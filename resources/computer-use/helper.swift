@@ -357,11 +357,15 @@ func screensInfo() -> [[String: Any]] {
     let mainH = NSScreen.screens.first?.frame.height ?? 0
     return NSScreen.screens.enumerated().map { (i, s) in
         let f = s.frame
+        let displayID = (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
         return [
             "width": Double(f.width), "height": Double(f.height), "scale": Double(s.backingScaleFactor),
             // origen arriba-izquierda relativo a la pantalla principal
             "x": Double(f.origin.x), "y": Double(mainH - f.origin.y - f.height),
             "main": i == 0,
+            // F8-B150: para capturar/filtrar la pantalla CORRECTA cuando la app en primer plano no está
+            // en la principal (ver sckScreenshotExcluding) — no es un punto, no sirve para nada más.
+            "displayID": Int(displayID),
         ]
     }
 }
@@ -425,7 +429,20 @@ func runningApps() -> [[String: Any]] {
 
 /// Rectángulos (puntos de pantalla, origen arriba-izquierda) de las ventanas visibles de las apps
 /// dadas (por bundle id): usado para enmascarar apps no concedidas si ScreenCaptureKit no está
-/// disponible (fallback de `screenshot-sck`).
+/// disponible (fallback de `screenshot-sck`) Y por `screenForCapture` (Node) para saber en qué
+/// pantalla está la app en primer plano — ahí toma SIEMPRE `wins[0]`, así que el orden/contenido de
+/// esta lista importa de verdad.
+///
+/// F8-B155: sin filtrar por capa, una ventana auxiliar siempre-encima de la misma app (overlay de
+/// notificaciones, HUD, panel flotante — Discord tiene varias de estas) podía colarse ANTES que la
+/// ventana de contenido real en el orden z (`CGWindowListCopyWindowInfo` ya viene ordenada de
+/// adelante hacia atrás), y `screenForCapture` tomaba su pantalla en vez de la de la ventana real —
+/// confirmado con una tarea real de Discord multi-monitor donde la captura mostraba el escritorio
+/// de OTRO monitor con "Discord en primer plano" ya confirmado. Mismo criterio que usan
+/// Hammerspoon (filtra por debajo del Dock, que de facto excluye los HUD/paneles que viven por
+/// encima) y Peekaboo (steipete/Peekaboo, `kCGWindowLayer == 0` + `kCGWindowAlpha` por encima de un
+/// umbral): acá, igual, nos quedamos solo con ventanas de capa normal (0) y no transparentes — las
+/// ventanas de app "de verdad" son capa 0, los overlays/HUD/paneles-flotantes casi siempre no.
 func windowsOf(bundleIds: Set<String>) -> [[String: Any]] {
     guard !bundleIds.isEmpty else { return [] }
     let pids = Set(NSWorkspace.shared.runningApplications.compactMap { app -> pid_t? in
@@ -437,8 +454,11 @@ func windowsOf(bundleIds: Set<String>) -> [[String: Any]] {
     guard let list = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { return [] }
     return list.compactMap { w -> [String: Any]? in
         guard let pidNum = w[kCGWindowOwnerPID as String] as? Int, pids.contains(pid_t(pidNum)),
+              let layer = w[kCGWindowLayer as String] as? Int, layer == 0,
               let b = w[kCGWindowBounds as String] as? [String: CGFloat],
               let x = b["X"], let y = b["Y"], let width = b["Width"], let height = b["Height"] else { return nil }
+        let alpha = (w[kCGWindowAlpha as String] as? CGFloat) ?? 1
+        guard alpha > 0.01 else { return nil }
         return ["x": Double(x), "y": Double(y), "width": Double(width), "height": Double(height)]
     }
 }
@@ -552,6 +572,10 @@ func resolveRef(_ appEl: AXUIElement, _ ref: String) -> AXUIElement? {
     }
     for comp in parts.dropFirst() {
         guard let idx = Int(comp) else { return nil }
+        // Best-effort, mismo motivo que en `AXWalker.walk`: si la página se recargó o perdió el
+        // estado "manual accessibility" entre el `ax-tree`/`ax-find` original y este `ax-press`, sin
+        // esto el recorrido podría quedarse corto antes de llegar al `ref` pedido.
+        AXUIElementSetAttributeValue(current, "AXManualAccessibility" as CFString, kCFBooleanTrue)
         var childrenRef: AnyObject?
         guard AXUIElementCopyAttributeValue(current, kAXChildrenAttribute as CFString, &childrenRef) == .success,
               let children = childrenRef as? [AXUIElement], idx >= 0, idx < children.count else { return nil }
@@ -569,6 +593,13 @@ struct AXWalker {
 
     mutating func walk(_ el: AXUIElement, ref: String, depth: Int) {
         if nodes.count >= maxNodes { truncated = true; return }
+        // Best-effort en CADA nodo (no solo en la app): en Brave/Chrome la app y la ventana rechazan
+        // este atributo (-25205, "unsupported"), el que lo acepta es un AXGroup varios niveles más
+        // adentro (el contenedor del contenido web) — sin activarlo ahí, todo lo de más abajo (la
+        // página en sí) queda invisible para este recorrido. Confirmado con Brave real: sin esto,
+        // una página con tarjetas de contenido (p.ej. un listado de canales) no expone NADA de su
+        // contenido, solo la barra/los botones nativos del navegador.
+        AXUIElementSetAttributeValue(el, "AXManualAccessibility" as CFString, kCFBooleanTrue)
         nodes.append(nodeJSON(el, ref: ref))
         if depth >= maxDepth {
             truncated = true
@@ -590,10 +621,9 @@ func requireRunningApp(_ bundleId: String) -> NSRunningApplication? {
 }
 
 /// Recorre las ventanas (y, si `includeMenuBar`, la barra de menús) de una app y devuelve el
-/// resultado del walker, activando antes `AXManualAccessibility` (best-effort: necesario para que
-/// las apps Electron/Chromium expongan su árbol AX).
+/// resultado del walker — cada nodo visitado intenta activar `AXManualAccessibility` (ver comentario
+/// en `AXWalker.walk`), necesario para que las apps Electron/Chromium expongan su árbol AX.
 func axTree(_ appEl: AXUIElement, maxDepth: Int, maxNodes: Int, includeMenuBar: Bool) -> AXWalker {
-    AXUIElementSetAttributeValue(appEl, "AXManualAccessibility" as CFString, kCFBooleanTrue)
     var walker = AXWalker(maxDepth: maxDepth, maxNodes: maxNodes)
     var windowsRef: AnyObject?
     if AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &windowsRef) == .success,
@@ -775,6 +805,8 @@ struct FindElementsWalker {
     mutating func walk(_ el: AXUIElement, query: FindElementsQuery) {
         if budgetExceeded() { return }
         visited += 1
+        // Best-effort en CADA nodo — ver comentario en `AXWalker.walk` (mismo motivo, mismo arreglo).
+        AXUIElementSetAttributeValue(el, "AXManualAccessibility" as CFString, kCFBooleanTrue)
         let role = axString(el, kAXRoleAttribute as String) ?? ""
         let subrole = axString(el, kAXSubroleAttribute as String)
         let roleOk = query.roles.map { $0.contains(role) } ?? true
@@ -800,7 +832,6 @@ struct FindElementsWalker {
 /// Solo las ventanas de la app (a diferencia de `axTree`, no incluye la barra de menús: los ítems de
 /// un menú cerrado no tienen marco en pantalla útil para un clic real).
 func findElements(_ appEl: AXUIElement, maxNodes: Int, maxMatches: Int, budgetSeconds: Double, query: FindElementsQuery) -> (matches: [[String: Any]], truncated: Bool) {
-    AXUIElementSetAttributeValue(appEl, "AXManualAccessibility" as CFString, kCFBooleanTrue)
     var walker = FindElementsWalker(maxNodes: maxNodes, maxMatches: maxMatches, deadline: DispatchTime.now() + budgetSeconds)
     var windowsRef: AnyObject?
     if AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &windowsRef) == .success,
@@ -817,11 +848,29 @@ func findElements(_ appEl: AXUIElement, maxNodes: Int, maxMatches: Int, budgetSe
 /// EJECUCIÓN (coincidencia exacta y luego parcial, sin distinguir mayúsculas), y si no está
 /// abierta, por Spotlight (`mdfind`) entre las instaladas. Usado por la herramienta `request_access`
 /// del MCP para poder identificar la app que el modelo nombra en lenguaje natural.
+/// Último segmento del bundle id (p.ej. "Notes" de "com.apple.Notes") — a diferencia del nombre
+/// localizado (que en un Mac en español es "Notas"), esto suele quedar en inglés sin importar el
+/// idioma del sistema.
+func bundleIdSuffix(_ bundleId: String?) -> String? {
+    guard let last = bundleId?.split(separator: ".").last else { return nil }
+    return String(last)
+}
+
 func resolveApp(_ name: String) -> [String: Any] {
     let lower = name.lowercased()
     let running = NSWorkspace.shared.runningApplications
+    // F8-B153: pedir "Notes" (inglés) en un Mac en español daba `com.apple.LinkedNotesUIService` —
+    // NO por el buscador de Spotlight de más abajo (lo que se sospechó primero), sino porque ESE
+    // proceso auxiliar real (corriendo de fondo, sin ventana) tiene "notes" como subcadena de su
+    // propio nombre ("LinkedNotesUIService") y el chequeo "parcial" de abajo lo atrapaba antes de
+    // llegar a esto — confirmado con el helper real, no una suposición. Por eso la coincidencia EXACTA
+    // por sufijo de bundle id (que sí encuentra la app real, `com.apple.Notes`) va ANTES que la
+    // parcial/floja, no después.
     if let exact = running.first(where: { ($0.localizedName ?? "").lowercased() == lower }) {
         return ["name": exact.localizedName ?? name, "bundleId": exact.bundleIdentifier ?? "", "found": !(exact.bundleIdentifier ?? "").isEmpty]
+    }
+    if let bySuffix = running.first(where: { (bundleIdSuffix($0.bundleIdentifier) ?? "").lowercased() == lower }) {
+        return ["name": bySuffix.localizedName ?? name, "bundleId": bySuffix.bundleIdentifier ?? "", "found": !(bySuffix.bundleIdentifier ?? "").isEmpty]
     }
     if let partial = running.first(where: { ($0.localizedName ?? "").lowercased().contains(lower) }) {
         return ["name": partial.localizedName ?? name, "bundleId": partial.bundleIdentifier ?? "", "found": !(partial.bundleIdentifier ?? "").isEmpty]
@@ -849,13 +898,15 @@ func resolveApp(_ name: String) -> [String: Any] {
 
 // MARK: - Reactivar app + asegurar ventana visible (`activate`, restaura el contexto del agente)
 
-/// Busca una app EN EJECUCIÓN por bundle id exacto, o por nombre (exacto y luego parcial, sin
-/// distinguir mayúsculas) — igual criterio que `resolveApp`, para aceptar lo que ya resolvió el MCP.
+/// Busca una app EN EJECUCIÓN por bundle id exacto, o por nombre (exacto, por sufijo del bundle id,
+/// y recién al final parcial) — igual criterio y mismo orden que `resolveApp`, para aceptar lo que
+/// ya resolvió el MCP.
 func findRunningApp(_ idOrName: String) -> NSRunningApplication? {
     let running = NSWorkspace.shared.runningApplications
     if let byBundle = running.first(where: { $0.bundleIdentifier == idOrName }) { return byBundle }
     let lower = idOrName.lowercased()
     if let exact = running.first(where: { ($0.localizedName ?? "").lowercased() == lower }) { return exact }
+    if let bySuffix = running.first(where: { (bundleIdSuffix($0.bundleIdentifier) ?? "").lowercased() == lower }) { return bySuffix }
     return running.first(where: { ($0.localizedName ?? "").lowercased().contains(lower) })
 }
 
@@ -953,14 +1004,20 @@ func writeJPEG(_ image: CGImage, to path: String, maxSide: CGFloat = 1280, quali
 }
 
 @available(macOS 14.0, *)
-func sckScreenshotExcluding(bundleIds: Set<String>) throws -> CGImage {
+func sckScreenshotExcluding(bundleIds: Set<String>, targetDisplayID: CGDirectDisplayID? = nil) throws -> CGImage {
     let sem = DispatchSemaphore(value: 0)
     var resultImage: CGImage?
     var resultError: Error?
     Task {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            guard let display = content.displays.first else {
+            // F8-B150: antes SIEMPRE `displays.first` (lo que sea que SCK enumere primero, no
+            // necesariamente la principal ni la que tiene la app en primer plano) — con un id de
+            // pantalla concreto (ver `screenForCapture` del lado de Node), se captura la que
+            // corresponde de verdad; sin id (comportamiento de siempre), sigue siendo la primera.
+            let display = (targetDisplayID.flatMap { id in content.displays.first(where: { $0.displayID == id }) })
+                ?? content.displays.first
+            guard let display else {
                 throw NSError(domain: "cu-helper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Sin pantalla compartible"])
             }
             let excluded = content.applications.filter { bundleIds.contains($0.bundleIdentifier) }
@@ -1045,6 +1102,21 @@ func windowShot(bundleId: String, windowIndex: Int) throws -> (CGImage, String) 
 
 /// Enmascara rectángulos (negro sólido) sobre una imagen; `rects` en coordenadas de PÍXELES de la
 /// imagen, origen arriba-izquierda (se voltean internamente al espacio de `CGContext`).
+/// Recorta `cgImg` a `rect` (en los mismos px de la imagen) y lo agranda `scale` veces (interpolación
+/// de calidad alta) — "zoom" para que el modelo vea más de cerca una zona densa/con texto chico.
+func zoomImage(_ cgImg: CGImage, rect: CGRect, scale: CGFloat) -> CGImage? {
+    guard let cropped = cgImg.cropping(to: rect) else { return nil }
+    if scale <= 1 { return cropped }
+    let newW = max(1, Int(CGFloat(cropped.width) * scale)), newH = max(1, Int(CGFloat(cropped.height) * scale))
+    guard let ctx = CGContext(
+        data: nil, width: newW, height: newH, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else { return cropped }
+    ctx.interpolationQuality = .high
+    ctx.draw(cropped, in: CGRect(x: 0, y: 0, width: newW, height: newH))
+    return ctx.makeImage() ?? cropped
+}
+
 func maskImage(_ cgImg: CGImage, rects: [CGRect]) -> CGImage? {
     let width = cgImg.width, height = cgImg.height
     guard let ctx = CGContext(
@@ -1440,7 +1512,7 @@ while let f = args.first, f.hasPrefix("--") {
     else { fail("Bandera desconocida: \(f)") }
 }
 guard let cmd = args.first else {
-    fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app|open-app-bg|resolve-app|activate|hide-apps|unhide-apps|app-at|running-apps|windows-of|focused-secure|recent-input|screenshot-sck|mask-regions|watch-esc|ax-tree|ax-find|ax-frame|ax-press|ax-set-value|ax-action|find-elements|window-shot|record|transcribe|mic-permission|mic-request …")
+    fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app|open-app-bg|resolve-app|activate|hide-apps|unhide-apps|app-at|running-apps|windows-of|focused-secure|recent-input|screenshot-sck|mask-regions|zoom-image|watch-esc|ax-tree|ax-find|ax-frame|ax-press|ax-set-value|ax-action|find-elements|window-shot|record|transcribe|mic-permission|mic-request …")
 }
 
 switch cmd {
@@ -1506,12 +1578,13 @@ case "focused-secure":
 case "recent-input":
     out(["keyDownSeconds": realKeyDownSeconds()])
 case "screenshot-sck":
-    guard args.count > 1 else { fail("Uso: screenshot-sck <outPath> [bundleId1,bundleId2,…]") }
+    guard args.count > 1 else { fail("Uso: screenshot-sck <outPath> [bundleId1,bundleId2,…] [displayID]") }
     let outPath = args[1]
     let excluded = args.count > 2 ? Set(args[2].split(separator: ",").map(String.init)) : Set<String>()
+    let targetDisplayID: CGDirectDisplayID? = args.count > 3 ? UInt32(args[3]) : nil
     if #available(macOS 14.0, *) {
         do {
-            let image = try sckScreenshotExcluding(bundleIds: excluded)
+            let image = try sckScreenshotExcluding(bundleIds: excluded, targetDisplayID: targetDisplayID)
             guard writePNG(image, to: outPath) else { fail("No se pudo guardar la captura") }
             out(["ok": true, "width": image.width, "height": image.height])
         } catch {
@@ -1535,6 +1608,21 @@ case "mask-regions":
         fail("No se pudo enmascarar/guardar \(args[2])")
     }
     out(["ok": true])
+case "zoom-image":
+    // zoom-image <inPath> <outPath> <x> <y> <w> <h> <scale> (px de la imagen, origen arriba-izquierda)
+    guard args.count > 7, let nsImg = NSImage(contentsOfFile: args[1]),
+          let cgImg = nsImg.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+        fail("Uso: zoom-image <in> <out> <x> <y> <w> <h> <scale> (no se pudo abrir la imagen de entrada)")
+    }
+    guard let x = Double(args[3]), let y = Double(args[4]), let w = Double(args[5]), let h = Double(args[6]), let scale = Double(args[7]) else {
+        fail("x/y/w/h/scale deben ser números")
+    }
+    let rect = CGRect(x: x, y: y, width: w, height: h).intersection(CGRect(x: 0, y: 0, width: cgImg.width, height: cgImg.height))
+    guard !rect.isEmpty, let zoomed = zoomImage(cgImg, rect: rect, scale: CGFloat(max(1, min(4, scale)))),
+          writeJPEG(zoomed, to: args[2], maxSide: 2000, quality: 0.85) else {
+        fail("No se pudo recortar/guardar \(args[2])")
+    }
+    out(["ok": true, "width": zoomed.width, "height": zoomed.height])
 case "watch-esc":
     requireAccessibility()
     watchEsc()
@@ -1677,6 +1765,43 @@ case "ax-set-value":
     guard settable.boolValue else { fail("El valor no se puede editar", code: 10) }
     guard AXUIElementSetAttributeValue(el, kAXValueAttribute as CFString, value as CFString) == .success else {
         fail("No se pudo escribir el valor", code: 10)
+    }
+    out(["ok": true])
+case "ax-insert-text":
+    // ax-insert-text <bundleId> <ref> <texto…> — AGREGA al final del valor actual, sin reemplazarlo
+    // (a diferencia de ax-set-value): mueve el cursor de Accessibility al final (AXSelectedTextRange,
+    // largo 0) e inserta ahí (AXSelectedText) — técnica estándar de edición por AX, no una escritura
+    // completa. Pensada para texto con contenido rico (adjuntos, formato) que ax-set-value perdería
+    // al reescribir el valor entero como texto plano; probada a mano contra una nota real de Notas
+    // (F8-B151) — agregó el texto al final sin tocar el resto. Si el campo no soporta estos atributos
+    // (no todos los AXTextArea lo hacen), falla con un mensaje claro en vez de a medias.
+    requireAccessibility()
+    guard args.count > 3 else { fail("Uso: cu-helper ax-insert-text <bundleId> <ref> <texto…>") }
+    let bundleId = args[1]; let ref = args[2]
+    let text = args[3...].joined(separator: " ")
+    guard let app = requireRunningApp(bundleId) else { fail("La app \(bundleId) no está en ejecución", code: 7) }
+    let appEl = AXUIElementCreateApplication(app.processIdentifier)
+    guard let el = resolveRef(appEl, ref) else { fail("El elemento cambió o no existe: \(ref)", code: 8) }
+    let role = axString(el, kAXRoleAttribute as String) ?? ""
+    let subrole = axString(el, kAXSubroleAttribute as String) ?? ""
+    if role == "AXSecureTextField" || subrole == "AXSecureTextField" {
+        fail("Campo seguro: no se puede escribir por AX", code: 9)
+    }
+    var currentRef: AnyObject?
+    AXUIElementCopyAttributeValue(el, kAXValueAttribute as CFString, &currentRef)
+    // NSString.length: unidades UTF-16, lo que espera AXSelectedTextRange (contar con String.count
+    // de Swift, en grafemas, daría un largo incorrecto con emoji/acentos/etc.).
+    let currentValue: String = (currentRef as? String) ?? ""
+    let length = (currentValue as NSString).length
+    var range = CFRange(location: length, length: 0)
+    guard let rangeValue = AXValueCreate(.cfRange, &range) else {
+        fail("No se pudo preparar la posición del cursor")
+    }
+    guard AXUIElementSetAttributeValue(el, "AXSelectedTextRange" as CFString, rangeValue) == .success else {
+        fail("No se pudo mover el cursor al final (este campo puede no soportar inserción por accesibilidad)", code: 10)
+    }
+    guard AXUIElementSetAttributeValue(el, "AXSelectedText" as CFString, text as CFString) == .success else {
+        fail("No se pudo insertar el texto (este campo puede no soportar inserción por accesibilidad)", code: 10)
     }
     out(["ok": true])
 case "ax-action":

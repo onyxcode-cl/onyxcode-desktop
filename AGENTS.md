@@ -90,6 +90,7 @@ No se modifican sin una decisión explícita del dueño (son los controles de se
 | CSP de la ventana principal y del esquema `lazunox://app` | `RENDERER_CSP` / `src/main/security/app-protocol.ts`, `src/renderer/index.html` | Sin ella un XSS llega a `window.api`; no se afloja ni se añaden orígenes. |
 | Hashes de los preloads secundarios | `src/preload/{quick,overlay,pill,assist,browser-host}.ts` | Son autocontenidos con sandbox a propósito; tras `build` sus hashes (`shasum out/preload/<x>.js`) deben ser idénticos (control de `docs/PLAN-MAESTRO.md`). |
 | Otros que el plan maestro protege | `helper.swift` (cu-helper), regla `webRequest` de loopback | Permisos TCC y red del navegador integrado. |
+| Esquema, sesión y CSP del visor de documentos | `src/main/security/app-protocol.ts` (solo la entrada del esquema `lazunox-viewer`, junto a la de la app principal — `registerSchemesAsPrivileged` solo se llama una vez por proceso), `src/main/viewer/{session,scheme}.ts` | Aísla el contenido no confiable que muestra el visor (PDF/Word/Excel/PowerPoint): sesión sin persistencia que cancela toda red que no sea el propio esquema, CSP propia sin `'unsafe-eval'`, token de un solo uso revalidado al servir bytes. Un cambio «inocente» aquí (aflojar la CSP, compartir la sesión con la app, confiar en la validación de apertura) abre una vía de fuga de red o de ejecución desde un documento hostil. |
 
 ## 8. Control remoto desde el celular (seguridad)
 

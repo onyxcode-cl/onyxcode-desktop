@@ -7,6 +7,7 @@ import { isRemoteSurface } from '../../lib/platform'
 import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
 import { attachmentBytes, toChatAttachment, validateFiles, type ChatAttachment } from '../../lib/attachments'
+import { VoiceDictationButton } from '../../components/VoiceDictationButton'
 
 const NO_ATTACHMENTS: ChatAttachment[] = []
 
@@ -120,6 +121,23 @@ export function ChatComposer({
   const keepFocus = mobile ? (e: React.MouseEvent): void => e.preventDefault() : undefined
 
   const canSend = !disabled && !busy && (text.trim().length > 0 || attachments.length > 0)
+
+  /** Inserta el texto dictado en la posición del cursor (o al final si no hay foco en el textarea). */
+  const insertDictated = (dictated: string): void => {
+    const el = ref.current
+    const start = el?.selectionStart ?? text.length
+    const end = el?.selectionEnd ?? text.length
+    const before = text.slice(0, start)
+    const needsSpace = before.length > 0 && !/\s$/.test(before)
+    const insert = `${needsSpace ? ' ' : ''}${dictated}`
+    const next = `${before}${insert}${text.slice(end)}`
+    setText(next)
+    const caret = before.length + insert.length
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(caret, caret)
+    })
+  }
 
   const addFiles = (list: FileList | File[]): void => {
     const files = Array.from(list)
@@ -299,6 +317,7 @@ export function ChatComposer({
               <Paperclip size={mobile ? 20 : 16} />
             </button>
           )}
+          <VoiceDictationButton onText={insertDictated} />
           {mobile ? (
             hero && footer ? (
               <div {...m('composer-model')} className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">

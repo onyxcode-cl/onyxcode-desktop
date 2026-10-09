@@ -5,16 +5,14 @@
  */
 import { t } from '@shared/i18n'
 import type { MessageEntry } from '../../../stores/sessions'
+import { lastAssistantText, visibleTextParts } from '../../../lib/conversation/entries'
+
+// Se re-exportan para no romper a quien las importaba de acá (la implementación vive en `lib/conversation/entries.ts`,
+// compartida con Code).
+export { lastAssistantText, visibleTextParts }
 
 /** Marca que `sendToTask` añade al mensaje cuando hay archivos adjuntos. */
 export const ATTACHMENTS_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: prompt al agente (se queda en español)
-
-type TextPart = Extract<MessageEntry['parts'][number], { type: 'text' }>
-
-/** Partes de texto visibles (sin sintéticas ni ignoradas) de un mensaje. */
-export function visibleTextParts(entry: MessageEntry): TextPart[] {
-  return entry.parts.filter((p): p is TextPart => p.type === 'text' && !p.synthetic && !p.ignored)
-}
 
 /** Separa el texto del usuario de su bloque de adjuntos (rutas relativas, sin el guion inicial). */
 export function splitAttachments(raw: string): { text: string; files: string[] } {
@@ -35,18 +33,6 @@ function userText(entry: MessageEntry): string {
       .map((p) => p.text)
       .join('\n')
   ).text
-}
-
-/** Texto del último mensaje del asistente (une sus partes de texto). '' si no hay. */
-export function lastAssistantText(entries: MessageEntry[]): string {
-  for (let i = entries.length - 1; i >= 0; i--) {
-    if (entries[i].info.role !== 'assistant') continue
-    return visibleTextParts(entries[i])
-      .map((p) => p.text)
-      .join('\n')
-      .trim()
-  }
-  return ''
 }
 
 /** Primer mensaje del usuario, sin el bloque de adjuntos que añade `sendToTask`. '' si no hay. */

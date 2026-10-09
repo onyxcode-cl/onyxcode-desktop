@@ -314,6 +314,8 @@ export const mainErrors = {
   'merr.dialog.pickBinary': 'Choose the OpenCode binary',
   'merr.dialog.savePreview': 'Save preview',
   'merr.dialog.saveFailed': 'Couldn’t save',
+  'merr.dialog.savePdf': 'Save as PDF',
+  'merr.dialog.saveDoc': 'Save document',
   'merr.menu.back': 'Back',
   'merr.menu.forward': 'Forward',
   'merr.menu.reload': 'Reload',
@@ -332,6 +334,8 @@ export const mainErrors = {
   'merr.files.htmlLoadFailed': 'Couldn’t load the HTML ({detail}).',
   'merr.files.rendererGone': 'The rendering process closed.',
   'merr.files.pdfTimeout': 'Converting to PDF took too long.',
+  'merr.files.pdfInvalid': 'Couldn’t generate the PDF.',
+  'merr.files.docExpired': 'This document is no longer available.',
   'merr.storage.serverRunning': 'Can’t clear it: that folder’s server is running. Stop it first.',
   'merr.restore.unavailable': 'The folder isn’t available (disk disconnected?)',
   'merr.restore.noPoint': 'That restore point doesn’t exist.',
@@ -373,5 +377,10 @@ export const mainErrors = {
   'merr.compare.unconfirmed': 'The engine didn’t confirm the stop; the copy is kept.',
   'merr.compare.notFinished': 'The comparison hasn’t finished yet.',
   'merr.compare.notReady': 'That column isn’t ready for this.',
-  'merr.compare.exportTitle': 'Save comparison'
+  'merr.compare.exportTitle': 'Save comparison',
+
+  // Document viewer (viewer plan, Phase 0)
+  'merr.viewer.openFailed': 'Couldn’t open the document.',
+  'merr.viewer.unsupported': 'This file type can’t be shown inside the app.',
+  'merr.viewer.tooLarge': 'The file is too large to show inside the app.'
 } as const satisfies Messages<typeof es>

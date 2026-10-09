@@ -31,7 +31,8 @@ import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
 import { cw } from './bridge'
-import { baseName, extOf, formatSize, relTime } from './util'
+import { requestViewerOpen } from './store'
+import { baseName, extOf, formatSize, isViewerExt, relTime } from './util'
 
 const IMAGE = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
 const MARKDOWN = new Set(['md', 'markdown'])
@@ -46,6 +47,11 @@ const ARTIFACT_MAX_BYTES = 2 * 1024 * 1024
 export function canPreview(path: string): boolean {
   const e = extOf(path)
   return IMAGE.has(e) || MARKDOWN.has(e) || TABLE.has(e) || TEXT.has(e) || DOCUMENT.has(e)
+}
+
+/** `.pdf/.docx/.xlsx/.pptx` con el visor de documentos disponible en esta plataforma. */
+export function canViewInViewer(path: string): boolean {
+  return isViewerExt(path) && platformCaps().docViewer
 }
 
 export function isHtmlFile(path: string): boolean {
@@ -359,8 +365,10 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
           <ul className="space-y-1.5">
             {g.files.map((f) => {
               const { icon: Icon, tone } = fileIcon(f.path)
-              const previewable = canPreview(f.path)
+              const viewable = canViewInViewer(f.path)
+              const previewable = !viewable && canPreview(f.path)
               const html = isHtmlFile(f.path)
+              const openView = (): void => (viewable ? requestViewerOpen(f.path) : setPreview(f))
               return (
                 <li key={f.path} className="rounded-lg border border-border bg-elevated px-2.5 py-2">
                   <div className="flex items-start gap-2">
@@ -369,7 +377,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                       type="button"
                       className="min-w-0 flex-1 text-left"
                       title={f.relPath}
-                      onClick={() => (previewable ? setPreview(f) : run(() => openPath(f.path)))}
+                      onClick={() => (viewable || previewable ? openView() : run(() => openPath(f.path)))}
                     >
                       <span className="block truncate text-[13px] font-medium">{baseName(f.path)}</span>
                       <span className="block truncate text-[11px] text-subtle">
@@ -380,8 +388,8 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                   </div>
                   {IMAGE.has(extOf(f.path)) && <ImageThumb file={f} />}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 pl-6">
-                    {previewable && (
-                      <button type="button" className={ACTION_BTN} onClick={() => setPreview(f)}>
+                    {(viewable || previewable) && (
+                      <button type="button" className={ACTION_BTN} onClick={openView}>
                         <Eye size={12} /> {t('tasks.deliv.view')}
                       </button>
                     )}

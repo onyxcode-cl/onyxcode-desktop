@@ -43,9 +43,22 @@ describe('memoria aprendida (2026-10-07)', () => {
   it('sin contenido aprobado, no agrega secciones de memoria (aunque learningEnabled sea true)', () => {
     expect(buildTasksSystemPrompt({ learnedUser: '', learnedProject: '' })).toBeUndefined()
   })
-  it('ejecución desatendida (rutinas): pide no proponer memoria nueva, aunque sí muestra la ya aprobada', () => {
+  it('ejecución desatendida (rutinas): puede proponer memoria, pero avisa que queda pendiente de revisión, y muestra la ya aprobada', () => {
     const s = buildTasksSystemPrompt({ learnedUser: 'ya aprobado', unattended: true }) ?? ''
     expect(s).toContain('ya aprobado')
-    expect(s).toContain('no propongas memoria nueva')
+    expect(s).toContain('pendiente de revisión')
+    expect(s).not.toContain('no propongas memoria nueva')
+  })
+  it('learningSupported: false omite toda la sección de memoria, aunque haya memoria ya aprobada o esté desactivada', () => {
+    const s1 = buildTasksSystemPrompt({ learnedUser: 'ya aprobado', learningSupported: false }) ?? ''
+    expect(s1).toBe('')
+    const s2 = buildTasksSystemPrompt({ learningEnabled: false, learningSupported: false }) ?? ''
+    expect(s2).toBe('')
+  })
+  it('learningSupported: false + unattended: igual omite la memoria, pero mantiene el aviso general de ejecución desatendida', () => {
+    const s = buildTasksSystemPrompt({ learnedUser: 'ya aprobado', unattended: true, learningSupported: false }) ?? ''
+    expect(s).not.toContain('ya aprobado')
+    expect(s).not.toContain('pendiente de revisión')
+    expect(s).toContain('PROGRAMADA y desatendida')
   })
 })

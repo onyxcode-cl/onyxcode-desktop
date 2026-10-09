@@ -319,6 +319,8 @@ export const mainErrors = {
   'merr.dialog.pickBinary': 'Elegir el binario de OpenCode',
   'merr.dialog.savePreview': 'Guardar vista previa',
   'merr.dialog.saveFailed': 'No se pudo guardar',
+  'merr.dialog.savePdf': 'Guardar como PDF',
+  'merr.dialog.saveDoc': 'Guardar documento',
   'merr.menu.back': 'Atrás',
   'merr.menu.forward': 'Adelante',
   'merr.menu.reload': 'Recargar',
@@ -337,6 +339,8 @@ export const mainErrors = {
   'merr.files.htmlLoadFailed': 'No se pudo cargar el HTML ({detail}).',
   'merr.files.rendererGone': 'El proceso de renderizado se cerró.',
   'merr.files.pdfTimeout': 'La conversión a PDF tardó demasiado.',
+  'merr.files.pdfInvalid': 'No se pudo generar el PDF.',
+  'merr.files.docExpired': 'El documento ya no está disponible.',
   'merr.storage.serverRunning': 'No se puede limpiar: el servidor de esa carpeta está en marcha. Detenlo primero.',
   'merr.restore.unavailable': 'La carpeta no está disponible (¿disco desconectado?)',
   'merr.restore.noPoint': 'No existe ese punto de restauración.',
@@ -378,5 +382,10 @@ export const mainErrors = {
   'merr.compare.unconfirmed': 'El motor no confirmó la parada; la copia se conserva.',
   'merr.compare.notFinished': 'La comparación aún no terminó.',
   'merr.compare.notReady': 'Esa columna no está lista para esto.',
-  'merr.compare.exportTitle': 'Guardar comparación'
+  'merr.compare.exportTitle': 'Guardar comparación',
+
+  // Visor de documentos (Fase 0 del plan del visor)
+  'merr.viewer.openFailed': 'No se pudo abrir el documento.',
+  'merr.viewer.unsupported': 'Este tipo de archivo no se puede mostrar adentro de la app.',
+  'merr.viewer.tooLarge': 'El archivo es demasiado grande para mostrarlo adentro de la app.'
 } as const

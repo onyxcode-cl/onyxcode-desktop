@@ -39,7 +39,8 @@ import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
-import { endedMidTurn } from './util'
+import { endedMidTurn, isViewerExt } from './util'
+import { platformCaps } from '../../../lib/platform'
 import { sdkDirOf } from './path-map'
 import { hostFolder, sdkDir } from './conn-paths'
 import type { RestoreResult } from './restore-logic'
@@ -163,6 +164,13 @@ interface TasksState {
   /** Último «Cambios deshechos…» (con «Rehacer»). */
   restoreResult: RestoreResult | null
 
+  /**
+   * Pedido de abrir un archivo en el visor de documentos (Fase 0 del plan del visor): lo dispara
+   * `Deliverables.tsx`, lo consume `TasksWorkspace.tsx` (cambia a la pestaña «Documento» y monta
+   * `DocumentViewerPanel`). `nonce` fuerza una nueva apertura aunque sea la misma ruta.
+   */
+  viewerRequest: { path: string; nonce: number } | null
+
   set: (patch: Partial<TasksState>) => void
 }
 
@@ -268,6 +276,7 @@ export const useTasks = create<TasksState>((set) => ({
   policy: null,
   sideChat: null,
   showArchived: false,
+  viewerRequest: null,
   autoMode: null,
   autoPending: {},
   autoApprovedNotice: null,
@@ -277,6 +286,16 @@ export const useTasks = create<TasksState>((set) => ({
   restoreResult: null,
   set: (patch) => set(patch)
 }))
+
+/** Pide abrir `path` en el visor de documentos (`Deliverables.tsx`); `TasksWorkspace.tsx` lo consume. */
+export function requestViewerOpen(path: string): void {
+  useTasks.setState((s) => ({ viewerRequest: { path, nonce: s.viewerRequest ? s.viewerRequest.nonce + 1 : 1 } }))
+}
+
+/** El visor se cerró (botón «Cerrar» o se cambió de carpeta): nadie más tiene que hacer nada. */
+export function clearViewerRequest(): void {
+  useTasks.setState({ viewerRequest: null })
+}
 
 export function setProjectPanelOpen(open: boolean): void {
   useTasks.setState({ projectPanelOpen: open })
@@ -629,7 +648,7 @@ export function clearUnseen(sessionID: string): void {
   })
 }
 
-function handleEvent(event: OcEvent, directory: string): void {
+export function handleEvent(event: OcEvent, directory: string): void {
   const st = useTasks.getState()
   if (!st.folder || directory !== sdkDir(st.folder) || !st.conn) return
   const prevRun =
@@ -707,6 +726,16 @@ function handleEvent(event: OcEvent, directory: string): void {
         ['write', 'edit', 'bash', 'patch', 'apply_patch', 'multiedit'].includes(part.tool)
       ) {
         scheduleDeliverablesRefresh()
+        // Como los Artifacts de Claude: si lo que el agente acaba de terminar de escribir es un
+        // documento que el visor sabe mostrar, se abre solo (sin que el usuario tenga que ir a
+        // buscarlo a la lista de entregables). `bash` no trae una ruta directa en su `input`, así
+        // que se deja fuera a propósito — mejor no abrir nada que abrir el archivo equivocado.
+        if (part.tool !== 'bash') {
+          const input = (part.state.input ?? {}) as Record<string, unknown>
+          const rawPath = input.filePath ?? input.path
+          const path = typeof rawPath === 'string' ? rawPath : ''
+          if (path && isViewerExt(path) && platformCaps().docViewer) requestViewerOpen(path)
+        }
       }
       break
     }
@@ -774,7 +803,8 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     folderSet: null,
     taskModel: null,
     taskVariant: null,
-    sideChat: null
+    sideChat: null,
+    viewerRequest: null
   })
   try {
     const conn = await cw('tasks:start', { folder, fullAccess })

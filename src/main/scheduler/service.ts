@@ -38,6 +38,9 @@ import type { NotifyTarget, Settings } from '@shared/types'
 import { loadManagedPolicy } from '../tasks/policy'
 import { getMemory, type TasksProjectsStore } from '../tasks/projects'
 import { learnedMemoryForPrompt } from '../tasks/learned-memory'
+import { enqueueFromRoutine } from '../tasks/learned-pending'
+import { stripMemoryProposalBlock } from '@shared/memory-proposal'
+import { stripSkillProposalBlock } from '@shared/skill-proposal'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { shouldRunUnattended } from '@shared/routines-terms'
 import { decideUnattended } from './approvals'
@@ -674,6 +677,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
           : null,
         memory,
         learningEnabled: isTasks ? this.deps.getSettings?.().learningEnabled : undefined,
+        learningSupported: isTasks,
         learnedUser: learned?.usuario,
         learnedProject: learned?.proyecto,
         folders: folderSet ? [...folderSet.linked, ...folderSet.trusted].map((f) => ({ path: f.path, mode: f.mode })) : [],
@@ -693,7 +697,23 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (record.error) throw new Error(record.error)
       if (!final) throw new Error(t('merr.routine.noReply'))
       if (final.info.error) throw new Error(errMsg(final.info.error))
-      return truncate(extractText(final.parts) || t('merr.routine.noText'), SUMMARY_MAX)
+      const rawText = extractText(final.parts)
+      // Requisito de seguridad (no un detalle visual): el resumen nunca lleva los bloques crudos de
+      // propuesta, en NINGÚN modo, los proponga o no la memoria aprendida — `record.summary` llega a
+      // notificaciones nativas, al historial (Markdown) y al evento `routines:run`, que SÍ alcanza al celular.
+      const text = stripSkillProposalBlock(stripMemoryProposalBlock(rawText))
+      if (isTasks && this.deps.getSettings?.().learningEnabled !== false) {
+        enqueueFromRoutine({
+          text: rawText,
+          routineId: r.id,
+          routineName: r.name,
+          runId: record.id,
+          folder: dirForSession,
+          sessionId: sessionID,
+          messageId: final.info.id
+        })
+      }
+      return truncate(text || t('merr.routine.noText'), SUMMARY_MAX)
     } finally {
       clearInterval(poll)
       clearTimeout(timeout)

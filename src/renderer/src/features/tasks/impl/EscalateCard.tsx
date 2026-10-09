@@ -16,12 +16,14 @@ import type { Lang } from '@shared/i18n'
 import { getLang, useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
+import { lastAssistantEntry, lastAssistantText } from '../../../lib/conversation/entries'
 import { sendToTask, setAccessMode } from './actions'
 import { currentTasksModel, useTasks } from './store'
-import { firstUserPrompt, lastAssistantText } from './transcript'
+import { firstUserPrompt } from './transcript'
 
-// Se re-exporta para no romper a quien lo importaba de aquí (la implementación vive en `transcript.ts`).
-export { lastAssistantText }
+// Se re-exportan para no romper a quien las importaba de acá (la implementación vive en
+// `lib/conversation/entries.ts`, compartida con Code).
+export { lastAssistantEntry, lastAssistantText }
 
 // ───────────────────────────── Detección y prompt (funciones puras) ─────────────────────────────
 
@@ -39,12 +41,6 @@ const PHRASES = [
   'needs full control of your mac' // i18n-ignore: contrato con el agente
 ]
 const MAX_SUMMARY_CHARS = 1500
-
-/** Último mensaje del asistente de la tarea (undefined si no hay). */
-export function lastAssistantEntry(entries: MessageEntry[]): MessageEntry | undefined {
-  for (let i = entries.length - 1; i >= 0; i--) if (entries[i].info.role === 'assistant') return entries[i]
-  return undefined
-}
 
 /** Minúsculas y sin tildes (NFD), conservando para cada carácter normalizado su índice en el original. */
 function foldWithMap(text: string): { folded: string; map: number[] } {

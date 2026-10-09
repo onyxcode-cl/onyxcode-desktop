@@ -213,6 +213,24 @@ describe('addEntry', () => {
 
     expect(added).toBe(false)
   })
+
+  it('no agrega un texto ya guardado con el mismo tipo (ignora mayúsculas, tildes y espacios de más)', () => {
+    const entries: LearnedMemoryEntry[] = [{ id: 'aa', tipo: 'preferencia', texto: 'Usa Prettier', fecha: '2026-10-01' }]
+    const { entries: result, added } = addEntry(
+      entries,
+      { id: 'bb', tipo: 'preferencia', texto: '  usa   prettier  ', fecha: '2026-10-02' },
+      'usuario'
+    )
+    expect(added).toBe(false)
+    expect(result).toHaveLength(1)
+  })
+
+  it('el mismo texto pero con otro tipo SÍ se agrega (no es el mismo hecho)', () => {
+    const entries: LearnedMemoryEntry[] = [{ id: 'aa', tipo: 'preferencia', texto: 'Usa Prettier', fecha: '2026-10-01' }]
+    const { entries: result, added } = addEntry(entries, { id: 'bb', tipo: 'convencion', texto: 'Usa Prettier', fecha: '2026-10-02' }, 'usuario')
+    expect(added).toBe(true)
+    expect(result).toHaveLength(2)
+  })
 })
 
 describe('removeEntry', () => {

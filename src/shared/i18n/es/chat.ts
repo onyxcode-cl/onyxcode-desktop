@@ -1,4 +1,11 @@
 export const chat = {
+  'chat.doc.title': 'Documento',
+  'chat.doc.creating': 'Generando documento…',
+  'chat.doc.kindPdf': 'PDF',
+  'chat.doc.kindXlsx': 'Excel',
+  'chat.doc.kindPptx': 'PowerPoint',
+  'chat.doc.fullscreen': 'Pantalla completa',
+  'chat.doc.exitFullscreen': 'Salir de pantalla completa',
   'chat.greeting.morning': 'Buenos días',
   'chat.greeting.afternoon': 'Buenas tardes',
   'chat.greeting.evening': 'Buenas noches',

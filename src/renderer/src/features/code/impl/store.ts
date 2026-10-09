@@ -8,10 +8,13 @@ import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { rulesetFor, sameRuleset } from './permission-rules'
 import { NO_AI_ERROR } from '@shared/ai-errors'
+import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
+import { useSettings } from '../../../stores/settings'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
+import { useCodeLearnedMemory } from './learned-memory-store'
 import { sendNotification } from '../../../lib/notify'
 import { debounce } from '../../../lib/debounce'
 import { lruMax } from '../../../lib/lru'
@@ -648,6 +651,16 @@ export const useCode = create<CodeState>((set, get) => {
           agent,
           model: sendModel ? { providerID: sendModel.providerID, modelID: sendModel.modelID } : undefined,
           variant: variant ?? undefined,
+          // Memoria aprendida (decisión del dueño, 2026-10-07): nunca desde el celular. `PROMPT_KEYS` en
+          // `remote/policy.ts` no incluye `system`, así que un `system` armado en el celular (con memoria
+          // que ese mismo celular pudo manipular en su copia local de los ajustes) sería una forma de colar
+          // instrucciones con el peso de "sistema" sin pasar por la aprobación del dueño en el Mac/PC.
+          system: remote
+            ? undefined
+            : buildCodeSystemPrompt({
+                learningEnabled: useSettings.getState().settings.learningEnabled,
+                learnedUser: useCodeLearnedMemory.getState().learnedUser
+              }),
           // H1: un adjunto sin texto es un mensaje válido (solo partes `file`); no se manda un bloque de texto vacío.
           parts: [...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []), ...fileParts, ...elementParts, ...attachParts]
         })

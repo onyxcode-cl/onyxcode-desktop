@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CalendarClock,
   FileDown,
+  FileText,
   FolderOpen,
   Globe,
   Loader2,
@@ -86,6 +87,7 @@ import { StatusIcon } from './TaskList'
 import {
   addNetworkBlocked,
   clearUnseen,
+  clearViewerRequest,
   connectFolder,
   currentTasksModel,
   disconnect,
@@ -101,6 +103,7 @@ import {
   isPlanPending,
   isUsingComputer
 } from './store'
+import { DocumentViewerPanel } from './DocumentViewerPanel'
 import { sdkDir } from './conn-paths'
 import {
   extOf,
@@ -351,11 +354,25 @@ export function TasksWorkspace(): React.JSX.Element {
   const fullAccess = conn?.fullAccess === true
   // Navegador integrado del `aside`: pestaña "Progreso | Navegador" y ancho redimensionable.
   const composerRef = useRef<TasksComposerHandle>(null)
-  const [asideTab, setAsideTab] = useState<'progress' | 'browser'>('progress')
+  const [asideTab, setAsideTab] = useState<'progress' | 'browser' | 'viewer'>('progress')
   const [browserMounted, setBrowserMounted] = useState(false)
   const [browserWidth, setBrowserWidth] = useState(readAsideBrowserWidth)
   const asideDrag = useRef<{ x: number; w: number } | null>(null)
   const browserOwner: BrowserOwner | null = folder ? { kind: 'tasks', folder } : null
+  // Visor de documentos (Fase 0 del plan del visor): `Deliverables.tsx` pide abrir un archivo con
+  // `requestViewerOpen`; acá se cambia a la pestaña y se monta el panel.
+  const viewerRequest = useTasks((s) => s.viewerRequest)
+  useEffect(() => {
+    if (viewerRequest) {
+      setAsideTab('viewer')
+      setPanelOpen(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerRequest?.nonce])
+  const closeViewer = (): void => {
+    clearViewerRequest()
+    setAsideTab('progress')
+  }
 
   /** «Añadir al chat» del navegador integrado: inserta el texto en el compositor (v1 sin imagen). */
   const addPageToComposer = (item: BrowserToChat): void => {
@@ -761,9 +778,9 @@ export function TasksWorkspace(): React.JSX.Element {
         <aside
           aria-label={t('a11y.sidePanel')}
           className="relative hidden shrink-0 flex-col border-l border-border lg:flex desk:border-l-transparent desk:bg-sidebar"
-          style={{ width: asideTab === 'browser' ? browserWidth : 320 }}
+          style={{ width: asideTab === 'browser' || asideTab === 'viewer' ? browserWidth : 320 }}
         >
-          {asideTab === 'browser' && (
+          {(asideTab === 'browser' || asideTab === 'viewer') && (
             <div
               onPointerDown={onAsideResizeDown}
               onPointerMove={onAsideResizeMove}
@@ -795,6 +812,17 @@ export function TasksWorkspace(): React.JSX.Element {
                   <Globe size={12} /> {TASKS_TERMS.browser}
                 </button>
               )}
+              {viewerRequest && (
+                <button
+                  type="button"
+                  onClick={() => setAsideTab('viewer')}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
+                    asideTab === 'viewer' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
+                  }`}
+                >
+                  <FileText size={12} /> {t('viewer.tab')}
+                </button>
+              )}
             </div>
             <span className="ml-auto flex items-center gap-0.5">
               {asideTab === 'progress' && (
@@ -823,6 +851,16 @@ export function TasksWorkspace(): React.JSX.Element {
           {browserOwner && browserMounted && (
             <div className={`min-h-0 flex-1 ${asideTab === 'browser' ? 'flex flex-col' : 'hidden'}`}>
               <BrowserPanel owner={browserOwner} product="tasks" visible={asideTab === 'browser'} onAddToChat={addPageToComposer} />
+            </div>
+          )}
+          {viewerRequest && (
+            <div className={`min-h-0 flex-1 ${asideTab === 'viewer' ? 'flex flex-col' : 'hidden'}`}>
+              <DocumentViewerPanel
+                key={viewerRequest.nonce}
+                path={viewerRequest.path}
+                visible={asideTab === 'viewer'}
+                onClose={closeViewer}
+              />
             </div>
           )}
         </aside>

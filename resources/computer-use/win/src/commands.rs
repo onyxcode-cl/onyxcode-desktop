@@ -103,7 +103,7 @@ pub enum Command {
 pub const DEFERRED: [&str; 2] = ["open-app", "open-app-bg"];
 
 /// Comandos sin equivalente en Windows (`win32: none|replaced`) y su motivo.
-pub const UNAVAILABLE: [(&str, &str); 7] = [
+pub const UNAVAILABLE: [(&str, &str); 8] = [
     ("request-permissions", "no aplica en Windows: el consentimiento lo pide la propia app (Ajustes)"),
     ("screenshot-sck", "reemplazado en Windows por `screenshot`"),
     ("mask-regions", "reemplazado en Windows: la máscara la aplica `screenshot --mask-keys`"),
@@ -111,6 +111,9 @@ pub const UNAVAILABLE: [(&str, &str); 7] = [
     ("transcribe", "no disponible en Windows"),
     ("mic-permission", "no disponible en Windows"),
     ("mic-request", "no disponible en Windows"),
+    // F8-B149: pendiente de implementar con WIC (IWICBitmapClipper + scaler) y probar en una máquina
+    // Windows real antes de declararlo — por ahora usa una nueva captura completa en vez de zoom.
+    ("zoom-image", "recorte/zoom de una captura: todavía no implementado en Windows"),
 ];
 
 /// Todos los comandos implementados (lo que figura en la línea de uso).

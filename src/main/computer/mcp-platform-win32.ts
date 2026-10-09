@@ -502,6 +502,19 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     return JSON.parse(stdout) as { width: number; height: number; title?: string }
   }
 
+  /** F8-B149: todavía no implementado en Windows (necesitaría WIC — IWICBitmapClipper + scaler — probado
+   * en una máquina real antes de declararlo disponible). Falla con un mensaje claro de inmediato, en vez
+   * de intentar un comando nativo (`zoom-image`) que no existe en el helper de Windows. */
+  async function zoomImage(): Promise<{ width: number; height: number }> {
+    throw new Error('zoom no está disponible en Windows todavía — pide una nueva captura completa (screenshot) en su lugar.')
+  }
+
+  /** F8-B151: todavía no implementado en Windows (necesitaría UI Automation — `ITextRangeProvider` o
+   * similar — probado en una máquina real antes de declararlo disponible). */
+  async function insertAxText(): Promise<void> {
+    throw new Error('app_insert_text no está disponible en Windows todavía — usa app_set_value (con cuidado) o pide control real.')
+  }
+
   return {
     id: 'win32',
     helper,
@@ -517,6 +530,8 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     normalizeScreen: (s: Screen & Record<string, unknown>): Screen => ({ width: s.width, height: s.height, scale: 1, main: s.main }),
     captureScreen,
     windowShot,
+    zoomImage,
+    insertAxText,
     resolveApp,
     text: {
       instructions:

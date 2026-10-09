@@ -19,6 +19,7 @@ import { browser } from './browser'
 import { compare } from './compare'
 import { remote } from './remote'
 import { mobileShell } from './mobileShell'
+import { viewer } from './viewer'
 
 export const en = {
   ...common,
@@ -41,7 +42,8 @@ export const en = {
   ...browser,
   ...compare,
   ...remote,
-  ...mobileShell
+  ...mobileShell,
+  ...viewer
 }
 
 export const AREAS = {
@@ -65,5 +67,6 @@ export const AREAS = {
   browser,
   compare,
   remote,
-  mobileShell
+  mobileShell,
+  viewer
 }

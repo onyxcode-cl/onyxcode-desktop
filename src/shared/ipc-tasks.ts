@@ -4,8 +4,13 @@
  * Expuesto en el renderer como `window.api.tasks` (ver src/preload/tasks-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
  */
+import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
+import type { PendingLearnedState } from './learned-pending'
 import type { ModelRef } from './types'
+
+export type { PendingLearnedItem, PendingLearnedState } from './learned-pending'
+export type { DocKind } from './doc-kind'
 
 // ───────────────────────────── Tareas ─────────────────────────────
 
@@ -383,6 +388,25 @@ export interface LearnedMemoryProposal {
 /** Por qué `tasks:skill:accept` no escribió nada (revalidado en `main`: nunca confía en el renderer). */
 export type LearnedSkillReject = 'nombre-invalido' | 'campo-faltante' | 'demasiado-largo' | 'secreto' | 'ya-existe'
 export type LearnedSkillResult = { ok: true; path: string } | { ok: false; reason: LearnedSkillReject }
+
+/** Por qué `tasks:learn:pending:acceptMemory/acceptSkill` no hizo nada: el ítem ya no está, o la carpeta ya no se puede validar. */
+export type PendingLearnedReject = 'no-encontrado' | 'carpeta-no-aprobada'
+export type PendingAcceptMemoryResult =
+  { ok: true; savedCount: number; bundle: LearnedMemoryBundle } | { ok: false; reason: PendingLearnedReject }
+export type PendingAcceptSkillResult = LearnedSkillResult | { ok: false; reason: PendingLearnedReject }
+
+// ───────────────────────────── Visor de documentos ─────────────────────────────
+
+/** Por qué `tasks:viewer:open` no abrió nada: no se reconoce el formato, o pesa más que el tope de ese tipo. */
+export type ViewerOpenReject = 'unsupported' | 'too-large'
+export type ViewerOpenResult = { ok: true; token: string; kind: DocKind } | { ok: false; reason: ViewerOpenReject }
+export interface ViewerRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+export type ViewerEventType = 'escape' | 'crashed' | 'loaded' | 'error'
 
 // ───────────────────────────── Red de Tareas (egress) ─────────────────────────────
 
@@ -947,6 +971,30 @@ export interface TasksInvokeContract {
   /** Borra `<folder>/.opencode/skills/<name>/` entera (la propuso el agente o apareció sin revisar). */
   'tasks:skill:remove': { req: { folder: string; name: string }; res: string[] }
 
+  /**
+   * Cola de memoria/skills que una RUTINA propuso en una ejecución desatendida (decisión del dueño,
+   * 2026-10-07): nadie estaba mirando para aprobar en el momento, así que queda pendiente de revisión.
+   * Vive aparte de `tasks:learn:*`/`tasks:skill:*` (esos son para tareas interactivas, con alguien delante).
+   */
+  'tasks:learn:pending:list': { req: void; res: PendingLearnedState }
+  'tasks:learn:pending:acceptMemory': { req: { id: string; proposals: LearnedMemoryProposal[] }; res: PendingAcceptMemoryResult }
+  'tasks:learn:pending:acceptSkill': { req: { id: string; name: string; description: string; body: string }; res: PendingAcceptSkillResult }
+  'tasks:learn:pending:discard': { req: { id: string }; res: PendingLearnedState }
+  'tasks:learn:pending:discardAll': { req: void; res: PendingLearnedState }
+  /** "Entendido" sobre el aviso de descartados por tope: vuelve el contador a 0. */
+  'tasks:learn:pending:ackDropped': { req: void; res: PendingLearnedState }
+
+  /**
+   * Visor de documentos dentro de Tareas (Fase 0 del plan del visor, decisión del dueño,
+   * 2026-10-07): PDF/Word/Excel/PowerPoint se muestran en una vista nativa aislada (su propio
+   * esquema y sesión, `src/main/viewer/`), nunca en la ventana principal. `open` revalida la
+   * carpeta, detecta el tipo por bytes mágicos y emite un token de un solo uso; `attach` sincroniza
+   * el hueco del panel «Documento» con la vista nativa (mismo patrón que `browser:attach`).
+   */
+  'tasks:viewer:open': { req: { path: string; lang: 'es' | 'en'; theme: 'light' | 'dark' }; res: ViewerOpenResult }
+  'tasks:viewer:attach': { req: { rect: ViewerRect; visible: boolean }; res: void }
+  'tasks:viewer:close': { req: void; res: void }
+
   /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }
   /** Interruptores "PyPI"/"npm"/"búsqueda web" de la lista blanca por defecto. */
@@ -1198,6 +1246,10 @@ export interface TasksEventContract {
   'computer:recordDone': SkillRecording
   /** El Modo auto aprobó algo automáticamente (para el aviso "Aprobado por el modo auto: …"). */
   'tasks:auto:approved': AutoApprovalRecord
+  /** Cambió la cola de pendientes de Rutinas (se encoló algo nuevo, o el dueño aceptó/descartó). Nunca al celular. */
+  'tasks:learn:pending:changed': PendingLearnedState
+  /** Aviso de la vista nativa del visor (Escape, se cayó el proceso, terminó de cargar, falló la carga). */
+  'tasks:viewer:event': { type: ViewerEventType }
 }
 
 export type TasksInvokeChannel = keyof TasksInvokeContract
@@ -1234,6 +1286,15 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:skill:approved',
   'tasks:skill:trust',
   'tasks:skill:remove',
+  'tasks:learn:pending:list',
+  'tasks:learn:pending:acceptMemory',
+  'tasks:learn:pending:acceptSkill',
+  'tasks:learn:pending:discard',
+  'tasks:learn:pending:discardAll',
+  'tasks:learn:pending:ackDropped',
+  'tasks:viewer:open',
+  'tasks:viewer:attach',
+  'tasks:viewer:close',
   'tasks:network:state',
   'tasks:network:setToggle',
   'tasks:network:setHost',
@@ -1334,7 +1395,9 @@ export const TASKS_EVENT_CHANNELS = [
   'tasks:sandbox:progress',
   'computer:assist',
   'computer:recordDone',
-  'tasks:auto:approved'
+  'tasks:auto:approved',
+  'tasks:learn:pending:changed',
+  'tasks:viewer:event'
 ] as const satisfies readonly TasksEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>

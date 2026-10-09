@@ -1,0 +1,566 @@
+:root {
+  --bg: #f7f8fb;
+  --fg: #1a1d24;
+  --muted: #6b7280;
+  --border: #e3e5ea;
+}
+html[data-theme='dark'] {
+  --bg: #11131a;
+  --fg: #e8eaf0;
+  --muted: #8b8f9b;
+  --border: #2a2d36;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    14px -apple-system,
+    system-ui,
+    sans-serif;
+}
+.viewer-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+}
+.viewer-muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pdf-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.pdf-toolbar {
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pdf-toolbar button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+.pdf-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pdf-toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.pdf-container-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+/* pdf.js exige que el contenedor del PDFViewer esté `position: absolute` (lanza si no) — por eso el
+   envoltorio de arriba hace el trabajo de llenar el espacio flex y este solo se posiciona con inset. */
+.pdf-container {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: #525659;
+}
+
+/*
+ * Tipografías sustitutas (D9 del plan del visor): si el sistema tiene la original de Microsoft la
+ * usa (local()); si no, cae al sustituto libre empaquetado, con métricas compatibles, para que un
+ * .docx/.pptx se vea igual en Mac y en Windows sin depender de tener Office instalado.
+ */
+@font-face {
+  font-family: 'Calibri';
+  src:
+    local('Calibri'),
+    url('./fonts/carlito-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Calibri';
+  src:
+    local('Calibri Bold'),
+    url('./fonts/carlito-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Calibri';
+  src:
+    local('Calibri Italic'),
+    url('./fonts/carlito-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Calibri';
+  src:
+    local('Calibri Bold Italic'),
+    url('./fonts/carlito-bolditalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Cambria';
+  src:
+    local('Cambria'),
+    url('./fonts/caladea-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cambria';
+  src:
+    local('Cambria Bold'),
+    url('./fonts/caladea-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Cambria';
+  src:
+    local('Cambria Italic'),
+    url('./fonts/caladea-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Cambria';
+  src:
+    local('Cambria Bold Italic'),
+    url('./fonts/caladea-bolditalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Arial';
+  src:
+    local('Arial'),
+    url('./fonts/liberation-sans-regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Arial';
+  src:
+    local('Arial Bold'),
+    url('./fonts/liberation-sans-bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Arial';
+  src:
+    local('Arial Italic'),
+    url('./fonts/liberation-sans-italic.woff') format('woff');
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Arial';
+  src:
+    local('Arial Bold Italic'),
+    url('./fonts/liberation-sans-bolditalic.woff') format('woff');
+  font-weight: 700;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Times New Roman';
+  src:
+    local('Times New Roman'),
+    url('./fonts/liberation-serif-regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Times New Roman';
+  src:
+    local('Times New Roman Bold'),
+    url('./fonts/liberation-serif-bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Times New Roman';
+  src:
+    local('Times New Roman Italic'),
+    url('./fonts/liberation-serif-italic.woff') format('woff');
+  font-weight: 400;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Times New Roman';
+  src:
+    local('Times New Roman Bold Italic'),
+    url('./fonts/liberation-serif-bolditalic.woff') format('woff');
+  font-weight: 700;
+  font-style: italic;
+}
+
+.docx-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.docx-toolbar {
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.docx-toolbar button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+.docx-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.docx-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #525659;
+}
+.docx-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0 32px;
+}
+/* docx-preview envuelve cada hoja en `.docx-wrapper > .docx`; siempre hoja blanca, sea cual sea el tema de la app. */
+.docx-pages .docx-wrapper {
+  background: transparent;
+}
+.docx-pages .docx {
+  background: #fff !important;
+  color: #000;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.xlsx-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: 12px;
+}
+.xlsx-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.xlsx-search {
+  flex: 0 0 auto;
+  width: 160px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.xlsx-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.xlsx-tabs button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px 6px 0 0;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.xlsx-tabs button.xlsx-tab-active {
+  color: var(--fg);
+  border-color: var(--border);
+  background: var(--bg);
+}
+.xlsx-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+}
+.xlsx-colheaders {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+}
+.xlsx-corner,
+.xlsx-colheader,
+.xlsx-rowheader {
+  flex: 0 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-top: none;
+  color: var(--muted);
+  text-align: center;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: sticky;
+}
+.xlsx-colheader {
+  top: 0;
+}
+.xlsx-rowheader {
+  left: 0;
+  z-index: 1;
+}
+.xlsx-body {
+  position: relative;
+}
+.xlsx-rows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+.xlsx-row {
+  display: flex;
+}
+.xlsx-cell {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-top: none;
+  padding: 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.pptx-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #3a3a3a;
+}
+.pptx-banner {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 11px;
+  padding: 3px 0;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+}
+.pptx-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+}
+.pptx-nav {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+}
+.pptx-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.pptx-canvas-wrap {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.pptx-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.pptx-shape {
+  position: absolute;
+  overflow: hidden;
+}
+.pptx-shape-unknown {
+  border: 1px dashed #bbb;
+  background: repeating-linear-gradient(45deg, #f2f2f2, #f2f2f2 6px, #fafafa 6px, #fafafa 12px);
+}
+.pptx-pic {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.pptx-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  padding: 4%;
+  box-sizing: border-box;
+}
+.pptx-chart-bars {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 3%;
+}
+.pptx-chart-bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.pptx-chart-bar {
+  width: 70%;
+  border-radius: 3px 3px 0 0;
+}
+.pptx-chart-bar-label {
+  /* bug real: "9cqw" es 9% del ANCHO DE TODA LA DIAPOSITIVA (cqw mira al ancestro con container-type
+     más cercano, que es el lienzo entero, no la columna angosta de la barra) — salía gigante y se
+     desbordaba. 1.6cqw ≈ el tamaño de una etiqueta chica de verdad (equivalente a ~11pt en un lienzo
+     de 10in, el mismo orden que el resto del texto, que sí se calcula bien vía `ptToCqw`). */
+  font-size: 1.6cqw;
+  color: #444;
+  margin-top: 2%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.pptx-chart-pie {
+  flex: 0 0 auto;
+  width: 55%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+.pptx-chart-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4%;
+  min-width: 0;
+}
+.pptx-chart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6%;
+  font-size: 1.6cqw; /* mismo bug/arreglo que `.pptx-chart-bar-label`, ver su comentario */
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pptx-chart-legend-item i {
+  flex: 0 0 auto;
+  width: 10%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+}
+.pptx-para {
+  margin: 0;
+  line-height: 1.25;
+  color: #000;
+}
+.pptx-bullet {
+  margin-right: 0.4em;
+}
+.pptx-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #999;
+}
+.pptx-table-row {
+  display: flex;
+  flex: 1;
+}
+.pptx-table-cell {
+  flex: 1;
+  border: 1px solid #999;
+  padding: 2px 4px;
+  color: #000;
+  overflow: hidden;
+}
+.pptx-counter {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 11px;
+  padding: 2px 0;
+}
+.pptx-thumbs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.25);
+}
+.pptx-thumbs button {
+  flex: 0 0 auto;
+  width: 96px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+.pptx-thumbs button.pptx-thumb-active {
+  border-color: #fff;
+}
+.pptx-thumb-canvas {
+  container-type: inline-size;
+  width: 100%;
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+}

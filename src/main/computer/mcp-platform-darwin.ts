@@ -9,7 +9,7 @@ import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
-import type { AppRef, HelperResult, PlatformBackend, PlatformHost } from './mcp-platform'
+import type { AppRef, CaptureRequest, HelperResult, PlatformBackend, PlatformHost } from './mcp-platform'
 
 /** Dependencias sustituibles en pruebas (por defecto, las reales de Node). */
 export interface DarwinDeps {
@@ -258,18 +258,40 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
   // ───────────────────────────── capturas ─────────────────────────────
 
   /**
-   * Bundle ids de apps con ventana visible que NO tienen concesión: se excluyen de la captura
+   * Apps relevantes para la tarea ACTUAL de esa sesión (F8-B149), o `null` si no se pudo saber
+   * (sin sesión — respaldo legado global, o el canal lateral falló). `null` hace que
+   * `nonGrantedBundleIds` vuelva al criterio viejo ("cualquier concesión de siempre").
+   */
+  async function currentTaskApps(session?: string): Promise<Set<string> | null> {
+    if (!session) return null
+    try {
+      const j = (await host.sideGet(`/task-apps?session=${encodeURIComponent(session)}`)) as { apps?: string[] }
+      return new Set(Array.isArray(j.apps) ? j.apps : [])
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Bundle ids de apps con ventana visible que NO quedan visibles: se excluyen de la captura
    * (ScreenCaptureKit las quita del compositor; el modelo nunca las ve). Best-effort: sin canal
    * lateral o si el helper falla, no excluye nada (mejor que romper la captura).
+   *
+   * Con sesión conocida, "visible" = app de la TAREA ACTUAL (`taskApps`) — no cualquier concesión
+   * de siempre: antes, una app concedida en una tarea de hace semanas (p.ej. Discord) quedaba
+   * visible SIEMPRE, aunque la tarea de ahora no tuviera nada que ver con ella. Sin sesión (respaldo
+   * legado), se mantiene el criterio viejo porque no hay "tarea actual" que consultar.
    */
   async function nonGrantedBundleIds(session?: string): Promise<string[]> {
     if (!cfg.eventsUrl) return []
     try {
       const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string; name?: string }>
+      const taskApps = await currentTaskApps(session)
       const results = await Promise.all(
         apps
           .filter((a) => a.bundleId && !cfg.neverExclude.has(a.bundleId))
           .map(async (a) => {
+            if (taskApps) return taskApps.has(a.bundleId!) ? null : a.bundleId!
             const tier = await host.tierOf({ bundleId: a.bundleId!, name: a.name || a.bundleId! }, session).catch(() => null)
             return tier === null ? a.bundleId! : null
           })
@@ -281,8 +303,13 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     }
   }
 
-  async function captureScreen(req: { raw: string; out: string; session?: string }): Promise<{ width: number; height: number }> {
-    const { raw, out, session } = req
+  async function captureScreen(req: CaptureRequest): Promise<{ width: number; height: number }> {
+    const { raw, out, session, screen } = req
+    // F8-B150: si la app en primer plano está en OTRA pantalla, `screen` la trae — sin esto, "-m"
+    // capturaba siempre la principal y el modelo se quedaba mirando el escritorio o lo que haya
+    // detrás, aunque el sistema diga bien que esa app está en primer plano (confirmado con una tarea
+    // real: Notas en un monitor secundario, captura mostrando Brave/el escritorio de la principal).
+    const notMain = screen && screen.main !== true && screen.x !== undefined && screen.y !== undefined
     if (cfg.fakeShot) {
       await run('/bin/cp', [cfg.fakeShot, raw])
     } else {
@@ -290,16 +317,19 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
       let sckOk = false
       if (exclude.length) {
         try {
-          await helper('screenshot-sck', raw, exclude.join(','))
+          const sckArgs =
+            notMain && screen!.displayID !== undefined ? [raw, exclude.join(','), String(screen!.displayID)] : [raw, exclude.join(',')]
+          await helper('screenshot-sck', ...sckArgs)
           sckOk = true
         } catch (err) {
           log('ScreenCaptureKit no disponible, uso screencapture + enmascarado:', err instanceof Error ? err.message : err)
         }
       }
       if (!sckOk) {
-        // -x sin sonido, -C incluye el cursor, -m solo la pantalla principal
+        // -x sin sonido, -C incluye el cursor; -m solo la principal, o -R<x,y,w,h> para otra pantalla.
+        const regionFlags = notMain ? ['-R', `${screen!.x},${screen!.y},${screen!.width},${screen!.height}`] : ['-m']
         try {
-          await run('/usr/sbin/screencapture', ['-x', '-C', '-m', '-t', 'png', raw])
+          await run('/usr/sbin/screencapture', ['-x', '-C', ...regionFlags, '-t', 'png', raw])
         } catch (err) {
           throw new Error(
             `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
@@ -311,16 +341,22 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
         // las apps no concedidas con un rectángulo negro (mejor que enseñarlas).
         if (exclude.length) {
           try {
-            const s = await host.mainScreen()
+            const s = notMain ? screen! : await host.mainScreen()
             const scale = s.scale || 1
+            const originX = notMain ? (screen!.x ?? 0) : 0
+            const originY = notMain ? (screen!.y ?? 0) : 0
             const windows = JSON.parse(await helper('windows-of', exclude.join(','))) as Array<{
               x: number
               y: number
               width: number
               height: number
             }>
+            // Las ventanas vienen en coordenadas GLOBALES; la imagen capturada arranca en el origen
+            // de `s` (0,0 si es la principal) — hay que restarlo antes de escalar a píxeles.
             if (windows.length) {
-              const rects = windows.map((w) => `${w.x * scale},${w.y * scale},${w.width * scale},${w.height * scale}`)
+              const rects = windows.map(
+                (w) => `${(w.x - originX) * scale},${(w.y - originY) * scale},${w.width * scale},${w.height * scale}`
+              )
               await run(HELPER, ['mask-regions', raw, raw, ...rects])
             }
           } catch (err) {
@@ -349,6 +385,34 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     return info
   }
 
+  async function zoomImage(req: {
+    inPath: string
+    outPath: string
+    x: number
+    y: number
+    width: number
+    height: number
+    scale: number
+  }): Promise<{ width: number; height: number }> {
+    const { stdout, code } = await helperExit(
+      'zoom-image',
+      req.inPath,
+      req.outPath,
+      String(req.x),
+      String(req.y),
+      String(req.width),
+      String(req.height),
+      String(req.scale)
+    )
+    if (code !== 0) throw new Error(axExitMessage(code) ?? `zoom-image falló (código ${code})`)
+    return JSON.parse(stdout) as { width: number; height: number }
+  }
+
+  async function insertAxText(bundleId: string, ref: string, text: string): Promise<void> {
+    const { code } = await helperExit('ax-insert-text', bundleId, ref, text)
+    if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-insert-text falló (código ${code})`)
+  }
+
   return {
     id: 'darwin',
     helper,
@@ -366,6 +430,8 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     normalizeScreen: (s) => s,
     captureScreen,
     windowShot,
+    zoomImage,
+    insertAxText,
     resolveApp,
     text: {
       instructions: 'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.',

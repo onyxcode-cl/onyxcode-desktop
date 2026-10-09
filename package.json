@@ -1,15 +1,16 @@
 {
   "name": "lazunox",
   "productName": "Lazunox",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "Cliente de escritorio para OpenCode (Chat, Code, Tareas, Rutinas)",
   "main": "./out/main/index.js",
   "author": "bentec",
   "private": true,
   "scripts": {
     "dev": "node scripts/build-native.mjs && electron-vite dev",
-    "build": "node scripts/build-native.mjs && npm run build:pwa && electron-vite build",
+    "build": "node scripts/build-native.mjs && npm run build:pwa && npm run build:viewer && electron-vite build",
     "build:pwa": "node scripts/build-pwa.mjs",
+    "build:viewer": "vite build --config vite.viewer.config.ts && node scripts/copy-pdfjs-assets.mjs && node scripts/copy-docx-fonts.mjs",
     "build:site": "node scripts/build-site.mjs",
     "preview": "electron-vite preview",
     "build:helper": "sh resources/computer-use/build.sh",
@@ -17,7 +18,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck:pwa": "tsc --noEmit -p pwa/tsconfig.json",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web && npm run typecheck:pwa",
+    "typecheck:viewer": "tsc --noEmit -p tsconfig.viewer.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web && npm run typecheck:pwa && npm run typecheck:viewer",
     "package": "node scripts/fetch-opencode.mjs --if-missing && npm run build && electron-builder --mac --arm64",
     "package:win": "node scripts/fetch-opencode.mjs --if-missing && npm run build && node scripts/check-win-bundle.mjs --config-only && node node_modules/electron-builder/cli.js --win nsis --x64",
     "test": "vitest run",
@@ -50,13 +52,21 @@
     "@xterm/xterm": "^6.0.0",
     "croner": "^10.0.1",
     "diff": "^9.0.0",
+    "docx-preview": "^0.4.1",
+    "exceljs": "^4.4.0",
     "node-datachannel": "0.33.4",
+    "pdfjs-dist": "^6.4.299",
+    "pptxgenjs": "^4.0.1",
     "qrcode": "1.5.4",
-    "ws": "8.22.0"
+    "sherpa-onnx-node": "^1.13.8",
+    "ws": "8.22.0",
+    "xlsx": "file:vendor/sheetjs/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
     "@electron/notarize": "^2.5.0",
+    "@fontsource/caladea": "^5.3.0",
+    "@fontsource/carlito": "^5.3.0",
     "@opencode-ai/sdk": "1.18.32",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.10.0",
@@ -64,6 +74,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "8.18.2",
+    "@typopro/web-liberation": "^3.7.5",
     "@vitejs/plugin-react": "^5.2.0",
     "axe-core": "^4.13.0",
     "electron": "44.4.5",
@@ -71,7 +82,10 @@
     "electron-vite": "5.0.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "happy-dom": "^15.11.7",
     "highlight.js": "~11.11.2",
+    "jsdom": "^25.0.1",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.48.0",
     "playwright-core": "1.63.0",
     "prettier": "^3.9.9",
@@ -89,5 +103,9 @@
   },
   "optionalDependencies": {
     "node-pty": "1.2.0-beta.14"
+  },
+  "overrides": {
+    "image-size": "^2.0.3",
+    "uuid": "^11.1.1"
   }
 }

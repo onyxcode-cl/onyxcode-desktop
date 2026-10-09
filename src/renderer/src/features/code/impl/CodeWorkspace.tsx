@@ -40,7 +40,9 @@ import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
+import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
 import { Composer } from './Composer'
+import { loadCodeLearnedMemory } from './learned-memory-store'
 import { CompareConfirmDialog, CompareView, RecoveryBanner, useCompareBoot, useShownCompare } from '../../compare'
 import { useCodeAiGate } from './ComposerControls'
 import { MessageStream } from './MessageStream'
@@ -720,6 +722,11 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       )}
       {sid && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
+      {sid && entries && !busy && (
+        <div className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
+          <CodeMemoryProposalCard sessionId={sid} messages={entries} />
+        </div>
+      )}
       <div className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
         <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setModel} />
       </div>
@@ -740,6 +747,10 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
   const client = useClient()
   const directory = useCode((s) => s.directory)
   useEffect(() => ensureCodeSubscription(), [])
+  // Memoria aprendida global (decisión del dueño, 2026-10-07): se relee al abrir Code, no en cada envío.
+  useEffect(() => {
+    void loadCodeLearnedMemory()
+  }, [])
 
   // Atajos de Code (⌘1 Cambios · ⌘2 Terminal · ⌘3 Archivos · ⌘4 Navegador · Esc detiene): registro central `keybindings/`.
 

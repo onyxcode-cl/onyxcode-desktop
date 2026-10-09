@@ -527,9 +527,9 @@ export const tasks = {
   'tasks.learn.discard': 'Discard',
   'tasks.learn.saving': 'Saving…',
   'tasks.learn.saveFailed': 'Couldn’t save the memory.',
-  'tasks.learn.settingsToggle': 'Learn from tasks',
+  'tasks.learn.settingsToggle': 'Learn from Tasks and Code',
   'tasks.learn.settingsDesc':
-    'The task can propose facts to remember (preferences, conventions, decisions). You always choose what to keep; nothing is ever saved on its own.',
+    "The agent can propose facts to remember (preferences, conventions, decisions) in Tasks and in Code. You always choose what to keep; nothing is ever saved on its own. In Code, for now, only global memory (applies to every project).",
   'tasks.learn.manageTitle': 'Learned memory for this project',
   'tasks.learn.manageEmpty': 'No approved learned memory yet for this project.',
   'tasks.learn.deleteEntry': 'Delete this note',
@@ -541,6 +541,7 @@ export const tasks = {
   'tasks.learn.clearGlobal': 'Delete all global memory',
   'tasks.learn.clearGlobalTitle': 'Delete all global memory?',
   'tasks.learn.clearGlobalMsg': 'All approved learned notes that apply to every project are deleted. This can’t be undone.',
+  'tasks.learn.pendingLink': { one: '{count} pending from Routines · Review', other: '{count} pending from Routines · Review' },
 
   // Proposed skills (same as learned memory: the agent proposes, the user approves)
   'tasks.skill.cardTitle': 'The task proposes a skill',

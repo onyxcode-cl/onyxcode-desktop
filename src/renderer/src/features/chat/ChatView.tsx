@@ -38,6 +38,9 @@ import {
   sendChatMessage
 } from './actions'
 import { useChat } from './store'
+import { ChatDocPanel } from './ChatDocPanel'
+import { ChatProgressHud } from './ChatProgressHud'
+import { useChatDocPanel } from './useChatDocPanel'
 
 const EMPTY: MessageEntry[] = []
 
@@ -64,6 +67,7 @@ export function ChatView(): React.JSX.Element {
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
+  const docPanel = useChatDocPanel(activeId, entries)
   // Cada modo recuerda su propio modelo (`modelsByMode.chat`); sin elección propia vale el predeterminado global.
   const model = useModeModel('chat')
   const { effective, gate, free, unavailable } = useAiGate(model, { strict: true })
@@ -296,18 +300,34 @@ export function ChatView(): React.JSX.Element {
     )
   }
 
+  const docFullscreen = docPanel.open && docPanel.fullscreen
   return (
-    <div className="flex h-full flex-col">
-      <header
-        data-mobile="hide"
-        className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
-      >
-        <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
-      </header>
-      <TranscriptLoader sessionId={activeId} />
-      <ChatMessageList entries={entries} busy={busy} error={error} onRetry={retry} onCompact={compact} onEdit={edit} />
-      {notices}
-      {composer}
+    <div className="flex h-full">
+      <div className={`relative flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
+        <header
+          data-mobile="hide"
+          className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
+        >
+          <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
+        </header>
+        <ChatProgressHud entries={entries} busy={busy} />
+        <TranscriptLoader sessionId={activeId} />
+        <ChatMessageList entries={entries} busy={busy} error={error} onRetry={retry} onCompact={compact} onEdit={edit} />
+        {notices}
+        {composer}
+      </div>
+      {docPanel.open && (
+        <div className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}>
+          <ChatDocPanel
+            creating={docPanel.creating}
+            title={docPanel.title}
+            doc={docPanel.doc}
+            fullscreen={docPanel.fullscreen}
+            onToggleFullscreen={docPanel.toggleFullscreen}
+            onClose={docPanel.close}
+          />
+        </div>
+      )}
     </div>
   )
 }

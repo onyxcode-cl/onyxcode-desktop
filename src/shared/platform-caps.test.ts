@@ -15,7 +15,8 @@ describe('capsFor', () => {
       updater: true,
       keepAwakeText: true,
       quickLook: true,
-      remote: true
+      remote: true,
+      docViewer: true
     })
   })
   it('win32 no tiene ninguna de las funciones de macOS (Tareas apagada; sandbox previsto: wsl)', () => {
@@ -28,7 +29,8 @@ describe('capsFor', () => {
       updater: true,
       keepAwakeText: false,
       quickLook: false,
-      remote: false
+      remote: false,
+      docViewer: false
     })
   })
   it.each(['linux', 'freebsd'])('%s no tiene ninguna de las funciones de macOS', (p) => {
@@ -41,8 +43,22 @@ describe('capsFor', () => {
       updater: false,
       keepAwakeText: false,
       quickLook: false,
-      remote: false
+      remote: false,
+      docViewer: false
     })
+  })
+  it('docViewer sigue exactamente a tasks en Mac/Windows/Linux (misma condición: lo necesita la ventana nativa de Tareas)', () => {
+    for (const p of ['darwin', 'win32', 'linux']) {
+      for (const tasksWin of [undefined, false, true]) {
+        const c = capsFor(p, { tasksWin })
+        expect(c.docViewer).toBe(c.tasks)
+      }
+    }
+  })
+  it('docViewer es siempre false en el celular, aunque tasks sea true', () => {
+    const c = capsFor(REMOTE_SURFACE)
+    expect(c.tasks).toBe(true)
+    expect(c.docViewer).toBe(false)
   })
 })
 
@@ -64,9 +80,9 @@ describe('bandera de producto tasksWin (apagada por defecto)', () => {
       expect([platform, tasksWin, caps.tasks, caps.tasksSandbox]).toEqual([platform, tasksWin, tasks, sandbox])
     }
   })
-  it('la bandera solo afecta a Tareas: lo demás de win32 no cambia', () => {
-    const { tasks: _a, ...off } = capsFor('win32')
-    const { tasks: _b, ...on } = capsFor('win32', { tasksWin: true })
+  it('la bandera solo afecta a Tareas (y docViewer, que la sigue): lo demás de win32 no cambia', () => {
+    const { tasks: _a, docViewer: _c, ...off } = capsFor('win32')
+    const { tasks: _b, docViewer: _d, ...on } = capsFor('win32', { tasksWin: true })
     expect(on).toEqual(off)
   })
   it('un valor no booleano no enciende Tareas (fail closed)', () => {
@@ -91,7 +107,8 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       computerBackend: 'ax',
       updater: true,
       keepAwakeText: true,
-      remote: true
+      remote: true,
+      docViewer: true
     },
     win32: {
       tasks: false,
@@ -100,7 +117,8 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       computerBackend: 'none',
       updater: true, // actualizador de Windows (plan win-D): antes apagado
       keepAwakeText: false,
-      remote: false
+      remote: false,
+      docViewer: false
     }
   } as const
   const OFF: Array<CapsFlags | undefined> = [undefined, {}, { tasksWin: false }]
@@ -113,10 +131,11 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       expect(caps).toEqual(capsFor(platform))
     }
   })
-  it('encender tasksWin en darwin no cambia nada; en win32 solo cambia tasks (quickLook sigue apagado)', () => {
+  it('encender tasksWin en darwin no cambia nada; en win32 cambia tasks y docViewer (quickLook sigue apagado)', () => {
     expect(capsFor('darwin', { tasksWin: true })).toEqual(capsFor('darwin'))
     const on = capsFor('win32', { tasksWin: true })
     expect(on.tasks).toBe(true)
+    expect(on.docViewer).toBe(true)
     expect(on.quickLook).toBe(false)
     expect(on.computer).toBe(false)
   })
@@ -143,7 +162,8 @@ describe('superficie remote (PWA del celular)', () => {
       terminal: false,
       nativeDialogs: false,
       openExternal: false,
-      nativeBrowser: false
+      nativeBrowser: false,
+      docViewer: false
     })
   })
   it('Tareas disponible; un modo guardado sigue siendo usable', () => {

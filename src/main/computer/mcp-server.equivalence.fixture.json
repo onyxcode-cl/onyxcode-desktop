@@ -48,6 +48,37 @@
               }
             },
             {
+              "name": "zoom",
+              "description": "Recorta y agranda una región de la ÚLTIMA captura de pantalla completa (screenshot, no app_screenshot) para ver mejor texto chico o una zona densa, sin gastar una acción real sobre la pantalla. x,y,width,height en píxeles de ESA captura (mismo espacio que left_click). El resultado es SOLO para mirar: sus coordenadas no sirven para left_click/mouse_move — usa las de la captura original.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "X del recorte, px de la última captura"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Y del recorte, px de la última captura"
+                  },
+                  "width": {
+                    "type": "number",
+                    "description": "Ancho del recorte, px"
+                  },
+                  "height": {
+                    "type": "number",
+                    "description": "Alto del recorte, px"
+                  },
+                  "scale": {
+                    "type": "number",
+                    "description": "Cuánto agrandar el recorte (1 a 4; por defecto 2)"
+                  }
+                },
+                "required": ["x", "y", "width", "height"],
+                "additionalProperties": false
+              }
+            },
+            {
               "name": "left_click",
               "description": "Clic izquierdo en (x, y) px de la captura.",
               "inputSchema": {
@@ -206,6 +237,10 @@
                   "text": {
                     "type": "string"
                   },
+                  "expect_app": {
+                    "type": "string",
+                    "description": "Opcional, recomendado: nombre de la app donde esperás escribir (p.ej. \"WhatsApp\"). Si el foco cambió a otra app, no se escribe nada y se avisa — en vez de que el texto vaya a la app equivocada sin que lo notes."
+                  },
                   "screenshot": {
                     "type": "boolean",
                     "description": "Adjuntar una captura tras la acción (por defecto true)"
@@ -223,6 +258,10 @@
                 "properties": {
                   "keys": {
                     "type": "string"
+                  },
+                  "expect_app": {
+                    "type": "string",
+                    "description": "Opcional, recomendado: nombre de la app donde esperás escribir (p.ej. \"WhatsApp\"). Si el foco cambió a otra app, no se escribe nada y se avisa — en vez de que el texto vaya a la app equivocada sin que lo notes."
                   },
                   "screenshot": {
                     "type": "boolean",
@@ -410,6 +449,29 @@
               }
             },
             {
+              "name": "app_insert_text",
+              "description": "AGREGA texto al final de un campo de una app por su \"ref\", SIN mover el ratón real y SIN tocar lo que ya había (a diferencia de app_set_value, que REEMPLAZA todo el valor) — úsala para añadir algo a una nota/documento que puede tener contenido rico (adjuntos, formato) que app_set_value perdería al reescribir todo como texto plano. Rechaza campos de contraseña u otras entradas seguras. Nunca escribas contraseñas ni datos de pago. Si el campo no soporta inserción por accesibilidad, falla con un mensaje claro — en ese caso, o usa app_set_value (con el valor actual + lo nuevo, si no hay riesgo de perder contenido rico) o pide control real de la pantalla.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "ref": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "expect_role": {
+                    "type": "string"
+                  }
+                },
+                "required": ["app", "ref", "text"],
+                "additionalProperties": false
+              }
+            },
+            {
               "name": "app_action",
               "description": "Ejecuta una acción de accesibilidad sobre un elemento por su \"ref\": AXShowMenu, AXIncrement, AXDecrement, AXConfirm, AXCancel, AXRaise, AXPick.",
               "inputSchema": {
@@ -432,7 +494,7 @@
             },
             {
               "name": "app_screenshot",
-              "description": "Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón.",
+              "description": "Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón — SOLO para mirar (confirmar que algo cargó, leer texto, ver si está tapada), NUNCA para sacar coordenadas de clic: no sabe dónde está esa ventana en la pantalla, así que un píxel de esta imagen no se puede convertir a un punto de clic. Para clicar algo, usa screenshot (captura de la pantalla principal) o find_element.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -591,10 +653,14 @@
       },
       "res": {
         "isError": false,
-        "text": "Captura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "text": "Captura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
         "parts": ["image", "text"]
       },
-      "helper": ["{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "helper": [
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
       "actions": [
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
         "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
@@ -911,7 +977,7 @@
       },
       "res": {
         "isError": true,
-        "text": "Coordenadas fuera de la pantalla: (99999, 5) px de captura",
+        "text": "Coordenadas fuera de la pantalla: (99999, 5) px de captura. Si vienen de app_find/app_tree (accesibilidad), son puntos de pantalla reales, no píxeles de una captura — no se pueden usar en left_click/mouse_move/etc. directamente (y mucho menos si son negativas: puede ser un monitor secundario). Usa app_press/app_action en vez de adivinar un clic.",
         "parts": ["text"]
       },
       "helper": [],
@@ -979,14 +1045,16 @@
       },
       "res": {
         "isError": false,
-        "text": "left_click en (100, 50) px → (105.42, 52.71) pt\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "text": "left_click en (100, 50) px → (105.42, 52.71) pt\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
         "parts": ["image", "text", "text"]
       },
       "helper": [
         "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
@@ -1140,6 +1208,32 @@
       ]
     }
   ],
+  "segundo-plano-con-control-concedido": [
+    {
+      "step": {
+        "tool": "open_application",
+        "args": {
+          "name": "Notes",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Abierta Notes. App en primer plano: Notes.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"open-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"activate\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"start\"}",
+        "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    }
+  ],
   "accesibilidad-app": [
     {
       "step": {
@@ -1240,6 +1334,33 @@
     },
     {
       "step": {
+        "tool": "app_insert_text",
+        "args": {
+          "app": "Notes",
+          "ref": "w0.2",
+          "text": "agregado",
+          "expect_role": "AXTextField",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Agregado al final de w0.2 en Notes (8 caracteres).",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-find\",\"args\":[\"com.apple.Notes\",\"{\\\"role\\\":\\\"AXTextField\\\",\\\"limit\\\":50}\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-insert-text\",\"args\":[\"com.apple.Notes\",\"w0.2\",\"agregado\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_insert_text\",\"text\":\"Notes w0.2\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_insert_text\",\"text\":\"Notes w0.2\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
         "tool": "app_action",
         "args": {
           "app": "Notes",
@@ -1291,8 +1412,8 @@
       },
       "res": {
         "isError": false,
-        "text": "Ventana de Notes: 800x600 px («Ventana»). Archivo: <path>\nCaptura de la pantalla principal: 800x600 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-        "parts": ["image", "text", "text"]
+        "text": "Ventana de Notes: 800x600 px («Ventana»). Solo para mirar: esta imagen NO sirve para sacar coordenadas de clic (no sabe dónde está la ventana en la pantalla). Para clicar algo, usa screenshot o find_element. Archivo: <path>",
+        "parts": ["image", "text"]
       },
       "helper": [
         "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
@@ -1312,7 +1433,7 @@
       },
       "res": {
         "isError": false,
-        "text": "1 candidato(s) en Notes (AX) para \"Guardar\", de más a menos fiable:\n1. [button] \"Guardar\" en (16, 12) pt, tamaño 30x20\nUsa el punto indicado con left_click/mouse_move y verifica con una captura después de actuar.",
+        "text": "1 candidato(s) en Notes (AX) para \"Guardar\", de más a menos fiable:\n1. [button] \"Guardar\" en (15, 11) px, tamaño 30x20\nUsa el punto indicado con left_click/mouse_move y verifica con una captura después de actuar.",
         "parts": ["text"]
       },
       "helper": [
@@ -1332,7 +1453,7 @@
       },
       "res": {
         "isError": false,
-        "text": "1 elemento(s) en Notes (rol: button,textfield):\n1. [button] \"Guardar\" en (16, 12) pt, tamaño 30x20",
+        "text": "1 elemento(s) en Notes (rol: button,textfield):\n1. [button] \"Guardar\" en (15, 11) px, tamaño 30x20",
         "parts": ["text"]
       },
       "helper": [
@@ -1413,12 +1534,14 @@
       },
       "res": {
         "isError": false,
-        "text": "Respuesta del usuario:\n- Notes: Control total\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "text": "Respuesta del usuario:\n- Notes: Control total\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
         "parts": ["image", "text", "text"]
       },
       "helper": [
         "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
@@ -1461,12 +1584,14 @@
       },
       "res": {
         "isError": false,
-        "text": "Respuesta del usuario:\n- Notes: Control total\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "text": "Respuesta del usuario:\n- Notes: Control total\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
         "parts": ["image", "text", "text"]
       },
       "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"resolve-app\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"resolve-app\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
@@ -1719,6 +1844,30 @@
     },
     {
       "step": {
+        "tool": "app_insert_text",
+        "args": {
+          "app": "Notes",
+          "ref": "r",
+          "text": "v"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Ese campo es seguro (contraseña u otra entrada protegida): el agente nunca escribe ahí.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"ax-insert-text\",\"args\":[\"com.apple.Notes\",\"r\",\"v\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"app_insert_text\",\"text\":\"Notes r\",\"phase\":\"start\"}",
+        "{\"tool\":\"app_insert_text\",\"text\":\"Notes r\",\"phase\":\"end\",\"ok\":false}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
         "tool": "app_action",
         "args": {
           "app": "Notes",
@@ -1915,18 +2064,132 @@
       },
       "res": {
         "isError": false,
-        "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
         "parts": ["image", "text", "text"]
       },
       "helper": [
         "{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
         "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
       ],
       "side": ["POST /request-access? {\"apps\":[],\"plan\":[\"x\"],\"unresolved\":[\"Zzqx NoExisteApp\"],\"kind\":\"access\"}"]
+    }
+  ],
+  "expect-app": [
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "ok",
+          "expect_app": "Notes"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Escrito: 2 caracteres",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"type\",\"args\":[\"ok\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"type_text\",\"text\":\"ok\",\"phase\":\"start\"}",
+        "{\"tool\":\"type_text\",\"text\":\"ok\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "no",
+          "expect_app": "WhatsApp"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Esperabas escribir en «WhatsApp», pero la app en primer plano es «Notes». No se escribió nada — revisa con una captura antes de reintentar.",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "key",
+        "args": {
+          "keys": "return",
+          "expect_app": "notes"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Teclas pulsadas: return",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"key\",\"args\":[\"return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"key\",\"text\":\"return\",\"phase\":\"start\"}",
+        "{\"tool\":\"key\",\"text\":\"return\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "key",
+        "args": {
+          "keys": "escape",
+          "expect_app": "Slack"
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "Esperabas escribir en «Slack», pero la app en primer plano es «Notes». No se escribió nada — revisa con una captura antes de reintentar.",
+        "parts": ["text"]
+      },
+      "helper": ["{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "type_text",
+        "args": {
+          "text": "sin-expect"
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Escrito: 10 caracteres",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"type\",\"args\":[\"sin-expect\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"type_text\",\"text\":\"sin-expect\",\"phase\":\"start\"}",
+        "{\"tool\":\"type_text\",\"text\":\"sin-expect\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
     }
   ]
 }

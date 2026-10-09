@@ -20,7 +20,8 @@ function rig(
   reply: (cmd: string, args: string[]) => Reply,
   cfg: Partial<PlatformHost['config']> = {},
   tiers: Record<string, 'view' | 'click' | 'full' | null> = {},
-  files: Set<string> = new Set(['/h/cu-helper'])
+  files: Set<string> = new Set(['/h/cu-helper']),
+  sideGet: PlatformHost['sideGet'] = async () => ({})
 ): { backend: ReturnType<typeof createDarwinBackend>; calls: Call[]; kills: Array<{ pid: number; sig: string }>; logs: string[] } {
   const calls: Call[] = []
   const kills: Array<{ pid: number; sig: string }> = []
@@ -56,7 +57,7 @@ function rig(
     log: (...a) => void logs.push(a.map(String).join(' ')),
     tierOf: async (app) => tiers[app.bundleId] ?? null,
     mainScreen: async () => ({ width: 1440, height: 900, scale: 2, main: true }),
-    sideGet: async () => ({})
+    sideGet
   }
   const backend = createDarwinBackend(host, {
     execFile,
@@ -129,6 +130,37 @@ describe('macOS: capturas (comandos exactos)', () => {
       args: ['--instant', '--char-delay', '9', 'screenshot-sck', '/s/r.png', 'com.b.Sin,com.c.Sin']
     })
     expect(calls.some((c) => c.cmd === '/usr/sbin/screencapture')).toBe(false)
+  })
+
+  it('con sesión, "visible" = app de la TAREA ACTUAL (F8-B149): una app con concesión de siempre pero fuera de la tarea de hoy se excluye igual', async () => {
+    const running = JSON.stringify([
+      { bundleId: 'com.a.ConcedidaHaceTiempo', name: 'A' }, // tier 'view' persistido, pero NO en taskApps
+      { bundleId: 'com.b.DeEstaTarea', name: 'B' }, // en taskApps
+      { bundleId: 'com.apple.finder', name: 'Finder' }
+    ])
+    const { backend, calls } = rig(
+      (cmd, args) => (cmd === '/usr/bin/sips' ? { stdout: DIMS } : args.includes('running-apps') ? { stdout: running } : {}),
+      {},
+      { 'com.a.ConcedidaHaceTiempo': 'view', 'com.b.DeEstaTarea': 'view' },
+      undefined,
+      async (path) => (path.startsWith('/task-apps') ? { apps: ['com.b.DeEstaTarea'] } : {})
+    )
+    await backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg', session: 'ses_x' })
+    expect(calls[1]).toEqual({ cmd: '/h/cu-helper', args: ['screenshot-sck', '/s/r.png', 'com.a.ConcedidaHaceTiempo'] })
+  })
+
+  it('sin sesión, sigue el criterio viejo (cualquier concesión) — no hay "tarea actual" que consultar', async () => {
+    const running = JSON.stringify([
+      { bundleId: 'com.a.Concedida', name: 'A' },
+      { bundleId: 'com.b.Sin', name: 'B' }
+    ])
+    const { backend, calls } = rig(
+      (cmd, args) => (cmd === '/usr/bin/sips' ? { stdout: DIMS } : args.includes('running-apps') ? { stdout: running } : {}),
+      {},
+      { 'com.a.Concedida': 'view' }
+    )
+    await backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg' })
+    expect(calls[1]).toEqual({ cmd: '/h/cu-helper', args: ['screenshot-sck', '/s/r.png', 'com.b.Sin'] })
   })
 
   it('ScreenCaptureKit falla: screencapture + windows-of + mask-regions con los rectángulos en píxeles (× escala)', async () => {

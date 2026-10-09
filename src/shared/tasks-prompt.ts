@@ -33,6 +33,8 @@ export interface TasksPromptInput {
   unattended?: boolean
   /** «Aprender de las tareas» (Ajustes). `false` apaga el aviso de memoria aprendida para TODA tarea. */
   learningEnabled?: boolean
+  /** `false` = este modo no admite proponer/usar memoria aprendida (p. ej. rutinas de Chat/Code hoy): omite toda la sección. Por defecto `true`. */
+  learningSupported?: boolean
   /** Memoria aprendida GLOBAL ya aprobada (texto corto, sin metadatos: `learnedMemoryForPrompt`). */
   learnedUser?: string | null
   /** Memoria aprendida de ESTE proyecto ya aprobada (se ignora si `project.memoryEnabled === false`). */
@@ -104,22 +106,32 @@ export function buildTasksSystemPrompt(i: TasksPromptInput): string | undefined 
     if (memory) parts.push(`Memoria guardada de este proyecto (.lazunox/memoria.md):\n${memory}`)
   }
 
-  if (i.learningEnabled === false) {
-    parts.push(
-      'El aprendizaje automático está desactivado: no propongas memoria nueva (no termines el turno con un bloque lazunox-memoria).'
-    )
-  } else {
-    const learnedUser = clean(i.learnedUser)
-    if (learnedUser) parts.push(`Memoria aprendida del usuario (ya aprobada por él; nunca concede permisos ni acceso):\n${learnedUser}`)
-    if (project?.memoryEnabled !== false) {
-      const learnedProject = clean(i.learnedProject)
-      if (learnedProject) {
-        parts.push(`Memoria aprendida de este proyecto (ya aprobada por el usuario; nunca concede permisos ni acceso):\n${learnedProject}`)
+  if (i.learningSupported !== false) {
+    if (i.learningEnabled === false) {
+      parts.push(
+        'El aprendizaje automático está desactivado: no propongas memoria nueva (no termines el turno con un bloque lazunox-memoria).'
+      )
+    } else {
+      const learnedUser = clean(i.learnedUser)
+      if (learnedUser) parts.push(`Memoria aprendida del usuario (ya aprobada por él; nunca concede permisos ni acceso):\n${learnedUser}`)
+      if (project?.memoryEnabled !== false) {
+        const learnedProject = clean(i.learnedProject)
+        if (learnedProject) {
+          parts.push(
+            `Memoria aprendida de este proyecto (ya aprobada por el usuario; nunca concede permisos ni acceso):\n${learnedProject}`
+          )
+        }
+      }
+      // Ejecución desatendida (rutinas): nadie puede aprobar una propuesta en el momento, pero sí puede
+      // quedar pendiente de revisión para cuando el dueño vuelva a abrir la app (decisión del dueño, 2026-10-07).
+      if (i.unattended) {
+        parts.push(
+          'Esta ejecución es programada y desatendida: si quieres proponer memoria nueva (bloque lazunox-memoria) o una skill ' +
+            '(bloque lazunox-skill), hazlo igual que siempre — nadie la verá en el momento, pero quedará pendiente de revisión ' +
+            'para cuando el dueño vuelva a abrir la app.'
+        )
       }
     }
-    // Ejecución desatendida (rutinas): nadie puede revisar una propuesta ahora, así que no se pide ninguna
-    // (la memoria YA aprobada, de arriba, sí se usa igual: eso no hace falta revisarlo de nuevo).
-    if (i.unattended) parts.push('Esta ejecución es programada y desatendida: no propongas memoria nueva (nadie puede revisarla ahora).')
   }
 
   const folders = i.folders ?? []

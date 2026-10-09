@@ -31,6 +31,7 @@ import { isRemoteSurface, isWindowsPlatform } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { useT } from '../../../lib/i18n'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
+import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { useClient } from './client'
 import { ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
@@ -237,6 +238,21 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     draftKeyRef.current = draftKey
   }, [draftKey])
   const [caret, setCaret] = useState(0)
+  /** Inserta texto dictado en la posición del cursor — mismo patrón que el botón de "@" de abajo. */
+  const insertDictated = (dictated: string): void => {
+    const el = ref.current
+    const pos = el?.selectionStart ?? text.length
+    const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
+    const insert = `${needsSpace ? ' ' : ''}${dictated}`
+    const next = text.slice(0, pos) + insert + text.slice(pos)
+    const np = pos + insert.length
+    setText(next)
+    setCaret(np)
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(np, np)
+    })
+  }
   const agent = useCode((s) => s.agent)
   const setAgent = useCode((s) => s.setAgent)
   const model = useCode((s) => s.model)
@@ -750,6 +766,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   >
                     <AtSign size={20} />
                   </button>
+                  <VoiceDictationButton onText={insertDictated} size={20} className="h-9 w-9 rounded-full" />
                   <span className="ml-auto" />
                   {busy && (
                     <button
@@ -825,6 +842,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 >
                   <AtSign size={14} />
                 </button>
+                <VoiceDictationButton onText={insertDictated} size={14} className="h-6 w-6 rounded-md desk:h-7 desk:w-7 desk:rounded-lg" />
                 <button
                   type="button"
                   title={t('code.composer.attach')}

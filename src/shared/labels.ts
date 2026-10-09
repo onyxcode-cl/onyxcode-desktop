@@ -36,6 +36,24 @@ export const UI_LABELS = {
   get openHtmlPreview() {
     return t('labels.ui.openHtmlPreview')
   },
+  get downloadPdf() {
+    return t('labels.ui.downloadPdf')
+  },
+  get downloadSlidesPptx() {
+    return t('labels.ui.downloadSlidesPptx')
+  },
+  get presentSlides() {
+    return t('labels.ui.presentSlides')
+  },
+  get voiceStart() {
+    return t('labels.ui.voiceStart')
+  },
+  get voiceStop() {
+    return t('labels.ui.voiceStop')
+  },
+  get voiceTranscribing() {
+    return t('labels.ui.voiceTranscribing')
+  },
   get guideMode() {
     return t('labels.ui.guideMode')
   },

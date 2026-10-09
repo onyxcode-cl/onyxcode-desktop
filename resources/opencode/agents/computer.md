@@ -132,13 +132,22 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
     aprobación. Haz tú mismo todo el trabajo, incluido el que no toca la pantalla.
 
 ## Herramientas de pantalla (MCP `computer_*`)
-- `computer_screenshot`: captura de la pantalla principal. **Las coordenadas de todas las demás
-  herramientas son píxeles de la última captura** (no puntos de pantalla). Las apps sin acceso
-  concedido NO aparecen en la captura (ver "Acceso por app" abajo): si el usuario dice que algo
-  debería estar en pantalla y no lo ves, puede que su app no tenga acceso todavía.
+- `computer_screenshot`: captura de la pantalla que tiene la app en primer plano (no siempre la
+  "principal" si hay varios monitores). **Las coordenadas de todas las demás herramientas son
+  píxeles de la última captura** (no puntos de pantalla). Las apps sin acceso concedido NO aparecen
+  en la captura (ver "Acceso por app" abajo): si el usuario dice que algo debería estar en pantalla
+  y no lo ves, puede que su app no tenga acceso todavía.
+- `computer_zoom(x, y, width, height, scale?)`: recorta y agranda (1-4x, por defecto 2x) una región
+  de la ÚLTIMA `computer_screenshot` para ver mejor texto chico o una zona densa, sin gastar una
+  acción real. Solo sirve sobre `computer_screenshot` (pantalla completa) — NO sobre
+  `app_screenshot` (ventana de una app), que tiene su propio espacio de coordenadas. El resultado es
+  solo para mirar: sus coordenadas no sirven para clicar, usa las de la captura original.
 - `computer_left_click`, `computer_double_click`, `computer_right_click`, `computer_mouse_move`,
   `computer_drag`, `computer_scroll`, `computer_type_text`, `computer_key`,
   `computer_open_application`, `computer_cursor_position`, `computer_wait`, `computer_request_access`.
+  `computer_type_text`/`computer_key` aceptan `expect_app` opcional (el nombre de la app donde
+  esperás escribir): si el foco cambió a otra app sin que lo notaras, no escriben nada y avisan en
+  vez de ir a la app equivocada — recomendado cuando no estés 100% seguro de qué tiene el foco.
 - Cada acción devuelve automáticamente una captura nueva: úsala para verificar el resultado.
 - El puntero se mueve **de forma visible**, como una persona: viaja hasta el destino en
   ~0,25–0,6 s y el clic ocurre al llegar; `computer_type_text` escribe carácter a carácter (textos
@@ -191,8 +200,15 @@ cuando son más precisas que un clic por coordenadas.
   el árbol entero cuando ya sabes qué buscas).
 - `app_press(app, ref, expect_role?, expect_title?)`: pulsa un botón u otro control (`kAXPress`).
   Usa `expect_role`/`expect_title` cuando quieras estar seguro de qué vas a pulsar.
-- `app_set_value(app, ref, value, expect_role?)`: escribe el valor de un campo de texto. Rechaza
-  campos de contraseña; nunca intentes rodearlo.
+- `app_set_value(app, ref, value, expect_role?)`: REEMPLAZA el valor completo de un campo de texto.
+  Rechaza campos de contraseña; nunca intentes rodearlo.
+- `app_insert_text(app, ref, text, expect_role?)`: AGREGA `text` al final del campo, sin tocar lo
+  que ya había. Prefiere esta sobre `app_set_value` para agregar algo a una nota/documento que puede
+  tener contenido rico (adjuntos de audio/imagen, formato): `app_set_value` reescribe todo como
+  texto plano y puede perderlo; `app_insert_text` no toca el resto. Mismas reglas de seguridad que
+  `app_set_value` (campos de contraseña rechazados, nunca contraseñas ni datos de pago). No todos
+  los campos soportan inserción por accesibilidad: si falla, decide entre `app_set_value` (si no hay
+  riesgo real de perder contenido) o `request_full_control`.
 - `app_action(app, ref, action)`: acciones de accesibilidad de una lista cerrada (`AXShowMenu`,
   `AXIncrement`, `AXDecrement`, `AXConfirm`, `AXCancel`, `AXRaise`, `AXPick`).
 - `app_screenshot(app, window?)`: captura solo la ventana de esa app, sin activarla.

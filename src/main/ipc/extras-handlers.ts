@@ -9,7 +9,10 @@ import { join } from 'node:path'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
-import { openArtifact } from '../extras/artifact-window'
+import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
+import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
+import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
+import { cleanChatDocuments, downloadChatDoc, generateChatDoc, type ChatDocInput } from '../extras/chat-docs'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
 import {
   ensureAppOpencodeConfig,
@@ -29,7 +32,11 @@ import {
   unregisterQuickEntryShortcut
 } from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
+import { installViewerScheme } from '../viewer/scheme'
+import { attach, closeView, onViewerEvent, openDoc } from '../viewer/view'
+import { VIEWER_SCHEME } from '../security/app-protocol'
 import { makeInvokeHandler } from './handle'
+import { windowOfSender } from './sender-window'
 
 export interface ExtrasDeps extends MainWindowDeps {
   server: OpencodeServer
@@ -59,6 +66,13 @@ async function reloadOpencodeConfig(server: OpencodeServer): Promise<void> {
 export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void {
   ensureAppOpencodeConfig()
 
+  // Dictado por voz (F8-B144): proceso APARTE (utilityProcess), nunca en main directo — ONNX Runtime
+  // ya tiró un crash nativo real acá (confirmado con el reporte de crash del sistema) que se llevó
+  // toda la app; aislado, lo peor que pasa es que esa transcripción puntual falla con un mensaje.
+  const voiceWorker = new VoiceWorkerHost(voiceWorkerScriptPath)
+  voiceWorker.setProgressListener((progress) => broadcastExtras('extras:voiceModelProgress', progress))
+  app.on('before-quit', () => voiceWorker.dispose())
+
   handle(ipcMain, 'extras:getPrefs', () => getPrefsState())
   handle(ipcMain, 'extras:setPrefs', (patch) => {
     extrasPrefs.set(patch ?? {})
@@ -77,6 +91,48 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'extras:openArtifact', (payload) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     openArtifact({ title: String(payload.title ?? ''), html: payload.html })
+  })
+  handle(ipcMain, 'extras:downloadHtmlAsPdf', (payload, event) => {
+    if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
+    return downloadHtmlAsPdf({ title: String(payload.title ?? ''), html: payload.html }, windowOfSender(event.sender))
+  })
+  handle(ipcMain, 'extras:downloadSlidesAsPptx', (payload, event) => {
+    if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
+    return downloadSlidesAsPptx({ title: String(payload.title ?? ''), html: payload.html }, windowOfSender(event.sender))
+  })
+  handle(ipcMain, 'extras:presentSlides', (payload) => {
+    if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
+    presentSlides({ title: String(payload.title ?? ''), html: payload.html })
+  })
+  handle(ipcMain, 'extras:transcribeAudio', (payload) => voiceWorker.transcribe(payload.samples))
+  // Panel de documento de Chat: MISMA vista nativa que Tareas (un solo modo visible a la vez, sin conflicto).
+  onViewerEvent((event) => broadcastExtras('extras:chatDoc:event', event))
+  handle(ipcMain, 'extras:chatDoc:open', async (req) => {
+    try {
+      const { title, sessionId, lang, theme } = req
+      let input: ChatDocInput
+      if (req.kind === 'pdf') input = { kind: 'pdf', html: req.html }
+      else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
+      else input = { kind: 'pptx', data: req.data }
+      const doc = await generateChatDoc(input, title, sessionId)
+      installViewerScheme()
+      openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${doc.token}&kind=${doc.kind}&lang=${lang}&theme=${theme}`)
+      return { ok: true }
+    } catch {
+      return { ok: false, reason: 'failed' }
+    }
+  })
+  handle(ipcMain, 'extras:chatDoc:attach', ({ rect, visible }, event) => {
+    const win = windowOfSender(event.sender) ?? deps.getMainWindow?.() ?? null
+    if (win) attach(win, rect, visible)
+  })
+  handle(ipcMain, 'extras:chatDoc:close', ({ sessionId }) => {
+    closeView()
+    void cleanChatDocuments(sessionId)
+  })
+  handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {
+    const input: ChatDocInput = req.kind === 'xlsx' ? { kind: 'xlsx', data: req.data } : { kind: 'pptx', data: req.data }
+    return downloadChatDoc(input, req.title, windowOfSender(event.sender))
   })
   handle(ipcMain, 'extras:quickSubmit', (req) => {
     if (!req || typeof req.text !== 'string') throw new Error('Prompt inválido')

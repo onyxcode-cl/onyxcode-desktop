@@ -38,6 +38,13 @@ vi.stubGlobal('window', {
   removeEventListener: () => undefined
 })
 vi.stubGlobal('document', { hasFocus: () => true, visibilityState: 'visible' })
+// `navigator.language` de Node viene del idioma del SISTEMA OPERATIVO (en Linux sin configurar, "en-US";
+// en macOS, el del usuario): `lib/i18n.ts` lo lee al importarse para detectar el idioma por defecto, y
+// sin fijarlo acá los tests (y sus snapshots) cambiarían de idioma según la máquina que los corra.
+// `userAgent` se copia tal cual (xterm.js lo usa para detectar el navegador): no se puede clonar todo
+// `navigator` con `{...navigator}` porque sus propiedades son getters de campos privados de la clase
+// (fallan fuera de la instancia real), así que se listan explícitamente las que hacen falta.
+vi.stubGlobal('navigator', { userAgent: globalThis.navigator?.userAgent, language: 'es', languages: ['es'] })
 
 // Los tests (y sus snapshots) corren siempre en español: el idioma activo parte en `es`.
 import { setLang } from '@shared/i18n'

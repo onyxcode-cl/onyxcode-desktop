@@ -13,6 +13,7 @@ import { useLongPress } from '../../../lib/use-long-press'
 import { m } from '../../../app/mobile/m'
 import '../../../app/mobile/conversation.css'
 import { t } from '@shared/i18n'
+import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { useT } from '../../../lib/i18n'
 import { isOldRow, withCv } from '../../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../../lib/conversation/errors'
@@ -65,8 +66,14 @@ function buildBlocks(messages: CodeMessage[]): Block[] {
       if (p.type === 'reasoning' && !p.text.trim()) continue
       if (p.type === 'text' && (p.synthetic || p.ignored || !p.text)) continue
       flush()
-      if (p.type === 'text') blocks.push({ kind: 'text', key: p.id, part: p })
-      else if (p.type === 'reasoning') blocks.push({ kind: 'reasoning', key: p.id, part: p })
+      if (p.type === 'text') {
+        // El bloque ```lazunox-memoria``` (propuesta de memoria que el usuario aprueba desde una tarjeta,
+        // ver `CodeMemoryProposalCard`) es un contrato con el agente, no texto para leer: se quita aquí,
+        // igual para TODO mensaje (no solo el último).
+        const stripped = stripMemoryProposalBlock(p.text)
+        if (!stripped) continue
+        blocks.push({ kind: 'text', key: p.id, part: stripped === p.text ? p : { ...p, text: stripped } })
+      } else if (p.type === 'reasoning') blocks.push({ kind: 'reasoning', key: p.id, part: p })
       else if (p.type === 'retry') blocks.push({ kind: 'retry', key: p.id, text: friendlyError(p.error).message, attempt: p.attempt })
       else if (p.type === 'subtask')
         blocks.push({ kind: 'subtask', key: p.id, text: t('code.msg.subtask', { agent: p.agent, description: p.description }) })

@@ -47,6 +47,13 @@ export interface PlatformCaps {
   openExternal: boolean
   /** Vista nativa del navegador integrado (`WebContentsView` sobre la ventana). */
   nativeBrowser: boolean
+  /**
+   * Visor de documentos de Tareas (PDF/Word/Excel/PowerPoint, `WebContentsView` aislada). Mac y
+   * Windows siempre que haya Tareas (depende de la ventana nativa, igual que `nativeBrowser`); en
+   * el celular no existe. La disponibilidad de LibreOffice (Fase 5) se detecta en tiempo de
+   * ejecución, no va acá.
+   */
+  docViewer: boolean
 }
 
 export type TasksSandbox = 'seatbelt' | 'wsl' | 'none'
@@ -87,7 +94,8 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
       terminal: false,
       nativeDialogs: false,
       openExternal: false,
-      nativeBrowser: false
+      nativeBrowser: false,
+      docViewer: false
     }
   }
   const mac = platform === 'darwin'
@@ -107,7 +115,8 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     terminal: true,
     nativeDialogs: true,
     openExternal: true,
-    nativeBrowser: true
+    nativeBrowser: true,
+    docViewer: mac || (win && flags.tasksWin === true)
   }
 }
 

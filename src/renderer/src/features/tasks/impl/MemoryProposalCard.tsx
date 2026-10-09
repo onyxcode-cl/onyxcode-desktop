@@ -8,34 +8,18 @@
 import { useEffect, useState } from 'react'
 import { BrainCircuit } from 'lucide-react'
 import { Button } from '../../../components/Button'
-import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
-import type { LearnedMemoryProposal, LearnedMemoryScope, LearnedMemoryType } from '@shared/ipc-tasks'
-import { extractMemoryProposals, type MemoryProposal, type MemoryProposalFlag } from '@shared/memory-proposal'
+import type { LearnedMemoryProposal } from '@shared/ipc-tasks'
+import { extractMemoryProposals } from '@shared/memory-proposal'
+import { loadPendingLearned, subscribePendingLearned, usePendingLearned } from '../../routines/impl/pending-store'
 import { cw } from './bridge'
 import { lastAssistantEntry, lastAssistantText } from './EscalateCard'
+import { type Draft, LearnedProposalList } from './LearnedProposalList'
 import { loadProjectAndMemory } from './store'
 
-const TYPES: LearnedMemoryType[] = ['preferencia', 'convencion', 'decision', 'solucion']
-const SCOPES: LearnedMemoryScope[] = ['usuario', 'proyecto']
-const SCOPE_LABEL: Record<LearnedMemoryScope, MsgKey> = { usuario: 'tasks.learn.scope.usuario', proyecto: 'tasks.learn.scope.proyecto' }
-const TYPE_LABEL: Record<LearnedMemoryType, MsgKey> = {
-  preferencia: 'tasks.learn.type.preferencia',
-  convencion: 'tasks.learn.type.convencion',
-  decision: 'tasks.learn.type.decision',
-  solucion: 'tasks.learn.type.solucion'
-}
-/** `secreto` nunca llega a la tarjeta (se descarta al extraer, ver `memory-proposal.ts`): sin texto propio. */
-const FLAG_LABEL: Partial<Record<MemoryProposalFlag, MsgKey>> = {
-  personal: 'tasks.learn.flag.personal',
-  inyeccion: 'tasks.learn.flag.inyeccion'
-}
-
-export interface Draft extends MemoryProposal {
-  selected: boolean
-}
+export type { Draft }
 
 /** `undefined` si no hay (quien llama no pinta nada), para no confundirlo con "sin propuestas tras extraer". */
 export function draftsFrom(entries: MessageEntry[]): Draft[] | undefined {
@@ -62,6 +46,11 @@ export function MemoryProposalCard({
   const [drafts, setDrafts] = useState<Draft[] | undefined>(() => draftsFrom(entries))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Esta misma propuesta puede haber llegado por una rutina desatendida y ya estar en la cola de pendientes
+  // de Rutinas (`PendingLearnedReview`): si es así, se revisa ahí y no acá dos veces.
+  const alreadyPending = usePendingLearned(
+    (s) => !!last && s.state.items.some((i) => i.sessionId === taskId && i.messageId === last.info.id && !!i.proposals)
+  )
 
   // Un mensaje nuevo (tarea distinta, o la misma con otra respuesta): recalcula desde cero.
   useEffect(() => {
@@ -70,7 +59,12 @@ export function MemoryProposalCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [last?.info.id])
 
-  if (!taskId || !last || dismissed.has(last.info.id) || !drafts || drafts.length === 0) return null
+  useEffect(() => {
+    void loadPendingLearned()
+    return subscribePendingLearned()
+  }, [])
+
+  if (!taskId || !last || dismissed.has(last.info.id) || !drafts || drafts.length === 0 || alreadyPending) return null
 
   const update = (i: number, patch: Partial<Draft>): void => setDrafts((ds) => ds?.map((d, idx) => (idx === i ? { ...d, ...patch } : d)))
 
@@ -105,54 +99,9 @@ export function MemoryProposalCard({
           <p className="text-sm font-semibold desk:text-title-sm">{t('tasks.learn.cardTitle')}</p>
           <p className="mt-0.5 text-xs text-muted">{t('tasks.learn.cardHint')}</p>
 
-          <ul className="mt-3 flex flex-col gap-2">
-            {drafts.map((d, i) => (
-              <li key={i} className="flex items-start gap-2 rounded-lg border border-border bg-bg p-2.5">
-                <input
-                  type="checkbox"
-                  checked={d.selected}
-                  onChange={(e) => update(i, { selected: e.target.checked })}
-                  className="mt-1 shrink-0"
-                  aria-label={t('tasks.learn.saveOne')}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <select
-                      value={d.alcance}
-                      onChange={(e) => update(i, { alcance: e.target.value as LearnedMemoryScope })}
-                      className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] text-subtle"
-                    >
-                      {SCOPES.map((s) => (
-                        <option key={s} value={s}>
-                          {t(SCOPE_LABEL[s])}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={d.tipo}
-                      onChange={(e) => update(i, { tipo: e.target.value as LearnedMemoryType })}
-                      className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] text-subtle"
-                    >
-                      {TYPES.map((ty) => (
-                        <option key={ty} value={ty}>
-                          {t(TYPE_LABEL[ty])}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <textarea
-                    value={d.texto}
-                    onChange={(e) => update(i, { texto: e.target.value.slice(0, 300) })}
-                    maxLength={300}
-                    rows={2}
-                    className="mt-1.5 w-full resize-y rounded-md border border-border bg-bg px-2 py-1 text-sm outline-none focus:border-border-strong"
-                  />
-                  {d.porque && <p className="mt-1 text-xs text-subtle">{d.porque}</p>}
-                  {d.flag && FLAG_LABEL[d.flag] && <p className="mt-1 text-xs text-warning">{t(FLAG_LABEL[d.flag]!)}</p>}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-3">
+            <LearnedProposalList drafts={drafts} onUpdate={update} />
+          </div>
 
           {error && <p className="mt-2 text-xs text-danger">{error}</p>}
 

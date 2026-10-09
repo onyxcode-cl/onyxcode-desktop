@@ -173,12 +173,22 @@ const SCENARIOS: Scenario[] = [
     ]
   },
   {
+    // F8-B154: con control real concedido PARA ESTA SESIÓN (`foreground: true`) aunque la preferencia
+    // global siga en "En segundo plano" (`mode: 'background'`) — antes `open_application` solo miraba
+    // `mode` e ignoraba `foreground`, así que seguía abriendo sin activar aunque ya hubiera control
+    // real. Debe activar de verdad (open-app + activate), igual que en modo "Control de la pantalla".
+    name: 'segundo-plano-con-control-concedido',
+    side: { controlMode: { mode: 'background', foreground: true } },
+    steps: [{ tool: 'open_application', args: { name: 'Notes', screenshot: false } }]
+  },
+  {
     name: 'accesibilidad-app',
     steps: [
       { tool: 'app_tree', args: { app: 'Notes', max_depth: 3, max_nodes: 50 } },
       { tool: 'app_find', args: { app: 'Notes', role: 'AXButton', title: 'Guardar', text: 'g', limit: 5 } },
       { tool: 'app_press', args: { app: 'Notes', ref: 'w0.1', expect_role: 'AXButton', expect_title: 'OK', screenshot: false } },
       { tool: 'app_set_value', args: { app: 'Notes', ref: 'w0.2', value: 'hola', expect_role: 'AXTextField', screenshot: false } },
+      { tool: 'app_insert_text', args: { app: 'Notes', ref: 'w0.2', text: 'agregado', expect_role: 'AXTextField', screenshot: false } },
       { tool: 'app_action', args: { app: 'Notes', ref: 'w0.3', action: 'AXRaise', screenshot: false } },
       { tool: 'app_action', args: { app: 'Notes', ref: 'w0.3', action: 'AXDelete' } },
       { tool: 'app_screenshot', args: { app: 'Notes', window: 1 } },
@@ -246,6 +256,7 @@ const SCENARIOS: Scenario[] = [
         'ax-tree': [{ exit: 2, stderr: 'sin permiso' }, { exit: 7 }, { exit: 12 }, { exit: 99 }],
         'ax-press': { exit: 8 },
         'ax-set-value': { exit: 9 },
+        'ax-insert-text': { exit: 9 },
         'ax-action': { exit: 11 },
         'window-shot': { exit: 5 }
       }
@@ -257,6 +268,7 @@ const SCENARIOS: Scenario[] = [
       { tool: 'app_tree', args: { app: 'Notes' } },
       { tool: 'app_press', args: { app: 'Notes', ref: 'r' } },
       { tool: 'app_set_value', args: { app: 'Notes', ref: 'r', value: 'v' } },
+      { tool: 'app_insert_text', args: { app: 'Notes', ref: 'r', text: 'v' } },
       { tool: 'app_action', args: { app: 'Notes', ref: 'r', action: 'AXPick' } },
       { tool: 'app_screenshot', args: { app: 'Notes' } }
     ]
@@ -285,6 +297,17 @@ const SCENARIOS: Scenario[] = [
     name: 'app-desconocida',
     steps: [{ tool: 'request_access', args: { apps: ['Zzqx NoExisteApp'], plan: ['x'] } }],
     script: { responses: { 'resolve-app': { out: { name: 'Zzqx NoExisteApp', bundleId: '', found: false } } } }
+  },
+  {
+    // F8-B149: `expect_app` en type_text/key — el frontmost falso de siempre es "Notes" (com.apple.Notes).
+    name: 'expect-app',
+    steps: [
+      { tool: 'type_text', args: { text: 'ok', expect_app: 'Notes' } }, // coincide → escribe
+      { tool: 'type_text', args: { text: 'no', expect_app: 'WhatsApp' } }, // no coincide → NO escribe
+      { tool: 'key', args: { keys: 'return', expect_app: 'notes' } }, // sin distinguir mayúsculas → pulsa
+      { tool: 'key', args: { keys: 'escape', expect_app: 'Slack' } }, // no coincide → NO pulsa
+      { tool: 'type_text', args: { text: 'sin-expect' } } // sin expect_app → de siempre, sin chequeo
+    ]
   }
 ]
 

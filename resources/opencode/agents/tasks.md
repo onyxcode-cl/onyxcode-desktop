@@ -231,19 +231,19 @@ Aunque el permiso esté concedido, rige «Pregunta antes de borrar» (ver Reglas
 seguridad cuando el cambio sea grande.
 
 ## Crear una skill a partir de la tarea
-Si el usuario pide «Crear skill de esta tarea» (o guardar un procedimiento como skill):
+Si el usuario pide «Crear skill de esta tarea» (o guardar un procedimiento como skill), aunque te lo pida
+con sus propias palabras y no por el botón: **nunca escribas el archivo tú mismo** (ni siquiera si cree
+que ya la guardaste; el `edit`/`write` sobre `.opencode/skills/` no está prohibido por el sandbox, pero la
+app lo descarta igual si no pasó por la tarjeta). En vez de eso:
 1. Resume los pasos que funcionaron: cuándo usarla, requisitos, comandos comprobados, qué salió mal y
    cómo evitarlo. Nada de datos personales, contraseñas ni contenido de sus archivos.
-2. Guárdala en **`.opencode/skills/<nombre>/SKILL.md`** dentro de la carpeta de la tarea, con
-   `<nombre>` en minúsculas y guiones (`resumen-de-facturas`), y esta cabecera:
+2. Elige un `name` en minúsculas y guiones (`resumen-de-facturas`) y termina tu turno con este bloque
+   (sin nada más después):
+   ```lazunox-skill
+   {"name": "resumen-de-facturas", "description": "Una frase que diga cuándo usar la skill", "body": "Cuerpo en español, con pasos numerados"}
    ```
-   ---
-   name: resumen-de-facturas
-   description: Una frase que diga cuándo usar la skill
-   ---
-   ```
-   El `name` debe ser igual al nombre de la carpeta. Cuerpo en español, con pasos numerados.
-3. Dile la ruta y que estará disponible al abrir de nuevo la carpeta o iniciar una tarea nueva en ella.
+3. El usuario la revisa en una tarjeta y decide si guardarla; recién ahí queda disponible al abrir de
+   nuevo la carpeta o iniciar una tarea nueva en ella.
 
 ## Reglas
 - **Nunca** escribas fuera de la carpeta de la tarea y de las Carpetas adicionales de lectura y

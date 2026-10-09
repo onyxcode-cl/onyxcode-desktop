@@ -29,6 +29,13 @@ export interface Screen {
   height: number
   scale: number
   main?: boolean
+  /** Origen (arriba-izquierda), relativo a la pantalla principal — puede ser negativo (un monitor a
+   * la izquierda/arriba de la principal). Ausente/0 en Windows: no distingue monitores todavía. */
+  x?: number
+  y?: number
+  /** macOS únicamente (id de `CGDirectDisplayID`/ScreenCaptureKit) — para `screenshot-sck` cuando hay
+   * que capturar una pantalla que no es la principal (F8-B150). */
+  displayID?: number
 }
 
 /** Configuración del proceso del MCP que necesitan los backends (leída de las variables de entorno). */
@@ -67,6 +74,13 @@ export interface CaptureRequest {
   /** JPEG final que debe quedar escrito. */
   out: string
   session?: string
+  /**
+   * Pantalla a capturar (F8-B150) — la que tiene la ventana de la app en primer plano, calculada en
+   * `mcp-server.ts` (`screenForCapture`), NO siempre la principal. Si se omite (o es la principal),
+   * el comportamiento es idéntico a como era antes de esto. macOS únicamente por ahora: Windows la
+   * ignora (su "escritorio virtual" ya es un espacio único, ver `normalizeScreen` de ese backend).
+   */
+  screen?: Screen
 }
 
 /** Qué clase de herramienta se va a ejecutar (para las comprobaciones previas de Windows). */
@@ -119,6 +133,23 @@ export interface PlatformBackend {
   captureScreen: (req: CaptureRequest) => Promise<{ width: number; height: number }>
   /** Captura de la ventana de una app a JPEG en `out` (`raw` es el intermedio de macOS). */
   windowShot: (appKey: string, raw: string, out: string, windowIndex: number) => Promise<WindowShotResult>
+  /**
+   * Recorta `inPath` (una captura de pantalla completa ya tomada) a la región dada y la agranda
+   * `scale` veces, dejando el resultado (JPEG) en `outPath`. Windows: todavía no implementado — lanza
+   * con un mensaje claro en vez de intentar un comando nativo que no existe ahí (F8-B149).
+   */
+  zoomImage: (req: { inPath: string; outPath: string; x: number; y: number; width: number; height: number; scale: number }) => Promise<{
+    width: number
+    height: number
+  }>
+
+  /**
+   * AGREGA `text` al final del valor de accesibilidad de `ref` (AXSelectedTextRange + AXSelectedText),
+   * sin reemplazar lo que ya había (a diferencia de `ax-set-value`) — pensado para no perder contenido
+   * rico (adjuntos, formato) al escribir en un campo. Windows: todavía no implementado — lanza con un
+   * mensaje claro en vez de un comando nativo que no existe ahí (F8-B151).
+   */
+  insertAxText: (bundleId: string, ref: string, text: string) => Promise<void>
 
   // ── apps ──
   resolveApp: (name: string) => Promise<AppRef & { found: boolean }>

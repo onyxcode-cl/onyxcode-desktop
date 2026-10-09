@@ -194,6 +194,28 @@ async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Prom
 }
 
 /**
+ * `type_text`/`key` no tienen coordenadas que anclen la acción a una app concreta (a diferencia de
+ * los clics, que además verifican la app BAJO el punto) — van a lo que tenga el foco en ese momento,
+ * así que si el foco cambió sin que el modelo se diera cuenta (el "casi" de WhatsApp: otra ventana
+ * pasó al frente justo antes de escribir), el texto se va a la app equivocada sin ningún aviso.
+ * `expect_app` (F8-B149, opcional): si se da, compara contra la app en primer plano (nombre o bundle
+ * id, sin distinguir mayúsculas, substring) ANTES de escribir nada — mismo criterio defensivo que ya
+ * usa `app_press` con `expectRole`/`expectTitle`.
+ */
+async function checkExpectApp(expectApp: unknown): Promise<void> {
+  const expected = typeof expectApp === 'string' ? expectApp.trim() : ''
+  if (!expected) return
+  const front = await appFrontmost()
+  const haystack = `${front.name ?? ''} ${front.bundleId ?? ''}`.toLowerCase()
+  if (!haystack.includes(expected.toLowerCase())) {
+    throw new Error(
+      `Esperabas escribir en «${expected}», pero la app en primer plano es «${front.name ?? front.bundleId ?? 'desconocida'}». ` +
+        'No se escribió nada — revisa con una captura antes de reintentar.'
+    )
+  }
+}
+
+/**
  * Comprueba que la app en primer plano (y, si se da un punto, la app bajo ese punto) tenga AL
  * MENOS `minTier`. Usan esto las herramientas de ratón/teclado (sobre la app en primer plano).
  */
@@ -442,8 +464,18 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 // ───────────────────────────── pantalla / capturas ─────────────────────────────
 
 let mainScreen: Screen | null = null
+let allScreens: Screen[] | null = null
 /** puntos por píxel de captura (se actualiza con cada captura). */
 let ratio = 0
+/** Pantalla de la ÚLTIMA captura de pantalla completa (F8-B150) — no siempre la principal, ver
+ * `screenForCapture`. `toPoints`/`ensureRatio` la usan para convertir correctamente cuando la app en
+ * primer plano está en un monitor secundario; antes de esto SIEMPRE se asumía la principal. */
+let capturedScreen: Screen | null = null
+/** Última captura de pantalla COMPLETA (no `app_screenshot`, que es de una sola ventana y tiene su
+ * propio espacio de coordenadas) — la usa `zoom` para recortar/agrandar sin tener que volver a
+ * capturar. El archivo sigue en disco mientras `cleanupShots()` no lo haya purgado (guarda los 20
+ * últimos). */
+let lastShot: Shot | null = null
 
 async function getMainScreen(): Promise<Screen> {
   if (mainScreen) return mainScreen
@@ -454,9 +486,70 @@ async function getMainScreen(): Promise<Screen> {
   return mainScreen
 }
 
+/** Todas las pantallas normalizadas (F8-B150) — cacheadas igual que `getMainScreen` (no sigue un
+ * cambio de monitores en caliente a mitad de sesión, misma limitación que ya tenía esa función). */
+async function getAllScreens(): Promise<Screen[]> {
+  if (allScreens) return allScreens
+  const list = JSON.parse(await helper('screens')) as Array<Screen & Record<string, unknown>>
+  allScreens = list.map((s) => backend.normalizeScreen(s))
+  return allScreens
+}
+
+/**
+ * SOLO macOS (lo llama `captureScreen` ahí — en Windows el "escritorio virtual" ya es un espacio
+ * único, no hace falta nada de esto). Qué pantalla capturar (F8-B150) y la app en primer plano,
+ * juntas en una sola llamada: antes `takeScreenshot` pedía `frontmost` en paralelo con la captura —
+ * dos llamadas, y una carrera real entre ambas (el orden exacto de los comandos al helper dejaba de
+ * ser determinista, lo que rompió la prueba de equivalencia la primera vez que se probó esto).
+ *
+ * `screen`: la que tiene la ventana de la app en primer plano, no siempre la principal — antes,
+ * `screenshot` capturaba SIEMPRE la pantalla principal con `-m`, así que si la app activa estaba en un
+ * monitor secundario, la captura mostraba lo que hubiera detrás en la principal (el escritorio, u otra
+ * app) en vez de la app real — el sistema decía bien cuál era la app en primer plano, pero la imagen
+ * no la mostraba. Best-effort: cualquier paso que falle (sin ventana, sin `windows-of`, etc.) cae en
+ * la pantalla principal, el comportamiento de siempre.
+ */
+async function screenForCapture(): Promise<{ screen: Screen; front: AppRef | null }> {
+  const main = await getMainScreen()
+  const front = await appFrontmost().catch(() => null)
+  if (!front?.bundleId) return { screen: main, front }
+  try {
+    const wins = JSON.parse(await helper('windows-of', front.bundleId)) as Array<{
+      x: number
+      y: number
+      width: number
+      height: number
+    }>
+    const w = wins[0]
+    if (!w) return { screen: main, front }
+    // F8-B155: antes, qué pantalla "tiene" la ventana se decidía mirando si su CENTRO caía dentro de
+    // los límites de cada pantalla — una ventana cerca del borde entre dos monitores (o más ancha que
+    // una pantalla) podía tener el centro del lado "equivocado" aunque la mayor parte de su contenido
+    // esté en la otra. El criterio estándar (Hammerspoon/`hs.window`, mismo problema) es el área de
+    // solapamiento: la pantalla que más superficie real de la ventana cubre, no un único punto.
+    const screens = await getAllScreens()
+    let best: Screen | null = null
+    let bestArea = 0
+    for (const s of screens) {
+      const sx = s.x ?? 0
+      const sy = s.y ?? 0
+      const overlapW = Math.max(0, Math.min(w.x + w.width, sx + s.width) - Math.max(w.x, sx))
+      const overlapH = Math.max(0, Math.min(w.y + w.height, sy + s.height) - Math.max(w.y, sy))
+      const area = overlapW * overlapH
+      if (area > bestArea) {
+        bestArea = area
+        best = s
+      }
+    }
+    return { screen: best ?? main, front }
+  } catch {
+    return { screen: main, front }
+  }
+}
+
 async function ensureRatio(): Promise<number> {
   if (ratio > 0) return ratio
-  const s = await getMainScreen()
+  const s = capturedScreen ?? (await getMainScreen())
   const long = Math.max(s.width, s.height) * s.scale
   const outLong = Math.min(long, MAX_LONG)
   // ancho en px de la captura final ≈ width*scale*outLong/long
@@ -482,12 +575,19 @@ interface Shot {
   width: number
   height: number
   ratio: number
+  /** App en primer plano al momento de la captura (`null` si no se pudo saber) — ver `shotText`: sin
+   * esto, el modelo no tenía forma de saber QUÉ estaba viendo, solo lo que la imagen mostraba a ojo. */
+  front?: string | null
+  /** F8-B150: `false` si se capturó otra pantalla (la app en primer plano estaba en un monitor
+   * secundario) — `shotText` lo dice explícito, en vez de decir siempre "pantalla principal". */
+  onMainScreen?: boolean
 }
 
 async function takeScreenshot(auto = false, session?: string): Promise<Shot> {
   // Espera (≤600 ms) a que la app prepare el overlay para la captura; luego el destello.
   await post({ tool: 'screenshot', phase: 'start', auto }, 600)
   try {
+    // `captureScreen` ya resuelve la app en primer plano (ver F8-B150 ahí) — nada que pedir aparte.
     return await captureScreen(session)
   } finally {
     emit({ tool: 'screenshot', phase: 'end', auto })
@@ -554,31 +654,67 @@ async function captureScreen(session?: string): Promise<Shot> {
   const raw = join(SHOT_DIR, `raw-${stamp}.png`)
   const out = join(SHOT_DIR, `shot-${stamp}.jpg`)
   try {
-    // La captura (y, en macOS, el enmascarado de apps sin concesión; en Windows, FALLAR CERRADO) es del backend.
-    const { width, height } = await backend.captureScreen({ raw, out, session })
-    const s = await getMainScreen()
-    ratio = width > 0 ? s.width / width : await ensureRatio()
+    let screen: Screen
+    let front: AppRef | null
+    let width: number
+    let height: number
+    if (backend.id === 'darwin') {
+      // F8-B150: qué pantalla mostrar (la de la app en primer plano, no siempre la principal) se
+      // decide ANTES de capturar, para poder pedirle esa pantalla al backend — y de paso ya devuelve
+      // la app en primer plano, así no hay que pedirla aparte (antes se pedía en paralelo a la
+      // captura: dos llamadas, y encima una carrera real entre ambas).
+      ;({ screen, front } = await screenForCapture())
+      ;({ width, height } = await backend.captureScreen({ raw, out, session, screen }))
+    } else {
+      // Windows: mismo orden de siempre (varias pruebas lo fijan exacto) — antes `frontmost` corría
+      // en paralelo a la captura (ganaba la carrera casi siempre por ser una sola llamada corta
+      // contra una cadena larga), así que pedirlo PRIMERO ahora da el mismo resultado observable sin
+      // depender de una carrera real. Sin el cálculo de pantalla real de arriba (su "escritorio
+      // virtual" ya es un espacio único).
+      front = await appFrontmost().catch(() => null)
+      ;({ width, height } = await backend.captureScreen({ raw, out, session }))
+      screen = await getMainScreen()
+    }
+    capturedScreen = screen
+    ratio = width > 0 ? screen.width / width : await ensureRatio()
     const base64 = readFileSync(out).toString('base64')
     cleanupShots()
-    return { path: out, base64, width, height, ratio }
+    const shot: Shot = { path: out, base64, width, height, ratio, front: front?.name ?? null, onMainScreen: screen.main === true }
+    lastShot = shot
+    return shot
   } finally {
     rmSync(raw, { force: true })
   }
 }
 
-/** px de captura → puntos de pantalla. */
+/** px de captura → puntos de pantalla GLOBALES (los que esperan los clics/movimientos reales). */
 async function toPoints(x: unknown, y: unknown): Promise<{ x: number; y: number }> {
   const nx = Number(x)
   const ny = Number(y)
   if (!Number.isFinite(nx) || !Number.isFinite(ny)) throw new Error('Coordenadas inválidas: x e y deben ser números')
   const r = await ensureRatio()
-  const s = await getMainScreen()
+  // F8-B150: la pantalla de la ÚLTIMA captura, no siempre la principal (ver `screenForCapture`) — los
+  // límites y el origen que se suman abajo son los de ESA pantalla.
+  const s = capturedScreen ?? (await getMainScreen())
   const px = Math.round(nx * r * 100) / 100
   const py = Math.round(ny * r * 100) / 100
   if (px < 0 || py < 0 || px > s.width || py > s.height) {
-    throw new Error(`Coordenadas fuera de la pantalla: (${nx}, ${ny}) px de captura`)
+    // F8-B149: la otra confusión real medida (con un monitor secundario de verdad) es mezclar
+    // espacios de coordenadas — app_find/app_tree devuelven PUNTOS DE PANTALLA GLOBALES (de
+    // accesibilidad, pueden ser negativos si hay un monitor a la izquierda/arriba del principal), no
+    // píxeles de la última captura. Pasarle esos puntos directo a esta función nunca va a dar algo
+    // válido — el aviso lo dice en vez de solo "fuera de la pantalla".
+    throw new Error(
+      `Coordenadas fuera de la pantalla: (${nx}, ${ny}) px de captura. Si vienen de app_find/app_tree ` +
+        '(accesibilidad), son puntos de pantalla reales, no píxeles de una captura — no se pueden usar en ' +
+        'left_click/mouse_move/etc. directamente (y mucho menos si son negativas: puede ser un monitor ' +
+        'secundario). Usa app_press/app_action en vez de adivinar un clic.'
+    )
   }
-  return { x: px, y: py }
+  // F8-B150: sumar el origen de la pantalla capturada — en la principal es (0,0), sin cambio alguno
+  // respecto a como era antes de esto; en otra pantalla, esto es lo que hace que el clic caiga en el
+  // punto real (p.ej. en un monitor a la izquierda, con x negativa de verdad).
+  return { x: px + (s.x ?? 0), y: py + (s.y ?? 0) }
 }
 
 // ───────────────────────────── herramientas ─────────────────────────────
@@ -615,14 +751,27 @@ const SHOT_FLAG = {
     description: 'Adjuntar una captura tras la acción (por defecto true)'
   }
 }
+const EXPECT_APP = {
+  expect_app: {
+    type: 'string',
+    description:
+      'Opcional, recomendado: nombre de la app donde esperás escribir (p.ej. "WhatsApp"). Si el foco cambió a otra app, ' +
+      'no se escribe nada y se avisa — en vez de que el texto vaya a la app equivocada sin que lo notes.'
+  }
+}
 
 function obj(props: Record<string, unknown>, required: string[] = []): Record<string, unknown> {
   return { type: 'object', properties: { ...props }, required, additionalProperties: false }
 }
 
 function shotText(s: Shot): string {
+  const front = s.front ? ` App en primer plano: ${s.front}.` : ''
+  // F8-B150: antes decía siempre "pantalla principal" — ahora puede ser otra (la que tiene la app en
+  // primer plano), y es importante que el modelo lo sepa: sigue siendo la única que puede ver.
+  const which =
+    s.onMainScreen === false ? 'Captura de la pantalla con la app en primer plano (no la principal)' : 'Captura de la pantalla principal'
   return (
-    `Captura de la pantalla principal: ${s.width}x${s.height} px (1 px = ${s.ratio.toFixed(4)} puntos). ` +
+    `${which}: ${s.width}x${s.height} px (1 px = ${s.ratio.toFixed(4)} puntos).${front} ` +
     `Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: ${s.path}`
   )
 }
@@ -669,20 +818,49 @@ const AX_ACTIONS = new Set(['AXShowMenu', 'AXIncrement', 'AXDecrement', 'AXConfi
 /** Mensaje legible para los códigos de salida del helper (B.1 del plan Lote C; el texto depende del sistema). */
 const axExitMessage = (code: number): string | null => backend.exitMessage(code)
 
+/**
+ * Tope de tiempo PROPIO para las llamadas de Accessibility (F8-B149) — mucho más corto que el tope
+ * genérico de 30s de `helper()`/`helperExit()` (pensado para `type`/`screenshot-sck`, que sí pueden
+ * tardar de verdad). Una consulta AX normal tarda milisegundos; si una app está congelada/no responde,
+ * mejor fallar rápido y que el agente lo note y reintente, que esperar 30s por cada intento. El
+ * proceso nativo sigue su curso solo (lo reaparece/mata el mismo mecanismo de siempre); esto solo deja
+ * de esperarlo del lado de Node.
+ */
+const AX_TIMEOUT_MS = 8_000
+
+function withAxTimeout<T>(p: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`La consulta de Accessibility no respondió en ${AX_TIMEOUT_MS / 1000}s (¿la app está congelada?)`)),
+      AX_TIMEOUT_MS
+    )
+    p.then(
+      (v) => {
+        clearTimeout(timer)
+        resolve(v)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
+
 async function axTree(bundleId: string, maxDepth: number, maxNodes: number): Promise<{ nodes: AxNode[]; truncated: boolean }> {
-  const { stdout, code } = await helperExit('ax-tree', bundleId, String(maxDepth), String(maxNodes))
+  const { stdout, code } = await withAxTimeout(helperExit('ax-tree', bundleId, String(maxDepth), String(maxNodes)))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-tree falló (código ${code})`)
   return JSON.parse(stdout) as { nodes: AxNode[]; truncated: boolean }
 }
 
 async function axFind(bundleId: string, query: Record<string, unknown>): Promise<{ matches: AxNode[] }> {
-  const { stdout, code } = await helperExit('ax-find', bundleId, JSON.stringify(query))
+  const { stdout, code } = await withAxTimeout(helperExit('ax-find', bundleId, JSON.stringify(query)))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-find falló (código ${code})`)
   return JSON.parse(stdout) as { matches: AxNode[] }
 }
 
 async function axFrame(bundleId: string, ref: string): Promise<{ frame: { x: number; y: number; width: number; height: number } }> {
-  const { stdout, code } = await helperExit('ax-frame', bundleId, ref)
+  const { stdout, code } = await withAxTimeout(helperExit('ax-frame', bundleId, ref))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-frame falló (código ${code})`)
   return JSON.parse(stdout) as { frame: { x: number; y: number; width: number; height: number } }
 }
@@ -691,17 +869,17 @@ async function axPress(bundleId: string, ref: string, expectRole?: string, expec
   const args = ['ax-press', bundleId, ref]
   if (expectRole) args.push(expectRole)
   if (expectTitle) args.push(expectTitle)
-  const { code } = await helperExit(...args)
+  const { code } = await withAxTimeout(helperExit(...args))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-press falló (código ${code})`)
 }
 
 async function axSetValue(bundleId: string, ref: string, value: string): Promise<void> {
-  const { code } = await helperExit('ax-set-value', bundleId, ref, value)
+  const { code } = await withAxTimeout(helperExit('ax-set-value', bundleId, ref, value))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-set-value falló (código ${code})`)
 }
 
 async function axAction(bundleId: string, ref: string, action: string): Promise<void> {
-  const { code } = await helperExit('ax-action', bundleId, ref, action)
+  const { code } = await withAxTimeout(helperExit('ax-action', bundleId, ref, action))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-action falló (código ${code})`)
 }
 
@@ -735,7 +913,7 @@ async function findElementsHelper(bundleId: string, opts: { roles?: string[]; qu
   const args = ['find-elements', '--app', bundleId]
   if (opts.roles?.length) args.push('--role', opts.roles.join(','))
   if (opts.query) args.push('--query', opts.query)
-  const { stdout, code } = await helperExit(...args)
+  const { stdout, code } = await withAxTimeout(helperExit(...args))
   if (code !== 0) throw new Error(axExitMessage(code) ?? `find-elements falló (código ${code})`)
   let parsed: unknown
   try {
@@ -815,11 +993,22 @@ async function findElementCandidates(app: AppRef, description: string): Promise<
   return scored.slice(0, 5)
 }
 
-function describeElement(el: FoundElement, idx: number): string {
+/**
+ * `el.screenPoint` llega en PUNTOS de pantalla (así los da Accessibility/AX) — pero `left_click` y el
+ * resto de las herramientas de acción esperan PÍXELES de la última captura (`toPoints()` los
+ * convierte internamente multiplicando por `ratio`). Pasar un punto AX directo a `left_click` lo
+ * convertía dos veces (una acá nunca, otra adentro de `toPoints`) y el clic caía desviado — bug real,
+ * encontrado comparando un intento fallido de Lazunox contra uno de Claude en la misma tarea. Por eso
+ * acá se divide por `ratio` ANTES de mostrarlo: lo que el texto ofrece ya está en las mismas unidades
+ * que `left_click`/`mouse_move`/`type_text` esperan, así "pasá estas coordenadas directo" (lo que ya
+ * dice el prompt de la herramienta) es correcto sin tener que explicarle al modelo una conversión más.
+ */
+function describeElement(el: FoundElement, idx: number, ratio: number): string {
   const label = el.title || el.description || el.identifier || el.value || '(sin texto)'
   const state = el.enabled ? '' : ' [deshabilitado]'
-  const pt = `(${Math.round(el.screenPoint.x)}, ${Math.round(el.screenPoint.y)})`
-  return `${idx + 1}. [${el.role}] "${label}" en ${pt} pt, tamaño ${Math.round(el.width)}x${Math.round(el.height)}${state}`
+  const px = ratio > 0 ? { x: el.screenPoint.x / ratio, y: el.screenPoint.y / ratio } : el.screenPoint
+  const pt = `(${Math.round(px.x)}, ${Math.round(px.y)})`
+  return `${idx + 1}. [${el.role}] "${label}" en ${pt} px, tamaño ${Math.round(el.width)}x${Math.round(el.height)}${state}`
 }
 
 /** App en primer plano, o lanza si no se pudo identificar (p. ej. el Escritorio). */
@@ -872,6 +1061,49 @@ const TOOLS: ToolDef[] = [
     // Capturar la pantalla también es tomar control: requiere plan aprobado.
     action: true,
     run: async () => '' // gestionado aparte
+  },
+  {
+    name: 'zoom',
+    description:
+      'Recorta y agranda una región de la ÚLTIMA captura de pantalla completa (screenshot, no app_screenshot) para ver mejor ' +
+      'texto chico o una zona densa, sin gastar una acción real sobre la pantalla. x,y,width,height en píxeles de ESA captura ' +
+      '(mismo espacio que left_click). El resultado es SOLO para mirar: sus coordenadas no sirven para left_click/mouse_move — ' +
+      'usa las de la captura original.',
+    inputSchema: obj(
+      {
+        x: { type: 'number', description: 'X del recorte, px de la última captura' },
+        y: { type: 'number', description: 'Y del recorte, px de la última captura' },
+        width: { type: 'number', description: 'Ancho del recorte, px' },
+        height: { type: 'number', description: 'Alto del recorte, px' },
+        scale: { type: 'number', description: 'Cuánto agrandar el recorte (1 a 4; por defecto 2)' }
+      },
+      ['x', 'y', 'width', 'height']
+    ),
+    action: true,
+    noAutoShot: true,
+    run: async (a) => {
+      if (!lastShot) throw new Error('Todavía no hay ninguna captura de pantalla completa — pide una con screenshot primero.')
+      const shot = lastShot
+      const x = Math.round(Number(a.x))
+      const y = Math.round(Number(a.y))
+      const width = Math.round(Number(a.width))
+      const height = Math.round(Number(a.height))
+      if (![x, y, width, height].every(Number.isFinite)) throw new Error('x, y, width y height deben ser números')
+      if (width <= 0 || height <= 0) throw new Error('width y height deben ser mayores que 0')
+      if (x < 0 || y < 0 || x + width > shot.width || y + height > shot.height) {
+        throw new Error(`Región fuera de la captura (${shot.width}x${shot.height} px): (${x}, ${y}) ${width}x${height}`)
+      }
+      const scale = Math.max(1, Math.min(4, Number(a.scale) || 2))
+      const outPath = join(SHOT_DIR, `zoom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`)
+      const r = await backend.zoomImage({ inPath: shot.path, outPath, x, y, width, height, scale })
+      const base64 = readFileSync(outPath).toString('base64')
+      return {
+        text:
+          `Zoom x${scale} de (${x}, ${y}) ${width}x${height} px de la última captura (resultado: ${r.width}x${r.height} px). ` +
+          'Esta imagen es SOLO para mirar — sus coordenadas no sirven para left_click/mouse_move, usa las de la captura original.',
+        shot: { path: outPath, base64, width: r.width, height: r.height, ratio: shot.ratio }
+      }
+    }
   },
   {
     name: 'left_click',
@@ -965,13 +1197,14 @@ const TOOLS: ToolDef[] = [
   {
     name: 'type_text',
     description: 'Escribe texto (unicode) en el elemento con foco. "\\n" pulsa Return. Nunca escribas contraseñas ni datos de pago.',
-    inputSchema: obj({ text: { type: 'string' }, ...SHOT_FLAG }, ['text']),
+    inputSchema: obj({ text: { type: 'string' }, ...EXPECT_APP, ...SHOT_FLAG }, ['text']),
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
       const text = String(a.text ?? '')
       if (!text) throw new Error('text vacío')
       if (text.length > 5000) throw new Error('Texto demasiado largo (máx. 5000 caracteres)')
+      await checkExpectApp(a.expect_app)
       await requireTier('full', undefined, session)
       await requireCanType()
       await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () => helper('type', text))
@@ -983,10 +1216,11 @@ const TOOLS: ToolDef[] = [
     description:
       'Pulsa una tecla o combinación, p.ej. "return", "cmd+space", "cmd+shift+t", "escape", "tab", "up", "f5". ' +
       'Varias combinaciones separadas por espacio se pulsan en secuencia.',
-    inputSchema: obj({ keys: { type: 'string' }, ...SHOT_FLAG }, ['keys']),
+    inputSchema: obj({ keys: { type: 'string' }, ...EXPECT_APP, ...SHOT_FLAG }, ['keys']),
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
+      await checkExpectApp(a.expect_app)
       const keys = String(a.keys ?? '').trim()
       if (!keys) throw new Error('keys vacío')
       const sendKeys = await backend.checkKeys(keys) // política de combinaciones (Windows); en macOS devuelve `keys` tal cual
@@ -1017,9 +1251,16 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       const name = String(a.name ?? '').trim()
       if (!name) throw new Error('name vacío')
-      // Lote C: en segundo plano se abre SIN activar (no roba el foco ni mueve nada visible).
-      const { mode } = await controlMode(session)
-      if (mode === 'background') {
+      // Lote C: en segundo plano se abre SIN activar (no roba el foco ni mueve nada visible). F8-B154:
+      // antes esto miraba SOLO `mode` (la preferencia global) e ignoraba `foreground` (el control real
+      // de ESTA sesión, concedido por `request_full_control`) — mismo criterio que ya usa
+      // `requireForeground` para el resto de herramientas de ratón/teclado real, pero `open_application`
+      // no lo seguía: con el control ya concedido, seguía abriendo SIN activar, la app nunca pasaba a
+      // primer plano de verdad, y el agente quedaba mirando lo de siempre (otra app) sin poder ver ni
+      // clicar donde hacía falta — confirmado con una tarea real (Discord, control concedido, igual
+      // nunca se activó).
+      const { mode, foreground } = await controlMode(session)
+      if (mode === 'background' && !foreground) {
         const opened = await act({ tool: 'open_application', text: name }, () => helper('open-app-bg', name))
         // Windows no garantiza quedar detrás: si el helper avisa (`behind: false`), se le dice al modelo.
         let behindNote = ''
@@ -1304,6 +1545,41 @@ const TOOLS: ToolDef[] = [
     }
   },
   {
+    name: 'app_insert_text',
+    description:
+      'AGREGA texto al final de un campo de una app por su "ref", SIN mover el ratón real y SIN tocar lo que ya había ' +
+      '(a diferencia de app_set_value, que REEMPLAZA todo el valor) — úsala para añadir algo a una nota/documento que ' +
+      'puede tener contenido rico (adjuntos, formato) que app_set_value perdería al reescribir todo como texto plano. ' +
+      'Rechaza campos de contraseña u otras entradas seguras. Nunca escribas contraseñas ni datos de pago. Si el campo ' +
+      'no soporta inserción por accesibilidad, falla con un mensaje claro — en ese caso, o usa app_set_value (con el ' +
+      'valor actual + lo nuevo, si no hay riesgo de perder contenido rico) o pide control real de la pantalla.',
+    inputSchema: obj({ app: { type: 'string' }, ref: { type: 'string' }, text: { type: 'string' }, expect_role: { type: 'string' } }, [
+      'app',
+      'ref',
+      'text'
+    ]),
+    action: true,
+    run: async (a, session) => {
+      const app = await namedApp(a.app)
+      await requireTierFor(app, 'full', session)
+      const ref = String(a.ref ?? '')
+      const text = String(a.text ?? '')
+      if (!ref) throw new Error('ref vacío')
+      if (!text) throw new Error('text vacío')
+      if (text.length > 5000) throw new Error('text demasiado largo (máx. 5000 caracteres)')
+      if (typeof a.expect_role === 'string' && a.expect_role) {
+        const found = await axFind(app.bundleId, { role: a.expect_role, limit: 50 })
+        if (!found.matches.some((m) => m.ref === ref)) {
+          throw new Error(
+            'El elemento cambió (el rol esperado no coincide): vuelve a pedir app_tree/app_find y usa la referencia (ref) actual.'
+          )
+        }
+      }
+      await act({ tool: 'app_insert_text', text: `${app.name} ${ref}` }, () => withAxTimeout(backend.insertAxText(app.bundleId, ref, text)))
+      return `Agregado al final de ${ref} en ${app.name} (${text.length} caracteres).`
+    }
+  },
+  {
     name: 'app_action',
     description: `Ejecuta una acción de accesibilidad sobre un elemento por su "ref": ${[...AX_ACTIONS].join(', ')}.`,
     inputSchema: obj({ app: { type: 'string' }, ref: { type: 'string' }, action: { type: 'string', enum: [...AX_ACTIONS] } }, [
@@ -1325,7 +1601,11 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'app_screenshot',
-    description: 'Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón.',
+    description:
+      'Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón — SOLO para ' +
+      'mirar (confirmar que algo cargó, leer texto, ver si está tapada), NUNCA para sacar coordenadas de clic: no ' +
+      'sabe dónde está esa ventana en la pantalla, así que un píxel de esta imagen no se puede convertir a un ' +
+      'punto de clic. Para clicar algo, usa screenshot (captura de la pantalla principal) o find_element.',
     inputSchema: obj({ app: { type: 'string' }, window: { type: 'number' } }, ['app']),
     action: true,
     noAutoShot: true,
@@ -1343,7 +1623,11 @@ const TOOLS: ToolDef[] = [
         const base64 = readFileSync(out).toString('base64')
         cleanupShots()
         return {
-          text: `Ventana de ${app.name}: ${info.width}x${info.height} px${info.title ? ` («${info.title}»)` : ''}. Archivo: ${out}`,
+          text:
+            `Ventana de ${app.name}: ${info.width}x${info.height} px${info.title ? ` («${info.title}»)` : ''}. ` +
+            'Solo para mirar: esta imagen NO sirve para sacar coordenadas de clic (no sabe dónde está la ventana ' +
+            'en la pantalla). Para clicar algo, usa screenshot o find_element. Archivo: ' +
+            out,
           shot: { path: out, base64, width: info.width, height: info.height, ratio: await ensureRatio() }
         }
       } finally {
@@ -1383,7 +1667,8 @@ const TOOLS: ToolDef[] = [
           '(computer_screenshot) y adivina las coordenadas por visión como de costumbre.'
         )
       }
-      const lines = candidates.map(({ el }, i) => describeElement(el, i))
+      const elRatio = await ensureRatio()
+      const lines = candidates.map(({ el }, i) => describeElement(el, i, elRatio))
       return (
         `${candidates.length} candidato(s) en ${app.name} (AX) para "${description}", de más a menos fiable:\n` +
         `${lines.join('\n')}\n` +
@@ -1420,7 +1705,8 @@ const TOOLS: ToolDef[] = [
       const elements = await findElementsHelper(app.bundleId, { roles })
       if (!elements.length) return `Sin elementos visibles${roles ? ` de rol ${roles.join(',')}` : ''} en ${app.name} (AX).`
       const capped = elements.slice(0, 60)
-      const lines = capped.map((el, i) => describeElement(el, i))
+      const listRatio = await ensureRatio()
+      const lines = capped.map((el, i) => describeElement(el, i, listRatio))
       const suffix = elements.length > capped.length ? `\n… y ${elements.length - capped.length} más (afina con "role").` : ''
       return `${elements.length} elemento(s) en ${app.name}${roles ? ` (rol: ${roles.join(',')})` : ''}:\n${lines.join('\n')}${suffix}`
     }
@@ -1527,7 +1813,26 @@ const TOOLS: ToolDef[] = [
   }
 ]
 
+// Serializa TODA llamada a `callTool`, una por vez — nunca dos acciones nativas (clic/tipeo/captura)
+// corriendo a la vez. Antes del arreglo del timeout de arriba, un reintento de OpenCode (porque el
+// anterior ya había "timeado" del lado de él, aunque el clic/tipeo seguía corriendo de verdad en el
+// helper) podía superponerse con la llamada original — dos acciones de teclado/mouse reales peleando
+// por la misma sesión al mismo tiempo. Con el timeout ya arreglado esto debería ser rarísimo, pero una
+// cola es la red de seguridad correcta para control de mouse/teclado real: nunca vale la pena arriesgar
+// una acción doble por ahorrarse una cola.
+let toolQueue: Promise<unknown> = Promise.resolve()
+
 async function callTool(name: string, rawArgs: Record<string, unknown>): Promise<ToolResult> {
+  const run = (): Promise<ToolResult> => callToolNow(name, rawArgs)
+  const result = toolQueue.then(run, run)
+  toolQueue = result.then(
+    () => undefined,
+    () => undefined
+  )
+  return result
+}
+
+async function callToolNow(name: string, rawArgs: Record<string, unknown>): Promise<ToolResult> {
   // `lazunox_session` lo inyecta el plugin `lazunox-plan-gate` (sesión de OpenCode que llama): se separa
   // de los args para que ninguna herramienta lo vea como parámetro propio.
   const { lazunox_session, ...args } = rawArgs
@@ -1559,7 +1864,12 @@ async function callTool(name: string, rawArgs: Record<string, unknown>): Promise
     const content: Content[] = [{ type: 'text', text }]
     if (typeof result !== 'string') {
       content.unshift({ type: 'image', data: result.shot.base64, mimeType: 'image/jpeg' })
-      content.push({ type: 'text', text: shotText(result.shot) })
+      // `shotText` describe una captura de PANTALLA COMPLETA ("Captura de la pantalla principal…") —
+      // `app_screenshot` devuelve una ventana recortada, no la pantalla; agregarle esa frase la
+      // etiquetaba mal (y encima contradecía la advertencia de NO clicar con esas coordenadas que ya
+      // trae su propio `text`, arriba). El resto de las herramientas que alguna vez devuelvan
+      // `{text, shot}` de una captura de pantalla de verdad SÍ la siguen llevando.
+      if (name !== 'app_screenshot' && name !== 'zoom') content.push({ type: 'text', text: shotText(result.shot) })
     }
     const wantShot = tool.action && !tool.noAutoShot && AUTO_SHOT && args?.screenshot !== false
     if (wantShot) {

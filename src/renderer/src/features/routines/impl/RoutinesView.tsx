@@ -41,6 +41,7 @@ import { MODE_LABELS } from '@shared/labels'
 import { useCode } from '../../code/impl/store'
 import { openProjectTrusted } from '../../code/impl/trust'
 import { MODE_META } from './meta'
+import { PendingLearnedReview } from './PendingLearnedReview'
 import { RoutineEditor } from './RoutineEditor'
 import { agoText, durationText, fullDate, scheduleText, untilText } from './schedule'
 import { deleteRoutine, loadRoutines, openEditor, runRoutineNow, subscribeRoutines, toggleRoutine, useRoutines } from './store'
@@ -673,6 +674,7 @@ export function RoutinesView(): React.JSX.Element {
           </div>
         )}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <PendingLearnedReview />
           {routines.length === 0 && !loading ? (
             <EmptyState onCreate={create} />
           ) : (

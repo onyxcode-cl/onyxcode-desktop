@@ -414,6 +414,53 @@
       "replacedBy": "screenshot",
       "note": "Windows: la máscara la aplica el propio screenshot (--mask-keys)"
     },
+    "zoom-image": {
+      "args": [
+        {
+          "name": "inPath",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "outPath",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "x",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "y",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "w",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "h",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "scale",
+          "type": "number",
+          "required": true
+        }
+      ],
+      "output": {
+        "ok": "boolean",
+        "width": "number",
+        "height": "number"
+      },
+      "exits": [],
+      "win32": "none",
+      "note": "F8-B149: pendiente de implementar en Windows con WIC (IWICBitmapClipper + scaler), probado en una máquina real antes de declararlo disponible — por ahora la herramienta `zoom` falla con un mensaje claro en Windows"
+    },
     "watch-esc": {
       "args": [],
       "output": {},
@@ -668,6 +715,33 @@
       ],
       "win32": "same",
       "note": "Rechaza campos seguros (9) y no editables (10)"
+    },
+    "ax-insert-text": {
+      "args": [
+        {
+          "name": "bundleId",
+          "type": "appKey",
+          "required": true,
+          "note": "macOS: bundle id; Windows: appKey (exe:<ruta>|pub:<editor> o aumid:<id>)"
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "variadic": true
+        }
+      ],
+      "output": {
+        "ok": "boolean"
+      },
+      "exits": [2, 7, 8, 9, 10],
+      "win32": "none",
+      "note": "F8-B151: AGREGA al final (AXSelectedTextRange + AXSelectedText), sin reemplazar como ax-set-value — pendiente de implementar en Windows con UI Automation, probado en una máquina real antes de declararlo disponible; mientras tanto la herramienta app_insert_text falla con un mensaje claro ahí (ver mcp-platform-win32.ts)."
     },
     "ax-action": {
       "args": [

@@ -23,6 +23,12 @@ export function extOf(p: string): string {
   return i > 0 ? name.slice(i + 1).toLowerCase() : ''
 }
 
+/** `.pdf/.docx/.xlsx/.pptx`: lo que reconoce el visor de documentos (sin mirar `platformCaps`, eso lo decide quien llama). */
+export function isViewerExt(p: string): boolean {
+  return VIEWER_EXTS.has(extOf(p))
+}
+const VIEWER_EXTS = new Set(['pdf', 'docx', 'xlsx', 'pptx'])
+
 export function relTime(ts: number, now = Date.now()): string {
   const diff = now - ts
   const min = Math.floor(diff / 60_000)
@@ -42,15 +48,7 @@ export function formatSize(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
-/** "0:42", "12:05", "1:02:10". */
-export function formatDuration(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const ss = String(s).padStart(2, '0')
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
-}
+export { formatDuration, turnTiming } from '../../../lib/turn-timing'
 
 // ───────────────────────────── Estado de la tarea ─────────────────────────────
 
@@ -184,21 +182,6 @@ export function sessionBelongsTo(sessionID: string, taskId: string, sessions: Re
 /** ¿El permiso pertenece a la tarea (o a una subtarea suya)? */
 export function permissionBelongsTo(p: PermissionRequest, taskId: string, sessions: Record<string, Session>): boolean {
   return sessionBelongsTo(p.sessionID, taskId, sessions)
-}
-
-/** Inicio y fin del último turno (desde el último mensaje del usuario). */
-export function turnTiming(entries: MessageEntry[]): { start: number | null; end: number | null } {
-  let start: number | null = null
-  let end: number | null = null
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const info = entries[i].info
-    if (info.role === 'assistant' && end === null && info.time.completed) end = info.time.completed
-    if (info.role === 'user') {
-      start = info.time.created
-      break
-    }
-  }
-  return { start, end }
 }
 
 // ───────────────────────────── Etiquetas de pasos ─────────────────────────────

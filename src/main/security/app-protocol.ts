@@ -19,6 +19,15 @@ export const APP_HOST = 'app'
 /** Origen del renderer empaquetado (`lazunox://app`). */
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`
 
+/**
+ * Esquema del visor de documentos (`src/main/viewer/`, Fase 0 del plan del visor): necesita
+ * `standard`+`secure`+`supportFetchAPI` para que los module workers y `fetch` funcionen dentro de
+ * esa vista aislada (sin esto, PDF.js tendría que correr sin workers). Se registra acá porque
+ * `registerSchemesAsPrivileged` solo puede llamarse UNA vez en todo el proceso; el manejador y la
+ * CSP del visor viven enteramente en `src/main/viewer/`, este archivo no los toca.
+ */
+export const VIEWER_SCHEME = `${APP_SLUG}-viewer`
+
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -66,6 +75,10 @@ export function registerAppSchemePrivileges(): void {
     {
       scheme: APP_SCHEME,
       privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true }
+    },
+    {
+      scheme: VIEWER_SCHEME,
+      privileges: { standard: true, secure: true, supportFetchAPI: true }
     }
   ])
 }

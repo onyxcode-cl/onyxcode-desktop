@@ -219,6 +219,15 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   /** Lote C: "Solo ver" efímero por sesión (Modo auto), NUNCA persistido en `computer-grants.json`. */
   private readonly autoView = new Map<string, Set<string>>()
   /**
+   * Apps declaradas/aprobadas en el plan de ESTA tarea (F8-B149): a diferencia de `grants` (concesión
+   * PERMANENTE, para siempre), esto es solo "qué apps importan para la tarea de ahora" — se usa para
+   * decidir qué queda VISIBLE en las capturas en segundo plano. Antes de esto, una app concedida en
+   * cualquier tarea anterior (p.ej. Discord, concedida hace semanas) quedaba visible SIEMPRE, aunque
+   * la tarea actual no tuviera nada que ver con ella. Se limpia en `revokePlan`: tarea nueva, lista
+   * nueva.
+   */
+  private readonly taskApps = new Map<string, Set<string>>()
+  /**
    * Lote C: sesiones (tareas) que tomaron el control del ratón y el teclado en modo segundo plano
    * (`request_full_control` aprobado). Se limpia en `revokePlan`, `stop()` y `dispose()`.
    */
@@ -417,11 +426,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     if (verdict) {
       const decisions: Record<string, AccessDecision> = {}
       for (const a of enriched) decisions[a.bundleId] = 'view'
-      if (sessionId)
-        this.grantAutoView(
-          sessionId,
-          enriched.map((a) => a.bundleId)
-        )
+      if (sessionId) {
+        const bundleIds = enriched.map((a) => a.bundleId)
+        this.grantAutoView(sessionId, bundleIds)
+        this.markTaskApps(sessionId, bundleIds)
+      }
       return { decisions, auto: true }
     }
     const id = randomBytes(8).toString('hex')
@@ -440,6 +449,23 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       console.error('[computer] autoAccess:', err)
       return null
     }
+  }
+
+  /** Marca estas apps como relevantes para la tarea actual de esa sesión (ver `taskApps`). */
+  private markTaskApps(sessionId: string | undefined, bundleIds: string[]): void {
+    if (!sessionId || !bundleIds.length) return
+    let set = this.taskApps.get(sessionId)
+    if (!set) {
+      set = new Set()
+      this.taskApps.set(sessionId, set)
+    }
+    for (const b of bundleIds) set.add(b)
+  }
+
+  /** Bundle ids relevantes para la tarea ACTUAL de esa sesión (para no ocultarlos en las capturas). */
+  sessionTaskApps(sessionId?: string): string[] {
+    if (!sessionId) return []
+    return [...(this.taskApps.get(sessionId) ?? [])]
   }
 
   /** "Solo ver" efímero por sesión (Modo auto): NUNCA se persiste en `computer-grants.json`. */
@@ -527,6 +553,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           map[d.bundleId] = effective
           approvedSomething = true
           firstApproved ??= d.bundleId
+          this.markTaskApps(pending.sessionId, [d.bundleId])
         }
       }
       if (pending.plan && (approvePlan === true || approvedSomething)) {
@@ -573,6 +600,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const hadPlan = this.approvedPlans.delete(sessionId)
     this.foregroundSessions.delete(sessionId)
     this.revokeAutoView(sessionId)
+    this.taskApps.delete(sessionId)
     if (hadPlan) this.emit('planState', { sessionId, approved: false })
   }
 
@@ -963,6 +991,18 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           res.end(JSON.stringify({ approved: this.isPlanApproved(session) }))
           return
         }
+        if (req.method === 'GET' && (req.url ?? '').startsWith(`${path}/task-apps`)) {
+          // F8-B149: apps relevantes para la tarea ACTUAL de esa sesión (no TODA concesión de
+          // siempre) — lo consulta `nonGrantedBundleIds` para decidir qué queda visible en las
+          // capturas en segundo plano. Sin sesión: lista vacía (no exime nada de más).
+          const sess = new URL(req.url ?? '', 'http://localhost').searchParams.get('session') ?? ''
+          const session = SESSION_RE.test(sess) ? sess : undefined
+          res.statusCode = 200
+          res.setHeader('content-type', 'application/json')
+          res.setHeader('cache-control', 'no-store')
+          res.end(JSON.stringify({ apps: this.sessionTaskApps(session) }))
+          return
+        }
         if (req.method === 'POST' && req.url === `${path}/request-access`) {
           let body = ''
           req.setEncoding('utf8')
@@ -1198,7 +1238,15 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         headers: { Authorization: `Bearer ${token}` },
         oauth: false,
         enabled: true,
-        timeout: 15_000
+        // OpenCode aplica ESTE único valor a TODA llamada a este MCP — no hay uno aparte por
+        // herramienta. `request_access`/`request_full_control`/`teach_step` esperan sin límite a que
+        // el dueño responda una tarjeta (ver sus propios comentarios en `mcp-server.ts`) — con 15s acá
+        // (el valor de antes), timeaban solas mientras el dueño todavía estaba mirando la tarjeta
+        // (bug real, encontrado comparando un intento fallido contra uno de Claude). Las herramientas
+        // de acción normal (clic, tipeo, captura) ya tienen SU PROPIO límite más corto adentro
+        // (`mcp-platform-darwin.ts`, 30s) y siempre responden bien antes de este número — así que en
+        // la práctica esto nunca se activa para ellas, solo es la red de seguridad para las tarjetas.
+        timeout: 600_000
       }
     } catch (err) {
       console.error('[computer] no se pudo arrancar el MCP:', err)

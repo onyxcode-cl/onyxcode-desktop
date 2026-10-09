@@ -11,6 +11,7 @@ import { NoAiBanner } from '../../../components/NoAiBanner'
 import { useAiGate } from '../../../lib/ai-gate'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, ShieldAlert, Square, X } from 'lucide-react'
+import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { sandboxModelNotice } from '@shared/sandbox-providers'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
@@ -80,6 +81,20 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
   const setText = (draft: string): void => useTasks.setState({ draft })
+  /** Inserta texto dictado en la posición del cursor — mismo patrón que Chat/Code. */
+  const insertDictated = (dictated: string): void => {
+    const el = ref.current
+    const pos = el?.selectionStart ?? text.length
+    const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
+    const insert = `${needsSpace ? ' ' : ''}${dictated}`
+    const next = text.slice(0, pos) + insert + text.slice(pos)
+    const np = pos + insert.length
+    setText(next)
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(np, np)
+    })
+  }
 
   useImperativeHandle(forwardedRef, () => ({ focus: () => ref.current?.focus() }), [])
 
@@ -209,6 +224,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
                 {attaching ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
               </button>
             )}
+            <VoiceDictationButton onText={insertDictated} size={15} className="h-7 w-7 rounded-lg" />
             {hero && <FolderMenu variant="chip" placement="bottom" />}
             <AutoModeChip />
             {extra}

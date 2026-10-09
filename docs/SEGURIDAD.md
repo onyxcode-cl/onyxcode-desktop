@@ -1698,3 +1698,35 @@ salto de riesgo aparte, fuera de alcance de esta tanda).
 **No verificado:** una skill escrita fuera de este flujo (a mano, o de una versión anterior de la app) sigue
 sin detectarse ni avisarse en la interfaz. `skillAlreadyExists`/`skillPathFor` existen y se podrían usar para
 eso, pero no hay ninguna pantalla que los use todavía.
+
+## 3 quinquagies. Visor de documentos
+
+**Por qué existe.** Modo Tareas necesita mostrar PDF, Word, Excel y PowerPoint dentro de la propia app, con
+calidad real, en vez de depender del visor del sistema operativo (y de que exista uno). El contenido que se
+muestra es, por definición, **no confiable**: lo puede haber generado un agente de IA o puede venir de
+cualquier carpeta que el usuario autorizó a Tareas, igual que cualquier otro archivo del árbol de trabajo.
+
+**Por qué no puede vivir en la ventana principal.** La CSP de la ventana principal (`RENDERER_CSP`, zona
+intocable de la sección 7 de `AGENTS.md`) trae `worker-src 'none'` y `frame-src 'none'`: PDF.js no podría usar
+sus workers y un `.docx` no podría aislarse en un iframe. Además esa ventana tiene `window.api` con acceso a
+IPC real: un fallo de parseo (tipo CVE-2024-4367 de PDF.js, ejecución de JS arbitrario) o un `.docx` con una
+imagen enlazada a `http://127.0.0.1:<puerto>/…` podría alcanzar el sidecar o los proxies locales de Tareas. El
+visor necesita su propio aislamiento, separado del de la app.
+
+**Modelo de amenaza y capas de defensa**, de la más externa a la más interna:
+
+| # | Capa | Qué hace | Dónde |
+|---|---|---|---|
+| 1 | Vista nativa aislada | `WebContentsView` propia, `sandbox:true`, `contextIsolation:true`, **sin preload** (no hay IPC posible desde el documento que se muestra); `will-navigate`/`will-redirect`/`will-attach-webview` prevenidos; `setWindowOpenHandler` niega siempre | `src/main/viewer/view.ts` |
+| 2 | Sesión aislada | Partición propia `doc-viewer`, sin persistencia (`cache:false`, sin `persist:`): no comparte cookies, storage ni caché con la app ni con el navegador integrado. `webRequest.onBeforeRequest` cancela TODO lo que no empiece con el esquema propio `lazunox-viewer:` — ni una imagen externa de un `.docx` ni una acción `/URI` de un PDF pueden alcanzar la red. Permisos denegados, descargas bloqueadas | `src/main/viewer/session.ts` |
+| 3 | Esquema propio y privilegiado | `lazunox-viewer://viewer/…`, registrado junto al esquema de la app principal (`registerSchemesAsPrivileged` solo se puede llamar una vez por proceso — **no se tocó** `RENDERER_CSP` ni `handleAppScheme`). CSP propia y estricta (`VIEWER_CSP`): `default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; frame-src 'none'; object-src 'none'; connect-src 'self'; frame-ancestors 'none'` (con `'unsafe-inline'` en `style-src`, exigido por PDF.js y docx-preview) | `src/main/security/app-protocol.ts` (solo la entrada del esquema), `src/main/viewer/scheme.ts` |
+| 4 | Acceso a bytes por token, nunca por ruta | Token aleatorio de 256 bits, de un solo uso activo (abrir otro documento revoca el anterior). El manejador del esquema vuelve a validar que la carpeta sigue autorizada CADA VEZ que sirve bytes del documento (`tasks:viewer:open` ya la valida al abrir, pero el manejador no confía en eso: la carpeta pudo desaprobarse entretanto). Solo acepta `GET`, responde con `cache-control: no-store` y `x-content-type-options: nosniff`. Topes de tamaño por tipo (PDF/PPTX 100MB, DOCX/XLSX 25MB) | `src/main/viewer/tokens.ts`, `src/main/viewer/scheme.ts` |
+| 5 | Saneado posterior al render | Solo para Word por ahora: después de que `docx-preview` renderiza el documento, se recorre el DOM resultante asumiéndolo hostil — todo `<a>` queda inerte, cualquier `src`/`poster`/`srcset` que no sea `data:` se elimina, se sacan `<script>`/`<iframe>`/`<object>`/`<embed>`/`<link>`/`<meta>`/`<form>` del árbol, se sacan atributos `on*`, se limpia cualquier `url(http://…)` dentro de estilos (inline o en el `<style>` que inyecta el propio docx-preview) | `src/viewer/docx/sanitize.ts` |
+| 6 | Canales IPC con la clase más restrictiva | `tasks:viewer:open/attach/close` son clase `X` (la vista es nativa de la ventana del Mac, lee bytes de cualquier archivo autorizado; no tiene sentido para el control remoto desde el celular); el celular sigue usando el `tasks:previewFile` viejo | `src/main/remote/policy.ts` |
+
+**Qué NO hace esta arquitectura todavía** (para no sobre-prometer): no hay sandboxing de proceso del sistema
+operativo (Seatbelt) para el proceso de render del documento; la defensa es toda a nivel de Electron/Chromium
+(sesión, esquema, CSP). Es la misma aceptación que ya tiene `artifact-window.ts` para el mismo tipo de
+contenido.
+
+**Archivos clave:** `src/main/viewer/{session,scheme,tokens,doc-kind,view}.ts`, `src/viewer/docx/sanitize.ts`.

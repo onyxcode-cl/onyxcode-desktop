@@ -13,6 +13,14 @@ import { assertSafeToOpen } from '../tasks/open-policy'
 import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
 import { acceptLearnedMemory, clearLearnedMemory, getLearnedMemory, removeLearnedMemoryEntry } from '../tasks/learned-memory'
 import { approvedSkillNames, removeSkill, trustSkill, writeApprovedSkill } from '../tasks/learned-skills'
+import {
+  acceptPendingMemory,
+  acceptPendingSkill,
+  ackPendingDropped,
+  discardAllPending,
+  discardPending,
+  listPending
+} from '../tasks/learned-pending'
 import { KeepAwakeService } from '../tasks/keep-awake'
 import type { ComputerService } from '../computer/service'
 import type { WinBackendProvider } from '../tasks/backends'
@@ -22,6 +30,7 @@ import { registerRoutineChannels } from './routines-handlers'
 import { emit, emitTo } from './event-bus'
 import { makeTasksHandle, type TasksIpcContext, type TasksSubmodule } from './tasks-handle'
 import { registerTasksFoldersHandlers } from './tasks-folders-handlers'
+import { registerTasksViewerHandlers } from './tasks-viewer-handlers'
 import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
 import { registerTasksProjectHandlers } from './tasks-project-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
@@ -122,7 +131,12 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   tasks.on('server', (info) => send('tasks:server', info))
   tasks.on('networkBlocked', (ev) => send('tasks:networkBlocked', ev))
   scheduler.on('changed', (list) => send('routines:changed', list))
-  scheduler.on('run', (run) => send('routines:run', run))
+  scheduler.on('run', (run) => {
+    send('routines:run', run)
+    // La cola de pendientes solo puede cambiar al terminar (`perform()` encola justo antes de devolver el
+    // resumen): no hace falta nada más fino que "al terminar, re-mandar el estado actual".
+    if (run.status !== 'running') send('tasks:learn:pending:changed', listPending())
+  })
 
   // ── Tareas ──
   handle('tasks:pickFolder', async (_req, event) => {
@@ -208,6 +222,38 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     return approvedSkillNames(approved)
   })
 
+  // ── Cola de pendientes de Rutinas (propuesto en una ejecución desatendida; decisión del dueño, 2026-10-07) ──
+  const assertFolder = (folder: string): string => tasks.assertInsideApproved(folder)
+  handle('tasks:learn:pending:list', () => listPending())
+  handle('tasks:learn:pending:acceptMemory', ({ id, proposals }) => {
+    const result = acceptPendingMemory(id, proposals, assertFolder)
+    send('tasks:learn:pending:changed', listPending())
+    return result
+  })
+  handle('tasks:learn:pending:acceptSkill', ({ id, name, description, body }) => {
+    const result = acceptPendingSkill(id, { name, description, body }, assertFolder)
+    send('tasks:learn:pending:changed', listPending())
+    return result
+  })
+  handle('tasks:learn:pending:discard', ({ id }) => {
+    discardPending(id)
+    const state = listPending()
+    send('tasks:learn:pending:changed', state)
+    return state
+  })
+  handle('tasks:learn:pending:discardAll', () => {
+    discardAllPending()
+    const state = listPending()
+    send('tasks:learn:pending:changed', state)
+    return state
+  })
+  handle('tasks:learn:pending:ackDropped', () => {
+    ackPendingDropped()
+    const state = listPending()
+    send('tasks:learn:pending:changed', state)
+    return state
+  })
+
   // ── Red de Tareas (egress) ──
   handle('tasks:network:state', () => tasks.networkState())
   handle('tasks:network:setToggle', ({ key, value }) => tasks.networkSetToggle(key, value))
@@ -243,7 +289,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksFilesHandlers(ctx),
     registerTasksAutoHandlers(ctx),
     registerTasksRestoreHandlers(ctx),
-    registerTasksSandboxHandlers(ctx, { tasksWin: deps.tasksWin, winBackend: deps.winBackend })
+    registerTasksSandboxHandlers(ctx, { tasksWin: deps.tasksWin, winBackend: deps.winBackend }),
+    registerTasksViewerHandlers(ctx)
   ]
 
   scheduler.start()

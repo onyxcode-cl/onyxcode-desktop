@@ -118,7 +118,7 @@ La base es sólida para un proyecto de un día: IPC tipado con listas blancas, v
 | CSP | ✅ cabecera CSP en cada HTML servido por `onyxcode://app` (verificado en el paquete: script inline y `setTimeout(string)` bloqueados) + `<meta>` para el dev server |
 | `setWindowOpenHandler` | ✅ deniega todo, abre http(s) fuera |
 | `will-navigate` | ✅ `will-navigate`/`will-redirect`/`will-frame-navigate` en todo webContents: solo origen propio; http(s) → navegador (nunca desde artifacts); `<webview>` bloqueado (`security/web-security.ts`) |
-| Permisos de sesión | ✅ denegar por defecto; solo `notifications` y `clipboard-sanitized-write` para páginas propias; sin dispositivos ni captura desde el renderer (probado: geolocalización y micrófono denegados) |
+| Permisos de sesión | ✅ denegar por defecto; solo `notifications`, `clipboard-sanitized-write` y `media` (micrófono — F8-B141, dictado por voz) para páginas propias; sin dispositivos ni captura desde el renderer (probado: geolocalización denegada; micrófono permitido SOLO para el origen propio, nunca para un artifact ni el visor — esos mantienen su sesión propia, más estricta, sin tocar) |
 | Menú de aplicación | ✅ menú propio en producción sin *Reload*/*DevTools*; `devTools:false` en la ventana principal empaquetada |
 | Fuses | ✅ `electronFuses` en `electron-builder.yml`: RunAsNode, NODE_OPTIONS e `--inspect` off; integridad del asar y OnlyLoadAppFromAsar on; cookies cifradas; sin privilegios extra de `file://`. Verificado en el `.app`: `ELECTRON_RUN_AS_NODE=1 … -e`, `NODE_OPTIONS=--require` y `--inspect` se ignoran |
 

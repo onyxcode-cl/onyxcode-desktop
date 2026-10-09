@@ -8,6 +8,8 @@
 import type { KeybindingOverrides } from './keybindings'
 import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
+import type { ViewerEventType, ViewerRect } from './ipc-tasks'
+import type { PptxSpec, XlsxSpec } from './chat-doc-spec'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
 export type ModelMode = 'chat' | 'code' | 'tasks'
@@ -102,11 +104,54 @@ export interface QuickPromptEvent {
   text: string
 }
 
+// ───────────────── Documentos de Chat (PDF vía HTML, Excel/PowerPoint vía datos) ─────────────────
+
+/** Por qué `extras:chatDoc:open` no abrió nada: la generación del archivo falló. */
+export type ChatDocOpenReject = 'failed'
+export type ChatDocOpenResult = { ok: true } | { ok: false; reason: ChatDocOpenReject }
+
+interface ChatDocOpenCommon {
+  title: string
+  /** Carpeta temporal propia por sesión de chat (nunca una carpeta del usuario). */
+  sessionId: string
+  lang: 'es' | 'en'
+  theme: 'light' | 'dark'
+}
+
+export type ChatDocOpenRequest =
+  | (ChatDocOpenCommon & { kind: 'pdf'; html: string })
+  | (ChatDocOpenCommon & { kind: 'xlsx'; data: XlsxSpec })
+  | (ChatDocOpenCommon & { kind: 'pptx'; data: PptxSpec })
+
+/** Para `extras:downloadChatDoc` — solo xlsx/pptx (el PDF ya tiene su propio `downloadHtmlAsPdf`). */
+export type ChatDocDownloadRequest = { title: string } & ({ kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec })
+
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
   'extras:setPrefs': { req: Partial<ExtrasPrefs>; res: ExtrasPrefsState }
   'extras:versions': { req: void; res: VersionsInfo }
   'extras:openArtifact': { req: ArtifactPayload; res: void }
+  /** `html` → PDF, con diálogo nativo "Guardar como" (el usuario elige dónde). `null` si cancela. */
+  'extras:downloadHtmlAsPdf': { req: ArtifactPayload; res: string | null }
+  /** Un deck `​```slides` (HTML libre) → `.pptx` PROYECTABLE: una imagen por diapositiva, no editable
+   * (ver `slides-deck-export.ts`) — alternativa a `extras:downloadHtmlAsPdf` para quien necesite
+   * abrirlo y presentarlo en PowerPoint/Keynote. Mismo diálogo "Guardar como", `null` si cancela. */
+  'extras:downloadSlidesAsPptx': { req: ArtifactPayload; res: string | null }
+  /** "Presentar" un deck `​```slides` DENTRO de Lazunox: una ventana PROPIA (no la principal), en
+   * pantalla completa de verdad del sistema operativo, solo con el HTML escalado a toda la pantalla
+   * — nada de la app alrededor (ver `presentSlides`, `artifact-window.ts`). */
+  'extras:presentSlides': { req: ArtifactPayload; res: void }
+  /** Voz a texto 100% local (Whisper multilingüe vía `smart-whisper-electron`/whisper.cpp, ver
+   * `voice-transcribe.ts`) — `samples` es PCM mono de 16 kHz (el renderer graba/remuestrea a eso).
+   * El audio nunca sale de la máquina; devuelve el texto transcrito (`''` si no se entendió nada). */
+  'extras:transcribeAudio': { req: { samples: Float32Array }; res: string }
+  /** El archivo (PDF/Excel/PowerPoint) se genera y se guarda en una carpeta temporal propia de la sesión, mostrado en el visor nativo (panel lateral de Chat). */
+  'extras:chatDoc:open': { req: ChatDocOpenRequest; res: ChatDocOpenResult }
+  'extras:chatDoc:attach': { req: { rect: ViewerRect; visible: boolean }; res: void }
+  /** Cierra el panel y borra los documentos temporales de esa sesión. */
+  'extras:chatDoc:close': { req: { sessionId: string }; res: void }
+  /** `data` (Excel/PowerPoint) → archivo real, con diálogo nativo "Guardar como". `null` si cancela. */
+  'extras:downloadChatDoc': { req: ChatDocDownloadRequest; res: string | null }
   /** Desde la ventana Quick Entry. */
   'extras:quickSubmit': { req: QuickPromptEvent; res: void }
   'extras:quickHide': { req: void; res: void }
@@ -141,6 +186,12 @@ export interface IpcExtrasEventContract {
   'extras:quick-shown': void
   /** El archivo MCP de la app cambió. */
   'mcp:changed': AppMcpConfig
+  /** Avisos del panel de documento de Chat (escape, caída del proceso, carga, error) — igual que `tasks:viewer:event`. */
+  'extras:chatDoc:event': { type: ViewerEventType }
+  /** Progreso de la descarga del modelo de voz (solo la primera vez que se dicta algo, ver
+   * `voice-transcribe.ts`) — sin esto, la primera transcripción se sentía colgada sin avisar que en
+   * realidad estaba bajando el modelo. `progress` de 0 a 100. */
+  'extras:voiceModelProgress': { status: 'downloading' | 'ready'; progress: number }
 }
 
 export type IpcExtrasInvokeChannel = keyof IpcExtrasInvokeContract
@@ -151,6 +202,14 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:setPrefs',
   'extras:versions',
   'extras:openArtifact',
+  'extras:downloadHtmlAsPdf',
+  'extras:downloadSlidesAsPptx',
+  'extras:presentSlides',
+  'extras:transcribeAudio',
+  'extras:chatDoc:open',
+  'extras:chatDoc:attach',
+  'extras:chatDoc:close',
+  'extras:downloadChatDoc',
   'extras:quickSubmit',
   'extras:quickHide',
   'extras:quickToggle',
@@ -171,7 +230,9 @@ export const IPC_EXTRAS_EVENT_CHANNELS = [
   'extras:open-settings',
   'extras:prefs-changed',
   'extras:quick-shown',
-  'mcp:changed'
+  'mcp:changed',
+  'extras:chatDoc:event',
+  'extras:voiceModelProgress'
 ] as const satisfies readonly IpcExtrasEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>
@@ -193,6 +254,10 @@ export interface ExtrasApi {
   ): () => void
   // Atajos de conveniencia
   openArtifact(payload: ArtifactPayload): Promise<void>
+  downloadHtmlAsPdf(payload: ArtifactPayload): Promise<string | null>
+  downloadSlidesAsPptx(payload: ArtifactPayload): Promise<string | null>
+  presentSlides(payload: ArtifactPayload): Promise<void>
+  transcribeAudio(samples: Float32Array): Promise<string>
   onQuickPrompt(listener: (event: QuickPromptEvent) => void): () => void
   onNewConversation(listener: () => void): () => void
   onOpenSettings(listener: () => void): () => void

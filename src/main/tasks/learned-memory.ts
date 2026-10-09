@@ -46,7 +46,8 @@ export interface AcceptedProposal {
   porque?: string
 }
 
-function memoriaDir(): string {
+/** `userData/memoria/`: carpeta privada de la app para todo lo de memoria aprendida (también la usan `learned-skills.ts` y `learned-pending.ts`). */
+export function memoriaDir(): string {
   return join(app.getPath('userData'), 'memoria')
 }
 function userMemoryPath(): string {

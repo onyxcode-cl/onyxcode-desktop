@@ -7,9 +7,11 @@
  *   (esquema propio en su partición) conservan además sus propias reglas, más estrictas.
  * - `window.open`: denegado siempre (http(s) → navegador del sistema).
  * - `<webview>`: prohibido (`will-attach-webview` → preventDefault).
- * - Permisos de la sesión por defecto: denegados salvo notificaciones y escritura sanitizada del
- *   portapapeles, y solo para páginas propias en el frame principal. Sin dispositivos (HID/USB/
- *   serie), sin captura de pantalla desde el renderer.
+ * - Permisos de la sesión por defecto: denegados salvo notificaciones, escritura sanitizada del
+ *   portapapeles y `media` (micrófono — F8-B141, dictado por voz; esta app nunca pide video, pero
+ *   Electron no distingue micrófono de cámara a este nivel, así que `media` cubre ambos — el sistema
+ *   operativo igual pregunta la primera vez), y solo para páginas propias en el frame principal. Sin
+ *   dispositivos (HID/USB/serie), sin captura de pantalla desde el renderer.
  * - Menú de aplicación propio en producción (sin Recargar ni Herramientas de desarrollo).
  */
 import { app, dialog, Menu, session, shell, type MenuItemConstructorOptions, type WebContents } from 'electron'
@@ -18,8 +20,9 @@ import { onLangChange, t } from '@shared/i18n'
 import { isTrustedUrl, originOf } from './app-protocol'
 import { isEmbeddedBrowserSession } from '../embedded-browser/session'
 
-/** Permisos que la UI usa: notificaciones de Tareas y botones "Copiar". */
-const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write'])
+/** Permisos que la UI usa: notificaciones de Tareas, botones "Copiar" y micrófono (dictado por voz,
+ * F8-B141 — `media` es lo único que pide `getUserMedia({audio:true})`; esta app nunca pide video). */
+const ALLOWED_PERMISSIONS = new Set(['notifications', 'clipboard-sanitized-write', 'media'])
 
 function openExternalSafe(url: string): void {
   if (/^https?:\/\//i.test(url)) void shell.openExternal(url)

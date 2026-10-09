@@ -13,6 +13,32 @@ import { CODE_INVOKE_CHANNELS, EDITOR_IDS, FILES_SUB_ID_RE, type CodeInvokeChann
 import { TASKS_INVOKE_CHANNELS, type TasksInvokeChannel, type TasksRequest } from '@shared/ipc-tasks'
 import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import {
+  MAX_BULLET_CHARS,
+  MAX_BULLETS_PER_SLIDE,
+  MAX_CELL_CHARS,
+  MAX_CHART_LABEL_CHARS,
+  MAX_CHART_POINTS,
+  MAX_COLS_PER_ROW,
+  MAX_COLUMN_BULLETS,
+  MAX_COLUMN_HEADING_CHARS,
+  MAX_EYEBROW_CHARS,
+  MAX_FOOTER_CHARS,
+  MAX_KPI_DELTA_CHARS,
+  MAX_KPI_LABEL_CHARS,
+  MAX_KPI_VALUE_CHARS,
+  MAX_KPIS,
+  MAX_NOTE_CHARS,
+  MAX_ROWS_PER_SHEET,
+  MAX_SHEETS,
+  MAX_SLIDES,
+  MAX_TITLE_CHARS,
+  type PptxChartType,
+  type PptxLayout,
+  type PptxStyle,
+  type PptxTheme,
+  type XlsxColumnFormat
+} from '@shared/chat-doc-spec'
+import {
   BROWSER_HOST_EXCLUDED_CHANNELS,
   BROWSER_INVOKE_CHANNELS,
   PICK_LIMITS,
@@ -182,6 +208,83 @@ const browserOwner = tagged('kind', {
 const browserRectCoord = num({ min: -20_000, max: 20_000 })
 const browserRect = obj({ x: browserRectCoord, y: browserRectCoord, width: browserRectCoord, height: browserRectCoord })
 const browserDecision = literal('task', 'always', 'deny', 'allow')
+const xlsxColumnFormat = literal<XlsxColumnFormat>('currency', 'integer', 'decimal', 'percent')
+const xlsxFormulaValue: Validator<number | string> = (v, path = '') => {
+  if (typeof v === 'number') return num()(v, path)
+  return str({ max: MAX_CELL_CHARS })(v, path)
+}
+const xlsxFormulaCell = obj({ formula: str({ max: MAX_CELL_CHARS, min: 1 }), value: xlsxFormulaValue })
+/** Celda de Excel: texto, número, vacío o una fórmula `{formula,value}` — los límites de verdad (filas/hojas/columnas) ya los exige `isXlsxSpec` en `chat-docs.ts`, esto solo pone un techo razonable al payload IPC. */
+const xlsxCell: Validator<string | number | null | { formula: string; value: number | string }> = (v, path = '') => {
+  if (v === null) return null
+  if (typeof v === 'number') return num()(v, path)
+  if (typeof v === 'string') return str({ max: MAX_CELL_CHARS })(v, path)
+  return xlsxFormulaCell(v, path)
+}
+const xlsxData = obj({
+  sheets: arr(
+    obj({
+      name: str({ max: 200, min: 1 }),
+      rows: arr(arr(xlsxCell, MAX_COLS_PER_ROW), MAX_ROWS_PER_SHEET),
+      columnFormats: optional(arr(nullable(xlsxColumnFormat), MAX_COLS_PER_ROW))
+    }),
+    MAX_SHEETS
+  )
+})
+const pptxTheme = literal<PptxTheme>('blue', 'green', 'dark', 'warm', 'mono')
+const pptxStyle = literal<PptxStyle>('classic', 'editorial', 'geometric', 'minimal')
+const pptxLayout = literal<PptxLayout>('cover', 'section', 'bullets', 'closing', 'stat', 'steps', 'two-col', 'cards', 'chart', 'kpis')
+const pptxChartType = literal<PptxChartType>('bar', 'line', 'pie')
+/** El que `categories` y `values` tengan el mismo largo ya lo exige `isPptxSpec` en `chat-docs.ts`; esto solo pone un techo razonable al payload IPC, igual que `xlsxCell` de arriba. */
+const pptxChart = obj({
+  type: pptxChartType,
+  categories: arr(str({ max: MAX_CHART_LABEL_CHARS, min: 1 }), MAX_CHART_POINTS),
+  values: arr(num(), MAX_CHART_POINTS)
+})
+const pptxColumn = obj({
+  heading: optional(str({ max: MAX_COLUMN_HEADING_CHARS })),
+  bullets: arr(str({ max: MAX_BULLET_CHARS }), MAX_COLUMN_BULLETS)
+})
+/** Exactamente 2 columnas — `arr()` no expresa un largo fijo, por eso un validador aparte en vez de `arr(pptxColumn, 2)` (eso aceptaría 0 o 1 también). */
+const pptxColumns: Validator<[ReturnType<typeof pptxColumn>, ReturnType<typeof pptxColumn>]> = (v, path = '') => {
+  if (!Array.isArray(v) || v.length !== 2)
+    throw new ValidationError(`Parámetro inválido en "${path || 'req'}": se esperaba un array de exactamente 2 columnas`)
+  return [pptxColumn(v[0], `${path}[0]`), pptxColumn(v[1], `${path}[1]`)]
+}
+/** PCM mono de 16 kHz para `extras:transcribeAudio` (ver `voice-transcribe.ts`, mismo tope ahí:
+ * `MAX_SAMPLES`) — `Float32Array` de verdad: `arr(num(), ...)` validaría elemento por elemento hasta
+ * 1,9M números por llamada, innecesario cuando el tipo ya garantiza que son todos números. */
+const MAX_AUDIO_SAMPLES = 16_000 * 120 // 120 s a 16 kHz
+const audioSamples: Validator<Float32Array> = (v, path = '') => {
+  if (!(v instanceof Float32Array) || v.length > MAX_AUDIO_SAMPLES)
+    throw new ValidationError(`Parámetro inválido en "${path || 'req'}": se esperaba audio PCM (Float32Array) de hasta 120 s`)
+  return v
+}
+const pptxKpi = obj({
+  label: str({ max: MAX_KPI_LABEL_CHARS, min: 1 }),
+  value: str({ max: MAX_KPI_VALUE_CHARS, min: 1 }),
+  delta: optional(str({ max: MAX_KPI_DELTA_CHARS }))
+})
+/** El largo mínimo (2) ya lo exige `isPptxSpec` en `chat-docs.ts`; esto solo pone un techo razonable al payload IPC, igual que `pptxChart`/`xlsxCell`. */
+const pptxKpis = arr(pptxKpi, MAX_KPIS)
+const pptxData = obj({
+  theme: optional(pptxTheme),
+  style: optional(pptxStyle),
+  footer: optional(str({ max: MAX_FOOTER_CHARS })),
+  slides: arr(
+    obj({
+      title: optional(str({ max: MAX_TITLE_CHARS })),
+      bullets: optional(arr(str({ max: MAX_BULLET_CHARS }), MAX_BULLETS_PER_SLIDE)),
+      layout: optional(pptxLayout),
+      chart: optional(pptxChart),
+      eyebrow: optional(str({ max: MAX_EYEBROW_CHARS })),
+      note: optional(str({ max: MAX_NOTE_CHARS })),
+      columns: optional(pptxColumns),
+      kpis: optional(pptxKpis)
+    }),
+    MAX_SLIDES
+  )
+})
 const browserProduct = literal('code', 'tasks')
 const localOrigin = str({ max: 261, min: 1, pattern: /^(localhost|127\.0\.0\.1|\[::1\]):\d{1,5}$/ })
 const browserToChat = obj({
@@ -410,6 +513,20 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:skill:approved': folderReq,
   'tasks:skill:trust': obj({ folder: absPath, name: str({ max: 64, min: 1, pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/ }) }),
   'tasks:skill:remove': obj({ folder: absPath, name: str({ max: 64, min: 1, pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/ }) }),
+  'tasks:learn:pending:list': none,
+  'tasks:learn:pending:acceptMemory': obj({ id, proposals: arr(learnedProposal, 20) }),
+  'tasks:learn:pending:acceptSkill': obj({
+    id,
+    name: str({ max: 64, min: 1, pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/ }),
+    description: str({ max: 1024, min: 1 }),
+    body: str({ max: 20_000, min: 1 })
+  }),
+  'tasks:learn:pending:discard': obj({ id }),
+  'tasks:learn:pending:discardAll': none,
+  'tasks:learn:pending:ackDropped': none,
+  'tasks:viewer:open': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark') }),
+  'tasks:viewer:attach': obj({ rect: browserRect, visible: bool }),
+  'tasks:viewer:close': none,
   'tasks:network:state': none,
   'tasks:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
   'tasks:network:setHost': networkSetHost,
@@ -576,6 +693,42 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   }),
   'extras:versions': none,
   'extras:openArtifact': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+  'extras:downloadHtmlAsPdf': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+  'extras:downloadSlidesAsPptx': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+  'extras:presentSlides': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+  'extras:transcribeAudio': obj({ samples: audioSamples }),
+  'extras:chatDoc:open': tagged('kind', {
+    pdf: obj({
+      kind: literal('pdf'),
+      title: str({ max: 500 }),
+      html: str({ max: 5 * 1024 * 1024 }),
+      sessionId: str({ max: 200 }),
+      lang: literal('es', 'en'),
+      theme: literal('light', 'dark')
+    }),
+    xlsx: obj({
+      kind: literal('xlsx'),
+      title: str({ max: 500 }),
+      data: xlsxData,
+      sessionId: str({ max: 200 }),
+      lang: literal('es', 'en'),
+      theme: literal('light', 'dark')
+    }),
+    pptx: obj({
+      kind: literal('pptx'),
+      title: str({ max: 500 }),
+      data: pptxData,
+      sessionId: str({ max: 200 }),
+      lang: literal('es', 'en'),
+      theme: literal('light', 'dark')
+    })
+  }),
+  'extras:chatDoc:attach': obj({ rect: browserRect, visible: bool }),
+  'extras:chatDoc:close': obj({ sessionId: str({ max: 200 }) }),
+  'extras:downloadChatDoc': tagged('kind', {
+    xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
+    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData })
+  }),
   'extras:quickSubmit': obj({ text: str({ max: 100_000 }) }),
   'extras:quickHide': none,
   'extras:quickToggle': none,

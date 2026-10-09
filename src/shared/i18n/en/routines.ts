@@ -263,5 +263,20 @@ export const routines = {
   'routines.editor.cancel': 'Cancel',
   'routines.editor.saving': 'Saving…',
   'routines.editor.saveChanges': 'Save changes',
-  'routines.editor.create': 'Create routine'
+  'routines.editor.create': 'Create routine',
+
+  // Pending review (memory/skills a routine proposed with no one watching; owner's decision, 2026-10-07)
+  'routines.pending.heading': { one: '{count} pending review', other: '{count} pending review' },
+  'routines.pending.hint': 'A routine proposed this while no one was watching: review it before saving.',
+  'routines.pending.from': 'From routine "{name}", {when}',
+  'routines.pending.memoryTitle': 'Proposed memory',
+  'routines.pending.skillTitle': 'Proposed skill',
+  'routines.pending.discardAll': 'Discard all',
+  'routines.pending.droppedWarn': {
+    one: '{count} older proposal was dropped: the queue filled up.',
+    other: '{count} older proposals were dropped: the queue filled up.'
+  },
+  'routines.pending.ackDropped': 'Got it',
+  'routines.pending.folderGone': "This project's folder can no longer be used (you removed it, or it's no longer approved).",
+  'routines.pending.gone': 'This is no longer pending (you may have resolved it from another window).'
 } as const satisfies Messages<typeof es>

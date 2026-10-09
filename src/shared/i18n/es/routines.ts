@@ -260,5 +260,20 @@ export const routines = {
   'routines.editor.cancel': 'Cancelar',
   'routines.editor.saving': 'Guardando…',
   'routines.editor.saveChanges': 'Guardar cambios',
-  'routines.editor.create': 'Crear rutina'
+  'routines.editor.create': 'Crear rutina',
+
+  // Pendientes de revisar (memoria/skills que propuso una rutina sin nadie mirando; decisión del dueño, 2026-10-07)
+  'routines.pending.heading': { one: '{count} pendiente de revisar', other: '{count} pendientes de revisar' },
+  'routines.pending.hint': 'Lo propuso una rutina mientras nadie miraba: revísalo antes de guardar.',
+  'routines.pending.from': 'De la rutina «{name}», {when}',
+  'routines.pending.memoryTitle': 'Memoria propuesta',
+  'routines.pending.skillTitle': 'Skill propuesta',
+  'routines.pending.discardAll': 'Descartar todo',
+  'routines.pending.droppedWarn': {
+    one: 'Se descartó {count} propuesta más antigua: la cola se llenó.',
+    other: 'Se descartaron {count} propuestas más antiguas: la cola se llenó.'
+  },
+  'routines.pending.ackDropped': 'Entendido',
+  'routines.pending.folderGone': 'Ya no se puede usar la carpeta de ese proyecto (la quitaste o ya no está aprobada).',
+  'routines.pending.gone': 'Esto ya no está pendiente (puede que lo hayas resuelto desde otra ventana).'
 } as const

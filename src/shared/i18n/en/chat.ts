@@ -2,6 +2,13 @@ import type { Messages } from '../index'
 import type { chat as es } from '../es/chat'
 
 export const chat = {
+  'chat.doc.title': 'Document',
+  'chat.doc.creating': 'Generating document…',
+  'chat.doc.kindPdf': 'PDF',
+  'chat.doc.kindXlsx': 'Excel',
+  'chat.doc.kindPptx': 'PowerPoint',
+  'chat.doc.fullscreen': 'Full screen',
+  'chat.doc.exitFullscreen': 'Exit full screen',
   'chat.greeting.morning': 'Good morning',
   'chat.greeting.afternoon': 'Good afternoon',
   'chat.greeting.evening': 'Good evening',

@@ -99,7 +99,13 @@ module.exports = {
     'resources/opencode/skills/**',
     ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : []),
     // Control remoto (F8-B48): el addon nativo de WebRTC (`@node-datachannel/<plataforma>/node_datachannel.node`) no puede cargarse desde el .asar.
-    'node_modules/@node-datachannel/**'
+    'node_modules/@node-datachannel/**',
+    // Transcripción de voz local (F8-B147): `sherpa-onnx-node` trae un addon nativo precompilado por
+    // plataforma como paquete `optionalDependency` aparte (`sherpa-onnx-darwin-arm64` en Mac,
+    // `sherpa-onnx-win-x64` en Windows — `npm install` solo instala el que corresponde al sistema que
+    // lo corrió) — ninguno de los dos puede cargarse desde el .asar, mismo motivo que @node-datachannel.
+    'node_modules/sherpa-onnx-node/**',
+    'node_modules/sherpa-onnx-*/**'
   ],
   // Recursos comunes. Los de macOS (helper, lanzador, actualizador, OpenCode darwin) van en mac.extraResources y
   // el OpenCode de Windows en win.extraResources: cada plataforma empaqueta solo lo suyo.

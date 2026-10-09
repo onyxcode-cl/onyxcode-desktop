@@ -15,7 +15,10 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           // Servidor MCP de computer use: utilityProcess de main (HTTP en 127.0.0.1) → out/main/computer-mcp.js
-          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts')
+          'computer-mcp': resolve(__dirname, 'src/main/computer/mcp-server.ts'),
+          // Dictado por voz (F8-B144): utilityProcess aparte para que un crash nativo de ONNX Runtime
+          // nunca se lleve la app entera → out/main/voice-worker.js
+          'voice-worker': resolve(__dirname, 'src/main/extras/voice-worker.ts')
         }
       }
     }

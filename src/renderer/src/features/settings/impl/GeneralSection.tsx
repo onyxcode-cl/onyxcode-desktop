@@ -10,8 +10,10 @@ import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { UI_LABELS } from '@shared/labels'
+import { loadPendingLearned, subscribePendingLearned, usePendingLearned } from '../../routines/impl/pending-store'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
+import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs } from './extras'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
 
@@ -137,6 +139,13 @@ function LearningRow(): React.JSX.Element {
   const learningEnabled = useSettings((s) => s.settings.learningEnabled)
   const update = useSettings((s) => s.update)
   const [clearing, setClearing] = useState(false)
+  const pendingCount = usePendingLearned((s) => s.state.items.length)
+
+  useEffect(() => {
+    if (!hasTasksBridge()) return
+    void loadPendingLearned()
+    return subscribePendingLearned()
+  }, [])
 
   const clearGlobal = async (): Promise<void> => {
     const ok = await confirmDialog({
@@ -157,6 +166,15 @@ function LearningRow(): React.JSX.Element {
   return (
     <Row label={t('tasks.learn.settingsToggle')} description={t('tasks.learn.settingsDesc')}>
       <div className="flex items-center gap-2">
+        {pendingCount > 0 && (
+          <button
+            type="button"
+            onClick={() => useUi.getState().setMode('routines')}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            {t('tasks.learn.pendingLink', { count: pendingCount })}
+          </button>
+        )}
         <Button onClick={() => void clearGlobal()} disabled={clearing}>
           {t('tasks.learn.clearGlobal')}
         </Button>

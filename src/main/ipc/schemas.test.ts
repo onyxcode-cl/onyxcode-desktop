@@ -216,3 +216,148 @@ describe('remote:setDeviceTtl y remote:revokeAll', () => {
     }
   })
 })
+
+describe('extras:chatDoc:open', () => {
+  const common = { title: 'T', sessionId: 's1', lang: 'es' as const, theme: 'light' as const }
+  const v = IPC_SCHEMAS['extras:chatDoc:open']
+
+  it('pdf: acepta html', () => {
+    expect(() => v({ ...common, kind: 'pdf', html: '<p>x</p>' })).not.toThrow()
+  })
+
+  it('xlsx: acepta columnFormats y una celda de fórmula (el bug real que esto atrapa: faltaba declarar un campo opcional)', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'xlsx',
+        data: { sheets: [{ name: 'A', rows: [['Monto'], [{ formula: 'SUM(A1:A1)', value: 1 }]], columnFormats: ['currency'] }] }
+      })
+    ).not.toThrow()
+  })
+
+  it('xlsx: rechaza un formato de columna que no exista', () => {
+    expect(() => v({ ...common, kind: 'xlsx', data: { sheets: [{ name: 'A', rows: [[1]], columnFormats: ['moneda'] }] } })).toThrow()
+  })
+
+  it('pptx: acepta theme y layout por diapositiva (el mismo tipo de bug: faltaba declarar "layout")', () => {
+    expect(() => v({ ...common, kind: 'pptx', data: { theme: 'dark', slides: [{ title: 'X', layout: 'section' }] } })).not.toThrow()
+  })
+
+  it('pptx: rechaza un theme o un layout que no exista', () => {
+    expect(() => v({ ...common, kind: 'pptx', data: { theme: 'fucsia', slides: [{ title: 'X' }] } })).toThrow()
+    expect(() => v({ ...common, kind: 'pptx', data: { slides: [{ title: 'X', layout: 'collage' }] } })).toThrow()
+  })
+
+  it('pptx: acepta layout "chart" con su gráfico (mismo tipo de bug: faltaba declarar el campo "chart")', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: { slides: [{ title: 'Ventas', layout: 'chart', chart: { type: 'bar', categories: ['Ene', 'Feb'], values: [10, 20] } }] }
+      })
+    ).not.toThrow()
+  })
+
+  it('pptx: acepta los layouts "two-col"/"cards" (sin campos extra, solo título/viñetas)', () => {
+    expect(() => v({ ...common, kind: 'pptx', data: { slides: [{ title: 'X', bullets: ['a', 'b'], layout: 'two-col' }] } })).not.toThrow()
+    expect(() => v({ ...common, kind: 'pptx', data: { slides: [{ title: 'X', bullets: ['a', 'b'], layout: 'cards' }] } })).not.toThrow()
+  })
+
+  it('pptx: rechaza un tipo de gráfico inventado', () => {
+    expect(() =>
+      v({ ...common, kind: 'pptx', data: { slides: [{ layout: 'chart', chart: { type: 'donut', categories: ['A'], values: [1] } }] } })
+    ).toThrow()
+  })
+
+  it('pptx: acepta eyebrow/note por diapositiva y footer del deck (mismo tipo de bug: faltaba declarar estos campos)', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: { footer: 'Empresa · Q3', slides: [{ title: 'X', eyebrow: 'Informe', note: 'Cifras en miles' }] }
+      })
+    ).not.toThrow()
+  })
+
+  it('pptx: acepta "columns" (2 columnas con heading/bullets) en two-col', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: {
+          slides: [
+            {
+              title: 'X',
+              layout: 'two-col',
+              columns: [
+                { heading: 'Antes', bullets: ['a'] },
+                { heading: 'Después', bullets: ['b'] }
+              ]
+            }
+          ]
+        }
+      })
+    ).not.toThrow()
+  })
+
+  it('pptx: rechaza "columns" con 1 o 3 columnas (tiene que ser exactamente 2)', () => {
+    expect(() =>
+      v({ ...common, kind: 'pptx', data: { slides: [{ title: 'X', layout: 'two-col', columns: [{ bullets: ['a'] }] }] } })
+    ).toThrow()
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: { slides: [{ title: 'X', layout: 'two-col', columns: [{ bullets: ['a'] }, { bullets: ['b'] }, { bullets: ['c'] }] }] }
+      })
+    ).toThrow()
+  })
+
+  it('pptx: acepta "kpis" (label/value/delta por métrica, mismo tipo de bug: faltaba declarar este campo)', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: {
+          slides: [
+            {
+              title: 'X',
+              layout: 'kpis',
+              kpis: [
+                { label: 'Ventas', value: '$1M', delta: '+10%' },
+                { label: 'Y', value: '2' }
+              ]
+            }
+          ]
+        }
+      })
+    ).not.toThrow()
+  })
+
+  it('pptx: acepta "style" (mismo tipo de bug: faltaba declarar este campo)', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: { style: 'editorial', slides: [{ title: 'X', layout: 'kpis', kpis: [{ label: 'A', value: '1' }] }] }
+      })
+    ).not.toThrow()
+  })
+
+  it('pptx: rechaza un "style" que no exista', () => {
+    expect(() => v({ ...common, kind: 'pptx', data: { style: 'rococo', slides: [{ title: 'X' }] } })).toThrow()
+  })
+
+  it('rechaza un kind que no exista', () => {
+    expect(() => v({ ...common, kind: 'docx', html: 'x' })).toThrow()
+  })
+})
+
+describe('extras:downloadChatDoc', () => {
+  const v = IPC_SCHEMAS['extras:downloadChatDoc']
+
+  it('xlsx y pptx, con sus campos opcionales', () => {
+    expect(() => v({ kind: 'xlsx', title: 'T', data: { sheets: [{ name: 'A', rows: [[1]], columnFormats: ['integer'] }] } })).not.toThrow()
+    expect(() => v({ kind: 'pptx', title: 'T', data: { theme: 'warm', slides: [{ title: 'X', layout: 'closing' }] } })).not.toThrow()
+  })
+})

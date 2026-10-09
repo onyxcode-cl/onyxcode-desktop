@@ -167,7 +167,16 @@ describe('Windows: capturas que FALLAN CERRADO', () => {
       expect(r.content.map((c) => c.type)).toEqual(['image', 'text'])
       expect(textOf(r)).toMatch(/1366x768 px/)
       const c = mcp.calls()
-      expect(c.map((x) => x.cmd)).toEqual(['version', 'session', 'list-apps', 'screenshot', 'list-apps', 'screens'])
+      // `frontmost` nueva: `takeScreenshot` ahora también pregunta qué app está en primer plano, EN
+      // PARALELO a la captura (`Promise.all`), para poder decirle al modelo qué está viendo (F8-B140)
+      // — por eso su posición exacta entre "session" y "screenshot" no es determinista (depende de
+      // qué tick de microtareas termine primero), a diferencia del resto de la secuencia. Se separa:
+      // que haya pasado en algún punto temprano, y que el RESTO (sin "frontmost") sea el de siempre.
+      const cmds = c.map((x) => x.cmd)
+      expect(cmds).toContain('frontmost')
+      expect(cmds.filter((cmd) => cmd !== 'frontmost')).toEqual(['version', 'session', 'list-apps', 'screenshot', 'list-apps', 'screens'])
+      expect(cmds.indexOf('frontmost')).toBeGreaterThan(cmds.indexOf('session'))
+      expect(cmds.indexOf('frontmost')).toBeLessThan(cmds.indexOf('screenshot'))
       const shot = c.find((x) => x.cmd === 'screenshot')!
       expect(shot.args.slice(1)).toEqual(['--max-long', '1366', '--quality', '70', '--mask-keys', encodeKeyItem(CHROME)])
       expect(shot.args[0]).toMatch(/shot-.*\.jpg$/)

@@ -524,9 +524,9 @@ export const tasks = {
   'tasks.learn.discard': 'Descartar',
   'tasks.learn.saving': 'Guardando…',
   'tasks.learn.saveFailed': 'No se pudo guardar la memoria.',
-  'tasks.learn.settingsToggle': 'Aprender de las tareas',
+  'tasks.learn.settingsToggle': 'Aprender de Tareas y Code',
   'tasks.learn.settingsDesc':
-    'La tarea puede proponer hechos para recordar (preferencias, convenciones, decisiones). Siempre elegís qué guardar; nunca se guarda nada solo.',
+    'El agente puede proponer hechos para recordar (preferencias, convenciones, decisiones) en Tareas y en Code. Siempre elegís qué guardar; nunca se guarda nada solo. En Code, por ahora, solo memoria global (vale para todos los proyectos).',
   'tasks.learn.manageTitle': 'Memoria aprendida de este proyecto',
   'tasks.learn.manageEmpty': 'Todavía no hay memoria aprendida y aprobada en este proyecto.',
   'tasks.learn.deleteEntry': 'Borrar esta nota',
@@ -539,6 +539,7 @@ export const tasks = {
   'tasks.learn.clearGlobalTitle': '¿Borrar toda la memoria global?',
   'tasks.learn.clearGlobalMsg':
     'Se borran todas las notas aprendidas y aprobadas que valen para todos tus proyectos. No se puede deshacer.',
+  'tasks.learn.pendingLink': { one: '{count} pendiente de Rutinas · Revisar', other: '{count} pendientes de Rutinas · Revisar' },
 
   // Skills propuestas (igual que la memoria aprendida: el agente propone, el usuario aprueba)
   'tasks.skill.cardTitle': 'La tarea propone una skill',

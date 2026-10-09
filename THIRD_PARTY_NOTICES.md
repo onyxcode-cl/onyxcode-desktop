@@ -78,6 +78,17 @@ código abierto (en su mayoría MIT o ISC); sus avisos están en sus paquetes de
 - `@noble/hashes` (sha256 del código de confirmación, también en la PWA): MIT.
 - `detect-libc` (dependencia de `node-datachannel`): Apache-2.0.
 
+### Visor de documentos (PDF, Word, Excel, PowerPoint)
+
+- `pdfjs-dist` (visor de PDF): Apache-2.0, <https://github.com/mozilla/pdf.js>.
+- `docx-preview` (visor de Word) y su dependencia `jszip`: Apache-2.0 y (MIT O GPLv3, a elección) respectivamente.
+- `xlsx` / SheetJS Community Edition (visor de Excel), v0.20.3: Apache-2.0, <https://git.sheetjs.com/sheetjs/sheetjs>. Vendorizado desde
+  el CDN oficial del proyecto (no está en el registro de npm) en `vendor/sheetjs/`; ver `docs/VENDOR-SHEETJS.md` para el porqué y el sha256.
+- Tipografías empaquetadas con el visor, compatibles en métricas con las de Word/PowerPoint para que un documento se vea igual sin tener
+  Office instalado — ninguna es la tipografía original de Microsoft, son sustitutos de terceros con licencia libre:
+  - Carlito (sustituye a Calibri) y Caladea (sustituye a Cambria): OFL-1.1, paquetes `@fontsource/carlito` y `@fontsource/caladea`.
+  - Liberation Sans y Liberation Serif (sustituyen a Arial y Times New Roman): OFL-1.1, paquete `@typopro/web-liberation`.
+
 ### Modo viaje (opcional, se descarga bajo demanda)
 
 - `cloudflared` (cliente del túnel rápido de Cloudflare), versión **2026.9.3**: Apache-2.0, <https://github.com/cloudflare/cloudflared>
