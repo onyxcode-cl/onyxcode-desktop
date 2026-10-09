@@ -117,6 +117,11 @@ export interface PlatformBackend {
    */
   typeKeys?: (text: string, layout?: 'mac' | 'us') => Promise<string>
   pressKeys?: (combos: string, layout?: 'mac' | 'us') => Promise<string>
+  /**
+   * Portapapeles de TEXTO del Mac (solo macOS): `pasteText` lo sustituye por `text`, pulsa `combo` (p. ej. `cmd+v`) y lo restaura.
+   * Es el camino que NO depende de la distribución de teclado del equipo remoto (Windows App, AnyDesk… sincronizan el portapapeles).
+   */
+  pasteText?: (text: string, combo: string) => Promise<{ restored: boolean }>
   /** Mensaje legible para el modelo de un código de salida del helper (`null` = sin mensaje propio). */
   exitMessage: (code: number) => string | null
   /** Detiene los helpers en vuelo (Detener a mitad de una acción). */

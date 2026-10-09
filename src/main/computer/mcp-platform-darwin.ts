@@ -128,6 +128,37 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     })
   }
 
+  /** Ejecuta un comando del sistema con `stdin` (para `pbcopy`). */
+  function runWithStdin(cmd: string, args: string[], stdin: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const child = deps.execFile(cmd, args, { timeout: 10_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+        children.delete(child)
+        if (err) reject(new Error((stderr || err.message).toString().trim()))
+        else resolve(stdout.toString())
+      })
+      children.add(child)
+      child.stdin?.end(stdin, 'utf8')
+    })
+  }
+
+  /**
+   * Pega `text` por el portapapeles. Guarda el texto que hubiera (si no hay texto —una imagen, por ejemplo— NO se toca al final: vaciarlo
+   * la destruiría) y lo restaura tras pegar. `combo` lo pulsa `cu-keys` con modificadores reales.
+   */
+  async function pasteText(text: string, combo: string): Promise<{ restored: boolean }> {
+    const before = await run('/usr/bin/pbpaste', [], 5_000).catch(() => '')
+    await runWithStdin('/usr/bin/pbcopy', [], text)
+    await new Promise((r) => setTimeout(r, 120))
+    try {
+      await keysTool(['key', combo])
+      // El cliente remoto lee el portapapeles del Mac de forma asíncrona: no lo restauremos antes de que lo haya tomado.
+      await new Promise((r) => setTimeout(r, Math.min(1500, 400 + text.length * 2)))
+    } finally {
+      if (before) await runWithStdin('/usr/bin/pbcopy', [], before).catch(() => undefined)
+    }
+    return { restored: before.length > 0 }
+  }
+
   /** Como `helper()`, pero devuelve también el código de salida (para los mensajes de `axExitMessage`). */
   function helperExit(...args: string[]): Promise<HelperResult> {
     if (!HELPER || !deps.existsSync(HELPER))
@@ -438,6 +469,7 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     helper,
     helperExit,
     typeKeys: (text, layout) => keysTool(['type', ...(layout === 'us' ? ['--layout', 'us'] : [])], text),
+    pasteText,
     pressKeys: (combos, layout) => keysTool(['key', ...(layout === 'us' ? ['--layout', 'us'] : []), combos]),
     exitMessage: axExitMessage,
     killChildren,

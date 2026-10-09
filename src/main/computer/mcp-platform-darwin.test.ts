@@ -414,6 +414,26 @@ describe.skipIf(isWin)('teclado por teclas físicas (cu-keys, clientes de escrit
     ])
   })
 
+  it('pasteText: guarda el portapapeles, pega por cu-keys y lo restaura', async () => {
+    const { backend, calls } = rig(
+      (cmd) => (cmd === '/usr/bin/pbpaste' ? { stdout: 'previo' } : {}),
+      {},
+      {},
+      new Set(['/h/cu-helper', '/h/cu-keys'])
+    )
+    const r = await backend.pasteText!('a|{b}', 'cmd+v')
+    expect(r.restored).toBe(true)
+    expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys', '/usr/bin/pbcopy'])
+    expect(calls[2].args).toEqual(['key', 'cmd+v'])
+  })
+
+  it('pasteText: sin texto previo no vacía el portapapeles al final (podría ser una imagen)', async () => {
+    const { backend, calls } = rig(() => ({ stdout: '' }), {}, {}, new Set(['/h/cu-helper', '/h/cu-keys']))
+    const r = await backend.pasteText!('x', 'ctrl+v')
+    expect(r.restored).toBe(false)
+    expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys'])
+  })
+
   it('sin el binario cu-keys falla con un mensaje claro (y no toca cu-helper)', async () => {
     const { backend, calls } = rig(() => ({}))
     await expect(backend.typeKeys!('x')).rejects.toThrow(/cu-keys/)

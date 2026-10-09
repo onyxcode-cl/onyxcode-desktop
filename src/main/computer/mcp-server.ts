@@ -1171,11 +1171,30 @@ const REMOTE_CLIENT_BUNDLES = new Set([
 ])
 const REMOTE_CLIENT_NAME = /anydesk|teamviewer|rustdesk|windows app|remote desktop|escritorio remoto|screen sharing|vnc/i
 
-/** ¿Hay que escribir por teclas físicas (`cu-keys`)? `input` explícito manda; en `auto`, solo si la app al frente es un cliente remoto. */
-async function shouldTypeByKeys(input: unknown): Promise<boolean> {
+/** Símbolos cuya TECLA FÍSICA cambia entre distribuciones (llaves, corchetes, barras, @, $…): por teclas pueden salir otros caracteres. */
+const LAYOUT_SENSITIVE = /[{}[\]|\\@~^`<>"'$%&*=+/#]/
+
+type TypeMode = 'unicode' | 'keys' | 'paste'
+
+/**
+ * Cómo escribir `text`: `input` explícito manda. En `auto` y con un cliente remoto al frente: por PORTAPAPELES si el texto trae símbolos
+ * sensibles a la distribución (no depende del teclado del equipo remoto) y por TECLAS FÍSICAS (`cu-keys`) si no; en el resto, Unicode.
+ */
+async function typeModeFor(input: unknown, text: string): Promise<TypeMode> {
+  if (input === 'unicode') return 'unicode'
+  if (input === 'keys') return backend.typeKeys ? 'keys' : 'unicode'
+  if (input === 'paste') return backend.pasteText ? 'paste' : 'unicode'
+  if (!backend.typeKeys || !backend.pressKeys) return 'unicode'
+  const front = await appFrontmost().catch(() => null)
+  if (!front) return 'unicode'
+  const remote = REMOTE_CLIENT_BUNDLES.has(front.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(front.name)
+  if (!remote) return 'unicode'
+  return backend.pasteText && LAYOUT_SENSITIVE.test(text) ? 'paste' : 'keys'
+}
+
+/** ¿Pulsar combinaciones por teclas físicas? Solo con un cliente remoto al frente. */
+async function shouldPressByKeys(): Promise<boolean> {
   if (!backend.typeKeys || !backend.pressKeys) return false
-  if (input === 'keys') return true
-  if (input === 'unicode') return false
   const front = await appFrontmost().catch(() => null)
   if (!front) return false
   return REMOTE_CLIENT_BUNDLES.has(front.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(front.name)
@@ -1450,13 +1469,15 @@ const TOOLS: ToolDef[] = [
     name: 'type_text',
     description:
       'Escribe texto (unicode) en el elemento con foco. "\\n" pulsa Return. Nunca escribas contraseñas ni datos de pago. ' +
-      'En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…) escribe por TECLAS FÍSICAS de forma automática; ' +
-      'si los símbolos salen cambiados, repite con layout "us" (equipo remoto con teclado inglés). `input: "keys"` fuerza ese modo ' +
-      '(p. ej. Escritorio remoto de Chrome dentro del navegador).',
+      'En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…): texto con símbolos ({ } [ ] | \\\\ @ $ " …) se PEGA por ' +
+      'el portapapeles (no depende del teclado del equipo remoto) y el resto se escribe por teclas físicas. Comprueba SIEMPRE con zoom lo que ' +
+      'quedó escrito; si no apareció nada, repite con input "keys" (y layout "us" si el equipo remoto tiene teclado inglés). ' +
+      '`input`: "paste" | "keys" | "unicode" fuerzan el modo; "paste_key" cambia el atajo de pegar (por defecto cmd+v; prueba ctrl+v).',
     inputSchema: obj(
       {
         text: { type: 'string' },
-        input: { type: 'string', enum: ['auto', 'keys', 'unicode'] },
+        input: { type: 'string', enum: ['auto', 'paste', 'keys', 'unicode'] },
+        paste_key: { type: 'string' },
         layout: { type: 'string', enum: ['mac', 'us'] },
         ...EXPECT_APP,
         ...SHOT_FLAG
@@ -1473,11 +1494,17 @@ const TOOLS: ToolDef[] = [
       await requireTier('full', undefined, session)
       await requireCanType()
       const layout = a.layout === 'us' ? 'us' : 'mac'
-      const viaKeys = await shouldTypeByKeys(a.input)
+      const mode = await typeModeFor(a.input, text)
+      const pasteKey = typeof a.paste_key === 'string' && a.paste_key.trim() ? a.paste_key.trim() : 'cmd+v'
       await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
-        viaKeys ? backend.typeKeys!(text, layout) : helper('type', text)
+        mode === 'paste'
+          ? backend.pasteText!(text, pasteKey).then(() => '')
+          : mode === 'keys'
+            ? backend.typeKeys!(text, layout)
+            : helper('type', text)
       )
-      return `Escrito${viaKeys ? ' por teclas físicas' : ''}: ${text.length} caracteres`
+      const how = mode === 'paste' ? ` por portapapeles (${pasteKey})` : mode === 'keys' ? ' por teclas físicas' : ''
+      return `Escrito${how}: ${text.length} caracteres${mode === 'unicode' ? '' : '. Comprueba con zoom que apareció bien.'}`
     }
   },
   {
@@ -1495,7 +1522,7 @@ const TOOLS: ToolDef[] = [
       const sendKeys = await backend.checkKeys(keys) // política de combinaciones (Windows); en macOS devuelve `keys` tal cual
       await requireTier('full', undefined, session)
       await requireCanType()
-      const viaKeys = await shouldTypeByKeys(undefined)
+      const viaKeys = await shouldPressByKeys()
       await act({ tool: 'key', text: keys }, () =>
         viaKeys ? backend.pressKeys!(sendKeys, a.layout === 'us' ? 'us' : 'mac') : helper('key', sendKeys)
       )

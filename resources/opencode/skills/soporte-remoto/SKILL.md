@@ -25,7 +25,10 @@ Trabajas con **capturas, zoom y teclado**. Por eso: poca mano, mucho teclado y c
 - Deja la ventana grande y con letra legible. Comprueba con una captura que el cursor está en el prompt.
 
 ## 3. Escribir y leer
-- Escribe **una orden por vez**, acotada (`| select -first 10`, `| head -20`) y sigue con Enter. Si es muy larga, pégala por el portapapeles de AnyDesk.
+- Escribe **una orden por vez**, acotada (`| select -first 10`, `| head -20`) y sigue con Enter.
+- `type_text` elige solo el modo: un texto con símbolos (`{ } [ ] | \ @ $ " …`) se **pega por el portapapeles** (no depende de la distribución de teclado del equipo remoto) y el resto se escribe por teclas físicas. **Comprueba siempre con zoom** que quedó escrito lo que querías.
+- Si no apareció nada: repite con `input: "keys"` (y `layout: "us"` si el equipo remoto tiene teclado inglés); si pegar falla, prueba `paste_key: "ctrl+v"`. Si tras dos intentos sigue mal, **para** y dilo: no reintentes lo mismo.
+- Alternativa que evita todo teclado: ordenes sin símbolos raros (`Get-Process`, `hostname`, `ipconfig`) o dividir el trabajo en pasos simples.
 - Lee el resultado con `zoom` sobre la región de la terminal: nunca adivines texto borroso. Si no se lee, limpia (`cls` / `clear`) y repite más corto.
 - Tras cada orden que cambia algo, **vuelve a consultar** el estado para comprobarlo.
 

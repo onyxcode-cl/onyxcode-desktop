@@ -297,7 +297,7 @@
             },
             {
               "name": "type_text",
-              "description": "Escribe texto (unicode) en el elemento con foco. \"\\n\" pulsa Return. Nunca escribas contraseñas ni datos de pago. En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…) escribe por TECLAS FÍSICAS de forma automática; si los símbolos salen cambiados, repite con layout \"us\" (equipo remoto con teclado inglés). `input: \"keys\"` fuerza ese modo (p. ej. Escritorio remoto de Chrome dentro del navegador).",
+              "description": "Escribe texto (unicode) en el elemento con foco. \"\\n\" pulsa Return. Nunca escribas contraseñas ni datos de pago. En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…): texto con símbolos ({ } [ ] | \\\\ @ $ \" …) se PEGA por el portapapeles (no depende del teclado del equipo remoto) y el resto se escribe por teclas físicas. Comprueba SIEMPRE con zoom lo que quedó escrito; si no apareció nada, repite con input \"keys\" (y layout \"us\" si el equipo remoto tiene teclado inglés). `input`: \"paste\" | \"keys\" | \"unicode\" fuerzan el modo; \"paste_key\" cambia el atajo de pegar (por defecto cmd+v; prueba ctrl+v).",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -306,7 +306,10 @@
                   },
                   "input": {
                     "type": "string",
-                    "enum": ["auto", "keys", "unicode"]
+                    "enum": ["auto", "paste", "keys", "unicode"]
+                  },
+                  "paste_key": {
+                    "type": "string"
                   },
                   "layout": {
                     "type": "string",
