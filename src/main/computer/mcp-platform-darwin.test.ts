@@ -398,3 +398,25 @@ describe('macOS: helper, parada y apps', () => {
     expect(calls).toEqual([])
   })
 })
+
+describe.skipIf(isWin)('teclado por teclas físicas (cu-keys, clientes de escritorio remoto)', () => {
+  it('typeKeys y pressKeys ejecutan cu-keys junto a cu-helper, con la distribución elegida', async () => {
+    const { backend, calls } = rig(() => ({ stdout: '{"typed":3}' }), {}, {}, new Set(['/h/cu-helper', '/h/cu-keys']))
+    await backend.typeKeys!('a|b')
+    await backend.typeKeys!('a|b', 'us')
+    await backend.pressKeys!('ctrl+alt+supr')
+    await backend.pressKeys!('ctrl+v', 'us')
+    expect(calls).toEqual([
+      { cmd: '/h/cu-keys', args: ['type'] },
+      { cmd: '/h/cu-keys', args: ['type', '--layout', 'us'] },
+      { cmd: '/h/cu-keys', args: ['key', 'ctrl+alt+supr'] },
+      { cmd: '/h/cu-keys', args: ['key', '--layout', 'us', 'ctrl+v'] }
+    ])
+  })
+
+  it('sin el binario cu-keys falla con un mensaje claro (y no toca cu-helper)', async () => {
+    const { backend, calls } = rig(() => ({}))
+    await expect(backend.typeKeys!('x')).rejects.toThrow(/cu-keys/)
+    expect(calls).toEqual([])
+  })
+})

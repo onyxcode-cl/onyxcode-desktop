@@ -16,6 +16,28 @@ sign() {
   codesign --force --sign - --identifier "$HELPER_ID" "$OUT" >/dev/null 2>&1 || true
 }
 
+
+# cu-keys: teclado por teclas físicas para clientes de escritorio remoto (keys.swift). Binario APARTE de cu-helper a propósito:
+# recompilar cu-helper cambia su firma y macOS olvidaría sus permisos. Solo se recompila si keys.swift es más nuevo.
+KEYS_OUT="$(dirname "$OUT")/cu-keys"
+KEYS_ID="cl.bentec.lazunox.cu-keys"
+build_keys() {
+  if [ -x "$KEYS_OUT" ] && [ "$KEYS_OUT" -nt "$DIR/keys.swift" ]; then return 0; fi
+  command -v swiftc >/dev/null 2>&1 || return 0
+  mkdir -p "$(dirname "$KEYS_OUT")"
+  swiftc -O -target arm64-apple-macos13 "$DIR/keys.swift" -o "$KEYS_OUT.arm64" || return 0
+  if swiftc -O -target x86_64-apple-macos13 "$DIR/keys.swift" -o "$KEYS_OUT.x86_64" 2>/dev/null; then
+    lipo -create "$KEYS_OUT.arm64" "$KEYS_OUT.x86_64" -output "$KEYS_OUT"
+    rm -f "$KEYS_OUT.arm64" "$KEYS_OUT.x86_64"
+  else
+    mv "$KEYS_OUT.arm64" "$KEYS_OUT"
+  fi
+  codesign --force --sign - --identifier "$KEYS_ID" "$KEYS_OUT" >/dev/null 2>&1 || true
+  echo "[cu-keys] compilado: $KEYS_OUT"
+}
+
+build_keys
+
 if [ "$1" = "--if-missing" ] && [ -x "$OUT" ] && [ "$OUT" -nt "$DIR/helper.swift" ]; then
   if ! codesign -dv "$OUT" 2>&1 | grep -q "^Identifier=$HELPER_ID\$"; then
     sign

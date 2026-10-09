@@ -297,12 +297,20 @@
             },
             {
               "name": "type_text",
-              "description": "Escribe texto (unicode) en el elemento con foco. \"\\n\" pulsa Return. Nunca escribas contraseñas ni datos de pago.",
+              "description": "Escribe texto (unicode) en el elemento con foco. \"\\n\" pulsa Return. Nunca escribas contraseñas ni datos de pago. En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…) escribe por TECLAS FÍSICAS de forma automática; si los símbolos salen cambiados, repite con layout \"us\" (equipo remoto con teclado inglés). `input: \"keys\"` fuerza ese modo (p. ej. Escritorio remoto de Chrome dentro del navegador).",
               "inputSchema": {
                 "type": "object",
                 "properties": {
                   "text": {
                     "type": "string"
+                  },
+                  "input": {
+                    "type": "string",
+                    "enum": ["auto", "keys", "unicode"]
+                  },
+                  "layout": {
+                    "type": "string",
+                    "enum": ["mac", "us"]
                   },
                   "expect_app": {
                     "type": "string",
@@ -325,6 +333,10 @@
                 "properties": {
                   "keys": {
                     "type": "string"
+                  },
+                  "layout": {
+                    "type": "string",
+                    "enum": ["mac", "us"]
                   },
                   "expect_app": {
                     "type": "string",
@@ -951,6 +963,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"Hola\\nmundo ñ\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -991,6 +1004,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"cmd+space\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -1015,6 +1029,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"cmd+shift+t return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -1469,10 +1484,12 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"hola\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2411,6 +2428,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"ok\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2454,6 +2472,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2495,6 +2514,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"sin-expect\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [

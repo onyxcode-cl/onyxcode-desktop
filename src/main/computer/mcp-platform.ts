@@ -110,6 +110,13 @@ export interface PlatformBackend {
   helper: (...args: string[]) => Promise<string>
   /** Como `helper`, pero devuelve el código de salida (≠0 no lanza, salvo fallo de arranque o tiempo agotado). */
   helperExit: (...args: string[]) => Promise<HelperResult>
+  /**
+   * Teclado por teclas FÍSICAS para clientes de escritorio remoto (`cu-keys`, solo macOS): escribe `text` o pulsa
+   * combinaciones con modificadores reales, en un único proceso. `layout: 'us'` fuerza la tabla de teclado inglés de EE. UU.
+   * (para un equipo remoto con esa distribución). Ausente en plataformas sin esa herramienta.
+   */
+  typeKeys?: (text: string, layout?: 'mac' | 'us') => Promise<string>
+  pressKeys?: (combos: string, layout?: 'mac' | 'us') => Promise<string>
   /** Mensaje legible para el modelo de un código de salida del helper (`null` = sin mensaje propio). */
   exitMessage: (code: number) => string | null
   /** Detiene los helpers en vuelo (Detener a mitad de una acción). */

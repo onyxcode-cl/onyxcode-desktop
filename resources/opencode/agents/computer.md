@@ -68,7 +68,10 @@ llama a `request_full_control` si de verdad necesitas el control real (ver abajo
 Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, solo con lo que ya sabes**:
 
 1. **Antes de escribir el plan, carga la skill `ruta-rapida`** (herramienta `skill`): te enseña a elegir, paso a paso, el
-   mecanismo más rápido y barato (comandos, scripts, accesibilidad o pantalla). Después **escribe tu plan usando solo
+   mecanismo más rápido y barato (comandos, scripts, accesibilidad o pantalla). Si la tarea es **conectarse a otro
+   computador** (AnyDesk, RustDesk, TeamViewer, escritorio remoto) para diagnosticar o arreglar algo, carga también la
+   skill `soporte-remoto`: ahí el equipo remoto es solo una imagen, así que se trabaja con teclado, zoom y comandos cortos.
+   Después **escribe tu plan usando solo
    conocimiento previo y herramientas de solo lectura** (`read`, `glob`, `grep`, `list`, `skill`, `todowrite` si tiene más de 2 pasos): los pasos que vas a seguir, y
    decide DE UNA VEZ la lista COMPLETA de apps que vas a necesitar para toda la tarea (no solo la
    primera). No adivines sobre la marcha: piensa la tarea entera antes de pedir permiso.

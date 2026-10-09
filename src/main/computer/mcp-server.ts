@@ -1159,6 +1159,28 @@ async function elementsBlock(shot: Shot, session: string | undefined, max: numbe
   }
 }
 
+/** Apps de escritorio remoto: su cliente lee TECLAS FÍSICAS, no el texto Unicode que superpone `cu-helper type`. */
+const REMOTE_CLIENT_BUNDLES = new Set([
+  'com.microsoft.rdc.macos',
+  'com.microsoft.rdc.mac',
+  'com.philandro.anydesk',
+  'com.teamviewer.teamviewer',
+  'com.carriez.rustdesk',
+  'com.apple.screensharing',
+  'com.parallels.desktop.console'
+])
+const REMOTE_CLIENT_NAME = /anydesk|teamviewer|rustdesk|windows app|remote desktop|escritorio remoto|screen sharing|vnc/i
+
+/** ¿Hay que escribir por teclas físicas (`cu-keys`)? `input` explícito manda; en `auto`, solo si la app al frente es un cliente remoto. */
+async function shouldTypeByKeys(input: unknown): Promise<boolean> {
+  if (!backend.typeKeys || !backend.pressKeys) return false
+  if (input === 'keys') return true
+  if (input === 'unicode') return false
+  const front = await appFrontmost().catch(() => null)
+  if (!front) return false
+  return REMOTE_CLIENT_BUNDLES.has(front.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(front.name)
+}
+
 /** Punto (puntos globales) al que apunta una acción: `element: N` de la última lista, o x/y en px de la captura. */
 async function pointFromArgs(args: Record<string, unknown>): Promise<{ p: { x: number; y: number }; label: string }> {
   const raw = args.element
@@ -1426,8 +1448,21 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'type_text',
-    description: 'Escribe texto (unicode) en el elemento con foco. "\\n" pulsa Return. Nunca escribas contraseñas ni datos de pago.',
-    inputSchema: obj({ text: { type: 'string' }, ...EXPECT_APP, ...SHOT_FLAG }, ['text']),
+    description:
+      'Escribe texto (unicode) en el elemento con foco. "\\n" pulsa Return. Nunca escribas contraseñas ni datos de pago. ' +
+      'En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…) escribe por TECLAS FÍSICAS de forma automática; ' +
+      'si los símbolos salen cambiados, repite con layout "us" (equipo remoto con teclado inglés). `input: "keys"` fuerza ese modo ' +
+      '(p. ej. Escritorio remoto de Chrome dentro del navegador).',
+    inputSchema: obj(
+      {
+        text: { type: 'string' },
+        input: { type: 'string', enum: ['auto', 'keys', 'unicode'] },
+        layout: { type: 'string', enum: ['mac', 'us'] },
+        ...EXPECT_APP,
+        ...SHOT_FLAG
+      },
+      ['text']
+    ),
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
@@ -1437,8 +1472,12 @@ const TOOLS: ToolDef[] = [
       await checkExpectApp(a.expect_app)
       await requireTier('full', undefined, session)
       await requireCanType()
-      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () => helper('type', text))
-      return `Escrito: ${text.length} caracteres`
+      const layout = a.layout === 'us' ? 'us' : 'mac'
+      const viaKeys = await shouldTypeByKeys(a.input)
+      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
+        viaKeys ? backend.typeKeys!(text, layout) : helper('type', text)
+      )
+      return `Escrito${viaKeys ? ' por teclas físicas' : ''}: ${text.length} caracteres`
     }
   },
   {
@@ -1446,7 +1485,7 @@ const TOOLS: ToolDef[] = [
     description:
       'Pulsa una tecla o combinación, p.ej. "return", "cmd+space", "cmd+shift+t", "escape", "tab", "up", "f5". ' +
       'Varias combinaciones separadas por espacio se pulsan en secuencia.',
-    inputSchema: obj({ keys: { type: 'string' }, ...EXPECT_APP, ...SHOT_FLAG }, ['keys']),
+    inputSchema: obj({ keys: { type: 'string' }, layout: { type: 'string', enum: ['mac', 'us'] }, ...EXPECT_APP, ...SHOT_FLAG }, ['keys']),
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
@@ -1456,7 +1495,10 @@ const TOOLS: ToolDef[] = [
       const sendKeys = await backend.checkKeys(keys) // política de combinaciones (Windows); en macOS devuelve `keys` tal cual
       await requireTier('full', undefined, session)
       await requireCanType()
-      await act({ tool: 'key', text: keys }, () => helper('key', sendKeys))
+      const viaKeys = await shouldTypeByKeys(undefined)
+      await act({ tool: 'key', text: keys }, () =>
+        viaKeys ? backend.pressKeys!(sendKeys, a.layout === 'us' ? 'us' : 'mac') : helper('key', sendKeys)
+      )
       return `Teclas pulsadas: ${keys}`
     }
   },

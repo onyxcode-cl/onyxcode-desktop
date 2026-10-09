@@ -8,7 +8,7 @@
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import type { AppRef, CaptureRequest, HelperResult, PlatformBackend, PlatformHost } from './mcp-platform'
 
 /** Dependencias sustituibles en pruebas (por defecto, las reales de Node). */
@@ -109,6 +109,23 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     if (cfg.instant) flags.push('--instant')
     if (cfg.typeDelay && Number.isFinite(Number(cfg.typeDelay))) flags.push('--char-delay', String(Number(cfg.typeDelay)))
     return run(HELPER, [...flags, ...args], 30_000)
+  }
+
+  /** `cu-keys` vive junto a `cu-helper` (binario aparte: recompilar `cu-helper` cambiaría su firma y macOS olvidaría los permisos). */
+  const KEYS_BIN = HELPER ? join(dirname(HELPER), 'cu-keys') : ''
+
+  function keysTool(args: string[], stdin?: string): Promise<string> {
+    if (!KEYS_BIN || !deps.existsSync(KEYS_BIN))
+      return Promise.reject(new Error(`Herramienta de teclado remoto no encontrada (${KEYS_BIN || 'CU_HELPER vacío'})`))
+    return new Promise((resolve, reject) => {
+      const child = deps.execFile(KEYS_BIN, args, { timeout: 60_000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+        children.delete(child)
+        if (err) reject(new Error((stderr || err.message).toString().trim()))
+        else resolve(stdout.toString())
+      })
+      children.add(child)
+      if (stdin !== undefined) child.stdin?.end(stdin, 'utf8')
+    })
   }
 
   /** Como `helper()`, pero devuelve también el código de salida (para los mensajes de `axExitMessage`). */
@@ -420,6 +437,8 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     id: 'darwin',
     helper,
     helperExit,
+    typeKeys: (text, layout) => keysTool(['type', ...(layout === 'us' ? ['--layout', 'us'] : [])], text),
+    pressKeys: (combos, layout) => keysTool(['key', ...(layout === 'us' ? ['--layout', 'us'] : []), combos]),
     exitMessage: axExitMessage,
     killChildren,
     shutdown: async () => undefined,
