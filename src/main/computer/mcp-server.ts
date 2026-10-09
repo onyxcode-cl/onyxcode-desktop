@@ -780,6 +780,28 @@ const XY = {
   x: { type: 'number', description: 'X en píxeles de la última captura' },
   y: { type: 'number', description: 'Y en píxeles de la última captura' }
 }
+/** Acciones que un lote puede encadenar (las que no piden permisos nuevos ni abren tarjetas) y sus topes. */
+const BATCH_TOOLS = [
+  'left_click',
+  'double_click',
+  'right_click',
+  'mouse_move',
+  'drag',
+  'scroll',
+  'type_text',
+  'key',
+  'wait',
+  'open_application'
+]
+const BATCH_MAX_STEPS = 8
+const BATCH_PAUSE_MS = 250
+
+const ELEMENT_ARG = {
+  element: {
+    type: 'number',
+    description: 'Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad)'
+  }
+}
 const SHOT_FLAG = {
   screenshot: {
     type: 'boolean',
@@ -819,10 +841,10 @@ async function clickTool(
   session?: string
 ): Promise<string> {
   await requireForeground(session)
-  const p = await toPoints(args.x, args.y)
+  const { p, label } = await pointFromArgs(args)
   await requireTier('click', p, session)
   await act({ tool, x: p.x, y: p.y }, () => helper('click', String(p.x), String(p.y), button, String(count)))
-  return `${tool} en (${args.x}, ${args.y}) px → (${p.x}, ${p.y}) pt`
+  return `${tool} en ${label} → (${p.x}, ${p.y}) pt`
 }
 
 // ───────────────────────────── Lote C: control por Accessibility API (background) ─────────────────────────────
@@ -1038,12 +1060,127 @@ async function findElementCandidates(app: AppRef, description: string): Promise<
  * que `left_click`/`mouse_move`/`type_text` esperan, así "pasá estas coordenadas directo" (lo que ya
  * dice el prompt de la herramienta) es correcto sin tener que explicarle al modelo una conversión más.
  */
+/** Punto global (puntos de pantalla) → px de la ÚLTIMA captura: resta el origen de la pantalla capturada (monitores a la izquierda/arriba). */
+function shotPx(point: { x: number; y: number }, ratio: number): { x: number; y: number } {
+  const ox = capturedScreen?.x ?? 0
+  const oy = capturedScreen?.y ?? 0
+  return ratio > 0 ? { x: (point.x - ox) / ratio, y: (point.y - oy) / ratio } : point
+}
+
 function describeElement(el: FoundElement, idx: number, ratio: number): string {
   const label = el.title || el.description || el.identifier || el.value || '(sin texto)'
   const state = el.enabled ? '' : ' [deshabilitado]'
-  const px = ratio > 0 ? { x: el.screenPoint.x / ratio, y: el.screenPoint.y / ratio } : el.screenPoint
+  const px = shotPx(el.screenPoint, ratio)
   const pt = `(${Math.round(px.x)}, ${Math.round(px.y)})`
   return `${idx + 1}. [${el.role}] "${label}" en ${pt} px, tamaño ${Math.round(el.width)}x${Math.round(el.height)}${state}`
+}
+
+// ───────────────────────────── lista numerada de elementos en cada captura ─────────────────────────────
+//
+// Captura + árbol de accesibilidad juntos rinden más que cualquiera de los dos solos (los modelos pequeños fallan
+// sobre todo APUNTANDO a un píxel). Cada captura de pantalla completa añade una lista corta y numerada de lo
+// pulsable de la app objetivo, y los clics aceptan `element: N` (punto exacto de AX) en vez de x/y. Es un
+// complemento: apps con poca accesibilidad (Electron, juegos) devuelven pocas filas o ninguna y se sigue con x/y.
+
+const SHOT_ELEMENT_ROLES = [
+  'button',
+  'textfield',
+  'textarea',
+  'checkbox',
+  'radiobutton',
+  'popupbutton',
+  'menubutton',
+  'combobox',
+  'link',
+  'menuitem'
+]
+const ELEMENT_ROLE_ES: Record<string, string> = {
+  AXButton: 'botón',
+  AXTextField: 'campo de texto',
+  AXTextArea: 'área de texto',
+  AXCheckBox: 'casilla',
+  AXRadioButton: 'opción',
+  AXPopUpButton: 'desplegable',
+  AXMenuButton: 'menú',
+  AXComboBox: 'combo',
+  AXLink: 'enlace',
+  AXMenuItem: 'elemento de menú'
+}
+const ELEMENTS_TTL_MS = 90_000
+const ELEMENTS_QUERY_MS = 3_000
+
+interface ElementsSnapshot {
+  app: AppRef
+  at: number
+  items: FoundElement[]
+}
+let elementsSnapshot: ElementsSnapshot | null = null
+
+const elementLabel = (el: FoundElement): string => (el.title || el.description || el.identifier || '').replace(/\s+/g, ' ').trim()
+
+/**
+ * Lista numerada de elementos pulsables de la app objetivo (o la de primer plano) que caen DENTRO de la última
+ * captura, ordenados de arriba abajo y de izquierda a derecha. Devuelve '' si no se puede o no hay nada
+ * (best-effort: nunca rompe la captura). Guarda la instantánea para `element: N`.
+ */
+async function elementsBlock(shot: Shot, session: string | undefined, max: number): Promise<string> {
+  // Solo macOS: el helper de Windows no tiene find-elements (y sus pruebas fijan el orden exacto de sus llamadas).
+  if (backend.id !== 'darwin') return ''
+  try {
+    const app = currentTarget() ?? (await appFrontmost().catch(() => null))
+    if (!app?.bundleId) return ''
+    await requireTierFor(app, 'click', session)
+    const found = await Promise.race([
+      findElementsHelper(app.bundleId, { roles: SHOT_ELEMENT_ROLES }),
+      new Promise<FoundElement[]>((r) => setTimeout(() => r([]), ELEMENTS_QUERY_MS))
+    ])
+    const inside = found
+      .filter((el) => el.enabled !== false && el.width > 1 && el.height > 1)
+      .map((el) => ({ el, px: shotPx(el.screenPoint, shot.ratio) }))
+      .filter(({ px }) => px.x >= 0 && px.y >= 0 && px.x <= shot.width && px.y <= shot.height)
+      .filter(({ el }) => elementLabel(el) || el.role === 'AXTextField' || el.role === 'AXTextArea')
+      .sort((a, b) => a.px.y - b.px.y || a.px.x - b.px.x)
+      .slice(0, max)
+    if (!inside.length) {
+      elementsSnapshot = null
+      return ''
+    }
+    elementsSnapshot = { app, at: Date.now(), items: inside.map((i) => i.el) }
+    const lines = inside.map(({ el, px }, i) => {
+      const label = elementLabel(el)
+      return `[${i + 1}] ${ELEMENT_ROLE_ES[el.role] ?? el.role}${label ? ` «${label.slice(0, 50)}»` : ''} (${Math.round(px.x)}, ${Math.round(px.y)})`
+    })
+    return (
+      `Elementos pulsables de ${app.name} (accesibilidad). Para pulsar uno usa left_click/double_click/right_click/mouse_move con ` +
+      `element: N (más exacto que adivinar x/y); valen hasta la próxima captura o 90 s:\n${lines.join('\n')}`
+    )
+  } catch {
+    return ''
+  }
+}
+
+/** Punto (puntos globales) al que apunta una acción: `element: N` de la última lista, o x/y en px de la captura. */
+async function pointFromArgs(args: Record<string, unknown>): Promise<{ p: { x: number; y: number }; label: string }> {
+  const raw = args.element
+  if (raw !== undefined && raw !== null && raw !== '') {
+    const n = Number(raw)
+    if (!Number.isInteger(n) || n < 1) throw new Error('element debe ser el número de la lista de elementos (1, 2, 3…)')
+    const snap = elementsSnapshot
+    if (!snap || Date.now() - snap.at > ELEMENTS_TTL_MS) {
+      throw new Error('La lista de elementos caducó o no existe: toma una captura nueva (screenshot) o usa x/y.')
+    }
+    const el = snap.items[n - 1]
+    if (!el) throw new Error(`No hay elemento ${n}: la lista tiene ${snap.items.length}.`)
+    const front = await appFrontmost().catch(() => null)
+    const target = currentTarget()
+    if (front?.bundleId && front.bundleId !== snap.app.bundleId && target?.bundleId !== snap.app.bundleId) {
+      throw new Error(`La app en primer plano ya no es ${snap.app.name}: toma una captura nueva antes de usar element.`)
+    }
+    return { p: { x: el.screenPoint.x, y: el.screenPoint.y }, label: `elemento ${n} «${elementLabel(el).slice(0, 40)}»` }
+  }
+  if (args.x === undefined || args.y === undefined) throw new Error('Indica x e y (px de la captura) o element (número de la lista).')
+  const p = await toPoints(args.x, args.y)
+  return { p, label: `(${args.x}, ${args.y}) px` }
 }
 
 /** App en primer plano, o lanza si no se pudo identificar (p. ej. el Escritorio). */
@@ -1090,9 +1227,10 @@ const TOOLS: ToolDef[] = [
   {
     name: 'screenshot',
     description:
-      'Toma una captura de la pantalla principal. Devuelve la imagen y el tamaño en píxeles; ' +
-      'todas las demás herramientas usan coordenadas en píxeles de esta captura.',
-    inputSchema: obj({}),
+      'Toma una captura de la pantalla. Devuelve la imagen, su tamaño en píxeles y una lista NUMERADA de los elementos ' +
+      'pulsables de la app (por accesibilidad) para pulsarlos con element: N en left_click y compañía; ' +
+      'x/y usan coordenadas en píxeles de esta captura.',
+    inputSchema: obj({ elements: { type: 'boolean', description: 'Incluir la lista numerada de elementos (por defecto true)' } }),
     // Capturar la pantalla también es tomar control: requiere plan aprobado.
     action: true,
     run: async () => '' // gestionado aparte
@@ -1142,36 +1280,93 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'left_click',
-    description: 'Clic izquierdo en (x, y) px de la captura.',
-    inputSchema: obj({ ...XY, ...SHOT_FLAG }, ['x', 'y']),
+    description: 'Clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista de la última captura (element: N, más exacto).',
+    inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: (a, session) => clickTool(a, 'left', 1, 'left_click', session)
   },
   {
     name: 'right_click',
-    description: 'Clic derecho en (x, y) px de la captura.',
-    inputSchema: obj({ ...XY, ...SHOT_FLAG }, ['x', 'y']),
+    description: 'Clic derecho en (x, y) px de la captura, o en el elemento N de la lista (element: N).',
+    inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: (a, session) => clickTool(a, 'right', 1, 'right_click', session)
   },
   {
     name: 'double_click',
-    description: 'Doble clic izquierdo en (x, y) px de la captura.',
-    inputSchema: obj({ ...XY, ...SHOT_FLAG }, ['x', 'y']),
+    description: 'Doble clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista (element: N).',
+    inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: (a, session) => clickTool(a, 'left', 2, 'double_click', session)
   },
   {
     name: 'mouse_move',
-    description: 'Mueve el puntero a (x, y) px de la captura sin hacer clic.',
-    inputSchema: obj({ ...XY, ...SHOT_FLAG }, ['x', 'y']),
+    description: 'Mueve el puntero a (x, y) px de la captura, o al elemento N de la lista (element: N), sin hacer clic.',
+    inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
-      const p = await toPoints(a.x, a.y)
+      const { p, label } = await pointFromArgs(a)
       await requireTier('click', p, session)
       await act({ tool: 'mouse_move', x: p.x, y: p.y }, () => helper('move', String(p.x), String(p.y)))
-      return `Puntero movido a (${a.x}, ${a.y}) px → (${p.x}, ${p.y}) pt`
+      return `Puntero movido a ${label} → (${p.x}, ${p.y}) pt`
+    }
+  },
+  {
+    name: 'batch',
+    description:
+      'Ejecuta VARIAS acciones seguidas en una sola llamada (máx. 8) y devuelve una sola captura al final; se detiene en el primer ' +
+      'error. Úsala cuando ya sabes la secuencia (clic en un campo, escribir, Enter). Las acciones permitidas son left_click, ' +
+      'double_click, right_click, mouse_move, drag, scroll, type_text, key, wait y open_application, con los mismos argumentos que ' +
+      'sus herramientas. Los números element: N valen para todos los pasos y se refieren a la lista de la última captura; si un paso ' +
+      'puede cambiar la pantalla (abre un menú, cambia de ventana), ponlo el último o usa pasos separados.',
+    inputSchema: obj(
+      {
+        actions: {
+          type: 'array',
+          maxItems: BATCH_MAX_STEPS,
+          description:
+            'Pasos en orden, p.ej. [{"tool":"left_click","args":{"element":3}},{"tool":"type_text","args":{"text":"hola"}},{"tool":"key","args":{"keys":"return"}}]',
+          items: {
+            type: 'object',
+            properties: {
+              tool: { type: 'string', enum: [...BATCH_TOOLS] },
+              args: { type: 'object', description: 'Argumentos de esa herramienta (sin "screenshot")' }
+            },
+            required: ['tool'],
+            additionalProperties: false
+          }
+        },
+        ...SHOT_FLAG
+      },
+      ['actions']
+    ),
+    action: true,
+    run: async (a, session) => {
+      const steps = Array.isArray(a.actions) ? (a.actions as Array<Record<string, unknown>>) : []
+      if (!steps.length) throw new Error('actions vacío: indica al menos un paso.')
+      if (steps.length > BATCH_MAX_STEPS) throw new Error(`Demasiados pasos (${steps.length}): máximo ${BATCH_MAX_STEPS} por lote.`)
+      const lines: string[] = []
+      for (let i = 0; i < steps.length; i++) {
+        const name = String(steps[i]?.tool ?? '')
+        const inner = TOOLS.find((t) => t.name === name)
+        if (!inner || !BATCH_TOOLS.includes(name)) {
+          lines.push(`Paso ${i + 1}: herramienta no permitida en un lote («${name}»). Se detuvo.`)
+          return `Lote detenido en el paso ${i + 1} de ${steps.length}.\n${lines.join('\n')}`
+        }
+        const innerArgs = steps[i]?.args && typeof steps[i].args === 'object' ? (steps[i].args as Record<string, unknown>) : {}
+        try {
+          if (await isStopped()) throw new Error(STOPPED_MSG)
+          const out = await inner.run({ ...innerArgs, screenshot: false }, session)
+          const text = (typeof out === 'string' ? out : out.text).split('\n')[0].slice(0, 200)
+          lines.push(`Paso ${i + 1} (${name}): ${text}`)
+        } catch (err) {
+          lines.push(`Paso ${i + 1} (${name}): ERROR — ${err instanceof Error ? err.message : String(err)}`)
+          return `Lote detenido en el paso ${i + 1} de ${steps.length} (los anteriores sí se ejecutaron).\n${lines.join('\n')}`
+        }
+        if (i < steps.length - 1) await sleep(BATCH_PAUSE_MS)
+      }
+      return `Lote completo (${steps.length} paso${steps.length === 1 ? '' : 's'}).\n${lines.join('\n')}`
     }
   },
   {
@@ -1901,12 +2096,15 @@ async function callToolNow(name: string, rawArgs: Record<string, unknown>): Prom
     if (tool.action) await requirePlanApproved(session)
     if (name === 'screenshot') {
       const s = await takeScreenshot(false, session)
-      return {
-        content: [
-          { type: 'image', data: s.base64, mimeType: 'image/jpeg' },
-          { type: 'text', text: shotText(s) }
-        ]
+      const content: Content[] = [
+        { type: 'image', data: s.base64, mimeType: 'image/jpeg' },
+        { type: 'text', text: shotText(s) }
+      ]
+      if (args?.elements !== false) {
+        const block = await elementsBlock(s, session, 40)
+        if (block) content.push({ type: 'text', text: block })
       }
+      return { content }
     }
     const result = await tool.run(args, session)
     const text = typeof result === 'string' ? result : result.text
@@ -1930,6 +2128,9 @@ async function callToolNow(name: string, rawArgs: Record<string, unknown>): Prom
           const s = await takeScreenshot(true, session)
           content.unshift({ type: 'image', data: s.base64, mimeType: 'image/jpeg' })
           content.push({ type: 'text', text: shotText(s) })
+          // Tras una acción la interfaz cambió: la lista anterior ya no vale; se ofrece la nueva (más corta que en un screenshot).
+          const block = await elementsBlock(s, session, 30)
+          if (block) content.push({ type: 'text', text: block })
         } catch (err) {
           content.push({ type: 'text', text: `(sin captura: ${err instanceof Error ? err.message : err})` })
         }

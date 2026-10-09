@@ -39,10 +39,15 @@
           "tools": [
             {
               "name": "screenshot",
-              "description": "Toma una captura de la pantalla principal. Devuelve la imagen y el tamaño en píxeles; todas las demás herramientas usan coordenadas en píxeles de esta captura.",
+              "description": "Toma una captura de la pantalla. Devuelve la imagen, su tamaño en píxeles y una lista NUMERADA de los elementos pulsables de la app (por accesibilidad) para pulsarlos con element: N en left_click y compañía; x/y usan coordenadas en píxeles de esta captura.",
               "inputSchema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                  "elements": {
+                    "type": "boolean",
+                    "description": "Incluir la lista numerada de elementos (por defecto true)"
+                  }
+                },
                 "required": [],
                 "additionalProperties": false
               }
@@ -80,7 +85,7 @@
             },
             {
               "name": "left_click",
-              "description": "Clic izquierdo en (x, y) px de la captura.",
+              "description": "Clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista de la última captura (element: N, más exacto).",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -92,18 +97,22 @@
                     "type": "number",
                     "description": "Y en píxeles de la última captura"
                   },
+                  "element": {
+                    "type": "number",
+                    "description": "Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad)"
+                  },
                   "screenshot": {
                     "type": "boolean",
                     "description": "Adjuntar una captura tras la acción (por defecto true)"
                   }
                 },
-                "required": ["x", "y"],
+                "required": [],
                 "additionalProperties": false
               }
             },
             {
               "name": "right_click",
-              "description": "Clic derecho en (x, y) px de la captura.",
+              "description": "Clic derecho en (x, y) px de la captura, o en el elemento N de la lista (element: N).",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -115,18 +124,22 @@
                     "type": "number",
                     "description": "Y en píxeles de la última captura"
                   },
+                  "element": {
+                    "type": "number",
+                    "description": "Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad)"
+                  },
                   "screenshot": {
                     "type": "boolean",
                     "description": "Adjuntar una captura tras la acción (por defecto true)"
                   }
                 },
-                "required": ["x", "y"],
+                "required": [],
                 "additionalProperties": false
               }
             },
             {
               "name": "double_click",
-              "description": "Doble clic izquierdo en (x, y) px de la captura.",
+              "description": "Doble clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista (element: N).",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -138,18 +151,22 @@
                     "type": "number",
                     "description": "Y en píxeles de la última captura"
                   },
+                  "element": {
+                    "type": "number",
+                    "description": "Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad)"
+                  },
                   "screenshot": {
                     "type": "boolean",
                     "description": "Adjuntar una captura tras la acción (por defecto true)"
                   }
                 },
-                "required": ["x", "y"],
+                "required": [],
                 "additionalProperties": false
               }
             },
             {
               "name": "mouse_move",
-              "description": "Mueve el puntero a (x, y) px de la captura sin hacer clic.",
+              "description": "Mueve el puntero a (x, y) px de la captura, o al elemento N de la lista (element: N), sin hacer clic.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -161,12 +178,62 @@
                     "type": "number",
                     "description": "Y en píxeles de la última captura"
                   },
+                  "element": {
+                    "type": "number",
+                    "description": "Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad)"
+                  },
                   "screenshot": {
                     "type": "boolean",
                     "description": "Adjuntar una captura tras la acción (por defecto true)"
                   }
                 },
-                "required": ["x", "y"],
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            {
+              "name": "batch",
+              "description": "Ejecuta VARIAS acciones seguidas en una sola llamada (máx. 8) y devuelve una sola captura al final; se detiene en el primer error. Úsala cuando ya sabes la secuencia (clic en un campo, escribir, Enter). Las acciones permitidas son left_click, double_click, right_click, mouse_move, drag, scroll, type_text, key, wait y open_application, con los mismos argumentos que sus herramientas. Los números element: N valen para todos los pasos y se refieren a la lista de la última captura; si un paso puede cambiar la pantalla (abre un menú, cambia de ventana), ponlo el último o usa pasos separados.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "actions": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "description": "Pasos en orden, p.ej. [{\"tool\":\"left_click\",\"args\":{\"element\":3}},{\"tool\":\"type_text\",\"args\":{\"text\":\"hola\"}},{\"tool\":\"key\",\"args\":{\"keys\":\"return\"}}]",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "tool": {
+                          "type": "string",
+                          "enum": [
+                            "left_click",
+                            "double_click",
+                            "right_click",
+                            "mouse_move",
+                            "drag",
+                            "scroll",
+                            "type_text",
+                            "key",
+                            "wait",
+                            "open_application"
+                          ]
+                        },
+                        "args": {
+                          "type": "object",
+                          "description": "Argumentos de esa herramienta (sin \"screenshot\")"
+                        }
+                      },
+                      "required": ["tool"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "screenshot": {
+                    "type": "boolean",
+                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                  }
+                },
+                "required": ["actions"],
                 "additionalProperties": false
               }
             },
@@ -659,13 +726,15 @@
       "helper": [
         "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--role\",\"button,textfield,textarea,checkbox,radiobutton,popupbutton,menubutton,combobox,link,menuitem\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
         "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
       ],
-      "side": ["GET /plan-status?"]
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
     },
     {
       "step": {
@@ -1054,7 +1123,9 @@
         "{\"cmd\":\"app-at\",\"args\":[\"105.42\",\"52.71\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"click\",\"args\":[\"105.42\",\"52.71\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--role\",\"button,textfield,textarea,checkbox,radiobutton,popupbutton,menubutton,combobox,link,menuitem\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"left_click\",\"x\":105.42,\"y\":52.71,\"phase\":\"start\"}",
@@ -1062,7 +1133,12 @@
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
         "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
       ],
-      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+      "side": [
+        "GET /control-mode?",
+        "GET /plan-status?",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes"
+      ]
     },
     {
       "step": {
@@ -1278,12 +1354,195 @@
         "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"windows-of\",\"args\":[\"com.hnc.Discord\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.hnc.Discord\",\"--role\",\"button,textfield,textarea,checkbox,radiobutton,popupbutton,menubutton,combobox,link,menuitem\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
         "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
         "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
       ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.hnc.Discord&name=Discord"]
+    }
+  ],
+  "elementos-y-lote": [
+    {
+      "step": {
+        "tool": "screenshot"
+      },
+      "res": {
+        "isError": false,
+        "text": "Captura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>\nElementos pulsables de Notes (accesibilidad). Para pulsar uno usa left_click/double_click/right_click/mouse_move con element: N (más exacto que adivinar x/y); valen hasta la próxima captura o 90 s:\n[1] botón «Guardar» (38, 28)\n[2] campo de texto «Buscar» (190, 124)",
+        "parts": ["image", "text", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"find-elements\",\"args\":[\"--app\",\"com.apple.Notes\",\"--role\",\"button,textfield,textarea,checkbox,radiobutton,popupbutton,menubutton,combobox,link,menuitem\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
+      ],
+      "side": ["GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "element": 2,
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "left_click en elemento 2 «Buscar» → (200, 131) pt",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"200\",\"131\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"200\",\"131\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"left_click\",\"x\":200,\"y\":131,\"phase\":\"start\"}",
+        "{\"tool\":\"left_click\",\"x\":200,\"y\":131,\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?", "GET /tier?bundleId=com.apple.Notes&name=Notes"]
+    },
+    {
+      "step": {
+        "tool": "left_click",
+        "args": {
+          "element": 9,
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": true,
+        "text": "No hay elemento 9: la lista tiene 2.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "batch",
+        "args": {
+          "actions": [
+            {
+              "tool": "left_click",
+              "args": {
+                "element": 1
+              }
+            },
+            {
+              "tool": "type_text",
+              "args": {
+                "text": "hola"
+              }
+            },
+            {
+              "tool": "key",
+              "args": {
+                "keys": "return"
+              }
+            }
+          ],
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Lote completo (3 pasos).\nPaso 1 (left_click): left_click en elemento 1 «Guardar» → (40, 30) pt\nPaso 2 (type_text): Escrito: 4 caracteres\nPaso 3 (key): Teclas pulsadas: return",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"app-at\",\"args\":[\"40\",\"30\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"click\",\"args\":[\"40\",\"30\",\"left\",\"1\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"type\",\"args\":[\"hola\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"key\",\"args\":[\"return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"left_click\",\"x\":40,\"y\":30,\"phase\":\"start\"}",
+        "{\"tool\":\"left_click\",\"x\":40,\"y\":30,\"phase\":\"end\",\"ok\":true}",
+        "{\"tool\":\"type_text\",\"text\":\"hola\",\"phase\":\"start\"}",
+        "{\"tool\":\"type_text\",\"text\":\"hola\",\"phase\":\"end\",\"ok\":true}",
+        "{\"tool\":\"key\",\"text\":\"return\",\"phase\":\"start\"}",
+        "{\"tool\":\"key\",\"text\":\"return\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": [
+        "GET /control-mode?",
+        "GET /control-mode?",
+        "GET /control-mode?",
+        "GET /plan-status?",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes",
+        "GET /tier?bundleId=com.apple.Notes&name=Notes"
+      ]
+    },
+    {
+      "step": {
+        "tool": "batch",
+        "args": {
+          "actions": [
+            {
+              "tool": "left_click",
+              "args": {
+                "element": 77
+              }
+            },
+            {
+              "tool": "key",
+              "args": {
+                "keys": "return"
+              }
+            }
+          ],
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Lote detenido en el paso 1 de 2 (los anteriores sí se ejecutaron).\nPaso 1 (left_click): ERROR — No hay elemento 77: la lista tiene 2.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "batch",
+        "args": {
+          "actions": [
+            {
+              "tool": "request_access",
+              "args": {}
+            }
+          ],
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Lote detenido en el paso 1 de 1.\nPaso 1: herramienta no permitida en un lote («request_access»). Se detuvo.",
+        "parts": ["text"]
+      },
+      "helper": [],
+      "actions": [],
       "side": ["GET /plan-status?"]
     }
   ],

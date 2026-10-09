@@ -203,6 +203,48 @@ const SCENARIOS: Scenario[] = [
     }
   },
   {
+    // Lista numerada de elementos en la captura + clic por número + lote de acciones (A1/A2). El helper falso devuelve
+    // dos elementos de Notes; element: 2 debe ir al punto de accesibilidad del segundo (no a un x/y adivinado).
+    name: 'elementos-y-lote',
+    steps: [
+      { tool: 'screenshot' },
+      { tool: 'left_click', args: { element: 2, screenshot: false } },
+      { tool: 'left_click', args: { element: 9, screenshot: false } },
+      {
+        tool: 'batch',
+        args: {
+          actions: [
+            { tool: 'left_click', args: { element: 1 } },
+            { tool: 'type_text', args: { text: 'hola' } },
+            { tool: 'key', args: { keys: 'return' } }
+          ],
+          screenshot: false
+        }
+      },
+      {
+        tool: 'batch',
+        args: {
+          actions: [
+            { tool: 'left_click', args: { element: 77 } },
+            { tool: 'key', args: { keys: 'return' } }
+          ],
+          screenshot: false
+        }
+      },
+      { tool: 'batch', args: { actions: [{ tool: 'request_access', args: {} }], screenshot: false } }
+    ],
+    script: {
+      responses: {
+        'find-elements': {
+          out: [
+            { role: 'AXButton', title: 'Guardar', enabled: true, x: 10, y: 20, width: 60, height: 20, screenPoint: { x: 40, y: 30 } },
+            { role: 'AXTextField', title: 'Buscar', enabled: true, x: 100, y: 120, width: 200, height: 22, screenPoint: { x: 200, y: 131 } }
+          ]
+        }
+      }
+    }
+  },
+  {
     name: 'accesibilidad-app',
     steps: [
       { tool: 'app_tree', args: { app: 'Notes', max_depth: 3, max_nodes: 50 } },
