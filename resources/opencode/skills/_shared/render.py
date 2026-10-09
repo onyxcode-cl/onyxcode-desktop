@@ -9,6 +9,7 @@ import pathlib
 import shutil
 import subprocess
 import sys
+import tempfile
 
 OFFICE = {".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt", ".odt", ".ods", ".odp"}
 SOFFICE_MAC = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
@@ -31,22 +32,30 @@ def a_pdf(origen, outdir, avisos):
         avisos.append("LibreOffice no está instalado: no se puede renderizar este archivo de Office. "
                       "Haz solo la verificación estructural.")
         return None
-    # LibreOffice exige una URL file:// ABSOLUTA y bien escapada para el perfil: con un espacio en la ruta (p. ej.
-    # «Application Support») o una ruta relativa aborta con -6, así que se construye con as_uri().
-    perfil = pathlib.Path(outdir, ".lo-profile").resolve().as_uri()
-    cmd = [soffice, "-env:UserInstallation=" + perfil, "--headless", "--norestore",
-           "--convert-to", "pdf", "--outdir", outdir, origen]
+    os.makedirs(outdir, exist_ok=True)
+    # El perfil de LibreOffice va en una carpeta TEMPORAL (no en la del usuario: no deja «.lo-profile» ni rastros) y como URL
+    # file:// absoluta y bien escapada: con un espacio en la ruta (p. ej. «Application Support») o una ruta relativa
+    # LibreOffice aborta con -6, así que se construye con as_uri().
+    tmp = tempfile.mkdtemp(prefix="lazunox-lo-")
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-    except subprocess.TimeoutExpired:
-        avisos.append("LibreOffice superó el tiempo límite de 120 s al convertir a PDF.")
-        return None
-    except OSError as e:
-        avisos.append("No se pudo ejecutar LibreOffice: %s" % e)
-        return None
+        perfil = pathlib.Path(tmp, "perfil").resolve().as_uri()
+        cmd = [soffice, "-env:UserInstallation=" + perfil, "--headless", "--norestore",
+               "--convert-to", "pdf", "--outdir", outdir, origen]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        except subprocess.TimeoutExpired:
+            avisos.append("LibreOffice superó el tiempo límite de 120 s al convertir a PDF.")
+            return None
+        except OSError as e:
+            avisos.append("No se pudo ejecutar LibreOffice: %s" % e)
+            return None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     pdf = os.path.join(outdir, os.path.splitext(os.path.basename(origen))[0] + ".pdf")
     if not os.path.isfile(pdf):
-        avisos.append("LibreOffice no generó el PDF (código %s). %s" % (r.returncode, (r.stderr or "").strip()[:300]))
+        avisos.append("LibreOffice no generó el PDF (código %s). %s Si trabajas en modo Sandbox, LibreOffice no puede "
+                      "ejecutarse ahí: haz solo la verificación estructural y dilo en «Para revisar»."
+                      % (r.returncode, (r.stderr or "").strip()[:300]))
         return None
     return pdf
 
