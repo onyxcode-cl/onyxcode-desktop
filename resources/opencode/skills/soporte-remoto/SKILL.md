@@ -11,7 +11,8 @@ Trabajas con **capturas, zoom y teclado**. Por eso: poca mano, mucho teclado y c
 ## 0. Antes de tocar nada
 1. El equipo es de OTRA persona. Confirma en el chat que quien lo usa **sabe y autoriza** el acceso (di el ID y a quién pertenece). Sin eso, no sigas.
 2. Nunca escribas contraseñas (la de AnyDesk, la de administrador, la del UAC o `sudo`): si aparece una, para y pide a la persona que la ponga. Tampoco desactives antivirus ni firewall.
-3. Plan primero, con los comandos exactos que vas a ejecutar. Lo de **solo lectura** va antes; lo que **cambia** el equipo, después y listado aparte.
+3. **Avisos de certificado, huella o «equipo no verificado» al conectar: NO los aceptes tú.** Detente, descríbele al usuario qué dice el aviso (nombre y dirección del equipo) y espera su OK en el chat. Aceptarlo es confiar en ese equipo: es decisión suya, aunque el equipo parezca el suyo.
+4. Plan primero, con los comandos exactos que vas a ejecutar. Lo de **solo lectura** va antes; lo que **cambia** el equipo, después y listado aparte.
 
 ## 1. Conectar
 - Abre AnyDesk con `open_application`, escribe el ID en el campo «Dirección remota» y pulsa Enter. La persona remota debe **aceptar** (o hay acceso desatendido: no pidas la contraseña, que la ponga el usuario).
