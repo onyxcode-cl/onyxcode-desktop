@@ -423,7 +423,8 @@ describe.skipIf(isWin)('teclado por teclas físicas (cu-keys, clientes de escrit
     )
     const r = await backend.pasteText!('a|{b}', 'cmd+v')
     expect(r.restored).toBe(true)
-    expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys', '/usr/bin/pbcopy'])
+    // La restauración se programa para más tarde (el cliente remoto tarda en sincronizar): al volver, solo pbpaste, pbcopy y cu-keys.
+    expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys'])
     expect(calls[2].args).toEqual(['key', 'cmd+v'])
   })
 

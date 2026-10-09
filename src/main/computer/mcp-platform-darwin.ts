@@ -142,21 +142,27 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
   }
 
   /**
-   * Pega `text` por el portapapeles. Guarda el texto que hubiera (si no hay texto —una imagen, por ejemplo— NO se toca al final: vaciarlo
-   * la destruiría) y lo restaura tras pegar. `combo` lo pulsa `cu-keys` con modificadores reales.
+   * Pega `text` por el portapapeles. Los clientes remotos (Windows App, AnyDesk…) sincronizan el portapapeles del Mac con RETRASO (sondeo
+   * de ~1 s): si se pega o se restaura enseguida, el equipo remoto recibe el texto ANTERIOR. Por eso: se espera `SYNC_MS` tras copiar, se
+   * pega, y la restauración del texto previo ocurre más tarde y SOLO si el portapapeles sigue siendo el nuestro (no pisa un pegado posterior).
+   * Si no había texto (una imagen, por ejemplo) no se toca al final: vaciarlo la destruiría.
    */
+  const PASTE_SYNC_MS = 1000
+  const PASTE_RESTORE_MS = 4000
   async function pasteText(text: string, combo: string): Promise<{ restored: boolean }> {
     const before = await run('/usr/bin/pbpaste', [], 5_000).catch(() => '')
     await runWithStdin('/usr/bin/pbcopy', [], text)
-    await new Promise((r) => setTimeout(r, 120))
-    try {
-      await keysTool(['key', combo])
-      // El cliente remoto lee el portapapeles del Mac de forma asíncrona: no lo restauremos antes de que lo haya tomado.
-      await new Promise((r) => setTimeout(r, Math.min(1500, 400 + text.length * 2)))
-    } finally {
-      if (before) await runWithStdin('/usr/bin/pbcopy', [], before).catch(() => undefined)
+    await new Promise((r) => setTimeout(r, PASTE_SYNC_MS))
+    await keysTool(['key', combo])
+    if (before && before !== text) {
+      const t = setTimeout(() => {
+        void run('/usr/bin/pbpaste', [], 5_000)
+          .then((now) => (now === text ? runWithStdin('/usr/bin/pbcopy', [], before) : undefined))
+          .catch(() => undefined)
+      }, PASTE_RESTORE_MS)
+      t.unref?.()
     }
-    return { restored: before.length > 0 }
+    return { restored: before.length > 0 && before !== text }
   }
 
   /** Como `helper()`, pero devuelve también el código de salida (para los mensajes de `axExitMessage`). */

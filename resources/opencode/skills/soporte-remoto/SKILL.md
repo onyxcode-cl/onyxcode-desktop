@@ -27,6 +27,8 @@ Trabajas con **capturas, zoom y teclado**. Por eso: poca mano, mucho teclado y c
 ## 3. Escribir y leer
 - Escribe **una orden por vez**, acotada (`| select -first 10`, `| head -20`) y sigue con Enter.
 - `type_text` elige solo el modo: un texto con símbolos (`{ } [ ] | \ @ $ " …`) se **pega por el portapapeles** (no depende de la distribución de teclado del equipo remoto) y el resto se escribe por teclas físicas. **Comprueba siempre con zoom** que quedó escrito lo que querías.
+- **La imagen del equipo remoto llega con retraso** (a veces varios segundos): antes de leer una captura espera 3-4 s con `computer_wait`; si no, verás la línea de ANTES y creerás que falló. Mejor aún: haz una captura, espera, y vuelve a capturar para comparar.
+- **El portapapeles remoto a veces se queda con el texto anterior** (el cliente solo sincroniza algunas veces). Si pegaste y salió el comando viejo, no sigas pegando: cancela la línea (`ctrl+c`), y usa `input: "keys"` con comandos cortos y de símbolos básicos.
 - Si no apareció nada: repite con `input: "keys"` (y `layout: "us"` si el equipo remoto tiene teclado inglés); si pegar falla, prueba `paste_key: "ctrl+v"`. Si tras dos intentos sigue mal, **para** y dilo: no reintentes lo mismo.
 - Alternativa que evita todo teclado: ordenes sin símbolos raros (`Get-Process`, `hostname`, `ipconfig`) o dividir el trabajo en pasos simples.
 - Lee el resultado con `zoom` sobre la región de la terminal: nunca adivines texto borroso. Si no se lee, limpia (`cls` / `clear`) y repite más corto.
