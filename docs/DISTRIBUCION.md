@@ -229,13 +229,15 @@ actualizar la versión y la URL de la release en ese fichero. El fichero `LICENS
 nueva de Lazunox. Procedimiento, contrato de la API y qué hacer si algo cambia:
 [`ACTUALIZAR-OPENCODE.md`](./ACTUALIZAR-OPENCODE.md).
 
-**Tamaño esperado.** El `.dmg` pasa de unos 130 MB a **unos 170 MB** (el binario ocupa ~100 MB sin comprimir). Por
-encima de 200 MB algo va mal (p. ej. se empaquetó dos veces).
+**Tamaño esperado.** Con OpenCode embebido y el Python de las skills de oficina (`resources/python-bin`, ~134 MB sin comprimir) el `.dmg` mide
+**unos 300 MB** (medido con `hdiutil`, UDZO: 302 MiB; el `.app` ocupa ~753 MB). Por encima de 400 MB algo va mal (p. ej. se
+empaquetó dos veces).
 
 **Cómo comprobarlo** tras `npm run package`: `npm run verify:bundled` (`scripts/verify-bundled.mjs`) hace todo lo
 siguiente de una vez, sin tocar tu `HOME`: `codesign --verify --deep --strict` del `.app`, `--version` == `pin.version`,
 el binario sirviendo `/global/health` dentro del perfil Seatbelt real de Tareas (`buildSandboxProfile`, con
-`HOME`/`XDG_*` temporales) más un control negativo (el perfil sigue negando leer `userData`), `.dmg` < 200 MB y los
+`HOME`/`XDG_*` temporales) más un control negativo (el perfil sigue negando leer `userData`), `.dmg` < 400 MB, las herramientas internas
+(`cu-helper`, `cu-keys`, Python con sus librerías y las skills de oficina/soporte remoto) y los
 avisos de licencias en `Contents/Resources`. A mano:
 
 ```bash

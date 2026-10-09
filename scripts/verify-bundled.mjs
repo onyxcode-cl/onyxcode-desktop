@@ -4,7 +4,7 @@
 //   npm run verify:bundled [-- --app <ruta.app>] [-- --dmg <ruta.dmg>]
 // Comprobaciones: firma del .app (codesign --verify --deep --strict), `--version` del binario embebido
 // == pin.version, el binario sirve /global/health DENTRO del perfil Seatbelt real de Tareas
-// (buildSandboxProfile) con HOME/XDG temporales, .dmg < 200 MB, y avisos/licencias de Electron.
+// (buildSandboxProfile) con HOME/XDG temporales, .dmg < 400 MB, herramientas internas (helper, cu-keys, Python, skills) y avisos/licencias de Electron.
 // Nunca usa el HOME ni los XDG reales. Informa el sha256 del binario antes (descargado) y después
 // (dentro del .app, ya vuelto a firmar por electron-builder).
 import { spawn, spawnSync } from 'node:child_process'
@@ -24,7 +24,8 @@ const appPath = resolve(arg('--app') ?? join(root, 'dist/mac-arm64/Lazunox.app')
 const dmgPath = resolve(arg('--dmg') ?? join(root, 'dist', `${pkg.name}-${pkg.version}-arm64.dmg`))
 const res = join(appPath, 'Contents/Resources')
 const bin = join(res, 'opencode/opencode')
-const DMG_LIMIT = 200 * 1024 * 1024
+// Medido: ~302 MiB con OpenCode y Python incluidos; por encima de 400 MiB algo va mal (p. ej. se empaquetó dos veces).
+const DMG_LIMIT = 400 * 1024 * 1024
 
 const results = []
 const record = (name, ok, detail) => {
@@ -58,7 +59,11 @@ async function main() {
 
   // 1. Firma del .app
   const cs = run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', appPath])
-  record('codesign --verify --deep --strict del .app', cs.status === 0, cs.status === 0 ? 'válida' : (cs.stderr || '').trim().split('\n').slice(-2).join(' | '))
+  record(
+    'codesign --verify --deep --strict del .app',
+    cs.status === 0,
+    cs.status === 0 ? 'válida' : (cs.stderr || '').trim().split('\n').slice(-2).join(' | ')
+  )
 
   // 2. Binario embebido presente, versión == pin.version
   if (!existsSync(bin)) {
@@ -77,7 +82,9 @@ async function main() {
     if (existsSync(fetched)) console.log(`INFO    ${sigInfo(fetched)}`)
     console.log(`INFO  binario en el .app (después de firmar): sha256 ${after}`)
     console.log(`INFO    ${sigInfo(bin)}`)
-    console.log(`INFO  ${before === after ? 'sha256 IGUAL (no se volvió a firmar)' : 'sha256 DISTINTO: electron-builder volvió a firmar el Mach-O (esperado; solo cambia la firma)'}`)
+    console.log(
+      `INFO  ${before === after ? 'sha256 IGUAL (no se volvió a firmar)' : 'sha256 DISTINTO: electron-builder volvió a firmar el Mach-O (esperado; solo cambia la firma)'}`
+    )
     await sandboxed()
   }
 
@@ -85,20 +92,65 @@ async function main() {
   if (!existsSync(dmgPath)) record('.dmg presente', false, dmgPath)
   else {
     const size = statSync(dmgPath).size
-    record('tamaño del .dmg < 200 MB', size < DMG_LIMIT, `${size} bytes (${(size / 1024 / 1024).toFixed(1)} MiB) ${dmgPath}`)
+    record('tamaño del .dmg < 400 MB', size < DMG_LIMIT, `${size} bytes (${(size / 1024 / 1024).toFixed(1)} MiB) ${dmgPath}`)
   }
 
   // 3 bis. Script de reemplazo del actualizador: presente, ejecutable por sh y cubierto por el sello del .app.
   const swap = join(res, 'updater/swap.sh')
-  record('presente Contents/Resources/updater/swap.sh', existsSync(swap) && statSync(swap).size > 0, existsSync(swap) ? `${statSync(swap).size} bytes` : 'falta')
+  record(
+    'presente Contents/Resources/updater/swap.sh',
+    existsSync(swap) && statSync(swap).size > 0,
+    existsSync(swap) ? `${statSync(swap).size} bytes` : 'falta'
+  )
   const sealFile = join(appPath, 'Contents/_CodeSignature/CodeResources')
   const sealed = existsSync(sealFile) && readFileSync(sealFile, 'utf8').includes('Resources/updater/swap.sh')
-  record('el sello del .app cubre Resources/updater/swap.sh', sealed, sealed ? 'listado en _CodeSignature/CodeResources' : 'no aparece en CodeResources (¿firma ad-hoc sin sellar recursos?)')
+  record(
+    'el sello del .app cubre Resources/updater/swap.sh',
+    sealed,
+    sealed ? 'listado en _CodeSignature/CodeResources' : 'no aparece en CodeResources (¿firma ad-hoc sin sellar recursos?)'
+  )
 
   // 4. Avisos y licencias
   for (const f of ['THIRD_PARTY_NOTICES.md', 'licenses/electron/LICENSE', 'licenses/electron/LICENSES.chromium.html']) {
     const p = join(res, f)
     record(`presente Contents/Resources/${f}`, existsSync(p) && statSync(p).size > 0, existsSync(p) ? `${statSync(p).size} bytes` : 'falta')
+  }
+
+  // 5. Herramientas internas que la app usa «por detrás»: si falta alguna, el DMG instalado NO funciona igual que en desarrollo.
+  for (const f of ['computer-use/bin/cu-helper', 'computer-use/bin/cu-keys']) {
+    const p = join(res, f)
+    const ok = existsSync(p) && (statSync(p).mode & 0o111) !== 0 && statSync(p).size > 0
+    record(`herramienta interna ${f}`, ok, ok ? `${statSync(p).size} bytes` : 'falta o no es ejecutable')
+  }
+  const keys = join(res, 'computer-use/bin/cu-keys')
+  if (existsSync(keys)) {
+    const r = run(keys, ['layout'])
+    record(
+      'cu-keys arranca y lee el teclado activo',
+      r.status === 0 && /"layout"/.test(r.stdout || ''),
+      (r.stdout || r.stderr || '').trim().slice(0, 120)
+    )
+  }
+  const py = join(res, 'python/bin/python3')
+  if (existsSync(py)) {
+    const r = run(py, ['-I', '-c', 'import docx, openpyxl, pptx, pypdf, pdfplumber, reportlab, pypdfium2, lxml, PIL; print("ok-libs")'])
+    record(
+      'Python incluido con las librerías de Word/Excel/PowerPoint/PDF',
+      r.status === 0 && /ok-libs/.test(r.stdout || ''),
+      (r.stdout || r.stderr || '').trim().slice(-160)
+    )
+  } else {
+    record('Python incluido (Contents/Resources/python)', false, 'falta: ¿se ejecutó `npm run fetch:python` antes de empaquetar?')
+  }
+  const skillsDir = join(root, 'resources/opencode/skills')
+  for (const sk of ['docx', 'xlsx', 'pptx', 'pdf', 'ruta-rapida', 'soporte-remoto']) {
+    const candidates = [join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'SKILL.md')]
+    const found = candidates.find((c) => existsSync(c))
+    record(
+      `skill incluida: ${sk}`,
+      Boolean(found) && existsSync(join(skillsDir, sk, 'SKILL.md')),
+      found ? 'presente' : 'falta en app.asar.unpacked'
+    )
   }
 
   const failed = results.filter((r) => !r.ok)
@@ -160,17 +212,28 @@ async function sandboxed() {
     const t0 = Date.now()
     while (Date.now() - t0 < 30_000 && exited === null && !body) {
       try {
-        const r = await fetch(`http://127.0.0.1:${port}/global/health`, { headers: { authorization: auth }, signal: AbortSignal.timeout(2000) })
+        const r = await fetch(`http://127.0.0.1:${port}/global/health`, {
+          headers: { authorization: auth },
+          signal: AbortSignal.timeout(2000)
+        })
         if (r.ok) body = await r.json()
       } catch {}
       if (!body) await new Promise((r) => setTimeout(r, 300))
     }
     const ms = Date.now() - t0
     const ok = Boolean(body?.healthy) && body.version === pin.version
-    record('binario sirve /global/health dentro del Seatbelt de Tareas', ok, body ? `healthy=${body.healthy} version=${body.version} en ${ms} ms` : `sin respuesta (exit=${exited}) ${tail.trim().slice(-300)}`)
+    record(
+      'binario sirve /global/health dentro del Seatbelt de Tareas',
+      ok,
+      body ? `healthy=${body.healthy} version=${body.version} en ${ms} ms` : `sin respuesta (exit=${exited}) ${tail.trim().slice(-300)}`
+    )
     // El perfil sigue aislando: lectura de userData denegada dentro del sandbox.
     const deny = run('/usr/bin/sandbox-exec', ['-f', profile, '/bin/cat', join(userData, 'secreto.txt')])
-    record('el perfil deniega leer userData (control negativo)', deny.status !== 0 && !(deny.stdout || '').includes('secreto'), `exit=${deny.status}`)
+    record(
+      'el perfil deniega leer userData (control negativo)',
+      deny.status !== 0 && !(deny.stdout || '').includes('secreto'),
+      `exit=${deny.status}`
+    )
   } finally {
     killAll()
     await new Promise((r) => setTimeout(r, 300))
