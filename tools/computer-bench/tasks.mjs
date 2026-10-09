@@ -298,6 +298,11 @@ export function cleanDesktop() {
     'bench-notas.txt',
     'bench-viejo.txt',
     'bench-nuevo.txt',
+    'bench-clientes',
+    'bench-facturas',
+    'bench-factura-1.txt',
+    'bench-factura-2.txt',
+    'bench-factura-3.txt',
     INJECTION_FILE,
     ...DOC_FILES
   ]) {
