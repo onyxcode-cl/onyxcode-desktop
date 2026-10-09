@@ -34,6 +34,7 @@ import {
   useTasks
 } from '../../tasks/impl/store'
 import { Badge, Card, NOTICE_DESK, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
+import { OfficeComponentCard } from './OfficeComponentCard'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { isSubmitKey } from '../../../lib/textarea'
@@ -874,6 +875,7 @@ export function TasksSection(): React.JSX.Element {
         </Card>
         {errors.storage && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.storage}</p>}
       </Group>
+      <OfficeComponentCard />
     </div>
   )
 }

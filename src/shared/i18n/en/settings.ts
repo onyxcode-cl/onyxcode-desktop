@@ -203,5 +203,32 @@ export const settings = {
   'settings.about.update': 'Update',
   'settings.about.links': 'Links',
   'settings.about.docs': 'OpenCode documentation',
-  'settings.about.mcpServers': 'MCP servers'
+  'settings.about.mcpServers': 'MCP servers',
+  // Optional components (LibreOffice, on demand)
+  'settings.office.title': 'Optional components',
+  'settings.office.name': 'LibreOffice',
+  'settings.office.desc': 'Lets the agent check how the Word, Excel and PowerPoint files it creates look.',
+  'settings.office.install': 'Install (≈ {mb} MB)',
+  'settings.office.consent.title': 'Install LibreOffice?',
+  'settings.office.consent.body':
+    'LibreOffice (≈ {mb} MB) will be downloaded from The Document Foundation official download. Its signature is verified before use, and no administrator password is needed.',
+  'settings.office.consent.confirm': 'Install',
+  'settings.office.installing': 'Installing…',
+  'settings.office.cancel': 'Cancel installation',
+  'settings.office.phase.download': 'Downloading',
+  'settings.office.phase.verify': 'Verifying',
+  'settings.office.phase.mount': 'Mounting',
+  'settings.office.phase.copy': 'Copying',
+  'settings.office.phase.done': 'Done',
+  'settings.office.progress': '{done} of {total} MB',
+  'settings.office.installed': 'Installed · version {version}',
+  'settings.office.installedSystem': 'Using the copy in /Applications · version {version}',
+  'settings.office.remove': 'Remove',
+  'settings.office.retry': 'Retry',
+  'settings.office.error.disk': 'Not enough disk space',
+  'settings.office.error.hash': 'The download does not match the expected one; nothing was installed',
+  'settings.office.error.signature': 'The signature is not valid; nothing was installed',
+  'settings.office.error.download': 'Could not download; check your connection',
+  'settings.office.error.cancelled': 'Installation cancelled',
+  'settings.office.error.generic': 'LibreOffice could not be installed. Try again.'
 } as const satisfies Messages<typeof es>

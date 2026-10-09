@@ -202,5 +202,32 @@ export const settings = {
   'settings.about.update': 'Actualización',
   'settings.about.links': 'Enlaces',
   'settings.about.docs': 'Documentación de OpenCode',
-  'settings.about.mcpServers': 'Servidores MCP'
+  'settings.about.mcpServers': 'Servidores MCP',
+  // Componentes opcionales (LibreOffice, bajo demanda)
+  'settings.office.title': 'Componentes opcionales',
+  'settings.office.name': 'LibreOffice',
+  'settings.office.desc': 'Sirve para que el agente revise cómo quedan los Word, Excel y PowerPoint que crea.',
+  'settings.office.install': 'Instalar (≈ {mb} MB)',
+  'settings.office.consent.title': '¿Instalar LibreOffice?',
+  'settings.office.consent.body':
+    'Se descargará LibreOffice (≈ {mb} MB) desde la descarga oficial de The Document Foundation. Se verifica su firma antes de usarlo y no necesita contraseña de administrador.',
+  'settings.office.consent.confirm': 'Instalar',
+  'settings.office.installing': 'Instalando…',
+  'settings.office.cancel': 'Cancelar instalación',
+  'settings.office.phase.download': 'Descargando',
+  'settings.office.phase.verify': 'Verificando',
+  'settings.office.phase.mount': 'Montando',
+  'settings.office.phase.copy': 'Copiando',
+  'settings.office.phase.done': 'Listo',
+  'settings.office.progress': '{done} de {total} MB',
+  'settings.office.installed': 'Instalado · versión {version}',
+  'settings.office.installedSystem': 'Usando el de /Applications · versión {version}',
+  'settings.office.remove': 'Quitar',
+  'settings.office.retry': 'Reintentar',
+  'settings.office.error.disk': 'No hay espacio suficiente',
+  'settings.office.error.hash': 'La descarga no coincide con la esperada; no se instaló nada',
+  'settings.office.error.signature': 'La firma no es válida; no se instaló nada',
+  'settings.office.error.download': 'No se pudo descargar; revisa tu conexión',
+  'settings.office.error.cancelled': 'Instalación cancelada',
+  'settings.office.error.generic': 'No se pudo instalar LibreOffice. Inténtalo de nuevo.'
 } as const
