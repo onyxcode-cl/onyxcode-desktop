@@ -1512,7 +1512,7 @@ while let f = args.first, f.hasPrefix("--") {
     else { fail("Bandera desconocida: \(f)") }
 }
 guard let cmd = args.first else {
-    fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app|open-app-bg|resolve-app|activate|hide-apps|unhide-apps|app-at|running-apps|windows-of|focused-secure|recent-input|screenshot-sck|mask-regions|zoom-image|watch-esc|ax-tree|ax-find|ax-frame|ax-press|ax-set-value|ax-action|find-elements|window-shot|record|transcribe|mic-permission|mic-request …")
+    fail("Uso: cu-helper move|click|drag|scroll|type|key|cursor|screens|permissions|request-permissions|frontmost|open-app|open-app-bg|resolve-app|activate|hide-apps|unhide-apps|app-at|running-apps|windows-of|focused-secure|recent-input|screenshot-sck|mask-regions|zoom-image|watch-esc|ax-tree|ax-find|ax-frame|ax-press|ax-insert-text|ax-set-value|ax-action|find-elements|window-shot|record|transcribe|mic-permission|mic-request …")
 }
 
 switch cmd {

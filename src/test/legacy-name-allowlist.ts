@@ -19,6 +19,18 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   { path: 'docs/archive/**', reason: 'Documentos históricos' },
   { path: 'AUDIT.md', reason: 'Auditoría histórica' },
 
+  // --- Herramientas internas que nombran la suite histórica ---
+  {
+    path: 'tools/agent-bench/**',
+    reason: 'Banco de pruebas de agentes: describe sus casos «onyx» (suite de prompts de la versión anterior) y vive fuera de la app'
+  },
+
+  {
+    path: 'tools/computer-bench/tasks.mjs',
+    token: /canal onyxcode/i,
+    reason: 'Prueba de control del Mac: «onyxcode» es el nombre real de un canal de Discord del dueño, no el de la app'
+  },
+
   // --- Datos en disco de versiones antiguas (D7: las migraciones se conservan) ---
   {
     path: 'src/main/migrations/legacy-names.ts',
