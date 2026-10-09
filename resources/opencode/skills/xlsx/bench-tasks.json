@@ -1,0 +1,17 @@
+[
+  {
+    "id": "xlsx-presupuesto",
+    "prompt": "Crea un presupuesto mensual en Excel con 8 categorías de gasto (arriendo, alimentación, transporte, etc.) para enero a marzo de 2026 en pesos chilenos. Incluye una fila de total por mes con fórmulas SUM, formato de moneda $ con separador de miles, encabezado con estilo, paneles congelados y un gráfico de columnas con título y ejes que compare los totales por mes. Guarda como presupuesto-2026.xlsx.",
+    "check": "El .xlsx existe, abre sin error, tiene fórmulas =SUM reales en la fila de total que calculan el valor correcto (recalc_check sin errores), formato de moneda en las celdas de importe y al menos un gráfico de columnas con título y títulos de ejes."
+  },
+  {
+    "id": "xlsx-editar-copia",
+    "prompt": "Te entrego el archivo ventas.xlsx (hoja 'Ventas' con Producto, Unidades, Precio). Añade una columna 'Subtotal' = Unidades*Precio con fórmula en cada fila, una fila de total, un autofiltro y un gráfico de barras de subtotal por producto. No modifiques el original: guarda una copia ventas-v2.xlsx y conserva el formato existente.",
+    "check": "Existe ventas-v2.xlsx y el original quedó intacto (misma huella); la copia conserva anchos y estilos originales, tiene fórmulas =B*C por fila, un total con SUM sin errores al recalcular y un gráfico de barras añadido."
+  },
+  {
+    "id": "xlsx-resumen-kpis",
+    "prompt": "Con estos datos de ventas por región (Norte 1.250.000; Centro 3.480.000; Sur 2.120.000; Austral 640.000) construye un libro con una hoja de datos con porcentaje de participación por región (fórmula), una hoja 'Resumen' con el total, la región líder (fórmula con INDEX/MATCH y MAX) y un gráfico de torta de participación. Verifica con recálculo y deja en 'Para revisar' qué valor da cada indicador.",
+    "check": "El libro tiene la hoja Resumen primero, el total es 7.490.000, la región líder calculada por fórmula da Centro, la participación suma 100%, hay un gráfico de torta, y recalc_check no reporta errores."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "pdf-informe-ventas",
+    "prompt": "Crea un PDF llamado informe-ventas.pdf con portada, un título, un párrafo de resumen y una tabla de ventas por región (Norte, Sur, Centro) con cifras en pesos chilenos formateadas es-CL, más numeración de páginas. Verifícalo y muéstrame cómo quedó.",
+    "check": "Existe informe-ventas.pdf con portada, tabla con encabezado y cifras alineadas a la derecha con formato 1.234.567, pie «Página X de N», y el agente lo renderizó y revisó antes de entregar."
+  },
+  {
+    "id": "pdf-extraer-tablas",
+    "prompt": "Del archivo adjunto reporte.pdf extrae todas las tablas a CSV y dame un resumen del texto de la primera página. Si el PDF fuera escaneado, dímelo.",
+    "check": "Se generan CSV con las tablas correctas y el resumen coincide con el texto real; si no hay texto el agente avisa que es escaneado y que no hay OCR, sin inventar contenido."
+  },
+  {
+    "id": "pdf-unir-estampar",
+    "prompt": "Une contrato.pdf y anexo.pdf en un solo archivo nuevo, elimina la página 2 del resultado, ponle marca de agua «BORRADOR» y numeración, y no modifiques los originales.",
+    "check": "Se crea un PDF nuevo con (páginas de ambos − 1), contiene la marca BORRADOR y numeración, los originales permanecen intactos (mismo hash)."
+  }
+]

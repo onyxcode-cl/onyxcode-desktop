@@ -1,45 +1,83 @@
 ---
 name: pdf
-description: Prepara documentos para PDF y trabaja con PDF existentes en el Mac (leer texto, unir, extraer). Úsala cuando el usuario pida un PDF o pida leer, resumir o unir archivos PDF.
+description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF profesional, unir/dividir/rotar páginas, rellenar formularios PDF o estampar marca de agua y numeración.
 ---
-# Skill: PDF
 
-## Crear un PDF: qué se puede y qué no (comprobado en el sandbox de las tareas)
-- `textutil` **no puede convertir a PDF** (al pedirle ese formato responde `Invalid output format`).
-- `cupsfilter -m application/pdf archivo.html` **no** convierte HTML (`No hay ningún filtro para convertir
-  de text/html a application/pdf`), ni RTF, ni docx.
-- `cupsfilter -m application/pdf archivo.txt > salida.pdf` sí funciona, pero solo para **texto plano**
-  con fuente monoespaciada y sin negritas ni tablas. Úsalo solo si el usuario acepta ese aspecto.
-- `cupsfilter -m application/pdf imagen.png > imagen.pdf` (o `sips -s format pdf imagen.png --out imagen.pdf`)
-  convierte una imagen a PDF.
-- En el sandbox no hay motor de maquetación (sin `wkhtmltopdf`, LibreOffice ni `reportlab` de serie).
+# Skill PDF
 
-### Ruta recomendada: HTML listo para «Guardar como PDF»
-1. Escribe un `.html` autocontenido y bien maquetado (UTF-8, CSS en `<style>`, sin recursos externos:
-   sin `<img src="http…">`, fuentes web ni scripts), con estilos de impresión: `@page { size: Letter; margin: 2cm }`,
-   `table { border-collapse: collapse } td, th { border: 1px solid #888; padding: 4px 8px }`,
-   `h1, h2 { break-after: avoid }` y `tr { break-inside: avoid }`. Nómbralo con guiones, p. ej. `informe-ventas.html`.
-2. Verifica que existe y no está vacío (`ls -l informe-ventas.html`).
-3. Entrégalo y **dile al usuario**: «Te dejé el informe como HTML; ábrelo en **Entregables** y pulsa
-   **Guardar como PDF** para obtener el PDF». No prometas un PDF que no pudiste generar.
+Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. En los ejemplos: `PY`.
+Scripts en `scripts/` (usa la ruta de esta skill). Escribe solo en la carpeta de la tarea o en `./.lazunox/trabajo/`.
+Salidas siempre NUEVAS (nunca sobrescribas el original; para «editar» crea `-v2`).
 
-### Otra opción: Word
-Si el usuario acepta Word, usa la skill `docx` (el documento se puede exportar a PDF desde Word/Pages).
+## Flujo: 1) Crear/editar  2) Verificar  3) Entregar
 
-## Leer, resumir o unir PDF existentes
-Comprueba qué hay antes de elegir (no asumas):
-`python3 -c "import pypdf; print(pypdf.__version__)"` · `which pdftotext`
-- **Texto**: `pdftotext -layout archivo.pdf -` si existe; si no, con `pypdf`:
-  `python3 -c "import pypdf,sys; r=pypdf.PdfReader('archivo.pdf'); print('\n'.join(p.extract_text() for p in r.pages))"`
-- **Unir**: con `pypdf` (`PdfWriter().add_page(...)`, `write('unido.pdf')`) o `pdfunite a.pdf b.pdf unido.pdf` si existe.
-- Un PDF **escaneado** (imagen) no tiene texto que extraer: no hay OCR disponible; dilo y pídele al
-  usuario el texto o un PDF con texto.
-- Si ni `pypdf` ni `pdftotext` existen y el usuario activó PyPI: `python3 -m pip install --target ./.lazunox/trabajo/pylib pypdf`
-  y `PYTHONPATH=.lazunox/trabajo/pylib python3 …` (nunca `pip install --user`). *(La descarga no se pudo comprobar
-  en esta verificación, porque sin PyPI activado no hay red en el sandbox.)*
+### A. Leer / extraer
+1. `PY scripts/extract_pdf.py doc.pdf` (texto por página en pantalla). Opciones: `--paginas 1-3,5`, `--tablas`,
+   `--formato json -o datos.json`, `--formato csv --outdir tablas/` (un CSV por tabla).
+2. Si dice `AVISO: ... ESCANEADO` (código de salida 2): el PDF son imágenes. **No hay OCR**. No inventes el contenido:
+   dilo al usuario y pide una versión con texto.
+3. Tablas: solo se detectan si tienen líneas o columnas bien alineadas; revisa el resultado y avisa si dudas.
 
-## Reglas
-- Archivos auxiliares en `./.lazunox/trabajo/`; los resultados con un nombre **nuevo** (en el sandbox no se puede
-  reemplazar ni renombrar un archivo existente, y nunca sobrescribas un original).
-- No uses `open`, `qlmanage` ni `osascript`: están bloqueados en el sandbox.
-- Cita la fuente (archivo y página) de todo dato que extraigas de un PDF.
+### B. Crear un PDF
+1. Escribe el contenido en JSON (o Markdown simple) y ejecuta:
+   `PY scripts/build_pdf.py contenido.json -o informe.pdf` (añade `--portada`, `--indice`, `--autor "Ana"`, `--pie "Confidencial"`).
+2. JSON mínimo:
+```json
+{"titulo":"Informe de ventas","subtitulo":"Tercer trimestre","autor":"Equipo","portada":true,"indice":true,
+ "bloques":[
+  {"tipo":"titulo","nivel":1,"texto":"Resumen"},
+  {"tipo":"parrafo","texto":"Las ventas subieron **12,5%**."},
+  {"tipo":"lista","ordenada":false,"items":["Uno","Dos"]},
+  {"tipo":"tabla","encabezado":["Región","Ventas"],"filas":[["Norte","1.234.567"],["Sur","987.654"]]},
+  {"tipo":"imagen","ruta":"grafico.png","ancho_cm":14,"pie":"Figura 1"},
+  {"tipo":"salto"}]}
+```
+   Markdown: `# Título` (del documento), `##`/`###` secciones, `-` listas, tablas con `|`, `![pie](img.png)`, `---` salto de página.
+3. Ya incluye: encabezado, pie con «Página X de N», cifras alineadas a la derecha, encabezado de tabla repetido, fuentes
+   incorporadas, fecha «27 de septiembre de 2026». Escribe las cifras ya formateadas es-CL (`1.234,5`).
+   `"pagina":"carta"` cambia de A4 a Carta.
+
+### C. Unir, dividir, rotar, reordenar, eliminar
+```
+PY scripts/merge_split_pdf.py unir a.pdf b.pdf -o junto.pdf
+PY scripts/merge_split_pdf.py extraer a.pdf --paginas 2-4 -o parte.pdf
+PY scripts/merge_split_pdf.py rotar a.pdf --paginas 1,3 --grados 90 -o rotado.pdf
+PY scripts/merge_split_pdf.py reordenar a.pdf --orden 3,1,2 -o orden.pdf     # nombra TODAS las páginas
+PY scripts/merge_split_pdf.py eliminar a.pdf --paginas 2 -o sin2.pdf
+PY scripts/merge_split_pdf.py dividir a.pdf --outdir partes                  # una página por archivo
+```
+Rangos: `1-3,5,8-` (1 = primera página).
+
+### D. Formularios (AcroForm)
+```
+PY scripts/fill_form_pdf.py listar ficha.pdf            # nombres de campo, tipo y valor
+PY scripts/fill_form_pdf.py rellenar ficha.pdf --campo nombre="Ana Pérez" --campo rut=12.345.678-5 -o ficha-v2.pdf
+PY scripts/fill_form_pdf.py rellenar ficha.pdf --datos datos.json --aplanar -o ficha-final.pdf
+```
+Usa los nombres exactos que muestra `listar`. Casillas: pasa el valor que figure en sus opciones (p. ej. `/Yes`, `Sí`).
+`--aplanar` deja el texto fijo (ya no editable). Si no hay campos, el script avisa (código 2): no se puede rellenar así.
+
+### E. Estampar
+`PY scripts/stamp_pdf.py in.pdf -o out.pdf --marca BORRADOR --numerar --titulo "Informe" --autor "Ana"`
+(cualquier combinación; al menos una acción).
+
+### Verificar (obligatorio antes de entregar)
+`PY scripts/check_pdf.py salida.pdf --render --outdir ./.lazunox/trabajo/render`
+Imprime páginas, tamaño, texto extraíble, páginas en blanco y rutas de los PNG (usa `_shared/render.py`).
+**Mira al menos las primeras páginas PNG**: títulos cortados, tablas desbordadas, imágenes deformadas. Corrige y regenera.
+Resultado esperado: `RESULTADO: correcto`. Si dice «revisar avisos», explica cada aviso o corrígelo.
+
+### Entregar
+Resume qué hiciste, nombre del archivo y páginas. Lo no resuelto va en **«Para revisar»**.
+
+## Limitaciones (dilas siempre que apliquen)
+- **PDF escaneado: sin OCR.** No se puede extraer su texto; no inventes. Pide versión con texto.
+- **No se puede modificar el texto de un PDF ya hecho** (cambiar una frase, corregir una cifra). Ofrece **regenerarlo**
+  (con `build_pdf.py` a partir del contenido extraído, corregido) o editar la fuente original (Word/Excel) y exportarlo de nuevo.
+  El diseño original no se reproduce idéntico al regenerar: avísalo.
+- **PDFs con contraseña:** hay que pedir la clave al usuario y pasarla con `--clave`. No se eliminan protecciones ni se adivinan claves.
+- Extracción de PDFs con varias columnas o maquetación compleja: el orden de lectura puede mezclarse; revisa el resultado.
+- Tablas sin líneas ni alineación clara pueden no detectarse o salir partidas.
+- Formularios XFA (dinámicos) no son compatibles; solo AcroForm.
+- Fuentes del PDF generado: las base de PDF (Helvetica); cubren español/Latin-1, no alfabetos no latinos ni emojis.
+- Marca de agua y numeración se dibujan encima del contenido; no se pueden «quitar» después.

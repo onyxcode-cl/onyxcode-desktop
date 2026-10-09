@@ -1,0 +1,17 @@
+[
+  {
+    "id": "docx-crear-informe",
+    "prompt": "Crea un informe en Word (informe-ventas.docx) de 2 páginas sobre las ventas del primer semestre 2026 de una empresa ficticia: título, subtítulo, resumen ejecutivo, una lista con 3 hallazgos y una tabla de ventas por región con fila de total. Cifras en formato chileno.",
+    "check": "El .docx abre, usa estilos Title y Heading 1, contiene una tabla con encabezado oscuro, cifras alineadas a la derecha con separador de miles con punto, fila de total en negrita y check_docx.py no reporta problemas."
+  },
+  {
+    "id": "docx-editar-copia",
+    "prompt": "Dado contrato.docx, cambia todas las apariciones de «2025» por «2026», borra el párrafo que dice «BORRADOR» y añade tras la cláusula «Vigencia» un párrafo nuevo con la cláusula de renovación. No modifiques el original.",
+    "check": "Existe una copia nueva (-v2/-revisado) con los cambios, el original queda intacto, el formato de los tramos reemplazados (negrita/cursiva) se conserva y no queda «2025» ni «BORRADOR»."
+  },
+  {
+    "id": "docx-revisar-comentarios",
+    "prompt": "Revisa el documento propuesta.docx: añade al menos 3 comentarios de Word sobre frases ambiguas o cifras sin respaldo, guardando una copia nueva, y dime en un resumen cuáles comentaste.",
+    "check": "La copia contiene >= 3 comentarios (comments_docx.py listar los muestra), anclados a texto real del documento; el contenido y el formato originales no cambian."
+  }
+]

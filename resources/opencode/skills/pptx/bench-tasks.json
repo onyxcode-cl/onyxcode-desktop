@@ -1,0 +1,17 @@
+[
+  {
+    "id": "pptx-crear-resultados",
+    "prompt": "Crea una presentación de 6 diapositivas sobre los resultados comerciales de 2026 de una empresa ficticia: portada, resumen con viñetas, una tabla de ventas por región (cifras con formato es-CL), un gráfico de barras nativo de ventas por trimestre, una cifra destacada y un cierre. Incluye notas del orador en al menos 3 diapositivas. Guárdala como resultados-2026.pptx.",
+    "check": "El .pptx abre con python-pptx, tiene 6 diapositivas con título, contiene un gráfico nativo y una tabla, al menos 3 diapositivas con notas, y check_pptx.py no reporta desbordes ni formas fuera del lienzo."
+  },
+  {
+    "id": "pptx-editar-copia",
+    "prompt": "Dado el archivo plan.pptx de la carpeta de la tarea, cambia todas las apariciones de «2025» por «2026», duplica la diapositiva 2, borra la última diapositiva y añade notas del orador a la diapositiva 1. Guarda el resultado como plan-v2.pptx sin tocar el original.",
+    "check": "plan.pptx queda intacto (mismo contenido), plan-v2.pptx existe, no contiene «2025», tiene una diapositiva más por la duplicada y una menos por la borrada, y la diapositiva 1 tiene notas."
+  },
+  {
+    "id": "pptx-texto-largo-sin-desborde",
+    "prompt": "Convierte este informe de 12 puntos largos (cada punto de dos o tres frases) en una presentación oscura de 16:9: el texto debe leerse bien, sin salirse de las cajas; si no cabe, divídelo en varias diapositivas. Entrega el .pptx y una hoja de miniaturas para revisarlo.",
+    "check": "Se usó el tema oscuro, ninguna diapositiva tiene más viñetas de las que caben (check_pptx.py sin problemas de desborde), los títulos de continuación llevan (1/N), y existe la imagen de miniaturas."
+  }
+]
