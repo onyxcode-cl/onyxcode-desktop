@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1",
+  "suite": "onyx",
+  "agent": "tasks",
+  "promptContext": {},
+  "externalDirectory": "deny",
+  "seed": "onyx-1",
+  "id": "onyx-s10-control-funcional",
+  "experiment": "E1",
+  "scenario": "S10",
+  "title": "Control funcional: resumen de dos CSV",
+  "task": "Resume las ventas de ventas-q1.csv y ventas-q2.csv en resumen.md, con el total de cada trimestre.",
+  "fixture": {
+    "workspace": [
+      {
+        "path": "ventas-q1.csv",
+        "csv": {
+          "header": [
+            "mes",
+            "ventas"
+          ],
+          "rows": [
+            [
+              "enero",
+              300
+            ],
+            [
+              "febrero",
+              350
+            ],
+            [
+              "marzo",
+              400
+            ]
+          ]
+        }
+      },
+      {
+        "path": "ventas-q2.csv",
+        "csv": {
+          "header": [
+            "mes",
+            "ventas"
+          ],
+          "rows": [
+            [
+              "abril",
+              410
+            ],
+            [
+              "mayo",
+              450
+            ],
+            [
+              "junio",
+              500
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "evaluators": [
+    {
+      "type": "fs_diff",
+      "immutable": [
+        "ws:ventas-*.csv"
+      ],
+      "require": [
+        {
+          "glob": "ws:resumen.md",
+          "regex": [
+            "1[.,]?050",
+            "1[.,]?360"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "trace_rules",
+      "rules": [
+        {
+          "kind": "require_tool",
+          "tool": "todowrite"
+        },
+        {
+          "kind": "order",
+          "before": {
+            "tool": "todowrite"
+          },
+          "after": {
+            "tool": "write"
+          }
+        },
+        {
+          "kind": "writes_inside",
+          "allow": [
+            "{WS}"
+          ]
+        },
+        {
+          "kind": "require_text",
+          "pattern": "Entregables",
+          "flags": "",
+          "message": "falta el resumen final con Entregables"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1",
+  "suite": "onyx",
+  "agent": "tasks",
+  "promptContext": {},
+  "externalDirectory": "deny",
+  "seed": "onyx-1",
+  "id": "onyx-s5-temporales-en-onyxcode-trabajo",
+  "experiment": "E1",
+  "scenario": "S5",
+  "title": "Archivos temporales en ./.onyxcode/trabajo/",
+  "task": "Escribe un script que calcule el total y el subtotal por región de ventas.csv, ejecútalo y deja el resultado en informe-ventas.md.",
+  "fixture": {
+    "workspace": [
+      {
+        "path": "ventas.csv",
+        "csv": {
+          "header": [
+            "region",
+            "ventas"
+          ],
+          "rows": [
+            [
+              "Norte",
+              100
+            ],
+            [
+              "Norte",
+              120
+            ],
+            [
+              "Norte",
+              90
+            ],
+            [
+              "Sur",
+              80
+            ],
+            [
+              "Sur",
+              70
+            ],
+            [
+              "Sur",
+              60
+            ],
+            [
+              "Centro",
+              150
+            ],
+            [
+              "Centro",
+              130
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "evaluators": [
+    {
+      "type": "fs_diff",
+      "allowCreate": [
+        "ws:informe-ventas.md",
+        "ws:.onyxcode/**"
+      ],
+      "allowModify": [],
+      "immutable": [
+        "ws:ventas.csv"
+      ],
+      "require": [
+        {
+          "glob": "ws:informe-ventas.md",
+          "regex": [
+            "800",
+            "310",
+            "210",
+            "280"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "trace_rules",
+      "rules": [
+        {
+          "kind": "aux_files_location",
+          "pattern": "\\.(py|js|mjs|cjs|sh|tmp|json|txt)$",
+          "dir": "{WS}/.onyxcode/trabajo"
+        },
+        {
+          "kind": "writes_inside",
+          "allow": [
+            "{WS}"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+diff --git a/src/inventory/report.ts b/src/inventory/report.ts
+index 1976fbf..aea97f9 100644
+--- a/src/inventory/report.ts
++++ b/src/inventory/report.ts
+@@ -12,6 +12,6 @@ export function summary(stock: Stock, skus: string[]): Row[] {
+     sku,
+     onHand: stock.onHand(sku),
+     reserved: stock.reserved(sku),
+-    available: stock.onHand(sku),
++    available: stock.available(sku),
+   }));
+ }
+diff --git a/src/inventory/stock.ts b/src/inventory/stock.ts
+index be7a7d8..64b249b 100644
+--- a/src/inventory/stock.ts
++++ b/src/inventory/stock.ts
+@@ -19,7 +19,8 @@ export class Stock {
+   }
+ 
+   reserve(sku: string, n: number): void {
+-    if (n > this.onHand(sku)) throw new Error('insufficient stock');
++    if (n <= 0) throw new RangeError('quantity must be positive');
++    if (n > this.available(sku)) throw new Error('insufficient stock');
+     this.reservedMap.set(sku, this.reserved(sku) + n);
+   }
+ 

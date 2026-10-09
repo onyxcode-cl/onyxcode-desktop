@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1",
+  "id": "fake-variant-a",
+  "name": "Fake variante A (simulado: más acierto, menos tokens)",
+  "runner": "fake",
+  "provider": null,
+  "model": "fake-model",
+  "skills": [{ "name": "skill-simulado", "version": "v1", "path": null }],
+  "subagents": [],
+  "prompts": [],
+  "settings": {
+    "solveRate": 0.85,
+    "script": {
+      "seed": 1,
+      "jitter": 0.15,
+      "events": [
+        { "type": "message", "name": "plan", "text": "leo solo lo relevante", "delayMs": 20 },
+        { "type": "tool_call", "name": "read", "read": "README.md", "delayMs": 20 },
+        { "type": "tool_call", "name": "edit", "delayMs": 20 },
+        { "type": "message", "name": "fin", "delayMs": 20 }
+      ],
+      "usage": { "input": 9000, "output": 1500, "cached": 5000, "peakContext": 10000 }
+    }
+  },
+  "tags": ["candidata", "simulado"]
+}

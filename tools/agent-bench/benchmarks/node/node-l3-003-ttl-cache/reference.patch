@@ -1,0 +1,75 @@
+diff --git a/src/cache.ts b/src/cache.ts
+new file mode 100644
+index 0000000..8de0b46
+--- /dev/null
++++ b/src/cache.ts
+@@ -0,0 +1,31 @@
++import type { Clock } from './clock.ts';
++
++export class TtlCache<V> {
++  private store = new Map<string, { value: V; at: number }>();
++
++  private ttlMs: number;
++  private clock: Clock;
++
++  constructor(ttlMs: number, clock: Clock) {
++    this.ttlMs = ttlMs;
++    this.clock = clock;
++  }
++
++  get(key: string): V | undefined {
++    const e = this.store.get(key);
++    if (!e) return undefined;
++    if (this.clock.now() - e.at >= this.ttlMs) {
++      this.store.delete(key);
++      return undefined;
++    }
++    return e.value;
++  }
++
++  set(key: string, value: V): void {
++    this.store.set(key, { value, at: this.clock.now() });
++  }
++
++  delete(key: string): void {
++    this.store.delete(key);
++  }
++}
+diff --git a/src/userService.ts b/src/userService.ts
+index 99af0fc..57dfb92 100644
+--- a/src/userService.ts
++++ b/src/userService.ts
+@@ -1,16 +1,32 @@
++import { TtlCache } from './cache.ts';
++import { systemClock, type Clock } from './clock.ts';
+ import { NotFoundError } from './errors.ts';
+ import type { User, UserRepo } from './userRepo.ts';
+ 
++export interface UserServiceOptions {
++  ttlMs: number;
++  clock?: Clock;
++}
++
+ export class UserService {
++  private cache?: TtlCache<User>;
+   private repo: UserRepo;
+ 
+-  constructor(repo: UserRepo) {
++  constructor(repo: UserRepo, opts?: UserServiceOptions) {
+     this.repo = repo;
++    if (opts) this.cache = new TtlCache<User>(opts.ttlMs, opts.clock ?? systemClock);
+   }
+ 
+   async get(id: string): Promise<User> {
++    const hit = this.cache?.get(id);
++    if (hit) return hit;
+     const u = await this.repo.find(id);
+     if (!u) throw new NotFoundError(id);
++    this.cache?.set(id, u);
+     return u;
+   }
++
++  invalidate(id: string): void {
++    this.cache?.delete(id);
++  }
+ }

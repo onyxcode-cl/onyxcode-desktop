@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1",
+  "id": "opencode-build-baseline",
+  "name": "OpenCode agente build, sin skills (PLANTILLA: fija provider y model antes de usar)",
+  "runner": "opencode",
+  "provider": null,
+  "model": null,
+  "skills": [],
+  "subagents": [],
+  "prompts": [],
+  "settings": { "steps": 60 },
+  "tags": ["plantilla", "opencode", "baseline"]
+}

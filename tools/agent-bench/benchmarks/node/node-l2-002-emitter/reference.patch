@@ -1,0 +1,40 @@
+diff --git a/src/emitter.ts b/src/emitter.ts
+index 2b95a65..0e0889a 100644
+--- a/src/emitter.ts
++++ b/src/emitter.ts
+@@ -14,19 +14,20 @@ export class Emitter {
+     const list = this.handlers.get(evt);
+     if (!list) return this;
+     const i = list.indexOf(h);
+-    if (i >= 0) list.splice(i);
++    if (i >= 0) list.splice(i, 1);
+     return this;
+   }
+ 
+   once(evt: string, h: Handler): this {
+     const wrapper: Handler = (...args) => {
++      this.off(evt, wrapper);
+       h(...args);
+     };
+     return this.on(evt, wrapper);
+   }
+ 
+   emit(evt: string, ...args: unknown[]): boolean {
+-    const list = this.handlers.get(evt) ?? [];
++    const list = [...(this.handlers.get(evt) ?? [])];
+     for (const h of list) h(...args);
+     return list.length > 0;
+   }
+diff --git a/src/index.ts b/src/index.ts
+index 3620532..1fa751e 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1 +1,7 @@
+-export { Emitter } from './emitter.ts';
++import { Emitter } from './emitter.ts';
++
++export { Emitter };
++
++export function createEmitter(): Emitter {
++  return new Emitter();
++}

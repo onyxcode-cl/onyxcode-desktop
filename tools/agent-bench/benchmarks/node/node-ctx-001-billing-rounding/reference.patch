@@ -1,0 +1,30 @@
+diff --git a/src/billing/invoice.ts b/src/billing/invoice.ts
+index 1ad489c..79b3251 100644
+--- a/src/billing/invoice.ts
++++ b/src/billing/invoice.ts
+@@ -6,10 +6,14 @@ export interface InvoiceLine {
+   taxPct: number;
+ }
+ 
++function raw(l: InvoiceLine): number {
++  return l.unitPrice * l.qty * (1 + l.taxPct / 100);
++}
++
+ export function lineTotal(l: InvoiceLine): number {
+-  return roundCents(l.unitPrice * l.qty * (1 + l.taxPct / 100));
++  return roundCents(raw(l));
+ }
+ 
+ export function invoiceTotal(lines: InvoiceLine[]): number {
+-  return lines.reduce((s, l) => s + lineTotal(l), 0);
++  return roundCents(lines.reduce((s, l) => s + raw(l), 0));
+ }
+diff --git a/src/billing/rounding.ts b/src/billing/rounding.ts
+index 8a86df4..6196ad6 100644
+--- a/src/billing/rounding.ts
++++ b/src/billing/rounding.ts
+@@ -1,3 +1,3 @@
+ export function roundCents(x: number): number {
+-  return Math.trunc(x * 100) / 100;
++  return Math.round(x * 100) / 100;
+ }

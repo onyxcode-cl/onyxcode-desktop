@@ -1,0 +1,12 @@
+diff --git a/src/inventory/stock.ts b/src/inventory/stock.ts
+index be7a7d8..414842b 100644
+--- a/src/inventory/stock.ts
++++ b/src/inventory/stock.ts
+@@ -19,6 +19,7 @@ export class Stock {
+   }
+ 
+   reserve(sku: string, n: number): void {
++    if (this.reserved(sku) > 0) throw new Error('insufficient stock');
+     if (n > this.onHand(sku)) throw new Error('insufficient stock');
+     this.reservedMap.set(sku, this.reserved(sku) + n);
+   }

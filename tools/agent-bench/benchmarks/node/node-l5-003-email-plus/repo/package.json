@@ -1,0 +1,9 @@
+{
+  "name": "fx-node-l5-003-email-plus",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  }
+}

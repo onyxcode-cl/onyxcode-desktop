@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1",
+  "id": "demo-fake",
+  "description": "Demostración de punta a punta con el runner simulado: 2 configuraciones x 6 casos x 3 repeticiones. Sin modelos ni red.",
+  "scenarios": [
+    "node-l1-001-paginate",
+    "node-l1-002-leap-year",
+    "node-l1-003-slugify",
+    "node-l2-001-cart-total",
+    "node-l2-002-emitter",
+    "node-l2-003-csv"
+  ],
+  "configurations": ["fake-baseline", "fake-variant-a"],
+  "repetitions": 3,
+  "seed": 7,
+  "design": "interleaved",
+  "limits": { "timeoutSec": 120, "maxSteps": 60, "maxTokens": 2000000, "inactivitySec": 30 },
+  "budget": { "maxCost": 0, "maxRuns": 40, "maxWallSec": 4500 },
+  "concurrency": 1,
+  "alpha": 0.05
+}

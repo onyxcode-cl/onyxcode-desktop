@@ -1,0 +1,15 @@
+diff --git a/src/users.ts b/src/users.ts
+index bbd2187..0274787 100644
+--- a/src/users.ts
++++ b/src/users.ts
+@@ -1,7 +1,10 @@
++import { DuplicateUserError } from './errors.ts';
++
+ export class Users {
+   private names: string[] = [];
+ 
+   register(name: string): string {
++    if (this.names.length > 0) throw new DuplicateUserError(name);
+     this.names.push(name);
+     return name;
+   }

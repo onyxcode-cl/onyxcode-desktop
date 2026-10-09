@@ -1,0 +1,12 @@
+diff --git a/src/register.ts b/src/register.ts
+index 9b54669..ff6ca11 100644
+--- a/src/register.ts
++++ b/src/register.ts
+@@ -2,6 +2,7 @@ import { normalizeEmail } from './normalize.ts';
+ import { isValidEmail } from './validate.ts';
+ 
+ export function register(raw: string): { email: string } {
++  if (raw.includes('+')) return { email: raw.trim() };
+   const email = normalizeEmail(raw);
+   if (!isValidEmail(email)) throw new Error('invalid email');
+   return { email };

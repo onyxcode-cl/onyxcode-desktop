@@ -1,0 +1,7 @@
+[
+  {"info":{"role":"user"},"parts":[{"type":"text","text":"x"}]},
+  {"info":{"role":"assistant","tokens":{"input":10,"output":4,"reasoning":1,"cache":{"read":5,"write":0}}},"parts":[
+    {"type":"tool","tool":"edit","state":{"input":{"filePath":"a.ts"},"time":{"start":1,"end":3}}},
+    {"type":"tool","tool":"grep","state":{"input":{"path":"src"}}}
+  ]}
+]

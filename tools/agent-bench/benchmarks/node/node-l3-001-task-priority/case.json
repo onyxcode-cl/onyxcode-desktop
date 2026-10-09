@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1",
+  "id": "node-l3-001-task-priority",
+  "category": "repository",
+  "difficulty": "L3",
+  "language": "typescript",
+  "title": "Agregar prioridad a las tareas en todas las capas",
+  "seed": 20260101,
+  "task": "Agrega prioridad a las tareas: Priority = \"low\" | \"normal\" | \"high\". TaskService.add(title, priority = \"normal\") la guarda (prioridad invalida lanza Error(\"invalid priority\")); TaskService.list() ordena high > normal > low y, a igual prioridad, por id; formatTask antepone \"! \" al titulo de las tareas high. Actualiza el modelo, el repositorio, el servicio y el formateador.",
+  "constraints": [
+    "No modificar tests existentes.",
+    "Mantener el comportamiento actual para tareas sin prioridad."
+  ],
+  "files": {
+    "allowed": [
+      "src/**",
+      "docs/**",
+      "README.md"
+    ],
+    "forbidden": [
+      "test/**",
+      "test-hidden/**",
+      "package.json",
+      "legacy/**"
+    ]
+  },
+  "relevantFiles": [
+    "src/model.ts",
+    "src/repo.ts",
+    "src/service.ts",
+    "src/format.ts"
+  ],
+  "repo": "repo",
+  "hiddenDir": "hidden",
+  "hiddenInject": "test-hidden",
+  "referencePatch": "reference.patch",
+  "cheatPatch": "cheat.patch",
+  "cheatKind": "edit-tests",
+  "evaluators": [
+    {
+      "type": "tests-visible",
+      "command": [
+        "node",
+        "--test",
+        "test/**/*.test.ts"
+      ],
+      "env": {},
+      "timeoutSec": 60
+    },
+    {
+      "type": "tests-hidden",
+      "command": [
+        "node",
+        "--test",
+        "test-hidden/**/*.test.ts"
+      ],
+      "env": {},
+      "timeoutSec": 60
+    },
+    {
+      "type": "restrictions"
+    },
+    {
+      "type": "anti-cheat",
+      "protectedPaths": [
+        "test/**",
+        "test-hidden/**",
+        "package.json",
+        "legacy/**"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+diff --git a/src/search.ts b/src/search.ts
+index d364d15..ed91dee 100644
+--- a/src/search.ts
++++ b/src/search.ts
+@@ -4,6 +4,21 @@ export interface Item {
+   tags: string[];
+ }
+ 
++const norm = (s: string): string =>
++  s
++    .normalize('NFD')
++    .replace(/[̀-ͯ]/g, '')
++    .toLowerCase()
++    .trim();
++
+ export function search(items: Item[], q: string): Item[] {
+-  return items.filter((i) => i.name.includes(q));
++  const n = norm(q);
++  if (!n) return [];
++  const byName: Item[] = [];
++  const byTag: Item[] = [];
++  for (const it of items) {
++    if (norm(it.name).includes(n)) byName.push(it);
++    else if (it.tags.some((t) => norm(t).includes(n))) byTag.push(it);
++  }
++  return [...byName, ...byTag];
+ }

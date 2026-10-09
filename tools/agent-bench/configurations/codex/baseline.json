@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1",
+  "id": "codex-baseline",
+  "name": "Codex base (PLANTILLA: fija model antes de usar; requiere CODEX_API_KEY solo en el entorno)",
+  "runner": "codex",
+  "provider": null,
+  "model": null,
+  "skills": [],
+  "subagents": [],
+  "prompts": [],
+  "settings": { "sandbox": "workspace-write" },
+  "tags": ["plantilla", "codex", "baseline"]
+}
