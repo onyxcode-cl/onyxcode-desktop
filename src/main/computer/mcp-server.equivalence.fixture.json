@@ -1105,6 +1105,7 @@
         "parts": ["text"]
       },
       "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"open-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"activate\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
@@ -1146,7 +1147,10 @@
         "text": "Abierta Notes en segundo plano (sin activarla ni traerla al frente).",
         "parts": ["text"]
       },
-      "helper": ["{\"cmd\":\"open-app-bg\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"open-app-bg\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
       "actions": [
         "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"start\"}",
         "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
@@ -1223,6 +1227,7 @@
         "parts": ["text"]
       },
       "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"open-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"activate\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
@@ -1232,6 +1237,54 @@
         "{\"tool\":\"open_application\",\"text\":\"Notes\",\"phase\":\"end\",\"ok\":true}"
       ],
       "side": ["GET /control-mode?", "GET /plan-status?"]
+    }
+  ],
+  "captura-app-objetivo": [
+    {
+      "step": {
+        "tool": "open_application",
+        "args": {
+          "name": "Discord",
+          "screenshot": false
+        }
+      },
+      "res": {
+        "isError": false,
+        "text": "Abierta Discord. App en primer plano: Finder.",
+        "parts": ["text"]
+      },
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Discord\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"open-app\",\"args\":[\"Discord\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"activate\",\"args\":[\"Discord\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"open_application\",\"text\":\"Discord\",\"phase\":\"start\"}",
+        "{\"tool\":\"open_application\",\"text\":\"Discord\",\"phase\":\"end\",\"ok\":true}"
+      ],
+      "side": ["GET /control-mode?", "GET /plan-status?"]
+    },
+    {
+      "step": {
+        "tool": "screenshot"
+      },
+      "res": {
+        "isError": false,
+        "text": "Captura de la pantalla con la app en primer plano (no la principal): 1366x853 px (1 px = 1.4056 puntos). App en primer plano: Finder. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
+        "parts": ["image", "text"]
+      },
+      "helper": [
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"windows-of\",\"args\":[\"com.hnc.Discord\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
+      "actions": [
+        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":false}",
+        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":false}"
+      ],
+      "side": ["GET /plan-status?"]
     }
   ],
   "accesibilidad-app": [

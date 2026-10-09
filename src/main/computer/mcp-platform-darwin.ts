@@ -317,8 +317,11 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
       let sckOk = false
       if (exclude.length) {
         try {
-          const sckArgs =
-            notMain && screen!.displayID !== undefined ? [raw, exclude.join(','), String(screen!.displayID)] : [raw, exclude.join(',')]
+          // Se pasa SIEMPRE el id de la pantalla elegida, también si es la principal: sin id el helper captura
+          // `SCShareableContent.displays.first`, que no tiene por qué ser la principal (con un monitor vertical a
+          // la izquierda, SCK devolvía ESE y la imagen no mostraba ninguna ventana: solo el fondo de pantalla, con
+          // la escala de la principal — coordenadas erróneas incluidas).
+          const sckArgs = screen?.displayID !== undefined ? [raw, exclude.join(','), String(screen.displayID)] : [raw, exclude.join(',')]
           await helper('screenshot-sck', ...sckArgs)
           sckOk = true
         } catch (err) {

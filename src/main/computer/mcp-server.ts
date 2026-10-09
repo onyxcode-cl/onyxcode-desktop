@@ -387,7 +387,31 @@ async function namedApp(nameRaw: unknown): Promise<AppRef> {
   if (!ref.found) {
     throw new Error(backend.text.appNotFound(name))
   }
-  return { bundleId: ref.bundleId, name: ref.name }
+  const app = { bundleId: ref.bundleId, name: ref.name }
+  noteTarget(app)
+  return app
+}
+
+/**
+ * Última app que el modelo nombró como objetivo (`open_application`, `app_*`, `find_element`…). La captura
+ * (`screenForCapture`) la prefiere sobre la app en primer plano: si Discord vive en otro monitor pero lo que
+ * está al frente en ese instante es Finder o Spotlight, el modelo debe ver el monitor de Discord. Caduca para
+ * no arrastrar una app vieja a otra tarea.
+ */
+let targetApp: { ref: AppRef; at: number } | null = null
+const TARGET_TTL_MS = 5 * 60_000
+
+function noteTarget(ref: AppRef | null | undefined): void {
+  if (ref?.bundleId) targetApp = { ref, at: Date.now() }
+}
+
+function currentTarget(): AppRef | null {
+  if (!targetApp) return null
+  if (Date.now() - targetApp.at > TARGET_TTL_MS) {
+    targetApp = null
+    return null
+  }
+  return targetApp.ref
 }
 
 interface ActionEvent {
@@ -512,21 +536,32 @@ async function getAllScreens(): Promise<Screen[]> {
 async function screenForCapture(): Promise<{ screen: Screen; front: AppRef | null }> {
   const main = await getMainScreen()
   const front = await appFrontmost().catch(() => null)
-  if (!front?.bundleId) return { screen: main, front }
+  // Primero la app objetivo (si la hay y tiene ventana), luego la que está al frente, y si no, la principal.
+  const target = currentTarget()
+  const candidates: AppRef[] = []
+  if (target?.bundleId) candidates.push(target)
+  if (front?.bundleId && front.bundleId !== target?.bundleId) candidates.push(front)
+  for (const app of candidates) {
+    const screen = await screenOfApp(app.bundleId)
+    if (screen) return { screen, front }
+  }
+  return { screen: main, front }
+}
+
+/** Pantalla que cubre más superficie de la primera ventana de la app, o `null` si no se puede saber. */
+async function screenOfApp(bundleId: string): Promise<Screen | null> {
   try {
-    const wins = JSON.parse(await helper('windows-of', front.bundleId)) as Array<{
+    const wins = JSON.parse(await helper('windows-of', bundleId)) as Array<{
       x: number
       y: number
       width: number
       height: number
     }>
     const w = wins[0]
-    if (!w) return { screen: main, front }
-    // F8-B155: antes, qué pantalla "tiene" la ventana se decidía mirando si su CENTRO caía dentro de
-    // los límites de cada pantalla — una ventana cerca del borde entre dos monitores (o más ancha que
-    // una pantalla) podía tener el centro del lado "equivocado" aunque la mayor parte de su contenido
-    // esté en la otra. El criterio estándar (Hammerspoon/`hs.window`, mismo problema) es el área de
-    // solapamiento: la pantalla que más superficie real de la ventana cubre, no un único punto.
+    if (!w) return null
+    // F8-B155: la pantalla que más superficie real de la ventana cubre (no un único punto): una ventana
+    // cerca del borde entre dos monitores, o más ancha que una pantalla, podía tener el centro del lado
+    // "equivocado". Es el criterio estándar (Hammerspoon/`hs.window`).
     const screens = await getAllScreens()
     let best: Screen | null = null
     let bestArea = 0
@@ -541,9 +576,9 @@ async function screenForCapture(): Promise<{ screen: Screen; front: AppRef | nul
         best = s
       }
     }
-    return { screen: best ?? main, front }
+    return best
   } catch {
-    return { screen: main, front }
+    return null
   }
 }
 
@@ -1251,6 +1286,12 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       const name = String(a.name ?? '').trim()
       if (!name) throw new Error('name vacío')
+      // Best-effort: que la captura siguiente muestre el monitor de esta app, no el de lo que esté al frente.
+      await resolveApp(name)
+        .then((r) => {
+          if (r.found) noteTarget({ bundleId: r.bundleId, name: r.name })
+        })
+        .catch(() => undefined)
       // Lote C: en segundo plano se abre SIN activar (no roba el foco ni mueve nada visible). F8-B154:
       // antes esto miraba SOLO `mode` (la preferencia global) e ignoraba `foreground` (el control real
       // de ESTA sesión, concedido por `request_full_control`) — mismo criterio que ya usa
@@ -1740,7 +1781,15 @@ const TOOLS: ToolDef[] = [
           'Sigue con app_find/app_press/app_set_value.'
         )
       }
-      const got = Object.values(decisions).some((d) => !!d && d !== 'deny')
+      // "Permitir" en la tarjeta de takeover responde SIN decisiones por app (`decisions: []`): main marca
+      // la sesión como foreground, pero `decisions` llega vacío. Fiarse solo de `decisions` le decía al
+      // modelo «no concedió» aunque el usuario hubiera aceptado, y el agente se rendía (sesiones reales de
+      // Discord). La fuente de verdad es el estado de la sesión en main.
+      const got =
+        Object.values(decisions).some((d) => !!d && d !== 'deny') ||
+        (await controlMode(session)
+          .then((m) => m.foreground)
+          .catch(() => false))
       return got
         ? `El usuario permitió tomar el control del ratón y el teclado para ${app.name}. Ya puedes usar left_click/type_text/key.`
         : 'El usuario no concedió el control: sigue con app_find/app_press/app_set_value.'

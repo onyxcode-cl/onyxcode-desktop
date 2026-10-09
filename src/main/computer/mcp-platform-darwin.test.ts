@@ -163,6 +163,23 @@ describe('macOS: capturas (comandos exactos)', () => {
     expect(calls[1]).toEqual({ cmd: '/h/cu-helper', args: ['screenshot-sck', '/s/r.png', 'com.b.Sin'] })
   })
 
+  it('pasa SIEMPRE el id de la pantalla elegida a screenshot-sck, también si es la principal', async () => {
+    // Sin id el helper captura `displays.first` de SCK, que con un monitor vertical a la izquierda no es la
+    // principal: la imagen salía sin ninguna ventana (solo el fondo) y con la escala de otra pantalla.
+    const running = JSON.stringify([{ bundleId: 'com.b.Sin', name: 'B' }])
+    const { backend, calls } = rig(
+      (cmd, args) => (cmd === '/usr/bin/sips' ? { stdout: DIMS } : args.includes('running-apps') ? { stdout: running } : {}),
+      {},
+      {}
+    )
+    await backend.captureScreen({
+      raw: '/s/r.png',
+      out: '/s/o.jpg',
+      screen: { width: 1920, height: 1080, scale: 1, x: 0, y: 0, main: true, displayID: 2 }
+    })
+    expect(calls[1]).toEqual({ cmd: '/h/cu-helper', args: ['screenshot-sck', '/s/r.png', 'com.b.Sin', '2'] })
+  })
+
   it('ScreenCaptureKit falla: screencapture + windows-of + mask-regions con los rectángulos en píxeles (× escala)', async () => {
     const { backend, calls, logs } = rig(
       (cmd, args) => {

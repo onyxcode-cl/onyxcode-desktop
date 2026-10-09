@@ -182,6 +182,27 @@ const SCENARIOS: Scenario[] = [
     steps: [{ tool: 'open_application', args: { name: 'Notes', screenshot: false } }]
   },
   {
+    // La captura sigue a la app OBJETIVO, no a la que esté al frente: Discord vive en el monitor de la izquierda
+    // mientras Finder (en el principal) tiene el foco; antes la captura mostraba Finder y el modelo nunca veía
+    // Discord (sesiones reales). Debe pedir `windows-of` de Discord y capturar ESA pantalla.
+    name: 'captura-app-objetivo',
+    side: { controlMode: { mode: 'full', foreground: true } },
+    steps: [{ tool: 'open_application', args: { name: 'Discord', screenshot: false } }, { tool: 'screenshot' }],
+    script: {
+      responses: {
+        screens: {
+          out: [
+            { width: 1440, height: 900, scale: 2, x: 0, y: 0, main: true },
+            { width: 1920, height: 1080, scale: 2, x: -1920, y: 0 }
+          ]
+        },
+        frontmost: { out: { name: 'Finder', bundleId: 'com.apple.finder', pid: 50 } },
+        'resolve-app': { out: { name: 'Discord', bundleId: 'com.hnc.Discord', found: true } },
+        'windows-of': { out: [{ x: -1500, y: 100, width: 800, height: 600 }] }
+      }
+    }
+  },
+  {
     name: 'accesibilidad-app',
     steps: [
       { tool: 'app_tree', args: { app: 'Notes', max_depth: 3, max_nodes: 50 } },
