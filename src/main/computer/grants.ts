@@ -19,6 +19,7 @@ import type { AppGrant, AppTier, GrantsSnapshot } from '@shared/ipc-tasks'
 import { APP_ID } from '@shared/brand'
 import { t } from '@shared/i18n'
 import { isWinBlocked, isWinExempt, winDefaultTier } from './policy/win-apps'
+import { isMacBlocked } from './policy/mac-apps'
 
 export type { AppGrant, AppTier, GrantsSnapshot }
 
@@ -103,16 +104,17 @@ export class ComputerGrantsStore {
 
   /**
    * `win32`: las claves son las de Windows (`policy/app-key.ts`) y rigen las listas de `policy/win-apps.ts` (bloqueadas = nunca
-   * concedibles, exentas, solo ver por defecto). Sin el segundo argumento (macOS) nada cambia.
+   * concedibles, exentas, solo ver por defecto). `darwin` (por defecto): bundle ids; solo la lista de bloqueadas de
+   * `policy/mac-apps.ts` (sin exentas ni niveles automáticos más allá de los de siempre).
    */
   constructor(
     private readonly file: string,
     private readonly os: 'darwin' | 'win32' = 'darwin'
   ) {}
 
-  /** Windows: app que nunca se puede conceder (ni por tarjeta ni desde Ajustes). En macOS, siempre false. */
+  /** App que nunca se puede conceder (ni por tarjeta ni desde Ajustes): listas de Windows o de macOS según la plataforma. */
   isBlocked(bundleId: string): boolean {
-    return this.os === 'win32' && isWinBlocked(bundleId)
+    return this.os === 'win32' ? isWinBlocked(bundleId) : isMacBlocked(bundleId)
   }
 
   private load(): void {
@@ -160,9 +162,9 @@ export class ComputerGrantsStore {
    * responda a una tarjeta `request_access` (o las conceda a mano en Ajustes).
    */
   resolve(bundleId: string, name: string): AppTier | null {
+    // Bloqueada gana a todo (también a una concesión antigua del archivo); luego las exentas del sistema.
+    if (this.isBlocked(bundleId)) return null
     if (this.os === 'win32') {
-      // Bloqueada gana a todo (también a una concesión antigua del archivo); luego las exentas del sistema.
-      if (isWinBlocked(bundleId)) return null
       if (isWinExempt(bundleId)) return 'full'
     } else if (isSystemExempt(bundleId)) return 'full'
     this.load()

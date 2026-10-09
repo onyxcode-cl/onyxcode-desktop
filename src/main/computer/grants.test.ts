@@ -65,3 +65,27 @@ describe('macOS: sin cambios', () => {
     expect(g.grant(consent, 'x', 'view').tier).toBe('view')
   })
 })
+
+describe('macOS: apps bloqueadas (policy/mac-apps.ts)', () => {
+  const pm = 'com.1password.1password'
+  it('gestor de contraseñas: nunca concedible, ni por tarjeta ni desde Ajustes, ni con un archivo antiguo', () => {
+    const g = new ComputerGrantsStore(join(dir, 'mb.json'))
+    expect(g.isBlocked(pm)).toBe(true)
+    expect(() => g.grant(pm, '1Password', 'full')).toThrow()
+    expect(g.resolve(pm, '1Password')).toBeNull()
+    expect(g.tierFor(pm)).toBeNull()
+    const file = join(dir, 'mb-old.json')
+    writeFileSync(file, JSON.stringify({ grants: { [pm]: { bundleId: pm, name: '1Password', tier: 'full', grantedAt: 1 } }, denied: [] }))
+    const old = new ComputerGrantsStore(file)
+    expect(old.resolve(pm, '1Password')).toBeNull()
+    expect(old.tierFor(pm)).toBeNull()
+  })
+
+  it('apps normales de macOS siguen concediéndose y no quedan bloqueadas', () => {
+    const g = new ComputerGrantsStore(join(dir, 'mn.json'))
+    expect(g.isBlocked('com.apple.finder')).toBe(false)
+    expect(g.isBlocked('com.apple.TextEdit')).toBe(false)
+    expect(g.grant('com.apple.TextEdit', 'TextEdit', 'click').tier).toBe('click')
+    expect(g.resolve('com.apple.finder', 'Finder')).toBeNull()
+  })
+})
