@@ -92,7 +92,6 @@ const LANG_LABELS: Record<string, string> = {
   yaml: 'YAML',
   yml: 'YAML',
   html: 'HTML',
-  slides: 'Presentación',
   xlsx: 'Excel',
   pptx: 'PowerPoint',
   xml: 'XML',
@@ -130,6 +129,7 @@ function languageOf(children: ReactNode): string | null {
   const id = rawLanguageOf(children)
   if (!id) return null
   if (id === 'plaintext' || id === 'text') return t('common.plainText')
+  if (id === 'slides') return t('chat.doc.slides')
   return LANG_LABELS[id] ?? id
 }
 
@@ -214,22 +214,27 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
           <>
             <ArtifactButton
               html={code}
-              title={guessTitle(code, 1, isSlides ? 'Presentación' : 'Vista previa')}
+              title={guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview'))}
               isSlides={isSlides}
               className="py-0.5 text-[11.5px]"
             />
             <DownloadPdfButton
               html={code}
-              title={guessTitle(code, 1, isSlides ? 'Presentación' : 'Vista previa')}
+              title={guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview'))}
               compact
               className="py-0.5 text-[11.5px]"
             />
             {isSlides && (
               <>
-                <PresentSlidesButton html={code} title={guessTitle(code, 1, 'Presentación')} compact className="py-0.5 text-[11.5px]" />
+                <PresentSlidesButton
+                  html={code}
+                  title={guessTitle(code, 1, t('chat.doc.slides'))}
+                  compact
+                  className="py-0.5 text-[11.5px]"
+                />
                 <DownloadSlidesPptxButton
                   html={code}
-                  title={guessTitle(code, 1, 'Presentación')}
+                  title={guessTitle(code, 1, t('chat.doc.slides'))}
                   compact
                   className="py-0.5 text-[11.5px]"
                 />

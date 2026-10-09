@@ -227,7 +227,11 @@ describe('addEntry', () => {
 
   it('el mismo texto pero con otro tipo SÍ se agrega (no es el mismo hecho)', () => {
     const entries: LearnedMemoryEntry[] = [{ id: 'aa', tipo: 'preferencia', texto: 'Usa Prettier', fecha: '2026-10-01' }]
-    const { entries: result, added } = addEntry(entries, { id: 'bb', tipo: 'convencion', texto: 'Usa Prettier', fecha: '2026-10-02' }, 'usuario')
+    const { entries: result, added } = addEntry(
+      entries,
+      { id: 'bb', tipo: 'convencion', texto: 'Usa Prettier', fecha: '2026-10-02' },
+      'usuario'
+    )
     expect(added).toBe(true)
     expect(result).toHaveLength(2)
   })

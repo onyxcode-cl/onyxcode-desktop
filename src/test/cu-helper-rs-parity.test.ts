@@ -18,7 +18,12 @@ const IMG = join(tmpdir(), `cu-parity-${process.pid}.jpg`)
 
 const rust = (...a: string[]) => spawnSync(exe, a, { encoding: 'utf8', input: '', timeout: 10_000 })
 const ref = (...a: string[]) =>
-  spawnSync(process.execPath, [fake, ...a], { encoding: 'utf8', input: '', timeout: 10_000, env: { ...process.env, FAKE_CU_PLATFORM: 'win32' } })
+  spawnSync(process.execPath, [fake, ...a], {
+    encoding: 'utf8',
+    input: '',
+    timeout: 10_000,
+    env: { ...process.env, FAKE_CU_PLATFORM: 'win32' }
+  })
 
 describe.skipIf(!existsSync(exe))('cu-helper (Rust nativo) frente al helper falso', () => {
   afterAll(() => rmSync(IMG, { force: true }))

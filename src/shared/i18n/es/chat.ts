@@ -1,6 +1,8 @@
 export const chat = {
   'chat.doc.title': 'Documento',
   'chat.doc.creating': 'Generando documento…',
+  'chat.doc.slides': 'Presentación',
+  'chat.doc.preview': 'Vista previa',
   'chat.doc.kindPdf': 'PDF',
   'chat.doc.kindXlsx': 'Excel',
   'chat.doc.kindPptx': 'PowerPoint',

@@ -4,6 +4,8 @@ import type { chat as es } from '../es/chat'
 export const chat = {
   'chat.doc.title': 'Document',
   'chat.doc.creating': 'Generating document…',
+  'chat.doc.slides': 'Presentation',
+  'chat.doc.preview': 'Preview',
   'chat.doc.kindPdf': 'PDF',
   'chat.doc.kindXlsx': 'Excel',
   'chat.doc.kindPptx': 'PowerPoint',

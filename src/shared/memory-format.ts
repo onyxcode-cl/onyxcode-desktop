@@ -111,12 +111,7 @@ export function serializeLearnedMemory(
 /** Agrega una entrada nueva (id y fecha de hoy ya puestos por quien llama) si no se llegó al tope. */
 /** Minúsculas, sin tildes, espacios colapsados: para no guardar dos veces el mismo hecho con otra mayúscula o espacio de más. */
 function normalize(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ')
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ')
 }
 
 /** Agrega una entrada nueva si no se llegó al tope Y no hay ya una con el mismo texto (mismo tipo, normalizado). */

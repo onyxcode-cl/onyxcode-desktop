@@ -529,7 +529,7 @@ export const tasks = {
   'tasks.learn.saveFailed': 'Couldn’t save the memory.',
   'tasks.learn.settingsToggle': 'Learn from Tasks and Code',
   'tasks.learn.settingsDesc':
-    "The agent can propose facts to remember (preferences, conventions, decisions) in Tasks and in Code. You always choose what to keep; nothing is ever saved on its own. In Code, for now, only global memory (applies to every project).",
+    'The agent can propose facts to remember (preferences, conventions, decisions) in Tasks and in Code. You always choose what to keep; nothing is ever saved on its own. In Code, for now, only global memory (applies to every project).',
   'tasks.learn.manageTitle': 'Learned memory for this project',
   'tasks.learn.manageEmpty': 'No approved learned memory yet for this project.',
   'tasks.learn.deleteEntry': 'Delete this note',
