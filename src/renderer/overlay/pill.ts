@@ -199,7 +199,9 @@ function renderRequest(req: AccessRequest): void {
     }
   }
   reqPlan.hidden = !req.plan?.length
-  reqNoApps.hidden = hasApps
+  // Sin apps: «este plan no controla ninguna app». Con apps y plan: aviso de que el clic/control total usa el ratón y teclado reales.
+  reqNoApps.textContent = hasApps ? t('ovl.req.mouseKeyboard') : t('ovl.req.noApps')
+  reqNoApps.hidden = hasApps && !req.plan
   reqUnresolved.textContent = req.unresolved?.length ? t('ovl.req.unresolved', { apps: req.unresolved.join(', ') }) : ''
   reqUnresolved.hidden = !req.unresolved?.length
   reqApps.innerHTML = ''

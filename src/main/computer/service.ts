@@ -559,6 +559,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       if (pending.plan && (approvePlan === true || approvedSomething)) {
         planApproved = true
         this.approvePlanFor(pending.sessionId)
+        // Una sola aprobación: si el usuario concedió «Ver y clic» o «Control total» a alguna app con el plan, ya aceptó
+        // que el agente actúe con el ratón y el teclado reales (la tarjeta lo dice). Antes hacía falta una SEGUNDA tarjeta
+        // («¿Tomar el control de la pantalla?») y el agente perdía 4-8 llamadas rebotando contra el modo segundo plano.
+        // La tarjeta de takeover sigue existiendo (apps añadidas luego, o planes sin apps que después piden control).
+        if (pending.kind === 'access' && pending.sessionId && Object.values(map).some((d) => d === 'click' || d === 'full')) {
+          this.foregroundSessions.add(pending.sessionId)
+          this.emit('foreground', { sessionId: pending.sessionId })
+        }
       }
       // Lote C: tarjeta "¿Tomar el control de la pantalla?" (`request_full_control`) aprobada:
       // la sesión pasa a controlar el ratón y el teclado en modo segundo plano hasta que termine

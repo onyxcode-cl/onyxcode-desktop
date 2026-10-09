@@ -222,6 +222,7 @@ export const mainErrors = {
   'ovl.pill.stepFailed': '{step} — failed',
   'ovl.req.close': 'Cancel (no permission changes)',
   'ovl.req.noApps': 'This plan doesn’t control any app: it will use the terminal, files or the web.',
+  'ovl.req.mouseKeyboard': 'With click or full-control access, the agent will use your real mouse and keyboard in those apps.',
   'ovl.req.denyAll': 'Deny all',
   'ovl.req.edit': 'Edit in {app}',
   'ovl.req.approveStart': 'Approve and start',

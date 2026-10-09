@@ -123,6 +123,7 @@ export const tasksComputer = {
   'tasksComputer.plan.noApps': 'Este plan no controla ninguna app: usará la terminal, archivos o la web.',
   'tasksComputer.plan.notFound': 'No encontré: {list}',
   'tasksComputer.plan.neverLowers': 'Aprobar nunca baja un nivel ya concedido; para bajarlo usa Ajustes.',
+  'tasksComputer.plan.mouseKeyboard': 'Con acceso de clic o de control total, el agente usará tu ratón y teclado reales en esas apps.',
   'tasksComputer.plan.feedbackLabel': 'Qué quieres que cambie del plan',
   'tasksComputer.plan.feedbackPlaceholder': 'p.ej. «No abras el navegador, solo necesito Discord»',
   'tasksComputer.plan.back': 'Volver',

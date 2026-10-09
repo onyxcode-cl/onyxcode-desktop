@@ -1019,6 +1019,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
             <p className="mt-2.5 text-xs text-muted">
               {t('tasksComputer.noTimeout')}
               {hasApps && ` ${t('tasksComputer.plan.neverLowers')}`}
+              {hasApps && ` ${t('tasksComputer.plan.mouseKeyboard')}`}
             </p>
             {editing ? (
               <div className="mt-3">
