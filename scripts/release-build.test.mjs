@@ -144,6 +144,7 @@ test('A2 el gancho autofirmado conserva su contrato (resign con 4 args) y los id
   assert.deepEqual(hook.idsFromBrandSource("export const AUTHOR_ALIAS = 'zz'"), {
     appId: 'cl.zz.lazunox',
     helperId: 'cl.zz.lazunox.cu-helper',
+    keysId: 'cl.zz.lazunox.cu-keys',
     disclaimId: 'cl.zz.lazunox.disclaim'
   })
 })

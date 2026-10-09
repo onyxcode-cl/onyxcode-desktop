@@ -966,7 +966,6 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"Hola\\nmundo ñ\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -1007,7 +1006,6 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"cmd+space\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -1032,7 +1030,6 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"cmd+shift+t return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -1487,12 +1484,10 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"hola\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2431,7 +2426,6 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"ok\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2475,7 +2469,6 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"key\",\"args\":[\"return\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2517,7 +2510,6 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"focused-secure\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"recent-input\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"type\",\"args\":[\"sin-expect\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [

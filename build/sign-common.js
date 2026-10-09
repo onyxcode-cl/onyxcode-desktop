@@ -9,7 +9,7 @@
  * imprimen. `APPLE_API_KEY` es la RUTA de un `.p8` (el workflow de release lo escribe en `$RUNNER_TEMP` y lo borra).
  */
 const { execFileSync } = require('node:child_process')
-const { readFileSync } = require('node:fs')
+const { existsSync, readFileSync } = require('node:fs')
 const { join } = require('node:path')
 
 const defaultRun = (cmd, args) => execFileSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] })
@@ -19,7 +19,7 @@ function idsFromBrandSource(src) {
   const alias = /export const AUTHOR_ALIAS = '([^']*)'/.exec(src)?.[1]
   if (!alias) throw new Error('No se encontró AUTHOR_ALIAS en src/shared/brand.ts')
   const appId = `cl.${alias}.lazunox`
-  return { appId, helperId: `cl.${alias}.lazunox.cu-helper`, disclaimId: `${appId}.disclaim` }
+  return { appId, helperId: `cl.${alias}.lazunox.cu-helper`, keysId: `cl.${alias}.lazunox.cu-keys`, disclaimId: `${appId}.disclaim` }
 }
 
 function readIds(root = join(__dirname, '..')) {
@@ -103,6 +103,9 @@ function resignBundle({ appPath, identity, ids, mode, entitlements, keychain, ru
     run('/usr/bin/codesign', args)
   }
   sign(join(res, 'computer-use', 'bin', 'cu-helper'), ids.helperId)
+  // `cu-keys` (teclado por teclas físicas para escritorio remoto) viaja junto a `cu-helper`: mismo trato y su propio identificador.
+  const keysBin = join(res, 'computer-use', 'bin', 'cu-keys')
+  if (existsSync(keysBin)) sign(keysBin, ids.keysId ?? ids.helperId.replace(/cu-helper$/, 'cu-keys'))
   sign(join(res, 'launcher', 'lazunox-disclaim'), ids.disclaimId)
   sign(appPath, ids.appId)
   run('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath])

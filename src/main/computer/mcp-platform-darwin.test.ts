@@ -435,9 +435,10 @@ describe.skipIf(isWin)('teclado por teclas físicas (cu-keys, clientes de escrit
     expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys'])
   })
 
-  it('sin el binario cu-keys falla con un mensaje claro (y no toca cu-helper)', async () => {
-    const { backend, calls } = rig(() => ({}))
-    await expect(backend.typeKeys!('x')).rejects.toThrow(/cu-keys/)
-    expect(calls).toEqual([])
+  it('sin el binario cu-keys el backend no ofrece teclado remoto (todo sigue por cu-helper, como antes)', () => {
+    const { backend } = rig(() => ({}))
+    expect(backend.typeKeys).toBeUndefined()
+    expect(backend.pressKeys).toBeUndefined()
+    expect(backend.pasteText).toBeUndefined()
   })
 })

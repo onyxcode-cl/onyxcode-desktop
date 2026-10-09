@@ -474,9 +474,14 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     id: 'darwin',
     helper,
     helperExit,
-    typeKeys: (text, layout) => keysTool(['type', ...(layout === 'us' ? ['--layout', 'us'] : [])], text),
-    pasteText,
-    pressKeys: (combos, layout) => keysTool(['key', ...(layout === 'us' ? ['--layout', 'us'] : []), combos]),
+    // Solo si `cu-keys` existe junto a `cu-helper`: sin él (build sin swiftc, paquete antiguo) todo sigue como antes, con `cu-helper type`.
+    ...(KEYS_BIN && deps.existsSync(KEYS_BIN)
+      ? {
+          typeKeys: (text: string, layout?: 'mac' | 'us') => keysTool(['type', ...(layout === 'us' ? ['--layout', 'us'] : [])], text),
+          pasteText,
+          pressKeys: (combos: string, layout?: 'mac' | 'us') => keysTool(['key', ...(layout === 'us' ? ['--layout', 'us'] : []), combos])
+        }
+      : {}),
     exitMessage: axExitMessage,
     killChildren,
     shutdown: async () => undefined,

@@ -79,7 +79,7 @@ module.exports = {
     '!build/*',
     // Nada generado por OpenCode ni fuentes del helper dentro del paquete (AUDIT.md P1).
     '!resources/opencode/{node_modules,node_modules/**,package.json,package-lock.json,bun.lock,.gitignore}',
-    '!resources/computer-use/{helper.swift,build.sh,bin,bin/**,win,win/**}',
+    '!resources/computer-use/{helper.swift,keys.swift,build.sh,bin,bin/**,win,win/**}',
     // El agente de Windows vive FUERA de `agents/` (esa carpeta se copia entera a userData y su contenido está vigilado) y nunca va en el .asar ni en el paquete de macOS: con la función activa viaja por win.extraResources.
     '!resources/opencode/agents-win/**',
     '!resources/launcher/**',
@@ -151,7 +151,7 @@ module.exports = {
       {
         from: 'resources/computer-use/bin',
         to: 'computer-use/bin',
-        filter: ['cu-helper']
+        filter: ['cu-helper', 'cu-keys']
       },
       // Lanzador que desvincula de TCC a los `opencode serve` y a la terminal integrada
       // (AUDIT.md S6, docs/SEGURIDAD.md §3) → Contents/Resources/launcher
@@ -203,6 +203,7 @@ module.exports = {
           entitlementsInherit: 'build/entitlements.mac.plist',
           binaries: [
             'Contents/Resources/computer-use/bin/cu-helper',
+            'Contents/Resources/computer-use/bin/cu-keys',
             'Contents/Resources/launcher/lazunox-disclaim',
             'Contents/Resources/opencode/opencode'
           ]
