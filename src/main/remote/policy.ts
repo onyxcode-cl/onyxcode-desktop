@@ -385,6 +385,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'office:install': 'X',
   'office:cancel': 'X',
   'office:remove': 'X',
+  'doctor:run': 'X', // revela permisos y software instalado de este Mac: solo en el Mac
   // Estado del entorno aislado: lectura. Instalarlo o cancelarlo (descarga, importa una distro) NO es cosa del celular.
   'tasks:sandbox:status': 'R',
   'tasks:sandbox:setup': 'X',

@@ -608,6 +608,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'office:install': none,
   'office:cancel': none,
   'office:remove': none,
+  'doctor:run': none,
   'tasks:sandbox:status': optional(obj({ force: optional(bool) })),
   'tasks:sandbox:setup': none,
   'tasks:sandbox:cancel': none,

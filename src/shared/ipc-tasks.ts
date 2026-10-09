@@ -4,6 +4,7 @@
  * Expuesto en el renderer como `window.api.tasks` (ver src/preload/tasks-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
  */
+import type { DoctorReport } from './doctor'
 import type { OfficeInstallResult, OfficeUiSnapshot } from './office'
 import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
@@ -1130,6 +1131,9 @@ export interface TasksInvokeContract {
   'office:install': { req: void; res: OfficeInstallResult }
   'office:cancel': { req: void; res: void }
   'office:remove': { req: void; res: void }
+
+  /** «Doctor»: revisa permisos, herramientas internas y componentes opcionales y devuelve qué funciona y qué falta (solo mira). */
+  'doctor:run': { req: void; res: DoctorReport }
   /**
    * Estado del entorno aislado (Windows: distro por instalar, instalando, lista, rota…). Solo lectura. `force` salta la caché de
    * 5 s de main (botón «Volver a comprobar»); sin él se usa la caché.
@@ -1354,6 +1358,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'office:install',
   'office:cancel',
   'office:remove',
+  'doctor:run',
   'tasks:sandbox:status',
   'tasks:sandbox:setup',
   'tasks:sandbox:cancel',
