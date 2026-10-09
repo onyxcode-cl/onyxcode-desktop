@@ -18,7 +18,7 @@ Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original de
 ## 2. Verificar (siempre)
 `python3 scripts/check_pptx.py informe.pptx --outdir .lazunox/trabajo/chk`
 - Revisa: abre, nº de diapositivas, texto que desborda (estimado), formas fuera del lienzo, diapositivas sin título,
-  imágenes diminutas/de baja resolución. Código de salida 1 = hay PROBLEMAS: corrige y repite.
+  imágenes diminutas/de baja resolución. Código de salida 1 = hay PROBLEMAS: corrige todo de una vez (ver «Presupuesto de revisión») y repite.
 - Renderiza con LibreOffice y crea `.lazunox/trabajo/chk/miniaturas.png` (todas las diapositivas en una imagen):
   MÍRALA con la herramienta de imágenes y comprueba que nada se corta ni se superpone.
 - Si no hay LibreOffice avisa «solo hay verificación estructural»: dilo en «Para revisar».
@@ -26,6 +26,12 @@ Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original de
 
 ## 3. Entregar
 Indica la ruta del .pptx y, en «Para revisar», lo que no pudiste comprobar (render, fuentes, animaciones).
+
+## Presupuesto de revisión
+1. Antes de renderizar aplica las medidas de §1 y las reglas de estilo del esquema: títulos ≤ 2 líneas (máx. ~50 caracteres o menor tamaño), margen bajo el texto antes de cajas o gráficos, sin formas superpuestas.
+2. Máximo 2 renders: uno tras crear y, solo si `check_pptx.py` o la miniatura muestran un fallo real, otro tras corregir TODOS los fallos a la vez. Las comprobaciones estructurales repetidas usan `--no-render`.
+3. Tras el 2.º render entrega y lista lo que quede en «Para revisar» en vez de seguir iterando.
+4. Corrige editando el JSON (o el script) y regenerando con `build_pptx.py`; nunca parches el .pptx a mano.
 
 ## Esquema JSON
 Rutas de imágenes relativas al JSON. `notes` (notas del orador) es opcional en toda diapositiva.
