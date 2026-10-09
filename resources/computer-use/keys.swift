@@ -23,7 +23,16 @@ func fail(_ msg: String, _ code: Int32 = 1) -> Never {
     exit(code)
 }
 
-let source = CGEventSource(stateID: .hidSystemState)
+// `.privateState` y la MISMA marca que `cu-helper` (`eventSourceUserData`): sin ella `watch-esc` toma un Escape sintético por el del usuario
+// y CORTA el control, y `recent-input` cree que el usuario está tecleando. La marca es lo único fiable para distinguirlos (ver helper.swift).
+let source = CGEventSource(stateID: .privateState)
+let ownEventTag: Int64 = 0x4C41_5049
+
+func post(_ e: CGEvent?) {
+    guard let e = e else { fail("No se pudo crear el evento (¿permiso de Accesibilidad?)") }
+    e.setIntegerValueField(.eventSourceUserData, value: ownEventTag)
+    e.post(tap: .cghidEventTap)
+}
 let stopFile = ProcessInfo.processInfo.environment["COMPUTER_STOP_FILE"]
 func checkStop() {
     if let f = stopFile, !f.isEmpty, FileManager.default.fileExists(atPath: f) { exit(3) }
@@ -60,18 +69,18 @@ func postModifier(_ m: Mod, down: Bool, held: [Mod]) {
     e.type = .flagsChanged
     e.flags = flagsFor(held)
     _ = down
-    e.post(tap: .cghidEventTap)
+    post(e)
 }
 
 func postKey(_ code: CGKeyCode, held: [Mod], holdMs: Double) {
     let f = flagsFor(held)
     let d = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true)
     d?.flags = f
-    d?.post(tap: .cghidEventTap)
+    post(d)
     pause(holdMs)
     let u = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
     u?.flags = f
-    u?.post(tap: .cghidEventTap)
+    post(u)
 }
 
 /// Pulsa `code` con los modificadores `use` como eventos reales: baja cada modificador, la tecla, y los suelta en orden inverso.
@@ -233,10 +242,10 @@ case "type":
             var units = Array(String(ch).utf16)
             let d = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
             d?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: &units)
-            d?.post(tap: .cghidEventTap)
+            post(d)
             let u = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
             u?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: &units)
-            u?.post(tap: .cghidEventTap)
+            post(u)
             fallback += 1
         }
         typed += 1
