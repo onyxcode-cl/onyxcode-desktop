@@ -999,10 +999,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // search.parallel.ai según el hash de la sesión. Fijar el proveedor deja UN único host
           // (`WEB_SEARCH_HOSTS`) que la lista blanca del proxy de egress puede permitir.
           ...(!fullAccess ? { OPENCODE_WEBSEARCH_PROVIDER: 'exa' } : {}),
-          // Solo sandbox: el servidor también descubre `~/.claude/skills` del usuario y, si allí hay
-          // skills con el mismo nombre (docx, pdf, pptx, xlsx), gana una u otra al azar. Con esto ganan
-          // siempre las de la app; las skills del proyecto (`.opencode/skills`) se siguen viendo.
-          ...(!fullAccess ? { OPENCODE_DISABLE_EXTERNAL_SKILLS: '1' } : {})
+          // El servidor también descubre `~/.claude/skills` del usuario y, si allí hay skills con el mismo
+          // nombre (docx, pdf, pptx, xlsx), gana una u otra al azar (medido en Control total: el agente usó
+          // la `pptx` de otra herramienta en vez de la de la app). Con esto ganan siempre las de la app; las
+          // skills del proyecto (`.opencode/skills`) se siguen viendo.
+          OPENCODE_DISABLE_EXTERNAL_SKILLS: '1'
         },
         networkAllowlist: fullAccess
           ? undefined

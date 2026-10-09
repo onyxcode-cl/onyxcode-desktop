@@ -22,6 +22,7 @@ Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original de
 - Renderiza con LibreOffice y crea `.lazunox/trabajo/chk/miniaturas.png` (todas las diapositivas en una imagen):
   MÍRALA con la herramienta de imágenes y comprueba que nada se corta ni se superpone.
 - Si no hay LibreOffice avisa «solo hay verificación estructural»: dilo en «Para revisar».
+- Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
 ## 3. Entregar
 Indica la ruta del .pptx y, en «Para revisar», lo que no pudiste comprobar (render, fuentes, animaciones).

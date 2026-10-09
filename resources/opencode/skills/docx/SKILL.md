@@ -13,6 +13,7 @@ Nunca sobrescribas el archivo del usuario: toda salida es un archivo NUEVO (`-v2
 2. Genera: `PY S/build_docx.py contenido.json informe.docx`
 3. Verifica (obligatorio): `PY S/check_docx.py informe.docx` — corrige y repite hasta «RESULTADO: OK».
 4. Si el check generó imágenes de página (`.lazunox/trabajo/render-docx/*.png`), ábrelas y MÍRALAS: títulos, tabla, cifras, imagen, sin páginas vacías.
+   Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 5. Entrega: indica la ruta del .docx y resume qué contiene (en «Para revisar»: lo que no pudiste comprobar).
 
 ### Esquema del JSON

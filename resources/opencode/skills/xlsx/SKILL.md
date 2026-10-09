@@ -35,6 +35,7 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 - `PY $S/check_xlsx.py archivo.xlsx --render ./.lazunox/trabajo/render` → estructura, columnas estrechas (#####), números guardados
   como texto, y PNG por página; MIRA las imágenes (¿gráfico legible, títulos y ejes, nada cortado?).
 - Si LibreOffice no está instalado el script lo dice: entonces los valores NO están verificados y debes decirlo en «Para revisar».
+- Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
 ## Esquema JSON de build_xlsx.py
 ```json

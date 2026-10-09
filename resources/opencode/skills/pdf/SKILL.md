@@ -65,6 +65,7 @@ Usa los nombres exactos que muestra `listar`. Casillas: pasa el valor que figure
 `PY scripts/check_pdf.py salida.pdf --render --outdir ./.lazunox/trabajo/render`
 Imprime páginas, tamaño, texto extraíble, páginas en blanco y rutas de los PNG (usa `_shared/render.py`).
 **Mira al menos las primeras páginas PNG**: títulos cortados, tablas desbordadas, imágenes deformadas. Corrige y regenera.
+Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 Resultado esperado: `RESULTADO: correcto`. Si dice «revisar avisos», explica cada aviso o corrígelo.
 
 ### Entregar
