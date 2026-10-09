@@ -60,6 +60,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pickMenuNode, type MenuNodeLike } from './menu-path'
 import type { AppRef, AppTier, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
 import { createWin32Backend } from './mcp-platform-win32'
@@ -1859,6 +1860,48 @@ const TOOLS: ToolDef[] = [
       const expectTitle = typeof a.expect_title === 'string' && a.expect_title ? a.expect_title : undefined
       await act({ tool: 'app_press', text: `${app.name} ${ref}` }, () => axPress(app.bundleId, ref, expectRole, expectTitle))
       return `Pulsado ${ref} en ${app.name}.`
+    }
+  },
+  {
+    name: 'app_menu',
+    description:
+      'Elige una opción de la BARRA DE MENÚS de una app por su ruta, p.ej. path ["Archivo", "Exportar como", "PDF"] ' +
+      '(o ["Connections", "Keyboard Mode", "Unicode"]), SIN mover el ratón ni abrir los menús: una sola llamada en vez de ' +
+      'varios clics. Ignora mayúsculas, acentos y los «…» finales. Si un tramo no existe, devuelve las opciones de ese nivel.',
+    inputSchema: obj({ app: { type: 'string' }, path: { type: 'array', items: { type: 'string' } } }, ['app', 'path']),
+    action: true,
+    run: async (a, session) => {
+      const app = await namedApp(a.app)
+      await requireTierFor(app, 'click', session)
+      const path = Array.isArray(a.path) ? a.path.map((x) => String(x).trim()).filter(Boolean) : []
+      if (path.length < 2 || path.length > 6)
+        throw new Error('path debe tener entre 2 y 6 tramos: el menú de la barra y la opción (más submenús).')
+      let parent: string | null = null
+      let last: MenuNodeLike | undefined
+      for (const [i, seg] of path.entries()) {
+        const found = await axFind(app.bundleId, { role: i === 0 ? 'AXMenuBarItem' : 'AXMenuItem', title: seg, limit: 50 })
+        let pick = pickMenuNode(found.matches, parent, seg)
+        if (!pick.node) {
+          // El filtro por título del helper puede dejar fuera opciones con otro texto: para listar las opciones disponibles se pide todo ese rol.
+          const all = await axFind(app.bundleId, { role: i === 0 ? 'AXMenuBarItem' : 'AXMenuItem', limit: 50 })
+          pick = pickMenuNode(all.matches, parent, seg)
+        }
+        if (!pick.node) {
+          const where = i === 0 ? 'en la barra de menús' : `dentro de «${path.slice(0, i).join(' › ')}»`
+          throw new Error(
+            `No encontré «${seg}» ${where} de ${app.name}.` +
+              (pick.options.length
+                ? ` Opciones de ese nivel: ${pick.options.slice(0, 30).join(' | ')}.`
+                : ' No pude leer ese menú: usa el teclado o app_tree.')
+          )
+        }
+        parent = pick.node.ref
+        last = pick.node
+      }
+      if (!last) throw new Error('Ruta vacía')
+      if (last.enabled === false) throw new Error(`La opción «${path.join(' › ')}» está desactivada en este momento.`)
+      await act({ tool: 'app_menu', text: `${app.name} ${path.join(' › ')}` }, () => axPress(app.bundleId, last!.ref, 'AXMenuItem'))
+      return `Elegido «${path.join(' › ')}» en ${app.name}.`
     }
   },
   {

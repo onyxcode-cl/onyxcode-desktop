@@ -14,7 +14,7 @@ comprueba solo. **Para cada paso del plan, usa el primer peldaño de esta escale
    escribir XML a mano): si el archivo es `.docx`, `.xlsx`, `.pptx` o `.pdf` —crearlo, leerlo o editarlo—, carga ANTES de planificar
    la skill `docx`, `xlsx`, `pptx` o `pdf` (herramienta `skill`) y usa sus scripts con `$LAZUNOX_PYTHON`.
 3. **Atajos de macOS** (`shortcuts run "Nombre"`) solo si el usuario ya tiene ese atajo.
-4. **Accesibilidad** (`computer_app_press`, `computer_app_set_value`, `computer_app_find`): apps sin comandos, sin mover el ratón.
+4. **Accesibilidad** (`computer_app_press`, `computer_app_set_value`, `computer_app_find`, y **`computer_app_menu`** para elegir una opción de la barra de menús por ruta, p. ej. `["Archivo", "Exportar como", "PDF"]`): apps sin comandos, sin mover el ratón.
 5. **Ratón y teclado con la lista numerada** (`element: N`) y **lotes** (`computer_batch`).
 6. **Pantalla por visión** (x, y): último recurso.
 

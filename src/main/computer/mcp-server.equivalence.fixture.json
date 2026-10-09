@@ -508,6 +508,26 @@
               }
             },
             {
+              "name": "app_menu",
+              "description": "Elige una opción de la BARRA DE MENÚS de una app por su ruta, p.ej. path [\"Archivo\", \"Exportar como\", \"PDF\"] (o [\"Connections\", \"Keyboard Mode\", \"Unicode\"]), SIN mover el ratón ni abrir los menús: una sola llamada en vez de varios clics. Ignora mayúsculas, acentos y los «…» finales. Si un tramo no existe, devuelve las opciones de ese nivel.",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "app": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": ["app", "path"],
+                "additionalProperties": false
+              }
+            },
+            {
               "name": "app_set_value",
               "description": "Escribe el valor (kAXValueAttribute) de un campo de una app por su \"ref\", SIN mover el ratón real. Rechaza campos de contraseña u otras entradas seguras. Nunca escribas contraseñas ni datos de pago.",
               "inputSchema": {
