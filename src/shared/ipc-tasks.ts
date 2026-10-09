@@ -4,6 +4,7 @@
  * Expuesto en el renderer como `window.api.tasks` (ver src/preload/tasks-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
  */
+import type { OfficeInstallResult, OfficeUiSnapshot } from './office'
 import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
 import type { PendingLearnedState } from './learned-pending'
@@ -1123,6 +1124,12 @@ export interface TasksInvokeContract {
   'tasks:trusted:remove': { req: { path: string }; res: TrustedFolder[] }
   /** Política gestionada por la organización (null = sin política). */
   'tasks:policy': { req: void; res: ManagedPolicy | null }
+
+  /** LibreOffice opcional (revisión visual de documentos de oficina): estado, instalación bajo demanda, cancelación y desinstalación. */
+  'office:status': { req: void; res: OfficeUiSnapshot }
+  'office:install': { req: void; res: OfficeInstallResult }
+  'office:cancel': { req: void; res: void }
+  'office:remove': { req: void; res: void }
   /**
    * Estado del entorno aislado (Windows: distro por instalar, instalando, lista, rota…). Solo lectura. `force` salta la caché de
    * 5 s de main (botón «Volver a comprobar»); sin él se usa la caché.
@@ -1343,6 +1350,10 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:trusted:set',
   'tasks:trusted:remove',
   'tasks:policy',
+  'office:status',
+  'office:install',
+  'office:cancel',
+  'office:remove',
   'tasks:sandbox:status',
   'tasks:sandbox:setup',
   'tasks:sandbox:cancel',

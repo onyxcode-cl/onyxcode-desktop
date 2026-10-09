@@ -380,6 +380,11 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:trusted:set': 'D',
   'tasks:trusted:remove': 'D',
   'tasks:policy': 'R',
+  // LibreOffice opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
+  'office:status': 'X',
+  'office:install': 'X',
+  'office:cancel': 'X',
+  'office:remove': 'X',
   // Estado del entorno aislado: lectura. Instalarlo o cancelarlo (descarga, importa una distro) NO es cosa del celular.
   'tasks:sandbox:status': 'R',
   'tasks:sandbox:setup': 'X',

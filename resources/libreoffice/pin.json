@@ -1,0 +1,19 @@
+{
+  "version": "26.8.1",
+  "releasedAt": "2026-10",
+  "source": "https://download.documentfoundation.org/libreoffice/stable/",
+  "assets": {
+    "darwin-arm64": {
+      "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/mac/aarch64/LibreOffice_26.8.1_MacOS_aarch64.dmg",
+      "size": 298845477,
+      "sha256": "ca074e0b13571efb30a31fc531c5f95e997030637325e5d5de92d67aefdf0dfc",
+      "signature": { "teamId": "7P5S3ZLCN7", "authority": "Developer ID Application: The Document Foundation (7P5S3ZLCN7)" }
+    },
+    "darwin-x64": {
+      "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/mac/x86_64/LibreOffice_26.8.1_MacOS_x86-64.dmg",
+      "size": 309092706,
+      "sha256": "4c7464313a529e9074400cbcdc894fc40ac4ef9421ded03b16b5a78d12cb155e",
+      "signature": { "teamId": "7P5S3ZLCN7", "authority": "Developer ID Application: The Document Foundation (7P5S3ZLCN7)" }
+    }
+  }
+}

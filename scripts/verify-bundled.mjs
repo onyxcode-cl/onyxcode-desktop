@@ -142,6 +142,14 @@ async function main() {
   } else {
     record('Python incluido (Contents/Resources/python)', false, 'falta: ¿se ejecutó `npm run fetch:python` antes de empaquetar?')
   }
+  // El pin de LibreOffice (descarga bajo demanda) debe viajar dentro del paquete: sin él la fila de Ajustes no sabría qué descargar.
+  const loPin = join(res, 'app.asar.unpacked/resources/libreoffice/pin.json')
+  const loOk = existsSync(loPin) && /"darwin-arm64"/.test(readFileSync(loPin, 'utf8'))
+  record(
+    'pin de LibreOffice incluido (descarga bajo demanda)',
+    loOk,
+    loOk ? 'presente' : 'falta resources/libreoffice/pin.json en app.asar.unpacked'
+  )
   const skillsDir = join(root, 'resources/opencode/skills')
   for (const sk of ['docx', 'xlsx', 'pptx', 'pdf', 'ruta-rapida', 'soporte-remoto']) {
     const candidates = [join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'SKILL.md')]

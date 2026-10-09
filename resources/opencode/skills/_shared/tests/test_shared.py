@@ -121,5 +121,29 @@ class PruebasShared(unittest.TestCase):
         self.assertTrue(json.loads(so)["ok"], so)
 
 
+    def test_buscar_soffice_en_la_carpeta_de_binarios_de_la_app(self):
+        # LibreOffice instalado bajo demanda por la app: LAZUNOX_BIN_DIR/libreoffice-<versión>/LibreOffice.app/Contents/MacOS/soffice
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("render_mod", os.path.join(SHARED, "render.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as base:
+            exe = os.path.join(base, "libreoffice-9.9.9", "LibreOffice.app", "Contents", "MacOS", "soffice")
+            os.makedirs(os.path.dirname(exe))
+            with open(exe, "w") as f:
+                f.write("#!/bin/sh\n")
+            os.chmod(exe, 0o755)
+            viejo = {k: os.environ.pop(k, None) for k in ("LAZUNOX_SOFFICE", "LAZUNOX_BIN_DIR")}
+            try:
+                os.environ["LAZUNOX_BIN_DIR"] = base
+                self.assertEqual(mod.buscar_soffice(), exe)
+                os.environ["LAZUNOX_SOFFICE"] = exe  # tiene prioridad
+                self.assertEqual(mod.buscar_soffice(), exe)
+            finally:
+                for k, v in viejo.items():
+                    os.environ.pop(k, None)
+                    if v is not None:
+                        os.environ[k] = v
+
 if __name__ == "__main__":
     unittest.main()

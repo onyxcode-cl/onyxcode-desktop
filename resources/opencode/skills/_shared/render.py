@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import pathlib
@@ -15,8 +16,22 @@ OFFICE = {".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt", ".odt", ".ods", ".o
 SOFFICE_MAC = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
 
 
+def _ejecutable(ruta):
+    return bool(ruta) and os.path.isfile(ruta) and os.access(ruta, os.X_OK)
+
+
 def buscar_soffice():
-    if os.path.isfile(SOFFICE_MAC) and os.access(SOFFICE_MAC, os.X_OK):
+    """LibreOffice, por orden: el que fijó la app (LAZUNOX_SOFFICE) → el que la app instaló bajo demanda en su carpeta de binarios
+    (LAZUNOX_BIN_DIR/libreoffice-*/, sirve aunque se instale con la app ya abierta) → /Applications → el PATH."""
+    ruta = os.environ.get("LAZUNOX_SOFFICE")
+    if _ejecutable(ruta):
+        return ruta
+    base = os.environ.get("LAZUNOX_BIN_DIR")
+    if base:
+        for cand in sorted(glob.glob(os.path.join(base, "libreoffice-*", "LibreOffice.app", "Contents", "MacOS", "soffice")), reverse=True):
+            if _ejecutable(cand):
+                return cand
+    if _ejecutable(SOFFICE_MAC):
         return SOFFICE_MAC
     return shutil.which("soffice")
 
@@ -29,8 +44,9 @@ def salida(res, codigo):
 def a_pdf(origen, outdir, avisos):
     soffice = buscar_soffice()
     if not soffice:
-        avisos.append("LibreOffice no está instalado: no se puede renderizar este archivo de Office. "
-                      "Haz solo la verificación estructural.")
+        avisos.append("LibreOffice no está instalado: no se puede renderizar este archivo de Office. Haz solo la verificación "
+                      "estructural y dile al usuario que puede instalarlo (unos 300 MB, con su permiso) en Ajustes › Componentes opcionales "
+                      "para poder revisar el resultado visualmente.")
         return None
     os.makedirs(outdir, exist_ok=True)
     # El perfil de LibreOffice va en una carpeta TEMPORAL (no en la del usuario: no deja «.lo-profile» ni rastros) y como URL

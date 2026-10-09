@@ -9,6 +9,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import render  # noqa: E402  (misma carpeta: comparte la búsqueda de LibreOffice)
+
 LIBS = [("python-docx", "docx"), ("openpyxl", "openpyxl"), ("python-pptx", "pptx"), ("pypdf", "pypdf"),
         ("pdfplumber", "pdfplumber"), ("reportlab", "reportlab"), ("pypdfium2", "pypdfium2"),
         ("pillow", "PIL"), ("lxml", "lxml")]
@@ -39,7 +42,7 @@ def main():
             libs[nombre] = None
     if libs.get("pillow") is None:
         pass
-    soffice = SOFFICE_MAC if os.access(SOFFICE_MAC, os.X_OK) and os.path.isfile(SOFFICE_MAC) else shutil.which("soffice")
+    soffice = render.buscar_soffice()
     lo_version = None
     if soffice:
         try:

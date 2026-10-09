@@ -102,6 +102,8 @@ module.exports = {
   asarUnpack: [
     'resources/opencode/agents/**',
     'resources/opencode/skills/**',
+    // Pin de LibreOffice (descarga bajo demanda): lo lee `main/office/service.ts` desde app.asar.unpacked.
+    'resources/libreoffice/**',
     ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : []),
     // Control remoto (F8-B48): el addon nativo de WebRTC (`@node-datachannel/<plataforma>/node_datachannel.node`) no puede cargarse desde el .asar.
     'node_modules/@node-datachannel/**',
