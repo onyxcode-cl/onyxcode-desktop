@@ -149,6 +149,13 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
   esperás escribir): si el foco cambió a otra app sin que lo notaras, no escriben nada y avisan en
   vez de ir a la app equivocada — recomendado cuando no estés 100% seguro de qué tiene el foco.
 - Cada acción devuelve automáticamente una captura nueva: úsala para verificar el resultado.
+- **Elementos numerados**: junto a cada captura recibes una lista `[N] botón «Guardar» (x, y)` con lo pulsable de la
+  app (por accesibilidad). Para pulsar uno usa `element: N` en `computer_left_click`/`double_click`/`right_click`/
+  `mouse_move`: es el punto exacto, mucho más fiable que adivinar `x`/`y` mirando la imagen. La lista vale hasta la
+  próxima captura; si el elemento no aparece (apps como Discord o Spotify exponen poco), usa `x`/`y` como siempre.
+- **Lote (`computer_batch`)**: cuando ya sabes la secuencia (clic en un campo → escribir → Enter) mándala en UNA llamada
+  (máx. 8 pasos); se detiene en el primer error y devuelve una sola captura al final. Pon al final el paso que cambie
+  la pantalla; no encadenes después de abrir un menú o una ventana nueva.
 - El puntero se mueve **de forma visible**, como una persona: viaja hasta el destino en
   ~0,25–0,6 s y el clic ocurre al llegar; `computer_type_text` escribe carácter a carácter (textos
   largos, más rápido). No hace falta añadir esperas por ello.
