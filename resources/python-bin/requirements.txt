@@ -1,0 +1,20 @@
+# Python incluido con Lazunox (scripts/fetch-python.mjs). Versiones EXACTAS; solo wheels binarios (--only-binary=:all:).
+# Directas (las usan las skills de oficina de resources/opencode/skills/*):
+python-docx==1.2.0
+openpyxl==3.1.5
+python-pptx==1.0.2
+pypdf==6.20.0
+pdfplumber==0.11.10
+reportlab==5.0.1
+pypdfium2==5.14.0
+pillow==12.3.0
+lxml==6.1.3
+# Transitivas (pip freeze de un entorno limpio con Python 3.12.15 / macOS arm64):
+cffi==2.1.1
+charset-normalizer==3.5.2
+cryptography==50.0.2
+et_xmlfile==2.0.0
+pdfminer.six==20260107
+pycparser==3.11
+typing_extensions==4.16.0
+xlsxwriter==3.2.9

@@ -98,7 +98,36 @@ código abierto (en su mayoría MIT o ISC); sus avisos están en sus paquetes de
   túneles rápidos se rige por las condiciones de Cloudflare (<https://www.cloudflare.com/website-terms/>), que el propio programa recuerda al
   arrancar. Lazunox no está afiliado a Cloudflare.
 
-## 5. No afiliación
+## 5. Python incluido y librerías de oficina
+
+Lazunox incluye su propio Python para que las skills de oficina (Word, Excel, PowerPoint y PDF) no dependan del Python del Mac del usuario.
+Se descarga con `scripts/fetch-python.mjs` (versión y SHA-256 fijados en `resources/python-bin/pin.json`; librerías con versión exacta en
+`resources/python-bin/requirements.txt`), sin modificar salvo por la poda de archivos innecesarios (pruebas, IDLE, tkinter, cabeceras).
+Ubicación en la app: `Contents/Resources/python/`. Las licencias de cada librería viajan en su carpeta `*.dist-info/` dentro de
+`Contents/Resources/python/lib/python3.12/site-packages/`.
+
+- CPython **3.12.15**: PSF License (Python Software Foundation License v2), <https://docs.python.org/3/license.html>. El intérprete enlaza
+  además bibliotecas de terceros (OpenSSL, SQLite, zlib, xz, libffi, etc.) con sus propias licencias permisivas.
+- python-build-standalone (compilación **20261009**, <https://github.com/astral-sh/python-build-standalone>): scripts de compilación bajo
+  MPL-2.0; el resultado es CPython bajo su licencia (PSF).
+- `python-docx` 1.2.0: MIT.
+- `openpyxl` 3.1.5 y su dependencia `et_xmlfile` 2.0.0: MIT.
+- `python-pptx` 1.0.2: MIT. Dependencia `XlsxWriter` 3.2.9: BSD-2-Clause.
+- `pypdf` 6.20.0: BSD-3-Clause.
+- `pdfplumber` 0.11.10: MIT (fichero `LICENSE.txt`). Dependencia `pdfminer.six` 20260107: MIT.
+- `reportlab` 5.0.1: licencia BSD de ReportLab Inc. (fichero `LICENSE`; incluye la licencia de la fuente Bitstream Vera que trae el paquete).
+- `pypdfium2` 5.14.0: BSD-3-Clause o Apache-2.0, con PDFium (BSD-3-Clause / Apache-2.0, Google y The PDFium Authors) y sus dependencias
+  empaquetadas; sus textos están en `pypdfium2-5.14.0.dist-info/licenses/`.
+- `pillow` 12.3.0: MIT-CMU (HPND), <https://github.com/python-pillow/Pillow>. Las bibliotecas nativas que trae la rueda (libjpeg, libpng,
+  libtiff, freetype, etc.) conservan sus licencias.
+- `lxml` 6.1.3: BSD-3-Clause (incluye libxml2 y libxslt, licencia MIT), <https://lxml.de>.
+- Dependencias transitivas: `cryptography` 50.0.2 (Apache-2.0 o BSD-3-Clause; la rueda incluye OpenSSL, Apache-2.0), `cffi` 2.1.1 (MIT-0),
+  `pycparser` 3.11 (BSD-3-Clause), `charset-normalizer` 3.5.2 (MIT), `typing_extensions` 4.16.0 (PSF-2.0).
+
+**LibreOffice (MPL-2.0) NO se incluye** en Lazunox: es una herramienta externa opcional que, si el usuario la tiene instalada, las skills
+pueden usar para convertir o previsualizar documentos. Lazunox no la distribuye ni la modifica.
+
+## 6. No afiliación
 
 Lazunox es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para
 indicar compatibilidad.

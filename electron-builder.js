@@ -10,6 +10,8 @@
 // conserve los permisos (TCC) entre actualizaciones: con firma ad-hoc los vuelve a pedir tras cada versión.
 // Ver docs/DISTRIBUCION.md §10.
 const selfSigned = process.env.LAZUNOX_SELF_SIGNED === '1'
+// Python propio de macOS: la arquitectura del paquete es arm64 (ver mac.target); LAZUNOX_PYTHON_ARCH=x64 elige el de Intel.
+const pythonMacDir = `resources/python-bin/mac-${process.env.LAZUNOX_PYTHON_ARCH === 'x64' ? 'x64' : 'arm64'}/python`
 if (selfSigned && !process.env.CSC_NAME) {
   throw new Error('LAZUNOX_SELF_SIGNED=1 requiere CSC_NAME con el nombre del certificado de firma de código (docs/DISTRIBUCION.md §10).')
 }
@@ -88,7 +90,9 @@ module.exports = {
     // El script de reemplazo del actualizador va por extraResources (sellado), no dentro del .asar.
     '!resources/updater/**',
     // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
-    '!resources/opencode-bin/**'
+    '!resources/opencode-bin/**',
+    // El Python propio (scripts/fetch-python.mjs) va por extraResources (sellado y firmado), nunca dentro del .asar.
+    '!resources/python-bin/**'
   ],
   // Los agentes y las skills de oficina (se copian a userData/opencode-config al arrancar; OpenCode
   // NUNCA escribe en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).
@@ -171,7 +175,10 @@ module.exports = {
         from: 'resources/opencode-bin/bin',
         to: 'opencode',
         filter: ['opencode']
-      }
+      },
+      // Python propio con las librerías de oficina (scripts/fetch-python.mjs, solo macOS) → Contents/Resources/python/bin/python3,
+      // para que las skills de oficina no dependan del Python del Mac del usuario. Solo si se descargó (en desarrollo no existe).
+      ...(require('node:fs').existsSync(pythonMacDir) ? [{ from: pythonMacDir, to: 'python' }] : [])
     ],
     // Icono generado desde build/icon.svg (node build/render-icon.mjs vía electron)
     icon: 'build/icon.icns',
