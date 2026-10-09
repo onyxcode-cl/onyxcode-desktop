@@ -9,6 +9,7 @@ import { call } from '../../../lib/api'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
+import { DoctorCard } from './DoctorCard'
 import { Badge, Card, ErrorText, Field, Row, Select, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 
 const AUTO_REFRESH_MS = 2000
@@ -26,6 +27,7 @@ export function DiagnosticsSection(): React.JSX.Element {
   return (
     <div>
       <SectionHeader title={t('misc.diag.title')} description={t('misc.diag.desc')} />
+      <DoctorCard />
       <StatusCard />
       <SubTitle>{t('misc.diag.logs')}</SubTitle>
       <LogsCard />

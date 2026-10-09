@@ -88,6 +88,27 @@ const REAL_API: OfficeApi = {
   remove: () => cw('office:remove')
 }
 
+/** Consentimiento de la instalación (el mismo diálogo para la tarjeta y para «Diagnóstico»). */
+export function confirmOfficeInstall(t: T): (mb: number) => Promise<boolean> {
+  return (mb) =>
+    confirmDialog({
+      title: t('settings.office.consent.title'),
+      message: t('settings.office.consent.body', { mb }),
+      confirmLabel: t('settings.office.consent.confirm'),
+      focusCancel: true
+    })
+}
+
+/**
+ * Flujo de instalación de LibreOffice para otras pantallas (Diagnóstico): consulta el tamaño, pide el mismo consentimiento y
+ * llama a `office:install`. Si ya está instalado no hace nada.
+ */
+export async function requestOfficeInstall(t: T): Promise<OfficeInstallOutcome> {
+  const s = await REAL_API.status()
+  if (s.status.state !== 'missing') return { kind: 'installed' }
+  return officeController(REAL_API, confirmOfficeInstall(t)).install(officeMb(s.status.sizeBytes))
+}
+
 export interface OfficeCardViewProps {
   t: T
   snapshot: OfficeUiSnapshot | null
@@ -222,14 +243,7 @@ export function OfficeComponentCard(): React.JSX.Element | null {
     return () => clearInterval(id)
   }, [polling, refresh])
 
-  const controller = officeController(REAL_API, (mb) =>
-    confirmDialog({
-      title: t('settings.office.consent.title'),
-      message: t('settings.office.consent.body', { mb }),
-      confirmLabel: t('settings.office.consent.confirm'),
-      focusCancel: true
-    })
-  )
+  const controller = officeController(REAL_API, confirmOfficeInstall(t))
 
   const onInstall = async (): Promise<void> => {
     if (!snapshot || snapshot.status.state !== 'missing') return
