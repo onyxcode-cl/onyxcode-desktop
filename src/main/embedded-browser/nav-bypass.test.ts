@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NavBypass } from './nav-bypass'
+import { isAbortedNavigation, NavBypass } from './nav-bypass'
 
 describe('NavBypass (exención por URL exacta y de un solo uso)', () => {
   it('solo la URL autorizada pasa; otra URL de la misma pestaña (redirección, window.open) NO', () => {
@@ -30,5 +30,16 @@ describe('NavBypass (exención por URL exacta y de un solo uso)', () => {
     expect(b.take('t1', 'https://a.com/')).toBe(false)
     b.clearTab('t1')
     expect(b.take('t1', 'https://b.com/')).toBe(false)
+  })
+})
+
+describe('isAbortedNavigation', () => {
+  it('reconoce ERR_ABORTED de loadURL y no confunde otros errores', () => {
+    expect(
+      isAbortedNavigation(Object.assign(new Error("ERR_ABORTED (-3) loading 'https://a.com/'"), { code: 'ERR_ABORTED', errno: -3 }))
+    ).toBe(true)
+    expect(isAbortedNavigation(new Error('ERR_ABORTED (-3) loading x'))).toBe(true)
+    expect(isAbortedNavigation(new Error('ERR_NAME_NOT_RESOLVED (-105) loading x'))).toBe(false)
+    expect(isAbortedNavigation(undefined)).toBe(false)
   })
 })

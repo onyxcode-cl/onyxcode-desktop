@@ -49,3 +49,12 @@ export class NavBypass {
     this.byTab.delete(tabId)
   }
 }
+
+/**
+ * `loadURL` rechaza con ERR_ABORTED (-3) cuando otra navegación la sustituye (p. ej. `about:blank` inicial de una pestaña
+ * nueva frente a la URL real, o la puerta que cancela una redirección y la relanza). No es un fallo de carga.
+ */
+export function isAbortedNavigation(err: unknown): boolean {
+  const e = err as { code?: unknown; errno?: unknown; message?: unknown } | null
+  return e?.code === 'ERR_ABORTED' || e?.errno === -3 || /ERR_ABORTED/.test(String(e?.message ?? err))
+}

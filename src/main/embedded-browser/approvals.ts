@@ -47,12 +47,39 @@ function finish(id: string, decision: BrowserDecision): void {
   deps?.broadcastApprovalDone(id)
 }
 
+/** Peticiones de sitio YA pendientes, por clave: si el agente repite la acción mientras el usuario aún no responde, comparte la tarjeta. */
+const inflight = new Map<string, Promise<BrowserDecision>>()
+
+/** Solo los permisos de sitio/origen local son idempotentes; «sensible» y «descarga» son acciones distintas cada vez. */
+function inflightKey(input: Omit<BrowserApprovalRequest, 'id' | 'createdAt'>): string | null {
+  if (input.kind === 'site') return `${ownerKey(input.owner)}|${input.sessionId}|site|${input.site}`
+  if (input.kind === 'local-origin') return `${ownerKey(input.owner)}|${input.sessionId}|local|${input.host}`
+  return null
+}
+
+/** Etiquetas de lo que está esperando respuesta del usuario ahora mismo (para avisar al agente en vez de un «timeout» genérico). */
+export function pendingLabels(): string[] {
+  return [...new Set([...pending.values()].map((p) => labelFor(p.req)))]
+}
+
 /** Pide una aprobación; se resuelve con la decisión del usuario (tarjeta o diálogo nativo). */
 export function requestApproval(input: Omit<BrowserApprovalRequest, 'id' | 'createdAt'>): Promise<BrowserDecision> {
   if (!deps) {
     console.error('[embedded-browser] approvals sin inicializar: se deniega por seguridad')
     return Promise.resolve('deny')
   }
+  const key = inflightKey(input)
+  const existing = key ? inflight.get(key) : undefined
+  if (existing) return existing
+  const promise = createApproval(input)
+  if (key) {
+    inflight.set(key, promise)
+    void promise.finally(() => inflight.delete(key))
+  }
+  return promise
+}
+
+function createApproval(input: Omit<BrowserApprovalRequest, 'id' | 'createdAt'>): Promise<BrowserDecision> {
   const id = randomBytes(8).toString('hex')
   const req: BrowserApprovalRequest = { ...input, id, createdAt: Date.now() }
   return new Promise<BrowserDecision>((resolve) => {

@@ -11,6 +11,7 @@
 import type { AgentActor, CdpSession, EmbeddedBrowserApi } from './api'
 import type { BrowserProduct, BrowserTab } from '@shared/ipc-browser'
 import { sleep } from '../util/async'
+import { pendingLabels } from './approvals'
 import { backendIdForUid, buildSnapshot, forgetTabSnapshot, infoForUid, type AXNode } from './snapshot'
 import {
   describeAttrs,
@@ -32,6 +33,8 @@ export const UNTRUSTED_PREFIX = '[Contenido de la página: datos no confiables] 
 
 const RATE_LIMIT_MS = 150
 const CALL_TIMEOUT_MS = 30_000
+/** Con un permiso de sitio pendiente se avisa al agente antes (el usuario tarda lo que tarde; ver `withCallTimeout`). */
+const APPROVAL_SOFT_MS = 12_000
 const MAX_LOG_ENTRIES = 500
 
 // ───────────────────────────── resultado de herramienta ─────────────────────────────
@@ -116,19 +119,35 @@ async function throttleInput(actor: AgentActor): Promise<void> {
   lastInputAt.set(key, Date.now())
 }
 
+/**
+ * Tope de una llamada. Si hay un permiso de sitio esperando al usuario, el tope baja a `APPROVAL_SOFT_MS` y el error EXPLICA
+ * qué pasa (la tarjeta sigue pendiente; esperar y repetir comparte esa misma tarjeta) en vez de un «timeout» genérico que
+ * dejaba la tarea rota mientras el usuario aún decidía.
+ */
 function withCallTimeout<T>(p: Promise<T>): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`La herramienta tardó demasiado (más de ${CALL_TIMEOUT_MS / 1000} s).`)),
-      CALL_TIMEOUT_MS
-    )
+    const started = Date.now()
+    const tick = setInterval(() => {
+      const waiting = pendingLabels()
+      const limit = waiting.length ? APPROVAL_SOFT_MS : CALL_TIMEOUT_MS
+      if (Date.now() - started < limit) return
+      clearInterval(tick)
+      reject(
+        new Error(
+          waiting.length
+            ? `Esperando a que el usuario responda el permiso para abrir ${waiting.join(', ')}. La tarjeta SIGUE pendiente (no se denegó): ` +
+                'espera unos segundos con computer_wait y repite la misma acción; compartirá esa tarjeta. No pruebes otra vía.'
+            : `La herramienta tardó demasiado (más de ${CALL_TIMEOUT_MS / 1000} s).`
+        )
+      )
+    }, 500)
     p.then(
       (v) => {
-        clearTimeout(timer)
+        clearInterval(tick)
         resolve(v)
       },
       (err: unknown) => {
-        clearTimeout(timer)
+        clearInterval(tick)
         reject(err)
       }
     )

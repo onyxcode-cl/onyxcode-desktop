@@ -10,6 +10,7 @@
  *
  * Límite: 6 pestañas por owner, 12 en total (protege memoria/CPU: un proceso por pestaña).
  */
+import { isAbortedNavigation } from './nav-bypass'
 import { t } from '@shared/i18n'
 import { EventEmitter } from 'node:events'
 import { Menu, WebContentsView, clipboard, shell, type WebContents } from 'electron'
@@ -374,7 +375,10 @@ export function createTab(owner: BrowserOwner, opts: { openedBy: 'user' | 'agent
   applyViewport(tab, getPrefs().viewMode, null)
   surfaceEvents.emit('created', tab)
 
-  void wc.loadURL('about:blank').catch((err) => console.error('[embedded-browser] about:blank:', err))
+  void wc.loadURL('about:blank').catch((err) => {
+    // Una navegación real que llega antes de que termine el about:blank inicial lo aborta: es esperado, no un fallo.
+    if (!isAbortedNavigation(err)) console.error('[embedded-browser] about:blank:', err)
+  })
   return tab
 }
 

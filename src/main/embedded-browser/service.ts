@@ -40,8 +40,8 @@ import { sleep } from '../util/async'
 import { inputScaleOf } from './viewport'
 import { findDevServers } from './dev-servers'
 import { isLoopbackOrPrivateHost, sessionFor } from './session'
-import { NavBypass } from './nav-bypass'
-import { closePopout, ensurePopoutWindow, popoutWindow, showPopoutInactive } from './popout'
+import { isAbortedNavigation, NavBypass } from './nav-bypass'
+import { closePopout, ensurePopoutWindow, popoutWindow, setPopoutClosedListener, showPopoutInactive } from './popout'
 import { initApprovals, requestApproval, respondApproval } from './approvals'
 import { initDownloads } from './downloads'
 import * as store from './store'
@@ -230,7 +230,7 @@ async function navigateBypassing(tab: TabRuntime, url: string): Promise<void> {
     await loadDirect(tab, url)
   } catch (err) {
     // La puerta abortó una redirección y relanza la navegación por su cuenta: no es un fallo de esta carga.
-    if (!/ERR_ABORTED/.test(String((err as Error)?.message ?? err))) throw err
+    if (!isAbortedNavigation(err)) throw err
   } finally {
     navBypass.revoke(tab.id, url)
   }
@@ -736,6 +736,19 @@ async function capture(tabId: string, maxLongSide: number): Promise<{ jpeg: Buff
 function init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection(): Promise<OpencodeConnection> }): void {
   getMainWindowFn = deps.getMainWindow
   getMainConnectionFn = deps.getMainConnection
+
+  // Si el usuario cierra la ventana «Navegador» aparte con la X, el anfitrión «popout» ya no existe: sin esto el panel de la
+  // ventana principal seguía en «Abierto en ventana aparte» y las aprobaciones creían tener un anfitrión visible (sin diálogo nativo).
+  setPopoutClosedListener(() => {
+    for (const rt of owners.values()) {
+      if (rt.hostKind !== 'popout') continue
+      rt.hostKind = 'none'
+      rt.hostWindow = null
+      rt.visible = false
+      layoutView(rt)
+      broadcastState(rt.owner)
+    }
+  })
 
   initApprovals({
     hasVisibleHost: (owner) => {

@@ -13,6 +13,12 @@ import { extrasWindows, loadRendererPage, preloadPath } from '../extras/windows'
 import { registerWindowRole } from '../ipc/guard'
 
 let win: BrowserWindow | null = null
+let onClosed: (() => void) | null = null
+
+/** `service.ts` se entera de que la ventana aparte se cerró (X) para dejar de considerarla anfitrión. */
+export function setPopoutClosedListener(fn: () => void): void {
+  onClosed = fn
+}
 
 export function popoutWindow(): BrowserWindow | null {
   return win && !win.isDestroyed() ? win : null
@@ -39,6 +45,11 @@ function create(): BrowserWindow {
   registerWindowRole(created.webContents, 'browserHost')
   created.on('closed', () => {
     if (win === created) win = null
+    try {
+      onClosed?.()
+    } catch (err) {
+      console.error('[embedded-browser] cierre de ventana Navegador:', err)
+    }
   })
   void loadRendererPage(created, 'browser/index.html').catch((err) => console.error('[embedded-browser] ventana Navegador:', err))
   return created
