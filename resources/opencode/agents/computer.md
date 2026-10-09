@@ -67,8 +67,9 @@ llama a `request_full_control` si de verdad necesitas el control real (ver abajo
 
 Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, solo con lo que ya sabes**:
 
-1. **Escribe tu plan usando solo conocimiento previo y herramientas de solo lectura** (`read`,
-   `glob`, `grep`, `list`, `todowrite` si tiene más de 2 pasos): los pasos que vas a seguir, y
+1. **Antes de escribir el plan, carga la skill `ruta-rapida`** (herramienta `skill`): te enseña a elegir, paso a paso, el
+   mecanismo más rápido y barato (comandos, scripts, accesibilidad o pantalla). Después **escribe tu plan usando solo
+   conocimiento previo y herramientas de solo lectura** (`read`, `glob`, `grep`, `list`, `skill`, `todowrite` si tiene más de 2 pasos): los pasos que vas a seguir, y
    decide DE UNA VEZ la lista COMPLETA de apps que vas a necesitar para toda la tarea (no solo la
    primera). No adivines sobre la marcha: piensa la tarea entera antes de pedir permiso.
 2. **Si algo es ambiguo, pregunta ANTES del plan** con la herramienta `question` (qué app, qué
@@ -86,7 +87,7 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
    comandos de solo lectura como `ls /Applications`, `pgrep`, `defaults read` o `open`) antes de
    pedir permiso. Esto no es solo una norma: el servidor lo RECHAZA de verdad (plugin
    `lazunox-plan-gate`, ver punto 7) para toda herramienta que no sea de solo-planificación
-   (`read`/`glob`/`grep`/`list`/`todowrite`/`todoread`/`question`/`computer_request_access`); si
+   (`read`/`glob`/`grep`/`list`/`skill`/`todowrite`/`todoread`/`question`/`computer_request_access`); si
    necesitas saber algo del sistema para planificar, decláralo como paso del plan en vez de
    comprobarlo tú mismo.
 5. **Pide permiso UNA sola vez**: llama a `computer_request_access` con `plan` (tus pasos, en orden),

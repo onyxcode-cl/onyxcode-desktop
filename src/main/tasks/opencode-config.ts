@@ -30,7 +30,7 @@
  * de OpenCode (no solo por prompt ni por el MCP): en el servidor de acceso total, ninguna
  * herramienta corre en NINGUNA sesión (agente `computer`, hijas de `task`, otros agentes) hasta que
  * el usuario apruebe el plan de esa sesión — salvo las de solo planificar (`computer_request_access`,
- * `todowrite`, `todoread`, `question`, `read`, `glob`, `grep`, `list`). Antes, el MCP de computer use ya bloqueaba sus propias herramientas
+ * `todowrite`, `todoread`, `question`, `read`, `glob`, `grep`, `list`, `skill`). Antes, el MCP de computer use ya bloqueaba sus propias herramientas
  * (`computer_*`) del lado del servidor (`computer/mcp-server.ts`), pero `bash`, `edit`, `write`,
  * `webfetch`/`websearch` y `task` son herramientas NATIVAS de OpenCode: el agente podía usarlas
  * (p. ej. `ls /Applications`, `open -a Discord`) antes de que el usuario viera la tarjeta del plan.
@@ -66,7 +66,9 @@ export const PLAN_GATE_ALLOWED_TOOLS = [
   'read',
   'glob',
   'grep',
-  'list'
+  'list',
+  // Solo carga las instrucciones de una skill (lectura): el agente debe poder leer `ruta-rapida` ANTES de escribir el plan.
+  'skill'
 ] as const
 
 /** Variables del entorno de `opencode serve` que bash/pty NO deben ver. */

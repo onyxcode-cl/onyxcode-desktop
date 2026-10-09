@@ -250,6 +250,41 @@ export const TASKS = [
     prompt: 'Abre Discord, entra al canal onyxcode y dime cuál es el último mensaje que aparece ahí.',
     check: ({ answer }) =>
       ok(/Definici[oó]n de Empresa/i.test(answer), 'la respuesta menciona el último mensaje conocido («Definición de Empresa»)')
+  },
+  {
+    // Sin decir «con Finder»: un usuario real no elige el mecanismo. Lo esperable es 1-2 llamadas con comandos.
+    id: 'ruta-carpeta',
+    kind: 'ruta',
+    prompt: 'Crea en el Escritorio una carpeta llamada bench-clientes.',
+    setup: () => rmSync(d('bench-clientes'), { recursive: true, force: true }),
+    check: () => ok(isDir(d('bench-clientes')), 'carpeta bench-clientes en el Escritorio')
+  },
+  {
+    id: 'ruta-ordenar',
+    kind: 'ruta',
+    prompt:
+      'En el Escritorio hay tres archivos: bench-factura-1.txt, bench-factura-2.txt y bench-factura-3.txt. Muévelos a una carpeta nueva llamada bench-facturas.',
+    setup: () => {
+      rmSync(d('bench-facturas'), { recursive: true, force: true })
+      for (const n of [1, 2, 3]) writeFileSync(d(`bench-factura-${n}.txt`), `factura ${n}\n`)
+    },
+    check: () => {
+      const inside = [1, 2, 3].every((n) => existsSync(join(d('bench-facturas'), `bench-factura-${n}.txt`)))
+      const left = [1, 2, 3].some((n) => existsSync(d(`bench-factura-${n}.txt`)))
+      return ok(inside && !left, 'los 3 archivos están dentro de bench-facturas y ya no en el Escritorio')
+    }
+  },
+  {
+    id: 'ruta-info',
+    kind: 'ruta',
+    prompt: 'Dime qué versión de macOS tengo y cuánto espacio libre queda en el disco.',
+    check: ({ answer }) => {
+      const v = execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim()
+      const short = v.split('.').slice(0, 2).join('.')
+      const hasVersion = answer.includes(v) || answer.includes(short)
+      const hasSpace = /\d[\d.,]*\s*(GB|GiB|Gi|TB|G\b)/i.test(answer)
+      return ok(hasVersion && hasSpace, `la respuesta da la versión real (${v}) y una cifra de espacio libre`)
+    }
   }
 ]
 
