@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import pathlib
 import shutil
 import subprocess
 import sys
@@ -30,8 +31,10 @@ def a_pdf(origen, outdir, avisos):
         avisos.append("LibreOffice no está instalado: no se puede renderizar este archivo de Office. "
                       "Haz solo la verificación estructural.")
         return None
-    perfil = os.path.join(outdir, ".lo-profile")
-    cmd = [soffice, "-env:UserInstallation=file://" + perfil, "--headless", "--norestore",
+    # LibreOffice exige una URL file:// ABSOLUTA y bien escapada para el perfil: con un espacio en la ruta (p. ej.
+    # «Application Support») o una ruta relativa aborta con -6, así que se construye con as_uri().
+    perfil = pathlib.Path(outdir, ".lo-profile").resolve().as_uri()
+    cmd = [soffice, "-env:UserInstallation=" + perfil, "--headless", "--norestore",
            "--convert-to", "pdf", "--outdir", outdir, origen]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)

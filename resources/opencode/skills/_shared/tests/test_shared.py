@@ -106,6 +106,20 @@ class PruebasShared(unittest.TestCase):
         self.assertTrue(j["ok"])
         self.assertGreaterEqual(len(j["pngs"]), 1)
 
+    def test_render_docx_ruta_con_espacios(self):
+        # Regresión: el perfil de LibreOffice iba en una URL sin escapar y abortaba (código -6) si la ruta tenía espacios.
+        if not hay_lo():
+            self.skipTest("LibreOffice no está instalado")
+        import docx
+        d = docx.Document()
+        d.add_paragraph("Ruta con espacios.")
+        ruta = os.path.join(self.dir, "con espacio.docx")
+        d.save(ruta)
+        out = os.path.join(self.dir, "carpeta con espacios", "salida")
+        code, so, _ = correr("render.py", ruta, "--outdir", out)
+        self.assertEqual(code, 0, so)
+        self.assertTrue(json.loads(so)["ok"], so)
+
 
 if __name__ == "__main__":
     unittest.main()
