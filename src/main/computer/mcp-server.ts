@@ -150,8 +150,14 @@ function asTier(v: unknown): AppTier | null {
   return t === 'view' || t === 'click' || t === 'full' ? t : null
 }
 
+/** Última app al frente vista (con su hora): evita un proceso extra solo para saber cuánto esperar antes de la captura automática. */
+let lastFront: { app: AppRef; at: number } | null = null
+const LAST_FRONT_TTL_MS = 8_000
+
 async function appFrontmost(): Promise<AppRef> {
-  return backend.parseApp(JSON.parse(await helper('frontmost')))
+  const app = backend.parseApp(JSON.parse(await helper('frontmost')))
+  lastFront = { app, at: Date.now() }
+  return app
 }
 
 async function appAtPoint(x: number, y: number): Promise<AppRef> {
@@ -1171,33 +1177,44 @@ const REMOTE_CLIENT_BUNDLES = new Set([
 ])
 const REMOTE_CLIENT_NAME = /anydesk|teamviewer|rustdesk|windows app|remote desktop|escritorio remoto|screen sharing|vnc/i
 
-/** Símbolos cuya TECLA FÍSICA cambia entre distribuciones (llaves, corchetes, barras, @, $…): por teclas pueden salir otros caracteres. */
-const LAYOUT_SENSITIVE = /[{}[\]|\\@~^`<>"'$%&*=+/#]/
+/** ¿La app al frente es un cliente de escritorio remoto? (su imagen llega con retraso y lee teclas físicas) */
+function isRemoteApp(app: AppRef): boolean {
+  return REMOTE_CLIENT_BUNDLES.has(app.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(app.name)
+}
+
+async function isRemoteClientFront(): Promise<boolean> {
+  const front = await appFrontmost().catch(() => null)
+  return front ? isRemoteApp(front) : false
+}
+
+/** Como `isRemoteClientFront`, pero con el dato ya conocido de esta misma acción (sin llamar otra vez al helper si es reciente). */
+function remoteFrontKnown(): boolean {
+  return lastFront !== null && Date.now() - lastFront.at < LAST_FRONT_TTL_MS && isRemoteApp(lastFront.app)
+}
+
+/** Espera antes de la captura automática: un escritorio remoto tarda en pintar el cambio (se vio hasta varios segundos). */
+const REMOTE_SETTLE_MS = 2200
 
 type TypeMode = 'unicode' | 'keys' | 'paste'
 
 /**
- * Cómo escribir `text`: `input` explícito manda. En `auto` y con un cliente remoto al frente: por PORTAPAPELES si el texto trae símbolos
- * sensibles a la distribución (no depende del teclado del equipo remoto) y por TECLAS FÍSICAS (`cu-keys`) si no; en el resto, Unicode.
+ * Cómo escribir: `input` explícito manda. En `auto`, con un cliente remoto al frente: TECLAS FÍSICAS (`cu-keys`); en el resto, Unicode.
+ * El portapapeles (`paste`) solo se usa si se pide: los clientes remotos lo sincronizan con retraso y a veces entregan el texto anterior.
  */
-async function typeModeFor(input: unknown, text: string): Promise<TypeMode> {
+async function typeModeFor(input: unknown): Promise<TypeMode> {
   if (input === 'unicode') return 'unicode'
   if (input === 'keys') return backend.typeKeys ? 'keys' : 'unicode'
   if (input === 'paste') return backend.pasteText ? 'paste' : 'unicode'
   if (!backend.typeKeys || !backend.pressKeys) return 'unicode'
-  const front = await appFrontmost().catch(() => null)
-  if (!front) return 'unicode'
-  const remote = REMOTE_CLIENT_BUNDLES.has(front.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(front.name)
-  if (!remote) return 'unicode'
-  return backend.pasteText && LAYOUT_SENSITIVE.test(text) ? 'paste' : 'keys'
+  if (!(await isRemoteClientFront())) return 'unicode'
+  // El portapapeles de los clientes remotos se sincroniza con retraso y a veces entrega el texto anterior: solo se usa si se pide (`input: "paste"`).
+  return 'keys'
 }
 
 /** ¿Pulsar combinaciones por teclas físicas? Solo con un cliente remoto al frente. */
 async function shouldPressByKeys(): Promise<boolean> {
   if (!backend.typeKeys || !backend.pressKeys) return false
-  const front = await appFrontmost().catch(() => null)
-  if (!front) return false
-  return REMOTE_CLIENT_BUNDLES.has(front.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(front.name)
+  return isRemoteClientFront()
 }
 
 /** Punto (puntos globales) al que apunta una acción: `element: N` de la última lista, o x/y en px de la captura. */
@@ -1469,10 +1486,9 @@ const TOOLS: ToolDef[] = [
     name: 'type_text',
     description:
       'Escribe texto (unicode) en el elemento con foco. "\\n" pulsa Return. Nunca escribas contraseñas ni datos de pago. ' +
-      'En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…): texto con símbolos ({ } [ ] | \\\\ @ $ " …) se PEGA por ' +
-      'el portapapeles (no depende del teclado del equipo remoto) y el resto se escribe por teclas físicas. Comprueba SIEMPRE con zoom lo que ' +
-      'quedó escrito; si no apareció nada, repite con input "keys" (y layout "us" si el equipo remoto tiene teclado inglés). ' +
-      '`input`: "paste" | "keys" | "unicode" fuerzan el modo; "paste_key" cambia el atajo de pegar (por defecto cmd+v; prueba ctrl+v).',
+      'En ventanas de escritorio remoto (Windows App, AnyDesk, TeamViewer, RustDesk…) escribe por TECLAS FÍSICAS. En Windows App, si { } [ ] | salen ' +
+      'cambiados, pasa su teclado a modo Unicode con key "ctrl+cmd+u" (ctrl+cmd+k = Scancode) y repite. Comprueba SIEMPRE con zoom lo escrito (la imagen ' +
+      'remota llega con retraso). `input`: "keys" | "paste" (portapapeles remoto: poco fiable) | "unicode"; "layout": "us" si el equipo remoto tiene teclado inglés.',
     inputSchema: obj(
       {
         text: { type: 'string' },
@@ -1494,7 +1510,7 @@ const TOOLS: ToolDef[] = [
       await requireTier('full', undefined, session)
       await requireCanType()
       const layout = a.layout === 'us' ? 'us' : 'mac'
-      const mode = await typeModeFor(a.input, text)
+      const mode = await typeModeFor(a.input)
       const pasteKey = typeof a.paste_key === 'string' && a.paste_key.trim() ? a.paste_key.trim() : 'cmd+v'
       await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
         mode === 'paste'
@@ -1504,7 +1520,13 @@ const TOOLS: ToolDef[] = [
             : helper('type', text)
       )
       const how = mode === 'paste' ? ` por portapapeles (${pasteKey})` : mode === 'keys' ? ' por teclas físicas' : ''
-      return `Escrito${how}: ${text.length} caracteres${mode === 'unicode' ? '' : '. Comprueba con zoom que apareció bien.'}`
+      const hint =
+        mode === 'keys'
+          ? '. Comprueba con zoom (la imagen remota llega con retraso: espera unos segundos). Si los símbolos { } [ ] | salieron cambiados y es Windows App: pasa su teclado a modo Unicode con la tecla ctrl+cmd+u (ctrl+cmd+k vuelve a Scancode) y repite.'
+          : mode === 'paste'
+            ? '. Comprueba con zoom que apareció bien (si salió el texto anterior, el portapapeles remoto no se sincronizó: usa input "keys").'
+            : ''
+      return `Escrito${how}: ${text.length} caracteres${hint}`
     }
   },
   {
@@ -2189,7 +2211,7 @@ async function callToolNow(name: string, rawArgs: Record<string, unknown>): Prom
     }
     const wantShot = tool.action && !tool.noAutoShot && AUTO_SHOT && args?.screenshot !== false
     if (wantShot) {
-      await sleep(SETTLE_MS)
+      await sleep(remoteFrontKnown() ? REMOTE_SETTLE_MS : SETTLE_MS)
       if (await isStopped().catch(() => true)) {
         content.push({ type: 'text', text: STOPPED_MSG })
       } else {

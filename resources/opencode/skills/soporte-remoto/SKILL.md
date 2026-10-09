@@ -26,9 +26,10 @@ Trabajas con **capturas, zoom y teclado**. Por eso: poca mano, mucho teclado y c
 
 ## 3. Escribir y leer
 - Escribe **una orden por vez**, acotada (`| select -first 10`, `| head -20`) y sigue con Enter.
-- `type_text` elige solo el modo: un texto con símbolos (`{ } [ ] | \ @ $ " …`) se **pega por el portapapeles** (no depende de la distribución de teclado del equipo remoto) y el resto se escribe por teclas físicas. **Comprueba siempre con zoom** que quedó escrito lo que querías.
+- `type_text` escribe por **teclas físicas**. En **Windows App** el teclado tiene dos modos (menú *Conexiones › Modo de teclado*): **Scancode** manda la tecla física y el PC remoto la interpreta con SU distribución (por eso `{ } [ ] | @ \` pueden salir cambiados) y **Unicode** manda el carácter ya traducido, sin depender de la distribución del PC remoto. Atajos del propio cliente: `ctrl+cmd+u` = Unicode, `ctrl+cmd+k` = Scancode.
+- **Antes de escribir órdenes con símbolos en Windows App**: pulsa `ctrl+cmd+u` (modo Unicode) y escribe. Para atajos del remoto (Ctrl+C, Win+R…) vuelve a `ctrl+cmd+k`. Dile al usuario que cambiaste el modo y déjalo como lo encontraste al terminar.
 - **La imagen del equipo remoto llega con retraso** (a veces varios segundos): antes de leer una captura espera 3-4 s con `computer_wait`; si no, verás la línea de ANTES y creerás que falló. Mejor aún: haz una captura, espera, y vuelve a capturar para comparar.
-- **El portapapeles remoto a veces se queda con el texto anterior** (el cliente solo sincroniza algunas veces). Si pegaste y salió el comando viejo, no sigas pegando: cancela la línea (`ctrl+c`), y usa `input: "keys"` con comandos cortos y de símbolos básicos.
+- **El portapapeles remoto es poco fiable** (el cliente lo sincroniza con retraso y a veces entrega el texto anterior): `input: "paste"` es el ÚLTIMO recurso. Si salió el comando viejo, cancela la línea (`ctrl+c`) y vuelve a `input: "keys"`.
 - Si no apareció nada: repite con `input: "keys"` (y `layout: "us"` si el equipo remoto tiene teclado inglés); si pegar falla, prueba `paste_key: "ctrl+v"`. Si tras dos intentos sigue mal, **para** y dilo: no reintentes lo mismo.
 - Alternativa que evita todo teclado: ordenes sin símbolos raros (`Get-Process`, `hostname`, `ipconfig`) o dividir el trabajo en pasos simples.
 - Lee el resultado con `zoom` sobre la región de la terminal: nunca adivines texto borroso. Si no se lee, limpia (`cls` / `clear`) y repite más corto.
