@@ -1087,6 +1087,12 @@ export interface TasksInvokeContract {
    * tarjeta `request_access` con más espacio que la píldora.
    */
   'computer:showMainWindow': { req: void; res: void }
+  /**
+   * El renderer avisa de que hay (o ya no hay) un permiso de OpenCode o una pregunta esperando al usuario. Mientras el control
+   * del Mac tiene la ventana principal minimizada, esas tarjetas solo viven ahí: con `visible: true` main la restaura SIN
+   * quitarle el foco a la app que el agente usa (y la vuelve a minimizar con `visible: false` si el control sigue activo).
+   */
+  'computer:promptVisible': { req: { visible: boolean }; res: void }
 
   /** Estado actual (ajuste + si el bloqueo está activo). */
   'tasks:keepAwakeState': { req: void; res: KeepAwakeState }
@@ -1325,6 +1331,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'computer:revokePlan',
   'computer:approvedPlans',
   'computer:showMainWindow',
+  'computer:promptVisible',
   'tasks:keepAwakeState',
   'tasks:keepAwakeSetting',
   'tasks:keepAwakeActive',

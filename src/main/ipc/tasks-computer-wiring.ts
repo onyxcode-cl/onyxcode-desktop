@@ -297,6 +297,22 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   handle('computer:respondAccess', ({ id, decisions, feedback, approvePlan, cancel }) => {
     computer.resolveAccessRequest(id, decisions, { feedback, approvePlan, cancel })
   })
+  // Permiso o pregunta de OpenCode esperando al usuario mientras el control tiene la ventana principal minimizada: la tarjeta
+  // solo existe ahí, así que sin esto el agente se quedaba esperando sin ninguna señal visible. Se restaura SIN foco (no le
+  // quita el teclado a la app que el agente usa; el agente está bloqueado esperando, no actúa) y se vuelve a minimizar al responder.
+  let restoredForPrompt = false
+  handle('computer:promptVisible', ({ visible }) => {
+    if (visible) {
+      if (!minimizedByFullAccess) return
+      restoredForPrompt = true
+      restoreMainWindowIfHidden()
+      const win = getWindow()
+      if (win && !win.isDestroyed()) win.moveTop()
+    } else if (restoredForPrompt) {
+      restoredForPrompt = false
+      if (sessionWanted) hideMainWindowForTask()
+    }
+  })
   handle('computer:showMainWindow', () => {
     restoreMainWindowIfHidden({ focus: true })
     const win = getWindow()

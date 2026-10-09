@@ -590,6 +590,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'computer:revokePlan': obj({ sessionId }),
   'computer:approvedPlans': none,
   'computer:showMainWindow': none,
+  'computer:promptVisible': obj({ visible: bool }),
   'tasks:keepAwakeState': none,
   'tasks:keepAwakeSetting': obj({ enabled: bool }),
   'tasks:keepAwakeActive': obj({ active: bool }),

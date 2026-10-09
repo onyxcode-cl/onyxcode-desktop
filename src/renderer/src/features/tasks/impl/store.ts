@@ -1413,3 +1413,22 @@ useExtrasPrefs.subscribe((s, prev) => {
   if (st.activeTaskId || sameRef(st.taskModel, next)) return
   useTasks.setState({ taskModel: null, taskVariant: null })
 })
+
+/**
+ * Permisos y preguntas de OpenCode que esperan AL USUARIO ahora mismo (los que el Modo auto está considerando no se le muestran,
+ * así que no cuentan). Función pura: la usa la señal de abajo y se prueba aparte.
+ */
+export function pendingPromptCount(s: Pick<TasksState, 'permissions' | 'questions' | 'autoPending'>): number {
+  return Object.keys(s.permissions).filter((id) => !s.autoPending[id]).length + Object.keys(s.questions).length
+}
+
+// Mientras el control del Mac tiene minimizada la ventana principal, estas tarjetas solo viven ahí: se avisa a main al pasar de «nada
+// pendiente» a «algo pendiente» (y al volver) para que la restaure sin foco y la vuelva a apartar (`computer:promptVisible`).
+let promptWasPending = false
+useTasks.subscribe((s) => {
+  const pending = pendingPromptCount(s) > 0
+  if (pending === promptWasPending) return
+  promptWasPending = pending
+  if (s.conn?.fullAccess !== true) return
+  void cw('computer:promptVisible', { visible: pending }).catch(() => undefined)
+})

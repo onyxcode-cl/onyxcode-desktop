@@ -366,6 +366,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'computer:revokePlan': 'M',
   'computer:approvedPlans': 'R',
   'computer:showMainWindow': 'X',
+  'computer:promptVisible': 'X',
   'tasks:keepAwakeState': 'R',
   'tasks:keepAwakeSetting': 'M',
   'tasks:keepAwakeActive': 'M',
