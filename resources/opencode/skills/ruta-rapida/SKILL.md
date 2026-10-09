@@ -9,8 +9,10 @@ Cada paso por pantalla cuesta 2-4 llamadas (captura, clic, comprobar) y puede fa
 comprueba solo. **Para cada paso del plan, usa el primer peldaño de esta escalera que sirva:**
 
 1. **Comandos de terminal** (`bash`): archivos y carpetas, texto, datos, comprimir, buscar, abrir cosas, información del sistema.
-2. **Scripts**: Python con las skills de oficina (`docx`, `xlsx`, `pptx`, `pdf`); `osascript` (AppleScript/JXA) para apps de
-   Apple con diccionario (Finder, Notas, Recordatorios, Calendario, Música, Safari) y para Spotify.
+2. **Scripts**: `osascript` (AppleScript/JXA) para apps de Apple con diccionario (Finder, Notas, Recordatorios, Calendario,
+   Música, Safari) y para Spotify. **Word, Excel, PowerPoint y PDF NO se improvisan** (nada de descomprimir el `.docx` o
+   escribir XML a mano): si el archivo es `.docx`, `.xlsx`, `.pptx` o `.pdf` —crearlo, leerlo o editarlo—, carga ANTES de planificar
+   la skill `docx`, `xlsx`, `pptx` o `pdf` (herramienta `skill`) y usa sus scripts con `$LAZUNOX_PYTHON`.
 3. **Atajos de macOS** (`shortcuts run "Nombre"`) solo si el usuario ya tiene ese atajo.
 4. **Accesibilidad** (`computer_app_press`, `computer_app_set_value`, `computer_app_find`): apps sin comandos, sin mover el ratón.
 5. **Ratón y teclado con la lista numerada** (`element: N`) y **lotes** (`computer_batch`).
@@ -25,7 +27,7 @@ comprueba solo. **Para cada paso del plan, usa el primer peldaño de esta escale
 1. Lista los pasos del encargo.
 2. Etiqueta cada uno con su peldaño (1-6). Agrupa los de comandos en UN solo `bash` (`&&`) o un script.
 3. Deja la pantalla solo para los pasos que de verdad la necesitan; di en el plan «con comandos» o «por pantalla».
-4. **Comprueba con un comando**, no con una captura: `test -d carpeta && echo ok`, `ls`, `cat archivo`, `wc -l`.
+4. Si el encargo toca un `.docx/.xlsx/.pptx/.pdf`, el paso «cargar la skill de ese formato» va ANTES del plan. **Comprueba con un comando**, no con una captura: `test -d carpeta && echo ok`, `ls`, `cat archivo`, `wc -l`.
 5. Si un peldaño falla UNA vez (error de permiso, app sin diccionario), sube al siguiente; no insistas con el mismo.
 
 ## Permisos y límites
