@@ -22,7 +22,7 @@
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
-import { exeBaseName, parseAppKey } from './policy/app-key'
+import { aumidKey, exeBaseName, parseAppKey } from './policy/app-key'
 import { checkKeys } from './policy/win-keys'
 
 /** Límites del contrato del helper (`protocol.json` → `io`); una prueba los compara con el JSON. */
@@ -205,7 +205,15 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     })
   }
 
-  function helperExit(...args: string[]): Promise<HelperResult> {
+  /** El helper actual deja `open-app` / `open-app-bg` diferidos (salida 12): se atienden con el menú Inicio (`openStartApp`). */
+  async function helperExit(...args: string[]): Promise<HelperResult> {
+    const out = await runHelper(...args)
+    if (out.code === 12 && (args[0] === 'open-app' || args[0] === 'open-app-bg'))
+      return openStartApp(args[1] ?? '', args[0] === 'open-app-bg')
+    return out
+  }
+
+  function runHelper(...args: string[]): Promise<HelperResult> {
     try {
       ensureHelper()
     } catch (err) {
@@ -363,6 +371,84 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
 
   // ───────────────────────────── apps ─────────────────────────────
 
+  interface StartApp {
+    name: string
+    appId: string
+  }
+  let startAppsCache: { at: number; apps: StartApp[] } | null = null
+  /** Id de app del menú Inicio que se acepta para lanzar (sin comillas, `&`, `;`…: el destino va a `shell:AppsFolder\<id>`). */
+  const SAFE_APP_ID = /^[\w.!{}\-\\ :()]+$/
+
+  /** Apps del menú Inicio (`Get-StartApps`): nombre localizado + AppID. Cacheadas 60 s; vacío si PowerShell falla. */
+  function startApps(): Promise<StartApp[]> {
+    if (startAppsCache && Date.now() - startAppsCache.at < 60_000) return Promise.resolve(startAppsCache.apps)
+    const root = deps.env.SystemRoot ?? deps.env.SYSTEMROOT ?? 'C:\\Windows'
+    const ps = `${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+    return new Promise((resolve) => {
+      try {
+        deps.execFile(
+          ps,
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-StartApps | ConvertTo-Json -Compress'
+          ],
+          { timeout: 15_000, maxBuffer: 2 * 1024 * 1024, windowsHide: true },
+          (err, stdout) => {
+            if (err) {
+              log('Get-StartApps:', err.message)
+              return resolve([])
+            }
+            try {
+              const j = JSON.parse(stdout.toString().replace(/^\uFEFF/, '')) as unknown
+              const arr = Array.isArray(j) ? j : j ? [j] : []
+              const apps = arr
+                .map((r) => r as { Name?: unknown; AppID?: unknown })
+                .filter((r): r is { Name: string; AppID: string } => typeof r.Name === 'string' && typeof r.AppID === 'string')
+                .map((r) => ({ name: r.Name, appId: r.AppID }))
+              startAppsCache = { at: Date.now(), apps }
+              resolve(apps)
+            } catch {
+              resolve([])
+            }
+          }
+        )
+      } catch {
+        resolve([])
+      }
+    })
+  }
+
+  /** Mejor coincidencia por nombre localizado: exacto → empieza por → contiene (mínimo 2 letras). */
+  async function findStartApp(query: string): Promise<StartApp | null> {
+    const want = fold(query.replace(/\.exe$/i, ''))
+    if (want.length < 2) return null
+    const apps = await startApps()
+    return (
+      apps.find((a) => fold(a.name) === want) ??
+      apps.find((a) => fold(a.name).startsWith(want)) ??
+      apps.find((a) => fold(a.name).includes(want)) ??
+      null
+    )
+  }
+
+  /** `open-app`: lanza una app del menú Inicio con `explorer.exe shell:AppsFolder\<AppID>` (sin shell, id validado). */
+  async function openStartApp(name: string, background: boolean): Promise<HelperResult> {
+    const app = await findStartApp(name)
+    if (!app || !SAFE_APP_ID.test(app.appId)) return { stdout: '', code: 7 }
+    const root = deps.env.SystemRoot ?? deps.env.SYSTEMROOT ?? 'C:\\Windows'
+    await new Promise<void>((resolve) => {
+      try {
+        // `explorer.exe` devuelve 1 aunque lance bien la app: el éxito no se deduce del código.
+        deps.execFile(`${root}\\explorer.exe`, [`shell:AppsFolder\\${app.appId}`], { timeout: 10_000, windowsHide: true }, () => resolve())
+      } catch {
+        resolve()
+      }
+    })
+    return { stdout: JSON.stringify({ opened: true, name: app.name, ...(background ? { behind: false } : {}) }), code: 0 }
+  }
+
   /** Apps con ventana visible (`list-apps`). Lanza si el helper falla o devuelve una entrada sin clave válida (falla cerrado). */
   async function listApps(): Promise<AppListEntry[]> {
     const arr = JSON.parse(await helper('list-apps')) as unknown
@@ -395,11 +481,18 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
         apps.find((a) => names(a).includes(want)) ??
         apps.find((a) => names(a).some((n) => n && n.startsWith(want))) ??
         apps.find((a) => names(a).some((n) => n && n.includes(want)))
-      return hit ? { bundleId: hit.key, name: hit.name, found: true } : notFound
+      if (hit) return { bundleId: hit.key, name: hit.name, found: true }
     } catch (err) {
       log('list-apps:', err instanceof Error ? err.message : err)
-      return notFound
     }
+    // App instalada que aún no está abierta: solo las empaquetadas (AppID con «!», como Calculadora o Bloc de notas), cuya clave
+    // `aumid:` es la misma que el helper informa cuando están en ejecución. El resto aparece al abrirse (clave por ruta y editor).
+    const installed = await findStartApp(query)
+    if (installed && installed.appId.includes('!')) {
+      const k = aumidKey(installed.appId)
+      if (k.ok) return { bundleId: k.key, name: installed.name, found: true }
+    }
+    return notFound
   }
 
   // ───────────────────────────── capturas (FALLAR CERRADO) ─────────────────────────────

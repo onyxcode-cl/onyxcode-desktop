@@ -865,3 +865,70 @@ describe('Windows: captura con dobles (sin proceso)', () => {
     })
   })
 })
+
+describe('Windows: abrir apps por nombre con el menú Inicio (sin proceso)', () => {
+  const host: PlatformHost = {
+    config: {
+      helper: 'C:\\x\\cu-helper.exe',
+      eventsUrl: '',
+      instant: false,
+      typeDelay: '',
+      maxLong: 1366,
+      shotDir: '',
+      fakeShot: '',
+      neverExclude: new Set()
+    },
+    log: () => undefined,
+    tierOf: async () => null,
+    mainScreen: async () => ({ width: 1, height: 1, scale: 1 }),
+    sideGet: async () => ({})
+  }
+  const START = JSON.stringify([
+    { Name: 'Calculadora', AppID: 'Microsoft.WindowsCalculator_8wekyb3d8bbwe!App' },
+    { Name: 'Bloc de notas', AppID: 'Microsoft.WindowsNotepad_8wekyb3d8bbwe!App' },
+    { Name: 'Raro', AppID: 'x" & calc & "' }
+  ])
+  /** `execFile` de mentira: PowerShell devuelve el menú Inicio, explorer anota el destino y el helper responde `list-apps` vacío. */
+  function fake(): { calls: Array<[string, string[]]>; deps: Parameters<typeof createWin32Backend>[1] } {
+    const calls: Array<[string, string[]]> = []
+    const execFile = ((cmd: string, args: string[], _o: unknown, cb: (e: Error | null, out: string) => void) => {
+      calls.push([cmd, args])
+      const done = (e: Error | null, out: string): void => void setImmediate(() => cb(e, out))
+      if (/powershell/i.test(cmd)) done(null, START)
+      else if (/explorer/i.test(cmd)) done(new Error('salida 1'), '')
+      else if (args.includes('open-app') || args.includes('open-app-bg')) done(Object.assign(new Error('diferido'), { code: 12 }), '')
+      else done(null, '[]')
+      return new EventEmitter()
+    }) as never
+    return { calls, deps: { execFile, existsSync: () => true, env: { SystemRoot: 'C:\\Windows' } } }
+  }
+
+  it('open-app lanza la app por su AppID con explorer, sin shell, aunque explorer devuelva 1', async () => {
+    const f = fake()
+    const b = createWin32Backend(host, f.deps)
+    const out = await b.helperExit('open-app', 'calculadora')
+    expect(out.code).toBe(0)
+    expect(JSON.parse(out.stdout)).toMatchObject({ opened: true, name: 'Calculadora' })
+    const launch = f.calls.find(([c]) => /explorer/i.test(c))!
+    expect(launch[1]).toEqual(['shell:AppsFolder\\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App'])
+  })
+  it('open-app-bg avisa de que no se pudo dejar detrás', async () => {
+    const b = createWin32Backend(host, fake().deps)
+    expect(JSON.parse((await b.helperExit('open-app-bg', 'Bloc de notas')).stdout)).toMatchObject({ opened: true, behind: false })
+  })
+  it('una app que no existe da salida 7 y no lanza nada; un AppID con caracteres peligrosos tampoco', async () => {
+    const f = fake()
+    const b = createWin32Backend(host, f.deps)
+    expect((await b.helperExit('open-app', 'no-existe-zz')).code).toBe(7)
+    expect((await b.helperExit('open-app', 'Raro')).code).toBe(7)
+    expect(f.calls.some(([c]) => /explorer/i.test(c))).toBe(false)
+  })
+  it('resolveApp encuentra una app empaquetada aún cerrada y devuelve su clave aumid', async () => {
+    const b = createWin32Backend(host, fake().deps)
+    expect(await b.resolveApp('Calculadora')).toEqual({
+      bundleId: 'aumid:microsoft.windowscalculator_8wekyb3d8bbwe!app',
+      name: 'Calculadora',
+      found: true
+    })
+  })
+})
