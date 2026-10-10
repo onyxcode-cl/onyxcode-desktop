@@ -34,7 +34,7 @@ import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { SidebarEmpty } from '../../../components/SidebarEmpty'
-import { StateDot, useSidebarTree, type SessionState } from '../../../components/SidebarTree'
+import { StateDot, useSidebarTree, SidebarTreeRegion, type SessionState } from '../../../components/SidebarTree'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { SheetAction } from './SheetAction'
 import { SwipeRow, useLongPress } from '../../../components/mobile/SwipeRow'
@@ -745,18 +745,20 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   return (
     <div className="flex min-h-0 flex-col gap-0.5">
       <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
-      {groups.map((dir) => (
-        <ProjectGroup
-          key={dir}
-          directory={dir}
-          focused={dir === directory}
-          waiting={waiting}
-          tree={tree}
-          desktop={desktop}
-          compact={compact}
-          onSearch={() => setSwitcherOpen(true)}
-        />
-      ))}
+      <SidebarTreeRegion>
+        {groups.map((dir) => (
+          <ProjectGroup
+            key={dir}
+            directory={dir}
+            focused={dir === directory}
+            waiting={waiting}
+            tree={tree}
+            desktop={desktop}
+            compact={compact}
+            onSearch={() => setSwitcherOpen(true)}
+          />
+        ))}
+      </SidebarTreeRegion>
     </div>
   )
 }

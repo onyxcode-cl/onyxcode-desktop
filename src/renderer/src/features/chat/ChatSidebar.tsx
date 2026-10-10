@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { useT } from '../../lib/i18n'
 import { ChatSessionList } from './ChatSessionList'
+import { SidebarTreeRegion } from '../../components/SidebarTree'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { sessionsKey, useSessions } from '../../stores/sessions'
 import { selectSessionsForDirectory } from '../../lib/session-reducer'
@@ -62,19 +63,21 @@ export function ChatSidebar(): React.JSX.Element {
   return (
     <>
       {listError && <div className="px-3 py-2 text-xs text-danger">{listError}</div>}
-      <ChatSessionList
-        sessions={sessions}
-        activeId={activeSessionId}
-        busyIds={busyIds}
-        loading={listLoading || !connection}
-        emptyText={t('chat.sidebar.empty')}
-        onSelect={(id) => void openChatSession(id)}
-        onRename={renameChat}
-        onDelete={deleteChat}
-        hasMore={!!more}
-        onLoadMore={onLoadMore}
-        showTime
-      />
+      <SidebarTreeRegion>
+        <ChatSessionList
+          sessions={sessions}
+          activeId={activeSessionId}
+          busyIds={busyIds}
+          loading={listLoading || !connection}
+          emptyText={t('chat.sidebar.empty')}
+          onSelect={(id) => void openChatSession(id)}
+          onRename={renameChat}
+          onDelete={deleteChat}
+          hasMore={!!more}
+          onLoadMore={onLoadMore}
+          showTime
+        />
+      </SidebarTreeRegion>
     </>
   )
 }

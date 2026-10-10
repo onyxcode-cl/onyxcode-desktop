@@ -370,6 +370,8 @@ function Section<T>({
         <button
           type="button"
           aria-expanded={expanded}
+          role={tree ? 'treeitem' : undefined}
+          aria-level={tree ? 2 : undefined}
           className="mt-0.5 w-full rounded-lg px-2 py-1 text-left text-[11.5px] text-muted hover:bg-hover hover:text-fg desk:rounded-ctl desk:px-2.5 desk:text-meta"
           onClick={() => setExpanded((e) => !e)}
         >

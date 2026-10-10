@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { StateDot, treeMove, useSidebarTree, type TreeNode } from './SidebarTree'
+import { SidebarTreeRegion, StateDot, treeMove, useSidebarTree, type TreeNode } from './SidebarTree'
 import { SidebarTree } from './SidebarTreeRoot'
 
 // Árbol de ejemplo: [0] proyecto A (desplegado) · [1] [2] sus sesiones · [3] proyecto B (plegado) · [4] sin proyecto.
@@ -43,10 +43,16 @@ describe('treeMove (teclado del árbol)', () => {
 describe('SidebarTree', () => {
   const Probe = (): React.JSX.Element => createElement('i', null, String(!!useSidebarTree()))
 
-  it('es un role=tree con nombre y activa el contexto solo dentro de él', () => {
+  it('activa el contexto solo dentro de él; el role=tree lo pone cada región de filas', () => {
     expect(renderToStaticMarkup(createElement(Probe))).toBe('<i>false</i>')
     const html = renderToStaticMarkup(createElement(SidebarTree, null, createElement(Probe)))
-    expect(html).toBe('<div role="tree" aria-label="Proyectos y conversaciones"><i>true</i></div>')
+    expect(html).toBe('<div><i>true</i></div>')
+    // Fuera de la barra lateral de escritorio la región no añade ni un elemento.
+    expect(renderToStaticMarkup(createElement(SidebarTreeRegion, null, createElement(Probe)))).toBe('<i>false</i>')
+    // Dentro, es un tree con nombre.
+    expect(renderToStaticMarkup(createElement(SidebarTree, null, createElement(SidebarTreeRegion, null, createElement(Probe))))).toBe(
+      '<div><div role="tree" aria-label="Proyectos y conversaciones"><i>true</i></div></div>'
+    )
   })
 
   it('el punto de estado es decorativo, de 7 px y usa solo tokens', () => {

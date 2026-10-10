@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
 /**
@@ -12,9 +12,37 @@ import type { KeyboardEvent } from 'react'
 export interface SidebarTreeValue {
   /** Nombre accesible de una fila con estado («… · esperando aprobación»); `undefined` si no hay estado (queda el nombre del contenido). */
   stateAria: (title: string, state: SessionState | null | undefined) => string | undefined
+  /** Nombre accesible de cada región `tree` (lo pone `SidebarTreeRoot.tsx`: aquí no hay textos). */
+  treeLabel: string
 }
 export const SidebarTreeContext = createContext<SidebarTreeValue | null>(null)
 export const useSidebarTree = (): SidebarTreeValue | null => useContext(SidebarTreeContext)
+
+/**
+ * Región `role="tree"`: SOLO las filas (proyectos y sesiones). ARIA exige que un `tree` contenga únicamente `treeitem`: los campos de búsqueda,
+ * selectores y botones de la cabecera de la lista van FUERA de la región. Sin ninguna fila (solo el texto «aún no hay…») la región es un div
+ * normal. Fuera de la barra lateral de escritorio (celular, pruebas de marcado fijado) no añade ni un elemento.
+ */
+export function SidebarTreeRegion({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const tree = useSidebarTree()
+  const ref = useRef<HTMLDivElement>(null)
+  const [hasItems, setHasItems] = useState(true)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const sync = (): void => setHasItems(el.querySelector('[role="treeitem"]') !== null)
+    sync()
+    const mo = new MutationObserver(sync)
+    mo.observe(el, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  }, [tree])
+  if (!tree) return <>{children}</>
+  return (
+    <div ref={ref} role={hasItems ? 'tree' : undefined} aria-label={hasItems ? tree.treeLabel : undefined}>
+      {children}
+    </div>
+  )
+}
 
 // ───────────────────────────── Teclado (puro, probable sin DOM) ─────────────────────────────
 

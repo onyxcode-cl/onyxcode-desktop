@@ -26,7 +26,7 @@ import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
 import { m as mob } from '../../../app/mobile/m'
 import { MAIN_SOURCE, sessionsKey, useSessions } from '../../../stores/sessions'
 import { SidebarEmpty } from '../../../components/SidebarEmpty'
-import { StateDot, useSidebarTree, type SessionState } from '../../../components/SidebarTree'
+import { SidebarTreeRegion, StateDot, useSidebarTree, type SessionState } from '../../../components/SidebarTree'
 import { isRemoteSurface } from '../../../lib/platform'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
@@ -588,35 +588,37 @@ export function TaskList(): React.JSX.Element {
         {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (
           <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}
-        {groups.map((g) => (
-          <div key={g.key} className="mb-1" role={tree ? 'group' : undefined} aria-label={tree ? g.label : undefined}>
-            <div
-              aria-hidden={tree ? true : undefined}
-              className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
-            >
-              {g.label}
+        <SidebarTreeRegion>
+          {groups.map((g) => (
+            <div key={g.key} className="mb-1" role={tree ? 'group' : undefined} aria-label={tree ? g.label : undefined}>
+              <div
+                aria-hidden={tree ? true : undefined}
+                className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
+              >
+                {g.label}
+              </div>
+              <div className="space-y-0.5">
+                {g.items.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    status={statusOf(t)}
+                    active={t.id === activeId}
+                    unseen={!!unseen[t.id] && t.id !== activeId}
+                    blockedHost={(networkBlocked[t.id] ?? []).some((b) => !b.resolved)}
+                    archivedView={showArchived}
+                    group={taskMeta[t.id]?.group}
+                    knownGroups={knownGroups}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="space-y-0.5">
-              {g.items.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  status={statusOf(t)}
-                  active={t.id === activeId}
-                  unseen={!!unseen[t.id] && t.id !== activeId}
-                  blockedHost={(networkBlocked[t.id] ?? []).some((b) => !b.resolved)}
-                  archivedView={showArchived}
-                  group={taskMeta[t.id]?.group}
-                  knownGroups={knownGroups}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-        <LoadMoreSessions
-          visible={more && !searching}
-          onClick={() => client && folder && void useSessions.getState().loadMoreSessions(client, dirKey, baseUrl)}
-        />
+          ))}
+          <LoadMoreSessions
+            visible={more && !searching}
+            onClick={() => client && folder && void useSessions.getState().loadMoreSessions(client, dirKey, baseUrl)}
+          />
+        </SidebarTreeRegion>
         {searching && !showArchived && q.length < MIN_QUERY_LENGTH && (
           <p className="px-1 py-2 text-[11.5px] text-subtle">{tr('tasks.list.minChars.pre', { n: MIN_QUERY_LENGTH })}</p>
         )}
