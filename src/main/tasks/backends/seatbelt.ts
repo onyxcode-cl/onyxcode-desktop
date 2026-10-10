@@ -8,6 +8,7 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { seedModelsCache } from '../models-cache'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv } from '../sandbox-profile'
 import { spawnOnHost } from './spawn'
 import type { SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './types'
@@ -50,10 +51,12 @@ export const seatbeltBackend: SandboxBackend = {
   prepare(isolation) {
     const dirs = sandboxDirs(isolation.privateDir)
     for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
+    seedModelsCache(dirs.cache)
   },
   async launch(spec) {
     if (!spec.isolation) throw new Error(t('merr.task.noPrivateDir'))
     const dirs = sandboxDirs(spec.isolation.privateDir)
+    seedModelsCache(dirs.cache)
     const profile = writeSandboxProfile(spec.folder, spec.isolation, spec.configDir, {
       allowedOutboundPorts: spec.outboundPorts,
       serverPort: spec.serverPort,

@@ -222,6 +222,34 @@ export interface CredentialProxyOptions {
 }
 
 /** Proxy inverso de un único destino que inyecta la clave real del proveedor. */
+/**
+ * Cabeceras hacia la API real: se descartan las del sandbox que llevan credencial (el centinela) y se inyecta la REAL.
+ * Los modelos con protocolo Anthropic (p.ej. Claude Haiku en OpenCode Go) mandan la clave en `x-api-key`, no en
+ * `Authorization`: si se reenviaba el centinela, la API respondía «clave no válida» solo dentro del sandbox.
+ */
+export function buildUpstreamHeaders(
+  incoming: Record<string, string | string[] | undefined>,
+  host: string,
+  authorization: string
+): Record<string, string | string[]> {
+  const headers: Record<string, string | string[]> = {}
+  let usesApiKey = false
+  for (const [k, v] of Object.entries(incoming)) {
+    if (v === undefined) continue
+    const lk = k.toLowerCase()
+    if (lk === 'host' || lk === 'authorization' || lk === 'connection') continue
+    if (lk === 'x-api-key') {
+      usesApiKey = true
+      continue
+    }
+    headers[k] = v
+  }
+  headers.host = host
+  headers.authorization = authorization
+  if (usesApiKey) headers['x-api-key'] = authorization.replace(/^Bearer\s+/i, '')
+  return headers
+}
+
 export class CredentialProxy {
   private server = createHttpServer((req, res) => this.handle(req, res))
   port = 0
@@ -268,15 +296,7 @@ export class CredentialProxy {
       return
     }
     const isHttps = target.protocol === 'https:'
-    const headers: Record<string, string | string[]> = {}
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v === undefined) continue
-      const lk = k.toLowerCase()
-      if (lk === 'host' || lk === 'authorization' || lk === 'connection') continue
-      headers[k] = v
-    }
-    headers.host = target.host
-    headers.authorization = this.opts.authorization
+    const headers = buildUpstreamHeaders(req.headers, target.host, this.opts.authorization)
 
     const fn = isHttps ? httpsRequest : httpRequest
     const upstream = fn(
