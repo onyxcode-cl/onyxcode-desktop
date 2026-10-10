@@ -200,6 +200,71 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
   const detail = d.detail ?? ''
   // Barra compacta (decisión del dueño): nunca se aprueba a ciegas un comando que no cabe entero.
   const compact = d.danger || detail.includes('\n') || detail.length > 120 || hasHiddenChars(detail)
+  const mac = isMacPlatform()
+  // Atajos de la tarjeta fija (Esc rechaza, ⌘/Ctrl+↵ permite una vez): solo para lo que cabe entero y no es peligroso,
+  // y «permitir» solo una vez armada. No pisan un diálogo abierto ni un evento que otro ya atendió.
+  const quick = !compact && d.kind !== 'folder' && !d.danger
+  useEffect(() => {
+    if (!quick) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.defaultPrevented || busy) return
+      if ((e.target as HTMLElement | null)?.closest?.('[role="dialog"]')) return
+      if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault()
+        void answer('reject')
+      } else if (e.key === 'Enter' && (mac ? e.metaKey : e.ctrlKey) && armed) {
+        e.preventDefault()
+        void answer('once')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [quick, busy, armed, mac, answer])
+
+  if (quick) {
+    // Tarjeta fija sobre la caja de entrada: la pregunta arriba y dos botones a lo ancho con su atajo.
+    return (
+      <div className="mx-auto mb-2 w-full max-w-3xl px-6 animate-rise-in">
+        <div className="rounded-card bg-elevated p-3 shadow-raised ring-1 ring-inset ring-accent/40">
+          <div className="flex items-start gap-2.5">
+            <Icon size={16} className="mt-0.5 shrink-0 text-accent" />
+            <button type="button" className="min-w-0 flex-1 text-left" title={d.detail || undefined} onClick={review}>
+              <span className="block text-ui font-medium text-fg">
+                {d.title}
+                {more > 0 && <span className="ml-1.5 text-meta font-normal text-muted">{t('tasksComputer.perm.more', { more })}</span>}
+              </span>
+              {d.detail && <span className="mt-0.5 block truncate font-mono text-caption text-muted">{d.detail}</span>}
+            </button>
+          </div>
+          <div className="mt-3 grid gap-2">
+            <Button variant="secondary" disabled={busy} onClick={() => answer('reject')} className="w-full justify-center">
+              {t('tasksComputer.perm.reject')}
+              <kbd aria-hidden className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">
+                {t('tasksComputer.perm.kbdReject')}
+              </kbd>
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || !armed}
+              onClick={() => answer('once')}
+              aria-keyshortcuts={mac ? 'Meta+Enter' : 'Control+Enter'}
+              className="w-full justify-center"
+            >
+              {t('tasksComputer.perm.once')}
+              <kbd aria-hidden className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">
+                {mac ? t('tasksComputer.perm.kbdOnce') : t('tasksComputer.perm.kbdOnce.win')}
+              </kbd>
+            </Button>
+            {canAlways && (
+              <Button variant="ghost" size="sm" disabled={busy || !armed} title={alwaysHint(request)} onClick={() => answer('always')}>
+                {t('tasksComputer.perm.alwaysShort')}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto mb-2 w-full max-w-3xl px-6 animate-rise-in">
