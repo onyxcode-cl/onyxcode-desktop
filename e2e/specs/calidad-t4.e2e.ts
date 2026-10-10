@@ -195,7 +195,7 @@ describe.skipIf(!DEV)('T4: más de 200 sesiones en Chat', () => {
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
     const rows = a.page.getByText(/^sesion-fantasma-\d{3}$/)
     await expect.poll(() => rows.count(), { timeout: 20_000 }).toBe(200)
-    const more = a.page.getByRole('button', { name: 'Cargar más' })
+    const more = a.page.getByRole('treeitem', { name: 'Cargar más' })
     await expectVisible(more)
     await more.scrollIntoViewIfNeeded()
     await shot(a, SHOTS, 'chat-cargar-mas')
