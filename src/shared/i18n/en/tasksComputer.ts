@@ -9,6 +9,9 @@ export const tasksComputer = {
     '{name}: reads and writes only inside the chosen folder and any additional folders (macOS sandbox). Recommended.',
   'tasksComputer.access.sandboxTitle.win':
     '{name}: reads and writes only inside the chosen folder and any additional folders (isolated Linux environment). Recommended.',
+  'tasksComputer.access.sandboxName': 'Only in your folder',
+  'tasksComputer.access.fullName': 'Use your whole Mac',
+  'tasksComputer.access.fullName.win': 'Use your whole PC',
   'tasksComputer.access.sandboxDesc': 'Works only in your folder and asks before deleting or moving. Recommended.',
   'tasksComputer.access.fullDesc': 'Uses mouse, keyboard and screen; can touch any file. Requires approving a plan.',
   'tasksComputer.access.fullTitle': '{name}: no sandbox; can use the mouse, keyboard and screen, and modify files anywhere.',

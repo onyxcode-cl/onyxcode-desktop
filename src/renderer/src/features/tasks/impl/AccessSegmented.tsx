@@ -71,7 +71,7 @@ export function AccessSegmented({
             {starting && !requested ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-medium">{TASKS_TERMS.sandbox}</span>
+            <span className="block text-sm font-medium">{t('tasksComputer.access.sandboxName')}</span>
             <span className="block text-xs text-muted">{t('tasksComputer.access.sandboxDesc')}</span>
           </span>
         </button>
@@ -89,7 +89,7 @@ export function AccessSegmented({
             {starting && requested ? <Loader2 size={16} className="animate-spin" /> : <MonitorCog size={16} />}
           </span>
           <span className="min-w-0">
-            <span className={`block text-sm font-medium ${full ? 'text-warning' : ''}`}>{TASKS_TERMS.fullControl}</span>
+            <span className={`block text-sm font-medium ${full ? 'text-warning' : ''}`}>{t('tasksComputer.access.fullName')}</span>
             <span className="block text-xs text-muted">{t('tasksComputer.access.fullDesc')}</span>
           </span>
         </button>
