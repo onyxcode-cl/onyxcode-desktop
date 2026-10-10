@@ -10,13 +10,20 @@ import { baseName, formatSize } from './util'
 
 const MAX_ROWS = 3
 
+/** Archivos de trabajo del agente (spec.json de las skills, la carpeta interna `.lazunox`, temporales de Office): no son «lo que dejé». */
+export function isHelperFile(f: { relPath: string; path: string }): boolean {
+  const name = baseName(f.path)
+  return /(^|\/)\.lazunox\//.test(f.relPath) || /^spec[-_.a-z0-9]*\.json$/i.test(name) || name.startsWith('~$') || name.endsWith('.pyc')
+}
+
 export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | null {
   const t = useT()
   const files = useTasks((s) => s.deliverables[taskId]) as TasksDeliverable[] | undefined
   // Abrir y mostrar en Finder son acciones del Mac: el celular no las ofrece.
-  if (isRemoteSurface() || !files || files.length === 0) return null
-  const shown = [...files].sort((a, b) => b.mtime - a.mtime).slice(0, MAX_ROWS)
-  const more = files.length - shown.length
+  const visible = (files ?? []).filter((f) => !isHelperFile(f))
+  if (isRemoteSurface() || visible.length === 0) return null
+  const shown = [...visible].sort((a, b) => b.mtime - a.mtime).slice(0, MAX_ROWS)
+  const more = visible.length - shown.length
   return (
     <section
       data-testid="result-card"

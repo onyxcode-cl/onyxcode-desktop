@@ -22,7 +22,8 @@ export function WorkingCard({ entries }: { entries: MessageEntry[] }): React.JSX
   // Con el modo control activo la tarjeta lo dice con el mismo vocabulario que el distintivo del encabezado.
   const using = useTasks((s) => now !== null && !!s.lastAction && now - s.lastAction.at < 15_000 && s.conn?.fullAccess === true)
   const current = tool ? friendlyTool(tool, showPath) : null
-  const headline = current ? `${current.verb} ${current.detail}`.trim() : t('tasks.conv.thinking')
+  // Sin puntos finales propios: la tarjeta anima los suyos.
+  const headline = (current ? `${current.verb} ${current.detail}`.trim() : t('tasks.conv.thinking')).replace(/[….\s]+$/, '')
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : null
   return (
     <div

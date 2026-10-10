@@ -8,7 +8,7 @@ vi.mock('../../../lib/platform', async (orig) => ({
   isRemoteSurface: () => false
 }))
 
-import { ResultCard } from './ResultCard'
+import { ResultCard, isHelperFile } from './ResultCard'
 
 const file = (name: string, mtime: number) => ({ path: `/Users/x/Desktop/${name}`, relPath: name, size: 2048, mtime })
 
@@ -29,5 +29,17 @@ describe('ResultCard', () => {
     expect(html).not.toContain('a.xlsx')
     expect(html).toContain('Abrir')
     expect(html).toContain('2 archivo')
+  })
+})
+
+describe('isHelperFile', () => {
+  it('oculta los archivos de trabajo del agente y deja los entregables', () => {
+    const f = (relPath: string) => ({ relPath, path: `/x/${relPath}` })
+    expect(isHelperFile(f('spec.json'))).toBe(true)
+    expect(isHelperFile(f('spec-ventas.json'))).toBe(true)
+    expect(isHelperFile(f('.lazunox/trabajo/render/p1.png'))).toBe(true)
+    expect(isHelperFile(f('~$informe.docx'))).toBe(true)
+    expect(isHelperFile(f('bench-ventas.xlsx'))).toBe(false)
+    expect(isHelperFile(f('datos.json'))).toBe(false)
   })
 })
