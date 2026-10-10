@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useShallow } from 'zustand/react/shallow'
 import {
   Archive,
@@ -398,7 +399,8 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
 
   if (!open) return null
 
-  return (
+  // En el `body`: un diálogo dentro del árbol de la barra lateral rompe su estructura ARIA.
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-fg/20 pt-[15vh]" onClick={onClose}>
       <div
         role="dialog"
@@ -449,7 +451,8 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -527,7 +530,8 @@ function ProjectGroup({
 
   return (
     <div className="flex min-h-0 shrink-0 flex-col">
-      {worktreeOpen && <NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />}
+      {/* En el `body`: un diálogo dentro del árbol de la barra lateral rompe su estructura ARIA. */}
+      {worktreeOpen && createPortal(<NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />, document.body)}
       {desktop && (
         <div
           className="group/proj relative flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
