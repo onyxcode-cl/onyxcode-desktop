@@ -90,11 +90,29 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   }, [open])
 
   const full = conn ? conn.fullAccess : requested
+  // «Usando tu Mac» solo cuando el agente acaba de tocar de verdad el ratón, el teclado o la pantalla (< 15 s); el resto del tiempo
+  // el chip dice lo que PUEDE hacer, en palabras llanas.
+  const lastAction = useTasks((s) => s.lastAction)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!lastAction) return
+    const id = setInterval(() => setNow(Date.now()), 2000)
+    return () => clearInterval(id)
+  }, [lastAction])
+  const usingMac = full && !!lastAction && now - lastAction.at < 15_000
   let chip: React.JSX.Element
   if (full) {
-    chip = (
+    chip = usingMac ? (
       <>
-        <MonitorCog size={12} /> {TASKS_TERMS.fullControlShort}
+        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
+        </span>{' '}
+        {t('tasksComputer.chip.using')}
+      </>
+    ) : (
+      <>
+        <MonitorCog size={12} /> {t('tasksComputer.chip.canUse')}
       </>
     )
   } else if (conn && !conn.sandboxed) {
@@ -106,7 +124,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   } else {
     chip = (
       <>
-        <Shield size={12} /> {t('tasksComputer.mode.sandboxOn')}
+        <Shield size={12} /> {t('tasksComputer.chip.folder')}
       </>
     )
   }
@@ -999,7 +1017,15 @@ export function PlanAccessCard(): React.JSX.Element | null {
             <h3 id="tasks-plan-access-title" className="text-sm font-semibold text-fg">
               {title}
             </h3>
-            {req.reason && <p className="mt-0.5 text-sm text-muted">«{req.reason}»</p>}
+            {req.plan && (
+              <span
+                className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${calm ? 'bg-success/10 text-success' : 'bg-amber-500/10 text-warning'}`}
+              >
+                {calm ? <Check size={12} aria-hidden /> : <MousePointerClick size={12} aria-hidden />}
+                {calm ? t('tasksComputer.plan.stampBackground') : t('tasksComputer.plan.stampControl')}
+              </span>
+            )}
+            {req.reason && <p className="mt-1.5 text-sm text-muted">«{req.reason}»</p>}
             {req.plan && req.plan.length > 0 && (
               <ol className="mt-2.5 space-y-1.5 rounded-lg border border-border bg-hover/60 px-3 py-2.5 text-sm text-fg">
                 {req.plan.map((step, i) => (
