@@ -6,6 +6,7 @@ import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { t } from '@shared/i18n'
 import { dateLocale } from '../../../lib/i18n'
+import { plainBash } from './plain-bash'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
 
 /** ¿El origen de una sesión es un servidor de Tareas (cualquiera)? Chat/Code usan el origen principal (ausente). */
@@ -230,7 +231,10 @@ export function friendlyTool(part: ToolPart, showPath: (path: string) => string 
       return { verb: v('grep'), detail: clip(str(input, 'pattern'), 40) }
     case 'bash': {
       const desc = str(input, 'description')
-      return { verb: v('bash'), detail: desc ? clip(desc) : clip(str(input, 'command')) }
+      if (desc) return { verb: v('bash'), detail: clip(desc) }
+      // Sin descripción del agente: en lenguaje llano («Creó la hoja de Excel»), no el comando crudo (queda al desplegar).
+      const id = plainBash(str(input, 'command'))
+      return { verb: running ? t(`tasks.plain.${id}.doing`) : t(`tasks.plain.${id}.done`), detail: t(`tasks.plain.${id}.what`) }
     }
     case 'webfetch':
       return { verb: v('webfetch'), detail: clip(str(input, 'url'), 50) }
