@@ -980,3 +980,23 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     animation: none;
   }
 }
+
+/* Logo en «trabajando»: la gema respira. */
+.gem-breathe {
+  transform-origin: 16px 16px;
+  animation: gem-breathe 2s ease-in-out infinite;
+}
+@keyframes gem-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gem-breathe {
+    animation: none;
+  }
+}

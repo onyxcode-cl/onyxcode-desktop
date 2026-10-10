@@ -24,7 +24,7 @@ let lastAccelerator = ''
 let remoteActive = false
 
 /**
- * Símbolo "Faceta" (gema de 4 facetas + chispa), misma geometría de 32 unidades que
+ * Símbolo "Faceta" (blob suave con la gema como hueco), misma geometría de 32 unidades que
  * renderer/components/Logo.tsx y build/icon.svg. Dibujado con antialiasing simple.
  */
 export function renderTrayBitmap(S: number, rgb: readonly [number, number, number]): Buffer {
@@ -83,30 +83,17 @@ function roundRect(x: number, y: number, x0: number, y0: number, x1: number, y1:
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
 }
 
-function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
-  const dx = bx - ax
-  const dy = by - ay
-  const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)))
-  return Math.hypot(x - (ax + t * dx), y - (ay + t * dy))
-}
-
 function inShape(x: number, y: number): boolean {
-  // Gema: cuadrado redondeado 17×17 rotado 45° alrededor de (16,16).
+  // Blob de 6 lóbulos suaves (radio medio 12 en el centro 16,16): el mismo contorno que Logo.tsx. El ángulo se mide desde arriba.
+  const t = Math.atan2(x - 16, -(y - 16))
+  const r = Math.hypot(x - 16, y - 16)
+  const blob = r <= 12 * (1 + 0.075 * Math.cos(6 * t))
+  // Gema (hueco): cuadrado redondeado 9.4×9.4 rotado 45° alrededor del centro (16,16).
   const c = Math.SQRT1_2
   const rx = (x - 16) * c + (y - 16) * c + 16
   const ry = -(x - 16) * c + (y - 16) * c + 16
-  const gem = roundRect(rx, ry, 7.5, 7.5, 24.5, 24.5, 3.6)
-  // Cortes entre facetas: del centro óptico (16,14.6) a los vértices izq., der. e inferior.
-  const cut = [
-    [29, 16],
-    [16, 29],
-    [3, 16]
-  ].some(([vx, vy]) => segDist(x, y, 16, 14.6, vx, vy) < 0.7)
-  // Chispa de 4 puntas centrada en (26,6).
-  const dx = Math.abs(x - 26)
-  const dy = Math.abs(y - 6)
-  const spark = Math.sqrt(dx) + Math.sqrt(dy) <= Math.sqrt(5.6)
-  return (gem && !cut) || spark
+  const gem = roundRect(rx, ry, 11.3, 11.3, 20.7, 20.7, 2.1)
+  return blob && !gem
 }
 
 function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {
