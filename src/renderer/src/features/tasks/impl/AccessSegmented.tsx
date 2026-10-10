@@ -61,6 +61,8 @@ export function AccessSegmented({
           type="button"
           role="radio"
           aria-checked={!full}
+          aria-label={t('tasksComputer.access.sandboxName')}
+          aria-description={t('tasksComputer.access.sandboxDesc')}
           tabIndex={!full ? 0 : -1}
           disabled={off}
           onClick={() => pick(false)}
@@ -79,6 +81,8 @@ export function AccessSegmented({
           type="button"
           role="radio"
           aria-checked={full}
+          aria-label={t('tasksComputer.access.fullName')}
+          aria-description={t('tasksComputer.access.fullDesc')}
           tabIndex={full ? 0 : -1}
           disabled={off}
           onClick={() => pick(true)}

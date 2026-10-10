@@ -55,7 +55,10 @@ interface Conn {
 }
 const conn = (page: Page): Promise<Conn | null> => storeState<Conn | null>(page, 'useTasks', 'conn')
 const phase = (page: Page): Promise<string> => storeState<string>(page, 'useTasks', 'phase')
-const radio = (page: Page, name: string) => page.getByRole('radio', { name, exact: true })
+// Los modos de acceso se ven como «Solo en tu carpeta» / «Usar todo tu Mac» (el glosario conserva los términos técnicos).
+const accessLabel = (name: string): string =>
+  name === TASKS_TERMS.sandbox ? 'Solo en tu carpeta' : name === TASKS_TERMS.fullControl ? 'Usar todo tu Mac' : name
+const radio = (page: Page, name: string) => page.getByRole('radio', { name: accessLabel(name), exact: true })
 
 async function openSettings(app: E2EApp, section: string): Promise<void> {
   await app.page.keyboard.press('Meta+,')
@@ -117,7 +120,7 @@ describe.skipIf(!DEV)('Control total sin carpeta', () => {
     const note = page.getByTestId('full-workspace-note')
     await expectVisible(note)
     expect(await note.innerText()).toContain('~')
-    expect(await note.innerText()).toContain('Sin sandbox')
+    expect(await note.innerText()).toContain('Puede usar todo tu Mac')
     await shot(a, 'inicio-control-total')
   })
 
@@ -138,10 +141,10 @@ describe.skipIf(!DEV)('Control total sin carpeta', () => {
     await page.getByPlaceholder('Describe qué debe hacer en tu Mac…').fill('TAREA CTL haz algo')
     await page.getByRole('button', { name: 'Enviar' }).click()
     await expectVisible(page.getByText('Trabajando en tu equipo.', { exact: false }).first(), 30_000)
-    // Mientras corre: banner «Controlando tu Mac · … no está confinado».
-    const banner = page.getByTestId('control-banner-busy')
-    await expectVisible(banner, 15_000)
-    expect(await banner.innerText()).toContain('no está confinado')
+    // Mientras corre sin usar el ratón ni la pantalla NO hay banner de «Controlando tu Mac» (solo cuando el agente actúa de verdad);
+    // el aviso de que no está confinado vive en el indicador de acceso de la cabecera de la tarea.
+    await expectCount(page.getByTestId('control-banner-busy'), 0)
+    await expectVisible(page.getByText('Puede usar tu Mac', { exact: false }).first(), 15_000)
     await shot(a, 'tarea-corriendo')
     // El servidor recibió el directorio personal (cwd), no una carpeta autorizada.
     const reqs = await fake.requests({ limit: 200 })

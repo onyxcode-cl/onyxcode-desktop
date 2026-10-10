@@ -73,7 +73,7 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Permitir', exact: true }).click()
     await expect.poll(() => storeState(page, 'useTasks', 'phase'), { timeout: 60_000 }).toBe('ready')
     // El sandbox solo deja borrar con «Permitir borrar»: se activa desde el panel del proyecto (reinicia el servidor).
-    await page.getByRole('button', { name: 'Proyecto e instrucciones' }).click()
+    await page.getByRole('treeitem', { name: 'Proyecto e instrucciones' }).click()
     const grant = page.getByRole('switch', { name: TASKS_TERMS.deleteGrant })
     await expectVisible(grant)
     await grant.click()
