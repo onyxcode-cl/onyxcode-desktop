@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   Keyboard,
+  ListChecks,
   Loader2,
   MonitorCog,
   MousePointerClick,
@@ -593,12 +594,17 @@ export function ControlBanner(): React.JSX.Element | null {
       setStopping(true)
       void stopComputerControl().finally(() => setStopping(false))
     }
+    // Plan sin apps (nada de ratón ni teclado): la barra es serena, con el acento, no una alerta ámbar.
+    const calmWait = !!accessRequest.plan && accessRequest.apps.length === 0
+    const dot = calmWait ? 'bg-accent' : 'bg-amber-500'
     return (
       <>
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-amber-600/40 bg-amber-500/10 px-4 py-1.5 text-amber-800 [[data-theme=dark]_&]:text-amber-300">
+        <div
+          className={`flex shrink-0 items-center gap-2.5 border-b px-4 py-1.5 ${calmWait ? 'border-accent/30 bg-accent-soft/40 text-fg' : 'border-amber-600/40 bg-amber-500/10 text-amber-800 [[data-theme=dark]_&]:text-amber-300'}`}
+        >
           <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+            <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${dot}`} />
+            <span className={`relative inline-flex h-2 w-2 rounded-full ${dot}`} />
           </span>
           <span className="min-w-0 flex-1 truncate text-xs font-medium">
             {t('tasksComputer.banner.waiting', {
@@ -966,6 +972,8 @@ export function PlanAccessCard(): React.JSX.Element | null {
     void respondAccessRequest([], { feedback: text }).finally(() => setBusy(false))
   }
 
+  // Plan sin apps (tarea de archivos, documentos o navegador): sin ratón ni teclado, así que no se ve como una alerta.
+  const calm = !!req.plan && !hasApps
   const title = req.plan
     ? hasApps
       ? t('tasksComputer.plan.titlePlan')
@@ -979,11 +987,13 @@ export function PlanAccessCard(): React.JSX.Element | null {
       <div
         role="alertdialog"
         aria-labelledby="tasks-plan-access-title"
-        className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm"
+        className={`animate-rise-in rounded-2xl border p-4 shadow-sm ${calm ? 'border-accent/30 bg-accent-soft/20' : 'border-amber-500/40 bg-amber-500/5'}`}
       >
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 desk:text-warning [[data-theme=dark]_&]:text-amber-400">
-            <ShieldAlert size={18} />
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-amber-700 desk:text-warning [[data-theme=dark]_&]:text-amber-400'}`}
+          >
+            {calm ? <ListChecks size={18} /> : <ShieldAlert size={18} />}
           </span>
           <div className="min-w-0 flex-1">
             <h3 id="tasks-plan-access-title" className="text-sm font-semibold text-fg">
@@ -991,9 +1001,17 @@ export function PlanAccessCard(): React.JSX.Element | null {
             </h3>
             {req.reason && <p className="mt-0.5 text-sm text-muted">«{req.reason}»</p>}
             {req.plan && req.plan.length > 0 && (
-              <ol className="mt-2.5 list-decimal space-y-1 rounded-lg border border-border bg-hover/60 px-4 py-2.5 pl-8 text-sm text-fg">
+              <ol className="mt-2.5 space-y-1.5 rounded-lg border border-border bg-hover/60 px-3 py-2.5 text-sm text-fg">
                 {req.plan.map((step, i) => (
-                  <li key={i}>{step}</li>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span
+                      aria-hidden
+                      className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-warning'}`}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">{step}</span>
+                  </li>
                 ))}
               </ol>
             )}
