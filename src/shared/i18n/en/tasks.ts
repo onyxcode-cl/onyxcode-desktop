@@ -366,6 +366,8 @@ export const tasks = {
   'tasks.deliv.loading': 'Loading preview…',
   'tasks.deliv.noPreview': 'There’s no preview for this type of file. Open it with its app.',
   'tasks.deliv.truncated': 'Preview truncated ({size} in total).',
+  'tasks.result.title': 'Done: here’s what I left for you',
+  'tasks.result.more': 'and {n} more file(s) in the Deliverables tab.',
   'tasks.deliv.open': 'Open',
   'tasks.deliv.reveal': 'Show in Finder',
   'tasks.deliv.reveal.win': 'Show in File Explorer',

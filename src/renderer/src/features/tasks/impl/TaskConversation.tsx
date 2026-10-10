@@ -22,6 +22,7 @@ import type { MessageEntry } from '../../../stores/sessions'
 import { ActivityRow } from './ProgressPanel'
 import { compactTask, editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
+import { ResultCard } from './ResultCard'
 import { toolImages } from './computer-tools'
 import { useT } from '../../../lib/i18n'
 import { ScreenshotThumbs } from './ComputerAccess'
@@ -531,6 +532,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
             </div>
           )}
           {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} onCompact={onCompact} />}
+          {!busy && taskId && <ResultCard taskId={taskId} />}
           {footer}
         </div>
       </div>

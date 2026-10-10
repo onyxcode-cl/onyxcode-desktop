@@ -363,6 +363,8 @@ export const tasks = {
   'tasks.deliv.loading': 'Cargando vista previa…',
   'tasks.deliv.noPreview': 'No hay vista previa para este tipo de archivo. Ábrelo con su aplicación.',
   'tasks.deliv.truncated': 'Vista previa recortada ({size} en total).',
+  'tasks.result.title': 'Listo: esto es lo que dejé',
+  'tasks.result.more': 'y {n} archivo(s) más en la pestaña Entregables.',
   'tasks.deliv.open': 'Abrir',
   'tasks.deliv.reveal': 'Mostrar en Finder',
   'tasks.deliv.reveal.win': 'Mostrar en el Explorador',
