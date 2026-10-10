@@ -13,8 +13,8 @@ import { isAutoPopoutFromPanel, planAutoPopoutReturn } from './popout'
 describe('isAutoPopoutFromPanel', () => {
   it('solo es automático si el panel estaba visible en la ventana principal', () => {
     expect(isAutoPopoutFromPanel('panel', true)).toBe(true)
-    expect(isAutoPopoutFromPanel('panel', false)).toBe(false)
-    expect(isAutoPopoutFromPanel('none', true)).toBe(false)
+    expect(isAutoPopoutFromPanel('panel', false)).toBe(true)
+    expect(isAutoPopoutFromPanel('none', true)).toBe(true)
     expect(isAutoPopoutFromPanel('popout', true)).toBe(false)
   })
 })

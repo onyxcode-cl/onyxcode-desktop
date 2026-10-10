@@ -456,7 +456,8 @@ function layoutView(rt: OwnerRuntime): void {
     height: Math.round(rect.height * zoom)
   }
   const key = `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`
-  if (lastBounds.get(tab!.view) !== key || !wasAttached) {
+  const moved = lastBounds.get(tab!.view) !== key || !wasAttached
+  if (moved) {
     lastBounds.set(tab!.view, key)
     // Si la vista aparece o se mueve bajo un puntero quieto (p. ej. al cerrarse la tarjeta de aprobación sobre ella),
     // Chromium sintetiza `mouseMove`/`mouseLeave` que NO son una persona: no cuentan como «usuario activo».
@@ -465,6 +466,25 @@ function layoutView(rt: OwnerRuntime): void {
   tab!.view.setBounds(bounds)
   applyViewport(tab!, store.getPrefs().viewMode, { width: bounds.width, height: bounds.height })
   tab!.view.setVisible(true)
+  if (moved) nudgePaint(tab!.view)
+}
+
+/**
+ * Fuerza un repintado de la vista. Medido en vivo: si la página se carga mientras la vista NO está colgada de la ventana (el agente
+ * navega con el panel cerrado o en otra pestaña) y luego se cuelga, Chromium no emite ningún fotograma y el panel queda en BLANCO aunque la
+ * página esté cargada y el agente la lea; recargar lo arreglaba. `invalidate()` pide ese primer fotograma; se repite una vez poco
+ * después porque el primero puede perderse mientras la vista termina de colocarse.
+ */
+function nudgePaint(view: WebContentsView): void {
+  const paint = (): void => {
+    try {
+      if (!view.webContents.isDestroyed()) view.webContents.invalidate?.()
+    } catch (err) {
+      console.error('[embedded-browser] invalidate:', err)
+    }
+  }
+  paint()
+  setTimeout(paint, 120).unref?.()
 }
 
 /**
@@ -579,6 +599,26 @@ function assertAgentEnabled(product: BrowserProduct): void {
   }
 }
 
+const AGENT_IDLE_MS = 20_000
+const agentIdleTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+/** Marca actividad del agente y, si se queda quieto, devuelve el control al usuario (quita el aviso «el agente está usando…»). */
+function touchAgent(rt: OwnerRuntime): void {
+  rt.lastAgentActivityAt = Date.now()
+  const key = ownerKeyOf(rt.owner)
+  const prev = agentIdleTimers.get(key)
+  if (prev) clearTimeout(prev)
+  const t = setTimeout(() => {
+    agentIdleTimers.delete(key)
+    if (rt.control === 'agent' && Date.now() - rt.lastAgentActivityAt >= AGENT_IDLE_MS - 50) {
+      rt.control = 'idle'
+      broadcastState(rt.owner)
+    }
+  }, AGENT_IDLE_MS)
+  t.unref?.()
+  agentIdleTimers.set(key, t)
+}
+
 function beginAgentAction(actor: AgentActor, tabId: string, kind: 'read' | 'input'): AgentLease {
   assertAgentEnabled(actor.product)
   const rt = ownerRuntime(actor.owner)
@@ -596,7 +636,7 @@ function beginAgentAction(actor: AgentActor, tabId: string, kind: 'read' | 'inpu
   rt.agentLabel = actor.label ?? rt.agentLabel
   rt.agentTabId = tab.id
   tab.agentSelected = true
-  rt.lastAgentActivityAt = Date.now()
+  touchAgent(rt)
   broadcastState(actor.owner)
   let released = false
   return {
@@ -604,7 +644,7 @@ function beginAgentAction(actor: AgentActor, tabId: string, kind: 'read' | 'inpu
     release: () => {
       if (released) return
       released = true
-      rt.lastAgentActivityAt = Date.now()
+      touchAgent(rt)
     }
   }
 }
@@ -617,7 +657,7 @@ async function navigateAsAgent(actor: AgentActor, tabId: string, url: string, ti
   ensureHostForAgent(actor.owner)
   rt.control = 'agent'
   rt.agentSessionId = actor.sessionId
-  rt.lastAgentActivityAt = Date.now()
+  touchAgent(rt)
   const parsed = parseNav(url)
   if (!parsed) throw new Error(`URL inválida o esquema no permitido: ${url.slice(0, 200)}`)
   const allowed = await siteApprovalGate(rt, tab, url, parsed)
@@ -669,7 +709,7 @@ async function historyAsAgent(
   ensureHostForAgent(actor.owner)
   rt.control = 'agent'
   rt.agentSessionId = actor.sessionId
-  rt.lastAgentActivityAt = Date.now()
+  touchAgent(rt)
   const nav = tab.wc.navigationHistory
   allowHistoryTarget(tab, a) // ya visitado antes (aprobado); no se vuelve a preguntar por ESA URL
   if (a === 'back' && nav.canGoBack()) nav.goBack()

@@ -82,10 +82,11 @@ export interface PopoutOwnerState {
 
 /**
  * Al abrir el popout por el agente con la principal oculta, solo es «automático» (y por tanto vuelve al panel) si el panel
- * estaba visible en la ventana principal. Si no había panel, o el usuario ya lo tenía aparte, no se marca.
+ * estaba en la principal o no había ventana alguna (al volver, el panel se monta solo). Si el usuario ya lo tenía aparte, no se marca.
  */
 export function isAutoPopoutFromPanel(hostKind: PopoutOwnerState['hostKind'], visible: boolean): boolean {
-  return hostKind === 'panel' && visible
+  void visible
+  return hostKind !== 'popout'
 }
 
 /**
