@@ -26,6 +26,7 @@ import type { MsgKey } from '@shared/i18n'
 import { OPENCODE_INSTALL_COMMAND, type OpencodeAction } from '@shared/opencode-links'
 import type { ModeId, OpencodeInfo } from '@shared/types'
 import { Button } from '../../components/Button'
+import { LogoMark } from '../../components/Logo'
 import { ModelPicker } from '../../components/ModelPicker'
 import { call } from '../../lib/api'
 import { useT } from '../../lib/i18n'
@@ -35,6 +36,8 @@ import { errorMessage } from '../../lib/opencode'
 import { useProviders } from '../../stores/providers'
 import { useServer } from '../../stores/server'
 import { useSettings } from '../../stores/settings'
+import { useUi } from '../../stores/ui'
+import { useTasks } from '../tasks/impl/store'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import {
@@ -130,6 +133,12 @@ function OnboardingHost(): React.JSX.Element | null {
 
   const steps = stepsFor()
   const finish = (): void => void update({ onboarded: true })
+  // «Probar con un ejemplo»: cierra la guía, abre Tareas y deja una tarea de ejemplo escrita para que solo haya que enviarla.
+  const tryExample = (): void => {
+    useUi.getState().setMode('tasks')
+    useTasks.setState({ draft: t('wizard.sampleTask') })
+    finish()
+  }
   const last = nextStep(step) === null
   const advance = canAdvance(step, {
     binaryFound: info?.found === true,
@@ -146,7 +155,8 @@ function OnboardingHost(): React.JSX.Element | null {
         className="flex max-h-full w-full max-w-xl animate-pop-in flex-col rounded-modal border border-transparent bg-elevated shadow-modal"
       >
         <header className="border-b border-border/60 px-6 pt-5 pb-4">
-          <p className="text-meta text-muted">
+          <p className="flex items-center gap-2 text-meta text-muted">
+            <LogoMark size={18} animated={false} />
             {t('wizard.header', { app: DISPLAY_NAME, step: stepIndex(step) + 1, total: steps.length })}
           </p>
           <h2
@@ -177,6 +187,11 @@ function OnboardingHost(): React.JSX.Element | null {
             {t('wizard.skip')}
           </Button>
           <div className="flex items-center gap-2">
+            {last && (
+              <Button variant="secondary" onClick={tryExample}>
+                {t('wizard.tryExample')}
+              </Button>
+            )}
             {prevStep(step) && (
               <Button variant="secondary" onClick={() => setStep(prevStep(step))}>
                 {t('wizard.back')}

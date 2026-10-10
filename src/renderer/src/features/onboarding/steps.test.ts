@@ -96,7 +96,7 @@ describe('paso 1 informativo', () => {
   })
 
   it('el título del paso 1 cambia solo con el motor incluido', () => {
-    expect(stepTitle('opencode', 'bundled')).toBe('Motor incluido')
+    expect(stepTitle('opencode', 'bundled')).toBe('Todo listo para empezar')
     expect(stepTitle('opencode', 'missing')).toBe('Instala o localiza OpenCode')
     expect(stepTitle('opencode', 'found')).toBe('Instala o localiza OpenCode')
     expect(stepTitle('auth', 'bundled')).toBe('Conecta tu IA')
