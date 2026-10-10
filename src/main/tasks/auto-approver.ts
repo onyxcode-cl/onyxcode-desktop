@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname } from 'node:path'
 import type { AutoApprovalRecord, AutoModeSettings, AutoModeState, AutoRuleId } from '@shared/ipc-tasks'
 import type { AutoAccessQuery, AutoAccessVerdict } from '../computer/service'
-import { classifyAccess, classifyPermission, DEFAULT_AUTO_VIEW_APPS } from './auto-mode'
+import { classifyAccess, classifyPermission, defaultAutoViewApps } from './auto-mode'
 import type { RawPerm } from './monitor'
 
 /** Servidor vivo de Tareas tal como lo entrega `TasksManager.liveServers()` (mismos campos). */
@@ -82,7 +82,7 @@ function isValidRecord(r: unknown): r is AutoApprovalRecord {
 }
 
 function defaultPersisted(): Persisted {
-  return { version: 1, enabled: false, folders: [], tasks: [], viewApps: [...DEFAULT_AUTO_VIEW_APPS], log: [] }
+  return { version: 1, enabled: false, folders: [], tasks: [], viewApps: [...defaultAutoViewApps()], log: [] }
 }
 
 export class AutoApprover {
@@ -113,7 +113,7 @@ export class AutoApprover {
           viewApps:
             Array.isArray(raw.viewApps) && raw.viewApps.length > 0 && raw.viewApps.every((x) => typeof x === 'string')
               ? [...new Set(raw.viewApps as string[])]
-              : [...DEFAULT_AUTO_VIEW_APPS],
+              : [...defaultAutoViewApps()],
           log: Array.isArray(raw.log) ? raw.log.filter(isValidRecord) : []
         }
       }

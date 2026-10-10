@@ -139,6 +139,8 @@ export const misc = {
   'misc.auto.app.pages': 'Pages',
   'misc.auto.app.numbers': 'Numbers',
   'misc.auto.app.keynote': 'Keynote',
+  'misc.auto.app.notepad': 'Bloc de notas',
+  'misc.auto.app.paint': 'Paint',
   'misc.browser.title': 'Navegador',
   'misc.browser.desc': 'Deja que el agente navegue con el navegador integrado en la propia ventana.',
   'misc.browser.orgOff': 'Tu organización desactivó el navegador integrado.',

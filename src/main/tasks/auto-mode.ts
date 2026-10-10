@@ -342,6 +342,24 @@ export const DEFAULT_AUTO_VIEW_APPS: string[] = [
 ]
 
 /**
+ * Lo mismo para Windows (claves `aumid:` de las apps de la Store que el helper informa: calculadora, bloc de notas, Paint, mapas,
+ * tiempo y reloj). Solo lectura de apps inofensivas; editable en Ajustes. `explorer.exe` no está (sus carpetas piden concesión).
+ */
+export const DEFAULT_AUTO_VIEW_APPS_WIN: string[] = [
+  'aumid:microsoft.windowscalculator_8wekyb3d8bbwe!app',
+  'aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app',
+  'aumid:microsoft.paint_8wekyb3d8bbwe!app',
+  'aumid:microsoft.windowsmaps_8wekyb3d8bbwe!app',
+  'aumid:microsoft.bingweather_8wekyb3d8bbwe!app',
+  'aumid:microsoft.windowsalarms_8wekyb3d8bbwe!app'
+]
+
+/** Lista inicial según la plataforma (macOS: bundle ids; Windows: claves `aumid:`). */
+export function defaultAutoViewApps(platform: string = process.platform): string[] {
+  return platform === 'win32' ? DEFAULT_AUTO_VIEW_APPS_WIN : DEFAULT_AUTO_VIEW_APPS
+}
+
+/**
  * Apps que NUNCA se conceden en automático, aunque el usuario las meta en `viewApps` a mano:
  * gestores de contraseñas y llaveros, Ajustes del sistema, Mensajes y Mail, terminales/IDE
  * (mismas categorías que `CLICK_ONLY_PATTERNS` de `computer/grants.ts`) y banca/trading/cripto

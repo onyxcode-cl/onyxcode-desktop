@@ -142,6 +142,8 @@ export const misc = {
   'misc.auto.app.pages': 'Pages',
   'misc.auto.app.numbers': 'Numbers',
   'misc.auto.app.keynote': 'Keynote',
+  'misc.auto.app.notepad': 'Notepad',
+  'misc.auto.app.paint': 'Paint',
   'misc.browser.title': 'Browser',
   'misc.browser.desc': 'Let the agent browse using the built-in browser inside the window itself.',
   'misc.browser.orgOff': 'Your organization turned off the built-in browser.',

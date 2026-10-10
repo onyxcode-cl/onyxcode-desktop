@@ -28,7 +28,13 @@ const APP_LABELS: Record<string, MsgKey> = {
   'com.apple.clock': 'misc.auto.app.clock',
   'com.apple.iWork.Pages': 'misc.auto.app.pages',
   'com.apple.iWork.Numbers': 'misc.auto.app.numbers',
-  'com.apple.iWork.Keynote': 'misc.auto.app.keynote'
+  'com.apple.iWork.Keynote': 'misc.auto.app.keynote',
+  'aumid:microsoft.windowscalculator_8wekyb3d8bbwe!app': 'misc.auto.app.calculator',
+  'aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app': 'misc.auto.app.notepad',
+  'aumid:microsoft.paint_8wekyb3d8bbwe!app': 'misc.auto.app.paint',
+  'aumid:microsoft.windowsmaps_8wekyb3d8bbwe!app': 'misc.auto.app.maps',
+  'aumid:microsoft.bingweather_8wekyb3d8bbwe!app': 'misc.auto.app.weather',
+  'aumid:microsoft.windowsalarms_8wekyb3d8bbwe!app': 'misc.auto.app.clock'
 }
 
 function appLabel(bundleId: string): string {
