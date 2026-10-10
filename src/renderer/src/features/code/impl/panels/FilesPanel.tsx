@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FileContent, FileNode } from '@opencode-ai/sdk/v2/client'
+import { FileTypeIcon } from './FileTypeIcon'
 import {
   ArrowLeft,
   Check,
@@ -664,7 +665,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                       <Folder size={14} className="shrink-0 text-accent" />
                     )
                   ) : (
-                    <File size={14} className="shrink-0 text-subtle" />
+                    <FileTypeIcon name={n.name} />
                   )}
                   <span className="truncate">{n.name}</span>
                 </button>
@@ -774,7 +775,7 @@ export function FilesPanel({ directory }: { directory: string }): React.JSX.Elem
                 onClick={() => setOpenFile(p)}
                 className={`flex w-full items-center gap-1.5 px-3 text-left hover:bg-hover ${mobile ? 'min-h-12 text-[15px]' : 'py-[3px] text-[13px]'}`}
               >
-                <File size={14} className="shrink-0 text-subtle" />
+                <FileTypeIcon name={p.slice(p.lastIndexOf('/') + 1)} />
                 <span className="truncate">{p}</span>
               </button>
             ))
