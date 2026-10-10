@@ -3,6 +3,8 @@
 Complementa `docs/DISTRIBUCION.md` (cómo se firma y notariza) y `docs/SEGURIDAD.md` §3 quinquies y septies (cómo se verifica una actualización).
 Aquí está el **orden** de una publicación, quién hace cada paso y qué hacer si algo sale mal.
 
+> **Dónde se publica:** en el servidor propio `lazunox.onyxcode.cl`, no en GitHub. Pasos del servidor y de la subida: `docs/VPS.md`.
+
 ## 0. Resumen
 
 | Quién | Paso |

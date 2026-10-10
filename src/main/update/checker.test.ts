@@ -7,11 +7,17 @@ import { IDLE_INSTALL } from '@shared/update-install'
 import { UpdateChecker, type UpdateCheckerDeps } from './checker'
 
 const T0 = 1_800_000_000_000
-const CONFIG = { configured: true, repo: 'o/r', apiBase: 'https://api.github.com', startDelayMs: 8000 }
+const CONFIG = { configured: true, repo: 'o/r', apiBase: 'https://lazunox.onyxcode.cl', startDelayMs: 8000 }
 
 function release(tag: string, extra: Record<string, unknown> = {}): Response {
   return new Response(
-    JSON.stringify({ tag_name: tag, html_url: `https://github.com/o/r/releases/tag/${tag}`, draft: false, prerelease: false, ...extra }),
+    JSON.stringify({
+      tag_name: tag,
+      html_url: `https://lazunox.onyxcode.cl/o/r/releases/tag/${tag}`,
+      draft: false,
+      prerelease: false,
+      ...extra
+    }),
     { status: 200, headers: { 'content-type': 'application/json' } }
   )
 }
@@ -100,7 +106,7 @@ describe('UpdateChecker', () => {
     expect(s).toMatchObject({
       available: true,
       current: '1.0.0',
-      latest: { version: '1.1.0', url: 'https://github.com/o/r/releases/tag/v1.1.0' },
+      latest: { version: '1.1.0', url: 'https://lazunox.onyxcode.cl/o/r/releases/tag/v1.1.0' },
       lastCheck: T0,
       checking: false
     })
@@ -138,7 +144,7 @@ describe('UpdateChecker', () => {
   it('cabeceras y opciones exactas, sin Authorization ni Cookie', async () => {
     await make().check(false)
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('https://api.github.com/repos/o/r/releases/latest')
+    expect(url).toBe('https://lazunox.onyxcode.cl/repos/o/r/releases/latest')
     expect(init.headers).toEqual({
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
@@ -204,10 +210,10 @@ describe('UpdateChecker', () => {
     expect(await make().check(false)).toMatchObject({ available: false, latest: null, lastCheck: null })
   })
 
-  it('html_url maliciosa: usa la URL de reserva de github.com', async () => {
+  it('html_url maliciosa: usa la URL de reserva de lazunox.onyxcode.cl', async () => {
     fetchMock.mockResolvedValueOnce(release('v1.1.0', { html_url: 'https://evil.example/x' }))
     const s = await make().check(false)
-    expect(s.latest?.url).toBe('https://github.com/o/r/releases/tag/v1.1.0')
+    expect(s.latest?.url).toBe('https://lazunox.onyxcode.cl/o/r/releases/tag/v1.1.0')
   })
 
   it('reutiliza la comprobación en curso', async () => {
@@ -265,7 +271,12 @@ describe('UpdateChecker: canal beta', () => {
   const list = (...tags: string[]): Response =>
     new Response(
       JSON.stringify(
-        tags.map((t) => ({ tag_name: t, html_url: `https://github.com/o/r/releases/tag/${t}`, draft: false, prerelease: t.includes('-') }))
+        tags.map((t) => ({
+          tag_name: t,
+          html_url: `https://lazunox.onyxcode.cl/o/r/releases/tag/${t}`,
+          draft: false,
+          prerelease: t.includes('-')
+        }))
       ),
       {
         status: 200

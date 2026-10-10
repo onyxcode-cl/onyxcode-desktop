@@ -1,7 +1,9 @@
+import { RELEASES_ORIGIN } from '@shared/brand'
 import { isValidRepo } from '@shared/update-check'
 import { decodePublicKey, type UpdateKey } from './signature'
 
-export const GITHUB_API_BASE = 'https://api.github.com'
+/** Origen de la API y de las descargas de releases (servidor propio, ver `RELEASES_ORIGIN`). Nombre antiguo conservado por los tests. */
+export const GITHUB_API_BASE: string = RELEASES_ORIGIN
 
 /**
  * Team ID de Apple (10 caracteres, p. ej. «ABCDE12345») del certificado Developer ID con el que se firma Lazunox.
@@ -116,7 +118,7 @@ export function resolveInstallConfig(i: InstallResolveInput): InstallConfig {
   const testDir = testEnvDir && testDirOk ? testEnvDir : null
   return {
     enabled,
-    downloadBase: i.isPackaged ? 'https://github.com' : i.update.apiBase,
+    downloadBase: i.isPackaged ? RELEASES_ORIGIN : i.update.apiBase,
     allowLoopbackHttp: !i.isPackaged && /^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(i.update.apiBase),
     keys,
     testInstallDir: testDir

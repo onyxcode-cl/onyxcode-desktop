@@ -4,7 +4,7 @@ import { pickBetaRelease, releasesListUrl } from './channel'
 
 const rel = (tag: string, extra: Record<string, unknown> = {}) => ({
   tag_name: tag,
-  html_url: `https://github.com/o/r/releases/tag/${tag}`,
+  html_url: `https://lazunox.onyxcode.cl/o/r/releases/tag/${tag}`,
   draft: false,
   prerelease: tag.includes('-'),
   ...extra
@@ -26,7 +26,7 @@ describe('canal beta: semver con prerelease', () => {
 
 describe('canal beta: pickBetaRelease', () => {
   it('URL de la lista: per_page=10 sobre el repositorio', () => {
-    expect(releasesListUrl('o/r')).toBe('https://api.github.com/repos/o/r/releases?per_page=10')
+    expect(releasesListUrl('o/r')).toBe('https://lazunox.onyxcode.cl/repos/o/r/releases?per_page=10')
     expect(releasesListUrl('o/r', 'http://127.0.0.1:9/')).toBe('http://127.0.0.1:9/repos/o/r/releases?per_page=10')
   })
   it('elige la semver mayor aunque sea prerelease y aunque no vaya primero', () => {

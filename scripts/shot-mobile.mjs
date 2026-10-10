@@ -17,8 +17,16 @@ const DEFAULT_OUT = '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-
 const SCENARIOS = ['inicio', 'panel', 'conversacion', 'chat-largo', 'tareas', 'permiso', 'ajustes', 'rutinas', 'bloqueo', 'vinculacion']
 const LIGHT_LAYER = new Set(['bloqueo', 'vinculacion'])
 const DEVICES = {
-  iphone14: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1' },
-  android360: { viewport: { width: 360, height: 740 }, deviceScaleFactor: 3, ua: 'Mozilla/5.0 (Linux; Android 13; SM-A135F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36' }
+  iphone14: {
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+  },
+  android360: {
+    viewport: { width: 360, height: 740 },
+    deviceScaleFactor: 3,
+    ua: 'Mozilla/5.0 (Linux; Android 13; SM-A135F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+  }
 }
 const TOTAL_TIMEOUT_MS = 240_000
 const PROJECT = '/Users/demo/proyectos/tienda-web'
@@ -41,7 +49,10 @@ mkdirSync(out, { recursive: true })
 function findBrowser() {
   const root = join(homedir(), 'Library/Caches/ms-playwright')
   if (existsSync(root)) {
-    for (const d of readdirSync(root).filter((x) => x.startsWith('chromium_headless_shell-')).sort().reverse()) {
+    for (const d of readdirSync(root)
+      .filter((x) => x.startsWith('chromium_headless_shell-'))
+      .sort()
+      .reverse()) {
       const p = join(root, d, 'chrome-headless-shell-mac-arm64/chrome-headless-shell')
       if (existsSync(p)) return p
     }
@@ -59,7 +70,14 @@ if (!process.argv.includes('--no-build')) {
 }
 
 // ---- servidor estático, puerto libre, solo loopback ----
-const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json' }
+const mime = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.json': 'application/json'
+}
 const srv = createServer(async (req, res) => {
   try {
     const f = resolve(site, '.' + decodeURIComponent(new URL(req.url, 'http://x').pathname))
@@ -104,14 +122,24 @@ try {
   browser = await chromium.launch({ headless: true, executablePath: findBrowser(), timeout: 30_000 })
   // Playwright ya no expone el proceso: los hijos directos de ESTE node son los suyos (se matan por pid, nunca por nombre).
   try {
-    pids = execFileSync('pgrep', ['-P', String(process.pid)]).toString().split('\n').filter(Boolean).map(Number)
+    pids = execFileSync('pgrep', ['-P', String(process.pid)])
+      .toString()
+      .split('\n')
+      .filter(Boolean)
+      .map(Number)
   } catch {}
   for (const dev of devices) {
     for (const theme of themes) {
       const d = DEVICES[dev]
       const ctx = await browser.newContext({
-        viewport: d.viewport, deviceScaleFactor: d.deviceScaleFactor, isMobile: true, hasTouch: true, userAgent: d.ua,
-        colorScheme: theme, locale: 'es-CL', reducedMotion: 'reduce'
+        viewport: d.viewport,
+        deviceScaleFactor: d.deviceScaleFactor,
+        isMobile: true,
+        hasTouch: true,
+        userAgent: d.ua,
+        colorScheme: theme,
+        locale: 'es-CL',
+        reducedMotion: 'reduce'
       })
       ctx.setDefaultTimeout(8000)
       for (const sc of scenarios) {
@@ -134,7 +162,9 @@ try {
           }
           const light = LIGHT_LAYER.has(sc)
           await page.goto(`${base}/${light ? 'light' : 'full'}.html?s=${sc}&theme=${theme}`, { waitUntil: 'load', timeout: 15_000 })
-          await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}' })
+          await page.addStyleTag({
+            content: '*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}'
+          })
           await page.waitForSelector('html[data-ready="1"]', { state: 'attached', timeout: 15_000 })
           await drive(page, sc)
           await page.waitForTimeout(400)
@@ -144,8 +174,14 @@ try {
           if (errs.length) console.warn(`  aviso ${sc}: ${errs[0]}`)
         } catch (e) {
           fail.push(`${sc}-${dev}-${theme}: ${String(e.message).split('\n')[0]}`)
-          if (process.env.SHOT_DEBUG) console.warn('  __unknown:', JSON.stringify(await page.evaluate(() => globalThis.__unknown).catch(() => null)), errs.join(' | '))
-          if (process.env.SHOT_DEBUG) await page.screenshot({ path: join(process.env.SHOT_DEBUG, `FALLO-${sc}-${dev}-${theme}.png`) }).catch(() => {})
+          if (process.env.SHOT_DEBUG)
+            console.warn(
+              '  __unknown:',
+              JSON.stringify(await page.evaluate(() => globalThis.__unknown).catch(() => null)),
+              errs.join(' | ')
+            )
+          if (process.env.SHOT_DEBUG)
+            await page.screenshot({ path: join(process.env.SHOT_DEBUG, `FALLO-${sc}-${dev}-${theme}.png`) }).catch(() => {})
         } finally {
           await page.close().catch(() => {})
         }
@@ -178,7 +214,11 @@ async function drive(page, sc) {
   }
   switch (sc) {
     case 'inicio': // raíz de Chat: saludo, sugerencias y compositor
-      await page.getByText('Buenas').first().waitFor().catch(() => {})
+      await page
+        .getByText('Buenas')
+        .first()
+        .waitFor()
+        .catch(() => {})
       await settle()
       break
     case 'panel':
@@ -193,7 +233,11 @@ async function drive(page, sc) {
       await openChat('Optimizar consultas lentas')
       await page.getByText('Dos, ambos menores').waitFor()
       await settle()
-      await page.evaluate(() => document.querySelectorAll('main, main *').forEach((el) => { if (el.scrollHeight > el.clientHeight + 40) el.scrollTop = el.scrollHeight }))
+      await page.evaluate(() =>
+        document.querySelectorAll('main, main *').forEach((el) => {
+          if (el.scrollHeight > el.clientHeight + 40) el.scrollTop = el.scrollHeight
+        })
+      )
       break
     case 'tareas': {
       // La carpeta se reconecta al entrar al detalle de Tareas (decisiones-pwa #3: Inicio no carga nada por su cuenta): se entra con
@@ -216,7 +260,10 @@ async function drive(page, sc) {
       break
     case 'ajustes':
       await openPanel()
-      await page.getByRole('dialog', { name: 'Menú de navegación' }).getByRole('button', { name: /Ajustes/ }).click()
+      await page
+        .getByRole('dialog', { name: 'Menú de navegación' })
+        .getByRole('button', { name: /Ajustes/ })
+        .click()
       await settle()
       break
     case 'rutinas':

@@ -13,7 +13,18 @@
 // pasa. Sin red falla con un error explícito. Solo se engancha en `npm run package`.
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, lstatSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  lstatSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,7 +40,8 @@ export const ARCHS = ['arm64', 'x64']
 export const OFFICE_MODULES = ['docx', 'openpyxl', 'pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'PIL', 'lxml']
 
 const URL_RE = /^https:\/\/github\.com\/astral-sh\/python-build-standalone\/releases\/download\/[^\s]+\.tar\.gz$/
-const validAsset = (a) => !!a && typeof a.url === 'string' && URL_RE.test(a.url) && /^[0-9a-f]{64}$/.test(a.sha256) && Number.isInteger(a.size) && a.size > 0
+const validAsset = (a) =>
+  !!a && typeof a.url === 'string' && URL_RE.test(a.url) && /^[0-9a-f]{64}$/.test(a.sha256) && Number.isInteger(a.size) && a.size > 0
 
 /** Clave de plataforma del pin: `darwin-arm64` | `darwin-x64`. */
 export function pinKey(arch) {
@@ -52,11 +64,18 @@ export function parsePin(text, label = 'pin.json') {
   } catch (e) {
     throw new Error(`${label} no es JSON válido: ${e.message}`)
   }
-  if (!pin || !/^3\.\d+\.\d+$/.test(pin.python ?? '') || !/^\d{8}$/.test(pin.release ?? '') || !pin.assets || typeof pin.assets !== 'object') {
+  if (
+    !pin ||
+    !/^3\.\d+\.\d+$/.test(pin.python ?? '') ||
+    !/^\d{8}$/.test(pin.release ?? '') ||
+    !pin.assets ||
+    typeof pin.assets !== 'object'
+  ) {
     throw new Error(`${label} inválido: faltan python/release/assets`)
   }
   for (const key of ['darwin-arm64', 'darwin-x64']) {
-    if (!validAsset(pin.assets[key])) throw new Error(`${label} inválido (asset ${key}): url https de github.com/astral-sh, sha256 de 64 hex y size entero`)
+    if (!validAsset(pin.assets[key]))
+      throw new Error(`${label} inválido (asset ${key}): url https de github.com/astral-sh, sha256 de 64 hex y size entero`)
   }
   return pin
 }
@@ -71,7 +90,10 @@ export function assetFor(pin, arch) {
 
 /** Líneas de requisitos sin comentarios ni vacías. */
 export function parseRequirements(text) {
-  return text.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+  return text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'))
 }
 
 export const sha256Text = (t) => createHash('sha256').update(t).digest('hex')
@@ -122,7 +144,14 @@ function run(cmd, args, options = {}) {
 }
 
 /** Entorno mínimo y aislado para ejecutar el Python extraído (nunca toca HOME ni el Python del usuario). */
-const pyEnv = (home) => ({ PATH: '/usr/bin:/bin', HOME: home, TMPDIR: home, PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1', PIP_DISABLE_PIP_VERSION_CHECK: '1' })
+const pyEnv = (home) => ({
+  PATH: '/usr/bin:/bin',
+  HOME: home,
+  TMPDIR: home,
+  PYTHONNOUSERSITE: '1',
+  PYTHONDONTWRITEBYTECODE: '1',
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+})
 
 export function pruneInstall(pyRoot) {
   for (const rel of PRUNE_PATHS) rmSync(join(pyRoot, rel), { recursive: true, force: true })
@@ -192,7 +221,14 @@ export function expectedSeal(pin, arch, requirementsText) {
 const sealMatches = (seal, want) => !!seal && ['python', 'release', 'arch', 'requirementsSha256'].every((k) => seal[k] === want[k])
 
 /** Descarga, verifica, extrae, instala, poda, verifica y mueve a su sitio. */
-export async function fetchPython({ pin, arch = process.arch, base = PY_DIR, ifMissing = false, log = console.log, requirementsPath = REQUIREMENTS_PATH } = {}) {
+export async function fetchPython({
+  pin,
+  arch = process.arch,
+  base = PY_DIR,
+  ifMissing = false,
+  log = console.log,
+  requirementsPath = REQUIREMENTS_PATH
+} = {}) {
   pin ??= readPin()
   const asset = assetFor(pin, arch)
   const requirementsText = readFileSync(requirementsPath, 'utf8')
@@ -225,7 +261,10 @@ export async function fetchPython({ pin, arch = process.arch, base = PY_DIR, ifM
     const home = join(work, 'home')
     mkdirSync(home)
     log('[fetch-python] instalando librerías de oficina…')
-    await run(py, ['-I', '-m', 'pip', 'install', '--no-compile', '--only-binary=:all:', '--no-cache-dir', '-r', requirementsPath], { cwd: home, env: pyEnv(home) })
+    await run(py, ['-I', '-m', 'pip', 'install', '--no-compile', '--only-binary=:all:', '--no-cache-dir', '-r', requirementsPath], {
+      cwd: home,
+      env: pyEnv(home)
+    })
     const frozen = (await run(py, ['-I', '-m', 'pip', 'freeze'], { cwd: home, env: pyEnv(home) })).split('\n').filter(Boolean)
 
     log('[fetch-python] podando lo innecesario…')

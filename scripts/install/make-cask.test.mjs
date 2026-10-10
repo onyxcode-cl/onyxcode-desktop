@@ -14,7 +14,7 @@ test('la cask lleva version, sha256, url, arquitectura y postflight', () => {
   const c = renderCask({ version: '0.4.0', sha256: SHA, repo: 'dueno/repo' })
   assert.match(c, /version "0\.4\.0"/)
   assert.match(c, new RegExp(`sha256 "${SHA}"`))
-  assert.match(c, /url "https:\/\/github\.com\/dueno\/repo\/releases\/download\/v#\{version\}\/lazunox-#\{version\}-arm64\.dmg"/)
+  assert.match(c, /url "https:\/\/lazunox\.onyxcode\.cl\/dueno\/repo\/releases\/download\/v#\{version\}\/lazunox-#\{version\}-arm64\.dmg"/)
   assert.match(c, /depends_on arch: :arm64/)
   assert.match(c, /depends_on macos:/)
   assert.match(c, /xattr/)

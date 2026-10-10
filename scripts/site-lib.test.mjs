@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { CSP, SITE_ORIGIN, buildId, buildSiteManifest, headersFile, patchIndex, siteManifestBytes, startupPaths, swWithBuild } from './site-lib.mjs'
+import {
+  CSP,
+  SITE_ORIGIN,
+  buildId,
+  buildSiteManifest,
+  headersFile,
+  patchIndex,
+  siteManifestBytes,
+  startupPaths,
+  swWithBuild
+} from './site-lib.mjs'
 
 test('CSP: estricta, sin terceros, sin eval ni scripts en línea', () => {
   for (const bad of ["'unsafe-eval'", 'http:', '*', "script-src 'self' 'unsafe-inline'"]) assert.ok(!CSP.includes(bad), bad)

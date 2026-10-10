@@ -82,7 +82,10 @@ test('caso feliz: descarga, verifica, instala y limpia', () => {
   const r = t.run('--no-open')
   assert.equal(r.status, 0, r.stderr)
   assert.ok(existsSync(join(t.apps, 'Lazunox.app', 'Contents', 'marker')))
-  assert.match(r.calls, /curl -fsSL -o \S+\/SHA256SUMS https:\/\/github\.com\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/)
+  assert.match(
+    r.calls,
+    /curl -fsSL -o \S+\/SHA256SUMS https:\/\/lazunox\.onyxcode\.cl\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/
+  )
   assert.match(r.calls, /hdiutil attach -readonly/)
   assert.match(r.calls, /codesign -d -r-/)
   assert.match(r.calls, /hdiutil detach/)
@@ -136,7 +139,7 @@ test('Intel es rechazado antes de descargar nada', () => {
 })
 
 test('el marcador PENDIENTE se niega a ejecutar', () => {
-  const t = setup({ LAZUNOX_RELEASES_REPO: '' })
+  const t = setup({ LAZUNOX_RELEASES_REPO: 'PENDIENTE' })
   const r = t.run('--no-open')
   assert.notEqual(r.status, 0)
   assert.match(r.stderr, /todavía no hay una release/)

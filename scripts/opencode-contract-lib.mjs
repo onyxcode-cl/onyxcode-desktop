@@ -170,11 +170,7 @@ export function directCallsInSource(src, sdkRouteSet) {
     if (/\s|\$\{/.test(content) || content.includes('http')) continue
     const around = clean.slice(Math.max(0, m.index - 80), m.index)
     const after = clean.slice(m.index + m[0].length, m.index + m[0].length + 240)
-    const method = (
-      /method:\s*['"](\w+)['"]/.exec(after)?.[1] ??
-      DIRECT_METHOD.exec(around.slice(-40))?.[1] ??
-      'GET'
-    ).toUpperCase()
+    const method = (/method:\s*['"](\w+)['"]/.exec(after)?.[1] ?? DIRECT_METHOD.exec(around.slice(-40))?.[1] ?? 'GET').toUpperCase()
     const hit = [...sdkRouteSet].find((r) => {
       const [rm, rp] = r.split(' ')
       return rm === method && shape(rp) === content
@@ -274,7 +270,12 @@ export function schemaDigests(doc, keys) {
   const out = {}
   for (const key of keys) {
     const shapeOf = operationShape(doc, key)
-    out[key] = shapeOf ? createHash('sha256').update(JSON.stringify(stable(shapeOf))).digest('hex').slice(0, 16) : null
+    out[key] = shapeOf
+      ? createHash('sha256')
+          .update(JSON.stringify(stable(shapeOf)))
+          .digest('hex')
+          .slice(0, 16)
+      : null
   }
   return out
 }

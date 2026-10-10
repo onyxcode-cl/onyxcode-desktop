@@ -4,7 +4,7 @@
  * La AUTENTICIDAD la da solo la firma Ed25519 del manifiesto (src/main/update/signature.ts);
  * `codesign` solo comprueba integridad y coherencia del paquete.
  */
-import { isNewerRelease, parseSemver } from './update-check'
+import { isNewerRelease, parseSemver, RELEASES_HOST } from './update-check'
 import { t } from './i18n'
 
 /** Nombre de la .app dentro del ZIP. */
@@ -287,9 +287,9 @@ export function validateInstallLocationWin(i: InstallLocationWinInput): Location
 }
 
 /**
- * Descargas: solo https://github.com y https://*.githubusercontent.com (las releases redirigen a
- * release-assets/objects.githubusercontent.com), sin credenciales ni puerto. `allowLoopbackHttp`
- * solo lo activa la configuración de pruebas (app sin empaquetar).
+ * Descargas: solo el servidor de releases propio (`RELEASES_ORIGIN`), https://github.com y https://*.githubusercontent.com
+ * (por si una release se publica allí), sin credenciales ni puerto. `allowLoopbackHttp` solo lo activa la configuración de
+ * pruebas (app sin empaquetar).
  */
 export function isAllowedDownloadUrl(raw: string, allowLoopbackHttp = false): boolean {
   let u: URL
@@ -303,7 +303,7 @@ export function isAllowedDownloadUrl(raw: string, allowLoopbackHttp = false): bo
   if (allowLoopbackHttp && u.protocol === 'http:' && u.hostname === '127.0.0.1') return true
   if (u.protocol !== 'https:' || u.port) return false
   const h = u.hostname.toLowerCase()
-  return h === 'github.com' || h.endsWith('.githubusercontent.com')
+  return h === RELEASES_HOST || h === 'github.com' || h.endsWith('.githubusercontent.com')
 }
 
 // ---- Estado de la instalación -------------------------------------------------------------

@@ -11,12 +11,12 @@ const env = {
 describe('resolveUpdateConfig', () => {
   it('empaquetada: GitHub y RELEASES_REPO, ignora el entorno', () => {
     const c = resolveUpdateConfig({ isPackaged: true, env, repo: 'o/r' })
-    expect(c).toEqual({ configured: true, repo: 'o/r', apiBase: 'https://api.github.com', startDelayMs: 8000 })
+    expect(c).toEqual({ configured: true, repo: 'o/r', apiBase: 'https://lazunox.onyxcode.cl', startDelayMs: 8000 })
   })
   it('empaquetada con repo vacío: sin configurar aunque haya entorno', () => {
     const c = resolveUpdateConfig({ isPackaged: true, env, repo: '' })
     expect(c.configured).toBe(false)
-    expect(c.apiBase).toBe('https://api.github.com')
+    expect(c.apiBase).toBe('https://lazunox.onyxcode.cl')
   })
   it('sin empaquetar y sin variables: apagado', () => {
     expect(resolveUpdateConfig({ isPackaged: false, env: {}, repo: 'o/r' }).configured).toBe(false)
@@ -77,7 +77,7 @@ describe('resolveInstallConfig', () => {
       windowsStore: o.windowsStore
     })
   }
-  it('empaquetada: activa solo con repo + clave + macOS; https://github.com; ignora el entorno', () => {
+  it('empaquetada: activa solo con repo + clave + macOS; https://lazunox.onyxcode.cl; ignora el entorno', () => {
     const c = inst({
       isPackaged: true,
       key: KEY,
@@ -85,7 +85,7 @@ describe('resolveInstallConfig', () => {
     })
     expect(c).toEqual({
       enabled: true,
-      downloadBase: 'https://github.com',
+      downloadBase: 'https://lazunox.onyxcode.cl',
       allowLoopbackHttp: false,
       keys: [{ id: 'k1', key: KEY }],
       testInstallDir: null

@@ -4,7 +4,20 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { PIN_PATH, REQUIREMENTS_PATH, assetFor, expectedSeal, parseArgs, parsePin, parseRequirements, pinKey, pruneInstall, pythonBin, pythonDir, readPin } from './fetch-python.mjs'
+import {
+  PIN_PATH,
+  REQUIREMENTS_PATH,
+  assetFor,
+  expectedSeal,
+  parseArgs,
+  parsePin,
+  parseRequirements,
+  pinKey,
+  pruneInstall,
+  pythonBin,
+  pythonDir,
+  readPin
+} from './fetch-python.mjs'
 
 const good = () => JSON.parse(readFileSync(PIN_PATH, 'utf8'))
 
@@ -30,8 +43,14 @@ test('parsePin rechaza sha256 malo, URL ajena, http, sin plataforma y JSON roto'
   assert.throws(() => parsePin(bad((p) => (p.assets['darwin-arm64'].sha256 = 'abc'))), /darwin-arm64/)
   assert.throws(() => parsePin(bad((p) => (p.assets['darwin-x64'].sha256 = 'G'.repeat(64)))), /darwin-x64/)
   assert.throws(() => parsePin(bad((p) => (p.assets['darwin-arm64'].url = 'https://evil.example/python.tar.gz'))), /darwin-arm64/)
-  assert.throws(() => parsePin(bad((p) => (p.assets['darwin-arm64'].url = 'https://github.com/otro/repo/releases/download/x.tar.gz'))), /darwin-arm64/)
-  assert.throws(() => parsePin(bad((p) => (p.assets['darwin-x64'].url = p.assets['darwin-x64'].url.replace('https', 'http')))), /darwin-x64/)
+  assert.throws(
+    () => parsePin(bad((p) => (p.assets['darwin-arm64'].url = 'https://github.com/otro/repo/releases/download/x.tar.gz'))),
+    /darwin-arm64/
+  )
+  assert.throws(
+    () => parsePin(bad((p) => (p.assets['darwin-x64'].url = p.assets['darwin-x64'].url.replace('https', 'http')))),
+    /darwin-x64/
+  )
   assert.throws(() => parsePin(bad((p) => delete p.assets['darwin-x64'])), /darwin-x64/)
   assert.throws(() => parsePin(bad((p) => (p.assets['darwin-arm64'].size = '10'))), /darwin-arm64/)
   assert.throws(() => parsePin(bad((p) => (p.release = 'hoy'))), /inválido/)
@@ -50,9 +69,15 @@ test('rutas y claves por arquitectura', () => {
 
 test('requirements.txt fija las 9 librerías con versión exacta', () => {
   const lines = parseRequirements(readFileSync(REQUIREMENTS_PATH, 'utf8'))
-  assert.ok(lines.every((l) => /^[A-Za-z0-9_.-]+==\d[\w.]*$/.test(l)), 'todas con ==')
+  assert.ok(
+    lines.every((l) => /^[A-Za-z0-9_.-]+==\d[\w.]*$/.test(l)),
+    'todas con =='
+  )
   for (const name of ['python-docx', 'openpyxl', 'python-pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'pillow', 'lxml']) {
-    assert.ok(lines.some((l) => l.startsWith(`${name}==`)), name)
+    assert.ok(
+      lines.some((l) => l.startsWith(`${name}==`)),
+      name
+    )
   }
 })
 
@@ -72,10 +97,50 @@ test('pruneInstall borra lo innecesario y conserva python3, stdlib y site-packag
       mkdirSync(join(p, '..'), { recursive: true })
       writeFileSync(p, content)
     }
-    for (const f of ['bin/python3', 'bin/python3.12', 'bin/pip3', 'bin/idle3', 'include/python3.12/Python.h', 'lib/python3.12/test/a.py', 'lib/python3.12/idlelib/a.py', 'lib/python3.12/tkinter/a.py', 'lib/python3.12/os.py', 'lib/python3.12/__pycache__/os.pyc', 'lib/python3.12/lib-dynload/_tkinter.so', 'lib/python3.12/lib-dynload/math.so', 'lib/python3.12/site-packages/docx/a.py', 'lib/python3.12/site-packages/pip/a.py', 'lib/python3.12/site-packages/pip-25.0.1.dist-info/METADATA', 'lib/libpython3.12.dylib', 'lib/libtcl9.0.dylib']) mk(f)
+    for (const f of [
+      'bin/python3',
+      'bin/python3.12',
+      'bin/pip3',
+      'bin/idle3',
+      'include/python3.12/Python.h',
+      'lib/python3.12/test/a.py',
+      'lib/python3.12/idlelib/a.py',
+      'lib/python3.12/tkinter/a.py',
+      'lib/python3.12/os.py',
+      'lib/python3.12/__pycache__/os.pyc',
+      'lib/python3.12/lib-dynload/_tkinter.so',
+      'lib/python3.12/lib-dynload/math.so',
+      'lib/python3.12/site-packages/docx/a.py',
+      'lib/python3.12/site-packages/pip/a.py',
+      'lib/python3.12/site-packages/pip-25.0.1.dist-info/METADATA',
+      'lib/libpython3.12.dylib',
+      'lib/libtcl9.0.dylib'
+    ])
+      mk(f)
     pruneInstall(root)
-    for (const f of ['bin/python3', 'bin/python3.12', 'lib/python3.12/os.py', 'lib/python3.12/lib-dynload/math.so', 'lib/python3.12/site-packages/docx/a.py', 'lib/libpython3.12.dylib']) assert.ok(existsSync(join(root, f)), f)
-    for (const f of ['bin/pip3', 'bin/idle3', 'include', 'lib/python3.12/test', 'lib/python3.12/idlelib', 'lib/python3.12/tkinter', 'lib/python3.12/__pycache__', 'lib/python3.12/lib-dynload/_tkinter.so', 'lib/python3.12/site-packages/pip', 'lib/python3.12/site-packages/pip-25.0.1.dist-info', 'lib/libtcl9.0.dylib']) assert.ok(!existsSync(join(root, f)), f)
+    for (const f of [
+      'bin/python3',
+      'bin/python3.12',
+      'lib/python3.12/os.py',
+      'lib/python3.12/lib-dynload/math.so',
+      'lib/python3.12/site-packages/docx/a.py',
+      'lib/libpython3.12.dylib'
+    ])
+      assert.ok(existsSync(join(root, f)), f)
+    for (const f of [
+      'bin/pip3',
+      'bin/idle3',
+      'include',
+      'lib/python3.12/test',
+      'lib/python3.12/idlelib',
+      'lib/python3.12/tkinter',
+      'lib/python3.12/__pycache__',
+      'lib/python3.12/lib-dynload/_tkinter.so',
+      'lib/python3.12/site-packages/pip',
+      'lib/python3.12/site-packages/pip-25.0.1.dist-info',
+      'lib/libtcl9.0.dylib'
+    ])
+      assert.ok(!existsSync(join(root, f)), f)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

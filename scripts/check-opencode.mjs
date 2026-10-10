@@ -179,7 +179,8 @@ async function main() {
     log(`OpenCode ${version} (${label})`)
 
     const used = usedRoutes({ sdk: sdkRoutes() })
-    if (used.unmatched.length) throw new Error(`Rutas directas del código que no existen en el SDK fijado:\n  ${used.unmatched.join('\n  ')}`)
+    if (used.unmatched.length)
+      throw new Error(`Rutas directas del código que no existen en el SDK fijado:\n  ${used.unmatched.join('\n  ')}`)
 
     const doc = await withServer(bin, work, async (base) => {
       const r = await fetch(`${base}/doc`, { signal: AbortSignal.timeout(15_000) })
@@ -220,7 +221,13 @@ async function main() {
     printList('Rutas eliminadas respecto a la instantánea', res.removed)
     const clean = !res.missing.length && !res.changed.length && !res.added.length && !res.removed.length && !res.unbaselined.length
     if (clean) log(`Sin cambios respecto a la instantánea (OpenCode ${snapshot.opencodeVersion}): 0 rutas faltantes.`)
-    log(res.code === 0 ? 'RESULTADO: OK' : res.code === 1 ? 'RESULTADO: FALLA (falta una ruta usada)' : 'RESULTADO: REVISAR (cambió un esquema usado)')
+    log(
+      res.code === 0
+        ? 'RESULTADO: OK'
+        : res.code === 1
+          ? 'RESULTADO: FALLA (falta una ruta usada)'
+          : 'RESULTADO: REVISAR (cambió un esquema usado)'
+    )
     return res.code
   } finally {
     rmSync(work, { recursive: true, force: true })

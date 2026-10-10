@@ -55,7 +55,11 @@ for (const name of names) {
   for (let y = 0; y < pa.height; y++) {
     for (let x = 0; x < pa.width; x++) {
       const i = (y * pa.width + x) * 4
-      const same = pa.data[i] === pb.data[i] && pa.data[i + 1] === pb.data[i + 1] && pa.data[i + 2] === pb.data[i + 2] && pa.data[i + 3] === pb.data[i + 3]
+      const same =
+        pa.data[i] === pb.data[i] &&
+        pa.data[i + 1] === pb.data[i + 1] &&
+        pa.data[i + 2] === pb.data[i + 2] &&
+        pa.data[i + 3] === pb.data[i + 3]
       if (!same) {
         n++
         if (x < x0) x0 = x
@@ -84,7 +88,11 @@ for (const name of names) {
   if (diff) writeFileSync(join(outDir, name), PNG.sync.write(diff))
   const over = n > max
   if (over) bad++
-  console.log(`${over ? 'DIFIERE' : 'ruido  '} ${name} ${n} px (${((100 * n) / (pa.width * pa.height)).toFixed(3)} %) caja ${x0},${y0}..${x1},${y1}`)
+  console.log(
+    `${over ? 'DIFIERE' : 'ruido  '} ${name} ${n} px (${((100 * n) / (pa.width * pa.height)).toFixed(3)} %) caja ${x0},${y0}..${x1},${y1}`
+  )
 }
-console.log(`${names.length} archivos: ${identical} idénticos, ${names.length - identical - bad} con diferencias dentro de --max ${max}, ${bad} fuera. Píxeles distintos en total: ${totalDiff}`)
+console.log(
+  `${names.length} archivos: ${identical} idénticos, ${names.length - identical - bad} con diferencias dentro de --max ${max}, ${bad} fuera. Píxeles distintos en total: ${totalDiff}`
+)
 process.exit(bad ? 1 : 0)

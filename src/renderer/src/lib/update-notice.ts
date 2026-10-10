@@ -1,4 +1,4 @@
-import { DISPLAY_NAME } from '@shared/brand'
+import { DISPLAY_NAME, RELEASES_ORIGIN } from '@shared/brand'
 import { localeTag, t } from '@shared/i18n'
 import { isValidRepo, safeReleaseUrl, type UpdateState } from '@shared/update-check'
 import { installErrorText, installPercent, type InstallPhase } from '@shared/update-install'
@@ -21,11 +21,11 @@ export function checkResultText(state: UpdateState, startedAt: number): string {
   return checkFailedText()
 }
 
-/** Devuelve la URL solo si es una página de releases de github.com (defensa en profundidad en el renderer). */
+/** Devuelve la URL solo si es una página de releases del servidor propio (defensa en profundidad en el renderer). */
 export function downloadUrl(state: UpdateState | null): string | null {
   const url = state?.latest?.url
   if (!state?.latest || !url) return null
-  const repo = /^https:\/\/github\.com\/([^/]+\/[^/]+)\/releases\//.exec(url)?.[1]
+  const repo = new RegExp(`^${RELEASES_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/([^/]+/[^/]+)/releases/`).exec(url)?.[1]
   if (!repo || !isValidRepo(repo)) return null
   return safeReleaseUrl(url, repo, `v${state.latest.version}`) === url ? url : null
 }

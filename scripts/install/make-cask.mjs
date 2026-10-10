@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const DEFAULT_OUT = join(ROOT, 'packaging', 'homebrew-tap', 'Casks', 'lazunox.rb')
 
-export function renderCask({ version, sha256, repo }) {
+/** Servidor propio de releases (el mismo que RELEASES_ORIGIN de src/shared/brand.ts). */
+export const RELEASES_ORIGIN = 'https://lazunox.onyxcode.cl'
+
+export function renderCask({ version, sha256, repo, origin = RELEASES_ORIGIN }) {
   if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version ?? '')) throw new Error(`versión inválida: «${version}» (esperado X.Y.Z)`)
   if (!/^[0-9a-f]{64}$/.test(sha256 ?? '')) throw new Error('--sha256 debe ser un SHA-256 de 64 caracteres hexadecimales en minúsculas')
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo ?? '')) throw new Error(`--repo debe tener la forma dueño/repositorio (recibido «${repo}»)`)
@@ -17,10 +20,10 @@ export function renderCask({ version, sha256, repo }) {
   version "${version}"
   sha256 "${sha256}"
 
-  url "https://github.com/${repo}/releases/download/v#{version}/lazunox-#{version}-arm64.dmg"
+  url "${origin}/${repo}/releases/download/v#{version}/lazunox-#{version}-arm64.dmg"
   name "Lazunox"
   desc "Aplicación de escritorio para trabajar con agentes de código"
-  homepage "https://github.com/${repo}"
+  homepage "${origin}"
 
   depends_on arch: :arm64
   depends_on macos: ">= :ventura"

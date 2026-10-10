@@ -84,7 +84,13 @@ export async function startReleasesServer(repo = 'test-owner/test-repo'): Promis
     setRelease: (tag, extra = {}) =>
       api.setResponse({
         status: 200,
-        body: { tag_name: tag, html_url: `https://github.com/${repo}/releases/tag/${tag}`, draft: false, prerelease: false, ...extra }
+        body: {
+          tag_name: tag,
+          html_url: `https://lazunox.onyxcode.cl/${repo}/releases/tag/${tag}`,
+          draft: false,
+          prerelease: false,
+          ...extra
+        }
       }),
     setAsset: (path, spec) => {
       if (spec) assets.set(path, spec)

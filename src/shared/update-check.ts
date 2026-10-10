@@ -1,4 +1,5 @@
 /** Lógica pura (sin Electron) del aviso de versión nueva. */
+import { RELEASES_ORIGIN } from './brand'
 import type { InstallState } from './update-install'
 
 export const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -83,19 +84,22 @@ export function isValidRepo(r: unknown): r is string {
   return name !== '.' && name !== '..'
 }
 
-export function releasesApiUrl(repo: string, base = 'https://api.github.com'): string {
+export function releasesApiUrl(repo: string, base = RELEASES_ORIGIN): string {
   return `${base.replace(/\/+$/, '')}/repos/${repo}/releases/latest`
 }
 
-/** Solo devuelve una URL https://github.com/{owner}/{repo}/releases/...; si no, la página de la release por tag. */
+/** Host de las releases (el servidor propio): de ahí salen las páginas de descarga que la app acepta abrir. */
+export const RELEASES_HOST = new URL(RELEASES_ORIGIN).hostname
+
+/** Solo devuelve una URL https://<servidor de releases>/{owner}/{repo}/releases/...; si no, la página de la release por tag. */
 export function safeReleaseUrl(raw: unknown, repo: string, tag: string): string {
-  const fallback = `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`
+  const fallback = `${RELEASES_ORIGIN}/${repo}/releases/tag/${encodeURIComponent(tag)}`
   if (typeof raw !== 'string') return fallback
   try {
     // URL normaliza «:443» y lo borra: se mira también el texto original.
     if (/^[a-z]+:\/\/[^/?#]*[:@]/i.test(raw)) return fallback
     const u = new URL(raw)
-    if (u.protocol !== 'https:' || u.hostname !== 'github.com') return fallback
+    if (u.protocol !== 'https:' || u.hostname !== RELEASES_HOST) return fallback
     if (u.username || u.password || u.port) return fallback
     if (!u.pathname.toLowerCase().startsWith(`/${repo}/releases/`.toLowerCase())) return fallback
     return u.href

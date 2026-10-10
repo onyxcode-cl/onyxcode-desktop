@@ -302,7 +302,7 @@ describe('actualizador propio', () => {
     await expectCount(button(app.page, 'Actualizar'), 0)
     await stubOpenExternal(app)
     await button(app.page, 'Descargar').click()
-    await expect.poll(() => opened(app)).toEqual([`https://github.com/${FIXTURE_REPO}/releases/tag/${f.tag}`])
+    await expect.poll(() => opened(app)).toEqual([`https://lazunox.onyxcode.cl/${FIXTURE_REPO}/releases/tag/${f.tag}`])
     await openAbout(app.page)
     await expectCount(app.page.getByTestId('update-actions').getByRole('button', { name: 'Actualizar', exact: true }), 0)
     await shot(app.page, 'instalador-7-acerca-sin-permiso')

@@ -12,7 +12,18 @@
 // a medias). Solo se engancha en `npm run package`, no en dev/build/verify.
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createReadStream, createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, chmodSync } from 'node:fs'
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  chmodSync
+} from 'node:fs'
 import { get as httpGet } from 'node:http'
 import { get as httpsGet } from 'node:https'
 import { tmpdir } from 'node:os'
@@ -39,7 +50,8 @@ const validAsset = (a) => !!a && typeof a.url === 'string' && /^[0-9a-f]{64}$/.t
 
 export function readPin(path = PIN_PATH) {
   const pin = JSON.parse(readFileSync(path, 'utf8'))
-  if (!pin || typeof pin.version !== 'string' || !pin.assets || typeof pin.assets !== 'object') throw new Error(`pin.json inválido: ${path}`)
+  if (!pin || typeof pin.version !== 'string' || !pin.assets || typeof pin.assets !== 'object')
+    throw new Error(`pin.json inválido: ${path}`)
   for (const [key, asset] of Object.entries(pin.assets)) {
     if (!validAsset(asset)) throw new Error(`pin.json inválido (asset ${key}): ${path}`)
   }
@@ -49,7 +61,10 @@ export function readPin(path = PIN_PATH) {
 /** Asset del pin para una plataforma; lanza un error claro si no hay binario fijado para ella. */
 export function assetFor(pin, key = platformKey()) {
   const asset = pin.assets?.[key]
-  if (!validAsset(asset)) throw new Error(`No hay binario de OpenCode fijado para ${key} (disponibles: ${Object.keys(pin.assets ?? {}).join(', ') || 'ninguno'}).`)
+  if (!validAsset(asset))
+    throw new Error(
+      `No hay binario de OpenCode fijado para ${key} (disponibles: ${Object.keys(pin.assets ?? {}).join(', ') || 'ninguno'}).`
+    )
   return asset
 }
 
@@ -135,7 +150,16 @@ export async function binaryVersion(bin) {
       windowsHide: true,
       env: {
         PATH: win ? `${sysRoot}\\System32;${sysRoot}` : '/usr/bin:/bin',
-        ...(win ? { SystemRoot: sysRoot, USERPROFILE: home, APPDATA: join(home, 'appdata'), LOCALAPPDATA: join(home, 'localappdata'), TEMP: home, TMP: home } : {}),
+        ...(win
+          ? {
+              SystemRoot: sysRoot,
+              USERPROFILE: home,
+              APPDATA: join(home, 'appdata'),
+              LOCALAPPDATA: join(home, 'localappdata'),
+              TEMP: home,
+              TMP: home
+            }
+          : {}),
         HOME: home,
         XDG_CONFIG_HOME: join(home, 'config'),
         XDG_DATA_HOME: join(home, 'data'),

@@ -48,8 +48,15 @@ export const BRAND_COLORS = {
 /** Dominio del servicio de conexión del control remoto. */
 export const CLOUD_DOMAIN = 'remoto.onyxcode.cl' // EXTERNO-PENDIENTE: D3
 
-/** «owner/repo» público en GitHub donde se publican las releases. Vacío = sin aviso de versión nueva (sin red). */
-export const RELEASES_REPO = '' as string
+/**
+ * Servidor propio (HTTPS) desde el que se publican las actualizaciones. Imita la estructura de GitHub Releases
+ * (`/repos/<repo>/releases/latest` y `/<repo>/releases/download/<tag>/<archivo>`), así que sirve con archivos estáticos (nginx).
+ * No hace falta que sea de confianza: cada actualización lleva su firma Ed25519 y la app la comprueba antes de instalar.
+ */
+export const RELEASES_ORIGIN = 'https://lazunox.onyxcode.cl'
+
+/** «dueño/repositorio» con el que se nombra la ruta de las releases en el servidor. Vacío = sin aviso de versión nueva (sin red). */
+export const RELEASES_REPO = 'lazunox/lazunox' as string
 
 /**
  * Clave PÚBLICA Ed25519 con la que se verifica el manifiesto de cada actualización (SPKI DER en base64,

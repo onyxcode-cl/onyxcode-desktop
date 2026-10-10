@@ -134,7 +134,7 @@ describe('aviso de versión nueva', () => {
     expect(req.headers.authorization).toBeUndefined()
 
     await notice(app.page).getByRole('button', { name: 'Descargar' }).click()
-    await expect.poll(() => opened(app)).toEqual([`https://github.com/${REPO}/releases/tag/v99.9.9`])
+    await expect.poll(() => opened(app)).toEqual([`https://lazunox.onyxcode.cl/${REPO}/releases/tag/v99.9.9`])
     await openAbout(app.page)
     await expectVisible(app.page.getByText(/Última comprobación: \d/))
     await shot(app.page, 'acerca-con-aviso')
@@ -148,7 +148,7 @@ describe('aviso de versión nueva', () => {
     await stubOpenExternal(app)
     await expectVisible(notice(app.page))
     await notice(app.page).getByRole('button', { name: 'Descargar' }).click()
-    await expect.poll(() => opened(app)).toEqual([`https://github.com/${REPO}/releases/tag/v99.9.9`])
+    await expect.poll(() => opened(app)).toEqual([`https://lazunox.onyxcode.cl/${REPO}/releases/tag/v99.9.9`])
     await stopApp(app)
   })
 

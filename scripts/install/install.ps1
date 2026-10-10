@@ -16,7 +16,7 @@
 #
 # QUÉ NO HACE: no necesita administrador, no toca tus datos (%APPDATA%\Lazunox), no cambia ajustes de seguridad ni instala otra cosa.
 #
-# Variables de entorno: LAZUNOX_RELEASES_REPO («dueño/repositorio» de GitHub; anula la constante de abajo).
+# Variables de entorno: LAZUNOX_RELEASES_REPO («dueño/repositorio»; anula la constante de abajo) y LAZUNOX_RELEASES_ORIGIN (solo pruebas).
 [CmdletBinding()]
 param(
   [string]$Version = '',
@@ -28,8 +28,10 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 # Mientras valga PENDIENTE no hay release publicada y el script se niega a ejecutarse.
-$ReleasesRepoDefault = 'PENDIENTE'
+$ReleasesRepoDefault = 'lazunox/lazunox'
+$ReleasesOriginDefault = 'https://lazunox.onyxcode.cl'
 $Repo = if ($env:LAZUNOX_RELEASES_REPO) { $env:LAZUNOX_RELEASES_REPO } else { $ReleasesRepoDefault }
+$Origin = if ($env:LAZUNOX_RELEASES_ORIGIN) { $env:LAZUNOX_RELEASES_ORIGIN.TrimEnd('/') } else { $ReleasesOriginDefault }
 $InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\Lazunox'
 
 function Say([string]$m) { Write-Host $m }
@@ -51,7 +53,7 @@ if ($Repo -eq 'PENDIENTE') { Fail 'Todavía no hay una versión publicada para d
 if ($Repo -notmatch '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$') { Fail 'LAZUNOX_RELEASES_REPO debe tener la forma «dueño/repositorio».' }
 if ($Version -and $Version -notmatch '^\d+\.\d+\.\d+$') { Fail '-Version debe ser X.Y.Z.' }
 
-$base = if ($Version) { "https://github.com/$Repo/releases/download/v$Version" } else { "https://github.com/$Repo/releases/latest/download" }
+$base = if ($Version) { "$Origin/$Repo/releases/download/v$Version" } else { "$Origin/$Repo/releases/latest/download" }
 if ($DryRun) {
   Say "[dry-run] Invoke-WebRequest $base/SHA256SUMS"
   Say "[dry-run] Invoke-WebRequest $base/<instalador>-x64.exe (el nombre sale de SHA256SUMS)"

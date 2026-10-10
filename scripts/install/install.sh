@@ -26,14 +26,17 @@
 # script comprueba la firma contra el hash fijado en lugar de fiarse del sistema.
 #
 # Variables de entorno:
-#   LAZUNOX_RELEASES_REPO   «dueño/repositorio» de GitHub con las releases (anula la constante de abajo).
+#   LAZUNOX_RELEASES_REPO   «dueño/repositorio» con las releases en el servidor (anula la constante de abajo).
+#   LAZUNOX_RELEASES_ORIGIN servidor de releases (https://…); solo para pruebas.
 #   LAZUNOX_INSTALL_DIR     carpeta destino (por defecto /Applications o ~/Applications). Útil para pruebas.
 
 set -eu
 
 # --- Constantes -----------------------------------------------------------------------------------
 # Mientras valga PENDIENTE no hay release publicada y el script se niega a ejecutarse.
-RELEASES_REPO_DEFAULT="PENDIENTE"
+RELEASES_REPO_DEFAULT="lazunox/lazunox"
+# Servidor propio de releases (misma estructura que GitHub Releases). LAZUNOX_RELEASES_ORIGIN lo anula (pruebas).
+RELEASES_ORIGIN_DEFAULT="https://lazunox.onyxcode.cl"
 # SHA-1 de la hoja del certificado «Lazunox Local Signing», en minúsculas.
 PINNED_CERT_SHA1="8446c25f2c710d66701c262f048390d8f6edba31"
 APP_NAME="Lazunox.app"
@@ -41,6 +44,7 @@ BUNDLE_ID="cl.bentec.lazunox"
 DATA_DIR="$HOME/Library/Application Support/Lazunox"
 
 REPO="${LAZUNOX_RELEASES_REPO:-$RELEASES_REPO_DEFAULT}"
+ORIGIN="${LAZUNOX_RELEASES_ORIGIN:-$RELEASES_ORIGIN_DEFAULT}"
 VERSION=""
 DRY_RUN=0
 NO_OPEN=0
@@ -115,9 +119,9 @@ if [ "$REPO" = "PENDIENTE" ] || [ -z "$REPO" ]; then
 fi
 
 if [ -n "$VERSION" ]; then
-  BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
+  BASE_URL="$ORIGIN/$REPO/releases/download/v$VERSION"
 else
-  BASE_URL="https://github.com/$REPO/releases/latest/download"
+  BASE_URL="$ORIGIN/$REPO/releases/latest/download"
 fi
 
 if [ "$DRY_RUN" = 1 ]; then

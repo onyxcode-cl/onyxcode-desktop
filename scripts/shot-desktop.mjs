@@ -15,17 +15,46 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const WIN = process.platform === 'win32'
 // macOS: /private/tmp (como siempre; Tareas rechaza carpetas de sistema y tmpdir() de macOS cuelga de /var/folders). Windows: tmpdir().
 const TMP = WIN ? tmpdir() : '/private/tmp'
-const DEFAULT_OUT = WIN ? join(tmpdir(), 'shots-desktop') : '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
+const DEFAULT_OUT = WIN
+  ? join(tmpdir(), 'shots-desktop')
+  : '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
-  'onboarding', 'onboarding-inicio', 'chat-vacio', 'chat-conversacion', 'chat-herramientas', 'code-proyecto', 'code-diff', 'code-terminal',
+  'onboarding',
+  'onboarding-inicio',
+  'chat-vacio',
+  'chat-conversacion',
+  'chat-herramientas',
+  'code-proyecto',
+  'code-diff',
+  'code-terminal',
   'code-permiso',
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
-  'tareas-primer-uso', 'tareas-nueva', 'tareas-lista', 'tareas-buscar', 'tareas-archivadas', 'tareas-en-curso', 'tareas-permiso', 'tareas-permiso-neutral', 'tareas-permiso-largo',
-  'rutinas-vacio', 'rutinas', 'rutinas-detalle', 'rutinas-editor', 'ajustes-general', 'ajustes-modelos', 'ajustes-celular',
-  'paleta', 'selector-modelo', 'dialogo-confirmar', 'comparar', 'barra-lateral-colapsada',
+  'tareas-primer-uso',
+  'tareas-nueva',
+  'tareas-lista',
+  'tareas-buscar',
+  'tareas-archivadas',
+  'tareas-en-curso',
+  'tareas-permiso',
+  'tareas-permiso-neutral',
+  'tareas-permiso-largo',
+  'rutinas-vacio',
+  'rutinas',
+  'rutinas-detalle',
+  'rutinas-editor',
+  'ajustes-general',
+  'ajustes-modelos',
+  'ajustes-celular',
+  'paleta',
+  'selector-modelo',
+  'dialogo-confirmar',
+  'comparar',
+  'barra-lateral-colapsada',
   // Barra lateral 2c (el árbol y sus estados). Conviene pedirlas con `--clip sidebar`.
-  'barra-chat', 'barra-code', 'barra-code-hover',
+  'barra-chat',
+  'barra-code',
+  'barra-code-hover',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
@@ -93,13 +122,19 @@ function seedRepo(dir) {
   git(dir, 'config', 'user.name', 'Demo')
   git(dir, 'config', 'core.autocrlf', 'false')
   writeFileSync(join(dir, 'README.md'), '# Tienda web\n\nTienda de ejemplo.\n')
-  writeFileSync(join(dir, 'src/carrito.ts'), 'export function total(items: { precio: number; cantidad: number }[]): number {\n  let t = 0\n  for (const i of items) t += i.precio * i.cantidad\n  return t\n}\n')
-  writeFileSync(join(dir, 'src/precios.ts'), "export const IVA = 0.19\nexport const redondear = (n: number): number => Math.round(n)\n")
+  writeFileSync(
+    join(dir, 'src/carrito.ts'),
+    'export function total(items: { precio: number; cantidad: number }[]): number {\n  let t = 0\n  for (const i of items) t += i.precio * i.cantidad\n  return t\n}\n'
+  )
+  writeFileSync(join(dir, 'src/precios.ts'), 'export const IVA = 0.19\nexport const redondear = (n: number): number => Math.round(n)\n')
   writeFileSync(join(dir, 'package.json'), '{\n  "name": "tienda-web",\n  "version": "1.0.0"\n}\n')
   git(dir, 'add', '.')
   git(dir, 'commit', '-q', '-m', 'Version inicial de la tienda')
   // Cambios sin confirmar: alimentan el panel «Cambios» de Code.
-  writeFileSync(join(dir, 'src/carrito.ts'), 'import { IVA, redondear } from "./precios"\n\nexport function total(items: { precio: number; cantidad: number }[]): number {\n  let t = 0\n  for (const i of items) t += i.precio * i.cantidad\n  return redondear(t * (1 + IVA))\n}\n\nexport function vacio(items: unknown[]): boolean {\n  return items.length === 0\n}\n')
+  writeFileSync(
+    join(dir, 'src/carrito.ts'),
+    'import { IVA, redondear } from "./precios"\n\nexport function total(items: { precio: number; cantidad: number }[]): number {\n  let t = 0\n  for (const i of items) t += i.precio * i.cantidad\n  return redondear(t * (1 + IVA))\n}\n\nexport function vacio(items: unknown[]): boolean {\n  return items.length === 0\n}\n'
+  )
   writeFileSync(join(dir, 'src/nuevo.ts'), 'export const ENVIO_GRATIS_DESDE = 30000\n')
 }
 
@@ -109,7 +144,12 @@ function myPids() {
     const rows = WIN
       ? execFileSync(
           'powershell.exe',
-          ['-NoProfile', '-NonInteractive', '-Command', 'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.CommandLine)" }'],
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            'Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId) $($_.CommandLine)" }'
+          ],
           { encoding: 'utf8', maxBuffer: 64 << 20 }
         ).split('\n')
       : execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 }).split('\n')
@@ -221,7 +261,11 @@ async function launch(name, { settings = {}, env = {}, noServer = false } = {}) 
   current = { electronApp, userData }
   const page = await electronApp.firstWindow({ timeout: 60_000 })
   await page.waitForLoadState('domcontentloaded')
-  await page.locator('nav[aria-label="Modo"]').first().waitFor({ timeout: 60_000 }).catch(() => {})
+  await page
+    .locator('nav[aria-label="Modo"]')
+    .first()
+    .waitFor({ timeout: 60_000 })
+    .catch(() => {})
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true })
   const ctx = { electronApp, page, cdp, userData, fake: null }
@@ -289,12 +333,23 @@ async function closeOverlays(page) {
 
 async function stage(ctx, [w, h], theme) {
   const { cdp, electronApp, page } = ctx
-  await electronApp.evaluate(({ BrowserWindow }, [cw, ch]) => {
-    for (const win of BrowserWindow.getAllWindows()) if (!win.getParentWindow()) win.setContentSize(cw, ch)
-  }, [w, h])
+  await electronApp.evaluate(
+    ({ BrowserWindow }, [cw, ch]) => {
+      for (const win of BrowserWindow.getAllWindows()) if (!win.getParentWindow()) win.setContentSize(cw, ch)
+    },
+    [w, h]
+  )
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: DPR, mobile: false })
-  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }, ...(forcedColors ? [{ name: 'forced-colors', value: 'active' }] : [])] })
-  const calm = realReducedMotion ? 'caret-color:transparent!important;scroll-behavior:auto!important' : 'transition:none!important;animation:none!important;caret-color:transparent!important;scroll-behavior:auto!important'
+  await cdp.send('Emulation.setEmulatedMedia', {
+    features: [
+      { name: 'prefers-color-scheme', value: theme },
+      { name: 'prefers-reduced-motion', value: 'reduce' },
+      ...(forcedColors ? [{ name: 'forced-colors', value: 'active' }] : [])
+    ]
+  })
+  const calm = realReducedMotion
+    ? 'caret-color:transparent!important;scroll-behavior:auto!important'
+    : 'transition:none!important;animation:none!important;caret-color:transparent!important;scroll-behavior:auto!important'
   await page.addStyleTag({ content: `*,*::before,*::after{${calm}}` }).catch(() => {})
   await parkMouse(ctx)
   await sleep(350)
@@ -307,7 +362,9 @@ async function parkMouse(ctx) {
     await ctx.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: -20, y: -20, buttons: 0 }).catch(() => {})
     await sleep(60)
     const left = await ctx.page
-      .evaluate(() => [...document.querySelectorAll(':hover')].filter((e) => !['HTML', 'BODY'].includes(e.tagName) && e.id !== 'root').length)
+      .evaluate(
+        () => [...document.querySelectorAll(':hover')].filter((e) => !['HTML', 'BODY'].includes(e.tagName) && e.id !== 'root').length
+      )
       .catch(() => 0)
     if (!left) return
   }
@@ -369,18 +426,58 @@ Para probarlo ejecuta \`npm test\`. Si algo falla, avísame y lo reviso.`
 
 const HERRAMIENTAS = [
   { type: 'text', text: 'Voy a revisar el proyecto y correr las pruebas.' },
-  { type: 'tool', tool: 'read', input: { filePath: '/Users/demo/proyectos/tienda-web/src/carrito.ts' }, output: 'export function total() {}\n', title: 'src/carrito.ts' },
-  { type: 'tool', tool: 'grep', input: { pattern: 'IVA', path: 'src' }, output: 'src/precios.ts:1:export const IVA = 0.19\n', title: 'IVA' },
-  { type: 'tool', tool: 'bash', input: { command: 'npm test', description: 'Corre las pruebas' }, output: '> tienda-web@1.0.0 test\n> vitest run\n\n ✓ carrito.test.ts (4)\n ✓ precios.test.ts (2)\n\n Test Files  2 passed (2)\n      Tests  6 passed (6)\n', title: 'Corre las pruebas' },
-  { type: 'tool', tool: 'edit', input: { filePath: 'src/carrito.ts', oldString: 'return t', newString: 'return redondear(t * (1 + IVA))' }, output: 'Edit applied successfully.', title: 'src/carrito.ts' },
+  {
+    type: 'tool',
+    tool: 'read',
+    input: { filePath: '/Users/demo/proyectos/tienda-web/src/carrito.ts' },
+    output: 'export function total() {}\n',
+    title: 'src/carrito.ts'
+  },
+  {
+    type: 'tool',
+    tool: 'grep',
+    input: { pattern: 'IVA', path: 'src' },
+    output: 'src/precios.ts:1:export const IVA = 0.19\n',
+    title: 'IVA'
+  },
+  {
+    type: 'tool',
+    tool: 'bash',
+    input: { command: 'npm test', description: 'Corre las pruebas' },
+    output:
+      '> tienda-web@1.0.0 test\n> vitest run\n\n ✓ carrito.test.ts (4)\n ✓ precios.test.ts (2)\n\n Test Files  2 passed (2)\n      Tests  6 passed (6)\n',
+    title: 'Corre las pruebas'
+  },
+  {
+    type: 'tool',
+    tool: 'edit',
+    input: { filePath: 'src/carrito.ts', oldString: 'return t', newString: 'return redondear(t * (1 + IVA))' },
+    output: 'Edit applied successfully.',
+    title: 'src/carrito.ts'
+  },
   { type: 'text', text: 'Listo: las **6 pruebas** pasan y el total ahora incluye el IVA.' }
 ]
 
 async function scriptChat(fake) {
   await fake.script({ match: 'plan del carrito', title: 'Plan del carrito de compras', steps: [{ type: 'text', text: MD_LARGO }] })
   await fake.script({ match: 'Ejecuta las pruebas', title: 'Pruebas y corrección del IVA', steps: HERRAMIENTAS })
-  await fake.script({ match: 'receta de pan', title: 'Receta de pan casero', steps: [{ type: 'text', text: 'Mezcla 500 g de harina, 350 ml de agua tibia, 10 g de sal y 5 g de levadura. Reposa 12 horas y hornea a 230 °C por 35 minutos.' }] })
-  await fake.script({ match: 'resumen semanal', title: 'Resumen semanal de ventas', steps: [{ type: 'text', text: 'Las ventas subieron un **12 %** frente a la semana anterior. El producto más vendido fue la polera negra.' }] })
+  await fake.script({
+    match: 'receta de pan',
+    title: 'Receta de pan casero',
+    steps: [
+      {
+        type: 'text',
+        text: 'Mezcla 500 g de harina, 350 ml de agua tibia, 10 g de sal y 5 g de levadura. Reposa 12 horas y hornea a 230 °C por 35 minutos.'
+      }
+    ]
+  })
+  await fake.script({
+    match: 'resumen semanal',
+    title: 'Resumen semanal de ventas',
+    steps: [
+      { type: 'text', text: 'Las ventas subieron un **12 %** frente a la semana anterior. El producto más vendido fue la polera negra.' }
+    ]
+  })
 }
 
 const sendChat = async (page, text) => {
@@ -417,12 +514,20 @@ async function seedChats(ctx) {
 // ---- escenarios: cada uno deja la pantalla lista y devuelve una función de limpieza opcional ----
 async function openSettings(page, section) {
   await closeOverlays(page)
-  await page.getByRole('button', { name: /^Ajustes/ }).first().click()
+  await page
+    .getByRole('button', { name: /^Ajustes/ })
+    .first()
+    .click()
   await sleep(400)
   if (section) {
-    await page.getByRole('navigation', { name: /Secciones de ajustes|Ajustes/ }).getByRole('button', { name: section }).first().click().catch(async () => {
-      await page.getByRole('button', { name: section, exact: true }).first().click()
-    })
+    await page
+      .getByRole('navigation', { name: /Secciones de ajustes|Ajustes/ })
+      .getByRole('button', { name: section })
+      .first()
+      .click()
+      .catch(async () => {
+        await page.getByRole('button', { name: section, exact: true }).first().click()
+      })
     await sleep(500)
   }
 }
@@ -460,7 +565,10 @@ async function openCode(ctx) {
   await goMode(page, 'Code')
   if (codeOpened) return
   await stubDialog(ctx, [codeRepo])
-  await page.getByRole('button', { name: /Abrir carpeta/ }).first().click()
+  await page
+    .getByRole('button', { name: /Abrir carpeta/ })
+    .first()
+    .click()
   const trust = page.getByRole('button', { name: 'Confiar y continuar' })
   await vis(trust, 15_000)
   await trust.click()
@@ -480,9 +588,28 @@ async function seedCode(ctx) {
     title: 'Agregar IVA al carrito',
     steps: [
       { type: 'text', text: 'Voy a **leer** el módulo y aplicar el IVA al total.' },
-      { type: 'tool', tool: 'read', input: { filePath: `${codeRepo}/src/carrito.ts` }, output: 'export function total() {}\n', title: 'src/carrito.ts' },
-      { type: 'tool', tool: 'bash', input: { command: 'npm test', description: 'Corre las pruebas' }, output: ' ✓ carrito.test.ts (4)\n Tests  4 passed (4)\n', title: 'Corre las pruebas' },
-      { type: 'tool', tool: 'edit', input: { filePath: `${codeRepo}/src/carrito.ts` }, output: 'Edit applied successfully.', title: 'src/carrito.ts', metadata: { diff } },
+      {
+        type: 'tool',
+        tool: 'read',
+        input: { filePath: `${codeRepo}/src/carrito.ts` },
+        output: 'export function total() {}\n',
+        title: 'src/carrito.ts'
+      },
+      {
+        type: 'tool',
+        tool: 'bash',
+        input: { command: 'npm test', description: 'Corre las pruebas' },
+        output: ' ✓ carrito.test.ts (4)\n Tests  4 passed (4)\n',
+        title: 'Corre las pruebas'
+      },
+      {
+        type: 'tool',
+        tool: 'edit',
+        input: { filePath: `${codeRepo}/src/carrito.ts` },
+        output: 'Edit applied successfully.',
+        title: 'src/carrito.ts',
+        metadata: { diff }
+      },
       { type: 'text', text: 'Hecho. `total()` ahora aplica el IVA y redondea una sola vez.\n\n```ts\nreturn redondear(t * (1 + IVA))\n```' }
     ]
   })
@@ -543,9 +670,20 @@ async function seedTaskList(ctx) {
   const fake = await openTasks(ctx)
   if (taskListSeeded) return
   taskListSeeded = true
-  await fake.script({ match: 'Ordena los informes', title: 'Ordenar informes del trimestre', steps: [{ type: 'text', text: 'Ordené **12 informes** por mes en carpetas.' }] })
-  await fake.script({ match: 'Resume el contrato', title: 'Resumir contrato de arriendo', steps: [{ type: 'text', text: 'El contrato dura 24 meses y se reajusta por UF.' }] })
-  for (const [t, done] of [['Ordena los informes del trimestre', /Ordené/], ['Resume el contrato de arriendo', /24 meses/]]) {
+  await fake.script({
+    match: 'Ordena los informes',
+    title: 'Ordenar informes del trimestre',
+    steps: [{ type: 'text', text: 'Ordené **12 informes** por mes en carpetas.' }]
+  })
+  await fake.script({
+    match: 'Resume el contrato',
+    title: 'Resumir contrato de arriendo',
+    steps: [{ type: 'text', text: 'El contrato dura 24 meses y se reajusta por UF.' }]
+  })
+  for (const [t, done] of [
+    ['Ordena los informes del trimestre', /Ordené/],
+    ['Resume el contrato de arriendo', /24 meses/]
+  ]) {
     await sendTask(ctx.page, t)
     await vis(ctx.page.getByText(done), 45_000)
     await sleep(400)
@@ -561,12 +699,43 @@ async function seedRoutines(ctx) {
   if (routinesSeeded) return
   routinesSeeded = true
   const mk = async (name, prompt, mode, schedule, enabled, folder) => {
-    const r = await page.evaluate(async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 200), { name, prompt, mode, schedule, enabled, folder, model: { providerID: 'fake', modelID: 'fake-model' }, sessionMode: 'fresh', onAsk: 'reject' })
+    const r = await page.evaluate(async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 200), {
+      name,
+      prompt,
+      mode,
+      schedule,
+      enabled,
+      folder,
+      model: { providerID: 'fake', modelID: 'fake-model' },
+      sessionMode: 'fresh',
+      onAsk: 'reject'
+    })
     if (!r.includes('"ok":true')) console.error(`  [rutinas] routines:save: ${r}`)
   }
-  await mk('Resumen diario de ventas', 'Resume las ventas de ayer y destaca anomalías.', 'chat', { kind: 'daily', time: '08:30' }, true, null)
-  await mk('Revisión semanal de dependencias', 'Revisa dependencias desactualizadas y propone actualizaciones.', 'code', { kind: 'weekly', day: 1, time: '09:00' }, true, codeRepo)
-  await mk('Ordenar descargas', 'Ordena la carpeta de descargas por tipo de archivo.', 'tasks', { kind: 'interval', hours: 6 }, false, taskFolder)
+  await mk(
+    'Resumen diario de ventas',
+    'Resume las ventas de ayer y destaca anomalías.',
+    'chat',
+    { kind: 'daily', time: '08:30' },
+    true,
+    null
+  )
+  await mk(
+    'Revisión semanal de dependencias',
+    'Revisa dependencias desactualizadas y propone actualizaciones.',
+    'code',
+    { kind: 'weekly', day: 1, time: '09:00' },
+    true,
+    codeRepo
+  )
+  await mk(
+    'Ordenar descargas',
+    'Ordena la carpeta de descargas por tipo de archivo.',
+    'tasks',
+    { kind: 'interval', hours: 6 },
+    false,
+    taskFolder
+  )
 }
 
 const S = {
@@ -589,8 +758,14 @@ const S = {
     await ctx.page.getByText('Pruebas y corrección del IVA').first().click()
     await vis(ctx.page.getByText(/pruebas.*pasan/), 15_000)
     // Las herramientas seguidas se pliegan en «N pasos»: se abre el grupo y luego la fila del comando.
-    await ctx.page.getByRole('button', { name: /\d+ pasos/ }).first().click()
-    await ctx.page.getByRole('button', { name: /bash|npm test|Corre las pruebas/ }).first().click()
+    await ctx.page
+      .getByRole('button', { name: /\d+ pasos/ })
+      .first()
+      .click()
+    await ctx.page
+      .getByRole('button', { name: /bash|npm test|Corre las pruebas/ })
+      .first()
+      .click()
     await sleep(500)
   },
   async 'code-proyecto'(ctx) {
@@ -643,7 +818,10 @@ const S = {
   },
   async 'tareas-nueva'(ctx) {
     await openTasks(ctx)
-    await ctx.page.getByRole('button', { name: /^Nueva tarea/ }).first().click()
+    await ctx.page
+      .getByRole('button', { name: /^Nueva tarea/ })
+      .first()
+      .click()
     await vis(ctx.page.getByPlaceholder('Describe la tarea que quieres delegar…'), 15_000)
     await sleep(500)
   },
@@ -677,7 +855,14 @@ const S = {
       title: 'Preparar informe de ventas',
       steps: [
         { type: 'text', text: 'Empiezo reuniendo los datos del mes.' },
-        { type: 'todo', todos: [{ content: 'Reunir datos de ventas', status: 'completed', priority: 'high' }, { content: 'Calcular totales por región', status: 'in_progress', priority: 'high' }, { content: 'Redactar resumen', status: 'pending', priority: 'medium' }] },
+        {
+          type: 'todo',
+          todos: [
+            { content: 'Reunir datos de ventas', status: 'completed', priority: 'high' },
+            { content: 'Calcular totales por región', status: 'in_progress', priority: 'high' },
+            { content: 'Redactar resumen', status: 'pending', priority: 'medium' }
+          ]
+        },
         { type: 'tool', tool: 'bash', input: { command: 'ls ventas' }, output: 'enero.csv\nfebrero.csv\n', title: 'Lista ventas' },
         { type: 'delay', ms: 120000 }
       ]
@@ -691,7 +876,10 @@ const S = {
     await fake.script({
       match: 'Borra los temporales',
       title: 'Limpiar archivos temporales',
-      steps: [{ type: 'text', text: 'Necesito ejecutar un comando para limpiar.' }, { type: 'permission', permission: 'bash', patterns: ['rm -rf temporales/*'] }]
+      steps: [
+        { type: 'text', text: 'Necesito ejecutar un comando para limpiar.' },
+        { type: 'permission', permission: 'bash', patterns: ['rm -rf temporales/*'] }
+      ]
     })
     await sendTask(ctx.page, 'Borra los temporales de la carpeta')
     await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
@@ -782,7 +970,10 @@ const S = {
   async 'selector-modelo'(ctx) {
     await closeOverlays(ctx.page)
     await newChat(ctx.page)
-    await ctx.page.getByRole('button', { name: /Fake Model/ }).first().click()
+    await ctx.page
+      .getByRole('button', { name: /Fake Model/ })
+      .first()
+      .click()
     await sleep(600)
   },
   // Diálogo modal de confirmación real: «¿Lanzar la comparación?» (aviso de que el uso se multiplica).
@@ -793,7 +984,11 @@ const S = {
     await vis(page.getByRole('dialog', { name: '¿Lanzar la comparación?' }), 10_000)
     await sleep(400)
     return async () => {
-      await page.getByRole('dialog', { name: '¿Lanzar la comparación?' }).getByRole('button', { name: /Cancelar/ }).click().catch(() => {})
+      await page
+        .getByRole('dialog', { name: '¿Lanzar la comparación?' })
+        .getByRole('button', { name: /Cancelar/ })
+        .click()
+        .catch(() => {})
     }
   },
   async comparar(ctx) {
@@ -801,8 +996,25 @@ const S = {
     await closeOverlays(page)
     await fake.script({
       scripts: [
-        { forModel: MODELS[0].id, steps: [{ type: 'text', text: 'Para pelar tomates: hazles un corte en cruz, sumérgelos **30 segundos** en agua hirviendo y pásalos a agua con hielo. La piel sale sola.' }] },
-        { forModel: MODELS[1].id, steps: [{ type: 'reasoning', text: 'Pensando en el método más simple.' }, { type: 'text', text: 'Escalda los tomates:\n\n1. Corte en cruz\n2. 1 minuto en agua hirviendo\n3. Agua fría\n\nLa piel se desprende fácil.' }] }
+        {
+          forModel: MODELS[0].id,
+          steps: [
+            {
+              type: 'text',
+              text: 'Para pelar tomates: hazles un corte en cruz, sumérgelos **30 segundos** en agua hirviendo y pásalos a agua con hielo. La piel sale sola.'
+            }
+          ]
+        },
+        {
+          forModel: MODELS[1].id,
+          steps: [
+            { type: 'reasoning', text: 'Pensando en el método más simple.' },
+            {
+              type: 'text',
+              text: 'Escalda los tomates:\n\n1. Corte en cruz\n2. 1 minuto en agua hirviendo\n3. Agua fría\n\nLa piel se desprende fácil.'
+            }
+          ]
+        }
       ]
     })
     await armCompareAndAsk(page, 'Cómo pelo tomates fácilmente')
@@ -831,12 +1043,22 @@ const S = {
     await goMode(ctx.page, 'Chat')
     if (!chatBusySeeded) {
       chatBusySeeded = true
-      await ctx.fake.script({ match: 'Prepara el informe mensual', title: 'Preparar informe mensual', steps: [{ type: 'text', text: 'Reúno los datos del mes.' }, { type: 'delay', ms: 120000 }] })
+      await ctx.fake.script({
+        match: 'Prepara el informe mensual',
+        title: 'Preparar informe mensual',
+        steps: [
+          { type: 'text', text: 'Reúno los datos del mes.' },
+          { type: 'delay', ms: 120000 }
+        ]
+      })
       await newChat(ctx.page)
       await sendChat(ctx.page, 'Prepara el informe mensual de ventas')
       await sleep(1500)
     }
-    await ctx.page.getByRole('treeitem', { name: /Plan del carrito de compras/ }).first().click()
+    await ctx.page
+      .getByRole('treeitem', { name: /Plan del carrito de compras/ })
+      .first()
+      .click()
     await sleep(500)
   },
   // Code: proyecto con una sesión lista (activa), otra esperando aprobación y otra trabajando.
@@ -850,12 +1072,27 @@ const S = {
         title: 'Instalar dependencias',
         steps: [
           { type: 'text', text: 'Necesito instalar dependencias para seguir.' },
-          { type: 'permission', permission: 'bash', patterns: ['npm install'], metadata: { command: 'npm install', description: 'Instala las dependencias del proyecto.' } }
+          {
+            type: 'permission',
+            permission: 'bash',
+            patterns: ['npm install'],
+            metadata: { command: 'npm install', description: 'Instala las dependencias del proyecto.' }
+          }
         ]
       })
-      await fake.script({ match: 'Prepara el informe de cobertura', title: 'Preparar informe de cobertura', steps: [{ type: 'text', text: 'Reúno la cobertura.' }, { type: 'delay', ms: 120000 }] })
+      await fake.script({
+        match: 'Prepara el informe de cobertura',
+        title: 'Preparar informe de cobertura',
+        steps: [
+          { type: 'text', text: 'Reúno la cobertura.' },
+          { type: 'delay', ms: 120000 }
+        ]
+      })
       const ask = async (text) => {
-        await page.getByRole('button', { name: /^Nueva sesión/ }).first().click()
+        await page
+          .getByRole('button', { name: /^Nueva sesión/ })
+          .first()
+          .click()
         await sleep(500)
         const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
         await box.fill(text)
@@ -876,7 +1113,10 @@ const S = {
       await sleep(1500)
       await rename(page.getByRole('treeitem', { name: /trabajando/ }), 'Preparar informe de cobertura')
     }
-    await page.getByRole('treeitem', { name: /Agregar IVA al carrito/ }).first().click()
+    await page
+      .getByRole('treeitem', { name: /Agregar IVA al carrito/ })
+      .first()
+      .click()
     await sleep(600)
   },
   async 'barra-code-hover'(ctx) {
@@ -924,7 +1164,12 @@ async function runKit(ctx) {
       await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 3000, deviceScaleFactor: DPR, mobile: false })
       await sleep(300)
       const height = await page.evaluate(() => document.querySelector('[data-kit-root]').scrollHeight)
-      await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: Math.min(height, 8000), deviceScaleFactor: DPR, mobile: false })
+      await cdp.send('Emulation.setDeviceMetricsOverride', {
+        width: 1280,
+        height: Math.min(height, 8000),
+        deviceScaleFactor: DPR,
+        mobile: false
+      })
       await sleep(300)
       const { root } = await cdp.send('DOM.getDocument', { depth: -1 })
       const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '[data-kit-state]' })
@@ -941,7 +1186,11 @@ async function runKit(ctx) {
         })
       )
       for (const { id, ...clip } of rects) {
-        const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { ...clip, scale: 1 } })
+        const { data } = await cdp.send('Page.captureScreenshot', {
+          format: 'png',
+          captureBeyondViewport: true,
+          clip: { ...clip, scale: 1 }
+        })
         const file = join(out, `kit-${id}-${theme}-1280x800${SFX}.png`)
         writeFileSync(file, Buffer.from(data, 'base64'))
         done.push(file)
@@ -981,7 +1230,16 @@ async function runGroup(ctx, names) {
           fail.push(`${sc}-${theme}-${sizeKey}: ${String(e.message).split('\n')[0]}`)
           ready = false
           try {
-            const names = await ctx.page.evaluate(() => [...document.querySelectorAll('button,[role=menuitem],[role=dialog],[role=alertdialog]')].map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim().slice(0, 40) + (b.getAttribute('role') ? `<${b.getAttribute('role')}>` : '')).filter(Boolean).slice(0, 60))
+            const names = await ctx.page.evaluate(() =>
+              [...document.querySelectorAll('button,[role=menuitem],[role=dialog],[role=alertdialog]')]
+                .map(
+                  (b) =>
+                    (b.getAttribute('aria-label') || b.textContent || '').trim().slice(0, 40) +
+                    (b.getAttribute('role') ? `<${b.getAttribute('role')}>` : '')
+                )
+                .filter(Boolean)
+                .slice(0, 60)
+            )
             console.error(`  [${sc}] controles: ${names.join(' | ')}`)
           } catch {
             /* sin lista */
@@ -1007,14 +1265,21 @@ try {
   if (WIN) {
     // Sin `uptime`: uso de CPU con typeperf (1 muestra). Si typeperf falla o no se entiende, no se comprueba la carga.
     try {
-      const rows = execFileSync('typeperf', ['\\Processor(_Total)\\% Processor Time', '-sc', '1'], { encoding: 'utf8', timeout: 15_000 }).split(/\r?\n/)
+      const rows = execFileSync('typeperf', ['\\Processor(_Total)\\% Processor Time', '-sc', '1'], {
+        encoding: 'utf8',
+        timeout: 15_000
+      }).split(/\r?\n/)
       const cpu = Number((rows.find((r) => /^"\d/.test(r)) ?? '').split('","')[1]?.replace(/"/g, ''))
       if (cpu > 90) throw new Error(`CPU alta (${cpu.toFixed(0)} %): no se lanza Electron.`)
     } catch (e) {
       if (/CPU alta/.test(String(e.message))) throw e
     }
   } else {
-    const load = Number(execFileSync('sh', ['-c', "uptime | sed 's/.*load averages*: *//' | cut -d' ' -f1 | tr -d ','"], { encoding: 'utf8' }).trim().replace(',', '.'))
+    const load = Number(
+      execFileSync('sh', ['-c', "uptime | sed 's/.*load averages*: *//' | cut -d' ' -f1 | tr -d ','"], { encoding: 'utf8' })
+        .trim()
+        .replace(',', '.')
+    )
     if (load > 8) throw new Error(`Carga del sistema alta (${load}): no se lanza Electron.`)
   }
   seedRepo(codeRepo)
@@ -1042,7 +1307,11 @@ try {
   }
   const onb = scenarios.filter(isOnb).sort(byOrder)
   if (onb.length) {
-    const ctx = await launch('onb', { settings: { onboarded: false }, env: { OPENCODE_BIN: join(binDir, 'no-existe', 'opencode') }, noServer: true })
+    const ctx = await launch('onb', {
+      settings: { onboarded: false },
+      env: { OPENCODE_BIN: join(binDir, 'no-existe', 'opencode') },
+      noServer: true
+    })
     await runGroup(ctx, onb)
     await stop(ctx)
   }
