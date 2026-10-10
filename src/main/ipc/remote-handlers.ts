@@ -4,6 +4,7 @@
  */
 import { BrowserWindow, Notification, app, dialog, type IpcMain } from 'electron'
 import { DISPLAY_NAME } from '@shared/brand'
+import { askButtons } from '../util/native-dialog'
 import { getLang } from '@shared/i18n'
 import type { RemoteConfirmRequest, RemoteEventContract, RemoteInvokeContract, RemotePairRequest, RemoteState } from '@shared/ipc-remote'
 import { LIMITS } from '@shared/remote/protocol'
@@ -51,20 +52,21 @@ function sendMain(
   return true
 }
 
-/** Sin ventana principal: diálogo nativo SIN padre. «Rechazar» es el botón por defecto y el de Esc. */
+/**
+ * Sin ventana principal: diálogo nativo SIN padre. «Rechazar» es el botón por defecto y el de Esc.
+ * Va por `askButtons` (proceso aparte en macOS) y NO por `dialog.showMessageBox`: sin ventana padre éste congela el bucle de eventos de la
+ * app mientras espera, y justo aquí la app está atendiendo al celular (ver `util/native-dialog.ts`).
+ */
 async function nativeConfirm(info: RemoteConfirmRequest): Promise<boolean> {
   const en = getLang() === 'en'
-  const r = await dialog.showMessageBox({
-    type: 'warning',
+  const i = await askButtons({
+    message: `${en ? 'Request from your phone' : 'Petición desde tu celular'}\n${info.summary[en ? 'en' : 'es']}`,
+    detail: [`${info.deviceName} · ${info.deviceFingerprint}`, ...info.detail].join('\n'),
     buttons: [en ? 'Reject' : 'Rechazar', en ? 'Allow' : 'Permitir'],
-    defaultId: 0,
-    cancelId: 0,
-    noLink: true,
-    title: en ? 'Request from your phone' : 'Petición desde tu celular',
-    message: info.summary[en ? 'en' : 'es'],
-    detail: [`${info.deviceName} · ${info.deviceFingerprint}`, ...info.detail].join('\n')
+    defaultIndex: 0,
+    cancelIndex: 0
   })
-  return r.response === 1
+  return i === 1
 }
 
 /**
@@ -99,8 +101,16 @@ async function confirmEnableApprove(deps: MainWindowDeps, info: EnableApproveInf
   }
   try {
     const w = mainWindowOf(deps)
-    const r = w ? await dialog.showMessageBox(w, opts) : await dialog.showMessageBox(opts)
-    return r.response === 1
+    // Con ventana: hoja de esa ventana (no congela). Sin ella: `askButtons` (proceso aparte), que tampoco congela; «Cancelar» es el seguro.
+    if (w) return (await dialog.showMessageBox(w, opts)).response === 1
+    const i = await askButtons({
+      message: `${opts.title ?? ''}\n${opts.message}`.trim(),
+      detail: opts.detail,
+      buttons: opts.buttons ?? [],
+      defaultIndex: 0,
+      cancelIndex: 0
+    })
+    return i === 1
   } catch {
     return false
   }
