@@ -70,7 +70,7 @@ export const misc = {
   'misc.computer.desc':
     'Cuando una tarea tiene el Control total del Mac, así decide el agente cuándo mover el ratón real y qué apps puede usar.',
   'misc.computer.desc.win':
-    'Beta, y solo con Tareas (beta) encendida. Cuando una tarea tiene el Control total del PC, así decide el agente cuándo mover el ratón real y qué apps puede usar.',
+    'Cuando le das Control del PC a una tarea, así decide el agente cuándo mover el ratón real y qué apps puede usar.',
   'misc.computer.howTitle': 'Cómo usa el agente las apps',
   'misc.computer.bgTitle': 'En segundo plano',
   'misc.computer.bgDesc':

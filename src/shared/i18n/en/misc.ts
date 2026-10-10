@@ -73,7 +73,7 @@ export const misc = {
   'misc.computer.desc':
     'When a task has Full Mac control, this is how the agent decides when to move the real mouse and which apps it can use.',
   'misc.computer.desc.win':
-    'Beta, and only with Tasks (beta) turned on. When a task has Full PC control, this is how the agent decides when to move the real mouse and which apps it can use.',
+    'When you give a task PC control, this is how the agent decides when to move the real mouse and which apps it can use.',
   'misc.computer.howTitle': 'How the agent uses apps',
   'misc.computer.bgTitle': 'In the background',
   'misc.computer.bgDesc':

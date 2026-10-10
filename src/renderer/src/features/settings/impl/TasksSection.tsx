@@ -37,6 +37,7 @@ import { Badge, Card, NOTICE_DESK, Row, Select, SectionHeader, TextInput, Toggle
 import { OfficeComponentCard } from './OfficeComponentCard'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
+import { isWindowsPlatform } from '../../../lib/platform'
 import { isSubmitKey } from '../../../lib/textarea'
 
 // ───────────────────────────── Helpers puros ─────────────────────────────
@@ -562,35 +563,39 @@ export function TasksSection(): React.JSX.Element {
       </Group>
 
       {/* 1 bis · Control total del equipo (sin carpeta) */}
-      <Group title={t('tasksSettings.full.title')} description={t('tasksSettings.full.desc')}>
-        <Card>
-          <Row
-            label={TASKS_TERMS.fullControl}
-            description={
-              fullInfo?.consentAt ? (
-                <span data-testid="full-consent-status">
-                  {t('tasksSettings.full.on', {
-                    date: new Intl.DateTimeFormat(getLang() === 'en' ? 'en-US' : 'es-CL', { dateStyle: 'long', timeStyle: 'short' }).format(
-                      new Date(fullInfo.consentAt)
-                    )
-                  })}
-                </span>
+      {/* En Windows no existe Control total (Tareas siempre va aislada): no se muestra una opción que no se puede usar. */}
+      {!isWindowsPlatform() && (
+        <Group title={t('tasksSettings.full.title')} description={t('tasksSettings.full.desc')}>
+          <Card>
+            <Row
+              label={TASKS_TERMS.fullControl}
+              description={
+                fullInfo?.consentAt ? (
+                  <span data-testid="full-consent-status">
+                    {t('tasksSettings.full.on', {
+                      date: new Intl.DateTimeFormat(getLang() === 'en' ? 'en-US' : 'es-CL', {
+                        dateStyle: 'long',
+                        timeStyle: 'short'
+                      }).format(new Date(fullInfo.consentAt))
+                    })}
+                  </span>
+                ) : (
+                  <span data-testid="full-consent-status">{t('tasksSettings.full.off')}</span>
+                )
+              }
+            >
+              {fullInfo?.consentAt ? (
+                <Button size="sm" onClick={() => void revokeAllFull()}>
+                  {t('tasksSettings.full.revoke')}
+                </Button>
               ) : (
-                <span data-testid="full-consent-status">{t('tasksSettings.full.off')}</span>
-              )
-            }
-          >
-            {fullInfo?.consentAt ? (
-              <Button size="sm" onClick={() => void revokeAllFull()}>
-                {t('tasksSettings.full.revoke')}
-              </Button>
-            ) : (
-              <Badge>{TASKS_TERMS.sandbox}</Badge>
-            )}
-          </Row>
-        </Card>
-        {errors.full && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.full}</p>}
-      </Group>
+                <Badge>{TASKS_TERMS.sandbox}</Badge>
+              )}
+            </Row>
+          </Card>
+          {errors.full && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.full}</p>}
+        </Group>
+      )}
 
       {/* 2 · Carpetas de trabajo */}
       <Group title={TASKS_TERMS.workFolders} description={t('tasksSettings.work.desc', { fullControl: TASKS_TERMS.fullControl })}>
