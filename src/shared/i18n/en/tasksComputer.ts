@@ -91,6 +91,8 @@ export const tasksComputer = {
   'tasksComputer.vision.text': ' can’t see images, so it won’t see the screen. To control the Mac, pick a model with vision.',
   'tasksComputer.vision.text.win': ' can’t see images, so it won’t see the screen. To control the PC, pick a model with vision.',
   'tasksComputer.vision.use': 'Use Kimi K3',
+  'tasksComputer.shortcut': '⌘⇧Esc',
+  'tasksComputer.shortcut.win': 'Ctrl+Alt+Shift+Esc',
   'tasksComputer.banner.shortcutOff': 'The ⌘⇧Esc shortcut isn’t available; use the Stop button',
   'tasksComputer.banner.shortcutOff.win': 'The Ctrl+Alt+Shift+Esc shortcut isn’t available; use the Stop button',
   'tasksComputer.banner.planApproved': 'Plan approved for this task: it can continue without asking again',

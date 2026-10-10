@@ -310,7 +310,7 @@ export function FullAccessDialog(): React.JSX.Element | null {
               {t('tasksComputer.full.stop1')}
               <strong className="text-fg">{t('tasksComputer.stop')}</strong>
               {t('tasksComputer.full.stop2')}{' '}
-              <kbd className="rounded border border-border bg-hover px-1 font-mono text-xs text-fg">⌘ ⇧ Esc</kbd>.
+              <kbd className="rounded border border-border bg-hover px-1 font-mono text-xs text-fg">{t('tasksComputer.shortcut')}</kbd>.
             </span>
           </li>
         </ul>
@@ -689,7 +689,7 @@ export function ControlBanner(): React.JSX.Element | null {
           </span>
         ) : (
           <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
-            <Keyboard size={12} /> ⌘⇧Esc
+            <Keyboard size={12} /> {t('tasksComputer.shortcut')}
           </span>
         )}
         <button

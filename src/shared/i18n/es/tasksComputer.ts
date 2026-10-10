@@ -88,6 +88,8 @@ export const tasksComputer = {
   'tasksComputer.vision.text': ' no ve imágenes, así que no podrá ver la pantalla. Para controlar el Mac elige un modelo con visión.',
   'tasksComputer.vision.text.win': ' no ve imágenes, así que no podrá ver la pantalla. Para controlar el PC elige un modelo con visión.',
   'tasksComputer.vision.use': 'Usar Kimi K3',
+  'tasksComputer.shortcut': '⌘⇧Esc',
+  'tasksComputer.shortcut.win': 'Ctrl+Alt+Mayús+Esc',
   'tasksComputer.banner.shortcutOff': 'El atajo ⌘⇧Esc no está disponible; usa el botón Detener',
   'tasksComputer.banner.shortcutOff.win': 'El atajo Ctrl+Alt+Mayús+Esc no está disponible; usa el botón Detener',
   'tasksComputer.banner.planApproved': 'Plan aprobado para esta tarea: puede seguir sin volver a pedirlo',
