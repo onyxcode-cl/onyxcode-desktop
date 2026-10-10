@@ -139,6 +139,10 @@ def analyse(path, soffice, workdir, show):
         except Exception as e:  # noqa: BLE001
             res["avisos"].append("No se pudo recalcular con LibreOffice (%s); solo verificación sintáctica." % e)
             res["libreoffice"] = False
+    elif os.environ.get("LAZUNOX_SANDBOX") == "1":
+        res["avisos"].append("En modo Sandbox LibreOffice no puede ejecutarse: NO se calcularon los valores; solo verificación "
+                             "sintáctica básica. Dile al usuario que los valores no están verificados y que con Control total del Mac "
+                             "(o abriendo el archivo en Excel) puede comprobarlos.")
     else:
         res["avisos"].append("LibreOffice no está instalado: NO se calcularon los valores; solo verificación "
                              "sintáctica básica. Dile al usuario que los valores no están verificados.")

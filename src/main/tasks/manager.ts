@@ -918,6 +918,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const config = buildInlineConfig({
       fullAccess,
       extras,
+      allowDirs: this.win ? [] : [join(getOpencodeConfigDir(), 'skills')],
       browserMcp,
       computerMcp,
       mcpContribution: c,

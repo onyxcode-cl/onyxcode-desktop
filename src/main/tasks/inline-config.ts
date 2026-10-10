@@ -11,6 +11,12 @@ export interface InlineConfigInput {
   fullAccess: boolean
   /** Carpetas adicionales del espacio (solo sandbox). */
   extras: Array<{ path: string }>
+  /**
+   * Carpetas de la propia app que el agente puede leer sin preguntar (solo sandbox): las skills de documentos
+   * (`opencode-config/skills`) con sus scripts. Sin esto cada tarea de Word/Excel abría una tarjeta de «carpeta fuera del
+   * espacio» sobre un directorio interno que además no se puede conceder.
+   */
+  allowDirs?: string[]
   /** Config del MCP del navegador integrado (o null si no está disponible). */
   browserMcp: Record<string, unknown> | null
   /** Config del MCP `computer` (solo Control total; o null). */
@@ -37,13 +43,19 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
       externalDirectory[p] = 'allow'
       externalDirectory[`${p}/*`] = 'allow'
     }
+    const allowDirs = i.allowDirs ?? []
+    for (const d of allowDirs) {
+      const p = i.toSandbox ? i.toSandbox(d) : d
+      externalDirectory[p] = 'allow'
+      externalDirectory[`${p}/*`] = 'allow'
+    }
     base = {
       autoupdate: false,
       share: 'disabled',
       ...(i.browserMcp ? { mcp: { browser: i.browserMcp } } : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
-        ...(i.extras.length ? { [TASKS_AGENT_ID]: { permission: { external_directory: externalDirectory } } } : {})
+        ...(i.extras.length || allowDirs.length ? { [TASKS_AGENT_ID]: { permission: { external_directory: externalDirectory } } } : {})
       }
     }
   } else {

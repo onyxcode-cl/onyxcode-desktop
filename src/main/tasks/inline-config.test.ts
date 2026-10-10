@@ -105,6 +105,13 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
     expect(agentsOf(c)[COMPUTER_AGENT_ID]).toEqual({ disable: true })
   })
 
+  it('sandbox + allowDirs (skills de la app): se leen sin preguntar aunque no haya carpetas extra', () => {
+    const c = buildInlineConfig({ ...empty, allowDirs: ['/fixture/cfg/skills'] })
+    expect(agentsOf(c)[TASKS_AGENT_ID].permission).toEqual({
+      external_directory: { '*': 'ask', '/fixture/cfg/skills': 'allow', '/fixture/cfg/skills/*': 'allow' }
+    })
+  })
+
   it('Windows: con `toSandbox` las carpetas extra se conceden con su ruta DENTRO de la distro; sin él, macOS no cambia', () => {
     const win = buildInlineConfig({
       ...empty,
