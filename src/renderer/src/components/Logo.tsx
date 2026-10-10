@@ -118,3 +118,20 @@ export function Logo({ size = 22, className = '', variant = 'color', markOnly, n
     </span>
   )
 }
+
+/** La chispa dorada de la marca sola: el indicador de «trabajando» (gira suave mientras `spinning`). */
+export function Spark({
+  size = 14,
+  spinning = true,
+  className = ''
+}: {
+  size?: number
+  spinning?: boolean
+  className?: string
+}): React.JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="20 0 12 12" className={`shrink-0 ${className}`} aria-hidden>
+      <path d={SPARK} fill="#f0c35a" className={spinning ? 'spark-spin' : undefined} />
+    </svg>
+  )
+}

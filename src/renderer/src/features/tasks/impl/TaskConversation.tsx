@@ -23,6 +23,7 @@ import { ActivityRow } from './ProgressPanel'
 import { compactTask, editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { ResultCard } from './ResultCard'
+import { Spark } from '../../../components/Logo'
 import { toolImages } from './computer-tools'
 import { useT } from '../../../lib/i18n'
 import { ScreenshotThumbs } from './ComputerAccess'
@@ -182,11 +183,7 @@ const StepsBlock = memo(
           className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-muted hover:text-fg desk:rounded-ctl desk:px-2 desk:hover:bg-hover"
         >
           <ChevronRight size={13} className={`shrink-0 transition-transform desk:text-subtle ${open ? 'rotate-90' : ''}`} />
-          {live && running ? (
-            <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
-          ) : (
-            <Sparkles size={13} className="shrink-0 text-accent" />
-          )}
+          {live && running ? <Spark size={15} /> : <Sparkles size={13} className="shrink-0 text-accent" />}
           <span className="shrink-0 font-medium text-fg">
             {count === 0 ? t('tasks.conv.thinkingShort') : t('tasks.conv.steps', { count })}
           </span>

@@ -1,6 +1,7 @@
 /** Pantalla de inicio de Tareas: compositor grande, carpeta, modo de acceso y sugerencias por categoría. */
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { useEffect, useState } from 'react'
+import { LogoMark } from '../../../components/Logo'
 import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
 import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
@@ -230,6 +231,7 @@ export function Home({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="m-auto w-full max-w-3xl py-10 desk:max-w-[calc(var(--measure-prose)+48px)]">
         <div className="mb-6 px-6 text-center">
+          <LogoMark size={44} className="mx-auto mb-3" />
           {hour !== null && <p className="mb-1.5 animate-rise-in text-sm font-medium text-accent">{t(greetingKey(hour))}</p>}
           <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight desk:leading-10 desk:font-semibold desk:tracking-[-0.02em]">
             {t('tasks.home.title')}
