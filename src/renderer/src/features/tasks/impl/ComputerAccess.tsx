@@ -203,16 +203,16 @@ export function FullWorkspaceNote({ canChange = true }: { canChange?: boolean })
   return (
     <div
       data-testid="full-workspace-note"
-      className="mx-auto mt-3 flex w-full max-w-3xl items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 [[data-theme=dark]_&]:text-amber-300"
+      className="mx-auto mt-3 flex w-full max-w-3xl items-center gap-2 px-6 text-xs text-muted"
       title={t('tasksComputer.workspace.unconfined')}
     >
-      <ShieldOff size={13} className="shrink-0" />
+      <ShieldOff size={13} className="shrink-0 text-warning" />
       <span className="min-w-0 flex-1 truncate">{t('tasksComputer.workspace.label', { folder: displayFolder(folder, home) })}</span>
       {canChange && (
         <button
           type="button"
           onClick={() => void changeFullWorkspace()}
-          className="no-drag shrink-0 rounded-md px-2 py-0.5 font-medium underline-offset-2 hover:underline"
+          className="no-drag shrink-0 rounded-md px-2 py-0.5 font-medium text-fg underline-offset-2 hover:underline"
         >
           {t('tasksComputer.workspace.change')}
         </button>
@@ -474,8 +474,8 @@ export function VisionModelHint(): React.JSX.Element | null {
   const isVision = model.providerID === VISION_MODEL.providerID && model.modelID === VISION_MODEL.modelID
   return (
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
-      <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 [[data-theme=dark]_&]:text-amber-300">
-        <Eye size={14} className="shrink-0" />
+      <div className="flex items-center gap-2 rounded-lg bg-hover/60 px-3 py-2 text-xs text-muted">
+        <Eye size={14} className="shrink-0 text-warning" />
         <span className="min-w-0 flex-1">
           <strong>{current.name}</strong>
           {t('tasksComputer.vision.text')}
@@ -484,7 +484,7 @@ export function VisionModelHint(): React.JSX.Element | null {
           <button
             type="button"
             onClick={() => setTaskModel(VISION_MODEL)}
-            className="shrink-0 rounded-md bg-amber-700 px-2 py-1 font-medium text-white hover:opacity-90"
+            className="shrink-0 rounded-md bg-accent px-2 py-1 font-medium text-accent-fg hover:opacity-90"
           >
             {t('tasksComputer.vision.use')}
           </button>

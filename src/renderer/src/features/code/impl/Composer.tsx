@@ -811,7 +811,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 )}
               </>
             ) : (
-              <div className="flex min-w-0 items-center gap-2 px-3 pb-2.5 desk:flex-nowrap desk:gap-y-1 desk:@container">
+              <div className="flex min-w-0 items-center gap-2 px-3 pb-2.5 desk:flex-wrap desk:gap-y-1 desk:@container">
                 <button
                   type="button"
                   onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}

@@ -53,7 +53,7 @@ export const tasksComputer = {
     'Podrá ver la pantalla, crear, modificar y borrar cualquier archivo de tu usuario, abrir cualquier programa y ejecutar comandos: nada queda confinado a una carpeta.',
   'tasksComputer.full.once':
     'Esto se te pregunta una sola vez en este equipo. Se guarda la fecha de tu consentimiento y puedes retirarlo cuando quieras en Ajustes › Tareas › Control total.',
-  'tasksComputer.workspace.label': 'Sin sandbox · acceso a todo tu equipo · carpeta de trabajo: {folder}',
+  'tasksComputer.workspace.label': 'Puede usar todo tu Mac · carpeta de trabajo: {folder}',
   'tasksComputer.workspace.home': 'Carpeta personal',
   'tasksComputer.workspace.change': 'Cambiar carpeta',
   'tasksComputer.workspace.unconfined': 'Control total no está confinado: el agente puede usar todo tu equipo.',
@@ -76,8 +76,7 @@ export const tasksComputer = {
   'tasksComputer.perms.help2': '); en la app empaquetada, a la propia app. Tras concederlo, reinicia la app.',
   'tasksComputer.perms.grant': 'Conceder permisos',
   'tasksComputer.perms.recheck': 'Volver a comprobar',
-  'tasksComputer.vision.text':
-    ' no acepta imágenes: no podrá ver las capturas de pantalla. El control del Mac necesita un modelo con visión.',
+  'tasksComputer.vision.text': ' no ve imágenes, así que no podrá ver la pantalla. Para controlar el Mac elige un modelo con visión.',
   'tasksComputer.vision.use': 'Usar Kimi K3',
   'tasksComputer.banner.shortcutOff': 'El atajo ⌘⇧Esc no está disponible; usa el botón Detener',
   'tasksComputer.banner.shortcutOff.win': 'El atajo Ctrl+Alt+Mayús+Esc no está disponible; usa el botón Detener',

@@ -160,7 +160,7 @@ export const tasks = {
   'tasks.home.title': 'What shall we work on today?',
   'tasks.home.lead.noFolder':
     'Choose a folder and describe the result you want. The agent reviews, proposes a plan and, once you approve it, works and hands you the files.',
-  'tasks.home.lead.full': 'Full control: the agent can use the mouse and keyboard and see the screen. Stop it with ⌘⇧Esc.',
+  'tasks.home.lead.full': 'The agent can use the mouse, keyboard and screen. Stop it with ⌘⇧Esc.',
   'tasks.home.lead.full.win': 'Full control: the agent can use the mouse and keyboard and see the screen. Stop it with Ctrl+Alt+Shift+Esc.',
   'tasks.home.lead.sandbox': 'It will work inside “{folder}”. It will ask for your permission before deleting, moving or renaming.',
   'tasks.home.startingFull': 'Starting full control…',

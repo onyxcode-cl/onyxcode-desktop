@@ -56,7 +56,7 @@ export const tasksComputer = {
     'It will be able to see the screen, create, modify and delete any file in your user account, open any program and run commands: nothing is confined to a folder.',
   'tasksComputer.full.once':
     'You’re asked this only once on this computer. The date of your consent is saved and you can withdraw it at any time in Settings › Tasks › Full control.',
-  'tasksComputer.workspace.label': 'No sandbox · access to your whole computer · working folder: {folder}',
+  'tasksComputer.workspace.label': 'Can use your whole Mac · working folder: {folder}',
   'tasksComputer.workspace.home': 'Home folder',
   'tasksComputer.workspace.change': 'Change folder',
   'tasksComputer.workspace.unconfined': 'Full control is not confined: the agent can use your whole computer.',
@@ -79,7 +79,7 @@ export const tasksComputer = {
   'tasksComputer.perms.help2': ' from; in the packaged app, to the app itself. After granting it, restart the app.',
   'tasksComputer.perms.grant': 'Grant permissions',
   'tasksComputer.perms.recheck': 'Check again',
-  'tasksComputer.vision.text': ' doesn’t accept images, so it won’t be able to see the screenshots. Mac control needs a model with vision.',
+  'tasksComputer.vision.text': ' can’t see images, so it won’t see the screen. To control the Mac, pick a model with vision.',
   'tasksComputer.vision.use': 'Use Kimi K3',
   'tasksComputer.banner.shortcutOff': 'The ⌘⇧Esc shortcut isn’t available; use the Stop button',
   'tasksComputer.banner.shortcutOff.win': 'The Ctrl+Alt+Shift+Esc shortcut isn’t available; use the Stop button',
