@@ -55,3 +55,36 @@ Verificar es gratis y tarda segundos.
 - Con el script: `sh install.sh --uninstall`. Con Homebrew: `brew uninstall --cask lazunox`. A mano: arrastra Lazunox a la Papelera.
 - Tus datos (sesiones, ajustes y claves cifradas) están en `~/Library/Application Support/Lazunox` y **nada de lo anterior los borra**.
   Si quieres eliminarlos del todo, borra esa carpeta tú a mano.
+
+
+---
+
+# Instalar en Windows (gratis, sin certificado de firma)
+
+Windows 10/11 de 64 bits. El instalador **no está firmado** (no hay certificado de pago): si lo bajas desde el navegador, SmartScreen
+puede mostrar «Windows protegió su PC». No es un fallo. Hay dos formas de evitarlo:
+
+## Vía 1: PowerShell (recomendada)
+
+Abre PowerShell normal (NO «Ejecutar como administrador») y pega:
+
+```powershell
+irm <dirección-del-script>/install.ps1 | iex
+```
+
+El script (`scripts/install/install.ps1`) descarga de la release de GitHub el `SHA256SUMS` y `Lazunox-Setup-X.Y.Z-x64.exe`,
+**comprueba el hash SHA-256** (si no coincide no instala nada), instala solo para tu usuario y borra los temporales. Lo que baja
+PowerShell no lleva la marca «descargado de Internet», así que SmartScreen no salta. No usa administrador ni toca tus datos
+(`%APPDATA%\Lazunox`).
+
+Opciones: `-Version X.Y.Z`, `-DryRun` (muestra los pasos sin ejecutar nada), `-NoOpen`, `-Uninstall`.
+Si lo prefieres, descárgalo y léelo antes: `.\install.ps1 -DryRun`.
+
+## Vía 2: instalador a mano
+
+1. Descarga `Lazunox-Setup-X.Y.Z-x64.exe` y `SHA256SUMS` de la página de releases.
+2. Comprueba el hash: `Get-FileHash .\Lazunox-Setup-X.Y.Z-x64.exe -Algorithm SHA256` y compáralo con `SHA256SUMS`.
+3. Ábrelo. Si sale el aviso azul: **Más información › Ejecutar de todos modos**. Solo la primera vez.
+
+**Al publicar:** `SHA256SUMS` de la release debe incluir también la línea del instalador de Windows
+(`sha256sum Lazunox-Setup-X.Y.Z-x64.exe`), si no el script se niega a instalar.
