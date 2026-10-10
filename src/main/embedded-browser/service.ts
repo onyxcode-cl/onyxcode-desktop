@@ -478,7 +478,7 @@ function layoutView(rt: OwnerRuntime): void {
   tab!.view.setBounds(bounds)
   applyViewport(tab!, store.getPrefs().viewMode, { width: bounds.width, height: bounds.height })
   tab!.view.setVisible(true)
-  if (moved) nudgePaint(tab!.view)
+  if (moved) nudgePaint(tab!.view, bounds)
 }
 
 /**
@@ -487,7 +487,7 @@ function layoutView(rt: OwnerRuntime): void {
  * página esté cargada y el agente la lea; recargar lo arreglaba. `invalidate()` pide ese primer fotograma; se repite una vez poco
  * después porque el primero puede perderse mientras la vista termina de colocarse.
  */
-function nudgePaint(view: WebContentsView): void {
+function nudgePaint(view: WebContentsView, bounds: { x: number; y: number; width: number; height: number }): void {
   const paint = (): void => {
     try {
       if (!view.webContents.isDestroyed()) view.webContents.invalidate?.()
@@ -497,6 +497,28 @@ function nudgePaint(view: WebContentsView): void {
   }
   paint()
   setTimeout(paint, 120).unref?.()
+  // `invalidate()` solo no basta si la página se cargó con la vista suelta: un cambio de tamaño de un píxel obliga a
+  // Chromium a generar un fotograma nuevo (medido en vivo: el panel seguía en blanco hasta recargar). Se deshace enseguida.
+  setTimeout(() => {
+    try {
+      if (view.webContents.isDestroyed() || bounds.width < 3 || bounds.height < 3) return
+      view.setBounds({ ...bounds, width: bounds.width - 1 })
+      setTimeout(() => {
+        try {
+          // Si mientras tanto la vista se recolocó (otro `layoutView`), esos bounds ya son los buenos: no se pisan.
+          const stale = lastBounds.get(view) !== `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`
+          if (!view.webContents.isDestroyed() && !stale) {
+            view.setBounds(bounds)
+            view.webContents.invalidate?.()
+          }
+        } catch {
+          // la vista pudo cerrarse entre medias
+        }
+      }, 60).unref?.()
+    } catch {
+      // la vista pudo cerrarse entre medias
+    }
+  }, 200).unref?.()
 }
 
 /**

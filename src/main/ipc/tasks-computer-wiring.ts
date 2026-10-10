@@ -114,6 +114,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   // (p.ej. abre la tarjeta "Editar" desde la píldora). Solo restaura si fue ELLA quien minimizó
   // (no toca una minimización manual del usuario).
   let minimizedByFullAccess = false
+  let controlEntered = false
+  let hiddenThisSession = false
   const hideMainWindowForTask = (): void => {
     const win = getWindow()
     if (!win || win.isDestroyed() || win.isMinimized()) return
@@ -138,6 +140,10 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   computer.on('action', (ev) => {
     send('computer:action', ev)
     overlay.handleAction(ev)
+    if (controlEntered && !hiddenThisSession && sessionWanted) {
+      hiddenThisSession = true
+      hideMainWindowForTask()
+    }
   })
   computer.on('killState', (st) => send('computer:killState', st))
   computer.on('stopped', (ev) => {
@@ -237,10 +243,13 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   // cuando el usuario aprueba el plan (evento `planApproved`). La aprobación es POR SESIÓN: dura
   // toda la tarea (seguimientos incluidos) hasta Revocar, Detener o archivar/borrar la tarea.
   let sessionWanted: { label?: string; sessionId?: string } | null = null
+  // La ventana principal solo se aparta cuando el agente usa de verdad el ratón/teclado/pantalla (primera acción del
+  // Control del Mac), no al aprobar el plan: una tarea que solo navega o trabaja con archivos la deja a la vista, y el
+  // navegador del agente se muestra en el panel de al lado en vez de abrirse como ventana aparte.
   const enterControlMode = (): void => {
     if (!sessionWanted) return
+    controlEntered = true
     overlay.setSession(true, sessionWanted.label)
-    hideMainWindowForTask()
     // Lote C: "Ocultar las demás apps" solo en modo "Control de la pantalla" (en segundo plano no
     // se oculta ni se minimiza nada; ver B.7 del plan). El takeover (`request_full_control`) las
     // oculta aparte, en el listener de `computer.on('foreground', …)`.
@@ -262,6 +271,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
       if (computer.isPlanApproved(sessionWanted.sessionId)) enterControlMode()
     } else {
       sessionWanted = null
+      controlEntered = false
+      hiddenThisSession = false
       overlay.setSession(false)
       restoreMainWindowIfHidden()
       maybeUnhideApps()
