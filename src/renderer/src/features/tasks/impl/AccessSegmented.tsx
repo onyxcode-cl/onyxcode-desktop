@@ -6,7 +6,16 @@ import { platformCaps } from '../../../lib/platform'
 import { setAccessMode } from './actions'
 import { useTasks } from './store'
 
-export function AccessSegmented({ disabled, compact }: { disabled?: boolean; compact?: boolean }): React.JSX.Element | null {
+export function AccessSegmented({
+  disabled,
+  compact,
+  list
+}: {
+  disabled?: boolean
+  compact?: boolean
+  /** Filas apiladas con una línea de explicación por modo (inicio de Tareas), en vez de la píldora compacta. */
+  list?: boolean
+}): React.JSX.Element | null {
   const t = useT()
   const conn = useTasks((s) => s.conn)
   const phase = useTasks((s) => s.phase)
@@ -33,6 +42,59 @@ export function AccessSegmented({ disabled, compact }: { disabled?: boolean; com
       e.preventDefault()
       pick(true)
     }
+  }
+
+  if (list) {
+    const row = (active: boolean, danger: boolean): string =>
+      `flex w-full items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition disabled:cursor-not-allowed ${
+        active ? (danger ? 'border-warning/50 bg-warning/10' : 'border-accent/50 bg-accent-soft/50') : 'border-border hover:bg-hover'
+      }`
+    return (
+      <div
+        role="radiogroup"
+        aria-label={t('tasksComputer.access.aria')}
+        onKeyDown={onKey}
+        title={disabled ? t('tasksComputer.access.waitTask') : undefined}
+        className={`mx-auto grid w-full max-w-3xl gap-2 px-6 sm:grid-cols-2 ${off ? 'opacity-70' : ''}`}
+      >
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!full}
+          tabIndex={!full ? 0 : -1}
+          disabled={off}
+          onClick={() => pick(false)}
+          title={!folder ? t('tasksComputer.access.pickFolder') : t('tasksComputer.access.sandboxTitle', { name: TASKS_TERMS.sandbox })}
+          className={row(!full, false)}
+        >
+          <span className={`mt-0.5 shrink-0 ${!full ? 'text-accent' : 'text-muted'}`}>
+            {starting && !requested ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">{TASKS_TERMS.sandbox}</span>
+            <span className="block text-xs text-muted">{t('tasksComputer.access.sandboxDesc')}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={full}
+          tabIndex={full ? 0 : -1}
+          disabled={off}
+          onClick={() => pick(true)}
+          title={t('tasksComputer.access.fullTitle', { name: TASKS_TERMS.fullControl })}
+          className={row(full, true)}
+        >
+          <span className="mt-0.5 shrink-0 text-warning">
+            {starting && requested ? <Loader2 size={16} className="animate-spin" /> : <MonitorCog size={16} />}
+          </span>
+          <span className="min-w-0">
+            <span className={`block text-sm font-medium ${full ? 'text-warning' : ''}`}>{TASKS_TERMS.fullControl}</span>
+            <span className="block text-xs text-muted">{t('tasksComputer.access.fullDesc')}</span>
+          </span>
+        </button>
+      </div>
+    )
   }
 
   const base = 'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:cursor-not-allowed'

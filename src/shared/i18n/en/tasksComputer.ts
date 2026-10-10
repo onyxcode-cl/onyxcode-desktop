@@ -9,6 +9,8 @@ export const tasksComputer = {
     '{name}: reads and writes only inside the chosen folder and any additional folders (macOS sandbox). Recommended.',
   'tasksComputer.access.sandboxTitle.win':
     '{name}: reads and writes only inside the chosen folder and any additional folders (isolated Linux environment). Recommended.',
+  'tasksComputer.access.sandboxDesc': 'Works only in your folder and asks before deleting or moving. Recommended.',
+  'tasksComputer.access.fullDesc': 'Uses mouse, keyboard and screen; can touch any file. Requires approving a plan.',
   'tasksComputer.access.fullTitle': '{name}: no sandbox; can use the mouse, keyboard and screen, and modify files anywhere.',
   'tasksComputer.delete.toggleA':
     'If you turn this on, the agent will be able to delete, move and rename files inside this folder (commands such as',

@@ -245,8 +245,8 @@ export function Home({
           autoFocusKey={folder}
           placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <AccessSegmented disabled={folderBusy} />
+        <div className="mt-4 flex flex-col items-center justify-center gap-2">
+          <AccessSegmented disabled={folderBusy} list />
           {phase === 'starting' && (
             <span className="flex items-center gap-1 text-xs text-muted">
               <Loader2 size={12} className="animate-spin" /> {requested ? t('tasks.home.startingFull') : t('tasks.home.startingSandbox')}

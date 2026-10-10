@@ -6,6 +6,8 @@ export const tasksComputer = {
     '{name}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (sandbox de macOS). Recomendado.',
   'tasksComputer.access.sandboxTitle.win':
     '{name}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (entorno Linux aislado). Recomendado.',
+  'tasksComputer.access.sandboxDesc': 'Trabaja solo en tu carpeta y pide permiso para borrar o mover. Recomendado.',
+  'tasksComputer.access.fullDesc': 'Usa ratón, teclado y pantalla; puede tocar cualquier archivo. Exige aprobar un plan.',
   'tasksComputer.access.fullTitle': '{name}: sin sandbox; puede usar ratón, teclado y pantalla, y modificar archivos en cualquier lugar.',
   'tasksComputer.delete.toggleA': 'Si lo activas, el agente podrá borrar, mover y renombrar archivos dentro de esta carpeta (comandos como',
   'tasksComputer.delete.or': 'o',
