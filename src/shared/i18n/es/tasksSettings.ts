@@ -56,6 +56,7 @@ export const tasksSettings = {
     'Cualquier tarea podrá leer y modificar archivos de {path} sin volver a preguntarte. Puedes quitarla de esta lista cuando quieras.',
   'tasksSettings.trusted.confirmBtn': 'Confiar',
   'tasksSettings.work.desc': 'Las carpetas donde trabajan las tareas. Aquí puedes revocar el {fullControl} concedido a una carpeta.',
+  'tasksSettings.work.desc.win': 'Las carpetas donde trabajan las tareas.',
   'tasksSettings.work.empty': 'Todavía no hay carpetas de trabajo. Añade una desde el selector de carpetas de trabajo.',
   'tasksSettings.work.granted': '{short} concedido',
   'tasksSettings.work.revoke': 'Revocar',

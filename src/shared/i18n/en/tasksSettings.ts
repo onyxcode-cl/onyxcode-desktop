@@ -58,6 +58,7 @@ export const tasksSettings = {
     'Any task will be able to read and modify files in {path} without asking you again. You can remove it from this list at any time.',
   'tasksSettings.trusted.confirmBtn': 'Trust',
   'tasksSettings.work.desc': 'The folders where tasks work. Here you can revoke the {fullControl} granted to a folder.',
+  'tasksSettings.work.desc.win': 'The folders where tasks work.',
   'tasksSettings.work.empty': 'There are no work folders yet. Add one from the work folder picker.',
   'tasksSettings.work.granted': '{short} granted',
   'tasksSettings.work.revoke': 'Revoke',
