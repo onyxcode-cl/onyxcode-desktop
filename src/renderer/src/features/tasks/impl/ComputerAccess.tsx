@@ -851,6 +851,7 @@ function AppAccessMeta({ app, choice }: { app: AccessRequestApp; choice: AccessD
         {app.current ? <TierBadge tier={app.current} /> : <span className="text-subtle">{t('tasksComputer.meta.none')}</span>}
       </span>
       {app.denied && <span className="text-danger">{t('tasksComputer.meta.deniedBefore')}</span>}
+      {app.alreadyOpen && choice !== 'deny' && <span className="basis-full text-warning">{t('tasksComputer.meta.alreadyOpen')}</span>}
       {keeps && <span>{t('tasksComputer.meta.keeps', { tier: tierInfo(t)[keeps].label })}</span>}
     </div>
   )

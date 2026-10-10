@@ -402,7 +402,7 @@
             },
             {
               "name": "request_access",
-              "description": "Flujo Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO de cada tarea, ANTES de tocar la pantalla o usar la terminal, los archivos o la web, con \"plan\" (tus pasos, en orden) y en \"apps\" la lista COMPLETA de apps que vas a necesitar (no solo una), con su nivel en \"levels\". Si la tarea NO controla ninguna app (solo terminal, archivos o web), envía el plan con \"apps\": []. Ninguna otra herramienta de acción (clic, teclear, capturar…) funciona hasta que el usuario apruebe esta tarjeta. También sirve, SIN \"plan\", a mitad de tarea si necesitas una app extra o un nivel mayor: llámala en cuanto una herramienta falle con \"no tiene acceso concedido\" o \"nivel insuficiente\". En todos los casos ESPERA a que el usuario responda (sin límite de tiempo: la tarea queda en pausa, no se cancela sola). Si el usuario pide cambios (\"Editar\") en vez de aprobar, el resultado trae su feedback: replantea el plan y vuelve a llamar a request_access. Si cancela, no actúes y explícaselo.",
+              "description": "Flujo Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO de cada tarea, ANTES de tocar la pantalla o usar la terminal, los archivos o la web, con \"plan\" (tus pasos, en orden) y en \"apps\" la lista COMPLETA de apps que vas a necesitar (no solo una), con su nivel en \"levels\". Si la tarea NO controla ninguna app (solo terminal, archivos o web), envía el plan con \"apps\": []. Ninguna otra herramienta de acción (clic, teclear, capturar…) funciona hasta que el usuario apruebe esta tarjeta. También sirve, SIN \"plan\", a mitad de tarea si necesitas una app extra o un nivel mayor: llámala en cuanto una herramienta falle con \"no tiene acceso concedido\" o \"nivel insuficiente\". En todos los casos ESPERA a que el usuario responda (sin límite de tiempo: la tarea queda en pausa, no se cancela sola). Si el usuario pide cambios (\"Editar\") en vez de aprobar, el resultado trae su feedback: replantea el plan y vuelve a llamar a request_access. Si cancela, no actúes y explícaselo. Si una app ya estaba abierta con trabajo del usuario, la respuesta te lo avisará: trabaja en una ventana o documento nuevo y no toques lo que ya había.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -1886,6 +1886,7 @@
       },
       "helper": [
         "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"running-apps\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
@@ -1938,6 +1939,7 @@
         "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"resolve-app\",\"args\":[\"Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"resolve-app\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"running-apps\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
         "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
       ],
       "actions": [
@@ -2414,7 +2416,10 @@
         "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).",
         "parts": ["text"]
       },
-      "helper": ["{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "helper": [
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"running-apps\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
       "actions": [],
       "side": ["POST /request-access? {\"apps\":[],\"plan\":[\"x\"],\"unresolved\":[\"Zzqx NoExisteApp\"],\"kind\":\"access\"}"]
     }

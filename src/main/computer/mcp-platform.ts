@@ -165,6 +165,11 @@ export interface PlatformBackend {
 
   // ── apps ──
   resolveApp: (name: string) => Promise<AppRef & { found: boolean }>
+  /**
+   * Claves de las apps que YA están abiertas con ventanas de la persona (para avisar de que no se escriba sobre su trabajo).
+   * Excluye a Lazunox y al shell. Falla blando: sin la lista el MCP simplemente no avisa.
+   */
+  openAppKeys?: () => Promise<Set<string>>
 
   // ── textos para el modelo (los de macOS son los de siempre) ──
   text: {

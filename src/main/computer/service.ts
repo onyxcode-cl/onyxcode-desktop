@@ -1062,6 +1062,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
                     if (typeof a.requested === 'string' && TIERS.has(a.requested)) {
                       app.requested = a.requested as AccessRequestApp['requested']
                     }
+                    if (a.alreadyOpen === true) app.alreadyOpen = true
                     return app
                   })
                   .filter((a) => a.bundleId)

@@ -263,6 +263,7 @@ export const mainErrors = {
   'ovl.meta.asks': 'Pide: {tier}',
   'ovl.meta.now': 'Ahora: {tier}',
   'ovl.meta.denied': 'Denegada antes',
+  'ovl.meta.alreadyOpen': 'Ya estaba abierta: trabajará en una ventana nueva',
   'ovl.meta.keeps': 'Se mantiene {tier} (bajar: Ajustes)',
   'ovl.tag.failed': 'No se pudo',
   'ovl.tag.waiting': 'Esperando tu permiso',

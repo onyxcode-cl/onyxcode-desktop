@@ -498,6 +498,10 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     zoomImage,
     insertAxText,
     resolveApp,
+    async openAppKeys() {
+      const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string }>
+      return new Set(apps.map((a) => a.bundleId).filter((b): b is string => !!b && !cfg.neverExclude.has(b) && !/lazunox/i.test(b)))
+    },
     text: {
       instructions: 'Controla el Mac del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.',
       toolDescriptions: {},

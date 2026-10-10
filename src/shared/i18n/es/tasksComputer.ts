@@ -137,6 +137,8 @@ export const tasksComputer = {
   'tasksComputer.plan.titleOne': '¿Permitir que el agente use {name}?',
   'tasksComputer.plan.titleMany': '¿Permitir que el agente use estas apps?',
   'tasksComputer.plan.noApps': 'Este plan no controla ninguna app: usará la terminal, archivos o la web.',
+  'tasksComputer.meta.alreadyOpen':
+    'Ya estaba abierta con tus ventanas: el agente trabajará en una ventana o documento nuevo y no tocará lo que ya tenías.',
   'tasksComputer.plan.notFound': 'No encontré: {list}',
   'tasksComputer.plan.neverLowers': 'Aprobar nunca baja un nivel ya concedido; para bajarlo usa Ajustes.',
   'tasksComputer.plan.mouseKeyboard': 'Con acceso de clic o de control total, el agente usará tu ratón y teclado reales en esas apps.',

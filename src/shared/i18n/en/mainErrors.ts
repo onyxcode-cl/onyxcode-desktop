@@ -257,6 +257,7 @@ export const mainErrors = {
   'ovl.meta.asks': 'Asks for: {tier}',
   'ovl.meta.now': 'Now: {tier}',
   'ovl.meta.denied': 'Denied before',
+  'ovl.meta.alreadyOpen': 'Already open: it will use a new window',
   'ovl.meta.keeps': '{tier} stays (to lower it: Settings)',
   'ovl.tag.failed': 'Failed',
   'ovl.tag.waiting': 'Waiting for your permission',

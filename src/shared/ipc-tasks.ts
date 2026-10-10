@@ -143,6 +143,8 @@ export interface AccessRequestApp {
   current?: AppTier | null
   /** La app está en la lista de denegadas. Lo rellena main. */
   denied?: boolean
+  /** La app YA estaba abierta con ventanas de la persona (puede haber trabajo sin guardar): el agente trabaja en una ventana o documento nuevo. Lo detecta el MCP. */
+  alreadyOpen?: boolean
 }
 
 /**

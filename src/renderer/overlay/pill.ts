@@ -125,6 +125,7 @@ function renderMeta(app: AccessRequestApp, meta: HTMLElement): void {
   const parts = [t('ovl.meta.asks', { tier: t(TIER_LABELS[app.requested ?? 'click']) })]
   if (app.current) parts.push(t('ovl.meta.now', { tier: t(TIER_LABELS[app.current]) }))
   if (app.denied) parts.push(t('ovl.meta.denied'))
+  if (app.alreadyOpen) parts.push(t('ovl.meta.alreadyOpen'))
   const choice = choices[app.bundleId]
   // Aprobar nunca baja un nivel ya concedido (main aplica el máximo): se avisa si la elección queda por debajo.
   if (app.current && choice && choice !== 'deny' && APP_TIER_RANK[choice] < APP_TIER_RANK[app.current]) {

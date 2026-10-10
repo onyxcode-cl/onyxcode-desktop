@@ -626,6 +626,10 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     zoomImage,
     insertAxText,
     resolveApp,
+    async openAppKeys() {
+      const apps = await listApps()
+      return new Set(apps.filter((a) => !isSelf({ bundleId: a.key, name: a.name })).map((a) => a.key))
+    },
     text: {
       instructions:
         'Controla el PC con Windows del usuario. Empieza siempre con screenshot; las coordenadas son píxeles de la última captura.',

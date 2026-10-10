@@ -1659,7 +1659,8 @@ const TOOLS: ToolDef[] = [
       '"no tiene acceso concedido" o "nivel insuficiente". En todos los casos ESPERA a que el usuario responda ' +
       '(sin límite de tiempo: la tarea queda en pausa, no se cancela sola). Si el usuario pide cambios ' +
       '("Editar") en vez de aprobar, el resultado trae su feedback: replantea el plan y vuelve a llamar a ' +
-      'request_access. Si cancela, no actúes y explícaselo.',
+      'request_access. Si cancela, no actúes y explícaselo. Si una app ya estaba abierta con trabajo del usuario, la respuesta ' +
+      'te lo avisará: trabaja en una ventana o documento nuevo y no toques lo que ya había.',
     inputSchema: obj(
       {
         apps: {
@@ -1723,7 +1724,11 @@ const TOOLS: ToolDef[] = [
         const prev = byId.get(r.bundleId)
         byId.set(r.bundleId, { bundleId: r.bundleId, name: prev?.name ?? r.name, requested: maxTier(prev?.requested, r.level) ?? r.level })
       }
-      const valid = [...byId.values()]
+      // Apps que la persona YA tenía abiertas (puede haber trabajo sin guardar): se marcan en la tarjeta y se le dice al modelo que no escriba sobre ello.
+      const openNow = await backend.openAppKeys?.().catch(() => new Set<string>())
+      const valid: Array<AppRef & { requested: AppTier; alreadyOpen?: boolean }> = [...byId.values()].map((v) =>
+        openNow?.has(v.bundleId) ? { ...v, alreadyOpen: true } : v
+      )
       const missing = resolved.filter((r) => !r.found).map((r) => r.input)
       if (!valid.length && !hasPlan) {
         return backend.text.noAppsFound(missing)
@@ -1761,7 +1766,13 @@ const TOOLS: ToolDef[] = [
         const t = asTier(d)
         const short =
           t && TIER_RANK[t] < TIER_RANK[r.requested] ? ` (pediste "${TIER_LABEL[r.requested]}": si lo necesitas, díselo al usuario)` : ''
-        return `- ${r.name}: ${label(d)}${short}`
+        const openNote =
+          r.alreadyOpen && t && TIER_RANK[t] >= TIER_RANK.click
+            ? ` AVISO: «${r.name}» ya estaba abierta con ventanas de la persona (puede haber trabajo sin guardar). NO escribas, pegues, borres ni ` +
+              'cierres nada de lo que ya había: abre una ventana o un documento NUEVO (Ctrl/Cmd+N o el menú Archivo › Nuevo) y trabaja solo ahí. ' +
+              'Si la tarea exige editar algo que ya estaba abierto, pídele confirmación explícita al usuario antes de tocarlo.'
+            : ''
+        return `- ${r.name}: ${label(d)}${short}${openNote}`
       })
       if (missing.length) lines.push(`- (no identificadas: ${missing.join(', ')})`)
       const approvedApp = valid.some((r) => {

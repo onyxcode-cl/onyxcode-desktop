@@ -140,6 +140,8 @@ export const tasksComputer = {
   'tasksComputer.plan.titleOne': 'Allow the agent to use {name}?',
   'tasksComputer.plan.titleMany': 'Allow the agent to use these apps?',
   'tasksComputer.plan.noApps': 'This plan doesn’t control any app: it will use the terminal, files or the web.',
+  'tasksComputer.meta.alreadyOpen':
+    'It was already open with your windows: the agent will work in a new window or document and won’t touch what you had.',
   'tasksComputer.plan.notFound': 'Not found: {list}',
   'tasksComputer.plan.neverLowers': 'Approving never lowers a level that was already granted; use Settings to lower it.',
   'tasksComputer.plan.mouseKeyboard': 'With click or full-control access, the agent will use your real mouse and keyboard in those apps.',

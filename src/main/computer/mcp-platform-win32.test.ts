@@ -542,7 +542,20 @@ describe('Windows: apps', () => {
       const r = await mcp.call('request_access', { apps: ['Bloc de notas'], levels: ['full'], plan: ['escribir'] })
       expect(r.isError).toBeFalsy()
       const body = side!.requests.find((x) => x.path === '/request-access')!.body as { apps: Array<{ bundleId: string }> }
-      expect(body.apps).toEqual([{ bundleId: NOTEPAD, name: 'Bloc de notas', requested: 'full' }])
+      // El Bloc de notas ya estaba abierto (está en `list-apps`): se marca para la tarjeta.
+      expect(body.apps).toEqual([{ bundleId: NOTEPAD, name: 'Bloc de notas', requested: 'full', alreadyOpen: true }])
+    } finally {
+      await done()
+    }
+  })
+  it('si la app ya estaba abierta, el modelo recibe el aviso de trabajar en una ventana o documento nuevo', async () => {
+    const { mcp, done } = await boot({
+      script: script({ 'resolve-app': { out: { name: 'Bloc de notas', bundleId: NOTEPAD, found: true } } })
+    })
+    try {
+      const r = await mcp.call('request_access', { apps: ['Bloc de notas'], levels: ['full'], plan: ['escribir'] })
+      expect(textOf(r)).toMatch(/ya estaba abierta con ventanas de la persona/)
+      expect(textOf(r)).toMatch(/NUEVO/)
     } finally {
       await done()
     }
