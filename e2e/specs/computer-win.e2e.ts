@@ -157,7 +157,10 @@ describe.skipIf(!IS_WIN || !OPT_IN)('Control del PC en Windows (helper real, ven
     expect((await helper(['--instant', 'click', String(t.x), String(t.y)], consent())).code).toBe(0)
     const r = await helper(['--instant', 'type', 'Camión ñandú'], consent())
     expect(r.code, r.err).toBe(0)
-    expect(await target.evaluate(() => (window as unknown as { __cu: { text: string } }).__cu.text)).toBe('Camión ñandú')
+    // El navegador procesa las teclas de forma asíncrona: el helper ya terminó pero el campo puede ir unos ms por detrás.
+    await expect
+      .poll(() => target.evaluate(() => (window as unknown as { __cu: { text: string } }).__cu.text), { timeout: 5_000 })
+      .toBe('Camión ñandú')
   })
 
   it('el campo de contrasena se reconoce como seguro (y escribir falla cerrado)', async () => {
