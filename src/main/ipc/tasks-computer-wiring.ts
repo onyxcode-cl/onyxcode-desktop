@@ -138,8 +138,9 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
     }
   })
   computer.on('action', (ev) => {
-    // Primera acción real sobre la pantalla: recién ahora aparecen el borde, la píldora y se aparta la ventana.
-    if (controlEntered && !hiddenThisSession && sessionWanted) {
+    // Primera acción real sobre la pantalla: recién ahora aparecen el borde, la píldora y se aparta la ventana. Las capturas
+    // automáticas (`auto`) no cuentan: las hace la app sola al aprobar el plan, sin que el agente toque nada.
+    if (!ev.auto && controlEntered && !hiddenThisSession && sessionWanted) {
       hiddenThisSession = true
       overlay.setSession(true, sessionWanted.label)
       hideMainWindowForTask()

@@ -448,7 +448,8 @@ export function TasksWorkspace(): React.JSX.Element {
     // compositor y la vía rápida de `permission.asked` quedan muertos aunque esté activo en Ajustes.
     syncAutoMode()
     const offAction = onTasks('computer:action', (ev) => {
-      if (useTasks.getState().conn?.fullAccess) useTasks.setState({ lastAction: ev })
+      // Las capturas automáticas (`auto`) las hace la app sola al aprobar el plan: no son «el agente usando el Mac».
+      if (!ev.auto && useTasks.getState().conn?.fullAccess) useTasks.setState({ lastAction: ev })
     })
     const offStopped = onTasks('computer:stopped', (ev) => {
       if (!useTasks.getState().conn?.fullAccess) return

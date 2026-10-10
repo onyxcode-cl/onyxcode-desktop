@@ -2411,19 +2411,11 @@
       },
       "res": {
         "isError": false,
-        "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).\nCaptura de la pantalla principal: 1366x853 px (1 px = 1.0542 puntos). App en primer plano: Notes. Usa coordenadas EN PÍXELES DE ESTA IMAGEN en las herramientas. Archivo: <path>",
-        "parts": ["image", "text", "text"]
+        "text": "Respuesta del usuario:\n- (no identificadas: Zzqx NoExisteApp)\n\nPlan aprobado: puedes actuar (terminal, archivos, web y las apps concedidas).",
+        "parts": ["text"]
       },
-      "helper": [
-        "{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"screens\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
-        "{\"cmd\":\"windows-of\",\"args\":[\"com.apple.Notes\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
-      ],
-      "actions": [
-        "{\"tool\":\"screenshot\",\"phase\":\"start\",\"auto\":true}",
-        "{\"tool\":\"screenshot\",\"phase\":\"end\",\"auto\":true}"
-      ],
+      "helper": ["{\"cmd\":\"resolve-app\",\"args\":[\"Zzqx NoExisteApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "actions": [],
       "side": ["POST /request-access? {\"apps\":[],\"plan\":[\"x\"],\"unresolved\":[\"Zzqx NoExisteApp\"],\"kind\":\"access\"}"]
     }
   ],

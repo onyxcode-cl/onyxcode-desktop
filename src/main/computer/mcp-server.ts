@@ -1780,8 +1780,9 @@ const TOOLS: ToolDef[] = [
       }
       // Contexto fresco tras la espera (que puede haber sido larga): reactiva la primera app
       // aprobada (main ya lo intentó, best-effort) y adjunta una captura para que el agente vea
-      // dónde quedó todo antes de seguir.
-      if (planApproved || approvedApp) {
+      // dónde quedó todo antes de seguir. SOLO si se concedió alguna app: un plan sin apps (documentos, archivos, navegador)
+      // trabaja en segundo plano y no debe tocar la pantalla ni siquiera para una captura.
+      if (approvedApp) {
         try {
           await sleep(400)
           const s = await takeScreenshot(true, session)
