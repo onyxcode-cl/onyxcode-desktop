@@ -20,7 +20,7 @@ export function ConfirmFolderDialog({ folder, onConfirm, onCancel }: Props): Rea
     return () => document.removeEventListener('keydown', onKey)
   }, [onCancel])
 
-  const name = folder.split('/').filter(Boolean).pop() ?? folder
+  const name = folder.split(/[/\\]/).filter(Boolean).pop() ?? folder
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" onMouseDown={onCancel}>
       <div

@@ -15,7 +15,7 @@ export function isTasksSource(src: string | undefined): boolean {
 }
 
 export function baseName(p: string): string {
-  return p.split('/').filter(Boolean).pop() ?? p
+  return p.split(/[/\\]/).filter(Boolean).pop() ?? p
 }
 
 export function extOf(p: string): string {

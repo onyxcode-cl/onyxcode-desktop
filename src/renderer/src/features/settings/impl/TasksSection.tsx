@@ -86,7 +86,7 @@ export function clampInt(raw: string | number, min: number, max: number, fallbac
 
 /** Última parte de una ruta (nombre de la carpeta). */
 export function folderLabel(path: string): string {
-  return path.split('/').filter(Boolean).pop() ?? path
+  return path.split(/[/\\]/).filter(Boolean).pop() ?? path
 }
 
 /** Qué restringe la política gestionada, listo para desactivar/explicar controles. */
