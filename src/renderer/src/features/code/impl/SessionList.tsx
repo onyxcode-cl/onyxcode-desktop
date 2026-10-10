@@ -160,8 +160,13 @@ function SessionRow({
     })
   }
 
+  const rowTitle = displayTitle(session.title, t('code.sessions.untitled'))
   const row = (
     <div
+      role={tree ? 'treeitem' : undefined}
+      aria-level={tree ? 2 : undefined}
+      aria-current={tree && active ? 'page' : undefined}
+      aria-label={tree ? (tree.stateAria(rowTitle, state) ?? rowTitle) : undefined}
       onContextMenu={
         mobile || editing
           ? undefined
@@ -198,10 +203,7 @@ function SessionRow({
             else void selectSession(session.id)
           }}
           onDoubleClick={() => setEditing(true)}
-          role={tree ? 'treeitem' : undefined}
-          aria-level={tree ? 2 : undefined}
-          aria-current={tree && active ? 'page' : undefined}
-          aria-label={tree?.stateAria(displayTitle(session.title, t('code.sessions.untitled')), state)}
+          data-tree-primary={tree ? '' : undefined}
           className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2.5' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
@@ -527,16 +529,19 @@ function ProjectGroup({
     <div className="flex min-h-0 shrink-0 flex-col">
       {worktreeOpen && <NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />}
       {desktop && (
-        <div className="group/proj relative flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover">
+        <div
+          className="group/proj relative flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
+          role={tree ? 'treeitem' : undefined}
+          aria-level={tree ? 1 : undefined}
+          aria-expanded={tree ? projectOpen : undefined}
+          aria-label={tree ? baseName(directory) : undefined}
+        >
           <button
             type="button"
-            aria-expanded={projectOpen}
-            role={tree ? 'treeitem' : undefined}
-            aria-level={tree ? 1 : undefined}
+            aria-expanded={tree ? undefined : projectOpen}
+            data-tree-primary={tree ? '' : undefined}
             aria-label={
-              tree
-                ? baseName(directory)
-                : t(projectOpen ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name: baseName(directory) })
+              tree ? undefined : t(projectOpen ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name: baseName(directory) })
             }
             title={directory}
             onClick={() => setProjectOpen((o) => !o)}

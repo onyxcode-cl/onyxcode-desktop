@@ -269,6 +269,12 @@ export function TaskRow({
   return (
     <div
       className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:h-8 desk:min-h-0 desk:rounded-ctl desk:py-0 desk:text-sm${tree ? " desk:ml-[22px] desk:gap-2.5 desk:px-2.5 desk:before:absolute desk:before:inset-y-0 desk:before:-left-[9px] desk:before:w-px desk:before:bg-border desk:before:content-['']" : ' desk:gap-2 desk:px-2 desk:pl-[30px]'} ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
+      role={tree ? 'treeitem' : undefined}
+      aria-level={tree ? 2 : undefined}
+      aria-current={tree && active ? 'page' : undefined}
+      aria-label={
+        tree ? (tree.stateAria(task.title || t('tasks.list.untitled'), state) ?? (task.title || t('tasks.list.untitled'))) : undefined
+      }
       {...mob('task-row')}
     >
       {tree && state && <StateDot state={state} />}
@@ -278,10 +284,8 @@ export function TaskRow({
       <button
         type="button"
         className="min-w-0 flex-1 text-left"
-        role={tree ? 'treeitem' : undefined}
-        aria-level={tree ? 2 : undefined}
-        aria-label={tree?.stateAria(task.title || t('tasks.list.untitled'), state)}
-        aria-current={active ? (tree ? 'page' : 'true') : undefined}
+        data-tree-primary={tree ? '' : undefined}
+        aria-current={active && !tree ? 'true' : undefined}
         onClick={() => void openTask(task.id)}
       >
         <div className={`truncate ${unseen ? 'font-semibold' : ''}`}>

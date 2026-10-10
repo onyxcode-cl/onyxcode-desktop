@@ -537,7 +537,11 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const busy = run === 'busy' || run === 'retry'
 
   return (
-    <div className="drag flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 desk:@container desk:pl-[calc(var(--header-inset,0px)+12px)] desk:pr-[calc(var(--controls-inset,0px)+12px)]">
+    <div
+      className="drag flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 desk:@container desk:pl-[calc(var(--header-inset,0px)+12px)] desk:pr-[calc(var(--controls-inset,0px)+12px)]"
+      // Con un panel abierto a la derecha, los controles de ventana de Windows quedan sobre ÉL: la barra no reserva ese hueco.
+      style={panel ? ({ '--controls-inset': '0px' } as React.CSSProperties) : undefined}
+    >
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (

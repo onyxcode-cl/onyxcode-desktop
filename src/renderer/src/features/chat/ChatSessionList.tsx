@@ -112,6 +112,15 @@ function Row({
     <div
       ref={rowRef}
       className="group relative"
+      role={tree ? 'treeitem' : undefined}
+      aria-level={tree ? 1 : undefined}
+      aria-label={
+        tree
+          ? (tree.stateAria(session.title || t('chat.list.untitled'), busy ? 'working' : null) ??
+            (session.title || t('chat.list.untitled')))
+          : undefined
+      }
+      aria-current={active && tree ? 'page' : undefined}
       onContextMenu={
         tree
           ? (e) => {
@@ -124,10 +133,8 @@ function Row({
       <button
         type="button"
         onClick={onSelect}
-        role={tree ? 'treeitem' : undefined}
-        aria-level={tree ? 1 : undefined}
-        aria-label={tree?.stateAria(session.title || t('chat.list.untitled'), busy ? 'working' : null)}
-        aria-current={active ? (tree ? 'page' : 'true') : undefined}
+        data-tree-primary={tree ? '' : undefined}
+        aria-current={active && !tree ? 'true' : undefined}
         className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-sm ${active ? 'bg-active font-medium text-fg desk:bg-hover' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
       >
         {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />}

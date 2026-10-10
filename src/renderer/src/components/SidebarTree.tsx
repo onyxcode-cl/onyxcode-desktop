@@ -61,20 +61,28 @@ export function treeMove(nodes: readonly TreeNode[], from: number, key: TreeKey)
 
 const isVisible = (el: HTMLElement): boolean => el.getClientRects().length > 0
 
-/** Manejador de teclado del árbol: actúa solo si el foco está en un `treeitem` (no en un campo de texto ni en un botón de acción). */
+/**
+ * Un `treeitem` es la FILA entera (así sus botones de acción —opciones, nueva sesión…— cuelgan de él y el árbol cumple ARIA); su botón
+ * principal lleva `data-tree-primary` y es quien recibe el foco. Una fila de un solo botón puede ser ella misma el `treeitem`.
+ */
+const primaryOf = (item: HTMLElement): HTMLElement => item.querySelector<HTMLElement>('[data-tree-primary]') ?? item
+
+/** Manejador de teclado del árbol: actúa solo si el foco está en el botón principal de un `treeitem` (no en un campo de texto ni en un botón de acción). */
 export function onTreeKeyDown(e: KeyboardEvent<HTMLElement>): void {
   if (!TREE_KEYS.includes(e.key) || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
   const active = document.activeElement
-  if (!(active instanceof HTMLElement) || active.getAttribute('role') !== 'treeitem') return
+  if (!(active instanceof HTMLElement)) return
+  const current = active.closest<HTMLElement>('[role="treeitem"]')
+  if (!current || primaryOf(current) !== active) return
   const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="treeitem"]')).filter(isVisible)
   const nodes: TreeNode[] = items.map((el) => {
     const exp = el.getAttribute('aria-expanded')
     return { level: Number(el.getAttribute('aria-level') ?? 1), expanded: exp === null ? undefined : exp === 'true' }
   })
-  const move = treeMove(nodes, items.indexOf(active), e.key as TreeKey)
+  const move = treeMove(nodes, items.indexOf(current), e.key as TreeKey)
   if (!move) return
   e.preventDefault()
-  const target = items[move.index] as HTMLElement
+  const target = primaryOf(items[move.index] as HTMLElement)
   if (move.type === 'toggle') target.click()
   else target.focus()
 }

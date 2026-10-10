@@ -626,7 +626,11 @@ export function RoutinesView(): React.JSX.Element {
 
   return (
     <div className="flex h-full min-h-0">
-      <section className="flex min-w-0 flex-1 flex-col">
+      {/* Con el detalle abierto, los controles de ventana de Windows quedan sobre ÉL (banda libre arriba): esta cabecera no reserva ese hueco. */}
+      <section
+        className="flex min-w-0 flex-1 flex-col"
+        style={selected ? ({ '--controls-inset': '0px' } as React.CSSProperties) : undefined}
+      >
         {isRemoteSurface() ? (
           routines.length === 0 && !loading ? null : (
             // Celular: el título lo pone la barra del armazón; aquí solo el resumen y «Nueva» (sin segunda cabecera).
@@ -721,6 +725,7 @@ export function RoutinesView(): React.JSX.Element {
 
       {selected && (
         <aside className="w-[420px] shrink-0 border-l border-border bg-bg desk:w-[400px] desk:border-l-transparent desk:bg-sidebar desk:xl:w-[440px]">
+          <div aria-hidden="true" className="hidden shrink-0 desk:block" style={{ height: 'var(--controls-band, 0px)' }} />
           <RoutineDetail key={selected.id} r={selected} now={fastNow} />
         </aside>
       )}

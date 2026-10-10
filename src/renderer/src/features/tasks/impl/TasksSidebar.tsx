@@ -21,13 +21,18 @@ export function TasksSidebar(): React.JSX.Element {
     <div className="flex flex-col px-1 desk:px-0">
       {desktop ? (
         // Barra lateral 1b: la carpeta es una fila plegable (chevron + carpeta abierta + nombre); sus tareas cuelgan sangradas.
-        <div className="flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover">
+        <div
+          className="flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
+          role={tree && folder ? 'treeitem' : undefined}
+          aria-level={tree && folder ? 1 : undefined}
+          aria-expanded={tree && folder ? open : undefined}
+          aria-label={tree && folder ? name : undefined}
+        >
           {folder && (
             <button
               type="button"
-              aria-expanded={open}
-              role={tree ? 'treeitem' : undefined}
-              aria-level={tree ? 1 : undefined}
+              aria-expanded={tree ? undefined : open}
+              data-tree-primary={tree ? '' : undefined}
               aria-label={t(open ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name })}
               onClick={() => setOpen((o) => !o)}
               className="no-drag flex h-8 w-[22px] shrink-0 items-center rounded-ctl pl-2 text-subtle hover:text-fg"
