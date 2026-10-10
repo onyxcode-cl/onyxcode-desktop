@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto'
 import { constants as FS, createWriteStream } from 'node:fs'
-import { access, lstat, mkdir, readdir, readlink, realpath, rm, statfs } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import * as nodeFsPromises from 'node:fs/promises'
+import { access } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { dirname, join, resolve, sep } from 'node:path'
 import {
@@ -489,7 +491,23 @@ export class UpdateInstaller {
 
 // ---- implementaciones reales ---------------------------------------------------------------
 
+/**
+ * `fs/promises` SIN la magia de Electron para los `.asar`: en el proceso principal, `fs` trata `…/app.asar` como una carpeta virtual
+ * (su `lstat` dice «directorio» y `readdir` lista el interior), así que el recorrido del paquete descargado veía `resources/app.asar` como
+ * carpeta y rechazaba TODA actualización («fichero ausente o de otro tamaño»). `original-fs` lo trata como el fichero que es. Fuera de Electron
+ * (pruebas, scripts) no existe y se usa el `fs` normal.
+ */
+function rawFsPromises(): typeof nodeFsPromises {
+  try {
+    const of = createRequire(process.execPath)('original-fs') as { promises?: typeof nodeFsPromises }
+    return of.promises ?? nodeFsPromises
+  } catch {
+    return nodeFsPromises
+  }
+}
+
 export function nodeInstallerFs(): InstallerFs {
+  const { lstat, mkdir, readdir, readlink, realpath, rm, statfs } = rawFsPromises()
   return {
     mkdirp: async (p, mode) => void (await mkdir(p, { recursive: true, mode })),
     rmrf: (p) => rm(p, { recursive: true, force: true }),
