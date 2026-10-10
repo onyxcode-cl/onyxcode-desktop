@@ -467,6 +467,8 @@
   "code.suggest.explain.prompt",
   "code.suggest.review",
   "code.suggest.review.prompt",
+  "code.suggest.tag.build",
+  "code.suggest.tag.plan",
   "code.suggest.tests",
   "code.suggest.tests.prompt",
   "code.suggest.types",

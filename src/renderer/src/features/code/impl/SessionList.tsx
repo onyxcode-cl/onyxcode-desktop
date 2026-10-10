@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { displayTitle } from './session-title'
 import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
@@ -198,7 +199,7 @@ function SessionRow({
           role={tree ? 'treeitem' : undefined}
           aria-level={tree ? 2 : undefined}
           aria-current={tree && active ? 'page' : undefined}
-          aria-label={tree?.stateAria(session.title || t('code.sessions.untitled'), state)}
+          aria-label={tree?.stateAria(displayTitle(session.title, t('code.sessions.untitled')), state)}
           className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2.5' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
@@ -214,7 +215,9 @@ function SessionRow({
             ) : unread ? (
               <Circle size={7} fill="currentColor" className="shrink-0 text-accent" />
             ) : null}
-            <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>{session.title || t('code.sessions.untitled')}</span>
+            <span className={`truncate ${unread ? 'font-semibold text-fg' : ''}`}>
+              {displayTitle(session.title, t('code.sessions.untitled'))}
+            </span>
           </span>
           {!mobile && waiting && tree ? (
             // Esperando aprobación: la meta «Aprobar» no se oculta nunca (ni al pasar el ratón).
@@ -257,14 +260,19 @@ function SessionRow({
         <>
           <button
             type="button"
-            aria-label={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+            aria-label={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
             aria-haspopup="dialog"
             onClick={() => setMenuOpen(true)}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted active:bg-hover"
           >
             <MoreHorizontal size={19} />
           </button>
-          <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={session.title || t('code.sessions.untitled')} size="half">
+          <Sheet
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            title={displayTitle(session.title, t('code.sessions.untitled'))}
+            size="half"
+          >
             <SheetAction
               icon={<Pencil size={19} />}
               label={t('code.sessions.rename')}
@@ -308,8 +316,8 @@ function SessionRow({
         >
           <button
             type="button"
-            title={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
-            aria-label={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+            title={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
+            aria-label={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
             aria-haspopup="menu"
             aria-expanded={deskMenu}
             onClick={() => setDeskMenu((o) => !o)}
@@ -321,7 +329,7 @@ function SessionRow({
             <div
               ref={menuRef}
               role="menu"
-              aria-label={t('code.m.itemActions', { name: session.title || t('code.sessions.untitled') })}
+              aria-label={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
               onKeyDown={onMenuKey}
               className="absolute top-full right-0 z-30 mt-1 w-52 rounded-card bg-elevated p-1 shadow-pop"
             >
@@ -431,7 +439,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-hover desk:h-8 desk:rounded-ctl desk:px-2 desk:py-0"
             >
               {s.time.archived ? <Archive size={12} className="shrink-0 text-subtle" /> : null}
-              <span className="min-w-0 flex-1 truncate">{s.title || t('code.sessions.untitled')}</span>
+              <span className="min-w-0 flex-1 truncate">{displayTitle(s.title, t('code.sessions.untitled'))}</span>
               <span className="shrink-0 text-[11px] text-subtle">{timeAgo(s.time.updated)}</span>
             </button>
           ))}

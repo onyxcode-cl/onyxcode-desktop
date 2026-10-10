@@ -13,6 +13,7 @@ import type { ConvError } from '../../../lib/session-reducer'
 import type { MsgKey } from '@shared/i18n'
 import { tildify } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
+import { LogoMark } from '../../../components/Logo'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Session } from '@opencode-ai/sdk/v2/client'
@@ -26,10 +27,12 @@ import {
   GitCompare,
   GitFork,
   Globe,
+  Hammer,
   LayoutGrid,
   ListChecks,
   ListTodo,
   Loader2,
+  Search,
   Sparkles,
   Square,
   SquareTerminal,
@@ -548,9 +551,7 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
   const client = useClient()
   return (
     <div className="w-full max-w-xl">
-      <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-        <Code2 size={22} />
-      </div>
+      <LogoMark size={44} className="mx-auto mb-3" />
       <h2 className="text-xl font-semibold tracking-tight">{t('code.empty.title', { name: baseName(directory) })}</h2>
       <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-muted">
         {t('code.empty.use')}
@@ -560,25 +561,32 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
         {t('code.empty.buildDesc')}
       </p>
       <div className="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-2">
-        {SUGGESTIONS.map((sug) => (
-          <button
-            key={sug.label}
-            type="button"
-            disabled={!client}
-            onClick={() => {
-              setAgent(sug.agent)
-              void send(t(sug.prompt))
-            }}
-            className="group flex items-start gap-2 rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm transition hover:border-border-strong hover:bg-hover disabled:opacity-50"
-          >
-            <span
-              className={`mt-0.5 shrink-0 rounded px-1 text-[10px] font-semibold uppercase ${sug.agent === 'plan' ? 'bg-accent-soft text-accent' : 'bg-hover text-muted'}`}
+        {SUGGESTIONS.map((sug) => {
+          const plan = sug.agent === 'plan'
+          const Icon = plan ? Search : Hammer
+          return (
+            <button
+              key={sug.label}
+              type="button"
+              disabled={!client}
+              onClick={() => {
+                setAgent(sug.agent)
+                void send(t(sug.prompt))
+              }}
+              className="group flex items-start gap-3 rounded-xl border border-border bg-elevated px-3.5 py-3 text-left transition hover:-translate-y-px hover:border-border-strong hover:bg-hover hover:shadow-sm disabled:opacity-50"
             >
-              {sug.agent}
-            </span>
-            <span className="text-fg/90">{t(sug.label)}</span>
-          </button>
-        ))}
+              <span
+                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${plan ? 'bg-accent-soft text-accent' : 'bg-emerald-500/15 text-emerald-600 [[data-theme=dark]_&]:text-emerald-400'}`}
+              >
+                <Icon size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fg">{t(sug.label)}</span>
+                <span className="block text-xs text-muted">{plan ? t('code.suggest.tag.plan') : t('code.suggest.tag.build')}</span>
+              </span>
+            </button>
+          )
+        })}
       </div>
       {error && (
         <div className="mt-3 w-full max-w-xl text-left">
