@@ -10,7 +10,7 @@ export interface AxeViolation {
   id: string
   impact: string | null
   help: string
-  nodes: { target: string; html: string }[]
+  nodes: { target: string; html: string; why: string }[]
 }
 
 /** Ejecuta axe sobre la página en claro y oscuro; devuelve las violaciones por esquema. */
@@ -28,9 +28,11 @@ export async function runAxe(page: Page, scope = 'body'): Promise<Record<'light'
         id: v.id as string,
         impact: (v.impact as string | null) ?? null,
         help: v.help as string,
-        nodes: (v.nodes as Array<{ target: unknown[]; html: string }>)
-          .slice(0, 6)
-          .map((n) => ({ target: n.target.join(' '), html: n.html.slice(0, 160) }))
+        nodes: (v.nodes as Array<{ target: unknown[]; html: string; any?: Array<{ message?: string }> }>).slice(0, 6).map((n) => ({
+          target: n.target.join(' '),
+          html: n.html.slice(0, 160),
+          why: (n.any ?? []).map((a) => a.message ?? '').join('; ')
+        }))
       }))
     }, scope)
   }
@@ -43,7 +45,10 @@ export const SERIOUS = new Set(['serious', 'critical', 'moderate'])
 export function summarize(v: Record<'light' | 'dark', AxeViolation[]>): string {
   return (['light', 'dark'] as const)
     .flatMap((s) =>
-      v[s].map((x) => `[${s}] ${x.impact} ${x.id}: ${x.help}\n${x.nodes.map((n) => `    ${n.target}  ${n.html}`).join('\n')}`)
+      v[s].map(
+        (x) =>
+          `[${s}] ${x.impact} ${x.id}: ${x.help}\n${x.nodes.map((n) => `    ${n.target}  ${n.html}${n.why ? `\n      → ${n.why}` : ''}`).join('\n')}`
+      )
     )
     .join('\n')
 }
