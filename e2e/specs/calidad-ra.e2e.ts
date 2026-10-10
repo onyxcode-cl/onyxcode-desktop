@@ -26,7 +26,12 @@ describe.skipIf(MODE === 'prod')(`calidad R2-A (${MODE})`, () => {
   afterAll(() => {
     rmSync(trashDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
     rmSync(outside, { force: true })
-    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
+    // En Windows la app aún puede tener su carpeta de trabajo en el repositorio (EBUSY): una carpeta temporal sobrante no es un fallo de la prueba.
+    try {
+      if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
+    } catch {
+      // se limpia sola con el temporal del sistema
+    }
   })
 
   const read = (rel: string): string => readFileSync(join(repo, rel), 'utf8')
