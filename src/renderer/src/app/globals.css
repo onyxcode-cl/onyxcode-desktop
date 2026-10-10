@@ -1000,3 +1000,19 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     animation: none;
   }
 }
+
+/* Marca «Aro»: el anillo gira lento mientras la app trabaja (el punto dorado queda fijo). */
+.ring-spin {
+  transform-origin: 16px 16px;
+  animation: ring-spin 1.6s linear infinite;
+}
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-spin {
+    animation: none;
+  }
+}

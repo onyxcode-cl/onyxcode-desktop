@@ -24,7 +24,7 @@ let lastAccelerator = ''
 let remoteActive = false
 
 /**
- * Símbolo "Faceta" (blob suave con la gema como hueco), misma geometría de 32 unidades que
+ * Símbolo "Faceta" (aro abierto y punto), misma geometría de 32 unidades que
  * renderer/components/Logo.tsx y build/icon.svg. Dibujado con antialiasing simple.
  */
 export function renderTrayBitmap(S: number, rgb: readonly [number, number, number]): Buffer {
@@ -76,24 +76,21 @@ export function createTrayIcon(platform: string = process.platform): NativeImage
   return img
 }
 
-function roundRect(x: number, y: number, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
-  if (x < x0 || x > x1 || y < y0 || y > y1) return false
-  const cx = Math.min(Math.max(x, x0 + r), x1 - r)
-  const cy = Math.min(Math.max(y, y0 + r), y1 - r)
-  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
-}
-
 function inShape(x: number, y: number): boolean {
-  // Blob de 6 lóbulos suaves (radio medio 12 en el centro 16,16): el mismo contorno que Logo.tsx. El ángulo se mide desde arriba.
-  const t = Math.atan2(x - 16, -(y - 16))
-  const r = Math.hypot(x - 16, y - 16)
-  const blob = r <= 12 * (1 + 0.075 * Math.cos(6 * t))
-  // Gema (hueco): cuadrado redondeado 9.4×9.4 rotado 45° alrededor del centro (16,16).
-  const c = Math.SQRT1_2
-  const rx = (x - 16) * c + (y - 16) * c + 16
-  const ry = -(x - 16) * c + (y - 16) * c + 16
-  const gem = roundRect(rx, ry, 11.3, 11.3, 20.7, 20.7, 2.1)
-  return blob && !gem
+  // Aro abierto (radio 10.4, grosor 3.6, centrado en 16,16) con el hueco arriba a la derecha, más el punto del hueco: el mismo
+  // dibujo que Logo.tsx. El ángulo se mide desde arriba, en el sentido de las agujas del reloj; el aro cubre de 90° a 360°.
+  const dx = x - 16
+  const dy = y - 16
+  const r = Math.hypot(dx, dy)
+  let ang = (Math.atan2(dx, -dy) * 180) / Math.PI
+  if (ang < 0) ang += 360
+  const half = 3.6 / 2
+  const onRing = ang >= 90 && Math.abs(r - 10.4) <= half
+  // Remates redondeados en los dos extremos del aro: (16, 5.6) arriba y (26.4, 16) a la derecha.
+  const capA = Math.hypot(x - 16, y - 5.6) <= half
+  const capB = Math.hypot(x - 26.4, y - 16) <= half
+  const dot = Math.hypot(x - 22.6, y - 7.6) <= 2.3
+  return onRing || capA || capB || dot
 }
 
 function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {
