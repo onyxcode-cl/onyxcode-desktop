@@ -1018,3 +1018,16 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     animation: none;
   }
 }
+
+/* Windows: el texto claro sobre fondo oscuro se ve más grueso que en macOS (suavizado de fuentes distinto). Se bajan un poco los pesos
+   intermedios de Tailwind para que se vea igual; en macOS no cambia nada. */
+:root[data-platform='win32'] {
+  --font-weight-medium: 480;
+  --font-weight-semibold: 580;
+  --font-weight-bold: 660;
+}
+:root[data-platform='win32'][data-theme='dark'] {
+  --font-weight-medium: 430;
+  --font-weight-semibold: 530;
+  --font-weight-bold: 620;
+}
