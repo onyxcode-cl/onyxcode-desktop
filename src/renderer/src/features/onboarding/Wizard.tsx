@@ -694,7 +694,13 @@ function StepSetup(): React.JSX.Element {
                   <p className="font-medium text-fg">{r.label}</p>
                   <p className="text-muted">
                     {st === 'running' && r.id === 'sandbox' && pct !== null ? `${pct} % · ` : ''}
-                    {st === 'waiting' ? t('wizard.setup.status.waiting') : st === 'failed' ? t('wizard.setup.status.failed') : r.hint}
+                    {st === 'waiting'
+                      ? t('wizard.setup.status.waiting')
+                      : st === 'failed'
+                        ? t('wizard.setup.status.failed')
+                        : st === 'done'
+                          ? t('wizard.setup.status.ready')
+                          : r.hint}
                   </p>
                 </div>
               </li>

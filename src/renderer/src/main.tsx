@@ -7,6 +7,8 @@ import { App } from './app/App'
 import { LangRoot } from './app/LangRoot'
 import { initLang } from './lib/i18n'
 import { installModalFocus } from './lib/modal-focus'
+// Inter incluida (variable): en Windows sustituye a la tipografía del sistema para que el texto se vea como en macOS (SF Pro); en macOS no se usa (gana -apple-system).
+import '@fontsource-variable/inter/wght.css'
 import './app/globals.css'
 // Capa visual solo de escritorio: DESPUÉS de globals.css; la PWA (remote/boot.tsx) no la carga. Ver app/desktop/index.css.
 import './app/desktop/index.css'

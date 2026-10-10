@@ -94,5 +94,6 @@ export const wizard = {
   'wizard.setup.retry': 'Reintentar',
   'wizard.setup.later': 'También puedes hacerlo después desde Ajustes.',
   'wizard.setup.status.waiting': 'Falta que lo actives en los avisos de macOS (Ajustes del Sistema › Privacidad y seguridad).',
+  'wizard.setup.status.ready': 'Ya está listo.',
   'wizard.setup.status.failed': 'No se pudo. Reintenta o hazlo después desde Ajustes.'
 } as const

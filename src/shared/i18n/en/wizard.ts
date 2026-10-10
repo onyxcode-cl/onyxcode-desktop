@@ -97,5 +97,6 @@ export const wizard = {
   'wizard.setup.retry': 'Try again',
   'wizard.setup.later': 'You can also do this later from Settings.',
   'wizard.setup.status.waiting': 'You still need to turn it on in the macOS prompts (System Settings › Privacy & Security).',
+  'wizard.setup.status.ready': 'Already set up.',
   'wizard.setup.status.failed': 'It didn’t work. Try again or do it later from Settings.'
 } as const satisfies Messages<typeof es>
