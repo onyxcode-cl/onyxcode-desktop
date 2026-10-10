@@ -510,7 +510,7 @@ export const tasks = {
   'tasks.sandbox.checking': 'Comprobando el entorno aislado…',
   'tasks.sandbox.needsSetup.title': 'Prepara Tareas (beta) en este PC',
   'tasks.sandbox.needsSetup.body':
-    'Las tareas se ejecutan dentro de un entorno Linux aislado de tu PC. Se prepara una sola vez; necesita conexión a internet y unos 2 GB libres en el disco, y no toca tus otras distribuciones de Linux.',
+    'Las tareas se ejecutan dentro de un entorno Linux aislado de tu PC. Se prepara una sola vez, con lo que ya trae la app (sin descargar nada); necesita unos 2 GB libres en el disco y no toca tus otras distribuciones de Linux.',
   'tasks.sandbox.needsSetup.action': 'Preparar ahora',
   'tasks.sandbox.needsUpdate.title': 'El entorno de Tareas necesita actualizarse',
   'tasks.sandbox.needsUpdate.body': 'Para seguir usando Tareas hay que actualizar su entorno aislado. Tus archivos no se tocan.',

@@ -135,8 +135,18 @@ export function managedApp(deps: OfficeDeps): string | null {
   return deps.pin ? join(deps.binDir, `libreoffice-${deps.pin.version}`, 'LibreOffice.app') : null
 }
 
+/** Rutas habituales de `soffice.exe` en Windows (instalador oficial, por equipo). */
+const WIN_SOFFICE = ['C:\\Program Files\\LibreOffice\\program\\soffice.exe', 'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe']
+
 export function officeStatus(deps: OfficeDeps): OfficeStatus {
-  if ((deps.platform ?? process.platform) !== 'darwin') return { state: 'unsupported', reason: 'Solo macOS por ahora' }
+  const platform = deps.platform ?? process.platform
+  if (platform === 'win32') {
+    // Windows: no hay descarga administrada (el pin no tiene instalador verificado); se usa el LibreOffice del sistema si existe.
+    const found = (deps.systemApp ? [deps.systemApp] : WIN_SOFFICE).find((p) => existsSync(p))
+    if (found) return { state: 'installed', source: 'system', version: 'sistema', soffice: found }
+    return { state: 'unsupported', reason: 'Instala LibreOffice desde libreoffice.org para ver las presentaciones tal como quedan' }
+  }
+  if (platform !== 'darwin') return { state: 'unsupported', reason: 'Solo macOS y Windows' }
   const managed = managedApp(deps)
   if (managed && existsSync(join(managed, SOFFICE_REL))) {
     return { state: 'installed', source: 'app', version: deps.pin!.version, soffice: join(managed, SOFFICE_REL) }

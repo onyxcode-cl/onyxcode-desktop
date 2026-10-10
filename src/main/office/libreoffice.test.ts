@@ -116,8 +116,14 @@ describe('estado', () => {
     writeFileSync(join(sys, 'Contents', 'MacOS', 'soffice'), '')
     expect(officeStatus(deps({ binDir: join(dir, 'otra'), systemApp: sys }))).toMatchObject({ state: 'installed', source: 'system' })
   })
+  it('Windows: usa el LibreOffice del sistema si existe', () => {
+    const soffice = join(dir, 'soffice.exe')
+    writeFileSync(soffice, '')
+    expect(officeStatus(deps({ platform: 'win32', systemApp: soffice }))).toMatchObject({ state: 'installed', source: 'system', soffice })
+  })
+
   it('fuera de macOS: unsupported', () => {
-    expect(officeStatus(deps({ platform: 'win32' })).state).toBe('unsupported')
+    expect(officeStatus(deps({ platform: 'win32', systemApp: join(dir, 'no-existe.exe') })).state).toBe('unsupported')
   })
 })
 

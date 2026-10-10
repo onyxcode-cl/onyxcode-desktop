@@ -513,7 +513,7 @@ export const tasks = {
   'tasks.sandbox.checking': 'Checking the isolated environment…',
   'tasks.sandbox.needsSetup.title': 'Set up Tasks (beta) on this PC',
   'tasks.sandbox.needsSetup.body':
-    'Tasks run inside an isolated Linux environment on your PC. It’s set up once; it needs an internet connection and about 2 GB of free disk space, and it doesn’t touch your other Linux distributions.',
+    'Tasks run inside an isolated Linux environment on your PC. It’s set up once, using what the app already includes (nothing to download); it needs about 2 GB of free disk space and doesn’t touch your other Linux distributions.',
   'tasks.sandbox.needsSetup.action': 'Set up now',
   'tasks.sandbox.needsUpdate.title': 'The Tasks environment needs an update',
   'tasks.sandbox.needsUpdate.body': 'To keep using Tasks its isolated environment has to be updated. Your files are not touched.',
