@@ -349,7 +349,24 @@ async function resolveNavigationApproval(tab: TabRuntime, url: string): Promise<
   else console.warn(`[embedded-browser] navegación de agente denegada: ${parsed.site}`)
 }
 
+/** Repinta las vistas que están colgadas de una ventana (al volver a primer plano o al terminar de cargar una página). */
+function repaintAttachedViews(onlyTabId?: string): void {
+  for (const rt of owners.values()) {
+    const view = rt.attachedView
+    if (!view || view.webContents.isDestroyed() || !rt.attachedTo || rt.attachedTo.isDestroyed()) continue
+    if (onlyTabId && rt.attachedTabId !== onlyTabId) continue
+    const b = view.getBounds()
+    nudgePaint(view, b)
+  }
+}
+
+/** La ventana principal volvió a primer plano: una página cargada mientras estaba tapada puede haber quedado sin pintar. */
+export function repaintOnWindowFocus(): void {
+  repaintAttachedViews()
+}
+
 function installNavigationGate(tab: TabRuntime): void {
+  tab.wc.on('did-stop-loading', () => repaintAttachedViews(tab.id))
   const handle = (url: string, isMainFrame: boolean, prevent: () => void): void => {
     if (!isMainFrame) return
     if (navBypass.take(tab.id, url)) return // decidida ya (esa URL exacta, una vez); surface.ts ya validó el esquema
@@ -497,6 +514,23 @@ function nudgePaint(view: WebContentsView, bounds: { x: number; y: number; width
   }
   paint()
   setTimeout(paint, 120).unref?.()
+  // Ocultar y volver a mostrar la vista reenvía al renderer el «ahora eres visible» (WasShown): una página cargada mientras
+  // estaba suelta o tapada se considera oculta y no produce fotogramas hasta recibirlo.
+  setTimeout(() => {
+    try {
+      if (view.webContents.isDestroyed()) return
+      view.setVisible(false)
+      setTimeout(() => {
+        try {
+          if (!view.webContents.isDestroyed()) view.setVisible(true)
+        } catch {
+          // la vista pudo cerrarse entre medias
+        }
+      }, 40).unref?.()
+    } catch {
+      // la vista pudo cerrarse entre medias
+    }
+  }, 80).unref?.()
   // `invalidate()` solo no basta si la página se cargó con la vista suelta: un cambio de tamaño de un píxel obliga a
   // Chromium a generar un fotograma nuevo (medido en vivo: el panel seguía en blanco hasta recargar). Se deshace enseguida.
   setTimeout(() => {
