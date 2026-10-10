@@ -3,7 +3,7 @@
  * Es portable —igual en Mac y Windows— y se prueba con fixtures generados en la propia prueba. NO descomprime nada: solo da
  * los nombres, tamaños y tipo de cada entrada para validarlos (isSafeZipEntryWin) ANTES de extraer.
  */
-import { open } from 'node:fs/promises'
+import { rawFsPromises } from './raw-fs'
 
 /** Fuente de bytes de acceso aleatorio (un fichero o un Buffer en las pruebas). */
 export interface ByteSource {
@@ -23,7 +23,7 @@ export function bufferSource(buf: Buffer): ByteSource {
 
 /** Abre un fichero como fuente; hay que llamar a `close()`. */
 export async function fileSource(path: string): Promise<ByteSource & { close: () => Promise<void> }> {
-  const fh = await open(path, 'r')
+  const fh = await rawFsPromises().open(path, 'r')
   const { size } = await fh.stat()
   return {
     size,
