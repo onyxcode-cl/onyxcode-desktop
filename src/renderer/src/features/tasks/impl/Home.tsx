@@ -230,14 +230,6 @@ export function Home({
                 ? t('tasks.home.lead.full')
                 : t('tasks.home.lead.sandbox', { folder: baseName(folder) })}
           </p>
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <AccessSegmented disabled={folderBusy} />
-            {phase === 'starting' && (
-              <span className="flex items-center gap-1 text-xs text-muted">
-                <Loader2 size={12} className="animate-spin" /> {requested ? t('tasks.home.startingFull') : t('tasks.home.startingSandbox')}
-              </span>
-            )}
-          </div>
         </div>
 
         <SandboxSetupCard />
@@ -253,6 +245,14 @@ export function Home({
           autoFocusKey={folder}
           placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <AccessSegmented disabled={folderBusy} />
+          {phase === 'starting' && (
+            <span className="flex items-center gap-1 text-xs text-muted">
+              <Loader2 size={12} className="animate-spin" /> {requested ? t('tasks.home.startingFull') : t('tasks.home.startingSandbox')}
+            </span>
+          )}
+        </div>
         {sendError != null && (
           <div className="mx-auto mt-2 max-w-3xl px-6">
             <ErrorNotice error={sendError} />
