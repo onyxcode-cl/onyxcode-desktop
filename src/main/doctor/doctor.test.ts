@@ -48,6 +48,11 @@ describe('doctor', () => {
     expect(r.items.find((i) => i.id === 'git')).toMatchObject({ level: 'warn', fix: 'xcodeSelect' })
   })
 
+  it('la herramienta de teclado muestra la distribución en lenguaje llano, no el JSON', async () => {
+    const r = await runDoctor(base())
+    expect(r.items.find((i) => i.id === 'keyboardTool')?.detail).toBe('Distribución: US')
+  })
+
   it('solo avisos (sin fallos): overall = warn', async () => {
     const r = await runDoctor(base({ office: () => ({ state: 'missing', sizeBytes: 1e6 }) }))
     expect(r.overall).toBe('warn')

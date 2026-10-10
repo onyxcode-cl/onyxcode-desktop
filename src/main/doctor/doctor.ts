@@ -34,6 +34,12 @@ const MIN_FREE_BYTES = 3 * 1024 * MB
 /** Darwin 22 = macOS 13 (el helper nativo se compila para macOS 13 o superior). */
 const MIN_DARWIN = 22
 
+/** «Distribución: LatinAmerican» a partir de la salida de `cu-keys layout` (`{"layout":"com.apple.keylayout.LatinAmerican",…}`). */
+function layoutName(out: string): string | undefined {
+  const id = /"layout"\s*:\s*"([^"]+)"/.exec(out)?.[1]
+  return id ? `Distribución: ${id.replace(/^com\.apple\.keylayout\./, '')}` : undefined
+}
+
 const PY_LIBS = 'import docx, openpyxl, pptx, pypdf, pdfplumber, reportlab, pypdfium2, lxml, PIL'
 
 export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Promise<DoctorReport> {
@@ -69,7 +75,7 @@ export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Pr
       push({
         id: 'keyboardTool',
         level: r.code === 0 && /"layout"/.test(r.out) ? 'ok' : 'warn',
-        detail: r.code === 0 ? r.out.trim().slice(0, 100) : `código ${r.code}`
+        detail: r.code === 0 ? layoutName(r.out) : `código ${r.code}`
       })
     }
   }
