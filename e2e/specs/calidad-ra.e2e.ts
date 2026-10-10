@@ -24,9 +24,9 @@ describe.skipIf(MODE === 'prod')(`calidad R2-A (${MODE})`, () => {
   })
   const app = useApp({ env: { LAZUNOX_E2E_TRASH_DIR: trashDir } })
   afterAll(() => {
-    rmSync(trashDir, { recursive: true, force: true })
+    rmSync(trashDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
     rmSync(outside, { force: true })
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
 
   const read = (rel: string): string => readFileSync(join(repo, rel), 'utf8')
