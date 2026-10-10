@@ -27,7 +27,9 @@ describe.skipIf(MODE === 'prod')(`calidad R3-B: descartar bloque y conservar lo 
   const app = useApp({ env: { LAZUNOX_E2E_TRASH_DIR: trashDir } })
   afterAll(async () => {
     // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
-    await app().stop().catch(() => undefined)
+    await app()
+      .stop()
+      .catch(() => undefined)
     rmSync(trashDir, { recursive: true, force: true })
     if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })

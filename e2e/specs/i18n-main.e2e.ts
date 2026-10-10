@@ -155,9 +155,9 @@ describe.skipIf(!DEV)('T4c: motivo de carpeta y ventanas propias en inglés', ()
     }
     p = await openPage('overlay/pill.html?lang=en#demo')
     try {
-      expect(await p.locator('.title').innerText()).toBe('The AI is controlling your Mac')
+      expect(await p.locator('.title').innerText()).toBe(IS_WIN ? 'The AI is controlling your PC' : 'The AI is controlling your Mac')
       expect(await p.locator('.stop').innerText()).toBe('Stop')
-      expect(await p.title()).toBe('The AI is controlling your Mac')
+      expect(await p.title()).toBe(IS_WIN ? 'The AI is controlling your PC' : 'The AI is controlling your Mac')
       await shotPage(p, 'pildora-en')
     } finally {
       await closePages('overlay/pill.html')

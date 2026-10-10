@@ -46,7 +46,7 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
       await scriptFor(fake, `LRU-Q${n}`, `LRU-R${n} respuesta final única${n}`, { title: `LRU Conv ${n}` })
       ids.push(await newChatVia(page, `LRU-Q${n}`, `LRU-R${n} respuesta final`))
     }
-    for (let n = 1; n <= 4; n++) await expectVisible(page.getByRole('button', { name: `LRU Conv ${n}` }))
+    for (let n = 1; n <= 4; n++) await expectVisible(page.getByRole('treeitem', { name: new RegExp(`LRU Conv ${n}`) }))
     const [c1, , , c4] = ids
     expect(await storeState(page, 'useChat', 'activeSessionId')).toBe(c4)
 
@@ -84,7 +84,7 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
       [c1, 'LRU-R1 respuesta final única1'] as const
     )
     const before = await messageFetches(fake, c1)
-    await page.getByRole('button', { name: 'LRU Conv 1' }).click()
+    await page.getByRole('treeitem', { name: /LRU Conv 1/ }).click()
 
     // Mientras dura la recarga: loader visible (no vacío).
     await expectVisible(page.getByText('Cargando conversación…'), 5_000)
@@ -146,8 +146,17 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
     expect(text).toBe(full)
     expect(await serverText(fake.conn, a)).toBe(full)
     const parts = await page.evaluate((sid) => {
-      const list = ((window as any).__lazunoxE2E.useSessions.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string }[] }[]
-      return { assistants: list.filter((m) => m.info.role === 'assistant').length, textParts: list.filter((m) => m.info.role === 'assistant').flatMap((m) => m.parts).filter((p) => p.type === 'text').length }
+      const list = ((window as any).__lazunoxE2E.useSessions.getState().messages[sid] ?? []) as {
+        info: { role: string }
+        parts: { type: string }[]
+      }[]
+      return {
+        assistants: list.filter((m) => m.info.role === 'assistant').length,
+        textParts: list
+          .filter((m) => m.info.role === 'assistant')
+          .flatMap((m) => m.parts)
+          .filter((p) => p.type === 'text').length
+      }
     }, a)
     expect(parts).toEqual({ assistants: 1, textParts: 1 })
     await expectVisible(page.getByText('LW70', { exact: false }).first(), 15_000)
@@ -171,7 +180,10 @@ describe.skipIf(!dev)('LRU de messages: Chat (tope 2)', () => {
     })
     const ghosts = [...(await emitGhostSessions(fake, dir, 8)), ...(await emitGhostSessions(fake, dir, 8, 'ses_ghost_b'))]
     await expect
-      .poll(() => page.evaluate(() => (window as any).__ghost.seen.size as number), { timeout: 15_000, message: 'eventos ajenos recibidos' })
+      .poll(() => page.evaluate(() => (window as any).__ghost.seen.size as number), {
+        timeout: 15_000,
+        message: 'eventos ajenos recibidos'
+      })
       .toBe(ghosts.length)
     // Fijadas = la conversación activa (nada está busy). Tras los microtasks el nº de claves vuelve a ≤ N + fijadas.
     await expect.poll(async () => (await messageKeys(page)).length, { message: 'claves ≤ N + fijadas' }).toBeLessThanOrEqual(MAX + 1)
@@ -202,7 +214,10 @@ describe.skipIf(!dev || IS_WIN)('LRU de messages: Tareas real (tope 2)', () => {
   const UNICO = 'zafiro-violeta-lru'
 
   const openTaskRow = async (n: number): Promise<void> => {
-    await app().page.getByRole('button', { name: `Tarea LRU ${n}` }).first().click()
+    await app()
+      .page.getByRole('button', { name: `Tarea LRU ${n}` })
+      .first()
+      .click()
   }
 
   it('conecta Tareas con una carpeta temporal y crea 4 tareas', async () => {
@@ -262,7 +277,9 @@ describe.skipIf(!dev || IS_WIN)('LRU de messages: Tareas real (tope 2)', () => {
       directory: dir,
       properties: { id: 'per_lru_1', sessionID: p, permission: 'bash', patterns: ['echo lru'], metadata: {}, always: [] }
     })
-    await expect.poll(() => storeState<object>(page, 'useTasks', 'permissions'), { message: 'permiso en el store' }).toHaveProperty('per_lru_1')
+    await expect
+      .poll(() => storeState<object>(page, 'useTasks', 'permissions'), { message: 'permiso en el store' })
+      .toHaveProperty('per_lru_1')
 
     for (const n of [1, 2, 3, 4]) {
       await openTaskRow(n)
@@ -292,7 +309,10 @@ describe.skipIf(!dev)('LRU de messages: Code (tope 2)', () => {
   const codeKeys = async (): Promise<string[]> => Object.keys(await storeState<Record<string, unknown>>(app().page, 'useCode', 'messages'))
   const codeText = async (id: string): Promise<string> =>
     app().page.evaluate((sid) => {
-      const list = ((window as any).__lazunoxE2E.useCode.getState().messages[sid] ?? []) as { info: { role: string }; parts: { type: string; text?: string }[] }[]
+      const list = ((window as any).__lazunoxE2E.useCode.getState().messages[sid] ?? []) as {
+        info: { role: string }
+        parts: { type: string; text?: string }[]
+      }[]
       return list.flatMap((m) => m.parts.filter((x) => x.type === 'text').map((x) => `${m.info.role}:${x.text ?? ''}`)).join('|')
     }, id)
   const activeCode = (): Promise<string> => storeState<string>(app().page, 'useCode', 'activeSessionID')
@@ -307,7 +327,11 @@ describe.skipIf(!dev)('LRU de messages: Code (tope 2)', () => {
   it('sesión encolada autoenvía (A no se desaloja con tope 2 al cambiar a B/C/D)', async () => {
     const { page, fake } = app()
     const words = Array.from({ length: 40 }, (_, i) => `CW${i + 1}`)
-    await fake.script({ match: '^CODE-A1$', title: 'Code A', steps: [{ type: 'text', text: words.map((w) => `${w} `).join(''), chunkDelayMs: 100 }] })
+    await fake.script({
+      match: '^CODE-A1$',
+      title: 'Code A',
+      steps: [{ type: 'text', text: words.map((w) => `${w} `).join(''), chunkDelayMs: 100 }]
+    })
     await fake.script({ match: '^CODE-A2$', steps: [{ type: 'text', text: 'RESP-A2 de la cola' }] })
     await storeCall(page, 'useCode', 'send', 'CODE-A1')
     const a = await activeCode()
@@ -316,7 +340,8 @@ describe.skipIf(!dev)('LRU de messages: Code (tope 2)', () => {
     expect(await storeState<unknown[]>(page, 'useCode', `queue.${a}`)).toHaveLength(1)
 
     const others: string[] = []
-    for (const t of ['B', 'C', 'D']) others.push((await storeCall<string>(page, 'useCode', 'newSessionAt', proj.path, `Code ${t}`)) as string)
+    for (const t of ['B', 'C', 'D'])
+      others.push((await storeCall<string>(page, 'useCode', 'newSessionAt', proj.path, `Code ${t}`)) as string)
     expect(await activeCode()).toBe(others[2])
     // A sigue con su contenido: ejecutando y con cola (fijada) aunque haya 4 sesiones y el tope sea 2.
     expect(await codeKeys()).toContain(a)
@@ -355,7 +380,9 @@ describe.skipIf(!dev)('LRU de messages: Code (tope 2)', () => {
     await storeCall(page, 'useCode', 'selectSession', r)
     await expect.poll(() => codeText(r), { timeout: 15_000 }).toContain('assistant:RESP-R2 segunda')
     expect(await messageFetches(fake, r)).toBeGreaterThan(fetchesBefore)
-    const serverMsgs = (await (await fetch(`${fake.conn.baseUrl}/session/${r}/message`, { headers: { authorization: fake.conn.authorization } })).json()) as {
+    const serverMsgs = (await (
+      await fetch(`${fake.conn.baseUrl}/session/${r}/message`, { headers: { authorization: fake.conn.authorization } })
+    ).json()) as {
       info: { id: string; role: string }
     }[]
     const lastUser = serverMsgs.filter((m) => m.info.role === 'user').at(-1)!.info.id
@@ -376,4 +403,3 @@ describe.skipIf(!dev)('LRU de messages: Code (tope 2)', () => {
     expect(await codeText(forked as string)).toContain('assistant:RESP-R2 segunda')
   })
 })
-

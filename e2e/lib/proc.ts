@@ -11,8 +11,8 @@ export const FAKE_BIN_NAME = IS_WIN ? 'server.mjs' : 'opencode'
 /** Cómo nombra la interfaz el equipo del usuario («Mac» / «PC»; textos `*.win`). */
 export const DEVICE = IS_WIN ? 'PC' : 'Mac'
 
-/** Pasos del asistente de primer uso: sin «Permisos de macOS» en Windows. */
-export const STEPS_TOTAL = IS_WIN ? 4 : 5
+/** Pasos del asistente de primer uso: iguales en macOS y Windows (el último es «Prepara tu equipo»). */
+export const STEPS_TOTAL = 5
 
 /** Separador de PATH. */
 export const PATH_SEP = IS_WIN ? ';' : ':'
@@ -43,7 +43,11 @@ export function descendants(pid: number): number[] {
   }
   try {
     const out = execFileSync('pgrep', ['-P', String(pid)], { encoding: 'utf8', timeout: 5_000 })
-    return out.split('\n').filter(Boolean).map(Number).flatMap((k) => [k, ...descendants(k)])
+    return out
+      .split('\n')
+      .filter(Boolean)
+      .map(Number)
+      .flatMap((k) => [k, ...descendants(k)])
   } catch {
     return []
   }
@@ -102,8 +106,12 @@ export function killByCommandLine(needle: string): void {
 /** Líneas `pid command` de los hijos directos de `pid` (diagnóstico). */
 export function childrenOf(pid: number): string {
   try {
-    if (IS_WIN) return ps(`Get-CimInstance Win32_Process -Filter 'ParentProcessId=${pid}'|%{ $_.ProcessId.ToString() + ' ' + $_.CommandLine }`)
-    const kids = execFileSync('pgrep', ['-P', String(pid)], { encoding: 'utf8', timeout: 5_000 }).trim().split('\n').join(',')
+    if (IS_WIN)
+      return ps(`Get-CimInstance Win32_Process -Filter 'ParentProcessId=${pid}'|%{ $_.ProcessId.ToString() + ' ' + $_.CommandLine }`)
+    const kids = execFileSync('pgrep', ['-P', String(pid)], { encoding: 'utf8', timeout: 5_000 })
+      .trim()
+      .split('\n')
+      .join(',')
     return execFileSync('ps', ['-o', 'pid=,command=', '-p', kids], { encoding: 'utf8', timeout: 5_000 })
   } catch {
     return ''

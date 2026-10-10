@@ -6,7 +6,18 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { stubDialog } from '../lib/dialogs'
 import { useApp } from '../lib/harness'
-import { BrowserMcp, tasksFake, fakeOutsideUserData, killByPath, makeTasksDir, neutralizeNativeApprovalDialog, prepareCodeBrowser, servePages, waitUserIdle, type PageServer } from '../lib/lotes'
+import {
+  BrowserMcp,
+  tasksFake,
+  fakeOutsideUserData,
+  killByPath,
+  makeTasksDir,
+  neutralizeNativeApprovalDialog,
+  prepareCodeBrowser,
+  servePages,
+  waitUserIdle,
+  type PageServer
+} from '../lib/lotes'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { MODE_LABELS, UI_LABELS } from '../../src/shared/labels'
 import { setMode, storeCall, storeState, waitForHooks } from '../lib/stores'
@@ -180,7 +191,10 @@ function writePolicy(name: string, content: string): string {
 describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada (paso 22)', () => {
   let app: E2EApp
   beforeAll(async () => {
-    const file = writePolicy('managed.json', JSON.stringify({ disableRoutines: true, disableBrowser: true, allowedFolderRoots: [join(homedir(), 'Documents')] }))
+    const file = writePolicy(
+      'managed.json',
+      JSON.stringify({ disableRoutines: true, disableBrowser: true, allowedFolderRoots: [join(homedir(), 'Documents')] })
+    )
     app = await startApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_MANAGED_POLICY: file } })
   })
   afterAll(async () => {
@@ -199,14 +213,18 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada (paso 22)', () => 
   it('Ajustes → Navegador refleja disableBrowser y bloquea el interruptor', async () => {
     await openSettings(app, 'Navegador')
     await expectVisible(app.page.getByText('Tu organización desactivó el navegador integrado.'))
-    await expect.poll(() => app.page.getByRole('switch', { name: /Permitir que el agente use el navegador en Code/ }).isDisabled()).toBe(true)
+    await expect
+      .poll(() => app.page.getByRole('switch', { name: /Permitir que el agente use el navegador en Code/ }).isDisabled())
+      .toBe(true)
     await app.page.keyboard.press('Escape')
   })
 
   it('una carpeta fuera de allowedFolderRoots se rechaza con el motivo de la organización', async () => {
     await goTasks(app)
     await pickFolder(app, work.dir)
-    await expect.poll(() => storeState<string | null>(app.page, 'useTasks', 'error')).toContain('Tu organización solo permite carpetas dentro de')
+    await expect
+      .poll(() => storeState<string | null>(app.page, 'useTasks', 'error'))
+      .toContain('Tu organización solo permite carpetas dentro de')
     expect(await storeState(app.page, 'useTasks', 'folder')).toBeNull()
   })
 })
@@ -225,7 +243,12 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada con JSON inválido
   it('activa todas las restricciones booleanas', async () => {
     await openSettings(app, UI_LABELS.tasksMode)
     await expectVisible(app.page.getByRole('status').filter({ hasText: 'Gestionado por tu organización' }))
-    for (const t of ['Control total del Mac está desactivado.', 'Las rutinas están desactivadas.', 'No se pueden añadir sitios a la red del sandbox.', 'No se pueden recordar permisos con «Siempre permitir».'])
+    for (const t of [
+      'Control total del Mac está desactivado.',
+      'Las rutinas están desactivadas.',
+      'No se pueden añadir sitios a la red del sandbox.',
+      'No se pueden recordar permisos con «Siempre permitir».'
+    ])
       await expectVisible(app.page.getByText(t))
     await app.page.keyboard.press('Escape')
     // El error de lectura del JSON lo escribe main con console.error a propósito.
@@ -320,7 +343,11 @@ describe.skipIf(!DEV)('Lote D: navegador integrado', () => {
   })
 
   it('un cliente sin Bearer válido o con cabecera Origin no entra al MCP', async () => {
-    const bad = await fetch(mcp.url, { method: 'POST', headers: { authorization: 'Bearer nope', 'content-type': 'application/json' }, body: '{}' })
+    const bad = await fetch(mcp.url, {
+      method: 'POST',
+      headers: { authorization: 'Bearer nope', 'content-type': 'application/json' },
+      body: '{}'
+    })
     expect(bad.status).toBe(401)
     const origin = await fetch(mcp.url, {
       method: 'POST',
@@ -511,8 +538,10 @@ describe.skipIf(!DEV)('Lote D: mailto: y tel: en el navegador integrado', () => 
     }
     return res
   }
-  const opened = (): Promise<string[]> => app.electronApp.evaluate(() => (globalThis as unknown as { __e2eOpened?: string[] }).__e2eOpened ?? [])
-  const warns = (): Promise<string[]> => app.electronApp.evaluate(() => (globalThis as unknown as { __e2eWarns?: string[] }).__e2eWarns ?? [])
+  const opened = (): Promise<string[]> =>
+    app.electronApp.evaluate(() => (globalThis as unknown as { __e2eOpened?: string[] }).__e2eOpened ?? [])
+  const warns = (): Promise<string[]> =>
+    app.electronApp.evaluate(() => (globalThis as unknown as { __e2eWarns?: string[] }).__e2eWarns ?? [])
 
   it('preparación: la página con el enlace mailto: está abierta, shell.openExternal y console.warn de main espiados', async () => {
     ;({ mcp, sessionId } = await prepareCodeBrowser(app, project.dir))

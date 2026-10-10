@@ -316,37 +316,41 @@ describe.skipIf(!DEV)('R3A: terminal sin caracteres sueltos', () => {
   })
 
   // Windows: el caso es de zsh (`ZDOTDIR`/`.zshrc` lento); la terminal de Windows (PowerShell/ConPTY) se cubre en `pty/service.win.test.ts`.
-  it.skipIf(IS_WIN)('lo escrito antes de que el shell esté listo no deja eco suelto antes del prompt y el reenganche no cambia nada (820 px oscuro)', async () => {
-    const a = app()
-    const { page } = a
-    repo = makeGitRepo()
-    await openCodeProject(a, repo)
-    await storeCall(page, 'useCode', 'togglePanel', 'terminal')
-    await page.locator('.xterm-helper-textarea').first().waitFor({ state: 'attached', timeout: 20_000 })
-    await expect.poll(async () => (await page.evaluate(() => (window as any).api.code.pty.list())).length, { timeout: 15_000 }).toBe(1)
-    // Se teclea YA, sin esperar al aviso del shell: el eco del núcleo de la primera tecla dejaba «e%» antes del prompt.
-    await page.locator('.xterm').first().click()
-    await page.keyboard.type('echo MARCA_R3A', { delay: 5 })
-    await page.keyboard.press('Enter')
-    await expect.poll(async () => (await termRows(page)).filter((r) => r.trim() === 'MARCA_R3A').length, { timeout: 20_000 }).toBe(1)
-    await expect
-      .poll(async () => (await termRows(page)).some((r, i, all) => r.trim() === 'MARCA_R3A' && (all[i + 1] ?? '').includes('LAZUNOX>')), {
-        timeout: 10_000
-      })
-      .toBe(true)
-    const clean = async (): Promise<string[]> => (await termRows(page)).map((r) => r.trimEnd()).filter((r) => r !== '')
-    const base = await clean()
-    console.log(`[r3a] terminal, filas iniciales: ${JSON.stringify(base)}`)
-    // La primera línea es el prompt: nada de eco suelto («e%», «echo …») antes de él.
-    expect(base[0]).toMatch(/^LAZUNOX>/)
-    for (let i = 0; i < 3; i++) {
-      await gotoMode(page, 'Chat')
-      await page.waitForTimeout(300)
-      await gotoMode(page, 'Code')
-      await expect.poll(() => page.locator('.xterm-rows').first().innerText(), { timeout: 10_000 }).toContain('MARCA_R3A')
-      await page.waitForTimeout(600)
-      expect(await clean()).toEqual(base)
-    }
-    await shot(a, SHOTS, 'terminal-reenganchada', [820])
-  }, 120_000)
+  it.skipIf(IS_WIN)(
+    'lo escrito antes de que el shell esté listo no deja eco suelto antes del prompt y el reenganche no cambia nada (820 px oscuro)',
+    async () => {
+      const a = app()
+      const { page } = a
+      repo = makeGitRepo()
+      await openCodeProject(a, repo)
+      await storeCall(page, 'useCode', 'togglePanel', 'terminal')
+      await page.locator('.xterm-helper-textarea').first().waitFor({ state: 'attached', timeout: 20_000 })
+      await expect.poll(async () => (await page.evaluate(() => (window as any).api.code.pty.list())).length, { timeout: 15_000 }).toBe(1)
+      // Se teclea YA, sin esperar al aviso del shell: el eco del núcleo de la primera tecla dejaba «e%» antes del prompt.
+      await page.locator('.xterm').first().click()
+      await page.keyboard.type('echo MARCA_R3A', { delay: 5 })
+      await page.keyboard.press('Enter')
+      await expect.poll(async () => (await termRows(page)).filter((r) => r.trim() === 'MARCA_R3A').length, { timeout: 20_000 }).toBe(1)
+      await expect
+        .poll(async () => (await termRows(page)).some((r, i, all) => r.trim() === 'MARCA_R3A' && (all[i + 1] ?? '').includes('LAZUNOX>')), {
+          timeout: 10_000
+        })
+        .toBe(true)
+      const clean = async (): Promise<string[]> => (await termRows(page)).map((r) => r.trimEnd()).filter((r) => r !== '')
+      const base = await clean()
+      console.log(`[r3a] terminal, filas iniciales: ${JSON.stringify(base)}`)
+      // La primera línea es el prompt: nada de eco suelto («e%», «echo …») antes de él.
+      expect(base[0]).toMatch(/^LAZUNOX>/)
+      for (let i = 0; i < 3; i++) {
+        await gotoMode(page, 'Chat')
+        await page.waitForTimeout(300)
+        await gotoMode(page, 'Code')
+        await expect.poll(() => page.locator('.xterm-rows').first().innerText(), { timeout: 10_000 }).toContain('MARCA_R3A')
+        await page.waitForTimeout(600)
+        expect(await clean()).toEqual(base)
+      }
+      await shot(a, SHOTS, 'terminal-reenganchada', [820])
+    },
+    120_000
+  )
 })

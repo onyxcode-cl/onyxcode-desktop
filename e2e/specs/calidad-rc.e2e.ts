@@ -54,12 +54,23 @@ async function expectFocusContract(page: Page, dlg: Locator, opener: Locator | n
   if (!esc) return
   await page.keyboard.press('Escape')
   await expectCount(dlg, 0)
-  if (opener) await expect.poll(() => opener.evaluate((el) => el === document.activeElement), { message: 'el foco vuelve al botón que abrió el diálogo' }).toBe(true)
+  if (opener)
+    await expect
+      .poll(() => opener.evaluate((el) => el === document.activeElement), { message: 'el foco vuelve al botón que abrió el diálogo' })
+      .toBe(true)
 }
 
 const routine = (id: string, name: string, enabled: boolean): Record<string, unknown> => ({
-  id, name, prompt: 'no hacer nada', mode: 'chat', folder: null, model: { providerID: 'fake', modelID: 'fake-model' },
-  schedule: { kind: 'daily', time: '09:00' }, enabled, createdAt: Date.now(), updatedAt: Date.now()
+  id,
+  name,
+  prompt: 'no hacer nada',
+  mode: 'chat',
+  folder: null,
+  model: { providerID: 'fake', modelID: 'fake-model' },
+  schedule: { kind: 'daily', time: '09:00' },
+  enabled,
+  createdAt: Date.now(),
+  updatedAt: Date.now()
 })
 const nav = (page: Page, name: string): Promise<void> => page.locator('nav[aria-label="Modo"]').getByRole('button', { name }).click()
 
@@ -98,7 +109,10 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     await clean(page, 'rutinas:lista')
     await shot(app(), SHOTS, 'rutinas-lista')
     // Detalle de una rutina seleccionada.
-    await page.getByRole('button', { name: /Rutina activa e2e/ }).first().click()
+    await page
+      .getByRole('button', { name: /Rutina activa e2e/ })
+      .first()
+      .click()
     await page.waitForTimeout(500)
     await clean(page, 'rutinas:detalle')
     const opener = page.getByRole('button', { name: 'Nueva rutina' }).first()
@@ -240,12 +254,11 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     await expectVisible(d.getByRole('heading', { name: 'Elige tu modelo' }))
     await clean(a.page, 'asistente:paso3')
     await d.getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d.getByRole('heading', { name: IS_WIN ? 'Los tres modos' : 'Los cuatro modos' }))
+    await expectVisible(d.getByRole('heading', { name: 'Cómo puedes usarlo' }))
     await clean(a.page, 'asistente:paso4')
-    // Paso 5 («Permisos de macOS»): solo existe en macOS (en Windows el asistente tiene 4 pasos).
-    if (IS_WIN) return
+    // Paso 5 («Prepara tu equipo»): existe en macOS y en Windows.
     await d.getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d.getByRole('heading', { name: 'Permisos de macOS' }))
+    await expectVisible(d.getByRole('heading', { name: 'Prepara tu equipo' }))
     await clean(a.page, 'asistente:paso5')
     await shot(a, SHOTS, 'asistente-paso5')
   })
@@ -267,7 +280,9 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
   const app = useApp({ env })
   afterAll(async () => {
     // Los hooks afterAll corren en orden inverso: sin parar antes la app, en Windows la terminal de Code aún tiene el repo como cwd (EBUSY).
-    await app().stop().catch(() => undefined)
+    await app()
+      .stop()
+      .catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
     if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
@@ -332,7 +347,10 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     const a = app()
     await a.fake.script({
       match: 'pide permiso rc',
-      steps: [{ type: 'text', text: 'Voy a ejecutar un comando.' }, { type: 'permission', permission: 'bash', patterns: ['echo rc'] }]
+      steps: [
+        { type: 'text', text: 'Voy a ejecutar un comando.' },
+        { type: 'permission', permission: 'bash', patterns: ['echo rc'] }
+      ]
     })
     const box = a.page.getByRole('combobox', { name: 'Mensaje para el asistente' })
     await box.fill('pide permiso rc')
@@ -341,7 +359,10 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await expectVisible(allow, 30_000)
     await clean(a.page, 'code:permiso')
     await shot(a, SHOTS, 'code-permiso')
-    await a.page.getByRole('button', { name: /Denegar|Rechazar/ }).first().click()
+    await a.page
+      .getByRole('button', { name: /Denegar|Rechazar/ })
+      .first()
+      .click()
   })
 
   it.skipIf(IS_WIN)('Tareas: aprobaciones (permiso y pregunta) y escalada sin violaciones', async () => {
@@ -367,7 +388,10 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     // Permiso
     await fake.script({
       match: 'tarea con permiso',
-      steps: [{ type: 'text', text: 'Necesito ejecutar algo.' }, { type: 'permission', permission: 'bash', patterns: ['echo rc'] }]
+      steps: [
+        { type: 'text', text: 'Necesito ejecutar algo.' },
+        { type: 'permission', permission: 'bash', patterns: ['echo rc'] }
+      ]
     })
     await send('tarea con permiso')
     const deny = a.page.getByRole('button', { name: 'Rechazar', exact: true }).first()
@@ -382,7 +406,18 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
       steps: [
         {
           type: 'question',
-          questions: [{ question: '¿Qué formato prefieres?', header: 'Formato', options: [{ label: 'PDF', description: 'Documento' }, { label: 'Word', description: 'Editable' }], multiple: false, custom: true }]
+          questions: [
+            {
+              question: '¿Qué formato prefieres?',
+              header: 'Formato',
+              options: [
+                { label: 'PDF', description: 'Documento' },
+                { label: 'Word', description: 'Editable' }
+              ],
+              multiple: false,
+              custom: true
+            }
+          ]
         }
       ]
     })
@@ -418,7 +453,14 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
       { bundleId: 'com.apple.Notes', name: 'Notas', requested: 'click', current: null },
       { bundleId: 'com.apple.Safari', name: 'Safari', requested: 'full', current: 'view' }
     ]
-    await storeSet(a.page, 'useTasks', { accessRequest: { id: 'rc-plan', apps, reason: 'Para ordenar tus notas', plan: ['Abrir Notas', 'Copiar el texto', 'Pegarlo en Safari'] } })
+    await storeSet(a.page, 'useTasks', {
+      accessRequest: {
+        id: 'rc-plan',
+        apps,
+        reason: 'Para ordenar tus notas',
+        plan: ['Abrir Notas', 'Copiar el texto', 'Pegarlo en Safari']
+      }
+    })
     await expectVisible(a.page.getByRole('alertdialog').first())
     await clean(a.page, 'tareas:acceso-plan')
     await shot(a, SHOTS, 'tareas-acceso-plan')

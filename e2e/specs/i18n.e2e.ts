@@ -46,8 +46,7 @@ describe.skipIf(!DEV)('Idioma (en/es)', () => {
     const { page } = app()
     const modes = page.locator(`nav[aria-label="${tr('en', 'app.sidebar.mode')}"]`)
     await expectVisible(modes)
-    // Windows: sin modo Tareas en la v1.
-    for (const m of IS_WIN ? ['Chat', 'Code', 'Routines'] : ['Chat', 'Code', 'Tasks', 'Routines']) await expectVisible(modes.getByRole('button', { name: m, exact: true }))
+    for (const m of ['Chat', 'Code', 'Tasks', 'Routines']) await expectVisible(modes.getByRole('button', { name: m, exact: true }))
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('en')
     await expectVisible(page.getByText(tr('en', 'chat.empty.prompt'), { exact: true }))
     await expectCount(page.getByText('Tareas', { exact: true }), 0)
@@ -76,7 +75,7 @@ describe.skipIf(!DEV)('Idioma (en/es)', () => {
     await goto(page, 'en', 'settings.nav.general')
     await page.getByRole('combobox', { name: tr('en', 'settings.general.language') }).selectOption('es')
     await expectVisible(navLabel('es')(page))
-    await expectVisible(page.locator('nav[aria-label="Modo"]').getByRole('button', { name: IS_WIN ? 'Rutinas' : 'Tareas', exact: true }))
+    await expectVisible(page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }))
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('es')
     await expect.poll(() => settingsFile().language).toBe('es')
     await shot(app(), sub('es'), 'general')

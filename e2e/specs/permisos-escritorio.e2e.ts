@@ -175,7 +175,10 @@ describe.skipIf(!DEV || IS_WIN)('permisos de escritorio (ND): Tareas', () => {
   const once = (a: E2EApp) => a.page.getByRole('button', { name: /Permitir una vez/ }).first()
 
   async function send(a: E2EApp, text: string): Promise<void> {
-    await a.page.getByRole('button', { name: /^Nueva tarea/ }).first().click()
+    await a.page
+      .getByRole('button', { name: /^Nueva tarea/ })
+      .first()
+      .click()
     await a.page.getByPlaceholder('Describe la tarea que quieres delegar…').fill(text)
     await a.page.getByRole('button', { name: 'Enviar' }).first().click()
   }
@@ -227,7 +230,14 @@ describe.skipIf(!DEV || IS_WIN)('permisos de escritorio (ND): Tareas', () => {
     await fake.emit({
       type: 'permission.asked',
       directory: res.path,
-      properties: { id: 'per_ghost_nd', sessionID, permission: 'bash', patterns: ['echo segundo'], metadata: { command: 'echo segundo' }, always: [] }
+      properties: {
+        id: 'per_ghost_nd',
+        sessionID,
+        permission: 'bash',
+        patterns: ['echo segundo'],
+        metadata: { command: 'echo segundo' },
+        always: []
+      }
     })
     await expectCount(card(a), 2)
 

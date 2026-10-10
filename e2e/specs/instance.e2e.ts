@@ -55,9 +55,7 @@ describe(`instancia única y Quick Entry (${MODE})`, () => {
     const { electronApp, page, fake } = app()
     // Mismo camino que el atajo: toggleQuickEntry vía IPC `extras:quickToggle`.
     await page.evaluate(() => (window as unknown as { api: { invoke: (c: string) => Promise<unknown> } }).api.invoke('extras:quickToggle'))
-    await expect
-      .poll(() => (findQuickPage(electronApp) ? true : false), { timeout: 15_000, message: 'página de Quick Entry' })
-      .toBe(true)
+    await expect.poll(() => (findQuickPage(electronApp) ? true : false), { timeout: 15_000, message: 'página de Quick Entry' }).toBe(true)
     const quick = findQuickPage(electronApp)!
     expect(isQuickUrl(quick.url())).toBe(true)
     const input = quick.getByLabel('Escribe un mensaje para el chat')

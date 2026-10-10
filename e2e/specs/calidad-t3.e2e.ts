@@ -42,7 +42,9 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
   const app = useApp({ env })
   afterAll(async () => {
     // Los afterAll corren en orden inverso: sin parar antes la app, en Windows la terminal aún tiene el repo como cwd (EBUSY).
-    await app().stop().catch(() => undefined)
+    await app()
+      .stop()
+      .catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
     if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
@@ -118,77 +120,83 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
   }, 60_000)
 
   // Windows v1: sin modo Tareas.
-  it.skipIf(IS_WIN)('Tareas: una tarea a medias se marca «Interrumpida» con «Continuar»; la que sigue ocupada no', async () => {
-    const a = app()
-    const { page } = a
-    const { fake } = await connectTasksFolder(a, res.folder.path)
-    const slow = (match: string, title: string) =>
-      fake.script({
-        match,
-        title,
-        steps: [
-          { type: 'text', text: `Trabajando en ${title}.` },
-          { type: 'delay', ms: 120_000 },
-          { type: 'text', text: ' Fin.' }
-        ]
+  it.skipIf(IS_WIN)(
+    'Tareas: una tarea a medias se marca «Interrumpida» con «Continuar»; la que sigue ocupada no',
+    async () => {
+      const a = app()
+      const { page } = a
+      const { fake } = await connectTasksFolder(a, res.folder.path)
+      const slow = (match: string, title: string) =>
+        fake.script({
+          match,
+          title,
+          steps: [
+            { type: 'text', text: `Trabajando en ${title}.` },
+            { type: 'delay', ms: 120_000 },
+            { type: 'text', text: ' Fin.' }
+          ]
+        })
+      await slow('CORTADA', 'Tarea cortada')
+      await slow('OCUPADA', 'Tarea ocupada')
+      await fake.script({
+        match: 'Continúa la tarea desde donde se interrumpió',
+        title: 'Tarea cortada',
+        steps: [{ type: 'text', text: 'Retomo y termino.' }]
       })
-    await slow('CORTADA', 'Tarea cortada')
-    await slow('OCUPADA', 'Tarea ocupada')
-    await fake.script({
-      match: 'Continúa la tarea desde donde se interrumpió',
-      title: 'Tarea cortada',
-      steps: [{ type: 'text', text: 'Retomo y termino.' }]
-    })
-    const start = async (prompt: string, wait: string): Promise<string> => {
+      const start = async (prompt: string, wait: string): Promise<string> => {
+        await page
+          .getByRole('button', { name: /^Nueva tarea/ })
+          .first()
+          .click()
+        await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill(prompt)
+        await page.getByRole('button', { name: 'Enviar' }).click()
+        await expectVisible(page.getByText(wait, { exact: false }).first(), 30_000)
+        return (await storeState<string>(page, 'useTasks', 'activeTaskId'))!
+      }
+      const cut = await start('CORTADA haz algo', 'Trabajando en Tarea cortada.')
+      const busy = await start('OCUPADA haz algo', 'Trabajando en Tarea ocupada.')
+      // El motor «se reinició»: la tarea cortada perdió su ejecución con el mensaje a medias; la otra sigue trabajando.
+      await fake.set({ sessionStatus: { [cut]: 'idle' } })
+      await page.reload({ waitUntil: 'domcontentloaded' })
+      await page.locator('nav[aria-label="Modo"]').waitFor()
+      await expect
+        .poll(() => storeState<Record<string, true>>(page, 'useTasks', 'interrupted'), { timeout: 30_000 })
+        .toEqual({ [cut]: true })
+      expect(await storeState(page, 'useSessions', `status.${busy}`)).not.toBe('idle')
+
+      await modeBtn(page, 'Tareas').click()
       await page
-        .getByRole('button', { name: /^Nueva tarea/ })
+        .getByRole('button', { name: /CORTADA haz algo/ })
         .first()
         .click()
-      await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill(prompt)
-      await page.getByRole('button', { name: 'Enviar' }).click()
-      await expectVisible(page.getByText(wait, { exact: false }).first(), 30_000)
-      return (await storeState<string>(page, 'useTasks', 'activeTaskId'))!
-    }
-    const cut = await start('CORTADA haz algo', 'Trabajando en Tarea cortada.')
-    const busy = await start('OCUPADA haz algo', 'Trabajando en Tarea ocupada.')
-    // El motor «se reinició»: la tarea cortada perdió su ejecución con el mensaje a medias; la otra sigue trabajando.
-    await fake.set({ sessionStatus: { [cut]: 'idle' } })
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await page.locator('nav[aria-label="Modo"]').waitFor()
-    await expect.poll(() => storeState<Record<string, true>>(page, 'useTasks', 'interrupted'), { timeout: 30_000 }).toEqual({ [cut]: true })
-    expect(await storeState(page, 'useSessions', `status.${busy}`)).not.toBe('idle')
+      await expectVisible(page.getByText('Esta tarea se interrumpió'))
+      // En la barra lateral 1b el estado de la fila va como icono (el texto está oculto): la píldora de la cabecera lo dice.
+      await expectVisible(page.locator('header').getByText('Interrumpida', { exact: true }))
+      await shot(a, SHOTS, 'tarea-interrumpida')
+      // La ocupada no muestra el aviso.
+      await page
+        .getByRole('button', { name: /OCUPADA haz algo/ })
+        .first()
+        .click()
+      await page.waitForTimeout(600)
+      expect(await page.getByText('Esta tarea se interrumpió').count()).toBe(0)
 
-    await modeBtn(page, 'Tareas').click()
-    await page
-      .getByRole('button', { name: /CORTADA haz algo/ })
-      .first()
-      .click()
-    await expectVisible(page.getByText('Esta tarea se interrumpió'))
-    // En la barra lateral 1b el estado de la fila va como icono (el texto está oculto): la píldora de la cabecera lo dice.
-    await expectVisible(page.locator('header').getByText('Interrumpida', { exact: true }))
-    await shot(a, SHOTS, 'tarea-interrumpida')
-    // La ocupada no muestra el aviso.
-    await page
-      .getByRole('button', { name: /OCUPADA haz algo/ })
-      .first()
-      .click()
-    await page.waitForTimeout(600)
-    expect(await page.getByText('Esta tarea se interrumpió').count()).toBe(0)
-
-    await page
-      .getByRole('button', { name: /CORTADA haz algo/ })
-      .first()
-      .click()
-    // El falso aún tiene viva la ejecución perdida (el motor real no): se aborta para que «Continuar» no quede en cola tras ella.
-    const abort = new URL(`${fake.conn.baseUrl}/session/${cut}/abort`)
-    abort.searchParams.set('directory', res.folder.path)
-    await fetch(abort, { method: 'POST', headers: { authorization: fake.conn.authorization } })
-    await page.getByRole('button', { name: 'Continuar', exact: true }).click()
-    await expectVisible(page.getByText('Retomo y termino.'), 30_000)
-    await waitIdle(page, cut, 30_000)
-    expect(await page.getByText('Esta tarea se interrumpió').count()).toBe(0)
-    expect(await storeState(page, 'useTasks', `interrupted.${cut}`)).toBeUndefined()
-  }, 150_000)
+      await page
+        .getByRole('button', { name: /CORTADA haz algo/ })
+        .first()
+        .click()
+      // El falso aún tiene viva la ejecución perdida (el motor real no): se aborta para que «Continuar» no quede en cola tras ella.
+      const abort = new URL(`${fake.conn.baseUrl}/session/${cut}/abort`)
+      abort.searchParams.set('directory', res.folder.path)
+      await fetch(abort, { method: 'POST', headers: { authorization: fake.conn.authorization } })
+      await page.getByRole('button', { name: 'Continuar', exact: true }).click()
+      await expectVisible(page.getByText('Retomo y termino.'), 30_000)
+      await waitIdle(page, cut, 30_000)
+      expect(await page.getByText('Esta tarea se interrumpió').count()).toBe(0)
+      expect(await storeState(page, 'useTasks', `interrupted.${cut}`)).toBeUndefined()
+    },
+    150_000
+  )
 })
 
 describe.skipIf(MODE === 'prod')(`calidad T3: salir (${MODE})`, () => {
@@ -201,46 +209,52 @@ describe.skipIf(MODE === 'prod')(`calidad T3: salir (${MODE})`, () => {
   })
 
   // Windows v1: sin modo Tareas (la salida con una tarea ocupada es del modo Tareas).
-  it.skipIf(IS_WIN)('Cmd+Q con una tarea ocupada pregunta; Cancelar mantiene la app y «Salir igualmente» sale', async () => {
-    const a = app()
-    const { page, electronApp } = a
-    const { fake } = await connectTasksFolder(a, folder.path)
-    await fake.script({
-      match: 'LARGA',
-      title: 'Tarea larga',
-      steps: [
-        { type: 'text', text: 'Trabajo largo en curso.' },
-        { type: 'delay', ms: 120_000 }
-      ]
-    })
-    await page
-      .getByRole('button', { name: /^Nueva tarea/ })
-      .first()
-      .click()
-    await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill('LARGA haz algo')
-    await page.getByRole('button', { name: 'Enviar' }).click()
-    await expectVisible(page.getByText('Trabajo largo en curso.', { exact: false }).first(), 30_000)
-    // El monitor de main ve la tarea (sondeo cada 3 s).
-    await expect.poll(() => storeState<number>(page, 'useTasks', 'activity.tasks.length'), { timeout: 20_000 }).toBeGreaterThan(0)
+  it.skipIf(IS_WIN)(
+    'Cmd+Q con una tarea ocupada pregunta; Cancelar mantiene la app y «Salir igualmente» sale',
+    async () => {
+      const a = app()
+      const { page, electronApp } = a
+      const { fake } = await connectTasksFolder(a, folder.path)
+      await fake.script({
+        match: 'LARGA',
+        title: 'Tarea larga',
+        steps: [
+          { type: 'text', text: 'Trabajo largo en curso.' },
+          { type: 'delay', ms: 120_000 }
+        ]
+      })
+      await page
+        .getByRole('button', { name: /^Nueva tarea/ })
+        .first()
+        .click()
+      await page.getByPlaceholder('Describe la tarea que quieres delegar…').fill('LARGA haz algo')
+      await page.getByRole('button', { name: 'Enviar' }).click()
+      await expectVisible(page.getByText('Trabajo largo en curso.', { exact: false }).first(), 30_000)
+      // El monitor de main ve la tarea (sondeo cada 3 s).
+      await expect.poll(() => storeState<number>(page, 'useTasks', 'activity.tasks.length'), { timeout: 20_000 }).toBeGreaterThan(0)
 
-    await stubDialog(electronApp, { messageBoxResponse: 1 })
-    await electronApp.evaluate(({ app }) => app.quit())
-    await expect.poll(async () => (await dialogCalls(electronApp)).filter((c) => c.kind === 'message').length, { timeout: 10_000 }).toBe(1)
-    const opts = (await dialogCalls(electronApp)).find((c) => c.kind === 'message')!.options as { message: string; buttons: string[] }
-    expect(opts.message).toBe('Hay 1 tarea en curso.')
-    expect(opts.buttons).toEqual(['Salir igualmente', 'Cancelar'])
-    await page.waitForTimeout(1500)
-    expect(await page.evaluate(() => document.title.length > 0)).toBe(true) // sigue viva y responde
-    await shot(a, SHOTS, 'salir-cancelado')
+      await stubDialog(electronApp, { messageBoxResponse: 1 })
+      await electronApp.evaluate(({ app }) => app.quit())
+      await expect
+        .poll(async () => (await dialogCalls(electronApp)).filter((c) => c.kind === 'message').length, { timeout: 10_000 })
+        .toBe(1)
+      const opts = (await dialogCalls(electronApp)).find((c) => c.kind === 'message')!.options as { message: string; buttons: string[] }
+      expect(opts.message).toBe('Hay 1 tarea en curso.')
+      expect(opts.buttons).toEqual(['Salir igualmente', 'Cancelar'])
+      await page.waitForTimeout(1500)
+      expect(await page.evaluate(() => document.title.length > 0)).toBe(true) // sigue viva y responde
+      await shot(a, SHOTS, 'salir-cancelado')
 
-    await stubDialog(electronApp, { messageBoxResponse: 0 })
-    const closed = new Promise<void>((r) => electronApp.process().once('exit', () => r()))
-    await electronApp.evaluate(({ app }) => app.quit())
-    await Promise.race([
-      closed,
-      new Promise((_, rej) => setTimeout(() => rej(new Error('la app no salió tras «Salir igualmente»')), 30_000))
-    ])
-    // Al salir se cierran los streams de eventos de los servidores: Chromium lo registra como error de red (esperado).
-    consumeErrors(a, /ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_CONNECTION/)
-  }, 90_000)
+      await stubDialog(electronApp, { messageBoxResponse: 0 })
+      const closed = new Promise<void>((r) => electronApp.process().once('exit', () => r()))
+      await electronApp.evaluate(({ app }) => app.quit())
+      await Promise.race([
+        closed,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('la app no salió tras «Salir igualmente»')), 30_000))
+      ])
+      // Al salir se cierran los streams de eventos de los servidores: Chromium lo registra como error de red (esperado).
+      consumeErrors(a, /ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_CONNECTION/)
+    },
+    90_000
+  )
 })

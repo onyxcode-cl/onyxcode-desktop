@@ -25,7 +25,9 @@ describe.skipIf(MODE === 'prod')(`calidad T2 (${MODE})`, () => {
   const app = useApp({ env })
   afterAll(async () => {
     // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
-    await app().stop().catch(() => undefined)
+    await app()
+      .stop()
+      .catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
     if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
@@ -33,7 +35,10 @@ describe.skipIf(MODE === 'prod')(`calidad T2 (${MODE})`, () => {
 
   it('Chat: un 429 muestra «Reintentar» y al pulsarlo queda UN solo mensaje de usuario', async () => {
     const a = app()
-    await newChatAndSend(a, 'haz algo con cuota', { steps: [{ type: 'error', statusCode: 429, message: 'Too many requests' }], match: 'haz algo con cuota' })
+    await newChatAndSend(a, 'haz algo con cuota', {
+      steps: [{ type: 'error', statusCode: 429, message: 'Too many requests' }],
+      match: 'haz algo con cuota'
+    })
     const retry = a.page.getByRole('button', { name: 'Reintentar', exact: true })
     await expectVisible(retry.first(), 20_000)
     await shot(a, SHOTS, 'chat-error-reintentar')
@@ -66,7 +71,10 @@ describe.skipIf(MODE === 'prod')(`calidad T2 (${MODE})`, () => {
 
   it('Chat: el error de contexto ofrece «Compactar» y resume la conversación', async () => {
     const a = app()
-    await newChatAndSend(a, 'texto enorme', { steps: [{ type: 'error', name: 'ContextOverflowError', message: 'too big' }], match: 'texto enorme' })
+    await newChatAndSend(a, 'texto enorme', {
+      steps: [{ type: 'error', name: 'ContextOverflowError', message: 'too big' }],
+      match: 'texto enorme'
+    })
     const compact = a.page.getByRole('button', { name: 'Compactar conversación' })
     await expectVisible(compact.first(), 20_000)
     await shot(a, SHOTS, 'chat-error-contexto')

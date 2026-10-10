@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../lib/i18n'
 import { onTreeKeyDown, SidebarTreeContext, type SidebarTreeValue } from './SidebarTree'
 
@@ -18,9 +18,27 @@ export function SidebarTree({ children, onClickCapture }: { children: React.Reac
     }),
     [t]
   )
+  // `role="tree"` exige hijos `treeitem`: sin conversaciones (solo el texto de «aún no hay…») el contenedor queda como un div normal.
+  const ref = useRef<HTMLDivElement>(null)
+  const [hasItems, setHasItems] = useState(true)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const sync = (): void => setHasItems(el.querySelector('[role="treeitem"]') !== null)
+    sync()
+    const mo = new MutationObserver(sync)
+    mo.observe(el, { childList: true, subtree: true })
+    return () => mo.disconnect()
+  }, [])
   return (
     <SidebarTreeContext.Provider value={value}>
-      <div role="tree" aria-label={t('app.sidebar.tree')} onKeyDown={onTreeKeyDown} onClickCapture={onClickCapture}>
+      <div
+        ref={ref}
+        role={hasItems ? 'tree' : undefined}
+        aria-label={hasItems ? t('app.sidebar.tree') : undefined}
+        onKeyDown={onTreeKeyDown}
+        onClickCapture={onClickCapture}
+      >
         {children}
       </div>
     </SidebarTreeContext.Provider>

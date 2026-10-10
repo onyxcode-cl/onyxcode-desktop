@@ -98,12 +98,10 @@ describe('conexión propia de la app', () => {
     await d().getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(d().getByRole('heading', { name: 'Elige tu modelo' }))
     await d().getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d().getByRole('heading', { name: IS_WIN ? 'Los tres modos' : 'Los cuatro modos' }))
-    // Windows: el asistente acaba en «Los tres modos» (sin el paso de permisos de macOS).
-    if (!IS_WIN) {
-      await d().getByRole('button', { name: 'Continuar' }).click()
-      await expectVisible(d().getByRole('heading', { name: 'Permisos de macOS' }))
-    }
+    await expectVisible(d().getByRole('heading', { name: 'Cómo puedes usarlo' }))
+    // Último paso, igual en macOS y Windows: «Prepara tu equipo».
+    await d().getByRole('button', { name: 'Continuar' }).click()
+    await expectVisible(d().getByRole('heading', { name: 'Prepara tu equipo' }))
     await d().getByRole('button', { name: 'Empezar' }).click()
     await expectCount(app.page.getByRole('dialog'), 0)
     await expect.poll(() => settingsOf(userData).onboarded).toBe(true)

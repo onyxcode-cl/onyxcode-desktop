@@ -12,7 +12,8 @@ import { fakeOutsideUserData } from '../lib/lotes'
 import { expectCount, expectVisible } from '../lib/wait'
 import { IS_WIN, STEPS_TOTAL, isolatedHomeEnv } from '../lib/proc'
 
-const settingsOf = (userData: string): Record<string, unknown> => JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8')) as Record<string, unknown>
+const settingsOf = (userData: string): Record<string, unknown> =>
+  JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8')) as Record<string, unknown>
 
 describe('asistente de primer uso', () => {
   let app: E2EApp | null = null
@@ -103,15 +104,13 @@ describe('asistente de primer uso', () => {
     await dialog().getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(dialog().getByRole('heading', { name: 'Elige tu modelo' }))
     await dialog().getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(dialog().getByRole('heading', { name: IS_WIN ? 'Los tres modos' : 'Los cuatro modos' }))
-    for (const label of [MODE_LABELS.chat, MODE_LABELS.code, ...(IS_WIN ? [] : [MODE_LABELS.tasks]), MODE_LABELS.routines]) {
+    await expectVisible(dialog().getByRole('heading', { name: 'Cómo puedes usarlo' }))
+    for (const label of [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines]) {
       await expectVisible(dialog().getByText(label, { exact: true }))
     }
-    // Windows: el asistente acaba en «Los tres modos» (sin el paso de permisos de macOS).
-    if (!IS_WIN) {
-      await dialog().getByRole('button', { name: 'Continuar' }).click()
-      await expectVisible(dialog().getByRole('heading', { name: 'Permisos de macOS' }))
-    }
+    // Último paso, igual en macOS y Windows: «Prepara tu equipo».
+    await dialog().getByRole('button', { name: 'Continuar' }).click()
+    await expectVisible(dialog().getByRole('heading', { name: 'Prepara tu equipo' }))
     await dialog().getByRole('button', { name: 'Empezar' }).click()
     await expectCount(a.page.getByRole('dialog'), 0)
     await expect.poll(() => settingsOf(userData).onboarded).toBe(true)

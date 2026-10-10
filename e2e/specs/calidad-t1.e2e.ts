@@ -31,7 +31,9 @@ describe.skipIf(MODE === 'prod')(`calidad T1 (${MODE})`, () => {
   })
   afterAll(async () => {
     // Los afterAll corren en orden inverso: se para la app antes de borrar (Windows: EBUSY si un proceso aún tiene la carpeta como cwd).
-    await app().stop().catch(() => undefined)
+    await app()
+      .stop()
+      .catch(() => undefined)
     res.folder?.cleanup()
     res.bin?.cleanup()
     if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })

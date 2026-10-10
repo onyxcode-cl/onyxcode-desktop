@@ -8,7 +8,21 @@ import { FakeClient } from '../lib/fake'
 import { connection, hook, storeState, waitForHooks } from '../lib/stores'
 import { expectAttr, expectCount, expectVisible } from '../lib/wait'
 import { spyNotifications } from '../lib/notifications'
-import { assistantInfo, chatDirectory, consumeErrors, countIpc, makeGitRepo, openCodeProject, connectTasksFolder, makeHomeFolder, prepareFakeBin, type TasksConn, fakeApi, newChatAndSend, sessionInfo } from '../lib/fase6'
+import {
+  assistantInfo,
+  chatDirectory,
+  consumeErrors,
+  countIpc,
+  makeGitRepo,
+  openCodeProject,
+  connectTasksFolder,
+  makeHomeFolder,
+  prepareFakeBin,
+  type TasksConn,
+  fakeApi,
+  newChatAndSend,
+  sessionInfo
+} from '../lib/fase6'
 import { IS_WIN } from '../lib/proc'
 
 describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
@@ -27,10 +41,26 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
     await a.fake.emit({
       events: [
-        { type: 'session.created', directory: foreign, properties: { sessionID: 'ses_ajena', info: sessionInfo('ses_ajena', foreign, 'Sesion ajena xyz') } },
-        { type: 'message.updated', directory: foreign, properties: { sessionID: 'ses_ajena', info: assistantInfo('msg_ajeno', 'ses_ajena', foreign) } },
-        { type: 'session.created', directory: chatDir, properties: { sessionID: 'ses_chat', info: sessionInfo('ses_chat', chatDir, 'Sesion de chat xyz') } },
-        { type: 'message.updated', directory: chatDir, properties: { sessionID: 'ses_chat', info: assistantInfo('msg_chat', 'ses_chat', chatDir) } }
+        {
+          type: 'session.created',
+          directory: foreign,
+          properties: { sessionID: 'ses_ajena', info: sessionInfo('ses_ajena', foreign, 'Sesion ajena xyz') }
+        },
+        {
+          type: 'message.updated',
+          directory: foreign,
+          properties: { sessionID: 'ses_ajena', info: assistantInfo('msg_ajeno', 'ses_ajena', foreign) }
+        },
+        {
+          type: 'session.created',
+          directory: chatDir,
+          properties: { sessionID: 'ses_chat', info: sessionInfo('ses_chat', chatDir, 'Sesion de chat xyz') }
+        },
+        {
+          type: 'message.updated',
+          directory: chatDir,
+          properties: { sessionID: 'ses_chat', info: assistantInfo('msg_chat', 'ses_chat', chatDir) }
+        }
       ]
     })
     await expectVisible(a.page.getByText('Sesion de chat xyz'))
@@ -45,7 +75,10 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
 
   it('9. resaltado de código: el bloque ```ts genera .hljs y clases de token', async () => {
     const a = app()
-    await newChatAndSend(a, 'dame codigo', { steps: [{ type: 'text', text: 'Aqui:\n\n```ts\nconst x: number = 1\nfunction f() { return x }\n```\n' }], match: 'dame codigo' })
+    await newChatAndSend(a, 'dame codigo', {
+      steps: [{ type: 'text', text: 'Aqui:\n\n```ts\nconst x: number = 1\nfunction f() { return x }\n```\n' }],
+      match: 'dame codigo'
+    })
     const code = a.page.locator('pre code.hljs')
     await expectVisible(code, 30_000)
     await expectVisible(a.page.locator('pre code .hljs-keyword'))
@@ -59,7 +92,9 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await a.page.getByRole('button', { name: 'Nueva conversación' }).first().click()
     const box = a.page.getByPlaceholder('Escribe un mensaje…')
     await box.fill('mensaje ime')
-    const before = (await a.fake.requests({ limit: 0, path: '/session', method: 'POST' })).filter((r) => r.path.endsWith('/prompt_async')).length
+    const before = (await a.fake.requests({ limit: 0, path: '/session', method: 'POST' })).filter((r) =>
+      r.path.endsWith('/prompt_async')
+    ).length
     // Precondición: este Chromium respeta keyCode en el constructor (si no, el caso 229 no probaría nada).
     expect(await a.page.evaluate(() => new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229 }).keyCode)).toBe(229)
     const fire = (init: { isComposing?: boolean; keyCode?: number }): Promise<boolean> =>
@@ -89,7 +124,13 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
   it('2. busy pegado (F6-B5): tras perder el evento de fin y reconectar el SSE, el spinner desaparece', async () => {
     const a = app()
     const chatDir = await chatDirectory(a)
-    const sid = await newChatAndSend(a, 'respuesta larga', { steps: [{ type: 'text', text: 'parcial' }, { type: 'delay', ms: 60_000 }], match: 'respuesta larga' })
+    const sid = await newChatAndSend(a, 'respuesta larga', {
+      steps: [
+        { type: 'text', text: 'parcial' },
+        { type: 'delay', ms: 60_000 }
+      ],
+      match: 'respuesta larga'
+    })
     const status = (): Promise<string | undefined> => storeState<string | undefined>(a.page, 'useSessions', `status.${sid}`)
     await expect.poll(status, { timeout: 15_000 }).toBe('busy')
     const stop = a.page.getByRole('button', { name: 'Detener' })
@@ -99,7 +140,11 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await a.fake.dropSse(3_000)
     await expect.poll(() => storeState<boolean>(a.page, 'useServer', 'streaming'), { timeout: 10_000 }).toBe(false)
     await fakeApi(a, 'POST', `/session/${sid}/abort`, chatDir)
-    await expect.poll(async () => ((await a.fake.status()).sessions as { id: string; status: string }[]).find((s) => s.id === sid)?.status, { timeout: 10_000 }).toBe('idle')
+    await expect
+      .poll(async () => ((await a.fake.status()).sessions as { id: string; status: string }[]).find((s) => s.id === sid)?.status, {
+        timeout: 10_000
+      })
+      .toBe('idle')
     expect(await status()).toBe('busy') // busy pegado: la UI no se enteró
     expect(await stop.isVisible()).toBe(true)
     // El SSE vuelve (backoff de la app) → onStreamReconnect → syncChatRunStatus → idle.
@@ -135,7 +180,10 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     // El userData sembrado por `startApp` ya trae `routinesTermsAcknowledged: true`: aquí no aparece el diálogo del aviso
     // (su flujo lo cubre `routines-terms.e2e.ts`).
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Rutinas' }).click()
-    await a.page.getByRole('button', { name: /Empezar desde cero|Nueva rutina/ }).first().click()
+    await a.page
+      .getByRole('button', { name: /Empezar desde cero|Nueva rutina/ })
+      .first()
+      .click()
     const editor = a.page.getByRole('dialog', { name: 'Nueva rutina' })
     await expectVisible(editor)
     await editor.getByLabel('Nombre').fill('Rutina e2e toggle')
@@ -151,7 +199,9 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     const file = join(a.userData, 'routines.json')
     const persisted = (): boolean | undefined => {
       try {
-        return (JSON.parse(readFileSync(file, 'utf8')).routines as { name: string; enabled: boolean }[]).find((r) => r.name === 'Rutina e2e toggle')?.enabled
+        return (JSON.parse(readFileSync(file, 'utf8')).routines as { name: string; enabled: boolean }[]).find(
+          (r) => r.name === 'Rutina e2e toggle'
+        )?.enabled
       } catch {
         return undefined
       }
@@ -216,19 +266,28 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     // Estabilizar: esperar a que no lleguen más git:status por el estado previo (fin de la ejecución del caso 4, etc.).
     let last = -1
     await expect
-      .poll(async () => {
-        const c = await git.count()
-        const same = c === last
-        last = c
-        return same
-      }, { timeout: 15_000, interval: 1_200 })
+      .poll(
+        async () => {
+          const c = await git.count()
+          const same = c === last
+          last = c
+          return same
+        },
+        { timeout: 15_000, interval: 1_200 }
+      )
       .toBe(true)
     await git.reset()
     const v0 = await storeState<number>(a.page, 'useCode', 'fsVersion')
 
     // 300 eventos del proyecto en ~1 s (6 lotes de 50 cada ~180 ms).
     const burst = (dir: string, n: number): Promise<unknown> =>
-      a.fake.emit({ events: Array.from({ length: n }, (_, i) => ({ type: 'file.watcher.updated', directory: dir, properties: { file: `${dir}/f${i}.txt`, event: 'change' } })) })
+      a.fake.emit({
+        events: Array.from({ length: n }, (_, i) => ({
+          type: 'file.watcher.updated',
+          directory: dir,
+          properties: { file: `${dir}/f${i}.txt`, event: 'change' }
+        }))
+      })
     const t0 = Date.now()
     for (let i = 0; i < 6; i++) {
       await burst(projectDir, 50)
@@ -278,7 +337,13 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
       await git.reset()
       const v0 = await storeState<number>(a.page, 'useCode', 'fsVersion')
       for (let i = 0; i < 3; i++) {
-        await a.fake.emit({ events: Array.from({ length: 20 }, (_, n) => ({ type: 'file.watcher.updated', directory: projectDir, properties: { file: `${projectDir}/h${i}_${n}.txt`, event: 'change' } })) })
+        await a.fake.emit({
+          events: Array.from({ length: 20 }, (_, n) => ({
+            type: 'file.watcher.updated',
+            directory: projectDir,
+            properties: { file: `${projectDir}/h${i}_${n}.txt`, event: 'change' }
+          }))
+        })
         await new Promise((r) => setTimeout(r, 700)) // > debounce (400 ms): cada lote sube fsVersion
       }
       await new Promise((r) => setTimeout(r, 1_000)) // espera acotada (negativa)
@@ -291,7 +356,8 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await expect.poll(() => git.count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(1) // al volver se pone al día
   })
 
-  it.skip('6c. ocultar/minimizar la ventana real no genera git:status (BrowserWindow.hide/minimize no cambia document.visibilityState en headless; checklist humana en docs/VERIFICACION.md)', () => undefined)
+  it.skip('6c. ocultar/minimizar la ventana real no genera git:status (BrowserWindow.hide/minimize no cambia document.visibilityState en headless; checklist humana en docs/VERIFICACION.md)', () =>
+    undefined)
 
   it('3. reiniciar el sidecar desde Ajustes durante un busy limpia el estado y los mensajes nuevos funcionan', async () => {
     const a = app()
@@ -299,7 +365,13 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     // (su recarga daría un 404 legítimo en consola): se vuelve a Chat y se suelta la sesión de Code.
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
     await a.page.evaluate(() => (window as any).__lazunoxE2E.useCode.setState({ activeSessionID: null }))
-    const sid = await newChatAndSend(a, 'trabajo largo', { steps: [{ type: 'text', text: 'parcial' }, { type: 'delay', ms: 60_000 }], match: 'trabajo largo' })
+    const sid = await newChatAndSend(a, 'trabajo largo', {
+      steps: [
+        { type: 'text', text: 'parcial' },
+        { type: 'delay', ms: 60_000 }
+      ],
+      match: 'trabajo largo'
+    })
     const status = (id: string): Promise<string | undefined> => storeState<string | undefined>(a.page, 'useSessions', `status.${id}`)
     await expect.poll(() => status(sid), { timeout: 15_000 }).toBe('busy')
     const oldUrl = await storeState<string>(a.page, 'useServer', 'connection.baseUrl')
@@ -314,9 +386,11 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     // Conexión nueva (otro puerto/credenciales) y nuevo proceso del falso.
     await expect.poll(() => storeState<string>(a.page, 'useServer', 'connection.baseUrl'), { timeout: 60_000 }).not.toBe(oldUrl)
     const fake2 = new FakeClient(await connection(a.page))
-    expect(((await fake2.status()).pid as number)).not.toBe(oldPid)
+    expect((await fake2.status()).pid as number).not.toBe(oldPid)
     // La sesión no existe en el sidecar nuevo: la lista se vacía y la vista de Chat vuelve a estado libre.
-    await expect.poll(() => storeState<string[]>(a.page, 'useSessions', 'sessions').then((x) => Object.keys(x)), { timeout: 30_000 }).not.toContain(sid)
+    await expect
+      .poll(() => storeState<string[]>(a.page, 'useSessions', 'sessions').then((x) => Object.keys(x)), { timeout: 30_000 })
+      .not.toContain(sid)
     await a.page.keyboard.press('Escape')
     await expectCount(a.page.locator('nav[aria-label="Secciones de ajustes"]'), 0)
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
@@ -373,7 +447,11 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
     res.folder?.cleanup()
     res.bin?.cleanup()
   })
-  const folder = { get path() { return res.folder.path } }
+  const folder = {
+    get path() {
+      return res.folder.path
+    }
+  }
 
   const accessRadios = (a: ReturnType<typeof app>) => a.page.getByRole('radiogroup', { name: 'Modo de acceso' }).getByRole('radio')
 
@@ -394,7 +472,9 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
     const codeSid = (await storeState<string>(a.page, 'useCode', 'activeSessionID'))!
     await expect.poll(() => storeState<string>(a.page, 'useCode', `runState.${codeSid}`), { timeout: 15_000 }).toBe('busy')
     // El sidecar principal también la ve ocupada en esa carpeta.
-    const codeDirs = ((await a.fake.status()).sessions as { id: string; directory: string; status: string }[]).filter((x) => x.directory === folder.path)
+    const codeDirs = ((await a.fake.status()).sessions as { id: string; directory: string; status: string }[]).filter(
+      (x) => x.directory === folder.path
+    )
     expect(codeDirs.map((x) => x.status)).toContain('busy')
 
     // Con el enrutado por directorio (default) la sesión de Code ni siquiera entra en useSessions.
@@ -406,7 +486,12 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
 
     // Escenario del bug original (F6-B1 sin enrutado): la sesión de Code SÍ está en useSessions con el origen principal
     // (`sessionSource` sin fijar). El filtro por origen de folderBusy debe ignorarla.
-    const busySession = { id: 'ses_code_en_useSessions', directory: folder.path, title: 'Code en useSessions', time: { created: Date.now(), updated: Date.now() } }
+    const busySession = {
+      id: 'ses_code_en_useSessions',
+      directory: folder.path,
+      title: 'Code en useSessions',
+      time: { created: Date.now(), updated: Date.now() }
+    }
     await a.page.evaluate((sess) => {
       const st = (window as any).__lazunoxE2E.useSessions
       st.setState({ sessions: { ...st.getState().sessions, [sess.id]: sess }, status: { ...st.getState().status, [sess.id]: 'busy' } })
@@ -415,10 +500,13 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
     expect(await accessRadios(a).first().isDisabled()).toBe(false)
 
     // Control positivo: la misma sesión atribuida al origen de Tareas sí marca ocupada la carpeta.
-    await a.page.evaluate(([id, baseUrl]) => {
-      const st = (window as any).__lazunoxE2E.useSessions
-      st.setState({ sessionSource: { ...st.getState().sessionSource, [id as string]: baseUrl } })
-    }, [busySession.id, conn.baseUrl])
+    await a.page.evaluate(
+      ([id, baseUrl]) => {
+        const st = (window as any).__lazunoxE2E.useSessions
+        st.setState({ sessionSource: { ...st.getState().sessionSource, [id as string]: baseUrl } })
+      },
+      [busySession.id, conn.baseUrl]
+    )
     await expect.poll(() => accessRadios(a).first().isDisabled(), { timeout: 10_000 }).toBe(true)
     // Y al quedar idle vuelve a habilitarse.
     await a.page.evaluate((id) => {
