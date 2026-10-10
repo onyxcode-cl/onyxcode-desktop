@@ -42,6 +42,8 @@ export const wizard = {
   'wizard.opencode.notFound': 'OpenCode was not found.',
   'wizard.opencode.installHint':
     'Install it by opening the Terminal app and pasting this command (copy it with the button; {app} never runs it for you):',
+  'wizard.opencode.installHint.win':
+    'Install it by opening PowerShell and pasting this command (copy it with the button; {app} never runs it for you). It needs Node.js:',
   'wizard.opencode.copied': 'Command copied',
   'wizard.opencode.copyInstall': 'Copy install command',
   'wizard.opencode.openDocs': 'Open instructions',

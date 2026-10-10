@@ -23,7 +23,7 @@ import {
 import { DISPLAY_NAME } from '@shared/brand'
 import { MODE_LABELS } from '@shared/labels'
 import type { MsgKey } from '@shared/i18n'
-import { OPENCODE_INSTALL_COMMAND, type OpencodeAction } from '@shared/opencode-links'
+import { openCodeInstallCommand, type OpencodeAction } from '@shared/opencode-links'
 import type { ModeId, OpencodeInfo } from '@shared/types'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
@@ -350,7 +350,9 @@ function StepOpencode({
         <div className="rounded-xl border border-border bg-bg px-3.5 py-3 text-sm">
           <p className="font-medium">{t('wizard.opencode.notFound')}</p>
           <p className="mt-1 text-xs text-muted">{t('wizard.opencode.installHint', { app: DISPLAY_NAME })}</p>
-          <code className="mt-2 block rounded-lg bg-hover px-2.5 py-1.5 font-mono text-xs break-all">{OPENCODE_INSTALL_COMMAND}</code>
+          <code className="mt-2 block rounded-lg bg-hover px-2.5 py-1.5 font-mono text-xs break-all">
+            {openCodeInstallCommand(currentPlatform())}
+          </code>
         </div>
       )}
 

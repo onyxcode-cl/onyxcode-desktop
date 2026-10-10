@@ -3,7 +3,7 @@ import { t } from '@shared/i18n'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { OPENCODE_INSTALL_COMMAND, OPENCODE_LINKS } from '@shared/opencode-links'
+import { OPENCODE_LINKS, openCodeInstallCommand } from '@shared/opencode-links'
 import { getOpencodeInfo, validateOpencodeBin } from '../opencode/binary'
 import { resolveOpencodeAsync } from '../opencode/server'
 import { settingsStore } from '../store'
@@ -18,7 +18,7 @@ export function registerOnboardingHandlers(ipcMain: IpcMain): void {
   })
 
   handle(ipcMain, 'app:opencodeAction', async ({ action }) => {
-    if (action === 'copyInstall') clipboard.writeText(OPENCODE_INSTALL_COMMAND)
+    if (action === 'copyInstall') clipboard.writeText(openCodeInstallCommand(process.platform))
     else await shell.openExternal(OPENCODE_LINKS[action])
   })
 

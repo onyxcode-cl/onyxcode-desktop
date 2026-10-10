@@ -11,6 +11,14 @@ export const OPENCODE_SDK_VERSION = '1.18.32'
 
 export const OPENCODE_INSTALL_COMMAND = 'curl -fsSL https://opencode.ai/install | bash'
 
+/** Comando de instalación de Windows (PowerShell): el paquete npm oficial, que no necesita bash ni WSL. */
+export const OPENCODE_INSTALL_COMMAND_WIN = 'npm install -g opencode-ai'
+
+/** El comando que se muestra y se copia según la plataforma (solo se copia: la app nunca lo ejecuta). */
+export function openCodeInstallCommand(platform: string): string {
+  return platform === 'win32' ? OPENCODE_INSTALL_COMMAND_WIN : OPENCODE_INSTALL_COMMAND
+}
+
 /** Páginas que la app puede abrir desde el asistente (URL fija: el renderer solo elige la clave). */
 export const OPENCODE_LINKS = {
   openDocs: 'https://opencode.ai/docs',
