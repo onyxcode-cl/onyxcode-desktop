@@ -138,10 +138,10 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
     }
   })
   computer.on('action', (ev) => {
-    send('computer:action', ev)
-    overlay.handleAction(ev)
+    // Primera acción real sobre la pantalla: recién ahora aparecen el borde, la píldora y se aparta la ventana.
     if (controlEntered && !hiddenThisSession && sessionWanted) {
       hiddenThisSession = true
+      overlay.setSession(true, sessionWanted.label)
       hideMainWindowForTask()
       // Lote C: "Ocultar las demás apps" solo en modo "Control de la pantalla" (en segundo plano no se oculta ni se
       // minimiza nada; ver B.7 del plan) y, como la ventana, solo cuando el agente actúa de verdad sobre la pantalla:
@@ -150,6 +150,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
       const prefs = computer.prefs.get()
       if (prefs.mode === 'full' && prefs.hideOtherApps) void appVisibility.hide(keepVisibleBundleIds())
     }
+    send('computer:action', ev)
+    overlay.handleAction(ev)
   })
   computer.on('killState', (st) => send('computer:killState', st))
   computer.on('stopped', (ev) => {
@@ -255,7 +257,6 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   const enterControlMode = (): void => {
     if (!sessionWanted) return
     controlEntered = true
-    overlay.setSession(true, sessionWanted.label)
   }
   computer.on('planApproved', (ev) => {
     // Entra en modo control si la aprobación es de la tarea ocupada (o no se puede saber de cuál es).

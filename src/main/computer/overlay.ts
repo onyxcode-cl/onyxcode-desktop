@@ -152,9 +152,14 @@ export class ComputerOverlay {
    */
   showAccessRequest(req: AccessRequest, floating = true): void {
     if (this.disposed) return
-    this.show(this.sessionLabel)
     this.pendingRequest = req
-    this.post(this.overlay, { type: 'waiting', request: req })
+    // Con la ventana principal al frente su tarjeta es la única: no se levanta el borde ni la píldora de «control remoto»
+    // (una tarea de archivos, documentos o navegador solo necesita aprobar el plan en el chat). Si la app pierde el foco,
+    // `setRequestFloating(true)` los muestra.
+    if (floating) {
+      this.show(this.sessionLabel)
+      this.post(this.overlay, { type: 'waiting', request: req })
+    }
     this.setRequestFloating(floating)
     if (this.idleTimer) clearTimeout(this.idleTimer) // no ocultar por inactividad mientras se espera
   }
@@ -166,6 +171,10 @@ export class ComputerOverlay {
     const req = this.pendingRequest
     if (!req) return
     if (floating) {
+      if (!this.visible) {
+        this.show(this.sessionLabel)
+        this.post(this.overlay, { type: 'waiting', request: req })
+      }
       this.resizePillForRequest(true)
       this.post(this.pill, { type: 'waiting', request: req })
       // Ajusta el alto de la ventana al de la tarjeta cuando ya se pintó (evita una zona transparente vacía).

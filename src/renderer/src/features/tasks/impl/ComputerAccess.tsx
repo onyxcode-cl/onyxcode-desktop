@@ -618,7 +618,8 @@ export function ControlBanner(): React.JSX.Element | null {
       </>
     )
   }
-  if (!anyBusy)
+  // Sin ninguna acción real sobre la pantalla (tarea de archivos, documentos o navegador) no hay «modo control»: nada de banner rojo.
+  if (!anyBusy || !lastAction)
     return (
       <>
         {revokeRow}
