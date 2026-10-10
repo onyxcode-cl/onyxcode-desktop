@@ -143,6 +143,12 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
     if (controlEntered && !hiddenThisSession && sessionWanted) {
       hiddenThisSession = true
       hideMainWindowForTask()
+      // Lote C: "Ocultar las demás apps" solo en modo "Control de la pantalla" (en segundo plano no se oculta ni se
+      // minimiza nada; ver B.7 del plan) y, como la ventana, solo cuando el agente actúa de verdad sobre la pantalla:
+      // una tarea de documentos o de navegador no deja el escritorio en negro. El takeover (`request_full_control`) las
+      // oculta aparte, en el listener de `computer.on('foreground', …)`.
+      const prefs = computer.prefs.get()
+      if (prefs.mode === 'full' && prefs.hideOtherApps) void appVisibility.hide(keepVisibleBundleIds())
     }
   })
   computer.on('killState', (st) => send('computer:killState', st))
@@ -250,11 +256,6 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
     if (!sessionWanted) return
     controlEntered = true
     overlay.setSession(true, sessionWanted.label)
-    // Lote C: "Ocultar las demás apps" solo en modo "Control de la pantalla" (en segundo plano no
-    // se oculta ni se minimiza nada; ver B.7 del plan). El takeover (`request_full_control`) las
-    // oculta aparte, en el listener de `computer.on('foreground', …)`.
-    const prefs = computer.prefs.get()
-    if (prefs.mode === 'full' && prefs.hideOtherApps) void appVisibility.hide(keepVisibleBundleIds())
   }
   computer.on('planApproved', (ev) => {
     // Entra en modo control si la aprobación es de la tarea ocupada (o no se puede saber de cuál es).
