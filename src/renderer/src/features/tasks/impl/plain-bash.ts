@@ -14,12 +14,15 @@ const RULES: Array<[PlainBashId, RegExp]> = [
   ['word', /(build_docx|python-docx|\.docx\b)/],
   ['ppt', /(build_pptx|python-pptx|\.pptx\b)/],
   ['pdf', /(build_pdf|reportlab|\bqpdf\b|\.pdf\b)/],
-  ['mkdir', /(^|[;&|]\s*)mkdir\b/],
-  ['move', /(^|[;&|]\s*)mv\b/],
-  ['copy', /(^|[;&|]\s*)(cp|ditto)\b/],
-  ['remove', /(^|[;&|]\s*)(rm|trash)\b/],
-  ['open', /(^|[;&|]\s*)open\b/],
-  ['look', /(^|[;&|]\s*)(ls|find|test|stat|du|cat|head|tail|wc|echo|pwd|which)\b/],
+  ['mkdir', /((^|[;&|]\s*)mkdir\b|new-item\b.*-itemtype\s+directory|\bmd\s)/],
+  ['move', /((^|[;&|]\s*)mv\b|\bmove-item\b|(^|[;&|]\s*)move\s)/],
+  ['copy', /((^|[;&|]\s*)(cp|ditto)\b|\bcopy-item\b|(^|[;&|]\s*)(copy|xcopy|robocopy)\s)/],
+  ['remove', /((^|[;&|]\s*)(rm|trash)\b|\bremove-item\b|(^|[;&|]\s*)(del|erase|rmdir)\s)/],
+  ['open', /((^|[;&|]\s*)open\b|\bstart-process\b|(^|[;&|]\s*)start\s)/],
+  [
+    'look',
+    /((^|[;&|]\s*)(ls|find|test|stat|du|cat|head|tail|wc|echo|pwd|which|dir|type)\b|\b(get-childitem|test-path|get-content|get-item)\b)/
+  ],
   ['prep', /(python3?\b|\$lazunox_python|\bpip\b|\bnode\b|\bsed\b|\bawk\b)/]
 ]
 

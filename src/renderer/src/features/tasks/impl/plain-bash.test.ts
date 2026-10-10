@@ -15,6 +15,11 @@ describe('plainBash', () => {
     ['test -e ~/Desktop/x && ls -l ~/Desktop/x', 'look'],
     ['ls -la', 'look'],
     ['python3 -c "print(1)"', 'prep'],
+    ['New-Item -ItemType Directory -Path C:\\Users\\x\\Desktop\\facturas', 'mkdir'],
+    ['Move-Item a.txt C:\\x\\b\\', 'move'],
+    ['Copy-Item a.txt b.txt', 'copy'],
+    ['Remove-Item temporal.txt', 'remove'],
+    ['Get-ChildItem C:\\Users\\x\\Desktop', 'look'],
     ['curl https://example.com', 'other']
   ] as const)('%s → %s', (cmd, id) => {
     expect(plainBash(cmd)).toBe(id)
