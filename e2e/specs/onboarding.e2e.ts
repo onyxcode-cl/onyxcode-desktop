@@ -169,7 +169,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
     await expectVisible(d.getByRole('heading', { name: 'Conecta tu IA' }))
     await d.getByRole('button', { name: 'Atrás' }).click()
 
-    await expectVisible(d.getByRole('heading', { name: 'Motor incluido' }))
+    await expectVisible(d.getByRole('heading', { name: 'Todo listo para empezar' }))
     await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL}`))
     await expectVisible(d.getByText('Incluido: OpenCode 1.18.32'))
     await expectVisible(d.getByRole('button', { name: 'Usar mi CLI…' }))
