@@ -34,7 +34,7 @@ export function ChatProgressHud({ entries, busy }: { entries: MessageEntry[]; bu
     <div
       role="status"
       aria-live="polite"
-      className="no-drag absolute top-3 right-3 z-10 hidden max-w-[260px] items-center gap-2 rounded-lg border border-border bg-elevated/95 px-2.5 py-1.5 text-[12.5px] shadow-md backdrop-blur desk:flex"
+      className="no-drag absolute top-3 right-3 z-10 hidden desk:right-[calc(var(--controls-inset,0px)+12px)] max-w-[260px] items-center gap-2 rounded-lg border border-border bg-elevated/95 px-2.5 py-1.5 text-[12.5px] shadow-md backdrop-blur desk:flex"
     >
       <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
       <span className="min-w-0 flex-1 truncate font-medium">{progress.label}</span>

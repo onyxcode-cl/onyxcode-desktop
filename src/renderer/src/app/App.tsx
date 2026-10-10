@@ -184,7 +184,9 @@ function DesktopApp(): React.JSX.Element {
           {
             '--header-inset': collapsed && isMacPlatform() ? '24px' : '0px',
             // Reserva derecha para los controles de ventana de Windows (0 en macOS y Linux).
-            '--controls-inset': `${controlsInset}px`
+            '--controls-inset': `${controlsInset}px`,
+            // Alto de la banda de título bajo los controles de Windows (48 px): los paneles del borde derecho dejan ese hueco libre arriba.
+            '--controls-band': controlsInset > 0 ? '48px' : '0px'
           } as React.CSSProperties
         }
       >
