@@ -35,9 +35,16 @@ describe('ruta de menús por accesibilidad', () => {
   })
 
   it('ignora acentos y los puntos suspensivos finales', () => {
-    expect(foldTitle('Preferencias…')).toBe('preferencias')
+    expect(foldTitle('Preferencias…')).toBe('preferencia')
     expect(pickMenuNode(bar, 'm.2', 'preferencias').node?.ref).toBe('m.2.0.1')
     expect(foldTitle('Conexión')).toBe('conexion')
+    // singular/plural: el agente pide «rutas» y el menú de Finder dice «ruta»
+    expect(foldTitle('Mostrar barra de rutas')).toBe(foldTitle('Mostrar barra de ruta'))
+  })
+
+  it('tolera plural/singular entre lo pedido y el título real', () => {
+    const nodes: MenuNodeLike[] = [{ ref: 'm.4.0.18', role: 'AXMenuItem', title: 'Mostrar barra de ruta' }]
+    expect(pickMenuNode(nodes, 'm.4', 'Mostrar barra de rutas').node?.ref).toBe('m.4.0.18')
   })
 
   it('si no existe devuelve las opciones de ese nivel para poder corregir', () => {

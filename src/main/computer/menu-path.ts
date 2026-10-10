@@ -13,13 +13,20 @@ export interface MenuNodeLike {
   enabled?: boolean
 }
 
-/** Minúsculas y sin acentos ni puntos suspensivos finales («Preferencias…» ≈ «preferencias»). */
+/**
+ * Minúsculas, sin acentos, sin «…» finales y con las palabras en singular tosco (quita la «s» final): «Mostrar barra de rutas» ≈
+ * «Mostrar barra de ruta» (el menú real de Finder). Es solo para COMPARAR; nunca se devuelve al usuario.
+ */
 export const foldTitle = (s: string): string =>
   s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[….]+\s*$/u, '')
     .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.length > 3 ? w.replace(/s$/, '') : w))
+    .join(' ')
     .trim()
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

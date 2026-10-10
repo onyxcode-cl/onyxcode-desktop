@@ -1876,31 +1876,54 @@ const TOOLS: ToolDef[] = [
       const path = Array.isArray(a.path) ? a.path.map((x) => String(x).trim()).filter(Boolean) : []
       if (path.length < 2 || path.length > 6)
         throw new Error('path debe tener entre 2 y 6 tramos: el menú de la barra y la opción (más submenús).')
+      // Una sola lectura del árbol (la barra de menús incluida): una búsqueda con tope de 50 coincidencias se quedaría con las opciones del
+      // primer menú (Apple). Límite de nodos alto: las ventanas se recorren antes que los menús y pueden ser muy grandes.
+      const tree = await axTree(app.bundleId, 30, 8000)
+      const menuNodes: MenuNodeLike[] = tree.nodes
+        .filter((n) => n.ref === 'm' || n.ref.startsWith('m.'))
+        .map((n) => ({ ref: n.ref, role: n.role, title: n.title, enabled: n.enabled }))
+      if (!menuNodes.length) {
+        throw new Error(
+          `No pude leer la barra de menús de ${app.name}` +
+            (tree.truncated ? ' (la ventana es enorme y se agotó la lectura)' : '') +
+            ': usa el teclado o app_tree.'
+        )
+      }
       let parent: string | null = null
-      let last: MenuNodeLike | undefined
+      const chain: MenuNodeLike[] = []
       for (const [i, seg] of path.entries()) {
-        const found = await axFind(app.bundleId, { role: i === 0 ? 'AXMenuBarItem' : 'AXMenuItem', title: seg, limit: 50 })
-        let pick = pickMenuNode(found.matches, parent, seg)
-        if (!pick.node) {
-          // El filtro por título del helper puede dejar fuera opciones con otro texto: para listar las opciones disponibles se pide todo ese rol.
-          const all = await axFind(app.bundleId, { role: i === 0 ? 'AXMenuBarItem' : 'AXMenuItem', limit: 50 })
-          pick = pickMenuNode(all.matches, parent, seg)
-        }
+        const pick = pickMenuNode(menuNodes, parent, seg)
         if (!pick.node) {
           const where = i === 0 ? 'en la barra de menús' : `dentro de «${path.slice(0, i).join(' › ')}»`
           throw new Error(
             `No encontré «${seg}» ${where} de ${app.name}.` +
               (pick.options.length
-                ? ` Opciones de ese nivel: ${pick.options.slice(0, 30).join(' | ')}.`
-                : ' No pude leer ese menú: usa el teclado o app_tree.')
+                ? ` Opciones de ese nivel: ${pick.options.slice(0, 40).join(' | ')}.`
+                : ' Ese menú no tiene opciones legibles.')
           )
         }
         parent = pick.node.ref
-        last = pick.node
+        chain.push(pick.node)
       }
-      if (!last) throw new Error('Ruta vacía')
-      if (last.enabled === false) throw new Error(`La opción «${path.join(' › ')}» está desactivada en este momento.`)
-      await act({ tool: 'app_menu', text: `${app.name} ${path.join(' › ')}` }, () => axPress(app.bundleId, last!.ref, 'AXMenuItem'))
+      const last = chain[chain.length - 1]
+      await act({ tool: 'app_menu', text: `${app.name} ${path.join(' › ')}` }, async () => {
+        try {
+          await axPress(app.bundleId, last.ref, 'AXMenuItem')
+        } catch (firstErr) {
+          // Muchas apps (Finder) validan y activan sus opciones solo al ABRIR el menú: se abren los tramos intermedios y se reintenta.
+          try {
+            for (const step of chain.slice(0, -1)) await axPress(app.bundleId, step.ref)
+            await new Promise((r) => setTimeout(r, 250))
+            await axPress(app.bundleId, last.ref, 'AXMenuItem')
+          } catch {
+            throw new Error(
+              `No se pudo elegir «${path.join(' › ')}» en ${app.name}` +
+                (last.enabled === false ? ' (la opción está desactivada en este momento)' : '') +
+                `: ${firstErr instanceof Error ? firstErr.message : String(firstErr)}`
+            )
+          }
+        }
+      })
       return `Elegido «${path.join(' › ')}» en ${app.name}.`
     }
   },
