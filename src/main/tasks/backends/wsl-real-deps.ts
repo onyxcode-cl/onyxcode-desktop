@@ -4,7 +4,7 @@
  * Los comandos llegan ya como `WslSpawnSpec` (lista cerrada de `wsl-spec.ts`): aquí no se arma ningún argumento.
  */
 import { spawn, type ChildProcess } from 'node:child_process'
-import { createReadStream, createWriteStream, statfsSync } from 'node:fs'
+import { createReadStream, createWriteStream, mkdirSync, statfsSync } from 'node:fs'
 import { connect as netConnect, createServer } from 'node:net'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join, parse } from 'node:path'
@@ -214,6 +214,7 @@ export function createRealWslDeps(o: RealWslDepsOptions): WslDeps {
     connect: realConnect,
     listen: realListen,
     policyDisabled: o.policyDisabled,
-    setup: createRealSetupExtras(o)
+    setup: createRealSetupExtras(o),
+    ensureDir: (p) => mkdirSync(p, { recursive: true })
   }
 }

@@ -47,6 +47,12 @@ export interface WslDeps {
   /** Sin esto el backend no ofrece `setup`/`remove` y `status` no compara con el pin. */
   setup?: WslSetupExtras
   onReject?: (info: { port: number; streamId: number }) => void
+  /**
+   * Crea (si faltan) las carpetas de trabajo del agente DENTRO de la carpeta principal, antes de lanzar: la política Landlock exige que
+   * cada ruta exista y `.lazunox\\trabajo` no existe en una carpeta recién elegida (en macOS Seatbelt no lo exige). Sin esto la
+   * primera tarea de una carpeta fallaba con «la ruta de la política no existe».
+   */
+  ensureDir?: (hostPath: string) => void
 }
 
 const STATUS_TIMEOUT_MS = 20_000
@@ -79,6 +85,7 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
     async launch(spec: SandboxLaunchSpec): Promise<LaunchedSandbox> {
       if (!spec.isolation) throw new Error('falta el directorio privado del sandbox')
       const sandboxKey = win32.basename(spec.isolation.privateDir)
+      deps.ensureDir?.(win32.join(spec.folder, '.lazunox', 'trabajo'))
       const env = { ...spec.baseEnv, ...spec.proxyEnv, ...spec.extraEnv }
       const { frame, mounts } = buildWslInit({
         folder: spec.folder,

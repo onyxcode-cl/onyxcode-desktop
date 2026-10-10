@@ -158,6 +158,15 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect((await createWslBackend(t.d).status()).state).toBe('needsSetup')
   })
 
+  it('launch: crea la carpeta de trabajo del agente en el anfitrión antes de lanzar (Landlock exige que exista)', async () => {
+    const made: string[] = []
+    const t = deps({ ensureDir: (p) => void made.push(p) })
+    const spec = launchSpec()
+    await createWslBackend(t.d).launch(spec)
+    expect(made).toEqual([`${spec.folder.replace(/\\+$/, '')}\\.lazunox\\trabajo`])
+    expect(made[0]!.length).toBeGreaterThan(spec.folder.length)
+  })
+
   it('launch: spawn de wsl.exe con entorno mínimo, trama INIT sin claves reales y relés solo a los puertos del proxy', async () => {
     const t = deps()
     const b = createWslBackend(t.d)
