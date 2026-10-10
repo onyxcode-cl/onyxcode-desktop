@@ -354,10 +354,22 @@ function installNavigationGate(tab: TabRuntime): void {
     if (!isMainFrame) return
     if (navBypass.take(tab.id, url)) return // decidida ya (esa URL exacta, una vez); surface.ts ya validó el esquema
     prevent()
-    void resolveNavigationApproval(tab, url)
+    void resolveNavigationApproval(tab, url).catch((err) => console.error('[embedded-browser] navegación:', err))
   }
   tab.wc.on('will-frame-navigate', (d) => handle(d.url, d.isMainFrame, () => d.preventDefault()))
-  tab.wc.on('will-redirect', (d) => handle(d.url, d.isMainFrame, () => d.preventDefault()))
+  tab.wc.on('will-redirect', (d) => {
+    // Redirección de algo que escribió el usuario (google.cl → www.google.cl): se deja seguir. Cancelarla y relanzarla
+    // hacía fallar ambas cargas con ERR_FAILED (-2) y la página no abría. Las del agente siguen pasando por la puerta.
+    if (d.isMainFrame) {
+      const rt = ownerRuntime(tab.owner)
+      const parsed = parseNav(d.url)
+      if (parsed && (rt.control !== 'agent' || isUserActive(tab))) {
+        rt.userVisitedHosts.add(parsed.host)
+        return
+      }
+    }
+    handle(d.url, d.isMainFrame, () => d.preventDefault())
+  })
 }
 
 function waitForLoad(tab: TabRuntime, timeoutMs: number): Promise<void> {
