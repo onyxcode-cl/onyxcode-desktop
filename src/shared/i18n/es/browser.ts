@@ -12,6 +12,7 @@ export const browser = {
   'browser.chat.page': 'Página:',
   'browser.chat.element': 'Elemento:',
   'browser.tab.close': 'Cerrar pestaña',
+  'browser.agent.reading': 'Leyendo {host}…',
   'browser.agent.paused': 'Pausado',
   'browser.agent.resume': 'Reanudar',
   'browser.agent.userActive': 'Estás usando el navegador: el agente espera',

@@ -43,6 +43,17 @@ export interface BrowserPanelProps {
 }
 
 /** ¿Esta pestaña está "vacía" (recién creada, sin contenido de usuario)? Sirve para mostrar el `DevServerHint`. */
+/** Sitio de una URL para mostrarlo corto («www.» fuera); null si no hay una página web. */
+function hostOf(url: string | undefined): string | null {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.hostname.replace(/^www\./, '') : null
+  } catch {
+    return null
+  }
+}
+
 function isEmptyTab(tab: BrowserTab | null): boolean {
   return !tab || tab.url === '' || tab.url === 'about:blank'
 }
@@ -319,6 +330,7 @@ export function BrowserPanel({
       <AgentBar
         control={control}
         agentLabel={state?.agentLabel ?? null}
+        host={hostOf(activeTab?.url)}
         userActive={!!state?.userActive}
         onPause={() => void br('browser:agent', { owner, action: 'pause' }).catch(() => undefined)}
         onResume={() => void br('browser:agent', { owner, action: 'resume' }).catch(() => undefined)}

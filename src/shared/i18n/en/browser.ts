@@ -15,6 +15,7 @@ export const browser = {
   'browser.chat.page': 'Page:',
   'browser.chat.element': 'Element:',
   'browser.tab.close': 'Close tab',
+  'browser.agent.reading': 'Reading {host}…',
   'browser.agent.paused': 'Paused',
   'browser.agent.resume': 'Resume',
   'browser.agent.userActive': 'You’re using the browser: the agent is waiting',

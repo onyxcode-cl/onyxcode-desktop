@@ -10,6 +10,7 @@ import { useT } from '../../lib/i18n'
 export function AgentBar({
   control,
   agentLabel,
+  host,
   userActive,
   onPause,
   onResume,
@@ -17,6 +18,8 @@ export function AgentBar({
 }: {
   control: BrowserOwnerState['control']
   agentLabel: string | null
+  /** Sitio de la pestaña que el agente está leyendo (sin «www.»), si es una página web. */
+  host?: string | null
   userActive: boolean
   onPause: () => void
   onResume: () => void
@@ -48,9 +51,12 @@ export function AgentBar({
 
   return (
     <div className="flex h-8 shrink-0 items-center gap-2 border-b border-accent/30 bg-accent-soft/40 px-3 text-xs">
-      <Bot size={13} className="shrink-0 text-accent" />
+      <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+      </span>
       <span className="min-w-0 flex-1 truncate text-fg/90">
-        {t('browser.agent.using')}
+        {host ? t('browser.agent.reading', { host }) : t('browser.agent.using')}
         {agentLabel ? ` · ${agentLabel}` : ''}
       </span>
       <button
