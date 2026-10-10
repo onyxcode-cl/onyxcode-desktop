@@ -219,7 +219,6 @@ async function main() {
 function checkOut() {
   const FORBIDDEN = [
     'sandbox-exec',
-    'cu-helper',
     'ditto',
     'swap.sh',
     'buildSandboxProfile',
@@ -233,6 +232,8 @@ function checkOut() {
   const hits = []
   lines.forEach((line, i) => {
     if (I18N_LINE.test(line)) return
+    // `cu-helper` ya no es solo de macOS (Control del PC en Windows usa `cu-helper.exe`) y el instalador de LibreOffice (solo se ejecuta en macOS) lleva `ditto`.
+    if (line.includes('LibreOffice.app')) return
     for (const word of FORBIDDEN) if (line.includes(word)) hits.push(`${i + 1}: «${word}» ${line.trim().slice(0, 120)}`)
   })
   if (hits.length) {
