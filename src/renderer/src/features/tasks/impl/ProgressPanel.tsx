@@ -12,19 +12,23 @@ import {
   CheckCircle2,
   ChevronRight,
   Circle,
-  CircleDashed,
   CircleX,
   FileInput,
   FileOutput,
+  FilePlus2,
+  FileSearch,
   Globe,
   ListChecks,
   Loader2,
   MonitorCog,
+  MousePointerClick,
   Package,
   Plug,
   RefreshCw,
+  Sparkles,
   Terminal,
-  Activity
+  Activity,
+  type LucideIcon
 } from 'lucide-react'
 import type { TasksDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
 import { useT } from '../../../lib/i18n'
@@ -34,7 +38,8 @@ import { Section } from './PanelSection'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { openTaskAnywhere } from './actions'
 import { ScreenshotThumbs } from './ComputerAccess'
-import { computerToolKind, describeAction, toolImages } from './computer-tools'
+import { describeAction, toolImages } from './computer-tools'
+import { STEP_TONE, stepKind, stepStartedAt, type StepKind } from './tool-look'
 import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
 import { showPath } from './conn-paths'
@@ -58,42 +63,57 @@ function TodoIcon({ status }: { status: string }): React.JSX.Element {
   }
 }
 
-function ToolStatusIcon({ part }: { part: ToolPart }): React.JSX.Element {
-  switch (part.state.status) {
-    case 'completed':
-      return <CheckCircle2 size={12} className="text-accent" />
-    case 'error':
-      return <AlertCircle size={12} className="text-danger" />
-    case 'running':
-      return <Loader2 size={12} className="animate-spin text-accent" />
-    default:
-      return <CircleDashed size={12} className="text-subtle" />
-  }
+const STEP_ICON: Record<StepKind, LucideIcon> = {
+  mac: MousePointerClick,
+  web: Globe,
+  create: FilePlus2,
+  read: FileSearch,
+  terminal: Terminal,
+  other: Sparkles
 }
 
-/** Una fila de actividad legible ("Leyó informe.md"). */
+/** Una fila de la bitácora, en palabras llanas ("Creó la hoja de Excel") con su icono de color, la hora y las capturas. */
 export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
   const { verb, detail } = friendlyTool(part, showPath)
   const images = toolImages(part)
-  const isComputer = !!computerToolKind(part.tool)
+  const kind = stepKind(part.tool)
+  const Icon = STEP_ICON[kind]
+  const tone = STEP_TONE[kind]
+  const running = part.state.status === 'running'
+  const failed = part.state.status === 'error'
+  const at = stepStartedAt(part.state)
   return (
     <li className="text-xs">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 shrink-0">
-          <ToolStatusIcon part={part} />
+        <span
+          className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${failed ? 'bg-danger/15' : tone.bg}`}
+          aria-hidden
+        >
+          {running ? (
+            <Loader2 size={11} className="animate-spin text-accent" />
+          ) : failed ? (
+            <AlertCircle size={11} className="text-danger" />
+          ) : (
+            <Icon size={11} className={tone.fg} />
+          )}
         </span>
-        <span className="min-w-0 flex-1 truncate" title={detail ? `${verb} ${detail}` : verb}>
-          <span className={isComputer ? 'text-amber-700 [[data-theme=dark]_&]:text-amber-400' : 'text-fg'}>{verb}</span>
+        <span className="min-w-0 flex-1 truncate pt-0.5" title={detail ? `${verb} ${detail}` : verb}>
+          <span className="text-fg">{verb}</span>
           {detail && <span className="text-muted"> {detail}</span>}
         </span>
+        {at !== null && (
+          <time className="shrink-0 pt-0.5 text-[10.5px] text-subtle tabular-nums" dateTime={new Date(at).toISOString()}>
+            {new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </time>
+        )}
       </div>
       {part.state.status === 'error' && (
-        <p className="mt-0.5 ml-5 line-clamp-2 text-danger" title={part.state.error}>
+        <p className="mt-0.5 ml-7 line-clamp-2 text-danger" title={part.state.error}>
           {part.state.error}
         </p>
       )}
       {images.length > 0 && (
-        <div className="ml-5">
+        <div className="ml-7">
           <ScreenshotThumbs images={images} />
         </div>
       )}

@@ -4,7 +4,7 @@ import { MAIN_SOURCE, type MessageEntry, type SessionRunState } from '../../../s
 import type { ConvError } from '../../../lib/session-reducer'
 import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
-import { t } from '@shared/i18n'
+import { t, type MsgKey } from '@shared/i18n'
 import { dateLocale } from '../../../lib/i18n'
 import { plainBash } from './plain-bash'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
@@ -204,9 +204,17 @@ function fileLabel(p: string): string {
   return p ? baseName(p) : ''
 }
 
+/** Herramientas de documentos que el agente puede cargar, con nombre llano para quien no es técnico. */
+const SKILL_NAMES = new Set(['xlsx', 'docx', 'pptx', 'pdf'])
+
 /** Descripción amigable de una llamada a herramienta: "Leyendo informe.md". */
 export function friendlyTool(part: ToolPart, showPath: (path: string) => string = (x) => x): { verb: string; detail: string } {
   const input = part.state.input ?? {}
+  if (part.tool === 'computer_request_access') return { verb: t('tasks.tool.plan.verb'), detail: t('tasks.tool.plan.detail') }
+  if (part.tool === 'skill') {
+    const name = str(input, 'name').toLowerCase()
+    return { verb: t('tasks.tool.skill.verb'), detail: t(`tasks.skill.${SKILL_NAMES.has(name) ? name : 'other'}` as MsgKey) }
+  }
   const kind = computerToolKind(part.tool)
   if (kind) return { verb: computerToolInfo(kind).label, detail: computerToolDetail(kind, input) }
   const running = part.state.status === 'running' || part.state.status === 'pending'
