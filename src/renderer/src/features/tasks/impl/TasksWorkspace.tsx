@@ -779,7 +779,8 @@ export function TasksWorkspace(): React.JSX.Element {
         <aside
           aria-label={t('a11y.sidePanel')}
           className="relative hidden shrink-0 flex-col border-l border-border lg:flex desk:border-l-transparent desk:bg-sidebar"
-          style={{ width: asideTab === 'browser' || asideTab === 'viewer' ? browserWidth : 320 }}
+          // El chat conserva 22 rem: con la ventana estrecha el panel cede espacio.
+          style={{ width: asideTab === 'browser' || asideTab === 'viewer' ? browserWidth : 320, maxWidth: 'calc(100% - 22rem)' }}
         >
           {(asideTab === 'browser' || asideTab === 'viewer') && (
             <div

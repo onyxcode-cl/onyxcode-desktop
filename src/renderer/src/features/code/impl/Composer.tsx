@@ -903,7 +903,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         </Sheet>
       )}
       <div
-        className={`mx-auto mt-1.5 max-w-3xl desk:max-w-[var(--measure-prose)] justify-center gap-3 px-6 text-[11px] text-subtle desk:text-meta desk:opacity-0 desk:transition-opacity desk:duration-150 desk:group-focus-within/cc:opacity-100 ${mobile ? 'hidden' : 'flex'}`}
+        className={`mx-auto mt-1.5 max-h-[1.1rem] max-w-3xl flex-wrap overflow-hidden desk:max-w-[var(--measure-prose)] justify-center gap-x-3 px-6 text-[11px] text-subtle desk:text-meta desk:opacity-0 desk:transition-opacity desk:duration-150 desk:group-focus-within/cc:opacity-100 ${mobile ? 'hidden' : 'flex'}`}
       >
         <span>
           <Kbd>/</Kbd> {t('code.composer.hintCommands')}

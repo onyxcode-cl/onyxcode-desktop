@@ -207,8 +207,9 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
   if (!panel && !terminalMounted && !browserMounted) return null
   return (
     <div
-      className={`relative flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
-      style={{ width }}
+      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
+      // El chat conserva siempre 22 rem: con la ventana estrecha el panel cede espacio (antes lo aplastaba y la caja de entrada se deformaba).
+      style={{ width, maxWidth: 'calc(100% - 22rem)' }}
     >
       <div
         onPointerDown={onPointerDown}
@@ -236,7 +237,12 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
             </button>
           </Tip>
         ))}
-        <IconButton size="sm" label={t('code.panel.close')} className="ml-auto desk:shrink-0" onClick={() => panel && togglePanel(panel)}>
+        <IconButton
+          size="sm"
+          label={t('code.panel.close')}
+          className="sticky right-0 ml-auto bg-bg desk:shrink-0"
+          onClick={() => panel && togglePanel(panel)}
+        >
           <X size={14} />
         </IconButton>
       </div>
@@ -441,6 +447,34 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
   )
 }
 
+/** Barra fija sobre la caja de entrada: cuántos archivos tienen cambios y un botón para revisarlos (como en Codex y Claude). */
+function ChangesBar({ directory }: { directory: string }): React.JSX.Element | null {
+  const t = useT()
+  const info = useBranch(directory)
+  const togglePanel = useCode((s) => s.togglePanel)
+  const panel = useCode((s) => s.panel)
+  if (isRemoteSurface() || !info || info.changes <= 0) return null
+  const open = panel === 'changes'
+  return (
+    <div className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
+      <div
+        data-testid="changes-bar"
+        className="flex min-w-0 animate-rise-in flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-elevated px-3 py-2 text-sm shadow-sm"
+      >
+        <GitCompare size={15} className="shrink-0 text-accent" aria-hidden />
+        <span className="min-w-0 flex-1 basis-40 truncate">{t('code.changesbar.text', { count: info.changes })}</span>
+        <button
+          type="button"
+          onClick={() => togglePanel('changes')}
+          className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent-soft"
+        >
+          {open ? t('code.changesbar.hide') : t('code.changesbar.review')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const ALL_PANELS: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] = [
   { id: 'changes', label: 'code.panel.changes', icon: <GitCompare size={16} /> },
   { id: 'terminal', label: 'code.panel.terminal', icon: <SquareTerminal size={16} /> },
@@ -526,9 +560,11 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
               aria-label={t(p.label)}
               aria-pressed={panel === p.id}
               onClick={() => togglePanel(p.id)}
-              className={`no-drag inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
               {p.icon}
+              {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
+              <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
             </button>
           </Tip>
         ))}
@@ -728,6 +764,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       )}
       {sid && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
+      <ChangesBar directory={directory} />
       {sid && entries && !busy && (
         <div className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
           <CodeMemoryProposalCard sessionId={sid} messages={entries} />
