@@ -154,6 +154,9 @@ export const tasks = {
     'Primero revisa el Escritorio y muéstrame un resumen de los archivos sueltos que hay; luego propón las carpetas por tipo y qué iría a cada una; cuando lo apruebe, muévelos.',
   'tasks.home.moveNote': 'Al mover archivos en Sandbox se te pedirá el permiso «{term}»; sin él, ofrecerá una copia ordenada.',
   'tasks.home.title': '¿En qué trabajamos hoy?',
+  'tasks.home.greet.morning': 'Buenos días',
+  'tasks.home.greet.afternoon': 'Buenas tardes',
+  'tasks.home.greet.evening': 'Buenas noches',
   'tasks.home.lead.noFolder':
     'Elige una carpeta y describe el resultado que esperas. El agente revisa, te propone un plan y, cuando lo apruebes, trabaja y te entrega los archivos.',
   'tasks.home.lead.full': 'El agente puede usar el ratón, el teclado y la pantalla. Detenlo con ⌘⇧Esc.',

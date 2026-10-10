@@ -158,6 +158,9 @@ export const tasks = {
   'tasks.home.moveNote':
     'When moving files in Sandbox you’ll be asked for the “{term}” permission; without it, the agent will offer a sorted copy instead.',
   'tasks.home.title': 'What shall we work on today?',
+  'tasks.home.greet.morning': 'Good morning',
+  'tasks.home.greet.afternoon': 'Good afternoon',
+  'tasks.home.greet.evening': 'Good evening',
   'tasks.home.lead.noFolder':
     'Choose a folder and describe the result you want. The agent reviews, proposes a plan and, once you approve it, works and hands you the files.',
   'tasks.home.lead.full': 'The agent can use the mouse, keyboard and screen. Stop it with ⌘⇧Esc.',

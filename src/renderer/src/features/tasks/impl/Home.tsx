@@ -1,6 +1,6 @@
 /** Pantalla de inicio de Tareas: compositor grande, carpeta, modo de acceso y sugerencias por categoría. */
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCog, ShieldCheck, type LucideIcon } from 'lucide-react'
 import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
@@ -177,6 +177,13 @@ function writeFlag(key: string, value: boolean): void {
   }
 }
 
+/** Saludo según la hora del día (mañana / tarde / noche). */
+export function greetingKey(hour: number): 'tasks.home.greet.morning' | 'tasks.home.greet.afternoon' | 'tasks.home.greet.evening' {
+  if (hour >= 5 && hour < 12) return 'tasks.home.greet.morning'
+  if (hour >= 12 && hour < 20) return 'tasks.home.greet.afternoon'
+  return 'tasks.home.greet.evening'
+}
+
 export function Home({
   onSend,
   sendError,
@@ -198,6 +205,9 @@ export function Home({
   const categories = getCategories(t).filter((c) => !c.computer || caps.computer)
   const blocked = sandboxBlocksStart(useSandbox((s) => s.status))
   const category = categories.find((c) => c.id === cat) ?? categories[0]
+  // El saludo se calcula al montar (no en el render): así el marcado estático de las pruebas no depende de la hora.
+  const [hour, setHour] = useState<number | null>(null)
+  useEffect(() => setHour(new Date().getHours()), [])
   const [hidden, setHidden] = useState(() => readFlag(HIDE_KEY, false))
   const [onboarded, setOnboarded] = useState(() => readFlag(ONBOARDED_KEY, false))
 
@@ -220,6 +230,7 @@ export function Home({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div className="m-auto w-full max-w-3xl py-10 desk:max-w-[calc(var(--measure-prose)+48px)]">
         <div className="mb-6 px-6 text-center">
+          {hour !== null && <p className="mb-1.5 animate-rise-in text-sm font-medium text-accent">{t(greetingKey(hour))}</p>}
           <h1 className="font-display text-[32px] leading-tight font-medium tracking-tight desk:leading-10 desk:font-semibold desk:tracking-[-0.02em]">
             {t('tasks.home.title')}
           </h1>
