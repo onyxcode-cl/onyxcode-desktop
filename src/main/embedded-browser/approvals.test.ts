@@ -14,6 +14,8 @@ vi.mock('electron', () => ({
   }
 }))
 vi.mock('@shared/i18n', () => ({ t: (k: string) => k }))
+// El diálogo de permisos va por `askButtons` (osascript en macOS): aquí se sustituye; elige «Permitir en esta tarea» (índice 1).
+vi.mock('../util/native-dialog', () => ({ askButtons: vi.fn(async () => 1) }))
 
 import { initApprovals, pendingLabels, requestApproval, respondApproval } from './approvals'
 

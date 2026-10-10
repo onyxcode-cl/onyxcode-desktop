@@ -11,7 +11,8 @@
  */
 import { t } from '@shared/i18n'
 import { randomBytes } from 'node:crypto'
-import { dialog, Notification } from 'electron'
+import { Notification } from 'electron'
+import { askButtons } from '../util/native-dialog'
 import { DISPLAY_NAME } from '@shared/brand'
 import type { BrowserApprovalRequest, BrowserDecision, BrowserOwner } from '@shared/ipc-browser'
 
@@ -136,27 +137,25 @@ async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserD
   // `defaultId`/`cancelId` apuntar al índice del "No"/"Cancelar"). Con el botón de índice 0 sí
   // pensado como el seguro, una pulsación de Return sin leer (dialogo inesperado, foco robado)
   // deniega en vez de conceder. `cancelId` también se deja en 0 por si Esc tiene el mismo problema.
+  // OJO: se usa `askButtons` y NO `dialog.showMessageBox`: éste, sin ventana padre, congela el bucle de eventos de la app mientras está abierto
+  // (ver `util/native-dialog.ts`) y con el control del Mac activo la ventana principal está minimizada, así que no hay padre.
   if (req.kind === 'sensitive' || req.kind === 'download') {
-    const res = await dialog.showMessageBox({
-      type: 'warning',
+    const i = await askButtons({
       message: req.summary ?? t('merr.dialog.allowDownload', { file: req.fileName ?? req.url }),
       detail: req.url,
       buttons: [t('merr.dialog.cancel'), t('merr.dialog.allow')],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true
+      defaultIndex: 0,
+      cancelIndex: 0
     })
-    return res.response === 1 ? 'allow' : 'deny'
+    return i === 1 ? 'allow' : 'deny'
   }
 
-  const res = await dialog.showMessageBox({
-    type: 'warning',
+  const i = await askButtons({
     message: t('merr.dialog.allowOpen', { target: labelFor(req) }),
     detail: req.url,
     buttons: [t('merr.dialog.no'), t('merr.dialog.allowInTask'), t('merr.dialog.allowAlways')],
-    defaultId: 0,
-    cancelId: 0,
-    noLink: true
+    defaultIndex: 0,
+    cancelIndex: 0
   })
-  return res.response === 1 ? 'task' : res.response === 2 ? 'always' : 'deny'
+  return i === 1 ? 'task' : i === 2 ? 'always' : 'deny'
 }
