@@ -40,6 +40,12 @@ ISERR ISEVEN ISODD N NA T TRUNC SIGN ROUNDUP REPT CHAR CODE CLEAN EXACT FIXED DO
 
 
 def find_soffice():
+    # En el Sandbox de Tareas LibreOffice aborta (y macOS muestra un aviso de problema): no se intenta.
+    if os.environ.get("LAZUNOX_SANDBOX") == "1":
+        return None
+    p = os.environ.get("LAZUNOX_SOFFICE")
+    if p and os.path.isfile(p) and os.access(p, os.X_OK):
+        return p
     p = shutil.which("soffice")
     if p:
         return p

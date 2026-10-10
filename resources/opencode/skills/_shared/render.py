@@ -41,7 +41,16 @@ def salida(res, codigo):
     sys.exit(codigo)
 
 
+def en_sandbox():
+    """¿Corre dentro del Sandbox de Tareas? Ahí LibreOffice no puede arrancar (aborta y macOS muestra un aviso de problema)."""
+    return os.environ.get("LAZUNOX_SANDBOX") == "1"
+
+
 def a_pdf(origen, outdir, avisos):
+    if en_sandbox():
+        avisos.append("LibreOffice no puede ejecutarse en modo Sandbox, así que no se renderiza ni se recalcula. Haz solo la "
+                      "verificación estructural y dilo en «Para revisar» (con Control total del Mac sí se puede revisar visualmente).")
+        return None
     soffice = buscar_soffice()
     if not soffice:
         avisos.append("LibreOffice no está instalado: no se puede renderizar este archivo de Office. Haz solo la verificación "

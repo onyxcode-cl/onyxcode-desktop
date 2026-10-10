@@ -80,7 +80,9 @@ export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
     PIP_CACHE_DIR: join(dirs.cache, 'pip'),
     UV_CACHE_DIR: join(dirs.cache, 'uv'),
     PIP_DISABLE_PIP_VERSION_CHECK: '1',
-    OPENCODE_DISABLE_AUTOUPDATE: '1'
+    OPENCODE_DISABLE_AUTOUPDATE: '1',
+    // Las skills de documentos no lanzan LibreOffice aquí (el perfil le niega LaunchServices y se aborta con un aviso del sistema).
+    LAZUNOX_SANDBOX: '1'
   }
 }
 
