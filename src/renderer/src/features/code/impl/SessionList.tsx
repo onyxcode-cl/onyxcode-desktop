@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import {
   Archive,
@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { displayTitle } from './session-title'
+import { dayBucket } from './day-bucket'
+import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
@@ -507,6 +509,8 @@ function ProjectGroup({
     () => [...list].sort((a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)) || b.time.updated - a.time.updated),
     [list, pinnedIds]
   )
+  // Con pocas sesiones las etiquetas de día sobran; tampoco en el celular (lista a pantalla completa).
+  const groupByDay = !isRemoteSurface() && sortedList.length > 3
   const archivedList = useMemo(
     () => Object.values(sessions).filter((x) => sessionProject[x.id] === directory && !x.parentID && x.time.archived),
     [sessions, sessionProject, directory]
@@ -632,19 +636,30 @@ function ProjectGroup({
         {!loading && list.length === 0 && isRemoteSurface() && (
           <div className="px-2 py-1 text-xs text-subtle desk:px-2.5 desk:py-2 desk:text-meta">{t('code.sessions.empty')}</div>
         )}
-        {sortedList.map((s) => {
+        {sortedList.map((s, i) => {
           const st = runState[s.id]
+          // Etiquetas «Hoy / Ayer / Esta semana / Antes» (solo en escritorio, con lista larga y fuera de las fijadas).
+          const bucket = dayBucket(s.time.updated)
+          const prev = sortedList[i - 1]
+          const showLabel =
+            groupByDay && !pinnedIds.has(s.id) && (!prev || pinnedIds.has(prev.id) || dayBucket(prev.time.updated) !== bucket)
           return (
-            <SessionRow
-              key={s.id}
-              session={s}
-              directory={directory}
-              active={s.id === activeSessionID}
-              waiting={waiting.has(s.id)}
-              busy={st === 'busy' || st === 'retry'}
-              unread={!!unread[s.id]}
-              pinned={pinnedIds.has(s.id)}
-            />
+            <Fragment key={s.id}>
+              {showLabel && (
+                <div role="presentation" className="px-2.5 pt-2 pb-0.5 text-[10.5px] font-medium tracking-wide text-subtle uppercase">
+                  {t(`code.sessions.day.${bucket}` as MsgKey)}
+                </div>
+              )}
+              <SessionRow
+                session={s}
+                directory={directory}
+                active={s.id === activeSessionID}
+                waiting={waiting.has(s.id)}
+                busy={st === 'busy' || st === 'retry'}
+                unread={!!unread[s.id]}
+                pinned={pinnedIds.has(s.id)}
+              />
+            </Fragment>
           )
         })}
         <LoadMoreSessions visible={moreSessions} onClick={() => void useCode.getState().loadMoreSessions(false, directory)} />

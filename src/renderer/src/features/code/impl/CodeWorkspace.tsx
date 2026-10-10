@@ -43,6 +43,7 @@ import { br, BrowserPanel, onBrowser } from '../../browser'
 import { IconButton } from '../../../components/IconButton'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
+import { diffStats } from '../../../components/DiffView'
 import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
 import { Composer } from './Composer'
 import { loadCodeLearnedMemory } from './learned-memory-store'
@@ -447,12 +448,40 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
   )
 }
 
+const STATS_MAX_CHARS = 4_000_000
+
+/** +líneas / −líneas de todos los cambios del repo (staged + unstaged + nuevos). Null si no se puede o el diff es enorme. */
+function useChangeStats(directory: string, changes: number): { additions: number; deletions: number } | null {
+  const fsVersion = useVisibleFsVersion()
+  const [stats, setStats] = useState<{ additions: number; deletions: number } | null>(null)
+  useEffect(() => {
+    const native = nativeCode()
+    if (!native || changes <= 0) {
+      setStats(null)
+      return
+    }
+    let cancelled = false
+    void native.git
+      .diff({ cwd: directory })
+      .then((patch) => {
+        if (cancelled) return
+        setStats(patch.length > STATS_MAX_CHARS ? null : diffStats(patch))
+      })
+      .catch(() => !cancelled && setStats(null))
+    return () => {
+      cancelled = true
+    }
+  }, [directory, changes, fsVersion])
+  return stats
+}
+
 /** Barra fija sobre la caja de entrada: cuántos archivos tienen cambios y un botón para revisarlos (como en Codex y Claude). */
 function ChangesBar({ directory }: { directory: string }): React.JSX.Element | null {
   const t = useT()
   const info = useBranch(directory)
   const togglePanel = useCode((s) => s.togglePanel)
   const panel = useCode((s) => s.panel)
+  const stats = useChangeStats(directory, info?.changes ?? 0)
   if (isRemoteSurface() || !info || info.changes <= 0) return null
   const open = panel === 'changes'
   return (
@@ -462,7 +491,14 @@ function ChangesBar({ directory }: { directory: string }): React.JSX.Element | n
         className="flex min-w-0 animate-rise-in flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-elevated px-3 py-2 text-sm shadow-sm"
       >
         <GitCompare size={15} className="shrink-0 text-accent" aria-hidden />
-        <span className="min-w-0 flex-1 basis-40 truncate">{t('code.changesbar.text', { count: info.changes })}</span>
+        <span className="min-w-0 flex-1 basis-40 truncate">
+          {t('code.changesbar.text', { count: info.changes })}
+          {stats && (
+            <span className="ml-2 font-mono text-xs tabular-nums">
+              <span className="text-success">+{stats.additions}</span> <span className="text-danger">−{stats.deletions}</span>
+            </span>
+          )}
+        </span>
         <button
           type="button"
           onClick={() => togglePanel('changes')}
