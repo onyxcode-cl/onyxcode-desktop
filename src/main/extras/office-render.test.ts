@@ -31,7 +31,8 @@ vi.mock('node:fs/promises', () => ({
   }
 }))
 
-describe('findSoffice / convertToPdf', () => {
+// Las rutas típicas de soffice y el perfil temporal son de macOS/Linux; el visor de Office con LibreOffice no está en la v1 de Windows.
+describe.skipIf(process.platform === 'win32')('findSoffice / convertToPdf', () => {
   beforeEach(() => {
     state.execImpl = null
     state.accessOk = new Set()

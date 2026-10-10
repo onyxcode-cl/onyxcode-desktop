@@ -7,7 +7,7 @@
  * `showMessageBox({…})` (sin padre) o `showMessageBox(opciones)` suelto fuera de la lista de usos revisados hace fallar.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const ROOT = join(process.cwd(), 'src', 'main')
@@ -31,7 +31,7 @@ describe('diálogos que no congelan la app', () => {
   it('no hay `showMessageBox` sin ventana padre fuera de los usos revisados', () => {
     const offenders: string[] = []
     for (const file of walk(ROOT)) {
-      const rel = relative(ROOT, file)
+      const rel = relative(ROOT, file).split(sep).join('/') // en Windows la ruta trae «\\»
       if (rel in REVIEWED) continue
       const src = readFileSync(file, 'utf8')
       src.split('\n').forEach((line, i) => {

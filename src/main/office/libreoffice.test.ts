@@ -109,7 +109,7 @@ describe('estado', () => {
   it('missing con el tamaño; installed (app) tras instalar; usa la del sistema si existe', async () => {
     expect(officeStatus(deps())).toEqual({ state: 'missing', version: '9.9.9', sizeBytes: BYTES.length })
     const exe = await installLibreOffice(deps())
-    expect(exe.endsWith('Contents/MacOS/soffice')).toBe(true)
+    expect(exe.replace(/\\/g, '/').endsWith('Contents/MacOS/soffice')).toBe(true)
     expect(officeStatus(deps())).toMatchObject({ state: 'installed', source: 'app', version: '9.9.9' })
     const sys = join(dir, 'Sys.app')
     mkdirSync(join(sys, 'Contents', 'MacOS'), { recursive: true })

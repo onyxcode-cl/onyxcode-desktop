@@ -25,7 +25,7 @@ beforeEach(async () => {
   convertToPdfMock.mockResolvedValue(null) // por defecto: "sin LibreOffice", el caso de siempre
   vi.resetModules()
   chatDocs = await import('./chat-docs')
-})
+}, 30_000) // en Windows la primera importación (exceljs, pptxgenjs…) tarda más de 10 s
 afterEach(() => {
   rmSync(fakeTemp, { recursive: true, force: true })
 })

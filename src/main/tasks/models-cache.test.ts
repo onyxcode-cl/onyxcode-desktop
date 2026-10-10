@@ -43,7 +43,8 @@ describe('seedBinaries', () => {
     expect(seedBinaries(folder, main)).toBe(true)
     const dest = join(folder, 'opencode', 'bin', 'rg')
     expect(readFileSync(dest, 'utf8')).toBe('binario')
-    expect(statSync(dest).mode & 0o111).not.toBe(0)
+    // Windows no tiene bit de ejecución: solo se comprueba en macOS/Linux.
+    if (process.platform !== 'win32') expect(statSync(dest).mode & 0o111).not.toBe(0)
     expect(seedBinaries(folder, main)).toBe(false)
   })
   it('sin carpeta bin principal no hace nada', () => {
