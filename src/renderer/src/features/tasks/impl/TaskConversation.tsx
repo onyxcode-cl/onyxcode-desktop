@@ -23,6 +23,7 @@ import { ActivityRow } from './ProgressPanel'
 import { compactTask, editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { ResultCard } from './ResultCard'
+import { WorkingCard } from './WorkingCard'
 import { Spark } from '../../../components/Logo'
 import { toolImages } from './computer-tools'
 import { useT } from '../../../lib/i18n'
@@ -453,9 +454,6 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
 
   const onCompact = useMemo(() => (taskId ? () => compactTask(taskId) : undefined), [taskId])
 
-  const last = blocks[blocks.length - 1]
-  const showThinking = busy && permissions.length === 0 && (!last || last.kind === 'user' || last.kind === 'text')
-
   return (
     <div className="relative min-h-0 flex-1">
       <ConversationAnnouncer busy={busy} error={error} entries={entries} />
@@ -523,11 +521,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
           {permissions.map((p) => (
             <PermissionCard key={p.id} request={p} />
           ))}
-          {showThinking && (
-            <div className="flex items-center gap-2 text-sm text-muted">
-              <Loader2 size={15} className="animate-spin" /> {t('tasks.conv.thinking')}
-            </div>
-          )}
+          {busy && permissions.length === 0 && <WorkingCard entries={entries} />}
           {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} onCompact={onCompact} />}
           {!busy && taskId && <ResultCard taskId={taskId} />}
           {footer}

@@ -938,3 +938,45 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-ring: rgb(244 114 182 / 0.4);
   --selection: rgb(244 114 182 / 0.22);
 }
+
+/* Tarjeta de trabajo en curso: barra de avance lapislázuli → chispa dorada y puntos que respiran. */
+.work-bar {
+  background: linear-gradient(90deg, var(--accent), #f0c35a);
+  transition: width 600ms var(--ease-out);
+}
+.work-bar-indeterminate {
+  animation: work-slide 1.6s ease-in-out infinite;
+}
+@keyframes work-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+.work-dots::after {
+  content: '';
+  animation: work-dots 1.4s steps(4, end) infinite;
+}
+@keyframes work-dots {
+  0% {
+    content: '';
+  }
+  25% {
+    content: '.';
+  }
+  50% {
+    content: '..';
+  }
+  75%,
+  100% {
+    content: '...';
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .work-bar-indeterminate,
+  .work-dots::after {
+    animation: none;
+  }
+}

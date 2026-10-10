@@ -74,6 +74,7 @@ export const tasks = {
   'tasks.plain.other.doing': 'Running',
   'tasks.plain.other.done': 'Ran',
   'tasks.plain.other.what': 'a step',
+  'tasks.work.step': 'Step {done} of {total}',
   'tasks.tool.bash.doing': 'Running',
   'tasks.tool.bash.done': 'Ran',
   'tasks.tool.webfetch.doing': 'Fetching',
