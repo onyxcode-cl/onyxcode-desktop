@@ -49,7 +49,7 @@ root.innerHTML = `
       <span class="title">${t('ovl.pill.title')}</span>
       <span class="step"></span>
     </span>
-    <kbd class="hint" title="${t('ovl.pill.hint')}">⌘⇧Esc</kbd>
+    <kbd class="hint" title="${t('ovl.pill.hint')}">${t('tasksComputer.shortcut')}</kbd>
     <button type="button" class="stop">${t('ovl.pill.stop')}</button>
   </div>
   <div class="request" hidden role="region" aria-labelledby="req-title">
