@@ -37,7 +37,7 @@ import { Badge, Card, NOTICE_DESK, Row, Select, SectionHeader, TextInput, Toggle
 import { OfficeComponentCard } from './OfficeComponentCard'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import { isWindowsPlatform } from '../../../lib/platform'
+import { isWindowsPlatform, platformCaps } from '../../../lib/platform'
 import { isSubmitKey } from '../../../lib/textarea'
 
 // ───────────────────────────── Helpers puros ─────────────────────────────
@@ -563,8 +563,8 @@ export function TasksSection(): React.JSX.Element {
       </Group>
 
       {/* 1 bis · Control total del equipo (sin carpeta) */}
-      {/* En Windows no existe Control total (Tareas siempre va aislada): no se muestra una opción que no se puede usar. */}
-      {!isWindowsPlatform() && (
+      {/* En Windows solo existe con Control del PC activo (helper presente); sin él no se muestra una opción que no se puede usar. */}
+      {(!isWindowsPlatform() || platformCaps().computer) && (
         <Group title={t('tasksSettings.full.title')} description={t('tasksSettings.full.desc')}>
           <Card>
             <Row

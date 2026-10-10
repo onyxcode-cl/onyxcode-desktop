@@ -2,7 +2,7 @@
 import { Loader2, MonitorCog, Shield } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
-import { isWindowsPlatform, platformCaps } from '../../../lib/platform'
+import { platformCaps } from '../../../lib/platform'
 import { setAccessMode } from './actions'
 import { useTasks } from './store'
 
@@ -26,8 +26,7 @@ export function AccessSegmented({
   // Control total no necesita carpeta (trabaja en la carpeta personal por defecto); Sandbox sí la pide al enviar.
   const off = disabled || starting
   // Sin Control del PC (Windows) solo existe el modo aislado: un selector de una sola opción no haría nada.
-  // En Windows el gestor de Tareas aún no concede Control total (`noFullAccess`): ofrecerlo solo daba el aviso «no está disponible».
-  if (!platformCaps().computer || isWindowsPlatform()) return null
+  if (!platformCaps().computer) return null
 
   const pick = (fullAccess: boolean): void => {
     if (off || (fullAccess === full && phase === 'ready')) return

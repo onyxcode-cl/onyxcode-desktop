@@ -15,6 +15,8 @@ export function spawnOnHost(command: string, args: string[], folder: string, env
     env: minimalEnv(env),
     stdio: ['ignore', 'pipe', 'pipe'],
     // Líder de su propio grupo: `killTree` mata también MCP/bash (AUDIT.md B3).
-    detached: true
+    detached: true,
+    // Windows (Control total sin WSL): sin ventana de consola. En macOS el objeto de opciones no cambia.
+    ...(process.platform === 'win32' ? { windowsHide: true } : {})
   })
 }

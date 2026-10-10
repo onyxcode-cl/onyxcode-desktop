@@ -14,6 +14,7 @@ export const wizard = {
   'wizard.stepTitle.modes.win': 'Cómo puedes usarlo',
   'wizard.stepTitle.permissions': 'Permisos de tu Mac',
   'wizard.fullControl': 'Control total del Mac',
+  'wizard.fullControl.win': 'Control total del PC',
   'wizard.fullControlShort': 'Control total',
   'wizard.connectTasksNotice':
     'OpenCode funciona con cualquiera de estos proveedores. La única excepción es {tasks} con sandbox, que en {app} solo admite OpenCode Go (y los modelos gratuitos de OpenCode); para usar otro proveedor ahí, elige {fullControl}.',

@@ -175,6 +175,8 @@ export const routines = {
   'routines.editor.fullTitle': '¿Ejecutar esta rutina con {fullControl}?',
   'routines.editor.fullP1':
     'La rutina saldrá del sandbox: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.',
+  'routines.editor.fullP1.win':
+    'La rutina saldrá del sandbox: podrá controlar aplicaciones de tu PC, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.',
   'routines.editor.fullP2a': 'En cada ejecución tendrás que ',
   'routines.editor.fullP2b': 'aprobar el plan en persona',
   'routines.editor.fullP2c':

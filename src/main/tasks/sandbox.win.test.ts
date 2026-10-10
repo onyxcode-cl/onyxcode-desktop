@@ -9,13 +9,25 @@ import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const rec = vi.hoisted(() => ({ launches: 0, proxies: 0, userData: '' }))
+const rec = vi.hoisted(() => ({ launches: 0, proxies: 0, userData: '', hostSpawns: 0 }))
 
 vi.mock('electron', () => ({ app: { getPath: () => rec.userData, getAppPath: () => '/fixture/app' } }))
 vi.mock('../opencode/server', () => ({ resolveOpencodeAsync: async () => ({ path: '/fixture/bin/opencode' }) }))
 vi.mock('../util/net', () => ({ getFreePort: async () => 51000, waitForHealth: async () => '9.9.9' }))
 vi.mock('../opencode/pids', () => ({ killTree: () => undefined, trackPid: () => undefined, untrackPid: () => undefined }))
 vi.mock('./opencode-config', () => ({ getOpencodeEnv: () => ({ OPENCODE_CONFIG_DIR: 'C:\\cfg' }) }))
+vi.mock('./backends/spawn', () => ({
+  spawnOnHost: () => {
+    rec.hostSpawns++
+    return Object.assign(new EventEmitter(), {
+      pid: 78,
+      exitCode: null,
+      signalCode: null,
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter()
+    })
+  }
+}))
 vi.mock('./proxy', () => {
   class P {
     port = 1
@@ -41,6 +53,7 @@ beforeEach(() => {
   rec.userData = dir
   rec.launches = 0
   rec.proxies = 0
+  rec.hostSpawns = 0
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
@@ -161,5 +174,45 @@ describe('startTasksServer en win32 (A18)', () => {
     expect(h.sandboxed).toBe(true)
     expect(h.paths).toEqual({ map: { kind: 'wsl', mounts: [{ win: 'C:\\lzx\\a', linux: '/win/c/lzx/a' }] }, directory: '/win/c/lzx/a' })
     expect(rec.launches).toBe(1)
+  })
+})
+
+describe('startTasksServer en win32: Control total (sin WSL) solo con todas las puertas', () => {
+  const full = { platform: 'win32', noSandbox: true, winFullAccess: true, isolation: undefined } as const
+  it('sin `winFullAccess` sigue lanzando, aunque haya bandera y usuario normal', async () => {
+    await expect(
+      startTasksServer(dir, { platform: 'win32', noSandbox: true, tasksWin: true, isElevated: async () => false })
+    ).rejects.toThrow()
+    expect(rec.hostSpawns).toBe(0)
+  })
+  it('sin la bandera tasksWin cierra con WinBackendUnavailable', async () => {
+    await expect(startTasksServer(dir, { ...full, isElevated: async () => false })).rejects.toBeInstanceOf(WinBackendUnavailable)
+    expect(rec.hostSpawns).toBe(0)
+  })
+  it('elevado, o sin saberlo, cierra: nunca se lanza como administrador', async () => {
+    for (const elevated of [true, null]) {
+      await expect(startTasksServer(dir, { ...full, tasksWin: true, isElevated: async () => elevated })).rejects.toMatchObject({
+        block: 'elevated'
+      })
+    }
+    await expect(
+      startTasksServer(dir, {
+        ...full,
+        tasksWin: true,
+        isElevated: async () => {
+          throw new Error('whoami falló')
+        }
+      })
+    ).rejects.toMatchObject({ block: 'elevated' })
+    expect(rec.hostSpawns).toBe(0)
+  })
+  it('con todo en regla lanza OpenCode en el equipo: sin distro, sin proxies y con rutas de Windows tal cual', async () => {
+    const h = await startTasksServer(dir, { ...full, tasksWin: true, isElevated: async () => false })
+    expect(rec.hostSpawns).toBe(1)
+    expect(rec.launches).toBe(0)
+    expect(rec.proxies).toBe(0)
+    expect(h.sandboxed).toBe(false)
+    expect(h.deleteAllowed).toBe(true)
+    expect(h.paths.directory).toBe(dir)
   })
 })

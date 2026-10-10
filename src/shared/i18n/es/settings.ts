@@ -268,6 +268,7 @@ export const settings = {
   'settings.doctor.item.screenRecording.ok': 'Permiso concedido',
   'settings.doctor.item.screenRecording.fail': 'Falta el permiso de Grabación de pantalla: sin él el agente no puede ver la pantalla',
   'settings.doctor.item.controlHelper.title': 'Herramienta de control del Mac',
+  'settings.doctor.item.controlHelper.title.win': 'Herramienta de control del PC',
   'settings.doctor.item.controlHelper.ok': 'Herramienta de control lista',
   'settings.doctor.item.controlHelper.fail': 'La herramienta de control no arrancó',
   'settings.doctor.item.keyboardTool.title': 'Herramienta de teclado remoto',

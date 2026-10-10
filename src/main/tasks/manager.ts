@@ -252,9 +252,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     }
   }
 
-  /** Control total no existe en Windows (sin sandbox ni control del PC en esta versión): jamás se concede ni arranca. */
+  /**
+   * Control total en Windows (decisión del dueño, 2026-10-10): existe SOLO junto a Control del PC (`computerWin`: helper presente) y
+   * Tareas (`tasksWin`). Sin ambas banderas jamás se concede ni arranca. Además `startTasksServer` exige que Lazunox no corra elevado.
+   */
   private get noFullAccess(): boolean {
-    return this.platform === 'win32'
+    return this.platform === 'win32' && !(this.opts.computerWin === true && this.opts.tasksWin === true)
   }
 
   /**
@@ -977,6 +980,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
+        // Windows: sin WSL solo con Control total (ya filtrado por `noFullAccess`); `startTasksServer` lo vuelve a exigir.
+        winFullAccess: fullAccess && this.platform === 'win32',
         platform: this.platform,
         tasksWin: this.opts.tasksWin,
         winBackend: this.opts.winBackend,

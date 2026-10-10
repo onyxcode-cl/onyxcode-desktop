@@ -269,6 +269,7 @@ export const settings = {
   'settings.doctor.item.screenRecording.ok': 'Permission granted',
   'settings.doctor.item.screenRecording.fail': 'The Screen Recording permission is missing: without it the agent cannot see the screen',
   'settings.doctor.item.controlHelper.title': 'Mac control tool',
+  'settings.doctor.item.controlHelper.title.win': 'PC control tool',
   'settings.doctor.item.controlHelper.ok': 'Control tool ready',
   'settings.doctor.item.controlHelper.fail': 'The control tool did not start',
   'settings.doctor.item.keyboardTool.title': 'Remote keyboard tool',

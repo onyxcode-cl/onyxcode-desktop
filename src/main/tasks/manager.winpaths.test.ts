@@ -249,6 +249,27 @@ describe('TasksManager en win32: assertInsideApproved (traducir no autoriza)', (
   })
 })
 
+describe('TasksManager en win32: Control total solo con Tareas y Control del PC activos', () => {
+  const winBackend = { build: true, gate: async () => ({ ok: true }), create: () => null }
+  it('sin `computerWin` (o sin `tasksWin`) sigue sin existir', () => {
+    for (const over of [{ tasksWin: true, winBackend }, { computerWin: true }]) {
+      const m = mk(over)
+      expect(m.fullAccessState().disabled).toBe(true)
+      expect(() => m.grantFullAccessConsent()).toThrow(t('merr.task.fullAccessUnavailable'))
+      expect(m.fullAccessBlock('C:\\lzx\\tareas\\a')).toBe('notGranted')
+    }
+  })
+  it('con ambas banderas se puede dar el consentimiento y, sin él, no arranca', () => {
+    const m = mk({ tasksWin: true, computerWin: true, winBackend })
+    expect(m.fullAccessState()).toMatchObject({ consentAt: null, disabled: false })
+    expect(m.fullAccessBlock('C:\\lzx\\tareas\\a')).toBe('notGranted')
+    expect(m.grantFullAccessConsent()).toBeGreaterThan(0)
+    expect(m.fullAccessConsentAt()).not.toBeNull()
+    // Con consentimiento, una carpeta inexistente sigue rechazada.
+    expect(m.fullAccessBlock('C:\\no\\existe\\jamas')).toBe('notDir')
+  })
+})
+
 describe('TasksManager en win32: Control total no existe y el arranque falla cerrado (A18)', () => {
   it('start(fullAccess) lanza fullAccessUnavailable sin llegar al servidor; concederlo también', async () => {
     const m = mk()

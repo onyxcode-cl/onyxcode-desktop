@@ -28,7 +28,8 @@ import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
 import { IDENTITY_MAP, type PathMapWire } from '@shared/tasks-path-map'
-import { selectBackend, TasksSandboxNotReady, type WinBackendProvider } from './backends'
+import { selectBackend, TasksSandboxNotReady, WinBackendUnavailable, type WinBackendProvider } from './backends'
+import { detectElevated } from './win-elevation'
 import { noneBackend } from './backends/none'
 import { SANDBOX_EXEC, seatbeltAvailable, writeSandboxProfile } from './backends/seatbelt'
 import type { LaunchedSandbox, SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './backends/types'
@@ -91,8 +92,14 @@ export interface TasksServerHandle {
 
 export interface StartTasksServerOptions {
   corsOrigins?: string[]
-  /** Desactivar el sandbox (solo para depuración). */
+  /** Desactivar el sandbox (Control total en macOS; en Windows solo junto con `winFullAccess`). */
   noSandbox?: boolean
+  /**
+   * Windows: Control total (sin WSL). Solo vale con `noSandbox`, `tasksWin` y Lazunox NO elevado (`isElevated`, inyectable en pruebas;
+   * sin saberlo se trata como elevado). Cualquier otro uso de `noSandbox` en win32 sigue lanzando.
+   */
+  winFullAccess?: boolean
+  isElevated?: () => Promise<boolean | null>
   /** Variables de entorno extra para `opencode serve` (p.ej. OPENCODE_CONFIG_CONTENT). */
   extraEnv?: Record<string, string>
   /** Dirs privados + userData (obligatorio para el modo sandbox). */
@@ -126,7 +133,17 @@ export interface StartTasksServerOptions {
 export async function startTasksServer(folder: string, options: StartTasksServerOptions = {}): Promise<TasksServerHandle> {
   const platform = options.platform ?? process.platform
   // Windows: jamás sin aislamiento (A18). Se decide ANTES de resolver el binario o de abrir ningún puerto.
-  if (platform === 'win32' && options.noSandbox) throw new Error(t('merr.task.winNoUnsandboxed'))
+  if (platform === 'win32' && options.noSandbox) {
+    if (options.winFullAccess !== true) throw new Error(t('merr.task.winNoUnsandboxed'))
+    if (options.tasksWin !== true) throw new WinBackendUnavailable('flag')
+    let elevated: boolean | null = null
+    try {
+      elevated = await (options.isElevated ?? detectElevated)()
+    } catch {
+      elevated = null
+    }
+    if (elevated !== false) throw new WinBackendUnavailable('elevated')
+  }
   const bin = (await resolveOpencodeAsync())?.path
   if (!bin) throw new Error(t('merr.engine.noBinaryShort'))
   if (!existsSync(folder)) throw new Error(t('merr.task.noFolder', { folder }))
@@ -134,7 +151,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   const backend: SandboxBackend = options.noSandbox
     ? noneBackend
     : await selectBackend(platform, { tasksWin: options.tasksWin, win: options.winBackend })
-  if (platform === 'win32') {
+  if (platform === 'win32' && !options.noSandbox) {
     // Invariante: en Windows solo existe el backend de la distro, y solo con la distro lista (instalada, sana y al día).
     if (backend.id !== 'wsl') throw new Error(t('merr.task.winNoUnsandboxed'))
     const st = await backend.status()
