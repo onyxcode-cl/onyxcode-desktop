@@ -78,5 +78,23 @@ export const wizard = {
   'wizard.permissions.accessibilityHint': '(to move the mouse, click, and type) and',
   'wizard.permissions.screen': 'Screen Recording',
   'wizard.permissions.screenHint': '(to see what is on screen).',
-  'wizard.permissions.review': 'You can review or remove them in System Settings › Privacy & Security.'
+  'wizard.permissions.review': 'You can review or remove them in System Settings › Privacy & Security.',
+  'wizard.stepTitle.setup': 'Set up your computer',
+  'wizard.setup.lead':
+    '{app} can get everything ready now so it doesn’t ask for things one by one later. By clicking “Set everything up” you agree to the items below:',
+  'wizard.setup.nothing': 'Your computer is already ready: nothing more to install or allow.',
+  'wizard.setup.perms': 'macOS permissions: Accessibility and Screen Recording',
+  'wizard.setup.perms.hint':
+    'So the agent can move the mouse and see the screen when you ask it to. macOS will show its prompts: turn them on.',
+  'wizard.setup.office': 'LibreOffice, to preview Word, Excel and PowerPoint as they will look',
+  'wizard.setup.office.hint': 'Official download from The Document Foundation (about {mb} MB), verified before use.',
+  'wizard.setup.sandbox': 'Isolated environment for Tasks',
+  'wizard.setup.sandbox.hint': 'Set up once (about 2 GB of disk), using what the app already includes.',
+  'wizard.setup.run': 'Set everything up',
+  'wizard.setup.running': 'Setting up…',
+  'wizard.setup.done': 'All set',
+  'wizard.setup.retry': 'Try again',
+  'wizard.setup.later': 'You can also do this later from Settings.',
+  'wizard.setup.status.waiting': 'You still need to turn it on in the macOS prompts (System Settings › Privacy & Security).',
+  'wizard.setup.status.failed': 'It didn’t work. Try again or do it later from Settings.'
 } as const satisfies Messages<typeof es>

@@ -110,12 +110,12 @@ describe('paso 1 informativo', () => {
 
 describe('navegación', () => {
   it('los cinco pasos van en orden y los extremos no tienen vecino', () => {
-    expect(ONBOARDING_STEPS).toEqual(['opencode', 'auth', 'model', 'modes', 'permissions'])
+    expect(ONBOARDING_STEPS).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])
     expect(prevStep('opencode')).toBeNull()
     expect(nextStep('opencode')).toBe('auth')
-    expect(nextStep('modes')).toBe('permissions')
-    expect(nextStep('permissions')).toBeNull()
-    expect(prevStep('permissions')).toBe('modes')
+    expect(nextStep('modes')).toBe('setup')
+    expect(nextStep('setup')).toBeNull()
+    expect(prevStep('setup')).toBe('modes')
   })
 
   it('solo el paso 1 exige binario y servidor listos para avanzar', () => {
@@ -150,11 +150,12 @@ describe('paso «Conecta tu IA»', () => {
 })
 
 describe('pasos por plataforma', () => {
-  it('macOS conserva los permisos; Windows termina en «Modos»', () => {
-    expect(stepsFor('darwin')).toEqual(['opencode', 'auth', 'model', 'modes', 'permissions'])
-    expect(stepsFor('win32')).toEqual(['opencode', 'auth', 'model', 'modes'])
-    expect(nextStep('modes', 'win32')).toBeNull()
-    expect(nextStep('modes', 'darwin')).toBe('permissions')
+  it('ambas plataformas terminan en «Prepara tu equipo»', () => {
+    expect(stepsFor('darwin')).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])
+    expect(stepsFor('win32')).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])
+    expect(nextStep('modes', 'win32')).toBe('setup')
+    expect(nextStep('setup', 'win32')).toBeNull()
+    expect(nextStep('modes', 'darwin')).toBe('setup')
     expect(prevStep('modes', 'win32')).toBe('model')
   })
 })

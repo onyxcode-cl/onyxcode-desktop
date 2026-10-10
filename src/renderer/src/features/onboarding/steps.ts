@@ -9,12 +9,12 @@ import { MODE_LABELS } from '@shared/labels'
 import { currentPlatform } from '../../lib/platform'
 import type { OpencodeInfo, OpencodeSource, ServerState } from '@shared/types'
 
-export const ONBOARDING_STEPS = ['opencode', 'auth', 'model', 'modes', 'permissions'] as const
+export const ONBOARDING_STEPS = ['opencode', 'auth', 'model', 'modes', 'setup'] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
-/** Pasos de esta plataforma: «Permisos de macOS» solo existe en macOS (Control del PC y Tareas no están en Windows). */
-export function stepsFor(platform: string = currentPlatform()): readonly OnboardingStep[] {
-  return platform === 'darwin' ? ONBOARDING_STEPS : ONBOARDING_STEPS.filter((s) => s !== 'permissions')
+/** Pasos de esta plataforma: el último, «Prepara tu equipo», existe en macOS (permisos + LibreOffice) y en Windows (entorno de Tareas). */
+export function stepsFor(_platform: string = currentPlatform()): readonly OnboardingStep[] {
+  return ONBOARDING_STEPS
 }
 
 /** Proveedor del catálogo de OpenCode (`provider.list().all`) reducido a lo que se necesita. */
@@ -103,7 +103,7 @@ export function stepTitle(step: OnboardingStep, mode: OpencodeStepMode): string 
     auth: t('wizard.stepTitle.auth'),
     model: t('wizard.stepTitle.model'),
     modes: t('wizard.stepTitle.modes'),
-    permissions: t('wizard.stepTitle.permissions')
+    setup: t('wizard.stepTitle.setup')
   }[step]
 }
 

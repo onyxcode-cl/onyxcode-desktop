@@ -1,5 +1,5 @@
 /**
- * Asistente de primer uso (5 pasos: OpenCode, «Conecta tu IA», modelo, modos, permisos de macOS).
+ * Asistente de primer uso (5 pasos: OpenCode, «Conecta tu IA», modelo, modos, «Prepara tu equipo»: permisos y componentes en un solo botón).
  * El paso 2 ofrece OpenCode Go (recomendado) y cualquier otro proveedor del catálogo de OpenCode (API key u OAuth).
  * Con el motor incluido en la app, el paso 1 es solo informativo («Incluido: OpenCode X»).
  * Solo aparece si `settings.onboarded !== true` y falta el binario o ningún proveedor está
@@ -30,7 +30,7 @@ import { LogoMark } from '../../components/Logo'
 import { ModelPicker } from '../../components/ModelPicker'
 import { call } from '../../lib/api'
 import { useT } from '../../lib/i18n'
-import { currentFlags, currentPlatform } from '../../lib/platform'
+import { currentFlags, currentPlatform, isMacPlatform, platformCaps } from '../../lib/platform'
 import { modeAvailable } from '@shared/platform-caps'
 import { errorMessage } from '../../lib/opencode'
 import { useProviders } from '../../stores/providers'
@@ -38,6 +38,7 @@ import { useServer } from '../../stores/server'
 import { useSettings } from '../../stores/settings'
 import { useUi } from '../../stores/ui'
 import { useTasks } from '../tasks/impl/store'
+import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import {
@@ -179,7 +180,7 @@ function OnboardingHost(): React.JSX.Element | null {
           {step === 'auth' && <StepAuth connected={connected} refreshProviders={refreshProviders} />}
           {step === 'model' && <StepModel />}
           {step === 'modes' && <StepModes />}
-          {step === 'permissions' && <StepPermissions />}
+          {step === 'setup' && <StepSetup />}
         </div>
 
         <footer className="flex items-center justify-between gap-2 border-t border-border/60 px-6 py-3">
@@ -586,25 +587,135 @@ function StepModes(): React.JSX.Element {
   )
 }
 
-// ───────────── Paso 5: permisos de macOS ─────────────
+// ───────────── Paso 5: prepara tu equipo (permisos + componentes) ─────────────
 
-function StepPermissions(): React.JSX.Element {
+type SetupItemId = 'perms' | 'office' | 'sandbox'
+type SetupState = 'idle' | 'running' | 'done' | 'waiting' | 'failed'
+
+const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Un solo botón deja el equipo listo: en macOS pide Accesibilidad y Grabación de pantalla y baja LibreOffice (descarga oficial,
+ * verificada por el motor); en Windows prepara el entorno aislado de Tareas. Pulsarlo ES el consentimiento de todo lo que la tarjeta
+ * enumera; nada se hace antes. Cada pieza se puede reintentar y todo se puede hacer después desde Ajustes.
+ */
+function StepSetup(): React.JSX.Element {
   const t = useT()
+  const mac = isMacPlatform()
+  const caps = platformCaps()
+  const [items, setItems] = useState<Partial<Record<SetupItemId, SetupState>>>({})
+  const [officeMb, setOfficeMb] = useState(0)
+  const [pct, setPct] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
+
+  const refresh = useCallback(async (): Promise<void> => {
+    if (!hasTasksBridge()) return
+    if (mac && caps.computer) {
+      const c = await cw('computer:status').catch(() => null)
+      if (c) set('perms', c.accessibility && c.screenRecording ? 'done' : 'idle')
+    }
+    const o = await cw('office:status').catch(() => null)
+    if (o?.status.state === 'missing') {
+      setOfficeMb(Math.round(o.status.sizeBytes / 1e6))
+      set('office', 'idle')
+    } else if (o?.status.state === 'installed') set('office', 'done')
+    if (caps.tasks && caps.tasksSandbox === 'wsl') {
+      const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
+      if (s) set('sandbox', s.state === 'ready' ? 'done' : 'idle')
+    }
+  }, [mac, caps.computer, caps.tasks, caps.tasksSandbox])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  const runAll = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      if (mac && caps.computer && items.perms !== 'done') {
+        set('perms', 'running')
+        await cw('computer:requestPermissions').catch(() => undefined)
+        // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos.
+        let ok = false
+        for (let i = 0; i < 45 && !ok; i++) {
+          const c = await cw('computer:status').catch(() => null)
+          ok = !!c && c.accessibility && c.screenRecording
+          if (!ok) await wait(2000)
+        }
+        set('perms', ok ? 'done' : 'waiting')
+      }
+      if (items.office && items.office !== 'done') {
+        set('office', 'running')
+        const r = await cw('office:install').catch(() => ({ ok: false as const }))
+        set('office', r.ok ? 'done' : 'failed')
+      }
+      if (items.sandbox && items.sandbox !== 'done') {
+        set('sandbox', 'running')
+        const poll = setInterval(() => {
+          void cw('tasks:sandbox:status', undefined).then((s) => setPct(s.setup?.running ? s.setup.pct : null))
+        }, 1500)
+        const s = await cw('tasks:sandbox:setup').catch(() => null)
+        clearInterval(poll)
+        setPct(null)
+        set('sandbox', s?.state === 'ready' ? 'done' : 'failed')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const rows: Array<{ id: SetupItemId; label: string; hint: string }> = []
+  if (mac && caps.computer) rows.push({ id: 'perms', label: t('wizard.setup.perms'), hint: t('wizard.setup.perms.hint') })
+  if (items.office) rows.push({ id: 'office', label: t('wizard.setup.office'), hint: t('wizard.setup.office.hint', { mb: officeMb }) })
+  if (items.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
+  const allDone = rows.length > 0 && rows.every((r) => items[r.id] === 'done')
+  const anyFailed = rows.some((r) => items[r.id] === 'failed' || items[r.id] === 'waiting')
+
   return (
     <div className="space-y-3">
-      <Lead>{t('wizard.permissions.lead', { app: DISPLAY_NAME })}</Lead>
-      <div className="flex items-start gap-3 rounded-ctl bg-warning/10 px-3.5 py-3 ring-1 ring-warning/45 ring-inset">
-        <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
-        <div className="text-[13px] leading-[18px] text-fg">
-          <p>
-            {t('wizard.permissions.intro', { mode: t('wizard.fullControl') })}{' '}
-            <strong className="font-medium text-fg">{t('wizard.permissions.accessibility')}</strong>{' '}
-            {t('wizard.permissions.accessibilityHint')} <strong className="font-medium text-fg">{t('wizard.permissions.screen')}</strong>{' '}
-            {t('wizard.permissions.screenHint')}
-          </p>
-          <p className="mt-1.5">{t('wizard.permissions.review')}</p>
+      <Lead>{rows.length === 0 ? t('wizard.setup.nothing', { app: DISPLAY_NAME }) : t('wizard.setup.lead', { app: DISPLAY_NAME })}</Lead>
+      {rows.length > 0 && (
+        <ul className="space-y-2">
+          {rows.map((r) => {
+            const st = items[r.id] ?? 'idle'
+            return (
+              <li key={r.id} className="flex items-start gap-3 rounded-ctl bg-inset px-3.5 py-3">
+                <span className="mt-0.5 shrink-0">
+                  {st === 'done' ? (
+                    <Check size={16} className="text-success" />
+                  ) : st === 'running' ? (
+                    <Loader2 size={16} className="animate-spin text-accent" />
+                  ) : (
+                    <Shield size={16} className={st === 'failed' || st === 'waiting' ? 'text-warning' : 'text-subtle'} />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
+                  <p className="font-medium text-fg">{r.label}</p>
+                  <p className="text-muted">
+                    {st === 'running' && r.id === 'sandbox' && pct !== null ? `${pct} % · ` : ''}
+                    {st === 'waiting' ? t('wizard.setup.status.waiting') : st === 'failed' ? t('wizard.setup.status.failed') : r.hint}
+                  </p>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {rows.length > 0 && (
+        <div className="flex items-center gap-3">
+          <Button variant="primary" disabled={busy || allDone} onClick={() => void runAll()}>
+            {busy
+              ? t('wizard.setup.running')
+              : allDone
+                ? t('wizard.setup.done')
+                : anyFailed
+                  ? t('wizard.setup.retry')
+                  : t('wizard.setup.run')}
+          </Button>
+          <span className="text-meta text-muted">{t('wizard.setup.later')}</span>
         </div>
-      </div>
+      )}
     </div>
   )
 }

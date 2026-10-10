@@ -75,5 +75,23 @@ export const wizard = {
   'wizard.permissions.accessibilityHint': '(mover el ratón, hacer clic y escribir) y',
   'wizard.permissions.screen': 'Grabación de pantalla',
   'wizard.permissions.screenHint': '(ver lo que hay en pantalla).',
-  'wizard.permissions.review': 'Puedes revisarlos o quitarlos en Ajustes del Sistema › Privacidad y seguridad.'
+  'wizard.permissions.review': 'Puedes revisarlos o quitarlos en Ajustes del Sistema › Privacidad y seguridad.',
+  'wizard.stepTitle.setup': 'Prepara tu equipo',
+  'wizard.setup.lead':
+    '{app} puede dejar todo listo ahora para que después no te pida nada suelto. Al pulsar «Preparar todo» aceptas que haga lo de esta lista:',
+  'wizard.setup.nothing': 'Tu equipo ya está listo: no hay nada más que instalar ni permitir.',
+  'wizard.setup.perms': 'Permisos de macOS: Accesibilidad y Grabación de pantalla',
+  'wizard.setup.perms.hint':
+    'Para que el agente pueda mover el ratón y ver la pantalla cuando se lo pidas. macOS abrirá sus avisos: actívalos.',
+  'wizard.setup.office': 'LibreOffice, para ver Word, Excel y PowerPoint tal como quedan',
+  'wizard.setup.office.hint': 'Descarga oficial de The Document Foundation (unos {mb} MB), verificada antes de usarla.',
+  'wizard.setup.sandbox': 'Entorno aislado de Tareas',
+  'wizard.setup.sandbox.hint': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
+  'wizard.setup.run': 'Preparar todo',
+  'wizard.setup.running': 'Preparando…',
+  'wizard.setup.done': 'Todo listo',
+  'wizard.setup.retry': 'Reintentar',
+  'wizard.setup.later': 'También puedes hacerlo después desde Ajustes.',
+  'wizard.setup.status.waiting': 'Falta que lo actives en los avisos de macOS (Ajustes del Sistema › Privacidad y seguridad).',
+  'wizard.setup.status.failed': 'No se pudo. Reintenta o hazlo después desde Ajustes.'
 } as const
