@@ -7,6 +7,7 @@ import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { ACCENTS, applyAccent, getAccent, type AccentId } from '../../../lib/accent'
 import { useT } from '../../../lib/i18n'
+import { applyTextSize, getTextSize, TEXT_SIZES, type TextSizeId } from '../../../lib/text-size'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
@@ -225,6 +226,7 @@ export function GeneralSection(): React.JSX.Element {
       </div>
       {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
       {!phone && <AccentPicker />}
+      {!phone && <TextSizePicker />}
 
       <SubTitle>{t('settings.general.preferences')}</SubTitle>
       <Card>
@@ -352,6 +354,41 @@ function AccentPicker(): React.JSX.Element {
             style={{ backgroundColor: swatch }}
           >
             {accent === id && <Check size={14} className="text-white" aria-hidden />}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** Tamaño del texto: tres opciones, se aplica al instante y se recuerda en este equipo. */
+function TextSizePicker(): React.JSX.Element {
+  const t = useT()
+  const [size, setSize] = useState<TextSizeId>(getTextSize)
+  const names: Record<TextSizeId, MsgKey> = {
+    small: 'settings.general.textSize.small',
+    normal: 'settings.general.textSize.normal',
+    large: 'settings.general.textSize.large'
+  }
+  return (
+    <>
+      <h3 className="mt-6 mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+        {t('settings.general.textSize')}
+      </h3>
+      <div role="radiogroup" aria-label={t('settings.general.textSize')} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">
+        {TEXT_SIZES.map(({ id }) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={size === id}
+            onClick={() => {
+              setSize(id)
+              applyTextSize(id, true)
+            }}
+            className={`rounded-lg px-4 py-1.5 text-sm transition ${size === id ? 'bg-elevated font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
+          >
+            {t(names[id])}
           </button>
         ))}
       </div>
