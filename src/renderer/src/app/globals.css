@@ -872,3 +872,69 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     opacity: 1;
   }
 }
+
+/* Color de acento elegido en Ajustes › General. Sin `data-accent` queda el azul de siempre. */
+[data-accent='violet'] {
+  --accent: #6d3fd8;
+  --accent-hover: #5b32bd;
+  --accent-fg: #ffffff;
+  --accent-soft: #ece4ff;
+  --accent-ring: rgb(109 63 216 / 0.35);
+  --selection: rgb(109 63 216 / 0.18);
+}
+[data-theme='dark'][data-accent='violet'] {
+  --accent: #b095ff;
+  --accent-hover: #c4b0ff;
+  --accent-fg: #1a0a3d;
+  --accent-soft: #2a1b55;
+  --accent-ring: rgb(176 149 255 / 0.4);
+  --selection: rgb(176 149 255 / 0.22);
+}
+[data-accent='green'] {
+  --accent: #1f7a4d;
+  --accent-hover: #17613c;
+  --accent-fg: #ffffff;
+  --accent-soft: #dff5e9;
+  --accent-ring: rgb(31 122 77 / 0.35);
+  --selection: rgb(31 122 77 / 0.18);
+}
+[data-theme='dark'][data-accent='green'] {
+  --accent: #4fd08f;
+  --accent-hover: #74dca8;
+  --accent-fg: #04210f;
+  --accent-soft: #123324;
+  --accent-ring: rgb(79 208 143 / 0.4);
+  --selection: rgb(79 208 143 / 0.22);
+}
+[data-accent='teal'] {
+  --accent: #0f766e;
+  --accent-hover: #0b5e58;
+  --accent-fg: #ffffff;
+  --accent-soft: #d9f3f0;
+  --accent-ring: rgb(15 118 110 / 0.35);
+  --selection: rgb(15 118 110 / 0.18);
+}
+[data-theme='dark'][data-accent='teal'] {
+  --accent: #4fd1c5;
+  --accent-hover: #7be0d7;
+  --accent-fg: #032622;
+  --accent-soft: #10302d;
+  --accent-ring: rgb(79 209 197 / 0.4);
+  --selection: rgb(79 209 197 / 0.22);
+}
+[data-accent='rose'] {
+  --accent: #be185d;
+  --accent-hover: #9d174d;
+  --accent-fg: #ffffff;
+  --accent-soft: #fde4ef;
+  --accent-ring: rgb(190 24 93 / 0.35);
+  --selection: rgb(190 24 93 / 0.18);
+}
+[data-theme='dark'][data-accent='rose'] {
+  --accent: #f472b6;
+  --accent-hover: #f79bc9;
+  --accent-fg: #3b0620;
+  --accent-soft: #3a1327;
+  --accent-ring: rgb(244 114 182 / 0.4);
+  --selection: rgb(244 114 182 / 0.22);
+}

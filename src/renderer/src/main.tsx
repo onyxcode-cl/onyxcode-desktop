@@ -11,12 +11,14 @@ import './app/globals.css'
 // Capa visual solo de escritorio: DESPUÉS de globals.css; la PWA (remote/boot.tsx) no la carga. Ver app/desktop/index.css.
 import './app/desktop/index.css'
 import { currentPlatform } from './lib/platform'
+import { applyAccent, getAccent } from './lib/accent'
 
 document.title = DISPLAY_NAME
 // Marca el escritorio: activa los tokens y la variante desk (data-shell) y los ajustes por sistema (data-platform: darwin|win32).
 document.documentElement.dataset.shell = 'desktop'
 document.documentElement.dataset.platform = currentPlatform()
 initLang()
+applyAccent(getAccent())
 installModalFocus()
 
 // Ganchos del harness E2E: solo en DEV y con el flag en localStorage (tree-shaken en producción).

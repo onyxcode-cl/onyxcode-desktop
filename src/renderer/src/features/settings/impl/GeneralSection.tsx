@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Monitor, Moon, RotateCw, Sun } from 'lucide-react'
+import { Check, Monitor, Moon, RotateCw, Sun } from 'lucide-react'
 import type { ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
+import { ACCENTS, applyAccent, getAccent, type AccentId } from '../../../lib/accent'
 import { useT } from '../../../lib/i18n'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
@@ -223,6 +224,7 @@ export function GeneralSection(): React.JSX.Element {
         ))}
       </div>
       {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
+      {!phone && <AccentPicker />}
 
       <SubTitle>{t('settings.general.preferences')}</SubTitle>
       <Card>
@@ -315,5 +317,44 @@ export function GeneralSection(): React.JSX.Element {
         </div>
       )}
     </div>
+  )
+}
+
+/** Color de acento: cinco opciones, se aplica al instante y se recuerda en este equipo. */
+function AccentPicker(): React.JSX.Element {
+  const t = useT()
+  const [accent, setAccent] = useState<AccentId>(getAccent)
+  const names: Record<AccentId, MsgKey> = {
+    blue: 'settings.general.accent.blue',
+    violet: 'settings.general.accent.violet',
+    green: 'settings.general.accent.green',
+    teal: 'settings.general.accent.teal',
+    rose: 'settings.general.accent.rose'
+  }
+  return (
+    <>
+      <h3 className="mt-6 mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+        {t('settings.general.accent')}
+      </h3>
+      <div role="radiogroup" aria-label={t('settings.general.accent')} className="flex flex-wrap gap-2.5">
+        {ACCENTS.map(({ id, swatch }) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={accent === id}
+            title={t(names[id])}
+            onClick={() => {
+              setAccent(id)
+              applyAccent(id, true)
+            }}
+            className={`flex h-8 w-8 items-center justify-center rounded-full ring-offset-2 ring-offset-[var(--bg)] transition ${accent === id ? 'ring-2 ring-fg' : 'hover:ring-2 hover:ring-border-strong'}`}
+            style={{ backgroundColor: swatch }}
+          >
+            {accent === id && <Check size={14} className="text-white" aria-hidden />}
+          </button>
+        ))}
+      </div>
+    </>
   )
 }

@@ -22,6 +22,12 @@ export const settings = {
   // General
   'settings.general.title': 'General',
   'settings.general.subtitle': 'Appearance, language and the local OpenCode server.',
+  'settings.general.accent': 'Accent color',
+  'settings.general.accent.blue': 'Blue',
+  'settings.general.accent.violet': 'Violet',
+  'settings.general.accent.green': 'Green',
+  'settings.general.accent.teal': 'Teal',
+  'settings.general.accent.rose': 'Rose',
   'settings.general.theme': 'Theme',
   'settings.general.theme.system': 'System',
   'settings.general.theme.light': 'Light',
