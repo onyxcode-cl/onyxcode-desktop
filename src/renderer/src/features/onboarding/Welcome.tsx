@@ -166,6 +166,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     })
 
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {
+    if (id === 'perms' && st === 'downloading') return t('wizard.welcome.state.waiting')
     if (st === 'downloading')
       return id === 'sandbox' && pct !== null ? t('wizard.welcome.progress', { pct }) : t('wizard.welcome.state.downloading')
     return t(`wizard.welcome.state.${st}` as const)
