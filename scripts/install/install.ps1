@@ -28,8 +28,8 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 # Mientras valga PENDIENTE no hay release publicada y el script se niega a ejecutarse.
-$ReleasesRepoDefault = 'lazunox/lazunox'
-$ReleasesOriginDefault = 'https://lazunox.onyxcode.cl'
+$ReleasesRepoDefault = 'onyxcode-cl/onyxcode-desktop'
+$ReleasesOriginDefault = 'https://github.com'
 $Repo = if ($env:LAZUNOX_RELEASES_REPO) { $env:LAZUNOX_RELEASES_REPO } else { $ReleasesRepoDefault }
 $Origin = if ($env:LAZUNOX_RELEASES_ORIGIN) { $env:LAZUNOX_RELEASES_ORIGIN.TrimEnd('/') } else { $ReleasesOriginDefault }
 $InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\Lazunox'

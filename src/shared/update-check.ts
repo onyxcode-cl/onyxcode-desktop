@@ -1,5 +1,5 @@
 /** Lógica pura (sin Electron) del aviso de versión nueva. */
-import { RELEASES_ORIGIN } from './brand'
+import { RELEASES_API_ORIGIN, RELEASES_ORIGIN } from './brand'
 import type { InstallState } from './update-install'
 
 export const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
@@ -84,11 +84,11 @@ export function isValidRepo(r: unknown): r is string {
   return name !== '.' && name !== '..'
 }
 
-export function releasesApiUrl(repo: string, base = RELEASES_ORIGIN): string {
+export function releasesApiUrl(repo: string, base = RELEASES_API_ORIGIN): string {
   return `${base.replace(/\/+$/, '')}/repos/${repo}/releases/latest`
 }
 
-/** Host de las releases (el servidor propio): de ahí salen las páginas de descarga que la app acepta abrir. */
+/** Host de las releases (descargas y páginas): de ahí salen las páginas de descarga que la app acepta abrir. */
 export const RELEASES_HOST = new URL(RELEASES_ORIGIN).hostname
 
 /** Solo devuelve una URL https://<servidor de releases>/{owner}/{repo}/releases/...; si no, la página de la release por tag. */

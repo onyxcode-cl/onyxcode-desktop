@@ -9,14 +9,14 @@
  * (`isNewerRelease` con `prerelease: false` rechaza `0.4.0-beta.1` si la instalada es estable). Mientras no se amplíe allí,
  * una beta solo puede ofrecerse como aviso con «Descargar», no con «Actualizar».
  */
-import { RELEASES_ORIGIN } from '@shared/brand'
+import { RELEASES_API_ORIGIN } from '@shared/brand'
 import { compareSemver, parseReleaseJson, parseSemver, type Semver } from '@shared/update-check'
 
 export type UpdateChannel = 'stable' | 'beta'
 
 export const BETA_LIST_SIZE = 10
 
-export function releasesListUrl(repo: string, base = RELEASES_ORIGIN): string {
+export function releasesListUrl(repo: string, base = RELEASES_API_ORIGIN): string {
   return `${base.replace(/\/+$/, '')}/repos/${repo}/releases?per_page=${BETA_LIST_SIZE}`
 }
 

@@ -84,7 +84,7 @@ test('caso feliz: descarga, verifica, instala y limpia', () => {
   assert.ok(existsSync(join(t.apps, 'Lazunox.app', 'Contents', 'marker')))
   assert.match(
     r.calls,
-    /curl -fsSL -o \S+\/SHA256SUMS https:\/\/lazunox\.onyxcode\.cl\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/
+    /curl -fsSL -o \S+\/SHA256SUMS https:\/\/github\.com\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/
   )
   assert.match(r.calls, /hdiutil attach -readonly/)
   assert.match(r.calls, /codesign -d -r-/)

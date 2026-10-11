@@ -21,12 +21,12 @@ const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const TAG_RE = /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const SAFE_NAME = /^[A-Za-z0-9._-]{1,200}$/
 
-/** Lee `RELEASES_ORIGIN` y `RELEASES_REPO` de src/shared/brand.ts (sin importarlo: es TypeScript). */
+/** Lee `VPS_RELEASES_ORIGIN` y `VPS_RELEASES_REPO` de src/shared/brand.ts (sin importarlo: es TypeScript). */
 export function readReleasesBrand(root = defaultRoot) {
   const src = readFileSync(join(root, 'src', 'shared', 'brand.ts'), 'utf8')
-  const origin = /export const RELEASES_ORIGIN = '([^']+)'/.exec(src)?.[1]
-  const repo = /export const RELEASES_REPO = '([^']+)'/.exec(src)?.[1]
-  if (!origin || !repo) throw new Error('No encuentro RELEASES_ORIGIN y RELEASES_REPO en src/shared/brand.ts')
+  const origin = /export const VPS_RELEASES_ORIGIN = '([^']+)'/.exec(src)?.[1]
+  const repo = /export const VPS_RELEASES_REPO = '([^']+)'/.exec(src)?.[1]
+  if (!origin || !repo) throw new Error('No encuentro VPS_RELEASES_ORIGIN y VPS_RELEASES_REPO en src/shared/brand.ts')
   return { origin: origin.replace(/\/+$/, ''), repo }
 }
 

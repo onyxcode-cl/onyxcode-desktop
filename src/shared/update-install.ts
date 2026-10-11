@@ -287,8 +287,8 @@ export function validateInstallLocationWin(i: InstallLocationWinInput): Location
 }
 
 /**
- * Descargas: solo el servidor de releases propio (`RELEASES_ORIGIN`), https://github.com y https://*.githubusercontent.com
- * (por si una release se publica allí), sin credenciales ni puerto. `allowLoopbackHttp` solo lo activa la configuración de
+ * Descargas: solo el canal de releases (`RELEASES_ORIGIN`), https://github.com y https://*.githubusercontent.com
+ * (GitHub redirige los archivos de una release a ese dominio), sin credenciales ni puerto. `allowLoopbackHttp` solo lo activa la configuración de
  * pruebas (app sin empaquetar).
  */
 export function isAllowedDownloadUrl(raw: string, allowLoopbackHttp = false): boolean {

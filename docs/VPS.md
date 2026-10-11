@@ -1,6 +1,10 @@
-# Publicar actualizaciones desde tu propio servidor (lazunox.onyxcode.cl)
+# Publicar actualizaciones desde tu propio servidor (lazunox.onyxcode.cl) — ALTERNATIVA
 
-La app consulta `https://lazunox.onyxcode.cl` (constante `RELEASES_ORIGIN` de `src/shared/brand.ts`) y descarga de ahí las
+> **Hoy el canal es GitHub Releases** (`docs/RELEASE.md`). Esta guía es para cambiar más adelante a un servidor propio: se usa
+> `scripts/publish-vps.mjs` (lee `VPS_RELEASES_ORIGIN` y `VPS_RELEASES_REPO` de `src/shared/brand.ts`) y, para que la app lo consulte,
+> se pone ese origen en `RELEASES_ORIGIN` y `RELEASES_API_ORIGIN` y ese repo en `RELEASES_REPO`.
+
+La app consultaría `https://lazunox.onyxcode.cl` (constantes de `src/shared/brand.ts`) y descargaría de ahí las
 actualizaciones. Son **archivos estáticos**: no hace falta ningún programa propio en el servidor, solo nginx con HTTPS.
 
 **El servidor no necesita ser de confianza.** Cada actualización lleva un manifiesto firmado con tu clave privada (Ed25519,

@@ -8,7 +8,7 @@ const base: UpdateState = {
   configured: true,
   enabled: true,
   current: '1.0.0',
-  latest: { version: '1.1.0', url: 'https://lazunox.onyxcode.cl/o/r/releases/tag/v1.1.0' },
+  latest: { version: '1.1.0', url: 'https://github.com/o/r/releases/tag/v1.1.0' },
   dismissed: null,
   lastCheck: 1000,
   checking: false,
@@ -37,12 +37,12 @@ describe('checkResultText', () => {
 })
 
 describe('downloadUrl', () => {
-  it('solo acepta páginas de releases de lazunox.onyxcode.cl', () => {
+  it('solo acepta páginas de releases de github.com', () => {
     expect(downloadUrl(base)).toBe(base.latest!.url)
     for (const url of [
       'https://evil.example/x',
-      'http://lazunox.onyxcode.cl/o/r/releases/tag/v1.1.0',
-      'https://lazunox.onyxcode.cl/o/r/issues/1',
+      'http://github.com/o/r/releases/tag/v1.1.0',
+      'https://github.com/o/r/issues/1',
       'javascript:alert(1)'
     ])
       expect(downloadUrl({ ...base, latest: { version: '1.1.0', url } }), url).toBeNull()

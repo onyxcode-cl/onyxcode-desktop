@@ -20,8 +20,8 @@ Esta versión lleva Lazunox a Windows con casi todo lo que ya tenía en Mac, y c
   prepara el entorno de Tareas. También hay «Probar con un ejemplo», que abre Tareas con una tarea de ejemplo ya escrita.
 - **PowerPoint y PDF completos en Windows.** Las skills de presentaciones y de PDF ya funcionan en el entorno aislado de Windows (imagen
   2026.10.10, con las herramientas de Python que necesitan). La app aprende a trabajar con LibreOffice del sistema si lo tienes.
-- **Actualizaciones desde nuestro propio servidor** (lazunox.onyxcode.cl). La app consulta y descarga las actualizaciones de ahí; cada una
-  sigue verificada con firma, tamaño y hash antes de instalarse.
+- **Actualizaciones desde GitHub Releases.** La app consulta y descarga las actualizaciones de las releases del repositorio; cada una
+  sigue verificada con firma, tamaño y hash antes de instalarse. (El servidor propio queda como alternativa, `docs/VPS.md`.)
 - **Instaladores gratuitos por terminal**, en Mac (`install.sh`) y en Windows (`install.ps1`): descargan, comprueban el hash SHA-256 y
   instalan sin administrador y sin pedirte saltarte avisos. La guía está en `docs/INSTALAR.md`.
 - **Logo nuevo «Aro»**: un anillo abierto en lapislázuli con un punto dorado; gira suave mientras la app trabaja.

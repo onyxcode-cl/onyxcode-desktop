@@ -86,7 +86,7 @@ export async function startReleasesServer(repo = 'test-owner/test-repo'): Promis
         status: 200,
         body: {
           tag_name: tag,
-          html_url: `https://lazunox.onyxcode.cl/${repo}/releases/tag/${tag}`,
+          html_url: `https://github.com/${repo}/releases/tag/${tag}`,
           draft: false,
           prerelease: false,
           ...extra

@@ -2,10 +2,10 @@ cask "lazunox" do
   version "0.3.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://lazunox.onyxcode.cl/PENDIENTE/lazunox/releases/download/v#{version}/lazunox-#{version}-arm64.dmg"
+  url "https://github.com/PENDIENTE/lazunox/releases/download/v#{version}/lazunox-#{version}-arm64.dmg"
   name "Lazunox"
   desc "Aplicación de escritorio para trabajar con agentes de código"
-  homepage "https://lazunox.onyxcode.cl"
+  homepage "https://github.com/PENDIENTE/lazunox"
 
   depends_on arch: :arm64
   depends_on macos: ">= :ventura"

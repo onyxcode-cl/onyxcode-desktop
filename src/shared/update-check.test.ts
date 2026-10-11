@@ -69,26 +69,26 @@ describe('repo y URLs', () => {
     expect(isValidRepo(undefined)).toBe(false)
   })
   it('releasesApiUrl', () => {
-    expect(releasesApiUrl('o/r')).toBe('https://lazunox.onyxcode.cl/repos/o/r/releases/latest')
+    expect(releasesApiUrl('o/r')).toBe('https://api.github.com/repos/o/r/releases/latest')
     expect(releasesApiUrl('o/r', 'http://127.0.0.1:1234')).toBe('http://127.0.0.1:1234/repos/o/r/releases/latest')
   })
-  const fb = 'https://lazunox.onyxcode.cl/o/r/releases/tag/v1.0.0'
+  const fb = 'https://github.com/o/r/releases/tag/v1.0.0'
   it('acepta la URL legítima', () => {
-    const u = 'https://lazunox.onyxcode.cl/o/r/releases/tag/v1.0.0'
+    const u = 'https://github.com/o/r/releases/tag/v1.0.0'
     expect(safeReleaseUrl(u, 'o/r', 'v1.0.0')).toBe(u)
-    expect(safeReleaseUrl('https://lazunox.onyxcode.cl/O/R/releases/tag/v1.0.0', 'o/r', 'v1.0.0')).toContain('lazunox.onyxcode.cl')
+    expect(safeReleaseUrl('https://github.com/O/R/releases/tag/v1.0.0', 'o/r', 'v1.0.0')).toContain('github.com')
   })
   it('rechaza ataques', () => {
     for (const bad of [
-      'https://lazunox.onyxcode.cl.evil.com/o/r/releases/tag/v1',
-      'http://lazunox.onyxcode.cl/o/r/releases/tag/v1',
-      'https://evil@lazunox.onyxcode.cl/o/r/releases/tag/v1',
-      'https://user:pw@lazunox.onyxcode.cl/o/r/releases/tag/v1',
-      'https://lazunox.onyxcode.cl/other/r/releases/tag/v1',
-      'https://lazunox.onyxcode.cl/o/r2/releases/tag/v1',
-      'https://lazunox.onyxcode.cl/o/r/issues/1',
-      'https://lazunox.onyxcode.cl:443/o/r/releases/tag/v1',
-      'https://lazunox.onyxcode.cl:8443/o/r/releases/tag/v1',
+      'https://github.com.evil.com/o/r/releases/tag/v1',
+      'http://github.com/o/r/releases/tag/v1',
+      'https://evil@github.com/o/r/releases/tag/v1',
+      'https://user:pw@github.com/o/r/releases/tag/v1',
+      'https://github.com/other/r/releases/tag/v1',
+      'https://github.com/o/r2/releases/tag/v1',
+      'https://github.com/o/r/issues/1',
+      'https://github.com:443/o/r/releases/tag/v1',
+      'https://github.com:8443/o/r/releases/tag/v1',
       'https://evil.example/x',
       'javascript:alert(1)',
       'file:///etc/passwd',
@@ -99,7 +99,7 @@ describe('repo y URLs', () => {
       expect(safeReleaseUrl(bad, 'o/r', 'v1.0.0'), String(bad)).toBe(fb)
   })
   it('codifica el tag en la URL de reserva', () =>
-    expect(safeReleaseUrl(null, 'o/r', 'v1/../x')).toBe('https://lazunox.onyxcode.cl/o/r/releases/tag/v1%2F..%2Fx'))
+    expect(safeReleaseUrl(null, 'o/r', 'v1/../x')).toBe('https://github.com/o/r/releases/tag/v1%2F..%2Fx'))
 })
 
 describe('nextCheckDue', () => {

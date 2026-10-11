@@ -1,9 +1,9 @@
-import { RELEASES_ORIGIN } from '@shared/brand'
+import { RELEASES_API_ORIGIN, RELEASES_ORIGIN } from '@shared/brand'
 import { isValidRepo } from '@shared/update-check'
 import { decodePublicKey, type UpdateKey } from './signature'
 
-/** Origen de la API y de las descargas de releases (servidor propio, ver `RELEASES_ORIGIN`). Nombre antiguo conservado por los tests. */
-export const GITHUB_API_BASE: string = RELEASES_ORIGIN
+/** Origen de la API de releases (`RELEASES_API_ORIGIN`; las descargas salen de `RELEASES_ORIGIN`). */
+export const GITHUB_API_BASE: string = RELEASES_API_ORIGIN
 
 /**
  * Team ID de Apple (10 caracteres, p. ej. «ABCDE12345») del certificado Developer ID con el que se firma Lazunox.

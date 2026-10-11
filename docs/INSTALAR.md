@@ -8,14 +8,14 @@ macOS puede mostrar un aviso la primera vez. No es un fallo: es lo esperado, y a
 ## Vía 1: línea de comando
 
 ```sh
-curl -fsSL https://lazunox.onyxcode.cl/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.sh | sh
 ```
 
 El script comprueba que tu Mac es Apple Silicon, descarga el `.dmg` y `SHA256SUMS`, **verifica el hash**, comprueba la
 **firma** de la app contra el certificado fijado, instala en `/Applications` (o `~/Applications`) y desmonta. No usa sudo, no toca
 tus datos, no desactiva Gatekeeper y no instala nada más. Un archivo bajado con `curl` no lleva marca de cuarentena, así que no sale el aviso.
 
-Los archivos se descargan de `https://lazunox.onyxcode.cl/lazunox/lazunox/releases/latest/download/` (o de `…/releases/download/vX.Y.Z/`
+Los archivos se descargan de `https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest/download/` (o de `…/releases/download/vX.Y.Z/`
 con `--version`); no hace falta GitHub.
 
 Opciones: `--version X.Y.Z`, `--dry-run` (muestra los pasos sin ejecutar nada), `--no-open`, `--uninstall`, `--help`.
@@ -31,7 +31,7 @@ Está en un tap propio (Homebrew ya no admite apps sin firma de Apple en su cat�
 
 ## Vía 3: DMG a mano
 
-1. Descarga `lazunox-X.Y.Z-arm64.dmg` y `SHA256SUMS` de `https://lazunox.onyxcode.cl/lazunox/lazunox/releases/latest/download/`.
+1. Descarga `lazunox-X.Y.Z-arm64.dmg` y `SHA256SUMS` de `https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest/download/`.
 2. Comprueba el hash: `shasum -a 256 lazunox-X.Y.Z-arm64.dmg` y compáralo con la línea del mismo archivo en `SHA256SUMS`.
 3. Abre el `.dmg` y arrastra Lazunox a Aplicaciones.
 4. Al abrirla, macOS dirá que no puede verificar que esté libre de software malicioso. Pulsa **Aceptar** (o «Hecho»), luego:
@@ -80,10 +80,10 @@ puede mostrar «Windows protegió su PC». No es un fallo. Hay dos formas de evi
 Abre PowerShell normal (NO «Ejecutar como administrador») y pega:
 
 ```powershell
-irm https://lazunox.onyxcode.cl/install.ps1 | iex
+irm https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.ps1 | iex
 ```
 
-El script (`scripts/install/install.ps1`) descarga del servidor (`https://lazunox.onyxcode.cl`) el `SHA256SUMS` y `Lazunox-Setup-X.Y.Z-x64.exe`,
+El script (`scripts/install/install.ps1`) descarga de GitHub (`https://github.com/onyxcode-cl/onyxcode-desktop`) el `SHA256SUMS` y `Lazunox-Setup-X.Y.Z-x64.exe`,
 **comprueba el hash SHA-256** (si no coincide no instala nada), instala solo para tu usuario y borra los temporales. Lo que baja
 PowerShell no lleva la marca «descargado de Internet», así que SmartScreen no salta. No usa administrador ni toca tus datos
 (`%APPDATA%\Lazunox`).
@@ -93,7 +93,7 @@ Si lo prefieres, descárgalo y léelo antes: `.\install.ps1 -DryRun`.
 
 ## Vía 2: instalador a mano
 
-1. Descarga `Lazunox-Setup-X.Y.Z-x64.exe` y `SHA256SUMS` de `https://lazunox.onyxcode.cl/lazunox/lazunox/releases/latest/download/`.
+1. Descarga `Lazunox-Setup-X.Y.Z-x64.exe` y `SHA256SUMS` de `https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest/download/`.
 2. Comprueba el hash: `Get-FileHash .\Lazunox-Setup-X.Y.Z-x64.exe -Algorithm SHA256` y compáralo con `SHA256SUMS`.
 3. Ábrelo. Si sale el aviso azul: **Más información › Ejecutar de todos modos**. Solo la primera vez.
 
@@ -110,8 +110,9 @@ Si lo prefieres, descárgalo y léelo antes: `.\install.ps1 -DryRun`.
 | Tarjeta «Preparar Tareas» (entorno aislado) la primera vez                       | Lazunox instala WSL y su distro aislada, la imagen viene en el instalador.   | Sigue los pasos de la tarjeta; si falta WSL o la virtualización, te explica cómo activarlos (puede pedir reiniciar). **Si actualizas a 0.5.9, el entorno aislado se reinstala y lo guardado dentro de esa distro fuera de `/opt/lazunox` se pierde** (tus carpetas de Windows no). |
 | Control del PC / Control total                                                   | Permiso explícito por acción, y Control total además pide tu consentimiento. | Léelo antes de aceptar. Lazunox no debe correr como administrador: si lo abres así, Tareas y Control del PC se niegan a arrancar.                                                                                                                                                  |
 
-## Qué copiar a la raíz del servidor (Mac y Windows, para quien publica)
+## Qué publicar en GitHub (Mac y Windows, para quien publica)
 
-Las personas usan los dos comandos de arriba, así que `install.sh` e `install.ps1` (de `scripts/install/`) deben estar en la **raíz** de
-`/var/www/lazunox/` junto a la carpeta que arma `scripts/publish-vps.mjs` (ver `docs/VPS.md`): `https://lazunox.onyxcode.cl/install.sh` y
-`https://lazunox.onyxcode.cl/install.ps1`. Los instaladores y el `SHA256SUMS` salen de `publish-vps.mjs` (debe incluir la línea del `.exe`).
+Las personas usan los dos comandos de arriba, que bajan `install.sh` e `install.ps1` directamente del repositorio (rama `main`, carpeta
+`scripts/install/`): no hay que copiar nada a ningún servidor. Cada release de GitHub debe llevar el `.dmg`, el instalador `.exe` y el
+`SHA256SUMS` con una línea por cada uno (lo escribe `node scripts/publish-github.mjs`, ver `docs/RELEASE.md`). Si algún día se usa el
+servidor propio, los dos scripts se copian a su raíz (`docs/VPS.md`).

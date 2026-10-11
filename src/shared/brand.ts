@@ -49,14 +49,23 @@ export const BRAND_COLORS = {
 export const CLOUD_DOMAIN = 'remoto.onyxcode.cl' // EXTERNO-PENDIENTE: D3
 
 /**
- * Servidor propio (HTTPS) desde el que se publican las actualizaciones. Imita la estructura de GitHub Releases
- * (`/repos/<repo>/releases/latest` y `/<repo>/releases/download/<tag>/<archivo>`), así que sirve con archivos estáticos (nginx).
- * No hace falta que sea de confianza: cada actualización lleva su firma Ed25519 y la app la comprueba antes de instalar.
+ * Canal de actualizaciones: GitHub Releases (gratis, sin servidor). La app consulta la API (`RELEASES_API_ORIGIN`:
+ * `/repos/<repo>/releases/latest`) y descarga de `RELEASES_ORIGIN` (`/<repo>/releases/download/<tag>/<archivo>`). No hace falta que
+ * el canal sea de confianza: cada actualización lleva su firma Ed25519 y la app la comprueba antes de instalar.
+ * Alternativa con servidor propio (misma estructura, archivos estáticos): `VPS_RELEASES_*` más abajo y docs/VPS.md; para usarla se
+ * ponen esos valores en estas tres constantes (el origen y el de la API son el mismo en el servidor propio).
  */
-export const RELEASES_ORIGIN = 'https://lazunox.onyxcode.cl'
+export const RELEASES_ORIGIN = 'https://github.com'
 
-/** «dueño/repositorio» con el que se nombra la ruta de las releases en el servidor. Vacío = sin aviso de versión nueva (sin red). */
-export const RELEASES_REPO = 'lazunox/lazunox' as string
+/** Origen de la API de releases (en GitHub es otro host que las descargas; en el servidor propio es el mismo `RELEASES_ORIGIN`). */
+export const RELEASES_API_ORIGIN = 'https://api.github.com'
+
+/** «dueño/repositorio» de las releases. Vacío = sin aviso de versión nueva (sin red). */
+export const RELEASES_REPO = 'onyxcode-cl/onyxcode-desktop' as string
+
+/** Servidor propio de releases (alternativa a GitHub, ver docs/VPS.md). Lo usa `scripts/publish-vps.mjs`; la app NO lo consulta salvo que se cambien las tres constantes de arriba. */
+export const VPS_RELEASES_ORIGIN = 'https://lazunox.onyxcode.cl'
+export const VPS_RELEASES_REPO = 'lazunox/lazunox'
 
 /**
  * Clave PÚBLICA Ed25519 con la que se verifica el manifiesto de cada actualización (SPKI DER en base64,

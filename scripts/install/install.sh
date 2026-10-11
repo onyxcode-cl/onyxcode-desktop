@@ -34,9 +34,9 @@ set -eu
 
 # --- Constantes -----------------------------------------------------------------------------------
 # Mientras valga PENDIENTE no hay release publicada y el script se niega a ejecutarse.
-RELEASES_REPO_DEFAULT="lazunox/lazunox"
-# Servidor propio de releases (misma estructura que GitHub Releases). LAZUNOX_RELEASES_ORIGIN lo anula (pruebas).
-RELEASES_ORIGIN_DEFAULT="https://lazunox.onyxcode.cl"
+RELEASES_REPO_DEFAULT="onyxcode-cl/onyxcode-desktop"
+# GitHub Releases (también sirve un servidor propio con la misma estructura, docs/VPS.md). LAZUNOX_RELEASES_ORIGIN lo anula (pruebas).
+RELEASES_ORIGIN_DEFAULT="https://github.com"
 # SHA-1 de la hoja del certificado «Lazunox Local Signing», en minúsculas.
 PINNED_CERT_SHA1="8446c25f2c710d66701c262f048390d8f6edba31"
 APP_NAME="Lazunox.app"

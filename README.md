@@ -18,16 +18,16 @@ Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el s
 ## Descarga e instalación
 
 Guía completa, con los avisos que verás y qué hacer: [`docs/INSTALAR.md`](./docs/INSTALAR.md). Gratis y sin administrador; los dos
-comandos descargan del servidor `https://lazunox.onyxcode.cl`, verifican el hash SHA-256 y no desactivan ninguna protección del sistema:
+comandos descargan las releases de GitHub (`https://github.com/onyxcode-cl/onyxcode-desktop`), verifican el hash SHA-256 y no desactivan ninguna protección del sistema:
 
 ```sh
 # Mac con chip Apple
-curl -fsSL https://lazunox.onyxcode.cl/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.sh | sh
 ```
 
 ```powershell
 # Windows 10/11 de 64 bits (PowerShell normal, no como administrador)
-irm https://lazunox.onyxcode.cl/install.ps1 | iex
+irm https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.ps1 | iex
 ```
 
 El instalador de Windows no está firmado y el DMG de Mac no está notarizado (no hay certificados de pago): ver los avisos en
@@ -176,8 +176,8 @@ Chat, Code, Tareas, Rutinas, Ajustes y el navegador integrado están implementad
 etapa (lotes A–D de Tareas, seguridad, rediseño) está en [`docs/`](./docs) y [`AUDIT.md`](./AUDIT.md);
 la seguridad, en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md) y la verificación, en
 [`docs/VERIFICACION.md`](./docs/VERIFICACION.md).
-Pendiente: firma con Developer ID y notarización, y firma de código en Windows. Las actualizaciones se publican en el servidor propio
-(ver [`docs/VPS.md`](./docs/VPS.md) y [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).
+Pendiente: firma con Developer ID y notarización, y firma de código en Windows. Las actualizaciones se publican en GitHub Releases (ver
+[`docs/RELEASE.md`](./docs/RELEASE.md); el servidor propio queda como alternativa en [`docs/VPS.md`](./docs/VPS.md)) y la firma, en [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md).
 
 Licencia: pendiente de definir.
 

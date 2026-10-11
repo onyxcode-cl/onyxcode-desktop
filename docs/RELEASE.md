@@ -3,7 +3,7 @@
 Complementa `docs/DISTRIBUCION.md` (cómo se firma y notariza) y `docs/SEGURIDAD.md` §3 quinquies y septies (cómo se verifica una actualización).
 Aquí está el **orden** de una publicación, quién hace cada paso y qué hacer si algo sale mal.
 
-> **Dónde se publica:** en el servidor propio `lazunox.onyxcode.cl`, no en GitHub. Pasos del servidor y de la subida: `docs/VPS.md`.
+> **Dónde se publica:** en GitHub Releases (`onyxcode-cl/onyxcode-desktop`); la app consulta `api.github.com` y descarga de `github.com`. A mano, sin CI: `node scripts/publish-github.mjs --tag vX.Y.Z archivos…` arma la carpeta con el `SHA256SUMS` e imprime el comando `gh release create … --draft` (lo ejecutas tú; nunca publica solo). Alternativa con servidor propio (más adelante): `docs/VPS.md`.
 
 ## 0. Resumen
 

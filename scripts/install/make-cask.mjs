@@ -9,8 +9,8 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const DEFAULT_OUT = join(ROOT, 'packaging', 'homebrew-tap', 'Casks', 'lazunox.rb')
 
-/** Servidor propio de releases (el mismo que RELEASES_ORIGIN de src/shared/brand.ts). */
-export const RELEASES_ORIGIN = 'https://lazunox.onyxcode.cl'
+/** Origen de las releases (el mismo que RELEASES_ORIGIN de src/shared/brand.ts: GitHub). */
+export const RELEASES_ORIGIN = 'https://github.com'
 
 export function renderCask({ version, sha256, repo, origin = RELEASES_ORIGIN }) {
   if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version ?? '')) throw new Error(`versión inválida: «${version}» (esperado X.Y.Z)`)
@@ -23,7 +23,7 @@ export function renderCask({ version, sha256, repo, origin = RELEASES_ORIGIN }) 
   url "${origin}/${repo}/releases/download/v#{version}/lazunox-#{version}-arm64.dmg"
   name "Lazunox"
   desc "Aplicación de escritorio para trabajar con agentes de código"
-  homepage "${origin}"
+  homepage "${origin}/${repo}"
 
   depends_on arch: :arm64
   depends_on macos: ">= :ventura"

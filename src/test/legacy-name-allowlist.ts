@@ -45,6 +45,32 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   { path: 'e2e/specs/legacy-data.e2e.ts', token: /onyxcode-web-cowork/i, reason: 'El E2E de datos heredados siembra el nombre de origen' },
   { path: 'e2e/fixtures/legacy-userdata/**', reason: 'Fixture: userData de una versión anterior (rutas y contenido con el nombre viejo)' },
 
+  // --- Canal de actualizaciones en GitHub: el repositorio se llama como la organización del dueño ---
+  {
+    path: 'src/shared/brand.ts',
+    token: /onyxcode-cl\/onyxcode-desktop/i,
+    reason: 'RELEASES_REPO: repositorio de GitHub donde se publican las releases'
+  },
+  {
+    path: 'scripts/install/install.sh',
+    token: /onyxcode-cl\/onyxcode-desktop/i,
+    reason: 'repositorio de GitHub de las releases (RELEASES_REPO)'
+  },
+  {
+    path: 'scripts/install/install.ps1',
+    token: /onyxcode-cl\/onyxcode-desktop/i,
+    reason: 'repositorio de GitHub de las releases (RELEASES_REPO)'
+  },
+  {
+    path: 'scripts/sign-installed-mac.sh',
+    token: /OnyxCode Local Signing/i,
+    reason: 'nombre del certificado de firma local que ya existe en el llavero del dueño'
+  },
+
+  { path: 'README.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
+  { path: 'docs/INSTALAR.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
+  { path: 'docs/RELEASE.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
+
   // --- Dominio externo pendiente (D3): se quita al registrar lazunox.cl ---
   { path: 'src/shared/brand.ts', token: /remoto\.onyxcode\.cl/i, reason: 'EXTERNO-PENDIENTE D3: CLOUD_DOMAIN' },
   {
@@ -52,60 +78,8 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     token: /lazunox\.onyxcode\.cl/i,
     reason: 'RELEASES_ORIGIN: dominio de la empresa del dueño (onyxcode.cl) donde se publican las actualizaciones'
   },
-  {
-    path: 'src/shared/update-check.test.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
-  {
-    path: 'src/main/update/channel.test.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
-  {
-    path: 'src/main/update/checker.test.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
-  {
-    path: 'src/main/update/config.test.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
-  {
-    path: 'src/renderer/src/lib/update-notice.test.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
   { path: 'scripts/publish-vps.mjs', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  { path: 'scripts/install/install.sh', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  { path: 'scripts/install/install.ps1', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  { path: 'scripts/install/install.test.mjs', token: /lazunox\\?\.onyxcode/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  { path: 'scripts/install/make-cask.mjs', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  { path: 'scripts/install/make-cask.test.mjs', token: /lazunox\\?\.onyxcode/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  {
-    path: 'packaging/homebrew-tap/Casks/lazunox.rb',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'servidor propio de releases (RELEASES_ORIGIN)'
-  },
-  { path: 'README.md', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
   { path: 'docs/VPS.md', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  { path: 'docs/RELEASE.md', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
-  {
-    path: 'e2e/specs/update-install.e2e.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
-  {
-    path: 'e2e/specs/update-check.e2e.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
-  {
-    path: 'e2e/lib/releases-server.ts',
-    token: /lazunox\.onyxcode\.cl/i,
-    reason: 'prueba del servidor de releases propio (RELEASES_ORIGIN)'
-  },
   { path: 'cloud/remoto-worker/wrangler.jsonc', token: /remoto\.onyxcode\.cl/i, reason: 'EXTERNO-PENDIENTE D3: ALLOWED_ORIGINS' },
   { path: 'scripts/site-lib.mjs', token: /remoto\.onyxcode\.cl/i, reason: 'EXTERNO-PENDIENTE D3: SITE_ORIGIN' },
   {
