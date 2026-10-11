@@ -1,0 +1,11 @@
+#!/bin/bash
+# Gancho local: antes de CADA `git push` corre la guardia de secretos (src/test/no-secrets.test.ts) y bloquea el envío si algo rastreado
+# parece una llave privada, un token real o un archivo de secretos. Se activa con: git config core.hooksPath scripts/git-hooks
+set -e
+cd "$(git rev-parse --show-toplevel)"
+if ! npx vitest run src/test/no-secrets.test.ts --reporter=dot >/tmp/lazunox-prepush.log 2>&1; then
+  echo "BLOQUEADO: la guardia de secretos encontró algo que no debe subirse:" >&2
+  grep -E "^\+|: (llave|clave|token|archivo)" /tmp/lazunox-prepush.log | head -20 >&2 || true
+  echo "Quítalo (y cambia esa clave si era real) antes de volver a subir." >&2
+  exit 1
+fi

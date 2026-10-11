@@ -60,6 +60,7 @@ El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electr
 - **Changelog**: todo cambio de comportamiento lleva un ID `F8-B<n>` en `CHANGELOG-FASE8.md` (las fases anteriores: `CHANGELOG-FASE6.md`, `-FASE7.md`) con su prueba. Si toca seguridad, actualiza también `docs/SEGURIDAD.md`.
 - **Texto de UI en español** (con inglés beta, ver sección 6). Flujo del dueño: planifica con Opus 5.5, ejecuta con Sonnet 5.5.
 - No publicar, no hacer `git push` sin que se pida, no tocar servidores (Proxmox, Cloudflare), no crear tags ni releases.
+- **Nunca subir secretos ni datos que nos expongan (REGLA PERMANENTE).** Antes de cualquier `git push` o commit que se vaya a subir: revisa lo que sale (`git diff origin/main..HEAD`) y que no haya contraseñas, claves, tokens, llaves privadas, `.env`, certificados, IPs/usuarios de servidores propios, rutas personales ni capturas con datos reales. Si algo así llegó a un commit, NO basta borrarlo: se cambia la clave. La guardia `src/test/no-secrets.test.ts` corre en `npm test` y en el CI; el gancho `scripts/git-hooks/pre-push` la corre antes de cada push (se activa con `git config core.hooksPath scripts/git-hooks`). Nunca pegues en el repo, en commits ni en documentos una clave que la persona te haya dado por el chat.
 
 ## 5. IPC
 
