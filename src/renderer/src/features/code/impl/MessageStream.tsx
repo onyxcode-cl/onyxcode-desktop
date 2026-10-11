@@ -501,10 +501,12 @@ interface Props {
   revertMessageID?: string
   onUnrevert: () => void
   loading: boolean
+  /** El motor está reintentando (estado `retry`): el indicador lo dice en vez de «Trabajando…». */
+  retrying?: boolean
 }
 
 export function MessageStream(props: Props): React.JSX.Element {
-  const { entries, busy, error, root, permissions, questions, revertMessageID, onUnrevert, loading } = props
+  const { entries, busy, error, root, permissions, questions, revertMessageID, onUnrevert, loading, retrying } = props
   const t = useT()
   const retryLast = useCode((s) => s.retryLast)
   const compactSession = useCode((s) => s.compactSession)
@@ -599,7 +601,7 @@ export function MessageStream(props: Props): React.JSX.Element {
           {questions.map((q) => (
             <QuestionCard key={q.id} request={q} />
           ))}
-          {showThinking && <ThinkingIndicator label={t('code.msg.working')} />}
+          {showThinking && <ThinkingIndicator label={retrying ? t('chat.msg.retrying') : t('code.msg.working')} />}
           {error && !lastAssistantFailed(entries) && (
             <ErrorNotice
               error={error}

@@ -784,6 +784,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
         <MessageStream
           entries={entries}
           busy={busy}
+          retrying={run === 'retry'}
           error={error}
           root={directory}
           permissions={permissions}

@@ -191,6 +191,12 @@ describe('Windows: estado sin TCC', () => {
   })
 
   it('macOS: el estado no lleva `win`', async () => {
+    // El helper del Mac devuelve JSON válido (el mock sin implementación daba `undefined` y lo registraba como error).
+    h.helper.mockImplementation(async (_b: string, args: string[]) =>
+      args[0] === 'permissions'
+        ? JSON.stringify({ accessibility: true, screenRecording: true })
+        : JSON.stringify([{ width: 1440, height: 900, scale: 2 }])
+    )
     const s = make('darwin')
     expect((await s.status()).win).toBeUndefined()
   })
