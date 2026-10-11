@@ -15,6 +15,25 @@ Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el s
 > El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electron-builder.js`; las excepciones con el nombre anterior
 > están en `src/test/legacy-name-allowlist.ts`.
 
+## Descarga e instalación
+
+Guía completa, con los avisos que verás y qué hacer: [`docs/INSTALAR.md`](./docs/INSTALAR.md). Gratis y sin administrador; los dos
+comandos descargan del servidor `https://lazunox.onyxcode.cl`, verifican el hash SHA-256 y no desactivan ninguna protección del sistema:
+
+```sh
+# Mac con chip Apple
+curl -fsSL https://lazunox.onyxcode.cl/install.sh | sh
+```
+
+```powershell
+# Windows 10/11 de 64 bits (PowerShell normal, no como administrador)
+irm https://lazunox.onyxcode.cl/install.ps1 | iex
+```
+
+El instalador de Windows no está firmado y el DMG de Mac no está notarizado (no hay certificados de pago): ver los avisos en
+`docs/INSTALAR.md`. Qué cambió en cada versión: [`CHANGELOG.md`](./CHANGELOG.md); qué está verificado y qué no:
+[`docs/VERIFICACION.md`](./docs/VERIFICACION.md).
+
 ## Requisitos
 
 Para usar la app:
@@ -157,9 +176,8 @@ Chat, Code, Tareas, Rutinas, Ajustes y el navegador integrado están implementad
 etapa (lotes A–D de Tareas, seguridad, rediseño) está en [`docs/`](./docs) y [`AUDIT.md`](./AUDIT.md);
 la seguridad, en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md) y la verificación, en
 [`docs/VERIFICACION.md`](./docs/VERIFICACION.md).
-Pendiente: control remoto desde el móvil, firma con Developer ID y auto-actualización (hoy solo hay un
-aviso de versión nueva, sin instalación automática;
-ver [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).
+Pendiente: firma con Developer ID y notarización, y firma de código en Windows. Las actualizaciones se publican en el servidor propio
+(ver [`docs/VPS.md`](./docs/VPS.md) y [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md)).
 
 Licencia: pendiente de definir.
 

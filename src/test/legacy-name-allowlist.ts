@@ -88,6 +88,7 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     token: /lazunox\.onyxcode\.cl/i,
     reason: 'servidor propio de releases (RELEASES_ORIGIN)'
   },
+  { path: 'README.md', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
   { path: 'docs/VPS.md', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
   { path: 'docs/RELEASE.md', token: /lazunox\.onyxcode\.cl/i, reason: 'servidor propio de releases (RELEASES_ORIGIN)' },
   {

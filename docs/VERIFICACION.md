@@ -5,22 +5,52 @@
 Requiere Node 22 (`export PATH=/opt/homebrew/opt/node@22/bin:$PATH`). Ningún comando toca el userData real de la app
 ni los servidores OpenCode del usuario.
 
-| Comando | Qué cubre |
-|---|---|
-| `npm run typecheck` | `tsc` de main/preload y del renderer. |
-| `npm test` | Vitest unitario (`src/**`). No recoge `e2e/`. |
-| `npm run lint` | ESLint sobre `src`. |
-| `npm run build` | `electron-vite build` (main, preload, renderer). |
-| `npm run test:transform` | Cada archivo del renderer pasa por la cadena de Vite dev (Babel/Tailwind/alias), sin Electron. |
-| `npm run test:smoke` | Humo con Electron (script propio `e2e/smoke.mjs`). |
-| `npm run test:e2e` | E2E con Electron real + OpenCode falso (ver abajo), modo dev-renderer con ganchos `__lazunoxE2E`. |
-| `npm run test:e2e:prod` | Igual pero cargando por `lazunox://app` con la CSP real; solo aserciones de humo (no hay ganchos). |
-| `npm run test:fs` | **Opcional, solo macOS, fuera de `verify`.** Puntos de restauración sobre volúmenes reales: monta imágenes `hdiutil` ExFAT, FAT32 y HFS+ con mayúsculas (`-nobrowse`, `detach -force` al terminar) y repite crear → modificar/crear/borrar → cambios → deshacer → rehacer. Activa `LAZUNOX_FS_IT=1`. |
-| `npm run test:stress` | **Opcional, fuera de `verify`.** Estrés de los puntos de restauración (`LAZUNOX_STRESS=1`): 19 990 archivos entran y 20 010 dejan el punto omitido, incremental de 5 000 archivos rápido, p99 del retraso del bucle de eventos < 100 ms y RSS < +200 MB con dos archivos de 45 MB. Tarda ~15 s. |
-| `npm run check:mcp-catalog` | **Manual, con red, fuera de `verify`.** Cada ficha del catálogo MCP (`src/shared/mcp-catalog.ts`) debe responder como servidor MCP a un `initialize` (200, 401 o 405) y su documentación debe responder 200. Salida 1 si alguna falla, 3 sin red. Ejecutar al tocar el catálogo y de vez en cuando (las URL de los proveedores cambian). |
+| Comando                          | Qué cubre                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`              | `tsc` de main/preload y del renderer.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `npm test`                       | Vitest unitario (`src/**`). No recoge `e2e/`.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `npm run lint`                   | ESLint sobre `src`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `npm run build`                  | `electron-vite build` (main, preload, renderer).                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `npm run test:transform`         | Cada archivo del renderer pasa por la cadena de Vite dev (Babel/Tailwind/alias), sin Electron.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `npm run test:smoke`             | Humo con Electron (script propio `e2e/smoke.mjs`).                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `npm run test:e2e`               | E2E con Electron real + OpenCode falso (ver abajo), modo dev-renderer con ganchos `__lazunoxE2E`.                                                                                                                                                                                                                                                                                                                                                                                     |
+| `npm run test:e2e:prod`          | Igual pero cargando por `lazunox://app` con la CSP real; solo aserciones de humo (no hay ganchos).                                                                                                                                                                                                                                                                                                                                                                                    |
+| `npm run test:fs`                | **Opcional, solo macOS, fuera de `verify`.** Puntos de restauración sobre volúmenes reales: monta imágenes `hdiutil` ExFAT, FAT32 y HFS+ con mayúsculas (`-nobrowse`, `detach -force` al terminar) y repite crear → modificar/crear/borrar → cambios → deshacer → rehacer. Activa `LAZUNOX_FS_IT=1`.                                                                                                                                                                                  |
+| `npm run test:stress`            | **Opcional, fuera de `verify`.** Estrés de los puntos de restauración (`LAZUNOX_STRESS=1`): 19 990 archivos entran y 20 010 dejan el punto omitido, incremental de 5 000 archivos rápido, p99 del retraso del bucle de eventos < 100 ms y RSS < +200 MB con dos archivos de 45 MB. Tarda ~15 s.                                                                                                                                                                                       |
+| `npm run check:mcp-catalog`      | **Manual, con red, fuera de `verify`.** Cada ficha del catálogo MCP (`src/shared/mcp-catalog.ts`) debe responder como servidor MCP a un `initialize` (200, 401 o 405) y su documentación debe responder 200. Salida 1 si alguna falla, 3 sin red. Ejecutar al tocar el catálogo y de vez en cuando (las URL de los proveedores cambian).                                                                                                                                              |
 | `npm run verify:update-manifest` | **Sin red ni `.app`, rápido.** Genera una clave Ed25519 efímera y un ZIP falso, firma un manifiesto como `publish-update.mjs` y exige que se acepte el legítimo y se rechace cada manipulación (firma, byte, otra clave, downgrade, appId/keyId/tag, SHA-256/tamaño del ZIP, manifiesto enorme…); además valida `UPDATE_PUBLIC_KEY`/`UPDATE_KEY_ID` de `brand.ts`. También corre en `npm test` (`src/main/update/manifest-script.test.ts`, que añade la paridad con el cliente real). |
-| `npm run perf:startup` | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria». |
-| `npm run verify` | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden. |
+| `npm run perf:startup`           | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria».                                                                                                                                                                                                                                                                                                               |
+| `npm run verify`                 | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+
+## Estado de verificación antes del lanzamiento (0.5.9)
+
+Tabla honesta, hecha **solo** con lo que consta en `git log`, en estos documentos y en las pruebas del repositorio. Si algo no consta,
+está como «sin verificar». «Verificado en equipo real» = alguien lo probó en un Mac o PC Windows de verdad (no con la plataforma
+simulada ni con el OpenCode falso). «Solo pruebas automáticas» = pasa en `npm run verify` / el E2E con OpenCode falso (en Windows,
+sincronizado al PC de pruebas), pero nadie lo ha usado a mano con modelo y datos reales. Se actualiza cuando se hace una prueba nueva.
+
+| Función                                     | macOS                                                                                                                                                                 | Windows                                                                                                                                                                                                                                              |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chat                                        | Solo pruebas automáticas                                                                                                                                              | Solo pruebas automáticas (E2E en el PC de pruebas: 162 pruebas pasan, 49 saltadas)                                                                                                                                                                   |
+| Code (terminal, worktrees, carpeta real)    | Solo pruebas automáticas                                                                                                                                              | **Sin verificar** con carpeta real, terminal y worktrees (la terminal ConPTY y el paquete sí se probaron: `pty/service.win.test.ts`, `pack-check.ps1`)                                                                                               |
+| Tareas con entorno aislado                  | Solo pruebas automáticas (Seatbelt; la checklist humana H 7 está pendiente de marcar)                                                                                 | Verificado en equipo real, **parcial**: 38 pruebas de ataque (`attack_suite.py`) y una sesión real 2/2 (uid 1000, `CapEff=0`, montajes `noexec,nosuid,nodev`); falta la batería A1–A20 completa, las dos sesiones (elevada y normal), WSL#12443 y A3 |
+| Control total                               | Solo pruebas automáticas                                                                                                                                              | Solo pruebas automáticas (opcional, con consentimiento y sin elevar; decisión del 2026-10-10)                                                                                                                                                        |
+| Control del PC / del Mac                    | Solo pruebas automáticas (checklist humana H 1 pendiente de marcar)                                                                                                   | Verificado en equipo real, **parcial**: helper con ventana de prueba propia (clic, teclado con acentos, campo de contraseña, STOP) y apertura de apps por nombre. **Sin verificar**: modo en segundo plano (UI Automation) y Defender                |
+| Rutinas                                     | Solo pruebas automáticas                                                                                                                                              | **Sin verificar**                                                                                                                                                                                                                                    |
+| Skill Word / Excel                          | Solo pruebas automáticas                                                                                                                                              | Solo pruebas automáticas (en la imagen: `python3-docx/openpyxl`)                                                                                                                                                                                     |
+| Skill PowerPoint / PDF                      | Solo pruebas automáticas                                                                                                                                              | Imagen 2026.10.10 construida y reproducible; el fallo se encontró probando en un PC real. **Sin verificar de nuevo** con la imagen nueva en un equipo limpio                                                                                         |
+| Actualizador                                | Solo pruebas automáticas (manifiesto firmado, anti-downgrade, E2E con servidor falso). **Actualización real de punta a punta con lazunox.onyxcode.cl: sin verificar** | Solo pruebas automáticas; el reemplazo de carpeta (`swap.ps1`) sí se probó en un PC real. **Actualización real de punta a punta: sin verificar**                                                                                                     |
+| Instaladores (`install.sh` / `install.ps1`) | Solo pruebas automáticas (`scripts/install/install.test.mjs`)                                                                                                         | `install.ps1`: solo pruebas automáticas. El instalador `.exe` sí se instaló y desinstaló en el PC real (`pack-check.ps1`, 32 comprobaciones, sin firma)                                                                                              |
+
+### Pendiente de verificar (no marcado como hecho)
+
+1. **Actualización real de punta a punta con el servidor** (`lazunox.onyxcode.cl`): publicar, ver el aviso, descargar, verificar y reiniciar en Mac y Windows.
+2. **Rutinas y Code con carpeta real, terminal y worktrees en Windows.**
+3. **Máquina Windows limpia sin WSL**: el camino de «Preparar Tareas» desde cero (WSL ausente, virtualización apagada, reinicio).
+4. **Control del PC en Windows en segundo plano** (UI Automation), además de SendInput con apps reales distintas de la ventana de prueba, capturas con máscara y Defender.
+5. **Instalador de Windows sin firmar**: SmartScreen y reputación ante Defender no se pueden comprobar sin certificado (ver `docs/INSTALAR.md`).
+6. **DMG sin notarizar**: el aviso de Gatekeeper es el esperado; la ruta con certificado propio solo se ha comprobado con el script y la firma fijada.
+7. Tamaño real del ZIP de actualización de Windows con la imagen incluida (`docs/DISTRIBUCION.md` §12) y la reinstalación del entorno aislado al pasar a la imagen 2026.10.10 con datos reales de una persona.
 
 ## Windows (PC de pruebas, `scripts/win/`)
 
@@ -29,6 +59,7 @@ ni los servidores OpenCode del usuario.
 `STEPS=ci,typecheck,unit,build scripts/win/sync.sh` (desde la Mac) sube el árbol a `C:\onyx\wt` y ejecuta `C:\onyx\run.ps1` (Node 22 portátil en `C:\onyx\node22`; límites ci 900 s, typecheck 300, unit 600, build 300, e2e 2400, package 1500; limpia huérfanos al empezar y al acabar). Pasos extra: `fetch` (descarga y verifica `opencode.exe`) y `bundle` (`check:win-bundle`). `scripts/win/smoke.ps1` arranca la app sin pantalla con `OPENCODE_BIN`, comprueba «listo» < 30 s, cierre limpio (`WM_CLOSE`), huérfano simulado eliminado y ningún proceso sobrante; `procs.ps1` lista lo que cuelga de `C:\onyx`.
 
 Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo los de fixtures POSIX, que se sustituyen en la tanda 3):
+
 - `macOnly` (Tareas/actualizador): `sandbox-profile.test.ts` (Seatbelt), `restore-points.test.ts` (puntos de restauración del modo Tareas), `swap.test.ts` (`validateSwapArgs`, `startSwap`), `swap.integration.test.ts`, y en `main-errors.i18n.test.ts` las comprobaciones de `forbiddenFolderReason` (folder-policy).
 - `posixOnly` (fixtures `#!/bin/sh`, permisos, `mkfifo`): `binary.test.ts` solo en 4 casos (enlace simbólico y bit de ejecución, que Windows no tiene; y «resolución completa con CLI y embebido reales», que necesita un `opencode.exe` real con versión controlada: la decisión se cubre en `pickOpencode` y `bundledOpencodePath` con rutas win32). El resto corre en Windows con un `.mjs` falso lanzado con `node` (`opencode/test-launcher.ts`), `m001-tasks-rename.test.ts` (un caso con `chmod`), `installer.test.ts` (FIFO) y las aserciones de modo `0600`/`0700` en `account/store`, `mcp-catalog-install`, `installer` y `data-dir`.
 - `service.win.test.ts` (terminal real con ConPTY y `asarUnpack` de node-pty) solo corre en Windows (`winOnly`; en macOS la shell depende del `.zshrc`); la elección de shell (`shell.test.ts`) corre en todas.
@@ -71,14 +102,14 @@ Saltos de `vitest` en Windows (`src/test/platform.ts`; ninguno es de la v1 salvo
 
 Variables: `PERF_STARTS`, `PERF_MINUTES`, `PERF_TURNS`, `PERF_JSON=/ruta` (guarda `.startup.json` y `.memory.json`), `PERF_STRICT=1` (superar un umbral falla en vez de avisar). Hace falta el cerrojo de E2E si otra tarea usa Electron a la vez.
 
-| Métrica | Umbral sugerido | Medido (R3-B, M-series, macOS, prod) |
-|---|---|---|
-| Primer pintado (mediana / máx.) | ≤ 1 500 ms | 398 / 466 ms |
-| Interactiva (mediana / máx.) | ≤ 2 500 ms | 600 / 645 ms |
-| RSS del árbol sin conversaciones | (referencia) | 585 MB |
-| RSS pico tras cargar 3 conversaciones largas | ≤ 1 200 MB | 871 MB |
-| RSS asentado a los 1–3,5 min | ≤ pico | 711–726 MB |
-| RSS a los 5 min | sin crecimiento > 10 % desde el minuto 1 | 586 MB (−19 %: el sistema recupera memoria; no hay fuga) |
+| Métrica                                      | Umbral sugerido                          | Medido (R3-B, M-series, macOS, prod)                     |
+| -------------------------------------------- | ---------------------------------------- | -------------------------------------------------------- |
+| Primer pintado (mediana / máx.)              | ≤ 1 500 ms                               | 398 / 466 ms                                             |
+| Interactiva (mediana / máx.)                 | ≤ 2 500 ms                               | 600 / 645 ms                                             |
+| RSS del árbol sin conversaciones             | (referencia)                             | 585 MB                                                   |
+| RSS pico tras cargar 3 conversaciones largas | ≤ 1 200 MB                               | 871 MB                                                   |
+| RSS asentado a los 1–3,5 min                 | ≤ pico                                   | 711–726 MB                                               |
+| RSS a los 5 min                              | sin crecimiento > 10 % desde el minuto 1 | 586 MB (−19 %: el sistema recupera memoria; no hay fuga) |
 
 Si un umbral se supera: repetir (la primera medición tras compilar suele ser peor), mirar `PERF_JSON` y comparar con `E2E_MODE=dev` solo para descartar Vite; un arranque lento real suele ser una carga síncrona nueva en `main/index.ts` o en el primer render, y un crecimiento sostenido de RSS un almacén (`stores/`) que acumula mensajes sin liberar al cambiar de conversación.
 
@@ -113,14 +144,15 @@ Utilidades: `dialogs.ts` (`stubDialog`, `dialogCalls`), `notifications.ts` (`spy
 
 Variables de entorno:
 
-| Variable | Efecto |
-|---|---|
-| `E2E_MODE=prod` | Carga por `lazunox://app`, sin ganchos (lo fija `test:e2e:prod`). |
-| `E2E_SKIP_BUILD=1` | Reutiliza `./out` en vez de recompilar (`out/` debe estar al día). |
-| `E2E_DEBUG=1` | Vuelca stdout/stderr de main. |
-| `E2E_VISIBLE=1` | No define `LAZUNOX_E2E_HEADLESS` (ventana visible). |
-| `E2E_KEEP=1` | No borra el userData temporal (para inspeccionarlo). |
+| Variable                                        | Efecto                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------- |
+| `E2E_MODE=prod`                                 | Carga por `lazunox://app`, sin ganchos (lo fija `test:e2e:prod`).    |
+| `E2E_SKIP_BUILD=1`                              | Reutiliza `./out` en vez de recompilar (`out/` debe estar al día).   |
+| `E2E_DEBUG=1`                                   | Vuelca stdout/stderr de main.                                        |
+| `E2E_VISIBLE=1`                                 | No define `LAZUNOX_E2E_HEADLESS` (ventana visible).                  |
+| `E2E_KEEP=1`                                    | No borra el userData temporal (para inspeccionarlo).                 |
 | `E2E_LAUNCH_ATTEMPTS` / `E2E_LAUNCH_TIMEOUT_MS` | Reintentos (6) y timeout por intento (8000 ms) de `electron.launch`. |
+
 14. **Asistente de primer uso con un OpenCode real (3 min; F8-B1 a F8-B4).** Con un userData nuevo
     (`--user-data-dir=/tmp/lazunox-nuevo`, sin `onboarded`) y `PATH`/`~/.opencode` sin OpenCode: aparece el paso 1; «Copiar comando
     de instalación» deja `curl -fsSL https://opencode.ai/install | bash` en el portapapeles (la app no lo ejecuta), «Abrir
@@ -161,11 +193,11 @@ Ayudantes propios en `e2e/lib/lotes.ts`; página de prueba `e2e/pages/tienda.htm
 
 ### Bugs reales que destapó (arreglados en la Fase 7; ver `docs/HALLAZGOS-E2E.md`)
 
-| Caso | Qué pasa | Dónde |
-|---|---|---|
-| Carpeta prohibida en Tareas (`~`, `~/Library`) | `approvePending` guarda el motivo en `useTasks.error` pero solo se pinta con `phase === 'error' && folder`: el usuario no ve el mensaje. | `tasks/impl/actions.ts` + `TasksWorkspace.tsx` (`phaseBanners`) |
-| Foco por defecto en «Cancelar» de la tarjeta de aprobación | `denyRef.current?.focus()` corre al montar con el botón `disabled` (aún sin armar): no recibe foco y nada lo enfoca al armarse. Enter no deniega. | `browser/Cards.tsx` (`ApprovalCard`) |
-| Navegar el navegador integrado a `mailto:` / `tel:` | Mata el proceso principal (SIGTRAP en `CrBrowserMain`, informes `~/Library/Logs/DiagnosticReports/Electron-*.ips`); la guía esperaba «no abre Mail». Arreglado en F7-B1. | `embedded-browser/surface.ts` / `service.ts` (guardas de navegación) |
+| Caso                                                       | Qué pasa                                                                                                                                                                 | Dónde                                                                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Carpeta prohibida en Tareas (`~`, `~/Library`)             | `approvePending` guarda el motivo en `useTasks.error` pero solo se pinta con `phase === 'error' && folder`: el usuario no ve el mensaje.                                 | `tasks/impl/actions.ts` + `TasksWorkspace.tsx` (`phaseBanners`)      |
+| Foco por defecto en «Cancelar» de la tarjeta de aprobación | `denyRef.current?.focus()` corre al montar con el botón `disabled` (aún sin armar): no recibe foco y nada lo enfoca al armarse. Enter no deniega.                        | `browser/Cards.tsx` (`ApprovalCard`)                                 |
+| Navegar el navegador integrado a `mailto:` / `tel:`        | Mata el proceso principal (SIGTRAP en `CrBrowserMain`, informes `~/Library/Logs/DiagnosticReports/Electron-*.ips`); la guía esperaba «no abre Mail». Arreglado en F7-B1. | `embedded-browser/surface.ts` / `service.ts` (guardas de navegación) |
 
 Observaciones (con test que documenta el comportamiento actual): un origen local aprobado con «Permitir siempre» puede
 hacer `fetch` a cualquier otro puerto de loopback (`session.ts` mira el origen de la página, no el destino); «en esta
@@ -233,59 +265,59 @@ modelo reales. Marca cada punto; entre paréntesis, el tiempo aproximado.
 
 **Guía del lote B §4 (22 pasos)**
 
-| Paso | Cobertura |
-|---|---|
-| 1 Onboarding | `lotes` (se descarta y no vuelve tras recargar) |
-| 2 Carpetas prohibidas | `lotes`: `~` y `~/Library` (estado del store) y su versión visible con el banner «Cerrar» (F7-B4, arreglado); volumen SMB, Papelera e iCloud solo en pruebas de `folder-policy` fuera del repo → H 7 (rechazos a mano) |
-| 3 Otra carpeta en Sandbox | `lotes`: tarjeta «El agente quiere trabajar en otra carpeta» con ruta y motivo; reinicio del servidor y lectura real → H 7 |
-| 4 Carpeta de confianza | H 7 |
-| 5 Mover y renombrar | H 7 (Seatbelt + modelo reales) |
-| 6 Documentos · 7 Entregables | H 7 |
-| 8 Segundo plano | notificación «terminó» en `fase6` (caso 4); clic en la notificación y «mantener despierto» → H 3 |
-| 9 Inactividad | manual, opcional (bajar el tiempo a 1 min en Ajustes → Tareas → Servidores) |
-| 10 Búsqueda | `lru` (búsqueda en tarea desalojada) |
-| 11 Lista | `lotes`: fijar, archivar, restaurar; agrupar → manual |
-| 12 Modelo y esfuerzo | H 7 |
-| 13 Editar/reintentar/continuar/exportar | `lotes`: exportar a Markdown; editar y reintentar (`session.revert` con git real) → manual |
-| 14 Consulta lateral · 15 Proyecto · 16 MCP · 17 Crear skill | H 7 / H 8 (requieren modelo y MCP reales) |
-| 18–19 Rutinas | manual con modelo real |
-| 20 Subagentes en Control total · 21 Limpieza | H 1 |
-| 22 Política gestionada | `lotes`: banner, `disableRoutines`, `disableBrowser`, `allowedFolderRoots`, JSON inválido = todo restringido |
+| Paso                                                        | Cobertura                                                                                                                                                                                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Onboarding                                                | `lotes` (se descarta y no vuelve tras recargar)                                                                                                                                                                        |
+| 2 Carpetas prohibidas                                       | `lotes`: `~` y `~/Library` (estado del store) y su versión visible con el banner «Cerrar» (F7-B4, arreglado); volumen SMB, Papelera e iCloud solo en pruebas de `folder-policy` fuera del repo → H 7 (rechazos a mano) |
+| 3 Otra carpeta en Sandbox                                   | `lotes`: tarjeta «El agente quiere trabajar en otra carpeta» con ruta y motivo; reinicio del servidor y lectura real → H 7                                                                                             |
+| 4 Carpeta de confianza                                      | H 7                                                                                                                                                                                                                    |
+| 5 Mover y renombrar                                         | H 7 (Seatbelt + modelo reales)                                                                                                                                                                                         |
+| 6 Documentos · 7 Entregables                                | H 7                                                                                                                                                                                                                    |
+| 8 Segundo plano                                             | notificación «terminó» en `fase6` (caso 4); clic en la notificación y «mantener despierto» → H 3                                                                                                                       |
+| 9 Inactividad                                               | manual, opcional (bajar el tiempo a 1 min en Ajustes → Tareas → Servidores)                                                                                                                                            |
+| 10 Búsqueda                                                 | `lru` (búsqueda en tarea desalojada)                                                                                                                                                                                   |
+| 11 Lista                                                    | `lotes`: fijar, archivar, restaurar; agrupar → manual                                                                                                                                                                  |
+| 12 Modelo y esfuerzo                                        | H 7                                                                                                                                                                                                                    |
+| 13 Editar/reintentar/continuar/exportar                     | `lotes`: exportar a Markdown; editar y reintentar (`session.revert` con git real) → manual                                                                                                                             |
+| 14 Consulta lateral · 15 Proyecto · 16 MCP · 17 Crear skill | H 7 / H 8 (requieren modelo y MCP reales)                                                                                                                                                                              |
+| 18–19 Rutinas                                               | manual con modelo real                                                                                                                                                                                                 |
+| 20 Subagentes en Control total · 21 Limpieza                | H 1                                                                                                                                                                                                                    |
+| 22 Política gestionada                                      | `lotes`: banner, `disableRoutines`, `disableBrowser`, `allowedFolderRoots`, JSON inválido = todo restringido                                                                                                           |
 
 **Guía del lote C §4 (archivada)**
 
-| Punto | Cobertura |
-|---|---|
-| 0 Permisos tras recompilar · 1 Segundo plano · 2 Ocultar apps | H 1 |
-| 3 Modo guía · 4 Grabar skill | H 2 |
-| 5 Modo auto | manual con modelo real (chip del compositor y registro) |
-| 6 Navegador (Control total) · 7 Sandbox sin navegador | H 9 / manual |
-| 8 ⌘⇧Esc | H 1 |
-| 9 Pendientes del Lote B | H 7 |
+| Punto                                                         | Cobertura                                               |
+| ------------------------------------------------------------- | ------------------------------------------------------- |
+| 0 Permisos tras recompilar · 1 Segundo plano · 2 Ocultar apps | H 1                                                     |
+| 3 Modo guía · 4 Grabar skill                                  | H 2                                                     |
+| 5 Modo auto                                                   | manual con modelo real (chip del compositor y registro) |
+| 6 Navegador (Control total) · 7 Sandbox sin navegador         | H 9 / manual                                            |
+| 8 ⌘⇧Esc                                                       | H 1                                                     |
+| 9 Pendientes del Lote B                                       | H 7                                                     |
 
 **`docs/LOTE-D.md` §4**
 
-| Punto | Cobertura |
-|---|---|
-| 1 Uso humano en Code | `lotes`: pestaña, barra de URL y `file:///` rechazado; entrada humana real y congelado con menú → H 9 |
-| 2 Dev server detectado | manual (necesita una terminal con `npm run dev`) |
-| 3 Agente en Code | `lotes`: interruptor OFF por defecto, tarjeta de origen local y `new_page` por el MCP real; sitio remoto real → H 9 |
-| 4 Tomar el control · 5 Seleccionar elemento | H 9 |
-| 6 Login | `lotes`: `fill` sobre contraseña rechazado; login de Google → H 6 |
-| 7 Pago | `lotes`: tarjeta «acción sensible», «Permitir» hace el clic, «Cancelar» da error y no toca la página |
-| 8 Descarga | H 9 |
-| 9–10 Tareas (sandbox) / Control total con el navegador | manual (H 9) |
-| 12 Seguridad | `lotes`: `file:///etc/hosts`, `fetch` a otro puerto de loopback bloqueado en una página no aprobada; `mailto:`/`tel:` bloqueados sin crash (F7-B1, arreglado); resto → H 6 |
-| 13 `mcp.browser` en la config | `lotes` (sidecar de Code); servidores de Tareas → manual |
+| Punto                                                  | Cobertura                                                                                                                                                                  |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Uso humano en Code                                   | `lotes`: pestaña, barra de URL y `file:///` rechazado; entrada humana real y congelado con menú → H 9                                                                      |
+| 2 Dev server detectado                                 | manual (necesita una terminal con `npm run dev`)                                                                                                                           |
+| 3 Agente en Code                                       | `lotes`: interruptor OFF por defecto, tarjeta de origen local y `new_page` por el MCP real; sitio remoto real → H 9                                                        |
+| 4 Tomar el control · 5 Seleccionar elemento            | H 9                                                                                                                                                                        |
+| 6 Login                                                | `lotes`: `fill` sobre contraseña rechazado; login de Google → H 6                                                                                                          |
+| 7 Pago                                                 | `lotes`: tarjeta «acción sensible», «Permitir» hace el clic, «Cancelar» da error y no toca la página                                                                       |
+| 8 Descarga                                             | H 9                                                                                                                                                                        |
+| 9–10 Tareas (sandbox) / Control total con el navegador | manual (H 9)                                                                                                                                                               |
+| 12 Seguridad                                           | `lotes`: `file:///etc/hosts`, `fetch` a otro puerto de loopback bloqueado en una página no aprobada; `mailto:`/`tel:` bloqueados sin crash (F7-B1, arreglado); resto → H 6 |
+| 13 `mcp.browser` en la config                          | `lotes` (sidecar de Code); servidores de Tareas → manual                                                                                                                   |
 
 **`docs/FASE6-PLAN.md` y `docs/LRU-PLAN.md` (verificación manual)**
 
-| Punto | Cobertura |
-|---|---|
-| Fase 6: 10 casos automatizados (aislamiento de eventos, busy pegado, ErrorBoundary, toggle de Rutinas, notificación, panel Cambios, Tareas/Code en la misma carpeta) | `fase6` |
-| Fase 6: `kill -STOP` real, `npm install` real, IME real, portapapeles, aspecto del knob, clic en la notificación | H 3 y `it.skip` con motivo en `fase6` (checklist humana del propio spec) |
-| LRU: 4 chats y volver · streaming largo · claves ≤ N + fijadas | `lru` |
-| LRU: Tareas con permiso pendiente y búsqueda de tarea desalojada | `lru` |
-| LRU: `FolderRequestCard` de una subtarea | manual (`lotes` cubre la tarjeta en una tarea raíz) |
-| LRU: Code encolado, revert y fork | `lru` |
-| Instancia única, second-instance, Quick Entry (lógica) | `instance`; atajo físico → H 4, foco real → H 5, migración de userData → H 12 |
+| Punto                                                                                                                                                                | Cobertura                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Fase 6: 10 casos automatizados (aislamiento de eventos, busy pegado, ErrorBoundary, toggle de Rutinas, notificación, panel Cambios, Tareas/Code en la misma carpeta) | `fase6`                                                                       |
+| Fase 6: `kill -STOP` real, `npm install` real, IME real, portapapeles, aspecto del knob, clic en la notificación                                                     | H 3 y `it.skip` con motivo en `fase6` (checklist humana del propio spec)      |
+| LRU: 4 chats y volver · streaming largo · claves ≤ N + fijadas                                                                                                       | `lru`                                                                         |
+| LRU: Tareas con permiso pendiente y búsqueda de tarea desalojada                                                                                                     | `lru`                                                                         |
+| LRU: `FolderRequestCard` de una subtarea                                                                                                                             | manual (`lotes` cubre la tarjeta en una tarea raíz)                           |
+| LRU: Code encolado, revert y fork                                                                                                                                    | `lru`                                                                         |
+| Instancia única, second-instance, Quick Entry (lógica)                                                                                                               | `instance`; atajo físico → H 4, foco real → H 5, migración de userData → H 12 |
