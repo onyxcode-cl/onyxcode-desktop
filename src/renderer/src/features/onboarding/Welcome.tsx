@@ -10,7 +10,7 @@ import type { OpencodeInfo } from '@shared/types'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
-import { platformCaps } from '../../lib/platform'
+import { isMacPlatform, platformCaps } from '../../lib/platform'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import {
   WELCOME_COUNTDOWN_S,
@@ -27,6 +27,7 @@ import {
 export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: () => void }): React.JSX.Element {
   const t = useT()
   const caps = platformCaps()
+  const mac = isMacPlatform()
   const [found, setFound] = useState<WelcomeItems>({})
   const [officeMb, setOfficeMb] = useState(0)
   const [pct, setPct] = useState<number | null>(null)
@@ -53,6 +54,10 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     checked.current = true
     void (async () => {
       if (!hasTasksBridge()) return
+      if (mac && caps.computer) {
+        const c = await cw('computer:status').catch(() => null)
+        if (c) set('perms', c.accessibility && c.screenRecording ? 'ready' : 'pending')
+      }
       const o = await cw('office:status').catch(() => null)
       if (o?.status.state === 'missing') {
         if (alive.current) setOfficeMb(Math.round(o.status.sizeBytes / 1e6))
@@ -63,7 +68,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         if (s) set('sandbox', s.state === 'ready' ? 'ready' : 'pending')
       }
     })()
-  }, [caps.tasks, caps.tasksSandbox, set])
+  }, [caps.tasks, caps.tasksSandbox, caps.computer, mac, set])
 
   // 2) Preparar lo que falta, en orden.
   const install = useCallback(
@@ -73,6 +78,16 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         if (id === 'office') {
           const r = await cw('office:install').catch(() => ({ ok: false as const }))
           set('office', r.ok ? 'ready' : 'failed')
+        } else if (id === 'perms') {
+          await cw('computer:requestPermissions').catch(() => undefined)
+          // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos.
+          let ok = false
+          for (let i = 0; i < 45 && !ok && alive.current; i++) {
+            const c = await cw('computer:status').catch(() => null)
+            ok = !!c && c.accessibility && c.screenRecording
+            if (!ok) await new Promise((r) => setTimeout(r, 2000))
+          }
+          set('perms', ok ? 'ready' : 'failed')
         } else if (id === 'sandbox') {
           const poll = setInterval(() => {
             void cw('tasks:sandbox:status', undefined)
@@ -141,6 +156,13 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
       id: 'sandbox',
       label: t('wizard.setup.sandbox'),
       hint: found.sandbox === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.sandbox.hint')
+    })
+
+  if (found.perms)
+    rows.push({
+      id: 'perms',
+      label: t('wizard.setup.perms'),
+      hint: found.perms === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.perms.hint')
     })
 
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {

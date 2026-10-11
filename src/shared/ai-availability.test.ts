@@ -46,6 +46,12 @@ describe('disponibilidad de IA', () => {
     // Prefiere los que se sabe que responden, aunque no sean el primero del catálogo.
     const many = { ...free, models: { 'ling-3.0-flash-fin-free': {}, 'big-pickle': {}, 'ling-3.1-flash-free': {} } } as typeof free
     expect(firstFreeModel([many])).toEqual({ providerID: 'opencode', modelID: 'ling-3.1-flash-free' })
+    // Un modelo obsoleto nunca se elige, ni siquiera si es el preferido o el primero.
+    const dep = {
+      ...free,
+      models: { 'exo-free': { status: 'deprecated' }, 'ling-3.1-flash-free': { status: 'deprecated' }, 'big-pickle': {} }
+    } as typeof free
+    expect(firstFreeModel([dep])).toEqual({ providerID: 'opencode', modelID: 'big-pickle' })
     const noPref = { ...free, models: { 'otro-free': {}, 'zeta-free': {} } } as typeof free
     expect(firstFreeModel([noPref])).toEqual({ providerID: 'opencode', modelID: 'otro-free' })
     expect(firstFreeModel(null)).toBeNull()

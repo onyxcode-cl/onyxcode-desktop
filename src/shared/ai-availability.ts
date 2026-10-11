@@ -49,11 +49,19 @@ export function isChoiceUnavailable(wanted: ModelRef, providers: ProviderLike[] 
   return !hasModel(providers, wanted)
 }
 
-/** Modelo predeterminado de un proveedor: el que indica `defaults` si existe; si no, el primero. */
+/** ¿El catálogo marca este modelo como obsoleto? (el servidor lo rechaza: «Model … has been deprecated»). */
+const isDeprecated = (m: unknown): boolean => typeof m === 'object' && m !== null && (m as { status?: unknown }).status === 'deprecated'
+
+/** Ids de los modelos vigentes de un proveedor (sin los obsoletos), en el orden del catálogo. */
+function liveModelIds(p: ProviderLike): string[] {
+  return Object.keys(p.models).filter((id) => !isDeprecated(p.models[id]))
+}
+
+/** Modelo predeterminado de un proveedor: el que indica `defaults` si existe y está vigente; si no, el primero vigente. */
 function defaultOf(p: ProviderLike, defaults: Record<string, string>): ModelRef | null {
   const d = defaults[p.id]
-  if (d && Object.prototype.hasOwnProperty.call(p.models, d)) return { providerID: p.id, modelID: d }
-  const first = Object.keys(p.models)[0]
+  if (d && Object.prototype.hasOwnProperty.call(p.models, d) && !isDeprecated(p.models[d])) return { providerID: p.id, modelID: d }
+  const first = liveModelIds(p)[0]
   return first ? { providerID: p.id, modelID: first } : null
 }
 
@@ -90,7 +98,7 @@ export const FREE_MODEL_PREFERENCE: readonly string[] = [
 export function firstFreeModel(providers: ProviderLike[] | null): ModelRef | null {
   const p = providers?.find((x) => x.id === FREE_PROVIDER_ID)
   if (!p) return null
-  const ids = Object.keys(p.models)
+  const ids = liveModelIds(p)
   const id = FREE_MODEL_PREFERENCE.find((m) => ids.includes(m)) ?? ids[0]
   return id ? { providerID: FREE_PROVIDER_ID, modelID: id } : null
 }

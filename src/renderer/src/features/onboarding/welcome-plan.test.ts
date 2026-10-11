@@ -26,6 +26,12 @@ describe('welcome-plan', () => {
     expect(toInstall({ office: 'failed' })).toEqual([])
   })
 
+  it('los permisos van al final, después de las descargas', () => {
+    expect(toInstall({ engine: 'ready', perms: 'pending', office: 'pending', sandbox: 'pending' })).toEqual(['office', 'sandbox', 'perms'])
+    expect(welcomeOverall({ engine: 'ready', perms: 'pending' })).toBe('working')
+    expect(canRetry({ perms: 'failed' })).toBe(true)
+  })
+
   it('reintentar solo vale para lo descargable', () => {
     expect(canRetry({ engine: 'failed' })).toBe(false)
     expect(canRetry({ engine: 'failed', office: 'failed' })).toBe(true)
