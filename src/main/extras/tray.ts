@@ -24,7 +24,7 @@ let lastAccelerator = ''
 let remoteActive = false
 
 /**
- * Símbolo "Faceta" (aro abierto y punto), misma geometría de 32 unidades que
+ * Símbolo de la marca (gema de 4 facetas), misma geometría de 32 unidades que
  * renderer/components/Logo.tsx y build/icon.svg. Dibujado con antialiasing simple.
  */
 export function renderTrayBitmap(S: number, rgb: readonly [number, number, number]): Buffer {
@@ -77,20 +77,16 @@ export function createTrayIcon(platform: string = process.platform): NativeImage
 }
 
 function inShape(x: number, y: number): boolean {
-  // Aro abierto (radio 10.4, grosor 3.6, centrado en 16,16) con el hueco arriba a la derecha, más el punto del hueco: el mismo
-  // dibujo que Logo.tsx. El ángulo se mide desde arriba, en el sentido de las agujas del reloj; el aro cubre de 90° a 360°.
+  // Gema de la marca: un cuadrado de 15.6 de lado con esquinas redondeadas (radio 2.2) girado 45° y centrado en (16,16), el mismo
+  // dibujo que Logo.tsx. Se mide con la distancia firmada a un rectángulo redondeado en el sistema girado.
   const dx = x - 16
   const dy = y - 16
-  const r = Math.hypot(dx, dy)
-  let ang = (Math.atan2(dx, -dy) * 180) / Math.PI
-  if (ang < 0) ang += 360
-  const half = 3.6 / 2
-  const onRing = ang >= 90 && Math.abs(r - 10.4) <= half
-  // Remates redondeados en los dos extremos del aro: (16, 5.6) arriba y (26.4, 16) a la derecha.
-  const capA = Math.hypot(x - 16, y - 5.6) <= half
-  const capB = Math.hypot(x - 26.4, y - 16) <= half
-  const dot = Math.hypot(x - 22.6, y - 7.6) <= 2.3
-  return onRing || capA || capB || dot
+  const u = Math.abs((dx + dy) / Math.SQRT2)
+  const v = Math.abs((dy - dx) / Math.SQRT2)
+  const h = 7.8 - 2.2
+  const qx = Math.max(u - h, 0)
+  const qy = Math.max(v - h, 0)
+  return Math.hypot(qx, qy) <= 2.2
 }
 
 function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {

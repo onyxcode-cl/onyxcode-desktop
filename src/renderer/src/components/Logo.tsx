@@ -2,14 +2,13 @@ import { useId } from 'react'
 import { DISPLAY_NAME } from '@shared/brand'
 
 /**
- * Identidad visual (independiente del nombre): "Faceta" — una gema tallada vista desde
- * arriba (lapislázuli, 4 facetas) con una chispa dorada (pirita). El wordmark se dibuja
- * siempre desde DISPLAY_NAME. Geometría compartida con build/icon.svg y el icono de bandeja.
+ * Identidad visual (independiente del nombre): una gema azul de 4 facetas con puntas redondeadas
+ * sobre un cuadrado blanco suave. El wordmark se dibuja siempre desde DISPLAY_NAME.
+ * Geometría compartida con build/icon.svg y el icono de bandeja.
  */
 
 /**
- * Marca «Aro»: un anillo abierto (calma y control) en lapislázuli y un punto dorado en el hueco, como una luz encendida.
- * Geometría de 32×32 compartida con build/icon.svg y el icono de bandeja (src/main/extras/tray.ts).
+ * Aro del indicador «trabajando» (Spark): un anillo abierto y un punto dorado en el hueco, como una luz encendida.
  */
 const RING = 'M16 5.6A10.4 10.4 0 1 0 26.4 16'
 const DOT = { cx: 22.6, cy: 7.6, r: 2.3 }
@@ -33,26 +32,29 @@ interface MarkProps {
 export function LogoMark({ size = 24, className = '', variant = 'color', animated, title }: MarkProps): React.JSX.Element {
   const uid = useId().replace(/:/g, '')
   const bg = `tile-${uid}`
-  const ringGrad = `ring-${uid}`
+  const gemClip = `gem-${uid}`
   const tile = variant === 'tile'
   const mono = variant === 'mono'
-  const ringStroke = mono ? 'currentColor' : tile ? '#ffffff' : `url(#${ringGrad})`
-  const dotFill = mono ? 'currentColor' : '#f0c35a'
 
+  // Gema "B" de 4 facetas con puntas redondeadas, dibujada en 130 unidades (como build/icon.svg) y escalada al lienzo de 32.
+  const k = tile ? 32 / 130 : 0.371
+  const faces = mono ? ['0.55', '0.8', '0.9', '1'] : null
+  const fill = (i: number, c: string): { fill: string; fillOpacity?: string } =>
+    faces ? { fill: 'currentColor', fillOpacity: faces[i] } : { fill: c }
   const mark = (
-    <>
+    <g transform={`translate(16 16) scale(${k}) translate(-65 -65)`} className={animated ? 'ring-spin' : undefined}>
       <defs>
-        <linearGradient id={ringGrad} x1="0.1" y1="0" x2="0.9" y2="1">
-          <stop offset="0" stopColor="#7a95ff" />
-          <stop offset="0.55" stopColor="#2f52dc" />
-          <stop offset="1" stopColor="#18277a" />
-        </linearGradient>
+        <clipPath id={gemClip}>
+          <rect x="44" y="44" width="42" height="42" rx="6" transform="rotate(45 65 65)" />
+        </clipPath>
       </defs>
-      <g className={animated ? 'ring-spin' : undefined}>
-        <path d={RING} fill="none" stroke={ringStroke} strokeWidth={RING_WIDTH} strokeLinecap="round" />
+      <g clipPath={`url(#${gemClip})`}>
+        <path d="M65 30 L65 65 L30 65 Z" {...fill(0, '#6b86f5')} />
+        <path d="M65 30 L100 65 L65 65 Z" {...fill(1, '#4a6cf0')} />
+        <path d="M30 65 L65 65 L65 100 Z" {...fill(2, '#2b4fd6')} />
+        <path d="M65 65 L100 65 L65 100 Z" {...fill(3, '#1a2a7a')} />
       </g>
-      <circle cx={DOT.cx} cy={DOT.cy} r={DOT.r} fill={dotFill} />
-    </>
+    </g>
   )
 
   return (
@@ -70,13 +72,14 @@ export function LogoMark({ size = 24, className = '', variant = 'color', animate
         <>
           <defs>
             <linearGradient id={bg} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#4a6ff5" />
-              <stop offset="0.5" stopColor="#2c4fd8" />
-              <stop offset="1" stopColor="#18277a" />
+              <stop offset="0" stopColor="#6b86f0" />
+              <stop offset="0.5" stopColor="#3556dc" />
+              <stop offset="1" stopColor="#1d2a85" />
             </linearGradient>
           </defs>
-          <rect width="32" height="32" rx="7.5" fill={`url(#${bg})`} />
-          <g transform="translate(16 16.2) scale(0.78) translate(-16 -16)">{mark}</g>
+          <rect width="32" height="32" rx="6.9" fill={`url(#${bg})`} />
+          <rect x="4.7" y="4.7" width="22.6" height="22.6" rx="6.4" fill="#fff" />
+          {mark}
         </>
       ) : (
         mark
