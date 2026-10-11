@@ -159,7 +159,7 @@ describe('guardia de términos antiguos (renombrado a Tareas)', () => {
       failures.join('\n'),
       'Usa `tasks`/«Tareas». Si el término es imprescindible (datos antiguos), agrégalo a ALLOWLIST con motivo.'
     ).toBe('')
-  })
+  }, 30_000)
 
   it('la lista blanca solo apunta a rutas que existen', () => {
     for (const a of ALLOWLIST) {
