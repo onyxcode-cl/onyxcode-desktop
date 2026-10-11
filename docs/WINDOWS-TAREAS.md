@@ -60,7 +60,7 @@ Comando: `powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts
 
 ## Checklist EXACTO de pruebas que requieren el PC Windows
 
-Reglas: `ssh bentec@192.168.1.84`, solo bajo `C:\onyx\` (carpetas de prueba `C:\onyx\tareas\…`, distro de prueba en `C:\onyx\wsl\`; la ruta de producto será `%LOCALAPPDATA%\Lazunox\wsl`), `powershell -NoProfile -ExecutionPolicy Bypass -File` con logs en archivo, límite de tiempo en cada paso, sin carga artificial. Nunca `wsl --shutdown`. Al final: `Get-Process wsl*,vmmem*,opencode*,electron*`, `wsl -l -v` (la distro en `Stopped`) y `uptime`. **No hacer nada de esto hasta que el dueño autorice instalar WSL2 (decisión 1).**
+Reglas: `ssh <usuario>@<ip-del-pc-de-pruebas>`, solo bajo `C:\onyx\` (carpetas de prueba `C:\onyx\tareas\…`, distro de prueba en `C:\onyx\wsl\`; la ruta de producto será `%LOCALAPPDATA%\Lazunox\wsl`), `powershell -NoProfile -ExecutionPolicy Bypass -File` con logs en archivo, límite de tiempo en cada paso, sin carga artificial. Nunca `wsl --shutdown`. Al final: `Get-Process wsl*,vmmem*,opencode*,electron*`, `wsl -l -v` (la distro en `Stopped`) y `uptime`. **No hacer nada de esto hasta que el dueño autorice instalar WSL2 (decisión 1).**
 
 **Las dos sesiones.** La sesión SSH del administrador va **elevada** y el fallo abierto de WSL (microsoft/WSL#12443) puede montar las unidades pese a `automount enabled=false` al entrar elevado en una distro en marcha. Repetir 2 a 9 y los ataques **dos veces**: (a) por SSH (elevada) y (b) desde una sesión **NO elevada** (tarea programada interactiva de un solo uso bajo `C:\onyx\`, o el dueño frente al PC). Si `wsl.exe` falla por SSH (Store), usar la tarea programada y borrarla al terminar.
 
