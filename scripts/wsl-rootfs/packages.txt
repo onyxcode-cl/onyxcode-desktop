@@ -1,11 +1,16 @@
 # Paquetes de la imagen base de «Tareas en Windows» (Debian 13 trixie, minbase). Un paquete por línea; `#` comenta.
 # Sin sudo, curl, iproute2 (el lanzador levanta `lo` con ioctl), systemd ni locales (basta C.UTF-8).
 python3
-# python3-pptx NO existe en Debian 13 (apt falla): la skill pptx usa su plantilla sin dependencias; imagenes y graficos en .pptx no se ofrecen en Windows.
 python3-openpyxl
 python3-docx
 python3-pypdf
 python3-lxml
+# Dependencias de las librerias que instala customize.sh con pip (scripts/wsl-rootfs/pip-requirements.txt: python-pptx, pdfplumber,
+# pdfminer.six, pypdfium2, pillow, reportlab; python-pptx NO existe como paquete en Debian 13).
+python3-xlsxwriter
+python3-typing-extensions
+python3-charset-normalizer
+python3-cryptography
 git
 ripgrep
 mount

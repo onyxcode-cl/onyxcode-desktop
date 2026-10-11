@@ -1,0 +1,14 @@
+# Librerías de Python de las skills de oficina (Word, Excel, PowerPoint, PDF) que NO vienen (o no en la versión que piden) como
+# paquete de Debian 13. Las instala customize.sh en /usr/local/lib/python3.13/dist-packages (el python3 de Debian ya lo trae en
+# sys.path, delante de /usr/lib/python3/dist-packages): no hace falta exportar nada al sandbox. Dentro del sandbox no hay red ni pip.
+# Versiones EXACTAS con hash, solo wheels (--only-binary=:all:, --no-deps, cp313 manylinux x86_64). Mismas versiones que
+# resources/python-bin/requirements.txt (macOS). Las dependencias que sí son paquete de Debian van en packages.txt
+# (python3-lxml, python3-xlsxwriter, python3-typing-extensions, python3-charset-normalizer, python3-cryptography).
+# Para actualizar: `pip download --no-deps --only-binary=:all: --platform manylinux_2_28_x86_64 --platform manylinux2014_x86_64
+# --python-version 3.13 --implementation cp --abi cp313 --abi abi3 --abi none <paquete>==<versión>` y `shasum -a 256`.
+python-pptx==1.0.2 --hash=sha256:160838e0b8565a8b1f67947675886e9fea18aa5e795db7ae531606d68e785cba
+pdfplumber==0.11.10 --hash=sha256:7741ea81bf165b474b153e6789d10d18e06b6ddcf3ec84289c3ef2fed6802580
+pdfminer.six==20260107 --hash=sha256:366585ba97e80dffa8f00cebe303d2f381884d8637af4ce422f1df3ef38111a9
+pypdfium2==5.14.0 --hash=sha256:11f281613fa22313d9c7ab89947665e84eccf8ebe40e1198a84a88352305648d
+pillow==12.3.0 --hash=sha256:0847a763afefb695bc912d7c131e7e0632d4edc1d8698f58ddabec8e46b8b6d3
+reportlab==5.0.1 --hash=sha256:1c36e6bb0e71780c72331eba60da7f602e8d4389a8723825af71342e49d791e8

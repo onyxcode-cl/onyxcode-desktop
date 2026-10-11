@@ -17,7 +17,7 @@
 set -euo pipefail
 export LC_ALL=C TZ=UTC
 
-ROOTFS_VERSION="${LAZUNOX_ROOTFS_VERSION:-2026.10.1}"
+ROOTFS_VERSION="${LAZUNOX_ROOTFS_VERSION:-2026.10.10}"
 SNAPSHOT="${LAZUNOX_SNAPSHOT:-20261001T000000Z}"
 SUITE=trixie
 ARCH=amd64
@@ -54,7 +54,7 @@ SOURCE_DATE_EPOCH="$(date -u -d "$SNAP_ISO" +%s)"
 export SOURCE_DATE_EPOCH LAZUNOX_ROOTFS_VERSION="$ROOTFS_VERSION" LAZUNOX_SNAPSHOT="$SNAPSHOT"
 BUILT_AT="$(date -u -d "@$SOURCE_DATE_EPOCH" +%F)"
 
-for f in "$REPO/resources/wsl/wsl.conf" "$REPO/resources/wsl/rootfs/lazunox-install" "$HERE/wsl-rootfs/packages.txt" "$HERE/wsl-rootfs/customize.sh"; do
+for f in "$REPO/resources/wsl/wsl.conf" "$REPO/resources/wsl/rootfs/lazunox-install" "$HERE/wsl-rootfs/packages.txt" "$HERE/wsl-rootfs/customize.sh" "$HERE/wsl-rootfs/pip-requirements.txt"; do
   [ -f "$f" ] || { echo "falta $f" >&2; exit 1; }
 done
 
@@ -63,16 +63,24 @@ if ! command -v mmdebstrap >/dev/null; then
   apt-get update -qq
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends mmdebstrap ca-certificates perl
 fi
+if ! python3 -m pip --version >/dev/null 2>&1; then
+  # pip lo usa customize.sh (en el anfitrión) para instalar en la imagen las librerías de Python que Debian 13 no trae.
+  apt-get update -qq
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends python3 python3-pip ca-certificates
+fi
 
 PACKAGES="$(grep -v '^[[:space:]]*#' "$HERE/wsl-rootfs/packages.txt" | grep -v '^[[:space:]]*$' | paste -sd, -)"
 mkdir -p "$OUT"
 NAME="lazunox-rootfs-$ROOTFS_VERSION-x64"
 
+# Check-Valid-Until=false: las instantáneas de snapshot.debian.org llevan un «Valid-Until» de ~7 días en InRelease y caducan
+# aunque su contenido está fijado por fecha y por las sumas de los índices (si no, no se puede reconstruir pasada una semana).
 build_once() { # $1 = prefijo de salida (sin extensión)
   local tarball="$1.tar"
   rm -f "$tarball" "$tarball.gz"
   mmdebstrap --variant=minbase --architectures="$ARCH" --mode=root --format=tar \
     --include="$PACKAGES" \
+    --aptopt='Acquire::Check-Valid-Until "false"' \
     --dpkgopt='path-exclude=/usr/share/doc/*' --dpkgopt='path-include=/usr/share/doc/*/copyright' \
     --dpkgopt='path-exclude=/usr/share/man/*' --dpkgopt='path-exclude=/usr/share/info/*' \
     --dpkgopt='path-exclude=/usr/share/locale/*' --dpkgopt='path-include=/usr/share/locale/locale.alias' \

@@ -139,7 +139,7 @@ test('el CLI sale 1 con un origen malo y 0 con uno bueno (sin red)', async () =>
 const REAL_SRC = process.env.LAZUNOX_WSL_STAGING_SRC ?? join(homedir(), 'Documents', 'lazunox-staging')
 const realPin = JSON.parse(readFileSync(join(root, 'resources', 'opencode-bin', 'pin.json'), 'utf8'))
 const realThere =
-  existsSync(join(REAL_SRC, 'opencode-linux-x64.tar.gz')) && existsSync(join(REAL_SRC, 'lazunox-rootfs-2026.10.1-x64.tar.gz'))
+  existsSync(join(REAL_SRC, 'opencode-linux-x64.tar.gz')) && existsSync(join(REAL_SRC, `lazunox-rootfs-${realPin['wsl-rootfs'].version}-x64.tar.gz`))
 test('archivos reales de staging coinciden con el pin real', { skip: !realThere }, async () => {
   assert.deepEqual(await checkBundleDir(REAL_SRC, realPin), [])
 })

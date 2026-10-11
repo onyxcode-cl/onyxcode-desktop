@@ -18,12 +18,12 @@
     }
   },
   "wsl-rootfs": {
-    "version": "2026.10.1",
-    "minVersion": "2026.10.1",
-    "builtAt": "2026-10-06",
-    "url": "https://github.com/onyxcode-cl/lazunox-wsl/releases/download/rootfs-2026.10.1/lazunox-rootfs-2026.10.1-x64.tar.gz",
-    "sha256": "5cf9da9d8941d43461dca47e19193b0e3b1bcbb8b25d978623b665974f79ddc6",
-    "size": 77545052,
-    "unpackedMax": 268435456
+    "version": "2026.10.10",
+    "minVersion": "2026.10.10",
+    "builtAt": "2026-10-10",
+    "url": "https://github.com/onyxcode-cl/lazunox-wsl/releases/download/rootfs-2026.10.10/lazunox-rootfs-2026.10.10-x64.tar.gz",
+    "sha256": "8f855de87d073755ff8024eb4fe8f639538dbde7067bc74586e96028263cf39e",
+    "size": 98919533,
+    "unpackedMax": 402653184
   }
 }

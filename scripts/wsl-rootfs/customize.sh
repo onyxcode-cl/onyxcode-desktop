@@ -51,6 +51,25 @@ printf '{"id":"lazunox-rootfs","version":"%s","snapshot":"%s","epoch":%s}\n' "$L
   >"$ROOT/etc/lazunox-rootfs.json"
 chmod 0644 "$ROOT/etc/lazunox-rootfs.json"
 
+# 6b. Librerías de Python de las skills de oficina que no son paquete de Debian 13 (python-pptx, pdfplumber, pypdfium2, pillow,
+# reportlab...). Versiones y hashes fijos (pip-requirements.txt), solo wheels cp313 manylinux x86_64, sin dependencias (las
+# transitivas de Debian van en packages.txt). Van a /usr/local/lib/python3.13/dist-packages: el python3 de Debian lo trae en
+# sys.path, así que las skills las encuentran sin exportar nada. pip corre en el anfitrión (contenedor); la imagen no lleva pip.
+PIP_REQ="$HERE/pip-requirements.txt"
+[ -f "$PIP_REQ" ] || { echo "customize: falta $PIP_REQ" >&2; exit 1; }
+PYSITE="$ROOT/usr/local/lib/python3.13/dist-packages"
+[ -x "$ROOT/usr/bin/python3.13" ] || { echo "customize: la imagen no trae python3.13 (cambió la versión de Debian: actualiza la ruta y el --python-version)" >&2; exit 1; }
+install -d -m 0755 -o 0 -g 0 "$PYSITE"
+python3 -m pip install --disable-pip-version-check --no-cache-dir --no-compile --no-deps --require-hashes --only-binary=:all: \
+  --platform manylinux_2_28_x86_64 --platform manylinux_2_27_x86_64 --platform manylinux_2_17_x86_64 --platform manylinux2014_x86_64 \
+  --python-version 3.13 --implementation cp --abi cp313 --abi abi3 --abi none \
+  --target "$PYSITE" -r "$PIP_REQ"
+rm -rf "$PYSITE/bin"  # scripts de consola (pdf2txt.py...): sin uso y apuntarían al python del anfitrión
+find "$PYSITE" -name direct_url.json -delete
+chown -R 0:0 "$PYSITE"
+find "$PYSITE" -type d -exec chmod 0755 {} +
+find "$PYSITE" -type f -exec chmod u+rw,go+r,go-w {} +
+
 # 7. Limpieza de lo que varía entre construcciones.
 : >"$ROOT/etc/machine-id"
 printf 'lazunox\n' >"$ROOT/etc/hostname"

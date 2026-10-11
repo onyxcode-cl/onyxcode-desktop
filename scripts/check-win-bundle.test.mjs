@@ -155,7 +155,7 @@ test('bandera encendida: EXACTAMENTE los tres bloques del plan, solo en win; mac
   assert.deepEqual(wsl, [
     { from: 'resources/wsl', to: 'wsl', filter: ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'wsl.conf'] },
     { from: 'resources/opencode-bin', to: 'wsl', filter: ['pin.json'] },
-    { from: 'resources/wsl-images', to: 'wsl/images', filter: ['lazunox-rootfs-2026.10.1-x64.tar.gz', 'opencode-linux-x64.tar.gz'] }
+    { from: 'resources/wsl-images', to: 'wsl/images', filter: ['lazunox-rootfs-2026.10.10-x64.tar.gz', 'opencode-linux-x64.tar.gz'] }
   ])
   assert.deepEqual(wsl, expectedWslBlocks(realPin))
   assert.ok(!JSON.stringify(cfg.mac.extraResources).includes('wsl') && !JSON.stringify(cfg.extraResources).includes('wsl'))
