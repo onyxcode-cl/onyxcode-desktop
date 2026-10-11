@@ -158,6 +158,8 @@ interface TasksState {
 
   /** Se está guardando el punto de restauración previo al envío (el compositor lo indica). */
   restoreSaving: boolean
+  /** Hay un envío en curso (de ahí hasta que el mensaje sale): bloquea el compositor y un segundo envío no crea otra tarea. */
+  sending: boolean
   /** Windows: el arranque se pospuso porque el entorno aislado necesita instalarse/actualizarse; al quedar listo se reconecta. */
   awaitingSandbox: boolean
   /** Motivo por el que el último envío de cada tarea no guardó un punto de restauración. */
@@ -284,6 +286,7 @@ export const useTasks = create<TasksState>((set) => ({
   autoPending: {},
   autoApprovedNotice: null,
   restoreSaving: false,
+  sending: false,
   awaitingSandbox: false,
   restoreWarning: {},
   restoreVersion: 0,

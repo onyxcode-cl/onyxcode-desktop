@@ -63,6 +63,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const folder = useTasks((s) => s.folder)
   const activeTaskId = useTasks((s) => s.activeTaskId)
   const saving = useTasks((s) => s.restoreSaving)
+  const sending = useTasks((s) => s.sending)
   const linked = useTasks((s) => s.folderSet?.linked)
   const entries = useSessions((s) => (activeTaskId ? s.messages[activeTaskId] : undefined)) ?? NO_MESSAGES
   // Suscripción reactiva al modelo/esfuerzo de la tarea; el valor sale de las funciones del store.
@@ -105,7 +106,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   useAutosizeTextarea(ref, text, { max: hero ? 320 : 240 })
 
   const blocked = aiGate.gate.blocked
-  const canSend = !disabled && !blocked && !busy && !saving && text.trim().length > 0
+  const canSend = !disabled && !blocked && !busy && !saving && !sending && text.trim().length > 0
 
   const submit = (): void => {
     if (!canSend) return
@@ -198,7 +199,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           data-kb-composer=""
           value={text}
           rows={hero ? 3 : 1}
-          disabled={disabled || blocked}
+          disabled={disabled || blocked || sending}
           placeholder={blocked ? t('tasks.comp.phNoAi') : (placeholder ?? t('tasks.comp.phMessage'))}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -232,7 +233,18 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           </div>
           <EffortPicker model={model} variant={variant} onChange={setTaskVariant} />
           <UsageMeter messages={entries} model={model} />
-          {busy ? (
+          {sending ? (
+            <button
+              type="button"
+              disabled
+              data-testid="composer-sending"
+              title={t('tasks.comp.sending')}
+              aria-label={t('tasks.comp.sending')}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg opacity-70"
+            >
+              <Loader2 size={17} className="animate-spin" />
+            </button>
+          ) : busy ? (
             <button
               type="button"
               onClick={onAbort}
@@ -256,6 +268,11 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           )}
         </div>
       </div>
+      {sending && !saving && (
+        <p role="status" data-testid="composer-sending-note" className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
+          <Loader2 size={12} className="animate-spin" /> {requestedFull ? t('tasks.comp.sendingFull') : t('tasks.comp.sendingSandbox')}
+        </p>
+      )}
       {saving && (
         <p role="status" data-testid="restore-saving" className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
           <Loader2 size={12} className="animate-spin" /> {t('tasks.comp.saving')}

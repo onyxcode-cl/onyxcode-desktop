@@ -435,6 +435,18 @@ function withAttachments(text: string): string {
  * quedan guardados en la sesión; `metadata.folders` recuerda las carpetas adicionales de la tarea.
  */
 export async function sendToTask(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
+  // Protección contra doble envío: mientras uno está en curso (comprobaciones, punto de restauración, creación de la tarea)
+  // el compositor se ve bloqueado y un segundo clic/Enter no crea otra tarea con el mismo texto.
+  if (useTasks.getState().sending) return
+  useTasks.setState({ sending: true })
+  try {
+    await sendToTaskNow(rawText, model, opts)
+  } finally {
+    useTasks.setState({ sending: false })
+  }
+}
+
+async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
   // Sandbox: el servidor solo tiene OpenCode Go; con un modelo de otro proveedor, error claro (no fallo silencioso).
   // Modelo efectivo contra las IA conectadas (globales): sin ninguna, no se envía; no se persiste nada.
