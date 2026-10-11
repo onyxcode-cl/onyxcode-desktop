@@ -41,7 +41,8 @@ async function launch(
 ): Promise<E2EApp> {
   const env: Record<string, string> = { LAZUNOX_TEST_UPDATE_DELAY_MS: '200' }
   if (api) env.LAZUNOX_TEST_RELEASES_API = api
-  if (o.repo !== null) env.LAZUNOX_TEST_RELEASES_REPO = o.repo ?? REPO
+  // `repo: null` = «sin repositorio»: cadena vacía (ya no basta con no pasar la variable: RELEASES_REPO de brand.ts es real).
+  env.LAZUNOX_TEST_RELEASES_REPO = o.repo === null ? '' : (o.repo ?? REPO)
   const app = await startApp({ userData: o.userData ?? newDir(), keepUserData: true, env, settings: o.settings })
   apps.push(app)
   return app
