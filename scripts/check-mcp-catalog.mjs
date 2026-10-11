@@ -7,7 +7,28 @@
 // Salida: 0 todo bien · 1 alguna ficha falla (URL cambiada, caída o documentación movida) · 3 sin red para ninguna.
 // Sin dependencias. No envía credenciales. Cada petición tiene 15 s de límite.
 import { join, resolve } from 'node:path'
+import { register } from 'node:module'
 import { pathToFileURL } from 'node:url'
+
+// Node ESM no resuelve `./i18n` (carpeta) ni imports sin extensión como lo hace Vite: este hook mínimo los completa
+// (`./x` → `./x.ts` o `./x/index.ts`) solo para cargar el catálogo; la app y los tests no lo usan.
+register(
+  'data:text/javascript,' +
+    encodeURIComponent(`
+import { existsSync, statSync } from 'node:fs'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+export async function resolve(specifier, context, next) {
+  if (/^\\.{1,2}\\//.test(specifier) && context.parentURL?.startsWith('file:') && !/\\.[a-z]+$/i.test(specifier)) {
+    const base = new URL(specifier, context.parentURL)
+    const path = fileURLToPath(base)
+    for (const cand of [path + '.ts', path + '/index.ts']) {
+      if (existsSync(cand) && statSync(cand).isFile()) return next(pathToFileURL(cand).href, context)
+    }
+  }
+  return next(specifier, context)
+}`),
+  import.meta.url
+)
 
 const root = resolve(import.meta.dirname, '..')
 const { MCP_CATALOG } = await import(pathToFileURL(join(root, 'src/shared/mcp-catalog.ts')).href)
