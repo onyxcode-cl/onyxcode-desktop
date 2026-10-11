@@ -75,7 +75,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-A (${MODE})`, () => {
     await expectVisible(dialog.getByText('Papelera', { exact: false }))
     await shot(a, SHOTS, 'confirmar-archivo-nuevo')
     await dialog.getByRole('button', { name: 'Descartar', exact: true }).click()
-    await expectVisible(a.page.getByText('1 archivo nuevo movido a la Papelera.'))
+    await expectVisible(a.page.getByText(/1 archivo nuevo movido a la Papelera( de reciclaje)?\./))
     expect(existsSync(join(repo, 'nuevo.txt'))).toBe(false)
     const trashed = readdirSync(trashDir)
     expect(trashed).toHaveLength(1)
