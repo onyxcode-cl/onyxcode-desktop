@@ -27,6 +27,14 @@ export function App(): React.JSX.Element {
     if (!params) return
     document.documentElement.dataset.theme = params.theme
     document.documentElement.lang = params.lang
+    // El tema de la dirección es el de cuando se abrió. Si la persona lo cambia con el visor abierto, main fija `nativeTheme.themeSource`
+    // y `prefers-color-scheme` se actualiza aquí: se sigue en vivo (antes el visor se quedaba con el tema viejo).
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const follow = (): void => {
+      document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light'
+    }
+    mq.addEventListener('change', follow)
+    return () => mq.removeEventListener('change', follow)
   }, [params])
 
   if (!params) return <ErrorView lang="es" />
