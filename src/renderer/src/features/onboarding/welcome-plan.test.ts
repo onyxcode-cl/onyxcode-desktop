@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canRetry, engineState, toInstall, welcomeOverall } from './welcome-plan'
+import { canRetry, engineState, needsRestartHint, toInstall, welcomeOverall } from './welcome-plan'
 
 describe('welcome-plan', () => {
   it('el estado del motor sale de si se encontró', () => {
@@ -30,6 +30,13 @@ describe('welcome-plan', () => {
     expect(toInstall({ engine: 'ready', perms: 'pending', office: 'pending', sandbox: 'pending' })).toEqual(['office', 'sandbox', 'perms'])
     expect(welcomeOverall({ engine: 'ready', perms: 'pending' })).toBe('working')
     expect(canRetry({ perms: 'failed' })).toBe(true)
+  })
+
+  it('el aviso de reiniciar solo sale si los permisos quedaron en «failed»', () => {
+    expect(needsRestartHint({ perms: 'failed' })).toBe(true)
+    expect(needsRestartHint({ perms: 'downloading' })).toBe(false)
+    expect(needsRestartHint({ perms: 'ready' })).toBe(false)
+    expect(needsRestartHint({ office: 'failed' })).toBe(false)
   })
 
   it('reintentar solo vale para lo descargable', () => {

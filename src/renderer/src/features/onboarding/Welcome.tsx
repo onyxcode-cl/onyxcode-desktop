@@ -18,6 +18,7 @@ import {
   canRetry,
   engineState,
   toInstall,
+  needsRestartHint,
   welcomeOverall,
   type WelcomeItemId,
   type WelcomeItemState,
@@ -249,6 +250,11 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
               )
             })}
           </ul>
+          {needsRestartHint(items) && (
+            <p role="note" className="mt-3 text-[13px] leading-[18px] text-muted">
+              {t('wizard.welcome.restartHint', { app: DISPLAY_NAME })}
+            </p>
+          )}
         </div>
 
         <div className="welcome-rise mt-6 flex w-full items-center justify-between gap-2" style={{ ['--d' as string]: '1200ms' }}>
@@ -266,7 +272,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
                 {t('wizard.welcome.retry')}
               </Button>
             )}
-            <Button variant="primary" onClick={onDone} disabled={overall === 'working' && started.current}>
+            <Button variant="primary" onClick={onDone}>
               {t('wizard.welcome.continue')}
             </Button>
           </div>

@@ -119,6 +119,7 @@ export const wizard = {
   'wizard.welcome.state.failed': 'Failed',
   'wizard.welcome.state.missing': 'Missing',
   'wizard.welcome.reviewed': 'Check complete. Continue with the next steps.',
+  'wizard.welcome.restartHint': 'If you already turned them on, restart {app}: macOS applies Screen Recording when it opens again.',
   'wizard.welcome.retry': 'Retry',
   'wizard.welcome.skip': 'Skip for now',
   'wizard.welcome.continue': 'Continue',

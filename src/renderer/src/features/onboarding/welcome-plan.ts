@@ -33,6 +33,11 @@ export function canRetry(items: WelcomeItems): boolean {
   return WELCOME_ORDER.some((id) => id !== 'engine' && items[id] === 'failed')
 }
 
+/** ¿Hay que avisar de que reiniciar la app puede ser necesario? Los permisos no detectados tras la espera (macOS aplica Grabación de pantalla solo al reabrir). */
+export function needsRestartHint(items: WelcomeItems): boolean {
+  return items.perms === 'failed'
+}
+
 /** El motor de agentes: `null` = todavía no se sabe. */
 export function engineState(found: boolean | null): WelcomeItemState {
   return found === null ? 'checking' : found ? 'ready' : 'failed'

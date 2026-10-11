@@ -116,6 +116,7 @@ export const wizard = {
   'wizard.welcome.state.failed': 'No se pudo',
   'wizard.welcome.state.missing': 'Falta',
   'wizard.welcome.reviewed': 'Revisión lista. Sigue con los pasos siguientes.',
+  'wizard.welcome.restartHint': 'Si ya los activaste, reinicia {app}: macOS aplica Grabación de pantalla al abrirla de nuevo.',
   'wizard.welcome.retry': 'Reintentar',
   'wizard.welcome.skip': 'Omitir por ahora',
   'wizard.welcome.continue': 'Continuar',
