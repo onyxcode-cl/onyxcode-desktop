@@ -130,8 +130,18 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
       hint: items.engine === 'ready' ? t('wizard.welcome.engine.ok') : t('wizard.welcome.engine.missing')
     }
   ]
-  if (found.office) rows.push({ id: 'office', label: t('wizard.setup.office'), hint: t('wizard.setup.office.hint', { mb: officeMb }) })
-  if (found.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
+  if (found.office)
+    rows.push({
+      id: 'office',
+      label: t('wizard.setup.office'),
+      hint: found.office === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.office.hint', { mb: officeMb })
+    })
+  if (found.sandbox)
+    rows.push({
+      id: 'sandbox',
+      label: t('wizard.setup.sandbox'),
+      hint: found.sandbox === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.sandbox.hint')
+    })
 
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {
     if (st === 'downloading')
