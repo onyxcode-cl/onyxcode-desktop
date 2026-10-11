@@ -45,6 +45,8 @@ export const mainErrors = {
   'merr.rules.orgNoAlways': 'Your organization turned off "Always allow".',
   'merr.open.blocked':
     'For safety, "{ext}" isn’t opened directly: it could run code outside the sandbox. Use “Show in Finder” if you trust the file.',
+  'merr.open.blocked.win':
+    'For safety, "{ext}" isn’t opened directly: it could run code outside the sandbox. Use “Show in File Explorer” if you trust the file.',
   'merr.open.blockedExecutable': 'executable',
 
   // Routines
@@ -162,6 +164,7 @@ export const mainErrors = {
   'merr.rules.noPatterns': 'There are no patterns to remember.',
   'merr.rules.tooMany': 'Too many remembered permissions; remove some first.',
   'merr.folder.trash': 'The Trash can’t be used as a working folder. Restore the files you need first and choose that folder.',
+  'merr.folder.trash.win': 'The Recycle Bin can’t be used as a working folder. Restore the files you need first and choose that folder.',
   'merr.folder.appState': 'That folder holds {app}’s internal state (tasks, credentials and settings). Choose another folder.',
   'merr.folder.system': '“{system}” is a system folder and can’t be used. Choose a folder inside your home folder.',
   'merr.folder.secrets':

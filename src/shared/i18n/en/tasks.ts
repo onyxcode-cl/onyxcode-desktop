@@ -97,6 +97,8 @@ export const tasks = {
   'tasks.ctx.webPage': 'Web page',
   'tasks.ctx.webSearch': 'Web search',
   'tasks.restore.notRestorable.cloud': 'Can’t be restored (cloud only): the file was in iCloud and not downloaded, so it wasn’t saved.',
+  'tasks.restore.notRestorable.cloud.win':
+    'Not restorable (cloud only): the file was in the cloud (for example OneDrive) and not downloaded, so it wasn’t saved.',
   'tasks.restore.notRestorable.unreadable': 'Can’t be restored: the file couldn’t be read when the restore point was saved.',
   'tasks.restore.notRestorable.large': 'Can’t be undone: the file is larger than 50 MB and wasn’t saved.',
   'tasks.restore.notCopied': {
@@ -105,7 +107,9 @@ export const tasks = {
   },
   'tasks.restore.warning': 'A restore point wasn’t saved this time: {reason}',
   'tasks.restore.undone': 'Changes undone: {restored} restored, {trashed} moved to the Trash.',
+  'tasks.restore.undone.win': 'Changes undone: {restored} restored, {trashed} moved to the Recycle Bin.',
   'tasks.restore.redone': 'Changes redone: {restored} restored, {trashed} moved to the Trash.',
+  'tasks.restore.redone.win': 'Changes redone: {restored} restored, {trashed} moved to the Recycle Bin.',
   'tasks.restore.failed': 'Couldn’t restore: {shown}{more}.',
   'tasks.restore.failedMore': ' and {n} more',
   'tasks.restore.closeNotice': 'Dismiss notice',
@@ -201,8 +205,11 @@ export const tasks = {
   'tasks.home.tpl.computer.0.prompt':
     'First look at the Desktop and tell me whether a folder called Proyectos already exists; then propose the plan; once I approve it, create the Proyectos folder on the Desktop.',
   'tasks.home.tpl.computer.1.title': 'Search in Safari',
+  'tasks.home.tpl.computer.1.title.win': 'Search in the browser',
   'tasks.home.tpl.computer.1.prompt':
     'First tell me what you have open in Safari; then propose the steps to look up today’s weather in Santiago; once I approve them, do it and tell me the result.',
+  'tasks.home.tpl.computer.1.prompt.win':
+    'First tell me what you have open in the browser; then propose the steps to look up today’s weather in Santiago; when I approve, do it and tell me the result.',
   'tasks.home.tpl.computer.2.title': 'Describe screen',
   'tasks.home.tpl.computer.2.prompt':
     'First take a screenshot and show me a summary of which apps and windows are open; then propose what you could do with them; once I approve it, do it. Don’t close or change anything on your own.',
@@ -369,10 +376,14 @@ export const tasks = {
   'tasks.conv.editMsg.strong': 'the folder’s files will be restored',
   'tasks.conv.editMsg.post':
     ' to how they were before that message (if a restore point was saved). Anything created afterwards will go to the Trash. Then your edited message will be sent.',
+  'tasks.conv.editMsg.post.win':
+    ' to how they were before that message (if a restore point was saved). Anything created afterwards will go to the Recycle Bin. Then your edited message will be sent.',
   'tasks.conv.undoRetry': 'Undo and retry',
   'tasks.conv.undoTitle': 'Undo from this message?',
   'tasks.conv.undoMsg':
     'Later messages will be hidden and the folder’s files will go back to how they were before this message (if a restore point was saved). Anything created afterwards will go to the Trash. Anything the agent did outside the folder isn’t undone. You’ll be able to redo it.',
+  'tasks.conv.undoMsg.win':
+    'Later messages will be hidden and the folder’s files will go back to how they were before this message (if a restore point was saved). Anything created afterwards will go to the Recycle Bin. Anything the agent did outside the folder isn’t undone. You’ll be able to redo it.',
   'tasks.conv.undoHere': 'Undo from here',
   'tasks.conv.editAria': 'Edit message',
   'tasks.conv.attachNote': 'The attached files are already in the folder but aren’t sent again: mention them in the text if needed.',
@@ -453,6 +464,8 @@ export const tasks = {
   'tasks.changes.undoTitle': 'Undo this task’s changes?',
   'tasks.changes.undoMsg':
     'The files in this folder will go back to how they were before the task started. New files will go to the Trash. Anything the agent did outside the folder (commands, websites, other apps) isn’t undone.',
+  'tasks.changes.undoMsg.win':
+    'The files in this folder will go back to how they were before the task started. New files will go to the Recycle Bin. Anything the agent did outside the folder (commands, websites, other apps) isn’t undone.',
   'tasks.changes.undoConfirm': 'Undo changes',
   'tasks.changes.title': 'File changes',
   'tasks.changes.refresh': 'Refresh',

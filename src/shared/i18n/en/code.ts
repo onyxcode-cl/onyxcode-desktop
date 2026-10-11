@@ -193,6 +193,7 @@ export const code = {
   'code.composer.placeholderPlan': 'Describe what you want to plan… (@ for files, / for commands)',
   'code.composer.placeholderBuild': 'Ask for a change to the code… (@ for files, / for commands)',
   'code.composer.toggleAgent': 'Toggle Plan / Build (⇧Tab)',
+  'code.composer.toggleAgent.win': 'Toggle Plan / Build (Shift+Tab)',
   'code.composer.mention': 'Mention a file',
   'code.composer.attach': 'Attach a file or image',
   'code.composer.stop': 'Stop (Esc)',
@@ -304,12 +305,19 @@ export const code = {
   'code.changes.discardDeleted': 'The deleted file will be restored from the last commit.',
   'code.changes.discardNew':
     'This is a new file: it will be moved to the Trash (not permanently deleted) and you can recover it from there.',
+  'code.changes.discardNew.win':
+    'This is a new file: it will be moved to the Recycle Bin (not permanently deleted) and you can recover it from there.',
   'code.changes.discardRenamed': 'The rename is undone: the file goes back to {orig} and the new name goes to the Trash.',
+  'code.changes.discardRenamed.win': 'The rename is undone: the file goes back to {orig} and the new name goes to the Recycle Bin.',
   'code.changes.discardUndoable': 'Right afterwards you can use “Undo”.',
   'code.changes.discardAffects': 'Affects:',
   'code.changes.discardConfirm': 'Discard',
   'code.changes.discardRestored': { one: '1 file restored.', other: '{count} files restored.' },
   'code.changes.discardTrashed': { one: '1 new file moved to the Trash.', other: '{count} new files moved to the Trash.' },
+  'code.changes.discardTrashed.win': {
+    one: '1 new file moved to the Recycle Bin.',
+    other: '{count} new files moved to the Recycle Bin.'
+  },
   'code.changes.discardFailed': 'Couldn’t discard: {error}',
   'code.changes.discardUndo': 'Undo',
   'code.changes.discardUndone': 'Changes recovered.',

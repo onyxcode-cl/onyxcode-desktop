@@ -361,6 +361,8 @@ export const tasksComputer = {
   'tasksComputer.rec.narrate': 'Narrate with the microphone',
   'tasksComputer.rec.micNote':
     'macOS may ask for Microphone and Speech Recognition permission the first time. If something fails, the recording continues without audio.',
+  'tasksComputer.rec.micNote.win':
+    'Windows may ask for microphone permission the first time. If anything fails, the recording continues without audio.',
   'tasksComputer.rec.start': 'Start recording',
   'tasksComputer.rec.needFolder': 'Open a work folder to send this to the agent.',
   'tasksComputer.rec.review': 'Review the recording',

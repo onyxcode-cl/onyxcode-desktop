@@ -47,6 +47,8 @@ export const mainErrors = {
   'merr.rules.orgNoAlways': 'Tu organización desactivó "Siempre permitir".',
   'merr.open.blocked':
     'Por seguridad no se abre "{ext}" directamente: podría ejecutar código fuera del sandbox. Usa «Mostrar en Finder» si confías en el archivo.',
+  'merr.open.blocked.win':
+    'Por seguridad no se abre "{ext}" directamente: podría ejecutar código fuera del entorno aislado. Usa «Mostrar en el Explorador» si confías en el archivo.',
   'merr.open.blockedExecutable': 'ejecutable',
 
   // Rutinas
@@ -166,6 +168,8 @@ export const mainErrors = {
   'merr.rules.tooMany': 'Demasiados permisos recordados; quita alguno antes.',
   'merr.folder.trash':
     'La Papelera no se puede usar como carpeta de trabajo. Restaura primero los archivos que necesites y elige esa carpeta.',
+  'merr.folder.trash.win':
+    'La Papelera de reciclaje no se puede usar como carpeta de trabajo. Restaura primero los archivos que necesites y elige esa carpeta.',
   'merr.folder.appState': 'Esa carpeta guarda el estado interno de {app} (tareas, credenciales y ajustes). Elige otra carpeta.',
   'merr.folder.system': '«{system}» es una carpeta del sistema y no se puede usar. Elige una carpeta dentro de tu carpeta personal.',
   'merr.folder.secrets':

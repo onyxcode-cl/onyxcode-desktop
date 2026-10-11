@@ -94,6 +94,8 @@ export const tasks = {
   'tasks.ctx.webPage': 'Página web',
   'tasks.ctx.webSearch': 'Búsqueda web',
   'tasks.restore.notRestorable.cloud': 'No restaurable (solo en la nube): el archivo estaba en iCloud sin descargar y no se guardó.',
+  'tasks.restore.notRestorable.cloud.win':
+    'No restaurable (solo en la nube): el archivo estaba en la nube (por ejemplo OneDrive) sin descargar y no se guardó.',
   'tasks.restore.notRestorable.unreadable': 'No restaurable: el archivo no se pudo leer al guardar el punto.',
   'tasks.restore.notRestorable.large': 'No se puede deshacer: el archivo pesa más de 50 MB y no se guardó.',
   'tasks.restore.notCopied': {
@@ -102,7 +104,9 @@ export const tasks = {
   },
   'tasks.restore.warning': 'Esta vez no se guardó un punto de restauración: {reason}',
   'tasks.restore.undone': 'Cambios deshechos: {restored} restaurados, {trashed} enviados a la Papelera.',
+  'tasks.restore.undone.win': 'Cambios deshechos: {restored} restaurados, {trashed} enviados a la Papelera de reciclaje.',
   'tasks.restore.redone': 'Cambios rehechos: {restored} restaurados, {trashed} enviados a la Papelera.',
+  'tasks.restore.redone.win': 'Cambios rehechos: {restored} restaurados, {trashed} enviados a la Papelera de reciclaje.',
   'tasks.restore.failed': 'No se pudo restaurar: {shown}{more}.',
   'tasks.restore.failedMore': ' y {n} más',
   'tasks.restore.closeNotice': 'Cerrar aviso',
@@ -198,8 +202,11 @@ export const tasks = {
   'tasks.home.tpl.computer.0.prompt':
     'Primero mira el Escritorio y dime si ya existe una carpeta llamada Proyectos; luego propón el plan; cuando lo apruebe, crea la carpeta Proyectos en el Escritorio.',
   'tasks.home.tpl.computer.1.title': 'Buscar en Safari',
+  'tasks.home.tpl.computer.1.title.win': 'Buscar en el navegador',
   'tasks.home.tpl.computer.1.prompt':
     'Primero dime qué tienes abierto en Safari; luego propón los pasos para buscar el clima de hoy en Santiago; cuando lo apruebe, hazlo y dime el resultado.',
+  'tasks.home.tpl.computer.1.prompt.win':
+    'Primero dime qué tienes abierto en el navegador; luego propón los pasos para buscar el clima de hoy en Santiago; cuando lo apruebe, hazlo y dime el resultado.',
   'tasks.home.tpl.computer.2.title': 'Describir pantalla',
   'tasks.home.tpl.computer.2.prompt':
     'Primero toma una captura de pantalla y muéstrame un resumen de qué apps y ventanas hay abiertas; luego propón qué podrías hacer con ellas; cuando lo apruebe, hazlo. No cierres ni modifiques nada por tu cuenta.',
@@ -365,10 +372,14 @@ export const tasks = {
   'tasks.conv.editMsg.strong': 'restaurarán los archivos de la carpeta',
   'tasks.conv.editMsg.post':
     ' tal como estaban antes de ese mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera. Después se enviará tu mensaje editado.',
+  'tasks.conv.editMsg.post.win':
+    ' tal como estaban antes de ese mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera de reciclaje. Después se enviará tu mensaje editado.',
   'tasks.conv.undoRetry': 'Deshacer y reintentar',
   'tasks.conv.undoTitle': '¿Deshacer desde este mensaje?',
   'tasks.conv.undoMsg':
     'Se ocultarán los mensajes posteriores y los archivos de la carpeta volverán a como estaban antes de este mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera. Lo que el agente hizo fuera de la carpeta no se deshace. Podrás rehacerlo.',
+  'tasks.conv.undoMsg.win':
+    'Se ocultarán los mensajes posteriores y los archivos de la carpeta volverán a como estaban antes de este mensaje (si se guardó un punto de restauración). Lo creado después irá a la Papelera de reciclaje. Lo que el agente hizo fuera de la carpeta no se deshace. Podrás rehacerlo.',
   'tasks.conv.undoHere': 'Deshacer desde aquí',
   'tasks.conv.editAria': 'Editar mensaje',
   'tasks.conv.attachNote': 'Los archivos adjuntos ya están en la carpeta, pero no se reenvían: menciónalos en el texto si hacen falta.',
@@ -450,6 +461,8 @@ export const tasks = {
   'tasks.changes.undoTitle': '¿Deshacer los cambios de esta tarea?',
   'tasks.changes.undoMsg':
     'Los archivos de esta carpeta volverán a como estaban antes de que empezara la tarea. Los archivos nuevos irán a la Papelera. Lo que el agente hizo fuera de la carpeta (comandos, webs, otras apps) no se deshace.',
+  'tasks.changes.undoMsg.win':
+    'Los archivos de esta carpeta volverán a como estaban antes de que empezara la tarea. Los archivos nuevos irán a la Papelera de reciclaje. Lo que el agente hizo fuera de la carpeta (comandos, webs, otras apps) no se deshace.',
   'tasks.changes.undoConfirm': 'Deshacer cambios',
   'tasks.changes.title': 'Cambios en archivos',
   'tasks.changes.refresh': 'Actualizar',

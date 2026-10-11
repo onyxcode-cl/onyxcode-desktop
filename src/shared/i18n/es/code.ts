@@ -191,6 +191,7 @@ export const code = {
   'code.composer.placeholderPlan': 'Describe qué quieres planificar… (@ para archivos, / para comandos)',
   'code.composer.placeholderBuild': 'Pide un cambio en el código… (@ para archivos, / para comandos)',
   'code.composer.toggleAgent': 'Alternar Plan / Build (⇧Tab)',
+  'code.composer.toggleAgent.win': 'Alternar Plan / Build (Mayús+Tab)',
   'code.composer.mention': 'Mencionar archivo',
   'code.composer.attach': 'Adjuntar archivo o imagen',
   'code.composer.stop': 'Detener (Esc)',
@@ -302,12 +303,20 @@ export const code = {
   'code.changes.discardLostStaged': 'También se quitan los cambios ya preparados.',
   'code.changes.discardDeleted': 'El archivo borrado se restaurará desde el último commit.',
   'code.changes.discardNew': 'Es un archivo nuevo: se moverá a la Papelera (no se borra definitivamente) y podrás recuperarlo desde ahí.',
+  'code.changes.discardNew.win':
+    'Es un archivo nuevo: se moverá a la Papelera de reciclaje (no se borra definitivamente) y podrás recuperarlo desde ahí.',
   'code.changes.discardRenamed': 'El renombre se deshace: el archivo vuelve a llamarse {orig} y el nombre nuevo va a la Papelera.',
+  'code.changes.discardRenamed.win':
+    'El renombre se deshace: el archivo vuelve a llamarse {orig} y el nombre nuevo va a la Papelera de reciclaje.',
   'code.changes.discardUndoable': 'Justo después podrás usar «Deshacer».',
   'code.changes.discardAffects': 'Afecta a:',
   'code.changes.discardConfirm': 'Descartar',
   'code.changes.discardRestored': { one: '1 archivo restaurado.', other: '{count} archivos restaurados.' },
   'code.changes.discardTrashed': { one: '1 archivo nuevo movido a la Papelera.', other: '{count} archivos nuevos movidos a la Papelera.' },
+  'code.changes.discardTrashed.win': {
+    one: '1 archivo nuevo movido a la Papelera de reciclaje.',
+    other: '{count} archivos nuevos movidos a la Papelera de reciclaje.'
+  },
   'code.changes.discardFailed': 'No se pudo descartar: {error}',
   'code.changes.discardUndo': 'Deshacer',
   'code.changes.discardUndone': 'Cambios recuperados.',

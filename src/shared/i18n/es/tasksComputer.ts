@@ -359,6 +359,8 @@ export const tasksComputer = {
   'tasksComputer.rec.narrate': 'Narrar con el micrófono',
   'tasksComputer.rec.micNote':
     'macOS puede pedir permiso de Micrófono y de Reconocimiento de voz la primera vez. Si algo falla, la grabación sigue sin audio.',
+  'tasksComputer.rec.micNote.win':
+    'Windows puede pedir permiso para usar el micrófono la primera vez. Si algo falla, la grabación sigue sin audio.',
   'tasksComputer.rec.start': 'Empezar a grabar',
   'tasksComputer.rec.needFolder': 'Abre una carpeta de trabajo para enviárselo al agente.',
   'tasksComputer.rec.review': 'Revisar la grabación',
