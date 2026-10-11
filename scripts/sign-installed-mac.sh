@@ -1,8 +1,8 @@
 #!/bin/bash
 # Firma /Applications/Lazunox.app con un certificado de firma de código local para que macOS conserve los permisos (TCC) entre builds.
-# Uso: scripts/sign-installed-mac.sh ["Nombre del certificado"]   (por defecto «OnyxCode Local Signing»). La app debe estar cerrada.
+# Uso: scripts/sign-installed-mac.sh ["Nombre del certificado"]   (por defecto «Lazunox Local Signing»). La app debe estar cerrada.
 set -euo pipefail
-ID="${1:-OnyxCode Local Signing}"
+ID="${1:-Lazunox Local Signing}"
 APP=/Applications/Lazunox.app
 cd "$(dirname "$0")/.."
 pkill -f "$APP/Contents/MacOS" 2>/dev/null || true

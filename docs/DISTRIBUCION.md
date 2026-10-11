@@ -26,7 +26,7 @@ alguien con una cuenta de Apple Developer aporte el certificado y las credencial
    equipo → **Manage Certificates…** → botón `+` → **Developer ID Application**. Xcode genera la
    clave privada en el Llavero (Keychain) y el certificado firmado por Apple.
    - Alternativa sin Xcode: generar un CSR en Llavero (`Acceso a Llaveros` → `Solicitar certificado
-     de una autoridad certificadora`) y subirlo en
+de una autoridad certificadora`) y subirlo en
      <https://developer.apple.com/account/resources/certificates/add> eligiendo **Developer ID
      Application**; descargar el `.cer` resultante y hacer doble clic para importarlo al Llavero
      (debe unirse con la clave privada del CSR).
@@ -144,14 +144,14 @@ a medias, el empaquetado falla nombrando las que faltan).
 
 ## 6. Qué cambia respecto al build ad-hoc
 
-| | Sin `CSC_NAME`/`CSC_LINK` (default) | Con Developer ID + credenciales de notarización |
-|---|---|---|
-| Firma | Ad-hoc (`identity: '-'`) | Developer ID Application (via `CSC_NAME`; `CSC_LINK` solo junto con `CSC_NAME`) |
-| Hardened runtime | Off | On, con `build/entitlements.mac.plist` |
+|                                  | Sin `CSC_NAME`/`CSC_LINK` (default)   | Con Developer ID + credenciales de notarización                                                                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Firma                            | Ad-hoc (`identity: '-'`)              | Developer ID Application (via `CSC_NAME`; `CSC_LINK` solo junto con `CSC_NAME`)                                                                                                                                                                                                          |
+| Hardened runtime                 | Off                                   | On, con `build/entitlements.mac.plist`                                                                                                                                                                                                                                                   |
 | `cu-helper` / `lazunox-disclaim` | Firmados igual (deep-sign automático) | Firmados explícitamente (`mac.binaries`) y **vueltos a firmar con su identificador** (`HELPER_ID`/`DISCLAIM_ID`) y hardened runtime en `build/notarize.js`, antes de notarizar (electron-builder los deja con `cu-helper-<hash>` y macOS recordaría mal los permisos de Control del Mac) |
-| Notarización | Omitida (log lo indica) | `.app`: `build/notarize.js` vía `@electron/notarize` (clave API o Apple ID). `.dmg`: `build/notarize-dmg.js` (`notarytool` + `stapler`) |
-| Gatekeeper en otro Mac | Rechaza | Acepta |
-| Permisos TCC entre builds | Se pierden en cada build | Se conservan (identidad estable) |
+| Notarización                     | Omitida (log lo indica)               | `.app`: `build/notarize.js` vía `@electron/notarize` (clave API o Apple ID). `.dmg`: `build/notarize-dmg.js` (`notarytool` + `stapler`)                                                                                                                                                  |
+| Gatekeeper en otro Mac           | Rechaza                               | Acepta                                                                                                                                                                                                                                                                                   |
+| Permisos TCC entre builds        | Se pierden en cada build              | Se conservan (identidad estable)                                                                                                                                                                                                                                                         |
 
 ## 7. Novedades del Lote B que afectan a la distribución
 
@@ -182,6 +182,7 @@ a medias, el empaquetado falla nombrando las que faltan).
   aceptar esos dos prompts la primera vez. **Terminal.app no declara uso de micrófono**: si la grabación con voz
   falla o el proceso aborta al pedir el permiso desde ahí, prueba desde iTerm o VS Code (la grabación sigue
   funcionando sin audio si el permiso falla o se deniega).
+
 - **Navegador propio (`chrome-devtools-mcp`, `browser-mcp.js`): ELIMINADO** en el refactor fase 3 (nota del 2026-09-29). Ya no hay nada que
   desempaquetar ni verificar en el `.app`; el navegador integrado vive dentro del proceso principal.
 
@@ -206,14 +207,15 @@ hacerlo cambia el hash del ejecutable respecto al original (es esperable):
 
 - Sin Developer ID: firma **ad-hoc**, igual que el resto de la app. Medido con `npm run verify:bundled` (1.18.33):
 
-  | | Antes (descargado) | Después (dentro del .app) |
-  | --- | --- | --- |
+  |         | Antes (descargado)                                                 | Después (dentro del .app)                                          |
+  | ------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
   | SHA-256 | `139ddeb6a46ba276827bb8f79c7b28208621746e4fd6914d9ae71cc1a0a57524` | `774e92503dbb21d9708651f9a8becd8209d9abe8746a6eb7599b14481be24018` |
-  | Tamaño | 144 800 738 bytes | 143 959 952 bytes |
-  | Firma | ad-hoc, `Identifier=a.out` | ad-hoc, `Identifier=opencode-<hash>` |
+  | Tamaño  | 144 800 738 bytes                                                  | 143 959 952 bytes                                                  |
+  | Firma   | ad-hoc, `Identifier=a.out`                                         | ad-hoc, `Identifier=opencode-<hash>`                               |
 
   Solo cambia la firma (identificador y bloque de firma); el `--version` y el servidor siguen igual. El SHA-256
   que se verifica contra el release es el del ZIP (`pin.json`), no el del ejecutable ya firmado.
+
 - Con Developer ID: hardened runtime y `build/entitlements.mac.plist` (que ya trae JIT y memoria ejecutable, lo
   que necesita el motor de JavaScript del binario). El binario también figura en `mac.binaries`, y se notariza
   con el resto de la app.
@@ -336,10 +338,14 @@ otra app y **vuelve a pedir** Accesibilidad, Grabación de pantalla, etc. Mitiga
 **certificado de firma de código autofirmado** que crea el usuario; macOS recuerda los permisos por «identificador +
 certificado» y se conservan entre versiones.
 
-1. Acceso a Llaveros → menú *Acceso a Llaveros › Asistente de Certificados › Crear un certificado…* → nombre
-   `Lazunox Local Signing`, *Tipo de identidad:* **Raíz autofirmada**, *Tipo de certificado:* **Firma de código**.
+1. Acceso a Llaveros → menú _Acceso a Llaveros › Asistente de Certificados › Crear un certificado…_ → nombre
+   `Lazunox Local Signing`, _Tipo de identidad:_ **Raíz autofirmada**, _Tipo de certificado:_ **Firma de código**.
    Comprueba que aparece como válido: `security find-identity -v -p codesign`.
-2. Empaqueta con `LAZUNOX_SELF_SIGNED=1 CSC_NAME="Lazunox Local Signing" npm run package`. `electron-builder.js` firma con
+2. **Forma recomendada:** `npm run package` (ad-hoc) y después `scripts/sign-release-mac.sh`, que firma `dist/mac-arm64/Lazunox.app` con `codesign`
+   (helpers con su identificador), comprueba que la firma contenga el hash que fija `install.sh` y vuelve a armar el `.dmg`. Hace falta porque
+   electron-builder se salta la firma cuando el certificado autofirmado no es «de confianza» en el llavero. Para instalar en tu propio Mac
+   usa `scripts/sign-installed-mac.sh`. Alternativa de una sola orden, solo si el certificado es de confianza:
+   `LAZUNOX_SELF_SIGNED=1 CSC_NAME="Lazunox Local Signing" npm run package`. `electron-builder.js` firma con
    ese certificado, **sin hardened runtime** y **sin notarizar** (ignora las variables `APPLE_*`); sin esa variable el
    comportamiento es exactamente el de siempre. `build/after-sign-self-signed.js` vuelve a firmar
    `cu-helper` y `lazunox-disclaim` con el **mismo certificado** manteniendo `HELPER_ID` y `DISCLAIM_ID` (electron-builder
@@ -439,11 +445,11 @@ El actualizador de Windows usa el mismo esquema que el del Mac: un manifiesto fi
 contenido del ZIP. La clave privada es **la misma** y se queda en tu Mac; el campo `platform` va dentro de lo firmado, así que un
 manifiesto de Windows no sirve en el Mac ni al revés.
 
-| | macOS | Windows |
-|---|---|---|
-| Manifiesto y firma | `update.json`, `update.json.sig` | `update-win32-x64.json`, `update-win32-x64.json.sig` |
-| ZIP | `Lazunox-X.Y.Z-arm64.zip` (raíz `Lazunox.app/`) | `Lazunox-X.Y.Z-win32-x64.zip` (raíz `Lazunox/`, el contenido de `dist\win-unpacked`) |
-| Instalador para quien llega por primera vez | `.dmg` | `Lazunox-Setup-X.Y.Z-x64.exe` |
+|                                             | macOS                                           | Windows                                                                              |
+| ------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Manifiesto y firma                          | `update.json`, `update.json.sig`                | `update-win32-x64.json`, `update-win32-x64.json.sig`                                 |
+| ZIP                                         | `Lazunox-X.Y.Z-arm64.zip` (raíz `Lazunox.app/`) | `Lazunox-X.Y.Z-win32-x64.zip` (raíz `Lazunox/`, el contenido de `dist\win-unpacked`) |
+| Instalador para quien llega por primera vez | `.dmg`                                          | `Lazunox-Setup-X.Y.Z-x64.exe`                                                        |
 
 Pasos (el ZIP se arma en el Mac, en JavaScript, sin `tar.exe`; así se puede revisar y repetir con los mismos bytes):
 
@@ -492,4 +498,3 @@ El sitio conserva la unión de los `app/assets` de las últimas 10 versiones, as
 Todo se hace desde el Mac del dueño, sin CI y sin secretos en el repositorio: `npm run build:pwa` → `node scripts/build-site.mjs` → `LAZUNOX_SITE_KEY_FILE=~/.lazunox-keys/site.pem node scripts/site-release.mjs` (firma `site-manifest.json`; con `--build` compila antes)
 → `cd cloud/remoto-worker && npx wrangler@4 deploy` (lo imprime `site-release`; pasos completos y la clave de firma en `cloud/remoto-worker/README.md`). La clave **pública** de firma va en `SITE_PUBLIC_KEY` de `src/shared/brand.ts` y viaja en la app: hay que
 empaquetar la app con ella antes de que la vigilancia verifique algo. `site-archive/` (carpeta local, en `.gitignore`) guarda esas 10 versiones: no se borra entre publicaciones.
-

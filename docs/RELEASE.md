@@ -4,16 +4,18 @@ Complementa `docs/DISTRIBUCION.md` (cómo se firma y notariza) y `docs/SEGURIDAD
 Aquí está el **orden** de una publicación, quién hace cada paso y qué hacer si algo sale mal.
 
 > **Dónde se publica:** en GitHub Releases (`onyxcode-cl/onyxcode-desktop`); la app consulta `api.github.com` y descarga de `github.com`. A mano, sin CI: `node scripts/publish-github.mjs --tag vX.Y.Z archivos…` arma la carpeta con el `SHA256SUMS` e imprime el comando `gh release create … --draft` (lo ejecutas tú; nunca publica solo). Alternativa con servidor propio (más adelante): `docs/VPS.md`.
+>
+> **Orden en tu Mac:** `npm run package` → `scripts/sign-release-mac.sh` (firma la app con «Lazunox Local Signing», el certificado que fija `install.sh`, y rehace el `.dmg`) → `scripts/publish-update.mjs` (ZIP + manifiesto de esa app ya firmada) → firmar el manifiesto con la clave Ed25519 → `scripts/publish-github.mjs`.
 
 ## 0. Resumen
 
-| Quién | Paso |
-|---|---|
-| Tú | Subes la versión y las notas, corres `npm run verify` en tu Mac, creas y empujas el tag `vX.Y.Z`. |
+| Quién                          | Paso                                                                                                                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tú                             | Subes la versión y las notas, corres `npm run verify` en tu Mac, creas y empujas el tag `vX.Y.Z`.                                                                                  |
 | GitHub Actions (`release.yml`) | Espera tu **aprobación manual** (entorno `release`), firma, notariza, verifica y crea un **BORRADOR** de release con `.dmg`, `.zip` y `update.json` **sin firmar**. Nunca publica. |
-| Tú, en tu Mac | Descargas `update.json` y el `.zip`, los firmas con la clave Ed25519 (`sign-update.mjs`) y subes `update.json.sig` al borrador. |
-| Tú | Revisas el borrador y pulsas **Publish release** (sin marcar «pre-release», salvo una beta). |
-| Tú | Compruebas en un Mac limpio (sección 6). |
+| Tú, en tu Mac                  | Descargas `update.json` y el `.zip`, los firmas con la clave Ed25519 (`sign-update.mjs`) y subes `update.json.sig` al borrador.                                                    |
+| Tú                             | Revisas el borrador y pulsas **Publish release** (sin marcar «pre-release», salvo una beta).                                                                                       |
+| Tú                             | Compruebas en un Mac limpio (sección 6).                                                                                                                                           |
 
 La clave privada Ed25519 **nunca** va a GitHub: por eso la firma del manifiesto se hace en dos pasos. Los secretos de Apple sí viven en GitHub (solo en el
 entorno protegido `release`), con la mitigación de la sección 9.
@@ -25,7 +27,7 @@ entorno protegido `release`), con la mitigación de la sección 9.
 - [ ] Par de claves Ed25519 (`docs/DISTRIBUCION.md` §10.1) con copia de la privada en el gestor de contraseñas.
 - [ ] Alta en Apple Developer Program, certificado **Developer ID Application** exportado como `.p12`, clave API de App Store Connect (`docs/DISTRIBUCION.md` §1 y §2.1).
 - [ ] Secretos en **Settings › Environments › release** (no a nivel de repositorio): `MAC_CERT_P12_BASE64` (`base64 -i certificado.p12 | pbcopy`), `MAC_CERT_PASSWORD`,
-  `APPLE_API_KEY_P8` (contenido completo del `.p8`), `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID`. **La clave Ed25519 no va aquí.** Borra después el `.p12` y el `.p8` del Escritorio.
+      `APPLE_API_KEY_P8` (contenido completo del `.p8`), `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID`. **La clave Ed25519 no va aquí.** Borra después el `.p12` y el `.p8` del Escritorio.
 - [ ] Con el Team ID: rellena `UPDATE_TEAM_ID` (sección 8) y comprueba una release de prueba en un repositorio privado.
 
 ## 2. Antes de etiquetar
@@ -115,6 +117,7 @@ Principio: **siempre hacia delante**. Una versión mala no se «retira» de los 
 El cliente verifica el manifiesto con una **lista** de claves (`verifyWithKeys`; `resolveInstallConfig` admite `updateKeys` extra; probado en `manifest-two-step.test.ts`). Falta que `src/shared/brand.ts` exponga esa lista (hoy `UPDATE_PUBLIC_KEY` + `UPDATE_KEY_ID`) y cablearla en `src/main/ipc/update.ts`: hazlo **antes de la primera release**, porque una app ya publicada solo conoce las claves con las que salió.
 
 Rotación (sospecha de filtración o renovación periódica):
+
 1. [ ] Genera la clave nueva (`docs/DISTRIBUCION.md` §10.1) con otro `keyId` (`lazunox-2`). Guárdala en el gestor de contraseñas.
 2. [ ] Versión **N**: lleva `[lazunox-2 (nueva), lazunox-1 (vieja)]` y se **firma con la vieja**, para que la acepten las copias anteriores (que solo conocen la vieja).
 3. [ ] Versión **N+1**: se firma con la **nueva**. El manifiesto lleva `keyId: lazunox-2`; `brand.ts` pone `UPDATE_KEY_ID = 'lazunox-2'`.

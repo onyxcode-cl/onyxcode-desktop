@@ -61,11 +61,6 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     token: /onyxcode-cl\/onyxcode-desktop/i,
     reason: 'repositorio de GitHub de las releases (RELEASES_REPO)'
   },
-  {
-    path: 'scripts/sign-installed-mac.sh',
-    token: /OnyxCode Local Signing/i,
-    reason: 'nombre del certificado de firma local que ya existe en el llavero del dueño'
-  },
 
   { path: 'README.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
   { path: 'docs/INSTALAR.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
