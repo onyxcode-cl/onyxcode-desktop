@@ -95,9 +95,15 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
   const searchHint = hintText(bindings['palette.toggle'])
 
   const dot = serverState === 'ready' ? 'bg-success' : serverState === 'error' ? 'bg-danger' : 'bg-warning animate-pulse'
-  const dark = typeof document !== 'undefined' && document.documentElement?.dataset?.theme === 'dark'
-  const toggleTheme = (): void => void useSettings.getState().update({ theme: dark ? 'light' : 'dark' })
-  void themePref // la suscripción repinta el icono al cambiar el tema
+  // Tema efectivo desde el AJUSTE (no desde `data-theme`, que useTheme aplica DESPUÉS de dibujar y dejaba el valor un paso atrasado:
+  // el segundo clic repetía el mismo tema).
+  const prefersDark = (): boolean => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  const dark = themePref === 'system' ? prefersDark() : themePref === 'dark'
+  const toggleTheme = (): void => {
+    const cur = useSettings.getState().settings.theme
+    const isDark = cur === 'system' ? prefersDark() : cur === 'dark'
+    void useSettings.getState().update({ theme: isDark ? 'light' : 'dark' })
+  }
 
   const newAction = (): void => {
     openSettings(false)
