@@ -109,6 +109,7 @@ export const wizard = {
   'wizard.welcome.engine.ok': 'Incluido en la app.',
   'wizard.welcome.engine.missing': 'No se encontró: lo resuelves en el paso siguiente.',
   'wizard.welcome.state.checking': 'Revisando…',
+  'wizard.welcome.state.waiting': 'Esperando que los actives…',
   'wizard.welcome.state.ready': 'Listo',
   'wizard.welcome.state.pending': 'En cola',
   'wizard.welcome.state.downloading': 'Descargando…',

@@ -112,6 +112,7 @@ export const wizard = {
   'wizard.welcome.engine.ok': 'Included in the app.',
   'wizard.welcome.engine.missing': 'Not found: you’ll sort it out in the next step.',
   'wizard.welcome.state.checking': 'Checking…',
+  'wizard.welcome.state.waiting': 'Waiting for you to turn them on…',
   'wizard.welcome.state.ready': 'Ready',
   'wizard.welcome.state.pending': 'Queued',
   'wizard.welcome.state.downloading': 'Downloading…',
