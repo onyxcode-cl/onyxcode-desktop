@@ -921,7 +921,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const config = buildInlineConfig({
       fullAccess,
       extras,
-      allowDirs: this.win ? [] : [join(getOpencodeConfigDir(), 'skills')],
+      // Skills de la app, solo lectura. En Windows `toSandbox` (abajo) la traduce a `/win/c/…/opencode-config/skills`, la ruta que
+      // ve OpenCode dentro de la distro; esa carpeta ya está montada `ro` (`configDir` en `wsl-spec.ts`). No autoriza AppData.
+      allowDirs: [join(getOpencodeConfigDir(), 'skills')],
       browserMcp,
       computerMcp,
       mcpContribution: c,

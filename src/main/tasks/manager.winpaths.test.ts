@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const state = vi.hoisted(() => ({ userData: '', policy: null as null | Record<string, unknown> }))
+const state = vi.hoisted(() => ({ userData: '', cfgDir: '', policy: null as null | Record<string, unknown> }))
 const started = vi.hoisted(() => [] as Array<Record<string, unknown>>)
 const nextPaths = vi.hoisted(() => ({ value: null as null | { map: unknown; directory: string } }))
 
@@ -19,6 +19,10 @@ vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({
   embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null, revokeToken: () => undefined }
 }))
+vi.mock('./opencode-config', async (orig) => {
+  const real = await orig<typeof import('./opencode-config')>()
+  return { ...real, getOpencodeConfigDir: () => state.cfgDir || real.getOpencodeConfigDir() }
+})
 vi.mock('./policy', () => ({ loadManagedPolicy: () => state.policy }))
 vi.mock('./mcp-proxy', () => ({
   McpProxy: class {
@@ -115,6 +119,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'lzx-mgr-win-'))
   state.userData = join(root, 'userData')
   state.policy = null
+  state.cfgDir = ''
   started.length = 0
   nextPaths.value = null
   f = fakeHost()
@@ -307,6 +312,24 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     expect(started).toHaveLength(1)
     expect(started[0]).toMatchObject({ folder: 'C:\\lzx\\tareas\\a', platform: 'win32', tasksWin: true, noSandbox: false })
     expect(started[0]!.winBackend).toBe(winBackend)
+    await m.stopAll()
+  })
+  it('start() autoriza SOLO la carpeta de skills de la app (lectura), con la ruta de la distro, sin tarjeta ni AppData entera', async () => {
+    const winBackend = { build: true, gate: async () => ({ ok: true }), create: () => null }
+    const m = mk({ tasksWin: true, winBackend })
+    await m.refreshPolicy()
+    m.approveFolder('C:\\lzx\\tareas\\a')
+    state.cfgDir = 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config'
+    await m.start('C:\\lzx\\tareas\\a')
+    const env = (started[0]!.extraEnv ?? {}) as Record<string, string>
+    const cfg = JSON.parse(env.OPENCODE_CONFIG_CONTENT!) as {
+      agent: Record<string, { permission?: { external_directory?: Record<string, string> } }>
+    }
+    const ext = Object.values(cfg.agent).find((a) => a.permission?.external_directory)!.permission!.external_directory!
+    const skills = '/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config/skills'
+    expect(ext).toEqual({ '*': 'ask', [skills]: 'allow', [`${skills}/*`]: 'allow' })
+    // Ninguna entrada concede AppData ni el home: solo skills.
+    expect(Object.keys(ext).filter((k) => k !== '*' && !k.startsWith(skills))).toEqual([])
     await m.stopAll()
   })
   it('start() entrega a la interfaz `directory` y `pathMap` de la distro y liveServers() el `directory` para el monitor', async () => {
