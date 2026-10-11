@@ -39,6 +39,7 @@ import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
+import { useSandbox } from './sandbox-store'
 import { endedMidTurn, isViewerExt } from './util'
 import { platformCaps } from '../../../lib/platform'
 import { sdkDirOf } from './path-map'
@@ -157,6 +158,8 @@ interface TasksState {
 
   /** Se está guardando el punto de restauración previo al envío (el compositor lo indica). */
   restoreSaving: boolean
+  /** Windows: el arranque se pospuso porque el entorno aislado necesita instalarse/actualizarse; al quedar listo se reconecta. */
+  awaitingSandbox: boolean
   /** Motivo por el que el último envío de cada tarea no guardó un punto de restauración. */
   restoreWarning: Record<string, string>
   /** Sube al crear o aplicar un punto: el panel «Cambios en archivos» vuelve a consultar. */
@@ -281,6 +284,7 @@ export const useTasks = create<TasksState>((set) => ({
   autoPending: {},
   autoApprovedNotice: null,
   restoreSaving: false,
+  awaitingSandbox: false,
   restoreWarning: {},
   restoreVersion: 0,
   restoreResult: null,
@@ -786,6 +790,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     client: null,
     phase: 'starting',
     error: null,
+    awaitingSandbox: false,
     streaming: false,
     activeTaskId: null,
     todos: {},
@@ -843,8 +848,26 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
       }
       return connectFolder(folder, false)
     }
-    if (now.folder === folder && now.fullAccess === fullAccess) useTasks.setState({ phase: 'error', error: errorMessage(err) })
+    if (now.folder === folder && now.fullAccess === fullAccess) {
+      // Windows: si el entorno aislado necesita instalarse o actualizarse, la puerta de integridad cierra el arranque (correcto)
+      // pero la causa ya la explica `SandboxSetupCard`; un banner rojo «no disponible» sería engañoso. El estado de la tarjeta
+      // se consulta SIN caché; con la puerta de `setup` ya se comprobaron elevado/paquete, así que otras razones siguen con su error.
+      if (!fullAccess && (await sandboxNeedsSetup())) {
+        const again = useTasks.getState()
+        if (again.folder === folder && again.fullAccess === fullAccess)
+          useTasks.setState({ phase: 'idle', error: null, awaitingSandbox: true })
+        return
+      }
+      useTasks.setState({ phase: 'error', error: errorMessage(err) })
+    }
   }
+}
+
+/** Windows con aislamiento WSL: ¿el entorno está pendiente de instalar/actualizar (lo que muestra la tarjeta)? Nunca en macOS. */
+async function sandboxNeedsSetup(): Promise<boolean> {
+  if (platformCaps().tasksSandbox !== 'wsl') return false
+  await useSandbox.getState().refresh(true)
+  return useSandbox.getState().status?.state === 'needsSetup'
 }
 
 // ── Sesión de control del Mac (overlay + píldora del proceso principal) ──

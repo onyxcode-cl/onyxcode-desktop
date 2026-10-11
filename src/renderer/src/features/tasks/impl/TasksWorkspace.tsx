@@ -84,6 +84,7 @@ import { ProjectPanel } from './ProjectPanel'
 import { SideChat } from './SideChat'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon } from './TaskList'
+import { useSandbox } from './sandbox-store'
 import {
   addNetworkBlocked,
   clearUnseen,
@@ -423,6 +424,16 @@ export function TasksWorkspace(): React.JSX.Element {
       else if (last && fullAccessFor(last) && (await loadFullAccessInfo())?.consentAt) void connectFolder(last, true)
     })()
   }, [bridge])
+
+  // Windows: el arranque se pospuso porque el entorno aislado necesitaba instalarse/actualizarse; al quedar listo se reconecta solo.
+  const awaitingSandbox = useTasks((s) => s.awaitingSandbox)
+  const sandboxReady = useSandbox((s) => s.status?.state === 'ready' && s.status.setup?.running !== true)
+  useEffect(() => {
+    if (!awaitingSandbox || !sandboxReady) return
+    const st = useTasks.getState()
+    useTasks.setState({ awaitingSandbox: false })
+    if (st.folder && st.phase === 'idle') void selectFolder(st.folder)
+  }, [awaitingSandbox, sandboxReady])
 
   // Si el servidor de la carpeta se cae, mostrar el error (con "Reintentar").
   useEffect(
