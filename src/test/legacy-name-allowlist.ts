@@ -66,6 +66,12 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   { path: 'docs/INSTALAR.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
   { path: 'docs/RELEASE.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
 
+  {
+    path: 'src/shared/brand.ts',
+    token: /MADE_BY = 'Onyx Code'/,
+    reason: 'Crédito de la pantalla de bienvenida: «Hecho por Onyx Code» (la empresa del dueño)'
+  },
+
   // --- Dominio externo pendiente (D3): se quita al registrar lazunox.cl ---
   { path: 'src/shared/brand.ts', token: /remoto\.onyxcode\.cl/i, reason: 'EXTERNO-PENDIENTE D3: CLOUD_DOMAIN' },
   {

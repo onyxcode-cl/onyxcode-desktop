@@ -11,6 +11,7 @@ import type { Page } from 'playwright-core'
 import { afterAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { isQuickUrl, listWindows } from '../lib/instance'
+import { passWelcome } from '../lib/welcome'
 import { MODE, startApp } from '../lib/launch'
 import { expectCount, expectVisible } from '../lib/wait'
 import { IS_WIN, isolatedHomeEnv } from '../lib/proc'
@@ -47,6 +48,7 @@ describe.skipIf(!DEV)('T4c: error del asistente en inglés', () => {
       const env = { OPENCODE_BIN: join(home, 'no-existe', 'opencode'), ...isolatedHomeEnv(home) }
       const app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false, language: lang } })
       try {
+        await passWelcome(app.page)
         const alert = app.page.getByRole('dialog').getByRole('alert').filter({ hasText: expected })
         await expectVisible(alert)
         await expectCount(app.page.getByRole('dialog').getByRole('alert').filter({ hasText: other }), 0)

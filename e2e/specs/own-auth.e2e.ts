@@ -8,6 +8,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { MODE_LABELS } from '../../src/shared/labels'
 import type { FakeClient } from '../lib/fake'
 import { stubDialog } from '../lib/dialogs'
+import { passWelcome } from '../lib/welcome'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData, makeTasksDir, tasksFake } from '../lib/lotes'
 import { storeState } from '../lib/stores'
@@ -62,6 +63,7 @@ describe('conexión propia de la app', () => {
     noDefaultProviders(userData)
     const app = await startApp({ userData, keepUserData: true, settings: { onboarded: false } })
     apps.push(app)
+    await passWelcome(app.page)
     await expectVisible(app.page.getByRole('dialog').getByRole('heading', { name: 'Conecta tu IA' }))
     expect((await app.fake.env()).xdgDataHome).toBe(ownData(userData))
     expect(((await app.fake.status()).authProviders as string[]) ?? []).toEqual([])
@@ -86,6 +88,7 @@ describe('conexión propia de la app', () => {
     let app = await startApp({ userData, keepUserData: true, settings: { onboarded: true } })
     apps.push(app)
     const d = (): ReturnType<E2EApp['page']['getByRole']> => app.page.getByRole('dialog')
+    await passWelcome(app.page)
     await expectVisible(d().getByRole('heading', { name: 'Conecta tu IA' }))
     expect(settingsOf(userData).onboarded).toBe(false)
 

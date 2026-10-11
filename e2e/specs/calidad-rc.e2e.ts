@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path'
 import type { Locator, Page } from 'playwright-core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
+import { passWelcome } from '../lib/welcome'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { runAxe, SERIOUS, summarize, type AxeViolation } from '../lib/axe'
 import { shot } from '../lib/shots'
@@ -233,6 +234,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
   it('los cinco pasos del asistente, sin violaciones y con el foco contenido', async () => {
     app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false } })
     const a = app
+    await passWelcome(a.page)
     const d = a.page.getByRole('dialog')
     await expectVisible(d.getByRole('heading', { name: 'Instala o localiza OpenCode' }))
     await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el binario' }))

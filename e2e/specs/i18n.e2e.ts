@@ -10,6 +10,7 @@ import type { Page } from 'playwright-core'
 import { afterAll, describe, expect, it } from 'vitest'
 import { translate } from '../../src/shared/i18n'
 import { useApp } from '../lib/harness'
+import { passWelcome } from '../lib/welcome'
 import { MODE, startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData, makeTasksDir } from '../lib/lotes'
 import { shot } from '../lib/shots'
@@ -130,6 +131,7 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
       settings: { onboarded: false, language: lang }
     })
     try {
+      await passWelcome(app.page)
       const d = app.page.getByRole('dialog')
       await expectVisible(d.getByRole('heading', { name: tr(lang, 'wizard.stepTitle.install') }))
       await expectVisible(d.getByText(step))

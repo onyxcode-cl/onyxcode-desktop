@@ -41,6 +41,7 @@ import { useTasks } from '../tasks/impl/store'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
 import { Badge, ErrorText } from '../settings/impl/ui'
+import { Welcome } from './Welcome'
 import {
   canAdvance,
   connectedNames,
@@ -78,6 +79,8 @@ function OnboardingHost(): React.JSX.Element | null {
   /** Paso actual; `null` = todavía no se decidió mostrar el asistente. Una vez mostrado, no se oculta solo. */
   const [step, setStep] = useState<OnboardingStep | null>(null)
   const completed = useRef(false)
+  /** La bienvenida (animación, revisión y preparación del equipo) va antes del primer paso, una vez por arranque del asistente. */
+  const [welcomed, setWelcomed] = useState(false)
 
   const refreshInfo = useCallback(async () => {
     try {
@@ -131,6 +134,7 @@ function OnboardingHost(): React.JSX.Element | null {
   }, [step])
 
   if (!step) return null
+  if (!welcomed) return <Welcome info={info} onDone={() => setWelcomed(true)} />
 
   const steps = stepsFor()
   const finish = (): void => void update({ onboarded: true })

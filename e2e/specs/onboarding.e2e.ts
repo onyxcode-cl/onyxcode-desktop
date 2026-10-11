@@ -9,6 +9,7 @@ import { connectTasksNotice, connectTermsNotice } from '../../src/renderer/src/f
 import { openedUrls, stubDialog, stubOpenExternal } from '../lib/dialogs'
 import { startApp, type E2EApp } from '../lib/launch'
 import { fakeOutsideUserData } from '../lib/lotes'
+import { passWelcome } from '../lib/welcome'
 import { expectCount, expectVisible } from '../lib/wait'
 import { IS_WIN, STEPS_TOTAL, isolatedHomeEnv } from '../lib/proc'
 
@@ -46,6 +47,7 @@ describe('asistente de primer uso', () => {
 
   it('(a) sin OpenCode y sin onboarded: paso 1 con el error y «Reintentar»', async () => {
     app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false } })
+    await passWelcome(app.page)
     const d = dialog()
     await expectVisible(d.getByRole('heading', { name: 'Instala o localiza OpenCode' }))
     await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL}`))
@@ -164,6 +166,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
         LAZUNOX_TEST_BUNDLED_DIR: dirname(fakeBin.bin)
       }
     })
+    await passWelcome(app.page)
     const d = app.page.getByRole('dialog')
     // Sin proveedor conectado, el asistente abre directamente en el paso 2 (con el motor incluido el paso 1 no falta nada).
     await expectVisible(d.getByRole('heading', { name: 'Conecta tu IA' }))

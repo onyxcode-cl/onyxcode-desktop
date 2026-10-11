@@ -4,6 +4,9 @@
  */
 /** Nombre VISIBLE al usuario (ventanas, menús, textos, PWA). Es el único que se muestra. */
 export const DISPLAY_NAME = 'Lazunox'
+
+/** Quién hace la app: el crédito de la pantalla de bienvenida («Hecho por …»). */
+export const MADE_BY = 'Onyx Code'
 /**
  * Nombre INTERNO. Identidad de almacenamiento: userData, Llavero («<nombre> Safe Storage»,
  * `app.setName(INTERNAL_NAME)`), User-Agent, `TERM_PROGRAM` y rutas de administrador.

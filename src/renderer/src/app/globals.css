@@ -1031,3 +1031,56 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --font-weight-semibold: 530;
   --font-weight-bold: 620;
 }
+
+/* Bienvenida del primer uso (features/onboarding/Welcome.tsx): el logo aparece con un giro, flota y brilla; el texto sube escalonado. */
+@keyframes welcome-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55) rotate(-10deg);
+  }
+}
+@keyframes welcome-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes welcome-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.14);
+  }
+}
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.welcome-logo {
+  animation:
+    welcome-pop 800ms var(--ease-out) both,
+    welcome-float 4.2s ease-in-out 900ms infinite;
+}
+.welcome-glow {
+  animation: welcome-glow 4.2s ease-in-out infinite;
+}
+.welcome-rise {
+  animation: welcome-rise 650ms var(--ease-out) both;
+  animation-delay: var(--d, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-logo,
+  .welcome-glow,
+  .welcome-rise {
+    animation: none;
+  }
+}
