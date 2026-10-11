@@ -944,4 +944,73 @@ describe('Windows: abrir apps por nombre con el menú Inicio (sin proceso)', () 
       found: true
     })
   })
+
+  /** Como `fake()`, pero el menú Inicio incluye una app clásica y la 2.ª llamada a PowerShell (entorno LZX_APP_*) responde `classic`. */
+  function fakeClassic(classic: { out?: string; fail?: boolean }): {
+    envs: Array<Record<string, string | undefined>>
+    deps: Parameters<typeof createWin32Backend>[1]
+  } {
+    const envs: Array<Record<string, string | undefined>> = []
+    const execFile = ((
+      cmd: string,
+      _args: string[],
+      o: { env?: Record<string, string | undefined> },
+      cb: (e: Error | null, out: string) => void
+    ) => {
+      const done = (e: Error | null, out: string): void => void setImmediate(() => cb(e, out))
+      if (/powershell/i.test(cmd) && o.env?.LZX_APP_NAME) {
+        envs.push(o.env)
+        if (classic.fail) done(new Error('powershell falló'), '')
+        else done(null, classic.out ?? '')
+      } else if (/powershell/i.test(cmd)) {
+        done(
+          null,
+          JSON.stringify([
+            { Name: 'Google Chrome', AppID: 'Chrome' },
+            { Name: 'Calculadora', AppID: 'Microsoft.WindowsCalculator_8wekyb3d8bbwe!App' }
+          ])
+        )
+      } else done(null, '[]')
+      return new EventEmitter()
+    }) as never
+    return { envs, deps: { execFile, existsSync: () => true, env: { SystemRoot: 'C:\\Windows' } } }
+  }
+
+  it('resolveApp de una app clásica cerrada da la clave exe:ruta|pub:editor (ruta en minúsculas, editor del certificado)', async () => {
+    const f = fakeClassic({
+      out: JSON.stringify({ path: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', publisher: 'Google LLC' })
+    })
+    const r = await createWin32Backend(host, f.deps).resolveApp('Google Chrome')
+    expect(r).toEqual({
+      bundleId: 'exe:c:\\program files\\google\\chrome\\application\\chrome.exe|pub:Google LLC',
+      name: 'Google Chrome',
+      found: true
+    })
+    expect(f.envs[0]).toMatchObject({ LZX_APP_NAME: 'Google Chrome', LZX_APP_ID: 'Chrome' })
+  })
+  it('una clásica sin firma válida usa «(sin firma)», como el helper', async () => {
+    const f = fakeClassic({ out: JSON.stringify({ path: 'C:\\Apps\\x\\chrome.exe', publisher: '' }) })
+    expect((await createWin32Backend(host, f.deps).resolveApp('Google Chrome')).bundleId).toBe(
+      'exe:c:\\apps\\x\\chrome.exe|pub:(sin firma)'
+    )
+  })
+  it.each([
+    ['UNC', '\\\\servidor\\share\\chrome.exe'],
+    ['8.3', 'C:\\PROGRA~1\\Google\\chrome.exe'],
+    ['relativa', 'Chrome\\chrome.exe'],
+    ['con ..', 'C:\\Apps\\..\\chrome.exe']
+  ])('una ruta %s no se resuelve: no encontrada', async (_n, path) => {
+    const f = fakeClassic({ out: JSON.stringify({ path, publisher: 'Google LLC' }) })
+    expect(await createWin32Backend(host, f.deps).resolveApp('Google Chrome')).toMatchObject({ bundleId: '', found: false })
+  })
+  it('un editor con «|» o una salida que no es JSON no se resuelve', async () => {
+    const a = fakeClassic({ out: JSON.stringify({ path: 'C:\\Apps\\chrome.exe', publisher: 'A|B' }) })
+    expect((await createWin32Backend(host, a.deps).resolveApp('Google Chrome')).found).toBe(false)
+    const b = fakeClassic({ out: 'basura' })
+    expect((await createWin32Backend(host, b.deps).resolveApp('Google Chrome')).found).toBe(false)
+  })
+  it('si PowerShell falla, la clásica queda como no encontrada', async () => {
+    const f = fakeClassic({ fail: true })
+    expect(await createWin32Backend(host, f.deps).resolveApp('Google Chrome')).toMatchObject({ bundleId: '', found: false })
+  })
 })

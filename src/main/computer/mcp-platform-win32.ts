@@ -22,7 +22,7 @@
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
-import { aumidKey, exeBaseName, parseAppKey } from './policy/app-key'
+import { aumidKey, exeBaseName, exeKey, parseAppKey } from './policy/app-key'
 import { checkKeys } from './policy/win-keys'
 
 /** Límites del contrato del helper (`protocol.json` → `io`); una prueba los compara con el JSON. */
@@ -460,6 +460,74 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     })
   }
 
+  /**
+   * Script de PowerShell (solo lectura, no ejecuta la app) que lleva una entrada del menú Inicio a `{path, publisher}`:
+   * la ruta del `.exe` (AppID de ruta o destino del acceso directo `.lnk` de ProgramData/AppData con ese nombre) y el editor
+   * igual que el helper: firma válida (WinVerifyTrust, como el helper) → nombre simple del certificado del firmante INCRUSTADO (los archivos solo firmados por catálogo dan vacío); si no, vacío
+   * (el helper lo normaliza a «(sin firma)»). Nombre y AppID llegan por entorno, nunca interpolados en el comando.
+   */
+  const CLASSIC_APP_SCRIPT = [
+    "$ErrorActionPreference='Stop'",
+    '[Console]::OutputEncoding=[Text.Encoding]::UTF8',
+    '$n=$env:LZX_APP_NAME; $id=$env:LZX_APP_ID; $t=$null',
+    "if ($id -match '^[A-Za-z]:\\\\' -and $id -like '*.exe') { $t=$id } else {",
+    '$sh=New-Object -ComObject WScript.Shell',
+    "foreach ($d in @(($env:ProgramData+'\\Microsoft\\Windows\\Start Menu\\Programs'), ($env:APPDATA+'\\Microsoft\\Windows\\Start Menu\\Programs'))) {",
+    'if (-not $t -and (Test-Path -LiteralPath $d)) {',
+    "foreach ($f in Get-ChildItem -LiteralPath $d -Filter '*.lnk' -Recurse -File -ErrorAction SilentlyContinue) {",
+    "if ($f.BaseName -eq $n) { $x=$sh.CreateShortcut($f.FullName).TargetPath; if ($x -like '*.exe') { $t=$x; break } } } } } }",
+    'if (-not $t -or -not (Test-Path -LiteralPath $t -PathType Leaf)) { exit 3 }',
+    '$t=(Get-Item -LiteralPath $t).FullName',
+    '$s=Get-AuthenticodeSignature -LiteralPath $t',
+    "$p=''",
+    "if ($s.Status -eq 'Valid') { try { $p=([Security.Cryptography.X509Certificates.X509Certificate2]([Security.Cryptography.X509Certificates.X509Certificate]::CreateFromSignedFile($t))).GetNameInfo('SimpleName',$false) } catch { $p='' } }",
+    '@{path=$t;publisher=$p} | ConvertTo-Json -Compress'
+  ].join('; ')
+  const classicCache = new Map<string, { at: number; key: string | null }>()
+
+  /**
+   * Clave `exe:<ruta>|pub:<editor>` de una app CLÁSICA instalada pero cerrada, idéntica a la del helper cuando está en ejecución.
+   * Falla cerrado: sin PowerShell, sin destino .exe, ruta no válida (UNC, 8.3, `..`) o editor no válido → null.
+   */
+  function classicAppKey(app: StartApp): Promise<string | null> {
+    const ck = `${app.name}\u0000${app.appId}`
+    const hit = classicCache.get(ck)
+    if (hit && Date.now() - hit.at < 60_000) return Promise.resolve(hit.key)
+    const root = deps.env.SystemRoot ?? deps.env.SYSTEMROOT ?? 'C:\\Windows'
+    const ps = `${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
+    return new Promise((resolve) => {
+      const done = (key: string | null): void => {
+        classicCache.set(ck, { at: Date.now(), key })
+        resolve(key)
+      }
+      try {
+        deps.execFile(
+          ps,
+          ['-NoProfile', '-NonInteractive', '-Command', CLASSIC_APP_SCRIPT],
+          {
+            timeout: 15_000,
+            maxBuffer: 64 * 1024,
+            windowsHide: true,
+            env: { ...process.env, ...deps.env, LZX_APP_NAME: app.name, LZX_APP_ID: app.appId }
+          },
+          (err, stdout) => {
+            if (err) return done(null)
+            try {
+              const j = JSON.parse(stdout.toString().replace(/^\uFEFF/, '')) as { path?: unknown; publisher?: unknown }
+              if (typeof j.path !== 'string') return done(null)
+              const k = exeKey(j.path, typeof j.publisher === 'string' ? j.publisher : '')
+              done(k.ok && parseAppKey(k.key) ? k.key : null)
+            } catch {
+              done(null)
+            }
+          }
+        )
+      } catch {
+        done(null)
+      }
+    })
+  }
+
   async function resolveApp(name: string): Promise<AppRef & { found: boolean }> {
     const query = name.trim()
     const notFound = { bundleId: '', name: query || name, found: false }
@@ -486,11 +554,15 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
       log('list-apps:', err instanceof Error ? err.message : err)
     }
     // App instalada que aún no está abierta: solo las empaquetadas (AppID con «!», como Calculadora o Bloc de notas), cuya clave
-    // `aumid:` es la misma que el helper informa cuando están en ejecución. El resto aparece al abrirse (clave por ruta y editor).
+    // `aumid:` es la misma que el helper informa cuando están en ejecución. Las clásicas se resuelven por su acceso directo (`classicAppKey`).
     const installed = await findStartApp(query)
     if (installed && installed.appId.includes('!')) {
       const k = aumidKey(installed.appId)
       if (k.ok) return { bundleId: k.key, name: installed.name, found: true }
+    } else if (installed) {
+      // App clásica cerrada: ruta del .exe y editor leídos del acceso directo, sin ejecutar nada (misma clave que da el helper en ejecución).
+      const key = await classicAppKey(installed)
+      if (key) return { bundleId: key, name: installed.name, found: true }
     }
     return notFound
   }
