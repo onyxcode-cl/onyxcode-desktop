@@ -8,6 +8,7 @@ import { AlertTriangle, Check, Clock, Loader2 } from 'lucide-react'
 import { DISPLAY_NAME, MADE_BY } from '@shared/brand'
 import type { OpencodeInfo } from '@shared/types'
 import { Button } from '../../components/Button'
+import { call } from '../../lib/api'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 import { isMacPlatform, platformCaps } from '../../lib/platform'
@@ -251,9 +252,12 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
             })}
           </ul>
           {needsRestartHint(items) && (
-            <p role="note" className="mt-3 text-[13px] leading-[18px] text-muted">
-              {t('wizard.welcome.restartHint', { app: DISPLAY_NAME })}
-            </p>
+            <div role="note" className="mt-3 flex items-center justify-between gap-3 text-[13px] leading-[18px] text-muted">
+              <p>{t('wizard.welcome.restartHint', { app: DISPLAY_NAME })}</p>
+              <Button variant="secondary" onClick={() => void call('app:relaunch')}>
+                {t('wizard.welcome.restartNow')}
+              </Button>
+            </div>
           )}
         </div>
 

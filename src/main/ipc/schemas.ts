@@ -385,6 +385,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:notify': obj({ title: str({ max: 300, min: 1 }), body: str({ max: 2000, min: 1 }), target: optional(notifyTarget) }),
   'app:setAttention': obj({ count: num({ int: true, min: 0, max: 999_999 }) }),
   'app:opencodeInfo': none,
+  'app:relaunch': none,
   'app:opencodeAction': obj({ action: literal(...OPENCODE_ACTIONS) }),
   'app:pickOpencodeBin': none,
   'app:updateState': none,

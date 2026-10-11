@@ -253,6 +253,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   // ── app ──
   'app:info': 'R', // el resultado se limpia con `sanitizeResult` (sin `userDataPath`)
   'app:openExternal': 'X', // abre el navegador del Mac
+  'app:relaunch': 'X', // reinicia la app del Mac: nunca desde el celular
   'app:notify': 'X',
   'app:setAttention': 'X',
   'app:opencodeInfo': 'X', // revela la ruta del binario

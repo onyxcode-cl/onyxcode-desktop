@@ -1,4 +1,4 @@
-import { clipboard, dialog, shell, type IpcMain } from 'electron'
+import { app, clipboard, dialog, shell, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -15,6 +15,11 @@ export function registerOnboardingHandlers(ipcMain: IpcMain): void {
   handle(ipcMain, 'app:opencodeInfo', async () => {
     const resolved = await resolveOpencodeAsync()
     return getOpencodeInfo(() => resolved)
+  })
+
+  handle(ipcMain, 'app:relaunch', () => {
+    app.relaunch()
+    app.quit()
   })
 
   handle(ipcMain, 'app:opencodeAction', async ({ action }) => {

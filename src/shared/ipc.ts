@@ -28,6 +28,8 @@ export interface IpcInvokeContract {
   // app
   'app:info': { req: void; res: AppInfo }
   'app:openExternal': { req: { url: string }; res: void }
+  /** Reinicia Lazunox (la bienvenida lo ofrece cuando macOS solo aplica un permiso al abrir la app de nuevo). */
+  'app:relaunch': { req: void; res: void }
   /**
    * Notificación nativa desde main (Code/Tareas: sesión terminó o pide algo). `target`, si viene,
    * es adónde llevar al usuario al hacer clic (evento `app:openTarget`).
@@ -101,6 +103,7 @@ export type IpcResponse<C extends IpcInvokeChannel> = IpcInvokeContract[C]['res'
 export const IPC_INVOKE_CHANNELS = [
   'app:info',
   'app:openExternal',
+  'app:relaunch',
   'app:notify',
   'app:setAttention',
   'app:opencodeInfo',
