@@ -35,7 +35,8 @@ const r = (rel: string): string => readFileSync(join(repo, rel), 'utf8')
 const trashed = (): string[] => (existsSync(trashDir) ? readdirSync(trashDir) : [])
 
 beforeEach(() => {
-  base = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-discard-')))
+  // `.native`: en Windows el tmp puede venir con nombres 8.3 (RUNNER~1); git y el servicio usan la ruta nativa.
+  base = realpathSync.native(mkdtempSync(join(tmpdir(), 'lazunox-discard-')))
   repo = join(base, 'repo')
   mkdirSync(repo)
   trashDir = join(base, 'trash')

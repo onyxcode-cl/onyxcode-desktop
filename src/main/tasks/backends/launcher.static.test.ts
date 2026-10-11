@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { posixOnly } from '../../../test/platform'
 
 const dir = join(process.cwd(), 'resources/wsl')
 const read = (f: string): string => readFileSync(join(dir, f), 'utf8')
@@ -91,7 +92,9 @@ describe('landlock.py / protocol.py / mux.py', () => {
   })
 })
 
-describe.skipIf(!hasPython)('parte pura del lanzador (python3 -m unittest)', () => {
+// Se salta en Windows: test_install.py usa os.getuid/fcntl (solo POSIX). Es el lanzador de WSL, que corre dentro de Linux;
+// en el CI de macOS sí se ejecuta. El análisis estático de arriba sigue corriendo en todas las plataformas.
+describe.skipIf(!hasPython || !posixOnly)('parte pura del lanzador (python3 -m unittest)', () => {
   it('protocol.py, mux.py, el lanzador y el instalador pasan sus pruebas', () => {
     const r = spawnSync('python3', ['-m', 'unittest', 'test_protocol', 'test_install'], {
       cwd: dir,

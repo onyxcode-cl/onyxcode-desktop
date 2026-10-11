@@ -67,7 +67,8 @@ describe('isSensitivePath', () => {
 
 describe('realpathLoose / enlaces', () => {
   it('resuelve enlaces, tolera rutas que no existen y rechaza enlaces rotos fuera del camino', () => {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-pg-')))
+    // `.native`: en Windows el tmp puede venir con nombres 8.3 (RUNNER~1); realpathLoose usa realpath nativo.
+    const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'lazunox-pg-')))
     try {
       mkdirSync(join(root, 'in'))
       mkdirSync(join(root, 'out'))

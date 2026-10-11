@@ -117,7 +117,8 @@ const http = (h: Harness, method: string, path: string, query: Record<string, st
   ) as Promise<{ status: number; body: string; contentType?: string; encoding?: string }>
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-proxy-')))
+  // `.native`: en Windows el tmp puede venir con nombres 8.3 (RUNNER~1); el proxy canoniza con realpath nativo.
+  root = realpathSync.native(mkdtempSync(join(tmpdir(), 'lazunox-proxy-')))
   proj = join(root, 'proj')
   outside = join(root, 'outside')
   chat = join(root, 'chat')

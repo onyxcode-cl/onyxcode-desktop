@@ -40,7 +40,8 @@ async function* feed(events: unknown[], hold = true): AsyncGenerator<unknown> {
 const tick = (ms = 30): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-hub-')))
+  // `.native`: en Windows el tmp puede venir con nombres 8.3 (RUNNER~1); el hub canoniza con realpath nativo.
+  root = realpathSync.native(mkdtempSync(join(tmpdir(), 'lazunox-hub-')))
   proj = join(root, 'proj')
   outside = join(root, 'outside')
   mkdirSync(proj)

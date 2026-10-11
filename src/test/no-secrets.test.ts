@@ -28,12 +28,25 @@ const FAKE_TOKEN_TESTS = new Set([
   'scripts/win/attack/test_attack_suite.py'
 ])
 
+/** La guardia revisa lo que git rastrea: en una copia sin `.git` (p. ej. la que sube `scripts/win/sync.sh` al PC de pruebas) no hay nada que revisar. */
+function inGitRepo(): boolean {
+  try {
+    return (
+      execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim() === 'true'
+    )
+  } catch {
+    return false
+  }
+}
+
 function tracked(): string[] {
   const out = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 }).toString('utf8')
   return out.split('\0').filter(Boolean)
 }
 
-describe('guardia de secretos', () => {
+describe.skipIf(!inGitRepo())('guardia de secretos', () => {
   it('ningún archivo rastreado es de secretos ni contiene una llave o token reales', () => {
     const problems: string[] = []
     for (const f of tracked()) {

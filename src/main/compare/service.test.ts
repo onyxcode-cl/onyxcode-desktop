@@ -24,7 +24,8 @@ const live: CompareService[] = []
 const g = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' })
 
 beforeEach(() => {
-  parent = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-cmp-')))
+  // `.native`: en Windows el tmp puede venir con nombres 8.3 (RUNNER~1); git devuelve la ruta nativa del repo.
+  parent = realpathSync.native(mkdtempSync(join(tmpdir(), 'lazunox-cmp-')))
   repo = join(parent, 'proj')
   userData = join(parent, 'userData')
   chatDir = join(parent, 'chat')

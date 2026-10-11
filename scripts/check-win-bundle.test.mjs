@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import {
+  HELPER_EXE,
   checkComputerWinPackaging,
   checkWslBundlePackaging,
   checkHelperPresent,
@@ -18,7 +19,7 @@ import {
   wslBundlePackExpected,
   wslLeaksInAsar
 } from './check-win-bundle.mjs'
-import { checkBundleDir } from './wsl-bundle-lib.mjs'
+import { STAGING_DIR, bundleFilesFromPin, checkBundleDir } from './wsl-bundle-lib.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const script = join(root, 'scripts', 'check-win-bundle.mjs')
@@ -127,10 +128,30 @@ test('detecta configuraciones peligrosas', () => {
   assert.ok(has(c, /no lleva cu-helper\.exe/))
 })
 
-test('el script con --config-only sale 0 con la config real', () => {
-  const out = execFileSync(process.execPath, [script, '--config-only'], { encoding: 'utf8' })
-  assert.match(out, /OK: empaquetado de Control del PC en Windows/)
-})
+// El script con la función activa exige las dos imágenes de WSL (`resources/wsl-images/`, gitignored, las deja
+// `npm run stage:wsl-bundle`) y `cu-helper.exe` (gitignored, lo compila `build-native.mjs --win-helper`). Ninguno existe
+// en el CI de GitHub (macOS limpio), así que esta prueba de integración se SALTA ahí cuando falte algo. El script no
+// cambia: `npm run package:win` sigue fallando cerrado si faltan. Las pruebas unitarias de arriba sí cubren la regla.
+const flagsSource = readFileSync(join(root, 'src', 'shared', 'feature-flags.ts'), 'utf8')
+const packagingStaged = (() => {
+  if (!wslBundlePackExpected(flagsSource)) return true
+  const pinForStaging = JSON.parse(readFileSync(join(root, 'resources', 'opencode-bin', 'pin.json'), 'utf8'))
+  const imagesOk = bundleFilesFromPin(pinForStaging).files.every((f) => fsMod.existsSync(join(root, STAGING_DIR, f.name)))
+  return imagesOk && fsMod.existsSync(join(root, HELPER_EXE))
+})()
+
+test(
+  'el script con --config-only sale 0 con la config real',
+  {
+    skip: packagingStaged
+      ? false
+      : 'función activa pero faltan resources/wsl-images/* o cu-helper.exe (artefactos locales, no están en git)'
+  },
+  () => {
+    const out = execFileSync(process.execPath, [script, '--config-only'], { encoding: 'utf8' })
+    assert.match(out, /OK: empaquetado de Control del PC en Windows/)
+  }
+)
 
 // ───────────── paquete de WSL (Tareas en Windows, beta opcional 2026-10-07) ─────────────
 const realPin = JSON.parse(readFileSync(join(root, 'resources', 'opencode-bin', 'pin.json'), 'utf8'))
