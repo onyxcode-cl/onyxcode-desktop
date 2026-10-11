@@ -15,10 +15,11 @@ import {
   utimesSync,
   writeFileSync
 } from 'node:fs'
+import type { Stats } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { RestorePoints, type RestoreDeps, type RestoreLimits } from './restore-points'
+import { RestorePoints, defaultIsCloudPlaceholder, type RestoreDeps, type RestoreLimits } from './restore-points'
 import { macOnly } from '../../test/platform'
 
 let base: string
@@ -586,5 +587,20 @@ describe.skipIf(!macOnly)('RestorePoints: robustez', () => {
       clearInterval(timer)
     }
     expect(worst).toBeLessThan(200)
+  })
+})
+
+describe('defaultIsCloudPlaceholder', () => {
+  const st = { size: 10, blocks: 0 } as Stats
+  const set = (p: string): void => void Object.defineProperty(process, 'platform', { value: p, configurable: true })
+  const real = process.platform
+  afterEach(() => set(real))
+  it('en macOS un archivo con tamaño y sin bloques es de la nube', () => {
+    set('darwin')
+    expect(defaultIsCloudPlaceholder(st)).toBe(true)
+  })
+  it('en Windows nunca: los archivos pequeños de NTFS viven en la MFT con asignación 0', () => {
+    set('win32')
+    expect(defaultIsCloudPlaceholder(st)).toBe(false)
   })
 })

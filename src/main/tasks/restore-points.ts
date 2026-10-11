@@ -91,8 +91,11 @@ export interface RestoreDeps {
 /** Por qué un archivo no se guardó. */
 export type SkipReason = 'unreadable' | 'cloud' | 'nospace'
 
-/** iCloud «solo en la nube»: tiene tamaño pero ningún bloque en disco. Un archivo normal en APFS tiene blocks > 0. */
-export const defaultIsCloudPlaceholder = (st: Stats): boolean => st.size > 0 && st.blocks === 0
+/**
+ * iCloud «solo en la nube»: tiene tamaño pero ningún bloque en disco. Un archivo normal en APFS tiene blocks > 0.
+ * En Windows no existe iCloud y NTFS guarda los archivos muy pequeños dentro de la MFT (asignación 0): se saltarían por error.
+ */
+export const defaultIsCloudPlaceholder = (st: Stats): boolean => process.platform !== 'win32' && st.size > 0 && st.blocks === 0
 
 function defaultFreeBytes(path: string): number {
   try {
