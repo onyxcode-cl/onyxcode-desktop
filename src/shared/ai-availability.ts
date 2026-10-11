@@ -75,10 +75,23 @@ export function resolveModel(wanted: ModelRef, providers: ProviderLike[] | null,
   return null
 }
 
-/** Primer modelo del proveedor gratuito (el que ofrece «Probar un modelo gratuito»), o `null`. */
+/**
+ * Modelos gratuitos de OpenCode que se prefieren, en orden (los que respondieron en las pruebas de primer uso). El catálogo gratuito
+ * cambia y a veces un modelo cae («Model is unavailable»): elegir solo «el primero» dejaba al usuario nuevo esperando en «Pensando…».
+ */
+export const FREE_MODEL_PREFERENCE: readonly string[] = [
+  'ling-3.1-flash-free',
+  'mimo-v2.6-flash-free',
+  'big-pickle',
+  'nemotron-3.5-lightning-free'
+]
+
+/** Modelo del proveedor gratuito que ofrece «Probar un modelo gratuito»: el preferido que exista; si no, el primero; o `null`. */
 export function firstFreeModel(providers: ProviderLike[] | null): ModelRef | null {
   const p = providers?.find((x) => x.id === FREE_PROVIDER_ID)
-  const id = p ? Object.keys(p.models)[0] : undefined
+  if (!p) return null
+  const ids = Object.keys(p.models)
+  const id = FREE_MODEL_PREFERENCE.find((m) => ids.includes(m)) ?? ids[0]
   return id ? { providerID: FREE_PROVIDER_ID, modelID: id } : null
 }
 

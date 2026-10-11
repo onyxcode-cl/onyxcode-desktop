@@ -73,6 +73,7 @@ export const chat = {
   'chat.group.last30': 'Last 30 days',
   'chat.msg.retryAttempt': 'Retry {attempt}:',
   'chat.msg.thinking': 'Thinking',
+  'chat.msg.retrying': 'The model isn’t responding; retrying…',
   'chat.msg.copyMessage': 'Copy message',
   'chat.msg.copyReply': 'Copy reply',
   'chat.msg.retry': 'Retry',

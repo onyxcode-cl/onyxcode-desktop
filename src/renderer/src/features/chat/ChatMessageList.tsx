@@ -347,12 +347,15 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
 interface Props extends ErrorActions {
   entries: MessageEntry[]
   busy: boolean
+  /** El motor reintenta la respuesta (modelo caído o con error temporal). */
+  retrying?: boolean
   error?: ConvError | null
   /** Si se entrega, cada mensaje del usuario con texto ofrece «Editar y reintentar». */
   onEdit?: (messageID: string, text: string) => Promise<unknown>
 }
 
-export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEdit }: Props): React.JSX.Element {
+export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCompact, onEdit }: Props): React.JSX.Element {
+  const t = useT()
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
   const mobile = isRemoteSurface()
   // Celular: el historial que se carga de golpe no anima; solo las filas que llegan después de abrir la conversación.
@@ -394,7 +397,7 @@ export function ChatMessageList({ entries, busy, error, onRetry, onCompact, onEd
               />
             )
           })}
-          {showThinking && <ThinkingIndicator />}
+          {showThinking && <ThinkingIndicator label={retrying ? t('chat.msg.retrying') : undefined} />}
           {error && !lastAssistantFailed(entries) && (
             <ErrorNotice error={error} variant="chat" onRetry={canRetry ? onRetry : undefined} onCompact={onCompact} />
           )}

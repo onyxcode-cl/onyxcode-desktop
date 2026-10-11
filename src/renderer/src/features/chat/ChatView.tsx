@@ -66,6 +66,8 @@ export function ChatView(): React.JSX.Element {
   const session = useSessions((s) => (activeId ? s.sessions[activeId] : undefined))
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
+  /** El motor está reintentando (p. ej. el modelo no está disponible): se dice en vez de quedarse en «Pensando…». */
+  const retrying = useSessions((s) => (activeId ? s.status[activeId] === 'retry' : false))
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const docPanel = useChatDocPanel(activeId, entries)
   // Cada modo recuerda su propio modelo (`modelsByMode.chat`); sin elección propia vale el predeterminado global.
@@ -312,7 +314,15 @@ export function ChatView(): React.JSX.Element {
         </header>
         <ChatProgressHud entries={entries} busy={busy} />
         <TranscriptLoader sessionId={activeId} />
-        <ChatMessageList entries={entries} busy={busy} error={error} onRetry={retry} onCompact={compact} onEdit={edit} />
+        <ChatMessageList
+          entries={entries}
+          busy={busy}
+          retrying={retrying}
+          error={error}
+          onRetry={retry}
+          onCompact={compact}
+          onEdit={edit}
+        />
         {notices}
         {composer}
       </div>

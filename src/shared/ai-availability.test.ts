@@ -43,6 +43,11 @@ describe('disponibilidad de IA', () => {
     expect(sendGate('free-only', eff).blocked).toBe(true)
     expect(firstFreeModel([free])).toEqual({ providerID: 'opencode', modelID: 'fake-free-model' })
     expect(firstFreeModel([go])).toBeNull()
+    // Prefiere los que se sabe que responden, aunque no sean el primero del catálogo.
+    const many = { ...free, models: { 'ling-3.0-flash-fin-free': {}, 'big-pickle': {}, 'ling-3.1-flash-free': {} } } as typeof free
+    expect(firstFreeModel([many])).toEqual({ providerID: 'opencode', modelID: 'ling-3.1-flash-free' })
+    const noPref = { ...free, models: { 'otro-free': {}, 'zeta-free': {} } } as typeof free
+    expect(firstFreeModel([noPref])).toEqual({ providerID: 'opencode', modelID: 'otro-free' })
     expect(firstFreeModel(null)).toBeNull()
   })
 

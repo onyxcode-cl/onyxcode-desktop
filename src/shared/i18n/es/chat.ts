@@ -70,6 +70,7 @@ export const chat = {
   'chat.group.last30': 'Últimos 30 días',
   'chat.msg.retryAttempt': 'Reintento {attempt}:',
   'chat.msg.thinking': 'Pensando',
+  'chat.msg.retrying': 'El modelo no responde; reintentando…',
   'chat.msg.copyMessage': 'Copiar mensaje',
   'chat.msg.copyReply': 'Copiar respuesta',
   'chat.msg.retry': 'Reintentar',
