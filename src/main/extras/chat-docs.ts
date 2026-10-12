@@ -18,6 +18,7 @@ import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
 import { convertToPdf } from './office-render'
 import { craftService } from '../office/craft/service'
 import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
+import { renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from './render-xlsx'
 import { issueToken } from '../viewer/tokens'
@@ -91,7 +92,7 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
 }
 
 /** Ruta de un programa de ArtCraft si está instalado (`null` si no, o si no es macOS). */
-function craftBinary(tool: 'deckcraft' | 'wordcraft'): string | null {
+function craftBinary(tool: 'deckcraft' | 'wordcraft' | 'gridcraft'): string | null {
   const st = craftService().status()
   return st.state === 'installed' ? (st.bins[tool] ?? null) : null
 }
@@ -104,6 +105,15 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
   }
   if (input.kind === 'xlsx') {
     if (!isXlsxSpec(input.data)) throw new Error('Datos de Excel inválidos.')
+    // Con GridCraft instalado el libro se arma con él (calcula las fórmulas, sin LibreOffice); si falla, cae al generador de siempre.
+    const grid = craftBinary('gridcraft')
+    if (grid) {
+      try {
+        return await renderChatGrid(grid, input.data)
+      } catch (e) {
+        console.warn('[chat-docs] GridCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
+      }
+    }
     return renderXlsx(input.data)
   }
   if (!isPptxSpec(input.data)) throw new Error('Datos de PowerPoint inválidos.')

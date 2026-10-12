@@ -6,11 +6,11 @@
  * Mismo criterio que `deck-builder.ts`: el contenido es DATO (va como valor JSON de cada parámetro), nada del JSON del modelo se interpreta
  * como comando o ruta, y el tamaño de letra se ajusta al largo del texto porque la herramienta no mide ni autoajusta.
  */
-import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
+import { runCraft } from './craft-run'
 import { createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
 
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
@@ -272,19 +272,6 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
   return c
 }
 
-const run = (bin: string, args: string[], timeoutMs: number): Promise<void> =>
-  new Promise((ok, fail) => {
-    execFile(bin, args, { timeout: timeoutMs, maxBuffer: 1 << 20, env: envFor() }, (err, _o, stderr) =>
-      err ? fail(new Error(`DeckCraft falló: ${String(stderr || err.message).slice(0, 300)}`)) : ok()
-    )
-  })
-
-function envFor(): NodeJS.ProcessEnv {
-  // Sin tocar la configuración del usuario: carpetas de datos propias y PATH mínimo.
-  const home = tmpdir()
-  return { PATH: '/usr/bin:/bin', HOME: home, XDG_CONFIG_HOME: home, XDG_DATA_HOME: home, XDG_CACHE_HOME: home, XDG_STATE_HOME: home }
-}
-
 /** Arma el .pptx con DeckCraft y devuelve sus bytes. Lanza si el programa falla (quien llama cae al generador de siempre). */
 export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs = 30_000): Promise<Buffer> {
   const dir = await mkdtemp(join(tmpdir(), 'lazunox-chatdeck-'))
@@ -292,7 +279,7 @@ export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs =
     const out = join(dir, 'deck.pptx')
     const args = ['run', '--save', out]
     for (const cmd of chatDeckCommands(spec)) args.push('--cmd', cmd)
-    await run(binary, args, timeoutMs)
+    await runCraft(binary, args, timeoutMs)
     return await readFile(out)
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -302,7 +289,7 @@ export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs =
 /** .pptx → PDF con DeckCraft (para la vista previa, sin LibreOffice). Devuelve la ruta del PDF o `null` si falla. */
 export async function deckToPdf(binary: string, pptxPath: string, outPdf: string, timeoutMs = 60_000): Promise<string | null> {
   try {
-    await run(binary, ['convert', pptxPath, outPdf], timeoutMs)
+    await runCraft(binary, ['convert', pptxPath, outPdf], timeoutMs)
     return outPdf
   } catch {
     return null
