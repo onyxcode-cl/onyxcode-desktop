@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isXlsxSpec, type XlsxSpec } from '@shared/chat-doc-spec'
-import { chatGridScript, colLetter, renderChatGrid, sheetName } from './chat-grid'
+import { chatGridScript, colLetter, gridToPdf, renderChatGrid, sheetName } from './chat-grid'
 
 const SPEC: XlsxSpec = {
   sheets: [
@@ -108,8 +108,70 @@ describe('chat-grid (prueba Craft)', () => {
       const notas = execFileSync(real!, ['cat', file, '--sheet', 'Notas', '--csv'], { env, encoding: 'utf8' })
       expect(notas).toContain('=SUMA(1,2)')
       expect(notas).toContain('ñandú 😀')
+      // Vista previa: PDF con las dos hojas
+      const pdf = await gridToPdf(real!, file, join(dir, 'a.pdf'))
+      expect(pdf).toBe(join(dir, 'a.pdf'))
+      expect(readFileSync(join(dir, 'a.pdf')).subarray(0, 4).toString()).toBe('%PDF')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('gráficos en el Excel del Chat', () => {
+  const withChart = (c: unknown): unknown => ({
+    sheets: [
+      {
+        name: 'V',
+        rows: [
+          ['Mes', 'A'],
+          ['x', 1]
+        ],
+        charts: [c]
+      }
+    ]
+  })
+  it('valida el gráfico', () => {
+    expect(isXlsxSpec(withChart({ type: 'column', range: 'A1:C7', title: 'Ok', at: 'F2', width: 500, height: 300 }))).toBe(true)
+    for (const bad of [
+      { type: 'radar', range: 'A1:C7' },
+      { type: 'column', range: 'A1' },
+      { type: 'column', range: 'A1:C7,E1:E7' },
+      { type: 'column', range: 'A1:C7', at: 'F2:G3' },
+      { type: 'column', range: 'A1:C7', width: 5 },
+      { type: 'column', range: 'A1:C7', title: 'x'.repeat(81) }
+    ])
+      expect(isXlsxSpec(withChart(bad))).toBe(false)
+  })
+  it('más de 4 gráficos por hoja no es válido', () => {
+    const c = { type: 'line', range: 'A1:B2' }
+    expect(isXlsxSpec({ sheets: [{ name: 'V', rows: [['a']], charts: [c, c, c, c, c] }] })).toBe(false)
+  })
+  it('genera insert.chart con posición por defecto a la derecha de los datos y uno debajo del otro', () => {
+    const spec = {
+      sheets: [
+        {
+          name: 'V',
+          rows: [
+            ['Mes', 'A', 'B'],
+            ['x', 1, 2]
+          ],
+          charts: [
+            { type: 'column', range: 'A1:C2', title: 'T' },
+            { type: 'pie', range: 'A1:B2' }
+          ]
+        }
+      ]
+    } as XlsxSpec
+    const ch = cmds(chatGridScript(spec)).filter((x) => x.command === 'insert.chart')
+    expect(ch.map((x) => x.params?.at)).toEqual(['E2', 'E22'])
+    expect(ch[0].params).toMatchObject({ type: 'column', range: 'A1:C2', title: 'T', width: 520, height: 300 })
+    expect(ch[1].params).not.toHaveProperty('title')
+  })
+})
+
+describe('vista previa en PDF', () => {
+  it('si el programa no existe devuelve null en vez de lanzar', async () => {
+    expect(await gridToPdf('/no/existe/gridcraft-cli', '/tmp/x.xlsx', '/tmp/x.pdf')).toBeNull()
   })
 })

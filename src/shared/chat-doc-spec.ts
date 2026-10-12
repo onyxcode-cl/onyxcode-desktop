@@ -32,6 +32,8 @@ export const MAX_KPI_LABEL_CHARS = 40
 export const MAX_KPI_VALUE_CHARS = 16
 export const MAX_KPI_DELTA_CHARS = 40
 export const MAX_FREE_ELEMENTS = 60
+export const MAX_XLSX_CHARTS_PER_SHEET = 4
+export const MAX_XLSX_CHART_TITLE_CHARS = 80
 export const MAX_FREE_TEXT_CHARS = 600
 export const FREE_FONTS = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Courier New', 'Tahoma'] as const
 export const FREE_SHAPES = [
@@ -70,11 +72,35 @@ export interface XlsxFormulaCell {
 
 export type XlsxCell = string | number | null | XlsxFormulaCell
 
+/** Tipos de gráfico de un libro de Excel (nativos: se editan en Excel). */
+export type XlsxChartType = 'column' | 'bar' | 'line' | 'pie' | 'area'
+const XLSX_CHART_TYPES: readonly XlsxChartType[] = ['column', 'bar', 'line', 'pie', 'area']
+const A1_RANGE = /^[A-Z]{1,3}[1-9][0-9]{0,4}:[A-Z]{1,3}[1-9][0-9]{0,4}$/
+const A1_CELL = /^[A-Z]{1,3}[1-9][0-9]{0,4}$/
+
+/**
+ * Un gráfico NATIVO de Excel sobre los datos de la misma hoja. `range` es un rango CONTINUO con encabezados (p.ej. `"A1:C7"`): la
+ * primera columna son las categorías y cada columna siguiente es una serie, con su encabezado como nombre. Para graficar solo
+ * algunas columnas, ordenalas contiguas. Sin `at`, se coloca a la derecha de los datos.
+ */
+export interface XlsxChartSpec {
+  type: XlsxChartType
+  range: string
+  title?: string
+  /** Celda de la esquina superior izquierda del gráfico, p.ej. `"F2"`. */
+  at?: string
+  /** Tamaño en puntos (por defecto 520 × 300). */
+  width?: number
+  height?: number
+}
+
 export interface XlsxSheetSpec {
   name: string
   rows: XlsxCell[][]
   /** `columnFormats[i]` es el formato de la columna `i`; `null`/ausente = sin formato especial. */
   columnFormats?: (XlsxColumnFormat | null)[]
+  /** Gráficos de esta hoja (hasta 4). */
+  charts?: XlsxChartSpec[]
 }
 
 export interface XlsxSpec {
@@ -275,6 +301,16 @@ function isColumnFormats(v: unknown): v is (XlsxColumnFormat | null)[] {
   )
 }
 
+function isXlsxChart(v: unknown): v is XlsxChartSpec {
+  if (!v || typeof v !== 'object') return false
+  const c = v as XlsxChartSpec
+  if (!XLSX_CHART_TYPES.includes(c.type) || typeof c.range !== 'string' || !A1_RANGE.test(c.range)) return false
+  if (c.title !== undefined && (typeof c.title !== 'string' || c.title.length > MAX_XLSX_CHART_TITLE_CHARS)) return false
+  if (c.at !== undefined && (typeof c.at !== 'string' || !A1_CELL.test(c.at))) return false
+  const dim = (n: unknown): boolean => n === undefined || (typeof n === 'number' && Number.isFinite(n) && n >= 120 && n <= 1200)
+  return dim(c.width) && dim(c.height)
+}
+
 function isSheet(v: unknown): v is XlsxSheetSpec {
   if (
     !v ||
@@ -284,6 +320,9 @@ function isSheet(v: unknown): v is XlsxSheetSpec {
     (v as XlsxSheetSpec).rows.length > MAX_ROWS_PER_SHEET ||
     !(v as XlsxSheetSpec).rows.every(isRow)
   )
+    return false
+  const charts = (v as XlsxSheetSpec).charts
+  if (charts !== undefined && (!Array.isArray(charts) || charts.length > MAX_XLSX_CHARTS_PER_SHEET || !charts.every(isXlsxChart)))
     return false
   const formats = (v as XlsxSheetSpec).columnFormats
   return formats === undefined || isColumnFormats(formats)

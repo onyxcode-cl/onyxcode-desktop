@@ -18,7 +18,7 @@ import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
 import { convertToPdf } from './office-render'
 import { craftService } from '../office/craft/service'
 import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
-import { renderChatGrid } from '../office/craft/chat-grid'
+import { gridToPdf, renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from './render-xlsx'
 import { issueToken } from '../viewer/tokens'
@@ -85,6 +85,15 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
       const token = issueToken({ path: pdfPath, kind: 'pdf' })
       return { token, kind: 'pdf' }
     }
+  }
+
+  // Excel: el visor estructural del panel dibuja las hojas de forma aproximada y NO muestra los gráficos; con GridCraft instalado la vista
+  // previa es el PDF que genera GridCraft (hojas con formato, números calculados y gráficos, como se ven al abrirlo en Excel). Igual que
+  // con PowerPoint, solo cambia lo que ve el panel: lo que se descarga sigue siendo el .xlsx real. Si falla, cae al visor de siempre.
+  if (input.kind === 'xlsx') {
+    const grid = craftBinary('gridcraft')
+    const pdfPath = grid ? await gridToPdf(grid, target, target.replace(/\.xlsx$/, '.pdf')) : null
+    if (pdfPath) return { token: issueToken({ path: pdfPath, kind: 'pdf' }), kind: 'pdf' }
   }
 
   const token = issueToken({ path: target, kind: input.kind })

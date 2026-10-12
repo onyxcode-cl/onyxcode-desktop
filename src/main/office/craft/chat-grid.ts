@@ -80,6 +80,17 @@ export function chatGridScript(spec: XlsxSpec): string {
         cmd('home.numberFormat', { range: `${colLetter(k)}2:${colLetter(k)}${sheet.rows.length}`, code: NUM_CODES[f] })
     })
     cmd('home.autofitColumnWidth', { cols: `A:${last}` })
+    // Gráficos nativos: sin `at`, a la derecha de los datos (dejando una columna libre), uno debajo de otro.
+    sheet.charts?.forEach((ch, k) => {
+      cmd('insert.chart', {
+        range: ch.range,
+        type: ch.type,
+        ...(ch.title ? { title: ch.title } : {}),
+        at: ch.at ?? `${colLetter(width + 1)}${2 + k * 20}`,
+        width: ch.width ?? 520,
+        height: ch.height ?? 300
+      })
+    })
     if (sheet.rows.length > 1) cmd('view.freezeTopRow')
   })
   cmd('sheet.activate', { sheet: names[0] })
@@ -97,5 +108,22 @@ export async function renderChatGrid(binary: string, spec: XlsxSpec, timeoutMs =
     return await readFile(out)
   } finally {
     await rm(dir, { recursive: true, force: true })
+  }
+}
+
+/**
+ * .xlsx → PDF con GridCraft para la vista previa del panel (todas las hojas, cada una ajustada a una página, con sus gráficos).
+ * Devuelve la ruta del PDF o `null` si falla (quien llama cae al visor de siempre).
+ */
+export async function gridToPdf(binary: string, xlsxPath: string, outPdf: string, timeoutMs = 60_000): Promise<string | null> {
+  try {
+    await runCraft(
+      binary,
+      ['run', '--in', xlsxPath, '--cmd', `file.exportPdf=${JSON.stringify({ path: outPdf, sheets: 'all', fitToPage: true })}`, '--quiet'],
+      timeoutMs
+    )
+    return outPdf
+  } catch {
+    return null
   }
 }
