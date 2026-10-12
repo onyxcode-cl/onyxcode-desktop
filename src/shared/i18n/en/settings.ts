@@ -241,6 +241,16 @@ export const settings = {
   'settings.office.error.download': 'Could not download; check your connection',
   'settings.office.error.cancelled': 'Installation cancelled',
   'settings.office.error.generic': 'LibreOffice could not be installed. Try again.',
+  // Premium-design presentations (DeckCraft, optional, on demand)
+  'settings.craft.name': 'Premium-design presentations',
+  'settings.craft.desc': 'Lets the agent create PowerPoint presentations with a polished dark design, in seconds.',
+  'settings.craft.install': 'Install (≈ {mb} MB)',
+  'settings.craft.consent.title': 'Install premium-design presentations?',
+  'settings.craft.consent.body':
+    'DeckCraft (≈ {mb} MB), an open-source program, will be downloaded from its official GitHub page. Before use, the app checks it is the exact expected file and that it is signed by its developer on Apple. No administrator password is needed.',
+  'settings.craft.consent.confirm': 'Install',
+  'settings.craft.installed': 'Installed · version {version}',
+  'settings.craft.error.generic': 'Could not install. Try again.',
   // System status (Diagnostics › doctor:run)
   'settings.doctor.title': 'System status',
   'settings.doctor.overall.ok': 'All good',

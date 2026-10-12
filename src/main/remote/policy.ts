@@ -386,6 +386,11 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'office:install': 'X',
   'office:cancel': 'X',
   'office:remove': 'X',
+  // DeckCraft opcional: igual que LibreOffice, instalar/quitar software solo se decide en el Mac.
+  'craft:status': 'X',
+  'craft:install': 'X',
+  'craft:cancel': 'X',
+  'craft:remove': 'X',
   'doctor:run': 'X', // revela permisos y software instalado de este Mac: solo en el Mac
   // Estado del entorno aislado: lectura. Instalarlo o cancelarlo (descarga, importa una distro) NO es cosa del celular.
   'tasks:sandbox:status': 'R',

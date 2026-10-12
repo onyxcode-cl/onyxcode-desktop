@@ -54,8 +54,8 @@ export function officeNeedsPoll(snapshot: OfficeUiSnapshot | null): boolean {
   return snapshot?.installing === true
 }
 
-export interface OfficeApi {
-  status: () => Promise<OfficeUiSnapshot>
+export interface OfficeApi<S = OfficeUiSnapshot> {
+  status: () => Promise<S>
   install: () => Promise<OfficeInstallResult>
   cancel: () => Promise<void>
   remove: () => Promise<void>
@@ -67,7 +67,7 @@ export type OfficeInstallOutcome = { kind: 'declined' } | { kind: 'installed' } 
  * Acciones de la tarjeta. `install` pide el consentimiento ANTES de llamar a `api.install`: si se rechaza no se descarga nada.
  * `onStart` se invoca justo cuando la instalación arranca (tras confirmar).
  */
-export function officeController(api: OfficeApi, confirm: (mb: number) => Promise<boolean>) {
+export function officeController<S = OfficeUiSnapshot>(api: OfficeApi<S>, confirm: (mb: number) => Promise<boolean>) {
   return {
     status: () => api.status(),
     async install(mb: number, onStart?: () => void): Promise<OfficeInstallOutcome> {

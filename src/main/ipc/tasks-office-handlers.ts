@@ -3,6 +3,7 @@
  * desinstalación. La lógica vive en `main/office`; aquí solo se conecta al IPC.
  */
 import { runRealDoctor } from '../doctor/service'
+import { craftService } from '../office/craft/service'
 import { officeService } from '../office/service'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
@@ -15,6 +16,14 @@ export function registerTasksOfficeHandlers(ctx: TasksIpcContext): TasksSubmodul
   })
   handle('office:remove', () => {
     officeService().remove()
+  })
+  handle('craft:status', () => craftService().snapshot())
+  handle('craft:install', () => craftService().installNow())
+  handle('craft:cancel', () => {
+    craftService().cancel()
+  })
+  handle('craft:remove', () => {
+    craftService().remove()
   })
   handle('doctor:run', () => runRealDoctor(ctx.computer))
   return {}
