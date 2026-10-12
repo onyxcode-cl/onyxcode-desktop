@@ -57,15 +57,21 @@ test('parsePin rechaza sha256 malo, URL ajena, http, sin plataforma y JSON roto'
   assert.throws(() => parsePin('{no json'), /JSON/)
 })
 
-test('rutas y claves por arquitectura', () => {
-  assert.equal(pinKey('arm64'), 'darwin-arm64')
-  assert.equal(pinKey('x64'), 'darwin-x64')
-  assert.throws(() => pinKey('ia32'), /no soportada/)
-  assert.equal(pythonDir('arm64', '/b'), '/b/mac-arm64/python')
-  assert.equal(pythonBin('x64', '/b'), '/b/mac-x64/python/bin/python3')
-  assert.deepEqual(parseArgs(['--if-missing', '--arch', 'x64']), { ifMissing: true, arch: 'x64' })
-  assert.throws(() => parseArgs(['--arch', 'mips']), /no soportada/)
-})
+test(
+  'rutas y claves por arquitectura',
+  {
+    skip: process.platform === 'win32' ? 'prueba del instalador/firma de macOS (shell POSIX y rutas con «/»): no aplica a Windows' : false
+  },
+  () => {
+    assert.equal(pinKey('arm64'), 'darwin-arm64')
+    assert.equal(pinKey('x64'), 'darwin-x64')
+    assert.throws(() => pinKey('ia32'), /no soportada/)
+    assert.equal(pythonDir('arm64', '/b'), '/b/mac-arm64/python')
+    assert.equal(pythonBin('x64', '/b'), '/b/mac-x64/python/bin/python3')
+    assert.deepEqual(parseArgs(['--if-missing', '--arch', 'x64']), { ifMissing: true, arch: 'x64' })
+    assert.throws(() => parseArgs(['--arch', 'mips']), /no soportada/)
+  }
+)
 
 test('requirements.txt fija las 9 librerías con versión exacta', () => {
   const lines = parseRequirements(readFileSync(REQUIREMENTS_PATH, 'utf8'))

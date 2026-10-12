@@ -4,7 +4,17 @@ import { createHash } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { after, test } from 'node:test'
+import { after, test as nodeTest } from 'node:test'
+
+// install.sh es el instalador de macOS (sh + hdiutil + codesign): estas pruebas no aplican a Windows.
+const test = (name, fn) =>
+  nodeTest(
+    name,
+    {
+      skip: process.platform === 'win32' ? 'prueba del instalador/firma de macOS (shell POSIX y rutas con «/»): no aplica a Windows' : false
+    },
+    fn
+  )
 import { fileURLToPath } from 'node:url'
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'install.sh')
@@ -82,10 +92,7 @@ test('caso feliz: descarga, verifica, instala y limpia', () => {
   const r = t.run('--no-open')
   assert.equal(r.status, 0, r.stderr)
   assert.ok(existsSync(join(t.apps, 'Lazunox.app', 'Contents', 'marker')))
-  assert.match(
-    r.calls,
-    /curl -fsSL -o \S+\/SHA256SUMS https:\/\/github\.com\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/
-  )
+  assert.match(r.calls, /curl -fsSL -o \S+\/SHA256SUMS https:\/\/github\.com\/dueno\/repo\/releases\/latest\/download\/SHA256SUMS/)
   assert.match(r.calls, /hdiutil attach -readonly/)
   assert.match(r.calls, /codesign -d -r-/)
   assert.match(r.calls, /hdiutil detach/)

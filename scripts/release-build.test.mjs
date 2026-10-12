@@ -96,44 +96,53 @@ test('A1 afterSign: API key (prioridad) y Apple ID notarizan después de firmar;
 
 // ---- A2: identificadores de helpers con Developer ID -------------------------------------------
 
-test('A2 resignBundle: argumentos exactos de codesign en modo self y devid', () => {
-  const app = '/o/Lazunox.app'
-  const res = `${app}/Contents/Resources`
-  let calls = []
-  common.resignBundle({ appPath: app, identity: 'Local', ids: IDS, mode: 'self', run: (c, a) => calls.push([c, ...a]) })
-  assert.deepEqual(calls, [
-    ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.helperId, `${res}/computer-use/bin/cu-helper`],
-    ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.disclaimId, `${res}/launcher/lazunox-disclaim`],
-    ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.appId, app],
-    ['/usr/bin/codesign', '--verify', '--deep', '--strict', app]
-  ])
+test(
+  'A2 resignBundle: argumentos exactos de codesign en modo self y devid',
+  {
+    skip: process.platform === 'win32' ? 'prueba del instalador/firma de macOS (shell POSIX y rutas con «/»): no aplica a Windows' : false
+  },
+  () => {
+    const app = '/o/Lazunox.app'
+    const res = `${app}/Contents/Resources`
+    let calls = []
+    common.resignBundle({ appPath: app, identity: 'Local', ids: IDS, mode: 'self', run: (c, a) => calls.push([c, ...a]) })
+    assert.deepEqual(calls, [
+      ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.helperId, `${res}/computer-use/bin/cu-helper`],
+      ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.disclaimId, `${res}/launcher/lazunox-disclaim`],
+      ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', IDS.appId, app],
+      ['/usr/bin/codesign', '--verify', '--deep', '--strict', app]
+    ])
 
-  calls = []
-  const ent = '/r/build/entitlements.mac.plist'
-  common.resignBundle({ appPath: app, identity: 'Dev', ids: IDS, mode: 'devid', entitlements: ent, run: (c, a) => calls.push([c, ...a]) })
-  const rt = ['--options', 'runtime', '--timestamp', '--entitlements', ent]
-  assert.deepEqual(calls, [
-    ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.helperId, ...rt, `${res}/computer-use/bin/cu-helper`],
-    ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.disclaimId, ...rt, `${res}/launcher/lazunox-disclaim`],
-    ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.appId, ...rt, app],
-    ['/usr/bin/codesign', '--verify', '--deep', '--strict', app]
-  ])
-  assert.ok(!calls.some((c) => c.includes('--deep') && c.includes('--force')), 'el resellado no usa --deep')
+    calls = []
+    const ent = '/r/build/entitlements.mac.plist'
+    common.resignBundle({ appPath: app, identity: 'Dev', ids: IDS, mode: 'devid', entitlements: ent, run: (c, a) => calls.push([c, ...a]) })
+    const rt = ['--options', 'runtime', '--timestamp', '--entitlements', ent]
+    assert.deepEqual(calls, [
+      ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.helperId, ...rt, `${res}/computer-use/bin/cu-helper`],
+      ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.disclaimId, ...rt, `${res}/launcher/lazunox-disclaim`],
+      ['/usr/bin/codesign', '--force', '--sign', 'Dev', '--identifier', IDS.appId, ...rt, app],
+      ['/usr/bin/codesign', '--verify', '--deep', '--strict', app]
+    ])
+    assert.ok(!calls.some((c) => c.includes('--deep') && c.includes('--force')), 'el resellado no usa --deep')
 
-  calls = []
-  common.resignBundle({
-    appPath: app,
-    identity: 'Dev',
-    ids: IDS,
-    mode: 'devid',
-    entitlements: ent,
-    keychain: '/tmp/ci.keychain-db',
-    run: (c, a) => calls.push([c, ...a])
-  })
-  assert.ok(calls.slice(0, 3).every((c) => c.includes('--keychain') && c[c.indexOf('--keychain') + 1] === '/tmp/ci.keychain-db'))
-  assert.throws(() => common.resignBundle({ appPath: app, identity: 'Dev', ids: IDS, mode: 'devid', run: () => undefined }), /entitlements/)
-  assert.throws(() => common.resignBundle({ appPath: app, identity: 'Dev', ids: IDS, mode: 'x', run: () => undefined }), /modo/)
-})
+    calls = []
+    common.resignBundle({
+      appPath: app,
+      identity: 'Dev',
+      ids: IDS,
+      mode: 'devid',
+      entitlements: ent,
+      keychain: '/tmp/ci.keychain-db',
+      run: (c, a) => calls.push([c, ...a])
+    })
+    assert.ok(calls.slice(0, 3).every((c) => c.includes('--keychain') && c[c.indexOf('--keychain') + 1] === '/tmp/ci.keychain-db'))
+    assert.throws(
+      () => common.resignBundle({ appPath: app, identity: 'Dev', ids: IDS, mode: 'devid', run: () => undefined }),
+      /entitlements/
+    )
+    assert.throws(() => common.resignBundle({ appPath: app, identity: 'Dev', ids: IDS, mode: 'x', run: () => undefined }), /modo/)
+  }
+)
 
 test('A2 el gancho autofirmado conserva su contrato (resign con 4 args) y los ids salen de brand.ts', () => {
   const hook = require('../build/after-sign-self-signed.js')
