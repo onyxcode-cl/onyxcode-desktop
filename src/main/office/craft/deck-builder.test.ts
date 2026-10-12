@@ -124,7 +124,8 @@ describe('paridad con el script Python de la skill', () => {
       ],
       { input: JSON.stringify(FULL), encoding: 'utf8' }
     )
-    if (py.error) return // sin python3 en este equipo (p. ej. Windows): no hay nada que comparar
+    // Sin python3 útil en este equipo (en Windows suele ser el atajo de la Tienda, que sale con 9009): no hay nada que comparar.
+    if (py.error || py.status === 9009) return
     expect(py.status).toBe(0)
     expect(JSON.parse(py.stdout)).toEqual(buildDeckCommands(validateDeckSpec(FULL)))
   })
