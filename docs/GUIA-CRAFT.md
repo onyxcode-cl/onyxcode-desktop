@@ -130,3 +130,7 @@ El panel de documentos del Chat muestra Excel y PowerPoint con la versión **web
 - `src/main/office/craft/web-view.ts`: `WebContentsView` con partición propia en memoria, sin Node, sin preload, permisos y descargas denegados, y red cancelada salvo ese servidor. El archivo se entrega al motor desde el proceso principal simulando que se suelta en el lienzo (`DragEvent` con el archivo); el motor web no tiene una API de apertura.
 - Si la versión web no está instalada o falla, el panel usa la vista previa en PDF de GridCraft/DeckCraft y, si tampoco, el visor de siempre.
 - Lo que se descarga sigue siendo el archivo real. Pendiente: Word en el Chat, Windows real, y pasar `sandbox`/CSP por una revisión de seguridad formal antes de publicar.
+
+## Trampa: el prompt del Chat vive en DOS lugares
+
+El agente de Chat tiene sus instrucciones en `resources/opencode/agents/chat.md` **y** copiadas dentro de `src/main/opencode/config.ts` (config inline que recibe `opencode serve`). La inline **gana**. Un cambio solo en `chat.md` no llega al Chat: hay que aplicarlo también en `config.ts` (y se comprueba renderizando `buildInlineConfig()`). Esto hizo que el modelo dijera «no puedo poner gráficos en el Excel» aunque GridCraft sí los soporta.
