@@ -6,7 +6,6 @@
  */
 import type { DoctorReport } from './doctor'
 import type { CraftInstallResult, CraftUiSnapshot } from './craft'
-import type { OfficeInstallResult, OfficeUiSnapshot } from './office'
 import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
 import type { PendingLearnedState } from './learned-pending'
@@ -1129,12 +1128,7 @@ export interface TasksInvokeContract {
   /** Política gestionada por la organización (null = sin política). */
   'tasks:policy': { req: void; res: ManagedPolicy | null }
 
-  /** LibreOffice opcional (revisión visual de documentos de oficina): estado, instalación bajo demanda, cancelación y desinstalación. */
-  'office:status': { req: void; res: OfficeUiSnapshot }
-  'office:install': { req: void; res: OfficeInstallResult }
-  'office:cancel': { req: void; res: void }
-  'office:remove': { req: void; res: void }
-  /** Presentaciones con diseño premium (DeckCraft, opcional): mismo patrón que LibreOffice; el botón de Ajustes ES el consentimiento. */
+  /** Presentaciones con diseño premium (ArtCraft, opcional, bajo demanda): el botón de Ajustes ES el consentimiento. */
   'craft:status': { req: void; res: CraftUiSnapshot }
   'craft:install': { req: void; res: CraftInstallResult }
   'craft:cancel': { req: void; res: void }
@@ -1362,10 +1356,6 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:trusted:set',
   'tasks:trusted:remove',
   'tasks:policy',
-  'office:status',
-  'office:install',
-  'office:cancel',
-  'office:remove',
   'craft:status',
   'craft:install',
   'craft:cancel',

@@ -1,6 +1,6 @@
 /**
- * Visor de PowerPoint (Fase 4 del plan del visor): vista ESTRUCTURAL propia, sin LibreOffice (eso es
- * la F5). Cada diapositiva es un lienzo con proporción fija, escalado por CSS (`aspect-ratio` +
+ * Visor de PowerPoint (Fase 4 del plan del visor): vista ESTRUCTURAL propia, sin conversión externa (el Chat
+ * prefiere la versión web de DeckCraft cuando está instalada). Cada diapositiva es un lienzo con proporción fija, escalado por CSS (`aspect-ratio` +
  * `width: 100%`), con las formas posicionadas en porcentaje. El tamaño del texto se expresa en `cqw`
  * (porcentaje del ancho del propio lienzo, vía `container-type`): así escala igual sin importar si el
  * lienzo se ve grande (diapositiva activa) o chico (una miniatura), sin medir nada en JS.

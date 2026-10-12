@@ -1,6 +1,6 @@
 /**
  * PRUEBA (rama `exp/craft-office-pruebas`): el bloque ```xlsx del Chat (`XlsxSpec`, el mismo que lee `render-xlsx.ts`) → libro de Excel
- * armado con `gridcraft-cli` (GridCraft, el «Excel» de ArtCraft). Sin LibreOffice: GridCraft escribe el .xlsx y calcula las fórmulas.
+ * armado con `gridcraft-cli` (GridCraft, el «Excel» de ArtCraft). GridCraft escribe el .xlsx y calcula las fórmulas.
  * Si GridCraft no está o falla, `chat-docs.ts` cae al generador de siempre.
  *
  * El contenido es DATO: va como valor JSON de un comando en un archivo de guion (no por la línea de comandos, que tiene tope de largo)

@@ -1,6 +1,6 @@
 /**
  * PRUEBA (rama `exp/craft-office-pruebas`): instalación bajo demanda de `deckcraft-cli` (PowerPoint), `wordcraft-cli` (Word) y
- * `gridcraft-cli` (Excel), con el mismo rigor que LibreOffice/cloudflared. El pin (`resources/craft/pin.json`, dentro del código firmado
+ * `gridcraft-cli` (Excel), con verificación estricta (tamaño exacto, SHA-256 y firma). El pin (`resources/craft/pin.json`, dentro del código firmado
  * de la app) fija, por programa y plataforma, URL de GitHub Releases, TAMAÑO EXACTO y SHA-256. En macOS además el equipo de Apple que
  * debe firmar el binario (Developer ID «Learning Machines LLC», DJ6XS33FX8). Nada se ejecuta sin verificar: descarga (https, ≤5 saltos,
  * tope de bytes) → SHA-256 → descomprimir en carpeta temporal (`ditto` en macOS, `tar.exe` en Windows) → en macOS `codesign --verify
@@ -25,7 +25,7 @@ import {
   writeFileSync
 } from 'node:fs'
 import { join, normalize, sep } from 'node:path'
-import { OfficeError, downloadVerified, parseTeamId, realRun, type FetchLike, type RunFile } from '../libreoffice'
+import { OfficeError, downloadVerified, parseTeamId, realRun, type FetchLike, type RunFile } from '../download'
 
 export interface CraftPinAsset {
   url: string

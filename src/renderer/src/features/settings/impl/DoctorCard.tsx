@@ -1,6 +1,6 @@
 /**
  * Ajustes › Diagnóstico › «Estado del sistema»: lo que `doctor:run` dice que funciona y qué falta, con los arreglos que ya existen
- * (permisos de macOS, LibreOffice con su mismo consentimiento y el comando de las herramientas de Apple). Todo el diagnóstico vive en
+ * (permisos de macOS, ArtCraft con su mismo consentimiento y el comando de las herramientas de Apple). Todo el diagnóstico vive en
  * main; aquí solo se muestra y se piden acciones. `doctorController` es la lógica sin DOM que se prueba aparte.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -10,7 +10,8 @@ import type { DoctorFix, DoctorId, DoctorItem, DoctorLevel, DoctorReport } from 
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { cw } from '../../tasks/impl/bridge'
-import { requestOfficeInstall, type OfficeInstallOutcome } from './OfficeComponentCard'
+import { requestCraftInstall } from './CraftComponentCard'
+import type { InstallOutcome } from './component-install'
 import { Badge, Card, ErrorText, SubTitle } from './ui'
 
 type T = (key: MsgKey, params?: Params) => string
@@ -46,7 +47,7 @@ const TITLE_KEY = {
   controlHelper: 'settings.doctor.item.controlHelper.title',
   keyboardTool: 'settings.doctor.item.keyboardTool.title',
   python: 'settings.doctor.item.python.title',
-  office: 'settings.doctor.item.office.title',
+  craft: 'settings.doctor.item.craft.title',
   git: 'settings.doctor.item.git.title',
   disk: 'settings.doctor.item.disk.title',
   screens: 'settings.doctor.item.screens.title'
@@ -60,7 +61,7 @@ const EXPLAIN_KEY: Partial<Record<DoctorId, Partial<Record<DoctorLevel, MsgKey>>
   controlHelper: { ok: 'settings.doctor.item.controlHelper.ok', fail: 'settings.doctor.item.controlHelper.fail' },
   keyboardTool: { ok: 'settings.doctor.item.keyboardTool.ok', warn: 'settings.doctor.item.keyboardTool.warn' },
   python: { ok: 'settings.doctor.item.python.ok', warn: 'settings.doctor.item.python.warn', fail: 'settings.doctor.item.python.fail' },
-  office: { ok: 'settings.doctor.item.office.ok', warn: 'settings.doctor.item.office.warn' },
+  craft: { ok: 'settings.doctor.item.craft.ok', warn: 'settings.doctor.item.craft.warn' },
   git: { ok: 'settings.doctor.item.git.ok', warn: 'settings.doctor.item.git.warn' },
   disk: { ok: 'settings.doctor.item.disk.ok', warn: 'settings.doctor.item.disk.warn' }
 }
@@ -71,12 +72,12 @@ export type DoctorFixAction = Exclude<DoctorFix, 'xcodeSelect'>
 export interface DoctorApi {
   run: () => Promise<DoctorReport>
   requestPermissions: () => Promise<void>
-  installOffice: () => Promise<OfficeInstallOutcome>
+  installCraft: () => Promise<InstallOutcome>
 }
 
 /**
- * Acciones de la tarjeta. «Dar permisos» pide los permisos de macOS y luego vuelve a revisar; «Instalar LibreOffice» pasa por el
- * mismo flujo y consentimiento de la tarjeta de LibreOffice y luego revisa.
+ * Acciones de la tarjeta. «Dar permisos» pide los permisos de macOS y luego vuelve a revisar; «Instalar» (ArtCraft) pasa por el
+ * mismo flujo y consentimiento de la tarjeta de ArtCraft y luego revisa.
  */
 export function doctorController(api: DoctorApi) {
   return {
@@ -85,8 +86,8 @@ export function doctorController(api: DoctorApi) {
       await api.requestPermissions()
       return api.run()
     },
-    async installOffice(): Promise<DoctorReport> {
-      await api.installOffice()
+    async installCraft(): Promise<DoctorReport> {
+      await api.installCraft()
       return api.run()
     }
   }
@@ -97,7 +98,7 @@ export function copyXcodeCommand(write: (text: string) => Promise<void>): Promis
   return write(XCODE_COMMAND)
 }
 
-/** Canales reales que no necesitan React. La instalación de LibreOffice se añade en el componente (necesita `t`). */
+/** Canales reales que no necesitan React. La instalación de ArtCraft se añade en el componente (necesita `t`). */
 const CHANNELS = {
   run: (): Promise<DoctorReport> => cw('doctor:run'),
   requestPermissions: (): Promise<void> => cw('computer:requestPermissions')
@@ -151,16 +152,16 @@ function ItemRow({
         {t('settings.doctor.fix.requestPermissions')}
       </Button>
     )
-  } else if (item.fix === 'installOffice') {
+  } else if (item.fix === 'installCraft') {
     control = (
       <Button
         size="sm"
         variant="primary"
         disabled={fixing !== null}
-        loading={fixing === 'installOffice'}
-        onClick={() => onFix('installOffice')}
+        loading={fixing === 'installCraft'}
+        onClick={() => onFix('installCraft')}
       >
-        {t('settings.doctor.fix.installOffice')}
+        {t('settings.doctor.fix.installCraft')}
       </Button>
     )
   }
@@ -286,8 +287,8 @@ export function DoctorCard(): React.JSX.Element {
   const onFix = (fix: DoctorFixAction): void => {
     if (fixing) return
     setFixing(fix)
-    const ctl = doctorController({ ...CHANNELS, installOffice: () => requestOfficeInstall(t) })
-    const job = fix === 'requestPermissions' ? () => ctl.grantPermissions() : () => ctl.installOffice()
+    const ctl = doctorController({ ...CHANNELS, installCraft: () => requestCraftInstall(t) })
+    const job = fix === 'requestPermissions' ? () => ctl.grantPermissions() : () => ctl.installCraft()
     void runCheck(job).finally(() => {
       if (alive.current) setFixing(null)
     })

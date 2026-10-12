@@ -15,7 +15,6 @@ import { randomUUID } from 'node:crypto'
 import { join, sep } from 'node:path'
 import type { DocKind } from '@shared/doc-kind'
 import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
-import { convertToPdf } from './office-render'
 import { craftService } from '../office/craft/service'
 import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
 import { gridToPdf, renderChatGrid } from '../office/craft/chat-grid'
@@ -74,18 +73,13 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
   const target = join(dir, `${randomUUID()}.${EXT[input.kind]}`)
   await writeFile(target, bytes)
 
-  // PowerPoint: si hay LibreOffice instalado (nunca empaquetado, nunca se descarga solo — ver
-  // `office-render.ts`), la VISTA PREVIA usa el PDF real que convierte (pixel a pixel igual a
-  // PowerPoint, confirmado) en vez del visor estructural aproximado — el token apunta al PDF, con
-  // `kind:'pdf'`. Esto SOLO cambia qué ve el panel: `downloadChatDoc` (más abajo) vuelve a generar el
-  // `.pptx` real desde cero, siempre — lo que se descarga nunca es el PDF. Si no hay LibreOffice, o la
+  // PowerPoint: con DeckCraft instalado la VISTA PREVIA de respaldo es el PDF que genera DeckCraft (el panel prefiere la versión web del
+  // programa; este PDF es el respaldo). El token apunta al PDF con `kind:'pdf'`. Esto SOLO cambia qué ve el panel: `downloadChatDoc`
+  // (más abajo) vuelve a generar el `.pptx` real desde cero, siempre — lo que se descarga nunca es el PDF. Si no hay DeckCraft, o la
   // conversión falla por lo que sea, cae con gracia al `.pptx` de siempre (nunca rompe nada).
   if (input.kind === 'pptx') {
-    // Con DeckCraft instalado, el PDF de la vista previa sale de DeckCraft (rápido y sin LibreOffice); si no, LibreOffice como siempre.
     const craft = craftBinary('deckcraft')
-    const pdfPath =
-      (craft ? await deckToPdf(craft, target, target.replace(/\.pptx$/, '.pdf')) : null) ??
-      (await convertToPdf(target, dir).catch(() => null))
+    const pdfPath = craft ? await deckToPdf(craft, target, target.replace(/\.pptx$/, '.pdf')) : null
     if (pdfPath) {
       const token = issueToken({ path: pdfPath, kind: 'pdf' })
       return { token, kind: 'pdf', file: target }
@@ -126,7 +120,7 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
   }
   if (input.kind === 'xlsx') {
     if (!isXlsxSpec(input.data)) throw new Error('Datos de Excel inválidos.')
-    // Con GridCraft instalado el libro se arma con él (calcula las fórmulas, sin LibreOffice); si falla, cae al generador de siempre.
+    // Con GridCraft instalado el libro se arma con él (calcula las fórmulas); si falla, cae al generador de siempre.
     const grid = craftBinary('gridcraft')
     if (grid) {
       try {

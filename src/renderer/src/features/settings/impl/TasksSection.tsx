@@ -35,7 +35,6 @@ import {
 } from '../../tasks/impl/store'
 import { Badge, Card, NOTICE_DESK, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
 import { CraftComponentCard } from './CraftComponentCard'
-import { OfficeComponentCard } from './OfficeComponentCard'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { isWindowsPlatform, platformCaps } from '../../../lib/platform'
@@ -881,7 +880,6 @@ export function TasksSection(): React.JSX.Element {
         </Card>
         {errors.storage && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.storage}</p>}
       </Group>
-      <OfficeComponentCard />
       <CraftComponentCard />
     </div>
   )

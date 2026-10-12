@@ -50,7 +50,7 @@ export interface PlatformCaps {
   /**
    * Visor de documentos de Tareas (PDF/Word/Excel/PowerPoint, `WebContentsView` aislada). Mac y
    * Windows siempre que haya Tareas (depende de la ventana nativa, igual que `nativeBrowser`); en
-   * el celular no existe. La disponibilidad de LibreOffice (Fase 5) se detecta en tiempo de
+   * el celular no existe. La disponibilidad de ArtCraft se detecta en tiempo de
    * ejecución, no va acá.
    */
   docViewer: boolean

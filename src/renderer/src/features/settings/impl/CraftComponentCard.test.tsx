@@ -51,7 +51,7 @@ describe('CraftCardView', () => {
     expect(html).toContain('Reintentar')
   })
   it('errores: los conocidos reutilizan texto y el desconocido usa el propio', () => {
-    expect(craftErrorKey('disk')).toBe('settings.office.error.disk')
+    expect(craftErrorKey('disk')).toBe('settings.craft.error.disk')
     expect(craftErrorKey('raro')).toBe('settings.craft.error.generic')
   })
 })

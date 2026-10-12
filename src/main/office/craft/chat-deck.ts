@@ -47,7 +47,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
   const [g1, g2] = pal.dark ? ['4A2C96', '14285E'] : [pal.glow, pal.glow2]
   const footer = spec.footer ?? ''
   a('file.new')
-  // Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
+  // Arial en todo: Inter (la del tema) no está en todos los equipos y PowerPoint la sustituye por una serif.
   a('design.fonts', { major: spec.fonts?.title ?? 'Arial', minor: spec.fonts?.body ?? 'Arial' })
   let sectionN = 0
 
@@ -286,7 +286,7 @@ export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs =
   }
 }
 
-/** .pptx → PDF con DeckCraft (para la vista previa, sin LibreOffice). Devuelve la ruta del PDF o `null` si falla. */
+/** .pptx → PDF con DeckCraft (respaldo de la vista previa). Devuelve la ruta del PDF o `null` si falla. */
 export async function deckToPdf(binary: string, pptxPath: string, outPdf: string, timeoutMs = 60_000): Promise<string | null> {
   try {
     await runCraft(binary, ['convert', pptxPath, outPdf], timeoutMs)
