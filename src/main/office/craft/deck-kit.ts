@@ -107,6 +107,58 @@ const PALETTES: Record<string, Palette> = {
   }
 }
 
+const rgb = (h: string): [number, number, number] => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+const toHex = (c: [number, number, number]): string =>
+  c
+    .map((v) =>
+      Math.max(0, Math.min(255, Math.round(v)))
+        .toString(16)
+        .padStart(2, '0')
+    )
+    .join('')
+    .toUpperCase()
+/** Mezcla `a` con `b` (t = 0 → a, t = 1 → b). Colores en hex de 6 dígitos sin `#`. */
+export function mix(a: string, b: string, t: number): string {
+  const [x, y] = [rgb(a), rgb(b)]
+  return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t])
+}
+const luminance = (h: string): number => {
+  const [r, g, b] = rgb(h)
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+}
+export const stripHash = (h: string): string => h.replace(/^#/, '').toUpperCase()
+
+/** Paleta propia que inventa la IA (`PptxPalette`, hex con `#`): lo que falte se deriva del fondo, el texto y el acento. */
+export function customPalette(p: {
+  bg: string
+  text: string
+  accent: string
+  muted?: string
+  accent2?: string
+  panel?: string
+  edge?: string
+}): Palette {
+  const bg = stripHash(p.bg)
+  const text = stripHash(p.text)
+  const accent = stripHash(p.accent)
+  const dark = luminance(bg) < 0.45
+  const muted = p.muted ? stripHash(p.muted) : mix(text, bg, 0.42)
+  const accent2 = p.accent2 ? stripHash(p.accent2) : mix(accent, text, 0.25)
+  return {
+    bg,
+    text,
+    muted,
+    accent,
+    accent2,
+    panel: p.panel ? stripHash(p.panel) : mix(bg, text, dark ? 0.07 : 0.035),
+    edge: p.edge ? stripHash(p.edge) : mix(bg, text, 0.16),
+    glow: mix(bg, accent, dark ? 0.28 : 0.16),
+    glow2: mix(bg, accent2, dark ? 0.16 : 0.08),
+    marks: [accent, accent2, mix(accent, text, 0.4), mix(accent, bg, 0.4), muted],
+    dark
+  }
+}
+
 export function paletteFor(theme: string | undefined): Palette {
   return PALETTES[theme ?? 'blue'] ?? PALETTES.blue
 }
@@ -115,16 +167,22 @@ export function paletteFor(theme: string | undefined): Palette {
  * `pal`/`look` por defecto = el diseño oscuro «dots» de siempre (los comandos que genera NO cambian: una prueba exige que sean los mismos
  * que los del script de Python de la skill). `accent` solo lo usa la skill para teñir las etiquetas.
  */
-export function createKit(pal: Palette = DARK, look: Look = 'classic', accent: string = pal.accent) {
+export function createKit(pal: Palette = DARK, look: Look = 'classic', accent: string = pal.accent, titleFontOverride?: string) {
   const c: string[] = []
   const a = (id: string, params?: Record<string, unknown>): void => {
     c.push(params ? `${id}=${JSON.stringify(params)}` : id)
   }
   /** Tipografía de títulos: el estilo editorial usa serif (Georgia existe en macOS y Windows). */
-  const titleFont = look === 'editorial' ? 'Georgia' : undefined
+  const titleFont = titleFontOverride ?? (look === 'editorial' ? 'Georgia' : undefined)
+  /** Fondo de la diapositiva en curso, si la IA pidió uno distinto al de la paleta (sin `#`). */
+  let bgOverride: string | undefined
+  const setBg = (c: string | undefined): void => {
+    bgOverride = c
+  }
   const bgslide = (glows: [number, number, number, string][] = []): void => {
     a('slide.new', { layout: 'blank' })
-    a('design.background', { color: '#' + pal.bg })
+    const bgc = bgOverride ?? pal.bg
+    a('design.background', { color: '#' + bgc })
     // Los estilos editorial y minimal no llevan brillos: la página queda limpia.
     if (look === 'editorial' || look === 'minimal') return
     for (const [x, y, d, col] of glows) {
@@ -133,8 +191,8 @@ export function createKit(pal: Palette = DARK, look: Look = 'classic', accent: s
         gradient: {
           stops: [
             [0, '#' + col],
-            [0.62, '#' + pal.bg],
-            [1, '#' + pal.bg]
+            [0.62, '#' + bgc],
+            [1, '#' + bgc]
           ],
           kind: 'radial'
         }
@@ -215,5 +273,5 @@ export function createKit(pal: Palette = DARK, look: Look = 'classic', accent: s
     dotrow(60, 506, 8, 6)
     txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, pal.muted, false, 'right')
   }
-  return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont }
+  return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg }
 }

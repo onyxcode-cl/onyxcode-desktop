@@ -31,6 +31,21 @@ export const MIN_KPIS = 2
 export const MAX_KPI_LABEL_CHARS = 40
 export const MAX_KPI_VALUE_CHARS = 16
 export const MAX_KPI_DELTA_CHARS = 40
+export const MAX_FREE_ELEMENTS = 60
+export const MAX_FREE_TEXT_CHARS = 600
+export const FREE_FONTS = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Courier New', 'Tahoma'] as const
+export const FREE_SHAPES = [
+  'rect',
+  'roundRect',
+  'ellipse',
+  'triangle',
+  'diamond',
+  'hexagon',
+  'rightArrow',
+  'chevron',
+  'star5',
+  'line'
+] as const
 
 /**
  * Formato de número por columna (índice 0-based, alineado con las celdas de `rows`) — nunca estilo
@@ -94,8 +109,20 @@ const PPTX_STYLES: readonly PptxStyle[] = ['classic', 'editorial', 'geometric', 
  * para un resumen tipo tablero al principio de la presentación, DISTINTO de "stat": "stat" es UNA
  * cifra como foco de toda la diapositiva, "kpis" son VARIAS métricas juntas, más chicas).
  */
-export type PptxLayout = 'cover' | 'section' | 'bullets' | 'closing' | 'stat' | 'steps' | 'two-col' | 'cards' | 'chart' | 'kpis'
-const PPTX_LAYOUTS: readonly PptxLayout[] = ['cover', 'section', 'bullets', 'closing', 'stat', 'steps', 'two-col', 'cards', 'chart', 'kpis']
+export type PptxLayout = 'cover' | 'section' | 'bullets' | 'closing' | 'stat' | 'steps' | 'two-col' | 'cards' | 'chart' | 'kpis' | 'free'
+const PPTX_LAYOUTS: readonly PptxLayout[] = [
+  'cover',
+  'section',
+  'bullets',
+  'closing',
+  'stat',
+  'steps',
+  'two-col',
+  'cards',
+  'chart',
+  'kpis',
+  'free'
+]
 
 /** Un gráfico nativo de PowerPoint (de verdad editable ahí, no una imagen) — una sola serie de datos. */
 export type PptxChartType = 'bar' | 'line' | 'pie'
@@ -122,6 +149,70 @@ export interface PptxKpiSpec {
   delta?: string
 }
 
+/** Color en hex de 6 dígitos con `#` (p.ej. `"#1F3864"`). */
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+const isHex = (v: unknown): v is string => typeof v === 'string' && HEX_RE.test(v)
+
+/** Paleta propia de TODA la presentación (reemplaza a `theme`): la IA elige los colores. `bg` claro u oscuro; el resto se deriva si falta. */
+export interface PptxPalette {
+  bg: string
+  text: string
+  muted?: string
+  accent: string
+  accent2?: string
+  panel?: string
+  edge?: string
+}
+
+export type PptxFont = (typeof FREE_FONTS)[number]
+export type PptxFreeShape = (typeof FREE_SHAPES)[number]
+
+/**
+ * Un elemento de `layout: "free"`: texto o forma puestos donde la IA decida, en puntos sobre un lienzo de 960 × 540 (origen arriba a la
+ * izquierda), en el orden en que se escriben (los últimos quedan encima). Colores siempre en hex con `#`.
+ */
+export type PptxFreeElement =
+  | {
+      type: 'text'
+      x: number
+      y: number
+      w: number
+      h: number
+      text: string
+      size?: number
+      color?: string
+      bold?: boolean
+      italic?: boolean
+      align?: 'left' | 'center' | 'right'
+      font?: PptxFont
+      /** Espaciado entre letras en puntos (negativo = más junto). */
+      spacing?: number
+    }
+  | {
+      type: 'shape'
+      shape: PptxFreeShape
+      x: number
+      y: number
+      w: number
+      h: number
+      /** Sin `fill` la forma queda sin relleno. Con `fillTo` el relleno es un degradado de `fill` a `fillTo` (`angle` en grados). */
+      fill?: string
+      fillTo?: string
+      angle?: number
+      /** 0 (invisible) a 1 (sólido). */
+      opacity?: number
+      line?: string
+      lineWidth?: number
+      rotate?: number
+      /** Texto dentro de la forma. */
+      text?: string
+      size?: number
+      color?: string
+      bold?: boolean
+      align?: 'left' | 'center' | 'right'
+      font?: PptxFont
+    }
+
 export interface PptxSlideSpec {
   title?: string
   bullets?: string[]
@@ -140,12 +231,20 @@ export interface PptxSlideSpec {
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
   kpis?: PptxKpiSpec[]
+  /** Color de fondo de ESTA diapositiva (hex con `#`); sin esto, el de la paleta/tema. */
+  background?: string
+  /** Solo para `layout: "free"`: los elementos del lienzo, en orden. */
+  elements?: PptxFreeElement[]
 }
 
 export interface PptxSpec {
   theme?: PptxTheme
   /** Estilo visual de TODA la presentación (ver `PptxStyle`) — sin esto, "classic". */
   style?: PptxStyle
+  /** Paleta propia (en vez de `theme`). */
+  palette?: PptxPalette
+  /** Tipografías de TODA la presentación (de una lista corta que existe en macOS y Windows). */
+  fonts?: { title?: PptxFont; body?: PptxFont }
   slides: PptxSlideSpec[]
   /** Nota al pie de TODA la presentación (p.ej. "Empresa Ejemplo · Q3 2026") — una diapositiva con su propio `note` la pisa ahí. */
   footer?: string
@@ -232,6 +331,37 @@ function isKpiSpec(v: unknown): v is PptxKpiSpec {
   return true
 }
 
+const num = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
+const optHex = (v: unknown): boolean => v === undefined || isHex(v)
+const optFont = (v: unknown): boolean => v === undefined || (FREE_FONTS as readonly string[]).includes(v as string)
+
+function isFreeElement(v: unknown): v is PptxFreeElement {
+  if (!v || typeof v !== 'object') return false
+  const e = v as Record<string, unknown>
+  if (!num(e.x, -200, 1160) || !num(e.y, -200, 740) || !num(e.w, 0, 1400) || !num(e.h, 0, 900)) return false
+  if (e.size !== undefined && !num(e.size, 6, 260)) return false
+  if (!optHex(e.color) || !optFont(e.font)) return false
+  if (e.align !== undefined && e.align !== 'left' && e.align !== 'center' && e.align !== 'right') return false
+  if (e.text !== undefined && (typeof e.text !== 'string' || e.text.length > MAX_FREE_TEXT_CHARS)) return false
+  if (e.type === 'text') {
+    if (typeof e.text !== 'string' || e.text.length === 0) return false
+    return e.spacing === undefined || num(e.spacing, -20, 40)
+  }
+  if (e.type !== 'shape') return false
+  if (!(FREE_SHAPES as readonly string[]).includes(e.shape as string)) return false
+  if (!optHex(e.fill) || !optHex(e.fillTo) || !optHex(e.line)) return false
+  if (e.angle !== undefined && !num(e.angle, -360, 360)) return false
+  if (e.opacity !== undefined && !num(e.opacity, 0, 1)) return false
+  if (e.lineWidth !== undefined && !num(e.lineWidth, 0, 40)) return false
+  return e.rotate === undefined || num(e.rotate, -360, 360)
+}
+
+function isPalette(v: unknown): v is PptxPalette {
+  if (!v || typeof v !== 'object') return false
+  const p = v as Record<string, unknown>
+  return isHex(p.bg) && isHex(p.text) && isHex(p.accent) && optHex(p.muted) && optHex(p.accent2) && optHex(p.panel) && optHex(p.edge)
+}
+
 function isSlide(v: unknown): v is PptxSlideSpec {
   if (!v || typeof v !== 'object') return false
   const s = v as PptxSlideSpec
@@ -249,7 +379,10 @@ function isSlide(v: unknown): v is PptxSlideSpec {
     if (!Array.isArray(s.kpis) || s.kpis.length < MIN_KPIS || s.kpis.length > MAX_KPIS) return false
     if (!s.kpis.every(isKpiSpec)) return false
   }
-  return true
+  if (!optHex(s.background)) return false
+  if (s.elements !== undefined && (!Array.isArray(s.elements) || s.elements.length > MAX_FREE_ELEMENTS || !s.elements.every(isFreeElement)))
+    return false
+  return s.layout !== 'free' || (Array.isArray(s.elements) && s.elements.length > 0)
 }
 
 export function isPptxSpec(v: unknown): v is PptxSpec {
@@ -258,5 +391,11 @@ export function isPptxSpec(v: unknown): v is PptxSpec {
   if (spec.theme !== undefined && !PPTX_THEMES.includes(spec.theme)) return false
   if (spec.style !== undefined && !PPTX_STYLES.includes(spec.style)) return false
   if (spec.footer !== undefined && (typeof spec.footer !== 'string' || spec.footer.length > MAX_FOOTER_CHARS)) return false
+  if (spec.palette !== undefined && !isPalette(spec.palette)) return false
+  if (
+    spec.fonts !== undefined &&
+    (typeof spec.fonts !== 'object' || spec.fonts === null || !optFont(spec.fonts.title) || !optFont(spec.fonts.body))
+  )
+    return false
   return Array.isArray(spec.slides) && spec.slides.length > 0 && spec.slides.length <= MAX_SLIDES && spec.slides.every(isSlide)
 }

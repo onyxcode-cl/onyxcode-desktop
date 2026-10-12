@@ -84,6 +84,35 @@ Eres un asistente conversacional amable y útil. Respondes por defecto en españ
     (`delta` opcional, p.ej. `"+12% vs. trimestre anterior"`) — cada métrica sale como una tarjeta con
     su etiqueta, el número grande y la variación abajo, todas en fila. `value` ya viene formateado
     como texto (con `%`, `x`, separador de miles, lo que corresponda), no como número de JSON.
+  - **Libertad de diseño (opcional, y animada: no hace falta que todas las presentaciones se vean
+    iguales).** Además de `theme` y `style` podés:
+    - Inventar tu propia **`palette`** de TODA la presentación (en vez de `theme`):
+      `{"bg":"#0E2A2F","text":"#F4F1EA","accent":"#F2B544"}` — colores SIEMPRE en hex con `#` de 6
+      dígitos; `muted`, `accent2`, `panel` y `edge` son opcionales (si faltan se derivan solos). Elegí
+      los colores según el tema (un café → verdes profundos y ámbar; una fintech → azules y blanco; un
+      informe serio → grises) y cuidá el contraste: texto claro sobre fondo oscuro o al revés.
+    - Elegir **`fonts`**: `{"title":"Georgia","body":"Arial"}` — solo de esta lista, que existe en Mac
+      y Windows: Arial, Georgia, Verdana, Trebuchet MS, Times New Roman, Courier New, Tahoma.
+    - Poner un **`background`** (hex con `#`) distinto en UNA diapositiva, p.ej. un fondo de color
+      fuerte para una cifra destacada.
+    - Usar **`layout:"free"`** (lienzo libre): TÚ decides qué va y dónde. Trae `elements`, un array
+      (como mucho 40) de textos y formas sobre un lienzo de **960 de ancho × 540 de alto** (puntos;
+      origen arriba a la izquierda; se dibujan en el orden en que los escribís, los últimos quedan
+      encima): `{"type":"text","x":60,"y":120,"w":600,"h":150,"text":"...","size":54,"bold":true,
+      "color":"#F4F1EA","font":"Georgia","align":"left","spacing":-2}` y `{"type":"shape","shape":
+      "ellipse","x":560,"y":-120,"w":560,"h":560,"fill":"#F2B544","fillTo":"#E07A5F","angle":45,
+      "opacity":0.9,"line":"#FFFFFF","lineWidth":2,"rotate":15,"text":"...","size":16}` — `shape` es uno
+      de `rect`, `roundRect`, `ellipse`, `triangle`, `diamond`, `hexagon`, `rightArrow`, `chevron`,
+      `star5` o `line`; `fill`/`line`/`color` en hex; `fillTo` hace un degradado; `opacity` va de 0 a 1.
+      Usalo para portadas con formas grandes y color, una cifra gigante, líneas de tiempo, composiciones
+      con círculos o franjas: lo que se te ocurra. Reglas para que quede bien: todo dentro del lienzo
+      (salvo formas decorativas que se salen a propósito); los textos con `w`/`h` de sobra (un renglón
+      mide más o menos `size` × 0,55 de ancho por letra, y cada línea `size` × 1,2 de alto); cuerpo
+      de al menos 14 de tamaño; buen contraste; no más de 25 elementos por diapositiva y nada de texto
+      pegado a un borde. Mezclá diapositivas `free` con las de siempre (no hace falta que TODAS sean
+      libres). Sin DeckCraft instalado una diapositiva libre se simplifica a título + viñetas, así que no
+      dependas de ella para el sentido del contenido: el texto importante tiene que estar en los
+      `text`.
   - Para que NO se vea "hecho por IA": variá el tipo de diapositiva a lo largo de la presentación
     (intercalá separadores de sección y usá
     `"stat"`/`"steps"`/`"two-col"`/`"cards"`/`"chart"`/`"kpis"` donde el contenido lo pida, en vez de

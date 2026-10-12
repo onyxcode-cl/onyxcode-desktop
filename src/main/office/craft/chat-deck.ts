@@ -11,7 +11,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
-import { createKit, fitSize, paletteFor } from './deck-kit'
+import { createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
 
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
 
@@ -33,9 +33,14 @@ function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['l
 /** Genera los comandos `id={json}` de DeckCraft para toda la presentación. Asume `PptxSpec` ya validado (`isPptxSpec`). */
 export function chatDeckCommands(spec: PptxSpec): string[] {
   // `theme` elige la paleta (colores) y `style` la decoración, como pide el agente de Chat: no es siempre el mismo diseño.
-  const pal = paletteFor(spec.theme)
+  const pal = spec.palette ? customPalette(spec.palette) : paletteFor(spec.theme)
   const look = spec.style ?? 'classic'
-  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont } = createKit(pal, look)
+  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg } = createKit(
+    pal,
+    look,
+    pal.accent,
+    spec.fonts?.title
+  )
   const accent = pal.accent
   const DOTS = pal.marks
   const chartColors = DOTS.map((col) => '#' + col)
@@ -43,7 +48,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
   const footer = spec.footer ?? ''
   a('file.new')
   // Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
-  a('design.fonts', { major: 'Arial', minor: 'Arial' })
+  a('design.fonts', { major: spec.fonts?.title ?? 'Arial', minor: spec.fonts?.body ?? 'Arial' })
   let sectionN = 0
 
   const foot = (s: PptxSlideSpec): void => {
@@ -73,6 +78,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
 
   spec.slides.forEach((s, idx) => {
     const n = idx + 1
+    setBg(s.background ? stripHash(s.background) : undefined)
     const title = s.title ?? ''
     const bullets = s.bullets ?? []
     switch (layoutOf(s, idx)) {
@@ -199,6 +205,59 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
           txt(x + 14, 232, w - 28, 110, kp.value, fitSize(kp.value, 54, Math.floor((w - 28) / 29)), pal.text, true, 'left', -1)
           if (kp.delta) txt(x + 18, 350, w - 36, 50, kp.delta, 16, /^\s*[-−–]/.test(kp.delta) ? 'EC4899' : '22C55E', true)
         })
+        break
+      }
+      case 'free': {
+        // Lienzo libre: la IA decide qué va y dónde. Todo se valida antes (`isPptxSpec`): solo textos y formas con colores hex.
+        a('slide.new', { layout: 'blank' })
+        a('design.background', { color: '#' + (s.background ? stripHash(s.background) : pal.bg) })
+        for (const e of s.elements ?? []) {
+          const font = e.font ?? undefined
+          if (e.type === 'text') {
+            txt(
+              e.x,
+              e.y,
+              e.w,
+              e.h,
+              e.text,
+              e.size ?? 20,
+              e.color ? stripHash(e.color) : pal.text,
+              e.bold ?? false,
+              e.align ?? 'left',
+              e.spacing,
+              font
+            )
+            if (e.italic) a('format.italic', { on: true })
+            continue
+          }
+          a('shape.insert', { preset: e.shape, rect: [e.x, e.y, e.w, e.h], ...(e.text ? { text: e.text } : {}) })
+          const transparency = e.opacity === undefined ? undefined : Math.round((1 - e.opacity) * 100) / 100
+          if (e.fill && e.fillTo) {
+            a('shape.fill', {
+              gradient: {
+                stops: [
+                  [0, '#' + stripHash(e.fill)],
+                  [1, '#' + stripHash(e.fillTo)]
+                ],
+                angle: e.angle ?? 90,
+                kind: 'linear'
+              },
+              ...(transparency !== undefined ? { transparency } : {})
+            })
+          } else if (e.fill) a('shape.fill', { color: '#' + stripHash(e.fill), ...(transparency !== undefined ? { transparency } : {}) })
+          else a('shape.fill', { none: true })
+          if (e.line) a('shape.line', { color: '#' + stripHash(e.line), width: e.lineWidth ?? 1.5 })
+          else a('shape.line', { none: true })
+          if (e.rotate) a('shape.rotate', { deg: e.rotate })
+          if (e.text) {
+            a('format.size', { size: e.size ?? 18 })
+            a('format.color', { color: '#' + (e.color ? stripHash(e.color) : pal.text) })
+            a('format.bold', { on: e.bold ?? false })
+            a('format.align', { align: e.align ?? 'center' })
+            a('format.anchor', { anchor: 'middle' })
+            if (font) a('format.font', { family: font })
+          }
+        }
         break
       }
       default: {

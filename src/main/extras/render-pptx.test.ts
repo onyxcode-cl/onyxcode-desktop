@@ -426,3 +426,23 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     expect((text.match(/prst="ellipse"/g) ?? []).length).toBeGreaterThan(0)
   })
 })
+
+describe('diapositivas libres con el generador de respaldo', () => {
+  it('se simplifican a título + viñetas en vez de quedar vacías', async () => {
+    const { degradeFreeSlides } = await import('./render-pptx')
+    const out = degradeFreeSlides({
+      slides: [
+        { title: 'Portada' },
+        {
+          layout: 'free',
+          elements: [
+            { type: 'shape', shape: 'ellipse', x: 0, y: 0, w: 10, h: 10, fill: '#FFFFFF' },
+            { type: 'text', x: 0, y: 0, w: 100, h: 50, text: 'Grande', size: 60 },
+            { type: 'text', x: 0, y: 60, w: 100, h: 50, text: 'Chico', size: 16 }
+          ]
+        }
+      ]
+    })
+    expect(out.slides[1]).toMatchObject({ title: 'Grande', bullets: ['Chico'], layout: 'bullets' })
+  })
+})

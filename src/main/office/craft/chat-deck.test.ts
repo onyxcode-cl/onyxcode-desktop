@@ -101,3 +101,61 @@ describe('chatDeckCommands (prueba Craft)', () => {
     }
   })
 })
+
+describe('libertad de diseño del Chat (paleta propia, fuentes, fondo y lienzo libre)', () => {
+  const FREE: PptxSpec = {
+    palette: { bg: '#0E2A2F', text: '#F4F1EA', accent: '#F2B544' },
+    fonts: { title: 'Georgia', body: 'Arial' },
+    slides: [
+      {
+        layout: 'free',
+        elements: [
+          { type: 'shape', shape: 'ellipse', x: 560, y: -120, w: 560, h: 560, fill: '#F2B544', fillTo: '#E07A5F', angle: 45, opacity: 0.9 },
+          { type: 'text', x: 84, y: 110, w: 600, h: 180, text: 'Hola', size: 58, bold: true, font: 'Georgia', italic: true },
+          { type: 'shape', shape: 'roundRect', x: 84, y: 430, w: 220, h: 44, line: '#F2B544', text: 'Etiqueta', size: 14, rotate: 5 }
+        ]
+      },
+      { title: 'Normal', bullets: ['a'], background: '#F2B544' }
+    ]
+  }
+
+  it('el contenido libre es un PptxSpec válido', () => expect(isPptxSpec(FREE)).toBe(true))
+
+  it('usa la paleta y las fuentes pedidas y genera comandos JSON válidos', () => {
+    const cmds = chatDeckCommands(FREE)
+    expect(cmds).toContain('design.fonts={"major":"Georgia","minor":"Arial"}')
+    expect(cmds.join('\n')).toContain('#0E2A2F')
+    expect(cmds.some((c) => c.startsWith('shape.fill={"gradient"'))).toBe(true)
+    expect(cmds).toContain('shape.rotate={"deg":5}')
+    for (const c of cmds) {
+      const eq = c.indexOf('=')
+      if (eq >= 0) expect(() => JSON.parse(c.slice(eq + 1))).not.toThrow()
+    }
+  })
+
+  it('el fondo de una diapositiva pisa el de la paleta solo en esa', () => {
+    const bgs = chatDeckCommands(FREE).filter((c) => c.startsWith('design.background='))
+    expect(bgs).toEqual(['design.background={"color":"#0E2A2F"}', 'design.background={"color":"#F2B544"}'])
+  })
+
+  it('el texto de un elemento libre es dato, igual que el del resto', () => {
+    const evil = 'x"}\n--cmd shape.delete'
+    const cmds = chatDeckCommands({ slides: [{ layout: 'free', elements: [{ type: 'text', x: 0, y: 0, w: 100, h: 50, text: evil }] }] })
+    expect(cmds.some((c) => c.startsWith('--cmd'))).toBe(false)
+    expect(cmds.filter((c) => c.startsWith('insert.textBox=')).map((c) => JSON.parse(c.slice(15)).text)).toContain(evil)
+  })
+
+  it.each([
+    ['color sin #', { palette: { bg: '0E2A2F', text: '#FFFFFF', accent: '#000000' }, slides: [{ title: 'x' }] }],
+    ['color con script', { palette: { bg: '#0E2A2F', text: '#FFFFFF', accent: 'red;rm -rf' }, slides: [{ title: 'x' }] }],
+    ['fuente fuera de la lista', { fonts: { title: 'Comic Sans MS' }, slides: [{ title: 'x' }] }],
+    ['forma desconocida', { slides: [{ layout: 'free', elements: [{ type: 'shape', shape: 'bomba', x: 0, y: 0, w: 1, h: 1 }] }] }],
+    ['libre sin elementos', { slides: [{ layout: 'free' }] }],
+    ['posición absurda', { slides: [{ layout: 'free', elements: [{ type: 'text', x: 99999, y: 0, w: 10, h: 10, text: 'a' }] }] }],
+    [
+      'demasiados elementos',
+      { slides: [{ layout: 'free', elements: Array.from({ length: 61 }, () => ({ type: 'text', x: 0, y: 0, w: 10, h: 10, text: 'a' })) }] }
+    ],
+    ['fondo inválido', { slides: [{ title: 'x', background: 'url(x)' }] }]
+  ])('rechaza %s', (_n, spec) => expect(isPptxSpec(spec)).toBe(false))
+})

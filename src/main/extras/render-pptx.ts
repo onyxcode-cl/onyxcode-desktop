@@ -656,7 +656,33 @@ function addChartSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
   addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
 }
 
-export async function renderPptx(data: PptxSpec): Promise<Buffer> {
+/**
+ * Las diapositivas `layout:"free"` (lienzo libre) solo se dibujan fielmente con DeckCraft. Con este generador (el de respaldo, cuando
+ * DeckCraft no está instalado o falló) se simplifican a una diapositiva normal: el texto más grande como título y el resto como viñetas,
+ * en el orden en que estaban. Así nunca sale una diapositiva vacía.
+ */
+export function degradeFreeSlides(data: PptxSpec): PptxSpec {
+  if (!data.slides.some((s) => s.layout === 'free')) return data
+  return {
+    ...data,
+    slides: data.slides.map((s, i) => {
+      if (s.layout !== 'free') return s
+      const texts = (s.elements ?? []).flatMap((e) =>
+        e.type === 'text' ? [{ t: e.text, size: e.size ?? 20 }] : e.type === 'shape' && e.text ? [{ t: e.text, size: e.size ?? 18 }] : []
+      )
+      const biggest = texts.reduce<{ t: string; size: number } | null>((m, x) => (!m || x.size > m.size ? x : m), null)
+      const rest = texts.filter((x) => x !== biggest).map((x) => x.t.slice(0, 500))
+      return {
+        title: biggest?.t.slice(0, 200) ?? s.title,
+        bullets: rest.slice(0, 20),
+        layout: i === 0 ? 'cover' : rest.length ? 'bullets' : 'section'
+      }
+    })
+  }
+}
+
+export async function renderPptx(rawData: PptxSpec): Promise<Buffer> {
+  const data = degradeFreeSlides(rawData)
   const pres = new PptxGenJS()
   pres.defineLayout({ name: 'LAZUNOX', width: PAGE_W, height: PAGE_H })
   pres.layout = 'LAZUNOX'
