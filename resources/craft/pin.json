@@ -1,0 +1,21 @@
+{
+  "version": "0.5.0",
+  "releasedAt": "2026-10-10",
+  "source": "https://github.com/storytold/deckcraft/releases/tag/v0.5.0",
+  "assets": {
+    "darwin-arm64": {
+      "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
+      "size": 66680532,
+      "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
+      "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
+      "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+    },
+    "darwin-x64": {
+      "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
+      "size": 66680532,
+      "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
+      "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
+      "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+    }
+  }
+}

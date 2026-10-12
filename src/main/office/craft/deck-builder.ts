@@ -54,6 +54,13 @@ export function fitSize(text: string, base: number, fits: number): number {
   return Math.max(Math.round(base * 0.55), Math.floor((base * fits) / text.length))
 }
 
+/** Tamaño del título de portada: enorme si es una palabra corta; baja para que quepa en UNA línea (≈ 860 pt de ancho). */
+export function coverSize(title: string): number {
+  if (title.length <= 8) return 190
+  if (title.length <= 14) return 110
+  return Math.max(40, Math.floor((110 * 14 * 0.9) / title.length))
+}
+
 class SpecError extends Error {}
 const bad = (path: string, why: string): never => {
   throw new SpecError(`${path}: ${why}`)
@@ -258,7 +265,7 @@ export function buildDeckCommands(spec: DeckSpec): string[] {
           [-220, 300, 560, '14285E']
         ])
         dotrow(60, 88, 34, 20)
-        txt(44, 146, 860, 230, s.title, s.title.length > 8 ? 110 : 190, WH, true, 'left', -8)
+        txt(44, 146, 860, 230, s.title, coverSize(s.title), WH, true, 'left', coverSize(s.title) >= 110 ? -8 : -2)
         if (s.subtitle) txt(64, 384, 760, 50, s.subtitle, 28)
         if (s.note) txt(64, 430, 760, 30, s.note, 18, MU)
         if (s.badge) pill(64, 476, Math.min(420, 40 + s.badge.length * 9), 36, s.badge, 14)

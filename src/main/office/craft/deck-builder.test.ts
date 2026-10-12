@@ -108,3 +108,34 @@ describe('fitSize', () => {
     expect(fitSize('x'.repeat(400), 40, 36)).toBe(22)
   })
 })
+
+describe('paridad con el script Python de la skill', () => {
+  it('build_dots.py genera EXACTAMENTE los mismos comandos que deck-builder.ts', async () => {
+    const { spawnSync } = await import('node:child_process')
+    const { join: j } = await import('node:path')
+    const dir = j(__dirname, '../../../../resources/opencode/skills/pptx/scripts')
+    const py = spawnSync(
+      'python3',
+      [
+        '-I',
+        '-c',
+        'import sys,json;sys.path.insert(0,sys.argv[1]);import build_dots as b;print(json.dumps(b.build_commands(b.validate(json.load(sys.stdin))),ensure_ascii=False))',
+        dir
+      ],
+      { input: JSON.stringify(FULL), encoding: 'utf8' }
+    )
+    if (py.error) return // sin python3 en este equipo (p. ej. Windows): no hay nada que comparar
+    expect(py.status).toBe(0)
+    expect(JSON.parse(py.stdout)).toEqual(buildDeckCommands(validateDeckSpec(FULL)))
+  })
+})
+
+describe('coverSize', () => {
+  it('portada: 190 para palabras cortas, 110 hasta 14 caracteres y baja (mínimo 40) para títulos largos', async () => {
+    const { coverSize } = await import('./deck-builder')
+    expect(coverSize('dots')).toBe(190)
+    expect(coverSize('Sistema solar')).toBe(110)
+    expect(coverSize('Café de especialidad')).toBe(69)
+    expect(coverSize('x'.repeat(100))).toBe(40)
+  })
+})

@@ -6,6 +6,7 @@ import { app } from 'electron'
 import { join } from 'node:path'
 import type { OfficeInstallResult, OfficeUiSnapshot } from '@shared/office'
 import { unpacked } from '../util/asar'
+import { craftService } from './craft/service'
 import {
   OfficeError,
   installLibreOffice,
@@ -67,7 +68,8 @@ class OfficeService {
     const out: Record<string, string> = { LAZUNOX_BIN_DIR: d.binDir }
     const s = officeStatus(d)
     if (s.state === 'installed') out.LAZUNOX_SOFFICE = s.soffice
-    return out
+    // DeckCraft (opcional, bajo demanda, prueba): ruta de `deckcraft-cli` para el diseño «dots» de la skill pptx.
+    return { ...out, ...craftService().env() }
   }
 }
 
