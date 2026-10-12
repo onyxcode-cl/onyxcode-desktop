@@ -52,14 +52,19 @@ export function useClassicViewer(): void {
  */
 export async function openInCraftWeb(kind: DocKind, file: string, title: string): Promise<boolean> {
   const dir = craftService().webDir(WEB_PROGRAM[kind])
-  if (!dir) return false
+  if (!dir) {
+    console.warn(`[craft-web] la versión web de ${WEB_PROGRAM[kind]} no está instalada; se usa el visor de siempre`)
+    return false
+  }
   try {
     if ((await stat(file)).size > MAX_WEB_FILE_BYTES) return false
     const name = `${title.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 60) || 'documento'}.${kind}`
     const ok = await openWebDoc(dir, kind, name, await readFile(file))
     if (ok) applyPanel()
+    else console.warn(`[craft-web] la vista web de ${WEB_PROGRAM[kind]} no recibió el archivo (${kind}); se usa el visor de siempre`)
     return ok
-  } catch {
+  } catch (e) {
+    console.warn(`[craft-web] no se pudo abrir ${kind} en la vista web:`, e instanceof Error ? e.message : e)
     return false
   }
 }

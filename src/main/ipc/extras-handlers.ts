@@ -126,7 +126,8 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${doc.token}&kind=${doc.kind}&lang=${lang}&theme=${theme}`)
       useClassicViewer()
       return { ok: true }
-    } catch {
+    } catch (e) {
+      console.warn('[chat-doc] no se pudo generar el documento:', e instanceof Error ? e.message : e)
       return { ok: false, reason: 'failed' }
     }
   })

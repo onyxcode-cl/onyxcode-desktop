@@ -123,7 +123,8 @@ export async function gridToPdf(binary: string, xlsxPath: string, outPdf: string
       timeoutMs
     )
     return outPdf
-  } catch {
+  } catch (e) {
+    console.warn('[craft] gridToPdf falló:', e instanceof Error ? e.message : e)
     return null
   }
 }

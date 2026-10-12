@@ -218,7 +218,8 @@ export async function docxToPdf(binary: string, docxPath: string, outPdf: string
   try {
     await runCraft(binary, ['convert', docxPath, outPdf], timeoutMs)
     return outPdf
-  } catch {
+  } catch (e) {
+    console.warn('[craft] docxToPdf falló:', e instanceof Error ? e.message : e)
     return null
   }
 }

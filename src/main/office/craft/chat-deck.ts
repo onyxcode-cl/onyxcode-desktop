@@ -291,7 +291,8 @@ export async function deckToPdf(binary: string, pptxPath: string, outPdf: string
   try {
     await runCraft(binary, ['convert', pptxPath, outPdf], timeoutMs)
     return outPdf
-  } catch {
+  } catch (e) {
+    console.warn('[craft] deckToPdf falló:', e instanceof Error ? e.message : e)
     return null
   }
 }
