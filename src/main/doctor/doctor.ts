@@ -25,6 +25,8 @@ export interface DoctorDeps {
   pythonBin: string | null
   office: () =>
     { state: 'unsupported' } | { state: 'missing'; sizeBytes: number } | { state: 'installed'; source: 'app' | 'system'; version: string }
+  /** ¿Están instalados DeckCraft y WordCraft (ArtCraft)? Con ellos la revisión visual de Word/PowerPoint no necesita LibreOffice. */
+  artcraft?: () => boolean
   /** Bytes libres en el disco de los datos de la app. */
   freeBytes: () => number
 }
@@ -95,7 +97,8 @@ export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Pr
   const o = d.office()
   if (o.state === 'installed')
     push({ id: 'office', level: 'ok', detail: o.source === 'system' ? 'LibreOffice del sistema' : `LibreOffice ${o.version}` })
-  else if (o.state === 'missing') push({ id: 'office', level: 'warn', fix: 'installOffice', detail: `${Math.round(o.sizeBytes / MB)} MB` })
+  else if (o.state === 'missing' && !d.artcraft?.())
+    push({ id: 'office', level: 'warn', fix: 'installOffice', detail: `${Math.round(o.sizeBytes / MB)} MB` })
 
   if (d.platform === 'darwin') {
     const x = await d.run('/usr/bin/xcode-select', ['-p'])

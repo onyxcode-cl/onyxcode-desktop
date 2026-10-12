@@ -36,6 +36,89 @@ def buscar_soffice():
     return shutil.which("soffice")
 
 
+def _buscar_craft(var, exe, marca):
+    """Programa de ArtCraft (DeckCraft/WordCraft) que instaló la app: `$var` si el motor lo recibió al arrancar; si no (se instaló
+    después), el de `$LAZUNOX_BIN_DIR/craft-*/*/<exe>` con su marca de instalación completa."""
+    ruta = os.environ.get(var)
+    if _ejecutable(ruta):
+        return ruta
+    base = os.environ.get("LAZUNOX_BIN_DIR")
+    if base:
+        for d in sorted(glob.glob(os.path.join(base, "craft-*")), reverse=True):
+            if not os.path.isfile(os.path.join(d, marca)):
+                continue
+            for cand in sorted(glob.glob(os.path.join(d, "*", exe)), reverse=True):
+                if _ejecutable(cand):
+                    return cand
+    return None
+
+
+def buscar_deckcraft():
+    return _buscar_craft("LAZUNOX_DECKCRAFT", "deckcraft-cli", "installed-deckcraft.json") or _buscar_craft(
+        "LAZUNOX_DECKCRAFT", "deckcraft-cli", "installed.json")
+
+
+def buscar_wordcraft():
+    return _buscar_craft("LAZUNOX_WORDCRAFT", "wordcraft-cli", "installed-wordcraft.json")
+
+
+def _craft_run(args, timeout=90):
+    """Ejecuta un programa de ArtCraft sin shell, con carpetas de datos propias (no toca la configuración del usuario)."""
+    home = tempfile.mkdtemp(prefix="lazunox-craft-")
+    env = {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home, "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home}
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=env)
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def render_craft(origen, ext, outdir, max_pages, avisos):
+    """PNG por página con ArtCraft (más rápido y ligero que LibreOffice, y no necesita instalarlo): .pptx con DeckCraft y .docx con
+    WordCraft. Devuelve la lista de PNG o None (con un aviso) si no está o falla; entonces se intenta LibreOffice."""
+    base = os.path.splitext(os.path.basename(origen))[0]
+    pngs = []
+    try:
+        if ext == ".pptx":
+            exe = buscar_deckcraft()
+            if not exe:
+                return None
+            tmp = tempfile.mkdtemp(prefix="lazunox-craft-png-")
+            try:
+                r = _craft_run([exe, "render", origen, "--all", os.path.join(tmp, "s")])
+                lista = sorted(glob.glob(os.path.join(tmp, "s", "slide-*.png")))
+                if r.returncode != 0 or not lista:
+                    avisos.append("DeckCraft no pudo renderizar el archivo; se intenta con LibreOffice. %s" % (r.stderr or "").strip()[:200])
+                    return None
+                for i, f in enumerate(lista[:max_pages]):
+                    ruta = os.path.join(outdir, "%s-p%02d.png" % (base, i + 1))
+                    shutil.copyfile(f, ruta)
+                    pngs.append(ruta)
+                return pngs, len(lista)
+            finally:
+                shutil.rmtree(tmp, ignore_errors=True)
+        if ext == ".docx":
+            exe = buscar_wordcraft()
+            if not exe:
+                return None
+            r = _craft_run([exe, "info", origen])
+            try:
+                total = int(json.loads(r.stdout)["pages"])
+            except (ValueError, KeyError, TypeError):
+                avisos.append("WordCraft no pudo leer el documento; se intenta con LibreOffice. %s" % (r.stderr or "").strip()[:200])
+                return None
+            for i in range(1, min(total, max_pages) + 1):  # WordCraft numera las páginas desde 1
+                ruta = os.path.join(outdir, "%s-p%02d.png" % (base, i))
+                r = _craft_run([exe, "render", origen, ruta, "--page", str(i)])
+                if r.returncode != 0 or not os.path.isfile(ruta):
+                    avisos.append("WordCraft no pudo dibujar la página %d; se intenta con LibreOffice." % i)
+                    return None
+                pngs.append(ruta)
+            return pngs, total
+    except (OSError, subprocess.TimeoutExpired) as e:
+        avisos.append("No se pudo usar ArtCraft para revisar (%s); se intenta con LibreOffice." % e)
+    return None
+
+
 def salida(res, codigo):
     print(json.dumps(res, ensure_ascii=False))
     sys.exit(codigo)
@@ -109,6 +192,15 @@ def main():
     origen = os.path.abspath(a.archivo)
     ext = os.path.splitext(origen)[1].lower()
 
+    if ext in (".pptx", ".docx"):
+        hecho = render_craft(origen, ext, outdir, a.max_pages, avisos)
+        if hecho:
+            res["pngs"], res["paginas"] = hecho
+            res["motor"] = "artcraft"
+            if res["paginas"] > a.max_pages:
+                avisos.append("el documento tiene %d páginas; solo se rasterizaron las primeras %d." % (res["paginas"], a.max_pages))
+            res["ok"] = True
+            salida(res, 0)
     if ext == ".pdf":
         pdf = origen
     elif ext in OFFICE:

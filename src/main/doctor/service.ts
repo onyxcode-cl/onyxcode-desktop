@@ -6,6 +6,7 @@ import { release } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { DoctorReport } from '@shared/doctor'
 import type { ComputerService } from '../computer/service'
+import { craftService } from '../office/craft/service'
 import { officeService } from '../office/service'
 import { findBundledPython } from '../tasks/python-runtime'
 import { runDoctor } from './doctor'
@@ -38,6 +39,7 @@ export function runRealDoctor(computer?: ComputerService): Promise<DoctorReport>
       const s = officeService().snapshot().status
       return s.state === 'installed' ? s : s.state === 'missing' ? s : { state: 'unsupported' }
     },
+    artcraft: () => craftService().status().state === 'installed',
     freeBytes: () => {
       const s = statfsSync(app.getPath('userData'))
       return s.bavail * s.bsize

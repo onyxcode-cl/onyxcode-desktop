@@ -110,3 +110,14 @@ describe('doctor', () => {
     expect(calls).toContain('/usr/bin/xcode-select')
   })
 })
+
+describe('revisión visual con ArtCraft', () => {
+  it('sin LibreOffice pero con ArtCraft instalado no avisa de LibreOffice', async () => {
+    const r = await runDoctor(base({ office: () => ({ state: 'missing', sizeBytes: 299e6 }), artcraft: () => true }))
+    expect(r.items.find((i) => i.id === 'office')).toBeUndefined()
+  })
+  it('sin LibreOffice ni ArtCraft sigue avisando', async () => {
+    const r = await runDoctor(base({ office: () => ({ state: 'missing', sizeBytes: 299e6 }), artcraft: () => false }))
+    expect(r.items.find((i) => i.id === 'office')).toMatchObject({ level: 'warn', fix: 'installOffice' })
+  })
+})

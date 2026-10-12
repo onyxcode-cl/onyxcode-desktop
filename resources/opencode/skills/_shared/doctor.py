@@ -52,13 +52,14 @@ def main():
             lo_version = None
     faltan = [n for n, v in libs.items() if v is None and n in IMPRESCINDIBLES]
     avisos = []
-    if not soffice:
-        avisos.append("LibreOffice no encontrado: no habrá render visual (solo verificación estructural).")
+    deck, word = render.buscar_deckcraft(), render.buscar_wordcraft()
+    if not soffice and not (deck and word):
+        avisos.append("Ni LibreOffice ni ArtCraft encontrados: no habrá render visual (solo verificación estructural).")
     opcionales = [n for n, v in libs.items() if v is None and n not in IMPRESCINDIBLES]
     if opcionales:
         avisos.append("faltan librerías opcionales: " + ", ".join(opcionales))
     res = {"python": "%s (%s)" % (sys.version.split()[0], sys.executable), "librerias": libs,
-           "libreoffice": soffice, "libreoffice_version": lo_version, "faltan": faltan, "avisos": avisos}
+           "libreoffice": soffice, "libreoffice_version": lo_version, "deckcraft": deck, "wordcraft": word, "faltan": faltan, "avisos": avisos}
     print(json.dumps(res, ensure_ascii=False))
     sys.exit(0 if not faltan and sys.version_info >= (3, 9) else 1)
 
