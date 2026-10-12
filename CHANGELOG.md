@@ -26,7 +26,7 @@ Esta versión lleva Lazunox a Windows con casi todo lo que ya tenía en Mac, y c
   sigue verificada con firma, tamaño y hash antes de instalarse. (El servidor propio queda como alternativa, `docs/VPS.md`.)
 - **Instaladores gratuitos por terminal**, en Mac (`install.sh`) y en Windows (`install.ps1`): descargan, comprueban el hash SHA-256 y
   instalan sin administrador y sin pedirte saltarte avisos. La guía está en `docs/INSTALAR.md`.
-- **Logo nuevo «Aro»**: un anillo abierto en lapislázuli con un punto dorado; gira suave mientras la app trabaja.
+- **Logo nuevo**: una gema azul de cuatro facetas sobre un cuadrado blanco suave, en el ícono de la app (Mac y Windows), la barra lateral, la bandeja del sistema y la app del celular. El anillo con punto dorado se mantiene como indicador de «trabajando».
 - **Ajustes › General: tamaño del texto** (pequeño, normal, grande), que se aplica al instante.
 - **Tarjeta de resultado en Tareas**: al terminar, los archivos que dejó el agente con su icono, tamaño, «Abrir» y «Mostrar en la carpeta».
 
@@ -64,10 +64,9 @@ Esta versión lleva Lazunox a Windows con casi todo lo que ya tenía en Mac, y c
   guardaste algo ahí dentro, cópialo a una carpeta de Windows antes de actualizar.
 - **El instalador de Windows no está firmado** (no hay certificado de pago): si lo bajas desde el navegador, SmartScreen puede mostrar «Windows
   protegió su PC». Con `install.ps1` no sale. **El DMG de Mac no está notarizado**: macOS puede pedir «Abrir de todos modos». Ver `docs/INSTALAR.md`.
-- **Aún sin comprobar en un equipo real**: la actualización completa de punta a punta desde el servidor, Rutinas y Code con terminal y
-  worktrees en Windows, un Windows limpio sin WSL y el modo en segundo plano de Control del PC en Windows. Detalle en `docs/VERIFICACION.md`.
-- Las apps ya instaladas solo saben consultar el servidor con el que salieron: si algún día cambia la dirección, hay que publicar antes una versión
-  desde la dirección anterior.
+- **Aún sin comprobar en un equipo real**: la actualización automática descargada desde GitHub (en Mac se probó el reemplazo completo con estos mismos archivos desde un servidor local; en Windows, no), el Celular con un teléfono real, Rutinas y Code con terminal y worktrees en Windows, un Windows limpio sin WSL y el modo en segundo plano de Control del PC en Windows. Detalle en `docs/VERIFICACION.md`.
+- Las apps ya instaladas consultan el repositorio `onyxcode-cl/onyxcode-desktop` de GitHub: si algún día cambia, hay que publicar antes una versión
+  desde el repositorio anterior que apunte al nuevo.
 
 ## [0.5.0] - 2026-10-05
 

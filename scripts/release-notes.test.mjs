@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { extractNotes } from './release-notes.mjs'
 
 const LOG = `# Cambios
@@ -51,4 +53,25 @@ test('falla con versión inexistente, sección vacía o versión mal escrita', (
 
 test('admite prereleases y encabezados sin corchetes', () => {
   assert.equal(extractNotes('## 0.5.0-beta.1 - 2026-12-01\n- beta\n', '0.5.0-beta.1'), '- beta\n')
+})
+
+test('el bloque «Cómo instalar» trae Mac (DMG y Gatekeeper) y Windows (.exe y SmartScreen)', async () => {
+  const { installBlock } = await import('./release-notes.mjs')
+  const b = installBlock()
+  assert.match(b, /^## Cómo instalar/)
+  assert.match(b, /\.dmg/)
+  assert.match(b, /Abrir de todos modos/)
+  assert.match(b, /Setup-X\.Y\.Z-x64\.exe/)
+  assert.match(b, /Ejecutar de todas formas/)
+  assert.match(b, /SHA256SUMS/)
+  assert.ok(!/\/Users\/|PENDIENTE/.test(b))
+})
+
+test('la salida por defecto lleva las notas y el bloque de instalación; --no-install lo omite', () => {
+  const run = (...extra) =>
+    execFileSync(process.execPath, [fileURLToPath(new URL('./release-notes.mjs', import.meta.url)), '0.5.9', ...extra], {
+      encoding: 'utf8'
+    })
+  assert.match(run(), /## Cómo instalar/)
+  assert.ok(!/## Cómo instalar/.test(run('--no-install')))
 })

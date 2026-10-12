@@ -63,6 +63,11 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   },
 
   { path: 'README.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
+  {
+    path: 'docs/release-instalar.md',
+    token: /onyxcode-cl\/onyxcode-desktop/i,
+    reason: 'repositorio de GitHub de las releases (RELEASES_REPO)'
+  },
   { path: 'docs/INSTALAR.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
   { path: 'docs/RELEASE.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
 

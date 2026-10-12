@@ -17,8 +17,14 @@ Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el s
 
 ## Descarga e instalación
 
-Guía completa, con los avisos que verás y qué hacer: [`docs/INSTALAR.md`](./docs/INSTALAR.md). Gratis y sin administrador; los dos
-comandos descargan las releases de GitHub (`https://github.com/onyxcode-cl/onyxcode-desktop`), verifican el hash SHA-256 y no desactivan ninguna protección del sistema:
+Gratis y sin administrador. Guía completa, con todos los avisos y qué hacer: [`docs/INSTALAR.md`](./docs/INSTALAR.md).
+
+**Descargar el instalador** (de la página de [Releases](https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest)):
+
+- **Mac con chip Apple:** `lazunox-X.Y.Z-arm64.dmg`. Ábrelo, arrastra Lazunox a Aplicaciones y ábrela. macOS dirá que no puede verificarla: pulsa **Hecho** y ve a **Ajustes del Sistema › Privacidad y seguridad › Abrir de todos modos** (solo la primera vez).
+- **Windows 10/11 de 64 bits:** `Lazunox-Setup-X.Y.Z-x64.exe`. Si sale «Windows protegió su PC»: **Más información › Ejecutar de todas formas** (solo la primera vez).
+
+**O con un comando, sin avisos** (descargan las releases de GitHub, verifican el hash SHA-256 y no desactivan ninguna protección del sistema):
 
 ```sh
 # Mac con chip Apple
