@@ -26,7 +26,7 @@ from openpyxl.styles import Alignment, Font  # noqa: E402
 from openpyxl.utils import get_column_letter  # noqa: E402
 from openpyxl.worksheet.datavalidation import DataValidation  # noqa: E402
 
-from xlsx_common import (DATE_KINDS, NUMERIC_KINDS, THEME, SpecError, add_chart, autosize,  # noqa: E402
+from xlsx_common import (DATE_KINDS, NUMERIC_KINDS, THEME, SpecError, add_chart, add_xlfn_prefix, autosize,  # noqa: E402
                          col_letter, fill, is_formula, number_format, parse_date,
                          style_header_cell, thin_border)
 
@@ -177,7 +177,7 @@ def build_table(wb, spec):
             if kind in DATE_KINDS:
                 v = parse_date(v)
             if is_formula(v):
-                v = v.replace("{r}", str(r))
+                v = add_xlfn_prefix(v.replace("{r}", str(r)))
             c = ws.cell(row=r, column=ci, value=v)
             c.font = Font(name=THEME["font"], size=11)
             c.border = thin_border()
@@ -203,7 +203,7 @@ def build_table(wb, spec):
             c = ws.cell(row=total_row, column=ci)
             if t:
                 if str(t).startswith("="):
-                    c.value = str(t).replace("{r}", str(total_row))
+                    c.value = add_xlfn_prefix(str(t).replace("{r}", str(total_row)))
                 else:
                     fn = {"sum": "SUM", "average": "AVERAGE", "avg": "AVERAGE", "count": "COUNT",
                           "min": "MIN", "max": "MAX"}.get(str(t).lower())
@@ -351,7 +351,7 @@ def build_summary(wb, spec, infos):
         a.border = thin_border()
         v = k.get("formula", k.get("value"))
         if is_formula(v):
-            v = expand_tokens(v, infos)
+            v = add_xlfn_prefix(expand_tokens(v, infos))
         b = ws.cell(row=r, column=2, value=v)
         b.font = Font(name=THEME["font"], size=12, bold=True, color=THEME["title_font"])
         b.border = thin_border()

@@ -29,7 +29,7 @@ from openpyxl import load_workbook  # noqa: E402
 from openpyxl.styles import Alignment, Border, Font, Side  # noqa: E402
 from openpyxl.utils import column_index_from_string, get_column_letter  # noqa: E402
 
-from xlsx_common import (DATE_KINDS, SpecError, add_chart, autosize, col_letter, fill,  # noqa: E402
+from xlsx_common import (DATE_KINDS, SpecError, add_chart, add_xlfn_prefix, autosize, col_letter, fill,  # noqa: E402
                          is_formula, number_format, parse_date, style_header_cell, thin_border)
 
 OPS_HELP = """Operaciones ("op"), todas con "sheet" salvo add_sheet:
@@ -59,7 +59,7 @@ def prep(v, fmt, row=None):
         v = parse_date(v)
     if is_formula(v) and row:
         v = v.replace("{r}", str(row))
-    return v
+    return add_xlfn_prefix(v)
 
 
 def put(ws, coord, v, fmt=None):
