@@ -54,6 +54,8 @@ function ensureValidatorRegistered(): void {
 export interface ChatDocument {
   token: string
   kind: DocKind
+  /** Archivo real generado (el .xlsx/.pptx/.pdf), para quien quiera abrirlo en otro visor. */
+  file: string
 }
 
 export type ChatDocInput = { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec }
@@ -83,7 +85,7 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
       (await convertToPdf(target, dir).catch(() => null))
     if (pdfPath) {
       const token = issueToken({ path: pdfPath, kind: 'pdf' })
-      return { token, kind: 'pdf' }
+      return { token, kind: 'pdf', file: target }
     }
   }
 
@@ -93,11 +95,11 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
   if (input.kind === 'xlsx') {
     const grid = craftBinary('gridcraft')
     const pdfPath = grid ? await gridToPdf(grid, target, target.replace(/\.xlsx$/, '.pdf')) : null
-    if (pdfPath) return { token: issueToken({ path: pdfPath, kind: 'pdf' }), kind: 'pdf' }
+    if (pdfPath) return { token: issueToken({ path: pdfPath, kind: 'pdf' }), kind: 'pdf', file: target }
   }
 
   const token = issueToken({ path: target, kind: input.kind })
-  return { token, kind: input.kind }
+  return { token, kind: input.kind, file: target }
 }
 
 /** Ruta de un programa de ArtCraft si está instalado (`null` si no, o si no es macOS). */

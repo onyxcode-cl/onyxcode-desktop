@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type { CraftInstallResult, CraftUiSnapshot } from '@shared/craft'
 import { unpacked } from '../../util/asar'
 import { OfficeError } from '../libreoffice'
-import { craftStatus, installCraft, loadCraftPin, removeCraft, type CraftDeps, type CraftStatus } from './craft-install'
+import { craftStatus, craftWebDir, installCraft, loadCraftPin, removeCraft, type CraftDeps, type CraftStatus } from './craft-install'
 
 type Progress = NonNullable<CraftUiSnapshot['progress']>
 
@@ -59,6 +59,11 @@ class CraftService {
   remove(): void {
     removeCraft(this.deps())
     this.error = undefined
+  }
+
+  /** Carpeta de la versión web (sitio estático) de un programa (`gridcraft`, `deckcraft`, `wordcraft`), o `null` si no está instalada. */
+  webDir(programa: string): string | null {
+    return craftWebDir(this.deps(), programa)
   }
 
   /** Para el entorno de `opencode serve`: la ruta de `deckcraft-cli` si ya está instalado. */

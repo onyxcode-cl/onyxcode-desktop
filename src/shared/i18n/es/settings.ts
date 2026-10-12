@@ -243,7 +243,7 @@ export const settings = {
   // Presentaciones con diseño premium (DeckCraft, opcional, bajo demanda)
   'settings.craft.name': 'Presentaciones y documentos con diseño premium',
   'settings.craft.desc':
-    'Permite al agente crear presentaciones de PowerPoint, documentos de Word y hojas de Excel con un diseño cuidado, en segundos.',
+    'Permite al agente crear presentaciones de PowerPoint, documentos de Word y hojas de Excel con un diseño cuidado, en segundos, y los muestra en el panel con la misma pantalla del programa.',
   'settings.craft.install': 'Instalar (≈ {mb} MB)',
   'settings.craft.consent.title': '¿Instalar las presentaciones y documentos con diseño premium?',
   'settings.craft.consent.body':

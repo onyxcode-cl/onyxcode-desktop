@@ -13,6 +13,9 @@ import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifa
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
 import { cleanChatDocuments, downloadChatDoc, generateChatDoc, type ChatDocInput } from '../extras/chat-docs'
+import { craftService } from '../office/craft/service'
+import { attachWeb, closeWeb, deactivateWeb, isWebActive, onWebEvent, openWebDoc } from '../office/craft/web-view'
+import { readFile } from 'node:fs/promises'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
 import {
   ensureAppOpencodeConfig,
@@ -107,6 +110,35 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'extras:transcribeAudio', (payload) => voiceWorker.transcribe(payload.samples))
   // Panel de documento de Chat: MISMA vista nativa que Tareas (un solo modo visible a la vez, sin conflicto).
   onViewerEvent((event) => broadcastExtras('extras:chatDoc:event', event))
+  onWebEvent((event) => broadcastExtras('extras:chatDoc:event', event))
+  // Último hueco que mandó el panel: se reaplica al cambiar de vista (la web de ArtCraft o el visor de siempre), porque el renderer
+  // solo vuelve a mandarlo si el hueco cambia.
+  let lastAttach: { win: Electron.BrowserWindow; rect: { x: number; y: number; width: number; height: number }; visible: boolean } | null =
+    null
+  const applyAttach = (): void => {
+    if (!lastAttach) return
+    attach(lastAttach.win, lastAttach.rect, lastAttach.visible && !isWebActive())
+    attachWeb(lastAttach.win, lastAttach.rect, lastAttach.visible)
+  }
+  /**
+   * Excel y PowerPoint con el programa de ArtCraft instalado: el panel muestra su versión WEB (mismo motor y misma pantalla que el
+   * programa de escritorio). Devuelve `false` si no está instalada o falla: entonces se usa el visor de siempre.
+   */
+  const openWithCraftWeb = async (kind: string, file: string, title: string): Promise<boolean> => {
+    const program = kind === 'xlsx' ? 'gridcraft' : kind === 'pptx' ? 'deckcraft' : null
+    const dir = program ? craftService().webDir(program) : null
+    if (!program || !dir) return false
+    try {
+      return await openWebDoc(
+        dir,
+        kind as 'xlsx' | 'pptx',
+        `${title.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 60) || 'documento'}.${kind}`,
+        await readFile(file)
+      )
+    } catch {
+      return false
+    }
+  }
   handle(ipcMain, 'extras:chatDoc:open', async (req) => {
     try {
       const { title, sessionId, lang, theme } = req
@@ -115,8 +147,14 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
       const doc = await generateChatDoc(input, title, sessionId)
+      if (input.kind !== 'pdf' && (await openWithCraftWeb(input.kind, doc.file, title))) {
+        applyAttach()
+        return { ok: true }
+      }
+      deactivateWeb()
       installViewerScheme()
       openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${doc.token}&kind=${doc.kind}&lang=${lang}&theme=${theme}`)
+      applyAttach()
       return { ok: true }
     } catch {
       return { ok: false, reason: 'failed' }
@@ -124,10 +162,14 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   })
   handle(ipcMain, 'extras:chatDoc:attach', ({ rect, visible }, event) => {
     const win = windowOfSender(event.sender) ?? deps.getMainWindow?.() ?? null
-    if (win) attach(win, rect, visible)
+    if (win) {
+      lastAttach = { win, rect, visible }
+      applyAttach()
+    }
   })
   handle(ipcMain, 'extras:chatDoc:close', ({ sessionId }) => {
     closeView()
+    closeWeb()
     void cleanChatDocuments(sessionId)
   })
   handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {

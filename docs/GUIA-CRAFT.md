@@ -121,3 +121,12 @@ Diferencias concretas:
 - No probado: Windows (el binario es solo macOS), modo Sandbox de Tareas y libros con más de unas pocas hojas.
 
 Dónde está: `resources/opencode/skills/_shared/render_grid.py` (búsqueda `LAZUNOX_GRIDCRAFT` → `$LAZUNOX_BIN_DIR/craft-*/*/gridcraft-cli` con su marca) y pruebas `_shared/tests/test_craft_grid.py` (con un `gridcraft-cli` falso; la real necesita `GRIDCRAFT_CLI=ruta`).
+
+## Vista en el panel con la versión web (rama de pruebas)
+
+El panel de documentos del Chat muestra Excel y PowerPoint con la versión **web** del propio programa (GridCraft y DeckCraft; WordCraft queda instalada pero el Chat aún no genera Word): el mismo motor y la misma pantalla que el programa de escritorio, con datos, fórmulas, gráficos y diseño reales y editable. Se descarga con el mismo botón de Ajustes (zips fijados en `pin.json › web`, tamaño exacto + SHA-256, sin enlaces simbólicos).
+
+- `src/main/office/craft/web-server.ts`: servidor HTTP solo en `127.0.0.1`, solo GET/HEAD, ruta contenida en la carpeta (sin `..` ni enlaces), cabecera `Host` exacta (contra DNS rebinding) y CSP que permite solo el script en línea de `index.html` por su hash y prohíbe cualquier conexión externa.
+- `src/main/office/craft/web-view.ts`: `WebContentsView` con partición propia en memoria, sin Node, sin preload, permisos y descargas denegados, y red cancelada salvo ese servidor. El archivo se entrega al motor desde el proceso principal simulando que se suelta en el lienzo (`DragEvent` con el archivo); el motor web no tiene una API de apertura.
+- Si la versión web no está instalada o falla, el panel usa la vista previa en PDF de GridCraft/DeckCraft y, si tampoco, el visor de siempre.
+- Lo que se descarga sigue siendo el archivo real. Pendiente: Word en el Chat, Windows real, y pasar `sandbox`/CSP por una revisión de seguridad formal antes de publicar.
