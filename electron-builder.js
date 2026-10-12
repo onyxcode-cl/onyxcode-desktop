@@ -83,6 +83,7 @@ module.exports = {
     // El agente de Windows vive FUERA de `agents/` (esa carpeta se copia entera a userData y su contenido está vigilado) y nunca va en el .asar ni en el paquete de macOS: con la función activa viaja por win.extraResources.
     '!resources/opencode/agents-win/**',
     '!resources/launcher/**',
+    '!resources/keybox/**',
     // Recursos del backend WSL de Tareas (F8-B81): NUNCA dentro del .asar; con la bandera activa viajan por win.extraResources.
     '!resources/wsl/**',
     // Imágenes de staging (scripts/stage-wsl-bundle.mjs): idem, jamás en el .asar.
@@ -162,6 +163,13 @@ module.exports = {
         to: 'launcher',
         filter: ['lazunox-disclaim']
       },
+      // Auxiliar del Llavero (resources/keybox): su identidad no cambia entre versiones, así que el Llavero no vuelve a preguntar tras cada
+      // actualización → Contents/Resources/keybox. El binario va en git a propósito (ver resources/keybox/build.sh).
+      {
+        from: 'resources/keybox',
+        to: 'keybox',
+        filter: ['lazunox-keybox']
+      },
       // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
       // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).
       {
@@ -207,6 +215,7 @@ module.exports = {
             'Contents/Resources/computer-use/bin/cu-helper',
             'Contents/Resources/computer-use/bin/cu-keys',
             'Contents/Resources/launcher/lazunox-disclaim',
+            'Contents/Resources/keybox/lazunox-keybox',
             'Contents/Resources/opencode/opencode'
           ]
         }

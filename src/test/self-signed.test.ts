@@ -41,8 +41,8 @@ describe('electron-builder.js y LAZUNOX_SELF_SIGNED', () => {
     expect(c.afterSign).toBe('build/notarize.js')
     expect(c.mac).toMatchObject({ hardenedRuntime: true, entitlements: 'build/entitlements.mac.plist' })
     expect(c.mac.identity).toBeUndefined()
-    // cu-helper, cu-keys, lazunox-disclaim y opencode
-    expect((c.mac.binaries as string[]).length).toBe(4)
+    // cu-helper, cu-keys, lazunox-disclaim, lazunox-keybox y opencode
+    expect((c.mac.binaries as string[]).length).toBe(5)
   })
   it('autofirmado: firma con CSC_NAME, sin hardened runtime y sin notarizar', () => {
     const c = config({
@@ -71,7 +71,8 @@ describe('after-sign-self-signed.js', () => {
       helperId: HELPER_ID,
       // `cu-keys` (teclado por teclas físicas) viaja junto a `cu-helper`: mismo prefijo de marca, su propio identificador.
       keysId: HELPER_ID.replace(/cu-helper$/, 'cu-keys'),
-      disclaimId: DISCLAIM_ID
+      disclaimId: DISCLAIM_ID,
+      keyboxId: `${APP_ID}.keybox`
     })
   })
 

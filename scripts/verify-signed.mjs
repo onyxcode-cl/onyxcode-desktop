@@ -23,7 +23,13 @@ export function idsFromBrand(root = defaultRoot) {
   const alias = /export const AUTHOR_ALIAS = '([^']*)'/.exec(src)?.[1]
   if (!alias) throw new Error('No se encontró AUTHOR_ALIAS en src/shared/brand.ts')
   const appId = `cl.${alias}.lazunox`
-  return { appId, helperId: `cl.${alias}.lazunox.cu-helper`, keysId: `cl.${alias}.lazunox.cu-keys`, disclaimId: `${appId}.disclaim` }
+  return {
+    appId,
+    helperId: `cl.${alias}.lazunox.cu-helper`,
+    keysId: `cl.${alias}.lazunox.cu-keys`,
+    disclaimId: `${appId}.disclaim`,
+    keyboxId: `${appId}.keybox`
+  }
 }
 
 const defaultRun = (cmd, args) => {
@@ -77,11 +83,14 @@ export function verifySigned({ app, dmg, expect, team, ids, run = defaultRun }) 
   }
 
   const keysRel = 'Contents/Resources/computer-use/bin/cu-keys'
+  const keyboxRel = 'Contents/Resources/keybox/lazunox-keybox'
   for (const [rel, id] of [
     ['Contents/Resources/computer-use/bin/cu-helper', ids.helperId],
     // cu-keys solo se comprueba si viaja en el paquete (se compila con swiftc: puede faltar en un build sin Xcode).
     ...(existsSync(join(app, keysRel)) ? [[keysRel, ids.keysId ?? ids.helperId.replace(/cu-helper$/, 'cu-keys')]] : []),
-    ['Contents/Resources/launcher/lazunox-disclaim', ids.disclaimId]
+    ['Contents/Resources/launcher/lazunox-disclaim', ids.disclaimId],
+    // El auxiliar del Llavero (resources/keybox) viaja en el paquete; su identificador fijo es su identidad ante el Llavero.
+    ...(existsSync(join(app, keyboxRel)) ? [[keyboxRel, ids.keyboxId ?? `${ids.appId}.keybox`]] : [])
   ]) {
     const h = parseCodesignInfo(text(run('/usr/bin/codesign', ['-dvv', join(app, rel)])))
     add(`Identifier de ${rel.split('/').pop()} = ${id}`, h.identifier === id, `es «${h.identifier}»`)

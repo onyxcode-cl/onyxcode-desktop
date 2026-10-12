@@ -4,11 +4,13 @@
  * puertos, sockets ni módulos nativos cargados.
  */
 import { app, powerSaveBlocker, safeStorage } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { capsFor } from '@shared/platform-caps'
 import { REMOTE_OFF_STATE, type RemotePolicyView, type RemoteState } from '@shared/ipc-remote'
 import { AUDIT_FILE, AuditLog } from './audit'
-import { DevicesStore, REMOTE_FILE, toDeviceInfo } from './devices-store'
+import { DevicesStore, REMOTE_FILE, toDeviceInfo, type SafeStorageLike } from './devices-store'
+import { KeyboxSafeStorage, makeKeyboxFetcher } from './keybox-storage'
 import { createKeepAwake, type KeepAwake } from './keep-awake'
 import { OrgRemotePolicy } from './org-policy'
 import { policyFile } from '../tasks/policy'
@@ -36,9 +38,20 @@ let booting: Promise<RemoteService> | null = null
 let lastMode: RemoteState['mode'] = 'off'
 const modeListeners = new Set<(mode: RemoteState['mode']) => void>()
 
+/**
+ * Cifrado del archivo de celulares. En macOS empaquetado, con el auxiliar `lazunox-keybox` (su identidad no cambia entre versiones, así que el
+ * Llavero no vuelve a preguntar tras cada actualización); si falta o rechaza, `safeStorage` de Electron como antes. Windows y desarrollo: `safeStorage`.
+ */
+function devicesSafeStorage(): SafeStorageLike {
+  if (process.platform !== 'darwin' || !app.isPackaged) return safeStorage
+  const helper = join(process.resourcesPath, 'keybox', 'lazunox-keybox')
+  if (!existsSync(helper)) return safeStorage
+  return new KeyboxSafeStorage(makeKeyboxFetcher(helper), safeStorage)
+}
+
 export function getDevicesStore(): DevicesStore {
   if (!devicesStore) {
-    devicesStore = new DevicesStore(join(app.getPath('userData'), REMOTE_FILE), safeStorage)
+    devicesStore = new DevicesStore(join(app.getPath('userData'), REMOTE_FILE), devicesSafeStorage())
     // Un vínculo del modo viaje solo vale para su túnel: tras una salida sin limpiar (caída de la app) no debe sobrevivir.
     try {
       devicesStore.revokeTravel()

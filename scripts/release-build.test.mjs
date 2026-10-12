@@ -145,7 +145,8 @@ test('A2 el gancho autofirmado conserva su contrato (resign con 4 args) y los id
     appId: 'cl.zz.lazunox',
     helperId: 'cl.zz.lazunox.cu-helper',
     keysId: 'cl.zz.lazunox.cu-keys',
-    disclaimId: 'cl.zz.lazunox.disclaim'
+    disclaimId: 'cl.zz.lazunox.disclaim',
+    keyboxId: 'cl.zz.lazunox.keybox'
   })
 })
 
