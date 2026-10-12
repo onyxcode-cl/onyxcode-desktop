@@ -16,6 +16,8 @@ import { join, sep } from 'node:path'
 import type { DocKind } from '@shared/doc-kind'
 import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
 import { convertToPdf } from './office-render'
+import { craftService } from '../office/craft/service'
+import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from './render-xlsx'
 import { issueToken } from '../viewer/tokens'
@@ -73,7 +75,11 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
   // `.pptx` real desde cero, siempre — lo que se descarga nunca es el PDF. Si no hay LibreOffice, o la
   // conversión falla por lo que sea, cae con gracia al `.pptx` de siempre (nunca rompe nada).
   if (input.kind === 'pptx') {
-    const pdfPath = await convertToPdf(target, dir).catch(() => null)
+    // Con DeckCraft instalado, el PDF de la vista previa sale de DeckCraft (rápido y sin LibreOffice); si no, LibreOffice como siempre.
+    const craft = craftBinary('deckcraft')
+    const pdfPath =
+      (craft ? await deckToPdf(craft, target, target.replace(/\.pptx$/, '.pdf')) : null) ??
+      (await convertToPdf(target, dir).catch(() => null))
     if (pdfPath) {
       const token = issueToken({ path: pdfPath, kind: 'pdf' })
       return { token, kind: 'pdf' }
@@ -82,6 +88,12 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
 
   const token = issueToken({ path: target, kind: input.kind })
   return { token, kind: input.kind }
+}
+
+/** Ruta de un programa de ArtCraft si está instalado (`null` si no, o si no es macOS). */
+function craftBinary(tool: 'deckcraft' | 'wordcraft'): string | null {
+  const st = craftService().status()
+  return st.state === 'installed' ? (st.bins[tool] ?? null) : null
 }
 
 async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> {
@@ -95,6 +107,15 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
     return renderXlsx(input.data)
   }
   if (!isPptxSpec(input.data)) throw new Error('Datos de PowerPoint inválidos.')
+  // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.
+  const craft = craftBinary('deckcraft')
+  if (craft) {
+    try {
+      return await renderChatDeck(craft, input.data)
+    } catch (e) {
+      console.warn('[chat-docs] DeckCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
+    }
+  }
   return renderPptx(input.data)
 }
 

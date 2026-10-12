@@ -15,6 +15,8 @@ vi.mock('electron', () => ({ app: { getPath: () => fakeTemp } }))
 // para que `generateChatDoc` sea determinista acá sin importar la máquina (ver `office-render.test.ts`
 // para las pruebas de `convertToPdf`/`findSoffice` en sí).
 const convertToPdfMock = vi.fn<(pptxPath: string, outDir: string) => Promise<string | null>>()
+// Sin DeckCraft instalado: estas pruebas son del generador de siempre (ArtCraft se prueba en `office/craft/chat-deck.test.ts`).
+vi.mock('../office/craft/service', () => ({ craftService: () => ({ status: () => ({ state: 'missing', version: '0', sizeBytes: 0 }) }) }))
 vi.mock('./office-render', () => ({ convertToPdf: (...args: [string, string]) => convertToPdfMock(...args) }))
 
 let chatDocs: typeof import('./chat-docs')

@@ -10,6 +10,9 @@
  * ni formatos de archivo en el JSON del modelo y todo texto tiene tope de largo.
  */
 
+import { BLUEG, DOTS, EDGE, MU, VI, VIL, WH, createKit, fitSize } from './deck-kit'
+export { fitSize }
+
 export type DeckSlide =
   | { type: 'cover'; title: string; subtitle?: string; note?: string; badge?: string }
   | { type: 'stat'; kicker?: string; title: string; stat: string; statLabel: string; items: DeckItem[] }
@@ -37,22 +40,6 @@ export interface DeckSpec {
 
 export const DECK_LIMITS = { slides: 30, text: 400, short: 80, items: 4 } as const
 const KINDS = ['cover', 'stat', 'timeline', 'grid', 'steps', 'compare', 'rows', 'quad', 'stats', 'closing'] as const
-
-const BG = '07070C'
-const EDGE = '25253A'
-const VI = '8B5CF6'
-const VIL = 'C4B5FD'
-const WH = 'F5F5FA'
-const MU = 'A1A1B5'
-const GLOW = '1F1640'
-const BLUEG = '0F1A3A'
-const DOTS = ['3B82F6', '22C55E', 'F59E0B', 'EC4899', '8B5CF6']
-
-/** Tamaño de letra que cabe: reduce `base` en proporción al largo cuando el texto pasa de `fits` caracteres (mínimo 55 % de `base`). */
-export function fitSize(text: string, base: number, fits: number): number {
-  if (text.length <= fits) return base
-  return Math.max(Math.round(base * 0.55), Math.floor((base * fits) / text.length))
-}
 
 /** Tamaño del título de portada: enorme si es una palabra corta; baja para que quepa en UNA línea (≈ 860 pt de ancho). */
 export function coverSize(title: string): number {
@@ -179,82 +166,7 @@ export function validateDeckSpec(input: unknown): DeckSpec {
 
 /** Genera los comandos `id={json}` para `deckcraft-cli run --cmd …`. */
 export function buildDeckCommands(spec: DeckSpec): string[] {
-  const c: string[] = []
-  const a = (id: string, params?: Record<string, unknown>): void => {
-    c.push(params ? `${id}=${JSON.stringify(params)}` : id)
-  }
-  const bgslide = (glows: [number, number, number, string][] = []): void => {
-    a('slide.new', { layout: 'blank' })
-    a('design.background', { color: '#' + BG })
-    for (const [x, y, d, col] of glows) {
-      a('shape.insert', { preset: 'ellipse', rect: [x, y, d, d] })
-      a('shape.fill', {
-        gradient: {
-          stops: [
-            [0, '#' + col],
-            [0.62, '#' + BG],
-            [1, '#' + BG]
-          ],
-          kind: 'radial'
-        }
-      })
-      a('shape.line', { none: true })
-    }
-  }
-  const rect = (x: number, y: number, w: number, h: number, col: string): void => {
-    a('shape.insert', { preset: 'rect', rect: [x, y, w, h] })
-    a('shape.fill', { color: '#' + col })
-    a('shape.line', { none: true })
-  }
-  const ring = (x: number, y: number, d: number, col: string): void => {
-    a('shape.insert', { preset: 'ellipse', rect: [x, y, d, d] })
-    a('shape.fill', { none: true })
-    a('shape.line', { color: '#' + col, width: 2 })
-  }
-  const dot = (x: number, y: number, d: number, col: string): void => {
-    a('shape.insert', { preset: 'ellipse', rect: [x, y, d, d] })
-    a('shape.fill', { color: '#' + col })
-    a('shape.line', { none: true })
-  }
-  const dotrow = (x: number, y: number, d: number, gap: number): void => DOTS.forEach((col, i) => dot(x + i * (d + gap), y, d, col))
-  const txt = (
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    t: string,
-    size: number,
-    color = WH,
-    bold = false,
-    align = 'left',
-    spacing?: number
-  ): void => {
-    a('insert.textBox', { rect: [x, y, w, h], text: t })
-    a('format.size', { size })
-    a('format.color', { color: '#' + color })
-    a('format.bold', { on: bold })
-    a('format.align', { align })
-    if (spacing !== undefined) a('format.spacing', { pt: spacing })
-  }
-  const pill = (x: number, y: number, w: number, h: number, t: string, size: number, fill?: string): void => {
-    a('shape.insert', { preset: 'roundRect', rect: [x, y, w, h], text: t })
-    if (fill) a('shape.fill', { color: '#' + fill })
-    else a('shape.fill', { none: true })
-    a('shape.line', { color: '#' + VI, width: 1.5 })
-    a('format.size', { size })
-    a('format.color', { color: '#' + WH })
-    a('format.bold', { on: true })
-    a('format.align', { align: 'center' })
-    a('format.anchor', { anchor: 'middle' })
-  }
-  const header = (n: number, title: string, kicker: string | undefined): void => {
-    bgslide([[680, -250, 500, GLOW]])
-    if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 13, VI, true, 'left', 3)
-    txt(60, 62, 840, 64, title, fitSize(title, 40, 36), WH, true, 'left', -1)
-    dotrow(60, 506, 8, 6)
-    txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, MU, false, 'right')
-  }
-
+  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, header } = createKit()
   a('file.new')
   // Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
   a('design.fonts', { major: 'Arial', minor: 'Arial' })
