@@ -187,6 +187,8 @@ def build_commands(slides):
         txt(820, 500, 80, 24, f"{n:02d}", 13, MU, False, "right")
 
     a("file.new")
+    # Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
+    a("design.fonts", {"major": "Arial", "minor": "Arial"})
     for idx, s in enumerate(slides):
         n, t = idx + 1, s["type"]
         if t == "cover":

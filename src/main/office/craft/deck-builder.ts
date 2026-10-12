@@ -256,6 +256,8 @@ export function buildDeckCommands(spec: DeckSpec): string[] {
   }
 
   a('file.new')
+  // Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
+  a('design.fonts', { major: 'Arial', minor: 'Arial' })
   spec.slides.forEach((s, idx) => {
     const n = idx + 1
     switch (s.type) {
