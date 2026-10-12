@@ -159,13 +159,19 @@ test('A2 el gancho autofirmado conserva su contrato (resign con 4 args) y los id
   })
 })
 
-test('A2 el afterSign de Developer ID usa los ids de brand.ts y los entitlements del repo', async () => {
-  const d = doubles()
-  await runAfterSign(ctx(), { ...d, env: { CSC_NAME: 'Dev' } })
-  const helper = d.calls.find((c) => c[0] === '/usr/bin/codesign' && c.at(-1).endsWith('/cu-helper'))
-  assert.match(helper[helper.indexOf('--identifier') + 1], /^cl\..+\.lazunox\.cu-helper$/)
-  assert.match(helper[helper.indexOf('--entitlements') + 1], /build\/entitlements\.mac\.plist$/)
-})
+test(
+  'A2 el afterSign de Developer ID usa los ids de brand.ts y los entitlements del repo',
+  {
+    skip: process.platform === 'win32' ? 'prueba del instalador/firma de macOS (shell POSIX y rutas con «/»): no aplica a Windows' : false
+  },
+  async () => {
+    const d = doubles()
+    await runAfterSign(ctx(), { ...d, env: { CSC_NAME: 'Dev' } })
+    const helper = d.calls.find((c) => c[0] === '/usr/bin/codesign' && c.at(-1).endsWith('/cu-helper'))
+    assert.match(helper[helper.indexOf('--identifier') + 1], /^cl\..+\.lazunox\.cu-helper$/)
+    assert.match(helper[helper.indexOf('--entitlements') + 1], /build\/entitlements\.mac\.plist$/)
+  }
+)
 
 // ---- A3: notarizar y grapar el .dmg --------------------------------------------------------------
 
