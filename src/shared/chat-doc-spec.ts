@@ -175,6 +175,9 @@ export interface PptxKpiSpec {
   delta?: string
 }
 
+/** Todas las claves de `o` están en `allowed` (las partes nuevas son estrictas: una clave de más haría que el esquema IPC rechace el documento entero). */
+const onlyKeys = (o: object, allowed: readonly string[]): boolean => Object.keys(o).every((k) => allowed.includes(k))
+
 /** Color en hex de 6 dígitos con `#` (p.ej. `"#1F3864"`). */
 const HEX_RE = /^#[0-9a-fA-F]{6}$/
 const isHex = (v: unknown): v is string => typeof v === 'string' && HEX_RE.test(v)
@@ -304,6 +307,7 @@ function isColumnFormats(v: unknown): v is (XlsxColumnFormat | null)[] {
 function isXlsxChart(v: unknown): v is XlsxChartSpec {
   if (!v || typeof v !== 'object') return false
   const c = v as XlsxChartSpec
+  if (!onlyKeys(c, ['type', 'range', 'title', 'at', 'width', 'height'])) return false
   if (!XLSX_CHART_TYPES.includes(c.type) || typeof c.range !== 'string' || !A1_RANGE.test(c.range)) return false
   if (c.title !== undefined && (typeof c.title !== 'string' || c.title.length > MAX_XLSX_CHART_TITLE_CHARS)) return false
   if (c.at !== undefined && (typeof c.at !== 'string' || !A1_CELL.test(c.at))) return false
@@ -377,6 +381,16 @@ const optFont = (v: unknown): boolean => v === undefined || (FREE_FONTS as reado
 function isFreeElement(v: unknown): v is PptxFreeElement {
   if (!v || typeof v !== 'object') return false
   const e = v as Record<string, unknown>
+  const common = ['type', 'x', 'y', 'w', 'h', 'text', 'size', 'color', 'bold', 'align', 'font']
+  if (
+    !onlyKeys(
+      e,
+      e.type === 'text'
+        ? [...common, 'italic', 'spacing']
+        : [...common, 'shape', 'fill', 'fillTo', 'angle', 'opacity', 'line', 'lineWidth', 'rotate']
+    )
+  )
+    return false
   if (!num(e.x, -200, 1160) || !num(e.y, -200, 740) || !num(e.w, 0, 1400) || !num(e.h, 0, 900)) return false
   if (e.size !== undefined && !num(e.size, 6, 260)) return false
   if (!optHex(e.color) || !optFont(e.font)) return false
@@ -398,6 +412,7 @@ function isFreeElement(v: unknown): v is PptxFreeElement {
 function isPalette(v: unknown): v is PptxPalette {
   if (!v || typeof v !== 'object') return false
   const p = v as Record<string, unknown>
+  if (!onlyKeys(p, ['bg', 'text', 'accent', 'muted', 'accent2', 'panel', 'edge'])) return false
   return isHex(p.bg) && isHex(p.text) && isHex(p.accent) && optHex(p.muted) && optHex(p.accent2) && optHex(p.panel) && optHex(p.edge)
 }
 
