@@ -15,9 +15,12 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.join(HERE, "..", "scripts")
 PY = os.environ.get("LAZUNOX_PYTHON") or sys.executable
-SOFFICE = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
+sys.path.insert(0, os.path.join(HERE, "..", "..", "_shared"))
+import render as _render  # noqa: E402  (busca WordCraft de ArtCraft)
 
 from docx import Document  # noqa: E402
+
+WORDCRAFT = _render.buscar_wordcraft() is not None
 
 
 def run(script, *args, ok=(0,)):
@@ -146,7 +149,7 @@ class TestDocx(unittest.TestCase):
     def test_04_check_con_render(self):
         cp = run("check_docx.py", self.out, "--outdir", os.path.join(TMP_CWD, "r"), ok=(0, 1))
         self.assertIn("Estructura:", cp.stdout)
-        if os.path.exists(SOFFICE) and os.path.isfile(os.path.join(SCRIPTS, "..", "..", "_shared", "render.py")):
+        if WORDCRAFT:
             self.assertIn("Render:", cp.stdout)
 
     def test_05_check_detecta_problemas(self):

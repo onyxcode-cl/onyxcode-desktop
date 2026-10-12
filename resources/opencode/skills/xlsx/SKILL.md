@@ -30,11 +30,11 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
    `add_column` no incluye la fila «Total». `{r}` = número de fila. Los estilos, anchos, otras hojas y gráficos existentes se conservan.
 
 ### Verificar (obligatorio antes de entregar)
-- `PY $S/recalc_check.py archivo.xlsx` → calcula las fórmulas con LibreOffice y lista valores, errores (#DIV/0!, #REF!, #NAME?, #VALUE!)
+- `PY $S/recalc_check.py archivo.xlsx` → calcula las fórmulas con GridCraft (ArtCraft) y lista valores, errores (#DIV/0!, #REF!, #NAME?, #VALUE!)
   y fórmulas que apuntan a celdas vacías. Salida 0 = bien. Revisa que los totales den lo esperado (calcúlalo tú aparte con los datos).
 - `PY $S/check_xlsx.py archivo.xlsx --render ./.lazunox/trabajo/render` → estructura, columnas estrechas (#####), números guardados
   como texto, y PNG por página; MIRA las imágenes (¿gráfico legible, títulos y ejes, nada cortado?).
-- Si LibreOffice no está instalado el script lo dice: entonces los valores NO están verificados y debes decirlo en «Para revisar».
+- Si GridCraft (ArtCraft) no está instalado el script lo dice: entonces los valores NO están verificados y debes decirlo en «Para revisar».
 - Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
 ## Esquema JSON de build_xlsx.py
@@ -79,10 +79,10 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 - Hoja `Resumen` primero cuando haya varias hojas.
 
 ## Limitaciones (dilas en «Para revisar» si afectan)
-- openpyxl NO calcula: los valores se verifican con LibreOffice (`recalc_check.py`); sin él quedan sin verificar y Excel los calculará al abrir.
+- openpyxl NO calcula: los valores se verifican con GridCraft (ArtCraft, `recalc_check.py`); sin él quedan sin verificar y Excel los calculará al abrir.
 - NO crea ni conserva bien: tablas dinámicas (pivot), segmentaciones, macros (.xlsm solo se conservan con `keep_vba`, no se crean),
   gráficos combinados/de dos ejes, minigráficos (sparklines), formato condicional con extensiones de Excel 2010+ (barras de datos avanzadas), vínculos externos.
   Al editar un libro con esos elementos el script avisa; si son críticos, no los edites: entrega un libro nuevo y explica.
 - Los gráficos se editan solo agregando nuevos; no se modifican los existentes (se pierden detalles finos de su formato al reescribir).
 - Archivos protegidos con contraseña o muy grandes (>100 000 filas) no están soportados.
-- Fórmulas dinámicas (FILTER, SORT, UNIQUE, XLOOKUP) pueden dar #NAME? en LibreOffice antiguo: verifica con valores.
+- Fórmulas dinámicas (FILTER, SORT, UNIQUE, XLOOKUP) pueden dar #NAME? en Excel antiguo: verifica con valores.

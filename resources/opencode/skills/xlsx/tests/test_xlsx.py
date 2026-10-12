@@ -16,7 +16,7 @@ SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "script
 sys.path.insert(0, SCRIPTS)
 import recalc_check  # noqa: E402
 
-HAS_LO = recalc_check.find_soffice() is not None
+HAS_GRID = recalc_check.render_grid.find_gridcraft() is not None  # GridCraft (ArtCraft) instalado: calcula los valores
 
 SPEC = {
     "sheets": [{
@@ -107,10 +107,11 @@ class TestXlsx(unittest.TestCase):
             self.skipTest("depende de test_1")
         code, out, err = run("recalc_check.py", self.book, "--json")
         res = json.loads(out)
-        if not HAS_LO:
-            self.assertFalse(res["libreoffice"])
+        if not HAS_GRID:
+            self.assertIsNone(res["motor"])
             self.assertTrue(res["avisos"])
-            return
+            self.skipTest("necesita GridCraft (ArtCraft) instalado para calcular los valores")
+        self.assertEqual(res["motor"], "gridcraft")
         self.assertEqual(code, 0, out)
         vals = {(v["hoja"], v["celda"]): v["valor"] for v in res["valores"]}
         self.assertEqual(vals[("Ventas", "D4")], 2000)
@@ -133,7 +134,7 @@ class TestXlsx(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertTrue(res["vacias"])
         self.assertTrue(res["sintaxis"])
-        if HAS_LO:
+        if HAS_GRID:
             self.assertTrue(any(e["celda"] == "C1" and e["valor"] == "#DIV/0!" for e in res["errores"]))
 
 

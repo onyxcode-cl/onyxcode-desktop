@@ -37,9 +37,9 @@ Si la persona no pide imágenes, gráficos ni una plantilla suya, crea la presen
 `python3 scripts/check_pptx.py informe.pptx --outdir .lazunox/trabajo/chk`
 - Revisa: abre, nº de diapositivas, texto que desborda (estimado), formas fuera del lienzo, diapositivas sin título,
   imágenes diminutas/de baja resolución. Código de salida 1 = hay PROBLEMAS: corrige todo de una vez (ver «Presupuesto de revisión») y repite.
-- Renderiza con LibreOffice y crea `.lazunox/trabajo/chk/miniaturas.png` (todas las diapositivas en una imagen):
+- Renderiza con DeckCraft (ArtCraft) y crea `.lazunox/trabajo/chk/miniaturas.png` (todas las diapositivas en una imagen):
   MÍRALA con la herramienta de imágenes y comprueba que nada se corta ni se superpone.
-- Si no hay LibreOffice avisa «solo hay verificación estructural»: dilo en «Para revisar».
+- Si no está DeckCraft (ArtCraft) avisa «solo hay verificación estructural»: dilo en «Para revisar».
 - Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
 ## 3. Entregar
@@ -108,8 +108,8 @@ python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx batch --ops ops.json   # [{"
 - No crea ni conserva garantizadamente: animaciones, transiciones, SmartArt, vídeo/audio, macros ni WordArt; al editar se mantienen
   si ya existían en el archivo, pero no se pueden crear ni modificar.
 - Duplicar una diapositiva NO copia los gráficos (se avisa; recréalos con `build_pptx.py`); las imágenes y el texto sí.
-- La detección de desborde es una ESTIMACIÓN; el render con LibreOffice puede diferir de PowerPoint (fuentes: se usa Calibri,
-  que en LibreOffice se sustituye por Carlito). Si no hay LibreOffice no hay miniaturas.
+- La detección de desborde es una ESTIMACIÓN; el render de DeckCraft puede diferir de PowerPoint en fuentes y saltos de línea.
+  Si no está DeckCraft no hay miniaturas.
 - Las diapositivas se generan desde cero con tema propio; no aplica plantillas corporativas `.potx` (para eso edita una copia del archivo con la plantilla).
 - Los gráficos son nativos y editables, pero con estilos básicos (sin ejes secundarios, gráficos combinados ni 3D).
 - Si el usuario pide cambiar el aspecto de un archivo existente complejo, mejor pide confirmación y edita solo lo pedido.

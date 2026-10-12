@@ -89,8 +89,8 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
 
 - **Flujo de toda skill: crear o editar → verificar → entregar.** Verifica SIEMPRE con el script `check_*` de la
   skill. Si genera imágenes de página o miniaturas, **míralas** (herramienta `read` sobre el PNG, si tu modelo ve
-  imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si no hay
-  LibreOffice no se puede renderizar: dilo en **Para revisar** («no se pudo comprobar el aspecto visual»).
+  imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si no está
+  ArtCraft no se puede renderizar: dilo en **Para revisar** («no se pudo comprobar el aspecto visual»).
 - **Editar un archivo que ya existe** = crear una COPIA nueva (`-v2`, `-revisado`) con los scripts de edición de
   la skill; jamás sobrescribas el original del usuario.
 - **Markdown (`.md`) y CSV (`.csv`, UTF-8, separador `,`)**: directo con la herramienta de escritura.

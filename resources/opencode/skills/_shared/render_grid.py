@@ -8,10 +8,8 @@ Dos usos, sin shell, con tope de tiempo y con carpetas de datos propias (no toca
   (pypdfium2, como render.py).
 
 Si GridCraft no está, falla, o no da un resultado fiable (fórmulas que derraman «spill», funciones de Excel 2010+ sin
-prefijo `_xlfn.`, o #NAME? con una función que GridCraft conoce pero no calcula), devuelve None y el llamador usa
-LibreOffice. Nunca escribe junto al libro original: todo sale a una carpeta temporal o a `outdir`.
-
-Lo que cubre y lo que no frente a LibreOffice: docs/GUIA-CRAFT.md, sección «GridCraft: lo que cubre y lo que no».
+prefijo `_xlfn.`, o #NAME? con una función que GridCraft conoce pero no calcula), devuelve None y el llamador lo dice
+en sus avisos (no hay valores verificados). Nunca escribe junto al libro original: todo sale a una carpeta temporal o a `outdir`.
 """
 from __future__ import annotations
 
@@ -94,7 +92,7 @@ def _valor(celda, catalogo, formula):
     """(valor, es_error) de una celda del JSON de GridCraft. NoFiable si el tipo o el error no se reconoce.
 
     #NAME? solo es fiable si la función no existe en el catálogo de GridCraft: si existe y no se calculó, puede ser
-    una función que GridCraft no implementa y Excel sí, así que se usa LibreOffice."""
+    una función que GridCraft no implementa y Excel sí, así que no se da por bueno."""
     v = celda.get("value") or {}
     t, x = v.get("t"), v.get("v")
     if t == "Error":
@@ -159,10 +157,10 @@ def recalc(xlsx_path, avisos=None):
                 "errores": errores, "valores": valores}
     except NoFiable as e:
         if avisos is not None:
-            avisos.append("GridCraft no sirve para este libro (%s); se usa LibreOffice." % e)
+            avisos.append("GridCraft no sirve para este libro (%s): no se calcularon los valores." % e)
     except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, AttributeError) as e:
         if avisos is not None:
-            avisos.append("GridCraft no pudo recalcular (%s); se usa LibreOffice." % e)
+            avisos.append("GridCraft no pudo recalcular (%s): no se calcularon los valores." % e)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return None
@@ -200,9 +198,9 @@ def render_xlsx(xlsx_path, outdir, max_pages=20, dpi=110, avisos=None):
         if total > max_pages and avisos is not None:
             avisos.append("el documento tiene %d páginas; solo se rasterizaron las primeras %d." % (total, max_pages))
         return pngs, total
-    except Exception as e:  # noqa: BLE001 - PDF dañado, pypdfium2 ausente, etc.: siempre se cae a LibreOffice
+    except Exception as e:  # noqa: BLE001 - PDF dañado, pypdfium2 ausente, etc.: no se puede dibujar
         if avisos is not None:
-            avisos.append("GridCraft no pudo dibujar el libro (%s); se usa LibreOffice." % e)
+            avisos.append("GridCraft no pudo dibujar el libro (%s): solo verificación estructural." % e)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return None

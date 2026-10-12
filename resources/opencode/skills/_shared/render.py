@@ -1,39 +1,25 @@
 #!/usr/bin/env python3
-"""Renderiza un documento (docx/xlsx/pptx/pdf) a PNG por página. Imprime solo JSON."""
+"""Renderiza un documento a PNG por página. Imprime solo JSON.
+
+pptx → DeckCraft, docx → WordCraft, xlsx → GridCraft (programas de ArtCraft, que instala la app); pdf → pypdfium2.
+"""
 from __future__ import annotations
 
 import argparse
 import glob
 import json
 import os
-import pathlib
 import shutil
 import subprocess
 import sys
 import tempfile
 
-OFFICE = {".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt", ".odt", ".ods", ".odp"}
-SOFFICE_MAC = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
+AVISO_SIN_ARTCRAFT = ("El diseñador de documentos (ArtCraft) no está instalado: se hace solo la verificación estructural. "
+                      "Díselo a la persona: se instala desde Ajustes › Tareas › Componentes opcionales.")
 
 
 def _ejecutable(ruta):
     return bool(ruta) and os.path.isfile(ruta) and os.access(ruta, os.X_OK)
-
-
-def buscar_soffice():
-    """LibreOffice, por orden: el que fijó la app (LAZUNOX_SOFFICE) → el que la app instaló bajo demanda en su carpeta de binarios
-    (LAZUNOX_BIN_DIR/libreoffice-*/, sirve aunque se instale con la app ya abierta) → /Applications → el PATH."""
-    ruta = os.environ.get("LAZUNOX_SOFFICE")
-    if _ejecutable(ruta):
-        return ruta
-    base = os.environ.get("LAZUNOX_BIN_DIR")
-    if base:
-        for cand in sorted(glob.glob(os.path.join(base, "libreoffice-*", "LibreOffice.app", "Contents", "MacOS", "soffice")), reverse=True):
-            if _ejecutable(cand):
-                return cand
-    if _ejecutable(SOFFICE_MAC):
-        return SOFFICE_MAC
-    return shutil.which("soffice")
 
 
 def exe_name(nombre):
@@ -92,21 +78,22 @@ def _craft_run(args, timeout=90):
 
 
 def render_craft(origen, ext, outdir, max_pages, avisos):
-    """PNG por página con ArtCraft (más rápido y ligero que LibreOffice, y no necesita instalarlo): .pptx con DeckCraft y .docx con
-    WordCraft. Devuelve la lista de PNG o None (con un aviso) si no está o falla; entonces se intenta LibreOffice."""
+    """PNG por página con ArtCraft: .pptx con DeckCraft y .docx con WordCraft. Devuelve (pngs, total) o None (con un aviso)."""
     base = os.path.splitext(os.path.basename(origen))[0]
+    exe = buscar_deckcraft() if ext == ".pptx" else buscar_wordcraft()
+    if not exe:
+        avisos.append(AVISO_SIN_ARTCRAFT)
+        return None
     pngs = []
     try:
         if ext == ".pptx":
-            exe = buscar_deckcraft()
-            if not exe:
-                return None
             tmp = tempfile.mkdtemp(prefix="lazunox-craft-png-")
             try:
                 r = _craft_run([exe, "render", origen, "--all", os.path.join(tmp, "s")])
                 lista = sorted(glob.glob(os.path.join(tmp, "s", "slide-*.png")))
                 if r.returncode != 0 or not lista:
-                    avisos.append("DeckCraft no pudo renderizar el archivo; se intenta con LibreOffice. %s" % (r.stderr or "").strip()[:200])
+                    avisos.append("DeckCraft no pudo renderizar el archivo: solo verificación estructural. %s"
+                                  % (r.stderr or "").strip()[:200])
                     return None
                 for i, f in enumerate(lista[:max_pages]):
                     ruta = os.path.join(outdir, "%s-p%02d.png" % (base, i + 1))
@@ -115,76 +102,28 @@ def render_craft(origen, ext, outdir, max_pages, avisos):
                 return pngs, len(lista)
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
-        if ext == ".docx":
-            exe = buscar_wordcraft()
-            if not exe:
+        r = _craft_run([exe, "info", origen])
+        try:
+            total = int(json.loads(r.stdout)["pages"])
+        except (ValueError, KeyError, TypeError):
+            avisos.append("WordCraft no pudo leer el documento: solo verificación estructural. %s" % (r.stderr or "").strip()[:200])
+            return None
+        for i in range(1, min(total, max_pages) + 1):  # WordCraft numera las páginas desde 1
+            ruta = os.path.join(outdir, "%s-p%02d.png" % (base, i))
+            r = _craft_run([exe, "render", origen, ruta, "--page", str(i)])
+            if r.returncode != 0 or not os.path.isfile(ruta):
+                avisos.append("WordCraft no pudo dibujar la página %d: solo verificación estructural." % i)
                 return None
-            r = _craft_run([exe, "info", origen])
-            try:
-                total = int(json.loads(r.stdout)["pages"])
-            except (ValueError, KeyError, TypeError):
-                avisos.append("WordCraft no pudo leer el documento; se intenta con LibreOffice. %s" % (r.stderr or "").strip()[:200])
-                return None
-            for i in range(1, min(total, max_pages) + 1):  # WordCraft numera las páginas desde 1
-                ruta = os.path.join(outdir, "%s-p%02d.png" % (base, i))
-                r = _craft_run([exe, "render", origen, ruta, "--page", str(i)])
-                if r.returncode != 0 or not os.path.isfile(ruta):
-                    avisos.append("WordCraft no pudo dibujar la página %d; se intenta con LibreOffice." % i)
-                    return None
-                pngs.append(ruta)
-            return pngs, total
+            pngs.append(ruta)
+        return pngs, total
     except (OSError, subprocess.TimeoutExpired) as e:
-        avisos.append("No se pudo usar ArtCraft para revisar (%s); se intenta con LibreOffice." % e)
+        avisos.append("No se pudo usar ArtCraft para revisar (%s): solo verificación estructural." % e)
     return None
 
 
 def salida(res, codigo):
     print(json.dumps(res, ensure_ascii=False))
     sys.exit(codigo)
-
-
-def en_sandbox():
-    """¿Corre dentro del Sandbox de Tareas? Ahí LibreOffice no puede arrancar (aborta y macOS muestra un aviso de problema)."""
-    return os.environ.get("LAZUNOX_SANDBOX") == "1"
-
-
-def a_pdf(origen, outdir, avisos):
-    if en_sandbox():
-        avisos.append("LibreOffice no puede ejecutarse en modo Sandbox, así que no se renderiza ni se recalcula. Haz solo la "
-                      "verificación estructural y dilo en «Para revisar» (con Control total del Mac sí se puede revisar visualmente).")
-        return None
-    soffice = buscar_soffice()
-    if not soffice:
-        avisos.append("LibreOffice no está instalado: no se puede renderizar este archivo de Office. Haz solo la verificación "
-                      "estructural y dile al usuario que puede instalarlo (unos 300 MB, con su permiso) en Ajustes › Componentes opcionales "
-                      "para poder revisar el resultado visualmente.")
-        return None
-    os.makedirs(outdir, exist_ok=True)
-    # El perfil de LibreOffice va en una carpeta TEMPORAL (no en la del usuario: no deja «.lo-profile» ni rastros) y como URL
-    # file:// absoluta y bien escapada: con un espacio en la ruta (p. ej. «Application Support») o una ruta relativa
-    # LibreOffice aborta con -6, así que se construye con as_uri().
-    tmp = tempfile.mkdtemp(prefix="lazunox-lo-")
-    try:
-        perfil = pathlib.Path(tmp, "perfil").resolve().as_uri()
-        cmd = [soffice, "-env:UserInstallation=" + perfil, "--headless", "--norestore",
-               "--convert-to", "pdf", "--outdir", outdir, origen]
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        except subprocess.TimeoutExpired:
-            avisos.append("LibreOffice superó el tiempo límite de 120 s al convertir a PDF.")
-            return None
-        except OSError as e:
-            avisos.append("No se pudo ejecutar LibreOffice: %s" % e)
-            return None
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
-    pdf = os.path.join(outdir, os.path.splitext(os.path.basename(origen))[0] + ".pdf")
-    if not os.path.isfile(pdf):
-        avisos.append("LibreOffice no generó el PDF (código %s). %s Si trabajas en modo Sandbox, LibreOffice no puede "
-                      "ejecutarse ahí: haz solo la verificación estructural y dilo en «Para revisar»."
-                      % (r.returncode, (r.stderr or "").strip()[:300]))
-        return None
-    return pdf
 
 
 def main():
@@ -199,7 +138,7 @@ def main():
         sys.exit(2 if e.code not in (0, None) else 0)
 
     avisos = []
-    res = {"ok": False, "pdf": None, "pngs": [], "paginas": 0, "avisos": avisos}
+    res = {"ok": False, "motor": None, "pdf": None, "pngs": [], "paginas": 0, "avisos": avisos}
     if not os.path.isfile(a.archivo):
         avisos.append("el archivo no existe: %s" % a.archivo)
         salida(res, 1)
@@ -213,29 +152,29 @@ def main():
 
     if ext in (".pptx", ".docx"):
         hecho = render_craft(origen, ext, outdir, a.max_pages, avisos)
-        if hecho:
-            res["pngs"], res["paginas"] = hecho
-            res["motor"] = "artcraft"
-            if res["paginas"] > a.max_pages:
-                avisos.append("el documento tiene %d páginas; solo se rasterizaron las primeras %d." % (res["paginas"], a.max_pages))
-            res["ok"] = True
-            salida(res, 0)
-    if ext == ".xlsx":  # GridCraft (sin LibreOffice); si no está o falla, sigue con LibreOffice
+        if not hecho:
+            salida(res, 1)
+        res["pngs"], res["paginas"] = hecho
+        res["motor"] = "artcraft"
+        if res["paginas"] > a.max_pages:
+            avisos.append("el documento tiene %d páginas; solo se rasterizaron las primeras %d." % (res["paginas"], a.max_pages))
+        res["ok"] = True
+        salida(res, 0)
+    if ext == ".xlsx":  # GridCraft (ArtCraft)
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import render_grid
+        if not buscar_gridcraft():
+            avisos.append(AVISO_SIN_ARTCRAFT)
+            salida(res, 1)
         hecho = render_grid.render_xlsx(origen, outdir, a.max_pages, a.dpi, avisos)
-        if hecho:
-            res.update(ok=True, pngs=hecho[0], paginas=hecho[1], motor="gridcraft")
-            salida(res, 0)
-    if ext == ".pdf":
-        pdf = origen
-    elif ext in OFFICE:
-        pdf = a_pdf(origen, outdir, avisos)
-    else:
+        if not hecho:
+            salida(res, 1)
+        res.update(ok=True, pngs=hecho[0], paginas=hecho[1], motor="gridcraft")
+        salida(res, 0)
+    if ext != ".pdf":
         avisos.append("formato no soportado: %s (usa docx, xlsx, pptx o pdf)" % ext)
-        pdf = None
-    if not pdf:
         salida(res, 1)
+    pdf = origen
     res["pdf"] = pdf
 
     try:

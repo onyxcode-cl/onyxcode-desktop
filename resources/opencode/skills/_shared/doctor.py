@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-"""Diagnóstico del entorno: Python, librerías permitidas y LibreOffice. Imprime JSON."""
+"""Diagnóstico del entorno: Python, librerías permitidas y programas de ArtCraft (DeckCraft, WordCraft, GridCraft). Imprime JSON."""
 from __future__ import annotations
 
 import importlib
 import json
 import os
-import shutil
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import render  # noqa: E402  (misma carpeta: comparte la búsqueda de LibreOffice)
+import render  # noqa: E402  (misma carpeta: comparte la búsqueda de los programas de ArtCraft)
 
 LIBS = [("python-docx", "docx"), ("openpyxl", "openpyxl"), ("python-pptx", "pptx"), ("pypdf", "pypdf"),
         ("pdfplumber", "pdfplumber"), ("reportlab", "reportlab"), ("pypdfium2", "pypdfium2"),
         ("pillow", "PIL"), ("lxml", "lxml")]
 IMPRESCINDIBLES = {"python-docx", "openpyxl", "python-pptx", "pypdf", "pypdfium2", "pillow"}
-SOFFICE_MAC = "/Applications/LibreOffice.app/Contents/MacOS/soffice"
 
 
 def version_de(mod):
@@ -40,26 +37,19 @@ def main():
             libs[nombre] = version_de(importlib.import_module(modulo))
         except Exception:
             libs[nombre] = None
-    if libs.get("pillow") is None:
-        pass
-    soffice = render.buscar_soffice()
-    lo_version = None
-    if soffice:
-        try:
-            lo_version = subprocess.run([soffice, "--version"], capture_output=True, text=True,
-                                        timeout=60).stdout.strip() or None
-        except Exception:
-            lo_version = None
     faltan = [n for n, v in libs.items() if v is None and n in IMPRESCINDIBLES]
     avisos = []
-    deck, word = render.buscar_deckcraft(), render.buscar_wordcraft()
-    if not soffice and not (deck and word):
-        avisos.append("Ni LibreOffice ni ArtCraft encontrados: no habrá render visual (solo verificación estructural).")
+    deck, word, grid = render.buscar_deckcraft(), render.buscar_wordcraft(), render.buscar_gridcraft()
+    sin = [n for n, ruta in (("DeckCraft (.pptx)", deck), ("WordCraft (.docx)", word), ("GridCraft (.xlsx)", grid)) if not ruta]
+    if len(sin) == 3:
+        avisos.append(render.AVISO_SIN_ARTCRAFT)
+    elif sin:
+        avisos.append("ArtCraft no encontrado para: " + ", ".join(sin) + " (sin ese programa solo hay verificación estructural).")
     opcionales = [n for n, v in libs.items() if v is None and n not in IMPRESCINDIBLES]
     if opcionales:
         avisos.append("faltan librerías opcionales: " + ", ".join(opcionales))
     res = {"python": "%s (%s)" % (sys.version.split()[0], sys.executable), "librerias": libs,
-           "libreoffice": soffice, "libreoffice_version": lo_version, "deckcraft": deck, "wordcraft": word, "faltan": faltan, "avisos": avisos}
+           "deckcraft": deck, "wordcraft": word, "gridcraft": grid, "faltan": faltan, "avisos": avisos}
     print(json.dumps(res, ensure_ascii=False))
     sys.exit(0 if not faltan and sys.version_info >= (3, 9) else 1)
 

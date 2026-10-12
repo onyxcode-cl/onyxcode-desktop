@@ -1,4 +1,4 @@
-"""`render.py` con ArtCraft (DeckCraft/WordCraft) falsos: sin LibreOffice, con prioridad, con fallos y sin los programas.
+"""`render.py` con ArtCraft (DeckCraft/WordCraft/GridCraft) falsos: con prioridad, con fallos y sin los programas.
 
 Ejecutar:  $LAZUNOX_PYTHON tests/test_craft_render.py
 """
@@ -60,7 +60,7 @@ class CraftRender(unittest.TestCase):
         for f in (self.pptx, self.docx):
             open(f, "w").write("x")
 
-    def test_pptx_con_deckcraft_sin_libreoffice(self):
+    def test_pptx_con_deckcraft(self):
         code, res = run(self.pptx, os.path.join(self.d, "o1"), {"LAZUNOX_BIN_DIR": self.bin})
         self.assertEqual(code, 0, res)
         self.assertEqual((res["ok"], res["paginas"], res["motor"]), (True, 3, "artcraft"))
@@ -81,14 +81,35 @@ class CraftRender(unittest.TestCase):
     def test_sin_marca_de_instalacion_completa_no_se_usa(self):
         os.remove(os.path.join(self.bin, "craft-0.5.0", "installed-wordcraft.json"))
         code, res = run(self.docx, os.path.join(self.d, "o4"), {"LAZUNOX_BIN_DIR": self.bin})
-        self.assertEqual(code, 1)  # sin ArtCraft ni LibreOffice: no hay render
+        self.assertEqual(code, 1)  # sin ArtCraft: no hay render
         self.assertFalse(res["ok"])
+        self.assertIsNone(res["motor"])
+        self.assertIn(R.AVISO_SIN_ARTCRAFT, res["avisos"])
 
-    def test_si_el_programa_falla_se_avisa_y_se_cae_a_libreoffice(self):
+    def test_si_el_programa_falla_se_avisa_y_no_hay_render(self):
         fake(os.path.join(self.bin, "craft-0.5.0", "deck", "deckcraft-cli"), "#!/bin/sh\nexit 1\n")
         code, res = run(self.pptx, os.path.join(self.d, "o5"), {"LAZUNOX_BIN_DIR": self.bin})
+        self.assertEqual(code, 1)
         self.assertFalse(res["ok"])
         self.assertTrue(any("DeckCraft no pudo" in a for a in res["avisos"]), res["avisos"])
+
+    def test_sin_artcraft_aviso_accionable_para_cada_formato(self):
+        vacio = os.path.join(self.d, "vacio")
+        os.makedirs(vacio)
+        xlsx = os.path.join(self.d, "c.xlsx")
+        open(xlsx, "w").write("x")
+        for archivo in (self.pptx, self.docx, xlsx):
+            code, res = run(archivo, os.path.join(self.d, "sin-" + os.path.basename(archivo)), {"LAZUNOX_BIN_DIR": vacio})
+            self.assertEqual(code, 1, archivo)
+            self.assertEqual(res["avisos"], [R.AVISO_SIN_ARTCRAFT], archivo)
+        self.assertIn("Componentes opcionales", R.AVISO_SIN_ARTCRAFT)
+
+    def test_formato_sin_soporte(self):
+        doc = os.path.join(self.d, "viejo.doc")
+        open(doc, "w").write("x")
+        code, res = run(doc, os.path.join(self.d, "o6"), {"LAZUNOX_BIN_DIR": self.bin})
+        self.assertEqual(code, 1)
+        self.assertTrue(any("formato no soportado" in a for a in res["avisos"]), res["avisos"])
 
 
 class CraftWindows(unittest.TestCase):
