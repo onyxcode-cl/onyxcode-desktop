@@ -19,12 +19,15 @@ Lazunox es un cliente de escritorio para macOS, de código abierto, que usa el s
 
 Gratis y sin administrador. Guía completa, con todos los avisos y qué hacer: [`docs/INSTALAR.md`](./docs/INSTALAR.md).
 
-**Descargar el instalador** (de la página de [Releases](https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest)):
+Descarga el instalador de la página de [Releases](https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest):
 
 - **Mac con chip Apple:** `lazunox-X.Y.Z-arm64.dmg`. Ábrelo, arrastra Lazunox a Aplicaciones y ábrela. macOS dirá que no puede verificarla: pulsa **Hecho** y ve a **Ajustes del Sistema › Privacidad y seguridad › Abrir de todos modos** (solo la primera vez).
 - **Windows 10/11 de 64 bits:** `Lazunox-Setup-X.Y.Z-x64.exe`. Si sale «Windows protegió su PC»: **Más información › Ejecutar de todas formas** (solo la primera vez).
 
-**O con un comando, sin avisos** (descargan las releases de GitHub, verifican el hash SHA-256 y no desactivan ninguna protección del sistema):
+<details>
+<summary>Para quien usa la terminal: instalar con un comando, sin avisos</summary>
+
+Descargan las releases de GitHub, verifican el hash SHA-256 y no desactivan ninguna protección del sistema.
 
 ```sh
 # Mac con chip Apple
@@ -35,6 +38,8 @@ curl -fsSL https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/s
 # Windows 10/11 de 64 bits (PowerShell normal, no como administrador)
 irm https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.ps1 | iex
 ```
+
+</details>
 
 El instalador de Windows no está firmado y el DMG de Mac no está notarizado (no hay certificados de pago): ver los avisos en
 `docs/INSTALAR.md`. Qué cambió en cada versión: [`CHANGELOG.md`](./CHANGELOG.md); qué está verificado y qué no:

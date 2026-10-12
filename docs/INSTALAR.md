@@ -1,6 +1,6 @@
 # Instalar Lazunox
 
-**Mac con chip Apple** (M1 o posterior; no funciona en Mac con Intel) **o Windows 10/11 de 64 bits** (más abajo). En cada sistema hay dos vías: **descargar el instalador** (macOS o Windows muestran un aviso de seguridad que se pasa con un par de clics) o **pegar un comando** de una línea (sin avisos).
+**Mac con chip Apple** (M1 o posterior; no funciona en Mac con Intel) **o Windows 10/11 de 64 bits** (más abajo). La vía normal es **descargar el instalador** (macOS o Windows muestran un aviso de seguridad que se pasa con un par de clics). Quien sabe usar la terminal tiene además una vía de **un comando**, sin avisos.
 
 Lazunox va firmada con un certificado propio (autofirmado), no con un Developer ID de Apple, y no está notarizada. Por eso
 macOS puede mostrar un aviso la primera vez. No es un fallo: es lo esperado, y abajo se explica cómo comprobar que la app es la auténtica.
@@ -20,7 +20,7 @@ macOS puede mostrar un aviso la primera vez. No es un fallo: es lo esperado, y a
 
    debe mostrar `identifier "cl.bentec.lazunox"` y `certificate leaf = H"8446c25f2c710d66701c262f048390d8f6edba31"`. Si el hash es otro, no abras la app.
 
-## Vía 2: línea de comando (sin avisos)
+## Vía 2: línea de comando (para quien usa la terminal, sin avisos)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.sh | sh
@@ -84,7 +84,7 @@ puede mostrar «Windows protegió su PC». No es un fallo. Se puede pasar con do
 
 **Al publicar:** `SHA256SUMS` de la release debe incluir también la línea del instalador de Windows (lo hace `scripts/publish-github.mjs`), si no el script de PowerShell se niega a instalar.
 
-## Vía 2: PowerShell (sin avisos)
+## Vía 2: PowerShell (para quien usa la terminal, sin avisos)
 
 Abre PowerShell normal (NO «Ejecutar como administrador») y pega:
 
