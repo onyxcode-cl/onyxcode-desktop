@@ -55,7 +55,17 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
   const list = (items: string[], x: number, y: number, w: number, max: number, gap: number, size: number): void => {
     items.slice(0, max).forEach((t, i) => {
       dot(x, y + i * gap + 8, 12, DOTS[i % DOTS.length])
-      txt(x + 28, y + i * gap, w - 28, gap, t, fitSize(t, size, Math.floor(w / (size * 0.52))), WH, false)
+      // El texto puede ocupar dos líneas: se achica solo si es muy largo y nunca por debajo del 75 % del tamaño base.
+      txt(
+        x + 28,
+        y + i * gap,
+        w - 28,
+        gap,
+        t,
+        Math.max(fitSize(t, size, Math.floor((w / (size * 0.52)) * 2)), Math.round(size * 0.75)),
+        WH,
+        false
+      )
     })
   }
 
@@ -113,8 +123,9 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         const k = Math.max(items.length, 1)
         const w = Math.floor(840 / k)
         rect(60, 286, 840, 2, EDGE)
-        // Un solo tamaño para todos los pasos: el del texto más largo.
-        const size = Math.min(22, ...items.map((t) => fitSize(t, 22, Math.floor(((w - 16) / 12) * 2))))
+        // Un solo tamaño para todos los pasos, según el texto más largo (la caja deja sitio para 5 líneas).
+        const longest = Math.max(0, ...items.map((t) => t.length))
+        const size = longest <= 60 ? 18 : longest <= 100 ? 16 : 14
         items.forEach((t, i) => {
           const x = 60 + i * w
           txt(x - 4, 160, w, 100, String(i + 1).padStart(2, '0'), 72, DOTS[i % DOTS.length], true, 'left', -2)
