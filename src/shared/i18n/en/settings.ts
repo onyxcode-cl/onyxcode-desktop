@@ -243,11 +243,12 @@ export const settings = {
   'settings.office.error.generic': 'LibreOffice could not be installed. Try again.',
   // Premium-design presentations (DeckCraft, optional, on demand)
   'settings.craft.name': 'Premium-design presentations and documents',
-  'settings.craft.desc': 'Lets the agent create PowerPoint presentations and Word documents with a polished design, in seconds.',
+  'settings.craft.desc':
+    'Lets the agent create PowerPoint presentations, Word documents and Excel spreadsheets with a polished design, in seconds.',
   'settings.craft.install': 'Install (≈ {mb} MB)',
   'settings.craft.consent.title': 'Install premium-design presentations and documents?',
   'settings.craft.consent.body':
-    'DeckCraft and WordCraft (≈ {mb} MB), open-source programs, will be downloaded from their official GitHub pages. Before use, the app checks they are the exact expected files and that they are signed by their developer on Apple. No administrator password is needed.',
+    'DeckCraft, WordCraft and GridCraft (Excel) (≈ {mb} MB), open-source programs, will be downloaded from their official GitHub pages. Before use, the app checks they are the exact expected files (size and SHA-256) and, on Mac, that they are signed by their developer on Apple. No administrator password is needed.',
   'settings.craft.consent.confirm': 'Install',
   'settings.craft.installed': 'Installed · version {version}',
   'settings.craft.error.generic': 'Could not install. Try again.',

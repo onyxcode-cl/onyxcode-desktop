@@ -242,11 +242,12 @@ export const settings = {
   'settings.office.error.generic': 'No se pudo instalar LibreOffice. Inténtalo de nuevo.',
   // Presentaciones con diseño premium (DeckCraft, opcional, bajo demanda)
   'settings.craft.name': 'Presentaciones y documentos con diseño premium',
-  'settings.craft.desc': 'Permite al agente crear presentaciones de PowerPoint y documentos de Word con un diseño cuidado, en segundos.',
+  'settings.craft.desc':
+    'Permite al agente crear presentaciones de PowerPoint, documentos de Word y hojas de Excel con un diseño cuidado, en segundos.',
   'settings.craft.install': 'Instalar (≈ {mb} MB)',
   'settings.craft.consent.title': '¿Instalar las presentaciones y documentos con diseño premium?',
   'settings.craft.consent.body':
-    'Se descargarán DeckCraft y WordCraft (≈ {mb} MB), programas de código abierto, desde su página oficial de GitHub. Antes de usarlos se comprueba que son los archivos exactos esperados y que están firmados por su desarrollador en Apple. No pide contraseña de administrador.',
+    'Se descargarán DeckCraft, WordCraft y GridCraft (Excel) (≈ {mb} MB), programas de código abierto, desde su página oficial de GitHub. Antes de usarlos se comprueba que son los archivos exactos esperados (tamaño y SHA-256) y, en Mac, que están firmados por su desarrollador en Apple. No pide contraseña de administrador.',
   'settings.craft.consent.confirm': 'Instalar',
   'settings.craft.installed': 'Instalado · versión {version}',
   'settings.craft.error.generic': 'No se pudo instalar. Inténtalo de nuevo.',
