@@ -24,7 +24,8 @@ export const MAX_WEB_FILE_BYTES = 25 * 1024 * 1024
 const MIME_BY_EXT: Record<string, string> = {
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pdf: 'application/pdf'
 }
 
 const emitter = new EventEmitter()
@@ -144,7 +145,7 @@ export function dropScript(base64: string, fileName: string, mime: string): stri
  * Abre `bytes` (un .xlsx/.pptx/.docx) en la versión web de `webDir`. Devuelve `true` si el motor recibió el archivo. Lanza si el
  * archivo es demasiado grande o la versión web no arranca (quien llama cae al visor de siempre).
  */
-export async function openWebDoc(webDir: string, ext: 'xlsx' | 'pptx' | 'docx', fileName: string, bytes: Buffer): Promise<boolean> {
+export async function openWebDoc(webDir: string, ext: 'xlsx' | 'pptx' | 'docx' | 'pdf', fileName: string, bytes: Buffer): Promise<boolean> {
   if (bytes.length > MAX_WEB_FILE_BYTES) throw new Error('Archivo demasiado grande para la vista web')
   if (!state.server || state.serverDir !== webDir) {
     await state.server?.close().catch(() => undefined)

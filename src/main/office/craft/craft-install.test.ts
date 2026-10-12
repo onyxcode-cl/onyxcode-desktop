@@ -152,9 +152,9 @@ describe('pin de Craft', () => {
       }
     }
   })
-  it('el pin real del repo trae las tres versiones web con su tamaño, SHA-256 y carpeta', () => {
+  it('el pin real del repo trae las cuatro versiones web (Excel, PowerPoint, Word y PDF) con su tamaño, SHA-256 y carpeta', () => {
     const pin = loadCraftPin(join(__dirname, '../../../../resources/craft/pin.json'))
-    expect(Object.keys(pin?.web ?? {}).sort()).toEqual(WEBS)
+    expect(Object.keys(pin?.web ?? {}).sort()).toEqual(['deckcraft', 'gridcraft', 'pdfcraft', 'wordcraft'])
     expect(pin!.web!.gridcraft).toEqual({
       url: 'https://github.com/storytold/gridcraft/releases/download/v0.6.1/gridcraft-web-0.6.1.zip',
       size: 6961445,
@@ -163,6 +163,7 @@ describe('pin de Craft', () => {
     })
     expect(pin!.web!.deckcraft.dir).toBe('deckcraft-web-0.5.0')
     expect(pin!.web!.wordcraft.dir).toBe('wordcraft-web-0.6.1')
+    expect(pin!.web!.pdfcraft).toMatchObject({ size: 14047380, dir: 'pdfcraft-web-0.7.1' })
     for (const [name, w] of Object.entries(pin!.web!))
       expect(w.url.startsWith(`https://github.com/storytold/${name}/releases/download/`)).toBe(true)
   })

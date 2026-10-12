@@ -11,14 +11,20 @@
           "size": 66680532,
           "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
           "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
-          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+          "signature": {
+            "teamId": "DJ6XS33FX8",
+            "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)"
+          }
         },
         "darwin-x64": {
           "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
           "size": 66680532,
           "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
           "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
-          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+          "signature": {
+            "teamId": "DJ6XS33FX8",
+            "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)"
+          }
         },
         "win32-x64": {
           "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-0.5.0-windows-x64-portable.zip",
@@ -43,14 +49,20 @@
           "size": 80818424,
           "sha256": "9ded04712fad32c955b32c4efccbe4468fd95eae4f18ea3e32dd3355e6674b5b",
           "bin": "wordcraft-cli-0.5.0-macos-universal/wordcraft-cli",
-          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+          "signature": {
+            "teamId": "DJ6XS33FX8",
+            "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)"
+          }
         },
         "darwin-x64": {
           "url": "https://github.com/storytold/wordcraft/releases/download/v0.5.0/wordcraft-cli-0.5.0-macos-universal.zip",
           "size": 80818424,
           "sha256": "9ded04712fad32c955b32c4efccbe4468fd95eae4f18ea3e32dd3355e6674b5b",
           "bin": "wordcraft-cli-0.5.0-macos-universal/wordcraft-cli",
-          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+          "signature": {
+            "teamId": "DJ6XS33FX8",
+            "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)"
+          }
         },
         "win32-x64": {
           "url": "https://github.com/storytold/wordcraft/releases/download/v0.5.0/wordcraft-0.5.0-windows-x64-portable.zip",
@@ -75,14 +87,20 @@
           "size": 9154129,
           "sha256": "4559b42d96bafcbc4180cc7f09d5f428597ec19d447c3df2e4b458afcb4c04fc",
           "bin": "gridcraft-cli-0.5.0-macos-universal/gridcraft-cli",
-          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+          "signature": {
+            "teamId": "DJ6XS33FX8",
+            "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)"
+          }
         },
         "darwin-x64": {
           "url": "https://github.com/storytold/gridcraft/releases/download/v0.5.0/gridcraft-cli-0.5.0-macos-universal.zip",
           "size": 9154129,
           "sha256": "4559b42d96bafcbc4180cc7f09d5f428597ec19d447c3df2e4b458afcb4c04fc",
           "bin": "gridcraft-cli-0.5.0-macos-universal/gridcraft-cli",
-          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+          "signature": {
+            "teamId": "DJ6XS33FX8",
+            "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)"
+          }
         },
         "win32-x64": {
           "url": "https://github.com/storytold/gridcraft/releases/download/v0.5.0/gridcraft-0.5.0-windows-x64-portable.zip",
@@ -117,6 +135,12 @@
       "size": 14811800,
       "sha256": "85e458cb5adaa75afa871a9858c735ef7fd1e05741c6bf5d444dc09a1eb29e0a",
       "dir": "wordcraft-web-0.6.1"
+    },
+    "pdfcraft": {
+      "url": "https://github.com/storytold/pdfcraft/releases/download/v0.7.1/pdfcraft-web-0.7.1.zip",
+      "size": 14047380,
+      "sha256": "2e58067125b2c14d92d50888a6a03351302065ff4b99c0914892a078f05dfd66",
+      "dir": "pdfcraft-web-0.7.1"
     }
   }
 }
