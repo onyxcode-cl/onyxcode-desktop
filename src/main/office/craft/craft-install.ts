@@ -1,10 +1,11 @@
 /**
- * PRUEBA (rama `exp/craft-office-pruebas`): instalación bajo demanda de `deckcraft-cli` (PowerPoint) y `wordcraft-cli` (Word), con el
- * mismo rigor que LibreOffice/cloudflared. El pin (`resources/craft/pin.json`, dentro del código firmado de la app) fija, por programa,
- * URL de GitHub Releases, TAMAÑO EXACTO, SHA-256 y el equipo de Apple que debe firmar el binario (Developer ID «Learning Machines LLC»,
- * DJ6XS33FX8). Nada se ejecuta sin verificar: descarga (https, ≤5 saltos, tope de bytes) → SHA-256 → descomprimir en carpeta temporal
- * → `codesign --verify --strict` + equipo → renombrado atómico dentro de `userData/bin/craft-<versión>/`. Se instalan los dos juntos
- * (un solo botón); si uno ya estaba, solo se baja el que falta. Solo macOS por ahora (no hay CLI para Windows en esa versión).
+ * PRUEBA (rama `exp/craft-office-pruebas`): instalación bajo demanda de `deckcraft-cli` (PowerPoint), `wordcraft-cli` (Word) y
+ * `gridcraft-cli` (Excel), con el mismo rigor que LibreOffice/cloudflared. El pin (`resources/craft/pin.json`, dentro del código firmado
+ * de la app) fija, por programa y plataforma, URL de GitHub Releases, TAMAÑO EXACTO y SHA-256. En macOS además el equipo de Apple que
+ * debe firmar el binario (Developer ID «Learning Machines LLC», DJ6XS33FX8). Nada se ejecuta sin verificar: descarga (https, ≤5 saltos,
+ * tope de bytes) → SHA-256 → descomprimir en carpeta temporal (`ditto` en macOS, `tar.exe` en Windows) → en macOS `codesign --verify
+ * --strict` + equipo → renombrado atómico dentro de `userData/bin/craft-<versión>/`. Se instalan todos juntos (un solo botón); si alguno
+ * ya estaba, solo se baja el que falta. Plataformas: darwin-arm64, darwin-x64, win32-x64, win32-arm64.
  */
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, statfsSync, writeFileSync } from 'node:fs'
 import { join, normalize, sep } from 'node:path'
@@ -16,11 +17,12 @@ export interface CraftPinAsset {
   sha256: string
   /** Ruta del binario dentro del zip. */
   bin: string
-  signature: { teamId: string; authority: string }
+  /** Solo macOS: equipo de Apple que firma el binario. En Windows la integridad la dan tamaño + SHA-256. */
+  signature?: { teamId: string; authority: string }
 }
 export interface CraftPin {
   version: string
-  /** Programas a instalar, en orden (`deckcraft`, `wordcraft`), con sus descargas por plataforma. */
+  /** Programas a instalar (`deckcraft`, `wordcraft`, `gridcraft`), con sus descargas por plataforma. */
   tools: Record<string, Record<string, CraftPinAsset>>
 }
 export type CraftStatus =
@@ -41,8 +43,9 @@ export interface CraftDeps {
   freeBytes?: () => number
 }
 
-const PREFIX = /^https:\/\/github\.com\/storytold\/(deckcraft|wordcraft)\/releases\/download\//
 const TOOL_RE = /^[a-z]+$/
+/** `tar.exe` del propio Windows (bsdtar, Windows 10+): ruta absoluta para no ejecutar nada que esté en el directorio actual. */
+const WIN_TAR = join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
 
 export function parseCraftPin(raw: unknown): CraftPin | null {
   if (!raw || typeof raw !== 'object') return null
@@ -52,13 +55,17 @@ export function parseCraftPin(raw: unknown): CraftPin | null {
   for (const [name, t] of Object.entries(o.tools as Record<string, unknown>)) {
     const assetsRaw = (t as { assets?: unknown } | null)?.assets
     if (!TOOL_RE.test(name) || !assetsRaw || typeof assetsRaw !== 'object') return null
+    const prefix = `https://github.com/storytold/${name}/releases/download/`
     const assets: Record<string, CraftPinAsset> = {}
     for (const [k, v] of Object.entries(assetsRaw as Record<string, unknown>)) {
       const a = v as Partial<CraftPinAsset> | null
+      // La firma de Apple es obligatoria en macOS; en Windows es opcional (si viene, debe ser válida).
+      const sig = a?.signature
+      const sigOk = sig == null ? !k.startsWith('darwin-') : /^[A-Z0-9]{10}$/.test(sig.teamId ?? '')
       if (
         !a ||
         typeof a.url !== 'string' ||
-        !PREFIX.test(a.url) ||
+        !a.url.startsWith(prefix) ||
         !Number.isInteger(a.size) ||
         (a.size as number) <= 0 ||
         typeof a.sha256 !== 'string' ||
@@ -67,8 +74,9 @@ export function parseCraftPin(raw: unknown): CraftPin | null {
         !a.bin ||
         a.bin.includes('..') ||
         a.bin.startsWith('/') ||
-        !a.signature ||
-        !/^[A-Z0-9]{10}$/.test(a.signature.teamId ?? '')
+        a.bin.startsWith('\\') ||
+        /^[A-Za-z]:/.test(a.bin) ||
+        !sigOk
       )
         return null
       assets[k] = a as CraftPinAsset
@@ -86,7 +94,8 @@ export function loadCraftPin(path: string): CraftPin | null {
   }
 }
 
-const platformKey = (d: CraftDeps): string => `darwin-${(d.arch ?? process.arch) === 'arm64' ? 'arm64' : 'x64'}`
+const platOf = (d: CraftDeps): string => d.platform ?? process.platform
+const platformKey = (d: CraftDeps): string => `${platOf(d)}-${d.arch ?? process.arch}`
 const assetOf = (d: CraftDeps, tool: string): CraftPinAsset | null => d.pin?.tools[tool]?.[platformKey(d)] ?? null
 const dirFor = (d: CraftDeps): string | null => (d.pin ? join(d.binDir, `craft-${d.pin.version}`) : null)
 const markerOf = (dir: string, tool: string): string => join(dir, `installed-${tool}.json`)
@@ -102,7 +111,8 @@ function binOf(d: CraftDeps, tool: string): string | null {
 }
 
 export function craftStatus(d: CraftDeps): CraftStatus {
-  if ((d.platform ?? process.platform) !== 'darwin') return { state: 'unsupported', reason: 'Solo disponible en macOS por ahora' }
+  if (platOf(d) !== 'darwin' && platOf(d) !== 'win32')
+    return { state: 'unsupported', reason: 'Solo disponible en macOS y Windows por ahora' }
   if (!d.pin || Object.keys(d.pin.tools).some((t) => !assetOf(d, t)))
     return { state: 'unsupported', reason: 'No hay descarga fijada para esta plataforma' }
   const bins: Record<string, string> = {}
@@ -136,6 +146,7 @@ export async function installCraft(
   const final = dirFor(d)!
   const run = d.run ?? realRun
   const fetchFn = d.fetch ?? ((u, i) => fetch(u, i))
+  const isWin = platOf(d) === 'win32'
   const todo = Object.keys(d.pin!.tools).filter((t) => !binOf(d, t))
   const total = todo.reduce((n, t) => n + assetOf(d, t)!.size, 0)
   mkdirSync(d.binDir, { recursive: true, mode: 0o700 })
@@ -159,13 +170,16 @@ export async function installCraft(
       )
       onProgress({ phase: 'copy', done: before + asset.size, total })
       mkdirSync(stage, { mode: 0o700 })
-      const x = await run('/usr/bin/ditto', ['-x', '-k', zip, stage])
+      const x = isWin ? await run(WIN_TAR, ['-xf', zip, '-C', stage]) : await run('/usr/bin/ditto', ['-x', '-k', zip, stage])
       if (x.code !== 0) throw new OfficeError('copy', `No se pudo descomprimir: ${x.stderr.trim().slice(0, 200)}`)
       const bin = join(stage, normalize(asset.bin))
       if (!normalize(bin).startsWith(stage + sep) || !existsSync(bin) || !statSync(bin).isFile())
         throw new OfficeError('copy', 'El archivo descargado no contiene el programa esperado')
       onProgress({ phase: 'verify', done: before + asset.size, total })
-      await verifyBinary(run, bin, asset.signature.teamId)
+      if (!isWin) {
+        if (!asset.signature) throw new OfficeError('signature', 'Falta la firma esperada para este programa')
+        await verifyBinary(run, bin, asset.signature.teamId)
+      }
       // Cada zip trae UNA carpeta de primer nivel: se mueve entera al destino (renombrado atómico en el mismo disco).
       const top = normalize(asset.bin).split(sep)[0]
       rmSync(join(final, top), { recursive: true, force: true })

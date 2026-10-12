@@ -68,6 +68,7 @@ class CraftService {
     const out: Record<string, string> = {}
     if (s.bins.deckcraft) out.LAZUNOX_DECKCRAFT = s.bins.deckcraft
     if (s.bins.wordcraft) out.LAZUNOX_WORDCRAFT = s.bins.wordcraft
+    if (s.bins.gridcraft) out.LAZUNOX_GRIDCRAFT = s.bins.gridcraft
     return out
   }
 }
