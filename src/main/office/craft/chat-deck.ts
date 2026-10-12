@@ -10,14 +10,10 @@ import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { PptxChartType, PptxSlideSpec, PptxSpec, PptxTheme } from '@shared/chat-doc-spec'
-import { DOTS, EDGE, MU, VI, VIL, WH, createKit, fitSize } from './deck-kit'
+import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
+import { createKit, fitSize, paletteFor } from './deck-kit'
 
-const ACCENT: Record<PptxTheme, string> = { blue: '3B82F6', green: '22C55E', dark: VI, warm: 'F59E0B', mono: 'A1A1B5' }
-const PANEL = '12121B'
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
-/** Colores de un gráfico sobre fondo oscuro: los cinco puntos de la marca. */
-const CHART_COLORS = DOTS.map((c) => '#' + c)
 
 /** Título de portada del Chat: enorme si es corto y, si es largo, en hasta dos líneas grandes (la caja deja sitio para dos). */
 export function chatCoverSize(title: string): number {
@@ -36,8 +32,14 @@ function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['l
 
 /** Genera los comandos `id={json}` de DeckCraft para toda la presentación. Asume `PptxSpec` ya validado (`isPptxSpec`). */
 export function chatDeckCommands(spec: PptxSpec): string[] {
-  const accent = ACCENT[spec.theme ?? 'blue']
-  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, header } = createKit(accent)
+  // `theme` elige la paleta (colores) y `style` la decoración, como pide el agente de Chat: no es siempre el mismo diseño.
+  const pal = paletteFor(spec.theme)
+  const look = spec.style ?? 'classic'
+  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont } = createKit(pal, look)
+  const accent = pal.accent
+  const DOTS = pal.marks
+  const chartColors = DOTS.map((col) => '#' + col)
+  const [g1, g2] = pal.dark ? ['4A2C96', '14285E'] : [pal.glow, pal.glow2]
   const footer = spec.footer ?? ''
   a('file.new')
   // Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
@@ -46,7 +48,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
 
   const foot = (s: PptxSlideSpec): void => {
     const t = s.note ?? footer
-    if (t) txt(120, 500, 640, 24, t, 11, MU)
+    if (t) txt(120, 500, 640, 24, t, 11, pal.muted)
   }
   const head = (n: number, s: PptxSlideSpec): void => {
     header(n, s.title ?? '', s.eyebrow)
@@ -63,7 +65,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         gap,
         t,
         Math.max(fitSize(t, size, Math.floor((w / (size * 0.52)) * 2)), Math.round(size * 0.75)),
-        WH,
+        pal.text,
         false
       )
     })
@@ -76,43 +78,43 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
     switch (layoutOf(s, idx)) {
       case 'cover':
         bgslide([
-          [380, -300, 900, '4A2C96'],
-          [-220, 300, 560, '14285E']
+          [380, -300, 900, g1],
+          [-220, 300, 560, g2]
         ])
         dotrow(60, 88, 34, 20)
-        txt(44, 146, 860, 230, title, chatCoverSize(title), WH, true, 'left', chatCoverSize(title) >= 110 ? -8 : -2)
+        txt(44, 146, 860, 230, title, chatCoverSize(title), pal.text, true, 'left', chatCoverSize(title) >= 110 ? -8 : -2, titleFont)
         if (bullets[0]) txt(64, 384, 760, 50, bullets[0], fitSize(bullets[0], 28, 60))
-        if (bullets[1]) txt(64, 430, 760, 30, bullets[1], 18, MU)
+        if (bullets[1]) txt(64, 430, 760, 30, bullets[1], 18, pal.muted)
         if (s.eyebrow) pill(64, 476, Math.min(420, 40 + s.eyebrow.length * 9), 36, s.eyebrow, 14)
         break
       case 'section': {
         sectionN += 1
         bgslide([
-          [380, -300, 900, '2E1D66'],
-          [-220, 300, 560, '14285E']
+          [380, -300, 900, pal.dark ? '2E1D66' : pal.glow],
+          [-220, 300, 560, g2]
         ])
         dotrow(60, 88, 20, 14)
         txt(54, 130, 700, 160, s.eyebrow ?? String(sectionN).padStart(2, '0'), 120, accent, true, 'left', -4)
-        txt(60, 300, 840, 140, title, fitSize(title, 54, 28), WH, true, 'left', -1)
+        txt(60, 300, 840, 140, title, fitSize(title, 54, 28), pal.text, true, 'left', -1, titleFont)
         foot(s)
         break
       }
       case 'closing':
         bgslide([
-          [120, -40, 720, '2E1D66'],
-          [-200, 380, 420, '0F1A3A']
+          [120, -40, 720, pal.dark ? '2E1D66' : pal.glow],
+          [-200, 380, 420, pal.glow2]
         ])
         dotrow(364, 116, 32, 22)
-        txt(60, 184, 840, 100, title, fitSize(title, 62, 26), WH, true, 'center', -2)
-        if (bullets[0]) txt(120, 298, 720, 60, bullets[0], 22, MU, false, 'center')
-        if (s.note ?? footer) txt(60, 468, 840, 30, s.note ?? footer, 14, MU, false, 'center')
+        txt(60, 184, 840, 100, title, fitSize(title, 62, 26), pal.text, true, 'center', -2, titleFont)
+        if (bullets[0]) txt(120, 298, 720, 60, bullets[0], 22, pal.muted, false, 'center')
+        if (s.note ?? footer) txt(60, 468, 840, 30, s.note ?? footer, 14, pal.muted, false, 'center')
         break
       case 'stat': {
         head(n, { ...s, title: '' })
         txt(52, 130, 600, 200, title, fitSize(title, 150, 5), accent, true, 'left', -4)
-        if (bullets[0]) txt(64, 330, 560, 120, bullets[0], fitSize(bullets[0], 24, 70), WH)
+        if (bullets[0]) txt(64, 330, 560, 120, bullets[0], fitSize(bullets[0], 24, 70), pal.text)
         if (bullets.length > 1) {
-          rect(660, 150, 1, 300, EDGE)
+          rect(660, 150, 1, 300, pal.edge)
           list(bullets.slice(1), 690, 160, 230, 5, 62, 17)
         }
         break
@@ -122,7 +124,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         const items = bullets.slice(0, 6)
         const k = Math.max(items.length, 1)
         const w = Math.floor(840 / k)
-        rect(60, 286, 840, 2, EDGE)
+        rect(60, 286, 840, 2, pal.edge)
         // Un solo tamaño para todos los pasos, según el texto más largo (la caja deja sitio para 5 líneas).
         const longest = Math.max(0, ...items.map((t) => t.length))
         const size = longest <= 60 ? 18 : longest <= 100 ? 16 : 14
@@ -130,7 +132,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
           const x = 60 + i * w
           txt(x - 4, 160, w, 100, String(i + 1).padStart(2, '0'), 72, DOTS[i % DOTS.length], true, 'left', -2)
           dot(x, 279, 16, DOTS[i % DOTS.length])
-          txt(x, 326, w - 16, 130, t, size, WH, true)
+          txt(x, 326, w - 16, 130, t, size, pal.text, true)
         })
         break
       }
@@ -142,11 +144,11 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         ]
         cols.forEach((col, i) => {
           const x = 60 + i * 440
-          rect(x, 146, 400, 1, EDGE)
-          if (col.heading) txt(x, 158, 400, 40, col.heading, fitSize(col.heading, 26, 24), i === 0 ? WH : VIL, true)
+          rect(x, 146, 400, 1, pal.edge)
+          if (col.heading) txt(x, 158, 400, 40, col.heading, fitSize(col.heading, 26, 24), i === 0 ? pal.text : pal.accent2, true)
           list(col.bullets, x, col.heading ? 212 : 170, 400, 6, 48, 18)
         })
-        rect(480, 150, 1, 320, EDGE)
+        rect(480, 150, 1, 320, pal.edge)
         break
       }
       case 'cards': {
@@ -157,10 +159,10 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         items.forEach((t, i) => {
           const x = 60 + (i % per) * (per === 2 ? 440 : 285)
           const y = 150 + Math.floor(i / per) * (per === 2 ? 150 : 160)
-          rect(x, y, w, 1, EDGE)
+          rect(x, y, w, 1, pal.edge)
           ring(x, y + 22, 56, DOTS[i % DOTS.length])
           dot(x + 18, y + 40, 20, DOTS[i % DOTS.length])
-          txt(x + 76, y + 18, w - 76, 110, t, fitSize(t, 19, Math.floor((w - 76) / 10.5) * 3), WH)
+          txt(x + 76, y + 18, w - 76, 110, t, fitSize(t, 19, Math.floor((w - 76) / 10.5) * 3), pal.text)
         })
         break
       }
@@ -178,7 +180,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
             legend: s.chart.type === 'pie' ? 'r' : null,
             dataLabels: true,
             gridlines: false,
-            palette: CHART_COLORS
+            palette: chartColors
           })
         }
         break
@@ -192,9 +194,9 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         ks.forEach((kp, i) => {
           const x = 60 + i * (w + gap)
           rect(x, 160, w, 4, DOTS[i % DOTS.length])
-          rect(x, 164, w, 250, PANEL)
-          txt(x + 18, 184, w - 36, 40, kp.label.toUpperCase(), 13, MU, true, 'left', 2)
-          txt(x + 14, 232, w - 28, 110, kp.value, fitSize(kp.value, 54, Math.floor((w - 28) / 29)), WH, true, 'left', -1)
+          panel(x, 164, w, 250)
+          txt(x + 18, 184, w - 36, 40, kp.label.toUpperCase(), 13, pal.muted, true, 'left', 2)
+          txt(x + 14, 232, w - 28, 110, kp.value, fitSize(kp.value, 54, Math.floor((w - 28) / 29)), pal.text, true, 'left', -1)
           if (kp.delta) txt(x + 18, 350, w - 36, 50, kp.delta, 16, /^\s*[-−–]/.test(kp.delta) ? 'EC4899' : '22C55E', true)
         })
         break
