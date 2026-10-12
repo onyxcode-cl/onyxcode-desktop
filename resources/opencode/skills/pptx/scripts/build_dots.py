@@ -320,7 +320,7 @@ def find_deckcraft():
     if base and os.path.isdir(base):
         found = []
         for d in sorted(glob.glob(os.path.join(base, "craft-*"))):
-            if not os.path.isfile(os.path.join(d, "installed.json")):  # instalación completa (la app lo escribe al final)
+            if not (os.path.isfile(os.path.join(d, "installed-deckcraft.json")) or os.path.isfile(os.path.join(d, "installed.json"))):  # la app lo escribe al terminar
                 continue
             found += [f for f in sorted(glob.glob(os.path.join(d, "*", "deckcraft-cli"))) if os.access(f, os.X_OK)]
         if found:

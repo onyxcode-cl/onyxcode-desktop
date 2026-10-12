@@ -82,16 +82,24 @@ La app arma el archivo en ~30 ms. Calidad visual pareja en los cuatro. Problemas
 
 Mismos archivos dibujados con DeckCraft/WordCraft y con LibreOffice 26.8.1 (el que instala la app). Archivos: 3 presentaciones hechas por otras herramientas, 1 hecha con DeckCraft, y 5 Word (2 documentos reales de la empresa, uno con foto de portada y encabezados).
 
-| | ArtCraft | LibreOffice |
-| --- | --- | --- |
-| Velocidad (4 presentaciones / 5 Word) | < 1 s / 1 s | 6 s / 2 s |
-| Textos, formas, tablas, colores, imágenes | prácticamente idénticos | referencia |
-| Nº de páginas de los Word reales | igual (8 y 2) | igual |
-| Gráficos | sin etiquetas de datos y sin colores por barra (**peor**) | muestra etiquetas y colores |
-| Salto de página en Word | puede dejar un título al pie con su tabla en la página siguiente (**peor**) | mantiene título y tabla juntos |
-| Encabezado/pie de página | los pinta más pálidos (**peor**) | correcto |
-| Fuente que no está instalada | cae a serif y puede cambiar símbolos (p. ej. «+»); se evita usando Arial | igual |
+|                                           | ArtCraft                                                                    | LibreOffice                    |
+| ----------------------------------------- | --------------------------------------------------------------------------- | ------------------------------ |
+| Velocidad (4 presentaciones / 5 Word)     | < 1 s / 1 s                                                                 | 6 s / 2 s                      |
+| Textos, formas, tablas, colores, imágenes | prácticamente idénticos                                                     | referencia                     |
+| Nº de páginas de los Word reales          | igual (8 y 2)                                                               | igual                          |
+| Gráficos                                  | sin etiquetas de datos y sin colores por barra (**peor**)                   | muestra etiquetas y colores    |
+| Salto de página en Word                   | puede dejar un título al pie con su tabla en la página siguiente (**peor**) | mantiene título y tabla juntos |
+| Encabezado/pie de página                  | los pinta más pálidos (**peor**)                                            | correcto                       |
+| Fuente que no está instalada              | cae a serif y puede cambiar símbolos (p. ej. «+»); se evita usando Arial    | igual                          |
 
 Lección: en los documentos que creamos hay que fijar una fuente que exista en todos lados (Arial). El diseño dots ya lo hace. La plantilla de Word también (`design.themeFonts`).
 
 Conclusión: **ArtCraft sirve para crear** (rápido, ligero, buen diseño) y para revisar a ojo; **LibreOffice sigue siendo la referencia** para revisar fielmente documentos ajenos con gráficos, saltos de página y encabezados, para convertir a PDF y para Windows.
+
+## Estado de la integración en la app (rama de pruebas)
+
+- Un solo botón en Ajustes › Tareas instala **DeckCraft y WordCraft** (≈ 147 MB; si ya está uno, baja solo el que falta). Pin en `resources/craft/pin.json` (URL de GitHub de cada proyecto, tamaño exacto, SHA-256, equipo de Apple `DJ6XS33FX8`).
+- Skill `pptx`: `scripts/build_dots.py` (diseño dots; misma plantilla que `src/main/office/craft/deck-builder.ts`, con prueba de paridad).
+- Skill `docx`: `scripts/build_word_craft.py` usa el MISMO JSON que `build_docx.py` (no hay esquema nuevo para el modelo) y sale con código 3 si WordCraft no está instalado. Prueba: `tests/test_craft.py`.
+- Trampas de WordCraft vistas al hacerlo: `insert.header/footer` dejan el cursor dentro de ellos (cerrar con `insert.closeHeader`), `insert.picture` deja la imagen seleccionada (mover el cursor con `caret.docEnd` o el texto siguiente la reemplaza) y `para.restartNumbering` solo funciona con el cursor ya dentro de la lista.
+- Los programas se buscan en `$LAZUNOX_BIN_DIR/craft-<versión>/` aunque se instalen con el motor del agente ya arrancado.

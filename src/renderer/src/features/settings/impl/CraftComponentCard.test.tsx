@@ -27,7 +27,7 @@ describe('CraftCardView', () => {
   })
   it('falta: muestra el tamaño en el botón', () => {
     const html = view({ status: { state: 'missing', version: '0.5.0', sizeBytes: 66_680_532 }, installing: false })
-    expect(html).toContain('Presentaciones con diseño premium')
+    expect(html).toContain('Presentaciones y documentos con diseño premium')
     expect(html).toContain('Instalar (≈ 67 MB)')
   })
   it('instalando: barra de progreso y botón de cancelar', () => {

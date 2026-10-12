@@ -16,6 +16,12 @@ Nunca sobrescribas el archivo del usuario: toda salida es un archivo NUEVO (`-v2
    Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 5. Entrega: indica la ruta del .docx y resume qué contiene (en «Para revisar»: lo que no pudiste comprobar).
 
+### A0. Ruta rápida con diseño cuidado (si WordCraft está instalado)
+Con el MISMO `contenido.json` puedes generar el documento con WordCraft (más rápido y con mejor tipografía): `PY S/build_word_craft.py contenido.json informe.docx`.
+Si sale con **código 3** (WordCraft no está instalado en este equipo) no insistas: sigue con `build_docx.py` del paso 2. Soporta `title`, `subtitle`,
+`author`, `date`, `header`, `footer`, `page_numbers`, `toc` y los bloques `heading`, `paragraph`, `bullets` (los sublistas se aplanan), `numbered`, `table`, `image` y
+`page_break`; ignora `page` y `theme`. Si necesitas márgenes, tamaño de página o colores propios usa `build_docx.py`. Verifica igual con `check_docx.py`.
+
 ### Esquema del JSON
 Campos de nivel superior (todos opcionales salvo `blocks`): `title`, `subtitle`, `author`, `date` (texto, o `"hoy"` → «9 de octubre de 2026»),
 `header` (texto arriba a la derecha), `footer` (texto en el pie), `page_numbers` (por defecto true: «Página X de Y»),

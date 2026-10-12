@@ -1,21 +1,46 @@
 {
   "version": "0.5.0",
   "releasedAt": "2026-10-10",
-  "source": "https://github.com/storytold/deckcraft/releases/tag/v0.5.0",
-  "assets": {
-    "darwin-arm64": {
-      "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
-      "size": 66680532,
-      "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
-      "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
-      "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+  "tools": {
+    "deckcraft": {
+      "label": "Presentaciones (PowerPoint)",
+      "source": "https://github.com/storytold/deckcraft/releases/tag/v0.5.0",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
+          "size": 66680532,
+          "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
+          "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
+          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+        },
+        "darwin-x64": {
+          "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
+          "size": 66680532,
+          "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
+          "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
+          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+        }
+      }
     },
-    "darwin-x64": {
-      "url": "https://github.com/storytold/deckcraft/releases/download/v0.5.0/deckcraft-cli-0.5.0-macos-universal.zip",
-      "size": 66680532,
-      "sha256": "e4f8562c4c56337d2ae4069d182e2e325ddbf700b6248272d96f3e469702990b",
-      "bin": "deckcraft-cli-0.5.0-macos-universal/deckcraft-cli",
-      "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+    "wordcraft": {
+      "label": "Documentos (Word)",
+      "source": "https://github.com/storytold/wordcraft/releases/tag/v0.5.0",
+      "assets": {
+        "darwin-arm64": {
+          "url": "https://github.com/storytold/wordcraft/releases/download/v0.5.0/wordcraft-cli-0.5.0-macos-universal.zip",
+          "size": 80818424,
+          "sha256": "9ded04712fad32c955b32c4efccbe4468fd95eae4f18ea3e32dd3355e6674b5b",
+          "bin": "wordcraft-cli-0.5.0-macos-universal/wordcraft-cli",
+          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+        },
+        "darwin-x64": {
+          "url": "https://github.com/storytold/wordcraft/releases/download/v0.5.0/wordcraft-cli-0.5.0-macos-universal.zip",
+          "size": 80818424,
+          "sha256": "9ded04712fad32c955b32c4efccbe4468fd95eae4f18ea3e32dd3355e6674b5b",
+          "bin": "wordcraft-cli-0.5.0-macos-universal/wordcraft-cli",
+          "signature": { "teamId": "DJ6XS33FX8", "authority": "Developer ID Application: Learning Machines LLC (DJ6XS33FX8)" }
+        }
+      }
     }
   }
 }

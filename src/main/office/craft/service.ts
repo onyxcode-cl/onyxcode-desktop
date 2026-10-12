@@ -64,7 +64,11 @@ class CraftService {
   /** Para el entorno de `opencode serve`: la ruta de `deckcraft-cli` si ya está instalado. */
   env(): Record<string, string> {
     const s = this.status()
-    return s.state === 'installed' ? { LAZUNOX_DECKCRAFT: s.bin } : {}
+    if (s.state !== 'installed') return {}
+    const out: Record<string, string> = {}
+    if (s.bins.deckcraft) out.LAZUNOX_DECKCRAFT = s.bins.deckcraft
+    if (s.bins.wordcraft) out.LAZUNOX_WORDCRAFT = s.bins.wordcraft
+    return out
   }
 }
 
