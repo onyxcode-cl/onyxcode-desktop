@@ -46,29 +46,21 @@ def _ejecutable(ruta):
 
 
 def find_gridcraft():
-    """`gridcraft-cli`, por orden: el que la app fijó al arrancar (LAZUNOX_GRIDCRAFT) → el que instaló después,
-    en `$LAZUNOX_BIN_DIR/craft-*/*/gridcraft-cli`, solo si su carpeta tiene la marca installed-gridcraft.json."""
-    ruta = os.environ.get("LAZUNOX_GRIDCRAFT")
-    if _ejecutable(ruta):
-        return ruta
-    base = os.environ.get("LAZUNOX_BIN_DIR")
-    if base:
-        for d in sorted(glob.glob(os.path.join(base, "craft-*")), reverse=True):
-            if not os.path.isfile(os.path.join(d, "installed-gridcraft.json")):
-                continue
-            for cand in sorted(glob.glob(os.path.join(d, "*", "gridcraft-cli")), reverse=True):
-                if _ejecutable(cand):
-                    return cand
-    return None
+    """`gridcraft-cli` (`.exe` en Windows), por orden: el que la app fijó al arrancar (LAZUNOX_GRIDCRAFT) → el que instaló después,
+    en `$LAZUNOX_BIN_DIR/craft-*/*/`, solo si su carpeta tiene la marca installed-gridcraft.json. Comparte la búsqueda con `render.py`
+    (que ya sabe de Windows)."""
+    import render  # misma carpeta; import tardío para que `render` pueda importar este módulo sin ciclo
+
+    return render.buscar_gridcraft()
 
 
 def _run(args, tmp):
-    """Ejecuta gridcraft-cli sin shell, con entorno mínimo y datos en `tmp` (se borra al terminar el llamador)."""
+    """Ejecuta gridcraft-cli sin shell, con entorno mínimo por plataforma y datos en `tmp` (se borra al terminar el llamador)."""
+    import render
+
     home = os.path.join(tmp, "home")
     os.makedirs(home, exist_ok=True)
-    env = {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home,
-           "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home}
-    return subprocess.run(args, capture_output=True, text=True, timeout=TIEMPO, env=env, cwd=tmp,
+    return subprocess.run(args, capture_output=True, text=True, timeout=TIEMPO, env=render.entorno_minimo(home), cwd=tmp,
                           stdin=subprocess.DEVNULL)
 
 
