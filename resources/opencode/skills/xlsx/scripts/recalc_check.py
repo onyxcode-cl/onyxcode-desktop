@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """Calcula y verifica las fórmulas de un .xlsx (openpyxl NO calcula fórmulas).
 
-Con LibreOffice (soffice) convierte el libro a una copia recalculada en una carpeta temporal y
-lee los valores. Detecta #DIV/0!, #REF!, #NAME?, #VALUE!, #N/A, #NUM!, #NULL! y fórmulas que
-apuntan a celdas vacías. Sin LibreOffice lo dice claramente y hace solo una verificación sintáctica.
+Recalcula con GridCraft (programa de ArtCraft, que instala la app) y lee los valores. Detecta #DIV/0!, #REF!,
+#NAME?, #VALUE!, #N/A, #NUM!, #NULL! y fórmulas que apuntan a celdas vacías. Sin GridCraft (o si no da un resultado
+fiable) lo dice claramente y hace solo una verificación sintáctica, con `motor` null.
 
 Uso:  python recalc_check.py libro.xlsx [--json] [--show N] [--workdir DIR]
 Salida: 0 sin problemas, 1 hay errores/advertencias graves, 2 uso incorrecto.
@@ -12,12 +12,10 @@ Salida: 0 sin problemas, 1 hay errores/advertencias graves, 2 uso incorrecto.
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 
@@ -27,11 +25,10 @@ warnings.filterwarnings("ignore")
 from openpyxl import load_workbook  # noqa: E402
 from openpyxl.utils import column_index_from_string, range_boundaries
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
-import render_grid  # noqa: E402  GridCraft primero; si no está o no es fiable, LibreOffice
+import render  # noqa: E402  (AVISO_SIN_ARTCRAFT)
+import render_grid  # noqa: E402  GridCraft (ArtCraft)
 
 ERRORS = ("#DIV/0!", "#REF!", "#NAME?", "#VALUE!", "#N/A", "#NUM!", "#NULL!")
-SOFFICE_CANDIDATES = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "/usr/bin/soffice",
-                      "/usr/local/bin/soffice", "/opt/homebrew/bin/soffice"]
 KNOWN_FUNCS = set("""ABS AND AVERAGE AVERAGEIF AVERAGEIFS CEILING CHOOSE COLUMN COLUMNS CONCAT CONCATENATE COUNT COUNTA
 COUNTBLANK COUNTIF COUNTIFS DATE DATEDIF DAY DAYS EDATE EOMONTH EXP FILTER FIND FLOOR HLOOKUP HOUR IF IFERROR IFNA IFS
 INDEX INDIRECT INT ISBLANK ISERROR ISNA ISNUMBER ISTEXT LARGE LEFT LEN LN LOG LOG10 LOOKUP LOWER MATCH MAX MAXIFS MEDIAN
@@ -39,37 +36,6 @@ MID MIN MINIFS MINUTE MOD MONTH NETWORKDAYS NOT NOW OFFSET OR PI PMT POWER PRODU
 ROUNDUP ROW ROWS SEARCH SECOND SMALL SORT SQRT STDEV SUBSTITUTE SUBTOTAL SUM SUMIF SUMIFS SUMPRODUCT SWITCH TEXT TEXTJOIN
 TODAY TRIM TRUE FALSE UNIQUE UPPER VALUE VLOOKUP WEEKDAY XLOOKUP XOR YEAR NPV IRR FV PV RATE VAR TRANSPOSE COUNTUNIQUE
 ISERR ISEVEN ISODD N NA T TRUNC SIGN ROUNDUP REPT CHAR CODE CLEAN EXACT FIXED DOLLAR""".split())
-
-
-def find_soffice():
-    # En el Sandbox de Tareas LibreOffice aborta (y macOS muestra un aviso de problema): no se intenta.
-    if os.environ.get("LAZUNOX_SANDBOX") == "1":
-        return None
-    p = os.environ.get("LAZUNOX_SOFFICE")
-    if p and os.path.isfile(p) and os.access(p, os.X_OK):
-        return p
-    p = shutil.which("soffice")
-    if p:
-        return p
-    for c in SOFFICE_CANDIDATES:
-        if os.path.exists(c):
-            return c
-    return None
-
-
-def recalc_copy(path, soffice, workdir):
-    out = os.path.join(workdir, "recalc")
-    os.makedirs(out, exist_ok=True)
-    profile = os.path.join(workdir, "profile")
-    src = os.path.join(workdir, "entrada.xlsx")
-    shutil.copyfile(path, src)
-    cmd = [soffice, "-env:UserInstallation=file://" + profile, "--headless", "--norestore",
-           "--convert-to", "xlsx:Calc MS Excel 2007 XML", "--outdir", out, src]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-    files = glob.glob(os.path.join(out, "*.xlsx"))
-    if not files:
-        raise RuntimeError("LibreOffice no generó la copia recalculada: %s" % (r.stderr or r.stdout).strip()[:300])
-    return files[0]
 
 
 def cells_in_ref(ref):
@@ -124,7 +90,7 @@ def syntax_issues(formula, wb):
     return out
 
 
-def analyse(path, soffice, workdir, show):
+def analyse(path, show):
     wbf = load_workbook(path)  # fórmulas
     formulas = []
     for ws in wbf.worksheets:
@@ -132,35 +98,25 @@ def analyse(path, soffice, workdir, show):
             for c in row:
                 if isinstance(c.value, str) and c.value.startswith("=") and len(c.value) > 1:
                     formulas.append((ws.title, c.coordinate, c.value))
-    res = {"archivo": path, "libreoffice": bool(soffice), "motor": None, "formulas": len(formulas), "errores": [],
+    res = {"archivo": path, "motor": None, "formulas": len(formulas), "errores": [],
            "vacias": [], "sintaxis": [], "valores": [], "avisos": []}
-    values_wb = None
     grid = render_grid.recalc(path, res["avisos"])
     if grid is not None:
-        res["motor"], res["libreoffice"] = "gridcraft", False
+        res["motor"] = "gridcraft"
         mapa = {(v["hoja"], v["celda"]): v["valor"] for v in grid["valores"]}
-        res["avisos"].append("Valores calculados con GridCraft, no con LibreOffice.")
-    elif soffice:
-        try:
-            values_wb = load_workbook(recalc_copy(path, soffice, workdir), data_only=True)
-            res["motor"] = "libreoffice"
-        except Exception as e:  # noqa: BLE001
-            res["avisos"].append("No se pudo recalcular con LibreOffice (%s); solo verificación sintáctica." % e)
-            res["libreoffice"] = False
-    elif os.environ.get("LAZUNOX_SANDBOX") == "1":
-        res["avisos"].append("En modo Sandbox LibreOffice no puede ejecutarse: NO se calcularon los valores; solo verificación "
-                             "sintáctica básica. Dile al usuario que los valores no están verificados y que con Control total del Mac "
-                             "(o abriendo el archivo en Excel) puede comprobarlos.")
     else:
-        res["avisos"].append("LibreOffice no está instalado: NO se calcularon los valores; solo verificación "
-                             "sintáctica básica. Dile al usuario que los valores no están verificados.")
+        mapa = None
+        if render_grid.find_gridcraft() is None:
+            res["avisos"].append(render.AVISO_SIN_ARTCRAFT)
+        res["avisos"].append("Solo verificación sintáctica: NO se calcularon los valores. Dile al usuario que los valores "
+                             "no están verificados.")
     for sheet, coord, f in formulas:
         for p in syntax_issues(f, wbf):
             res["sintaxis"].append({"hoja": sheet, "celda": coord, "formula": f, "problema": p})
         for e in empty_refs(f, wbf, sheet):
             res["vacias"].append({"hoja": sheet, "celda": coord, "formula": f, "referencia": e})
-        if grid is not None or values_wb is not None:
-            v = mapa.get((sheet, coord)) if grid is not None else values_wb[sheet][coord].value
+        if mapa is not None:
+            v = mapa.get((sheet, coord))
             if isinstance(v, str) and (v in ERRORS or v.startswith("Err:")):
                 res["errores"].append({"hoja": sheet, "celda": coord, "formula": f, "valor": v})
             if len(res["valores"]) < show:
@@ -169,7 +125,7 @@ def analyse(path, soffice, workdir, show):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Recalcula (LibreOffice) y verifica las fórmulas de un .xlsx.")
+    ap = argparse.ArgumentParser(description="Recalcula (GridCraft) y verifica las fórmulas de un .xlsx.")
     ap.add_argument("archivo", help="libro .xlsx a verificar (no se modifica)")
     ap.add_argument("--json", action="store_true", help="salida en JSON")
     ap.add_argument("--show", type=int, default=15, help="cuántos valores calculados mostrar (def. 15)")
@@ -178,11 +134,10 @@ def main(argv=None):
     if not os.path.isfile(a.archivo):
         print("Error: el archivo no existe: %s" % a.archivo, file=sys.stderr)
         return 2
-    soffice = find_soffice()
     base = a.workdir or tempfile.mkdtemp(prefix="xlsx-recalc-")
     os.makedirs(base, exist_ok=True)
     try:
-        res = analyse(a.archivo, soffice, base, a.show)
+        res = analyse(a.archivo, a.show)
     except Exception as e:  # noqa: BLE001
         print("Error al abrir el libro: %s: %s" % (type(e).__name__, e), file=sys.stderr)
         return 2
@@ -195,7 +150,7 @@ def main(argv=None):
         print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
         return 1 if bad else 0
     print("Archivo: %s" % res["archivo"])
-    quien = {"gridcraft": "GridCraft", "libreoffice": "LibreOffice"}.get(res["motor"], "NADA (solo verificación sintáctica)")
+    quien = {"gridcraft": "GridCraft (ArtCraft)"}.get(res["motor"], "NADA (solo verificación sintáctica)")
     print("Fórmulas: %d | Recalculado con: %s" % (res["formulas"], quien))
     for av in res["avisos"]:
         print("AVISO: " + av)

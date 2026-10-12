@@ -156,7 +156,7 @@ def main(argv=None):
             if data.get("paginas") and data["paginas"] != n:
                 problems.append("El render tiene %s páginas pero hay %d diapositivas." % (data["paginas"], n))
         elif data is not None:
-            warns.append("No se pudo renderizar (¿falta LibreOffice?): solo hay verificación estructural.")
+            warns.append("No se pudo renderizar: solo hay verificación estructural.")
     if a.json:
         print(json.dumps(res, ensure_ascii=False, indent=1))
     else:

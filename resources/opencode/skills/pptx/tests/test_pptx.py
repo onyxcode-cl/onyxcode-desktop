@@ -9,7 +9,20 @@ import unittest
 SK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SC = os.path.join(SK, "scripts")
 PY = os.environ.get("LAZUNOX_PYTHON") or sys.executable
-SOFFICE = os.path.exists("/Applications/LibreOffice.app/Contents/MacOS/soffice")
+
+
+# DeckCraft falso: «render FILE --all OUTDIR» escribe una imagen por diapositiva (cuenta las del .pptx en el zip).
+FAKE_DECKCRAFT = """#!/bin/sh
+D=$(dirname "$0")
+[ "$1" = render ] || exit 2
+N=$(grep -ao 'ppt/slides/slide[0-9]*\\.xml' "$2" | sort -u | wc -l | tr -d ' ')
+mkdir -p "$4"
+i=1
+while [ "$i" -le "$N" ]; do
+  cp "$D/plantilla.png" "$4/slide-$(printf %02d "$i").png"
+  i=$((i+1))
+done
+"""
 
 
 def run(script, *args):
@@ -91,13 +104,6 @@ class PptxTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
         r = run("check_pptx.py", v3, "--no-render")
         self.assertEqual(r.returncode, 0, r.stdout)
-        if SOFFICE:
-            od = os.path.join(self.d, "chk")
-            r = run("check_pptx.py", out, "--outdir", od)
-            self.assertEqual(r.returncode, 0, r.stdout)
-            hoja = os.path.join(od, "miniaturas.png")
-            if os.path.exists(os.path.join(SK, "..", "_shared", "render.py")):
-                self.assertTrue(os.path.exists(hoja), r.stdout)
 
     def test_errores(self):
         self.assertEqual(run("build_pptx.py", os.path.join(self.d, "no.json"), os.path.join(self.d, "x.pptx")).returncode, 1)
@@ -105,6 +111,45 @@ class PptxTest(unittest.TestCase):
         with open(bad, "w") as fo:
             json.dump({"slides": [{"type": "volcan"}]}, fo)
         self.assertEqual(run("build_pptx.py", bad, os.path.join(self.d, "y.pptx")).returncode, 1)
+
+    def test_miniaturas_con_deckcraft_falso(self):
+        from pptx import Presentation
+        from unittest import mock
+        import shutil
+        carpeta = os.path.join(self.d, "bin", "craft-0.5.0", "deck")
+        os.makedirs(carpeta)
+        open(os.path.join(self.d, "bin", "craft-0.5.0", "installed-deckcraft.json"), "w").write("{}")
+        shutil.copyfile(os.path.join(self.d, "foto.png"), os.path.join(carpeta, "plantilla.png"))
+        exe = os.path.join(carpeta, "deckcraft-cli")
+        with open(exe, "w") as fo:
+            fo.write(FAKE_DECKCRAFT)
+        os.chmod(exe, 0o755)
+        prs = Presentation()
+        for _ in range(2):
+            prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = "Diapositiva"
+        f = os.path.join(self.d, "dos.pptx")
+        prs.save(f)
+        od = os.path.join(self.d, "chk")
+        with mock.patch.dict(os.environ, {"LAZUNOX_BIN_DIR": os.path.join(self.d, "bin")}):
+            r = run("check_pptx.py", f, "--outdir", od)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertTrue(os.path.exists(os.path.join(od, "miniaturas.png")), r.stdout)
+
+    def test_sin_deckcraft_avisa_solo_estructura(self):
+        from pptx import Presentation
+        from unittest import mock
+        prs = Presentation()
+        prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = "Solo"
+        f = os.path.join(self.d, "uno.pptx")
+        prs.save(f)
+        vacio = os.path.join(self.d, "vacio")
+        os.makedirs(vacio)
+        env = {"PATH": os.environ.get("PATH", ""), "HOME": os.environ.get("HOME", ""), "LAZUNOX_BIN_DIR": vacio,
+               "LAZUNOX_PYTHON": PY}
+        with mock.patch.dict(os.environ, env, clear=True):
+            r = run("check_pptx.py", f, "--outdir", os.path.join(self.d, "chk2"))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("Componentes opcionales", r.stdout)
 
     def test_detecta_desborde(self):
         from pptx import Presentation

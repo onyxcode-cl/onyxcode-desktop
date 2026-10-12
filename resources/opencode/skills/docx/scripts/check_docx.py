@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verifica un .docx: estructura y, si hay LibreOffice, render a PNG con detección de páginas en blanco.
+"""Verifica un .docx: estructura y, si está WordCraft (ArtCraft), render a PNG con detección de páginas en blanco.
 
 Uso:  python check_docx.py archivo.docx [--render] [--outdir DIR] [--json]
   --render  fuerza el render (por defecto se intenta si existe _shared/render.py)
@@ -108,7 +108,7 @@ def render(path, outdir):
         cp = subprocess.run([py, rpy, path, "--outdir", outdir], capture_output=True, text=True, timeout=240)
         data = json.loads(cp.stdout.strip().splitlines()[-1])
     except Exception as e:
-        res["aviso"] = "el render falló o no hay LibreOffice (%s); solo se verificó la estructura" % e
+        res["aviso"] = "el render falló o no está WordCraft (ArtCraft) (%s); solo se verificó la estructura" % e
         return res
     res.update(data)
     pngs = data.get("pngs") or []
@@ -162,8 +162,8 @@ def main():
         print("Archivo: %s" % a.archivo)
         print("Estructura: %d párrafos, %d tablas, %d imágenes, %d encabezados, %d sección(es)" % (
             info["parrafos"], info["tablas"], info["imagenes"], len(info["encabezados"]), info["secciones"]))
-        if rend.get("pdf"):
-            print("Render: %s páginas -> %s" % (rend.get("paginas"), rend["pdf"]))
+        if rend.get("ok"):
+            print("Render: %s páginas (%s)" % (rend.get("paginas"), rend.get("motor") or "pdf"))
             for p in rend.get("pngs", []):
                 print("  imagen de página: " + p)
             print("  (abra las imágenes y mírelas antes de entregar)")

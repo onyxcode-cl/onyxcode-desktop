@@ -3,7 +3,7 @@
 """Verificación general de un .xlsx: abre, hojas, errores de fórmula, columnas estrechas, números como texto.
 
 Uso:  python check_xlsx.py libro.xlsx [--render DIR] [--json]
-  --render DIR  además renderiza a PDF/PNG con _shared/render.py (necesita LibreOffice) para mirar las imágenes.
+  --render DIR  además renderiza a PNG con _shared/render.py (necesita GridCraft, de ArtCraft) para mirar las imágenes.
 Salida: 0 sin problemas, 1 hay problemas, 2 no se pudo abrir.
 """
 from __future__ import annotations
@@ -126,7 +126,7 @@ def main(argv=None):
                 res["render"] = json.loads(r.stdout)
                 res["avisos"].extend(res["render"].get("avisos", []))
                 if not res["render"].get("ok"):
-                    res["avisos"].append("el render falló o LibreOffice no está disponible: la verificación visual no se hizo")
+                    res["avisos"].append("el render falló o ArtCraft (GridCraft) no está disponible: la verificación visual no se hizo")
             except ValueError:
                 res["avisos"].append("render.py no devolvió JSON: %s" % (r.stderr or r.stdout)[:200])
     res["ok"] = not res["problemas"]

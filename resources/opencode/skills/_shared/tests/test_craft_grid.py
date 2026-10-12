@@ -1,4 +1,4 @@
-"""render_grid (GridCraft para xlsx) con un gridcraft-cli FALSO: búsqueda, prioridad, valores, guardas y caídas a LibreOffice.
+"""render_grid (GridCraft para xlsx) con un gridcraft-cli FALSO: búsqueda, prioridad, valores, guardas y avisos sin resultado fiable.
 La prueba con el binario real se salta si no se pasa GRIDCRAFT_CLI=/ruta/a/gridcraft-cli.
 
 Ejecutar:  $LAZUNOX_PYTHON -W ignore tests/test_craft_grid.py   (o python -m unittest discover -s tests)
@@ -192,7 +192,7 @@ class Recalculo(FakeCraft):
             self.assertIsNone(render_grid.recalc(self.xlsx, []))
 
     def test_funcion_del_catalogo_sin_calcular_devuelve_none(self):
-        # #NAME? con una función que GridCraft sí conoce (FILTER) puede ser una que no implementa: se usa LibreOffice
+        # #NAME? con una función que GridCraft sí conoce (FILTER) puede ser una que no implementa: no se da por bueno
         valores = libro_json({(0, 2): celda("Error", "Name", "FILTER(A1:A3,A1:A3>1)")})
         self.instalar(self.bin, valores=valores)
         with mock.patch.dict(os.environ, entorno(LAZUNOX_GRIDCRAFT=self.fake), clear=True):
@@ -264,12 +264,12 @@ class Renderizado(FakeCraft):
         self.assertEqual(cp.returncode, 0, res)
         self.assertEqual((res["ok"], res["motor"], res["paginas"]), (True, "gridcraft", 2))
 
-    def test_render_py_cae_a_libreoffice_si_gridcraft_falla(self):
+    def test_render_py_sin_resultado_de_gridcraft_no_hay_render(self):
         self.instalar(self.bin, fallo=True)
         cp = subprocess.run([sys.executable, "-I", RENDER, self.xlsx, "--outdir", os.path.join(self.d, "o")],
                             capture_output=True, text=True, env=entorno(LAZUNOX_GRIDCRAFT=self.fake))
         res = json.loads(cp.stdout)
-        self.assertNotEqual(res.get("motor"), "gridcraft")  # sin LibreOffice válido: no hay render, pero no revienta
+        self.assertIsNone(res.get("motor"))  # GridCraft falla: no hay render, pero no revienta
         self.assertIn("GridCraft", " ".join(res["avisos"]))
 
 
@@ -281,7 +281,6 @@ class RecalcCheck(FakeCraft):
                             env=entorno(LAZUNOX_GRIDCRAFT=self.fake))
         res = json.loads(cp.stdout)
         self.assertEqual(res["motor"], "gridcraft")
-        self.assertFalse(res["libreoffice"])
         self.assertEqual(cp.returncode, 1)
         self.assertTrue(any(e["celda"] == "C1" and e["valor"] == "#DIV/0!" for e in res["errores"]))
 
