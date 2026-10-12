@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getLang } from '@shared/i18n'
 import type { ChatDocOpenRequest } from '@shared/ipc-extras'
-import { isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
+import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { extractChatDocBlocks, type ChatDocBlock } from '../../lib/chatDocBlocks'
 import { getExtras } from '../../lib/extrasApi'
 import { setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
@@ -99,6 +99,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
         const parsed: unknown = JSON.parse(rawText)
         if (kind === 'xlsx' && isXlsxSpec(parsed)) req = { ...common, kind: 'xlsx', data: parsed }
         else if (kind === 'pptx' && isPptxSpec(parsed)) req = { ...common, kind: 'pptx', data: parsed }
+        else if (kind === 'docx' && isDocxSpec(parsed)) req = { ...common, kind: 'docx', data: parsed }
       } catch {
         /* req queda null: el JSON no es válido (no debería pasar, ya se validó al extraer el bloque) */
       }

@@ -33,6 +33,12 @@ export const MAX_KPI_VALUE_CHARS = 16
 export const MAX_KPI_DELTA_CHARS = 40
 export const MAX_FREE_ELEMENTS = 60
 export const MAX_XLSX_CHARTS_PER_SHEET = 4
+export const MAX_DOCX_BLOCKS = 300
+export const MAX_DOCX_TEXT_CHARS = 5000
+export const MAX_DOCX_ITEMS = 100
+export const MAX_DOCX_ROWS = 200
+export const MAX_DOCX_COLS = 12
+export const MAX_DOCX_META_CHARS = 200
 export const MAX_XLSX_CHART_TITLE_CHARS = 80
 export const MAX_FREE_TEXT_CHARS = 600
 export const FREE_FONTS = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Courier New', 'Tahoma'] as const
@@ -279,6 +285,40 @@ export interface PptxSpec {
   footer?: string
 }
 
+/**
+ * Documento de Word del Chat: el MISMO esquema que ya usa la skill `docx` de Tareas (`build_docx.py`), sin imágenes (el Chat no tiene
+ * archivos del usuario). `bullets`/`numbered` aceptan sublistas (se aplanan). Los números de las tablas se formatean es-CL.
+ */
+export type DocxAlign = 'left' | 'right' | 'center' | 'justify'
+export type DocxBlock =
+  | { type: 'heading'; level: 1 | 2 | 3; text: string }
+  | { type: 'paragraph'; text: string; align?: DocxAlign }
+  | { type: 'bullets' | 'numbered'; items: (string | string[])[] }
+  | {
+      type: 'table'
+      columns: string[]
+      rows: (string | number | null)[][]
+      total_row?: boolean
+      zebra?: boolean
+      align?: ('left' | 'right' | 'center')[]
+      decimals?: number
+      widths_cm?: number[]
+      caption?: string
+    }
+  | { type: 'page_break' }
+export interface DocxSpec {
+  title?: string
+  subtitle?: string
+  author?: string
+  /** Texto libre o `"hoy"` (se reemplaza por la fecha de hoy en español). */
+  date?: string
+  header?: string
+  footer?: string
+  page_numbers?: boolean
+  toc?: boolean
+  blocks: DocxBlock[]
+}
+
 const XLSX_COLUMN_FORMATS: readonly XlsxColumnFormat[] = ['currency', 'integer', 'decimal', 'percent']
 
 function isFormulaCell(v: unknown): v is XlsxFormulaCell {
@@ -437,6 +477,78 @@ function isSlide(v: unknown): v is PptxSlideSpec {
   if (s.elements !== undefined && (!Array.isArray(s.elements) || s.elements.length > MAX_FREE_ELEMENTS || !s.elements.every(isFreeElement)))
     return false
   return s.layout !== 'free' || (Array.isArray(s.elements) && s.elements.length > 0)
+}
+
+const DOCX_ALIGN = ['left', 'right', 'center', 'justify']
+const docxText = (v: unknown, max = MAX_DOCX_TEXT_CHARS): v is string => typeof v === 'string' && v.length <= max
+const docxOpt = (v: unknown, max = MAX_DOCX_META_CHARS): boolean => v === undefined || docxText(v, max)
+
+function isDocxBlock(v: unknown): v is DocxBlock {
+  if (!v || typeof v !== 'object') return false
+  const b = v as Record<string, unknown>
+  switch (b.type) {
+    case 'heading':
+      return (
+        onlyKeys(b, ['type', 'level', 'text']) && (b.level === 1 || b.level === 2 || b.level === 3) && docxText(b.text) && b.text !== ''
+      )
+    case 'paragraph':
+      return (
+        onlyKeys(b, ['type', 'text', 'align']) &&
+        docxText(b.text) &&
+        b.text !== '' &&
+        (b.align === undefined || DOCX_ALIGN.includes(b.align as string))
+      )
+    case 'bullets':
+    case 'numbered': {
+      if (!onlyKeys(b, ['type', 'items']) || !Array.isArray(b.items) || b.items.length === 0 || b.items.length > MAX_DOCX_ITEMS)
+        return false
+      return b.items.every((it) => (Array.isArray(it) ? it.length <= MAX_DOCX_ITEMS && it.every((x) => docxText(x)) : docxText(it)))
+    }
+    case 'table': {
+      if (!onlyKeys(b, ['type', 'columns', 'rows', 'total_row', 'zebra', 'align', 'decimals', 'widths_cm', 'caption'])) return false
+      if (
+        !Array.isArray(b.columns) ||
+        b.columns.length === 0 ||
+        b.columns.length > MAX_DOCX_COLS ||
+        !b.columns.every((c) => docxText(c, 200))
+      )
+        return false
+      if (!Array.isArray(b.rows) || b.rows.length === 0 || b.rows.length > MAX_DOCX_ROWS) return false
+      const n = b.columns.length
+      const cellOk = (c: unknown): boolean => c === null || (typeof c === 'number' && Number.isFinite(c)) || docxText(c, 500)
+      if (!b.rows.every((r) => Array.isArray(r) && r.length === n && r.every(cellOk))) return false
+      if (b.total_row !== undefined && typeof b.total_row !== 'boolean') return false
+      if (b.zebra !== undefined && typeof b.zebra !== 'boolean') return false
+      if (
+        b.align !== undefined &&
+        (!Array.isArray(b.align) ||
+          b.align.length > MAX_DOCX_COLS ||
+          !b.align.every((a) => a === 'left' || a === 'right' || a === 'center'))
+      )
+        return false
+      if (b.decimals !== undefined && !num(b.decimals, 0, 6)) return false
+      if (
+        b.widths_cm !== undefined &&
+        (!Array.isArray(b.widths_cm) || b.widths_cm.length > MAX_DOCX_COLS || !b.widths_cm.every((w) => num(w, 1, 40)))
+      )
+        return false
+      return docxOpt(b.caption)
+    }
+    case 'page_break':
+      return onlyKeys(b, ['type'])
+    default:
+      return false
+  }
+}
+
+export function isDocxSpec(v: unknown): v is DocxSpec {
+  if (!v || typeof v !== 'object') return false
+  const d = v as Record<string, unknown>
+  if (!onlyKeys(d, ['title', 'subtitle', 'author', 'date', 'header', 'footer', 'page_numbers', 'toc', 'blocks'])) return false
+  if (![d.title, d.subtitle, d.author, d.date, d.header, d.footer].every((x) => docxOpt(x))) return false
+  if ((d.page_numbers !== undefined && typeof d.page_numbers !== 'boolean') || (d.toc !== undefined && typeof d.toc !== 'boolean'))
+    return false
+  return Array.isArray(d.blocks) && d.blocks.length > 0 && d.blocks.length <= MAX_DOCX_BLOCKS && d.blocks.every(isDocxBlock)
 }
 
 export function isPptxSpec(v: unknown): v is PptxSpec {

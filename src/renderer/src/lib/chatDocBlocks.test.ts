@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractChatDocBlocks } from './chatDocBlocks'
+import { extractChatDocBlocks, guessDataTitle, parseDataBlock } from './chatDocBlocks'
 
 const HTML = '```html\n<!doctype html><html><body><h1>hola</h1></body></html>\n```'
 const SLIDES = '```slides\n<!doctype html><html><body><section class="slide"><h1>Intro</h1></section></body></html>\n```'
@@ -62,5 +62,42 @@ describe('extractChatDocBlocks', () => {
   it('sin título propio (sin nombre de hoja / sin título de diapositiva): usa un título genérico', () => {
     const blocks = extractChatDocBlocks('```xlsx\n{"sheets":[{"name":"","rows":[["x"]]}]}\n```')
     expect(blocks[0].title).toMatch(/Hoja de cálculo/)
+  })
+})
+
+describe('bloques ```docx (Word)', () => {
+  const spec = {
+    title: 'Informe de ventas',
+    blocks: [
+      { type: 'heading', level: 1, text: 'Resumen' },
+      { type: 'paragraph', text: 'Hola **mundo**' }
+    ]
+  }
+  const fence = (body: unknown): string => '```docx\n' + JSON.stringify(body) + '\n```'
+
+  it('detecta el bloque, lo valida y usa el título del documento', () => {
+    const blocks = extractChatDocBlocks('Aquí va:\n\n' + fence(spec) + '\n\nListo.')
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).toMatchObject({ kind: 'docx', title: 'Informe de ventas' })
+  })
+
+  it('sin título usa el primer encabezado y, si no hay, uno genérico', () => {
+    expect(guessDataTitle('docx', JSON.stringify({ blocks: [{ type: 'heading', level: 2, text: 'Plan' }, { type: 'page_break' }] }))).toBe(
+      'Plan'
+    )
+    expect(guessDataTitle('docx', JSON.stringify({ blocks: [{ type: 'page_break' }] }), 3)).toBe('Documento 3')
+    expect(guessDataTitle('docx', 'no es json', 2)).toBe('Documento 2')
+  })
+
+  it('ignora un bloque inválido o a medio escribir', () => {
+    expect(extractChatDocBlocks(fence({ blocks: [] }))).toHaveLength(0)
+    expect(extractChatDocBlocks(fence({ blocks: [{ type: 'image', path: 'x' }] }))).toHaveLength(0)
+    expect(extractChatDocBlocks('```docx\n{"blocks": [')).toHaveLength(0)
+  })
+
+  it('parseDataBlock devuelve null para JSON roto o con claves de más', () => {
+    expect(parseDataBlock('docx', '{')).toBeNull()
+    expect(parseDataBlock('docx', JSON.stringify({ ...spec, macro: 'x' }))).toBeNull()
+    expect(parseDataBlock('docx', JSON.stringify(spec))).toMatchObject({ title: 'Informe de ventas' })
   })
 })

@@ -15,6 +15,12 @@ import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtras
 import {
   FREE_FONTS,
   FREE_SHAPES,
+  MAX_DOCX_BLOCKS,
+  MAX_DOCX_COLS,
+  MAX_DOCX_ITEMS,
+  MAX_DOCX_META_CHARS,
+  MAX_DOCX_ROWS,
+  MAX_DOCX_TEXT_CHARS,
   MAX_BULLET_CHARS,
   MAX_BULLETS_PER_SLIDE,
   MAX_CELL_CHARS,
@@ -377,6 +383,49 @@ const pptxData = obj({
     }),
     MAX_SLIDES
   )
+})
+const docxAlign = literal('left', 'right', 'center', 'justify')
+const docxCellAlign = literal('left', 'right', 'center')
+const docxText = str({ max: MAX_DOCX_TEXT_CHARS })
+const docxMeta = optional(str({ max: MAX_DOCX_META_CHARS }))
+/** Documento de Word del Chat: mismos límites que `isDocxSpec` (`shared/chat-doc-spec.ts`); una clave de más rechaza el documento entero. */
+const docxBlock = tagged('type', {
+  heading: obj({ type: literal('heading'), level: literal<1 | 2 | 3>(1, 2, 3), text: str({ max: MAX_DOCX_TEXT_CHARS, min: 1 }) }),
+  paragraph: obj({ type: literal('paragraph'), text: str({ max: MAX_DOCX_TEXT_CHARS, min: 1 }), align: optional(docxAlign) }),
+  bullets: obj({
+    type: literal('bullets'),
+    items: arr((v, path) => (Array.isArray(v) ? arr(docxText, MAX_DOCX_ITEMS)(v, path) : docxText(v, path)), MAX_DOCX_ITEMS)
+  }),
+  numbered: obj({
+    type: literal('numbered'),
+    items: arr((v, path) => (Array.isArray(v) ? arr(docxText, MAX_DOCX_ITEMS)(v, path) : docxText(v, path)), MAX_DOCX_ITEMS)
+  }),
+  table: obj({
+    type: literal('table'),
+    columns: arr(str({ max: 200 }), MAX_DOCX_COLS),
+    rows: arr(
+      arr((v, path) => (v === null ? null : typeof v === 'number' ? num()(v, path) : str({ max: 500 })(v, path)), MAX_DOCX_COLS),
+      MAX_DOCX_ROWS
+    ),
+    total_row: optional(bool),
+    zebra: optional(bool),
+    align: optional(arr(docxCellAlign, MAX_DOCX_COLS)),
+    decimals: optional(num({ min: 0, max: 6 })),
+    widths_cm: optional(arr(num({ min: 1, max: 40 }), MAX_DOCX_COLS)),
+    caption: docxMeta
+  }),
+  page_break: obj({ type: literal('page_break') })
+})
+const docxData = obj({
+  title: docxMeta,
+  subtitle: docxMeta,
+  author: docxMeta,
+  date: docxMeta,
+  header: docxMeta,
+  footer: docxMeta,
+  page_numbers: optional(bool),
+  toc: optional(bool),
+  blocks: arr(docxBlock, MAX_DOCX_BLOCKS)
 })
 const browserProduct = literal('code', 'tasks')
 const localOrigin = str({ max: 261, min: 1, pattern: /^(localhost|127\.0\.0\.1|\[::1\]):\d{1,5}$/ })
@@ -825,13 +874,22 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
       sessionId: str({ max: 200 }),
       lang: literal('es', 'en'),
       theme: literal('light', 'dark')
+    }),
+    docx: obj({
+      kind: literal('docx'),
+      title: str({ max: 500 }),
+      data: docxData,
+      sessionId: str({ max: 200 }),
+      lang: literal('es', 'en'),
+      theme: literal('light', 'dark')
     })
   }),
   'extras:chatDoc:attach': obj({ rect: browserRect, visible: bool }),
   'extras:chatDoc:close': obj({ sessionId: str({ max: 200 }) }),
   'extras:downloadChatDoc': tagged('kind', {
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
-    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData })
+    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
+    docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
   }),
   'extras:quickSubmit': obj({ text: str({ max: 100_000 }) }),
   'extras:quickHide': none,

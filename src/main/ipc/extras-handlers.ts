@@ -116,6 +116,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       let input: ChatDocInput
       if (req.kind === 'pdf') input = { kind: 'pdf', html: req.html }
       else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
+      else if (req.kind === 'docx') input = { kind: 'docx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
       const doc = await generateChatDoc(input, title, sessionId)
       // Con el programa de ArtCraft instalado, el panel muestra su versión WEB (misma pantalla y motor que el programa de escritorio);
@@ -138,7 +139,12 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     void cleanChatDocuments(sessionId)
   })
   handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {
-    const input: ChatDocInput = req.kind === 'xlsx' ? { kind: 'xlsx', data: req.data } : { kind: 'pptx', data: req.data }
+    const input: ChatDocInput =
+      req.kind === 'xlsx'
+        ? { kind: 'xlsx', data: req.data }
+        : req.kind === 'docx'
+          ? { kind: 'docx', data: req.data }
+          : { kind: 'pptx', data: req.data }
     return downloadChatDoc(input, req.title, windowOfSender(event.sender))
   })
   handle(ipcMain, 'extras:quickSubmit', (req) => {

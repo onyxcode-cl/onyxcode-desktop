@@ -4,11 +4,11 @@
  * se genera pero el panel no abre (ya pasó con `charts`: «Clave inesperada data.sheets[0].charts»). Cada caso se comprueba contra las dos.
  */
 import { describe, expect, it } from 'vitest'
-import { isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
+import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { IPC_SCHEMAS } from './schemas'
 
 const common = { title: 'T', sessionId: 's1', lang: 'es' as const, theme: 'light' as const }
-const ipcAccepts = (kind: 'xlsx' | 'pptx', data: unknown): boolean => {
+const ipcAccepts = (kind: 'xlsx' | 'pptx' | 'docx', data: unknown): boolean => {
   try {
     IPC_SCHEMAS['extras:chatDoc:open']({ ...common, kind, data } as never)
     return true
@@ -135,6 +135,50 @@ const PPTX: [string, unknown, boolean][] = [
   ['fondo inválido', { slides: [{ title: 'x', background: 'url(x)' }] }, false]
 ]
 
+const DOCX: [string, unknown, boolean][] = [
+  ['simple', { blocks: [{ type: 'paragraph', text: 'Hola' }] }, true],
+  [
+    'completo',
+    {
+      title: 'T',
+      subtitle: 'S',
+      author: 'A',
+      date: 'hoy',
+      header: 'H',
+      footer: 'F',
+      page_numbers: false,
+      toc: true,
+      blocks: [
+        { type: 'heading', level: 2, text: 'H2' },
+        { type: 'paragraph', text: '**a** *b*', align: 'justify' },
+        { type: 'bullets', items: ['a', ['b1', 'b2']] },
+        { type: 'numbered', items: ['uno'] },
+        {
+          type: 'table',
+          columns: ['a', 'b'],
+          rows: [
+            ['x', 1],
+            [null, 2.5]
+          ],
+          total_row: true,
+          zebra: false,
+          align: ['left', 'right'],
+          decimals: 2,
+          widths_cm: [4, 6],
+          caption: 'c'
+        },
+        { type: 'page_break' }
+      ]
+    },
+    true
+  ],
+  ['sin bloques', { blocks: [] }, false],
+  ['bloque desconocido', { blocks: [{ type: 'image', path: 'a.png' }] }, false],
+  ['clave de más', { blocks: [{ type: 'paragraph', text: 'x', macro: 'y' }] }, false],
+  ['tabla con fila corta', { blocks: [{ type: 'table', columns: ['a', 'b'], rows: [['1']] }] }, false],
+  ['clave de más en el documento', { evil: 1, blocks: [{ type: 'page_break' }] }, false]
+]
+
 describe('contrato de documentos de Chat: validación compartida e IPC dicen lo mismo', () => {
   // Regla: lo que la validación compartida acepta, el esquema IPC TAMBIÉN (si no, el archivo se genera y el panel no abre). Lo contrario no
   // importa: el esquema IPC puede ser más laxo en algo que la validación compartida ya detiene antes.
@@ -145,5 +189,9 @@ describe('contrato de documentos de Chat: validación compartida e IPC dicen lo 
   it.each(PPTX)('pptx — %s', (_n, data, valid) => {
     expect(isPptxSpec(data), 'isPptxSpec').toBe(valid)
     if (valid) expect(ipcAccepts('pptx', data), 'esquema IPC').toBe(true)
+  })
+  it.each(DOCX)('docx — %s', (_n, data, valid) => {
+    expect(isDocxSpec(data), 'isDocxSpec').toBe(valid)
+    if (valid) expect(ipcAccepts('docx', data), 'esquema IPC').toBe(true)
   })
 })

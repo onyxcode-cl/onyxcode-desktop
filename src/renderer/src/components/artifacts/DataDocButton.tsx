@@ -8,14 +8,14 @@
  */
 import { useState } from 'react'
 import { AppWindow, Download, Loader2 } from 'lucide-react'
-import { isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
+import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { UI_LABELS } from '@shared/labels'
 import { getExtras } from '../../lib/extrasApi'
 import { previewInChatDocPanel, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { parseDataBlock } from '../../lib/chatDocBlocks'
 
 interface Props {
-  kind: Extract<ChatDocBlockKind, 'xlsx' | 'pptx'>
+  kind: Extract<ChatDocBlockKind, 'xlsx' | 'pptx' | 'docx'>
   rawText: string
   title: string
   className?: string
@@ -64,6 +64,9 @@ export function DownloadDataDocButton({ kind, rawText, title, className = '', co
       if (kind === 'xlsx') {
         if (!isXlsxSpec(parsed)) throw new Error('Datos inválidos')
         await extras.invoke('extras:downloadChatDoc', { kind: 'xlsx', title, data: parsed })
+      } else if (kind === 'docx') {
+        if (!isDocxSpec(parsed)) throw new Error('Datos inválidos')
+        await extras.invoke('extras:downloadChatDoc', { kind: 'docx', title, data: parsed })
       } else {
         if (!isPptxSpec(parsed)) throw new Error('Datos inválidos')
         await extras.invoke('extras:downloadChatDoc', { kind: 'pptx', title, data: parsed })

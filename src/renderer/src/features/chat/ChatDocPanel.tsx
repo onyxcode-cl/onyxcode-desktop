@@ -9,10 +9,11 @@ import { DownloadDataDocButton } from '../../components/artifacts/DataDocButton'
 import type { ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { useChatDocViewport } from './useChatDocViewport'
 
-const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXlsx' | 'chat.doc.kindPptx'> = {
+const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXlsx' | 'chat.doc.kindPptx' | 'chat.doc.kindDocx'> = {
   html: 'chat.doc.kindPdf',
   xlsx: 'chat.doc.kindXlsx',
-  pptx: 'chat.doc.kindPptx'
+  pptx: 'chat.doc.kindPptx',
+  docx: 'chat.doc.kindDocx'
 }
 
 interface Props {
@@ -41,7 +42,7 @@ export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscr
             <DownloadSlidesPptxButton html={doc.rawText} title={title} compact className="py-1" />
           </>
         )}
-        {doc && (doc.kind === 'xlsx' || doc.kind === 'pptx') && (
+        {doc && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
           <DownloadDataDocButton kind={doc.kind} rawText={doc.rawText} title={title} compact className="py-1" />
         )}
         <button

@@ -21,6 +21,8 @@ import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
 import { gridToPdf, renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from './render-xlsx'
+import { isDocxSpec, type DocxSpec } from '@shared/chat-doc-spec'
+import { docxToPdf, renderChatDocx } from '../office/craft/chat-word'
 import { issueToken } from '../viewer/tokens'
 import { registerViewerPathValidator } from '../viewer/scheme'
 
@@ -58,9 +60,10 @@ export interface ChatDocument {
   file: string
 }
 
-export type ChatDocInput = { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec }
+export type ChatDocInput =
+  { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
 
-const EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx' }
+const EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx', docx: 'docx' }
 
 /** Genera el archivo real (PDF/Excel/PowerPoint) y lo guarda en la carpeta temporal de esta sesión, con un token del visor ya emitido. */
 export async function generateChatDoc(input: ChatDocInput, title: string, sessionId: string): Promise<ChatDocument> {
@@ -87,6 +90,13 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
       const token = issueToken({ path: pdfPath, kind: 'pdf' })
       return { token, kind: 'pdf', file: target }
     }
+  }
+
+  // Word: la vista web de WordCraft va aparte (ver `web-open.ts`); aquí el respaldo es el PDF que genera WordCraft.
+  if (input.kind === 'docx') {
+    const word = craftBinary('wordcraft')
+    const pdfPath = word ? await docxToPdf(word, target, target.replace(/\.docx$/, '.pdf')) : null
+    if (pdfPath) return { token: issueToken({ path: pdfPath, kind: 'pdf' }), kind: 'pdf', file: target }
   }
 
   // Excel: el visor estructural del panel dibuja las hojas de forma aproximada y NO muestra los gráficos; con GridCraft instalado la vista
@@ -126,6 +136,13 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
       }
     }
     return renderXlsx(input.data)
+  }
+  if (input.kind === 'docx') {
+    if (!isDocxSpec(input.data)) throw new Error('Datos de Word inválidos.')
+    // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
+    const word = craftBinary('wordcraft')
+    if (!word) throw new Error('El diseñador de documentos (WordCraft) no está instalado.')
+    return renderChatDocx(word, input.data)
   }
   if (!isPptxSpec(input.data)) throw new Error('Datos de PowerPoint inválidos.')
   // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.

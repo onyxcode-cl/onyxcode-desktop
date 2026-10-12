@@ -9,6 +9,7 @@ export const chat = {
   'chat.doc.kindPdf': 'PDF',
   'chat.doc.kindXlsx': 'Excel',
   'chat.doc.kindPptx': 'PowerPoint',
+  'chat.doc.kindDocx': 'Word',
   'chat.doc.fullscreen': 'Full screen',
   'chat.doc.exitFullscreen': 'Exit full screen',
   'chat.greeting.morning': 'Good morning',

@@ -148,9 +148,11 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
       ? 'xlsx'
       : rawLang === 'pptx'
         ? 'pptx'
-        : (rawLang === 'html' || isSlides) && (looksRenderable(code) || /<[a-z]/i.test(code))
-          ? 'html'
-          : null
+        : rawLang === 'docx'
+          ? 'docx'
+          : (rawLang === 'html' || isSlides) && (looksRenderable(code) || /<[a-z]/i.test(code))
+            ? 'html'
+            : null
   const renderable = docKind !== null
   // Un documento (lo que arma un PDF/Excel/PowerPoint) es contenido a mostrar, no código a leer: se
   // oculta por defecto (igual que Claude no muestra el código fuente del artifact en el chat) y
@@ -242,7 +244,7 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
             )}
           </>
         )}
-        {(docKind === 'xlsx' || docKind === 'pptx') && (
+        {(docKind === 'xlsx' || docKind === 'pptx' || docKind === 'docx') && (
           <>
             <PreviewDataDocButton kind={docKind} rawText={code} title={guessDataTitle(docKind, code)} className="py-0.5 text-[11.5px]" />
             <DownloadDataDocButton

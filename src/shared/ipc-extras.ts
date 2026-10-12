@@ -9,7 +9,7 @@ import type { KeybindingOverrides } from './keybindings'
 import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
 import type { ViewerEventType, ViewerRect } from './ipc-tasks'
-import type { PptxSpec, XlsxSpec } from './chat-doc-spec'
+import type { DocxSpec, PptxSpec, XlsxSpec } from './chat-doc-spec'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
 export type ModelMode = 'chat' | 'code' | 'tasks'
@@ -122,9 +122,12 @@ export type ChatDocOpenRequest =
   | (ChatDocOpenCommon & { kind: 'pdf'; html: string })
   | (ChatDocOpenCommon & { kind: 'xlsx'; data: XlsxSpec })
   | (ChatDocOpenCommon & { kind: 'pptx'; data: PptxSpec })
+  | (ChatDocOpenCommon & { kind: 'docx'; data: DocxSpec })
 
 /** Para `extras:downloadChatDoc` — solo xlsx/pptx (el PDF ya tiene su propio `downloadHtmlAsPdf`). */
-export type ChatDocDownloadRequest = { title: string } & ({ kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec })
+export type ChatDocDownloadRequest = { title: string } & (
+  { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
+)
 
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
