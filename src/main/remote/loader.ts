@@ -94,7 +94,8 @@ export function offState(platform: string = process.platform): RemoteState {
     }
   const devices = getDevicesStore()
   const forced = policy.requireConnectionConfirm
-  if (!devices.available)
+  // Sin nada vinculado no se pregunta por el cifrado (tocaría el Llavero al arrancar): se comprueba al activar el Celular.
+  if (devices.hasData && !devices.available)
     return {
       ...REMOTE_OFF_STATE,
       available: false,

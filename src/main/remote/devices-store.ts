@@ -261,10 +261,19 @@ export class DevicesStore {
     }
   }
 
+  /**
+   * ¿Hay algo guardado? Sirve para NO preguntar por el cifrado (que en macOS toca el Llavero y puede mostrar su cuadro de contraseña)
+   * mientras nunca se haya vinculado nada: la primera vez que hace falta es al activar el Celular.
+   */
+  get hasData(): boolean {
+    return existsSync(this.file)
+  }
+
   private load(): DeviceRecord[] {
     if (this.cache) return this.cache
     let list: DeviceRecord[] = []
-    if (this.available && existsSync(this.file)) {
+    // Primero el archivo: sin datos guardados no se consulta el cifrado (no se toca el Llavero al arrancar).
+    if (existsSync(this.file) && this.available) {
       try {
         const raw = this.safeStorage.decryptString(readFileSync(this.file))
         let migrated = false

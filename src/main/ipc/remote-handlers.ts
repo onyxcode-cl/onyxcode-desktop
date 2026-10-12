@@ -274,7 +274,8 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
       try {
         const store = getDevicesStore()
         const p = getOrgPolicy()
-        const c = store.available ? store.getCloudPrefs() : null
+        // Sin nada vinculado no se pregunta por el cifrado: tocaría el Llavero de macOS 4 s después de abrir la app.
+        const c = store.hasData && store.available ? store.getCloudPrefs() : null
         if (c?.away && c.connection === 'cloud' && !p.blocked && p.allowOutsideNetwork && !p.requirePasskey && store.list().length > 0)
           void ensureRemote(host())
             .then((s) => s.autoStartAway())

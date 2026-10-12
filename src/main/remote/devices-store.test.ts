@@ -430,3 +430,49 @@ describe('DevicesStore: vínculos del modo viaje', () => {
     expect(r.list()[0].expiresAt).toBeUndefined()
   })
 })
+
+describe('DevicesStore: no toca el cifrado (Llavero de macOS) mientras no haya nada guardado', () => {
+  function counting(): { safe: SafeStorageLike; calls: () => number } {
+    let n = 0
+    const base = fakeSafe()
+    return {
+      safe: {
+        isEncryptionAvailable: () => {
+          n++
+          return base.isEncryptionAvailable()
+        },
+        encryptString: base.encryptString,
+        decryptString: base.decryptString
+      },
+      calls: () => n
+    }
+  }
+
+  it('sin archivo: hasData es false y leer listas y ajustes no pregunta por el cifrado', () => {
+    const c = counting()
+    const s = new DevicesStore(join(dir, 'remote.bin'), c.safe)
+    expect(s.hasData).toBe(false)
+    expect(s.list()).toEqual([])
+    s.getPrefs()
+    s.getCloudPrefs()
+    s.revokeTravel()
+    expect(c.calls()).toBe(0)
+  })
+
+  it('con archivo guardado: sí pregunta (hace falta descifrar) y hasData es true', () => {
+    const file = join(dir, 'remote.bin')
+    new DevicesStore(file, fakeSafe()).add('iPhone de Ana')
+    const c = counting()
+    const s = new DevicesStore(file, c.safe)
+    expect(s.hasData).toBe(true)
+    expect(s.list()).toHaveLength(1)
+    expect(c.calls()).toBeGreaterThan(0)
+  })
+
+  it('al vincular algo por primera vez sí se consulta el cifrado', () => {
+    const c = counting()
+    const s = new DevicesStore(join(dir, 'remote.bin'), c.safe)
+    s.add('iPhone de Ana')
+    expect(c.calls()).toBeGreaterThan(0)
+  })
+})
