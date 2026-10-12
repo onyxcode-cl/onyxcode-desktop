@@ -6,12 +6,13 @@
  *   storage ni caché con la app.
  * - Sin preload, `sandbox`, `contextIsolation`, sin `nodeIntegration`.
  * - Se sirve desde un esquema propio con cabecera CSP estricta (y además un <meta> CSP
- *   inyectado): sólo scripts/estilos inline, imágenes/fuentes data:/blob:, sin red.
+ *   inyectado): sólo scripts/estilos inline, imágenes/fuentes data:/blob:, sin red. Las imágenes de internet de bancos permitidos las
+ *   descarga la APP y las incrusta como data: antes de servir el HTML (`remote-images.ts`); la ventana sigue sin red.
  * - webRequest cancela cualquier petición http(s)/ws/file desde esa sesión; permisos denegados;
  *   navegación y ventanas nuevas bloqueadas.
  */
 import { t } from '@shared/i18n'
-import { app, BrowserWindow, clipboard, dialog, Menu, session, type Session } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, Menu, net, session, type Session } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
@@ -19,6 +20,7 @@ import { APP_SLUG } from '@shared/brand'
 import type { ArtifactPayload } from '@shared/ipc-extras'
 import { MAX_SLIDES } from '@shared/chat-doc-spec'
 import { extrasWindows } from './windows'
+import { inlineRemoteImages } from './remote-images'
 import { presentWindow } from '../e2e-headless'
 
 const PARTITION = 'artifact'
@@ -47,17 +49,32 @@ export const ARTIFACT_CSP = [
 ].join('; ')
 
 const artifacts = new Map<string, ArtifactPayload>()
+/** HTML con las imágenes de internet ya incrustadas, por documento. */
+const inlined = new Map<string, Promise<string>>()
 let configuredSession: Session | null = null
 
 function artifactSession(): Session {
   if (configuredSession) return configuredSession
   const ses = session.fromPartition(PARTITION, { cache: false })
 
-  ses.protocol.handle(SCHEME, (request) => {
+  ses.protocol.handle(SCHEME, async (request) => {
     const id = request.url.slice(`${SCHEME}://`.length).replace(/[/?#].*$/, '')
     const artifact = artifacts.get(id)
     if (!artifact) return new Response('Vista previa no encontrada', { status: 404 })
-    return new Response(withCspMeta(artifact.html, artifact.title), {
+    // La ventana no tiene red: las imágenes de internet (bancos de imágenes permitidos) las descarga la APP y se incrustan como data:
+    // (ventana, modo presentación, PDF y PowerPoint pasan todos por aquí). Una sola vez por documento.
+    let ready = inlined.get(id)
+    if (!ready) {
+      ready = inlineRemoteImages(artifact.html, { fetchImpl: (u, i) => net.fetch(u, i) })
+        .then((r) => {
+          if (r.inlined > 0 || r.blocked.length > 0)
+            console.info(`[artifact] imágenes de internet: ${r.inlined} incrustadas, ${r.blocked.length} bloqueadas`)
+          return r.html
+        })
+        .catch(() => artifact.html)
+      inlined.set(id, ready)
+    }
+    return new Response(withCspMeta(await ready, artifact.title), {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
@@ -136,7 +153,10 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
   // Mantener el título elegido aunque el HTML tenga su propio <title>.
   win.on('page-title-updated', (event) => event.preventDefault())
   win.once('ready-to-show', () => presentWindow(win))
-  win.on('closed', () => artifacts.delete(id))
+  win.on('closed', () => {
+    artifacts.delete(id)
+    inlined.delete(id)
+  })
 
   wc.on('context-menu', () => {
     const artifact = artifacts.get(id)
@@ -236,6 +256,7 @@ export async function renderHtmlToPdf(html: string, title = 'Documento'): Promis
   } finally {
     if (timer) clearTimeout(timer)
     artifacts.delete(id)
+    inlined.delete(id)
     if (!win.isDestroyed()) win.destroy()
   }
 }
@@ -369,6 +390,7 @@ export async function captureSlidesAsPngs(html: string, title = 'Presentación')
   } finally {
     if (timer) clearTimeout(timer)
     artifacts.delete(id)
+    inlined.delete(id)
     if (!win.isDestroyed()) win.destroy()
   }
 }
@@ -417,7 +439,10 @@ export function presentSlides(payload: ArtifactPayload): BrowserWindow {
   wc.on('will-redirect', (event) => event.preventDefault())
   wc.on('will-attach-webview', (event) => event.preventDefault())
   win.on('page-title-updated', (event) => event.preventDefault())
-  win.on('closed', () => artifacts.delete(id))
+  win.on('closed', () => {
+    artifacts.delete(id)
+    inlined.delete(id)
+  })
   // Si la persona sale de pantalla completa con los controles propios del sistema (no con Escape),
   // cerrar igual: esta ventana no tiene ningún sentido fuera de pantalla completa (sin marco, sin
   // controles propios).

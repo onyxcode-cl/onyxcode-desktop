@@ -68,6 +68,11 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     token: /onyxcode-cl\/onyxcode-desktop/i,
     reason: 'repositorio de GitHub de las releases (RELEASES_REPO)'
   },
+  {
+    path: 'src/main/extras/remote-images.ts',
+    token: /onyxcode-cl\/onyxcode-desktop/i,
+    reason: 'User-Agent de las descargas de imágenes: identifica al repositorio de GitHub (RELEASES_REPO)'
+  },
   { path: 'docs/INSTALAR.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
   { path: 'docs/RELEASE.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
 

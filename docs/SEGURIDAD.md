@@ -91,6 +91,10 @@ macOS reconoce a un programa sin Team ID de Apple por el hash exacto de su códi
 - **Respaldo:** si el auxiliar falta o rechaza (desarrollo, Windows, build ad-hoc) se usa `safeStorage` como antes, y lo cifrado con `safeStorage` se sigue leyendo (formato `v10`) y pasa al formato nuevo al guardar.
 - **Pendiente:** las cookies del navegador integrado usan la llave propia de Chromium («Lazunox Safe Storage»); su primera escritura tras cada actualización puede mostrar el cuadro del Llavero.
 
+### 3.2 Imágenes de internet en presentaciones y documentos HTML (`extras/remote-images.ts`)
+
+La ventana de artifacts (documentos y presentaciones que escribe la IA) sigue **sin red**: su CSP solo admite `data:` y `blob:`, y cancela cualquier petición http(s). Para que las fotos de la web se vean, la APP las descarga y las incrusta como `data:` antes de servir el HTML (un único punto: el manejador del esquema de la ventana, por el que pasan la ventana, el modo presentación, el PDF y el PowerPoint). Límites: solo https, solo dominios de la lista `ALLOWED_IMAGE_HOSTS` (Unsplash, Pexels, Pixabay, Wikimedia, Flickr), URL de hasta 400 caracteres, sin credenciales ni cookies, cada redirección se vuelve a validar, el dominio no puede resolver a una red privada o local, máximo 24 imágenes, 6 MB cada una y 40 MB en total, 12 s por imagen, y se comprueba el contenido real (PNG, JPEG, GIF, WebP o AVIF; el SVG se descarta). Lo que no cumple se sustituye por una imagen gris que lo explica. Riesgo residual honesto: la app contacta con esos bancos de imágenes por orden de la IA (verían tu IP y la dirección de la imagen pedida); una dirección con parámetros solo llega a esos dominios, no a uno elegido por un atacante.
+
 ## 3 bis. Tareas: puerta del plan, carpetas, red, MCP, política y rutinas (Lote B)
 
 Detalle de los hallazgos en `AUDIT.md` §9; resumen del lote B en la documentación interna de proceso.

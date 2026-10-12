@@ -192,7 +192,8 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
     if (st.size > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
     const html = await readFile(real, 'utf8')
     const stem = basename(real, extname(real))
-    // Ventana oculta con la misma sesión aislada que los artifacts: sin red, sin acceso a la app.
+    // Ventana oculta con la misma sesión aislada que los artifacts: sin red y sin acceso a la app (las imágenes de bancos permitidos las
+    // descarga la app y las incrusta antes: `extras/remote-images.ts`).
     const pdf = await renderHtmlToPdf(html, stem)
     if (!pdf.subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('No se pudo generar el PDF.')
     const dir = dirname(real)
