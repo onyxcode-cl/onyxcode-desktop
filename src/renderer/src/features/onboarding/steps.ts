@@ -12,7 +12,7 @@ import type { OpencodeInfo, OpencodeSource, ServerState } from '@shared/types'
 export const ONBOARDING_STEPS = ['opencode', 'auth', 'model', 'modes', 'setup'] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
-/** Pasos de esta plataforma: el último, «Prepara tu equipo», existe en macOS (permisos + LibreOffice) y en Windows (entorno de Tareas). */
+/** Pasos de esta plataforma: el último, «Prepara tu equipo», existe en macOS (permisos + ArtCraft) y en Windows (entorno de Tareas). */
 export function stepsFor(_platform: string = currentPlatform()): readonly OnboardingStep[] {
   return ONBOARDING_STEPS
 }

@@ -89,8 +89,9 @@ export const wizard = {
   'wizard.setup.perms': 'macOS permissions: Accessibility and Screen Recording',
   'wizard.setup.perms.hint':
     'So the agent can move the mouse and see the screen when you ask it to. macOS will show its prompts: turn them on.',
-  'wizard.setup.office': 'LibreOffice, to preview Word, Excel and PowerPoint as they will look',
-  'wizard.setup.office.hint': 'Official download from The Document Foundation (about {mb} MB), verified before use.',
+  'wizard.setup.craft': 'Document designer (ArtCraft), to create and view well-designed Word, Excel, PowerPoint and PDF files',
+  'wizard.setup.craft.hint':
+    'Downloaded from GitHub (about {mb} MB) and verified by hash and signature before use. No administrator password needed.',
   'wizard.setup.sandbox': 'Isolated environment for Tasks',
   'wizard.setup.sandbox.hint': 'Set up once (about 2 GB of disk), using what the app already includes.',
   'wizard.setup.run': 'Set everything up',

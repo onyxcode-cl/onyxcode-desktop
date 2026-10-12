@@ -1,4 +1,4 @@
-/** Ajustes › Diagnóstico › «Estado del sistema»: vista por resumen/nivel y lógica de arreglos (permisos, LibreOffice, xcode-select). */
+/** Ajustes › Diagnóstico › «Estado del sistema»: vista por resumen/nivel y lógica de arreglos (permisos, ArtCraft, xcode-select). */
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
@@ -77,7 +77,7 @@ describe('Estado del sistema › un ítem por nivel', () => {
     { id: 'macos', level: 'ok' },
     { id: 'accessibility', level: 'fail', fix: 'requestPermissions' },
     { id: 'keyboardTool', level: 'warn' },
-    { id: 'office', level: 'warn', fix: 'installOffice' },
+    { id: 'craft', level: 'warn', fix: 'installCraft' },
     { id: 'git', level: 'warn', fix: 'xcodeSelect' },
     { id: 'screens', level: 'info', detail: 'Built-in Retina (2056×1329)' }
   ]
@@ -100,7 +100,7 @@ describe('Estado del sistema › un ítem por nivel', () => {
   it('pone el botón de arreglo que corresponde a cada ítem', () => {
     const h = view({ report: rep(items) })
     expect(h).toContain('Dar permisos')
-    expect(h).toContain('Instalar LibreOffice')
+    expect(h).toContain('Instalar</button>')
     expect(h).toContain(XCODE_COMMAND)
     expect(h).toContain('Ábrelo en Terminal')
     expect(h).toContain('Copiar</button>')
@@ -127,13 +127,13 @@ describe('Estado del sistema › un ítem por nivel', () => {
     expect(view({ report: rep(items), copied: true })).toContain('Copiado')
   })
 
-  it('en inglés el arreglo de LibreOffice tiene su texto', () => {
-    expect(view({ report: rep(items) }, tEn)).toContain('Install LibreOffice')
+  it('en inglés el arreglo de ArtCraft tiene su texto', () => {
+    expect(view({ report: rep(items) }, tEn)).toContain('Install</button>')
   })
 
-  it('el texto de LibreOffice ok es «LibreOffice listo»', () => {
-    expect(view({ report: rep([{ id: 'office', level: 'ok' }], 'ok') })).toContain('LibreOffice listo')
-    expect(tEs('settings.doctor.item.office.warn')).toContain('no está instalado')
+  it('el texto de ArtCraft ok es «ArtCraft listo»', () => {
+    expect(view({ report: rep([{ id: 'craft', level: 'ok' }], 'ok') })).toContain('ArtCraft listo')
+    expect(tEs('settings.doctor.item.craft.warn')).toContain('no está instalado')
   })
 })
 
@@ -151,8 +151,8 @@ describe('Estado del sistema › acciones', () => {
       requestPermissions: vi.fn(async () => {
         calls.push('requestPermissions')
       }),
-      installOffice: vi.fn(async () => {
-        calls.push('installOffice')
+      installCraft: vi.fn(async () => {
+        calls.push('installCraft')
         return { kind: 'installed' as const }
       }),
       ...over
@@ -174,10 +174,10 @@ describe('Estado del sistema › acciones', () => {
     expect(m.api.run).not.toHaveBeenCalled()
   })
 
-  it('«Instalar LibreOffice» reutiliza la instalación (consentimiento incluido) y luego revisa', async () => {
+  it('«Instalar» (ArtCraft) reutiliza la instalación (consentimiento incluido) y luego revisa', async () => {
     const m = mk()
-    await m.ctl.installOffice()
-    expect(m.calls).toEqual(['installOffice', 'run'])
+    await m.ctl.installCraft()
+    expect(m.calls).toEqual(['installCraft', 'run'])
   })
 
   it('xcodeSelect copia exactamente el comando (sin ejecutar nada)', async () => {

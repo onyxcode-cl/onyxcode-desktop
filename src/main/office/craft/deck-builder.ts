@@ -168,7 +168,7 @@ export function validateDeckSpec(input: unknown): DeckSpec {
 export function buildDeckCommands(spec: DeckSpec): string[] {
   const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, header } = createKit()
   a('file.new')
-  // Arial en todo: Inter (la del tema) no está en todos los equipos y LibreOffice/PowerPoint la sustituyen por una serif.
+  // Arial en todo: Inter (la del tema) no está en todos los equipos y PowerPoint la sustituye por una serif.
   a('design.fonts', { major: 'Arial', minor: 'Arial' })
   spec.slides.forEach((s, idx) => {
     const n = idx + 1

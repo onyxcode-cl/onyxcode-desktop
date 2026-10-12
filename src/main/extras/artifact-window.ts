@@ -301,7 +301,7 @@ const SLIDE_H = 540
  * calce exacto en píxeles (un `padding` sin `box-sizing:border-box` en el HTML del agente rompería el
  * scroll por offset fijo). Si el HTML no sigue el contrato `.slide` (0 encontradas), captura la
  * página entera como una sola "diapositiva" — nunca falla por eso, degrada con gracia (mismo criterio
- * que la integración de LibreOffice, F8-B132).
+ * que el resto de las vistas previas, F8-B132).
  */
 export async function captureSlidesAsPngs(html: string, title = 'Presentación'): Promise<Buffer[]> {
   const source = String(html ?? '')

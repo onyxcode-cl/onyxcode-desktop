@@ -595,14 +595,14 @@ function StepModes(): React.JSX.Element {
 
 // ───────────── Paso 5: prepara tu equipo (permisos + componentes) ─────────────
 
-type SetupItemId = 'perms' | 'office' | 'sandbox'
+type SetupItemId = 'perms' | 'craft' | 'sandbox'
 type SetupState = 'idle' | 'running' | 'done' | 'waiting' | 'failed'
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 /**
- * Un solo botón deja el equipo listo: en macOS pide Accesibilidad y Grabación de pantalla y baja LibreOffice (descarga oficial,
- * verificada por el motor); en Windows prepara el entorno aislado de Tareas. Pulsarlo ES el consentimiento de todo lo que la tarjeta
+ * Un solo botón deja el equipo listo: en macOS pide Accesibilidad y Grabación de pantalla y baja ArtCraft (el diseñador de documentos: descarga de GitHub,
+ * verificada por hash y firma); en Windows prepara el entorno aislado de Tareas. Pulsarlo ES el consentimiento de todo lo que la tarjeta
  * enumera; nada se hace antes. Cada pieza se puede reintentar y todo se puede hacer después desde Ajustes.
  */
 function StepSetup(): React.JSX.Element {
@@ -610,7 +610,7 @@ function StepSetup(): React.JSX.Element {
   const mac = isMacPlatform()
   const caps = platformCaps()
   const [items, setItems] = useState<Partial<Record<SetupItemId, SetupState>>>({})
-  const [officeMb, setOfficeMb] = useState(0)
+  const [craftMb, setCraftMb] = useState(0)
   const [pct, setPct] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
@@ -621,11 +621,11 @@ function StepSetup(): React.JSX.Element {
       const c = await cw('computer:status').catch(() => null)
       if (c) set('perms', c.accessibility && c.screenRecording ? 'done' : 'idle')
     }
-    const o = await cw('office:status').catch(() => null)
+    const o = await cw('craft:status').catch(() => null)
     if (o?.status.state === 'missing') {
-      setOfficeMb(Math.round(o.status.sizeBytes / 1e6))
-      set('office', 'idle')
-    } else if (o?.status.state === 'installed') set('office', 'done')
+      setCraftMb(Math.round(o.status.sizeBytes / 1e6))
+      set('craft', 'idle')
+    } else if (o?.status.state === 'installed') set('craft', 'done')
     if (caps.tasks && caps.tasksSandbox === 'wsl') {
       const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
       if (s) set('sandbox', s.state === 'ready' ? 'done' : 'idle')
@@ -651,10 +651,20 @@ function StepSetup(): React.JSX.Element {
         }
         set('perms', ok ? 'done' : 'waiting')
       }
-      if (items.office && items.office !== 'done') {
-        set('office', 'running')
-        const r = await cw('office:install').catch(() => ({ ok: false as const }))
-        set('office', r.ok ? 'done' : 'failed')
+      if (items.craft && items.craft !== 'done') {
+        set('craft', 'running')
+        const poll = setInterval(() => {
+          void cw('craft:status')
+            .then((s) => {
+              const total = s.progress?.total ?? 0
+              setPct(s.installing && total > 0 ? Math.min(100, Math.round(((s.progress?.done ?? 0) / total) * 100)) : null)
+            })
+            .catch(() => undefined)
+        }, 1000)
+        const r = await cw('craft:install').catch(() => ({ ok: false as const }))
+        clearInterval(poll)
+        setPct(null)
+        set('craft', r.ok ? 'done' : 'failed')
       }
       if (items.sandbox && items.sandbox !== 'done') {
         set('sandbox', 'running')
@@ -673,7 +683,7 @@ function StepSetup(): React.JSX.Element {
 
   const rows: Array<{ id: SetupItemId; label: string; hint: string }> = []
   if (mac && caps.computer) rows.push({ id: 'perms', label: t('wizard.setup.perms'), hint: t('wizard.setup.perms.hint') })
-  if (items.office) rows.push({ id: 'office', label: t('wizard.setup.office'), hint: t('wizard.setup.office.hint', { mb: officeMb }) })
+  if (items.craft) rows.push({ id: 'craft', label: t('wizard.setup.craft'), hint: t('wizard.setup.craft.hint', { mb: craftMb }) })
   if (items.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
   const allDone = rows.length > 0 && rows.every((r) => items[r.id] === 'done')
   const anyFailed = rows.some((r) => items[r.id] === 'failed' || items[r.id] === 'waiting')
@@ -699,7 +709,7 @@ function StepSetup(): React.JSX.Element {
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
                   <p className="font-medium text-fg">{r.label}</p>
                   <p className="text-muted">
-                    {st === 'running' && r.id === 'sandbox' && pct !== null ? `${pct} % · ` : ''}
+                    {st === 'running' && (r.id === 'sandbox' || r.id === 'craft') && pct !== null ? `${pct} % · ` : ''}
                     {st === 'waiting'
                       ? t('wizard.setup.status.waiting')
                       : st === 'failed'

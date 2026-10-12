@@ -7,7 +7,7 @@ import { app } from 'electron'
 import { join } from 'node:path'
 import type { CraftInstallResult, CraftUiSnapshot } from '@shared/craft'
 import { unpacked } from '../../util/asar'
-import { OfficeError } from '../libreoffice'
+import { OfficeError } from '../download'
 import { craftStatus, craftWebDir, installCraft, loadCraftPin, removeCraft, type CraftDeps, type CraftStatus } from './craft-install'
 
 type Progress = NonNullable<CraftUiSnapshot['progress']>

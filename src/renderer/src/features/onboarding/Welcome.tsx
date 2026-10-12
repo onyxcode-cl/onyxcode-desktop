@@ -1,6 +1,6 @@
 /**
  * Bienvenida del primer uso: animación de marca («Hecho por …»), revisión de lo que ya hay en el equipo y preparación de lo que falta
- * (LibreOffice para ver documentos, el entorno aislado de Tareas en Windows). La persona ve la lista con los tamaños y una cuenta atrás;
+ * (ArtCraft, el diseñador de documentos, y el entorno aislado de Tareas en Windows). La persona ve la lista con los tamaños y una cuenta atrás;
  * puede empezar ya u omitirlo. Nada se descarga sin esa cuenta atrás visible. Los permisos de macOS siguen en el último paso del asistente.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -31,7 +31,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const caps = platformCaps()
   const mac = isMacPlatform()
   const [found, setFound] = useState<WelcomeItems>({})
-  const [officeMb, setOfficeMb] = useState(0)
+  const [craftMb, setCraftMb] = useState(0)
   const [pct, setPct] = useState<number | null>(null)
   const [left, setLeft] = useState<number | null>(null)
   const checked = useRef(false)
@@ -60,11 +60,11 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         const c = await cw('computer:status').catch(() => null)
         if (c) set('perms', c.accessibility && c.screenRecording ? 'ready' : 'pending')
       }
-      const o = await cw('office:status').catch(() => null)
+      const o = await cw('craft:status').catch(() => null)
       if (o?.status.state === 'missing') {
-        if (alive.current) setOfficeMb(Math.round(o.status.sizeBytes / 1e6))
-        set('office', 'pending')
-      } else if (o?.status.state === 'installed') set('office', 'ready')
+        if (alive.current) setCraftMb(Math.round(o.status.sizeBytes / 1e6))
+        set('craft', 'pending')
+      } else if (o?.status.state === 'installed') set('craft', 'ready')
       if (caps.tasks && caps.tasksSandbox === 'wsl') {
         const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
         if (s) set('sandbox', s.state === 'ready' ? 'ready' : 'pending')
@@ -77,9 +77,21 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     async (ids: WelcomeItemId[]): Promise<void> => {
       for (const id of ids) {
         set(id, 'downloading')
-        if (id === 'office') {
-          const r = await cw('office:install').catch(() => ({ ok: false as const }))
-          set('office', r.ok ? 'ready' : 'failed')
+        if (id === 'craft') {
+          // El progreso real de la descarga (main lo expone en `craft:status`) se muestra como porcentaje.
+          const poll = setInterval(() => {
+            void cw('craft:status')
+              .then((s) => {
+                const total = s.progress?.total ?? 0
+                if (alive.current)
+                  setPct(s.installing && total > 0 ? Math.min(100, Math.round(((s.progress?.done ?? 0) / total) * 100)) : null)
+              })
+              .catch(() => undefined)
+          }, 1000)
+          const r = await cw('craft:install').catch(() => ({ ok: false as const }))
+          clearInterval(poll)
+          if (alive.current) setPct(null)
+          set('craft', r.ok ? 'ready' : 'failed')
         } else if (id === 'perms') {
           await cw('computer:requestPermissions').catch(() => undefined)
           // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos.
@@ -147,11 +159,11 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
       hint: items.engine === 'ready' ? t('wizard.welcome.engine.ok') : t('wizard.welcome.engine.missing')
     }
   ]
-  if (found.office)
+  if (found.craft)
     rows.push({
-      id: 'office',
-      label: t('wizard.setup.office'),
-      hint: found.office === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.office.hint', { mb: officeMb })
+      id: 'craft',
+      label: t('wizard.setup.craft'),
+      hint: found.craft === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.craft.hint', { mb: craftMb })
     })
   if (found.sandbox)
     rows.push({
@@ -170,7 +182,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {
     if (id === 'perms' && st === 'downloading') return t('wizard.welcome.state.waiting')
     if (st === 'downloading')
-      return id === 'sandbox' && pct !== null ? t('wizard.welcome.progress', { pct }) : t('wizard.welcome.state.downloading')
+      return (id === 'sandbox' || id === 'craft') && pct !== null
+        ? t('wizard.welcome.progress', { pct })
+        : t('wizard.welcome.state.downloading')
     return t(`wizard.welcome.state.${st}` as const)
   }
 

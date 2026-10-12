@@ -7,7 +7,7 @@
  * se vio feo": fondo a toda página en las diapositivas de impacto (portada/sección/cifra/cierre),
  * etiqueta y nota al pie como convención ESTRUCTURAL (nunca contenido inventado), gráficos nativos,
  * tarjetas, dos columnas, y el mismo círculo de textura en toda la familia de fondo a toda página.
- * Sigue sin imágenes externas ni el ciclo de revisión con LibreOffice+visión de la skill oficial — eso
+ * Sigue sin imágenes externas ni el ciclo de revisión con visión de la skill oficial — eso
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
 import PptxGenJS from 'pptxgenjs'
@@ -115,9 +115,9 @@ function addFooterRow(
 /**
  * Forma de tarjeta a usar según `s.cardRadius` — NUNCA `addShape('roundRect', {rectRadius: 0, ...})`:
  * bug real de `pptxgenjs` (confirmado leyendo su fuente), `rectRadius` se chequea con `if (value)`, así
- * que `0` (falsy) nunca escribe el `adj` de la esquina — PowerPoint/LibreOffice cae al radio PROPIO
+ * que `0` (falsy) nunca escribe el `adj` de la esquina — PowerPoint cae al radio PROPIO
  * del preset `roundRect` (visiblemente redondeado, no la esquina recta que pide "editorial"/"minimal").
- * Confirmado visualmente con el render real de LibreOffice, no solo con el XML.
+ * Confirmado visualmente con un render real, no solo con el XML.
  */
 function cardShape(s: StyleParams): 'rect' | 'roundRect' {
   return s.cardRadius > 0 ? 'roundRect' : 'rect'

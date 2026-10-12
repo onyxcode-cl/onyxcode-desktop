@@ -16,7 +16,7 @@ import {
   type CraftProgress,
   type CraftWebAsset
 } from './craft-install'
-import type { RunFile } from '../libreoffice'
+import type { RunFile } from '../download'
 
 const BYTES = Buffer.from('zip-falso-para-prueba')
 const sha = createHash('sha256').update(BYTES).digest('hex')

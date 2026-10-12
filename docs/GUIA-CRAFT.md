@@ -134,3 +134,7 @@ El panel de documentos del Chat muestra Excel y PowerPoint con la versión **web
 ## Trampa: el prompt del Chat vive en DOS lugares
 
 El agente de Chat tiene sus instrucciones en `resources/opencode/agents/chat.md` **y** copiadas dentro de `src/main/opencode/config.ts` (config inline que recibe `opencode serve`). La inline **gana**. Un cambio solo en `chat.md` no llega al Chat: hay que aplicarlo también en `config.ts` (y se comprueba renderizando `buildInlineConfig()`). Esto hizo que el modelo dijera «no puedo poner gráficos en el Excel» aunque GridCraft sí los soporta.
+
+## LibreOffice fue eliminado
+
+LibreOffice fue eliminado del código (ya no se usa ni se instala). ArtCraft se instala automáticamente desde la bienvenida de la primera vez (con su cuenta regresiva visible y «Omitir por ahora») y, si hace falta, desde Ajustes › Tareas › Componentes opcionales o desde el diagnóstico. La descarga verificada (tamaño exacto, SHA-256, firma) vive en `src/main/office/download.ts`; el servicio `officeService()` de `src/main/office/service.ts` solo conserva `env()` porque `src/main/tasks/opencode-config.ts` (zona protegida) lo importa.

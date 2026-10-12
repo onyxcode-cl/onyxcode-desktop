@@ -11,20 +11,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 let fakeTemp: string
 vi.mock('electron', () => ({ app: { getPath: () => fakeTemp } }))
 
-// `convertToPdf` depende de si LibreOffice está instalado en la máquina que corre el test — mockeado
-// para que `generateChatDoc` sea determinista acá sin importar la máquina (ver `office-render.test.ts`
-// para las pruebas de `convertToPdf`/`findSoffice` en sí).
-const convertToPdfMock = vi.fn<(pptxPath: string, outDir: string) => Promise<string | null>>()
 // Sin DeckCraft instalado: estas pruebas son del generador de siempre (ArtCraft se prueba en `office/craft/chat-deck.test.ts`).
 vi.mock('../office/craft/service', () => ({ craftService: () => ({ status: () => ({ state: 'missing', version: '0', sizeBytes: 0 }) }) }))
-vi.mock('./office-render', () => ({ convertToPdf: (...args: [string, string]) => convertToPdfMock(...args) }))
 
 let chatDocs: typeof import('./chat-docs')
 
 beforeEach(async () => {
   fakeTemp = mkdtempSync(join(tmpdir(), 'lzx-chatdocs-root-'))
-  convertToPdfMock.mockReset()
-  convertToPdfMock.mockResolvedValue(null) // por defecto: "sin LibreOffice", el caso de siempre
   vi.resetModules()
   chatDocs = await import('./chat-docs')
 }, 30_000) // en Windows la primera importación (exceljs, pptxgenjs…) tarda más de 10 s
@@ -86,30 +79,9 @@ describe('generateChatDoc: genera xlsx/pptx reales con el token/kind correcto', 
     expect(doc.token).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('pptx, sin LibreOffice (convertToPdf → null): el de siempre, kind "pptx"', async () => {
+  it('pptx, sin DeckCraft: el de siempre, kind "pptx"', async () => {
     const doc = await chatDocs.generateChatDoc({ kind: 'pptx', data: { slides: [{ title: 'A' }] } }, 't', 's1')
     expect(doc.kind).toBe('pptx')
     expect(doc.token).toMatch(/^[0-9a-f]{64}$/)
-  })
-})
-
-describe('generateChatDoc: pptx con LibreOffice disponible — la vista previa usa el PDF real, nunca lo que se descarga', () => {
-  it('convertToPdf resuelve una ruta: el token queda con kind "pdf" (apuntando al PDF, no al .pptx)', async () => {
-    convertToPdfMock.mockResolvedValue('/tmp/no-hace-falta-que-exista/deck.pdf')
-    const doc = await chatDocs.generateChatDoc({ kind: 'pptx', data: { slides: [{ title: 'A' }] } }, 't', 's1')
-    expect(doc.kind).toBe('pdf')
-    expect(doc.token).toMatch(/^[0-9a-f]{64}$/)
-    expect(convertToPdfMock).toHaveBeenCalledTimes(1)
-  })
-
-  it('convertToPdf lanza (en vez de devolver null): igual cae con gracia a "pptx", nunca rompe la generación', async () => {
-    convertToPdfMock.mockRejectedValue(new Error('se cayó soffice'))
-    const doc = await chatDocs.generateChatDoc({ kind: 'pptx', data: { slides: [{ title: 'A' }] } }, 't', 's1')
-    expect(doc.kind).toBe('pptx')
-  })
-
-  it('xlsx: nunca llama a convertToPdf (solo aplica a pptx)', async () => {
-    await chatDocs.generateChatDoc({ kind: 'xlsx', data: { sheets: [{ name: 'A', rows: [['x']] }] } }, 't', 's1')
-    expect(convertToPdfMock).not.toHaveBeenCalled()
   })
 })

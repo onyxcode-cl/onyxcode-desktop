@@ -1,7 +1,7 @@
 /**
- * Ajustes › Tareas › «Componentes opcionales»: tarjeta de las presentaciones con diseño premium (DeckCraft) con instalación bajo demanda.
- * Mismo patrón que `OfficeComponentCard`: el botón «Instalar» ES el consentimiento (el diálogo confirma la descarga antes de llamar a
- * `craft:install`) y todo el estado vive en main (`craft:*`). Reutiliza el controlador y los textos de error de LibreOffice.
+ * Ajustes › Tareas › «Componentes opcionales»: tarjeta de ArtCraft (presentaciones, documentos, hojas y PDF con diseño premium) con
+ * instalación bajo demanda. El botón «Instalar» ES el consentimiento (el diálogo confirma la descarga antes de llamar a `craft:install`)
+ * y todo el estado vive en main (`craft:*`). La lógica sin DOM (controlador, MB, errores) está en `component-install.ts`.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MsgKey, Params } from '@shared/i18n'
@@ -10,25 +10,22 @@ import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { useT } from '../../../lib/i18n'
 import { cw } from '../../tasks/impl/bridge'
-import { officeController, officeErrorKey, officeMb } from './OfficeComponentCard'
-import { Card, Row } from './ui'
+import { officeController, officeErrorKey, officeMb, type InstallOutcome } from './component-install'
+import { Card, Row, SubTitle } from './ui'
 
 type T = (key: MsgKey, params?: Params) => string
 
 const POLL_MS = 1000
 
 const PHASE_KEYS = {
-  download: 'settings.office.phase.download',
-  verify: 'settings.office.phase.verify',
-  copy: 'settings.office.phase.copy',
-  done: 'settings.office.phase.done'
+  download: 'settings.craft.phase.download',
+  verify: 'settings.craft.phase.verify',
+  copy: 'settings.craft.phase.copy',
+  done: 'settings.craft.phase.done'
 } as const satisfies Record<NonNullable<CraftUiSnapshot['progress']>['phase'], MsgKey>
 
-/** Mensaje de un fallo: los de LibreOffice sirven (disco, hash, firma, descarga, cancelado); el genérico es propio. */
-export function craftErrorKey(code: string | undefined): MsgKey {
-  const k = officeErrorKey(code)
-  return k === 'settings.office.error.generic' ? 'settings.craft.error.generic' : k
-}
+/** Mensaje humano de un fallo (disco, hash, firma, descarga, cancelado o genérico). */
+export const craftErrorKey = officeErrorKey
 
 const REAL_API = {
   status: () => cw('craft:status') as Promise<CraftUiSnapshot>,
@@ -46,6 +43,16 @@ const confirmInstall =
       confirmLabel: t('settings.craft.consent.confirm'),
       focusCancel: true
     })
+
+/**
+ * Flujo de instalación de ArtCraft para otras pantallas (Diagnóstico): consulta el tamaño, pide el mismo consentimiento y llama a
+ * `craft:install`. Si ya está instalado (o no hay nada que instalar) no hace nada.
+ */
+export async function requestCraftInstall(t: T): Promise<InstallOutcome> {
+  const s = await REAL_API.status()
+  if (s.status.state !== 'missing') return { kind: 'installed' }
+  return officeController(REAL_API, confirmInstall(t)).install(officeMb(s.status.sizeBytes))
+}
 
 export interface CraftCardViewProps {
   t: T
@@ -89,21 +96,21 @@ export function CraftCardView({ t, snapshot, busy, error, onInstall, onCancel, o
         </span>
         {total > 0 && (
           <span className="block text-xs tabular-nums">
-            {t('settings.office.progress', { done: officeMb(done), total: officeMb(total) })}
+            {t('settings.craft.progress', { done: officeMb(done), total: officeMb(total) })}
           </span>
         )}
       </span>
     )
     control = (
       <Button size="sm" variant="secondary" onClick={onCancel}>
-        {t('settings.office.cancel')}
+        {t('settings.craft.cancel')}
       </Button>
     )
   } else if (status.state === 'installed') {
     extra = <span className="block text-xs text-muted">{t('settings.craft.installed', { version: status.version })}</span>
     control = (
       <Button size="sm" variant="secondary" onClick={onRemove}>
-        {t('settings.office.remove')}
+        {t('settings.craft.remove')}
       </Button>
     )
   } else {
@@ -115,25 +122,28 @@ export function CraftCardView({ t, snapshot, busy, error, onInstall, onCancel, o
       )
     control = (
       <Button size="sm" variant={err ? 'secondary' : 'primary'} onClick={onInstall}>
-        {err ? t('settings.office.retry') : t('settings.craft.install', { mb: officeMb(status.sizeBytes) })}
+        {err ? t('settings.craft.retry') : t('settings.craft.install', { mb: officeMb(status.sizeBytes) })}
       </Button>
     )
   }
 
   return (
-    <Card>
-      <Row
-        label={t('settings.craft.name')}
-        description={
-          <span className="block space-y-1">
-            <span className="block">{t('settings.craft.desc')}</span>
-            {extra}
-          </span>
-        }
-      >
-        {control}
-      </Row>
-    </Card>
+    <>
+      <SubTitle>{t('settings.craft.title')}</SubTitle>
+      <Card>
+        <Row
+          label={t('settings.craft.name')}
+          description={
+            <span className="block space-y-1">
+              <span className="block">{t('settings.craft.desc')}</span>
+              {extra}
+            </span>
+          }
+        >
+          {control}
+        </Row>
+      </Card>
+    </>
   )
 }
 

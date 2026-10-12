@@ -381,12 +381,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:trusted:set': 'D',
   'tasks:trusted:remove': 'D',
   'tasks:policy': 'R',
-  // LibreOffice opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
-  'office:status': 'X',
-  'office:install': 'X',
-  'office:cancel': 'X',
-  'office:remove': 'X',
-  // DeckCraft opcional: igual que LibreOffice, instalar/quitar software solo se decide en el Mac.
+  // ArtCraft opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
   'craft:status': 'X',
   'craft:install': 'X',
   'craft:cancel': 'X',
