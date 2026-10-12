@@ -68,6 +68,14 @@ class AddXlfnPrefix(unittest.TestCase):
         self.assertEqual(add_xlfn_prefix(una), una)
 
 
+class RecalcCheckConoceLasModernas(unittest.TestCase):
+    def test_sintaxis_acepta_funciones_con_prefijo(self):
+        import recalc_check
+        for f in ("=_xlfn.STDEV.S(A1:A3)", "=_xlfn.TEXTJOIN(\",\",TRUE,A1:A3)", "=STDEV.S(A1:A3)"):
+            self.assertEqual(recalc_check.syntax_issues(f, None), [], f)
+        self.assertTrue(recalc_check.syntax_issues("=FOO.BAR(A1)", None))
+
+
 class EscrituraEnArchivo(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()

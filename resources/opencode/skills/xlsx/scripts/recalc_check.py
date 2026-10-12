@@ -27,6 +27,9 @@ warnings.filterwarnings("ignore")
 from openpyxl import load_workbook  # noqa: E402
 from openpyxl.utils import column_index_from_string, range_boundaries
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from xlsx_common import XLFN_FUNCTIONS  # noqa: E402
+
 ERRORS = ("#DIV/0!", "#REF!", "#NAME?", "#VALUE!", "#N/A", "#NUM!", "#NULL!")
 SOFFICE_CANDIDATES = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "/usr/bin/soffice",
                       "/usr/local/bin/soffice", "/opt/homebrew/bin/soffice"]
@@ -37,6 +40,7 @@ MID MIN MINIFS MINUTE MOD MONTH NETWORKDAYS NOT NOW OFFSET OR PI PMT POWER PRODU
 ROUNDUP ROW ROWS SEARCH SECOND SMALL SORT SQRT STDEV SUBSTITUTE SUBTOTAL SUM SUMIF SUMIFS SUMPRODUCT SWITCH TEXT TEXTJOIN
 TODAY TRIM TRUE FALSE UNIQUE UPPER VALUE VLOOKUP WEEKDAY XLOOKUP XOR YEAR NPV IRR FV PV RATE VAR TRANSPOSE COUNTUNIQUE
 ISERR ISEVEN ISODD N NA T TRUNC SIGN ROUNDUP REPT CHAR CODE CLEAN EXACT FIXED DOLLAR""".split())
+KNOWN_FUNCS.update(XLFN_FUNCTIONS)  # las modernas con punto (STDEV.S…) también son válidas
 
 
 def find_soffice():
