@@ -6,13 +6,17 @@ Solo el CONTENIDO va en el JSON (nunca comandos ni rutas). La plantilla es la mi
 demanda (y pasa su ruta en `$LAZUNOX_DECKCRAFT`, o se busca en `$LAZUNOX_BIN_DIR`). Si no está, sale con código 3 y hay que usar `build_pptx.py`.
 Medido: la presentación sale en ~30 ms (el tiempo del modelo es escribir el JSON).
 """
-import glob
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
+
+# Búsqueda del programa y entorno mínimo compartidos con la skill _shared (render.py).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+import render  # noqa: E402
 
 BG, EDGE, VI, VIL, WH, MU = "07070C", "25253A", "8B5CF6", "C4B5FD", "F5F5FA", "A1A1B5"
 GLOW, BLUEG = "1F1640", "0F1A3A"
@@ -311,21 +315,9 @@ def build_commands(slides):
 
 
 def find_deckcraft():
-    """Ruta de `deckcraft-cli`: `$LAZUNOX_DECKCRAFT` si la app la pasó al arrancar el motor; si no (se instaló DESPUÉS de arrancar),
-    la copia administrada de la app en `$LAZUNOX_BIN_DIR/craft-<versión>/…/deckcraft-cli` (la más nueva)."""
-    p = os.environ.get("LAZUNOX_DECKCRAFT", "")
-    if p and os.path.isfile(p):
-        return p
-    base = os.environ.get("LAZUNOX_BIN_DIR", "")
-    if base and os.path.isdir(base):
-        found = []
-        for d in sorted(glob.glob(os.path.join(base, "craft-*"))):
-            if not (os.path.isfile(os.path.join(d, "installed-deckcraft.json")) or os.path.isfile(os.path.join(d, "installed.json"))):  # la app lo escribe al terminar
-                continue
-            found += [f for f in sorted(glob.glob(os.path.join(d, "*", "deckcraft-cli"))) if os.access(f, os.X_OK)]
-        if found:
-            return found[-1]
-    return ""
+    """Ruta de `deckcraft-cli` (`deckcraft-cli.exe` en Windows): `$LAZUNOX_DECKCRAFT` si la app la pasó al arrancar el motor; si no
+    (se instaló DESPUÉS de arrancar), la copia administrada en `$LAZUNOX_BIN_DIR/craft-<versión>/…/` con su marca de instalación."""
+    return render.buscar_deckcraft() or ""
 
 
 def main(argv):
@@ -347,14 +339,13 @@ def main(argv):
     for cmd in build_commands(slides):
         args += ["--cmd", cmd]
     home = tempfile.mkdtemp(prefix="lazunox-craft-")
-    env = {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home, "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home}
+    env = render.entorno_minimo(home)
     try:
         r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
     except subprocess.TimeoutExpired:
         print("ERROR: DeckCraft tardó más de 30 s", file=sys.stderr)
         return 1
     finally:
-        import shutil
         shutil.rmtree(home, ignore_errors=True)
     if r.returncode != 0:
         print("ERROR: DeckCraft falló: " + (r.stderr or "")[:400], file=sys.stderr)

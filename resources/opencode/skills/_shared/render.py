@@ -36,38 +36,57 @@ def buscar_soffice():
     return shutil.which("soffice")
 
 
-def _buscar_craft(var, exe, marca):
+def exe_name(nombre):
+    """Nombre del ejecutable de un programa de ArtCraft según la plataforma: `deckcraft-cli` → `deckcraft-cli.exe` en Windows."""
+    return nombre + ".exe" if sys.platform == "win32" else nombre
+
+
+def entorno_minimo(home):
+    """Entorno mínimo y sin shell para ejecutar programas de ArtCraft. Todo apunta a la carpeta temporal `home` (no toca la
+    configuración del usuario). macOS/Linux: PATH fijo y carpetas XDG. Windows: SystemRoot + System32 en el PATH y las carpetas
+    de perfil (USERPROFILE, APPDATA, LOCALAPPDATA, TEMP, TMP) dentro de `home`."""
+    if sys.platform == "win32":
+        raiz = os.environ.get("SystemRoot") or os.environ.get("SYSTEMROOT") or "C:\\Windows"
+        return {"SystemRoot": raiz, "PATH": raiz + "\\System32;" + raiz,
+                "HOME": home, "USERPROFILE": home, "APPDATA": home, "LOCALAPPDATA": home, "TEMP": home, "TMP": home}
+    return {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home,
+            "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home}
+
+
+def _buscar_craft(var, nombre, marcas):
     """Programa de ArtCraft (DeckCraft/WordCraft) que instaló la app: `$var` si el motor lo recibió al arrancar; si no (se instaló
-    después), el de `$LAZUNOX_BIN_DIR/craft-*/*/<exe>` con su marca de instalación completa."""
+    después), el de `$LAZUNOX_BIN_DIR/craft-*/*/<exe>` cuya carpeta tenga alguna de las `marcas` de instalación completa."""
     ruta = os.environ.get(var)
     if _ejecutable(ruta):
         return ruta
     base = os.environ.get("LAZUNOX_BIN_DIR")
     if base:
         for d in sorted(glob.glob(os.path.join(base, "craft-*")), reverse=True):
-            if not os.path.isfile(os.path.join(d, marca)):
+            if not any(os.path.isfile(os.path.join(d, m)) for m in marcas):
                 continue
-            for cand in sorted(glob.glob(os.path.join(d, "*", exe)), reverse=True):
+            for cand in sorted(glob.glob(os.path.join(d, "*", exe_name(nombre))), reverse=True):
                 if _ejecutable(cand):
                     return cand
     return None
 
 
 def buscar_deckcraft():
-    return _buscar_craft("LAZUNOX_DECKCRAFT", "deckcraft-cli", "installed-deckcraft.json") or _buscar_craft(
-        "LAZUNOX_DECKCRAFT", "deckcraft-cli", "installed.json")
+    return _buscar_craft("LAZUNOX_DECKCRAFT", "deckcraft-cli", ("installed-deckcraft.json", "installed.json"))
 
 
 def buscar_wordcraft():
-    return _buscar_craft("LAZUNOX_WORDCRAFT", "wordcraft-cli", "installed-wordcraft.json")
+    return _buscar_craft("LAZUNOX_WORDCRAFT", "wordcraft-cli", ("installed-wordcraft.json",))
+
+
+def buscar_gridcraft():
+    return _buscar_craft("LAZUNOX_GRIDCRAFT", "gridcraft-cli", ("installed-gridcraft.json",))
 
 
 def _craft_run(args, timeout=90):
     """Ejecuta un programa de ArtCraft sin shell, con carpetas de datos propias (no toca la configuración del usuario)."""
     home = tempfile.mkdtemp(prefix="lazunox-craft-")
-    env = {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home, "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home}
     try:
-        return subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=env)
+        return subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=entorno_minimo(home))
     finally:
         shutil.rmtree(home, ignore_errors=True)
 

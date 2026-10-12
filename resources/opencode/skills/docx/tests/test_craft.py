@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.join(HERE, "..", "scripts")
@@ -91,6 +92,32 @@ class Craft(unittest.TestCase):
             cp = subprocess.run([sys.executable, "-I", os.path.join(SCRIPTS, "build_word_craft.py"), j, out], capture_output=True, text=True, env=env)
             self.assertEqual(cp.returncode, 0, cp.stderr)
             self.assertGreater(os.path.getsize(out), 3000)
+
+
+class CraftWindowsFind(unittest.TestCase):
+    """`find_wordcraft` en Windows (simulado): busca `wordcraft-cli.exe` con su marca de instalación."""
+
+    def test_windows_encuentra_exe_con_marca(self):
+        with tempfile.TemporaryDirectory() as d:
+            carpeta = os.path.join(d, "craft-0.5.0", "word")
+            os.makedirs(carpeta)
+            exe = os.path.join(carpeta, "wordcraft-cli.exe")
+            open(exe, "w").write("#!/bin/sh\n")
+            os.chmod(exe, 0o755)
+            open(os.path.join(d, "craft-0.5.0", "installed-wordcraft.json"), "w").write("{}")
+            env = {"LAZUNOX_BIN_DIR": d}
+            with mock.patch.object(sys, "platform", "win32"), mock.patch.dict(os.environ, env, clear=True):
+                self.assertEqual(bw.find_wordcraft(), exe)
+                os.remove(os.path.join(d, "craft-0.5.0", "installed-wordcraft.json"))
+                self.assertEqual(bw.find_wordcraft(), "")
+
+    def test_variable_del_motor_gana(self):
+        with tempfile.TemporaryDirectory() as d:
+            exe = os.path.join(d, "wordcraft-cli.exe")
+            open(exe, "w").write("x")
+            os.chmod(exe, 0o755)
+            with mock.patch.object(sys, "platform", "win32"), mock.patch.dict(os.environ, {"LAZUNOX_WORDCRAFT": exe}, clear=True):
+                self.assertEqual(bw.find_wordcraft(), exe)
 
 
 if __name__ == "__main__":

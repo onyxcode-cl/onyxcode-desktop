@@ -11,9 +11,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RENDER = os.path.join(HERE, "..", "render.py")
+sys.path.insert(0, os.path.join(HERE, ".."))
+import render as R  # noqa: E402
 PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360f8cfc000000301010018dd8db00000000049454e44ae426082")
 
 DECK = """#!/bin/sh
@@ -86,6 +89,100 @@ class CraftRender(unittest.TestCase):
         code, res = run(self.pptx, os.path.join(self.d, "o5"), {"LAZUNOX_BIN_DIR": self.bin})
         self.assertFalse(res["ok"])
         self.assertTrue(any("DeckCraft no pudo" in a for a in res["avisos"]), res["avisos"])
+
+
+class CraftWindows(unittest.TestCase):
+    """Búsqueda y entorno como en Windows (se simula con sys.platform; los «.exe» son scripts de texto con permiso)."""
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.bin = os.path.join(self.d, "bin")
+        self.dir = os.path.join(self.bin, "craft-0.5.0")
+        for carpeta, exe in (("deck", "deckcraft-cli.exe"), ("word", "wordcraft-cli.exe"), ("grid", "gridcraft-cli.exe")):
+            os.makedirs(os.path.join(self.dir, carpeta))
+            fake(os.path.join(self.dir, carpeta, exe), "#!/bin/sh\n")
+        for marca in ("installed-deckcraft.json", "installed-wordcraft.json", "installed-gridcraft.json"):
+            open(os.path.join(self.dir, marca), "w").write("{}")
+        self.env = {"LAZUNOX_BIN_DIR": self.bin}
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.d, ignore_errors=True)
+
+    def _win(self):
+        return mock.patch.object(sys, "platform", "win32")
+
+    def test_exe_name(self):
+        with self._win():
+            self.assertEqual(R.exe_name("deckcraft-cli"), "deckcraft-cli.exe")
+        with mock.patch.object(sys, "platform", "darwin"):
+            self.assertEqual(R.exe_name("deckcraft-cli"), "deckcraft-cli")
+        with mock.patch.object(sys, "platform", "linux"):
+            self.assertEqual(R.exe_name("wordcraft-cli"), "wordcraft-cli")
+
+    def test_busca_los_tres_programas_en_windows(self):
+        with self._win(), mock.patch.dict(os.environ, self.env, clear=True):
+            self.assertEqual(R.buscar_deckcraft(), os.path.join(self.dir, "deck", "deckcraft-cli.exe"))
+            self.assertEqual(R.buscar_wordcraft(), os.path.join(self.dir, "word", "wordcraft-cli.exe"))
+            self.assertEqual(R.buscar_gridcraft(), os.path.join(self.dir, "grid", "gridcraft-cli.exe"))
+
+    def test_en_windows_no_sirve_el_nombre_sin_exe(self):
+        os.rename(os.path.join(self.dir, "deck", "deckcraft-cli.exe"), os.path.join(self.dir, "deck", "deckcraft-cli"))
+        with self._win(), mock.patch.dict(os.environ, self.env, clear=True):
+            self.assertIsNone(R.buscar_deckcraft())
+
+    def test_sin_marca_de_instalacion_completa_no_se_usa(self):
+        os.remove(os.path.join(self.dir, "installed-gridcraft.json"))
+        with self._win(), mock.patch.dict(os.environ, self.env, clear=True):
+            self.assertIsNone(R.buscar_gridcraft())
+            self.assertIsNotNone(R.buscar_wordcraft())
+
+    def test_deckcraft_acepta_la_marca_antigua_installed_json(self):
+        os.remove(os.path.join(self.dir, "installed-deckcraft.json"))
+        open(os.path.join(self.dir, "installed.json"), "w").write("{}")
+        with self._win(), mock.patch.dict(os.environ, self.env, clear=True):
+            self.assertIsNotNone(R.buscar_deckcraft())
+
+    def test_variable_del_motor_tiene_prioridad_en_windows(self):
+        otro = os.path.join(self.d, "otro", "gridcraft-cli.exe")
+        os.makedirs(os.path.dirname(otro))
+        fake(otro, "#!/bin/sh\n")
+        env = dict(self.env, LAZUNOX_GRIDCRAFT=otro)
+        with self._win(), mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(R.buscar_gridcraft(), otro)
+
+    def test_variable_inexistente_cae_a_la_carpeta_de_la_app(self):
+        env = dict(self.env, LAZUNOX_WORDCRAFT=os.path.join(self.d, "no-existe.exe"))
+        with self._win(), mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(R.buscar_wordcraft(), os.path.join(self.dir, "word", "wordcraft-cli.exe"))
+
+    def test_entorno_minimo_windows(self):
+        home = os.path.join(self.d, "home")
+        with self._win(), mock.patch.dict(os.environ, {"SystemRoot": "C:\\WINDOWS"}, clear=True):
+            e = R.entorno_minimo(home)
+        self.assertEqual(e["PATH"], "C:\\WINDOWS\\System32;C:\\WINDOWS")
+        self.assertEqual(e["SystemRoot"], "C:\\WINDOWS")
+        for clave in ("HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP"):
+            self.assertEqual(e[clave], home, clave)
+        self.assertNotIn("XDG_CONFIG_HOME", e)
+
+    def test_entorno_minimo_windows_sin_systemroot_usa_el_valor_por_defecto(self):
+        with self._win(), mock.patch.dict(os.environ, {}, clear=True):
+            e = R.entorno_minimo(self.d)
+        self.assertEqual(e["PATH"], "C:\\Windows\\System32;C:\\Windows")
+
+    def test_entorno_minimo_macos_igual_que_antes(self):
+        home = os.path.join(self.d, "home")
+        with mock.patch.object(sys, "platform", "darwin"):
+            e = R.entorno_minimo(home)
+        self.assertEqual(e, {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home,
+                             "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home})
+
+    def test_macos_busca_sin_exe(self):
+        with mock.patch.object(sys, "platform", "darwin"), mock.patch.dict(os.environ, self.env, clear=True):
+            os.rename(os.path.join(self.dir, "deck", "deckcraft-cli.exe"), os.path.join(self.dir, "deck", "deckcraft-cli"))
+            self.assertEqual(R.buscar_deckcraft(), os.path.join(self.dir, "deck", "deckcraft-cli"))
+            self.assertIsNone(R.buscar_wordcraft())  # solo existe wordcraft-cli.exe: en macOS no se encuentra
 
 
 if __name__ == "__main__":

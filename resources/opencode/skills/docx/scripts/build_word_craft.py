@@ -8,7 +8,7 @@ widths_cm, decimals, caption), image, page_break. Las listas anidadas se aplanan
 Fuente: Arial (existe en todos los equipos; una fuente ausente se sustituye por una serif en otros programas).
 El contenido es DATO: va como valor JSON dentro de cada comando; no se interpreta nada del JSON como comando ni ruta fuera de su carpeta.
 """
-import glob
+import datetime
 import json
 import os
 import re
@@ -17,7 +17,9 @@ import subprocess
 import sys
 import tempfile
 
-import datetime
+# Búsqueda del programa y entorno mínimo compartidos con la skill _shared (render.py).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+import render  # noqa: E402
 
 # Copias de `_docxlib.fecha_es/fmt_num/looks_numeric` (aquí no hace falta python-docx; una prueba exige que sigan iguales).
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
@@ -77,20 +79,9 @@ def text(v, path, required=True):
 
 
 def find_wordcraft():
-    """`$LAZUNOX_WORDCRAFT` si la app lo pasó al arrancar el motor; si no (se instaló DESPUÉS de arrancar), la copia administrada
-    de la app en `$LAZUNOX_BIN_DIR/craft-<versión>/…/wordcraft-cli` con su marca de instalación completa."""
-    p = os.environ.get("LAZUNOX_WORDCRAFT", "")
-    if p and os.path.isfile(p):
-        return p
-    base = os.environ.get("LAZUNOX_BIN_DIR", "")
-    if base and os.path.isdir(base):
-        found = []
-        for d in sorted(glob.glob(os.path.join(base, "craft-*"))):
-            if os.path.isfile(os.path.join(d, "installed-wordcraft.json")):
-                found += [f for f in sorted(glob.glob(os.path.join(d, "*", "wordcraft-cli"))) if os.access(f, os.X_OK)]
-        if found:
-            return found[-1]
-    return ""
+    """Ruta de `wordcraft-cli` (`wordcraft-cli.exe` en Windows): `$LAZUNOX_WORDCRAFT` si la app la pasó al arrancar el motor; si no
+    (se instaló DESPUÉS de arrancar), la copia administrada en `$LAZUNOX_BIN_DIR/craft-<versión>/…/` con su marca de instalación."""
+    return render.buscar_wordcraft() or ""
 
 
 def build_commands(spec, base_dir):
@@ -286,7 +277,7 @@ def main(argv):
     for cmd in cmds:
         args += ["--cmd", cmd]
     home = tempfile.mkdtemp(prefix="lazunox-craft-")
-    env = {"PATH": "/usr/bin:/bin", "HOME": home, "XDG_CONFIG_HOME": home, "XDG_DATA_HOME": home, "XDG_CACHE_HOME": home, "XDG_STATE_HOME": home}
+    env = render.entorno_minimo(home)
     try:
         r = subprocess.run(args, capture_output=True, text=True, timeout=60, env=env)
     except subprocess.TimeoutExpired:
