@@ -54,7 +54,7 @@ Flujo que recomienda el propio servidor: `new_presentation` → `add_slide` → 
 - `table.nextCell` no existe: se usa `text.tab`.
 - `insert.table {style}` solo acepta estilos que existen en el documento (`Table Grid`); para color propio, `table.shading`.
 - Texto largo en una celda estrecha puede recortarse en la última fila: acortar o ampliar columnas (`table.columnWidth`).
-- `render --page` es numerado desde 0.
+- `render --page N` cuenta desde **1** (con 0 devuelve la página 1).
 
 ## Cómo usarlo dentro de Lazunox (propuesta, sin implementar)
 
@@ -77,3 +77,21 @@ Misma petición (presentación de 9 diapositivas sobre «dots», el modelo escri
 | `mimo-v2.6-flash-free` (gratis) | 102 s  | ~40 s con 3 diapositivas, mucho más para el Word |
 
 La app arma el archivo en ~30 ms. Calidad visual pareja en los cuatro. Problemas vistos: el modelo inventa cifras si la guía no se lo prohíbe, y los textos largos se pisaban (corregido con `fitSize`, que reduce la letra según el largo).
+
+## Comparación con LibreOffice (12 oct 2026)
+
+Mismos archivos dibujados con DeckCraft/WordCraft y con LibreOffice 26.8.1 (el que instala la app). Archivos: 3 presentaciones hechas por otras herramientas, 1 hecha con DeckCraft, y 5 Word (2 documentos reales de la empresa, uno con foto de portada y encabezados).
+
+| | ArtCraft | LibreOffice |
+| --- | --- | --- |
+| Velocidad (4 presentaciones / 5 Word) | < 1 s / 1 s | 6 s / 2 s |
+| Textos, formas, tablas, colores, imágenes | prácticamente idénticos | referencia |
+| Nº de páginas de los Word reales | igual (8 y 2) | igual |
+| Gráficos | sin etiquetas de datos y sin colores por barra (**peor**) | muestra etiquetas y colores |
+| Salto de página en Word | puede dejar un título al pie con su tabla en la página siguiente (**peor**) | mantiene título y tabla juntos |
+| Encabezado/pie de página | los pinta más pálidos (**peor**) | correcto |
+| Fuente que no está instalada | cae a serif y puede cambiar símbolos (p. ej. «+»); se evita usando Arial | igual |
+
+Lección: en los documentos que creamos hay que fijar una fuente que exista en todos lados (Arial). El diseño dots ya lo hace. Pendiente hacer lo mismo en la plantilla de Word.
+
+Conclusión: **ArtCraft sirve para crear** (rápido, ligero, buen diseño) y para revisar a ojo; **LibreOffice sigue siendo la referencia** para revisar fielmente documentos ajenos con gráficos, saltos de página y encabezados, para convertir a PDF y para Windows.
