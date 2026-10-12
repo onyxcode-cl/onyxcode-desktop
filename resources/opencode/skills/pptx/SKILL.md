@@ -8,10 +8,10 @@ description: Crear, editar, inspeccionar y verificar presentaciones PowerPoint (
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/` (usa python-pptx y Pillow).
 Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original del usuario).
 
-## 0. Diseño «dots» (premium, oscuro) — si `$LAZUNOX_DECKCRAFT` existe
-Si la variable `LAZUNOX_DECKCRAFT` apunta a un archivo, puedes crear la presentación con un diseño cuidado, en un solo paso y sin pelear con la herramienta:
+## 0. Diseño «dots» (premium, oscuro) — pruébalo PRIMERO cuando no haya imágenes ni gráficos
+Si la persona no pide imágenes, gráficos ni una plantilla suya, crea la presentación con un diseño cuidado, en un solo paso:
 1. Escribe `contenido.json` con SOLO texto (nada de comandos ni rutas): `{"slides":[...]}`. Tipos de diapositiva y sus campos:
-   - `cover` {title (una palabra corta), subtitle, note, badge}
+   - `cover` {title (una palabra o dos cortas), subtitle, note, badge}
    - `stat` {kicker, title, stat («4.000+»), statLabel, items:[2 × {title, body}]}
    - `timeline` {kicker, title, items:[3 × {title, body}], callout}
    - `grid` {kicker, title, items:[4 × {title, body}], footnote}
@@ -22,8 +22,9 @@ Si la variable `LAZUNOX_DECKCRAFT` apunta a un archivo, puedes crear la presenta
    - `stats` {kicker, title, stat, statLabel, items:[3 × {value (1–2 caracteres), label}]}
    - `closing` {title, text, sources}
    Empieza con `cover`, termina con `closing`, mezcla tipos. Título ≤ 60 caracteres, cuerpos ≤ 90. Usa SOLO datos reales (de la investigación o de lo que pidió la persona): no inventes cifras ni fechas.
-2. Genera: `python3 scripts/build_dots.py contenido.json salida.pptx`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite. Si sale con código 3 (DeckCraft no instalado) usa el §1.
-3. Verifica como siempre (§2). Este diseño no admite imágenes ni gráficos: si la persona los pide, usa el §1.
+2. Genera: `python3 scripts/build_dots.py contenido.json salida.pptx`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
+3. Si sale con **código 3** (el programa del diseño no está instalado en este equipo), no insistas: sigue con el §1 normal.
+4. Verifica como siempre (§2).
 
 ## 1. Crear una presentación
 1. Escribe un JSON (esquema abajo) en la carpeta de la tarea, p. ej. `deck.json`.

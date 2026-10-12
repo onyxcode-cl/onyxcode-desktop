@@ -3,9 +3,10 @@
 
 Solo el CONTENIDO va en el JSON (nunca comandos ni rutas). La plantilla es la misma que `src/main/office/craft/deck-builder.ts`
 (hay una prueba que exige que ambas generen los MISMOS comandos). Necesita el programa `deckcraft-cli`: la app lo instala bajo
-demanda y pasa su ruta en `$LAZUNOX_DECKCRAFT`. Si no está, sale con código 3 y hay que usar `build_pptx.py`.
+demanda (y pasa su ruta en `$LAZUNOX_DECKCRAFT`, o se busca en `$LAZUNOX_BIN_DIR`). Si no está, sale con código 3 y hay que usar `build_pptx.py`.
 Medido: la presentación sale en ~30 ms (el tiempo del modelo es escribir el JSON).
 """
+import glob
 import json
 import math
 import os
@@ -307,12 +308,30 @@ def build_commands(slides):
     return c
 
 
+def find_deckcraft():
+    """Ruta de `deckcraft-cli`: `$LAZUNOX_DECKCRAFT` si la app la pasó al arrancar el motor; si no (se instaló DESPUÉS de arrancar),
+    la copia administrada de la app en `$LAZUNOX_BIN_DIR/craft-<versión>/…/deckcraft-cli` (la más nueva)."""
+    p = os.environ.get("LAZUNOX_DECKCRAFT", "")
+    if p and os.path.isfile(p):
+        return p
+    base = os.environ.get("LAZUNOX_BIN_DIR", "")
+    if base and os.path.isdir(base):
+        found = []
+        for d in sorted(glob.glob(os.path.join(base, "craft-*"))):
+            if not os.path.isfile(os.path.join(d, "installed.json")):  # instalación completa (la app lo escribe al final)
+                continue
+            found += [f for f in sorted(glob.glob(os.path.join(d, "*", "deckcraft-cli"))) if os.access(f, os.X_OK)]
+        if found:
+            return found[-1]
+    return ""
+
+
 def main(argv):
     if len(argv) != 3 or not argv[2].lower().endswith(".pptx"):
         print("Uso: build_dots.py contenido.json salida.pptx", file=sys.stderr)
         return 2
-    binary = os.environ.get("LAZUNOX_DECKCRAFT", "")
-    if not binary or not os.path.isfile(binary):
+    binary = find_deckcraft()
+    if not binary:
         print("Aviso: DeckCraft no está instalado; usa build_pptx.py (diseño estándar).", file=sys.stderr)
         return 3
     try:
