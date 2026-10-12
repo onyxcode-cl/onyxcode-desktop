@@ -10,6 +10,7 @@ def bul(items):
     a("para.bullets")
     for t in items: a("text.insert",text=t); a("text.newParagraph")
     a("para.bullets",off=True)
+a("design.themeFonts",heading="Arial",body="Arial")  # Arial: existe en todos los equipos (la fuente del tema no, y se sustituye por una serif)
 a("para.heading1"); a("para.alignCenter"); a("text.insert",text="Impacto de la inteligencia artificial en las pequeñas empresas de Chile"); a("text.newParagraph")
 a("para.style",style="Normal"); a("para.alignLeft")
 a("format.color",color="666666"); a("text.insert",text="Informe ejecutivo · Oportunidades, riesgos y primeros pasos"); a("text.newParagraph"); a("format.color",color="auto")

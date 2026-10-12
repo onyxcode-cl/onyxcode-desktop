@@ -92,6 +92,6 @@ Mismos archivos dibujados con DeckCraft/WordCraft y con LibreOffice 26.8.1 (el q
 | Encabezado/pie de página | los pinta más pálidos (**peor**) | correcto |
 | Fuente que no está instalada | cae a serif y puede cambiar símbolos (p. ej. «+»); se evita usando Arial | igual |
 
-Lección: en los documentos que creamos hay que fijar una fuente que exista en todos lados (Arial). El diseño dots ya lo hace. Pendiente hacer lo mismo en la plantilla de Word.
+Lección: en los documentos que creamos hay que fijar una fuente que exista en todos lados (Arial). El diseño dots ya lo hace. La plantilla de Word también (`design.themeFonts`).
 
 Conclusión: **ArtCraft sirve para crear** (rápido, ligero, buen diseño) y para revisar a ojo; **LibreOffice sigue siendo la referencia** para revisar fielmente documentos ajenos con gráficos, saltos de página y encabezados, para convertir a PDF y para Windows.
