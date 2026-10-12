@@ -220,6 +220,13 @@ def main():
                 avisos.append("el documento tiene %d páginas; solo se rasterizaron las primeras %d." % (res["paginas"], a.max_pages))
             res["ok"] = True
             salida(res, 0)
+    if ext == ".xlsx":  # GridCraft (sin LibreOffice); si no está o falla, sigue con LibreOffice
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import render_grid
+        hecho = render_grid.render_xlsx(origen, outdir, a.max_pages, a.dpi, avisos)
+        if hecho:
+            res.update(ok=True, pngs=hecho[0], paginas=hecho[1], motor="gridcraft")
+            salida(res, 0)
     if ext == ".pdf":
         pdf = origen
     elif ext in OFFICE:

@@ -26,6 +26,8 @@ import warnings
 warnings.filterwarnings("ignore")
 from openpyxl import load_workbook  # noqa: E402
 from openpyxl.utils import column_index_from_string, range_boundaries
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+import render_grid  # noqa: E402  GridCraft primero; si no está o no es fiable, LibreOffice
 
 ERRORS = ("#DIV/0!", "#REF!", "#NAME?", "#VALUE!", "#N/A", "#NUM!", "#NULL!")
 SOFFICE_CANDIDATES = ["/Applications/LibreOffice.app/Contents/MacOS/soffice", "/usr/bin/soffice",
@@ -130,12 +132,18 @@ def analyse(path, soffice, workdir, show):
             for c in row:
                 if isinstance(c.value, str) and c.value.startswith("=") and len(c.value) > 1:
                     formulas.append((ws.title, c.coordinate, c.value))
-    res = {"archivo": path, "libreoffice": bool(soffice), "formulas": len(formulas), "errores": [],
+    res = {"archivo": path, "libreoffice": bool(soffice), "motor": None, "formulas": len(formulas), "errores": [],
            "vacias": [], "sintaxis": [], "valores": [], "avisos": []}
     values_wb = None
-    if soffice:
+    grid = render_grid.recalc(path, res["avisos"])
+    if grid is not None:
+        res["motor"], res["libreoffice"] = "gridcraft", False
+        mapa = {(v["hoja"], v["celda"]): v["valor"] for v in grid["valores"]}
+        res["avisos"].append("Valores calculados con GridCraft, no con LibreOffice.")
+    elif soffice:
         try:
             values_wb = load_workbook(recalc_copy(path, soffice, workdir), data_only=True)
+            res["motor"] = "libreoffice"
         except Exception as e:  # noqa: BLE001
             res["avisos"].append("No se pudo recalcular con LibreOffice (%s); solo verificación sintáctica." % e)
             res["libreoffice"] = False
@@ -151,14 +159,12 @@ def analyse(path, soffice, workdir, show):
             res["sintaxis"].append({"hoja": sheet, "celda": coord, "formula": f, "problema": p})
         for e in empty_refs(f, wbf, sheet):
             res["vacias"].append({"hoja": sheet, "celda": coord, "formula": f, "referencia": e})
-        if values_wb is not None:
-            v = values_wb[sheet][coord].value
+        if grid is not None or values_wb is not None:
+            v = mapa.get((sheet, coord)) if grid is not None else values_wb[sheet][coord].value
             if isinstance(v, str) and (v in ERRORS or v.startswith("Err:")):
                 res["errores"].append({"hoja": sheet, "celda": coord, "formula": f, "valor": v})
             if len(res["valores"]) < show:
                 res["valores"].append({"hoja": sheet, "celda": coord, "formula": f, "valor": v})
-            elif v is None and not res["errores"]:
-                pass
     return res
 
 
@@ -189,7 +195,8 @@ def main(argv=None):
         print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
         return 1 if bad else 0
     print("Archivo: %s" % res["archivo"])
-    print("Fórmulas: %d | Recalculado con LibreOffice: %s" % (res["formulas"], "sí" if res["libreoffice"] else "NO"))
+    quien = {"gridcraft": "GridCraft", "libreoffice": "LibreOffice"}.get(res["motor"], "NADA (solo verificación sintáctica)")
+    print("Fórmulas: %d | Recalculado con: %s" % (res["formulas"], quien))
     for av in res["avisos"]:
         print("AVISO: " + av)
     for e in res["errores"]:

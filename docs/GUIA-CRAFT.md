@@ -103,3 +103,21 @@ Conclusión: **ArtCraft sirve para crear** (rápido, ligero, buen diseño) y par
 - Skill `docx`: `scripts/build_word_craft.py` usa el MISMO JSON que `build_docx.py` (no hay esquema nuevo para el modelo) y sale con código 3 si WordCraft no está instalado. Prueba: `tests/test_craft.py`.
 - Trampas de WordCraft vistas al hacerlo: `insert.header/footer` dejan el cursor dentro de ellos (cerrar con `insert.closeHeader`), `insert.picture` deja la imagen seleccionada (mover el cursor con `caret.docEnd` o el texto siguiente la reemplaza) y `para.restartNumbering` solo funciona con el cursor ya dentro de la lista.
 - Los programas se buscan en `$LAZUNOX_BIN_DIR/craft-<versión>/` aunque se instalen con el motor del agente ya arrancado.
+
+## GridCraft: lo que cubre y lo que no
+
+GridCraft 0.5.0 (`gridcraft-cli`, macOS universal, firma DJ6XS33FX8) recalcula y dibuja las hojas `.xlsx` en la skill xlsx antes que LibreOffice (`_shared/render_grid.py`). Si no está o no es fiable para ese libro, cae a LibreOffice. Medido contra LibreOffice 26.8.1 con 78 y 96 fórmulas de prueba: coinciden SUM, AVERAGE, ROUND, IF, IFERROR, COUNTIF(S), SUMIF(S), VLOOKUP, INDEX/MATCH, PMT, FV, PV, NPV, RATE, STDEV, VAR, MEDIAN, PERCENTILE, fechas (DATE, EOMONTH, EDATE, DATEDIF, NETWORKDAYS) y los errores #DIV/0!, #N/A, #REF!, #VALUE!, #NUM!. El recálculo sale con precisión completa (el CSV de GridCraft solo trae 15 cifras).
+
+Diferencias concretas:
+
+- `=IRR(A1:A3)` sin solución y `=SQRT(-1)`: GridCraft da `#NUM!` (como Excel); LibreOffice da `#N/A` y `#VALUE!`.
+- Decimales en texto: `=TEXT(1234.5,"#,##0.00")`, `=FIXED(…)`, `="x"&1.5` salen con punto en GridCraft (`1,234.50`, `x1.5`) y con coma en LibreOffice porque aquí usa configuración española (`1.234,50`, `x1,5`). `=VALUE("3,5")`: GridCraft `#VALUE!`, LibreOffice `3.5`. Depende de la configuración regional, no del libro.
+- `=TEXT(D2,"0.0%")` con 0,125: GridCraft `12.5%`, LibreOffice `13%` (interpreta el punto como separador de miles).
+- Funciones modernas escritas sin prefijo `_xlfn.` (TEXTJOIN, XLOOKUP, IFS, MAXIFS, DAYS, XOR, STDEV.S…): openpyxl las escribe así; Excel y LibreOffice muestran `#NAME?` y GridCraft las calcula. `recalc()` no usa GridCraft con ellas: cae a LibreOffice, que es lo que verá Excel. Es un fallo real del libro, no del motor.
+- Matrices dinámicas (`FILTER`, `SORT`, `UNIQUE`, o `=A1:A3` en una celda): GridCraft devuelve «Spill» y no derrama, así que se usa LibreOffice.
+- `#NAME?` con una función que está en el catálogo de GridCraft aunque no la calcule: cae a LibreOffice. Si la función no está en el catálogo, el `#NAME?` se acepta tal cual.
+- `=DATE(2024,1,31)` y `=TIME(12,0,0)` en el recálculo dan el número de serie (45322, 0,5); LibreOffice con formato de fecha da fecha/hora.
+- Render: tipografía propia (no la de Office), separadores en formato inglés y el número de páginas coincidió en el libro de prueba (3 y 3). No se ha comparado la paginación de libros largos ni con gráficos, formato condicional o validaciones.
+- No probado: Windows (el binario es solo macOS), modo Sandbox de Tareas y libros con más de unas pocas hojas.
+
+Dónde está: `resources/opencode/skills/_shared/render_grid.py` (búsqueda `LAZUNOX_GRIDCRAFT` → `$LAZUNOX_BIN_DIR/craft-*/*/gridcraft-cli` con su marca) y pruebas `_shared/tests/test_craft_grid.py` (con un `gridcraft-cli` falso; la real necesita `GRIDCRAFT_CLI=ruta`).
