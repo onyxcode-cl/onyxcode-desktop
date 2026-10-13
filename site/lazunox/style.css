@@ -9,19 +9,7 @@
   --spark: #f0c35a;
   --dot: rgba(44, 79, 216, 0.16);
   --max: 70rem;
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d0f15;
-    --ink: #f1f3fa;
-    --ink-soft: #a3a9bd;
-    --lapis: #8aa2ff;
-    --lapis-deep: #c3d0ff;
-    --tint: #161a27;
-    --edge: #262b3f;
-    --dot: rgba(138, 162, 255, 0.18);
-  }
+  color-scheme: light;
 }
 * {
   box-sizing: border-box;
