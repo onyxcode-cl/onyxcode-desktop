@@ -702,10 +702,12 @@ body {
 }
 
 /* ---------- Movimiento reducido ---------- */
+/* Los indicadores de «trabajando» (giro del logo, barra y puntos de la tarjeta de tarea) NO se apagan: son la única señal de que la app sigue
+   viva, y Windows informa «movimiento reducido» en sesiones remotas (RDP) y con los efectos de animación desactivados, donde si no quedaban quietos. */
 @media (prefers-reduced-motion: reduce) {
-  *:not(.animate-spin),
+  *:not(.animate-spin):not(.ring-spin):not(.gem-breathe):not(.work-bar-indeterminate),
   *::before,
-  *::after {
+  *:not(.work-dots)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -976,12 +978,6 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     content: '...';
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .work-bar-indeterminate,
-  .work-dots::after {
-    animation: none;
-  }
-}
 
 /* Logo en «trabajando»: la gema respira. */
 .gem-breathe {
@@ -997,11 +993,6 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     transform: scale(1.12);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .gem-breathe {
-    animation: none;
-  }
-}
 
 /* Marca «Aro»: el anillo gira lento mientras la app trabaja (el punto dorado queda fijo). */
 .ring-spin {
@@ -1011,11 +1002,6 @@ html[data-keyboard='open'] [data-surface='mobile'] {
 @keyframes ring-spin {
   to {
     transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ring-spin {
-    animation: none;
   }
 }
 
