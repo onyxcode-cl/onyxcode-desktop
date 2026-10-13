@@ -222,7 +222,20 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
     observingRef.current = true
     const root = scrollParent(el)
     let state: ArmState = initialArmState(Date.now(), el.getBoundingClientRect().top)
+    // «Visible» se calcula midiendo la tarjeta contra el área de desplazamiento en cada vuelta (no solo cuando el observador avisa: este solo
+    // avisa al cruzar sus umbrales, y una tarjeta más alta que la ventana se queda entre dos umbrales y nunca volvía a avisar). Cuenta como
+    // visible si se ve al menos el 60 % de la tarjeta o, si es más alta que la ventana, al menos el 60 % de la altura visible.
+    const measureVisible = (): boolean => {
+      if (document.visibilityState === 'hidden') return false
+      const r = el.getBoundingClientRect()
+      const top = root ? root.getBoundingClientRect().top : 0
+      const bottom = root ? root.getBoundingClientRect().bottom : window.innerHeight
+      const shown = Math.min(r.bottom, bottom) - Math.max(r.top, top)
+      if (shown <= 0 || r.height <= 0) return false
+      return shown / r.height >= 0.6 || shown >= (bottom - top) * 0.6
+    }
     const commit = (): void => {
+      visibleRef.current = measureVisible()
       const y = el.getBoundingClientRect().top
       state = armState(state, { visible: visibleRef.current, now: Date.now(), y })
       if (state.armed !== armedRef.current) {
@@ -230,13 +243,7 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
         setArmed(state.armed)
       }
     }
-    const io = new IntersectionObserver(
-      (entries) => {
-        visibleRef.current = entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.6)
-        commit()
-      },
-      { root, threshold: [0, 0.6, 1] }
-    )
+    const io = new IntersectionObserver(() => commit(), { root, threshold: [0, 0.25, 0.6, 1] })
     io.observe(el)
     // El observador se dispara mucho con streaming: se limita la frecuencia con un sondeo barato que usa refs.
     const timer = setInterval(commit, 200)
