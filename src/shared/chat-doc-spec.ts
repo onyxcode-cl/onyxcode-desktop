@@ -27,6 +27,10 @@ export const MAX_FOOTER_CHARS = 60
 export const MAX_COLUMN_HEADING_CHARS = 60
 export const MAX_COLUMN_BULLETS = 6
 export const MAX_KPIS = 4
+export const MAX_TABLE_COLS = 6
+export const MIN_TABLE_COLS = 2
+export const MAX_TABLE_ROWS = 8
+export const MAX_TABLE_CELL_CHARS = 60
 export const MIN_KPIS = 2
 export const MAX_KPI_LABEL_CHARS = 40
 export const MAX_KPI_VALUE_CHARS = 16
@@ -141,7 +145,22 @@ const PPTX_STYLES: readonly PptxStyle[] = ['classic', 'editorial', 'geometric', 
  * para un resumen tipo tablero al principio de la presentación, DISTINTO de "stat": "stat" es UNA
  * cifra como foco de toda la diapositiva, "kpis" son VARIAS métricas juntas, más chicas).
  */
-export type PptxLayout = 'cover' | 'section' | 'bullets' | 'closing' | 'stat' | 'steps' | 'two-col' | 'cards' | 'chart' | 'kpis' | 'free'
+export type PptxLayout =
+  | 'cover'
+  | 'section'
+  | 'bullets'
+  | 'closing'
+  | 'stat'
+  | 'steps'
+  | 'two-col'
+  | 'cards'
+  | 'chart'
+  | 'kpis'
+  | 'timeline'
+  | 'quote'
+  | 'agenda'
+  | 'table'
+  | 'free'
 const PPTX_LAYOUTS: readonly PptxLayout[] = [
   'cover',
   'section',
@@ -153,6 +172,10 @@ const PPTX_LAYOUTS: readonly PptxLayout[] = [
   'cards',
   'chart',
   'kpis',
+  'timeline',
+  'quote',
+  'agenda',
+  'table',
   'free'
 ]
 
@@ -173,6 +196,16 @@ export interface PptxColumnSpec {
   heading?: string
   bullets: string[]
 }
+
+/** Tabla de `layout: "table"`: encabezados y filas ya formateadas como texto (2 a 6 columnas, hasta 8 filas). */
+export interface PptxTableSpec {
+  columns: string[]
+  rows: string[][]
+}
+
+/** Transición entre diapositivas de TODA la presentación (DeckCraft); sin esto, sin transición. */
+export type PptxTransition = 'fade' | 'push' | 'wipe'
+const PPTX_TRANSITIONS: readonly PptxTransition[] = ['fade', 'push', 'wipe']
 
 /** Una métrica de `layout: "kpis"` — p.ej. `{"label":"Ventas totales","value":"$433 M","delta":"+18% vs. trimestre anterior"}`. */
 export interface PptxKpiSpec {
@@ -266,6 +299,8 @@ export interface PptxSlideSpec {
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
   kpis?: PptxKpiSpec[]
+  /** Solo para `layout: "table"`. */
+  table?: PptxTableSpec
   /** Color de fondo de ESTA diapositiva (hex con `#`); sin esto, el de la paleta/tema. */
   background?: string
   /** Solo para `layout: "free"`: los elementos del lienzo, en orden. */
@@ -280,6 +315,8 @@ export interface PptxSpec {
   palette?: PptxPalette
   /** Tipografías de TODA la presentación (de una lista corta que existe en macOS y Windows). */
   fonts?: { title?: PptxFont; body?: PptxFont }
+  /** Transición entre diapositivas (fade, push o wipe). */
+  transition?: PptxTransition
   slides: PptxSlideSpec[]
   /** Nota al pie de TODA la presentación (p.ej. "Empresa Ejemplo · Q3 2026") — una diapositiva con su propio `note` la pisa ahí. */
   footer?: string
@@ -405,6 +442,22 @@ function isColumnSpec(v: unknown): v is PptxColumnSpec {
   return isBulletList(c.bullets, MAX_COLUMN_BULLETS)
 }
 
+function isTableSpec(v: unknown): v is PptxTableSpec {
+  if (!v || typeof v !== 'object') return false
+  const t = v as Record<string, unknown>
+  if (!onlyKeys(t, ['columns', 'rows'])) return false
+  const cell = (x: unknown): boolean => typeof x === 'string' && x.length <= MAX_TABLE_CELL_CHARS
+  if (!Array.isArray(t.columns) || t.columns.length < MIN_TABLE_COLS || t.columns.length > MAX_TABLE_COLS || !t.columns.every(cell))
+    return false
+  const n = t.columns.length
+  return (
+    Array.isArray(t.rows) &&
+    t.rows.length >= 1 &&
+    t.rows.length <= MAX_TABLE_ROWS &&
+    t.rows.every((r) => Array.isArray(r) && r.length === n && r.every(cell))
+  )
+}
+
 function isKpiSpec(v: unknown): v is PptxKpiSpec {
   if (!v || typeof v !== 'object') return false
   const k = v as PptxKpiSpec
@@ -473,6 +526,7 @@ function isSlide(v: unknown): v is PptxSlideSpec {
     if (!Array.isArray(s.kpis) || s.kpis.length < MIN_KPIS || s.kpis.length > MAX_KPIS) return false
     if (!s.kpis.every(isKpiSpec)) return false
   }
+  if (s.table !== undefined && !isTableSpec(s.table)) return false
   if (!optHex(s.background)) return false
   if (s.elements !== undefined && (!Array.isArray(s.elements) || s.elements.length > MAX_FREE_ELEMENTS || !s.elements.every(isFreeElement)))
     return false
@@ -557,6 +611,7 @@ export function isPptxSpec(v: unknown): v is PptxSpec {
   if (spec.theme !== undefined && !PPTX_THEMES.includes(spec.theme)) return false
   if (spec.style !== undefined && !PPTX_STYLES.includes(spec.style)) return false
   if (spec.footer !== undefined && (typeof spec.footer !== 'string' || spec.footer.length > MAX_FOOTER_CHARS)) return false
+  if (spec.transition !== undefined && !PPTX_TRANSITIONS.includes(spec.transition)) return false
   if (spec.palette !== undefined && !isPalette(spec.palette)) return false
   if (
     spec.fonts !== undefined &&

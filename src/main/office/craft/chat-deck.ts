@@ -207,6 +207,80 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         })
         break
       }
+      case 'timeline': {
+        // Línea de tiempo horizontal; los hitos alternan arriba y abajo de la línea. «2024: texto» → etiqueta en acento + descripción.
+        head(n, s)
+        const items = bullets.slice(0, 6)
+        const k = Math.max(items.length, 1)
+        const w = Math.floor(840 / k)
+        const bw = Math.min(2 * w - 24, 330)
+        rect(60, 306, 840, 3, pal.edge)
+        items.forEach((t, i) => {
+          const cut = t.indexOf(': ')
+          const label = cut > 0 && cut <= 24 ? t.slice(0, cut) : String(i + 1).padStart(2, '0')
+          const desc = cut > 0 && cut <= 24 ? t.slice(cut + 2) : t
+          const x = 60 + i * w
+          const up = i % 2 === 0
+          dot(x, 299, 18, DOTS[i % DOTS.length])
+          rect(x + 8, up ? 262 : 322, 2, 34, pal.edge)
+          const y = up ? 150 : 346
+          txt(x, y, bw, 40, label, fitSize(label, 28, Math.floor(bw / 16)), DOTS[i % DOTS.length], true, 'left', -1)
+          txt(x, y + 40, bw, 70, desc, fitSize(desc, 16, Math.floor((bw / 8.6) * 3)), pal.text)
+        })
+        break
+      }
+      case 'quote': {
+        bgslide([[480, -260, 800, pal.dark ? '2E1D66' : pal.glow]])
+        txt(52, 40, 200, 200, '\u201C', 220, accent, true, 'left')
+        txt(110, 170, 740, 220, title, fitSize(title, 46, 70), pal.text, true, 'left', -1, titleFont)
+        if (bullets[0]) {
+          rect(112, 396, 48, 3, accent)
+          txt(110, 408, 740, 40, bullets[0], 20, pal.muted)
+        }
+        foot(s)
+        break
+      }
+      case 'agenda': {
+        head(n, s)
+        const items = bullets.slice(0, 7)
+        const gap = items.length > 5 ? 46 : 56
+        items.forEach((t, i) => {
+          const y = 146 + i * gap
+          rect(60, y + gap - 6, 840, 1, pal.edge)
+          txt(60, y, 90, gap - 8, String(i + 1).padStart(2, '0'), 30, DOTS[i % DOTS.length], true, 'left', -1)
+          txt(150, y + 2, 750, gap - 10, t, fitSize(t, items.length > 5 ? 22 : 24, 56), pal.text)
+        })
+        break
+      }
+      case 'table': {
+        head(n, s)
+        const tb = s.table
+        if (!tb) break
+        const k = tb.columns.length
+        const colW = Math.floor(840 / k)
+        const rowH = Math.min(48, Math.floor(330 / (tb.rows.length + 1)))
+        const size = k > 4 ? 14 : 16
+        const cell = (t: string, i: number, y: number, color: string, bold: boolean): void =>
+          txt(
+            60 + i * colW + 12,
+            y + Math.max(0, (rowH - size * 1.4) / 2),
+            colW - 20,
+            rowH,
+            t,
+            fitSize(t, size, Math.floor((colW - 20) / (size * 0.55))),
+            color,
+            bold
+          )
+        rect(60, 146, 840, rowH, accent)
+        tb.columns.forEach((t, i) => cell(t, i, 146, pal.dark ? pal.bg : 'FFFFFF', true))
+        tb.rows.forEach((row, r) => {
+          const y = 146 + rowH * (r + 1)
+          if (r % 2 === 1) rect(60, y, 840, rowH, pal.panel)
+          rect(60, y + rowH - 1, 840, 1, pal.edge)
+          row.forEach((t, i) => cell(t, i, y, pal.text, i === 0))
+        })
+        break
+      }
       case 'free': {
         // Lienzo libre: la IA decide qué va y dónde. Todo se valida antes (`isPptxSpec`): solo textos y formas con colores hex.
         a('slide.new', { layout: 'blank' })
@@ -269,6 +343,10 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
     }
   })
   a('slide.delete', { index: 0 }) // `file.new` deja una diapositiva vacía al inicio
+  if (spec.transition) {
+    a('transition.set', { kind: spec.transition, index: 0 })
+    a('transition.applyAll')
+  }
   return c
 }
 

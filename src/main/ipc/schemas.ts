@@ -37,6 +37,9 @@ import {
   MAX_KPI_LABEL_CHARS,
   MAX_KPI_VALUE_CHARS,
   MAX_KPIS,
+  MAX_TABLE_CELL_CHARS,
+  MAX_TABLE_COLS,
+  MAX_TABLE_ROWS,
   MAX_NOTE_CHARS,
   MAX_ROWS_PER_SHEET,
   MAX_SHEETS,
@@ -50,6 +53,7 @@ import {
   type PptxLayout,
   type PptxStyle,
   type PptxTheme,
+  type PptxTransition,
   type XlsxChartType,
   type XlsxColumnFormat
 } from '@shared/chat-doc-spec'
@@ -271,6 +275,10 @@ const pptxLayout = literal<PptxLayout>(
   'cards',
   'chart',
   'kpis',
+  'timeline',
+  'quote',
+  'agenda',
+  'table',
   'free'
 )
 const pptxChartType = literal<PptxChartType>('bar', 'line', 'pie')
@@ -306,6 +314,12 @@ const pptxKpi = obj({
 })
 /** El largo mínimo (2) ya lo exige `isPptxSpec` en `chat-docs.ts`; esto solo pone un techo razonable al payload IPC, igual que `pptxChart`/`xlsxCell`. */
 const pptxKpis = arr(pptxKpi, MAX_KPIS)
+/** Mismos límites que `isTableSpec`; que cada fila tenga tantas celdas como columnas lo exige `isPptxSpec`. */
+const pptxTable = obj({
+  columns: arr(str({ max: MAX_TABLE_CELL_CHARS }), MAX_TABLE_COLS),
+  rows: arr(arr(str({ max: MAX_TABLE_CELL_CHARS }), MAX_TABLE_COLS), MAX_TABLE_ROWS)
+})
+const pptxTransition = literal<PptxTransition>('fade', 'push', 'wipe')
 const hexColor = str({ max: 7, min: 7, pattern: /^#[0-9a-fA-F]{6}$/ })
 const pptxFont = literal<PptxFont>(...FREE_FONTS)
 const freeShape = literal<PptxFreeShape>(...FREE_SHAPES)
@@ -367,6 +381,7 @@ const pptxData = obj({
   fonts: optional(obj({ title: optional(pptxFont), body: optional(pptxFont) })),
   theme: optional(pptxTheme),
   style: optional(pptxStyle),
+  transition: optional(pptxTransition),
   footer: optional(str({ max: MAX_FOOTER_CHARS })),
   slides: arr(
     obj({
@@ -378,6 +393,7 @@ const pptxData = obj({
       note: optional(str({ max: MAX_NOTE_CHARS })),
       columns: optional(pptxColumns),
       kpis: optional(pptxKpis),
+      table: optional(pptxTable),
       background: optional(hexColor),
       elements: optional(arr(pptxFreeElement, MAX_FREE_ELEMENTS))
     }),

@@ -159,3 +159,29 @@ describe('libertad de diseño del Chat (paleta propia, fuentes, fondo y lienzo l
     ['fondo inválido', { slides: [{ title: 'x', background: 'url(x)' }] }]
   ])('rechaza %s', (_n, spec) => expect(isPptxSpec(spec)).toBe(false))
 })
+
+describe('layouts nuevos (línea de tiempo, agenda, cita, tabla) y transición', () => {
+  const spec: PptxSpec = {
+    transition: 'fade',
+    slides: [
+      { title: 'Portada' },
+      { title: 'Hitos', layout: 'timeline', bullets: ['Q1: beta', 'Q2: lanzamiento', 'sin etiqueta'] },
+      { title: 'Temario', layout: 'agenda', bullets: ['Uno', 'Dos'] },
+      { title: 'Frase', layout: 'quote', bullets: ['Autor'] },
+      { title: 'Planes', layout: 'table', table: { columns: ['Plan', 'Precio'], rows: [['Pro', '$29.990']] } }
+    ]
+  }
+  it('es un PptxSpec válido y genera comandos JSON válidos', () => {
+    expect(isPptxSpec(spec)).toBe(true)
+    for (const cmd of chatDeckCommands(spec)) {
+      const eq = cmd.indexOf('=')
+      if (eq > 0) expect(() => JSON.parse(cmd.slice(eq + 1))).not.toThrow()
+    }
+  })
+  it('la tabla dibuja encabezado y celdas; la transición se aplica a todas', () => {
+    const cmds = chatDeckCommands(spec).join('\n')
+    expect(cmds).toContain('$29.990')
+    expect(cmds).toContain('transition.set={"kind":"fade"')
+    expect(cmds).toContain('transition.applyAll')
+  })
+})

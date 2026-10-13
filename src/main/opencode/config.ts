@@ -151,6 +151,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'opcional, p.ej. "+12% vs. trimestre anterior") — cada métrica sale como una tarjeta con su etiqueta, el ' +
           'número grande y la variación abajo, todas en fila. "value" ya viene formateado como texto (con "%", "x", ' +
           'separador de miles, lo que corresponda), no como número de JSON. ' +
+          '"layout" opcional más: "timeline" (línea de tiempo; "bullets" como "2024: hito", hasta 6), "agenda" (temario numerado, hasta 7 "bullets"), "quote" (cita destacada: "title" es la frase y el primer "bullet" el autor) y "table" (tabla: "table":{"columns":["Plan","Precio"],"rows":[["Básico","$9.990"]]}, de 2 a 6 columnas y hasta 8 filas, todo texto ya formateado). "transition" (opcional, del deck entero): "fade", "push" o "wipe" — úsala en presentaciones formales. ' +
           'Para que NO se vea "hecho por IA": variá el tipo de diapositiva a lo largo de la presentación (intercalá ' +
           'separadores de sección y usá "stat"/"steps"/"two-col"/"cards"/"chart"/"kpis" donde el contenido lo pida, en ' +
           'vez de una sola lista plana de título+viñetas repetida); los títulos nunca terminan en punto. Cada ' +
