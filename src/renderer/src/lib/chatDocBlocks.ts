@@ -5,6 +5,8 @@
  * la valla ya alcanza) y se MEZCLAN con los de `extractHtmlArtifacts` (sin tocarla: la sigue usando
  * Tareas/Code, que no conocen xlsx/pptx) ordenados por posición en el texto.
  */
+import { parseLenient } from '@shared/json-lenient'
+import { normalizePptx } from '@shared/chat-doc-normalize'
 import { isDocxSpec, isPptxSpec, isXlsxSpec, type DocxSpec, type PptxSpec, type XlsxSpec } from '@shared/chat-doc-spec'
 import { extractHtmlArtifacts } from '../components/artifacts/ArtifactButton'
 
@@ -20,13 +22,14 @@ const DATA_FENCE = /(^|\n)[ \t]*(```+|~~~+)[ \t]*(xlsx|pptx|docx)\b[^\n]*\n([\s\
 export function parseDataBlock(kind: 'xlsx' | 'pptx' | 'docx', rawText: string): XlsxSpec | PptxSpec | DocxSpec | null {
   let parsed: unknown
   try {
-    parsed = JSON.parse(rawText)
+    parsed = parseLenient(rawText)
   } catch {
     return null
   }
   if (kind === 'xlsx') return isXlsxSpec(parsed) ? parsed : null
   if (kind === 'docx') return isDocxSpec(parsed) ? parsed : null
-  return isPptxSpec(parsed) ? parsed : null
+  const fixed = normalizePptx(parsed)
+  return isPptxSpec(fixed) ? fixed : null
 }
 
 /** Mismo espíritu que `guessTitle` (HTML): un título corto a partir del contenido, o uno genérico. */

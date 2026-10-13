@@ -101,3 +101,22 @@ describe('bloques ```docx (Word)', () => {
     expect(parseDataBlock('docx', JSON.stringify(spec))).toMatchObject({ title: 'Informe de ventas' })
   })
 })
+
+describe('bloques con deslices comunes del modelo (antes no mostraban vista previa)', () => {
+  const md = (json: string): string => 'Aquí va:\n\n```pptx\n' + json + '\n```\n'
+  it('comilla de más tras un booleano y elemento «line» en vez de shape: se acepta', () => {
+    const json =
+      '{"slides":[{"layout":"free","elements":[{"type":"text","x":10,"y":10,"w":300,"h":50,"text":"Hola","size":20,"bold":true"},' +
+      '{"type":"line","x":100,"y":285,"w":760,"h":0,"line":"#F28C38","lineWidth":4}]}]}'
+    const blocks = extractChatDocBlocks(md(json))
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0].kind).toBe('pptx')
+  })
+  it('una tabla con números en las celdas se acepta', () => {
+    const json = '{"slides":[{"title":"T","layout":"table","table":{"columns":["Plan","Precio"],"rows":[["Pro",29990]]}}]}'
+    expect(extractChatDocBlocks(md(json))).toHaveLength(1)
+  })
+  it('JSON irreparable sigue sin generar bloque', () => {
+    expect(extractChatDocBlocks(md('{"slides":[{"title":'))).toHaveLength(0)
+  })
+})
