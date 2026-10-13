@@ -348,7 +348,7 @@ export const tasks = {
   'tasks.side.openOrigin': 'Abrir la tarea de origen',
   'tasks.side.openRoutines': 'Abrir en Rutinas',
   'tasks.sandboxProviderNotice':
-    'En Tareas con sandbox solo está disponible OpenCode Go (y los modelos gratuitos de OpenCode). Para otros proveedores usa Control total, Chat o Code.',
+    'En Overdrive con sandbox solo está disponible OpenCode Go (y los modelos gratuitos de OpenCode). Para otros proveedores usa Control total, Chat o Code.',
   'tasks.comp.removeAttachment': 'Quitar (el archivo sigue en la carpeta)',
   'tasks.comp.unlinkTitle': 'Quitar «{name}» de las carpetas adicionales',
   'tasks.comp.unlinkAria': 'Quitar la carpeta adicional {name}',
@@ -530,14 +530,14 @@ export const tasks = {
   'tasks.proj.save': 'Guardar',
   'tasks.conv.retryAttempt': 'Reintento {attempt}:',
   'tasks.sandbox.checking': 'Comprobando el entorno aislado…',
-  'tasks.sandbox.needsSetup.title': 'Prepara Tareas en este PC',
+  'tasks.sandbox.needsSetup.title': 'Prepara Overdrive en este PC',
   'tasks.sandbox.needsSetup.body':
     'Las tareas se ejecutan dentro de un entorno Linux aislado de tu PC. Se prepara una sola vez, con lo que ya trae la app (sin descargar nada); necesita unos 2 GB libres en el disco y no toca tus otras distribuciones de Linux.',
   'tasks.sandbox.needsSetup.action': 'Preparar ahora',
-  'tasks.sandbox.needsUpdate.title': 'El entorno de Tareas necesita actualizarse',
-  'tasks.sandbox.needsUpdate.body': 'Para seguir usando Tareas hay que actualizar su entorno aislado. Tus archivos no se tocan.',
+  'tasks.sandbox.needsUpdate.title': 'El entorno de Overdrive necesita actualizarse',
+  'tasks.sandbox.needsUpdate.body': 'Para seguir usando Overdrive hay que actualizar su entorno aislado. Tus archivos no se tocan.',
   'tasks.sandbox.needsUpdate.action': 'Actualizar ahora',
-  'tasks.sandbox.installing.title': 'Preparando Tareas…',
+  'tasks.sandbox.installing.title': 'Preparando Overdrive…',
   'tasks.sandbox.installing.hint': 'Puede tardar unos minutos. Puedes seguir usando Lazunox mientras tanto.',
   'tasks.sandbox.installing.cancel': 'Cancelar',
   'tasks.sandbox.phase.start': 'Empezando…',
@@ -547,7 +547,7 @@ export const tasks = {
   'tasks.sandbox.phase.installing': 'Instalando…',
   'tasks.sandbox.phase.checking': 'Comprobando…',
   'tasks.sandbox.phase.done': 'Listo',
-  'tasks.sandbox.error.title': 'No se pudo preparar Tareas',
+  'tasks.sandbox.error.title': 'No se pudo preparar Overdrive',
   'tasks.sandbox.error.offline': 'No hay conexión con internet.',
   'tasks.sandbox.error.no-space': 'No hay espacio suficiente en el disco.',
   'tasks.sandbox.error.bad-hash': 'La descarga no es válida. Inténtalo de nuevo más tarde.',
@@ -561,7 +561,7 @@ export const tasks = {
   'tasks.sandbox.recheck': 'Volver a comprobar',
   'tasks.sandbox.needsWsl.title': 'Falta WSL en este PC',
   'tasks.sandbox.needsWsl.body':
-    'Tareas necesita el Subsistema de Windows para Linux (WSL). Instálalo desde la Tienda de Microsoft o ejecuta «wsl --install --no-distribution» en una terminal de administrador (Lazunox no ejecuta nada como administrador), reinicia si te lo pide y vuelve a comprobar.',
+    'Overdrive necesita el Subsistema de Windows para Linux (WSL). Instálalo desde la Tienda de Microsoft o ejecuta «wsl --install --no-distribution» en una terminal de administrador (Lazunox no ejecuta nada como administrador), reinicia si te lo pide y vuelve a comprobar.',
   'tasks.sandbox.needsWsl.org': 'Tu organización bloquea WSL en este PC. Pídele a tu administrador que lo permita y vuelve a comprobar.',
   'tasks.sandbox.needsWsl2.title': 'WSL necesita una actualización',
   'tasks.sandbox.needsWsl2.body': 'Actualiza WSL ejecutando «wsl --update» en una terminal y vuelve a comprobar.',
@@ -569,20 +569,22 @@ export const tasks = {
   'tasks.sandbox.needsVirtualization.body':
     'Activa la virtualización (VT-x o AMD-V) en la BIOS o UEFI y la característica «Plataforma de máquina virtual» de Windows; reinicia y vuelve a comprobar.',
   'tasks.sandbox.policy.title': 'Desactivado por tu organización',
-  'tasks.sandbox.policy.body': 'Tu organización ha desactivado Tareas en Windows.',
-  'tasks.sandbox.unavailable.title': 'Tareas en Windows aún no está disponible',
+  'tasks.sandbox.policy.body': 'Tu organización ha desactivado Overdrive en Windows.',
+  'tasks.sandbox.unavailable.title': 'Overdrive en Windows aún no está disponible',
   'tasks.sandbox.unavailable.body':
-    'Esta versión todavía no incluye el entorno aislado que Tareas necesita en Windows. Por seguridad no se ejecuta sin él.',
-  'tasks.sandbox.broken.title': 'El entorno de Tareas necesita atención',
+    'Esta versión todavía no incluye el entorno aislado que Overdrive necesita en Windows. Por seguridad no se ejecuta sin él.',
+  'tasks.sandbox.broken.title': 'El entorno de Overdrive necesita atención',
   'tasks.sandbox.broken.payload': 'Faltan archivos del entorno aislado. Puedes repararlo.',
   'tasks.sandbox.broken.repair': 'Reparar',
   'tasks.sandbox.broken.landlock':
-    'El núcleo de Linux de WSL no admite el aislamiento que Tareas exige. Actualiza WSL con «wsl --update» y vuelve a comprobar.',
-  'tasks.sandbox.broken.interop': 'El entorno permite ejecutar programas de Windows, algo que Tareas no admite. No se usa por seguridad.',
-  'tasks.sandbox.broken.drives': 'El entorno tiene acceso a tus unidades de Windows, algo que Tareas no admite. No se usa por seguridad.',
+    'El núcleo de Linux de WSL no admite el aislamiento que Overdrive exige. Actualiza WSL con «wsl --update» y vuelve a comprobar.',
+  'tasks.sandbox.broken.interop':
+    'El entorno permite ejecutar programas de Windows, algo que Overdrive no admite. No se usa por seguridad.',
+  'tasks.sandbox.broken.drives':
+    'El entorno tiene acceso a tus unidades de Windows, algo que Overdrive no admite. No se usa por seguridad.',
   'tasks.sandbox.broken.foreign':
     'Existe un entorno con el mismo nombre que no es el de Lazunox. No se toca; si no lo necesitas, elimínalo tú desde WSL y vuelve a comprobar.',
-  'tasks.sandbox.broken.wsl1': 'El entorno está en WSL 1 y Tareas necesita WSL 2.',
+  'tasks.sandbox.broken.wsl1': 'El entorno está en WSL 1 y Overdrive necesita WSL 2.',
   'tasks.sandbox.broken.generic': 'No se pudo comprobar el entorno aislado. Por seguridad no se usan las tareas hasta resolverlo.',
   'tasks.sandbox.detail': 'Detalle técnico: {detail}',
 
@@ -602,9 +604,9 @@ export const tasks = {
   'tasks.learn.discard': 'Descartar',
   'tasks.learn.saving': 'Guardando…',
   'tasks.learn.saveFailed': 'No se pudo guardar la memoria.',
-  'tasks.learn.settingsToggle': 'Aprender de Tareas y Code',
+  'tasks.learn.settingsToggle': 'Aprender de Overdrive y Code',
   'tasks.learn.settingsDesc':
-    'El agente puede proponer hechos para recordar (preferencias, convenciones, decisiones) en Tareas y en Code. Siempre elegís qué guardar; nunca se guarda nada solo. En Code, por ahora, solo memoria global (vale para todos los proyectos).',
+    'El agente puede proponer hechos para recordar (preferencias, convenciones, decisiones) en Overdrive y en Code. Siempre elegís qué guardar; nunca se guarda nada solo. En Code, por ahora, solo memoria global (vale para todos los proyectos).',
   'tasks.learn.manageTitle': 'Memoria aprendida de este proyecto',
   'tasks.learn.manageEmpty': 'Todavía no hay memoria aprendida y aprobada en este proyecto.',
   'tasks.learn.deleteEntry': 'Borrar esta nota',

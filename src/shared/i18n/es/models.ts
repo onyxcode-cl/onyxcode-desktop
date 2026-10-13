@@ -1,10 +1,10 @@
 export const models = {
   'models.mode.chat.description': 'Conversaciones generales. Es el mismo modelo que eliges en el selector de Chat.',
   'models.mode.code.description': 'Agente de programación sobre una carpeta. Es el mismo modelo que eliges en el selector de Code.',
-  'models.mode.tasks.description': 'Tareas autónomas sobre documentos. Es el mismo modelo que eliges en el selector de Tareas.',
+  'models.mode.tasks.description': 'Trabajo autónomo sobre documentos. Es el mismo modelo que eliges en el selector de Overdrive.',
   'models.title': 'Modelos',
   'models.subtitle':
-    'Modelo predeterminado y uno propio por modo. Elegir un modelo en Chat, Code o Tareas lo recuerda solo para ese modo; no cambia el predeterminado. Los modelos de OpenCode Go aparecen primero.',
+    'Modelo predeterminado y uno propio por modo. Elegir un modelo en Chat, Code o Overdrive lo recuerda solo para ese modo; no cambia el predeterminado. Los modelos de OpenCode Go aparecen primero.',
   'models.waitingServer': 'Esperando al servidor de OpenCode…',
   'models.default.label': 'Predeterminado',
   'models.default.description': 'Se usa en los modos que no tienen un modelo propio. Cambiarlo aquí no pisa lo que elegiste en un modo.',

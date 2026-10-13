@@ -92,7 +92,7 @@ export const wizard = {
   'wizard.setup.craft': 'Document designer (ArtCraft), to create and view well-designed Word, Excel, PowerPoint and PDF files',
   'wizard.setup.craft.hint':
     'Downloaded from GitHub (about {mb} MB) and verified by hash and signature before use. No administrator password needed.',
-  'wizard.setup.sandbox': 'Isolated environment for Tasks',
+  'wizard.setup.sandbox': 'Isolated environment for Overdrive',
   'wizard.setup.sandbox.hint': 'Set up once (about 2 GB of disk), using what the app already includes.',
   'wizard.setup.run': 'Set everything up',
   'wizard.setup.running': 'Setting up…',

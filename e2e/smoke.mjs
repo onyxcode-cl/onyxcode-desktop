@@ -316,7 +316,7 @@ async function main() {
     return !(await check(name))
   }
 
-  for (const mode of ['Chat', 'Code', 'Tareas', 'Rutinas', 'Chat']) {
+  for (const mode of ['Chat', 'Code', 'Overdrive', 'Rutinas', 'Chat']) {
     const ok = await step(
       `modo ${mode}`,
       () => clickBy('nav[aria-label="Modo"]', mode),

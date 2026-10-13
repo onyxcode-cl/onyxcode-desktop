@@ -69,7 +69,7 @@ export const wizard = {
   'wizard.modes.lead.win': 'Cambias de modo desde la barra lateral (Ctrl+Tab recorre los tres).',
   'wizard.modes.chat': 'Conversaciones generales con el modelo, sin tocar tus archivos.',
   'wizard.modes.code': 'Un agente de programación que trabaja sobre la carpeta de tu proyecto.',
-  'wizard.modes.tasks': 'Tareas autónomas sobre tus documentos y carpetas, con permisos que tú apruebas.',
+  'wizard.modes.tasks': 'Trabajo autónomo sobre tus documentos y carpetas, con permisos que tú apruebas.',
   'wizard.modes.routines': 'Tareas programadas que se ejecutan solas a la hora que elijas.',
 
   'wizard.permissions.lead': '{app} no pide ningún permiso especial de macOS al empezar.',
@@ -89,7 +89,7 @@ export const wizard = {
   'wizard.setup.craft': 'Diseñador de documentos (ArtCraft), para crear y ver Word, Excel, PowerPoint y PDF con buen diseño',
   'wizard.setup.craft.hint':
     'Se descarga de GitHub (unos {mb} MB) y se verifica por hash y firma antes de usarlo. No pide contraseña de administrador.',
-  'wizard.setup.sandbox': 'Entorno aislado de Tareas',
+  'wizard.setup.sandbox': 'Entorno aislado de Overdrive',
   'wizard.setup.sandbox.hint': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'wizard.setup.run': 'Preparar todo',
   'wizard.setup.running': 'Preparando…',

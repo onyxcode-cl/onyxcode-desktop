@@ -111,7 +111,7 @@ export const tasksSettings = {
   'tasksSettings.storage.refresh': 'Refresh',
   'tasksSettings.storage.calculating': 'Calculating…',
   'tasksSettings.storage.failed': 'Couldn’t calculate storage.',
-  'tasksSettings.storage.empty': 'Tasks haven’t saved any data yet.',
+  'tasksSettings.storage.empty': 'Overdrive hasn’t saved any data yet.',
   'tasksSettings.storage.colFolder': 'Folder',
   'tasksSettings.storage.colTotal': 'Total',
   'tasksSettings.storage.colCache': 'Cache',

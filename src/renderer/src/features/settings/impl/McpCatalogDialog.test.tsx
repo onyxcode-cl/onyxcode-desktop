@@ -41,8 +41,10 @@ describe('McpCatalogDialog', () => {
       expect(html, item.id).toContain('Añadir y conectar')
       expect(html, item.id).toContain('Preguntar antes de cada uso')
       expect(html, item.id).toContain('Verificado el')
-      expect(html, item.id).toContain('Disponible en Tareas')
-      expect(html, item.id).toMatch(/aria-label="Disponible en Tareas"[^>]*disabled|disabled=""[^>]*aria-label="Disponible en Tareas"/)
+      expect(html, item.id).toContain('Disponible en Overdrive')
+      expect(html, item.id).toMatch(
+        /aria-label="Disponible en Overdrive"[^>]*disabled|disabled=""[^>]*aria-label="Disponible en Overdrive"/
+      )
       if (item.auth === 'token') expect(html, item.id).toContain('type="password"')
     }
   })

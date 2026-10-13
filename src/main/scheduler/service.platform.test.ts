@@ -52,7 +52,7 @@ describe('planificador con tasksSupported=false', () => {
 
   it('rechaza guardar una rutina en modo Tareas con el mensaje de plataforma', () => {
     const svc = make()
-    expect(() => svc.saveRoutine(input({ mode: 'tasks', folder: state.dir }))).toThrow(/Tareas|Tasks/)
+    expect(() => svc.saveRoutine(input({ mode: 'tasks', folder: state.dir }))).toThrow(/Overdrive/)
     expect(svc.list()).toHaveLength(0)
   })
 
@@ -60,7 +60,7 @@ describe('planificador con tasksSupported=false', () => {
     const svc = make()
     const perform = (svc as unknown as { perform: (r: unknown, rec: unknown, s: AbortSignal) => Promise<string> }).perform.bind(svc)
     const start = vi.spyOn(noTasksPort, 'start')
-    await expect(perform({ mode: 'tasks', folder: state.dir, name: 'x' }, {}, new AbortController().signal)).rejects.toThrow(/Tareas|Tasks/)
+    await expect(perform({ mode: 'tasks', folder: state.dir, name: 'x' }, {}, new AbortController().signal)).rejects.toThrow(/Overdrive/)
     expect(start).not.toHaveBeenCalled()
   })
 })

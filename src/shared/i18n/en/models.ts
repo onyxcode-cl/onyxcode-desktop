@@ -4,10 +4,10 @@ import type { models as es } from '../es/models'
 export const models = {
   'models.mode.chat.description': 'General conversations. Same model as the Chat picker.',
   'models.mode.code.description': 'Coding agent working on a folder. Same model as the Code picker.',
-  'models.mode.tasks.description': 'Autonomous tasks on documents. Same model as the Tasks picker.',
+  'models.mode.tasks.description': 'Autonomous tasks on documents. Same model as the Overdrive picker.',
   'models.title': 'Models',
   'models.subtitle':
-    'Default model and one of its own per mode. Picking a model in Chat, Code or Tasks remembers it for that mode only; it does not change the default. OpenCode Go models are listed first.',
+    'Default model and one of its own per mode. Picking a model in Chat, Code or Overdrive remembers it for that mode only; it does not change the default. OpenCode Go models are listed first.',
   'models.waitingServer': 'Waiting for the OpenCode server…',
   'models.default.label': 'Default',
   'models.default.description':

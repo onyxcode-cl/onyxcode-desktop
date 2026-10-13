@@ -82,7 +82,7 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
       permission: { 'context7_*': 'ask' }
     })
     expect(await d.getByRole('switch', { name: 'Preguntar antes de cada uso' }).getAttribute('aria-checked')).toBe('true')
-    const tareas = d.getByRole('switch', { name: 'Disponible en Tareas' })
+    const tareas = d.getByRole('switch', { name: 'Disponible en Overdrive' })
     expect(await tareas.isDisabled()).toBe(true)
     expect(await tareas.getAttribute('aria-checked')).toBe('false')
     expect(await page.evaluate(() => document.activeElement?.textContent?.trim())).toBe('Cancelar')

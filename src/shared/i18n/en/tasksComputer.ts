@@ -50,7 +50,7 @@ export const tasksComputer = {
   'tasksComputer.mode.fullDesc': 'No sandbox. Can move the mouse, type, take screenshots and modify files anywhere.',
   'tasksComputer.full.title': 'Allow the agent to control your Mac?',
   'tasksComputer.full.title.win': 'Allow the agent to control your PC?',
-  'tasksComputer.full.intro1': 'Tasks will run ',
+  'tasksComputer.full.intro1': 'Overdrive will run ',
   'tasksComputer.full.noSandbox': 'without a sandbox',
   'tasksComputer.full.intro2':
     ' and with Mac control. You don’t have to pick a folder: the agent will be able to use your whole computer and will start working from “{name}”.',
@@ -63,7 +63,7 @@ export const tasksComputer = {
   'tasksComputer.full.b3':
     'It will be able to see the screen, create, modify and delete any file in your user account, open any program and run commands: nothing is confined to a folder.',
   'tasksComputer.full.once':
-    'You’re asked this only once on this computer. The date of your consent is saved and you can withdraw it at any time in Settings › Tasks › Full control.',
+    'You’re asked this only once on this computer. The date of your consent is saved and you can withdraw it at any time in Settings › Overdrive › Full control.',
   'tasksComputer.workspace.label': 'Can use your whole Mac · working folder: {folder}',
   'tasksComputer.workspace.label.win': 'Can use your whole PC · working folder: {folder}',
   'tasksComputer.workspace.home': 'Home folder',
@@ -275,10 +275,10 @@ export const tasksComputer = {
   'tasksComputer.menu.alreadyAdded': 'That folder is already added.',
   'tasksComputer.menu.chooseTitle': 'Choose the folder the agent will work in',
   'tasksComputer.menu.choose': 'Choose folder',
-  'tasksComputer.menu.removeTitle': 'Remove from Tasks',
-  'tasksComputer.menu.removeAria': 'Remove “{name}” from Tasks',
+  'tasksComputer.menu.removeTitle': 'Remove from Overdrive',
+  'tasksComputer.menu.removeAria': 'Remove “{name}” from Overdrive',
   'tasksComputer.menu.removeConfirmTitle': 'Remove work folder?',
-  'tasksComputer.menu.removeConfirmMessage': '“{name}” will no longer be available in Tasks. No files are deleted.',
+  'tasksComputer.menu.removeConfirmMessage': '“{name}” will no longer be available in Overdrive. No files are deleted.',
   'tasksComputer.menu.unlinkTitle': 'Remove additional folder',
   'tasksComputer.menu.unlinkAria': 'Remove the additional folder “{name}”',
   'tasksComputer.menu.appliedOnRestart': 'Changes will apply when this folder’s sandbox restarts.',
@@ -311,7 +311,7 @@ export const tasksComputer = {
   'tasksComputer.onb.tip1':
     'Start in {sandbox}: it only touches the chosen folder and any additional folders you add. Use {full} only when you really need it.',
   'tasksComputer.onb.tip1.win':
-    'Tasks only touch the chosen folder and any additional folders you add: they run in an isolated environment ({sandbox}).',
+    'Overdrive only touches the chosen folder and any additional folders you add: they run in an isolated environment ({sandbox}).',
   'tasksComputer.onb.tip2':
     'Ask for a summary and a plan first: “First review… and show me a summary; then propose…; once I approve, do it.”',
   'tasksComputer.onb.tip3': 'Moving, renaming and deleting require the “{grant}” permission. Grant it only on folders you have backed up.',

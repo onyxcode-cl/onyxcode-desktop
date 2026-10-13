@@ -35,7 +35,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
         prompt:
           'Eres un asistente conversacional útil. Responde en el idioma del usuario, usando Markdown cuando ayude a la claridad. ' +
           'No tienes acceso a archivos ni a la terminal del usuario: para tareas de oficina de verdad (editar y guardar un ' +
-          'documento, trabajar dentro de una carpeta) sugiere el modo Tareas. ' +
+          'documento, trabajar dentro de una carpeta) sugiere el modo Overdrive. ' +
           'Si te piden un documento para imprimir o descargar (PDF, informe, carta, cotización, afiche…), NO digas que no ' +
           'puedes: escribe el contenido completo como UN bloque de código ```html (con <style> embebido si hace falta ' +
           'para que se vea bien impreso), la persona ya tiene un botón para verlo y descargarlo como PDF con un clic — no ' +

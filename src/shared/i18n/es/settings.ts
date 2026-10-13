@@ -36,7 +36,7 @@ export const settings = {
   'settings.general.preferences': 'Preferencias',
   'settings.general.language': 'Idioma',
   'settings.general.language.description':
-    'Idioma de la interfaz. El inglés está en beta: Code, Tareas y Rutinas siguen en español por ahora.',
+    'Idioma de la interfaz. El inglés está en beta: Code, Overdrive y Rutinas siguen en español por ahora.',
   'settings.general.language.system': 'Sistema',
   'settings.general.language.es': 'Español',
   'settings.general.language.en': 'English (beta)',
@@ -153,7 +153,7 @@ export const settings = {
   'settings.shortcuts.act.modePrev': 'Cambiar de modo (en sentido inverso)',
   'settings.shortcuts.act.modeChat': 'Ir a Chat',
   'settings.shortcuts.act.modeCode': 'Ir a Code',
-  'settings.shortcuts.act.modeTasks': 'Ir a Tareas',
+  'settings.shortcuts.act.modeTasks': 'Ir a Overdrive',
   'settings.shortcuts.act.modeRoutines': 'Ir a Rutinas',
   'settings.shortcuts.act.composerFocus': 'Enfocar el compositor',
   'settings.shortcuts.act.stop': 'Detener la respuesta',

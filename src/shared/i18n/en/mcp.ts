@@ -31,7 +31,7 @@ export const mcp = {
   'mcp.note.external':
     'For servers from an external config, the switch only connects/disconnects until the next restart. The status shown is for the Chat workspace; Code projects can have their own MCP servers.',
   'mcp.note.tasks':
-    '“Available in Tasks” takes effect the next time the folder is opened. In the sandbox, remote servers that need sign-in (OAuth) are not available, and the sites of remote servers are added to the Sandbox network.',
+    '“Available in Overdrive” takes effect the next time the folder is opened. In the sandbox, remote servers that need sign-in (OAuth) are not available, and the sites of remote servers are added to the Sandbox network.',
   'mcp.auth.oauth': 'Sign-in',
   'mcp.auth.token': 'Needs a token',
   'mcp.auth.none': 'No account',
@@ -43,7 +43,7 @@ export const mcp = {
   'mcp.catalog.added': 'Added',
   'mcp.catalog.addAria': 'Add {title}',
   'mcp.catalog.addBtn': 'Add…',
-  'mcp.flags.tasks': 'Available in Tasks',
+  'mcp.flags.tasks': 'Available in Overdrive',
   'mcp.flags.ask': 'Ask on every use',
   'mcp.flags.oauthWarn':
     'This remote server appears to use sign-in (OAuth): it won’t be available in the sandbox (it may work with Full control).',
@@ -130,7 +130,7 @@ export const mcp = {
   'mcp.dlg.badFormat': '“{label}” isn’t in the expected format.',
   'mcp.dlg.afterAdd': 'After adding it, click “Authenticate” to sign in to {publisher}.',
   'mcp.dlg.askEach': 'Ask before every use',
-  'mcp.dlg.tasks': 'Available in Tasks',
+  'mcp.dlg.tasks': 'Available in Overdrive',
   'mcp.dlg.tasksOff': 'Not available for catalog connectors in this version.',
   'mcp.dlg.saveExactly': 'This is exactly what will be saved',
   'mcp.dlg.configAria': 'Configuration that will be saved',

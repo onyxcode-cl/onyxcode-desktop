@@ -108,10 +108,10 @@ describe('format y plurales', () => {
 describe('idioma activo', () => {
   it('t() usa el idioma activo y los tests parten en español', () => {
     expect(getLang()).toBe('es')
-    expect(t('labels.mode.tasks')).toBe('Tareas')
+    expect(t('labels.mode.tasks')).toBe('Overdrive')
     setLang('en')
     try {
-      expect(t('labels.mode.tasks')).toBe('Tasks')
+      expect(t('labels.mode.tasks')).toBe('Overdrive')
     } finally {
       setLang('es')
     }

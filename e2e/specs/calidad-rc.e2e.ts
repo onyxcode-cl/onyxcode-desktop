@@ -128,7 +128,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     await dlg.getByRole('button', { name: 'Cron avanzado', exact: true }).click()
     await clean(page, 'rutinas:editor-cron')
     if (!IS_WIN) {
-      await dlg.getByRole('button', { name: /^Tareas/ }).click()
+      await dlg.getByRole('button', { name: /^Overdrive/ }).click()
       await dlg.getByRole('button', { name: 'Añadir regla' }).click()
       await clean(page, 'rutinas:editor-tareas')
     }
@@ -164,7 +164,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
 
   it.skipIf(IS_WIN)('Tareas sin carpeta (primer uso): sin violaciones', async () => {
     const { page } = app()
-    await nav(page, 'Tareas')
+    await nav(page, 'Overdrive')
     await page.waitForTimeout(600)
     await clean(page, 'tareas:primer-uso')
   })
@@ -371,7 +371,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     const a = app()
     // Elegir carpeta: diálogo de confirmación de la carpeta (con foco contenido) y luego Tareas lista.
     await stubDialog(a.electronApp, { openPaths: [res.folder.path] })
-    await nav(a.page, 'Tareas')
+    await nav(a.page, 'Overdrive')
     const choose = a.page.getByRole('button', { name: 'Elegir carpeta' }).first()
     await choose.click()
     const confirm = a.page.getByRole('dialog').filter({ has: a.page.getByRole('button', { name: 'Permitir', exact: true }) })
