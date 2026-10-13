@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 130" role="img" aria-label="Logo de Lazunox">
+<defs><clipPath id="g"><rect x="44" y="44" width="42" height="42" rx="6" transform="rotate(45 65 65)"/></clipPath></defs>
+<g clip-path="url(#g)">
+<path d="M65 30 L65 65 L30 65 Z" fill="#6b86f5"/><path d="M65 30 L100 65 L65 65 Z" fill="#4a6cf0"/>
+<path d="M30 65 L65 65 L65 100 Z" fill="#2b4fd6"/><path d="M65 65 L100 65 L65 100 Z" fill="#1a2a7a"/>
+</g></svg>

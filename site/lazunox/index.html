@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lazunox: asistente de escritorio para Mac y Windows</title>
+<meta name="description" content="Lazunox es una app de escritorio, gratis y de código abierto, que conversa, programa y trabaja sobre tus carpetas y crea PowerPoint, Excel y Word. Para Mac y Windows.">
+<link rel="icon" href="gem.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+
+<header class="top">
+  <a class="brand" href="#inicio" aria-label="Lazunox, inicio">
+    <svg class="brand-gem" viewBox="0 0 130 130" aria-hidden="true"><use href="#gem"/></svg>
+    <span>Lazunox</span>
+  </a>
+  <nav aria-label="Secciones">
+    <a href="#hace">Qué hace</a>
+    <a href="#instalar">Instalar</a>
+    <a href="#confianza">Confianza</a>
+  </nav>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="gclip"><rect x="44" y="44" width="42" height="42" rx="6" transform="rotate(45 65 65)"/></clipPath>
+    <symbol id="gem" viewBox="0 0 130 130">
+      <g clip-path="url(#gclip)">
+        <path d="M65 30 L65 65 L30 65 Z" fill="#6b86f5"/><path d="M65 30 L100 65 L65 65 Z" fill="#4a6cf0"/>
+        <path d="M30 65 L65 65 L65 100 Z" fill="#2b4fd6"/><path d="M65 65 L100 65 L65 100 Z" fill="#1a2a7a"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<main id="contenido">
+  <section class="hero" id="inicio">
+    <h1>Un asistente que trabaja en tu computador, no solo conversa</h1>
+    <p class="lead">Lazunox es una app de escritorio gratuita y de código abierto. Programa contigo, trabaja sobre las carpetas que tú le autorizas y arma presentaciones, planillas y documentos listos para abrir en PowerPoint, Excel y Word.</p>
+
+    <div class="dl-card" id="descargar" aria-live="polite">
+      <p class="dl-title">Descargar para escritorio</p>
+      <p class="dl-sub">Disponible para macOS y Windows</p>
+      <div class="download">
+        <a class="btn btn-primary" id="dl-mac" href="https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest" data-os="mac">
+          <span class="btn-title">Descargar para Mac</span>
+          <span class="btn-sub" data-sub="mac">Chip Apple (M1 o posterior)</span>
+        </a>
+        <a class="btn btn-primary" id="dl-win" href="https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest" data-os="win">
+          <span class="btn-title">Descargar para Windows</span>
+          <span class="btn-sub" data-sub="win">Windows 10 u 11, 64 bits</span>
+        </a>
+      </div>
+      <p class="note" id="dl-note">Gratis, sin cuenta y sin pasar por una tienda. Si la descarga no aparece todavía, la lista completa está en <a href="https://github.com/onyxcode-cl/onyxcode-desktop/releases">las versiones publicadas</a>.</p>
+    </div>
+
+    <div class="stage" aria-hidden="true">
+      <svg viewBox="0 0 130 130" class="gem-assemble">
+        <g clip-path="url(#gclip)">
+          <path class="f f1" d="M65 30 L65 65 L30 65 Z" fill="#6b86f5"/>
+          <path class="f f2" d="M65 30 L100 65 L65 65 Z" fill="#4a6cf0"/>
+          <path class="f f3" d="M30 65 L65 65 L65 100 Z" fill="#2b4fd6"/>
+          <path class="f f4" d="M65 65 L100 65 L65 100 Z" fill="#1a2a7a"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="section" id="hace" aria-labelledby="t-hace">
+    <h2 id="t-hace">Qué puedes hacer con Lazunox</h2>
+    <dl class="defs">
+      <div>
+        <dt>Conversar</dt>
+        <dd>Un chat con modelos de OpenCode Go y de otros proveedores. Le pides un texto, una idea o una explicación, y te responde en tu idioma.</dd>
+      </div>
+      <div>
+        <dt>Programar en tu proyecto</dt>
+        <dd>Abre una carpeta de código y trabaja con ella: lee los archivos, propone cambios y los aplica donde tú lo permitas.</dd>
+      </div>
+      <div>
+        <dt>Delegar tareas sobre carpetas</dt>
+        <dd>Le autorizas una carpeta y le encargas un trabajo largo. Solo puede tocar lo que hay dentro de ella, y te pide confirmación antes de borrar nada. También puedes arrastrar la carpeta a la ventana para conectarla.</dd>
+      </div>
+      <div>
+        <dt>Crear presentaciones, planillas y documentos</dt>
+        <dd>Pide una presentación, un Excel o un Word y míralo en un panel igual a como se vería en el programa real. Se descarga como archivo <code>.pptx</code>, <code>.xlsx</code> o <code>.docx</code> y se puede seguir editando. Para esto usa <a href="https://getartcraft.com/">ArtCraft</a>, que la app descarga y verifica sola en el primer uso.</dd>
+      </div>
+      <div>
+        <dt>Repetir trabajos solos</dt>
+        <dd>Las rutinas ejecutan una tarea cada cierto tiempo, por ejemplo un resumen cada mañana.</dd>
+      </div>
+      <div>
+        <dt>Seguir desde el celular</dt>
+        <dd>Opcional: vincula tu teléfono para ver y aprobar lo que hace la app en tu computador mientras no estás frente a él.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="section" id="instalar" aria-labelledby="t-inst">
+    <h2 id="t-inst">Cómo instalarla</h2>
+    <p class="section-lead">Es gratis y no pide permisos de administrador. Como Lazunox no usa certificados de pago de Apple ni de Microsoft, tu sistema te mostrará un aviso la primera vez. No significa que tenga un problema: significa que nadie de esas empresas la ha revisado. Más abajo está cómo comprobar que el archivo es el auténtico.</p>
+
+    <div class="cols">
+      <article>
+        <h3>En Mac</h3>
+        <ol>
+          <li>Descarga el archivo <code>.dmg</code> y ábrelo.</li>
+          <li>Arrastra <strong>Lazunox</strong> a <strong>Aplicaciones</strong> y ábrela.</li>
+          <li>Si macOS dice que no puede verificarla, pulsa <strong>Hecho</strong>. Luego entra a <strong>Ajustes del Sistema › Privacidad y seguridad</strong> y pulsa <strong>Abrir de todos modos</strong>. Solo hace falta la primera vez.</li>
+        </ol>
+        <p class="small">Necesita un Mac con chip Apple (M1 o posterior). No funciona en Mac con Intel.</p>
+      </article>
+      <article>
+        <h3>En Windows</h3>
+        <ol>
+          <li>Descarga el archivo <code>.exe</code> y ábrelo.</li>
+          <li>Si sale «Windows protegió su PC», pulsa <strong>Más información</strong> y luego <strong>Ejecutar de todas formas</strong>.</li>
+          <li>Sigue los pasos del instalador. Se instala solo para tu usuario.</li>
+        </ol>
+        <p class="small">Necesita Windows 10 u 11 de 64 bits.</p>
+      </article>
+    </div>
+
+    <h3 class="sub">Instalar con un comando</h3>
+    <p class="section-lead">Si te acomoda la terminal, estos comandos descargan la última versión, comprueban su huella digital (SHA-256) y la instalan sin avisos. No desactivan ninguna protección de tu sistema.</p>
+    <div class="cmds">
+      <div class="cmd">
+        <p class="cmd-label">Mac</p>
+        <pre><code id="cmd-mac">curl -fsSL https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.sh | sh</code></pre>
+        <button type="button" class="copy" data-copy="cmd-mac">Copiar</button>
+      </div>
+      <div class="cmd">
+        <p class="cmd-label">Windows (PowerShell normal, no como administrador)</p>
+        <pre><code id="cmd-win">irm https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.ps1 | iex</code></pre>
+        <button type="button" class="copy" data-copy="cmd-win">Copiar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="confianza" aria-labelledby="t-conf">
+    <h2 id="t-conf">Por qué puedes confiar</h2>
+    <dl class="defs defs-tight">
+      <div>
+        <dt>Código abierto</dt>
+        <dd>Todo el código está en <a href="https://github.com/onyxcode-cl/onyxcode-desktop">GitHub</a>. Puedes leerlo, auditarlo y compilarlo tú.</dd>
+      </div>
+      <div>
+        <dt>Tus claves se quedan en tu equipo</dt>
+        <dd>Las claves de los proveedores de IA las guarda la app en tu computador y solo viajan al proveedor que elijas.</dd>
+      </div>
+      <div>
+        <dt>Tú decides qué carpeta toca</dt>
+        <dd>Las tareas solo trabajan dentro de las carpetas que autorizas, y piden confirmación antes de borrar archivos.</dd>
+      </div>
+      <div>
+        <dt>Puedes verificar el archivo</dt>
+        <dd>Cada versión publica su huella SHA-256 en el archivo <code>SHA256SUMS</code>. Compárala con la de tu descarga antes de abrirla.</dd>
+      </div>
+    </dl>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><strong>Lazunox</strong> es un proyecto independiente y sin fines de lucro, creado por Benjamín Sánchez y Sebastián Rodríguez. No está afiliado a OpenCode ni a Anthropic.</p>
+  <p>Usa el motor de <a href="https://opencode.ai">OpenCode</a> y, para los documentos, <a href="https://getartcraft.com/">ArtCraft</a> de storytold (código abierto, licencia MIT/Apache 2.0).</p>
+  <ul class="foot-links"><li><a href="https://github.com/onyxcode-cl/onyxcode-desktop">Código fuente</a></li><li><a href="https://github.com/onyxcode-cl/onyxcode-desktop/releases">Todas las versiones</a></li><li><a href="https://github.com/onyxcode-cl/onyxcode-desktop/blob/main/CHANGELOG.md">Novedades</a></li></ul>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>
