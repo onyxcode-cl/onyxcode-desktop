@@ -129,6 +129,9 @@ export type ChatDocDownloadRequest = { title: string } & (
   { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
 )
 
+/** Para `extras:chatDoc:openExternal`: como la descarga, más el PDF (HTML). */
+export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string }
+
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
   'extras:setPrefs': { req: Partial<ExtrasPrefs>; res: ExtrasPrefsState }
@@ -153,6 +156,8 @@ export interface IpcExtrasInvokeContract {
   'extras:chatDoc:attach': { req: { rect: ViewerRect; visible: boolean }; res: void }
   /** Cierra el panel y borra los documentos temporales de esa sesión. */
   'extras:chatDoc:close': { req: { sessionId: string }; res: void }
+  /** El documento se abre en el programa de ArtCraft de escritorio (o, si no está, en el del sistema): `via` dice cuál. */
+  'extras:chatDoc:openExternal': { req: ChatDocExternalRequest; res: { ok: true; via: 'craft' | 'system' } | { ok: false } }
   /** `data` (Excel/PowerPoint) → archivo real, con diálogo nativo "Guardar como". `null` si cancela. */
   'extras:downloadChatDoc': { req: ChatDocDownloadRequest; res: string | null }
   /** Desde la ventana Quick Entry. */
@@ -212,6 +217,7 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatDoc:open',
   'extras:chatDoc:attach',
   'extras:chatDoc:close',
+  'extras:chatDoc:openExternal',
   'extras:downloadChatDoc',
   'extras:quickSubmit',
   'extras:quickHide',

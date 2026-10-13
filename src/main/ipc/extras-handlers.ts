@@ -12,7 +12,8 @@ import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
-import { cleanChatDocuments, downloadChatDoc, generateChatDoc, type ChatDocInput } from '../extras/chat-docs'
+import { cleanChatDocuments, downloadChatDoc, generateChatDoc, writeChatDocForExternal, type ChatDocInput } from '../extras/chat-docs'
+import { openExternally } from '../office/craft/open-external'
 import { onWebEvent } from '../office/craft/web-view'
 import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
@@ -138,6 +139,23 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'extras:chatDoc:close', ({ sessionId }) => {
     panelClose()
     void cleanChatDocuments(sessionId)
+  })
+  handle(ipcMain, 'extras:chatDoc:openExternal', async (req) => {
+    try {
+      const input: ChatDocInput =
+        req.kind === 'pdf'
+          ? { kind: 'pdf', html: req.html }
+          : req.kind === 'xlsx'
+            ? { kind: 'xlsx', data: req.data }
+            : req.kind === 'docx'
+              ? { kind: 'docx', data: req.data }
+              : { kind: 'pptx', data: req.data }
+      const file = await writeChatDocForExternal(input, req.title)
+      return { ok: true as const, via: await openExternally(input.kind, file, (p) => shell.openPath(p)) }
+    } catch (e) {
+      console.warn('[chat-doc] no se pudo abrir aparte:', e instanceof Error ? e.message : e)
+      return { ok: false as const }
+    }
   })
   handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {
     const input: ChatDocInput =

@@ -171,6 +171,19 @@ export async function downloadChatDoc(input: ChatDocInput, title: string, win: B
   return res.filePath
 }
 
+/**
+ * Genera el documento y lo deja en una carpeta temporal PROPIA (aparte de la del panel, que se borra al cerrarlo) para abrirlo en otro
+ * programa. El nombre sale del título limpiado; la carpeta es única por apertura y la barre `sweepStaleChatDocuments`.
+ */
+export async function writeChatDocForExternal(input: ChatDocInput, title: string): Promise<string> {
+  const bytes = await renderBytes(input, title)
+  const dir = join(chatDocsRoot(), 'abiertos', randomUUID())
+  await mkdir(dir, { recursive: true, mode: 0o700 })
+  const file = join(dir, `${safeDocumentName(title || 'documento', 'documento')}.${EXT[input.kind]}`)
+  await writeFile(file, bytes, { mode: 0o600 })
+  return file
+}
+
 /** Borra los documentos de una sesión de chat (al cerrarla o cambiar a otra). Nunca lanza. */
 export async function cleanChatDocuments(sessionId: string): Promise<void> {
   try {

@@ -442,6 +442,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:chatDoc:open': 'X',
   'extras:chatDoc:attach': 'X',
   'extras:chatDoc:close': 'X',
+  'extras:chatDoc:openExternal': 'X',
   'extras:downloadChatDoc': 'X',
   'extras:quickSubmit': 'X',
   'extras:quickHide': 'X',

@@ -898,6 +898,12 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   }),
   'extras:chatDoc:attach': obj({ rect: browserRect, visible: bool }),
   'extras:chatDoc:close': obj({ sessionId: str({ max: 200 }) }),
+  'extras:chatDoc:openExternal': tagged('kind', {
+    pdf: obj({ kind: literal('pdf'), title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+    xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
+    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
+    docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
+  }),
   'extras:downloadChatDoc': tagged('kind', {
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
