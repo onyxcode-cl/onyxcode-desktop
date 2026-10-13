@@ -3,6 +3,7 @@
  * global (por defecto Option+Space en macOS y Alt+Shift+Space en Windows, donde Alt+Space abre el menú del sistema). Al enviar, abre/enfoca la ventana principal en Chat
  * con el prompt (evento `extras:quick-prompt`).
  */
+import { installEditContextMenu } from '../security/edit-context-menu'
 import { t } from '@shared/i18n'
 import { BrowserWindow, globalShortcut, screen } from 'electron'
 import type { QuickPromptEvent } from '@shared/ipc-extras'
@@ -58,6 +59,7 @@ function createQuickWindow(): BrowserWindow {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   void loadLocalizedPage(win, 'quick/index.html')
+  installEditContextMenu(win.webContents)
   return win
 }
 
