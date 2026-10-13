@@ -91,10 +91,39 @@ export async function loadFolders(): Promise<void> {
 export async function chooseFolder(): Promise<void> {
   const picked = await cw('tasks:pickFolder')
   if (!picked) return
+  await useChosenFolder(picked)
+}
+
+async function useChosenFolder(picked: string): Promise<void> {
   useTasks.setState({ error: null })
   const { folders } = useTasks.getState()
   if (folders.some((f) => f.path === picked)) await selectFolder(picked)
   else useTasks.setState({ pendingApproval: picked })
+}
+
+/**
+ * Una carpeta arrastrada a la ventana de Tareas: main la valida igual que cualquier otra (`tasks:folders:check`: política, unidades,
+ * carpetas prohibidas) y sigue el MISMO camino que «Elegir carpeta» — si ya estaba autorizada se conecta, y si no se pide la confirmación
+ * de siempre. En Control total solo cambia la carpeta de trabajo, como hace el selector.
+ */
+export async function dropFolder(path: string): Promise<void> {
+  if (!path) return
+  try {
+    const chk = await cw('tasks:folders:check', { path })
+    if (!chk.ok) {
+      useTasks.setState({ error: chk.reason ?? t('tasks.act.cannotAddFolder') })
+      return
+    }
+    if (useTasks.getState().conn?.fullAccess) {
+      useTasks.setState({ error: null })
+      rememberFullAccess(chk.normalized, true)
+      await connectFolder(chk.normalized, true)
+      return
+    }
+    await useChosenFolder(chk.normalized)
+  } catch (err) {
+    useTasks.setState({ error: errorMessage(err) })
+  }
 }
 
 export async function approvePending(): Promise<void> {

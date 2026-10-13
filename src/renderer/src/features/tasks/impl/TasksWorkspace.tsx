@@ -65,6 +65,7 @@ import {
   VisionModelHint
 } from './ComputerAccess'
 import { hasTasksBridge, onTasks } from './bridge'
+import { useFolderDrop } from './useFolderDrop'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
@@ -329,6 +330,7 @@ function FollowUps({ items, onPick }: { items: FollowUpId[]; onPick: (text: stri
 export function TasksWorkspace(): React.JSX.Element {
   const t = useT()
   const bridge = hasTasksBridge()
+  const folderDrop = useFolderDrop(bridge)
   const folder = useTasks((s) => s.folder)
   const phase = useTasks((s) => s.phase)
   const conn = useTasks((s) => s.conn)
@@ -676,7 +678,15 @@ export function TasksWorkspace(): React.JSX.Element {
   const showPanel = !!activeId && panelOpen && !sideOpen
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="relative flex h-full min-h-0" {...folderDrop.handlers}>
+      {folderDrop.dragging && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-2 z-30 flex items-center justify-center rounded-card border-2 border-dashed border-accent bg-accent-soft/70 text-sm font-medium text-accent"
+        >
+          {t('tasks.drop.hint')}
+        </div>
+      )}
       {/* Centro */}
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
