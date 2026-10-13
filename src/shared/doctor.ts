@@ -6,10 +6,10 @@
 export type DoctorLevel = 'ok' | 'warn' | 'fail' | 'info'
 
 /** Qué botón ofrece la interfaz para arreglarlo (la acción real la hace la interfaz con canales que ya existen). */
-export type DoctorFix = 'requestPermissions' | 'installOffice' | 'xcodeSelect'
+export type DoctorFix = 'requestPermissions' | 'installCraft' | 'xcodeSelect'
 
 export type DoctorId =
-  'macos' | 'accessibility' | 'screenRecording' | 'controlHelper' | 'keyboardTool' | 'python' | 'office' | 'git' | 'disk' | 'screens'
+  'macos' | 'accessibility' | 'screenRecording' | 'controlHelper' | 'keyboardTool' | 'python' | 'craft' | 'git' | 'disk' | 'screens'
 
 export interface DoctorItem {
   id: DoctorId

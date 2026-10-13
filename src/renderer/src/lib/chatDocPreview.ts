@@ -7,7 +7,7 @@
  * que un bloque ```html (el único de los tres que también existe fuera de Chat) sigue abriendo su
  * ventana aislada de siempre.
  */
-export type ChatDocBlockKind = 'html' | 'xlsx' | 'pptx'
+export type ChatDocBlockKind = 'html' | 'xlsx' | 'pptx' | 'docx'
 
 type PreviewHandler = (kind: ChatDocBlockKind, rawText: string, title: string, isSlides?: boolean) => void
 

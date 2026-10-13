@@ -7,7 +7,7 @@
  * se vio feo": fondo a toda página en las diapositivas de impacto (portada/sección/cifra/cierre),
  * etiqueta y nota al pie como convención ESTRUCTURAL (nunca contenido inventado), gráficos nativos,
  * tarjetas, dos columnas, y el mismo círculo de textura en toda la familia de fondo a toda página.
- * Sigue sin imágenes externas ni el ciclo de revisión con LibreOffice+visión de la skill oficial — eso
+ * Sigue sin imágenes externas ni el ciclo de revisión con visión de la skill oficial — eso
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
 import PptxGenJS from 'pptxgenjs'
@@ -115,9 +115,9 @@ function addFooterRow(
 /**
  * Forma de tarjeta a usar según `s.cardRadius` — NUNCA `addShape('roundRect', {rectRadius: 0, ...})`:
  * bug real de `pptxgenjs` (confirmado leyendo su fuente), `rectRadius` se chequea con `if (value)`, así
- * que `0` (falsy) nunca escribe el `adj` de la esquina — PowerPoint/LibreOffice cae al radio PROPIO
+ * que `0` (falsy) nunca escribe el `adj` de la esquina — PowerPoint cae al radio PROPIO
  * del preset `roundRect` (visiblemente redondeado, no la esquina recta que pide "editorial"/"minimal").
- * Confirmado visualmente con el render real de LibreOffice, no solo con el XML.
+ * Confirmado visualmente con un render real, no solo con el XML.
  */
 function cardShape(s: StyleParams): 'rect' | 'roundRect' {
   return s.cardRadius > 0 ? 'roundRect' : 'rect'
@@ -656,7 +656,33 @@ function addChartSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
   addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
 }
 
-export async function renderPptx(data: PptxSpec): Promise<Buffer> {
+/**
+ * Las diapositivas `layout:"free"` (lienzo libre) solo se dibujan fielmente con DeckCraft. Con este generador (el de respaldo, cuando
+ * DeckCraft no está instalado o falló) se simplifican a una diapositiva normal: el texto más grande como título y el resto como viñetas,
+ * en el orden en que estaban. Así nunca sale una diapositiva vacía.
+ */
+export function degradeFreeSlides(data: PptxSpec): PptxSpec {
+  if (!data.slides.some((s) => s.layout === 'free')) return data
+  return {
+    ...data,
+    slides: data.slides.map((s, i) => {
+      if (s.layout !== 'free') return s
+      const texts = (s.elements ?? []).flatMap((e) =>
+        e.type === 'text' ? [{ t: e.text, size: e.size ?? 20 }] : e.type === 'shape' && e.text ? [{ t: e.text, size: e.size ?? 18 }] : []
+      )
+      const biggest = texts.reduce<{ t: string; size: number } | null>((m, x) => (!m || x.size > m.size ? x : m), null)
+      const rest = texts.filter((x) => x !== biggest).map((x) => x.t.slice(0, 500))
+      return {
+        title: biggest?.t.slice(0, 200) ?? s.title,
+        bullets: rest.slice(0, 20),
+        layout: i === 0 ? 'cover' : rest.length ? 'bullets' : 'section'
+      }
+    })
+  }
+}
+
+export async function renderPptx(rawData: PptxSpec): Promise<Buffer> {
+  const data = degradeFreeSlides(rawData)
   const pres = new PptxGenJS()
   pres.defineLayout({ name: 'LAZUNOX', width: PAGE_W, height: PAGE_H })
   pres.layout = 'LAZUNOX'

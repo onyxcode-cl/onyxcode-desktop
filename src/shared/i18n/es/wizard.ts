@@ -86,8 +86,9 @@ export const wizard = {
   'wizard.setup.perms': 'Permisos de macOS: Accesibilidad y Grabación de pantalla',
   'wizard.setup.perms.hint':
     'Para que el agente pueda mover el ratón y ver la pantalla cuando se lo pidas. macOS abrirá sus avisos: actívalos.',
-  'wizard.setup.office': 'LibreOffice, para ver Word, Excel y PowerPoint tal como quedan',
-  'wizard.setup.office.hint': 'Descarga oficial de The Document Foundation (unos {mb} MB), verificada antes de usarla.',
+  'wizard.setup.craft': 'Diseñador de documentos (ArtCraft), para crear y ver Word, Excel, PowerPoint y PDF con buen diseño',
+  'wizard.setup.craft.hint':
+    'Se descarga de GitHub (unos {mb} MB) y se verifica por hash y firma antes de usarlo. No pide contraseña de administrador.',
   'wizard.setup.sandbox': 'Entorno aislado de Tareas',
   'wizard.setup.sandbox.hint': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'wizard.setup.run': 'Preparar todo',

@@ -16,6 +16,12 @@ Nunca sobrescribas el archivo del usuario: toda salida es un archivo NUEVO (`-v2
    Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 5. Entrega: indica la ruta del .docx y resume qué contiene (en «Para revisar»: lo que no pudiste comprobar).
 
+### A0. Ruta rápida con diseño cuidado (si WordCraft está instalado)
+Con el MISMO `contenido.json` puedes generar el documento con WordCraft (más rápido y con mejor tipografía): `PY S/build_word_craft.py contenido.json informe.docx`.
+Si sale con **código 3** (WordCraft no está instalado en este equipo) no insistas: sigue con `build_docx.py` del paso 2. Soporta `title`, `subtitle`,
+`author`, `date`, `header`, `footer`, `page_numbers`, `toc` y los bloques `heading`, `paragraph`, `bullets` (los sublistas se aplanan), `numbered`, `table`, `image` y
+`page_break`; ignora `page` y `theme`. Si necesitas márgenes, tamaño de página o colores propios usa `build_docx.py`. Verifica igual con `check_docx.py`.
+
 ### Esquema del JSON
 Campos de nivel superior (todos opcionales salvo `blocks`): `title`, `subtitle`, `author`, `date` (texto, o `"hoy"` → «9 de octubre de 2026»),
 `header` (texto arriba a la derecha), `footer` (texto en el pie), `page_numbers` (por defecto true: «Página X de Y»),
@@ -69,7 +75,7 @@ PY S/edit_docx.py original.docx original-v2.docx \
 - Añadir (copia nueva): `PY S/comments_docx.py añadir documento.docx documento-revisado.docx --texto-ancla "frase exacta" --comentario "Verificar esta cifra" [--autor Lazunox]` (los pares se pueden repetir).
 
 ## D. Verificar siempre
-`PY S/check_docx.py archivo.docx` abre el archivo, cuenta tablas/imágenes/encabezados y avisa de: párrafos vacíos consecutivos, estilos no definidos, saltos de nivel de encabezado, tablas sin encabezado, cambios registrados sin resolver y (si hay LibreOffice) páginas en blanco. Ejemplo de salida final: `RESULTADO: OK con 1 aviso(s)`. Con `--no-render` solo revisa la estructura. Si LibreOffice no está instalado lo dice y sigue: en ese caso decláralo en «Para revisar» («no se pudo comprobar el aspecto visual»).
+`PY S/check_docx.py archivo.docx` abre el archivo, cuenta tablas/imágenes/encabezados y avisa de: párrafos vacíos consecutivos, estilos no definidos, saltos de nivel de encabezado, tablas sin encabezado, cambios registrados sin resolver y (si está WordCraft de ArtCraft) páginas en blanco. Ejemplo de salida final: `RESULTADO: OK con 1 aviso(s)`. Con `--no-render` solo revisa la estructura. Si ArtCraft no está instalado lo dice y sigue: en ese caso decláralo en «Para revisar» («no se pudo comprobar el aspecto visual»).
 
 ## Buenas prácticas
 - Usa encabezados reales (nivel 1-3), no texto grande en negrita. No uses Enter repetido para espaciar: ya hay espaciado en los estilos.
@@ -83,4 +89,4 @@ PY S/edit_docx.py original.docx original-v2.docx \
 - Texto reemplazado mantiene el formato del primer carácter afectado; no se reordenan secciones complejas ni se editan cuadros de texto, formas, ecuaciones ni notas al pie.
 - Comentarios anclados solo a texto dentro de un párrafo normal (no a hipervínculos ni a cuadros de texto).
 - No convierte .doc antiguos ni .pdf a .docx; no firma ni protege con contraseña.
-- El aspecto exacto en Word puede diferir mínimamente del render de LibreOffice.
+- El aspecto exacto en Word puede diferir mínimamente del render de WordCraft (ArtCraft).

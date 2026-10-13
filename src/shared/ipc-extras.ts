@@ -9,7 +9,7 @@ import type { KeybindingOverrides } from './keybindings'
 import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
 import type { ViewerEventType, ViewerRect } from './ipc-tasks'
-import type { PptxSpec, XlsxSpec } from './chat-doc-spec'
+import type { DocxSpec, PptxSpec, XlsxSpec } from './chat-doc-spec'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
 export type ModelMode = 'chat' | 'code' | 'tasks'
@@ -122,9 +122,15 @@ export type ChatDocOpenRequest =
   | (ChatDocOpenCommon & { kind: 'pdf'; html: string })
   | (ChatDocOpenCommon & { kind: 'xlsx'; data: XlsxSpec })
   | (ChatDocOpenCommon & { kind: 'pptx'; data: PptxSpec })
+  | (ChatDocOpenCommon & { kind: 'docx'; data: DocxSpec })
 
 /** Para `extras:downloadChatDoc` — solo xlsx/pptx (el PDF ya tiene su propio `downloadHtmlAsPdf`). */
-export type ChatDocDownloadRequest = { title: string } & ({ kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec })
+export type ChatDocDownloadRequest = { title: string } & (
+  { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
+)
+
+/** Para `extras:chatDoc:openExternal`: como la descarga, más el PDF (HTML). */
+export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string }
 
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
@@ -150,6 +156,8 @@ export interface IpcExtrasInvokeContract {
   'extras:chatDoc:attach': { req: { rect: ViewerRect; visible: boolean }; res: void }
   /** Cierra el panel y borra los documentos temporales de esa sesión. */
   'extras:chatDoc:close': { req: { sessionId: string }; res: void }
+  /** El documento se abre en el programa de ArtCraft de escritorio (o, si no está, en el del sistema): `via` dice cuál. */
+  'extras:chatDoc:openExternal': { req: ChatDocExternalRequest; res: { ok: true; via: 'craft' | 'system' } | { ok: false } }
   /** `data` (Excel/PowerPoint) → archivo real, con diálogo nativo "Guardar como". `null` si cancela. */
   'extras:downloadChatDoc': { req: ChatDocDownloadRequest; res: string | null }
   /** Desde la ventana Quick Entry. */
@@ -209,6 +217,7 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatDoc:open',
   'extras:chatDoc:attach',
   'extras:chatDoc:close',
+  'extras:chatDoc:openExternal',
   'extras:downloadChatDoc',
   'extras:quickSubmit',
   'extras:quickHide',

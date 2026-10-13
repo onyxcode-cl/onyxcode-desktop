@@ -15,9 +15,13 @@ import { randomUUID } from 'node:crypto'
 import { join, sep } from 'node:path'
 import type { DocKind } from '@shared/doc-kind'
 import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
-import { convertToPdf } from './office-render'
+import { craftService } from '../office/craft/service'
+import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
+import { gridToPdf, renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from './render-xlsx'
+import { isDocxSpec, type DocxSpec } from '@shared/chat-doc-spec'
+import { docxToPdf, renderChatDocx } from '../office/craft/chat-word'
 import { issueToken } from '../viewer/tokens'
 import { registerViewerPathValidator } from '../viewer/scheme'
 
@@ -51,11 +55,14 @@ function ensureValidatorRegistered(): void {
 export interface ChatDocument {
   token: string
   kind: DocKind
+  /** Archivo real generado (el .xlsx/.pptx/.pdf), para quien quiera abrirlo en otro visor. */
+  file: string
 }
 
-export type ChatDocInput = { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec }
+export type ChatDocInput =
+  { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
 
-const EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx' }
+const EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx', docx: 'docx' }
 
 /** Genera el archivo real (PDF/Excel/PowerPoint) y lo guarda en la carpeta temporal de esta sesión, con un token del visor ya emitido. */
 export async function generateChatDoc(input: ChatDocInput, title: string, sessionId: string): Promise<ChatDocument> {
@@ -66,22 +73,43 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
   const target = join(dir, `${randomUUID()}.${EXT[input.kind]}`)
   await writeFile(target, bytes)
 
-  // PowerPoint: si hay LibreOffice instalado (nunca empaquetado, nunca se descarga solo — ver
-  // `office-render.ts`), la VISTA PREVIA usa el PDF real que convierte (pixel a pixel igual a
-  // PowerPoint, confirmado) en vez del visor estructural aproximado — el token apunta al PDF, con
-  // `kind:'pdf'`. Esto SOLO cambia qué ve el panel: `downloadChatDoc` (más abajo) vuelve a generar el
-  // `.pptx` real desde cero, siempre — lo que se descarga nunca es el PDF. Si no hay LibreOffice, o la
+  // PowerPoint: con DeckCraft instalado la VISTA PREVIA de respaldo es el PDF que genera DeckCraft (el panel prefiere la versión web del
+  // programa; este PDF es el respaldo). El token apunta al PDF con `kind:'pdf'`. Esto SOLO cambia qué ve el panel: `downloadChatDoc`
+  // (más abajo) vuelve a generar el `.pptx` real desde cero, siempre — lo que se descarga nunca es el PDF. Si no hay DeckCraft, o la
   // conversión falla por lo que sea, cae con gracia al `.pptx` de siempre (nunca rompe nada).
   if (input.kind === 'pptx') {
-    const pdfPath = await convertToPdf(target, dir).catch(() => null)
+    const craft = craftBinary('deckcraft')
+    const pdfPath = craft ? await deckToPdf(craft, target, target.replace(/\.pptx$/, '.pdf')) : null
     if (pdfPath) {
       const token = issueToken({ path: pdfPath, kind: 'pdf' })
-      return { token, kind: 'pdf' }
+      return { token, kind: 'pdf', file: target }
     }
   }
 
+  // Word: la vista web de WordCraft va aparte (ver `web-open.ts`); aquí el respaldo es el PDF que genera WordCraft.
+  if (input.kind === 'docx') {
+    const word = craftBinary('wordcraft')
+    const pdfPath = word ? await docxToPdf(word, target, target.replace(/\.docx$/, '.pdf')) : null
+    if (pdfPath) return { token: issueToken({ path: pdfPath, kind: 'pdf' }), kind: 'pdf', file: target }
+  }
+
+  // Excel: el visor estructural del panel dibuja las hojas de forma aproximada y NO muestra los gráficos; con GridCraft instalado la vista
+  // previa es el PDF que genera GridCraft (hojas con formato, números calculados y gráficos, como se ven al abrirlo en Excel). Igual que
+  // con PowerPoint, solo cambia lo que ve el panel: lo que se descarga sigue siendo el .xlsx real. Si falla, cae al visor de siempre.
+  if (input.kind === 'xlsx') {
+    const grid = craftBinary('gridcraft')
+    const pdfPath = grid ? await gridToPdf(grid, target, target.replace(/\.xlsx$/, '.pdf')) : null
+    if (pdfPath) return { token: issueToken({ path: pdfPath, kind: 'pdf' }), kind: 'pdf', file: target }
+  }
+
   const token = issueToken({ path: target, kind: input.kind })
-  return { token, kind: input.kind }
+  return { token, kind: input.kind, file: target }
+}
+
+/** Ruta de un programa de ArtCraft si está instalado (`null` si no, o si no es macOS). */
+function craftBinary(tool: 'deckcraft' | 'wordcraft' | 'gridcraft'): string | null {
+  const st = craftService().status()
+  return st.state === 'installed' ? (st.bins[tool] ?? null) : null
 }
 
 async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> {
@@ -92,9 +120,34 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
   }
   if (input.kind === 'xlsx') {
     if (!isXlsxSpec(input.data)) throw new Error('Datos de Excel inválidos.')
+    // Con GridCraft instalado el libro se arma con él (calcula las fórmulas); si falla, cae al generador de siempre.
+    const grid = craftBinary('gridcraft')
+    if (grid) {
+      try {
+        return await renderChatGrid(grid, input.data)
+      } catch (e) {
+        console.warn('[chat-docs] GridCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
+      }
+    }
     return renderXlsx(input.data)
   }
+  if (input.kind === 'docx') {
+    if (!isDocxSpec(input.data)) throw new Error('Datos de Word inválidos.')
+    // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
+    const word = craftBinary('wordcraft')
+    if (!word) throw new Error('El diseñador de documentos (WordCraft) no está instalado.')
+    return renderChatDocx(word, input.data)
+  }
   if (!isPptxSpec(input.data)) throw new Error('Datos de PowerPoint inválidos.')
+  // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.
+  const craft = craftBinary('deckcraft')
+  if (craft) {
+    try {
+      return await renderChatDeck(craft, input.data)
+    } catch (e) {
+      console.warn('[chat-docs] DeckCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
+    }
+  }
   return renderPptx(input.data)
 }
 
@@ -116,6 +169,19 @@ export async function downloadChatDoc(input: ChatDocInput, title: string, win: B
   if (res.canceled || !res.filePath) return null
   await writeFile(res.filePath, bytes)
   return res.filePath
+}
+
+/**
+ * Genera el documento y lo deja en una carpeta temporal PROPIA (aparte de la del panel, que se borra al cerrarlo) para abrirlo en otro
+ * programa. El nombre sale del título limpiado; la carpeta es única por apertura y la barre `sweepStaleChatDocuments`.
+ */
+export async function writeChatDocForExternal(input: ChatDocInput, title: string): Promise<string> {
+  const bytes = await renderBytes(input, title)
+  const dir = join(chatDocsRoot(), 'abiertos', randomUUID())
+  await mkdir(dir, { recursive: true, mode: 0o700 })
+  const file = join(dir, `${safeDocumentName(title || 'documento', 'documento')}.${EXT[input.kind]}`)
+  await writeFile(file, bytes, { mode: 0o600 })
+  return file
 }
 
 /** Borra los documentos de una sesión de chat (al cerrarla o cambiar a otra). Nunca lanza. */

@@ -30,7 +30,7 @@ import { registerRoutineChannels } from './routines-handlers'
 import { emit, emitTo } from './event-bus'
 import { makeTasksHandle, type TasksIpcContext, type TasksSubmodule } from './tasks-handle'
 import { registerTasksFoldersHandlers } from './tasks-folders-handlers'
-import { registerTasksOfficeHandlers } from './tasks-office-handlers'
+import { registerTasksCraftHandlers } from './tasks-craft-handlers'
 import { registerTasksViewerHandlers } from './tasks-viewer-handlers'
 import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
 import { registerTasksProjectHandlers } from './tasks-project-handlers'
@@ -285,7 +285,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   // ── Lote B/C: submódulos (carpetas, ciclo de vida, proyecto/MCP/reglas, archivos, Modo auto) ──
   const submodules: TasksSubmodule[] = [
     registerTasksFoldersHandlers(ctx),
-    registerTasksOfficeHandlers(ctx),
+    registerTasksCraftHandlers(ctx),
     registerTasksLifecycleHandlers(ctx),
     registerTasksProjectHandlers(ctx),
     registerTasksFilesHandlers(ctx),

@@ -124,12 +124,10 @@ Ubicación en la app: `Contents/Resources/python/`. Las licencias de cada librer
 - Dependencias transitivas: `cryptography` 50.0.2 (Apache-2.0 o BSD-3-Clause; la rueda incluye OpenSSL, Apache-2.0), `cffi` 2.1.1 (MIT-0),
   `pycparser` 3.11 (BSD-3-Clause), `charset-normalizer` 3.5.2 (MIT), `typing_extensions` 4.16.0 (PSF-2.0).
 
-**LibreOffice (MPL-2.0) NO se incluye en el instalador** de Lazunox. Es un componente opcional que el usuario puede instalar desde
-Ajustes › Componentes opcionales: la app lo DESCARGA del sitio oficial de The Document Foundation
-(<https://download.documentfoundation.org/libreoffice/stable/>, versión fijada en `resources/libreoffice/pin.json`), con tamaño exacto,
-SHA-256 y firma de Apple (Developer ID de The Document Foundation, equipo `7P5S3ZLCN7`) comprobados antes de usarlo, y lo guarda sin
-modificar en la carpeta de datos de la app. Si el usuario ya lo tiene en `/Applications`, se usa ese. Las skills lo emplean para convertir
-y previsualizar documentos de oficina. Código fuente y licencias: <https://www.libreoffice.org/about-us/source-code/>.
+**ArtCraft (DeckCraft, WordCraft, GridCraft, PdfCraft) NO se incluye en el instalador** de Lazunox. Es un componente que la app DESCARGA
+bajo demanda (desde la bienvenida o desde Ajustes › Componentes opcionales) de sus versiones publicadas, con tamaño exacto, SHA-256 y firma
+(equipo de desarrollo fijado en `resources/craft/pin.json`) comprobados antes de usarlo, y lo guarda sin modificar en la carpeta de datos
+de la app. Las skills de oficina lo emplean para crear y previsualizar documentos.
 
 ## 6. No afiliación
 

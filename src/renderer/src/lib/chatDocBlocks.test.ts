@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractChatDocBlocks } from './chatDocBlocks'
+import { extractChatDocBlocks, guessDataTitle, parseDataBlock } from './chatDocBlocks'
 
 const HTML = '```html\n<!doctype html><html><body><h1>hola</h1></body></html>\n```'
 const SLIDES = '```slides\n<!doctype html><html><body><section class="slide"><h1>Intro</h1></section></body></html>\n```'
@@ -62,5 +62,61 @@ describe('extractChatDocBlocks', () => {
   it('sin título propio (sin nombre de hoja / sin título de diapositiva): usa un título genérico', () => {
     const blocks = extractChatDocBlocks('```xlsx\n{"sheets":[{"name":"","rows":[["x"]]}]}\n```')
     expect(blocks[0].title).toMatch(/Hoja de cálculo/)
+  })
+})
+
+describe('bloques ```docx (Word)', () => {
+  const spec = {
+    title: 'Informe de ventas',
+    blocks: [
+      { type: 'heading', level: 1, text: 'Resumen' },
+      { type: 'paragraph', text: 'Hola **mundo**' }
+    ]
+  }
+  const fence = (body: unknown): string => '```docx\n' + JSON.stringify(body) + '\n```'
+
+  it('detecta el bloque, lo valida y usa el título del documento', () => {
+    const blocks = extractChatDocBlocks('Aquí va:\n\n' + fence(spec) + '\n\nListo.')
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).toMatchObject({ kind: 'docx', title: 'Informe de ventas' })
+  })
+
+  it('sin título usa el primer encabezado y, si no hay, uno genérico', () => {
+    expect(guessDataTitle('docx', JSON.stringify({ blocks: [{ type: 'heading', level: 2, text: 'Plan' }, { type: 'page_break' }] }))).toBe(
+      'Plan'
+    )
+    expect(guessDataTitle('docx', JSON.stringify({ blocks: [{ type: 'page_break' }] }), 3)).toBe('Documento 3')
+    expect(guessDataTitle('docx', 'no es json', 2)).toBe('Documento 2')
+  })
+
+  it('ignora un bloque inválido o a medio escribir', () => {
+    expect(extractChatDocBlocks(fence({ blocks: [] }))).toHaveLength(0)
+    expect(extractChatDocBlocks(fence({ blocks: [{ type: 'image', path: 'x' }] }))).toHaveLength(0)
+    expect(extractChatDocBlocks('```docx\n{"blocks": [')).toHaveLength(0)
+  })
+
+  it('parseDataBlock devuelve null para JSON roto o con claves de más', () => {
+    expect(parseDataBlock('docx', '{')).toBeNull()
+    expect(parseDataBlock('docx', JSON.stringify({ ...spec, macro: 'x' }))).toBeNull()
+    expect(parseDataBlock('docx', JSON.stringify(spec))).toMatchObject({ title: 'Informe de ventas' })
+  })
+})
+
+describe('bloques con deslices comunes del modelo (antes no mostraban vista previa)', () => {
+  const md = (json: string): string => 'Aquí va:\n\n```pptx\n' + json + '\n```\n'
+  it('comilla de más tras un booleano y elemento «line» en vez de shape: se acepta', () => {
+    const json =
+      '{"slides":[{"layout":"free","elements":[{"type":"text","x":10,"y":10,"w":300,"h":50,"text":"Hola","size":20,"bold":true"},' +
+      '{"type":"line","x":100,"y":285,"w":760,"h":0,"line":"#F28C38","lineWidth":4}]}]}'
+    const blocks = extractChatDocBlocks(md(json))
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0].kind).toBe('pptx')
+  })
+  it('una tabla con números en las celdas se acepta', () => {
+    const json = '{"slides":[{"title":"T","layout":"table","table":{"columns":["Plan","Precio"],"rows":[["Pro",29990]]}}]}'
+    expect(extractChatDocBlocks(md(json))).toHaveLength(1)
+  })
+  it('JSON irreparable sigue sin generar bloque', () => {
+    expect(extractChatDocBlocks(md('{"slides":[{"title":'))).toHaveLength(0)
   })
 })

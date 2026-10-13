@@ -361,3 +361,102 @@ describe('extras:downloadChatDoc', () => {
     expect(() => v({ kind: 'pptx', title: 'T', data: { theme: 'warm', slides: [{ title: 'X', layout: 'closing' }] } })).not.toThrow()
   })
 })
+
+describe('extras:chatDoc:open — gráficos de Excel y libertad de diseño de PowerPoint', () => {
+  const common = { title: 'T', sessionId: 's1', lang: 'es' as const, theme: 'light' as const }
+  const v = IPC_SCHEMAS['extras:chatDoc:open']
+  const sheet = (charts: unknown) => ({
+    kind: 'xlsx',
+    data: {
+      sheets: [
+        {
+          name: 'A',
+          rows: [
+            ['Mes', 'V'],
+            ['x', 1]
+          ],
+          charts
+        }
+      ]
+    }
+  })
+
+  it('xlsx: acepta un gráfico nativo (el bug real: «Clave inesperada data.sheets[0].charts» rechazaba el documento y el panel no abría)', () => {
+    expect(() =>
+      v({ ...common, ...sheet([{ type: 'column', range: 'A1:C7', title: 'Ventas', at: 'F2', width: 520, height: 300 }]) } as never)
+    ).not.toThrow()
+    expect(() => v({ ...common, ...sheet([{ type: 'pie', range: 'A1:B7' }]) } as never)).not.toThrow()
+  })
+
+  it.each([
+    [{ type: 'radar', range: 'A1:C7' }],
+    [{ type: 'column', range: 'A1' }],
+    [{ type: 'column', range: 'A1:C7,E1:E7' }],
+    [{ type: 'column', range: 'A1:C7', at: 'F2:G3' }],
+    [{ type: 'column', range: 'A1:C7', width: 5 }],
+    [{ type: 'column', range: 'A1:C7', macro: 'x' }]
+  ])('xlsx: rechaza un gráfico inválido (%#)', (chart) => {
+    expect(() => v({ ...common, ...sheet([chart]) } as never)).toThrow()
+  })
+
+  it('pptx: acepta paleta propia, fuentes, fondo por diapositiva y lienzo libre', () => {
+    expect(() =>
+      v({
+        ...common,
+        kind: 'pptx',
+        data: {
+          palette: { bg: '#0E2A2F', text: '#F4F1EA', accent: '#F2B544', accent2: '#7FD1B9' },
+          fonts: { title: 'Georgia', body: 'Arial' },
+          slides: [
+            { title: 'X', background: '#F2B544' },
+            {
+              layout: 'free',
+              elements: [
+                {
+                  type: 'text',
+                  x: 84,
+                  y: 110,
+                  w: 600,
+                  h: 180,
+                  text: 'Hola',
+                  size: 58,
+                  bold: true,
+                  color: '#FFFFFF',
+                  font: 'Georgia',
+                  align: 'left',
+                  spacing: -2
+                },
+                {
+                  type: 'shape',
+                  shape: 'ellipse',
+                  x: 560,
+                  y: -120,
+                  w: 560,
+                  h: 560,
+                  fill: '#F2B544',
+                  fillTo: '#E07A5F',
+                  angle: 45,
+                  opacity: 0.9,
+                  rotate: 15,
+                  text: 'ok'
+                }
+              ]
+            }
+          ]
+        }
+      } as never)
+    ).not.toThrow()
+  })
+
+  it.each([
+    ['color sin #', { palette: { bg: '0E2A2F', text: '#FFFFFF', accent: '#000000' }, slides: [{ title: 'x' }] }],
+    ['color con script', { palette: { bg: '#0E2A2F', text: '#FFFFFF', accent: 'red;rm -rf' }, slides: [{ title: 'x' }] }],
+    ['fuente fuera de la lista', { fonts: { title: 'Comic Sans MS' }, slides: [{ title: 'x' }] }],
+    ['forma desconocida', { slides: [{ layout: 'free', elements: [{ type: 'shape', shape: 'bomba', x: 0, y: 0, w: 1, h: 1 }] }] }],
+    ['tipo de elemento desconocido', { slides: [{ layout: 'free', elements: [{ type: 'image', x: 0, y: 0, w: 1, h: 1 }] }] }],
+    ['posición absurda', { slides: [{ layout: 'free', elements: [{ type: 'text', x: 99999, y: 0, w: 10, h: 10, text: 'a' }] }] }],
+    ['fondo inválido', { slides: [{ title: 'x', background: 'url(x)' }] }]
+  ])('pptx: rechaza %s', (_n, data) => {
+    expect(() => v({ ...common, kind: 'pptx', data } as never)).toThrow()
+  })
+})

@@ -15,7 +15,7 @@ const base = (over: Partial<DoctorDeps> = {}): DoctorDeps => ({
   exists: () => true,
   keysBin: '/app/computer-use/bin/cu-keys',
   pythonBin: '/app/python/bin/python3',
-  office: () => ({ state: 'installed', source: 'app', version: '26.8.1' }),
+  craft: () => ({ state: 'installed', version: '0.5.0' }),
   freeBytes: () => 50 * GB,
   ...over
 })
@@ -29,11 +29,11 @@ describe('doctor', () => {
     expect(r.items.filter((i) => i.level === 'fail' || i.level === 'warn')).toEqual([])
   })
 
-  it('Mac recién instalado: faltan permisos, LibreOffice y las herramientas de Apple; cada fallo trae su botón', async () => {
+  it('Mac recién instalado: faltan permisos, ArtCraft y las herramientas de Apple; cada fallo trae su botón', async () => {
     const r = await runDoctor(
       base({
         computer: async () => ({ helperOk: true, accessibility: false, screenRecording: false, screens: [] }),
-        office: () => ({ state: 'missing', sizeBytes: 299e6 }),
+        craft: () => ({ state: 'missing', sizeBytes: 205e6 }),
         run: async (file) =>
           file.endsWith('xcode-select')
             ? { code: 2, out: 'xcode-select: error: unable to get active developer directory' }
@@ -44,7 +44,7 @@ describe('doctor', () => {
     expect(level(r, 'accessibility')).toBe('fail')
     expect(r.items.find((i) => i.id === 'accessibility')?.fix).toBe('requestPermissions')
     expect(r.items.find((i) => i.id === 'screenRecording')?.fix).toBe('requestPermissions')
-    expect(r.items.find((i) => i.id === 'office')).toMatchObject({ level: 'warn', fix: 'installOffice' })
+    expect(r.items.find((i) => i.id === 'craft')).toMatchObject({ level: 'warn', fix: 'installCraft', detail: '196 MB' })
     expect(r.items.find((i) => i.id === 'git')).toMatchObject({ level: 'warn', fix: 'xcodeSelect' })
   })
 
@@ -54,7 +54,7 @@ describe('doctor', () => {
   })
 
   it('solo avisos (sin fallos): overall = warn', async () => {
-    const r = await runDoctor(base({ office: () => ({ state: 'missing', sizeBytes: 1e6 }) }))
+    const r = await runDoctor(base({ craft: () => ({ state: 'missing', sizeBytes: 1e6 }) }))
     expect(r.overall).toBe('warn')
   })
 
@@ -99,7 +99,7 @@ describe('doctor', () => {
       })
     )
     expect(r1.items.some((i) => i.id === 'accessibility')).toBe(false)
-    const r2 = await runDoctor(base({ platform: 'win32', keysBin: null, office: () => ({ state: 'unsupported' }) }))
+    const r2 = await runDoctor(base({ platform: 'win32', keysBin: null, craft: () => ({ state: 'unsupported' }) }))
     expect(r2.items.some((i) => i.id === 'macos' || i.id === 'git')).toBe(false)
   })
 
@@ -108,5 +108,17 @@ describe('doctor', () => {
     await runDoctor(base({ run: async (f) => (calls.push(f), { code: 0, out: 'ok-libs "layout"' }) }))
     expect(calls.some((c) => c.endsWith('/git'))).toBe(false)
     expect(calls).toContain('/usr/bin/xcode-select')
+  })
+})
+
+describe('ArtCraft', () => {
+  it('instalado: ok con su versión y sin arreglo', async () => {
+    const r = await runDoctor(base())
+    expect(r.items.find((i) => i.id === 'craft')).toMatchObject({ level: 'ok', detail: 'ArtCraft 0.5.0' })
+    expect(r.items.find((i) => i.id === 'craft')?.fix).toBeUndefined()
+  })
+  it('no soportado (Windows): no aparece', async () => {
+    const r = await runDoctor(base({ craft: () => ({ state: 'unsupported' }) }))
+    expect(r.items.some((i) => i.id === 'craft')).toBe(false)
   })
 })

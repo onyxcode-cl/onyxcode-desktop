@@ -381,11 +381,11 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:trusted:set': 'D',
   'tasks:trusted:remove': 'D',
   'tasks:policy': 'R',
-  // LibreOffice opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
-  'office:status': 'X',
-  'office:install': 'X',
-  'office:cancel': 'X',
-  'office:remove': 'X',
+  // ArtCraft opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
+  'craft:status': 'X',
+  'craft:install': 'X',
+  'craft:cancel': 'X',
+  'craft:remove': 'X',
   'doctor:run': 'X', // revela permisos y software instalado de este Mac: solo en el Mac
   // Estado del entorno aislado: lectura. Instalarlo o cancelarlo (descarga, importa una distro) NO es cosa del celular.
   'tasks:sandbox:status': 'R',
@@ -442,6 +442,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:chatDoc:open': 'X',
   'extras:chatDoc:attach': 'X',
   'extras:chatDoc:close': 'X',
+  'extras:chatDoc:openExternal': 'X',
   'extras:downloadChatDoc': 'X',
   'extras:quickSubmit': 'X',
   'extras:quickHide': 'X',

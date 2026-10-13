@@ -13,6 +13,14 @@ import { CODE_INVOKE_CHANNELS, EDITOR_IDS, FILES_SUB_ID_RE, type CodeInvokeChann
 import { TASKS_INVOKE_CHANNELS, type TasksInvokeChannel, type TasksRequest } from '@shared/ipc-tasks'
 import { IPC_EXTRAS_INVOKE_CHANNELS, type IpcExtrasInvokeChannel, type IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import {
+  FREE_FONTS,
+  FREE_SHAPES,
+  MAX_DOCX_BLOCKS,
+  MAX_DOCX_COLS,
+  MAX_DOCX_ITEMS,
+  MAX_DOCX_META_CHARS,
+  MAX_DOCX_ROWS,
+  MAX_DOCX_TEXT_CHARS,
   MAX_BULLET_CHARS,
   MAX_BULLETS_PER_SLIDE,
   MAX_CELL_CHARS,
@@ -23,19 +31,30 @@ import {
   MAX_COLUMN_HEADING_CHARS,
   MAX_EYEBROW_CHARS,
   MAX_FOOTER_CHARS,
+  MAX_FREE_ELEMENTS,
+  MAX_FREE_TEXT_CHARS,
   MAX_KPI_DELTA_CHARS,
   MAX_KPI_LABEL_CHARS,
   MAX_KPI_VALUE_CHARS,
   MAX_KPIS,
+  MAX_TABLE_CELL_CHARS,
+  MAX_TABLE_COLS,
+  MAX_TABLE_ROWS,
   MAX_NOTE_CHARS,
   MAX_ROWS_PER_SHEET,
   MAX_SHEETS,
   MAX_SLIDES,
   MAX_TITLE_CHARS,
+  MAX_XLSX_CHART_TITLE_CHARS,
+  MAX_XLSX_CHARTS_PER_SHEET,
   type PptxChartType,
+  type PptxFont,
+  type PptxFreeShape,
   type PptxLayout,
   type PptxStyle,
   type PptxTheme,
+  type PptxTransition,
+  type XlsxChartType,
   type XlsxColumnFormat
 } from '@shared/chat-doc-spec'
 import {
@@ -221,19 +240,47 @@ const xlsxCell: Validator<string | number | null | { formula: string; value: num
   if (typeof v === 'string') return str({ max: MAX_CELL_CHARS })(v, path)
   return xlsxFormulaCell(v, path)
 }
+const xlsxChartType = literal<XlsxChartType>('column', 'bar', 'line', 'pie', 'area')
+const chartDim = num({ min: 120, max: 1200 })
+/** Gráfico nativo de Excel: el formato exacto del rango/celda y los topes los exige `isXlsxSpec` en `chat-docs.ts`; aquí van los mismos límites en forma. */
+const xlsxChart = obj({
+  type: xlsxChartType,
+  range: str({ max: 24, min: 5, pattern: /^[A-Z]{1,3}[1-9][0-9]{0,4}:[A-Z]{1,3}[1-9][0-9]{0,4}$/ }),
+  title: optional(str({ max: MAX_XLSX_CHART_TITLE_CHARS })),
+  at: optional(str({ max: 9, min: 2, pattern: /^[A-Z]{1,3}[1-9][0-9]{0,4}$/ })),
+  width: optional(chartDim),
+  height: optional(chartDim)
+})
 const xlsxData = obj({
   sheets: arr(
     obj({
       name: str({ max: 200, min: 1 }),
       rows: arr(arr(xlsxCell, MAX_COLS_PER_ROW), MAX_ROWS_PER_SHEET),
-      columnFormats: optional(arr(nullable(xlsxColumnFormat), MAX_COLS_PER_ROW))
+      columnFormats: optional(arr(nullable(xlsxColumnFormat), MAX_COLS_PER_ROW)),
+      charts: optional(arr(xlsxChart, MAX_XLSX_CHARTS_PER_SHEET))
     }),
     MAX_SHEETS
   )
 })
 const pptxTheme = literal<PptxTheme>('blue', 'green', 'dark', 'warm', 'mono')
 const pptxStyle = literal<PptxStyle>('classic', 'editorial', 'geometric', 'minimal')
-const pptxLayout = literal<PptxLayout>('cover', 'section', 'bullets', 'closing', 'stat', 'steps', 'two-col', 'cards', 'chart', 'kpis')
+const pptxLayout = literal<PptxLayout>(
+  'cover',
+  'section',
+  'bullets',
+  'closing',
+  'stat',
+  'steps',
+  'two-col',
+  'cards',
+  'chart',
+  'kpis',
+  'timeline',
+  'quote',
+  'agenda',
+  'table',
+  'free'
+)
 const pptxChartType = literal<PptxChartType>('bar', 'line', 'pie')
 /** El que `categories` y `values` tengan el mismo largo ya lo exige `isPptxSpec` en `chat-docs.ts`; esto solo pone un techo razonable al payload IPC, igual que `xlsxCell` de arriba. */
 const pptxChart = obj({
@@ -267,9 +314,74 @@ const pptxKpi = obj({
 })
 /** El largo mínimo (2) ya lo exige `isPptxSpec` en `chat-docs.ts`; esto solo pone un techo razonable al payload IPC, igual que `pptxChart`/`xlsxCell`. */
 const pptxKpis = arr(pptxKpi, MAX_KPIS)
+/** Mismos límites que `isTableSpec`; que cada fila tenga tantas celdas como columnas lo exige `isPptxSpec`. */
+const pptxTable = obj({
+  columns: arr(str({ max: MAX_TABLE_CELL_CHARS }), MAX_TABLE_COLS),
+  rows: arr(arr(str({ max: MAX_TABLE_CELL_CHARS }), MAX_TABLE_COLS), MAX_TABLE_ROWS)
+})
+const pptxTransition = literal<PptxTransition>('fade', 'push', 'wipe')
+const hexColor = str({ max: 7, min: 7, pattern: /^#[0-9a-fA-F]{6}$/ })
+const pptxFont = literal<PptxFont>(...FREE_FONTS)
+const freeShape = literal<PptxFreeShape>(...FREE_SHAPES)
+const freeAlign = literal('left', 'center', 'right')
+const freeX = num({ min: -200, max: 1160 })
+const freeY = num({ min: -200, max: 740 })
+const freeW = num({ min: 0, max: 1400 })
+const freeH = num({ min: 0, max: 900 })
+/** Elemento del lienzo libre (`layout:"free"`): texto o forma, con colores hex y valores acotados; el resto de las reglas las exige `isPptxSpec`. */
+const pptxFreeElement = tagged('type', {
+  text: obj({
+    type: literal('text'),
+    x: freeX,
+    y: freeY,
+    w: freeW,
+    h: freeH,
+    text: str({ max: MAX_FREE_TEXT_CHARS, min: 1 }),
+    size: optional(num({ min: 6, max: 260 })),
+    color: optional(hexColor),
+    bold: optional(bool),
+    italic: optional(bool),
+    align: optional(freeAlign),
+    font: optional(pptxFont),
+    spacing: optional(num({ min: -20, max: 40 }))
+  }),
+  shape: obj({
+    type: literal('shape'),
+    shape: freeShape,
+    x: freeX,
+    y: freeY,
+    w: freeW,
+    h: freeH,
+    fill: optional(hexColor),
+    fillTo: optional(hexColor),
+    angle: optional(num({ min: -360, max: 360 })),
+    opacity: optional(num({ min: 0, max: 1 })),
+    line: optional(hexColor),
+    lineWidth: optional(num({ min: 0, max: 40 })),
+    rotate: optional(num({ min: -360, max: 360 })),
+    text: optional(str({ max: MAX_FREE_TEXT_CHARS })),
+    size: optional(num({ min: 6, max: 260 })),
+    color: optional(hexColor),
+    bold: optional(bool),
+    align: optional(freeAlign),
+    font: optional(pptxFont)
+  })
+})
+const pptxPalette = obj({
+  bg: hexColor,
+  text: hexColor,
+  accent: hexColor,
+  muted: optional(hexColor),
+  accent2: optional(hexColor),
+  panel: optional(hexColor),
+  edge: optional(hexColor)
+})
 const pptxData = obj({
+  palette: optional(pptxPalette),
+  fonts: optional(obj({ title: optional(pptxFont), body: optional(pptxFont) })),
   theme: optional(pptxTheme),
   style: optional(pptxStyle),
+  transition: optional(pptxTransition),
   footer: optional(str({ max: MAX_FOOTER_CHARS })),
   slides: arr(
     obj({
@@ -280,10 +392,56 @@ const pptxData = obj({
       eyebrow: optional(str({ max: MAX_EYEBROW_CHARS })),
       note: optional(str({ max: MAX_NOTE_CHARS })),
       columns: optional(pptxColumns),
-      kpis: optional(pptxKpis)
+      kpis: optional(pptxKpis),
+      table: optional(pptxTable),
+      background: optional(hexColor),
+      elements: optional(arr(pptxFreeElement, MAX_FREE_ELEMENTS))
     }),
     MAX_SLIDES
   )
+})
+const docxAlign = literal('left', 'right', 'center', 'justify')
+const docxCellAlign = literal('left', 'right', 'center')
+const docxText = str({ max: MAX_DOCX_TEXT_CHARS })
+const docxMeta = optional(str({ max: MAX_DOCX_META_CHARS }))
+/** Documento de Word del Chat: mismos límites que `isDocxSpec` (`shared/chat-doc-spec.ts`); una clave de más rechaza el documento entero. */
+const docxBlock = tagged('type', {
+  heading: obj({ type: literal('heading'), level: literal<1 | 2 | 3>(1, 2, 3), text: str({ max: MAX_DOCX_TEXT_CHARS, min: 1 }) }),
+  paragraph: obj({ type: literal('paragraph'), text: str({ max: MAX_DOCX_TEXT_CHARS, min: 1 }), align: optional(docxAlign) }),
+  bullets: obj({
+    type: literal('bullets'),
+    items: arr((v, path) => (Array.isArray(v) ? arr(docxText, MAX_DOCX_ITEMS)(v, path) : docxText(v, path)), MAX_DOCX_ITEMS)
+  }),
+  numbered: obj({
+    type: literal('numbered'),
+    items: arr((v, path) => (Array.isArray(v) ? arr(docxText, MAX_DOCX_ITEMS)(v, path) : docxText(v, path)), MAX_DOCX_ITEMS)
+  }),
+  table: obj({
+    type: literal('table'),
+    columns: arr(str({ max: 200 }), MAX_DOCX_COLS),
+    rows: arr(
+      arr((v, path) => (v === null ? null : typeof v === 'number' ? num()(v, path) : str({ max: 500 })(v, path)), MAX_DOCX_COLS),
+      MAX_DOCX_ROWS
+    ),
+    total_row: optional(bool),
+    zebra: optional(bool),
+    align: optional(arr(docxCellAlign, MAX_DOCX_COLS)),
+    decimals: optional(num({ min: 0, max: 6 })),
+    widths_cm: optional(arr(num({ min: 1, max: 40 }), MAX_DOCX_COLS)),
+    caption: docxMeta
+  }),
+  page_break: obj({ type: literal('page_break') })
+})
+const docxData = obj({
+  title: docxMeta,
+  subtitle: docxMeta,
+  author: docxMeta,
+  date: docxMeta,
+  header: docxMeta,
+  footer: docxMeta,
+  page_numbers: optional(bool),
+  toc: optional(bool),
+  blocks: arr(docxBlock, MAX_DOCX_BLOCKS)
 })
 const browserProduct = literal('code', 'tasks')
 const localOrigin = str({ max: 261, min: 1, pattern: /^(localhost|127\.0\.0\.1|\[::1\]):\d{1,5}$/ })
@@ -605,10 +763,10 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:trusted:set': obj({ path: absPath, mode: folderMode }),
   'tasks:trusted:remove': pathReq,
   'tasks:policy': none,
-  'office:status': none,
-  'office:install': none,
-  'office:cancel': none,
-  'office:remove': none,
+  'craft:status': none,
+  'craft:install': none,
+  'craft:cancel': none,
+  'craft:remove': none,
   'doctor:run': none,
   'tasks:sandbox:status': optional(obj({ force: optional(bool) })),
   'tasks:sandbox:setup': none,
@@ -728,13 +886,28 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
       sessionId: str({ max: 200 }),
       lang: literal('es', 'en'),
       theme: literal('light', 'dark')
+    }),
+    docx: obj({
+      kind: literal('docx'),
+      title: str({ max: 500 }),
+      data: docxData,
+      sessionId: str({ max: 200 }),
+      lang: literal('es', 'en'),
+      theme: literal('light', 'dark')
     })
   }),
   'extras:chatDoc:attach': obj({ rect: browserRect, visible: bool }),
   'extras:chatDoc:close': obj({ sessionId: str({ max: 200 }) }),
+  'extras:chatDoc:openExternal': tagged('kind', {
+    pdf: obj({ kind: literal('pdf'), title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+    xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
+    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
+    docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
+  }),
   'extras:downloadChatDoc': tagged('kind', {
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
-    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData })
+    pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
+    docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
   }),
   'extras:quickSubmit': obj({ text: str({ max: 100_000 }) }),
   'extras:quickHide': none,

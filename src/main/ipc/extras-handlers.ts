@@ -12,7 +12,11 @@ import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
-import { cleanChatDocuments, downloadChatDoc, generateChatDoc, type ChatDocInput } from '../extras/chat-docs'
+import { cleanChatDocuments, downloadChatDoc, generateChatDoc, writeChatDocForExternal, type ChatDocInput } from '../extras/chat-docs'
+import { defaultFindDeps, guiNextToCli, openExternally } from '../office/craft/open-external'
+import { craftService } from '../office/craft/service'
+import { onWebEvent } from '../office/craft/web-view'
+import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
 import {
   ensureAppOpencodeConfig,
@@ -33,7 +37,7 @@ import {
 } from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
 import { installViewerScheme } from '../viewer/scheme'
-import { attach, closeView, onViewerEvent, openDoc } from '../viewer/view'
+import { onViewerEvent, openDoc } from '../viewer/view'
 import { VIEWER_SCHEME } from '../security/app-protocol'
 import { makeInvokeHandler } from './handle'
 import { windowOfSender } from './sender-window'
@@ -107,31 +111,68 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'extras:transcribeAudio', (payload) => voiceWorker.transcribe(payload.samples))
   // Panel de documento de Chat: MISMA vista nativa que Tareas (un solo modo visible a la vez, sin conflicto).
   onViewerEvent((event) => broadcastExtras('extras:chatDoc:event', event))
+  onWebEvent((event) => broadcastExtras('extras:chatDoc:event', event))
   handle(ipcMain, 'extras:chatDoc:open', async (req) => {
     try {
       const { title, sessionId, lang, theme } = req
       let input: ChatDocInput
       if (req.kind === 'pdf') input = { kind: 'pdf', html: req.html }
       else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
+      else if (req.kind === 'docx') input = { kind: 'docx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
       const doc = await generateChatDoc(input, title, sessionId)
+      // Con el programa de ArtCraft instalado, el panel muestra su versión WEB (misma pantalla y motor que el programa de escritorio);
+      // si no está o falla, el visor de siempre.
+      if (await openInCraftWeb(input.kind, doc.file, title)) return { ok: true }
       installViewerScheme()
       openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${doc.token}&kind=${doc.kind}&lang=${lang}&theme=${theme}`)
+      useClassicViewer()
       return { ok: true }
-    } catch {
+    } catch (e) {
+      console.warn('[chat-doc] no se pudo generar el documento:', e instanceof Error ? e.message : e)
       return { ok: false, reason: 'failed' }
     }
   })
   handle(ipcMain, 'extras:chatDoc:attach', ({ rect, visible }, event) => {
     const win = windowOfSender(event.sender) ?? deps.getMainWindow?.() ?? null
-    if (win) attach(win, rect, visible)
+    if (win) panelAttach(win, rect, visible)
   })
   handle(ipcMain, 'extras:chatDoc:close', ({ sessionId }) => {
-    closeView()
+    panelClose()
     void cleanChatDocuments(sessionId)
   })
+  const installedCli = (kind: ChatDocInput['kind']): string | null => {
+    const st = craftService().status()
+    if (st.state !== 'installed' || kind === 'pdf') return null
+    return st.bins[{ pptx: 'deckcraft', docx: 'wordcraft', xlsx: 'gridcraft' }[kind] as 'deckcraft'] ?? null
+  }
+  handle(ipcMain, 'extras:chatDoc:openExternal', async (req) => {
+    try {
+      const input: ChatDocInput =
+        req.kind === 'pdf'
+          ? { kind: 'pdf', html: req.html }
+          : req.kind === 'xlsx'
+            ? { kind: 'xlsx', data: req.data }
+            : req.kind === 'docx'
+              ? { kind: 'docx', data: req.data }
+              : { kind: 'pptx', data: req.data }
+      const file = await writeChatDocForExternal(input, req.title)
+      return {
+        ok: true as const,
+        via: await openExternally(input.kind, file, (p) => shell.openPath(p), defaultFindDeps(guiNextToCli(installedCli(input.kind))))
+      }
+    } catch (e) {
+      console.warn('[chat-doc] no se pudo abrir aparte:', e instanceof Error ? e.message : e)
+      return { ok: false as const }
+    }
+  })
   handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {
-    const input: ChatDocInput = req.kind === 'xlsx' ? { kind: 'xlsx', data: req.data } : { kind: 'pptx', data: req.data }
+    const input: ChatDocInput =
+      req.kind === 'xlsx'
+        ? { kind: 'xlsx', data: req.data }
+        : req.kind === 'docx'
+          ? { kind: 'docx', data: req.data }
+          : { kind: 'pptx', data: req.data }
     return downloadChatDoc(input, req.title, windowOfSender(event.sender))
   })
   handle(ipcMain, 'extras:quickSubmit', (req) => {

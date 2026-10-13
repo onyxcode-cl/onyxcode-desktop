@@ -27,10 +27,37 @@ export const MAX_FOOTER_CHARS = 60
 export const MAX_COLUMN_HEADING_CHARS = 60
 export const MAX_COLUMN_BULLETS = 6
 export const MAX_KPIS = 4
+export const MAX_TABLE_COLS = 6
+export const MIN_TABLE_COLS = 2
+export const MAX_TABLE_ROWS = 8
+export const MAX_TABLE_CELL_CHARS = 60
 export const MIN_KPIS = 2
 export const MAX_KPI_LABEL_CHARS = 40
 export const MAX_KPI_VALUE_CHARS = 16
 export const MAX_KPI_DELTA_CHARS = 40
+export const MAX_FREE_ELEMENTS = 60
+export const MAX_XLSX_CHARTS_PER_SHEET = 4
+export const MAX_DOCX_BLOCKS = 300
+export const MAX_DOCX_TEXT_CHARS = 5000
+export const MAX_DOCX_ITEMS = 100
+export const MAX_DOCX_ROWS = 200
+export const MAX_DOCX_COLS = 12
+export const MAX_DOCX_META_CHARS = 200
+export const MAX_XLSX_CHART_TITLE_CHARS = 80
+export const MAX_FREE_TEXT_CHARS = 600
+export const FREE_FONTS = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Courier New', 'Tahoma'] as const
+export const FREE_SHAPES = [
+  'rect',
+  'roundRect',
+  'ellipse',
+  'triangle',
+  'diamond',
+  'hexagon',
+  'rightArrow',
+  'chevron',
+  'star5',
+  'line'
+] as const
 
 /**
  * Formato de número por columna (índice 0-based, alineado con las celdas de `rows`) — nunca estilo
@@ -55,11 +82,35 @@ export interface XlsxFormulaCell {
 
 export type XlsxCell = string | number | null | XlsxFormulaCell
 
+/** Tipos de gráfico de un libro de Excel (nativos: se editan en Excel). */
+export type XlsxChartType = 'column' | 'bar' | 'line' | 'pie' | 'area'
+const XLSX_CHART_TYPES: readonly XlsxChartType[] = ['column', 'bar', 'line', 'pie', 'area']
+const A1_RANGE = /^[A-Z]{1,3}[1-9][0-9]{0,4}:[A-Z]{1,3}[1-9][0-9]{0,4}$/
+const A1_CELL = /^[A-Z]{1,3}[1-9][0-9]{0,4}$/
+
+/**
+ * Un gráfico NATIVO de Excel sobre los datos de la misma hoja. `range` es un rango CONTINUO con encabezados (p.ej. `"A1:C7"`): la
+ * primera columna son las categorías y cada columna siguiente es una serie, con su encabezado como nombre. Para graficar solo
+ * algunas columnas, ordenalas contiguas. Sin `at`, se coloca a la derecha de los datos.
+ */
+export interface XlsxChartSpec {
+  type: XlsxChartType
+  range: string
+  title?: string
+  /** Celda de la esquina superior izquierda del gráfico, p.ej. `"F2"`. */
+  at?: string
+  /** Tamaño en puntos (por defecto 520 × 300). */
+  width?: number
+  height?: number
+}
+
 export interface XlsxSheetSpec {
   name: string
   rows: XlsxCell[][]
   /** `columnFormats[i]` es el formato de la columna `i`; `null`/ausente = sin formato especial. */
   columnFormats?: (XlsxColumnFormat | null)[]
+  /** Gráficos de esta hoja (hasta 4). */
+  charts?: XlsxChartSpec[]
 }
 
 export interface XlsxSpec {
@@ -94,8 +145,39 @@ const PPTX_STYLES: readonly PptxStyle[] = ['classic', 'editorial', 'geometric', 
  * para un resumen tipo tablero al principio de la presentación, DISTINTO de "stat": "stat" es UNA
  * cifra como foco de toda la diapositiva, "kpis" son VARIAS métricas juntas, más chicas).
  */
-export type PptxLayout = 'cover' | 'section' | 'bullets' | 'closing' | 'stat' | 'steps' | 'two-col' | 'cards' | 'chart' | 'kpis'
-const PPTX_LAYOUTS: readonly PptxLayout[] = ['cover', 'section', 'bullets', 'closing', 'stat', 'steps', 'two-col', 'cards', 'chart', 'kpis']
+export type PptxLayout =
+  | 'cover'
+  | 'section'
+  | 'bullets'
+  | 'closing'
+  | 'stat'
+  | 'steps'
+  | 'two-col'
+  | 'cards'
+  | 'chart'
+  | 'kpis'
+  | 'timeline'
+  | 'quote'
+  | 'agenda'
+  | 'table'
+  | 'free'
+const PPTX_LAYOUTS: readonly PptxLayout[] = [
+  'cover',
+  'section',
+  'bullets',
+  'closing',
+  'stat',
+  'steps',
+  'two-col',
+  'cards',
+  'chart',
+  'kpis',
+  'timeline',
+  'quote',
+  'agenda',
+  'table',
+  'free'
+]
 
 /** Un gráfico nativo de PowerPoint (de verdad editable ahí, no una imagen) — una sola serie de datos. */
 export type PptxChartType = 'bar' | 'line' | 'pie'
@@ -115,12 +197,89 @@ export interface PptxColumnSpec {
   bullets: string[]
 }
 
+/** Tabla de `layout: "table"`: encabezados y filas ya formateadas como texto (2 a 6 columnas, hasta 8 filas). */
+export interface PptxTableSpec {
+  columns: string[]
+  rows: string[][]
+}
+
+/** Transición entre diapositivas de TODA la presentación (DeckCraft); sin esto, sin transición. */
+export type PptxTransition = 'fade' | 'push' | 'wipe'
+const PPTX_TRANSITIONS: readonly PptxTransition[] = ['fade', 'push', 'wipe']
+
 /** Una métrica de `layout: "kpis"` — p.ej. `{"label":"Ventas totales","value":"$433 M","delta":"+18% vs. trimestre anterior"}`. */
 export interface PptxKpiSpec {
   label: string
   value: string
   delta?: string
 }
+
+/** Todas las claves de `o` están en `allowed` (las partes nuevas son estrictas: una clave de más haría que el esquema IPC rechace el documento entero). */
+const onlyKeys = (o: object, allowed: readonly string[]): boolean => Object.keys(o).every((k) => allowed.includes(k))
+
+/** Color en hex de 6 dígitos con `#` (p.ej. `"#1F3864"`). */
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+const isHex = (v: unknown): v is string => typeof v === 'string' && HEX_RE.test(v)
+
+/** Paleta propia de TODA la presentación (reemplaza a `theme`): la IA elige los colores. `bg` claro u oscuro; el resto se deriva si falta. */
+export interface PptxPalette {
+  bg: string
+  text: string
+  muted?: string
+  accent: string
+  accent2?: string
+  panel?: string
+  edge?: string
+}
+
+export type PptxFont = (typeof FREE_FONTS)[number]
+export type PptxFreeShape = (typeof FREE_SHAPES)[number]
+
+/**
+ * Un elemento de `layout: "free"`: texto o forma puestos donde la IA decida, en puntos sobre un lienzo de 960 × 540 (origen arriba a la
+ * izquierda), en el orden en que se escriben (los últimos quedan encima). Colores siempre en hex con `#`.
+ */
+export type PptxFreeElement =
+  | {
+      type: 'text'
+      x: number
+      y: number
+      w: number
+      h: number
+      text: string
+      size?: number
+      color?: string
+      bold?: boolean
+      italic?: boolean
+      align?: 'left' | 'center' | 'right'
+      font?: PptxFont
+      /** Espaciado entre letras en puntos (negativo = más junto). */
+      spacing?: number
+    }
+  | {
+      type: 'shape'
+      shape: PptxFreeShape
+      x: number
+      y: number
+      w: number
+      h: number
+      /** Sin `fill` la forma queda sin relleno. Con `fillTo` el relleno es un degradado de `fill` a `fillTo` (`angle` en grados). */
+      fill?: string
+      fillTo?: string
+      angle?: number
+      /** 0 (invisible) a 1 (sólido). */
+      opacity?: number
+      line?: string
+      lineWidth?: number
+      rotate?: number
+      /** Texto dentro de la forma. */
+      text?: string
+      size?: number
+      color?: string
+      bold?: boolean
+      align?: 'left' | 'center' | 'right'
+      font?: PptxFont
+    }
 
 export interface PptxSlideSpec {
   title?: string
@@ -140,15 +299,61 @@ export interface PptxSlideSpec {
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
   kpis?: PptxKpiSpec[]
+  /** Solo para `layout: "table"`. */
+  table?: PptxTableSpec
+  /** Color de fondo de ESTA diapositiva (hex con `#`); sin esto, el de la paleta/tema. */
+  background?: string
+  /** Solo para `layout: "free"`: los elementos del lienzo, en orden. */
+  elements?: PptxFreeElement[]
 }
 
 export interface PptxSpec {
   theme?: PptxTheme
   /** Estilo visual de TODA la presentación (ver `PptxStyle`) — sin esto, "classic". */
   style?: PptxStyle
+  /** Paleta propia (en vez de `theme`). */
+  palette?: PptxPalette
+  /** Tipografías de TODA la presentación (de una lista corta que existe en macOS y Windows). */
+  fonts?: { title?: PptxFont; body?: PptxFont }
+  /** Transición entre diapositivas (fade, push o wipe). */
+  transition?: PptxTransition
   slides: PptxSlideSpec[]
   /** Nota al pie de TODA la presentación (p.ej. "Empresa Ejemplo · Q3 2026") — una diapositiva con su propio `note` la pisa ahí. */
   footer?: string
+}
+
+/**
+ * Documento de Word del Chat: el MISMO esquema que ya usa la skill `docx` de Tareas (`build_docx.py`), sin imágenes (el Chat no tiene
+ * archivos del usuario). `bullets`/`numbered` aceptan sublistas (se aplanan). Los números de las tablas se formatean es-CL.
+ */
+export type DocxAlign = 'left' | 'right' | 'center' | 'justify'
+export type DocxBlock =
+  | { type: 'heading'; level: 1 | 2 | 3; text: string }
+  | { type: 'paragraph'; text: string; align?: DocxAlign }
+  | { type: 'bullets' | 'numbered'; items: (string | string[])[] }
+  | {
+      type: 'table'
+      columns: string[]
+      rows: (string | number | null)[][]
+      total_row?: boolean
+      zebra?: boolean
+      align?: ('left' | 'right' | 'center')[]
+      decimals?: number
+      widths_cm?: number[]
+      caption?: string
+    }
+  | { type: 'page_break' }
+export interface DocxSpec {
+  title?: string
+  subtitle?: string
+  author?: string
+  /** Texto libre o `"hoy"` (se reemplaza por la fecha de hoy en español). */
+  date?: string
+  header?: string
+  footer?: string
+  page_numbers?: boolean
+  toc?: boolean
+  blocks: DocxBlock[]
 }
 
 const XLSX_COLUMN_FORMATS: readonly XlsxColumnFormat[] = ['currency', 'integer', 'decimal', 'percent']
@@ -176,6 +381,17 @@ function isColumnFormats(v: unknown): v is (XlsxColumnFormat | null)[] {
   )
 }
 
+function isXlsxChart(v: unknown): v is XlsxChartSpec {
+  if (!v || typeof v !== 'object') return false
+  const c = v as XlsxChartSpec
+  if (!onlyKeys(c, ['type', 'range', 'title', 'at', 'width', 'height'])) return false
+  if (!XLSX_CHART_TYPES.includes(c.type) || typeof c.range !== 'string' || !A1_RANGE.test(c.range)) return false
+  if (c.title !== undefined && (typeof c.title !== 'string' || c.title.length > MAX_XLSX_CHART_TITLE_CHARS)) return false
+  if (c.at !== undefined && (typeof c.at !== 'string' || !A1_CELL.test(c.at))) return false
+  const dim = (n: unknown): boolean => n === undefined || (typeof n === 'number' && Number.isFinite(n) && n >= 120 && n <= 1200)
+  return dim(c.width) && dim(c.height)
+}
+
 function isSheet(v: unknown): v is XlsxSheetSpec {
   if (
     !v ||
@@ -185,6 +401,9 @@ function isSheet(v: unknown): v is XlsxSheetSpec {
     (v as XlsxSheetSpec).rows.length > MAX_ROWS_PER_SHEET ||
     !(v as XlsxSheetSpec).rows.every(isRow)
   )
+    return false
+  const charts = (v as XlsxSheetSpec).charts
+  if (charts !== undefined && (!Array.isArray(charts) || charts.length > MAX_XLSX_CHARTS_PER_SHEET || !charts.every(isXlsxChart)))
     return false
   const formats = (v as XlsxSheetSpec).columnFormats
   return formats === undefined || isColumnFormats(formats)
@@ -223,6 +442,22 @@ function isColumnSpec(v: unknown): v is PptxColumnSpec {
   return isBulletList(c.bullets, MAX_COLUMN_BULLETS)
 }
 
+function isTableSpec(v: unknown): v is PptxTableSpec {
+  if (!v || typeof v !== 'object') return false
+  const t = v as Record<string, unknown>
+  if (!onlyKeys(t, ['columns', 'rows'])) return false
+  const cell = (x: unknown): boolean => typeof x === 'string' && x.length <= MAX_TABLE_CELL_CHARS
+  if (!Array.isArray(t.columns) || t.columns.length < MIN_TABLE_COLS || t.columns.length > MAX_TABLE_COLS || !t.columns.every(cell))
+    return false
+  const n = t.columns.length
+  return (
+    Array.isArray(t.rows) &&
+    t.rows.length >= 1 &&
+    t.rows.length <= MAX_TABLE_ROWS &&
+    t.rows.every((r) => Array.isArray(r) && r.length === n && r.every(cell))
+  )
+}
+
 function isKpiSpec(v: unknown): v is PptxKpiSpec {
   if (!v || typeof v !== 'object') return false
   const k = v as PptxKpiSpec
@@ -230,6 +465,48 @@ function isKpiSpec(v: unknown): v is PptxKpiSpec {
   if (typeof k.value !== 'string' || k.value.length === 0 || k.value.length > MAX_KPI_VALUE_CHARS) return false
   if (k.delta !== undefined && (typeof k.delta !== 'string' || k.delta.length > MAX_KPI_DELTA_CHARS)) return false
   return true
+}
+
+const num = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max
+const optHex = (v: unknown): boolean => v === undefined || isHex(v)
+const optFont = (v: unknown): boolean => v === undefined || (FREE_FONTS as readonly string[]).includes(v as string)
+
+function isFreeElement(v: unknown): v is PptxFreeElement {
+  if (!v || typeof v !== 'object') return false
+  const e = v as Record<string, unknown>
+  const common = ['type', 'x', 'y', 'w', 'h', 'text', 'size', 'color', 'bold', 'align', 'font']
+  if (
+    !onlyKeys(
+      e,
+      e.type === 'text'
+        ? [...common, 'italic', 'spacing']
+        : [...common, 'shape', 'fill', 'fillTo', 'angle', 'opacity', 'line', 'lineWidth', 'rotate']
+    )
+  )
+    return false
+  if (!num(e.x, -200, 1160) || !num(e.y, -200, 740) || !num(e.w, 0, 1400) || !num(e.h, 0, 900)) return false
+  if (e.size !== undefined && !num(e.size, 6, 260)) return false
+  if (!optHex(e.color) || !optFont(e.font)) return false
+  if (e.align !== undefined && e.align !== 'left' && e.align !== 'center' && e.align !== 'right') return false
+  if (e.text !== undefined && (typeof e.text !== 'string' || e.text.length > MAX_FREE_TEXT_CHARS)) return false
+  if (e.type === 'text') {
+    if (typeof e.text !== 'string' || e.text.length === 0) return false
+    return e.spacing === undefined || num(e.spacing, -20, 40)
+  }
+  if (e.type !== 'shape') return false
+  if (!(FREE_SHAPES as readonly string[]).includes(e.shape as string)) return false
+  if (!optHex(e.fill) || !optHex(e.fillTo) || !optHex(e.line)) return false
+  if (e.angle !== undefined && !num(e.angle, -360, 360)) return false
+  if (e.opacity !== undefined && !num(e.opacity, 0, 1)) return false
+  if (e.lineWidth !== undefined && !num(e.lineWidth, 0, 40)) return false
+  return e.rotate === undefined || num(e.rotate, -360, 360)
+}
+
+function isPalette(v: unknown): v is PptxPalette {
+  if (!v || typeof v !== 'object') return false
+  const p = v as Record<string, unknown>
+  if (!onlyKeys(p, ['bg', 'text', 'accent', 'muted', 'accent2', 'panel', 'edge'])) return false
+  return isHex(p.bg) && isHex(p.text) && isHex(p.accent) && optHex(p.muted) && optHex(p.accent2) && optHex(p.panel) && optHex(p.edge)
 }
 
 function isSlide(v: unknown): v is PptxSlideSpec {
@@ -249,7 +526,83 @@ function isSlide(v: unknown): v is PptxSlideSpec {
     if (!Array.isArray(s.kpis) || s.kpis.length < MIN_KPIS || s.kpis.length > MAX_KPIS) return false
     if (!s.kpis.every(isKpiSpec)) return false
   }
-  return true
+  if (s.table !== undefined && !isTableSpec(s.table)) return false
+  if (!optHex(s.background)) return false
+  if (s.elements !== undefined && (!Array.isArray(s.elements) || s.elements.length > MAX_FREE_ELEMENTS || !s.elements.every(isFreeElement)))
+    return false
+  return s.layout !== 'free' || (Array.isArray(s.elements) && s.elements.length > 0)
+}
+
+const DOCX_ALIGN = ['left', 'right', 'center', 'justify']
+const docxText = (v: unknown, max = MAX_DOCX_TEXT_CHARS): v is string => typeof v === 'string' && v.length <= max
+const docxOpt = (v: unknown, max = MAX_DOCX_META_CHARS): boolean => v === undefined || docxText(v, max)
+
+function isDocxBlock(v: unknown): v is DocxBlock {
+  if (!v || typeof v !== 'object') return false
+  const b = v as Record<string, unknown>
+  switch (b.type) {
+    case 'heading':
+      return (
+        onlyKeys(b, ['type', 'level', 'text']) && (b.level === 1 || b.level === 2 || b.level === 3) && docxText(b.text) && b.text !== ''
+      )
+    case 'paragraph':
+      return (
+        onlyKeys(b, ['type', 'text', 'align']) &&
+        docxText(b.text) &&
+        b.text !== '' &&
+        (b.align === undefined || DOCX_ALIGN.includes(b.align as string))
+      )
+    case 'bullets':
+    case 'numbered': {
+      if (!onlyKeys(b, ['type', 'items']) || !Array.isArray(b.items) || b.items.length === 0 || b.items.length > MAX_DOCX_ITEMS)
+        return false
+      return b.items.every((it) => (Array.isArray(it) ? it.length <= MAX_DOCX_ITEMS && it.every((x) => docxText(x)) : docxText(it)))
+    }
+    case 'table': {
+      if (!onlyKeys(b, ['type', 'columns', 'rows', 'total_row', 'zebra', 'align', 'decimals', 'widths_cm', 'caption'])) return false
+      if (
+        !Array.isArray(b.columns) ||
+        b.columns.length === 0 ||
+        b.columns.length > MAX_DOCX_COLS ||
+        !b.columns.every((c) => docxText(c, 200))
+      )
+        return false
+      if (!Array.isArray(b.rows) || b.rows.length === 0 || b.rows.length > MAX_DOCX_ROWS) return false
+      const n = b.columns.length
+      const cellOk = (c: unknown): boolean => c === null || (typeof c === 'number' && Number.isFinite(c)) || docxText(c, 500)
+      if (!b.rows.every((r) => Array.isArray(r) && r.length === n && r.every(cellOk))) return false
+      if (b.total_row !== undefined && typeof b.total_row !== 'boolean') return false
+      if (b.zebra !== undefined && typeof b.zebra !== 'boolean') return false
+      if (
+        b.align !== undefined &&
+        (!Array.isArray(b.align) ||
+          b.align.length > MAX_DOCX_COLS ||
+          !b.align.every((a) => a === 'left' || a === 'right' || a === 'center'))
+      )
+        return false
+      if (b.decimals !== undefined && !num(b.decimals, 0, 6)) return false
+      if (
+        b.widths_cm !== undefined &&
+        (!Array.isArray(b.widths_cm) || b.widths_cm.length > MAX_DOCX_COLS || !b.widths_cm.every((w) => num(w, 1, 40)))
+      )
+        return false
+      return docxOpt(b.caption)
+    }
+    case 'page_break':
+      return onlyKeys(b, ['type'])
+    default:
+      return false
+  }
+}
+
+export function isDocxSpec(v: unknown): v is DocxSpec {
+  if (!v || typeof v !== 'object') return false
+  const d = v as Record<string, unknown>
+  if (!onlyKeys(d, ['title', 'subtitle', 'author', 'date', 'header', 'footer', 'page_numbers', 'toc', 'blocks'])) return false
+  if (![d.title, d.subtitle, d.author, d.date, d.header, d.footer].every((x) => docxOpt(x))) return false
+  if ((d.page_numbers !== undefined && typeof d.page_numbers !== 'boolean') || (d.toc !== undefined && typeof d.toc !== 'boolean'))
+    return false
+  return Array.isArray(d.blocks) && d.blocks.length > 0 && d.blocks.length <= MAX_DOCX_BLOCKS && d.blocks.every(isDocxBlock)
 }
 
 export function isPptxSpec(v: unknown): v is PptxSpec {
@@ -258,5 +611,12 @@ export function isPptxSpec(v: unknown): v is PptxSpec {
   if (spec.theme !== undefined && !PPTX_THEMES.includes(spec.theme)) return false
   if (spec.style !== undefined && !PPTX_STYLES.includes(spec.style)) return false
   if (spec.footer !== undefined && (typeof spec.footer !== 'string' || spec.footer.length > MAX_FOOTER_CHARS)) return false
+  if (spec.transition !== undefined && !PPTX_TRANSITIONS.includes(spec.transition)) return false
+  if (spec.palette !== undefined && !isPalette(spec.palette)) return false
+  if (
+    spec.fonts !== undefined &&
+    (typeof spec.fonts !== 'object' || spec.fonts === null || !optFont(spec.fonts.title) || !optFont(spec.fonts.body))
+  )
+    return false
   return Array.isArray(spec.slides) && spec.slides.length > 0 && spec.slides.length <= MAX_SLIDES && spec.slides.every(isSlide)
 }

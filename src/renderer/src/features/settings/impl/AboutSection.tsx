@@ -110,6 +110,14 @@ export function AboutSection(): React.JSX.Element {
           <span className="text-sm desk:text-meta desk:text-muted">{t('settings.about.creatorsNames')}</span>
         </Row>
         <Row label={t('settings.about.disclaimer')} />
+        <Row label={t('settings.about.craft')}>
+          <span className="flex items-center gap-2">
+            <span className="text-sm desk:text-meta desk:text-muted">{t('settings.about.craftCredit')}</span>
+            <Button size="sm" onClick={() => open('https://getartcraft.com/')}>
+              <ExternalLink size={13} /> {t('settings.about.seeMore')}
+            </Button>
+          </span>
+        </Row>
       </Card>
 
       {info && (

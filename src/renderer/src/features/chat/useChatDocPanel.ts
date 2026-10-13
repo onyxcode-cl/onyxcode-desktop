@@ -7,8 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getLang } from '@shared/i18n'
 import type { ChatDocOpenRequest } from '@shared/ipc-extras'
-import { isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
-import { extractChatDocBlocks, type ChatDocBlock } from '../../lib/chatDocBlocks'
+import { extractChatDocBlocks, parseDataBlock, type ChatDocBlock } from '../../lib/chatDocBlocks'
 import { getExtras } from '../../lib/extrasApi'
 import { setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { platformCaps } from '../../lib/platform'
@@ -95,13 +94,9 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     if (kind === 'html') {
       req = { ...common, kind: 'pdf', html: rawText }
     } else {
-      try {
-        const parsed: unknown = JSON.parse(rawText)
-        if (kind === 'xlsx' && isXlsxSpec(parsed)) req = { ...common, kind: 'xlsx', data: parsed }
-        else if (kind === 'pptx' && isPptxSpec(parsed)) req = { ...common, kind: 'pptx', data: parsed }
-      } catch {
-        /* req queda null: el JSON no es válido (no debería pasar, ya se validó al extraer el bloque) */
-      }
+      // Misma lectura que el resto de botones (JSON tolerante + deslices comunes del modelo corregidos + esquema estricto).
+      const parsed = parseDataBlock(kind, rawText)
+      if (parsed) req = { ...common, kind, data: parsed } as ChatDocOpenRequest
     }
     if (!req) return
 
