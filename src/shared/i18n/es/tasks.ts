@@ -276,6 +276,7 @@ export const tasks = {
   'tasks.ws.retry': 'Reintentar',
   'tasks.ws.close': 'Cerrar',
   'tasks.ws.untitled': 'Tarea',
+  'tasks.drop.hint': 'Suelta la carpeta para conectarla',
   'tasks.ws.openFinder': 'Abrir carpeta en Finder',
   'tasks.ws.openFinder.win': 'Abrir carpeta en el Explorador',
   'tasks.ws.hidePanel': 'Ocultar panel',

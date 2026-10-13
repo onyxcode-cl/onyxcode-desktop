@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { t } from '@shared/i18n'
+import { installEditContextMenu } from './security/edit-context-menu'
 import { needsQuitConfirmation } from './quit-guard'
 import { APP_ID, BRAND_COLORS, DISPLAY_NAME, INTERNAL_NAME } from '@shared/brand'
 import { OpencodeServer } from './opencode/server'
@@ -166,6 +167,7 @@ function createWindow(): BrowserWindow {
   }
 
   mainWindow = win
+  installEditContextMenu(win.webContents)
   win.on('ready-to-show', () => presentWindow(win))
   // Si el agente llevó el navegador a una ventana aparte mientras esta ventana estaba oculta, vuelve al panel al mostrarse.
   win.on('restore', () => returnAutoPopoutsToPanel())

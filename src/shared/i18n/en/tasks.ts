@@ -280,6 +280,7 @@ export const tasks = {
   'tasks.ws.retry': 'Retry',
   'tasks.ws.close': 'Close',
   'tasks.ws.untitled': 'Task',
+  'tasks.drop.hint': 'Drop the folder to connect it',
   'tasks.ws.openFinder': 'Open folder in Finder',
   'tasks.ws.openFinder.win': 'Open folder in File Explorer',
   'tasks.ws.hidePanel': 'Hide panel',
