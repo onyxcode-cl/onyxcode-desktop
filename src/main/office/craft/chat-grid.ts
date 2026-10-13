@@ -12,7 +12,11 @@ import { join } from 'node:path'
 import type { XlsxCell, XlsxColumnFormat, XlsxSpec } from '@shared/chat-doc-spec'
 import { runCraft } from './craft-run'
 
-const HEADER_FILL = '#E8ECF4'
+const HEADER_FILL = '#1F3A5F'
+const BAND_FILL = '#F2F5FA'
+const TOTAL_FILL = '#E3E9F4'
+const LINE = '#D5DCE8'
+const TOTAL_ROW_RE = /^\s*(total|subtotal|suma|promedio)\b/i
 /** Códigos de formato de número (los mismos que usa el generador de siempre). */
 const NUM_CODES: Record<XlsxColumnFormat, string> = { currency: '"$"#,##0', integer: '#,##0', decimal: '#,##0.00', percent: '0.00%' }
 
@@ -73,8 +77,36 @@ export function chatGridScript(spec: XlsxSpec): string {
       cmd('range.setValues', { range: `A${at + 1}`, values: block })
     }
     if (sheet.rows.length === 0) return
+    const all = `A1:${last}${sheet.rows.length}`
+    cmd('home.fontName', { range: all, name: 'Arial' })
+    cmd('home.fontSize', { range: all, size: 11 })
+    cmd('home.alignMiddle', { range: all })
+    // Encabezado: fondo azul oscuro, texto blanco en negrita; los de columnas numéricas alineados a la derecha como sus datos.
     cmd('home.bold', { range: `A1:${last}1`, on: true })
     cmd('home.fillColor', { range: `A1:${last}1`, color: HEADER_FILL })
+    cmd('home.fontColor', { range: `A1:${last}1`, color: '#FFFFFF' })
+    cmd('home.rowHeight', { rows: '1:1', height: 24 })
+    sheet.columnFormats?.forEach((f, k) => {
+      if (f && k < width) cmd('home.alignRight', { range: `${colLetter(k)}1` })
+    })
+    if (sheet.rows.length > 1) {
+      // Filas alternadas (una sola regla, sirve para cualquier largo) y líneas finas entre filas.
+      cmd('home.conditionalFormat', {
+        range: `A2:${last}${sheet.rows.length}`,
+        rule: { type: 'expression', formula: 'MOD(ROW(),2)=1', style: { fill: { color: BAND_FILL } } }
+      })
+      cmd('home.borders', { range: `A1:${last}${sheet.rows.length}`, preset: 'insideHorizontal', style: 'thin', color: LINE })
+      cmd('home.borders', { range: `A${sheet.rows.length}:${last}${sheet.rows.length}`, preset: 'bottom', style: 'thin', color: LINE })
+      // Fila de totales: una que empieza con «Total/Subtotal/Suma/Promedio» → negrita, fondo propio y línea superior marcada.
+      const lastRow = sheet.rows[sheet.rows.length - 1]
+      const first = lastRow[0]
+      if (typeof first === 'string' && TOTAL_ROW_RE.test(first)) {
+        const r = sheet.rows.length
+        cmd('home.bold', { range: `A${r}:${last}${r}`, on: true })
+        cmd('home.fillColor', { range: `A${r}:${last}${r}`, color: TOTAL_FILL })
+        cmd('home.borders', { range: `A${r}:${last}${r}`, preset: 'top', style: 'medium', color: HEADER_FILL })
+      }
+    }
     sheet.columnFormats?.forEach((f, k) => {
       if (f && k < width && sheet.rows.length > 1)
         cmd('home.numberFormat', { range: `${colLetter(k)}2:${colLetter(k)}${sheet.rows.length}`, code: NUM_CODES[f] })
@@ -91,6 +123,7 @@ export function chatGridScript(spec: XlsxSpec): string {
         height: ch.height ?? 300
       })
     })
+    cmd('view.gridlines', { on: false })
     if (sheet.rows.length > 1) cmd('view.freezeTopRow')
   })
   cmd('sheet.activate', { sheet: names[0] })
