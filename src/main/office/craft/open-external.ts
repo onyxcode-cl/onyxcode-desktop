@@ -7,7 +7,7 @@
 import { execFile, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { posix, win32 } from 'node:path'
 
 export type ExternalKind = 'pdf' | 'xlsx' | 'pptx' | 'docx'
 
@@ -28,14 +28,14 @@ export function findCraftApp(kind: ExternalKind, deps: FindDeps): string | null 
   const exe = `${name.toLowerCase()}.exe`
   const candidates: string[] = [...(deps.extra ?? [])]
   if (deps.platform === 'darwin') {
-    candidates.push(join('/Applications', `${name}.app`), join(deps.home, 'Applications', `${name}.app`))
+    candidates.push(posix.join('/Applications', `${name}.app`), posix.join(deps.home, 'Applications', `${name}.app`))
   } else if (deps.platform === 'win32') {
     for (const base of [
       deps.env.LOCALAPPDATA && join(deps.env.LOCALAPPDATA, 'Programs'),
       deps.env.ProgramFiles,
       deps.env['ProgramFiles(x86)']
     ]) {
-      if (base) candidates.push(join(base, name, exe), join(base, name, `${name}.exe`))
+      if (base) candidates.push(win32.join(base, name, exe), win32.join(base, name, `${name}.exe`))
     }
   }
   return candidates.find((p) => deps.exists(p)) ?? null

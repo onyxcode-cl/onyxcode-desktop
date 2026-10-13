@@ -128,7 +128,7 @@ describe('paridad con el script Python de la skill', () => {
     if (py.error || py.status === 9009) return
     expect(py.status).toBe(0)
     expect(JSON.parse(py.stdout)).toEqual(buildDeckCommands(validateDeckSpec(FULL)))
-  })
+  }, 60_000)
 })
 
 describe('coverSize', () => {
