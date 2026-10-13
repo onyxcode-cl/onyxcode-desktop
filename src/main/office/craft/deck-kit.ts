@@ -167,7 +167,28 @@ export function paletteFor(theme: string | undefined): Palette {
  * `pal`/`look` por defecto = el diseño oscuro «dots» de siempre (los comandos que genera NO cambian: una prueba exige que sean los mismos
  * que los del script de Python de la skill). `accent` solo lo usa la skill para teñir las etiquetas.
  */
-export function createKit(pal: Palette = DARK, look: Look = 'classic', accent: string = pal.accent, titleFontOverride?: string) {
+/**
+ * Tamaño que cabe en una caja de `w × h` pt: estima las líneas con el ancho medio de Arial (0,5 × tamaño; 0,55 en negrita) y baja de a 1 pt
+ * hasta que el alto estimado entra, sin pasar del 55 % del tamaño pedido. DeckCraft no mide ni autoajusta, y así un texto largo no se sale de la caja.
+ */
+export function autoFitSize(text: string, size: number, w: number, h: number, bold: boolean): number {
+  const inner = Math.max(20, w - 14)
+  const floor = Math.max(8, Math.round(size * 0.55))
+  const cw = bold ? 0.55 : 0.5
+  const lines = (sz: number): number => text.split('\n').reduce((n, ln) => n + Math.max(1, Math.ceil((ln.length * sz * cw) / inner)), 0)
+  let sz = size
+  while (sz > floor && lines(sz) * sz * 1.2 > h - 4) sz -= 1
+  return sz
+}
+
+/** `autoFit` (solo el Chat): cada caja de texto se achica si su contenido no cabe; la plantilla de la skill (`deck-builder`) no lo usa para mantener la paridad con su script de Python. */
+export function createKit(
+  pal: Palette = DARK,
+  look: Look = 'classic',
+  accent: string = pal.accent,
+  titleFontOverride?: string,
+  autoFit = false
+) {
   const c: string[] = []
   const a = (id: string, params?: Record<string, unknown>): void => {
     c.push(params ? `${id}=${JSON.stringify(params)}` : id)
@@ -241,7 +262,7 @@ export function createKit(pal: Palette = DARK, look: Look = 'classic', accent: s
     font?: string
   ): void => {
     a('insert.textBox', { rect: [x, y, w, h], text: t })
-    a('format.size', { size })
+    a('format.size', { size: autoFit ? autoFitSize(t, size, w, h, bold) : size })
     a('format.color', { color: '#' + color })
     a('format.bold', { on: bold })
     a('format.align', { align })

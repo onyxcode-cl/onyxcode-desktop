@@ -39,7 +39,8 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
     pal,
     look,
     pal.accent,
-    spec.fonts?.title
+    spec.fonts?.title,
+    true
   )
   const accent = pal.accent
   const DOTS = pal.marks
@@ -213,13 +214,13 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         const items = bullets.slice(0, 6)
         const k = Math.max(items.length, 1)
         const w = Math.floor(840 / k)
-        const bw = Math.min(2 * w - 24, 330)
         rect(60, 306, 840, 3, pal.edge)
         items.forEach((t, i) => {
           const cut = t.indexOf(': ')
           const label = cut > 0 && cut <= 24 ? t.slice(0, cut) : String(i + 1).padStart(2, '0')
           const desc = cut > 0 && cut <= 24 ? t.slice(cut + 2) : t
           const x = 60 + i * w
+          const bw = Math.min(2 * w - 24, 330, 900 - x)
           const up = i % 2 === 0
           dot(x, 299, 18, DOTS[i % DOTS.length])
           rect(x + 8, up ? 262 : 322, 2, 34, pal.edge)
