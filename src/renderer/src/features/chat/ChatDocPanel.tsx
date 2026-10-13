@@ -63,7 +63,7 @@ export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscr
 
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-border">
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2">
+      <div className="drag flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 desk:h-12 desk:py-0 desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
           {title || t('chat.doc.title')} {doc && <span className="text-subtle">· {t(KIND_LABEL[doc.kind])}</span>}
         </span>
@@ -94,7 +94,7 @@ export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscr
           type="button"
           onClick={onToggleFullscreen}
           aria-label={t(fullscreen ? 'chat.doc.exitFullscreen' : 'chat.doc.fullscreen')}
-          className="rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
+          className="no-drag rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
         >
           {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
@@ -102,7 +102,7 @@ export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscr
           type="button"
           onClick={onClose}
           aria-label={t('common.close')}
-          className="rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
+          className="no-drag rounded-md p-1 text-muted hover:bg-hover hover:text-fg"
         >
           <X size={14} />
         </button>
