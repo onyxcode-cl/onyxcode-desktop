@@ -153,6 +153,13 @@ describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
     if (SHOTS) await shot(a, SHOTS, 'code-permiso-largo')
   })
 
+  it('comando de 70 líneas (tarjeta más alta que la ventana): «Permitir» se arma igual', async () => {
+    const a = app()
+    const cmd = Array.from({ length: 70 }, (_, i) => `echo linea_${String(i).padStart(2, '0')}`).join('\n')
+    await ask(a, cmd, 'permiso tarjeta alta')
+    await armed(a)
+  })
+
   it('tarjeta de permiso sin violaciones axe', async () => {
     const a = app()
     await ask(a, 'npm install', 'permiso axe')
