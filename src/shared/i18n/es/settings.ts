@@ -193,6 +193,8 @@ export const settings = {
   'settings.about.server': 'Servidor OpenCode',
   'settings.about.noConnection': 'Sin conexión',
   'settings.about.system': 'Sistema',
+  'settings.about.creators': 'Creadores',
+  'settings.about.creatorsNames': 'Benjamín Sánchez · Sebastián Rodríguez',
   'settings.about.disclaimer': 'Proyecto independiente, no afiliado a OpenCode ni a Anthropic.',
   'settings.about.data': 'Datos',
   'settings.about.appData': 'Datos de la app',
