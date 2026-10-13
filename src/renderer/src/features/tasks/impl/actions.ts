@@ -91,10 +91,10 @@ export async function loadFolders(): Promise<void> {
 export async function chooseFolder(): Promise<void> {
   const picked = await cw('tasks:pickFolder')
   if (!picked) return
-  await useChosenFolder(picked)
+  await connectChosenFolder(picked)
 }
 
-async function useChosenFolder(picked: string): Promise<void> {
+async function connectChosenFolder(picked: string): Promise<void> {
   useTasks.setState({ error: null })
   const { folders } = useTasks.getState()
   if (folders.some((f) => f.path === picked)) await selectFolder(picked)
@@ -120,7 +120,7 @@ export async function dropFolder(path: string): Promise<void> {
       await connectFolder(chk.normalized, true)
       return
     }
-    await useChosenFolder(chk.normalized)
+    await connectChosenFolder(chk.normalized)
   } catch (err) {
     useTasks.setState({ error: errorMessage(err) })
   }
