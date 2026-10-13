@@ -232,7 +232,14 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
     }
     const io = new IntersectionObserver(
       (entries) => {
-        visibleRef.current = entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.6)
+        // «Visible» = al menos el 60 % de la tarjeta, o (tarjetas más altas que la ventana: un comando largo) al menos el 60 % de la altura
+        // visible del área de desplazamiento. Sin lo segundo, una tarjeta alta nunca llega al 60 % y «Permitir» queda deshabilitado para siempre.
+        visibleRef.current = entries.some(
+          (e) =>
+            e.isIntersecting &&
+            (e.intersectionRatio >= 0.6 ||
+              (!!e.rootBounds && e.rootBounds.height > 0 && e.intersectionRect.height >= e.rootBounds.height * 0.6))
+        )
         commit()
       },
       { root, threshold: [0, 0.6, 1] }
