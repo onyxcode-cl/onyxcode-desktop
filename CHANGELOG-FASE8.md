@@ -3378,3 +3378,31 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
   acá sin tocar configuración de Discord del dueño. Falta que el dueño repita una tarea real de
   Discord con multi-monitor (ideal: con una notificación o el overlay de voz activo) y confirme que
   la captura de pantalla completa ya muestra lo mismo que `window-shot` mostraba bien.
+
+## F8-B156 — ArtCraft reemplaza a LibreOffice para crear y mostrar documentos del Chat
+
+- **Qué cambia**: el Chat arma `.pptx`, `.xlsx` y `.docx` con `deckcraft-cli`, `gridcraft-cli` y `wordcraft-cli` (instalación con tamaño y SHA-256 fijados en `resources/craft/pin.json`; en macOS además firma de desarrollador) y el panel muestra la versión web de cada programa en una vista aislada y local (`web-server.ts`, `web-view.ts`). Se eliminó LibreOffice del código y de los paquetes.
+- **Pruebas**: `craft-install.test.ts`, `chat-deck.test.ts`, `chat-grid.test.ts`, `chat-word.test.ts`, `web-server.test.ts`, `web-open.test.ts`, `chat-doc-contract.test.ts`; instalación real y generación de los tres documentos comprobadas en Windows y macOS.
+- **No verificado todavía**: la revisión de seguridad formal de las vistas web; el gráfico «Margen mensual» (valores iguales) no se vio en el panel de Excel de un usuario.
+
+## F8-B157 — diapositivas nuevas, transiciones, Excel con estilo, «Abrir aparte» y lectura tolerante del JSON del modelo
+
+- **Qué cambia**: diseños `timeline`, `agenda`, `quote` y `table` y `transition` (`fade`, `push`, `wipe`); las cajas de texto se achican solas si no caben (`autoFitSize`); Excel con encabezado oscuro, filas alternadas, líneas finas y fila de totales; botón «Abrir aparte» (`open-external.ts`); `parseLenient` y `normalizePptx` corrigen deslices del modelo antes de validar.
+- **Pruebas**: `chat-deck.test.ts`, `open-external.test.ts`, `json-lenient.test.ts`, `chat-doc-normalize.test.ts`, `chatDocBlocks.test.ts`, contrato IPC.
+
+## F8-B158 — arreglos de Windows: animaciones, «Permitir» y botones de ventana
+
+- **Qué cambia**: los indicadores de «trabajando» no se apagan con `prefers-reduced-motion` (Windows lo informa en sesiones remotas); la visibilidad de la tarjeta de permiso se mide en cada vuelta, porque las tarjetas más altas que la ventana nunca se armaban; las cabeceras dejan sitio a los controles de ventana.
+- **Pruebas**: E2E `permisos-escritorio.e2e.ts` (comando de 70 líneas, falla con el código anterior), verificación en la app real de Windows.
+
+## F8-B159 — Overdrive (antes Tareas) y lista vertical de modos
+
+- **Qué cambia**: el nombre del modo en toda la interfaz, el atajo y los prompts del asistente; la barra lateral muestra los modos en lista con ícono. Los identificadores internos (p. ej. la distro `Lazunox-Tareas`) no cambian.
+- **Pruebas**: `Sidebar.render.test.tsx`, `i18n.test.ts` y los E2E de arranque, idioma, atajos y catálogo MCP.
+
+## F8-B160 — arrastrar una carpeta, clic derecho y créditos
+
+- **Qué cambia**: `dropFolder` valida con `tasks:folders:check` y sigue el camino de «Elegir carpeta»; menú contextual con deshacer, cortar, copiar, pegar y seleccionar todo (`edit-context-menu.ts`); «Acerca de» con creadores y créditos.
+- **Pruebas**: `dropFolder.test.ts`, `useFolderDrop.test.ts`, `arrastrar-carpeta.e2e.ts`, `menu-contextual.e2e.ts`, `edit-context-menu.test.ts`.
+- **No verificado todavía**: el arrastre real de una carpeta desde el explorador del sistema (solo se simuló con un archivo real).
+
