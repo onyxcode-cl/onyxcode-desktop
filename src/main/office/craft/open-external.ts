@@ -18,13 +18,15 @@ export interface FindDeps {
   env: NodeJS.ProcessEnv
   home: string
   exists: (p: string) => boolean
+  /** Rutas de programas ya instalados por Lazunox (en Windows, el `.exe` de escritorio viene en el mismo zip que el `-cli.exe`). */
+  extra?: string[]
 }
 
 /** Ruta del programa de ArtCraft de escritorio para este tipo de documento (`null` si no está instalado o la plataforma no es macOS/Windows). */
 export function findCraftApp(kind: ExternalKind, deps: FindDeps): string | null {
   const name = PROGRAM[kind]
   const exe = `${name.toLowerCase()}.exe`
-  const candidates: string[] = []
+  const candidates: string[] = [...(deps.extra ?? [])]
   if (deps.platform === 'darwin') {
     candidates.push(join('/Applications', `${name}.app`), join(deps.home, 'Applications', `${name}.app`))
   } else if (deps.platform === 'win32') {
@@ -59,11 +61,21 @@ function launch(app: string, file: string, platform: NodeJS.Platform): Promise<v
  * `'craft'` si se abrió en el programa de ArtCraft; `'system'` si no está y se usó el programa por defecto del sistema (`openPath`);
  * lanza si ninguno pudo abrirlo.
  */
+export function defaultFindDeps(extra: string[] = []): FindDeps {
+  return { platform: process.platform, env: process.env, home: homedir(), exists: existsSync, extra }
+}
+
+/** Programa de escritorio que viene junto al `-cli` ya instalado (Windows: `deckcraft-cli.exe` → `deckcraft.exe`). */
+export function guiNextToCli(cliPath: string | null | undefined): string[] {
+  if (!cliPath || !/-cli\.exe$/i.test(cliPath)) return []
+  return [cliPath.replace(/-cli\.exe$/i, '.exe')]
+}
+
 export async function openExternally(
   kind: ExternalKind,
   file: string,
   openPath: (p: string) => Promise<string>,
-  deps: FindDeps = { platform: process.platform, env: process.env, home: homedir(), exists: existsSync }
+  deps: FindDeps = defaultFindDeps()
 ): Promise<'craft' | 'system'> {
   const app = findCraftApp(kind, deps)
   if (app) {

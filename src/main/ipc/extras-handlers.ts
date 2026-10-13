@@ -13,7 +13,8 @@ import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifa
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
 import { cleanChatDocuments, downloadChatDoc, generateChatDoc, writeChatDocForExternal, type ChatDocInput } from '../extras/chat-docs'
-import { openExternally } from '../office/craft/open-external'
+import { defaultFindDeps, guiNextToCli, openExternally } from '../office/craft/open-external'
+import { craftService } from '../office/craft/service'
 import { onWebEvent } from '../office/craft/web-view'
 import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
@@ -140,6 +141,11 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     panelClose()
     void cleanChatDocuments(sessionId)
   })
+  const installedCli = (kind: ChatDocInput['kind']): string | null => {
+    const st = craftService().status()
+    if (st.state !== 'installed' || kind === 'pdf') return null
+    return st.bins[{ pptx: 'deckcraft', docx: 'wordcraft', xlsx: 'gridcraft' }[kind] as 'deckcraft'] ?? null
+  }
   handle(ipcMain, 'extras:chatDoc:openExternal', async (req) => {
     try {
       const input: ChatDocInput =
@@ -151,7 +157,10 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
               ? { kind: 'docx', data: req.data }
               : { kind: 'pptx', data: req.data }
       const file = await writeChatDocForExternal(input, req.title)
-      return { ok: true as const, via: await openExternally(input.kind, file, (p) => shell.openPath(p)) }
+      return {
+        ok: true as const,
+        via: await openExternally(input.kind, file, (p) => shell.openPath(p), defaultFindDeps(guiNextToCli(installedCli(input.kind))))
+      }
     } catch (e) {
       console.warn('[chat-doc] no se pudo abrir aparte:', e instanceof Error ? e.message : e)
       return { ok: false as const }
