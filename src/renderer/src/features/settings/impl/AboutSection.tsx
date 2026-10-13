@@ -106,9 +106,7 @@ export function AboutSection(): React.JSX.Element {
             {versions ? `${versions.platform} ${versions.arch} · ${versions.osRelease}` : '…'}
           </span>
         </Row>
-        <Row label={t('settings.about.creators')}>
-          <span className="text-sm desk:text-meta desk:text-muted">{t('settings.about.creatorsNames')}</span>
-        </Row>
+        <Row label={t('settings.about.disclaimer')} />
         <Row label={t('settings.about.craft')}>
           <span className="flex items-center gap-2">
             <span className="text-sm desk:text-meta desk:text-muted">{t('settings.about.craftCredit')}</span>
@@ -117,7 +115,6 @@ export function AboutSection(): React.JSX.Element {
             </Button>
           </span>
         </Row>
-        <Row label={t('settings.about.disclaimer')} />
       </Card>
 
       {info && (
