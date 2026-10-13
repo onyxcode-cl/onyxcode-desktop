@@ -1,4 +1,4 @@
-import { CircleHelp, LayoutGrid, Moon, PanelLeft, PanelLeftOpen, Plus, Search, Settings, SquarePen, Sun } from 'lucide-react'
+import { CircleHelp, LayoutGrid, Moon, PanelLeft, PanelLeftOpen, Plus, Search, Settings, SquarePen, Sun, Zap } from 'lucide-react'
 import { DISPLAY_NAME } from '@shared/brand'
 import type { ModeId } from '@shared/types'
 import { IconButton } from '../components/IconButton'
@@ -12,6 +12,7 @@ import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { useTasks } from '../features/tasks/impl/store'
 import { MODES, MODES_BY_ID } from './modes'
+import type { ModeDefinition } from './types'
 import { hintSuffix, hintText, useEffectiveBindings } from '../keybindings/bindings'
 
 const STATUS_KEY = {
@@ -27,6 +28,9 @@ const STATUS_KEY = {
  */
 const ROW =
   'no-drag group flex h-8 min-w-0 items-center gap-2.5 rounded-ctl px-2.5 text-left text-sm transition-[background-color,color,transform] duration-[var(--dur-fast)] hover:bg-hover active:scale-[0.985] motion-reduce:active:scale-100'
+
+/** Ícono del modo en la barra de escritorio: Overdrive lleva un rayo; el celular conserva el suyo (la PWA no cambia). */
+const modeIcon = (m: ModeDefinition): ModeDefinition['icon'] => (m.id === 'tasks' ? Zap : m.icon)
 
 /** Botón de 36 × 36 de la barra colapsada: tooltip con nombre + atajo a la derecha, con el ratón y con el foco. */
 function RailButton({
@@ -138,7 +142,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
         <div className="h-3 shrink-0" aria-hidden="true" />
         <nav aria-label={t('app.sidebar.mode')} className="flex flex-col items-center gap-0.5">
           {MODES.map((m) => {
-            const Icon = m.icon
+            const Icon = modeIcon(m)
             return (
               <RailButton
                 key={m.id}
@@ -225,33 +229,39 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
             )}
           </button>
 
-          {/* Segmentado de modos. Con Ajustes abiertos el modo actual conserva el texto fuerte, sin fondo; `aria-current` lo lleva Ajustes. */}
-          <nav
-            aria-label={t('app.sidebar.mode')}
-            className="grid gap-0.5 rounded-[10px] bg-hover p-[3px]"
-            style={{ gridTemplateColumns: `repeat(${MODES.length}, minmax(0, 1fr))` }}
-          >
+          {/* Lista vertical de modos: cada uno con su ícono y su nombre completo (nada se corta, sea cual sea el idioma). Con Ajustes abiertos el
+              modo actual conserva el texto fuerte, sin fondo; `aria-current` lo lleva Ajustes. El atajo aparece al pasar o enfocar. */}
+          <nav aria-label={t('app.sidebar.mode')} className="flex flex-col gap-0.5">
             {MODES.map((m) => {
+              const Icon = modeIcon(m)
               const current = m.id === mode
               const active = current && !settingsOpen
+              const hint = hintText(bindings[`mode.${m.id}`])
               return (
                 <button
                   key={m.id}
                   type="button"
                   aria-current={active ? 'page' : undefined}
                   onClick={() => goMode(m.id)}
-                  className={`no-drag relative flex h-7 min-w-0 items-center justify-center rounded-[7px] px-1 text-[13px] leading-4 transition-[background-color,color,transform] duration-[var(--dur-fast)] active:scale-[0.985] motion-reduce:active:scale-100 ${
-                    active ? 'sb-card font-medium text-fg shadow-sm' : current ? 'font-medium text-fg' : 'text-muted hover:text-fg'
-                  }`}
+                  className={`${ROW} w-full ${active ? 'sb-card font-medium text-fg shadow-sm' : current ? 'font-medium text-fg' : 'text-muted hover:text-fg'}`}
                 >
-                  <span className="truncate">{m.label}</span>
+                  <Icon size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{m.label}</span>
                   {m.id === 'tasks' && approvalsPending && (
                     <span
                       role="img"
                       aria-label={t('app.sidebar.pendingApproval')}
-                      className="absolute top-1 right-[3px] size-1.5 rounded-full bg-warning"
+                      className="size-2 shrink-0 rounded-full bg-warning"
                       data-testid="sidebar-approvals-dot"
                     />
+                  )}
+                  {hint && (
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 font-mono text-[11px] leading-4 text-subtle opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                    >
+                      {hint}
+                    </span>
                   )}
                 </button>
               )
