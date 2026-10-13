@@ -681,7 +681,7 @@ export function TasksWorkspace(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
           <header
-            className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : 'desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
+            className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
             <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
               {session?.title || t('tasks.ws.untitled')}

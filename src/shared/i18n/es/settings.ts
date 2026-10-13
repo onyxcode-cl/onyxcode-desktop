@@ -193,6 +193,11 @@ export const settings = {
   'settings.about.server': 'Servidor OpenCode',
   'settings.about.noConnection': 'Sin conexión',
   'settings.about.system': 'Sistema',
+  'settings.about.creators': 'Creadores',
+  'settings.about.creatorsNames': 'Benjamín Sánchez · Sebastián Rodríguez',
+  'settings.about.craft': 'Documentos',
+  'settings.about.craftCredit':
+    'ArtCraft (DeckCraft, WordCraft, GridCraft y PdfCraft), de storytold — código abierto, licencia MIT/Apache 2.0',
   'settings.about.disclaimer': 'Proyecto independiente, no afiliado a OpenCode ni a Anthropic.',
   'settings.about.data': 'Datos',
   'settings.about.appData': 'Datos de la app',
