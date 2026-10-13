@@ -31,7 +31,7 @@ export function findCraftApp(kind: ExternalKind, deps: FindDeps): string | null 
     candidates.push(posix.join('/Applications', `${name}.app`), posix.join(deps.home, 'Applications', `${name}.app`))
   } else if (deps.platform === 'win32') {
     for (const base of [
-      deps.env.LOCALAPPDATA && join(deps.env.LOCALAPPDATA, 'Programs'),
+      deps.env.LOCALAPPDATA && win32.join(deps.env.LOCALAPPDATA, 'Programs'),
       deps.env.ProgramFiles,
       deps.env['ProgramFiles(x86)']
     ]) {
