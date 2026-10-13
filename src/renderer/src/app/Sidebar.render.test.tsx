@@ -22,22 +22,27 @@ const render = (): string => renderToStaticMarkup(createElement(Sidebar))
 describe('barra lateral de escritorio (2c)', () => {
   afterEach(reset)
 
-  it('el modo activo lleva aria-current en un segmentado de solo texto', () => {
+  it('los modos van en una lista vertical con ícono y nombre completo; el activo lleva aria-current', () => {
     seed({ mode: 'code', settingsOpen: false })
     const html = render()
     expect(html.match(/<nav aria-label="Modo"[^>]*>/g)).toHaveLength(1)
     const nav = html.slice(html.indexOf('<nav aria-label="Modo"'), html.indexOf('</nav>'))
+    expect(nav).toContain('flex flex-col gap-0.5')
+    // Una fila por modo, cada una con su ícono y el nombre entero (Overdrive no se corta).
+    expect(nav.match(/<button/g)).toHaveLength(4)
+    expect(nav.match(/<svg/g)).toHaveLength(4)
+    for (const name of ['Chat', 'Code', 'Overdrive', 'Rutinas'])
+      expect(nav).toContain(`<span class="min-w-0 flex-1 truncate">${name}</span>`)
     expect(nav.match(/aria-current="page"/g)).toHaveLength(1)
-    expect(nav).toMatch(/aria-current="page"[^>]*>(<span class="truncate">Code<\/span>)/)
-    expect(nav).not.toContain('<svg')
-    expect(nav).toContain('rounded-[10px] bg-hover p-[3px]')
+    expect(nav).toMatch(/aria-current="page"[^>]*>(?:(?!<\/button>).)*>Code<\/span>/)
+    expect(nav).not.toContain('rounded-[10px] bg-hover p-[3px]')
   })
 
   it('con Ajustes abierto el modo conserva el texto fuerte y pierde aria-current', () => {
     seed({ mode: 'code', settingsOpen: true })
     const html = render()
     expect(html).not.toContain('aria-current="page"')
-    expect(html).toMatch(/font-medium text-fg"><span class="truncate">Code/)
+    expect(html).toMatch(/font-medium text-fg"><svg[^>]*>(?:(?!<\/button>).)*>Code<\/span>/)
   })
 
   it('estructura: marca con el nombre de la app, «Nueva» con su atajo, buscador, árbol y pie de tres botones', () => {

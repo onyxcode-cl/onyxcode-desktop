@@ -60,7 +60,7 @@ export const tasksComputer = {
   'tasksComputer.full.b3':
     'Podrá ver la pantalla, crear, modificar y borrar cualquier archivo de tu usuario, abrir cualquier programa y ejecutar comandos: nada queda confinado a una carpeta.',
   'tasksComputer.full.once':
-    'Esto se te pregunta una sola vez en este equipo. Se guarda la fecha de tu consentimiento y puedes retirarlo cuando quieras en Ajustes › Tareas › Control total.',
+    'Esto se te pregunta una sola vez en este equipo. Se guarda la fecha de tu consentimiento y puedes retirarlo cuando quieras en Ajustes › Overdrive › Control total.',
   'tasksComputer.workspace.label': 'Puede usar todo tu Mac · carpeta de trabajo: {folder}',
   'tasksComputer.workspace.label.win': 'Puede usar todo tu PC · carpeta de trabajo: {folder}',
   'tasksComputer.workspace.home': 'Carpeta personal',
@@ -273,10 +273,10 @@ export const tasksComputer = {
   'tasksComputer.menu.alreadyAdded': 'Esa carpeta ya está añadida.',
   'tasksComputer.menu.chooseTitle': 'Elegir la carpeta en la que trabajará el agente',
   'tasksComputer.menu.choose': 'Elegir carpeta',
-  'tasksComputer.menu.removeTitle': 'Quitar de Tareas',
-  'tasksComputer.menu.removeAria': 'Quitar «{name}» de Tareas',
+  'tasksComputer.menu.removeTitle': 'Quitar de Overdrive',
+  'tasksComputer.menu.removeAria': 'Quitar «{name}» de Overdrive',
   'tasksComputer.menu.removeConfirmTitle': '¿Quitar carpeta de trabajo?',
-  'tasksComputer.menu.removeConfirmMessage': '«{name}» dejará de estar disponible en Tareas. No se borra ningún archivo.',
+  'tasksComputer.menu.removeConfirmMessage': '«{name}» dejará de estar disponible en Overdrive. No se borra ningún archivo.',
   'tasksComputer.menu.unlinkTitle': 'Quitar carpeta adicional',
   'tasksComputer.menu.unlinkAria': 'Quitar la carpeta adicional «{name}»',
   'tasksComputer.menu.appliedOnRestart': 'Los cambios se aplicarán al reiniciar el sandbox de esta carpeta.',

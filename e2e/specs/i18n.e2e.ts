@@ -47,7 +47,7 @@ describe.skipIf(!DEV)('Idioma (en/es)', () => {
     const { page } = app()
     const modes = page.locator(`nav[aria-label="${tr('en', 'app.sidebar.mode')}"]`)
     await expectVisible(modes)
-    for (const m of ['Chat', 'Code', 'Tasks', 'Routines']) await expectVisible(modes.getByRole('button', { name: m, exact: true }))
+    for (const m of ['Chat', 'Code', 'Overdrive', 'Routines']) await expectVisible(modes.getByRole('button', { name: m, exact: true }))
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('en')
     await expectVisible(page.getByText(tr('en', 'chat.empty.prompt'), { exact: true }))
     await expectCount(page.getByText('Tareas', { exact: true }), 0)
@@ -76,7 +76,7 @@ describe.skipIf(!DEV)('Idioma (en/es)', () => {
     await goto(page, 'en', 'settings.nav.general')
     await page.getByRole('combobox', { name: tr('en', 'settings.general.language') }).selectOption('es')
     await expectVisible(navLabel('es')(page))
-    await expectVisible(page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }))
+    await expectVisible(page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Overdrive', exact: true }))
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('es')
     await expect.poll(() => settingsFile().language).toBe('es')
     await shot(app(), sub('es'), 'general')
@@ -184,7 +184,7 @@ describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b
   // Windows v1: modo Tareas fuera de alcance.
   it.skipIf(IS_WIN)('(5) Tareas en inglés: guía de inicio y pantalla de inicio', async () => {
     const { page } = app()
-    await modes(page).getByRole('button', { name: 'Tasks', exact: true }).click()
+    await modes(page).getByRole('button', { name: 'Overdrive', exact: true }).click()
     await expectVisible(page.getByText(tr('en', 'tasksComputer.onb.title'), { exact: true }))
     await expectCount(page.getByText('Así funcionan las tareas'), 0)
     await shot(app(), sub('en'), 'tareas-guia')
@@ -232,7 +232,7 @@ describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b
     await storeCall(page, 'useSettings', 'update', { language: 'es' })
     await expectVisible(page.getByText(tr('es', 'routines.view.title'), { exact: true }).first())
     if (!IS_WIN) {
-      await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas', exact: true }).click()
+      await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Overdrive', exact: true }).click()
       await expectVisible(page.getByText(tr('es', 'tasks.home.title'), { exact: true }))
     }
   })

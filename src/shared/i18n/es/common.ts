@@ -1,7 +1,7 @@
 export const common = {
   'labels.mode.chat': 'Chat',
   'labels.mode.code': 'Code',
-  'labels.mode.tasks': 'Tareas',
+  'labels.mode.tasks': 'Overdrive',
   'labels.mode.routines': 'Rutinas',
   'labels.ui.task': 'tarea',
   'labels.ui.network': 'Red del sandbox',

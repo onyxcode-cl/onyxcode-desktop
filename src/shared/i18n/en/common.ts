@@ -4,7 +4,7 @@ import type { common as es } from '../es/common'
 export const common = {
   'labels.mode.chat': 'Chat',
   'labels.mode.code': 'Code',
-  'labels.mode.tasks': 'Tasks',
+  'labels.mode.tasks': 'Overdrive',
   'labels.mode.routines': 'Routines',
   'labels.ui.task': 'task',
   'labels.ui.network': 'Sandbox network',

@@ -26,16 +26,16 @@ export const mainErrors = {
     'That is a protected macOS location (Library), where apps keep their data, and tasks can’t use it. Try a folder inside Documents.',
   'merr.folder.volumes': 'Choose a folder inside the volume, not the list of volumes.',
   'merr.folder.network':
-    'That folder is on a network volume ({fsType}, {mountPoint}). Tasks can’t safely work on network volumes: copy the files to a local folder and choose that folder.',
+    'That folder is on a network volume ({fsType}, {mountPoint}). Overdrive can’t safely work on network volumes: copy the files to a local folder and choose that folder.',
   'merr.folder.orgRoots': 'Your organization only allows folders inside: {roots}. “{folder}” is outside.',
-  'merr.folder.orgNone': 'Your organization doesn’t allow using folders in Tasks.',
+  'merr.folder.orgNone': 'Your organization doesn’t allow using folders in Overdrive.',
   'merr.task.notValidFolder': 'Not a valid folder: {folder}',
   'merr.task.notAuthorized': 'The folder isn’t authorized for tasks.',
   'merr.task.insideMain': 'That folder is already inside the main folder.',
   'merr.task.orgNoHosts': 'Your organization doesn’t allow adding sites to the sandbox network.',
   'merr.task.orgNoFullControl': 'Your organization has turned off Full Mac control.',
   'merr.task.orgNoFullControl.win': 'Your organization has turned off Full PC control.',
-  'merr.task.fullNotGranted': 'Full control isn’t authorized on this computer (accept it from Tasks).',
+  'merr.task.fullNotGranted': 'Full control isn’t authorized on this computer (accept it from Overdrive).',
   'merr.restore.homeSkipped': 'restore point skipped: the working folder is your home folder (too large)',
   'merr.task.serverEnded': 'The tasks server stopped (code={code})',
   'merr.task.noFolder': 'The folder doesn’t exist: {folder}',
@@ -60,20 +60,20 @@ export const mainErrors = {
   'merr.routine.moreCount': '+{count} more',
   'merr.routine.interrupted': 'Interrupted (the app was closed during the run)',
   'merr.routine.orgDisabled': 'Routines are turned off by your organization’s policy.',
-  'merr.routine.platformUnsupported': 'Routines in Tasks mode are not available on this platform yet.',
+  'merr.routine.platformUnsupported': 'Routines in Overdrive mode are not available on this platform yet.',
   'merr.platform.unsupported': 'This feature is not available on this platform yet.',
   'merr.routine.needsPrompt': 'The routine needs an instruction (prompt)',
   'merr.routine.badMode': 'Invalid mode',
-  'merr.routine.folderNotAuthorized': 'The folder isn’t authorized for tasks (authorize it first from Tasks).',
+  'merr.routine.folderNotAuthorized': 'The folder isn’t authorized for tasks (authorize it first from Overdrive).',
   'merr.routine.fullNeedsConsent': 'Full Mac control in a routine requires your explicit consent when you create it.',
   'merr.routine.fullNeedsConsent.win': 'Full PC control in a routine requires your explicit consent when you create it.',
-  'merr.routine.folderNoFull': 'Full Mac control isn’t granted on this computer (accept it first from Tasks).',
-  'merr.routine.folderNoFull.win': 'Full PC control isn’t granted on this computer (accept it first from Tasks).',
+  'merr.routine.folderNoFull': 'Full Mac control isn’t granted on this computer (accept it first from Overdrive).',
+  'merr.routine.folderNoFull.win': 'Full PC control isn’t granted on this computer (accept it first from Overdrive).',
   'merr.routine.alreadyRunning': 'The routine is already running',
   'merr.routine.noConsent': 'This routine uses Full Mac control but has no recorded consent: edit it and confirm.',
   'merr.routine.noConsent.win': 'This routine uses Full PC control but has no recorded consent: edit it and confirm.',
-  'merr.routine.fullRevoked': 'The folder no longer has Full Mac control granted: grant it again from Tasks or edit the routine.',
-  'merr.routine.fullRevoked.win': 'The folder no longer has Full PC control granted: grant it again from Tasks or edit the routine.',
+  'merr.routine.fullRevoked': 'The folder no longer has Full Mac control granted: grant it again from Overdrive or edit the routine.',
+  'merr.routine.fullRevoked.win': 'The folder no longer has Full PC control granted: grant it again from Overdrive or edit the routine.',
   'merr.routine.sessionFailed': 'Couldn’t create the session: {detail}',
   'merr.routine.timeoutFull':
     'Time limit exceeded ({min} min). With Full control the plan has to be approved in person, and it wasn’t approved in time.',
@@ -173,7 +173,7 @@ export const mainErrors = {
   'merr.folder.winBadPath':
     'That path is invalid or ambiguous on Windows (it has “..”, “:”, reserved names such as CON or NUL, short 8.3 names, or ends in a dot or space). Type the full path with its drive, for example C:\\Projects\\my-folder.',
   'merr.folder.winNetwork':
-    'That folder is on a network path or drive ({where}). Tasks can’t safely work on network resources: copy the files to a local folder and choose that folder.',
+    'That folder is on a network path or drive ({where}). Overdrive can’t safely work on network resources: copy the files to a local folder and choose that folder.',
   'merr.folder.winDriveType':
     'Drive {drive}: is not a local fixed disk ({kind}). For safety, tasks only work on fixed disks: copy the files to a local folder and choose that folder.',
   'merr.folder.winSubst': 'Drive {drive}: is an alias created with “subst” and can’t be verified. Choose the folder using its real path.',
@@ -182,7 +182,7 @@ export const mainErrors = {
   'merr.folder.winOtherUsers':
     'That folder belongs to another user of this computer or is shared ({path}). Choose a folder inside your own user folder.',
   'merr.folder.winAppData':
-    'That folder holds application data ({path}), where browser profiles, credentials and settings live. Tasks can’t use it. Choose another folder.',
+    'That folder holds application data ({path}), where browser profiles, credentials and settings live. Overdrive can’t use it. Choose another folder.',
   'merr.folder.winLink':
     'That folder contains or goes through a symbolic link or junction at “{path}”, which could lead somewhere else on the disk. Choose a folder without links.',
   'merr.folder.winLinkUnverified':
@@ -194,7 +194,7 @@ export const mainErrors = {
   'merr.routine.notFound': 'Routine not found',
   'merr.routine.needsName': 'The routine needs a name',
   'merr.routine.pickModel': 'Choose a model',
-  'merr.routine.needsFolder': 'Tasks and Code modes require a folder',
+  'merr.routine.needsFolder': 'Overdrive and Code modes require a folder',
   'merr.routine.reconfirm': 'Confirm the Full control consent again for this folder.',
   'merr.routine.noSavedFolder': 'The routine has no folder',
   'merr.routine.unknownError': 'Unknown error',
@@ -358,14 +358,14 @@ export const mainErrors = {
   'merr.task.onlyFull': 'Only available with Full control.',
   'merr.task.noPrivateDir': 'The tasks sandbox private directory is missing.',
   'merr.task.winBackendUnavailable':
-    'Tasks on Windows isn’t available on this computer ({reason}). For safety it never runs without isolation.',
+    'Overdrive on Windows isn’t available on this computer ({reason}). For safety it never runs without isolation.',
   'merr.task.winBackendUnavailable.elevated':
-    'Tasks on Windows doesn’t run while Lazunox is running as administrator. Close it and open it again without administrator rights.',
+    'Overdrive on Windows doesn’t run while Lazunox is running as administrator. Close it and open it again without administrator rights.',
   'merr.task.winBackendUnavailable.bundle':
-    'Tasks on Windows isn’t available: the isolated-image bundle that ships with Lazunox is missing or doesn’t match what is expected. Reinstall Lazunox.',
+    'Overdrive on Windows isn’t available: the isolated-image bundle that ships with Lazunox is missing or doesn’t match what is expected. Reinstall Lazunox.',
   'merr.task.winBackendUnavailable.gate':
-    'Tasks on Windows isn’t available on this computer (the safety check didn’t pass). For safety it never runs without isolation.',
-  'merr.task.sandboxNotReady': 'The isolated Tasks environment isn’t ready ({state}). Set it up from Tasks before starting.',
+    'Overdrive on Windows isn’t available on this computer (the safety check didn’t pass). For safety it never runs without isolation.',
+  'merr.task.sandboxNotReady': 'The isolated Overdrive environment isn’t ready ({state}). Set it up from Overdrive before starting.',
   'merr.task.fullAccessUnavailable': 'Full control isn’t available on Windows.',
   'merr.task.winNoUnsandboxed': 'On Windows, tasks never run without isolation.',
   'merr.engine.stoppedAtStart': 'The server stopped during startup',

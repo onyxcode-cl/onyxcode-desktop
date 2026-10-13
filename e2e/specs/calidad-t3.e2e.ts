@@ -104,7 +104,7 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
     await page.getByRole('button', { name: 'Nueva conversación' }).first().click()
     const chatBox = page.getByPlaceholder('Escribe un mensaje…')
     await chatBox.fill('borrador de chat sin enviar')
-    await modeBtn(page, IS_WIN ? 'Rutinas' : 'Tareas').click()
+    await modeBtn(page, IS_WIN ? 'Rutinas' : 'Overdrive').click()
     await storeCall(page, 'useUi', 'openSettings', true)
     await storeCall(page, 'useUi', 'openSettings', false)
     await modeBtn(page, 'Chat').click()
@@ -164,7 +164,7 @@ describe.skipIf(MODE === 'prod')(`calidad T3 (${MODE})`, () => {
         .toEqual({ [cut]: true })
       expect(await storeState(page, 'useSessions', `status.${busy}`)).not.toBe('idle')
 
-      await modeBtn(page, 'Tareas').click()
+      await modeBtn(page, 'Overdrive').click()
       await page
         .getByRole('button', { name: /CORTADA haz algo/ })
         .first()

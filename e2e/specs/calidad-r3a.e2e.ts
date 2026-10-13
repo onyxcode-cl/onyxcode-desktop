@@ -189,7 +189,7 @@ describe.skipIf(!DEV)('R3A: las imágenes del compositor de Code sobreviven al c
   })
 })
 
-const OTHER_MODE = IS_WIN ? 'Code' : 'Tareas'
+const OTHER_MODE = IS_WIN ? 'Code' : 'Overdrive'
 
 describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de modo', () => {
   const bin = prepareFakeBin()
@@ -266,7 +266,7 @@ describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de
     await a.page.waitForTimeout(300)
     const before = await scrollInfo(a.page, 'TareaP 119')
     await gotoMode(a.page, 'Chat')
-    await gotoMode(a.page, 'Tareas')
+    await gotoMode(a.page, 'Overdrive')
     await expectVisible(a.page.getByText('TareaP 119', { exact: false }).first())
     await a.page.waitForTimeout(500)
     const after = await scrollInfo(a.page, 'TareaP 119')

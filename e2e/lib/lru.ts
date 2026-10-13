@@ -13,7 +13,7 @@ import { storeState } from './stores'
 import { expectVisible } from './wait'
 
 /** Cambia a un modo por la barra de modos (clic real). */
-export async function gotoMode(page: Page, name: 'Chat' | 'Code' | 'Tareas' | 'Rutinas'): Promise<void> {
+export async function gotoMode(page: Page, name: 'Chat' | 'Code' | 'Overdrive' | 'Rutinas'): Promise<void> {
   await page.locator('nav[aria-label="Modo"]').getByRole('button', { name }).click()
 }
 

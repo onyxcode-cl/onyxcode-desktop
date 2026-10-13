@@ -46,7 +46,7 @@ describe('errores que construye main: idioma activo', () => {
       expect(forbiddenFolderReason('/Users/x/Library/Foo', ctx)).toMatch(/protected macOS location/)
       expect(forbiddenFolderReason('/Volumes', ctx)).toBe('Choose a folder inside the volume, not the list of volumes.')
       expect(forbiddenFolderReason('/Users/x/Docs', { ...ctx, allowedRoots: [] })).toBe(
-        'Your organization doesn’t allow using folders in Tasks.'
+        'Your organization doesn’t allow using folders in Overdrive.'
       )
     }
     expect(ruleRejectionReason('bash', '*')).toBe('A bash pattern this broad can’t be remembered: it would also cover delete commands.')

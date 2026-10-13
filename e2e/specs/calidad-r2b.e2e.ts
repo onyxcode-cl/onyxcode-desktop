@@ -148,7 +148,7 @@ describe.skipIf(!DEV || IS_WIN)('R2-B: más de 200 tareas', () => {
     }
     await ghostSessions(post, 'tarea-fantasma')
     await a.page.reload()
-    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas' }).click()
+    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Overdrive' }).click()
     const rows = a.page.getByText(/^tarea-fantasma-\d{3}$/)
     await expect.poll(() => uniqueTitles(rows), { timeout: 30_000 }).toBe(200)
     const more = a.page.getByRole('treeitem', { name: 'Cargar más' })
@@ -163,7 +163,7 @@ describe.skipIf(!DEV || IS_WIN)('R2-B: más de 200 tareas', () => {
   it('el filtro de Tareas carga todas por sí solo', async () => {
     const a = app()
     await a.page.reload()
-    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Tareas' }).click()
+    await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Overdrive' }).click()
     const rows = a.page.getByText(/^tarea-fantasma-\d{3}$/)
     await expect.poll(() => uniqueTitles(rows), { timeout: 30_000 }).toBe(200)
     expect(await a.page.getByText('tarea-fantasma-000', { exact: true }).count()).toBe(0)

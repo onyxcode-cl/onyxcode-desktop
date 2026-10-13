@@ -190,14 +190,14 @@ describe('atajos configurables', () => {
   it('combinaciones reservadas del sistema/edición se rechazan con aviso; sin modificador también', async () => {
     const { page } = app
     await openShortcuts(page)
-    await record(page, 'Ir a Tareas', 'ControlOrMeta+C')
+    await record(page, 'Ir a Overdrive', 'ControlOrMeta+C')
     await expectVisible(page.getByText(/se usa para copiar, pegar o deshacer y no se puede asignar/))
     expect(disk(userData)['mode.tasks']).toBeUndefined()
     await page.keyboard.press('K')
     await expectVisible(page.getByText(/Usa al menos un modificador/))
     expect(disk(userData)['mode.tasks']).toBeUndefined()
     await page.keyboard.press('Escape') // cancela la grabación
-    await expectAttr(rec(page, 'Ir a Tareas'), 'aria-pressed', 'false')
+    await expectAttr(rec(page, 'Ir a Overdrive'), 'aria-pressed', 'false')
     expect(await mode(page)).toBe('chat') // Esc no cerró Ajustes por el camino
     await expectVisible(page.getByTestId('keybindings-list'))
   })

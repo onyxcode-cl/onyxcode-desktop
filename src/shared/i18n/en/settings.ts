@@ -38,7 +38,8 @@ export const settings = {
   'settings.general.theme.dark': 'Dark',
   'settings.general.preferences': 'Preferences',
   'settings.general.language': 'Language',
-  'settings.general.language.description': 'Interface language. English is in beta: Code, Tasks and Routines are still in Spanish for now.',
+  'settings.general.language.description':
+    'Interface language. English is in beta: Code, Overdrive and Routines are still in Spanish for now.',
   'settings.general.language.system': 'System',
   'settings.general.language.es': 'Español',
   'settings.general.language.en': 'English (beta)',
@@ -154,7 +155,7 @@ export const settings = {
   'settings.shortcuts.act.modePrev': 'Switch mode (backwards)',
   'settings.shortcuts.act.modeChat': 'Go to Chat',
   'settings.shortcuts.act.modeCode': 'Go to Code',
-  'settings.shortcuts.act.modeTasks': 'Go to Tasks',
+  'settings.shortcuts.act.modeTasks': 'Go to Overdrive',
   'settings.shortcuts.act.modeRoutines': 'Go to Routines',
   'settings.shortcuts.act.composerFocus': 'Focus the composer',
   'settings.shortcuts.act.stop': 'Stop the response',
