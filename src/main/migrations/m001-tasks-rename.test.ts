@@ -198,22 +198,27 @@ describe('m001: userData viejo sembrado -> nombres nuevos', () => {
     expect(readManifest(bdir)?.completed).toBe(true)
   })
 
-  // chmod 0o500 no impide escribir en NTFS: el fallo no se puede provocar así en Windows.
-  it.skipIf(!posixOnly)('un paso de renombre que falla (carpeta sin permiso de escritura) tampoco impide los demás', () => {
-    const ud = seededUserData()
-    chmodSync(join(ud, 'Partitions'), 0o555)
-    try {
-      const out = runMigrations(ud, opts)
-      expect(out[0].status).toBe('partial')
-      expect(out[0].report?.steps.filter((s) => s.status === 'failed').map((s) => s.step)).toEqual([expect.stringContaining('Partitions')])
-      expect(existsSync(join(ud, 'Partitions/onyxcode-web-cowork/Cookies'))).toBe(true)
-      expect(existsSync(join(ud, 'tasks-meta.json'))).toBe(true)
-      expect(existsSync(join(ud, 'tasks-sandbox'))).toBe(true)
-      expect(existsSync(join(ud, 'migrations.json'))).toBe(false)
-    } finally {
-      chmodSync(join(ud, 'Partitions'), 0o755)
+  // chmod 0o500 no impide escribir en NTFS (Windows) ni a `root` (p. ej. un contenedor de pruebas): el fallo no se puede provocar así.
+  it.skipIf(!posixOnly || process.getuid?.() === 0)(
+    'un paso de renombre que falla (carpeta sin permiso de escritura) tampoco impide los demás',
+    () => {
+      const ud = seededUserData()
+      chmodSync(join(ud, 'Partitions'), 0o555)
+      try {
+        const out = runMigrations(ud, opts)
+        expect(out[0].status).toBe('partial')
+        expect(out[0].report?.steps.filter((s) => s.status === 'failed').map((s) => s.step)).toEqual([
+          expect.stringContaining('Partitions')
+        ])
+        expect(existsSync(join(ud, 'Partitions/onyxcode-web-cowork/Cookies'))).toBe(true)
+        expect(existsSync(join(ud, 'tasks-meta.json'))).toBe(true)
+        expect(existsSync(join(ud, 'tasks-sandbox'))).toBe(true)
+        expect(existsSync(join(ud, 'migrations.json'))).toBe(false)
+      } finally {
+        chmodSync(join(ud, 'Partitions'), 0o755)
+      }
     }
-  })
+  )
 
   it('conserva solo las 3 últimas copias de seguridad', () => {
     const ud = tmpDir()
