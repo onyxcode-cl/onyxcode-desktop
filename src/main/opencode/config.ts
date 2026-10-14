@@ -169,17 +169,20 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'en una lista corta: 1) EDITABLE (PowerPoint): un archivo .pptx que abrís y cambiás después en PowerPoint, ' +
           'Keynote o Google Slides (textos, colores, orden, gráficos nativos que podés modificar); el diseño es más ' +
           'sobrio porque está limitado a lo que PowerPoint puede representar. 2) DISEÑO LIBRE (HTML/CSS): se ve bastante ' +
-          'mejor y tiene mucha más variedad (tipografías, composiciones, formas, colores a medida), pero el resultado es ' +
-          'un PDF de diapositivas que NO se edita; si querés cambiar algo, me lo pedís y la rehago. Cerrá con una ' +
-          'recomendación según el caso — si la van a presentar tal cual, la 2; si otras personas tienen que modificarla, ' +
-          'la 1 — y preguntá «¿Cuál preferís?». Si el formato ya está claro ("editable", "para editar", "PowerPoint", ' +
-          '".pptx" → pptx; "HTML", "CSS", "lo más lindo", "no hace falta editarla", "PDF" → slides) o ya lo eligieron ' +
-          'antes en esta conversación, NO vuelvas a preguntar: armala directo en ese formato. Si responden con un número,' +
-          ' una palabra o «la primera/la segunda», usá ese formato. ' +
+          'mejor y tiene mucha más variedad (tipografías, composiciones, formas, colores a medida), pero el texto NO se ' +
+          'edita (cada diapositiva queda como imagen). Se puede presentar directo dentro de Lazunox a pantalla completa ' +
+          '(botón «Presentar»), bajar como PDF («Descargar como PDF») o bajar como PowerPoint «para proyectar» (cada ' +
+          'diapositiva queda como imagen: se abre y se proyecta en PowerPoint, pero no se pueden editar los textos); si ' +
+          'querés cambiar algo, me lo pedís y la rehago. Cerrá con una recomendación según el caso — si la van a ' +
+          'presentar tal cual (en Lazunox, en PDF o proyectada en PowerPoint), la 2; si otras personas tienen que ' +
+          'modificarla, la 1 — y preguntá «¿Cuál preferís?». Si el formato ya está claro ("editable", "para editar", ' +
+          '"PowerPoint", ".pptx" → pptx; "HTML", "CSS", "lo más lindo", "no hace falta editarla", "PDF" → slides) o ya lo' +
+          ' eligieron antes en esta conversación, NO vuelvas a preguntar: armala directo en ese formato. Si responden con' +
+          ' un número, una palabra o «la primera/la segunda», usá ese formato. ' +
           'Si eligen la opción HTML/CSS (o piden que se vea MUY bien sin necesidad de editarla), armala como un deck en ' +
           'HTML/CSS en vez de ```pptx: controlás ' +
           'tipografía, color y layout directo en CSS, sin las limitaciones de forma/texto de PowerPoint — avisá que el ' +
-          'resultado es un PDF de diapositivas, no un archivo .pptx editable. Escribilo como UN bloque ```slides con ' +
+          'resultado no es un archivo .pptx editable: se puede presentar en Lazunox, bajar como PDF o bajar como PowerPoint para proyectar (cada diapositiva como imagen). Escribilo como UN bloque ```slides con ' +
           'un documento HTML completo (con su propio <style>, sin imágenes/fuentes de internet — no hay red, igual ' +
           'que con ```html): un <section class="slide"> por diapositiva, con esta base de CSS para que cada ' +
           '<section> salga como una página aparte, panorámica, sin márgenes — ' +
