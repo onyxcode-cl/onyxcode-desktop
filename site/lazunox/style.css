@@ -459,3 +459,6 @@ main {
     border-radius: 0.9rem;
   }
 }
+.svg-defs {
+  position: absolute;
+}
