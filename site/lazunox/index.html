@@ -60,18 +60,18 @@
           <p class="dl-title">Descargar para escritorio</p>
           <p class="dl-sub">Disponible para macOS y Windows</p>
           <div class="download">
-            <a class="btn btn-primary" id="dl-mac" href="https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest" data-os="mac">
+            <a class="btn btn-primary" id="dl-mac" href="descargas/Lazunox-0.5.10-arm64.dmg" download data-os="mac">
               <span class="btn-title">Descargar para Mac</span>
               <span class="btn-sub" data-sub="mac">Chip Apple (M1 o posterior)</span>
             </a>
-            <a class="btn btn-primary" id="dl-win" href="https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest" data-os="win">
+            <a class="btn btn-primary" id="dl-win" href="descargas/Lazunox-Setup-0.5.10-x64.exe" download data-os="win">
               <span class="btn-title">Descargar para Windows</span>
               <span class="btn-sub" data-sub="win">Windows 10 u 11, 64 bits</span>
             </a>
           </div>
           <p class="note" id="dl-note">
-            Gratis, sin cuenta y sin pasar por una tienda. Si la descarga no aparece todavía, la lista completa está en
-            <a href="https://github.com/onyxcode-cl/onyxcode-desktop/releases">las versiones publicadas</a>.
+            Gratis, sin cuenta y sin pasar por una tienda. Cada descarga lleva su huella de verificación (más abajo, en «Verifica tu
+            descarga»).
           </p>
         </div>
 
@@ -174,23 +174,30 @@
           <figcaption>Así se ve Lazunox al abrirla en Mac.</figcaption>
         </figure>
 
-        <h3 class="sub">Instalar con un comando</h3>
+        <h3 class="sub">Verifica tu descarga</h3>
         <p class="section-lead">
-          Si te acomoda la terminal, estos comandos descargan la última versión, comprueban su huella digital (SHA-256) y la instalan sin
-          avisos. No desactivan ninguna protección de tu sistema.
+          Antes de abrir el instalador, comprueba que es el auténtico: la huella (SHA-256) de tu archivo debe ser idéntica a la que aparece
+          aquí.
         </p>
         <div class="cmds">
           <div class="cmd">
-            <p class="cmd-label">Mac</p>
-            <pre><code id="cmd-mac">curl -fsSL https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.sh | sh</code></pre>
+            <p class="cmd-label">Mac: pega esto en la Terminal</p>
+            <pre><code id="cmd-mac">shasum -a 256 ~/Downloads/Lazunox-0.5.10-arm64.dmg</code></pre>
             <button type="button" class="copy" data-copy="cmd-mac">Copiar</button>
+            <p class="sha">
+              Debe dar exactamente: <code id="sha-mac" class="hash">022657cdc81c7f0e45c59e40ce1b28d8398f5002c462615136d2af2814acbae7</code>
+            </p>
           </div>
           <div class="cmd">
-            <p class="cmd-label">Windows (PowerShell normal, no como administrador)</p>
-            <pre><code id="cmd-win">irm https://raw.githubusercontent.com/onyxcode-cl/onyxcode-desktop/main/scripts/install/install.ps1 | iex</code></pre>
+            <p class="cmd-label">Windows: pega esto en PowerShell</p>
+            <pre><code id="cmd-win">Get-FileHash "$HOME\Downloads\Lazunox-Setup-0.5.10-x64.exe" -Algorithm SHA256</code></pre>
             <button type="button" class="copy" data-copy="cmd-win">Copiar</button>
+            <p class="sha">
+              Debe dar exactamente: <code id="sha-win" class="hash">97690494ad8820cc5dc7882ac584ab1918b9b0e69dec0ffe2be6780a40a353c2</code>
+            </p>
           </div>
         </div>
+        <p class="small sha-full">Las huellas completas están en <a href="descargas/SHA256SUMS">SHA256SUMS</a>.</p>
       </section>
 
       <section class="section" id="confianza" aria-labelledby="t-conf">
@@ -233,7 +240,6 @@
       </p>
       <ul class="foot-links">
         <li><a href="https://github.com/onyxcode-cl/onyxcode-desktop">Código fuente</a></li>
-        <li><a href="https://github.com/onyxcode-cl/onyxcode-desktop/releases">Todas las versiones</a></li>
         <li><a href="https://github.com/onyxcode-cl/onyxcode-desktop/blob/main/CHANGELOG.md">Novedades</a></li>
       </ul>
     </footer>
