@@ -139,7 +139,9 @@ describe('DiagnosticsService: problemas guardados', () => {
   const problems = (lines: string[]): { readLines(max?: number): string[] } => ({ readLines: (max) => (max ? lines.slice(-max) : lines) })
 
   it('problems: devuelve el registro permanente, vuelve a redactar los secretos de ahora y respeta maxLines', () => {
-    const s = setup({ problems: problems([`2026-10-14 [error] [app] falló con ${PASSWORD}`, '2026-10-14 [error] [ventana] leyó /Users/ana/x', 'tres']) })
+    const s = setup({
+      problems: problems([`2026-10-14 [error] [app] falló con ${PASSWORD}`, '2026-10-14 [error] [ventana] leyó /Users/ana/x', 'tres'])
+    })
     const r = s.getLogs('problems', 2)
     expect(r.lines).toHaveLength(2)
     expect(r.truncated).toBe(true)
@@ -161,5 +163,40 @@ describe('DiagnosticsService: problemas guardados', () => {
 
   it('el informe dice «(ninguno)» cuando no hay problemas', () => {
     expect(setup().getText('report').text).toContain('(ninguno)')
+  })
+
+  it('informe: sección «Proveedores y modelos» con ids, origen, tipos de credencial y elecciones, sin claves', async () => {
+    let calls = 0
+    const s = setup({
+      providers: {
+        refresh: async () => {
+          calls++
+        },
+        connected: () => [
+          { id: 'openai', source: 'custom' },
+          { id: 'opencode-go', source: 'api' }
+        ],
+        defaultModel: () => ({ providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }),
+        modelsByMode: () => ({ chat: { providerID: 'openai', modelID: 'gpt-5' } }),
+        sandbox: () => ({ allowed: ['opencode-go', 'opencode'], credentialed: [] })
+      }
+    })
+    await s.refresh()
+    expect(calls).toBe(1)
+    const text = s.getText('report').text
+    expect(text).toContain('Proveedores y modelos')
+    expect(text).toContain('openai [custom], opencode-go [api]')
+    expect(text).toContain('credenciales guardadas (nombre: tipo): openai: api')
+    expect(text).toContain('modelo predeterminado: opencode-go/deepseek-v4.1-flash')
+    expect(text).toContain('modelo de chat: openai/gpt-5')
+    expect(text).toContain('modelo de code: (predeterminado)')
+    expect(text).toContain('con credencial: (ninguno)')
+    expect(text).not.toContain('clave-openai-guardada-1')
+  })
+
+  it('sin la sección de proveedores el informe sigue igual y refresh no lanza', async () => {
+    const s = setup()
+    await s.refresh()
+    expect(s.getText('report').text).not.toContain('Proveedores y modelos')
   })
 })

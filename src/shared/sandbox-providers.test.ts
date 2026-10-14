@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sandboxProviderNotice, sandboxModelNotice, sandboxSendBlocked } from './sandbox-providers'
+import { sandboxProviderNotice, sandboxProviderPendingNotice, sandboxModelNotice, sandboxSendBlocked } from './sandbox-providers'
 
 describe('sandboxModelNotice', () => {
   it('OpenCode Go en sandbox: sin aviso', () => {
@@ -21,6 +21,12 @@ describe('sandboxSendBlocked', () => {
   it('bloquea solo si el servidor sandboxeado no tiene el proveedor', () => {
     expect(sandboxSendBlocked(['opencode-go', 'opencode'], 'openai')).toBe(sandboxProviderNotice())
     expect(sandboxSendBlocked(['opencode-go', 'opencode'], 'opencode-go')).toBeNull()
+  })
+  it('distingue «OpenCode Go aún no llegó» de «proveedor no admitido»', () => {
+    expect(sandboxSendBlocked(['opencode'], 'opencode-go')).toBe(sandboxProviderPendingNotice())
+    expect(sandboxProviderPendingNotice()).toContain('aún no llegó')
+    expect(sandboxProviderPendingNotice()).not.toBe(sandboxProviderNotice())
+    expect(sandboxSendBlocked(['opencode'], 'openai')).toBe(sandboxProviderNotice())
   })
   it('sin lista (consulta fallida) no bloquea', () => {
     expect(sandboxSendBlocked(null, 'openai')).toBeNull()

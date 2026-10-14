@@ -40,6 +40,7 @@ import { useUi } from '../../stores/ui'
 import { useTasks } from '../tasks/impl/store'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
+import { SwitchNoticeBar } from '../settings/impl/SwitchNoticeBar'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import { Welcome } from './Welcome'
@@ -475,6 +476,7 @@ function StepAuth({
           title={null}
           className="mt-3 border-0! bg-transparent! p-0! shadow-none!"
         />
+        <SwitchNoticeBar notice={connect.notice} onClose={() => connect.setNotice(null)} />
         {connect.error && origin === 'go' && (
           <div role="alert" className="mt-2">
             <ErrorText>{connect.error}</ErrorText>
@@ -511,6 +513,7 @@ function StepAuth({
               onSetKey={setKeyFrom('other')}
               onOauthStart={oauthStart}
               onOauthFinish={oauthFinish}
+              onOauthCancel={connect.cancelOauth}
               title={null}
               className="border-0! bg-transparent! p-0! shadow-none!"
             />

@@ -5,6 +5,7 @@ import { OnboardingGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
 import { onOpencodeEvent, useServer } from '../stores/server'
 import { routeEventToSessions } from '../stores/eventRouter'
+import { reportProviderError } from '../lib/provider-error-report'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { initExtrasPrefs, whenExtrasLoaded } from '../features/settings/impl/extras'
@@ -46,7 +47,10 @@ function useAppRuntime(): void {
     const offSettings = useSettings.getState().init()
     const offServer = useServer.getState().init()
     // Eventos de OpenCode → store genérico de sesiones (Chat/Tareas), filtrados por directorio del sobre (6.5).
-    const offEvents = onOpencodeEvent((event, dir) => routeEventToSessions(event, dir))
+    const offEvents = onOpencodeEvent((event, dir) => {
+      reportProviderError(event)
+      routeEventToSessions(event, dir)
+    })
     return () => {
       offEvents()
       offServer()

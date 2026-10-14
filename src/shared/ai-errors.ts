@@ -100,7 +100,8 @@ function buildDetail(n: Normalized): string {
 
 const NETWORK_RE = /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|fetch failed|socket hang up/i
 const QUOTA_RE = /rate.?limit|quota|insufficient|credit|too many requests/i
-const AUTH_RE = /unauthorized|invalid api key|invalid_api_key/i
+const AUTH_RE =
+  /unauthorized|invalid api key|invalid_api_key|token refresh failed|oauth callback timeout|login cancell?ed|failed to initiate device authorization/i
 const NOT_FOUND_RE = /ProviderModelNotFoundError|Model not found:/
 
 /** Una sola línea, sin rastro de pila y sin prefijo `XxxError:` ⇒ es un mensaje propio, se muestra tal cual. */

@@ -15,7 +15,9 @@ import { useExtrasPrefs, withModeModel } from './extras'
 import { modeAvailable } from '@shared/platform-caps'
 import { currentFlags, currentPlatform, isRemoteSurface } from '../../../lib/platform'
 import { ModelSelect, modelLabel, sortProviders } from './ModelSelect'
-import { useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
+import { canDisconnect, useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
+import { reconcileAfterProviderChange, snapshotProviderIds, type SwitchNotice } from './reconcileModels'
+import { SwitchNoticeBar } from './SwitchNoticeBar'
 import { KeyTestNotice } from './KeyTestNotice'
 import { ProviderKeyForm } from './ProviderKeyForm'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput } from './ui'
@@ -41,6 +43,7 @@ export function ModelsSection(): React.JSX.Element {
   const { catalog, error: loadError, reload: loadCatalog } = useProviderCatalog(isRemoteSurface() ? null : client)
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)
+  const [removeNotice, setRemoveNotice] = useState<SwitchNotice | null>(null)
 
   useEffect(() => {
     if (client) void load(client)
@@ -63,7 +66,13 @@ export function ModelsSection(): React.JSX.Element {
 
   const connect = useProviderConnect(client, refresh)
   const catalogError = connect.error ?? removeError ?? loadError
+  // El login pendiente en el navegador (`connect.oauthPending`) NO bloquea guardar la clave de otro proveedor.
   const busy = connect.busy || removing
+  const notice = connect.notice ?? removeNotice
+  const closeNotice = (): void => {
+    connect.setNotice(null)
+    setRemoveNotice(null)
+  }
 
   const setModeModel = (mode: ModelMode, value: ModelRef | null): void => {
     void updatePrefs({ modelsByMode: withModeModel(modelsByMode, mode, value) })
@@ -112,6 +121,7 @@ export function ModelsSection(): React.JSX.Element {
         </div>
       )}
       {!isRemoteSurface() && catalogError && <ErrorText>{catalogError}</ErrorText>}
+      {!isRemoteSurface() && <SwitchNoticeBar notice={notice} onClose={closeNotice} />}
       {!isRemoteSurface() && catalog && (
         <ProvidersList
           catalog={catalog}
@@ -127,10 +137,13 @@ export function ModelsSection(): React.JSX.Element {
             if (!ok) return
             setRemoving(true)
             try {
+              const before = await snapshotProviderIds(client)
               const r = await client.auth.remove({ providerID: id })
               if (r.error) throw new Error(errorMessage(r.error))
               await client.global.dispose()
               await refresh()
+              // Si el predeterminado o el de un modo apuntaban a este proveedor, pasan a otro disponible (con aviso y «Deshacer»).
+              setRemoveNotice(await reconcileAfterProviderChange(client, before))
             } catch (err) {
               setRemoveError(errorMessage(err))
             } finally {
@@ -140,6 +153,7 @@ export function ModelsSection(): React.JSX.Element {
           onSetKey={connect.setKey}
           onOauthStart={connect.oauthStart}
           onOauthFinish={connect.oauthFinish}
+          onOauthCancel={connect.cancelOauth}
         />
       )}
     </div>
@@ -152,7 +166,8 @@ function ProvidersList({
   onDisconnect,
   onSetKey,
   onOauthStart,
-  onOauthFinish
+  onOauthFinish,
+  onOauthCancel
 }: {
   catalog: ProviderCatalog
   busy: boolean
@@ -160,6 +175,7 @@ function ProvidersList({
   onSetKey: (id: string, key: string) => Promise<void>
   onOauthStart: ComponentProps<typeof ProviderKeyForm>['onOauthStart']
   onOauthFinish: ComponentProps<typeof ProviderKeyForm>['onOauthFinish']
+  onOauthCancel: () => void
 }): React.JSX.Element {
   const t = useT()
   const connected = useMemo(() => sortProviders(catalog.all.filter((p) => catalog.connected.includes(p.id))), [catalog])
@@ -222,7 +238,7 @@ function ProvidersList({
                   {entry?.phase === 'testing' ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />}{' '}
                   {t('models.test')}
                 </Button>
-                {p.source === 'api' && (
+                {canDisconnect(p) && (
                   <Button variant="ghost" disabled={busy} onClick={() => void onDisconnect(p.id)}>
                     <Unplug size={14} /> {t('models.disconnect')}
                   </Button>
@@ -240,6 +256,7 @@ function ProvidersList({
         onSetKey={onSetKey}
         onOauthStart={onOauthStart}
         onOauthFinish={onOauthFinish}
+        onOauthCancel={onOauthCancel}
         showTestResult={false}
       />
     </>

@@ -13,7 +13,7 @@ import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, s
 import { join } from 'node:path'
 import { DISPLAY_NAME } from '@shared/brand'
 import type { DiagLogs, DiagSource } from '@shared/diagnostics'
-import type { ServerStatus } from '@shared/types'
+import type { ModelRef, ServerStatus } from '@shared/types'
 import { appAuthFile, opencodeDataHome } from '../opencode/data-dir'
 import { collectMcpSecrets, collectStringValues, makeRedactor, type Redactor } from './redact'
 
@@ -38,6 +38,19 @@ export interface DiagnosticsDeps {
   versions: () => Record<string, string>
   /** Registro permanente de problemas (opcional: sin él, la fuente `problems` sale vacía). */
   problems?: { readLines(max?: number): string[] }
+  /**
+   * Proveedores y modelos para el informe (opcional). Todo lo que devuelve son ids, `source`, nombres de tipo y modelos elegidos:
+   * jamás claves. `refresh` (si existe) vuelve a pedir al motor la lista de proveedores conectados antes de generar el informe.
+   */
+  providers?: {
+    refresh?(): Promise<void>
+    /** Proveedores conectados según el motor (último dato conocido) o `null` si no se pudo consultar. */
+    connected(): { id: string; source: string }[] | null
+    defaultModel(): ModelRef
+    modelsByMode(): Partial<Record<string, ModelRef>>
+    /** Proveedores admitidos en el sandbox de Tareas y los que de verdad tienen credencial para él (solo ids). */
+    sandbox(): { allowed: string[]; credentialed: string[] }
+  }
   now: () => number
 }
 
@@ -99,8 +112,51 @@ export function exportFileName(ms: number): string {
   return `${DISPLAY_NAME}-diagnostico-${stamp(ms)}.txt`
 }
 
+const modelText = (m: ModelRef | undefined): string => (m ? `${m.providerID}/${m.modelID}` : '(predeterminado)')
+
 export class DiagnosticsService {
   constructor(private readonly deps: DiagnosticsDeps) {}
+
+  /** Actualiza lo que el informe necesita pedir al motor (proveedores conectados). Nunca lanza. */
+  async refresh(): Promise<void> {
+    try {
+      await this.deps.providers?.refresh?.()
+    } catch {
+      /* se usa el último dato conocido */
+    }
+  }
+
+  /** Sección «Proveedores y modelos»: sin claves, solo ids, `source`, tipos de credencial y elecciones de modelo. */
+  private providersSection(): string[] {
+    const p = this.deps.providers
+    if (!p) return []
+    const out: string[] = ['', 'Proveedores y modelos']
+    const connected = p.connected()
+    out.push(
+      connected === null
+        ? '  conectados (motor): (no se pudo consultar)'
+        : `  conectados (motor): ${connected.length ? connected.map((c) => `${c.id} [${c.source}]`).join(', ') : '(ninguno)'}`
+    )
+    // Solo nombre → tipo de cada entrada de auth.json (api, oauth, wellknown…): nunca el contenido.
+    const auth = readJson(appAuthFile(this.deps.userData))
+    if (auth && typeof auth === 'object' && !Array.isArray(auth)) {
+      const types = Object.entries(auth as Record<string, unknown>).map(([name, v]) => {
+        const type = v && typeof v === 'object' && typeof (v as { type?: unknown }).type === 'string' ? (v as { type: string }).type : '?'
+        return `${name}: ${type}`
+      })
+      out.push(`  credenciales guardadas (nombre: tipo): ${types.length ? types.join(', ') : '(ninguna)'}`)
+    } else {
+      out.push('  credenciales guardadas (nombre: tipo): (ninguna o ilegible)')
+    }
+    out.push(`  modelo predeterminado: ${modelText(p.defaultModel())}`)
+    const byMode = p.modelsByMode()
+    for (const mode of ['chat', 'code', 'tasks']) out.push(`  modelo de ${mode}: ${modelText(byMode[mode])}`)
+    const sb = p.sandbox()
+    out.push(
+      `  sandbox de Tareas — admitidos: ${sb.allowed.join(', ') || '(ninguno)'}; con credencial: ${sb.credentialed.join(', ') || '(ninguno)'}`
+    )
+    return out
+  }
 
   /** Redactor con los secretos de AHORA (la contraseña del sidecar cambia en cada arranque; las claves, al guardarlas). */
   private redactor(): Redactor {
@@ -144,6 +200,7 @@ export class DiagnosticsService {
     out.push('', 'Motor (OpenCode)', `  estado: ${status.state}`, `  reinicios: ${status.restarts}`)
     if (status.version) out.push(`  versión: ${status.version}`)
     if (status.error) out.push(`  último error: ${status.error}`)
+    out.push(...this.providersSection())
     const problems = deps.problems?.readLines(REPORT_PROBLEM_LINES) ?? []
     out.push('', `Últimos problemas guardados de la app (${problems.length} líneas)`)
     out.push(...(problems.length ? problems : ['  (ninguno)']))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Provider, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
-import { authOptions, providerName, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
+import { authOptions, canDisconnect, providerName, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 
 const prov = (id: string, name: string): Provider => ({ id, name, source: 'api', env: [], options: {}, models: {} }) as Provider
 
@@ -43,5 +43,15 @@ describe('authOptions', () => {
     const withPrompts: ProviderAuthMethod = { type: 'oauth', label: 'Empresa', prompts: [{ type: 'text', key: 'k', message: 'm' }] }
     expect(authOptions([withPrompts])).toEqual({ api: false, oauth: [] })
     expect(authOptions([withPrompts, oauth]).oauth).toEqual([{ index: 1, label: 'Cuenta' }])
+  })
+})
+
+describe('canDisconnect', () => {
+  it('claves (api) y logins por plugin (custom) sí; el gratuito, el entorno y la config no', () => {
+    expect(canDisconnect({ id: 'opencode-go', source: 'api' })).toBe(true)
+    expect(canDisconnect({ id: 'openai', source: 'custom' })).toBe(true)
+    expect(canDisconnect({ id: 'opencode', source: 'custom' })).toBe(false)
+    expect(canDisconnect({ id: 'x', source: 'env' })).toBe(false)
+    expect(canDisconnect({ id: 'x', source: 'config' })).toBe(false)
   })
 })

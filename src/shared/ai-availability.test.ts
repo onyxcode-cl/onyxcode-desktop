@@ -5,6 +5,7 @@ import {
   firstFreeModel,
   isChoiceUnavailable,
   isConfiguredProvider,
+  reconcileChoices,
   resolveModel,
   sendGate,
   type ProviderLike
@@ -117,5 +118,35 @@ describe('elección explícita que falta (F8-B42)', () => {
   it('con la elección no disponible el envío se bloquea con motivo propio, sin freeNote', () => {
     expect(sendGate('ready', null, true)).toEqual({ blocked: true, reason: 'model-unavailable', freeNote: false })
     expect(sendGate('ready', luna, false).blocked).toBe(false)
+  })
+})
+
+describe('reconcileChoices', () => {
+  const gpt = { providerID: 'openai', modelID: 'gpt-5' }
+  const openai: ProviderLike = { id: 'openai', source: 'custom', models: { 'gpt-5': {} } }
+  const base = { defaultModel: gpt, modelsByMode: { chat: gpt, code: { providerID: 'opencode-go', modelID: 'other-go' } } }
+  it('al conectar Go con elecciones en otro proveedor vuelve a DEFAULT_MODEL y limpia el modo', () => {
+    const r = reconcileChoices(base, [openai, go], defaults, ['openai'])
+    expect(r.changed).toBe(true)
+    expect(r.choices.defaultModel).toEqual(DEFAULT_MODEL)
+    expect(r.choices.modelsByMode).toEqual({ code: { providerID: 'opencode-go', modelID: 'other-go' } })
+    expect(r.switchedTo).toEqual(DEFAULT_MODEL)
+    expect(r.previous.defaultModel).toEqual(gpt)
+  })
+  it('si Go ya estaba conectado no toca la elección explícita', () => {
+    expect(reconcileChoices(base, [openai, go], defaults, ['openai', 'opencode-go']).changed).toBe(false)
+  })
+  it('al desconectar el proveedor sustituye el predeterminado y limpia los modos', () => {
+    const r = reconcileChoices(base, [go], defaults, ['openai', 'opencode-go'])
+    expect(r.choices.defaultModel).toEqual({ providerID: 'opencode-go', modelID: 'other-go' })
+    expect(r.choices.modelsByMode.chat).toBeUndefined()
+  })
+  it('sin lista cargada o sin IA configurada no cambia nada', () => {
+    expect(reconcileChoices(base, null, defaults, []).changed).toBe(false)
+    expect(reconcileChoices(base, [free], defaults, []).changed).toBe(false)
+  })
+  it('si Go no tiene DEFAULT_MODEL usa su predeterminado', () => {
+    const g2: ProviderLike = { id: 'opencode-go', source: 'api', models: { 'other-go': {} } }
+    expect(reconcileChoices(base, [openai, g2], defaults, ['openai']).choices.defaultModel.modelID).toBe('other-go')
   })
 })

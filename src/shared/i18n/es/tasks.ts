@@ -348,6 +348,8 @@ export const tasks = {
   'tasks.side.noNext': 'Sin próxima ejecución',
   'tasks.side.openOrigin': 'Abrir la tarea de origen',
   'tasks.side.openRoutines': 'Abrir en Rutinas',
+  'tasks.sandboxProviderPending':
+    'OpenCode Go aún no llegó al entorno aislado de esta tarea (se conectó después de abrirla). Espera unos segundos y reintenta, o cierra la tarea y ábrela de nuevo.',
   'tasks.sandboxProviderNotice':
     'En Overdrive con sandbox solo está disponible OpenCode Go (y los modelos gratuitos de OpenCode). Para otros proveedores usa Control total, Chat o Code.',
   'tasks.comp.removeAttachment': 'Quitar (el archivo sigue en la carpeta)',
