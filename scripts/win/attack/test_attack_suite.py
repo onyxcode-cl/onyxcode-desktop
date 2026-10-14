@@ -351,7 +351,7 @@ class MutationTests(Tmp):
         self.assertIn("PERMITIDO", r["evidence"])
         self.assertNotIn(TOKEN, json.dumps(S.normalize_row(r, "A1", "B", "t", TOKEN, 0)))
 
-    def test_a1_pasa_si_la_victima_no_existe(self):
+    def test_a1_marca_el_ls_del_padre_si_funciona(self):
         cfg = make_cfg(self.tmp)
         import shutil
 
