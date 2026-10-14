@@ -1,6 +1,6 @@
 #!/bin/bash
 # Actualiza las descargas directas de la página (onyxcode.cl/lazunox) con una release YA PUBLICADA en GitHub.
-# Uso: site/publicar-descargas.sh 0.5.12
+# Uso: site/publicar-descargas.sh 0.5.13
 #
 # Baja el .dmg y el .exe de la release, comprueba su SHA-256 contra el SHA256SUMS de la release y contra el digest que calcula GitHub,
 # los sube al VPS (carpeta de preparación), vuelve a comprobar la huella allá, los mueve a su sitio, reescribe latest.json y SHA256SUMS
