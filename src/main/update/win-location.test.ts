@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateLocationWin, parseUninstallEntries, readUninstallKeyWin } from './win-location'
+import {
+  evaluateLocationWin,
+  installDirFromUninstallString,
+  isLazunoxUninstallName,
+  parseUninstallEntries,
+  readUninstallKeyWin
+} from './win-location'
 import type { RunFn } from './installer'
 
 const DIR = 'C:\\Users\\Ana\\AppData\\Local\\Programs\\Lazunox'
@@ -87,5 +93,60 @@ describe('evaluateLocationWin', () => {
     expect(noParent).toEqual({ ok: false, reason: 'not-writable' })
     const noDir = await evaluateLocationWin({ ...base, run: run(REG), probe: async (d) => d !== DIR })
     expect(noDir).toEqual({ ok: false, reason: 'not-writable' })
+  })
+})
+
+// Contenido REAL de `reg.exe query` en un PC con Lazunox 0.5.14 instalado con el instalador NSIS (electron-builder): el nombre lleva la
+// versión, no hay InstallLocation y la ruta solo está en UninstallString / DisplayIcon. Antes de este arreglo el actualizador no lo
+// reconocía (`no-uninstall-key`) y en Windows solo ofrecía «Descargar».
+const REAL_DIR = 'C:\\Users\\Bentec\\AppData\\Local\\Programs\\Lazunox'
+const REAL_REG = [
+  '',
+  'HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\139f0a7f-399d-5fde-985e-7ffd071dbaef',
+  '    DisplayName    REG_SZ    Lazunox 0.5.14',
+  `    UninstallString    REG_SZ    "${REAL_DIR}\\Uninstall Lazunox.exe" /currentuser`,
+  `    QuietUninstallString    REG_SZ    "${REAL_DIR}\\Uninstall Lazunox.exe" /currentuser /S`,
+  '    DisplayVersion    REG_SZ    0.5.14',
+  `    DisplayIcon    REG_SZ    ${REAL_DIR}\\Lazunox.exe,0`,
+  '    Publisher    REG_SZ    bentec',
+  '    NoModify    REG_DWORD    0x1',
+  ''
+].join('\r\n')
+
+describe('instalación real con el instalador NSIS (nombre con versión, sin InstallLocation)', () => {
+  const real = { ...base, installDir: REAL_DIR, tempDir: 'C:\\Users\\Bentec\\AppData\\Local\\Temp' }
+
+  it('el nombre con versión vale; otros nombres no', () => {
+    for (const ok of ['Lazunox', 'Lazunox 0.5.14', 'Lazunox 1.0.0-beta.2']) expect(isLazunoxUninstallName(ok)).toBe(true)
+    for (const no of ['Lazunox Pro', 'MiLazunox 0.5.14', 'Lazunox 0.5', 'Lazunox  0.5.14 x', 'OtraApp', ''])
+      expect(isLazunoxUninstallName(no)).toBe(false)
+  })
+
+  it('la carpeta sale del desinstalador que registra el instalador', () => {
+    expect(installDirFromUninstallString(`"${REAL_DIR}\\Uninstall Lazunox.exe" /currentuser`)).toBe(REAL_DIR)
+    expect(installDirFromUninstallString(`${REAL_DIR}\\Uninstall Lazunox.exe /currentuser`)).toBe(REAL_DIR)
+  })
+
+  it('rechaza desinstaladores que no son el de Lazunox o rutas no absolutas', () => {
+    expect(installDirFromUninstallString('"C:\\Otra\\setup.exe" /S')).toBeNull()
+    expect(installDirFromUninstallString('"Uninstall Lazunox.exe"')).toBeNull()
+    expect(installDirFromUninstallString('')).toBeNull()
+  })
+
+  it('el registro real se interpreta y la carpeta por usuario es VÁLIDA (antes: no-uninstall-key)', async () => {
+    expect(parseUninstallEntries(REAL_REG)).toEqual([{ displayName: 'Lazunox 0.5.14', installLocation: REAL_DIR }])
+    expect(await evaluateLocationWin({ ...real, run: run(REAL_REG) })).toEqual({ ok: true })
+  })
+
+  it('si la clave apunta a otra carpeta, sigue sin valer (key-mismatch)', async () => {
+    const r = await evaluateLocationWin({ ...real, installDir: 'C:\\Users\\Bentec\\Descargas\\Lazunox', run: run(REAL_REG) })
+    expect(r).toEqual({ ok: false, reason: 'key-mismatch' })
+  })
+
+  it('una clave con nombre «Lazunox Pro» o sin desinstalador propio no cuenta', async () => {
+    const otro = REAL_REG.replace('Lazunox 0.5.14', 'Lazunox Pro')
+    expect(await evaluateLocationWin({ ...real, run: run(otro) })).toEqual({ ok: false, reason: 'no-uninstall-key' })
+    const sinUn = REAL_REG.replace(/Uninstall Lazunox\.exe/g, 'otro.exe')
+    expect(await evaluateLocationWin({ ...real, run: run(sinUn) })).toEqual({ ok: false, reason: 'no-uninstall-key' })
   })
 })

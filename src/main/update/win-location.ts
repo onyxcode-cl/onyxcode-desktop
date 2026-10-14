@@ -11,13 +11,39 @@ export interface UninstallEntry {
   installLocation: string
 }
 
+/**
+ * ¿Es el nombre que escribe nuestro instalador? electron-builder (NSIS) guarda «Lazunox» seguido de la versión («Lazunox 0.5.14»),
+ * no solo «Lazunox»; por eso se acepta el nombre exacto o con una versión (SemVer) detrás. Cualquier otra cosa («Lazunox Pro», otra app) no.
+ */
+export function isLazunoxUninstallName(name: string): boolean {
+  return /^Lazunox(?: \d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)*)?$/.test(name.trim())
+}
+
+/**
+ * Carpeta de instalación que deja el instalador cuando NO escribe `InstallLocation` (el NSIS actual lo deja vacío o ausente): la del
+ * desinstalador que él mismo registra en `UninstallString` («"C:\…\Lazunox\Uninstall Lazunox.exe" /currentuser»). Solo vale si el
+ * ejecutable se llama exactamente «Uninstall Lazunox.exe».
+ */
+export function installDirFromUninstallString(raw: string): string | null {
+  const v = raw.trim()
+  const m = /^"([^"]+)"/.exec(v) ?? /^(.+?\.exe)(?:\s|$)/i.exec(v)
+  if (!m) return null
+  const exe = m[1]
+  if (win32.basename(exe).toLowerCase() !== 'uninstall lazunox.exe') return null
+  const dir = win32.dirname(exe)
+  return /^[A-Za-z]:[\\/]/.test(dir) ? dir : null
+}
+
 /** Interpreta la salida de `reg.exe query <clave> /s`: bloques «HKEY_…\subclave» con líneas «    Nombre    REG_SZ    valor». */
 export function parseUninstallEntries(stdout: string): UninstallEntry[] {
   const out: UninstallEntry[] = []
-  let cur: { displayName?: string; installLocation?: string } | null = null
+  let cur: { displayName?: string; installLocation?: string; uninstallString?: string } | null = null
   const flush = (): void => {
-    if (cur?.displayName !== undefined && cur.installLocation !== undefined)
-      out.push({ displayName: cur.displayName, installLocation: cur.installLocation })
+    if (cur?.displayName === undefined) return
+    const explicit = cur.installLocation !== undefined && cur.installLocation !== '' ? cur.installLocation : undefined
+    const derived = cur.uninstallString !== undefined ? installDirFromUninstallString(cur.uninstallString) : null
+    const location = explicit ?? derived
+    if (location !== undefined && location !== null) out.push({ displayName: cur.displayName, installLocation: location })
   }
   for (const raw of stdout.split(/\r?\n/)) {
     if (/^HKEY_/i.test(raw)) {
@@ -25,11 +51,12 @@ export function parseUninstallEntries(stdout: string): UninstallEntry[] {
       cur = {}
       continue
     }
-    const m = /^\s+(DisplayName|InstallLocation)\s+REG_(?:EXPAND_)?SZ\s+(.*)$/.exec(raw)
+    const m = /^\s+(DisplayName|InstallLocation|UninstallString)\s+REG_(?:EXPAND_)?SZ\s*(.*)$/.exec(raw)
     if (m && cur) {
       const v = m[2].trim()
       if (m[1] === 'DisplayName') cur.displayName = v
-      else cur.installLocation = v.replace(/^"(.*)"$/, '$1')
+      else if (m[1] === 'InstallLocation') cur.installLocation = v.replace(/^"(.*)"$/, '$1')
+      else cur.uninstallString = v
     }
   }
   flush()
@@ -46,7 +73,7 @@ const norm = (p: string): string =>
 export async function readUninstallKeyWin(run: RunFn, systemRoot: string, installDir: string): Promise<{ installLocation: string } | null> {
   const r = await run(win32.join(systemRoot, 'System32', 'reg.exe'), ['query', UNINSTALL_KEY, '/s'])
   if (r.code !== 0) return null
-  const mine = parseUninstallEntries(r.stdout).filter((e) => e.displayName === 'Lazunox')
+  const mine = parseUninstallEntries(r.stdout).filter((e) => isLazunoxUninstallName(e.displayName))
   if (mine.length === 0) return null
   return mine.find((e) => norm(e.installLocation) === norm(installDir)) ?? mine[0]
 }
