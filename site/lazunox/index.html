@@ -6,50 +6,31 @@
     <title>Lazunox: asistente de escritorio para Mac y Windows</title>
     <meta
       name="description"
-      content="Lazunox es una app de escritorio, gratis y de código abierto, que conversa, programa y trabaja sobre tus carpetas y crea PowerPoint, Excel y Word. Para Mac y Windows."
+      content="Lazunox es una app de escritorio, gratis y de código abierto: conversa, programa, trabaja sobre tus carpetas con Overdrive y crea PowerPoint, Excel, Word y PDF. Para Mac y Windows."
     />
-    <link rel="icon" href="gem.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css?v=2" />
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="style.css?v=3" />
   </head>
   <body>
     <a class="skip" href="#contenido">Saltar al contenido</a>
 
     <header class="top">
       <a class="brand" href="#inicio" aria-label="Lazunox, inicio">
-        <svg class="brand-gem" viewBox="0 0 130 130" aria-hidden="true"><use href="#gem" /></svg>
+        <img class="brand-logo" src="logo.svg" width="30" height="30" alt="" />
         <span>Lazunox</span>
       </a>
       <nav aria-label="Secciones">
         <a href="#hace">Qué hace</a>
+        <a href="#overdrive">Overdrive</a>
+        <a href="#documentos">Documentos</a>
         <a href="#instalar">Instalar</a>
-        <a href="#confianza">Confianza</a>
       </nav>
     </header>
 
-    <svg width="0" height="0" class="svg-defs" aria-hidden="true">
-      <defs>
-        <clipPath id="gclip"><rect x="44" y="44" width="42" height="42" rx="6" transform="rotate(45 65 65)" /></clipPath>
-        <symbol id="gem" viewBox="0 0 130 130">
-          <g clip-path="url(#gclip)">
-            <path d="M65 30 L65 65 L30 65 Z" fill="#6b86f5" />
-            <path d="M65 30 L100 65 L65 65 Z" fill="#4a6cf0" />
-            <path d="M30 65 L65 65 L65 100 Z" fill="#2b4fd6" />
-            <path d="M65 65 L100 65 L65 100 Z" fill="#1a2a7a" />
-          </g>
-        </symbol>
-      </defs>
-    </svg>
-
     <main id="contenido">
       <section class="hero" id="inicio">
-        <svg viewBox="0 0 130 130" class="gem-assemble gem-hero" aria-hidden="true">
-          <g clip-path="url(#gclip)">
-            <path class="f f1" d="M65 30 L65 65 L30 65 Z" fill="#6b86f5" />
-            <path class="f f2" d="M65 30 L100 65 L65 65 Z" fill="#4a6cf0" />
-            <path class="f f3" d="M30 65 L65 65 L65 100 Z" fill="#2b4fd6" />
-            <path class="f f4" d="M65 65 L100 65 L65 100 Z" fill="#1a2a7a" />
-          </g>
-        </svg>
+        <img class="hero-logo" src="logo.svg" width="96" height="96" alt="Logo de Lazunox" />
         <h1>Un asistente que trabaja en tu computador, no solo conversa</h1>
         <p class="lead">
           Lazunox es una app de escritorio gratuita y de código abierto. Programa contigo, trabaja sobre las carpetas que tú le autorizas y
@@ -58,17 +39,39 @@
 
         <div class="dl-card" id="descargar" aria-live="polite">
           <p class="dl-title">Descargar para escritorio</p>
-          <p class="dl-sub">Disponible para macOS y Windows</p>
-          <div class="download">
+          <p class="dl-sub" id="dl-sub">Disponible para macOS y Windows</p>
+
+          <div class="mobile-note" id="mobile-note" hidden>
+            <p><strong>Lazunox es para computador.</strong> Abre esta página desde tu Mac o tu PC para descargarla.</p>
+            <button type="button" class="copy-link" id="copy-link">Copiar enlace de esta página</button>
+          </div>
+
+          <div class="download" id="downloads">
             <a class="btn btn-primary" id="dl-mac" href="descargas/Lazunox-0.5.10-arm64.dmg" download data-os="mac">
               <span class="btn-title">Descargar para Mac</span>
-              <span class="btn-sub" data-sub="mac">Chip Apple (M1 o posterior)</span>
+              <span class="btn-sub">Chip Apple (M1 o posterior)</span>
             </a>
             <a class="btn btn-primary" id="dl-win" href="descargas/Lazunox-Setup-0.5.10-x64.exe" download data-os="win">
               <span class="btn-title">Descargar para Windows</span>
-              <span class="btn-sub" data-sub="win">Windows 10 u 11, 64 bits</span>
+              <span class="btn-sub">Windows 10 u 11, 64 bits</span>
             </a>
           </div>
+          <p class="other-os" id="other-os" hidden>¿Usas otro sistema? <a href="#instalar" id="other-os-link">Ver las dos descargas</a></p>
+
+          <div class="chip-note" id="chip-note" hidden>
+            <p class="chip-title"><strong>Antes de bajarla en Mac:</strong> Lazunox necesita un Mac con chip Apple (M1 o más nuevo).</p>
+            <p class="small">
+              Compruébalo en el menú Apple › <strong>Acerca de este Mac</strong>: debe decir «Chip Apple M1» (o M2, M3…). Si dice
+              «Procesador Intel», esta versión no funciona en tu Mac.
+            </p>
+          </div>
+          <div class="chip-warn" id="chip-warn" hidden>
+            <p>
+              <strong>Este parece un Mac con procesador Intel.</strong> Lazunox todavía no funciona ahí; necesita un Mac con chip Apple (M1
+              o más nuevo).
+            </p>
+          </div>
+
           <p class="note" id="dl-note">
             Gratis, sin cuenta y sin pasar por una tienda. Cada descarga lleva su huella de verificación (más abajo, en «Verifica tu
             descarga»).
@@ -80,49 +83,236 @@
             src="app-windows.webp"
             width="1279"
             height="816"
-            alt="Captura de Lazunox en Windows: a la izquierda el Chat y a la derecha el panel con la presentación que creó, con portada, línea de tiempo y tabla."
+            alt="Lazunox en Windows: el Chat a la izquierda y, a la derecha, el panel con la presentación que creó, con portada, línea de tiempo y tabla."
             decoding="async"
           />
-          <figcaption>Captura real de Lazunox en Windows: el Chat creó la presentación y la muestra a la derecha.</figcaption>
+          <figcaption>
+            Lazunox en Windows: el Chat creó la presentación y la muestra a la derecha, igual a como se vería en PowerPoint.
+          </figcaption>
         </figure>
       </section>
 
       <section class="section" id="hace" aria-labelledby="t-hace">
         <h2 id="t-hace">Qué puedes hacer con Lazunox</h2>
+        <p class="section-lead">Cuatro modos, uno para cada tipo de trabajo. Los eliges en la barra de la izquierda.</p>
         <dl class="defs">
           <div>
-            <dt>Conversar</dt>
+            <dt>Chat: conversar y crear</dt>
             <dd>
-              Un chat con modelos de OpenCode Go y de otros proveedores. Le pides un texto, una idea o una explicación, y te responde en tu
-              idioma.
+              Pide un texto, una idea o una explicación, y compara la respuesta de varios modelos. También crea presentaciones, planillas,
+              Word y PDF, que ves en un panel y descargas.
             </dd>
           </div>
           <div>
-            <dt>Programar en tu proyecto</dt>
-            <dd>Abre una carpeta de código y trabaja con ella: lee los archivos, propone cambios y los aplica donde tú lo permitas.</dd>
-          </div>
-          <div>
-            <dt>Overdrive: delega un trabajo y míralo avanzar</dt>
+            <dt>Code: programar en tu proyecto</dt>
             <dd>
-              Le autorizas una carpeta y le encargas un trabajo largo. Solo puede tocar lo que hay dentro de ella, y te pide confirmación
-              antes de borrar nada. También puedes arrastrar la carpeta a la ventana para conectarla.
+              Abre la carpeta de un repositorio: el agente lee el código, propone un plan, edita archivos y ejecuta comandos, siempre con tu
+              permiso. Menciona archivos con @ y usa comandos con /.
             </dd>
           </div>
           <div>
-            <dt>Crear presentaciones, planillas y documentos</dt>
+            <dt>Overdrive: delegar un trabajo</dt>
             <dd>
-              Pide una presentación, un Excel o un Word y míralo en un panel igual a como se vería en el programa real. Se descarga como
-              archivo <code>.pptx</code>, <code>.xlsx</code> o <code>.docx</code> y se puede seguir editando. Para esto usa
-              <a href="https://getartcraft.com/">ArtCraft</a>, que la app descarga y verifica sola en el primer uso.
+              Le autorizas una carpeta, le encargas un trabajo largo y lo ves avanzar. Solo toca lo que hay dentro de ella y te pide permiso
+              antes de borrar o mover. <a href="#overdrive">Ver todo lo que hace</a>.
             </dd>
           </div>
           <div>
-            <dt>Repetir trabajos solos</dt>
-            <dd>Las rutinas ejecutan una tarea cada cierto tiempo, por ejemplo un resumen cada mañana.</dd>
+            <dt>Rutinas: trabajos que se repiten solos</dt>
+            <dd>
+              Programa una tarea por intervalo o con cron, por ejemplo un resumen cada mañana. Las rutinas piden tu aviso expreso antes de
+              activarse.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="overdrive" aria-labelledby="t-od">
+        <h2 id="t-od">Overdrive: delega un trabajo y míralo avanzar</h2>
+        <p class="section-lead">
+          Elige una carpeta, describe lo que quieres y Lazunox se pone a trabajar. Tú ves cada paso y decides qué se aprueba.
+        </p>
+        <figure class="stage">
+          <img
+            src="app-mac-overdrive.webp"
+            width="1280"
+            height="820"
+            alt="Overdrive en Mac: la pregunta «¿En qué trabajamos hoy?», la carpeta de trabajo, el modelo y las dos opciones: solo en tu carpeta o usar todo tu Mac."
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>Overdrive en Mac: eliges la carpeta y si el trabajo queda dentro de ella o puede usar todo tu equipo.</figcaption>
+        </figure>
+        <dl class="defs">
+          <div>
+            <dt>Solo dentro de tu carpeta</dt>
+            <dd>
+              El modo recomendado. El agente trabaja en un entorno aislado, con acceso únicamente a la carpeta que le diste (en Mac con el
+              aislamiento del sistema, en Windows dentro de un entorno Linux aparte). Puedes arrastrar una carpeta a la ventana para
+              conectarla.
+            </dd>
           </div>
           <div>
-            <dt>Seguir desde el celular</dt>
-            <dd>Opcional: vincula tu teléfono para ver y aprobar lo que hace la app en tu computador mientras no estás frente a él.</dd>
+            <dt>Tú apruebas lo importante</dt>
+            <dd>
+              Antes de borrar o mover archivos, o de ejecutar algo delicado, aparece una tarjeta con lo que va a hacer. También puedes
+              aprobar desde el celular.
+            </dd>
+          </div>
+          <div>
+            <dt>Todo el avance a la vista</dt>
+            <dd>
+              Un panel muestra el plan, los entregables, los cambios en archivos, el contexto y la actividad. Si algo no te gusta: «Hazlo
+              otra vez», «Explícame paso a paso lo que hiciste» o «Deshaz el último cambio».
+            </dd>
+          </div>
+          <div>
+            <dt>Usar todo tu Mac o tu PC, si lo autorizas</dt>
+            <dd>
+              Opcional y con tu consentimiento: el agente puede usar el ratón, el teclado y la pantalla para trabajar en tus aplicaciones.
+              Exige aprobar un plan antes y lo detienes al instante con ⌘⇧Esc en Mac o Ctrl+Alt+Mayús+Esc en Windows.
+            </dd>
+          </div>
+          <div>
+            <dt>Navegador integrado</dt>
+            <dd>
+              El agente navega la web dentro de la propia app, en su pestaña «Navegador», para investigar o completar tareas en sitios.
+            </dd>
+          </div>
+          <div>
+            <dt>Memoria e instrucciones por carpeta</dt>
+            <dd>
+              Cada carpeta guarda sus instrucciones y las notas que el agente va aprendiendo (preferencias, convenciones, decisiones), para
+              no repetirte lo mismo. Tú decides qué se guarda.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="documentos" aria-labelledby="t-doc">
+        <h2 id="t-doc">Documentos que se ven como en el programa real</h2>
+        <p class="section-lead">
+          Pide una presentación, un Excel, un Word o un PDF. Lazunox los arma con <a href="https://getartcraft.com/">ArtCraft</a> y te los
+          muestra en un panel con la misma pantalla del programa de verdad, no con una vista aproximada.
+        </p>
+        <figure class="stage">
+          <img
+            src="app-windows-excel.webp"
+            width="1279"
+            height="816"
+            alt="Lazunox en Windows: a la izquierda el Chat y a la derecha el panel con una planilla de Excel con encabezado oscuro, filas alternadas y total destacado."
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>Una planilla de ventas creada en el Chat, vista en el panel con la pantalla de Excel.</figcaption>
+        </figure>
+        <dl class="defs">
+          <div>
+            <dt>PowerPoint con diseño propio</dt>
+            <dd>
+              Portadas, separadores, cifras destacadas, pasos, comparaciones, tarjetas, métricas, gráficos, línea de tiempo, agenda, citas y
+              tablas. La IA puede inventar su paleta, elegir sus fuentes o componer una diapositiva libre, y añade transiciones suaves.
+            </dd>
+          </div>
+          <div>
+            <dt>Excel que calcula</dt>
+            <dd>
+              Fórmulas de verdad (se recalculan al abrir), formatos de moneda, porcentaje y miles, varias hojas y gráficos nativos que
+              puedes editar, con encabezado oscuro, filas alternadas y fila de totales.
+            </dd>
+          </div>
+          <div>
+            <dt>Word y PDF</dt>
+            <dd>
+              Títulos, listas, tablas con formato chileno, índice, encabezado y pie, con portada y numeración. Los PDF salen listos para
+              imprimir o descargar.
+            </dd>
+          </div>
+          <div>
+            <dt>Los sigues editando</dt>
+            <dd>
+              Descarga el archivo <code>.pptx</code>, <code>.xlsx</code> o <code>.docx</code> y ábrelo donde quieras. El botón «Abrir
+              aparte» lo abre en el programa de escritorio de ArtCraft, o en el de tu equipo si no lo tienes.
+            </dd>
+          </div>
+          <div>
+            <dt>Con fotos de internet</dt>
+            <dd>
+              Si la IA arma una presentación o un documento con imágenes de la web, la app las baja de bancos permitidos (Unsplash, Pexels,
+              Pixabay, Wikimedia y Flickr) con límites estrictos, y se ven también al descargar.
+            </dd>
+          </div>
+          <div>
+            <dt>ArtCraft se instala solo</dt>
+            <dd>
+              En el primer uso, la app descarga ArtCraft (código abierto, de storytold) y lo verifica por tamaño, huella y firma antes de
+              usarlo. No pide contraseña de administrador.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="motor" aria-labelledby="t-motor">
+        <h2 id="t-motor">Conectada con OpenCode</h2>
+        <p class="section-lead">
+          Lazunox es el escritorio; el motor que hace el trabajo es <a href="https://opencode.ai">OpenCode</a> oficial, sin modificar y ya
+          incluido en el instalador: no tienes que instalar nada más.
+        </p>
+        <dl class="defs">
+          <div>
+            <dt>OpenCode Go y otros proveedores</dt>
+            <dd>
+              Pega tu clave de OpenCode Go en el asistente de primer uso, o conecta otros proveedores con tus propias claves. Cada modo
+              recuerda el modelo que elegiste.
+            </dd>
+          </div>
+          <div>
+            <dt>Conectores MCP</dt>
+            <dd>
+              Un catálogo para añadir conectores con un clic. Cada uno puede quedar disponible en Overdrive o solo en Chat y Code, y la app
+              te muestra a qué sitios puede llegar.
+            </dd>
+          </div>
+          <div>
+            <dt>Tu propio OpenCode, si prefieres</dt>
+            <dd>
+              Si ya tienes OpenCode instalado y es compatible, puedes usarlo como motor. Ajustes › Acerca de muestra cuál se está usando y
+              su versión.
+            </dd>
+          </div>
+          <div>
+            <dt>Habilidades para documentos</dt>
+            <dd>
+              Las habilidades de PowerPoint, Excel, Word y PDF vienen incluidas y funcionan también dentro del entorno aislado de Overdrive.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section" id="detalles" aria-labelledby="t-det">
+        <h2 id="t-det">Y muchos detalles más</h2>
+        <dl class="defs">
+          <div>
+            <dt>Dictado por voz, en tu equipo</dt>
+            <dd>Habla en vez de escribir. El reconocimiento de voz corre en tu computador y el audio no sale de él.</dd>
+          </div>
+          <div>
+            <dt>Entrada rápida</dt>
+            <dd>
+              Una ventana pequeña que se abre con un atajo en cualquier momento (Opción+Espacio en Mac, Alt+Mayús+Espacio en Windows) para
+              lanzar una pregunta sin abrir la app.
+            </dd>
+          </div>
+          <div>
+            <dt>Desde el celular</dt>
+            <dd>Opcional: vincula tu teléfono para ver lo que hace la app y aprobar permisos mientras no estás frente al computador.</dd>
+          </div>
+          <div>
+            <dt>A tu manera</dt>
+            <dd>
+              Español e inglés, tema claro u oscuro, color de acento a elegir, tamaño de texto ajustable y atajos de teclado que puedes
+              cambiar. Clic derecho con copiar y pegar en los campos de texto.
+            </dd>
           </div>
         </dl>
       </section>
@@ -138,8 +328,11 @@
         <div class="cols">
           <article>
             <h3>En Mac</h3>
+            <p class="dl-inline">
+              <a class="btn btn-primary btn-inline" href="descargas/Lazunox-0.5.10-arm64.dmg" download>Descargar el .dmg</a>
+            </p>
             <ol>
-              <li>Descarga el archivo <code>.dmg</code> y ábrelo.</li>
+              <li>Abre el archivo <code>.dmg</code>.</li>
               <li>Arrastra <strong>Lazunox</strong> a <strong>Aplicaciones</strong> y ábrela.</li>
               <li>
                 Si macOS dice que no puede verificarla, pulsa <strong>Hecho</strong>. Luego entra a
@@ -151,8 +344,11 @@
           </article>
           <article>
             <h3>En Windows</h3>
+            <p class="dl-inline">
+              <a class="btn btn-primary btn-inline" href="descargas/Lazunox-Setup-0.5.10-x64.exe" download>Descargar el .exe</a>
+            </p>
             <ol>
-              <li>Descarga el archivo <code>.exe</code> y ábrelo.</li>
+              <li>Abre el archivo <code>.exe</code>.</li>
               <li>
                 Si sale «Windows protegió su PC», pulsa <strong>Más información</strong> y luego <strong>Ejecutar de todas formas</strong>.
               </li>
@@ -167,7 +363,7 @@
             src="app-mac.webp"
             width="1280"
             height="820"
-            alt="Captura de Lazunox en Mac: pantalla de inicio del Chat, con los modos Chat, Code, Tareas y Rutinas a la izquierda y una caja para escribir al centro."
+            alt="Lazunox en Mac: pantalla de inicio del Chat, con los modos Chat, Code, Overdrive y Rutinas en una lista a la izquierda y una caja para escribir al centro."
             loading="lazy"
             decoding="async"
           />
@@ -185,7 +381,7 @@
             <pre><code id="cmd-mac">shasum -a 256 ~/Downloads/Lazunox-0.5.10-arm64.dmg</code></pre>
             <button type="button" class="copy" data-copy="cmd-mac">Copiar</button>
             <p class="sha">
-              Debe dar exactamente: <code id="sha-mac" class="hash">022657cdc81c7f0e45c59e40ce1b28d8398f5002c462615136d2af2814acbae7</code>
+              Debe dar exactamente: <code id="sha-mac" class="hash">668d07bb22978654bf36a0ac0de29e1528f51a089ec94453e8bfc99193c5f209</code>
             </p>
           </div>
           <div class="cmd">
@@ -193,7 +389,7 @@
             <pre><code id="cmd-win">Get-FileHash "$HOME\Downloads\Lazunox-Setup-0.5.10-x64.exe" -Algorithm SHA256</code></pre>
             <button type="button" class="copy" data-copy="cmd-win">Copiar</button>
             <p class="sha">
-              Debe dar exactamente: <code id="sha-win" class="hash">97690494ad8820cc5dc7882ac584ab1918b9b0e69dec0ffe2be6780a40a353c2</code>
+              Debe dar exactamente: <code id="sha-win" class="hash">6aa7632a98f9179c750b3e1d94ee9830cbb359c6acb687721d3c64f7becd5774</code>
             </p>
           </div>
         </div>
@@ -211,12 +407,22 @@
             </dd>
           </div>
           <div>
+            <dt>Sin cuentas ni servidores</dt>
+            <dd>
+              Lazunox no tiene inicio de sesión y no guarda tus datos en ningún servidor propio. Se conecta solo al proveedor de IA que
+              elijas y, una vez al día como máximo, a GitHub para avisarte si hay una versión nueva (puedes desactivarlo).
+            </dd>
+          </div>
+          <div>
             <dt>Tus claves se quedan en tu equipo</dt>
-            <dd>Las claves de los proveedores de IA las guarda la app en tu computador y solo viajan al proveedor que elijas.</dd>
+            <dd>Las claves de los proveedores las guarda la app en tu computador y solo viajan al proveedor que elijas.</dd>
           </div>
           <div>
             <dt>Tú decides qué carpeta toca</dt>
-            <dd>Overdrive solo trabaja dentro de las carpetas que autorizas, y pide confirmación antes de borrar archivos.</dd>
+            <dd>
+              Overdrive solo trabaja dentro de las carpetas que autorizas, y pide confirmación antes de borrar archivos. Las rutinas nunca
+              se activan sin tu aviso expreso.
+            </dd>
           </div>
           <div>
             <dt>Puedes verificar el archivo</dt>
@@ -244,6 +450,6 @@
       </ul>
     </footer>
 
-    <script src="app.js?v=2" defer></script>
+    <script src="app.js?v=3" defer></script>
   </body>
 </html>

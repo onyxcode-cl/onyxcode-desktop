@@ -21,7 +21,8 @@ python3 -m http.server 8765 --directory site/lazunox   # http://127.0.0.1:8765/
    `{"version":"X.Y.Z","files":{"mac":{"file","size","sha256"},"win":{"file","size","sha256"}}}`.
 3. Copiar los cuatro archivos a `descargas/` del servidor y comprobar `sha256sum -c SHA256SUMS` allí.
 4. Actualizar en `index.html` los nombres de archivo y las huellas del bloque «Verifica tu descarga», y subir `index.html`, `style.css` y `app.js`.
-5. Probar bajando desde el dominio y comparando la huella.
+5. **Vaciar la caché de Cloudflare** de esas direcciones (los instaladores, `SHA256SUMS`, `latest.json`, `index.html`, `style.css` y `app.js`): si no, durante horas se sigue sirviendo la copia vieja y la huella no coincide. Al cambiar `style.css` o `app.js`, sube también su `?v=` en `index.html`.
+6. Probar bajando desde el dominio y comparando la huella.
 
 ## Cómo está montado hoy
 
