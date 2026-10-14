@@ -43,6 +43,9 @@ const APP_ID = 'cl.bentec.lazunox'
 const WIN_MANIFEST = 'update-win32-x64.json'
 const WIN_SIG = 'update-win32-x64.json.sig'
 const hasTar = existsSync('/usr/bin/tar')
+// El instalador de Windows lee el ZIP con `tar.exe` (bsdtar); aquí se sustituye por bsdtar. En macOS `/usr/bin/tar` ya lo es; en Linux hace falta
+// el paquete `libarchive-tools` (el `tar` de GNU no lee ZIP) y, sin él, la ida y vuelta se salta.
+const BSDTAR = existsSync('/usr/bin/bsdtar') ? '/usr/bin/bsdtar' : process.platform === 'darwin' ? '/usr/bin/tar' : null
 
 let base: string
 let keys: string
@@ -455,7 +458,7 @@ describe.skipIf(!posixOnly)('paridad con el cliente (zip-index.ts, asar-version.
   })
 })
 
-describe.skipIf(!posixOnly)('ida y vuelta con el instalador real de la app (WinUpdateInstaller)', () => {
+describe.skipIf(!posixOnly || !BSDTAR)('ida y vuelta con el instalador real de la app (WinUpdateInstaller)', () => {
   const TAG = 'v0.5.1'
   const BASE = `https://github.com/o/r/releases/download/${TAG}`
   const SYS = 'C:\\Windows'
@@ -481,7 +484,7 @@ describe.skipIf(!posixOnly)('ida y vuelta con el instalador real de la app (WinU
     // tar.exe → bsdtar de macOS (mismo formato y mismas opciones usadas por el instalador).
     const run: RunFn = async (cmd, args) => {
       if (cmd !== `${SYS}\\System32\\tar.exe`) return { code: 127, stdout: '', stderr: 'desconocido' }
-      const r = spawnSync('/usr/bin/tar', args, { encoding: 'utf8' })
+      const r = spawnSync(BSDTAR as string, args, { encoding: 'utf8' })
       return { code: r.status ?? 1, stdout: r.stdout, stderr: r.stderr }
     }
     const inst = new WinUpdateInstaller({
