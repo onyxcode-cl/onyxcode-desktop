@@ -28,6 +28,7 @@ import { resolveTasksWin } from './tasks/tasks-win-flag'
 import { loadManagedPolicy } from './tasks/policy'
 import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
 import { craftService } from './office/craft/service'
+import { cleanLegacyLibreOffice } from './office/legacy-clean'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
 import { disposeRemote, getOrgPolicy, remoteMode, setRemoteWin } from './remote/loader'
@@ -356,6 +357,15 @@ function start(): void {
 
     // ArtCraft: si una instalación quedó a medias, se reintenta en silencio (máx. una vez cada 24 h, sin bloquear el arranque).
     setTimeout(() => void craftService().retryIncomplete(), 45_000).unref()
+
+    // LibreOffice abandonado (lo reemplazó ArtCraft): borra userData/bin/libreoffice-<versión> (~800 MB) una vez por arranque, sin bloquearlo.
+    setTimeout(() => {
+      try {
+        cleanLegacyLibreOffice({ binDir: join(app.getPath('userData'), 'bin') })
+      } catch (err) {
+        console.warn('[limpieza] LibreOffice abandonado:', err)
+      }
+    }, 20_000).unref()
 
     app.on('activate', () => {
       // La ventana oculta de Quick Entry cuenta en getAllWindows: usar la principal.

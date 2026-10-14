@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 describe('electron-builder: archivos que nunca van en el paquete', () => {
   const cfg = readFileSync(resolve(__dirname, '../../electron-builder.js'), 'utf8')
 
-  it.each(['!.claude/**', '!src/*', '!e2e/**', '!scripts/**', '!docs/**'])('excluye %s', (glob) => {
+  it.each(['!.claude/**', '!src/*', '!e2e/**', '!scripts/**', '!docs/**', '!**/__pycache__/**', '!**/*.pyc'])('excluye %s', (glob) => {
     expect(cfg).toContain(`'${glob}'`)
   })
 })
