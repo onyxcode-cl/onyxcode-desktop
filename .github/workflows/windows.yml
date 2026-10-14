@@ -69,8 +69,10 @@ jobs:
         run: >
           powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/pack-check.ps1 -Branch ci -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE" -NoSmoke
       - name: ZIP -> tar.exe -> comprobación (tar-check)
+        if: steps.wsl.outputs.hay == 'true'
         run: node scripts/win/tar-check.mjs --root "$env:LAZUNOX_CI_ROOT"
       - name: swap.ps1 en modo de prueba (swap-check)
+        if: steps.wsl.outputs.hay == 'true'
         run: >
           powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/swap-check.ps1 -Branch ci -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE"
       # Humo de la app EMPAQUETADA (arranca Electron oculto y un terminal ConPTY): depende de la sesión gráfica del runner, así que
