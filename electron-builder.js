@@ -67,6 +67,8 @@ module.exports = {
     '!e2e/**',
     '!scripts/**',
     '!tools/**',
+    // Copias de trabajo y ajustes locales de agentes/herramientas: NUNCA dentro del paquete (una vez entraron 17 600 archivos de .claude/worktrees).
+    '!.claude/**',
     '!vitest*.config.ts',
     // Higiene del paquete (F7-B34): config de lint/formato, changelogs y documentación no van en el .asar.
     '!{eslint.config.mjs,.prettierrc,.prettierignore,CHANGELOG-FASE*.md}',
