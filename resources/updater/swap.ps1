@@ -125,21 +125,36 @@ function Move-Dir([string]$from, [string]$to) {
   return $false
 }
 
-# Clave de desinstalación HKCU de Lazunox cuya InstallLocation es Target (solo fuera del modo de prueba).
+# Clave de desinstalación HKCU de Lazunox que corresponde a Target (solo fuera del modo de prueba). El instalador NSIS (electron-builder)
+# escribe «Lazunox <versión>» como nombre y deja InstallLocation vacío: la carpeta se saca entonces de UninstallString
+# («"C:\...\Lazunox\Uninstall Lazunox.exe" /currentuser»). Misma regla que `win-location.ts` de la app.
 function Get-UninstallKey {
   if ($Test) { return $null }
   try {
     foreach ($k in Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall') {
       $p = Get-ItemProperty -LiteralPath $k.PSPath
-      if ($p.PSObject.Properties['DisplayName'] -and $p.DisplayName -eq 'Lazunox' -and $p.PSObject.Properties['InstallLocation'] -and ([string]$p.InstallLocation).TrimEnd('\') -ieq $Target) { return $k.PSPath }
+      if (-not $p.PSObject.Properties['DisplayName']) { continue }
+      if ([string]$p.DisplayName -notmatch '^Lazunox( \d+\.\d+\.\d+([-+][0-9A-Za-z.-]+)*)?$') { continue }
+      $loc = ''
+      if ($p.PSObject.Properties['InstallLocation'] -and ([string]$p.InstallLocation).Trim() -ne '') {
+        $loc = ([string]$p.InstallLocation).Trim().Trim('"').TrimEnd('\')
+      } elseif ($p.PSObject.Properties['UninstallString'] -and ([string]$p.UninstallString) -match '^\s*"?(.+?)\\Uninstall Lazunox\.exe') {
+        $loc = $Matches[1].TrimEnd('\')
+      }
+      if ($loc -and $loc -ieq $Target) { return $k.PSPath }
     }
   } catch { }
   return $null
 }
 
+# DisplayVersion (lo leen winget y el Panel de control) y, si el nombre lleva la versión («Lazunox 0.5.16»), también el nombre.
 function Set-DisplayVersion([string]$keyPath, [string]$v) {
   if (-not $keyPath -or -not $v) { return }
   try { Set-ItemProperty -LiteralPath $keyPath -Name 'DisplayVersion' -Value $v } catch { }
+  try {
+    $n = [string](Get-ItemProperty -LiteralPath $keyPath).DisplayName
+    if ($n -match '^Lazunox \d') { Set-ItemProperty -LiteralPath $keyPath -Name 'DisplayName' -Value ('Lazunox ' + $v) }
+  } catch { }
 }
 
 function Launch([string]$dir, [bool]$isNew) {

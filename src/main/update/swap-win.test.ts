@@ -203,6 +203,16 @@ describe('startSwapWin', () => {
 // El script no se puede ejecutar en macOS (no hay PowerShell): estas comprobaciones son estáticas, NO sustituyen la prueba real.
 describe('resources/updater/swap.ps1 (comprobación estática)', () => {
   const ps = readFileSync(resolve(__dirname, '../../../resources/updater/swap.ps1'), 'utf8')
+
+  it('reconoce la clave real del instalador NSIS: nombre con versión y carpeta sacada de UninstallString', () => {
+    expect(ps).toContain("'^Lazunox( \\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)*)?$'")
+    expect(ps).toContain('Uninstall Lazunox\\.exe')
+    expect(ps).not.toContain("$p.DisplayName -eq 'Lazunox'")
+  })
+
+  it('al actualizar deja también el nombre con la versión nueva (Lazunox X.Y.Z)', () => {
+    expect(ps).toContain("-Name 'DisplayName' -Value ('Lazunox ' + $v)")
+  })
   it('declara los parámetros que pasa startSwapWin, en el mismo orden', () => {
     const names = ['AppPid', 'Target', 'Staged', 'Bak', 'MarkerDir', 'Version'].map(
       (n) => ps.indexOf(`[string]$${n}`) >= 0 || ps.indexOf(`[int]$${n}`) >= 0

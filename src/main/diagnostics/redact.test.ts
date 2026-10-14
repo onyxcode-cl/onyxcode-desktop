@@ -130,7 +130,8 @@ describe('propiedades', () => {
       const t0 = performance.now()
       redact(line)
       const ms = performance.now() - t0
-      expect(ms, line.slice(0, 20)).toBeLessThan(200)
+      // 200 ms en local; en CI (contenedor con CPU limitada) 1 s: un ReDoS real tardaría segundos o minutos, no unos cientos de ms de más.
+      expect(ms, line.slice(0, 20)).toBeLessThan(process.env.CI ? 1000 : 200)
     }
   })
 })

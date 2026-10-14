@@ -98,7 +98,8 @@ const backend = {
   applySessionInfo: () => null
 } satisfies RemoteBackend & EventSource
 
-async function until(cond: () => boolean, ms = 3000): Promise<void> {
+// 3 s en local; 15 s en CI (el canal WebRTC nativo tarda más en un contenedor con CPU limitada).
+async function until(cond: () => boolean, ms = process.env.CI ? 15_000 : 3000): Promise<void> {
   const end = Date.now() + ms
   while (!cond()) {
     if (Date.now() > end) throw new Error('until: tiempo agotado')
