@@ -4,6 +4,11 @@ import type { chat as es } from '../es/chat'
 export const chat = {
   'chat.doc.title': 'Document',
   'chat.doc.creating': 'Generating document…',
+  'chat.doc.failed': 'The document could not be generated. The reason was saved to the problems log in Settings › Diagnostics.',
+  'chat.doc.craftMissing': 'Creating Word documents needs ArtCraft (the document designer), which is not installed on this computer yet.',
+  'chat.doc.craftInstall': 'Install ArtCraft',
+  'chat.doc.craftInstalling': 'Installing ArtCraft…',
+  'chat.doc.craftInstallFailed': 'ArtCraft could not be installed. Try again or check the problems log in Settings.',
   'chat.doc.slides': 'Presentation',
   'chat.doc.preview': 'Preview',
   'chat.doc.kindPdf': 'PDF',

@@ -45,15 +45,22 @@ export interface ChatDocPanelState {
    * `isSlides` (solo relevante para `kind:'html'`) decide si además se ofrece el botón de descarga
    * "PowerPoint (para proyectar)". */
   doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
+  /** Por qué no se pudo generar el documento (el panel sigue abierto para mostrarlo); `null` si no hay fallo. */
+  notice: ChatDocNotice
+  /** Vuelve a generar el documento actual (p. ej. tras instalar ArtCraft). */
+  retry: () => void
   toggleFullscreen: () => void
   close: () => void
 }
+
+export type ChatDocNotice = null | 'failed' | 'craft-missing'
 
 export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[]): ChatDocPanelState {
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [title, setTitle] = useState('')
+  const [notice, setNotice] = useState<ChatDocNotice>(null)
   const [doc, setDoc] = useState<{ kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null>(null)
   const lastRawTextRef = useRef<string | null>(null)
   const sessionRef = useRef(sessionId)
@@ -69,6 +76,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     setCreating(false)
     setFullscreen(false)
     setTitle('')
+    setNotice(null)
     setDoc(null)
     setCreatingDoc(null)
   }
@@ -103,6 +111,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     lastRawTextRef.current = rawText
     setOpen(true)
     setCreating(true)
+    setNotice(null)
     setTitle(title)
     setDoc({ kind, rawText, isSlides })
     setCreatingDoc({ kind, rawText, title })
@@ -111,13 +120,19 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
       .then((res) => {
         setCreating(false)
         setCreatingDoc(null)
-        if (!res.ok) setOpen(false)
+        // El panel SE QUEDA abierto con el motivo (antes se cerraba sin decir nada).
+        if (!res.ok) setNotice(res.reason === 'craft-missing' ? 'craft-missing' : 'failed')
       })
       .catch(() => {
         setCreating(false)
         setCreatingDoc(null)
+        setNotice('failed')
       })
   }, [])
+
+  const retry = useCallback((): void => {
+    if (doc) openDoc(doc.kind, doc.rawText, title, doc.isSlides)
+  }, [doc, title, openDoc])
 
   const toggleFullscreen = useCallback((): void => setFullscreen((v) => !v), [])
 
@@ -170,5 +185,5 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     })
   }, [])
 
-  return { open, creating, fullscreen, title, doc, toggleFullscreen, close: () => close(sessionRef.current) }
+  return { open, creating, fullscreen, title, doc, notice, retry, toggleFullscreen, close: () => close(sessionRef.current) }
 }

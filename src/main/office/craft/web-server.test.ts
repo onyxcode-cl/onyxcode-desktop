@@ -115,4 +115,27 @@ describe('dropScript', () => {
     expect(s).toContain('new DragEvent(t, o)')
     expect(s).toContain('"QUJD"')
   })
+
+  /** Ejecuta el script en un contexto falso (sin Electron) y devuelve lo que responde. */
+  const run = async (script: string, wasmReady: boolean): Promise<unknown> => {
+    const { runInNewContext } = await import('node:vm')
+    const ctx = {
+      window: wasmReady ? { wasmBindings: {} } : {},
+      addEventListener: () => undefined,
+      setTimeout,
+      clearTimeout,
+      document: { querySelector: () => null },
+      innerWidth: 1,
+      innerHeight: 1
+    }
+    return runInNewContext(script, ctx) as Promise<unknown>
+  }
+
+  it('si el motor wasm nunca arranca, se rinde y devuelve false (no espera para siempre)', async () => {
+    expect(await run(dropScript('QUJD', 'a.docx', 'application/x-test', 30), false)).toBe(false)
+  })
+
+  it('con el motor listo no se queda colgado (sin lienzo devuelve false)', async () => {
+    expect(await run(dropScript('QUJD', 'a.docx', 'application/x-test', 30), true)).toBe(false)
+  })
 })

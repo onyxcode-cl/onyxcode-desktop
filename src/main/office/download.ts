@@ -15,7 +15,9 @@ export type OfficeErrorCode =
 export class OfficeError extends Error {
   constructor(
     readonly code: OfficeErrorCode,
-    message: string
+    message: string,
+    /** Bytes recibidos antes del fallo (descargas), para el registro de problemas. */
+    readonly received?: number
   ) {
     super(message)
     this.name = 'OfficeError'
@@ -63,14 +65,14 @@ export async function downloadVerified(
   if (!res || res.status !== 200 || !res.body) throw new OfficeError('download', `Respuesta inesperada (${res?.status ?? 'sin respuesta'})`)
   const declared = Number(res.headers.get('content-length') ?? '')
   if (Number.isFinite(declared) && declared > 0 && declared !== expect.size) {
-    throw new OfficeError('size', `Tamaño distinto al esperado (${declared} ≠ ${expect.size})`)
+    throw new OfficeError('size', `Tamaño distinto al esperado (${declared} ≠ ${expect.size})`, 0)
   }
   const hash = createHash('sha256')
   let received = 0
   const guard = new Transform({
     transform(chunk: Buffer, _enc, cb) {
       received += chunk.length
-      if (received > expect.size) return cb(new OfficeError('size', 'La descarga supera el tamaño esperado'))
+      if (received > expect.size) return cb(new OfficeError('size', 'La descarga supera el tamaño esperado', received))
       hash.update(chunk)
       onProgress(received)
       cb(null, chunk)
@@ -82,15 +84,15 @@ export async function downloadVerified(
     rmSync(dest, { force: true })
     if (e instanceof OfficeError) throw e
     if (signal?.aborted) throw new OfficeError('cancelled', 'Descarga cancelada')
-    throw new OfficeError('download', `Descarga interrumpida: ${e instanceof Error ? e.message : String(e)}`)
+    throw new OfficeError('download', `Descarga interrumpida: ${e instanceof Error ? e.message : String(e)}`, received)
   }
   if (received !== expect.size) {
     rmSync(dest, { force: true })
-    throw new OfficeError('size', `Descarga incompleta (${received} de ${expect.size} bytes)`)
+    throw new OfficeError('size', `Descarga incompleta (${received} de ${expect.size} bytes)`, received)
   }
   if (hash.digest('hex') !== expect.sha256) {
     rmSync(dest, { force: true })
-    throw new OfficeError('hash', 'El SHA-256 no coincide con el esperado: se descarta el archivo')
+    throw new OfficeError('hash', 'El SHA-256 no coincide con el esperado: se descarta el archivo', received)
   }
 }
 

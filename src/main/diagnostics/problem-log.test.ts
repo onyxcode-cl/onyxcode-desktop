@@ -14,9 +14,18 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-const make = (o: Partial<ConstructorParameters<typeof ProblemLog>[0]> = {}): ProblemLog => new ProblemLog({ dir, now, home: '/Users/ben', ...o })
+const make = (o: Partial<ConstructorParameters<typeof ProblemLog>[0]> = {}): ProblemLog =>
+  new ProblemLog({ dir, now, home: '/Users/ben', ...o })
 
 describe('ProblemLog', () => {
+  it('el origen «craft» se muestra como «ArtCraft»', () => {
+    const log = make()
+    log.record({ source: 'craft', message: 'falló la instalación', detail: { codigo: 'hash', bytes: 123 } })
+    const lines = log.readLines()
+    expect(lines[0]).toBe('2026-10-14 12:00:00 [error] [ArtCraft] falló la instalación')
+    expect(lines[1]).toBe('    codigo=hash bytes=123')
+  })
+
   it('guarda un problema y lo devuelve legible, con fecha, nivel y origen', () => {
     const log = make()
     log.record({ source: 'engine', message: 'el motor se cerró', detail: { codigo: 1 } })
@@ -69,7 +78,10 @@ describe('ProblemLog', () => {
     expect(files).toEqual(['problemas.1.log', 'problemas.2.log', 'problemas.log'])
     const lines = log.readLines()
     expect(lines[lines.length - 1]).toContain('problema número 39')
-    const nums = lines.map((l) => /número (\d+)/.exec(l)?.[1]).filter(Boolean).map(Number)
+    const nums = lines
+      .map((l) => /número (\d+)/.exec(l)?.[1])
+      .filter(Boolean)
+      .map(Number)
     expect(nums).toEqual([...nums].sort((a, b) => a - b))
   })
 

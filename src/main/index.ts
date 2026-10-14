@@ -27,6 +27,7 @@ import { computerWinHelperPresent, resolveComputerWin } from './computer/compute
 import { resolveTasksWin } from './tasks/tasks-win-flag'
 import { loadManagedPolicy } from './tasks/policy'
 import { createManualFetch, type NetLike } from './remote/tunnel/manual-fetch'
+import { craftService } from './office/craft/service'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
 import { disposeRemote, getOrgPolicy, remoteMode, setRemoteWin } from './remote/loader'
@@ -224,10 +225,20 @@ function start(): void {
     recordProblem({ source: 'main', level: 'warn', ...describeError(reason) })
   })
   app.on('render-process-gone', (_e, wc, d) => {
-    if (d.reason !== 'clean-exit') recordProblem({ source: 'process', message: 'se cerró una ventana por un fallo', detail: { motivo: d.reason, codigo: d.exitCode, url: wc.getURL().slice(0, 80) } })
+    if (d.reason !== 'clean-exit')
+      recordProblem({
+        source: 'process',
+        message: 'se cerró una ventana por un fallo',
+        detail: { motivo: d.reason, codigo: d.exitCode, url: wc.getURL().slice(0, 80) }
+      })
   })
   app.on('child-process-gone', (_e, d) => {
-    if (d.reason !== 'clean-exit') recordProblem({ source: 'process', message: `falló un proceso de la app (${d.type})`, detail: { motivo: d.reason, codigo: d.exitCode } })
+    if (d.reason !== 'clean-exit')
+      recordProblem({
+        source: 'process',
+        message: `falló un proceso de la app (${d.type})`,
+        detail: { motivo: d.reason, codigo: d.exitCode }
+      })
   })
   // Un segundo lanzamiento (dock, `open`, lazunox://) enfoca esta instancia. Antes de `ready` se
   // ignora: la ventana se crea igualmente al arrancar.
@@ -342,6 +353,9 @@ function start(): void {
     server.start().catch((err: unknown) => console.error('[main] opencode no arrancó:', err))
 
     createWindow()
+
+    // ArtCraft: si una instalación quedó a medias, se reintenta en silencio (máx. una vez cada 24 h, sin bloquear el arranque).
+    setTimeout(() => void craftService().retryIncomplete(), 45_000).unref()
 
     app.on('activate', () => {
       // La ventana oculta de Quick Entry cuenta en getAllWindows: usar la principal.

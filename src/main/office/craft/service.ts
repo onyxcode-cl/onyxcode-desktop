@@ -3,11 +3,14 @@
  * el botón de Ajustes ES el consentimiento) + variable de entorno `LAZUNOX_DECKCRAFT` para los motores de OpenCode, de modo que la
  * skill `pptx` use el diseño «dots» solo si el programa ya está instalado (si no, sigue con `build_pptx.py`).
  */
-import { app } from 'electron'
+import { app, net } from 'electron'
 import { join } from 'node:path'
 import type { CraftInstallResult, CraftUiSnapshot } from '@shared/craft'
 import { unpacked } from '../../util/asar'
+import { createManualFetch, type NetLike } from '../../remote/tunnel/manual-fetch'
 import { OfficeError } from '../download'
+import { recordCraftProblem } from './craft-problems'
+import { readAttempt, retryIncompleteInstall, writeAttempt, type RetryOutcome } from './craft-retry'
 import { craftStatus, craftWebDir, installCraft, loadCraftPin, removeCraft, type CraftDeps, type CraftStatus } from './craft-install'
 
 type Progress = NonNullable<CraftUiSnapshot['progress']>
@@ -20,8 +23,19 @@ class CraftService {
   private deps(): CraftDeps {
     return {
       binDir: join(app.getPath('userData'), 'bin'),
-      pin: loadCraftPin(unpacked(join(app.getAppPath(), 'resources', 'craft', 'pin.json')))
+      pin: loadCraftPin(unpacked(join(app.getAppPath(), 'resources', 'craft', 'pin.json'))),
+      // La pila de red de Electron (proxy del sistema, certificados del Llavero); el `fetch` de Node las ignora. Cada salto de
+      // redirección lo valida `downloadVerified` (https, tamaño, SHA-256), igual que antes.
+      fetch: createManualFetch(net as unknown as NetLike)
     }
+  }
+
+  private statePath(): string {
+    return join(app.getPath('userData'), 'bin', 'craft-intento.json')
+  }
+
+  private mark(last: 'started' | 'ok' | 'failed' | 'cancelled'): void {
+    writeAttempt(this.statePath(), { ...readAttempt(this.statePath()), last })
   }
 
   status(): CraftStatus {
@@ -39,16 +53,35 @@ class CraftService {
     this.error = undefined
     const ac = new AbortController()
     this.installing = ac
+    this.mark('started')
     try {
       await installCraft(this.deps(), (p) => (this.progress = p), ac.signal)
+      this.mark('ok')
       return { ok: true }
     } catch (e) {
       const code = e instanceof OfficeError ? e.code : 'download'
       this.error = code
+      this.mark(code === 'cancelled' ? 'cancelled' : 'failed')
+      recordCraftProblem('instalación', e)
       return { ok: false, error: code, message: e instanceof Error ? e.message : String(e) }
     } finally {
       this.installing = null
       this.progress = undefined
+    }
+  }
+
+  /** Al arrancar: reintenta en silencio una instalación incompleta (máx. una vez cada 24 h; ver `craft-retry.ts`). Nunca lanza. */
+  async retryIncomplete(): Promise<RetryOutcome | 'error'> {
+    try {
+      return await retryIncompleteInstall({
+        statePath: this.statePath(),
+        now: Date.now,
+        status: () => this.status(),
+        install: () => this.installNow()
+      })
+    } catch (e) {
+      recordCraftProblem('reintento automático', e)
+      return 'error'
     }
   }
 

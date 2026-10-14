@@ -41,6 +41,7 @@ import { useTasks } from '../tasks/impl/store'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
 import { Badge, ErrorText } from '../settings/impl/ui'
+import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import { Welcome } from './Welcome'
 import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
 import { waitForMacPerms } from './perms-wait'
@@ -614,6 +615,7 @@ function StepSetup(): React.JSX.Element {
   const caps = platformCaps()
   const [items, setItems] = useState<Partial<Record<SetupItemId, SetupState>>>({})
   const [craftMb, setCraftMb] = useState(0)
+  const [craftError, setCraftError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [location, setLocation] = useState<AppLocation | null>(null)
@@ -690,10 +692,11 @@ function StepSetup(): React.JSX.Element {
             })
             .catch(() => undefined)
         }, 1000)
-        const r = await cw('craft:install').catch(() => ({ ok: false as const }))
+        const r = await cw('craft:install').catch(() => undefined)
         clearInterval(poll)
         setPct(null)
-        set('craft', r.ok ? 'done' : 'failed')
+        setCraftError(installFailureCode(r))
+        set('craft', r?.ok ? 'done' : 'failed')
       }
       if (items.sandbox && items.sandbox !== 'done') {
         set('sandbox', 'running')
@@ -742,7 +745,9 @@ function StepSetup(): React.JSX.Element {
                     {st === 'waiting'
                       ? t('wizard.setup.status.waiting')
                       : st === 'failed'
-                        ? t('wizard.setup.status.failed')
+                        ? r.id === 'craft' && craftError
+                          ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
+                          : t('wizard.setup.status.failed')
                         : st === 'done'
                           ? t('wizard.setup.status.ready')
                           : r.hint}

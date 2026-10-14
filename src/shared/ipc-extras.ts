@@ -106,8 +106,8 @@ export interface QuickPromptEvent {
 
 // ───────────────── Documentos de Chat (PDF vía HTML, Excel/PowerPoint vía datos) ─────────────────
 
-/** Por qué `extras:chatDoc:open` no abrió nada: la generación del archivo falló. */
-export type ChatDocOpenReject = 'failed'
+/** Por qué `extras:chatDoc:open` no abrió nada: la generación del archivo falló (`craft-missing`: Word sin ArtCraft instalado). */
+export type ChatDocOpenReject = 'failed' | 'craft-missing'
 export type ChatDocOpenResult = { ok: true } | { ok: false; reason: ChatDocOpenReject }
 
 interface ChatDocOpenCommon {

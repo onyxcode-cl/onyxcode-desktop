@@ -16,6 +16,7 @@ import { join, sep } from 'node:path'
 import type { DocKind } from '@shared/doc-kind'
 import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
 import { craftService } from '../office/craft/service'
+import { recordCraftProblem } from '../office/craft/craft-problems'
 import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
 import { gridToPdf, renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
@@ -57,6 +58,14 @@ export interface ChatDocument {
   kind: DocKind
   /** Archivo real generado (el .xlsx/.pptx/.pdf), para quien quiera abrirlo en otro visor. */
   file: string
+}
+
+/** Word solo se arma con WordCraft (ArtCraft): sin él instalado no hay documento. El panel lo traduce en un aviso con «Instalar». */
+export class CraftMissingError extends Error {
+  constructor(readonly tool: 'wordcraft') {
+    super('El diseñador de documentos (WordCraft) no está instalado.')
+    this.name = 'CraftMissingError'
+  }
 }
 
 export type ChatDocInput =
@@ -127,6 +136,7 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
         return await renderChatGrid(grid, input.data)
       } catch (e) {
         console.warn('[chat-docs] GridCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
+        recordCraftProblem('documento', e, { programa: 'gridcraft' }, { level: 'warn' })
       }
     }
     return renderXlsx(input.data)
@@ -135,7 +145,7 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
     if (!isDocxSpec(input.data)) throw new Error('Datos de Word inválidos.')
     // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
     const word = craftBinary('wordcraft')
-    if (!word) throw new Error('El diseñador de documentos (WordCraft) no está instalado.')
+    if (!word) throw new CraftMissingError('wordcraft')
     return renderChatDocx(word, input.data)
   }
   if (!isPptxSpec(input.data)) throw new Error('Datos de PowerPoint inválidos.')
@@ -146,6 +156,7 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
       return await renderChatDeck(craft, input.data)
     } catch (e) {
       console.warn('[chat-docs] DeckCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
+      recordCraftProblem('documento', e, { programa: 'deckcraft' }, { level: 'warn' })
     }
   }
   return renderPptx(input.data)

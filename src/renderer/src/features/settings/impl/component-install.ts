@@ -28,6 +28,15 @@ export function officeErrorKey(code: string | undefined): MsgKey {
   }
 }
 
+/**
+ * Código del fallo de una instalación para mostrar su motivo (Bienvenida y asistente). Si la llamada ni siquiera respondió
+ * (`undefined`, IPC caído) o no trae código, `download`; así nunca se queda en un «falló» sin explicación.
+ */
+export function installFailureCode(r: { ok: boolean; error?: string } | undefined): string | undefined {
+  if (r?.ok) return undefined
+  return r?.error || 'download'
+}
+
 export type InstallResult = { ok: true } | { ok: false; error: string; message?: string }
 
 export interface ComponentApi<S> {

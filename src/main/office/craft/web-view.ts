@@ -11,6 +11,7 @@
 import { app, BrowserWindow, session, WebContentsView, type Session } from 'electron'
 import { EventEmitter } from 'node:events'
 import { startWebServer, type WebServer } from './web-server'
+import { WEB_OPEN_TIMEOUT_MS, withTimeout } from './web-timeout'
 
 export interface WebRect {
   x: number
@@ -126,9 +127,15 @@ function layout(): void {
 }
 
 /** Script que espera a que el motor esté listo y le «suelta» el archivo en el lienzo, como si la persona lo arrastrara. */
-export function dropScript(base64: string, fileName: string, mime: string): string {
+export function dropScript(base64: string, fileName: string, mime: string, waitMs: number = WEB_OPEN_TIMEOUT_MS - 3000): string {
   return `(async () => {
-    await new Promise((ok) => { if (window.wasmBindings) ok(); else addEventListener('TrunkApplicationStarted', () => ok(), { once: true }) })
+    // Si el motor wasm nunca arranca, se rinde (devuelve false) en vez de esperar para siempre.
+    const ready = await new Promise((ok) => {
+      if (window.wasmBindings) return ok(true)
+      const timer = setTimeout(() => ok(false), ${Math.max(1, Math.round(waitMs))})
+      addEventListener('TrunkApplicationStarted', () => { clearTimeout(timer); ok(true) }, { once: true })
+    })
+    if (!ready) return false
     await new Promise((ok) => setTimeout(ok, 700))
     const canvas = document.querySelector('canvas')
     if (!canvas) return false
@@ -145,8 +152,16 @@ export function dropScript(base64: string, fileName: string, mime: string): stri
  * Abre `bytes` (un .xlsx/.pptx/.docx) en la versión web de `webDir`. Devuelve `true` si el motor recibió el archivo. Lanza si el
  * archivo es demasiado grande o la versión web no arranca (quien llama cae al visor de siempre).
  */
-export async function openWebDoc(webDir: string, ext: 'xlsx' | 'pptx' | 'docx' | 'pdf', fileName: string, bytes: Buffer): Promise<boolean> {
+export async function openWebDoc(
+  webDir: string,
+  ext: 'xlsx' | 'pptx' | 'docx' | 'pdf',
+  fileName: string,
+  bytes: Buffer,
+  timeoutMs: number = WEB_OPEN_TIMEOUT_MS
+): Promise<boolean> {
   if (bytes.length > MAX_WEB_FILE_BYTES) throw new Error('Archivo demasiado grande para la vista web')
+  const started = Date.now()
+  const left = (): number => Math.max(1, timeoutMs - (Date.now() - started))
   if (!state.server || state.serverDir !== webDir) {
     await state.server?.close().catch(() => undefined)
     state.server = await startWebServer(webDir)
@@ -155,10 +170,17 @@ export async function openWebDoc(webDir: string, ext: 'xlsx' | 'pptx' | 'docx' |
   const view = ensureView()
   state.active = true
   layout()
-  await view.webContents.loadURL(`${state.server.origin}/?_r=${Date.now()}`)
-  const ok = (await view.webContents.executeJavaScript(dropScript(bytes.toString('base64'), fileName, MIME_BY_EXT[ext]), false)) === true
-  emitter.emit('event', { type: ok ? 'loaded' : 'error' } satisfies WebViewEvent)
-  return ok
+  try {
+    await withTimeout(view.webContents.loadURL(`${state.server.origin}/?_r=${Date.now()}`), left(), 'carga')
+    const script = dropScript(bytes.toString('base64'), fileName, MIME_BY_EXT[ext], Math.max(1, left() - 1000))
+    const ok = (await withTimeout(view.webContents.executeJavaScript(script, false), left(), 'motor')) === true
+    emitter.emit('event', { type: ok ? 'loaded' : 'error' } satisfies WebViewEvent)
+    return ok
+  } catch (e) {
+    // El motor no respondió: se avisa a la ventana y se propaga para que quien llama registre el fallo y use el visor de siempre.
+    emitter.emit('event', { type: 'error' } satisfies WebViewEvent)
+    throw e
+  }
 }
 
 export function attachWeb(hostWindow: BrowserWindow, rect: WebRect, visible: boolean): void {
