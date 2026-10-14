@@ -21,8 +21,10 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
   it('el prompt del Chat pide preguntar el formato ANTES de armar una presentación, con las dos opciones', () => {
     for (const text of [inline, chatMd]) {
       expect(text).toContain('ANTES de armar una PRESENTACIÓN')
-      expect(text).toContain('Editable')
-      expect(text).toContain('HTML/CSS')
+      expect(text).toContain('EDITABLE (PowerPoint)')
+      expect(text).toContain('DISEÑO LIBRE (HTML/CSS)')
+      expect(text).toContain('NO se edita')
+      expect(text).toContain('¿Cuál preferís?')
     }
   })
 
@@ -34,7 +36,7 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
 
   it('la copia larga y el prompt inline dicen lo mismo sobre las dos opciones', () => {
     const norm = (t: string): string => t.replace(/\\n|\s+|[-•]/g, ' ').replace(/ +/g, ' ')
-    expect(norm(inline)).toContain('Diseño libre en HTML/CSS')
-    expect(norm(chatMd)).toContain('Diseño libre en HTML/CSS')
+    expect(norm(inline)).toContain('DISEÑO LIBRE (HTML/CSS)')
+    expect(norm(chatMd)).toContain('DISEÑO LIBRE (HTML/CSS)')
   })
 })
