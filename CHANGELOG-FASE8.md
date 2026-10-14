@@ -3406,3 +3406,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Pruebas**: `dropFolder.test.ts`, `useFolderDrop.test.ts`, `arrastrar-carpeta.e2e.ts`, `menu-contextual.e2e.ts`, `edit-context-menu.test.ts`.
 - **No verificado todavía**: el arrastre real de una carpeta desde el explorador del sistema (solo se simuló con un archivo real).
 
+
+## F8-B161 — ArtCraft en el primer uso: red del sistema, fallos visibles y reintentos
+
+- **Qué cambia**: la descarga de ArtCraft usa la pila de red de Electron (`createManualFetch(net)`: proxy del sistema y certificados del Llavero) con las mismas verificaciones (https, tamaño, SHA-256, firma). Todo fallo de ArtCraft (instalación, vista web, generación de documentos, apertura externa) queda en el registro de problemas con origen «ArtCraft» (código, plataforma, arquitectura, bytes recibidos). La Bienvenida y el asistente muestran el motivo del fallo. `dropScript`/`openWebDoc` se rinden a los 20 s y caen al visor de siempre. Word sin ArtCraft instalado avisa en el panel y ofrece instalarlo; el panel ya no se cierra en silencio ante un fallo. Una instalación incompleta se reintenta sola al arrancar (45 s después, máx. una vez cada 24 h; solo si la persona ya había pedido instalar y no canceló).
+- **Pruebas**: `craft-problems.test.ts`, `craft-retry.test.ts`, `web-timeout.test.ts`, `web-server.test.ts` (dropScript), `web-open.test.ts`, `problem-log.test.ts`, `chat-docs.test.ts`, `component-install.test.ts`.
+- **No verificado todavía**: la descarga real con `net` en un Mac limpio con proxy; la interfaz del panel y de la Bienvenida con un fallo real.

@@ -8,6 +8,7 @@ import { readFile, stat } from 'node:fs/promises'
 import type { BrowserWindow } from 'electron'
 import type { DocKind } from '@shared/doc-kind'
 import { attach as attachViewer, closeView } from '../../viewer/view'
+import { recordCraftProblem } from './craft-problems'
 import { craftService } from './service'
 import { MAX_WEB_FILE_BYTES, attachWeb, closeWeb, deactivateWeb, isWebActive, openWebDoc } from './web-view'
 
@@ -54,6 +55,12 @@ export async function openInCraftWeb(kind: DocKind, file: string, title: string)
   const dir = craftService().webDir(WEB_PROGRAM[kind])
   if (!dir) {
     console.warn(`[craft-web] la versión web de ${WEB_PROGRAM[kind]} no está instalada; se usa el visor de siempre`)
+    recordCraftProblem(
+      'vista web',
+      new Error(`la versión web de ${WEB_PROGRAM[kind]} no está instalada; se usa el visor de siempre`),
+      { programa: WEB_PROGRAM[kind] },
+      { level: 'warn' }
+    )
     return false
   }
   try {
@@ -61,10 +68,16 @@ export async function openInCraftWeb(kind: DocKind, file: string, title: string)
     const name = `${title.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 60) || 'documento'}.${kind}`
     const ok = await openWebDoc(dir, kind, name, await readFile(file))
     if (ok) applyPanel()
-    else console.warn(`[craft-web] la vista web de ${WEB_PROGRAM[kind]} no recibió el archivo (${kind}); se usa el visor de siempre`)
+    else {
+      console.warn(`[craft-web] la vista web de ${WEB_PROGRAM[kind]} no recibió el archivo (${kind}); se usa el visor de siempre`)
+      recordCraftProblem('vista web', new Error(`la vista web de ${WEB_PROGRAM[kind]} no recibió el archivo (${kind})`), {
+        programa: WEB_PROGRAM[kind]
+      })
+    }
     return ok
   } catch (e) {
     console.warn(`[craft-web] no se pudo abrir ${kind} en la vista web:`, e instanceof Error ? e.message : e)
+    recordCraftProblem('vista web', e, { programa: WEB_PROGRAM[kind] })
     return false
   }
 }

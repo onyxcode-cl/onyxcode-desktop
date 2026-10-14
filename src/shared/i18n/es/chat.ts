@@ -1,6 +1,12 @@
 export const chat = {
   'chat.doc.title': 'Documento',
   'chat.doc.creating': 'Generando documento…',
+  'chat.doc.failed': 'No se pudo generar el documento. El motivo quedó en el registro de problemas de Ajustes › Diagnóstico.',
+  'chat.doc.craftMissing':
+    'Para crear documentos de Word hace falta ArtCraft (el diseñador de documentos), que aún no está instalado en este equipo.',
+  'chat.doc.craftInstall': 'Instalar ArtCraft',
+  'chat.doc.craftInstalling': 'Instalando ArtCraft…',
+  'chat.doc.craftInstallFailed': 'No se pudo instalar ArtCraft. Inténtalo de nuevo o revisa el registro de problemas en Ajustes.',
   'chat.doc.slides': 'Presentación',
   'chat.doc.preview': 'Vista previa',
   'chat.doc.kindPdf': 'PDF',

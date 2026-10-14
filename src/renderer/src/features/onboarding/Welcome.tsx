@@ -13,6 +13,7 @@ import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 import { isMacPlatform, platformCaps } from '../../lib/platform'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
+import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import {
   WELCOME_COUNTDOWN_S,
   WELCOME_ORDER,
@@ -32,6 +33,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const mac = isMacPlatform()
   const [found, setFound] = useState<WelcomeItems>({})
   const [craftMb, setCraftMb] = useState(0)
+  const [craftError, setCraftError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   const [left, setLeft] = useState<number | null>(null)
   const checked = useRef(false)
@@ -88,10 +90,13 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
               })
               .catch(() => undefined)
           }, 1000)
-          const r = await cw('craft:install').catch(() => ({ ok: false as const }))
+          const r = await cw('craft:install').catch(() => undefined)
           clearInterval(poll)
-          if (alive.current) setPct(null)
-          set('craft', r.ok ? 'ready' : 'failed')
+          if (alive.current) {
+            setPct(null)
+            setCraftError(installFailureCode(r))
+          }
+          set('craft', r?.ok ? 'ready' : 'failed')
         } else if (id === 'perms') {
           await cw('computer:requestPermissions').catch(() => undefined)
           // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos.
@@ -163,7 +168,13 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     rows.push({
       id: 'craft',
       label: t('wizard.setup.craft'),
-      hint: found.craft === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.craft.hint', { mb: craftMb })
+      // Si falló, se muestra el MOTIVO (sin conexión, hash, firma, disco…) en vez de solo «No se pudo».
+      hint:
+        found.craft === 'ready'
+          ? t('wizard.setup.status.ready')
+          : found.craft === 'failed' && craftError
+            ? t(officeErrorKey(craftError))
+            : t('wizard.setup.craft.hint', { mb: craftMb })
     })
   if (found.sandbox)
     rows.push({

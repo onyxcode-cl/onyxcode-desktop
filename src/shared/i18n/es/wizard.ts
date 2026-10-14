@@ -89,6 +89,7 @@ export const wizard = {
   'wizard.setup.craft': 'Diseñador de documentos (ArtCraft), para crear y ver Word, Excel, PowerPoint y PDF con buen diseño',
   'wizard.setup.craft.hint':
     'Se descarga de GitHub (unos {mb} MB) y se verifica por hash y firma antes de usarlo. No pide contraseña de administrador.',
+  'wizard.setup.craft.retryHint': 'Pulsa «Reintentar» o hazlo después desde Ajustes.',
   'wizard.setup.sandbox': 'Entorno aislado de Overdrive',
   'wizard.setup.sandbox.hint': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'wizard.setup.run': 'Preparar todo',

@@ -8,6 +8,7 @@ import { execFile, spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { posix, win32 } from 'node:path'
+import { recordCraftProblem } from './craft-problems'
 
 export type ExternalKind = 'pdf' | 'xlsx' | 'pptx' | 'docx'
 
@@ -84,9 +85,14 @@ export async function openExternally(
       return 'craft'
     } catch (e) {
       console.warn('[craft] no se pudo abrir con el programa de ArtCraft, se usa el del sistema:', e instanceof Error ? e.message : e)
+      recordCraftProblem('apertura externa', e, { programa: PROGRAM[kind] }, { level: 'warn' })
     }
   }
   const err = await openPath(file)
-  if (err) throw new Error(err)
+  if (err) {
+    const e = new Error(err)
+    recordCraftProblem('apertura externa', e, { programa: PROGRAM[kind], via: 'sistema' })
+    throw e
+  }
   return 'system'
 }

@@ -14,6 +14,8 @@ vi.mock('./web-view', () => ({
   deactivateWeb: vi.fn(),
   isWebActive: () => false
 }))
+const recordCraftProblem = vi.fn()
+vi.mock('./craft-problems', () => ({ recordCraftProblem: (...a: unknown[]) => recordCraftProblem(...a) }))
 vi.mock('../../viewer/view', () => ({ attach: vi.fn(), closeView: vi.fn() }))
 
 import { WEB_PROGRAM, openInCraftWeb } from './web-open'
@@ -22,6 +24,7 @@ let dir: string
 beforeEach(() => {
   webDir.mockReset()
   openWebDoc.mockReset()
+  recordCraftProblem.mockReset()
   dir = mkdtempSync(join(tmpdir(), 'web-open-'))
   return () => rmSync(dir, { recursive: true, force: true })
 })
@@ -77,5 +80,21 @@ describe('web-open (prueba Craft)', () => {
   it('un archivo que no existe devuelve false', async () => {
     webDir.mockReturnValue('/web/x')
     expect(await openInCraftWeb('xlsx', join(dir, 'no-existe'), 'T')).toBe(false)
+  })
+
+  it('cada fallo de la vista web (incluido un plazo agotado) queda en el registro de problemas', async () => {
+    webDir.mockReturnValue('/web/x')
+    openWebDoc.mockRejectedValueOnce(new Error('La vista web de ArtCraft no respondió a tiempo'))
+    expect(await openInCraftWeb('docx', file(), 'T')).toBe(false)
+    expect(recordCraftProblem).toHaveBeenCalledWith('vista web', expect.any(Error), { programa: 'wordcraft' })
+    openWebDoc.mockResolvedValueOnce(false)
+    await openInCraftWeb('docx', file(), 'T')
+    expect(recordCraftProblem).toHaveBeenCalledTimes(2)
+  })
+
+  it('sin la versión web instalada se anota como aviso (no como error)', async () => {
+    webDir.mockReturnValue(null)
+    await openInCraftWeb('docx', file(), 'T')
+    expect(recordCraftProblem).toHaveBeenCalledWith('vista web', expect.any(Error), { programa: 'wordcraft' }, { level: 'warn' })
   })
 })

@@ -1,8 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { translate } from '@shared/i18n'
-import { officeController, officeErrorKey, officeMb, type ComponentApi, type InstallResult } from './component-install'
+import { installFailureCode, officeController, officeErrorKey, officeMb, type ComponentApi, type InstallResult } from './component-install'
 
 const tEs = (k: Parameters<typeof translate>[1], p?: Parameters<typeof translate>[2]): string => translate('es', k, p)
+
+describe('installFailureCode (motivo que ve la Bienvenida y el asistente)', () => {
+  it('éxito: sin código; fallo con código: ese código; sin respuesta o sin código: «download» (nunca un fallo mudo)', () => {
+    expect(installFailureCode({ ok: true })).toBeUndefined()
+    expect(installFailureCode({ ok: false, error: 'hash' })).toBe('hash')
+    expect(installFailureCode(undefined)).toBe('download')
+    expect(installFailureCode({ ok: false })).toBe('download')
+    expect(tEs(officeErrorKey(installFailureCode({ ok: false, error: 'disk' })))).toContain('espacio')
+  })
+})
 
 describe('componentes opcionales › utilidades', () => {
   it('megabytes redondeados (1 MB = 1e6 bytes)', () => {

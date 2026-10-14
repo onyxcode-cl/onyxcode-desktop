@@ -12,7 +12,15 @@ import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
-import { cleanChatDocuments, downloadChatDoc, generateChatDoc, writeChatDocForExternal, type ChatDocInput } from '../extras/chat-docs'
+import {
+  CraftMissingError,
+  cleanChatDocuments,
+  downloadChatDoc,
+  generateChatDoc,
+  writeChatDocForExternal,
+  type ChatDocInput
+} from '../extras/chat-docs'
+import { recordCraftProblem } from '../office/craft/craft-problems'
 import { defaultFindDeps, guiNextToCli, openExternally } from '../office/craft/open-external'
 import { craftService } from '../office/craft/service'
 import { onWebEvent } from '../office/craft/web-view'
@@ -130,7 +138,10 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       return { ok: true }
     } catch (e) {
       console.warn('[chat-doc] no se pudo generar el documento:', e instanceof Error ? e.message : e)
-      return { ok: false, reason: 'failed' }
+      // Word sin ArtCraft instalado: el panel avisa con un mensaje claro y ofrece instalarlo (no es un error "raro", pero se anota).
+      const missing = e instanceof CraftMissingError && craftService().status().state === 'missing'
+      recordCraftProblem('documento', e, { tipo: req.kind }, { level: missing ? 'warn' : 'error' })
+      return { ok: false, reason: missing ? 'craft-missing' : 'failed' }
     }
   })
   handle(ipcMain, 'extras:chatDoc:attach', ({ rect, visible }, event) => {
@@ -163,6 +174,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       }
     } catch (e) {
       console.warn('[chat-doc] no se pudo abrir aparte:', e instanceof Error ? e.message : e)
+      recordCraftProblem('apertura externa', e, { tipo: req.kind })
       return { ok: false as const }
     }
   })
