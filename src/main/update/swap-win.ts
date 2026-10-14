@@ -38,6 +38,11 @@ export function bakDirWin(target: string, currentVersion: string): string {
 
 const SAFE = /^[^\x00-\x1f"/<>|?*]+$/
 
+/** ¿Un argumento puede pasar por `cmd.exe` sin que éste le dé un significado especial? (sin `& ^ % ! ( ) ; , = ' ` ni saltos). */
+export function cmdSafeArg(x: string): boolean {
+  return typeof x === 'string' && !/[&^%!();,='`\x00-\x1f]/.test(x)
+}
+
 function cleanAbsWin(p: string): boolean {
   if (typeof p !== 'string' || !/^[A-Za-z]:\\[^\\]/.test(p) || !SAFE.test(p)) return false
   if (p.slice(2).includes(':')) return false // flujos ADS
@@ -171,8 +176,15 @@ export function startSwapWin(deps: SwapDepsWin, stagedApp: string, version: stri
     APPDATA: process.env.APPDATA ?? '',
     ...deps.extraEnv
   }
+  // Lanzamiento: `powershell.exe` suelto con `detached` NO arranca el script en Windows (verificado en un PC real y con el mismo Electron:
+  // PowerShell sin consola termina sin hacer nada) y sin `detached` muere con la app. Lo que sí arranca y sobrevive a que la app termine es
+  // `cmd.exe /c start "" /B powershell …`. Como cmd interpreta `& ^ % ! ( ) ; , =`, ningún argumento puede llevarlos (si no, no se lanza).
+  const psArguments = psArgs(copy, args)
+  const bad2 = [ps, ...psArguments].find((x) => !cmdSafeArg(x))
+  if (bad2 !== undefined) throw new Error('argumentos de reemplazo no aptos para cmd.exe')
+  const cmd = win32.join(sr, 'System32', 'cmd.exe')
   const run = deps.spawn ?? ((c, a, o) => nodeSpawn(c, a, o))
-  const child = run(ps, psArgs(copy, args), { detached: true, stdio: 'ignore', windowsHide: true, env })
+  const child = run(cmd, ['/d', '/c', 'start', '""', '/B', ps, ...psArguments], { detached: true, stdio: 'ignore', windowsHide: true, env })
   child.unref()
   updating = true
   deps.quit()

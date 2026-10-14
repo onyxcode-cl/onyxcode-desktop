@@ -10,7 +10,8 @@ import {
   startSwapWin,
   validateSwapArgsWin,
   type SwapArgsWin,
-  type SwapContextWin
+  type SwapContextWin,
+  cmdSafeArg
 } from './swap-win'
 
 // Pruebas de lógica pura con rutas de Windows (node:path/win32): corren igual en macOS y en Windows.
@@ -121,16 +122,19 @@ describe('startSwapWin', () => {
     }
   }
 
-  it('lanza powershell.exe por ruta absoluta, sin shell, con argumentos en array y cierra la app', () => {
+  it('lanza cmd.exe /c start /B powershell.exe (rutas absolutas, sin shell, argumentos en array) y cierra la app', () => {
     const x = deps()
     const copy = startSwapWin(x.d, good(ctx()).staged, '0.5.1')
     expect(copy).toBe('C:\\Users\\Ana Maria\\AppData\\Roaming\\Lazunox\\update\\run\\swap-0.5.1-abc.ps1')
     expect(x.calls).toHaveLength(1)
     const c = x.calls[0]
-    expect(c.cmd).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+    // `powershell.exe` suelto + `detached` no arranca en Windows; con `cmd /c start /B` sí y sobrevive a la app (verificado en un PC real).
+    expect(c.cmd).toBe('C:\\Windows\\System32\\cmd.exe')
     expect(c.opts).toMatchObject({ detached: true, stdio: 'ignore', windowsHide: true })
     expect(c.opts).not.toHaveProperty('shell')
-    expect(c.args.slice(0, 8)).toEqual([
+    expect(c.args.slice(0, 6)).toEqual(['/d', '/c', 'start', '""', '/B', 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'])
+    const ps = c.args.slice(6)
+    expect(ps.slice(0, 8)).toEqual([
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
@@ -140,8 +144,8 @@ describe('startSwapWin', () => {
       'Hidden',
       '-File'
     ])
-    expect(c.args[8]).toBe(copy)
-    expect(c.args.slice(9)).toEqual([
+    expect(ps[8]).toBe(copy)
+    expect(ps.slice(9)).toEqual([
       '-AppPid',
       '4321',
       '-Target',
@@ -158,6 +162,21 @@ describe('startSwapWin', () => {
     expect(x.unref).toBe(1)
     expect(x.quit).toBe(1)
     expect(isUpdatingWin()).toBe(true)
+  })
+
+  it('cmdSafeArg: acepta rutas normales (con espacios) y rechaza lo que cmd.exe interpretaría', () => {
+    for (const ok of ['C:\\Users\\Ana Maria\\AppData\\Local\\Programs\\Lazunox', '-ExecutionPolicy', '0.5.1', 'C:\\Users\\José\\x'])
+      expect(cmdSafeArg(ok)).toBe(true)
+    for (const bad of ['C:\\a&b', 'C:\\a^b', 'C:\\%TEMP%\\x', 'C:\\a!b', 'C:\\a(1)', 'a;b', 'a,b', 'a=b', "a'b", 'a`b', 'a\nb'])
+      expect(cmdSafeArg(bad)).toBe(false)
+  })
+
+  it('una ruta con caracteres que cmd interpretaría no se lanza ni cierra la app', () => {
+    const c = { ...ctx(), userData: 'C:\\Users\\Juan & Co\\AppData\\Roaming\\Lazunox' }
+    const x = deps({ ctx: c })
+    expect(() => startSwapWin(x.d, good(c).staged, '0.5.1')).toThrow()
+    expect(x.calls).toHaveLength(0)
+    expect(x.quit).toBe(0)
   })
 
   it('el entorno del script es mínimo y fija PATH a System32', () => {
