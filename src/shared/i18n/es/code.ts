@@ -193,6 +193,7 @@ export const code = {
   'code.composer.toggleAgent': 'Alternar Plan / Build (⇧Tab)',
   'code.composer.toggleAgent.win': 'Alternar Plan / Build (Mayús+Tab)',
   'code.composer.mention': 'Mencionar archivo',
+  'code.composer.more': 'Más opciones',
   'code.composer.attach': 'Adjuntar archivo o imagen',
   'code.composer.stop': 'Detener (Esc)',
   'code.composer.queueTitle': 'Encolar (se envía al quedar libre) · {mod}↵ para enviar ya',

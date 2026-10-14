@@ -195,6 +195,7 @@ export const code = {
   'code.composer.toggleAgent': 'Toggle Plan / Build (⇧Tab)',
   'code.composer.toggleAgent.win': 'Toggle Plan / Build (Shift+Tab)',
   'code.composer.mention': 'Mention a file',
+  'code.composer.more': 'More options',
   'code.composer.attach': 'Attach a file or image',
   'code.composer.stop': 'Stop (Esc)',
   'code.composer.queueTitle': 'Queue (sent when free) · {mod}↵ to send now',

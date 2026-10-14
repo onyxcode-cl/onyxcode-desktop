@@ -4,7 +4,7 @@
  * Los menús se abren hacia arriba porque el compositor vive al fondo de la ventana.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Brain, Check, CircleSlash, ListChecks, PencilLine, Shield, Wand2 } from 'lucide-react'
+import { AtSign, Brain, Check, CircleSlash, ListChecks, MoreHorizontal, Paperclip, PencilLine, Shield, Wand2 } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -108,7 +108,7 @@ export function PermissionChip(): React.JSX.Element {
         className={`${chip()} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
       >
         {current.icon}
-        <span className="inline desk:@max-[25rem]:hidden">{t(current.label)}</span>
+        <span className="inline desk:@max-[36rem]:hidden">{t(current.label)}</span>
       </button>
       {(() => {
         const items = PERMISSION_MODES.map((m) => (
@@ -181,7 +181,7 @@ export function EffortChip(): React.JSX.Element | null {
         className={`${chip()} text-muted hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
       >
         <Brain size={14} />
-        <span className="capitalize">{variant ?? t('code.effort.standard')}</span>
+        <span className="capitalize desk:@max-[41rem]:sr-only">{variant ?? t('code.effort.standard')}</span>
       </button>
       {isRemoteSurface() ? (
         <Sheet open={open} onClose={() => setOpen(false)} title={t('code.effort.menu')} size="half">
@@ -224,14 +224,72 @@ export function ModelControls(): React.JSX.Element {
 
   return (
     <div className="flex items-center gap-0.5 desk:ml-auto desk:min-w-0 desk:shrink">
-      {/* «Comparar modelos…»: no existe en el celular (CompareControls devuelve null allí). */}
-      <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" />
-      {/* El menú del selector se alinea a la derecha para no salirse del compositor. */}
-      <div className="no-drag desk:max-w-36 desk:min-w-0 desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
+      {/* «Comparar modelos…»: solo el ícono, y solo con sitio (en la barra de escritorio). No existe en el celular. */}
+      <div className="desk:@max-[36rem]:hidden">
+        <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" iconOnly />
+      </div>
+      {/* El nombre largo se acorta con «…» (nunca se sale ni se pisa con lo de al lado); el menú se alinea a la derecha. */}
+      <div className="no-drag desk:max-w-[15rem] desk:min-w-[2.5rem] desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
         <ModelPicker value={effective} onChange={setModel} placement="top" />
       </div>
-      <EffortChip />
-      <UsageMeter messages={messages ?? []} model={effective} />
+      <div className="desk:@max-[18rem]:hidden">
+        <EffortChip />
+      </div>
+      <div className="desk:@max-[30rem]:hidden">
+        <UsageMeter messages={messages ?? []} model={effective} />
+      </div>
+    </div>
+  )
+}
+
+/** «⋯» de la barra de escritorio: solo aparece cuando el compositor es muy angosto y reúne lo que no guarda estado (mencionar, adjuntar). */
+export function ComposerMoreMenu({ onMention, onAttach }: { onMention: () => void; onAttach: () => void }): React.JSX.Element {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const ref = useDismiss(open, () => setOpen(false))
+  const item = 'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium hover:bg-hover'
+  return (
+    <div ref={ref} className="relative hidden desk:@max-[24rem]:block">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={t('code.composer.more')}
+        aria-label={t('code.composer.more')}
+        className={`no-drag flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
+      >
+        <MoreHorizontal size={14} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute bottom-full left-0 z-50 mb-2 w-52 animate-pop-in origin-bottom-left rounded-xl border border-border bg-elevated p-1 shadow-xl"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              setOpen(false)
+              onMention()
+            }}
+          >
+            <AtSign size={14} /> {t('code.composer.mention')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              setOpen(false)
+              onAttach()
+            }}
+          >
+            <Paperclip size={14} /> {t('code.composer.attach')}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

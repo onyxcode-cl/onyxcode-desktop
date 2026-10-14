@@ -33,7 +33,7 @@ import { useT } from '../../../lib/i18n'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { useClient } from './client'
-import { ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
+import { ComposerMoreMenu, ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
 import { getDraft, setDraft, useDraft } from '../../../stores/drafts'
 import { useCode } from './store'
@@ -239,6 +239,20 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }, [draftKey])
   const [caret, setCaret] = useState(0)
   /** Inserta texto dictado en la posición del cursor — mismo patrón que el botón de "@" de abajo. */
+  const insertMention = (): void => {
+    const el = ref.current
+    const pos = el?.selectionStart ?? text.length
+    const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
+    const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
+    const np = pos + (needsSpace ? 2 : 1)
+    setText(next)
+    setCaret(np)
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(np, np)
+    })
+  }
+
   const insertDictated = (dictated: string): void => {
     const el = ref.current
     const pos = el?.selectionStart ?? text.length
@@ -811,49 +825,42 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 )}
               </>
             ) : (
-              <div className="flex min-w-0 items-center gap-2 px-3 pb-2.5 desk:flex-wrap desk:gap-y-1 desk:@container">
+              <div className="flex min-w-0 flex-nowrap items-center gap-1 px-3 pb-2.5 desk:@container">
                 <button
                   type="button"
                   onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
                   title={t('code.composer.toggleAgent')}
+                  aria-label={t('code.composer.toggleAgent')}
                   className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:text-ui ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                 >
                   {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
-                  {agent === 'plan' ? 'Plan' : 'Build'}
+                  <span className="desk:@max-[36rem]:sr-only">{agent === 'plan' ? 'Plan' : 'Build'}</span>
                 </button>
                 <button
                   type="button"
                   title={t('code.composer.mention')}
                   aria-label={t('code.composer.mention')}
-                  onClick={() => {
-                    const el = ref.current
-                    const pos = el?.selectionStart ?? text.length
-                    const needsSpace = pos > 0 && !/\s/.test(text[pos - 1])
-                    const next = text.slice(0, pos) + (needsSpace ? ' @' : '@') + text.slice(pos)
-                    const np = pos + (needsSpace ? 2 : 1)
-                    setText(next)
-                    setCaret(np)
-                    requestAnimationFrame(() => {
-                      el?.focus()
-                      el?.setSelectionRange(np, np)
-                    })
-                  }}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[34rem]:hidden"
+                  onClick={insertMention}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[24rem]:hidden"
                 >
                   <AtSign size={14} />
                 </button>
-                <VoiceDictationButton onText={insertDictated} size={14} className="h-6 w-6 rounded-md desk:h-7 desk:w-7 desk:rounded-lg" />
+                <VoiceDictationButton
+                  onText={insertDictated}
+                  size={14}
+                  className="h-6 w-6 shrink-0 rounded-md desk:h-7 desk:w-7 desk:rounded-lg"
+                />
                 <button
                   type="button"
                   title={t('code.composer.attach')}
                   aria-label={t('code.composer.attach')}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[24rem]:hidden"
                 >
                   <Paperclip size={14} />
                 </button>
                 <PermissionChip />
-                <span className="ml-auto desk:hidden" />
+                <ComposerMoreMenu onMention={insertMention} onAttach={() => fileInputRef.current?.click()} />
                 <ModelControls />
                 {busy && (
                   <button
