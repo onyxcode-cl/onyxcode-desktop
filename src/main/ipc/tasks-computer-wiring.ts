@@ -230,6 +230,7 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   // ── Computer use ──
   handle('computer:status', () => computer.status())
   handle('computer:requestPermissions', () => computer.requestPermissions())
+  handle('computer:reportPermsStall', () => computer.reportPermsStall())
   // Windows: consentimiento propio de la app y registro auditable (sin soporte en macOS, que usa TCC y no tiene registro).
   const winOnly = (): void => {
     if (!computer.ownConsent) throw new IpcError('PLATFORM_UNSUPPORTED', t('merr.platform.unsupported'))

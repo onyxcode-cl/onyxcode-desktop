@@ -42,6 +42,9 @@ import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import { Welcome } from './Welcome'
+import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
+import { waitForMacPerms } from './perms-wait'
+import { permsStage, type AppLocation } from '@shared/mac-permissions'
 import {
   canAdvance,
   connectedNames,
@@ -613,13 +616,19 @@ function StepSetup(): React.JSX.Element {
   const [craftMb, setCraftMb] = useState(0)
   const [pct, setPct] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [location, setLocation] = useState<AppLocation | null>(null)
+  const [screenRestart, setScreenRestart] = useState(false)
   const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!hasTasksBridge()) return
     if (mac && caps.computer) {
       const c = await cw('computer:status').catch(() => null)
-      if (c) set('perms', c.accessibility && c.screenRecording ? 'done' : 'idle')
+      if (c) {
+        set('perms', c.accessibility && c.screenRecording ? 'done' : 'idle')
+        setLocation(c.location ?? null)
+        setScreenRestart(permsStage(c) === 'restart')
+      }
     }
     const o = await cw('craft:status').catch(() => null)
     if (o?.status.state === 'missing') {
@@ -636,20 +645,40 @@ function StepSetup(): React.JSX.Element {
     void refresh()
   }, [refresh])
 
+  // Al volver de Ajustes del Sistema se revalidan los permisos.
+  useEffect(() => {
+    if (!mac) return
+    const onFocus = (): void => {
+      if (!hasTasksBridge() || !caps.computer) return
+      void cw('computer:status')
+        .then((c) => {
+          setLocation(c.location ?? null)
+          setScreenRestart(permsStage(c) === 'restart')
+          if (permsStage(c) === 'ready') setItems((p) => ({ ...p, perms: 'done' }))
+        })
+        .catch(() => undefined)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [mac, caps.computer])
+
   const runAll = async (): Promise<void> => {
     setBusy(true)
     try {
       if (mac && caps.computer && items.perms !== 'done') {
         set('perms', 'running')
         await cw('computer:requestPermissions').catch(() => undefined)
-        // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos.
-        let ok = false
-        for (let i = 0; i < 45 && !ok; i++) {
-          const c = await cw('computer:status').catch(() => null)
-          ok = !!c && c.accessibility && c.screenRecording
-          if (!ok) await wait(2000)
-        }
-        set('perms', ok ? 'done' : 'waiting')
+        // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos. Si Accesibilidad
+        // llega antes que Pantalla, se avisa del reinicio al instante.
+        const r = await waitForMacPerms({
+          status: () => cw('computer:status').catch(() => null),
+          request: () => cw('computer:requestPermissions'),
+          report: () => cw('computer:reportPermsStall'),
+          sleep: wait,
+          alive: () => true,
+          onStage: (st) => setScreenRestart(st === 'restart')
+        })
+        set('perms', r === 'ready' ? 'done' : 'waiting')
       }
       if (items.craft && items.craft !== 'done') {
         set('craft', 'running')
@@ -724,6 +753,9 @@ function StepSetup(): React.JSX.Element {
           })}
         </ul>
       )}
+      {mac && caps.computer && <AppLocationNotice location={location} />}
+      {mac && caps.computer && items.perms !== 'done' && screenRestart && <ScreenRestartNotice />}
+      {mac && caps.computer && items.perms !== 'done' && (items.perms === 'waiting' || items.perms === 'running') && <PermsHelp />}
       {rows.length > 0 && (
         <div className="flex items-center gap-3">
           <Button variant="primary" disabled={busy || allDone} onClick={() => void runAll()}>

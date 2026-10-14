@@ -42,6 +42,8 @@ import type { AddressInfo } from 'node:net'
 import { dirname, join } from 'node:path'
 import { unpacked } from '../util/asar'
 import { runHelper } from '../util/exec'
+import { recordProblem } from '../diagnostics/problem-log'
+import { classifyAppLocation, permsStallDetail } from '@shared/mac-permissions'
 import {
   maxTier,
   type AccessDecision,
@@ -153,6 +155,12 @@ const TIERS: ReadonlySet<string> = new Set(['view', 'click', 'full'])
 export interface AbortReport {
   aborted: number
   failed: number
+}
+
+/** Solo macOS: `location` si la app corre translocada o desde un volumen (ruta del ejecutable). */
+function locationField(): { location?: 'translocated' | 'volume' } {
+  const loc = classifyAppLocation(process.execPath)
+  return loc ? { location: loc } : {}
 }
 
 export class ComputerService extends EventEmitter<ServiceEvents> {
@@ -833,7 +841,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       helperOk: false,
       accessibility: process.platform === 'darwin' ? systemPreferences.isTrustedAccessibilityClient(false) : false,
       screenRecording: process.platform === 'darwin' ? systemPreferences.getMediaAccessStatus('screen') === 'granted' : false,
-      screens: []
+      screens: [],
+      ...locationField()
     }
     if (!bin) return base
     try {
@@ -843,11 +852,33 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         helperOk: true,
         accessibility: !!perms.accessibility,
         screenRecording: !!perms.screenRecording,
-        screens: screens.map((s) => ({ width: s.width, height: s.height, scale: s.scale }))
+        screens: screens.map((s) => ({ width: s.width, height: s.height, scale: s.scale })),
+        ...locationField()
       }
     } catch (err) {
       console.error('[computer] helper:', err)
       return base
+    }
+  }
+
+  /**
+   * La interfaz esperó ~90 s y siguen faltando permisos de macOS: lo deja en el registro de problemas con lo que dice el ayudante
+   * (sin rutas ni datos personales) y si la app corre translocada o desde un volumen. No lanza nunca.
+   */
+  async reportPermsStall(): Promise<void> {
+    if (this.platform.ownConsent || process.platform !== 'darwin') return
+    try {
+      const st = await this.status()
+      if (st.helperOk && st.accessibility && st.screenRecording) return
+      recordProblem({
+        source: 'process',
+        level: 'warn',
+        // i18n-ignore: registro de diagnóstico, no es texto de la interfaz
+        message: 'los permisos de macOS siguen sin activarse tras esperar',
+        detail: permsStallDetail(st, st.location ?? null)
+      })
+    } catch {
+      // el registro nunca debe romper nada
     }
   }
 

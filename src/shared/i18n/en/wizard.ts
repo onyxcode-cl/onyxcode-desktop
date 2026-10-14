@@ -125,5 +125,21 @@ export const wizard = {
   'wizard.welcome.retry': 'Retry',
   'wizard.welcome.skip': 'Skip for now',
   'wizard.welcome.continue': 'Continue',
-  'wizard.welcome.progress': '{pct}%'
+  'wizard.welcome.progress': '{pct}%',
+  'wizard.perms.restart.title': 'A restart is needed for Screen Recording',
+  'wizard.perms.restart.body':
+    'Accessibility is already on. Also turn on Screen Recording in System Settings (that pane was opened) and restart {app}: macOS only applies Screen Recording when the app opens again.',
+  'wizard.perms.restart.button': 'Restart {app}',
+  'wizard.perms.location.translocated':
+    '{app} is running from a temporary macOS location (App Translocation), so permissions are not saved properly. Move {app} to the Applications folder, quit it and open it from there.',
+  'wizard.perms.location.volume':
+    '{app} is running from the installer (.dmg). Drag {app} to the Applications folder, eject the installer, quit it and open it from Applications.',
+  'wizard.perms.help.toggle': "Permissions won't turn on",
+  'wizard.perms.help.intro':
+    'Try this in order: 1) Turn on {app} in System Settings › Privacy & Security › Accessibility and Screen Recording. 2) Restart {app}: macOS applies Screen Recording only when the app opens again. 3) Check that {app} is in Applications, not in the .dmg or Downloads.',
+  'wizard.perms.help.repair':
+    'If nothing changes, an old permission from a previous version may be stuck. Quit {app} completely (Cmd+Q), paste these commands in the Terminal app, open it again and grant the permissions again. {app} does not run them for you.',
+  'wizard.perms.help.copy': 'Copy commands',
+  'wizard.perms.help.copied': 'Copied',
+  'wizard.perms.help.restart': 'Restart {app}'
 } as const satisfies Messages<typeof es>

@@ -3406,3 +3406,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Pruebas**: `dropFolder.test.ts`, `useFolderDrop.test.ts`, `arrastrar-carpeta.e2e.ts`, `menu-contextual.e2e.ts`, `edit-context-menu.test.ts`.
 - **No verificado todavía**: el arrastre real de una carpeta desde el explorador del sistema (solo se simuló con un archivo real).
 
+
+## F8-B161 — permisos de macOS: reinicio inmediato, aviso de ubicación y ayuda de reparación
+
+- **Qué cambia**: la bienvenida, el asistente y la tarjeta de Ajustes avisan al instante cuando Accesibilidad está concedida y Grabación de pantalla no (hay que reiniciar; botón «Reiniciar Lazunox», se abre el panel de Pantalla una sola vez) y revalidan al recuperar el foco; aviso si la app corre translocada o desde el .dmg (`ComputerStatus.location`); ayuda «Los permisos no se activan» que copia (sin ejecutar) los `tccutil reset`; canal `computer:reportPermsStall` (clase X en el celular) que anota en el registro de problemas lo que dice el helper tras ~90 s; sección nueva en `docs/INSTALAR.md`.
+- **Pruebas**: `mac-permissions.test.ts`, `perms-wait.test.ts`, `service-perms-stall.test.ts`, `i18n.test.ts`, `i18n-coverage.test.ts`.
+- **No verificado todavía**: el flujo en un Mac real con permisos de verdad (reinicio, aviso de translocation, paneles de Ajustes).
