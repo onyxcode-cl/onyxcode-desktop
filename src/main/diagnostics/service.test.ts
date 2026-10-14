@@ -134,3 +134,32 @@ describe('guardia estática: diag:* solo devuelve texto redactado', () => {
     expect(users).toEqual(['/diagnostics/service.ts'])
   })
 })
+
+describe('DiagnosticsService: problemas guardados', () => {
+  const problems = (lines: string[]): { readLines(max?: number): string[] } => ({ readLines: (max) => (max ? lines.slice(-max) : lines) })
+
+  it('problems: devuelve el registro permanente, vuelve a redactar los secretos de ahora y respeta maxLines', () => {
+    const s = setup({ problems: problems([`2026-10-14 [error] [app] falló con ${PASSWORD}`, '2026-10-14 [error] [ventana] leyó /Users/ana/x', 'tres']) })
+    const r = s.getLogs('problems', 2)
+    expect(r.lines).toHaveLength(2)
+    expect(r.truncated).toBe(true)
+    const all = s.getLogs('problems').lines.join('\n')
+    expect(all).not.toContain(PASSWORD)
+    expect(all).not.toContain('/Users/ana')
+  })
+
+  it('problems: sin registro, la fuente sale vacía', () => {
+    expect(setup().getLogs('problems').lines).toEqual([])
+  })
+
+  it('el informe y la exportación incluyen los últimos problemas guardados', () => {
+    const s = setup({ problems: problems(['2026-10-14 [error] [motor] se cayó']) })
+    expect(s.getText('report').text).toContain('Últimos problemas guardados de la app')
+    expect(s.getText('report').text).toContain('[motor] se cayó')
+    expect(s.getExport().text).toContain('[motor] se cayó')
+  })
+
+  it('el informe dice «(ninguno)» cuando no hay problemas', () => {
+    expect(setup().getText('report').text).toContain('(ninguno)')
+  })
+})

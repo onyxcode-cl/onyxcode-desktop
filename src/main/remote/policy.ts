@@ -275,6 +275,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'diag:logs': 'X',
   'diag:copy': 'X',
   'diag:export': 'X',
+  'diag:problem': 'X',
   // ── ajustes ──
   'settings:get': 'R',
   'settings:set': fieldwise(SETTINGS_FIELDS),

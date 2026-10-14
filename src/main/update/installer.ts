@@ -4,6 +4,7 @@ import { access } from 'node:fs/promises'
 import { rawFsPromises } from './raw-fs'
 import { spawn } from 'node:child_process'
 import { dirname, join, resolve, sep } from 'node:path'
+import { describeError, recordProblem } from '../diagnostics/problem-log'
 import {
   APP_BUNDLE_NAME,
   IDLE_INSTALL,
@@ -146,6 +147,8 @@ export class UpdateInstaller {
         if (this.cancelled) return
         const code = err instanceof InstallError ? err.code : 'unknown'
         console.warn(`[update] descarga fallida (${code}): ${err instanceof Error ? err.message : String(err)}`)
+        const e = describeError(err)
+        recordProblem({ source: 'update', level: 'warn', message: `descarga de la actualización fallida (${code}): ${e.message}`, stack: e.stack })
         this.emit({ type: 'fail', code })
         void this.d.fs.rmrf(join(stagingRoot(this.d.userData), release.version)).catch(() => undefined)
         void this.discardExtra(release.version).catch(() => undefined)
@@ -162,6 +165,7 @@ export class UpdateInstaller {
   preset(code: InstallErrorCode, version: string): void {
     if (this.state.phase !== 'idle') return
     this.state = { phase: 'error', version, received: 0, total: 0, code }
+    recordProblem({ source: 'update', message: `la actualización a ${version} no se completó (${code})` })
     this.d.onState(this.state)
   }
 

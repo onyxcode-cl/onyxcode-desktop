@@ -16,6 +16,7 @@ import {
 import { IDLE_INSTALL, type InstallState } from '@shared/update-install'
 import { pickBetaRelease, releasesListUrl, type UpdateChannel } from './channel'
 import type { UpdateConfig } from './config'
+import { recordProblem } from '../diagnostics/problem-log'
 
 const HOUR_MS = 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 8000
@@ -223,6 +224,7 @@ export class UpdateChecker {
 
   private fail(now: number, why: string): void {
     console.warn(`[update] no se pudo comprobar (${why})`)
+    recordProblem({ source: 'update', level: 'warn', message: `no se pudo comprobar si hay actualización (${why})` })
     this.saved = { ...this.saved, retryAfter: now + HOUR_MS }
     this.persist()
   }

@@ -1,11 +1,14 @@
 /** Diagnóstico (Ajustes › Diagnóstico): fuentes de registros que main entrega YA redactadas. */
 import { t } from './i18n'
 
-export const DIAG_SOURCES = ['engine', 'engine-file', 'report'] as const
+export const DIAG_SOURCES = ['problems', 'engine', 'engine-file', 'report'] as const
 export type DiagSource = (typeof DIAG_SOURCES)[number]
 
 /** Etiquetas visibles de cada fuente, en el idioma activo (getters: se leen al usarse). */
 export const DIAG_SOURCE_LABELS: Record<DiagSource, string> = {
+  get problems() {
+    return t('misc.diag.source.problems')
+  },
   get engine() {
     return t('misc.diag.source.engine')
   },

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { t } from '@shared/i18n'
 import { installEditContextMenu } from './security/edit-context-menu'
@@ -48,6 +49,7 @@ import { clampBounds } from './window-bounds'
 import { syncTitleBarOverlay, themeOf } from './window-overlay'
 import { titleBarOptions } from '@shared/window-chrome'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
+import { describeError, initProblemLog, recordProblem } from './diagnostics/problem-log'
 
 app.setName(INTERNAL_NAME)
 
@@ -213,6 +215,20 @@ function start(): void {
   } catch (err) {
     console.warn('[main] no se pudo limpiar la sesión de la antigua cuenta', err)
   }
+  // Registro permanente de problemas (Ajustes › Diagnóstico): queda en disco aunque se cierre la app.
+  initProblemLog({ dir: join(app.getPath('userData'), 'logs'), home: homedir() })
+  // `uncaughtExceptionMonitor` solo OBSERVA: no cambia lo que hace Electron con el error.
+  process.on('uncaughtExceptionMonitor', (err) => recordProblem({ source: 'main', ...describeError(err) }))
+  process.on('unhandledRejection', (reason) => {
+    console.error('[main] promesa rechazada sin capturar:', reason)
+    recordProblem({ source: 'main', level: 'warn', ...describeError(reason) })
+  })
+  app.on('render-process-gone', (_e, wc, d) => {
+    if (d.reason !== 'clean-exit') recordProblem({ source: 'process', message: 'se cerró una ventana por un fallo', detail: { motivo: d.reason, codigo: d.exitCode, url: wc.getURL().slice(0, 80) } })
+  })
+  app.on('child-process-gone', (_e, d) => {
+    if (d.reason !== 'clean-exit') recordProblem({ source: 'process', message: `falló un proceso de la app (${d.type})`, detail: { motivo: d.reason, codigo: d.exitCode } })
+  })
   // Un segundo lanzamiento (dock, `open`, lazunox://) enfoca esta instancia. Antes de `ready` se
   // ignora: la ventana se crea igualmente al arrancar.
   app.on('second-instance', () => {

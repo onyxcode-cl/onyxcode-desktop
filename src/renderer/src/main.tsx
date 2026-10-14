@@ -6,6 +6,7 @@ import { DISPLAY_NAME } from '@shared/brand'
 import { App } from './app/App'
 import { LangRoot } from './app/LangRoot'
 import { initLang } from './lib/i18n'
+import { installProblemReporting } from './lib/report-problems'
 import { installModalFocus } from './lib/modal-focus'
 // Inter incluida (variable): en Windows sustituye a la tipografía del sistema para que el texto se vea como en macOS (SF Pro); en macOS no se usa (gana -apple-system).
 import '@fontsource-variable/inter/wght.css'
@@ -20,6 +21,7 @@ document.title = DISPLAY_NAME
 // Marca el escritorio: activa los tokens y la variante desk (data-shell) y los ajustes por sistema (data-platform: darwin|win32).
 document.documentElement.dataset.shell = 'desktop'
 document.documentElement.dataset.platform = currentPlatform()
+installProblemReporting()
 initLang()
 applyAccent(getAccent())
 applyTextSize(getTextSize())

@@ -6,6 +6,7 @@ export const misc = {
   'misc.managedTitle': 'Managed by your organization',
   'misc.remove': 'Remove',
   'misc.add': 'Add',
+  'misc.diag.source.problems': 'App problems (saved)',
   'misc.diag.source.engine': 'Engine (live)',
   'misc.diag.source.engine-file': 'Engine (file)',
   'misc.diag.source.report': 'Diagnostic report',

@@ -2,6 +2,7 @@ import { app, BrowserWindow, clipboard, dialog, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
 import { chmod, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
+import { getProblemLog, recordProblem } from '../diagnostics/problem-log'
 import { DiagnosticsService } from '../diagnostics/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { appOpencodeConfigPath } from '../extras/mcp-config'
@@ -19,6 +20,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     home: homedir(),
     mcpConfigPath: appOpencodeConfigPath(),
     server,
+    problems: { readLines: (max) => getProblemLog()?.readLines(max) ?? [] },
     extraSecrets: () => [...embeddedBrowserMcp.knownTokens(), ...knownMcpProxyTokens()],
     versions: () => ({
       [app.getName()]: app.getVersion(),
@@ -31,6 +33,10 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
   })
 
   handle(ipcMain, 'diag:logs', ({ source, maxLines }) => service.getLogs(source, maxLines))
+
+  handle(ipcMain, 'diag:problem', ({ message, stack }) => {
+    recordProblem({ source: 'renderer', message, stack })
+  })
 
   handle(ipcMain, 'diag:copy', ({ source }) => {
     const { text, lines } = service.getText(source)

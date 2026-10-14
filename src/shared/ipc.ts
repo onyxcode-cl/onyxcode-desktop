@@ -75,6 +75,8 @@ export interface IpcInvokeContract {
   'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
   /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
+  /** La ventana avisa de un error suyo (error no capturado, fallo de render) para dejarlo en el registro de problemas. */
+  'diag:problem': { req: { message: string; stack?: string }; res: void }
 
   // settings
   'settings:get': { req: void; res: Settings }
@@ -123,6 +125,7 @@ export const IPC_INVOKE_CHANNELS = [
   'diag:logs',
   'diag:copy',
   'diag:export',
+  'diag:problem',
   'settings:get',
   'settings:set',
   'settings:addRecentFolder'

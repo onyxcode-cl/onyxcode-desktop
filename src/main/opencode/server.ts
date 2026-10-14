@@ -10,6 +10,7 @@ import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { embeddedBrowser } from '../embedded-browser/service'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import { recordProblem } from '../diagnostics/problem-log'
 import { accessSync, constants, existsSync, mkdirSync } from 'node:fs'
 import { app } from 'electron'
 import { randomBytes } from 'node:crypto'
@@ -251,6 +252,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   }
 
   private setStatus(patch: Partial<ServerStatus>): void {
+    if (patch.state === 'error' && patch.error) recordProblem({ source: 'engine', message: patch.error, detail: { reinicios: this.status.restarts } })
     this.status = { ...this.status, ...patch }
     this.emit('status', this.status)
   }

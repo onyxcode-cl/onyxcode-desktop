@@ -4,6 +4,7 @@
  * `makeRedactor`. No incluye los registros del sandbox de Tareas.
  *
  * Fuentes:
+ *  - `problems`    registro permanente de problemas de la app (`userData/logs/problemas.log`), sobrevive a cerrar la app.
  *  - `engine`      anillo en memoria con lo que escribe `opencode serve` (stdout/stderr).
  *  - `engine-file` últimos 256 KB del `.log` más reciente de `userData/opencode-data/opencode/log`.
  *  - `report`      informe: versiones, estado del servidor y las últimas 200 líneas del motor.
@@ -19,6 +20,7 @@ import { collectMcpSecrets, collectStringValues, makeRedactor, type Redactor } f
 export const ENGINE_FILE_TAIL_BYTES = 256 * 1024
 export const DEFAULT_MAX_LINES = 500
 export const REPORT_ENGINE_LINES = 200
+export const REPORT_PROBLEM_LINES = 150
 
 export interface DiagnosticsDeps {
   userData: string
@@ -34,6 +36,8 @@ export interface DiagnosticsDeps {
   extraSecrets?: () => string[]
   /** Versiones para el informe (`app`, `electron`, `chrome`, `node`, `sistema`…). */
   versions: () => Record<string, string>
+  /** Registro permanente de problemas (opcional: sin él, la fuente `problems` sale vacía). */
+  problems?: { readLines(max?: number): string[] }
   now: () => number
 }
 
@@ -113,6 +117,9 @@ export class DiagnosticsService {
   /** Todas las líneas de una fuente, redactadas, más si el origen estaba recortado. */
   private collect(source: DiagSource, redact: Redactor): { lines: string[]; truncated: boolean } {
     const { deps } = this
+    if (source === 'problems') {
+      return { lines: (deps.problems?.readLines(5000) ?? []).map(redact), truncated: false }
+    }
     if (source === 'engine') {
       return { lines: deps.server.recentLog().map(redact), truncated: false }
     }
@@ -137,6 +144,9 @@ export class DiagnosticsService {
     out.push('', 'Motor (OpenCode)', `  estado: ${status.state}`, `  reinicios: ${status.restarts}`)
     if (status.version) out.push(`  versión: ${status.version}`)
     if (status.error) out.push(`  último error: ${status.error}`)
+    const problems = deps.problems?.readLines(REPORT_PROBLEM_LINES) ?? []
+    out.push('', `Últimos problemas guardados de la app (${problems.length} líneas)`)
+    out.push(...(problems.length ? problems : ['  (ninguno)']))
     out.push('', `Últimas ${REPORT_ENGINE_LINES} líneas del motor`)
     out.push(...deps.server.recentLog(REPORT_ENGINE_LINES))
     // Todo el informe (también los datos de estado) pasa por el redactor, una línea a la vez.

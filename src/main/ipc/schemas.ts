@@ -560,6 +560,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'diag:logs': obj({ source: literal(...DIAG_SOURCES), maxLines: optional(num({ int: true, min: 1, max: 5000 })) }),
   'diag:copy': obj({ source: literal(...DIAG_SOURCES) }),
   'diag:export': none,
+  'diag:problem': obj({ message: str({ max: 2000 }), stack: optional(str({ max: 4000 })) }),
   'settings:get': none,
   'settings:set': partial({
     defaultModel: modelRef,

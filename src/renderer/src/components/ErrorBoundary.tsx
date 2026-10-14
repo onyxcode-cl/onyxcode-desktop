@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { t } from '@shared/i18n'
+import { reportProblem } from '../lib/report-problems'
 import { Button } from './Button'
 
 /** Texto que copia "Copiar detalle": mensaje, pila y pila de componentes (pura, testeable). */
@@ -35,6 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error(`[ErrorBoundary${this.props.label ? `:${this.props.label}` : ''}]`, error, info.componentStack)
+    reportProblem(error, `Zona: ${this.props.label ?? 'general'}${info.componentStack ?? ''}`)
     this.setState({ componentStack: info.componentStack ?? null })
   }
 

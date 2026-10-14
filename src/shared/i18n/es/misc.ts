@@ -3,6 +3,7 @@ export const misc = {
   'misc.managedTitle': 'Gestionado por tu organización',
   'misc.remove': 'Quitar',
   'misc.add': 'Añadir',
+  'misc.diag.source.problems': 'Problemas de la app (guardados)',
   'misc.diag.source.engine': 'Motor (en vivo)',
   'misc.diag.source.engine-file': 'Motor (archivo)',
   'misc.diag.source.report': 'Informe de diagnóstico',
