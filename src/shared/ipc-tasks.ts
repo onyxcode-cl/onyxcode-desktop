@@ -6,6 +6,7 @@
  */
 import type { DoctorReport } from './doctor'
 import type { CraftInstallResult, CraftUiSnapshot } from './craft'
+import type { PreflightId, PreflightReport } from './preflight'
 import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
 import type { PendingLearnedState } from './learned-pending'
@@ -1138,6 +1139,11 @@ export interface TasksInvokeContract {
   'craft:cancel': { req: void; res: void }
   'craft:remove': { req: void; res: void }
 
+  /** Revisión de arranque («Preparando Lazunox»): agrega motor, ArtCraft, permisos, ayudante, entorno aislado y disco. Solo mira, sin red. */
+  'preflight:run': { req: void; res: PreflightReport }
+  /** Una instalación de la pantalla falló: se anota en el registro de problemas y vuelve el detalle redactado para «Copiar detalle». */
+  'preflight:fail': { req: { id: PreflightId; code?: string; message?: string }; res: { detail: string } }
+
   /** «Doctor»: revisa permisos, herramientas internas y componentes opcionales y devuelve qué funciona y qué falta (solo mira). */
   'doctor:run': { req: void; res: DoctorReport }
   /**
@@ -1365,6 +1371,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'craft:install',
   'craft:cancel',
   'craft:remove',
+  'preflight:run',
+  'preflight:fail',
   'doctor:run',
   'tasks:sandbox:status',
   'tasks:sandbox:setup',

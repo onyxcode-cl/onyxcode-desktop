@@ -157,22 +157,129 @@ const webAssetOf = (d: CraftDeps, prog: string): CraftWebAsset | null => d.pin?.
 const dirFor = (d: CraftDeps): string | null => (d.pin ? join(d.binDir, `craft-${d.pin.version}`) : null)
 const markerOf = (dir: string, tool: string): string => join(dir, `installed-${tool}.json`)
 
-function binOf(d: CraftDeps, tool: string): string | null {
-  const dir = dirFor(d)
-  const asset = assetOf(d, tool)
-  if (!dir || !asset) return null
-  const bin = join(dir, normalize(asset.bin))
-  // Marca propia del programa; la de la primera versión de la prueba (`installed.json`) valía solo para deckcraft.
-  const marked = existsSync(markerOf(dir, tool)) || (tool === 'deckcraft' && existsSync(join(dir, 'installed.json')))
-  return marked && existsSync(bin) ? bin : null
+/** Por qué una pieza instalada no vale (la marca sola no basta: puede faltar el archivo, estar truncado o ser de otro pin). */
+export type CraftPartProblem = 'no-mark' | 'stale' | 'no-file' | 'truncated'
+export interface CraftPart {
+  /** `deckcraft`, `wordcraft`… (CLI) o `web-gridcraft`… (versión web). */
+  name: string
+  kind: 'cli' | 'web'
+  /** `null` = la pieza está bien instalada. */
+  problem: CraftPartProblem | null
+  /** Bytes que se descargarían para repararla. */
+  sizeBytes: number
 }
 
-/** Ruta de la versión web de un programa (`<craft-versión>/web/<programa>`) si está instalada con su marca e `index.html`. */
+/** Factor de espacio libre exigido respecto de lo que se descarga (zip + descompresión + copia). Lo usan el instalador y la revisión de arranque. */
+export const CRAFT_DISK_FACTOR = 4
+
+function readMark(path: string): { sha256?: string; binSize?: number; web?: { files: number; bytes: number } } {
+  try {
+    const o = JSON.parse(readFileSync(path, 'utf8')) as unknown
+    return o && typeof o === 'object' && !Array.isArray(o) ? (o as never) : {}
+  } catch {
+    // Marca ilegible (instalaciones muy antiguas): se acepta como antes; lo que manda es que el archivo exista y no esté vacío.
+    return {}
+  }
+}
+
+function inspectCli(d: CraftDeps, tool: string): { problem: CraftPartProblem | null; bin: string | null } {
+  const dir = dirFor(d)
+  const asset = assetOf(d, tool)
+  if (!dir || !asset) return { problem: 'no-mark', bin: null }
+  const bin = join(dir, normalize(asset.bin))
+  // Marca propia del programa; la de la primera versión de la prueba (`installed.json`) valía solo para deckcraft.
+  const mark = markerOf(dir, tool)
+  const legacy = tool === 'deckcraft' && existsSync(join(dir, 'installed.json'))
+  if (!existsSync(mark) && !legacy) return { problem: 'no-mark', bin: null }
+  const m = existsSync(mark) ? readMark(mark) : {}
+  if (typeof m.sha256 === 'string' && m.sha256 !== asset.sha256) return { problem: 'stale', bin: null }
+  try {
+    const st = statSync(bin)
+    if (!st.isFile()) return { problem: 'no-file', bin: null }
+    if (st.size === 0 || (typeof m.binSize === 'number' && st.size !== m.binSize)) return { problem: 'truncated', bin: null }
+  } catch {
+    return { problem: 'no-file', bin: null }
+  }
+  return { problem: null, bin }
+}
+
+function binOf(d: CraftDeps, tool: string): string | null {
+  return inspectCli(d, tool).bin
+}
+
+/** Archivos y bytes de un árbol (sin seguir enlaces). */
+function treeStats(path: string): { files: number; bytes: number } {
+  const st = lstatSync(path)
+  if (!st.isDirectory()) return { files: 1, bytes: st.size }
+  let files = 0
+  let bytes = 0
+  for (const n of readdirSync(path)) {
+    const r = treeStats(join(path, n))
+    files += r.files
+    bytes += r.bytes
+  }
+  return { files, bytes }
+}
+
+/** El recorrido del sitio web se repite como mucho una vez por minuto y carpeta (se vacía al instalar o quitar). */
+const webCheckCache = new Map<string, { at: number; ok: boolean }>()
+const WEB_CHECK_TTL_MS = 60_000
+/** Olvida el recorrido guardado (la revisión explícita de «Revisar de nuevo» y las pruebas). */
+export function clearCraftCheckCache(): void {
+  webCheckCache.clear()
+}
+
+function inspectWeb(d: CraftDeps, prog: string): CraftPartProblem | null {
+  const dir = dirFor(d)
+  const asset = webAssetOf(d, prog)
+  if (!dir || !TOOL_RE.test(prog) || !asset) return 'no-mark'
+  const mark = markerOf(dir, `web-${prog}`)
+  if (!existsSync(mark)) return 'no-mark'
+  const m = readMark(mark)
+  if (typeof m.sha256 === 'string' && m.sha256 !== asset.sha256) return 'stale'
+  const web = join(dir, 'web', prog)
+  try {
+    const idx = statSync(join(web, 'index.html'))
+    if (!idx.isFile()) return 'no-file'
+    if (idx.size === 0) return 'truncated'
+  } catch {
+    return 'no-file'
+  }
+  if (m.web && typeof m.web.files === 'number' && typeof m.web.bytes === 'number') {
+    const hit = webCheckCache.get(web)
+    if (hit && Date.now() - hit.at < WEB_CHECK_TTL_MS) return hit.ok ? null : 'truncated'
+    let ok = false
+    try {
+      const s = treeStats(web)
+      ok = s.files === m.web.files && s.bytes === m.web.bytes
+    } catch {
+      ok = false
+    }
+    webCheckCache.set(web, { at: Date.now(), ok })
+    if (!ok) return 'truncated'
+  }
+  return null
+}
+
+/** Ruta de la versión web de un programa (`<craft-versión>/web/<programa>`) si está instalada, íntegra y con su marca. */
 export function craftWebDir(d: CraftDeps, programa: string): string | null {
   const dir = dirFor(d)
   if (!dir || !TOOL_RE.test(programa) || !webAssetOf(d, programa)) return null
-  const web = join(dir, 'web', programa)
-  return existsSync(markerOf(dir, `web-${programa}`)) && existsSync(join(web, 'index.html')) ? web : null
+  return inspectWeb(d, programa) === null ? join(dir, 'web', programa) : null
+}
+
+/** Estado pieza a pieza (3 CLI + 4 webs): qué está bien y qué falta o está dañado. Solo mira el disco, sin red. */
+export function craftInspect(d: CraftDeps): CraftPart[] {
+  if (!d.pin) return []
+  const parts: CraftPart[] = []
+  for (const t of Object.keys(d.pin.tools)) {
+    const asset = assetOf(d, t)
+    if (!asset) continue
+    parts.push({ name: t, kind: 'cli', problem: inspectCli(d, t).problem, sizeBytes: asset.size })
+  }
+  for (const [p, asset] of Object.entries(d.pin.web ?? {}))
+    parts.push({ name: `web-${p}`, kind: 'web', problem: inspectWeb(d, p), sizeBytes: asset.size })
+  return parts
 }
 
 export function craftStatus(d: CraftDeps): CraftStatus {
@@ -235,7 +342,8 @@ export async function installCraft(
   const total = items.reduce((n, it) => n + it.asset.size, 0)
   mkdirSync(d.binDir, { recursive: true, mode: 0o700 })
   const free = d.freeBytes ? d.freeBytes() : statfsSync(d.binDir).bavail * statfsSync(d.binDir).bsize
-  if (free < total * 4) throw new OfficeError('disk', `Espacio insuficiente: hacen falta unos ${Math.ceil((total * 4) / 1e6)} MB libres`)
+  if (free < total * CRAFT_DISK_FACTOR)
+    throw new OfficeError('disk', `Espacio insuficiente: hacen falta unos ${Math.ceil((total * CRAFT_DISK_FACTOR) / 1e6)} MB libres`)
   mkdirSync(final, { recursive: true, mode: 0o700 })
   let before = 0
   for (const it of items) {
@@ -271,7 +379,12 @@ export async function installCraft(
         renameSync(join(stage, top), join(final, top))
         writeFileSync(
           markerOf(final, it.tool),
-          JSON.stringify({ version: d.pin!.version, sha256: asset.sha256, installedAt: new Date().toISOString() })
+          JSON.stringify({
+            version: d.pin!.version,
+            sha256: asset.sha256,
+            binSize: statSync(join(final, normalize(it.asset.bin))).size,
+            installedAt: new Date().toISOString()
+          })
         )
       } else {
         const root = join(stage, it.asset.dir)
@@ -283,9 +396,15 @@ export async function installCraft(
         mkdirSync(join(final, 'web'), { recursive: true, mode: 0o700 })
         rmSync(join(final, 'web', it.prog), { recursive: true, force: true })
         renameSync(root, join(final, 'web', it.prog))
+        webCheckCache.delete(join(final, 'web', it.prog))
         writeFileSync(
           markerOf(final, `web-${it.prog}`),
-          JSON.stringify({ version: d.pin!.version, sha256: asset.sha256, installedAt: new Date().toISOString() })
+          JSON.stringify({
+            version: d.pin!.version,
+            sha256: asset.sha256,
+            web: treeStats(join(final, 'web', it.prog)),
+            installedAt: new Date().toISOString()
+          })
         )
       }
     } finally {
@@ -299,5 +418,6 @@ export async function installCraft(
 
 export function removeCraft(d: CraftDeps): void {
   const dir = dirFor(d)
+  webCheckCache.clear()
   if (dir && existsSync(dir) && statSync(dir).isDirectory()) rmSync(dir, { recursive: true, force: true })
 }

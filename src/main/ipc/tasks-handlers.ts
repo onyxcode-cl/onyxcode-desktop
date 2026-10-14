@@ -37,6 +37,7 @@ import { registerTasksProjectHandlers } from './tasks-project-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
 import { registerTasksAutoHandlers } from './tasks-auto-handlers'
 import { registerTasksSandboxHandlers } from './tasks-sandbox-handlers'
+import { registerTasksPreflightHandlers } from './tasks-preflight-handlers'
 import { createRestorePoints, registerTasksRestoreHandlers } from './tasks-restore-handlers'
 import { windowOfSender } from './sender-window'
 
@@ -283,6 +284,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   const computerWiring = cu ? wireComputer(cu, { tasks, send, handle, getWindow }) : null
 
   // ── Lote B/C: submódulos (carpetas, ciclo de vida, proyecto/MCP/reglas, archivos, Modo auto) ──
+  const sandboxModule = registerTasksSandboxHandlers(ctx, { tasksWin: deps.tasksWin, winBackend: deps.winBackend })
   const submodules: TasksSubmodule[] = [
     registerTasksFoldersHandlers(ctx),
     registerTasksCraftHandlers(ctx),
@@ -291,7 +293,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksFilesHandlers(ctx),
     registerTasksAutoHandlers(ctx),
     registerTasksRestoreHandlers(ctx),
-    registerTasksSandboxHandlers(ctx, { tasksWin: deps.tasksWin, winBackend: deps.winBackend }),
+    sandboxModule,
+    registerTasksPreflightHandlers(ctx, { computer, sandboxStatus: sandboxModule.status }),
     registerTasksViewerHandlers(ctx)
   ]
 
