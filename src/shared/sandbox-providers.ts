@@ -23,5 +23,11 @@ export function sandboxModelNotice(sandboxed: boolean, providerID: string): stri
  */
 export function sandboxSendBlocked(available: readonly string[] | null, providerID: string): string | null {
   if (!available) return null
-  return available.includes(providerID) ? null : sandboxProviderNotice()
+  if (available.includes(providerID)) return null
+  // Un proveedor que el sandbox SÍ admite pero su servidor aún no tiene: se conectó después de arrancar (lee las credenciales una vez).
+  if (SANDBOX_PROVIDER_IDS.includes(providerID)) return sandboxProviderPendingNotice()
+  return sandboxProviderNotice()
 }
+
+/** Aviso: el proveedor es admitido, pero aún no llegó al entorno aislado de esta tarea. */
+export const sandboxProviderPendingNotice = (): string => t('tasks.sandboxProviderPending')

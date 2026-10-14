@@ -54,6 +54,8 @@ import type { WinBackendProvider } from './backends'
 import { isApprovedPath, resolveUiPath } from './ui-path'
 import { IDENTITY_MAP, toSandboxOrNull, type PathMapWire } from '@shared/tasks-path-map'
 import { createRealWinHost, type WinHost } from './win-context'
+import { appAuthFile } from '../opencode/data-dir'
+import { sandboxCredentialIds } from './sandbox-credentials'
 
 /** Traducción léxica `C:\x` → `/win/c/x` (no depende de los montajes concedidos). */
 const WIN_PATH_MAP: PathMapWire = { kind: 'wsl', mounts: [] }
@@ -226,6 +228,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       winBackend?: WinBackendProvider
       /** Bandera efectiva `computerWin` (la trae `main`). Ausente: en Windows el agente `computer` sigue siendo el de macOS y no se usa. */
       computerWin?: boolean
+      /** Ids de proveedores con credencial que vería un servidor sandbox al arrancar (pruebas); por defecto se leen de `auth.json` (solo ids). */
+      credentialIds?: () => string[]
     } = {}
   ) {
     super()
@@ -476,7 +480,44 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** Firma del perfil del servidor sandbox: JSON ordenado de las carpetas extra + permiso de borrado. */
   private signatureOf(extras: ExtraFolder[], allowDelete: boolean): string {
     const sorted = [...extras].sort((a, b) => a.path.localeCompare(b.path)).map((e) => ({ path: e.path, mode: e.mode }))
-    return JSON.stringify({ extra: sorted, allowDelete })
+    // Los ids (nunca las claves) de los proveedores con credencial: el servidor sandbox las lee una sola vez al arrancar.
+    return JSON.stringify({ extra: sorted, allowDelete, providers: this.credentialIds() })
+  }
+
+  /** Ids de proveedores con credencial utilizable en el sandbox (solo nombres). */
+  private credentialIds(): string[] {
+    try {
+      return this.opts.credentialIds ? this.opts.credentialIds() : sandboxCredentialIds(appAuthFile(app.getPath('userData')))
+    } catch {
+      return []
+    }
+  }
+
+  /** ¿Cambió el conjunto de proveedores con credencial desde que arrancó el servidor que registró `signature`? */
+  private credentialsChanged(signature: string | undefined): boolean {
+    if (!signature) return false
+    try {
+      const was = (JSON.parse(signature) as { providers?: string[] }).providers ?? []
+      return JSON.stringify([...was].sort()) !== JSON.stringify(this.credentialIds())
+    } catch {
+      return false
+    }
+  }
+
+  /** ¿El servidor no tiene ninguna sesión ocupada? Si no se puede consultar, se asume ocupado (no se reinicia). */
+  private async serverIdle(handle: TasksServerHandle, folder: string): Promise<boolean> {
+    try {
+      const dir = handle.paths?.directory ?? folder
+      const res = await fetch(`${handle.baseUrl}/session/status?directory=${encodeURIComponent(dir)}`, {
+        headers: { Authorization: handle.authorization },
+        signal: AbortSignal.timeout(3000)
+      })
+      if (!res.ok) return false
+      const body = (await res.json()) as Record<string, { type?: string }> | null
+      return !!body && typeof body === 'object' && Object.values(body).every((v) => v?.type === 'idle')
+    } catch {
+      return false
+    }
   }
 
   private requireApproved(folder: string): string {
@@ -820,6 +861,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (why) throw new Error(why)
     }
     const key = serverKey(f, fullAccess)
+    // El sandbox lee las credenciales una sola vez: si se conectó (o quitó) un proveedor después de arrancar, un servidor ocioso se
+    // reinicia para que lo vea (OpenCode Go aún no llegaba al entorno aislado). Uno ocupado no se toca: `applied` queda en false.
+    const live = this.servers.get(key)
+    if (!fullAccess && live?.handle && live.info.state === 'ready' && this.credentialsChanged(live.signature)) {
+      if (await this.serverIdle(live.handle, f)) await this.restartSandbox(f)
+    }
     const existing = this.servers.get(key)
     let handle = existing?.handle
     if (!handle || existing?.info.state !== 'ready') {
