@@ -12,6 +12,7 @@ let userData = ''
 let version = '0.2.2'
 
 vi.mock('electron', () => ({
+  net: {},
   app: {
     getPath: () => userData,
     getAppPath: () => process.cwd(),

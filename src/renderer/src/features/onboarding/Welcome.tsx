@@ -30,6 +30,9 @@ import {
   type WelcomeItems
 } from './welcome-plan'
 
+/** Sondeos (cada 1,5 s) que se esperan al entorno aislado: ~45 min como máximo. */
+const SANDBOX_WAIT_POLLS = 1800
+
 export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: () => void }): React.JSX.Element {
   const t = useT()
   const caps = platformCaps()
@@ -146,7 +149,17 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
               .then((s) => alive.current && setPct(s.setup?.running ? s.setup.pct : null))
               .catch(() => undefined)
           }, 1500)
-          const s = await cw('tasks:sandbox:setup').catch(() => null)
+          // `tasks:sandbox:setup` devuelve al EMPEZAR: se espera sondeando el estado hasta que la instalación termine de verdad
+          // (antes se daba por fallida nada más llamar, aunque siguiera instalándose bien por detrás).
+          let s = await cw('tasks:sandbox:setup').catch(() => null)
+          for (let i = 0; i < SANDBOX_WAIT_POLLS && alive.current; i++) {
+            const st = await cw('tasks:sandbox:status', undefined).catch(() => null)
+            if (st && !st.setup?.running) {
+              s = st
+              break
+            }
+            await new Promise((res) => setTimeout(res, 1500))
+          }
           clearInterval(poll)
           if (alive.current) setPct(null)
           set('sandbox', s?.state === 'ready' ? 'ready' : 'failed')

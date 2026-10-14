@@ -225,6 +225,7 @@
     "POST /mcp/{name}/connect": "0ac130b9cac57ba7",
     "POST /mcp/{name}/disconnect": "0ac130b9cac57ba7",
     "POST /permission/{requestID}/reply": "ae715532ca524cb5",
+    "POST /provider/{providerID}/oauth/callback": "e0dcd9cda521aec1",
     "POST /question/{requestID}/reject": "b0242b7d205350b5",
     "POST /question/{requestID}/reply": "5a3e100000c62308",
     "POST /session": "1add3b129e4c189e",
