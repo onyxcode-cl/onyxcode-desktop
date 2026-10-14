@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildInlineConfig } from './config'
 
@@ -9,5 +11,30 @@ describe('buildInlineConfig (sidecar principal)', () => {
       expect(c.autoupdate).toBe(false)
     }
     expect(buildInlineConfig().share).toBe('disabled')
+  })
+})
+
+describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () => {
+  const inline = JSON.stringify(buildInlineConfig())
+  const chatMd = readFileSync(resolve(__dirname, '../../../resources/opencode/agents/chat.md'), 'utf8').replace(/\s+/g, ' ')
+
+  it('el prompt del Chat pide preguntar el formato ANTES de armar una presentación, con las dos opciones', () => {
+    for (const text of [inline, chatMd]) {
+      expect(text).toContain('ANTES de armar una PRESENTACIÓN')
+      expect(text).toContain('Editable')
+      expect(text).toContain('HTML/CSS')
+    }
+  })
+
+  it('no vuelve a preguntar si el formato ya está claro o ya se eligió', () => {
+    for (const text of [inline, chatMd]) {
+      expect(text).toContain('NO vuelvas a preguntar')
+    }
+  })
+
+  it('la copia larga y el prompt inline dicen lo mismo sobre las dos opciones', () => {
+    const norm = (t: string): string => t.replace(/\\n|\s+|[-•]/g, ' ').replace(/ +/g, ' ')
+    expect(norm(inline)).toContain('Diseño libre en HTML/CSS')
+    expect(norm(chatMd)).toContain('Diseño libre en HTML/CSS')
   })
 })
