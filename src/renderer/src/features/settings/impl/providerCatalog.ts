@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
 import { localeTag, t } from '@shared/i18n'
 import { errorMessage, type OpencodeClient } from '../../../lib/opencode'
+import { FREE_PROVIDER_ID } from '@shared/ai-availability'
 import { startKeyTest } from './useKeyTest'
+import { reconcileAfterProviderChange, snapshotProviderIds, type SwitchNotice } from './reconcileModels'
 
 /** Catálogo de proveedores de OpenCode (`provider.list` + `provider.auth`). */
 export interface ProviderCatalog {
@@ -89,21 +91,41 @@ export async function saveProviderKey(client: OpencodeClient, providerID: string
 }
 
 /**
- * Acciones para conectar un proveedor (API key u OAuth) con estado `busy`/`error` compartido.
- * `onChanged` recarga lo que dependa de los proveedores conectados. Todas las acciones relanzan el error.
+ * ¿Tiene una credencial guardada que el usuario puede quitar? El catálogo marca `source: 'api'` para las claves y `custom` para el
+ * inicio de sesión por plugin (p. ej. ChatGPT); el proveedor gratuito preinstalado también es `custom` pero no tiene credencial.
+ * `env` y `config` vienen del entorno o de la configuración, no de `auth.json`. No se lee `auth.json`: se decide con el catálogo.
+ */
+export function canDisconnect(p: Pick<Provider, 'id' | 'source'>): boolean {
+  return p.source === 'api' || (p.source === 'custom' && p.id !== FREE_PROVIDER_ID)
+}
+
+/**
+ * Acciones para conectar un proveedor (API key u OAuth). `busy` cubre las acciones cortas (guardar una clave, iniciar el login);
+ * `oauthPending` cubre la espera del login en el navegador (hasta 5 min) y NO bloquea guardar la clave de otro proveedor.
+ * `onChanged` recarga lo que dependa de los proveedores conectados. Tras cada cambio se reconcilian el modelo predeterminado y
+ * los de cada modo (`notice` = aviso «Ahora usas …» con «Deshacer»). Todas las acciones relanzan el error.
  */
 export function useProviderConnect(
   client: OpencodeClient | null,
   onChanged: () => Promise<void>
 ): {
   busy: boolean
+  oauthPending: boolean
   error: string | null
+  notice: SwitchNotice | null
+  setNotice: (n: SwitchNotice | null) => void
   setKey: (providerID: string, key: string) => Promise<void>
   oauthStart: (providerID: string, method: number) => Promise<ProviderAuthAuthorization>
   oauthFinish: (providerID: string, method: number, code?: string) => Promise<void>
+  /** Libera la interfaz de un login pendiente. El motor no ofrece cancelar `oauth.callback`: su espera termina sola (5 min). */
+  cancelOauth: () => void
 } {
   const [busy, setBusy] = useState(false)
+  const [oauthPending, setOauthPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<SwitchNotice | null>(null)
+  /** Cada login pendiente tiene su número: cancelar lo invalida (su resultado tardío ya no toca el estado de la interfaz). */
+  const pendingGen = useRef(0)
 
   const run = useCallback(
     async <T>(fn: (c: OpencodeClient) => Promise<T>): Promise<T> => {
@@ -122,15 +144,26 @@ export function useProviderConnect(
     [client]
   )
 
+  /** Tras guardar credenciales: recarga y reconcilia las elecciones de modelo (el aviso solo si hubo cambio). */
+  const afterChange = useCallback(
+    async (c: OpencodeClient, previousIds: string[] | null): Promise<void> => {
+      await onChanged()
+      const n = await reconcileAfterProviderChange(c, previousIds)
+      if (n) setNotice(n)
+    },
+    [onChanged]
+  )
+
   const setKey = useCallback(
     (providerID: string, key: string) =>
       run(async (c) => {
+        const before = await snapshotProviderIds(c)
         await saveProviderKey(c, providerID, key)
         // Solo claves ya guardadas: main lee la clave de su almacén (no viaja por el IPC) y avisa si no sirve.
         startKeyTest(providerID)
-        await onChanged()
+        await afterChange(c, before)
       }),
-    [run, onChanged]
+    [run, afterChange]
   )
 
   const oauthStart = useCallback(
@@ -144,15 +177,31 @@ export function useProviderConnect(
   )
 
   const oauthFinish = useCallback(
-    (providerID: string, method: number, code?: string) =>
-      run(async (c) => {
-        const r = await c.provider.oauth.callback({ providerID, method, code })
+    async (providerID: string, method: number, code?: string): Promise<void> => {
+      if (!client) throw new Error(t('models.connect.notReady'))
+      const mine = ++pendingGen.current
+      setOauthPending(true)
+      setError(null)
+      try {
+        const before = await snapshotProviderIds(client)
+        const r = await client.provider.oauth.callback({ providerID, method, code })
         if (r.error) throw new Error(errorMessage(r.error))
-        await c.global.dispose()
-        await onChanged()
-      }),
-    [run, onChanged]
+        await client.global.dispose()
+        await afterChange(client, before)
+      } catch (err) {
+        if (mine === pendingGen.current) setError(errorMessage(err))
+        throw err
+      } finally {
+        if (mine === pendingGen.current) setOauthPending(false)
+      }
+    },
+    [client, afterChange]
   )
 
-  return { busy, error, setKey, oauthStart, oauthFinish }
+  const cancelOauth = useCallback(() => {
+    pendingGen.current++
+    setOauthPending(false)
+  }, [])
+
+  return { busy, oauthPending, error, notice, setNotice, setKey, oauthStart, oauthFinish, cancelOauth }
 }

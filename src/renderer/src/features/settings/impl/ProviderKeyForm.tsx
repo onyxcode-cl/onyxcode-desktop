@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { KeyRound, Loader2 } from 'lucide-react'
 import type { Provider, ProviderAuthAuthorization, ProviderAuthMethod } from '@opencode-ai/sdk/v2/client'
+import { friendlyError } from '@shared/ai-errors'
 import { DISPLAY_NAME } from '@shared/brand'
 import { Button } from '../../../components/Button'
+import { CopyButton } from '../../../components/CopyButton'
+import { reportProblem } from '../../../lib/report-problems'
 import { openExternalUrlStrict } from '../../../lib/open-external'
 import { useT } from '../../../lib/i18n'
 import { KeyTestNotice } from './KeyTestNotice'
@@ -27,6 +30,8 @@ interface Props {
   onOauthStart?: (providerID: string, method: number) => Promise<ProviderAuthAuthorization>
   /** Completa el inicio de sesión (con `code` si el método lo pide). Rechaza si falla. */
   onOauthFinish?: (providerID: string, method: number, code?: string) => Promise<void>
+  /** Libera la interfaz de un login pendiente (el anfitrión deja de marcarlo como en curso). */
+  onOauthCancel?: () => void
   /** Muestra bajo el formulario el resultado de probar la clave recién guardada (false si el anfitrión ya lo enseña). */
   showTestResult?: boolean
   className?: string
@@ -35,8 +40,83 @@ interface Props {
 type Flow =
   | { kind: 'idle' }
   | { kind: 'starting'; index: number }
-  | { kind: 'auto'; index: number }
+  | { kind: 'auto'; index: number; instructions: string }
   | { kind: 'code'; index: number; instructions: string; code: string; submitting: boolean }
+
+/** Código del flujo «sin navegador» a partir de las instrucciones del motor («Enter code: XXXX-XXXXX»); `null` si no hay. */
+export function parseDeviceCode(instructions: string): string | null {
+  const m = /(?:code|c[oó]digo)\s*[:：]\s*([A-Za-z0-9][A-Za-z0-9-]{3,})/i.exec(instructions)
+  return m ? m[1] : null
+}
+
+/** Quita de un mensaje de error lo que no debe anotarse: códigos de autorización y cadenas largas que parezcan tokens. */
+export function sanitizeAuthMessage(message: string): string {
+  return message
+    .replace(/([?&#](?:code|state|access_token|refresh_token|id_token)=)[^&\s]+/gi, '$1…')
+    .replace(/\b(?:Bearer|Basic)\s+\S+/gi, '…')
+    .replace(/[A-Za-z0-9_\-.]{24,}/g, '…')
+    .slice(0, 300)
+}
+
+/** Espera de un login «automático»: muestra el código/instrucciones del motor (si las hay) y deja cancelar o cambiar de método. */
+export function OauthAutoPanel({
+  instructions,
+  onCancel,
+  onOtherMethod
+}: {
+  instructions: string
+  onCancel: () => void
+  onOtherMethod?: () => void
+}): React.JSX.Element {
+  const t = useT()
+  const code = parseDeviceCode(instructions)
+  return (
+    <div className="space-y-2" aria-live="polite">
+      {instructions && (
+        <div data-testid="oauth-instructions" className="rounded-ctl bg-elevated px-3 py-2">
+          <p className="text-xs text-muted">{t('models.form.oauthCodeHint')}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <code className="select-all font-mono text-base font-semibold tracking-wider">{code ?? instructions}</code>
+            <CopyButton text={code ?? instructions} label={t('models.form.copyCode')} showLabel />
+          </div>
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-xs text-muted">
+          <Loader2 size={13} className="animate-spin" /> {t('models.form.oauthWaiting')}
+        </p>
+        <div className="flex items-center gap-1">
+          {onOtherMethod && (
+            <Button size="sm" variant="ghost" onClick={onOtherMethod}>
+              {t('models.form.otherMethod')}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={onCancel}>
+            {t('models.form.cancel')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Motivo de un login fallido tras abrir la página, con «Reintentar» y la sugerencia del método sin navegador. */
+export function OauthFailure({ reason, onRetry }: { reason: string; onRetry: () => void }): React.JSX.Element {
+  const t = useT()
+  return (
+    <div
+      role="alert"
+      data-testid="oauth-failure"
+      className="mb-2 rounded-ctl bg-danger/10 px-3 py-2 text-xs ring-1 ring-danger/30 ring-inset"
+    >
+      <p className="text-fg">{t('models.form.oauthFailed', { reason })}</p>
+      <p className="mt-1 text-muted">{t('models.form.oauthHint')}</p>
+      <Button size="sm" className="mt-2" onClick={onRetry}>
+        {t('models.form.retry')}
+      </Button>
+    </div>
+  )
+}
 
 /** Formulario «Conectar proveedor» (API key u OAuth): lo usan Ajustes › Modelos y el asistente de primer uso. */
 export function ProviderKeyForm({
@@ -48,6 +128,7 @@ export function ProviderKeyForm({
   title,
   onOauthStart,
   onOauthFinish,
+  onOauthCancel,
   showTestResult = true,
   className = 'mt-3 p-4'
 }: Props): React.JSX.Element {
@@ -57,6 +138,8 @@ export function ProviderKeyForm({
   /** Último proveedor cuya clave se guardó desde este formulario: muestra el resultado de la prueba. */
   const [lastSaved, setLastSaved] = useState<{ id: string; name: string } | null>(null)
   const [flow, setFlow] = useState<Flow>({ kind: 'idle' })
+  /** Fallo de un login tras abrir la página (se limpia al reintentar, cancelar o cambiar de proveedor). */
+  const [failure, setFailure] = useState<{ index: number; reason: string } | null>(null)
   /** Contador de generación: una respuesta de OAuth solo cuenta si sigue siendo la vigente (cancelar, cambiar de proveedor o desmontar la invalidan). */
   const generation = useRef(0)
   const target = fixedProviderId ?? picked
@@ -81,6 +164,8 @@ export function ProviderKeyForm({
   const cancelFlow = (): void => {
     generation.current++
     setFlow({ kind: 'idle' })
+    setFailure(null)
+    onOauthCancel?.()
   }
 
   const pick = (id: string): void => {
@@ -103,14 +188,17 @@ export function ProviderKeyForm({
   const startOauth = async (index: number): Promise<void> => {
     if (!onOauthStart || !onOauthFinish || !target) return
     const mine = ++generation.current
+    setFailure(null)
     setFlow({ kind: 'starting', index })
+    let opened = false
     try {
       const authz = await onOauthStart(target, index)
       if (mine !== generation.current) return
       await openExternalUrlStrict(authz.url)
+      opened = true
       if (mine !== generation.current) return
       if (authz.method === 'auto') {
-        setFlow({ kind: 'auto', index })
+        setFlow({ kind: 'auto', index, instructions: authz.instructions ?? '' })
         await onOauthFinish(target, index)
         if (mine !== generation.current) return
         setFlow({ kind: 'idle' })
@@ -118,8 +206,18 @@ export function ProviderKeyForm({
       } else {
         setFlow({ kind: 'code', index, instructions: authz.instructions, code: '', submitting: false })
       }
-    } catch {
-      if (mine === generation.current) setFlow({ kind: 'idle' })
+    } catch (err) {
+      if (mine !== generation.current) return
+      setFlow({ kind: 'idle' })
+      // Un fallo ANTES de abrir la página ya lo muestra el anfitrión; el de después (callback, canje, tiempo agotado) se perdía.
+      if (opened) {
+        const reason = friendlyError(err, { providerID: target }).message
+        setFailure({ index, reason })
+        // Sin tokens ni códigos de autorización: solo el id del proveedor y el mensaje depurado.
+        reportProblem(
+          new Error(`Fallo de inicio de sesión (${target}): ${sanitizeAuthMessage(err instanceof Error ? err.message : String(err))}`)
+        )
+      }
     }
   }
 
@@ -182,6 +280,7 @@ export function ProviderKeyForm({
 
       {target && oauth.length > 0 && (
         <div className="mt-3 border-t border-border pt-3">
+          {failure && flow.kind === 'idle' && <OauthFailure reason={failure.reason} onRetry={() => void startOauth(failure.index)} />}
           {flow.kind === 'idle' || flow.kind === 'starting' ? (
             <div className="flex flex-wrap gap-2">
               {oauth.map((m) => (
@@ -192,14 +291,11 @@ export function ProviderKeyForm({
               ))}
             </div>
           ) : flow.kind === 'auto' ? (
-            <div className="flex items-center justify-between gap-2" aria-live="polite">
-              <p className="flex items-center gap-2 text-xs text-muted">
-                <Loader2 size={13} className="animate-spin" /> {t('models.form.finishInBrowser')}
-              </p>
-              <Button size="sm" variant="ghost" onClick={cancelFlow}>
-                {t('models.form.cancel')}
-              </Button>
-            </div>
+            <OauthAutoPanel
+              instructions={flow.instructions}
+              onCancel={cancelFlow}
+              onOtherMethod={oauth.length > 1 ? cancelFlow : undefined}
+            />
           ) : (
             <form
               className="space-y-2"

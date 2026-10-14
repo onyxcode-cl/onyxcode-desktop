@@ -12,6 +12,7 @@ import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
+import { useProviders } from '../../../stores/providers'
 import { useSettings } from '../../../stores/settings'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { useCodeLearnedMemory } from './learned-memory-store'
@@ -1630,4 +1631,18 @@ useExtrasPrefs.subscribe((s, prev) => {
   const cur = useCode.getState().model
   if (cur && next && cur.providerID === next.providerID && cur.modelID === next.modelID) return
   useCode.setState({ model: null, variant: null })
+})
+
+// Si cambia el conjunto de proveedores conectados (conectar o desconectar una cuenta), el modelo elegido en memoria (p. ej. el que el
+// compositor fijó con `setModel(eff, false)`) puede ser de la cuenta anterior: se descarta y manda el del modo (ya reconciliado).
+let providerIdsSig: string | null = null
+useProviders.subscribe((s) => {
+  if (!s.loaded) return
+  const sig = s.providers
+    .map((p) => p.id)
+    .sort()
+    .join(',')
+  const changed = providerIdsSig !== null && sig !== providerIdsSig
+  providerIdsSig = sig
+  if (changed && useCode.getState().model) useCode.setState({ model: null, variant: null })
 })
