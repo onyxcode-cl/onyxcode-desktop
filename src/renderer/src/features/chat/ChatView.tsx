@@ -330,10 +330,10 @@ export function ChatView(): React.JSX.Element {
         <div className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}>
           <ChatDocPanel
             creating={docPanel.creating}
-            notice={docPanel.notice}
-            onRetry={docPanel.retry}
             title={docPanel.title}
             doc={docPanel.doc}
+            problem={docPanel.problem}
+            onRetry={docPanel.retry}
             fullscreen={docPanel.fullscreen}
             onToggleFullscreen={docPanel.toggleFullscreen}
             onClose={docPanel.close}

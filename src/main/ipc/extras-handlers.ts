@@ -13,7 +13,7 @@ import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifa
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
 import {
-  CraftMissingError,
+  ChatDocError,
   cleanChatDocuments,
   downloadChatDoc,
   generateChatDoc,
@@ -24,6 +24,7 @@ import { recordCraftProblem } from '../office/craft/craft-problems'
 import { defaultFindDeps, guiNextToCli, openExternally } from '../office/craft/open-external'
 import { craftService } from '../office/craft/service'
 import { onWebEvent } from '../office/craft/web-view'
+import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
 import {
@@ -138,10 +139,23 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       return { ok: true }
     } catch (e) {
       console.warn('[chat-doc] no se pudo generar el documento:', e instanceof Error ? e.message : e)
-      // Word sin ArtCraft instalado: el panel avisa con un mensaje claro y ofrece instalarlo (no es un error "raro", pero se anota).
-      const missing = e instanceof CraftMissingError && craftService().status().state === 'missing'
-      recordCraftProblem('documento', e, { tipo: req.kind }, { level: missing ? 'warn' : 'error' })
-      return { ok: false, reason: missing ? 'craft-missing' : 'failed' }
+      // Queda en el registro de problemas (Ajustes › Diagnóstico) con el tipo de documento y el motivo, ya redactado por el registro.
+      // Falta de ArtCraft (esperable, aún no instalado): origen `craft` en aviso; el resto (generación, JSON inválido): origen `document`.
+      const kind = req?.kind ?? 'desconocido'
+      if (e instanceof ChatDocError && e.code === 'no-craft') {
+        recordCraftProblem('documento', e, { tipo: kind }, { level: craftService().status().state === 'missing' ? 'warn' : 'error' })
+      } else {
+        const why = describeError(e)
+        recordProblem({
+          source: 'document',
+          level: 'warn',
+          message: `no se pudo abrir un documento de Chat (${kind}): ${why.message}`,
+          stack: why.stack,
+          detail: { tipo: kind }
+        })
+      }
+      if (e instanceof ChatDocError) return { ok: false, reason: e.code, detail: e.message }
+      return { ok: false, reason: 'failed' }
     }
   })
   handle(ipcMain, 'extras:chatDoc:attach', ({ rect, visible }, event) => {

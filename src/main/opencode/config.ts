@@ -184,7 +184,11 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'previa de la persona solo se actualiza si el bloque viene completo, un resumen del cambio no sirve de nada ' +
           'ahí. Para armar esa versión completa, partí SIEMPRE del mismo contenido que ya escribiste (mismo texto, ' +
           'mismos datos, misma estructura) y tocá SOLO lo que te pidieron cambiar: no reescribas de cero ni cambies ' +
-          'partes que no te pidieron tocar, eso es trabajo de más para nada.',
+          'partes que no te pidieron tocar, eso es trabajo de más para nada. ' +
+          'En TODO bloque de documento (```xlsx, ```pptx, ```docx, ```html, ```slides): respetá los límites de longitud ' +
+          'indicados (viñetas hasta 500 caracteres, notas hasta 140, títulos hasta 200, "eyebrow" hasta 40, valor de KPI ' +
+          'hasta 16 caracteres y siempre como texto), no uses campos que no estén descritos acá, y CERRÁ SIEMPRE la ' +
+          'valla con ``` en su propia línea; si el documento es muy largo, hacelo más breve en vez de dejarlo sin cerrar.',
         permission: {
           '*': 'deny',
           webfetch: 'allow',

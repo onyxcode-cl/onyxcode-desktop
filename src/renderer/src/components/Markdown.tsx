@@ -26,8 +26,10 @@ import {
   looksRenderable
 } from './artifacts/ArtifactButton'
 import { DownloadDataDocButton, PreviewDataDocButton } from './artifacts/DataDocButton'
-import { getCreatingRawText, subscribeCreatingDoc, type ChatDocBlockKind } from '../lib/chatDocPreview'
-import { guessDataTitle } from '../lib/chatDocBlocks'
+import { DocNotice, type DocProblemReason } from './artifacts/DocNotice'
+import { askAboutChatDoc, canAskAboutChatDoc, getCreatingRawText, subscribeCreatingDoc, type ChatDocBlockKind } from '../lib/chatDocPreview'
+import { guessDataTitle, isJsonLang, parseDataBlockDetailed, sniffDataKind } from '../lib/chatDocBlocks'
+import { docProblemMessage, reportDocProblem } from '../lib/report-problems'
 import '../app/mobile/markdown.css'
 
 function noCreatingDoc(): null {
@@ -36,6 +38,12 @@ function noCreatingDoc(): null {
 
 /** Texto fuente que está analizando el `<ReactMarkdown>` que envuelve a `CodeBlock` (ver `isFenceOpen`). */
 const SourceTextContext = createContext('')
+
+/**
+ * ¿La respuesta que se está pintando sigue llegando? `true` = en curso, `false` = ya terminó, `undefined` = no se sabe (Tareas/Code no
+ * lo informan). Solo con `false` una valla de documento sin cerrar se declara «cortada»: con `undefined` se sigue mostrando «Generando…».
+ */
+const StreamingContext = createContext<boolean | undefined>(undefined)
 
 /**
  * ¿La valla de código de este fragmento (el texto fuente completo entre `node.position.start/end`
@@ -143,6 +151,8 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
   // HTML, esos lenguajes de valla no se usan nunca para otra cosa, así que no hace falta ninguna
   // heurística de "¿tiene pinta de...?".
   const isSlides = rawLang === 'slides'
+  // Un modelo a veces pega la spec en una valla ```json (o javascript/text): si el contenido es, sin dudas, la spec de un documento, cuenta como tal.
+  const sniffedKind = useMemo(() => (isJsonLang(rawLang) ? sniffDataKind(code) : null), [rawLang, code])
   const docKind: ChatDocBlockKind | null =
     rawLang === 'xlsx'
       ? 'xlsx'
@@ -150,9 +160,11 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
         ? 'pptx'
         : rawLang === 'docx'
           ? 'docx'
-          : (rawLang === 'html' || isSlides) && (looksRenderable(code) || /<[a-z]/i.test(code))
-            ? 'html'
-            : null
+          : sniffedKind
+            ? sniffedKind
+            : (rawLang === 'html' || isSlides) && (looksRenderable(code) || /<[a-z]/i.test(code))
+              ? 'html'
+              : null
   const renderable = docKind !== null
   // Un documento (lo que arma un PDF/Excel/PowerPoint) es contenido a mostrar, no código a leer: se
   // oculta por defecto (igual que Claude no muestra el código fuente del artifact en el chat) y
@@ -182,6 +194,39 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
     return isFenceOpen(sourceText.slice(pos.start.offset, pos.end.offset))
   }, [node, sourceText])
   const creatingRawText = useSyncExternalStore(subscribeCreatingDoc, getCreatingRawText, noCreatingDoc)
+  const streaming = useContext(StreamingContext)
+  // Valla cerrada de un documento de datos cuyo contenido no se pudo leer: se avisa en vez de dejar un bloque que no hace nada.
+  const isDataDoc = docKind === 'xlsx' || docKind === 'pptx' || docKind === 'docx'
+  const brokenReason = useMemo<DocProblemReason | null>(() => {
+    if (!isDataDoc || fenceOpen) return null
+    const r = parseDataBlockDetailed(docKind, code)
+    return r.ok ? null : r.reason
+  }, [isDataDoc, fenceOpen, docKind, code])
+  // Valla abierta cuando la respuesta ya terminó: el modelo se cortó (límite de salida, red…); «Generando…» sería eterno.
+  const cut = renderable && fenceOpen && streaming === false
+  const problem: DocProblemReason | null = cut ? 'cut' : brokenReason
+  useEffect(() => {
+    if (problem)
+      reportDocProblem(code, docProblemMessage(docKind ?? 'html', problem === 'cut' ? 'cut' : problem === 'json' ? 'json' : 'schema'))
+  }, [problem, code, docKind])
+  if (problem) {
+    const canAsk = canAskAboutChatDoc()
+    const ask = (): void => {
+      if (problem === 'cut') askAboutChatDoc(t('chat.doc.continuePrompt'))
+      else
+        askAboutChatDoc(t('chat.doc.retryPrompt', { reason: t(problem === 'json' ? 'chat.doc.problem.json' : 'chat.doc.problem.schema') }))
+    }
+    return (
+      <div className="code-block">
+        <DocNotice
+          reason={problem}
+          actionLabel={canAsk ? t(problem === 'cut' ? 'chat.doc.continue' : 'chat.doc.askAgain') : undefined}
+          onAction={canAsk ? ask : undefined}
+          detail={code.slice(0, 4000)}
+        />
+      </div>
+    )
+  }
   if (renderable && (fenceOpen || isSameDoc(creatingRawText, code))) {
     return (
       <div className="code-block">
@@ -355,15 +400,17 @@ export const Markdown = memo(function Markdown({
   const blocks = highlight ? null : splitMarkdownBlocks(text)
   return (
     <div className={`markdown ${streaming ? 'is-streaming' : ''} ${className}`}>
-      {blocks ? (
-        blocks.map((b, i) => <Block key={i} text={b} rehype={rehype} />)
-      ) : (
-        <SourceTextContext.Provider value={text}>
-          <ReactMarkdown remarkPlugins={markdownRemarkPlugins} rehypePlugins={rehype} components={components}>
-            {text}
-          </ReactMarkdown>
-        </SourceTextContext.Provider>
-      )}
+      <StreamingContext.Provider value={streaming}>
+        {blocks ? (
+          blocks.map((b, i) => <Block key={i} text={b} rehype={rehype} />)
+        ) : (
+          <SourceTextContext.Provider value={text}>
+            <ReactMarkdown remarkPlugins={markdownRemarkPlugins} rehypePlugins={rehype} components={components}>
+              {text}
+            </ReactMarkdown>
+          </SourceTextContext.Provider>
+        )}
+      </StreamingContext.Provider>
     </div>
   )
 })

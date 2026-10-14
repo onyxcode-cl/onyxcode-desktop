@@ -73,9 +73,9 @@ describe('generateChatDoc: datos inválidos de Excel/PowerPoint se rechazan ante
 })
 
 describe('generateChatDoc: Word sin ArtCraft instalado', () => {
-  it('lanza CraftMissingError (el panel lo convierte en un aviso con «Instalar»)', async () => {
+  it('lanza ChatDocError no-craft (el panel lo convierte en un aviso con «Instalar»)', async () => {
     const data = { blocks: [{ type: 'paragraph', text: 'hola' }] } as never
-    await expect(chatDocs.generateChatDoc({ kind: 'docx', data }, 't', 's1')).rejects.toBeInstanceOf(chatDocs.CraftMissingError)
+    await expect(chatDocs.generateChatDoc({ kind: 'docx', data }, 't', 's1')).rejects.toMatchObject({ code: 'no-craft' })
   })
 })
 

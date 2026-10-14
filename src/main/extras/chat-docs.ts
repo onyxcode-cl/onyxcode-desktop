@@ -60,11 +60,14 @@ export interface ChatDocument {
   file: string
 }
 
-/** Word solo se arma con WordCraft (ArtCraft): sin él instalado no hay documento. El panel lo traduce en un aviso con «Instalar». */
-export class CraftMissingError extends Error {
-  constructor(readonly tool: 'wordcraft') {
-    super('El diseñador de documentos (WordCraft) no está instalado.')
-    this.name = 'CraftMissingError'
+/** Fallo de generación con un motivo que la ventana puede explicar (el mensaje es un texto propio de la app, apto para mostrar). */
+export class ChatDocError extends Error {
+  constructor(
+    readonly code: 'invalid' | 'no-craft',
+    message: string
+  ) {
+    super(message)
+    this.name = 'ChatDocError'
   }
 }
 
@@ -128,7 +131,7 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
     return pdf
   }
   if (input.kind === 'xlsx') {
-    if (!isXlsxSpec(input.data)) throw new Error('Datos de Excel inválidos.')
+    if (!isXlsxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de Excel inválidos.')
     // Con GridCraft instalado el libro se arma con él (calcula las fórmulas); si falla, cae al generador de siempre.
     const grid = craftBinary('gridcraft')
     if (grid) {
@@ -142,13 +145,13 @@ async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> 
     return renderXlsx(input.data)
   }
   if (input.kind === 'docx') {
-    if (!isDocxSpec(input.data)) throw new Error('Datos de Word inválidos.')
+    if (!isDocxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de Word inválidos.')
     // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
     const word = craftBinary('wordcraft')
-    if (!word) throw new CraftMissingError('wordcraft')
+    if (!word) throw new ChatDocError('no-craft', 'El diseñador de documentos (WordCraft) no está instalado.')
     return renderChatDocx(word, input.data)
   }
-  if (!isPptxSpec(input.data)) throw new Error('Datos de PowerPoint inválidos.')
+  if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de PowerPoint inválidos.')
   // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.
   const craft = craftBinary('deckcraft')
   if (craft) {

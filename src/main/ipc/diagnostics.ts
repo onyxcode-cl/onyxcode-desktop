@@ -34,8 +34,10 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
 
   handle(ipcMain, 'diag:logs', ({ source, maxLines }) => service.getLogs(source, maxLines))
 
-  handle(ipcMain, 'diag:problem', ({ message, stack }) => {
-    recordProblem({ source: 'renderer', message, stack })
+  handle(ipcMain, 'diag:problem', ({ message, stack, origin }) => {
+    // Un documento de Chat que no se pudo leer/abrir se anota como aviso del origen «documento»; el resto, como error de la ventana.
+    if (origin === 'chat-doc') recordProblem({ source: 'document', level: 'warn', message, stack })
+    else recordProblem({ source: 'renderer', message, stack })
   })
 
   handle(ipcMain, 'diag:copy', ({ source }) => {

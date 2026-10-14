@@ -7,9 +7,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getLang } from '@shared/i18n'
 import type { ChatDocOpenRequest } from '@shared/ipc-extras'
-import { extractChatDocBlocks, parseDataBlock, type ChatDocBlock } from '../../lib/chatDocBlocks'
+import {
+  extractBrokenDocBlocks,
+  extractChatDocBlocks,
+  parseDataBlockDetailed,
+  type BrokenDocBlock,
+  type ChatDocBlock
+} from '../../lib/chatDocBlocks'
 import { getExtras } from '../../lib/extrasApi'
-import { setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
+import { setChatDocAskHandler, setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
+import { docProblemMessage, reportDocProblem } from '../../lib/report-problems'
+import { sendChatMessage } from './actions'
+import type { DocProblemReason } from '../../components/artifacts/DocNotice'
 import { platformCaps } from '../../lib/platform'
 import type { MessageEntry } from '../../stores/sessions'
 
@@ -34,6 +43,28 @@ export function lastDocBlock(entries: MessageEntry[]): ChatDocBlock | null {
   return blocks.length > 0 ? blocks[blocks.length - 1] : null
 }
 
+/**
+ * El último bloque de datos CERRADO pero inválido del último mensaje del agente (si no hay uno válido que mostrar), para avisar en vez
+ * de ignorarlo en silencio.
+ */
+export function lastBrokenBlock(entries: MessageEntry[]): BrokenDocBlock | null {
+  const last = entries[entries.length - 1]
+  if (!last || last.info.role !== 'assistant') return null
+  const text = last.parts
+    .map((p) => (p.type === 'text' ? p.text : ''))
+    .filter(Boolean)
+    .join('\n')
+  const broken = extractBrokenDocBlocks(text)
+  return broken.length > 0 ? broken[broken.length - 1] : null
+}
+
+/** Por qué el panel no pudo mostrar el documento (se muestra un aviso con «Reintentar»/«Ver detalle» en vez de cerrarlo). */
+export interface ChatDocProblem {
+  reason: Exclude<DocProblemReason, 'cut'>
+  /** Motivo corto ya apto para mostrar (solo textos propios de la app). */
+  detail?: string
+}
+
 export interface ChatDocPanelState {
   open: boolean
   /** El panel ya está abierto pero el archivo (PDF/Excel/PowerPoint) todavía no terminó de generarse. */
@@ -45,23 +76,21 @@ export interface ChatDocPanelState {
    * `isSlides` (solo relevante para `kind:'html'`) decide si además se ofrece el botón de descarga
    * "PowerPoint (para proyectar)". */
   doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
-  /** Por qué no se pudo generar el documento (el panel sigue abierto para mostrarlo); `null` si no hay fallo. */
-  notice: ChatDocNotice
-  /** Vuelve a generar el documento actual (p. ej. tras instalar ArtCraft). */
+  /** El documento no se pudo abrir: el panel muestra el motivo y un botón en vez de cerrarse. */
+  problem: ChatDocProblem | null
+  /** Vuelve a intentar abrir el mismo documento (fallos de generación). */
   retry: () => void
   toggleFullscreen: () => void
   close: () => void
 }
-
-export type ChatDocNotice = null | 'failed' | 'craft-missing'
 
 export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[]): ChatDocPanelState {
   const [open, setOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [title, setTitle] = useState('')
-  const [notice, setNotice] = useState<ChatDocNotice>(null)
   const [doc, setDoc] = useState<{ kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null>(null)
+  const [problem, setProblem] = useState<ChatDocProblem | null>(null)
   const lastRawTextRef = useRef<string | null>(null)
   const sessionRef = useRef(sessionId)
 
@@ -76,10 +105,24 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     setCreating(false)
     setFullscreen(false)
     setTitle('')
-    setNotice(null)
     setDoc(null)
+    setProblem(null)
     setCreatingDoc(null)
   }
+
+  /** Muestra el aviso de fallo en el panel (lo deja abierto). Cierra la vista nativa de main: se pintaría POR ENCIMA del aviso. */
+  const showProblem = useCallback((kind: ChatDocBlockKind, rawText: string, title: string, isSlides: boolean, p: ChatDocProblem): void => {
+    const extras = getExtras()
+    const sid = sessionRef.current
+    if (extras && sid) void extras.invoke('extras:chatDoc:close', { sessionId: sid }).catch(() => undefined)
+    lastRawTextRef.current = rawText
+    setOpen(true)
+    setCreating(false)
+    setTitle(title)
+    setDoc({ kind, rawText, isSlides })
+    setProblem(p)
+    setCreatingDoc(null)
+  }, [])
 
   // Abre el documento en el panel de la sesión ACTUAL (vía la ref: nunca una versión vieja de
   // sessionId). Usado tanto por la auto-apertura al terminar el turno como por "Abrir vista previa"
@@ -91,44 +134,52 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   // hasta pasar la batería de seguridad de Windows — ver `shared/platform-caps.ts`): sin esto, en una
   // plataforma donde el visor nativo no está habilitado, no hay que intentar abrirlo — los botones de
   // vista previa/descarga de cada bloque siguen funcionando igual, sin depender de este cap.
-  const openDoc = useCallback((kind: ChatDocBlockKind, rawText: string, title: string, isSlides = false): void => {
-    if (!platformCaps().docViewer) return
-    const sid = sessionRef.current
-    const extras = getExtras()
-    if (!sid || !extras) return
+  const openDoc = useCallback(
+    (kind: ChatDocBlockKind, rawText: string, title: string, isSlides = false): void => {
+      if (!platformCaps().docViewer) return
+      const sid = sessionRef.current
+      const extras = getExtras()
+      if (!sid || !extras) return
 
-    const common = { title, sessionId: sid, lang: getLang(), theme: currentTheme() } as const
-    let req: ChatDocOpenRequest | null = null
-    if (kind === 'html') {
-      req = { ...common, kind: 'pdf', html: rawText }
-    } else {
-      // Misma lectura que el resto de botones (JSON tolerante + deslices comunes del modelo corregidos + esquema estricto).
-      const parsed = parseDataBlock(kind, rawText)
-      if (parsed) req = { ...common, kind, data: parsed } as ChatDocOpenRequest
-    }
-    if (!req) return
+      const common = { title, sessionId: sid, lang: getLang(), theme: currentTheme() } as const
+      let req: ChatDocOpenRequest | null = null
+      if (kind === 'html') {
+        req = { ...common, kind: 'pdf', html: rawText }
+      } else {
+        // Misma lectura que el resto de botones (JSON tolerante + limpieza de forma + esquema estricto).
+        const parsed = parseDataBlockDetailed(kind, rawText)
+        if (parsed.ok) req = { ...common, kind, data: parsed.data } as ChatDocOpenRequest
+        else {
+          reportDocProblem(rawText, docProblemMessage(kind, parsed.reason))
+          showProblem(kind, rawText, title, isSlides, { reason: parsed.reason })
+          return
+        }
+      }
 
-    lastRawTextRef.current = rawText
-    setOpen(true)
-    setCreating(true)
-    setNotice(null)
-    setTitle(title)
-    setDoc({ kind, rawText, isSlides })
-    setCreatingDoc({ kind, rawText, title })
-    void extras
-      .invoke('extras:chatDoc:open', req)
-      .then((res) => {
-        setCreating(false)
-        setCreatingDoc(null)
-        // El panel SE QUEDA abierto con el motivo (antes se cerraba sin decir nada).
-        if (!res.ok) setNotice(res.reason === 'craft-missing' ? 'craft-missing' : 'failed')
-      })
-      .catch(() => {
-        setCreating(false)
-        setCreatingDoc(null)
-        setNotice('failed')
-      })
-  }, [])
+      lastRawTextRef.current = rawText
+      setProblem(null)
+      setOpen(true)
+      setCreating(true)
+      setTitle(title)
+      setDoc({ kind, rawText, isSlides })
+      setCreatingDoc({ kind, rawText, title })
+      void extras
+        .invoke('extras:chatDoc:open', req)
+        .then((res) => {
+          setCreating(false)
+          setCreatingDoc(null)
+          // Antes se cerraba el panel sin decir nada; main ya anotó el motivo en el registro de problemas.
+          if (!res.ok) showProblem(kind, rawText, title, isSlides, { reason: res.reason, detail: res.detail })
+        })
+        .catch((err: unknown) => {
+          setCreating(false)
+          setCreatingDoc(null)
+          reportDocProblem(rawText, `no se pudo abrir un documento de Chat (${kind}): ${err instanceof Error ? err.message : String(err)}`)
+          showProblem(kind, rawText, title, isSlides, { reason: 'failed' })
+        })
+    },
+    [showProblem]
+  )
 
   const retry = useCallback((): void => {
     if (doc) openDoc(doc.kind, doc.rawText, title, doc.isSlides)
@@ -152,9 +203,21 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   useEffect(() => {
     if (!sessionId) return
     const block = lastDocBlock(entries)
-    if (!block || block.rawText === lastRawTextRef.current) return
+    if (!block) {
+      // Sin documento válido: si el agente escribió uno cerrado pero roto, se avisa (antes se ignoraba en silencio).
+      const broken = lastBrokenBlock(entries)
+      if (broken && broken.rawText !== lastRawTextRef.current) openDoc(broken.kind, broken.rawText, '', false)
+      return
+    }
+    if (block.rawText === lastRawTextRef.current) return
     openDoc(block.kind, block.rawText, block.title, block.kind === 'html' && block.isSlides)
   }, [entries, sessionId, openDoc])
+
+  // Los avisos de documento («Pedir de nuevo», «Pedir que continúe») mandan su mensaje a la conversación abierta.
+  useEffect(() => {
+    setChatDocAskHandler((text) => void sendChatMessage(text).catch(() => undefined))
+    return () => setChatDocAskHandler(null)
+  }, [])
 
   // Mientras el chat está montado, "Abrir vista previa" (en cualquier bloque de cualquier mensaje)
   // reusa este panel en vez de abrir una ventana aparte. `openDoc` lee sessionRef.current en cada
@@ -185,5 +248,5 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     })
   }, [])
 
-  return { open, creating, fullscreen, title, doc, notice, retry, toggleFullscreen, close: () => close(sessionRef.current) }
+  return { open, creating, fullscreen, title, doc, problem, retry, toggleFullscreen, close: () => close(sessionRef.current) }
 }

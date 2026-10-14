@@ -3,17 +3,18 @@
  * (`useChatDocPanel` llamó a `extras:chatDoc:open`); esto solo mide el hueco y pone la cabecera.
  */
 import { useState } from 'react'
-import { AlertTriangle, ExternalLink, Loader2, Maximize2, Minimize2, X } from 'lucide-react'
+import { ExternalLink, Loader2, Maximize2, Minimize2, X } from 'lucide-react'
 import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { getExtras } from '../../lib/extrasApi'
 import { parseDataBlock } from '../../lib/chatDocBlocks'
 import { useT } from '../../lib/i18n'
 import { DownloadPdfButton, DownloadSlidesPptxButton, PresentSlidesButton } from '../../components/artifacts/ArtifactButton'
 import { DownloadDataDocButton } from '../../components/artifacts/DataDocButton'
-import type { ChatDocBlockKind } from '../../lib/chatDocPreview'
+import { DocNotice, docProblemKey } from '../../components/artifacts/DocNotice'
+import { askAboutChatDoc, canAskAboutChatDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { requestCraftInstall } from '../settings/impl/CraftComponentCard'
 import { useChatDocViewport } from './useChatDocViewport'
-import type { ChatDocNotice } from './useChatDocPanel'
+import type { ChatDocProblem } from './useChatDocPanel'
 
 const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXlsx' | 'chat.doc.kindPptx' | 'chat.doc.kindDocx'> = {
   html: 'chat.doc.kindPdf',
@@ -24,10 +25,10 @@ const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXl
 
 interface Props {
   creating: boolean
-  notice?: ChatDocNotice
-  onRetry?: () => void
   title: string
   doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
+  problem: ChatDocProblem | null
+  onRetry: () => void
   fullscreen: boolean
   onToggleFullscreen: () => void
   onClose: () => void
@@ -35,16 +36,16 @@ interface Props {
 
 export function ChatDocPanel({
   creating,
-  notice = null,
-  onRetry,
   title,
   doc,
+  problem,
+  onRetry,
   fullscreen,
   onToggleFullscreen,
   onClose
 }: Props): React.JSX.Element {
   const t = useT()
-  const { hostRef, shouldShowNative } = useChatDocViewport(true)
+  const { hostRef, shouldShowNative } = useChatDocViewport(!problem)
   const [opening, setOpening] = useState(false)
   const [openFailed, setOpenFailed] = useState(false)
   const [installing, setInstalling] = useState(false)
@@ -76,13 +77,13 @@ export function ChatDocPanel({
     }
   }
 
-  // Word sin ArtCraft: ofrece instalarlo (pide el mismo consentimiento que Ajustes) y vuelve a generar el documento.
+  // Falta ArtCraft (Word): ofrece instalarlo (pide el mismo consentimiento que Ajustes) y vuelve a generar el documento.
   const installCraft = async (): Promise<void> => {
     setInstalling(true)
     setInstallFailed(false)
     try {
       const r = await requestCraftInstall(t)
-      if (r.kind === 'installed') onRetry?.()
+      if (r.kind === 'installed') onRetry()
       else if (r.kind === 'failed') setInstallFailed(true)
     } catch {
       setInstallFailed(true)
@@ -91,23 +92,28 @@ export function ChatDocPanel({
     }
   }
 
+  // JSON roto / forma incorrecta / datos no válidos: reintentar el mismo texto no sirve, hay que pedirle al modelo que lo vuelva a escribir.
+  const askAgain =
+    !!problem && (problem.reason === 'json' || problem.reason === 'schema' || problem.reason === 'invalid') && canAskAboutChatDoc()
+  const noCraft = problem?.reason === 'no-craft'
+
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-border">
       <div className="drag flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 desk:h-12 desk:py-0 desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
           {title || t('chat.doc.title')} {doc && <span className="text-subtle">· {t(KIND_LABEL[doc.kind])}</span>}
         </span>
-        {doc?.kind === 'html' && <DownloadPdfButton html={doc.rawText} title={title} compact className="py-1" />}
-        {doc?.kind === 'html' && doc.isSlides && (
+        {doc && !problem && doc.kind === 'html' && <DownloadPdfButton html={doc.rawText} title={title} compact className="py-1" />}
+        {doc && !problem && doc.kind === 'html' && doc.isSlides && (
           <>
             <PresentSlidesButton html={doc.rawText} title={title} compact className="py-1" />
             <DownloadSlidesPptxButton html={doc.rawText} title={title} compact className="py-1" />
           </>
         )}
-        {doc && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
+        {doc && !problem && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
           <DownloadDataDocButton kind={doc.kind} rawText={doc.rawText} title={title} compact className="py-1" />
         )}
-        {doc && !doc.isSlides && (
+        {doc && !problem && !doc.isSlides && (
           <button
             type="button"
             onClick={() => void openExternal()}
@@ -139,27 +145,35 @@ export function ChatDocPanel({
       </div>
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0" style={{ visibility: shouldShowNative ? 'visible' : 'hidden' }} />
-        {notice && !creating && (
-          <div
-            role="alert"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-elevated px-6 text-center text-muted"
-          >
-            <AlertTriangle size={20} className="text-warning" />
-            <span className="max-w-sm text-[12.5px] leading-[18px]">
-              {notice === 'craft-missing' ? t('chat.doc.craftMissing') : t('chat.doc.failed')}
-            </span>
-            {installFailed && <span className="max-w-sm text-[12px] text-danger">{t('chat.doc.craftInstallFailed')}</span>}
-            {notice === 'craft-missing' && (
-              <button
-                type="button"
-                onClick={() => void installCraft()}
-                disabled={installing}
-                className="no-drag inline-flex items-center gap-1.5 rounded-lg border border-border bg-elevated px-3 py-1.5 text-xs font-medium text-fg transition hover:bg-hover disabled:opacity-50"
-              >
-                {installing && <Loader2 size={13} className="animate-spin" />}
-                {installing ? t('chat.doc.craftInstalling') : t('chat.doc.craftInstall')}
-              </button>
-            )}
+        {problem && doc && (
+          <div className="absolute inset-0 overflow-auto bg-elevated p-4">
+            <DocNotice
+              reason={problem.reason}
+              actionLabel={
+                noCraft
+                  ? installing
+                    ? t('chat.doc.craftInstalling')
+                    : t('chat.doc.craftInstall')
+                  : askAgain
+                    ? t('chat.doc.askAgain')
+                    : t('chat.doc.retry')
+              }
+              busy={installing}
+              extra={noCraft && installFailed ? t('chat.doc.craftInstallFailed') : undefined}
+              onAction={
+                noCraft
+                  ? () => void installCraft()
+                  : askAgain
+                    ? () =>
+                        askAboutChatDoc(
+                          t('chat.doc.retryPrompt', {
+                            reason: t(docProblemKey(problem.reason))
+                          })
+                        )
+                    : onRetry
+              }
+              detail={askAgain && problem.reason !== 'invalid' ? doc.rawText.slice(0, 4000) : problem.detail}
+            />
           </div>
         )}
         {creating && (

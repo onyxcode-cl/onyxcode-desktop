@@ -8,6 +8,7 @@
     "src/shared/**/*",
     "src/test/platform.ts",
     "src/test/cu-mcp-kit.ts",
+    "src/test/fixtures/chat-doc-gpt.ts",
     "src/test/update-scripts-win.test.ts"
   ],
   "compilerOptions": {

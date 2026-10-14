@@ -84,9 +84,9 @@ export type XlsxCell = string | number | null | XlsxFormulaCell
 
 /** Tipos de gráfico de un libro de Excel (nativos: se editan en Excel). */
 export type XlsxChartType = 'column' | 'bar' | 'line' | 'pie' | 'area'
-const XLSX_CHART_TYPES: readonly XlsxChartType[] = ['column', 'bar', 'line', 'pie', 'area']
-const A1_RANGE = /^[A-Z]{1,3}[1-9][0-9]{0,4}:[A-Z]{1,3}[1-9][0-9]{0,4}$/
-const A1_CELL = /^[A-Z]{1,3}[1-9][0-9]{0,4}$/
+export const XLSX_CHART_TYPES: readonly XlsxChartType[] = ['column', 'bar', 'line', 'pie', 'area']
+export const A1_RANGE = /^[A-Z]{1,3}[1-9][0-9]{0,4}:[A-Z]{1,3}[1-9][0-9]{0,4}$/
+export const A1_CELL = /^[A-Z]{1,3}[1-9][0-9]{0,4}$/
 
 /**
  * Un gráfico NATIVO de Excel sobre los datos de la misma hoja. `range` es un rango CONTINUO con encabezados (p.ej. `"A1:C7"`): la
@@ -119,7 +119,7 @@ export interface XlsxSpec {
 
 /** Paleta de color de la presentación entera — sin esto, "blue" (el mismo celeste de siempre). */
 export type PptxTheme = 'blue' | 'green' | 'dark' | 'warm' | 'mono'
-const PPTX_THEMES: readonly PptxTheme[] = ['blue', 'green', 'dark', 'warm', 'mono']
+export const PPTX_THEMES: readonly PptxTheme[] = ['blue', 'green', 'dark', 'warm', 'mono']
 
 /**
  * Estilo VISUAL de la presentación entera (forma, decoración, tipografía de forma) — un eje distinto
@@ -130,7 +130,7 @@ const PPTX_THEMES: readonly PptxTheme[] = ['blue', 'green', 'dark', 'warm', 'mon
  * ejecutivo ultra limpio).
  */
 export type PptxStyle = 'classic' | 'editorial' | 'geometric' | 'minimal'
-const PPTX_STYLES: readonly PptxStyle[] = ['classic', 'editorial', 'geometric', 'minimal']
+export const PPTX_STYLES: readonly PptxStyle[] = ['classic', 'editorial', 'geometric', 'minimal']
 
 /**
  * Tipo de diapositiva. Sin indicarlo, se infiere: la primera es "cover"; una diapositiva CON título
@@ -161,7 +161,7 @@ export type PptxLayout =
   | 'agenda'
   | 'table'
   | 'free'
-const PPTX_LAYOUTS: readonly PptxLayout[] = [
+export const PPTX_LAYOUTS: readonly PptxLayout[] = [
   'cover',
   'section',
   'bullets',
@@ -181,7 +181,7 @@ const PPTX_LAYOUTS: readonly PptxLayout[] = [
 
 /** Un gráfico nativo de PowerPoint (de verdad editable ahí, no una imagen) — una sola serie de datos. */
 export type PptxChartType = 'bar' | 'line' | 'pie'
-const PPTX_CHART_TYPES: readonly PptxChartType[] = ['bar', 'line', 'pie']
+export const PPTX_CHART_TYPES: readonly PptxChartType[] = ['bar', 'line', 'pie']
 
 export interface PptxChartSpec {
   type: PptxChartType
@@ -205,7 +205,7 @@ export interface PptxTableSpec {
 
 /** Transición entre diapositivas de TODA la presentación (DeckCraft); sin esto, sin transición. */
 export type PptxTransition = 'fade' | 'push' | 'wipe'
-const PPTX_TRANSITIONS: readonly PptxTransition[] = ['fade', 'push', 'wipe']
+export const PPTX_TRANSITIONS: readonly PptxTransition[] = ['fade', 'push', 'wipe']
 
 /** Una métrica de `layout: "kpis"` — p.ej. `{"label":"Ventas totales","value":"$433 M","delta":"+18% vs. trimestre anterior"}`. */
 export interface PptxKpiSpec {
@@ -218,7 +218,7 @@ export interface PptxKpiSpec {
 const onlyKeys = (o: object, allowed: readonly string[]): boolean => Object.keys(o).every((k) => allowed.includes(k))
 
 /** Color en hex de 6 dígitos con `#` (p.ej. `"#1F3864"`). */
-const HEX_RE = /^#[0-9a-fA-F]{6}$/
+export const HEX_RE = /^#[0-9a-fA-F]{6}$/
 const isHex = (v: unknown): v is string => typeof v === 'string' && HEX_RE.test(v)
 
 /** Paleta propia de TODA la presentación (reemplaza a `theme`): la IA elige los colores. `bg` claro u oscuro; el resto se deriva si falta. */
@@ -356,7 +356,7 @@ export interface DocxSpec {
   blocks: DocxBlock[]
 }
 
-const XLSX_COLUMN_FORMATS: readonly XlsxColumnFormat[] = ['currency', 'integer', 'decimal', 'percent']
+export const XLSX_COLUMN_FORMATS: readonly XlsxColumnFormat[] = ['currency', 'integer', 'decimal', 'percent']
 
 function isFormulaCell(v: unknown): v is XlsxFormulaCell {
   if (!v || typeof v !== 'object') return false
@@ -471,7 +471,7 @@ const num = (v: unknown, min: number, max: number): v is number => typeof v === 
 const optHex = (v: unknown): boolean => v === undefined || isHex(v)
 const optFont = (v: unknown): boolean => v === undefined || (FREE_FONTS as readonly string[]).includes(v as string)
 
-function isFreeElement(v: unknown): v is PptxFreeElement {
+export function isFreeElement(v: unknown): v is PptxFreeElement {
   if (!v || typeof v !== 'object') return false
   const e = v as Record<string, unknown>
   const common = ['type', 'x', 'y', 'w', 'h', 'text', 'size', 'color', 'bold', 'align', 'font']
@@ -533,7 +533,7 @@ function isSlide(v: unknown): v is PptxSlideSpec {
   return s.layout !== 'free' || (Array.isArray(s.elements) && s.elements.length > 0)
 }
 
-const DOCX_ALIGN = ['left', 'right', 'center', 'justify']
+export const DOCX_ALIGN = ['left', 'right', 'center', 'justify']
 const docxText = (v: unknown, max = MAX_DOCX_TEXT_CHARS): v is string => typeof v === 'string' && v.length <= max
 const docxOpt = (v: unknown, max = MAX_DOCX_META_CHARS): boolean => v === undefined || docxText(v, max)
 
