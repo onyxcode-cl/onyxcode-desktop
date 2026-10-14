@@ -13,6 +13,27 @@ type PreviewHandler = (kind: ChatDocBlockKind, rawText: string, title: string, i
 
 let handler: PreviewHandler | null = null
 
+/**
+ * Pedirle algo al modelo desde un aviso de documento ("Pedir de nuevo", "Pedir que continúe"): `ChatView` registra aquí cómo mandar un
+ * mensaje a la conversación abierta (mismo patrón). Sin nadie registrado (Tareas/Code) el aviso no ofrece el botón.
+ */
+let askHandler: ((text: string) => void) | null = null
+
+export function setChatDocAskHandler(fn: ((text: string) => void) | null): void {
+  askHandler = fn
+}
+
+/** `true` si hay una conversación a la que mandarle el mensaje. */
+export function askAboutChatDoc(text: string): boolean {
+  if (!askHandler) return false
+  askHandler(text)
+  return true
+}
+
+export function canAskAboutChatDoc(): boolean {
+  return askHandler !== null
+}
+
 export function setChatDocPreviewHandler(fn: PreviewHandler | null): void {
   handler = fn
 }

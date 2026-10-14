@@ -12,10 +12,18 @@ import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
-import { cleanChatDocuments, downloadChatDoc, generateChatDoc, writeChatDocForExternal, type ChatDocInput } from '../extras/chat-docs'
+import {
+  ChatDocError,
+  cleanChatDocuments,
+  downloadChatDoc,
+  generateChatDoc,
+  writeChatDocForExternal,
+  type ChatDocInput
+} from '../extras/chat-docs'
 import { defaultFindDeps, guiNextToCli, openExternally } from '../office/craft/open-external'
 import { craftService } from '../office/craft/service'
 import { onWebEvent } from '../office/craft/web-view'
+import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
 import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
 import {
@@ -130,6 +138,17 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       return { ok: true }
     } catch (e) {
       console.warn('[chat-doc] no se pudo generar el documento:', e instanceof Error ? e.message : e)
+      // Queda en el registro de problemas (Ajustes › Diagnóstico) con el tipo de documento y el motivo, ya redactado por el registro.
+      const kind = req?.kind ?? 'desconocido'
+      const why = describeError(e)
+      recordProblem({
+        source: 'document',
+        level: 'warn',
+        message: `no se pudo abrir un documento de Chat (${kind}): ${why.message}`,
+        stack: why.stack,
+        detail: { tipo: kind }
+      })
+      if (e instanceof ChatDocError) return { ok: false, reason: e.code, detail: e.message }
       return { ok: false, reason: 'failed' }
     }
   })

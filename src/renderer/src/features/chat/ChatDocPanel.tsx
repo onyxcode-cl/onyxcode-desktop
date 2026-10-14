@@ -10,8 +10,10 @@ import { parseDataBlock } from '../../lib/chatDocBlocks'
 import { useT } from '../../lib/i18n'
 import { DownloadPdfButton, DownloadSlidesPptxButton, PresentSlidesButton } from '../../components/artifacts/ArtifactButton'
 import { DownloadDataDocButton } from '../../components/artifacts/DataDocButton'
-import type { ChatDocBlockKind } from '../../lib/chatDocPreview'
+import { DocNotice } from '../../components/artifacts/DocNotice'
+import { askAboutChatDoc, canAskAboutChatDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { useChatDocViewport } from './useChatDocViewport'
+import type { ChatDocProblem } from './useChatDocPanel'
 
 const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXlsx' | 'chat.doc.kindPptx' | 'chat.doc.kindDocx'> = {
   html: 'chat.doc.kindPdf',
@@ -24,14 +26,25 @@ interface Props {
   creating: boolean
   title: string
   doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
+  problem: ChatDocProblem | null
+  onRetry: () => void
   fullscreen: boolean
   onToggleFullscreen: () => void
   onClose: () => void
 }
 
-export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscreen, onClose }: Props): React.JSX.Element {
+export function ChatDocPanel({
+  creating,
+  title,
+  doc,
+  problem,
+  onRetry,
+  fullscreen,
+  onToggleFullscreen,
+  onClose
+}: Props): React.JSX.Element {
   const t = useT()
-  const { hostRef, shouldShowNative } = useChatDocViewport(true)
+  const { hostRef, shouldShowNative } = useChatDocViewport(!problem)
   const [opening, setOpening] = useState(false)
   const [openFailed, setOpenFailed] = useState(false)
 
@@ -61,23 +74,26 @@ export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscr
     }
   }
 
+  // JSON roto / forma incorrecta: reintentar el mismo texto no sirve, hay que pedirle al modelo que lo vuelva a escribir.
+  const askAgain = !!problem && (problem.reason === 'json' || problem.reason === 'schema') && canAskAboutChatDoc()
+
   return (
     <div className="flex h-full min-h-0 flex-col border-l border-border">
       <div className="drag flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 desk:h-12 desk:py-0 desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
           {title || t('chat.doc.title')} {doc && <span className="text-subtle">· {t(KIND_LABEL[doc.kind])}</span>}
         </span>
-        {doc?.kind === 'html' && <DownloadPdfButton html={doc.rawText} title={title} compact className="py-1" />}
-        {doc?.kind === 'html' && doc.isSlides && (
+        {doc && !problem && doc.kind === 'html' && <DownloadPdfButton html={doc.rawText} title={title} compact className="py-1" />}
+        {doc && !problem && doc.kind === 'html' && doc.isSlides && (
           <>
             <PresentSlidesButton html={doc.rawText} title={title} compact className="py-1" />
             <DownloadSlidesPptxButton html={doc.rawText} title={title} compact className="py-1" />
           </>
         )}
-        {doc && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
+        {doc && !problem && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
           <DownloadDataDocButton kind={doc.kind} rawText={doc.rawText} title={title} compact className="py-1" />
         )}
-        {doc && !doc.isSlides && (
+        {doc && !problem && !doc.isSlides && (
           <button
             type="button"
             onClick={() => void openExternal()}
@@ -109,6 +125,25 @@ export function ChatDocPanel({ creating, title, doc, fullscreen, onToggleFullscr
       </div>
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0" style={{ visibility: shouldShowNative ? 'visible' : 'hidden' }} />
+        {problem && doc && (
+          <div className="absolute inset-0 overflow-auto bg-elevated p-4">
+            <DocNotice
+              reason={problem.reason}
+              actionLabel={askAgain ? t('chat.doc.askAgain') : t('chat.doc.retry')}
+              onAction={
+                askAgain
+                  ? () =>
+                      askAboutChatDoc(
+                        t('chat.doc.retryPrompt', {
+                          reason: t(problem.reason === 'json' ? 'chat.doc.problem.json' : 'chat.doc.problem.schema')
+                        })
+                      )
+                  : onRetry
+              }
+              detail={askAgain ? doc.rawText.slice(0, 4000) : problem.detail}
+            />
+          </div>
+        )}
         {creating && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-elevated text-muted">
             <Loader2 size={20} className="animate-spin" />

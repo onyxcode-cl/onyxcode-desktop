@@ -13,7 +13,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync
 import { join } from 'node:path'
 import { makeRedactor, type Redactor } from './redact'
 
-export const PROBLEM_SOURCES = ['main', 'renderer', 'engine', 'update', 'process'] as const
+export const PROBLEM_SOURCES = ['main', 'renderer', 'engine', 'update', 'process', 'document'] as const
 export type ProblemSource = (typeof PROBLEM_SOURCES)[number]
 
 export interface ProblemInput {
@@ -53,7 +53,8 @@ const SOURCE_LABEL: Record<ProblemSource, string> = {
   renderer: 'ventana',
   engine: 'motor',
   update: 'actualización',
-  process: 'proceso'
+  process: 'proceso',
+  document: 'documento'
 }
 
 const clip = (s: string, n: number): string => (s.length > n ? s.slice(0, n) + '…' : s)

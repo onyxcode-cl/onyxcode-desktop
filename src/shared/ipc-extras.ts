@@ -106,9 +106,13 @@ export interface QuickPromptEvent {
 
 // ───────────────── Documentos de Chat (PDF vía HTML, Excel/PowerPoint vía datos) ─────────────────
 
-/** Por qué `extras:chatDoc:open` no abrió nada: la generación del archivo falló. */
-export type ChatDocOpenReject = 'failed'
-export type ChatDocOpenResult = { ok: true } | { ok: false; reason: ChatDocOpenReject }
+/**
+ * Por qué `extras:chatDoc:open` no abrió nada: `failed` (la generación del archivo falló por algo inesperado), `invalid` (los datos no
+ * pasaron la validación de main) o `no-craft` (falta el programa de ArtCraft que ese tipo de documento necesita). `detail` es un motivo
+ * corto y ya apto para mostrar (nunca un mensaje crudo del sistema: solo textos propios de la app).
+ */
+export type ChatDocOpenReject = 'failed' | 'invalid' | 'no-craft'
+export type ChatDocOpenResult = { ok: true } | { ok: false; reason: ChatDocOpenReject; detail?: string }
 
 interface ChatDocOpenCommon {
   title: string

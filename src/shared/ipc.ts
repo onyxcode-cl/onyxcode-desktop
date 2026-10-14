@@ -76,7 +76,7 @@ export interface IpcInvokeContract {
   /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
   /** La ventana avisa de un error suyo (error no capturado, fallo de render) para dejarlo en el registro de problemas. */
-  'diag:problem': { req: { message: string; stack?: string }; res: void }
+  'diag:problem': { req: { message: string; stack?: string; origin?: 'chat-doc' }; res: void }
 
   // settings
   'settings:get': { req: void; res: Settings }

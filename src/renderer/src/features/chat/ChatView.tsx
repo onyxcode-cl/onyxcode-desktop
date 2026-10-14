@@ -332,6 +332,8 @@ export function ChatView(): React.JSX.Element {
             creating={docPanel.creating}
             title={docPanel.title}
             doc={docPanel.doc}
+            problem={docPanel.problem}
+            onRetry={docPanel.retry}
             fullscreen={docPanel.fullscreen}
             onToggleFullscreen={docPanel.toggleFullscreen}
             onClose={docPanel.close}
