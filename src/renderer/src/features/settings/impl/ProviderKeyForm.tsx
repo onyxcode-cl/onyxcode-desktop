@@ -214,9 +214,9 @@ export function ProviderKeyForm({
         const reason = friendlyError(err, { providerID: target }).message
         setFailure({ index, reason })
         // Sin tokens ni códigos de autorización: solo el id del proveedor y el mensaje depurado.
-        reportProblem(
-          new Error(`Fallo de inicio de sesión (${target}): ${sanitizeAuthMessage(err instanceof Error ? err.message : String(err))}`)
-        )
+        const clean = sanitizeAuthMessage(err instanceof Error ? err.message : String(err))
+        // i18n-ignore: texto del registro de problemas (no visible)
+        reportProblem(new Error(`Fallo de inicio de sesión (${target}): ${clean}`))
       }
     }
   }
