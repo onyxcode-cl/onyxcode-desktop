@@ -2,10 +2,10 @@ import type { Messages } from '../index'
 import type { remote as es } from '../es/remote'
 
 export const remote = {
-  'remote.nav': 'Phone',
-  'remote.title': 'Connect my phone',
+  'remote.nav': 'Phone (beta)',
+  'remote.title': 'Connect my phone (beta)',
   'remote.intro':
-    'See your conversations and reply from your phone, only while both are on the same Wi-Fi network. You can read, send a message, stop the reply, and approve or reject a permission. Nothing leaves your network.',
+    'Beta feature: it is still being tested, so it may fail. See your conversations and reply from your phone, only while both are on the same Wi-Fi network. You can read, send a message, stop the reply, and approve or reject a permission. Nothing leaves your network.',
   'remote.unavailable.platform': 'This feature is only on macOS for now.',
   'remote.unavailable.noSafeStorage':
     'Data can’t be stored encrypted on this computer (Keychain access is missing), so the feature is turned off.',

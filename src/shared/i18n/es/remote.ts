@@ -1,8 +1,8 @@
 export const remote = {
-  'remote.nav': 'Celular',
-  'remote.title': 'Conectar mi celular',
+  'remote.nav': 'Celular (beta)',
+  'remote.title': 'Conectar mi celular (beta)',
   'remote.intro':
-    'Mira tus conversaciones y responde desde el celular, solo mientras estén en la misma red Wi-Fi. Puedes ver, enviar un mensaje, detener la respuesta y aprobar o rechazar un permiso. Nada sale de tu red.',
+    'Función en beta: está en prueba, así que puede fallar. Mira tus conversaciones y responde desde el celular, solo mientras estén en la misma red Wi-Fi. Puedes ver, enviar un mensaje, detener la respuesta y aprobar o rechazar un permiso. Nada sale de tu red.',
   'remote.unavailable.platform': 'Esta función por ahora solo está en macOS.',
   'remote.unavailable.noSafeStorage':
     'No se puede guardar de forma cifrada en este equipo (falta el acceso al Llavero), así que la función queda desactivada.',
