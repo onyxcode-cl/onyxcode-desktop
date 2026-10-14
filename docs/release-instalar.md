@@ -14,7 +14,7 @@
 1. Descarga **`Lazunox-Setup-X.Y.Z-x64.exe`** de la lista de archivos de esta página (más abajo, en «Assets»).
 2. Haz doble clic. Si aparece el aviso azul «Windows protegió su PC», pulsa **Más información** y luego **Ejecutar de todas formas**. Solo la primera vez.
 3. Sigue el instalador: se instala solo para tu usuario, sin pedir administrador.
-4. La primera vez que abras Lazunox, prepara solo lo que falta (incluido el entorno de Tareas). Puede pedirte reiniciar el PC.
+4. La primera vez que abras Lazunox, prepara solo lo que falta (incluido el entorno de Overdrive). Puede pedirte reiniciar el PC.
 
 ### Lo que verás al abrir Lazunox
 
