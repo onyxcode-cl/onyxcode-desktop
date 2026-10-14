@@ -87,9 +87,10 @@ code {
   font-size: 1.15rem;
   letter-spacing: -0.02em;
 }
-.brand-gem {
-  width: 1.7rem;
-  height: 1.7rem;
+.brand-logo {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.5rem;
 }
 .top nav {
   display: flex;
@@ -227,59 +228,6 @@ main {
 .stage-mac {
   max-width: 52rem;
   margin: 2.5rem auto 0;
-}
-.gem-hero {
-  width: 3.6rem;
-  margin: 0 0 1.4rem;
-}
-.gem-assemble {
-  width: 2.6rem;
-  margin: 0 0 1rem 0.5rem;
-  filter: none;
-}
-
-.gem-assemble {
-  width: 4rem;
-  height: auto;
-  overflow: visible;
-}
-.gem-assemble .f {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .gem-assemble .f {
-    animation: assemble 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-  .gem-assemble .f1 {
-    --dx: -22px;
-    --dy: -22px;
-  }
-  .gem-assemble .f2 {
-    --dx: 22px;
-    --dy: -22px;
-    animation-delay: 0.08s;
-  }
-  .gem-assemble .f3 {
-    --dx: -22px;
-    --dy: 22px;
-    animation-delay: 0.16s;
-  }
-  .gem-assemble .f4 {
-    --dx: 22px;
-    --dy: 22px;
-    animation-delay: 0.24s;
-  }
-  @keyframes assemble {
-    from {
-      transform: translate(var(--dx), var(--dy));
-      opacity: 0;
-    }
-    to {
-      transform: none;
-      opacity: 1;
-    }
-  }
 }
 
 .section {
@@ -476,4 +424,122 @@ main {
 .sha-full {
   text-align: center;
   margin-top: 1.4rem;
+}
+
+/* Logo del inicio: aparece con un leve ascenso, el único movimiento de la página. */
+.hero-logo {
+  width: 6rem;
+  height: 6rem;
+  margin: 0 0 1.6rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 1.2rem 2.4rem -1rem rgba(26, 42, 122, 0.5);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-logo {
+    animation: logo-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes logo-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* Detección de sistema: el botón del tuyo va primero y grande; el otro, discreto. */
+.download.has-os .btn.is-os {
+  grid-column: 1 / -1;
+  outline: none;
+  padding: 1.15rem 1.4rem;
+}
+.download.has-os .btn.is-os .btn-title {
+  font-size: 1.2rem;
+}
+.download.has-os .btn:not(.is-os) {
+  grid-column: 1 / -1;
+  padding: 0.6rem 1.1rem;
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--edge);
+}
+.download.has-os .btn:not(.is-os):hover {
+  background: var(--tint);
+}
+.download.has-os .btn:not(.is-os) .btn-sub {
+  display: none;
+}
+.download.has-os .btn:not(.is-os) .btn-title {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+.download.is-mobile .btn {
+  opacity: 0.55;
+}
+.mobile-note {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.1rem;
+  background: var(--tint);
+  text-align: left;
+}
+.mobile-note p {
+  margin: 0 0 0.7rem;
+}
+.copy-link {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: var(--ink);
+  color: var(--bg);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.copy-link:hover {
+  background: var(--lapis);
+  color: #fff;
+}
+.chip-note,
+.chip-warn {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  text-align: left;
+  font-size: 0.93rem;
+}
+.chip-note {
+  background: var(--tint);
+}
+.chip-warn {
+  background: #fdecea;
+  color: #7a1c14;
+}
+.chip-note p,
+.chip-warn p {
+  margin: 0 0 0.3rem;
+}
+.chip-note p:last-child,
+.chip-warn p:last-child {
+  margin-bottom: 0;
+}
+.dl-inline {
+  margin: 0 0 0.9rem;
+}
+.btn-inline {
+  display: inline-flex;
+  min-width: 0;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 40rem) {
+  .top nav {
+    display: none;
+  }
 }
