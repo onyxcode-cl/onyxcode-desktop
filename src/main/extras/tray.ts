@@ -24,7 +24,7 @@ let lastAccelerator = ''
 let remoteActive = false
 
 /**
- * Símbolo de la marca (gema de 4 facetas), misma geometría de 32 unidades que
+ * Símbolo de la marca (blob suave con la gema como hueco), misma geometría de 32 unidades que
  * renderer/components/Logo.tsx y build/icon.svg. Dibujado con antialiasing simple.
  */
 export function renderTrayBitmap(S: number, rgb: readonly [number, number, number]): Buffer {
@@ -76,17 +76,24 @@ export function createTrayIcon(platform: string = process.platform): NativeImage
   return img
 }
 
+function roundRect(x: number, y: number, x0: number, y0: number, x1: number, y1: number, r: number): boolean {
+  if (x < x0 || x > x1 || y < y0 || y > y1) return false
+  const cx = Math.min(Math.max(x, x0 + r), x1 - r)
+  const cy = Math.min(Math.max(y, y0 + r), y1 - r)
+  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+}
+
 function inShape(x: number, y: number): boolean {
-  // Gema de la marca: un cuadrado de 15.6 de lado con esquinas redondeadas (radio 2.2) girado 45° y centrado en (16,16), el mismo
-  // dibujo que Logo.tsx. Se mide con la distancia firmada a un rectángulo redondeado en el sistema girado.
-  const dx = x - 16
-  const dy = y - 16
-  const u = Math.abs((dx + dy) / Math.SQRT2)
-  const v = Math.abs((dy - dx) / Math.SQRT2)
-  const h = 7.8 - 2.2
-  const qx = Math.max(u - h, 0)
-  const qy = Math.max(v - h, 0)
-  return Math.hypot(qx, qy) <= 2.2
+  // Blob de 6 lóbulos suaves (radio medio 12 en el centro 16,16): el mismo contorno que Logo.tsx. El ángulo se mide desde arriba.
+  const t = Math.atan2(x - 16, -(y - 16))
+  const r = Math.hypot(x - 16, y - 16)
+  const blob = r <= 12 * (1 + 0.075 * Math.cos(6 * t))
+  // Gema (hueco): cuadrado redondeado 9.4×9.4 rotado 45° alrededor del centro (16,16).
+  const c = Math.SQRT1_2
+  const rx = (x - 16) * c + (y - 16) * c + 16
+  const ry = -(x - 16) * c + (y - 16) * c + 16
+  const gem = roundRect(rx, ry, 11.3, 11.3, 20.7, 20.7, 2.1)
+  return blob && !gem
 }
 
 function buildMenu(actions: TrayActions, quickAccelerator: string): Menu {
