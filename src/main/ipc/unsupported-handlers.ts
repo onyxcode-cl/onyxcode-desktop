@@ -21,6 +21,15 @@ const NEUTRAL_TASKS: Record<string, () => unknown> = {
   'tasks:trusted:list': () => [],
   'tasks:policy': () => null,
   'tasks:sandbox:status': () => ({ backend: 'none', state: 'unsupported', setup: null }),
+  // Sin Tareas no hay nada que revisar al arrancar: informe vacío y omitido (la pantalla no se muestra).
+  'preflight:run': () => ({
+    at: Date.now(),
+    platform: process.platform,
+    appVersion: app.getVersion(),
+    components: [],
+    freeBytes: null,
+    skipped: true
+  }),
   'tasks:tasks:list': () => [],
   'tasks:mcp:list': () => [],
   'tasks:rules:list': () => [],

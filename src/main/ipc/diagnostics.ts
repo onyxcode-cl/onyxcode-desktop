@@ -4,6 +4,7 @@ import { chmod, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { createOpencodeClient } from '@opencode-ai/sdk/v2/client'
 import { SANDBOX_PROVIDER_IDS } from '@shared/sandbox-providers'
+import { reportLines } from '@shared/preflight'
 import { getProblemLog, recordProblem } from '../diagnostics/problem-log'
 import { DiagnosticsService } from '../diagnostics/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
@@ -14,6 +15,7 @@ import { appAuthFile } from '../opencode/data-dir'
 import { extrasPrefs } from '../extras/prefs'
 import { settingsStore } from '../store'
 import { sandboxCredentialIds } from '../tasks/sandbox-credentials'
+import { lastPreflightReport } from '../preflight/real'
 import { handle } from './handle'
 
 /**
@@ -58,6 +60,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
         credentialed: sandboxCredentialIds(appAuthFile(app.getPath('userData')))
       })
     },
+    components: () => reportLines(lastPreflightReport()),
     now: () => Date.now()
   })
 

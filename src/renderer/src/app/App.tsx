@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { ErrorBoundary } from '../components/ErrorBoundary'
-import { OnboardingGate } from '../features/onboarding'
+import { OnboardingGate, PreflightGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
 import { onOpencodeEvent, useServer } from '../stores/server'
 import { routeEventToSessions } from '../stores/eventRouter'
@@ -167,7 +167,9 @@ function DesktopApp(): React.JSX.Element {
       <RemotePairHost />
       <RemoteConfirmHost />
       <ErrorBoundary label={t('app.boundary.onboarding')}>
-        <OnboardingGate />
+        <PreflightGate>
+          <OnboardingGate />
+        </PreflightGate>
       </ErrorBoundary>
       <ErrorBoundary label={t('app.boundary.palette')}>
         <CommandPalette />

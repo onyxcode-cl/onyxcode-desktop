@@ -11,7 +11,18 @@ import { createManualFetch, type NetLike } from '../../remote/tunnel/manual-fetc
 import { OfficeError } from '../download'
 import { recordCraftProblem } from './craft-problems'
 import { readAttempt, retryIncompleteInstall, writeAttempt, type RetryOutcome } from './craft-retry'
-import { craftStatus, craftWebDir, installCraft, loadCraftPin, removeCraft, type CraftDeps, type CraftStatus } from './craft-install'
+import {
+  clearCraftCheckCache,
+  craftInspect,
+  craftStatus,
+  craftWebDir,
+  installCraft,
+  loadCraftPin,
+  removeCraft,
+  type CraftDeps,
+  type CraftStatus
+} from './craft-install'
+import type { CraftCheck } from '../../preflight/service'
 
 type Progress = NonNullable<CraftUiSnapshot['progress']>
 
@@ -40,6 +51,16 @@ class CraftService {
 
   status(): CraftStatus {
     return craftStatus(this.deps())
+  }
+
+  /** Revisión de arranque: estado + pieza a pieza (3 CLI y las webs) sin caché del recorrido de las webs. Solo disco. */
+  check(): CraftCheck {
+    clearCraftCheckCache()
+    const s = this.status()
+    const parts = craftInspect(this.deps())
+    if (s.state === 'unsupported') return { state: 'unsupported', parts }
+    if (s.state === 'missing') return { state: 'missing', version: s.version, sizeBytes: s.sizeBytes, parts }
+    return { state: 'installed', version: s.version, parts }
   }
 
   snapshot(): CraftUiSnapshot {

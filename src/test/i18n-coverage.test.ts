@@ -13,6 +13,9 @@ const ROOT = resolve(__dirname, '../..')
 
 export const MIGRATED: string[] = [
   'src/main/ipc/onboarding.ts',
+  'src/renderer/src/features/onboarding/PreflightScreen.tsx',
+  'src/renderer/src/features/onboarding/PreflightGate.tsx',
+  'src/renderer/src/features/settings/impl/ComponentsCard.tsx',
   'src/main/git/service.ts',
   'src/renderer/src/app/App.tsx',
   'src/renderer/src/app/mobile/MobileShell.tsx',

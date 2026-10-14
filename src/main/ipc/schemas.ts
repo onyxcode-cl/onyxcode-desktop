@@ -8,6 +8,7 @@
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { DIAG_SOURCES } from '@shared/diagnostics'
+import { PREFLIGHT_ORDER } from '@shared/preflight'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, EDITOR_IDS, FILES_SUB_ID_RE, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
 import { TASKS_INVOKE_CHANNELS, type TasksInvokeChannel, type TasksRequest } from '@shared/ipc-tasks'
@@ -769,6 +770,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'craft:install': none,
   'craft:cancel': none,
   'craft:remove': none,
+  'preflight:run': none,
+  'preflight:fail': obj({ id: literal(...PREFLIGHT_ORDER), code: optional(str({ max: 80 })), message: optional(str({ max: 1000 })) }),
   'doctor:run': none,
   'tasks:sandbox:status': optional(obj({ force: optional(bool) })),
   'tasks:sandbox:setup': none,

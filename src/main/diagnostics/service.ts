@@ -51,6 +51,11 @@ export interface DiagnosticsDeps {
     /** Proveedores admitidos en el sandbox de Tareas y los que de verdad tienen credencial para él (solo ids). */
     sandbox(): { allowed: string[]; credentialed: string[] }
   }
+  /**
+   * Líneas de «Estado de componentes» (revisión de arranque: motor, ArtCraft, permisos, entorno aislado, disco…). Opcional: sin él no hay
+   * sección. Ya vienen en texto; igualmente pasan por el redactor con el resto del informe.
+   */
+  components?: () => string[]
   now: () => number
 }
 
@@ -201,6 +206,7 @@ export class DiagnosticsService {
     if (status.version) out.push(`  versión: ${status.version}`)
     if (status.error) out.push(`  último error: ${status.error}`)
     out.push(...this.providersSection())
+    if (deps.components) out.push('', 'Estado de componentes', ...deps.components())
     const problems = deps.problems?.readLines(REPORT_PROBLEM_LINES) ?? []
     out.push('', `Últimos problemas guardados de la app (${problems.length} líneas)`)
     out.push(...(problems.length ? problems : ['  (ninguno)']))

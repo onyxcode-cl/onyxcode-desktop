@@ -52,7 +52,7 @@ const PHASES: Record<string, MsgKey> = {
   done: 'tasks.sandbox.phase.done'
 }
 
-const SETUP_ERRORS: Record<string, MsgKey> = {
+export const SETUP_ERRORS: Record<string, MsgKey> = {
   offline: 'tasks.sandbox.error.offline',
   'no-space': 'tasks.sandbox.error.no-space',
   'bad-hash': 'tasks.sandbox.error.bad-hash',

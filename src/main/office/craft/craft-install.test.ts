@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  CRAFT_DISK_FACTOR,
+  clearCraftCheckCache,
+  craftInspect,
   craftStatus,
   craftWebDir,
   installCraft,
@@ -115,6 +118,7 @@ const deps = (o: Partial<CraftDeps> = {}): CraftDeps => ({
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'craft-test-'))
   webLayout = defaultWebLayout
+  clearCraftCheckCache()
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
@@ -392,5 +396,70 @@ describe('varios programas', () => {
     await installCraft(deps(), (p) => events.push(p))
     expect(events.every((p) => p.total === TOTAL)).toBe(true)
     expect(events.at(-1)).toEqual({ phase: 'done', done: TOTAL, total: TOTAL })
+  })
+})
+
+describe('integridad de lo instalado (no basta la marca)', () => {
+  const binPath = (top: string, exe: string): string => join(dir, 'craft-0.5.0', top, exe)
+
+  it('instalación completa: ninguna pieza con problema y la marca guarda el tamaño del binario', async () => {
+    await installCraft(deps())
+    expect(craftInspect(deps()).every((p) => p.problem === null)).toBe(true)
+    const mark = JSON.parse(readFileSync(join(dir, 'craft-0.5.0', 'installed-deckcraft.json'), 'utf8')) as { binSize: number }
+    expect(mark.binSize).toBe(3)
+  })
+  it('un binario borrado con su marca presente cuenta como faltante (y se repara solo ese)', async () => {
+    await installCraft(deps())
+    rmSync(binPath('pkgw', 'wordcraft-cli'))
+    expect(craftInspect(deps()).find((p) => p.name === 'wordcraft')?.problem).toBe('no-file')
+    expect(craftStatus(deps())).toMatchObject({ state: 'missing', sizeBytes: BYTES.length })
+  })
+  it('un binario truncado (tamaño distinto al anotado) o vacío cuenta como dañado', async () => {
+    await installCraft(deps())
+    truncateSync(binPath('pkgd', 'deckcraft-cli'), 1)
+    writeFileSync(binPath('pkgg', 'gridcraft-cli'), '')
+    const parts = craftInspect(deps())
+    expect(parts.find((p) => p.name === 'deckcraft')?.problem).toBe('truncated')
+    expect(parts.find((p) => p.name === 'gridcraft')?.problem).toBe('truncated')
+    expect(craftStatus(deps())).toMatchObject({ state: 'missing', sizeBytes: BYTES.length * 2 })
+  })
+  it('una marca de otro SHA-256 (el pin cambió) es obsoleta', async () => {
+    await installCraft(deps())
+    const mark = join(dir, 'craft-0.5.0', 'installed-deckcraft.json')
+    writeFileSync(mark, JSON.stringify({ sha256: 'f'.repeat(64) }))
+    expect(craftInspect(deps()).find((p) => p.name === 'deckcraft')?.problem).toBe('stale')
+  })
+  it('una versión web sin index.html, con index vacío o con archivos de menos queda dañada', async () => {
+    await installCraft(deps())
+    rmSync(join(webDirOf('gridcraft'), 'index.html'))
+    writeFileSync(join(webDirOf('wordcraft'), 'index.html'), '')
+    writeFileSync(join(webDirOf('deckcraft'), 'extra.js'), 'x')
+    rmSync(join(webDirOf('deckcraft'), 'extra.js'))
+    const byName = Object.fromEntries(craftInspect(deps()).map((p) => [p.name, p.problem]))
+    expect(byName['web-gridcraft']).toBe('no-file')
+    expect(byName['web-wordcraft']).toBe('truncated')
+    expect(craftWebDir(deps(), 'gridcraft')).toBeNull()
+  })
+  it('un archivo de la web que desaparece (cuarentena de un antivirus) se detecta por el recuento', async () => {
+    webLayout = (dest) => {
+      for (const w of Object.values(PIN.web!)) {
+        mkdirSync(join(dest, w.dir), { recursive: true })
+        writeFileSync(join(dest, w.dir, 'index.html'), 'index')
+        writeFileSync(join(dest, w.dir, 'motor.wasm'), 'wasm')
+      }
+    }
+    await installCraft(deps())
+    expect(craftWebDir(deps(), 'deckcraft')).not.toBeNull()
+    rmSync(join(webDirOf('wordcraft'), 'motor.wasm'))
+    clearCraftCheckCache()
+    expect(craftInspect(deps()).find((p) => p.name === 'web-wordcraft')?.problem).toBe('truncated')
+  })
+  it('reinstalar tras un daño repone el binario y el espacio exigido es CRAFT_DISK_FACTOR veces lo que se baja', async () => {
+    await installCraft(deps())
+    truncateSync(binPath('pkgd', 'deckcraft-cli'), 1)
+    await installCraft(deps())
+    expect(craftStatus(deps()).state).toBe('installed')
+    rmSync(join(dir, 'craft-0.5.0'), { recursive: true })
+    await expect(installCraft(deps({ freeBytes: () => TOTAL * CRAFT_DISK_FACTOR - 1 }))).rejects.toMatchObject({ code: 'disk' })
   })
 })
