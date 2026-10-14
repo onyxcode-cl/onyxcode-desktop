@@ -462,3 +462,18 @@ main {
 .svg-defs {
   position: absolute;
 }
+.sha {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.hash {
+  display: block;
+  margin-top: 0.3rem;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+.sha-full {
+  text-align: center;
+  margin-top: 1.4rem;
+}
