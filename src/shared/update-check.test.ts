@@ -105,11 +105,11 @@ describe('repo y URLs', () => {
 describe('nextCheckDue', () => {
   const now = 1_000_000_000_000
   it('primera vez', () => expect(nextCheckDue({ now, lastCheck: null, retryAfter: null, manual: false })).toBe(true))
-  it('menos de 24 h no', () => {
+  it('menos de 6 h no', () => {
     expect(nextCheckDue({ now, lastCheck: now - CHECK_INTERVAL_MS + 1, retryAfter: null, manual: false })).toBe(false)
     expect(nextCheckDue({ now, lastCheck: now - CHECK_INTERVAL_MS, retryAfter: null, manual: false })).toBe(true)
   })
-  it('manual ignora las 24 h', () => expect(nextCheckDue({ now, lastCheck: now - 1000, retryAfter: null, manual: true })).toBe(true))
+  it('manual ignora las 6 h', () => expect(nextCheckDue({ now, lastCheck: now - 1000, retryAfter: null, manual: true })).toBe(true))
   it('retryAfter futuro espera incluso en manual', () => {
     expect(nextCheckDue({ now, lastCheck: null, retryAfter: now + 1, manual: true })).toBe(false)
     expect(nextCheckDue({ now, lastCheck: null, retryAfter: now, manual: true })).toBe(true)
@@ -124,7 +124,8 @@ describe('parseRetryAfter', () => {
     expect(parseRetryAfter(h({ 'retry-after': '7200' }), now)).toBe(now + 7_200_000)
     expect(parseRetryAfter(h({ 'retry-after': '60' }), now)).toBe(now + 3_600_000)
   })
-  it('máximo 24 h', () => expect(parseRetryAfter(h({ 'retry-after': '999999999' }), now)).toBe(now + CHECK_INTERVAL_MS))
+  it('máximo 24 h', () => expect(parseRetryAfter(h({ 'retry-after': '999999999' }), now)).toBe(now + 24 * 60 * 60 * 1000))
+  it('el intervalo entre comprobaciones es de 6 h', () => expect(CHECK_INTERVAL_MS).toBe(6 * 60 * 60 * 1000))
   it('x-ratelimit-reset en epoch segundos', () =>
     expect(parseRetryAfter(h({ 'x-ratelimit-reset': String((now + 10_800_000) / 1000) }), now)).toBe(now + 10_800_000))
   it('sin cabeceras: 1 h', () => expect(parseRetryAfter(h({}), now)).toBe(now + 3_600_000))

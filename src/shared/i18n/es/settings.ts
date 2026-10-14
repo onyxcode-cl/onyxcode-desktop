@@ -205,7 +205,7 @@ export const settings = {
   'settings.about.updates': 'Actualizaciones',
   'settings.about.autoCheck': 'Buscar actualizaciones automáticamente',
   'settings.about.autoCheck.configured':
-    'Una vez al día como mucho, la app pide a GitHub (api.github.com) cuál es la última versión publicada. Solo se envía esa petición con el nombre y la versión de la app ({agent}); ningún dato tuyo ni identificador. Solo descarga cuando pulsas Actualizar.',
+    'Cada pocas horas como mucho (y al abrir la app), la app pide a GitHub (api.github.com) cuál es la última versión publicada. Solo se envía esa petición con el nombre y la versión de la app ({agent}); ningún dato tuyo ni identificador. Solo descarga cuando pulsas Actualizar.',
   'settings.about.autoCheck.unconfigured': 'Esta compilación no tiene configurado dónde buscar versiones nuevas.',
   'settings.about.currentVersion': 'Versión actual',
   'settings.about.channel': 'Canal',

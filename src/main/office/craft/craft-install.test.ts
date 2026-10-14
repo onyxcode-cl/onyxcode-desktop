@@ -228,6 +228,19 @@ describe('instalación de Craft', () => {
     await installCraft(deps({ fetch: async () => (calls++, new Response('x')) }))
     expect(calls).toBe(0)
   })
+  it('tras instalar con éxito limpia versiones viejas; si la instalación falla no borra nada', async () => {
+    mkdirSync(join(dir, 'craft-0.4.0'), { recursive: true })
+    mkdirSync(join(dir, 'craft-0.3.0'), { recursive: true })
+    writeFileSync(join(dir, 'craft-intento.json'), '{}')
+    const bad = deps({ pin: withAsset('deckcraft', 'darwin-arm64', { sha256: '0'.repeat(64) }) as CraftPin })
+    await expect(installCraft(bad)).rejects.toMatchObject({ code: 'hash' })
+    expect(existsSync(join(dir, 'craft-0.4.0'))).toBe(true)
+    await installCraft(deps())
+    expect(existsSync(join(dir, 'craft-0.4.0'))).toBe(false)
+    expect(existsSync(join(dir, 'craft-0.3.0'))).toBe(false)
+    expect(existsSync(join(dir, 'craft-0.5.0'))).toBe(true)
+    expect(existsSync(join(dir, 'craft-intento.json'))).toBe(true)
+  })
   it('instala también las tres versiones web junto a los CLI, cada una en web/<programa> con su index.html', async () => {
     await installCraft(deps())
     for (const p of WEBS) {

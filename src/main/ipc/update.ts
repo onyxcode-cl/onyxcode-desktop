@@ -215,5 +215,6 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
 
   void refreshLocation()
   checker.start()
+  app.once('will-quit', () => checker.stop())
   return checker
 }

@@ -25,6 +25,7 @@ import {
   writeFileSync
 } from 'node:fs'
 import { join, normalize, sep } from 'node:path'
+import { cleanStaleCraft } from './craft-clean'
 import { OfficeError, downloadVerified, parseTeamId, realRun, type FetchLike, type RunFile } from '../download'
 
 export interface CraftPinAsset {
@@ -413,7 +414,10 @@ export async function installCraft(
     before += asset.size
   }
   onProgress({ phase: 'done', done: total, total })
-  return (craftStatus(d) as Extract<CraftStatus, { state: 'installed' }>).bins
+  const after = craftStatus(d)
+  // Solo con la instalación completa y verificada: se quitan versiones viejas y temporales abandonados (nunca falla la instalación).
+  if (after.state === 'installed') cleanStaleCraft({ binDir: d.binDir, currentDir: final, now: Date.now() })
+  return (after as Extract<CraftStatus, { state: 'installed' }>).bins
 }
 
 export function removeCraft(d: CraftDeps): void {

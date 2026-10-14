@@ -27,6 +27,7 @@ let clock: number
 let enabled: boolean
 let states: UpdateState[]
 let timers: Array<{ fn: () => void; ms: number }>
+let intervals: Array<{ fn: () => void; ms: number; cleared: boolean }>
 let fetchMock: ReturnType<typeof vi.fn>
 
 function make(over: Partial<UpdateCheckerDeps> = {}): UpdateChecker {
@@ -34,6 +35,14 @@ function make(over: Partial<UpdateCheckerDeps> = {}): UpdateChecker {
     fetch: fetchMock as unknown as UpdateCheckerDeps['fetch'],
     now: () => clock,
     setTimeout: (fn, ms) => timers.push({ fn, ms }),
+    setInterval: (fn, ms) => {
+      const h = { fn, ms, cleared: false }
+      intervals.push(h)
+      return h
+    },
+    clearInterval: (h) => {
+      ;(h as { cleared: boolean }).cleared = true
+    },
     currentVersion: '1.0.0',
     config: CONFIG,
     isEnabled: () => enabled,
@@ -49,6 +58,7 @@ beforeEach(() => {
   enabled = true
   states = []
   timers = []
+  intervals = []
   fetchMock = vi.fn(async () => release('v1.1.0'))
   vi.spyOn(console, 'warn').mockImplementation(() => undefined)
 })
@@ -92,6 +102,50 @@ describe('UpdateChecker', () => {
     timers[0].fn()
     await vi.waitFor(() => expect(c.getState().available).toBe(true))
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('revisión periódica: cada 30 min llama a check(false) y respeta el intervalo de 6 h', async () => {
+    const c = make()
+    c.start()
+    expect(intervals).toHaveLength(1)
+    expect(intervals[0].ms).toBe(30 * 60 * 1000)
+    intervals[0].fn()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(c.getState().checking).toBe(false))
+    clock += 30 * 60 * 1000
+    intervals[0].fn()
+    await Promise.resolve()
+    expect(fetchMock).toHaveBeenCalledTimes(1) // aún no pasaron 6 h
+    clock += CHECK_INTERVAL_MS
+    intervals[0].fn()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  })
+
+  it('start dos veces no acumula temporizadores y stop lo detiene', () => {
+    const c = make()
+    c.start()
+    c.start()
+    expect(intervals).toHaveLength(1)
+    expect(timers).toHaveLength(1)
+    c.stop()
+    expect(intervals[0].cleared).toBe(true)
+    c.stop() // idempotente
+    c.start()
+    expect(intervals).toHaveLength(2)
+  })
+
+  it('sin configurar: start no crea el temporizador recurrente', () => {
+    make({ config: { ...CONFIG, configured: false } }).start()
+    expect(intervals).toHaveLength(0)
+  })
+
+  it('el temporizador recurrente respeta retryAfter y el ajuste apagado', async () => {
+    const c = make()
+    c.start()
+    enabled = false
+    intervals[0].fn()
+    await Promise.resolve()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('ajuste apagado: 0 llamadas', async () => {

@@ -207,7 +207,7 @@ export const settings = {
   'settings.about.updates': 'Updates',
   'settings.about.autoCheck': 'Check for updates automatically',
   'settings.about.autoCheck.configured':
-    'At most once a day, the app asks GitHub (api.github.com) for the latest published version. Only that request is sent, with the app name and version ({agent}); no personal data or identifiers. It only downloads when you click Update.',
+    'Every few hours at most (and when the app opens), the app asks GitHub (api.github.com) for the latest published version. Only that request is sent, with the app name and version ({agent}); no personal data or identifiers. It only downloads when you click Update.',
   'settings.about.autoCheck.unconfigured': 'This build has no location configured to check for new versions.',
   'settings.about.currentVersion': 'Current version',
   'settings.about.channel': 'Channel',

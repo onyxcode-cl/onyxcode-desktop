@@ -19,6 +19,8 @@ import type { UpdateConfig } from './config'
 import { recordProblem } from '../diagnostics/problem-log'
 
 const HOUR_MS = 60 * 60 * 1000
+/** Cada cuánto se revisa mientras la app está abierta; `check(false)` ya respeta el intervalo mínimo, `retryAfter` y el ajuste. */
+export const POLL_INTERVAL_MS = 30 * 60 * 1000
 const FETCH_TIMEOUT_MS = 8000
 const MAX_BODY_BYTES = 256 * 1024
 
@@ -28,6 +30,9 @@ export interface UpdateCheckerDeps {
   fetch: FetchLike
   now: () => number
   setTimeout: (fn: () => void, ms: number) => unknown
+  /** Temporizador recurrente (opcional; por defecto el global, con `unref`). */
+  setInterval?: (fn: () => void, ms: number) => unknown
+  clearInterval?: (handle: unknown) => void
   currentVersion: string
   config: UpdateConfig
   isEnabled: () => boolean
@@ -79,7 +84,7 @@ async function readLimited(res: Response): Promise<string | null> {
 
 /**
  * Aviso NO bloqueante de versión nueva: una petición GET sin autenticar a la API pública de
- * GitHub como mucho cada 24 h. Por sí solo no descarga ni instala nada (eso lo hace `UpdateInstaller` al pulsar «Actualizar»).
+ * GitHub como mucho cada 6 h (se revisa cada 30 min mientras la app está abierta). Por sí solo no descarga ni instala nada (eso lo hace `UpdateInstaller` al pulsar «Actualizar»).
  */
 export class UpdateChecker {
   private saved: Persisted
@@ -91,10 +96,27 @@ export class UpdateChecker {
     this.saved = this.load()
   }
 
-  /** Programa la comprobación automática tras `startDelayMs` (no hace nada si no está configurado). */
+  private poll: unknown = null
+
+  /** Programa la comprobación inicial tras `startDelayMs` y una revisión recurrente (no hace nada si no está configurado; llamarlo dos veces no duplica el temporizador). */
   start(): void {
-    if (!this.d.config.configured) return
+    if (!this.d.config.configured || this.poll !== null) return
     this.d.setTimeout(() => void this.check(false), this.d.config.startDelayMs)
+    const tick = (): void => void this.check(false)
+    if (this.d.setInterval) this.poll = this.d.setInterval(tick, POLL_INTERVAL_MS)
+    else {
+      const t = setInterval(tick, POLL_INTERVAL_MS)
+      t.unref?.()
+      this.poll = t
+    }
+  }
+
+  /** Detiene la revisión recurrente (al cerrar la app). */
+  stop(): void {
+    if (this.poll === null) return
+    if (this.d.clearInterval) this.d.clearInterval(this.poll)
+    else clearInterval(this.poll as ReturnType<typeof setInterval>)
+    this.poll = null
   }
 
   getState(): UpdateState {

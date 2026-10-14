@@ -2,7 +2,10 @@
 import { RELEASES_API_ORIGIN, RELEASES_ORIGIN } from './brand'
 import type { InstallState } from './update-install'
 
-export const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+/** Separación mínima entre comprobaciones automáticas (el temporizador revisa cada 30 min; el límite de GitHub sin token es 60/h). */
+export const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+/** Tope de espera tras un 403/429 de GitHub. */
+const MAX_RETRY_MS = 24 * 60 * 60 * 1000
 const HOUR_MS = 60 * 60 * 1000
 
 export interface UpdateState {
@@ -124,7 +127,7 @@ export function parseRetryAfter(headers: { get(name: string): string | null }, n
   if (ra && /^\d+$/.test(ra.trim())) wait = Number(ra.trim()) * 1000
   else if (ra && Number.isFinite(Date.parse(ra))) wait = Date.parse(ra) - now
   else if (reset && /^\d+$/.test(reset.trim())) wait = Number(reset.trim()) * 1000 - now
-  return now + Math.min(Math.max(wait, HOUR_MS), CHECK_INTERVAL_MS)
+  return now + Math.min(Math.max(wait, HOUR_MS), MAX_RETRY_MS)
 }
 
 export function parseReleaseJson(raw: unknown): { tag: string; url: string | null; draft: boolean; prerelease: boolean } | null {
