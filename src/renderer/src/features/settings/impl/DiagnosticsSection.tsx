@@ -86,7 +86,7 @@ function StatusCard(): React.JSX.Element {
 
 function LogsCard(): React.JSX.Element {
   const t = useT()
-  const [source, setSource] = useState<DiagSource>('engine')
+  const [source, setSource] = useState<DiagSource>('problems')
   const [logs, setLogs] = useState<DiagLogs | null>(null)
   const [filter, setFilter] = useState('')
   const [auto, setAuto] = useState(false)
