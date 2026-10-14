@@ -316,7 +316,7 @@ export function getOpencodeEnv(): Record<string, string> {
     XDG_DATA_HOME: opencodeDataHome(app.getPath('userData')),
     // Python incluido para las skills de oficina (vacío si no está: las skills caen en `python3`).
     ...bundledPythonEnv(),
-    // LibreOffice (opcional, se instala bajo demanda): carpeta de binarios y, si ya está, la ruta de `soffice` para las skills de oficina.
+    // Carpeta de binarios opcionales (`LAZUNOX_BIN_DIR`) y variables de ArtCraft si ya está instalado, para las skills de oficina.
     ...officeService().env()
   }
 }

@@ -95,7 +95,10 @@ module.exports = {
     // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
     '!resources/opencode-bin/**',
     // El Python propio (scripts/fetch-python.mjs) va por extraResources (sellado y firmado), nunca dentro del .asar.
-    '!resources/python-bin/**'
+    '!resources/python-bin/**',
+    // Cachés de bytecode de Python (las genera cualquier ejecución local de las skills): basura, nunca en el paquete.
+    '!**/__pycache__/**',
+    '!**/*.pyc'
   ],
   // Los agentes y las skills de oficina (se copian a userData/opencode-config al arrancar; OpenCode
   // NUNCA escribe en el bundle). El helper `cu-helper` va por extraResources (Contents/Resources/computer-use/bin).

@@ -37,3 +37,7 @@ resources/computer-use/win/bin/
 
 # Imágenes incluidas de Tareas en Windows (scripts/stage-wsl-bundle.mjs): ~138 MB, nunca en git
 resources/wsl-images/
+
+# Bytecode de Python (generado al ejecutar las skills; no se versiona ni se empaqueta)
+__pycache__/
+*.pyc
