@@ -49,12 +49,23 @@ jobs:
         run: npm run test:release-scripts
       - name: Compilar
         run: npm run build
+      # Las imágenes de «Tareas en Windows» (rootfs de WSL y opencode linux-x64) las prepara el dueño a mano (`npm run stage:wsl-bundle`, ver
+      # docs/RELEASE.md) y NO viven en el repositorio ni en una release: en este runner nunca existen. Sin ellas el empaquetado exige y falla
+      # («paquete de WSL incorrecto»), así que el empaquetado y lo que depende del instalador se saltan con un aviso en vez de fallar siempre.
+      - name: ¿Están las imágenes de WSL para empaquetar?
+        id: wsl
+        run: |
+          $hay = (Test-Path 'resources/wsl-images/opencode-linux-x64.tar.gz') -and ((Get-ChildItem 'resources/wsl-images' -Filter 'lazunox-rootfs-*-x64.tar.gz' -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0)
+          "hay=$($hay.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if (-not $hay) { Write-Host '::notice title=Empaquetado omitido::Faltan las imágenes de WSL (resources/wsl-images); se omite el instalador, que se arma en el PC del dueño.' }
       # Descarga el OpenCode fijado (pin.json, con su suma de verificación) y empaqueta el instalador NSIS x64. Sin certificado: queda sin firmar.
       - name: Empaquetar (sin firma)
+        if: steps.wsl.outputs.hay == 'true'
         run: npm run package:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - name: Comprobaciones estáticas del paquete (pack-check -NoSmoke)
+        if: steps.wsl.outputs.hay == 'true'
         run: >
           powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/pack-check.ps1 -Branch ci -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE" -NoSmoke
       - name: ZIP -> tar.exe -> comprobación (tar-check)
@@ -65,6 +76,7 @@ jobs:
       # Humo de la app EMPAQUETADA (arranca Electron oculto y un terminal ConPTY): depende de la sesión gráfica del runner, así que
       # no bloquea; si falla, el registro queda en el artefacto de registros.
       - name: Humo de la app empaquetada (pack-check, no bloqueante)
+        if: steps.wsl.outputs.hay == 'true'
         continue-on-error: true
         run: >
           powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/win/pack-check.ps1 -Branch ci-smoke -Root "$env:LAZUNOX_CI_ROOT" -Wt "$env:GITHUB_WORKSPACE"
@@ -77,6 +89,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Instalador sin firma
+        if: steps.wsl.outputs.hay == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: lazunox-win-x64-sin-firma
