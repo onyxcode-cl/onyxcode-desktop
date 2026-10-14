@@ -95,9 +95,11 @@ describe('bloques ```docx (Word)', () => {
     expect(extractChatDocBlocks('```docx\n{"blocks": [')).toHaveLength(0)
   })
 
-  it('parseDataBlock devuelve null para JSON roto o con claves de más', () => {
+  it('parseDataBlock devuelve null para JSON roto; las claves de más se descartan (tolerancia de forma)', () => {
     expect(parseDataBlock('docx', '{')).toBeNull()
-    expect(parseDataBlock('docx', JSON.stringify({ ...spec, macro: 'x' }))).toBeNull()
+    const cleaned = parseDataBlock('docx', JSON.stringify({ ...spec, macro: 'x' }))
+    expect(cleaned).toMatchObject({ title: 'Informe de ventas' })
+    expect(cleaned).not.toHaveProperty('macro')
     expect(parseDataBlock('docx', JSON.stringify(spec))).toMatchObject({ title: 'Informe de ventas' })
   })
 })

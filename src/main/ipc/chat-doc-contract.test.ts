@@ -5,6 +5,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
+import { sanitizeDoc } from '@shared/chat-doc-sanitize'
+import { GPT_DOCX, GPT_PPTX, GPT_XLSX } from '../../test/fixtures/chat-doc-gpt'
 import { IPC_SCHEMAS } from './schemas'
 
 const common = { title: 'T', sessionId: 's1', lang: 'es' as const, theme: 'light' as const }
@@ -208,5 +210,32 @@ describe('contrato de documentos de Chat: validación compartida e IPC dicen lo 
   it.each(DOCX)('docx — %s', (_n, data, valid) => {
     expect(isDocxSpec(data), 'isDocxSpec').toBe(valid)
     if (valid) expect(ipcAccepts('docx', data), 'esquema IPC').toBe(true)
+  })
+})
+
+describe('contrato: la tolerancia de forma (sanitizeDoc) NUNCA produce algo que el esquema IPC rechace', () => {
+  // El saneado corre en el renderer ANTES de mandar el documento por IPC: su salida tiene que pasar las DOS validaciones (la compartida y la
+  // IPC, que sigue siendo estricta con las claves). Si el saneado dejara pasar una clave de más, el panel fallaría en main.
+  it.each([
+    ['xlsx', GPT_XLSX],
+    ['pptx', GPT_PPTX],
+    ['docx', GPT_DOCX]
+  ] as const)('salida típica de GPT — %s', (kind, raw) => {
+    const clean = sanitizeDoc(kind, raw)
+    const shared = { xlsx: isXlsxSpec, pptx: isPptxSpec, docx: isDocxSpec }[kind]
+    expect(shared(clean), 'validación compartida').toBe(true)
+    expect(ipcAccepts(kind, clean), 'esquema IPC').toBe(true)
+  })
+
+  it('los documentos del contrato que ya eran válidos siguen igual de válidos tras sanear', () => {
+    for (const [, data, valid] of PPTX) if (valid) expect(ipcAccepts('pptx', sanitizeDoc('pptx', data))).toBe(true)
+    for (const [, data, valid] of DOCX) if (valid) expect(ipcAccepts('docx', sanitizeDoc('docx', data))).toBe(true)
+    for (const [, data, valid] of XLSX) if (valid) expect(ipcAccepts('xlsx', sanitizeDoc('xlsx', data))).toBe(true)
+  })
+
+  it('el esquema IPC SIGUE rechazando claves de más (la tolerancia vive en el renderer, no aquí)', () => {
+    expect(ipcAccepts('pptx', GPT_PPTX)).toBe(false)
+    expect(ipcAccepts('docx', GPT_DOCX)).toBe(false)
+    expect(ipcAccepts('xlsx', GPT_XLSX)).toBe(false)
   })
 })

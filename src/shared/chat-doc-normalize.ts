@@ -29,7 +29,7 @@ const SHAPE_ALIAS: Record<string, string> = {
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 
-function fixElement(e: unknown): unknown {
+export function fixElement(e: unknown): unknown {
   if (!isObj(e) || e.type === 'text' || e.type === 'shape') return e
   const alias = typeof e.type === 'string' ? SHAPE_ALIAS[e.type.toLowerCase()] : undefined
   if (!alias || !(FREE_SHAPES as readonly string[]).includes(alias)) return e

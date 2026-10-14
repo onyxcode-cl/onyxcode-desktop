@@ -6,9 +6,11 @@
  * Tareas/Code, que no conocen xlsx/pptx) ordenados por posición en el texto.
  */
 import { parseLenient } from '@shared/json-lenient'
-import { normalizePptx } from '@shared/chat-doc-normalize'
+import { sanitizeDoc, sniffDocKind } from '@shared/chat-doc-sanitize'
 import { isDocxSpec, isPptxSpec, isXlsxSpec, type DocxSpec, type PptxSpec, type XlsxSpec } from '@shared/chat-doc-spec'
 import { extractHtmlArtifacts } from '../components/artifacts/ArtifactButton'
+
+export type DataDocKind = 'xlsx' | 'pptx' | 'docx'
 
 export type ChatDocBlock =
   | { kind: 'html'; index: number; title: string; rawText: string; isSlides: boolean }
@@ -16,20 +18,47 @@ export type ChatDocBlock =
   | { kind: 'pptx'; index: number; title: string; rawText: string; data: PptxSpec }
   | { kind: 'docx'; index: number; title: string; rawText: string; data: DocxSpec }
 
-const DATA_FENCE = /(^|\n)[ \t]*(```+|~~~+)[ \t]*(xlsx|pptx|docx)\b[^\n]*\n([\s\S]*?)\n[ \t]*\2[ \t]*(?=\n|$)/gi
+/** Lenguajes de valla en los que un modelo suele pegar la spec cuando no usa el nombre del documento (se aceptan si el JSON es inequívoco). */
+const JSON_LANGS = ['json', 'javascript', 'js', 'text', 'txt', 'plaintext']
+export const isJsonLang = (lang: string | null | undefined): boolean => !!lang && JSON_LANGS.includes(lang.toLowerCase())
 
-/** `null` si `rawText` no es JSON válido o no cumple el schema del tipo — nunca lanza. */
-export function parseDataBlock(kind: 'xlsx' | 'pptx' | 'docx', rawText: string): XlsxSpec | PptxSpec | DocxSpec | null {
+const DATA_FENCE = new RegExp(
+  String.raw`(^|\n)[ \t]*(\x60\x60\x60+|~~~+)[ \t]*(xlsx|pptx|docx|${JSON_LANGS.join('|')})\b[^\n]*\n([\s\S]*?)\n[ \t]*\2[ \t]*(?=\n|$)`,
+  'gi'
+)
+
+/** Por qué un bloque no se pudo usar: `json` (no es JSON ni con reparaciones) o `schema` (es JSON pero no tiene la forma del documento). */
+export type DataBlockFailure = 'json' | 'schema'
+
+export type DataBlockParse = { ok: true; data: XlsxSpec | PptxSpec | DocxSpec } | { ok: false; reason: DataBlockFailure }
+
+/** Lee un bloque: JSON tolerante + limpieza de forma (claves de más, textos largos, números por texto…) + esquema estricto. Nunca lanza. */
+export function parseDataBlockDetailed(kind: DataDocKind, rawText: string): DataBlockParse {
   let parsed: unknown
   try {
     parsed = parseLenient(rawText)
   } catch {
+    return { ok: false, reason: 'json' }
+  }
+  const data = sanitizeDoc(kind, parsed)
+  if (kind === 'xlsx') return isXlsxSpec(data) ? { ok: true, data } : { ok: false, reason: 'schema' }
+  if (kind === 'docx') return isDocxSpec(data) ? { ok: true, data } : { ok: false, reason: 'schema' }
+  return isPptxSpec(data) ? { ok: true, data } : { ok: false, reason: 'schema' }
+}
+
+/** `null` si `rawText` no es JSON válido o no cumple el schema del tipo — nunca lanza. */
+export function parseDataBlock(kind: DataDocKind, rawText: string): XlsxSpec | PptxSpec | DocxSpec | null {
+  const r = parseDataBlockDetailed(kind, rawText)
+  return r.ok ? r.data : null
+}
+
+/** Para una valla genérica (```json…): el tipo de documento que describe su contenido, o `null` si no es (claramente) una spec. */
+export function sniffDataKind(rawText: string): DataDocKind | null {
+  try {
+    return sniffDocKind(parseLenient(rawText))
+  } catch {
     return null
   }
-  if (kind === 'xlsx') return isXlsxSpec(parsed) ? parsed : null
-  if (kind === 'docx') return isDocxSpec(parsed) ? parsed : null
-  const fixed = normalizePptx(parsed)
-  return isPptxSpec(fixed) ? fixed : null
 }
 
 /** Mismo espíritu que `guessTitle` (HTML): un título corto a partir del contenido, o uno genérico. */
@@ -45,25 +74,46 @@ export function guessDataTitle(kind: 'xlsx' | 'pptx' | 'docx', rawText: string, 
   return (data as PptxSpec).slides[0]?.title || `Presentación ${n}`
 }
 
-/** Extrae los bloques ```xlsx/```pptx completos y bien formados (ignora uno a medio escribir o con JSON inválido). */
-function extractDataArtifacts(markdown: string): Array<ChatDocBlock & { kind: 'xlsx' | 'pptx' | 'docx' }> {
-  const out: Array<ChatDocBlock & { kind: 'xlsx' | 'pptx' | 'docx' }> = []
+/** Un bloque de datos CERRADO que no se pudo usar (para avisar en vez de ignorarlo en silencio). */
+export interface BrokenDocBlock {
+  kind: DataDocKind
+  index: number
+  rawText: string
+  reason: DataBlockFailure
+}
+
+/** Recorre las vallas cerradas de datos: válidas → `blocks`; con JSON roto o forma incorrecta → `broken`. */
+function scanDataFences(markdown: string): { blocks: Array<ChatDocBlock & { kind: DataDocKind }>; broken: BrokenDocBlock[] } {
+  const blocks: Array<ChatDocBlock & { kind: DataDocKind }> = []
+  const broken: BrokenDocBlock[] = []
   let m: RegExpExecArray | null
   DATA_FENCE.lastIndex = 0
   while ((m = DATA_FENCE.exec(markdown))) {
-    const kind = m[3].toLowerCase() as 'xlsx' | 'pptx' | 'docx'
+    const lang = m[3].toLowerCase()
     const rawText = m[4]
     if (!rawText.trim()) continue
-    const data = parseDataBlock(kind, rawText)
-    if (!data) continue
-    if (kind === 'xlsx' && isXlsxSpec(data))
-      out.push({ kind, index: m.index, rawText, data, title: guessDataTitle(kind, rawText, out.length + 1) })
-    else if (kind === 'docx' && isDocxSpec(data))
-      out.push({ kind, index: m.index, rawText, data, title: guessDataTitle(kind, rawText, out.length + 1) })
-    else if (kind === 'pptx' && isPptxSpec(data))
-      out.push({ kind, index: m.index, rawText, data, title: guessDataTitle(kind, rawText, out.length + 1) })
+    // ```json y compañía: solo cuenta si el contenido es, sin dudas, la spec de un documento (si no, es código normal).
+    const kind: DataDocKind | null = isJsonLang(lang) ? sniffDataKind(rawText) : (lang as DataDocKind)
+    if (!kind) continue
+    const r = parseDataBlockDetailed(kind, rawText)
+    if (!r.ok) {
+      broken.push({ kind, index: m.index, rawText, reason: r.reason })
+      continue
+    }
+    const title = guessDataTitle(kind, rawText, blocks.length + 1)
+    blocks.push({ kind, index: m.index, rawText, data: r.data, title } as ChatDocBlock & { kind: DataDocKind })
   }
-  return out
+  return { blocks, broken }
+}
+
+/** Bloques ```xlsx/```pptx/```docx (o ```json con la spec) completos y bien formados. */
+function extractDataArtifacts(markdown: string): Array<ChatDocBlock & { kind: DataDocKind }> {
+  return scanDataFences(markdown).blocks
+}
+
+/** Bloques de datos cerrados pero inválidos (JSON roto o forma que no es la del documento). */
+export function extractBrokenDocBlocks(markdown: string): BrokenDocBlock[] {
+  return scanDataFences(markdown).broken
 }
 
 export function extractChatDocBlocks(markdown: string): ChatDocBlock[] {
