@@ -118,3 +118,89 @@ export function sendGate(avail: AiAvailability, effective: ModelRef | null, unav
   if (effective === null) return { blocked: true, reason: 'no-ai', freeNote: false }
   return { blocked: false, reason: null, freeNote: avail === 'free-only' }
 }
+
+// ───────────── Reconciliar las elecciones guardadas al cambiar de proveedor ─────────────
+
+/** Modos con modelo propio (`modelsByMode`); mismo conjunto que `ModelMode` de `ipc-extras`. */
+export type ChoiceMode = 'chat' | 'code' | 'tasks'
+
+/** Elecciones explícitas del usuario: el predeterminado global (settings.json) y el de cada modo (extras.json). */
+export interface ModelChoices {
+  defaultModel: ModelRef
+  modelsByMode: Partial<Record<ChoiceMode, ModelRef>>
+}
+
+export interface ReconcileOutcome {
+  /** Elecciones ya reconciliadas (las mismas de entrada si `changed` es false). */
+  choices: ModelChoices
+  /** Las de entrada, para «Deshacer». */
+  previous: ModelChoices
+  changed: boolean
+  /** Modelo al que se pasó (para el aviso «Ahora usas …»), o `null` si el predeterminado no cambió. */
+  switchedTo: ModelRef | null
+}
+
+const copyChoices = (c: ModelChoices): ModelChoices => {
+  const modelsByMode: ModelChoices['modelsByMode'] = {}
+  for (const mode of Object.keys(c.modelsByMode) as ChoiceMode[]) {
+    const ref = c.modelsByMode[mode]
+    if (ref) modelsByMode[mode] = { providerID: ref.providerID, modelID: ref.modelID }
+  }
+  return { defaultModel: { providerID: c.defaultModel.providerID, modelID: c.defaultModel.modelID }, modelsByMode }
+}
+
+/**
+ * Reconcilia las elecciones explícitas con los proveedores que hay AHORA (tras conectar o desconectar uno). Pura: no persiste.
+ *
+ * - Si OpenCode Go acaba de pasar a conectado (no estaba en `previousIds`) y alguna elección apunta a otro proveedor, vuelve a
+ *   `DEFAULT_MODEL` (o al predeterminado de Go si ese modelo ya no existe) y se limpia el override del modo afectado.
+ * - Una elección cuyo modelo ya no existe (proveedor desconectado) se sustituye (`resolveModel`: Go primero) y el override del modo se limpia.
+ * - Sin ninguna IA configurada, o con la lista aún sin cargar, no se toca nada.
+ */
+export function reconcileChoices(
+  choices: ModelChoices,
+  providers: ProviderLike[] | null,
+  defaults: Record<string, string>,
+  previousIds: readonly string[] | null
+): ReconcileOutcome {
+  const previous = copyChoices(choices)
+  const unchanged: ReconcileOutcome = { choices, previous, changed: false, switchedTo: null }
+  if (providers === null || aiAvailability(providers) !== 'ready') return unchanged
+
+  const go = providers.find((p) => p.id === PREFERRED_PROVIDER_ID)
+  const goJustConnected = !!go && !(previousIds ?? []).includes(PREFERRED_PROVIDER_ID)
+  const goTarget: ModelRef | null = !go ? null : hasModel(providers, DEFAULT_MODEL) ? { ...DEFAULT_MODEL } : defaultOf(go, defaults)
+
+  const next = copyChoices(choices)
+  let changed = false
+  let switchedTo: ModelRef | null = null
+
+  // Predeterminado global.
+  if (goJustConnected && goTarget && choices.defaultModel.providerID !== PREFERRED_PROVIDER_ID) {
+    next.defaultModel = goTarget
+    changed = true
+    switchedTo = goTarget
+  } else if (isChoiceUnavailable(choices.defaultModel, providers)) {
+    const alt = resolveModel(choices.defaultModel, providers, defaults)
+    if (alt) {
+      next.defaultModel = alt
+      changed = true
+      switchedTo = alt
+    }
+  }
+
+  // Modelo propio de cada modo: se borra (vuelve a valer el predeterminado ya reconciliado).
+  for (const mode of Object.keys(choices.modelsByMode) as ChoiceMode[]) {
+    const ref = choices.modelsByMode[mode]
+    if (!ref) continue
+    const wrongAccount = goJustConnected && !!goTarget && ref.providerID !== PREFERRED_PROVIDER_ID
+    if (wrongAccount || !hasModel(providers, ref)) {
+      delete next.modelsByMode[mode]
+      changed = true
+      switchedTo ??= wrongAccount ? goTarget : resolveModel(next.defaultModel, providers, defaults)
+    }
+  }
+
+  if (!changed) return unchanged
+  return { choices: next, previous, changed: true, switchedTo }
+}

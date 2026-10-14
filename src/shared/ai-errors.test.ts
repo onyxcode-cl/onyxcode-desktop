@@ -42,6 +42,15 @@ describe('friendlyError', () => {
     expect(friendlyError('Invalid API key provided').kind).toBe('auth')
   })
 
+  it.each(['Token refresh failed', 'OAuth callback timeout', 'Login cancelled', 'Failed to initiate device authorization'])(
+    'fallos de inicio de sesión del motor («%s») son auth con acción conectar',
+    (msg) => {
+      const f = friendlyError(new Error(msg))
+      expect(f.kind).toBe('auth')
+      expect(f.action).toBe('connect')
+    }
+  )
+
   it('ECONNREFUSED es de red', () => {
     const f = friendlyError(new Error('connect ECONNREFUSED 127.0.0.1:443'))
     expect(f.kind).toBe('network')
