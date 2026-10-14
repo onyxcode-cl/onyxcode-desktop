@@ -7,7 +7,7 @@
  */
 
 /** Versión del SDK (`@opencode-ai/sdk`) con la que se compila la app; un test la ata a package.json. */
-export const OPENCODE_SDK_VERSION = '1.18.32'
+export const OPENCODE_SDK_VERSION = '1.19.0'
 
 export const OPENCODE_INSTALL_COMMAND = 'curl -fsSL https://opencode.ai/install | bash'
 

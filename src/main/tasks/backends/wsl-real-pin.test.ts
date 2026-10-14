@@ -20,9 +20,9 @@ describe('resources/opencode-bin/pin.json (beta de Tareas en Windows, 2026-10-07
     expect(pin!.rootfs.sha256).toBe('8f855de87d073755ff8024eb4fe8f639538dbde7067bc74586e96028263cf39e')
     expect(pin!.rootfs.size).toBe(98919533)
     expect(pin!.rootfs.unpackedMax).toBeGreaterThanOrEqual(274501120)
-    expect(pin!.opencode.sha256).toBe('e546123213ae47909a4268692aa4b94950d011afe9cac9938753a2194f1c16d5')
-    expect(pin!.opencode.size).toBe(60628669)
-    expect(pin!.opencode.url).toBe('https://github.com/anomalyco/opencode/releases/download/v1.18.33/opencode-linux-x64.tar.gz')
+    expect(pin!.opencode.sha256).toBe('7bb9e61ad6feacf2e89c10a6a2c1840e3de4220bb50ba1fc7110f31806076aec')
+    expect(pin!.opencode.size).toBe(60685698)
+    expect(pin!.opencode.url).toBe('https://github.com/anomalyco/opencode/releases/download/v1.19.0/opencode-linux-x64.tar.gz')
   })
   it('la url de la imagen es EXACTAMENTE la de wslRootfsUrl (no publicada: el parser no se relajó)', () => {
     expect(raw['wsl-rootfs'].url).toBe(wslRootfsUrl('2026.10.10'))
@@ -31,6 +31,6 @@ describe('resources/opencode-bin/pin.json (beta de Tareas en Windows, 2026-10-07
   })
   it('conserva los assets de darwin-arm64 y win32-x64', () => {
     expect(Object.keys(raw.assets).sort()).toEqual(['darwin-arm64', 'linux-x64', 'win32-x64'])
-    expect(raw.version).toBe('1.18.33')
+    expect(raw.version).toBe('1.19.0')
   })
 })

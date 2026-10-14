@@ -11,8 +11,8 @@ componentes de terceros; si `LICENSE` cambia, esta línea debe cambiar a la vez 
 
 ## 1. OpenCode (motor incluido)
 
-- Componente: ejecutable oficial de OpenCode, versión **1.18.33** (macOS, arm64), sin modificar.
-- Origen: <https://github.com/anomalyco/opencode/releases/tag/v1.18.33>
+- Componente: ejecutable oficial de OpenCode, versión **1.19.0** (macOS, arm64), sin modificar.
+- Origen: <https://github.com/anomalyco/opencode/releases/tag/v1.19.0>
 - Ubicación en la app: `Contents/Resources/opencode/opencode`.
 - Licencia: MIT.
 

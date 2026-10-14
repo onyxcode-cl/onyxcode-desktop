@@ -81,8 +81,8 @@ describe('parseVersion / isCompatible', () => {
 
 describe('validateOpencodeBin (archivos reales)', () => {
   it('acepta un ejecutable cuyo --version imprime algo', async () => {
-    const bin = script('ok', 'echo 1.18.32')
-    expect(await validateOpencodeBin(bin)).toEqual({ ok: true, path: bin, output: '1.18.32', version: '1.18.32' })
+    const bin = script('ok', 'echo 1.19.32')
+    expect(await validateOpencodeBin(bin)).toEqual({ ok: true, path: bin, output: '1.19.32', version: '1.19.32' })
   })
   // Windows: crear enlaces simbólicos exige privilegios; el caso no aporta a la v1 (la ruta se resuelve con realpath en ambos).
   it.skipIf(isWin)('acepta un enlace simbólico a un ejecutable válido', async () => {
@@ -135,12 +135,12 @@ describe('getOpencodeInfo', () => {
       path: null,
       version: null,
       compatible: false,
-      sdkVersion: '1.18.32'
+      sdkVersion: '1.19.0'
     })
   })
   it('con binario: versión y compatibilidad', async () => {
-    const bin = script('info', 'echo 1.18.99')
-    expect(await getOpencodeInfo(() => bin)).toMatchObject({ found: true, path: bin, version: '1.18.99', compatible: true })
+    const bin = script('info', 'echo 1.19.99')
+    expect(await getOpencodeInfo(() => bin)).toMatchObject({ found: true, path: bin, version: '1.19.99', compatible: true })
     const old = script('info-old', 'echo 0.9.0')
     expect(await getOpencodeInfo(() => old)).toMatchObject({ found: true, version: '0.9.0', compatible: false })
   })
@@ -169,7 +169,7 @@ describe('findOpencodeBinary: OPENCODE_BIN antes que settings.opencodeBin', () =
 
 describe('pickOpencode: orden de resolución', () => {
   const base: PickInput = { cli: null, bundled: null, isExecutable: () => true, cliVersion: () => undefined }
-  const cliOk = { cli: '/u/opencode', cliVersion: () => '1.18.99' }
+  const cliOk = { cli: '/u/opencode', cliVersion: () => '1.19.99' }
   const cliOld = { cli: '/u/opencode', cliVersion: () => '1.10.0' }
 
   it('OPENCODE_BIN gana a todo; ajustes gana al resto', () => {
@@ -203,7 +203,7 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
   mkdirSync(join(res, 'opencode'), { recursive: true })
   const exeName = isWin ? 'opencode.exe' : 'opencode'
   const bin = join(res, 'opencode', exeName)
-  writeFileSync(bin, isWin ? 'MZ' : '#!/bin/sh\necho 1.18.33\n')
+  writeFileSync(bin, isWin ? 'MZ' : '#!/bin/sh\necho 1.19.33\n')
   chmodSync(bin, 0o755)
   const noexec = join(dir, 'Res2')
   mkdirSync(join(noexec, 'opencode'), { recursive: true })
@@ -231,7 +231,7 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
     const d = join(dir, 'TestWin')
     mkdirSync(d, { recursive: true })
     const mjs = join(d, 'opencode.mjs')
-    writeFileSync(mjs, 'console.log("1.18.33")\n')
+    writeFileSync(mjs, 'console.log("1.19.33")\n')
     chmodSync(mjs, 0o755)
     expect(bundledOpencodePath({ isPackaged: false, testDir: d, platform: 'win32' })).toBe(mjs)
     expect(bundledOpencodePath({ isPackaged: false, testDir: d, platform: 'darwin' })).toBeNull()
@@ -271,9 +271,9 @@ describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts 
 
   it('embebido presente: CLI compatible → cli; incompatible → embebido; sin CLI → embebido', async () => {
     delete process.env.OPENCODE_BIN
-    const bundled = fake('bundled-a', '1.18.33')
+    const bundled = fake('bundled-a', '1.19.33')
     process.env.LAZUNOX_TEST_BUNDLED_DIR = bundled.d
-    const good = fake('cli-good', '1.18.40')
+    const good = fake('cli-good', '1.19.40')
     process.env.PATH = good.d
     expect(await resolveOpencodeAsync('')).toEqual(expect.objectContaining({ source: 'cli' }))
     expect((await resolveOpencodeAsync(''))?.path).toBe(good.f)
@@ -296,10 +296,10 @@ describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts 
   })
 
   it('getOpencodeInfo informa el origen', async () => {
-    const b = fake('info-b', '1.18.33')
+    const b = fake('info-b', '1.19.33')
     expect(await getOpencodeInfo(() => ({ path: b.f, source: 'bundled' }))).toMatchObject({
       source: 'bundled',
-      version: '1.18.33',
+      version: '1.19.33',
       compatible: true
     })
     expect(await getOpencodeInfo(() => b.f)).toMatchObject({ source: 'cli' })
@@ -310,13 +310,13 @@ describe.skipIf(isWin)('resolución completa con CLI y embebido reales (scripts 
 describe('caché de la versión del CLI por (ruta, mtime)', () => {
   afterEach(() => clearCliVersionCache())
   it('no vuelve a ejecutar mientras la ruta y el mtime no cambian, y remide si cambia el mtime', async () => {
-    const f = script('cached', 'echo 1.18.1')
-    const run = vi.fn(async () => '1.18.1')
+    const f = script('cached', 'echo 1.19.1')
+    const run = vi.fn(async () => '1.19.1')
     expect(cachedCliVersion(f)).toBeUndefined()
-    expect(await warmCliVersion(f, run)).toBe('1.18.1')
-    expect(await warmCliVersion(f, run)).toBe('1.18.1')
+    expect(await warmCliVersion(f, run)).toBe('1.19.1')
+    expect(await warmCliVersion(f, run)).toBe('1.19.1')
     expect(run).toHaveBeenCalledTimes(1)
-    expect(cachedCliVersion(f)).toBe('1.18.1')
+    expect(cachedCliVersion(f)).toBe('1.19.1')
     utimesSync(f, new Date(), new Date(Date.now() + 5_000))
     expect(cachedCliVersion(f)).toBeUndefined()
     expect(await warmCliVersion(f, async () => '1.19.0')).toBe('1.19.0')
