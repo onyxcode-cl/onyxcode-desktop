@@ -172,16 +172,7 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
   if (d.mac) {
     if (mac) {
       const stage = permsStage(mac)
-      const reason =
-        stage === 'ready'
-          ? undefined
-          : stage === 'restart'
-            ? 'restart'
-            : mac.accessibility
-              ? 'screen'
-              : mac.screenRecording
-                ? 'accessibility'
-                : 'both'
+      const reason = stage === 'ready' ? undefined : stage === 'restart' ? 'restart' : mac.screenRecording ? 'accessibility' : 'both'
       out.push({ id: 'perms', essential: false, ok: stage === 'ready', installable: false, ...(reason ? { reason } : {}) })
     } else out.push({ id: 'perms', essential: false, ok: false, installable: false, reason: 'unknown' })
     const place = d.mac.placement()

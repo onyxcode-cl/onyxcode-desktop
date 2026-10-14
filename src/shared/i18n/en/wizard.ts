@@ -142,5 +142,76 @@ export const wizard = {
     'If nothing changes, an old permission from a previous version may be stuck. Quit {app} completely (Cmd+Q), paste these commands in the Terminal app, open it again and grant the permissions again. {app} does not run them for you.',
   'wizard.perms.help.copy': 'Copy commands',
   'wizard.perms.help.copied': 'Copied',
-  'wizard.perms.help.restart': 'Restart {app}'
+  'wizard.perms.help.restart': 'Restart {app}',
+  'preflight.title': 'Getting {app} ready',
+  'preflight.subtitle.blocking':
+    'Some components are missing for {app} to work. They are installed once and no administrator password is needed.',
+  'preflight.subtitle.optional': 'The essentials are ready. A few notices are worth fixing now; you can continue and do it later.',
+  'preflight.checking': 'Checking your computer…',
+  'preflight.size': 'About {size} will be downloaded.',
+  'preflight.size.mb': '{n} MB',
+  'preflight.size.gb': '{n} GB',
+  'preflight.install': 'Install what is missing',
+  'preflight.installing': 'Installing…',
+  'preflight.retry': 'Retry',
+  'preflight.recheck': 'Check again',
+  'preflight.copy': 'Copy details',
+  'preflight.copied': 'Details copied',
+  'preflight.continueAnyway': 'Continue anyway',
+  'preflight.continue': 'Continue',
+  'preflight.cannotSkip': 'This cannot be skipped: {app} does not work without it.',
+  'preflight.allReady': 'All set.',
+  'preflight.engine.pick': 'Choose engine…',
+  'preflight.perms.grant': 'Grant permissions',
+  'preflight.state.ready': 'Ready',
+  'preflight.state.missing': 'Missing',
+  'preflight.state.downloading': 'Installing…',
+  'preflight.state.failed': 'Failed',
+  'preflight.state.pending': 'Pending',
+  'preflight.progress': '{pct} %',
+  'preflight.version': 'version {v}',
+  'preflight.c.storage': 'Data folder',
+  'preflight.c.disk': 'Disk space',
+  'preflight.c.engine': 'Agent engine',
+  'preflight.c.craft': 'Document designer (ArtCraft)',
+  'preflight.c.sandbox': 'Overdrive isolated environment',
+  'preflight.c.helper': 'Computer control helper',
+  'preflight.c.perms': 'macOS permissions',
+  'preflight.c.location': 'App location',
+  'preflight.hint.engine.not-found':
+    'The engine that ships with the app was not found. Reinstall {app} from the installer or choose an engine that is already installed.',
+  'preflight.hint.engine.not-responding':
+    'The engine is there but does not respond. Reinstall {app} from the installer or choose another engine.',
+  'preflight.hint.craft.missing':
+    'To create and view Word, Excel, PowerPoint and PDF files with good design. Downloaded from GitHub (about {mb} MB) and verified before use.',
+  'preflight.hint.craft.incomplete':
+    'Some pieces are missing or damaged; they are downloaded again (about {mb} MB) and verified before use.',
+  'preflight.hint.sandbox.needsSetup': 'Set up once (about 2 GB of disk), using what the app already includes.',
+  'preflight.hint.sandbox.broken': 'The environment is damaged; it is set up again from what the app includes.',
+  'preflight.hint.sandbox.other':
+    'Needs Windows features turned on (WSL or virtualization). The steps are in Overdrive; you can continue and do it later.',
+  'preflight.hint.helper.not-found': 'The {app} control helper was not found. Reinstall the app to be able to control the computer.',
+  'preflight.hint.perms.both': 'The Accessibility and Screen Recording permissions are missing; computer control needs them.',
+  'preflight.hint.perms.accessibility': 'The Accessibility permission is missing; computer control needs it.',
+  'preflight.hint.perms.restart':
+    'Accessibility is on but Screen Recording is not yet: turn it on and restart {app} (macOS applies it when the app opens again).',
+  'preflight.hint.perms.unknown': 'The permissions could not be checked. Press “Check again”.',
+  'preflight.hint.location.translocated':
+    '{app} is running from a temporary macOS location, so permissions are not saved properly. Move it to Applications and open it from there.',
+  'preflight.hint.location.volume':
+    '{app} is running from the installer (.dmg). Drag it to Applications, eject the installer and open it from there.',
+  'preflight.hint.location.elsewhere':
+    '{app} is not in the Applications folder. Drag it there and open it from there: that way macOS remembers the permissions and it can update itself.',
+  'preflight.hint.disk.low-space': 'There is not enough free space to install what is missing. Free up disk space and press “Retry”.',
+  'preflight.hint.storage.not-writable':
+    '{app} cannot write to its data folder. Check your user permissions on that folder and press “Retry”.',
+  'preflight.hint.generic.essential': 'This component is missing and {app} needs it.',
+  'preflight.hint.generic.optional': 'This notice does not stop you from using {app}.',
+  'preflight.error.engine': 'The engine could not be restarted. Reinstall {app} from the installer.',
+  'preflight.failed.title': '“{name}” could not be installed',
+  'settings.diag.components.title': 'Component status',
+  'settings.diag.components.desc': 'What is ready and what is missing for {app} to work. It is also included in the exported report.',
+  'settings.diag.components.recheck': 'Check again',
+  'settings.diag.components.checking': 'Checking…',
+  'settings.diag.components.error': 'The components could not be checked.'
 } as const satisfies Messages<typeof es>

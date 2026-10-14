@@ -139,5 +139,76 @@ export const wizard = {
     'Si sigue igual, puede haber un permiso viejo de una versión anterior. Cierra {app} por completo (Cmd+Q), pega estos comandos en la app Terminal, ábrela de nuevo y vuelve a conceder los permisos. {app} no los ejecuta por ti.',
   'wizard.perms.help.copy': 'Copiar comandos',
   'wizard.perms.help.copied': 'Copiados',
-  'wizard.perms.help.restart': 'Reiniciar {app}'
+  'wizard.perms.help.restart': 'Reiniciar {app}',
+  'preflight.title': 'Preparando {app}',
+  'preflight.subtitle.blocking':
+    'Faltan algunos componentes para que {app} funcione. Se instalan una sola vez y no hace falta contraseña de administrador.',
+  'preflight.subtitle.optional': 'Lo esencial está listo. Quedan avisos que conviene resolver ahora; puedes seguir y hacerlo después.',
+  'preflight.checking': 'Revisando tu equipo…',
+  'preflight.size': 'Se descargarán unos {size}.',
+  'preflight.size.mb': '{n} MB',
+  'preflight.size.gb': '{n} GB',
+  'preflight.install': 'Instalar lo que falta',
+  'preflight.installing': 'Instalando…',
+  'preflight.retry': 'Reintentar',
+  'preflight.recheck': 'Revisar de nuevo',
+  'preflight.copy': 'Copiar detalle',
+  'preflight.copied': 'Detalle copiado',
+  'preflight.continueAnyway': 'Continuar de todos modos',
+  'preflight.continue': 'Continuar',
+  'preflight.cannotSkip': 'No se puede omitir: sin esto {app} no funciona.',
+  'preflight.allReady': 'Todo listo.',
+  'preflight.engine.pick': 'Elegir motor…',
+  'preflight.perms.grant': 'Dar permisos',
+  'preflight.state.ready': 'Listo',
+  'preflight.state.missing': 'Falta',
+  'preflight.state.downloading': 'Instalando…',
+  'preflight.state.failed': 'No se pudo',
+  'preflight.state.pending': 'Pendiente',
+  'preflight.progress': '{pct} %',
+  'preflight.version': 'versión {v}',
+  'preflight.c.storage': 'Carpeta de datos',
+  'preflight.c.disk': 'Espacio en disco',
+  'preflight.c.engine': 'Motor de agentes',
+  'preflight.c.craft': 'Diseñador de documentos (ArtCraft)',
+  'preflight.c.sandbox': 'Entorno aislado de Overdrive',
+  'preflight.c.helper': 'Ayudante de control del equipo',
+  'preflight.c.perms': 'Permisos de macOS',
+  'preflight.c.location': 'Ubicación de la app',
+  'preflight.hint.engine.not-found':
+    'No se encontró el motor que viene con la app. Reinstala {app} desde el instalador o elige un motor ya instalado.',
+  'preflight.hint.engine.not-responding': 'El motor está pero no responde. Reinstala {app} desde el instalador o elige otro motor.',
+  'preflight.hint.craft.missing':
+    'Para crear y ver Word, Excel, PowerPoint y PDF con buen diseño. Se descarga de GitHub (unos {mb} MB) y se verifica antes de usarlo.',
+  'preflight.hint.craft.incomplete':
+    'Hay piezas que faltan o están dañadas; se vuelven a descargar (unos {mb} MB) y se verifican antes de usarlas.',
+  'preflight.hint.sandbox.needsSetup': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
+  'preflight.hint.sandbox.broken': 'El entorno está dañado; se vuelve a preparar con lo que trae la app.',
+  'preflight.hint.sandbox.other':
+    'Necesita activar funciones de Windows (WSL o virtualización). Los pasos están en Overdrive; puedes continuar y hacerlo después.',
+  'preflight.hint.helper.not-found': 'No se encontró el ayudante de control de {app}. Reinstala la app para poder controlar el equipo.',
+  'preflight.hint.perms.both': 'Faltan los permisos de Accesibilidad y de Grabación de pantalla, que el control del equipo necesita.',
+  'preflight.hint.perms.accessibility': 'Falta el permiso de Accesibilidad, que el control del equipo necesita.',
+  'preflight.hint.perms.restart':
+    'Accesibilidad está activada, pero Grabación de pantalla aún no: actívala y reinicia {app} (macOS la aplica al abrir la app de nuevo).',
+  'preflight.hint.perms.unknown': 'No se pudo comprobar los permisos. Pulsa «Revisar de nuevo».',
+  'preflight.hint.location.translocated':
+    '{app} corre desde un lugar temporal de macOS, así que los permisos no se guardan bien. Muévela a Aplicaciones y ábrela desde ahí.',
+  'preflight.hint.location.volume':
+    '{app} corre desde el instalador (.dmg). Arrástrala a Aplicaciones, expulsa el instalador y ábrela desde ahí.',
+  'preflight.hint.location.elsewhere':
+    '{app} no está en la carpeta Aplicaciones. Arrástrala allí y ábrela desde ahí: así macOS recuerda los permisos y puede actualizarla.',
+  'preflight.hint.disk.low-space':
+    'No hay espacio libre suficiente para instalar lo que falta. Libera espacio en el disco y pulsa «Reintentar».',
+  'preflight.hint.storage.not-writable':
+    '{app} no puede escribir en su carpeta de datos. Revisa los permisos de tu usuario sobre esa carpeta y pulsa «Reintentar».',
+  'preflight.hint.generic.essential': 'Falta este componente y {app} lo necesita.',
+  'preflight.hint.generic.optional': 'Este aviso no impide usar {app}.',
+  'preflight.error.engine': 'No se pudo reiniciar el motor. Reinstala {app} desde el instalador.',
+  'preflight.failed.title': 'No se pudo instalar «{name}»',
+  'settings.diag.components.title': 'Estado de componentes',
+  'settings.diag.components.desc': 'Qué está listo y qué falta para que {app} funcione. También sale en el informe exportado.',
+  'settings.diag.components.recheck': 'Revisar de nuevo',
+  'settings.diag.components.checking': 'Revisando…',
+  'settings.diag.components.error': 'No se pudo revisar los componentes.'
 } as const
