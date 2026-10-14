@@ -63,6 +63,33 @@ def is_formula(v):
     return isinstance(v, str) and v.startswith("=") and len(v) > 1
 
 
+# Funciones posteriores a Excel 2007: en el XML OOXML deben ir como «_xlfn.NOMBRE(»; sin el prefijo
+# Excel y LibreOffice las muestran como #NAME?. Lista cerrada (no incluye las de matrices dinámicas).
+XLFN_FUNCTIONS = (
+    "CONCAT", "TEXTJOIN", "IFS", "SWITCH", "MAXIFS", "MINIFS", "XLOOKUP", "XMATCH", "IFNA", "DAYS", "XOR",
+    "ISOWEEKNUM", "NUMBERVALUE", "FORMULATEXT", "ISFORMULA", "SHEET", "SHEETS",
+    "STDEV.S", "STDEV.P", "VAR.S", "VAR.P", "MODE.SNGL", "MODE.MULT", "COVARIANCE.S", "COVARIANCE.P",
+    "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE.INC", "QUARTILE.EXC", "RANK.EQ", "RANK.AVG",
+    "PERCENTRANK.INC", "PERCENTRANK.EXC", "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV",
+    "CEILING.MATH", "FLOOR.MATH", "CEILING.PRECISE", "FLOOR.PRECISE",
+)
+_XLFN_RE = re.compile(
+    r'("(?:[^"]|"")*")|(\'(?:[^\']|\'\')*\')|(?<![A-Za-z0-9_.])(%s)(?=\s*\()'
+    % "|".join(re.escape(n) for n in sorted(XLFN_FUNCTIONS, key=len, reverse=True)),
+    re.IGNORECASE)
+
+
+def add_xlfn_prefix(formula):
+    """Antepone «_xlfn.» a las funciones modernas de una fórmula (=TEXTJOIN(...) → =_xlfn.TEXTJOIN(...)).
+
+    No toca texto entre comillas dobles ni nombres de hoja entre comillas simples, ni funciones que ya
+    llevan el prefijo; los valores que no son fórmulas se devuelven tal cual.
+    """
+    if not is_formula(formula):
+        return formula
+    return _XLFN_RE.sub(lambda m: m.group(0) if m.group(3) is None else "_xlfn." + m.group(3).upper(), formula)
+
+
 def parse_date(v):
     """Convierte 'YYYY-MM-DD' / 'DD-MM-YYYY' / 'DD/MM/YYYY' (y con hora) a datetime; si no, devuelve v."""
     if isinstance(v, (_dt.date, _dt.datetime)) or not isinstance(v, str):

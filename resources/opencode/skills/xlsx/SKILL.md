@@ -74,6 +74,7 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 
 ## Buenas prácticas
 - Cálculos con FÓRMULAS (`=SUM(B2:B9)`), nunca el resultado pegado como número. Datos de entrada en celdas, no dentro de la fórmula.
+- Funciones modernas (TEXTJOIN, XLOOKUP, IFS, SWITCH, CONCAT, MAXIFS, MINIFS, XMATCH, DAYS, XOR, STDEV.S…): escríbelas con su nombre normal; `build_xlsx.py` y `edit_xlsx.py` les añaden solas el prefijo `_xlfn.` que exige el formato (sin él salen como `#NAME?`). Las de matrices dinámicas (FILTER, SORT, UNIQUE, SEQUENCE) no se soportan: evítalas.
 - Una tabla por hoja, encabezado en la primera fila de la tabla, sin filas ni columnas en blanco dentro de los datos.
 - Números como números (no texto «1.234»). Porcentaje como fracción (0,22 con formato `percent`).
 - Hoja `Resumen` primero cuando haya varias hojas.
