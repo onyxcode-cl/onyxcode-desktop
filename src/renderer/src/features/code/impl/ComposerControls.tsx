@@ -55,7 +55,7 @@ function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivEl
 }
 
 const chip = (): string =>
-  `no-drag flex items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors desk:rounded-lg desk:text-[13px] ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
+  `no-drag flex items-center whitespace-nowrap gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors desk:rounded-lg desk:text-[13px] ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
 
 function MenuItem({
   active,
@@ -98,7 +98,7 @@ export function PermissionChip(): React.JSX.Element {
   const current = PERMISSION_MODES.find((m) => m.id === mode) ?? PERMISSION_MODES[0]
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -108,7 +108,7 @@ export function PermissionChip(): React.JSX.Element {
         className={`${chip()} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
       >
         {current.icon}
-        <span className="inline desk:@max-[36rem]:hidden">{t(current.label)}</span>
+        <span className="inline whitespace-nowrap desk:@max-[36rem]:hidden">{t(current.label)}</span>
       </button>
       {(() => {
         const items = PERMISSION_MODES.map((m) => (
