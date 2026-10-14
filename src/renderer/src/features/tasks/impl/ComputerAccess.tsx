@@ -45,6 +45,7 @@ import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
 import { useSessions } from '../../../stores/sessions'
 import { useModeModel } from '../../settings/impl/extras'
+import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from '../../onboarding/PermsNotices'
 import {
   cancelFullAccess,
   checkComputer,
@@ -448,6 +449,9 @@ export function ComputerPermissionsCard(): React.JSX.Element | null {
           <strong className="text-fg">{t('tasksComputer.perms.helpApps')}</strong>
           {t('tasksComputer.perms.help2')}
         </p>
+        <AppLocationNotice location={status?.location} />
+        {helperOk && accessibility && !screenRecording && <ScreenRestartNotice />}
+        <PermsHelp />
         {error && <p className="mt-2 text-xs text-danger">{error}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="primary" onClick={request}>

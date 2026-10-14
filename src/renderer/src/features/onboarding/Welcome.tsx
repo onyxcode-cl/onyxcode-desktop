@@ -7,12 +7,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, Clock, Loader2 } from 'lucide-react'
 import { DISPLAY_NAME, MADE_BY } from '@shared/brand'
 import type { OpencodeInfo } from '@shared/types'
+import { permsStage, type AppLocation } from '@shared/mac-permissions'
 import { Button } from '../../components/Button'
 import { call } from '../../lib/api'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 import { isMacPlatform, platformCaps } from '../../lib/platform'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
+import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
+import { waitForMacPerms } from './perms-wait'
 import {
   WELCOME_COUNTDOWN_S,
   WELCOME_ORDER,
@@ -34,6 +37,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const [craftMb, setCraftMb] = useState(0)
   const [pct, setPct] = useState<number | null>(null)
   const [left, setLeft] = useState<number | null>(null)
+  const [location, setLocation] = useState<AppLocation | null>(null)
+  // Accesibilidad ya concedida y Pantalla no: macOS pide reiniciar la app (se muestra de inmediato, sin esperar los ~90 s).
+  const [screenRestart, setScreenRestart] = useState(false)
   const checked = useRef(false)
   const started = useRef(false)
   const alive = useRef(true)
@@ -58,7 +64,13 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
       if (!hasTasksBridge()) return
       if (mac && caps.computer) {
         const c = await cw('computer:status').catch(() => null)
-        if (c) set('perms', c.accessibility && c.screenRecording ? 'ready' : 'pending')
+        if (c) {
+          set('perms', c.accessibility && c.screenRecording ? 'ready' : 'pending')
+          if (alive.current) {
+            setLocation(c.location ?? null)
+            setScreenRestart(permsStage(c) === 'restart')
+          }
+        }
       }
       const o = await cw('craft:status').catch(() => null)
       if (o?.status.state === 'missing') {
@@ -71,6 +83,24 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
       }
     })()
   }, [caps.tasks, caps.tasksSandbox, caps.computer, mac, set])
+
+  // Al volver de Ajustes del Sistema se revalidan los permisos sin esperar al siguiente sondeo.
+  useEffect(() => {
+    if (!mac || !caps.computer) return
+    const onFocus = (): void => {
+      if (!hasTasksBridge()) return
+      void cw('computer:status')
+        .then((c) => {
+          if (!alive.current) return
+          setLocation(c.location ?? null)
+          setScreenRestart(permsStage(c) === 'restart')
+          if (permsStage(c) === 'ready') set('perms', 'ready')
+        })
+        .catch(() => undefined)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [mac, caps.computer, set])
 
   // 2) Preparar lo que falta, en orden.
   const install = useCallback(
@@ -94,14 +124,17 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
           set('craft', r.ok ? 'ready' : 'failed')
         } else if (id === 'perms') {
           await cw('computer:requestPermissions').catch(() => undefined)
-          // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos.
-          let ok = false
-          for (let i = 0; i < 45 && !ok && alive.current; i++) {
-            const c = await cw('computer:status').catch(() => null)
-            ok = !!c && c.accessibility && c.screenRecording
-            if (!ok) await new Promise((r) => setTimeout(r, 2000))
-          }
-          set('perms', ok ? 'ready' : 'failed')
+          // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos. Si Accesibilidad
+          // llega antes que Pantalla, se avisa del reinicio al instante.
+          const r = await waitForMacPerms({
+            status: () => cw('computer:status').catch(() => null),
+            request: () => cw('computer:requestPermissions'),
+            report: () => cw('computer:reportPermsStall'),
+            sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
+            alive: () => alive.current,
+            onStage: (st) => alive.current && setScreenRestart(st === 'restart')
+          })
+          set('perms', r === 'ready' ? 'ready' : 'failed')
         } else if (id === 'sandbox') {
           const poll = setInterval(() => {
             void cw('tasks:sandbox:status', undefined)
@@ -265,7 +298,10 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
               )
             })}
           </ul>
-          {needsRestartHint(items) && (
+          <AppLocationNotice location={location} />
+          {found.perms && found.perms !== 'ready' && screenRestart && <ScreenRestartNotice />}
+          {(found.perms === 'downloading' || found.perms === 'failed') && <PermsHelp />}
+          {needsRestartHint(items) && !screenRestart && (
             <div role="note" className="mt-3 flex items-center justify-between gap-3 text-[13px] leading-[18px] text-muted">
               <p>{t('wizard.welcome.restartHint', { app: DISPLAY_NAME })}</p>
               <Button variant="secondary" onClick={() => void call('app:relaunch')}>

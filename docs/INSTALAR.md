@@ -61,6 +61,25 @@ Verificar es gratis y tarda segundos.
 | El script dice «la firma de la app NO corresponde al certificado esperado» (o falla la comprobación del hash)          | El archivo no es el publicado o está corrupto.                                                             | No se instala nada. Vuelve a ejecutar el script; si se repite, no instales.                                                                                                           |
 | «Lazunox solo está disponible para Mac con chip Apple»                                                                 | Tu Mac es de Intel.                                                                                        | Esta versión no funciona en él.                                                                                                                                                       |
 
+## Los permisos no se activan (Mac)
+
+Activaste Accesibilidad y Grabación de pantalla en Ajustes del Sistema y Lazunox sigue diciendo que faltan. En orden:
+
+1. **Reinicia Lazunox** (botón «Reiniciar Lazunox», o ciérrala con Cmd+Q y ábrela). macOS aplica Grabación de pantalla solo al abrir la app de nuevo.
+2. **Que esté en Aplicaciones.** Si la abriste desde el `.dmg` o desde Descargas, macOS la corre desde un lugar temporal (App Translocation) y no guarda bien los permisos. Arrastra Lazunox a `/Applications`, expulsa el instalador, ciérrala y ábrela desde ahí. Lazunox avisa si detecta este caso.
+3. **Quita la cuarentena** de la copia ya instalada: `xattr -dr com.apple.quarantine /Applications/Lazunox.app`.
+4. **Reparar un permiso viejo** (de una versión anterior). Cierra Lazunox por completo y pega esto en Terminal; luego ábrela y vuelve a conceder los permisos:
+
+```sh
+tccutil reset ScreenCapture cl.bentec.lazunox
+tccutil reset Accessibility cl.bentec.lazunox
+tccutil reset ScreenCapture cl.bentec.lazunox.cu-helper
+tccutil reset Accessibility cl.bentec.lazunox.cu-helper
+```
+
+En la bienvenida, el asistente y Ajustes › Control del Mac hay un enlace «Los permisos no se activan» que explica esto y **copia** los comandos al portapapeles; Lazunox nunca los ejecuta por ti.
+Si tras ~90 s siguen faltando permisos, el motivo queda en Ajustes › Diagnóstico › «Problemas de la app» (qué dice el ayudante y si la app corre fuera de Aplicaciones).
+
 ## Desinstalar sin perder datos
 
 - Con el script: `sh install.sh --uninstall`. Con Homebrew: `brew uninstall --cask lazunox`. A mano: arrastra Lazunox a la Papelera.

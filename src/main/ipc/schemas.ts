@@ -718,6 +718,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'routines:preview': obj({ schedule }),
   'computer:status': none,
   'computer:requestPermissions': none,
+  'computer:reportPermsStall': none,
   'computer:winConsent': obj({ action: literal('show', 'check', 'uncheck', 'confirm', 'revoke') }),
   'computer:auditLog': none,
   'computer:stop': none,

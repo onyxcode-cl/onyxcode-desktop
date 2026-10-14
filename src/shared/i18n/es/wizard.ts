@@ -122,5 +122,21 @@ export const wizard = {
   'wizard.welcome.retry': 'Reintentar',
   'wizard.welcome.skip': 'Omitir por ahora',
   'wizard.welcome.continue': 'Continuar',
-  'wizard.welcome.progress': '{pct} %'
+  'wizard.welcome.progress': '{pct} %',
+  'wizard.perms.restart.title': 'Falta un reinicio para Grabación de pantalla',
+  'wizard.perms.restart.body':
+    'Accesibilidad ya está activada. Activa también Grabación de pantalla en Ajustes del Sistema (se abrió ese panel) y reinicia {app}: macOS solo aplica Grabación de pantalla cuando la app se abre de nuevo.',
+  'wizard.perms.restart.button': 'Reiniciar {app}',
+  'wizard.perms.location.translocated':
+    '{app} está corriendo desde un lugar temporal de macOS (App Translocation), así que los permisos no se guardan bien. Mueve {app} a la carpeta Aplicaciones, ciérrala y ábrela desde ahí.',
+  'wizard.perms.location.volume':
+    '{app} está corriendo desde el instalador (.dmg). Arrastra {app} a la carpeta Aplicaciones, expulsa el instalador, ciérrala y ábrela desde Aplicaciones.',
+  'wizard.perms.help.toggle': 'Los permisos no se activan',
+  'wizard.perms.help.intro':
+    'Prueba en este orden: 1) Activa {app} en Ajustes del Sistema › Privacidad y seguridad › Accesibilidad y Grabación de pantalla. 2) Reinicia {app}: macOS aplica Grabación de pantalla solo al abrir la app de nuevo. 3) Comprueba que {app} está en Aplicaciones, no en el .dmg ni en Descargas.',
+  'wizard.perms.help.repair':
+    'Si sigue igual, puede haber un permiso viejo de una versión anterior. Cierra {app} por completo (Cmd+Q), pega estos comandos en la app Terminal, ábrela de nuevo y vuelve a conceder los permisos. {app} no los ejecuta por ti.',
+  'wizard.perms.help.copy': 'Copiar comandos',
+  'wizard.perms.help.copied': 'Copiados',
+  'wizard.perms.help.restart': 'Reiniciar {app}'
 } as const

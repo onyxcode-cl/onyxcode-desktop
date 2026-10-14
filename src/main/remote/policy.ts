@@ -348,6 +348,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   // ── Control del PC ──
   'computer:status': 'R',
   'computer:requestPermissions': 'X', // permisos TCC del sistema
+  'computer:reportPermsStall': 'X', // solo la ventana del Mac anota el diagnóstico de permisos
   'computer:winConsent': 'X', // el consentimiento de Windows solo se da en el propio PC (nunca desde el celular)
   'computer:auditLog': 'X', // el registro auditable se ve en el PC
   'computer:stop': 'M',

@@ -215,6 +215,8 @@ export interface ComputerStatus {
    * `win.consent`, para que lo que mira solo esos dos campos siga siendo cierto. Ausente en macOS.
    */
   win?: ComputerWinStatus
+  /** Solo macOS: la app corre translocada (abierta desde un .dmg o Descargas) o desde un volumen; los permisos no se guardan bien ahí. */
+  location?: 'translocated' | 'volume'
 }
 
 /** «Estado en este PC» (Windows): lo que Ajustes muestra y lo que decide si Control del PC puede arrancar. */
@@ -1026,6 +1028,8 @@ export interface TasksInvokeContract {
   'computer:status': { req: void; res: ComputerStatus }
   /** Lanza los prompts de macOS y abre Ajustes › Privacidad (Accesibilidad / Grabación de pantalla). */
   'computer:requestPermissions': { req: void; res: void }
+  /** La interfaz esperó ~90 s y siguen faltando permisos: main lo anota en el registro de problemas (con lo que dice el helper). */
+  'computer:reportPermsStall': { req: void; res: void }
   /**
    * Windows: la tarjeta de consentimiento (sustituye a los permisos TCC). `show` abre/rearma, `check`/`uncheck` la casilla
    * «Entiendo», `confirm` concede (solo si está armada), `revoke` lo retira y detiene el control. En macOS: PLATFORM_UNSUPPORTED.
@@ -1329,6 +1333,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'routines:preview',
   'computer:status',
   'computer:requestPermissions',
+  'computer:reportPermsStall',
   'computer:winConsent',
   'computer:auditLog',
   'computer:stop',
