@@ -133,7 +133,7 @@ describe('reconcileChoices', () => {
     expect(r.switchedTo).toEqual(DEFAULT_MODEL)
     expect(r.previous.defaultModel).toEqual(gpt)
   })
-  it('si Go ya estaba conectado no toca la elección explícita' , () => {
+  it('si Go ya estaba conectado no toca la elección explícita', () => {
     expect(reconcileChoices(base, [openai, go], defaults, ['openai', 'opencode-go']).changed).toBe(false)
   })
   it('al desconectar el proveedor sustituye el predeterminado y limpia los modos', () => {
