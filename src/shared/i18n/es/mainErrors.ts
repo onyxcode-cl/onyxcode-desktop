@@ -84,6 +84,7 @@ export const mainErrors = {
   'merr.routine.timeoutWaiting': 'Tiempo máximo excedido ({min} min) esperando tu aprobación.',
   'merr.routine.timeout': 'Tiempo máximo excedido ({min} min)',
   'merr.routine.noReply': 'La sesión terminó sin respuesta del asistente',
+  'merr.routine.noAi': 'No hay ninguna IA conectada para ejecutar la rutina. Conecta una en Ajustes › Modelos.',
   'merr.routine.unattendedReject':
     'Ejecución programada desatendida: este permiso no está en la lista «Permitir sin preguntar» de la rutina. Continúa sin esta acción.',
   'merr.sched.badTime': 'Hora inválida "{time}" (usa HH:MM)',

@@ -44,6 +44,7 @@ import { stripSkillProposalBlock } from '@shared/skill-proposal'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { shouldRunUnattended } from '@shared/routines-terms'
 import { decideUnattended } from './approvals'
+import { pickRoutineModel } from './model'
 import { nextRunAfter, validateSchedule } from './schedule'
 
 const TICK_MS = 30_000
@@ -684,11 +685,25 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         unattended: true,
         lang: getLang()
       })
+      // El modelo guardado en la rutina se reevalúa al ejecutar: si su proveedor ya no está (cuenta desconectada o cambiada), se usa
+      // el de la IA conectada. Si no se puede consultar al motor, se intenta con el guardado.
+      const provs = await (async () => {
+        try {
+          return (await client.config.providers({ directory: ocDirectory })).data ?? null
+        } catch {
+          return null
+        }
+      })()
+      const model = pickRoutineModel(
+        { providerID: r.model.providerID, modelID: r.model.modelID },
+        provs ? { providers: provs.providers as never, default: provs.default } : null
+      )
+      if (!model) throw new Error(t('merr.routine.noAi'))
       const res = await client.session.promptAsync({
         sessionID,
         directory: ocDirectory,
         agent,
-        model: { providerID: r.model.providerID, modelID: r.model.modelID },
+        model,
         system,
         parts: [{ type: 'text', text: r.prompt }]
       })

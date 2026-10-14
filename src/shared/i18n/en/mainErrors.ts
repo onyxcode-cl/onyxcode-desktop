@@ -80,6 +80,7 @@ export const mainErrors = {
   'merr.routine.timeoutWaiting': 'Time limit exceeded ({min} min) while waiting for your approval.',
   'merr.routine.timeout': 'Time limit exceeded ({min} min)',
   'merr.routine.noReply': 'The session ended without a reply from the assistant',
+  'merr.routine.noAi': 'No AI is connected to run the routine. Connect one in Settings › Models.',
   'merr.routine.unattendedReject':
     'Unattended scheduled run: this permission isn’t in the routine’s “Allow without asking” list. Continue without this action.',
   'merr.sched.badTime': 'Invalid time "{time}" (use HH:MM)',
