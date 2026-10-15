@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.23] - 2026-10-14
+
+### Mejoras
+
+- **Las preguntas con opciones ahora salen como botones.** Cuando el asistente te pregunta algo con opciones (por ejemplo, si quieres la presentación editable en PowerPoint o con diseño libre HTML/CSS), aparece una tarjeta para elegir y pulsar Responder, en vez de tener que escribir «1» o «2». Es la misma tarjeta en Chat, Code y Overdrive.
+
+### Arreglos
+
+- **Overdrive:** el aviso de proveedores ya no nombra marcas que no corresponden, y el nombre largo del modelo se acorta con «…» solo en escritorio, sin afectar el celular.
+
 ## [0.5.22] - 2026-10-14
 
 ### Arreglos
