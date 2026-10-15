@@ -1164,7 +1164,10 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                     patch={diff}
                     path={selectedFile.path}
                     hideFileHeaders
-                    wrap={wrap}
+                    // Escritorio: el código nunca se parte (una línea = una fila, desplazamiento horizontal dentro del diff con los
+                    // números fijos); el diff ocupa el alto del panel para que la barra horizontal quede a la vista. El celular conserva su ajuste.
+                    wrap={mobile ? wrap : false}
+                    className={mobile ? '' : 'h-full'}
                     onDiscardHunk={
                       native && !selStaged && selectedFile.kind === 'modified' && isSingleFileDiff(diff)
                         ? (i) => void discardHunk(selectedFile, i)
