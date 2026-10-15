@@ -925,24 +925,36 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         <div
           role="group"
           aria-label={t('code.changes.reviewActions')}
-          className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5"
+          className="flex shrink-0 flex-nowrap items-center gap-2 border-b border-border px-3 py-1.5"
         >
           <span className="min-w-0 flex-1 basis-24 truncate text-meta text-muted" title={t('code.changes.acceptHint')}>
             {canReview ? (pending.length > 0 ? t('code.changes.pending', { count: pending.length }) : t('code.changes.allReviewed')) : ''}
           </span>
           {canReview && (
-            <Button size="xs" variant="secondary" disabled={pending.length === 0} onClick={acceptAll} title={t('code.changes.acceptHint')}>
-              <CheckCheck size={12} aria-hidden /> {t('code.changes.acceptAll')}
+            <Button
+              size="xs"
+              variant="secondary"
+              className="shrink-0 whitespace-nowrap"
+              disabled={pending.length === 0}
+              onClick={acceptAll}
+              aria-label={t('code.changes.acceptAll')}
+              title={`${t('code.changes.acceptAll')}. ${t('code.changes.acceptHint')}`}
+            >
+              <CheckCheck size={12} aria-hidden />
+              <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.acceptAll')}</span>
             </Button>
           )}
           <Button
             size="xs"
             variant="ghost"
-            className="hover:text-danger"
+            className="shrink-0 whitespace-nowrap hover:text-danger"
             disabled={!status.files.some(canDiscard)}
             onClick={() => void revertAll()}
+            aria-label={t('code.changes.revertAll')}
+            title={t('code.changes.revertAll')}
           >
-            <Undo2 size={12} aria-hidden /> {t('code.changes.revertAll')}
+            <Undo2 size={12} aria-hidden />
+            <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.revertAll')}</span>
           </Button>
         </div>
       )}
@@ -1063,12 +1075,15 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                           isAccepted(record, selectedFile.path, infos.get(selectedFile.path)?.fingerprint) || !infos.has(selectedFile.path)
                         }
                         title={t('code.changes.acceptHint')}
+                        aria-label={t('code.changes.accept')}
                         onClick={() => accept([selectedFile.path])}
                       >
                         <Check size={12} aria-hidden />
-                        {isAccepted(record, selectedFile.path, infos.get(selectedFile.path)?.fingerprint)
-                          ? t('code.changes.accepted')
-                          : t('code.changes.accept')}
+                        <span className="whitespace-nowrap desk:@max-[30rem]:hidden">
+                          {isAccepted(record, selectedFile.path, infos.get(selectedFile.path)?.fingerprint)
+                            ? t('code.changes.accepted')
+                            : t('code.changes.accept')}
+                        </span>
                       </Button>
                     )}
                     {native && (

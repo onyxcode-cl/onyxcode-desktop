@@ -58,6 +58,7 @@ const SCENARIOS = [
   'barra-code',
   'barra-code-hover',
   'code-cambios',
+  'code-cambios-archivo',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
@@ -813,6 +814,11 @@ const S = {
   async 'code-cambios'(ctx) {
     await S['barra-code'](ctx)
     await togglePanel(ctx.page, 'Cambios')
+  },
+  async 'code-cambios-archivo'(ctx) {
+    await S['code-cambios'](ctx)
+    await ctx.page.getByRole('complementary').getByText('carrito.ts').first().click()
+    await sleep(900)
   },
   async 'code-terminal'(ctx) {
     await seedCode(ctx)

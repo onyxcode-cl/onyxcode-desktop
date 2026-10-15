@@ -179,25 +179,31 @@ export function acceptEntries(paths: string[], infos: Map<string, FileDiffInfo>)
 
 /** El centro (conversación + caja de entrada) conserva al menos esto: 36 rem a 16 px. */
 export const CENTER_MIN_PX = 576
-/** Por debajo de este ancho el panel fijo no es útil (lista + diff): se pasa a superposición. */
+/** Por debajo de este ancho el panel no es útil (lista + diff). */
 export const DOCK_PANEL_MIN_PX = 300
-/** Margen que queda libre a la izquierda de la superposición, para que se vea que hay conversación debajo. */
-export const OVERLAY_GAP_PX = 48
+/** Tope del panel en modo «partido» (ventana mediana/angosta): 26 rem. */
+export const SPLIT_MAX_PX = 416
 
 export interface PanelLayout {
-  mode: 'docked' | 'overlay'
-  /** Ancho en px que ocupa el panel. */
+  /**
+   * `docked`: fijo a la derecha y el centro conserva ≥ 36 rem. `split`: no cabe eso, pero sí conversación y panel lado a lado
+   * (panel ≤ 26 rem y ≤ 50 % del área): ambos siguen enteros y usables. `full`: ni siquiera caben dos mitades útiles; el panel
+   * cubre TODA el área (con su botón de cerrar) y no deja nada a medias detrás.
+   */
+  mode: 'docked' | 'split' | 'full'
+  /** Ancho en px que ocupa el panel (en `full`, el del área). */
   width: number
 }
 
 /**
- * Fijo a la derecha mientras el centro conserve `CENTER_MIN_PX`; si no, superposición sobre la conversación (sin
- * apretarla). `container` es el ancho del área de trabajo (sin la barra lateral global); `wanted` el ancho elegido.
- * Sin medida (0) se asume fijo, como siempre.
+ * `container` es el ancho del área de trabajo (sin la barra lateral global); `wanted` el ancho elegido por el usuario.
+ * Sin medida (0) se asume fijo, como siempre. Nunca hay superposición parcial: o van lado a lado, o el panel lo cubre todo.
  */
 export function panelLayout(container: number, wanted: number): PanelLayout {
   if (container <= 0) return { mode: 'docked', width: wanted }
   const room = container - CENTER_MIN_PX
   if (room >= DOCK_PANEL_MIN_PX) return { mode: 'docked', width: Math.min(wanted, room) }
-  return { mode: 'overlay', width: Math.min(container, Math.max(DOCK_PANEL_MIN_PX, Math.min(wanted, container - OVERLAY_GAP_PX))) }
+  const half = Math.floor(container / 2)
+  if (half >= DOCK_PANEL_MIN_PX) return { mode: 'split', width: Math.min(wanted, SPLIT_MAX_PX, half) }
+  return { mode: 'full', width: container }
 }

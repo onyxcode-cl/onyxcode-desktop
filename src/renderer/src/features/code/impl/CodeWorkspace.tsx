@@ -180,10 +180,10 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
   const togglePanel = useCode((s) => s.togglePanel)
   const branch = useBranch(directory)
   const [width, setWidth] = useState(readWidth)
-  // «Cambios» va fijo a la derecha mientras el centro conserve ~36 rem; con menos espacio se superpone a la conversación
-  // (sin apretarla). Los demás paneles conservan su regla de siempre (el chat nunca baja de 22 rem).
+  // «Cambios» va fijo a la derecha mientras el centro conserve ~36 rem; con menos espacio va lado a lado (≤ 26 rem) o, si ni así caben dos mitades útiles, cubre toda el área
+  // (nunca tapa la conversación a medias). Los demás paneles conservan su regla de siempre (el chat nunca baja de 22 rem).
   const layout = panel === 'changes' ? panelLayout(containerWidth, width) : null
-  const overlay = layout?.mode === 'overlay'
+  const full = layout?.mode === 'full'
   // La terminal se mantiene montada tras abrirse para conservar el shell; el navegador igual,
   // para no perder pestañas/sesión al ocultar el panel.
   const [terminalMounted, setTerminalMounted] = useState(panel === 'terminal')
@@ -228,12 +228,12 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
   if (!panel && !terminalMounted && !browserMounted) return null
   return (
     <div
-      className={`${overlay ? 'absolute inset-y-0 right-0 z-30 shadow-xl' : 'relative'} flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
+      className={`${full ? 'absolute inset-0 z-30' : 'relative'} desk:@container flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
       data-panel-layout={layout?.mode}
       role={panel ? 'complementary' : undefined}
       aria-label={panel ? t(PANEL_LABEL[panel]) : undefined}
       // El chat conserva siempre 22 rem: con la ventana estrecha el panel cede espacio (antes lo aplastaba y la caja de entrada se deformaba).
-      style={layout ? { width: layout.width, maxWidth: overlay ? '100%' : undefined } : { width, maxWidth: 'calc(100% - 22rem)' }}
+      style={layout ? { width: layout.width, maxWidth: full ? '100%' : undefined } : { width, maxWidth: 'calc(100% - 22rem)' }}
     >
       <div
         onPointerDown={onPointerDown}
@@ -248,9 +248,16 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
+              aria-label={p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
               className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:whitespace-nowrap desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
-              <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}</span>
+              {/* Panel estrecho (< 28 rem): solo el icono (el nombre sigue en el tooltip y en aria-label); ancho: solo el texto, como siempre. */}
+              <span aria-hidden className="hidden desk:@max-[28rem]:inline-flex desk:@max-[28rem]:align-middle">
+                {ALL_PANELS.find((x) => x.id === p)?.icon}
+              </span>
+              <span className="inline-block max-w-32 truncate align-bottom desk:@max-[28rem]:hidden">
+                {p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
+              </span>
               {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
                 <span
                   aria-hidden

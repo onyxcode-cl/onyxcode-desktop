@@ -148,15 +148,20 @@ describe('panelLayout (fijo o superposición)', () => {
   it('un ancho elegido demasiado grande se recorta para que el centro no baje de 36 rem', () => {
     expect(panelLayout(1000, 880)).toEqual({ mode: 'docked', width: 1000 - CENTER_MIN_PX })
   })
-  it('sin espacio para un panel útil: superposición con margen, nunca más ancha que la ventana', () => {
-    const l = panelLayout(800, 460)
-    expect(l.mode).toBe('overlay')
-    expect(l.width).toBeLessThanOrEqual(800)
-    expect(panelLayout(320, 460).width).toBeLessThanOrEqual(320)
+  it('ventana mediana: lado a lado, panel ≤ 26 rem y ≤ 50 % del área (la conversación sigue entera)', () => {
+    const l = panelLayout(744, 460)
+    expect(l.mode).toBe('split')
+    expect(l.width).toBe(372)
+    expect(744 - l.width).toBeGreaterThanOrEqual(l.width)
+    expect(panelLayout(840, 900)).toEqual({ mode: 'split', width: 416 })
   })
-  it('justo en el umbral', () => {
+  it('área tan angosta que no caben dos mitades útiles: el panel cubre todo (nada a medias)', () => {
+    expect(panelLayout(599, 460)).toEqual({ mode: 'full', width: 599 })
+  })
+  it('justo en los umbrales', () => {
     expect(panelLayout(CENTER_MIN_PX + 300, 460).mode).toBe('docked')
-    expect(panelLayout(CENTER_MIN_PX + 299, 460).mode).toBe('overlay')
+    expect(panelLayout(CENTER_MIN_PX + 299, 460).mode).toBe('split')
+    expect(panelLayout(600, 460).mode).toBe('split')
   })
   it('sin medida se asume fijo (comportamiento de siempre)', () => {
     expect(panelLayout(0, 460)).toEqual({ mode: 'docked', width: 460 })
