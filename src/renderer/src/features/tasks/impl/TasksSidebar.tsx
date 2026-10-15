@@ -66,7 +66,8 @@ export function TasksSidebar(): React.JSX.Element {
               className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:rounded-ctl desk:overflow-hidden desk:py-0 desk:whitespace-nowrap${tree ? ' desk:h-[30px] desk:gap-[5px] desk:pr-2 desk:pl-[5px] desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'}`}
             >
               {/* En el árbol, el ícono (13 px) se centra en la columna del punto de estado y el texto arranca en la de los títulos. */}
-              <BookText size={13} className={tree ? 'shrink-0 desk:size-[13px]' : 'shrink-0 desk:size-[15px]'} /> {t('tasks.sidebar.project')}
+              <BookText size={13} className={tree ? 'shrink-0 desk:size-[13px]' : 'shrink-0 desk:size-[15px]'} />{' '}
+              {t('tasks.sidebar.project')}
             </button>
           )}
           <SidebarSections />

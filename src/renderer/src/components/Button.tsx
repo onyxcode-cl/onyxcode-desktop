@@ -7,11 +7,13 @@ export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 // Las clases con prefijo desk son la variante de escritorio (alturas 24/28/32/36, radio 8, texto 13, solo el primario se encoge al presionar);
 // el celular conserva exactamente las clases de siempre. Las variantes `subtle` y `link` y los tamaños `xs`/`lg` son nuevos; `link` es texto en línea (hereda el tamaño de letra, sin altura ni relleno).
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-accent-fg shadow-xs hover:bg-accent-hover desk:active:scale-[0.97] desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100 desk:disabled:shadow-none',
+  primary:
+    'bg-accent text-accent-fg shadow-xs hover:bg-accent-hover desk:active:scale-[0.97] desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100 desk:disabled:shadow-none',
   secondary:
     'bg-elevated text-fg border border-border shadow-xs hover:bg-hover hover:border-border-strong desk:active:scale-100 desk:disabled:shadow-none',
   ghost: 'text-muted hover:bg-hover hover:text-fg desk:active:scale-100',
-  danger: 'bg-danger text-danger-fg shadow-xs hover:brightness-110 desk:active:scale-100 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100 desk:disabled:shadow-none',
+  danger:
+    'bg-danger text-danger-fg shadow-xs hover:brightness-110 desk:active:scale-100 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100 desk:disabled:shadow-none',
   subtle: 'bg-accent-soft text-accent hover:brightness-95 desk:active:scale-100',
   link: 'text-accent underline-offset-2 hover:underline desk:active:scale-100'
 }
