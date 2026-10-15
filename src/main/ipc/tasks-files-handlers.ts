@@ -14,6 +14,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
 import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { describeDeliverable, writeNewFile } from '../tasks/files'
+import { readPasteFiles } from '../clipboard/paste-files'
+import { electronClipboardReader } from './clipboard-handlers'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { renderHtmlToPdf } from '../extras/artifact-window'
 import { winTarZipArgs } from '../tasks/zip-args'
@@ -99,6 +101,22 @@ async function createZip(out: string, files: string[]): Promise<void> {
 export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, tasks, getWindow } = ctx
   const windowFor = (event: { sender: Electron.WebContents }): BrowserWindow | null => windowOfSender(event.sender) ?? getWindow()
+
+  // ── Pegar en el compositor: archivos/imagen del portapapeles → carpeta autorizada (sin sobrescribir) ──
+  handle('tasks:pasteFromClipboard', async ({ folder }, event) => {
+    const root = tasks.assertInsideApproved(folder)
+    const win = windowOfSender(event.sender)
+    if (!win || !win.isFocused()) throw new IpcError('FORBIDDEN', t('chat.paste.notFocused'))
+    const { files, rejected } = await readPasteFiles(electronClipboardReader, 'any')
+    const saved: TasksDeliverable[] = []
+    for (const f of files) {
+      // `f.name` ya es un basename; se separa nombre y extensión para que `writeNewFile` no pise nada.
+      const ext = extname(f.name)
+      const stem = ext ? f.name.slice(0, -ext.length) : f.name
+      saved.push(describeDeliverable(writeNewFile(root, stem || 'archivo', ext, Buffer.from(f.base64, 'base64')), root))
+    }
+    return { files: saved, rejected }
+  })
 
   // ── Descargar todo (zip) ──
   handle('tasks:zip', async ({ paths, suggestedName }, event) => {

@@ -274,6 +274,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   // ── diagnóstico ──
   'diag:logs': 'X',
   'diag:copy': 'X',
+  'clipboard:readFilesForPaste': 'X', // lee el portapapeles del Mac: el celular no lo usa
   'diag:export': 'X',
   'diag:problem': 'X',
   // ── ajustes ──
@@ -296,6 +297,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:reveal': 'X',
   'tasks:openPath': 'X',
   'tasks:importFiles': 'X',
+  'tasks:pasteFromClipboard': 'X',
   'tasks:previewFile': (p, ctx) =>
     !inDirs(p.path, scopeIpc(ctx))
       ? deny('out-of-scope')

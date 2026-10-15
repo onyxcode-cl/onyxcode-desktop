@@ -14,7 +14,7 @@ import { ArrowUp, FileText, FolderPlus, Image as ImageIcon, Loader2, Paperclip, 
 import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { sandboxModelNotice } from '@shared/sandbox-providers'
 import { useT } from '../../../lib/i18n'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
@@ -23,7 +23,8 @@ import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey, useAutosizeTextarea } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { useModeModel } from '../../settings/impl/extras'
-import { attachFiles, removeAttachment, removeElement, setElementInclude, unlinkFolder } from './actions'
+import { handlePaste, pasteRejectedMessages } from '../../../lib/paste-attachments'
+import { attachFiles, pasteFromClipboard, removeAttachment, removeElement, setElementInclude, unlinkFolder } from './actions'
 import { ElementChipRow } from '../../browser/ElementChip'
 import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
@@ -202,6 +203,28 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           disabled={disabled || blocked || sending}
           placeholder={blocked ? t('tasks.comp.phNoAi') : (placeholder ?? t('tasks.comp.phMessage'))}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            // Sin carpeta no hay dónde guardar el adjunto: se deja el pegado normal (texto).
+            if (!folder || disabled || blocked || sending || isRemoteSurface()) return
+            handlePaste(e, {
+              scope: 'any',
+              // Los archivos que Chromium sí entrega también se guardan por el canal de main (que lee el portapapeles real
+              // y los valida): en Tareas el adjunto es un archivo dentro de la carpeta, no bytes del renderer.
+              addFiles: () => {
+                void pasteFromClipboard().then(
+                  (r) => {
+                    if (r.rejected.length > 0) setError(pasteRejectedMessages(r.rejected).join(' '))
+                  },
+                  (err: unknown) => setError(errorMessage(err))
+                )
+              },
+              readFallback: async () => {
+                const r = await pasteFromClipboard()
+                return { files: [], rejected: r.rejected, handled: r.added > 0 }
+              },
+              onErrors: (msgs) => setError(msgs.join(' '))
+            })
+          }}
           onKeyDown={(e) => {
             if (isSubmitKey(e)) {
               e.preventDefault()
