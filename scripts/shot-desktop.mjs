@@ -323,7 +323,8 @@ function fakeClient(conn) {
 // ---- utilidades de interfaz ----
 const MODE = (page) => page.locator('nav[aria-label="Modo"]')
 const goMode = async (page, name) => {
-  await MODE(page).getByRole('button', { name, exact: true }).click()
+  // El modo Tareas se muestra como «Overdrive» en escritorio.
+  await MODE(page).getByRole('button', { name: name === 'Tareas' ? 'Overdrive' : name, exact: true }).click()
   await sleep(400)
 }
 const vis = (loc, timeout = 15_000) => loc.first().waitFor({ state: 'visible', timeout })

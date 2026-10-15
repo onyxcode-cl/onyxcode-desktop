@@ -9,6 +9,14 @@ interface UiState {
   settingsOpen: boolean
   sidebarCollapsed: boolean
   paletteOpen: boolean
+  /** Ventana angosta (< NARROW_WINDOW_PX): la lista de la barra lateral se pliega sola a riel; el botón de la barra la abre encima. */
+  narrow: boolean
+  /** Solo en ventana angosta: la lista está abierta (superpuesta al contenido). */
+  narrowOpen: boolean
+  /** Filtro de la lista de sesiones de Code (píldoras de la barra lateral). */
+  sessionFilter: 'all' | 'active' | 'review'
+  setNarrow: (narrow: boolean) => void
+  setSessionFilter: (f: 'all' | 'active' | 'review') => void
   /** Elemento al que debe desplazarse la sección de Ajustes al abrirse (p. ej. `providers`); lo consume la sección. */
   settingsFocus: 'providers' | null
   setMode: (mode: ModeId) => void
@@ -38,6 +46,11 @@ export const useUi = create<UiState>((set) => ({
   settingsOpen: false,
   sidebarCollapsed: false,
   paletteOpen: false,
+  narrow: false,
+  narrowOpen: false,
+  sessionFilter: 'all',
+  setNarrow: (narrow) => set((s) => (s.narrow === narrow ? s : { narrow, narrowOpen: false })),
+  setSessionFilter: (sessionFilter) => set({ sessionFilter }),
   settingsFocus: null,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setMode: (requested) => {
@@ -60,5 +73,12 @@ export const useUi = create<UiState>((set) => ({
     set({ settingsOpen: true, settingsFocus: focus ?? null })
   },
   clearSettingsFocus: () => set({ settingsFocus: null }),
-  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))
+  toggleSidebar: () => set((s) => (s.narrow ? { narrowOpen: !s.narrowOpen } : { sidebarCollapsed: !s.sidebarCollapsed }))
 }))
+
+/** Ancho de ventana bajo el cual la lista se pliega sola: riel 56 + lista 236 + ~568 px mínimos para la conversación. */
+export const NARROW_WINDOW_PX = 860
+
+/** ¿La lista está oculta (solo riel)? Plegada a mano, o sola en ventana angosta mientras no se abra encima. */
+export const selectListCollapsed = (s: Pick<UiState, 'narrow' | 'narrowOpen' | 'sidebarCollapsed'>): boolean =>
+  s.narrow ? !s.narrowOpen : s.sidebarCollapsed

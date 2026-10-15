@@ -5,6 +5,7 @@ import {
   acceptFilesIn,
   acceptSessionIn,
   deriveSessionState,
+  matchesSessionFilter,
   fingerprint,
   isAccepted,
   legacyBaseline,
@@ -253,5 +254,24 @@ describe('panelLayout (fijo o superposición)', () => {
   })
   it('sin medida se asume fijo (comportamiento de siempre)', () => {
     expect(panelLayout(0, 460)).toEqual({ mode: 'docked', width: 460 })
+  })
+})
+
+describe('matchesSessionFilter (píldoras de la barra lateral)', () => {
+  const idle = { waiting: false, busy: false, needsReview: false }
+  it('Todas deja pasar todo', () => {
+    expect(matchesSessionFilter('all', idle)).toBe(true)
+  })
+  it('Activas = trabajando o esperando', () => {
+    expect(matchesSessionFilter('active', idle)).toBe(false)
+    expect(matchesSessionFilter('active', { ...idle, busy: true })).toBe(true)
+    expect(matchesSessionFilter('active', { ...idle, waiting: true })).toBe(true)
+    expect(matchesSessionFilter('active', { ...idle, needsReview: true })).toBe(false)
+  })
+  it('Cambios = por revisar, aunque ahora mismo esté trabajando', () => {
+    expect(matchesSessionFilter('review', idle)).toBe(false)
+    expect(matchesSessionFilter('review', { ...idle, needsReview: true })).toBe(true)
+    expect(matchesSessionFilter('review', { ...idle, needsReview: true, busy: true })).toBe(true)
+    expect(matchesSessionFilter('review', { ...idle, busy: true })).toBe(false)
   })
 })

@@ -19,65 +19,93 @@ const reset = (): void => {
 
 const render = (): string => renderToStaticMarkup(createElement(Sidebar))
 
-describe('barra lateral de escritorio (2c)', () => {
+describe('barra lateral de escritorio (riel + lista, maqueta B)', () => {
   afterEach(reset)
 
-  it('los modos van en una lista vertical con ícono y nombre completo; el activo lleva aria-current', () => {
+  /** El riel es el primer `<aside>`; la lista, lo que sigue a `data-list` (si se dibuja). */
+  const railOf = (html: string): string => html.slice(html.indexOf('<aside'), html.indexOf('</aside>'))
+  const listOf = (html: string): string => html.slice(html.indexOf('data-list'))
+
+  it('el riel lleva los cuatro modos como botones de ícono con nombre accesible; el activo lleva aria-current', () => {
     seed({ mode: 'code', settingsOpen: false })
-    const html = render()
-    expect(html.match(/<nav aria-label="Modo"[^>]*>/g)).toHaveLength(1)
-    const nav = html.slice(html.indexOf('<nav aria-label="Modo"'), html.indexOf('</nav>'))
-    expect(nav).toContain('flex flex-col gap-0.5')
-    // Una fila por modo, cada una con su ícono y el nombre entero (Overdrive no se corta).
+    const rail = railOf(render())
+    expect(rail).toContain('w-14')
+    expect(rail.match(/<nav aria-label="Modo"[^>]*>/g)).toHaveLength(1)
+    const nav = rail.slice(rail.indexOf('<nav aria-label="Modo"'), rail.indexOf('</nav>'))
     expect(nav.match(/<button/g)).toHaveLength(4)
     expect(nav.match(/<svg/g)).toHaveLength(4)
-    for (const name of ['Chat', 'Code', 'Overdrive', 'Rutinas'])
-      expect(nav).toContain(`<span class="min-w-0 flex-1 truncate">${name}</span>`)
+    for (const name of ['Chat', 'Code', 'Overdrive', 'Rutinas']) expect(nav).toContain(`aria-label="${name}"`)
+    // Solo íconos: ningún nombre como texto visible dentro del riel.
+    expect(nav).not.toMatch(/>(Chat|Code|Overdrive|Rutinas)</)
     expect(nav.match(/aria-current="page"/g)).toHaveLength(1)
-    expect(nav).toMatch(/aria-current="page"[^>]*>(?:(?!<\/button>).)*>Code<\/span>/)
-    expect(nav).not.toContain('rounded-[10px] bg-hover p-[3px]')
+    expect(nav).toMatch(/aria-label="Code" aria-current="page"/)
+    expect(nav).toContain('bg-active text-fg')
   })
 
-  it('con Ajustes abierto el modo conserva el texto fuerte y pierde aria-current', () => {
+  it('con Ajustes abierto el modo pierde aria-current y Ajustes queda pulsado', () => {
     seed({ mode: 'code', settingsOpen: true })
     const html = render()
     expect(html).not.toContain('aria-current="page"')
-    expect(html).toMatch(/font-medium text-fg"><svg[^>]*>(?:(?!<\/button>).)*>Code<\/span>/)
+    expect(html).toMatch(/aria-label="Ajustes" aria-pressed="true"/)
   })
 
-  it('estructura: marca con el nombre de la app, «Nueva» con su atajo, buscador, árbol y pie de tres botones', () => {
+  it('el pie del riel trae Ayuda, Tema y Ajustes con nombre accesible', () => {
+    seed({ mode: 'chat', settingsOpen: false })
+    const rail = railOf(render())
+    for (const name of ['Ayuda', 'Cambiar tema', 'Ajustes']) expect(rail).toContain(`aria-label="${name}"`)
+  })
+
+  it('la lista (maqueta B): «Nueva» primaria de acento suave, «Buscar…» con ⌘K, árbol y «● Conectado»; sin marca ni rótulo de sección', () => {
     seed({ mode: 'chat', settingsOpen: false })
     const html = render()
-    expect(html).toContain('>Lazunox</span>')
+    const list = listOf(html)
+    // La maqueta no lleva marca: el nombre de la app no se dibuja en la barra.
+    expect(html).not.toContain('>Lazunox</span>')
     // El nombre anterior no puede aparecer (se arma en dos trozos para que esta guardia no lo encuentre en el propio archivo).
     expect(html).not.toMatch(new RegExp(['on', 'yx'].join(''), 'i'))
-    // «Nueva conversación»: el nombre accesible sigue siendo el texto (el atajo es decorativo y va en aria-keyshortcuts).
-    expect(html).toMatch(/<button[^>]*aria-keyshortcuts="[^"]+"[^>]*>.*?Nueva conversación<\/span><span aria-hidden="true"[^>]*>⌘N<\/span>/)
-    expect(html).not.toContain('title="Nueva conversación (⌘N)"')
-    // Buscador como campo sobre la «tarjeta», con ⌘K.
-    expect(html).toMatch(/class="[^"]*sb-card[^"]*shadow-\[inset_0_0_0_1px_var\(--border\)\][^"]*"/)
-    expect(html).toMatch(/>⌘K<\/span>/)
-    // Rótulo de sección y árbol.
-    expect(html).toContain('Sin proyecto')
-    expect(html).toContain('role="tree" aria-label="Proyectos y conversaciones"')
-    expect(html).toContain('overflow-y-auto px-2 pt-5 pb-2')
-    // Pie: Ajustes · Ayuda · Tema y el estado de la conexión.
-    for (const name of ['Ajustes (⌘,)', 'Ayuda', 'Cambiar tema']) expect(html).toContain(`aria-label="${name}"`)
-    expect(html).not.toContain('border-t border-border"></div>')
+    // «Nueva»: atajo en aria-keyshortcuts y en el título (la maqueta no lo dibuja).
+    expect(list).toMatch(
+      /<button[^>]*title="Nueva conversación \(⌘N\)"[^>]*aria-keyshortcuts="⌘N"[^>]*bg-accent-soft[^>]*>.*?Nueva conversación<\/span><\/button>/
+    )
+    expect(list).toMatch(
+      /aria-label="Buscar o ir a…"[^>]*rounded-\[9px\] border border-border[^>]*>.*?>Buscar…<\/span><span aria-hidden="true"[^>]*>⌘K<\/span>/
+    )
+    expect(list).not.toContain('Sin proyecto')
+    expect(list).toContain('role="tree" aria-label="Proyectos y conversaciones"')
+    expect(list).toContain('border-t border-border text-ui text-muted')
+    expect(list).toContain('>Iniciando…</span>')
+    // Ajustes, Ayuda y Tema viven en el riel, no en la lista.
+    expect(list).not.toContain('aria-label="Ajustes"')
   })
 
-  it('en Code y Tareas el rótulo es «Proyectos» y lleva la acción de abrir carpeta', () => {
+  it('los filtros «Todas / Activas / Cambios» solo salen en Code, con aria-pressed y sin partirse en dos líneas', () => {
+    seed({ mode: 'chat', settingsOpen: false })
+    expect(render()).not.toContain('aria-label="Filtrar sesiones"')
     seed({ mode: 'code', settingsOpen: false })
     const html = render()
-    expect(html).toContain('>Proyectos</span>')
-    expect(html).not.toContain('Sin proyecto')
+    expect(html).toContain('role="group" aria-label="Filtrar sesiones"')
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Todas<\/button>/)
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Activas<\/button>/)
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Cambios<\/button>/)
+    expect(html).toContain('flex-nowrap')
+    expect(html).toContain('whitespace-nowrap')
+    seed({ mode: 'code', sessionFilter: 'review' })
+    expect(render()).toMatch(/aria-pressed="true"[^>]*>Cambios<\/button>/)
   })
 
-  it('colapsada: 56 px, botones de 36 px con nombre accesible y el mismo nav «Modo»', () => {
+  it('en Code las acciones de proyecto (abrir carpeta, recientes) van discretas en la franja superior de la lista', () => {
+    seed({ mode: 'code', settingsOpen: false })
+    const head = listOf(render()).split('Nueva sesión')[0]
+    expect(head).toContain('aria-label="Proyectos recientes"')
+    expect(head).toMatch(/aria-label="Ocultar barra lateral/)
+    expect(head).not.toContain('>Proyectos</span>')
+  })
+
+  it('plegada: solo el riel (sin lista), con «Mostrar», «Nueva» y «Buscar» en él', () => {
     seed({ mode: 'chat', settingsOpen: false, sidebarCollapsed: true })
     const html = render()
     expect(html).toContain('data-collapsed=""')
-    expect(html).toContain('w-14')
+    expect(html).not.toContain('data-list')
     expect(html).not.toContain('>Lazunox<')
     expect(html).toContain('<nav aria-label="Modo"')
     for (const name of ['Mostrar barra lateral', 'Nueva conversación', 'Buscar o ir a…', 'Chat', 'Code', 'Ajustes']) {
@@ -85,6 +113,23 @@ describe('barra lateral de escritorio (2c)', () => {
     }
     expect(html.match(/size-9/g)?.length).toBeGreaterThanOrEqual(8)
     expect(html.match(/aria-current="page"/g)).toHaveLength(1)
+  })
+
+  it('Rutinas no tiene lista: solo el riel, sin botón «Mostrar» (no hay qué mostrar)', () => {
+    seed({ mode: 'routines', settingsOpen: false })
+    const html = render()
+    expect(html).not.toContain('data-list')
+    expect(html).not.toContain('aria-label="Mostrar barra lateral"')
+    expect(html).toContain('aria-label="Buscar o ir a…"')
+  })
+
+  it('ventana angosta: la lista se pliega sola a riel y, abierta, va superpuesta', () => {
+    seed({ mode: 'code', settingsOpen: false, narrow: true, narrowOpen: false })
+    expect(render()).not.toContain('data-list')
+    seed({ narrowOpen: true })
+    const html = render()
+    expect(html).toContain('data-list')
+    expect(listOf(html)).toContain('absolute inset-y-0 left-14 z-30')
   })
 })
 

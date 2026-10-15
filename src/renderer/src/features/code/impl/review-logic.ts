@@ -34,6 +34,19 @@ export function deriveSessionState(i: SessionStateInput): SessionState | null {
   return null
 }
 
+/** Filtro de la lista de sesiones de Code (píldoras «Todas / Activas / Cambios» de la barra lateral). */
+export type SessionFilter = 'all' | 'active' | 'review'
+
+/**
+ * Activas = trabajando o esperando tu respuesta; Cambios = terminó con cambios sin revisar (aunque ahora mismo esté trabajando o
+ * esperando: la prioridad de `deriveSessionState` decide el punto, no el filtro).
+ */
+export function matchesSessionFilter(filter: SessionFilter, i: Pick<SessionStateInput, 'waiting' | 'busy' | 'needsReview'>): boolean {
+  if (filter === 'active') return i.waiting || i.busy
+  if (filter === 'review') return i.needsReview
+  return true
+}
+
 export interface SessionSummaryLike {
   additions: number
   deletions: number

@@ -21,6 +21,7 @@
  "app.sidebar.emptyHint.generic",
  "app.sidebar.emptyHint.genericNoKey",
  "app.sidebar.expandProject",
+ "app.sidebar.filterEmpty",
  "app.sidebar.noProjects",
  "app.sidebar.pendingApproval",
  "app.sidebar.projects",
