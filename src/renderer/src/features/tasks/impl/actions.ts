@@ -477,7 +477,7 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
 
 async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
-  // Sandbox: el servidor solo tiene OpenCode Go; con un modelo de otro proveedor, error claro (no fallo silencioso).
+  // Sandbox: el servidor solo tiene los proveedores con clave de API (SANDBOX_PROVIDER_IDS); con un modelo de otro proveedor, error claro (no fallo silencioso).
   // Modelo efectivo contra las IA conectadas (globales): sin ninguna, no se envía; no se persiste nada.
   const wanted = model ?? currentTasksModel()
   const aiGate = currentAiGate(wanted)

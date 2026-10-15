@@ -2,11 +2,13 @@
  * Mapa de proveedores de modelos → destino real (para `CredentialProxy`) y overrides de config
  * de OpenCode que apuntan el `baseURL` del proveedor al proxy de credenciales local.
  *
- * Solo se lista lo que el sandbox de Tareas puede usar; hoy: OpenCode Go/Zen (`opencode-go`,
- * `api: https://opencode.ai/zen/go/v1`, verificado contra el binario `opencode` 1.18.32).
+ * Solo se lista lo que el sandbox de Tareas puede usar: proveedores con CLAVE de API estática (cada fila: origen +
+ * prefijo que es el `baseURL` por defecto del SDK + esquema de autenticación). Para añadir uno basta una fila nueva
+ * (y su id en `SANDBOX_PROVIDER_IDS`; una prueba vigila que coincidan). Los de inicio de sesión (OAuth) o nube
+ * (Bedrock, Azure, Vertex) no caben aquí: sus credenciales no son una clave estática.
  *
  * Política de credenciales del servidor SANDBOXEADO (falla cerrado):
- * - OpenCode Go con `key`: la clave real vive solo en un `CredentialProxy` del proceso main (fuera
+ * - Proveedor de `PROVIDER_TARGETS` con `key`: la clave real vive solo en un `CredentialProxy` del proceso main (fuera
  *   del sandbox); el servidor recibe en `OPENCODE_AUTH_CONTENT` una clave centinela aleatoria.
  * - Todo lo demás del `auth.json` del usuario (otros proveedores, OAuth, entradas sin `key`,
  *   cualquier otro campo) se OMITE: el servidor sandboxeado no lo recibe, así que esos proveedores
@@ -15,25 +17,26 @@
  * el `auth.json` como haría el CLI.
  */
 import { randomBytes } from 'node:crypto'
+import { GENERATED_PROVIDER_TARGETS } from '../../shared/provider-targets.generated'
 
 export interface ProviderTarget {
-  /** Host real (para la lista blanca del proxy de egress; el credential-proxy no la necesita,
-   * conecta directo desde el proceso main, sin sandbox). */
-  host: string
   origin: string
   pathPrefix: string
-  /** Esquema de autorización real: 'bearer' → `Authorization: Bearer <key>`. */
-  auth: 'bearer'
 }
 
-export const PROVIDER_TARGETS: Record<string, ProviderTarget> = {
-  'opencode-go': {
-    host: 'opencode.ai',
-    origin: 'https://opencode.ai',
-    pathPrefix: '/zen/go/v1',
-    auth: 'bearer'
-  }
-}
+/**
+ * Destinos con clave de API estática, de la tabla VERSIONADA `shared/provider-targets.generated.ts` (la genera
+ * `scripts/gen-provider-targets.mjs` desde el catálogo de models.dev + lista manual; no se lee ningún catálogo en ejecución).
+ * `pathPrefix` = el `baseURL` del proveedor; el override apunta al proxy local y el SDK le añade las mismas rutas relativas.
+ * El esquema de autenticación NO es por proveedor (un mismo baseURL sirve a SDKs distintos): el proxy reinyecta la clave real
+ * en la cabecera que usó el cliente (ver `buildUpstreamHeaders`).
+ *
+ * EXCLUIDOS en esta ronda (siguen requiriendo Control total, Chat o Code): inicio de sesión/OAuth (ChatGPT/Codex, Copilot,
+ * xAI OAuth, GitLab, SAP), SigV4/IAM (Bedrock), Azure, Vertex y Cloudflare (URL por recurso) y proveedores con variables en la URL.
+ */
+export const PROVIDER_TARGETS: Record<string, ProviderTarget> = Object.fromEntries(
+  Object.entries(GENERATED_PROVIDER_TARGETS).map(([id, t]) => [id, { ...t }])
+)
 
 export interface ProviderAuthEntry {
   type: string

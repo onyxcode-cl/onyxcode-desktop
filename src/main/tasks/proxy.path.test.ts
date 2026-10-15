@@ -24,7 +24,7 @@ describe('CredentialProxy: ruta contenida en el prefijo de la API', () => {
       token: 'tok123',
       targetOrigin: `http://127.0.0.1:${port}`,
       targetPathPrefix: '/zen/go/v1',
-      authorization: 'Bearer real'
+      key: 'real'
     })
     await proxy.start()
     open.push(proxy)

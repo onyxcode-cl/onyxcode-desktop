@@ -1,12 +1,14 @@
 /**
- * Proveedores de modelos disponibles en Tareas CON sandbox. El servidor sandboxeado solo recibe
- * OpenCode Go (clave centinela + proxy de credenciales en main, ver `main/tasks/provider-egress.ts`);
- * el resto de proveedores no se le pasan.
+ * Proveedores de modelos disponibles en Tareas CON sandbox. El servidor sandboxeado solo recibe los proveedores con
+ * clave de API de `PROVIDER_TARGETS` (clave centinela + proxy de credenciales en main, ver `main/tasks/provider-egress.ts`);
+ * el resto (OAuth, nube) no se le pasan. Los ids salen de la misma tabla generada que usa `main`
+ * (`shared/provider-targets.generated.ts`); `provider-egress.sync.test.ts` vigila que sigan coincidiendo.
  * `opencode` son los modelos gratuitos de OpenCode, que el motor ofrece sin clave. Lógica pura compartida por main y renderer.
  */
 import { t } from './i18n'
+import { GENERATED_PROVIDER_TARGETS } from './provider-targets.generated'
 
-export const SANDBOX_PROVIDER_IDS: readonly string[] = ['opencode-go', 'opencode']
+export const SANDBOX_PROVIDER_IDS: readonly string[] = [...Object.keys(GENERATED_PROVIDER_TARGETS), 'opencode']
 
 /** Aviso en el idioma activo. */
 export const sandboxProviderNotice = (): string => t('tasks.sandboxProviderNotice')

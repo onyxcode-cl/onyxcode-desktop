@@ -215,46 +215,156 @@ export interface CredentialProxyOptions {
   token: string
   /** Origen real (p.ej. `https://opencode.ai`). */
   targetOrigin: string
-  /** Prefijo a anteponer al path reenviado (p.ej. `/zen/go/v1`). */
+  /** Prefijo a anteponer al path reenviado (p.ej. `/inference/go/v1`). */
   targetPathPrefix?: string
-  /** Header Authorization REAL a inyectar (p.ej. `Bearer sk-...`). Nunca se expone al sandbox. */
-  authorization: string
+  /** Clave REAL a inyectar (nunca se expone al sandbox). */
+  key: string
 }
 
-/** Proxy inverso de un único destino que inyecta la clave real del proveedor. */
+/** Cabeceras que pueden llevar una credencial del sandbox (el centinela u otra): se descartan SIEMPRE. */
+const CREDENTIAL_HEADERS = new Set(['authorization', 'proxy-authorization', 'x-api-key', 'x-goog-api-key', 'api-key'])
+/** Cabeceras de salto/identidad que no se reenvían tal cual. */
+const DROPPED_HEADERS = new Set(['host', 'connection'])
+
 /**
- * Cabeceras hacia la API real: se descartan las del sandbox que llevan credencial (el centinela) y se inyecta la REAL.
- * Los modelos con protocolo Anthropic (p.ej. Claude Haiku en OpenCode Go) mandan la clave en `x-api-key`, no en
- * `Authorization`: si se reenviaba el centinela, la API respondía «clave no válida» solo dentro del sandbox.
+ * Cabeceras hacia la API real. Un mismo `baseURL` puede servir a SDKs distintos (openai-compatible → `Authorization: Bearer`,
+ * anthropic → `x-api-key`, google → `x-goog-api-key`), así que NO se fija un esquema por proveedor: se descartan TODAS las
+ * credenciales del sandbox (el centinela, duplicadas o de otro esquema) y la clave REAL se reinyecta únicamente en la cabecera
+ * que el cliente usó (`x-api-key` → `x-api-key`; `x-goog-api-key` o `?key=` → `x-goog-api-key`; `Authorization` o ninguna →
+ * `Authorization: Bearer`). `anthropic-version`/`anthropic-beta` las manda el cliente y pasan tal cual.
  */
 export function buildUpstreamHeaders(
   incoming: Record<string, string | string[] | undefined>,
   host: string,
-  authorization: string
+  key: string,
+  queryHadKey = false
 ): Record<string, string | string[]> {
   const headers: Record<string, string | string[]> = {}
-  let usesApiKey = false
+  let usedApiKey = false
+  let usedGoog = queryHadKey
+  let usedBearer = false
+  let usedApiKeyHdr = false
   for (const [k, v] of Object.entries(incoming)) {
     if (v === undefined) continue
     const lk = k.toLowerCase()
-    if (lk === 'host' || lk === 'authorization' || lk === 'connection') continue
-    if (lk === 'x-api-key') {
-      usesApiKey = true
+    if (DROPPED_HEADERS.has(lk)) continue
+    if (CREDENTIAL_HEADERS.has(lk)) {
+      if (lk === 'x-api-key') usedApiKey = true
+      else if (lk === 'x-goog-api-key') usedGoog = true
+      else if (lk === 'authorization') usedBearer = true
+      else if (lk === 'api-key') usedApiKeyHdr = true
       continue
     }
     headers[k] = v
   }
   headers.host = host
-  headers.authorization = authorization
-  if (usesApiKey) headers['x-api-key'] = authorization.replace(/^Bearer\s+/i, '')
+  headers['accept-encoding'] = 'identity'
+  if (usedApiKey) headers['x-api-key'] = key
+  if (usedGoog) headers['x-goog-api-key'] = key
+  if (usedApiKeyHdr) headers['api-key'] = key
+  if (usedBearer || (!usedApiKey && !usedGoog && !usedApiKeyHdr)) headers.authorization = `Bearer ${key}`
   return headers
 }
 
+/** Quita del query los pares de credencial (`key=`, `api_key=`) conservando el resto del texto tal cual (sin re-serializar). */
+export function stripQueryCredentials(search: string): { search: string; hadKey: boolean } {
+  if (!search || search === '?') return { search, hadKey: false }
+  const pairs = search.slice(1).split('&')
+  let hadKey = false
+  const kept = pairs.filter((pair) => {
+    let name = pair.split('=')[0].replace(/\+/g, ' ')
+    try {
+      name = decodeURIComponent(name)
+    } catch {
+      /* nombre no decodificable: se compara tal cual */
+    }
+    if (!/^(key|api[_-]?key)$/i.test(name.trim())) return true
+    if (name.trim().toLowerCase() === 'key') hadKey = true
+    return false
+  })
+  if (kept.length === pairs.length) return { search, hadKey }
+  const out = kept.join('&')
+  return { search: out ? `?${out}` : '', hadKey }
+}
+
+/** Métodos que se reenvían a la API real. */
+const ALLOWED_METHODS = new Set(['GET', 'POST', 'HEAD', 'OPTIONS'])
+/** Segmentos de ruta de administración/almacenamiento que un sandbox no necesita (denegar, no lista blanca). */
+const DENIED_SEGMENTS = new Set([
+  'files',
+  'batches',
+  'fine_tuning',
+  'fine-tunes',
+  'fine_tunes',
+  'keys',
+  'api-keys',
+  'api_keys',
+  'billing',
+  'organization',
+  'organizations',
+  'admin',
+  'usage-admin',
+  'projects',
+  'members',
+  'users',
+  'invites',
+  'tokens',
+  'uploads',
+  'vector_stores',
+  'assistants',
+  'threads'
+])
+/** true si algún segmento del path (sin importar mayúsculas) está denegado. */
+export function hasDeniedSegment(path: string): boolean {
+  let decoded = path
+  try {
+    decoded = decodeURIComponent(path)
+  } catch {
+    return true
+  }
+  return decoded.split('/').some((seg) => DENIED_SEGMENTS.has(seg.toLowerCase()))
+}
+/** Cabeceras de respuesta que nunca se devuelven al sandbox. */
+const DROPPED_RESPONSE_HEADERS = new Set(['set-cookie', 'www-authenticate', 'proxy-authenticate'])
+const MAX_REDACT_BODY = 64 * 1024
+const REDACTED = '[clave oculta]'
+
+/** Cabeceras de respuesta filtradas; `null` si el redirect sale del origen del destino. */
+export function filterResponseHeaders(
+  headers: Record<string, string | string[] | undefined>,
+  key: string,
+  targetUrl: URL
+): Record<string, string | string[]> | null {
+  const out: Record<string, string | string[]> = {}
+  for (const [k, v] of Object.entries(headers)) {
+    if (v === undefined) continue
+    const lk = k.toLowerCase()
+    if (DROPPED_RESPONSE_HEADERS.has(lk)) continue
+    const vals = Array.isArray(v) ? v : [v]
+    if (vals.some((x) => x.includes(key))) continue
+    if (lk === 'location') {
+      let ok = false
+      try {
+        ok = new URL(vals[0] ?? '', targetUrl).origin === targetUrl.origin
+      } catch {
+        ok = false
+      }
+      if (!ok) return null
+    }
+    out[k] = v
+  }
+  return out
+}
+
+/** Proxy inverso de un único destino que inyecta la clave real del proveedor. */
 export class CredentialProxy {
   private server = createHttpServer((req, res) => this.handle(req, res))
   port = 0
 
-  constructor(private opts: CredentialProxyOptions) {}
+  constructor(private opts: CredentialProxyOptions) {
+    // Falla cerrado al construir (no dentro del manejador de peticiones): clave vacía.
+    if (typeof opts.key !== 'string' || !opts.key) throw new Error('credential-proxy: clave vacía')
+  }
 
   async start(): Promise<number> {
     this.port = await getFreePort()
@@ -273,6 +383,55 @@ export class CredentialProxy {
     return `http://127.0.0.1:${this.port}/${this.opts.token}`
   }
 
+  /** Respuesta de la API al sandbox: sin cookies/desafíos/redirects externos ni la clave real (cabeceras; cuerpo pequeño no-SSE). */
+  private relay(upstreamRes: IncomingMessage, res: ServerResponse, target: URL): void {
+    const status = upstreamRes.statusCode ?? 502
+    const headers = filterResponseHeaders(upstreamRes.headers, this.opts.key, target)
+    if (!headers) {
+      upstreamRes.resume()
+      res.writeHead(502, { 'content-type': 'text/plain' }).end('credential-proxy: redirect fuera del destino bloqueado')
+      return
+    }
+    const type = String(upstreamRes.headers['content-type'] ?? '').toLowerCase()
+    const redactable = /^(text\/|application\/(json|[a-z.+-]*\+json|xml))/.test(type) && !type.includes('event-stream')
+    if (!redactable) {
+      res.writeHead(status, headers)
+      upstreamRes.pipe(res)
+      return
+    }
+    // Cuerpo texto/JSON: se acumula hasta 64 KB para ocultar la clave; si crece más, pasa a streaming sin tocar el resto.
+    const chunks: Buffer[] = []
+    let size = 0
+    let streaming = false
+    upstreamRes.on('data', (c: Buffer) => {
+      if (streaming) {
+        res.write(c)
+        return
+      }
+      chunks.push(c)
+      size += c.length
+      if (size > MAX_REDACT_BODY) {
+        streaming = true
+        res.writeHead(status, headers)
+        res.write(Buffer.concat(chunks))
+        chunks.length = 0
+      }
+    })
+    upstreamRes.on('end', () => {
+      if (streaming) {
+        res.end()
+        return
+      }
+      const body = Buffer.concat(chunks).toString('utf8').split(this.opts.key).join(REDACTED)
+      const out = { ...headers }
+      for (const k of Object.keys(out)) if (['content-length', 'transfer-encoding'].includes(k.toLowerCase())) delete out[k]
+      out['content-length'] = String(Buffer.byteLength(body))
+      res.writeHead(status, out)
+      res.end(body)
+    })
+    upstreamRes.on('error', () => res.destroy())
+  }
+
   private handle(req: IncomingMessage, res: ServerResponse): void {
     const url = req.url ?? '/'
     const prefix = `/${this.opts.token}`
@@ -280,9 +439,17 @@ export class CredentialProxy {
       res.writeHead(403, { 'content-type': 'text/plain' }).end('forbidden')
       return
     }
+    if (!ALLOWED_METHODS.has((req.method ?? '').toUpperCase())) {
+      res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, POST, HEAD, OPTIONS' }).end('method not allowed')
+      return
+    }
     const rest = safeUpstreamRest(url.slice(prefix.length))
     if (rest === null) {
       res.writeHead(400, { 'content-type': 'text/plain' }).end('bad path')
+      return
+    }
+    if (hasDeniedSegment(rest.split('?')[0])) {
+      res.writeHead(403, { 'content-type': 'text/plain' }).end('path not allowed')
       return
     }
     const apiPrefix = this.opts.targetPathPrefix ?? ''
@@ -296,7 +463,8 @@ export class CredentialProxy {
       return
     }
     const isHttps = target.protocol === 'https:'
-    const headers = buildUpstreamHeaders(req.headers, target.host, this.opts.authorization)
+    const q = stripQueryCredentials(target.search)
+    const headers = buildUpstreamHeaders(req.headers, target.host, this.opts.key, q.hadKey)
 
     const fn = isHttps ? httpsRequest : httpRequest
     const upstream = fn(
@@ -304,14 +472,11 @@ export class CredentialProxy {
         protocol: target.protocol,
         hostname: target.hostname,
         port: target.port || (isHttps ? 443 : 80),
-        path: `${target.pathname}${target.search}`,
+        path: `${target.pathname}${q.search}`,
         method: req.method,
         headers
       },
-      (upstreamRes) => {
-        res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers)
-        upstreamRes.pipe(res)
-      }
+      (upstreamRes) => this.relay(upstreamRes, res, target)
     )
     upstream.on('error', (err) => {
       if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain' })
@@ -334,6 +499,7 @@ export function safeUpstreamRest(raw: string): string | null {
   const query = q === -1 ? '' : rest.slice(q)
   if (rest.includes('#')) return null
   if (/[\\\u0000-\u001f\u007f]/.test(rest)) return null
+  if (path.includes(';')) return null
   if (/%25/i.test(path) || /%5c/i.test(path) || /%2f/i.test(path)) return null
   let decoded: string
   try {

@@ -23,17 +23,26 @@ describe('placeholderAuthContent', () => {
     expect(out['opencode-go'].key).toMatch(/^sandboxed-placeholder-[0-9a-f]{16}$/)
   })
 
-  it('OpenAI, Anthropic, Google y OAuth se omiten', () => {
-    const secrets = [rnd(), rnd(), rnd(), rnd(), rnd(), rnd()]
+  it('los proveedores con clave salen con centinela; OAuth y nube se omiten', () => {
+    const secrets = [rnd(), rnd(), rnd(), rnd(), rnd(), rnd(), rnd()]
     const raw = placeholderAuthContent({
       openai: { type: 'api', key: secrets[0] },
       anthropic: { type: 'api', key: secrets[1] },
       google: { type: 'api', key: secrets[2] },
       'github-copilot': { type: 'oauth', access: secrets[3], refresh: secrets[4], expires: 1 },
+      'amazon-bedrock': { type: 'api', key: secrets[6] },
       'opencode-go': { type: 'api', key: secrets[5] }
     })
-    expect(Object.keys(parse(raw))).toEqual(['opencode-go'])
+    expect(Object.keys(parse(raw)).sort()).toEqual(['anthropic', 'google', 'openai', 'opencode-go'])
     for (const s of secrets) expect(raw).not.toContain(s)
+  })
+
+  it('cada proveedor de PROVIDER_TARGETS con clave sale con centinela', () => {
+    const input: Record<string, ProviderAuthEntry> = {}
+    for (const id of Object.keys(PROVIDER_TARGETS)) input[id] = { type: 'api', key: rnd() }
+    const out = parse(placeholderAuthContent(input))
+    expect(Object.keys(out).sort()).toEqual(Object.keys(PROVIDER_TARGETS).sort())
+    for (const e of Object.values(out)) expect(e.key).toMatch(/^sandboxed-placeholder-/)
   })
 
   it('OAuth con el id de un proveedor conocido (sin key) se omite entero', () => {
@@ -52,7 +61,8 @@ describe('placeholderAuthContent', () => {
 
   it('sin proveedores utilizables devuelve {}', () => {
     expect(placeholderAuthContent({})).toBe('{}')
-    expect(placeholderAuthContent({ openai: { type: 'api', key: rnd() } })).toBe('{}')
+    expect(placeholderAuthContent({ 'amazon-bedrock': { type: 'api', key: rnd() } })).toBe('{}')
+    expect(placeholderAuthContent({ openai: { type: 'oauth', access: rnd() } })).toBe('{}')
   })
 
   it('propiedad: la salida nunca contiene ninguna clave real de entrada', () => {
@@ -98,7 +108,7 @@ describe('placeholderAuthContent', () => {
       { 'opencode-go': { type: 'api', key: { nested: s } } },
       { 'opencode-go': null },
       { 'opencode-go': 'texto-' + s },
-      { openai: { key: s } },
+      { openai: { type: 'oauth', access: s } },
       { openai: null }
     ]
     for (const c of cases) {
@@ -124,7 +134,7 @@ describe('sandbox.ts: el entorno del sandbox no recibe secretos reales', () => {
 
   it('la clave real (entry.key) solo va al CredentialProxy', () => {
     const uses = src.match(/[^\n]*\b(?:entry|e)\.key\b[^\n]*/g) ?? []
-    for (const l of uses) expect(l).toMatch(/!entry\.key|authorization: `Bearer \$\{entry\.key\}`/)
+    for (const l of uses) expect(l).toMatch(/!entry\.key|typeof entry\.key|^\s*key: entry\.key/)
   })
 
   it('`auth` (auth.json real) solo se usa en el bucle del proxy y en placeholderAuthContent', () => {
