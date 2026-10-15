@@ -112,7 +112,8 @@ export interface QuickPromptEvent {
  * corto y ya apto para mostrar (nunca un mensaje crudo del sistema: solo textos propios de la app).
  */
 export type ChatDocOpenReject = 'failed' | 'invalid' | 'no-craft'
-export type ChatDocOpenResult = { ok: true } | { ok: false; reason: ChatDocOpenReject; detail?: string }
+/** `bytes` (opcional): peso real del archivo generado, para la tarjeta de documento del Chat. */
+export type ChatDocOpenResult = { ok: true; bytes?: number } | { ok: false; reason: ChatDocOpenReject; detail?: string }
 
 interface ChatDocOpenCommon {
   title: string

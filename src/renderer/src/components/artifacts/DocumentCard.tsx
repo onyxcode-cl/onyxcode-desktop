@@ -4,7 +4,9 @@
  * tipo y dos acciones: «Abrir» (el panel de documento que ya existe) y «Descargar» (la descarga que ya existe).
  * Solo se monta en escritorio (`Markdown.tsx` la omite en la PWA del celular, que sigue igual).
  */
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
+import { getLang } from '@shared/i18n'
+import { formatFileSize, getChatDocSize, subscribeChatDocSize } from '../../lib/chatDocSize'
 import { Code2, Download, Eye, FileSpreadsheet, FileText, Loader2, Presentation } from 'lucide-react'
 import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { useT } from '../../lib/i18n'
@@ -116,7 +118,10 @@ export function DocumentCard({ kind, rawText, isSlides = false, title, codeShown
   const [error, setError] = useState<string | null>(null)
   const name = docFileName(title, type)
   const count = docCardCount(kind, rawText)
-  const meta = [t(KIND_KEY[type]), count ? t(count.key === 'sheets' ? 'chat.doc.card.sheets' : 'chat.doc.card.slides', { n: count.n }) : null]
+  // Peso real: solo cuando main ya generó el archivo (al abrir el panel); antes no se muestra nada, nunca un número inventado.
+  const bytes = useSyncExternalStore(subscribeChatDocSize, () => getChatDocSize(kind, rawText), () => getChatDocSize(kind, rawText))
+  const size = bytes ? formatFileSize(bytes, getLang()) : null
+  const meta = [t(KIND_KEY[type]), count ? t(count.key === 'sheets' ? 'chat.doc.card.sheets' : 'chat.doc.card.slides', { n: count.n }) : null, size]
     .filter(Boolean)
     .join(' · ')
 

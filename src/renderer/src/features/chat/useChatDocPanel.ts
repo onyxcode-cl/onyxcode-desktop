@@ -15,6 +15,7 @@ import {
   type ChatDocBlock
 } from '../../lib/chatDocBlocks'
 import { getExtras } from '../../lib/extrasApi'
+import { recordChatDocSize } from '../../lib/chatDocSize'
 import { setChatDocAskHandler, setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { docProblemMessage, reportDocProblem } from '../../lib/report-problems'
 import { sendChatMessage } from './actions'
@@ -170,6 +171,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
           setCreatingDoc(null)
           // Antes se cerraba el panel sin decir nada; main ya anotó el motivo en el registro de problemas.
           if (!res.ok) showProblem(kind, rawText, title, isSlides, { reason: res.reason, detail: res.detail })
+          else recordChatDocSize(kind, rawText, res.bytes)
         })
         .catch((err: unknown) => {
           setCreating(false)
