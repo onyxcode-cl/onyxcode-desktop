@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.24] - 2026-10-15
+
+### Mejoras
+
+- **Barra lateral nueva.** Los cuatro modos (Chat, Code, Overdrive y Rutinas) pasan a una tira de íconos a la izquierda, y al lado queda la lista de conversaciones, sesiones o tareas con «Nueva…», buscar y, en Code, filtros (Todas, Activas, Cambios). En ventanas angostas la lista se pliega sola y queda solo la tira. Ajustes, tema y ayuda quedan abajo.
+- **Code: panel «Cambios» a la derecha.** Muestra los archivos modificados con sus +/−, el detalle de cada cambio, y botones para marcar como revisado o revertir. Cada sesión muestra su estado con un punto de color: trabajando, esperando tu permiso o respuesta, o con cambios por revisar. Con ventanas angostas el panel se acomoda al lado de la conversación sin taparla.
+- **Pulido visual.** Los botones deshabilitados se leen bien en tema claro, el código del diff ya no se parte en varias líneas, los títulos de las sesiones no los pisa el estado, y la lista de Overdrive, las Rutinas y la cabecera de Code quedaron alineadas y ordenadas.
+
+### Arreglos
+
+- Los archivos con tildes, ñ o comillas en el nombre ya aparecen en el panel de cambios.
+- «Revertir todo» ya no se puede pulsar mientras el asistente sigue trabajando.
+
 ## [0.5.23] - 2026-10-14
 
 ### Mejoras
