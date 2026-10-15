@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.29] - 2026-10-15
+
+### Mejoras
+
+- **Overdrive: el progreso ahora avanza de verdad.** La tarjeta «Pensando…» mostraba «Paso 3 de 3» y la barra llena apenas empezabas una petición nueva, porque arrastraba el plan de la tarea anterior; además se quedaba en el paso 1 y saltaba al final. Ahora cada petición empieza desde cero: el título dice lo que está haciendo («Leyendo ventas_marzo.csv»), con el plan muestra «Paso 2 de 5 · 4 acciones · 0:42» y una barra por pasos que avanza de a poco; sin plan muestra contadores reales (acciones, archivos leídos y creados) y la fase en que va, sin inventar porcentajes.
+- **Overdrive: ya no pide controlar tu PC sin necesitarlo.** Al asistente se le indica que para documentos, archivos y búsquedas web no use el ratón ni el teclado, y la tarjeta que avisa que necesita Control total solo aparece si lo dice de forma explícita. Si te pide controlar la pantalla, el botón principal es «No, seguir sin controlar el PC».
+- **Pegar imágenes y archivos en el cuadro de mensaje** (Chat, Code y Overdrive): copiar un archivo en el Finder o el Explorador y pegarlo ahora lo adjunta (hasta 10 archivos, 25 MB cada uno). **Si no funciona en tu equipo, cuéntanos qué copiaste y desde dónde.**
+
 ## [0.5.28] - 2026-10-15
 
 ### Mejoras
