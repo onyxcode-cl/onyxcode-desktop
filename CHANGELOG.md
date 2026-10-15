@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.21] - 2026-10-14
+
+### Mejoras
+
+- **Overdrive ahora funciona con casi todas las IA que usan clave de API.** Hasta ahora, en Overdrive (el modo aislado) solo se podía usar OpenCode Go. Ahora también funcionan OpenAI, Anthropic (Claude), Google (Gemini), DeepSeek, OpenRouter, Mistral, Groq, xAI, Together y muchas más (más de 200 proveedores). Tu clave sigue sin entrar nunca al entorno aislado: la guarda Lazunox fuera y la usa por ti.
+- **Más protección al usar tu clave en Overdrive.** El entorno aislado solo puede conversar con el modelo (no puede tocar archivos, facturación ni claves de tu cuenta del proveedor).
+- **Lo que sigue sin estar en Overdrive:** las IA con inicio de sesión (ChatGPT, GitHub Copilot) y los servicios en la nube (Amazon Bedrock, Azure, Google Vertex). Para esos usa Control total, Chat o Code.
+
 ## [0.5.20] - 2026-10-14
 
 ### Arreglos

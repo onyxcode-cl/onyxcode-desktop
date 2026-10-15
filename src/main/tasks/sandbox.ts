@@ -220,7 +220,14 @@ export async function startTasksServer(folder: string, options: StartTasksServer
       if (prevConfig) {
         try {
           const parsed = JSON.parse(prevConfig) as Record<string, unknown>
-          merged = { ...parsed, provider: { ...(parsed.provider as object | undefined), ...(override.provider as object) } }
+          // Mezcla por proveedor: el override solo pone `options.baseURL`; no pisa modelos ni otras opciones ya definidos para ese id.
+          const prevProviders = (parsed.provider ?? {}) as Record<string, Record<string, unknown>>
+          const providers: Record<string, unknown> = { ...prevProviders }
+          for (const [id, entry] of Object.entries(override.provider as Record<string, { options: Record<string, unknown> }>)) {
+            const prev = prevProviders[id] ?? {}
+            providers[id] = { ...prev, options: { ...((prev.options as object | undefined) ?? {}), ...entry.options } }
+          }
+          merged = { ...parsed, provider: providers }
         } catch {
           merged = override
         }
