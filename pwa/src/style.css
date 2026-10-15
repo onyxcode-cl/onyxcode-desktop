@@ -27,7 +27,7 @@
   --danger: #b52f26;
   --danger-fg: #ffffff;
   --user-bubble: #e8ecf8;
-  --selection: rgb(44 79 216 / 0.18);
+  --selection: #adbdff;
   --scrollbar: #c9cfdc;
   --shadow-color: 222 40% 25%;
   color-scheme: light;
@@ -57,7 +57,7 @@
   --danger: #ff7a6e;
   --danger-fg: #2a0805;
   --user-bubble: #1e2331;
-  --selection: rgb(125 151 255 / 0.28);
+  --selection: #34458f;
   --scrollbar: #2e3342;
   --shadow-color: 228 50% 2%;
   color-scheme: dark;
@@ -87,7 +87,7 @@
     --danger: #ff7a6e;
     --danger-fg: #2a0805;
     --user-bubble: #1e2331;
-    --selection: rgb(125 151 255 / 0.28);
+    --selection: #34458f;
     --scrollbar: #2e3342;
     --shadow-color: 228 50% 2%;
     color-scheme: dark;
