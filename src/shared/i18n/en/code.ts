@@ -325,6 +325,26 @@ export const code = {
   'code.changes.discardUndoFailed': 'Couldn’t undo: {error}',
   'code.changes.discardDismiss': 'Dismiss notice',
   'code.changes.discardRowLabel': 'Discard the changes to {name}',
+  'code.changes.accept': 'Accept',
+  'code.changes.acceptAll': 'Accept all',
+  'code.changes.acceptRow': 'Mark {name} as reviewed',
+  'code.changes.accepted': 'Reviewed',
+  'code.changes.acceptHint': 'Accept only marks it as reviewed: it does not change any file.',
+  'code.changes.pending': { one: '1 to review', other: '{count} to review' },
+  'code.changes.allReviewed': 'All reviewed',
+  'code.changes.revert': 'Revert',
+  'code.changes.revertAll': 'Revert all',
+  'code.changes.revertAllTitle': 'Revert all changes?',
+  'code.changes.revertAllBody': {
+    one: 'The file goes back to its last saved version (commit); if it is new, it moves to the Trash. This also includes anything you changed yourself. Right after, you can use "Undo".',
+    other:
+      'All {count} files go back to their last saved version (commit); new ones move to the Trash. This also includes anything you changed yourself. Right after, you can use "Undo".'
+  },
+  'code.changes.revertSkipped': {
+    one: '1 file that cannot be reverted was skipped.',
+    other: '{count} files that cannot be reverted were skipped.'
+  },
+  'code.changes.reviewActions': 'Actions on all changes',
   'code.changes.discardKeepsStaged': 'Anything already staged is kept: the file goes back to the staged version.',
   'code.changes.discardHunk': 'Discard this block',
   'code.changes.discardHunkTitle': 'Discard this block of {name}?',

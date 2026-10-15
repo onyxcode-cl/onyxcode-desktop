@@ -28,6 +28,7 @@ import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
 import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
+import { deriveSessionState, sessionNeedsReview } from './review-logic'
 import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
@@ -67,6 +68,7 @@ function SessionRow({
   waiting,
   busy,
   unread,
+  needsReview,
   pinned
 }: {
   session: { id: string; title: string; time: { updated: number }; summary?: { additions: number; deletions: number; files: number } }
@@ -76,11 +78,13 @@ function SessionRow({
   waiting: boolean
   busy: boolean
   unread: boolean
+  /** Terminó con cambios que aún no se aceptaron en el panel Cambios. */
+  needsReview: boolean
   pinned: boolean
 }): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
-  const state: SessionState | null = waiting ? 'waiting' : busy ? 'working' : unread ? 'done' : null
+  const state: SessionState | null = deriveSessionState({ waiting, busy, unread, needsReview })
   const [deskMenu, setDeskMenu] = useState(false)
   const menuRoot = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -205,6 +209,7 @@ function SessionRow({
           }}
           onDoubleClick={() => setEditing(true)}
           data-tree-primary={tree ? '' : undefined}
+          title={tree && state ? t(`app.sidebar.state.${state}` as MsgKey) : undefined}
           className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2.5' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
@@ -494,6 +499,7 @@ function ProjectGroup({
   const activeSessionID = useCode((s) => s.activeSessionID)
   const runState = useCode((s) => s.runState)
   const unread = useCode((s) => s.unread)
+  const reviewed = useCode((s) => s.reviewed)
   const pinnedMap = useCode((s) => s.pinned)
   const loading = useCode((s) => s.loadingSessionsByDir[directory] ?? false)
   const moreSessions = useCode((s) => s.moreSessionsByDir[directory] ?? false)
@@ -666,6 +672,7 @@ function ProjectGroup({
                 waiting={waiting.has(s.id)}
                 busy={st === 'busy' || st === 'retry'}
                 unread={!!unread[s.id]}
+                needsReview={sessionNeedsReview(s.summary, reviewed[s.id])}
                 pinned={pinnedIds.has(s.id)}
               />
             </Fragment>
@@ -694,6 +701,7 @@ function ProjectGroup({
                     waiting={false}
                     busy={false}
                     unread={false}
+                    needsReview={false}
                     pinned={false}
                   />
                 ))}
@@ -715,6 +723,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const openDirectories = useCode((s) => s.openDirectories)
   const sessions = useCode((s) => s.sessions)
   const permissions = useCode((s) => s.permissions)
+  const questions = useCode((s) => s.questions)
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const tree = useSidebarTree()
   const desktop = !isRemoteSurface()
@@ -730,8 +739,13 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   )
 
   const waiting = useMemo(
-    () => new Set(Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID))),
-    [permissions, sessions]
+    // Un permiso O una pregunta pendiente bloquean a la sesión (y a la raíz de sus subagentes).
+    () =>
+      new Set([
+        ...Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID)),
+        ...Object.values(questions).map((q) => rootSessionID(sessions, q.sessionID))
+      ]),
+    [permissions, questions, sessions]
   )
 
   if (!directory) {

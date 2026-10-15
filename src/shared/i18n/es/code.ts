@@ -324,6 +324,26 @@ export const code = {
   'code.changes.discardUndoFailed': 'No se pudo deshacer: {error}',
   'code.changes.discardDismiss': 'Cerrar aviso',
   'code.changes.discardRowLabel': 'Descartar los cambios de {name}',
+  'code.changes.accept': 'Aceptar',
+  'code.changes.acceptAll': 'Aceptar todo',
+  'code.changes.acceptRow': 'Marcar {name} como revisado',
+  'code.changes.accepted': 'Revisado',
+  'code.changes.acceptHint': 'Aceptar solo marca como revisado: no cambia ningún archivo.',
+  'code.changes.pending': { one: '1 por revisar', other: '{count} por revisar' },
+  'code.changes.allReviewed': 'Todo revisado',
+  'code.changes.revert': 'Revertir',
+  'code.changes.revertAll': 'Revertir todo',
+  'code.changes.revertAllTitle': '¿Revertir todos los cambios?',
+  'code.changes.revertAllBody': {
+    one: 'El archivo vuelve a su última versión guardada (commit); si es nuevo, va a la Papelera. Incluye también lo que hayas cambiado tú. Justo después podrás usar «Deshacer».',
+    other:
+      'Los {count} archivos vuelven a su última versión guardada (commit); los nuevos van a la Papelera. Incluye también lo que hayas cambiado tú. Justo después podrás usar «Deshacer».'
+  },
+  'code.changes.revertSkipped': {
+    one: 'Se omitió 1 archivo que no se puede revertir.',
+    other: 'Se omitieron {count} archivos que no se pueden revertir.'
+  },
+  'code.changes.reviewActions': 'Acciones sobre todos los cambios',
   'code.changes.discardKeepsStaged': 'Lo que ya está preparado se conserva: el archivo vuelve a la versión preparada.',
   'code.changes.discardHunk': 'Descartar este bloque',
   'code.changes.discardHunkTitle': '¿Descartar este bloque de {name}?',

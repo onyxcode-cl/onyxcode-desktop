@@ -12,9 +12,11 @@ export function SidebarTree({ children, onClickCapture }: { children: React.Reac
           ? `${title} · ${t('app.sidebar.state.waiting')}`
           : state === 'working'
             ? `${title} · ${t('app.sidebar.state.working')}`
-            : state === 'done'
-              ? `${title} · ${t('app.sidebar.state.done')}`
-              : undefined,
+            : state === 'review'
+              ? `${title} · ${t('app.sidebar.state.review')}`
+              : state === 'done'
+                ? `${title} · ${t('app.sidebar.state.done')}`
+                : undefined,
       treeLabel: t('app.sidebar.tree')
     }),
     [t]

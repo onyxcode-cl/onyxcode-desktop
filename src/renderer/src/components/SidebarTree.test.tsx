@@ -56,7 +56,7 @@ describe('SidebarTree', () => {
   })
 
   it('el punto de estado es decorativo, de 7 px y usa solo tokens', () => {
-    const cases = { waiting: 'bg-warning', working: 'bg-accent', done: 'bg-success' } as const
+    const cases = { waiting: 'bg-warning', working: 'bg-accent', review: 'border-accent', done: 'bg-success' } as const
     for (const [state, token] of Object.entries(cases)) {
       const html = renderToStaticMarkup(createElement(StateDot, { state: state as keyof typeof cases }))
       expect(html).toContain('aria-hidden="true"')
