@@ -61,6 +61,8 @@ import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
 import type { RightPanel } from './types'
+import { panelLayout } from './review-logic'
+import { sharedFullDiff } from './full-diff'
 import { Tip } from './ui'
 import { hintText, useEffectiveBindings } from '../../../keybindings/bindings'
 
@@ -157,13 +159,32 @@ function useBrowserTabTitle(directory: string): string {
   return title ?? t('code.panel.browser')
 }
 
-function SidePanels({ directory }: { directory: string }): React.JSX.Element | null {
+/** Ancho (px) del elemento (ref de callback: el elemento puede montarse más tarde), al día con `ResizeObserver`. 0 hasta la primera medida. */
+function useElementWidth(): [(el: HTMLDivElement | null) => void, number] {
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  const [w, setW] = useState(0)
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const sync = (): void => setW((prev) => (Math.round(el.clientWidth) === prev ? prev : Math.round(el.clientWidth)))
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [el])
+  return [setEl, w]
+}
+
+function SidePanels({ directory, containerWidth }: { directory: string; containerWidth: number }): React.JSX.Element | null {
   const bindings = useEffectiveBindings()
   const t = useT()
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const branch = useBranch(directory)
   const [width, setWidth] = useState(readWidth)
+  // «Cambios» va fijo a la derecha mientras el centro conserve ~36 rem; con menos espacio va lado a lado (≤ 26 rem) o, si ni así caben dos mitades útiles, cubre toda el área
+  // (nunca tapa la conversación a medias). Los demás paneles conservan su regla de siempre (el chat nunca baja de 22 rem).
+  const layout = panel === 'changes' ? panelLayout(containerWidth, width) : null
+  const full = layout?.mode === 'full'
   // La terminal se mantiene montada tras abrirse para conservar el shell; el navegador igual,
   // para no perder pestañas/sesión al ocultar el panel.
   const [terminalMounted, setTerminalMounted] = useState(panel === 'terminal')
@@ -184,7 +205,7 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
 
   const dragging = useRef<{ x: number; w: number } | null>(null)
   const onPointerDown = (e: React.PointerEvent): void => {
-    dragging.current = { x: e.clientX, w: width }
+    dragging.current = { x: e.clientX, w: layout ? layout.width : width }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
   const onPointerMove = (e: React.PointerEvent): void => {
@@ -208,9 +229,12 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
   if (!panel && !terminalMounted && !browserMounted) return null
   return (
     <div
-      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
+      className={`${full ? 'absolute inset-0 z-30' : 'relative'} desk:@container flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
+      data-panel-layout={layout?.mode}
+      role={panel ? 'complementary' : undefined}
+      aria-label={panel ? t(PANEL_LABEL[panel]) : undefined}
       // El chat conserva siempre 22 rem: con la ventana estrecha el panel cede espacio (antes lo aplastaba y la caja de entrada se deformaba).
-      style={{ width, maxWidth: 'calc(100% - 22rem)' }}
+      style={layout ? { width: layout.width, maxWidth: full ? '100%' : undefined } : { width, maxWidth: 'calc(100% - 22rem)' }}
     >
       <div
         onPointerDown={onPointerDown}
@@ -225,9 +249,16 @@ function SidePanels({ directory }: { directory: string }): React.JSX.Element | n
             <button
               type="button"
               onClick={() => p !== panel && togglePanel(p)}
+              aria-label={p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
               className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:whitespace-nowrap desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
-              <span className="inline-block max-w-32 truncate align-bottom">{p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}</span>
+              {/* Panel estrecho (< 28 rem): solo el icono (el nombre sigue en el tooltip y en aria-label); ancho: solo el texto, como siempre. */}
+              <span aria-hidden className="hidden desk:@max-[28rem]:inline-flex desk:@max-[28rem]:align-middle">
+                {ALL_PANELS.find((x) => x.id === p)?.icon}
+              </span>
+              <span className="inline-block max-w-32 truncate align-bottom desk:@max-[28rem]:hidden">
+                {p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
+              </span>
               {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
                 <span
                   aria-hidden
@@ -462,8 +493,8 @@ function useChangeStats(directory: string, changes: number): { additions: number
       return
     }
     let cancelled = false
-    void native.git
-      .diff({ cwd: directory })
+    // El mismo diff que pide el panel Cambios (misma carpeta y versión del disco): una sola llamada.
+    void sharedFullDiff(directory, fsVersion, () => native.git.diff({ cwd: directory }))
       .then((patch) => {
         if (cancelled) return
         setStats(patch.length > STATS_MAX_CHARS ? null : diffStats(patch))
@@ -545,7 +576,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (
-        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex desk:@max-[32rem]:hidden">
+        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex desk:@max-[16rem]:hidden">
           <span className="text-subtle">/</span>
           <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
         </span>
@@ -588,27 +619,32 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
             </Tip>
           </span>
         )}
-        <span className="mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden" />
-        {PANEL_META.map((p) => (
-          <Tip
-            key={p.id}
-            label={t(p.label)}
-            shortcut={hintText(bindings[`code.panel.${p.id}`])}
-            align={p.id === 'browser' ? 'end' : 'center'}
-          >
-            <button
-              type="button"
-              aria-label={t(p.label)}
-              aria-pressed={panel === p.id}
-              onClick={() => togglePanel(p.id)}
-              className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+        <span
+          className={panel ? 'mx-0.5 h-5 w-px bg-border desk:@max-[48rem]:hidden' : 'mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden'}
+        />
+        {/* Con un panel abierto y la barra estrecha, sus pestañas ya están en el panel: se ocultan aquí y el título de la sesión cabe. */}
+        <span className={panel ? 'contents desk:@max-[48rem]:hidden' : 'contents'}>
+          {PANEL_META.map((p) => (
+            <Tip
+              key={p.id}
+              label={t(p.label)}
+              shortcut={hintText(bindings[`code.panel.${p.id}`])}
+              align={p.id === 'browser' ? 'end' : 'center'}
             >
-              {p.icon}
-              {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
-              <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
-            </button>
-          </Tip>
-        ))}
+              <button
+                type="button"
+                aria-label={t(p.label)}
+                aria-pressed={panel === p.id}
+                onClick={() => togglePanel(p.id)}
+                className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              >
+                {p.icon}
+                {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
+                <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
+              </button>
+            </Tip>
+          ))}
+        </span>
       </div>
     </div>
   )
@@ -859,6 +895,7 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     void openProjectTrusted(dir)
   }, [client])
 
+  const [rootRef, containerWidth] = useElementWidth()
   const projectPickerOpen = useCode((s) => s.projectPickerOpen)
   const hideProjectPicker = useCode((s) => s.hideProjectPicker)
 
@@ -903,7 +940,7 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     )
 
   return (
-    <div className="flex h-full min-h-0 w-full bg-bg text-fg">
+    <div ref={rootRef} className="relative flex h-full min-h-0 w-full bg-bg text-fg">
       <TrustGate />
       {showSessionList && (
         <div className="flex w-60 shrink-0 flex-col border-r border-border bg-sidebar pt-2">
@@ -911,7 +948,7 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
         </div>
       )}
       <ChatColumn directory={directory} />
-      <SidePanels directory={directory} />
+      <SidePanels directory={directory} containerWidth={containerWidth - (showSessionList ? 240 : 0)} />
     </div>
   )
 }

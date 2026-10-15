@@ -171,6 +171,9 @@ export interface GitCommitResult {
 }
 
 /** Resultado de descartar cambios de archivos concretos (operación destructiva: ver `git/service.ts`). */
+/** Tope de archivos por llamada a `git:discard` (lo comprueba main; la interfaz desactiva «Revertir todo» por encima). */
+export const GIT_MAX_DISCARD_FILES = 200
+
 export interface GitDiscardResult {
   /** Archivos con seguimiento devueltos al estado de HEAD. */
   restored: string[]

@@ -4,9 +4,11 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { t as tg, type MsgKey } from '@shared/i18n'
-import type { GitBranch as GitBranchInfo, GitChangeKind, GitWorktreeDetailed } from '@shared/ipc-code'
+import { GIT_MAX_DISCARD_FILES } from '@shared/ipc-code'
+import type { GitBranch as GitBranchInfo, GitChangeKind, GitDiscardResult, GitWorktreeDetailed } from '@shared/ipc-code'
 import {
   Check,
+  CheckCheck,
   ChevronLeft,
   ChevronRight,
   Code2,
@@ -23,6 +25,7 @@ import {
   X
 } from 'lucide-react'
 import { IconButton } from '../../../../components/IconButton'
+import { Button } from '../../../../components/Button'
 import { splitPath } from '../../../../lib/paths'
 import { useT } from '../../../../lib/i18n'
 import { isRemoteSurface, platformCaps } from '../../../../lib/platform'
@@ -30,15 +33,29 @@ import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
 import { DiffStats } from '../ToolCard'
 import { useCode } from '../store'
+import { sameDir } from '../open-projects'
 import { useVisibleFsVersion } from '../useVisibleFsVersion'
 import { openProjectTrusted } from '../trust'
 import { isImeComposing } from '../../../../lib/textarea'
-import { ConfirmButton, Kbd, MOD } from '../ui'
+import { ConfirmButton, MOD } from '../ui'
 import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
 import { abbreviatePath, displayPath } from '../mobile-logic'
 import { useProjectWatch } from './useProjectWatch'
+import { sharedFullDiff } from '../full-diff'
 import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
+import {
+  acceptEntries,
+  acceptFilesIn,
+  isAccepted,
+  pendingPaths,
+  splitPatchByFile,
+  summarySignature,
+  type FileDiffInfo
+} from '../review-logic'
+
+/** Igual que la barra sobre la caja de entrada: un diff mayor que esto no se trocea (solo se pierden los +/− por fila). */
+const ALL_DIFF_MAX_CHARS = 4_000_000
 
 interface ChangedFile {
   path: string
@@ -138,7 +155,10 @@ function FileRow({
   staged,
   selected,
   onSelect,
-  onDiscard
+  onDiscard,
+  stat,
+  accepted,
+  onAccept
 }: {
   file: ChangedFile
   directory: string
@@ -146,6 +166,12 @@ function FileRow({
   selected: boolean
   onSelect: () => void
   onDiscard?: () => void
+  /** +/− de este archivo (escritorio). */
+  stat?: { additions: number; deletions: number }
+  /** Ya revisado con su contenido actual. */
+  accepted?: boolean
+  /** Marcar como revisado (escritorio, solo con sesión activa). */
+  onAccept?: () => void
 }): React.JSX.Element {
   const t = useT()
   const meta = KIND_META[file.kind] ?? KIND_META.modified
@@ -180,6 +206,7 @@ function FileRow({
       </div>
     )
   }
+  const hasActions = !!onDiscard || (!!onAccept && !accepted)
   return (
     <div
       className={`group relative flex items-center desk:h-8 desk:rounded-ctl desk:mx-1 ${selected ? 'bg-active desk:font-medium' : 'hover:bg-hover'}`}
@@ -195,20 +222,45 @@ function FileRow({
         >
           {meta.letter}
         </span>
-        <span className="min-w-0 truncate">
+        <span className={`min-w-0 truncate ${accepted ? 'opacity-60' : ''}`}>
           <span className={file.kind === 'deleted' ? 'text-muted line-through' : 'text-fg'}>{name}</span>
           {dir && <span className="ml-1.5 text-xs text-subtle">{dir}</span>}
         </span>
       </button>
-      {onDiscard && (
-        <IconButton
-          label={t('code.changes.discardRowLabel', { name })}
-          onClick={onDiscard}
-          className="mr-1 h-6 w-6 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
-        >
-          <Undo2 size={13} />
-        </IconButton>
-      )}
+      {/* Derecha: +/− (o «revisado») y, al pasar el ratón o enfocar, las acciones encima (sin reservar hueco ni salir del foco de teclado). */}
+      <span className={`relative flex h-full shrink-0 items-center justify-end desk:pr-2.5 ${hasActions ? 'min-w-14' : ''}`}>
+        {((stat && stat.additions + stat.deletions > 0) || accepted) && (
+          <span
+            className={`flex items-center gap-1.5 font-mono text-[11px] tabular-nums ${hasActions ? 'group-focus-within:opacity-0 group-hover:opacity-0' : ''}`}
+          >
+            {/* Solo el lado que no es 0 (archivo nuevo: «+3»; binario o cambio de modo: nada). */}
+            {stat && stat.additions > 0 && <span className="text-success">+{stat.additions}</span>}
+            {stat && stat.deletions > 0 && <span className="text-danger">−{stat.deletions}</span>}
+            {accepted && (
+              <>
+                <Check size={12} aria-hidden className="text-success" />
+                <span className="sr-only">{t('code.changes.accepted')}</span>
+              </>
+            )}
+          </span>
+        )}
+        {hasActions && (
+          <span
+            className={`absolute inset-y-0 right-0 flex items-center rounded-ctl opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 desk:pr-1 ${selected ? 'bg-active' : 'bg-hover'}`}
+          >
+            {onAccept && !accepted && (
+              <IconButton label={t('code.changes.acceptRow', { name })} onClick={onAccept} className="h-6 w-6 hover:text-success">
+                <Check size={13} />
+              </IconButton>
+            )}
+            {onDiscard && (
+              <IconButton label={t('code.changes.discardRowLabel', { name })} onClick={onDiscard} className="h-6 w-6 hover:text-danger">
+                <Undo2 size={13} />
+              </IconButton>
+            )}
+          </span>
+        )}
+      </span>
     </div>
   )
 }
@@ -322,11 +374,6 @@ function CommitBox({
           {willCommit > 0 ? ` (${willCommit})` : ''}
         </button>
       </div>
-      {!isRemoteSurface() && (
-        <div className="mt-1 text-right text-[10px] text-subtle">
-          <Kbd>{MOD}↵</Kbd>
-        </div>
-      )}
     </div>
   )
 }
@@ -597,6 +644,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   // Cambios hechos fuera de la app (editor, terminal): el vigilante sube `fsVersion` con debounce, sin polling.
   useProjectWatch(directory)
   const [status, setStatus] = useState<StatusInfo | null>(null)
+  /** Carpeta a la que corresponde `status` (al cambiar de proyecto, el anterior sigue a la vista hasta que llega el nuevo). */
+  const [statusDir, setStatusDir] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Selection | null>(null)
@@ -605,6 +654,16 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const [diffError, setDiffError] = useState<string | null>(null)
   const [dialog, setDialog] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'error'; undoId?: string } | null>(null)
+  // Revisión («Aceptar»): estado de interfaz por sesión, no toca el disco. Solo escritorio y con una sesión activa.
+  const sessionID = useCode((s) => s.activeSessionID)
+  const record = useCode((s) => (sessionID ? s.reviewed[sessionID] : undefined))
+  const summary = useCode((s) => (sessionID ? s.sessions[sessionID]?.summary : undefined))
+  const acceptFiles = useCode((s) => s.acceptFiles)
+  const acceptSession = useCode((s) => s.acceptSession)
+  const sessionDir = useCode((s) => (sessionID ? s.sessionProject[sessionID] : undefined))
+  const sessionBusy = useCode((s) => (sessionID ? s.runState[sessionID] === 'busy' || s.runState[sessionID] === 'retry' : false))
+  const canReview = !mobile && !!sessionID
+  const [infos, setInfos] = useState<Map<string, FileDiffInfo>>(() => new Map())
 
   const refreshGen = useRef(0)
   const refresh = useCallback(async () => {
@@ -614,6 +673,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
       const next = await loadStatus(directory)
       if (gen !== refreshGen.current) return
       setStatus(next)
+      setStatusDir(directory)
       setError(null)
     } catch (err) {
       if (gen === refreshGen.current) setError(errorMessage(err))
@@ -625,6 +685,49 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   useEffect(() => {
     void refresh()
   }, [refresh, fsVersion])
+
+  // +/− y huella de cada archivo, de UN solo `git diff`, compartido con la barra sobre la caja de entrada (`sharedFullDiff`).
+  const fileCount = status?.files.length ?? 0
+  useEffect(() => {
+    if (mobile || !native || fileCount === 0) {
+      setInfos((prev) => (prev.size ? new Map() : prev))
+      return
+    }
+    let cancelled = false
+    void sharedFullDiff(directory, fsVersion, () => native.git.diff({ cwd: directory }))
+      .then((patch) => !cancelled && setInfos(patch.length > ALL_DIFF_MAX_CHARS ? new Map() : splitPatchByFile(patch)))
+      .catch(() => !cancelled && setInfos(new Map()))
+    return () => {
+      cancelled = true
+    }
+    // `native` es estable por ventana; el diff se vuelve a pedir cuando cambian los archivos.
+  }, [directory, fsVersion, fileCount, mobile]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sin archivos cambiados (commit por terminal, «Revertir todo», nada que mirar): la sesión activa deja de estar «por
+  // revisar». Si no, el punto se quedaba para siempre, porque «Aceptar todo» solo aparece con archivos.
+  const sig = summarySignature(summary)
+  const cleanNow = !!status && status.isRepo && status.files.length === 0 && statusDir === directory && !error
+  useEffect(() => {
+    if (mobile || !sessionID || !cleanNow || sig === null || record?.sig === sig) return
+    if (sessionDir && !sameDir(sessionDir, directory)) return
+    acceptSession(sessionID, sig, {})
+  }, [mobile, sessionID, cleanNow, sig, record?.sig, sessionDir, directory, acceptSession])
+
+  const allPaths = useMemo(() => status?.files.map((f) => f.path) ?? [], [status])
+  const pending = useMemo(() => pendingPaths(allPaths, record, infos), [allPaths, record, infos])
+  const acceptable = useMemo(() => Object.keys(acceptEntries(pending, infos)).length, [pending, infos])
+
+  /** Aceptar archivos concretos; si con eso no queda nada pendiente, la sesión entera deja de marcarse «por revisar». */
+  const accept = (paths: string[]): void => {
+    if (!sessionID) return
+    const entries = acceptEntries(paths, infos)
+    if (!Object.keys(entries).length) return
+    const rest = pendingPaths(allPaths, acceptFilesIn(record, entries), infos)
+    if (rest.length === 0) acceptSession(sessionID, summarySignature(summary), entries)
+    else acceptFiles(sessionID, entries)
+  }
+  /** «Aceptar todo»: igual que aceptar cada pendiente; la sesión solo pasa a «revisada» si de verdad no queda ninguno. */
+  const acceptAll = (): void => accept(pending)
 
   const staged = useMemo(() => status?.files.filter((f) => f.staged) ?? [], [status])
   const unstaged = useMemo(() => status?.files.filter((f) => f.unstaged || !f.staged) ?? [], [status])
@@ -668,12 +771,46 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     if (!ok) return
     try {
       const res = await native.git.discard(directory, [file.path], scope)
-      const parts: string[] = []
-      if (res.restored.length) parts.push(t('code.changes.discardRestored', { count: res.restored.length }))
-      if (res.trashed.length) parts.push(t('code.changes.discardTrashed', { count: res.trashed.length }))
-      if (res.failed.length) parts.push(t('code.changes.discardFailed', { error: res.failed.map((f) => f.reason).join(' ') }))
-      setNotice({ text: parts.join(' '), tone: res.failed.length ? 'error' : 'ok', undoId: res.undoId ?? undefined })
+      setNotice(discardNotice(res))
       if (selected?.path === file.path) setSelected(null)
+    } catch (err) {
+      setNotice({ text: t('code.changes.discardFailed', { error: errorMessage(err) }), tone: 'error' })
+    }
+    touchFs()
+    void refresh()
+  }
+
+  const discardNotice = (res: GitDiscardResult, skipped = 0): { text: string; tone: 'ok' | 'error'; undoId?: string } => {
+    const parts: string[] = []
+    if (res.restored.length) parts.push(t('code.changes.discardRestored', { count: res.restored.length }))
+    if (res.trashed.length) parts.push(t('code.changes.discardTrashed', { count: res.trashed.length }))
+    if (res.failed.length) parts.push(t('code.changes.discardFailed', { error: res.failed.map((f) => f.reason).join(' ') }))
+    if (skipped > 0) parts.push(t('code.changes.revertSkipped', { count: skipped }))
+    return { text: parts.join(' '), tone: res.failed.length ? 'error' : 'ok', undoId: res.undoId ?? undefined }
+  }
+
+  /** «Revertir todo»: lo mismo que descartar cada archivo (mismo mecanismo, con «Deshacer»), en una sola confirmación. */
+  const revertAll = async (): Promise<void> => {
+    if (!native || !status) return
+    const targets = status.files.filter(canDiscard)
+    if (targets.length === 0) return
+    const shown = targets.slice(0, 12).map((f) => `• ${f.path}`)
+    if (targets.length > shown.length) shown.push(`• …(+${targets.length - shown.length})`)
+    const ok = await confirmDialog({
+      title: t('code.changes.revertAllTitle'),
+      message: `${t('code.changes.revertAllBody', { count: targets.length })}\n\n${t('code.changes.discardAffects')}\n${shown.join('\n')}`,
+      confirmLabel: t('code.changes.revertAll'),
+      danger: true
+    })
+    if (!ok) return
+    try {
+      const res = await native.git.discard(
+        directory,
+        targets.map((f) => f.path),
+        'all'
+      )
+      setNotice(discardNotice(res, status.files.length - targets.length))
+      setSelected(null)
     } catch (err) {
       setNotice({ text: t('code.changes.discardFailed', { error: errorMessage(err) }), tone: 'error' })
     }
@@ -719,7 +856,23 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     void refresh()
   }
 
+  const rowReview = (f: ChangedFile): { stat?: { additions: number; deletions: number }; accepted?: boolean; onAccept?: () => void } => {
+    if (mobile) return {}
+    const info = infos.get(f.path)
+    return {
+      stat: info ? { additions: info.additions, deletions: info.deletions } : undefined,
+      accepted: canReview && isAccepted(record, f.path, info?.fingerprint),
+      onAccept: canReview && info ? () => accept([f.path]) : undefined
+    }
+  }
+
   const stats = useMemo(() => (diff ? diffStats(diff) : null), [diff])
+  // «Revertir todo» no se ofrece mientras el agente escribe (se pisarían) ni por encima del tope de main (fallaría entero).
+  const revertBlocked = sessionBusy
+    ? t('code.changes.revertAllBusy')
+    : (status?.files.filter(canDiscard).length ?? 0) > GIT_MAX_DISCARD_FILES
+      ? t('code.changes.revertAllTooMany', { max: GIT_MAX_DISCARD_FILES })
+      : null
   const abs = selectedFile ? `${directory.replace(/[/\\]+$/, '')}/${selectedFile.path}` : ''
 
   if (status && !status.isRepo) {
@@ -782,6 +935,48 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         </div>
       )}
 
+      {!mobile && native && status && status.files.length > 0 && (
+        <div
+          role="group"
+          aria-label={t('code.changes.reviewActions')}
+          className="flex shrink-0 flex-nowrap items-center gap-2 border-b border-border px-3 py-1.5"
+        >
+          <span className="min-w-0 flex-1 basis-24 truncate text-meta text-muted" title={t('code.changes.acceptHint')}>
+            {canReview ? (pending.length > 0 ? t('code.changes.pending', { count: pending.length }) : t('code.changes.allReviewed')) : ''}
+          </span>
+          {canReview && (
+            <Button
+              size="xs"
+              variant="secondary"
+              className="shrink-0 whitespace-nowrap"
+              // Sin diff conocido de ningún pendiente (cargando, con error o enorme) todavía no hay nada que aceptar.
+              disabled={acceptable === 0}
+              onClick={acceptAll}
+              aria-label={t('code.changes.acceptAll')}
+              title={`${t('code.changes.acceptAll')}. ${t('code.changes.acceptHint')}`}
+            >
+              <CheckCheck size={12} aria-hidden />
+              <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.acceptAll')}</span>
+            </Button>
+          )}
+          {/* Envoltorio con el tooltip: un botón desactivado no recibe el ratón y no mostraría por qué. */}
+          <span className="flex shrink-0" title={revertBlocked ?? t('code.changes.revertAll')}>
+            <Button
+              size="xs"
+              variant="ghost"
+              className="shrink-0 whitespace-nowrap hover:text-danger"
+              disabled={revertBlocked !== null || !status.files.some(canDiscard)}
+              onClick={() => void revertAll()}
+              aria-label={t('code.changes.revertAll')}
+              aria-description={revertBlocked ?? undefined}
+            >
+              <Undo2 size={12} aria-hidden />
+              <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.revertAll')}</span>
+            </Button>
+          </span>
+        </div>
+      )}
+
       {status && status.files.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-6 text-center">
           <Check size={20} className="text-success" />
@@ -808,6 +1003,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       staged
                       selected={selected?.path === f.path && selected.staged}
                       onDiscard={native && canDiscard(f) ? () => void discard(f, 'all') : undefined}
+                      {...rowReview(f)}
                       onSelect={() => setSelected(selected?.path === f.path && selected.staged ? null : { path: f.path, staged: true })}
                     />
                   ))}
@@ -823,6 +1019,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       staged={false}
                       selected={selected?.path === f.path && !selected.staged}
                       onDiscard={native && canDiscard(f) ? () => void discard(f, 'unstaged') : undefined}
+                      {...rowReview(f)}
                       onSelect={() => setSelected(selected?.path === f.path && !selected.staged ? null : { path: f.path, staged: false })}
                     />
                   ))}
@@ -869,24 +1066,49 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 </div>
               )}
               {selectedFile && !mobile && (
-                <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5 desk:h-10 desk:px-4">
-                  <span className="min-w-0 truncate font-mono text-xs" title={selectedFile.path}>
-                    {(() => {
-                      const { dir, name } = splitPath(selectedFile.path)
-                      return (
-                        <>
-                          {dir && <span className="text-muted">{dir.replace(/[/\\]+$/, '')}/</span>}
-                          <span className="font-semibold text-fg">{name}</span>
-                        </>
-                      )
-                    })()}
-                  </span>
-                  {stats && (
-                    <span className="shrink-0 font-mono text-xs tabular-nums">
-                      <span className="text-success">+{stats.additions}</span> <span className="text-danger">−{stats.deletions}</span>
+                // Panel estrecho: las acciones bajan a una segunda fila y el nombre conserva todo el ancho (antes los iconos se lo comían).
+                <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5 desk:min-h-10 desk:px-4">
+                  <span className="flex min-w-0 flex-1 basis-44 items-center gap-2">
+                    <span className="flex min-w-0 font-mono text-xs" title={selectedFile.path}>
+                      {(() => {
+                        const { dir, name } = splitPath(selectedFile.path)
+                        return (
+                          <>
+                            {/* Si no cabe, se acorta la carpeta antes que el nombre. */}
+                            {dir && <span className="min-w-0 truncate text-muted">{dir.replace(/[/\\]+$/, '')}/</span>}
+                            <span className="max-w-full shrink-0 truncate font-semibold text-fg">{name}</span>
+                          </>
+                        )
+                      })()}
                     </span>
-                  )}
+                    {stats && (
+                      <span className="flex shrink-0 gap-1.5 font-mono text-xs tabular-nums">
+                        {stats.additions > 0 && <span className="text-success">+{stats.additions}</span>}
+                        {stats.deletions > 0 && <span className="text-danger">−{stats.deletions}</span>}
+                      </span>
+                    )}
+                  </span>
                   <span className="ml-auto flex shrink-0 items-center">
+                    {canReview && (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        className="mr-1"
+                        disabled={
+                          isAccepted(record, selectedFile.path, infos.get(selectedFile.path)?.fingerprint) || !infos.has(selectedFile.path)
+                        }
+                        title={t('code.changes.acceptHint')}
+                        aria-label={t('code.changes.accept')}
+                        onClick={() => accept([selectedFile.path])}
+                      >
+                        <Check size={12} aria-hidden />
+                        <span className="whitespace-nowrap desk:@max-[30rem]:hidden">
+                          {isAccepted(record, selectedFile.path, infos.get(selectedFile.path)?.fingerprint)
+                            ? t('code.changes.accepted')
+                            : t('code.changes.accept')}
+                        </span>
+                      </Button>
+                    )}
                     {native && (
                       <>
                         {dialogs && (
@@ -908,13 +1130,17 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                           </>
                         )}
                         {canDiscard(selectedFile) && (
-                          <IconButton
-                            label={t('code.changes.discard')}
-                            className="h-6 w-6 hover:text-danger"
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            className="hover:text-danger"
+                            aria-label={t('code.changes.discard')}
+                            title={t('code.changes.discard')}
                             onClick={() => void discard(selectedFile, selStaged ? 'all' : 'unstaged')}
                           >
-                            <Undo2 size={13} />
-                          </IconButton>
+                            <Undo2 size={12} aria-hidden />
+                            <span className="hidden desk:@min-[30rem]:inline">{t('code.changes.revert')}</span>
+                          </Button>
                         )}
                       </>
                     )}

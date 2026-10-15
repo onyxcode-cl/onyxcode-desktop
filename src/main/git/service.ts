@@ -21,6 +21,7 @@ import {
 import { samePath } from '../util/paths'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { splitDiffHunks, isSingleFileDiff } from '@shared/diff-hunks'
+import { GIT_MAX_DISCARD_FILES } from '@shared/ipc-code'
 import type {
   GitBranch,
   GitChangeKind,
@@ -66,7 +67,9 @@ function run(cwd: string, args: string[], opts: RunOptions = {}): Promise<RunRes
   return new Promise((resolvePromise, reject) => {
     const child = execFile(
       'git',
-      args,
+      // `core.quotepath=off`: rutas no ASCII tal cual en diff/status sin `-z` (si no, git las cita con escapes octales y el
+      // panel Cambios no las casa con las de `status -z`), como en `compare/git.ts`.
+      ['-c', 'core.quotepath=off', ...args],
       {
         cwd,
         shell: false,
@@ -546,7 +549,7 @@ export interface DiscardDeps {
   backupDir: string
 }
 
-export const MAX_DISCARD_FILES = 200
+export const MAX_DISCARD_FILES = GIT_MAX_DISCARD_FILES
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024
 const BACKUP_TTL_MS = 7 * 24 * 3600 * 1000
 

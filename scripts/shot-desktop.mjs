@@ -57,6 +57,8 @@ const SCENARIOS = [
   'barra-chat',
   'barra-code',
   'barra-code-hover',
+  'code-cambios',
+  'code-cambios-archivo',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
@@ -588,6 +590,8 @@ async function seedCode(ctx) {
   await fake.script({
     match: 'agrega el IVA',
     title: 'Agregar IVA al carrito',
+    // Resumen de cambios de la sesión: la lista de Code la marca «por revisar» hasta que se aceptan en el panel Cambios.
+    summary: { files: 2, additions: 12, deletions: 2 },
     steps: [
       { type: 'text', text: 'Voy a **leer** el módulo y aplicar el IVA al total.' },
       {
@@ -805,6 +809,16 @@ const S = {
   async 'code-diff'(ctx) {
     await seedCode(ctx)
     await togglePanel(ctx.page, 'Cambios')
+  },
+  // Espacio de trabajo de Code: lista con estados por sesión + conversación + panel «Cambios» fijo a la derecha (o en superposición si no cabe).
+  async 'code-cambios'(ctx) {
+    await S['barra-code'](ctx)
+    await togglePanel(ctx.page, 'Cambios')
+  },
+  async 'code-cambios-archivo'(ctx) {
+    await S['code-cambios'](ctx)
+    await ctx.page.getByRole('complementary').getByText('carrito.ts').first().click()
+    await sleep(900)
   },
   async 'code-terminal'(ctx) {
     await seedCode(ctx)
@@ -1170,7 +1184,7 @@ const S = {
       }
       await ask('Instala las dependencias del proyecto')
       await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
-      await rename(page.getByRole('treeitem', { name: /esperando aprobación/ }), 'Instalar dependencias')
+      await rename(page.getByRole('treeitem', { name: /esperando/ }), 'Instalar dependencias')
       await ask('Prepara el informe de cobertura')
       await sleep(1500)
       await rename(page.getByRole('treeitem', { name: /trabajando/ }), 'Preparar informe de cobertura')

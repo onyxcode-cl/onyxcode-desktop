@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import {
   Archive,
   ArchiveRestore,
+  CheckCheck,
   ChevronDown,
   Circle,
   FolderOpen,
@@ -28,6 +29,7 @@ import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
 import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
+import { deriveSessionState, legacyBaseline, sessionNeedsReview, summarySignature } from './review-logic'
 import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
@@ -67,6 +69,7 @@ function SessionRow({
   waiting,
   busy,
   unread,
+  needsReview,
   pinned
 }: {
   session: { id: string; title: string; time: { updated: number }; summary?: { additions: number; deletions: number; files: number } }
@@ -76,11 +79,13 @@ function SessionRow({
   waiting: boolean
   busy: boolean
   unread: boolean
+  /** Terminó con cambios que aún no se aceptaron en el panel Cambios. */
+  needsReview: boolean
   pinned: boolean
 }): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
-  const state: SessionState | null = waiting ? 'waiting' : busy ? 'working' : unread ? 'done' : null
+  const state: SessionState | null = deriveSessionState({ waiting, busy, unread, needsReview })
   const [deskMenu, setDeskMenu] = useState(false)
   const menuRoot = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -90,6 +95,7 @@ function SessionRow({
   const togglePin = useCode((s) => s.togglePin)
   const archiveSession = useCode((s) => s.archiveSession)
   const unarchiveSession = useCode((s) => s.unarchiveSession)
+  const acceptSession = useCode((s) => s.acceptSession)
   const archived = !!(session as { time?: { archived?: number } }).time && !!(session as { time?: { archived?: number } }).time?.archived
   const [editing, setEditing] = useState(false)
   // Celular: tocar abre la conversación; renombrar/fijar/archivar/eliminar salen de un menú «⋯» (sin hover ni doble clic).
@@ -205,6 +211,9 @@ function SessionRow({
           }}
           onDoubleClick={() => setEditing(true)}
           data-tree-primary={tree ? '' : undefined}
+          title={
+            tree && state ? (state === 'review' ? t('code.sessions.reviewTip') : t(`app.sidebar.state.${state}` as MsgKey)) : undefined
+          }
           className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2.5' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
@@ -338,6 +347,11 @@ function SessionRow({
               onKeyDown={onMenuKey}
               className="absolute top-full right-0 z-30 mt-1 w-52 rounded-card bg-elevated p-1 shadow-pop"
             >
+              {needsReview &&
+                menuItem(<CheckCheck size={14} strokeWidth={1.75} />, t('code.sessions.markReviewed'), () =>
+                  // Solo estado de interfaz: no toca archivos ni git (como «Aceptar todo» del panel Cambios).
+                  acceptSession(session.id, summarySignature(session.summary), {})
+                )}
               {menuItem(<Pin size={14} strokeWidth={1.75} />, pinned ? t('code.sessions.unpin') : t('code.sessions.pin'), () =>
                 togglePin(session.id)
               )}
@@ -494,6 +508,8 @@ function ProjectGroup({
   const activeSessionID = useCode((s) => s.activeSessionID)
   const runState = useCode((s) => s.runState)
   const unread = useCode((s) => s.unread)
+  const reviewed = useCode((s) => s.reviewed)
+  const reviewedSince = useCode((s) => s.reviewedSince)
   const pinnedMap = useCode((s) => s.pinned)
   const loading = useCode((s) => s.loadingSessionsByDir[directory] ?? false)
   const moreSessions = useCode((s) => s.moreSessionsByDir[directory] ?? false)
@@ -514,6 +530,12 @@ function ProjectGroup({
     () => [...list].sort((a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)) || b.time.updated - a.time.updated),
     [list, pinnedIds]
   )
+  // Migración del registro de revisión: las sesiones anteriores a él se fijan como revisadas al verlas por primera vez
+  // (solo cambiarán a «por revisar» si el agente vuelve a editar archivos).
+  useEffect(() => {
+    const base = legacyBaseline(list, useCode.getState().reviewed, reviewedSince)
+    if (Object.keys(base).length) useCode.getState().baselineReviewed(base)
+  }, [list, reviewedSince])
   // Con pocas sesiones las etiquetas de día sobran; tampoco en el celular (lista a pantalla completa).
   const groupByDay = !isRemoteSurface() && sortedList.length > 3
   const archivedList = useMemo(
@@ -666,6 +688,7 @@ function ProjectGroup({
                 waiting={waiting.has(s.id)}
                 busy={st === 'busy' || st === 'retry'}
                 unread={!!unread[s.id]}
+                needsReview={sessionNeedsReview(s.summary, reviewed[s.id], { updated: s.time.updated, since: reviewedSince })}
                 pinned={pinnedIds.has(s.id)}
               />
             </Fragment>
@@ -694,6 +717,7 @@ function ProjectGroup({
                     waiting={false}
                     busy={false}
                     unread={false}
+                    needsReview={false}
                     pinned={false}
                   />
                 ))}
@@ -715,6 +739,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const openDirectories = useCode((s) => s.openDirectories)
   const sessions = useCode((s) => s.sessions)
   const permissions = useCode((s) => s.permissions)
+  const questions = useCode((s) => s.questions)
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const tree = useSidebarTree()
   const desktop = !isRemoteSurface()
@@ -730,8 +755,13 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   )
 
   const waiting = useMemo(
-    () => new Set(Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID))),
-    [permissions, sessions]
+    // Un permiso O una pregunta pendiente bloquean a la sesión (y a la raíz de sus subagentes).
+    () =>
+      new Set([
+        ...Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID)),
+        ...Object.values(questions).map((q) => rootSessionID(sessions, q.sessionID))
+      ]),
+    [permissions, questions, sessions]
   )
 
   if (!directory) {

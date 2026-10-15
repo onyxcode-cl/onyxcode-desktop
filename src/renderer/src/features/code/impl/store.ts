@@ -44,6 +44,7 @@ import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { phoneSafeAttachments } from './mobile-logic'
 import { mentionMime } from './mention-mime'
+import { acceptFilesIn, acceptSessionIn, parseReviewed, trimReviewed, withBaseline, type ReviewRecord } from './review-logic'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import { ELEMENT_METADATA, elementPartsOf, elementTextsOf, isElementAttachment } from '../../browser/element-context'
 import { MAX_OPEN_PROJECTS, nextFocusAfterClose, parseOpenProjects, planOpen, sameDir } from './open-projects'
@@ -71,6 +72,20 @@ const LS_SESSION = 'code.session.'
 const LS_PERM_MODE = 'code.permissionMode'
 const LS_PINNED = 'code.pinned'
 const LS_TRUSTED = 'code.trustedFolders'
+/** Lo que el usuario ya revisó («Aceptar») en el panel Cambios, por sesión. Solo estado de interfaz: no toca el disco. */
+const LS_REVIEWED = 'code.reviewed'
+/** Cuándo empezó a existir ese registro: lo anterior se da por revisado (ver `sessionNeedsReview`). */
+const LS_REVIEWED_SINCE = 'code.reviewed.since'
+
+/** Primera ejecución con el registro de revisión (no hay `code.reviewed`): se fija «desde cuándo» y se guarda. */
+function initReviewedSince(): number | null {
+  const saved = Number(lsGet(LS_REVIEWED_SINCE))
+  if (Number.isFinite(saved) && saved > 0) return saved
+  if (lsGet(LS_REVIEWED) !== null) return null
+  const now = Date.now()
+  lsSet(LS_REVIEWED_SINCE, String(now))
+  return now
+}
 
 function lsGet(key: string): string | null {
   try {
@@ -145,6 +160,10 @@ export interface CodeState {
   unread: Record<string, boolean>
   /** Sesiones fijadas (por proyecto). */
   pinned: Record<string, string[]>
+  /** Revisión del panel Cambios por sesión (persistida): qué archivos se aceptaron y con qué contenido. */
+  reviewed: Record<string, ReviewRecord>
+  /** Desde cuándo existe el registro de revisión (null: desde siempre). Las sesiones sin tocar desde antes no salen «por revisar». */
+  reviewedSince: number | null
   /** Carpetas en las que el usuario ya confirmó "confiar" (workspace trust). */
   trustedFolders: string[]
 
@@ -213,6 +232,12 @@ export interface CodeState {
   // -- Sesiones: renombrar / fijar / archivar --
   renameSession: (sessionID: string, title: string) => Promise<void>
   togglePin: (sessionID: string) => void
+  /** «Aceptar»: marca archivos (ruta → huella de su contenido) como revisados en esa sesión. No toca el disco. */
+  acceptFiles: (sessionID: string, entries: Record<string, string>) => void
+  /** «Aceptar todo»: además de los archivos, guarda la huella del resumen de la sesión (la lista deja de marcarla «por revisar»). */
+  acceptSession: (sessionID: string, sig: string | null, entries: Record<string, string>) => void
+  /** Migración: fija como revisadas las sesiones anteriores al registro (sesión → huella del resumen), sin pisar nada. */
+  baselineReviewed: (entries: Record<string, string>) => void
   isPinned: (sessionID: string) => boolean
   archiveSession: (sessionID: string) => Promise<void>
   unarchiveSession: (sessionID: string) => Promise<void>
@@ -739,6 +764,9 @@ export const useCode = create<CodeState>((set, get) => {
     moreSessionsByDir: {},
     pinned: lsGetJSON<Record<string, string[]>>(LS_PINNED, {}),
     trustedFolders: lsGetJSON<string[]>(LS_TRUSTED, []),
+    // Antes de leer el registro: su ausencia es la que marca la primera ejecución.
+    reviewedSince: initReviewedSince(),
+    reviewed: parseReviewed(lsGetJSON<unknown>(LS_REVIEWED, {})),
 
     openProject: async (directory) => {
       // Celular: un solo proyecto a la vez, reemplaza (como siempre). Escritorio: agrega y da el foco.
@@ -1203,6 +1231,33 @@ export const useCode = create<CodeState>((set, get) => {
         const pinned = { ...s.pinned, [dir]: next }
         lsSetJSON(LS_PINNED, pinned)
         return { pinned }
+      })
+    },
+    acceptFiles: (sessionID, entries) => {
+      set((s) => {
+        const prev = s.reviewed[sessionID]
+        // Reinserta la sesión al final: el tope descarta primero las más antiguas.
+        const { [sessionID]: _old, ...rest } = s.reviewed
+        const reviewed = trimReviewed({ ...rest, [sessionID]: acceptFilesIn(prev, entries) })
+        lsSetJSON(LS_REVIEWED, reviewed)
+        return { reviewed }
+      })
+    },
+    acceptSession: (sessionID, sig, entries) => {
+      set((s) => {
+        const prev = s.reviewed[sessionID]
+        const { [sessionID]: _old, ...rest } = s.reviewed
+        const reviewed = trimReviewed({ ...rest, [sessionID]: acceptSessionIn(acceptFilesIn(prev, entries), sig) })
+        lsSetJSON(LS_REVIEWED, reviewed)
+        return { reviewed }
+      })
+    },
+    baselineReviewed: (entries) => {
+      set((s) => {
+        const reviewed = withBaseline(s.reviewed, entries)
+        if (reviewed === s.reviewed) return {}
+        lsSetJSON(LS_REVIEWED, reviewed)
+        return { reviewed }
       })
     },
     isPinned: (sessionID) => {

@@ -287,7 +287,12 @@ export function createFakeServer(options = {}) {
     if (body.agent) info.agent = body.agent
     if (body.metadata) info.metadata = body.metadata
     if (body.permission) info.permission = body.permission
-    if (body.model) info.model = { id: body.model.modelID ?? body.model.id, providerID: body.model.providerID, ...(body.model.variant ? { variant: body.model.variant } : {}) }
+    if (body.model)
+      info.model = {
+        id: body.model.modelID ?? body.model.id,
+        providerID: body.model.providerID,
+        ...(body.model.variant ? { variant: body.model.variant } : {})
+      }
     return info
   }
   function createSession(directory, body = {}) {
@@ -349,7 +354,10 @@ export function createFakeServer(options = {}) {
   const words = (t) => t.match(/\S+\s*/g) ?? (t ? [t] : [])
 
   function promptText(parts) {
-    return (parts ?? []).filter((p) => p && p.type === 'text').map((p) => p.text ?? '').join('\n')
+    return (parts ?? [])
+      .filter((p) => p && p.type === 'text')
+      .map((p) => p.text ?? '')
+      .join('\n')
   }
 
   function upsertPart(s, message, part) {
@@ -372,7 +380,10 @@ export function createFakeServer(options = {}) {
     const run = { aborted: false, wakers: new Set() }
     s.run = run
     const reqModel = body.model ?? {}
-    const m = script?.model ?? { providerID: reqModel.providerID ?? DEFAULT_MODEL.providerID, modelID: reqModel.modelID ?? DEFAULT_MODEL.modelID }
+    const m = script?.model ?? {
+      providerID: reqModel.providerID ?? DEFAULT_MODEL.providerID,
+      modelID: reqModel.modelID ?? DEFAULT_MODEL.modelID
+    }
     const agent = body.agent ?? s.info.agent ?? 'build'
 
     const userId = body.messageID ?? nextId('message', 'msg')
@@ -382,13 +393,18 @@ export function createFakeServer(options = {}) {
       role: 'user',
       time: { created: Date.now() },
       agent,
-      model: { providerID: reqModel.providerID ?? m.providerID, modelID: reqModel.modelID ?? m.modelID, ...(body.variant ? { variant: body.variant } : {}) }
+      model: {
+        providerID: reqModel.providerID ?? m.providerID,
+        modelID: reqModel.modelID ?? m.modelID,
+        ...(body.variant ? { variant: body.variant } : {})
+      }
     }
     const userMsg = { info: userInfo, parts: [] }
     s.messages.push(userMsg)
     touch(s)
     emit('message.updated', { sessionID: s.info.id, info: userInfo }, dir)
-    for (const p of body.parts ?? []) upsertPart(s, userMsg, { ...p, id: p.id ?? nextId('part', 'prt'), sessionID: s.info.id, messageID: userId })
+    for (const p of body.parts ?? [])
+      upsertPart(s, userMsg, { ...p, id: p.id ?? nextId('part', 'prt'), sessionID: s.info.id, messageID: userId })
     if (body.noReply) {
       s.run = null
       return null
@@ -435,7 +451,12 @@ export function createFakeServer(options = {}) {
         if (p.type === 'tool' && (p.state.status === 'running' || p.state.status === 'pending')) {
           upsertPart(s, asst, {
             ...p,
-            state: { status: 'error', input: p.state.input ?? {}, error: 'Tool execution aborted', time: { start: p.state.time?.start ?? Date.now(), end: Date.now() } }
+            state: {
+              status: 'error',
+              input: p.state.input ?? {},
+              error: 'Tool execution aborted',
+              time: { start: p.state.time?.start ?? Date.now(), end: Date.now() }
+            }
           })
         }
       }
@@ -451,9 +472,11 @@ export function createFakeServer(options = {}) {
     else done.finish = 'stop'
     asst.info = done
     if (script?.title) s.info.title = script.title
+    // `summary` {files,additions,deletions}: el resumen de cambios de la sesión (alimenta el estado «por revisar» de la lista de Code).
+    if (script?.summary) s.info.summary = script.summary
     touch(s)
     emit('message.updated', { sessionID: s.info.id, info: done }, dir)
-    if (script?.title) emit('session.updated', { sessionID: s.info.id, info: s.info }, dir)
+    if (script?.title || script?.summary) emit('session.updated', { sessionID: s.info.id, info: s.info }, dir)
     s.run = null
     setStatus(s, { type: 'idle' })
     return asst
@@ -473,7 +496,11 @@ export function createFakeServer(options = {}) {
       emit('message.part.delta', { sessionID: s.info.id, messageID: asstId, partID: id, field: 'text', delta: d }, dir)
       await sleep(run, step.chunkDelayMs ?? 0)
     }
-    upsertPart(s, asst, { ...base, text: acc, ...(kind === 'reasoning' ? { time: { start: Date.now(), end: Date.now() } } : { time: { start: Date.now(), end: Date.now() } }) })
+    upsertPart(s, asst, {
+      ...base,
+      text: acc,
+      ...(kind === 'reasoning' ? { time: { start: Date.now(), end: Date.now() } } : { time: { start: Date.now(), end: Date.now() } })
+    })
     if (kind === 'text') ctx.outText += acc
   }
 
@@ -501,7 +528,12 @@ export function createFakeServer(options = {}) {
         emit(step.event.type, step.event.properties ?? {}, step.event.directory ?? dir)
         return
       case 'retry':
-        setStatus(s, { type: 'retry', attempt: step.attempt ?? 1, message: step.message ?? 'Reintentando…', next: Date.now() + (step.nextMs ?? 1000) })
+        setStatus(s, {
+          type: 'retry',
+          attempt: step.attempt ?? 1,
+          message: step.message ?? 'Reintentando…',
+          next: Date.now() + (step.nextMs ?? 1000)
+        })
         await sleep(run, step.nextMs ?? 0)
         setStatus(s, { type: 'busy' })
         return
@@ -510,7 +542,10 @@ export function createFakeServer(options = {}) {
         const quota = step.preset === 'quota'
         const name = step.name ?? (quota ? 'APIError' : 'UnknownError')
         const statusCode = step.statusCode ?? (quota ? 429 : undefined)
-        const data = { message: step.message ?? (quota ? 'token rate limit exceeded' : 'Error simulado'), ...(statusCode ? { statusCode, isRetryable: !!step.isRetryable } : {}) }
+        const data = {
+          message: step.message ?? (quota ? 'token rate limit exceeded' : 'Error simulado'),
+          ...(statusCode ? { statusCode, isRetryable: !!step.isRetryable } : {})
+        }
         ctx.failed = { name, data }
         emit('session.error', { sessionID: s.info.id, error: ctx.failed }, dir)
         return
@@ -537,7 +572,8 @@ export function createFakeServer(options = {}) {
     let parent = dirname(abs)
     while (!existsSync(parent) && parent !== base) parent = dirname(parent)
     const realParent = realpathSync(parent)
-    if (realParent !== base && !realParent.startsWith(base + sep)) throw new Error(`Paso fs fuera del directorio de la sesión: ${step.path}`)
+    if (realParent !== base && !realParent.startsWith(base + sep))
+      throw new Error(`Paso fs fuera del directorio de la sesión: ${step.path}`)
     if (step.op === 'write') {
       mkdirSync(dirname(abs), { recursive: true })
       writeFileSync(abs, String(step.content ?? ''))
@@ -605,7 +641,12 @@ export function createFakeServer(options = {}) {
     }
     const end = Date.now()
     if (error) upsertPart(s, asst, mk({ status: 'error', input, error, time: { start, end } }))
-    else upsertPart(s, asst, mk({ status: 'completed', input, output, title: step.title ?? tool, metadata: step.metadata ?? {}, time: { start, end } }))
+    else
+      upsertPart(
+        s,
+        asst,
+        mk({ status: 'completed', input, output, title: step.title ?? tool, metadata: step.metadata ?? {}, time: { start, end } })
+      )
   }
 
   async function runChild(ctx, step) {
@@ -615,13 +656,33 @@ export function createFakeServer(options = {}) {
     const id = nextId('part', 'prt')
     const callID = `call_${String(++state.seq.call).padStart(4, '0')}`
     const start = Date.now()
-    const mk = (st) => ({ id, sessionID: s.info.id, messageID: asstId, type: 'tool', callID, tool: 'task', state: st, })
+    const mk = (st) => ({ id, sessionID: s.info.id, messageID: asstId, type: 'tool', callID, tool: 'task', state: st })
     upsertPart(s, asst, mk({ status: 'running', input, time: { start } }))
     const childScript = { steps: step.steps ?? [{ type: 'text', text: step.text ?? 'Listo.' }] }
-    const res = await execute(child, { parts: [{ type: 'text', text: step.prompt ?? input.description }], agent: step.agent ?? 'explore' }, childScript)
+    const res = await execute(
+      child,
+      { parts: [{ type: 'text', text: step.prompt ?? input.description }], agent: step.agent ?? 'explore' },
+      childScript
+    )
     if (run.aborted) return
-    const out = res ? res.parts.filter((p) => p.type === 'text').map((p) => p.text).join('') : ''
-    upsertPart(s, asst, mk({ status: 'completed', input, output: out, title: input.description, metadata: { sessionId: child.info.id }, time: { start, end: Date.now() } }))
+    const out = res
+      ? res.parts
+          .filter((p) => p.type === 'text')
+          .map((p) => p.text)
+          .join('')
+      : ''
+    upsertPart(
+      s,
+      asst,
+      mk({
+        status: 'completed',
+        input,
+        output: out,
+        title: input.description,
+        metadata: { sessionId: child.info.id },
+        time: { start, end: Date.now() }
+      })
+    )
   }
 
   /** Encola una ejecución en la sesión (una a la vez, como el real). */
@@ -689,7 +750,10 @@ export function createFakeServer(options = {}) {
     res.setHeader('access-control-allow-origin', origin)
     res.setHeader('vary', 'Origin')
     res.setHeader('access-control-allow-methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-    res.setHeader('access-control-allow-headers', req.headers['access-control-request-headers'] || 'authorization, content-type, x-opencode-directory, x-opencode-workspace')
+    res.setHeader(
+      'access-control-allow-headers',
+      req.headers['access-control-request-headers'] || 'authorization, content-type, x-opencode-directory, x-opencode-workspace'
+    )
     res.setHeader('access-control-expose-headers', 'x-next-cursor, x-total-count, link')
   }
 
@@ -751,15 +815,28 @@ export function createFakeServer(options = {}) {
   })
   route('POST', '/global/upgrade', (c) => json(c.res, { success: true, version: FAKE_VERSION }))
   route('POST', '/log', (c) => json(c.res, true))
-  route('GET', '/path', (c) => json(c.res, { home: env.HOME ?? '/', state: '/tmp/fake-opencode/state', config: '/tmp/fake-opencode/config', worktree: c.directory, directory: c.directory }))
+  route('GET', '/path', (c) =>
+    json(c.res, {
+      home: env.HOME ?? '/',
+      state: '/tmp/fake-opencode/state',
+      config: '/tmp/fake-opencode/config',
+      worktree: c.directory,
+      directory: c.directory
+    })
+  )
   route('GET', '/vcs', (c) => json(c.res, { branch: 'main', default_branch: 'main' }))
   route('GET', '/agent', (c) => json(c.res, []))
   route('GET', '/skill', (c) => json(c.res, []))
-  route('GET', '/project', (c) => json(c.res, [{ id: 'proj_fake', worktree: c.directory, time: { created: startedAt, updated: startedAt }, sandboxes: [] }]))
-  route('GET', '/project/current', (c) => json(c.res, { id: 'proj_fake', worktree: c.directory, time: { created: startedAt, updated: startedAt }, sandboxes: [] }))
+  route('GET', '/project', (c) =>
+    json(c.res, [{ id: 'proj_fake', worktree: c.directory, time: { created: startedAt, updated: startedAt }, sandboxes: [] }])
+  )
+  route('GET', '/project/current', (c) =>
+    json(c.res, { id: 'proj_fake', worktree: c.directory, time: { created: startedAt, updated: startedAt }, sandboxes: [] })
+  )
 
   function openSse(c, raw) {
-    if (Date.now() < sseBlockedUntil) return json(c.res, { name: 'UnavailableError', data: { message: 'SSE bloqueado por /__e2e/drop-sse' } }, 503)
+    if (Date.now() < sseBlockedUntil)
+      return json(c.res, { name: 'UnavailableError', data: { message: 'SSE bloqueado por /__e2e/drop-sse' } }, 503)
     c.res.writeHead(200, {
       'content-type': 'text/event-stream',
       'cache-control': 'no-cache, no-transform',
@@ -804,7 +881,10 @@ export function createFakeServer(options = {}) {
   route('POST', '/session', (c) => json(c.res, createSession(c.directory, c.body ?? {}).info))
   route('GET', '/experimental/session', (c) => {
     const q = c.url.searchParams
-    let list = [...state.sessions.values()].map((s) => ({ ...s.info, project: { id: 'proj_fake', name: 'fake', worktree: s.info.directory } }))
+    let list = [...state.sessions.values()].map((s) => ({
+      ...s.info,
+      project: { id: 'proj_fake', name: 'fake', worktree: s.info.directory }
+    }))
     if (q.get('cursor')) list = list.filter((i) => i.time.updated < Number(q.get('cursor')))
     list.sort((a, b) => b.time.updated - a.time.updated || (a.id < b.id ? 1 : -1))
     if (q.get('limit')) list = list.slice(0, Number(q.get('limit')))
@@ -842,7 +922,11 @@ export function createFakeServer(options = {}) {
   })
   route('GET', '/session/{sessionID}/children', (c) => {
     const s = getSession(c)
-    if (s) json(c.res, [...state.sessions.values()].filter((x) => x.info.parentID === s.info.id).map((x) => x.info))
+    if (s)
+      json(
+        c.res,
+        [...state.sessions.values()].filter((x) => x.info.parentID === s.info.id).map((x) => x.info)
+      )
   })
   route('GET', '/session/{sessionID}/todo', (c) => {
     const s = getSession(c)
@@ -904,7 +988,11 @@ export function createFakeServer(options = {}) {
     if (!s) return
     const b = c.body ?? {}
     const text = `/${b.command ?? ''}${b.arguments ? ' ' + b.arguments : ''}`
-    const asst = await enqueue(s, { parts: [{ type: 'text', text }], agent: b.agent, model: typeof b.model === 'string' ? undefined : b.model, messageID: b.messageID }, {})
+    const asst = await enqueue(
+      s,
+      { parts: [{ type: 'text', text }], agent: b.agent, model: typeof b.model === 'string' ? undefined : b.model, messageID: b.messageID },
+      {}
+    )
     json(c.res, asst ?? s.messages[s.messages.length - 1])
   })
   route('POST', '/session/{sessionID}/shell', async (c) => {
@@ -984,7 +1072,11 @@ export function createFakeServer(options = {}) {
     const reply = c.body?.reply
     if (!['once', 'always', 'reject'].includes(reply)) return badRequest(c.res, 'reply inválido')
     state.permissionReplies.push({ requestID: e.req.id, reply, message: c.body?.message })
-    emit('permission.replied', { sessionID: e.req.sessionID, requestID: e.req.id, reply }, state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory)
+    emit(
+      'permission.replied',
+      { sessionID: e.req.sessionID, requestID: e.req.id, reply },
+      state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory
+    )
     e.resolve(reply)
     json(c.res, true)
   })
@@ -993,7 +1085,11 @@ export function createFakeServer(options = {}) {
     if (!e) return notFound(c.res, `Permission not found: ${c.params.permissionID}`)
     const reply = c.body?.response ?? 'once'
     state.permissionReplies.push({ requestID: e.req.id, reply })
-    emit('permission.replied', { sessionID: e.req.sessionID, requestID: e.req.id, reply }, state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory)
+    emit(
+      'permission.replied',
+      { sessionID: e.req.sessionID, requestID: e.req.id, reply },
+      state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory
+    )
     e.resolve(reply)
     json(c.res, true)
   })
@@ -1003,7 +1099,11 @@ export function createFakeServer(options = {}) {
     if (!e) return notFound(c.res, `Question not found: ${c.params.requestID}`)
     const answers = c.body?.answers ?? []
     state.questionReplies.push({ requestID: e.req.id, answers })
-    emit('question.replied', { sessionID: e.req.sessionID, requestID: e.req.id, answers }, state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory)
+    emit(
+      'question.replied',
+      { sessionID: e.req.sessionID, requestID: e.req.id, answers },
+      state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory
+    )
     e.resolve({ answers })
     json(c.res, true)
   })
@@ -1011,7 +1111,11 @@ export function createFakeServer(options = {}) {
     const e = state.questions.get(c.params.requestID)
     if (!e) return notFound(c.res, `Question not found: ${c.params.requestID}`)
     state.questionReplies.push({ requestID: e.req.id, rejected: true })
-    emit('question.rejected', { sessionID: e.req.sessionID, requestID: e.req.id }, state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory)
+    emit(
+      'question.rejected',
+      { sessionID: e.req.sessionID, requestID: e.req.id },
+      state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory
+    )
     e.resolve({ rejected: true })
     json(c.res, true)
   })
@@ -1019,7 +1123,11 @@ export function createFakeServer(options = {}) {
   // --- providers / config / auth ---
   route('GET', '/provider', (c) => {
     const all = catalog()
-    json(c.res, { all, default: defaultModels(connectedProviders()), connected: connectedIds().filter((id) => all.some((p) => p.id === id)) })
+    json(c.res, {
+      all,
+      default: defaultModels(connectedProviders()),
+      connected: connectedIds().filter((id) => all.some((p) => p.id === id))
+    })
   })
   route('GET', '/provider/auth', (c) =>
     json(
@@ -1039,7 +1147,11 @@ export function createFakeServer(options = {}) {
   )
   // OAuth falso: «authorize» devuelve una URL local con método `code`; «callback» exige el código y deja el proveedor conectado.
   route('POST', '/provider/{providerID}/oauth/authorize', (c) =>
-    json(c.res, { url: `http://127.0.0.1/fake-oauth/provider/${c.params.providerID}`, method: 'code', instructions: 'Pega el código (E2E)' })
+    json(c.res, {
+      url: `http://127.0.0.1/fake-oauth/provider/${c.params.providerID}`,
+      method: 'code',
+      instructions: 'Pega el código (E2E)'
+    })
   )
   route('POST', '/provider/{providerID}/oauth/callback', (c) => {
     if (!c.body?.code) return badRequest(c.res, 'code requerido')
@@ -1075,7 +1187,11 @@ export function createFakeServer(options = {}) {
     state.mcpAdded[b.name] = b.config ?? {}
     json(c.res, mcpStatus())
   })
-  const mcpKnown = (c) => (c.params.name in mcpStatus() ? true : (json(c.res, { _tag: 'McpServerNotFoundError', name: c.params.name, message: `MCP server not found: ${c.params.name}` }, 404), false))
+  const mcpKnown = (c) =>
+    c.params.name in mcpStatus()
+      ? true
+      : (json(c.res, { _tag: 'McpServerNotFoundError', name: c.params.name, message: `MCP server not found: ${c.params.name}` }, 404),
+        false)
   route('POST', '/mcp/{name}/connect', (c) => {
     if (!mcpKnown(c)) return
     delete state.mcpForced[c.params.name]
@@ -1137,7 +1253,8 @@ export function createFakeServer(options = {}) {
     if (!abs || !existsSync(abs) || !statSync(abs).isFile()) return notFound(c.res, 'File not found')
     const buf = readFileSync(abs)
     if (buf.includes(0)) {
-      const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.pdf': 'application/pdf' }[extname(abs).toLowerCase()] ?? 'application/octet-stream'
+      const mime =
+        { '.png': 'image/png', '.jpg': 'image/jpeg', '.pdf': 'application/pdf' }[extname(abs).toLowerCase()] ?? 'application/octet-stream'
       return json(c.res, { type: 'binary', content: buf.toString('base64'), encoding: 'base64', mimeType: mime })
     }
     json(c.res, { type: 'text', content: buf.toString('utf8') })
@@ -1148,7 +1265,13 @@ export function createFakeServer(options = {}) {
       c.res,
       state.commands ?? [
         { name: 'init', description: 'Crear AGENTS.md', source: 'command', template: 'Analiza el proyecto y crea AGENTS.md', hints: [] },
-        { name: 'review', description: 'Revisar cambios', source: 'command', template: 'Revisa los cambios: $ARGUMENTS', hints: ['$ARGUMENTS'] }
+        {
+          name: 'review',
+          description: 'Revisar cambios',
+          source: 'command',
+          template: 'Revisa los cambios: $ARGUMENTS',
+          hints: ['$ARGUMENTS']
+        }
       ]
     )
   )
@@ -1191,7 +1314,15 @@ export function createFakeServer(options = {}) {
         eventCount: eventCounter,
         lastEventId: events.length ? events[events.length - 1].payload.id : null,
         scriptsQueued: state.scripts.length,
-        sessions: [...state.sessions.values()].map((s) => ({ id: s.info.id, directory: s.info.directory, parentID: s.info.parentID ?? null, title: s.info.title, status: s.status.type, messages: s.messages.length, running: !!s.run })),
+        sessions: [...state.sessions.values()].map((s) => ({
+          id: s.info.id,
+          directory: s.info.directory,
+          parentID: s.info.parentID ?? null,
+          title: s.info.title,
+          status: s.status.type,
+          messages: s.messages.length,
+          running: !!s.run
+        })),
         pendingPermissions: [...state.permissions.values()].map((e) => e.req),
         pendingQuestions: [...state.questions.values()].map((e) => e.req),
         permissionReplies: state.permissionReplies,
@@ -1234,9 +1365,12 @@ export function createFakeServer(options = {}) {
       json(c.res, { raw, content, config: mergedConfig() })
     },
     'GET env': (c) => {
-      const content = typeof env.OPENCODE_AUTH_CONTENT === 'string' && env.OPENCODE_AUTH_CONTENT ? parseAuthObject(env.OPENCODE_AUTH_CONTENT) ?? {} : {}
+      const content =
+        typeof env.OPENCODE_AUTH_CONTENT === 'string' && env.OPENCODE_AUTH_CONTENT ? (parseAuthObject(env.OPENCODE_AUTH_CONTENT) ?? {}) : {}
       const providers = Object.keys(content)
-      const allPlaceholder = Object.values(content).every((e) => e && typeof e === 'object' && typeof e.key === 'string' && e.key.startsWith('sandboxed-placeholder-'))
+      const allPlaceholder = Object.values(content).every(
+        (e) => e && typeof e === 'object' && typeof e.key === 'string' && e.key.startsWith('sandboxed-placeholder-')
+      )
       json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder } })
     },
     'GET unknown-routes': (c) => json(c.res, [...state.unknownRoutes.values()]),
@@ -1250,7 +1384,8 @@ export function createFakeServer(options = {}) {
       if (b.connectedProviders) state.connectedOverride = b.connectedProviders
       if (b.failPrompt !== undefined) state.failPrompt = Number(b.failPrompt)
       // sessionStatus:{id:'idle'|'busy'} fuerza el estado que ve GET /session/status (simula un motor reiniciado: la ejecución se perdió pero el mensaje quedó a medias).
-      if (b.sessionStatus) for (const [k, v] of Object.entries(b.sessionStatus)) if (state.sessions.get(k)) state.sessions.get(k).status = { type: v }
+      if (b.sessionStatus)
+        for (const [k, v] of Object.entries(b.sessionStatus)) if (state.sessions.get(k)) state.sessions.get(k).status = { type: v }
       json(c.res, true)
     },
     'POST reset': (c) => {
