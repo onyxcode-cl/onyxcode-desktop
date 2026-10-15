@@ -619,9 +619,11 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
             </Tip>
           </span>
         )}
-        <span className="mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden" />
+        <span
+          className={panel ? 'mx-0.5 h-5 w-px bg-border desk:@max-[48rem]:hidden' : 'mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden'}
+        />
         {/* Con un panel abierto y la barra estrecha, sus pestañas ya están en el panel: se ocultan aquí y el título de la sesión cabe. */}
-        <span className={panel ? 'contents desk:@max-[32rem]:hidden' : 'contents'}>
+        <span className={panel ? 'contents desk:@max-[48rem]:hidden' : 'contents'}>
           {PANEL_META.map((p) => (
             <Tip
               key={p.id}
