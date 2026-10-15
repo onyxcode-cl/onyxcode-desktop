@@ -83,6 +83,7 @@ import { QuestionCard } from './QuestionPrompt'
 import { ProgressPanel } from './ProgressPanel'
 import { ProjectPanel } from './ProjectPanel'
 import { SideChat } from './SideChat'
+import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon } from './TaskList'
 import { useSandbox } from './sandbox-store'
@@ -691,7 +692,7 @@ export function TasksWorkspace(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
           <header
-            className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
+            className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
             <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
               {session?.title || t('tasks.ws.untitled')}
@@ -700,6 +701,7 @@ export function TasksWorkspace(): React.JSX.Element {
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
+              <ReadingModeSwitch />
               {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
               <TaskMenu items={menuItems} />
               {folder && (

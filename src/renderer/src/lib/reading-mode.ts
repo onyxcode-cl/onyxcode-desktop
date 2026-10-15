@@ -65,3 +65,22 @@ export function showReasoning(mode: ReadingMode): boolean {
 export function expandStepGroups(mode: ReadingMode): boolean {
   return mode === 'detailed'
 }
+
+/** Forma mínima de una parte de un grupo de pasos (herramienta o razonamiento). */
+export interface StepPartFacts {
+  type: string
+  callID?: string
+  state?: { status: string }
+}
+
+/**
+ * Partes que se pintan de un grupo de pasos según el modo, o `null` si el grupo entero se oculta.
+ * En `summary` el razonamiento se quita y el grupo solo sobrevive con permiso/pregunta pendiente o error.
+ */
+export function visibleStepParts<T extends StepPartFacts>(mode: ReadingMode, parts: readonly T[], pendingCallIDs: ReadonlySet<string>): T[] | null {
+  if (mode !== 'summary') return [...parts]
+  const hasPending = parts.some((p) => p.type === 'tool' && !!p.callID && pendingCallIDs.has(p.callID))
+  const hasError = parts.some((p) => p.type === 'tool' && p.state?.status === 'error')
+  if (!showStepGroup(mode, { hasPending, hasError })) return null
+  return parts.filter((p) => p.type !== 'reasoning' || showReasoning(mode))
+}

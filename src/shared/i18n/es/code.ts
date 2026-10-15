@@ -77,6 +77,7 @@ export const code = {
   'code.reading.summary': 'Resumen',
   'code.reading.normal': 'Normal',
   'code.reading.detailed': 'Detallado',
+  'code.reading.menu': 'Modo de lectura: {mode}',
   'code.msg.loading': 'Cargando…',
   'code.msg.hidden': { one: '1 mensaje revertido', other: '{count} mensajes revertidos' },
   'code.msg.restore': 'Restaurar',

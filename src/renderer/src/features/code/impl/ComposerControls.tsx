@@ -3,7 +3,8 @@
  * modo de permisos, esfuerzo del modelo, selector de modelo y medidor de uso.
  * Los menús se abren hacia arriba porque el compositor vive al fondo de la ventana.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useDismiss } from '../../../lib/use-dismiss'
+import { useState } from 'react'
 import { AtSign, Brain, Check, CircleSlash, ListChecks, MoreHorizontal, Paperclip, PencilLine, Shield, Wand2 } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
@@ -31,27 +32,6 @@ export function useCodeAiGate(): AiGate {
   const model = useCode((s) => s.model)
   const modeModel = useModeModel('code')
   return useAiGate(model ?? modeModel)
-}
-
-/** Cierra al hacer clic fuera o con Esc. */
-function useDismiss(open: boolean, close: () => void): React.RefObject<HTMLDivElement | null> {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) close()
-    }
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') close()
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open, close])
-  return ref
 }
 
 const chip = (): string =>

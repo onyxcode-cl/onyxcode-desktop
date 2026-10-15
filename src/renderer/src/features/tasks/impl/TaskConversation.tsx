@@ -36,6 +36,8 @@ import { elementTextsOf, isElementContextText, parseElementContext } from '../..
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
 import { friendlyTool, isVisibleText } from './util'
+import { expandStepGroups, useReadingMode, visibleStepParts } from '../../../lib/reading-mode'
+import { isRemoteSurface } from '../../../lib/platform'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { stripSkillProposalBlock } from '@shared/skill-proposal'
 
@@ -420,7 +422,22 @@ const UserMessage = memo(
 export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
-  const blocks = useMemo(() => buildBlocks(entries), [entries])
+  const allBlocks = useMemo(() => buildBlocks(entries), [entries])
+  // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
+  const readingStored = useReadingMode((s) => s.mode)
+  const reading = isRemoteSurface() ? 'normal' : readingStored
+  const pendingCallIDs = useMemo(() => new Set(permissions.flatMap((p) => (p.tool ? [p.tool.callID] : []))), [permissions])
+  const blocks = useMemo(
+    () =>
+      reading === 'normal'
+        ? allBlocks
+        : allBlocks.flatMap((b): Block[] => {
+            if (b.kind !== 'steps') return [b]
+            const parts = visibleStepParts(reading, b.parts, pendingCallIDs)
+            return parts ? [{ ...b, parts }] : []
+          }),
+    [allBlocks, reading, pendingCallIDs]
+  )
   const [forceOpenId, setForceOpenId] = useState<string | null>(null)
   const [flashId, setFlashId] = useState<string | null>(null)
   // Mientras dura un salto a una parte (búsqueda/contexto) se desactiva `content-visibility` en todos los bloques: con
@@ -485,7 +502,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                     id={b.id}
                     parts={b.parts}
                     live={busy && i === blocks.length - 1}
-                    forceOpen={forceOpenId === b.id}
+                    forceOpen={forceOpenId === b.id || expandStepGroups(reading)}
                     flash={flashId === b.id}
                     old={!noCv && isOldRow(i, blocks.length)}
                   />
