@@ -36,7 +36,7 @@
   --danger: #b52f26;
   --danger-fg: #ffffff;
   --user-bubble: #e8ecf8;
-  --selection: rgb(44 79 216 / 0.18);
+  --selection: #adbdff;
   --scrollbar: #c9cfdc;
   --scrollbar-hover: #a9b1c3;
   --shadow-color: 222 40% 25%;
@@ -71,7 +71,7 @@
   --danger: #ff7a6e;
   --danger-fg: #2a0805;
   --user-bubble: #1e2331;
-  --selection: rgb(125 151 255 / 0.28);
+  --selection: #34458f;
   --scrollbar: #2e3342;
   --scrollbar-hover: #444b5e;
   --shadow-color: 228 50% 2%;
@@ -303,8 +303,11 @@ body {
   color: var(--fg-muted);
 }
 
+/* Resaltado de selección: fondo opaco teñido de acento, bien visible en todos los temas; el texto seleccionado pasa a
+   --fg para asegurar >= 4,5:1 también en texto secundario (lo vigila contrast.test.ts). */
 ::selection {
   background: var(--selection);
+  color: var(--fg);
 }
 
 /* Anillo de foco coherente (sólo con teclado). */
@@ -884,7 +887,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #ffffff;
   --accent-soft: #ece4ff;
   --accent-ring: rgb(109 63 216 / 0.35);
-  --selection: rgb(109 63 216 / 0.18);
+  --selection: #cbb7ff;
 }
 [data-theme='dark'][data-accent='violet'] {
   --accent: #b095ff;
@@ -892,7 +895,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #1a0a3d;
   --accent-soft: #2a1b55;
   --accent-ring: rgb(176 149 255 / 0.4);
-  --selection: rgb(176 149 255 / 0.22);
+  --selection: #4b358f;
 }
 [data-accent='green'] {
   --accent: #1f7a4d;
@@ -900,7 +903,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #ffffff;
   --accent-soft: #dff5e9;
   --accent-ring: rgb(31 122 77 / 0.35);
-  --selection: rgb(31 122 77 / 0.18);
+  --selection: #9cd8b7;
 }
 [data-theme='dark'][data-accent='green'] {
   --accent: #4fd08f;
@@ -908,7 +911,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #04210f;
   --accent-soft: #123324;
   --accent-ring: rgb(79 208 143 / 0.4);
-  --selection: rgb(79 208 143 / 0.22);
+  --selection: #1d5a3c;
 }
 [data-accent='teal'] {
   --accent: #0f766e;
@@ -916,7 +919,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #ffffff;
   --accent-soft: #d9f3f0;
   --accent-ring: rgb(15 118 110 / 0.35);
-  --selection: rgb(15 118 110 / 0.18);
+  --selection: #93d5ce;
 }
 [data-theme='dark'][data-accent='teal'] {
   --accent: #4fd1c5;
@@ -924,7 +927,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #032622;
   --accent-soft: #10302d;
   --accent-ring: rgb(79 209 197 / 0.4);
-  --selection: rgb(79 209 197 / 0.22);
+  --selection: #155852;
 }
 [data-accent='rose'] {
   --accent: #be185d;
@@ -932,7 +935,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #ffffff;
   --accent-soft: #fde4ef;
   --accent-ring: rgb(190 24 93 / 0.35);
-  --selection: rgb(190 24 93 / 0.18);
+  --selection: #f5b0cf;
 }
 [data-theme='dark'][data-accent='rose'] {
   --accent: #f472b6;
@@ -940,7 +943,7 @@ html[data-keyboard='open'] [data-surface='mobile'] {
   --accent-fg: #3b0620;
   --accent-soft: #3a1327;
   --accent-ring: rgb(244 114 182 / 0.4);
-  --selection: rgb(244 114 182 / 0.22);
+  --selection: #7a2654;
 }
 
 /* Tarjeta de trabajo en curso: barra de avance lapislázuli → chispa dorada y puntos que respiran. */

@@ -61,7 +61,7 @@ nunca renombrar ni eliminar. Cada token de color tiene utilidad Tailwind (`bg-*`
 | `--warning` *(nuevo)* | `text-warning`, `bg-warning` | `#b45309` | `#fbbf24` | Aviso |
 | `--danger` | `text-danger`, `bg-danger` | `#c0352b` | `#ff7a6e` | Error / destructivo |
 | `--user-bubble` | `bg-user` | `#e8ecf8` | `#1e2331` | Burbuja del usuario |
-| `--selection` *(nuevo)* | — | | | `::selection` |
+| `--selection` *(nuevo)* | — | `#adbdff` | `#34458f` | `::selection` (opaco, texto seleccionado en `--fg`; una variante por acento) |
 | `--scrollbar`, `--scrollbar-hover` *(nuevos)* | — | | | Scrollbars |
 | `--brand-gradient` *(nuevo)* | `.bg-brand`, `.text-brand` | | | Degradado de marca |
 
