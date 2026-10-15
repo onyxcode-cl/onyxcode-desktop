@@ -60,6 +60,7 @@ import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrust
 import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
 import { TodoList } from './ToolCard'
+import { PlanCard } from './PlanCard'
 import type { RightPanel } from './types'
 import { panelLayout } from './review-logic'
 import { sharedFullDiff } from './full-diff'
@@ -841,7 +842,9 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           )}
         </div>
       )}
-      {sid && <TodoBar sessionID={sid} />}
+      {/* Escritorio: tarjeta «Plan»; la barra de tareas compacta queda para el celular (sin cambios allí). */}
+      {sid && !isRemoteSurface() && <PlanCard sessionID={sid} />}
+      {sid && isRemoteSurface() && <TodoBar sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
       <ChangesBar directory={directory} />
       {sid && entries && !busy && (
