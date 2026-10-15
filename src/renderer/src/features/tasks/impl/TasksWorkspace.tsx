@@ -91,10 +91,8 @@ import {
   addNetworkBlocked,
   clearUnseen,
   clearViewerRequest,
-  connectFolder,
   currentTasksModel,
   disconnect,
-  fullAccessFor,
   lastFolder,
   loadFullAccessInfo,
   resync,
@@ -423,8 +421,8 @@ export function TasksWorkspace(): React.JSX.Element {
       }
       const last = lastFolder()
       if (last && st.folders.some((f) => f.path === last)) void selectFolder(last)
-      // Control total sin carpeta autorizada (p. ej. la carpeta personal): se reconecta si el equipo ya lo consintió.
-      else if (last && fullAccessFor(last) && (await loadFullAccessInfo())?.consentAt) void connectFolder(last, true)
+      // Control total NO se retoma solo al abrir Overdrive: cada sesión de trabajo empieza en «Solo en tu carpeta» y el usuario lo
+      // sube cuando lo necesita (en Control total hasta una consulta de solo lectura exige aprobar un plan).
     })()
   }, [bridge])
 
