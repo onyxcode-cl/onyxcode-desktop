@@ -31,6 +31,9 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+# Carpeta de trabajo fuera de la app: si este proceso heredara la de instalación (acceso directo del menú Inicio), Windows no dejaría
+# renombrar esa carpeta («el archivo está siendo utilizado por otro proceso») y el reemplazo fallaría siempre.
+try { Set-Location -LiteralPath $env:SystemRoot; [Environment]::CurrentDirectory = $env:SystemRoot } catch { }
 
 function Fail-Args([string]$why) {
   [Console]::Error.WriteLine("argumentos no validos: $why")
@@ -84,6 +87,10 @@ $Result = Join-Path $MarkerDir 'result.json'
 $ExeName = 'Lazunox.exe'
 if ($Test) { $ExeName = $TestExec }
 
+function Save-MoveError {
+  try { [IO.File]::WriteAllText((Join-Path $MarkerDir 'swap-error.txt'), $script:LastMoveError, (New-Object Text.UTF8Encoding($false))) } catch { }
+}
+
 function Write-Result([bool]$ok, [bool]$rolledBack, [string]$err) {
   $json = '{"version":"' + $Version + '","ok":' + $ok.ToString().ToLowerInvariant() + ',"rolledBack":' + $rolledBack.ToString().ToLowerInvariant() + ',"error":"' + $err + '"}'
   try {
@@ -118,9 +125,10 @@ function Remove-Tree([string]$path) {
   }
 }
 
+$script:LastMoveError = ''
 function Move-Dir([string]$from, [string]$to) {
   for ($i = 0; $i -lt 40; $i++) {
-    try { [IO.Directory]::Move($from, $to); return $true } catch { Start-Sleep -Milliseconds 500 }
+    try { [IO.Directory]::Move($from, $to); return $true } catch { $script:LastMoveError = "$from -> $to : $($_.Exception.Message)"; Start-Sleep -Milliseconds 500 }
   }
   return $false
 }
@@ -190,7 +198,7 @@ try {
 
   # 2. Apartar la carpeta actual (renombrado atómico en el mismo volumen; reintentos por Defender o el Explorador).
   Remove-Tree $Bak
-  if (-not (Move-Dir $Target $Bak)) { Write-Result $false $false 'backup-failed'; Launch $Target $false | Out-Null; exit 1 }
+  if (-not (Move-Dir $Target $Bak)) { Save-MoveError; Write-Result $false $false 'backup-failed'; Launch $Target $false | Out-Null; exit 1 }
 
   function Restore-Old {
     if ([IO.Directory]::Exists($Target)) { Remove-Tree $Target }
@@ -201,7 +209,7 @@ try {
   if (-not (Move-Dir $Staged $Target)) {
     Restore-Old
     Launch $Target $false | Out-Null
-    Write-Result $false $true 'replace-failed'
+    Save-MoveError; Write-Result $false $true 'replace-failed'
     exit 1
   }
 

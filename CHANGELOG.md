@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.26] - 2026-10-15
+
+### Arreglos
+
+- **Windows: la actualización dentro de la app ya se instala.** Si abrías Lazunox desde el acceso directo del menú Inicio o del escritorio, al pulsar «Actualizar» salía que no se pudo instalar y quedaba la versión anterior: Windows no deja renombrar una carpeta que otro programa usa como carpeta de trabajo, y el reemplazo la heredaba de la app. Ahora el reemplazo se hace desde otra carpeta y, si algo falla, guarda el motivo. **Si tienes la 0.5.25 o anterior en Windows, instala esta versión una vez a mano desde la página (la actualización dentro de la app todavía no puede con ese caso); de ahí en adelante se actualiza sola.**
+
 ## [0.5.25] - 2026-10-15
 
 ### Arreglos

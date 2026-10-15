@@ -131,6 +131,8 @@ describe('startSwapWin', () => {
     // `powershell.exe` suelto + `detached` no arranca en Windows; con `cmd /c start /B` sí y sobrevive a la app (verificado en un PC real).
     expect(c.cmd).toBe('C:\\Windows\\System32\\cmd.exe')
     expect(c.opts).toMatchObject({ detached: true, stdio: 'ignore', windowsHide: true })
+    // La carpeta de trabajo NO puede ser la de la app (si no, Windows no deja renombrarla): es SystemRoot.
+    expect(c.opts.cwd).toBe('C:\\Windows')
     expect(c.opts).not.toHaveProperty('shell')
     expect(c.args.slice(0, 6)).toEqual(['/d', '/c', 'start', '""', '/B', 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'])
     const ps = c.args.slice(6)
@@ -203,6 +205,13 @@ describe('startSwapWin', () => {
 // El script no se puede ejecutar en macOS (no hay PowerShell): estas comprobaciones son estáticas, NO sustituyen la prueba real.
 describe('resources/updater/swap.ps1 (comprobación estática)', () => {
   const ps = readFileSync(resolve(__dirname, '../../../resources/updater/swap.ps1'), 'utf8')
+
+  it('se sale de la carpeta de la app antes de renombrarla (si hereda la de instalación, Windows no deja renombrarla) y guarda el motivo si falla', () => {
+    const idx = (t: string): number => ps.indexOf(t)
+    expect(idx('Set-Location -LiteralPath $env:SystemRoot')).toBeGreaterThan(-1)
+    expect(idx('Set-Location -LiteralPath $env:SystemRoot')).toBeLessThan(idx('Move-Dir $Target $Bak'))
+    expect(ps).toMatch(/Save-MoveError; Write-Result \$false \$false 'backup-failed'/)
+  })
 
   it('reconoce la clave real del instalador NSIS: nombre con versión y carpeta sacada de UninstallString', () => {
     expect(ps).toContain("'^Lazunox( \\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)*)?$'")

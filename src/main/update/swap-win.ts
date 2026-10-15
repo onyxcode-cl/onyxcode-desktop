@@ -79,7 +79,7 @@ export interface SwapDepsWin {
   spawn?: (
     cmd: string,
     args: string[],
-    opts: { detached: true; stdio: 'ignore'; windowsHide: true; env: Record<string, string> }
+    opts: { detached: true; stdio: 'ignore'; windowsHide: true; cwd: string; env: Record<string, string> }
   ) => Pick<ChildProcess, 'unref'>
   /** Variables de entorno que se pasan al script (solo las de prueba en un build de prueba). */
   extraEnv?: Record<string, string>
@@ -184,7 +184,10 @@ export function startSwapWin(deps: SwapDepsWin, stagedApp: string, version: stri
   if (bad2 !== undefined) throw new Error('argumentos de reemplazo no aptos para cmd.exe')
   const cmd = win32.join(sr, 'System32', 'cmd.exe')
   const run = deps.spawn ?? ((c, a, o) => nodeSpawn(c, a, o))
-  const child = run(cmd, ['/d', '/c', 'start', '""', '/B', ps, ...psArguments], { detached: true, stdio: 'ignore', windowsHide: true, env })
+  // `cwd` FUERA de la carpeta de la app: si el proceso del reemplazo heredara como carpeta de trabajo la de instalación (así abre Windows
+  // la app desde el acceso directo del menú Inicio o del escritorio), Windows no deja renombrar esa carpeta («el archivo está siendo
+  // utilizado por otro proceso») y la actualización fallaba siempre tras 20 s de reintentos.
+  const child = run(cmd, ['/d', '/c', 'start', '""', '/B', ps, ...psArguments], { detached: true, stdio: 'ignore', windowsHide: true, cwd: sr, env })
   child.unref()
   updating = true
   deps.quit()
