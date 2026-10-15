@@ -33,6 +33,7 @@ import { useCode } from './store'
 import { ElementReadonlyChip } from '../../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { isRemoteSurface } from '../../../lib/platform'
+import { expandStepGroups, showReasoning, showStepGroup, useReadingMode } from '../../../lib/reading-mode'
 
 // ---------------------------------------------------------------------------
 // Agrupación en bloques
@@ -397,6 +398,9 @@ const TurnView = memo(
       .trim()
     const showCopy = !!replyText && !(busy && isLastTurn)
     const mobile = isRemoteSurface()
+    // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
+    const readingStored = useReadingMode((s) => s.mode)
+    const reading = mobile ? 'normal' : readingStored
     const [sheet, setSheet] = useState(false)
     const longPress = useLongPress(() => setSheet(true))
     const inlinePerms = new Map<string, PendingPermission[]>()
@@ -415,9 +419,12 @@ const TurnView = memo(
                 case 'text':
                   return <DeferredMarkdown key={b.key} text={b.part.text} highlight={!live} />
                 case 'reasoning':
+                  if (!showReasoning(reading)) return null
                   return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} variant={isRemoteSurface() ? 'code' : 'chat'} />
                 case 'steps': {
                   const hasPending = b.parts.some((p) => inlinePerms.has(p.callID))
+                  const hasError = b.parts.some((p) => p.state.status === 'error')
+                  if (!showStepGroup(reading, { hasPending, hasError })) return null
                   return (
                     <StepGroup
                       key={b.key}
@@ -425,6 +432,7 @@ const TurnView = memo(
                       root={root}
                       live={live}
                       hasPending={hasPending}
+                      forceOpen={expandStepGroups(reading)}
                       after={(p) =>
                         inlinePerms
                           .get(p.callID)

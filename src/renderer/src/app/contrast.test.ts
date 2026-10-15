@@ -95,3 +95,30 @@ describe('botones de acento deshabilitados (escritorio)', () => {
     })
   }
 })
+
+/**
+ * Resaltado de selección (`::selection`): fondo opaco por tema y por acento. Tiene que verse claramente sobre todas las
+ * superficies (antes era acento al 18-28 % y en oscuro casi no se notaba) y el texto seleccionado, que pasa a --fg,
+ * debe mantener >= 4,5:1.
+ */
+describe('resaltado de selección', () => {
+  const ACCENTS = ['violet', 'green', 'teal', 'rose']
+  const variants: [string, Record<string, string>][] = [
+    ['light', THEMES.light],
+    ['dark', THEMES.dark],
+    ...ACCENTS.flatMap((a): [string, Record<string, string>][] => [
+      [`light/${a}`, { ...THEMES.light, ...tokens(`[data-accent='${a}'] {`) }],
+      [`dark/${a}`, { ...THEMES.dark, ...tokens(`[data-theme='dark'][data-accent='${a}'] {`) }]
+    ])
+  ]
+  it('el texto seleccionado usa --fg', () => {
+    expect(css).toMatch(/::selection \{\s*background: var\(--selection\);\s*color: var\(--fg\);/)
+  })
+  for (const [name, t] of variants) {
+    it(`${name}: --selection es opaco, texto >= 4,5 y se distingue de las superficies (>= 1,3)`, () => {
+      expect(t['selection']).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(contrast(t['fg'], t['selection'])).toBeGreaterThanOrEqual(4.5)
+      for (const bg of SURFACES) expect(contrast(t['selection'], t[bg])).toBeGreaterThanOrEqual(1.3)
+    })
+  }
+})
