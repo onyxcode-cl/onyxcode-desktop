@@ -32,6 +32,7 @@ const SCENARIOS = [
   'code-permiso',
   'code-pregunta',
   'code-plan',
+  'code-archivo',
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
@@ -905,6 +906,27 @@ const S = {
     await box.press('Enter')
     await vis(page.getByTestId('plan-card'), 45_000)
     await sleep(2500)
+  },
+  // Tarjetas de archivo: el turno escribe un .xlsx (herramienta `write`) y menciona un .pdf que ya existe en el proyecto.
+  async 'code-archivo'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'Arma el Excel',
+      title: 'Excel de ventas',
+      steps: [
+        { type: 'fs', op: 'write', path: 'informe-ventas.xlsx', content: 'x'.repeat(18_400) },
+        { type: 'fs', op: 'write', path: 'docs/negocios_ganados_2026.pdf', content: 'x'.repeat(412_000) },
+        { type: 'text', text: 'Voy a armar el Excel con los totales.' },
+        { type: 'tool', tool: 'write', input: { filePath: join(codeRepo, 'informe-ventas.xlsx'), content: '' }, output: 'Wrote file successfully.', title: 'informe-ventas.xlsx' },
+        { type: 'text', text: `Listo. También actualicé el PDF: ${join(codeRepo, 'docs', 'negocios_ganados_2026.pdf')}` }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Arma el Excel de ventas')
+    await box.press('Enter')
+    await vis(page.locator('[data-file-card]').first(), 45_000)
+    await sleep(800)
   },
   async 'code-pregunta'(ctx) {
     await openCode(ctx)
