@@ -4,7 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
-## [0.5.24] - 2026-10-15
+## [0.5.25] - 2026-10-15
+
+### Arreglos
+
+- **Mac: la 0.5.24 se cerraba al abrirla («Cannot find module»).** Esa versión salió de Mac sin unos archivos internos y la app se caía apenas arrancaba. **Si instalaste la 0.5.24 en Mac, esta versión la reemplaza: descárgala una vez desde la página y de ahí en adelante se actualiza sola.** La 0.5.24 se retiró; trae lo mismo que ahora llega en esta (la barra lateral nueva, el panel de Cambios y el pulido visual). Además, ahora cada versión se revisa automáticamente para comprobar que no falte ningún archivo interno antes de publicarla.
+
+## [0.5.24] - 2026-10-15 (retirada)
 
 ### Mejoras
 

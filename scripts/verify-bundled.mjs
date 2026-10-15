@@ -142,6 +142,41 @@ async function main() {
   } else {
     record('Python incluido (Contents/Resources/python)', false, 'falta: ¿se ejecutó `npm run fetch:python` antes de empaquetar?')
   }
+  // Dependencias completas dentro de app.asar: cada paquete de node_modules debe encontrar las suyas (la 0.5.24 salió sin is-number-object
+  // —un enlace circular en node_modules confundió al empaquetador— y la app se caía al arrancar con «Cannot find module»).
+  const asarFile = join(res, 'app.asar')
+  if (existsSync(asarFile)) {
+    try {
+      const asar = (await import('@electron/asar')).default ?? (await import('@electron/asar'))
+      const files = new Set(asar.listPackage(asarFile, { isPack: false }).map((f) => f.replace(/\\/g, '/')))
+      const missing = []
+      for (const f of files) {
+        const m = /^(\/node_modules\/(?:.*\/node_modules\/)?(?:@[^/]+\/)?[^/]+)\/package\.json$/.exec(f)
+        if (!m) continue
+        const info = JSON.parse(asar.extractFile(asarFile, f.slice(1)).toString('utf8'))
+        for (const dep of Object.keys(info.dependencies ?? {})) {
+          // Resuelve como Node: sube por las carpetas node_modules desde el paquete.
+          let dir = m[1]
+          let found = false
+          for (;;) {
+            if (files.has(`${dir}/node_modules/${dep}/package.json`) || files.has(`/node_modules/${dep}/package.json`)) {
+              found = true
+              break
+            }
+            const up = dir.replace(/\/node_modules\/(?:@[^/]+\/)?[^/]+$/, '')
+            if (up === dir || up === '') break
+            dir = up
+          }
+          if (!found) missing.push(`${m[1].slice('/node_modules/'.length)} → ${dep}`)
+        }
+      }
+      record('dependencias de node_modules completas dentro de app.asar', missing.length === 0, missing.length ? `faltan: ${missing.slice(0, 6).join(', ')}` : `${files.size} archivos revisados`)
+    } catch (e) {
+      record('dependencias de node_modules completas dentro de app.asar', false, `no se pudo revisar: ${String(e?.message ?? e).slice(0, 120)}`)
+    }
+  } else {
+    record('dependencias de node_modules completas dentro de app.asar', false, 'falta Contents/Resources/app.asar')
+  }
   // El pin de ArtCraft (descarga bajo demanda) debe viajar dentro del paquete: sin él la bienvenida y Ajustes no sabrían qué descargar.
   const craftPin = join(res, 'app.asar.unpacked/resources/craft/pin.json')
   const craftOk = existsSync(craftPin) && /"deckcraft"/.test(readFileSync(craftPin, 'utf8'))
