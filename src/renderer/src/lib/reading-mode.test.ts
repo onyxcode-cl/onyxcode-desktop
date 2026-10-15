@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { expandStepGroups, parseReadingMode, showReasoning, showStepGroup } from './reading-mode'
+import { expandStepGroups, parseReadingMode, showReasoning, showStepGroup, visibleStepParts } from './reading-mode'
+
+describe('visibleStepParts', () => {
+  const tool = (callID: string, status = 'completed') => ({ type: 'tool', callID, state: { status } })
+  const reasoning = { type: 'reasoning' }
+  const none = new Set<string>()
+  it('normal y detallado dejan todo', () => {
+    const parts = [reasoning, tool('a')]
+    expect(visibleStepParts('normal', parts, none)).toEqual(parts)
+    expect(visibleStepParts('detailed', parts, none)).toEqual(parts)
+  })
+  it('resumen oculta el grupo sin error ni pendiente', () => {
+    expect(visibleStepParts('summary', [reasoning, tool('a')], none)).toBeNull()
+  })
+  it('resumen conserva el grupo con error o permiso pendiente, sin razonamiento', () => {
+    expect(visibleStepParts('summary', [reasoning, tool('a', 'error')], none)).toEqual([tool('a', 'error')])
+    expect(visibleStepParts('summary', [reasoning, tool('b', 'running')], new Set(['b']))).toEqual([tool('b', 'running')])
+  })
+})
 
 describe('modos de lectura', () => {
   it('un valor desconocido cae a normal', () => {
