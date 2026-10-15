@@ -41,6 +41,8 @@ const SCENARIOS = [
   'tareas-buscar',
   'tareas-archivadas',
   'tareas-en-curso',
+  'tareas-progreso',
+  'tareas-progreso-plan',
   'tareas-permiso',
   'tareas-permiso-neutral',
   'tareas-permiso-largo',
@@ -675,6 +677,47 @@ async function sendTask(page, text) {
   await page.getByRole('button', { name: 'Enviar' }).first().click()
 }
 
+const planTool = (todos) => ({ type: 'tool', tool: 'todowrite', input: { todos }, output: 'ok', title: 'Plan' })
+async function progresoDosTurnos(ctx, conPlan) {
+  const fake = await freshTasks(ctx)
+  await fake.script({
+    match: 'Prepara el informe',
+    title: 'Preparar informe de ventas',
+    steps: [
+      planTool([
+        { content: 'Reunir datos', status: 'completed', priority: 'high' },
+        { content: 'Calcular totales', status: 'completed', priority: 'high' },
+        { content: 'Redactar resumen', status: 'completed', priority: 'medium' }
+      ]),
+      { type: 'text', text: 'Listo, el informe de ventas quedó preparado.' }
+    ]
+  })
+  const nuevo = [
+    ...(conPlan
+      ? [
+          planTool([
+            { content: 'Revisar la carpeta', status: 'completed', priority: 'high' },
+            { content: 'Leer los tres meses', status: 'in_progress', priority: 'high' },
+            { content: 'Calcular totales', status: 'pending', priority: 'medium' },
+            { content: 'Armar el Excel', status: 'pending', priority: 'medium' },
+            { content: 'Revisar', status: 'pending', priority: 'low' }
+          ])
+        ]
+      : []),
+    { type: 'tool', tool: 'read', input: { filePath: join(taskFolder, 'ventas_enero.csv') }, output: 'mes,total', title: 'Lee enero' },
+    { type: 'tool', tool: 'read', input: { filePath: join(taskFolder, 'ventas_febrero.csv') }, output: 'mes,total', title: 'Lee febrero' },
+    { type: 'tool', tool: 'read', input: { filePath: join(taskFolder, 'ventas_marzo.csv') }, output: 'mes,total', title: 'Lee marzo', runMs: 120000 }
+  ]
+  await fake.script({ match: 'Ahora cruza', title: 'Preparar informe de ventas', steps: nuevo })
+  await sendTask(ctx.page, 'Prepara el informe de ventas del mes')
+  await vis(ctx.page.getByText('el informe de ventas quedó preparado'), 45_000)
+  const box = ctx.page.getByPlaceholder('Responde o pide un cambio…')
+  await box.fill('Ahora cruza los datos de la carpeta')
+  await ctx.page.getByRole('button', { name: 'Enviar' }).first().click()
+  await vis(ctx.page.getByTestId('working-card'), 30_000)
+  await sleep(2500)
+}
+
 // Dos tareas terminadas (se crean una sola vez por arranque, aunque varios escenarios las necesiten).
 let taskListSeeded = false
 async function seedTaskList(ctx) {
@@ -1018,6 +1061,14 @@ const S = {
     await sendTask(ctx.page, 'Prepara el informe de ventas del mes')
     await vis(ctx.page.getByText('Calcular totales por región'), 45_000)
     await sleep(800)
+  },
+  // Turno viejo con plan completo y turno nuevo en curso: la tarjeta NO debe mostrar el plan viejo (sin plan: contadores y fases).
+  async 'tareas-progreso'(ctx) {
+    await progresoDosTurnos(ctx, false)
+  },
+  // Igual, pero el turno nuevo ya publicó su propio plan: barra segmentada con el paso en curso y la lista de pasos.
+  async 'tareas-progreso-plan'(ctx) {
+    await progresoDosTurnos(ctx, true)
   },
   async 'tareas-permiso'(ctx) {
     const fake = await freshTasks(ctx)
