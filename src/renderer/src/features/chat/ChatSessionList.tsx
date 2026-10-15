@@ -149,13 +149,7 @@ function Row({
             <span className={`shrink-0 text-meta text-subtle group-focus-within:hidden group-hover:hidden ${active ? 'hidden' : ''}`}>
               {t('app.sidebar.working')}
             </span>
-          ) : tree ? (
-            <span
-              className={`shrink-0 text-meta text-subtle tabular-nums group-focus-within:hidden group-hover:hidden ${active ? 'hidden' : ''}`}
-            >
-              {relCompact(session.time.updated)}
-            </span>
-          ) : busy ? (
+          ) : tree ? null : busy ? (
             <span className="flex shrink-0 items-center gap-1.5 text-meta text-muted group-hover:hidden">
               <span
                 className="size-2.5 animate-spin rounded-full border-2 border-accent border-r-transparent motion-reduce:animate-none"
