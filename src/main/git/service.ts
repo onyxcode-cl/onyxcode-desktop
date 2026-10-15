@@ -66,7 +66,9 @@ function run(cwd: string, args: string[], opts: RunOptions = {}): Promise<RunRes
   return new Promise((resolvePromise, reject) => {
     const child = execFile(
       'git',
-      args,
+      // `core.quotepath=off`: rutas no ASCII tal cual en diff/status sin `-z` (si no, git las cita con escapes octales y el
+      // panel Cambios no las casa con las de `status -z`), como en `compare/git.ts`.
+      ['-c', 'core.quotepath=off', ...args],
       {
         cwd,
         shell: false,

@@ -115,36 +115,146 @@ export function fingerprint(text: string): string {
   return `${text.length.toString(36)}.${(h >>> 0).toString(36)}`
 }
 
-/** Ruta (del lado nuevo) de una cabecera `diff --git a/X b/Y`; `null` si no se puede leer con seguridad. */
+/**
+ * Decodifica una ruta entre comillas al estilo C de git (`"caf\303\251.txt"`, `"q\"uote.txt"`): escapes octales
+ * (bytes UTF-8), `\t`, `\n`, `\"`, barra invertida… Devuelve la ruta y dónde termina la comilla de cierre; `null` si está mal formada.
+ */
+export function unquoteGitPath(s: string, from = 0): { path: string; end: number } | null {
+  if (s[from] !== '"') return null
+  const bytes: number[] = []
+  const enc = new TextEncoder()
+  const SIMPLE: Record<string, number> = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 }
+  for (let i = from + 1; i < s.length; i++) {
+    const c = s[i]
+    if (c === '"') return { path: new TextDecoder().decode(new Uint8Array(bytes)), end: i + 1 }
+    if (c !== '\\') {
+      bytes.push(...enc.encode(c))
+      continue
+    }
+    const n = s[++i]
+    if (n === undefined) return null
+    if (n in SIMPLE) bytes.push(SIMPLE[n])
+    else if (/[0-7]/.test(n)) {
+      const oct = /^[0-7]{1,3}/.exec(s.slice(i))![0]
+      bytes.push(parseInt(oct, 8) & 0xff)
+      i += oct.length - 1
+    } else return null
+  }
+  return null
+}
+
+/** Quita el prefijo `a/`/`b/` de una ruta del diff, entre comillas o no. */
+function stripSide(raw: string, side: 'a/' | 'b/'): string | null {
+  const unq = raw.startsWith('"') ? unquoteGitPath(raw)?.path : raw
+  return unq && unq.startsWith(side) ? unq.slice(2) : null
+}
+
+/** Ruta (del lado nuevo) de una cabecera `diff --git a/X b/Y` (con o sin comillas); `null` si no se puede leer con seguridad. */
 export function pathOfDiffHeader(line: string): string | null {
   const rest = line.startsWith('diff --git ') ? line.slice('diff --git '.length) : null
-  if (!rest || rest.startsWith('"')) return null
+  if (!rest) return null
+  if (rest.startsWith('"')) {
+    // Lado «a» entre comillas: el lado «b» empieza justo después.
+    const a = unquoteGitPath(rest)
+    if (!a || rest[a.end] !== ' ') return null
+    return stripSide(rest.slice(a.end + 1), 'b/')
+  }
   if (!rest.startsWith('a/')) return null
+  // Lado «b» entre comillas (y «a» sin ellas): `a/X "b/Y"`.
+  if (rest.endsWith('"')) {
+    const q = rest.lastIndexOf(' "b/')
+    return q > 0 ? stripSide(rest.slice(q + 1), 'b/') : null
+  }
   // Mismo nombre en ambos lados (lo normal): «a/P b/P».
   const half = (rest.length - 5) / 2
   if (Number.isInteger(half) && rest.slice(2, 2 + half) === rest.slice(2 + half + 3)) return rest.slice(2 + half + 3)
-  const i = rest.lastIndexOf(' b/')
-  return i > 0 ? rest.slice(i + 3) : null
+  // Nombres distintos (renombre) con « b/» ambiguo: no se adivina; lo resuelven `rename to` o `+++ b/` del cuerpo.
+  const i = rest.indexOf(' b/')
+  return i > 0 && rest.indexOf(' b/', i + 1) < 0 ? rest.slice(i + 3) : null
+}
+
+/** Líneas de cabecera extendida que git escribe entre `diff --git` y el primer `@@`. */
+const EXT_HEADER =
+  /^(index |old mode |new mode |deleted file mode |new file mode |similarity index |dissimilarity index |rename from |rename to |copy from |copy to |Binary files |--- |\+\+\+ )/
+
+/** Ruta tras `rename to `, `copy to `, `+++ b/` o `--- a/` (sin la tabulación final que git añade a nombres con espacios). */
+function pathOfBodyLine(line: string): { path: string; strong: boolean } | null {
+  const m = /^(rename to |copy to )(.*)$/.exec(line)
+  if (m) {
+    const raw = m[2]
+    const p = raw.startsWith('"') ? unquoteGitPath(raw)?.path : raw
+    return p ? { path: p, strong: true } : null
+  }
+  for (const [prefix, side] of [
+    ['+++ ', 'b/'],
+    ['--- ', 'a/']
+  ] as const) {
+    if (!line.startsWith(prefix)) continue
+    const raw = line.slice(prefix.length).replace(/\t$/, '')
+    const p = stripSide(raw, side)
+    return p ? { path: p, strong: false } : null
+  }
+  return null
 }
 
 /**
  * Trocea un diff de varios archivos en uno por ruta. Un archivo con cambios preparados y sin preparar aparece dos
- * veces en la salida de git: aquí se juntan.
+ * veces en la salida de git: aquí se juntan. Cuenta las líneas de cada bloque `@@`: lo que va detrás de un archivo y no
+ * es diff (p. ej. el aviso de archivos nuevos omitidos) no se pega a su huella.
  */
 export function splitPatchByFile(patch: string): Map<string, FileDiffInfo> {
   const chunks = new Map<string, string>()
-  let path: string | null = null
+  let header: string | null = null
+  let strong: string | null = null
+  let weakNew: string | null = null
+  let weakOld: string | null = null
+  let inFile = false
+  let remOld = 0
+  let remNew = 0
   let cur: string[] = []
   const flush = (): void => {
-    if (path !== null && cur.length) chunks.set(path, (chunks.get(path) ?? '') + cur.join('\n') + '\n')
+    const path = strong ?? header ?? weakNew ?? weakOld
+    if (inFile && path !== null && cur.length) chunks.set(path, (chunks.get(path) ?? '') + cur.join('\n') + '\n')
     cur = []
+    inFile = false
+    header = strong = weakNew = weakOld = null
+    remOld = remNew = 0
   }
   for (const line of patch.split('\n')) {
     if (line.startsWith('diff --git ')) {
       flush()
-      path = pathOfDiffHeader(line)
+      inFile = true
+      header = pathOfDiffHeader(line)
+      cur.push(line)
+      continue
     }
-    if (path !== null) cur.push(line)
+    if (!inFile) continue
+    if (remOld > 0 || remNew > 0) {
+      const c = line[0]
+      if (c === ' ' || line === '') {
+        remOld--
+        remNew--
+      } else if (c === '-') remOld--
+      else if (c === '+') remNew--
+      else if (c !== '\\') {
+        flush()
+        continue
+      }
+      cur.push(line)
+      continue
+    }
+    const hunk = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line)
+    if (hunk) {
+      remOld = hunk[1] === undefined ? 1 : Number(hunk[1])
+      remNew = hunk[2] === undefined ? 1 : Number(hunk[2])
+      cur.push(line)
+    } else if (line.startsWith('\\') || EXT_HEADER.test(line)) {
+      const body = pathOfBodyLine(line)
+      if (body?.strong) strong = body.path
+      else if (body && line.startsWith('+++ ')) weakNew = body.path
+      else if (body) weakOld = body.path
+      cur.push(line)
+    } else flush() // Texto que no es diff: el archivo terminó.
   }
   flush()
   const out = new Map<string, FileDiffInfo>()

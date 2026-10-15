@@ -15,6 +15,7 @@ import {
   splitPatchByFile,
   summarySignature,
   trimReviewed,
+  unquoteGitPath,
   type ReviewRecord
 } from './review-logic'
 
@@ -86,7 +87,61 @@ describe('splitPatchByFile', () => {
     expect(pathOfDiffHeader('diff --git a/src/a.ts b/src/a.ts')).toBe('src/a.ts')
     expect(pathOfDiffHeader('diff --git a/b with space.md b/b with space.md')).toBe('b with space.md')
     expect(pathOfDiffHeader('diff --git a/old.ts b/new.ts')).toBe('new.ts')
-    expect(pathOfDiffHeader('diff --git "a/\\303\\261.ts" "b/\\303\\261.ts"')).toBeNull()
+    // Entre comillas (git cita no ASCII con escapes octales y siempre las comillas dobles): se decodifica.
+    expect(pathOfDiffHeader('diff --git "a/\\303\\261.ts" "b/\\303\\261.ts"')).toBe('ñ.ts')
+    expect(pathOfDiffHeader('diff --git "a/q\\"uote.txt" "b/q\\"uote.txt"')).toBe('q"uote.txt')
+    expect(pathOfDiffHeader('diff --git "a/tab\\there" "b/tab\\there"')).toBe('tab\there')
+    expect(pathOfDiffHeader('diff --git "a/b\\\\s" "b/b\\\\s"')).toBe('b\\s')
+    expect(pathOfDiffHeader('diff --git a/plain.txt "b/q\\"x.txt"')).toBe('q"x.txt')
+    expect(pathOfDiffHeader('diff --git a/café.txt b/café.txt')).toBe('café.txt')
+    // Renombre con « b/» ambiguo: no se adivina (lo resuelve el cuerpo del diff).
+    expect(pathOfDiffHeader('diff --git a/x b/y b/z b/w')).toBeNull()
+    expect(unquoteGitPath('"sin cierre')).toBeNull()
+  })
+  it('renombres: manda `rename to` sobre la cabecera, aunque haya « b/» en los nombres', () => {
+    const p = ['diff --git a/x b/y b/z b/w', 'similarity index 100%', 'rename from x b/y', 'rename to z b/w', ''].join('\n')
+    expect([...splitPatchByFile(p).keys()]).toEqual(['z b/w'])
+    const q = ['diff --git "a/vie\\"jo" "b/nue\\"vo"', 'similarity index 100%', 'rename from "vie\\"jo"', 'rename to "nue\\"vo"', ''].join('\n')
+    expect([...splitPatchByFile(q).keys()]).toEqual(['nue"vo'])
+  })
+  it('salida real de git (core.quotepath=off): café.txt, nuevo ñ.txt y q"uote.txt casan con las rutas de status', () => {
+    const real = [
+      'diff --git a/café.txt b/café.txt',
+      'index 5626abf..3e8b6d8 100644',
+      '--- a/café.txt',
+      '+++ b/café.txt',
+      '@@ -1 +1,2 @@',
+      ' uno',
+      '+dos',
+      'diff --git "a/q\\"uote.txt" "b/q\\"uote.txt"',
+      'index 5626abf..3e8b6d8 100644',
+      '--- "a/q\\"uote.txt"',
+      '+++ "b/q\\"uote.txt"',
+      '@@ -1 +1,2 @@',
+      ' uno',
+      '+dos',
+      'diff --git a/nuevo ñ.txt b/nuevo ñ.txt',
+      'new file mode 100644',
+      'index 0000000..b1b7161',
+      '--- /dev/null',
+      '+++ b/nuevo ñ.txt\t',
+      '@@ -0,0 +1 @@',
+      '+hola',
+      ''
+    ].join('\n')
+    const m = splitPatchByFile(real)
+    expect([...m.keys()]).toEqual(['café.txt', 'q"uote.txt', 'nuevo ñ.txt'])
+    for (const p of m.keys()) expect(m.get(p)).toMatchObject({ additions: 1, deletions: 0 })
+  })
+  it('el aviso de archivos omitidos que va detrás del último diff no entra en su huella', () => {
+    const one = splitPatchByFile(PATCH).get('b with space.md')!
+    const withNotice = splitPatchByFile(`${PATCH}# 3 archivos sin seguimiento adicionales omitidos\n`).get('b with space.md')!
+    expect(withNotice.fingerprint).toBe(one.fingerprint)
+    expect(withNotice.patch).not.toContain('omitidos')
+  })
+  it('una línea de contenido que empieza por «---» o «diff» dentro de un bloque no corta el archivo', () => {
+    const p = ['diff --git a/m.md b/m.md', '--- a/m.md', '+++ b/m.md', '@@ -1,1 +1,2 @@', ' x', '+--- separador', ''].join('\n')
+    expect(splitPatchByFile(p).get('m.md')).toMatchObject({ additions: 1, deletions: 0 })
   })
   it('un diff por archivo con sus +/− (preparado y sin preparar se suman)', () => {
     const m = splitPatchByFile(PATCH)
