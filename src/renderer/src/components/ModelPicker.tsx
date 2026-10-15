@@ -186,13 +186,13 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
     )
 
   return (
-    <div ref={rootRef} className="relative min-w-0 max-w-full">
+    <div ref={rootRef} className="relative desk:min-w-0 desk:max-w-full">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`no-drag flex max-w-[min(280px,100%)] min-w-0 items-center gap-1.5 rounded-full px-2.5 text-[13px] transition-colors ${sheet ? 'min-h-11 min-w-0 px-3' : 'py-1'} ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+        className={`no-drag flex max-w-[280px] items-center desk:max-w-[min(280px,100%)] desk:min-w-0 gap-1.5 rounded-full px-2.5 text-[13px] transition-colors ${sheet ? 'min-h-11 min-w-0 px-3' : 'py-1'} ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
         title={`${value.providerID}/${value.modelID}`}
       >
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${current.name === null || unavailable ? 'bg-warning' : 'bg-accent'}`} />

@@ -225,17 +225,17 @@ export function ModelControls(): React.JSX.Element {
   return (
     <div className="flex items-center gap-0.5 desk:ml-auto desk:min-w-0 desk:shrink">
       {/* «Comparar modelos…»: solo el ícono, y solo con sitio (en la barra de escritorio). No existe en el celular. */}
-      <div className="desk:@max-[36rem]:hidden">
+      <div className="block desk:@max-[36rem]:hidden">
         <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" iconOnly />
       </div>
       {/* El nombre largo se acorta con «…» (nunca se sale ni se pisa con lo de al lado); el menú se alinea a la derecha. */}
       <div className="no-drag desk:max-w-[15rem] desk:min-w-[2.5rem] desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
         <ModelPicker value={effective} onChange={setModel} placement="top" />
       </div>
-      <div className="desk:@max-[18rem]:hidden">
+      <div className="block desk:@max-[18rem]:hidden">
         <EffortChip />
       </div>
-      <div className="desk:@max-[30rem]:hidden">
+      <div className="block desk:@max-[30rem]:hidden">
         <UsageMeter messages={messages ?? []} model={effective} />
       </div>
     </div>

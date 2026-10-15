@@ -834,7 +834,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   className={`flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:text-ui ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                 >
                   {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
-                  <span className="desk:@max-[36rem]:sr-only">{agent === 'plan' ? 'Plan' : 'Build'}</span>
+                  <span className="inline desk:@max-[36rem]:sr-only">{agent === 'plan' ? 'Plan' : 'Build'}</span>
                 </button>
                 <button
                   type="button"

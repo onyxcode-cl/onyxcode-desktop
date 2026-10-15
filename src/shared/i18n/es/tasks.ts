@@ -351,7 +351,7 @@ export const tasks = {
   'tasks.sandboxProviderPending':
     'Este proveedor aún no llegó al entorno aislado de esta tarea (se conectó después de abrirla). Espera unos segundos y reintenta, o cierra la tarea y ábrela de nuevo.',
   'tasks.sandboxProviderNotice':
-    'En Overdrive con sandbox están los proveedores que se conectan con una clave de API (OpenAI, Anthropic, Google, OpenRouter, DeepSeek, OpenCode Go y muchos más) y los modelos gratuitos de OpenCode. Los que entran con inicio de sesión (como ChatGPT o Copilot) o son servicios en la nube (Bedrock, Azure, Vertex) requieren Control total, Chat o Code.',
+    'En Overdrive con sandbox están los proveedores que se conectan con una clave de API (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go y muchos más) y los modelos gratuitos de OpenCode. Los que entran con inicio de sesión (como ChatGPT o Copilot) o son servicios en la nube (Bedrock, Azure, Vertex) requieren Control total, Chat o Code.',
   'tasks.comp.removeAttachment': 'Quitar (el archivo sigue en la carpeta)',
   'tasks.comp.unlinkTitle': 'Quitar «{name}» de las carpetas adicionales',
   'tasks.comp.unlinkAria': 'Quitar la carpeta adicional {name}',

@@ -355,7 +355,7 @@ export const tasks = {
   'tasks.sandboxProviderPending':
     'This provider hasn’t reached this task’s isolated environment yet (it was connected after the task was opened). Wait a few seconds and try again, or close the task and reopen it.',
   'tasks.sandboxProviderNotice':
-    'In Overdrive with sandbox, providers connected with an API key are available (OpenAI, Anthropic, Google, OpenRouter, DeepSeek, OpenCode Go and many more) plus OpenCode’s free models. Providers that use a sign-in (like ChatGPT or Copilot) or cloud services (Bedrock, Azure, Vertex) require Full control, Chat or Code.',
+    'In Overdrive with sandbox, providers connected with an API key are available (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go and many more) plus OpenCode’s free models. Providers that use a sign-in (like ChatGPT or Copilot) or cloud services (Bedrock, Azure, Vertex) require Full control, Chat or Code.',
   'tasks.comp.removeAttachment': 'Remove (the file stays in the folder)',
   'tasks.comp.unlinkTitle': 'Remove “{name}” from the additional folders',
   'tasks.comp.unlinkAria': 'Remove the additional folder {name}',
