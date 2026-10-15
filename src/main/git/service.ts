@@ -21,6 +21,7 @@ import {
 import { samePath } from '../util/paths'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { splitDiffHunks, isSingleFileDiff } from '@shared/diff-hunks'
+import { GIT_MAX_DISCARD_FILES } from '@shared/ipc-code'
 import type {
   GitBranch,
   GitChangeKind,
@@ -548,7 +549,7 @@ export interface DiscardDeps {
   backupDir: string
 }
 
-export const MAX_DISCARD_FILES = 200
+export const MAX_DISCARD_FILES = GIT_MAX_DISCARD_FILES
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024
 const BACKUP_TTL_MS = 7 * 24 * 3600 * 1000
 

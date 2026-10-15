@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { t as tg, type MsgKey } from '@shared/i18n'
+import { GIT_MAX_DISCARD_FILES } from '@shared/ipc-code'
 import type { GitBranch as GitBranchInfo, GitChangeKind, GitDiscardResult, GitWorktreeDetailed } from '@shared/ipc-code'
 import {
   Check,
@@ -32,6 +33,7 @@ import { errorMessage, getClient, nativeCode, requireCode } from '../client'
 import { DiffView, diffStats, makePatch } from '../DiffView'
 import { DiffStats } from '../ToolCard'
 import { useCode } from '../store'
+import { sameDir } from '../open-projects'
 import { useVisibleFsVersion } from '../useVisibleFsVersion'
 import { openProjectTrusted } from '../trust'
 import { isImeComposing } from '../../../../lib/textarea'
@@ -226,16 +228,13 @@ function FileRow({
       </button>
       {/* Derecha: +/− (o «revisado») y, al pasar el ratón o enfocar, las acciones encima (sin reservar hueco ni salir del foco de teclado). */}
       <span className={`relative flex h-full shrink-0 items-center justify-end desk:pr-1 ${hasActions ? 'min-w-14' : ''}`}>
-        {(stat || accepted) && (
+        {((stat && stat.additions + stat.deletions > 0) || accepted) && (
           <span
             className={`flex items-center gap-1.5 font-mono text-[11px] tabular-nums ${hasActions ? 'group-focus-within:opacity-0 group-hover:opacity-0' : ''}`}
           >
-            {stat && (
-              <>
-                <span className="text-success">+{stat.additions}</span>
-                <span className="text-danger">−{stat.deletions}</span>
-              </>
-            )}
+            {/* Solo el lado que no es 0 (archivo nuevo: «+3»; binario o cambio de modo: nada). */}
+            {stat && stat.additions > 0 && <span className="text-success">+{stat.additions}</span>}
+            {stat && stat.deletions > 0 && <span className="text-danger">−{stat.deletions}</span>}
             {accepted && (
               <>
                 <Check size={12} aria-hidden className="text-success" />
@@ -649,6 +648,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   // Cambios hechos fuera de la app (editor, terminal): el vigilante sube `fsVersion` con debounce, sin polling.
   useProjectWatch(directory)
   const [status, setStatus] = useState<StatusInfo | null>(null)
+  /** Carpeta a la que corresponde `status` (al cambiar de proyecto, el anterior sigue a la vista hasta que llega el nuevo). */
+  const [statusDir, setStatusDir] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Selection | null>(null)
@@ -663,6 +664,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const summary = useCode((s) => (sessionID ? s.sessions[sessionID]?.summary : undefined))
   const acceptFiles = useCode((s) => s.acceptFiles)
   const acceptSession = useCode((s) => s.acceptSession)
+  const sessionDir = useCode((s) => (sessionID ? s.sessionProject[sessionID] : undefined))
+  const sessionBusy = useCode((s) => (sessionID ? s.runState[sessionID] === 'busy' || s.runState[sessionID] === 'retry' : false))
   const canReview = !mobile && !!sessionID
   const [infos, setInfos] = useState<Map<string, FileDiffInfo>>(() => new Map())
 
@@ -674,6 +677,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
       const next = await loadStatus(directory)
       if (gen !== refreshGen.current) return
       setStatus(next)
+      setStatusDir(directory)
       setError(null)
     } catch (err) {
       if (gen === refreshGen.current) setError(errorMessage(err))
@@ -704,8 +708,19 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     // `native` es estable por ventana; el diff se vuelve a pedir cuando cambian los archivos.
   }, [directory, fsVersion, fileCount, mobile]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sin archivos cambiados (commit por terminal, «Revertir todo», nada que mirar): la sesión activa deja de estar «por
+  // revisar». Si no, el punto se quedaba para siempre, porque «Aceptar todo» solo aparece con archivos.
+  const sig = summarySignature(summary)
+  const cleanNow = !!status && status.isRepo && status.files.length === 0 && statusDir === directory && !error
+  useEffect(() => {
+    if (mobile || !sessionID || !cleanNow || sig === null || record?.sig === sig) return
+    if (sessionDir && !sameDir(sessionDir, directory)) return
+    acceptSession(sessionID, sig, {})
+  }, [mobile, sessionID, cleanNow, sig, record?.sig, sessionDir, directory, acceptSession])
+
   const allPaths = useMemo(() => status?.files.map((f) => f.path) ?? [], [status])
   const pending = useMemo(() => pendingPaths(allPaths, record, infos), [allPaths, record, infos])
+  const acceptable = useMemo(() => Object.keys(acceptEntries(pending, infos)).length, [pending, infos])
 
   /** Aceptar archivos concretos; si con eso no queda nada pendiente, la sesión entera deja de marcarse «por revisar». */
   const accept = (paths: string[]): void => {
@@ -716,10 +731,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     if (rest.length === 0) acceptSession(sessionID, summarySignature(summary), entries)
     else acceptFiles(sessionID, entries)
   }
-  const acceptAll = (): void => {
-    if (!sessionID) return
-    acceptSession(sessionID, summarySignature(summary), acceptEntries(allPaths, infos))
-  }
+  /** «Aceptar todo»: igual que aceptar cada pendiente; la sesión solo pasa a «revisada» si de verdad no queda ninguno. */
+  const acceptAll = (): void => accept(pending)
 
   const staged = useMemo(() => status?.files.filter((f) => f.staged) ?? [], [status])
   const unstaged = useMemo(() => status?.files.filter((f) => f.unstaged || !f.staged) ?? [], [status])
@@ -859,6 +872,12 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   }
 
   const stats = useMemo(() => (diff ? diffStats(diff) : null), [diff])
+  // «Revertir todo» no se ofrece mientras el agente escribe (se pisarían) ni por encima del tope de main (fallaría entero).
+  const revertBlocked = sessionBusy
+    ? t('code.changes.revertAllBusy')
+    : (status?.files.filter(canDiscard).length ?? 0) > GIT_MAX_DISCARD_FILES
+      ? t('code.changes.revertAllTooMany', { max: GIT_MAX_DISCARD_FILES })
+      : null
   const abs = selectedFile ? `${directory.replace(/[/\\]+$/, '')}/${selectedFile.path}` : ''
 
   if (status && !status.isRepo) {
@@ -935,7 +954,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
               size="xs"
               variant="secondary"
               className="shrink-0 whitespace-nowrap"
-              disabled={pending.length === 0}
+              // Sin diff conocido de ningún pendiente (cargando, con error o enorme) todavía no hay nada que aceptar.
+              disabled={acceptable === 0}
               onClick={acceptAll}
               aria-label={t('code.changes.acceptAll')}
               title={`${t('code.changes.acceptAll')}. ${t('code.changes.acceptHint')}`}
@@ -944,18 +964,21 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
               <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.acceptAll')}</span>
             </Button>
           )}
-          <Button
-            size="xs"
-            variant="ghost"
-            className="shrink-0 whitespace-nowrap hover:text-danger"
-            disabled={!status.files.some(canDiscard)}
-            onClick={() => void revertAll()}
-            aria-label={t('code.changes.revertAll')}
-            title={t('code.changes.revertAll')}
-          >
-            <Undo2 size={12} aria-hidden />
-            <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.revertAll')}</span>
-          </Button>
+          {/* Envoltorio con el tooltip: un botón desactivado no recibe el ratón y no mostraría por qué. */}
+          <span className="flex shrink-0" title={revertBlocked ?? t('code.changes.revertAll')}>
+            <Button
+              size="xs"
+              variant="ghost"
+              className="shrink-0 whitespace-nowrap hover:text-danger"
+              disabled={revertBlocked !== null || !status.files.some(canDiscard)}
+              onClick={() => void revertAll()}
+              aria-label={t('code.changes.revertAll')}
+              aria-description={revertBlocked ?? undefined}
+            >
+              <Undo2 size={12} aria-hidden />
+              <span className="whitespace-nowrap desk:@max-[26rem]:hidden">{t('code.changes.revertAll')}</span>
+            </Button>
+          </span>
         </div>
       )}
 
