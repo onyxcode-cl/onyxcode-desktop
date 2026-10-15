@@ -36,6 +36,13 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
     }
   })
 
+  it('decir solo «PowerPoint», «PPT» o «PPTX» NO cuenta como elegir: sigue preguntando', () => {
+    for (const text of [inline.replace(/\\"/g, '"'), chatMd]) {
+      expect(text).toContain('decir solo "PowerPoint", "PPT" o "PPTX" NO alcanza')
+      expect(text).not.toMatch(/"PowerPoint", "\.pptx" → pptx/)
+    }
+  })
+
   it('la copia larga y el prompt inline dicen lo mismo sobre las dos opciones', () => {
     const norm = (t: string): string => t.replace(/\\n|\s+|[-•]/g, ' ').replace(/ +/g, ' ')
     expect(norm(inline)).toContain('DISEÑO LIBRE (HTML/CSS)')
