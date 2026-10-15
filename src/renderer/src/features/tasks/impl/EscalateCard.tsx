@@ -54,10 +54,23 @@ function foldWithMap(text: string): { folded: string; map: number[] } {
   return { folded, map }
 }
 
-/** ¿El texto pide Control total? Marcador neutro o frase en español/inglés (sin tildes ni mayúsculas). */
+/**
+ * ¿El texto pide Control total? Solo cuenta la ÚLTIMA línea no vacía (ignorando espacios): o bien el
+ * marcador neutro solo en esa línea, o bien la frase del contrato al inicio de la línea (con su
+ * decoración markdown). Citar la frase o el marcador en medio de un párrafo, o con texto después, NO escala.
+ */
 export function needsFullAccess(text: string): boolean {
-  const { folded } = foldWithMap(text)
-  return folded.includes(NEUTRAL_MARKER) || PHRASES.some((p) => folded.includes(p))
+  const lines = text.split('\n').filter((l) => l.trim() !== '')
+  if (lines.length === 0) return false
+  const { folded } = foldWithMap(lines[lines.length - 1])
+  const line = folded.trim()
+  if (line.endsWith(NEUTRAL_MARKER)) {
+    // Marcador al final de la línea: lo único que puede precederlo es decoración (no texto corrido).
+    const before = line.slice(0, line.length - NEUTRAL_MARKER.length).replace(/[\s*_`>#-]+/g, '')
+    return before === ''
+  }
+  const bare = line.replace(/^[\s*_`>#-]+/, '')
+  return PHRASES.some((p) => bare.startsWith(p))
 }
 
 /** Posición (en el texto plegado) y longitud de la última coincidencia de alguna de las frases. */

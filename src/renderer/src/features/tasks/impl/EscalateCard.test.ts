@@ -13,7 +13,7 @@ describe('needsFullAccess', () => {
   })
   it('detecta la frase en inglés', () => {
     expect(needsFullAccess('Done.\n\n**Needs Full Mac control**: open Discord')).toBe(true)
-    expect(needsFullAccess('This needs full control of the Mac to continue')).toBe(true)
+    expect(needsFullAccess('Done.\n\nNeeds full control of the Mac: open Discord')).toBe(true)
   })
   it('detecta el marcador neutro aunque el texto esté en otro idioma', () => {
     expect(needsFullAccess(`Ich brauche mehr Rechte.\n${ESCALATE_MARKER}`)).toBe(true)
@@ -21,6 +21,15 @@ describe('needsFullAccess', () => {
   it('no se activa con texto normal', () => {
     expect(needsFullAccess('Terminé el informe. Control total no hace falta.')).toBe(false)
     expect(needsFullAccess('')).toBe(false)
+  })
+  it('una cita en medio de un párrafo no escala', () => {
+    expect(needsFullAccess('Si hiciera falta escribiría «Necesita Control total del Mac» y listo.\nSigo con el informe.')).toBe(false)
+    expect(needsFullAccess('Dije que This needs full control of the Mac to continue, pero no.')).toBe(false)
+    expect(needsFullAccess(`Cito el marcador ${ESCALATE_MARKER} en una frase.`)).toBe(false)
+  })
+  it('el marcador en su propia línea final escala; con texto después, no', () => {
+    expect(needsFullAccess(`Listo.\n  ${ESCALATE_MARKER}  \n\n`)).toBe(true)
+    expect(needsFullAccess(`${ESCALATE_MARKER}\nY además terminé el informe.`)).toBe(false)
   })
 })
 

@@ -35,6 +35,22 @@ describe('prompts de agente', () => {
     expect(read('chat')).toMatch(/cita las fuentes/)
   })
 
+  it('computer.md y computer.win.md: documentos/archivos/web no usan ratón ni apps, y full_control solo tras fallo real', () => {
+    for (const n of ['computer', 'computer.win']) {
+      const t = read(n)
+      expect(t).toContain('NO uses el ratón ni el teclado ni listes aplicaciones')
+      expect(t).toContain('`apps: []`')
+      expect(t).toContain('«verificarlo»')
+      expect(t).toContain('tras un fallo real de las herramientas `app_*`')
+    }
+  })
+
+  it('tasks.md acota la escalada a una petición explícita', () => {
+    const t = read('tasks')
+    expect(t).toContain('pidió explícitamente manejar OTRA aplicación')
+    expect(t).toContain('NO escales')
+  })
+
   it('el flujo Plan → Aprobar sigue en computer.md con sus 10 pasos y sin ser contradictorio', () => {
     const s = read('computer')
     for (let i = 1; i <= 10; i++) expect(s).toContain(`\n${i}. `)
