@@ -20,7 +20,8 @@ import {
   Search,
   ShieldOff,
   Trash2,
-  X
+  X,
+  ArrowUpDown
 } from 'lucide-react'
 import { confirmDialog, promptDialog } from '../../../components/ConfirmDialog'
 import { m as mob } from '../../../app/mobile/m'
@@ -271,7 +272,7 @@ export function TaskRow({
   const metaHide = tree ? ' desk:group-focus-within:hidden' : ''
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:min-h-0 desk:rounded-ctl desk:py-0${tree ? ' desk:h-[30px] desk:gap-2 desk:px-2 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'}${busy ? '' : active ? ' desk:pr-8' : ' desk:focus-within:pr-8 desk:hover:pr-8'} ${active ? (tree ? 'bg-active desk:text-fg' : 'bg-active desk:bg-hover desk:font-medium') : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:min-h-0 desk:rounded-ctl desk:py-0${tree ? ' desk:h-auto desk:min-h-[42px] desk:gap-2 desk:px-2 desk:py-1.5 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'}${busy ? '' : active ? ' desk:pr-8' : ' desk:focus-within:pr-8 desk:hover:pr-8'} ${active ? (tree ? 'bg-active desk:text-fg' : 'bg-active desk:bg-hover desk:font-medium') : 'hover:bg-hover'}`}
       role={tree ? 'treeitem' : undefined}
       aria-level={tree ? 2 : undefined}
       aria-current={tree && active ? 'page' : undefined}
@@ -297,7 +298,7 @@ export function TaskRow({
         </div>
         <div
           data-quiet={quiet || undefined}
-          className={`truncate text-[11px] desk:text-meta desk:hidden ${statusTextClass(status)}${chipRemote ? ' hidden' : ''}`}
+          className={`truncate text-[11px] desk:text-meta ${tree ? ' desk:mt-0.5' : ' desk:hidden'} ${statusTextClass(status)}${chipRemote ? ' hidden' : ''}`}
         >
           {status === 'archived'
             ? t('tasks.list.archivedAgo', { when: relTime(task.time.archived ?? task.time.updated) })
@@ -308,7 +309,9 @@ export function TaskRow({
                 status === 'plan_ready' ||
                 status === 'interrupted'
               ? TASK_STATUS_LABEL[status]
-              : relTime(task.time.updated)}
+              : tree && status === 'done'
+                ? `${TASK_STATUS_LABEL.done} · ${relTime(task.time.updated)}`
+                : relTime(task.time.updated)}
           {group && !archivedView && <span className="text-subtle"> · {group}</span>}
         </div>
       </button>
@@ -320,9 +323,7 @@ export function TaskRow({
           {relTime(task.time.updated)}
         </span>
       )}
-      {waitsUser && tree && (
-        <span className="hidden shrink-0 text-meta font-medium text-warning desk:inline">{t('tasks.list.metaApprove')}</span>
-      )}
+      {waitsUser && tree && <span className="sr-only">{t('tasks.list.metaApprove')}</span>}
       {waitsUser && !tree && (
         <span
           className={`${remote ? 'inline-flex h-6 items-center rounded-full border border-warning/45 bg-warning/10 px-2.5 text-[12px] font-medium text-warning' : 'hidden'} shrink-0 desk:inline-flex desk:h-5 desk:items-center desk:rounded-full desk:border desk:border-warning/45 desk:bg-warning/10 desk:px-2 desk:text-meta desk:font-medium desk:text-warning desk:group-hover:hidden`}
@@ -330,7 +331,7 @@ export function TaskRow({
           {t('tasks.list.metaApprove')}
         </span>
       )}
-      {working && tree && <span className="hidden shrink-0 text-meta text-subtle desk:inline">{TASK_STATUS_LABEL.running}</span>}
+      {working && tree && <span className="sr-only">{TASK_STATUS_LABEL.running}</span>}
       {working && !tree && (
         <span
           className={`${remote ? 'inline-flex h-6 items-center gap-1.5 text-[12px] text-accent' : 'hidden'} shrink-0 desk:inline-flex desk:items-center desk:gap-1.5 desk:text-meta desk:text-accent desk:before:size-2.5 desk:before:animate-spin desk:before:rounded-full desk:before:border-2 desk:before:border-accent desk:before:border-r-transparent desk:before:content-[''] desk:motion-reduce:before:animate-none`}
@@ -339,7 +340,7 @@ export function TaskRow({
           {TASK_STATUS_LABEL.running}
         </span>
       )}
-      {failed && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-danger">{t('tasks.list.metaFailed')}</span>}
+      {failed && !tree && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-danger">{t('tasks.list.metaFailed')}</span>}
       {blockedHost && (
         <span className="shrink-0 text-warning" title={t('tasks.list.blocked')}>
           <ShieldOff size={12} />
@@ -557,7 +558,40 @@ export function TaskList(): React.JSX.Element {
           )}
         </div>
       )}
-      <div className="mb-1 flex items-center gap-1.5 desk:mt-1">
+      {!ownSearch && (
+        // Escritorio: ordenar y archivadas son dos botones de ícono en una sola fila, con el título de lo que se está viendo.
+        <div className="mt-2 mb-1 flex items-center gap-1 px-1">
+          <span className="min-w-0 flex-1 truncate text-meta text-subtle">
+            {showArchived ? tr('tasks.list.archived') : groupMode === 'group' ? tr('tasks.list.byGroup') : tr('tasks.list.byDate')}
+          </span>
+          <button
+            type="button"
+            disabled={showArchived || searching}
+            title={`${tr('tasks.list.groupBy')}: ${groupMode === 'date' ? tr('tasks.list.byGroup') : tr('tasks.list.byDate')}`}
+            aria-label={tr('tasks.list.groupBy')}
+            onClick={() => changeGroupMode(groupMode === 'date' ? 'group' : 'date')}
+            className="no-drag flex size-7 items-center justify-center rounded-ctl-sm text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+          >
+            <ArrowUpDown size={14} strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            aria-pressed={showArchived}
+            title={showArchived ? tr('tasks.list.backToTasks') : tr('tasks.list.showArchived')}
+            aria-label={showArchived ? tr('tasks.list.backToTasks') : tr('tasks.list.showArchived')}
+            onClick={() => useTasks.setState({ showArchived: !showArchived })}
+            className={`no-drag relative flex size-7 items-center justify-center rounded-ctl-sm ${showArchived ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+          >
+            <Archive size={14} strokeWidth={1.75} />
+            {archivedTasks.length > 0 && !showArchived && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-3.5 rounded-full bg-hover px-1 text-[9px] leading-3.5 text-muted">
+                {archivedTasks.length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+      <div className={`mb-1 items-center gap-1.5 desk:mt-1 ${ownSearch ? 'flex' : 'hidden'}`}>
         <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-subtle">
           <span className="shrink-0 desk:sr-only">{tr('tasks.list.groupBy')}</span>
           <select

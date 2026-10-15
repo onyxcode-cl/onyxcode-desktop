@@ -1,6 +1,6 @@
 /** Selector de carpeta de Tareas (chip del compositor o botón de la barra lateral). */
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, FolderOpen, FolderPlus, Loader2, Lock, Trash2, X } from 'lucide-react'
+import { Check, ChevronDown, FolderOpen, FolderPlus, Loader2, Lock, Trash2, X, ChevronsUpDown } from 'lucide-react'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
@@ -150,10 +150,13 @@ export function FolderMenu({
         title={folder ?? undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
-        // Sin ícono de carpeta: el nombre arranca en la misma columna que el del proyecto en Code (chevron + nombre).
-        className="flex h-8 w-full items-center gap-2 rounded-ctl pr-2 pl-1.5 text-left text-sm font-medium text-fg"
+        className="flex h-9 w-full items-center gap-2 rounded-ctl border border-border bg-surface-1/60 pr-2 pl-1.5 text-left text-sm font-medium text-fg hover:bg-hover"
       >
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
+          <FolderOpen size={14} strokeWidth={1.75} aria-hidden="true" />
+        </span>
         <span className="min-w-0 flex-1 truncate">{label}</span>
+        <ChevronsUpDown size={13} strokeWidth={1.75} className="shrink-0 text-subtle" aria-hidden="true" />
       </button>
     ) : (
       <button

@@ -23,7 +23,7 @@ export function TasksSidebar(): React.JSX.Element {
         // Barra lateral 1b: la carpeta es una fila plegable (chevron + nombre, como el proyecto de Code); sus tareas cuelgan sangradas.
         <SidebarTreeRegion>
           <div
-            className="flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
+            className="flex h-9 shrink-0 items-center rounded-ctl"
             role={tree && folder ? 'treeitem' : undefined}
             aria-level={tree && folder ? 1 : undefined}
             aria-expanded={tree && folder ? open : undefined}
@@ -49,6 +49,17 @@ export function TasksSidebar(): React.JSX.Element {
             <div className="min-w-0 flex-1">
               <FolderMenu variant="row" />
             </div>
+            {folder && (
+              <button
+                type="button"
+                onClick={() => setProjectPanelOpen(true)}
+                title={t('tasks.sidebar.projectTitle')}
+                aria-label={t('tasks.sidebar.project')}
+                className="no-drag ml-1 flex size-9 shrink-0 items-center justify-center rounded-ctl border border-border bg-surface-1/60 text-muted hover:bg-hover hover:text-fg"
+              >
+                <BookText size={15} strokeWidth={1.75} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </SidebarTreeRegion>
       ) : (
@@ -56,7 +67,7 @@ export function TasksSidebar(): React.JSX.Element {
       )}
       <div className={desktop && !open ? 'hidden' : 'contents'}>
         <SidebarTreeRegion>
-          {folder && (
+          {folder && !desktop && (
             <button
               type="button"
               onClick={() => setProjectPanelOpen(true)}

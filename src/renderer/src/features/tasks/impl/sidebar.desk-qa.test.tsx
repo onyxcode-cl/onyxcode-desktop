@@ -29,10 +29,11 @@ describe('Overdrive en la barra lateral de escritorio (QA)', () => {
     expect(list).toContain('desk:absolute! desk:inset-y-0 desk:right-1 desk:flex desk:items-center')
     expect(list).toContain("active ? ' desk:pr-8'")
   })
-  it('columnas como en Code: carpeta sin ícono (chevron + nombre) y el ícono de «Proyecto» en la columna del punto', () => {
-    expect(side).toContain('desk:h-[30px] desk:gap-[5px] desk:pr-2 desk:pl-[5px] desk:text-ui')
-    expect(readFileSync(join(__dirname, 'FolderMenu.tsx'), 'utf8')).toContain(
-      'flex h-8 w-full items-center gap-2 rounded-ctl pr-2 pl-1.5 text-left text-sm font-medium text-fg'
-    )
+  it('carpeta como tarjeta con ícono y selector, y «Proyecto» como botón de ícono a su lado', () => {
+    const folderMenu = readFileSync(join(__dirname, 'FolderMenu.tsx'), 'utf8')
+    expect(folderMenu).toContain('flex h-9 w-full items-center gap-2 rounded-ctl border border-border')
+    expect(folderMenu).toContain('ChevronsUpDown')
+    expect(side).toContain("aria-label={t('tasks.sidebar.project')}")
+    expect(side).toContain('size-9 shrink-0 items-center justify-center rounded-ctl border')
   })
 })

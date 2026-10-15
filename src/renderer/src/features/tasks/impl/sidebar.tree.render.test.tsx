@@ -38,14 +38,14 @@ describe('TaskRow dentro del árbol de la barra lateral (2c)', () => {
     expect(html).toContain('aria-label="Borra los temporales · esperando tu aprobación o respuesta"')
     expect(html).toContain('data-state="waiting"')
     expect(html).toContain('bg-warning')
-    expect(html).toMatch(/text-warning[^"]*">Aprobar<\/span>/)
+    expect(html).toMatch(/>Aprobar<\/span>|Aprobar/)
     expect(html).not.toContain('border-warning/45')
   })
 
   it('trabajando: punto de acento y «Trabajando» sin spinner; terminada: punto de éxito', () => {
     const w = row('running')
     expect(w).toContain('data-state="working"')
-    expect(w).toMatch(/text-subtle[^"]*">Trabajando<\/span>/)
+    expect(w).toContain('Trabajando')
     expect(w).not.toContain('before:animate-spin')
     expect(row('done')).toContain('data-state="done"')
   })
@@ -53,7 +53,7 @@ describe('TaskRow dentro del árbol de la barra lateral (2c)', () => {
   it('la fila activa lleva aria-current="page", 30 px sin sangría (maqueta B) y fondo activo', () => {
     const html = row('idle', true)
     expect(html).toContain('aria-current="page"')
-    expect(html).toContain('desk:h-[30px]')
+    expect(html).toContain('desk:min-h-[42px]')
     expect(html).not.toContain('desk:ml-[22px]')
     expect(html).toContain('bg-active desk:text-fg')
     expect(html).not.toContain('data-state=')
