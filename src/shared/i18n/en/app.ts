@@ -31,7 +31,7 @@ export const app = {
   'app.sidebar.noProject': 'No project',
   'app.sidebar.help': 'Help',
   'app.sidebar.theme': 'Change theme',
-  'app.sidebar.state.waiting': 'waiting for your answer or approval',
+  'app.sidebar.state.waiting': 'waiting for your approval or answer',
   'app.sidebar.state.review': 'changes to review',
   'app.sidebar.state.working': 'working',
   'app.sidebar.state.done': 'ready',

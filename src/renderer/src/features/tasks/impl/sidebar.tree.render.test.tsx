@@ -35,7 +35,7 @@ describe('TaskRow dentro del árbol de la barra lateral (2c)', () => {
     const html = row('waiting')
     expect(html).toContain('role="treeitem"')
     expect(html).toContain('aria-level="2"')
-    expect(html).toContain('aria-label="Borra los temporales · esperando aprobación"')
+    expect(html).toContain('aria-label="Borra los temporales · esperando tu aprobación o respuesta"')
     expect(html).toContain('data-state="waiting"')
     expect(html).toContain('bg-warning')
     expect(html).toMatch(/text-warning[^"]*">Aprobar<\/span>/)
