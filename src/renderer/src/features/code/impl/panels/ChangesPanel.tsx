@@ -37,7 +37,7 @@ import { sameDir } from '../open-projects'
 import { useVisibleFsVersion } from '../useVisibleFsVersion'
 import { openProjectTrusted } from '../trust'
 import { isImeComposing } from '../../../../lib/textarea'
-import { ConfirmButton, Kbd, MOD } from '../ui'
+import { ConfirmButton, MOD } from '../ui'
 import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
 import { abbreviatePath, displayPath } from '../mobile-logic'
@@ -228,7 +228,7 @@ function FileRow({
         </span>
       </button>
       {/* Derecha: +/− (o «revisado») y, al pasar el ratón o enfocar, las acciones encima (sin reservar hueco ni salir del foco de teclado). */}
-      <span className={`relative flex h-full shrink-0 items-center justify-end desk:pr-1 ${hasActions ? 'min-w-14' : ''}`}>
+      <span className={`relative flex h-full shrink-0 items-center justify-end desk:pr-2.5 ${hasActions ? 'min-w-14' : ''}`}>
         {((stat && stat.additions + stat.deletions > 0) || accepted) && (
           <span
             className={`flex items-center gap-1.5 font-mono text-[11px] tabular-nums ${hasActions ? 'group-focus-within:opacity-0 group-hover:opacity-0' : ''}`}
@@ -374,11 +374,6 @@ function CommitBox({
           {willCommit > 0 ? ` (${willCommit})` : ''}
         </button>
       </div>
-      {!isRemoteSurface() && (
-        <div className="mt-1 text-right text-[10px] text-subtle">
-          <Kbd>{MOD}↵</Kbd>
-        </div>
-      )}
     </div>
   )
 }
@@ -1071,23 +1066,28 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 </div>
               )}
               {selectedFile && !mobile && (
-                <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5 desk:h-10 desk:px-4">
-                  <span className="min-w-0 truncate font-mono text-xs" title={selectedFile.path}>
-                    {(() => {
-                      const { dir, name } = splitPath(selectedFile.path)
-                      return (
-                        <>
-                          {dir && <span className="text-muted">{dir.replace(/[/\\]+$/, '')}/</span>}
-                          <span className="font-semibold text-fg">{name}</span>
-                        </>
-                      )
-                    })()}
-                  </span>
-                  {stats && (
-                    <span className="shrink-0 font-mono text-xs tabular-nums">
-                      <span className="text-success">+{stats.additions}</span> <span className="text-danger">−{stats.deletions}</span>
+                // Panel estrecho: las acciones bajan a una segunda fila y el nombre conserva todo el ancho (antes los iconos se lo comían).
+                <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5 desk:min-h-10 desk:px-4">
+                  <span className="flex min-w-0 flex-1 basis-44 items-center gap-2">
+                    <span className="flex min-w-0 font-mono text-xs" title={selectedFile.path}>
+                      {(() => {
+                        const { dir, name } = splitPath(selectedFile.path)
+                        return (
+                          <>
+                            {/* Si no cabe, se acorta la carpeta antes que el nombre. */}
+                            {dir && <span className="min-w-0 truncate text-muted">{dir.replace(/[/\\]+$/, '')}/</span>}
+                            <span className="max-w-full shrink-0 truncate font-semibold text-fg">{name}</span>
+                          </>
+                        )
+                      })()}
                     </span>
-                  )}
+                    {stats && (
+                      <span className="flex shrink-0 gap-1.5 font-mono text-xs tabular-nums">
+                        {stats.additions > 0 && <span className="text-success">+{stats.additions}</span>}
+                        {stats.deletions > 0 && <span className="text-danger">−{stats.deletions}</span>}
+                      </span>
+                    )}
+                  </span>
                   <span className="ml-auto flex shrink-0 items-center">
                     {canReview && (
                       <Button

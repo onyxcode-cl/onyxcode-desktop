@@ -576,7 +576,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (
-        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex desk:@max-[32rem]:hidden">
+        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex desk:@max-[16rem]:hidden">
           <span className="text-subtle">/</span>
           <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
         </span>
@@ -620,26 +620,29 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
           </span>
         )}
         <span className="mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden" />
-        {PANEL_META.map((p) => (
-          <Tip
-            key={p.id}
-            label={t(p.label)}
-            shortcut={hintText(bindings[`code.panel.${p.id}`])}
-            align={p.id === 'browser' ? 'end' : 'center'}
-          >
-            <button
-              type="button"
-              aria-label={t(p.label)}
-              aria-pressed={panel === p.id}
-              onClick={() => togglePanel(p.id)}
-              className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+        {/* Con un panel abierto y la barra estrecha, sus pestañas ya están en el panel: se ocultan aquí y el título de la sesión cabe. */}
+        <span className={panel ? 'contents desk:@max-[32rem]:hidden' : 'contents'}>
+          {PANEL_META.map((p) => (
+            <Tip
+              key={p.id}
+              label={t(p.label)}
+              shortcut={hintText(bindings[`code.panel.${p.id}`])}
+              align={p.id === 'browser' ? 'end' : 'center'}
             >
-              {p.icon}
-              {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
-              <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
-            </button>
-          </Tip>
-        ))}
+              <button
+                type="button"
+                aria-label={t(p.label)}
+                aria-pressed={panel === p.id}
+                onClick={() => togglePanel(p.id)}
+                className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              >
+                {p.icon}
+                {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
+                <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
+              </button>
+            </Tip>
+          ))}
+        </span>
       </div>
     </div>
   )

@@ -13,7 +13,8 @@ const PATCH = [
 
 describe('ajuste de línea del diff', () => {
   it('con ajuste parte las líneas largas; sin él las deja enteras', () => {
-    expect(diffCellClass(true)).toBe('pr-3 whitespace-pre-wrap break-all')
+    // Celular: parte en cualquier punto (sin cambios). Escritorio: por los espacios y solo corta una palabra si no cabe sola.
+    expect(diffCellClass(true)).toBe('pr-3 whitespace-pre-wrap break-all desk:[word-break:normal] desk:[overflow-wrap:anywhere]')
     expect(diffCellClass(false)).toBe('pr-3 whitespace-pre')
   })
   it('por defecto ajusta (escritorio no cambia)', () => {

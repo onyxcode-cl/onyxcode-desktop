@@ -171,9 +171,12 @@ function wordText(text: string, ranges: WordRange[]): React.ReactNode {
 
 const SIGN: Record<LineKind, string> = { add: '+', del: '-', ctx: ' ', hunk: '', file: '', meta: '' }
 
-/** Clases del texto de una línea: con ajuste (por defecto) parte las líneas largas; sin él, se desplaza en horizontal. */
+/**
+ * Clases del texto de una línea: con ajuste (por defecto) parte las líneas largas; sin él, se desplaza en horizontal.
+ * Escritorio: parte por los espacios y solo corta una palabra si no cabe sola (antes «it/ems», «numbe/r»); el celular no cambia.
+ */
 export function diffCellClass(wrap: boolean): string {
-  return wrap ? 'pr-3 whitespace-pre-wrap break-all' : 'pr-3 whitespace-pre'
+  return wrap ? 'pr-3 whitespace-pre-wrap break-all desk:[word-break:normal] desk:[overflow-wrap:anywhere]' : 'pr-3 whitespace-pre'
 }
 
 interface Props {

@@ -212,6 +212,9 @@ function useFileSearch(directory: string | null, query: string | null): { files:
 const NO_MENTIONS: string[] = []
 const NO_ATTACHMENTS: Attachment[] = []
 
+/** Por debajo de este ancho (px) de la caja, el texto de ayuda largo no cabe en una línea: se usa el corto. */
+const COMPOSER_SHORT_HINT_PX = 560
+
 export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean }): React.JSX.Element {
   const t = useT()
   const [menuIndex, setMenuIndex] = useState(0)
@@ -219,6 +222,16 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const [focused, setFocused] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
+  // Caja estrecha (panel abierto, ventana pequeña): el texto de ayuda largo no cabe en una línea y se cortaba a media
+  // frase; se usa el corto (el del celular).
+  const [narrowBox, setNarrowBox] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setNarrowBox(el.clientWidth > 0 && el.clientWidth < COMPOSER_SHORT_HINT_PX))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   // Celular: sin atajos de teclado ni arrastrar y soltar; adjuntos con límites y solo `data:`; botones de 44 px.
@@ -730,7 +743,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               placeholder={
                 aiGate.gate.blocked
                   ? t('code.composer.noAi')
-                  : mobile
+                  : mobile || narrowBox
                     ? agent === 'plan'
                       ? t('code.m.placeholderPlan')
                       : t('code.m.placeholderBuild')
@@ -738,7 +751,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       ? t('code.composer.placeholderPlan')
                       : t('code.composer.placeholderBuild')
               }
-              className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle desk:max-h-72 desk:leading-6"
+              className="block max-h-64 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-relaxed outline-none placeholder:text-subtle desk:max-h-72 desk:leading-6 desk:placeholder:truncate"
             />
             {mobile ? (
               <>
