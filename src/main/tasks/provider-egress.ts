@@ -20,9 +20,6 @@ import { randomBytes } from 'node:crypto'
 import { GENERATED_PROVIDER_TARGETS } from '../../shared/provider-targets.generated'
 
 export interface ProviderTarget {
-  /** Host real (para la lista blanca del proxy de egress; el credential-proxy no la necesita,
-   * conecta directo desde el proceso main, sin sandbox). */
-  host: string
   origin: string
   pathPrefix: string
 }
@@ -38,7 +35,7 @@ export interface ProviderTarget {
  * xAI OAuth, GitLab, SAP), SigV4/IAM (Bedrock), Azure, Vertex y Cloudflare (URL por recurso) y proveedores con variables en la URL.
  */
 export const PROVIDER_TARGETS: Record<string, ProviderTarget> = Object.fromEntries(
-  Object.entries(GENERATED_PROVIDER_TARGETS).map(([id, t]) => [id, { host: new URL(t.origin).hostname, ...t }])
+  Object.entries(GENERATED_PROVIDER_TARGETS).map(([id, t]) => [id, { ...t }])
 )
 
 export interface ProviderAuthEntry {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildUpstreamHeaders } from './proxy'
+import { buildUpstreamHeaders, stripQueryCredentials } from './proxy'
 
 describe('buildUpstreamHeaders', () => {
   it('sustituye Authorization por la real y descarta el centinela', () => {
@@ -40,9 +40,15 @@ describe('buildUpstreamHeaders: la clave real va solo donde el cliente la puso',
     expect(h['x-goog-api-key']).toBe('REAL')
     expect(h.authorization).toBeUndefined()
   })
-  it('api-key y Proxy-Authorization del cliente se descartan', () => {
+  it('api-key del cliente → solo api-key; Proxy-Authorization se descarta', () => {
     const h = buildUpstreamHeaders({ 'api-key': 'S', 'proxy-authorization': 'S' }, 'h', 'REAL')
-    expect(JSON.stringify(h)).not.toContain('"S"')
-    expect(h['api-key']).toBeUndefined()
+    expect(h['api-key']).toBe('REAL')
+    expect(h.authorization).toBeUndefined()
+    expect(h['proxy-authorization']).toBeUndefined()
+  })
+  it('stripQueryCredentials conserva el resto del query tal cual', () => {
+    expect(stripQueryCredentials('?a=1%20b&key=S&c=x+y&api_key=T&d')).toEqual({ search: '?a=1%20b&c=x+y&d', hadKey: true })
+    expect(stripQueryCredentials('?alt=sse')).toEqual({ search: '?alt=sse', hadKey: false })
+    expect(stripQueryCredentials('?KEY=S')).toEqual({ search: '', hadKey: true })
   })
 })

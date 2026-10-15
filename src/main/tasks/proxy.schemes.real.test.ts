@@ -2,7 +2,14 @@
  * CredentialProxy real contra una «API upstream» falsa (HTTP local): por cada esquema de autenticación la clave REAL llega
  * por la cabecera correcta, el centinela del sandbox nunca llega y las credenciales extra/duplicadas se descartan.
  */
-import { createServer, request as httpRequest, type IncomingHttpHeaders, type Server } from 'node:http'
+import {
+  createServer,
+  request as httpRequest,
+  type IncomingHttpHeaders,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse
+} from 'node:http'
 import { afterEach, describe, expect, it } from 'vitest'
 import { getFreePort } from '../util/net'
 import { CredentialProxy, randomToken } from './proxy'
@@ -43,9 +50,9 @@ async function setup(prefix = '/v1'): Promise<{ seen: Seen[]; token: string }> {
 }
 
 /** Petición con cabeceras (admite repetidas) al proxy. */
-function call(path: string, headers: Array<[string, string]>): Promise<{ status: number }> {
+function call(path: string, headers: Array<[string, string]>, method = 'POST'): Promise<{ status: number }> {
   return new Promise((resolve, reject) => {
-    const req = httpRequest({ host: '127.0.0.1', port: proxy!.port, path, method: 'POST' }, (res) => {
+    const req = httpRequest({ host: '127.0.0.1', port: proxy!.port, path, method }, (res) => {
       res.resume()
       res.on('end', () => resolve({ status: res.statusCode ?? 0 }))
     })
@@ -53,7 +60,8 @@ function call(path: string, headers: Array<[string, string]>): Promise<{ status:
     const grouped = new Map<string, string[]>()
     for (const [k, v] of headers) grouped.set(k, [...(grouped.get(k) ?? []), v])
     for (const [k, v] of grouped) req.setHeader(k, v)
-    req.end('{}')
+    if (method === 'POST') req.end('{}')
+    else req.end()
   })
 }
 
@@ -69,13 +77,11 @@ describe('CredentialProxy: cliente con Authorization Bearer (openai-compatible)'
     const { seen, token } = await setup()
     const r = await call(`/${token}/chat/completions`, [
       ['authorization', `Bearer ${SENTINEL}`],
-      ['api-key', SENTINEL],
       ['accept', 'application/json']
     ])
     expect(r.status).toBe(200)
     expect(seen[0].url).toBe('/v1/chat/completions')
     expect(seen[0].headers.authorization).toBe(`Bearer ${REAL}`)
-    // Solo se reinyecta en la cabecera que usó el cliente: api-key y x-goog-api-key del cliente no se reflejan.
     expect(credHeaders(seen[0])).toEqual(['authorization'])
     expect(seen[0].headers.accept).toBe('application/json')
     noSentinel(seen[0])
@@ -99,7 +105,6 @@ describe('CredentialProxy: cliente con x-api-key (SDK anthropic)', () => {
     const { seen, token } = await setup()
     await call(`/${token}/messages`, [
       ['x-api-key', SENTINEL],
-      ['api-key', SENTINEL],
       ['anthropic-version', '2023-06-01'],
       ['anthropic-beta', 'tools-2024']
     ])
@@ -141,8 +146,7 @@ describe('CredentialProxy: cliente con x-goog-api-key o ?key= (SDK google)', () 
   it('manda x-goog-api-key real y elimina key= del query (centinela incluido)', async () => {
     const { seen, token } = await setup('/v1beta')
     await call(`/${token}/models/gemini:streamGenerateContent?alt=sse&key=${SENTINEL}&api_key=${SENTINEL}&key=${SENTINEL}2`, [
-      ['x-goog-api-key', SENTINEL],
-      ['api-key', SENTINEL]
+      ['x-goog-api-key', SENTINEL]
     ])
     const s = seen[0]
     expect(s.headers['x-goog-api-key']).toBe(REAL)
@@ -191,5 +195,125 @@ describe('CredentialProxy: prefijo de opencode-go del catálogo', () => {
     await call(`/${token}/chat/completions`, [['authorization', `Bearer ${SENTINEL}`]])
     expect(seen[0].url).toBe('/inference/go/v1/chat/completions')
     expect(seen[0].headers.authorization).toBe(`Bearer ${REAL}`)
+  })
+})
+
+describe('CredentialProxy: api-key, métodos, rutas y path', () => {
+  it('cliente con api-key: la real va en api-key y no en Authorization', async () => {
+    const { seen, token } = await setup()
+    await call(`/${token}/chat/completions`, [['api-key', SENTINEL]])
+    expect(seen[0].headers['api-key']).toBe(REAL)
+    expect(seen[0].headers.authorization).toBeUndefined()
+    noSentinel(seen[0])
+  })
+  it('DELETE/PUT/PATCH → 405 sin llegar al upstream', async () => {
+    const { seen, token } = await setup()
+    for (const m of ['DELETE', 'PUT', 'PATCH']) expect((await call(`/${token}/models/x`, [], m)).status).toBe(405)
+    expect(seen).toHaveLength(0)
+  })
+  it('GET y HEAD sí pasan', async () => {
+    const { seen, token } = await setup()
+    expect((await call(`/${token}/models`, [], 'GET')).status).toBe(200)
+    expect((await call(`/${token}/models`, [], 'HEAD')).status).toBe(200)
+    expect(seen).toHaveLength(2)
+  })
+  it.each([
+    '/files',
+    '/FILES/abc',
+    '/v1/files',
+    '/fine_tuning/jobs',
+    '/organization/users',
+    '/a/Batches',
+    '/vector_stores/x/files',
+    '/threads'
+  ])('ruta denegada %s → 403', async (p) => {
+    const { seen, token } = await setup()
+    expect((await call(`/${token}${p}`, [])).status).toBe(403)
+    expect(seen).toHaveLength(0)
+  })
+  it('`;` en el path → 400', async () => {
+    const { seen, token } = await setup()
+    expect((await call(`/${token}/models;x=1`, [])).status).toBe(400)
+    expect(seen).toHaveLength(0)
+  })
+  it('el query se reenvía sin re-serializar', async () => {
+    const { seen, token } = await setup('/v1beta')
+    await call(`/${token}/models?a=1%20b&key=${SENTINEL}&c=x+y`, [])
+    expect(seen[0].url).toBe('/v1beta/models?a=1%20b&c=x+y')
+  })
+})
+
+describe('CredentialProxy: respuesta del upstream', () => {
+  async function withReply(reply: (req: IncomingMessage, res: ServerResponse) => void): Promise<{ token: string; port: number }> {
+    const up = createServer(reply)
+    upstream = up
+    const uport = await getFreePort()
+    await new Promise<void>((r) => up.listen(uport, '127.0.0.1', () => r()))
+    const token = randomToken()
+    proxy = new CredentialProxy({ token, targetOrigin: `http://127.0.0.1:${uport}`, targetPathPrefix: '/v1', key: REAL })
+    await proxy.start()
+    return { token, port: proxy.port }
+  }
+  function get(port: number, path: string): Promise<{ status: number; headers: IncomingHttpHeaders; body: string }> {
+    return new Promise((resolve, reject) => {
+      httpRequest({ host: '127.0.0.1', port, path, method: 'GET' }, (res) => {
+        let body = ''
+        res.on('data', (c) => (body += c))
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body }))
+      })
+        .on('error', reject)
+        .end()
+    })
+  }
+
+  it('redirect 307 a otro host → 502 y no se reenvía location', async () => {
+    const { token, port } = await withReply((_q, res) => res.writeHead(307, { location: 'https://evil.example/steal' }).end())
+    const r = await get(port, `/${token}/models`)
+    expect(r.status).toBe(502)
+    expect(r.headers.location).toBeUndefined()
+    expect(r.body).not.toContain('evil')
+  })
+  it('redirect al mismo origen se conserva', async () => {
+    const { token, port } = await withReply((_q, res) => res.writeHead(307, { location: '/v1/other' }).end())
+    const r = await get(port, `/${token}/models`)
+    expect(r.status).toBe(307)
+    expect(r.headers.location).toBe('/v1/other')
+  })
+  it('set-cookie, www-authenticate y cabeceras que contienen la clave se descartan', async () => {
+    const { token, port } = await withReply((_q, res) =>
+      res
+        .writeHead(200, {
+          'set-cookie': 'a=b',
+          'www-authenticate': 'Bearer',
+          'x-echo': `Bearer ${REAL}`,
+          'x-ok': 'si',
+          'content-type': 'text/plain'
+        })
+        .end('ok')
+    )
+    const r = await get(port, `/${token}/models`)
+    expect(r.headers['set-cookie']).toBeUndefined()
+    expect(r.headers['www-authenticate']).toBeUndefined()
+    expect(r.headers['x-echo']).toBeUndefined()
+    expect(r.headers['x-ok']).toBe('si')
+  })
+  it('upstream que refleja la cabecera de autenticación: la clave real no llega al cliente', async () => {
+    const { token, port } = await withReply((q, res) => {
+      const echo = JSON.stringify({ auth: q.headers.authorization })
+      res.writeHead(401, { 'content-type': 'application/json', 'x-seen': String(q.headers.authorization) }).end(echo)
+    })
+    const r = await get(port, `/${token}/models`)
+    expect(r.status).toBe(401)
+    expect(JSON.stringify(r)).not.toContain(REAL)
+    expect(r.body).toContain('[clave oculta]')
+  })
+  it('cuerpo grande y SSE no se tocan (streaming)', async () => {
+    const big = 'x'.repeat(70 * 1024) + REAL
+    const { token, port } = await withReply((q, res) => {
+      if (q.url?.endsWith('/sse')) res.writeHead(200, { 'content-type': 'text/event-stream' }).end(`data: ${REAL}\n\n`)
+      else res.writeHead(200, { 'content-type': 'application/json' }).end(big)
+    })
+    expect((await get(port, `/${token}/big`)).body).toBe(big)
+    expect((await get(port, `/${token}/sse`)).body).toContain(REAL)
   })
 })

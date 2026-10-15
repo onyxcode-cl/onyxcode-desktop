@@ -243,6 +243,7 @@ export function buildUpstreamHeaders(
   let usedApiKey = false
   let usedGoog = queryHadKey
   let usedBearer = false
+  let usedApiKeyHdr = false
   for (const [k, v] of Object.entries(incoming)) {
     if (v === undefined) continue
     const lk = k.toLowerCase()
@@ -251,33 +252,108 @@ export function buildUpstreamHeaders(
       if (lk === 'x-api-key') usedApiKey = true
       else if (lk === 'x-goog-api-key') usedGoog = true
       else if (lk === 'authorization') usedBearer = true
+      else if (lk === 'api-key') usedApiKeyHdr = true
       continue
     }
     headers[k] = v
   }
   headers.host = host
+  headers['accept-encoding'] = 'identity'
   if (usedApiKey) headers['x-api-key'] = key
   if (usedGoog) headers['x-goog-api-key'] = key
-  if (usedBearer || (!usedApiKey && !usedGoog)) headers.authorization = `Bearer ${key}`
+  if (usedApiKeyHdr) headers['api-key'] = key
+  if (usedBearer || (!usedApiKey && !usedGoog && !usedApiKeyHdr)) headers.authorization = `Bearer ${key}`
   return headers
 }
 
-/** Quita del query toda credencial que el SDK pudiera haber puesto (`?key=`, `?api_key=`); nunca se reenvía el centinela. */
+/** Quita del query los pares de credencial (`key=`, `api_key=`) conservando el resto del texto tal cual (sin re-serializar). */
 export function stripQueryCredentials(search: string): { search: string; hadKey: boolean } {
-  if (!search) return { search, hadKey: false }
-  const params = new URLSearchParams(search)
-  let removed = false
+  if (!search || search === '?') return { search, hadKey: false }
+  const pairs = search.slice(1).split('&')
   let hadKey = false
-  for (const name of [...new Set([...params.keys()])]) {
-    if (/^(key|api[_-]?key)$/i.test(name)) {
-      if (name.toLowerCase() === 'key') hadKey = true
-      params.delete(name)
-      removed = true
+  const kept = pairs.filter((pair) => {
+    let name = pair.split('=')[0].replace(/\+/g, ' ')
+    try {
+      name = decodeURIComponent(name)
+    } catch {
+      /* nombre no decodificable: se compara tal cual */
     }
-  }
-  if (!removed) return { search, hadKey }
-  const out = params.toString()
+    if (!/^(key|api[_-]?key)$/i.test(name.trim())) return true
+    if (name.trim().toLowerCase() === 'key') hadKey = true
+    return false
+  })
+  if (kept.length === pairs.length) return { search, hadKey }
+  const out = kept.join('&')
   return { search: out ? `?${out}` : '', hadKey }
+}
+
+/** Métodos que se reenvían a la API real. */
+const ALLOWED_METHODS = new Set(['GET', 'POST', 'HEAD', 'OPTIONS'])
+/** Segmentos de ruta de administración/almacenamiento que un sandbox no necesita (denegar, no lista blanca). */
+const DENIED_SEGMENTS = new Set([
+  'files',
+  'batches',
+  'fine_tuning',
+  'fine-tunes',
+  'fine_tunes',
+  'keys',
+  'api-keys',
+  'api_keys',
+  'billing',
+  'organization',
+  'organizations',
+  'admin',
+  'usage-admin',
+  'projects',
+  'members',
+  'users',
+  'invites',
+  'tokens',
+  'uploads',
+  'vector_stores',
+  'assistants',
+  'threads'
+])
+/** true si algún segmento del path (sin importar mayúsculas) está denegado. */
+export function hasDeniedSegment(path: string): boolean {
+  let decoded = path
+  try {
+    decoded = decodeURIComponent(path)
+  } catch {
+    return true
+  }
+  return decoded.split('/').some((seg) => DENIED_SEGMENTS.has(seg.toLowerCase()))
+}
+/** Cabeceras de respuesta que nunca se devuelven al sandbox. */
+const DROPPED_RESPONSE_HEADERS = new Set(['set-cookie', 'www-authenticate', 'proxy-authenticate'])
+const MAX_REDACT_BODY = 64 * 1024
+const REDACTED = '[clave oculta]'
+
+/** Cabeceras de respuesta filtradas; `null` si el redirect sale del origen del destino. */
+export function filterResponseHeaders(
+  headers: Record<string, string | string[] | undefined>,
+  key: string,
+  targetUrl: URL
+): Record<string, string | string[]> | null {
+  const out: Record<string, string | string[]> = {}
+  for (const [k, v] of Object.entries(headers)) {
+    if (v === undefined) continue
+    const lk = k.toLowerCase()
+    if (DROPPED_RESPONSE_HEADERS.has(lk)) continue
+    const vals = Array.isArray(v) ? v : [v]
+    if (vals.some((x) => x.includes(key))) continue
+    if (lk === 'location') {
+      let ok = false
+      try {
+        ok = new URL(vals[0] ?? '', targetUrl).origin === targetUrl.origin
+      } catch {
+        ok = false
+      }
+      if (!ok) return null
+    }
+    out[k] = v
+  }
+  return out
 }
 
 /** Proxy inverso de un único destino que inyecta la clave real del proveedor. */
@@ -307,6 +383,55 @@ export class CredentialProxy {
     return `http://127.0.0.1:${this.port}/${this.opts.token}`
   }
 
+  /** Respuesta de la API al sandbox: sin cookies/desafíos/redirects externos ni la clave real (cabeceras; cuerpo pequeño no-SSE). */
+  private relay(upstreamRes: IncomingMessage, res: ServerResponse, target: URL): void {
+    const status = upstreamRes.statusCode ?? 502
+    const headers = filterResponseHeaders(upstreamRes.headers, this.opts.key, target)
+    if (!headers) {
+      upstreamRes.resume()
+      res.writeHead(502, { 'content-type': 'text/plain' }).end('credential-proxy: redirect fuera del destino bloqueado')
+      return
+    }
+    const type = String(upstreamRes.headers['content-type'] ?? '').toLowerCase()
+    const redactable = /^(text\/|application\/(json|[a-z.+-]*\+json|xml))/.test(type) && !type.includes('event-stream')
+    if (!redactable) {
+      res.writeHead(status, headers)
+      upstreamRes.pipe(res)
+      return
+    }
+    // Cuerpo texto/JSON: se acumula hasta 64 KB para ocultar la clave; si crece más, pasa a streaming sin tocar el resto.
+    const chunks: Buffer[] = []
+    let size = 0
+    let streaming = false
+    upstreamRes.on('data', (c: Buffer) => {
+      if (streaming) {
+        res.write(c)
+        return
+      }
+      chunks.push(c)
+      size += c.length
+      if (size > MAX_REDACT_BODY) {
+        streaming = true
+        res.writeHead(status, headers)
+        res.write(Buffer.concat(chunks))
+        chunks.length = 0
+      }
+    })
+    upstreamRes.on('end', () => {
+      if (streaming) {
+        res.end()
+        return
+      }
+      const body = Buffer.concat(chunks).toString('utf8').split(this.opts.key).join(REDACTED)
+      const out = { ...headers }
+      for (const k of Object.keys(out)) if (['content-length', 'transfer-encoding'].includes(k.toLowerCase())) delete out[k]
+      out['content-length'] = String(Buffer.byteLength(body))
+      res.writeHead(status, out)
+      res.end(body)
+    })
+    upstreamRes.on('error', () => res.destroy())
+  }
+
   private handle(req: IncomingMessage, res: ServerResponse): void {
     const url = req.url ?? '/'
     const prefix = `/${this.opts.token}`
@@ -314,9 +439,17 @@ export class CredentialProxy {
       res.writeHead(403, { 'content-type': 'text/plain' }).end('forbidden')
       return
     }
+    if (!ALLOWED_METHODS.has((req.method ?? '').toUpperCase())) {
+      res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, POST, HEAD, OPTIONS' }).end('method not allowed')
+      return
+    }
     const rest = safeUpstreamRest(url.slice(prefix.length))
     if (rest === null) {
       res.writeHead(400, { 'content-type': 'text/plain' }).end('bad path')
+      return
+    }
+    if (hasDeniedSegment(rest.split('?')[0])) {
+      res.writeHead(403, { 'content-type': 'text/plain' }).end('path not allowed')
       return
     }
     const apiPrefix = this.opts.targetPathPrefix ?? ''
@@ -343,10 +476,7 @@ export class CredentialProxy {
         method: req.method,
         headers
       },
-      (upstreamRes) => {
-        res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers)
-        upstreamRes.pipe(res)
-      }
+      (upstreamRes) => this.relay(upstreamRes, res, target)
     )
     upstream.on('error', (err) => {
       if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain' })
@@ -369,6 +499,7 @@ export function safeUpstreamRest(raw: string): string | null {
   const query = q === -1 ? '' : rest.slice(q)
   if (rest.includes('#')) return null
   if (/[\\\u0000-\u001f\u007f]/.test(rest)) return null
+  if (path.includes(';')) return null
   if (/%25/i.test(path) || /%5c/i.test(path) || /%2f/i.test(path)) return null
   let decoded: string
   try {
