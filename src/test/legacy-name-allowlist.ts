@@ -67,6 +67,11 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
     token: /onyxcode-cl\/onyxcode-desktop|onyxcode\.cl/i,
     reason: 'Sitio de descargas: dominio onyxcode.cl (CLOUD_DOMAIN) y repositorio de las releases onyxcode-cl/onyxcode-desktop'
   },
+  {
+    path: 'scripts/retirar-release.sh',
+    token: /onyxcode-cl\/onyxcode-desktop/i,
+    reason: 'Retiro de una versión mala: repositorio de las releases onyxcode-cl/onyxcode-desktop'
+  },
   { path: 'README.md', token: /onyxcode-cl\/onyxcode-desktop/i, reason: 'repositorio de GitHub de las releases (RELEASES_REPO)' },
   {
     path: 'docs/release-instalar.md',
