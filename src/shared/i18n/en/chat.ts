@@ -2,6 +2,12 @@ import type { Messages } from '../index'
 import type { chat as es } from '../es/chat'
 
 export const chat = {
+  'chat.doc.card.open': 'Open',
+  'chat.doc.card.download': 'Download',
+  'chat.doc.card.downloadFailed': 'Save failed',
+  'chat.doc.card.code': 'Code',
+  'chat.doc.card.sheets': '{n} sheets',
+  'chat.doc.card.slides': '{n} slides',
   'chat.doc.title': 'Document',
   'chat.doc.creating': 'Generating document…',
   'chat.doc.craftInstall': 'Install ArtCraft',

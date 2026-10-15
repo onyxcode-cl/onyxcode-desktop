@@ -26,6 +26,8 @@ import {
   looksRenderable
 } from './artifacts/ArtifactButton'
 import { DownloadDataDocButton, PreviewDataDocButton } from './artifacts/DataDocButton'
+import { DocumentCard } from './artifacts/DocumentCard'
+import { isRemoteSurface } from '../lib/platform'
 import { DocNotice, type DocProblemReason } from './artifacts/DocNotice'
 import { askAboutChatDoc, canAskAboutChatDoc, getCreatingRawText, subscribeCreatingDoc, type ChatDocBlockKind } from '../lib/chatDocPreview'
 import { guessDataTitle, isJsonLang, parseDataBlockDetailed, sniffDataKind } from '../lib/chatDocBlocks'
@@ -237,6 +239,31 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
           </span>
         </div>
       </div>
+    )
+  }
+  // Escritorio: el documento generado se muestra como tarjeta (miniatura + Abrir/Descargar); el celular sigue con el bloque de siempre.
+  // Solo en Chat (ahí `ChatView` registra el panel de documento); Tareas y Code conservan su bloque.
+  if (docKind && !isRemoteSurface() && canAskAboutChatDoc()) {
+    const cardTitle = docKind === 'html' ? guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview')) : guessDataTitle(docKind, code)
+    return (
+      <>
+        <DocumentCard
+          kind={docKind}
+          rawText={code}
+          isSlides={isSlides}
+          title={cardTitle}
+          codeShown={showCode}
+          onToggleCode={() => {
+            userToggledRef.current = true
+            setShowCode((v) => !v)
+          }}
+        />
+        {showCode && (
+          <div className="code-block">
+            <pre>{children}</pre>
+          </div>
+        )}
+      </>
     )
   }
   return (
