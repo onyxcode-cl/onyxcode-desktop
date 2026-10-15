@@ -21,6 +21,8 @@ function hashText(text: string): string {
 }
 
 export function chatDocSizeKey(kind: ChatDocBlockKind, rawText: string): string {
+  // El bloque llega con o sin salto de línea final según de dónde se lea (Markdown vs. registro de bloques): se normaliza.
+  rawText = rawText.trim()
   return `${kind}:${rawText.length}:${hashText(rawText)}`
 }
 

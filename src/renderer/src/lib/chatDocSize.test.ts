@@ -24,6 +24,10 @@ describe('caché de peso por contenido', () => {
     expect(getChatDocSize('xlsx', '{"a":2}')).toBeNull()
     expect(getChatDocSize('docx', '{"a":1}')).toBeNull()
   })
+  it('ignora saltos de línea finales al buscar', () => {
+    recordChatDocSize('xlsx', '{"a":1}\n', 2048)
+    expect(getChatDocSize('xlsx', '{"a":1}')).toBe(2048)
+  })
   it('ignora html y valores no válidos (no inventa números)', () => {
     recordChatDocSize('html', '<p>x</p>', 5000)
     recordChatDocSize('xlsx', 'a', undefined)
