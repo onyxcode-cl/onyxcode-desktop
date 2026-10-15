@@ -29,7 +29,10 @@ export function WorkingCard({ entries }: { entries: MessageEntry[] }): React.JSX
   // Con el modo control activo la tarjeta lo dice con el mismo vocabulario que el distintivo del encabezado.
   const using = useTasks((s) => now !== null && !!s.lastAction && now - s.lastAction.at < 15_000 && s.conn?.fullAccess === true)
   const hasPlan = total > 0
-  const createdCount = Math.max(ctx.filesWritten.length, startedAt === null ? 0 : (created ?? []).filter((f) => f.mtime >= startedAt).length)
+  const createdCount = Math.max(
+    ctx.filesWritten.length,
+    startedAt === null ? 0 : (created ?? []).filter((f) => f.mtime >= startedAt).length
+  )
   // Título = lo que hace ahora; sin herramienta, el paso en curso del plan; si no, «Pensando».
   let headline: string
   if (activity === 'read') headline = target ? t('tasks.work.reading', { name: target }) : t('tasks.work.readingMany')
@@ -51,7 +54,8 @@ export function WorkingCard({ entries }: { entries: MessageEntry[] }): React.JSX
     if (toolCount > 0) sub.push(t(toolCount === 1 ? 'tasks.work.actions.one' : 'tasks.work.actions.many', { n: toolCount }))
     const r = ctx.filesRead.length
     if (r > 0) sub.push(t(r === 1 ? 'tasks.work.filesRead.one' : 'tasks.work.filesRead.many', { n: r }))
-    if (createdCount > 0) sub.push(t(createdCount === 1 ? 'tasks.work.filesCreated.one' : 'tasks.work.filesCreated.many', { n: createdCount }))
+    if (createdCount > 0)
+      sub.push(t(createdCount === 1 ? 'tasks.work.filesCreated.one' : 'tasks.work.filesCreated.many', { n: createdCount }))
   }
   if (startedAt !== null && now !== null) sub.push(formatElapsed(now - startedAt))
   const phaseIdx = PHASES.indexOf(phase)

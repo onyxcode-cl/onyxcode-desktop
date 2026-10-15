@@ -37,7 +37,10 @@ describe('workProgress', () => {
   })
 })
 
-const asst = (parts: unknown[]): MessageEntry => ({ info: { id: 'a' + Math.random(), role: 'assistant', time: { created: 1 } } as never, parts: parts as never })
+const asst = (parts: unknown[]): MessageEntry => ({
+  info: { id: 'a' + Math.random(), role: 'assistant', time: { created: 1 } } as never,
+  parts: parts as never
+})
 const plan = (...st: Array<'completed' | 'in_progress' | 'pending'>): never =>
   tool('todowrite', 'completed', { todos: st.map((status, i) => ({ content: 'p' + i, status })) })
 
@@ -56,7 +59,12 @@ describe('workProgress por turno', () => {
   it('con plan, in_progress y herramientas: avance parcial solo por herramientas posteriores', () => {
     const w = workProgress([
       user(1),
-      asst([plan('completed', 'in_progress', 'pending'), tool('read', 'completed'), tool('read', 'completed'), tool('read', 'running', { filePath: '/x/ventas.csv' })])
+      asst([
+        plan('completed', 'in_progress', 'pending'),
+        tool('read', 'completed'),
+        tool('read', 'completed'),
+        tool('read', 'running', { filePath: '/x/ventas.csv' })
+      ])
     ])
     expect(w).toMatchObject({ total: 3, done: 1, currentIdx: 1, toolCount: 3, activity: 'read', target: 'ventas.csv' })
     expect(w.partial).toBeCloseTo(partialProgress(2))
