@@ -44,6 +44,7 @@ import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
 import { showPath } from './conn-paths'
 import { isUsingComputer, refreshDeliverables, useTasks } from './store'
+import { turnEntries, turnTodos, workProgress } from './work-progress'
 import { buildContext, friendlyTool, groupActivityBySteps, relTime, type ContextItem } from './util'
 
 const EMPTY_TODOS: Todo[] = []
@@ -337,9 +338,13 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
 
 export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; busy: boolean }): React.JSX.Element {
   const tr = useT()
-  const todos = useTasks((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
+  const storeTodos = useTasks((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
   const files = useTasks((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
   const entries = useSessions((s) => (sessionID ? (s.messages[sessionID] ?? EMPTY_ENTRIES) : EMPTY_ENTRIES))
+  // El plan es el del turno actual: en curso, un plan de una petición anterior no cuenta (el guardado solo se usa en reposo).
+  const turnPlan = useMemo(() => turnTodos(entries), [entries])
+  const todos = turnPlan ?? (busy ? EMPTY_TODOS : storeTodos)
+  const work = useMemo(() => workProgress(entries), [entries])
   const groups = useMemo(() => groupActivityBySteps(entries), [entries])
   const toolCount = groups.reduce((n, g) => n + g.tools.length, 0)
   const context = useMemo(() => buildContext(entries), [entries])
@@ -369,6 +374,15 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         ? tr('tasks.prog.completed')
         : tr('tasks.prog.stepOf', { n: (currentIdx >= 0 ? currentIdx : stepsDone) + 1, total: steps.length })
 
+  // Contadores reales del turno (nunca un porcentaje inventado: el % de arriba solo sale de pasos del plan).
+  const readN = buildContext(turnEntries(entries)).filesRead.length
+  const counters = [
+    work.toolCount > 0 ? tr(work.toolCount === 1 ? 'tasks.work.actions.one' : 'tasks.work.actions.many', { n: work.toolCount }) : '',
+    readN > 0 ? tr(readN === 1 ? 'tasks.work.filesRead.one' : 'tasks.work.filesRead.many', { n: readN }) : ''
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <div className="h-full overflow-y-auto text-sm">
       {usingComputer && <LiveSection entries={entries} />}
@@ -380,7 +394,10 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         badgeTone="plain"
       >
         {todos.length === 0 ? (
-          <p className="text-xs text-subtle">{busy ? tr('tasks.prog.planPreparing') : tr('tasks.prog.planNone')}</p>
+          <>
+            {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
+            <p className="text-xs text-subtle">{busy ? tr('tasks.prog.planPreparing') : tr('tasks.prog.planNone')}</p>
+          </>
         ) : (
           <>
             <div className="mb-3 flex items-center gap-2 desk:hidden">
@@ -390,6 +407,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
               <span className="text-[11px] text-muted tabular-nums">{pct}%</span>
             </div>
             {stepLabel && <p className="mb-2 text-xs font-medium text-muted desk:hidden">{stepLabel}</p>}
+            {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
             <ol className="space-y-1">
               {todos.map((t, i) => {
                 const current = t.status === 'in_progress'
