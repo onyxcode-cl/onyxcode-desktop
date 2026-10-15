@@ -41,6 +41,8 @@ const SCENARIOS = [
   'tareas-buscar',
   'tareas-archivadas',
   'tareas-en-curso',
+  'tareas-progreso',
+  'tareas-progreso-plan',
   'tareas-permiso',
   'tareas-permiso-neutral',
   'tareas-permiso-largo',
@@ -327,7 +329,9 @@ function fakeClient(conn) {
 const MODE = (page) => page.locator('nav[aria-label="Modo"]')
 const goMode = async (page, name) => {
   // El modo Tareas se muestra como «Overdrive» en escritorio.
-  await MODE(page).getByRole('button', { name: name === 'Tareas' ? 'Overdrive' : name, exact: true }).click()
+  await MODE(page)
+    .getByRole('button', { name: name === 'Tareas' ? 'Overdrive' : name, exact: true })
+    .click()
   await sleep(400)
 }
 const vis = (loc, timeout = 15_000) => loc.first().waitFor({ state: 'visible', timeout })
@@ -675,6 +679,54 @@ async function sendTask(page, text) {
   await page.getByRole('button', { name: 'Enviar' }).first().click()
 }
 
+const planTool = (todos) => ({ type: 'tool', tool: 'todowrite', input: { todos }, output: 'ok', title: 'Plan' })
+async function progresoDosTurnos(ctx, conPlan) {
+  const fake = await freshTasks(ctx)
+  await fake.script({
+    match: 'Prepara el informe',
+    title: 'Preparar informe de ventas',
+    steps: [
+      planTool([
+        { content: 'Reunir datos', status: 'completed', priority: 'high' },
+        { content: 'Calcular totales', status: 'completed', priority: 'high' },
+        { content: 'Redactar resumen', status: 'completed', priority: 'medium' }
+      ]),
+      { type: 'text', text: 'Listo, el informe de ventas quedó preparado.' }
+    ]
+  })
+  const nuevo = [
+    ...(conPlan
+      ? [
+          planTool([
+            { content: 'Revisar la carpeta', status: 'completed', priority: 'high' },
+            { content: 'Leer los tres meses', status: 'in_progress', priority: 'high' },
+            { content: 'Calcular totales', status: 'pending', priority: 'medium' },
+            { content: 'Armar el Excel', status: 'pending', priority: 'medium' },
+            { content: 'Revisar', status: 'pending', priority: 'low' }
+          ])
+        ]
+      : []),
+    { type: 'tool', tool: 'read', input: { filePath: join(taskFolder, 'ventas_enero.csv') }, output: 'mes,total', title: 'Lee enero' },
+    { type: 'tool', tool: 'read', input: { filePath: join(taskFolder, 'ventas_febrero.csv') }, output: 'mes,total', title: 'Lee febrero' },
+    {
+      type: 'tool',
+      tool: 'read',
+      input: { filePath: join(taskFolder, 'ventas_marzo.csv') },
+      output: 'mes,total',
+      title: 'Lee marzo',
+      runMs: 120000
+    }
+  ]
+  await fake.script({ match: 'Ahora cruza', title: 'Preparar informe de ventas', steps: nuevo })
+  await sendTask(ctx.page, 'Prepara el informe de ventas del mes')
+  await vis(ctx.page.getByText('el informe de ventas quedó preparado'), 45_000)
+  const box = ctx.page.getByPlaceholder('Responde o pide un cambio…')
+  await box.fill('Ahora cruza los datos de la carpeta')
+  await ctx.page.getByRole('button', { name: 'Enviar' }).first().click()
+  await vis(ctx.page.getByTestId('working-card'), 30_000)
+  await sleep(2500)
+}
+
 // Dos tareas terminadas (se crean una sola vez por arranque, aunque varios escenarios las necesiten).
 let taskListSeeded = false
 async function seedTaskList(ctx) {
@@ -818,8 +870,7 @@ const S = {
       steps: [
         {
           type: 'text',
-          text:
-            'Listo, armé el informe del trimestre con el total por mes y por vendedor.\n\n```xlsx\n{"sheets":[{"name":"Resumen","rows":[["Mes","Ventas"],["Enero",120],["Febrero",135]]},{"name":"Detalle","rows":[["Vendedor","Total"],["Ana",80]]},{"name":"Notas","rows":[["Nota"],["Cifras en millones"]]}]}\n```\n\nVentas totales: $48,2 millones, un 12 % más que el trimestre anterior.'
+          text: 'Listo, armé el informe del trimestre con el total por mes y por vendedor.\n\n```xlsx\n{"sheets":[{"name":"Resumen","rows":[["Mes","Ventas"],["Enero",120],["Febrero",135]]},{"name":"Detalle","rows":[["Vendedor","Total"],["Ana",80]]},{"name":"Notas","rows":[["Nota"],["Cifras en millones"]]}]}\n```\n\nVentas totales: $48,2 millones, un 12 % más que el trimestre anterior.'
         }
       ]
     })
@@ -918,7 +969,13 @@ const S = {
         { type: 'fs', op: 'write', path: 'informe-ventas.xlsx', content: 'x'.repeat(18_400) },
         { type: 'fs', op: 'write', path: 'docs/negocios_ganados_2026.pdf', content: 'x'.repeat(412_000) },
         { type: 'text', text: 'Voy a armar el Excel con los totales.' },
-        { type: 'tool', tool: 'write', input: { filePath: join(codeRepo, 'informe-ventas.xlsx'), content: '' }, output: 'Wrote file successfully.', title: 'informe-ventas.xlsx' },
+        {
+          type: 'tool',
+          tool: 'write',
+          input: { filePath: join(codeRepo, 'informe-ventas.xlsx'), content: '' },
+          output: 'Wrote file successfully.',
+          title: 'informe-ventas.xlsx'
+        },
         { type: 'text', text: `Listo. También actualicé el PDF: ${join(codeRepo, 'docs', 'negocios_ganados_2026.pdf')}` }
       ]
     })
@@ -1018,6 +1075,14 @@ const S = {
     await sendTask(ctx.page, 'Prepara el informe de ventas del mes')
     await vis(ctx.page.getByText('Calcular totales por región'), 45_000)
     await sleep(800)
+  },
+  // Turno viejo con plan completo y turno nuevo en curso: la tarjeta NO debe mostrar el plan viejo (sin plan: contadores y fases).
+  async 'tareas-progreso'(ctx) {
+    await progresoDosTurnos(ctx, false)
+  },
+  // Igual, pero el turno nuevo ya publicó su propio plan: barra segmentada con el paso en curso y la lista de pasos.
+  async 'tareas-progreso-plan'(ctx) {
+    await progresoDosTurnos(ctx, true)
   },
   async 'tareas-permiso'(ctx) {
     const fake = await freshTasks(ctx)
