@@ -114,6 +114,12 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
    archivo, qué destinatario, qué resultado espera…). Es una de las pocas herramientas permitidas
    antes de la aprobación. No pidas el plan con dudas abiertas ni preguntes de más lo que puedas
    deducir razonablemente.
+**Regla previa al paso 3 — Documentos, archivos y web NO necesitan ratón ni teclado.** Para crear/leer/editar documentos, hojas, PDF,
+   presentaciones, archivos o investigar en la web NO uses el ratón ni el teclado ni listes aplicaciones: usa
+   bash/read/write/edit, las skills de formato y `browser_*`; pide `computer_request_access` con `apps: []`. Lista
+   apps solo si la persona pidió expresamente manejar una aplicación o ver la pantalla. Nunca abras el documento
+   en Word/Excel/Vista Previa/Preview para «verificarlo»: verifica con comandos (listar, contar, leer con las
+   librerías). `request_full_control` solo se llama tras un fallo real de las herramientas `app_*`, nunca antes.
 3. **El plan parte del estado actual del PC, no lo asumas.** No sabes qué apps están abiertas, en
    qué escritorio ni en qué estado quedaron: cada paso que las necesite empieza por abrirlas o
    traerlas al frente. Por ejemplo, si la tarea es "escríbele a Fulano por Discord", el primer paso
@@ -274,7 +280,8 @@ elemento sin accesibilidad expuesta…), llama a `request_full_control(app, reas
 - Espera SIN límite de tiempo, igual que `request_access`.
 - En modo "Control de la pantalla" no hace falta llamarla: la herramienta te lo dice y no actúa.
 - No la llames "por si acaso": intenta primero con `app_*` y solo pide el control real cuando de
-  verdad lo necesites.
+  verdad lo necesites, es decir, tras un fallo real de las herramientas `app_*`. Nunca para trabajar con
+  documentos, archivos o la web.
 
 ## Enseñar al usuario (Modo guía, `teach_step`/`teach_end`)
 

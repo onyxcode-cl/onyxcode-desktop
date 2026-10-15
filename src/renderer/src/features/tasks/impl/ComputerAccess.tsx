@@ -925,12 +925,13 @@ function TakeoverAccessCard({ req }: { req: AccessRequest }): React.JSX.Element 
               {t('tasksComputer.takeover.text2')}
             </p>
             {req.reason && <p className="mt-1 text-xs text-muted italic">«{req.reason}»</p>}
+            <p className="mt-1 text-sm text-muted">{t('tasksComputer.takeover.hint')}</p>
             <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.noTimeout')}</p>
             <div className="mt-3.5 flex flex-wrap justify-end gap-2">
-              <Button variant="ghost" onClick={decline} disabled={busy}>
+              <Button variant="primary" onClick={decline} disabled={busy}>
                 {t('tasksComputer.takeover.background')}
               </Button>
-              <Button variant="primary" onClick={allow} disabled={busy}>
+              <Button variant="secondary" onClick={allow} disabled={busy}>
                 {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.confirm.allow')}
               </Button>
             </div>
@@ -1069,7 +1070,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
             <p className="mt-2.5 text-xs text-muted">
               {t('tasksComputer.noTimeout')}
               {hasApps && ` ${t('tasksComputer.plan.neverLowers')}`}
-              {hasApps && ` ${t('tasksComputer.plan.mouseKeyboard')}`}
+              {hasApps && ` ${t('tasksComputer.plan.mouseKeyboard')} ${t('tasksComputer.plan.filesHint')}`}
             </p>
             {editing ? (
               <div className="mt-3">
