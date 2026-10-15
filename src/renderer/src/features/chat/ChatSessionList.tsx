@@ -135,11 +135,14 @@ function Row({
         onClick={onSelect}
         data-tree-primary={tree ? '' : undefined}
         aria-current={active && !tree ? 'true' : undefined}
-        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-sm ${active ? 'bg-active font-medium text-fg desk:bg-hover' : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
+        className={`relative flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13.5px] transition-colors ${tree ? 'duration-150 desk:h-[30px] desk:gap-2 desk:rounded-ctl desk:px-2 desk:py-0 desk:text-ui' : 'duration-150 desk:h-8 desk:gap-2.5 desk:rounded-ctl desk:px-2.5 desk:py-0 desk:text-sm'} ${active ? (tree ? 'bg-active text-fg desk:font-normal' : 'bg-active font-medium text-fg desk:bg-hover') : 'text-muted hover:bg-hover hover:text-fg'} ${menu ? 'bg-hover' : ''}`}
       >
         {active && <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />}
         {tree && busy && <StateDot state="working" />}
-        <span className="flex-1 truncate group-hover:pr-5">{session.title || t('chat.list.untitled')}</span>
+        {/* En el árbol la fila activa muestra «⋯» fijo: el título le deja su hueco y se trunca con «…» en vez de pisarlo. */}
+        <span className={`flex-1 truncate group-hover:pr-5${tree && (active || menu) ? ' desk:pr-5' : ''}`}>
+          {session.title || t('chat.list.untitled')}
+        </span>
         {busy && !showTime && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
         {showTime &&
           (tree && busy ? (

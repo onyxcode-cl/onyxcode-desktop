@@ -309,7 +309,8 @@ export function TaskRow({
           {group && !archivedView && <span className="text-subtle"> · {group}</span>}
         </div>
       </button>
-      {showTime && (
+      {/* En el árbol de escritorio (maqueta B) la fila es solo punto + título: sin hora, que recortaba el título. */}
+      {showTime && !tree && (
         <span
           className={`hidden shrink-0 text-[11px] text-subtle tabular-nums desk:inline desk:order-2 desk:text-meta ${busy ? '' : ' desk:group-hover:hidden'}${metaHide}`}
         >

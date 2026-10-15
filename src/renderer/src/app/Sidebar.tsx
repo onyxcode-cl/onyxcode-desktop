@@ -231,17 +231,18 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
             }
           : undefined
       }
-      className={`flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar ${narrow ? 'absolute inset-y-0 left-14 z-30 shadow-pop' : ''}`}
+      className={`group/list flex h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r border-border bg-sidebar ${narrow ? 'absolute inset-y-0 left-14 z-30 shadow-pop' : ''}`}
     >
-      {/* Franja superior (48 px, como la cabecera del contenido): arrastre de ventana y, a la derecha y discretas, las acciones del
-          proyecto (abrir carpeta, proyectos recientes) y «Ocultar». La zona de arrastre es hermana de los botones, no su contenedor. */}
+      {/* Franja superior (48 px, como la cabecera del contenido): arrastre de ventana y, a la derecha, «Ocultar» y las acciones del
+          proyecto (abrir carpeta, proyectos recientes), que la maqueta no trae: solo aparecen al pasar por la lista o con el foco del
+          teclado. La zona de arrastre es hermana de los botones, no su contenedor. */}
       <div className={`flex shrink-0 items-center gap-0.5 pr-2.5 ${tall ? 'h-12' : 'h-10'}`}>
         <div aria-hidden="true" className="drag h-full min-w-0 flex-1" />
         {def.projectAction && platformCaps().nativeDialogs && (
           <IconButton
             label={t('app.sidebar.openFolder')}
             size="sm"
-            className="text-subtle"
+            className="text-subtle opacity-0 transition-opacity duration-[var(--dur-fast)] group-focus-within/list:opacity-100 group-hover/list:opacity-100 focus-visible:opacity-100"
             onClick={() => {
               openSettings(false)
               def.projectAction?.()
@@ -254,7 +255,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
           <IconButton
             label={t('app.sidebar.recentProjects')}
             size="sm"
-            className="text-subtle"
+            className="text-subtle opacity-0 transition-opacity duration-[var(--dur-fast)] group-focus-within/list:opacity-100 group-hover/list:opacity-100 focus-visible:opacity-100"
             onClick={() => {
               openSettings(false)
               def.backToProjects?.()
