@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { recordChatDocSize, resetChatDocSizes } from '../../lib/chatDocSize'
 import { DocumentCard, docCardCount, docCardType, docFileName } from './DocumentCard'
 
 describe('docCardType', () => {
@@ -27,6 +28,19 @@ describe('docCardCount', () => {
     expect(docCardCount('xlsx', raw)).toEqual({ key: 'sheets', n: 2 })
     expect(docCardCount('xlsx', '{roto')).toBeNull()
     expect(docCardCount('docx', raw)).toBeNull()
+  })
+})
+
+describe('DocumentCard: peso', () => {
+  it('sin dato no muestra peso; con dato registrado lo muestra', () => {
+    resetChatDocSizes()
+    const raw = JSON.stringify({ sheets: [{ name: 'A', rows: [['x']] }] })
+    const sin = renderToStaticMarkup(<DocumentCard kind="xlsx" rawText={raw} title="Ventas" />)
+    expect(sin).not.toMatch(/\bKB\b|\bMB\b/)
+    recordChatDocSize('xlsx', raw, 124 * 1024)
+    const con = renderToStaticMarkup(<DocumentCard kind="xlsx" rawText={raw} title="Ventas" />)
+    expect(con).toContain('124 KB')
+    resetChatDocSizes()
   })
 })
 

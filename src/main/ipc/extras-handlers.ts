@@ -4,6 +4,7 @@
  * Además inicializa atajo global de Quick Entry y bandeja (idempotente).
  */
 import { app, shell, type IpcMain } from 'electron'
+import { stat } from 'node:fs/promises'
 import { release } from 'node:os'
 import { join } from 'node:path'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
@@ -132,11 +133,15 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       const doc = await generateChatDoc(input, title, sessionId)
       // Con el programa de ArtCraft instalado, el panel muestra su versión WEB (misma pantalla y motor que el programa de escritorio);
       // si no está o falla, el visor de siempre.
-      if (await openInCraftWeb(input.kind, doc.file, title)) return { ok: true }
+      // Peso real del archivo generado; si no se puede leer, simplemente no se informa.
+      const bytes = await stat(doc.file)
+        .then((s) => s.size)
+        .catch(() => undefined)
+      if (await openInCraftWeb(input.kind, doc.file, title)) return { ok: true, bytes }
       installViewerScheme()
       openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${doc.token}&kind=${doc.kind}&lang=${lang}&theme=${theme}`)
       useClassicViewer()
-      return { ok: true }
+      return { ok: true, bytes }
     } catch (e) {
       console.warn('[chat-doc] no se pudo generar el documento:', e instanceof Error ? e.message : e)
       // Queda en el registro de problemas (Ajustes › Diagnóstico) con el tipo de documento y el motivo, ya redactado por el registro.
