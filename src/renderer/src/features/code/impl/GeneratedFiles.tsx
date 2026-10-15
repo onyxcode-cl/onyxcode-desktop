@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { FileSpreadsheet, FileText, FolderOpen, Presentation, SquareArrowOutUpRight } from 'lucide-react'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import { getLang } from '@shared/i18n'
-import type { DocFileInfo } from '@shared/ipc-code'
+import type { CodeApi, DocFileInfo } from '@shared/ipc-code'
 import { useT } from '../../../lib/i18n'
 import { formatFileSize } from '../../../lib/chatDocSize'
 import { DocThumb, type DocCardType } from '../../../components/artifacts/DocumentCard'
@@ -43,6 +43,22 @@ const TONE: Record<DocCardType, string> = {
   pdf: 'var(--accent)'
 }
 
+/**
+ * Acciones de la tarjeta. «Abrir» = el programa de siempre del sistema (Word, Excel, PowerPoint, visor de PDF) vía
+ * `files:openDoc` (`shell.openPath` en main). No hay «Ver aquí»: el visor integrado (`ChatDocPanel`) es del Chat y solo
+ * recibe el contenido de documentos del chat, no archivos del disco; no existe un canal para leerlos, así que no se ofrece.
+ */
+export function fileCardActions(
+  api: Pick<CodeApi['files'], 'openDoc' | 'revealDoc'> | undefined,
+  cwd: string,
+  path: string
+): { open: () => Promise<void>; reveal: () => Promise<void> } {
+  return {
+    open: async () => void (await api?.openDoc(cwd, path)),
+    reveal: async () => void (await api?.revealDoc(cwd, path))
+  }
+}
+
 function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.Element {
   const t = useT()
   const type = fileCardType(file.name)
@@ -50,7 +66,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
   const [error, setError] = useState(false)
   const kind = t(KIND_KEY[type])
   const meta = [kind, formatFileSize(file.bytes, getLang())].filter(Boolean).join(' · ')
-  const api = nativeCode('dialogs')
+  const actions = fileCardActions(nativeCode('dialogs')?.files, cwd, file.path)
   const btn =
     'no-drag inline-flex h-7 items-center gap-1.5 rounded-ctl px-2.5 text-meta font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring'
   return (
@@ -76,7 +92,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
             type="button"
             onClick={() => {
               setError(false)
-              void api?.files.openDoc(cwd, file.path).catch(() => setError(true))
+              void actions.open().catch(() => setError(true))
             }}
             className={`${btn} ${error ? 'border border-danger/40 text-danger' : 'bg-accent-soft text-accent hover:bg-hover'}`}
           >
@@ -85,7 +101,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
           </button>
           <button
             type="button"
-            onClick={() => void api?.files.revealDoc(cwd, file.path).catch(() => undefined)}
+            onClick={() => void actions.reveal().catch(() => undefined)}
             className={`${btn} border border-border text-fg hover:bg-hover`}
           >
             <FolderOpen size={14} aria-hidden="true" />
