@@ -1102,7 +1102,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       })()}
                     </span>
                     {stats && (
-                      <span className="flex shrink-0 gap-1.5 font-mono text-xs tabular-nums">
+                      <span className="flex shrink-0 gap-1.5 font-mono text-xs tabular-nums desk:@max-[26rem]:hidden">
                         {stats.additions > 0 && <span className="text-success">+{stats.additions}</span>}
                         {stats.deletions > 0 && <span className="text-danger">−{stats.deletions}</span>}
                       </span>
