@@ -120,6 +120,8 @@ export const code = {
   'code.sessions.rename': 'Rename',
   'code.sessions.unpin': 'Unpin',
   'code.sessions.pin': 'Pin session',
+  'code.sessions.markReviewed': 'Mark as reviewed',
+  'code.sessions.reviewTip': 'Changes to review. Open them in the Changes panel or use “⋯ › Mark as reviewed”.',
   'code.sessions.unarchive': 'Unarchive',
   'code.sessions.archive': 'Archive',
   'code.sessions.delete': 'Delete session',
@@ -344,6 +346,8 @@ export const code = {
     one: '1 file that cannot be reverted was skipped.',
     other: '{count} files that cannot be reverted were skipped.'
   },
+  'code.changes.revertAllBusy': 'Wait for the agent to finish before reverting everything.',
+  'code.changes.revertAllTooMany': 'More than {max} files: revert in parts or from the terminal.',
   'code.changes.reviewActions': 'Actions on all changes',
   'code.changes.discardKeepsStaged': 'Anything already staged is kept: the file goes back to the staged version.',
   'code.changes.discardHunk': 'Discard this block',

@@ -7,6 +7,7 @@ import {
   deriveSessionState,
   fingerprint,
   isAccepted,
+  legacyBaseline,
   panelLayout,
   parseReviewed,
   pathOfDiffHeader,
@@ -16,6 +17,7 @@ import {
   summarySignature,
   trimReviewed,
   unquoteGitPath,
+  withBaseline,
   type ReviewRecord
 } from './review-logic'
 
@@ -53,6 +55,35 @@ describe('revisión de la sesión', () => {
     expect(sessionNeedsReview(summary, rec)).toBe(false)
     expect(sessionNeedsReview({ ...summary, additions: 11 }, rec)).toBe(true)
     expect(sessionNeedsReview(undefined, undefined)).toBe(false)
+  })
+  it('migración: sin registro, lo que no se tocó desde que existe el registro se da por revisado', () => {
+    const since = 1_000
+    expect(sessionNeedsReview(summary, undefined, { updated: 900, since })).toBe(false)
+    expect(sessionNeedsReview(summary, undefined, { updated: 1_000, since })).toBe(false)
+    // Tocada después (el agente volvió a trabajar): se juzga normal.
+    expect(sessionNeedsReview(summary, undefined, { updated: 1_001, since })).toBe(true)
+    // Sin «desde» (registro ya existente): todo se juzga normal.
+    expect(sessionNeedsReview(summary, undefined, { updated: 900, since: null })).toBe(true)
+    // Con registro propio manda el registro, aunque sea antigua.
+    expect(sessionNeedsReview(summary, { sig: '1:1:1', files: {} }, { updated: 900, since })).toBe(true)
+  })
+  it('legacyBaseline fija la huella actual de las sesiones antiguas sin registro, y solo de esas', () => {
+    const sessions = [
+      { id: 'vieja', time: { updated: 500 }, summary },
+      { id: 'nueva', time: { updated: 2_000 }, summary },
+      { id: 'sin-cambios', time: { updated: 500 } },
+      { id: 'con-registro', time: { updated: 500 }, summary }
+    ]
+    const reviewed = { 'con-registro': { sig: 'x', files: {} } }
+    expect(legacyBaseline(sessions, reviewed, 1_000)).toEqual({ vieja: '2:10:3' })
+    expect(legacyBaseline(sessions, reviewed, null)).toEqual({})
+  })
+  it('withBaseline no pisa registros y pone los de base al principio (el tope los descarta primero)', () => {
+    const all = { a: { sig: 'real', files: { 'x.ts': 'h' } } }
+    const next = withBaseline(all, { a: 'otra', b: '1:1:0' })
+    expect(next.a).toEqual(all.a)
+    expect(Object.keys(next)).toEqual(['b', 'a'])
+    expect(withBaseline(all, { a: 'otra' })).toBe(all)
   })
 })
 
@@ -101,7 +132,9 @@ describe('splitPatchByFile', () => {
   it('renombres: manda `rename to` sobre la cabecera, aunque haya « b/» en los nombres', () => {
     const p = ['diff --git a/x b/y b/z b/w', 'similarity index 100%', 'rename from x b/y', 'rename to z b/w', ''].join('\n')
     expect([...splitPatchByFile(p).keys()]).toEqual(['z b/w'])
-    const q = ['diff --git "a/vie\\"jo" "b/nue\\"vo"', 'similarity index 100%', 'rename from "vie\\"jo"', 'rename to "nue\\"vo"', ''].join('\n')
+    const q = ['diff --git "a/vie\\"jo" "b/nue\\"vo"', 'similarity index 100%', 'rename from "vie\\"jo"', 'rename to "nue\\"vo"', ''].join(
+      '\n'
+    )
     expect([...splitPatchByFile(q).keys()]).toEqual(['nue"vo'])
   })
   it('salida real de git (core.quotepath=off): café.txt, nuevo ñ.txt y q"uote.txt casan con las rutas de status', () => {

@@ -44,6 +44,31 @@ describe('store: aceptar cambios', () => {
     expect(again.getState().reviewed.s1).toEqual({ sig: '1:1:0', files: { 'a.ts': 'h1' } })
   })
 
+  it('primera ejecución sin registro: fija «desde cuándo» y lo conserva al reiniciar', async () => {
+    const since = st().reviewedSince
+    expect(typeof since).toBe('number')
+    expect(localStorage.getItem('code.reviewed.since')).toBe(String(since))
+    vi.resetModules()
+    const again = (await import('./store')).useCode
+    expect(again.getState().reviewedSince).toBe(since)
+  })
+
+  it('con un registro ya existente (sin «desde») no hay migración: se juzga todo normal', async () => {
+    localStorage.clear()
+    localStorage.setItem('code.reviewed', '{}')
+    vi.resetModules()
+    const again = (await import('./store')).useCode
+    expect(again.getState().reviewedSince).toBeNull()
+  })
+
+  it('baselineReviewed fija la huella sin pisar lo aceptado y se guarda', () => {
+    st().acceptSession('s1', '1:1:0', {})
+    st().baselineReviewed({ s1: '9:9:9', s2: '2:2:2' })
+    expect(st().reviewed.s1.sig).toBe('1:1:0')
+    expect(st().reviewed.s2).toEqual({ sig: '2:2:2', files: {} })
+    expect(JSON.parse(localStorage.getItem('code.reviewed') ?? '{}').s2.sig).toBe('2:2:2')
+  })
+
   it('un valor guardado corrupto no rompe el arranque', async () => {
     localStorage.setItem('code.reviewed', '{"s1": 7, "s2": {"files": {"a": 1}}}')
     vi.resetModules()

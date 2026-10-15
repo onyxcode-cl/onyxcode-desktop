@@ -46,10 +46,52 @@ export function summarySignature(summary: SessionSummaryLike | undefined): strin
   return `${summary.files}:${summary.additions}:${summary.deletions}`
 }
 
-/** ¿Quedan cambios de la sesión sin revisar? (hay resumen y su huella no es la que el usuario aceptó). */
-export function sessionNeedsReview(summary: SessionSummaryLike | undefined, record: ReviewRecord | undefined): boolean {
+/**
+ * ¿Quedan cambios de la sesión sin revisar? (hay resumen y su huella no es la que el usuario aceptó).
+ * `since` es el momento en que empezó a existir el registro de revisión (primera ejecución con esta función): una sesión
+ * sin registro que no se tocó después de eso es anterior y se da por revisada (si no, al actualizar TODAS saldrían «por
+ * revisar»). Si el agente la vuelve a tocar (`updated > since`), se juzga normal.
+ */
+export function sessionNeedsReview(
+  summary: SessionSummaryLike | undefined,
+  record: ReviewRecord | undefined,
+  legacy?: { updated?: number; since?: number | null }
+): boolean {
   const sig = summarySignature(summary)
-  return sig !== null && record?.sig !== sig
+  if (sig === null || record?.sig === sig) return false
+  if (!record && legacy?.since != null && legacy.updated !== undefined && legacy.updated <= legacy.since) return false
+  return true
+}
+
+export interface SessionLike {
+  id: string
+  time: { updated: number }
+  summary?: SessionSummaryLike
+}
+
+/**
+ * Migración: huellas a fijar como «ya revisado» para las sesiones anteriores al registro (sin registro propio, con cambios y
+ * sin tocar desde `since`). Así una sesión antigua que luego solo recibe un mensaje sin cambios no pasa a «por revisar».
+ */
+export function legacyBaseline(
+  sessions: SessionLike[],
+  reviewed: Record<string, ReviewRecord>,
+  since: number | null
+): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (since == null) return out
+  for (const s of sessions) {
+    const sig = summarySignature(s.summary)
+    if (sig !== null && !reviewed[s.id] && s.time.updated <= since) out[s.id] = sig
+  }
+  return out
+}
+
+/** Inserta registros de base al PRINCIPIO (el tope descarta primero esas), sin pisar los que ya existen. */
+export function withBaseline(all: Record<string, ReviewRecord>, entries: Record<string, string>): Record<string, ReviewRecord> {
+  const fresh = Object.entries(entries).filter(([sid]) => !all[sid])
+  if (!fresh.length) return all
+  return trimReviewed({ ...Object.fromEntries(fresh.map(([sid, sig]) => [sid, { sig, files: {} }])), ...all })
 }
 
 // ───────────────────────────── Registro de revisión ─────────────────────────────

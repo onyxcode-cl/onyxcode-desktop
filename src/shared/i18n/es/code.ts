@@ -117,6 +117,8 @@ export const code = {
   'code.sessions.rename': 'Renombrar',
   'code.sessions.unpin': 'Quitar de fijadas',
   'code.sessions.pin': 'Fijar sesión',
+  'code.sessions.markReviewed': 'Marcar como revisada',
+  'code.sessions.reviewTip': 'Cambios por revisar. Ábrelos en el panel Cambios o usa «⋯ › Marcar como revisada».',
   'code.sessions.unarchive': 'Desarchivar',
   'code.sessions.archive': 'Archivar',
   'code.sessions.delete': 'Eliminar sesión',
@@ -343,6 +345,8 @@ export const code = {
     one: 'Se omitió 1 archivo que no se puede revertir.',
     other: 'Se omitieron {count} archivos que no se pueden revertir.'
   },
+  'code.changes.revertAllBusy': 'Espera a que el agente termine para revertir todo.',
+  'code.changes.revertAllTooMany': 'Hay más de {max} archivos: revierte por partes o desde la terminal.',
   'code.changes.reviewActions': 'Acciones sobre todos los cambios',
   'code.changes.discardKeepsStaged': 'Lo que ya está preparado se conserva: el archivo vuelve a la versión preparada.',
   'code.changes.discardHunk': 'Descartar este bloque',
