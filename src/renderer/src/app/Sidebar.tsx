@@ -154,8 +154,8 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
     >
       {/* Espacio superior: en macOS libre para los semáforos; en Windows, la franja de arrastre bajo el overlay de controles. Es un
           hermano de los botones, no su contenedor (en Windows una franja `drag` se come los clics de sus hijos). */}
-      <div aria-hidden="true" className={`drag w-full shrink-0 ${tall ? 'h-12' : 'h-3'}`} />
-      <nav aria-label={t('app.sidebar.mode')} className="flex flex-col items-center gap-1.5">
+      <div aria-hidden="true" className={`drag w-full shrink-0 ${tall ? 'h-9' : 'h-3'}`} />
+      <nav aria-label={t('app.sidebar.mode')} className="flex flex-col items-center gap-1">
         {MODES.map((m) => {
           const Icon = modeIcon(m)
           return (
@@ -236,7 +236,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
       {/* Franja superior (48 px, como la cabecera del contenido): arrastre de ventana y, a la derecha, «Ocultar» y las acciones del
           proyecto (abrir carpeta, proyectos recientes), que la maqueta no trae: solo aparecen al pasar por la lista o con el foco del
           teclado. La zona de arrastre es hermana de los botones, no su contenedor. */}
-      <div className={`flex shrink-0 items-center gap-0.5 pr-2.5 ${tall ? 'h-12' : 'h-10'}`}>
+      <div className={`flex shrink-0 items-center gap-0.5 pr-2.5 ${tall ? 'h-9' : 'h-10'}`}>
         <div aria-hidden="true" className="drag h-full min-w-0 flex-1" />
         {def.projectAction && platformCaps().nativeDialogs && (
           <IconButton
