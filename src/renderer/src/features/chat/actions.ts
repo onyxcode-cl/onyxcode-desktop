@@ -8,11 +8,12 @@ import { CHAT_AGENT } from '@shared/types'
 import { isSafeAttachmentUrl } from '../../lib/attachments'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
-import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
+import { reconcilePending, reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
+import { sameDir } from '../../stores/eventRouter'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../stores/sessions'
 import { resolveModelForMode } from '../settings/impl/extras'
-import { useChat } from './store'
+import { useChat, type ChatPendingQuestion } from './store'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 
 function ctx(): { client: NonNullable<ReturnType<typeof useServer.getState>['client']>; directory: string } {
@@ -33,7 +34,51 @@ useSessions.getState().addEvictionGuard(() => {
 onStreamReconnect(() => {
   const active = useChat.getState().activeSessionId
   useSessions.getState().invalidateLoaded((src) => src === MAIN_SOURCE, active ? [active] : [])
+  void loadChatQuestions() // una pregunta pudo llegar (o contestarse desde otro cliente) mientras no había stream
 })
+
+/**
+ * Preguntas estructuradas pendientes del agente de Chat (herramienta `question`). Se RECONSTRUYEN desde el servidor
+ * (como Code, F7-B16): lo contestado desde otro cliente no queda pegado y lo que llegó por evento durante la petición se
+ * conserva. Si la petición falla no se toca nada.
+ */
+export async function loadChatQuestions(): Promise<void> {
+  const { client, connection } = useServer.getState()
+  if (!client || !connection) return
+  const directory = connection.chatDirectory
+  const before = useChat.getState().questions
+  const res = await Promise.resolve()
+    .then(() => client.question.list({ directory }))
+    .catch(() => null)
+  if (!res?.data) return
+  const inChat = (sid: string): boolean => {
+    const { sessions, sessionSource } = useSessions.getState()
+    const s = sessions[sid]
+    return !!s && (sessionSource[sid] ?? MAIN_SOURCE) === MAIN_SOURCE && sameDir(s.directory, directory)
+  }
+  const server: ChatPendingQuestion[] = res.data
+    .filter((q) => inChat(q.sessionID))
+    .map((q) => ({ id: q.id, sessionID: q.sessionID, questions: q.questions }))
+  useChat
+    .getState()
+    .setQuestions(reconcilePending({ cur: useChat.getState().questions, before, server, inScope: (q) => inChat(q.sessionID) }))
+}
+
+/** Responde una pregunta del agente (una lista de respuestas por pregunta); la conversación sigue sola. */
+export async function replyChatQuestion(q: ChatPendingQuestion, answers: string[][]): Promise<void> {
+  const { client, directory } = ctx()
+  const res = await client.question.reply({ requestID: q.id, answers, directory })
+  if (res.error) throw new Error(errorMessage(res.error))
+  useChat.getState().removeQuestion(q.id)
+}
+
+/** «Omitir»: rechaza la pregunta (el agente sigue sin esa respuesta). */
+export async function rejectChatQuestion(q: ChatPendingQuestion): Promise<void> {
+  const { client, directory } = ctx()
+  const res = await client.question.reject({ requestID: q.id, directory })
+  if (res.error) throw new Error(errorMessage(res.error))
+  useChat.getState().removeQuestion(q.id)
+}
 
 export async function loadChatSessions(): Promise<void> {
   const chat = useChat.getState()
@@ -86,6 +131,7 @@ export async function openChatSession(sessionID: string | null): Promise<void> {
       store.setError(sessionID, errorMessage(err))
     }
   }
+  void loadChatQuestions() // una pregunta pendiente de esta conversación (p. ej. la app estaba cerrada) se muestra al abrirla
 }
 
 export function newChat(): void {

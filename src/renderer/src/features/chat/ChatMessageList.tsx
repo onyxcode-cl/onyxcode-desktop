@@ -16,6 +16,7 @@ import { m } from '../../app/mobile/m'
 import '../../app/mobile/conversation.css'
 import { AssistantError } from '../../components/conversation/AssistantError'
 import { Button } from '../../components/Button'
+import { QuestionCard } from '../../components/QuestionCard'
 import { ErrorNotice, type ErrorActions } from '../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../components/conversation/Reasoning'
 import { ScrollToEnd } from '../../components/conversation/ScrollToEnd'
@@ -24,6 +25,8 @@ import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ConversationAnnouncer } from '../../components/conversation/ConversationAnnouncer'
 import { ChatToolCall } from './ChatToolCall'
+import { rejectChatQuestion, replyChatQuestion } from './actions'
+import type { ChatPendingQuestion } from './store'
 import { StepGroup } from '../code/impl/ToolCard'
 import { ElementReadonlyChip } from '../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../browser/element-context'
@@ -352,9 +355,11 @@ interface Props extends ErrorActions {
   error?: ConvError | null
   /** Si se entrega, cada mensaje del usuario con texto ofrece «Editar y reintentar». */
   onEdit?: (messageID: string, text: string) => Promise<unknown>
+  /** Preguntas con opciones que el agente espera que se contesten (herramienta `question`). */
+  questions?: ChatPendingQuestion[]
 }
 
-export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCompact, onEdit }: Props): React.JSX.Element {
+export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCompact, onEdit, questions = [] }: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
   const mobile = isRemoteSurface()
@@ -364,7 +369,8 @@ export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCom
 
   const last = entries[entries.length - 1]
   const lastHasOutput = last?.info.role === 'assistant' && last.parts.some((p) => (p.type === 'text' && p.text) || p.type === 'tool')
-  const showThinking = busy && !lastHasOutput
+  // Mientras espera una respuesta tuya el agente sigue «ocupado», pero no está pensando: no se muestra el indicador.
+  const showThinking = busy && !lastHasOutput && questions.length === 0
 
   // Sin ningún mensaje de usuario no hay nada que reenviar: no se ofrece «Reintentar».
   const canRetry = entries.some((e) => e.info.role === 'user')
@@ -397,6 +403,14 @@ export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCom
               />
             )
           })}
+          {questions.map((q) => (
+            <QuestionCard
+              key={q.id}
+              questions={q.questions}
+              onReply={(answers) => replyChatQuestion(q, answers)}
+              onReject={() => rejectChatQuestion(q)}
+            />
+          ))}
           {showThinking && <ThinkingIndicator label={retrying ? t('chat.msg.retrying') : undefined} />}
           {error && !lastAssistantFailed(entries) && (
             <ErrorNotice error={error} variant="chat" onRetry={canRetry ? onRetry : undefined} onCompact={onCompact} />

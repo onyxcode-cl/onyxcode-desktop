@@ -3,6 +3,7 @@
  * recibir lo de Chat (y lo que Tareas aplica por su cuenta con su origen); Code tiene su propio store.
  */
 import type { OcEvent } from '../lib/opencode'
+import { applyChatQuestionEvent } from '../features/chat/store'
 import { useServer } from './server'
 import { MAIN_SOURCE, useSessions } from './sessions'
 
@@ -52,6 +53,8 @@ const warned = new Set<string>()
 /** Punto de entrada de `App.tsx`: aplica a `useSessions` solo los eventos de Chat (directorio de Chat o sesión de Chat conocida). */
 export function routeEventToSessions(ev: OcEvent, dir: string): void {
   const chatDirectory = useServer.getState().connection?.chatDirectory ?? null
+  // Lo respondido o rechazado se quita por id aunque el evento llegue con otro directorio (no estorba si no era de Chat).
+  if (ev.type === 'question.replied' || ev.type === 'question.rejected') applyChatQuestionEvent(ev, () => true)
   const st = useSessions.getState()
   const knownChat = (sid: string): boolean => {
     const s = st.sessions[sid]
@@ -66,5 +69,6 @@ export function routeEventToSessions(ev: OcEvent, dir: string): void {
       console.warn(`[eventRouter] evento de sesión de Chat con directory=${dir} distinto de chatDirectory=${chatDirectory}`)
     }
   }
+  if (ev.type === 'question.asked') applyChatQuestionEvent(ev, () => true) // ya pasó el filtro de Chat de arriba
   useSessions.getState().applyEvent(ev)
 }
