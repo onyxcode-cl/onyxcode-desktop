@@ -7,6 +7,7 @@ import { isRemoteSurface } from '../../lib/platform'
 import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
 import { attachmentBytes, toChatAttachment, validateFiles, type ChatAttachment } from '../../lib/attachments'
+import { handlePaste } from '../../lib/paste-attachments'
 import { VoiceDictationButton } from '../../components/VoiceDictationButton'
 
 const NO_ATTACHMENTS: ChatAttachment[] = []
@@ -276,14 +277,14 @@ export function ChatComposer({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onPaste={(e) => {
-            if (!showAttach) return
-            const pasted = Array.from(e.clipboardData.items)
-              .filter((it) => it.kind === 'file')
-              .map((it) => it.getAsFile())
-              .filter((f): f is File => !!f)
-            if (pasted.length === 0) return
-            e.preventDefault()
-            addFiles(pasted)
+            if (!showAttach || disabled) return
+            // Vía estándar + respaldo de escritorio (Finder/Explorador/capturas que no llegan como File): ver lib/paste-attachments.
+            handlePaste(e, {
+              scope: 'any',
+              addFiles,
+              fallback: !mobile,
+              onErrors: (msgs) => setAttachError(msgs.join(' '))
+            })
           }}
           onKeyDown={(e) => {
             // M5: Esc detiene la respuesta en curso (como en Code y Tareas).

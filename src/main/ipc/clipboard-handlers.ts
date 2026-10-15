@@ -1,17 +1,51 @@
-import { clipboard, type IpcMain } from 'electron'
+import { clipboard, nativeImage, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
 import { readPasteFiles, type ClipboardReader } from '../clipboard/paste-files'
 import { handle, IpcError } from './handle'
 import { windowOfSender } from './sender-window'
 
-/** Portapapeles real de Electron como lector (formatos de Finder/Explorador y la imagen como PNG). */
+async function clipboardItems(): Promise<Electron.ClipboardItem[]> {
+  try {
+    return await clipboard.read()
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Portapapeles real de Electron 44 (API asíncrona) como lector. Los formatos nativos de Finder/Explorador se piden
+ * por su nombre y, si no, con la clave `electron application/osclipboard;format="…"`.
+ */
 export const electronClipboardReader: ClipboardReader = {
-  availableFormats: () => clipboard.availableFormats(),
-  readFormat: (format) => clipboard.read(format),
-  readBuffer: (format) => clipboard.readBuffer(format),
-  readImagePng: () => {
-    const img = clipboard.readImage()
-    return img.isEmpty() ? null : img.toPNG()
+  async readRaw(format) {
+    const keys = [format, `electron application/osclipboard;format="${format}"`]
+    const items = await clipboardItems()
+    for (const key of keys) {
+      for (const item of items) {
+        try {
+          const blob = (await item.getType(key)) as Blob
+          return Buffer.from(await blob.arrayBuffer())
+        } catch {
+          /* este elemento no trae ese formato */
+        }
+      }
+    }
+    return null
+  },
+  async readImagePng() {
+    for (const item of await clipboardItems()) {
+      const type = item.types.find((x) => x.startsWith('image/'))
+      if (!type) continue
+      try {
+        const buf = Buffer.from(await ((await item.getType(type)) as Blob).arrayBuffer())
+        if (type === 'image/png') return buf
+        const img = nativeImage.createFromBuffer(buf)
+        return img.isEmpty() ? null : img.toPNG()
+      } catch {
+        /* siguiente elemento */
+      }
+    }
+    return null
   }
 }
 

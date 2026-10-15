@@ -27,14 +27,16 @@ import {
 } from '@shared/paste-files'
 import { BLOCKED_OPEN_EXTENSIONS } from '../tasks/open-policy'
 
-/** Lo mínimo del portapapeles de Electron que usamos (inyectable en pruebas). */
+/**
+ * Lo mínimo del portapapeles de Electron que usamos (inyectable en pruebas). En Electron 44 el módulo `clipboard` es
+ * asíncrono (`read()` → `ClipboardItem[]`); los formatos nativos se piden como MIME o con
+ * `electron application/osclipboard;format="<formato nativo>"`.
+ */
 export interface ClipboardReader {
-  availableFormats(): string[]
-  /** `clipboard.read(format)`: texto del formato (p.ej. `public.file-url`). */
-  readFormat(format: string): string
-  readBuffer(format: string): Buffer
+  /** Bytes del formato (MIME o nativo, p.ej. `NSFilenamesPboardType`, `public.file-url`, `FileNameW`), o `null` si no está. */
+  readRaw(format: string): Promise<Buffer | null>
   /** PNG de la imagen del portapapeles, o `null` si no hay. */
-  readImagePng(): Buffer | null
+  readImagePng(): Promise<Buffer | null>
 }
 
 const MAX_PATH_CHARS = 4096
@@ -93,24 +95,44 @@ export function fileUrlToLocalPath(url: string): string | null {
   }
 }
 
-/** Rutas de archivos copiados que hay en el portapapeles, según la plataforma. Nunca lanza. */
-export function readClipboardPaths(cb: ClipboardReader, platform: NodeJS.Platform): string[] {
-  const formats = new Set(cb.availableFormats())
+/** `text/uri-list`: una URL `file:` por línea (varios archivos). */
+export function parseUriList(text: string): string[] {
   const out: string[] = []
-  const add = (p: string | null): void => {
-    if (p && !out.includes(p)) out.push(p)
+  for (const line of text.split(/\r?\n/).slice(0, MAX_CANDIDATES)) {
+    if (line.startsWith('#')) continue
+    const p = fileUrlToLocalPath(line)
+    if (p) out.push(p)
   }
-  try {
-    if (platform === 'darwin') {
-      if (formats.has('NSFilenamesPboardType')) {
-        for (const p of parseFilenamesPlist(cb.readBuffer('NSFilenamesPboardType').toString('utf8'))) add(p)
-      }
-      if (out.length === 0 && formats.has('public.file-url')) add(fileUrlToLocalPath(cb.readFormat('public.file-url')))
-    } else if (platform === 'win32') {
-      if (formats.has('FileNameW')) for (const p of parseFileNameW(cb.readBuffer('FileNameW'))) add(p)
+  return out
+}
+
+/** Rutas de archivos copiados que hay en el portapapeles, según la plataforma. Nunca lanza. */
+export async function readClipboardPaths(cb: ClipboardReader, platform: NodeJS.Platform): Promise<string[]> {
+  const out: string[] = []
+  const add = (list: (string | null)[]): void => {
+    for (const p of list) if (p && !out.includes(p) && out.length < MAX_CANDIDATES) out.push(p)
+  }
+  const raw = async (format: string): Promise<Buffer | null> => {
+    try {
+      return await cb.readRaw(format)
+    } catch {
+      return null // formato ilegible: se trata como ausente
     }
-  } catch {
-    /* formato ilegible: se trata como sin archivos */
+  }
+  if (platform === 'darwin') {
+    const plist = await raw('NSFilenamesPboardType')
+    if (plist) add(parseFilenamesPlist(plist.toString('utf8')))
+    if (out.length === 0) {
+      const url = await raw('public.file-url')
+      if (url) add([fileUrlToLocalPath(url.toString('utf8'))])
+    }
+  } else if (platform === 'win32') {
+    const w = await raw('FileNameW')
+    if (w) add(parseFileNameW(w))
+  }
+  if (out.length === 0) {
+    const list = await raw('text/uri-list')
+    if (list) add(parseUriList(list.toString('utf8')))
   }
   return out
 }
@@ -171,7 +193,7 @@ export async function readPasteFiles(
 ): Promise<PasteResult> {
   const files: PasteFile[] = []
   const rejected: PasteRejected[] = []
-  const paths = readClipboardPaths(cb, platform)
+  const paths = await readClipboardPaths(cb, platform)
   if (paths.length > 0) {
     const budget = { left: PASTE_MAX_TOTAL_BYTES }
     for (const p of paths) {
@@ -187,7 +209,7 @@ export async function readPasteFiles(
   }
   let png: Buffer | null = null
   try {
-    png = cb.readImagePng()
+    png = await cb.readImagePng()
   } catch {
     png = null
   }

@@ -30,6 +30,7 @@ import { splitPath } from '../../../lib/paths'
 import { isRemoteSurface, isWindowsPlatform } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { useT } from '../../../lib/i18n'
+import { handlePaste } from '../../../lib/paste-attachments'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { useClient } from './client'
@@ -548,11 +549,13 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }
 
   const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
-    const imgFiles = Array.from(e.clipboardData.items)
-      .filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
-      .map((it) => it.getAsFile())
-      .filter((f): f is File => !!f)
-    if (imgFiles.length > 0) addFiles(imgFiles)
+    // Mismo tipo que su botón de adjuntar (imágenes). Vía estándar + respaldo de escritorio: ver lib/paste-attachments.
+    handlePaste(e, {
+      scope: 'images',
+      addFiles,
+      fallback: !mobile,
+      onErrors: (msgs) => setAttachError(msgs.join(' '))
+    })
   }
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>): void => {

@@ -1,4 +1,5 @@
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
+import type { PasteRejected } from '@shared/paste-files'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { getLang, t } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
@@ -395,6 +396,20 @@ export async function attachFiles(): Promise<void> {
     const seen = new Set(s.attachments.map((a) => a.path))
     return { attachments: [...s.attachments, ...files.filter((f) => !seen.has(f.path))] }
   })
+}
+
+/** Pegar en el compositor: main guarda en la carpeta los archivos/imagen del portapapeles (validados). Devuelve cuántos se añadieron y los rechazos. */
+export async function pasteFromClipboard(): Promise<{ added: number; rejected: PasteRejected[] }> {
+  const { folder } = useTasks.getState()
+  if (!folder) return { added: 0, rejected: [] }
+  const { files, rejected } = await cw('tasks:pasteFromClipboard', { folder })
+  if (files.length > 0) {
+    useTasks.setState((s) => {
+      const seen = new Set(s.attachments.map((a) => a.path))
+      return { attachments: [...s.attachments, ...files.filter((f) => !seen.has(f.path))] }
+    })
+  }
+  return { added: files.length, rejected }
 }
 
 export function removeAttachment(path: string): void {
