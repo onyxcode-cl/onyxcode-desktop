@@ -131,7 +131,7 @@ const DOT: Record<SessionState, string> = {
   done: 'bg-success'
 }
 
-/** Punto de estado de 7 px. Nunca va solo: la fila lleva el texto («Aprobar», «Trabajando») y `stateAria` lo repite para lectores. */
+/** Punto de estado de 7 px. Nunca va solo: la fila lleva el texto o la insignia («Aprobar», «Trabajando»; en Code solo la insignia de aprobación y el `title`) y `stateAria` lo repite para lectores. */
 export function StateDot({ state }: { state: SessionState }): React.JSX.Element {
   return <span aria-hidden="true" data-state={state} className={`size-[7px] shrink-0 rounded-full ${DOT[state]}`} />
 }
