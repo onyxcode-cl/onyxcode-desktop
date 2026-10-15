@@ -291,22 +291,27 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
           </button>
         )}
 
-        {/* Buscar: caja con borde que abre la paleta (⌘K). El nombre accesible completo va en `aria-label`. */}
-        <button
-          type="button"
-          aria-label={t('app.sidebar.search')}
-          aria-keyshortcuts={searchHint || undefined}
-          onClick={() => setPaletteOpen(true)}
-          className="no-drag mt-0.5 mb-1.5 flex h-8 w-full min-w-0 items-center gap-2 rounded-[9px] border border-border px-2.5 text-left text-ui whitespace-nowrap text-subtle transition-colors duration-[var(--dur-fast)] hover:bg-hover hover:text-muted"
-        >
-          <Search size={15} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate">{t('app.sidebar.searchShort')}</span>
-          {searchHint && (
-            <span aria-hidden="true" className="shrink-0 text-[11px] leading-4">
-              {searchHint}
-            </span>
-          )}
-        </button>
+        {/* Buscar: caja con borde que abre la paleta (⌘K). El nombre accesible completo va en `aria-label`. Un modo puede poner su
+            propio buscador en el mismo sitio (Tareas: busca sus tareas, con la paleta a un clic en el atajo). */}
+        {def.SidebarSearch ? (
+          <def.SidebarSearch openPalette={() => setPaletteOpen(true)} paletteHint={searchHint} />
+        ) : (
+          <button
+            type="button"
+            aria-label={t('app.sidebar.search')}
+            aria-keyshortcuts={searchHint || undefined}
+            onClick={() => setPaletteOpen(true)}
+            className="no-drag mt-0.5 mb-1.5 flex h-8 w-full min-w-0 items-center gap-2 rounded-[9px] border border-border px-2.5 text-left text-ui whitespace-nowrap text-subtle transition-colors duration-[var(--dur-fast)] hover:bg-hover hover:text-muted"
+          >
+            <Search size={15} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{t('app.sidebar.searchShort')}</span>
+            {searchHint && (
+              <span aria-hidden="true" className="shrink-0 text-[11px] leading-4">
+                {searchHint}
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Filtros: solo donde aplican (sesiones de Code: «Cambios» = por revisar). */}
         {mode === 'code' && <FilterPills />}

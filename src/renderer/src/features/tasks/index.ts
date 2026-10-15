@@ -3,6 +3,7 @@ import { t } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
 import type { ModeDefinition } from '../../app/types'
 import { chooseFolder, newTask } from './impl/actions'
+import { TasksSearchBox } from './impl/TasksSearchBox'
 import { TasksSidebar } from './impl/TasksSidebar'
 import { TasksWorkspace } from './impl/TasksWorkspace'
 
@@ -14,6 +15,7 @@ export const tasksMode: ModeDefinition = {
   icon: ListChecks,
   View: TasksWorkspace,
   SidebarContent: TasksSidebar,
+  SidebarSearch: TasksSearchBox,
   projectAction: () => void chooseFolder(),
   newAction: {
     get label() {

@@ -82,13 +82,16 @@ function TaskMenu({
   title,
   archived,
   group,
-  knownGroups
+  knownGroups,
+  active = false
 }: {
   id: string
   title: string
   archived?: boolean
   group?: string | null
   knownGroups: string[]
+  /** Fila abierta: en escritorio el «⋯» queda siempre a la vista, como en Chat y Code. */
+  active?: boolean
 }): React.JSX.Element {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -157,7 +160,7 @@ function TaskMenu({
     // el contenedor sube de capa (z-30 solo en escritorio) para que no lo tapen las filas siguientes.
     <div
       ref={rootRef}
-      className={`relative shrink-0 desk:absolute! desk:top-1/2 desk:right-1 desk:-translate-y-1/2${open ? ' desk:z-30' : ''}`}
+      className={`relative shrink-0 desk:absolute! desk:inset-y-0 desk:right-1 desk:flex desk:items-center${open ? ' desk:z-30' : ''}`}
     >
       <button
         ref={triggerRef}
@@ -168,7 +171,7 @@ function TaskMenu({
         aria-expanded={open}
         className={`rounded p-0.5 text-subtle group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 desk:flex desk:size-6 desk:items-center desk:justify-center desk:rounded-ctl-sm desk:text-muted desk:hover:bg-active ${
           open ? 'opacity-100' : 'opacity-0'
-        }`}
+        }${active ? ' desk:opacity-100' : ''}`}
         onClick={(e) => {
           e.stopPropagation()
           setOpen((o) => !o)
@@ -268,7 +271,7 @@ export function TaskRow({
   const metaHide = tree ? ' desk:group-focus-within:hidden' : ''
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:min-h-0 desk:rounded-ctl desk:py-0${tree ? ' desk:h-[30px] desk:gap-2 desk:px-2 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'} ${active ? (tree ? 'bg-active desk:text-fg' : 'bg-active desk:bg-hover desk:font-medium') : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:min-h-0 desk:rounded-ctl desk:py-0${tree ? ' desk:h-[30px] desk:gap-2 desk:px-2 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'}${busy ? '' : active ? ' desk:pr-8' : ' desk:focus-within:pr-8 desk:hover:pr-8'} ${active ? (tree ? 'bg-active desk:text-fg' : 'bg-active desk:bg-hover desk:font-medium') : 'hover:bg-hover'}`}
       role={tree ? 'treeitem' : undefined}
       aria-level={tree ? 2 : undefined}
       aria-current={tree && active ? 'page' : undefined}
@@ -352,7 +355,9 @@ export function TaskRow({
           {t('tasks.list.restore')}
         </button>
       )}
-      {!busy && <TaskMenu id={task.id} title={task.title || ''} archived={archivedView} group={group} knownGroups={knownGroups} />}
+      {!busy && (
+        <TaskMenu id={task.id} title={task.title || ''} archived={archivedView} group={group} knownGroups={knownGroups} active={active} />
+      )}
     </div>
   )
 }
@@ -431,7 +436,10 @@ export function TaskList(): React.JSX.Element {
   // Carpeta tal como la ve OpenCode (`session.directory`): en macOS es la propia carpeta; en Windows, la ruta del sandbox.
   const dirKey = useTasks((s) => (folder ? sdkDirOf(s.conn, folder) : ''))
   const more = useSessions((s) => (folder ? !!s.moreSessions[sessionsKey(dirKey, baseUrl)] : false))
-  const [query, setQuery] = useState('')
+  const query = useTasks((s) => s.listQuery)
+  const setQuery = (v: string): void => useTasks.setState({ listQuery: v })
+  // Escritorio: la caja de búsqueda vive arriba en la barra lateral (`TasksSearchBox`, una sola en vez de dos); el celular la conserva aquí.
+  const ownSearch = isRemoteSurface()
   const [groupMode, setGroupMode] = useState<GroupMode>(readGroupMode)
   const [, tick] = useState(0)
 
@@ -525,29 +533,31 @@ export function TaskList(): React.JSX.Element {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="relative mt-3 mb-1">
-        <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle desk:size-4" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={tr('tasks.list.search')}
-          aria-label={tr('tasks.list.search')}
-          className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong desk:h-8 desk:rounded-ctl desk:border-transparent desk:py-0 desk:pl-9 desk:text-sm desk:hover:bg-hover desk:focus:bg-hover [&::-webkit-search-cancel-button]:hidden"
-        />
-        {query && (
-          <button
-            type="button"
-            title={tr('tasks.list.clear')}
-            aria-label={tr('tasks.list.clearSearch')}
-            className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-fg"
-            onClick={() => setQuery('')}
-          >
-            <X size={12} />
-          </button>
-        )}
-      </div>
-      <div className="mb-1 flex items-center gap-1.5">
+      {ownSearch && (
+        <div className="relative mt-3 mb-1">
+          <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle desk:size-4" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={tr('tasks.list.search')}
+            aria-label={tr('tasks.list.search')}
+            className="w-full rounded-lg border border-border bg-transparent py-1.5 pr-7 pl-8 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong desk:h-8 desk:rounded-ctl desk:border-transparent desk:py-0 desk:pl-9 desk:text-sm desk:hover:bg-hover desk:focus:bg-hover [&::-webkit-search-cancel-button]:hidden"
+          />
+          {query && (
+            <button
+              type="button"
+              title={tr('tasks.list.clear')}
+              aria-label={tr('tasks.list.clearSearch')}
+              className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded p-0.5 text-subtle hover:text-fg"
+              onClick={() => setQuery('')}
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      )}
+      <div className="mb-1 flex items-center gap-1.5 desk:mt-1">
         <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-subtle">
           <span className="shrink-0 desk:sr-only">{tr('tasks.list.groupBy')}</span>
           <select
@@ -573,7 +583,8 @@ export function TaskList(): React.JSX.Element {
           {archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* Escritorio: sin scroll propio (lo da la lista de la barra lateral): no aparece una barra con dos tareas ni se reserva su canal. */}
+      <div className="min-h-0 flex-1 overflow-y-auto desk:overflow-visible">
         {loading && source.length === 0 && (
           <div className="flex items-center gap-2 px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">
             <Loader2 size={12} className="animate-spin" /> {tr('tasks.list.loading')}

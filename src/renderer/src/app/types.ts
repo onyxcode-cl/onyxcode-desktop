@@ -14,6 +14,11 @@ export interface ModeDefinition {
   View: ComponentType
   /** Contenido de la barra lateral bajo el botón "nuevo" (lista de sesiones, etc.). */
   SidebarContent?: ComponentType
+  /**
+   * Sustituye la caja «Buscar…» (abre la paleta) de la barra lateral de escritorio por un buscador propio del modo (Tareas: una sola
+   * búsqueda, la de sus tareas, en vez de dos). Recibe cómo abrir la paleta y su atajo para seguir ofreciéndola.
+   */
+  SidebarSearch?: ComponentType<{ openPalette: () => void; paletteHint: string }>
   /** Botón principal de la barra lateral. */
   newAction?: { label: string; run: () => void }
   /** Acción «Abrir carpeta como proyecto» del encabezado «Proyectos» de la barra lateral de escritorio (solo Code y Tareas). */

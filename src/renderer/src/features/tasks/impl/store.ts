@@ -143,6 +143,8 @@ interface TasksState {
   sideChat: { taskId: string; sessionId: string | null } | null
   /** La lista de la carpeta muestra las tareas archivadas. */
   showArchived: boolean
+  /** Texto de búsqueda de la lista de tareas (en escritorio lo escribe la caja «Buscar…» de la barra lateral; en el celular, la de la lista). */
+  listQuery: string
 
   /** Lote C: estado del Modo auto (null = sin cargar; usar como apagado). */
   autoMode: AutoModeState | null
@@ -281,6 +283,7 @@ export const useTasks = create<TasksState>((set) => ({
   policy: null,
   sideChat: null,
   showArchived: false,
+  listQuery: '',
   viewerRequest: null,
   autoMode: null,
   autoPending: {},
