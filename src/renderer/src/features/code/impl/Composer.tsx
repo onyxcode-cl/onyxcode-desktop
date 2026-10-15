@@ -892,7 +892,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   disabled={(!text.trim() && attachments.length === 0) || disabled}
                   title={sendTitle}
                   aria-label={sendTitle}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0 desk:disabled:bg-active desk:disabled:text-subtle desk:disabled:opacity-100"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100"
                 >
                   {busy ? <Send size={14} /> : <ArrowUp size={16} />}
                 </button>

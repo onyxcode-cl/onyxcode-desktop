@@ -367,7 +367,7 @@ function CommitBox({
           onClick={() => void commit()}
           disabled={!canCommit}
           title={t('code.changes.commitTitle', { mod: MOD })}
-          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 desk:h-7 desk:rounded-ctl-sm desk:text-ui ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
+          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 desk:h-7 desk:rounded-ctl-sm desk:text-ui desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100 ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <GitCommitHorizontal size={14} />}
           {t('code.changes.commit')}

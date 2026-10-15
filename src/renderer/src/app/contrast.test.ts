@@ -64,9 +64,34 @@ describe('contraste de tokens (WCAG AA)', () => {
     it(`${theme}: --gold (iconos/decoración) >= 3 sobre las superficies`, () => {
       for (const bg of ['bg', 'bg-elevated']) expect(contrast(t['gold'], t[bg])).toBeGreaterThanOrEqual(3)
     })
+    it(`${theme}: botón deshabilitado de escritorio (texto muted sobre bg-hover >= 4,5; nada de blanco sobre acento atenuado)`, () => {
+      expect(contrast(t['fg-muted'], t['bg-hover'])).toBeGreaterThanOrEqual(4.5)
+      // El fondo del botón deshabilitado tiene que distinguirse del compositor/panel donde vive (icono >= 3 contra su propio fondo ya lo da muted).
+      expect(contrast(t['fg-muted'], t['bg-elevated'])).toBeGreaterThanOrEqual(4.5)
+    })
     it(`${theme}: la jerarquía se mantiene (fg > muted > subtle)`, () => {
       expect(contrast(t['fg'], t['bg'])).toBeGreaterThan(contrast(t['fg-muted'], t['bg']))
       expect(contrast(t['fg-muted'], t['bg'])).toBeGreaterThan(contrast(t['fg-subtle'], t['bg']))
+    })
+  }
+})
+
+/**
+ * Los botones de acento (enviar de los compositores, Commit del panel Cambios, Button primario/peligro) en escritorio no se
+ * atenúan con `opacity` cuando están deshabilitados (blanco sobre lila ≈ 2:1): pasan a superficie neutra con texto `muted`.
+ */
+describe('botones de acento deshabilitados (escritorio)', () => {
+  const DISABLED = 'desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100'
+  const src = (p: string): string => readFileSync(join(__dirname, '..', p), 'utf8')
+  for (const file of [
+    'components/Button.tsx',
+    'features/code/impl/Composer.tsx',
+    'features/code/impl/panels/ChangesPanel.tsx',
+    'features/tasks/impl/TasksComposer.tsx',
+    'features/tasks/impl/SideChat.tsx'
+  ]) {
+    it(`${file} usa el estado deshabilitado neutro`, () => {
+      expect(src(file)).toContain(DISABLED)
     })
   }
 })

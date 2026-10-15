@@ -261,7 +261,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
               disabled={!canSend}
               title={t('tasks.comp.sendTitle')}
               aria-label={t('tasks.comp.send')}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-35"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-35 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100"
             >
               <ArrowUp size={17} />
             </button>
