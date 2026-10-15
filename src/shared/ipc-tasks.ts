@@ -4,6 +4,7 @@
  * Expuesto en el renderer como `window.api.tasks` (ver src/preload/tasks-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
  */
+import type { PasteRejected } from './paste-files'
 import type { DoctorReport } from './doctor'
 import type { CraftInstallResult, CraftUiSnapshot } from './craft'
 import type { PreflightId, PreflightReport } from './preflight'
@@ -941,6 +942,11 @@ export interface TasksInvokeContract {
    * (sin sobrescribir: añade " (2)"…). Devuelve los archivos copiados ([] si se cancela).
    */
   'tasks:importFiles': { req: { folder: string }; res: TasksDeliverable[] }
+  /**
+   * Pegar en el compositor de Tareas: main lee el portapapeles del sistema (archivos copiados o imagen), valida
+   * (regulares, sin ejecutables, topes) y los GUARDA en la carpeta autorizada sin sobrescribir. Solo escritorio.
+   */
+  'tasks:pasteFromClipboard': { req: { folder: string }; res: { files: TasksDeliverable[]; rejected: PasteRejected[] } }
   /** Lee un archivo de una carpeta autorizada para previsualizarlo (texto recortado / imagen). */
   'tasks:previewFile': { req: { path: string; maxBytes?: number }; res: TasksFilePreview }
 
@@ -1301,6 +1307,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:reveal',
   'tasks:openPath',
   'tasks:importFiles',
+  'tasks:pasteFromClipboard',
   'tasks:previewFile',
   'tasks:project:get',
   'tasks:project:save',

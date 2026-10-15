@@ -560,6 +560,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'opencode:restart': none,
   'diag:logs': obj({ source: literal(...DIAG_SOURCES), maxLines: optional(num({ int: true, min: 1, max: 5000 })) }),
   'diag:copy': obj({ source: literal(...DIAG_SOURCES) }),
+  'clipboard:readFilesForPaste': obj({ scope: literal('images', 'any') }),
   'diag:export': none,
   'diag:problem': obj({ message: str({ max: 2000 }), stack: optional(str({ max: 4000 })), origin: optional(literal('chat-doc')) }),
   'settings:get': none,
@@ -652,6 +653,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:reveal': pathReq,
   'tasks:openPath': pathReq,
   'tasks:importFiles': folderReq,
+  'tasks:pasteFromClipboard': folderReq,
   'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: 20 * 1024 * 1024 })) }),
   'tasks:project:get': folderReq,
   'tasks:project:save': obj({

@@ -7,6 +7,7 @@
  * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
+import type { PasteResult, PasteScope } from './paste-files'
 import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpencodeBinResult, ServerStatus, Settings } from './types'
 import type { OpencodeAction } from './opencode-links'
 import type { UpdateState } from './update-check'
@@ -73,6 +74,11 @@ export interface IpcInvokeContract {
   'diag:logs': { req: { source: DiagSource; maxLines?: number }; res: DiagLogs }
   /** Copia al portapapeles (lo hace main) el texto redactado de la fuente. */
   'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
+  /**
+   * Pegar archivos/imágenes cuando el evento `paste` no trajo ninguno (Finder/Explorador/capturas). Main lee el portapapeles
+   * del sistema, valida (regulares, sin ejecutables, topes 10 / 25 MB / 50 MB) y devuelve los bytes en base64. Solo escritorio.
+   */
+  'clipboard:readFilesForPaste': { req: { scope: PasteScope }; res: PasteResult }
   /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
   /** La ventana avisa de un error suyo (error no capturado, fallo de render) para dejarlo en el registro de problemas. */
@@ -124,6 +130,7 @@ export const IPC_INVOKE_CHANNELS = [
   'opencode:restart',
   'diag:logs',
   'diag:copy',
+  'clipboard:readFilesForPaste',
   'diag:export',
   'diag:problem',
   'settings:get',
