@@ -30,6 +30,7 @@ import { StepGroup, relPath } from './ToolCard'
 import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
+import { GeneratedFiles } from './GeneratedFiles'
 import { ElementReadonlyChip } from '../../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -467,6 +468,7 @@ const TurnView = memo(
             })}
           </div>
         )}
+        {!mobile && <GeneratedFiles parts={assistant.flatMap((a) => a.parts)} root={root} done={!(busy && isLastTurn)} />}
         {mobile && replyText && <MessageActionsSheet open={sheet} onClose={() => setSheet(false)} text={replyText} />}
         {mobile && showCopy && isLastTurn && (
           <div className="-ml-1.5 flex items-center gap-0.5">

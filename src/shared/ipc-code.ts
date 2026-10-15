@@ -51,6 +51,9 @@ export const CODE_CHANNELS = {
   filesWatch: 'files:watch',
   filesSetDirs: 'files:setDirs',
   filesUnwatch: 'files:unwatch',
+  filesDocInfo: 'files:docInfo',
+  filesOpenDoc: 'files:openDoc',
+  filesRevealDoc: 'files:revealDoc',
   filesCreate: 'files:create',
   filesRename: 'files:rename',
   filesTrash: 'files:trash',
@@ -224,6 +227,13 @@ export interface FilesChangedEvent {
   dirs: string[] | null
   /** `lost`: la vigilancia se perdió (carpeta borrada/desconectada, límite del sistema): usar el refresco manual. */
   status: 'ok' | 'lost'
+}
+
+/** Documento generado en disco (tarjeta de archivo del modo Code). */
+export interface DocFileInfo {
+  path: string
+  name: string
+  bytes: number
 }
 
 export interface FilesOpResult {
@@ -421,6 +431,9 @@ export interface CodeInvokeContract {
   'files:watch': { req: { folder: string; subId: string }; res: { mode: FilesWatchMode } }
   'files:setDirs': { req: { subId: string; dirs: string[] }; res: void }
   'files:unwatch': { req: { subId: string }; res: void }
+  'files:docInfo': { req: { cwd: string; paths: string[] }; res: DocFileInfo[] }
+  'files:openDoc': { req: { cwd: string; path: string }; res: void }
+  'files:revealDoc': { req: { cwd: string; path: string }; res: void }
   'files:create': { req: { cwd: string; parent: string; name: string; kind: 'file' | 'dir' }; res: FilesOpResult }
   'files:rename': { req: { cwd: string; path: string; name: string }; res: FilesOpResult }
   'files:trash': { req: { cwd: string; path: string }; res: void }
@@ -499,6 +512,10 @@ export interface CodeApi {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>
     setDirs(subId: string, dirs: string[]): Promise<void>
     unwatch(subId: string): Promise<void>
+    /** Documentos generados (xlsx, docx, pptx, pdf, html) que existen dentro del proyecto, con su peso real. */
+    docInfo(cwd: string, paths: string[]): Promise<DocFileInfo[]>
+    openDoc(cwd: string, path: string): Promise<void>
+    revealDoc(cwd: string, path: string): Promise<void>
     create(cwd: string, parent: string, name: string, kind: 'file' | 'dir'): Promise<FilesOpResult>
     rename(cwd: string, path: string, name: string): Promise<FilesOpResult>
     trash(cwd: string, path: string): Promise<void>
