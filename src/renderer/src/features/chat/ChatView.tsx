@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
@@ -64,6 +64,8 @@ export function ChatView(): React.JSX.Element {
   const ready = useServer((s) => s.status.state === 'ready' && !!s.client)
   const activeId = useChat((s) => s.activeSessionId)
   const session = useSessions((s) => (activeId ? s.sessions[activeId] : undefined))
+  const allQuestions = useChat((s) => s.questions)
+  const questions = useMemo(() => Object.values(allQuestions).filter((q) => q.sessionID === activeId), [allQuestions, activeId])
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   /** El motor está reintentando (p. ej. el modelo no está disponible): se dice en vez de quedarse en «Pensando…». */
@@ -322,6 +324,7 @@ export function ChatView(): React.JSX.Element {
           onRetry={retry}
           onCompact={compact}
           onEdit={edit}
+          questions={questions}
         />
         {notices}
         {composer}

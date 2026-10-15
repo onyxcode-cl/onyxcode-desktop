@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
-import { FilePen, HelpCircle, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
+import { FilePen, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
-import { Button } from '../../../components/Button'
+import { QuestionCard as SharedQuestionCard } from '../../../components/QuestionCard'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { m } from '../../../app/mobile/m'
@@ -174,90 +174,7 @@ function MobilePermissionCard({
 }
 
 export function QuestionCard({ request }: { request: PendingQuestion }): React.JSX.Element {
-  const t = useT()
   const reply = useCode((s) => s.replyQuestion)
   const reject = useCode((s) => s.rejectQuestion)
-  const [answers, setAnswers] = useState<string[][]>(() => request.questions.map(() => []))
-  const [custom, setCustom] = useState<string[]>(() => request.questions.map(() => ''))
-  const [busy, setBusy] = useState(false)
-
-  const toggle = (qi: number, label: string, multiple: boolean): void => {
-    setAnswers((prev) =>
-      prev.map((a, i) => {
-        if (i !== qi) return a
-        if (!multiple) return [label]
-        return a.includes(label) ? a.filter((x) => x !== label) : [...a, label]
-      })
-    )
-  }
-
-  const final = answers.map((a, i) => (custom[i].trim() ? [...a, custom[i].trim()] : a))
-  const ready = final.every((a) => a.length > 0)
-
-  return (
-    <div
-      {...m('pending-card')}
-      className={`my-2 rounded-xl border border-accent/40 bg-elevated px-3.5 py-3 shadow-sm ${isRemoteSurface() ? '' : 'ring-4 ring-accent/5'}`}
-    >
-      {request.questions.map((q, qi) => (
-        <div key={qi} className="mb-3">
-          <div className="flex items-start gap-2 text-sm">
-            <HelpCircle size={16} className="mt-0.5 shrink-0 text-accent" />
-            <div>
-              {q.header && <div className="text-xs font-medium tracking-wide text-muted uppercase">{q.header}</div>}
-              <div className="font-medium">{q.question}</div>
-            </div>
-          </div>
-          <div className="mt-2 ml-6 flex flex-wrap gap-2">
-            {q.options.map((o) => {
-              const selected = answers[qi]?.includes(o.label)
-              return (
-                <button
-                  key={o.label}
-                  type="button"
-                  title={o.description}
-                  onClick={() => toggle(qi, o.label, !!q.multiple)}
-                  className={`rounded-lg border px-2.5 py-1 text-sm transition ${isRemoteSurface() ? 'min-h-11 px-4' : ''} ${selected ? 'border-accent bg-accent-soft text-fg' : 'border-border hover:bg-hover'}`}
-                >
-                  {o.label}
-                </button>
-              )
-            })}
-          </div>
-          {q.custom !== false && (
-            <input
-              value={custom[qi]}
-              onChange={(e) => setCustom((prev) => prev.map((c, i) => (i === qi ? e.target.value : c)))}
-              placeholder={t('code.question.other')}
-              className={`mt-2 ml-6 w-[calc(100%-1.5rem)] rounded-lg border border-border bg-bg px-2.5 py-1 text-sm outline-none focus:border-accent ${isRemoteSurface() ? 'min-h-11' : ''}`}
-            />
-          )}
-        </div>
-      ))}
-      <div className="flex gap-2">
-        <Button
-          variant="primary"
-          className={isRemoteSurface() ? 'min-h-11 flex-1' : undefined}
-          disabled={busy || !ready}
-          onClick={() => {
-            setBusy(true)
-            void reply(request, final).finally(() => setBusy(false))
-          }}
-        >
-          {t('code.question.answer')}
-        </Button>
-        <Button
-          variant="ghost"
-          className={isRemoteSurface() ? 'min-h-11 flex-1' : undefined}
-          disabled={busy}
-          onClick={() => {
-            setBusy(true)
-            void reject(request).finally(() => setBusy(false))
-          }}
-        >
-          {t('code.question.skip')}
-        </Button>
-      </div>
-    </div>
-  )
+  return <SharedQuestionCard questions={request.questions} onReply={(answers) => reply(request, answers)} onReject={() => reject(request)} />
 }

@@ -24,10 +24,12 @@ const SCENARIOS = [
   'chat-vacio',
   'chat-conversacion',
   'chat-herramientas',
+  'chat-pregunta',
   'code-proyecto',
   'code-diff',
   'code-terminal',
   'code-permiso',
+  'code-pregunta',
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
@@ -768,6 +770,35 @@ const S = {
       .click()
     await sleep(500)
   },
+  async 'chat-pregunta'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await ctx.fake.script({
+      match: 'presentación de ventas',
+      title: 'Presentación de ventas',
+      steps: [
+        { type: 'text', text: 'Antes de armarla necesito saber el formato.' },
+        {
+          type: 'question',
+          questions: [
+            {
+              header: 'Formato',
+              question: 'Si la vas a presentar tal cual, te recomiendo el diseño libre. ¿Cuál prefieres?',
+              multiple: false,
+              custom: false,
+              options: [
+                { label: 'Editable (PowerPoint)', description: 'Un archivo .pptx que cambias después en PowerPoint.' },
+                { label: 'Diseño libre (HTML/CSS)', description: 'Se ve mejor, pero el texto no se edita.' }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    await sendChat(ctx.page, 'Hazme una presentación de ventas')
+    await vis(ctx.page.getByRole('radio', { name: /Editable \(PowerPoint\)/ }), 45_000)
+    await sleep(500)
+  },
   async 'code-proyecto'(ctx) {
     await seedCode(ctx)
   },
@@ -809,6 +840,37 @@ const S = {
     await box.fill('Instala las dependencias del proyecto')
     await box.press('Enter')
     await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await sleep(500)
+  },
+  async 'code-pregunta'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'Elige el formato',
+      title: 'Elegir formato',
+      steps: [
+        { type: 'text', text: 'Antes de armarla necesito saber el formato.' },
+        {
+          type: 'question',
+          questions: [
+            {
+              header: 'Formato',
+              question: 'Si la vas a presentar tal cual, te recomiendo el diseño libre. ¿Cuál prefieres?',
+              multiple: false,
+              custom: false,
+              options: [
+                { label: 'Editable (PowerPoint)', description: 'Un archivo .pptx que cambias después en PowerPoint.' },
+                { label: 'Diseño libre (HTML/CSS)', description: 'Se ve mejor, pero el texto no se edita.' }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Elige el formato del informe')
+    await box.press('Enter')
+    await vis(page.getByRole('radio', { name: /Editable \(PowerPoint\)/ }), 45_000)
     await sleep(500)
   },
   async 'tareas-primer-uso'(ctx) {

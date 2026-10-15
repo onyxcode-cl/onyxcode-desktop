@@ -56,4 +56,21 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
     expect(norm(inline)).toContain('DISEÑO LIBRE (HTML/CSS)')
     expect(norm(chatMd)).toContain('DISEÑO LIBRE (HTML/CSS)')
   })
+
+  it('la pregunta de formato se hace con la herramienta `question` (dos opciones) y hay respaldo en texto', () => {
+    for (const text of [inline.replace(/\\"/g, '"'), chatMd]) {
+      expect(text).toContain('CON LA HERRAMIENTA `question`')
+      expect(text).toContain('header «Formato»')
+      expect(text).toContain('«Editable (PowerPoint)»')
+      expect(text).toContain('«Diseño libre (HTML/CSS)»')
+      expect(text).toContain('multiple:false')
+      expect(text).toContain('no está disponible')
+    }
+  })
+
+  it('el agente chat permite `question` y sigue denegando todo lo demás', () => {
+    const chat = (buildInlineConfig() as { agent: { chat: { permission: Record<string, string> } } }).agent.chat
+    expect(chat.permission).toEqual({ '*': 'deny', webfetch: 'allow', websearch: 'allow', question: 'allow' })
+    expect(chatMd).toMatch(/permission: "\*": deny webfetch: allow websearch: allow question: allow ---/)
+  })
 })
