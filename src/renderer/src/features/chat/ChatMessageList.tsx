@@ -28,6 +28,8 @@ import { ChatToolCall } from './ChatToolCall'
 import { rejectChatQuestion, replyChatQuestion } from './actions'
 import type { ChatPendingQuestion } from './store'
 import { StepGroup } from '../code/impl/ToolCard'
+import type { ReadingMode } from '../../lib/reading-mode'
+import { expandStepGroups, showReasoning, showStepGroup, useReadingMode } from '../../lib/reading-mode'
 import { ElementReadonlyChip } from '../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../browser/element-context'
 
@@ -252,6 +254,14 @@ function groupBlocks(parts: Part[]): Block[] {
   return out
 }
 
+/** Modo de lectura: ¿se pinta este bloque? (resumen oculta herramientas sin error y el razonamiento). */
+function showBlock(mode: ReadingMode, b: Block): boolean {
+  if (b.kind === 'tools') return showStepGroup(mode, { hasPending: false, hasError: b.parts.some((p) => p.state.status === 'error') })
+  if (b.part.type === 'tool') return showStepGroup(mode, { hasPending: false, hasError: b.part.state.status === 'error' })
+  if (b.part.type === 'reasoning') return showReasoning(mode)
+  return true
+}
+
 const ChatAssistantRow = memo(function ChatAssistantRow({
   entry,
   live,
@@ -278,14 +288,25 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const longPress = useLongPress(() => setSheet(true))
   // Las herramientas seguidas se agrupan como en Code (se pliegan con 3 o más), también en el celular (chip de resumen).
   const blocks = useMemo(() => groupBlocks(entry.parts), [entry.parts])
+  // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
+  const readingStored = useReadingMode((s) => s.mode)
+  const reading = mobile ? 'normal' : readingStored
+  const visibleBlocks = reading === 'normal' ? blocks : blocks.filter((b) => showBlock(reading, b))
   return (
     <div
       className={withCv('group flex flex-col gap-1.5 desk:gap-4', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >
-      {blocks.map((b, bi) =>
+      {visibleBlocks.map((b, bi) =>
         b.kind === 'tools' ? (
-          <StepGroup key={b.parts[0].id} parts={b.parts} root={null} live={live && bi === blocks.length - 1} hasPending={false} />
+          <StepGroup
+            key={b.parts[0].id}
+            parts={b.parts}
+            root={null}
+            live={live && bi === visibleBlocks.length - 1}
+            hasPending={false}
+            forceOpen={expandStepGroups(reading)}
+          />
         ) : (
           <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
         )

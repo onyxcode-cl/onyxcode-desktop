@@ -8,6 +8,7 @@
  *  └──────────┴──────────────────────────────┴──────────────────┘
  */
 import { NoAiBanner } from '../../../components/NoAiBanner'
+import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MsgKey } from '@shared/i18n'
@@ -583,6 +584,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         </span>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <ReadingModeSwitch />
         {busy && (
           <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
             <button

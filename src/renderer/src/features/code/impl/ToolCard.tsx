@@ -472,9 +472,11 @@ interface StepGroupProps {
   hasPending: boolean
   /** Contenido a mostrar después de una llamada concreta (p. ej. su tarjeta de permiso). */
   after?: (part: ToolPart) => ReactNode
+  /** Modo de lectura «Detallado»: el grupo sale siempre expandido. */
+  forceOpen?: boolean
 }
 
-export function StepGroup({ parts, root, live, hasPending, after }: StepGroupProps): React.JSX.Element {
+export function StepGroup({ parts, root, live, hasPending, after, forceOpen }: StepGroupProps): React.JSX.Element {
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const locale = useLocale()
   // `locale` fuerza recalcular el resumen (texto traducido) al cambiar de idioma.
@@ -484,7 +486,7 @@ export function StepGroup({ parts, root, live, hasPending, after }: StepGroupPro
   const errors = parts.filter((p) => p.state.status === 'error').length
   const edits = parts.filter((p) => toolKind(p.tool) === 'edit')
   const collapsible = parts.length >= 3
-  const open = !collapsible || hasPending || (userOpen ?? live)
+  const open = !collapsible || hasPending || !!forceOpen || (userOpen ?? live)
 
   const rows = (list: ToolPart[]): React.JSX.Element[] =>
     list.map((p) => (

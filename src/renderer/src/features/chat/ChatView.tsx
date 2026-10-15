@@ -38,6 +38,7 @@ import {
   sendChatMessage
 } from './actions'
 import { useChat } from './store'
+import { ReadingModeSwitch } from '../../components/ReadingModeSwitch'
 import { ChatDocPanel } from './ChatDocPanel'
 import { ChatProgressHud } from './ChatProgressHud'
 import { useChatDocPanel } from './useChatDocPanel'
@@ -310,9 +311,12 @@ export function ChatView(): React.JSX.Element {
       <div className={`relative flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
         <header
           data-mobile="hide"
-          className="drag flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
+          className="drag relative flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:@container desk:px-[max(15rem,calc(var(--controls-inset,0px)+8px))] desk:@max-[44rem]:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
         >
           <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
+          <div className="absolute right-3 top-0 hidden h-12 items-center desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
+            <ReadingModeSwitch />
+          </div>
         </header>
         <ChatProgressHud entries={entries} busy={busy} />
         <TranscriptLoader sessionId={activeId} />
