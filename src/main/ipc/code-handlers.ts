@@ -16,6 +16,7 @@ import { homedir } from 'node:os'
 import { existsSync, readdirSync, realpathSync } from 'node:fs'
 import { t } from '@shared/i18n'
 import { FileWatchHub } from '../files/watcher'
+import { DocFileError, docFilesInfo, resolveDocFile } from '../files/doc-files'
 import { createEntry, FileOpError, projectRoot, renameEntry, trashEntry } from '../files/fs-ops'
 import { resolveE2eEditors, type EditorEnv } from '../editors/catalog'
 import { EditorError, listInstalled, openWithEditor, type EditorsDeps } from '../editors/service'
@@ -26,7 +27,7 @@ import { windowOfSender } from './sender-window'
 
 const on = makeInvokeHandler<CodeInvokeContract>({
   withCode: true,
-  silent: (err) => err instanceof GitError || err instanceof FileOpError || err instanceof EditorError
+  silent: (err) => err instanceof GitError || err instanceof FileOpError || err instanceof EditorError || err instanceof DocFileError
 })
 
 /** Evento al remitente dueño del recurso: ventana real o remitente virtual del celular (id negativo). */
@@ -181,6 +182,24 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   })
   on(ipcMain, 'files:setDirs', (r, event) => hub.setDirs(event.sender.id, req(r, 'req').subId, r.dirs))
   on(ipcMain, 'files:unwatch', (r, event) => hub.unsubscribe(event.sender.id, req(r, 'req').subId))
+  // Tarjetas de archivo: solo dentro de un proyecto abierto en la ventana (o reciente); cada ruta se revalida en main.
+  const docRoot = (cwd: string, event: IpcMainInvokeEvent): string => {
+    const real = safeReal(cwd)
+    const recents = new Set(settingsStore.get().recentFolders.map((p) => safeReal(p)))
+    if (!hub.isActive(event.sender.id, real) && !hub.isActive(event.sender.id, cwd) && !recents.has(real)) {
+      throw new FileOpError(t('common.files.notActive'))
+    }
+    return real
+  }
+  on(ipcMain, 'files:docInfo', (r, event) => docFilesInfo(docRoot(req(r, 'req').cwd, event), r.paths))
+  on(ipcMain, 'files:openDoc', async (r, event) => {
+    const info = resolveDocFile(docRoot(req(r, 'req').cwd, event), r.path)
+    const err = await shell.openPath(info.path)
+    if (err) throw new DocFileError(err)
+  })
+  on(ipcMain, 'files:revealDoc', (r, event) => {
+    shell.showItemInFolder(resolveDocFile(docRoot(req(r, 'req').cwd, event), r.path).path)
+  })
   on(ipcMain, 'files:create', (r, event) => {
     active(req(r, 'req').cwd, event)
     return createEntry(r.cwd, r.parent, r.name, r.kind)

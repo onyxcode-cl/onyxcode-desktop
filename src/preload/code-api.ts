@@ -71,6 +71,9 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       watch: (folder, subId) => call('files:watch', { folder, subId }),
       setDirs: (subId, dirs) => call('files:setDirs', { subId, dirs }),
       unwatch: (subId) => call('files:unwatch', { subId }),
+      docInfo: (cwd, paths) => call('files:docInfo', { cwd, paths }),
+      openDoc: (cwd, path) => call('files:openDoc', { cwd, path }),
+      revealDoc: (cwd, path) => call('files:revealDoc', { cwd, path }),
       create: (cwd, parent, name, kind) => call('files:create', { cwd, parent, name, kind }),
       rename: (cwd, path, name) => call('files:rename', { cwd, path, name }),
       trash: (cwd, path) => call('files:trash', { cwd, path })

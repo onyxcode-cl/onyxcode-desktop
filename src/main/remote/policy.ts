@@ -515,6 +515,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'editors:open': 'X',
 
   // ── archivos ──
+  'files:docInfo': 'X',
+  'files:openDoc': 'X',
+  'files:revealDoc': 'X',
   'files:watch': scoped('R', 'folder'),
   'files:setDirs': (p, ctx) => {
     const dirs = Array.isArray(p.dirs) ? p.dirs : []
