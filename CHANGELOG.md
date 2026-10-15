@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.28] - 2026-10-15
+
+### Mejoras
+
+- **Code: tarjeta para cada documento que crea el asistente.** Cuando genera un Excel, Word, PowerPoint, PDF o presentación HTML, aparece una tarjeta con el nombre, el tipo y el peso real del archivo, con los botones **Abrir** (lo abre con tu programa de siempre: tu Word, tu Excel, tu PowerPoint o tu visor de PDF) y **Mostrar en la carpeta**. Antes solo quedaba la ruta escrita en el texto. Siempre se ve, también en el modo Resumen.
+
 ## [0.5.27] - 2026-10-15
 
 ### Mejoras
