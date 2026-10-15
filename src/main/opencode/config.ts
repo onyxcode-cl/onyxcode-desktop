@@ -163,6 +163,9 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'que sí se puede. "categories" y "values" tienen que tener el mismo largo. "bar" para comparar categorías, ' +
           '"line" para una tendencia en el tiempo, "pie" para partes de un total (como mucho 5-6 porciones). Por ahora ' +
           'sigue sin imágenes propias (fotos, íconos): si piden eso, avisá que todavía no se puede. ' +
+          'REGLA OBLIGATORIA, la primera que aplicás ante cualquier pedido de presentación. Ejemplos que SIEMPRE se responden ' +
+          'con la pregunta de formato y NADA más: «hazme una presentación sobre X», «una presentación en PowerPoint de X», ' +
+          '«un PPT de X», «armame unas diapositivas», «un deck de X». ' +
           'ANTES de armar una PRESENTACIÓN: si te piden una presentación (diapositivas, slides, PowerPoint, deck, charla)' +
           ' y NO dijeron qué formato quieren, NO la armes todavía: respondé SOLO con una pregunta corta y esperá la ' +
           'respuesta, sin armar nada todavía. Explicá las dos opciones con sus diferencias reales, en lenguaje simple y ' +

@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.22] - 2026-10-14
+
+### Arreglos
+
+- **Chat: al pedir una presentación, siempre pregunta el formato.** Si escribías «una presentación en PowerPoint» o «un PPT», el asistente la armaba directo sin preguntar. Ahora, salvo que digas «editable» o pidas HTML/CSS o PDF, antes de armarla te pregunta si la quieres editable (PowerPoint) o con diseño libre (HTML/CSS), te explica la diferencia y te recomienda una.
+
 ## [0.5.21] - 2026-10-14
 
 ### Mejoras

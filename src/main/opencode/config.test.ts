@@ -36,6 +36,14 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
     }
   })
 
+  it('trae ejemplos concretos de pedidos que siempre deben recibir la pregunta', () => {
+    for (const text of [inline, chatMd]) {
+      expect(text).toContain('REGLA OBLIGATORIA')
+      expect(text).toContain('un PPT de X')
+      expect(text).toContain('una presentación en PowerPoint de X')
+    }
+  })
+
   it('decir solo «PowerPoint», «PPT» o «PPTX» NO cuenta como elegir: sigue preguntando', () => {
     for (const text of [inline.replace(/\\"/g, '"'), chatMd]) {
       expect(text).toContain('decir solo "PowerPoint", "PPT" o "PPTX" NO alcanza')
