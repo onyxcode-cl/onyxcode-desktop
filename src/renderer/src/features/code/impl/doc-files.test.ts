@@ -44,6 +44,10 @@ describe('detectDocFiles', () => {
     const r = detectDocFiles({ parts: [tool('bash', { command: 'x' }, 'Guardado en /tmp/Mis Docs/final.pdf')], root: ROOT })
     expect(r).toEqual(['/tmp/Mis Docs/final.pdf'])
   })
+  it('un .html solo cuenta si parece una presentación o informe', () => {
+    const r = detectDocFiles({ parts: [tool('write', { filePath: 'index.html' }), tool('write', { filePath: 'presentacion-q3.html' })], root: ROOT })
+    expect(r).toEqual([`${ROOT}/presentacion-q3.html`])
+  })
   it('relativa sin proyecto se descarta', () => {
     expect(detectDocFiles({ parts: [tool('write', { filePath: 'a.pdf' })], root: null })).toEqual([])
   })

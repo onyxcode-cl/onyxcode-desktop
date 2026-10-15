@@ -18,7 +18,13 @@ const WRITE_TOOLS = new Set(['write', 'edit', 'multiedit'])
 const PATCH_TOOLS = new Set(['patch', 'apply_patch'])
 
 const isAbs = (p: string): boolean => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p)
-const isDocPath = (p: string): boolean => new RegExp(`\\.(?:${EXT})$`, 'i').test(p)
+/** Un `.html` solo cuenta como documento si su nombre dice que lo es (el `index.html` de una web no merece tarjeta). */
+const HTML_DOC_NAME = /presenta|slide|deck|diapositiv|keynote|informe|report|propuesta|pitch|resumen|brochure/i
+const isDocPath = (p: string): boolean => {
+  if (!new RegExp(`\\.(?:${EXT})$`, 'i').test(p)) return false
+  if (/\.html?$/i.test(p)) return HTML_DOC_NAME.test(p.split(/[\\/]/).pop() ?? '')
+  return true
+}
 
 /** Normaliza `.` y `..` y las barras repetidas (sin tocar el disco). */
 export function normalizeAbs(p: string): string {
