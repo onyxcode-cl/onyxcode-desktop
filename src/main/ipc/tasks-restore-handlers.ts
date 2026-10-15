@@ -46,6 +46,7 @@ export function registerTasksRestoreHandlers(ctx: TasksIpcContext): TasksSubmodu
         files: 0,
         bytes: 0,
         status: 'skipped' as const,
+        wholeHome: true,
         reason: t('merr.restore.homeSkipped')
       }
     }

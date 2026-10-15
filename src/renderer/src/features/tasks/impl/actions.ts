@@ -592,6 +592,7 @@ async function saveRestorePoint(folder: string, sessionId: string, label: string
       new Promise<null>((r) => setTimeout(() => r(null), RESTORE_SEND_GUARD_MS))
     ])
     if (!point) setRestoreWarning(sessionId, restoreWarningText('tardaba demasiado'))
+    else if (point.status !== 'ok' && point.wholeHome) setRestoreWarning(sessionId, null)
     else if (point.status !== 'ok') setRestoreWarning(sessionId, restoreWarningText(point.reason ?? 'motivo desconocido'))
     else if (point.notCopied) setRestoreWarning(sessionId, notCopiedWarningText(point.notCopied))
   } catch (err) {

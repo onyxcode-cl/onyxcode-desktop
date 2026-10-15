@@ -701,6 +701,8 @@ export interface TasksRestorePoint {
   status: 'ok' | 'skipped'
   /** Motivo cuando `status` es `skipped`. */
   reason?: string
+  /** Control total sobre la carpeta personal: no hay punto por carpeta a propósito (no es un fallo, no se avisa en cada turno). */
+  wholeHome?: boolean
   /** Archivos que existían pero no se pudieron guardar (solo en la nube o ilegibles; los de más de 50 MB no cuentan). */
   notCopied?: number
 }
