@@ -1,4 +1,10 @@
 export const chat = {
+  'chat.doc.card.open': 'Abrir',
+  'chat.doc.card.download': 'Descargar',
+  'chat.doc.card.downloadFailed': 'Error al guardar',
+  'chat.doc.card.code': 'Código',
+  'chat.doc.card.sheets': '{n} hojas',
+  'chat.doc.card.slides': '{n} diapositivas',
   'chat.doc.title': 'Documento',
   'chat.doc.creating': 'Generando documento…',
   'chat.doc.craftInstall': 'Instalar ArtCraft',

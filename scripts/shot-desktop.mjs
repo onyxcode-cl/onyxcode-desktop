@@ -25,6 +25,7 @@ const SCENARIOS = [
   'chat-conversacion',
   'chat-herramientas',
   'chat-pregunta',
+  'chat-documento',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -804,6 +805,25 @@ const S = {
     await sendChat(ctx.page, 'Hazme una presentación de ventas')
     await vis(ctx.page.getByRole('radio', { name: /Editable \(PowerPoint\)/ }), 45_000)
     await sleep(500)
+  },
+  // Documento generado en el Chat (bloque ```xlsx): se ve como tarjeta con miniatura, «Abrir» y «Descargar».
+  async 'chat-documento'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await ctx.fake.script({
+      match: 'informe de ventas del trimestre',
+      title: 'Informe de ventas',
+      steps: [
+        {
+          type: 'text',
+          text:
+            'Listo, armé el informe del trimestre con el total por mes y por vendedor.\n\n```xlsx\n{"sheets":[{"name":"Resumen","rows":[["Mes","Ventas"],["Enero",120],["Febrero",135]]},{"name":"Detalle","rows":[["Vendedor","Total"],["Ana",80]]},{"name":"Notas","rows":[["Nota"],["Cifras en millones"]]}]}\n```\n\nVentas totales: $48,2 millones, un 12 % más que el trimestre anterior.'
+        }
+      ]
+    })
+    await sendChat(ctx.page, 'Arma un informe de ventas del trimestre en Excel')
+    await vis(ctx.page.locator('[data-doc-card]'), 45_000)
+    await sleep(800)
   },
   async 'code-proyecto'(ctx) {
     await seedCode(ctx)
