@@ -31,6 +31,7 @@ const SCENARIOS = [
   'code-terminal',
   'code-permiso',
   'code-pregunta',
+  'code-plan',
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
@@ -877,6 +878,33 @@ const S = {
     await box.press('Enter')
     await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
     await sleep(500)
+  },
+  // «Plan» visible: tarjeta con los pasos del agente (3 de 5 listos, uno en curso con cronómetro).
+  async 'code-plan'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'Arma el informe',
+      title: 'Informe de ventas',
+      steps: [
+        { type: 'text', text: 'Voy a armar el informe paso a paso.' },
+        {
+          type: 'todo',
+          todos: [
+            { content: 'Revisar la carpeta de ventas', status: 'completed', priority: 'high' },
+            { content: 'Leer los tres meses', status: 'completed', priority: 'high' },
+            { content: 'Calcular totales por mes y vendedor', status: 'completed', priority: 'high' },
+            { content: 'Armar el Excel con tres hojas', status: 'in_progress', priority: 'high' },
+            { content: 'Revisar que los números cuadren', status: 'pending', priority: 'medium' }
+          ]
+        }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Arma el informe de ventas del trimestre')
+    await box.press('Enter')
+    await vis(page.getByTestId('plan-card'), 45_000)
+    await sleep(2500)
   },
   async 'code-pregunta'(ctx) {
     await openCode(ctx)
