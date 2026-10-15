@@ -1,9 +1,9 @@
 /* Dueño: ESTRUCTURA (barra lateral, cabeceras, paleta, cromo de la ventana).
  * Reglas: todo selector bajo :root[data-shell='desktop']; sin colores nuevos; tokens de ./tokens.css. */
 
-/* ---- Barra lateral 2c: 272 px expandida (la colapsada, de 56 px, la fija `w-14` en App.tsx/Sidebar.tsx), separada del lienzo por tono ---- */
+/* ---- Barra lateral «riel + lista» (maqueta B): riel de 56 px (`w-14` en Sidebar.tsx) + lista de 236 px (esta variable), separados por borde ---- */
 :root[data-shell='desktop'] {
-  --sidebar-width: 272px;
+  --sidebar-width: 236px;
 }
 
 /* «Tarjeta» de la propuesta 2c (campo de búsqueda y segmento activo): el fondo del lienzo en oscuro y el elevado en claro. Reutiliza los

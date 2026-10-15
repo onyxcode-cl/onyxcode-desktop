@@ -7,7 +7,7 @@ import { onOpencodeEvent, useServer } from '../stores/server'
 import { routeEventToSessions } from '../stores/eventRouter'
 import { reportProviderError } from '../lib/provider-error-report'
 import { useSettings } from '../stores/settings'
-import { useUi } from '../stores/ui'
+import { NARROW_WINDOW_PX, selectListCollapsed, useUi } from '../stores/ui'
 import { initExtrasPrefs, whenExtrasLoaded } from '../features/settings/impl/extras'
 import { newChat, sendChatMessage } from '../features/chat/actions'
 import { useChat } from '../features/chat/store'
@@ -150,9 +150,19 @@ function useAppRuntime(): void {
 function DesktopApp(): React.JSX.Element {
   const mode = useUi((s) => s.mode)
   const settingsOpen = useUi((s) => s.settingsOpen)
-  const collapsed = useUi((s) => s.sidebarCollapsed)
+  const listCollapsed = useUi(selectListCollapsed)
+  const narrow = useUi((s) => s.narrow)
   const t = useT()
   useAppRuntime()
+  // Ventana angosta: la lista de la barra se pliega sola a riel (umbral `NARROW_WINDOW_PX`; ver `Sidebar.tsx`).
+  useEffect(() => {
+    const mq = window.matchMedia?.(`(max-width: ${NARROW_WINDOW_PX - 1}px)`)
+    if (!mq) return
+    const sync = (): void => useUi.getState().setNarrow(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
   const controlsInset = useControlsInset()
 
   // Atajos configurables (⌘\ barra lateral, ⌘, ajustes, ⌘K / ⌘⇧P paleta, ⌘N nuevo, ⌃Tab cambia de modo, Plan/Build, paneles de Code…):
@@ -160,6 +170,8 @@ function DesktopApp(): React.JSX.Element {
   useKeybindings()
 
   const View = MODES_BY_ID[mode].View
+  // La lista empuja al contenido solo si es visible, está en flujo (no superpuesta por ventana angosta) y el modo tiene una.
+  const listInFlow = !!MODES_BY_ID[mode].SidebarContent && !listCollapsed && !narrow
 
   return (
     <div className="flex h-full bg-bg">
@@ -174,21 +186,18 @@ function DesktopApp(): React.JSX.Element {
       <ErrorBoundary label={t('app.boundary.palette')}>
         <CommandPalette />
       </ErrorBoundary>
-      <div
-        className={`h-full shrink-0 overflow-hidden transition-[width] duration-[240ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none ${collapsed ? 'w-14' : 'w-[var(--sidebar-width)]'}`}
-      >
-        <ErrorBoundary label={t('app.boundary.sidebar')}>
-          <Sidebar showLabel={t('app.sidebar.show', { hint: '' })} />
-        </ErrorBoundary>
-      </div>
-      {/* `--header-inset`: hueco que las cabeceras reservan a la izquierda cuando la barra lateral está colapsada (56 px, con su botón
-          «Mostrar» dentro): en macOS lo que falta para pasar los semáforos (80 px menos los 56 de la barra); en Windows y Linux, nada.
+      <ErrorBoundary label={t('app.boundary.sidebar')}>
+        <Sidebar showLabel={t('app.sidebar.show', { hint: '' })} />
+      </ErrorBoundary>
+      {/* `--header-inset`: hueco que las cabeceras reservan a la izquierda cuando solo se ve el riel (56 px: modos y «Mostrar» dentro): en macOS lo que falta para pasar los semáforos (80 px menos los 56 de la barra); en Windows y Linux, nada.
           Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
       <main
         className="relative flex min-w-0 flex-1 flex-col"
+        // Lista superpuesta (ventana angosta): pulsar el contenido la cierra.
+        onMouseDownCapture={narrow && !listCollapsed ? () => useUi.getState().toggleSidebar() : undefined}
         style={
           {
-            '--header-inset': collapsed && isMacPlatform() ? '24px' : '0px',
+            '--header-inset': !listInFlow && isMacPlatform() ? '24px' : '0px',
             // Reserva derecha para los controles de ventana de Windows (0 en macOS y Linux).
             '--controls-inset': `${controlsInset}px`,
             // Alto de la banda de título bajo los controles de Windows (48 px): los paneles del borde derecho dejan ese hueco libre arriba.

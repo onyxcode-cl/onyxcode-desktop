@@ -50,11 +50,12 @@ describe('TaskRow dentro del árbol de la barra lateral (2c)', () => {
     expect(row('done')).toContain('data-state="done"')
   })
 
-  it('la fila activa lleva aria-current="page" y la sangría de 22 px con su guía', () => {
+  it('la fila activa lleva aria-current="page", 30 px sin sangría (maqueta B) y fondo activo', () => {
     const html = row('idle', true)
     expect(html).toContain('aria-current="page"')
-    expect(html).toContain('desk:ml-[22px]')
-    expect(html).toContain('desk:before:-left-[9px]')
+    expect(html).toContain('desk:h-[30px]')
+    expect(html).not.toContain('desk:ml-[22px]')
+    expect(html).toContain('bg-active desk:text-fg')
     expect(html).not.toContain('data-state=')
   })
 })

@@ -268,7 +268,7 @@ export function TaskRow({
   const metaHide = tree ? ' desk:group-focus-within:hidden' : ''
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:h-8 desk:min-h-0 desk:rounded-ctl desk:py-0 desk:text-sm${tree ? " desk:ml-[22px] desk:gap-2.5 desk:px-2.5 desk:before:absolute desk:before:inset-y-0 desk:before:-left-[9px] desk:before:w-px desk:before:bg-border desk:before:content-['']" : ' desk:gap-2 desk:px-2 desk:pl-[30px]'} ${active ? 'bg-active desk:bg-hover desk:font-medium' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm${remote ? ' min-h-11' : ''} desk:relative desk:min-h-0 desk:rounded-ctl desk:py-0${tree ? ' desk:h-[30px] desk:gap-2 desk:px-2 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'} ${active ? (tree ? 'bg-active desk:text-fg' : 'bg-active desk:bg-hover desk:font-medium') : 'hover:bg-hover'}`}
       role={tree ? 'treeitem' : undefined}
       aria-level={tree ? 2 : undefined}
       aria-current={tree && active ? 'page' : undefined}

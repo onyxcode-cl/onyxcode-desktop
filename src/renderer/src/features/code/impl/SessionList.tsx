@@ -28,7 +28,7 @@ import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
 import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
-import { deriveSessionState, sessionNeedsReview } from './review-logic'
+import { deriveSessionState, matchesSessionFilter, sessionNeedsReview } from './review-logic'
 import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
@@ -180,7 +180,7 @@ function SessionRow({
               setDeskMenu(true)
             }
       }
-      className={`group flex items-center gap-1 rounded-lg desk:relative desk:h-8 desk:gap-0.5 desk:rounded-ctl ${tree ? " desk:ml-[22px] desk:before:absolute desk:before:inset-y-0 desk:before:-left-[9px] desk:before:w-px desk:before:bg-border desk:before:content-['']" : ''} ${mobile ? 'min-h-14' : ''} ${active ? 'bg-active desk:bg-hover' : 'hover:bg-hover'}`}
+      className={`group flex items-center gap-1 rounded-lg desk:relative desk:gap-0.5 desk:rounded-ctl ${tree ? ' desk:h-[30px]' : ' desk:h-8'} ${mobile ? 'min-h-14' : ''} ${active ? `bg-active${tree ? '' : ' desk:bg-hover'}` : 'hover:bg-hover'}`}
     >
       {active && !mobile && !editing && (
         <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-accent desk:hidden" aria-hidden />
@@ -210,11 +210,11 @@ function SessionRow({
           onDoubleClick={() => setEditing(true)}
           data-tree-primary={tree ? '' : undefined}
           title={tree && state ? t(`app.sidebar.state.${state}` as MsgKey) : undefined}
-          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2.5' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
+          className={`no-drag flex min-w-0 flex-1 flex-col items-start px-2 text-left desk:h-full desk:flex-row desk:items-center desk:px-2.5 desk:py-0 ${tree ? ' desk:gap-2 desk:px-2' : ' desk:gap-2 desk:pl-[30px]'} ${mobile ? 'min-h-14 justify-center px-3' : 'py-1.5'}`}
           {...(mobile ? press : {})}
         >
           <span
-            className={`flex w-full items-center gap-1.5 desk:w-auto desk:min-w-0 desk:flex-1 ${tree ? ' desk:gap-2.5 desk:text-sm' : ' desk:text-ui'} ${mobile ? 'text-[15px]' : 'text-[13px]'} ${active ? ' desk:font-medium desk:text-fg' : ' desk:text-muted'}`}
+            className={`flex w-full items-center gap-1.5 desk:w-auto desk:min-w-0 desk:flex-1 ${tree ? ' desk:gap-2 desk:text-ui' : ' desk:text-ui'} ${mobile ? 'text-[15px]' : 'text-[13px]'} ${active ? (tree ? ' desk:text-fg' : ' desk:font-medium desk:text-fg') : ' desk:text-muted'}`}
           >
             {tree && state && <StateDot state={state} />}
             {pinned && <Pin size={10} className="shrink-0 text-subtle" />}
@@ -521,7 +521,23 @@ function ProjectGroup({
     [list, pinnedIds]
   )
   // Con pocas sesiones las etiquetas de día sobran; tampoco en el celular (lista a pantalla completa).
-  const groupByDay = !isRemoteSurface() && sortedList.length > 3
+  // Filtro de las píldoras de la barra (solo escritorio): se aplica a la lista ya ordenada; el contador del proyecto cuenta lo visible.
+  const filter = useUi((s) => s.sessionFilter)
+  const visibleList = useMemo(
+    () =>
+      desktop && filter !== 'all'
+        ? sortedList.filter((x) => {
+            const st = runState[x.id]
+            return matchesSessionFilter(filter, {
+              waiting: waiting.has(x.id),
+              busy: st === 'busy' || st === 'retry',
+              needsReview: sessionNeedsReview(x.summary, reviewed[x.id])
+            })
+          })
+        : sortedList,
+    [desktop, filter, sortedList, runState, waiting, reviewed]
+  )
+  const groupByDay = !isRemoteSurface() && visibleList.length > 3 && filter === 'all'
   const archivedList = useMemo(
     () => Object.values(sessions).filter((x) => sessionProject[x.id] === directory && !x.parentID && x.time.archived),
     [sessions, sessionProject, directory]
@@ -540,7 +556,7 @@ function ProjectGroup({
       {worktreeOpen && createPortal(<NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />, document.body)}
       {desktop && (
         <div
-          className="group/proj relative flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
+          className="group/proj relative flex h-7 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
           role={tree ? 'treeitem' : undefined}
           aria-level={tree ? 1 : undefined}
           aria-expanded={tree ? projectOpen : undefined}
@@ -555,18 +571,25 @@ function ProjectGroup({
             }
             title={directory}
             onClick={() => setProjectOpen((o) => !o)}
-            className={`no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-ctl px-2.5 text-left text-sm font-medium ${focused ? 'text-fg' : 'text-muted'}`}
+            className={`no-drag flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-ctl pr-7 pl-2 text-left text-[11px] ${focused ? 'text-muted' : 'text-subtle'}`}
           >
             <ChevronDown
-              size={14}
-              strokeWidth={1.75}
-              className={`-ml-1 shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
+              size={12}
+              strokeWidth={1.8}
+              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
               aria-hidden="true"
             />
-            <FolderOpen size={16} strokeWidth={1.75} className="shrink-0 text-muted" aria-hidden="true" />
             <span className="truncate">{baseName(directory)}</span>
           </button>
-          <span className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
+          {/* Contador (diseño riel + lista): se oculta al pasar o enfocar para dejar sitio a las acciones del proyecto. */}
+          <span
+            aria-hidden="true"
+            data-testid="project-count"
+            className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11px] tabular-nums text-subtle group-focus-within/proj:hidden group-hover/proj:hidden"
+          >
+            {visibleList.length}
+          </span>
+          <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 group-focus-within/proj:flex group-hover/proj:flex">
             <button
               type="button"
               title={t('code.sessions.closeProject', { name: baseName(directory) })}
@@ -592,7 +615,7 @@ function ProjectGroup({
             >
               <Search size={14} strokeWidth={1.75} />
             </button>
-            {/* «+» siempre visible (descubrible): crea una sesión dentro del proyecto. */}
+            {/* «+»: nueva sesión dentro del proyecto (sale al pasar o enfocar la fila; «Nueva sesión» de la barra crea en el enfocado). */}
             <button
               type="button"
               title={t('code.sessions.newHere')}
@@ -651,11 +674,13 @@ function ProjectGroup({
         {!loading && list.length === 0 && isRemoteSurface() && (
           <div className="px-2 py-1 text-xs text-subtle desk:px-2.5 desk:py-2 desk:text-meta">{t('code.sessions.empty')}</div>
         )}
-        {sortedList.map((s, i) => {
+        {!loading && list.length > 0 && visibleList.length === 0 && (
+          <div className="px-2.5 py-2 text-meta text-subtle">{t('app.sidebar.filterEmpty')}</div>
+        )}
+        {visibleList.map((s, i) => {
           const st = runState[s.id]
-          // Etiquetas «Hoy / Ayer / Esta semana / Antes» (solo en escritorio, con lista larga y fuera de las fijadas).
           const bucket = dayBucket(s.time.updated)
-          const prev = sortedList[i - 1]
+          const prev = visibleList[i - 1]
           const showLabel =
             groupByDay && !pinnedIds.has(s.id) && (!prev || pinnedIds.has(prev.id) || dayBucket(prev.time.updated) !== bucket)
           return (
