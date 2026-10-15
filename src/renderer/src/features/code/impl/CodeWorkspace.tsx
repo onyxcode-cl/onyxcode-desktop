@@ -62,6 +62,7 @@ import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode
 import { TodoList } from './ToolCard'
 import type { RightPanel } from './types'
 import { panelLayout } from './review-logic'
+import { sharedFullDiff } from './full-diff'
 import { Tip } from './ui'
 import { hintText, useEffectiveBindings } from '../../../keybindings/bindings'
 
@@ -492,8 +493,8 @@ function useChangeStats(directory: string, changes: number): { additions: number
       return
     }
     let cancelled = false
-    void native.git
-      .diff({ cwd: directory })
+    // El mismo diff que pide el panel Cambios (misma carpeta y versión del disco): una sola llamada.
+    void sharedFullDiff(directory, fsVersion, () => native.git.diff({ cwd: directory }))
       .then((patch) => {
         if (cancelled) return
         setStats(patch.length > STATS_MAX_CHARS ? null : diffStats(patch))

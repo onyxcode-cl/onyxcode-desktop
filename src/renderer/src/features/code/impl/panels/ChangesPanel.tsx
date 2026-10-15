@@ -42,6 +42,7 @@ import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
 import { abbreviatePath, displayPath } from '../mobile-logic'
 import { useProjectWatch } from './useProjectWatch'
+import { sharedFullDiff } from '../full-diff'
 import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
 import {
   acceptEntries,
@@ -690,7 +691,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     void refresh()
   }, [refresh, fsVersion])
 
-  // +/− y huella de cada archivo, de UN solo `git diff` (el mismo que la barra sobre la caja de entrada).
+  // +/− y huella de cada archivo, de UN solo `git diff`, compartido con la barra sobre la caja de entrada (`sharedFullDiff`).
   const fileCount = status?.files.length ?? 0
   useEffect(() => {
     if (mobile || !native || fileCount === 0) {
@@ -698,8 +699,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
       return
     }
     let cancelled = false
-    void native.git
-      .diff({ cwd: directory })
+    void sharedFullDiff(directory, fsVersion, () => native.git.diff({ cwd: directory }))
       .then((patch) => !cancelled && setInfos(patch.length > ALL_DIFF_MAX_CHARS ? new Map() : splitPatchByFile(patch)))
       .catch(() => !cancelled && setInfos(new Map()))
     return () => {
