@@ -628,7 +628,8 @@ async function seedCode(ctx) {
 }
 
 async function togglePanel(page, name) {
-  const btn = page.getByRole('button', { name, exact: true }).first()
+  // Acotado al contenido (`<main>`): la barra lateral tiene sus propios botones (filtros) y no deben confundirse con los del panel.
+  const btn = page.getByRole('main').getByRole('button', { name, exact: true }).first()
   if ((await btn.getAttribute('aria-pressed')) !== 'true') await btn.click()
   await sleep(900)
 }

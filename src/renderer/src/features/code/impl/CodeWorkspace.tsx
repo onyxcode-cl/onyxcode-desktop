@@ -456,7 +456,7 @@ export function BranchPill({ directory }: { directory: string }): React.JSX.Elem
     info.changes ? t('code.branch.changes', { count: info.changes }) : t('code.branch.clean')
   ].join(' · ')
   return (
-    <Tip label={tip} className="no-drag desk:max-w-40 desk:min-w-[6.5rem] desk:shrink-[2]">
+    <Tip label={tip} className="no-drag desk:max-w-40 desk:shrink-0">
       <button
         type="button"
         onClick={() =>
@@ -576,7 +576,8 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       <ProjectMenu directory={directory} />
       <BranchPill directory={directory} />
       {session && (
-        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] md:desk:flex desk:@max-[16rem]:hidden">
+        // Escritorio: el título se muestra (truncado) según el ancho REAL de la barra (consulta de contenedor), no por punto de quiebre de la ventana.
+        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] desk:@max-[16rem]:hidden">
           <span className="text-subtle">/</span>
           <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
         </span>

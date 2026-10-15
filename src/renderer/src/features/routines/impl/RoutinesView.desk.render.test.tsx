@@ -93,3 +93,15 @@ describe('Rutinas (render estático, sin desk:)', () => {
     )
   })
 })
+
+describe('Rutinas en escritorio: los interruptores forman columna (QA)', () => {
+  it('la fila queda en tres columnas: nombre · próxima (ancho mínimo, a la derecha) · interruptor', () => {
+    const raw = renderToStaticMarkup(<RoutineCard r={base} selected={false} now={NOW} />)
+    // El envoltorio del nombre y el interruptor se disuelve en escritorio…
+    expect(raw).toContain('class="flex items-start gap-3 desk:contents"')
+    // …el nombre va primero, la próxima ejecución después con ancho mínimo y el interruptor (orden 0) al final.
+    expect(raw).toMatch(/aria-pressed="false" class="[^"]*desk:-order-2/)
+    expect(raw).toMatch(/class="[^"]*desk:-order-1 desk:min-w-56 desk:shrink-0 desk:justify-end/)
+    expect(raw).toContain('role="switch"')
+  })
+})

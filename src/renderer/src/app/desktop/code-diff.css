@@ -6,3 +6,35 @@
   background: color-mix(in srgb, var(--accent) 28%, transparent);
   border-radius: 3px;
 }
+
+/*
+ * Diff sin ajuste de línea (panel Cambios de Code): el diff es el contenedor de desplazamiento en ambos ejes y los números de línea y
+ * el signo (las tres primeras celdas) quedan fijos a la izquierda con fondo opaco (superficie + el tinte de su fila), para que el código
+ * pase por debajo al desplazar en horizontal. `container-type` deja a la cabecera del bloque medir el ancho visible (`100cqw`).
+ */
+:root[data-shell='desktop'] [data-diff][data-nowrap] {
+  container-type: inline-size;
+}
+:root[data-shell='desktop'] [data-diff][data-nowrap] tr[data-k] > td:nth-child(-n + 3) {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--bg);
+}
+:root[data-shell='desktop'] [data-diff][data-nowrap] tr[data-k] > td:nth-child(1) {
+  left: 0;
+}
+:root[data-shell='desktop'] [data-diff][data-nowrap] tr[data-k] > td:nth-child(2) {
+  left: 2.5rem;
+}
+:root[data-shell='desktop'] [data-diff][data-nowrap] tr[data-k] > td:nth-child(3) {
+  left: 5rem;
+}
+:root[data-shell='desktop'] [data-diff][data-nowrap] tr[data-k='add'] > td:nth-child(-n + 3) {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--success) 13%, transparent),
+    color-mix(in srgb, var(--success) 13%, transparent)
+  );
+}
+:root[data-shell='desktop'] [data-diff][data-nowrap] tr[data-k='del'] > td:nth-child(-n + 3) {
+  background-image: linear-gradient(color-mix(in srgb, var(--danger) 12%, transparent), color-mix(in srgb, var(--danger) 12%, transparent));
+}

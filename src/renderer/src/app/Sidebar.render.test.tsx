@@ -89,6 +89,9 @@ describe('barra lateral de escritorio (riel + lista, maqueta B)', () => {
     expect(html).toMatch(/aria-pressed="false"[^>]*>Cambios<\/button>/)
     expect(html).toContain('flex-nowrap')
     expect(html).toContain('whitespace-nowrap')
+    // Nombre accesible propio: «Cambios» a secas lo tiene el botón del panel Cambios de Code.
+    expect(html).toContain('aria-label="Filtrar: con cambios"')
+    expect(html).not.toMatch(/aria-label="Cambios"/)
     seed({ mode: 'code', sessionFilter: 'review' })
     expect(render()).toMatch(/aria-pressed="true"[^>]*>Cambios<\/button>/)
   })

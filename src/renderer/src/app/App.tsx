@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { OnboardingGate, PreflightGate } from '../features/onboarding'
@@ -164,6 +164,19 @@ function DesktopApp(): React.JSX.Element {
     return () => mq.removeEventListener('change', sync)
   }, [])
   const controlsInset = useControlsInset()
+  // Con un aviso arriba (motor, actualización…) las cabeceras ya no comparten franja con los semáforos de macOS: no necesitan el
+  // hueco `--header-inset` y arrancan con el mismo margen que con la lista abierta (antes ~42 px frente a ~17 px).
+  const noticesRef = useRef<HTMLDivElement>(null)
+  const [noticeShown, setNoticeShown] = useState(false)
+  useEffect(() => {
+    const el = noticesRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const sync = (): void => setNoticeShown(el.offsetHeight > 0)
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Atajos configurables (⌘\ barra lateral, ⌘, ajustes, ⌘K / ⌘⇧P paleta, ⌘N nuevo, ⌃Tab cambia de modo, Plan/Build, paneles de Code…):
   // un único manejador resuelve el atajo efectivo de cada acción (registro central en `keybindings/`; se cambian en Ajustes › Atajos).
@@ -197,7 +210,7 @@ function DesktopApp(): React.JSX.Element {
         onMouseDownCapture={narrow && !listCollapsed ? () => useUi.getState().toggleSidebar() : undefined}
         style={
           {
-            '--header-inset': !listInFlow && isMacPlatform() ? '24px' : '0px',
+            '--header-inset': !listInFlow && !noticeShown && isMacPlatform() ? '24px' : '0px',
             // Reserva derecha para los controles de ventana de Windows (0 en macOS y Linux).
             '--controls-inset': `${controlsInset}px`,
             // Alto de la banda de título bajo los controles de Windows (48 px): los paneles del borde derecho dejan ese hueco libre arriba.
@@ -206,10 +219,12 @@ function DesktopApp(): React.JSX.Element {
         }
       >
         <ErrorBoundary label={t('app.boundary.server')}>
-          <ServerBanner />
-          <EngineNotice />
-          <QuickEntryNotice />
-          <UpdateNotice />
+          <div ref={noticesRef} data-testid="app-notices" className="shrink-0">
+            <ServerBanner />
+            <EngineNotice />
+            <QuickEntryNotice />
+            <UpdateNotice />
+          </div>
         </ErrorBoundary>
         <div className="min-h-0 flex-1">
           {settingsOpen ? (

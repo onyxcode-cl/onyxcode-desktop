@@ -2,6 +2,8 @@
  * Caracterización de `DiffView` en escritorio frente a celular: el resaltado de palabra (`data-w`) y el gancho `data-diff`
  * solo existen en escritorio; la superficie remota conserva el marcado de siempre (con `desk:` ya quitado por `stripDesk`).
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { DiffView } from './DiffView'
@@ -31,6 +33,30 @@ describe('DiffView en escritorio', () => {
     const html = renderToStaticMarkup(<DiffView patch={rows.join('\n')} />)
     expect(html).toContain('data-diff=""')
     expect(html).not.toContain('data-w=""')
+  })
+
+  it('sin ajuste de línea (panel Cambios): data-nowrap, filas con data-k y código en una sola línea (whitespace-pre)', () => {
+    surface('darwin')
+    const html = renderToStaticMarkup(<DiffView patch={PATCH} wrap={false} onDiscardHunk={() => undefined} />)
+    expect(html).toContain('data-nowrap=""')
+    expect(html).toContain('data-k="add"')
+    expect(html).toContain('data-k="del"')
+    expect(html).not.toContain('whitespace-pre-wrap')
+    expect(html).toContain('w-max min-w-full')
+    // La cabecera del bloque (con «Descartar este bloque») queda fija al ancho visible.
+    expect(html).toContain('sticky left-3 w-[calc(100cqw-1.5rem)]')
+  })
+
+  it('con ajuste (por defecto, Tareas) no marca data-nowrap', () => {
+    surface('darwin')
+    const html = renderToStaticMarkup(<DiffView patch={PATCH} />)
+    expect(html).not.toContain('data-nowrap')
+    expect(html).not.toContain('data-k=')
+  })
+
+  it('el CSS de escritorio fija las columnas de números y signo al desplazar en horizontal', () => {
+    const css = readFileSync(join(__dirname, '../app/desktop/code-diff.css'), 'utf8')
+    expect(css).toMatch(/\[data-nowrap\] tr\[data-k\] > td:nth-child\(-n \+ 3\) \{\s*position: sticky;/)
   })
 })
 

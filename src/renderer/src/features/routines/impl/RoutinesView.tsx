@@ -141,11 +141,13 @@ export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selecte
       onClick={select}
       className={`group flex cursor-pointer flex-col gap-3 rounded-xl border bg-elevated p-4 text-left transition desk:min-h-16 desk:flex-row desk:items-center desk:gap-6 desk:rounded-none desk:border-0 desk:border-b desk:border-border/60 desk:px-5 desk:py-3.5 desk:shadow-none desk:ring-0 desk:last:border-b-0 ${selected ? 'border-accent/60 shadow-md ring-2 ring-accent/15 desk:bg-accent-soft' : 'border-border hover:border-border-strong hover:shadow-sm desk:bg-transparent desk:hover:bg-hover desk:hover:shadow-none'}`}
     >
-      <div className="flex items-start gap-3 desk:min-w-0 desk:flex-1 desk:items-center">
+      {/* Escritorio: el envoltorio se disuelve (`contents`) y la fila queda en tres columnas: nombre (flexible) · próxima ejecución
+          (ancho mínimo fijo, alineada a la derecha) · interruptor; así los interruptores forman columna sea cual sea el texto. */}
+      <div className="flex items-start gap-3 desk:contents">
         <button
           type="button"
           aria-pressed={selected}
-          className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left desk:items-center"
+          className="flex min-w-0 flex-1 items-start gap-3 rounded-lg text-left desk:-order-2 desk:items-center"
         >
           <div
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg desk:size-8 desk:rounded-ctl desk:bg-active desk:[&_svg]:size-4 ${r.enabled ? 'bg-accent-soft text-accent' : 'bg-hover text-subtle'}`}
@@ -178,7 +180,7 @@ export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selecte
           label={r.enabled ? t('routines.card.deactivate') : t('routines.card.activate')}
         />
       </div>
-      <div className="flex items-center gap-2 border-t border-border pt-3 text-xs desk:shrink-0 desk:border-t-0 desk:pt-0">
+      <div className="flex items-center gap-2 border-t border-border pt-3 text-xs desk:-order-1 desk:min-w-56 desk:shrink-0 desk:justify-end desk:border-t-0 desk:pt-0">
         {r.running ? (
           waiting ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning">

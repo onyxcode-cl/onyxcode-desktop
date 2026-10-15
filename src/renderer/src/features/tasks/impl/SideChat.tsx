@@ -171,7 +171,7 @@ export function SideChat(): React.JSX.Element | null {
             title={t('tasks.sidechat.send')}
             aria-label={t('tasks.sidechat.sendAria')}
             disabled={busy || !draft.trim()}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg transition hover:bg-accent-hover disabled:opacity-40"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-fg transition hover:bg-accent-hover disabled:opacity-40 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100"
           >
             {busy ? <Loader2 size={14} className="animate-spin" /> : <ArrowUp size={14} />}
           </button>

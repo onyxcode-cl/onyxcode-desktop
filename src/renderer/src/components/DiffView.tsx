@@ -288,12 +288,16 @@ export const DiffView = memo(function DiffView({
     }
     return map
   }, [parsed, words])
+  // Escritorio sin ajuste de línea: cada línea en una sola fila con desplazamiento horizontal dentro del diff, y los números de línea
+  // y el signo quedan fijos a la izquierda (CSS `[data-nowrap]` en app/desktop/code-diff.css). El celular no cambia.
+  const sticky = !touch && !wrap
   if (lines.length === 0) {
     return <div className={`px-3 py-2 text-xs text-subtle ${className}`}>{t('common.diff.empty')}</div>
   }
   return (
     <div
       {...(touch ? {} : { 'data-diff': '' })}
+      {...(sticky ? { 'data-nowrap': '' } : {})}
       className={`overflow-auto font-mono text-[12px] leading-[1.55] desk:leading-5 ${className}`}
     >
       {limited && (
@@ -322,7 +326,7 @@ export const DiffView = memo(function DiffView({
               return (
                 <tr key={i} className={ROW.hunk}>
                   <td colSpan={4} className={`px-3 py-0.5 desk:py-0 desk:leading-5 ${touch && wrap ? 'max-w-0' : ''}`}>
-                    <div className="flex items-center gap-2">
+                    <div className={`flex items-center gap-2${sticky ? ' sticky left-3 w-[calc(100cqw-1.5rem)]' : ''}`}>
                       <span className="min-w-0 flex-1 truncate whitespace-pre">{l.text}</span>
                       <button
                         type="button"
@@ -350,7 +354,7 @@ export const DiffView = memo(function DiffView({
             }
             const ranges = wordRangesFor.get(i) ?? NO_RANGES
             return (
-              <tr key={i} className={ROW[l.kind]}>
+              <tr key={i} className={ROW[l.kind]} {...(sticky ? { 'data-k': l.kind } : {})}>
                 <td className={touch ? 'hidden' : 'w-10 pr-2 text-right align-top text-subtle/70 select-none desk:text-subtle desk:pr-2.5'}>
                   {l.oldNo ?? ''}
                 </td>

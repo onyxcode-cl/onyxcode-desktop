@@ -265,7 +265,18 @@ function FileRow({
   )
 }
 
-function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }): React.JSX.Element {
+function Section({
+  title,
+  count,
+  sole = false,
+  children
+}: {
+  title: string
+  count: number
+  /** Única sección (sin «preparados»): en escritorio el recuento sobra (ya lo dicen la pestaña y «N por revisar»). */
+  sole?: boolean
+  children: React.ReactNode
+}): React.JSX.Element {
   const [open, setOpen] = useState(true)
   return (
     <div>
@@ -276,7 +287,9 @@ function Section({ title, count, children }: { title: string; count: number; chi
       >
         <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
-        <span className="ml-1 rounded-full bg-hover px-1.5 text-[10px] font-medium normal-case desk:bg-active desk:text-[11px]">
+        <span
+          className={`ml-1 rounded-full bg-hover px-1.5 text-[10px] font-medium normal-case desk:bg-active desk:text-[11px]${sole ? ' desk:hidden' : ''}`}
+        >
           {count}
         </span>
       </button>
@@ -367,7 +380,7 @@ function CommitBox({
           onClick={() => void commit()}
           disabled={!canCommit}
           title={t('code.changes.commitTitle', { mod: MOD })}
-          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 desk:h-7 desk:rounded-ctl-sm desk:text-ui ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
+          className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1 text-xs font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40 desk:h-7 desk:rounded-ctl-sm desk:text-ui desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100 ${isRemoteSurface() ? 'min-h-11 px-4 text-[14px]' : ''}`}
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <GitCommitHorizontal size={14} />}
           {t('code.changes.commit')}
@@ -903,7 +916,10 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
           {status && status.ahead > 0 && <span className="text-subtle">↑{status.ahead}</span>}
           {status && status.behind > 0 && <span className="text-subtle">↓{status.behind}</span>}
         </span>
-        <span className="ml-auto shrink-0">{status ? t('code.changes.fileCount', { count: status.files.length }) : ''}</span>
+        {/* En escritorio el recuento ya está en la pestaña del panel y en «N por revisar»: aquí solo empuja los botones a la derecha. */}
+        <span className="ml-auto shrink-0">
+          <span className="inline desk:hidden">{status ? t('code.changes.fileCount', { count: status.files.length }) : ''}</span>
+        </span>
         {native && (
           <IconButton label={t('code.changes.newBranch')} onClick={() => setDialog(true)} className={ib}>
             <GitBranchPlus size={13} />
@@ -1010,7 +1026,11 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 </Section>
               )}
               {unstaged.length > 0 && (
-                <Section title={staged.length ? t('code.changes.unstaged') : t('code.panel.changes')} count={unstaged.length}>
+                <Section
+                  title={staged.length ? t('code.changes.unstaged') : t('code.panel.changes')}
+                  count={unstaged.length}
+                  sole={staged.length === 0}
+                >
                   {unstaged.map((f) => (
                     <FileRow
                       key={`u:${f.path}`}
@@ -1066,9 +1086,9 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                 </div>
               )}
               {selectedFile && !mobile && (
-                // Panel estrecho: las acciones bajan a una segunda fila y el nombre conserva todo el ancho (antes los iconos se lo comían).
-                <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5 desk:min-h-10 desk:px-4">
-                  <span className="flex min-w-0 flex-1 basis-44 items-center gap-2">
+                // Escritorio: nombre y acciones en UNA fila; si no cabe, se acorta la carpeta y luego el nombre (las acciones son iconos).
+                <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5 desk:min-h-10 desk:flex-nowrap desk:px-4">
+                  <span className="flex min-w-0 flex-1 basis-44 items-center gap-2 desk:basis-0">
                     <span className="flex min-w-0 font-mono text-xs" title={selectedFile.path}>
                       {(() => {
                         const { dir, name } = splitPath(selectedFile.path)
@@ -1082,7 +1102,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       })()}
                     </span>
                     {stats && (
-                      <span className="flex shrink-0 gap-1.5 font-mono text-xs tabular-nums">
+                      <span className="flex shrink-0 gap-1.5 font-mono text-xs tabular-nums desk:@max-[26rem]:hidden">
                         {stats.additions > 0 && <span className="text-success">+{stats.additions}</span>}
                         {stats.deletions > 0 && <span className="text-danger">−{stats.deletions}</span>}
                       </span>
@@ -1164,7 +1184,10 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                     patch={diff}
                     path={selectedFile.path}
                     hideFileHeaders
-                    wrap={wrap}
+                    // Escritorio: el código nunca se parte (una línea = una fila, desplazamiento horizontal dentro del diff con los
+                    // números fijos); el diff ocupa el alto del panel para que la barra horizontal quede a la vista. El celular conserva su ajuste.
+                    wrap={mobile ? wrap : false}
+                    className={mobile ? '' : 'h-full'}
                     onDiscardHunk={
                       native && !selStaged && selectedFile.kind === 'modified' && isSingleFileDiff(diff)
                         ? (i) => void discardHunk(selectedFile, i)

@@ -62,7 +62,7 @@ function writeOpen(directory: string | null, open: boolean): void {
 }
 
 /** Fila de sesión con menú contextual (renombrar / fijar / archivar / eliminar). */
-function SessionRow({
+export function SessionRow({
   session,
   directory,
   active,
@@ -234,19 +234,20 @@ function SessionRow({
             </span>
           </span>
           {!mobile && waiting && tree ? (
-            // Esperando aprobación: la meta «Aprobar» no se oculta nunca (ni al pasar el ratón).
-            <span className="hidden shrink-0 text-meta font-medium text-warning desk:inline">{t('tasks.list.metaApprove')}</span>
+            // Esperando aprobación: insignia compacta de 20 px (ícono, no texto) para que el título use el ancho de la fila; el estado
+            // completo va en el `title` del botón y en el nombre accesible de la fila. No se oculta nunca (ni al pasar el ratón).
+            <span
+              data-testid="code-row-approve"
+              aria-hidden="true"
+              className="hidden size-5 shrink-0 items-center justify-center rounded-md bg-warning/10 text-warning desk:inline-flex desk:rounded-ctl-sm"
+            >
+              <ShieldAlert size={12} />
+            </span>
           ) : !mobile && waiting ? (
             <span className="hidden h-5 shrink-0 items-center rounded-full border border-warning/45 bg-warning/10 px-2 text-meta font-medium text-warning desk:inline-flex desk:group-hover:hidden">
               {t('tasks.list.metaApprove')}
             </span>
-          ) : !mobile && busy && tree ? (
-            <span
-              className={`hidden shrink-0 text-meta text-subtle desk:inline desk:group-focus-within:hidden desk:group-hover:hidden ${active ? ' desk:hidden' : ''}`}
-            >
-              {t('app.sidebar.working')}
-            </span>
-          ) : !mobile && busy ? (
+          ) : !mobile && busy && tree ? null : !mobile && busy ? (
             <span className="hidden shrink-0 items-center gap-1.5 text-meta text-muted desk:inline-flex desk:group-hover:hidden">
               <span
                 className="size-2.5 animate-spin rounded-full border-2 border-accent border-r-transparent motion-reduce:animate-none"

@@ -20,7 +20,7 @@ export function TasksSidebar(): React.JSX.Element {
   return (
     <div className="flex flex-col px-1 desk:px-0">
       {desktop ? (
-        // Barra lateral 1b: la carpeta es una fila plegable (chevron + carpeta abierta + nombre); sus tareas cuelgan sangradas.
+        // Barra lateral 1b: la carpeta es una fila plegable (chevron + nombre, como el proyecto de Code); sus tareas cuelgan sangradas.
         <SidebarTreeRegion>
           <div
             className="flex h-8 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
@@ -36,11 +36,11 @@ export function TasksSidebar(): React.JSX.Element {
                 data-tree-primary={tree ? '' : undefined}
                 aria-label={t(open ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name })}
                 onClick={() => setOpen((o) => !o)}
-                className="no-drag flex h-8 w-[22px] shrink-0 items-center rounded-ctl pl-2 text-subtle hover:text-fg"
+                className="no-drag flex h-8 w-5 shrink-0 items-center rounded-ctl pl-2 text-subtle hover:text-fg"
               >
                 <ChevronDown
-                  size={14}
-                  strokeWidth={1.75}
+                  size={12}
+                  strokeWidth={1.8}
                   className={`transition-transform duration-[var(--dur-fast)] ${open ? '' : '-rotate-90'}`}
                   aria-hidden="true"
                 />
@@ -63,9 +63,11 @@ export function TasksSidebar(): React.JSX.Element {
               title={t('tasks.sidebar.projectTitle')}
               role={tree ? 'treeitem' : undefined}
               aria-level={tree ? 2 : undefined}
-              className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:rounded-ctl desk:overflow-hidden desk:py-0 desk:whitespace-nowrap${tree ? ' desk:h-[30px] desk:gap-2 desk:px-2 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'}`}
+              className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-muted hover:bg-hover hover:text-fg desk:mt-0.5 desk:rounded-ctl desk:overflow-hidden desk:py-0 desk:whitespace-nowrap${tree ? ' desk:h-[30px] desk:gap-[5px] desk:pr-2 desk:pl-[5px] desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'}`}
             >
-              <BookText size={13} className="shrink-0 desk:size-[15px]" /> {t('tasks.sidebar.project')}
+              {/* En el árbol, el ícono (13 px) se centra en la columna del punto de estado y el texto arranca en la de los títulos. */}
+              <BookText size={13} className={tree ? 'shrink-0 desk:size-[13px]' : 'shrink-0 desk:size-[15px]'} />{' '}
+              {t('tasks.sidebar.project')}
             </button>
           )}
           <SidebarSections />
