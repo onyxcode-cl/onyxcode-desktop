@@ -5,17 +5,15 @@ import type { MessageEntry } from '../../../lib/session-reducer'
 import { LogoMark } from '../../../components/Logo'
 import { useTasks } from './store'
 import { buildContext, friendlyTool } from './util'
-import { formatElapsed, turnEntries, workProgress, type WorkPhase } from './work-progress'
+import { formatElapsed, turnEntries, workProgress } from './work-progress'
 import { useShowPath } from './conn-paths'
-
-const PHASES: WorkPhase[] = ['gather', 'create', 'review']
 
 export function WorkingCard({ entries }: { entries: MessageEntry[] }): React.JSX.Element {
   const t = useT()
   const showPath = useShowPath()
   // Todo se calcula solo del turno actual: un plan de una petición anterior no cuenta.
   const w = workProgress(entries)
-  const { tool, total, startedAt, steps, currentIdx, partial, toolCount, activity, target, phase } = w
+  const { tool, total, startedAt, steps, currentIdx, partial, toolCount, activity, target } = w
   const sessionID = entries[0]?.info.sessionID
   const created = useTasks((s) => (sessionID ? s.deliverables[sessionID] : undefined))
   const ctx = useMemo(() => buildContext(turnEntries(entries)), [entries])
@@ -58,7 +56,6 @@ export function WorkingCard({ entries }: { entries: MessageEntry[] }): React.JSX
       sub.push(t(createdCount === 1 ? 'tasks.work.filesCreated.one' : 'tasks.work.filesCreated.many', { n: createdCount }))
   }
   if (startedAt !== null && now !== null) sub.push(formatElapsed(now - startedAt))
-  const phaseIdx = PHASES.indexOf(phase)
   return (
     <div
       role="status"
@@ -109,25 +106,6 @@ export function WorkingCard({ entries }: { entries: MessageEntry[] }): React.JSX
         </>
       ) : (
         <>
-          {toolCount > 0 && (
-            <div className="mt-3 flex gap-1.5 overflow-hidden whitespace-nowrap" aria-label={t('tasks.work.phasesLabel')}>
-              {PHASES.map((ph, i) => (
-                <span
-                  key={ph}
-                  className={`shrink-0 rounded-full border px-2.5 py-0.5 text-meta ${
-                    i === phaseIdx
-                      ? 'border-accent/40 bg-accent-soft font-medium text-fg'
-                      : i < phaseIdx
-                        ? 'border-success/40 text-success'
-                        : 'border-border text-muted'
-                  }`}
-                >
-                  {i < phaseIdx && <span aria-hidden>✓ </span>}
-                  {t(`tasks.work.phase.${ph}` as const)}
-                </span>
-              ))}
-            </div>
-          )}
           <div className="mt-3 h-1 overflow-hidden rounded-full bg-hover" aria-hidden>
             <div className="work-bar work-bar-indeterminate h-full w-1/3 rounded-full" />
           </div>
