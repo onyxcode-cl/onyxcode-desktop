@@ -62,6 +62,7 @@ const SCENARIOS = [
   'barra-chat',
   'barra-code',
   'barra-code-hover',
+  'barra-code-menu',
   'code-cambios',
   'code-cambios-archivo',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
@@ -1335,6 +1336,15 @@ const S = {
   async 'barra-code-hover'(ctx) {
     await S['barra-code'](ctx)
     ctx.hover = ctx.page.getByRole('treeitem', { name: /Preparar informe de cobertura/ })
+  },
+  async 'barra-code-menu'(ctx) {
+    await S['barra-code'](ctx)
+    const row = ctx.page.getByRole('treeitem', { name: /Preparar informe de cobertura/ })
+    await row.hover()
+    await sleep(250)
+    await row.getByRole('button', { name: /^Acciones de/ }).click()
+    await sleep(350)
+    ctx.hover = null
   },
   async onboarding(ctx) {
     await vis(ctx.page.getByRole('dialog'), 30_000)

@@ -87,6 +87,19 @@ export function SessionRow({
   const tree = useSidebarTree()
   const state: SessionState | null = deriveSessionState({ waiting, busy, unread, needsReview })
   const [deskMenu, setDeskMenu] = useState(false)
+  // El menú sale en un portal con posición fija: la lista de sesiones tiene scroll y recortaba las opciones de abajo.
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const openDeskMenu = (): void => {
+    const r = menuRoot.current?.getBoundingClientRect()
+    if (!r) return setDeskMenu((o) => !o)
+    const needed = 240
+    const below = window.innerHeight - r.bottom
+    setMenuPos({
+      right: Math.max(8, window.innerWidth - r.right),
+      ...(below >= needed || below >= r.top ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 })
+    })
+    setDeskMenu((o) => !o)
+  }
   const menuRoot = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const selectSession = useCode((s) => s.selectSession)
@@ -121,11 +134,19 @@ export function SessionRow({
   useEffect(() => {
     if (!deskMenu) return
     const onDown = (e: MouseEvent): void => {
-      if (menuRoot.current && !menuRoot.current.contains(e.target as Node)) setDeskMenu(false)
+      const n = e.target as Node
+      if (menuRoot.current && !menuRoot.current.contains(n) && !menuRef.current?.contains(n)) setDeskMenu(false)
     }
+    const close = (): void => setDeskMenu(false)
     document.addEventListener('mousedown', onDown)
+    window.addEventListener('resize', close)
+    document.addEventListener('scroll', close, true)
     menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
-    return () => document.removeEventListener('mousedown', onDown)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', close)
+      document.removeEventListener('scroll', close, true)
+    }
   }, [deskMenu])
   const onMenuKey = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') {
@@ -329,42 +350,57 @@ export function SessionRow({
           ref={menuRoot}
           className={`relative mr-1 shrink-0 items-center ${deskMenu || active ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
         >
+          {/* Papelera a un clic (siempre con confirmación); el resto de acciones vive en «⋯». */}
+          <button
+            type="button"
+            title={t('code.sessions.delete')}
+            aria-label={t('code.sessions.delete')}
+            onClick={askDelete}
+            className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-danger"
+          >
+            <Trash2 size={13} strokeWidth={1.75} />
+          </button>
           <button
             type="button"
             title={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
             aria-label={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
             aria-haspopup="menu"
             aria-expanded={deskMenu}
-            onClick={() => setDeskMenu((o) => !o)}
+            onClick={openDeskMenu}
             className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
           >
             <MoreHorizontal size={14} strokeWidth={1.75} />
           </button>
-          {deskMenu && (
-            <div
-              ref={menuRef}
-              role="menu"
-              aria-label={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
-              onKeyDown={onMenuKey}
-              className="absolute top-full right-0 z-30 mt-1 w-52 rounded-card bg-elevated p-1 shadow-pop"
-            >
-              {needsReview &&
-                menuItem(<CheckCheck size={14} strokeWidth={1.75} />, t('code.sessions.markReviewed'), () =>
-                  // Solo estado de interfaz: no toca archivos ni git (como «Aceptar todo» del panel Cambios).
-                  acceptSession(session.id, summarySignature(session.summary), {})
+          {deskMenu &&
+            menuPos &&
+            createPortal(
+              <div
+                ref={menuRef}
+                role="menu"
+                aria-label={t('code.m.itemActions', { name: displayTitle(session.title, t('code.sessions.untitled')) })}
+                onKeyDown={onMenuKey}
+                style={menuPos}
+                className="fixed z-50 w-52 rounded-card bg-elevated p-1 shadow-pop"
+              >
+                {needsReview &&
+                  menuItem(<CheckCheck size={14} strokeWidth={1.75} />, t('code.sessions.markReviewed'), () =>
+                    // Solo estado de interfaz: no toca archivos ni git (como «Aceptar todo» del panel Cambios).
+                    acceptSession(session.id, summarySignature(session.summary), {})
+                  )}
+                {menuItem(<Pin size={14} strokeWidth={1.75} />, pinned ? t('code.sessions.unpin') : t('code.sessions.pin'), () =>
+                  togglePin(session.id)
                 )}
-              {menuItem(<Pin size={14} strokeWidth={1.75} />, pinned ? t('code.sessions.unpin') : t('code.sessions.pin'), () =>
-                togglePin(session.id)
-              )}
-              {menuItem(<Pencil size={14} strokeWidth={1.75} />, t('code.sessions.rename'), () => setEditing(true))}
-              {menuItem(
-                archived ? <ArchiveRestore size={14} strokeWidth={1.75} /> : <Archive size={14} strokeWidth={1.75} />,
-                archived ? t('code.sessions.unarchive') : t('code.sessions.archive'),
-                () => void (archived ? unarchiveSession(session.id) : archiveSession(session.id))
-              )}
-              {menuItem(<Trash2 size={14} strokeWidth={1.75} />, t('code.sessions.delete'), askDelete, true)}
-            </div>
-          )}
+                {menuItem(<Pencil size={14} strokeWidth={1.75} />, t('code.sessions.rename'), () => setEditing(true))}
+                {menuItem(
+                  archived ? <ArchiveRestore size={14} strokeWidth={1.75} /> : <Archive size={14} strokeWidth={1.75} />,
+                  archived ? t('code.sessions.unarchive') : t('code.sessions.archive'),
+                  () => void (archived ? unarchiveSession(session.id) : archiveSession(session.id))
+                )}
+                <div className="mx-1.5 my-1 h-px bg-border" role="separator" />
+                {menuItem(<Trash2 size={14} strokeWidth={1.75} />, t('code.sessions.delete'), askDelete, true)}
+              </div>,
+              document.body
+            )}
         </div>
       )}
     </div>
