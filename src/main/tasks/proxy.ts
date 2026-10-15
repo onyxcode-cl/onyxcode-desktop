@@ -215,46 +215,80 @@ export interface CredentialProxyOptions {
   token: string
   /** Origen real (p.ej. `https://opencode.ai`). */
   targetOrigin: string
-  /** Prefijo a anteponer al path reenviado (p.ej. `/zen/go/v1`). */
+  /** Prefijo a anteponer al path reenviado (p.ej. `/inference/go/v1`). */
   targetPathPrefix?: string
-  /** Header Authorization REAL a inyectar (p.ej. `Bearer sk-...`). Nunca se expone al sandbox. */
-  authorization: string
+  /** Clave REAL a inyectar (nunca se expone al sandbox). */
+  key: string
 }
 
-/** Proxy inverso de un único destino que inyecta la clave real del proveedor. */
+/** Cabeceras que pueden llevar una credencial del sandbox (el centinela u otra): se descartan SIEMPRE. */
+const CREDENTIAL_HEADERS = new Set(['authorization', 'proxy-authorization', 'x-api-key', 'x-goog-api-key', 'api-key'])
+/** Cabeceras de salto/identidad que no se reenvían tal cual. */
+const DROPPED_HEADERS = new Set(['host', 'connection'])
+
 /**
- * Cabeceras hacia la API real: se descartan las del sandbox que llevan credencial (el centinela) y se inyecta la REAL.
- * Los modelos con protocolo Anthropic (p.ej. Claude Haiku en OpenCode Go) mandan la clave en `x-api-key`, no en
- * `Authorization`: si se reenviaba el centinela, la API respondía «clave no válida» solo dentro del sandbox.
+ * Cabeceras hacia la API real. Un mismo `baseURL` puede servir a SDKs distintos (openai-compatible → `Authorization: Bearer`,
+ * anthropic → `x-api-key`, google → `x-goog-api-key`), así que NO se fija un esquema por proveedor: se descartan TODAS las
+ * credenciales del sandbox (el centinela, duplicadas o de otro esquema) y la clave REAL se reinyecta únicamente en la cabecera
+ * que el cliente usó (`x-api-key` → `x-api-key`; `x-goog-api-key` o `?key=` → `x-goog-api-key`; `Authorization` o ninguna →
+ * `Authorization: Bearer`). `anthropic-version`/`anthropic-beta` las manda el cliente y pasan tal cual.
  */
 export function buildUpstreamHeaders(
   incoming: Record<string, string | string[] | undefined>,
   host: string,
-  authorization: string
+  key: string,
+  queryHadKey = false
 ): Record<string, string | string[]> {
   const headers: Record<string, string | string[]> = {}
-  let usesApiKey = false
+  let usedApiKey = false
+  let usedGoog = queryHadKey
+  let usedBearer = false
   for (const [k, v] of Object.entries(incoming)) {
     if (v === undefined) continue
     const lk = k.toLowerCase()
-    if (lk === 'host' || lk === 'authorization' || lk === 'connection') continue
-    if (lk === 'x-api-key') {
-      usesApiKey = true
+    if (DROPPED_HEADERS.has(lk)) continue
+    if (CREDENTIAL_HEADERS.has(lk)) {
+      if (lk === 'x-api-key') usedApiKey = true
+      else if (lk === 'x-goog-api-key') usedGoog = true
+      else if (lk === 'authorization') usedBearer = true
       continue
     }
     headers[k] = v
   }
   headers.host = host
-  headers.authorization = authorization
-  if (usesApiKey) headers['x-api-key'] = authorization.replace(/^Bearer\s+/i, '')
+  if (usedApiKey) headers['x-api-key'] = key
+  if (usedGoog) headers['x-goog-api-key'] = key
+  if (usedBearer || (!usedApiKey && !usedGoog)) headers.authorization = `Bearer ${key}`
   return headers
 }
 
+/** Quita del query toda credencial que el SDK pudiera haber puesto (`?key=`, `?api_key=`); nunca se reenvía el centinela. */
+export function stripQueryCredentials(search: string): { search: string; hadKey: boolean } {
+  if (!search) return { search, hadKey: false }
+  const params = new URLSearchParams(search)
+  let removed = false
+  let hadKey = false
+  for (const name of [...new Set([...params.keys()])]) {
+    if (/^(key|api[_-]?key)$/i.test(name)) {
+      if (name.toLowerCase() === 'key') hadKey = true
+      params.delete(name)
+      removed = true
+    }
+  }
+  if (!removed) return { search, hadKey }
+  const out = params.toString()
+  return { search: out ? `?${out}` : '', hadKey }
+}
+
+/** Proxy inverso de un único destino que inyecta la clave real del proveedor. */
 export class CredentialProxy {
   private server = createHttpServer((req, res) => this.handle(req, res))
   port = 0
 
-  constructor(private opts: CredentialProxyOptions) {}
+  constructor(private opts: CredentialProxyOptions) {
+    // Falla cerrado al construir (no dentro del manejador de peticiones): clave vacía.
+    if (typeof opts.key !== 'string' || !opts.key) throw new Error('credential-proxy: clave vacía')
+  }
 
   async start(): Promise<number> {
     this.port = await getFreePort()
@@ -296,7 +330,8 @@ export class CredentialProxy {
       return
     }
     const isHttps = target.protocol === 'https:'
-    const headers = buildUpstreamHeaders(req.headers, target.host, this.opts.authorization)
+    const q = stripQueryCredentials(target.search)
+    const headers = buildUpstreamHeaders(req.headers, target.host, this.opts.key, q.hadKey)
 
     const fn = isHttps ? httpsRequest : httpRequest
     const upstream = fn(
@@ -304,7 +339,7 @@ export class CredentialProxy {
         protocol: target.protocol,
         hostname: target.hostname,
         port: target.port || (isHttps ? 443 : 80),
-        path: `${target.pathname}${target.search}`,
+        path: `${target.pathname}${q.search}`,
         method: req.method,
         headers
       },

@@ -188,13 +188,13 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     const baseUrls: Record<string, string> = {}
     if (auth) {
       for (const [id, entry] of Object.entries(auth)) {
-        const target = PROVIDER_TARGETS[id]
-        if (!target || target.auth !== 'bearer' || !entry.key) continue
+        const target = Object.prototype.hasOwnProperty.call(PROVIDER_TARGETS, id) ? PROVIDER_TARGETS[id] : undefined
+        if (!target || !entry || typeof entry.key !== 'string' || !entry.key) continue
         const cred = new CredentialProxy({
           token: randomToken(),
           targetOrigin: target.origin,
           targetPathPrefix: target.pathPrefix,
-          authorization: `Bearer ${entry.key}`
+          key: entry.key
         })
         await cred.start()
         credentialProxies.push(cred)

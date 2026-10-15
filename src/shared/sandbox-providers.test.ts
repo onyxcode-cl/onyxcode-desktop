@@ -3,11 +3,13 @@ import { sandboxProviderNotice, sandboxProviderPendingNotice, sandboxModelNotice
 
 describe('sandboxModelNotice', () => {
   it('OpenCode Go en sandbox: sin aviso', () => {
-    expect(sandboxModelNotice(true, 'opencode-go')).toBeNull()
+    for (const p of ['opencode-go', 'openai', 'anthropic', 'google']) expect(sandboxModelNotice(true, p)).toBeNull()
   })
   it('otro proveedor en sandbox: aviso claro', () => {
-    for (const p of ['openai', 'anthropic', 'google']) expect(sandboxModelNotice(true, p)).toBe(sandboxProviderNotice())
-    expect(sandboxProviderNotice()).toContain('solo está disponible OpenCode Go')
+    for (const p of ['github-copilot', 'amazon-bedrock', 'azure', 'google-vertex'])
+      expect(sandboxModelNotice(true, p)).toBe(sandboxProviderNotice())
+    expect(sandboxProviderNotice()).toContain('clave de API')
+    expect(sandboxProviderNotice()).not.toContain('solo está disponible OpenCode Go')
   })
   it('los modelos gratuitos de OpenCode no llevan aviso', () => {
     expect(sandboxModelNotice(true, 'opencode')).toBeNull()
@@ -19,14 +21,15 @@ describe('sandboxModelNotice', () => {
 
 describe('sandboxSendBlocked', () => {
   it('bloquea solo si el servidor sandboxeado no tiene el proveedor', () => {
-    expect(sandboxSendBlocked(['opencode-go', 'opencode'], 'openai')).toBe(sandboxProviderNotice())
+    expect(sandboxSendBlocked(['opencode-go', 'opencode'], 'amazon-bedrock')).toBe(sandboxProviderNotice())
     expect(sandboxSendBlocked(['opencode-go', 'opencode'], 'opencode-go')).toBeNull()
   })
   it('distingue «OpenCode Go aún no llegó» de «proveedor no admitido»', () => {
     expect(sandboxSendBlocked(['opencode'], 'opencode-go')).toBe(sandboxProviderPendingNotice())
     expect(sandboxProviderPendingNotice()).toContain('aún no llegó')
     expect(sandboxProviderPendingNotice()).not.toBe(sandboxProviderNotice())
-    expect(sandboxSendBlocked(['opencode'], 'openai')).toBe(sandboxProviderNotice())
+    expect(sandboxSendBlocked(['opencode'], 'github-copilot')).toBe(sandboxProviderNotice())
+    expect(sandboxSendBlocked(['opencode'], 'openai')).toBe(sandboxProviderPendingNotice())
   })
   it('sin lista (consulta fallida) no bloquea', () => {
     expect(sandboxSendBlocked(null, 'openai')).toBeNull()

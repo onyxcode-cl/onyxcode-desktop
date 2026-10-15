@@ -193,8 +193,8 @@
           "kind": "cred",
           "token": "tok2",
           "targetOrigin": "https://opencode.ai",
-          "targetPathPrefix": "/zen/go/v1",
-          "authorization": "Bearer sk-FIXTURE-real-key"
+          "targetPathPrefix": "/inference/go/v1",
+          "key": "sk-FIXTURE-real-key"
         },
         {
           "kind": "cred.start",
