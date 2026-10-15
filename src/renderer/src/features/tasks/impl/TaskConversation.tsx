@@ -36,6 +36,7 @@ import { elementTextsOf, isElementContextText, parseElementContext } from '../..
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
 import { friendlyTool, isVisibleText } from './util'
+import { isPlanGateText } from '../../../lib/plan-gate'
 import { expandStepGroups, useReadingMode, visibleStepParts } from '../../../lib/reading-mode'
 import { isRemoteSurface } from '../../../lib/platform'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
@@ -161,7 +162,7 @@ const StepsBlock = memo(
     }, [forceOpen])
     const tools = parts.filter((p): p is ToolPart => p.type === 'tool')
     const running = live ? [...tools].reverse().find((t) => t.state.status === 'running' || t.state.status === 'pending') : undefined
-    const failed = tools.filter((t) => t.state.status === 'error').length
+    const failed = tools.filter((t) => t.state.status === 'error' && !isPlanGateText(t.state.error)).length
     const lastTool = running ?? tools[tools.length - 1]
     const current = lastTool ? friendlyTool(lastTool, showPath) : null
     const lastShot = useMemo(() => {

@@ -91,6 +91,7 @@ export const tasks = {
   'tasks.work.stepsLabel': 'Plan steps',
   'tasks.tool.plan.verb': 'Asked for your approval',
   'tasks.tool.plan.detail': 'of the plan',
+  'tasks.gate.waiting': 'Waiting for your plan approval: this task is in Full control and won’t start until you approve it.',
   'tasks.tool.skill.verb': 'Prepared',
   'tasks.skill.xlsx': 'Excel',
   'tasks.skill.docx': 'Word',

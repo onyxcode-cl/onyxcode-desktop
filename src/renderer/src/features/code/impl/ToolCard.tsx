@@ -8,6 +8,7 @@ import { memo, useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { t, type MsgKey } from '@shared/i18n'
 import { splitPath } from '../../../lib/paths'
+import { friendlyToolError, isPlanGateText } from '../../../lib/plan-gate'
 import { useLocale, useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { m } from '../../../app/mobile/m'
@@ -290,8 +291,11 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
   const output = state.status === 'completed' ? state.output : ''
-  const error = state.status === 'error' ? state.error : ''
-  const errorBlock = error ? <div className="px-3 py-2 font-mono text-xs whitespace-pre-wrap text-danger">{error}</div> : null
+  const error = state.status === 'error' ? friendlyToolError(state.error) : ''
+  const gated = state.status === 'error' && isPlanGateText(state.error)
+  const errorBlock = error ? (
+    <div className={`px-3 py-2 text-xs whitespace-pre-wrap ${gated ? 'text-muted' : 'font-mono text-danger'}`}>{error}</div>
+  ) : null
   const running = state.status === 'running' || state.status === 'pending'
   const tool = part.tool
   const kind = toolKind(tool)

@@ -5,6 +5,7 @@
  * cada ejecución) y Actividad agrupada por paso.
  */
 import { useEffect, useMemo, useState } from 'react'
+import { friendlyToolError, isPlanGateText } from '../../../lib/plan-gate'
 import type { Todo, ToolPart } from '@opencode-ai/sdk/v2/client'
 import {
   AlertCircle,
@@ -81,7 +82,7 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
   const Icon = STEP_ICON[kind]
   const tone = STEP_TONE[kind]
   const running = part.state.status === 'running'
-  const failed = part.state.status === 'error'
+  const failed = part.state.status === 'error' && !isPlanGateText(part.state.error)
   const at = stepStartedAt(part.state)
   return (
     <li className="text-xs">
@@ -109,8 +110,11 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
         )}
       </div>
       {part.state.status === 'error' && (
-        <p className="mt-0.5 ml-7 line-clamp-2 text-danger" title={part.state.error}>
-          {part.state.error}
+        <p
+          className={`mt-0.5 ml-7 line-clamp-2 ${isPlanGateText(part.state.error) ? 'text-muted' : 'text-danger'}`}
+          title={friendlyToolError(part.state.error)}
+        >
+          {friendlyToolError(part.state.error)}
         </p>
       )}
       {images.length > 0 && (
@@ -126,7 +130,7 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
   const tr = useT()
   const [open, setOpen] = useState(live)
   const [showAll, setShowAll] = useState(false)
-  const failed = tools.filter((t) => t.state.status === 'error').length
+  const failed = tools.filter((t) => t.state.status === 'error' && !isPlanGateText(t.state.error)).length
   const visible = showAll ? tools : tools.slice(-8)
   return (
     <li>

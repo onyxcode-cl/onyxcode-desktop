@@ -865,6 +865,7 @@
  "tasks.ctx.webPage",
  "tasks.ctx.webSearch",
  "tasks.deliv.savePdf",
+ "tasks.gate.waiting",
  "tasks.learn.cardHint",
  "tasks.learn.cardTitle",
  "tasks.learn.discard",
