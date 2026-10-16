@@ -64,6 +64,7 @@ import {
   PlanAccessCard,
   VisionModelHint
 } from './ComputerAccess'
+import { TasksEnvironment } from './TasksEnvironment'
 import { hasTasksBridge, onTasks } from './bridge'
 import { useFolderDrop } from './useFolderDrop'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
@@ -701,6 +702,7 @@ export function TasksWorkspace(): React.JSX.Element {
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
               <ReadingModeSwitch />
               {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
+              {(phase === 'ready' || phase === 'error') && <TasksEnvironment disabled={folderBusy} />}
               <TaskMenu items={menuItems} />
               {folder && (
                 <button
