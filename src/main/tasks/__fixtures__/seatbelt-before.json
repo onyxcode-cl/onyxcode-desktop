@@ -219,7 +219,7 @@
     },
     {
       "name": "sin-isolation",
-      "error": "Falta el directorio privado del sandbox de las tareas.",
+      "error": "Falta la carpeta interna donde las tareas guardan su trabajo. Reinicia la app.",
       "spawns": [],
       "profileFileExistsBeforeStop": null,
       "handleInfo": null,

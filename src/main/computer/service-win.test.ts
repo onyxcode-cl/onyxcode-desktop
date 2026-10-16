@@ -186,7 +186,7 @@ describe('Windows: estado sin TCC', () => {
     vi.spyOn(s, 'helperPath').mockReturnValue(null)
     const info = await s.info()
     expect(info.available).toBe(false)
-    expect(info.reason).toMatch(/helper/i)
+    expect(info.reason).toMatch(/componente de la app/i)
     expect(h.helper).not.toHaveBeenCalled()
   })
 
