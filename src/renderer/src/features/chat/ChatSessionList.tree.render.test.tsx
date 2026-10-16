@@ -34,6 +34,7 @@ describe('ChatSessionList dentro del árbol de la barra lateral (2c)', () => {
   it('la ocupada lleva punto de acento, «Trabajando» y el estado en su nombre accesible', () => {
     expect(html).toContain('data-state="working"')
     expect(html).toContain('aria-label="Plan de viaje · trabajando"')
-    expect(html).toContain('>Trabajando</span>')
+    // Segunda línea de la fila de dos líneas (como Overdrive), en acento.
+    expect(html).toContain('>Trabajando</div>')
   })
 })
