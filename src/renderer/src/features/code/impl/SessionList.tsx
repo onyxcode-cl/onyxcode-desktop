@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { displayTitle } from './session-title'
+import { focusNeutral, hasKeyboardFocus, newSessionHere } from './new-session-plus'
 import { dayBucket } from './day-bucket'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
@@ -519,9 +520,14 @@ export async function askCloseProject(t: ReturnType<typeof useT>, directory: str
       confirmLabel: t('code.sessions.closeProjectConfirm'),
       danger: true
     })
-    if (!ok) return
+    if (!ok) {
+      focusNeutral()
+      return
+    }
   }
   useCode.getState().closeOneProject(directory)
+  // El botón pulsado desaparece con el proyecto: el foco no debe caer en el «+» de otra fila al reordenarse la lista.
+  focusNeutral()
 }
 
 /** Un proyecto abierto: fila plegable + sus sesiones debajo. Varias instancias conviven en `SessionList` (una por proyecto abierto). */
@@ -609,7 +615,17 @@ function ProjectGroup({
   return (
     <div className="flex min-h-0 shrink-0 flex-col">
       {/* En el `body`: un diálogo dentro del árbol de la barra lateral rompe su estructura ARIA. */}
-      {worktreeOpen && createPortal(<NewWorktreeDialog directory={directory} onClose={() => setWorktreeOpen(false)} />, document.body)}
+      {worktreeOpen &&
+        createPortal(
+          <NewWorktreeDialog
+            directory={directory}
+            onClose={() => {
+              setWorktreeOpen(false)
+              focusNeutral()
+            }}
+          />,
+          document.body
+        )}
       {desktop && (
         <div
           className="group/proj relative flex h-7 shrink-0 items-center rounded-ctl hover:bg-hover focus-within:bg-hover"
@@ -672,13 +688,18 @@ function ProjectGroup({
             >
               <Search size={14} strokeWidth={1.75} />
             </button>
-            {/* «+»: nueva sesión dentro del proyecto (sale al pasar o enfocar la fila; «Nueva sesión» de la barra crea en el enfocado). */}
+            {/* «+»: nueva sesión dentro del proyecto. Siempre visible, al borde derecho y separado 8 px del resto; solo responde a
+                Return/Espacio con foco de teclado real (no con uno heredado tras cerrar un diálogo) y no repite en 400 ms. */}
             <button
               type="button"
+              data-testid="project-new-session"
               title={t('code.sessions.newHere')}
               aria-label={t('code.sessions.newHere')}
-              onClick={() => focusThen(() => void useCode.getState().newSessionAt(directory))}
-              className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+              onClick={(e) => {
+                if (e.detail === 0 && !hasKeyboardFocus(e.currentTarget)) return
+                focusThen(() => void newSessionHere(directory))
+              }}
+              className="no-drag ml-2 flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
             >
               <Plus size={14} strokeWidth={1.75} />
             </button>
@@ -839,7 +860,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const groups = desktop ? openDirectories : [directory]
 
   return (
-    <div className="flex min-h-0 flex-col gap-0.5">
+    <div data-session-list-root="" tabIndex={-1} className="flex min-h-0 flex-col gap-0.5 outline-none">
       <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
       <SidebarTreeRegion>
         {groups.map((dir) => (
