@@ -121,5 +121,7 @@ export const common = {
   'env.mode.needFolder': 'To go back to “Only in your folder”, first authorize a folder.',
   'env.restore.label': 'Restore point',
   'env.restore.on': 'active',
-  'env.restore.off': 'not available in Full control over the home folder'
+  'env.restore.off': 'not available in Full control over the home folder',
+  'perm.details.show': 'Show details',
+  'perm.details.hide': 'Hide details'
 } as const satisfies Messages<typeof es>

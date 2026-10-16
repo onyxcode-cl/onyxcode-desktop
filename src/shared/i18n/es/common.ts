@@ -119,5 +119,7 @@ export const common = {
   'env.mode.needFolder': 'Para volver a «Solo en tu carpeta» primero autoriza una carpeta.',
   'env.restore.label': 'Punto de restauración',
   'env.restore.on': 'activo',
-  'env.restore.off': 'no disponible en Control total sobre la carpeta personal'
+  'env.restore.off': 'no disponible en Control total sobre la carpeta personal',
+  'perm.details.show': 'Ver detalles',
+  'perm.details.hide': 'Ocultar detalles'
 } as const

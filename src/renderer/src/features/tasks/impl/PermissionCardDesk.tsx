@@ -11,7 +11,9 @@ import {
   PermActions,
   PermCardFrame,
   PermCommand,
+  PermPreview,
   PermScope,
+  previewFits,
   usePermGuard,
   type PermAction
 } from '../../../components/permission/PermissionShell'
@@ -83,6 +85,82 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
   ]
   const shownActions = noting ? actions.filter((a) => a.label !== rejectNote) : actions
 
+  // El detalle nace abierto si el resumen de una línea no muestra todo lo que se aprueba: comando largo, de varias líneas o con
+  // caracteres ocultos, parámetros sin comando que resumir o un diff con caracteres ocultos.
+  const openDetails =
+    (!!d.detail && !previewFits(d.detail, hasHiddenChars(d.detail))) ||
+    (!d.detail && !!d.sections?.length) ||
+    (!!d.diff && hasHiddenChars(d.diff)) ||
+    !!d.sections?.some((sec) => hasHiddenChars(sec.text))
+
+  const details = (
+    <>
+      {d.detail && (
+        <PermCommand
+          text={d.detail}
+          prompt={isBash}
+          hasHidden={hasHiddenChars(d.detail)}
+          hiddenMessage={t('tasksComputer.perm.hidden')}
+          longMessage={(n) => t('tasksComputer.perm.cmdLong', { n })}
+        />
+      )}
+      {d.diff && (
+        <div className="overflow-hidden rounded-ctl bg-code ring-1 ring-inset ring-border">
+          {showDiff ? (
+            <DiffView patch={d.diff} path={d.file} hideFileHeaders className="max-h-56" />
+          ) : (
+            <pre className="max-h-56 overflow-auto px-3 py-2.5 font-mono text-[13px] whitespace-pre-wrap">{d.diff}</pre>
+          )}
+        </div>
+      )}
+      {d.diff && hasHiddenChars(d.diff) && (
+        <p className="flex items-start gap-1.5 text-meta text-danger">
+          <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+          {t('tasksComputer.perm.hidden')}
+        </p>
+      )}
+      {d.sections?.map((sec) => (
+        <div key={sec.label}>
+          <p className="text-caption font-medium text-subtle">{sec.label}</p>
+          <div className="mt-1 rounded-ctl bg-code ring-1 ring-inset ring-border">
+            <pre className="max-h-32 overflow-auto px-3 py-2.5 font-mono text-[13px] whitespace-pre-wrap">{sec.text}</pre>
+          </div>
+          {hasHiddenChars(sec.text) && (
+            <p className="mt-1.5 flex items-start gap-1.5 text-meta text-danger">
+              <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+              {t('tasksComputer.perm.hidden')}
+            </p>
+          )}
+        </div>
+      ))}
+      {d.aiDescription && (
+        <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
+          <p className="text-caption font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
+          <p className="mt-0.5 text-ui text-muted">{d.aiDescription}</p>
+        </div>
+      )}
+      <PermScope>
+        {folder && (
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <Folder size={14} className="shrink-0" />
+            <span className="truncate">{displayFolder(folder, home)}</span>
+          </span>
+        )}
+        {fullAccess ? (
+          <span className="inline-flex items-center gap-1.5 text-danger">
+            <ShieldAlert size={14} />
+            {t('tasksComputer.perm.sandboxOff')}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-accent">
+            <ShieldCheck size={14} />
+            {t('tasksComputer.perm.sandboxOn')}
+          </span>
+        )}
+      </PermScope>
+    </>
+  )
+
   return (
     <>
       <p className="sr-only" aria-live="polite">
@@ -96,71 +174,11 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
         icon={d.icon}
         title={d.title}
         effect={d.effect}
+        preview={d.detail ? <PermPreview text={d.detail} prompt={isBash} danger={d.danger} /> : undefined}
+        details={details}
+        detailsOpen={openDetails}
         onKeyDown={onKeyDown}
       >
-        {d.detail && (
-          <PermCommand
-            text={d.detail}
-            prompt={isBash}
-            hasHidden={hasHiddenChars(d.detail)}
-            hiddenMessage={t('tasksComputer.perm.hidden')}
-            longMessage={(n) => t('tasksComputer.perm.cmdLong', { n })}
-          />
-        )}
-        {d.diff && (
-          <div className="overflow-hidden rounded-ctl bg-code ring-1 ring-inset ring-border">
-            {showDiff ? (
-              <DiffView patch={d.diff} path={d.file} hideFileHeaders className="max-h-56" />
-            ) : (
-              <pre className="max-h-56 overflow-auto px-3 py-2.5 font-mono text-[13px] whitespace-pre-wrap">{d.diff}</pre>
-            )}
-          </div>
-        )}
-        {d.diff && hasHiddenChars(d.diff) && (
-          <p className="flex items-start gap-1.5 text-meta text-danger">
-            <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-            {t('tasksComputer.perm.hidden')}
-          </p>
-        )}
-        {d.sections?.map((sec) => (
-          <div key={sec.label}>
-            <p className="text-caption font-medium text-subtle">{sec.label}</p>
-            <div className="mt-1 rounded-ctl bg-code ring-1 ring-inset ring-border">
-              <pre className="max-h-32 overflow-auto px-3 py-2.5 font-mono text-[13px] whitespace-pre-wrap">{sec.text}</pre>
-            </div>
-            {hasHiddenChars(sec.text) && (
-              <p className="mt-1.5 flex items-start gap-1.5 text-meta text-danger">
-                <ShieldAlert size={13} className="mt-0.5 shrink-0" />
-                {t('tasksComputer.perm.hidden')}
-              </p>
-            )}
-          </div>
-        ))}
-        {d.aiDescription && (
-          <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
-            <p className="text-caption font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
-            <p className="mt-0.5 text-ui text-muted">{d.aiDescription}</p>
-          </div>
-        )}
-        <PermScope>
-          {folder && (
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <Folder size={14} className="shrink-0" />
-              <span className="truncate">{displayFolder(folder, home)}</span>
-            </span>
-          )}
-          {fullAccess ? (
-            <span className="inline-flex items-center gap-1.5 text-danger">
-              <ShieldAlert size={14} />
-              {t('tasksComputer.perm.sandboxOff')}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-accent">
-              <ShieldCheck size={14} />
-              {t('tasksComputer.perm.sandboxOn')}
-            </span>
-          )}
-        </PermScope>
         {error && (
           <p role="alert" className="text-meta text-danger">
             {error}

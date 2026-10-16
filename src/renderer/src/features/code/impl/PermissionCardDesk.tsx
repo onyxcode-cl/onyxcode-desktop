@@ -9,8 +9,11 @@ import type { MsgKey } from '@shared/i18n'
 import {
   PermActions,
   PermCardFrame,
+  hasHiddenChars,
   PermCommand,
+  PermPreview,
   PermScope,
+  previewFits,
   usePermGuard,
   type PermAction
 } from '../../../components/permission/PermissionShell'
@@ -97,22 +100,15 @@ export function PermissionCardDesk({
     }
   ]
 
-  return (
-    <PermCardFrame
-      id={request.id}
-      danger={false}
-      armed={armed}
-      busy={busy}
-      icon={Icon}
-      title={t('code.perm.agentWants', { label })}
-      onKeyDown={onKeyDown}
-    >
-      {file && (
-        <div className="flex items-center gap-2 font-mono text-meta text-muted">
-          <span className="truncate">{relPath(file, root)}</span>
-          {stats && <DiffStats {...stats} />}
-        </div>
-      )}
+  const previewText = command || (file ? relPath(file, root) : patterns.map((p) => relPath(p, root)).join(', '))
+  const previewNode = previewText ? (
+    <PermPreview text={previewText} prompt={!!command} extra={!command && stats ? <DiffStats {...stats} /> : undefined} />
+  ) : undefined
+  // Nace abierto si el resumen de una línea no muestra todo el comando (largo, varias líneas o caracteres ocultos).
+  const openDetails = !!previewText && !previewFits(previewText, hasHiddenChars(previewText))
+
+  const details = (
+    <>
       {command && (
         <PermCommand text={command} prompt hasHidden={false} hiddenMessage="" longMessage={(n) => t('code.perm.cmdLong', { n })} />
       )}
@@ -142,6 +138,22 @@ export function PermissionCardDesk({
           </span>
         </PermScope>
       )}
+    </>
+  )
+
+  return (
+    <PermCardFrame
+      id={request.id}
+      danger={false}
+      armed={armed}
+      busy={busy}
+      icon={Icon}
+      title={t('code.perm.agentWants', { label })}
+      preview={previewNode}
+      details={details}
+      detailsOpen={openDetails}
+      onKeyDown={onKeyDown}
+    >
       <PermActions actions={actions} armed={armed} busy={busy} />
     </PermCardFrame>
   )

@@ -954,9 +954,11 @@ export function PlanAccessCard(): React.JSX.Element | null {
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [detailsOpen, setDetailsOpen] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!req) return
+    setDetailsOpen(null)
     setChoices(Object.fromEntries(req.apps.map((a) => [a.bundleId, defaultAccessDecision(a)])))
     setEditing(false)
     setFeedback('')
@@ -1009,6 +1011,14 @@ export function PlanAccessCard(): React.JSX.Element | null {
 
   // Plan sin apps (tarea de archivos, documentos o navegador): sin ratón ni teclado, así que no se ve como una alerta.
   const calm = !!req.plan && !hasApps
+  // Resumen de una línea; los pasos y las notas van plegados. Con ratón y teclado (plan no «tranquilo») nacen abiertos.
+  const steps = req.plan?.length ?? 0
+  const summary = req.reason
+    ? `«${req.reason}»`
+    : steps > 0
+      ? t(steps === 1 ? 'tasksComputer.plan.summaryOne' : 'tasksComputer.plan.summaryMany', { n: steps })
+      : ''
+  const showDetails = detailsOpen ?? !calm
   const title = req.plan
     ? hasApps
       ? t('tasksComputer.plan.titlePlan')
@@ -1031,37 +1041,67 @@ export function PlanAccessCard(): React.JSX.Element | null {
             {calm ? <ListChecks size={18} /> : <ShieldAlert size={18} />}
           </span>
           <div className="min-w-0 flex-1">
-            <h3 id="tasks-plan-access-title" className="text-sm font-semibold text-fg">
-              {title}
-            </h3>
-            {req.plan && (
-              <span
-                className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${calm ? 'bg-success/10 text-success' : 'bg-amber-500/10 text-warning'}`}
-              >
-                {calm ? <Check size={12} aria-hidden /> : <MousePointerClick size={12} aria-hidden />}
-                {calm ? t('tasksComputer.plan.stampBackground') : t('tasksComputer.plan.stampControl')}
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1">
+                <h3 id="tasks-plan-access-title" className="text-sm font-semibold text-fg">
+                  {title}
+                </h3>
+                {req.plan && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${calm ? 'bg-success/10 text-success' : 'bg-amber-500/10 text-warning'}`}
+                  >
+                    {calm ? <Check size={12} aria-hidden /> : <MousePointerClick size={12} aria-hidden />}
+                    {calm ? t('tasksComputer.plan.stampBackground') : t('tasksComputer.plan.stampControl')}
+                  </span>
+                )}
+              </div>
+              {
+                <button
+                  type="button"
+                  aria-expanded={showDetails}
+                  aria-controls="tasks-plan-access-details"
+                  onClick={() => setDetailsOpen(!showDetails)}
+                  className="no-drag inline-flex shrink-0 items-center gap-1 rounded-ctl px-2 py-1 text-xs text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
+                >
+                  {showDetails ? t('perm.details.hide') : t('perm.details.show')}
+                  <ChevronDown size={14} aria-hidden className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+                </button>
+              }
+            </div>
+            {summary && !(showDetails && req.reason) && (
+              <p className="mt-1 truncate text-sm text-muted" title={summary}>
+                {summary}
+              </p>
             )}
-            {req.reason && <p className="mt-1.5 text-sm text-muted">«{req.reason}»</p>}
-            {req.plan && req.plan.length > 0 && (
-              <ol className="mt-2.5 space-y-1.5 rounded-lg border border-border bg-hover/60 px-3 py-2.5 text-sm text-fg">
-                {req.plan.map((step, i) => (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <span
-                      aria-hidden
-                      className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-warning'}`}
-                    >
-                      {i + 1}
-                    </span>
-                    <span className="min-w-0 flex-1">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {!hasApps && <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.plan.noApps')}</p>}
             {req.unresolved && req.unresolved.length > 0 && (
-              <p className="mt-2.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
+              <p className="mt-1.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
             )}
+            {
+              <div id="tasks-plan-access-details" hidden={!showDetails}>
+                {req.reason && <p className="mt-1.5 text-sm text-muted">«{req.reason}»</p>}
+                {req.plan && req.plan.length > 0 && (
+                  <ol className="mt-2.5 space-y-1.5 rounded-lg border border-border bg-hover/60 px-3 py-2.5 text-sm text-fg">
+                    {req.plan.map((step, i) => (
+                      <li key={i} className="flex items-start gap-2.5">
+                        <span
+                          aria-hidden
+                          className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-warning'}`}
+                        >
+                          {i + 1}
+                        </span>
+                        <span className="min-w-0 flex-1">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                {!hasApps && <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.plan.noApps')}</p>}
+                <p className="mt-2.5 text-xs text-muted">
+                  {t('tasksComputer.noTimeout')}
+                  {hasApps && ` ${t('tasksComputer.plan.neverLowers')}`}
+                  {hasApps && ` ${t('tasksComputer.plan.mouseKeyboard')} ${t('tasksComputer.plan.filesHint')}`}
+                </p>
+              </div>
+            }
             {hasApps && (
               <ul className="mt-3 space-y-2">
                 {req.apps.map((a) => (
@@ -1078,11 +1118,6 @@ export function PlanAccessCard(): React.JSX.Element | null {
                 ))}
               </ul>
             )}
-            <p className="mt-2.5 text-xs text-muted">
-              {t('tasksComputer.noTimeout')}
-              {hasApps && ` ${t('tasksComputer.plan.neverLowers')}`}
-              {hasApps && ` ${t('tasksComputer.plan.mouseKeyboard')} ${t('tasksComputer.plan.filesHint')}`}
-            </p>
             {editing ? (
               <div className="mt-3">
                 <label htmlFor="tasks-access-feedback" className="mb-1 block text-xs font-medium text-muted">
