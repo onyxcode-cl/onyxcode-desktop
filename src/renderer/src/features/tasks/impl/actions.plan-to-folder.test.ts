@@ -41,6 +41,38 @@ describe('switchPlanToFolderMode', () => {
     }
   )
 
+  it.each(['Ordena los archivos de la carpeta', 'Resume el informe de ventas'])(
+    'deja el último mensaje del usuario (%s) en el compositor para reenviarlo',
+    async (text) => {
+      const { useSessions } = await import('../../../stores/sessions')
+      const msg = (role: string, t: string): never => ({ info: { id: t, role }, parts: [{ type: 'text', text: t }] }) as never
+      useSessions.setState({ messages: { s1: [msg('user', 'primero'), msg('assistant', 'ok'), msg('user', text)] } } as never)
+      C.useTasks.setState({
+        folder: '/Users/ana',
+        folders: [{ path: '/Users/ana' }] as never,
+        accessRequest: REQ([]),
+        activeTaskId: 's1',
+        draft: ''
+      })
+      await A.switchPlanToFolderMode()
+      expect(C.useTasks.getState().draft).toBe(text)
+    }
+  )
+
+  it('no pisa lo que el usuario ya estaba escribiendo', async () => {
+    const { useSessions } = await import('../../../stores/sessions')
+    useSessions.setState({ messages: { s1: [{ info: { id: 'm', role: 'user' }, parts: [{ type: 'text', text: 'viejo' }] }] } } as never)
+    C.useTasks.setState({
+      folder: '/a',
+      folders: [{ path: '/a' }] as never,
+      accessRequest: REQ([]),
+      activeTaskId: 's1',
+      draft: 'nuevo texto'
+    })
+    await A.switchPlanToFolderMode()
+    expect(C.useTasks.getState().draft).toBe('nuevo texto')
+  })
+
   it.each([
     ['sin carpeta', null, []],
     ['carpeta no autorizada', '/Users/ana', [{ path: '/Users/ana/otra' }]]
