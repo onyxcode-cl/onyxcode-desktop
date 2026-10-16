@@ -627,7 +627,7 @@ export class TasksMonitor {
   /** Tarea terminada: distingue error y aborto (sin aviso) del fin normal. */
   private async finishRoot(st: ServerState, rootId: string, title: string): Promise<void> {
     const prefs = this.deps.prefs.get()
-    if (this.isWatchedNow(st) || (!prefs.notify.done && !prefs.notify.error)) return
+    if (this.isWatchedNow(st) || !prefs.notify.enabled || (!prefs.notify.done && !prefs.notify.error)) return
     let kind: MonitorNotifyKind = 'done'
     const r = await this.req<Array<{ info?: { role?: string; error?: { name?: string } } }>>(
       st,
@@ -647,7 +647,8 @@ export class TasksMonitor {
   }
 
   private emitNotify(st: ServerState, ev: MonitorNotifyEvent): void {
-    if (!this.deps.prefs.get().notify[ev.kind]) return
+    const np = this.deps.prefs.get().notify
+    if (!np.enabled || !np[ev.kind]) return
     if (this.isWatchedNow(st)) return
     try {
       this.deps.notify(ev)

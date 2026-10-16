@@ -236,7 +236,7 @@ function NumberField({
   )
 }
 
-const NOTIFY_ROWS: Array<{ key: keyof TasksNotifyPrefs; label: MsgKey; description: MsgKey }> = [
+const NOTIFY_ROWS: Array<{ key: Exclude<keyof TasksNotifyPrefs, 'enabled'>; label: MsgKey; description: MsgKey }> = [
   { key: 'done', label: 'tasksSettings.notify.done.label', description: 'tasksSettings.notify.done.desc' },
   { key: 'approval', label: 'tasksSettings.notify.approval.label', description: 'tasksSettings.notify.approval.desc' },
   { key: 'question', label: 'tasksSettings.notify.question.label', description: 'tasksSettings.notify.question.desc' },
@@ -663,6 +663,14 @@ export function TasksSection(): React.JSX.Element {
       {/* 4 · Notificaciones por tipo */}
       <Group title={t('tasksSettings.notify.title')} description={t('tasksSettings.notify.desc')}>
         <Card>
+          <Row label={t('tasksSettings.notify.master.label')} description={t('tasksSettings.notify.master.desc')}>
+            <Toggle
+              checked={prefs?.notify.enabled ?? true}
+              disabled={!prefs}
+              onChange={(v) => prefs && savePrefs({ notify: { ...prefs.notify, enabled: v } }, 'notify')}
+              label={t('tasksSettings.notify.master.label')}
+            />
+          </Row>
           {NOTIFY_ROWS.map((n) => (
             <Row key={n.key} label={t(n.label)} description={t(n.description)}>
               <Toggle
