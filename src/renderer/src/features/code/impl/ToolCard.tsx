@@ -215,7 +215,7 @@ function Row({ icon, verb, detail, extra, status, autoOpen = false, children }: 
 export function DiffStats({ additions, deletions }: { additions: number; deletions: number }): React.JSX.Element | null {
   if (!additions && !deletions) return null
   return (
-    <span className="font-mono text-[11px] tabular-nums">
+    <span className="font-mono text-[11px] desk:text-meta tabular-nums">
       <span className={ADD_TEXT}>+{additions}</span> <span className={DEL_TEXT}>-{deletions}</span>
     </span>
   )
@@ -321,7 +321,7 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           autoOpen={running && !!live}
           extra={
             exit !== undefined && exit !== 0 ? (
-              <span className="rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">
+              <span className="rounded bg-danger/10 px-1.5 text-[11px] desk:text-meta font-medium text-danger">
                 {'exit '}
                 {exit}
               </span>
@@ -519,7 +519,7 @@ export function StepGroup({ parts, root, live, hasPending, after, forceOpen }: S
         <span className="shrink-0 font-medium text-fg/90">{plural(parts.length, 'code.n.step')}</span>
         <span className="min-w-0 truncate">{summary}</span>
         {errors > 0 && (
-          <span className="ml-auto shrink-0 rounded bg-danger/10 px-1.5 text-[11px] font-medium text-danger">
+          <span className="ml-auto shrink-0 rounded bg-danger/10 px-1.5 text-[11px] desk:text-meta font-medium text-danger">
             {plural(errors, 'code.n.error')}
           </span>
         )}

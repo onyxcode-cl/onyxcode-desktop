@@ -33,7 +33,7 @@ export function Section({
           <span>{title}</span>
           {badge !== undefined && (
             <span
-              className={`rounded-full bg-hover px-1.5 text-[11px] font-medium text-muted desk:h-[18px] desk:min-w-[18px] desk:bg-active desk:px-[5px] desk:text-[11px] desk:font-semibold desk:leading-[18px]${
+              className={`rounded-full bg-hover px-1.5 text-[11px] desk:text-meta font-medium text-muted desk:h-[18px] desk:min-w-[18px] desk:bg-active desk:px-[5px] desk:text-[11px] desk:font-semibold desk:leading-[18px]${
                 badgeTone === 'plain' ? ' desk:bg-transparent desk:font-normal desk:text-subtle' : ''
               }`}
             >

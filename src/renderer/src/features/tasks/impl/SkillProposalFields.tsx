@@ -23,7 +23,7 @@ export function SkillProposalFields({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-bg p-2.5">
       <div>
-        <label className="text-[11px] font-medium text-subtle">{t('tasks.skill.nameLabel')}</label>
+        <label className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasks.skill.nameLabel')}</label>
         <input
           value={draft.name}
           onChange={(e) => onChange({ name: e.target.value.slice(0, 64) })}
@@ -31,7 +31,7 @@ export function SkillProposalFields({
         />
       </div>
       <div>
-        <label className="text-[11px] font-medium text-subtle">{t('tasks.skill.descriptionLabel')}</label>
+        <label className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasks.skill.descriptionLabel')}</label>
         <textarea
           value={draft.description}
           onChange={(e) => onChange({ description: e.target.value.slice(0, 1024) })}
@@ -40,7 +40,7 @@ export function SkillProposalFields({
         />
       </div>
       <div>
-        <label className="text-[11px] font-medium text-subtle">{t('tasks.skill.bodyLabel')}</label>
+        <label className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasks.skill.bodyLabel')}</label>
         <textarea
           value={draft.body}
           onChange={(e) => onChange({ body: e.target.value.slice(0, 20_000) })}

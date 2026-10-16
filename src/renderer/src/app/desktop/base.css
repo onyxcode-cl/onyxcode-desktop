@@ -12,6 +12,8 @@
   font-family: var(--font-ui);
   border-radius: var(--radius-2xs);
   font-variant-numeric: tabular-nums;
+  /* 0.78em sobre 13 px daba ~10 px: el atajo no baja de 12 px en escritorio (legibilidad en pantallas chicas). */
+  font-size: max(12px, 0.78em);
 }
 
 /* sin capa: la regla de foco de globals.css (`:where(button…):focus-visible { border-radius: var(--radius-sm) }`) no tiene capa y

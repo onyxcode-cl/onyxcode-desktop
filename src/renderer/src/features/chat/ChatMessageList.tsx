@@ -161,7 +161,7 @@ const ChatUserRow = memo(function ChatUserRow({
           }}
           className="w-full max-w-[85%] resize-y rounded-xl border border-border-strong bg-elevated px-3 py-2 text-[15px] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"
         />
-        <p className="max-w-[85%] text-right text-[11px] text-subtle">{t('chat.msg.editNote')}</p>
+        <p className="max-w-[85%] text-right text-[11px] desk:text-meta text-subtle">{t('chat.msg.editNote')}</p>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" disabled={pending} onClick={cancel}>
             {t('chat.msg.editCancel')}

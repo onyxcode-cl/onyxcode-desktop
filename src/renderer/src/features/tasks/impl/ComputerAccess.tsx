@@ -693,11 +693,14 @@ export function ControlBanner(): React.JSX.Element | null {
           </div>
         </div>
         {shortcutUnavailable ? (
-          <span className="hidden items-center gap-1 text-[11px] text-white/85 md:flex" title={t('tasksComputer.banner.shortcutOff')}>
+          <span
+            className="hidden items-center gap-1 text-[11px] desk:text-meta text-white/85 md:flex"
+            title={t('tasksComputer.banner.shortcutOff')}
+          >
             <ShieldAlert size={12} /> {t('tasksComputer.banner.shortcutNA')}
           </span>
         ) : (
-          <span className="hidden items-center gap-1 text-[11px] text-white/75 md:flex">
+          <span className="hidden items-center gap-1 text-[11px] desk:text-meta text-white/75 md:flex">
             <Keyboard size={12} /> {t('tasksComputer.shortcut')}
           </span>
         )}
@@ -833,7 +836,7 @@ function TierSegmented({ value, onChange }: { value: AccessDecision; onChange: (
           aria-checked={value === o.v}
           title={o.title}
           onClick={() => onChange(o.v)}
-          className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition ${
+          className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] desk:text-meta font-medium transition ${
             value === o.v ? (o.v === 'deny' ? 'bg-danger/15 text-danger' : 'bg-elevated text-accent shadow-sm') : 'text-muted hover:text-fg'
           }`}
         >
@@ -1085,7 +1088,7 @@ export function PlanAccessCard(): React.JSX.Element | null {
                       <li key={i} className="flex items-start gap-2.5">
                         <span
                           aria-hidden
-                          className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-warning'}`}
+                          className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] desk:text-meta font-semibold ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-warning'}`}
                         >
                           {i + 1}
                         </span>

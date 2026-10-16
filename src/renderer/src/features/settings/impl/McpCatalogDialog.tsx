@@ -163,7 +163,7 @@ export function McpCatalogDialog({
           </p>
 
           <section className="mt-4">
-            <h4 className="text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.canDo')}</h4>
+            <h4 className="text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.canDo')}</h4>
             <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-sm">
               {ct.capabilities.map((c) => (
                 <li key={c}>{c}</li>
@@ -173,7 +173,9 @@ export function McpCatalogDialog({
           </section>
 
           <section className="mt-4">
-            <h4 className="text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.connectsTo')}</h4>
+            <h4 className="text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase">
+              {t('mcp.dlg.connectsTo')}
+            </h4>
             <p className="mt-1.5 text-sm">
               <strong>{host}</strong>
             </p>
@@ -182,7 +184,7 @@ export function McpCatalogDialog({
           </section>
 
           <section className="mt-4">
-            <h4 className="text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.dataOut')}</h4>
+            <h4 className="text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.dataOut')}</h4>
             <p className="mt-1.5 text-sm">{ct.dataLeaves}</p>
           </section>
 
@@ -221,20 +223,22 @@ export function McpCatalogDialog({
                 <Toggle checked={false} disabled label={t('mcp.dlg.tasks')} onChange={() => undefined} />
                 <span className="text-muted">{t('mcp.dlg.tasks')}</span>
               </div>
-              <p className="mt-1 pl-11 text-[11px] text-subtle">{t('mcp.dlg.tasksOff')}</p>
+              <p className="mt-1 pl-11 text-[11px] desk:text-meta text-subtle">{t('mcp.dlg.tasksOff')}</p>
             </div>
           </section>
 
           <section className="mt-4">
-            <h4 className="text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('mcp.dlg.saveExactly')}</h4>
+            <h4 className="text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase">
+              {t('mcp.dlg.saveExactly')}
+            </h4>
             <pre
               tabIndex={0} // región con scroll: debe poder recorrerse con el teclado
               aria-label={t('mcp.dlg.configAria')}
-              className="mt-1.5 max-h-48 overflow-auto rounded-lg border border-border bg-bg p-2.5 font-mono text-[11px] leading-relaxed"
+              className="mt-1.5 max-h-48 overflow-auto rounded-lg border border-border bg-bg p-2.5 font-mono text-[11px] desk:text-meta leading-relaxed"
             >
               {previewJson(item, name || item.name, true, askEachUse)}
             </pre>
-            {item.auth === 'token' && <p className="mt-1 text-[11px] text-subtle">{t('mcp.dlg.tokenPlain')}</p>}
+            {item.auth === 'token' && <p className="mt-1 text-[11px] desk:text-meta text-subtle">{t('mcp.dlg.tokenPlain')}</p>}
           </section>
 
           <p className="mt-4 flex flex-wrap items-center gap-x-2 text-xs text-muted">

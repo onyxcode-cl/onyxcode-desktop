@@ -75,7 +75,7 @@ export function DocNotice({ reason, actionLabel, onAction, busy = false, extra, 
         </div>
       )}
       {detail && showDetail && (
-        <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg p-2 text-[11.5px] text-muted">
+        <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg p-2 text-[11.5px] desk:text-meta text-muted">
           {detail}
         </pre>
       )}

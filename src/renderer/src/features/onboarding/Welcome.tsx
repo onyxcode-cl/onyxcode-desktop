@@ -287,7 +287,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
           {t('wizard.welcome.tagline')}
         </p>
         <p
-          className="welcome-rise mt-3 text-[11.5px] font-medium tracking-[0.18em] text-subtle uppercase"
+          className="welcome-rise mt-3 text-[11.5px] desk:text-meta font-medium tracking-[0.18em] text-subtle uppercase"
           style={{ ['--d' as string]: '750ms' }}
         >
           {t('wizard.welcome.madeBy', { maker: MADE_BY })}

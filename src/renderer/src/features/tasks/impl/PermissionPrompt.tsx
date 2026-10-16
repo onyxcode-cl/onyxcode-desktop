@@ -352,7 +352,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
           )}
           {d.sections?.map((sec) => (
             <div key={sec.label} className="mt-2">
-              <p className="text-[11px] font-medium text-subtle">{sec.label}</p>
+              <p className="text-[11px] desk:text-meta font-medium text-subtle">{sec.label}</p>
               <pre className="mt-1 max-h-32 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
                 {sec.text}
               </pre>
@@ -366,7 +366,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
           ))}
           {d.aiDescription && (
             <div className="mt-2 rounded-md border border-border/70 bg-hover/40 px-2.5 py-1.5">
-              <p className="text-[11px] font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
+              <p className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
               <p className="mt-0.5 text-xs text-muted">{d.aiDescription}</p>
             </div>
           )}
@@ -507,7 +507,7 @@ function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more
             {d.title}
             {more > 0 && <span className="ml-1.5 text-xs font-normal text-muted">{t('tasksComputer.perm.more', { more })}</span>}
           </span>
-          <span className="block truncate font-mono text-[11px] text-muted">{error ?? d.detail}</span>
+          <span className="block truncate font-mono text-[11px] desk:text-meta text-muted">{error ?? d.detail}</span>
         </button>
         <div className="flex shrink-0 items-center gap-1.5">
           {d.kind === 'folder' ? (

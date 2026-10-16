@@ -338,7 +338,9 @@ const UserMessage = memo(
             }}
             className="w-full max-w-[85%] resize-y rounded-xl border border-border-strong bg-elevated px-3 py-2 text-[15px] focus:shadow-[0_0_0_3px_var(--accent-ring)] focus:outline-none"
           />
-          {block.files.length > 0 && <p className="max-w-[85%] text-right text-[11px] text-subtle">{t('tasks.conv.attachNote')}</p>}
+          {block.files.length > 0 && (
+            <p className="max-w-[85%] text-right text-[11px] desk:text-meta text-subtle">{t('tasks.conv.attachNote')}</p>
+          )}
           {error && <p className="max-w-[85%] text-right text-xs text-danger">{error}</p>}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" disabled={busy} onClick={cancel}>
@@ -390,7 +392,7 @@ const UserMessage = memo(
                 setDraft(block.text)
                 setEditing(true)
               }}
-              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle hover:text-fg"
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] desk:text-meta text-subtle hover:text-fg"
               title={t('tasks.conv.editHint')}
             >
               <Pencil size={11} /> {t('tasks.conv.editRetry')}
@@ -399,7 +401,7 @@ const UserMessage = memo(
               type="button"
               disabled={busy}
               onClick={() => void undoHere()}
-              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-subtle hover:text-fg disabled:opacity-50"
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] desk:text-meta text-subtle hover:text-fg disabled:opacity-50"
               title={t('tasks.conv.undoHint')}
             >
               <Undo2 size={11} /> {t('tasks.conv.undoHere')}

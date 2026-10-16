@@ -61,7 +61,7 @@ function MenuItem({
       {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-medium">{label}</span>
-        {hint && <span className="block text-[11.5px] leading-snug text-subtle">{hint}</span>}
+        {hint && <span className="block text-[11.5px] desk:text-meta leading-snug text-subtle">{hint}</span>}
       </span>
       {active && <Check size={14} className="mt-0.5 shrink-0 text-accent" />}
     </button>
@@ -178,7 +178,7 @@ export function EffortChip(): React.JSX.Element | null {
             role="menu"
             className="absolute right-0 bottom-full z-50 mb-2 w-48 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-1 shadow-xl"
           >
-            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle">{t('code.effort.menu')}</div>
+            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] desk:text-meta text-subtle">{t('code.effort.menu')}</div>
             <MenuItem active={!variant} label={t('code.effort.standard')} onClick={() => pick(null)} />
             {variants.map((v) => (
               <MenuItem key={v} active={variant === v} label={v.charAt(0).toUpperCase() + v.slice(1)} onClick={() => pick(v)} />

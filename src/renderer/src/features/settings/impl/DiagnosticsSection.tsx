@@ -77,7 +77,7 @@ function StatusCard(): React.JSX.Element {
       {lastError && (
         <div className="px-4 py-3">
           <div className="mb-1 text-xs font-medium text-muted">{t('misc.diag.lastError')}</div>
-          <pre className="max-h-32 overflow-auto rounded-lg border border-border bg-bg p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-danger">
+          <pre className="max-h-32 overflow-auto rounded-lg border border-border bg-bg p-2 font-mono text-[11px] desk:text-meta leading-relaxed whitespace-pre-wrap text-danger">
             {lastError}
           </pre>
         </div>
@@ -215,7 +215,7 @@ function LogsCard(): React.JSX.Element {
           const el = e.currentTarget
           stickBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24
         }}
-        className="mt-3 h-80 overflow-auto rounded-lg border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all text-fg"
+        className="mt-3 h-80 overflow-auto rounded-lg border border-border bg-bg p-3 font-mono text-[11px] desk:text-meta leading-relaxed whitespace-pre-wrap break-all text-fg"
       >
         {logs === null
           ? t('misc.diag.loading')
@@ -225,7 +225,7 @@ function LogsCard(): React.JSX.Element {
               ? t('misc.diag.noMatch')
               : t('misc.diag.empty')}
       </pre>
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-subtle" aria-live="polite">
+      <div className="mt-1.5 flex items-center justify-between text-[11px] desk:text-meta text-subtle" aria-live="polite">
         <span>
           {logs
             ? `${t('misc.diag.count', { shown: shown.length, total: logs.lines.length })}${logs.truncated ? t('misc.diag.truncated') : ''}`
@@ -234,7 +234,7 @@ function LogsCard(): React.JSX.Element {
         </span>
       </div>
 
-      <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-subtle">
+      <p className="mt-3 flex items-start gap-2 text-[11px] desk:text-meta leading-relaxed text-subtle">
         <ShieldCheck size={13} className="mt-px shrink-0" />
         {t('misc.diag.redactNote')}
       </p>

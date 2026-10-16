@@ -217,7 +217,7 @@ function Launcher({
     >
       <div className="flex h-9 items-center gap-2 px-3 pt-1">
         <span className="text-[13px] font-medium">{t('compare.launcher.title')}</span>
-        <span role="status" aria-live="polite" className="ml-auto text-[11.5px] text-subtle">
+        <span role="status" aria-live="polite" className="ml-auto text-[11.5px] desk:text-meta text-subtle">
           {hint}
         </span>
       </div>
@@ -271,15 +271,17 @@ function Launcher({
               </span>
               <span className="min-w-0 flex-1 truncate text-[13px]">{r.name}</span>
               {isLimitedProvider(r.ref.providerID) && (
-                <span className="shrink-0 text-[10.5px] tracking-[0.06em] text-subtle uppercase">{t('compare.launcher.goLimit')}</span>
+                <span className="shrink-0 text-[10.5px] desk:text-meta tracking-[0.06em] text-subtle uppercase">
+                  {t('compare.launcher.goLimit')}
+                </span>
               )}
-              <span className="max-w-[90px] shrink-0 truncate text-[11.5px] text-subtle">{r.provider}</span>
+              <span className="max-w-[90px] shrink-0 truncate text-[11.5px] desk:text-meta text-subtle">{r.provider}</span>
             </div>
           )
         })}
       </div>
       <div className="flex items-center gap-2 border-t border-border p-2.5">
-        <p className="min-w-0 flex-1 text-[11.5px] leading-snug text-subtle">{t('compare.launcher.note')}</p>
+        <p className="min-w-0 flex-1 text-[11.5px] desk:text-meta leading-snug text-subtle">{t('compare.launcher.note')}</p>
         <Button size="sm" variant="primary" disabled={!!issue} onClick={submit}>
           {t('compare.launcher.submit', { count: selected.length })}
         </Button>

@@ -62,7 +62,9 @@ export function SandboxSetupCard(): React.JSX.Element | null {
             </p>
           )}
           {view.body && <p className="mt-0.5 text-[13px] leading-snug text-muted">{t(view.body)}</p>}
-          {view.detail && <p className="mt-1 font-mono text-[11px] text-subtle">{t('tasks.sandbox.detail', { detail: view.detail })}</p>}
+          {view.detail && (
+            <p className="mt-1 font-mono text-[11px] desk:text-meta text-subtle">{t('tasks.sandbox.detail', { detail: view.detail })}</p>
+          )}
           {view.kind === 'installing' && (
             <div className="mt-3">
               <div

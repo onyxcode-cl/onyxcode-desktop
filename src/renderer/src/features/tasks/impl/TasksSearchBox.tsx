@@ -46,7 +46,7 @@ export function TasksSearchBox({ openPalette, paletteHint }: { openPalette: () =
             aria-label={t('app.sidebar.search')}
             aria-keyshortcuts={paletteHint}
             onClick={openPalette}
-            className="shrink-0 rounded-ctl-sm px-1 text-[11px] leading-4 text-subtle hover:text-fg"
+            className="shrink-0 rounded-ctl-sm px-1 text-[11px] desk:text-meta leading-4 text-subtle hover:text-fg"
           >
             {paletteHint}
           </button>

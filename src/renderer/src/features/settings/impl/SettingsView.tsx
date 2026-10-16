@@ -216,7 +216,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
               <div key={g.id} role="group" aria-label={g.label()} className="space-y-0.5">
                 <div
                   aria-hidden
-                  className="hidden px-3 pt-4 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:flex desk:h-7 desk:items-end desk:px-2 desk:pt-2 desk:pb-0 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em]"
+                  className="hidden px-3 pt-4 pb-1 text-[11.5px] desk:text-meta font-medium text-subtle first:pt-0 desk:flex desk:h-7 desk:items-end desk:px-2 desk:pt-2 desk:pb-0 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em]"
                 >
                   {g.label()}
                 </div>

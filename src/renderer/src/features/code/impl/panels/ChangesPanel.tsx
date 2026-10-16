@@ -187,12 +187,14 @@ function FileRow({
           aria-label={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}: ${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
           className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 text-left"
         >
-          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded font-mono text-[11px] font-bold ${meta.cls}`}>
+          <span
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded font-mono text-[11px] desk:text-meta font-bold ${meta.cls}`}
+          >
             {meta.letter}
           </span>
           <span className="min-w-0 flex-1">
             <span className={`block truncate text-[15px] ${file.kind === 'deleted' ? 'text-muted line-through' : 'text-fg'}`}>{name}</span>
-            <span className="block truncate font-mono text-[11.5px] text-subtle" dir="ltr">
+            <span className="block truncate font-mono text-[11.5px] desk:text-meta text-subtle" dir="ltr">
               {abbreviatePath(displayPath(directory, dir), 30)}
             </span>
           </span>
@@ -218,7 +220,7 @@ function FileRow({
         className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left text-[13px] desk:px-2"
       >
         <span
-          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] font-bold desk:h-[18px] desk:w-[18px] desk:rounded-2xs desk:text-[11px] desk:font-semibold ${meta.cls}`}
+          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded font-mono text-[10px] desk:text-meta font-bold desk:h-[18px] desk:w-[18px] desk:rounded-2xs desk:text-[11px] desk:font-semibold ${meta.cls}`}
         >
           {meta.letter}
         </span>
@@ -231,7 +233,7 @@ function FileRow({
       <span className={`relative flex h-full shrink-0 items-center justify-end desk:pr-2.5 ${hasActions ? 'min-w-14' : ''}`}>
         {((stat && stat.additions + stat.deletions > 0) || accepted) && (
           <span
-            className={`flex items-center gap-1.5 font-mono text-[11px] tabular-nums ${hasActions ? 'group-focus-within:opacity-0 group-hover:opacity-0' : ''}`}
+            className={`flex items-center gap-1.5 font-mono text-[11px] desk:text-meta tabular-nums ${hasActions ? 'group-focus-within:opacity-0 group-hover:opacity-0' : ''}`}
           >
             {/* Solo el lado que no es 0 (archivo nuevo: «+3»; binario o cambio de modo: nada). */}
             {stat && stat.additions > 0 && <span className="text-success">+{stat.additions}</span>}
@@ -288,7 +290,7 @@ function Section({
         <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
         <span
-          className={`ml-1 rounded-full bg-hover px-1.5 text-[10px] font-medium normal-case desk:bg-active desk:text-[11px]${sole ? ' desk:hidden' : ''}`}
+          className={`ml-1 rounded-full bg-hover px-1.5 text-[10px] desk:text-meta font-medium normal-case desk:bg-active desk:text-[11px]${sole ? ' desk:hidden' : ''}`}
         >
           {count}
         </span>
@@ -568,7 +570,7 @@ function WorktreeDialog({
           )}
           {others.length > 1 && (
             <div>
-              <div className="mb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">{t('code.wt.list')}</div>
+              <div className="mb-1 text-[11px] desk:text-meta font-semibold tracking-wide text-subtle uppercase">{t('code.wt.list')}</div>
               <div className="max-h-40 overflow-y-auto rounded-lg border border-border">
                 {others.map((w) => (
                   <div key={w.path} className="flex items-center gap-2 border-b border-border px-2.5 py-1.5 text-xs last:border-b-0">
@@ -1055,7 +1057,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                   <span className="min-w-0 flex-1 px-1">
                     <span className="block truncate text-[15px] font-semibold">{splitPath(selectedFile.path).name}</span>
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="min-w-0 truncate font-mono text-[11.5px] text-subtle" dir="ltr">
+                      <span className="min-w-0 truncate font-mono text-[11.5px] desk:text-meta text-subtle" dir="ltr">
                         {abbreviatePath(displayPath(directory, splitPath(selectedFile.path).dir), 28)}
                       </span>
                       {stats && (

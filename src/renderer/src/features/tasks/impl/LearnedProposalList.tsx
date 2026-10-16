@@ -51,7 +51,7 @@ export function LearnedProposalList({
               <select
                 value={d.alcance}
                 onChange={(e) => onUpdate(i, { alcance: e.target.value as LearnedMemoryScope })}
-                className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] text-subtle"
+                className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] desk:text-meta text-subtle"
               >
                 {SCOPES.map((s) => (
                   <option key={s} value={s}>
@@ -62,7 +62,7 @@ export function LearnedProposalList({
               <select
                 value={d.tipo}
                 onChange={(e) => onUpdate(i, { tipo: e.target.value as LearnedMemoryType })}
-                className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] text-subtle"
+                className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] desk:text-meta text-subtle"
               >
                 {TYPES.map((ty) => (
                   <option key={ty} value={ty}>

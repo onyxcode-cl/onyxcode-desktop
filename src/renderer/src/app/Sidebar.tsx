@@ -88,7 +88,7 @@ function FilterPills(): React.JSX.Element {
           // Nombre accesible propio («Filtrar: con cambios»): «Cambios» a secas chocaba con el botón del panel Cambios de Code.
           aria-label={t(`app.sidebar.filterAria.${f}`)}
           onClick={() => setFilter(f)}
-          className={`no-drag inline-flex h-[22px] shrink-0 items-center rounded-full border px-[9px] text-[11.5px] whitespace-nowrap transition-colors duration-[var(--dur-fast)] ${
+          className={`no-drag inline-flex h-[22px] shrink-0 items-center rounded-full border px-[9px] text-[11.5px] desk:text-meta whitespace-nowrap transition-colors duration-[var(--dur-fast)] ${
             filter === f ? 'border-transparent bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
           }`}
         >
@@ -306,7 +306,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
             <Search size={15} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
             <span className="min-w-0 flex-1 truncate">{t('app.sidebar.searchShort')}</span>
             {searchHint && (
-              <span aria-hidden="true" className="shrink-0 text-[11px] leading-4">
+              <span aria-hidden="true" className="shrink-0 text-[11px] desk:text-meta leading-4">
                 {searchHint}
               </span>
             )}

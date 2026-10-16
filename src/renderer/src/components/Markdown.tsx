@@ -244,7 +244,8 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
   // Escritorio: el documento generado se muestra como tarjeta (miniatura + Abrir/Descargar); el celular sigue con el bloque de siempre.
   // Solo en Chat (ahí `ChatView` registra el panel de documento); Tareas y Code conservan su bloque.
   if (docKind && !isRemoteSurface() && canAskAboutChatDoc()) {
-    const cardTitle = docKind === 'html' ? guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview')) : guessDataTitle(docKind, code)
+    const cardTitle =
+      docKind === 'html' ? guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview')) : guessDataTitle(docKind, code)
     return (
       <>
         <DocumentCard
@@ -290,13 +291,13 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
               html={code}
               title={guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview'))}
               isSlides={isSlides}
-              className="py-0.5 text-[11.5px]"
+              className="py-0.5 text-[11.5px] desk:text-meta"
             />
             <DownloadPdfButton
               html={code}
               title={guessTitle(code, 1, isSlides ? t('chat.doc.slides') : t('chat.doc.preview'))}
               compact
-              className="py-0.5 text-[11.5px]"
+              className="py-0.5 text-[11.5px] desk:text-meta"
             />
             {isSlides && (
               <>
@@ -304,13 +305,13 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
                   html={code}
                   title={guessTitle(code, 1, t('chat.doc.slides'))}
                   compact
-                  className="py-0.5 text-[11.5px]"
+                  className="py-0.5 text-[11.5px] desk:text-meta"
                 />
                 <DownloadSlidesPptxButton
                   html={code}
                   title={guessTitle(code, 1, t('chat.doc.slides'))}
                   compact
-                  className="py-0.5 text-[11.5px]"
+                  className="py-0.5 text-[11.5px] desk:text-meta"
                 />
               </>
             )}
@@ -318,17 +319,22 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
         )}
         {(docKind === 'xlsx' || docKind === 'pptx' || docKind === 'docx') && (
           <>
-            <PreviewDataDocButton kind={docKind} rawText={code} title={guessDataTitle(docKind, code)} className="py-0.5 text-[11.5px]" />
+            <PreviewDataDocButton
+              kind={docKind}
+              rawText={code}
+              title={guessDataTitle(docKind, code)}
+              className="py-0.5 text-[11.5px] desk:text-meta"
+            />
             <DownloadDataDocButton
               kind={docKind}
               rawText={code}
               title={guessDataTitle(docKind, code)}
               compact
-              className="py-0.5 text-[11.5px]"
+              className="py-0.5 text-[11.5px] desk:text-meta"
             />
           </>
         )}
-        <CopyButton text={() => textOf(children)} showLabel size={12} className="text-[11.5px]" />
+        <CopyButton text={() => textOf(children)} showLabel size={12} className="text-[11.5px] desk:text-meta" />
       </div>
       {showCode && <pre>{children}</pre>}
     </div>

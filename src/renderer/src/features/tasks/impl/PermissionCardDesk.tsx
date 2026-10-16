@@ -257,7 +257,10 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
           <div className="mt-3 grid gap-2">
             <Button variant="secondary" disabled={busy} onClick={() => answer('reject')} className="w-full justify-center">
               {t('tasksComputer.perm.reject')}
-              <kbd aria-hidden className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">
+              <kbd
+                aria-hidden
+                className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] desk:text-meta leading-4 opacity-70"
+              >
                 {t('tasksComputer.perm.kbdReject')}
               </kbd>
             </Button>
@@ -269,7 +272,10 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
               className="w-full justify-center"
             >
               {t('tasksComputer.perm.once')}
-              <kbd aria-hidden className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">
+              <kbd
+                aria-hidden
+                className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] desk:text-meta leading-4 opacity-70"
+              >
                 {mac ? t('tasksComputer.perm.kbdOnce') : t('tasksComputer.perm.kbdOnce.win')}
               </kbd>
             </Button>

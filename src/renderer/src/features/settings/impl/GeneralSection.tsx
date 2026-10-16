@@ -204,7 +204,7 @@ export function GeneralSection(): React.JSX.Element {
     <div>
       {!phone && <SectionHeader title={t('settings.general.title')} description={t('settings.general.subtitle')} />}
 
-      <h3 className="mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mt-8 desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+      <h3 className="mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mt-8 desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
         {t('settings.general.theme')}
       </h3>
       <div className="grid grid-cols-3 gap-2 desk:gap-3">
@@ -335,7 +335,7 @@ function AccentPicker(): React.JSX.Element {
   }
   return (
     <>
-      <h3 className="mt-6 mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+      <h3 className="mt-6 mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
         {t('settings.general.accent')}
       </h3>
       <div role="radiogroup" aria-label={t('settings.general.accent')} className="flex flex-wrap gap-2.5">
@@ -372,7 +372,7 @@ function TextSizePicker(): React.JSX.Element {
   }
   return (
     <>
-      <h3 className="mt-6 mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+      <h3 className="mt-6 mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
         {t('settings.general.textSize')}
       </h3>
       <div role="radiogroup" aria-label={t('settings.general.textSize')} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">

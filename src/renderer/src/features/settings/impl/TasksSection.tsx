@@ -523,7 +523,7 @@ export function TasksSection(): React.JSX.Element {
               <FolderPlus size={14} /> {t('tasksSettings.trusted.add')}
             </Button>
             {locks.allowedRoots.length > 0 && (
-              <span className="text-[11px] text-subtle">
+              <span className="text-[11px] desk:text-meta text-subtle">
                 {t('tasksSettings.trusted.onlyInside', { roots: locks.allowedRoots.join(', ') })}
               </span>
             )}

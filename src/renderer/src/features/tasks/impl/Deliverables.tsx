@@ -225,7 +225,7 @@ export function PreviewDialog({ file, onClose }: { file: TasksDeliverable; onClo
           <Icon size={16} className={tone} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{baseName(file.path)}</div>
-            <div className="truncate font-mono text-[11px] text-subtle">{file.relPath}</div>
+            <div className="truncate font-mono text-[11px] desk:text-meta text-subtle">{file.relPath}</div>
           </div>
           <button
             type="button"
@@ -266,7 +266,7 @@ function ImageThumb({ file }: { file: TasksDeliverable }): React.JSX.Element | n
 }
 
 const ACTION_BTN =
-  'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50'
+  'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] desk:text-meta text-muted hover:bg-hover hover:text-fg disabled:opacity-50'
 
 /** «Abrir como artifact» para un HTML entregable: carga su contenido y usa el `ArtifactButton` de siempre. */
 function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Element | null {
@@ -276,7 +276,7 @@ function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Ele
     <ArtifactButton
       html={data.content}
       title={baseName(file.path).replace(/\.[^.]+$/, '')}
-      className="!border-transparent !bg-transparent !px-1.5 !py-0.5 !text-[11px]"
+      className="!border-transparent !bg-transparent !px-1.5 !py-0.5 !text-[11px] desk:text-meta"
     />
   )
 }
@@ -357,7 +357,10 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
       {groups.map((g) => (
         <div key={g.root ?? '·'} className={grouped ? 'mb-3 last:mb-0' : ''}>
           {grouped && (
-            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-subtle" title={g.root ?? undefined}>
+            <div
+              className="mb-1.5 flex items-center gap-1.5 text-[11px] desk:text-meta font-medium text-subtle"
+              title={g.root ?? undefined}
+            >
               <FolderOpen size={12} /> {g.root ? baseName(g.root) : t('tasks.deliv.taskFolder')}
               <span className="text-subtle/70">· {g.files.length}</span>
             </div>
@@ -380,7 +383,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                       onClick={() => (viewable || previewable ? openView() : run(() => openPath(f.path)))}
                     >
                       <span className="block truncate text-[13px] font-medium">{baseName(f.path)}</span>
-                      <span className="block truncate text-[11px] text-subtle">
+                      <span className="block truncate text-[11px] desk:text-meta text-subtle">
                         {f.relPath.includes('/') ? `${f.relPath.slice(0, f.relPath.lastIndexOf('/'))} · ` : ''}
                         {formatSize(f.size)} · {relTime(f.mtime)}
                       </span>

@@ -148,7 +148,9 @@ export function KeybindingsList(): React.JSX.Element {
   return (
     <div data-testid="keybindings-list">
       <div className="mt-9 mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase">{t('settings.shortcuts.inApp')}</h3>
+        <h3 className="text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase">
+          {t('settings.shortcuts.inApp')}
+        </h3>
         <Button
           variant="ghost"
           size="sm"
@@ -235,7 +237,7 @@ export function KeybindingsList(): React.JSX.Element {
                   <div className="flex min-w-0 items-center gap-2 text-sm font-medium">
                     {name(a)}
                     {custom && (
-                      <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent">
+                      <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] desk:text-meta font-medium text-accent">
                         {t('settings.shortcuts.custom')}
                       </span>
                     )}
