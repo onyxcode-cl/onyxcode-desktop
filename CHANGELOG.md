@@ -12,6 +12,11 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Overdrive: el bloqueo del plan se explica en palabras claras.** En vez del texto técnico en rojo («Todavía no hay un plan aprobado… computer_request_access…») ahora dice «Esperando tu aprobación del plan», sin contarlo como error. Vale para cualquier MCP o herramienta.
 - **Overdrive: la tarjeta de progreso ya no inventa fases.** Sin plan mostraba «Reunir datos · Crear el documento · Revisar» aunque no hubieras pedido ningún documento; ahora muestra solo lo que hace («Leyendo ventas_marzo.csv») y sus contadores reales.
 - **Overdrive: menos avisos repetidos de restauración.** En Control total sobre tu carpeta personal ya no sale «Esta vez no se guardó un punto de restauración» en cada mensaje.
+- **Overdrive: barra lateral nueva.** La carpeta es una tarjeta con su ícono, «Proyecto e instrucciones» es un botón al lado, ordenar y archivadas van en una sola fila con íconos, y cada tarea muestra su estado y hora («Trabajando», «Terminado · hace 5 min»), con las que están en curso arriba.
+- **Overdrive: el modo siempre a la vista.** Una insignia fija dice «Solo en tu carpeta» o «Control total», y la tarjeta del plan ofrece «Cambiar a Solo en tu carpeta» cuando el plan no controla ninguna app.
+- **Avisos del sistema cuando una tarea termina, falla o necesita tu aprobación**, solo si la app no está en primer plano, sin rutas ni contenido en el aviso y con un interruptor en Ajustes > Tareas.
+- **Mensajes en palabras llanas.** Unos 40 textos técnicos («sandbox», «MCP», «binario», errores del sistema como permiso denegado o archivo no encontrado) ahora dicen qué pasó y qué puedes hacer.
+- **Code: el menú «⋯» de una sesión ya no se corta** y hay una papelera al pasar el mouse.
 
 ## [0.5.29] - 2026-10-15
 

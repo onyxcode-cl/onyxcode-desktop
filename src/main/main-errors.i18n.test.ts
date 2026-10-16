@@ -26,7 +26,7 @@ afterEach(() => setLang('es'))
 
 describe('errores que construye main: idioma activo', () => {
   it('con es el texto es el de siempre', () => {
-    expect(t('merr.engine.noBinary')).toContain('No se encontró el binario `opencode`.')
+    expect(t('merr.engine.noBinary')).toContain('No se encontró el motor de la IA en este equipo.')
     // folder-policy es del modo Tareas (rutas de macOS): solo se comprueba en macOS.
     if (macOnly) expect(forbiddenFolderReason('/', ctx)).toContain('No se puede usar la raíz del disco')
     expect(scheduleLabel({ kind: 'daily', time: '08:00' })).toBe('Todos los días a las 08:00')
@@ -37,7 +37,7 @@ describe('errores que construye main: idioma activo', () => {
 
   it('con en: binario, carpetas, reglas y rutinas salen en inglés', async () => {
     setLang('en')
-    expect(t('merr.engine.noBinary')).toMatch(/^Couldn’t find the `opencode` binary\./)
+    expect(t('merr.engine.noBinary')).toMatch(/^The AI engine wasn’t found on this computer\./)
     const bin = await validateOpencodeBin('relativa/ruta')
     expect(bin).toEqual({ ok: false, error: 'The path isn’t valid.' })
     // folder-policy es del modo Tareas (rutas de macOS): solo se comprueba en macOS.
@@ -49,7 +49,7 @@ describe('errores que construye main: idioma activo', () => {
         'Your organization doesn’t allow using folders in Overdrive.'
       )
     }
-    expect(ruleRejectionReason('bash', '*')).toBe('A bash pattern this broad can’t be remembered: it would also cover delete commands.')
+    expect(ruleRejectionReason('bash', '*')).toBe('A permission this broad for commands can’t be remembered: it would also cover commands that delete files.')
     expect(scheduleLabel({ kind: 'weekly', day: 1, time: '09:30' })).toBe('Every Monday at 09:30')
     expect(scheduleLabel({ kind: 'interval', hours: 6 })).toBe('Every 6 hours')
     expect(() => nextRunAfter({ kind: 'daily', time: '99:99' }, Date.now())).toThrow('Invalid time "99:99"')
