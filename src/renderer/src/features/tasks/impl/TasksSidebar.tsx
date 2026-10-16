@@ -36,7 +36,7 @@ export function TasksSidebar(): React.JSX.Element {
                 data-tree-primary={tree ? '' : undefined}
                 aria-label={t(open ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name })}
                 onClick={() => setOpen((o) => !o)}
-                className="no-drag flex h-8 w-5 shrink-0 items-center rounded-ctl pl-2 text-subtle hover:text-fg"
+                className="no-drag flex h-8 w-4 shrink-0 items-center rounded-ctl pl-1 text-subtle hover:text-fg"
               >
                 <ChevronDown
                   size={12}
@@ -55,7 +55,7 @@ export function TasksSidebar(): React.JSX.Element {
                 onClick={() => setProjectPanelOpen(true)}
                 title={t('tasks.sidebar.projectTitle')}
                 aria-label={t('tasks.sidebar.project')}
-                className="no-drag ml-1 flex size-9 shrink-0 items-center justify-center rounded-ctl border border-border bg-surface-1/60 text-muted hover:bg-hover hover:text-fg"
+                className="no-drag ml-1 flex size-8 shrink-0 items-center justify-center rounded-ctl border border-border bg-surface-1/60 text-muted hover:bg-hover hover:text-fg"
               >
                 <BookText size={15} strokeWidth={1.75} aria-hidden="true" />
               </button>

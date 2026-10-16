@@ -31,9 +31,9 @@ describe('Overdrive en la barra lateral de escritorio (QA)', () => {
   })
   it('carpeta como tarjeta con ícono y selector, y «Proyecto» como botón de ícono a su lado', () => {
     const folderMenu = readFileSync(join(__dirname, 'FolderMenu.tsx'), 'utf8')
-    expect(folderMenu).toContain('flex h-9 w-full items-center gap-2 rounded-ctl border border-border')
+    expect(folderMenu).toContain('flex h-9 w-full items-center gap-1.5 rounded-ctl border border-border')
     expect(folderMenu).toContain('ChevronsUpDown')
     expect(side).toContain("aria-label={t('tasks.sidebar.project')}")
-    expect(side).toContain('size-9 shrink-0 items-center justify-center rounded-ctl border')
+    expect(side).toContain('size-8 shrink-0 items-center justify-center rounded-ctl border')
   })
 })

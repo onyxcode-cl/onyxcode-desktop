@@ -57,6 +57,7 @@ import {
   revokeAppGrant,
   revokePlanApproval,
   changeFullWorkspace,
+  switchPlanToFolderMode,
   setAccessMode,
   setAppGrant,
   stopComputerControl,
@@ -109,11 +110,11 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
         </span>{' '}
-        {t('tasksComputer.chip.using')}
+        {t('tasksComputer.chip.full')}
       </>
     ) : (
       <>
-        <MonitorCog size={12} /> {t('tasksComputer.chip.canUse')}
+        <MonitorCog size={12} aria-hidden /> {t('tasksComputer.chip.full')}
       </>
     )
   } else if (conn && !conn.sandboxed) {
@@ -125,7 +126,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   } else {
     chip = (
       <>
-        <Shield size={12} /> {t('tasksComputer.chip.folder')}
+        <Shield size={12} aria-hidden /> {t('tasksComputer.chip.folder')}
       </>
     )
   }
@@ -133,7 +134,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
     ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 desk:text-warning [[data-theme=dark]_&]:text-amber-400'
     : conn && !conn.sandboxed
       ? 'border-danger/40 text-danger'
-      : 'border-accent/40 text-accent'
+      : 'border-border text-fg'
 
   const pick = (fullAccess: boolean): void => {
     setOpen(false)
@@ -148,7 +149,11 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
         disabled={disabled || phase === 'starting'}
         onClick={() => setOpen((o) => !o)}
         title={
-          disabled ? t('tasksComputer.access.waitTask') : full ? t('tasksComputer.mode.fullTitle') : t('tasksComputer.mode.sandboxTitle')
+          disabled
+            ? t('tasksComputer.access.waitTask')
+            : full
+              ? `${usingMac ? `${t('tasksComputer.chip.using')}. ` : ''}${t('tasksComputer.mode.fullTitle')}`
+              : t('tasksComputer.mode.sandboxTitle')
         }
         className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 whitespace-nowrap transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60 ${tone}`}
       >
@@ -988,6 +993,12 @@ export function PlanAccessCard(): React.JSX.Element | null {
     )
   }
 
+  /** Plan sin apps: cancela el plan y vuelve a «Solo en tu carpeta» (si no hay carpeta autorizada, explica por qué no). */
+  const switchToFolder = (): void => {
+    setBusy(true)
+    void switchPlanToFolderMode().finally(() => setBusy(false))
+  }
+
   const sendFeedback = (): void => {
     const text = feedback.trim()
     if (!text) return
@@ -1104,6 +1115,11 @@ export function PlanAccessCard(): React.JSX.Element | null {
                 ) : (
                   <Button variant="ghost" onClick={denyAll} disabled={busy}>
                     {t('tasksComputer.plan.denyAll')}
+                  </Button>
+                )}
+                {req.plan && !hasApps && (
+                  <Button variant="secondary" onClick={switchToFolder} disabled={busy} title={t('tasksComputer.plan.toFolderTitle')}>
+                    {t('tasksComputer.plan.toFolder')}
                   </Button>
                 )}
                 {req.plan && (

@@ -150,13 +150,13 @@ export function FolderMenu({
         title={folder ?? undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-9 w-full items-center gap-2 rounded-ctl border border-border bg-surface-1/60 pr-2 pl-1.5 text-left text-sm font-medium text-fg hover:bg-hover"
+        className="flex h-9 w-full items-center gap-1.5 rounded-ctl border border-border bg-surface-1/60 pr-1.5 pl-1 text-left text-sm font-medium text-fg hover:bg-hover"
       >
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
           <FolderOpen size={14} strokeWidth={1.75} aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1 truncate">{label}</span>
-        <ChevronsUpDown size={13} strokeWidth={1.75} className="shrink-0 text-subtle" aria-hidden="true" />
+        <ChevronsUpDown size={12} strokeWidth={1.75} className="shrink-0 text-subtle" aria-hidden="true" />
       </button>
     ) : (
       <button

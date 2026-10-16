@@ -36,6 +36,7 @@ export const tasksComputer = {
   'tasksComputer.chip.using.win': 'Usando tu PC',
   'tasksComputer.chip.canUse': 'Puede usar tu Mac',
   'tasksComputer.chip.canUse.win': 'Puede usar tu PC',
+  'tasksComputer.chip.full': 'Control total',
   'tasksComputer.chip.folder': 'Solo en tu carpeta',
   'tasksComputer.mode.noSandbox': 'Sin sandbox',
   'tasksComputer.mode.sandboxOn': 'Sandbox activo',
@@ -152,6 +153,10 @@ export const tasksComputer = {
   'tasksComputer.plan.denyAll': 'No, seguir sin controlar el Mac',
   'tasksComputer.plan.denyAll.win': 'No, seguir sin controlar el PC',
   'tasksComputer.plan.filesHint': 'Para trabajar con tus archivos no hace falta.',
+  'tasksComputer.plan.toFolder': 'Cambiar a Solo en tu carpeta',
+  'tasksComputer.plan.toFolderTitle': 'Cancela este plan y trabaja solo dentro de tu carpeta, sin usar el resto del Mac',
+  'tasksComputer.plan.toFolderNoFolder':
+    'No hay una carpeta autorizada para trabajar solo en ella. Elige una carpeta primero y vuelve a intentarlo.',
   'tasksComputer.plan.edit': 'Editar',
   'tasksComputer.plan.approve': 'Aprobar y empezar',
   'tasksComputer.plan.confirm': 'Confirmar',

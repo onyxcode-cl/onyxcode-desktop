@@ -280,6 +280,20 @@ export function dismissAccessRequest(): void {
   void respondAccessRequest([], { cancel: true })
 }
 
+/**
+ * Desde un plan de Control total que no controla ninguna app: cancela el plan y vuelve a «Solo en tu carpeta».
+ * Solo es posible con una carpeta autorizada para el sandbox; si no la hay, no cancela nada y lo explica.
+ */
+export async function switchPlanToFolderMode(): Promise<void> {
+  const { folder, folders } = useTasks.getState()
+  if (!folder || !folders.some((f) => f.path === folder)) {
+    useTasks.setState({ error: t('tasksComputer.plan.toFolderNoFolder') })
+    return
+  }
+  await respondAccessRequest([], { cancel: true })
+  await setAccessMode(false)
+}
+
 /** "Revocar": la siguiente acción del agente en esa tarea vuelve a pedir el plan. */
 export async function revokePlanApproval(sessionId: string): Promise<void> {
   try {
