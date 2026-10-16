@@ -2,14 +2,9 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (30): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
+- Escenarios (31): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
   `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
-  `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `inicio-vacio`, `inicio-pendientes`,
-- Escenarios (29): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
-  `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
-  `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `aviso-motor`,
-  `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
-  `selector-modelo`, `dialogo-confirmar`, `comparar`, `barra-lateral-colapsada`.
+  `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `inicio-vacio`, `inicio-pendientes`, `aviso-motor`,
 - `tareas-plan-sin-apps` / `tareas-plan-sin-apps-cambio`: pasan a Control total y usan el paso `request-access` del OpenCode falso (el mismo POST que `computer_request_access`, con `apps: []`) para mostrar la tarjeta del plan con «Cambiar a Solo en tu carpeta»; el segundo pulsa el botón y comprueba que vuelve a «Solo en tu carpeta».
 - `code-entorno` / `tareas-entorno`: abren el panel «Entorno» (botón de la barra de Code y de la cabecera de la tarea) y capturan el popover con el equipo, la carpeta, la rama (Code) o el modo y el punto de restauración (Tareas).
 - `aviso-motor`: arranca con una ruta de motor elegida aparte (el falso, 1.18.32) y un motor incluido falso (`LAZUNOX_TEST_BUNDLED_DIR`, solo pruebas); captura la tarjeta «Estás usando un motor de IA instalado aparte…» con «Usar el motor incluido» y «Ahora no».
