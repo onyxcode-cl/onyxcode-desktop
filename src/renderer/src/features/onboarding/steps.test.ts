@@ -7,11 +7,13 @@ import {
   stepsFor,
   connectTasksNotice,
   connectTermsNotice,
+  engineStepNeeded,
   hasConfiguredProvider,
   isConfiguredProvider,
   nextStep,
   opencodeStepMode,
   prevStep,
+  stepIndex,
   stepTitle,
   ONBOARDING_STEPS,
   type OnboardingInputs
@@ -97,8 +99,8 @@ describe('paso 1 informativo', () => {
 
   it('el título del paso 1 cambia solo con el motor incluido', () => {
     expect(stepTitle('opencode', 'bundled')).toBe('Todo listo para empezar')
-    expect(stepTitle('opencode', 'missing')).toBe('Instala o localiza OpenCode')
-    expect(stepTitle('opencode', 'found')).toBe('Instala o localiza OpenCode')
+    expect(stepTitle('opencode', 'missing')).toBe('Falta el programa de la IA')
+    expect(stepTitle('opencode', 'found')).toBe('Falta el programa de la IA')
     expect(stepTitle('auth', 'bundled')).toBe('Conecta tu IA')
   })
 
@@ -150,6 +152,19 @@ describe('paso «Conecta tu IA»', () => {
 })
 
 describe('pasos por plataforma', () => {
+  it('con el motor incluido no hay paso del motor: 4 pasos, y el contador sale de 4', () => {
+    expect(engineStepNeeded({ found: true, source: 'bundled' })).toBe(false)
+    expect(engineStepNeeded({ found: false, source: null })).toBe(true)
+    expect(engineStepNeeded({ found: true, source: 'cli' })).toBe(true)
+    expect(engineStepNeeded(null)).toBe(true)
+    expect(stepsFor('darwin', false)).toEqual(['auth', 'model', 'modes', 'setup'])
+    expect(stepsFor('win32', false)).toHaveLength(4)
+    expect(stepIndex('auth', 'darwin', false)).toBe(0)
+    expect(prevStep('auth', 'darwin', false)).toBeNull()
+    expect(nextStep('auth', 'darwin', false)).toBe('model')
+    expect(nextStep('setup', 'darwin', false)).toBeNull()
+  })
+
   it('ambas plataformas terminan en «Prepara tu equipo»', () => {
     expect(stepsFor('darwin')).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])
     expect(stepsFor('win32')).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])

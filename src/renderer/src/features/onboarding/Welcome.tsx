@@ -1,21 +1,19 @@
 /**
  * Bienvenida del primer uso: animación de marca («Hecho por …»), revisión de lo que ya hay en el equipo y preparación de lo que falta
- * (ArtCraft, el diseñador de documentos, y el entorno aislado de Tareas en Windows). La persona ve la lista con los tamaños y una cuenta atrás;
- * puede empezar ya u omitirlo. Nada se descarga sin esa cuenta atrás visible. Los permisos de macOS siguen en el último paso del asistente.
+ * (ArtCraft, el diseñador de documentos, y el entorno aislado de Tareas en Windows).
+ * Si todo está bien, solo se ve un saludo de una frase y «Empezar»; la lista de chequeos aparece únicamente cuando algo requiere
+ * atención (falta el motor, hay algo por descargar o algo falló). Con algo por descargar la persona ve la lista con los tamaños y una
+ * cuenta atrás; nada se descarga sin esa cuenta atrás visible. Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, Clock, Loader2 } from 'lucide-react'
 import { DISPLAY_NAME, MADE_BY } from '@shared/brand'
 import type { OpencodeInfo } from '@shared/types'
-import { permsStage, type AppLocation } from '@shared/mac-permissions'
 import { Button } from '../../components/Button'
-import { call } from '../../lib/api'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
-import { isMacPlatform, platformCaps } from '../../lib/platform'
+import { platformCaps } from '../../lib/platform'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
-import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
-import { waitForMacPerms } from './perms-wait'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import {
   WELCOME_COUNTDOWN_S,
@@ -23,8 +21,8 @@ import {
   canRetry,
   engineState,
   toInstall,
-  needsRestartHint,
   welcomeOverall,
+  welcomeView,
   type WelcomeItemId,
   type WelcomeItemState,
   type WelcomeItems
@@ -36,15 +34,15 @@ const SANDBOX_WAIT_POLLS = 1800
 export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: () => void }): React.JSX.Element {
   const t = useT()
   const caps = platformCaps()
-  const mac = isMacPlatform()
   const [found, setFound] = useState<WelcomeItems>({})
   const [craftMb, setCraftMb] = useState(0)
   const [craftError, setCraftError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   const [left, setLeft] = useState<number | null>(null)
-  const [location, setLocation] = useState<AppLocation | null>(null)
-  // Accesibilidad ya concedida y Pantalla no: macOS pide reiniciar la app (se muestra de inmediato, sin esperar los ~90 s).
-  const [screenRestart, setScreenRestart] = useState(false)
+  /** La revisión del equipo terminó (hasta entonces el saludo dice «Revisando…» y «Empezar» espera). */
+  const [scanned, setScanned] = useState(false)
+  /** Una vez que algo requirió atención la lista se queda (no vuelve al saludo a mitad de una descarga). */
+  const [sawAttention, setSawAttention] = useState(false)
   const checked = useRef(false)
   const started = useRef(false)
   const alive = useRef(true)
@@ -66,16 +64,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     if (checked.current) return
     checked.current = true
     void (async () => {
-      if (!hasTasksBridge()) return
-      if (mac && caps.computer) {
-        const c = await cw('computer:status').catch(() => null)
-        if (c) {
-          set('perms', c.accessibility && c.screenRecording ? 'ready' : 'pending')
-          if (alive.current) {
-            setLocation(c.location ?? null)
-            setScreenRestart(permsStage(c) === 'restart')
-          }
-        }
+      if (!hasTasksBridge()) {
+        if (alive.current) setScanned(true)
+        return
       }
       const o = await cw('craft:status').catch(() => null)
       if (o?.status.state === 'missing') {
@@ -86,26 +77,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
         if (s) set('sandbox', s.state === 'ready' ? 'ready' : 'pending')
       }
+      if (alive.current) setScanned(true)
     })()
-  }, [caps.tasks, caps.tasksSandbox, caps.computer, mac, set])
-
-  // Al volver de Ajustes del Sistema se revalidan los permisos sin esperar al siguiente sondeo.
-  useEffect(() => {
-    if (!mac || !caps.computer) return
-    const onFocus = (): void => {
-      if (!hasTasksBridge()) return
-      void cw('computer:status')
-        .then((c) => {
-          if (!alive.current) return
-          setLocation(c.location ?? null)
-          setScreenRestart(permsStage(c) === 'restart')
-          if (permsStage(c) === 'ready') set('perms', 'ready')
-        })
-        .catch(() => undefined)
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [mac, caps.computer, set])
+  }, [caps.tasks, caps.tasksSandbox, set])
 
   // 2) Preparar lo que falta, en orden.
   const install = useCallback(
@@ -130,19 +104,6 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
             setCraftError(installFailureCode(r))
           }
           set('craft', r?.ok ? 'ready' : 'failed')
-        } else if (id === 'perms') {
-          await cw('computer:requestPermissions').catch(() => undefined)
-          // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos. Si Accesibilidad
-          // llega antes que Pantalla, se avisa del reinicio al instante.
-          const r = await waitForMacPerms({
-            status: () => cw('computer:status').catch(() => null),
-            request: () => cw('computer:requestPermissions'),
-            report: () => cw('computer:reportPermsStall'),
-            sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
-            alive: () => alive.current,
-            onStage: (st) => alive.current && setScreenRestart(st === 'restart')
-          })
-          set('perms', r === 'ready' ? 'ready' : 'failed')
         } else if (id === 'sandbox') {
           const poll = setInterval(() => {
             void cw('tasks:sandbox:status', undefined)
@@ -229,21 +190,21 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
       hint: found.sandbox === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.sandbox.hint')
     })
 
-  if (found.perms)
-    rows.push({
-      id: 'perms',
-      label: t('wizard.setup.perms'),
-      hint: found.perms === 'ready' ? t('wizard.setup.status.ready') : t('wizard.setup.perms.hint')
-    })
-
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {
-    if (id === 'perms' && st === 'downloading') return t('wizard.welcome.state.waiting')
+    if (id === 'engine' && st === 'failed') return t('wizard.welcome.state.missing')
     if (st === 'downloading')
       return (id === 'sandbox' || id === 'craft') && pct !== null
         ? t('wizard.welcome.progress', { pct })
         : t('wizard.welcome.state.downloading')
     return t(`wizard.welcome.state.${st}` as const)
   }
+
+  const view = welcomeView(items, scanned)
+  useEffect(() => {
+    if (view === 'attention') setSawAttention(true)
+  }, [view])
+  // Con algo que requirió atención se queda la lista (aunque luego todo quede listo); si no, solo el saludo.
+  const showList = view === 'attention' || sawAttention
 
   const headline =
     overall === 'ready'
@@ -262,6 +223,8 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
+        data-testid="welcome"
+        data-view={showList ? 'attention' : view}
         className="relative flex w-full max-w-md flex-col items-center text-center"
       >
         <div className="relative mb-6 flex h-32 w-32 items-center justify-center">
@@ -293,66 +256,78 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
           {t('wizard.welcome.madeBy', { maker: MADE_BY })}
         </p>
 
-        <div className="welcome-rise mt-8 w-full text-left" style={{ ['--d' as string]: '1000ms' }}>
-          <p className="mb-2 text-[13px] text-muted" role="status" aria-live="polite">
-            {headline}
+        {showList ? (
+          <div className="welcome-rise mt-8 w-full text-left" style={{ ['--d' as string]: '1000ms' }}>
+            <p className="mb-2 text-[13px] text-muted" role="status" aria-live="polite">
+              {headline}
+            </p>
+            <ul className="space-y-2">
+              {rows.map((r) => {
+                const st = items[r.id] ?? 'checking'
+                return (
+                  <li key={r.id} className="flex items-start gap-3 rounded-ctl bg-inset px-3.5 py-3">
+                    <span className="mt-0.5 shrink-0">
+                      {st === 'ready' ? (
+                        <Check size={16} className="text-success" />
+                      ) : st === 'downloading' || st === 'checking' ? (
+                        <Loader2 size={16} className="animate-spin text-accent" />
+                      ) : st === 'failed' ? (
+                        <AlertTriangle size={16} className="text-warning" />
+                      ) : (
+                        <Clock size={16} className="text-subtle" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
+                      <p className="font-medium text-fg">{r.label}</p>
+                      <p className="text-muted">{r.hint}</p>
+                    </div>
+                    <span className="shrink-0 pt-0.5 text-[12px] text-muted">{stateText(r.id, st)}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : (
+          <p className="welcome-rise mt-8 flex min-h-5 items-center gap-2 text-[13px] text-muted" style={{ ['--d' as string]: '1000ms' }}>
+            {view === 'checking' ? (
+              <span role="status" aria-live="polite" className="flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin text-accent" /> {t('wizard.welcome.checking')}
+              </span>
+            ) : (
+              <span>{t('wizard.welcome.greetingNote')}</span>
+            )}
           </p>
-          <ul className="space-y-2">
-            {rows.map((r) => {
-              const st = items[r.id] ?? 'checking'
-              return (
-                <li key={r.id} className="flex items-start gap-3 rounded-ctl bg-inset px-3.5 py-3">
-                  <span className="mt-0.5 shrink-0">
-                    {st === 'ready' ? (
-                      <Check size={16} className="text-success" />
-                    ) : st === 'downloading' || st === 'checking' ? (
-                      <Loader2 size={16} className="animate-spin text-accent" />
-                    ) : st === 'failed' ? (
-                      <AlertTriangle size={16} className="text-warning" />
-                    ) : (
-                      <Clock size={16} className="text-subtle" />
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
-                    <p className="font-medium text-fg">{r.label}</p>
-                    <p className="text-muted">{r.hint}</p>
-                  </div>
-                  <span className="shrink-0 pt-0.5 text-[12px] text-muted">{stateText(r.id, st)}</span>
-                </li>
-              )
-            })}
-          </ul>
-          <AppLocationNotice location={location} />
-          {found.perms && found.perms !== 'ready' && screenRestart && <ScreenRestartNotice />}
-          {(found.perms === 'downloading' || found.perms === 'failed') && <PermsHelp />}
-          {needsRestartHint(items) && !screenRestart && (
-            <div role="note" className="mt-3 flex items-center justify-between gap-3 text-[13px] leading-[18px] text-muted">
-              <p>{t('wizard.welcome.restartHint', { app: DISPLAY_NAME })}</p>
-              <Button variant="secondary" onClick={() => void call('app:relaunch')}>
-                {t('wizard.welcome.restartNow')}
-              </Button>
-            </div>
-          )}
-        </div>
+        )}
 
-        <div className="welcome-rise mt-6 flex w-full items-center justify-between gap-2" style={{ ['--d' as string]: '1200ms' }}>
-          <Button variant="ghost" onClick={onDone}>
-            {t('wizard.welcome.skip')}
-          </Button>
+        <div
+          className={`welcome-rise mt-6 flex w-full items-center gap-2 ${showList ? 'justify-between' : 'justify-center'}`}
+          style={{ ['--d' as string]: '1200ms' }}
+        >
+          {showList && (
+            <Button variant="ghost" onClick={onDone}>
+              {t('wizard.welcome.skip')}
+            </Button>
+          )}
           <div className="flex items-center gap-2">
-            {countingDown && (
+            {showList && countingDown && (
               <Button variant="secondary" onClick={startNow}>
                 {left === null ? t('wizard.setup.run') : `${t('wizard.setup.run')} (${left})`}
               </Button>
             )}
-            {canRetry(items) && overall === 'failed' && (
+            {showList && canRetry(items) && overall === 'failed' && (
               <Button variant="secondary" onClick={retry}>
                 {t('wizard.welcome.retry')}
               </Button>
             )}
-            <Button variant="primary" onClick={onDone}>
-              {t('wizard.welcome.continue')}
-            </Button>
+            {showList ? (
+              <Button variant="primary" onClick={onDone}>
+                {t('wizard.welcome.continue')}
+              </Button>
+            ) : (
+              <Button variant="primary" disabled={view === 'checking'} onClick={onDone}>
+                {t('wizard.welcome.start')}
+              </Button>
+            )}
           </div>
         </div>
       </section>

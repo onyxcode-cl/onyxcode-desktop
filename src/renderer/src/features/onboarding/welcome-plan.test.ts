@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canRetry, engineState, needsRestartHint, toInstall, welcomeOverall } from './welcome-plan'
+import { canRetry, engineState, toInstall, welcomeOverall, welcomeView } from './welcome-plan'
 
 describe('welcome-plan', () => {
   it('el estado del motor sale de si se encontró', () => {
@@ -26,17 +26,24 @@ describe('welcome-plan', () => {
     expect(toInstall({ craft: 'failed' })).toEqual([])
   })
 
-  it('los permisos van al final, después de las descargas', () => {
-    expect(toInstall({ engine: 'ready', perms: 'pending', craft: 'pending', sandbox: 'pending' })).toEqual(['craft', 'sandbox', 'perms'])
-    expect(welcomeOverall({ engine: 'ready', perms: 'pending' })).toBe('working')
-    expect(canRetry({ perms: 'failed' })).toBe(true)
+  it('los permisos de macOS ya no forman parte de la bienvenida', () => {
+    expect(toInstall({ engine: 'ready', craft: 'pending', sandbox: 'pending' })).toEqual(['craft', 'sandbox'])
+    expect(canRetry({ craft: 'failed' })).toBe(true)
   })
 
-  it('el aviso de reiniciar solo sale si los permisos quedaron en «failed»', () => {
-    expect(needsRestartHint({ perms: 'failed' })).toBe(true)
-    expect(needsRestartHint({ perms: 'downloading' })).toBe(false)
-    expect(needsRestartHint({ perms: 'ready' })).toBe(false)
-    expect(needsRestartHint({ craft: 'failed' })).toBe(false)
+  it('welcomeView: todo bien → saludo; mientras se revisa → «checking»', () => {
+    expect(welcomeView({ engine: 'ready' }, true)).toBe('greeting')
+    expect(welcomeView({ engine: 'ready', craft: 'ready', sandbox: 'ready' }, true)).toBe('greeting')
+    expect(welcomeView({ engine: 'ready' }, false)).toBe('checking')
+    expect(welcomeView({ engine: 'checking' }, true)).toBe('checking')
+  })
+
+  it('welcomeView: algo que requiere atención (falta el motor, algo por descargar o algo falló) muestra la lista', () => {
+    expect(welcomeView({ engine: 'failed' }, true)).toBe('attention')
+    expect(welcomeView({ engine: 'failed' }, false)).toBe('attention')
+    expect(welcomeView({ engine: 'ready', craft: 'pending' }, true)).toBe('attention')
+    expect(welcomeView({ engine: 'ready', sandbox: 'downloading' }, true)).toBe('attention')
+    expect(welcomeView({ engine: 'ready', craft: 'failed' }, true)).toBe('attention')
   })
 
   it('reintentar solo vale para lo descargable', () => {

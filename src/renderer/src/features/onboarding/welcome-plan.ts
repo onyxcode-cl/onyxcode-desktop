@@ -2,13 +2,13 @@
  * Lógica pura de la pantalla de bienvenida del primer uso: qué estado tiene cada componente que la app prepara y cuándo se puede
  * decir «todo listo». Sin React ni IPC (se prueba con `welcome-plan.test.ts`).
  */
-export type WelcomeItemId = 'engine' | 'craft' | 'sandbox' | 'perms'
+export type WelcomeItemId = 'engine' | 'craft' | 'sandbox'
 export type WelcomeItemState = 'checking' | 'ready' | 'pending' | 'downloading' | 'failed'
 
 export type WelcomeItems = Partial<Record<WelcomeItemId, WelcomeItemState>>
 
 /** Orden en que se muestran y se instalan. */
-export const WELCOME_ORDER: readonly WelcomeItemId[] = ['engine', 'craft', 'sandbox', 'perms']
+export const WELCOME_ORDER: readonly WelcomeItemId[] = ['engine', 'craft', 'sandbox']
 
 /** Cuenta atrás antes de empezar a descargar solo (la persona ve la lista y puede omitir o empezar ya). */
 export const WELCOME_COUNTDOWN_S = 6
@@ -33,9 +33,18 @@ export function canRetry(items: WelcomeItems): boolean {
   return WELCOME_ORDER.some((id) => id !== 'engine' && items[id] === 'failed')
 }
 
-/** ¿Hay que avisar de que reiniciar la app puede ser necesario? Los permisos no detectados tras la espera (macOS aplica Grabación de pantalla solo al reabrir). */
-export function needsRestartHint(items: WelcomeItems): boolean {
-  return items.perms === 'failed'
+/**
+ * Qué muestra la primera pantalla: `checking` mientras se revisa el equipo (saludo con «Revisando…»), `greeting` si todo está bien
+ * (saludo de una frase y «Empezar») y `attention` si algo requiere atención (falta el motor, hay algo por descargar o algo falló).
+ * Los permisos de macOS ya no se piden aquí: se piden cuando la persona usa «Control total».
+ */
+export type WelcomeView = 'checking' | 'greeting' | 'attention'
+
+export function welcomeView(items: WelcomeItems, scanned: boolean): WelcomeView {
+  const states = WELCOME_ORDER.map((id) => items[id]).filter((s): s is WelcomeItemState => s !== undefined)
+  if (states.some((s) => s === 'pending' || s === 'downloading' || s === 'failed')) return 'attention'
+  if (!scanned || states.some((s) => s === 'checking')) return 'checking'
+  return 'greeting'
 }
 
 /** El motor de agentes: `null` = todavía no se sabe. */
