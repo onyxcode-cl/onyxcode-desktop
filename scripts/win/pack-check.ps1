@@ -73,7 +73,7 @@ Check 'fuses: NodeOptions/inspect off' (($fuses -match 'EnableNodeOptionsEnviron
 # 4. opencode embebido y metadatos PE
 $oc = Join-Path $unp 'resources\opencode\opencode.exe'
 $ver = if (Test-Path $oc) { (& $oc --version 2>&1 | Out-String).Trim() } else { '(falta)' }
-Check 'opencode.exe --version = 1.18.33' ($ver -eq '1.18.33') $ver
+Check 'opencode.exe --version = 1.19.0' ($ver -eq '1.19.0') $ver
 $vi = (Get-Item $exe).VersionInfo
 Log ("PE: ProductName=$($vi.ProductName) FileDescription=$($vi.FileDescription) FileVersion=$($vi.FileVersion) ProductVersion=$($vi.ProductVersion) Company=$($vi.CompanyName) Copyright=$($vi.LegalCopyright)")
 Check 'PE: ProductName Lazunox' ($vi.ProductName -eq 'Lazunox')
@@ -118,7 +118,7 @@ if ($Install -and $setup -and -not $NoSmoke) {
   Check 'instalacion silenciosa termina (< 120 s)' ($p.WaitForExit(120000)) "codigo=$($p.ExitCode)"
   $ie = Join-Path $inst 'Lazunox.exe'
   Check 'instalado: Lazunox.exe' (Test-Path $ie)
-  Check 'instalado: opencode.exe 1.18.33' ((Test-Path (Join-Path $inst 'resources\opencode\opencode.exe')) -and ((& (Join-Path $inst 'resources\opencode\opencode.exe') --version 2>&1 | Out-String).Trim() -eq '1.18.33'))
+  Check 'instalado: opencode.exe 1.19.0' ((Test-Path (Join-Path $inst 'resources\opencode\opencode.exe')) -and ((& (Join-Path $inst 'resources\opencode\opencode.exe') --version 2>&1 | Out-String).Trim() -eq '1.19.0'))
   $un = Join-Path $inst 'Uninstall Lazunox.exe'
   Check 'instalado: desinstalador' (Test-Path $un)
   $reg = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Lazunox*' }
