@@ -2,7 +2,7 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (33): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
+- Escenarios (38): `onboarding`, `onboarding-motor`, `onboarding-inicio`, `onboarding-conecta`, `onboarding-modelo`, `onboarding-modos`, `onboarding-final`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
   `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
   `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `inicio-vacio`, `inicio-pendientes`, `aviso-motor`,
   `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
@@ -26,7 +26,7 @@
   lleva su prefijo temporal `lazunox-shotd-<pid>-` y borra sus carpetas. Úsalo con `perl -e 'alarm shift; exec @ARGV' 345 node ...`
   (el alarm no mata hijos: el propio script los limpia). No toca la app instalada, su userData ni su cloudflared.
 - Límites: `dialogo-confirmar` es el diálogo «¿Lanzar la comparación?» (el borrado de conversaciones confirma en la propia fila);
-  `onboarding` sale en el paso 2 (OpenCode ausente); `ajustes-celular` muestra el estado apagado, sin QR ni celulares; la terminal
+  `onboarding*` recorren el asistente de primer uso completo (ver «Asistente de primer uso» abajo); `ajustes-celular` muestra el estado apagado, sin QR ni celulares; la terminal
   es una shell real con el prompt cambiado; los modelos son «Fake Model/Reasoner».
 
 ## Opciones nuevas (F8-B89)
@@ -74,3 +74,7 @@ arranque (`onboarding-inicio` vuelve con «Atrás» al paso 1).
 ## Barra lateral 2c
 
 `--clip sidebar` recorta cada captura al `<aside>` (sufijo `-lateral`). Escenarios `barra-chat`, `barra-chat-fijadas` (una fijada, una archivada con su contador y el menú «⋯» abierto), `barra-code` (sesiones lista / esperando / trabajando) y `barra-code-hover` (ratón sobre una fila); además `chat-vacio`, `barra-lateral-colapsada` y `tareas-permiso`.
+
+## Asistente de primer uso (`onboarding*`)
+
+Dos arranques con `onboarded: false`: **sin motor** (OpenCode ausente, sin servidor) para `onboarding` (primera pantalla con la tarjeta de atención «Lo que hace funcionar la IA… Falta») y `onboarding-motor` (paso del motor, «Paso 1 de 5»); y **con motor incluido** (`LAZUNOX_TEST_BUNDLED_DIR` con un `connected.json` que deja conectado solo el gratuito, que no cuenta como configurado) para `onboarding-inicio` (saludo directo con «Empezar»), `onboarding-conecta` («Paso 1 de 4»), `onboarding-modelo`, `onboarding-modos` y `onboarding-final` («Prepara tu equipo» con «Probar con un ejemplo»). Cada escenario avanza o retrocede con los botones reales hasta su paso (`onbTo`, que lee «Paso N de M»). `ONB_OFFSET=1` sirve solo para comparar con versiones anteriores, que llevaban siempre el paso del motor (5 pasos). La bienvenida con la lista de ArtCraft o del entorno aislado de Windows no se captura (necesita el puente de componentes reales); la cubre `Welcome.render.test.tsx`.

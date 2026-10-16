@@ -19,8 +19,15 @@ const DEFAULT_OUT = WIN
   ? join(tmpdir(), 'shots-desktop')
   : '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
+  // Asistente de primer uso. Arranque «sin motor» (OpenCode ausente): `onboarding` (primera pantalla con la tarjeta de atención) y
+  // `onboarding-motor` (paso del motor). Arranque «motor incluido»: `onboarding-inicio` (saludo directo) y los cuatro pasos.
   'onboarding',
+  'onboarding-motor',
   'onboarding-inicio',
+  'onboarding-conecta',
+  'onboarding-modelo',
+  'onboarding-modos',
+  'onboarding-final',
   'chat-vacio',
   'chat-conversacion',
   'chat-herramientas',
@@ -125,6 +132,10 @@ const binDir = mk(TMP, 'bin-') // el sandbox de Tareas no puede leer userData: e
 for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(binDir, f))
 // Windows no ejecuta el script sh ni un .cmd directo: la app lanza el falso `.mjs` con node (src/main/opencode/test-launcher.ts).
 const FAKE_BIN = join(binDir, WIN ? 'server.mjs' : 'opencode')
+// Motor incluido falso para el asistente de primer uso: igual, pero con solo el gratuito «conectado» (no cuenta como configurado).
+const onbBundledDir = mk(TMP, 'bundled-onb-')
+for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(onbBundledDir, f))
+writeFileSync(join(onbBundledDir, 'connected.json'), JSON.stringify(['opencode']))
 // «Motor incluido» falso (solo `aviso-motor`): `LAZUNOX_TEST_BUNDLED_DIR` hace de `Resources/opencode`.
 const bundledDir = mk(TMP, 'bundled-')
 for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(bundledDir, f))
@@ -1560,21 +1571,68 @@ const S = {
       .click()
     await sleep(900)
   },
+  // Asistente de primer uso: `onbTo(n)` avanza o retrocede hasta «Paso n de m» (n = 0 es la primera pantalla, la bienvenida).
   async onboarding(ctx) {
-    await vis(ctx.page.getByRole('dialog'), 30_000)
-    await sleep(500)
+    await onbTo(ctx, 0)
+  },
+  async 'onboarding-motor'(ctx) {
+    await onbTo(ctx, 1)
   },
   async 'onboarding-inicio'(ctx) {
-    await vis(ctx.page.getByRole('dialog'), 30_000)
-    // «Atrás» hasta el primer paso (sin él el botón no existe).
-    for (let i = 0; i < 6; i++) {
-      const back = ctx.page.getByRole('button', { name: 'Atrás', exact: true })
-      if (!(await back.isVisible().catch(() => false))) break
-      await back.click()
-      await sleep(300)
-    }
-    await sleep(400)
+    await onbTo(ctx, 0)
+  },
+  async 'onboarding-conecta'(ctx) {
+    await onbTo(ctx, 1 + ONB_OFFSET)
+  },
+  async 'onboarding-modelo'(ctx) {
+    await onbTo(ctx, 2 + ONB_OFFSET)
+  },
+  async 'onboarding-modos'(ctx) {
+    await onbTo(ctx, 3 + ONB_OFFSET)
+  },
+  async 'onboarding-final'(ctx) {
+    await onbTo(ctx, 4 + ONB_OFFSET)
   }
+}
+
+// `ONB_OFFSET=1` (solo para comparar con versiones anteriores del asistente, que llevaban un paso más del motor siempre).
+const ONB_OFFSET = Number(process.env.ONB_OFFSET ?? 0)
+// Lleva el asistente al paso `n` (0 = bienvenida). Con el motor incluido hay 4 pasos; sin motor, 5 (el 1 es el del motor).
+async function onbTo(ctx, n) {
+  const { page } = ctx
+  await vis(page.getByRole('dialog'), 30_000)
+  for (let i = 0; i < 12; i++) {
+    const welcome = await page
+      .locator('#welcome-title')
+      .isVisible()
+      .catch(() => false)
+    const cur = welcome
+      ? 0
+      : Number(
+          (
+            (await page
+              .locator('header p')
+              .first()
+              .textContent()
+              .catch(() => '')) ?? ''
+          ).match(/Paso\s+(\d+)\s+de/)?.[1] ?? 0
+        )
+    if (cur === n) break
+    if (cur > n) await page.getByRole('button', { name: 'Atrás', exact: true }).click()
+    else if (welcome) {
+      // «Empezar» (todo bien) o «Continuar» (había algo que atender); con «Empezar» deshabilitado se espera a que termine la revisión.
+      const go = page.getByRole('button', { name: /^(Empezar|Continuar)$/ }).first()
+      await go.waitFor({ state: 'visible', timeout: 10_000 })
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('button')].some((b) => /^(Empezar|Continuar)$/.test(b.textContent ?? '') && !b.disabled),
+        null,
+        { timeout: 15_000 }
+      )
+      await go.click()
+    } else await page.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await sleep(500)
+  }
+  await sleep(n === 0 ? 2200 : 500) // la bienvenida entra con animaciones escalonadas (hasta ~1,5 s)
 }
 
 // ---- kit de UI: una captura por sección (tipografía, fundamentos, botones, campos), con los estados hover/foco/presionado FORZADOS
@@ -1752,13 +1810,26 @@ try {
     await stop(ctx)
   }
   const onb = scenarios.filter(isOnb).sort(byOrder)
-  if (onb.length) {
+  // Sin motor (OpenCode ausente): la bienvenida avisa y el asistente empieza por el paso del motor.
+  const onbSin = onb.filter((s) => s === 'onboarding' || s === 'onboarding-motor')
+  if (onbSin.length) {
     const ctx = await launch('onb', {
       settings: { onboarded: false },
       env: { OPENCODE_BIN: join(binDir, 'no-existe', 'opencode') },
       noServer: true
     })
-    await runGroup(ctx, onb)
+    await runGroup(ctx, onbSin)
+    await stop(ctx)
+  }
+  // Motor incluido y ninguna IA conectada: saludo directo y los cuatro pasos.
+  const onbCon = onb.filter((s) => !onbSin.includes(s))
+  if (onbCon.length) {
+    const ctx = await launch('onb2', {
+      settings: { onboarded: false },
+      env: { OPENCODE_BIN: '', LAZUNOX_TEST_BUNDLED_DIR: onbBundledDir },
+      noServer: true
+    })
+    await runGroup(ctx, onbCon)
     await stop(ctx)
   }
 } catch (e) {
