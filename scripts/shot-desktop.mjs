@@ -70,6 +70,8 @@ const SCENARIOS = [
   'barra-code',
   'barra-code-hover',
   'barra-code-menu',
+  'inicio-chat',
+  'inicio-code',
   'code-cambios',
   'code-cambios-archivo',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
@@ -1515,6 +1517,21 @@ const S = {
     await row.getByRole('button', { name: /^Acciones de/ }).click()
     await sleep(350)
     ctx.hover = null
+  },
+  // Inicio de Chat con conversaciones: una respondiendo arriba, «Retomar» con las recientes y las ideas plegadas.
+  async 'inicio-chat'(ctx) {
+    await S['barra-chat'](ctx)
+    await newChat(ctx.page)
+    await sleep(700)
+  },
+  // Inicio de Code con sesiones: la que espera aprobación arriba, «Retomar» y las ideas plegadas (sesión nueva abierta, vacía).
+  async 'inicio-code'(ctx) {
+    await S['barra-code'](ctx)
+    await ctx.page
+      .getByRole('button', { name: /^Nueva sesión/ })
+      .first()
+      .click()
+    await sleep(900)
   },
   async onboarding(ctx) {
     await vis(ctx.page.getByRole('dialog'), 30_000)

@@ -42,6 +42,7 @@ export const SWAPS: Record<string, Record<string, string>> = {
   // «Comparar modelos» (columnas, diálogo, tienda…): el celular no la usa (`compareApi()` es null), así que todo su índice se sustituye.
   'src/renderer/src/features/chat/ChatView.tsx': { '../compare': 'shims/no-compare.tsx' },
   'src/renderer/src/features/chat/ChatSidebar.tsx': { '../compare': 'shims/no-compare.tsx' },
+  'src/renderer/src/features/chat/ChatHomeBlocks.tsx': { '../compare': 'shims/no-compare.tsx' },
   'src/renderer/src/features/code/impl/CodeWorkspace.tsx': {
     './panels/ChangesPanel': 'lazy/ChangesPanel.tsx',
     './panels/FilesPanel': 'lazy/FilesPanel.tsx',

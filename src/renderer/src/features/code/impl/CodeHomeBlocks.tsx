@@ -1,5 +1,7 @@
 /** Bloques del inicio de Code para retomar sesiones: «Esperando tu aprobación» y «Retomar». Sin sesiones no pintan nada. */
 import { useMemo } from 'react'
+import type { Session } from '@opencode-ai/sdk/v2/client'
+import type { SessionState } from '../../../components/SidebarTree'
 import { useShallow } from 'zustand/react/shallow'
 import { HomeAttentionCard, HomeResume, type HomeRow } from '../../../components/HomeBlocks'
 import { useT } from '../../../lib/i18n'
@@ -11,7 +13,7 @@ import { timeAgo } from './ui'
 
 /** Sesiones del proyecto con el mismo estado que pinta la barra lateral (esperando, trabajando, por revisar, lista). */
 export function useCodeHome(directory: string): CodeHome {
-  const { sessions, sessionProject, permissions, questions, runState, unread, reviewed, reviewedSince } = useCode(
+  const { sessions, sessionProject, permissions, questions, runState, unread, reviewed, reviewedSince, activeSessionID } = useCode(
     useShallow((s) => ({
       sessions: s.sessions,
       sessionProject: s.sessionProject,
@@ -20,12 +22,13 @@ export function useCodeHome(directory: string): CodeHome {
       runState: s.runState,
       unread: s.unread,
       reviewed: s.reviewed,
-      reviewedSince: s.reviewedSince
+      reviewedSince: s.reviewedSince,
+      activeSessionID: s.activeSessionID
     }))
   )
   return useMemo(() => {
     const waiting = waitingRoots(permissions, questions, (id) => rootSessionID(sessions, id))
-    return pickCodeHome(selectProjectSessions({ sessions, sessionProject }, directory), (x) => {
+    const stateOf = (x: Session): SessionState | null => {
       const run = runState[x.id]
       return deriveSessionState({
         waiting: waiting.has(x.id),
@@ -33,8 +36,9 @@ export function useCodeHome(directory: string): CodeHome {
         unread: !!unread[x.id],
         needsReview: sessionNeedsReview(x.summary, reviewed[x.id], { updated: x.time.updated, since: reviewedSince })
       })
-    })
-  }, [sessions, sessionProject, permissions, questions, runState, unread, reviewed, reviewedSince, directory])
+    }
+    return pickCodeHome(selectProjectSessions({ sessions, sessionProject }, directory), stateOf, activeSessionID)
+  }, [sessions, sessionProject, permissions, questions, runState, unread, reviewed, reviewedSince, activeSessionID, directory])
 }
 
 export function CodeHomeBlocks({ home, part }: { home: CodeHome; part: 'waiting' | 'resume' }): React.JSX.Element | null {

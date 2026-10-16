@@ -47,6 +47,16 @@ describe('pickCodeHome', () => {
   })
 })
 
+describe('pickCodeHome con la sesión abierta', () => {
+  it('la sesión vacía que ya está en pantalla no se ofrece retomar y, si es la única, cuenta como primera vez', () => {
+    const only = pickCodeHome([ses('n', 'Nueva', 0)], states({}), 'n')
+    expect(only).toEqual({ waiting: [], waitingTotal: 0, recent: [], hasSessions: false })
+    const more = pickCodeHome([ses('n', 'Nueva', 0), ses('a', 'A', 5)], states({}), 'n')
+    expect(more.recent.map((i) => i.session.id)).toEqual(['a'])
+    expect(more.hasSessions).toBe(true)
+  })
+})
+
 describe('waitingRoots', () => {
   it('un permiso o una pregunta de una subsesión bloquean a su sesión raíz', () => {
     const roots = waitingRoots({ p1: { sessionID: 'sub' } }, { q1: { sessionID: 'b' } }, (id) => (id === 'sub' ? 'a' : id))

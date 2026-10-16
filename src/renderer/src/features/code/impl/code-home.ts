@@ -37,9 +37,12 @@ export function waitingRoots(
   ])
 }
 
-/** `sessions`: las del proyecto actual. Se ignoran subsesiones y archivadas; un id repetido cuenta una vez y sale en una sola lista. */
-export function pickCodeHome(sessions: Session[], stateOf: (s: Session) => SessionState | null): CodeHome {
-  const seen = new Set<string>()
+/**
+ * `sessions`: las del proyecto actual. Se ignoran subsesiones y archivadas; un id repetido cuenta una vez y sale en una sola
+ * lista. `activeId` es la sesión que ya está abierta en pantalla (la vacía de «Nueva sesión»): no se ofrece retomarla a sí misma.
+ */
+export function pickCodeHome(sessions: Session[], stateOf: (s: Session) => SessionState | null, activeId?: string | null): CodeHome {
+  const seen = new Set<string>(activeId ? [activeId] : [])
   const items: CodeHomeItem[] = []
   for (const session of sessions) {
     if (seen.has(session.id) || session.parentID || session.time.archived) continue
