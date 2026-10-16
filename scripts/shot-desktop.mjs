@@ -34,6 +34,7 @@ const SCENARIOS = [
   'code-plan',
   'code-archivo',
   'code-entorno',
+  'aviso-motor',
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
@@ -119,6 +120,9 @@ const binDir = mk(TMP, 'bin-') // el sandbox de Tareas no puede leer userData: e
 for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(binDir, f))
 // Windows no ejecuta el script sh ni un .cmd directo: la app lanza el falso `.mjs` con node (src/main/opencode/test-launcher.ts).
 const FAKE_BIN = join(binDir, WIN ? 'server.mjs' : 'opencode')
+// «Motor incluido» falso (solo `aviso-motor`): `LAZUNOX_TEST_BUNDLED_DIR` hace de `Resources/opencode`.
+const bundledDir = mk(TMP, 'bundled-')
+for (const f of ['opencode', 'server.mjs']) cpSync(join(repo, 'e2e/fake-opencode', f), join(bundledDir, f))
 const home = homedir()
 // Tareas rechaza carpetas de sistema (/private, /tmp): su carpeta tiene que colgar del home.
 const taskFolder = join(mk(home, 'tareas-'), 'Informes')
@@ -953,6 +957,13 @@ const S = {
       await sleep(300)
     }
   },
+  // Franja del motor: se usa un OpenCode elegido aparte (ruta en ajustes, versión 1.18.32 del falso) y la app trae otro incluido
+  // (1.19.0 probado): tarjeta en lenguaje llano con «Usar el motor incluido» y «Ahora no». Grupo propio (necesita ajustes y entorno propios).
+  async 'aviso-motor'(ctx) {
+    const bar = ctx.page.getByRole('status').filter({ hasText: 'motor de IA instalado aparte' })
+    await vis(bar, 20_000)
+    await sleep(500)
+  },
   async 'code-terminal'(ctx) {
     await seedCode(ctx)
     await togglePanel(ctx.page, 'Terminal')
@@ -1611,8 +1622,9 @@ try {
   // interfaz mezclaría mensajes entre ambos; con ids reales (únicos) no pasa.
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
   const isOnb = (s) => s.startsWith('onboarding')
+  const isAviso = (s) => s === 'aviso-motor'
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
-  const main = scenarios.filter((s) => !isOnb(s) && s !== 'kit' && !isTasks(s))
+  const main = scenarios.filter((s) => !isOnb(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
   const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {
     const ctx = await launch('main')
@@ -1622,6 +1634,14 @@ try {
   if (tasks.length) {
     const ctx = await launch('tareas')
     await runGroup(ctx, tasks)
+    await stop(ctx)
+  }
+  if (scenarios.includes('aviso-motor')) {
+    const ctx = await launch('aviso', {
+      settings: { opencodeBin: FAKE_BIN },
+      env: { OPENCODE_BIN: '', LAZUNOX_TEST_BUNDLED_DIR: bundledDir }
+    })
+    await runGroup(ctx, ['aviso-motor'])
     await stop(ctx)
   }
   if (scenarios.includes('kit')) {
