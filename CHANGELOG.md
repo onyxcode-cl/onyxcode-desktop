@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.34] - 2026-10-16
+
+### Mejoras
+
+- **Inicio útil en Chat y Code.** En el Chat, «Respondiendo ahora» y «Retomar» con tus conversaciones recientes; en Code, «Esperando tu aprobación» y «Retomar» con tus sesiones y su estado. Las ideas de ejemplo quedan plegadas cuando ya tienes trabajo. En la barra de Code, el texto «Sin sesiones todavía» pasó a un botón «Nueva sesión aquí».
+- **Chat: fijar y archivar conversaciones.** El menú de tres puntos ahora tiene Fijar, Renombrar, Archivar y Eliminar; las fijadas van arriba en su propio grupo y las archivadas tienen su vista con «Restaurar».
+- **Aprobaciones más compactas.** Los permisos y el plan de Overdrive muestran un resumen de una línea con los botones siempre a la vista y los detalles plegados («Ver detalles»). En acciones delicadas, como borrar o ejecutar comandos largos, el detalle sale abierto.
+- **Code: el «+» de cada proyecto ya no se activa por accidente.** Está más separado de los otros botones, ignora el doble clic, y si ya tienes una sesión vacía sin título la abre en lugar de crear otra.
+- **Textos más grandes y legibles en escritorio.** Los textos secundarios que se veían a 9–11 px (insignias, horas, atajos, contadores, paneles) ahora tienen al menos 12 px. El celular no cambia.
+
 ## [0.5.33] - 2026-10-16
 
 ### Mejoras
