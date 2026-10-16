@@ -9,8 +9,27 @@ export interface ChatPendingQuestion {
   questions: QuestionInfo[]
 }
 
+/** Fijadas de Chat: mismo formato que `code.pinned` de Code (`{ [carpeta]: ids[] }`), solo en este equipo (localStorage). */
+export const LS_CHAT_PINNED = 'chat.pinned'
+
+function readPinned(): Record<string, string[]> {
+  try {
+    const raw = localStorage.getItem(LS_CHAT_PINNED)
+    const v = raw ? (JSON.parse(raw) as unknown) : null
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, string[]>) : {}
+  } catch {
+    return {}
+  }
+}
+
 interface ChatState {
   activeSessionId: string | null
+  /** Conversaciones fijadas por carpeta de Chat. */
+  pinned: Record<string, string[]>
+  /** Vista «Archivadas» de la barra lateral. */
+  showArchived: boolean
+  togglePin: (directory: string, sessionID: string) => void
+  setShowArchived: (v: boolean) => void
   listLoading: boolean
   listError: string | null
   /** Preguntas pendientes del agente, por id de solicitud. */
@@ -24,6 +43,21 @@ interface ChatState {
 
 export const useChat = create<ChatState>((set) => ({
   activeSessionId: null,
+  pinned: readPinned(),
+  showArchived: false,
+  togglePin: (directory, sessionID) =>
+    set((s) => {
+      const list = s.pinned[directory] ?? []
+      const next = list.includes(sessionID) ? list.filter((x) => x !== sessionID) : [...list, sessionID]
+      const pinned = { ...s.pinned, [directory]: next }
+      try {
+        localStorage.setItem(LS_CHAT_PINNED, JSON.stringify(pinned))
+      } catch {
+        // sin storage
+      }
+      return { pinned }
+    }),
+  setShowArchived: (showArchived) => set({ showArchived }),
   listLoading: false,
   listError: null,
   questions: {},

@@ -13,6 +13,7 @@ import { sameDir } from '../../stores/eventRouter'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../stores/sessions'
 import { resolveModelForMode } from '../settings/impl/extras'
+import { isArchivedSession } from '../tasks/impl/util'
 import { useChat, type ChatPendingQuestion } from './store'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 
@@ -315,4 +316,41 @@ export async function deleteChat(sessionID: string): Promise<void> {
   await client.session.delete({ sessionID, directory })
   useSessions.getState().removeSession(sessionID)
   if (useChat.getState().activeSessionId === sessionID) useChat.getState().setActive(null)
+  if (useChat.getState().pinned[directory]?.includes(sessionID)) useChat.getState().togglePin(directory, sessionID)
+}
+
+/** Fija o quita de fijadas una conversación (solo en este equipo; el motor no se entera). */
+export function toggleChatPin(sessionID: string): void {
+  const { connection } = useServer.getState()
+  if (connection) useChat.getState().togglePin(connection.chatDirectory, sessionID)
+}
+
+/** Archiva una conversación con `session.update({ time: { archived } })`, igual que Code y Tareas. Si estaba abierta, se cierra. */
+export async function archiveChat(sessionID: string): Promise<void> {
+  const { client, directory } = ctx()
+  const res = await client.session.update({ sessionID, directory, time: { archived: Date.now() } })
+  if (res.error) throw new Error(errorMessage(res.error))
+  if (res.data) useSessions.getState().upsertSession(res.data)
+  if (useChat.getState().activeSessionId === sessionID) useChat.getState().setActive(null)
+}
+
+/**
+ * Restaura una conversación archivada (`archived: 0`). Si el servidor lo rechaza o sigue archivada, respaldo
+ * `metadata.unarchivedAt` (como `restoreTask`).
+ */
+export async function restoreChat(sessionID: string): Promise<void> {
+  const { client, directory } = ctx()
+  const known = useSessions.getState().sessions[sessionID]
+  const first = await client.session.update({ sessionID, directory, time: { archived: 0 } })
+  let data = first.error ? undefined : first.data
+  if (!data || isArchivedSession(data)) {
+    const second = await client.session.update({
+      sessionID,
+      directory,
+      metadata: { ...(data?.metadata ?? known?.metadata ?? {}), unarchivedAt: Date.now() }
+    })
+    if (second.error) throw new Error(errorMessage(second.error))
+    data = second.data ?? data
+  }
+  if (data) useSessions.getState().upsertSession(data)
 }

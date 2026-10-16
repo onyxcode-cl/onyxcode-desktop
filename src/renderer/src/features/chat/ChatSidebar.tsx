@@ -5,7 +5,17 @@ import { SidebarTreeRegion } from '../../components/SidebarTree'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { sessionsKey, useSessions } from '../../stores/sessions'
 import { selectSessionsForDirectory } from '../../lib/session-reducer'
-import { deleteChat, loadChatSessions, openChatSession, renameChat, syncChatRunStatus } from './actions'
+import { isArchivedSession } from '../tasks/impl/util'
+import {
+  archiveChat,
+  deleteChat,
+  loadChatSessions,
+  openChatSession,
+  renameChat,
+  restoreChat,
+  syncChatRunStatus,
+  toggleChatPin
+} from './actions'
 import { useCompare, useHiddenCompareSession } from '../compare'
 import { useChat } from './store'
 
@@ -18,7 +28,9 @@ export function ChatSidebar(): React.JSX.Element {
   const status = useSessions((s) => s.status)
   const more = useSessions((s) => (connection ? s.moreSessions[sessionsKey(connection.chatDirectory)] : false))
   const client = useServer((s) => s.client)
-  const { activeSessionId, listLoading, listError } = useChat()
+  const { activeSessionId, listLoading, listError, showArchived, pinned } = useChat()
+  const pinnedList = connection ? pinned[connection.chatDirectory] : undefined
+  const pinnedIds = useMemo(() => new Set(pinnedList ?? []), [pinnedList])
 
   useEffect(() => {
     if (!connection) return
@@ -41,6 +53,24 @@ export function ChatSidebar(): React.JSX.Element {
           )
         : [],
     // `hidden` cambia con los manifiestos y la carga: se enumeran para no recalcular en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSessions, sessionSource, directorySource, connection, manifestsKey, compareLoaded]
+  )
+  // Archivadas del Chat: mismas sesiones del directorio y origen, pero las que el motor marca como archivadas.
+  const archived = useMemo(
+    () =>
+      connection
+        ? Object.values(allSessions)
+            .filter(
+              (s) =>
+                s.directory === connection.chatDirectory &&
+                !s.parentID &&
+                isArchivedSession(s) &&
+                (sessionSource[s.id] ?? 'main') === (directorySource[connection.chatDirectory] ?? 'main') &&
+                !hidden(s)
+            )
+            .sort((a, b) => (b.time.archived ?? 0) - (a.time.archived ?? 0))
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allSessions, sessionSource, directorySource, connection, manifestsKey, compareLoaded]
   )
@@ -73,6 +103,13 @@ export function ChatSidebar(): React.JSX.Element {
           onSelect={(id) => void openChatSession(id)}
           onRename={renameChat}
           onDelete={deleteChat}
+          pinnedIds={pinnedIds}
+          onTogglePin={toggleChatPin}
+          onArchive={archiveChat}
+          onRestore={restoreChat}
+          archived={archived}
+          showArchived={showArchived}
+          onToggleArchived={() => useChat.getState().setShowArchived(!showArchived)}
           hasMore={!!more}
           onLoadMore={onLoadMore}
           showTime

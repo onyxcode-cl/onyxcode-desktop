@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
-import { Check, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Check, MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from 'lucide-react'
 import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 import { confirmDialog } from '../../components/ConfirmDialog'
@@ -19,7 +19,12 @@ export function ChatSidebarRow({
   busy,
   onSelect,
   onRename,
-  onDelete
+  onDelete,
+  pinned = false,
+  archivedView = false,
+  onTogglePin,
+  onArchive,
+  onRestore
 }: {
   session: Session
   active: boolean
@@ -27,6 +32,13 @@ export function ChatSidebarRow({
   onSelect: () => void
   onRename: (title: string) => void
   onDelete: () => void
+  /** Fijada en este equipo: ícono de pin junto al título. */
+  pinned?: boolean
+  /** Vista «Archivadas»: botón «Restaurar» en la fila y menú reducido. */
+  archivedView?: boolean
+  onTogglePin?: () => void
+  onArchive?: () => void
+  onRestore?: () => void
 }): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
@@ -106,11 +118,31 @@ export function ChatSidebarRow({
         data-tree-primary={tree ? '' : undefined}
         className="no-drag min-w-0 flex-1 text-left"
       >
-        <div className={`truncate ${active ? 'text-fg' : 'text-muted'}`}>{title}</div>
+        {pinned ? (
+          <div className={`flex items-center gap-1 ${active ? 'text-fg' : 'text-muted'}`}>
+            <Pin size={10} strokeWidth={2} className="shrink-0 text-subtle" aria-label={t('chat.list.pinned')} />
+            <span className="min-w-0 truncate">{title}</span>
+          </div>
+        ) : (
+          <div className={`truncate ${active ? 'text-fg' : 'text-muted'}`}>{title}</div>
+        )}
         <div data-testid="chat-row-meta" className={`mt-0.5 truncate text-meta ${busy ? 'text-accent' : 'text-subtle'}`}>
-          {busy ? t('app.sidebar.working') : `${t('tasks.status.done')} · ${timeAgo(session.time.updated)}`}
+          {busy
+            ? t('app.sidebar.working')
+            : archivedView
+              ? t('chat.list.archivedAgo', { when: timeAgo(session.time.archived ?? session.time.updated) })
+              : `${t('tasks.status.done')} · ${timeAgo(session.time.updated)}`}
         </div>
       </button>
+      {archivedView && onRestore && (
+        <button
+          type="button"
+          onClick={onRestore}
+          className="no-drag shrink-0 rounded-ctl-sm px-1.5 py-0.5 text-meta text-accent hover:bg-hover"
+        >
+          {t('chat.list.restore')}
+        </button>
+      )}
       <div
         ref={actionsRef}
         className={`relative shrink-0 items-center ${menu || active ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
@@ -136,6 +168,16 @@ export function ChatSidebarRow({
           <MoreHorizontal size={14} strokeWidth={1.75} />
         </button>
         <PortalMenu open={menu} anchor={actionsRef} onClose={closeMenu} label={optionsLabel}>
+          {!archivedView && onTogglePin && (
+            <PortalMenuItem
+              icon={pinned ? <PinOff size={14} strokeWidth={1.75} /> : <Pin size={14} strokeWidth={1.75} />}
+              label={pinned ? t('chat.list.unpin') : t('chat.list.pin')}
+              onClick={() => {
+                setMenu(false)
+                onTogglePin()
+              }}
+            />
+          )}
           <PortalMenuItem
             icon={<Pencil size={14} strokeWidth={1.75} />}
             label={t('chat.list.rename')}
@@ -145,6 +187,27 @@ export function ChatSidebarRow({
               setEditing(true)
             }}
           />
+          {archivedView
+            ? onRestore && (
+                <PortalMenuItem
+                  icon={<ArchiveRestore size={14} strokeWidth={1.75} />}
+                  label={t('chat.list.restore')}
+                  onClick={() => {
+                    setMenu(false)
+                    onRestore()
+                  }}
+                />
+              )
+            : onArchive && (
+                <PortalMenuItem
+                  icon={<Archive size={14} strokeWidth={1.75} />}
+                  label={t('chat.list.archive')}
+                  onClick={() => {
+                    setMenu(false)
+                    onArchive()
+                  }}
+                />
+              )}
           <PortalMenuSeparator />
           <PortalMenuItem
             danger
