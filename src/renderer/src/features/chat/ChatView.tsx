@@ -41,6 +41,8 @@ import { useChat } from './store'
 import { ReadingModeSwitch } from '../../components/ReadingModeSwitch'
 import { ChatDocPanel } from './ChatDocPanel'
 import { ChatProgressHud } from './ChatProgressHud'
+import { ChatHomeBlocks, useChatHome } from './ChatHomeBlocks'
+import { HomeIdeas } from '../../components/HomeBlocks'
 import { useChatDocPanel } from './useChatDocPanel'
 
 const EMPTY: MessageEntry[] = []
@@ -81,6 +83,7 @@ export function ChatView(): React.JSX.Element {
   // «Comparar modelos» (solo texto): activo únicamente en escritorio.
   useCompareBoot()
   const compareId = useShownCompare('chat', null)
+  const home = useChatHome()
 
   // Si la conversación abierta se eliminó (aquí o desde otro cliente), volver a "nueva".
   const listLoading = useChat((s) => s.listLoading)
@@ -261,7 +264,7 @@ export function ChatView(): React.JSX.Element {
     return (
       <div className="flex h-full flex-col">
         <div className="drag h-12 shrink-0" data-mobile="hide" />
-        <div className="flex flex-1 flex-col items-center justify-center pb-20">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto pb-20">
           <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
             <div className="relative isolate desk:hidden">
               <div
@@ -278,28 +281,49 @@ export function ChatView(): React.JSX.Element {
             </div>
           </div>
           <div className="w-full animate-rise-in [animation-delay:60ms]">
+            {home.working.length > 0 && (
+              <div className="mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]">
+                <ChatHomeBlocks home={home} part="working" />
+              </div>
+            )}
             {notices}
             {composerEl(true)}
           </div>
-          <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms] desk:mt-2 desk:grid desk:w-full desk:max-w-[calc(var(--measure-prose)+48px)] desk:grid-cols-4 desk:gap-3">
-            {SUGGESTIONS.slice(0, 4).map(({ icon: Icon, label, prompt }) => (
-              <button
-                key={label}
-                type="button"
-                disabled={!ready}
-                onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
-                className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-auto desk:flex-col desk:items-start desk:gap-2.5 desk:rounded-card desk:border-transparent desk:p-4 desk:text-left desk:shadow-sm desk:duration-[var(--dur-base)] desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover"
-              >
-                <span className="shrink-0 desk:flex desk:h-8 desk:w-8 desk:items-center desk:justify-center desk:rounded-ctl desk:bg-active">
-                  <Icon size={14} className="text-accent desk:h-4 desk:w-4" />
-                </span>
-                <span className="min-w-0 desk:flex desk:flex-col">
-                  <span className="block desk:text-sm desk:leading-5 desk:font-medium desk:text-fg">{t(label)}</span>
-                  <span className="hidden desk:block desk:text-meta desk:font-normal desk:text-muted">{t(`${label}.desc` as MsgKey)}</span>
-                </span>
-              </button>
-            ))}
-          </div>
+          {home.recent.length > 0 && (
+            <div className="mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]">
+              <ChatHomeBlocks home={home} part="resume" />
+            </div>
+          )}
+          <HomeIdeas
+            storageKey="chat.hideIdeas"
+            className="mx-auto max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]"
+            secondary={home.hasChats}
+            label={t('chat.home.ideas')}
+            showLabel={t('chat.home.ideas.show')}
+            hideLabel={t('chat.home.ideas.hide')}
+          >
+            <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms] desk:mt-2 desk:grid desk:w-full desk:max-w-[calc(var(--measure-prose)+48px)] desk:grid-cols-4 desk:gap-3">
+              {SUGGESTIONS.slice(0, 4).map(({ icon: Icon, label, prompt }) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={!ready}
+                  onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
+                  className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-auto desk:flex-col desk:items-start desk:gap-2.5 desk:rounded-card desk:border-transparent desk:p-4 desk:text-left desk:shadow-sm desk:duration-[var(--dur-base)] desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover"
+                >
+                  <span className="shrink-0 desk:flex desk:h-8 desk:w-8 desk:items-center desk:justify-center desk:rounded-ctl desk:bg-active">
+                    <Icon size={14} className="text-accent desk:h-4 desk:w-4" />
+                  </span>
+                  <span className="min-w-0 desk:flex desk:flex-col">
+                    <span className="block desk:text-sm desk:leading-5 desk:font-medium desk:text-fg">{t(label)}</span>
+                    <span className="hidden desk:block desk:text-meta desk:font-normal desk:text-muted">
+                      {t(`${label}.desc` as MsgKey)}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </HomeIdeas>
         </div>
       </div>
     )

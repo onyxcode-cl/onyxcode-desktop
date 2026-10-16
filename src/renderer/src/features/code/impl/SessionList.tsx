@@ -17,7 +17,6 @@ import {
   Plus,
   Search,
   ShieldAlert,
-  Terminal,
   Trash2,
   X
 } from 'lucide-react'
@@ -31,6 +30,7 @@ import { sameDir } from './open-projects'
 import { openProjectTrusted } from './trust'
 import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
+import { waitingRoots } from './code-home'
 import { deriveSessionState, legacyBaseline, matchesSessionFilter, sessionNeedsReview, summarySignature } from './review-logic'
 import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
@@ -726,7 +726,17 @@ function ProjectGroup({
           </div>
         )}
         {!loading && list.length === 0 && !isRemoteSurface() && (
-          <SidebarEmpty icon={<Terminal size={18} strokeWidth={1.75} />} text={t('code.sessions.empty')} hint />
+          <div className="px-2 py-2">
+            <button
+              type="button"
+              data-testid="code-sidebar-new-here"
+              onClick={() => focusThen(() => void useCode.getState().newSessionAt(directory))}
+              className="no-drag flex h-8 w-full items-center justify-center gap-2 rounded-ctl border border-border bg-elevated text-ui font-medium text-fg transition hover:border-border-strong hover:bg-hover"
+            >
+              <Plus size={14} strokeWidth={1.75} aria-hidden="true" />
+              {t('code.sessions.newHere')}
+            </button>
+          </div>
         )}
         {!loading && list.length === 0 && isRemoteSurface() && (
           <div className="px-2 py-1 text-xs text-subtle desk:px-2.5 desk:py-2 desk:text-meta">{t('code.sessions.empty')}</div>
@@ -822,11 +832,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
 
   const waiting = useMemo(
     // Un permiso O una pregunta pendiente bloquean a la sesión (y a la raíz de sus subagentes).
-    () =>
-      new Set([
-        ...Object.values(permissions).map((p) => rootSessionID(sessions, p.sessionID)),
-        ...Object.values(questions).map((q) => rootSessionID(sessions, q.sessionID))
-      ]),
+    () => waitingRoots(permissions, questions, (id) => rootSessionID(sessions, id)),
     [permissions, questions, sessions]
   )
 
