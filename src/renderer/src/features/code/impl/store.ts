@@ -814,12 +814,21 @@ export const useCode = create<CodeState>((set, get) => {
       codeSessionLimits.delete(directory)
       const wasFocused = sameDir(s.directory ?? '', directory)
       const next = wasFocused ? nextFocusAfterClose(openDirs(s), directory, focusRank) : (s.directory ?? null)
-      set((st) => ({ ...purgeManyPatch(st, ids), openDirectories }))
+      // Si se cierra el proyecto con foco, el foco pasa al siguiente EN LA MISMA actualización: si no, `openDirs` seguiría
+      // contando la carpeta cerrada (por ser `directory`) y `focusProject` la volvía a guardar en la lista (reaparecía al reiniciar).
+      set((st) => ({
+        ...purgeManyPatch(st, ids),
+        openDirectories,
+        ...(wasFocused ? { directory: next ?? null, activeSessionID: null } : {})
+      }))
       purgeManySideState(ids)
       writeOpenProjects(openDirectories, next)
-      if (wasFocused) {
-        if (next) void get().focusProject(next)
-        else set({ directory: null, activeSessionID: null })
+      if (wasFocused && next) {
+        touchFocus(next)
+        const last = lsGet(LS_SESSION + next)
+        const sessions = selectProjectSessions(get(), next)
+        const pick = sessions.find((x) => x.id === last) ?? sessions[0]
+        if (pick) void get().selectSession(pick.id)
       }
     },
 

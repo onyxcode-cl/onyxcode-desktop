@@ -245,3 +245,26 @@ describe('al reiniciar, los proyectos abiertos no desaparecen de la barra', () =
     expect(st().openDirectories).toEqual([A, B])
   })
 })
+
+describe('cerrar un proyecto no lo vuelve a guardar', () => {
+  it('cerrar el proyecto con foco: la lista guardada ya no lo trae y el foco pasa al siguiente', async () => {
+    installClient({ [A]: [makeSession('sa', A)], [B]: [makeSession('sb', B)], [C]: [] })
+    await st().openProject(A)
+    await st().openProject(B)
+    await st().openProject(C)
+    expect(st().directory).toBe(C)
+    st().closeOneProject(C)
+    expect(st().openDirectories).not.toContain(C)
+    expect(projectsLS()?.open).toEqual([A, B])
+    expect(projectsLS()?.open).not.toContain(C)
+    expect(st().directory === A || st().directory === B).toBe(true)
+  })
+  it('cerrar un proyecto sin foco tampoco queda guardado', async () => {
+    installClient({ [A]: [], [B]: [] })
+    await st().openProject(A)
+    await st().openProject(B)
+    st().closeOneProject(A)
+    expect(projectsLS()?.open).toEqual([B])
+    expect(st().directory).toBe(B)
+  })
+})
