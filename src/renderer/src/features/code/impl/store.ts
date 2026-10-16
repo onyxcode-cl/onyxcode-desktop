@@ -837,13 +837,11 @@ export const useCode = create<CodeState>((set, get) => {
 
     restoreOpenProjects: async () => {
       const s = get()
+      // Los proyectos que el usuario ya tenía abiertos NO se quitan de la barra aunque aún no consten como de confianza (antes
+      // desaparecían sin avisar al reiniciar): quedan visibles y piden confirmar al entrar. Solo se cargan sus sesiones (lo que
+      // inicia el motor en esa carpeta) si son de confianza.
       const all = openDirs(s)
-      const trustedOpen = all.filter((d) => sameDir(d, s.directory ?? '') || s.isTrusted(d))
-      if (trustedOpen.length !== all.length) {
-        set({ openDirectories: trustedOpen })
-        writeOpenProjects(trustedOpen, s.directory)
-      }
-      const others = trustedOpen.filter((d) => !sameDir(d, s.directory ?? ''))
+      const others = all.filter((d) => !sameDir(d, s.directory ?? '') && s.isTrusted(d))
       await Promise.all(others.map((d) => get().loadSessions(d)))
     },
 
@@ -1396,7 +1394,11 @@ export const useCode = create<CodeState>((set, get) => {
     resync: async () => {
       const s = get()
       if (!s.directory) return
-      await Promise.all(openDirs(s).map((d) => get().loadSessions(d)))
+      await Promise.all(
+        openDirs(s)
+          .filter((d) => sameDir(d, s.directory ?? '') || s.isTrusted(d))
+          .map((d) => get().loadSessions(d))
+      )
       const sid = get().activeSessionID
       if (sid) await loadMessages(sid)
     },

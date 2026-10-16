@@ -212,3 +212,36 @@ describe('celular (isRemoteSurface): un solo proyecto a la vez, reemplaza como s
     expect(st().directory).toBe(B)
   })
 })
+
+describe('al reiniciar, los proyectos abiertos no desaparecen de la barra', () => {
+  it('un proyecto abierto que aún no es de confianza sigue en la lista, pero no se cargan sus sesiones', async () => {
+    const listed: string[] = []
+    const client = {
+      session: {
+        list: ({ directory }: { directory: string }) => {
+          listed.push(directory)
+          return Promise.resolve({ data: [] })
+        },
+        status: () => Promise.resolve({ data: {} }),
+        messages: () => Promise.resolve({ data: [] }),
+        todo: () => Promise.resolve({ data: [] })
+      },
+      permission: { list: () => Promise.resolve({ data: [] }) },
+      question: { list: () => Promise.resolve({ data: [] }) }
+    }
+    useServer.setState({ client: client as never })
+    // Estado de «reinicio»: tres proyectos guardados; solo B es de confianza y A tiene el foco.
+    useCode.setState({ directory: A, openDirectories: [A, B, C], trustedFolders: [B] })
+    await st().restoreOpenProjects()
+    expect(st().openDirectories).toEqual([A, B, C])
+    expect(listed).toContain(B)
+    expect(listed).not.toContain(C)
+  })
+
+  it('con todos de confianza se cargan todos', async () => {
+    installClient()
+    useCode.setState({ directory: A, openDirectories: [A, B], trustedFolders: [A, B] })
+    await st().restoreOpenProjects()
+    expect(st().openDirectories).toEqual([A, B])
+  })
+})

@@ -27,6 +27,7 @@ import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
+import { openProjectTrusted } from './trust'
 import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
 import { timeAgo } from './ui'
 import { deriveSessionState, legacyBaseline, matchesSessionFilter, sessionNeedsReview, summarySignature } from './review-logic'
@@ -549,6 +550,7 @@ function ProjectGroup({
   const reviewedSince = useCode((s) => s.reviewedSince)
   const pinnedMap = useCode((s) => s.pinned)
   const loading = useCode((s) => s.loadingSessionsByDir[directory] ?? false)
+  const trusted = useCode((s) => s.trustedFolders.includes(directory) || sameDir(s.directory ?? '', directory))
   const moreSessions = useCode((s) => s.moreSessionsByDir[directory] ?? false)
   const [showArchived, setShowArchived] = useState(false)
   const [worktreeOpen, setWorktreeOpen] = useState(false)
@@ -623,13 +625,14 @@ function ProjectGroup({
               tree ? undefined : t(projectOpen ? 'app.sidebar.collapseProject' : 'app.sidebar.expandProject', { name: baseName(directory) })
             }
             title={directory}
-            onClick={() => setProjectOpen((o) => !o)}
-            className={`no-drag flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-ctl pr-7 pl-2 text-left text-[11px] ${focused ? 'text-muted' : 'text-subtle'}`}
+            // Proyecto que quedó abierto pero aún sin confianza: no se carga hasta que el usuario confirme al entrar.
+            onClick={() => (trusted ? setProjectOpen((o) => !o) : void openProjectTrusted(directory))}
+            className={`no-drag flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-ctl pr-14 pl-2 text-left text-[12px] font-medium ${focused ? 'text-fg' : 'text-muted'}`}
           >
             <ChevronDown
               size={12}
               strokeWidth={1.8}
-              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
+              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? 'opacity-0 group-focus-within/proj:opacity-100 group-hover/proj:opacity-100' : '-rotate-90'}`}
               aria-hidden="true"
             />
             <span className="truncate">{baseName(directory)}</span>
@@ -640,9 +643,9 @@ function ProjectGroup({
             data-testid="project-count"
             className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11px] tabular-nums text-subtle group-focus-within/proj:hidden group-hover/proj:hidden"
           >
-            {visibleList.length}
+            {!projectOpen || !trusted ? visibleList.length : ''}
           </span>
-          <span className="absolute top-1/2 right-1 hidden -translate-y-1/2 items-center gap-0.5 group-focus-within/proj:flex group-hover/proj:flex">
+          <span className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
             <button
               type="button"
               title={t('code.sessions.closeProject', { name: baseName(directory) })}
