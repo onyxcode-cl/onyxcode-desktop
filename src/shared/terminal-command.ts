@@ -30,7 +30,6 @@ export function shellFamilyOf(lang: string | null | undefined, platform: string)
   return null
 }
 
-// eslint-disable-next-line no-control-regex
 const CONTROL_RE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/
 /** Prompt al inicio de una línea: `$ cmd`, `% cmd`, `> cmd`, `PS C:\x> cmd`, `C:\x> cmd`, `user@host:~$ cmd`. */
 const PROMPT_RES: RegExp[] = [
@@ -102,8 +101,8 @@ export function terminalInputFor(lines: readonly string[]): string {
 
 export type DangerCode = 'delete' | 'privilege' | 'remote-exec' | 'permissions' | 'disk' | 'system' | 'git' | 'process' | 'secrets'
 
-/** Envoltorios y palabras que no cambian lo que se ejecuta de verdad. */
-const WRAPPERS = new Set(['command', 'builtin', 'time', 'nohup', 'env', 'exec', 'nice', 'xargs', 'then', 'do', 'else'])
+/** Envoltorios (`sudo` incluido: lo que importa es el comando de dentro) y palabras que no cambian lo que se ejecuta de verdad. */
+const WRAPPERS = new Set(['sudo', 'doas', 'command', 'builtin', 'time', 'nohup', 'env', 'exec', 'nice', 'xargs', 'then', 'do', 'else'])
 
 /** Parte el comando en segmentos (`;`, `&&`, `||`, `|`, `&`, saltos de línea) respetando comillas simples y dobles. */
 function segmentsOf(cmd: string): string[] {
@@ -137,12 +136,54 @@ function headWord(segment: string): { name: string; rest: string } {
 }
 
 const DELETE_CMDS = new Set(['rm', 'rmdir', 'unlink', 'shred', 'srm', 'del', 'erase', 'rd', 'remove-item', 'ri', 'rimraf', 'trash'])
-const PRIVILEGE_CMDS = new Set(['sudo', 'su', 'doas', 'runas', 'pkexec'])
-const DISK_CMDS = new Set(['mkfs', 'dd', 'diskutil', 'fdisk', 'parted', 'diskpart', 'format', 'format-volume', 'clear-disk', 'initialize-disk', 'wipefs', 'newfs'])
+const PRIVILEGE_CMDS = new Set(['su', 'runas', 'pkexec'])
+const DISK_CMDS = new Set([
+  'mkfs',
+  'dd',
+  'diskutil',
+  'fdisk',
+  'parted',
+  'diskpart',
+  'format',
+  'format-volume',
+  'clear-disk',
+  'initialize-disk',
+  'wipefs',
+  'newfs'
+])
 const SYSTEM_CMDS = new Set([
-  'shutdown', 'reboot', 'halt', 'poweroff', 'restart-computer', 'stop-computer', 'launchctl', 'systemctl', 'csrutil', 'spctl', 'defaults',
-  'crontab', 'reg', 'regedit', 'sc', 'schtasks', 'netsh', 'bcdedit', 'set-executionpolicy', 'new-service', 'security', 'pmset', 'networksetup',
-  'systemsetup', 'sysadminctl', 'dscl', 'passwd', 'visudo', 'tmutil', 'mount', 'umount', 'setx'
+  'shutdown',
+  'reboot',
+  'halt',
+  'poweroff',
+  'restart-computer',
+  'stop-computer',
+  'launchctl',
+  'systemctl',
+  'csrutil',
+  'spctl',
+  'defaults',
+  'crontab',
+  'reg',
+  'regedit',
+  'sc',
+  'schtasks',
+  'netsh',
+  'bcdedit',
+  'set-executionpolicy',
+  'new-service',
+  'security',
+  'pmset',
+  'networksetup',
+  'systemsetup',
+  'sysadminctl',
+  'dscl',
+  'passwd',
+  'visudo',
+  'tmutil',
+  'mount',
+  'umount',
+  'setx'
 ])
 const PROCESS_CMDS = new Set(['kill', 'killall', 'pkill', 'taskkill', 'stop-process'])
 const READ_ONLY_SUB = /^(?:read|status|list|query|show|search|info|--version|-v)\b/i
@@ -163,7 +204,8 @@ export function dangerousCommandReason(command: string): DangerCode | null {
     return 'remote-exec'
   if (/:\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/.test(flat)) return 'process'
   // Secretos y sistema por ruta.
-  if (/\.ssh\b|\bid_(?:rsa|ed25519|ecdsa)\b|(?:^|[\s/\\])\.env(?:\.\w+)?\b|\.aws[\\/]credentials|\.npmrc\b|\bkeychain\b/i.test(flat)) return 'secrets'
+  if (/\.ssh\b|\bid_(?:rsa|ed25519|ecdsa)\b|(?:^|[\s/\\])\.env(?:\.\w+)?\b|\.aws[\\/]credentials|\.npmrc\b|\bkeychain\b/i.test(flat))
+    return 'secrets'
   if (
     /(?:^|[\s=>"'])\/(?:etc|System|Library|usr\/(?:bin|sbin|lib)|bin|sbin|var\/db|private\/etc)\b|[A-Za-z]:\\Windows\b|\bHK(?:LM|CU|CR)\b[:\\]|>\s*\/dev\/(?!null\b)/i.test(
       flat
@@ -193,9 +235,25 @@ export function dangerousCommandReason(command: string): DangerCode | null {
         return 'git'
     }
     if ((name === 'npm' || name === 'pnpm' || name === 'yarn') && /\bpublish\b|(?:^|\s)(?:-g|--global)\b/.test(rest)) return 'system'
-    if (['brew', 'apt', 'apt-get', 'dnf', 'yum', 'pacman', 'pip', 'pip3', 'winget', 'choco'].includes(name) && /\b(?:uninstall|remove|purge|autoremove)\b/.test(rest))
+    if (
+      ['brew', 'apt', 'apt-get', 'dnf', 'yum', 'pacman', 'pip', 'pip3', 'winget', 'choco'].includes(name) &&
+      /\b(?:uninstall|remove|purge|autoremove)\b/.test(rest)
+    )
       return 'system'
     if (name === 'set-content' || name === 'clear-content' || name === 'truncate') return 'delete'
   }
   return null
+}
+
+/** ¿Es probable que el comando pida una contraseña? (`sudo`, `su`, `ssh`…): no es peligroso por sí mismo, solo se avisa. */
+export function mayAskPassword(command: string): boolean {
+  for (const seg of segmentsOf(command.replace(/\\\n/g, ' '))) {
+    const first = seg.split(/\s+/).find((w) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(w)) ?? ''
+    const name = first
+      .replace(/^.*[\\/]/, '')
+      .replace(/\.exe$/i, '')
+      .toLowerCase()
+    if (['sudo', 'su', 'doas', 'runas', 'ssh', 'scp', 'sftp', 'passwd'].includes(name)) return true
+  }
+  return false
 }

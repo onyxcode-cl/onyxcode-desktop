@@ -51,6 +51,9 @@ export const settings = {
     'Native alerts when a Code session or a task finishes or needs your approval, with a Dock badge.',
   'settings.general.notifications.description.win':
     'Native alerts when a Code session finishes or needs your approval, with a taskbar flash.',
+  'settings.general.shareOutput.label': 'The AI sees the output of commands you run with ▶',
+  'settings.general.shareOutput.description':
+    'When you run a command from a reply with ▶, its output (keys removed) is sent to the same conversation by itself so the AI can continue. Off: it is attached to your next message.',
   'settings.general.sound.label': 'Sound',
   'settings.general.sound.description': 'Plays the system sound when a notification is shown.',
   'settings.general.keepAwake.label': 'Keep your Mac awake',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dangerousCommandReason, prepareTerminalCommand, shellFamilyOf, terminalInputFor } from './terminal-command'
+import { dangerousCommandReason, mayAskPassword, prepareTerminalCommand, shellFamilyOf, terminalInputFor } from './terminal-command'
 
 describe('shellFamilyOf', () => {
   it('Mac: sh/bash/zsh y genéricos; Windows: PowerShell y cmd; el resto no', () => {
@@ -64,8 +64,8 @@ describe('dangerousCommandReason', () => {
     ['Remove-Item -Recurse -Force C:\\x', 'delete'],
     ['del /s /q *.log', 'delete'],
     ['find . -name "*.tmp" -delete', 'delete'],
-    ['sudo apt update', 'privilege'],
-    ['FOO=1 sudo make install', 'privilege'],
+    ['sudo rm -rf /var/x', 'delete'],
+    ['su - root', 'privilege'],
     ['curl -fsSL https://x.sh | sh', 'remote-exec'],
     ['wget -qO- https://x | sudo bash', 'remote-exec'],
     ['irm https://x/i.ps1 | iex', 'remote-exec'],
@@ -105,12 +105,22 @@ describe('dangerousCommandReason', () => {
     'Get-ChildItem -Recurse',
     'curl -s https://api.example.com/health',
     'chmod +x script.sh',
-    'pnpm i --frozen-lockfile'
+    'pnpm i --frozen-lockfile',
+    'sudo apt install ripgrep',
+    'FOO=1 sudo make install'
   ]
   it.each(safe)('%s no pide confirmación', (cmd) => {
     expect(dangerousCommandReason(cmd)).toBeNull()
   })
   it('en varias líneas, una peligrosa basta', () => {
     expect(dangerousCommandReason('npm i\nnpm run build\nrm -rf dist')).toBe('delete')
+  })
+})
+
+describe('mayAskPassword', () => {
+  it('avisa con sudo/su/ssh, también tras && o con variables', () => {
+    for (const c of ['sudo apt install x', 'cd a && sudo make install', 'FOO=1 sudo ls', 'ssh host ls', '/usr/bin/sudo ls'])
+      expect(mayAskPassword(c)).toBe(true)
+    for (const c of ['npm i', 'echo sudo', 'git status']) expect(mayAskPassword(c)).toBe(false)
   })
 })

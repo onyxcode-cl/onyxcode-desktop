@@ -61,6 +61,7 @@ import { TranscriptLoading } from '../../../components/TranscriptLoader'
 import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
 import { TerminalPanel } from './panels/TerminalPanel'
+import { ShellRunProvider } from './ShellRunProvider'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
 import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
@@ -990,7 +991,9 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
           <SessionList />
         </div>
       )}
-      <ChatColumn directory={directory} />
+      <ShellRunProvider directory={directory}>
+        <ChatColumn directory={directory} />
+      </ShellRunProvider>
       <SidePanels directory={directory} containerWidth={containerWidth - (showSessionList ? 240 : 0)} />
     </div>
   )

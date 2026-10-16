@@ -114,7 +114,15 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
 }
 
 /** Tarjetas de los documentos que dejó un turno terminado. No pinta nada en el celular, mientras escribe o sin documentos. */
-export function GeneratedFiles({ parts, root, done }: { parts: readonly Part[]; root: string | null; done: boolean }): React.JSX.Element | null {
+export function GeneratedFiles({
+  parts,
+  root,
+  done
+}: {
+  parts: readonly Part[]
+  root: string | null
+  done: boolean
+}): React.JSX.Element | null {
   const [files, setFiles] = useState<DocFileInfo[]>([])
   // Solo cuenta lo que cambia las rutas, no cada actualización del stream.
   const key = done && root ? detectDocFiles({ parts, root }).join('\n') : ''

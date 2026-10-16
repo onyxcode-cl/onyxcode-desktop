@@ -36,6 +36,8 @@ import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { useClient } from './client'
 import { ComposerMoreMenu, ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
+import { usePendingTerminalOutput } from './terminal-output'
+import { TerminalOutputPill } from './TerminalOutputPill'
 import { getDraft, setDraft, useDraft } from '../../../stores/drafts'
 import { useCode } from './store'
 import type { Attachment, FileAttachment } from './types'
@@ -256,6 +258,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     draftKeyRef.current = draftKey
   }, [draftKey])
   const [caret, setCaret] = useState(0)
+  // Salida de la terminal / de un comando adjunta al siguiente mensaje (pastilla con ✕).
+  const termOut = usePendingTerminalOutput((s) => (directory ? s.byDir[directory] : undefined))
+  const clearTermOut = usePendingTerminalOutput((s) => s.clear)
   /** Inserta texto dictado en la posición del cursor — mismo patrón que el botón de "@" de abajo. */
   const insertMention = (): void => {
     const el = ref.current
@@ -456,7 +461,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   /** `force`: ⌘/Ctrl+Enter → interrumpe lo que esté en curso y envía de inmediato (salta la cola). */
   const submit = (force = false): void => {
     const t = text.trim()
-    if ((!t && attachments.length === 0) || disabled) return
+    if ((!t && attachments.length === 0 && !termOut) || disabled) return
     // Comandos locales escritos a mano.
     const local = /^\/(\S+)$/.exec(t)
     const lc = !busy && local && localCommands.find((c) => c.id === local[1])
@@ -489,6 +494,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     }
     const used = mentions.filter((m) => text.includes(`@${m}`))
     const atts = attachments
+    const outgoing = termOut ? (t ? `${t}\n\n${termOut.text}` : termOut.text) : t
+    if (termOut && directory) clearTermOut(directory)
     const draft = { text, mentions, attachments: atts }
     clear()
     // Al enviar se apaga el modo «Seleccionar elemento» (si seguía activo en el navegador de este proyecto).
@@ -498,16 +505,16 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
       if (!ok) restore(draft)
     }
     if (force) {
-      void sendNow(t, used, atts).then(settle, () => settle(false))
+      void sendNow(outgoing, used, atts).then(settle, () => settle(false))
       return
     }
     if (busy) {
       const sid = activeSessionID
-      if (sid) settle(enqueue(sid, t, used, atts))
-      else void send(t, used, atts).then(settle, () => settle(false))
+      if (sid) settle(enqueue(sid, outgoing, used, atts))
+      else void send(outgoing, used, atts).then(settle, () => settle(false))
       return
     }
-    void send(t, used, atts).then(settle, () => settle(false))
+    void send(outgoing, used, atts).then(settle, () => settle(false))
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -651,6 +658,16 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           <div
             className={`${mobile ? 'rounded-[24px]' : 'rounded-2xl'} border border-border bg-elevated shadow-sm transition focus-within:border-border-strong focus-within:shadow-md desk:rounded-2xl desk:border-transparent desk:shadow-[var(--elev-edge),var(--shadow-md)] desk:focus-within:border-transparent desk:focus-within:shadow-[var(--elev-edge),var(--shadow-md),0_0_0_1px_color-mix(in_srgb,var(--accent)_40%,transparent)]`}
           >
+            {termOut && (
+              <TerminalOutputPill
+                item={termOut}
+                className={`px-4 ${mobile ? 'pt-5' : 'pt-3'}`}
+                onRemove={() => {
+                  if (directory) clearTermOut(directory)
+                  ref.current?.focus()
+                }}
+              />
+            )}
             <ElementChipRow
               elements={elementAtts}
               className={`px-4 ${mobile ? 'pt-5' : 'pt-3'}`}
@@ -818,7 +835,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     type="button"
                     onMouseDown={keepFocus}
                     onClick={() => submit(false)}
-                    disabled={(!text.trim() && attachments.length === 0) || disabled}
+                    disabled={(!text.trim() && attachments.length === 0 && !termOut) || disabled}
                     aria-label={busy ? t('code.m.queue') : t('code.m.send')}
                     title={busy ? t('code.m.queue') : t('code.m.send')}
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-fg disabled:opacity-30 active:opacity-90"
@@ -896,7 +913,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 <button
                   type="button"
                   onClick={() => submit(false)}
-                  disabled={(!text.trim() && attachments.length === 0) || disabled}
+                  disabled={(!text.trim() && attachments.length === 0 && !termOut) || disabled}
                   title={sendTitle}
                   aria-label={sendTitle}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100"

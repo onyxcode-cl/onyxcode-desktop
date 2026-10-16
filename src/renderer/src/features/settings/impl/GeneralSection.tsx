@@ -17,6 +17,7 @@ import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs } from './extras'
+import { useShareCommandOutput } from '../../code/impl/terminal-output'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
 
 /** Fila "Mantener el Mac despierto mientras corren tareas" (powerSaveBlocker en main). */
@@ -191,6 +192,8 @@ export function GeneralSection(): React.JSX.Element {
   const { settings, update } = useSettings()
   const { status, connection, restart } = useServer()
   const showTray = useExtrasPrefs((s) => s.prefs.showTray)
+  const shareOutput = useShareCommandOutput((s) => s.on)
+  const setShareOutput = useShareCommandOutput((s) => s.set)
   const notificationsEnabled = useExtrasPrefs((s) => s.prefs.notificationsEnabled)
   const soundEnabled = useExtrasPrefs((s) => s.prefs.soundEnabled)
   const updatePrefs = useExtrasPrefs((s) => s.update)
@@ -255,6 +258,9 @@ export function GeneralSection(): React.JSX.Element {
                 onChange={(v) => void updatePrefs({ notificationsEnabled: v })}
                 label={t('settings.general.notifications.label')}
               />
+            </Row>
+            <Row label={t('settings.general.shareOutput.label')} description={t('settings.general.shareOutput.description')}>
+              <Toggle checked={shareOutput} onChange={setShareOutput} label={t('settings.general.shareOutput.label')} />
             </Row>
             <Row label={t('settings.general.sound.label')} description={t('settings.general.sound.description')}>
               <Toggle

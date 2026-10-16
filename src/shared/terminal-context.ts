@@ -19,7 +19,6 @@ const ANSI_RE = new RegExp(
   ].join('|'),
   'g'
 )
-// eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
 
 export function stripAnsi(text: string): string {
@@ -76,14 +75,15 @@ export interface TerminalAskResult {
   /** Texto para el compositor; `null` si no había nada que citar. */
   text: string | null
   clipped: boolean
+  lineCount: number
 }
 
 /** Arma «intro + bloque ```text```» con lo que había en la terminal (ya limpio y sin secretos). */
 export function buildTerminalAsk(raw: string, intro: string, clippedNote: string): TerminalAskResult {
   const cleaned = cleanTerminalText(raw)
-  if (!cleaned.trim()) return { text: null, clipped: false }
+  if (!cleaned.trim()) return { text: null, clipped: false, lineCount: 0 }
   const { text, clipped } = clipTail(cleaned)
   const fence = fenceFor(text)
   const note = clipped ? `${clippedNote}\n` : ''
-  return { text: `${intro}\n\n${note}${fence}text\n${text}\n${fence}\n`, clipped }
+  return { text: `${intro}\n\n${note}${fence}text\n${text}\n${fence}\n`, clipped, lineCount: text.split('\n').length }
 }

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildTerminalAsk, cleanTerminalText, clipTail, MAX_TERMINAL_CONTEXT_CHARS, scrubTerminalSecrets, stripAnsi } from './terminal-context'
+import {
+  buildTerminalAsk,
+  cleanTerminalText,
+  clipTail,
+  MAX_TERMINAL_CONTEXT_CHARS,
+  scrubTerminalSecrets,
+  stripAnsi
+} from './terminal-context'
 
 describe('stripAnsi', () => {
   it('quita colores, cursor, OSC y retornos de carro', () => {
@@ -18,10 +25,10 @@ describe('scrubTerminalSecrets', () => {
     ['curl -H "Authorization: Bearer abc.def.ghi" https://x', 'abc.def.ghi'],
     ['Cookie: sid=abcdef123456; other=1', 'abcdef123456'],
     ['sk-ant-api03-ABCDEFGHIJKLMNOP', 'ABCDEFGHIJKLMNOP'],
-    ['AKIAIOSFODNN7EXAMPLE', 'AKIAIOSFODNN7EXAMPLE'],
+    [['AKIA', 'IOSFODNN7EXAMPLE'].join(''), ['AKIA', 'IOSFODNN7EXAMPLE'].join('')],
     ['https://user:pass1234@host.example/repo.git', 'pass1234'],
     ['GET /x?token=zzzzzzzzzz9999', 'zzzzzzzzzz9999'],
-    ['-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA\n-----END RSA PRIVATE KEY-----', 'MIIEowIBAAKCAQEA']
+    [['-----BEGIN RSA ', 'PRIVATE KEY-----\nMIIEowIBAAKCAQEA\n-----END RSA ', 'PRIVATE KEY-----'].join(''), 'MIIEowIBAAKCAQEA']
   ]
   it.each(cases)('tacha %s', (input, secret) => {
     const out = scrubTerminalSecrets(input)
