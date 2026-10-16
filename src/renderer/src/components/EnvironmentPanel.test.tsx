@@ -1,6 +1,6 @@
+// @vitest-environment jsdom
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { JSDOM } from 'jsdom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EnvironmentPanel, type EnvironmentPanelProps } from './EnvironmentPanel'
 
@@ -8,17 +8,10 @@ import { EnvironmentPanel, type EnvironmentPanelProps } from './EnvironmentPanel
 
 let host: HTMLDivElement
 let root: Root
-let dom: JSDOM
 
 beforeEach(() => {
-  // `src/test/setup.ts` sustituye `window`/`document` por dobles mínimos: aquí se necesita un DOM de verdad.
-  dom = new JSDOM('<!doctype html><body></body>', { url: 'http://localhost/' })
-  vi.stubGlobal('window', dom.window)
-  vi.stubGlobal('document', dom.window.document)
-  vi.stubGlobal('Node', dom.window.Node)
-  vi.stubGlobal('HTMLElement', dom.window.HTMLElement)
-  vi.stubGlobal('KeyboardEvent', dom.window.KeyboardEvent)
-  vi.stubGlobal('MouseEvent', dom.window.MouseEvent)
+  // `src/test/setup.ts` sustituye `window`/`document` por dobles mínimos: se restauran los del DOM (jsdom) de este archivo.
+  vi.unstubAllGlobals()
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -26,8 +19,6 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   host.remove()
-  dom.window.close()
-  vi.unstubAllGlobals()
 })
 
 const render = (p: Partial<EnvironmentPanelProps> = {}): void => {
