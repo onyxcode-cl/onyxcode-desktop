@@ -83,4 +83,22 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     expect(html).toContain('Solo lista archivos')
     expect(html).not.toContain('aria-describedby')
   })
+  it('compacta: comando corto → detalle plegado con el comando entero en el resumen; botones a la vista', () => {
+    surface('darwin')
+    const html = render(perm())
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toMatch(/id="perm-details-p1"[^>]*hidden=""/)
+    expect(html).toContain('title="npm run build"')
+    expect(html).toContain('>Permitir una vez<')
+    expect(html).toContain('Ver detalles')
+  })
+
+  it('compacta: comando de varias líneas o con caracteres ocultos → detalle abierto de entrada', () => {
+    surface('darwin')
+    const multi = render(perm({ metadata: { command: 'echo uno\necho dos' } }))
+    expect(multi).toContain('aria-expanded="true"')
+    expect(multi).not.toMatch(/id="perm-details-p1"[^>]*hidden=""/)
+    const hidden = render(perm({ metadata: { command: 'ls \u202e' } }))
+    expect(hidden).toContain('aria-expanded="true"')
+  })
 })
