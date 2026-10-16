@@ -4,7 +4,7 @@ export const common = {
   'labels.mode.tasks': 'Overdrive',
   'labels.mode.routines': 'Rutinas',
   'labels.ui.task': 'tarea',
-  'labels.ui.network': 'Red del sandbox',
+  'labels.ui.network': 'Sitios permitidos',
   'labels.ui.htmlPreview': 'Vista previa',
   'labels.ui.openHtmlPreview': 'Abrir vista previa',
   'labels.ui.downloadPdf': 'Descargar como PDF',

@@ -20,7 +20,7 @@ export const wizard = {
   'wizard.fullControl.win': 'Full PC control',
   'wizard.fullControlShort': 'Full control',
   'wizard.connectTasksNotice':
-    'OpenCode works with any of these providers. The only exception is {tasks} with the sandbox, which in {app} only supports OpenCode Go (and OpenCode’s free models); to use another provider there, choose {fullControl}.',
+    'OpenCode works with any of these providers. The only exception is {tasks} limited to your folder, which in {app} only supports OpenCode Go (and OpenCode’s free models); to use another provider there, choose {fullControl}.',
   'wizard.connectTasksNotice.win': 'OpenCode works with any of these providers.',
   'wizard.connectTermsNotice': 'Each person is responsible for complying with their provider’s terms and OpenCode’s.',
 

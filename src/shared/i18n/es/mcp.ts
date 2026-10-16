@@ -28,7 +28,7 @@ export const mcp = {
   'mcp.note.external':
     'En servidores de config externa el interruptor conecta/desconecta sólo hasta el próximo reinicio. El estado mostrado corresponde al espacio de Chat; los proyectos de Code pueden tener MCP propios.',
   'mcp.note.tasks':
-    '«Disponible en Overdrive» se aplica al abrir de nuevo la carpeta. En el sandbox los servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los servidores remotos se añaden a la Red del sandbox.',
+    '«Disponible en Overdrive» se aplica al abrir de nuevo la carpeta. Trabajando solo en tu carpeta los servidores remotos con inicio de sesión (OAuth) no están disponibles, y los sitios de los servidores remotos se añaden a la Red del sandbox.',
   'mcp.auth.oauth': 'Inicio de sesión',
   'mcp.auth.token': 'Necesita un token',
   'mcp.auth.none': 'Sin cuenta',
@@ -43,10 +43,10 @@ export const mcp = {
   'mcp.flags.tasks': 'Disponible en Overdrive',
   'mcp.flags.ask': 'Preguntar en cada uso',
   'mcp.flags.oauthWarn':
-    'Este servidor remoto parece usar inicio de sesión (OAuth): no estará disponible en el sandbox (en Control total puede funcionar).',
+    'Este servidor remoto parece usar inicio de sesión (OAuth): no estará disponible trabajando solo en tu carpeta (en Control total puede funcionar).',
   'mcp.flags.envWarn':
-    'Este servidor local usa variables de entorno secretas: no estará disponible en el sandbox porque el agente podría leerlas del entorno del proceso (en Control total sí funciona).',
-  'mcp.flags.hosts': 'Sitio añadido a la Red del sandbox: ',
+    'Este servidor local usa variables de entorno secretas: no estará disponible trabajando solo en tu carpeta porque el agente podría leerlas del entorno del proceso (en Control total sí funciona).',
+  'mcp.flags.hosts': 'Sitio añadido a los sitios permitidos: ',
   'mcp.pair.invalid': 'Línea inválida: "{line}" (formato {fmt})',
   'mcp.pair.fmtEnv': 'CLAVE=valor',
   'mcp.pair.fmtHeader': 'Nombre: valor',

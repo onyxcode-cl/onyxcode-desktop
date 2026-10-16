@@ -1,5 +1,5 @@
 export const tasksSettings = {
-  'tasksSettings.glossary.sandbox': 'Sandbox',
+  'tasksSettings.glossary.sandbox': 'Solo en tu carpeta',
   'tasksSettings.glossary.fullControl': 'Control total del Mac',
   'tasksSettings.glossary.fullControl.win': 'Control total del PC',
   'tasksSettings.glossary.fullControlShort': 'Control total',
@@ -21,7 +21,7 @@ export const tasksSettings = {
   'tasksSettings.idle.hm': 'Inactivo hace {h} h {m} min',
   'tasksSettings.policy.fullControlOff': '{name} está desactivado.',
   'tasksSettings.policy.roots': 'Las carpetas solo pueden estar dentro de: {roots}.',
-  'tasksSettings.policy.noHosts': 'No se pueden añadir sitios a la red del sandbox.',
+  'tasksSettings.policy.noHosts': 'No se pueden añadir sitios a los que las tareas pueden conectarse.',
   'tasksSettings.policy.noAlwaysAllow': 'No se pueden recordar permisos con «Siempre permitir».',
   'tasksSettings.policy.noRoutines': 'Las rutinas están desactivadas.',
   'tasksSettings.policy.maxArchive': 'El archivado automático no puede superar {days} días.',
@@ -104,7 +104,7 @@ export const tasksSettings = {
   'tasksSettings.servers.none': 'No hay servidores en marcha.',
   'tasksSettings.storage.title': 'Almacenamiento',
   'tasksSettings.storage.desc':
-    'Espacio privado que usa cada carpeta en el {sandbox} (historial de tareas, caché y temporales). Solo se puede limpiar si su servidor está detenido.',
+    'Espacio privado que usa cada carpeta en modo «{sandbox}» (historial de tareas, caché y temporales). Solo se puede limpiar si su servidor está detenido.',
   'tasksSettings.storage.total': 'Total',
   'tasksSettings.storage.refresh': 'Actualizar',
   'tasksSettings.storage.calculating': 'Calculando…',
@@ -122,7 +122,7 @@ export const tasksSettings = {
   'tasksSettings.storage.deleteAll': 'Borrar todo',
   'tasksSettings.storage.deleteAllTitle': '¿Borrar todo el almacenamiento de «{name}»?',
   'tasksSettings.storage.deleteAllMessage':
-    'Se borrará el espacio privado de esta carpeta en el sandbox: se pierde el historial de tareas del sandbox, la caché y los archivos temporales. Los archivos de la carpeta en sí no se tocan. No se puede deshacer.',
+    'Se borrará el espacio privado de esta carpeta: se pierde el historial de tareas, la caché y los archivos temporales. Los archivos de la carpeta en sí no se tocan. No se puede deshacer.',
   'tasksSettings.storage.screenshots': 'Capturas temporales',
   'tasksSettings.storage.screenshotsDesc': 'Copias de pantalla del {fullControl}{size}. Se borran solas al terminar y al cerrar la app.',
   'tasksSettings.storage.screenshotsBtn': 'Borrar capturas temporales',

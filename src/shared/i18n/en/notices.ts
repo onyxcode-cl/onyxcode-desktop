@@ -40,7 +40,7 @@ export const notices = {
   // macOS-only features: notice in Settings and on saved routines (Windows)
   'platform.win.unavailable.title': 'Blocked by your organization’s policy',
   'platform.win.unavailable.tasks':
-    '{tasks} mode (autonomous work in a sandbox) is off on this computer: your organization’s policy doesn’t allow it.',
+    '{tasks} mode (autonomous work limited to your folder) is off on this computer: your organization’s policy doesn’t allow it.',
   'platform.win.unavailable.computer': '{computer} (using the mouse, keyboard and apps for you) is off together with {tasks}.',
   'platform.win.unavailable.update': 'Automatic updates are not available on Windows: install new versions by downloading them yourself.',
   'platform.win.unavailable.routine':

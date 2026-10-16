@@ -7,7 +7,7 @@ export const common = {
   'labels.mode.tasks': 'Overdrive',
   'labels.mode.routines': 'Routines',
   'labels.ui.task': 'task',
-  'labels.ui.network': 'Sandbox network',
+  'labels.ui.network': 'Allowed sites',
   'labels.ui.htmlPreview': 'Preview',
   'labels.ui.openHtmlPreview': 'Open preview',
   'labels.ui.downloadPdf': 'Download as PDF',

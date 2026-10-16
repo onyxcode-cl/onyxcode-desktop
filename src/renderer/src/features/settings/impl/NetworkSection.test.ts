@@ -12,7 +12,7 @@ describe('networkErrorMessage', () => {
     expect(networkErrorMessage(new Error('lo que sea'), locked)).toBe(customHostsBlockedMessage())
     setLang('en')
     expect(networkErrorMessage(new Error('cualquier cosa'), locked)).toBe(
-      'Your organization doesn’t allow adding sites to the sandbox network.'
+      'Your organization doesn’t allow adding sites that tasks can connect to.'
     )
   })
 

@@ -8,7 +8,7 @@ describe('sandboxModelNotice', () => {
   it('otro proveedor en sandbox: aviso claro', () => {
     for (const p of ['github-copilot', 'amazon-bedrock', 'azure', 'google-vertex'])
       expect(sandboxModelNotice(true, p)).toBe(sandboxProviderNotice())
-    expect(sandboxProviderNotice()).toContain('clave de API')
+    expect(sandboxProviderNotice()).toContain('clave')
     expect(sandboxProviderNotice()).not.toContain('solo está disponible OpenCode Go')
   })
   it('los modelos gratuitos de OpenCode no llevan aviso', () => {

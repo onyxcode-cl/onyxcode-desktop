@@ -155,9 +155,9 @@ export const tasks = {
   'tasks.act.noRestorePointMsg': 'No restore point was saved for this message, so the files can’t be restored.',
   'tasks.act.interruptTitle': 'Running tasks will be interrupted',
   'tasks.act.interruptMsg': {
-    one: '{count} task is working in this folder. Changing the sandbox folders requires restarting it, which interrupts the task; you can resume it afterwards.',
+    one: '{count} task is working in this folder. Changing the allowed folders requires restarting the work, which interrupts the task; you can resume it afterwards.',
     other:
-      '{count} tasks are working in this folder. Changing the sandbox folders requires restarting it, which interrupts them; you can resume them afterwards.'
+      '{count} tasks are working in this folder. Changing the allowed folders requires restarting the work, which interrupts them; you can resume them afterwards.'
   },
   'tasks.act.interruptContinue': 'Continue',
   'tasks.act.cannotAddFolder': 'That folder can’t be added.',
@@ -231,7 +231,7 @@ export const tasks = {
   'tasks.home.tpl.computer.3.prompt':
     'First review the Desktop and show me a summary of the loose files there; then propose folders by type and what would go in each; once I approve it, move them.',
   'tasks.home.moveNote':
-    'When moving files in Sandbox you’ll be asked for the “{term}” permission; without it, the agent will offer a sorted copy instead.',
+    'When moving files while working only in your folder you’ll be asked for the “{term}” permission; without it, the agent will offer a sorted copy instead.',
   'tasks.home.title': 'What shall we work on today?',
   'tasks.home.greet.morning': 'Good morning',
   'tasks.home.greet.afternoon': 'Good afternoon',
@@ -242,12 +242,12 @@ export const tasks = {
   'tasks.home.lead.full.win': 'The agent can use the mouse, keyboard and screen. Stop it with Ctrl+Alt+Shift+Esc.',
   'tasks.home.lead.sandbox': 'It will work inside “{folder}”. It will ask for your permission before deleting, moving or renaming.',
   'tasks.home.startingFull': 'Starting full control…',
-  'tasks.home.startingSandbox': 'Starting sandbox…',
+  'tasks.home.startingSandbox': 'Getting the workspace ready…',
   'tasks.home.ph.full': 'Describe what it should do on your Mac…',
   'tasks.home.ph.full.win': 'Describe what it should do on your PC…',
   'tasks.home.ph.folder': 'Describe the task you want to delegate…',
   'tasks.home.ph.noFolder': 'Describe the task… (choose a folder to start)',
-  'tasks.home.sandboxActive': 'Sandbox active: it can’t write outside the folder or read your keys.',
+  'tasks.home.sandboxActive': 'Limited to your folder: it can’t write outside it or read your keys.',
   'tasks.home.suggestions': 'Suggestions to get started',
   'tasks.home.show': 'Show suggestions',
   'tasks.home.hide': 'Hide suggestions',
@@ -290,7 +290,7 @@ export const tasks = {
   'tasks.ws.schedule': 'Schedule',
   'tasks.ws.scheduleHint': 'Repeat this task with a routine',
   'tasks.ws.noBridge': '`window.api.tasks` is missing in the preload.',
-  'tasks.ws.noFull': 'The server didn’t enable Full control for this folder; Sandbox mode is being used.',
+  'tasks.ws.noFull': 'Full control couldn’t be enabled for this folder; work stays limited to your folder.',
   'tasks.ws.retry': 'Retry',
   'tasks.ws.close': 'Close',
   'tasks.ws.untitled': 'Task',
@@ -367,9 +367,9 @@ export const tasks = {
   'tasks.side.openOrigin': 'Open the original task',
   'tasks.side.openRoutines': 'Open in Routines',
   'tasks.sandboxProviderPending':
-    'This provider hasn’t reached this task’s isolated environment yet (it was connected after the task was opened). Wait a few seconds and try again, or close the task and reopen it.',
+    'This provider hasn’t reached this task yet (it was connected after the task was opened). Wait a few seconds and retry, or close the task and open it again.',
   'tasks.sandboxProviderNotice':
-    'In Overdrive with sandbox, providers connected with an API key are available (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go and many more) plus OpenCode’s free models. Providers that use a sign-in (like ChatGPT or Copilot) or cloud services (Bedrock, Azure, Vertex) require Full control, Chat or Code.',
+    'In Overdrive limited to your folder you’ll find the providers that connect with a key (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go and many more) and OpenCode’s free models. Those that sign in with an account (like ChatGPT or Copilot) or are cloud services (Bedrock, Azure, Vertex) need Full control, Chat or Code.',
   'tasks.comp.removeAttachment': 'Remove (the file stays in the folder)',
   'tasks.comp.unlinkTitle': 'Remove “{name}” from the additional folders',
   'tasks.comp.unlinkAria': 'Remove the additional folder {name}',
@@ -381,7 +381,7 @@ export const tasks = {
   'tasks.comp.sendTitle': 'Send (Enter)',
   'tasks.comp.send': 'Send',
   'tasks.comp.sending': 'Sending…',
-  'tasks.comp.sendingSandbox': 'Preparing the isolated environment for your task…',
+  'tasks.comp.sendingSandbox': 'Getting your task ready…',
   'tasks.comp.sendingFull': 'Preparing your task…',
   'tasks.comp.saving': 'Saving restore point…',
   'tasks.conv.thoughtFor': 'Thought for {seconds} s',
@@ -597,7 +597,7 @@ export const tasks = {
   'tasks.sandbox.broken.payload': 'Some files of the isolated environment are missing. You can repair it.',
   'tasks.sandbox.broken.repair': 'Repair',
   'tasks.sandbox.broken.landlock':
-    'The WSL Linux kernel doesn’t support the isolation Overdrive requires. Update WSL with “wsl --update” and check again.',
+    'The Linux version in WSL doesn’t support the protection Overdrive requires. Update WSL with “wsl --update” in a terminal and check again.',
   'tasks.sandbox.broken.interop': 'The environment can run Windows programs, which Overdrive doesn’t allow. It isn’t used, for safety.',
   'tasks.sandbox.broken.drives':
     'The environment has access to your Windows drives, which Overdrive doesn’t allow. It isn’t used, for safety.',

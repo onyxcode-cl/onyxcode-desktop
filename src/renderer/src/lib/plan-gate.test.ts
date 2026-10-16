@@ -12,7 +12,11 @@ describe('plan-gate', () => {
     expect(friendlyToolError('ECONNREFUSED 127.0.0.1:5432')).toBe('ECONNREFUSED 127.0.0.1:5432')
   })
   it('explica en llano un fallo crudo del sistema de cualquier herramienta (una línea); Code lo conserva', () => {
-    for (const raw of ["EPERM: operation not permitted, open '/x/a.txt'", "ENOENT: no such file or directory, open 'b'", 'ENOSPC: no space left on device']) {
+    for (const raw of [
+      "EPERM: operation not permitted, open '/x/a.txt'",
+      "ENOENT: no such file or directory, open 'b'",
+      'ENOSPC: no space left on device'
+    ]) {
       const out = friendlyToolError(raw)
       expect(out).not.toMatch(/E[A-Z]{3,6}\b/)
       expect(out).toMatch(/Vuelve a intentarlo|Revisa|Libera/)

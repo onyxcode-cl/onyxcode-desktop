@@ -69,7 +69,7 @@ export const routines = {
   'routines.time.yesterday': 'yesterday',
   'routines.time.agoDays': '{n} days ago',
   'routines.mode.chat.hint': 'Text reply (with web search), no files',
-  'routines.mode.tasks.hint': 'Works with documents in a folder (sandboxed or, with your consent, with Full control)',
+  'routines.mode.tasks.hint': 'Works with documents in a folder (limited to the folder or, with your consent, with Full control)',
   'routines.mode.code.hint': 'Coding agent working on a project',
   'routines.terms.title': 'Routines and the OpenCode terms',
   'routines.terms.body':
@@ -172,14 +172,14 @@ export const routines = {
   'routines.editor.chip.6': 'S',
   'routines.editor.chip.0': 'S',
   'routines.editor.allowTitle': 'Allow working in “{name}”?',
-  'routines.editor.allowMessage': 'The agent will be able to create and modify files inside that folder (sandboxed).',
+  'routines.editor.allowMessage': 'The agent will be able to create and modify files inside that folder (and not outside it).',
   'routines.editor.allowConfirm': 'Allow',
   'routines.editor.invalidHost': 'Invalid site: {host} (use the domain only, e.g. api.example.com)',
   'routines.editor.fullTitle': 'Run this routine with {fullControl}?',
   'routines.editor.fullP1':
-    'The routine will leave the sandbox: it will be able to control apps on your Mac, see the screen and use your open sessions, not just the files in the folder.',
+    'The routine will leave your folder: it will be able to control apps on your Mac, see the screen and use your open sessions, not just the files in the folder.',
   'routines.editor.fullP1.win':
-    'The routine will leave the sandbox: it will be able to control apps on your PC, see the screen and use your open sessions, not just the files in the folder.',
+    'The routine will leave your folder: it will be able to control apps on your PC, see the screen and use your open sessions, not just the files in the folder.',
   'routines.editor.fullP2a': 'On every run you will have to ',
   'routines.editor.fullP2b': 'approve the plan in person',
   'routines.editor.fullP2c':
@@ -255,7 +255,7 @@ export const routines = {
   'routines.editor.sitesHint':
     'They only apply while each run lasts; the rest of the network stays blocked. Blocks are recorded in the history.',
   'routines.editor.fullDesc':
-    'No sandbox and with app control. Requires your consent now and that you approve the plan in person on every run.',
+    'No folder limit and with app control. Requires your consent now and that you approve the plan in person on every run.',
   'routines.editor.consent': 'Consent given on {date}.',
   'routines.editor.model': 'Model',
   'routines.editor.active': 'Active',
