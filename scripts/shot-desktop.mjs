@@ -31,6 +31,7 @@ const SCENARIOS = [
   'code-terminal',
   'code-ejecutar',
   'code-ejecutar-confirmar',
+  'code-ejecutar-mensaje',
   'code-terminal-ia',
   'code-permiso',
   'code-pregunta',
@@ -1016,13 +1017,21 @@ const S = {
   // Mismo mensaje: el comando delicado (rm -rf) muestra la confirmación con el comando completo.
   async 'code-ejecutar-confirmar'(ctx) {
     await S['code-ejecutar'](ctx)
-    await ctx.page.getByRole('button', { name: 'Ejecutar en la terminal' }).last().click()
+    await ctx.page.locator('[data-shell-block]').last().getByTestId('shell-run').click()
     await vis(ctx.page.getByText('¿Ejecutar en la terminal?'), 15_000)
     await sleep(500)
     return async () => {
       await ctx.page.keyboard.press('Escape')
       await sleep(300)
     }
+  },
+  // Lo que recibe la IA: el mensaje «Ejecuté el comando y esto salió:» con la salida limpia (sin prompt ni eco).
+  async 'code-ejecutar-mensaje'(ctx) {
+    await S['code-ejecutar'](ctx)
+    await ctx.page.getByText('Ejecuté el comando y esto salió:').last().scrollIntoViewIfNeeded()
+    await ctx.page.mouse.move(800, 400)
+    await ctx.page.mouse.wheel(0, 2000)
+    await sleep(600)
   },
   // Terminal con salida de un error y el botón «Preguntar a la IA sobre esto»: deja la pastilla (sin claves) en el compositor.
   async 'code-terminal-ia'(ctx) {

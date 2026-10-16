@@ -181,13 +181,13 @@ export class TerminalEntry {
    * Empieza a capturar la salida de un comando que se va a escribir con ▶. `null` si una ejecución anterior sigue en curso o
    * esperando entrada (nunca se escribe encima de un proceso en marcha).
    */
-  startCapture(onShare: (view: OutputView, status: ShareStatus) => void): OutputCapture | null {
+  startCapture(command: string, onShare: (view: OutputView, status: ShareStatus) => void): OutputCapture | null {
     if (this.disposed) return null
     const prev = this.capture
     if (prev && prev.getSnapshot().status !== 'done') return null
     prev?.dispose()
     const promptLine = this.getTailText(1)
-    this.capture = new OutputCapture({ promptLine, onShare })
+    this.capture = new OutputCapture({ promptLine, command, cols: () => this.term.cols, onShare })
     return this.capture
   }
 
@@ -280,12 +280,13 @@ export const getTerminalReplacedVersion = (): number => replacedVersion
 export function runInTerminal(
   directory: string,
   data: string,
+  command: string,
   onShare: (view: OutputView, status: ShareStatus) => void
 ): OutputCapture | null {
   let entry = getTerminal(directory)
   const { exited, error } = entry.getSnapshot()
   if (exited !== null || error) entry = restartTerminal(directory)
-  const capture = entry.startCapture(onShare)
+  const capture = entry.startCapture(command, onShare)
   if (!capture) return null
   entry.sendInput(data)
   return capture

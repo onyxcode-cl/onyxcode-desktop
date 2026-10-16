@@ -24,7 +24,6 @@ export const code = {
   'code.run.mayAskPassword': 'This command may ask for your password: you type it in the terminal, not here.',
   'code.run.busy.title': 'The terminal is busy',
   'code.run.busy.message': 'A command is still running in the project terminal. Wait for it to finish, or open the terminal to stop it.',
-  'code.run.busy.ok': 'Got it',
   'code.run.card': 'Command output',
   'code.run.fold': 'Fold the output',
   'code.run.unfold': 'Show the output',

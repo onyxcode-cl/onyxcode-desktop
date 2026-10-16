@@ -138,7 +138,7 @@ export function ShellRunProvider({ directory, children }: { directory: string; c
     return {
       run(lines) {
         const handle = new RunHandle(directory, useCode.getState().activeSessionID)
-        const capture = runInTerminal(directory, terminalInputFor(lines), handle.onShare)
+        const capture = runInTerminal(directory, terminalInputFor(lines), lines.join('\n'), handle.onShare)
         if (!capture) {
           handle.dispose()
           return null

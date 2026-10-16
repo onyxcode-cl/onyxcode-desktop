@@ -82,8 +82,9 @@ export function ShellRunBlock({
       void confirmDialog({
         title: t('code.run.busy.title'),
         message: t('code.run.busy.message'),
-        cancelLabel: null,
-        confirmLabel: t('code.run.busy.ok')
+        confirmLabel: t('code.run.open')
+      }).then((open) => {
+        if (open) runner.showTerminal()
       })
       return
     }
@@ -93,7 +94,10 @@ export function ShellRunBlock({
   const label = state === 'idle' ? t('code.run.aria') : state === 'running' ? t('code.run.runningAria') : t('code.run.doneAria')
   return (
     <>
-      <div className="code-block relative [&>pre]:!pr-[4.5rem]" data-shell-block>
+      <div
+        className="code-block relative [&>pre]:!overflow-x-hidden [&>pre]:!whitespace-pre-wrap [&>pre]:!pr-16 [&>pre]:![overflow-wrap:anywhere] [&_code]:!whitespace-pre-wrap [&_code]:![overflow-wrap:anywhere]"
+        data-shell-block
+      >
         <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5">
           <button
             type="button"
@@ -188,7 +192,7 @@ function OutputCard({
         >
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
-        <span role="status" className="min-w-0 flex-1 truncate text-xs text-muted desk:text-meta">
+        <span role="status" className="min-w-0 flex-1 text-xs leading-snug text-muted desk:text-meta">
           {status}
         </span>
         <button

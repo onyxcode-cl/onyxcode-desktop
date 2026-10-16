@@ -1,0 +1,194 @@
+[
+  {
+    "shell": "zsh",
+    "cols": 40,
+    "key": "long",
+    "cmd": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "e\becho \"Instalan \r\u001b[Kd\rdo ripgrep...\" && printf \"[sudo] hecho p \r\u001b[Ka\rara demo\\n\"\u001b[?2004l\r\r\nInstalando ripgrep...\r\n[sudo] hecho para demo\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 40,
+    "key": "silent",
+    "cmd": "true",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "t\btrue\u001b[?2004l\r\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 40,
+    "key": "color",
+    "cmd": "printf '\\033[32mok\\033[0m listo\\n'",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "p\bprintf '\\033[3 \r\u001b[K2\r2mok\\033[0m listo\\n'\u001b[?2004l\r\r\n\u001b[32mok\u001b[0m listo\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 40,
+    "key": "progress",
+    "cmd": "printf '10%%\\r50%%\\r100%%\\n'",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "p\bprintf '10%%\\r \r\u001b[K5\r50%%\\r100%%\\n'\u001b[?2004l\r\r\n10%\r50%\r100%\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 80,
+    "key": "long",
+    "cmd": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "e\becho \"Instalando ripgrep...\" && printf \"[sudo] hecho p \r\u001b[Ka\rara demo\\n\"\u001b[?2004l\r\r\nInstalando ripgrep...\r\n[sudo] hecho para demo\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 80,
+    "key": "silent",
+    "cmd": "true",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "t\btrue\u001b[?2004l\r\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 80,
+    "key": "color",
+    "cmd": "printf '\\033[32mok\\033[0m listo\\n'",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "p\bprintf '\\033[32mok\\033[0m listo\\n'\u001b[?2004l\r\r\n\u001b[32mok\u001b[0m listo\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 80,
+    "key": "progress",
+    "cmd": "printf '10%%\\r50%%\\r100%%\\n'",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "p\bprintf '10%%\\r50%%\\r100%%\\n'\u001b[?2004l\r\r\n10%\r50%\r100%\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 120,
+    "key": "long",
+    "cmd": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "e\becho \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"\u001b[?2004l\r\r\nInstalando ripgrep...\r\n[sudo] hecho para demo\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 120,
+    "key": "silent",
+    "cmd": "true",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "t\btrue\u001b[?2004l\r\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 120,
+    "key": "color",
+    "cmd": "printf '\\033[32mok\\033[0m listo\\n'",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "p\bprintf '\\033[32mok\\033[0m listo\\n'\u001b[?2004l\r\r\n\u001b[32mok\u001b[0m listo\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "zsh",
+    "cols": 120,
+    "key": "progress",
+    "cmd": "printf '10%%\\r50%%\\r100%%\\n'",
+    "prompt": "ben@mac tienda-web (main) ",
+    "raw": "p\bprintf '10%%\\r50%%\\r100%%\\n'\u001b[?2004l\r\r\n10%\r50%\r100%\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@mac tienda-web (main) \u001b[K\u001b[?2004h"
+  },
+  {
+    "shell": "bash",
+    "cols": 40,
+    "key": "long",
+    "cmd": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "echo \"Instal \rando ripgrep...\" && printf \"[sudo] hecho \r para demo\\n\"\r\nInstalando ripgrep...\r\n[sudo] hecho para demo\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 40,
+    "key": "silent",
+    "cmd": "true",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "true\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 40,
+    "key": "color",
+    "cmd": "printf '\\033[32mok\\033[0m listo\\n'",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "printf '\\033 \r[32mok\\033[0m listo\\n'\r\n\u001b[32mok\u001b[0m listo\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 40,
+    "key": "progress",
+    "cmd": "printf '10%%\\r50%%\\r100%%\\n'",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "printf '10%% \r\\r50%%\\r100%%\\n'\r\n10%\r50%\r100%\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 80,
+    "key": "long",
+    "cmd": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho \r para demo\\n\"\r\nInstalando ripgrep...\r\n[sudo] hecho para demo\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 80,
+    "key": "silent",
+    "cmd": "true",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "true\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 80,
+    "key": "color",
+    "cmd": "printf '\\033[32mok\\033[0m listo\\n'",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "printf '\\033[32mok\\033[0m listo\\n'\r\n\u001b[32mok\u001b[0m listo\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 80,
+    "key": "progress",
+    "cmd": "printf '10%%\\r50%%\\r100%%\\n'",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "printf '10%%\\r50%%\\r100%%\\n'\r\n10%\r50%\r100%\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 120,
+    "key": "long",
+    "cmd": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "echo \"Instalando ripgrep...\" && printf \"[sudo] hecho para demo\\n\"\r\nInstalando ripgrep...\r\n[sudo] hecho para demo\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 120,
+    "key": "silent",
+    "cmd": "true",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "true\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 120,
+    "key": "color",
+    "cmd": "printf '\\033[32mok\\033[0m listo\\n'",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "printf '\\033[32mok\\033[0m listo\\n'\r\n\u001b[32mok\u001b[0m listo\r\nben@mac tienda-web (main) $ "
+  },
+  {
+    "shell": "bash",
+    "cols": 120,
+    "key": "progress",
+    "cmd": "printf '10%%\\r50%%\\r100%%\\n'",
+    "prompt": "ben@mac tienda-web (main) $ ",
+    "raw": "printf '10%%\\r50%%\\r100%%\\n'\r\n10%\r50%\r100%\r\nben@mac tienda-web (main) $ "
+  }
+]

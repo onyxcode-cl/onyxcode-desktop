@@ -1,7 +1,5 @@
 import {
-  endsWithPrompt,
   outputView,
-  plainOutput,
   SETTLE_MS,
   STABLE_DONE_MS,
   STABLE_RUNNING_MS,
@@ -25,6 +23,10 @@ export interface CaptureSnapshot {
 interface Opts {
   /** Última línea del búfer ANTES de escribir el comando (el prompt del shell), para reconocer su regreso. */
   promptLine: string
+  /** Comando tal como se tecleó y ancho del terminal: para quitar el eco y emular el redibujado. */
+  command: string
+  /** Ancho real del terminal en este momento (se lee en cada paso: el panel puede ajustarse al abrirse). */
+  cols: () => number
   onShare: (view: OutputView, status: ShareStatus) => void
   setTimer?: (fn: () => void, ms: number) => unknown
   clearTimer?: (h: never) => void
@@ -39,15 +41,17 @@ export class OutputCapture {
   private timer: unknown = null
   private shared = false
   private disposed = false
+  /** El comando terminó (el shell volvió al prompt): lo que se teclee después ya no es de este comando. */
+  private finished = false
   private readonly setTimer: (fn: () => void, ms: number) => unknown
   private readonly clearTimer: (h: never) => void
-  private readonly promptKnown: boolean
+  private promptKnown: boolean
 
   constructor(private readonly opts: Opts) {
+    this.promptKnown = opts.promptLine.trim().length >= 2
     this.setTimer = opts.setTimer ?? ((fn, ms) => setTimeout(fn, ms))
     this.clearTimer = opts.clearTimer ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>))
-    this.promptKnown = opts.promptLine.trim().length >= 2
-    this.snap = { view: outputView('', opts.promptLine), status: 'running', waitKind: null }
+    this.snap = { view: this.view(), status: 'running', waitKind: null }
     this.schedule(this.promptKnown ? STABLE_RUNNING_MS : STABLE_DONE_MS, this.promptKnown ? 'running' : 'done')
   }
 
@@ -58,19 +62,24 @@ export class OutputCapture {
   }
 
   push(data: string): void {
-    if (this.disposed || data === '') return
+    if (this.disposed || this.finished || data === '') return
     this.raw += data
     if (this.raw.length > MAX_RAW) this.raw = this.raw.slice(this.raw.length - MAX_RAW)
-    const view = outputView(this.raw, this.opts.promptLine)
-    const plain = plainOutput(this.raw)
+    const view = this.view()
+    this.promptKnown = view.promptKnown
     let status: CaptureSnapshot['status'] = 'running'
     if (view.waitKind) status = 'waiting'
-    else if (this.promptKnown && endsWithPrompt(plain, this.opts.promptLine)) status = 'done'
+    else if (this.promptKnown && view.promptReturned) status = 'done'
     this.snap = { view, status, waitKind: view.waitKind }
+    if (status === 'done') this.finished = true
     for (const l of [...this.listeners]) l()
     if (status === 'waiting') this.schedule(SETTLE_MS, 'waiting')
     else if (status === 'done') this.schedule(SETTLE_MS, 'done')
     else this.schedule(this.promptKnown ? STABLE_RUNNING_MS : STABLE_DONE_MS, this.promptKnown ? 'running' : 'done')
+  }
+
+  private view(): OutputView {
+    return outputView(this.raw, this.opts.promptLine, { command: this.opts.command, cols: this.opts.cols() })
   }
 
   private schedule(ms: number, share: ShareStatus): void {

@@ -166,12 +166,29 @@ describe('tarjeta de salida en vivo (PTY simulado)', () => {
     expect(card()).not.toBeNull()
   })
 
-  it('terminal ocupada: no escribe y avisa', async () => {
+  it('terminal ocupada: no escribe; el aviso ofrece «Abrir en la terminal» (y cancelar)', async () => {
     runner.run.mockReturnValue(null)
+    confirmMock.mockResolvedValue(true)
     render(fence('sh', 'npm test'))
     await click(btn())
     expect(confirmMock).toHaveBeenCalledTimes(1)
+    const opts = confirmMock.mock.calls[0][0] as { confirmLabel: string; cancelLabel?: string | null }
+    expect(opts.confirmLabel).toBe('Abrir en la terminal')
+    expect(opts.cancelLabel).toBeUndefined() // «Cancelar» por defecto
+    expect(runner.showTerminal).toHaveBeenCalledTimes(1)
     expect(card()).toBeNull()
+  })
+
+  it('el estado de la tarjeta envuelve (sin elipsis) y el comando largo también', async () => {
+    render(fence('sh', 'echo ' + 'x'.repeat(300)))
+    const block = host.querySelector('[data-shell-block]')
+    expect(block?.className).toContain('[&>pre]:!whitespace-pre-wrap')
+    expect(block?.className).toContain('[&>pre]:!pr-16')
+    expect(block?.className).toContain('overflow-wrap:anywhere')
+    await click(btn())
+    handle.emit({ status: 'waiting', waitKind: 'password', lines: ['x'], lineCount: 1 })
+    const status = card()?.querySelector('[role="status"]')
+    expect(status?.className).not.toContain('truncate')
   })
 })
 

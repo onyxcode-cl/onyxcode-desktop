@@ -3,8 +3,9 @@
  * secretos, detección de «espera entrada» (contraseña, s/n), reconocimiento del regreso al prompt y armado del mensaje para la IA.
  * NUNCA se capturan teclas: solo lo que el shell imprime.
  */
-import { clipTail, scrubTerminalSecrets, stripAnsi, MAX_TERMINAL_CONTEXT_CHARS } from './terminal-context'
+import { clipTail, scrubTerminalSecrets, MAX_TERMINAL_CONTEXT_CHARS } from './terminal-context'
 import { REDACT_MASK } from './redact-patterns'
+import { emulateTerminal, type EmulateOptions } from './terminal-emulate'
 
 /** Líneas que muestra la tarjeta de salida (con scroll). */
 export const OUTPUT_VIEW_LINES = 40
@@ -20,26 +21,42 @@ export const AUTO_SHARE_DEFAULT = true
 
 export type WaitKind = 'password' | 'answer'
 
-/** Cada línea queda con lo último que dejó un `\r` (barras de progreso) y sin ANSI. */
-export function collapseCarriageReturns(raw: string): string {
-  return raw
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((l) => {
-      const i = l.lastIndexOf('\r')
-      return i === -1 ? l : l.slice(i + 1).length ? l.slice(i + 1) : l.slice(0, i)
-    })
-    .join('\n')
-}
-
-/** Texto limpio (sin ANSI ni `\r`), SIN tachar secretos todavía. */
-export function plainOutput(raw: string): string {
-  const out = stripAnsi(collapseCarriageReturns(raw))
-    .split('\n')
-    .map((l) => l.replace(/\s+$/, ''))
+/** Texto limpio como lo vería una persona (emulación mínima de terminal: `\r`, borrados, ANSI), SIN tachar secretos todavía. */
+export function plainOutput(raw: string, opts: EmulateOptions = {}): string {
+  const out = emulateTerminal(raw, opts).split('\n')
   while (out.length && out[0] === '') out.shift()
   while (out.length && out[out.length - 1] === '') out.pop()
   return out.join('\n')
+}
+
+/**
+ * Busca el eco del comando tecleado en el texto (ignorando espacios y saltos: el eco se parte por el ancho del terminal y zsh/bash lo
+ * redibujan) y devuelve lo que viene DESPUÉS, más lo que había ANTES (el prompt). `partial`: el eco aún no llegó entero; `gaveup`:
+ * no se encontró (no se toca nada).
+ */
+export function stripEcho(text: string, command: string): { state: 'ok' | 'partial' | 'gaveup'; text: string; before: string } {
+  const exp = command.replace(/\s+/g, '')
+  if (!exp) return { state: 'gaveup', text, before: '' }
+  let partial = false
+  for (let start = 0; start < text.length; start++) {
+    if (text[start] !== exp[0]) continue
+    let j = 0
+    let i = start
+    let skips = 0
+    for (; i < text.length && j < exp.length; i++) {
+      const c = text[i]
+      if (/\s/.test(c)) continue
+      if (c === exp[j]) j++
+      else if (++skips > 8) break
+    }
+    if (j >= exp.length) {
+      return { state: 'ok', text: text.slice(i).replace(/^[ \t]*\n/, ''), before: text.slice(0, start) }
+    }
+    if (i >= text.length && skips <= 8) partial = true
+  }
+  return partial || text.trim() === '' || text.length < exp.length + 60
+    ? { state: 'partial', text: '', before: '' }
+    : { state: 'gaveup', text, before: '' }
 }
 
 const ANSWER_RE =
@@ -64,8 +81,12 @@ export function endsWithPrompt(text: string, promptLine: string): boolean {
   if (p.length < 2) return false
   const lines = text.split('\n')
   if (lines.length < 2) return false // la primera línea es el eco del comando
-  const last = lines[lines.length - 1].trim()
-  const tail = p.slice(-Math.min(12, p.length))
+  return lastLineIsPrompt(lines[lines.length - 1], p)
+}
+
+function lastLineIsPrompt(line: string, trimmedPrompt: string): boolean {
+  const last = line.trim()
+  const tail = trimmedPrompt.slice(-Math.min(12, trimmedPrompt.length))
   return last.length > 0 && last.endsWith(tail)
 }
 
@@ -86,13 +107,65 @@ export interface OutputView {
   clipped: boolean
   mostlySecret: boolean
   waitKind: WaitKind | null
+  /** El shell volvió a mostrar su prompt (el comando terminó). */
+  promptReturned: boolean
+  /** ¿Se conoce el prompt del shell (aprendido antes o leído antes del eco)? Sin él no se puede saber cuándo vuelve. */
+  promptKnown: boolean
 }
 
-/** Vista de la salida capturada. `promptLine`: si la salida termina en el prompt, esa última línea se quita. */
-export function outputView(raw: string, promptLine = ''): OutputView {
-  let plain = plainOutput(raw)
+export interface OutputContext {
+  /** Comando tal como se tecleó (todas sus líneas). Con él se quita el eco y se reconoce el regreso del prompt. */
+  command: string
+  cols: number
+}
+
+const EMPTY_VIEW: OutputView = {
+  lines: [],
+  lineCount: 0,
+  text: '',
+  clipped: false,
+  mostlySecret: false,
+  waitKind: null,
+  promptReturned: false,
+  promptKnown: false
+}
+
+/**
+ * Vista de la salida capturada. Con `ctx` (ejecuciones con ▶): la fila del prompt aprendido se siembra antes de emular, se consume el
+ * eco del comando y se quita el prompt final de regreso; solo queda lo que imprimió el comando. Sin `ctx`: limpieza simple.
+ */
+export function outputView(raw: string, promptLine = '', ctx?: OutputContext): OutputView {
+  let plain: string
+  let promptReturned = false
+  let promptKnown = promptLine.trim().length >= 2
+  if (ctx) {
+    const emulated = plainOutput(raw, { cols: ctx.cols, seed: promptLine })
+    const echo = stripEcho(emulated, ctx.command)
+    if (echo.state === 'partial') return EMPTY_VIEW
+    plain = echo.state === 'ok' ? echo.text : emulated
+    const lines = plain.split('\n')
+    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop()
+    // Prompt efectivo: el aprendido antes de ejecutar o, si no se pudo, el que quedó antes del eco.
+    const learned = echo.state === 'ok' ? (echo.before.split('\n').pop() ?? '').trim() : ''
+    const tp = promptLine.trim() || learned
+    promptKnown = tp.length >= 2
+    if (
+      echo.state === 'ok' &&
+      promptKnown &&
+      lines.length &&
+      !detectInputPrompt(lines.join('\n')) &&
+      lastLineIsPrompt(lines[lines.length - 1], tp)
+    ) {
+      lines.pop()
+      promptReturned = true
+    }
+    while (lines.length && lines[0].trim() === '') lines.shift()
+    plain = lines.join('\n')
+  } else {
+    plain = plainOutput(raw)
+    if (!detectInputPrompt(plain) && endsWithPrompt(plain, promptLine)) plain = plain.split('\n').slice(0, -1).join('\n')
+  }
   const waitKind = detectInputPrompt(plain)
-  if (!waitKind && endsWithPrompt(plain, promptLine)) plain = plain.split('\n').slice(0, -1).join('\n')
   const scrubbed = scrubTerminalSecrets(plain)
   const all = scrubbed.split('\n')
   const clip = clipTail(scrubbed, MAX_TERMINAL_CONTEXT_CHARS)
@@ -102,7 +175,9 @@ export function outputView(raw: string, promptLine = ''): OutputView {
     text: clip.text,
     clipped: clip.clipped,
     mostlySecret: mostlySecret(plain, scrubbed),
-    waitKind
+    waitKind,
+    promptReturned,
+    promptKnown
   }
 }
 

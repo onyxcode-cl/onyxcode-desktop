@@ -21,7 +21,6 @@ export const code = {
   'code.run.mayAskPassword': 'Este comando puede pedir tu contraseña: la escribes en la terminal, no aquí.',
   'code.run.busy.title': 'La terminal está ocupada',
   'code.run.busy.message': 'Todavía hay un comando en marcha en la terminal del proyecto. Espera a que termine, o ábrela para detenerlo.',
-  'code.run.busy.ok': 'Entendido',
   'code.run.card': 'Salida del comando',
   'code.run.fold': 'Plegar la salida',
   'code.run.unfold': 'Mostrar la salida',
