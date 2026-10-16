@@ -123,7 +123,7 @@ export function EnvironmentPanel({ hostName, directory, branch, mode }: Environm
                   <div className="truncate font-medium" title={name ?? undefined}>
                     {name}
                   </div>
-                  <div className="truncate text-xs text-muted" title={directory} data-testid="env-path">
+                  <div className="text-xs break-all text-muted" title={directory} data-testid="env-path">
                     {shown}
                   </div>
                 </>
