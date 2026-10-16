@@ -11,6 +11,7 @@ import { PopoverPanel } from '../../components/PopoverPanel'
 import { isRemoteSurface } from '../../lib/platform'
 import { relCompact } from '../../lib/rel-compact'
 import { MobileSessionList } from './MobileSessionList'
+import { ChatSidebarRow } from './ChatSidebarRow'
 
 interface Props {
   sessions: Session[]
@@ -40,7 +41,7 @@ function groupLabel(ts: number): string {
   return d.toLocaleDateString(localeTag(), { month: 'long', year: 'numeric' })
 }
 
-function Row({
+function PlainRow({
   session,
   active,
   busy,
@@ -223,6 +224,14 @@ function Row({
       </PopoverPanel>
     </div>
   )
+}
+
+type RowProps = Parameters<typeof PlainRow>[0]
+
+/** En el árbol de la barra lateral de escritorio la fila es la de dos líneas (como Overdrive y Code); fuera de él (pruebas, celular) no cambia. */
+function Row(props: RowProps): React.JSX.Element {
+  const tree = useSidebarTree()
+  return tree ? <ChatSidebarRow {...props} /> : <PlainRow {...props} />
 }
 
 /** Lista de sesiones agrupada por fecha, con renombrar/eliminar. En el celular es la lista táctil de `MobileSessionList`. */
