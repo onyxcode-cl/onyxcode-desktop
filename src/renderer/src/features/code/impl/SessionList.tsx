@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Circle,
   FolderOpen,
+  FolderPlus,
   GitBranchPlus,
   Loader2,
   MoreHorizontal,
@@ -854,6 +855,18 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
           />
         ))}
       </SidebarTreeRegion>
+      {desktop && (
+        // Abrir otra carpeta a la vista: se suma como un proyecto nuevo bajo los que ya están (no reemplaza ninguno).
+        <button
+          type="button"
+          onClick={() => void pickAndOpenFolder()}
+          disabled={!platformCaps().nativeDialogs}
+          className="no-drag mt-1 flex h-8 w-full items-center gap-2 rounded-ctl px-2 text-left text-ui text-muted hover:bg-hover hover:text-fg disabled:pointer-events-none"
+        >
+          <FolderPlus size={14} strokeWidth={1.75} aria-hidden="true" />
+          {t('code.sessions.addProject')}
+        </button>
+      )}
     </div>
   )
 }

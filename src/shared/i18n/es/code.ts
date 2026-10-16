@@ -150,6 +150,7 @@ export const code = {
   'code.sessions.loading': 'Cargando sesiones…',
   'code.sessions.empty': 'Sin sesiones todavía.',
   'code.sessions.newHere': 'Nueva sesión aquí',
+  'code.sessions.addProject': 'Agregar proyecto',
   'code.sessions.archived': 'Archivadas ({count})',
   'code.trust.title': '¿Confiar en esta carpeta?',
   'code.trust.body':

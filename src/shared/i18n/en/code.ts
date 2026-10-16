@@ -153,6 +153,7 @@ export const code = {
   'code.sessions.loading': 'Loading sessions…',
   'code.sessions.empty': 'No sessions yet.',
   'code.sessions.newHere': 'New session here',
+  'code.sessions.addProject': 'Add project',
   'code.sessions.archived': 'Archived ({count})',
   'code.trust.title': 'Trust this folder?',
   'code.trust.body': 'The agent will be able to read, write and run files inside this folder. Only trust folders whose contents you know.',
