@@ -49,6 +49,8 @@ import { nativeCode, useClient } from './client'
 import { diffStats } from '../../../components/DiffView'
 import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
 import { Composer } from './Composer'
+import { CodeHomeBlocks, useCodeHome } from './CodeHomeBlocks'
+import { HomeIdeas } from '../../../components/HomeBlocks'
 import { loadCodeLearnedMemory } from './learned-memory-store'
 import { CompareConfirmDialog, CompareView, RecoveryBanner, useCompareBoot, useShownCompare } from '../../compare'
 import { useCodeAiGate } from './ComposerControls'
@@ -682,45 +684,64 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
   const send = useCode((s) => s.send)
   const setAgent = useCode((s) => s.setAgent)
   const client = useClient()
+  const home = useCodeHome(directory)
+  // Celular: la pantalla vacía no cambia. Escritorio: con sesiones previas, retomar va primero y los ejemplos pasan a segundo plano.
+  const returning = home.hasSessions && !isRemoteSurface()
   return (
-    <div className="w-full max-w-xl">
+    <div className="my-auto w-full max-w-xl">
       <LogoMark size={44} className="mx-auto mb-3" />
       <h2 className="text-xl font-semibold tracking-tight">{t('code.empty.title', { name: baseName(directory) })}</h2>
-      <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-muted">
-        {t('code.empty.use')}
-        <b className="font-medium text-fg">{'Plan'}</b>
-        {t('code.empty.planDesc')}
-        <b className="font-medium text-fg">{'Build'}</b>
-        {t('code.empty.buildDesc')}
-      </p>
-      <div className="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-2">
-        {SUGGESTIONS.map((sug) => {
-          const plan = sug.agent === 'plan'
-          const Icon = plan ? Search : Hammer
-          return (
-            <button
-              key={sug.label}
-              type="button"
-              disabled={!client}
-              onClick={() => {
-                setAgent(sug.agent)
-                void send(t(sug.prompt))
-              }}
-              className="group flex items-start gap-3 rounded-xl border border-border bg-elevated px-3.5 py-3 text-left transition hover:-translate-y-px hover:border-border-strong hover:bg-hover hover:shadow-sm disabled:opacity-50"
-            >
-              <span
-                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${plan ? 'bg-accent-soft text-accent' : 'bg-emerald-500/15 text-emerald-600 [[data-theme=dark]_&]:text-emerald-400'}`}
+      {!returning && (
+        <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-muted">
+          {t('code.empty.use')}
+          <b className="font-medium text-fg">{'Plan'}</b>
+          {t('code.empty.planDesc')}
+          <b className="font-medium text-fg">{'Build'}</b>
+          {t('code.empty.buildDesc')}
+        </p>
+      )}
+      {returning && (
+        <div className="mt-5">
+          <CodeHomeBlocks home={home} part="waiting" />
+        </div>
+      )}
+      {returning && <CodeHomeBlocks home={home} part="resume" />}
+      <HomeIdeas
+        storageKey="code.hideIdeas"
+        secondary={returning}
+        label={t('code.home.ideas')}
+        showLabel={t('code.home.ideas.show')}
+        hideLabel={t('code.home.ideas.hide')}
+      >
+        <div className="mt-6 grid grid-cols-1 gap-2 text-left sm:grid-cols-2">
+          {SUGGESTIONS.map((sug) => {
+            const plan = sug.agent === 'plan'
+            const Icon = plan ? Search : Hammer
+            return (
+              <button
+                key={sug.label}
+                type="button"
+                disabled={!client}
+                onClick={() => {
+                  setAgent(sug.agent)
+                  void send(t(sug.prompt))
+                }}
+                className="group flex items-start gap-3 rounded-xl border border-border bg-elevated px-3.5 py-3 text-left transition hover:-translate-y-px hover:border-border-strong hover:bg-hover hover:shadow-sm disabled:opacity-50"
               >
-                <Icon size={15} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-fg">{t(sug.label)}</span>
-                <span className="block text-xs text-muted">{plan ? t('code.suggest.tag.plan') : t('code.suggest.tag.build')}</span>
-              </span>
-            </button>
-          )
-        })}
-      </div>
+                <span
+                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${plan ? 'bg-accent-soft text-accent' : 'bg-emerald-500/15 text-emerald-600 [[data-theme=dark]_&]:text-emerald-400'}`}
+                >
+                  <Icon size={15} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-fg">{t(sug.label)}</span>
+                  <span className="block text-xs text-muted">{plan ? t('code.suggest.tag.plan') : t('code.suggest.tag.build')}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </HomeIdeas>
       {error && (
         <div className="mt-3 w-full max-w-xl text-left">
           <ErrorNotice error={error} />
@@ -850,7 +871,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           loading={loading}
         />
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 text-center">
           {evictedLoading ? (
             <TranscriptLoading />
           ) : loading ? (
