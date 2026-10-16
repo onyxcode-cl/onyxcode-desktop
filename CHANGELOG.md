@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.35] - 2026-10-16
+
+### Novedades
+
+- **Botón ▶ «Ejecutar» en los bloques de comandos.** En las respuestas del chat de Code, los comandos de terminal tienen un botón ▶ que los corre en la terminal interna de la app. Debajo aparece una tarjeta con la salida en vivo y un botón `>_` para abrir la terminal. Cuando el comando termina, la IA recibe la salida sola (se puede apagar en Ajustes › General) y la sesión no se queda «trabajando». Los comandos delicados (como borrar archivos) piden confirmación, y si la terminal está ocupada la app te avisa y te ofrece abrirla.
+- **Primer uso más simple.** El asistente saluda directo, tiene 4 pasos con barra de progreso, usa el motor incluido y pide los permisos de macOS solo cuando los necesitas. Todo sin jerga, y «Probar con un ejemplo» queda a la vista.
+
 ## [0.5.34] - 2026-10-16
 
 ### Mejoras
