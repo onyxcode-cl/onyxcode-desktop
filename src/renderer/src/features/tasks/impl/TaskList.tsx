@@ -45,18 +45,9 @@ import {
   type TaskGroup
 } from './SidebarSections'
 import { sdkDirOf } from './path-map'
-import { isPinned, isPlanPending, isUsingComputer, markUnread, togglePinned, useTasks } from './store'
-import {
-  evictedStatusOf,
-  isArchivedSession,
-  permissionBelongsTo,
-  relTime,
-  rememberEvictedStatus,
-  sessionBelongsTo,
-  taskStatus,
-  TASK_STATUS_LABEL,
-  type TaskStatus
-} from './util'
+import { useTaskStatusOf } from './useTaskStatusOf'
+import { isPinned, markUnread, togglePinned, useTasks } from './store'
+import { relTime, rememberEvictedStatus, TASK_STATUS_LABEL, type TaskStatus } from './util'
 
 // `StatusIcon` vive en SidebarSections (evita un ciclo de imports); se reexporta para quien lo importaba de aquí.
 export { StatusIcon }
@@ -416,22 +407,13 @@ export function TaskList(): React.JSX.Element {
   const folder = useTasks((s) => s.folder)
   const activeId = useTasks((s) => s.activeTaskId)
   const loading = useTasks((s) => s.listLoading)
-  const permissions = useTasks((s) => s.permissions)
-  const questions = useTasks((s) => s.questions)
   const unseen = useTasks((s) => s.unseen)
-  const interrupted = useTasks((s) => s.interrupted)
   const networkBlocked = useTasks((s) => s.networkBlocked)
   const taskMeta = useTasks((s) => s.taskMeta)
   const showArchived = useTasks((s) => s.showArchived)
-  // Solo para repintar el estado "usando el Mac" / "plan listo".
-  useTasks((s) => s.lastAction)
-  useTasks((s) => s.accessRequest)
   const sessions = useSessions((s) => s.sessions)
   const sessionSource = useSessions((s) => s.sessionSource)
   const directorySource = useSessions((s) => s.directorySource)
-  const status = useSessions((s) => s.status)
-  const errors = useSessions((s) => s.errors)
-  const messages = useSessions((s) => s.messages)
   const client = useTasks((s) => s.client)
   const baseUrl = useTasks((s) => s.conn?.baseUrl)
   // Carpeta tal como la ve OpenCode (`session.directory`): en macOS es la propia carpeta; en Windows, la ruta del sandbox.
@@ -490,22 +472,7 @@ export function TaskList(): React.JSX.Element {
     return [...set].sort((a, b) => a.localeCompare(b, dateLocale(), { sensitivity: 'base' }))
   }, [liveTasks, taskMeta])
 
-  const perms = Object.values(permissions)
-  const qs = Object.values(questions)
-
-  const statusOf = (t: Session): TaskStatus =>
-    taskStatus({
-      run: status[t.id],
-      waiting: perms.some((p) => permissionBelongsTo(p, t.id, sessions)),
-      hasQuestion: qs.some((x) => sessionBelongsTo(x.sessionID, t.id, sessions)),
-      error: errors[t.id],
-      entries: messages[t.id],
-      evicted: evictedStatusOf(t.id),
-      usingComputer: isUsingComputer(t.id),
-      planPending: isPlanPending(t.id),
-      interrupted: !!interrupted[t.id],
-      archived: isArchivedSession(t)
-    })
+  const statusOf = useTaskStatusOf()
 
   const searching = q.length > 0
   // F8-B89: las tareas en curso de la carpeta abierta van en su propio grupo y NO se repiten en los grupos por

@@ -38,6 +38,7 @@ const SCENARIOS = [
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
   'tareas-nueva',
+  'inicio-vacio',
   'tareas-lista',
   'tareas-buscar',
   'tareas-archivadas',
@@ -50,6 +51,7 @@ const SCENARIOS = [
   'tareas-entorno',
   'tareas-permiso-neutral',
   'tareas-permiso-largo',
+  'inicio-pendientes',
   'rutinas-vacio',
   'rutinas',
   'rutinas-detalle',
@@ -1088,6 +1090,17 @@ const S = {
     await vis(ctx.page.getByPlaceholder('Describe la tarea que quieres delegar…'), 15_000)
     await sleep(500)
   },
+  // Inicio de Tareas de una carpeta sin tareas (primera vez): se ve como siempre, con las sugerencias abiertas y sin bloques vacíos.
+  async 'inicio-vacio'(ctx) {
+    await openTasks(ctx)
+    await ctx.page
+      .getByRole('button', { name: /^Nueva tarea/ })
+      .first()
+      .click()
+    await vis(ctx.page.getByPlaceholder('Describe la tarea que quieres delegar…'), 15_000)
+    await vis(ctx.page.getByRole('button', { name: 'Ocultar sugerencias' }), 15_000)
+    await sleep(500)
+  },
   async 'tareas-lista'(ctx) {
     await seedTaskList(ctx)
   },
@@ -1199,6 +1212,51 @@ const S = {
       await ctx.page.keyboard.press('Escape')
       await sleep(300)
     }
+  },
+  // Inicio con trabajo pendiente: una tarea con permiso y otra con pregunta esperando, más dos terminadas; tarjeta «Esperando tu aprobación» y «Retomar».
+  async 'inicio-pendientes'(ctx) {
+    const fake = await openTasks(ctx)
+    await seedTaskList(ctx)
+    await fake.script({
+      match: 'Borra los temporales',
+      title: 'Limpiar archivos temporales',
+      steps: [
+        { type: 'text', text: 'Necesito ejecutar un comando para limpiar.' },
+        { type: 'permission', permission: 'bash', patterns: ['rm -rf temporales/*'] }
+      ]
+    })
+    await sendTask(ctx.page, 'Borra los temporales de la carpeta')
+    await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await fake.script({
+      match: 'Elige el formato',
+      title: 'Elegir formato del informe',
+      steps: [
+        { type: 'text', text: 'Antes de armarlo necesito saber el formato.' },
+        {
+          type: 'question',
+          questions: [
+            {
+              header: 'Formato',
+              question: '¿Cuál prefieres?',
+              multiple: false,
+              custom: false,
+              options: [
+                { label: 'Editable (PowerPoint)', description: 'Un archivo .pptx que cambias después.' },
+                { label: 'Diseño libre (HTML/CSS)', description: 'Se ve mejor, pero el texto no se edita.' }
+              ]
+            }
+          ]
+        }
+      ]
+    })
+    await sendTask(ctx.page, 'Elige el formato del informe')
+    await vis(ctx.page.getByRole('radio', { name: /Editable \(PowerPoint\)/ }), 45_000)
+    await ctx.page
+      .getByRole('button', { name: /^Nueva tarea/ })
+      .first()
+      .click()
+    await vis(ctx.page.getByRole('region', { name: 'Esperando tu aprobación' }), 15_000)
+    await sleep(600)
   },
   async 'tareas-permiso-neutral'(ctx) {
     const fake = await freshTasks(ctx)
