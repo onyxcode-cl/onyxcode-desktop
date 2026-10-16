@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.31] - 2026-10-16
+
+### Mejoras
+
+- **Overdrive: «Cambiar a Solo en tu carpeta» ya no te hace reescribir el mensaje.** Al pulsarlo en la tarjeta del plan de Control total, la tarea se cancela y tu mensaje queda escrito en el cuadro, listo para enviar en el modo seguro (si ya estabas escribiendo algo, no se pisa).
+- **Code: un proyecto que cierras ya no reaparece al reiniciar la app.** Y los proyectos que ya tenías abiertos no desaparecen de la barra.
+
 ## [0.5.30] - 2026-10-15
 
 ### Mejoras
