@@ -6,8 +6,9 @@ import { BarChart3, Eye, EyeOff, FileText, FolderTree, Globe, Loader2, MonitorCo
 import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
-import { platformCaps } from '../../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { AccessSegmented } from './AccessSegmented'
+import { ResumeBlock, WaitingCard } from './HomeFocus'
 import { ComputerPermissionsCard, FullWorkspaceNote, VisionModelHint } from './ComputerAccess'
 import { TasksComposer } from './TasksComposer'
 import { setAccessMode } from './actions'
@@ -15,6 +16,7 @@ import { Onboarding } from './Onboarding'
 import { SandboxSetupCard } from './SandboxSetupCard'
 import { sandboxBlocksStart, useSandbox } from './sandbox-store'
 import { useTasks } from './store'
+import { useHomeFocus } from './useHomeFocus'
 import { baseName } from './util'
 
 /** Plantilla de inicio. `note` es un aviso que se muestra en Sandbox (p. ej. permisos que se pedirán). */
@@ -170,6 +172,16 @@ function readFlag(key: string, fallback: boolean): boolean {
   }
 }
 
+/** Lee un indicador de localStorage; `null` si nunca se guardó (el usuario aún no eligió). */
+function readStoredFlag(key: string): boolean | null {
+  try {
+    const v = localStorage.getItem(key)
+    return v === null ? null : v === '1'
+  } catch {
+    return null
+  }
+}
+
 function writeFlag(key: string, value: boolean): void {
   try {
     localStorage.setItem(key, value ? '1' : '0')
@@ -209,12 +221,18 @@ export function Home({
   // El saludo se calcula al montar (no en el render): así el marcado estático de las pruebas no depende de la hora.
   const [hour, setHour] = useState<number | null>(null)
   useEffect(() => setHour(new Date().getHours()), [])
-  const [hidden, setHidden] = useState(() => readFlag(HIDE_KEY, false))
+  // Retomar trabajo: lo que espera al usuario y lo reciente de la carpeta. En el celular el inicio es otro componente.
+  const remote = isRemoteSurface()
+  const focus = useHomeFocus()
+  // Las sugerencias son secundarias: plegadas si la carpeta ya tiene tareas, abiertas la primera vez; si el usuario
+  // eligió una vez, se respeta su elección.
+  const [storedHidden, setStoredHidden] = useState(() => readStoredFlag(HIDE_KEY))
+  const hidden = storedHidden ?? (!remote && focus.hasTasks)
   const [onboarded, setOnboarded] = useState(() => readFlag(ONBOARDED_KEY, false))
 
   const toggleHidden = (): void => {
     const next = !hidden
-    setHidden(next)
+    setStoredHidden(next)
     writeFlag(HIDE_KEY, next)
   }
   const setOnboardedPersisted = (value: boolean): void => {
@@ -250,6 +268,7 @@ export function Home({
         <FullWorkspaceNote canChange={!folderBusy} />
         <ComputerPermissionsCard />
         <VisionModelHint />
+        {!remote && <WaitingCard focus={focus} />}
         <TasksComposer
           hero
           onSend={onSend}
@@ -276,6 +295,8 @@ export function Home({
             <ShieldCheck size={12} /> {t('tasks.home.sandboxActive')}
           </p>
         )}
+
+        {!remote && <ResumeBlock focus={focus} />}
 
         <div className="mt-8 px-6">
           <div className="mb-3 flex items-center justify-between gap-3">
