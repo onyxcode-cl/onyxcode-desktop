@@ -104,7 +104,7 @@ export function EnvironmentPanel({ hostName, directory, branch, mode }: Environm
           role="dialog"
           aria-label={t('env.aria')}
           tabIndex={-1}
-          className="absolute top-full right-0 z-30 mt-1 w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-elevated text-sm text-fg shadow-lg outline-none"
+          className="absolute top-full right-0 z-30 mt-1 w-[26rem] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-elevated text-sm text-fg shadow-lg outline-none"
         >
           <div className="flex items-center gap-1 border-b border-border px-3.5 py-2 text-sm font-medium">
             {t('env.title')}
@@ -123,7 +123,7 @@ export function EnvironmentPanel({ hostName, directory, branch, mode }: Environm
                   <div className="truncate font-medium" title={name ?? undefined}>
                     {name}
                   </div>
-                  <div className="text-xs break-all text-muted" title={directory} data-testid="env-path">
+                  <div className="text-xs [overflow-wrap:anywhere] text-muted" title={directory} data-testid="env-path">
                     {shown}
                   </div>
                 </>
