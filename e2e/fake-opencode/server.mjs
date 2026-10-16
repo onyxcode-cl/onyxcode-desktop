@@ -32,10 +32,11 @@
  *                     commands:[...], connectedProviders:[ids] }
  *   POST log        { stream?:'stdout'|'stderr', text }: escribe `text` (tal cual, más salto de línea) en la salida del proceso,
  *                   que la app recoge como registro del motor (prueba de Diagnóstico)
+ *   GET  access-responses  respuestas que recibió el paso de guion `request-access` (tarjeta de plan/acceso de Control total)
  *   POST reset      vuelve al estado inicial (aborta ejecuciones; no corta los SSE)
  *
  * Pasos de un guion (todos aceptan delayMs): text|reasoning {text|deltas, chunkDelayMs}, tool {tool,input,output,title,
- * error,metadata}, permission {permission,patterns,tool?,input?,output?}, question {questions}, todo {todos},
+ * error,metadata}, request-access {apps?,plan?,reason?} (espera la tarjeta de acceso de Control total, solo ahí), permission {permission,patterns,tool?,input?,output?}, question {questions}, todo {todos},
  * error {message,name?,statusCode?}, retry {attempt,message,nextMs}, title {title}, emit {event:{type,properties}},
  * child {title,text,agent?}, delay {ms}, fs {op:'write'|'delete', path, content?} (escribe o borra un archivo REAL, siempre
  * dentro del `directory` de la sesión: una ruta que salga de él hace fallar el paso; sirve para probar puntos de restauración).
@@ -132,6 +133,7 @@ export function createFakeServer(options = {}) {
       sessions: new Map(), // id -> { info, messages:[{info,parts}], status, run, chain }
       permissions: new Map(), // id -> { req, resolve }
       questions: new Map(),
+      accessResponses: [], // respuestas a pasos `request-access` (lo que recibió el "MCP")
       scripts: [],
       failPrompt: 0, // prompt_async corta la conexión (red caída) las próximas N veces; -1 = siempre
       todos: new Map(),
@@ -550,6 +552,8 @@ export function createFakeServer(options = {}) {
         emit('session.error', { sessionID: s.info.id, error: ctx.failed }, dir)
         return
       }
+      case 'request-access':
+        return runRequestAccess(ctx, step)
       case 'child':
         return runChild(ctx, step)
       case 'fs':
@@ -560,6 +564,38 @@ export function createFakeServer(options = {}) {
         return runTool(ctx, step)
       default:
         throw new Error(`Paso de guion desconocido: ${step.type}`)
+    }
+  }
+
+  /**
+   * Paso `request-access`: hace lo que el MCP `computer_request_access` (POST `<LAZUNOX_PLAN_GATE_URL>/request-access`, el canal
+   * lateral de main) y ESPERA la respuesta del usuario. Solo existe en servidores de Control total (la app pasa la URL por entorno).
+   * `{ apps?: [], plan?: string[], reason?: string }`; la respuesta se guarda en `state.accessResponses` (GET /__e2e/access-responses).
+   */
+  async function runRequestAccess(ctx, step) {
+    const base = process.env.LAZUNOX_PLAN_GATE_URL
+    if (!base) throw new Error('Paso request-access: sin LAZUNOX_PLAN_GATE_URL (solo hay en Control total)')
+    const ac = new AbortController()
+    const wake = () => ac.abort()
+    ctx.run.wakers.add(wake)
+    try {
+      const res = await fetch(`${base}/request-access`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          apps: step.apps ?? [],
+          plan: step.plan ?? [],
+          reason: step.reason,
+          session: ctx.s.info.id
+        }),
+        signal: ac.signal
+      })
+      const body = await res.json().catch(() => ({}))
+      state.accessResponses.push({ sessionID: ctx.s.info.id, status: res.status, body })
+    } catch (err) {
+      if (!ctx.run.aborted) throw err
+    } finally {
+      ctx.run.wakers.delete(wake)
     }
   }
 
@@ -1289,6 +1325,7 @@ export function createFakeServer(options = {}) {
       })
       json(c.res, { emitted: out })
     },
+    'GET access-responses': (c) => json(c.res, { responses: state.accessResponses }),
     'POST log': (c) => {
       const b = c.body ?? {}
       if (typeof b.text !== 'string') throw new Error('log: falta text')

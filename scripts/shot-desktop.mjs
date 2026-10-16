@@ -44,6 +44,8 @@ const SCENARIOS = [
   'tareas-progreso',
   'tareas-progreso-plan',
   'tareas-permiso',
+  'tareas-plan-sin-apps',
+  'tareas-plan-sin-apps-cambio',
   'tareas-permiso-neutral',
   'tareas-permiso-largo',
   'rutinas-vacio',
@@ -675,10 +677,52 @@ async function freshTasks(ctx) {
 }
 async function sendTask(page, text) {
   await page.getByRole('button', { name: 'Nueva tarea' }).first().click()
-  const box = page.getByPlaceholder('Describe la tarea que quieres delegar…')
+  // En Control total el campo dice «Describe qué debe hacer en tu Mac…».
+  const box = page.getByPlaceholder(/^Describe (la tarea que quieres delegar|qué debe hacer en tu Mac)…$/)
   await box.fill(text)
   await page.getByRole('button', { name: 'Enviar' }).first().click()
 }
+
+// Pone la app en Control total (si no lo está) y devuelve el cliente del falso de ESE servidor (sin sandbox). Lo usan los
+// escenarios del plan sin apps: el paso `request-access` del falso hace el mismo POST que el MCP `computer_request_access`.
+async function freshFullControl(ctx) {
+  await openTasks(ctx)
+  const { page } = ctx
+  // Una tarjeta de plan que quedó pendiente de un escenario anterior se cancela; luego, tarea nueva (ahí está el selector de modo).
+  const pend = page.getByRole('button', { name: 'Cancelar', exact: true })
+  if (await pend.isVisible().catch(() => false)) await pend.click()
+  await page.getByRole('button', { name: 'Nueva tarea' }).first().click()
+  const full = page.getByRole('radio', { name: 'Usar todo tu Mac', exact: true })
+  await vis(full, 15_000)
+  if ((await full.getAttribute('aria-checked')) !== 'true') {
+    await full.click()
+    const consent = page.getByRole('button', { name: 'Permitir control' })
+    if (await consent.isVisible().catch(() => false)) await consent.click()
+    await page.getByRole('radio', { name: 'Usar todo tu Mac', exact: true, checked: true }).waitFor({ state: 'visible', timeout: 60_000 })
+    await vis(page.getByPlaceholder('Describe qué debe hacer en tu Mac…'), 60_000)
+  }
+  const conn = await page.evaluate(async (folder) => {
+    const r = await window.api.tasks.invoke('tasks:start', { folder, fullAccess: true })
+    return r.ok ? r.data : { error: JSON.stringify(r).slice(0, 300) }
+  }, taskFolder)
+  if (!conn || conn.error) throw new Error(`tasks:start (Control total): ${conn?.error}`)
+  return fakeClient(conn)
+}
+const planSinApps = (match, title) => ({
+  match,
+  title,
+  steps: [
+    { type: 'text', text: 'Voy a ordenar los archivos de la carpeta.' },
+    {
+      type: 'request-access',
+      apps: [],
+      reason: 'Solo trabajo con archivos',
+      plan: ['Listar los archivos', 'Moverlos a subcarpetas por tipo']
+    },
+    { type: 'text', text: 'Listo, seguimos.' }
+  ]
+})
+const CAMBIAR_A_CARPETA = 'Cambiar a Solo en tu carpeta'
 
 const planTool = (todos) => ({ type: 'tool', tool: 'todowrite', input: { todos }, output: 'ok', title: 'Plan' })
 async function progresoDosTurnos(ctx, conPlan) {
@@ -1098,6 +1142,32 @@ const S = {
     await sendTask(ctx.page, 'Borra los temporales de la carpeta')
     await vis(ctx.page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
     await sleep(500)
+  },
+  // Plan de Control total que no controla ninguna app: tarjeta con el botón «Cambiar a Solo en tu carpeta».
+  async 'tareas-plan-sin-apps'(ctx) {
+    const fake = await freshFullControl(ctx)
+    await fake.script(planSinApps('Ordena los archivos', 'Ordenar archivos'))
+    await sendTask(ctx.page, 'Ordena los archivos de la carpeta')
+    await vis(ctx.page.getByRole('button', { name: CAMBIAR_A_CARPETA }), 45_000)
+    await sleep(500)
+  },
+  // Pulsa el botón: el plan se cancela, el modo pasa a «Solo en tu carpeta» y la tarea queda lista para reenviar.
+  async 'tareas-plan-sin-apps-cambio'(ctx) {
+    const { page } = ctx
+    const fake = await freshFullControl(ctx)
+    await fake.script(planSinApps('Ordena los documentos', 'Ordenar documentos'))
+    await sendTask(page, 'Ordena los documentos de la carpeta')
+    await vis(page.getByRole('button', { name: CAMBIAR_A_CARPETA }), 45_000)
+    await page.getByRole('button', { name: CAMBIAR_A_CARPETA }).click()
+    await page.getByRole('radio', { name: 'Solo en tu carpeta', exact: true, checked: true }).waitFor({ state: 'visible', timeout: 60_000 })
+    await sleep(1500)
+    // La tarjeta desapareció y el campo para escribir de nuevo está disponible.
+    await page.getByRole('button', { name: CAMBIAR_A_CARPETA }).waitFor({ state: 'detached', timeout: 10_000 })
+    const box = page.getByPlaceholder('Describe la tarea que quieres delegar…')
+    await vis(box, 30_000)
+    // El mensaje de la tarea cancelada queda en el compositor para reenviarlo.
+    const val = await box.inputValue()
+    if (val !== 'Ordena los documentos de la carpeta') throw new Error(`compositor sin el mensaje original: «${val}»`)
   },
   async 'tareas-permiso-neutral'(ctx) {
     const fake = await freshTasks(ctx)

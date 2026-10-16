@@ -2,10 +2,12 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (26): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
+- Escenarios (28): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
   `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
+  `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`,
   `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
   `selector-modelo`, `dialogo-confirmar`, `comparar`, `barra-lateral-colapsada`.
+- `tareas-plan-sin-apps` / `tareas-plan-sin-apps-cambio`: pasan a Control total y usan el paso `request-access` del OpenCode falso (el mismo POST que `computer_request_access`, con `apps: []`) para mostrar la tarjeta del plan con «Cambiar a Solo en tu carpeta»; el segundo pulsa el botón y comprueba que vuelve a «Solo en tu carpeta».
 - Sin argumentos: claro y oscuro, 1280x800 para todo y 1000x700 solo para `chat-*` y `ajustes-*` (~64 PNG; con tantos escenarios conviene partir en dos corridas por el tope de 330 s).
   Con `--size` se usa solo ese tamaño. Nombre: `<escenario>-<tema>-<tamaño>.png`, a 2x (2560x1600 para 1280x800).
   Salida por defecto: `.../scratchpad/shots-desktop`. Si un escenario falla, deja su captura en `<out>/_fallos/` y la lista de controles visibles.
