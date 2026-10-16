@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.32] - 2026-10-16
+
+### Mejoras
+
+- **Nuevo panel «Entorno» en Code y en Overdrive.** Con un clic ves de un vistazo dónde está trabajando la IA: el nombre del equipo, la carpeta del proyecto con su ruta, y en Code la rama con sus cambios sin guardar; en Overdrive, además, el modo («Solo en tu carpeta» o «Control total», con un botón para cambiarlo) y si hay punto de restauración.
+
 ## [0.5.31] - 2026-10-16
 
 ### Mejoras
