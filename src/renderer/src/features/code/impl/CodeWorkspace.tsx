@@ -9,6 +9,8 @@
  */
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
+import { EnvironmentPanel } from '../../../components/EnvironmentPanel'
+import { useHostName } from '../../../lib/use-host-name'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MsgKey } from '@shared/i18n'
@@ -445,6 +447,19 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   )
 }
 
+/** Panel «Entorno» de la barra de Code (solo escritorio): equipo, carpeta del proyecto y rama. */
+function CodeEnvironment({ directory }: { directory: string }): React.JSX.Element {
+  const hostName = useHostName()
+  const info = useBranch(directory)
+  return (
+    <EnvironmentPanel
+      hostName={hostName}
+      directory={directory}
+      branch={info && info.branch ? { name: info.branch, changes: info.changes } : null}
+    />
+  )
+}
+
 export function BranchPill({ directory }: { directory: string }): React.JSX.Element | null {
   const t = useT()
   const info = useBranch(directory)
@@ -585,6 +600,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         </span>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
         <ReadingModeSwitch />
         {busy && (
           <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>

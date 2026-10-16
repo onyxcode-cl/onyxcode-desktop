@@ -33,6 +33,7 @@ const SCENARIOS = [
   'code-pregunta',
   'code-plan',
   'code-archivo',
+  'code-entorno',
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
@@ -46,6 +47,7 @@ const SCENARIOS = [
   'tareas-permiso',
   'tareas-plan-sin-apps',
   'tareas-plan-sin-apps-cambio',
+  'tareas-entorno',
   'tareas-permiso-neutral',
   'tareas-permiso-largo',
   'rutinas-vacio',
@@ -940,6 +942,17 @@ const S = {
     await ctx.page.getByRole('complementary').getByText('carrito.ts').first().click()
     await sleep(900)
   },
+  // Panel «Entorno» abierto en la barra de Code: equipo, carpeta del proyecto y rama.
+  async 'code-entorno'(ctx) {
+    await seedCode(ctx)
+    await ctx.page.getByRole('main').getByRole('button', { name: 'Entorno', exact: true }).first().click()
+    await vis(ctx.page.getByRole('dialog', { name: /Entorno/ }), 15_000)
+    await sleep(600)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
+  },
   async 'code-terminal'(ctx) {
     await seedCode(ctx)
     await togglePanel(ctx.page, 'Terminal')
@@ -1168,6 +1181,24 @@ const S = {
     // El mensaje de la tarea cancelada queda en el compositor para reenviarlo.
     const val = await box.inputValue()
     if (val !== 'Ordena los documentos de la carpeta') throw new Error(`compositor sin el mensaje original: «${val}»`)
+  },
+  // Panel «Entorno» abierto en la cabecera de una tarea: equipo, carpeta, modo con «Cambiar» y punto de restauración.
+  async 'tareas-entorno'(ctx) {
+    const fake = await freshTasks(ctx)
+    await fake.script({
+      match: 'Resume la carpeta',
+      title: 'Resumir la carpeta',
+      steps: [{ type: 'text', text: 'Listo: revisé la carpeta y no hay nada pendiente.' }]
+    })
+    await sendTask(ctx.page, 'Resume la carpeta de informes')
+    await vis(ctx.page.getByText('Listo: revisé la carpeta'), 45_000)
+    await ctx.page.getByRole('main').getByRole('button', { name: 'Entorno', exact: true }).first().click()
+    await vis(ctx.page.getByRole('dialog', { name: /Entorno/ }), 15_000)
+    await sleep(600)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
   },
   async 'tareas-permiso-neutral'(ctx) {
     const fake = await freshTasks(ctx)

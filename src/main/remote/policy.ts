@@ -252,6 +252,7 @@ const MAX_DISCARD_FILES = 20
 export const CELULAR_POLICY: Record<string, IpcSpec> = {
   // ── app ──
   'app:info': 'R', // el resultado se limpia con `sanitizeResult` (sin `userDataPath`)
+  'app:hostName': 'X', // nombre del equipo: solo para la ventana principal
   'app:openExternal': 'X', // abre el navegador del Mac
   'app:relaunch': 'X', // reinicia la app del Mac: nunca desde el celular
   'app:notify': 'X',

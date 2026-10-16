@@ -1,3 +1,4 @@
+import { hostname } from 'node:os'
 import { app, shell, type IpcMain } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { DISPLAY_NAME } from '@shared/brand'
@@ -12,6 +13,8 @@ export function registerAppHandlers(ipcMain: IpcMain, ctx: { chatDirectory: stri
     chatDirectory: ctx.chatDirectory,
     isDev: is.dev
   }))
+
+  handle(ipcMain, 'app:hostName', () => hostname().slice(0, 100))
 
   handle(ipcMain, 'app:openExternal', async ({ url }) => {
     if (!/^https?:\/\//i.test(url)) throw new IpcError('ERROR', 'Solo se permiten URLs http(s)')

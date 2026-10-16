@@ -540,6 +540,7 @@ const BROWSER_SCHEMAS: { [C in BrowserInvokeChannel]: Validator<BrowserInvokeCon
 
 const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:info': none,
+  'app:hostName': none,
   'app:openExternal': obj({ url: str({ max: 8192, pattern: /^https?:\/\//i }) }),
   'app:notify': obj({ title: str({ max: 300, min: 1 }), body: str({ max: 2000, min: 1 }), target: optional(notifyTarget) }),
   'app:setAttention': obj({ count: num({ int: true, min: 0, max: 999_999 }) }),
