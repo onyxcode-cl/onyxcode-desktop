@@ -1,5 +1,6 @@
 import {
   outputView,
+  viewFromEmulated,
   SETTLE_MS,
   STABLE_DONE_MS,
   STABLE_RUNNING_MS,
@@ -25,6 +26,11 @@ interface Opts {
   promptLine: string
   /** Comando tal como se tecleó y ancho del terminal: para quitar el eco y emular el redibujado. */
   command: string
+  /**
+   * Texto que muestra el terminal desde la fila del prompt (búfer de xterm). Si se da, manda sobre el flujo crudo: es lo que ve la
+   * persona, sin depender del ancho ni de los redibujados del shell.
+   */
+  readText?: () => string
   /** Ancho real del terminal en este momento (se lee en cada paso: el panel puede ajustarse al abrirse). */
   cols: () => number
   onShare: (view: OutputView, status: ShareStatus) => void
@@ -79,6 +85,7 @@ export class OutputCapture {
   }
 
   private view(): OutputView {
+    if (this.opts.readText) return viewFromEmulated(this.opts.readText(), this.opts.promptLine, this.opts.command)
     return outputView(this.raw, this.opts.promptLine, { command: this.opts.command, cols: this.opts.cols() })
   }
 

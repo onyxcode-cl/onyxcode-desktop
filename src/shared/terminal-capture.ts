@@ -38,6 +38,9 @@ export function stripEcho(text: string, command: string): { state: 'ok' | 'parti
   const exp = command.replace(/\s+/g, '')
   if (!exp) return { state: 'gaveup', text, before: '' }
   let partial = false
+  // Se prueban todos los inicios posibles y se elige el que menos caracteres sueltos salta (el eco de verdad: 0 o pocos); si empatan,
+  // el último. Sin esto, una `e` del final del prompt (`…-web % echo …`) servía de atajo y el «prompt» aprendido salía cortado.
+  let best: { skips: number; start: number; end: number } | null = null
   for (let start = 0; start < text.length; start++) {
     if (text[start] !== exp[0]) continue
     let j = 0
@@ -50,10 +53,10 @@ export function stripEcho(text: string, command: string): { state: 'ok' | 'parti
       else if (++skips > 8) break
     }
     if (j >= exp.length) {
-      return { state: 'ok', text: text.slice(i).replace(/^[ \t]*\n/, ''), before: text.slice(0, start) }
-    }
-    if (i >= text.length && skips <= 8) partial = true
+      if (!best || skips <= best.skips) best = { skips, start, end: i }
+    } else if (i >= text.length && skips <= 8) partial = true
   }
+  if (best) return { state: 'ok', text: text.slice(best.end).replace(/^[ \t]*\n/, ''), before: text.slice(0, best.start) }
   return partial || text.trim() === '' || text.length < exp.length + 60
     ? { state: 'partial', text: '', before: '' }
     : { state: 'gaveup', text, before: '' }
@@ -135,36 +138,42 @@ const EMPTY_VIEW: OutputView = {
  * eco del comando y se quita el prompt final de regreso; solo queda lo que imprimió el comando. Sin `ctx`: limpieza simple.
  */
 export function outputView(raw: string, promptLine = '', ctx?: OutputContext): OutputView {
-  let plain: string
+  if (ctx) return viewFromEmulated(plainOutput(raw, { cols: ctx.cols, seed: promptLine }), promptLine, ctx.command)
+  let plain = plainOutput(raw)
+  if (!detectInputPrompt(plain) && endsWithPrompt(plain, promptLine)) plain = plain.split('\n').slice(0, -1).join('\n')
+  return finishView(plain, false, promptLine.trim().length >= 2)
+}
+
+/**
+ * Vista a partir del texto que YA ve la persona en la pantalla (el búfer del terminal, desde la fila del prompt: prompt + eco del
+ * comando + salida + prompt de regreso). No depende del ancho, de los redibujados de zsh ni de cómo llegó el flujo.
+ */
+export function viewFromEmulated(emulated: string, promptLine: string, command: string): OutputView {
+  const echo = stripEcho(emulated, command)
+  if (echo.state === 'partial') return EMPTY_VIEW
+  const lines = (echo.state === 'ok' ? echo.text : emulated).split('\n')
+  while (lines.length && lines[lines.length - 1].trim() === '') lines.pop()
+  // Prompt efectivo: el aprendido antes de ejecutar o, si no se pudo, el que quedó antes del eco.
+  const learned = echo.state === 'ok' ? (echo.before.split('\n').pop() ?? '').trim() : ''
+  // El prompt que se VE antes del eco manda sobre el aprendido al empezar (en una terminal recién abierta lo aprendido puede ser basura).
+  const tp = learned.length >= 2 ? learned : promptLine.trim()
+  const promptKnown = tp.length >= 2
   let promptReturned = false
-  let promptKnown = promptLine.trim().length >= 2
-  if (ctx) {
-    const emulated = plainOutput(raw, { cols: ctx.cols, seed: promptLine })
-    const echo = stripEcho(emulated, ctx.command)
-    if (echo.state === 'partial') return EMPTY_VIEW
-    plain = echo.state === 'ok' ? echo.text : emulated
-    const lines = plain.split('\n')
-    while (lines.length && lines[lines.length - 1].trim() === '') lines.pop()
-    // Prompt efectivo: el aprendido antes de ejecutar o, si no se pudo, el que quedó antes del eco.
-    const learned = echo.state === 'ok' ? (echo.before.split('\n').pop() ?? '').trim() : ''
-    const tp = promptLine.trim() || learned
-    promptKnown = tp.length >= 2
-    if (
-      echo.state === 'ok' &&
-      promptKnown &&
-      lines.length &&
-      !detectInputPrompt(lines.join('\n')) &&
-      lastLineIsPrompt(lines[lines.length - 1], tp)
-    ) {
-      lines.pop()
-      promptReturned = true
-    }
-    while (lines.length && lines[0].trim() === '') lines.shift()
-    plain = lines.join('\n')
-  } else {
-    plain = plainOutput(raw)
-    if (!detectInputPrompt(plain) && endsWithPrompt(plain, promptLine)) plain = plain.split('\n').slice(0, -1).join('\n')
+  if (
+    echo.state === 'ok' &&
+    promptKnown &&
+    lines.length &&
+    !detectInputPrompt(lines.join('\n')) &&
+    lastLineIsPrompt(lines[lines.length - 1], tp)
+  ) {
+    lines.pop()
+    promptReturned = true
   }
+  while (lines.length && lines[0].trim() === '') lines.shift()
+  return finishView(lines.join('\n'), promptReturned, promptKnown)
+}
+
+function finishView(plain: string, promptReturned: boolean, promptKnown: boolean): OutputView {
   const waitKind = detectInputPrompt(plain)
   const scrubbed = scrubTerminalSecrets(plain)
   const all = scrubbed.split('\n')

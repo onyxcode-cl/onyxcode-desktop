@@ -39,6 +39,7 @@ const SCENARIOS = [
   'code-ejecutar',
   'code-ejecutar-confirmar',
   'code-ejecutar-mensaje',
+  'code-ejecutar-termina',
   'code-terminal-ia',
   'code-permiso',
   'code-pregunta',
@@ -1043,6 +1044,45 @@ const S = {
     await ctx.page.mouse.move(800, 400)
     await ctx.page.mouse.wheel(0, 2000)
     await sleep(600)
+  },
+  // Regresión «el ▶ no reconoce el regreso del prompt»: terminal recién abierta, panel angosto, prompt real del shell. La tarjeta debe
+  // pasar a «Terminó», con solo la salida del comando, y el mensaje a la IA no debe llevar el prompt ni «sigue en ejecución».
+  async 'code-ejecutar-termina'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'dame el comando',
+      title: 'Comando de prueba',
+      steps: [{ type: 'text', text: 'Este es el comando:\n\n```bash\necho hola-desde-lazunox && sleep 2 && echo fin\n```' }]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('dame el comando de prueba')
+    await box.press('Enter')
+    const run = page.getByRole('button', { name: 'Ejecutar en la terminal' })
+    await vis(run.first(), 45_000)
+    await run.first().click()
+    await vis(page.locator('[data-shell-output]').getByText('Terminó'), 20_000).catch(async (e) => {
+      console.log(
+        'VERIF-FALLO-TARJETA ' +
+          JSON.stringify(
+            await page
+              .locator('[data-shell-output]')
+              .first()
+              .innerText()
+              .catch(() => 'sin tarjeta')
+          )
+      )
+      throw e
+    })
+    await sleep(1500)
+    const card = await page.locator('[data-shell-output]').first().innerText()
+    const sent = await page
+      .getByText('Ejecuté el comando y esto salió:')
+      .last()
+      .evaluate((el) => el.closest('div')?.parentElement?.innerText ?? el.innerText)
+    console.log('VERIF-TARJETA ' + JSON.stringify(card))
+    console.log('VERIF-MENSAJE ' + JSON.stringify(sent))
+    await sleep(400)
   },
   // Terminal con salida de un error y el botón «Preguntar a la IA sobre esto»: deja la pastilla (sin claves) en el compositor.
   async 'code-terminal-ia'(ctx) {

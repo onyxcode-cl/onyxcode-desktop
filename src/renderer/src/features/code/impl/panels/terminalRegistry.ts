@@ -4,6 +4,7 @@ import { errorMessage, requireCode } from '../client'
 import { useCode } from '../store'
 import { createInputGate, type InputGate } from './inputGate'
 import { OutputCapture } from './outputCapture'
+import { bufferTextFrom } from './terminalBuffer'
 import type { OutputView, ShareStatus } from '@shared/terminal-capture'
 
 /**
@@ -119,8 +120,8 @@ export class TerminalEntry {
     const offData = api.onPtyData((ev) => {
       if (this.ptyId === null) early.set(ev.id, [...(early.get(ev.id) ?? []), ev.data])
       else if (ev.id === this.ptyId) {
-        this.term.write(ev.data)
-        this.capture?.push(ev.data)
+        // La captura lee el búfer cuando xterm ya procesó el dato (la escritura es asíncrona).
+        this.term.write(ev.data, () => this.capture?.push(ev.data))
         this.gate?.onOutput()
       }
     })
@@ -155,8 +156,7 @@ export class TerminalEntry {
         for (const data of this.pending.splice(0)) gate.push(data)
         const chunks = early.get(info.id) ?? []
         for (const chunk of chunks) {
-          this.term.write(chunk)
-          this.capture?.push(chunk)
+          this.term.write(chunk, () => this.capture?.push(chunk))
         }
         if (chunks.length) gate.onOutput()
         early.clear()
@@ -187,7 +187,16 @@ export class TerminalEntry {
     if (prev && prev.getSnapshot().status !== 'done') return null
     prev?.dispose()
     const promptLine = this.getTailText(1)
-    this.capture = new OutputCapture({ promptLine, command, cols: () => this.term.cols, onShare })
+    // Fila del prompt actual: desde ahí hasta el final del búfer está el eco del comando, su salida y el prompt de regreso.
+    const buf = this.term.buffer.active
+    const startRow = buf.baseY + buf.cursorY
+    this.capture = new OutputCapture({
+      promptLine,
+      command,
+      cols: () => this.term.cols,
+      readText: () => bufferTextFrom(this.term.buffer.active, startRow),
+      onShare
+    })
     return this.capture
   }
 
