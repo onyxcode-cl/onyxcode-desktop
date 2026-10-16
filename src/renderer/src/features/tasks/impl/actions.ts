@@ -43,7 +43,14 @@ import {
   useTasks
 } from './store'
 import { sdkDir, showPath } from './conn-paths'
-import { CREATE_SKILL_PROMPT, buildContinuationPrompt, buildSideChatSystem, suggestedExportName, transcriptToMarkdown } from './transcript'
+import {
+  CREATE_SKILL_PROMPT,
+  buildContinuationPrompt,
+  firstUserPrompt,
+  buildSideChatSystem,
+  suggestedExportName,
+  transcriptToMarkdown
+} from './transcript'
 import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './util'
 
 // ── Red de Tareas (aviso "Se bloqueó el acceso a…") ──
@@ -290,8 +297,14 @@ export async function switchPlanToFolderMode(): Promise<void> {
     useTasks.setState({ error: t('tasksComputer.plan.toFolderNoFolder') })
     return
   }
+  // La tarea vive en el servidor de Control total (otra lista que la de «Solo en tu carpeta»): se rescata el último mensaje del usuario
+  // para dejarlo en el compositor y que se pueda reenviar sin reescribirlo.
+  const taskId = useTasks.getState().activeTaskId
+  const entries = (taskId ? useSessions.getState().messages[taskId] : undefined) ?? []
+  const prompt = firstUserPrompt([...entries].reverse())
   await respondAccessRequest([], { cancel: true })
   await setAccessMode(false)
+  if (prompt && !useTasks.getState().draft.trim()) useTasks.setState({ draft: prompt })
 }
 
 /** "Revocar": la siguiente acción del agente en esa tarea vuelve a pedir el plan. */
