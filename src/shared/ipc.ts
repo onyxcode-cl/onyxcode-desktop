@@ -29,6 +29,8 @@ export interface IpcInvokeContract {
   // app
   'app:info': { req: void; res: AppInfo }
   'app:openExternal': { req: { url: string }; res: void }
+  /** Nombre del equipo (`os.hostname()`) para el panel «Entorno». Solo la ventana principal; nunca el celular. */
+  'app:hostName': { req: void; res: string }
   /** Reinicia Lazunox (la bienvenida lo ofrece cuando macOS solo aplica un permiso al abrir la app de nuevo). */
   'app:relaunch': { req: void; res: void }
   /**
@@ -111,6 +113,7 @@ export type IpcResponse<C extends IpcInvokeChannel> = IpcInvokeContract[C]['res'
 export const IPC_INVOKE_CHANNELS = [
   'app:info',
   'app:openExternal',
+  'app:hostName',
   'app:relaunch',
   'app:notify',
   'app:setAttention',

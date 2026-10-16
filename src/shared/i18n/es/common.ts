@@ -103,5 +103,21 @@ export const common = {
   'common.files.opFailed': 'No se pudo completar la operación: {reason}',
   'common.editors.unknown': 'Editor desconocido.',
   'common.editors.notInstalled': 'El editor no está instalado en este equipo.',
-  'common.editors.launchFailed': 'No se pudo abrir el editor: {reason}'
+  'common.editors.launchFailed': 'No se pudo abrir el editor: {reason}',
+  'env.title': 'Entorno',
+  'env.aria': 'Entorno: dónde trabaja la IA',
+  'env.host.name': 'Equipo',
+  'env.host.this': 'este equipo',
+  'env.folder.label': 'Carpeta',
+  'env.folder.none': 'Sin carpeta elegida',
+  'env.branch.label': 'Rama',
+  'env.branch.clean': 'sin cambios',
+  'env.branch.changes': { one: '{count} cambio', other: '{count} cambios' },
+  'env.mode.label': 'Modo',
+  'env.mode.change': 'Cambiar',
+  'env.mode.changeTo': 'Cambiar a «{mode}»',
+  'env.mode.needFolder': 'Para volver a «Solo en tu carpeta» primero autoriza una carpeta.',
+  'env.restore.label': 'Punto de restauración',
+  'env.restore.on': 'activo',
+  'env.restore.off': 'no disponible en Control total sobre la carpeta personal'
 } as const

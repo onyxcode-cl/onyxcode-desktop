@@ -105,5 +105,21 @@ export const common = {
   'common.files.opFailed': 'Couldn’t complete the operation: {reason}',
   'common.editors.unknown': 'Unknown editor.',
   'common.editors.notInstalled': 'The editor isn’t installed on this computer.',
-  'common.editors.launchFailed': 'Couldn’t open the editor: {reason}'
+  'common.editors.launchFailed': 'Couldn’t open the editor: {reason}',
+  'env.title': 'Environment',
+  'env.aria': 'Environment: where the AI works',
+  'env.host.name': 'Computer',
+  'env.host.this': 'this computer',
+  'env.folder.label': 'Folder',
+  'env.folder.none': 'No folder chosen',
+  'env.branch.label': 'Branch',
+  'env.branch.clean': 'no changes',
+  'env.branch.changes': { one: '{count} change', other: '{count} changes' },
+  'env.mode.label': 'Mode',
+  'env.mode.change': 'Change',
+  'env.mode.changeTo': 'Change to “{mode}”',
+  'env.mode.needFolder': 'To go back to “Only in your folder”, first authorize a folder.',
+  'env.restore.label': 'Restore point',
+  'env.restore.on': 'active',
+  'env.restore.off': 'not available in Full control over the home folder'
 } as const satisfies Messages<typeof es>
