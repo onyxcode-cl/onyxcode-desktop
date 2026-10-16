@@ -8,7 +8,16 @@
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
 import type { PasteResult, PasteScope } from './paste-files'
-import type { AppInfo, NotifyTarget, OpencodeConnection, OpencodeInfo, PickOpencodeBinResult, ServerStatus, Settings } from './types'
+import type {
+  AppInfo,
+  NotifyTarget,
+  OpencodeConnection,
+  OpencodeInfo,
+  PickOpencodeBinResult,
+  ServerStatus,
+  Settings,
+  UseBundledEngineResult
+} from './types'
 import type { OpencodeAction } from './opencode-links'
 import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
@@ -47,6 +56,8 @@ export interface IpcInvokeContract {
   'app:opencodeAction': { req: { action: OpencodeAction }; res: void }
   /** Diálogo «Elegir binario…»: valida el archivo y lo guarda en `settings.opencodeBin`. */
   'app:pickOpencodeBin': { req: void; res: PickOpencodeBinResult }
+  /** «Usar el motor incluido»: olvida la ruta elegida en ajustes (el renderer reinicia el motor después). No descarga nada. */
+  'app:useBundledEngine': { req: void; res: UseBundledEngineResult }
   /** Estado del aviso de versión nueva (la versión publicada se consulta como mucho una vez al día). */
   'app:updateState': { req: void; res: UpdateState }
   /** «Buscar ahora»: fuerza una comprobación (respeta la espera por límite de GitHub). */
@@ -120,6 +131,7 @@ export const IPC_INVOKE_CHANNELS = [
   'app:opencodeInfo',
   'app:opencodeAction',
   'app:pickOpencodeBin',
+  'app:useBundledEngine',
   'app:updateState',
   'app:checkUpdates',
   'app:dismissUpdate',

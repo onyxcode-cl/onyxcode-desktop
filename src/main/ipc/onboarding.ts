@@ -1,20 +1,30 @@
 import { app, clipboard, dialog, shell, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
-import { existsSync } from 'node:fs'
+import { accessSync, constants, existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { OPENCODE_LINKS, openCodeInstallCommand } from '@shared/opencode-links'
 import { getOpencodeInfo, validateOpencodeBin } from '../opencode/binary'
-import { resolveOpencodeAsync } from '../opencode/server'
+import { useBundledEngine } from '../opencode/use-bundled'
+import { bundledOpencodePath, resolveOpencodeAsync } from '../opencode/server'
 import { settingsStore } from '../store'
 import { handle } from './handle'
 import { windowOfSender } from './sender-window'
+
+function isExecutableFile(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /** Canales del asistente de primer uso. La app NUNCA ejecuta un instalador: el comando solo se copia. */
 export function registerOnboardingHandlers(ipcMain: IpcMain): void {
   handle(ipcMain, 'app:opencodeInfo', async () => {
     const resolved = await resolveOpencodeAsync()
-    return getOpencodeInfo(() => resolved)
+    return getOpencodeInfo(() => resolved, bundledOpencodePath() !== null)
   })
 
   handle(ipcMain, 'app:relaunch', () => {
@@ -40,6 +50,20 @@ export function registerOnboardingHandlers(ipcMain: IpcMain): void {
     const check = await validateOpencodeBin(picked.filePaths[0])
     if (!check.ok) return { status: 'invalid' as const, error: check.error }
     settingsStore.set({ opencodeBin: check.path })
-    return { status: 'ok' as const, info: await resolveOpencodeAsync().then((resolved) => getOpencodeInfo(() => resolved)) }
+    return {
+      status: 'ok' as const,
+      info: await resolveOpencodeAsync().then((resolved) => getOpencodeInfo(() => resolved, bundledOpencodePath() !== null))
+    }
   })
+
+  handle(ipcMain, 'app:useBundledEngine', () =>
+    useBundledEngine({
+      bundled: bundledOpencodePath,
+      envBin: () => process.env.OPENCODE_BIN,
+      isExecutable: isExecutableFile,
+      clearConfigured: () => settingsStore.set({ opencodeBin: '' }),
+      resolve: () => resolveOpencodeAsync(),
+      describe: (resolved) => getOpencodeInfo(() => resolved, true)
+    })
+  )
 }

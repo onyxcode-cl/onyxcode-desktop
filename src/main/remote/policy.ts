@@ -260,6 +260,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'app:opencodeInfo': 'X', // revela la ruta del binario
   'app:opencodeAction': 'X',
   'app:pickOpencodeBin': 'X',
+  'app:useBundledEngine': 'X',
   'app:updateState': 'R',
   'app:checkUpdates': 'M',
   'app:dismissUpdate': 'M',

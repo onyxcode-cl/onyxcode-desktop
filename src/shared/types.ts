@@ -94,7 +94,15 @@ export interface OpencodeInfo {
   sdkVersion: string
   /** Misma versión mayor y menor que el SDK (un parche distinto es compatible). */
   compatible: boolean
+  /** Hay un motor incluido en la app (solo empaquetada) al que se puede volver. */
+  bundledAvailable: boolean
 }
+
+/**
+ * Resultado de `app:useBundledEngine` (volver al motor incluido): `ok` (ya no hay ruta elegida; falta reiniciar el motor),
+ * `unavailable` (esta app no trae motor incluido) o `pinned` (una variable de entorno fija otro motor y la app no puede soltarla).
+ */
+export type UseBundledEngineResult = { status: 'ok'; info: OpencodeInfo } | { status: 'unavailable' } | { status: 'pinned' }
 
 /** Resultado de `app:pickOpencodeBin` (diálogo «Elegir binario…»). */
 export type PickOpencodeBinResult = { status: 'canceled' } | { status: 'invalid'; error: string } | { status: 'ok'; info: OpencodeInfo }

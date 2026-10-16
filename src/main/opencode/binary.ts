@@ -171,9 +171,11 @@ export function pickOpencode(i: PickInput): ResolvedOpencode | null {
 }
 
 /** Estado del binario que la app usaría ahora (`find` inyectado para poder probarlo). */
-export async function getOpencodeInfo(find: () => string | ResolvedOpencode | null): Promise<OpencodeInfo> {
+export async function getOpencodeInfo(find: () => string | ResolvedOpencode | null, bundledAvailable = false): Promise<OpencodeInfo> {
   const found = find()
-  if (!found) return { found: false, path: null, source: null, version: null, sdkVersion: OPENCODE_SDK_VERSION, compatible: false }
+  if (!found) {
+    return { found: false, path: null, source: null, version: null, sdkVersion: OPENCODE_SDK_VERSION, compatible: false, bundledAvailable }
+  }
   const { path, source } = typeof found === 'string' ? { path: found, source: 'cli' as const } : found
   let version: string | null = null
   try {
@@ -181,5 +183,5 @@ export async function getOpencodeInfo(find: () => string | ResolvedOpencode | nu
   } catch {
     version = null
   }
-  return { found: true, path, source, version, sdkVersion: OPENCODE_SDK_VERSION, compatible: isCompatible(version) }
+  return { found: true, path, source, version, sdkVersion: OPENCODE_SDK_VERSION, compatible: isCompatible(version), bundledAvailable }
 }

@@ -548,6 +548,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'app:relaunch': none,
   'app:opencodeAction': obj({ action: literal(...OPENCODE_ACTIONS) }),
   'app:pickOpencodeBin': none,
+  'app:useBundledEngine': none,
   'app:updateState': none,
   'app:checkUpdates': none,
   'app:dismissUpdate': obj({ version: str({ max: 64, min: 1, pattern: /^v?\d+\.\d+\.\d+[0-9A-Za-z.+-]*$/ }) }),
