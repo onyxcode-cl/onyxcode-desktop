@@ -36,6 +36,10 @@ const SCENARIOS = [
   'code-proyecto',
   'code-diff',
   'code-terminal',
+  'code-ejecutar',
+  'code-ejecutar-confirmar',
+  'code-ejecutar-mensaje',
+  'code-terminal-ia',
   'code-permiso',
   'code-pregunta',
   'code-plan',
@@ -993,6 +997,69 @@ const S = {
     )
     await ctx.page.keyboard.press('Enter')
     await sleep(1200)
+  },
+  // Bloques de comando de una respuesta: compactos, con ▶ y copiar; al pulsar ▶ aparece la tarjeta con la salida en vivo
+  // (aquí un comando que pide contraseña: «Esperando que escribas…») y la IA ve esa salida (envío automático sin claves).
+  async 'code-ejecutar'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'Instala lo necesario',
+      title: 'Instalar herramientas',
+      steps: [
+        {
+          type: 'text',
+          text: 'Para instalar la herramienta corre este comando:\n\n```bash\necho "Instalando ripgrep..." && printf "[sudo] contrase\u00f1a para demo: " && sleep 25\n```\n\nY despu\u00e9s limpia la carpeta de compilaci\u00f3n:\n\n```bash\nrm -rf dist\n```'
+        }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Instala lo necesario para buscar texto')
+    await box.press('Enter')
+    const run = page.getByRole('button', { name: 'Ejecutar en la terminal' })
+    await vis(run.first(), 45_000)
+    await sleep(500)
+    await run.first().click()
+    await vis(page.getByText(/Esperando que escribas/).first(), 20_000)
+    await sleep(1500)
+    await page.locator('[data-shell-output]').first().scrollIntoViewIfNeeded({ timeout: 10_000 })
+    await sleep(400)
+  },
+  // Mismo mensaje: el comando delicado (rm -rf) muestra la confirmación con el comando completo.
+  async 'code-ejecutar-confirmar'(ctx) {
+    await S['code-ejecutar'](ctx)
+    await ctx.page.locator('[data-shell-block]').last().getByTestId('shell-run').click()
+    await vis(ctx.page.getByText('¿Ejecutar en la terminal?'), 15_000)
+    await sleep(500)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
+  },
+  // Lo que recibe la IA: el mensaje «Ejecuté el comando y esto salió:» con la salida limpia (sin prompt ni eco).
+  async 'code-ejecutar-mensaje'(ctx) {
+    await S['code-ejecutar'](ctx)
+    await ctx.page.getByText('Ejecuté el comando y esto salió:').last().scrollIntoViewIfNeeded()
+    await ctx.page.mouse.move(800, 400)
+    await ctx.page.mouse.wheel(0, 2000)
+    await sleep(600)
+  },
+  // Terminal con salida de un error y el botón «Preguntar a la IA sobre esto»: deja la pastilla (sin claves) en el compositor.
+  async 'code-terminal-ia'(ctx) {
+    await seedCode(ctx)
+    await togglePanel(ctx.page, 'Terminal')
+    await sleep(800)
+    await ctx.page.mouse.click(1000, 300)
+    await ctx.page.keyboard.type(
+      WIN
+        ? "function prompt { 'demo@tienda-web > ' }; Clear-Host; Write-Output 'Error: Cannot find module zod'; Write-Output 'OPENAI_API_KEY=sk-demo1234567890abcdef'"
+        : "export PS1='demo@tienda-web % '; clear; echo 'Error: Cannot find module zod'; echo 'OPENAI_API_KEY=sk-demo1234567890abcdef'"
+    )
+    await ctx.page.keyboard.press('Enter')
+    await sleep(1200)
+    await ctx.page.getByRole('button', { name: 'Preguntar a la IA sobre esto' }).click()
+    await vis(ctx.page.getByTestId('terminal-output-pill'), 10_000)
+    await sleep(500)
   },
   async 'code-permiso'(ctx) {
     await openCode(ctx)

@@ -48,6 +48,9 @@ export const settings = {
     'Avisos nativos cuando una sesión de Code o una tarea termina o necesita tu aprobación, con badge en el Dock.',
   'settings.general.notifications.description.win':
     'Avisos nativos cuando una sesión de Code termina o necesita tu aprobación, con parpadeo en la barra de tareas.',
+  'settings.general.shareOutput.label': 'La IA ve la salida de los comandos que ejecutas con ▶',
+  'settings.general.shareOutput.description':
+    'Al ejecutar un comando de una respuesta con ▶, la salida (sin claves) se envía sola a la misma conversación para que la IA continúe. Apagado: queda adjunta a tu próximo mensaje.',
   'settings.general.sound.label': 'Sonido',
   'settings.general.sound.description': 'Reproduce el sonido del sistema al mostrar una notificación.',
   'settings.general.keepAwake.label': 'Mantener el Mac despierto',

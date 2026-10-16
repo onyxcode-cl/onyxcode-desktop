@@ -3,6 +3,8 @@ import { FitAddon } from '@xterm/addon-fit'
 import { errorMessage, requireCode } from '../client'
 import { useCode } from '../store'
 import { createInputGate, type InputGate } from './inputGate'
+import { OutputCapture } from './outputCapture'
+import type { OutputView, ShareStatus } from '@shared/terminal-capture'
 
 /**
  * Registro de terminales de Code (F8-B32). El shell (pty) y su `Terminal` de xterm viven AQUÍ, fuera de React:
@@ -42,6 +44,11 @@ export class TerminalEntry {
   private readonly listeners = new Set<() => void>()
   private opened = false
   private disposed = false
+  /** Puerta de entrada al shell (existe cuando el pty ya se creó) y lo tecleado mientras tanto. */
+  private gate: InputGate | null = null
+  private readonly pending: string[] = []
+  /** Captura de la última ejecución con ▶ (la salida que se comparte con la IA). */
+  private capture: OutputCapture | null = null
   private readonly cleanups: Array<() => void> = []
 
   constructor(readonly directory: string) {
@@ -109,23 +116,19 @@ export class TerminalEntry {
     const early = new Map<string, string[]>()
     const earlyExit = new Map<string, number>()
     // R3-A: lo tecleado antes de que el shell dé su primer aviso se retiene (si no, el eco queda suelto antes del prompt).
-    let gate: InputGate | null = null
     const offData = api.onPtyData((ev) => {
       if (this.ptyId === null) early.set(ev.id, [...(early.get(ev.id) ?? []), ev.data])
       else if (ev.id === this.ptyId) {
         this.term.write(ev.data)
-        gate?.onOutput()
+        this.capture?.push(ev.data)
+        this.gate?.onOutput()
       }
     })
     const offExit = api.onPtyExit((ev) => {
       if (this.ptyId === null) earlyExit.set(ev.id, ev.exitCode)
       else if (ev.id === this.ptyId) this.set({ exited: ev.exitCode })
     })
-    const pending: string[] = []
-    const onInput = this.term.onData((data) => {
-      if (gate) gate.push(data)
-      else pending.push(data) // el pty aún se está creando
-    })
+    const onInput = this.term.onData((data) => this.sendInput(data))
     const onResize = this.term.onResize(({ cols, rows }) => {
       if (this.ptyId) void api.pty.resize(this.ptyId, cols, rows).catch(() => undefined)
     })
@@ -133,7 +136,7 @@ export class TerminalEntry {
       offData,
       offExit,
       () => onInput.dispose(),
-      () => gate?.dispose(),
+      () => this.gate?.dispose(),
       () => onResize.dispose()
     )
 
@@ -146,11 +149,15 @@ export class TerminalEntry {
         }
         this.ptyId = info.id
         const id = info.id
-        gate = createInputGate((data) => void api.pty.write(id, data).catch(() => undefined))
+        const gate = createInputGate((data) => void api.pty.write(id, data).catch(() => undefined))
+        this.gate = gate
         gate.start()
-        for (const data of pending.splice(0)) gate.push(data)
+        for (const data of this.pending.splice(0)) gate.push(data)
         const chunks = early.get(info.id) ?? []
-        for (const chunk of chunks) this.term.write(chunk)
+        for (const chunk of chunks) {
+          this.term.write(chunk)
+          this.capture?.push(chunk)
+        }
         if (chunks.length) gate.onOutput()
         early.clear()
         // El shell puede haber terminado antes de que `create` resolviera: muestra el banner de salida.
@@ -163,9 +170,52 @@ export class TerminalEntry {
       })
   }
 
+  /** Escribe en el shell como si se tecleara (pasa por la misma puerta que el teclado; si el pty aún se crea, espera). */
+  sendInput(data: string): void {
+    if (this.disposed) return
+    if (this.gate) this.gate.push(data)
+    else this.pending.push(data)
+  }
+
+  /**
+   * Empieza a capturar la salida de un comando que se va a escribir con ▶. `null` si una ejecución anterior sigue en curso o
+   * esperando entrada (nunca se escribe encima de un proceso en marcha).
+   */
+  startCapture(command: string, onShare: (view: OutputView, status: ShareStatus) => void): OutputCapture | null {
+    if (this.disposed) return null
+    const prev = this.capture
+    if (prev && prev.getSnapshot().status !== 'done') return null
+    prev?.dispose()
+    const promptLine = this.getTailText(1)
+    this.capture = new OutputCapture({ promptLine, command, cols: () => this.term.cols, onShare })
+    return this.capture
+  }
+
+  /** Texto seleccionado en la terminal, o '' si no hay selección. */
+  getSelectionText(): string {
+    return this.disposed ? '' : this.term.getSelection()
+  }
+
+  /** Últimas `maxLines` líneas del búfer (unidas las que el ancho partió), sin las vacías del final. */
+  getTailText(maxLines: number): string {
+    if (this.disposed) return ''
+    const buf = this.term.buffer.active
+    const joined: string[] = []
+    for (let i = Math.max(0, buf.length - maxLines * 3); i < buf.length; i++) {
+      const line = buf.getLine(i)
+      if (!line) continue
+      const text = line.translateToString(true)
+      if (line.isWrapped && joined.length) joined[joined.length - 1] += text
+      else joined.push(text)
+    }
+    while (joined.length && joined[joined.length - 1].trim() === '') joined.pop()
+    return joined.slice(-maxLines).join('\n')
+  }
+
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
+    this.capture?.dispose()
     for (const c of this.cleanups) c()
     if (this.ptyId) {
       try {
@@ -208,7 +258,38 @@ export function disposeTerminalsExcept(directory: string | null): void {
 /** Reinicia la terminal del proyecto (shell nuevo, sin scrollback). */
 export function restartTerminal(directory: string): TerminalEntry {
   disposeTerminal(directory)
-  return getTerminal(directory)
+  const entry = getTerminal(directory)
+  replacedVersion += 1
+  for (const l of [...replacedListeners]) l()
+  return entry
+}
+
+// Aviso a los paneles abiertos de que la terminal de un proyecto fue reemplazada (para releer la entrada).
+let replacedVersion = 0
+const replacedListeners = new Set<() => void>()
+export const subscribeTerminalReplaced = (cb: () => void): (() => void) => {
+  replacedListeners.add(cb)
+  return () => replacedListeners.delete(cb)
+}
+export const getTerminalReplacedVersion = (): number => replacedVersion
+
+/**
+ * Escribe `data` (comandos ya con su Enter) en la terminal del proyecto, capturando su salida. La crea si no existe y, si su shell
+ * había terminado o no pudo abrirse, la reinicia antes. `null` (y no escribe nada) si una ejecución anterior sigue en curso.
+ */
+export function runInTerminal(
+  directory: string,
+  data: string,
+  command: string,
+  onShare: (view: OutputView, status: ShareStatus) => void
+): OutputCapture | null {
+  let entry = getTerminal(directory)
+  const { exited, error } = entry.getSnapshot()
+  if (exited !== null || error) entry = restartTerminal(directory)
+  const capture = entry.startCapture(command, onShare)
+  if (!capture) return null
+  entry.sendInput(data)
+  return capture
 }
 
 // Al cambiar o cerrar el proyecto se descartan las terminales de los demás (como antes del registro).

@@ -28,6 +28,7 @@ import {
 import { DownloadDataDocButton, PreviewDataDocButton } from './artifacts/DataDocButton'
 import { DocumentCard } from './artifacts/DocumentCard'
 import { isRemoteSurface } from '../lib/platform'
+import { ShellRunBlock, useShellRunnable } from './ShellRunButton'
 import { DocNotice, type DocProblemReason } from './artifacts/DocNotice'
 import { askAboutChatDoc, canAskAboutChatDoc, getCreatingRawText, subscribeCreatingDoc, type ChatDocBlockKind } from '../lib/chatDocPreview'
 import { guessDataTitle, isJsonLang, parseDataBlockDetailed, sniffDataKind } from '../lib/chatDocBlocks'
@@ -197,6 +198,8 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
   }, [node, sourceText])
   const creatingRawText = useSyncExternalStore(subscribeCreatingDoc, getCreatingRawText, noCreatingDoc)
   const streaming = useContext(StreamingContext)
+  // Code de escritorio: un bloque de comando completo (valla cerrada, respuesta ya escrita) se ofrece con ▶ y salida en vivo.
+  const shellRun = useShellRunnable(code, rawLang, !renderable && !fenceOpen && streaming !== true)
   // Valla cerrada de un documento de datos cuyo contenido no se pudo leer: se avisa en vez de dejar un bloque que no hace nada.
   const isDataDoc = docKind === 'xlsx' || docKind === 'pptx' || docKind === 'docx'
   const brokenReason = useMemo<DocProblemReason | null>(() => {
@@ -265,6 +268,13 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
           </div>
         )}
       </>
+    )
+  }
+  if (shellRun) {
+    return (
+      <ShellRunBlock prepared={shellRun} code={code}>
+        <pre>{children}</pre>
+      </ShellRunBlock>
     )
   }
   return (
