@@ -1,7 +1,7 @@
 {
   "name": "lazunox",
   "productName": "Lazunox",
-  "version": "0.5.32",
+  "version": "0.5.33",
   "description": "Cliente de escritorio para OpenCode (Chat, Code, Tareas, Rutinas)",
   "main": "./out/main/index.js",
   "author": "bentec",
