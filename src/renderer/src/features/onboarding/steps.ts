@@ -13,8 +13,16 @@ export const ONBOARDING_STEPS = ['opencode', 'auth', 'model', 'modes', 'setup'] 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
 /** Pasos de esta plataforma: el último, «Prepara tu equipo», existe en macOS (permisos + ArtCraft) y en Windows (entorno de Tareas). */
-export function stepsFor(_platform: string = currentPlatform()): readonly OnboardingStep[] {
-  return ONBOARDING_STEPS
+export function stepsFor(_platform: string = currentPlatform(), withEngine = true): readonly OnboardingStep[] {
+  return withEngine ? ONBOARDING_STEPS : ONBOARDING_STEPS.filter((s) => s !== 'opencode')
+}
+
+/**
+ * ¿Hace falta el paso del motor? Con el motor que viene en la app no hay nada que decidir (la persona ni lo nota) y el asistente
+ * empieza directo en «Conecta tu IA»: son 4 pasos. Con un motor propio o sin motor se conserva el paso extra (5 pasos).
+ */
+export function engineStepNeeded(info: Pick<OpencodeInfo, 'found' | 'source'> | null): boolean {
+  return opencodeStepMode(info) !== 'bundled'
 }
 
 /** Proveedor del catálogo de OpenCode (`provider.list().all`) reducido a lo que se necesita. */
@@ -76,16 +84,16 @@ export function decideOnboarding(i: OnboardingInputs): OnboardingDecision {
   return hasConfiguredProvider(i.connected) ? { kind: 'complete' } : { kind: 'show', step: 'auth' }
 }
 
-export function stepIndex(step: OnboardingStep, platform: string = currentPlatform()): number {
-  return stepsFor(platform).indexOf(step)
+export function stepIndex(step: OnboardingStep, platform: string = currentPlatform(), withEngine = true): number {
+  return stepsFor(platform, withEngine).indexOf(step)
 }
 
-export function nextStep(step: OnboardingStep, platform: string = currentPlatform()): OnboardingStep | null {
-  return stepsFor(platform)[stepIndex(step, platform) + 1] ?? null
+export function nextStep(step: OnboardingStep, platform: string = currentPlatform(), withEngine = true): OnboardingStep | null {
+  return stepsFor(platform, withEngine)[stepIndex(step, platform, withEngine) + 1] ?? null
 }
 
-export function prevStep(step: OnboardingStep, platform: string = currentPlatform()): OnboardingStep | null {
-  return stepsFor(platform)[stepIndex(step, platform) - 1] ?? null
+export function prevStep(step: OnboardingStep, platform: string = currentPlatform(), withEngine = true): OnboardingStep | null {
+  return stepsFor(platform, withEngine)[stepIndex(step, platform, withEngine) - 1] ?? null
 }
 
 /** Cómo presentar el paso 1: informativo con el motor incluido; con el CLI propio o sin binario, el flujo de siempre. */

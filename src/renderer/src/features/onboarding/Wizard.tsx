@@ -1,7 +1,8 @@
 /**
- * Asistente de primer uso (5 pasos: OpenCode, «Conecta tu IA», modelo, modos, «Prepara tu equipo»: permisos y componentes en un solo botón).
- * El paso 2 ofrece OpenCode Go (recomendado) y cualquier otro proveedor del catálogo de OpenCode (API key u OAuth).
- * Con el motor incluido en la app, el paso 1 es solo informativo («Incluido: OpenCode X»).
+ * Asistente de primer uso: «Conecta tu IA», modelo, modos y «Prepara tu equipo» (4 pasos). Solo con un motor propio o sin motor se
+ * añade el paso del motor (OpenCode) al principio (5 pasos). Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
+ * «Conecta tu IA» ofrece OpenCode Go (recomendado) y cualquier otro servicio del catálogo de OpenCode (clave u OAuth).
+ * El último paso ofrece «Probar con un ejemplo» a la vista.
  * Solo aparece si `settings.onboarded !== true` y falta el binario o ningún proveedor está
  * configurado (`decideOnboarding`); si todo ya funciona, marca `onboarded` sin mostrar nada.
  * La app nunca ejecuta un instalador: el comando de instalación solo se copia al portapapeles.
@@ -44,15 +45,13 @@ import { SwitchNoticeBar } from '../settings/impl/SwitchNoticeBar'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import { Welcome } from './Welcome'
-import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
-import { waitForMacPerms } from './perms-wait'
-import { permsStage, type AppLocation } from '@shared/mac-permissions'
 import {
   canAdvance,
   connectedNames,
   connectTasksNotice,
   connectTermsNotice,
   decideOnboarding,
+  engineStepNeeded,
   nextStep,
   stepsFor,
   opencodeStepMode,
@@ -84,6 +83,8 @@ function OnboardingHost(): React.JSX.Element | null {
   /** Paso actual; `null` = todavía no se decidió mostrar el asistente. Una vez mostrado, no se oculta solo. */
   const [step, setStep] = useState<OnboardingStep | null>(null)
   const completed = useRef(false)
+  /** ¿Lleva el paso del motor? Se decide al mostrar el asistente y no cambia a mitad del recorrido (el contador de pasos sería inestable). */
+  const [withEngine, setWithEngine] = useState(true)
   /** La bienvenida (animación, revisión y preparación del equipo) va antes del primer paso, una vez por arranque del asistente. */
   const [welcomed, setWelcomed] = useState(false)
 
@@ -125,12 +126,14 @@ function OnboardingHost(): React.JSX.Element | null {
 
   useEffect(() => {
     if (step) return
-    if (decision.kind === 'show') setStep(decision.step)
-    else if (decision.kind === 'complete' && !completed.current) {
+    if (decision.kind === 'show') {
+      setWithEngine(decision.step === 'opencode' || engineStepNeeded(info))
+      setStep(decision.step)
+    } else if (decision.kind === 'complete' && !completed.current) {
       completed.current = true
       void update({ onboarded: true })
     }
-  }, [decision, step, update])
+  }, [decision, step, update, info])
 
   // L10: el foco inicial y el de cada cambio de paso van al título (no a un botón, que mostraría el anillo).
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -141,7 +144,7 @@ function OnboardingHost(): React.JSX.Element | null {
   if (!step) return null
   if (!welcomed) return <Welcome info={info} onDone={() => setWelcomed(true)} />
 
-  const steps = stepsFor()
+  const steps = stepsFor(undefined, withEngine)
   const finish = (): void => void update({ onboarded: true })
   // «Probar con un ejemplo»: cierra la guía, abre Tareas y deja una tarea de ejemplo escrita para que solo haya que enviarla.
   const tryExample = (): void => {
@@ -149,7 +152,7 @@ function OnboardingHost(): React.JSX.Element | null {
     useTasks.setState({ draft: t('wizard.sampleTask') })
     finish()
   }
-  const last = nextStep(step) === null
+  const last = nextStep(step, undefined, withEngine) === null
   const advance = canAdvance(step, {
     binaryFound: info?.found === true,
     serverReady: serverStatus.state === 'ready',
@@ -167,7 +170,9 @@ function OnboardingHost(): React.JSX.Element | null {
         <header className="border-b border-border/60 px-6 pt-5 pb-4">
           <p className="flex items-center gap-2 text-meta text-muted">
             <LogoMark size={18} animated={false} />
-            {t('wizard.header', { app: DISPLAY_NAME, step: stepIndex(step) + 1, total: steps.length })}
+            <span data-testid="onboarding-progress">
+              {t('wizard.header', { step: stepIndex(step, undefined, withEngine) + 1, total: steps.length })}
+            </span>
           </p>
           <h2
             id="onboarding-title"
@@ -177,9 +182,19 @@ function OnboardingHost(): React.JSX.Element | null {
           >
             {stepTitle(step, opencodeStepMode(info))}
           </h2>
-          <div className="mt-3 flex gap-1.5" aria-hidden>
+          <div
+            className="mt-3 flex gap-1.5"
+            role="progressbar"
+            aria-label={t('wizard.header', { step: stepIndex(step, undefined, withEngine) + 1, total: steps.length })}
+            aria-valuemin={1}
+            aria-valuemax={steps.length}
+            aria-valuenow={stepIndex(step, undefined, withEngine) + 1}
+          >
             {steps.map((s, i) => (
-              <span key={s} className={`h-1 flex-1 rounded-full ${i <= stepIndex(step) ? 'bg-accent' : 'bg-active'}`} />
+              <span
+                key={s}
+                className={`h-1 flex-1 rounded-full ${i <= stepIndex(step, undefined, withEngine) ? 'bg-accent' : 'bg-active'}`}
+              />
             ))}
           </div>
         </header>
@@ -189,7 +204,7 @@ function OnboardingHost(): React.JSX.Element | null {
           {step === 'auth' && <StepAuth connected={connected} refreshProviders={refreshProviders} />}
           {step === 'model' && <StepModel />}
           {step === 'modes' && <StepModes />}
-          {step === 'setup' && <StepSetup />}
+          {step === 'setup' && <StepSetup onTryExample={tryExample} />}
         </div>
 
         <footer className="flex items-center justify-between gap-2 border-t border-border/60 px-6 py-3">
@@ -197,17 +212,16 @@ function OnboardingHost(): React.JSX.Element | null {
             {t('wizard.skip')}
           </Button>
           <div className="flex items-center gap-2">
-            {last && (
-              <Button variant="secondary" onClick={tryExample}>
-                {t('wizard.tryExample')}
-              </Button>
-            )}
-            {prevStep(step) && (
-              <Button variant="secondary" onClick={() => setStep(prevStep(step))}>
+            {prevStep(step, undefined, withEngine) && (
+              <Button variant="secondary" onClick={() => setStep(prevStep(step, undefined, withEngine))}>
                 {t('wizard.back')}
               </Button>
             )}
-            <Button variant="primary" disabled={!advance} onClick={() => (last ? finish() : setStep(nextStep(step)))}>
+            <Button
+              variant="primary"
+              disabled={!advance}
+              onClick={() => (last ? finish() : setStep(nextStep(step, undefined, withEngine)))}
+            >
               {last ? t('wizard.start') : t('wizard.continue')}
             </Button>
           </div>
@@ -413,6 +427,11 @@ function StepAuth({
   const [savedIds, setSavedIds] = useState<string[]>([])
   /** Tarjeta que originó la última acción, para mostrar el error bajo ella. */
   const [origin, setOrigin] = useState<'go' | 'other'>('go')
+  const serverStatus = useServer((s) => s.status)
+  const serverError = useServer((s) => s.error)
+  const restartServer = useServer((s) => s.restart)
+  const [restarting, setRestarting] = useState(false)
+  const engineFailure = serverStatus.state === 'error' || serverError ? (serverError ?? serverStatus.error ?? '').split('\n')[0] : ''
   const markSaved = (id: string): void => setSavedIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
 
   const connectedNow: ProviderState[] = [
@@ -445,6 +464,24 @@ function StepAuth({
   return (
     <div className="space-y-4">
       <Lead>{t('wizard.auth.lead')}</Lead>
+      <p className="text-[13px] leading-[18px] text-muted">{t('wizard.auth.keyHelp', { app: DISPLAY_NAME })}</p>
+      {engineFailure && (
+        <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+          <p>{t('wizard.auth.engineFailed', { app: DISPLAY_NAME })}</p>
+          <p className="mt-1 break-words whitespace-pre-wrap opacity-80">{engineFailure}</p>
+          <Button
+            size="sm"
+            className="mt-2"
+            disabled={restarting}
+            onClick={() => {
+              setRestarting(true)
+              void restartServer().finally(() => setRestarting(false))
+            }}
+          >
+            {restarting ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />} {t('wizard.opencode.retry')}
+          </Button>
+        </div>
+      )}
 
       <section aria-labelledby="onb-go" className="rounded-card border-0 bg-accent-soft p-4 ring-[1.5px] ring-accent ring-inset">
         <div className="flex items-center gap-2">
@@ -491,7 +528,7 @@ function StepAuth({
         <p className="mt-1 text-sm text-muted">{t('wizard.auth.otherDescription')}</p>
         <div className="mt-3 space-y-2">
           {!client ? (
-            <p className="text-xs text-muted">{t('wizard.auth.waitingServer')}</p>
+            <p className="text-xs text-muted">{t('wizard.auth.waitingServer', { app: DISPLAY_NAME })}</p>
           ) : catalogError && !catalog ? (
             <div className="space-y-2">
               <ErrorText>{t('wizard.auth.catalogError', { error: catalogError })}</ErrorText>
@@ -602,17 +639,15 @@ function StepModes(): React.JSX.Element {
 
 // ───────────── Paso 5: prepara tu equipo (permisos + componentes) ─────────────
 
-type SetupItemId = 'perms' | 'craft' | 'sandbox'
-type SetupState = 'idle' | 'running' | 'done' | 'waiting' | 'failed'
-
-const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+type SetupItemId = 'craft' | 'sandbox'
+type SetupState = 'idle' | 'running' | 'done' | 'failed'
 
 /**
  * Un solo botón deja el equipo listo: en macOS pide Accesibilidad y Grabación de pantalla y baja ArtCraft (el diseñador de documentos: descarga de GitHub,
  * verificada por hash y firma); en Windows prepara el entorno aislado de Tareas. Pulsarlo ES el consentimiento de todo lo que la tarjeta
  * enumera; nada se hace antes. Cada pieza se puede reintentar y todo se puede hacer después desde Ajustes.
  */
-function StepSetup(): React.JSX.Element {
+function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.Element {
   const t = useT()
   const mac = isMacPlatform()
   const caps = platformCaps()
@@ -621,20 +656,10 @@ function StepSetup(): React.JSX.Element {
   const [craftError, setCraftError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
-  const [location, setLocation] = useState<AppLocation | null>(null)
-  const [screenRestart, setScreenRestart] = useState(false)
   const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
 
   const refresh = useCallback(async (): Promise<void> => {
     if (!hasTasksBridge()) return
-    if (mac && caps.computer) {
-      const c = await cw('computer:status').catch(() => null)
-      if (c) {
-        set('perms', c.accessibility && c.screenRecording ? 'done' : 'idle')
-        setLocation(c.location ?? null)
-        setScreenRestart(permsStage(c) === 'restart')
-      }
-    }
     const o = await cw('craft:status').catch(() => null)
     if (o?.status.state === 'missing') {
       setCraftMb(Math.round(o.status.sizeBytes / 1e6))
@@ -644,47 +669,15 @@ function StepSetup(): React.JSX.Element {
       const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
       if (s) set('sandbox', s.state === 'ready' ? 'done' : 'idle')
     }
-  }, [mac, caps.computer, caps.tasks, caps.tasksSandbox])
+  }, [caps.tasks, caps.tasksSandbox])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  // Al volver de Ajustes del Sistema se revalidan los permisos.
-  useEffect(() => {
-    if (!mac) return
-    const onFocus = (): void => {
-      if (!hasTasksBridge() || !caps.computer) return
-      void cw('computer:status')
-        .then((c) => {
-          setLocation(c.location ?? null)
-          setScreenRestart(permsStage(c) === 'restart')
-          if (permsStage(c) === 'ready') setItems((p) => ({ ...p, perms: 'done' }))
-        })
-        .catch(() => undefined)
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [mac, caps.computer])
-
   const runAll = async (): Promise<void> => {
     setBusy(true)
     try {
-      if (mac && caps.computer && items.perms !== 'done') {
-        set('perms', 'running')
-        await cw('computer:requestPermissions').catch(() => undefined)
-        // macOS abre sus avisos y la persona los activa: se espera hasta ~90 s a que ambos queden concedidos. Si Accesibilidad
-        // llega antes que Pantalla, se avisa del reinicio al instante.
-        const r = await waitForMacPerms({
-          status: () => cw('computer:status').catch(() => null),
-          request: () => cw('computer:requestPermissions'),
-          report: () => cw('computer:reportPermsStall'),
-          sleep: wait,
-          alive: () => true,
-          onStage: (st) => setScreenRestart(st === 'restart')
-        })
-        set('perms', r === 'ready' ? 'done' : 'waiting')
-      }
       if (items.craft && items.craft !== 'done') {
         set('craft', 'running')
         const poll = setInterval(() => {
@@ -717,11 +710,10 @@ function StepSetup(): React.JSX.Element {
   }
 
   const rows: Array<{ id: SetupItemId; label: string; hint: string }> = []
-  if (mac && caps.computer) rows.push({ id: 'perms', label: t('wizard.setup.perms'), hint: t('wizard.setup.perms.hint') })
   if (items.craft) rows.push({ id: 'craft', label: t('wizard.setup.craft'), hint: t('wizard.setup.craft.hint', { mb: craftMb }) })
   if (items.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
   const allDone = rows.length > 0 && rows.every((r) => items[r.id] === 'done')
-  const anyFailed = rows.some((r) => items[r.id] === 'failed' || items[r.id] === 'waiting')
+  const anyFailed = rows.some((r) => items[r.id] === 'failed')
 
   return (
     <div className="space-y-3">
@@ -738,22 +730,20 @@ function StepSetup(): React.JSX.Element {
                   ) : st === 'running' ? (
                     <Loader2 size={16} className="animate-spin text-accent" />
                   ) : (
-                    <Shield size={16} className={st === 'failed' || st === 'waiting' ? 'text-warning' : 'text-subtle'} />
+                    <Shield size={16} className={st === 'failed' ? 'text-warning' : 'text-subtle'} />
                   )}
                 </span>
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
                   <p className="font-medium text-fg">{r.label}</p>
                   <p className="text-muted">
                     {st === 'running' && (r.id === 'sandbox' || r.id === 'craft') && pct !== null ? `${pct} % · ` : ''}
-                    {st === 'waiting'
-                      ? t('wizard.setup.status.waiting')
-                      : st === 'failed'
-                        ? r.id === 'craft' && craftError
-                          ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
-                          : t('wizard.setup.status.failed')
-                        : st === 'done'
-                          ? t('wizard.setup.status.ready')
-                          : r.hint}
+                    {st === 'failed'
+                      ? r.id === 'craft' && craftError
+                        ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
+                        : t('wizard.setup.status.failed')
+                      : st === 'done'
+                        ? t('wizard.setup.status.ready')
+                        : r.hint}
                   </p>
                 </div>
               </li>
@@ -761,9 +751,6 @@ function StepSetup(): React.JSX.Element {
           })}
         </ul>
       )}
-      {mac && caps.computer && <AppLocationNotice location={location} />}
-      {mac && caps.computer && items.perms !== 'done' && screenRestart && <ScreenRestartNotice />}
-      {mac && caps.computer && items.perms !== 'done' && (items.perms === 'waiting' || items.perms === 'running') && <PermsHelp />}
       {rows.length > 0 && (
         <div className="flex items-center gap-3">
           <Button variant="primary" disabled={busy || allDone} onClick={() => void runAll()}>
@@ -778,6 +765,20 @@ function StepSetup(): React.JSX.Element {
           <span className="text-meta text-muted">{t('wizard.setup.later')}</span>
         </div>
       )}
+      {mac && caps.computer && (
+        <p role="note" className="text-[13px] leading-[18px] text-muted">
+          {t('wizard.setup.permsLater', { app: DISPLAY_NAME, mode: t('wizard.fullControl') })}
+        </p>
+      )}
+      <section aria-labelledby="onb-example" className="rounded-card bg-accent-soft p-4 ring-[1.5px] ring-accent ring-inset">
+        <h3 id="onb-example" className="text-sm font-semibold">
+          {t('wizard.example.title')}
+        </h3>
+        <p className="mt-1 text-sm leading-relaxed text-muted">{t('wizard.example.body', { sample: t('wizard.sampleTask') })}</p>
+        <Button className="mt-3" variant="primary" onClick={onTryExample}>
+          {t('wizard.tryExample')}
+        </Button>
+      </section>
     </div>
   )
 }
