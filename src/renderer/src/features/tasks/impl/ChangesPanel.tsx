@@ -94,7 +94,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
           {dir && <span className="text-subtle"> {dir}</span>}
         </span>
         <span
-          className={`shrink-0 rounded px-1.5 py-px text-[11px] font-medium desk:grid desk:size-[18px] desk:place-items-center desk:rounded-2xs desk:px-0 desk:py-0 desk:font-code desk:text-[11px] desk:font-semibold ${b.cls}`}
+          className={`shrink-0 rounded px-1.5 py-px text-[11px] desk:text-meta font-medium desk:grid desk:size-[18px] desk:place-items-center desk:rounded-2xs desk:px-0 desk:py-0 desk:font-code desk:text-[11px] desk:font-semibold ${b.cls}`}
         >
           {/* Escritorio: la letra se ve y la palabra queda para lectores de pantalla (sr-only), no oculta. */}
           <span className="contents desk:inline desk:sr-only">{t(b.label)}</span>
@@ -103,7 +103,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
           </span>
         </span>
         {!change.binary && (
-          <span className="shrink-0 text-[11px] tabular-nums">
+          <span className="shrink-0 text-[11px] desk:text-meta tabular-nums">
             <span className="text-success">+{change.additions}</span> <span className="text-danger">−{change.deletions}</span>
           </span>
         )}
@@ -118,7 +118,7 @@ function ChangeRow({ change }: { change: TasksRestoreChange }): React.JSX.Elemen
             <p className="px-3 py-2 text-xs text-subtle">{t('tasks.changes.tooMany')}</p>
           )}
           {!change.restorable && (
-            <p className="border-t border-border px-3 py-1.5 text-[11px] text-warning">{notRestorableText(change.reason)}</p>
+            <p className="border-t border-border px-3 py-1.5 text-[11px] desk:text-meta text-warning">{notRestorableText(change.reason)}</p>
           )}
         </div>
       )}
@@ -185,12 +185,12 @@ export function ChangesSection({ sessionID, busy }: { sessionID: string; busy: b
               <ChangeRow key={c.path} change={c} />
             ))}
           </ul>
-          {data.truncated && <p className="mt-1.5 text-[11px] text-subtle">{t('tasks.changes.more')}</p>}
+          {data.truncated && <p className="mt-1.5 text-[11px] desk:text-meta text-subtle">{t('tasks.changes.more')}</p>}
           <Button variant="secondary" size="sm" className="mt-3 w-full" disabled={busy || working} onClick={() => void undoAll()}>
             {working ? <Loader2 size={13} className="animate-spin" /> : <Undo2 size={13} />} {t('tasks.changes.undoAll')}
           </Button>
           {actionError && <p className="mt-1.5 text-xs text-danger">{actionError}</p>}
-          {fullAccess && <p className="mt-2 text-[11px] text-subtle">{t('tasks.changes.fullNote')}</p>}
+          {fullAccess && <p className="mt-2 text-[11px] desk:text-meta text-subtle">{t('tasks.changes.fullNote')}</p>}
         </>
       )}
     </Section>

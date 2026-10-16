@@ -341,7 +341,7 @@ export function TaskRow({
       {archivedView && (
         <button
           type="button"
-          className="shrink-0 rounded-md px-1.5 py-0.5 text-[11.5px] text-accent hover:bg-hover"
+          className="shrink-0 rounded-md px-1.5 py-0.5 text-[11.5px] desk:text-meta text-accent hover:bg-hover"
           onClick={() => void restoreTask(task.id).catch(() => undefined)}
         >
           {t('tasks.list.restore')}
@@ -375,7 +375,7 @@ function TranscriptResults({
   }
   return (
     <div className="mb-1">
-      <div className="flex items-center gap-1.5 px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle">
+      <div className="flex items-center gap-1.5 px-1 pt-2.5 pb-1 text-[11.5px] desk:text-meta font-medium text-subtle">
         {t('tasks.list.inChats')}
         {loading && (
           <span className="flex items-center gap-1 font-normal">
@@ -390,9 +390,9 @@ function TranscriptResults({
             <button type="button" className="w-full rounded-lg px-2 py-1.5 text-left hover:bg-hover" onClick={() => open(h)}>
               <div className="flex items-baseline gap-2">
                 <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">{h.title || t('tasks.list.untitled')}</span>
-                <span className="shrink-0 text-[10.5px] text-subtle">{relTime(h.at)}</span>
+                <span className="shrink-0 text-[10.5px] desk:text-meta text-subtle">{relTime(h.at)}</span>
               </div>
-              <div className="line-clamp-2 text-[11.5px] leading-snug text-muted">{h.snippet}</div>
+              <div className="line-clamp-2 text-[11.5px] desk:text-meta leading-snug text-muted">{h.snippet}</div>
             </button>
           </li>
         ))}
@@ -551,7 +551,7 @@ export function TaskList(): React.JSX.Element {
           >
             <Archive size={14} strokeWidth={1.75} />
             {archivedTasks.length > 0 && !showArchived && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-3.5 rounded-full bg-hover px-1 text-[9px] leading-3.5 text-muted">
+              <span className="absolute -top-0.5 -right-0.5 min-w-3.5 rounded-full bg-hover px-1 text-[9px] desk:text-meta leading-3.5 text-muted">
                 {archivedTasks.length}
               </span>
             )}
@@ -559,7 +559,7 @@ export function TaskList(): React.JSX.Element {
         </div>
       )}
       <div className={`mb-1 items-center gap-1.5 desk:mt-1 ${ownSearch ? 'flex' : 'hidden'}`}>
-        <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] text-subtle">
+        <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] desk:text-meta text-subtle">
           <span className="shrink-0 desk:sr-only">{tr('tasks.list.groupBy')}</span>
           <select
             value={groupMode}
@@ -633,7 +633,7 @@ export function TaskList(): React.JSX.Element {
           />
         </SidebarTreeRegion>
         {searching && !showArchived && q.length < MIN_QUERY_LENGTH && (
-          <p className="px-1 py-2 text-[11.5px] text-subtle">{tr('tasks.list.minChars.pre', { n: MIN_QUERY_LENGTH })}</p>
+          <p className="px-1 py-2 text-[11.5px] desk:text-meta text-subtle">{tr('tasks.list.minChars.pre', { n: MIN_QUERY_LENGTH })}</p>
         )}
         {searching && !showArchived && q.length >= MIN_QUERY_LENGTH && (
           <TranscriptResults hits={transcript.hits} loading={transcript.loading} scanned={transcript.scanned} total={transcript.total} />

@@ -116,7 +116,7 @@ export function EffortPicker({ model, variant, onChange }: Props): React.JSX.Ele
             aria-label={t('common.effort.menu')}
             className="absolute right-0 bottom-full z-50 mb-2 w-48 origin-bottom-right animate-pop-in rounded-xl border border-border bg-elevated p-1 shadow-xl desk:rounded-card desk:border-border/60 desk:shadow-pop"
           >
-            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] text-subtle desk:text-[11px] desk:font-semibold">
+            <div className="px-2.5 pt-1.5 pb-1 text-[11.5px] desk:text-meta text-subtle desk:text-[11px] desk:font-semibold">
               {t('common.effort.menu')}
             </div>
             {list}

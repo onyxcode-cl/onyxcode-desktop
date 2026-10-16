@@ -495,7 +495,9 @@ export function ProjectPanel(): React.JSX.Element | null {
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-mono text-xs font-medium">{k.name}</span>
                               {unreviewed && (
-                                <span className="shrink-0 text-[10px] font-medium text-warning">{t('tasks.proj.skillUnreviewed')}</span>
+                                <span className="shrink-0 text-[10px] desk:text-meta font-medium text-warning">
+                                  {t('tasks.proj.skillUnreviewed')}
+                                </span>
                               )}
                             </div>
                             {k.description && <p className="mt-0.5 line-clamp-2 text-xs text-subtle">{k.description}</p>}

@@ -115,7 +115,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
             {groups.length === 0 && <div className="px-3 py-4 text-center text-sm text-muted">{t('models.select.noResults')}</div>}
             {groups.map(({ provider, models }) => (
               <div key={provider.id}>
-                <div className="px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-subtle uppercase">
+                <div className="px-2.5 pt-2 pb-1 text-[11px] desk:text-meta font-semibold tracking-wide text-subtle uppercase">
                   {provider.id === PREFERRED_PROVIDER ? `${provider.name} ★` : provider.name}
                 </div>
                 {models.map((m) => {
@@ -124,7 +124,7 @@ export function ModelSelect({ providers, value, onChange, defaultLabel, classNam
                     <Option key={key} selected={key === current} onClick={() => pick({ providerID: provider.id, modelID: m.id })}>
                       <span className="flex-1 truncate">{m.name}</span>
                       {(m.status === 'alpha' || m.status === 'beta') && (
-                        <span className="rounded-md bg-gold-soft px-1 text-[10px] text-gold-text">{m.status}</span>
+                        <span className="rounded-md bg-gold-soft px-1 text-[10px] desk:text-meta text-gold-text">{m.status}</span>
                       )}
                     </Option>
                   )

@@ -311,7 +311,7 @@ function DesktopSessionList({
         >
           <Archive size={14} strokeWidth={1.75} />
           {archivedCount > 0 && !showArchived && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-3.5 rounded-full bg-hover px-1 text-[9px] leading-3.5 text-muted">
+            <span className="absolute -top-0.5 -right-0.5 min-w-3.5 rounded-full bg-hover px-1 text-[9px] desk:text-meta leading-3.5 text-muted">
               {archivedCount}
             </span>
           )}

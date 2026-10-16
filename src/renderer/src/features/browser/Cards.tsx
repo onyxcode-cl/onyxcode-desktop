@@ -74,7 +74,7 @@ function ApprovalCard({
       className="rounded-xl border border-warning/40 bg-elevated px-3.5 py-2.5 shadow-md"
     >
       <p className="text-sm text-fg/90">{titleFor(req, t)}</p>
-      <p className="mt-1 truncate font-mono text-[11px] text-subtle" title={req.url}>
+      <p className="mt-1 truncate font-mono text-[11px] desk:text-meta text-subtle" title={req.url}>
         {req.url}
       </p>
       <div className="mt-2.5 flex justify-end gap-1.5">

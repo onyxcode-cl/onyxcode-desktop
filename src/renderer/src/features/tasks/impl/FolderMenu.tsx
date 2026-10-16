@@ -183,7 +183,7 @@ export function FolderMenu({
             placement === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
-          <div className="px-2 pt-1 pb-1.5 text-[11.5px] font-medium text-subtle">{TASKS_TERMS.workFolders}</div>
+          <div className="px-2 pt-1 pb-1.5 text-[11.5px] desk:text-meta font-medium text-subtle">{TASKS_TERMS.workFolders}</div>
           <div className="max-h-64 overflow-y-auto">
             {folders.map((f) => (
               <div key={f.path} className="group flex items-center rounded-lg hover:bg-hover">
@@ -199,7 +199,7 @@ export function FolderMenu({
                   <FolderOpen size={14} className="shrink-0 text-muted" />
                   <span className="min-w-0 flex-1">
                     <span className={`block truncate text-sm ${f.path === folder ? 'font-semibold' : ''}`}>{f.name}</span>
-                    <span className="block truncate font-mono text-[10px] text-subtle">{f.path}</span>
+                    <span className="block truncate font-mono text-[10px] desk:text-meta text-subtle">{f.path}</span>
                   </span>
                   {f.path === folder && <Check size={14} className="shrink-0 text-accent" />}
                 </button>
@@ -228,7 +228,7 @@ export function FolderMenu({
           {folder && linked.length > 0 && (
             <>
               <div className="my-1 border-t border-border" />
-              <div className="px-2 pt-1 pb-1 text-[11.5px] font-medium text-subtle">{TASKS_TERMS.linkedFolders}</div>
+              <div className="px-2 pt-1 pb-1 text-[11.5px] desk:text-meta font-medium text-subtle">{TASKS_TERMS.linkedFolders}</div>
               <div className="max-h-40 overflow-y-auto">
                 {linked.map((l) => (
                   <div key={l.path} className="group flex items-center rounded-lg hover:bg-hover">
@@ -238,12 +238,12 @@ export function FolderMenu({
                         <span className="flex items-center gap-1.5">
                           <span className="truncate text-sm">{l.name}</span>
                           {l.mode === 'ro' && (
-                            <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">
+                            <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-border px-1.5 py-px text-[10px] desk:text-meta text-muted">
                               <Lock size={9} /> {TASKS_TERMS.readOnly}
                             </span>
                           )}
                         </span>
-                        <span className="block truncate font-mono text-[10px] text-subtle">{l.path}</span>
+                        <span className="block truncate font-mono text-[10px] desk:text-meta text-subtle">{l.path}</span>
                       </span>
                     </span>
                     <button
@@ -259,7 +259,7 @@ export function FolderMenu({
                 ))}
               </div>
               {folderSet && !folderSet.applied && (
-                <p className="px-2 pb-1 text-[11px] text-subtle">{t('tasksComputer.menu.appliedOnRestart')}</p>
+                <p className="px-2 pb-1 text-[11px] desk:text-meta text-subtle">{t('tasksComputer.menu.appliedOnRestart')}</p>
               )}
             </>
           )}
@@ -271,7 +271,7 @@ export function FolderMenu({
                   <div className="truncate text-sm font-medium" title={pending.path}>
                     {t('tasksComputer.menu.addNamed', { name: baseName(pending.path) })}
                   </div>
-                  <div className="truncate font-mono text-[10px] text-subtle">{pending.path}</div>
+                  <div className="truncate font-mono text-[10px] desk:text-meta text-subtle">{pending.path}</div>
                   <div role="radiogroup" aria-label={t('tasksComputer.access.aria')} className="mt-1.5 space-y-1">
                     {(['rw', 'ro'] as const).map((m) => (
                       <label
@@ -289,7 +289,7 @@ export function FolderMenu({
                         />
                         <span>
                           <span className="block text-[13px] font-medium">{m === 'rw' ? TASKS_TERMS.readWrite : TASKS_TERMS.readOnly}</span>
-                          <span className="block text-[11px] text-muted">{t(MODE_HINT_KEY[m])}</span>
+                          <span className="block text-[11px] desk:text-meta text-muted">{t(MODE_HINT_KEY[m])}</span>
                         </span>
                       </label>
                     ))}
@@ -327,7 +327,7 @@ export function FolderMenu({
                 )
               )}
               {linkError && (
-                <p role="alert" className="px-2 py-1 text-[11.5px] text-danger">
+                <p role="alert" className="px-2 py-1 text-[11.5px] desk:text-meta text-danger">
                   {linkError}
                 </p>
               )}

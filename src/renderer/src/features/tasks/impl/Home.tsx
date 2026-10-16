@@ -291,7 +291,7 @@ export function Home({
           </div>
         )}
         {!full && folder && phase === 'ready' && (
-          <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-subtle">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] desk:text-meta text-subtle">
             <ShieldCheck size={12} /> {t('tasks.home.sandboxActive')}
           </p>
         )}
@@ -363,7 +363,9 @@ export function Home({
                       <span className="min-w-0">
                         <span className="block text-sm font-medium">{s.title}</span>
                         <span className="line-clamp-2 block text-xs text-muted">{s.prompt}</span>
-                        {s.note && !full && <span className="mt-1 block text-[11.5px] leading-snug text-warning">{s.note}</span>}
+                        {s.note && !full && (
+                          <span className="mt-1 block text-[11.5px] desk:text-meta leading-snug text-warning">{s.note}</span>
+                        )}
                       </span>
                     </button>
                   )

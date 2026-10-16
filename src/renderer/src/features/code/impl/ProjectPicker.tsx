@@ -269,18 +269,18 @@ function ProjectCard({
             <div className="flex items-center gap-1.5">
               <div className="truncate text-sm font-semibold">{baseName(dir)}</div>
               {open && (
-                <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-medium text-accent">
+                <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-[10px] desk:text-meta font-medium text-accent">
                   {t('code.picker.openBadge')}
                 </span>
               )}
             </div>
-            <div className="truncate font-mono text-[11px] text-subtle" title={dir}>
+            <div className="truncate font-mono text-[11px] desk:text-meta text-subtle" title={dir}>
               {tildify(dir)}
             </div>
           </div>
         </div>
         {meta?.lastTitle && <div className="line-clamp-1 text-xs text-muted">{meta.lastTitle}</div>}
-        <div className="mt-auto flex items-center gap-2 text-[11px] text-subtle">
+        <div className="mt-auto flex items-center gap-2 text-[11px] desk:text-meta text-subtle">
           {meta === null ? (
             <span className="h-3 w-24 animate-pulse rounded bg-hover" />
           ) : (

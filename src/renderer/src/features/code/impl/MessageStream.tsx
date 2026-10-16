@@ -235,7 +235,7 @@ const UserMessage = memo(function UserMessage({
               return (
                 <span
                   key={f.id}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-bg/60 px-1.5 py-0.5 font-mono text-[11px] text-muted"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-bg/60 px-1.5 py-0.5 font-mono text-[11px] desk:text-meta text-muted"
                   title={path}
                 >
                   <AtSign size={11} /> {relPath(path.replace(/^file:\/\//, ''), root)}
@@ -291,7 +291,7 @@ const UserMessage = memo(function UserMessage({
         />
       )}
       {!mobile && (
-        <div className="flex items-center gap-1 text-[11px] text-subtle desk:absolute desk:top-full desk:right-0 desk:z-[1]">
+        <div className="flex items-center gap-1 text-[11px] desk:text-meta text-subtle desk:absolute desk:top-full desk:right-0 desk:z-[1]">
           <span
             className={`rounded px-1 font-medium${agent === 'plan' ? ' desk:h-5 desk:bg-accent-soft desk:px-1.5 desk:leading-5 desk:text-accent' : ' desk:hidden'}`}
           >

@@ -328,7 +328,7 @@ export function ProviderKeyForm({
 
       {showTestResult && <KeyTestNotice providerID={lastSaved?.id ?? null} providerName={lastSaved?.name ?? ''} />}
 
-      <p className="mt-2 text-[11px] text-muted">
+      <p className="mt-2 text-[11px] desk:text-meta text-muted">
         {target && !supportsApi && oauth.length === 0
           ? t('models.form.loginOnly', { app: DISPLAY_NAME })
           : t('models.form.keyStoredNote', { app: DISPLAY_NAME })}

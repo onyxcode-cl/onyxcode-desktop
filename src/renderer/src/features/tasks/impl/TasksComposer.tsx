@@ -178,7 +178,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
                 <FolderPlus size={13} className="shrink-0 text-muted" />
                 <span className="truncate">{f.name}</span>
                 {f.mode === 'ro' && (
-                  <span className="shrink-0 rounded bg-warning/15 px-1.5 py-px text-[11px] font-medium text-warning">
+                  <span className="shrink-0 rounded bg-warning/15 px-1.5 py-px text-[11px] desk:text-meta font-medium text-warning">
                     {TASKS_TERMS.readOnly}
                   </span>
                 )}

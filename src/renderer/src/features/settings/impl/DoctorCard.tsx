@@ -175,13 +175,17 @@ function ItemRow({
         <div className="text-sm font-medium">{t(TITLE_KEY[item.id])}</div>
         {explainKey && <div className="mt-0.5 text-xs text-muted">{t(explainKey)}</div>}
         {item.detail && (
-          <div className={showDetailAsText ? 'mt-1 text-sm whitespace-pre-line' : 'mt-0.5 text-[11px] text-subtle'}>{item.detail}</div>
+          <div className={showDetailAsText ? 'mt-1 text-sm whitespace-pre-line' : 'mt-0.5 text-[11px] desk:text-meta text-subtle'}>
+            {item.detail}
+          </div>
         )}
         {item.fix === 'xcodeSelect' && (
           <div className="mt-2 space-y-1.5">
             <div className="text-xs text-muted">{t('settings.doctor.xcode.hint')}</div>
             <div className="flex flex-wrap items-center gap-2">
-              <code className="rounded-md border border-border bg-bg px-2 py-1 font-mono text-[11px] text-fg">{XCODE_COMMAND}</code>
+              <code className="rounded-md border border-border bg-bg px-2 py-1 font-mono text-[11px] desk:text-meta text-fg">
+                {XCODE_COMMAND}
+              </code>
               <Button size="sm" variant="secondary" onClick={onCopy}>
                 <Copy size={14} /> {copied ? t('settings.doctor.xcode.copied') : t('settings.doctor.xcode.copy')}
               </Button>

@@ -93,7 +93,7 @@ function ToolRow({ part }: { part: Extract<Part, { type: 'tool' }> }): React.JSX
   const failed = st.status === 'error'
   return (
     <div
-      className={`flex items-center gap-1.5 font-mono text-[11.5px] ${failed ? 'text-danger' : 'text-muted'}`}
+      className={`flex items-center gap-1.5 font-mono text-[11.5px] desk:text-meta ${failed ? 'text-danger' : 'text-muted'}`}
       title={t('compare.column.tool', { name: part.tool })}
     >
       {st.status === 'running' || st.status === 'pending' ? (
@@ -213,7 +213,7 @@ export function CompareColumn(props: Props): React.JSX.Element {
         role="group"
         aria-label={t('compare.metrics.region', { model: label })}
         title={breakdown}
-        className="flex min-h-9 shrink-0 flex-wrap items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11.5px] text-muted tabular-nums"
+        className="flex min-h-9 shrink-0 flex-wrap items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11.5px] desk:text-meta text-muted tabular-nums"
       >
         <span className={CHIP} title={t('compare.metrics.in')}>
           <ArrowUpRight size={12} aria-hidden />
@@ -238,7 +238,7 @@ export function CompareColumn(props: Props): React.JSX.Element {
         {badges.length > 0 && (
           <span className="ml-auto flex min-w-0 shrink-0 gap-1">
             {badges.map((b) => (
-              <span key={b} className="rounded-full bg-accent-soft px-2 text-[11px] font-medium text-accent">
+              <span key={b} className="rounded-full bg-accent-soft px-2 text-[11px] desk:text-meta font-medium text-accent">
                 {t(BADGE_LABEL[b])}
               </span>
             ))}

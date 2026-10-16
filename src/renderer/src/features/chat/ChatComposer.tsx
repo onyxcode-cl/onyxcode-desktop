@@ -222,7 +222,7 @@ export function ChatComposer({
                 {a.mime.startsWith('image/') ? (
                   <img src={a.url} alt={a.name} className={`h-full object-cover ${mobile ? 'w-16 rounded-lg' : 'w-14'}`} />
                 ) : (
-                  <span className="flex min-w-0 flex-col items-center gap-0.5 px-2 text-[10px] text-muted">
+                  <span className="flex min-w-0 flex-col items-center gap-0.5 px-2 text-[10px] desk:text-meta text-muted">
                     <FileText size={16} className="text-accent" />
                     <span className="max-w-full truncate">{a.name}</span>
                   </span>

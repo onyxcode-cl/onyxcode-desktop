@@ -155,7 +155,7 @@ export function UsageSection(): React.JSX.Element {
           value={formatTokens(totals.input + totals.output + totals.reasoning + totals.cacheRead + totals.cacheWrite)}
         />
       </div>
-      <p className="mt-2 text-[11px] text-subtle">{t('settings.usage.costNote')}</p>
+      <p className="mt-2 text-[11px] desk:text-meta text-subtle">{t('settings.usage.costNote')}</p>
 
       <SubTitle>{t('settings.usage.byModel')}</SubTitle>
       <Breakdown groups={byModel} />
@@ -226,7 +226,7 @@ function Breakdown({ groups }: { groups: Group[] }): React.JSX.Element {
 function Stat({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
     <Card className="px-3 py-2.5">
-      <div className="text-[11px] text-muted">{label}</div>
+      <div className="text-[11px] desk:text-meta text-muted">{label}</div>
       <div className="mt-0.5 text-base font-semibold tabular-nums">{value}</div>
     </Card>
   )

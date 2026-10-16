@@ -87,10 +87,14 @@ function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | nu
           key={m.id}
           className={`flex items-center gap-2 rounded-xl border border-dashed border-border bg-elevated/60 px-3 py-1.5 text-[13px] ${touch ? 'flex-wrap' : ''}`}
         >
-          <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] font-medium text-subtle">{t('code.queue.queued')}</span>
+          <span className="shrink-0 rounded bg-hover px-1.5 py-0.5 text-[10px] desk:text-meta font-medium text-subtle">
+            {t('code.queue.queued')}
+          </span>
           <span className={`min-w-0 flex-1 truncate text-muted ${touch ? 'basis-40' : ''}`}>{m.text}</span>
           {m.attachments.length > 0 && (
-            <span className="shrink-0 text-[11px] text-subtle">{t('code.queue.attachments', { count: m.attachments.length })}</span>
+            <span className="shrink-0 text-[11px] desk:text-meta text-subtle">
+              {t('code.queue.attachments', { count: m.attachments.length })}
+            </span>
           )}
           <span className={touch ? 'ml-auto flex shrink-0 items-center' : 'contents'}>
             <button
@@ -592,7 +596,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           )}
           {menuOpen && trigger && (
             <div className="absolute right-0 bottom-full left-0 z-30 mb-2 overflow-hidden rounded-xl border border-border bg-elevated shadow-xl">
-              <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11px] font-medium tracking-wide text-subtle uppercase">
+              <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-[11px] desk:text-meta font-medium tracking-wide text-subtle uppercase">
                 {trigger.kind === '/' ? (
                   <>
                     <Slash size={11} /> {t('code.composer.commands')}

@@ -289,13 +289,13 @@ export function McpSection(): React.JSX.Element {
           }}
         />
       )}
-      <p className="mt-2 flex items-center gap-1.5 text-[11px] text-subtle">
+      <p className="mt-2 flex items-center gap-1.5 text-[11px] desk:text-meta text-subtle">
         <Unplug size={12} /> {t('mcp.note.external')}
       </p>
-      <p className="mt-1 flex items-start gap-1.5 text-[11px] text-subtle">
+      <p className="mt-1 flex items-start gap-1.5 text-[11px] desk:text-meta text-subtle">
         <Info size={12} className="mt-0.5 shrink-0" /> {t('mcp.note.tasks')}
       </p>
-      {appCfg && <p className="mt-1 truncate font-mono text-[11px] text-subtle">{appCfg.path}</p>}
+      {appCfg && <p className="mt-1 truncate font-mono text-[11px] desk:text-meta text-subtle">{appCfg.path}</p>}
       {catalogItem && (
         <McpCatalogDialog
           item={catalogItem}
@@ -344,7 +344,7 @@ function McpCatalogBlock({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold">{text.title}</div>
-                    <div className="text-[11px] text-subtle">{item.publisher}</div>
+                    <div className="text-[11px] desk:text-meta text-subtle">{item.publisher}</div>
                   </div>
                 </div>
                 <p className="mt-1.5 flex-1 text-xs leading-relaxed text-muted">{text.description}</p>
@@ -408,17 +408,17 @@ function TasksFlags({
         </label>
       </div>
       {info.tasks && info.type === 'remote' && info.oauth && (
-        <p className={`mt-2 flex items-start gap-1.5 text-[11px] text-warning ${NOTICE_DESK.warning}`}>
+        <p className={`mt-2 flex items-start gap-1.5 text-[11px] desk:text-meta text-warning ${NOTICE_DESK.warning}`}>
           <AlertTriangle size={12} className="mt-0.5 shrink-0 desk:size-4 desk:text-warning" /> {t('mcp.flags.oauthWarn')}
         </p>
       )}
       {info.tasks && info.type === 'local' && info.localSecrets && (
-        <p className={`mt-2 flex items-start gap-1.5 text-[11px] text-warning ${NOTICE_DESK.warning}`}>
+        <p className={`mt-2 flex items-start gap-1.5 text-[11px] desk:text-meta text-warning ${NOTICE_DESK.warning}`}>
           <AlertTriangle size={12} className="mt-0.5 shrink-0 desk:size-4 desk:text-warning" /> {t('mcp.flags.envWarn')}
         </p>
       )}
       {info.tasks && info.hosts.length > 0 && (
-        <p className="mt-1.5 text-[11px] text-subtle">
+        <p className="mt-1.5 text-[11px] desk:text-meta text-subtle">
           {t('mcp.flags.hosts')}
           <span className="font-mono">{info.hosts.join(', ')}</span>
         </p>

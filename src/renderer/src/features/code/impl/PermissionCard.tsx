@@ -161,7 +161,7 @@ function MobilePermissionCard({
           >
             {a.label}
             {hotkeys && !mobile && (
-              <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70 desk:opacity-80">
+              <kbd className="rounded border border-current/25 px-1 font-sans text-[10px] desk:text-meta leading-4 opacity-70 desk:opacity-80">
                 {a.key}
               </kbd>
             )}
@@ -176,5 +176,7 @@ function MobilePermissionCard({
 export function QuestionCard({ request }: { request: PendingQuestion }): React.JSX.Element {
   const reply = useCode((s) => s.replyQuestion)
   const reject = useCode((s) => s.rejectQuestion)
-  return <SharedQuestionCard questions={request.questions} onReply={(answers) => reply(request, answers)} onReject={() => reject(request)} />
+  return (
+    <SharedQuestionCard questions={request.questions} onReply={(answers) => reply(request, answers)} onReject={() => reject(request)} />
+  )
 }

@@ -73,7 +73,7 @@ function StatusBadge({ status, compact = false }: { status: RoutineRunRecord['st
     error: { cls: 'bg-danger/10 text-danger', icon: <XCircle size={11} />, label: t('routines.status.error') }
   }[status]
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${meta.cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] desk:text-meta font-medium ${meta.cls}`}>
       {meta.icon}
       {!compact && meta.label}
     </span>
@@ -113,8 +113,8 @@ function PermList({ title, tone, items }: { title: string; tone: 'danger' | 'suc
       <ul className="space-y-0.5">
         {items.map((e, i) => (
           <li key={i} className="flex items-baseline gap-1.5 text-xs text-muted">
-            <span className="shrink-0 rounded bg-hover px-1 font-mono text-[11px] text-fg">{e.permission}</span>
-            <span className="min-w-0 truncate font-mono text-[11px]" title={e.patterns.join('\n')}>
+            <span className="shrink-0 rounded bg-hover px-1 font-mono text-[11px] desk:text-meta text-fg">{e.permission}</span>
+            <span className="min-w-0 truncate font-mono text-[11px] desk:text-meta" title={e.patterns.join('\n')}>
               {e.patterns.join(', ')}
             </span>
           </li>
@@ -165,7 +165,7 @@ export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selecte
               </span>
             </div>
             {r.mode === 'tasks' && !platformCaps().tasks && (
-              <div className="mt-1 text-[11px] font-medium text-warning">{t('platform.win.unavailable.routineBadge')}</div>
+              <div className="mt-1 text-[11px] desk:text-meta font-medium text-warning">{t('platform.win.unavailable.routineBadge')}</div>
             )}
           </div>
         </button>
@@ -183,7 +183,7 @@ export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selecte
       <div className="flex items-center gap-2 border-t border-border pt-3 text-xs desk:-order-1 desk:min-w-56 desk:shrink-0 desk:justify-end desk:border-t-0 desk:pt-0">
         {r.running ? (
           waiting ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning">
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[11px] desk:text-meta font-medium text-warning">
               <Hourglass size={11} /> {t('routines.card.waitingApproval')}
             </span>
           ) : (
@@ -249,11 +249,11 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
         className={`flex w-full items-center gap-2 text-left text-xs ${hasBody ? 'cursor-pointer' : 'cursor-default'}`}
       >
         <span className="font-medium text-fg">{fullDate(run.startedAt)}</span>
-        <span className="rounded-full border border-border px-1.5 text-[10px] text-muted">
+        <span className="rounded-full border border-border px-1.5 text-[10px] desk:text-meta text-muted">
           {t(`routines.trigger.${run.trigger}` as 'routines.trigger.manual')}
         </span>
         {run.waiting && run.status === 'running' && (
-          <span className="flex items-center gap-1 rounded-full bg-warning/10 px-1.5 text-[10px] font-medium text-warning">
+          <span className="flex items-center gap-1 rounded-full bg-warning/10 px-1.5 text-[10px] desk:text-meta font-medium text-warning">
             <Hourglass size={10} /> {t('routines.card.waitingApproval')}
           </span>
         )}
@@ -301,8 +301,8 @@ function RunItem({ run, mode, last, now }: { run: RoutineRunRecord; mode: Routin
               <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-danger">
                 <ShieldAlert size={13} /> {t('routines.run.blockedSites')} ({blocked.length})
               </div>
-              <p className="font-mono text-[11px] break-all text-muted">{blocked.join(', ')}</p>
-              <p className="mt-0.5 text-[11px] text-subtle">{t('routines.run.blockedHint')}</p>
+              <p className="font-mono text-[11px] desk:text-meta break-all text-muted">{blocked.join(', ')}</p>
+              <p className="mt-0.5 text-[11px] desk:text-meta text-subtle">{t('routines.run.blockedHint')}</p>
             </div>
           )}
           {run.summary && (
@@ -477,7 +477,7 @@ export function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }):
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <h3 className="mb-3 text-[11px] font-semibold tracking-wide text-subtle uppercase desk:tracking-[0.02em] desk:normal-case">
+        <h3 className="mb-3 text-[11px] desk:text-meta font-semibold tracking-wide text-subtle uppercase desk:tracking-[0.02em] desk:normal-case">
           {t('routines.detail.history')}
         </h3>
         {history.length === 0 ? (
@@ -523,13 +523,13 @@ export function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] 
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-hover text-muted transition group-hover:bg-accent-soft group-hover:text-accent desk:rounded-ctl desk:bg-active desk:text-accent desk:group-hover:bg-active">
           <Icon size={16} />
         </span>
-        <span className="flex items-center gap-1 text-[11px] text-subtle">
+        <span className="flex items-center gap-1 text-[11px] desk:text-meta text-subtle">
           <ModeIcon size={11} /> {MODE_META[tpl.input.mode].label}
         </span>
       </div>
       <div className="text-sm font-medium">{tpl.title}</div>
       <div className="text-xs leading-relaxed text-muted">{tpl.description}</div>
-      <div className="mt-auto flex items-center gap-1 pt-1 text-[11px] text-subtle">
+      <div className="mt-auto flex items-center gap-1 pt-1 text-[11px] desk:text-meta text-subtle">
         <Clock size={11} /> {scheduleText(tpl.input.schedule)}
       </div>
     </button>
@@ -607,12 +607,14 @@ export function RoutinesView(): React.JSX.Element {
   const headerMeta = (
     <>
       {routines.length > 0 && (
-        <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">
+        <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] desk:text-meta text-muted">
           {t('routines.view.active', { count: activeCount })}
         </span>
       )}
       {nextAll && (
-        <span className="hidden text-[11px] text-muted desk:inline">{t('routines.view.nextAll', { when: untilText(nextAll, now) })}</span>
+        <span className="hidden text-[11px] desk:text-meta text-muted desk:inline">
+          {t('routines.view.nextAll', { when: untilText(nextAll, now) })}
+        </span>
       )}
       {loading && <Loader2 size={14} className="animate-spin text-muted" />}
     </>
@@ -693,7 +695,7 @@ export function RoutinesView(): React.JSX.Element {
                   if (group.length === 0) return null
                   return (
                     <Fragment key={String(enabled)}>
-                      <div className="hidden px-1 pt-3 pb-1 text-[11.5px] font-medium text-subtle first:pt-0 desk:flex desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+                      <div className="hidden px-1 pt-3 pb-1 text-[11.5px] desk:text-meta font-medium text-subtle first:pt-0 desk:flex desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
                         {enabled ? t('routines.group.active') : t('routines.group.paused')}
                       </div>
                       {/* Un grupo de superficie por sección en escritorio; en el celular `contents` deja las tarjetas en la rejilla. */}
@@ -708,7 +710,7 @@ export function RoutinesView(): React.JSX.Element {
               </div>
               {routines.length < 6 && (
                 <section aria-label={t('routines.ideas.title')} className="mx-auto mt-8 hidden max-w-[760px] desk:block">
-                  <div className="px-1 pb-2 text-[11.5px] font-medium text-subtle desk:flex desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
+                  <div className="px-1 pb-2 text-[11.5px] desk:text-meta font-medium text-subtle desk:flex desk:items-end desk:px-2 desk:pb-0.5 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em] desk:normal-case">
                     {t('routines.ideas.title')}
                   </div>
                   <div className="grid grid-cols-2 gap-3">

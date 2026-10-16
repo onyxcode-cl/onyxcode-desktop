@@ -21,7 +21,7 @@ interface Props extends HTMLAttributes<HTMLSpanElement> {
 export function Badge({ tone = 'neutral', pill, className = '', ...rest }: Props): React.JSX.Element {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap tabular-nums desk:text-caption ${
+      className={`inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 text-[11px] desk:text-meta leading-none font-medium whitespace-nowrap tabular-nums desk:text-caption ${
         pill ? 'rounded-full' : 'rounded-md desk:rounded-2xs'
       } ${TONES[tone]} ${className}`}
       {...rest}

@@ -243,7 +243,7 @@ export function PermActions({ actions, armed, busy }: { actions: PermAction[]; a
     >
       {a.label}
       {a.kbd && (
-        <kbd aria-hidden className="ml-1 rounded border border-current/25 px-1 font-sans text-[10px] leading-4 opacity-70">
+        <kbd aria-hidden className="ml-1 rounded border border-current/25 px-1 font-sans text-[10px] desk:text-meta leading-4 opacity-70">
           {a.kbd}
         </kbd>
       )}

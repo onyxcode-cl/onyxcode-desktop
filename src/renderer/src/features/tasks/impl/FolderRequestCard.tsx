@@ -113,7 +113,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
             {fullAccess ? t('tasksComputer.folder.outsideFull') : t('tasksComputer.folder.outsideSandbox')}
           </p>
 
-          <p className="mt-2.5 text-[11px] font-medium text-subtle">{t('tasksComputer.folder.requested')}</p>
+          <p className="mt-2.5 text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.folder.requested')}</p>
           <pre className="mt-1 max-h-24 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
             {view.requested ? showPath(view.requested) : t('tasksComputer.folder.unknown')}
           </pre>
@@ -125,7 +125,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
           )}
           {view.command && (
             <>
-              <p className="mt-2 text-[11px] font-medium text-subtle">{t('tasksComputer.folder.command')}</p>
+              <p className="mt-2 text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.folder.command')}</p>
               <pre className="mt-1 max-h-24 overflow-auto rounded-md border border-border bg-code px-2.5 py-1.5 font-mono text-xs whitespace-pre-wrap">
                 {view.command}
               </pre>
@@ -139,13 +139,13 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
           )}
 
           <div className="mt-2.5 rounded-md border border-border/70 bg-hover/40 px-2.5 py-1.5">
-            <p className="text-[11px] font-medium text-subtle">{t('tasksComputer.folder.motive')}</p>
+            <p className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.folder.motive')}</p>
             <p className="mt-0.5 text-xs text-muted">{view.motive || t('tasksComputer.folder.noMotive')}</p>
           </div>
 
           {view.candidates.length > 1 && (
             <fieldset className="mt-3 min-w-0">
-              <legend className="text-[11px] font-medium text-subtle">{t('tasksComputer.folder.pick')}</legend>
+              <legend className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.folder.pick')}</legend>
               <div role="radiogroup" className="mt-1 space-y-1">
                 {view.candidates.map((c, i) => (
                   <label
@@ -163,17 +163,19 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
                     <span className="min-w-0 flex-1 truncate font-mono" title={showPath(c)}>
                       {showPath(c)}
                     </span>
-                    {i === 0 && <span className="shrink-0 text-[11px] text-subtle">{t('tasksComputer.folder.theRequested')}</span>}
+                    {i === 0 && (
+                      <span className="shrink-0 text-[11px] desk:text-meta text-subtle">{t('tasksComputer.folder.theRequested')}</span>
+                    )}
                   </label>
                 ))}
               </div>
-              {widened && <p className="mt-1 text-[11px] text-warning">{t('tasksComputer.folder.widened')}</p>}
+              {widened && <p className="mt-1 text-[11px] desk:text-meta text-warning">{t('tasksComputer.folder.widened')}</p>}
             </fieldset>
           )}
 
           {showMode && (
             <fieldset className="mt-3 min-w-0">
-              <legend className="text-[11px] font-medium text-subtle">{t('tasksComputer.access.aria')}</legend>
+              <legend className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.access.aria')}</legend>
               <div role="radiogroup" className="mt-1 flex flex-wrap gap-1.5">
                 {MODES.map((m) => (
                   <label
@@ -195,7 +197,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
                   </label>
                 ))}
               </div>
-              <p className="mt-1 text-[11px] text-subtle">{MODES.find((m) => m.mode === mode)?.hint}</p>
+              <p className="mt-1 text-[11px] desk:text-meta text-subtle">{MODES.find((m) => m.mode === mode)?.hint}</p>
             </fieldset>
           )}
 
@@ -211,7 +213,7 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
               <span>
                 {t('tasksComputer.folder.trust')}
                 {trust && (
-                  <span className="mt-0.5 block text-[11px] text-subtle">
+                  <span className="mt-0.5 block text-[11px] desk:text-meta text-subtle">
                     {t('tasksComputer.folder.trustNote', { name: TASKS_TERMS.trustedFolders })}
                   </span>
                 )}

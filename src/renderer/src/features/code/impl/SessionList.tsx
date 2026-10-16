@@ -281,7 +281,7 @@ export function SessionRow({
             </span>
           ) : (
             <span
-              className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${tree ? ` desk:group-focus-within:hidden ${active ? ' desk:hidden' : ''}` : ''} ${mobile ? 'text-xs' : 'text-[11px]'}`}
+              className={`text-subtle desk:shrink-0 desk:text-meta desk:tabular-nums desk:group-hover:hidden ${tree ? ` desk:group-focus-within:hidden ${active ? ' desk:hidden' : ''}` : ''} ${mobile ? 'text-xs' : 'text-[11px] desk:text-meta'}`}
             >
               {timeAgo(session.time.updated)}
               {session.summary && session.summary.files > 0 && (
@@ -500,7 +500,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
             >
               {s.time.archived ? <Archive size={12} className="shrink-0 text-subtle" /> : null}
               <span className="min-w-0 flex-1 truncate">{displayTitle(s.title, t('code.sessions.untitled'))}</span>
-              <span className="shrink-0 text-[11px] text-subtle">{timeAgo(s.time.updated)}</span>
+              <span className="shrink-0 text-[11px] desk:text-meta text-subtle">{timeAgo(s.time.updated)}</span>
             </button>
           ))}
         </div>
@@ -658,7 +658,7 @@ function ProjectGroup({
           <span
             aria-hidden="true"
             data-testid="project-count"
-            className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11px] tabular-nums text-subtle group-focus-within/proj:hidden group-hover/proj:hidden"
+            className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11px] desk:text-meta tabular-nums text-subtle group-focus-within/proj:hidden group-hover/proj:hidden"
           >
             {!projectOpen || !trusted ? visibleList.length : ''}
           </span>
@@ -774,7 +774,10 @@ function ProjectGroup({
           return (
             <Fragment key={s.id}>
               {showLabel && (
-                <div role="presentation" className="px-2.5 pt-2 pb-0.5 text-[10.5px] font-medium tracking-wide text-subtle uppercase">
+                <div
+                  role="presentation"
+                  className="px-2.5 pt-2 pb-0.5 text-[10.5px] desk:text-meta font-medium tracking-wide text-subtle uppercase"
+                >
                   {t(`code.sessions.day.${bucket}` as MsgKey)}
                 </div>
               )}
@@ -797,7 +800,7 @@ function ProjectGroup({
             <button
               type="button"
               onClick={() => setShowArchived((o) => !o)}
-              className={`no-drag flex w-full items-center gap-1.5 rounded-lg px-2 text-[11.5px] font-medium text-subtle hover:text-fg ${isRemoteSurface() ? 'min-h-11' : 'py-1'}`}
+              className={`no-drag flex w-full items-center gap-1.5 rounded-lg px-2 text-[11.5px] desk:text-meta font-medium text-subtle hover:text-fg ${isRemoteSurface() ? 'min-h-11' : 'py-1'}`}
             >
               <ChevronDown size={11} className={`transition-transform ${showArchived ? 'rotate-180' : ''}`} />
               {t('code.sessions.archived', { count: archivedList.length })}

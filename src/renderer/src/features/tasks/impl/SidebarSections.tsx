@@ -320,11 +320,11 @@ export function SectionRow({
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate">{title || tr('tasks.list.untitled')}</span>
-        <span className={`block truncate text-[11px] desk:hidden ${subtitleClass}`}>{subtitle}</span>
+        <span className={`block truncate text-[11px] desk:text-meta desk:hidden ${subtitleClass}`}>{subtitle}</span>
       </span>
       {meta && <span className="hidden shrink-0 desk:inline desk:text-meta desk:text-subtle">{meta}</span>}
       {fullAccess && (
-        <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted">
+        <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] desk:text-meta text-muted">
           {TASKS_TERMS.fullControlShort}
         </span>
       )}

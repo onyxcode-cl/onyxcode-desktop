@@ -104,7 +104,7 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
           {detail && <span className="text-muted"> {detail}</span>}
         </span>
         {at !== null && (
-          <time className="shrink-0 pt-0.5 text-[10.5px] text-subtle tabular-nums" dateTime={new Date(at).toISOString()}>
+          <time className="shrink-0 pt-0.5 text-[10.5px] desk:text-meta text-subtle tabular-nums" dateTime={new Date(at).toISOString()}>
             {new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </time>
         )}
@@ -139,7 +139,7 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
         <span className={`min-w-0 flex-1 ${live ? 'font-semibold text-fg' : 'font-medium text-muted'}`}>
           {title ?? tr('tasks.prog.prep')}
         </span>
-        <span className="shrink-0 text-[11px] text-subtle">
+        <span className="shrink-0 text-[11px] desk:text-meta text-subtle">
           {failed > 0 && <span className="mr-1 text-danger">{failed} ✕</span>}
           {tools.length}
         </span>
@@ -148,7 +148,7 @@ function ActivityGroup({ title, tools, live }: { title: string | null; tools: To
         <ul className="mt-1.5 mb-1 ml-1.5 space-y-1.5 border-l border-border pl-3">
           {tools.length > visible.length && (
             <li>
-              <button type="button" className="text-[11px] text-accent hover:underline" onClick={() => setShowAll(true)}>
+              <button type="button" className="text-[11px] desk:text-meta text-accent hover:underline" onClick={() => setShowAll(true)}>
                 {tr('tasks.prog.seePrev', { n: tools.length - visible.length })}
               </button>
             </li>
@@ -189,7 +189,7 @@ function ContextGroup({
   if (items.length === 0) return null
   return (
     <div className="mb-2.5 last:mb-0">
-      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-subtle">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] desk:text-meta font-medium text-subtle">
         <Icon size={12} /> {label} <span className="text-subtle/70">· {items.length}</span>
       </div>
       <ul className="space-y-0.5">
@@ -408,7 +408,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-hover">
                 <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <span className="text-[11px] text-muted tabular-nums">{pct}%</span>
+              <span className="text-[11px] desk:text-meta text-muted tabular-nums">{pct}%</span>
             </div>
             {stepLabel && <p className="mb-2 text-xs font-medium text-muted desk:hidden">{stepLabel}</p>}
             {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}

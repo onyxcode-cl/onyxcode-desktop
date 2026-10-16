@@ -43,7 +43,7 @@ export interface ElementDetailPopoverProps {
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.JSX.Element {
   return (
     <section className="flex flex-col gap-1">
-      <h4 className="text-[11px] font-medium tracking-wide text-subtle">{title}</h4>
+      <h4 className="text-[11px] desk:text-meta font-medium tracking-wide text-subtle">{title}</h4>
       {children}
     </section>
   )
@@ -53,7 +53,7 @@ function Row({ label, value, copyLabel }: { label: string; value: string; copyLa
   return (
     <div className="flex items-start gap-1">
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-subtle">{label}</div>
+        <div className="text-[11px] desk:text-meta text-subtle">{label}</div>
         <div className="font-mono text-[12px] break-all text-fg">{value}</div>
       </div>
       <CopyButton text={value} label={copyLabel} />
@@ -76,7 +76,7 @@ export function ElementDetailBody({
     <div className="flex flex-col gap-3 p-3 text-[12px]">
       <div className="min-w-0">
         <div className="truncate text-[13px] font-medium text-fg">{detail.title || detail.host}</div>
-        <div className="truncate text-[11px] text-subtle">{detail.url}</div>
+        <div className="truncate text-[11px] desk:text-meta text-subtle">{detail.url}</div>
       </div>
       <Row label={t('browser.element.selector')} value={detail.selector} copyLabel={t('browser.element.copySelector')} />
       <Row label={t('browser.element.path')} value={detail.path} copyLabel={t('browser.element.copyPath')} />
@@ -99,7 +99,7 @@ export function ElementDetailBody({
               className="h-3.5 w-3.5 accent-[var(--accent)]"
             />
             {t('browser.element.includeImage')}
-            {!canIncludeImage && <span className="text-[11px] text-subtle">· {t('browser.element.noImage')}</span>}
+            {!canIncludeImage && <span className="text-[11px] desk:text-meta text-subtle">· {t('browser.element.noImage')}</span>}
           </label>
           <label htmlFor={diagId} className={`flex items-center gap-2 ${diagCount > 0 ? 'text-fg' : 'text-subtle'}`}>
             <input
@@ -111,35 +111,37 @@ export function ElementDetailBody({
               className="h-3.5 w-3.5 accent-[var(--accent)]"
             />
             {t('browser.element.includeDiag')}
-            {diagCount > 0 && <span className="text-[11px] text-danger">· {t('browser.element.errors', { count: diagCount })}</span>}
+            {diagCount > 0 && (
+              <span className="text-[11px] desk:text-meta text-danger">· {t('browser.element.errors', { count: diagCount })}</span>
+            )}
           </label>
         </div>
       )}
       {detail.sensitive && (
-        <p role="note" className="text-[11px] text-warning">
+        <p role="note" className="text-[11px] desk:text-meta text-warning">
           {t('browser.element.sensitive')}
         </p>
       )}
       {detail.redactions > 0 && (
-        <p role="note" className="text-[11px] text-muted">
+        <p role="note" className="text-[11px] desk:text-meta text-muted">
           {t('browser.element.redacted', { count: detail.redactions })}
         </p>
       )}
       {detail.truncated && (
-        <p role="note" className="text-[11px] text-muted">
+        <p role="note" className="text-[11px] desk:text-meta text-muted">
           {t('browser.element.truncated')}
         </p>
       )}
       {detail.html && (
         <Section title={t('browser.element.html')}>
-          <pre className="max-h-40 overflow-auto rounded-lg bg-code px-2.5 py-2 font-mono text-[11.5px] whitespace-pre-wrap break-all text-fg">
+          <pre className="max-h-40 overflow-auto rounded-lg bg-code px-2.5 py-2 font-mono text-[11.5px] desk:text-meta whitespace-pre-wrap break-all text-fg">
             {detail.html}
           </pre>
         </Section>
       )}
       {detail.styles.length > 0 && (
         <Section title={t('browser.element.styles')}>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11.5px]">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11.5px] desk:text-meta">
             {detail.styles.map(([k, v]) => (
               <div key={k} className="contents">
                 <dt className="font-mono text-subtle">{k}</dt>
@@ -151,7 +153,7 @@ export function ElementDetailBody({
       )}
       {detail.console.length > 0 && (
         <Section title={t('browser.element.console')}>
-          <ul className="flex flex-col gap-0.5 font-mono text-[11.5px] break-all text-danger">
+          <ul className="flex flex-col gap-0.5 font-mono text-[11.5px] desk:text-meta break-all text-danger">
             {detail.console.map((c, i) => (
               <li key={i}>{c}</li>
             ))}
@@ -160,15 +162,15 @@ export function ElementDetailBody({
       )}
       {detail.network.length > 0 && (
         <Section title={t('browser.element.network')}>
-          <ul className="flex flex-col gap-0.5 font-mono text-[11.5px] break-all text-danger">
+          <ul className="flex flex-col gap-0.5 font-mono text-[11.5px] desk:text-meta break-all text-danger">
             {detail.network.map((c, i) => (
               <li key={i}>{c}</li>
             ))}
           </ul>
         </Section>
       )}
-      {include && diagCount > 0 && <p className="text-[11px] text-subtle">{t('browser.element.diagSince')}</p>}
-      {include && diagCount === 0 && <p className="text-[11px] text-subtle">{t('browser.element.noDiag')}</p>}
+      {include && diagCount > 0 && <p className="text-[11px] desk:text-meta text-subtle">{t('browser.element.diagSince')}</p>}
+      {include && diagCount === 0 && <p className="text-[11px] desk:text-meta text-subtle">{t('browser.element.noDiag')}</p>}
     </div>
   )
 }

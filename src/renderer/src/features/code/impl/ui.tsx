@@ -15,7 +15,7 @@ export const DEL_TEXT = 'text-danger'
 export function Kbd({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
   return (
     <kbd
-      className={`inline-flex min-w-[1.25rem] items-center justify-center rounded border border-border bg-bg px-1 font-sans text-[10px] leading-4 font-medium text-muted desk:border-transparent desk:bg-active desk:rounded-2xs desk:text-[11px] desk:font-[family-name:var(--font-ui)] ${className}`}
+      className={`inline-flex min-w-[1.25rem] items-center justify-center rounded border border-border bg-bg px-1 font-sans text-[10px] desk:text-meta leading-4 font-medium text-muted desk:border-transparent desk:bg-active desk:rounded-2xs desk:text-[11px] desk:font-[family-name:var(--font-ui)] ${className}`}
     >
       {children}
     </kbd>
@@ -40,7 +40,7 @@ export function Tip({ label, shortcut, side = 'bottom', align = 'center', childr
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute z-50 ${pos} ${al} flex items-center gap-1.5 rounded-md border border-border bg-elevated px-2 py-1 text-[11px] font-medium whitespace-nowrap text-fg opacity-0 shadow-lg transition-opacity delay-0 group-hover/tip:opacity-100 group-hover/tip:delay-500`}
+        className={`pointer-events-none absolute z-50 ${pos} ${al} flex items-center gap-1.5 rounded-md border border-border bg-elevated px-2 py-1 text-[11px] desk:text-meta font-medium whitespace-nowrap text-fg opacity-0 shadow-lg transition-opacity delay-0 group-hover/tip:opacity-100 group-hover/tip:delay-500`}
       >
         {label}
         {shortcut && <Kbd>{shortcut}</Kbd>}

@@ -112,7 +112,7 @@ export function ErrorNotice({
             >
               {open ? t('chat.error.hideDetail') : t('chat.error.showDetail')}
             </summary>
-            <pre className="mt-1.5 max-h-48 overflow-auto rounded-md border border-border/70 bg-inset px-2.5 py-2 font-mono text-[11.5px] break-words whitespace-pre-wrap text-muted select-text">
+            <pre className="mt-1.5 max-h-48 overflow-auto rounded-md border border-border/70 bg-inset px-2.5 py-2 font-mono text-[11.5px] desk:text-meta break-words whitespace-pre-wrap text-muted select-text">
               {f.detail}
             </pre>
             <button

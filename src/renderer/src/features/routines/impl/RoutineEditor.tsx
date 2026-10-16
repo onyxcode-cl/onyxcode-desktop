@@ -409,7 +409,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     aria-label={t('routines.editor.cronAria')}
                     onChange={(e) => setSchedule({ kind: 'cron', expr: e.target.value })}
                   />
-                  <div className="mt-1.5 grid grid-cols-5 gap-1 text-center font-mono text-[10px] text-subtle">
+                  <div className="mt-1.5 grid grid-cols-5 gap-1 text-center font-mono text-[10px] desk:text-meta text-subtle">
                     <span>{t('routines.editor.cronMinute')}</span>
                     <span>{t('routines.editor.cronHour')}</span>
                     <span>{t('routines.editor.cronDom')}</span>
@@ -423,7 +423,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                         type="button"
                         onClick={() => setSchedule({ kind: 'cron', expr: ex })}
                         title={describeCron(ex) ?? ex}
-                        className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[11px] text-muted hover:border-border-strong hover:text-fg"
+                        className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[11px] desk:text-meta text-muted hover:border-border-strong hover:text-fg"
                       >
                         {ex}
                       </button>
@@ -487,7 +487,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   >
                     <Icon size={17} className={on ? 'text-accent' : 'text-muted'} />
                     <span className="text-sm font-medium">{meta.label}</span>
-                    <span className="text-[11px] leading-snug text-muted">{meta.hint}</span>
+                    <span className="text-[11px] desk:text-meta leading-snug text-muted">{meta.hint}</span>
                   </button>
                 )
               })}
@@ -515,7 +515,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                   {form.folder ? (
                     <>
                       <span className="block truncate text-sm font-medium">{baseName(form.folder)}</span>
-                      <span className="block truncate font-mono text-[11px] text-subtle">{tildify(form.folder)}</span>
+                      <span className="block truncate font-mono text-[11px] desk:text-meta text-subtle">{tildify(form.folder)}</span>
                     </>
                   ) : (
                     <span className="text-sm text-muted">{t('routines.editor.pickFolder')}</span>
@@ -527,7 +527,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
               </button>
               {folderOptions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <span className="py-0.5 text-[11px] text-subtle">
+                  <span className="py-0.5 text-[11px] desk:text-meta text-subtle">
                     {form.mode === 'tasks' ? t('routines.editor.authorized') : t('routines.editor.recent')}
                   </span>
                   {folderOptions.map((f) => (
@@ -536,7 +536,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       type="button"
                       title={f.path}
                       onClick={() => setFolder(f.path)}
-                      className={`rounded-full border px-2 py-0.5 text-[11px] transition ${form.folder === f.path ? 'border-accent bg-accent-soft text-accent' : 'border-border text-muted hover:border-border-strong hover:text-fg'}`}
+                      className={`rounded-full border px-2 py-0.5 text-[11px] desk:text-meta transition ${form.folder === f.path ? 'border-accent bg-accent-soft text-accent' : 'border-border text-muted hover:border-border-strong hover:text-fg'}`}
                     >
                       {f.name}
                     </button>
@@ -680,7 +680,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       {hosts.map((h) => (
                         <span
                           key={h}
-                          className="flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 font-mono text-[11px]"
+                          className="flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 font-mono text-[11px] desk:text-meta"
                         >
                           {h}
                           <button
@@ -727,7 +727,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                       <div className="text-sm font-medium">{TASKS_TERMS.fullControl}</div>
                       <p className="mt-0.5 text-xs text-muted">{t('routines.editor.fullDesc')}</p>
                       {fullControl && form.fullAccessConsentAt ? (
-                        <p className="mt-1 text-[11px] text-warning">
+                        <p className="mt-1 text-[11px] desk:text-meta text-warning">
                           {t('routines.editor.consent', { date: new Date(form.fullAccessConsentAt).toLocaleString(dateLocale()) })}
                         </p>
                       ) : null}

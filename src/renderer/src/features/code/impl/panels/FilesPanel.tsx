@@ -82,11 +82,13 @@ function FileViewer({ directory, path, onClose }: { directory: string; path: str
         {mobile ? (
           <span className="min-w-0 flex-1 px-1">
             <span className="block truncate text-[15px] font-semibold">{baseOf(path)}</span>
-            <span className="flex min-w-0 items-center gap-2 text-[11.5px] text-subtle">
+            <span className="flex min-w-0 items-center gap-2 text-[11.5px] desk:text-meta text-subtle">
               <span className="min-w-0 truncate font-mono" dir="ltr">
                 {abbreviatePath(displayPath(directory, path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''), 26)}
               </span>
-              <span className="shrink-0 rounded bg-hover px-1.5 py-px text-[10.5px] font-medium">{t('code.m.readOnly')}</span>
+              <span className="shrink-0 rounded bg-hover px-1.5 py-px text-[10.5px] desk:text-meta font-medium">
+                {t('code.m.readOnly')}
+              </span>
             </span>
           </span>
         ) : (
@@ -354,7 +356,7 @@ function OpenInMenu({ directory, onNotice }: { directory: string; onNotice: (n: 
             >
               <span className="truncate">{ed.id === 'system' ? t('code.files.editor.system') : ed.label}</span>
               {ed.id === list?.last && (
-                <span className="ml-auto flex shrink-0 items-center gap-1 text-[11px] text-subtle">
+                <span className="ml-auto flex shrink-0 items-center gap-1 text-[11px] desk:text-meta text-subtle">
                   <Check size={11} /> {t('code.files.openInLast')}
                 </span>
               )}

@@ -58,7 +58,7 @@ export function Row({
 
 export function SubTitle({ children }: { children: ReactNode }): React.JSX.Element {
   return (
-    <h3 className="mt-9 mb-3 text-[11.5px] font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mt-8 desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+    <h3 className="mt-9 mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mt-8 desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
       {children}
     </h3>
   )
@@ -117,7 +117,7 @@ export function Field({
     <label className={`block ${className}`}>
       <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-subtle">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] desk:text-meta text-subtle">{hint}</span>}
     </label>
   )
 }

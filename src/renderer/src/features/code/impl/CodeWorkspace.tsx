@@ -268,7 +268,7 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
               {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
                 <span
                   aria-hidden
-                  className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-active px-1.5 align-middle text-[11px] font-medium tabular-nums"
+                  className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-active px-1.5 align-middle text-[11px] desk:text-meta font-medium tabular-nums"
                 >
                   {branch!.changes}
                 </span>
@@ -397,12 +397,12 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
       </button>
       {open && (
         <div className="absolute top-full left-0 z-50 mt-1 w-64 overflow-hidden rounded-xl border border-border bg-elevated py-1 shadow-xl">
-          <div className="truncate px-3 py-1.5 font-mono text-[11px] text-subtle" title={directory}>
+          <div className="truncate px-3 py-1.5 font-mono text-[11px] desk:text-meta text-subtle" title={directory}>
             {tildify(directory)}
           </div>
           {others.length > 0 && (
             <>
-              <div className="px-3 pt-1 pb-0.5 text-[11px] font-medium text-subtle">{t('code.menu.openProjects')}</div>
+              <div className="px-3 pt-1 pb-0.5 text-[11px] desk:text-meta font-medium text-subtle">{t('code.menu.openProjects')}</div>
               {others.map((d) => (
                 <button key={d} type="button" className={item} onClick={() => (setOpen(false), void useCode.getState().focusProject(d))}>
                   <FolderOpen size={14} />

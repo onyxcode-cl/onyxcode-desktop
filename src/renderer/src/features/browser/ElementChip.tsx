@@ -55,10 +55,10 @@ function ElementChip({
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-mono text-[12px] text-fg">{att.name}</span>
-          <span className="truncate text-[11px] text-subtle">
+          <span className="truncate text-[11px] desk:text-meta text-subtle">
             {detail.host} · {detail.size}
           </span>
-          {errors > 0 && <span className="text-[10.5px] text-danger">{t('browser.element.errors', { count: errors })}</span>}
+          {errors > 0 && <span className="text-[10.5px] desk:text-meta text-danger">{t('browser.element.errors', { count: errors })}</span>}
         </span>
       </button>
       <button
@@ -153,7 +153,7 @@ export function ElementReadonlyChip({ detail }: { detail: ElementDetail }): Reac
       >
         <MousePointerClick size={13} className="shrink-0 text-accent" />
         <span className="truncate font-mono text-fg">{detail.label}</span>
-        <span className="shrink-0 text-[11px] text-subtle">· {detail.host}</span>
+        <span className="shrink-0 text-[11px] desk:text-meta text-subtle">· {detail.host}</span>
       </button>
       {open && <ElementDetailPopover detail={detail} anchor={btnRef.current} onClose={() => setOpen(false)} />}
     </span>
