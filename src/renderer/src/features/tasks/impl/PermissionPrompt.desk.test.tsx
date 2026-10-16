@@ -80,8 +80,8 @@ describe('tarjeta de permiso de escritorio (Tareas)', () => {
     const i = (s: string): number => html.indexOf(s)
     expect(i('perm-title-p1')).toBeLessThan(i('perm-effect-p1'))
     expect(i('perm-effect-p1')).toBeLessThan(i('<pre'))
-    expect(i('<pre')).toBeLessThan(i('Sandbox activo'))
-    expect(i('Sandbox activo')).toBeLessThan(i('Permitir una vez'))
+    expect(i('<pre')).toBeLessThan(i('Limitado a tu carpeta'))
+    expect(i('Limitado a tu carpeta')).toBeLessThan(i('Permitir una vez'))
   })
 
   it('comando bash con $ aria-hidden, sin max-h para 5000 caracteres', () => {
@@ -137,9 +137,9 @@ describe('tarjeta de permiso de escritorio (Tareas)', () => {
     expect(html).not.toContain('Permitir siempre')
   })
 
-  it('sandbox activo frente a control total (texto, no solo color)', () => {
-    expect(render(req(), base)).toContain('Sandbox activo')
-    expect(render(req(), { ...base, conn: { fullAccess: true } })).toContain('Control total: sin sandbox')
+  it('límite de carpeta frente a control total (texto, no solo color)', () => {
+    expect(render(req(), base)).toContain('Limitado a tu carpeta')
+    expect(render(req(), { ...base, conn: { fullAccess: true } })).toContain('Control total: sin límite de carpeta')
   })
 
   it('edit muestra el diff con DiffView (tabla) y la ruta, sin prefijo $', () => {

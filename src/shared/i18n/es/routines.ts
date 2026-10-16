@@ -66,7 +66,7 @@ export const routines = {
   'routines.time.yesterday': 'ayer',
   'routines.time.agoDays': 'hace {n} días',
   'routines.mode.chat.hint': 'Respuesta de texto (con búsqueda web), sin archivos',
-  'routines.mode.tasks.hint': 'Trabaja con documentos de una carpeta (en sandbox o, con tu consentimiento, en Control total)',
+  'routines.mode.tasks.hint': 'Trabaja con documentos de una carpeta (solo en tu carpeta o, con tu consentimiento, en Control total)',
   'routines.mode.code.hint': 'Agente de programación sobre un proyecto',
   'routines.terms.title': 'Rutinas y los términos de OpenCode',
   'routines.terms.body':
@@ -169,14 +169,14 @@ export const routines = {
   'routines.editor.chip.6': 'S',
   'routines.editor.chip.0': 'D',
   'routines.editor.allowTitle': '¿Permitir trabajar en «{name}»?',
-  'routines.editor.allowMessage': 'El agente podrá crear y modificar archivos dentro de esa carpeta (en sandbox).',
+  'routines.editor.allowMessage': 'El agente podrá crear y modificar archivos dentro de esa carpeta (y no fuera de ella).',
   'routines.editor.allowConfirm': 'Permitir',
   'routines.editor.invalidHost': 'Sitio inválido: {host} (usa solo el dominio, p. ej. api.ejemplo.com)',
   'routines.editor.fullTitle': '¿Ejecutar esta rutina con {fullControl}?',
   'routines.editor.fullP1':
-    'La rutina saldrá del sandbox: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.',
+    'La rutina saldrá de tu carpeta: podrá controlar aplicaciones de tu Mac, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.',
   'routines.editor.fullP1.win':
-    'La rutina saldrá del sandbox: podrá controlar aplicaciones de tu PC, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.',
+    'La rutina saldrá de tu carpeta: podrá controlar aplicaciones de tu PC, ver la pantalla y usar tus sesiones abiertas, no solo los archivos de la carpeta.',
   'routines.editor.fullP2a': 'En cada ejecución tendrás que ',
   'routines.editor.fullP2b': 'aprobar el plan en persona',
   'routines.editor.fullP2c':
@@ -252,7 +252,7 @@ export const routines = {
   'routines.editor.sitesHint':
     'Solo valen mientras dura cada ejecución; el resto de la red sigue bloqueada. Los bloqueos quedan en el historial.',
   'routines.editor.fullDesc':
-    'Sin sandbox y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada ejecución.',
+    'Sin límite de carpeta y con control de aplicaciones. Exige tu consentimiento ahora y que apruebes el plan en persona en cada ejecución.',
   'routines.editor.consent': 'Consentimiento dado el {date}.',
   'routines.editor.model': 'Modelo',
   'routines.editor.active': 'Activa',

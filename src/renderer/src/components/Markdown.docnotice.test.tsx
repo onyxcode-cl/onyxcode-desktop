@@ -14,7 +14,7 @@ describe('CodeBlock: avisos de documento', () => {
   it('JSON roto en una valla cerrada → aviso de formato roto, con «Ver detalle»', () => {
     const html = renderToStaticMarkup(<Markdown text={closed('pptx', '{"slides": [oops]}')} streaming={false} />)
     expect(html).toContain('role="alert"')
-    expect(html).toContain('JSON inválido')
+    expect(html).toContain('formato dañado')
     expect(html).toContain('Ver detalle')
     expect(html).not.toContain('Generando documento')
   })

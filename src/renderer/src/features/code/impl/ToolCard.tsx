@@ -291,7 +291,7 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
   const output = state.status === 'completed' ? state.output : ''
-  const error = state.status === 'error' ? friendlyToolError(state.error) : ''
+  const error = state.status === 'error' ? friendlyToolError(state.error, true) : ''
   const gated = state.status === 'error' && isPlanGateText(state.error)
   const errorBlock = error ? (
     <div className={`px-3 py-2 text-xs whitespace-pre-wrap ${gated ? 'text-muted' : 'font-mono text-danger'}`}>{error}</div>

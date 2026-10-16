@@ -31,7 +31,7 @@ export const mcp = {
   'mcp.note.external':
     'For servers from an external config, the switch only connects/disconnects until the next restart. The status shown is for the Chat workspace; Code projects can have their own MCP servers.',
   'mcp.note.tasks':
-    '“Available in Overdrive” takes effect the next time the folder is opened. In the sandbox, remote servers that need sign-in (OAuth) are not available, and the sites of remote servers are added to the Sandbox network.',
+    '“Available in Overdrive” takes effect the next time the folder is opened. When working in your folder only, remote servers that need sign-in (OAuth) are not available, and the sites of remote servers are added to the Sandbox network.',
   'mcp.auth.oauth': 'Sign-in',
   'mcp.auth.token': 'Needs a token',
   'mcp.auth.none': 'No account',
@@ -46,10 +46,10 @@ export const mcp = {
   'mcp.flags.tasks': 'Available in Overdrive',
   'mcp.flags.ask': 'Ask on every use',
   'mcp.flags.oauthWarn':
-    'This remote server appears to use sign-in (OAuth): it won’t be available in the sandbox (it may work with Full control).',
+    'This remote server appears to use sign-in (OAuth): it won’t be available when working in your folder only (it may work with Full control).',
   'mcp.flags.envWarn':
-    'This local server uses secret environment variables: it won’t be available in the sandbox because the agent could read them from the process environment (it works with Full control).',
-  'mcp.flags.hosts': 'Site added to the Sandbox network: ',
+    'This local server uses secret environment variables: it won’t be available when working in your folder only because the agent could read them from the process environment (it works with Full control).',
+  'mcp.flags.hosts': 'Site added to the allowed sites: ',
   'mcp.pair.invalid': 'Invalid line: "{line}" (format {fmt})',
   'mcp.pair.fmtEnv': 'KEY=value',
   'mcp.pair.fmtHeader': 'Name: value',

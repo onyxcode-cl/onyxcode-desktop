@@ -103,7 +103,7 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3
     await pickFolder(a, work.dir)
     await expect.poll(() => storeState(a.page, 'useTasks', 'phase'), { timeout: 60_000 }).toBe('ready')
     expect(await storeState<{ sandboxed: boolean }>(a.page, 'useTasks', 'conn')).toMatchObject({ sandboxed: true })
-    await expectVisible(a.page.getByText('Sandbox activo'))
+    await expectVisible(a.page.getByText('Limitado a tu carpeta'))
   })
 
   async function sendTask(a: E2EApp, text: string): Promise<void> {
@@ -246,7 +246,7 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: política gestionada con JSON inválido
     for (const t of [
       'Control total del Mac está desactivado.',
       'Las rutinas están desactivadas.',
-      'No se pueden añadir sitios a la red del sandbox.',
+      'No se pueden añadir sitios a los que las tareas pueden conectarse.',
       'No se pueden recordar permisos con «Siempre permitir».'
     ])
       await expectVisible(app.page.getByText(t))

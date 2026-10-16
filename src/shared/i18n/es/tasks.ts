@@ -152,9 +152,9 @@ export const tasks = {
   'tasks.act.noRestorePointMsg': 'Para este mensaje no se guardó un punto de restauración, así que no se pueden restaurar los archivos.',
   'tasks.act.interruptTitle': 'Se interrumpirán tareas en curso',
   'tasks.act.interruptMsg': {
-    one: 'Hay {count} tarea trabajando en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.',
+    one: 'Hay {count} tarea trabajando en esta carpeta. Para cambiar las carpetas permitidas hay que reiniciar el trabajo y se interrumpirá; después podrás reanudarlas.',
     other:
-      'Hay {count} tareas trabajando en esta carpeta. Para cambiar las carpetas del sandbox hay que reiniciarlo y se interrumpirán; después podrás reanudarlas.'
+      'Hay {count} tareas trabajando en esta carpeta. Para cambiar las carpetas permitidas hay que reiniciar el trabajo y se interrumpirá; después podrás reanudarlas.'
   },
   'tasks.act.interruptContinue': 'Continuar',
   'tasks.act.cannotAddFolder': 'Esa carpeta no se puede añadir.',
@@ -227,7 +227,8 @@ export const tasks = {
   'tasks.home.tpl.computer.3.title': 'Ordenar Escritorio',
   'tasks.home.tpl.computer.3.prompt':
     'Primero revisa el Escritorio y muéstrame un resumen de los archivos sueltos que hay; luego propón las carpetas por tipo y qué iría a cada una; cuando lo apruebe, muévelos.',
-  'tasks.home.moveNote': 'Al mover archivos en Sandbox se te pedirá el permiso «{term}»; sin él, ofrecerá una copia ordenada.',
+  'tasks.home.moveNote':
+    'Al mover archivos trabajando solo en tu carpeta se te pedirá el permiso «{term}»; sin él, ofrecerá una copia ordenada.',
   'tasks.home.title': '¿En qué trabajamos hoy?',
   'tasks.home.greet.morning': 'Buenos días',
   'tasks.home.greet.afternoon': 'Buenas tardes',
@@ -238,12 +239,12 @@ export const tasks = {
   'tasks.home.lead.full.win': 'El agente puede usar el ratón, el teclado y la pantalla. Detenlo con Ctrl+Alt+Mayús+Esc.',
   'tasks.home.lead.sandbox': 'Trabajará dentro de «{folder}». Te pedirá permiso antes de borrar, mover o renombrar.',
   'tasks.home.startingFull': 'Iniciando control total…',
-  'tasks.home.startingSandbox': 'Iniciando sandbox…',
+  'tasks.home.startingSandbox': 'Preparando el espacio de trabajo…',
   'tasks.home.ph.full': 'Describe qué debe hacer en tu Mac…',
   'tasks.home.ph.full.win': 'Describe qué debe hacer en tu PC…',
   'tasks.home.ph.folder': 'Describe la tarea que quieres delegar…',
   'tasks.home.ph.noFolder': 'Describe la tarea… (elige una carpeta para empezar)',
-  'tasks.home.sandboxActive': 'Sandbox activo: no puede escribir fuera de la carpeta ni leer tus claves.',
+  'tasks.home.sandboxActive': 'Limitado a tu carpeta: no puede escribir fuera de ella ni leer tus claves.',
   'tasks.home.suggestions': 'Sugerencias para empezar',
   'tasks.home.show': 'Mostrar sugerencias',
   'tasks.home.hide': 'Ocultar sugerencias',
@@ -286,7 +287,7 @@ export const tasks = {
   'tasks.ws.schedule': 'Programar',
   'tasks.ws.scheduleHint': 'Repetir esta tarea con una rutina',
   'tasks.ws.noBridge': 'Falta `window.api.tasks` en el preload.',
-  'tasks.ws.noFull': 'El servidor no activó el Control total para esta carpeta; se usa el modo Sandbox.',
+  'tasks.ws.noFull': 'No se pudo activar el Control total para esta carpeta; se trabaja solo en tu carpeta.',
   'tasks.ws.retry': 'Reintentar',
   'tasks.ws.close': 'Cerrar',
   'tasks.ws.untitled': 'Tarea',
@@ -363,9 +364,9 @@ export const tasks = {
   'tasks.side.openOrigin': 'Abrir la tarea de origen',
   'tasks.side.openRoutines': 'Abrir en Rutinas',
   'tasks.sandboxProviderPending':
-    'Este proveedor aún no llegó al entorno aislado de esta tarea (se conectó después de abrirla). Espera unos segundos y reintenta, o cierra la tarea y ábrela de nuevo.',
+    'Este proveedor aún no llegó a esta tarea (se conectó después de abrirla). Espera unos segundos y reintenta, o cierra la tarea y ábrela de nuevo.',
   'tasks.sandboxProviderNotice':
-    'En Overdrive con sandbox están los proveedores que se conectan con una clave de API (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go y muchos más) y los modelos gratuitos de OpenCode. Los que entran con inicio de sesión (como ChatGPT o Copilot) o son servicios en la nube (Bedrock, Azure, Vertex) requieren Control total, Chat o Code.',
+    'En Overdrive limitado a tu carpeta están los proveedores que se conectan con una clave (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go y muchos más) y los modelos gratuitos de OpenCode. Los que entran con inicio de sesión (como ChatGPT o Copilot) o son servicios en la nube (Bedrock, Azure, Vertex) requieren Control total, Chat o Code.',
   'tasks.comp.removeAttachment': 'Quitar (el archivo sigue en la carpeta)',
   'tasks.comp.unlinkTitle': 'Quitar «{name}» de las carpetas adicionales',
   'tasks.comp.unlinkAria': 'Quitar la carpeta adicional {name}',
@@ -377,7 +378,7 @@ export const tasks = {
   'tasks.comp.sendTitle': 'Enviar (Enter)',
   'tasks.comp.send': 'Enviar',
   'tasks.comp.sending': 'Enviando…',
-  'tasks.comp.sendingSandbox': 'Preparando el entorno aislado para tu tarea…',
+  'tasks.comp.sendingSandbox': 'Preparando tu tarea…',
   'tasks.comp.sendingFull': 'Preparando tu tarea…',
   'tasks.comp.saving': 'Guardando punto de restauración…',
   'tasks.conv.thoughtFor': 'Pensó durante {seconds} s',
@@ -594,7 +595,7 @@ export const tasks = {
   'tasks.sandbox.broken.payload': 'Faltan archivos del entorno aislado. Puedes repararlo.',
   'tasks.sandbox.broken.repair': 'Reparar',
   'tasks.sandbox.broken.landlock':
-    'El núcleo de Linux de WSL no admite el aislamiento que Overdrive exige. Actualiza WSL con «wsl --update» y vuelve a comprobar.',
+    'La versión de Linux de WSL no admite la protección que Overdrive exige. Actualiza WSL con «wsl --update» en una terminal y vuelve a comprobar.',
   'tasks.sandbox.broken.interop':
     'El entorno permite ejecutar programas de Windows, algo que Overdrive no admite. No se usa por seguridad.',
   'tasks.sandbox.broken.drives':

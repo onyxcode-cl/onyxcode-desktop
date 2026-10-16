@@ -29,7 +29,7 @@ describe('TasksComposer: envío en curso', () => {
     const html = render()
     expect(html).toContain('data-testid="composer-sending"')
     expect(html).toContain('Enviando…')
-    expect(html).toContain('Preparando el entorno aislado')
+    expect(html).toContain('Preparando tu tarea')
     expect(html).not.toContain('aria-label="Enviar"')
     expect(html).toMatch(/<textarea[^>]*disabled/)
     over.patch = {}

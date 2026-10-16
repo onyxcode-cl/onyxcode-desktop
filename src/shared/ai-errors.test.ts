@@ -80,7 +80,7 @@ describe('friendlyError', () => {
   it('un error desconocido con pila se oculta tras un mensaje genérico', () => {
     const f = friendlyError({ name: 'UnknownError', data: { message: 'TypeError: boom\n    at x (/a.js:1:1)' } })
     expect(f.title).toBe('Algo salió mal')
-    expect(f.message).toBe('OpenCode devolvió un error inesperado.')
+    expect(f.message).toContain('Ocurrió un error inesperado')
     expect(f.detail).toContain('boom')
   })
 
@@ -119,6 +119,32 @@ describe('friendlyError', () => {
       data: { message: 'x', statusCode: 500, isRetryable: false, responseBody: 'a'.repeat(5000) }
     })
     expect(f.detail!.length).toBe(2000)
+  })
+
+  it('errores crudos del sistema se traducen por patrón, sea cual sea la herramienta que los produjo', () => {
+    const casos: Array<[string, RegExp]> = [
+      ["EPERM: operation not permitted, open '/Users/x/a.txt'", /no hay permiso/],
+      ["EACCES: permission denied, mkdir '/var/x'", /no hay permiso/],
+      ["ENOENT: no such file or directory, scandir '/tmp/nada'", /No se encontró un archivo o carpeta/],
+      ['write failed: ENOSPC: no space left on device', /No hay espacio libre/],
+      ['EMFILE: too many open files, watch', /demasiados abiertos/],
+      ["EEXIST: file already exists, mkdir 'out'", /Ya existe un archivo o carpeta/],
+      ['Unexpected token < in JSON at position 0', /formato que no se pudo leer/]
+    ]
+    for (const [raw, esperado] of casos) {
+      for (const err of [new Error(raw), { name: 'UnknownError', data: { message: `${raw}\n    at x (/a.js:1:1)` } }]) {
+        const f = friendlyError(err)
+        expect(f.message).toMatch(esperado)
+        expect(f.message).not.toMatch(/E[A-Z]{3,6}\b|JSON|Unexpected/)
+        expect(f.detail).toContain(raw.split('\n')[0])
+        expect(f.action).toBe('retry')
+      }
+    }
+  })
+
+  it('un error HTTP con código no se confunde con un fallo de archivos', () => {
+    const f = friendlyError({ name: 'APIError', data: { message: 'permission denied', statusCode: 500 } })
+    expect(f.message).not.toMatch(/archivo o carpeta/)
   })
 
   it('NO_AI_ERROR', () => {

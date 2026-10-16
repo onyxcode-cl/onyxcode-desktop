@@ -61,10 +61,10 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     expect(html).toMatch(/disabled=""[^>]*>Permitir una vez</)
   })
 
-  it('alcance «Sin sandbox · {root}» y comando bash con $', () => {
+  it('alcance «Sin límite de carpeta · {root}» y comando bash con $', () => {
     surface('darwin')
     const html = render(perm())
-    expect(html).toContain('Sin sandbox · /proj')
+    expect(html).toContain('Sin límite de carpeta · /proj')
     expect(html).toContain('npm run build')
     expect(html).toContain('aria-hidden')
   })

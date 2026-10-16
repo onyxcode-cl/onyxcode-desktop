@@ -2,7 +2,7 @@ import type { Messages } from '../index'
 import type { tasksSettings as es } from '../es/tasksSettings'
 
 export const tasksSettings = {
-  'tasksSettings.glossary.sandbox': 'Sandbox',
+  'tasksSettings.glossary.sandbox': 'Your folder only',
   'tasksSettings.glossary.fullControl': 'Full Mac control',
   'tasksSettings.glossary.fullControl.win': 'Full PC control',
   'tasksSettings.glossary.fullControlShort': 'Full control',
@@ -24,7 +24,7 @@ export const tasksSettings = {
   'tasksSettings.idle.hm': 'Idle for {h} h {m} min',
   'tasksSettings.policy.fullControlOff': '{name} is turned off.',
   'tasksSettings.policy.roots': 'Folders can only be inside: {roots}.',
-  'tasksSettings.policy.noHosts': 'Sites can’t be added to the sandbox network.',
+  'tasksSettings.policy.noHosts': 'Sites that tasks can connect to can’t be added.',
   'tasksSettings.policy.noAlwaysAllow': 'Permissions can’t be remembered with “Always allow”.',
   'tasksSettings.policy.noRoutines': 'Routines are turned off.',
   'tasksSettings.policy.maxArchive': 'Auto-archive can’t exceed {days} days.',
@@ -108,7 +108,7 @@ export const tasksSettings = {
   'tasksSettings.servers.none': 'No servers running.',
   'tasksSettings.storage.title': 'Storage',
   'tasksSettings.storage.desc':
-    'Private space each folder uses in the {sandbox} (task history, cache, and temporary files). It can only be cleaned when its server is stopped.',
+    'Private space each folder uses in “{sandbox}” mode (task history, cache, and temporary files). It can only be cleaned when its server is stopped.',
   'tasksSettings.storage.total': 'Total',
   'tasksSettings.storage.refresh': 'Refresh',
   'tasksSettings.storage.calculating': 'Calculating…',
@@ -126,7 +126,7 @@ export const tasksSettings = {
   'tasksSettings.storage.deleteAll': 'Delete all',
   'tasksSettings.storage.deleteAllTitle': 'Delete all storage for “{name}”?',
   'tasksSettings.storage.deleteAllMessage':
-    'This folder’s private space in the sandbox will be deleted: the sandbox task history, cache, and temporary files will be lost. The files in the folder itself are not touched. This can’t be undone.',
+    'This folder’s private space will be deleted: the task history, cache, and temporary files will be lost. The files in the folder itself are not touched. This can’t be undone.',
   'tasksSettings.storage.screenshots': 'Temporary screenshots',
   'tasksSettings.storage.screenshotsDesc':
     'Screen copies from {fullControl}{size}. They are deleted automatically when finished and when the app closes.',

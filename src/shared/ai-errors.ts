@@ -104,6 +104,26 @@ const AUTH_RE =
   /unauthorized|invalid api key|invalid_api_key|token refresh failed|oauth callback timeout|login cancell?ed|failed to initiate device authorization/i
 const NOT_FOUND_RE = /ProviderModelNotFoundError|Model not found:/
 
+/**
+ * Fallos del sistema de archivos o de lectura que el motor deja pasar crudos (`EPERM: operation not permitted, open '/ruta'`,
+ * `Unexpected token < in JSON…`). Se reconocen por patrón, sin depender de la herramienta ni del conector que los produjo:
+ * lo que ve la persona es qué pasó y qué puede hacer; el texto original queda en «Ver detalle».
+ */
+const SYSTEM_ERRORS: ReadonlyArray<{ re: RegExp; key: 'permission' | 'missing' | 'noSpace' | 'busy' | 'exists' | 'unreadable' }> = [
+  { re: /\b(EPERM|EACCES)\b|operation not permitted|permission denied|sandbox.{0,20}deny/i, key: 'permission' },
+  { re: /\b(ENOENT|ENOTDIR)\b|no such file or directory/i, key: 'missing' },
+  { re: /\bENOSPC\b|no space left on device|disk quota exceeded/i, key: 'noSpace' },
+  { re: /\b(EBUSY|EMFILE|ENFILE|EAGAIN)\b|resource busy|too many open files/i, key: 'busy' },
+  { re: /\b(EEXIST|ENOTEMPTY)\b|file already exists|directory not empty/i, key: 'exists' },
+  { re: /unexpected token .{0,40}JSON|JSON\.parse|is not valid JSON|unexpected end of (JSON|data)/i, key: 'unreadable' }
+]
+
+/** Texto llano para un fallo crudo del sistema (`EPERM…`, `ENOENT…`), o `null` si el texto no es de ese tipo. */
+export function humanizeSystemError(text: string): string | null {
+  const hit = SYSTEM_ERRORS.find((e) => e.re.test(text))
+  return hit ? tr(`errors.system.${hit.key}`) : null
+}
+
 /** Una sola línea, sin rastro de pila y sin prefijo `XxxError:` ⇒ es un mensaje propio, se muestra tal cual. */
 function isPlainMessage(text: string): boolean {
   const t = text.trim()
@@ -168,6 +188,18 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
       message: tr('errors.network.message'),
       detail,
       action: 'retry'
+    }
+  }
+  if (n.statusCode === null) {
+    const sys = SYSTEM_ERRORS.find((e) => e.re.test(text))
+    if (sys) {
+      return {
+        kind: 'unknown',
+        title: tr('errors.unknown.title'),
+        message: tr(`errors.system.${sys.key}`),
+        detail,
+        action: 'retry'
+      }
     }
   }
   if (n.statusCode === null && !n.responseBody && isPlainMessage(n.message)) {
