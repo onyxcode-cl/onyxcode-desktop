@@ -659,6 +659,8 @@ export interface TasksActivitySnapshot {
 
 /** Qué eventos de tareas en segundo plano generan notificación. */
 export interface TasksNotifyPrefs {
+  /** Interruptor general: avisar (notificación del sistema) cuando una tarea termina o necesita tu atención. */
+  enabled: boolean
   done: boolean
   approval: boolean
   question: boolean
@@ -682,7 +684,7 @@ export const DEFAULT_TASKS_PREFS: TasksPrefs = {
   idleStopMinutes: 15,
   stallWarnMinutes: 5,
   maxServers: 4,
-  notify: { done: true, approval: true, question: true, error: true }
+  notify: { enabled: true, done: true, approval: true, question: true, error: true }
 }
 
 // ───────────────────────────── Lote B: almacenamiento ─────────────────────────────

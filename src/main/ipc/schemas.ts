@@ -800,7 +800,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     idleStopMinutes: num({ int: true, min: 0, max: 1440 }),
     stallWarnMinutes: num({ int: true, min: 0, max: 240 }),
     maxServers: num({ int: true, min: 1, max: 12 }),
-    notify: partial({ done: bool, approval: bool, question: bool, error: bool })
+    notify: partial({ enabled: bool, done: bool, approval: bool, question: bool, error: bool })
   }),
   'tasks:storage:report': none,
   'tasks:storage:clean': obj({ key: storageKey, scope: literal('cache', 'all') }),

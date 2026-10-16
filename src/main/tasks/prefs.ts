@@ -28,6 +28,7 @@ export function normalizeTasksPrefs(input: unknown, base: TasksPrefs = DEFAULT_T
   const o = input && typeof input === 'object' ? (input as Record<string, unknown>) : {}
   const n = o.notify && typeof o.notify === 'object' ? (o.notify as Record<string, unknown>) : {}
   const notify: TasksNotifyPrefs = {
+    enabled: bool(n.enabled, base.notify.enabled),
     done: bool(n.done, base.notify.done),
     approval: bool(n.approval, base.notify.approval),
     question: bool(n.question, base.notify.question),

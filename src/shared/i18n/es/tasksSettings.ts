@@ -82,6 +82,8 @@ export const tasksSettings = {
   'tasksSettings.rules.orgNoNew': 'Tu organización no permite recordar permisos nuevos; los existentes se pueden quitar.',
   'tasksSettings.notify.title': 'Notificaciones por tipo',
   'tasksSettings.notify.desc': 'Aplica a las tareas que ocurren en segundo plano. El interruptor general está en General.',
+  'tasksSettings.notify.master.label': 'Avisarme cuando una tarea termine o necesite mi aprobación',
+  'tasksSettings.notify.master.desc': 'Notificación del sistema cuando la ventana de la app no está en primer plano.',
   'tasksSettings.notify.aria': 'Notificar: {label}',
   'tasksSettings.archive.title': 'Archivado automático',
   'tasksSettings.archive.desc': 'Archiva las tareas sin actividad. Las tareas fijadas o que esperan tu respuesta no se archivan.',

@@ -84,6 +84,8 @@ export const tasksSettings = {
   'tasksSettings.rules.orgNoNew': 'Your organization doesn’t allow remembering new permissions; existing ones can be removed.',
   'tasksSettings.notify.title': 'Notifications by type',
   'tasksSettings.notify.desc': 'Applies to tasks running in the background. The main switch is in General.',
+  'tasksSettings.notify.master.label': 'Notify me when a task finishes or needs my approval',
+  'tasksSettings.notify.master.desc': 'System notification when the app window is not in the foreground.',
   'tasksSettings.notify.aria': 'Notify: {label}',
   'tasksSettings.archive.title': 'Auto-archive',
   'tasksSettings.archive.desc': 'Archives tasks with no activity. Pinned tasks and tasks waiting for your answer are not archived.',

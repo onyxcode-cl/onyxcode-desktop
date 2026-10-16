@@ -6,14 +6,13 @@
  * este archivo le inyecta lo que depende de Electron (notificaciones, ventana, mantener despierto,
  * parada de servidores, revocar planes al archivar) y reenvía su actividad al renderer.
  */
-import { t, type MsgKey } from '@shared/i18n'
 import { app, Notification } from 'electron'
 import { realpathSync } from 'node:fs'
-import { basename, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { TasksActivitySnapshot } from '@shared/ipc-tasks'
-import type { NotifyTarget } from '@shared/types'
-import { TasksMonitor, type MonitorNotifyEvent, type MonitorWindowState } from '../tasks/monitor'
+import { TasksMonitor, type MonitorWindowState } from '../tasks/monitor'
 import { getAutoApprover } from '../tasks/auto-approver'
+import { createOsNotifier } from '../tasks/os-notify'
 import { TasksPrefsStore } from '../tasks/prefs'
 import { TasksTasksStore } from '../tasks/tasks-meta'
 import { storageClean, storageReport, type StorageEnv } from '../tasks/storage'
@@ -35,13 +34,6 @@ function realOrResolved(p: string): string {
   }
 }
 
-const NOTIFY_KEY = {
-  done: 'merr.notif.taskDone',
-  approval: 'merr.notif.taskApproval',
-  question: 'merr.notif.taskQuestion',
-  error: 'merr.notif.taskError'
-} as const satisfies Record<MonitorNotifyEvent['kind'], MsgKey>
-
 export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, send, getWindow, tasks: tasksManager, computer, keepAwake } = ctx
   const userData = app.getPath('userData')
@@ -58,26 +50,22 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   }
 
   // Notificación nativa de una tarea en segundo plano; clic = traer la ventana y abrir la tarea.
-  const notify = (ev: MonitorNotifyEvent): void => {
-    const extras = extrasPrefs.get()
-    if (!extras.notificationsEnabled || !Notification.isSupported()) return
-    const label = ev.title.trim() || t('merr.notif.untitledTask')
-    const n = new Notification({
-      title: t(NOTIFY_KEY[ev.kind]),
-      body: `${label} · ${basename(ev.folder)}`,
-      silent: !extras.soundEnabled
-    })
-    n.on('click', () => {
+  const notify = createOsNotifier({
+    isSupported: () => Notification.isSupported(),
+    create: (opts) => new Notification(opts),
+    appEnabled: () => extrasPrefs.get().notificationsEnabled,
+    tasksEnabled: () => prefs.get().notify.enabled,
+    silent: () => !extrasPrefs.get().soundEnabled,
+    windowFocused: () => windowState() === 'focused',
+    open: (target) => {
       const win = getWindow()
       if (!win || win.isDestroyed()) return
       if (win.isMinimized()) win.restore()
       win.show()
       win.focus()
-      const target: NotifyTarget = { mode: 'tasks', id: ev.sessionId, directory: ev.folder, fullAccess: ev.fullAccess }
       emitTo(win, 'app:openTarget', target)
-    })
-    n.show()
-  }
+    }
+  })
 
   // Capturas temporales de Control total: se borran a los 60 s sin tareas de ese modo en curso.
   let shotTimer: ReturnType<typeof setTimeout> | null = null
