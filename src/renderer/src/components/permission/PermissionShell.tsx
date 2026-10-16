@@ -6,10 +6,19 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ShieldAlert, type LucideIcon } from 'lucide-react'
+import { ChevronDown, ShieldAlert, type LucideIcon } from 'lucide-react'
+import { useT } from '../../lib/i18n'
 import { isMacPlatform } from '../../lib/platform'
 import { ARM_MS, decidePermKey, initialArmState, armState, type ArmState } from '../../lib/perm-guard'
 import { Button } from '../Button'
+
+/** Caracteres de control, marcas bidi y espacios invisibles que pueden ocultar el contenido real de un comando. */
+const HIDDEN_CHARS_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/
+
+/** true si `text` contiene caracteres de control/unicode invisibles que podrían ocultar contenido. */
+export function hasHiddenChars(text: string): boolean {
+  return HIDDEN_CHARS_RE.test(text)
+}
 
 export const permTitleId = (id: string): string => `perm-title-${id}`
 export const permEffectId = (id: string): string => `perm-effect-${id}`
@@ -24,6 +33,9 @@ export function PermCardFrame({
   icon: Icon,
   title,
   effect,
+  preview,
+  details,
+  detailsOpen = false,
   onKeyDown,
   children
 }: {
@@ -34,9 +46,22 @@ export function PermCardFrame({
   icon: LucideIcon
   title: string
   effect?: string
+  /** Resumen de una línea (siempre visible), p. ej. el comando abreviado. */
+  preview?: ReactNode
+  /** Detalles plegables (comando completo, diff, alcance…). Siguen en el DOM, solo ocultos, para lectores y pruebas. */
+  details?: ReactNode
+  /** Abierto desde el principio (riesgo alto o comando que no cabe en una línea). */
+  detailsOpen?: boolean
   onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
   children?: ReactNode
 }): React.JSX.Element {
+  const t = useT()
+  const [open, setOpen] = useState(detailsOpen)
+  // Si la misma tarjeta pasa a pedir el detalle abierto (el comando cambió a algo largo), se abre y ya no se cierra sola.
+  useEffect(() => {
+    if (detailsOpen) setOpen(true)
+  }, [detailsOpen])
+  const detailsId = `perm-details-${id}`
   return (
     <div
       id={`perm-${id}`}
@@ -48,32 +73,85 @@ export function PermCardFrame({
       aria-busy={busy || undefined}
       data-armed={armed || undefined}
       onKeyDown={onKeyDown}
-      className={`flex flex-col gap-3.5 rounded-card p-4 outline-none focus-visible:shadow-focus ${
+      className={`flex flex-col gap-2 rounded-card p-3 outline-none focus-visible:shadow-focus ${
         danger ? 'bg-danger/[0.06] ring-1 ring-inset ring-danger/40' : 'bg-elevated ring-1 ring-inset ring-accent/40'
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-2.5">
         <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] ${
             danger ? 'bg-danger/15 text-danger' : 'bg-accent-soft text-accent'
           }`}
         >
-          <Icon size={20} strokeWidth={1.75} />
+          <Icon size={16} strokeWidth={1.75} />
         </span>
-        <div className="min-w-0 flex-1">
-          <p id={permTitleId(id)} className="text-title-sm text-fg">
-            {title}
-          </p>
-          {effect && (
-            <p id={permEffectId(id)} className="mt-0.5 text-ui text-muted">
-              {effect}
-            </p>
-          )}
-        </div>
+        <p id={permTitleId(id)} className="min-w-0 flex-1 truncate text-title-sm text-fg" title={title}>
+          {title}
+        </p>
+        {details && (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={detailsId}
+            onClick={() => setOpen((o) => !o)}
+            className="no-drag inline-flex shrink-0 items-center gap-1 rounded-ctl px-2 py-1 text-ui text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
+          >
+            {open ? t('perm.details.hide') : t('perm.details.show')}
+            <ChevronDown size={14} aria-hidden className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
+      {effect && (
+        <p id={permEffectId(id)} className={open || !details ? 'text-ui text-muted' : 'sr-only'}>
+          {effect}
+        </p>
+      )}
+      {preview}
+      {details && (
+        <div id={detailsId} hidden={!open} className="flex flex-col gap-3">
+          {details}
+        </div>
+      )}
       {children}
     </div>
   )
+}
+
+/** Resumen de una línea: el comando o la ruta literales (abreviados con «…» si no caben; completos en el detalle y en el título). */
+export function PermPreview({
+  text,
+  prompt,
+  danger,
+  extra
+}: {
+  text: string
+  prompt?: boolean
+  danger?: boolean
+  extra?: ReactNode
+}): React.JSX.Element {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-ctl bg-code px-3 py-1.5 ring-1 ring-inset ${danger ? 'ring-danger/30' : 'ring-border'}`}
+      title={text}
+    >
+      <p className="min-w-0 flex-1 truncate font-mono text-[13px] leading-5 text-fg">
+        {prompt && (
+          <span aria-hidden className="select-none text-subtle">
+            ${' '}
+          </span>
+        )}
+        {text.split('\n')[0]}
+        {text.includes('\n') ? ' …' : ''}
+      </p>
+      {extra}
+    </div>
+  )
+}
+
+/** ¿El comando cabe entero en la línea de resumen? Si no (varias líneas, largo o con caracteres ocultos), el detalle nace abierto. */
+export const PREVIEW_MAX_CHARS = 90
+export function previewFits(text: string, hidden: boolean): boolean {
+  return !hidden && !text.includes('\n') && text.length <= PREVIEW_MAX_CHARS
 }
 
 // ───────────────────────────── Comando literal ─────────────────────────────

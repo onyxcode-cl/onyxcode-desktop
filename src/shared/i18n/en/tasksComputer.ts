@@ -138,6 +138,8 @@ export const tasksComputer = {
   'tasksComputer.plan.stampBackground': 'Won’t touch your screen: works in the background',
   'tasksComputer.plan.stampControl': 'Will use your Mac’s mouse and keyboard',
   'tasksComputer.plan.stampControl.win': 'Will use your PC’s mouse and keyboard',
+  'tasksComputer.plan.summaryOne': 'Plan with 1 step',
+  'tasksComputer.plan.summaryMany': 'Plan with {n} steps',
   'tasksComputer.plan.titlePlan': 'Plan and permissions',
   'tasksComputer.plan.titleTask': 'Task plan',
   'tasksComputer.plan.titleOne': 'Allow the agent to use {name}?',

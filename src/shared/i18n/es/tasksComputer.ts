@@ -137,6 +137,8 @@ export const tasksComputer = {
   'tasksComputer.plan.stampBackground': 'Sin tocar tu pantalla: trabaja en segundo plano',
   'tasksComputer.plan.stampControl': 'Usará el ratón y el teclado de tu Mac',
   'tasksComputer.plan.stampControl.win': 'Usará el ratón y el teclado de tu PC',
+  'tasksComputer.plan.summaryOne': 'Plan de 1 paso',
+  'tasksComputer.plan.summaryMany': 'Plan de {n} pasos',
   'tasksComputer.plan.titlePlan': 'Plan y permisos',
   'tasksComputer.plan.titleTask': 'Plan de la tarea',
   'tasksComputer.plan.titleOne': '¿Permitir que el agente use {name}?',

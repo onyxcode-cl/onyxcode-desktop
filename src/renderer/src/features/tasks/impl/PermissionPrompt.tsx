@@ -5,6 +5,7 @@
  * Siempre se muestra el comando, la ruta o los parámetros LITERALES; la descripción del modelo va aparte
  * y marcada como no verificada.
  */
+import { hasHiddenChars } from '../../../components/permission/PermissionShell'
 import { useEffect, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
@@ -47,13 +48,7 @@ interface Described {
   danger: boolean
 }
 
-/** Caracteres de control, marcas bidi y espacios invisibles que pueden ocultar el contenido real de un comando. */
-const HIDDEN_CHARS_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁠-⁤﻿]/
-
-/** true si `text` contiene caracteres de control/unicode invisibles que podrían ocultar contenido. */
-export function hasHiddenChars(text: string): boolean {
-  return HIDDEN_CHARS_RE.test(text)
-}
+export { hasHiddenChars }
 
 function meta(p: PermissionRequest, ...keys: string[]): string {
   for (const key of keys) {
