@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
-import { Check, Loader2, MessagesSquare, MoreHorizontal, Pencil, Search, Trash2, X } from 'lucide-react'
+import { Archive, Check, Loader2, MessagesSquare, MoreHorizontal, Pencil, Search, Trash2, X } from 'lucide-react'
 import { t as tr, localeTag } from '@shared/i18n'
 import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
@@ -28,6 +28,15 @@ interface Props {
   onLoadMore?: (all: boolean) => void
   /** Solo la barra lateral de escritorio (1b): hora relativa a la derecha de cada fila y «Trabajando» en las ocupadas. */
   showTime?: boolean
+  /** Ids fijados (solo escritorio): salen primero, en el grupo «Fijadas». */
+  pinnedIds?: ReadonlySet<string>
+  onTogglePin?: (id: string) => void
+  onArchive?: (id: string) => void | Promise<void>
+  onRestore?: (id: string) => void | Promise<void>
+  /** Conversaciones archivadas: con `onToggleArchived` aparece el botón de ícono con su contador (solo escritorio). */
+  archived?: Session[]
+  showArchived?: boolean
+  onToggleArchived?: () => void
 }
 
 function groupLabel(ts: number): string {
@@ -226,12 +235,20 @@ function PlainRow({
   )
 }
 
-type RowProps = Parameters<typeof PlainRow>[0]
+type RowProps = Parameters<typeof PlainRow>[0] & {
+  pinned?: boolean
+  archivedView?: boolean
+  onTogglePin?: () => void
+  onArchive?: () => void
+  onRestore?: () => void
+}
 
 /** En el árbol de la barra lateral de escritorio la fila es la de dos líneas (como Overdrive y Code); fuera de él (pruebas, celular) no cambia. */
 function Row(props: RowProps): React.JSX.Element {
   const tree = useSidebarTree()
-  return tree ? <ChatSidebarRow {...props} /> : <PlainRow {...props} />
+  if (tree) return <ChatSidebarRow {...props} />
+  const { pinned: _p, archivedView: _a, onTogglePin: _t, onArchive: _r, onRestore: _s, ...plain } = props
+  return <PlainRow {...plain} />
 }
 
 /** Lista de sesiones agrupada por fecha, con renombrar/eliminar. En el celular es la lista táctil de `MobileSessionList`. */
@@ -250,7 +267,14 @@ function DesktopSessionList({
   onDelete,
   hasMore,
   onLoadMore,
-  showTime
+  showTime,
+  pinnedIds,
+  onTogglePin,
+  onArchive,
+  onRestore,
+  archived,
+  showArchived = false,
+  onToggleArchived
 }: Props): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
@@ -269,20 +293,55 @@ function DesktopSessionList({
       </div>
     )
   }
-  if (sessions.length === 0) {
+  // Escritorio: fila de herramientas con el título de la vista y el botón «Archivadas» (ícono con contador), como en Overdrive.
+  const archivedCount = archived?.length ?? 0
+  const toolsRow =
+    onToggleArchived && !isRemoteSurface() && (archivedCount > 0 || showArchived) ? (
+      <div className="mb-1 flex items-center gap-1 px-1">
+        <span className="min-w-0 flex-1 truncate text-meta text-subtle">
+          {showArchived ? t('chat.list.archived') : t('chat.list.title')}
+        </span>
+        <button
+          type="button"
+          aria-pressed={showArchived}
+          title={showArchived ? t('chat.list.backToChats') : t('chat.list.showArchived')}
+          aria-label={showArchived ? t('chat.list.backToChats') : t('chat.list.showArchived')}
+          onClick={onToggleArchived}
+          className={`no-drag relative flex size-7 items-center justify-center rounded-ctl-sm ${showArchived ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+        >
+          <Archive size={14} strokeWidth={1.75} />
+          {archivedCount > 0 && !showArchived && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-3.5 rounded-full bg-hover px-1 text-[9px] leading-3.5 text-muted">
+              {archivedCount}
+            </span>
+          )}
+        </button>
+      </div>
+    ) : null
+  const shown = showArchived ? (archived ?? []) : sessions
+  if (shown.length === 0) {
+    const text = showArchived ? t('chat.list.emptyArchived') : (emptyText ?? t('chat.list.emptyDefault'))
     if (!isRemoteSurface())
-      return <SidebarEmpty icon={<MessagesSquare size={18} strokeWidth={1.75} />} text={emptyText ?? t('chat.list.emptyDefault')} hint />
+      return (
+        <>
+          {toolsRow}
+          <SidebarEmpty icon={<MessagesSquare size={18} strokeWidth={1.75} />} text={text} hint={!showArchived} />
+        </>
+      )
     return (
       <div className="mx-1 mt-6 flex flex-col items-center gap-2 px-4 text-center">
         <MessagesSquare size={18} className="text-subtle" />
-        <span className="text-xs text-subtle">{emptyText ?? t('chat.list.emptyDefault')}</span>
+        <span className="text-xs text-subtle">{text}</span>
       </div>
     )
   }
   const q = filter.trim().toLowerCase()
-  const visible = q ? sessions.filter((s) => (s.title || '').toLowerCase().includes(q)) : sessions
+  const visible = q ? shown.filter((s) => (s.title || '').toLowerCase().includes(q)) : shown
   const groups: { label: string; items: Session[] }[] = []
-  for (const s of visible) {
+  // «Fijadas» arriba (solo en la vista normal); el resto sigue agrupado por fecha.
+  const pinnedItems = !showArchived && pinnedIds ? visible.filter((s) => pinnedIds.has(s.id)) : []
+  if (pinnedItems.length > 0) groups.push({ label: t('chat.group.pinned'), items: pinnedItems })
+  for (const s of pinnedItems.length > 0 ? visible.filter((x) => !pinnedIds!.has(x.id)) : visible) {
     const label = groupLabel(s.time.updated)
     const g = groups[groups.length - 1]
     if (g && g.label === label) g.items.push(s)
@@ -290,7 +349,8 @@ function DesktopSessionList({
   }
   return (
     <div className="flex flex-col gap-4">
-      {sessions.length > 8 && (
+      {toolsRow}
+      {shown.length > 8 && (
         <div className="mx-0.5 flex items-center gap-2 rounded-lg border border-transparent bg-hover/60 px-2.5 py-1 transition-colors focus-within:border-accent/40 focus-within:bg-elevated">
           <Search size={13} className="shrink-0 text-subtle" />
           <input
@@ -333,12 +393,17 @@ function DesktopSessionList({
                 onSelect={() => onSelect(s.id)}
                 onRename={(title) => void onRename(s.id, title)}
                 onDelete={() => void onDelete(s.id)}
+                pinned={pinnedIds?.has(s.id) ?? false}
+                archivedView={showArchived}
+                onTogglePin={onTogglePin ? () => onTogglePin(s.id) : undefined}
+                onArchive={onArchive ? () => void onArchive(s.id) : undefined}
+                onRestore={onRestore ? () => void onRestore(s.id) : undefined}
               />
             ))}
           </div>
         </div>
       ))}
-      <LoadMoreSessions visible={!!hasMore && !q} onClick={() => onLoadMore?.(false)} />
+      <LoadMoreSessions visible={!!hasMore && !q && !showArchived} onClick={() => onLoadMore?.(false)} />
     </div>
   )
 }

@@ -15,11 +15,15 @@ import { ChatSidebarRow } from './ChatSidebarRow'
 let host: HTMLDivElement
 let root: Root
 const onDelete = vi.fn()
+const onTogglePin = vi.fn()
+const onArchive = vi.fn()
 
 beforeEach(() => {
   vi.unstubAllGlobals()
   confirmDialog.mockReset()
   onDelete.mockReset()
+  onTogglePin.mockReset()
+  onArchive.mockReset()
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -35,7 +39,9 @@ beforeEach(() => {
           busy: false,
           onSelect: () => undefined,
           onRename: () => undefined,
-          onDelete
+          onDelete,
+          onTogglePin,
+          onArchive
         })
       )
     )
@@ -50,7 +56,7 @@ const more = (): HTMLButtonElement => host.querySelector('button[aria-haspopup="
 const menu = (): HTMLElement | null => document.body.querySelector('[role="menu"]')
 
 describe('ChatSidebarRow: menú «⋯»', () => {
-  it('sale en un portal de posición fija en <body> (no dentro de la lista), con Renombrar, separador y Eliminar en rojo', () => {
+  it('sale en un portal de posición fija en <body> (no dentro de la lista), con Fijar, Renombrar, Archivar, separador y Eliminar en rojo', () => {
     expect(menu()).toBeNull()
     act(() => more().click())
     const m = menu()!
@@ -60,9 +66,23 @@ describe('ChatSidebarRow: menú «⋯»', () => {
     expect(m.className).toContain('fixed')
     expect(more().getAttribute('aria-expanded')).toBe('true')
     const items = Array.from(m.querySelectorAll('[role="menuitem"]'))
-    expect(items.map((i) => i.textContent)).toEqual(['Renombrar', 'Eliminar'])
+    expect(items.map((i) => i.textContent)).toEqual(['Fijar', 'Renombrar', 'Archivar', 'Eliminar'])
     expect(m.querySelectorAll('[role="separator"]')).toHaveLength(1)
-    expect(items[1]!.className).toContain('text-danger')
+    expect(items[3]!.className).toContain('text-danger')
+  })
+
+  it('«Fijar» y «Archivar» avisan y cierran el menú', () => {
+    const click = (label: string): void => {
+      act(() => more().click())
+      const b = Array.from(menu()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find((x) => x.textContent === label)!
+      act(() => b.click())
+    }
+    click('Fijar')
+    expect(onTogglePin).toHaveBeenCalledTimes(1)
+    expect(menu()).toBeNull()
+    click('Archivar')
+    expect(onArchive).toHaveBeenCalledTimes(1)
+    expect(menu()).toBeNull()
   })
 
   it('Esc lo cierra y devuelve el foco a «⋯»; pulsar fuera también', () => {
