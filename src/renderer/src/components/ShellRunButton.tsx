@@ -46,7 +46,7 @@ export function ShellRunBlock({
 }): React.JSX.Element {
   const t = useT()
   const runner = useContext(ShellRunContext)
-  const [run, setRun] = useState<ShellRunHandle | null>(null)
+  const [run, setRun] = useState<ShellRunHandle | null>(() => runner?.find(prepared.lines) ?? null)
   const snap = useRun(run)
   const { command, lines } = prepared
   const state: 'idle' | 'running' | 'done' = !snap ? 'idle' : snap.status === 'done' ? 'done' : 'running'
@@ -93,7 +93,7 @@ export function ShellRunBlock({
   const label = state === 'idle' ? t('code.run.aria') : state === 'running' ? t('code.run.runningAria') : t('code.run.doneAria')
   return (
     <>
-      <div className="code-block relative [&>pre]:pr-[4.5rem]" data-shell-block>
+      <div className="code-block relative [&>pre]:!pr-[4.5rem]" data-shell-block>
         <div className="absolute right-1 top-1 z-10 flex items-center gap-0.5">
           <button
             type="button"

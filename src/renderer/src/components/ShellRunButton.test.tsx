@@ -60,7 +60,7 @@ beforeEach(() => {
   g.window.api = { platform: 'darwin' }
   confirmMock.mockReset()
   handle = new FakeRun()
-  runner = { run: vi.fn(() => handle), showTerminal: vi.fn() }
+  runner = { run: vi.fn(() => handle), find: vi.fn(() => null), showTerminal: vi.fn() }
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)

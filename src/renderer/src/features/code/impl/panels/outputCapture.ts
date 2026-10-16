@@ -44,8 +44,8 @@ export class OutputCapture {
   private readonly promptKnown: boolean
 
   constructor(private readonly opts: Opts) {
-    this.setTimer = opts.setTimer ?? setTimeout
-    this.clearTimer = opts.clearTimer ?? clearTimeout
+    this.setTimer = opts.setTimer ?? ((fn, ms) => setTimeout(fn, ms))
+    this.clearTimer = opts.clearTimer ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>))
     this.promptKnown = opts.promptLine.trim().length >= 2
     this.snap = { view: outputView('', opts.promptLine), status: 'running', waitKind: null }
     this.schedule(this.promptKnown ? STABLE_RUNNING_MS : STABLE_DONE_MS, this.promptKnown ? 'running' : 'done')

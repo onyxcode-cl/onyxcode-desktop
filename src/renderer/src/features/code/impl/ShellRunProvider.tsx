@@ -45,6 +45,10 @@ export function deliverCommandOutput(opts: {
   return 'sent'
 }
 
+/** Ejecuciones por proyecto y comando: sobreviven a que el mensaje se vuelva a pintar. */
+const runs = new Map<string, ShellRunHandle>()
+const runKey = (directory: string, lines: string[]): string => `${directory}\n${lines.join('\n')}`
+
 class RunHandle implements ShellRunHandle {
   private listeners = new Set<() => void>()
   private snap: ShellRunSnapshot
@@ -140,9 +144,11 @@ export function ShellRunProvider({ directory, children }: { directory: string; c
           return null
         }
         handle.bind(capture)
+        runs.set(runKey(directory, lines), handle)
         showTerminal()
         return handle
       },
+      find: (lines) => runs.get(runKey(directory, lines)) ?? null,
       showTerminal
     }
   }, [directory])

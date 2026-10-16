@@ -31,6 +31,8 @@ export interface ShellRunHandle {
 export interface ShellRunner {
   /** Escribe las líneas (cada una con Enter) en la terminal del proyecto. `null` si la terminal está ocupada con una ejecución anterior. */
   run(lines: string[]): ShellRunHandle | null
+  /** La ejecución anterior de estas mismas líneas (el mensaje se vuelve a pintar y la tarjeta de salida debe conservarse). */
+  find(lines: string[]): ShellRunHandle | null
   /** Abre el panel de terminal y le da el foco. */
   showTerminal(): void
 }

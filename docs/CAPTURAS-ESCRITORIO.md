@@ -2,7 +2,7 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (33): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
+- Escenarios (36): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`, `code-ejecutar`, `code-ejecutar-confirmar`, `code-terminal-ia`,
   `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
   `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `inicio-vacio`, `inicio-pendientes`, `aviso-motor`,
   `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
