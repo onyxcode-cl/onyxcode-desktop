@@ -1,5 +1,5 @@
 /** Control segmentado visible: «Sandbox» / «Control total del Mac» (términos del glosario de Tareas). */
-import { Loader2, MonitorCog, Shield } from 'lucide-react'
+import { Check, Loader2, MonitorCog, Shield } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
@@ -76,6 +76,7 @@ export function AccessSegmented({
             <span className="block text-sm font-medium">{t('tasksComputer.access.sandboxName')}</span>
             <span className="block text-xs text-muted">{t('tasksComputer.access.sandboxDesc')}</span>
           </span>
+          {!full && <Check size={15} className="mt-0.5 ml-auto shrink-0 text-accent" aria-hidden />}
         </button>
         <button
           type="button"
@@ -96,6 +97,7 @@ export function AccessSegmented({
             <span className={`block text-sm font-medium ${full ? 'text-warning' : ''}`}>{t('tasksComputer.access.fullName')}</span>
             <span className="block text-xs text-muted">{t('tasksComputer.access.fullDesc')}</span>
           </span>
+          {full && <Check size={15} className="mt-0.5 ml-auto shrink-0 text-warning" aria-hidden />}
         </button>
       </div>
     )
