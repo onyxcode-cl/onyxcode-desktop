@@ -67,6 +67,7 @@ const SCENARIOS = [
   'barra-lateral-colapsada',
   // Barra lateral 2c (el árbol y sus estados). Conviene pedirlas con `--clip sidebar`.
   'barra-chat',
+  'barra-chat-fijadas',
   'barra-code',
   'barra-code-hover',
   'barra-code-menu',
@@ -1444,6 +1445,32 @@ const S = {
       .first()
       .click()
     await sleep(500)
+  },
+  // Chat con una fijada («Fijadas» arriba) y una archivada (botón con contador), y el menú «⋯» de una fila abierto (4 opciones).
+  async 'barra-chat-fijadas'(ctx) {
+    await S['barra-chat'](ctx)
+    const { page } = ctx
+    const menuOf = async (name) => {
+      const row = page.getByRole('treeitem', { name })
+      await row.hover()
+      await sleep(250)
+      await row.getByRole('button', { name: /^Opciones de/ }).click()
+      await sleep(300)
+    }
+    const pick = async (label) => {
+      await page.getByRole('menuitem', { name: label, exact: true }).click()
+      await sleep(500)
+    }
+    if (!(await page.getByRole('group', { name: 'Fijadas' }).count())) {
+      await menuOf(/Receta de pan casero/)
+      await pick('Fijar')
+    }
+    if (!(await page.getByRole('button', { name: 'Ver las conversaciones archivadas' }).count())) {
+      await menuOf(/Resumen semanal de ventas/)
+      await pick('Archivar')
+    }
+    await menuOf(/Pruebas y corrección del IVA/)
+    ctx.hover = null
   },
   // Code: proyecto con una sesión lista (activa), otra esperando aprobación y otra trabajando.
   async 'barra-code'(ctx) {

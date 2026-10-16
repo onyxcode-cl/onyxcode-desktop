@@ -72,4 +72,4 @@ arranque (`onboarding-inicio` vuelve con «Atrás» al paso 1).
 
 ## Barra lateral 2c
 
-`--clip sidebar` recorta cada captura al `<aside>` (sufijo `-lateral`). Escenarios `barra-chat`, `barra-code` (sesiones lista / esperando / trabajando) y `barra-code-hover` (ratón sobre una fila); además `chat-vacio`, `barra-lateral-colapsada` y `tareas-permiso`.
+`--clip sidebar` recorta cada captura al `<aside>` (sufijo `-lateral`). Escenarios `barra-chat`, `barra-chat-fijadas` (una fijada, una archivada con su contador y el menú «⋯» abierto), `barra-code` (sesiones lista / esperando / trabajando) y `barra-code-hover` (ratón sobre una fila); además `chat-vacio`, `barra-lateral-colapsada` y `tareas-permiso`.
