@@ -2,9 +2,9 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (28): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
+- Escenarios (30): `onboarding`, `onboarding-inicio`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`,
   `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
-  `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`,
+  `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `inicio-vacio`, `inicio-pendientes`,
   `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
   `selector-modelo`, `dialogo-confirmar`, `comparar`, `barra-lateral-colapsada`.
 - `tareas-plan-sin-apps` / `tareas-plan-sin-apps-cambio`: pasan a Control total y usan el paso `request-access` del OpenCode falso (el mismo POST que `computer_request_access`, con `apps: []`) para mostrar la tarjeta del plan con «Cambiar a Solo en tu carpeta»; el segundo pulsa el botón y comprueba que vuelve a «Solo en tu carpeta».
@@ -48,6 +48,8 @@ código 1 si algún archivo supera `--max` (por defecto 0), si falta alguno o si
 El grupo de Tareas corre en el orden de `SCENARIOS`, pidas lo que pidas: `tareas-primer-uso` captura la tarjeta antes de descartarla; `tareas-nueva` y
 `rutinas-vacio` van antes de crear tareas y rutinas; `tareas-buscar` y `tareas-archivadas` crean la lista si hace falta. `onboarding*` comparten
 arranque (`onboarding-inicio` vuelve con «Atrás» al paso 1).
+
+`inicio-vacio` (carpeta sin tareas: el inicio de siempre, sugerencias abiertas) corre justo después de `tareas-nueva`; `inicio-pendientes` corre al final del grupo y deja una tarea con permiso y otra con pregunta esperando, más dos terminadas, para ver la tarjeta «Esperando tu aprobación» y el bloque «Retomar» (las sugerencias salen plegadas).
 
 ## Windows, alto contraste y escala (plan de paridad Windows, S5)
 
