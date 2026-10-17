@@ -19,9 +19,16 @@ type TasksHandle = ReturnType<typeof makeTasksHandle>
 /** Registra los nueve canales `routines:*` sobre un planificador ya creado. */
 export function registerRoutineChannels(handle: TasksHandle, scheduler: SchedulerService): void {
   handle('routines:list', () => scheduler.list())
-  handle('routines:save', (input) => scheduler.saveRoutine(input))
+  // Windows: las unidades se releen ANTES de validar la carpeta vigilada (la política es síncrona y caduca a los 2 min).
+  handle('routines:save', async (input) => {
+    await scheduler.refreshFolderPolicy()
+    return scheduler.saveRoutine(input)
+  })
   handle('routines:delete', ({ id }) => scheduler.delete(id))
-  handle('routines:toggle', ({ id, enabled }) => scheduler.toggle(id, enabled))
+  handle('routines:toggle', async ({ id, enabled }) => {
+    if (enabled) await scheduler.refreshFolderPolicy()
+    return scheduler.toggle(id, enabled)
+  })
   handle('routines:runNow', ({ id }) => scheduler.runNow(id))
   handle('routines:history', (req) => scheduler.history(req?.id, req?.limit))
   handle('routines:preview', ({ schedule }) => previewSchedule(schedule, 3))

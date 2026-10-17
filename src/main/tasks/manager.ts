@@ -277,19 +277,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * política gestionada). Devuelve un motivo accionable o `null`. En Windows: `folder-policy-win` con contexto REAL; sin
    * contexto (unidades sin leer o caducadas) rechaza todo.
    */
-  private forbidden(folder: string): string | null {
+  private forbidden(folder: string, shallowLinks = false): string | null {
     const allowedRoots = loadManagedPolicy()?.allowedFolderRoots?.map((r) => this.nf(r))
     const normalized = this.nf(folder)
     if (this.win) {
+      let winCtx = this.win.context(allowedRoots)
+      // Disparador de Rutinas (`shallowLinks`): solo se vigila la carpeta (sin recursión) y los enlaces de dentro se ignoran, así
+      // que se comprueban los ancestros y la propia carpeta, NO los miles de entradas de dentro (se llamaría en cada tick).
+      if (shallowLinks && winCtx?.links) winCtx = { ...winCtx, links: { lstat: winCtx.links.lstat, readdir: () => [] } }
       return folderPolicyReason(
         normalized,
-        {
-          home: this.win.home(),
-          userData: this.nf(app.getPath('userData')),
-          mounts: [],
-          allowedRoots,
-          win: this.win.context(allowedRoots)
-        },
+        { home: this.win.home(), userData: this.nf(app.getPath('userData')), mounts: [], allowedRoots, win: winCtx },
         'win32'
       )
     }
@@ -424,7 +422,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** Motivo por el que la política de carpetas no admite `folder` (disparadores de Rutinas), o null. */
   folderForbidden(folder: string): string | null {
-    return this.forbidden(this.nf(folder))
+    return this.forbidden(this.nf(folder), true)
   }
 
   approveFolder(folder: string): TasksFolder {

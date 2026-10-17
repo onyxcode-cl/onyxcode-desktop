@@ -73,8 +73,8 @@ export function watchFolderReason(
   const win = platform === 'win32'
   if (typeof folder !== 'string' || folder.length === 0 || folder.length > 1024 || folder.includes('\0')) return 'notAbsolute'
   const winAbs = /^[a-zA-Z]:[\\/]/.test(folder)
-  if (win ? !winAbs && !folder.startsWith('\\\\') : !folder.startsWith('/')) return 'notAbsolute'
-  if (win && (folder.startsWith('\\\\') || folder.startsWith('//'))) return 'network' // UNC / \\?\ / \\.\
+  if (win && (folder.startsWith('\\\\') || folder.startsWith('//'))) return 'network' // UNC / \\?\ / \\.\ (también con barras normales)
+  if (win ? !winAbs : !folder.startsWith('/')) return 'notAbsolute'
   if (folder.split(/[\\/]+/).includes('..')) return 'dotdot'
   const norm = (p: string): string => {
     const s = p.replace(/[\\/]+/g, '/').replace(/\/$/, '')

@@ -6,7 +6,7 @@
  *
  * El acceso al disco entra inyectado (`FsLike`) para probar el ciclo de vida sin tocar el sistema de archivos.
  */
-import { closeSync, lstatSync, openSync, readdirSync, realpathSync, watch as fsWatch, type FSWatcher } from 'node:fs'
+import { closeSync, lstatSync, openSync, readdirSync, realpathSync, statSync, watch as fsWatch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
 import type { RoutineFileSchedule, ScheduledRoutine } from '@shared/ipc-tasks'
 import { FileTriggerEngine, type FileStat, type FileTriggerSnapshot } from './file-trigger'
@@ -22,6 +22,8 @@ export interface FsLike {
   lstat(p: string): FileStat | null
   list(dir: string): string[]
   canOpen(p: string): boolean
+  /** ¿Existe y es una carpeta? Opcional: sin ella la validación usa `node:fs` (las pruebas de Windows la inyectan). */
+  isDirectory?(p: string): boolean
 }
 
 export const nodeFs: FsLike = {
@@ -50,6 +52,13 @@ export const nodeFs: FsLike = {
     try {
       closeSync(openSync(p, 'r'))
       return true
+    } catch {
+      return false
+    }
+  },
+  isDirectory(p) {
+    try {
+      return statSync(p).isDirectory()
     } catch {
       return false
     }

@@ -26,7 +26,7 @@ import { getLang, t } from '@shared/i18n'
 import { app, Notification, powerMonitor } from 'electron'
 import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { createOpencodeClient, type AssistantMessage, type Message, type OpencodeClient, type Part } from '@opencode-ai/sdk/v2/client'
@@ -56,7 +56,7 @@ import { decideUnattended } from './approvals'
 import { pickRoutineModel } from './model'
 import { nextRunAfter, missedRuns, validateSchedule } from './schedule'
 import { buildFilePrompt, isSameOrInside, parsePatterns, watchFolderReason } from './file-trigger'
-import { FileWatchManager, type FsLike } from './file-watch-manager'
+import { FileWatchManager, nodeFs, type FsLike } from './file-watch-manager'
 
 const TICK_MS = 30_000
 const FIRST_TICK_DELAY_MS = 8_000
@@ -92,6 +92,12 @@ export interface RoutineTasksPort {
   canStartFullAccess(folder: string): boolean
   /** Motivo por el que la política de carpetas no admite `folder` (ya normalizada por el gestor), o null. */
   folderForbidden?(folder: string): string | null
+  /**
+   * Relee lo asíncrono de la política de carpetas (en Windows, las unidades: la política es síncrona y solo vale con una lectura
+   * reciente). Sin esto, validar la carpeta vigilada fallaba cerrado («no se pudo comprobar la política») salvo justo después de
+   * haber aprobado una carpeta en Tareas. Nunca debe lanzar.
+   */
+  refreshPolicy?(): Promise<void>
   start(folder: string, fullAccess: boolean): Promise<{ baseUrl: string; authorization: string; folder: string; directory?: string }>
   folderSet(folder: string): TasksFolderSet
   networkAllowOnce(folder: string, host: string): void
@@ -122,6 +128,10 @@ export interface SchedulerDeps {
   deliverables?: (folder: string, since: number) => string[]
   /** Acceso al sistema de archivos del disparador por archivo (solo pruebas). */
   watchFs?: FsLike
+  /** Plataforma efectiva de la validación de carpetas vigiladas (pruebas con rutas de Windows); por defecto `process.platform`. */
+  platform?: NodeJS.Platform
+  /** Carpeta personal (pruebas); por defecto `os.homedir()`. */
+  homeDir?: string
   /** Carpeta de datos de la app (para rechazarla como carpeta vigilada); por defecto `app.getPath('userData')`. */
   userDataDir?: string
 }
@@ -341,6 +351,28 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     return Math.max(r.lastRun ?? 0, r.updatedAt, r.missedHandledAt ?? 0)
   }
 
+  /**
+   * Prepara la validación de carpetas vigiladas: relee la política (Windows: unidades) y luego sincroniza los vigilantes.
+   * Solo cuesta algo si hay rutinas por archivo activas. Sin `refreshPolicy` (macOS, pruebas) es síncrono.
+   */
+  private hasFileRoutines(): boolean {
+    return this.load().routines.some((r) => r.enabled && r.schedule.kind === 'file')
+  }
+
+  /** Relee la política de carpetas del gestor de Tareas (si la plataforma la necesita). Nunca lanza. */
+  async refreshFolderPolicy(): Promise<void> {
+    try {
+      await this.deps.tasks.refreshPolicy?.()
+    } catch {
+      // la política queda sin contexto y falla cerrado
+    }
+  }
+
+  private async syncWatchersFresh(): Promise<void> {
+    if (this.started && this.deps.tasks.refreshPolicy && this.hasFileRoutines()) await this.refreshFolderPolicy()
+    this.syncWatchers()
+  }
+
   private emitChanged(): void {
     this.syncWatchers()
     this.emit('changed', this.list())
@@ -362,26 +394,38 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
   // ───────────── disparador por archivo ─────────────
 
+  /** ¿Existe y es una carpeta? (con el disco inyectado en pruebas). */
+  private isDirectory(p: string): boolean {
+    const fs = this.deps.watchFs
+    if (fs?.isDirectory) return fs.isDirectory(p)
+    try {
+      return statSync(p).isDirectory()
+    } catch {
+      return false
+    }
+  }
+
   /** Motivo por el que la carpeta vigilada no sirve ahora mismo (mensaje ya traducido), o null. */
   private fileFolderProblem(r: ScheduledRoutine, s: RoutineFileSchedule): string | null {
-    const ctx = { home: homedir(), userData: this.deps.userDataDir ?? app.getPath('userData') }
+    const ctx = {
+      home: this.deps.homeDir ?? homedir(),
+      userData: this.deps.userDataDir ?? app.getPath('userData'),
+      platform: this.deps.platform
+    }
     const reason = watchFolderReason(s.folder, ctx)
     if (reason) return t(`merr.routine.fileFolder.${reason}` as 'merr.routine.fileFolder.root')
-    try {
-      if (!statSync(s.folder).isDirectory()) return t('merr.task.noFolder', { folder: s.folder })
-    } catch {
-      return t('merr.task.noFolder', { folder: s.folder })
-    }
+    const fs = this.deps.watchFs ?? nodeFs
+    if (!this.isDirectory(s.folder)) return t('merr.task.noFolder', { folder: s.folder })
     // Una carpeta enlazada fuera de lo permitido no cuela: se comprueba también la ruta real.
     try {
-      const real = realpathSync(s.folder)
+      const real = fs.realpath(s.folder)
       if (real !== s.folder && watchFolderReason(real, ctx)) return t('merr.routine.fileFolder.root')
     } catch {
       return t('merr.task.noFolder', { folder: s.folder })
     }
     if (r.mode !== 'chat') {
       // Tareas y Code: la carpeta vigilada es la de la rutina (autorizada) o una dentro de ella.
-      if (!r.folder || !isSameOrInside(s.folder, r.folder)) return t('merr.routine.fileFolderOutside')
+      if (!r.folder || !isSameOrInside(s.folder, r.folder, this.deps.platform)) return t('merr.routine.fileFolderOutside')
       if (r.mode === 'tasks' && r.fullAccess !== true && !this.deps.tasks.isApproved(r.folder)) return t('merr.routine.folderNotAuthorized')
     }
     return this.deps.tasks.folderForbidden?.(s.folder) ?? null
@@ -434,7 +478,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const folder = input.folder?.trim() || null
     if (input.mode !== 'chat') {
       if (!folder) throw new Error(t('merr.routine.needsFolder'))
-      if (!existsSync(folder) || !statSync(folder).isDirectory()) throw new Error(t('merr.task.noFolder', { folder }))
+      if (!this.isDirectory(folder)) throw new Error(t('merr.task.noFolder', { folder }))
       // Control total no confina a una carpeta: no exige que esté autorizada para Sandbox (sí el consentimiento del equipo).
       if (input.mode === 'tasks' && input.fullAccess !== true && !this.deps.tasks.isApproved(folder)) {
         throw new Error(t('merr.routine.folderNotAuthorized'))
@@ -574,7 +618,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (this.timer) return
     this.load()
     this.started = true
-    this.syncWatchers()
+    if (this.deps.tasks.refreshPolicy && this.hasFileRoutines()) void this.syncWatchersFresh()
+    else this.syncWatchers()
     setTimeout(() => void this.tick(), FIRST_TICK_DELAY_MS)
     this.timer = setInterval(() => void this.tick(), TICK_MS)
     const onResume = (): void => void this.tick()
@@ -603,7 +648,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const now = Date.now()
     const first = this.firstTick
     this.firstTick = false
-    this.syncWatchers() // reintenta carpetas que estaban desconectadas y respeta el aviso de términos
+    await this.syncWatchersFresh() // reintenta carpetas que estaban desconectadas y respeta el aviso de términos
     // Sin el reconocimiento del aviso sobre los términos de OpenCode no se ejecuta nada por horario.
     // «Ejecutar ahora» (`runNow`) no pasa por aquí y sigue funcionando siempre.
     if (!shouldRunUnattended(this.deps.getSettings?.())) {
