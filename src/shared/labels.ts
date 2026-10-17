@@ -17,6 +17,9 @@ export const MODE_LABELS = {
   },
   get routines() {
     return t('labels.mode.routines')
+  },
+  get gallery() {
+    return t('labels.mode.gallery')
   }
 }
 

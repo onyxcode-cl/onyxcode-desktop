@@ -3,7 +3,8 @@
 // Arranca la app compilada (`out/`, carga por lazunox://app) con un userData TEMPORAL, un OpenCode falso y datos inventados;
 // captura por CDP (`Page.captureScreenshot`, 2x). No toca la app instalada, su userData, su cloudflared ni el motor real.
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { deflateSync } from 'node:zlib'
 import { createRequire } from 'node:module'
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
@@ -19,6 +20,10 @@ const DEFAULT_OUT = WIN
   ? join(tmpdir(), 'shots-desktop')
   : '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
+  // Galería «Lo que has creado» (modo propio de la barra lateral): `galeria-vacia` va primero (la carpeta del Chat aún no tiene archivos);
+  // `galeria` siembra archivos de muestra con fechas distintas, borra uno para mostrar «Archivo no encontrado» y abre la galería.
+  'galeria-vacia',
+  'galeria',
   // Pantalla «Preparando Lazunox» (revisión de arranque, simulada con LAZUNOX_TEST_PREFLIGHT): `preparando` = primer uso con el motor
   // listo (ArtCraft y avisos de macOS opcionales, «Más tarde»); `preparando-motor` = sin motor (lo único que bloquea).
   'preparando',
@@ -113,7 +118,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -931,7 +936,100 @@ async function makeOfficeFixtures(dir) {
   return ['informe-trimestre.docx', 'ventas-2026.xlsx', 'presentacion-resultados.pptx'].map((n) => join(dir, n))
 }
 
+// PNG de muestra (degradado) armado a mano: sin binarios versionados ni dependencias.
+function makePng(w, h, [r, g, b]) {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    return c >>> 0
+  })
+  const crc = (buf) => {
+    let c = 0xffffffff
+    for (const x of buf) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8)
+    return (c ^ 0xffffffff) >>> 0
+  }
+  const chunk = (type, data) => {
+    const t = Buffer.from(type)
+    const len = Buffer.alloc(4)
+    len.writeUInt32BE(data.length)
+    const sum = Buffer.alloc(4)
+    sum.writeUInt32BE(crc(Buffer.concat([t, data])))
+    return Buffer.concat([len, t, data, sum])
+  }
+  const raw = Buffer.alloc((w * 3 + 1) * h)
+  for (let y = 0; y < h; y++) {
+    const row = y * (w * 3 + 1)
+    for (let x = 0; x < w; x++) {
+      raw[row + 1 + x * 3] = Math.round(r * (0.4 + (0.6 * x) / w))
+      raw[row + 2 + x * 3] = Math.round(g * (0.4 + (0.6 * y) / h))
+      raw[row + 3 + x * 3] = b
+    }
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(w, 0)
+  ihdr.writeUInt32BE(h, 4)
+  ihdr[8] = 8
+  ihdr[9] = 2
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))])
+}
+
 const S = {
+  async 'galeria-vacia'(ctx) {
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Lo que has creado')
+    await vis(ctx.page.locator('[data-gallery-empty]'), 15_000)
+    await sleep(500)
+    // Vuelve a Chat para que el siguiente escenario parta de donde siempre.
+    return async () => goMode(ctx.page, 'Chat')
+  },
+  async galeria(ctx) {
+    await closeOverlays(ctx.page)
+    const dir = join(ctx.userData, 'chat-workspace')
+    mkdirSync(dir, { recursive: true })
+    const office = await makeOfficeFixtures(join(ctx.userData, 'office-muestras'))
+    const day = 24 * 3600_000
+    const at = (file, ago, hours = 0) => {
+      const t = new Date(Date.now() - ago * day - hours * 3600_000)
+      utimesSync(file, t, t)
+    }
+    const put = (name, content, ago, hours) => {
+      const f = join(dir, name)
+      writeFileSync(f, content)
+      at(f, ago, hours)
+      return f
+    }
+    const copy = (src, name, ago, hours) => {
+      const f = join(dir, name)
+      copyFileSync(src, f)
+      at(f, ago, hours)
+    }
+    copy(office[0], 'Cotización flota Transportes Maule.docx', 0, 1)
+    copy(office[1], 'Presupuesto octubre.xlsx', 1)
+    copy(office[2], 'Renovaciones cuarto trimestre.pptx', 3)
+    put('Foto del taller.png', makePng(240, 160, [90, 120, 220]), 3, 5)
+    put(
+      'Página de cotización Seguros del Sur.html',
+      '<!doctype html><html><head><title>Seguros del Sur</title></head><body><h1>Cotiza en minutos</h1></body></html>',
+      5
+    )
+    put('Notas de la reunión.md', '# Notas de la reunión del lunes\n\n- Revisar renovaciones\n- Llamar al taller\n', 9)
+    copy(office[0], 'Acta reunión semanal.docx', 12)
+    copy(office[1], 'Gastos comunes Los Aromos.xlsx', 15)
+    put('Informe de siniestros de septiembre.pdf', '%PDF-1.4\n' + 'x'.repeat(120_000), 18)
+    put('Se borrará.docx', 'PK', 2)
+    await goMode(ctx.page, 'Lo que has creado')
+    await vis(ctx.page.locator('[data-gallery-card]'), 15_000)
+    // El archivo borrado después de indexarse sale como «Archivo no encontrado».
+    rmSync(join(dir, 'Se borrará.docx'))
+    await goMode(ctx.page, 'Chat')
+    await goMode(ctx.page, 'Lo que has creado')
+    await vis(ctx.page.locator('[data-missing]'), 15_000)
+    await sleep(900)
+    // La tarjeta con foco muestra «Ver aquí» / «Abrir con tu programa» / «Mostrar en la carpeta» (como la maqueta).
+    await ctx.page.locator('[data-gallery-card] button').first().focus()
+    await sleep(300)
+    return async () => goMode(ctx.page, 'Chat')
+  },
   async 'chat-vacio'(ctx) {
     await closeOverlays(ctx.page)
     await newChat(ctx.page)

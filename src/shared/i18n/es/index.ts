@@ -22,6 +22,7 @@ import { mobileShell } from './mobileShell'
 import { viewer } from './viewer'
 import { memory } from './memory'
 import { importSettings } from './importSettings'
+import { gallery } from './gallery'
 
 export const es = {
   ...common,
@@ -47,7 +48,8 @@ export const es = {
   ...mobileShell,
   ...viewer,
   ...memory,
-  ...importSettings
+  ...importSettings,
+  ...gallery
 }
 
 export const AREAS = {
@@ -74,5 +76,6 @@ export const AREAS = {
   mobileShell,
   viewer,
   memory,
-  importSettings
+  importSettings,
+  gallery
 }

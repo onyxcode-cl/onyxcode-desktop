@@ -1826,6 +1826,25 @@ Ajustes › Importar trae a Lazunox las instrucciones de un proyecto y servidore
 - **Control remoto:** `extras:import:pick` y `extras:import:apply` son clase **X** (`policy.ts`; el celular no importa). La sección está oculta en la superficie remota.
 - **No cubierto:** configuraciones en TOML; resolución de `${VAR}` del origen; las referencias `{env:…}` dependen de que la variable exista en el entorno de la app (una app abierta desde el Finder no hereda las de la terminal: se pueden definir editando el conector en MCP).
 
+## 3 quinquagies quinquies. Galería «Lo que has creado» (F8-B180)
+
+Nuevo ítem de la barra lateral (modo `gallery`, solo escritorio) que junta en tarjetas lo que la IA creó en Chat y en Overdrive. No agrega permisos nuevos: reutiliza la validación de `files/chat-files.ts` (ruta absoluta, `realpath` dentro de carpetas permitidas, archivos regulares, nombres de secretos fuera, ejecutables y lanzadores sin ver ni abrir; `.js`/`.svg` sin abrir con el sistema) y los canales `extras:chatFile:{viewNative,read,open,reveal}` para «Ver aquí», «Abrir con tu programa» y «Mostrar en la carpeta».
+
+| Qué | Dónde | Quién puede | Límite |
+| --- | --- | --- | --- |
+| Lista (`extras:gallery:list`), miniatura (`extras:gallery:thumb`), «Quitar de la lista» (`extras:gallery:remove`) | `main/files/gallery*.ts`, `main/ipc/extras-handlers.ts` | Solo la ventana principal; celular **X** (`remote/policy.ts`) | Esquema estricto (`pathReq`, la lista no recibe nada); tope de 500 entradas |
+| Índice local | `userData/gallery-index.json` (0600, escritura atómica) | Solo main | Ruta, tipo, fecha, origen, sesión/carpeta y título; nunca contenido. Todo lo leído del disco se revisa campo a campo; un archivo roto se ignora |
+| Fuentes | (1) documentos generados en Chat, al crearlos; (2) archivos de `userData/chat-workspace` y de los «abiertos aparte», al abrir la galería (recorrido de 3 niveles y 600 entradas, sin ocultos); (3) entregables de `tasks:deliverables` (Overdrive), que ya exigen carpeta autorizada; (4) archivos guardados con «Descargar/Guardar» | Cada alta se valida igual que una acción | Nada fuera de esas fuentes: la galería no recorre carpetas del usuario |
+| Overdrive | La entrada guarda su carpeta autorizada (`root`); en cada lista y en cada acción se vuelve a preguntar a `TasksManager.assertInsideApproved` | Si se revoca la carpeta, los archivos pasan a «Archivo no encontrado» y dejan de poder verse/abrirse | Solo ese archivo, dentro de esa carpeta |
+| «Descargar/Guardar» | El destino lo elige la persona con el diálogo nativo; la entrada autoriza **ese archivo exacto** (`root` = el propio archivo), no su carpeta | Ver/abrir/mostrar solo ese archivo | Un archivo vecino de la misma carpeta sigue sin estar permitido |
+| Miniaturas | Imágenes PNG/JPG/GIF/WebP/BMP de hasta 10 MB, reducidas a 320 px con `nativeImage` y guardadas en `userData/gallery-thumbs` (máx. 600 archivos, 256 KB cada una); texto/Markdown/HTML: primera línea de los primeros 4 KB, que la interfaz pinta como texto | Solo main | Sin red; Office y PDF **no** se renderizan (ni con programas externos): la interfaz dibuja un ícono por tipo. SVG no tiene miniatura |
+
+- «Quitar de la lista» no borra el archivo: lo saca del índice y el recorrido automático no lo vuelve a traer.
+- Un archivo borrado o movido sale con «Archivo no encontrado» y la opción de quitarlo; no se intenta rastrearlo.
+- Los documentos temporales del Chat (`lazunox-chat-docs`) los barre la app a las 24 h o al cerrar la conversación: su entrada pasa a «no encontrado» (solo «Descargar» o «Abrir aparte» los deja en una ruta duradera).
+- «Ver aquí» cambia a Chat y abre el panel de siempre (con una conversación nueva el panel usa el id `galeria` solo para cerrar la vista nativa).
+- No verificado: Windows real (solo rutas de Windows inyectadas en las pruebas), miles de archivos reales, Overdrive con carpetas autorizadas reales.
+
 ## 3 quinquagies quater. Modos de permisos de Code (F8-B179)
 
 Los modos del chip («Preguntar siempre», «Editar sin preguntar», «Solo explorar», «Automático», «Todo sin preguntar») no los aplica la app: **solo escribe reglas en la sesión del motor** y el motor decide. Qué hace el motor 1.19.0 (verificado con el motor real, `docs/estudio-competencia/permisos-arreglo.md`):

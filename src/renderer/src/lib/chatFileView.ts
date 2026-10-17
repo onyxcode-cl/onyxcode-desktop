@@ -6,8 +6,22 @@ import type { ChatFileInfo } from '@shared/ipc-extras'
 
 let handler: ((info: ChatFileInfo) => void) | null = null
 
+let pending: ChatFileInfo | null = null
+
 export function setChatFileViewHandler(fn: ((info: ChatFileInfo) => void) | null): void {
   handler = fn
+  // Un archivo pedido desde otro modo (la galería) espera a que el Chat monte su panel.
+  if (fn && pending) {
+    const info = pending
+    pending = null
+    fn(info)
+  }
+}
+
+/** Como `viewChatFile`, pero si el Chat todavía no está en pantalla deja el pedido pendiente hasta que monte su panel. */
+export function requestViewChatFile(info: ChatFileInfo): void {
+  if (handler) handler(info)
+  else pending = info
 }
 
 /** `true` si había un panel de chat al que mostrarle el archivo. */

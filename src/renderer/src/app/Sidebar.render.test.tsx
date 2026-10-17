@@ -26,17 +26,17 @@ describe('barra lateral de escritorio (riel + lista, maqueta B)', () => {
   const railOf = (html: string): string => html.slice(html.indexOf('<aside'), html.indexOf('</aside>'))
   const listOf = (html: string): string => html.slice(html.indexOf('data-list'))
 
-  it('el riel lleva los cuatro modos como botones de ícono con nombre accesible; el activo lleva aria-current', () => {
+  it('el riel lleva los cinco modos (el último, la galería «Lo que has creado») como botones de ícono con nombre accesible; el activo lleva aria-current', () => {
     seed({ mode: 'code', settingsOpen: false })
     const rail = railOf(render())
     expect(rail).toContain('w-14')
     expect(rail.match(/<nav aria-label="Modo"[^>]*>/g)).toHaveLength(1)
     const nav = rail.slice(rail.indexOf('<nav aria-label="Modo"'), rail.indexOf('</nav>'))
-    expect(nav.match(/<button/g)).toHaveLength(4)
-    expect(nav.match(/<svg/g)).toHaveLength(4)
-    for (const name of ['Chat', 'Code', 'Overdrive', 'Rutinas']) expect(nav).toContain(`aria-label="${name}"`)
+    expect(nav.match(/<button/g)).toHaveLength(5)
+    expect(nav.match(/<svg/g)).toHaveLength(5)
+    for (const name of ['Chat', 'Code', 'Overdrive', 'Rutinas', 'Lo que has creado']) expect(nav).toContain(`aria-label="${name}"`)
     // Solo íconos: ningún nombre como texto visible dentro del riel.
-    expect(nav).not.toMatch(/>(Chat|Code|Overdrive|Rutinas)</)
+    expect(nav).not.toMatch(/>(Chat|Code|Overdrive|Rutinas|Lo que has creado)</)
     expect(nav.match(/aria-current="page"/g)).toHaveLength(1)
     expect(nav).toMatch(/aria-label="Code" aria-current="page"/)
     expect(nav).toContain('bg-active text-fg')

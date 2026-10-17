@@ -1,7 +1,7 @@
 /** Tipos de dominio compartidos entre main, preload y renderer. */
 import type { LangPref } from './i18n'
 
-export type ModeId = 'chat' | 'code' | 'tasks' | 'routines'
+export type ModeId = 'chat' | 'code' | 'tasks' | 'routines' | 'gallery'
 
 export type ThemePreference = 'system' | 'light' | 'dark'
 

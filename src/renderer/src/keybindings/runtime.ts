@@ -91,6 +91,7 @@ const BUILTIN: Record<string, ActionHandler> = {
   'mode.code': goMode('code'),
   'mode.tasks': goMode('tasks'),
   'mode.routines': goMode('routines'),
+  'mode.gallery': goMode('gallery'),
   'conversation.new': {
     run: () => {
       const ui = useUi.getState()

@@ -42,6 +42,7 @@ import { registerTasksSandboxHandlers } from './tasks-sandbox-handlers'
 import { registerTasksPreflightHandlers } from './tasks-preflight-handlers'
 import { createRestorePoints, registerTasksRestoreHandlers } from './tasks-restore-handlers'
 import { windowOfSender } from './sender-window'
+import { configureGalleryOverdrive, galleryRecordOverdrive } from '../files/gallery-runtime'
 
 export interface TasksHandlerDeps {
   /** Conexión al sidecar principal (p.ej. `() => server.start()`). */
@@ -174,7 +175,16 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     await tasks.revokeFullAccessConsent()
     return tasks.fullAccessState()
   })
-  handle('tasks:deliverables', ({ folder, since }) => tasks.deliverables(folder, since))
+  // Galería «Lo que has creado»: Overdrive solo aporta carpetas que él mismo autoriza (se revalida al listar y al abrir).
+  configureGalleryOverdrive((root) => {
+    tasks.assertInsideApproved(root)
+    return true
+  })
+  handle('tasks:deliverables', ({ folder, since }) => {
+    const files = tasks.deliverables(folder, since)
+    galleryRecordOverdrive(folder, files)
+    return files
+  })
   handle('tasks:reveal', ({ path }) => {
     shell.showItemInFolder(tasks.assertInsideApproved(path))
   })

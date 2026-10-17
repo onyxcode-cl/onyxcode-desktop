@@ -118,7 +118,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   // distinto) el `rawText !== lastRawTextRef.current` ya detecta el cambio igual, sin necesitar el reseteo.
   const close = (closingSessionId: string | null): void => {
     const extras = getExtras()
-    if (extras && closingSessionId) void extras.invoke('extras:chatDoc:close', { sessionId: closingSessionId }).catch(() => undefined)
+    if (extras) void extras.invoke('extras:chatDoc:close', { sessionId: closingSessionId ?? 'galeria' }).catch(() => undefined)
     setOpen(false)
     setCreating(false)
     setFullscreen(false)
@@ -207,8 +207,9 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   const openFile = useCallback(
     (info: ChatFileInfo): void => {
       const extras = getExtras()
-      const sid = sessionRef.current
-      if (!extras || !sid) return
+      // Sin conversación abierta (se llega desde la galería) el panel usa un id propio solo para cerrar/limpiar la vista.
+      const sid = sessionRef.current ?? 'galeria'
+      if (!extras) return
       const fail = (mode: 'native' | 'inline', error: NonNullable<ChatFileView['error']>): void =>
         setFile({ info, mode, status: 'error', content: null, error })
       const native = /\.(pdf|docx|xlsx|pptx)$/i.test(info.name)

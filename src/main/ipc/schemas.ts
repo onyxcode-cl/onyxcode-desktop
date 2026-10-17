@@ -984,6 +984,9 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:chatFile:viewNative': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark') }),
   'extras:chatFile:open': pathReq,
   'extras:chatFile:reveal': pathReq,
+  'extras:gallery:list': none,
+  'extras:gallery:thumb': pathReq,
+  'extras:gallery:remove': pathReq,
   'extras:exportConversation': exportConversationReq,
   'extras:downloadChatDoc': tagged('kind', {
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
