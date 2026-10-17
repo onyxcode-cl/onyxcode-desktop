@@ -264,7 +264,7 @@ export type CompareMode = 'code' | 'chat'
  * automático programado; con `retryAt` == null ya se agotó (o el motor insistió) y el proveedor queda en pausa hasta `compare:retry`.
  */
 export type CompareColumnState = 'queued' | 'starting' | 'running' | 'done' | 'error' | 'rateLimited' | 'cancelled'
-/** Modo de permisos de las sesiones de la comparación: `bypass` NO existe aquí (main lo rebaja a `auto`). */
+/** Modo de permisos de las sesiones de la comparación: mismos valores que Code, salvo «Solo explorar». */
 export type ComparePermissionMode = 'manual' | 'acceptEdits' | 'auto' | 'bypass'
 export type CompareErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
 
@@ -334,7 +334,7 @@ export interface CompareManifest {
   createdAt: number
   /** 200 caracteres como máximo, ya redactado. */
   promptPreview: string
-  /** Modo efectivo (con `bypass` ya rebajado a `auto`). */
+  /** Modo efectivo. */
   permissionMode: ComparePermissionMode
   /** Proveedores con la cola en pausa por cuota (`compare:retry` los reanuda). */
   pausedProviders: string[]

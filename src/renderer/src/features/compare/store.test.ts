@@ -212,7 +212,7 @@ describe('lanzamiento (requestCompare / confirmStart)', () => {
     cancelConfirm()
     expect(await p).toBe(false)
   })
-  it('Code: consulta preflight, avisa de cambios sin guardar y lanza al confirmar; `bypass` y `plan` se rebajan', async () => {
+  it('Code: consulta preflight, avisa de cambios sin guardar y lanza al confirmar; `plan` se rebaja a Preguntar siempre', async () => {
     ;(fake.api.preflight as ReturnType<typeof vi.fn>).mockResolvedValue({
       repo: true,
       root: '/repo',

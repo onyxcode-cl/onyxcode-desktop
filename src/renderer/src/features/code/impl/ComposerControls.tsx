@@ -4,7 +4,7 @@
  * Los menús se abren hacia arriba porque el compositor vive al fondo de la ventana.
  */
 import { useDismiss } from '../../../lib/use-dismiss'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AtSign, Brain, Check, CircleSlash, Hammer, ListChecks, MoreHorizontal, Paperclip, PencilLine, Shield, Wand2 } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
@@ -22,10 +22,22 @@ import type { PermissionMode } from './types'
 
 const PERMISSION_MODES: { id: PermissionMode; label: MsgKey; hint: MsgKey; short: MsgKey; icon: React.JSX.Element }[] = [
   { id: 'manual', label: 'code.mode.manual', hint: 'code.mode.manual.hint', short: 'code.mode.manual.short', icon: <Shield size={14} /> },
-  { id: 'acceptEdits', label: 'code.mode.acceptEdits', hint: 'code.mode.acceptEdits.hint', short: 'code.mode.acceptEdits.short', icon: <PencilLine size={14} /> },
+  {
+    id: 'acceptEdits',
+    label: 'code.mode.acceptEdits',
+    hint: 'code.mode.acceptEdits.hint',
+    short: 'code.mode.acceptEdits.short',
+    icon: <PencilLine size={14} />
+  },
   { id: 'plan', label: 'code.mode.plan', hint: 'code.mode.plan.hint', short: 'code.mode.plan.short', icon: <ListChecks size={14} /> },
   { id: 'auto', label: 'code.mode.auto', hint: 'code.mode.auto.hint', short: 'code.mode.auto.short', icon: <Wand2 size={14} /> },
-  { id: 'bypass', label: 'code.mode.bypass', hint: 'code.mode.bypass.hint', short: 'code.mode.bypass.short', icon: <CircleSlash size={14} /> }
+  {
+    id: 'bypass',
+    label: 'code.mode.bypass',
+    hint: 'code.mode.bypass.hint',
+    short: 'code.mode.bypass.short',
+    icon: <CircleSlash size={14} />
+  }
 ]
 
 /** Modelo pedido (el elegido en Code o el predeterminado) resuelto contra las IA conectadas. */
@@ -73,8 +85,20 @@ function MenuItem({
 export function PermissionChip(): React.JSX.Element {
   const t = useT()
   const mode = useCode((s) => s.permissionMode)
-  const setPermissionMode = useCode((s) => s.setPermissionMode)
   const current = PERMISSION_MODES.find((m) => m.id === mode) ?? PERMISSION_MODES[0]
+  // El motor lee las reglas de la sesión al EMPEZAR cada respuesta: con una en curso, el cambio vale desde el próximo mensaje.
+  const [notice, setNotice] = useState(false)
+  useEffect(() => {
+    if (!notice) return
+    const id = setTimeout(() => setNotice(false), 6000)
+    return () => clearTimeout(id)
+  }, [notice])
+  const pick = (id: string): void => {
+    const st = useCode.getState()
+    const running = st.activeSessionID ? st.runState[st.activeSessionID] === 'busy' : false
+    setNotice(running)
+    void st.setPermissionMode(id as PermissionMode)
+  }
   return (
     <ChipMenu
       name={t('code.mode.title')}
@@ -85,6 +109,8 @@ export function PermissionChip(): React.JSX.Element {
       collapseClass="inline desk:@max-[30rem]:sr-only"
       shortClass="hidden desk:@max-[30rem]:inline"
       testId="permission-chip"
+      note={t('code.mode.note')}
+      notice={notice ? t('code.mode.laterNotice') : undefined}
       options={PERMISSION_MODES.map((m) => ({
         id: m.id,
         label: t(m.label),
@@ -93,7 +119,7 @@ export function PermissionChip(): React.JSX.Element {
         icon: m.icon,
         tone: m.id === 'bypass' ? 'danger' : undefined
       }))}
-      onSelect={(id) => void setPermissionMode(id as PermissionMode)}
+      onSelect={pick}
     />
   )
 }

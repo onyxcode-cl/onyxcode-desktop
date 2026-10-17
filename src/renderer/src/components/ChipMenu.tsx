@@ -56,6 +56,10 @@ interface Props {
   /** Hacia dónde abre el menú; la composición vive abajo, así que por defecto arriba. */
   align?: 'left' | 'right'
   disabled?: boolean
+  /** Nota corta al pie del menú (p. ej. lo que se pregunta siempre, sea cual sea la opción). */
+  note?: string
+  /** Aviso breve junto al chip (se muestra mientras exista; quien lo pasa decide cuándo quitarlo). */
+  notice?: string
   /** Ancla de pruebas. */
   testId?: string
   className?: string
@@ -78,6 +82,8 @@ export function ChipMenu({
   chipShortcut,
   align = 'left',
   disabled,
+  note,
+  notice,
   testId,
   className = ''
 }: Props): React.JSX.Element {
@@ -150,6 +156,12 @@ export function ChipMenu({
   const full = `${name}: ${valueLabel}`
   const shortLabel = options.find((o) => o.id === value)?.shortLabel
 
+  const noteEl = note ? (
+    <div role="note" className="mt-1 border-t border-border px-2.5 pt-1.5 pb-1 text-[11px] leading-snug text-subtle desk:text-meta">
+      {note}
+    </div>
+  ) : null
+
   const items = options.map((o, n) => (
     <button
       key={o.id}
@@ -209,6 +221,7 @@ export function ChipMenu({
         <Sheet open={open} onClose={close} title={name} size="half">
           <div role="menu" aria-label={name} onKeyDown={onKeyDown} ref={menuRef} className="p-2">
             {items}
+            {noteEl}
           </div>
         </Sheet>
       ) : (
@@ -222,8 +235,18 @@ export function ChipMenu({
           >
             <div className="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold text-subtle desk:text-meta">{name}</div>
             {items}
+            {noteEl}
           </div>
         )
+      )}
+      {notice && (
+        <div
+          role="status"
+          data-testid={testId ? `${testId}-notice` : undefined}
+          className="pointer-events-none absolute bottom-full left-0 z-40 mb-2 w-max max-w-[18rem] rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[11.5px] leading-snug text-muted shadow-lg desk:text-meta"
+        >
+          {notice}
+        </div>
       )}
     </div>
   )

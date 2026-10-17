@@ -193,16 +193,16 @@ describe('crear una comparación en Code', () => {
     expect((await svc.preflight(parent)).repo).toBe(false)
   })
 
-  it('«bypass» se rebaja a «auto»: la sesión no permite todo', async () => {
+  it('«bypass» NO se rebaja: la sesión permite todo, igual que en Code', async () => {
     const { svc, engine } = mk({ a: {}, b: {} })
     const id = randomUUID()
     const m = await svc.start({ id, mode: 'code', cwd: repo, models: models('a', 'b'), prompt: 'p', permissionMode: 'bypass' })
-    expect(m.permissionMode).toBe('auto')
+    expect(m.permissionMode).toBe('bypass')
     await waitFor(() => allTerminal(svc, id))
     const perms = engine.calls
       .filter((c) => c.fn === 'createSession')
       .map((c) => (c.args as { permission: { permission: string; pattern: string; action: string }[] }).permission)
-    for (const p of perms) expect(p).not.toContainEqual({ permission: 'bash', pattern: '*', action: 'allow' })
+    for (const p of perms) expect(p).toContainEqual({ permission: 'bash', pattern: '*', action: 'allow' })
   })
 })
 
