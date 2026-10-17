@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { DICTIONARIES } from '@shared/i18n'
-import { buildSearchIndex, highlightParts, normalize, queryWords, searchSettings } from './search-index'
+import { buildSearchIndex, highlightParts, normalize, queryWords, searchSettings, shownText } from './search-index'
+import { SECTION_KEYS } from './section-keys'
 
 const SECTIONS = [
   { id: 'general', label: 'General', prefixes: ['settings.general.'] },
   { id: 'shortcuts', label: 'Atajos', prefixes: ['settings.shortcuts.'] },
   { id: 'import', label: 'Importar', prefixes: ['import.title', 'import.source.'] }
 ] as const
+
+const REAL = Object.entries(SECTION_KEYS).map(([id, prefixes]) => ({ id, label: id, prefixes }))
 
 describe('índice de búsqueda de Ajustes', () => {
   it('se construye solo con claves i18n del prefijo de cada sección y con su texto en el idioma activo', () => {
@@ -17,7 +20,7 @@ describe('índice de búsqueda de Ajustes', () => {
       expect(sec.prefixes.some((p) => e.key === p || e.key.startsWith(p))).toBe(true)
       const msg = DICTIONARIES.es[e.key]
       const template = typeof msg === 'string' ? msg : msg.other
-      expect(template.replace(/\{[^}]*\}/g, '…').trim()).toBe(e.text) // el texto es exactamente el del diccionario
+      expect(template.trim()).toBe(e.text) // el texto es exactamente el del diccionario, sin plantillas
     }
     const en = buildSearchIndex(SECTIONS, 'en')
     expect(en.map((e) => e.key)).toEqual(expect.arrayContaining(es.slice(0, 3).map((e) => e.key)))
@@ -64,4 +67,61 @@ describe('índice de búsqueda de Ajustes', () => {
     expect(parts.find((p) => p.hit)?.text).toBe('Conexión')
     expect(highlightParts('abc', '')).toEqual([{ text: 'abc', hit: false }])
   })
+
+  it('las plantillas con parámetros quedan fuera del índice (nada de «Clave de …»)', () => {
+    for (const lang of ['es', 'en'] as const) {
+      const idx = buildSearchIndex(REAL, lang)
+      expect(idx.some((e) => /[{}]/.test(e.text) || e.text.slice(0, -1).includes('…'))).toBe(false)
+      expect(idx.some((e) => e.key === 'models.form.keyOf' || e.key === 'models.keyTest.testing')).toBe(false)
+    }
+  })
+
+  it('shownText corta en límite de palabra, solo con «…» al final, y conserva la coincidencia', () => {
+    const long =
+      'Primera frase corta. Esta segunda oración es bastante más larga y habla de claves guardadas en un lugar protegido de tu equipo, sin compartirlas con nadie más.'
+    const w = ['claves']
+    const out = shownText(long, w, 80)
+    expect(out.length).toBeLessThanOrEqual(81)
+    expect(out.slice(0, -1)).not.toContain('…')
+    expect(normalize(out)).toContain('claves')
+    expect(shownText('Texto corto', ['corto'])).toBe('Texto corto')
+  })
+
+  it('agrupa casi-duplicados y limita con «más»', () => {
+    const dict = {
+      'a.x1': 'Abre el enlace en el navegador del celular y confirma aquí en el Mac.',
+      'a.x2': 'Abre el enlace en el navegador del celular y confirma aquí en este PC.',
+      'a.celular': 'Celular conectado',
+      'a.c2': 'Todos los celulares',
+      'a.c3': 'Filtrar por celular',
+      'a.c4': 'Esperando al celular',
+      'a.c5': 'Celulares vinculados'
+    }
+    const idx = buildSearchIndex([{ id: 'a', label: 'A', prefixes: ['a.'] }], 'es', dict)
+    const [g] = searchSettings([{ id: 'a', label: 'A', prefixes: ['a.'] }], idx, 'celular')
+    expect(g.entries).toHaveLength(4)
+    expect(g.more.length).toBe(2) // 7 coinciden: 1 casi-duplicado descartado, 4 visibles, 2 en «Ver más»
+    expect(g.entries.every((e) => e.text.length < 30)).toBe(true) // etiquetas antes que ayudas
+  })
+
+  for (const lang of ['es', 'en'] as const) {
+    const q = lang === 'es' ? ['clave', 'modelo', 'memoria', 'permisos', 'celular', 'idioma'] : ['key', 'model', 'memory', 'permissions', 'phone', 'language']
+    it(`consultas reales (${lang}): frases completas, sin «{»/«}» ni «…» en medio, y cada resultado enlaza a una opción existente`, () => {
+      const idx = buildSearchIndex(REAL, lang)
+      for (const query of q) {
+        const groups = searchSettings(REAL, idx, query, 50)
+        expect(groups.length, query).toBeGreaterThan(0)
+        for (const g of groups)
+          for (const e of [...g.entries, ...g.more]) {
+            expect(e.shown, e.key).not.toMatch(/[{}]/)
+            expect(e.shown.slice(0, -1), e.key).not.toContain('…')
+            expect(e.shown.startsWith('…'), e.key).toBe(false)
+            expect(DICTIONARIES[lang][e.key], e.key).toBeDefined()
+            expect(e.anchor.length, e.key).toBeGreaterThan(2)
+            expect(e.text.includes(e.anchor), e.key).toBe(true)
+            expect(normalize(e.shown), e.key).toContain(queryWords(query)[0])
+          }
+      }
+    })
+  }
 })

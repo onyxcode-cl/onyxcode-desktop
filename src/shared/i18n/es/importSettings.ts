@@ -13,6 +13,8 @@ export const importSettings = {
   'settings.search.empty': 'Nada coincide con «{query}»',
   'settings.search.emptyHelp': 'Prueba con otra palabra (por ejemplo «tema», «modelo» o «atajos») o elige una sección del menú.',
   'settings.search.listLabel': 'Resultados de la búsqueda en Ajustes',
+  'settings.search.more': 'Ver {count} más',
+  'settings.search.less': 'Ver menos',
 
   // Importar
   'import.title': 'Importar desde otras herramientas',

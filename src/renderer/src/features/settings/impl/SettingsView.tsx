@@ -48,6 +48,7 @@ import { RemoteSection } from './RemoteSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 import { ImportSection } from './ImportSection'
+import { SECTION_KEYS } from './section-keys'
 import { buildSearchIndex, findAnchorElement, highlightParts, searchSettings, type SearchEntry } from './search-index'
 import { getLang } from '@shared/i18n'
 
@@ -102,7 +103,7 @@ const SECTIONS: {
     label: lazy('settings.nav.general'),
     icon: SlidersHorizontal,
     View: GeneralSection,
-    keys: ['settings.general.', 'tasks.learn.', 'settings.extras.']
+    keys: SECTION_KEYS.general
   },
   {
     id: 'instructions',
@@ -110,31 +111,31 @@ const SECTIONS: {
     label: lazy('settings.nav.instructions'),
     icon: NotebookPen,
     View: InstructionsSection,
-    keys: ['instr.']
+    keys: SECTION_KEYS.instructions
   },
-  { id: 'memory', group: 'app', label: lazy('settings.nav.memory'), icon: BrainCircuit, View: MemorySection, keys: ['memory.'] },
-  { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection, keys: ['models.'] },
-  { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection, keys: ['settings.usage.'] },
+  { id: 'memory', group: 'app', label: lazy('settings.nav.memory'), icon: BrainCircuit, View: MemorySection, keys: SECTION_KEYS.memory },
+  { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection, keys: SECTION_KEYS.models },
+  { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection, keys: SECTION_KEYS.usage },
   {
     id: 'shortcuts',
     group: 'app',
     label: lazy('settings.nav.shortcuts'),
     icon: Keyboard,
     View: ShortcutsSection,
-    keys: ['settings.shortcuts.']
+    keys: SECTION_KEYS.shortcuts
   },
-  { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection, keys: ['tasksSettings.'] },
-  { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection, keys: ['misc.net.'] },
-  { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection, keys: ['misc.auto.'] },
-  { id: 'computer', group: 'agents', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection, keys: ['misc.computer.'] },
-  { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection, keys: ['misc.browser.'] },
+  { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection, keys: SECTION_KEYS.tasks },
+  { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection, keys: SECTION_KEYS.network },
+  { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection, keys: SECTION_KEYS.automode },
+  { id: 'computer', group: 'agents', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection, keys: SECTION_KEYS.computer },
+  { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection, keys: SECTION_KEYS.browser },
   {
     id: 'mcp',
     group: 'agents',
     label: lazy('settings.nav.mcp'),
     icon: Blocks,
     View: McpSection,
-    keys: ['mcp.header.', 'mcp.form.', 'mcp.catalog.', 'mcp.flags.', 'mcp.note.', 'mcp.badge.', 'mcp.add', 'mcp.refresh', 'mcp.viewFile']
+    keys: SECTION_KEYS.mcp
   },
   {
     id: 'import',
@@ -142,7 +143,7 @@ const SECTIONS: {
     label: lazy('settings.nav.import'),
     icon: Download,
     View: ImportSection,
-    keys: ['import.title', 'import.intro', 'import.source.', 'import.guarantee.']
+    keys: SECTION_KEYS.import
   },
   {
     id: 'remote',
@@ -150,7 +151,7 @@ const SECTIONS: {
     label: lazy('remote.nav'),
     icon: Smartphone,
     View: RemoteSection,
-    keys: ['remote.devices.', 'remote.qr.', 'remote.conn.', 'remote.travel.', 'remote.state.', 'remote.activity.', 'remote.title']
+    keys: SECTION_KEYS.remote
   },
   {
     id: 'diagnostics',
@@ -158,9 +159,9 @@ const SECTIONS: {
     label: lazy('settings.nav.diagnostics'),
     icon: LifeBuoy,
     View: DiagnosticsSection,
-    keys: ['misc.diag.', 'settings.doctor.']
+    keys: SECTION_KEYS.diagnostics
   },
-  { id: 'about', group: 'help', label: lazy('settings.nav.about'), icon: Info, View: AboutSection, keys: ['settings.about.'] }
+  { id: 'about', group: 'help', label: lazy('settings.nav.about'), icon: Info, View: AboutSection, keys: SECTION_KEYS.about }
 ]
 
 const KEY = 'settings.section'
@@ -228,6 +229,8 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
   const [query, setQuery] = useState('')
+  /** Secciones del buscador con «Ver N más» desplegado. */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const [active, setActive] = useState(0)
   /** Opción a la que llevar tras abrir la sección elegida en la búsqueda (`anchor`: texto fijo de la opción). */
   const [target, setTarget] = useState<{ section: SettingsSectionId; anchor: string; nonce: number } | null>(null)
@@ -257,23 +260,28 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
     [sectionIds, lang]
   )
   const groups = useMemo(() => searchSettings(searchSections, index, query), [index, query, lang]) // eslint-disable-line react-hooks/exhaustive-deps
+  const visibleEntries = (g: (typeof groups)[number]): SearchEntry<SettingsSectionId>[] =>
+    expanded.has(g.section) ? [...g.entries, ...g.more] : g.entries
   /** Resultados planos en el orden en que se pintan (para el teclado). */
   const flat = useMemo(
     () =>
       groups.flatMap((g) => [
         ...(g.titleMatch ? [{ id: `${g.section}:title`, section: g.section, anchor: '', text: g.label }] : []),
-        ...g.entries.map((e: SearchEntry<SettingsSectionId>) => ({
+        ...visibleEntries(g).map((e: SearchEntry<SettingsSectionId>) => ({
           id: `${g.section}:${e.key}`,
           section: g.section,
           anchor: e.anchor,
-          text: e.text
+          text: e.shown
         }))
       ]),
     [groups]
   )
   const searching = query.trim().length > 0
 
-  useEffect(() => setActive(0), [query])
+  useEffect(() => {
+    setActive(0)
+    setExpanded(new Set())
+  }, [query])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -475,10 +483,10 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                       const Icon = SECTIONS.find((s) => s.id === g.section)?.icon ?? Settings2
                       const rows = [
                         ...(g.titleMatch ? [{ id: `${g.section}:title`, anchor: '', text: g.label, title: true }] : []),
-                        ...g.entries.map((e: SearchEntry<SettingsSectionId>) => ({
+                        ...visibleEntries(g).map((e: SearchEntry<SettingsSectionId>) => ({
                           id: `${g.section}:${e.key}`,
                           anchor: e.anchor,
-                          text: e.text,
+                          text: e.shown,
                           title: false
                         }))
                       ]
@@ -519,6 +527,22 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                               )
                             })}
                           </ul>
+                          {g.more.length > 0 && (
+                            <button
+                              type="button"
+                              data-testid={`settings-search-more-${g.section}`}
+                              onClick={() =>
+                                setExpanded((prev) => {
+                                  const next = new Set(prev)
+                                  if (!next.delete(g.section)) next.add(g.section)
+                                  return next
+                                })
+                              }
+                              className="mt-1.5 rounded-md px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
+                            >
+                              {expanded.has(g.section) ? t('settings.search.less') : t('settings.search.more', { count: g.more.length })}
+                            </button>
+                          )}
                         </section>
                       )
                     })

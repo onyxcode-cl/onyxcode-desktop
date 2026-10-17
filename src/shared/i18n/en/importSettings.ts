@@ -15,6 +15,8 @@ export const importSettings = {
   'settings.search.empty': 'Nothing matches “{query}”',
   'settings.search.emptyHelp': 'Try another word (for example “theme”, “model” or “shortcuts”) or pick a section from the menu.',
   'settings.search.listLabel': 'Settings search results',
+  'settings.search.more': 'Show {count} more',
+  'settings.search.less': 'Show less',
 
   'import.title': 'Import from other tools',
   'import.intro':
