@@ -1,6 +1,6 @@
 /**
  * Estado y acciones de los conectores (servidores MCP) de la app, compartidos por Ajustes › Conectores y por Personalización
- * (F8-B180): una sola lógica de alta, baja, estado y conexión; cada pantalla pone su presentación.
+ * (F8-B181): una sola lógica de alta, baja, estado y conexión; cada pantalla pone su presentación.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'

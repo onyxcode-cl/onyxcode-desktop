@@ -1,5 +1,5 @@
 /**
- * Personalización (F8-B180): habilidades y conectores en una sola pantalla, con pestañas Habilidades / Conectores / Tuyos.
+ * Personalización (F8-B181): habilidades y conectores en una sola pantalla, con pestañas Habilidades / Conectores / Tuyos.
  * Una sola fuente de fichas: el catálogo empaquetado (`resources/catalogo/catalogo.json`); sin servidor ni cuentas. La lógica de
  * alta/baja/estado de conectores es la de Ajustes › Conectores (`useMcpConnections`); las habilidades pasan por `personalizacion:skills:*`.
  */

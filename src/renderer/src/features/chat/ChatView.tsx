@@ -272,77 +272,106 @@ export function ChatView(): React.JSX.Element {
     )
   }
 
+  const docFullscreen = docPanel.open && docPanel.fullscreen
+  const docPanelEl = docPanel.open && (
+    <div className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}>
+      {docPanel.file && docPanel.file.mode === 'inline' ? (
+        <ChatFilePanel
+          file={docPanel.file}
+          fullscreen={docPanel.fullscreen}
+          onToggleFullscreen={docPanel.toggleFullscreen}
+          onClose={docPanel.close}
+        />
+      ) : (
+        <ChatDocPanel
+          creating={docPanel.creating}
+          title={docPanel.title}
+          doc={docPanel.doc}
+          problem={docPanel.problem}
+          file={docPanel.file}
+          onRetry={docPanel.retry}
+          fullscreen={docPanel.fullscreen}
+          onToggleFullscreen={docPanel.toggleFullscreen}
+          onClose={docPanel.close}
+        />
+      )}
+    </div>
+  )
+
   if (!activeId) {
     return (
-      <div className="flex h-full flex-col">
-        <div className="drag h-12 shrink-0" data-mobile="hide" />
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto pb-20">
-          <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
-            <div className="relative isolate desk:hidden">
-              <div
-                className="pointer-events-none absolute inset-0 -z-10 scale-[3] rounded-full bg-[radial-gradient(closest-side,var(--accent-soft),transparent)]"
-                aria-hidden
-              />
-              <LogoMark size={44} />
+      <div className="flex h-full">
+        <div className={`flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
+          <div className="drag h-12 shrink-0" data-mobile="hide" />
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto pb-20">
+            <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
+              <div className="relative isolate desk:hidden">
+                <div
+                  className="pointer-events-none absolute inset-0 -z-10 scale-[3] rounded-full bg-[radial-gradient(closest-side,var(--accent-soft),transparent)]"
+                  aria-hidden
+                />
+                <LogoMark size={44} />
+              </div>
+              <div>
+                <h1 className="font-display text-[32px] leading-tight font-semibold tracking-[-0.02em] desk:font-[var(--font-title)] desk:leading-10">
+                  {greeting()}
+                </h1>
+                <p className="mt-1.5 text-[15px] text-muted">{t('chat.empty.prompt')}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-display text-[32px] leading-tight font-semibold tracking-[-0.02em] desk:font-[var(--font-title)] desk:leading-10">
-                {greeting()}
-              </h1>
-              <p className="mt-1.5 text-[15px] text-muted">{t('chat.empty.prompt')}</p>
+            <div className="w-full animate-rise-in [animation-delay:60ms]">
+              {home.working.length > 0 && (
+                <div className="mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]">
+                  <ChatHomeBlocks home={home} part="working" />
+                </div>
+              )}
+              {notices}
+              {composerEl(true)}
             </div>
-          </div>
-          <div className="w-full animate-rise-in [animation-delay:60ms]">
-            {home.working.length > 0 && (
+            {home.recent.length > 0 && (
               <div className="mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]">
-                <ChatHomeBlocks home={home} part="working" />
+                <ChatHomeBlocks home={home} part="resume" />
               </div>
             )}
-            {notices}
-            {composerEl(true)}
-          </div>
-          {home.recent.length > 0 && (
-            <div className="mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]">
-              <ChatHomeBlocks home={home} part="resume" />
-            </div>
-          )}
-          <HomeIdeas
-            storageKey="chat.hideIdeas"
-            className="mx-auto max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]"
-            secondary={home.hasChats}
-            label={t('chat.home.ideas')}
-            showLabel={t('chat.home.ideas.show')}
-            hideLabel={t('chat.home.ideas.hide')}
-          >
-            <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms] desk:mt-2 desk:grid desk:w-full desk:max-w-[calc(var(--measure-prose)+48px)] desk:grid-cols-4 desk:gap-3">
-              {SUGGESTIONS.slice(0, 4).map(({ icon: Icon, label, prompt }) => (
-                <button
-                  key={label}
-                  type="button"
-                  disabled={!ready}
-                  title={t(prompt)}
-                  onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
-                  className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-auto desk:flex-col desk:items-start desk:gap-2.5 desk:rounded-card desk:border-transparent desk:p-4 desk:text-left desk:shadow-sm desk:duration-[var(--dur-base)] desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover"
-                >
-                  <span className="shrink-0 desk:flex desk:h-8 desk:w-8 desk:items-center desk:justify-center desk:rounded-ctl desk:bg-active">
-                    <Icon size={14} className="text-accent desk:h-4 desk:w-4" />
-                  </span>
-                  <span className="min-w-0 desk:flex desk:flex-col">
-                    <span className="block desk:text-sm desk:leading-5 desk:font-medium desk:text-fg">{t(label)}</span>
-                    <span className="hidden desk:block desk:text-meta desk:font-normal desk:text-muted">
-                      {t(`${label}.desc` as MsgKey)}
+            <HomeIdeas
+              storageKey="chat.hideIdeas"
+              className="mx-auto max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)]"
+              secondary={home.hasChats}
+              label={t('chat.home.ideas')}
+              showLabel={t('chat.home.ideas.show')}
+              hideLabel={t('chat.home.ideas.hide')}
+            >
+              <div className="mt-1 flex max-w-2xl animate-rise-in flex-wrap justify-center gap-2 px-6 [animation-delay:120ms] desk:mt-2 desk:grid desk:w-full desk:max-w-[calc(var(--measure-prose)+48px)] desk:grid-cols-4 desk:gap-3">
+                {SUGGESTIONS.slice(0, 4).map(({ icon: Icon, label, prompt }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={!ready}
+                    title={t(prompt)}
+                    onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
+                    className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-auto desk:flex-col desk:items-start desk:gap-2.5 desk:rounded-card desk:border-transparent desk:p-4 desk:text-left desk:shadow-sm desk:duration-[var(--dur-base)] desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover"
+                  >
+                    <span className="shrink-0 desk:flex desk:h-8 desk:w-8 desk:items-center desk:justify-center desk:rounded-ctl desk:bg-active">
+                      <Icon size={14} className="text-accent desk:h-4 desk:w-4" />
                     </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </HomeIdeas>
+                    <span className="min-w-0 desk:flex desk:flex-col">
+                      <span className="block desk:text-sm desk:leading-5 desk:font-medium desk:text-fg">{t(label)}</span>
+                      <span className="hidden desk:block desk:text-meta desk:font-normal desk:text-muted">
+                        {t(`${label}.desc` as MsgKey)}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </HomeIdeas>
+          </div>
         </div>
+
+        {docPanelEl}
       </div>
     )
   }
 
-  const docFullscreen = docPanel.open && docPanel.fullscreen
   return (
     <div className="flex h-full">
       <div className={`relative flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
@@ -373,30 +402,7 @@ export function ChatView(): React.JSX.Element {
         {notices}
         {composer}
       </div>
-      {docPanel.open && (
-        <div className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}>
-          {docPanel.file && docPanel.file.mode === 'inline' ? (
-            <ChatFilePanel
-              file={docPanel.file}
-              fullscreen={docPanel.fullscreen}
-              onToggleFullscreen={docPanel.toggleFullscreen}
-              onClose={docPanel.close}
-            />
-          ) : (
-            <ChatDocPanel
-              creating={docPanel.creating}
-              title={docPanel.title}
-              doc={docPanel.doc}
-              problem={docPanel.problem}
-              file={docPanel.file}
-              onRetry={docPanel.retry}
-              fullscreen={docPanel.fullscreen}
-              onToggleFullscreen={docPanel.toggleFullscreen}
-              onClose={docPanel.close}
-            />
-          )}
-        </div>
-      )}
+      {docPanelEl}
     </div>
   )
 }

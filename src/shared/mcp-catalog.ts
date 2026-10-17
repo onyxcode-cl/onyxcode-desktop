@@ -5,7 +5,7 @@
  * El renderer solo envía id, nombre y entradas del formulario; el proceso principal construye la entrada
  * de `opencode.json` desde SU copia de este catálogo (ver `main/extras/mcp-catalog-install.ts`).
  *
- * Los datos de las fichas viven en UN archivo (`resources/catalogo/catalogo.json`, F8-B180) que comparten Ajustes › Conectores y
+ * Los datos de las fichas viven en UN archivo (`resources/catalogo/catalogo.json`, F8-B181) que comparten Ajustes › Conectores y
  * la pantalla Personalización; aquí solo están los tipos, los textos por idioma y la búsqueda por id.
  * Cada URL se verificó contra la documentación oficial del proveedor y respondiendo como servidor MCP
  * (`npm run check:mcp-catalog` lo repite a mano, con red, fuera de `verify`).

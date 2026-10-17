@@ -42,7 +42,8 @@ const MODE_KEY = 'ui.mode'
 function initialMode(): ModeId {
   try {
     const m = localStorage.getItem(MODE_KEY)
-    if (m === 'chat' || m === 'code' || m === 'tasks' || m === 'routines') return usableMode(m, currentPlatform(), currentFlags())
+    if (m === 'chat' || m === 'code' || m === 'tasks' || m === 'routines' || m === 'gallery')
+      return usableMode(m, currentPlatform(), currentFlags())
     if (m === LEGACY_MODE) return usableMode('tasks', currentPlatform(), currentFlags())
   } catch {
     // sin storage

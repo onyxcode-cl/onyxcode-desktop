@@ -1,4 +1,4 @@
-/** Pantalla Personalización (habilidades y conectores, F8-B180). Las fichas del catálogo llevan su texto en `resources/catalogo/catalogo.json`; aquí van sus traducciones. */
+/** Pantalla Personalización (habilidades y conectores, F8-B181). Las fichas del catálogo llevan su texto en `resources/catalogo/catalogo.json`; aquí van sus traducciones. */
 export const personalizacion = {
   'app.sidebar.personalization': 'Personalización',
   'app.palette.personalization': 'Personalización: habilidades y conectores',

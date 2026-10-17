@@ -1,4 +1,4 @@
-/** Personalization screen (skills and connectors, F8-B180). */
+/** Personalization screen (skills and connectors, F8-B181). */
 import type { Messages } from '../index'
 import type { personalizacion as es } from '../es/personalizacion'
 

@@ -24,6 +24,7 @@ import { memory } from './memory'
 import { importSettings } from './importSettings'
 import { personalizacion } from './personalizacion'
 import { personalizacionCatalogo } from './personalizacionCatalogo'
+import { gallery } from './gallery'
 
 export const en = {
   ...common,
@@ -51,7 +52,8 @@ export const en = {
   ...memory,
   ...importSettings,
   ...personalizacion,
-  ...personalizacionCatalogo
+  ...personalizacionCatalogo,
+  ...gallery
 }
 
 export const AREAS = {
@@ -80,5 +82,6 @@ export const AREAS = {
   memory,
   importSettings,
   personalizacion,
-  personalizacionCatalogo
+  personalizacionCatalogo,
+  gallery
 }

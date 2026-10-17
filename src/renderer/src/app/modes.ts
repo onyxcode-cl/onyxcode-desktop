@@ -6,9 +6,10 @@ import { chatMode } from '../features/chat'
 import { codeMode } from '../features/code'
 import { tasksMode } from '../features/tasks'
 import { routinesMode } from '../features/routines'
+import { galleryMode } from '../features/gallery'
 
 /** Registro de modos (orden = orden en el selector). Agregar un modo = una línea. */
-const ALL_MODES: ModeDefinition[] = [chatMode, codeMode, tasksMode, routinesMode]
+const ALL_MODES: ModeDefinition[] = [chatMode, codeMode, tasksMode, routinesMode, galleryMode]
 
 /** Los modos visibles en esta plataforma: sin Tareas en Windows (selector, paleta y atajos salen de aquí). */
 export const MODES: ModeDefinition[] = ALL_MODES.filter((m) => modeAvailable(m.id, currentPlatform(), currentFlags()))

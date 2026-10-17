@@ -1,5 +1,5 @@
 /**
- * Conectar un conector, paso a paso y en lenguaje llano (F8-B180). Nada se añade ni se conecta hasta el paso 2:
+ * Conectar un conector, paso a paso y en lenguaje llano (F8-B181). Nada se añade ni se conecta hasta el paso 2:
  *   1. «Lee esto»: qué podrá y qué NO podrá hacer, aviso de que verá tus datos y se los pasa al modelo, casilla «Entiendo».
  *   2. «Entra a tu cuenta» (o «Datos de acceso»): token (se guarda sin volver a mostrarse) o inicio de sesión en el servicio.
  *      El inicio de sesión lo hace el flujo que ya tiene el motor: la app nunca ve la contraseña.

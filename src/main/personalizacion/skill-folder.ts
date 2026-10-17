@@ -1,5 +1,5 @@
 /**
- * Lectura y validación de una carpeta de habilidad (F8-B180). SOLO lee: nunca ejecuta, importa ni interpreta nada de lo que hay
+ * Lectura y validación de una carpeta de habilidad (F8-B181). SOLO lee: nunca ejecuta, importa ni interpreta nada de lo que hay
  * dentro. Una habilidad es código de terceros para el agente (instrucciones y, a veces, programas), así que se pide una estructura
  * mínima y cerrada:
  *   - `SKILL.md` en la raíz, con encabezado `name` y `description` (el nombre pasa por la misma regla que las habilidades propuestas);

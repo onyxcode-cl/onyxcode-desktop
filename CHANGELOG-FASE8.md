@@ -3311,7 +3311,7 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
   de la pantalla") y `foreground` (si ESTA sesión en particular ya recibió control real temporal vía
   `request_full_control`, sin importar la preferencia global). El resto del código (`requireForeground`,
   el propio handler de `request_full_control`) ya usaba correctamente los dos: `mode === 'background'
-  && !foreground`. Pero la herramienta `open_application` solo miraba `mode`, así que aunque
+&& !foreground`. Pero la herramienta `open_application` solo miraba `mode`, así que aunque
   `foreground` fuera `true` seguía tomando la rama de "abrir sin activar" (`open-app-bg`) como si
   nunca se hubiera concedido nada.
 - **Arreglo**: en `mcp-server.ts`, `open_application` ahora desestructura también `foreground` y usa
@@ -3405,7 +3405,6 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Qué cambia**: `dropFolder` valida con `tasks:folders:check` y sigue el camino de «Elegir carpeta»; menú contextual con deshacer, cortar, copiar, pegar y seleccionar todo (`edit-context-menu.ts`); «Acerca de» con creadores y créditos.
 - **Pruebas**: `dropFolder.test.ts`, `useFolderDrop.test.ts`, `arrastrar-carpeta.e2e.ts`, `menu-contextual.e2e.ts`, `edit-context-menu.test.ts`.
 - **No verificado todavía**: el arrastre real de una carpeta desde el explorador del sistema (solo se simuló con un archivo real).
-
 
 ## F8-B161 — permisos de macOS: reinicio inmediato, aviso de ubicación y ayuda de reparación
 
@@ -3559,12 +3558,22 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Pruebas**: `src/shared/permission-rules.test.ts` (simulador del motor: sesión cambiada equivale a sesión nueva para todas las parejas de modos, tabla modo × permiso, idempotencia, comandos permitidos y rechazados), `store.permisos.test.ts` (reemplazo, no reenvío, agente Plan, aprobación automática), Comparar (`service.test.ts`), guardias de lenguaje llano; y la corrida en el motor real y en la app real de `docs/estudio-competencia/permisos-arreglo.md`.
 - **No verificado**: conectores externos (MCP) reales; Windows real (los comandos de PowerShell solo por pruebas unitarias); ventana cerrada con un comando pendiente (el motor espera).
 
-## F8-B180 — Personalización: habilidades y conectores en una pantalla
+## F8-B180 — Galería «Lo que has creado» (v1)
+
+- **Qué es**: ítem nuevo de la barra lateral (ícono cuadrícula, también en la paleta de comandos y con acción de atajo `mode.gallery` sin tecla) con tarjetas de lo que la IA creó en Chat y en Overdrive: documentos Word, planillas, presentaciones, PDF, páginas HTML, imágenes y texto/Markdown. Filtros por tipo, fecha (hoy, 7 y 30 días) y origen, buscador por nombre (sin tildes ni mayúsculas), agrupación «Esta semana» y por mes, y las acciones «Ver aquí» (abre el panel del Chat), «Abrir con tu programa» y «Mostrar en la carpeta» con los canales de siempre. Estados: vacío (cuatro tarjetas «Crea algo nuevo» que llevan al Chat con el pedido escrito), cargando (esqueletos), error amable con «Reintentar» y «Archivo no encontrado» con «Quitar de la lista». Diseño según las maquetas `mockup/personalizacion-galeria` (06 a 09); responsive hasta 1000x700; teclado (las acciones de la tarjeta aparecen al enfocarla), roles y `aria-label` con el nombre del archivo.
+- **Datos**: índice liviano `userData/gallery-index.json` (`main/files/gallery-index.ts`, tope de 500) actualizado al crear (documentos del Chat, entregables de Overdrive, «Descargar/Guardar») y al abrir la galería (recorrido acotado de la carpeta del Chat + comprobación de que cada archivo sigue existiendo). Miniaturas en `main/files/gallery-thumbs.ts` (imágenes reducidas con caché en `userData/gallery-thumbs`; texto: primera línea; Office/PDF: ícono por tipo, nada se renderiza con programas externos).
+- **Canales nuevos**: `extras:gallery:{list,thumb,remove}` con esquema estricto y clase **X** en `policy.ts`. Cambios mínimos en lo existente: los canales `extras:chatFile:*` ahora también aceptan los archivos que la galería autoriza (Overdrive con su carpeta aún autorizada; descargas, ese archivo exacto); `useChatDocPanel` puede abrir un archivo sin conversación abierta (id `galeria`); `requestViewChatFile` deja pendiente el pedido hasta que el Chat monte su panel.
+- **Seguridad**: `docs/SEGURIDAD.md` §3 quinquagies quinquies. Sin red, sin recorrer carpetas del usuario, sin tocar zonas intocables.
+- **Pruebas**: `src/main/files/gallery.test.ts` (índice: alta, repetido, baja, tope 500, archivo roto, rutas de Windows inyectadas; validación de rutas: fuera de carpeta, secretos, enlaces, ejecutables, Overdrive revocada, descarga exacta; miniaturas y caché; esquemas y clase X), `src/renderer/src/features/gallery/impl/GalleryView.test.tsx` (filtros, buscador, agrupación, fechas, estados, acciones), `Sidebar.render.test.tsx` (cinco modos), `i18n-core-keys.json` regenerado. Capturas con `node scripts/shot-desktop.mjs --scenario galeria-vacia,galeria` (oscuro y claro, 1280x800 y 1000x700).
+- **Verificado en la app real** (Electron, userData temporal, motor 1.19.0, sin modelo): un PDF creado por el canal del Chat aparece en la galería; «Ver aquí» abre el panel (se corrigió que `ChatView` no mostraba el panel en la pantalla de inicio sin conversación y que el visor perdía la extensión cuando el nombre era el título) y «Mostrar en la carpeta» responde bien.
+- **No verificado**: Windows real; Overdrive con carpetas autorizadas reales; creación de documentos con un modelo real desde el Chat; miles de archivos; Word/Excel/PowerPoint en la app real (requieren ArtCraft).
+
+## F8-B181 — Personalización: habilidades y conectores en una pantalla
 
 - **Qué es**: pantalla «Personalización» (ítem en el grupo de abajo de la barra lateral y en la paleta) con pestañas Habilidades / Conectores / Tuyos, buscador, tarjetas con etiqueta de estado, detalle de cada ficha (qué hace, permisos, ejemplos, «Quitar»), paso a paso para conectar en lenguaje llano y estados cargando / error / vacío. Maquetas aprobadas en `mockup/personalizacion-galeria`.
 - **Catálogo**: un JSON versionado dentro de la app (`resources/catalogo/catalogo.json` + esquema + validador `src/shared/catalogo.ts`), sin servidor ni cuentas; `docs/CATALOGO.md` explica cómo proponer una ficha por pull request. v1 ofrece las 7 fichas ya verificadas del catálogo MCP de Ajustes, reorganizadas por tareas de la vida real (grupos vacíos ocultos), y las habilidades incluidas. Sello «Revisado por Lazunox» solo en el catálogo empaquetado.
 - **Habilidades**: interruptor para las incluidas (aplica a conversaciones nuevas) e instalación de una propia solo desde una carpeta elegida con el diálogo nativo (validación estricta, vista previa y confirmación, nada se ejecuta ni se descarga). Canales nuevos `personalizacion:skills:*`, clase X.
 - **Conectores**: la lógica de alta/baja/estado de MCP se compartió con Ajustes › Conectores (`useMcpConnections`, `src/shared/mcp-catalog.ts`); ambas pantallas se enlazan.
-- **Seguridad**: `docs/SEGURIDAD.md` §3 quinquagies quinquies.
+- **Seguridad**: `docs/SEGURIDAD.md` §3 quinquagies sexies.
 - **Pruebas**: `src/test/catalogo.test.ts` (falla si una ficha no cumple el esquema o promete sin verificar), `src/main/personalizacion/personalizacion.test.ts`, `src/main/ipc/personalizacion-ipc.test.ts`, `src/renderer/src/features/personalizacion/*.test.ts(x)`.
 - **No verificado**: Windows real; conectores contra servicios reales desde esta pantalla (la verificación de las fichas es la del catálogo de Ajustes).

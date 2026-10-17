@@ -1,5 +1,5 @@
 /**
- * Servicio de habilidades de Personalización (F8-B180).
+ * Servicio de habilidades de Personalización (F8-B181).
  *
  *  - Habilidades INCLUIDAS (`resources/opencode/skills/<id>`): se apagan quitando su carpeta de `userData/opencode-config/skills`
  *    (la copia de trabajo que lee el motor) y se encienden copiándola de nuevo desde el paquete, que nunca se toca. Es

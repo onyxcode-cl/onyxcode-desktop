@@ -1,5 +1,5 @@
 /**
- * Estado de Personalización (F8-B180): qué habilidades incluidas están apagadas y cuáles instaló la persona desde una carpeta.
+ * Estado de Personalización (F8-B181): qué habilidades incluidas están apagadas y cuáles instaló la persona desde una carpeta.
  * Vive en `userData/personalizacion.json`, sin secretos. Sin dependencias de Electron: lo leen también `opencode-config.ts`
  * (para no borrar las habilidades propias al refrescar las incluidas) y las pruebas.
  */

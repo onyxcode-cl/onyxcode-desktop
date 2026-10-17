@@ -140,6 +140,39 @@ export type ChatFileReadResult =
 
 export type ChatFileViewResult = { ok: true } | { ok: false; reason: 'unsupported' | 'too-large' | 'failed' }
 
+// ───────────────── Galería «Lo que has creado» ─────────────────
+
+/** Tipo de creación para filtrar y dibujar la miniatura. */
+export type GalleryType = 'document' | 'sheet' | 'slides' | 'web' | 'pdf' | 'image' | 'text'
+/** De dónde viene: Chat o Overdrive (el modo Tareas). */
+export type GalleryOrigin = 'chat' | 'overdrive'
+
+export interface GalleryItem {
+  /** Ruta real del archivo (sirve de identificador y es lo que se pasa a «Ver aquí» y compañía). */
+  path: string
+  name: string
+  type: GalleryType
+  origin: GalleryOrigin
+  /** Fecha de creación o registro (ms). */
+  createdAt: number
+  bytes: number
+  /** Datos de ChatFileInfo para las acciones. */
+  kind: ChatFileKind
+  canView: boolean
+  canOpen: boolean
+  /** El archivo ya no existe (o salió de las carpetas permitidas): solo se ofrece «Quitar de la lista». */
+  missing: boolean
+}
+
+export interface GalleryListResult {
+  items: GalleryItem[]
+  /** Había más que el tope y se mostraron los más recientes. */
+  truncated: boolean
+}
+
+/** Miniatura: imagen reducida real, primera línea de texto, o nada (la interfaz dibuja el ícono del tipo). */
+export type GalleryThumbResult = { kind: 'image'; dataUrl: string } | { kind: 'text'; text: string } | { kind: 'none' }
+
 interface ChatDocOpenCommon {
   title: string
   /** Carpeta temporal propia por sesión de chat (nunca una carpeta del usuario). */
@@ -174,7 +207,7 @@ export interface ConversationExportResult {
   redactions: number
 }
 
-// ───────────────────────────── Personalización: habilidades (F8-B180) ─────────────────────────────
+// ───────────────────────────── Personalización: habilidades (F8-B181) ─────────────────────────────
 /** Habilidad que instaló la persona desde una carpeta (las incluidas en la app salen aparte). */
 export interface UserSkillInfo {
   name: string
@@ -311,6 +344,10 @@ export interface IpcExtrasInvokeContract {
   /** Abre con el programa predeterminado del sistema (nunca ejecutables ni lanzadores). */
   'extras:chatFile:open': { req: { path: string }; res: void }
   'extras:chatFile:reveal': { req: { path: string }; res: void }
+  /** Galería: lista (reconstruye el índice local y comprueba que los archivos sigan existiendo), miniatura y «Quitar de la lista». */
+  'extras:gallery:list': { req: void; res: GalleryListResult }
+  'extras:gallery:thumb': { req: { path: string }; res: GalleryThumbResult }
+  'extras:gallery:remove': { req: { path: string }; res: void }
   'extras:chatDoc:openExternal': { req: ChatDocExternalRequest; res: { ok: true; via: 'craft' | 'system' } | { ok: false } }
   /** `data` (Excel/PowerPoint) → archivo real, con diálogo nativo "Guardar como". `null` si cancela. */
   'extras:downloadChatDoc': { req: ChatDocDownloadRequest; res: string | null }
@@ -391,6 +428,9 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatFile:viewNative',
   'extras:chatFile:open',
   'extras:chatFile:reveal',
+  'extras:gallery:list',
+  'extras:gallery:thumb',
+  'extras:gallery:remove',
   'extras:downloadChatDoc',
   'extras:exportConversation',
   'extras:quickSubmit',

@@ -58,6 +58,8 @@ import {
 } from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
 import { settingsStore } from '../store'
+import { galleryTypeOf } from '../files/gallery-index'
+import { galleryRecordChat, galleryThumbFor, getGallery, configureGalleryChat } from '../files/gallery-runtime'
 import { assertNativeViewable, assertOpenable, assertRevealable, chatFilesInfo, readChatFile, resolveChatFile } from '../files/chat-files'
 import { issueToken } from '../viewer/tokens'
 import { MAX_BYTES, sniffDocKind } from '../viewer/doc-kind'
@@ -123,13 +125,20 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     openArtifact({ title: String(payload.title ?? ''), html: payload.html })
   })
-  handle(ipcMain, 'extras:downloadHtmlAsPdf', (payload, event) => {
+  // «Descargar/Guardar»: el archivo elegido por la persona se anota en la galería (solo ese archivo, no su carpeta).
+  const recordSaved = (path: string | null, title: string): string | null => {
+    if (path) galleryRecordChat(path, { exact: true, title: title.trim() || undefined })
+    return path
+  }
+  handle(ipcMain, 'extras:downloadHtmlAsPdf', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
-    return downloadHtmlAsPdf({ title: String(payload.title ?? ''), html: payload.html }, windowOfSender(event.sender))
+    const title = String(payload.title ?? '')
+    return recordSaved(await downloadHtmlAsPdf({ title, html: payload.html }, windowOfSender(event.sender)), title)
   })
-  handle(ipcMain, 'extras:downloadSlidesAsPptx', (payload, event) => {
+  handle(ipcMain, 'extras:downloadSlidesAsPptx', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
-    return downloadSlidesAsPptx({ title: String(payload.title ?? ''), html: payload.html }, windowOfSender(event.sender))
+    const title = String(payload.title ?? '')
+    return recordSaved(await downloadSlidesAsPptx({ title, html: payload.html }, windowOfSender(event.sender)), title)
   })
   handle(ipcMain, 'extras:presentSlides', (payload) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
@@ -148,6 +157,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       else if (req.kind === 'docx') input = { kind: 'docx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
       const doc = await generateChatDoc(input, title, sessionId)
+      galleryRecordChat(doc.file, { session: sessionId, title: title.trim() || undefined })
       // Con el programa de ArtCraft instalado, el panel muestra su versión WEB (misma pantalla y motor que el programa de escritorio);
       // si no está o falla, el visor de siempre.
       // Peso real del archivo generado; si no se puede leer, simplemente no se informa.
@@ -204,6 +214,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
               ? { kind: 'docx', data: req.data }
               : { kind: 'pptx', data: req.data }
       const file = await writeChatDocForExternal(input, req.title)
+      galleryRecordChat(file, { title: req.title.trim() || undefined })
       return {
         ok: true as const,
         via: await openExternally(input.kind, file, (p) => shell.openPath(p), defaultFindDeps(guiNextToCli(installedCli(input.kind))))
@@ -221,12 +232,18 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     chatDocsRoot(),
     ...settingsStore.get().recentFolders
   ]
+  // Galería: sus archivos de Overdrive (carpetas autorizadas) y los guardados con «Descargar» se suman como ámbito de las acciones.
+  configureGalleryChat({
+    chatRoots: chatFileRoots,
+    scanDirs: () => [...(deps.chatDirectory ? [deps.chatDirectory] : []), join(chatDocsRoot(), 'abiertos')]
+  })
+  const allFileRoots = (): string[] => [...chatFileRoots(), ...getGallery().extraRoots()]
   let chatFileValidatorRegistered = false
-  handle(ipcMain, 'extras:chatFile:info', ({ paths }) => chatFilesInfo(chatFileRoots(), paths))
-  handle(ipcMain, 'extras:chatFile:read', ({ path }) => readChatFile(chatFileRoots(), path))
+  handle(ipcMain, 'extras:chatFile:info', ({ paths }) => chatFilesInfo(allFileRoots(), paths))
+  handle(ipcMain, 'extras:chatFile:read', ({ path }) => readChatFile(allFileRoots(), path))
   handle(ipcMain, 'extras:chatFile:viewNative', async ({ path, lang, theme }) => {
     try {
-      const real = assertNativeViewable(chatFileRoots(), path)
+      const real = assertNativeViewable(allFileRoots(), path)
       if (!chatFileValidatorRegistered) {
         chatFileValidatorRegistered = true
         // El visor revalida al SERVIR los bytes: la ruta debe seguir dentro de las carpetas permitidas (o ser un documento propio de Chat).
@@ -234,7 +251,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
           try {
             return assertInsideChatDocs(p)
           } catch {
-            return resolveChatFile(chatFileRoots(), p).path
+            return resolveChatFile(allFileRoots(), p).path
           }
         })
       }
@@ -265,20 +282,32 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     }
   })
   handle(ipcMain, 'extras:chatFile:open', async ({ path }) => {
-    const err = await shell.openPath(assertOpenable(chatFileRoots(), path))
+    const err = await shell.openPath(assertOpenable(allFileRoots(), path))
     if (err) throw new Error(err)
   })
   handle(ipcMain, 'extras:chatFile:reveal', ({ path }) => {
-    shell.showItemInFolder(assertRevealable(chatFileRoots(), path))
+    shell.showItemInFolder(assertRevealable(allFileRoots(), path))
   })
-  handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {
+  handle(ipcMain, 'extras:gallery:list', () => getGallery().list())
+  handle(ipcMain, 'extras:gallery:thumb', ({ path }) => {
+    try {
+      const g = getGallery()
+      const info = g.resolve(path)
+      const entry = galleryTypeOf(info.path)
+      return entry ? galleryThumbFor(info, entry) : { kind: 'none' as const }
+    } catch {
+      return { kind: 'none' as const }
+    }
+  })
+  handle(ipcMain, 'extras:gallery:remove', ({ path }) => getGallery().remove(path))
+  handle(ipcMain, 'extras:downloadChatDoc', async (req, event) => {
     const input: ChatDocInput =
       req.kind === 'xlsx'
         ? { kind: 'xlsx', data: req.data }
         : req.kind === 'docx'
           ? { kind: 'docx', data: req.data }
           : { kind: 'pptx', data: req.data }
-    return downloadChatDoc(input, req.title, windowOfSender(event.sender))
+    return recordSaved(await downloadChatDoc(input, req.title, windowOfSender(event.sender)), req.title)
   })
   handle(ipcMain, 'extras:exportConversation', (req, event) => exportConversation(req, windowOfSender(event.sender)))
   handle(ipcMain, 'extras:quickSubmit', (req) => {

@@ -212,7 +212,7 @@ let prepared: string | null = null
 
 /**
  * Copia `src` a `dest` recursivamente y borra de `dest` lo que ya no exista en `src`.
- * Solo en el primer nivel de las skills (F8-B180): `keep` = habilidades propias de la persona (no se borran) y `skip` = habilidades
+ * Solo en el primer nivel de las skills (F8-B181): `keep` = habilidades propias de la persona (no se borran) y `skip` = habilidades
  * incluidas que apagó en Personalización (no se copian ni se dejan).
  */
 export function syncDirRecursive(src: string, dest: string, opts?: { keep?: ReadonlySet<string>; skip?: ReadonlySet<string> }): void {

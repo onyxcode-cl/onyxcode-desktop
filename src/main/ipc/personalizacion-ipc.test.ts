@@ -11,7 +11,7 @@ const CHANNELS = [
   'personalizacion:skills:remove'
 ] as const
 
-describe('canales de Personalización (F8-B180)', () => {
+describe('canales de Personalización (F8-B181)', () => {
   it('existen en el contrato, tienen esquema, son solo de la ventana principal y clase X para el celular', () => {
     for (const c of CHANNELS) {
       expect(IPC_EXTRAS_INVOKE_CHANNELS as readonly string[], c).toContain(c)

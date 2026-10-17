@@ -1,5 +1,5 @@
 /**
- * Confirmación para instalar una habilidad propia desde una carpeta (F8-B180). La carpeta ya la validó `main` (estructura, tamaño,
+ * Confirmación para instalar una habilidad propia desde una carpeta (F8-B181). La carpeta ya la validó `main` (estructura, tamaño,
  * sin enlaces ni binarios, sin claves); aquí se muestra lo que se copiaría, con aviso claro de que una habilidad es código de
  * terceros para el agente. Nada se copia hasta «Instalar», y solo si marcas la casilla.
  */

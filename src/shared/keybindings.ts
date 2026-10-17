@@ -358,6 +358,7 @@ export const ACTIONS: readonly ActionMeta[] = [
   { id: 'mode.code', category: 'navigation', nameKey: 'settings.shortcuts.act.modeCode', defaultBinding: null },
   { id: 'mode.tasks', category: 'navigation', nameKey: 'settings.shortcuts.act.modeTasks', defaultBinding: null },
   { id: 'mode.routines', category: 'navigation', nameKey: 'settings.shortcuts.act.modeRoutines', defaultBinding: null },
+  { id: 'mode.gallery', category: 'navigation', nameKey: 'settings.shortcuts.act.modeGallery', defaultBinding: null },
   { id: 'conversation.new', category: 'conversation', nameKey: 'settings.shortcuts.app.new', defaultBinding: 'Mod+N' },
   { id: 'composer.focus', category: 'conversation', nameKey: 'settings.shortcuts.act.composerFocus', defaultBinding: null },
   {
