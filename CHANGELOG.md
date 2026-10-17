@@ -18,6 +18,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Mejoras
 
+- **El Chat funciona con el modelo gratuito.** Antes, con el modelo gratuito de OpenCode el Chat fallaba siempre con un aviso de «clave inválida». Ya responde.
 - **Primer uso sin bloqueos.** La pantalla «Preparando Lazunox» solo detiene la app si falta el motor; lo opcional (como el diseñador de documentos) se puede dejar para «Más tarde», y la bienvenida ya no descarga nada sola: el diseñador de documentos solo se instala si pulsas «Preparar todo».
 - **El asistente empieza por lo gratuito.** «Empezar gratis» con un modelo gratuito va primero; el servicio con suscripción ya no aparece como recomendado.
 
