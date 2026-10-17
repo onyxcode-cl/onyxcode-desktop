@@ -84,7 +84,8 @@ const SCENARIOS = [
   'rutinas-detalle',
   'rutinas-editor',
   'rutinas-evento',
-  'rutinas-vigilante', // H24: «Sin vigilar» y «Carpeta no disponible» (antes de la bandeja)
+  'rutinas-vigilante', // H24: «Carpeta no disponible»
+  'rutinas-sin-vigilar', // H24: «Sin vigilar» (aviso de Rutinas sin aceptar)
   'rutinas-bandeja',
   'rutinas-evento-e2e',
   'ajustes-general',
@@ -905,6 +906,29 @@ async function seedTaskList(ctx) {
 
 // Tres rutinas inventadas (se crean una sola vez por arranque; `rutinas-vacio` corre antes de que existan).
 let routinesSeeded = false
+// Un guardado cualquiera hace que main vuelva a sincronizar los vigilantes de archivos (para provocar sus estados).
+async function resyncWatch(page) {
+  await page.evaluate(async (folder) =>
+    window.api.tasks.invoke('routines:save', {
+      name: 'Auxiliar',
+      prompt: 'Sin uso.',
+      mode: 'tasks',
+      schedule: { kind: 'interval', hours: 6 },
+      enabled: false,
+      folder,
+      model: { providerID: 'fake', modelID: 'fake-model' },
+      sessionMode: 'fresh',
+      onAsk: 'reject'
+    }), taskFolder
+  )
+  await sleep(1500)
+  // La rutina auxiliar solo sirve para provocar la sincronización: se borra para que no salga en la captura.
+  await page.evaluate(async () => {
+    const l = await window.api.tasks.invoke('routines:list')
+    for (const r of l?.data ?? []) if (r.name === 'Auxiliar') await window.api.tasks.invoke('routines:delete', { id: r.id })
+  })
+  await sleep(800)
+}
 async function seedRoutines(ctx) {
   const { page } = ctx
   await openTasks(ctx) // autoriza la carpeta de Tareas (las rutinas de Tareas la exigen)
@@ -2127,24 +2151,22 @@ const S = {
       )
     console.log('  [rutinas] vigilante', await mkFile('Ordenar facturas nuevas', gone))
     console.log('  [rutinas] vigilante', await mkFile('Archivar informes recibidos', base))
-    // El aviso de Rutinas sin aceptar y la carpeta que desaparece son estados reales del vigilante de main; aquí se provocan
-    // (carpeta borrada) o se inyectan en la lista (el aviso), sin tocar los ajustes reales.
+    // Carpeta borrada y un guardado cualquiera para que el vigilante se vuelva a sincronizar: pasa a «Carpeta no disponible».
     rmSync(gone, { recursive: true, force: true })
-    await page.evaluate(() => {
-      const orig = window.api.tasks.invoke.bind(window.api.tasks)
-      window.__origTasksInvoke = orig
-      window.api.tasks.invoke = async (ch, ...rest) => {
-        const res = await orig(ch, ...rest)
-        if (ch === 'routines:list' && res?.ok && Array.isArray(res.data)) {
-          for (const r of res.data) if (r.name === 'Archivar informes recibidos' && r.fileWatch) r.fileWatch = { ...r.fileWatch, state: 'off' }
-        }
-        return res
-      }
-    })
+    await resyncWatch(page)
     await goMode(page, 'Chat')
     await goMode(page, 'Rutinas')
-    await sleep(1500)
     await vis(page.getByText('Carpeta no disponible'), 20_000).catch(() => notes.push('rutinas-vigilante: no apareció «Carpeta no disponible»'))
+    await sleep(500)
+  },
+  // Rutinas con disparador por archivo sin haber aceptado el aviso de Rutinas: el vigilante queda en «Sin vigilar».
+  async 'rutinas-sin-vigilar'(ctx) {
+    const { page } = ctx
+    await page.evaluate(async () => window.api.invoke('settings:set', { routinesTermsAcknowledged: false }))
+    await resyncWatch(page)
+    await goMode(page, 'Chat')
+    await goMode(page, 'Rutinas')
+    await vis(page.getByText(/Sin vigilar/).first(), 20_000).catch(() => notes.push('rutinas-sin-vigilar: no apareció «Sin vigilar»'))
     await sleep(500)
   },
   // Ningún servicio de IA conectado: Ajustes › Modelos vacío.
@@ -2156,6 +2178,9 @@ const S = {
     await sleep(1200)
     await openSettings(page, 'Modelos')
     await sleep(1000)
+    // El estado vacío está en «Servicios de IA», más abajo que lo primero que se ve.
+    await page.getByText('Servicios de IA', { exact: true }).first().evaluate((el) => el.scrollIntoView({ block: 'start' })).catch(() => {})
+    await sleep(500)
     return async () => {
       await fake.set({ connectedProviders: ['fake', 'opencode-go'] })
       await page.reload()

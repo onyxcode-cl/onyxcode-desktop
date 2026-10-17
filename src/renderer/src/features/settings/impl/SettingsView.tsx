@@ -412,7 +412,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
               aria-activedescendant={searching && flat[active] ? `settings-hit-${active}` : undefined}
               aria-autocomplete="list"
               aria-label={t('settings.search.label')}
-              placeholder={t('settings.search.label')}
+              placeholder={t('settings.search.placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onSearchKey}
