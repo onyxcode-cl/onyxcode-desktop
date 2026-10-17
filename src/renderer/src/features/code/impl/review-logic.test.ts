@@ -33,6 +33,14 @@ describe('deriveSessionState', () => {
     expect(deriveSessionState({ ...none, busy: true })).toBe('working')
     expect(deriveSessionState({ ...none, needsReview: true })).toBe('review')
     expect(deriveSessionState({ ...none, unread: true })).toBe('done')
+    expect(deriveSessionState({ ...none, failed: true })).toBe('error')
+  })
+  it('un error pesa menos que lo que bloquea o está en marcha, y más que revisar o sin leer', () => {
+    const all = { waiting: true, busy: true, unread: true, needsReview: true, failed: true }
+    expect(deriveSessionState(all)).toBe('waiting')
+    expect(deriveSessionState({ ...all, waiting: false })).toBe('working')
+    expect(deriveSessionState({ ...all, waiting: false, busy: false })).toBe('error')
+    expect(deriveSessionState({ ...all, waiting: false, busy: false, failed: false })).toBe('review')
   })
   it('prioridad: esperando > trabajando > por revisar > sin leer', () => {
     const all = { waiting: true, busy: true, unread: true, needsReview: true }

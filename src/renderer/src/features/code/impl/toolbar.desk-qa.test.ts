@@ -14,7 +14,33 @@ describe('barra superior de Code (escritorio, QA)', () => {
   })
   it('el título de la sesión depende del ancho de la barra (consulta de contenedor), no del punto de quiebre md de la ventana', () => {
     expect(ws).not.toContain('md:desk:flex')
-    expect(ws).toContain('lg:flex desk:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] desk:@max-[16rem]:hidden')
+    expect(ws).toContain('lg:flex desk:flex desk:min-w-[5rem] desk:flex-1 desk:shrink-[4]')
+    // H13: el título nunca desaparece por ancho; se trunca con elipsis y lleva el título completo en el tooltip.
+    expect(ws).not.toContain('desk:@max-[16rem]:hidden')
+    expect(ws).toContain('data-testid="toolbar-session-title"')
+  })
+  it('H13: con la barra estrecha la rama cede su sitio y las acciones secundarias pasan a un menú «…» con etiquetas', () => {
+    expect(ws).toContain('<span className="contents desk:@max-[40rem]:hidden">')
+    expect(ws).toContain('<span className="contents desk:@max-[44rem]:hidden">')
+    const more = readFileSync(join(__dirname, 'ToolbarMore.tsx'), 'utf8')
+    expect(more).toContain('desk:@max-[44rem]:flex')
+    for (const k of [
+      'instr.open',
+      'conv.export.copy',
+      'conv.export.saveMd',
+      'conv.export.savePdf',
+      'code.toolbar.fork',
+      'code.toolbar.compact'
+    ])
+      expect(more).toContain(`t('${k}')`)
+    expect(more).toContain("aria-label={t('code.toolbar.more')}")
+  })
+  it('H12: los iconos de la barra van en grupos con nombre (conversación / revisión / herramientas) y cada botón con aria-label', () => {
+    for (const g of ['conversation', 'review', 'tools']) expect(ws).toContain(`code.toolbar.group.${g}`)
+    expect(ws).toContain("aria-label={t('code.toolbar.fork')}")
+    expect(ws).toContain("aria-label={t('code.toolbar.compact')}")
+    expect(ws).toContain('aria-label={t(p.label)}')
+    expect(ws).toContain("aria-label={t('code.toolbar.stop')}")
   })
   it('con un aviso arriba no se reserva el hueco de los semáforos (mismo margen izquierdo que con la lista abierta)', () => {
     expect(app).toContain("'--header-inset': !listInFlow && !noticeShown && isMacPlatform() ? '24px' : '0px'")

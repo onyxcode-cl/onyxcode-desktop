@@ -79,6 +79,7 @@ export function SessionRow({
   busy,
   unread,
   needsReview,
+  failed = false,
   pinned
 }: {
   session: { id: string; title: string; time: { updated: number }; summary?: { additions: number; deletions: number; files: number } }
@@ -90,11 +91,13 @@ export function SessionRow({
   unread: boolean
   /** Terminó con cambios que aún no se aceptaron en el panel Cambios. */
   needsReview: boolean
+  /** La última respuesta terminó con un error. */
+  failed?: boolean
   pinned: boolean
 }): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
-  const state: SessionState | null = deriveSessionState({ waiting, busy, unread, needsReview })
+  const state: SessionState | null = deriveSessionState({ waiting, busy, unread, needsReview, failed })
   const [deskMenu, setDeskMenu] = useState(false)
   // El menú sale en un portal con posición fija: la lista de sesiones tiene scroll y recortaba las opciones de abajo.
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
@@ -575,6 +578,7 @@ function ProjectGroup({
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const activeSessionID = useCode((s) => s.activeSessionID)
   const runState = useCode((s) => s.runState)
+  const convErrors = useCode((s) => s.errors)
   const unread = useCode((s) => s.unread)
   const reviewed = useCode((s) => s.reviewed)
   const reviewedSince = useCode((s) => s.reviewedSince)
@@ -811,6 +815,7 @@ function ProjectGroup({
                 waiting={waiting.has(s.id)}
                 busy={st === 'busy' || st === 'retry'}
                 unread={!!unread[s.id]}
+                failed={!!convErrors[s.id]}
                 needsReview={sessionNeedsReview(s.summary, reviewed[s.id], { updated: s.time.updated, since: reviewedSince })}
                 pinned={pinnedIds.has(s.id)}
               />

@@ -121,14 +121,16 @@ export function onTreeKeyDown(e: KeyboardEvent<HTMLElement>): void {
  * Esperando aprobación o respuesta (aviso) · trabajando (acento) · cambios por revisar (acento, punto hueco) · lista/sin leer (éxito).
  * Sin estado = sin punto.
  */
-export type SessionState = 'waiting' | 'working' | 'review' | 'done'
+export type SessionState = 'waiting' | 'working' | 'review' | 'done' | 'error'
 
 const DOT: Record<SessionState, string> = {
   waiting: 'bg-warning',
   working: 'bg-accent animate-pulse motion-reduce:animate-none',
   // Hueco (no solo otro color): se distingue de «trabajando» y «lista» sin depender del tono.
   review: 'border-[1.5px] border-accent bg-transparent',
-  done: 'bg-success'
+  done: 'bg-success',
+  // Rombo (no solo rojo): se distingue de los círculos aunque no se vea el color.
+  error: 'rotate-45 rounded-[1px] bg-danger'
 }
 
 /** Punto de estado de 7 px. Nunca va solo: la fila lleva el texto o la insignia («Aprobar», «Trabajando»; en Code solo la insignia de aprobación y el `title`) y `stateAria` lo repite para lectores. */

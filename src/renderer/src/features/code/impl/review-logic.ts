@@ -20,15 +20,18 @@ export interface SessionStateInput {
   unread: boolean
   /** Terminó de trabajar y quedan cambios sin revisar. */
   needsReview: boolean
+  /** La última respuesta terminó con un error (fallo del modelo, de red…). */
+  failed?: boolean
 }
 
 /**
- * Prioridad: lo que te bloquea (esperando) > lo que está pasando (trabajando) > lo que debes hacer (revisar cambios) >
+ * Prioridad: lo que te bloquea (esperando) > lo que está pasando (trabajando) > lo que falló (error) > lo que debes hacer (revisar cambios) >
  * lo que no has visto (sin leer) > nada (reposo, sin punto).
  */
 export function deriveSessionState(i: SessionStateInput): SessionState | null {
   if (i.waiting) return 'waiting'
   if (i.busy) return 'working'
+  if (i.failed) return 'error'
   if (i.needsReview) return 'review'
   if (i.unread) return 'done'
   return null

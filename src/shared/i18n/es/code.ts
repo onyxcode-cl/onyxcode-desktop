@@ -294,6 +294,10 @@ export const code = {
   'code.toolbar.stop': 'Detener',
   'code.toolbar.fork': 'Bifurcar sesión (fork) desde aquí',
   'code.toolbar.compact': 'Compactar historial (resumir contexto)',
+  'code.toolbar.more': 'Más acciones de la sesión',
+  'code.toolbar.group.conversation': 'Conversación',
+  'code.toolbar.group.review': 'Revisión',
+  'code.toolbar.group.tools': 'Herramientas',
   'code.suggest.explain': 'Explícame este proyecto',
   'code.suggest.explain.prompt':
     'Explícame la estructura de este proyecto: qué hace, cómo está organizado y cuáles son sus piezas principales.',

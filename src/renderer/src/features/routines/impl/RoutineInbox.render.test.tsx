@@ -41,11 +41,15 @@ const missed: RoutineInboxItem = {
 }
 
 describe('bandeja «Resultados por revisar»', () => {
-  it('un resultado muestra resumen, archivos y las cuatro acciones', () => {
+  it('un resultado muestra resumen, archivos y, a la vista, solo Aprobar y Descartar (el resto va en el menú «…»)', () => {
     const html = renderToStaticMarkup(<InboxCard item={result} />)
     expect(html).toContain('Clasificar facturas')
     expect(html).toContain('Moví 3 facturas')
-    for (const a of ['Aprobar', 'Descartar', 'Ver detalle', 'Volver a ejecutar']) expect(html).toContain(a)
+    for (const a of ['Aprobar', 'Descartar']) expect(html).toContain(a)
+    // «Ver detalle» y «Volver a ejecutar» no compiten con la decisión: viven en el menú «…» (cerrado en el render estático).
+    for (const a of ['Ver detalle', 'Volver a ejecutar']) expect(html).not.toContain(a)
+    expect(html).toContain('data-testid="inbox-more"')
+    expect(html).toContain('Marcar como revisado')
   })
   it('un error se muestra como error', () => {
     const html = renderToStaticMarkup(<InboxCard item={{ ...result, runStatus: 'error', error: 'Falló el motor' }} />)

@@ -16,7 +16,9 @@ export function SidebarTree({ children, onClickCapture }: { children: React.Reac
               ? `${title} · ${t('app.sidebar.state.review')}`
               : state === 'done'
                 ? `${title} · ${t('app.sidebar.state.done')}`
-                : undefined,
+                : state === 'error'
+                  ? `${title} · ${t('app.sidebar.state.error')}`
+                  : undefined,
       treeLabel: t('app.sidebar.tree')
     }),
     [t]
