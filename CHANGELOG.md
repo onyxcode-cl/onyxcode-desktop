@@ -11,6 +11,11 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Pestañas en la terminal de Code.** Puedes abrir varias terminales a la vez con el botón «+» (hasta 8 por proyecto), renombrarlas con doble clic y cerrarlas con la «x». Si pulsas ▶ y la terminal está ocupada, la app te ofrece usar una pestaña nueva.
 - **Archivos del Chat.** Cuando la IA crea o nombra un archivo, aparece una tarjeta con «Ver aquí» (imágenes, texto, Markdown, código, PDF y Office), «Abrir con tu programa» y «Mostrar en la carpeta». Los programas y scripts solo ofrecen «Mostrar en la carpeta».
 
+- **Adjuntar Word, Excel y PowerPoint en el Chat.** Ya puedes adjuntar documentos de oficina (.docx, .xlsx, .pptx y sus equivalentes) con el botón, arrastrando o pegando. La app los convierte a texto antes de pasárselos a la IA, así que funciona con cualquier proveedor. Si el documento es muy grande, se avisa qué parte se recortó.
+- **Memoria e instrucciones en Chat y Code.** En Ajustes puedes escribir cómo quieres que te responda la IA, ver y editar el archivo AGENTS.md de cada proyecto, y revisar lo que la IA recuerda. La IA solo propone recordar algo: nada se guarda sin tu aprobación, y puedes olvidarlo todo cuando quieras.
+- **Exportar y copiar conversaciones.** En el menú «…» de cada conversación (y en la cabecera) puedes copiar la conversación, guardarla como Markdown o como PDF. Las claves y tokens que aparezcan se tachan antes de exportar.
+- **Rutinas que reaccionan.** Una rutina ahora puede dispararse cuando aparece un archivo nuevo en una carpeta, con filtro por nombre, espera a que termine de copiarse y un tope por hora. Los resultados de cada ejecución llegan a una bandeja de «Resultados por revisar» donde los apruebas o descartas, con un contador en la barra lateral. Si la app estuvo cerrada cuando tocaba una rutina, ahora te pregunta si quieres ejecutarla (antes la ejecutaba sola al abrir).
+
 ### Mejoras
 
 - **Primer uso sin bloqueos.** La pantalla «Preparando Lazunox» solo detiene la app si falta el motor; lo opcional (como el diseñador de documentos) se puede dejar para «Más tarde», y la bienvenida ya no descarga nada sola: el diseñador de documentos solo se instala si pulsas «Preparar todo».
