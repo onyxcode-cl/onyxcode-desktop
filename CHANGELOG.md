@@ -15,6 +15,8 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Ajustes con buscador y más espacio.** Buscas por lo que recuerdas y te lleva a la opción. Al abrir Ajustes, la lista de conversaciones se pliega.
 - **Importar desde otras herramientas.** En Ajustes puedes traer las instrucciones de un proyecto y los conectores de un archivo `.mcp.json` que elijas. Nada se importa sin tu confirmación, las claves no se copian y los conectores quedan desactivados hasta que los actives.
 - **Code más cómodo en ventana pequeña.** La cabecera ya no se corta: lo secundario pasa a un menú «…». Al abrir «Cambios» se selecciona el primer archivo y puedes moverte con las flechas. Las sesiones con error se marcan con un rombo rojo.
+- **Los modos de permisos hacen lo que dicen.** Antes, al pasar de «Preguntar siempre» a «Automático» en una sesión que ya existía, la app seguía preguntando de más; ahora cada modo reemplaza al anterior y se comporta igual en una sesión nueva que en una que cambió de modo. «Automático» deja pasar sin preguntar solo comandos simples de lectura (como `ls`, `git status`, `npm test`) y siempre pregunta por carpetas fuera del proyecto, archivos `.env` y todo comando con redirecciones o encadenados. Los textos de cada modo dicen ahora con exactitud qué pasa, y la app avisa que el cambio de modo vale desde el próximo mensaje.
+- **Rutinas por archivo en Windows.** Ya se pueden crear y vigilar carpetas sin tener que aprobarlas antes en Overdrive, y el estado dice con claridad cuando falta aceptar el aviso de Rutinas.
 - **Rutinas.** En la bandeja de resultados quedan a la vista «Aprobar» y «Descartar»; lo demás va en un menú «…». «Nueva rutina» aparece siempre en la cabecera.
 
 ## [0.5.36] - 2026-10-17
