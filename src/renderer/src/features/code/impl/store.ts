@@ -6,7 +6,8 @@
  */
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
-import { rulesetFor, sameRuleset } from './permission-rules'
+import { rulesetForState, sessionHasRuleset } from './permission-rules'
+import { approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
@@ -598,6 +599,21 @@ export const useCode = create<CodeState>((set, get) => {
     return { client, dir: get().sessionProject[activeSessionID] ?? directory, sid: activeSessionID }
   }
 
+  /**
+   * «Automático» y «Solo explorar»: el motor pregunta por todo comando (`bash * ask`) y la app aprueba sola, con «una vez», los de solo
+   * lectura, pero únicamente tras comprobar el comando COMPLETO (el motor evalúa por separado cada parte de una orden compuesta y sin
+   * su redirección). Solo si la sesión termina con el bloque de ese modo; cualquier otra cosa sigue su camino normal (la tarjeta).
+   */
+  const autoApproveReadOnly = (p: PendingPermission): boolean => {
+    if (p.permission !== 'bash') return false
+    const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
+    if (!kind) return false
+    const command = (p.metadata as Record<string, unknown> | undefined)?.command
+    if (!isAutoApprovableCommand(kind, typeof command === 'string' ? command : undefined)) return false
+    void get().replyPermission(p, 'once')
+    return true
+  }
+
   /** Envía un prompt a `sid` (no necesariamente la sesión activa: lo usa también el auto-envío de la cola). */
   const doSend = async (
     client: ReturnType<typeof requireClient>,
@@ -625,13 +641,15 @@ export const useCode = create<CodeState>((set, get) => {
     setError(sid, null)
     // El modo de permisos es de la interfaz, pero el ruleset vive en la sesión del motor: una sesión creada antes (o por otra vía) puede
     // no tenerlo y «Manual» no preguntaría nada. Se iguala ANTES de enviar; en Manual, si no se puede, no se envía (falla cerrado).
-    const wantRules = rulesetFor(get().permissionMode)
-    if (wantRules && !sameRuleset(get().sessions[sid]?.permission, wantRules)) {
+    // El bloque de reglas es autosuficiente (anula lo de bloques anteriores) y el motor lo AÑADE: solo se reenvía si la sesión no
+    // termina ya con él, así no crece la lista en cada mensaje. El agente `plan` manda sobre el modo (ver `effectiveModeFor`).
+    const wantRules = rulesetForState(get().permissionMode, agent)
+    if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
       try {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
         set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
       } catch (err) {
-        if (get().permissionMode === 'manual') {
+        if (get().permissionMode === 'manual' || agent === 'plan') {
           setError(sid, errorMessage(err))
           return false
         }
@@ -914,7 +932,9 @@ export const useCode = create<CodeState>((set, get) => {
     newSessionAt: async (dir, title) => {
       try {
         const client = requireClient()
-        const sess = sdkData(await client.session.create({ directory: dir, title, permission: rulesetFor(get().permissionMode) }))
+        const sess = sdkData(
+          await client.session.create({ directory: dir, title, permission: rulesetForState(get().permissionMode, get().agent) })
+        )
         set((s) => ({
           sessions: { ...s.sessions, [sess.id]: sess },
           sessionProject: { ...s.sessionProject, [sess.id]: dir },
@@ -1207,13 +1227,13 @@ export const useCode = create<CodeState>((set, get) => {
       set({ permissionMode: mode })
       const sid = get().activeSessionID
       if (!sid) return
-      if (mode === 'plan') {
-        get().setAgent('plan')
-        return
-      }
-      if (get().agent === 'plan') get().setAgent('build')
-      const permission = rulesetFor(mode)
-      if (!permission) return
+      if (mode === 'plan') get().setAgent('plan')
+      else if (get().agent === 'plan') get().setAgent('build')
+      // El bloque del modo se manda ya (también «Solo explorar»: tiene que anular lo que dejó el modo anterior en esta sesión).
+      // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
+      // el cambio vale desde el próximo mensaje (la interfaz lo avisa).
+      const permission = rulesetForState(mode, get().agent)
+      if (sessionHasRuleset(get().sessions[sid]?.permission, permission)) return
       try {
         const { client, dir } = activeDir()
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission }))
@@ -1523,45 +1543,39 @@ export const useCode = create<CodeState>((set, get) => {
         case 'permission.asked': {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
+          const pending: PendingPermission = {
+            id: p.id,
+            sessionID: p.sessionID,
+            permission: p.permission,
+            patterns: p.patterns,
+            metadata: p.metadata ?? {},
+            always: p.always,
+            tool: p.tool,
+            api: 'v1'
+          }
+          if (autoApproveReadOnly(pending)) break
           markUnread(rootSessionID(get().sessions, p.sessionID))
           notifyCode(p.sessionID, t('code.store.notifyApproval'))
-          set((s) => ({
-            permissions: {
-              ...s.permissions,
-              [p.id]: {
-                id: p.id,
-                sessionID: p.sessionID,
-                permission: p.permission,
-                patterns: p.patterns,
-                metadata: p.metadata ?? {},
-                always: p.always,
-                tool: p.tool,
-                api: 'v1'
-              }
-            }
-          }))
+          set((s) => ({ permissions: { ...s.permissions, [p.id]: pending } }))
           break
         }
         case 'permission.v2.asked': {
           const p = event.properties
           if (!adopt(p.sessionID, eventDir)) return
+          const pending: PendingPermission = {
+            id: p.id,
+            sessionID: p.sessionID,
+            permission: p.action,
+            patterns: p.resources,
+            metadata: p.metadata ?? {},
+            always: p.save ?? [],
+            tool: p.source ? { messageID: p.source.messageID, callID: p.source.callID } : undefined,
+            api: 'v2'
+          }
+          if (autoApproveReadOnly(pending)) break
           markUnread(rootSessionID(get().sessions, p.sessionID))
           notifyCode(p.sessionID, t('code.store.notifyApproval'))
-          set((s) => ({
-            permissions: {
-              ...s.permissions,
-              [p.id]: {
-                id: p.id,
-                sessionID: p.sessionID,
-                permission: p.action,
-                patterns: p.resources,
-                metadata: p.metadata ?? {},
-                always: p.save ?? [],
-                tool: p.source ? { messageID: p.source.messageID, callID: p.source.callID } : undefined,
-                api: 'v2'
-              }
-            }
-          }))
+          set((s) => ({ permissions: { ...s.permissions, [p.id]: pending } }))
           break
         }
         case 'permission.replied':

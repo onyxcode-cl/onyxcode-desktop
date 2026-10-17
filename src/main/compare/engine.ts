@@ -4,6 +4,7 @@
  */
 import { createOpencodeClient, type PermissionRuleset } from '@opencode-ai/sdk/v2/client'
 import type { ComparePermissionMode } from '@shared/ipc-code'
+import { rulesetForMode } from '@shared/permission-rules'
 import type { MetricMessage } from './metrics'
 import { EngineCallError } from './rate-limit'
 
@@ -45,36 +46,14 @@ export interface CompareEngine {
   deleteSession(a: { sessionID: string; directory: string }): Promise<void>
 }
 
-/** Reglas de permisos de la sesión de una comparación. `bypass` se rebaja a `auto`: aquí no se salta ningún permiso. */
-export function effectivePermissionMode(mode: ComparePermissionMode | undefined): Exclude<ComparePermissionMode, 'bypass'> {
-  return mode === 'bypass' ? 'auto' : (mode ?? 'manual')
+/** Modo efectivo de una comparación: el pedido (por defecto «Preguntar siempre»). «Todo sin preguntar» ya no se rebaja a «Automático». */
+export function effectivePermissionMode(mode: ComparePermissionMode | undefined): ComparePermissionMode {
+  return mode ?? 'manual'
 }
 
+/** Mismo bloque de reglas que Code (`src/shared/permission-rules.ts`); la única diferencia es quién aprueba los comandos de lectura. */
 export function rulesetFor(mode: ComparePermissionMode | undefined): PermissionRule[] {
-  switch (effectivePermissionMode(mode)) {
-    case 'manual':
-      return ['edit', 'write', 'bash', 'webfetch', 'websearch', 'external_directory'].map((permission) => ({
-        permission,
-        pattern: '*',
-        action: 'ask'
-      }))
-    case 'acceptEdits':
-      return [
-        { permission: 'edit', pattern: '*', action: 'allow' },
-        { permission: 'write', pattern: '*', action: 'allow' }
-      ]
-    case 'auto':
-      return [
-        { permission: 'edit', pattern: '*', action: 'allow' },
-        { permission: 'write', pattern: '*', action: 'allow' },
-        { permission: 'read', pattern: '*', action: 'allow' },
-        { permission: 'bash', pattern: 'git status*', action: 'allow' },
-        { permission: 'bash', pattern: 'git diff*', action: 'allow' },
-        { permission: 'bash', pattern: 'git log*', action: 'allow' },
-        { permission: 'bash', pattern: 'npm run*', action: 'allow' },
-        { permission: 'bash', pattern: 'npm test*', action: 'allow' }
-      ]
-  }
+  return rulesetForMode(effectivePermissionMode(mode), { engineAllowReadOnly: true })
 }
 
 const REQUEST_TIMEOUT_MS = 30_000
