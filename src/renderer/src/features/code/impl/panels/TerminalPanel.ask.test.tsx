@@ -22,13 +22,22 @@ const h = vi.hoisted(() => ({
   },
   run: vi.fn()
 }))
-vi.mock('./terminalRegistry', () => ({
-  getTerminal: () => h.entry,
-  restartTerminal: vi.fn(),
-  subscribeTerminalReplaced: () => () => undefined,
-  getTerminalReplacedVersion: () => 0,
-  runInTerminal: h.run
-}))
+vi.mock('./terminalRegistry', () => {
+  const snapshot = { tabs: [{ id: 't1', n: 1, title: null }], activeId: 't1' }
+  return {
+    MAX_TABS: 8,
+    getTerminal: () => h.entry,
+    getTabs: () => snapshot,
+    subscribeTabs: () => () => undefined,
+    openTab: vi.fn(),
+    closeTab: vi.fn(),
+    cycleTab: vi.fn(),
+    selectTab: vi.fn(),
+    renameTab: vi.fn(),
+    restartTerminal: vi.fn(),
+    runInTerminal: h.run
+  }
+})
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 import { TerminalPanel } from './TerminalPanel'

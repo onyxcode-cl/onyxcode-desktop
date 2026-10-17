@@ -22,6 +22,8 @@ export interface ConfirmDialogOptions {
   danger?: boolean
   /** Foco inicial en «Cancelar» (y Enter respeta el botón enfocado) sin el estilo de peligro. */
   focusCancel?: boolean
+  /** Tercera opción (entre «Cancelar» y la confirmación); solo la devuelve `choiceDialog`. */
+  altLabel?: string
 }
 
 export interface PromptDialogOptions {
@@ -38,7 +40,7 @@ export interface PromptDialogOptions {
 interface PendingConfirm extends ConfirmDialogOptions {
   kind: 'confirm'
   id: number
-  resolve: (value: boolean) => void
+  resolve: (value: boolean | 'alt') => void
 }
 
 interface PendingPrompt extends PromptDialogOptions {
@@ -65,7 +67,14 @@ function setPending(req: PendingRequest | null): void {
  */
 export function confirmDialog(options: ConfirmDialogOptions): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
-    setPending({ ...options, kind: 'confirm', id: nextId++, resolve })
+    setPending({ ...options, kind: 'confirm', id: nextId++, resolve: (v) => resolve(v === true) })
+  })
+}
+
+/** Como `confirmDialog`, pero con una tercera opción (`altLabel`): resuelve 'confirm', 'alt' o 'cancel' (Esc, clic fuera o Cancelar). */
+export function choiceDialog(options: ConfirmDialogOptions): Promise<'confirm' | 'alt' | 'cancel'> {
+  return new Promise((resolve) => {
+    setPending({ ...options, kind: 'confirm', id: nextId++, resolve: (v) => resolve(v === 'alt' ? 'alt' : v ? 'confirm' : 'cancel') })
   })
 }
 
@@ -120,7 +129,7 @@ function ConfirmDialogView(): React.JSX.Element | null {
   const inputRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
 
-  const finishConfirm = (value: boolean): void => {
+  const finishConfirm = (value: boolean | 'alt'): void => {
     if (req?.kind !== 'confirm') return
     req.resolve(value)
     setPending(null)
@@ -304,6 +313,16 @@ function ConfirmDialogView(): React.JSX.Element | null {
               className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
             >
               {req.cancelLabel ?? t('common.cancel')}
+            </button>
+          )}
+          {req.altLabel && (
+            <button
+              type="button"
+              data-testid="confirm-alt"
+              onClick={() => finishConfirm('alt')}
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-fg hover:bg-hover desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:shadow-raised desk:hover:bg-hover"
+            >
+              {req.altLabel}
             </button>
           )}
           <button

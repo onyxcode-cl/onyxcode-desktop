@@ -21,6 +21,8 @@ export interface ShellRunSnapshot {
 
 /** Una ejecución con ▶: su salida en vivo y su envío a la IA. */
 export interface ShellRunHandle {
+  /** Pestaña de la terminal donde corre esta ejecución. */
+  readonly tabId?: string
   subscribe(cb: () => void): () => void
   getSnapshot(): ShellRunSnapshot
   setShareOn(on: boolean): void
@@ -29,12 +31,15 @@ export interface ShellRunHandle {
 }
 
 export interface ShellRunner {
-  /** Escribe las líneas (cada una con Enter) en la terminal del proyecto. `null` si la terminal está ocupada con una ejecución anterior. */
-  run(lines: string[]): ShellRunHandle | null
+  /**
+   * Escribe las líneas (cada una con Enter) en la pestaña seleccionada de la terminal del proyecto, o en una pestaña nueva con
+   * `newTab`. `null` si esa pestaña está ocupada con una ejecución anterior (o ya no caben más pestañas).
+   */
+  run(lines: string[], opts?: { newTab?: boolean }): ShellRunHandle | null
   /** La ejecución anterior de estas mismas líneas (el mensaje se vuelve a pintar y la tarjeta de salida debe conservarse). */
   find(lines: string[]): ShellRunHandle | null
-  /** Abre el panel de terminal y le da el foco. */
-  showTerminal(): void
+  /** Abre el panel de terminal (en la pestaña indicada, si se da) y le da el foco. */
+  showTerminal(tabId?: string): void
 }
 
 export const ShellRunContext = createContext<ShellRunner | null>(null)

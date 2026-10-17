@@ -10,7 +10,8 @@ import { ShellRunContext, type ShellRunHandle, type ShellRunSnapshot, type Shell
 import { Markdown } from './Markdown'
 
 const confirmMock = vi.hoisted(() => vi.fn())
-vi.mock('./ConfirmDialog', () => ({ confirmDialog: confirmMock }))
+const choiceMock = vi.hoisted(() => vi.fn())
+vi.mock('./ConfirmDialog', () => ({ confirmDialog: confirmMock, choiceDialog: choiceMock }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const g = {
@@ -59,6 +60,7 @@ beforeEach(() => {
   vi.unstubAllGlobals()
   g.window.api = { platform: 'darwin' }
   confirmMock.mockReset()
+  choiceMock.mockReset()
   handle = new FakeRun()
   runner = { run: vi.fn(() => handle), find: vi.fn(() => null), showTerminal: vi.fn() }
   host = document.createElement('div')
@@ -166,17 +168,61 @@ describe('tarjeta de salida en vivo (PTY simulado)', () => {
     expect(card()).not.toBeNull()
   })
 
-  it('terminal ocupada: no escribe; el aviso ofrece «Abrir en la terminal» (y cancelar)', async () => {
+  it('pestaña ocupada: no escribe; el aviso ofrece «Usar una pestaña nueva», «Abrir en la terminal» y cancelar', async () => {
     runner.run.mockReturnValue(null)
-    confirmMock.mockResolvedValue(true)
+    choiceMock.mockResolvedValue('cancel')
     render(fence('sh', 'npm test'))
     await click(btn())
-    expect(confirmMock).toHaveBeenCalledTimes(1)
-    const opts = confirmMock.mock.calls[0][0] as { confirmLabel: string; cancelLabel?: string | null }
-    expect(opts.confirmLabel).toBe('Abrir en la terminal')
+    expect(choiceMock).toHaveBeenCalledTimes(1)
+    const opts = choiceMock.mock.calls[0][0] as { confirmLabel: string; altLabel: string; cancelLabel?: string | null }
+    expect(opts.confirmLabel).toBe('Usar una pestaña nueva')
+    expect(opts.altLabel).toBe('Abrir en la terminal')
     expect(opts.cancelLabel).toBeUndefined() // «Cancelar» por defecto
-    expect(runner.showTerminal).toHaveBeenCalledTimes(1)
+    expect(runner.run).toHaveBeenCalledTimes(1)
+    expect(runner.showTerminal).not.toHaveBeenCalled()
     expect(card()).toBeNull()
+  })
+
+  it('pestaña ocupada → «Abrir en la terminal»: abre el panel y no corre nada más', async () => {
+    runner.run.mockReturnValue(null)
+    choiceMock.mockResolvedValue('alt')
+    render(fence('sh', 'npm test'))
+    await click(btn())
+    expect(runner.showTerminal).toHaveBeenCalledTimes(1)
+    expect(runner.run).toHaveBeenCalledTimes(1)
+    expect(card()).toBeNull()
+  })
+
+  it('pestaña ocupada → «Usar una pestaña nueva»: reintenta con newTab y muestra la tarjeta', async () => {
+    runner.run.mockReturnValueOnce(null).mockReturnValueOnce(handle)
+    choiceMock.mockResolvedValue('confirm')
+    render(fence('sh', 'npm test'))
+    await click(btn())
+    expect(runner.run).toHaveBeenNthCalledWith(1, ['npm test'])
+    expect(runner.run).toHaveBeenNthCalledWith(2, ['npm test'], { newTab: true })
+    expect(card()).not.toBeNull()
+  })
+
+  it('pestaña ocupada y sin cupo para otra: avisa que no caben más pestañas', async () => {
+    runner.run.mockReturnValue(null)
+    choiceMock.mockResolvedValue('confirm')
+    render(fence('sh', 'npm test'))
+    await click(btn())
+    expect(runner.run).toHaveBeenCalledTimes(2)
+    expect(confirmMock).toHaveBeenCalledTimes(1)
+    expect((confirmMock.mock.calls[0][0] as { title: string }).title).toBe('No caben más pestañas')
+    expect(card()).toBeNull()
+  })
+
+  it('con la ejecución en marcha, ▶ y el ícono de la tarjeta llevan a SU pestaña', async () => {
+    ;(handle as { tabId?: string }).tabId = 'tab-7'
+    render(fence('sh', 'npm run dev'))
+    await click(btn())
+    await click(btn())
+    expect(runner.showTerminal).toHaveBeenCalledWith('tab-7')
+    runner.showTerminal.mockClear()
+    await click(host.querySelector('[data-testid="shell-open-terminal"]'))
+    expect(runner.showTerminal).toHaveBeenCalledWith('tab-7')
   })
 
   it('el estado de la tarjeta envuelve (sin elipsis) y el comando largo también', async () => {

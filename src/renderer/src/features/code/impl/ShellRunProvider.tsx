@@ -4,7 +4,7 @@ import { terminalInputFor } from '@shared/terminal-command'
 import { buildShareMessage, outputView, type OutputView, type ShareStatus } from '@shared/terminal-capture'
 import { ShellRunContext, type ShareState, type ShellRunHandle, type ShellRunner, type ShellRunSnapshot } from '../../../lib/shellRun'
 import { useCode } from './store'
-import { getTerminal, runInTerminal } from './panels/terminalRegistry'
+import { getTerminal, runInTerminal, selectTab } from './panels/terminalRegistry'
 import type { OutputCapture } from './panels/outputCapture'
 import { usePendingTerminalOutput, useShareCommandOutput } from './terminal-output'
 
@@ -56,6 +56,8 @@ class RunHandle implements ShellRunHandle {
   private shareOn: boolean
   private capture: OutputCapture | null = null
   private off: (() => void) | null = null
+  /** Pestaña donde corre (se fija al crear la captura). */
+  tabId: string | undefined
 
   constructor(
     private readonly directory: string,
@@ -66,8 +68,9 @@ class RunHandle implements ShellRunHandle {
   }
 
   /** Se llama una vez creada la captura (el aviso de «terminó» puede llegar después). */
-  bind(capture: OutputCapture): void {
+  bind(capture: OutputCapture, tabId: string): void {
     this.capture = capture
+    this.tabId = tabId
     this.off = capture.subscribe(() => this.refresh())
     this.refresh()
   }
@@ -129,23 +132,24 @@ class RunHandle implements ShellRunHandle {
  */
 export function ShellRunProvider({ directory, children }: { directory: string; children: React.ReactNode }): React.JSX.Element {
   const runner = useMemo<ShellRunner>(() => {
-    const showTerminal = (): void => {
+    const showTerminal = (tabId?: string): void => {
       const st = useCode.getState()
       if (st.panel !== 'terminal') st.togglePanel('terminal')
+      if (tabId) selectTab(directory, tabId)
       // El panel puede estar recién montado: el foco va en el siguiente cuadro.
-      requestAnimationFrame(() => getTerminal(directory).term.focus())
+      requestAnimationFrame(() => getTerminal(directory, tabId).term.focus())
     }
     return {
-      run(lines) {
+      run(lines, opts) {
         const handle = new RunHandle(directory, useCode.getState().activeSessionID)
-        const capture = runInTerminal(directory, terminalInputFor(lines), lines.join('\n'), handle.onShare)
-        if (!capture) {
+        const res = runInTerminal(directory, terminalInputFor(lines), lines.join('\n'), handle.onShare, { newTab: opts?.newTab })
+        if (!res) {
           handle.dispose()
           return null
         }
-        handle.bind(capture)
+        handle.bind(res.capture, res.tabId)
         runs.set(runKey(directory, lines), handle)
-        showTerminal()
+        showTerminal(res.tabId)
         return handle
       },
       find: (lines) => runs.get(runKey(directory, lines)) ?? null,
