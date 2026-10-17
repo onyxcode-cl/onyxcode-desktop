@@ -97,10 +97,37 @@ function realDeps(): PreflightDeps {
   }
 }
 
+/**
+ * Solo para las capturas de pantalla (`scripts/shot-desktop.mjs`): con `LAZUNOX_TEST_PREFLIGHT` y el modo E2E sin pantalla (nunca en la
+ * app empaquetada) se simula un equipo de primer uso con la lógica REAL de `runPreflightChecks`: motor presente (`primer-uso`) o ausente
+ * (`sin-motor`), ArtCraft sin descargar y, en macOS, permisos sin dar y la app fuera de Aplicaciones.
+ */
+function testDeps(kind: string): PreflightDeps {
+  const base = realDeps()
+  return {
+    ...base,
+    engine: async () => (kind === 'sin-motor' ? { found: false, version: null } : { found: true, version: '1.18.32' }),
+    craft: () => ({ state: 'missing', version: '0.5.0', sizeBytes: 205_000_000, parts: [] }),
+    sandbox: undefined,
+    helperPresent: undefined,
+    mac:
+      process.platform === 'darwin'
+        ? { status: async () => ({ accessibility: false, screenRecording: false }), placement: () => 'elsewhere' }
+        : undefined,
+    freeBytes: () => 50e9,
+    userDataWritable: () => true
+  }
+}
+
 /** Corre la revisión. En las pruebas automáticas (modo E2E sin pantalla, nunca en producción) se omite. */
 export async function runPreflight(): Promise<PreflightReport> {
   const deps = realDeps()
-  const report = E2E_HEADLESS ? skippedReport(deps) : await runPreflightChecks(deps)
+  const testKind = E2E_HEADLESS ? process.env.LAZUNOX_TEST_PREFLIGHT : undefined
+  const report = testKind
+    ? await runPreflightChecks(testDeps(testKind))
+    : E2E_HEADLESS
+      ? skippedReport(deps)
+      : await runPreflightChecks(deps)
   last = report
   // Una nota en el registro de problemas cuando falta algo esencial (una vez por combinación, no en cada «Revisar de nuevo»).
   const block = blocking(report)

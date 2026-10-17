@@ -94,7 +94,9 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
           {t('preflight.title', { app: DISPLAY_NAME })}
         </h1>
         <p className="mt-2 max-w-md text-[14px] leading-5 text-muted">
-          {block.length > 0 ? t('preflight.subtitle.blocking', { app: DISPLAY_NAME }) : t('preflight.subtitle.optional')}
+          {block.length > 0
+            ? t('preflight.subtitle.blocking', { app: DISPLAY_NAME })
+            : t('preflight.subtitle.optional', { app: DISPLAY_NAME })}
         </p>
 
         <ul className="mt-6 w-full space-y-2 text-left" aria-live="polite">

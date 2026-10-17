@@ -71,12 +71,13 @@ export function craftPartsDetail(parts: CraftPart[]): string {
 
 function craftComponent(c: CraftCheck): PreflightComponent | null {
   if (c.state === 'unsupported') return null
-  if (c.state === 'installed') return { id: 'craft', essential: true, ok: true, installable: true, version: c.version }
+  if (c.state === 'installed') return { id: 'craft', essential: false, ok: true, installable: true, version: c.version }
   const total = c.parts.length
   const bad = c.parts.filter((p) => p.problem !== null)
   return {
     id: 'craft',
-    essential: true,
+    // Opcional: sin ArtCraft se puede chatear y programar; se instala cuando la persona quiere documentos con diseño (aquí o en Ajustes).
+    essential: false,
     ok: false,
     installable: true,
     // `missing` = no hay nada (primer uso); `incomplete` = hay piezas pero faltan o están dañadas.
@@ -143,8 +144,8 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     const installable = sandboxInstallable(sandbox)
     out.push({
       id: 'sandbox',
-      // Solo es esencial si el botón lo puede arreglar; si pide WSL o virtualización, avisa pero deja entrar (no hay salida desde aquí).
-      essential: installable || ok,
+      // Opcional: solo lo necesita el modo Tareas; se prepara aquí o cuando la persona lo abra.
+      essential: false,
       ok,
       installable,
       ...(ok ? {} : { reason: sandbox.state, sizeBytes: installable ? SANDBOX_APPROX_BYTES : undefined }),
@@ -152,13 +153,13 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     })
   }
 
-  // Disco: solo exige espacio para lo que falte instalar (ArtCraft ×4, entorno aislado ×1).
+  // Disco: avisa si no alcanza para lo que falte instalar (ArtCraft ×4, entorno aislado ×1); no bloquea la app, solo la instalación.
   const need = out.reduce((n, c) => (!c.ok && c.installable ? n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1) : n), 0)
   const freeBytes = typeof free === 'number' ? free : null
   const diskOk = need === 0 || freeBytes === null || freeBytes >= need
   out.push({
     id: 'disk',
-    essential: true,
+    essential: false,
     ok: diskOk,
     installable: false,
     ...(diskOk

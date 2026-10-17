@@ -60,6 +60,25 @@ describe('motor', () => {
   })
 })
 
+describe('primer uso: solo el motor bloquea', () => {
+  it('sin ArtCraft, sin espacio para instalarlo, con el entorno aislado por preparar: no bloquea nada', async () => {
+    const r = await runPreflightChecks(
+      deps({
+        platform: 'win32',
+        craft: () => ({ state: 'missing', version: '0.5.0', sizeBytes: 700e6, parts: ALL.map((n) => part(n, 'no-mark')) }),
+        freeBytes: () => 1e9,
+        sandbox: async () => ({ state: 'needsSetup' })
+      })
+    )
+    expect(blocking(r)).toEqual([])
+    expect(optionalPending(r).map((c) => c.id)).toEqual(['disk', 'craft', 'sandbox'])
+  })
+  it('sin motor sí bloquea', async () => {
+    const r = await runPreflightChecks(deps({ engine: async () => ({ found: false, version: null }) }))
+    expect(blocking(r).map((c) => c.id)).toEqual(['engine'])
+  })
+})
+
 describe('ArtCraft', () => {
   it('nada instalado: falta entero con el tamaño a descargar', async () => {
     const craft: CraftCheck = {
@@ -70,7 +89,7 @@ describe('ArtCraft', () => {
     }
     expect(await get({ craft: () => craft }, 'craft')).toMatchObject({
       ok: false,
-      essential: true,
+      essential: false,
       installable: true,
       reason: 'missing',
       sizeBytes: 700e6
@@ -92,7 +111,7 @@ describe('disco y carpeta de datos', () => {
   const faltaCraft: CraftCheck = { state: 'missing', version: '0.5.0', sizeBytes: 300e6, parts: ALL.map((n) => part(n, 'no-mark')) }
   it('sin espacio para lo que falta (300 MB ×4): falla el disco con el detalle', async () => {
     const d = await get({ craft: () => faltaCraft, freeBytes: () => 1.1e9 }, 'disk')
-    expect(d).toMatchObject({ ok: false, essential: true, reason: 'low-space' })
+    expect(d).toMatchObject({ ok: false, essential: false, reason: 'low-space' })
     expect(d?.detail).toContain('hacen falta 1200 MB')
   })
   it('con espacio justo alcanza', async () => {
@@ -157,18 +176,18 @@ describe('Windows: entorno aislado', () => {
   it('listo', async () => {
     expect(await get(win('ready'), 'sandbox')).toMatchObject({ ok: true })
   })
-  it('por preparar: esencial e instalable con ~2 GB', async () => {
+  it('por preparar: opcional e instalable con ~2 GB', async () => {
     const r = await runPreflightChecks(deps(win('needsSetup')))
     expect(r.components.find((c) => c.id === 'sandbox')).toMatchObject({
       ok: false,
-      essential: true,
+      essential: false,
       installable: true,
       sizeBytes: 2_000_000_000
     })
     expect(installPlan(r).map((c) => c.id)).toEqual(['sandbox'])
   })
   it('imagen rota por el paquete se repara; rota por otra causa no', async () => {
-    expect(await get(win('broken', 'payload'), 'sandbox')).toMatchObject({ installable: true, essential: true })
+    expect(await get(win('broken', 'payload'), 'sandbox')).toMatchObject({ installable: true, essential: false })
     expect(await get(win('broken', 'status'), 'sandbox')).toMatchObject({ installable: false, essential: false })
   })
   it('falta WSL o virtualización: avisa pero deja entrar', async () => {

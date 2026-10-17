@@ -3,8 +3,9 @@
  * instala y en qué orden, cuánto se descarga y cuándo hay que mostrar la pantalla. Sin Electron, React ni IPC: la comparten el servicio de
  * main (`src/main/preflight`), la pantalla del renderer y el informe de Diagnóstico (se prueba con `preflight.test.ts`).
  *
- * Esencial = sin eso la app no sirve y se resuelve aquí (motor, ArtCraft, en Windows el entorno aislado, disco y carpeta de datos). No
- * esencial = permisos de macOS, ubicación de la app y ayudante de control: se avisan como «Pendiente» y se puede continuar.
+ * Esencial = sin eso la app no arranca (solo el motor de agentes y la carpeta de datos). No esencial = todo lo demás: ArtCraft, el
+ * entorno aislado de Windows, el espacio en disco para instalarlos, permisos de macOS, ubicación de la app y ayudante de control. Se
+ * avisan como «Pendiente», se puede continuar («Más tarde») y se ofrecen cuando se necesiten o desde Ajustes.
  */
 
 export type PreflightId = 'storage' | 'disk' | 'engine' | 'craft' | 'sandbox' | 'helper' | 'perms' | 'location'
@@ -56,12 +57,12 @@ export function ordered(report: PreflightReport): PreflightComponent[] {
   return [...report.components].sort((a, b) => rank(a.id) - rank(b.id))
 }
 
-/** Esenciales que no están listos: mientras haya alguno, la pantalla no se puede omitir. */
+/** Esenciales que no están listos (motor, carpeta de datos): mientras haya alguno, la pantalla no se puede omitir. */
 export function blocking(report: PreflightReport): PreflightComponent[] {
   return ordered(report).filter((c) => c.essential && !c.ok)
 }
 
-/** No esenciales pendientes (permisos, ubicación, ayudante): se avisan y se puede continuar. */
+/** No esenciales pendientes (ArtCraft, entorno aislado, permisos, ubicación, ayudante): se avisan y se puede continuar. */
 export function optionalPending(report: PreflightReport): PreflightComponent[] {
   return ordered(report).filter((c) => !c.essential && !c.ok)
 }
@@ -124,7 +125,7 @@ export function canContinue(report: PreflightReport, rt: RuntimeMap = {}): boole
   return blocking(report).length === 0 && !Object.values(rt).some((r) => r?.state === 'downloading')
 }
 
-/** Huella de «Continuar de todos modos»: no se vuelve a mostrar la pantalla por los mismos pendientes en la misma versión de la app. */
+/** Huella de «Más tarde»: no se vuelve a mostrar la pantalla mientras los pendientes sean los mismos (o menos), ni siquiera tras actualizar la app. */
 export interface Dismissal {
   version: string
   ids: PreflightId[]
@@ -134,20 +135,21 @@ export function dismissalFor(report: PreflightReport): Dismissal {
   return { version: report.appVersion, ids: optionalPending(report).map((c) => c.id) }
 }
 
-function sameDismissal(a: Dismissal, b: Dismissal): boolean {
-  return a.version === b.version && a.ids.length === b.ids.length && a.ids.every((id, i) => id === b.ids[i])
+/** ¿Todos los pendientes de ahora ya estaban en lo que la persona dejó para más tarde? (Un pendiente nuevo vuelve a avisar.) */
+function coversDismissal(saved: Dismissal, now: Dismissal): boolean {
+  return now.ids.every((id) => saved.ids.includes(id))
 }
 
 /**
  * ¿Hay que mostrar la pantalla? Siempre que falte algo esencial. Si solo hay pendientes no esenciales, solo hasta que la persona pulse
- * «Continuar de todos modos» (para esa versión de la app y esos mismos pendientes). Todo listo o revisión omitida = no se muestra nada.
+ * «Más tarde» (no vuelve a salir por esos mismos pendientes; uno nuevo sí avisa). Todo listo o revisión omitida = no se muestra nada.
  */
 export function shouldShow(report: PreflightReport, dismissed: Dismissal | null): 'blocking' | 'optional' | null {
   if (report.skipped) return null
   if (blocking(report).length > 0) return 'blocking'
   const pending = optionalPending(report)
   if (pending.length === 0) return null
-  return dismissed && sameDismissal(dismissed, dismissalFor(report)) ? null : 'optional'
+  return dismissed && coversDismissal(dismissed, dismissalFor(report)) ? null : 'optional'
 }
 
 /** Lee una huella guardada (JSON de localStorage) con tolerancia a datos rotos. */

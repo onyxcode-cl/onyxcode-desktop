@@ -6,7 +6,7 @@ import { PreflightScreen, type PreflightScreenProps } from './PreflightScreen'
 
 const c = (id: PreflightComponent['id'], o: Partial<PreflightComponent> = {}): PreflightComponent => ({
   id,
-  essential: ['storage', 'disk', 'engine', 'craft', 'sandbox'].includes(id),
+  essential: ['storage', 'engine'].includes(id),
   ok: true,
   installable: id === 'craft' || id === 'sandbox',
   ...o
@@ -46,22 +46,21 @@ const faltaCraft = (): PreflightComponent[] => [
   c('craft', { ok: false, reason: 'missing', sizeBytes: 300e6 })
 ]
 
-describe('pantalla «Preparando»: falta algo esencial', () => {
+describe('pantalla «Preparando»: falta ArtCraft (opcional)', () => {
   const html = render(report(faltaCraft()))
   it('título, lista de componentes con su estado y el tamaño a descargar', () => {
     expect(html).toContain('Preparando Lazunox')
     expect(html).toMatch(/data-testid="preflight-row-engine" data-state="ready"/)
-    expect(html).toMatch(/data-testid="preflight-row-craft" data-state="missing"/)
+    expect(html).toMatch(/data-testid="preflight-row-craft" data-state="pending"/)
     expect(html).toContain('Se descargarán unos 300 MB.')
     // Disco y carpeta de datos listos no ocupan fila.
     expect(html).not.toContain('preflight-row-disk')
   })
-  it('un botón claro «Instalar lo que falta» y NINGUNA forma de omitir', () => {
+  it('«Instalar lo que falta» y también «Más tarde»: nada obliga a descargar para entrar', () => {
     expect(html).toContain('Instalar lo que falta')
-    expect(html).toContain('No se puede omitir')
-    expect(html).not.toContain('Continuar de todos modos')
-    expect(html).not.toContain('Omitir')
-    expect(html).not.toMatch(/Cerrar|Saltar/)
+    expect(html).toContain('Más tarde')
+    expect(html).toContain('Opcional')
+    expect(html).not.toContain('No se puede omitir')
   })
   it('es un diálogo modal a pantalla completa', () => {
     expect(html).toContain('role="dialog"')
@@ -108,7 +107,7 @@ describe('instalando y fallos', () => {
       c('craft', { ok: false, sizeBytes: 300e6 })
     ])
     const html = render(r)
-    expect(html).toMatch(/data-testid="preflight-row-disk" data-state="missing"/)
+    expect(html).toMatch(/data-testid="preflight-row-disk" data-state="pending"/)
     expect(html).toContain('Libera espacio')
     expect(html).toMatch(/<button[^>]*disabled[^>]*>(?:(?!<\/button>).)*Instalar lo que falta/)
   })
@@ -132,12 +131,12 @@ describe('avisos no esenciales', () => {
       c('perms', { ok: false, reason: 'both' }),
       c('location', { ok: false, reason: 'translocated' })
     ])
-  it('salen como «Pendiente» con su acción y se puede «Continuar de todos modos»', () => {
+  it('salen como «Pendiente» con su acción y se puede dejar para «Más tarde»', () => {
     const html = render(optional())
     expect(html).toMatch(/data-testid="preflight-row-perms" data-state="pending"/)
     expect(html).toMatch(/data-testid="preflight-row-location" data-state="pending"/)
     expect(html).toContain('Dar permisos')
-    expect(html).toContain('Continuar de todos modos')
+    expect(html).toContain('Más tarde')
     expect(html).not.toContain('Instalar lo que falta')
     expect(html).not.toContain('No se puede omitir')
   })
@@ -151,9 +150,9 @@ describe('avisos no esenciales', () => {
   it('permisos que no se activan tras esperar: ayuda de reparación', () => {
     expect(render(optional(), { permsStalled: true })).toContain('Los permisos no se activan')
   })
-  it('con lo esencial pendiente Y avisos, «Continuar de todos modos» NO aparece', () => {
-    const r = report([c('engine'), c('craft', { ok: false, sizeBytes: 1e8 }), c('perms', { ok: false, reason: 'both' })])
-    expect(render(r)).not.toContain('Continuar de todos modos')
+  it('con lo esencial pendiente (motor) Y avisos, «Más tarde» NO aparece', () => {
+    const r = report([c('engine', { ok: false, reason: 'not-found' }), c('craft'), c('perms', { ok: false, reason: 'both' })])
+    expect(render(r)).not.toContain('Más tarde')
   })
   it('todo listo (tras instalar): botón «Continuar»', () => {
     const html = render(report([c('storage'), c('disk'), c('engine'), c('craft')]))
