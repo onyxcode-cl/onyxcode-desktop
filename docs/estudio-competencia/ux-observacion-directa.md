@@ -31,3 +31,32 @@ Fecha: 2026-10-17. Hecha con permiso del dueño, mirando solo la interfaz (esté
 - La **configuración (Ajustes) de Claude**, por la dificultad de manejar la sesión remota.
 - Recorridos más profundos de ChatGPT/Codex (la app no respondió a mis clics).
 - Aprobaciones en acción y cómo muestran el trabajo del agente paso a paso en una sesión real.
+
+## Segunda pasada (2026-10-17, con mouse real)
+
+Solo interfaz; se omiten datos personales que aparecieron en pantalla (fotos de la Biblioteca de ChatGPT, temas de la memoria de Claude, nombres de proyectos).
+
+### ChatGPT con Codex (Mac)
+- **Imágenes:** galería de plantillas de ejemplo («Tendencias» / «Templates») con caja «Describe una imagen nueva».
+- **Se programó:** «Programar una tarea» con 8 recetas listas (resumen de noticias, seguir a la competencia, planificar la semana…) y lista «Próximas».
+- **Biblioteca:** todo lo creado o subido, pestañas Sugeridos / Favoritos / Carpetas / Imágenes / Todo, buscador, vista cuadrícula/lista y botón «Nuevo».
+- **Complementos / Skills:** «Populares», «Nuevos y destacados», «Instaladas» y «Sistema», buscador y «Agregar».
+- **Revisión de código:** pantalla propia para conectar GitHub/GitLab.
+- **Configuración:** buscador y ~20 secciones en tres grupos (Personal, Integraciones, Programación), incluidas Atajos de teclado, Uso y facturación, Controles de datos, Hooks, Worktrees, Entornos.
+- **Permisos en la caja:** «Solicitar aprobación», «Aprobar por mí», «Acceso completo» (naranja, con advertencia).
+- **Conversación:** el trabajo se pliega en «Procesado durante 6s ›»; al abrirlo, una línea por paso («Editó un archivo y ejecutó un comando»); copiar y pulgares por respuesta.
+
+### Claude (Windows)
+- **Ajustes:** buscador; grupos Configuración (General, Cuenta, Privacidad, Facturación, Uso, Capacidades, Memoria, Sistemas de diseño, Reflexión, Tiempo y concentración, Claude Code, Claude in Chrome), Este ordenador (Sistema, Extensiones, Desarrollador), Personalización (Skills, Conectores, Plugins), Plataforma.
+- **Uso:** frase llana arriba («Todo en orden. Deberías llegar al reinicio…») y barras de sesión, semana y por modelo con su hora de reinicio.
+- **General:** tema, fuente y tamaño del chat, ancho de la transcripción, movimiento reducido, carpetas de confianza («Gestionar»), navegador preferido, voz.
+- **Claude Code:** clasificar estados de sesión, tema del código con vista previa de un diff, fuente de código, fuente de la interfaz (incluye OpenDyslexic), vista de la transcripción (Normal / Razonamiento / Detallado).
+- **Capacidades:** interruptores con una frase cada uno (búsqueda de conectores, artefactos, visualizaciones, ejecución de código, red saliente con aviso de riesgo).
+- **Memoria:** interruptores, «Importar memoria de otros proveedores», lista por temas editable y caja «Dile a Claude qué debe cambiar».
+- **Reflexión:** resumen del último mes basado en tus chats.
+- **Tiempo y concentración:** recordatorios de descanso y horas de silencio por día.
+- **Sistema:** versión, ejecutar al iniciar, atajo de Entrada rápida, atajo de dictado, bandeja, mantener equipo activo, almacenamiento.
+- **Extensiones:** arrastrar archivos .MCPB/.DXT para instalar.
+- **Artefactos:** «Crea algo nuevo» (Documentos, Diapositivas, Diseño, Panel) y tarjetas con miniatura real; filtros Todo / Tuyos / Compartido contigo.
+- **Programadas:** vacío con «Nueva tarea» y 8 plantillas con horario sugerido (resumen diario, clasificar correos, revisar PR, notas de versión…).
+- **Caja:** «+» (archivos o fotos Ctrl+U, carpeta, incidencia de GitHub, comandos de barra, conectores, plugins); permisos Auto / Manual / Aceptar ediciones / Plan / Omitir permisos; modelo con atajos 1–4, «Predeterminado», Esfuerzo y «Más modelos».
