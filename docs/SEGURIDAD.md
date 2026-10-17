@@ -1882,3 +1882,13 @@ Pantalla «Personalización» (Habilidades / Conectores / Tuyos). Catálogo: `re
 - **Sello «Revisado por Lazunox»** solo en fichas del catálogo empaquetado.
 - **Pruebas**: `src/main/personalizacion/personalizacion.test.ts` (carpetas hostiles, topes, huella, ficha caducada, apagar/encender), `src/main/ipc/personalizacion-ipc.test.ts` (esquemas y clase X), `src/test/catalogo.test.ts`, `PersonalizacionView.test.tsx`.
 - **No verificado**: Windows real; conectores contra los servicios reales desde esta pantalla; habilidades con binarios propios de cada plataforma (se rechazan los ejecutables).
+
+## 3 quinquagies septies. Búsqueda dentro de los mensajes (F8-B182)
+
+La paleta busca en el contenido de las conversaciones de Chat y Code. Sin canales IPC nuevos ni cambios en `main`: es solo renderer.
+
+- **Solo en memoria.** El texto preparado para buscar vive en la memoria de la ventana (`src/renderer/src/features/search/`). No hay archivo en `userData` ni en ningún otro lugar; cerrar la app lo borra y «Borrar lo leído» (pie de la paleta, `clearSearchIndex`) lo vacía al instante y detiene las lecturas hasta que se vuelva a abrir la paleta. Nada sale del equipo (se lee el historial por el mismo cliente local del motor que ya usa la app).
+- **Qué se guarda y qué no.** Solo el texto visible de los mensajes del usuario y de la IA. No: resultados de herramientas (donde caería el contenido de un `.env`), razonamiento, archivos, el bloque de adjuntos ni los bloques internos de memoria. Antes de guardar se tapan secretos con `maskSecretPatterns` (`src/shared/redact-patterns.ts`) y los bloques de llave privada; el texto tapado no se puede buscar ni aparece en el fragmento.
+- **Topes**: 300 conversaciones, 20 000 caracteres por mensaje y 400 000 por conversación; lectura con 2 en paralelo y pausa.
+- **Fuera de alcance**: las tareas de Overdrive (sandbox por carpeta) no se leen desde aquí. El celular no tiene paleta (`no-command-palette` en la PWA), así que no hay superficie remota nueva.
+- **Pruebas**: `search-index.test.ts` (secretos y llaves privadas no se encuentran, herramientas y razonamiento no se indexan), `search-service.test.ts` (vaciar y no releer).

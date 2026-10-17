@@ -104,7 +104,8 @@ export function cleanForIndex(raw: string): string {
     .slice(0, MAX_DOC_CHARS * 2)
     .replace(MEMORY_BLOCK_RE, ' ')
     .replace(PRIVATE_KEY_RE, ' … ')
-  return maskSecretPatterns(text).replace(/\s+/g, ' ').trim().slice(0, MAX_DOC_CHARS)
+  // Los signos de formato (negritas, comillas de código) no aportan al buscar y ensucian el fragmento.
+  return maskSecretPatterns(text.replace(/[`*]+/g, '')).replace(/\s+/g, ' ').trim().slice(0, MAX_DOC_CHARS)
 }
 
 /** Documentos buscables de una conversación. En Code las respuestas se anclan al mensaje del usuario de su turno. */
