@@ -89,11 +89,11 @@ export const chat = {
   'chat.suggest.translate': 'Translate',
   'chat.suggest.translate.prompt': 'Translate the following text into Spanish:\n\n',
   'chat.suggest.translate.desc': 'A text into Spanish',
-  'chat.placeholder.connecting': 'Connecting to OpenCode…',
+  'chat.placeholder.connecting': 'Connecting to the AI…',
   'chat.placeholder.noAi': 'Connect an AI to get started',
   'chat.placeholder.modelUnavailable': 'Pick an available model to continue',
   'chat.modelUnavailable.notice':
-    'The model “{model}” you picked isn’t available right now (it was removed from the list or its provider’s key is missing). We won’t swap it for another one: pick one in the selector.',
+    'The model “{model}” you picked isn’t available right now (it was removed from the list or the access key of its AI service is missing). We won’t swap it for another one: pick one in the selector.',
   'chat.modelUnavailable.send': 'The model “{model}” isn’t available. Pick another one in the selector to send.',
   'chat.placeholder.message': 'Type a message…',
   'chat.newConversation': 'New conversation',

@@ -21,7 +21,7 @@ export const compare = {
   'compare.confirm.usage': 'Se ejecutará {count} veces: el uso se multiplica ×{count}. Hoy llevas {spent}.',
   'compare.confirm.usageNoSpent': 'Se ejecutará {count} veces: el uso se multiplica ×{count}.',
   'compare.confirm.limits':
-    'Algunos proveedores limitan el uso por minuto: si se alcanza el límite, esa columna esperará y se reintentará.',
+    'Algunos servicios de IA limitan el uso por minuto: si se alcanza el límite, esa columna esperará y se reintentará.',
   'compare.confirm.dirty': 'Los cambios sin confirmar no entran: cada modelo parte del último commit ({commit}).',
   'compare.confirm.deps': 'Cada copia empieza sin dependencias instaladas ni archivos ignorados.',
   'compare.confirm.noRepo': 'Comparar en Code necesita un repositorio git. Puedes comparar en Chat.',
@@ -65,7 +65,7 @@ export const compare = {
   'compare.metrics.cost': 'Coste',
   'compare.metrics.duration': 'Duración',
   'compare.metrics.region': 'Métricas de {model}',
-  'compare.metrics.costUnknown': 'El proveedor no informó el coste',
+  'compare.metrics.costUnknown': 'El servicio de IA no informó el coste',
   'compare.badge.cheapest': 'más barato',
   'compare.badge.fastest': 'más rápido',
   'compare.badge.smallest': 'menos cambios',

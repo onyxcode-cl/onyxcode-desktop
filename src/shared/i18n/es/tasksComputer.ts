@@ -56,10 +56,10 @@ export const tasksComputer = {
     ' y con control del computador. No tienes que elegir una carpeta: el agente podrá usar todo tu equipo y empezará trabajando desde «{name}».',
   'tasksComputer.full.b1': 'Podrá mover el ratón, hacer clic, escribir y pulsar teclas en cualquier aplicación.',
   'tasksComputer.full.cap1': 'Tomará capturas de pantalla, que ',
-  'tasksComputer.full.cap2': 'se envían al proveedor del modelo',
+  'tasksComputer.full.cap2': 'se envían al servicio de IA',
   'tasksComputer.full.cap3': '. Cierra o oculta lo que no quieras compartir.',
   'tasksComputer.full.retention':
-    'Las capturas se envían al proveedor del modelo y quedan en el historial de la tarea; las copias temporales se borran al terminar y al cerrar la app.',
+    'Las capturas se envían al servicio de IA y quedan en el historial de la tarea; las copias temporales se borran al terminar y al cerrar la app.',
   'tasksComputer.full.b3':
     'Podrá ver la pantalla, crear, modificar y borrar cualquier archivo de tu usuario, abrir cualquier programa y ejecutar comandos: nada queda confinado a una carpeta.',
   'tasksComputer.full.once':
@@ -311,8 +311,8 @@ export const tasksComputer = {
   'tasksComputer.net.explain': 'El agente intentó conectarse a esta dirección y no está entre los sitios permitidos.',
   'tasksComputer.net.allowOnce': 'Permitir esta vez',
   'tasksComputer.net.keepBlocked': 'Mantener bloqueado',
-  'tasksComputer.auto.approved': 'Aprobado por el modo auto: {summary}',
-  'tasksComputer.auto.title': 'Modo auto: aprueba en automático lo de bajo riesgo para esta carpeta o tarea',
+  'tasksComputer.auto.approved': 'Aprobado automáticamente: {summary}',
+  'tasksComputer.auto.title': 'Aprobación automática: aprueba sola lo de bajo riesgo para esta carpeta o tarea',
   'tasksComputer.auto.folder': 'Activarlo en esta carpeta',
   'tasksComputer.auto.folderDesc': 'Vale para todas las tareas de esta carpeta.',
   'tasksComputer.auto.task': 'Activarlo solo en esta tarea',
@@ -347,7 +347,7 @@ export const tasksComputer = {
   'tasksComputer.onb.fullDesc':
     'sin límite de carpeta; usa ratón, teclado y pantalla y puede tocar cualquier archivo. Exige aprobar un plan.',
   'tasksComputer.onb.step3': 'Prueba una tarea',
-  'tasksComputer.onb.fillSample': 'Rellenar una tarea de prueba',
+  'tasksComputer.onb.fillSample': 'Escribir una tarea de ejemplo',
   'tasksComputer.onb.step3Desc': 'Una que solo lee y resume: no modifica nada.',
   'tasksComputer.onb.pickFirst': 'Elige antes una carpeta.',
   'tasksComputer.onb.safe': 'Cómo usar las tareas de forma segura',
@@ -392,7 +392,7 @@ export const tasksComputer = {
   'tasksComputer.consent.intro':
     'Control del PC deja que el agente vea la pantalla principal y use el ratón y el teclado, como lo haría una persona. Windows no tiene un permiso del sistema para esto: la autorización la das aquí, en Lazunox.',
   'tasksComputer.consent.canTitle': 'Podrá',
-  'tasksComputer.consent.can1': 'Ver la pantalla principal. Las capturas se envían al proveedor del modelo.',
+  'tasksComputer.consent.can1': 'Ver la pantalla principal. Las capturas se envían al servicio de IA.',
   'tasksComputer.consent.can2': 'Mover el ratón, hacer clic, escribir y pulsar teclas.',
   'tasksComputer.consent.can3': 'Usar solo las apps que le permitas, una por una y con el nivel que elijas.',
   'tasksComputer.consent.neverTitle': 'Nunca podrá',

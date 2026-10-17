@@ -52,7 +52,7 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
     const { page } = app()
     await page.keyboard.press('ControlOrMeta+,')
     const nav = page.locator('nav[aria-label="Secciones de ajustes"]')
-    await nav.getByRole('button', { name: 'MCP', exact: true }).click()
+    await nav.getByRole('button', { name: 'Conectores', exact: true }).click()
     await expectVisible(page.getByLabel('Catálogo de conectores'))
     for (const t of ['Context7', 'Cloudflare Docs', 'GitHub', 'Linear', 'Notion', 'Sentry', 'Atlassian (Jira y Confluence)']) {
       await expectVisible(card(page, t))

@@ -4,7 +4,7 @@ import type { errors as es } from '../es/errors'
 export const errors = {
   'errors.noAi.title': 'You haven’t connected an AI yet',
   'errors.noAi.body':
-    'To send messages you need to connect an AI: your OpenCode Go subscription or another provider’s key. It only takes a minute.',
+    'To send messages you need to connect an AI: use the free model, or connect your OpenCode Go subscription or another service’s access key. It only takes a minute.',
   'errors.yourAi': 'your AI',
   'errors.context.title': 'This conversation is too long',
   'errors.context.message': 'Compact it or start a new conversation to keep going.',

@@ -10,11 +10,11 @@ const app = useApp()
 // Windows v1: sin modo Tareas ni sus ajustes (Tareas, Red, Control del PC, Modo automático) ni Actualizaciones.
 const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines] as readonly string[]
 const SETTINGS = IS_WIN
-  ? ['General', 'Modelos', 'MCP', 'Navegador', 'Uso', 'Atajos', 'Diagnóstico', 'Acerca de']
+  ? ['General', 'Modelos', 'Conectores', 'Navegador', 'Uso', 'Atajos', 'Diagnóstico', 'Acerca de']
   : [
       'General',
       'Modelos',
-      'MCP',
+      'Conectores',
       UI_LABELS.tasksMode,
       UI_LABELS.network,
       UI_LABELS.computer,

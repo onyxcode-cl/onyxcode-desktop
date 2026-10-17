@@ -325,7 +325,7 @@ function DesktopSessionList({
       return (
         <>
           {toolsRow}
-          <SidebarEmpty icon={<MessagesSquare size={18} strokeWidth={1.75} />} text={text} hint={!showArchived} />
+          <SidebarEmpty icon={<MessagesSquare size={18} strokeWidth={1.75} />} text={text} hint={showArchived ? false : 'chat'} />
         </>
       )
     return (

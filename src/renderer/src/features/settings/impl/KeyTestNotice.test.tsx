@@ -34,7 +34,7 @@ describe('KeyTestNotice', () => {
     expect(render(done('invalid', 401, 10))).toContain('Clave no válida')
     expect(render(done('rate-limited', 429, 10))).toContain('Límite de uso alcanzado')
     const down = render(done('provider-down', 503, 10))
-    expect(down).toContain('El proveedor tiene problemas')
+    expect(down).toContain('El servicio tiene problemas')
     expect(down).toContain('HTTP 503')
   })
 

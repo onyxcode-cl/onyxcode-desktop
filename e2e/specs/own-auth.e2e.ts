@@ -93,8 +93,9 @@ describe('conexión propia de la app', () => {
     expect(settingsOf(userData).onboarded).toBe(false)
 
     // Conecta una IA (clave de OpenCode Go) y termina el asistente.
+    await d().getByText('Otras formas de conectar').click()
     const go = d().getByRole('region', { name: 'OpenCode Go' })
-    await go.getByLabel('API key').fill('sk-e2e-reabrir')
+    await go.getByLabel('Clave de acceso').fill('sk-e2e-reabrir')
     await go.getByRole('button', { name: 'Guardar' }).click()
     await expectVisible(d().getByText('OpenCode Go conectado'))
     expect(JSON.parse(readFileSync(join(ownData(userData), 'opencode', 'auth.json'), 'utf8'))).toHaveProperty('opencode-go')

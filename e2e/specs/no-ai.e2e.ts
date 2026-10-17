@@ -101,7 +101,7 @@ describe('sin ninguna IA conectada', () => {
     await page.getByRole('button', { name: 'Conectar una IA' }).first().click()
     await expectVisible(page.getByRole('heading', { name: 'Modelos' }))
     const providers = page.locator('#settings-providers')
-    await expectVisible(providers.getByText('Proveedores'))
+    await expectVisible(providers.getByText('Servicios de IA'))
     await expect
       .poll(() =>
         providers.evaluate((el) => {
@@ -115,10 +115,10 @@ describe('sin ninguna IA conectada', () => {
 
   it('(b) conectar la clave de Go en Ajustes: el banner desaparece y el envío funciona', async () => {
     const { page, fake } = app
-    const form = page.getByLabel('Proveedor')
+    const form = page.getByLabel('Servicio de IA')
     await expectVisible(form)
     await form.selectOption('opencode-go')
-    await page.getByLabel('API key').fill('sk-e2e-noai-0123456789')
+    await page.getByLabel('Clave de acceso').fill('sk-e2e-noai-0123456789')
     await page.getByRole('button', { name: 'Guardar' }).click()
     await expectVisible(page.getByText('Conectado').first())
 

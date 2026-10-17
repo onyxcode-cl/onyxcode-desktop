@@ -595,7 +595,7 @@ export function TaskList(): React.JSX.Element {
           <SidebarEmpty
             icon={<ListChecks size={18} strokeWidth={1.75} />}
             text={emptyText}
-            hint={!!folder && !showArchived && !searching}
+            hint={!!folder && !showArchived && !searching ? 'tasks' : false}
           />
         )}
         {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (

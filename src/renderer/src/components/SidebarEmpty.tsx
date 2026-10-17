@@ -1,17 +1,30 @@
 import type { ReactNode } from 'react'
 import { useT } from '../lib/i18n'
-import { hintText, useEffectiveBindings } from '../keybindings/bindings'
+
+/** Pista de cada modo: dice qué hacer en ESE modo (Chat escribe abajo, Code abre una carpeta con +, Overdrive describe una tarea). */
+export type SidebarEmptyHint = 'chat' | 'code' | 'tasks'
 
 /**
  * Estado vacío de la barra lateral de escritorio (1b): sin recuadro ni icono, texto de 14 px y una pista en `caption`.
- * `hint={true}` usa la pista estándar «Abre una carpeta con + o empieza con ⌘N.»; un texto la sustituye.
+ * `hint` elige la pista del modo correcto; un texto la sustituye.
  */
-export function SidebarEmpty({ text, hint }: { icon?: ReactNode; text: string; hint?: string | boolean }): React.JSX.Element {
+export function SidebarEmpty({
+  text,
+  hint
+}: {
+  icon?: ReactNode
+  text: string
+  hint?: SidebarEmptyHint | string | false
+}): React.JSX.Element {
   const t = useT()
-  const bindings = useEffectiveBindings()
-  const key = hintText(bindings['conversation.new'])
   const hintLine =
-    hint === true ? (key ? t('app.sidebar.emptyHint.generic', { hint: key }) : t('app.sidebar.emptyHint.genericNoKey')) : hint || undefined
+    hint === 'chat'
+      ? t('app.sidebar.emptyHint.chat')
+      : hint === 'code'
+        ? t('app.sidebar.emptyHint.code')
+        : hint === 'tasks'
+          ? t('app.sidebar.emptyHint.tasks')
+          : hint || undefined
   return (
     <div className="flex flex-col gap-1 px-2 py-2">
       <p className="text-sm text-fg">{text}</p>

@@ -885,7 +885,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
 
   if (!directory) {
     // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
-    return desktop ? <SidebarEmpty text={t('app.sidebar.noProjects')} hint /> : null
+    return desktop ? <SidebarEmpty text={t('app.sidebar.noProjects')} hint="code" /> : null
   }
 
   // Celular: un solo proyecto, como siempre (openDirectories tiene como mucho uno). Escritorio: un grupo por abierto.
