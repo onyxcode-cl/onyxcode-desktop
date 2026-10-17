@@ -60,7 +60,6 @@ export const MIGRATED: string[] = [
   'src/renderer/src/app/UpdateNotice.tsx',
   'src/renderer/src/components/ConfirmDialog.tsx',
   'src/renderer/src/components/DiffView.tsx',
-  'src/renderer/src/components/EffortPicker.tsx',
   'src/renderer/src/components/ErrorBoundary.tsx',
   'src/renderer/src/components/Markdown.tsx',
   'src/renderer/src/components/ModelPicker.tsx',

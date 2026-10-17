@@ -7,7 +7,7 @@
  *   `collapseClass`; el nombre accesible y el `title` llevan SIEMPRE la etiqueta y el valor actual, así que la información no desaparece.
  * - En el celular (PWA) el mismo contenido sale en una hoja inferior.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { Sheet } from './mobile/Sheet'
 import { useDismiss } from '../lib/use-dismiss'
@@ -26,6 +26,13 @@ export interface ChipMenuOption {
   /** Color de aviso (opción peligrosa o que no es la predeterminada). */
   tone?: 'danger' | 'warning'
   disabled?: boolean
+  /**
+   * Acción en vez de valor: no se marca ni cambia el valor del chip; al elegirla solo avisa a `onSelect` (rol `menuitem`).
+   * Se usa para «Agregar proyecto…» o «Mostrar en Finder».
+   */
+  action?: boolean
+  /** Línea separadora encima de esta opción. */
+  separatorBefore?: boolean
 }
 
 /** Texto de la tecla modificadora principal: ⌘ en Mac, Ctrl en el resto. */
@@ -36,6 +43,12 @@ interface Props {
   name: string
   /** Etiqueta del valor actual («Preguntar siempre»). */
   valueLabel: string
+  /** Dato secundario junto al valor (p. ej. la rama): se ve con sitio (`detailClass`) y va SIEMPRE al `aria-label`/`title`. */
+  detail?: string
+  /** Clases de la etiqueta de `detail` (p. ej. para ocultarla en un contenedor angosto). */
+  detailClass?: string
+  /** Clases del texto del valor (p. ej. `truncate` si puede ser largo). */
+  labelClass?: string
   icon?: React.ReactNode
   options: ChipMenuOption[]
   value: string
@@ -66,11 +79,14 @@ interface Props {
 }
 
 const chipBase = (): string =>
-  `no-drag flex items-center whitespace-nowrap gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent desk:rounded-lg desk:text-[13px] ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
+  `no-drag flex max-w-full min-w-0 items-center whitespace-nowrap gap-1.5 rounded-md px-2 text-[12.5px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent desk:rounded-lg desk:text-[13px] ${isRemoteSurface() ? 'h-11 rounded-xl px-3' : 'h-7'}`
 
 export function ChipMenu({
   name,
   valueLabel,
+  detail,
+  detailClass = '',
+  labelClass = '',
   icon,
   options,
   value,
@@ -97,14 +113,14 @@ export function ChipMenu({
   // Al abrir, el foco va a la opción actual (o a la primera).
   useEffect(() => {
     if (!open) return
-    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"], [role="menuitem"]') ?? [])
     ;(items.find((el) => el.getAttribute('aria-checked') === 'true') ?? items[0])?.focus()
   }, [open])
 
   const pick = (id: string): void => {
     setOpen(false)
     triggerRef.current?.focus()
-    if (id !== value) onSelect(id)
+    if (id !== value || options.find((o) => o.id === id)?.action) onSelect(id)
   }
 
   const onKeyDown = (e: React.KeyboardEvent): void => {
@@ -119,7 +135,9 @@ export function ChipMenu({
       setOpen(false)
       return
     }
-    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]:not(:disabled)') ?? [])
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]:not(:disabled), [role="menuitem"]:not(:disabled)') ?? []
+    )
     const i = items.indexOf(document.activeElement as HTMLButtonElement)
     const go = (n: number): void => {
       e.preventDefault()
@@ -153,7 +171,7 @@ export function ChipMenu({
         : tone === 'warning'
           ? 'bg-warning/10 text-warning'
           : 'text-muted hover:bg-hover hover:text-fg'
-  const full = `${name}: ${valueLabel}`
+  const full = detail ? `${name}: ${valueLabel} (${detail})` : `${name}: ${valueLabel}`
   const shortLabel = options.find((o) => o.id === value)?.shortLabel
 
   const noteEl = note ? (
@@ -163,34 +181,48 @@ export function ChipMenu({
   ) : null
 
   const items = options.map((o, n) => (
-    <button
-      key={o.id}
-      type="button"
-      role="menuitemradio"
-      aria-checked={o.id === value}
-      disabled={o.disabled}
-      data-option={o.id}
-      onClick={() => pick(o.id)}
-      className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 text-left outline-none hover:bg-hover focus-visible:bg-hover focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 ${sheet ? 'min-h-12 py-2.5' : 'py-1.5'} ${
-        o.tone === 'danger' ? 'text-danger' : o.tone === 'warning' ? 'text-warning' : o.id === value ? 'text-fg' : 'text-muted'
-      }`}
-    >
-      {o.icon && <span className="mt-0.5 shrink-0">{o.icon}</span>}
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-medium">{o.label}</span>
-        {o.hint && <span className="block text-[11.5px] leading-snug text-subtle desk:text-meta">{o.hint}</span>}
-      </span>
-      {(o.shortcut ?? (!sheet && n < 9 ? String(n + 1) : null)) && (
-        <kbd className="mt-0.5 shrink-0 rounded border border-border px-1 font-sans text-[10.5px] leading-4 text-subtle desk:text-meta">
-          {o.shortcut ?? String(n + 1)}
-        </kbd>
-      )}
-      {o.id === value ? <Check size={14} className="mt-0.5 shrink-0 text-accent" aria-hidden /> : <span className="w-3.5 shrink-0" />}
-    </button>
+    <Fragment key={o.id}>
+      {o.separatorBefore && <div role="separator" className="my-1 h-px bg-border" />}
+      <button
+        type="button"
+        role={o.action ? 'menuitem' : 'menuitemradio'}
+        aria-checked={o.action ? undefined : o.id === value}
+        disabled={o.disabled}
+        data-option={o.id}
+        onClick={() => pick(o.id)}
+        className={`flex w-full items-start gap-2.5 rounded-lg px-2.5 text-left outline-none hover:bg-hover focus-visible:bg-hover focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 ${sheet ? 'min-h-12 py-2.5' : 'py-1.5'} ${
+          o.tone === 'danger'
+            ? 'text-danger'
+            : o.tone === 'warning'
+              ? 'text-warning'
+              : o.id === value || o.action
+                ? 'text-fg'
+                : 'text-muted'
+        }`}
+      >
+        {o.icon && <span className="mt-0.5 shrink-0">{o.icon}</span>}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-medium">{o.label}</span>
+          {o.hint && <span className="block text-[11.5px] leading-snug text-subtle desk:text-meta">{o.hint}</span>}
+        </span>
+        {(o.shortcut ?? (!sheet && n < 9 ? String(n + 1) : null)) && (
+          <kbd className="mt-0.5 shrink-0 rounded border border-border px-1 font-sans text-[10.5px] leading-4 text-subtle desk:text-meta">
+            {o.shortcut ?? String(n + 1)}
+          </kbd>
+        )}
+        {o.action ? (
+          <span className="w-3.5 shrink-0" />
+        ) : o.id === value ? (
+          <Check size={14} className="mt-0.5 shrink-0 text-accent" aria-hidden />
+        ) : (
+          <span className="w-3.5 shrink-0" />
+        )}
+      </button>
+    </Fragment>
   ))
 
   return (
-    <div ref={rootRef} className={`relative shrink-0 ${className}`}>
+    <div ref={rootRef} className={`relative ${className.includes('shrink') ? '' : 'shrink-0'} ${className}`}>
       <button
         ref={triggerRef}
         type="button"
@@ -205,7 +237,12 @@ export function ChipMenu({
         className={`${chipBase()} ${toneClass} ${open ? 'bg-hover text-fg' : ''} disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {icon}
-        <span className={`whitespace-nowrap ${collapseClass}`}>{valueLabel}</span>
+        <span className={`whitespace-nowrap ${labelClass} ${collapseClass}`}>{valueLabel}</span>
+        {detail && (
+          <span aria-hidden className={`whitespace-nowrap font-normal text-subtle ${detailClass}`}>
+            {detail}
+          </span>
+        )}
         {shortLabel && shortClass && (
           <span aria-hidden className={`whitespace-nowrap ${shortClass}`}>
             {shortLabel}

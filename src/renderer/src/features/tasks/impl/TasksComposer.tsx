@@ -16,7 +16,6 @@ import { sandboxModelNotice } from '@shared/sandbox-providers'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
-import { EffortPicker } from '../../../components/EffortPicker'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { errorMessage } from '../../../lib/opencode'
@@ -257,9 +256,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             <AccessChip disabled={sending || busy} />
             <AutoModeChip />
             {extra}
-            <ModelPicker value={model} onChange={setTaskModel} />
+            <ModelPicker value={model} onChange={setTaskModel} effort={{ variant, onChange: setTaskVariant }} />
           </div>
-          <EffortPicker model={model} variant={variant} onChange={setTaskVariant} />
           <UsageMeter messages={entries} model={model} />
           {sending ? (
             <button
