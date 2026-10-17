@@ -47,7 +47,7 @@ Formato: **ID. Título** — Dónde · Qué se ve · Por qué importa · Severid
 - Esfuerzo: **bajo-medio**.
 
 **H3. Bienvenida con poco contenido útil y un rótulo de marca en mayúsculas espaciadas** — `onboarding-inicio-dark-1280x800.png`
-- Se ve: logo, título, frase y «HECHO POR ONYX CODE» en versalitas con tracking amplio y bajo contraste; «Lo dejamos listo en unos minutos» en gris; botón «Empezar» pequeño.
+- Se ve: logo, título, frase y «Hecho por» + el nombre de la empresa en versalitas con tracking amplio y bajo contraste; «Lo dejamos listo en unos minutos» en gris; botón «Empezar» pequeño.
 - Problema: la línea de autoría compite con el mensaje y es difícil de leer; «unos minutos» sin cifra de pasos (el siguiente paso dice «Paso 1 de 4» pero aquí no se anticipa). El botón es chico para ser la única acción de la pantalla.
 - Severidad: **baja**.
 - Propuesta: mover la autoría al pie (más pequeña) o a «Acerca de»; cambiar la frase por «4 pasos cortos · puedes empezar gratis»; subir el botón a tamaño `lg`.
