@@ -141,6 +141,16 @@ export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
   // prueba coherentes entre sí y no tocan el PC.
   { path: 'scripts/win/**', reason: 'Scripts del PC de pruebas real: carpeta C:\\onyx, host win-onyx y ONYX_WIN_HOST' },
   {
+    path: /^(scripts\/release\.sh|src\/test\/release-script\.test\.ts|docs\/DISTRIBUCION\.md)$/,
+    token: /ONYX_WIN_|C:[\\/]+onyx/i,
+    reason: 'Release de un solo comando: usa el PC de pruebas real (ONYX_WIN_HOST y C:/onyx, como scripts/win/sync.sh)'
+  },
+  {
+    path: 'scripts/release.sh',
+    token: /onyxcode\.cl/i,
+    reason: 'Release de un solo comando: dominio de las descargas onyxcode.cl (CLOUD_DOMAIN), como site/publicar-descargas.sh'
+  },
+  {
     path: /^src\/main\/tasks\/backends\/(wsl-setup\.win\.test|wsl-session\.win\.test|wsl-it-support)\.ts$/,
     token: /C:\\+onyx|\/win\/c\/onyx|\/c\/onyx/i,
     reason: 'Pruebas de integración (y su apoyo) que solo corren en el PC de pruebas real (C:\\onyx\\wsl, C:\\onyx\\tmp, LAZUNOX_WSL_IT=1)'
