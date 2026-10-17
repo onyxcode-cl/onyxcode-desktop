@@ -57,10 +57,12 @@ const SCENARIOS = [
   'code-archivo',
   'code-entorno',
   'aviso-motor',
+  'motor-error', // H24: el motor no arranca (banner «No se pudo conectar con la IA»)
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
   'tareas-nueva',
+  'tareas-lista-vacia', // H24: lista de Tareas sin ninguna tarea (antes de crear tareas)
   'inicio-vacio',
   'tareas-lista',
   'tareas-buscar',
@@ -80,6 +82,7 @@ const SCENARIOS = [
   'rutinas-detalle',
   'rutinas-editor',
   'rutinas-evento',
+  'rutinas-vigilante', // H24: «Sin vigilar» y «Carpeta no disponible» (antes de la bandeja)
   'rutinas-bandeja',
   'rutinas-evento-e2e',
   'ajustes-general',
@@ -109,6 +112,10 @@ const SCENARIOS = [
   'inicio-code',
   'code-cambios',
   'code-cambios-archivo',
+  'chat-error-conexion', // H24: la IA rechaza la conexión (clave caducada)
+  'chat-carga-larga', // H24: respuesta larga en curso
+  'tareas-error', // H24: tarea que termina con error
+  'ajustes-modelos-vacio', // H24: ningún servicio de IA conectado
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
@@ -1968,6 +1975,125 @@ const S = {
     await vis(ctx.page.getByRole('dialog'), 5000)
     await sleep(400)
   },
+  // ---- H24: estados de error, carga y vacío ----
+  // La IA rechaza la conexión (ProviderAuthError): tarjeta de error del Chat con su mensaje llano y el botón de ayuda.
+  async 'chat-error-conexion'(ctx) {
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'consulta con error de conexion',
+      title: 'Consulta con error',
+      steps: [{ type: 'error', name: 'ProviderAuthError', message: 'invalid x-api-key', statusCode: 401 }]
+    })
+    await closeOverlays(page)
+    await newChat(page)
+    await sendChat(page, 'Haz una consulta con error de conexion')
+    await vis(page.getByText('La IA rechazó la conexión'), 30_000)
+    await sleep(600)
+  },
+  // Respuesta larga en curso: texto parcial + indicador de trabajo (el guion se queda esperando; se detiene al terminar).
+  async 'chat-carga-larga'(ctx) {
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'tarea muy larga',
+      title: 'Análisis largo',
+      steps: [{ type: 'text', text: 'Estoy revisando los 4.200 registros del año. Esto puede tardar un poco; sigo con el segundo trimestre…' }, { type: 'delay', ms: 120000 }]
+    })
+    await closeOverlays(page)
+    await newChat(page)
+    await sendChat(page, 'Analiza esta tarea muy larga')
+    await vis(page.getByText(/Estoy revisando los 4\.200 registros/), 30_000)
+    await sleep(900)
+    return async () => {
+      await page.getByRole('button', { name: /^(Detener|Parar)/ }).first().click({ timeout: 3000 }).catch(() => {})
+      await sleep(400)
+    }
+  },
+  // Lista de Tareas sin ninguna tarea (antes de que otros escenarios creen tareas).
+  async 'tareas-lista-vacia'(ctx) {
+    await openTasks(ctx)
+    await sleep(700)
+  },
+  // Una tarea que termina con error del proveedor: fila de la lista y mensaje en la conversación.
+  async 'tareas-error'(ctx) {
+    const fake = await freshTasks(ctx)
+    await fake.script({
+      match: 'Genera el balance con error',
+      title: 'Generar balance',
+      steps: [
+        { type: 'text', text: 'Empiezo a preparar el balance.' },
+        { type: 'error', name: 'ProviderAuthError', message: 'invalid x-api-key', statusCode: 401 }
+      ]
+    })
+    await sendTask(ctx.page, 'Genera el balance con error de conexión')
+    await vis(ctx.page.getByText('La IA rechazó la conexión'), 45_000)
+    await sleep(800)
+  },
+  // Rutinas con disparador por archivo: una sin vigilar (aviso de Rutinas sin aceptar) y otra con la carpeta borrada.
+  async 'rutinas-vigilante'(ctx) {
+    const { page } = ctx
+    await seedRoutines(ctx)
+    // La carpeta vigilada debe colgar de la carpeta de la rutina (taskFolder).
+    const base = join(taskFolder, 'Recibidos')
+    const gone = join(taskFolder, 'Facturas')
+    mkdirSync(base, { recursive: true })
+    mkdirSync(gone, { recursive: true })
+    const mkFile = (name, folder) =>
+      page.evaluate(
+        async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 160),
+        {
+          name,
+          prompt: 'Ordena el archivo nuevo que apareció en la carpeta.',
+          mode: 'tasks',
+          schedule: { kind: 'file', folder, patterns: ['*.pdf'], on: 'create', settleSec: 5, maxPerHour: 6 },
+          enabled: true,
+          folder: taskFolder,
+          model: { providerID: 'fake', modelID: 'fake-model' },
+          sessionMode: 'fresh',
+          onAsk: 'reject'
+        }
+      )
+    console.log('  [rutinas] vigilante', await mkFile('Ordenar facturas nuevas', gone))
+    console.log('  [rutinas] vigilante', await mkFile('Archivar informes recibidos', base))
+    // El aviso de Rutinas sin aceptar y la carpeta que desaparece son estados reales del vigilante de main; aquí se provocan
+    // (carpeta borrada) o se inyectan en la lista (el aviso), sin tocar los ajustes reales.
+    rmSync(gone, { recursive: true, force: true })
+    await page.evaluate(() => {
+      const orig = window.api.tasks.invoke.bind(window.api.tasks)
+      window.__origTasksInvoke = orig
+      window.api.tasks.invoke = async (ch, ...rest) => {
+        const res = await orig(ch, ...rest)
+        if (ch === 'routines:list' && res?.ok && Array.isArray(res.data)) {
+          for (const r of res.data) if (r.name === 'Archivar informes recibidos' && r.fileWatch) r.fileWatch = { ...r.fileWatch, state: 'off' }
+        }
+        return res
+      }
+    })
+    await goMode(page, 'Chat')
+    await goMode(page, 'Rutinas')
+    await sleep(1500)
+    await vis(page.getByText('Carpeta no disponible'), 20_000).catch(() => notes.push('rutinas-vigilante: no apareció «Carpeta no disponible»'))
+    await sleep(500)
+  },
+  // Ningún servicio de IA conectado: Ajustes › Modelos vacío.
+  async 'ajustes-modelos-vacio'(ctx) {
+    const { page, fake } = ctx
+    await fake.set({ connectedProviders: [] })
+    await page.reload()
+    await page.locator('nav[aria-label="Modo"]').first().waitFor({ timeout: 60_000 })
+    await sleep(1200)
+    await openSettings(page, 'Modelos')
+    await sleep(1000)
+    return async () => {
+      await fake.set({ connectedProviders: ['fake', 'opencode-go'] })
+      await page.reload()
+      await sleep(1200)
+    }
+  },
+  // El motor de IA no arranca (OpenCode ausente con la app ya configurada).
+  async 'motor-error'(ctx) {
+    await vis(ctx.page.getByRole('alert').filter({ hasText: /No se pudo|motor|IA/ }), 40_000)
+    await sleep(600)
+  },
   async 'caja-menus'(ctx) {
     await seedCode(ctx)
     const { page } = ctx
@@ -2406,7 +2532,7 @@ try {
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
   const isOnb = (s) => s.startsWith('onboarding')
   const isPrep = (s) => s.startsWith('preparando')
-  const isAviso = (s) => s === 'aviso-motor'
+  const isAviso = (s) => s === 'aviso-motor' || s === 'motor-error'
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
   const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
   const tasks = scenarios.filter(isTasks).sort(byOrder)
@@ -2426,6 +2552,12 @@ try {
       env: { OPENCODE_BIN: '', LAZUNOX_TEST_BUNDLED_DIR: bundledDir }
     })
     await runGroup(ctx, ['aviso-motor'])
+    await stop(ctx)
+  }
+  if (scenarios.includes('motor-error')) {
+    // Motor ausente con la app ya configurada: el banner superior avisa que no se pudo conectar.
+    const ctx = await launch('motor-error', { env: { OPENCODE_BIN: join(binDir, 'no-existe', 'opencode') }, noServer: true })
+    await runGroup(ctx, ['motor-error'])
     await stop(ctx)
   }
   if (scenarios.includes('kit')) {
