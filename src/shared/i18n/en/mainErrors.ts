@@ -343,7 +343,7 @@ export const mainErrors = {
 
   'merr.dialog.pickFolder': 'Choose a working folder',
   'merr.dialog.pick': 'Choose',
-  'merr.dialog.saveZip': 'Save deliverables as a zip',
+  'merr.dialog.saveZip': 'Save the created files as a zip',
   'merr.dialog.exportMarkdown': 'Export the task to Markdown',
   'merr.dialog.pickBinary': 'Choose the OpenCode binary',
   'merr.dialog.savePreview': 'Save preview',

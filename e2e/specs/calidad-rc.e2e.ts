@@ -125,7 +125,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     // Otras pestañas de programación y el modo Tareas (reglas, hosts) y Code (carpeta).
     await dlg.getByRole('button', { name: 'Intervalo', exact: true }).click()
     await clean(page, 'rutinas:editor-intervalo')
-    await dlg.getByRole('button', { name: 'Cron avanzado', exact: true }).click()
+    await dlg.getByRole('button', { name: 'Horario avanzado (cron)', exact: true }).click()
     await clean(page, 'rutinas:editor-cron')
     if (!IS_WIN) {
       await dlg.getByRole('button', { name: /^Overdrive/ }).click()
@@ -152,7 +152,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
   it('Catálogo MCP: diálogo de añadir sin violaciones y con foco contenido', async () => {
     const { page } = app()
     await page.keyboard.press('ControlOrMeta+,')
-    await page.locator('nav[aria-label="Secciones de ajustes"]').getByRole('button', { name: 'MCP', exact: true }).click()
+    await page.locator('nav[aria-label="Secciones de ajustes"]').getByRole('button', { name: 'Conectores', exact: true }).click()
     const opener = page.getByRole('button', { name: 'Añadir Context7' })
     await opener.click()
     const dlg = page.getByRole('dialog', { name: /^Añadir / })

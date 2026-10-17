@@ -17,7 +17,7 @@ export const wizard = {
   'wizard.fullControl.win': 'Control total del PC',
   'wizard.fullControlShort': 'Control total',
   'wizard.connectTasksNotice':
-    'Cualquiera de estos servicios sirve en todos los modos. La única excepción es {tasks} limitado a tu carpeta, que en {app} solo admite OpenCode Go (y los modelos gratuitos de OpenCode); para usar otro servicio ahí, elige {fullControl}.',
+    'Cualquiera de estos servicios sirve en todos los modos. Solo {tasks} con «Solo en tu carpeta» exige OpenCode Go o los modelos gratuitos; para usar otro servicio ahí, elige {fullControl}.',
   'wizard.connectTasksNotice.win': 'Cualquiera de estos servicios sirve en todos los modos.',
   'wizard.connectTermsNotice': 'Cada persona es responsable de cumplir los términos de su servicio de IA y los de OpenCode.',
 
@@ -48,23 +48,22 @@ export const wizard = {
   'wizard.opencode.openDocs': 'Abrir instrucciones',
   'wizard.opencode.pickBinary': 'Elegir el programa…',
 
-  'wizard.auth.lead':
-    'Para que la IA responda hace falta un modelo. Puedes empezar gratis, sin cuenta ni clave, y conectar otro servicio cuando quieras en Ajustes › Modelos.',
+  'wizard.auth.lead': 'Para responder, la IA necesita un modelo. Puedes empezar ahora mismo, sin cuenta ni tarjeta.',
   'wizard.auth.freeTitle': 'Empezar gratis',
   'wizard.auth.free': 'Gratis',
   'wizard.auth.freeChosen': 'Modelo gratuito elegido',
   'wizard.auth.freeDescription':
-    'Usa los modelos gratuitos de OpenCode: no hace falta cuenta, clave ni tarjeta. Pueden ser más lentos o cambiar con el tiempo. Elige el modelo gratuito y sigue.',
+    'Sin cuenta, sin clave y sin tarjeta. Es más lento y menos preciso que un servicio de pago, y puede cambiar con el tiempo. Podrás cambiarlo cuando quieras en Ajustes › Modelos.',
   'wizard.auth.freeUse': 'Usar el modelo gratuito',
   'wizard.auth.freeUnavailable': 'Ahora mismo no hay modelos gratuitos disponibles. Prueba otro servicio o inténtalo más tarde.',
   'wizard.auth.paid': 'Con suscripción',
   'wizard.auth.goConnected': 'OpenCode Go conectado',
   'wizard.auth.goDescription':
-    'OpenCode Go es una suscripción de pago con acceso a modelos abiertos para programar. Solo si ya la tienes o quieres contratarla: crea tu cuenta, suscríbete y copia tu clave; luego pégala aquí. Se guarda solo para {app}, en su propio almacén de credenciales, sin compartirla con otros programas.',
-  'wizard.auth.getKey': 'Obtener mi clave',
+    'Suscripción de pago con modelos abiertos para programar. Úsala solo si ya la tienes: copia tu clave de acceso y pégala aquí. Se guarda solo para {app}, en un lugar protegido de tu equipo.',
+  'wizard.auth.getKey': 'Obtener mi clave de acceso',
   'wizard.auth.learnGo': 'Conocer OpenCode Go',
   'wizard.auth.otherTitle': 'Otro servicio de IA',
-  'wizard.auth.otherDescription': 'Pega una clave o inicia sesión con otro servicio de IA de la lista.',
+  'wizard.auth.otherDescription': 'Usa la clave de acceso de otro servicio de IA, o inicia sesión con tu cuenta.',
   'wizard.auth.waitingServer': 'Esperando a que la IA termine de iniciar… Si tarda mucho, cierra y vuelve a abrir {app}.',
   'wizard.auth.catalogError': 'No se pudo cargar la lista de servicios de IA: {error}',
   'wizard.auth.loadingProviders': 'Cargando servicios de IA…',
@@ -224,13 +223,12 @@ export const wizard = {
   'settings.diag.components.recheck': 'Revisar de nuevo',
   'settings.diag.components.checking': 'Revisando…',
   'settings.diag.components.error': 'No se pudo revisar los componentes.',
-  'wizard.auth.keyHelp':
-    'Una «clave» (en los campos aparece como «API key») es como una contraseña que te da el servicio de IA para que {app} pueda usarlo por ti. «Proveedor» es el servicio de IA.',
   'wizard.auth.engineFailed': 'La IA no pudo iniciar. Pulsa «Reintentar»; si sigue igual, reinstala {app}.',
   'wizard.setup.permsLater':
     'Permisos de macOS: solo si usas «{mode}», {app} te los pedirá en ese momento. No tienes que hacer nada ahora.',
   'wizard.example.title': 'Probar con un ejemplo',
   'wizard.example.body': 'Mira cómo funciona con una tarea de ejemplo ya escrita: «{sample}» Solo tendrás que enviarla.',
   'wizard.welcome.start': 'Empezar',
-  'wizard.welcome.greetingNote': 'Lo dejamos listo en unos minutos.'
+  'wizard.welcome.greetingNote': 'Son 4 pasos cortos y puedes empezar gratis.',
+  'wizard.auth.moreWays': 'Otras formas de conectar'
 } as const

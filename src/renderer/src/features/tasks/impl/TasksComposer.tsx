@@ -42,6 +42,8 @@ interface Props {
   disabled?: boolean
   placeholder?: string
   autoFocusKey?: string | null
+  /** No mostrar el aviso de modelo incompatible (tarea terminada: ya no hay nada que decidir). */
+  hideModelNotice?: boolean
   /** Variante grande de la pantalla de inicio (con chip de carpeta). */
   hero?: boolean
   /** Controles extra en el pie (p.ej. selector de modo). */
@@ -54,7 +56,7 @@ export interface TasksComposerHandle {
 }
 
 export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function TasksComposer(
-  { onSend, onAbort, busy, disabled, placeholder, autoFocusKey, hero, extra },
+  { onSend, onAbort, busy, disabled, placeholder, autoFocusKey, hero, extra, hideModelNotice },
   forwardedRef
 ) {
   const t = useT()
@@ -80,6 +82,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const sandboxed = conn ? conn.sandboxed && !conn.fullAccess : !requestedFull
   const providerNotice = sandboxModelNotice(sandboxed, model.providerID)
   const [attaching, setAttaching] = useState(false)
+  const [noticeOpen, setNoticeOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
   const setText = (draft: string): void => useTasks.setState({ draft })
@@ -301,15 +304,26 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
           <Loader2 size={12} className="animate-spin" /> {t('tasks.comp.saving')}
         </p>
       )}
-      {providerNotice && (
-        <p
+      {providerNotice && !hideModelNotice && (
+        <div
           role="status"
           data-testid="sandbox-provider-notice"
-          className="mt-1.5 text-xs text-warning desk:mt-2.5 desk:flex desk:gap-2.5 desk:rounded-ctl desk:bg-warning/10 desk:px-3 desk:py-2.5 desk:text-ui desk:text-fg desk:ring-1 desk:ring-warning/45 desk:ring-inset"
+          className="mt-1.5 text-xs text-warning desk:mt-2.5 desk:rounded-ctl desk:bg-warning/10 desk:px-3 desk:py-2 desk:text-ui desk:text-fg desk:ring-1 desk:ring-warning/45 desk:ring-inset"
         >
-          <ShieldAlert size={16} aria-hidden className="hidden shrink-0 desk:block desk:text-warning" />
-          {providerNotice}
-        </p>
+          <p className="flex items-center gap-2">
+            <ShieldAlert size={16} aria-hidden className="hidden shrink-0 desk:block desk:text-warning" />
+            <span className="min-w-0">{t('tasks.sandboxProviderShort')}</span>
+            <button
+              type="button"
+              aria-expanded={noticeOpen}
+              onClick={() => setNoticeOpen((v) => !v)}
+              className="ml-auto shrink-0 rounded px-1 underline underline-offset-2 hover:text-fg"
+            >
+              {noticeOpen ? t('tasks.sandboxProviderLess') : t('tasks.sandboxProviderMore')}
+            </button>
+          </p>
+          {noticeOpen && <p className="mt-1.5 desk:pl-6">{providerNotice}</p>}
+        </div>
       )}
       {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
     </div>

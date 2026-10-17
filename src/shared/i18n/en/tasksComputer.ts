@@ -57,10 +57,10 @@ export const tasksComputer = {
     ' and with Mac control. You don’t have to pick a folder: the agent will be able to use your whole computer and will start working from “{name}”.',
   'tasksComputer.full.b1': 'It will be able to move the mouse, click, type and press keys in any app.',
   'tasksComputer.full.cap1': 'It will take screenshots, which ',
-  'tasksComputer.full.cap2': 'are sent to the model provider',
+  'tasksComputer.full.cap2': 'are sent to the AI service',
   'tasksComputer.full.cap3': '. Close or hide anything you don’t want to share.',
   'tasksComputer.full.retention':
-    'Screenshots are sent to the model provider and stay in the task history; temporary copies are deleted when the task ends and when you quit the app.',
+    'Screenshots are sent to the AI service and stay in the task history; temporary copies are deleted when the task ends and when you quit the app.',
   'tasksComputer.full.b3':
     'It will be able to see the screen, create, modify and delete any file in your user account, open any program and run commands: nothing is confined to a folder.',
   'tasksComputer.full.once':
@@ -310,8 +310,8 @@ export const tasksComputer = {
   'tasksComputer.net.explain': 'The agent tried to connect to this address and it isn’t among the allowed sites.',
   'tasksComputer.net.allowOnce': 'Allow this time',
   'tasksComputer.net.keepBlocked': 'Keep blocked',
-  'tasksComputer.auto.approved': 'Approved by Auto mode: {summary}',
-  'tasksComputer.auto.title': 'Auto mode: automatically approves low-risk actions for this folder or task',
+  'tasksComputer.auto.approved': 'Approved automatically: {summary}',
+  'tasksComputer.auto.title': 'Automatic approval: approves low-risk actions on its own for this folder or task',
   'tasksComputer.auto.folder': 'Turn on for this folder',
   'tasksComputer.auto.folderDesc': 'Applies to all tasks in this folder.',
   'tasksComputer.auto.task': 'Turn on for this task only',
@@ -345,7 +345,7 @@ export const tasksComputer = {
     'reads and writes only in your folders, can’t see your keys and asks permission to delete, move or rename.',
   'tasksComputer.onb.fullDesc': 'no folder limit; uses the mouse, keyboard and screen and can touch any file. Requires approving a plan.',
   'tasksComputer.onb.step3': 'Try a task',
-  'tasksComputer.onb.fillSample': 'Fill in a sample task',
+  'tasksComputer.onb.fillSample': 'Write a sample task',
   'tasksComputer.onb.step3Desc': 'One that only reads and summarizes: it changes nothing.',
   'tasksComputer.onb.pickFirst': 'Choose a folder first.',
   'tasksComputer.onb.safe': 'How to use tasks safely',
@@ -390,7 +390,7 @@ export const tasksComputer = {
   'tasksComputer.consent.intro':
     'PC control lets the agent see the main screen and use the mouse and keyboard, the way a person would. Windows has no system permission for this: you give the authorization here, in Lazunox.',
   'tasksComputer.consent.canTitle': 'It will be able to',
-  'tasksComputer.consent.can1': 'See the main screen. Screenshots are sent to the model provider.',
+  'tasksComputer.consent.can1': 'See the main screen. Screenshots are sent to the AI service.',
   'tasksComputer.consent.can2': 'Move the mouse, click, type and press keys.',
   'tasksComputer.consent.can3': 'Use only the apps you allow, one by one and at the level you choose.',
   'tasksComputer.consent.neverTitle': 'It will never be able to',

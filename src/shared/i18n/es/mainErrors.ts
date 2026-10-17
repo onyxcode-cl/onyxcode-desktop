@@ -351,7 +351,7 @@ export const mainErrors = {
 
   'merr.dialog.pickFolder': 'Elegir carpeta de trabajo',
   'merr.dialog.pick': 'Elegir',
-  'merr.dialog.saveZip': 'Guardar entregables como zip',
+  'merr.dialog.saveZip': 'Guardar los archivos creados como zip',
   'merr.dialog.exportMarkdown': 'Exportar la tarea a Markdown',
   'merr.dialog.pickBinary': 'Elegir el binario de OpenCode',
   'merr.dialog.savePreview': 'Guardar vista previa',

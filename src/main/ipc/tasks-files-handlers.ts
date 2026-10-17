@@ -133,7 +133,7 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
     }
     if (files.length === 0) throw new Error(t('merr.files.noFiles'))
 
-    const base = safeFileName(suggestedName ?? 'Entregables', 'Entregables')
+    const base = safeFileName(suggestedName ?? 'Archivos creados', 'Archivos creados')
     const defaultName = /\.zip$/i.test(base) ? base : `${base}.zip`
     const options: Electron.SaveDialogOptions = {
       title: t('merr.dialog.saveZip'),

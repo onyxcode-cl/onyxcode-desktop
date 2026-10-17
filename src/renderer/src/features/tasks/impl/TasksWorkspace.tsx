@@ -787,6 +787,7 @@ export function TasksWorkspace(): React.JSX.Element {
               onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
               busy={busy}
               disabled={phase !== 'ready'}
+              hideModelNotice={status === 'done'}
               autoFocusKey={activeId}
               placeholder={busy ? t('tasks.ws.phWorking') : t('tasks.ws.phReply')}
             />

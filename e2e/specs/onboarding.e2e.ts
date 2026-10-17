@@ -80,8 +80,9 @@ describe('asistente de primer uso', () => {
     const a = app!
     await dialog().getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(dialog().getByRole('heading', { name: 'Conecta tu IA' }))
+    await dialog().getByText('Otras formas de conectar').click()
     const go = dialog().getByRole('region', { name: 'OpenCode Go' })
-    await go.getByLabel('API key').fill('sk-e2e-onboarding')
+    await go.getByLabel('Clave de acceso').fill('sk-e2e-onboarding')
     await go.getByRole('button', { name: 'Guardar' }).click()
     const put = await a.fake.waitForRequest((r) => r.method === 'PUT' && r.path === '/auth/opencode-go')
     expect(put.body).toEqual({ type: 'api', key: 'sk-e2e-onboarding' })
@@ -90,9 +91,9 @@ describe('asistente de primer uso', () => {
 
   it('(c2) otro proveedor del catálogo: la clave llega como PUT /auth/openai y se ven los avisos', async () => {
     const a = app!
-    const other = dialog().getByRole('region', { name: 'Otro proveedor / API key' })
-    await other.getByLabel('Proveedor').selectOption('openai')
-    await other.getByLabel('API key').fill('sk-e2e-otro')
+    const other = dialog().getByRole('region', { name: 'Otro servicio de IA' })
+    await other.getByLabel('Servicio de IA').selectOption('openai')
+    await other.getByLabel('Clave de acceso').fill('sk-e2e-otro')
     await other.getByRole('button', { name: 'Guardar' }).click()
     const put = await a.fake.waitForRequest((r) => r.method === 'PUT' && r.path === '/auth/openai')
     expect(put.body).toEqual({ type: 'api', key: 'sk-e2e-otro' })
@@ -191,8 +192,9 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
     await stubOpenExternal(app.electronApp)
     await d.getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(d.getByRole('heading', { name: 'Conecta tu IA' }))
-    const other = d.getByRole('region', { name: 'Otro proveedor / API key' })
-    await other.getByLabel('Proveedor').selectOption('openai')
+    await d.getByText('Otras formas de conectar').click()
+    const other = d.getByRole('region', { name: 'Otro servicio de IA' })
+    await other.getByLabel('Servicio de IA').selectOption('openai')
     await other.getByRole('button', { name: 'Iniciar sesión · Cuenta (E2E)' }).click()
     await expect.poll(async () => (await openedUrls(app!.electronApp)).some((u) => u.endsWith('/fake-oauth/provider/openai'))).toBe(true)
     await other.getByLabel('Código de autorización').fill('codigo-e2e')

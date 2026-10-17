@@ -223,7 +223,7 @@ export class TasksMcpPrefs {
 
   set(name: string, patch: { tasks?: boolean; askEachTool?: boolean }): TasksMcpInfo[] {
     const servers = readAppMcpConfig().servers
-    if (!(name in servers)) throw new Error(`No existe el servidor MCP "${name}".`)
+    if (!(name in servers)) throw new Error(`No existe el conector "${name}".`)
     const data = readFlags()
     // Limpia marcas de servidores que ya no existen.
     for (const n of Object.keys(data.servers)) if (!(n in servers)) delete data.servers[n]

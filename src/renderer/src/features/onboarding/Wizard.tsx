@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   CalendarClock,
   Check,
+  ChevronRight,
   ClipboardCopy,
   Code2,
   ExternalLink,
@@ -220,7 +221,7 @@ function OnboardingHost(): React.JSX.Element | null {
               </Button>
             )}
             <Button
-              variant="primary"
+              variant={step === 'auth' && !advance ? 'secondary' : 'primary'}
               disabled={!advance}
               onClick={() => (last ? finish() : setStep(nextStep(step, undefined, withEngine)))}
             >
@@ -435,6 +436,8 @@ function StepAuth({
   const freeChosen = freeModel !== null && defaultModel.providerID === freeModel.providerID && defaultModel.modelID === freeModel.modelID
   /** Tarjeta que originó la última acción, para mostrar el error bajo ella. */
   const [origin, setOrigin] = useState<'go' | 'other'>('go')
+  /** «Otras formas de conectar» va plegado; se abre solo si ya hay algo conectado por esa vía. */
+  const [moreOpen, setMoreOpen] = useState(false)
   const serverStatus = useServer((s) => s.status)
   const serverError = useServer((s) => s.error)
   const restartServer = useServer((s) => s.restart)
@@ -472,7 +475,6 @@ function StepAuth({
   return (
     <div className="space-y-4">
       <Lead>{t('wizard.auth.lead')}</Lead>
-      <p className="text-[13px] leading-[18px] text-muted">{t('wizard.auth.keyHelp', { app: DISPLAY_NAME })}</p>
       {engineFailure && (
         <div role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
           <p>{t('wizard.auth.engineFailed', { app: DISPLAY_NAME })}</p>
@@ -506,7 +508,7 @@ function StepAuth({
         <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.freeDescription')}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
-            size="sm"
+            variant="primary"
             disabled={!freeModel || freeChosen}
             onClick={() => freeModel && void updateSettings({ defaultModel: freeModel })}
           >
@@ -516,105 +518,118 @@ function StepAuth({
         </div>
       </section>
 
-      <section aria-labelledby="onb-go" className="rounded-card border-0 bg-elevated p-4 shadow-raised">
-        <div className="flex items-center gap-2">
-          <h3 id="onb-go" className="text-sm font-semibold">
-            OpenCode Go
-          </h3>
-          <Badge>{t('wizard.auth.paid')}</Badge>
-          {goConnected && (
-            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] desk:text-meta font-medium text-fg">
-              <Check size={11} className="text-success" /> {t('wizard.auth.goConnected')}
-            </span>
-          )}
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.goDescription', { app: DISPLAY_NAME })}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => void runAction('openAuth')}>
-            <ExternalLink size={13} /> {t('wizard.auth.getKey')}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => void runAction('openGo')}>
-            {t('wizard.auth.learnGo')}
-          </Button>
-        </div>
-        <ProviderKeyForm
-          providers={GO_FORM_PROVIDERS}
-          auth={{}}
-          busy={connect.busy || !client}
-          onSetKey={setKeyFrom('go')}
-          fixedProviderId={GO_PROVIDER}
-          title={null}
-          className="mt-3 border-0! bg-transparent! p-0! shadow-none!"
-        />
-        <SwitchNoticeBar notice={connect.notice} onClose={() => connect.setNotice(null)} />
-        {connect.error && origin === 'go' && (
-          <div role="alert" className="mt-2">
-            <ErrorText>{connect.error}</ErrorText>
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="onb-other" className="rounded-card border-0 bg-elevated p-4 shadow-raised">
-        <h3 id="onb-other" className="text-sm font-semibold">
-          {t('wizard.auth.otherTitle')}
-        </h3>
-        <p className="mt-1 text-sm text-muted">{t('wizard.auth.otherDescription')}</p>
-        <div className="mt-3 space-y-2">
-          {!client ? (
-            <p className="text-xs text-muted">{t('wizard.auth.waitingServer', { app: DISPLAY_NAME })}</p>
-          ) : catalogError && !catalog ? (
-            <div className="space-y-2">
-              <ErrorText>{t('wizard.auth.catalogError', { error: catalogError })}</ErrorText>
-              <Button size="sm" onClick={() => void reload()}>
-                {t('wizard.opencode.retry')}
+      <details
+        open={moreOpen}
+        onToggle={(e) => setMoreOpen(e.currentTarget.open)}
+        data-testid="onb-more-ways"
+        className="group rounded-card bg-elevated shadow-raised"
+      >
+        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-card px-4 py-3 text-sm font-medium select-none">
+          <ChevronRight size={14} aria-hidden className="transition-transform group-open:rotate-90" />
+          {t('wizard.auth.moreWays')}
+        </summary>
+        <div className="space-y-3 px-3 pb-3">
+          <section aria-labelledby="onb-go" className="rounded-card border-0 bg-elevated p-4 shadow-raised">
+            <div className="flex items-center gap-2">
+              <h3 id="onb-go" className="text-sm font-semibold">
+                OpenCode Go
+              </h3>
+              <Badge>{t('wizard.auth.paid')}</Badge>
+              {goConnected && (
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] desk:text-meta font-medium text-fg">
+                  <Check size={11} className="text-success" /> {t('wizard.auth.goConnected')}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.goDescription', { app: DISPLAY_NAME })}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button size="sm" onClick={() => void runAction('openAuth')}>
+                <ExternalLink size={13} /> {t('wizard.auth.getKey')}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => void runAction('openGo')}>
+                {t('wizard.auth.learnGo')}
               </Button>
             </div>
-          ) : loading && !catalog ? (
-            <p className="flex items-center gap-2 text-xs text-muted" aria-live="polite">
-              <Loader2 size={13} className="animate-spin" /> {t('wizard.auth.loadingProviders')}
-            </p>
-          ) : catalog && others.length === 0 ? (
-            <p className="text-xs text-muted">{t('wizard.auth.noOthers')}</p>
-          ) : catalog ? (
             <ProviderKeyForm
-              providers={others}
-              auth={catalog.auth}
-              busy={connect.busy}
-              onSetKey={setKeyFrom('other')}
-              onOauthStart={oauthStart}
-              onOauthFinish={oauthFinish}
-              onOauthCancel={connect.cancelOauth}
+              providers={GO_FORM_PROVIDERS}
+              auth={{}}
+              busy={connect.busy || !client}
+              onSetKey={setKeyFrom('go')}
+              fixedProviderId={GO_PROVIDER}
               title={null}
-              className="border-0! bg-transparent! p-0! shadow-none!"
+              className="mt-3 border-0! bg-transparent! p-0! shadow-none!"
             />
-          ) : null}
-          {otherNames.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {otherNames.map((n) => (
-                <span
-                  key={n}
-                  className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] desk:text-meta font-medium text-fg"
-                >
-                  <Check size={11} className="text-success" /> {t('wizard.auth.providerConnected', { name: n })}
-                </span>
-              ))}
-            </div>
-          )}
-          {connect.error && origin === 'other' && (
-            <div role="alert">
-              <ErrorText>{connect.error}</ErrorText>
-            </div>
-          )}
-        </div>
-      </section>
+            <SwitchNoticeBar notice={connect.notice} onClose={() => connect.setNotice(null)} />
+            {connect.error && origin === 'go' && (
+              <div role="alert" className="mt-2">
+                <ErrorText>{connect.error}</ErrorText>
+              </div>
+            )}
+          </section>
 
-      <div role="note" className="flex items-start gap-3 rounded-ctl bg-warning/10 px-3.5 py-3 ring-1 ring-warning/45 ring-inset">
-        <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
-        <div className="text-[13px] leading-[18px] text-fg">
-          <p>{connectTasksNotice()}</p>
-          <p className="mt-1.5 text-muted">{connectTermsNotice()}</p>
+          <section aria-labelledby="onb-other" className="rounded-card border-0 bg-elevated p-4 shadow-raised">
+            <h3 id="onb-other" className="text-sm font-semibold">
+              {t('wizard.auth.otherTitle')}
+            </h3>
+            <p className="mt-1 text-sm text-muted">{t('wizard.auth.otherDescription')}</p>
+            <div className="mt-3 space-y-2">
+              {!client ? (
+                <p className="text-xs text-muted">{t('wizard.auth.waitingServer', { app: DISPLAY_NAME })}</p>
+              ) : catalogError && !catalog ? (
+                <div className="space-y-2">
+                  <ErrorText>{t('wizard.auth.catalogError', { error: catalogError })}</ErrorText>
+                  <Button size="sm" onClick={() => void reload()}>
+                    {t('wizard.opencode.retry')}
+                  </Button>
+                </div>
+              ) : loading && !catalog ? (
+                <p className="flex items-center gap-2 text-xs text-muted" aria-live="polite">
+                  <Loader2 size={13} className="animate-spin" /> {t('wizard.auth.loadingProviders')}
+                </p>
+              ) : catalog && others.length === 0 ? (
+                <p className="text-xs text-muted">{t('wizard.auth.noOthers')}</p>
+              ) : catalog ? (
+                <ProviderKeyForm
+                  providers={others}
+                  auth={catalog.auth}
+                  busy={connect.busy}
+                  onSetKey={setKeyFrom('other')}
+                  onOauthStart={oauthStart}
+                  onOauthFinish={oauthFinish}
+                  onOauthCancel={connect.cancelOauth}
+                  title={null}
+                  className="border-0! bg-transparent! p-0! shadow-none!"
+                />
+              ) : null}
+              {otherNames.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {otherNames.map((n) => (
+                    <span
+                      key={n}
+                      className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] desk:text-meta font-medium text-fg"
+                    >
+                      <Check size={11} className="text-success" /> {t('wizard.auth.providerConnected', { name: n })}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {connect.error && origin === 'other' && (
+                <div role="alert">
+                  <ErrorText>{connect.error}</ErrorText>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <div role="note" className="flex items-start gap-3 rounded-ctl bg-warning/10 px-3.5 py-3 ring-1 ring-warning/45 ring-inset">
+            <Shield size={16} className="mt-0.5 shrink-0 text-warning" />
+            <div className="text-[13px] leading-[18px] text-fg">
+              <p>{connectTasksNotice()}</p>
+              <p className="mt-1.5 text-muted">{connectTermsNotice()}</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </details>
     </div>
   )
 }

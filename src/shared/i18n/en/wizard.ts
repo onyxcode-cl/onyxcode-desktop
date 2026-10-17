@@ -20,7 +20,7 @@ export const wizard = {
   'wizard.fullControl.win': 'Full PC control',
   'wizard.fullControlShort': 'Full control',
   'wizard.connectTasksNotice':
-    'Any of these services works in every mode. The only exception is {tasks} limited to your folder, which in {app} only supports OpenCode Go (and OpenCode’s free models); to use another service there, choose {fullControl}.',
+    'Any of these services works in every mode. Only {tasks} with “Only in your folder” requires OpenCode Go or the free models; to use another service there, choose {fullControl}.',
   'wizard.connectTasksNotice.win': 'Any of these services works in every mode.',
   'wizard.connectTermsNotice': 'Each person is responsible for complying with the terms of their AI service and OpenCode’s.',
 
@@ -51,23 +51,22 @@ export const wizard = {
   'wizard.opencode.openDocs': 'Open instructions',
   'wizard.opencode.pickBinary': 'Choose the program…',
 
-  'wizard.auth.lead':
-    'The AI needs a model to answer. You can start for free, with no account or key, and connect another service any time in Settings › Models.',
+  'wizard.auth.lead': 'The AI needs a model to answer. You can start right now, with no account or card.',
   'wizard.auth.freeTitle': 'Start for free',
   'wizard.auth.free': 'Free',
   'wizard.auth.freeChosen': 'Free model chosen',
   'wizard.auth.freeDescription':
-    'Use the free OpenCode models: no account, key or card needed. They can be slower or change over time. Pick the free model and continue.',
+    'No account, key or card. It is slower and less accurate than a paid service, and it may change over time. You can switch any time in Settings › Models.',
   'wizard.auth.freeUse': 'Use the free model',
   'wizard.auth.freeUnavailable': 'No free models are available right now. Try another service or try again later.',
   'wizard.auth.paid': 'Subscription',
   'wizard.auth.goConnected': 'OpenCode Go connected',
   'wizard.auth.goDescription':
-    'OpenCode Go is a paid subscription with access to open models for coding. Only if you already have it or want it: create your account, subscribe, and copy your key, then paste it here. It is stored only for {app}, in its own credential store, without sharing it with other programs.',
-  'wizard.auth.getKey': 'Get my key',
+    'Paid subscription with open models for coding. Use it only if you already have one: copy your access key and paste it here. It is stored only for {app}, in a protected place on your computer.',
+  'wizard.auth.getKey': 'Get my access key',
   'wizard.auth.learnGo': 'Learn about OpenCode Go',
   'wizard.auth.otherTitle': 'Another AI service',
-  'wizard.auth.otherDescription': 'Paste a key or sign in with another AI service from the list.',
+  'wizard.auth.otherDescription': 'Use another AI service’s access key, or sign in with your account.',
   'wizard.auth.waitingServer': 'Waiting for the AI to finish starting… If it takes too long, close and reopen {app}.',
   'wizard.auth.catalogError': 'Couldn’t load the list of AI services: {error}',
   'wizard.auth.loadingProviders': 'Loading AI services…',
@@ -225,13 +224,12 @@ export const wizard = {
   'settings.diag.components.recheck': 'Check again',
   'settings.diag.components.checking': 'Checking…',
   'settings.diag.components.error': 'The components could not be checked.',
-  'wizard.auth.keyHelp':
-    'A “key” (shown as “API key” in the fields) is like a password the AI service gives you so {app} can use it for you. “Provider” means the AI service.',
   'wizard.auth.engineFailed': 'The AI couldn’t start. Press “Retry”; if it stays the same, reinstall {app}.',
   'wizard.setup.permsLater':
     'macOS permissions: only if you use “{mode}”, {app} will ask for them at that moment. There is nothing to do now.',
   'wizard.example.title': 'Try an example',
   'wizard.example.body': 'See how it works with a sample task already written: “{sample}” You only have to send it.',
   'wizard.welcome.start': 'Get started',
-  'wizard.welcome.greetingNote': 'We’ll have it ready in a few minutes.'
+  'wizard.welcome.greetingNote': 'Four short steps, and you can start for free.',
+  'wizard.auth.moreWays': 'Other ways to connect'
 } as const satisfies Messages<typeof es>

@@ -1,7 +1,7 @@
 export const errors = {
   'errors.noAi.title': 'Aún no conectaste ninguna IA',
   'errors.noAi.body':
-    'Para enviar mensajes necesitas conectar una IA: tu suscripción de OpenCode Go o la clave de otro proveedor. Solo toma un minuto.',
+    'Para enviar mensajes necesitas conectar una IA: usa el modelo gratuito o conecta tu suscripción de OpenCode Go o la clave de acceso de otro servicio. Solo toma un minuto.',
   'errors.yourAi': 'tu IA',
   'errors.context.title': 'La conversación es demasiado larga',
   'errors.context.message': 'Compáctala o empieza una conversación nueva para seguir.',
