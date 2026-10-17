@@ -26,6 +26,7 @@ import { useModeModel } from '../../settings/impl/extras'
 import { handlePaste, pasteRejectedMessages } from '../../../lib/paste-attachments'
 import { attachFiles, pasteFromClipboard, removeAttachment, removeElement, setElementInclude, unlinkFolder } from './actions'
 import { ElementChipRow } from '../../browser/ElementChip'
+import { AccessChip } from './AccessChip'
 import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
 import { currentTasksModel, currentTasksVariant, setTaskModel, setTaskVariant, useTasks } from './store'
@@ -235,7 +236,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             hero ? 'min-h-[84px] text-base desk:min-h-[66px]' : 'text-[15px]'
           }`}
         />
-        <div className="flex items-center gap-1.5 px-2.5 pb-2.5">
+        <div className="flex items-center gap-1.5 px-2.5 pb-2.5 desk:@container">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             {platformCaps().nativeDialogs && (
               <button
@@ -250,6 +251,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             )}
             <VoiceDictationButton onText={insertDictated} size={15} className="h-7 w-7 rounded-lg" />
             {hero && <FolderMenu variant="chip" placement="bottom" />}
+            <AccessChip disabled={sending || busy} />
             <AutoModeChip />
             {extra}
             <ModelPicker value={model} onChange={setTaskModel} />

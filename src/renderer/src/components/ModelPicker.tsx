@@ -5,7 +5,8 @@ import { PREFERRED_PROVIDER, sortProviders, useProviders } from '../stores/provi
 import { useServer } from '../stores/server'
 import { isSubmitKey } from '../lib/textarea'
 import { useT } from '../lib/i18n'
-import { isRemoteSurface } from '../lib/platform'
+import { isMacPlatform, isRemoteSurface } from '../lib/platform'
+import { useSettings } from '../stores/settings'
 import { Sheet } from './mobile/Sheet'
 
 interface Props {
@@ -23,6 +24,8 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   // En el celular el selector es una hoja a pantalla completa (no un popover): filas de 48 px y el teclado no lo tapa.
   const sheet = isRemoteSurface()
   const client = useServer((s) => s.client)
+  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const mod = isMacPlatform() ? '⌘' : 'Ctrl+'
   const { providers, loading, error, load, loaded } = useProviders()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -88,6 +91,13 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
       e.preventDefault()
       e.stopPropagation()
       setOpen(false)
+    } else if ((isMacPlatform() ? e.metaKey : e.ctrlKey) && /^[1-9]$/.test(e.key)) {
+      // ⌘1…⌘9 / Ctrl+1…9: elige el modelo de esa posición sin soltar el cuadro de búsqueda.
+      const r = flat[Number(e.key) - 1]
+      if (r) {
+        e.preventDefault()
+        choose(r)
+      }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       setCursor((c) => Math.min(flat.length - 1, c + 1))
@@ -123,7 +133,12 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
             className={`w-full bg-transparent text-sm outline-none placeholder:text-subtle ${sheet ? 'min-h-11' : ''}`}
           />
         </div>
-        <div ref={listRef} role="listbox" className={sheet ? 'p-1' : 'max-h-80 overflow-y-auto p-1'}>
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-label={t('common.modelPicker.sheetTitle')}
+          className={sheet ? 'p-1' : 'max-h-[min(20rem,calc(100vh-14rem))] overflow-y-auto p-1'}
+        >
           {loading && (
             <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
               <Loader2 size={14} className="animate-spin" /> {t('common.modelPicker.loading')}
@@ -170,6 +185,12 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
                       >
                         <Brain size={10} /> {t('common.modelPicker.reasons')}
                       </span>
+                    )}
+                    {m.id === defaultModel.modelID && provider.id === defaultModel.providerID && (
+                      <span className="rounded-md bg-hover px-1.5 text-caption text-subtle">{t('common.modelPicker.default')}</span>
+                    )}
+                    {!sheet && i < 9 && (
+                      <kbd className="rounded border border-border px-1 font-sans text-[10.5px] leading-4 text-subtle desk:text-meta">{`${mod}${i + 1}`}</kbd>
                     )}
                     {selected ? (
                       <Check size={sheet ? 18 : 14} className="text-accent" />
