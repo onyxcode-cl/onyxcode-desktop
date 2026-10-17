@@ -6,6 +6,7 @@ export const importSettings = {
   'settings.nav.import': 'Import',
 
   'settings.search.label': 'Search Settings',
+  'settings.search.placeholder': 'Search…',
   'settings.search.clear': 'Clear search',
   'settings.search.results': {
     one: '{count} section with results',

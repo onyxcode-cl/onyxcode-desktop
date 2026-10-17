@@ -43,6 +43,7 @@ import { useChat } from './store'
 import { ReadingModeSwitch } from '../../components/ReadingModeSwitch'
 import { MemoryProposalCard } from '../memory/MemoryProposalCard'
 import { PersonalizeButton } from '../memory/PersonalizeButton'
+import { ConversationInstructionsButton } from './ConversationInstructionsButton'
 import { ChatDocPanel } from './ChatDocPanel'
 import { ChatFilePanel } from './ChatFilePanel'
 import { ChatProgressHud } from './ChatProgressHud'
@@ -252,6 +253,7 @@ export function ChatView(): React.JSX.Element {
               key={label}
               type="button"
               disabled={!ready}
+              title={t(prompt)}
               onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
               className="flex min-h-11 flex-col items-start gap-2 rounded-xl bg-elevated p-3.5 text-left shadow-sm active:bg-hover disabled:opacity-50"
             >
@@ -318,6 +320,7 @@ export function ChatView(): React.JSX.Element {
                   key={label}
                   type="button"
                   disabled={!ready}
+                  title={t(prompt)}
                   onClick={() => setInsert({ text: t(prompt), key: Date.now() })}
                   className="no-drag inline-flex items-center gap-1.5 rounded-full border border-border bg-elevated px-3 py-1.5 text-[13px] text-muted shadow-xs transition-[color,border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-accent/40 hover:text-fg active:translate-y-0 disabled:opacity-50 desk:h-auto desk:flex-col desk:items-start desk:gap-2.5 desk:rounded-card desk:border-transparent desk:p-4 desk:text-left desk:shadow-sm desk:duration-[var(--dur-base)] desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover"
                 >
@@ -349,6 +352,7 @@ export function ChatView(): React.JSX.Element {
         >
           <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
           <div className="absolute right-3 top-0 hidden h-12 items-center gap-1.5 desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
+            <ConversationInstructionsButton sessionId={activeId} />
             <PersonalizeButton />
             {session && <ExportMenuButton onAction={(a) => void exportChatConversation(session, a)} />}
             <ReadingModeSwitch />

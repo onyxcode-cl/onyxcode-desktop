@@ -19,6 +19,8 @@ import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../stores/sessio
 import { resolveModelForMode } from '../settings/impl/extras'
 import { isArchivedSession } from '../tasks/impl/util'
 import { useChat, type ChatPendingQuestion } from './store'
+import { clearConversationInstructions, getConversationInstructions } from './conversation-instructions'
+import { markFirstStepDone, noteFirstStepsActivity } from '../../stores/first-steps'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 
 function ctx(): { client: NonNullable<ReturnType<typeof useServer.getState>['client']>; directory: string } {
@@ -165,6 +167,8 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
   if (gate.blocked || !effective) throw NO_AI_ERROR
   const model = effective
   let sessionID = useChat.getState().activeSessionId
+  // «Primeros pasos»: desde aquí hay actividad real de esta persona (no se la trata de usuaria antigua por la conversación que va a crear).
+  noteFirstStepsActivity()
 
   if (!sessionID) {
     const res = await client.session.create({ directory, agent: CHAT_AGENT, metadata: { mode: 'chat' } })
@@ -190,7 +194,7 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       model: { providerID: model.providerID, modelID: model.modelID },
       // Instrucciones personalizadas + memoria aprobada (relevada justo ahora, para que lo aprobado hace un momento ya valga).
       // Nunca desde el celular: ver el comentario equivalente en `code/impl/store.ts`.
-      system: await chatSystemPrompt(),
+      system: await chatSystemPrompt(sessionID),
       // Un mensaje sin texto es válido si lleva adjuntos (reintento de un mensaje solo con archivos).
       parts: [
         ...(text || files.length === 0 ? [{ type: 'text' as const, text }] : []),
@@ -208,15 +212,23 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
     sessions.setError(sessionID, error)
     return false
   }
+  // El motor aceptó el mensaje: paso «Haz tu primera pregunta» de los primeros pasos.
+  if (text.trim()) markFirstStepDone('message')
   return true
 }
 
-/** `system` de Chat: instrucciones de la persona + memoria de usuario aprobada. `undefined` desde el celular. */
-async function chatSystemPrompt(): Promise<string | undefined> {
+/** `system` de Chat: instrucciones de la persona + las de esta conversación + memoria de usuario aprobada. `undefined` desde el celular. */
+async function chatSystemPrompt(sessionID: string): Promise<string | undefined> {
   if (isRemoteSurface()) return undefined
   const s = useSettings.getState().settings
   const mem = s.learningEnabled === false ? null : await loadPromptMemory()
-  return buildChatSystemPrompt({ learningEnabled: s.learningEnabled, instructions: s.userInstructions, learnedUser: mem?.usuario ?? null })
+  return buildChatSystemPrompt({
+    learningEnabled: s.learningEnabled,
+    instructions: s.userInstructions,
+    // Solo las de ESTA conversación (guardadas por sesión en este computador).
+    conversationInstructions: getConversationInstructions(sessionID),
+    learnedUser: mem?.usuario ?? null
+  })
 }
 
 /** Texto (sin partes sintéticas) y adjuntos de un mensaje de usuario. */
@@ -330,6 +342,7 @@ export async function deleteChat(sessionID: string): Promise<void> {
   const { client, directory } = ctx()
   await client.session.delete({ sessionID, directory })
   useSessions.getState().removeSession(sessionID)
+  clearConversationInstructions(sessionID)
   if (useChat.getState().activeSessionId === sessionID) useChat.getState().setActive(null)
   if (useChat.getState().pinned[directory]?.includes(sessionID)) useChat.getState().togglePin(directory, sessionID)
 }

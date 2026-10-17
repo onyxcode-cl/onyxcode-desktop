@@ -4,6 +4,7 @@ export const importSettings = {
 
   // Búsqueda en Ajustes
   'settings.search.label': 'Buscar en Ajustes',
+  'settings.search.placeholder': 'Buscar…',
   'settings.search.clear': 'Borrar la búsqueda',
   'settings.search.results': {
     one: '{count} sección con resultados',

@@ -55,6 +55,7 @@ export const common = {
   'common.effort.standard': 'Estándar',
   'common.effort.title': 'Esfuerzo del modelo',
   'common.effort.menu': 'Esfuerzo de razonamiento',
+  'common.effort.submenu': 'Esfuerzo',
   'common.plainText': 'Texto',
   'common.git.notInstalled': 'git no está instalado o no está en el PATH',
   'common.git.failed': 'git {cmd} falló',

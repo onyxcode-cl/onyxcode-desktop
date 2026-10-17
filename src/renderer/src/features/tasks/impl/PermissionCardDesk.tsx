@@ -163,9 +163,6 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
 
   return (
     <>
-      <p className="sr-only" aria-live="polite">
-        {t('tasksComputer.perm.waiting')}
-      </p>
       <PermCardFrame
         id={request.id}
         danger={d.danger}

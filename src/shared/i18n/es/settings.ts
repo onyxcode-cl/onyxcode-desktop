@@ -53,6 +53,8 @@ export const settings = {
     'Al ejecutar un comando de una respuesta con ▶, la salida (sin claves) se envía sola a la misma conversación para que la IA continúe. Apagado: queda adjunta a tu próximo mensaje.',
   'settings.general.sound.label': 'Sonido',
   'settings.general.sound.description': 'Reproduce el sonido del sistema al mostrar una notificación.',
+  'settings.general.firstSteps.label': 'Primeros pasos',
+  'settings.general.firstSteps.description': 'Muestra en la barra lateral la lista corta con lo básico para empezar.',
   'settings.general.keepAwake.label': 'Mantener el Mac despierto',
   'settings.general.keepAwake.label.win': 'Mantener el PC despierto',
   'settings.general.keepAwake.description': 'Evita que el equipo entre en reposo mientras hay tareas trabajando en segundo plano.',

@@ -17,6 +17,7 @@ import {
 } from '../../lib/attachments'
 import { handlePaste } from '../../lib/paste-attachments'
 import { VoiceDictationButton } from '../../components/VoiceDictationButton'
+import { markFirstStepDone } from '../../stores/first-steps'
 
 const NO_ATTACHMENTS: ChatAttachment[] = []
 
@@ -175,7 +176,10 @@ export function ChatComposer({
         else failed.push(r.reason instanceof Error ? r.reason.message : String(r.reason))
       }
       if (reads.length > 0) setReading((cur) => cur.filter((n) => !reads.includes(n)))
-      if (added.length > 0) setAttachments((cur) => [...cur, ...added])
+      if (added.length > 0) {
+        setAttachments((cur) => [...cur, ...added])
+        markFirstStepDone('attach') // «Primeros pasos › Prueba adjuntar un archivo»
+      }
       if (failed.length > 0) setAttachError([...errors, ...failed].join(' '))
     })
   }

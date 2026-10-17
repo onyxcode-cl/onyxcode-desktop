@@ -25,7 +25,7 @@ export function ServerBanner(): React.JSX.Element | null {
       ) : (
         <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
       )}
-      <span className="flex-1 truncate" title={status.error ?? error ?? ''}>
+      <span className="flex-1 truncate desk:line-clamp-2 desk:whitespace-normal" title={status.error ?? error ?? ''}>
         {failed
           ? t('app.banner.failed', { error: (status.error ?? error ?? '').split('\n')[0] })
           : (status.error ?? t('app.banner.starting'))}

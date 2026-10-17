@@ -10,6 +10,7 @@ import { buildConversationMarkdown, type ExportDoc, type ExportOptions } from '@
 import { useT } from '../lib/i18n'
 import { loadExportOptions, saveExportOptions } from '../lib/conversation/export'
 import { getExtras } from '../lib/extrasApi'
+import { announce } from '../lib/announce'
 import { PortalMenu, PortalMenuItem } from './PortalMenu'
 
 export type ExportAction = 'copy' | 'md' | 'pdf'
@@ -27,6 +28,7 @@ let noticeTimer: ReturnType<typeof setTimeout> | undefined
 
 function notify(text: string, tone: 'success' | 'danger'): void {
   const id = nextNotice++
+  announce(text, tone === 'danger' ? 'assertive' : 'polite')
   useExportUi.setState({ notice: { id, text, tone } })
   if (noticeTimer) clearTimeout(noticeTimer)
   noticeTimer = setTimeout(() => useExportUi.setState((s) => (s.notice?.id === id ? { notice: null } : s)), 7000)
@@ -129,7 +131,7 @@ function ExportNotice(): React.JSX.Element | null {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[330] flex justify-center px-4" data-testid="export-notice">
       <div
-        role={notice.tone === 'danger' ? 'alert' : 'status'}
+        // Sin role vivo propio: el texto ya lo lee la región permanente de `announce()` (si no, se leería dos veces).
         className="pointer-events-auto flex max-w-xl items-start gap-2 rounded-card bg-fg px-4 py-2.5 text-ui text-bg shadow-pop animate-rise-in"
       >
         <Icon size={16} className="mt-0.5 shrink-0" aria-hidden="true" />

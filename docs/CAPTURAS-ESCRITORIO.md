@@ -21,6 +21,14 @@
 - `rutinas-evento`: editor de Rutinas con la pestaña «Archivo» (disparador por carpeta): carpeta vigilada, filtro `*.pdf, factura-*.csv`, nuevo o modificado, espera de estabilización y tope por hora.
 - `rutinas-bandeja`: ejecuta dos rutinas con el motor falso y captura la bandeja «Resultados por revisar» (Aprobar / Descartar / Ver detalle / Volver a ejecutar), con un detalle abierto y el contador en el riel. Debe ir después de los demás escenarios de Rutinas (cambia su «última ejecución»).
 - `rutinas-evento-e2e`: prueba de punta a punta del disparador por archivo con el motor falso (carpeta temporal bajo el home, tope 2/h, espera 1 s). Escribe en consola `VERIF-EVENTO-1` (un archivo = una ejecución; lo que aparece al terminar no dispara), `VERIF-EVENTO-5` (cinco seguidos = una ejecución agrupada) y `VERIF-EVENTO-TOPE` (la tercera queda frenada por el tope, `capped: true`). Tarda ~80 s.
+- Estados de error, carga y vacío (H24; motor falso, sin tocar datos reales):
+  - `chat-error-conexion`: el motor falso responde con error de clave (401); tarjeta «La IA rechazó la conexión» con «Conectar una IA».
+  - `chat-carga-larga`: respuesta parcial con indicador «Pensando» y botón de detener; al terminar se pulsa «Detener».
+  - `motor-error`: arranca sin motor con la app ya configurada (`OPENCODE_BIN` inexistente): aviso superior «No se pudo conectar con la IA», «Reintentar», esqueleto de carga de la barra lateral y «Error de conexión».
+  - `tareas-lista-vacia` (antes de crear tareas) y `tareas-error` (tarea que termina con error del proveedor).
+  - `rutinas-vigilante`: rutina por archivo cuya carpeta se borra: «Carpeta no disponible». `rutinas-sin-vigilar`: con el aviso de Rutinas sin aceptar: «Sin vigilar: falta aceptar el aviso de Rutinas».
+  - `ajustes-modelos-vacio`: Ajustes › Modelos sin servicios conectados («Ningún servicio de IA conectado»).
+  Se piden con `--scenario`; los de Tareas/Rutinas necesitan `--size 1000x700` para sacar también el tamaño pequeño.
 - `aviso-motor`: arranca con una ruta de motor elegida aparte (el falso, 1.18.32) y un motor incluido falso (`LAZUNOX_TEST_BUNDLED_DIR`, solo pruebas); captura la tarjeta «Estás usando un motor de IA instalado aparte…» con «Usar el motor incluido» y «Ahora no».
 - Sin argumentos: claro y oscuro, 1280x800 para todo y 1000x700 solo para `chat-*` y `ajustes-*` (~64 PNG; con tantos escenarios conviene partir en dos corridas por el tope de 330 s).
   Con `--size` se usa solo ese tamaño. Nombre: `<escenario>-<tema>-<tamaño>.png`, a 2x (2560x1600 para 1280x800).
