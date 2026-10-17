@@ -78,6 +78,7 @@ const SCENARIOS = [
   'rutinas-editor',
   'rutinas-evento',
   'rutinas-bandeja',
+  'rutinas-evento-e2e',
   'ajustes-general',
   'ajustes-modelos',
   'ajustes-celular',
@@ -1601,6 +1602,54 @@ const S = {
     const first = ctx.page.getByRole('button', { name: 'Ver detalle' }).first()
     await first.click()
     await sleep(600)
+  },
+  // Prueba de punta a punta del disparador por archivo con el motor falso y userData temporal: un archivo = una ejecución,
+  // lo que aparece justo al terminar no dispara, cinco seguidos = una ejecución agrupada y el tope por hora frena la siguiente.
+  async 'rutinas-evento-e2e'(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    const dir = mkdtempSync(join(homedir(), 'lazunox-shotd-evt-'))
+    const inv = (ch, payload) =>
+      ctx.page.evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload]).then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
+    const saved = await inv('routines:save', {
+      name: 'Clasificar facturas (E2E)',
+      prompt: 'Resume {{archivo}}',
+      mode: 'chat',
+      folder: null,
+      model: { providerID: 'fake', modelID: 'fake-model' },
+      schedule: { kind: 'file', folder: dir, patterns: ['*.txt'], on: 'create', settleSec: 1, maxPerHour: 2 },
+      enabled: true
+    })
+    const runs = async () => (await inv('routines:history', { id: saved.id, limit: 50 })).filter((h) => h.trigger === 'file')
+    const waitRuns = async (n, ms) => {
+      const t0 = Date.now()
+      while (Date.now() - t0 < ms) {
+        const r = await runs()
+        if (r.length >= n && r.every((x) => x.status !== 'running')) return r
+        await sleep(500)
+      }
+      return runs()
+    }
+    await sleep(2500) // el vigilante arranca al guardar
+    writeFileSync(join(dir, 'uno.txt'), 'a')
+    const r1 = await waitRuns(1, 20_000)
+    writeFileSync(join(dir, 'salida-de-la-rutina.txt'), 'x') // lo que aparece justo al terminar es salida propia
+    await sleep(9000)
+    const r1b = await runs()
+    console.log('VERIF-EVENTO-1 ' + JSON.stringify({ ejecuciones: r1.length, tras_salida_propia: r1b.length, archivos: r1[0]?.triggerFiles }))
+    await sleep(6000) // pasa el margen anti-bucle
+    for (let i = 1; i <= 5; i++) writeFileSync(join(dir, `lote${i}.txt`), String(i))
+    const r2 = await waitRuns(2, 25_000)
+    console.log('VERIF-EVENTO-5 ' + JSON.stringify({ ejecuciones: r2.length, archivos_ultima: r2[0]?.triggerFiles }))
+    await sleep(6000)
+    writeFileSync(join(dir, 'tercero.txt'), 'z') // tope de 2 por hora alcanzado
+    await sleep(9000)
+    const r3 = await runs()
+    const info = (await inv('routines:list')).find((x) => x.id === saved.id)
+    const inbox = await inv('routines:inbox:list')
+    console.log('VERIF-EVENTO-TOPE ' + JSON.stringify({ ejecuciones: r3.length, fileWatch: info.fileWatch, bandeja_pendiente: inbox.filter((i) => i.status === 'pending' && i.routineId === saved.id).length }))
+    await sleep(800)
+    rmSync(dir, { recursive: true, force: true })
   },
   async 'ajustes-general'(ctx) {
     await openSettings(ctx.page, 'General')
