@@ -38,6 +38,9 @@ describe.skipIf(!macOnly)('ComputerService.reportPermsStall (macOS)', () => {
     h.ax = true
     h.screen = 'denied'
     svc = new ComputerService()
+    // Hermético: `helperPath()` también busca bajo `process.cwd()/resources/computer-use/bin`; en un checkout con el ayudante compilado
+    // el test hablaba con el ayudante REAL (permisos reales del Mac de quien lo corre) en vez de los permisos simulados de arriba.
+    vi.spyOn(svc, 'helperPath').mockReturnValue(null)
     await svc.reportPermsStall()
     expect(h.record).toHaveBeenCalledTimes(1)
     const p = h.record.mock.calls[0][0] as { source: string; detail: Record<string, string> }
