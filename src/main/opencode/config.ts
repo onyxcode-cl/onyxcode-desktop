@@ -14,6 +14,12 @@
  */
 import { CHAT_AGENT } from '@shared/types'
 
+/**
+ * Patrón de `read` que no corresponde a ningún archivo real (ver `permission.read` del agente `chat`). Debe
+ * coincidir con `resources/opencode/agents/chat.md`.
+ */
+export const CHAT_READ_SENTINEL = '/__lazunox_sin_acceso__'
+
 export interface InlineConfigOptions {
   /** Bloque `mcp.browser` ya resuelto (o null si el MCP del navegador integrado no arrancó). */
   browserMcp?: Record<string, unknown> | null
@@ -215,7 +221,12 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           '*': 'deny',
           webfetch: 'allow',
           websearch: 'allow',
-          question: 'allow' // preguntas con opciones (tarjeta de botones); el resto sigue denegado
+          question: 'allow', // preguntas con opciones (tarjeta de botones); el resto sigue denegado
+          // `read` debe seguir ANUNCIADO al modelo: el servidor del modelo gratuito de OpenCode (FreeTierError 403)
+          // rechaza toda petición cuya lista de herramientas no incluya `read`. Con `read: deny` (o `'*': deny` a secas)
+          // el motor lo quita de la lista. Truco: la última regla de `read` no es `'*'`, así que el motor lo anuncia,
+          // pero ninguna ruta real coincide con el patrón permitido y toda lectura se deniega.
+          read: { '*': 'deny', [CHAT_READ_SENTINEL]: 'allow' }
         }
       },
       computer: { disable: true }

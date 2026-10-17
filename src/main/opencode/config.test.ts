@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildInlineConfig } from './config'
+import { buildInlineConfig, CHAT_READ_SENTINEL } from './config'
 
 describe('buildInlineConfig (sidecar principal)', () => {
   it('fija share:disabled y autoupdate:false, con y sin navegador', () => {
@@ -69,8 +69,23 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
   })
 
   it('el agente chat permite `question` y sigue denegando todo lo demás', () => {
-    const chat = (buildInlineConfig() as { agent: { chat: { permission: Record<string, string> } } }).agent.chat
-    expect(chat.permission).toEqual({ '*': 'deny', webfetch: 'allow', websearch: 'allow', question: 'allow' })
-    expect(chatMd).toMatch(/permission: "\*": deny webfetch: allow websearch: allow question: allow ---/)
+    const chat = (buildInlineConfig() as { agent: { chat: { permission: Record<string, unknown> } } }).agent.chat
+    expect(chat.permission).toMatchObject({ '*': 'deny', webfetch: 'allow', websearch: 'allow', question: 'allow' })
+    expect(Object.keys(chat.permission).sort()).toEqual(['*', 'question', 'read', 'webfetch', 'websearch'])
+    expect(chatMd).toMatch(/permission: "\*": deny webfetch: allow websearch: allow question: allow/)
+  })
+
+  // Regresión: el modelo gratuito de OpenCode responde 403 FreeTierError a toda petición cuya lista de herramientas
+  // no incluya `read`. El motor quita del request la herramienta cuya última regla es `"*": deny`.
+  it('`read` sigue anunciado (última regla distinta de "*") pero no puede leer ninguna ruta real', () => {
+    const chat = (buildInlineConfig() as { agent: { chat: { permission: { read: Record<string, string> } } } }).agent.chat
+    const rules = Object.entries(chat.permission.read)
+    expect(rules[0]).toEqual(['*', 'deny'])
+    const last = rules[rules.length - 1]
+    expect(last[0]).not.toBe('*')
+    expect(last).toEqual([CHAT_READ_SENTINEL, 'allow'])
+    expect(CHAT_READ_SENTINEL.startsWith('/')).toBe(true)
+    expect(CHAT_READ_SENTINEL).not.toMatch(/[*?]/)
+    expect(chatMd).toContain(`read: "*": deny "${CHAT_READ_SENTINEL}": allow`)
   })
 })

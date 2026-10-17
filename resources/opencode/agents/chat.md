@@ -7,6 +7,11 @@ permission:
   webfetch: allow
   websearch: allow
   question: allow
+  # `read` debe seguir anunciado al modelo (el modelo gratuito de OpenCode rechaza peticiones sin esa
+  # herramienta), pero ninguna ruta real coincide con el patrón permitido: no lee nada.
+  read:
+    "*": deny
+    "/__lazunox_sin_acceso__": allow
 ---
 Eres un asistente conversacional amable y útil. Respondes por defecto en español
 (o en el idioma en que te escriba el usuario), con un tono cercano y claro.
