@@ -8,6 +8,7 @@
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { DIAG_SOURCES } from '@shared/diagnostics'
+import { EXPORT_LIMITS, type ExportDoc } from '@shared/conversation-export'
 import { PREFLIGHT_ORDER } from '@shared/preflight'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, EDITOR_IDS, FILES_SUB_ID_RE, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
@@ -857,6 +858,36 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   })
 }
 
+const exportPart = tagged('kind', {
+  text: obj({ kind: literal('text'), text: str({ max: EXPORT_LIMITS.text }) }),
+  reasoning: obj({ kind: literal('reasoning'), text: str({ max: EXPORT_LIMITS.text }) }),
+  tool: obj({ kind: literal('tool'), tool: str({ max: 100 }), detail: str({ max: EXPORT_LIMITS.detail }) })
+})
+const exportTurn = obj({
+  role: literal('user', 'assistant'),
+  at: num({ min: 0, max: 8.64e15 }),
+  parts: arr(exportPart, EXPORT_LIMITS.parts),
+  files: arr(str({ max: EXPORT_LIMITS.name }), EXPORT_LIMITS.files)
+})
+/** Conversación a exportar: topes por campo y un tope TOTAL de texto (20 MB) para que un renderer comprometido no agote la memoria. */
+const exportDoc: Validator<ExportDoc> = (v, path = '') => {
+  const doc = obj({
+    title: str({ max: 500 }),
+    createdAt: num({ min: 0, max: 8.64e15 }),
+    model: str({ max: 200 }),
+    turns: arr(exportTurn, EXPORT_LIMITS.turns)
+  })(v, path)
+  let total = 0
+  for (const turn of doc.turns) for (const p of turn.parts) total += p.kind === 'tool' ? p.detail.length : p.text.length
+  if (total > 20 * 1024 * 1024) throw new ValidationError(`Parámetro "${path}" demasiado grande`)
+  return doc
+}
+const exportConversationReq = obj({
+  format: literal('md', 'pdf'),
+  doc: exportDoc,
+  options: obj({ reasoning: bool, tools: bool, attachments: bool }),
+  lang: literal('es', 'en')
+})
 type ExtrasReq<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
 const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> } = {
   'extras:getPrefs': none,
@@ -921,6 +952,7 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:chatFile:viewNative': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark') }),
   'extras:chatFile:open': pathReq,
   'extras:chatFile:reveal': pathReq,
+  'extras:exportConversation': exportConversationReq,
   'extras:downloadChatDoc': tagged('kind', {
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),

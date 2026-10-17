@@ -49,8 +49,11 @@ import {
   firstUserPrompt,
   buildSideChatSystem,
   suggestedExportName,
+  splitAttachments,
   transcriptToMarkdown
 } from './transcript'
+import { runExportAction, type ExportAction } from '../../../components/ExportConversation'
+import { entriesToExportDoc } from '../../../lib/conversation/export'
 import { folderRequestPaths, isArchivedSession, rememberablePatterns } from './util'
 
 // ── Red de Tareas (aviso "Se bloqueó el acceso a…") ──
@@ -1111,6 +1114,16 @@ export async function exportTaskMarkdown(taskId: string): Promise<string | null>
   if (!session) return null
   const content = transcriptToMarkdown(session, entries, { showPath })
   return cw('tasks:exportMarkdown', { suggestedName: suggestedExportName(session.title), content })
+}
+
+/** Copiar o guardar (Markdown/PDF) la conversación de la tarea, con las opciones de exportación compartidas con Chat y Code. */
+export function exportTaskConversation(taskId: string, action: ExportAction): Promise<void> {
+  return runExportAction(action, async () => {
+    const entries = await ensureEntries(taskId)
+    const session = useSessions.getState().sessions[taskId]
+    if (!session) return null
+    return entriesToExportDoc(entries, { title: session.title, createdAt: session.time.created, splitAttachments })
+  })
 }
 
 /** «Crear skill de esta tarea»: le pide a la propia tarea que guarde `.opencode/skills/<nombre>/SKILL.md`. */

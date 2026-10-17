@@ -8,10 +8,12 @@
  */
 import '../../../app/mobile/switch.css'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
+import { openExportOptions } from '../../../components/ExportConversation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   CalendarClock,
+  ClipboardCopy,
   FileDown,
   FileText,
   FolderOpen,
@@ -22,6 +24,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
+  SlidersHorizontal,
   Sparkles,
   Wand2,
   Workflow,
@@ -46,7 +49,7 @@ import {
   closeSideChat,
   continueInNewTask,
   createSkillFromTask,
-  exportTaskMarkdown,
+  exportTaskConversation,
   loadFolders,
   openSideChat,
   reveal,
@@ -581,15 +584,10 @@ export function TasksWorkspace(): React.JSX.Element {
 
   const menuItems: MenuItem[] = activeId
     ? [
-        {
-          icon: FileDown,
-          label: t('tasks.ws.exportMd'),
-          run: () =>
-            guarded(async () => {
-              const path = await exportTaskMarkdown(activeId)
-              if (path) setNote(t('tasks.ws.saved', { path }))
-            })
-        },
+        { icon: ClipboardCopy, label: t('conv.export.copy'), run: () => void exportTaskConversation(activeId, 'copy') },
+        { icon: FileText, label: t('conv.export.saveMd'), run: () => void exportTaskConversation(activeId, 'md') },
+        { icon: FileDown, label: t('conv.export.savePdf'), run: () => void exportTaskConversation(activeId, 'pdf') },
+        { icon: SlidersHorizontal, label: t('conv.export.options'), run: () => openExportOptions() },
         {
           icon: Workflow,
           label: t('tasks.ws.continue'),

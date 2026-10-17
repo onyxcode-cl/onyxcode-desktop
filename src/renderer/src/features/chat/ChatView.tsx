@@ -14,6 +14,8 @@ import { isRemoteSurface } from '../../lib/platform'
 import { useAiGate } from '../../lib/ai-gate'
 import { useT } from '../../lib/i18n'
 import { onStreamReconnect, useServer } from '../../stores/server'
+import { ExportMenuButton } from '../../components/ExportConversation'
+import { exportChatConversation } from './export'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
 import { setModeModel, useModeModel } from '../settings/impl/extras'
 import type { ChatAttachment } from '../../lib/attachments'
@@ -340,6 +342,7 @@ export function ChatView(): React.JSX.Element {
         >
           <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
           <div className="absolute right-3 top-0 hidden h-12 items-center desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
+            {session && <ExportMenuButton onAction={(a) => void exportChatConversation(session, a)} />}
             <ReadingModeSwitch />
           </div>
         </header>

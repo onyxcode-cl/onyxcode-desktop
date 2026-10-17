@@ -80,7 +80,7 @@ export function PortalMenu({
       aria-label={label}
       onKeyDown={onKeyDown}
       style={pos}
-      className="fixed z-50 w-52 rounded-card bg-elevated p-1 shadow-pop"
+      className="fixed z-50 w-60 rounded-card bg-elevated p-1 shadow-pop"
     >
       {children}
     </div>,

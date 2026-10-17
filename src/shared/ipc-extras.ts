@@ -10,6 +10,7 @@ import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
 import type { ViewerEventType, ViewerRect } from './ipc-tasks'
 import type { DocxSpec, PptxSpec, XlsxSpec } from './chat-doc-spec'
+import type { ExportDoc, ExportOptions } from './conversation-export'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
 export type ModelMode = 'chat' | 'code' | 'tasks'
@@ -161,6 +162,18 @@ export type ChatDocDownloadRequest = { title: string } & (
 /** Para `extras:chatDoc:openExternal`: como la descarga, más el PDF (HTML). */
 export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string }
 
+export interface ConversationExportRequest {
+  format: 'md' | 'pdf'
+  doc: ExportDoc
+  options: ExportOptions
+  lang: 'es' | 'en'
+}
+export interface ConversationExportResult {
+  path: string | null
+  /** Posibles claves tachadas. */
+  redactions: number
+}
+
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
   'extras:setPrefs': { req: Partial<ExtrasPrefs>; res: ExtrasPrefsState }
@@ -197,6 +210,8 @@ export interface IpcExtrasInvokeContract {
   'extras:chatDoc:openExternal': { req: ChatDocExternalRequest; res: { ok: true; via: 'craft' | 'system' } | { ok: false } }
   /** `data` (Excel/PowerPoint) → archivo real, con diálogo nativo "Guardar como". `null` si cancela. */
   'extras:downloadChatDoc': { req: ChatDocDownloadRequest; res: string | null }
+  /** Exporta una conversación a `.md` o `.pdf` con el diálogo nativo «Guardar como» (main genera el archivo, tacha claves y sanea el nombre). `path: null` si se cancela. */
+  'extras:exportConversation': { req: ConversationExportRequest; res: ConversationExportResult }
   /** Desde la ventana Quick Entry. */
   'extras:quickSubmit': { req: QuickPromptEvent; res: void }
   'extras:quickHide': { req: void; res: void }
@@ -261,6 +276,7 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatFile:open',
   'extras:chatFile:reveal',
   'extras:downloadChatDoc',
+  'extras:exportConversation',
   'extras:quickSubmit',
   'extras:quickHide',
   'extras:quickToggle',

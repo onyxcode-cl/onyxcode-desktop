@@ -12,6 +12,7 @@ import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
 import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
+import { exportConversation } from '../extras/export-conversation'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
 import {
@@ -272,6 +273,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
           : { kind: 'pptx', data: req.data }
     return downloadChatDoc(input, req.title, windowOfSender(event.sender))
   })
+  handle(ipcMain, 'extras:exportConversation', (req, event) => exportConversation(req, windowOfSender(event.sender)))
   handle(ipcMain, 'extras:quickSubmit', (req) => {
     if (!req || typeof req.text !== 'string') throw new Error('Prompt inválido')
     deliverQuickPrompt(deps, { text: req.text })

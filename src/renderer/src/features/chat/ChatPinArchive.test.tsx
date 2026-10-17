@@ -120,6 +120,14 @@ describe('ChatSessionList: archivadas', () => {
     })
     act(() => (host.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement).click())
     const items = Array.from(document.body.querySelectorAll('[role="menu"] [role="menuitem"]')).map((i) => i.textContent)
-    expect(items).toEqual(['Renombrar', 'Restaurar', 'Eliminar'])
+    expect(items).toEqual([
+      'Renombrar',
+      'Restaurar',
+      'Copiar conversación',
+      'Guardar como Markdown…',
+      'Guardar como PDF…',
+      'Opciones de exportación…',
+      'Eliminar'
+    ])
   })
 })

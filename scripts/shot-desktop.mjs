@@ -38,6 +38,7 @@ const SCENARIOS = [
   'chat-pregunta',
   'chat-documento',
   'chat-archivo-ver',
+  'chat-exportar',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -892,6 +893,41 @@ const S = {
     await ctx.page.getByText('Plan del carrito de compras').first().click()
     await vis(ctx.page.getByText('Plan para el carrito'), 15_000)
     await sleep(500)
+  },
+  // Menú «…» de una conversación del Chat con «Copiar conversación», «Guardar como Markdown/PDF» y las opciones de exportación.
+  async 'chat-exportar'(ctx) {
+    await seedChats(ctx)
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Chat')
+    await ctx.page.getByText('Pruebas y corrección del IVA').first().click()
+    await vis(ctx.page.getByText(/pruebas.*pasan/), 15_000)
+    await sleep(500)
+    const row = ctx.page.getByRole('treeitem', { name: /Pruebas y corrección del IVA/ })
+    const openMenu = async () => {
+      await row.hover()
+      await sleep(250)
+      await row.getByRole('button', { name: /^Opciones de/ }).click()
+      await sleep(400)
+    }
+    // Con SHOT_EXPORT_DIR: verificación REAL de punta a punta. Se sustituye solo el diálogo nativo (que CDP no ve) por una ruta fija
+    // dentro de esa carpeta; main genera de verdad el .md y el .pdf (printToPDF) y se lee el portapapeles real.
+    const dir = process.env.SHOT_EXPORT_DIR
+    if (dir) {
+      await ctx.electronApp.evaluate(({ dialog }, d) => {
+        dialog.showSaveDialog = async (...a) => ({ canceled: false, filePath: d + '/' + a[a.length - 1].defaultPath.split(/[\\/]/).pop() })
+      }, dir)
+      for (const label of ['Guardar como Markdown…', 'Guardar como PDF…', 'Copiar conversación']) {
+        await openMenu()
+        await ctx.page.getByRole('menuitem', { name: label, exact: true }).click()
+        await vis(ctx.page.getByTestId('export-notice'), 20_000)
+        console.log('VERIF-EXPORT ' + label + ' => ' + (await ctx.page.getByTestId('export-notice').innerText()).replace(/\s+/g, ' '))
+        await sleep(600)
+      }
+      const clip = await ctx.electronApp.evaluate(({ clipboard }) => clipboard.readText())
+      console.log('VERIF-CLIP ' + JSON.stringify(clip.slice(0, 160)))
+    }
+    await openMenu()
+    ctx.hover = null
   },
   async 'chat-herramientas'(ctx) {
     await seedChats(ctx)

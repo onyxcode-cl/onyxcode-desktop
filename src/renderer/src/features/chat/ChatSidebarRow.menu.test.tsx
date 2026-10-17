@@ -66,9 +66,18 @@ describe('ChatSidebarRow: menú «⋯»', () => {
     expect(m.className).toContain('fixed')
     expect(more().getAttribute('aria-expanded')).toBe('true')
     const items = Array.from(m.querySelectorAll('[role="menuitem"]'))
-    expect(items.map((i) => i.textContent)).toEqual(['Fijar', 'Renombrar', 'Archivar', 'Eliminar'])
-    expect(m.querySelectorAll('[role="separator"]')).toHaveLength(1)
-    expect(items[3]!.className).toContain('text-danger')
+    expect(items.map((i) => i.textContent)).toEqual([
+      'Fijar',
+      'Renombrar',
+      'Archivar',
+      'Copiar conversación',
+      'Guardar como Markdown…',
+      'Guardar como PDF…',
+      'Opciones de exportación…',
+      'Eliminar'
+    ])
+    expect(m.querySelectorAll('[role="separator"]')).toHaveLength(2)
+    expect(items[7]!.className).toContain('text-danger')
   })
 
   it('«Fijar» y «Archivar» avisan y cierran el menú', () => {

@@ -337,6 +337,7 @@ export const mainErrors = {
   'merr.dialog.pickBinary': 'Elegir el binario de OpenCode',
   'merr.dialog.savePreview': 'Guardar vista previa',
   'merr.dialog.saveFailed': 'No se pudo guardar',
+  'merr.dialog.exportConversation': 'Guardar la conversación',
   'merr.dialog.savePdf': 'Guardar como PDF',
   'merr.dialog.saveDoc': 'Guardar documento',
   'merr.menu.back': 'Atrás',

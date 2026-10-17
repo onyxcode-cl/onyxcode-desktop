@@ -9,6 +9,8 @@
  */
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
+import { ExportMenuButton } from '../../../components/ExportConversation'
+import { exportCodeConversation } from './export'
 import { EnvironmentPanel } from '../../../components/EnvironmentPanel'
 import { useHostName } from '../../../lib/use-host-name'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
@@ -604,6 +606,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
+        {session && !isRemoteSurface() && <ExportMenuButton onAction={(a) => void exportCodeConversation(session, a)} />}
         <ReadingModeSwitch />
         {busy && (
           <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
