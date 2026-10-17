@@ -37,7 +37,7 @@ import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
 import { friendlyTool, isVisibleText } from './util'
 import { isPlanGateText } from '../../../lib/plan-gate'
-import { expandStepGroups, useReadingMode, visibleStepParts } from '../../../lib/reading-mode'
+import { expandStepGroups, useWorkView, visibleStepParts } from '../../../lib/reading-mode'
 import { isRemoteSurface } from '../../../lib/platform'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { stripSkillProposalBlock } from '@shared/skill-proposal'
@@ -427,7 +427,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
   const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
   const allBlocks = useMemo(() => buildBlocks(entries), [entries])
   // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
-  const readingStored = useReadingMode((s) => s.mode)
+  const readingStored = useWorkView('code')
   const reading = isRemoteSurface() ? 'normal' : readingStored
   const pendingCallIDs = useMemo(() => new Set(permissions.flatMap((p) => (p.tool ? [p.tool.callID] : []))), [permissions])
   const blocks = useMemo(

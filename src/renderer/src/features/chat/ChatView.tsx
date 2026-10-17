@@ -384,7 +384,7 @@ export function ChatView(): React.JSX.Element {
             <ConversationInstructionsButton sessionId={activeId} />
             <PersonalizeButton />
             {session && <ExportMenuButton onAction={(a) => void exportChatConversation(session, a)} />}
-            <ReadingModeSwitch />
+            <ReadingModeSwitch surface="chat" />
           </div>
         </header>
         <ChatProgressHud entries={entries} busy={busy} />

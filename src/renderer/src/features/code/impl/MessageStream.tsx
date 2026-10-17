@@ -26,7 +26,8 @@ import { Reasoning } from '../../../components/conversation/Reasoning'
 import { friendlyError } from '@shared/ai-errors'
 import type { ConvError } from '../../../lib/session-reducer'
 import { PermissionCard, QuestionCard } from './PermissionCard'
-import { StepGroup, relPath } from './ToolCard'
+import { StepGroup, ToolRow, relPath } from './ToolCard'
+import { WorkFold } from './WorkFold'
 import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
@@ -34,7 +35,8 @@ import { GeneratedFiles } from './GeneratedFiles'
 import { ElementReadonlyChip } from '../../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { isRemoteSurface } from '../../../lib/platform'
-import { expandStepGroups, showReasoning, showStepGroup, useReadingMode } from '../../../lib/reading-mode'
+import { expandStepGroups, showReasoning, showStepGroup, useWorkView } from '../../../lib/reading-mode'
+import { attentionSteps, isOngoing, segmentWork, type Segment, type TimedFacts, type WorkRole } from '../../../lib/conversation/work'
 
 // ---------------------------------------------------------------------------
 // Agrupación en bloques
@@ -88,6 +90,22 @@ function buildBlocks(messages: CodeMessage[]): Block[] {
   flush()
   return blocks
 }
+
+/** Papel de cada bloque para decidir qué entra en el trabajo plegado. */
+function blockRole(b: Block): WorkRole {
+  switch (b.kind) {
+    case 'steps':
+      return 'tool'
+    case 'reasoning':
+      return 'reasoning'
+    case 'text':
+      return 'text'
+    default:
+      return 'break'
+  }
+}
+
+const blockKey = (b: Block): string => `work-${b.key}`
 
 /** Turno: un mensaje de usuario y las respuestas del asistente que le siguen. */
 interface Turn {
@@ -400,12 +418,107 @@ const TurnView = memo(
     const showCopy = !!replyText && !(busy && isLastTurn)
     const mobile = isRemoteSurface()
     // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
-    const readingStored = useReadingMode((s) => s.mode)
+    const readingStored = useWorkView('code')
     const reading = mobile ? 'normal' : readingStored
+    const segments: Segment<Block>[] = mobile ? [{ kind: 'plain', items: blocks }] : segmentWork(blocks, blockRole)
     const [sheet, setSheet] = useState(false)
     const longPress = useLongPress(() => setSheet(true))
     const inlinePerms = new Map<string, PendingPermission[]>()
     for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
+    const turnLive = busy && isLastTurn
+    const permCards = (p: ToolPart): React.JSX.Element[] | undefined =>
+      inlinePerms.get(p.callID)?.map((perm) => <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />)
+
+    /** Un bloque suelto (fuera del plegado del trabajo). */
+    const renderBlock = (b: Block, bi: number): React.JSX.Element | null => {
+      const live = turnLive && bi === blocks.length - 1
+      switch (b.kind) {
+        case 'text':
+          return <DeferredMarkdown key={b.key} text={b.part.text} highlight={!live} />
+        case 'reasoning':
+          if (!showReasoning(reading)) return null
+          return <Reasoning key={b.key} part={b.part} live={turnLive} variant={isRemoteSurface() ? 'code' : 'chat'} />
+        case 'steps': {
+          const hasPending = b.parts.some((p) => inlinePerms.has(p.callID))
+          const hasError = b.parts.some((p) => p.state.status === 'error')
+          if (!showStepGroup(reading, { hasPending, hasError })) return null
+          return (
+            <StepGroup
+              key={b.key}
+              parts={b.parts}
+              root={root}
+              live={live}
+              hasPending={hasPending}
+              forceOpen={expandStepGroups(reading)}
+              after={permCards}
+            />
+          )
+        }
+        case 'retry':
+          return (
+            <div key={b.key} {...m('meta')} className="flex items-center gap-1.5 text-xs text-muted">
+              <RotateCw size={12} /> {t('code.msg.retry', { attempt: b.attempt })} {b.text}
+            </div>
+          )
+        case 'subtask':
+          return (
+            <div key={b.key} {...m('meta')} className="text-xs text-muted">
+              {b.text}
+            </div>
+          )
+        case 'error':
+          return (
+            <AssistantError
+              key={b.key}
+              info={b.info}
+              abortedLabel={t('code.msg.aborted')}
+              onRetry={canAct ? () => retryLast() : undefined}
+              onCompact={canAct && sessionID ? () => compactSession(sessionID) : undefined}
+            />
+          )
+      }
+    }
+
+    /** Todo el trabajo de la respuesta en una línea plegable (permisos y errores siempre a la vista). */
+    const renderWork = (seg: Segment<Block>, si: number): React.JSX.Element => {
+      const tools = seg.items.flatMap<ToolPart>((b) => (b.kind === 'steps' ? b.parts : []))
+      const timed = seg.items.flatMap<TimedFacts>((b) =>
+        b.kind === 'steps' ? b.parts : b.kind === 'reasoning' || b.kind === 'text' ? [b.part] : []
+      )
+      const attention = attentionSteps(tools, new Set(inlinePerms.keys()))
+      const stepRow = (p: ToolPart): React.JSX.Element => (
+        <div key={p.id}>
+          <ToolRow part={p} root={root} />
+          {permCards(p)}
+        </div>
+      )
+      return (
+        <WorkFold
+          key={seg.items[0] ? blockKey(seg.items[0]) : `w${si}`}
+          parts={timed}
+          tools={tools}
+          live={turnLive && isOngoing(segments, si, blockRole)}
+          view={reading}
+          root={root}
+          attention={attention}
+          renderStep={stepRow}
+          renderList={() =>
+            seg.items.map((b) => {
+              switch (b.kind) {
+                case 'steps':
+                  return b.parts.map(stepRow)
+                case 'reasoning':
+                  return <Reasoning key={b.key} part={b.part} live={turnLive} variant={isRemoteSurface() ? 'code' : 'chat'} />
+                case 'text':
+                  return <DeferredMarkdown key={b.key} text={b.part.text} highlight={!turnLive} />
+                default:
+                  return null
+              }
+            })
+          }
+        />
+      )
+    }
     return (
       <div data-message-id={user?.info.id} className={withCv('group/turn flex flex-col gap-3', old && perms.length === 0, true)}>
         {user && <UserMessage entry={user} busy={busy} root={root} />}
@@ -414,57 +527,9 @@ const TurnView = memo(
             className={mobile ? 'flex flex-col gap-2.5' : 'flex flex-col gap-2'}
             {...(longPress && replyText ? { ...longPress, 'data-long-press': '' } : {})}
           >
-            {blocks.map((b, bi) => {
-              const live = busy && isLastTurn && bi === blocks.length - 1
-              switch (b.kind) {
-                case 'text':
-                  return <DeferredMarkdown key={b.key} text={b.part.text} highlight={!live} />
-                case 'reasoning':
-                  if (!showReasoning(reading)) return null
-                  return <Reasoning key={b.key} part={b.part} live={busy && isLastTurn} variant={isRemoteSurface() ? 'code' : 'chat'} />
-                case 'steps': {
-                  const hasPending = b.parts.some((p) => inlinePerms.has(p.callID))
-                  const hasError = b.parts.some((p) => p.state.status === 'error')
-                  if (!showStepGroup(reading, { hasPending, hasError })) return null
-                  return (
-                    <StepGroup
-                      key={b.key}
-                      parts={b.parts}
-                      root={root}
-                      live={live}
-                      hasPending={hasPending}
-                      forceOpen={expandStepGroups(reading)}
-                      after={(p) =>
-                        inlinePerms
-                          .get(p.callID)
-                          ?.map((perm) => <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />)
-                      }
-                    />
-                  )
-                }
-                case 'retry':
-                  return (
-                    <div key={b.key} {...m('meta')} className="flex items-center gap-1.5 text-xs text-muted">
-                      <RotateCw size={12} /> {t('code.msg.retry', { attempt: b.attempt })} {b.text}
-                    </div>
-                  )
-                case 'subtask':
-                  return (
-                    <div key={b.key} {...m('meta')} className="text-xs text-muted">
-                      {b.text}
-                    </div>
-                  )
-                case 'error':
-                  return (
-                    <AssistantError
-                      key={b.key}
-                      info={b.info}
-                      abortedLabel={t('code.msg.aborted')}
-                      onRetry={canAct ? () => retryLast() : undefined}
-                      onCompact={canAct && sessionID ? () => compactSession(sessionID) : undefined}
-                    />
-                  )
-              }
+            {segments.map((seg, si) => {
+              if (seg.kind === 'plain') return seg.items.map((b) => renderBlock(b, blocks.indexOf(b)))
+              return renderWork(seg, si)
             })}
           </div>
         )}

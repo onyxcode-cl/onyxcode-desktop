@@ -1621,5 +1621,16 @@
  "tasksSettings.glossary.sandbox",
  "tasksSettings.glossary.sideChat",
  "tasksSettings.glossary.trustedFolders",
- "tasksSettings.glossary.workFolders"
+ "tasksSettings.glossary.workFolders",
+ "work.announce.done",
+ "work.attention",
+ "work.dur.hour",
+ "work.dur.hourMin",
+ "work.dur.min",
+ "work.dur.minSec",
+ "work.dur.sec",
+ "work.title.done",
+ "work.title.doneNoTime",
+ "work.title.live",
+ "work.title.liveNoTime"
 ]

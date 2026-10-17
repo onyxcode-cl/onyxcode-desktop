@@ -31,7 +31,9 @@ import type { ChatPendingQuestion } from './store'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { StepGroup } from '../code/impl/ToolCard'
 import type { ReadingMode } from '../../lib/reading-mode'
-import { expandStepGroups, showReasoning, showStepGroup, useReadingMode } from '../../lib/reading-mode'
+import { expandStepGroups, showReasoning, showStepGroup, useWorkView } from '../../lib/reading-mode'
+import { WorkFold } from '../code/impl/WorkFold'
+import { attentionSteps, isOngoing, segmentWork, type Segment, type WorkRole } from '../../lib/conversation/work'
 import { ElementReadonlyChip } from '../browser/ElementChip'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../browser/element-context'
 
@@ -278,6 +280,26 @@ function showBlock(mode: ReadingMode, b: Block): boolean {
   return true
 }
 
+/** Papel de cada parte para decidir qué entra en el trabajo plegado. */
+function partRole(p: Part): WorkRole {
+  switch (p.type) {
+    case 'tool':
+      return 'tool'
+    case 'reasoning':
+      return p.text.trim() ? 'reasoning' : 'skip'
+    case 'text':
+      return p.synthetic || p.ignored || !p.text ? 'skip' : 'text'
+    case 'retry':
+    case 'file':
+      return 'break'
+    default:
+      return 'skip'
+  }
+}
+
+/** Chat no tiene permisos ligados a llamadas (los errores sí se ven siempre). */
+const NO_PENDING: ReadonlySet<string> = new Set()
+
 const ChatAssistantRow = memo(function ChatAssistantRow({
   entry,
   live,
@@ -297,6 +319,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
 }): React.JSX.Element {
   const t = useT()
   const lastTextIdx = live ? entry.parts.map((p) => p.type).lastIndexOf('text') : -1
+  const lastTextID = lastTextIdx >= 0 ? entry.parts[lastTextIdx].id : undefined
   const text = textOfParts(entry.parts)
   const showActions = !live && !!text
   const mobile = isRemoteSurface()
@@ -305,29 +328,52 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   // Las herramientas seguidas se agrupan como en Code (se pliegan con 3 o más), también en el celular (chip de resumen).
   const blocks = useMemo(() => groupBlocks(entry.parts), [entry.parts])
   // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
-  const readingStored = useReadingMode((s) => s.mode)
+  const readingStored = useWorkView('chat')
   const reading = mobile ? 'normal' : readingStored
   const visibleBlocks = reading === 'normal' ? blocks : blocks.filter((b) => showBlock(reading, b))
+  // Escritorio: el trabajo de la respuesta (herramientas, razonamiento y la narración entre medias) va en una línea plegable.
+  const segments: Segment<Part>[] | null = useMemo(() => (mobile ? null : segmentWork(entry.parts, partRole)), [mobile, entry.parts])
   return (
     <div
       data-message-id={entry.info.id}
       className={withCv('group flex flex-col gap-1.5 desk:gap-4', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >
-      {visibleBlocks.map((b, bi) =>
-        b.kind === 'tools' ? (
-          <StepGroup
-            key={b.parts[0].id}
-            parts={b.parts}
-            root={null}
-            live={live && bi === visibleBlocks.length - 1}
-            hasPending={false}
-            forceOpen={expandStepGroups(reading)}
-          />
-        ) : (
-          <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
-        )
-      )}
+      {segments
+        ? segments.map((seg, si) => {
+            if (seg.kind === 'plain')
+              return seg.items.map((part) => <PartView key={part.id} part={part} live={live} streaming={live && part.id === lastTextID} />)
+            const tools = seg.items.filter((p): p is ToolPart => p.type === 'tool')
+            return (
+              <WorkFold
+                key={`work-${seg.items[0].id}`}
+                parts={seg.items as Parameters<typeof WorkFold>[0]['parts']}
+                tools={tools}
+                live={live && isOngoing(segments, si, partRole)}
+                view={reading}
+                root={null}
+                attention={attentionSteps(tools, NO_PENDING)}
+                renderStep={(p) => <ChatToolCall part={p} />}
+                renderList={() =>
+                  seg.items.map((part) => <PartView key={part.id} part={part} live={live} streaming={live && part.id === lastTextID} />)
+                }
+              />
+            )
+          })
+        : visibleBlocks.map((b, bi) =>
+            b.kind === 'tools' ? (
+              <StepGroup
+                key={b.parts[0].id}
+                parts={b.parts}
+                root={null}
+                live={live && bi === visibleBlocks.length - 1}
+                hasPending={false}
+                forceOpen={expandStepGroups(reading)}
+              />
+            ) : (
+              <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
+            )
+          )}
       {!mobile && <ChatFiles parts={entry.parts} done={!live} />}
       <AssistantError
         info={entry.info}
@@ -398,6 +444,36 @@ interface Props extends ErrorActions {
   questions?: ChatPendingQuestion[]
 }
 
+/**
+ * Junta los mensajes del asistente que van seguidos en una sola fila (partes en orden). Un mensaje solo no cambia (misma
+ * referencia, así sigue memoizado). La fila toma el `info` del último mensaje, o el del primero con error si lo hubo, con el id del primero.
+ */
+export function mergeAssistantRuns(entries: MessageEntry[]): MessageEntry[] {
+  const out: MessageEntry[] = []
+  let run: MessageEntry[] = []
+  const flush = (): void => {
+    if (run.length <= 1) out.push(...run)
+    else {
+      const withError = run.find((e) => e.info.role === 'assistant' && e.info.error)
+      // El id es el del primero: la fila conserva su clave (y su estado abierto/cerrado) cuando llegan más mensajes.
+      out.push({
+        info: { ...(withError?.info ?? run[run.length - 1].info), id: run[0].info.id },
+        parts: run.flatMap((e) => e.parts)
+      } as MessageEntry)
+    }
+    run = []
+  }
+  for (const e of entries) {
+    if (e.info.role === 'assistant') run.push(e)
+    else {
+      flush()
+      out.push(e)
+    }
+  }
+  flush()
+  return out
+}
+
 export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCompact, onEdit, questions = [] }: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
@@ -405,6 +481,9 @@ export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCom
   // Celular: el historial que se carga de golpe no anima; solo las filas que llegan después de abrir la conversación.
   const firstRows = useRef<{ key: string | undefined; count: number }>({ key: entries[0]?.info.id, count: entries.length })
   if (firstRows.current.key !== entries[0]?.info.id) firstRows.current = { key: entries[0]?.info.id, count: entries.length }
+
+  // Escritorio: las respuestas seguidas del asistente (el motor abre un mensaje por vuelta del modelo) se pintan como UNA sola.
+  const rows = useMemo(() => (mobile ? entries : mergeAssistantRuns(entries)), [mobile, entries])
 
   const last = entries[entries.length - 1]
   const lastHasOutput = last?.info.role === 'assistant' && last.parts.some((p) => (p.type === 'text' && p.text) || p.type === 'tool')
@@ -425,9 +504,9 @@ export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCom
               : 'mx-auto flex max-w-3xl flex-col gap-7 px-6 pt-8 pb-10 desk:max-w-[calc(var(--measure-prose)+48px)] desk:gap-8 desk:pb-12'
           }
         >
-          {entries.map((entry, i) => {
-            const isLast = i === entries.length - 1
-            const old = isOldRow(i, entries.length)
+          {rows.map((entry, i) => {
+            const isLast = i === rows.length - 1
+            const old = isOldRow(i, rows.length)
             if (entry.info.role === 'user')
               return <ChatUserRow key={entry.info.id} entry={entry} old={old} animate={i >= firstRows.current.count} onEdit={onEdit} />
             return (

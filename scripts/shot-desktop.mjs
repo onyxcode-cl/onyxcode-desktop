@@ -70,6 +70,12 @@ const SCENARIOS = [
   'code-ejecutar-termina',
   'code-terminal-ia',
   'code-permiso',
+  // Trabajo del agente legible (F8-B183): el trabajo de una respuesta plegado en «Trabajó durante Xs · N pasos» (Chat Resumida y abierto;
+  // Code «Con pasos»; Code con un permiso pendiente que sigue a la vista aunque el trabajo esté plegado).
+  'trabajo-legible',
+  'trabajo-legible-abierto',
+  'trabajo-legible-code',
+  'trabajo-legible-permiso',
   'code-pregunta',
   'code-plan',
   'code-archivo',
@@ -152,7 +158,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|busqueda-)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|busqueda-|trabajo-legible)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -726,6 +732,59 @@ async function armCompareAndAsk(page, text) {
   const box = page.getByPlaceholder('Escribe un mensaje…')
   await box.fill(text)
   await box.press('Enter')
+}
+
+// Trabajo legible: guion con cuatro pasos de verdad lentos (runMs) y la narración del agente entre medias.
+async function trabajoScript(fake, dir) {
+  await fake.script({
+    match: 'ordena el trabajo legible',
+    title: 'Trabajo legible',
+    steps: [
+      { type: 'text', text: 'Voy a mirar el carrito, buscar el IVA y correr las pruebas.' },
+      {
+        type: 'tool',
+        tool: 'read',
+        input: { filePath: `${dir}/src/carrito.ts` },
+        output: 'export function total() {}\n',
+        title: 'src/carrito.ts',
+        runMs: 900
+      },
+      {
+        type: 'tool',
+        tool: 'grep',
+        input: { pattern: 'IVA', path: 'src' },
+        output: 'src/precios.ts:1:export const IVA = 0.19\n',
+        title: 'IVA',
+        runMs: 900
+      },
+      { type: 'text', text: 'Ahora aplico el IVA y compruebo.' },
+      {
+        type: 'tool',
+        tool: 'edit',
+        input: { filePath: `${dir}/src/carrito.ts`, oldString: 'return t', newString: 'return redondear(t * (1 + IVA))' },
+        output: 'Edit applied successfully.',
+        title: 'src/carrito.ts',
+        runMs: 900
+      },
+      {
+        type: 'tool',
+        tool: 'bash',
+        input: { command: 'npm test', description: 'Corre las pruebas' },
+        output: ' ✓ carrito.test.ts (4)\n Test Files  1 passed (1)\n      Tests  4 passed (4)\n',
+        title: 'Corre las pruebas',
+        runMs: 900
+      },
+      { type: 'text', text: 'Terminé: el total ya incluye el IVA.' }
+    ]
+  })
+}
+
+async function trabajoChat(ctx) {
+  await closeOverlays(ctx.page)
+  await trabajoScript(ctx.fake, '/Users/demo/proyectos/tienda-web')
+  await newChat(ctx.page)
+  await sendChat(ctx.page, 'Revisa el carrito y ordena el trabajo legible')
+  await vis(ctx.page.getByText('Terminé: el total ya incluye el IVA.'), 45_000)
 }
 
 let chatBusySeeded = false
@@ -1649,6 +1708,79 @@ const S = {
     await box.press('Enter')
     await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
     await sleep(500)
+  },
+  // ---- Trabajo del agente legible (F8-B183). Herramientas con `runMs` para que el tiempo del resumen sea real. ----
+  async 'trabajo-legible'(ctx) {
+    await trabajoChat(ctx)
+    // Plegado: una línea con el tiempo y los pasos; la respuesta final queda limpia debajo.
+    await vis(ctx.page.getByRole('button', { name: /Trabajó durante .* · 4 pasos/ }), 30_000)
+    await sleep(500)
+  },
+  async 'trabajo-legible-abierto'(ctx) {
+    await trabajoChat(ctx)
+    const fold = ctx.page.getByRole('button', { name: /Trabajó durante .* · 4 pasos/ })
+    await vis(fold, 30_000)
+    await fold.click()
+    // Una línea por paso, con la narración del agente entre medias; el comando se abre a su detalle técnico.
+    await ctx.page
+      .getByRole('button', { name: /npm test|Corre las pruebas/ })
+      .first()
+      .click()
+    await sleep(500)
+  },
+  async 'trabajo-legible-code'(ctx) {
+    await openCode(ctx)
+    await trabajoScript(ctx.fake, codeRepo)
+    const box = ctx.page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Revisa el carrito y ordena el trabajo legible')
+    await box.press('Enter')
+    // En Code la vista predeterminada es «Con pasos»: plegado, dice qué hizo y deja a la vista el archivo editado.
+    await vis(ctx.page.getByRole('button', { name: /Trabajó durante .* · 4 pasos/ }), 40_000)
+    await vis(ctx.page.getByText('Terminé: el total ya incluye el IVA.'), 20_000)
+    await sleep(500)
+  },
+  async 'trabajo-legible-permiso'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'Instala lo que falta',
+      title: 'Instalar lo que falta',
+      steps: [
+        { type: 'text', text: 'Reviso el proyecto y luego instalo.' },
+        { type: 'tool', tool: 'read', input: { filePath: `${codeRepo}/package.json` }, output: '{}', title: 'package.json', runMs: 700 },
+        {
+          type: 'tool',
+          tool: 'grep',
+          input: { pattern: 'dependencies', path: '.' },
+          output: 'package.json:3',
+          title: 'dependencies',
+          runMs: 700
+        },
+        {
+          type: 'permission',
+          permission: 'bash',
+          patterns: ['npm install'],
+          metadata: { command: 'npm install', description: 'Instala las dependencias del proyecto.' }
+        }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('Instala lo que falta')
+    await box.press('Enter')
+    await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    // La persona pliega el trabajo: el permiso NO desaparece con él.
+    const fold = page.getByRole('button', { name: /Trabajando… .* pasos|Trabajó/ }).first()
+    if ((await fold.getAttribute('aria-expanded')) === 'true') await fold.click()
+    await sleep(500)
+    console.log(
+      'VERIF-PLEGADO aria-expanded=' +
+        (await fold.getAttribute('aria-expanded')) +
+        ' grupo-atencion=' +
+        (await page.locator('[data-work-attention]').count())
+    )
+    const allowed = await page.getByRole('button', { name: 'Permitir una vez' }).isVisible()
+    console.log('VERIF-PERMISO-VISIBLE-CON-TRABAJO-PLEGADO ' + allowed)
+    if (!allowed) throw new Error('el permiso quedó oculto con el trabajo plegado')
   },
   // «Plan» visible: tarjeta con los pasos del agente (3 de 5 listos, uno en curso con cronómetro).
   async 'code-plan'(ctx) {

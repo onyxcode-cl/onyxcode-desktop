@@ -29,6 +29,11 @@ export const settings = {
   'settings.general.textSize.small': 'Pequeño',
   'settings.general.textSize.normal': 'Normal',
   'settings.general.textSize.large': 'Grande',
+  'settings.general.workView': 'Vista del trabajo',
+  'settings.general.workView.hint':
+    'Cómo se muestra lo que hace la IA en cada respuesta. Resumida deja una sola línea que se abre; Con pasos añade qué hizo; Detallada muestra todos los pasos abiertos.',
+  'settings.general.workView.chat': 'En Chat',
+  'settings.general.workView.code': 'En Code y Overdrive',
   'settings.general.theme': 'Tema',
   'settings.general.theme.system': 'Sistema',
   'settings.general.theme.light': 'Claro',

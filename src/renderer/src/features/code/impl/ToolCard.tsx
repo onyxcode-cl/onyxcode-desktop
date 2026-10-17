@@ -237,7 +237,7 @@ function editInfo(part: ToolPart, root: string | null): { file: string; patch: s
 }
 
 /** Chip de archivo editado con +/- que se expande al diff. */
-function EditChip({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
+export function EditChip({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const t = useT()
   const { file, patch } = useMemo(() => editInfo(part, root), [part, root])
