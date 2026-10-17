@@ -47,6 +47,8 @@ interface Props {
    * p. ej. `hidden desk:@max-[30rem]:inline`. Sin ella (o sin `shortLabel` en la opción) queda solo el ícono, como antes.
    */
   shortClass?: string
+  /** Clases extra del chevron (p. ej. ocultarlo cuando el chip queda solo con ícono para ganar sitio). */
+  chevronClass?: string
   /** Estilo del chip cuando el valor es especial (p. ej. «Todo sin preguntar»). */
   tone?: 'danger' | 'warning' | 'accent'
   /** Atajo del chip entero (se muestra en el `title`). */
@@ -71,6 +73,7 @@ export function ChipMenu({
   onSelect,
   collapseClass = '',
   shortClass = '',
+  chevronClass = '',
   tone,
   chipShortcut,
   align = 'left',
@@ -199,7 +202,7 @@ export function ChipMenu({
         <ChevronDown
           size={12}
           aria-hidden
-          className={`shrink-0 opacity-70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 opacity-70 transition-transform duration-200 ${open ? 'rotate-180' : ''} ${chevronClass}`}
         />
       </button>
       {sheet ? (

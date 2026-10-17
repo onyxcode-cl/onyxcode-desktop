@@ -274,7 +274,8 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
           text: e.shown
         }))
       ]),
-    [groups]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, expanded]
   )
   const searching = query.trim().length > 0
 

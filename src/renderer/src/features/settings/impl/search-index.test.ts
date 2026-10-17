@@ -71,7 +71,7 @@ describe('índice de búsqueda de Ajustes', () => {
   it('las plantillas con parámetros quedan fuera del índice (nada de «Clave de …»)', () => {
     for (const lang of ['es', 'en'] as const) {
       const idx = buildSearchIndex(REAL, lang)
-      expect(idx.some((e) => /[{}]/.test(e.text) || e.text.slice(0, -1).includes('…'))).toBe(false)
+      expect(idx.some((e) => /[{}]/.test(e.text) || e.text.includes('…'))).toBe(false)
       expect(idx.some((e) => e.key === 'models.form.keyOf' || e.key === 'models.keyTest.testing')).toBe(false)
     }
   })
@@ -85,6 +85,10 @@ describe('índice de búsqueda de Ajustes', () => {
     expect(out.slice(0, -1)).not.toContain('…')
     expect(normalize(out)).toContain('claves')
     expect(shownText('Texto corto', ['corto'])).toBe('Texto corto')
+    // Parte por oraciones, pero no en abreviaturas como «p.ej.».
+    const intro = 'Cuéntale a la IA cómo quieres que te responda y qué debe saber de ti. Se envían con cada mensaje de Chat y de Code, con el modelo que tengas conectado.'
+    expect(shownText(intro, ['modelo'])).toBe('Se envían con cada mensaje de Chat y de Code, con el modelo que tengas conectado.')
+    expect(shownText('El costo usa los precios (p.ej. OpenCode Go) es sólo referencial.', ['costo'])).toContain('p.ej. OpenCode')
   })
 
   it('agrupa casi-duplicados y limita con «más»', () => {

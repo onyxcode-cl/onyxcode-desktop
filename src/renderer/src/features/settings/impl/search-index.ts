@@ -72,7 +72,8 @@ export function buildSearchIndex<Id extends string>(
       // Plantillas con parámetros («Clave de {x}», «Probando la clave de {x}…») solo tienen sentido con datos: fuera del índice.
       if (/[{}]/.test(text) || text.length < 3) continue
       // Frases ya cortadas en el original («Pulsa la combinación… (Esc cancela)») no sirven como resultado.
-      if (/…|\.\.\./.test(text.replace(/(…|\.\.\.)$/, ''))) continue
+      // Tampoco los que terminan en «…» (marcadores de campo como «Buscar modelo…» o textos de progreso).
+      if (/…|\.\.\./.test(text)) continue
       const dedupe = `${sec.id}\u0000${text}`
       if (seenText.has(dedupe)) continue
       seenKeys.add(key)
@@ -108,7 +109,7 @@ function clip(text: string, max: number): string {
  * de palabra con «…» solo al final. Si la coincidencia quedaría fuera del recorte, se parte la oración antes de la coincidencia.
  */
 export function shownText(text: string, words: readonly string[], max = SHOWN_MAX): string {
-  const sentences = text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡«“])|\n+/).map((x) => x.trim()).filter(Boolean)
+  const sentences = text.split(/(?<=(?<![.\p{L}])\p{L}{2,}[.!?]|[»”)][.!?]?)\s+(?=[A-ZÁÉÍÓÚÑ¿¡«“])|\n+/u).map((x) => x.trim()).filter(Boolean)
   if (sentences.length === 0) return text
   const hit = sentences.find((x) => words.every((w) => normalize(x).includes(w)))
   const pick = hit ?? sentences.find((x) => words.some((w) => normalize(x).includes(w))) ?? sentences[0]

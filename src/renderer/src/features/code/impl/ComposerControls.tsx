@@ -109,6 +109,7 @@ export function AgentChip({ agent, onChange }: { agent: 'build' | 'plan'; onChan
       value={agent}
       tone={agent === 'plan' ? 'accent' : undefined}
       collapseClass="inline desk:@max-[26rem]:sr-only"
+      chevronClass="block desk:@max-[26rem]:hidden"
       chipShortcut={isWindowsPlatform() ? 'Shift+Tab' : '⇧Tab'}
       testId="agent-chip"
       options={[
@@ -202,7 +203,7 @@ export function ModelControls(): React.JSX.Element {
         <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" iconOnly />
       </div>
       {/* El nombre largo se acorta con «…» (nunca se sale ni se pisa con lo de al lado); el menú se alinea a la derecha. */}
-      <div className="no-drag desk:max-w-[15rem] desk:min-w-[2.5rem] desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
+      <div className="no-drag desk:max-w-[15rem] desk:min-w-[5.5rem] desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
         <ModelPicker value={effective} onChange={setModel} placement="top" />
       </div>
       <div className="block desk:@max-[18rem]:hidden">
