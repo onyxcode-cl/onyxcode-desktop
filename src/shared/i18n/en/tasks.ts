@@ -628,9 +628,9 @@ export const tasks = {
   'tasks.learn.discard': 'Discard',
   'tasks.learn.saving': 'Saving…',
   'tasks.learn.saveFailed': 'Couldn’t save the memory.',
-  'tasks.learn.settingsToggle': 'Learn from Overdrive and Code',
+  'tasks.learn.settingsToggle': 'Memory for Chat, Code and Overdrive',
   'tasks.learn.settingsDesc':
-    'The agent can propose facts to remember (preferences, conventions, decisions) in Overdrive and in Code. You always choose what to keep; nothing is ever saved on its own. In Code, for now, only global memory (applies to every project).',
+    'The AI can propose notes to remember (preferences, conventions, decisions). You always choose what to keep; nothing is ever saved on its own. To view, edit or delete them, open Settings > Memory.',
   'tasks.learn.manageTitle': 'Learned memory for this project',
   'tasks.learn.manageEmpty': 'No approved learned memory yet for this project.',
   'tasks.learn.deleteEntry': 'Delete this note',

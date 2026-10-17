@@ -14,7 +14,7 @@
  * tarjeta: aquí NO bloquean, porque la aprobación humana ya pasó.
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { app } from 'electron'
 import { maskSecretPatterns } from '@shared/redact-patterns'
@@ -180,4 +180,64 @@ export function clearLearnedMemory(scope: LearnedMemoryScope, folder: string | n
     // Ya no existía: nada que borrar.
   }
   return getLearnedMemory(folder)
+}
+
+/** Cambio pedido por la persona sobre una entrada ya guardada (desde la pantalla «Memoria»). */
+export interface EntryEdit {
+  tipo?: string
+  texto?: string
+}
+
+export type UpdateResult =
+  { ok: true; bundle: LearnedMemoryBundle } | { ok: false; reason: 'no-encontrado' | 'invalido' | 'secreto' | 'duplicado' }
+
+/**
+ * Edita el texto y/o el tipo de una entrada. Mismas reglas que al guardar: largo, tipo válido y sin secretos
+ * (un texto con una clave se rechaza entero y la entrada queda como estaba). Si el cambio la dejaría igual a
+ * otra del mismo tipo, se rechaza como duplicado.
+ */
+export function updateLearnedMemoryEntry(scope: LearnedMemoryScope, folder: string | null, id: string, edit: EntryEdit): UpdateResult {
+  if (scope === 'proyecto' && !folder) return { ok: false, reason: 'no-encontrado' }
+  const path = scope === 'usuario' ? userMemoryPath() : projectMemoryPath(folder as string)
+  const entries = parseLearnedMemory(readFile(path))
+  const current = entries.find((e) => e.id === id)
+  if (!current) return { ok: false, reason: 'no-encontrado' }
+  const tipo = edit.tipo ?? current.tipo
+  if (!VALID_TYPES.has(tipo as LearnedMemoryType)) return { ok: false, reason: 'invalido' }
+  const texto = clampEntryText(String(edit.texto ?? current.texto))
+  if (!texto) return { ok: false, reason: 'invalido' }
+  if (maskSecretPatterns(texto) !== texto) return { ok: false, reason: 'secreto' }
+  const norm = (x: string): string =>
+    x
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ')
+  if (entries.some((e) => e.id !== id && e.tipo === tipo && norm(e.texto) === norm(texto))) return { ok: false, reason: 'duplicado' }
+  const next = entries.map((e) => (e.id === id ? { ...e, tipo: tipo as LearnedMemoryType, texto } : e))
+  atomicWrite(
+    path,
+    serializeLearnedMemory(
+      next,
+      scope === 'usuario'
+        ? { alcance: 'usuario', titulo: titleFor('usuario', null) }
+        : { alcance: 'proyecto', carpeta: folder as string, titulo: titleFor('proyecto', folder) }
+    )
+  )
+  return { ok: true, bundle: getLearnedMemory(folder) }
+}
+
+/** «Olvidar todo»: borra la memoria de usuario y la de TODOS los proyectos (solo esos archivos; skills y pendientes no se tocan). */
+export function forgetAllLearnedMemory(): void {
+  try {
+    unlinkSync(userMemoryPath())
+  } catch {
+    // Ya no existía.
+  }
+  try {
+    rmSync(join(memoriaDir(), 'proyectos'), { recursive: true, force: true })
+  } catch {
+    // Nada que borrar.
+  }
 }

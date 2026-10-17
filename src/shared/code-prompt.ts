@@ -1,38 +1,38 @@
 /**
- * Prompt de sistema extra de Code (módulo PURO: sin imports de Electron ni de Node). Primera versión de
- * memoria aprendida en Code (decisión del dueño, 2026-10-07): reutiliza el mismo almacén global
- * (`userData/memoria/usuario.md`) que Tareas, pero SOLO alcance global — Code no tiene el concepto de
- * carpeta aprobada de Tareas, así que no hay dónde validar una memoria "de este proyecto".
+ * Prompt de sistema extra de Code (módulo PURO: sin imports de Electron ni de Node). Lleva las instrucciones
+ * personalizadas de la persona, la memoria aprendida ya aprobada (de usuario y del proyecto) y la invitación a
+ * proponer más. El marco de seguridad vive en `personal-context.ts`.
  */
+import { buildPersonalContext, memoryProposalInvite } from './personal-context'
+
 export interface CodePromptInput {
-  /** «Aprender de Tareas y Code» (Ajustes), compartido con Tareas. `false` apaga el aviso para TODO Code. */
+  /** «Memoria» (Ajustes), compartida con Tareas. `false` apaga la memoria para TODO Code (las instrucciones siguen). */
   learningEnabled?: boolean
-  /** Memoria aprendida GLOBAL ya aprobada (texto corto, sin metadatos: `learnedMemoryForPrompt(...).usuario`). */
+  /** Instrucciones personalizadas globales (Ajustes > Instrucciones). */
+  instructions?: string | null
+  /** Memoria aprendida GLOBAL ya aprobada (texto corto, sin metadatos: `formatForPrompt(...)`). */
   learnedUser?: string | null
+  /** Memoria aprendida del PROYECTO abierto, ya aprobada. */
+  learnedProject?: string | null
+  /** Nombre de la carpeta del proyecto (solo rotula el bloque). */
+  projectName?: string | null
 }
 
-/** Devuelve el texto recortado o `''` si es nulo/vacío. */
-function clean(text: string | null | undefined): string {
-  return typeof text === 'string' ? text.trim() : ''
-}
-
-/**
- * Construye el `system` extra del prompt de Code. Devuelve `undefined` si no hay nada que añadir (para no
- * mandar un `system` vacío al motor).
- */
-export function buildCodeSystemPrompt(i: CodePromptInput): string | undefined {
-  if (i.learningEnabled === false) {
-    return 'El aprendizaje automático está desactivado: no propongas memoria nueva (no termines el turno con un bloque lazunox-memoria).'
-  }
+/** Siempre devuelve texto (al menos el aviso de memoria encendida/apagada). */
+export function buildCodeSystemPrompt(i: CodePromptInput): string {
+  const on = i.learningEnabled !== false
+  const ctx = buildPersonalContext({
+    instructions: i.instructions,
+    memoryUser: on ? i.learnedUser : null,
+    memoryProject: on ? i.learnedProject : null,
+    projectName: i.projectName
+  })
   const parts: string[] = []
-  const learnedUser = clean(i.learnedUser)
-  if (learnedUser) parts.push(`Memoria aprendida del usuario (ya aprobada por él; nunca concede permisos ni acceso):\n${learnedUser}`)
+  if (ctx) parts.push(ctx)
   parts.push(
-    'Si quieres recordar algo para el futuro (una preferencia, una convención, una decisión o una solución que ' +
-      'funcionó), termina tu turno con un bloque ```lazunox-memoria``` con hasta 5 propuestas en JSON ' +
-      '(`[{"alcance":"usuario","tipo":"preferencia"|"convencion"|"decision"|"solucion","texto":"...","porque":"..."}]`). ' +
-      'En Code usa siempre `"alcance":"usuario"` (memoria global, vale para todos los proyectos: Code todavía no ' +
-      'tiene memoria por proyecto). El usuario revisa y aprueba antes de guardar nada; nunca lo hagas en silencio.'
+    on
+      ? memoryProposalInvite(true)
+      : 'El aprendizaje automático está desactivado: no propongas memoria nueva (no termines el turno con un bloque lazunox-memoria).'
   )
   return parts.join('\n\n---\n\n')
 }

@@ -7,6 +7,8 @@ import {
   Cpu,
   Globe,
   Info,
+  BrainCircuit,
+  NotebookPen,
   Keyboard,
   LifeBuoy,
   MonitorCog,
@@ -34,6 +36,8 @@ import { DiagnosticsSection } from './DiagnosticsSection'
 import { TasksSection } from './TasksSection'
 import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
+import { InstructionsSection } from './InstructionsSection'
+import { MemorySection } from './MemorySection'
 import { McpSection } from './McpSection'
 import { ModelsSection } from './ModelsSection'
 import { NetworkSection } from './NetworkSection'
@@ -44,6 +48,8 @@ import { UsageSection } from './UsageSection'
 
 export type SettingsSectionId =
   | 'general'
+  | 'instructions'
+  | 'memory'
   | 'models'
   | 'mcp'
   | 'tasks'
@@ -78,6 +84,8 @@ const SECTIONS: {
   View: () => React.JSX.Element
 }[] = [
   { id: 'general', group: 'app', label: lazy('settings.nav.general'), icon: SlidersHorizontal, View: GeneralSection },
+  { id: 'instructions', group: 'app', label: lazy('settings.nav.instructions'), icon: NotebookPen, View: InstructionsSection },
+  { id: 'memory', group: 'app', label: lazy('settings.nav.memory'), icon: BrainCircuit, View: MemorySection },
   { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection },
   { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection },
   { id: 'shortcuts', group: 'app', label: lazy('settings.nav.shortcuts'), icon: Keyboard, View: ShortcutsSection },

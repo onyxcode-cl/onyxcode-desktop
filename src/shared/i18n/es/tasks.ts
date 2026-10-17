@@ -627,9 +627,9 @@ export const tasks = {
   'tasks.learn.discard': 'Descartar',
   'tasks.learn.saving': 'Guardando…',
   'tasks.learn.saveFailed': 'No se pudo guardar la memoria.',
-  'tasks.learn.settingsToggle': 'Aprender de Overdrive y Code',
+  'tasks.learn.settingsToggle': 'Memoria de Chat, Code y Overdrive',
   'tasks.learn.settingsDesc':
-    'El agente puede proponer hechos para recordar (preferencias, convenciones, decisiones) en Overdrive y en Code. Siempre elegís qué guardar; nunca se guarda nada solo. En Code, por ahora, solo memoria global (vale para todos los proyectos).',
+    'La IA puede proponer notas para recordar (preferencias, convenciones, decisiones). Siempre eliges qué guardar; nunca se guarda nada solo. Para verlas, editarlas o borrarlas, abre Ajustes > Memoria.',
   'tasks.learn.manageTitle': 'Memoria aprendida de este proyecto',
   'tasks.learn.manageEmpty': 'Todavía no hay memoria aprendida y aprobada en este proyecto.',
   'tasks.learn.deleteEntry': 'Borrar esta nota',

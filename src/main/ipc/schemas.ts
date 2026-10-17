@@ -571,6 +571,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     theme: literal('system', 'light', 'dark'),
     recentFolders: arr(absPath, 50),
     tasksGlobalInstructions: str({ max: 20_000 }),
+    userInstructions: str({ max: 4_000 }),
     onboarded: bool,
     routinesTermsAcknowledged: bool,
     checkUpdates: bool,
@@ -672,6 +673,20 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:learn:accept': obj({ folder: optional(absPath), proposals: arr(learnedProposal, 20) }),
   'tasks:learn:remove': obj({ alcance: learnedScope, folder: optional(absPath), id: learnedEntryId }),
   'tasks:learn:clear': obj({ alcance: learnedScope, folder: optional(absPath) }),
+  'tasks:mem:get': obj({ folder: optional(absPath) }),
+  'tasks:mem:accept': obj({ folder: optional(absPath), proposals: arr(learnedProposal, 20) }),
+  'tasks:mem:update': obj({
+    alcance: learnedScope,
+    folder: optional(absPath),
+    id: learnedEntryId,
+    tipo: optional(literal('preferencia', 'convencion', 'decision', 'solucion')),
+    texto: optional(str({ max: 300, min: 1 }))
+  }),
+  'tasks:mem:remove': obj({ alcance: learnedScope, folder: optional(absPath), id: learnedEntryId }),
+  'tasks:mem:clear': obj({ alcance: learnedScope, folder: optional(absPath) }),
+  'tasks:mem:forgetAll': none,
+  'tasks:instr:get': obj({ folder: absPath }),
+  'tasks:instr:save': obj({ folder: absPath, content: str({ max: 200_000 }) }),
   'tasks:skill:accept': obj({
     folder: absPath,
     name: str({ max: 64, min: 1, pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/ }),

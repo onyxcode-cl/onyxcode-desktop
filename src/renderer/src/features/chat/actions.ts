@@ -4,7 +4,11 @@
  */
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
+import { buildChatSystemPrompt } from '@shared/chat-prompt'
 import { CHAT_AGENT } from '@shared/types'
+import { isRemoteSurface } from '../../lib/platform'
+import { useSettings } from '../../stores/settings'
+import { loadPromptMemory } from '../memory/memory-client'
 import { isSafeAttachmentUrl } from '../../lib/attachments'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
@@ -184,6 +188,9 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       directory,
       agent: CHAT_AGENT,
       model: { providerID: model.providerID, modelID: model.modelID },
+      // Instrucciones personalizadas + memoria aprobada (relevada justo ahora, para que lo aprobado hace un momento ya valga).
+      // Nunca desde el celular: ver el comentario equivalente en `code/impl/store.ts`.
+      system: await chatSystemPrompt(),
       // Un mensaje sin texto es válido si lleva adjuntos (reintento de un mensaje solo con archivos).
       parts: [
         ...(text || files.length === 0 ? [{ type: 'text' as const, text }] : []),
@@ -202,6 +209,14 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
     return false
   }
   return true
+}
+
+/** `system` de Chat: instrucciones de la persona + memoria de usuario aprobada. `undefined` desde el celular. */
+async function chatSystemPrompt(): Promise<string | undefined> {
+  if (isRemoteSurface()) return undefined
+  const s = useSettings.getState().settings
+  const mem = s.learningEnabled === false ? null : await loadPromptMemory()
+  return buildChatSystemPrompt({ learningEnabled: s.learningEnabled, instructions: s.userInstructions, learnedUser: mem?.usuario ?? null })
 }
 
 /** Texto (sin partes sintéticas) y adjuntos de un mensaje de usuario. */

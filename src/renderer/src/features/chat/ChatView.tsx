@@ -39,6 +39,8 @@ import {
 } from './actions'
 import { useChat } from './store'
 import { ReadingModeSwitch } from '../../components/ReadingModeSwitch'
+import { MemoryProposalCard } from '../memory/MemoryProposalCard'
+import { PersonalizeButton } from '../memory/PersonalizeButton'
 import { ChatDocPanel } from './ChatDocPanel'
 import { ChatFilePanel } from './ChatFilePanel'
 import { ChatProgressHud } from './ChatProgressHud'
@@ -185,6 +187,11 @@ export function ChatView(): React.JSX.Element {
   const notices = (
     <div className={`mx-auto w-full max-w-3xl desk:max-w-[calc(var(--measure-prose)+48px)] ${isRemoteSurface() ? 'px-4' : 'px-6'}`}>
       <RecoveryBanner mode="chat" directory={null} />
+      {activeId && !busy && !isRemoteSurface() && (
+        <div className="mb-2">
+          <MemoryProposalCard sessionId={activeId} messages={entries} />
+        </div>
+      )}
       {sendError != null && (
         <div className="mb-2">
           <ErrorNotice error={sendError} variant="chat" />
@@ -339,7 +346,8 @@ export function ChatView(): React.JSX.Element {
           className="drag relative flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:@container desk:px-[max(15rem,calc(var(--controls-inset,0px)+8px))] desk:@max-[44rem]:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
         >
           <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
-          <div className="absolute right-3 top-0 hidden h-12 items-center desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
+          <div className="absolute right-3 top-0 hidden h-12 items-center gap-1.5 desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
+            <PersonalizeButton />
             <ReadingModeSwitch />
           </div>
         </header>
