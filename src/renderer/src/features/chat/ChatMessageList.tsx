@@ -25,6 +25,7 @@ import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ConversationAnnouncer } from '../../components/conversation/ConversationAnnouncer'
 import { ChatToolCall } from './ChatToolCall'
+import { ChatFiles } from './ChatFiles'
 import { rejectChatQuestion, replyChatQuestion } from './actions'
 import type { ChatPendingQuestion } from './store'
 import { StepGroup } from '../code/impl/ToolCard'
@@ -311,6 +312,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
           <PartView key={b.part.id} part={b.part} live={live} streaming={live && b.idx === lastTextIdx} />
         )
       )}
+      {!mobile && <ChatFiles parts={entry.parts} done={!live} />}
       <AssistantError
         info={entry.info}
         abortedLabel={t('chat.msg.stopped')}

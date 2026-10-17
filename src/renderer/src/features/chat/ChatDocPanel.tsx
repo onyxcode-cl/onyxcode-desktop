@@ -14,7 +14,8 @@ import { DocNotice, docProblemKey } from '../../components/artifacts/DocNotice'
 import { askAboutChatDoc, canAskAboutChatDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { requestCraftInstall } from '../settings/impl/CraftComponentCard'
 import { useChatDocViewport } from './useChatDocViewport'
-import type { ChatDocProblem } from './useChatDocPanel'
+import { ChatFileButtons } from './ChatFiles'
+import type { ChatDocProblem, ChatFileView } from './useChatDocPanel'
 
 const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXlsx' | 'chat.doc.kindPptx' | 'chat.doc.kindDocx'> = {
   html: 'chat.doc.kindPdf',
@@ -28,6 +29,8 @@ interface Props {
   title: string
   doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
   problem: ChatDocProblem | null
+  /** Archivo del disco (PDF/Office) abierto en el visor nativo; `null` si el panel muestra un documento del chat. */
+  file?: ChatFileView | null
   onRetry: () => void
   fullscreen: boolean
   onToggleFullscreen: () => void
@@ -39,6 +42,7 @@ export function ChatDocPanel({
   title,
   doc,
   problem,
+  file = null,
   onRetry,
   fullscreen,
   onToggleFullscreen,
@@ -103,6 +107,7 @@ export function ChatDocPanel({
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
           {title || t('chat.doc.title')} {doc && <span className="text-subtle">· {t(KIND_LABEL[doc.kind])}</span>}
         </span>
+        {file && <ChatFileButtons info={file.info} compact />}
         {doc && !problem && doc.kind === 'html' && <DownloadPdfButton html={doc.rawText} title={title} compact className="py-1" />}
         {doc && !problem && doc.kind === 'html' && doc.isSlides && (
           <>
@@ -176,10 +181,10 @@ export function ChatDocPanel({
             />
           </div>
         )}
-        {creating && (
+        {(creating || file?.status === 'loading') && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-elevated text-muted">
             <Loader2 size={20} className="animate-spin" />
-            <span className="text-[12.5px]">{t('chat.doc.creating')}</span>
+            <span className="text-[12.5px]">{t(file ? 'chat.file.loading' : 'chat.doc.creating')}</span>
           </div>
         )}
       </div>

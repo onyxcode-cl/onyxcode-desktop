@@ -115,6 +115,30 @@ export type ChatDocOpenReject = 'failed' | 'invalid' | 'no-craft'
 /** `bytes` (opcional): peso real del archivo generado, para la tarjeta de documento del Chat. */
 export type ChatDocOpenResult = { ok: true; bytes?: number } | { ok: false; reason: ChatDocOpenReject; detail?: string }
 
+// ───────────────── Archivos que la IA crea o menciona en el Chat ─────────────────
+
+/** Tipo de archivo: `blocked` = ejecutable o lanzador (solo «Mostrar en la carpeta»). */
+export type ChatFileKind = 'image' | 'pdf' | 'office' | 'html' | 'markdown' | 'text' | 'code' | 'other' | 'blocked'
+
+export interface ChatFileInfo {
+  /** Ruta tal como la nombró el renderer (main revalida en cada acción). */
+  path: string
+  name: string
+  bytes: number
+  kind: ChatFileKind
+  /** Se puede mostrar dentro de la app («Ver aquí»). */
+  canView: boolean
+  /** Se puede abrir con el programa predeterminado del sistema. */
+  canOpen: boolean
+}
+
+export type ChatFileReadResult =
+  | { ok: true; kind: 'image'; dataUrl: string }
+  | { ok: true; kind: 'text' | 'markdown' | 'code' | 'html'; text: string; truncated: boolean }
+  | { ok: false; reason: 'too-large' | 'unsupported' | 'unreadable' }
+
+export type ChatFileViewResult = { ok: true } | { ok: false; reason: 'unsupported' | 'too-large' | 'failed' }
+
 interface ChatDocOpenCommon {
   title: string
   /** Carpeta temporal propia por sesión de chat (nunca una carpeta del usuario). */
@@ -162,6 +186,14 @@ export interface IpcExtrasInvokeContract {
   /** Cierra el panel y borra los documentos temporales de esa sesión. */
   'extras:chatDoc:close': { req: { sessionId: string }; res: void }
   /** El documento se abre en el programa de ArtCraft de escritorio (o, si no está, en el del sistema): `via` dice cuál. */
+  /** Archivos del Chat: solo dentro de las carpetas del chat y de los proyectos (`files/chat-files.ts`); cada acción revalida la ruta. */
+  'extras:chatFile:info': { req: { paths: string[] }; res: ChatFileInfo[] }
+  'extras:chatFile:read': { req: { path: string }; res: ChatFileReadResult }
+  /** PDF/Word/Excel/PowerPoint en el visor nativo del panel lateral del Chat. */
+  'extras:chatFile:viewNative': { req: { path: string; lang: 'es' | 'en'; theme: 'light' | 'dark' }; res: ChatFileViewResult }
+  /** Abre con el programa predeterminado del sistema (nunca ejecutables ni lanzadores). */
+  'extras:chatFile:open': { req: { path: string }; res: void }
+  'extras:chatFile:reveal': { req: { path: string }; res: void }
   'extras:chatDoc:openExternal': { req: ChatDocExternalRequest; res: { ok: true; via: 'craft' | 'system' } | { ok: false } }
   /** `data` (Excel/PowerPoint) → archivo real, con diálogo nativo "Guardar como". `null` si cancela. */
   'extras:downloadChatDoc': { req: ChatDocDownloadRequest; res: string | null }
@@ -223,6 +255,11 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatDoc:attach',
   'extras:chatDoc:close',
   'extras:chatDoc:openExternal',
+  'extras:chatFile:info',
+  'extras:chatFile:read',
+  'extras:chatFile:viewNative',
+  'extras:chatFile:open',
+  'extras:chatFile:reveal',
   'extras:downloadChatDoc',
   'extras:quickSubmit',
   'extras:quickHide',

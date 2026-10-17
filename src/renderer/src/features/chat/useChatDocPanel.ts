@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getLang } from '@shared/i18n'
-import type { ChatDocOpenRequest } from '@shared/ipc-extras'
+import type { ChatDocOpenRequest, ChatFileInfo, ChatFileReadResult } from '@shared/ipc-extras'
 import {
   extractBrokenDocBlocks,
   extractChatDocBlocks,
@@ -18,6 +18,7 @@ import { getExtras } from '../../lib/extrasApi'
 import { recordChatDocSize } from '../../lib/chatDocSize'
 import { setChatDocAskHandler, setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { docProblemMessage, reportDocProblem } from '../../lib/report-problems'
+import { setChatFileViewHandler } from '../../lib/chatFileView'
 import { sendChatMessage } from './actions'
 import type { DocProblemReason } from '../../components/artifacts/DocNotice'
 import { platformCaps } from '../../lib/platform'
@@ -66,8 +67,23 @@ export interface ChatDocProblem {
   detail?: string
 }
 
+/**
+ * Archivo del disco que se está mostrando (tarjeta «Ver aquí»). `native`: PDF/Word/Excel/PowerPoint en el visor nativo de este mismo
+ * panel; `inline`: imagen o texto dentro de la interfaz (`content`); `error`: no se pudo mostrar.
+ */
+export interface ChatFileView {
+  info: ChatFileInfo
+  mode: 'native' | 'inline'
+  status: 'loading' | 'ready' | 'error'
+  content: ChatFileReadResult | null
+  /** Clave de texto del error (solo textos propios de la app). */
+  error: 'chat.file.tooLarge' | 'chat.file.unreadable' | 'chat.file.unsupported' | 'chat.file.viewFailed' | null
+}
+
 export interface ChatDocPanelState {
   open: boolean
+  /** Archivo del disco abierto en el panel (o `null`). */
+  file: ChatFileView | null
   /** El panel ya está abierto pero el archivo (PDF/Excel/PowerPoint) todavía no terminó de generarse. */
   creating: boolean
   fullscreen: boolean
@@ -92,6 +108,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   const [title, setTitle] = useState('')
   const [doc, setDoc] = useState<{ kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null>(null)
   const [problem, setProblem] = useState<ChatDocProblem | null>(null)
+  const [file, setFile] = useState<ChatFileView | null>(null)
   const lastRawTextRef = useRef<string | null>(null)
   const sessionRef = useRef(sessionId)
 
@@ -108,6 +125,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     setTitle('')
     setDoc(null)
     setProblem(null)
+    setFile(null)
     setCreatingDoc(null)
   }
 
@@ -159,6 +177,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
 
       lastRawTextRef.current = rawText
       setProblem(null)
+      setFile(null)
       setOpen(true)
       setCreating(true)
       setTitle(title)
@@ -181,6 +200,76 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
         })
     },
     [showProblem]
+  )
+
+  // «Ver aquí» de la tarjeta de un archivo. Cada tipo va por su camino: PDF/Office al visor nativo (main revalida la ruta y el tipo),
+  // HTML a la vista previa de siempre (misma ventana aislada que los bloques ```html), imagen y texto dentro de la interfaz.
+  const openFile = useCallback(
+    (info: ChatFileInfo): void => {
+      const extras = getExtras()
+      const sid = sessionRef.current
+      if (!extras || !sid) return
+      const fail = (mode: 'native' | 'inline', error: NonNullable<ChatFileView['error']>): void =>
+        setFile({ info, mode, status: 'error', content: null, error })
+      const native = /\.(pdf|docx|xlsx|pptx)$/i.test(info.name)
+      lastRawTextRef.current = null
+      setProblem(null)
+      setDoc(null)
+      setCreating(false)
+      setCreatingDoc(null)
+      setTitle(info.name)
+      if (native) {
+        if (!platformCaps().docViewer) return
+        setOpen(true)
+        setFile({ info, mode: 'native', status: 'loading', content: null, error: null })
+        void extras
+          .invoke('extras:chatFile:viewNative', { path: info.path, lang: getLang(), theme: currentTheme() })
+          .then((res) => {
+            if (res.ok) setFile((f) => (f && f.info.path === info.path ? { ...f, status: 'ready' } : f))
+            else {
+              void extras.invoke('extras:chatDoc:close', { sessionId: sid }).catch(() => undefined)
+              fail(
+                'inline',
+                res.reason === 'too-large'
+                  ? 'chat.file.tooLarge'
+                  : res.reason === 'unsupported'
+                    ? 'chat.file.unsupported'
+                    : 'chat.file.viewFailed'
+              )
+            }
+          })
+          .catch(() => fail('inline', 'chat.file.viewFailed'))
+        return
+      }
+      // Lo que no es PDF/Office se muestra en la propia interfaz: se cierra la vista nativa (se pintaría POR ENCIMA).
+      void extras.invoke('extras:chatDoc:close', { sessionId: sid }).catch(() => undefined)
+      setOpen(true)
+      setFile({ info, mode: 'inline', status: 'loading', content: null, error: null })
+      void extras
+        .invoke('extras:chatFile:read', { path: info.path })
+        .then((res) => {
+          if (!res.ok) {
+            fail(
+              'inline',
+              res.reason === 'too-large'
+                ? 'chat.file.tooLarge'
+                : res.reason === 'unsupported'
+                  ? 'chat.file.unsupported'
+                  : 'chat.file.unreadable'
+            )
+            return
+          }
+          if (res.kind === 'html') {
+            if (!platformCaps().docViewer) return fail('inline', 'chat.file.unsupported')
+            // Página web: la vista previa aislada de siempre (sin scripts de la app, sin acceso a nada del equipo).
+            openDoc('html', res.text, info.name.replace(/\.[^.]+$/, ''), false)
+            return
+          }
+          setFile((f) => (f && f.info.path === info.path ? { ...f, status: 'ready', content: res } : f))
+        })
+        .catch(() => fail('inline', 'chat.file.unreadable'))
+    },
+    [openDoc]
   )
 
   const retry = useCallback((): void => {
@@ -232,6 +321,12 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     return () => setChatDocPreviewHandler(null)
   }, [openDoc])
 
+  // Las tarjetas de archivo («Ver aquí») muestran el archivo en este mismo panel. Las imágenes y el texto no necesitan el visor nativo.
+  useEffect(() => {
+    setChatFileViewHandler(openFile)
+    return () => setChatFileViewHandler(null)
+  }, [openFile])
+
   // Si se cambia de modo (Tareas, Code…) con el panel abierto, `ChatView` entera se desmonta — sin
   // esto, la vista nativa (vive en main, fuera del árbol de React) se quedaba pegada encima de
   // cualquier otro modo, sin forma de cerrarla (mismo cierre que al apretar la X, ver `DocumentViewerPanel.tsx`
@@ -250,5 +345,5 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     })
   }, [])
 
-  return { open, creating, fullscreen, title, doc, problem, retry, toggleFullscreen, close: () => close(sessionRef.current) }
+  return { open, file, creating, fullscreen, title, doc, problem, retry, toggleFullscreen, close: () => close(sessionRef.current) }
 }
