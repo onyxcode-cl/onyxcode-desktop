@@ -95,6 +95,8 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/chat/ChatSessionList.tsx',
   'src/renderer/src/features/chat/ChatSidebar.tsx',
   'src/renderer/src/features/chat/ChatView.tsx',
+  'src/renderer/src/features/chat/ConversationInstructionsButton.tsx',
+  'src/renderer/src/features/onboarding/FirstStepsCard.tsx',
   'src/renderer/src/features/chat/actions.ts',
   'src/renderer/src/features/chat/index.ts',
   'src/renderer/src/features/code/impl/CodeWorkspace.tsx',

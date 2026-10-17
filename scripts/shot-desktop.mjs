@@ -41,6 +41,8 @@ const SCENARIOS = [
   'chat-adjunto-office',
   'chat-memoria-propuesta',
   'chat-exportar',
+  'chat-primeros-pasos',
+  'chat-instrucciones-conversacion',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -961,6 +963,34 @@ const S = {
   async 'chat-vacio'(ctx) {
     await closeOverlays(ctx.page)
     await newChat(ctx.page)
+  },
+  // «Primeros pasos» (0 de 4, tarjeta plegable al pie de la barra lateral) y una tarjeta de inicio ya pulsada: la caja queda rellena y sin enviar.
+  async 'chat-primeros-pasos'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await vis(ctx.page.locator('[data-testid="first-steps"]'), 15_000)
+    const idea = ctx.page.getByRole('button', { name: /Redactar/ }).first()
+    if (!(await idea.isVisible().catch(() => false)))
+      await ctx.page
+        .getByRole('button', { name: /Mostrar ideas/ })
+        .first()
+        .click()
+    await idea.click()
+    await sleep(500)
+  },
+  // «Instrucciones de esta conversación»: botón de la cabecera y panel con el texto escrito, el contador y el aviso honesto.
+  async 'chat-instrucciones-conversacion'(ctx) {
+    await seedChats(ctx)
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Chat')
+    await ctx.page.getByText('Plan del carrito de compras').first().click()
+    await vis(ctx.page.getByText('Plan para el carrito'), 15_000)
+    await ctx.page.locator('[data-testid="conv-instr-button"]').click()
+    await vis(ctx.page.getByRole('dialog', { name: /Instrucciones de esta conversación/ }), 10_000)
+    await ctx.page
+      .locator('[data-testid="conv-instr-text"]')
+      .fill('Responde en inglés y en frases cortas. Explícamelo como si no supiera nada del tema.')
+    await sleep(400)
   },
   async 'chat-conversacion'(ctx) {
     await seedChats(ctx)

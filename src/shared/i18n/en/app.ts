@@ -83,5 +83,19 @@ export const app = {
   'app.boundary.onboarding': 'the setup assistant',
   'app.boundary.palette': 'the command palette',
   'app.boundary.sidebar': 'the sidebar',
-  'app.boundary.server': 'the server status'
+  'app.boundary.server': 'the server status',
+  'firstSteps.title': 'Getting started',
+  'firstSteps.aria': 'Getting started: {done} of {total} done',
+  'firstSteps.progress': '{done} of {total}',
+  'firstSteps.step.model': 'Choose your AI',
+  'firstSteps.step.message': 'Ask your first question',
+  'firstSteps.step.attach': 'Try attaching a file',
+  'firstSteps.step.settings': 'Look at Settings › Instructions and memory',
+  'firstSteps.stepDone': 'done',
+  'firstSteps.stepTodo': 'to do',
+  'firstSteps.hide': 'Hide',
+  'firstSteps.hideHint': 'Hide getting started. You can show it again in Settings › General.',
+  'firstSteps.collapse': 'Collapse getting started',
+  'firstSteps.expand': 'Show getting started',
+  'firstSteps.finished': 'Done! You know the basics.'
 } as const satisfies Messages<typeof es>
