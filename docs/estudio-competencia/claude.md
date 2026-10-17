@@ -1,0 +1,213 @@
+# Inventario de funciones de Claude (Anthropic), estado a 2026-10-17
+
+Método: WebSearch/WebFetch sobre fuentes oficiales (notas de versión de support.claude.com, changelog de Claude Desktop, "What's new" y changelog de Claude Code, página de precios). Opinión de la gente: solo blogs, resúmenes de hilos de Hacker News y medios. **No pude leer Reddit directamente** (las búsquedas no devolvieron hilos de r/ClaudeAI), así que la columna de elogios/críticas es débil y se marca «terceros». Todo lo que no pude confirmar dice «no confirmado». Parafraseado; fechas tal como las dan las fuentes.
+
+Leyenda de confianza: **Oficial** = documentación/notas de Anthropic; **Terceros** = prensa/blogs; **No confirmado**.
+Fuentes base (se citan abreviadas):
+- [RN] https://support.claude.com/en/articles/12138966-release-notes
+- [DESK] https://claude.com/docs/cowork/changelog (changelog de Claude Desktop, General y Cowork)
+- [CCW] https://code.claude.com/docs/en/whats-new (resumen semanal de Claude Code)
+- [CCC] https://code.claude.com/docs/en/changelog
+- [PRECIOS] https://claude.com/pricing
+- [CCO] https://code.claude.com/docs/en/overview
+
+---
+
+## 0. Planes (qué incluye cada uno) — [PRECIOS], oficial
+
+| Plan | Precio | Incluye (según la página) |
+|---|---|---|
+| Free | 0 USD | Chat web/escritorio/móvil, búsqueda web, creación de archivos, ejecución de código, memoria; hasta 5 proyectos; Artifacts, Design, Slides y Docs; solo Sonnet y Haiku; sin tope fijo de mensajes |
+| Pro | 17 USD/mes anual (200 USD) o 20 USD mensual | Todo lo de Free + Claude Code, Opus, Projects, Research, Dashboards (beta), Claude in Chrome y Microsoft 365; al menos 5x el uso de Free por sesión de 5 h, más límites semanales |
+| Max | desde 100 USD/mes | Todo Pro + 5x o 20x de uso, límites de salida mayores, acceso temprano, prioridad en picos, créditos API mensuales (100-200 USD), Fable al 50% del límite semanal |
+| Team | Standard 20 USD/asiento/mes anual (25 mensual); Premium 100 (125 mensual); 2-150 usuarios | Claude Code, Design, Slides, Docs, Dashboards, M365, SSO, facturación central, skills a nivel organización, hasta 500 USD/mes de créditos API agrupados |
+| Enterprise | 20 USD/asiento/mes anual, mínimo 20 asientos, más uso a tarifa API | Todo Team + límites de gasto, roles, SCIM, registros de auditoría, API de cumplimiento, retención a medida, lista blanca de IP, opción HIPAA, Claude Security (beta) |
+
+Notas: los límites son ventana móvil de 5 h + límites semanales y pueden cambiar. Modelos recientes: Opus 5.5 (22-sep-2026), Sonnet 5.5 (28-sep), Haiku 5.5 (7-oct), Fable 5.1 / Mythos 5.1 (1-sep) [RN]. Haiku 5.5 en API: 0,10/0,50 USD por millón de tokens [CCC].
+
+---
+
+## 1. Conversación y creación
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Chat con elección de modelo | Conversa con Sonnet/Haiku (Free) y Opus/Fable (pago) | Web, escritorio, móvil | Free/pago según modelo | continuo | [PRECIOS] | Oficial | Elogio general a la calidad; ver quejas de límites (sección 12) |
+| 2 | Cowork en cada conversación | Cualquier chat puede escalar a tarea larga (informe, hoja de cálculo) sin elegir modo; chats, proyectos, conectores y skills se conservan | Web, escritorio, móvil | Pro y Max (despliegue gradual) | 16-sep-2026 | [RN] | Oficial | No hay opinión localizada |
+| 3 | Editar borradores de Claude en el sitio | Editas directamente el texto que Claude redactó, en chat y Cowork | Web/escritorio | no especificado | 12-jun-2026 | [RN] | Oficial | Sin opinión localizada |
+| 4 | Mensajes durante una respuesta | Lo que escribes mientras Claude responde se encola; "Enviar ya" o Cmd/Ctrl+Enter interrumpen | Escritorio | todos | 10-sep-2026 (v1.52386.0) | [DESK] | Oficial | Sin opinión |
+| 5 | Gráficos y diagramas interactivos en línea | Claude dibuja gráficos/diagramas dentro de la respuesta | Web/escritorio/móvil | no especificado | 12-mar-2026; apps interactivas en móvil 25-mar | [RN] | Oficial | Sin opinión |
+| 6 | Nueva ventana para un chat | "Abrir en ventana nueva" | Escritorio | todos | 13-oct-2026 | [DESK] | Oficial | Sin opinión |
+| 7 | Reflect (resumen mensual) y "Tiempo y enfoque" | Recapitulación de temas y uso; recordatorios de pausa y horas de silencio | Web/escritorio | beta | 9-jul-2026 | [RN] | Oficial | Sin opinión |
+| 8 | Chats de incógnito | Conversación que no entra en memoria | Web/apps | Free, Pro, Max, Team | 11-sep-2025 | [RN] | Oficial | Sin opinión |
+| 9 | Búsqueda en conversaciones pasadas | Busca en el historial | Web/apps | Max, Team, Enterprise (ago-2025); alcance actual no confirmado | 11-ago-2025 | [RN] | Oficial | Sin opinión |
+
+## 2. Trabajo con archivos y documentos
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 10 | Subida de archivos | Hasta 20 archivos por chat, 500 MB por archivo; PDF hasta 1000 págs (texto+imágenes hasta 100 págs, texto solo de 101 a 1000); imágenes hasta 8000x8000; formatos PDF, DOCX, CSV, TXT, HTML, ODT, RTF, EPUB, JSON, XLSX, JPEG/PNG/GIF/WebP | Web/apps | el artículo no distingue por plan | vigente | https://support.claude.com/en/articles/8241126-uploading-files-to-claude | Oficial | Sin opinión |
+| 11 | Creación/edición de archivos | Genera y edita Excel, PowerPoint, Word, PDF | Web/escritorio/móvil | Free con ejecución de código (XLSX requiere activarla) | 9-sep-2025 (Pro/móvil 29-sep-2025); Free hoy según [PRECIOS] | [RN] | Oficial | Reseñas de Cowork elogian "archivos terminados" (ver sección 12, terceros) |
+| 12 | Claude Docs / Slides / Design | Crear documentos, presentaciones y diseños en cualquier conversación; salen de beta y llegan a todos los planes (Enterprise: beta, apagado por defecto) | Web/escritorio | Free y todos | 16-sep-2026 (Design lanzado 17-abr-2026) | [RN] | Oficial | Sin opinión |
+| 13 | Salida a Google Docs/Sheets/Slides | Crear esos archivos desde el selector de salida | Escritorio | con Drive conectado | 29-sep-2026 | [DESK] | Oficial | Sin opinión |
+| 14 | Google Workspace (complemento) | Conectores de Docs, Sheets, Slides | Web/escritorio | beta, complemento | 6-oct-2026 | Releasebot (agregador) | Terceros | — |
+| 15 | Claude para Excel y PowerPoint | Complementos de Office con contexto compartido, skills, pasarelas LLM; tablas dinámicas y formato condicional | Excel, PowerPoint | Pro+ (M365 en Pro/Team) | PowerPoint 5-feb-2026; contexto compartido 11-mar-2026 | [RN] | Oficial | Sin opinión |
+| 16 | Dashboards | Preguntas en lenguaje natural a gráficos en vivo, con SQL visible y hora de actualización; conecta a Snowflake, BigQuery, Redshift, Databricks, ClickHouse, Salesforce | Web | beta, planes de pago | 8-oct-2026 | https://tbreak.com/claude-dashboards-motion-beta/ + [PRECIOS] | Terceros (precios: oficial) | — |
+| 17 | Motion | Animaciones editables exportables a MP4 | Web | beta, Team/Enterprise | 8-oct-2026 | mismo | Terceros | — |
+| 18 | Artifacts | Páginas/apps vivas generadas en el chat; las publicadas pueden llamar conectores MCP de cada espectador, enlaces públicos, rol editor en Team/Enterprise | Web/escritorio | todos los planes | enlaces/MCP: sem. 29 (13-17 jul 2026) | [CCW] y https://claude.com/features/artifacts | Oficial | Sin opinión |
+| 19 | Vista previa de Office y vídeo en el panel de archivos | Previsualiza archivos Office y reproduce vídeo | Escritorio (Cowork) | Pro+ | sep-2026 | [DESK] | Oficial | Hubo fallos de vistas previas corregidos en varias versiones (oficial) |
+
+## 3. Memoria y contexto
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 20 | Memoria entre chats | Recuerda hechos y preferencias; desde jul-2026 guarda entradas individuales por categoría que Claude actualiza (antes, resumen diario) | Web/escritorio/móvil | Free, Pro, Max (activa por defecto); Team/Enterprise apagada por defecto | Max oct-2025; Free 2-mar-2026; entradas 10-jul-2026 | [RN] | Oficial | Elogio: transparencia y edición por temas (TechCrunch, https://techcrunch.com/2026/08/25/claude-cowork-finally-remembers-what-you-told-the-app-in-chat/). Crítica: "conoce una preferencia, no mi trabajo" (https://studiomeyer.io/en/blog/why-claude-needs-memory.md, terceros, vendedor adyacente) |
+| 21 | Memoria compartida chat y Cowork, con Temas editables | Ves, editas o borras recuerdos en Ajustes > Memoria; temas sensibles (salud, creencias) excluidos salvo activar | Web/escritorio | igual que arriba | 25-ago-2026 | [RN] | Oficial | Elogio a los valores por defecto de privacidad (TechCrunch, terceros) |
+| 22 | Memoria por proyecto | Cada proyecto tiene memoria propia; se puede desactivar "usar memoria de cuenta" | Web/apps | Proyectos | vigente | https://support.claude.com/en/articles/9519177-how-can-i-create-and-manage-projects | Oficial | — |
+| 23 | Importar memoria de otras IA | Ajustes > Importar: memoria/instrucciones, skills y MCP locales de otra app | Escritorio | no especificado | 8-oct-2026 y 15-oct-2026 | [DESK] | Oficial | — |
+| 24 | Ventana de contexto de 1M tokens | Sonnet 4.6 (beta feb-2026), nativa en Sonnet 5, Opus 5, Fable 5.1 en Claude Code | API/Claude Code | según modelo | feb-jul 2026 | [RN], [CCW] | Oficial | — |
+| 25 | Compactación de contexto | Compacta automáticamente; en Code también "compactar en reposo" a los ~54 min | Chat/Code | todos | nov-2025; reposo 14-oct-2026 | [RN], [CCC] | Oficial | — |
+
+## 4. Proyectos y colaboración
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 26 | Projects | Espacio con archivos (30 MB c/u) e instrucciones comunes a sus chats; modo RAG automático en planes de pago; Free hasta 5 proyectos | Web/escritorio/móvil | todos | vigente | URL de proyectos arriba | Oficial | — |
+| 27 | Compartir proyectos | Acceso "puede ver/editar" o visible a toda la organización | Web | Team y Enterprise | 1-ago-2025 | mismo | Oficial | — |
+| 28 | Claude Tag (en Slack) | Mencionas a Claude en un hilo de Slack; hace la tarea y publica en el hilo; soporta Slack Connect y clips de voz transcritos | Slack | beta, Team y Enterprise | 23-jun-2026; actualización 14-oct-2026 | [RN], https://claude.com/product/tag, [CCC] | Oficial | — |
+| 29 | Plugins y Skills compartidos en la organización | Despliegue organizativo, mercado de plugins y portal para enviar plugins al directorio | Escritorio/web | Team/Enterprise; portal abierto 25-sep-2026 | feb-sep 2026 | [RN] | Oficial | — |
+| 30 | Controles de administración | Grupos, SCIM, roles personalizados por conector, analítica y OpenTelemetry, informes inteligentes (beta), control de modelos y esfuerzo | Admin | Enterprise (algunos Team) | abr-sep 2026 | [RN] | Oficial | — |
+
+## 5. Automatización
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 31 | Cowork | Agente que trabaja con carpetas/archivos locales en una máquina virtual; GA en Mac y Windows | Mac, Windows (GA 9-abr-2026), Linux beta, web y móvil con sesiones remotas (beta, 7-jul-2026) | Pro y Max (lanzó en Max 12-ene-2026 en Mac; Pro 16-ene) | ene-abr 2026 | [RN] | Oficial | Elogio: entrega archivos terminados (https://www.lowcode.agency/blog/claude-cowork-review, terceros). Crítica: en Pro se agota rápido; fiabilidad aún irregular (misma fuente); HN mixto (https://news.ycombinator.com/item?id=46612919) |
+| 32 | Tareas programadas (Cowork) | Tareas recurrentes o a demanda; ahora pueden correr en la nube sin el equipo encendido | Escritorio y nube | Pro+ | 25-feb-2026; nube jul-2026 | [RN], [DESK] | Oficial | Varios fallos corregidos en octubre (oficial, [DESK]) |
+| 33 | Dispatch | Mandas tareas desde el móvil y se ejecutan en tu escritorio (debe estar despierto con la app abierta); una sola conversación; beta limitada que ya no admite usuarios nuevos | iOS/Android + Mac/Windows/Linux | Pro/Max parcial | 17-mar-2026 | https://support.claude.com/en/articles/13947068-assign-tasks-from-anywhere-in-claude-cowork | Oficial | Guía elogiosa de uso (https://www.productcompass.pm/p/claude-dispatch-guide, terceros) |
+| 34 | Routines (Claude Code web) | Agentes en la nube disparados por horario, evento de GitHub o llamada API | Web | planes con Code | 13-17 abr 2026 | [CCW] | Oficial | — |
+| 35 | Plugins de Cowork y Personalizar | Sección Customize; plugins con marketplace y Record a skill | Escritorio | Pro+; admin Team/Ent. | 25-feb-2026 | [RN], [DESK] | Oficial | — |
+
+## 6. Control del computador y navegador
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 36 | Computer use (Cowork/Chat) | Claude abre apps, hace clic y navega; en 1-sep-2026 corre en segundo plano en macOS; desde 1-oct requiere macOS 14+ y evita carpetas ocultas | Mac, Windows; en Linux no | Pro y Max (vista previa) | 23-mar-2026 | [RN], [DESK], [CCW] | Oficial | Críticas indirectas: el propio changelog lista errores (escribir dos veces, clics en el elemento equivocado) |
+| 37 | Computer use en Claude Code CLI y escritorio | Abrir apps nativas y verificar cambios desde terminal | CLI, escritorio | Pro/Max | sem. 13-14 (30-mar-2026) | [CCW] | Oficial | — |
+| 38 | Claude in Chrome | Lee, hace clic, rellena formularios en Chrome (panel lateral o desde Cowork/Code); multi-pestaña, atajos programables, tareas diarias/semanales, 1Password (beta) | Solo Chrome de escritorio; no móvil ni otros Chromium | Pro, Max, Team, Enterprise; GA 29 jun-2026 | beta 26-ago-2025 | https://support.claude.com/en/articles/12012173-get-started-with-claude-in-chrome | Oficial | La propia página avisa que sigue siendo arriesgado |
+| 39 | Navegador integrado en escritorio | Pestaña de navegador dentro de la app (Cowork y Code) | Escritorio | Pro+ | jul-2026 (sem. 28) | [CCW] | Oficial | Un fallo de pestaña cerraba la app, corregido 6-oct (oficial) |
+| 40 | Panel simulador de iOS | Claude ejecuta y toca tu app en el simulador mientras miras | Mac | beta pública | sem. 30 | [CCW] | Oficial | — |
+
+## 7. Integraciones (conectores / MCP / skills)
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 41 | Conectores / MCP | Conectar Gmail, Calendar, Drive, Slack, GitHub, Microsoft 365 (escritura desde 7-jul-2026), Salesforce (37 skills de ventas en beta, 15-sep) | Web/escritorio/móvil | según conector | 2025-2026 | [RN] | Oficial | — |
+| 42 | Extensiones de escritorio (antes DXT) | Instalar servidores MCP locales como extensión; claves de gestión renombradas `isDesktopExtension*` | Escritorio | todos | ago-2025; cambio 13-oct-2026 | [DESK] | Oficial | — |
+| 43 | Skills | Paquetes de instrucciones reutilizables; `/docx`, `/pdf`, `/pptx`, `/xlsx`; grabar una skill; análisis de coste con `/skill-doctor` | Web/escritorio/Code | Pro+ | dic-2025 en adelante | [RN], [CCW] | Oficial | — |
+| 44 | Escaneo de skills y plugins | Detecta contenido malicioso al subir | Admin | Enterprise beta | 6-ago-2026 | [RN] | Oficial | — |
+| 45 | Apps interactivas en móvil | Visuales renderizados dentro de la conversación | iOS/Android | no especificado | 25-mar-2026 | [RN] | Oficial | — |
+| 46 | Salud y fitness (datos) | Analizar datos de salud | iOS/Android | Pro/Max, solo EE. UU. | 12-ene-2026 | [RN] | Oficial | — |
+
+## 8. Investigación y búsqueda
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 47 | Research (investigación profunda) | Informes con muchas fuentes, típicamente 5+ llamadas de herramienta en 1-3 min | Web/apps | Pro+ (según [PRECIOS]) | 2025 | https://support.claude.com/en/articles/11095360-use-research-on-claude (dio 404 al leerlo; datos de [PRECIOS] y de un artículo hermano) | Oficial parcial | Sin opinión |
+| 48 | Búsqueda web | Respuestas con datos recientes | Todas | Free+ | — | [PRECIOS] | Oficial | — |
+| 49 | Pensamiento extendido / adaptativo | Razonamiento largo; adaptativo activado por defecto en Sonnet 5 | Todas | según modelo | — | [CCW] | Oficial | — |
+
+## 9. Voz y multimodal
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 50 | Modo de voz | Conversación hablada, alterna texto y voz; puede usar Gmail/Calendar/Slack; por turnos | Web, iOS, Android | todos (beta); Opus/Sonnet en pago desde 23-jul-2026, Free con Haiku | 2025; expansión jul-2026 | https://support.claude.com/en/articles/11101966 y https://www.androidauthority.com/claude-voice-mode-models-tools-3691101/ | Oficial + terceros | Crítica de terceros: por turnos, no full-duplex como el de OpenAI. Nº de idiomas: no confirmado (10, 11 o 14 según fuente) |
+| 51 | Dictado | Micrófono en el compositor | Escritorio, móvil | no especificado | corregido 8-oct-2026 | [DESK] | Oficial | — |
+| 52 | Leer en voz alta | Reproduce respuestas | Escritorio | no especificado | sep-2026 | [DESK] | Oficial | — |
+| 53 | Imágenes en entrada | Analiza imágenes y capturas | Todas | Free+ | — | URL de archivos | Oficial | — |
+| 54 | Accesibilidad | Modo lector de pantalla en Claude Code; correcciones de RTL (árabe, hebreo) | Code, escritorio | todos | jul y oct 2026 | [CCW], [DESK] | Oficial | — |
+
+## 10. Seguridad y privacidad
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 55 | Temas sensibles fuera de memoria | Salud, creencias, etc., excluidos salvo activar | Todas | Free+ | 25-ago-2026 | [RN] | Oficial | Elogiado (TechCrunch, terceros) |
+| 56 | Cowork en VM aislada y carpetas protegidas | Claves SSH, credenciales cloud y perfiles de shell fuera de alcance; se pueden adjuntar disco/Documentos/Library | Escritorio | Pro+ | 4-sep-2026 | [DESK] | Oficial | — |
+| 57 | HIPAA | Enterprise "HIPAA-ready", configuración self-service | Enterprise | Enterprise y API | 12-ene y 14-jul-2026 | [RN] | Oficial | — |
+| 58 | Verificación de dispositivo para control remoto | Admin exige verificar el dispositivo | Team/Enterprise | 25-jun-2026 | [RN] | Oficial | — |
+| 59 | API de cumplimiento y auditoría | Integraciones de seguridad/cumplimiento | Enterprise | 21-may-2026 | [RN] | Oficial | — |
+| 60 | Claude Security (complemento y producto) | Escaneo multiagente de vulnerabilidades con parches que tú aplicas | Code / Enterprise beta | Enterprise (no en Team) | jul-2026 | [CCW], [PRECIOS] | Oficial | — |
+
+## 11. Programación (Claude Code: CLI, escritorio, IDE, web)
+
+| # | Función | Qué hace | Plataformas | Plan | Fecha | Fuente | Confianza | Elogio / crítica |
+|---|---|---|---|---|---|---|---|---|
+| 61 | Claude Code (CLI, VS Code, JetBrains, escritorio, web, móvil) | Agente que lee el repo, edita y ejecuta; mismo motor en todas las superficies | Mac, Windows (sin Git Bash desde abr-2026), Linux, web, móvil | Pro/Max/Team/Enterprise | — | [CCO] | Oficial | Elogio: razonamiento multiarchivo y larga duración (https://builtin.com/articles/claude-code-codex-cursor-github-copilot-comparison, terceros). Crítica: curva de aprendizaje, solo modelos de Anthropic (https://theaiengineer.substack.com/p/cursor-vs-claude-code) |
+| 62 | Hooks | Comandos antes/después de acciones; `if` condicionales, `onFailure: "block"`, ven el nivel de esfuerzo | Todas | — | 23-mar y 8-oct-2026 | [CCO], [CCC] | Oficial | — |
+| 63 | Subagentes | Agentes paralelos; anidados (5 niveles), fondo por defecto, modo fork, mención con @ | Todas | — | jun-oct 2026 | [CCW] | Oficial | — |
+| 64 | Workflows dinámicos | Orquesta decenas o cientos de subagentes desde un guion | Code | — | 25-29 may-2026 | [CCW] | Oficial | — |
+| 65 | Worktrees | `--worktree`, `worktree.baseRef`, URLs de GitLab | CLI/escritorio | — | may y ago 2026 | [CCW] | Oficial | — |
+| 66 | Modo plan y Ultraplan | Plan en la nube, comentas en editor web, ejecutas remoto o local | CLI/web | — | 6-10 abr-2026 (vista previa) | [CCW] | Oficial | — |
+| 67 | Revisión de código | `/code-review` (local), `/ultrareview` y `claude ultrareview` (flota de agentes en la nube), revisión de GitHub, `/autofix-pr` | CLI/escritorio/web | — | abr-jul 2026 | [CCW], [CCO] | Oficial | — |
+| 68 | Modo automático (auto mode) | Un clasificador decide los permisos; por defecto en Pro/Max/Team desde 14-ago-2026; reglas de denegación fuertes | Todas, incluido Bedrock/Vertex/Foundry | Pro+ | 23-mar-2026 | [CCW] | Oficial | — |
+| 69 | Agent view y `/goal` | Pantalla única de todas las sesiones; seguir trabajando hasta cumplir una condición | CLI | — | 11-15 may-2026 | [CCW] | Oficial | — |
+| 70 | Sesiones entre dispositivos | Remote Control, teleport, `/desktop`, `/resume` desde escritorio, mensajería entre sesiones, notificaciones push, tarjeta de dispositivo en el móvil | Todas | cuenta claude.ai | abr-ago 2026 | [CCW], [CCO] | Oficial | — |
+| 71 | CLAUDE.md, memoria automática, AGENTS.md | Instrucciones persistentes; lee AGENTS.md en lugar de CLAUDE.md | Todas | — | — | [CCO] | Oficial | Terceros decían antes que no leía AGENTS.md (builder.io); hoy la documentación sí lo indica |
+| 72 | Plugins, `claude plugin eval`, mods | Plugins desde zip/URL, evaluación con casos, mods en TypeScript | CLI/escritorio | — | may-oct 2026 | [CCW], [CCC] | Oficial | — |
+| 73 | Control de uso: `/usage`, `/fast`, `/effort`, auto-continue tras límite | Desglose de lo que gasta tu límite; continuar al reiniciarse el límite | CLI/escritorio | — | may-ago 2026 | [CCW] | Oficial | — |
+| 74 | Claude Code en Slack / Channels / CI | `@Claude` en Slack, eventos de Telegram/Discord/iMessage, GitHub Actions, GitLab CI | — | — | — | [CCO] | Oficial | — |
+| 75 | Monitor, `/loop`, `/cd`, `/rewind`, `/fork`, `/design`, `/radio` | Utilidades de flujo; `/design` trae artboards de Claude Design al CLI | CLI/escritorio | — | 2026 | [CCW] | Oficial | — |
+
+Total de funciones inventariadas: **75** (algunas filas agrupan varias funciones relacionadas).
+
+---
+
+## 12. Lo que dice la gente (calidad de evidencia: baja a media)
+
+Limitaciones: Reddit no accesible; el resto son blogs, hilos de HN resumidos por el buscador y medios. Ninguna cifra de sentimiento es estadística.
+
+### (1) Las 10 funciones más elogiadas
+1. **Claude Code como agente de ingeniería de largo recorrido**: razonamiento multiarchivo y coordinación de varios agentes (builtin.com, admix.software; terceros).
+2. **Cowork entregando archivos terminados** (hojas, presentaciones, documentos) (lowcode.agency; terceros).
+3. **Memoria transparente y editable por temas**, con sensibles excluidos por defecto (TechCrunch 25-ago-2026).
+4. **Skills**: paquetes reutilizables; Anthropic las impulsa en todos los productos (no encontré elogio de usuarios; inferido del peso en el producto: no confirmado).
+5. **Subagentes / workflows dinámicos** para paralelizar (comparativas de terceros; el elogio es indirecto).
+6. **Dispatch** (tareas desde el móvil): guía de 48 horas con tono muy positivo (productcompass.pm).
+7. **Claude in Chrome** pasa a disponibilidad general: sin crítica fuerte localizada; elogio no confirmado.
+8. **Calidad del modelo/ventana de 1M**: la ventaja de contexto largo aparece repetidamente frente a Cursor (dev.to, builder.io).
+9. **Artifacts con datos en vivo vía MCP**: sin opiniones localizadas; valor inferido de las notas oficiales.
+10. **Auto mode** (menos permisos sin renunciar a seguridad): descrito como el punto medio ideal por Anthropic ([CCW]); opinión de usuarios no confirmada.
+
+Honestidad: de estos diez, solo los números 1, 2, 3, 6 y 8 tienen respaldo de terceros; el resto es inferencia o aparece solo en lo oficial.
+
+### (2) Las 10 quejas más repetidas (oportunidades)
+1. **Límites de uso**: Pro "justo" para uso todo el día; en Cowork "racionas" tras pocas tareas pesadas (theaiengineer.substack.com; lowcode.agency). Hilos de HN (ids 48883064, 49348751) muestran gente agotando la cuota semanal en menos de 24 h y confusión por promociones temporales; un análisis de terceros habla de recorte del 17% al terminar la promoción (septiembre 2026; cifras dispares, no confirmado).
+2. **Opacidad del límite**: no hay número fijo publicado; "varía según la demanda" (Yahoo/TechCrunch 2025; sigue vigente en [PRECIOS]).
+3. **Caídas y fiabilidad**: 13 incidentes en 30 días en septiembre 2026, con una caída global de una hora el 29-sep en la que se perdieron mensajes (deployflow.co, tercero).
+4. **Cowork inestable**: ejecución frágil con instrucciones ambiguas, problemas en Windows (la actualización KB5124008 de Windows bloqueó el acceso a archivos del 8 al 14-sep, oficial en [DESK]).
+5. **Pérdida de mensajes y errores de interfaz en escritorio**: el changelog corrige repetidamente mensajes perdidos, tareas programadas sin editar, fallos de reintento (oficial, indirecto).
+6. **Computer use inexacto**: clics en elemento equivocado, texto duplicado (oficial, indirecto).
+7. **Poca flexibilidad en Cowork**: no cambiar de modelo, plugins limitados (reseñas de terceros; parte ya superada por Customize y plugins).
+8. **Memoria superficial y atada a una cuenta**: no sigue a otras herramientas; "no conoce mi trabajo" (memorylake.ai, studiomeyer.io; ambos venden alternativas).
+9. **Solo modelos de Anthropic y terminal con curva de aprendizaje** en Claude Code; antes sin diff gráfico (hoy hay `/diff` y escritorio) (admix.software).
+10. **Voz por turnos, no simultánea**, y prestaciones distintas entre idiomas/países (androidauthority.com; idiomas no confirmado). Añado: Claude in Chrome solo en Chrome y la salud solo en EE. UU.
+
+### (3) Tendencias 2026 (hacia dónde va el producto)
+- **De "chat" a agente único**: Cowork se funde con el chat (16-sep), vía web y móvil, sesiones remotas y tareas en la nube que sobreviven al portátil apagado.
+- **Un solo motor, muchas superficies**: Claude Code igual en CLI, escritorio, IDE, web, móvil, Slack; continuidad entre dispositivos (Remote Control, teleport, Dispatch).
+- **Autonomía supervisada por clasificador**: auto mode por defecto, computer use en segundo plano, reglas de denegación, verificación de dispositivo.
+- **Salidas de trabajo, no solo texto**: Docs, Slides, Design, Dashboards, Motion, Artifacts conectados a MCP; salida a Google Docs; Office add-ins.
+- **Memoria y personalización portables**: memoria por entradas editables, importar desde otras IA, skills/plugins con directorio y portal de envío.
+- **Orquestación masiva**: subagentes anidados, workflows con cientos de agentes, `/ultrareview`, `/goal`, routines.
+- **Capa empresarial rápida**: roles por conector, SCIM, HIPAA self-service, escaneo de skills, Claude Tag en Slack, entornos autohospedados.
+- **Modelos cada pocas semanas** (Opus 4.7, 4.8, 5, 5.5; Sonnet 5, 5.5; Haiku 5.5; Fable/Mythos) con presión en precio (Opus 5.5 con 40% menos de coste que Opus 5) y rescates puntuales de acceso (suspensión de Fable 5 y Mythos 5 del 12-jun al 1-jul, [RN]).
+- **Linux y multiplataforma**: app de escritorio en Linux (beta).
+
+---
+
+## 13. Huecos y cosas no confirmadas
+- «Claude Science» aparece en la página de precios, pero no encontré ninguna fuente que lo explique: **no confirmado**.
+- El artículo oficial de Research devolvió 404; la descripción se apoya en el artículo de comparación y en [PRECIOS].
+- Cifras de idiomas del modo de voz: 10, 11 o 14 según la fuente; **no confirmado**.
+- Las notas de versión de Releasebot y los blogs de límites son secundarios; las fechas exactas de la promoción de límites no están verificadas con Anthropic.
+- Las páginas largas ([DESK], [CCC]) se leyeron solo en parte (primeros 100k caracteres); versiones anteriores a v1.44121 del escritorio y a Claude Code 2.1.293 no se revisaron.
+- Reddit y X no se pudieron consultar directamente: el análisis de elogios/quejas es parcial.
