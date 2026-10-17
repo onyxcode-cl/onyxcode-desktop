@@ -4,6 +4,7 @@
  * Además inicializa atajo global de Quick Entry y bandeja (idempotente).
  */
 import { app, shell, type IpcMain } from 'electron'
+import { closeSync, openSync, readSync, statSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { release } from 'node:os'
 import { join } from 'node:path'
@@ -15,6 +16,8 @@ import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
 import {
   ChatDocError,
+  assertInsideChatDocs,
+  chatDocsRoot,
   cleanChatDocuments,
   downloadChatDoc,
   generateChatDoc,
@@ -46,7 +49,11 @@ import {
   unregisterQuickEntryShortcut
 } from '../extras/quick-entry'
 import type { MainWindowDeps } from '../extras/windows'
-import { installViewerScheme } from '../viewer/scheme'
+import { settingsStore } from '../store'
+import { assertNativeViewable, assertOpenable, assertRevealable, chatFilesInfo, readChatFile, resolveChatFile } from '../files/chat-files'
+import { issueToken } from '../viewer/tokens'
+import { MAX_BYTES, sniffDocKind } from '../viewer/doc-kind'
+import { installViewerScheme, registerViewerPathValidator } from '../viewer/scheme'
 import { onViewerEvent, openDoc } from '../viewer/view'
 import { VIEWER_SCHEME } from '../security/app-protocol'
 import { makeInvokeHandler } from './handle'
@@ -54,6 +61,8 @@ import { windowOfSender } from './sender-window'
 
 export interface ExtrasDeps extends MainWindowDeps {
   server: OpencodeServer
+  /** Carpeta de trabajo del Chat (userData/chat-workspace): una de las carpetas desde las que se pueden ver/abrir archivos. */
+  chatDirectory?: string
 }
 
 const handle = makeInvokeHandler<IpcExtrasInvokeContract>({ withCode: false })
@@ -196,6 +205,63 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       recordCraftProblem('apertura externa', e, { tipo: req.kind })
       return { ok: false as const }
     }
+  })
+  // Archivos que la IA crea o menciona en el Chat. Carpetas permitidas: la del chat, la de documentos generados y los proyectos
+  // recientes (nunca una ruta cualquiera que escriba el modelo); la validación completa vive en `files/chat-files.ts`.
+  const chatFileRoots = (): string[] => [
+    ...(deps.chatDirectory ? [deps.chatDirectory] : []),
+    chatDocsRoot(),
+    ...settingsStore.get().recentFolders
+  ]
+  let chatFileValidatorRegistered = false
+  handle(ipcMain, 'extras:chatFile:info', ({ paths }) => chatFilesInfo(chatFileRoots(), paths))
+  handle(ipcMain, 'extras:chatFile:read', ({ path }) => readChatFile(chatFileRoots(), path))
+  handle(ipcMain, 'extras:chatFile:viewNative', async ({ path, lang, theme }) => {
+    try {
+      const real = assertNativeViewable(chatFileRoots(), path)
+      if (!chatFileValidatorRegistered) {
+        chatFileValidatorRegistered = true
+        // El visor revalida al SERVIR los bytes: la ruta debe seguir dentro de las carpetas permitidas (o ser un documento propio de Chat).
+        registerViewerPathValidator((p) => {
+          try {
+            return assertInsideChatDocs(p)
+          } catch {
+            return resolveChatFile(chatFileRoots(), p).path
+          }
+        })
+      }
+      installViewerScheme()
+      const head = Buffer.alloc(8)
+      const fd = openSync(real, 'r')
+      try {
+        readSync(fd, head, 0, 8, 0)
+      } finally {
+        closeSync(fd)
+      }
+      const kind = sniffDocKind(real, head)
+      if (!kind) return { ok: false as const, reason: 'unsupported' as const }
+      if (statSync(real).size > MAX_BYTES[kind]) return { ok: false as const, reason: 'too-large' as const }
+      const token = issueToken({ path: real, kind })
+      const title =
+        real
+          .split(/[\\/]/)
+          .pop()
+          ?.replace(/\.[^.]+$/, '') ?? 'documento'
+      if (await openInCraftWeb(kind, real, title)) return { ok: true as const }
+      openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${token}&kind=${kind}&lang=${lang}&theme=${theme}`)
+      useClassicViewer()
+      return { ok: true as const }
+    } catch (e) {
+      console.warn('[chat-file] no se pudo mostrar el archivo:', e instanceof Error ? e.message : e)
+      return { ok: false as const, reason: 'failed' as const }
+    }
+  })
+  handle(ipcMain, 'extras:chatFile:open', async ({ path }) => {
+    const err = await shell.openPath(assertOpenable(chatFileRoots(), path))
+    if (err) throw new Error(err)
+  })
+  handle(ipcMain, 'extras:chatFile:reveal', ({ path }) => {
+    shell.showItemInFolder(assertRevealable(chatFileRoots(), path))
   })
   handle(ipcMain, 'extras:downloadChatDoc', (req, event) => {
     const input: ChatDocInput =

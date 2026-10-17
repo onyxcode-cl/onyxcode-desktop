@@ -1791,3 +1791,13 @@ Resumen de superficie y límites; el detalle y las pruebas de cada punto están 
 **Actualizador.** En 0.5.29–0.5.35 no cambió ningún archivo de `src/main/update/`, `resources/updater/` ni `scripts/update-lib.mjs`; el modelo de las secciones 3 septies y siguientes sigue vigente. Lo que sí cambió es el proceso de publicación: `scripts/release.sh` (F8-B174) encadena los scripts existentes y no puede publicar sin una confirmación escrita por una persona en un terminal; no lee ni imprime las claves de firma ni de despliegue.
 
 **Archivos clave:** `src/main/ipc/{app,onboarding,tasks-restore-handlers,clipboard-handlers}.ts`, `src/main/clipboard/paste-files.ts`, `src/main/tasks/os-notify.ts`, `src/shared/{terminal-command,terminal-capture,terminal-context,paste-files}.ts`, `src/renderer/src/components/ShellRunButton.tsx`, `src/main/remote/policy.ts`.
+
+## Archivos del Chat: «Ver aquí», «Abrir con tu programa» y «Mostrar en la carpeta»
+
+Cuando la IA crea o menciona un archivo en el Chat, la tarjeta ofrece verlo en el panel lateral, abrirlo con el programa del sistema o mostrarlo en su carpeta. La ruta sale del texto del modelo (dato no confiable), así que `src/main/files/chat-files.ts` valida cada acción en main:
+
+- Solo rutas absolutas dentro de las carpetas del chat (`userData/chat-workspace`), de los documentos generados del chat y de los proyectos recientes, con `realpath` (un enlace que escapa se rechaza) y solo archivos regulares.
+- Ejecutables y lanzadores (la lista de `tasks/open-policy.ts`, archivos con bit de ejecución o sin extensión) no se muestran ni se abren: solo «Mostrar en la carpeta». `.js` y `.svg` se pueden ver pero no abrir con el sistema.
+- Nombres de secretos (`.env`, llaves, `credentials*`…) no se ofrecen.
+- Imagen y texto se leen en main con tope (10 MB / 512 KB) y se pintan como `<img>` (data URL) o texto/Markdown; no hay `iframe` ni HTML en bruto (la CSP no se tocó). PDF/Word/Excel/PowerPoint van por el visor nativo aislado (tipo por bytes mágicos, token de un solo uso; su validador de ruta revalida al servir). HTML usa la vista previa aislada de los bloques html.
+- Canales `extras:chatFile:{info,read,viewNative,open,reveal}`: esquema estricto y clase X (no remoto) en `remote/policy.ts`.

@@ -37,6 +37,7 @@ const SCENARIOS = [
   'chat-herramientas',
   'chat-pregunta',
   'chat-documento',
+  'chat-archivo-ver',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -952,6 +953,44 @@ const S = {
     })
     await sendChat(ctx.page, 'Arma un informe de ventas del trimestre en Excel')
     await vis(ctx.page.locator('[data-doc-card]'), 45_000)
+    await sleep(800)
+  },
+  // Archivos que la IA crea o menciona en el Chat: tarjetas con «Ver aquí», «Abrir con tu programa» y «Mostrar en la carpeta»
+  // (el script solo ofrece «Mostrar en la carpeta»); se abre el resumen en Markdown en el panel lateral.
+  async 'chat-archivo-ver'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    const dir = join(ctx.userData, 'chat-workspace')
+    await ctx.fake.script({
+      match: 'archivos del trimestre',
+      title: 'Archivos del trimestre',
+      steps: [
+        {
+          type: 'fs',
+          op: 'write',
+          path: 'resumen-ventas.md',
+          content:
+            '# Resumen de ventas\n\nEl trimestre cerró con **$48,2 millones**, un 12 % más que el anterior.\n\n| Mes | Ventas |\n| --- | --- |\n| Enero | 120 |\n| Febrero | 135 |\n\n- Norte lidera el crecimiento\n- Centro se mantiene estable\n'
+        },
+        {
+          type: 'fs',
+          op: 'write',
+          path: 'grafico-ventas.svg',
+          content:
+            '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#eef2ff"/><rect x="40" y="90" width="50" height="70" fill="#4f46e5"/><rect x="120" y="60" width="50" height="100" fill="#4f46e5"/><rect x="200" y="30" width="50" height="130" fill="#4f46e5"/></svg>'
+        },
+        { type: 'fs', op: 'write', path: 'informe-trimestral.pdf', content: '%PDF-1.4\n' + 'x'.repeat(184_000) },
+        { type: 'fs', op: 'write', path: 'preparar.sh', content: 'echo preparar\n' },
+        {
+          type: 'text',
+          text: `Dejé estos archivos listos:\n\n- ${join(dir, 'resumen-ventas.md')}\n- ${join(dir, 'grafico-ventas.svg')}\n- ${join(dir, 'informe-trimestral.pdf')}\n- ${join(dir, 'preparar.sh')}`
+        }
+      ]
+    })
+    await sendChat(ctx.page, 'Prepárame los archivos del trimestre')
+    await vis(ctx.page.locator('[data-chat-file]').first(), 45_000)
+    await ctx.page.locator('[data-chat-file]').first().getByRole('button', { name: 'Ver aquí' }).click()
+    await vis(ctx.page.locator('[data-chat-file-panel]'), 15_000)
     await sleep(800)
   },
   async 'code-proyecto'(ctx) {

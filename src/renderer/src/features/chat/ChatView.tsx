@@ -40,6 +40,7 @@ import {
 import { useChat } from './store'
 import { ReadingModeSwitch } from '../../components/ReadingModeSwitch'
 import { ChatDocPanel } from './ChatDocPanel'
+import { ChatFilePanel } from './ChatFilePanel'
 import { ChatProgressHud } from './ChatProgressHud'
 import { ChatHomeBlocks, useChatHome } from './ChatHomeBlocks'
 import { HomeIdeas } from '../../components/HomeBlocks'
@@ -359,16 +360,26 @@ export function ChatView(): React.JSX.Element {
       </div>
       {docPanel.open && (
         <div className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}>
-          <ChatDocPanel
-            creating={docPanel.creating}
-            title={docPanel.title}
-            doc={docPanel.doc}
-            problem={docPanel.problem}
-            onRetry={docPanel.retry}
-            fullscreen={docPanel.fullscreen}
-            onToggleFullscreen={docPanel.toggleFullscreen}
-            onClose={docPanel.close}
-          />
+          {docPanel.file && docPanel.file.mode === 'inline' ? (
+            <ChatFilePanel
+              file={docPanel.file}
+              fullscreen={docPanel.fullscreen}
+              onToggleFullscreen={docPanel.toggleFullscreen}
+              onClose={docPanel.close}
+            />
+          ) : (
+            <ChatDocPanel
+              creating={docPanel.creating}
+              title={docPanel.title}
+              doc={docPanel.doc}
+              problem={docPanel.problem}
+              file={docPanel.file}
+              onRetry={docPanel.retry}
+              fullscreen={docPanel.fullscreen}
+              onToggleFullscreen={docPanel.toggleFullscreen}
+              onClose={docPanel.close}
+            />
+          )}
         </div>
       )}
     </div>

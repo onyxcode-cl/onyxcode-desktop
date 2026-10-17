@@ -29,7 +29,7 @@ import { registerViewerPathValidator } from '../viewer/scheme'
 const ROOT_NAME = 'lazunox-chat-docs'
 const SESSION_ID_RE = /^[A-Za-z0-9_-]+$/
 
-function chatDocsRoot(): string {
+export function chatDocsRoot(): string {
   return join(app.getPath('temp'), ROOT_NAME)
 }
 

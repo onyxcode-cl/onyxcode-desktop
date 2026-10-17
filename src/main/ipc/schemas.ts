@@ -916,6 +916,11 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
     docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
   }),
+  'extras:chatFile:info': obj({ paths: arr(str({ max: 4096, min: 1 }), 40) }),
+  'extras:chatFile:read': pathReq,
+  'extras:chatFile:viewNative': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark') }),
+  'extras:chatFile:open': pathReq,
+  'extras:chatFile:reveal': pathReq,
   'extras:downloadChatDoc': tagged('kind', {
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),

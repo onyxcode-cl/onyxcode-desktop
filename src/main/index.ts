@@ -345,7 +345,7 @@ function start(): void {
       tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
     }
     registerUnsupportedHandlers(ipcMain, caps)
-    registerExtrasHandlers(ipcMain, { server, createMainWindow: createWindow, getMainWindow: () => mainWindow })
+    registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
     registerBrowserHandlers(ipcMain)
