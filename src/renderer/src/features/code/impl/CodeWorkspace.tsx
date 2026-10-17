@@ -635,7 +635,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
           </Tip>
         )}
         {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
-        <ReadingModeSwitch />
+        <ReadingModeSwitch surface="code" />
         {/* Conversación: memoria, exportar, bifurcar y compactar. Barra ancha: iconos con la etiqueta en el tooltip; estrecha: menú «…» con texto. */}
         <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
         <div role="group" aria-label={t('code.toolbar.group.conversation')} className="flex items-center gap-1.5">

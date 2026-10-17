@@ -32,6 +32,11 @@ export const settings = {
   'settings.general.textSize.small': 'Small',
   'settings.general.textSize.normal': 'Normal',
   'settings.general.textSize.large': 'Large',
+  'settings.general.workView': 'Work view',
+  'settings.general.workView.hint':
+    'How what the AI does is shown in each reply. Summary leaves one line you can open; With steps adds what it did; Detailed shows every step open.',
+  'settings.general.workView.chat': 'In Chat',
+  'settings.general.workView.code': 'In Code and Overdrive',
   'settings.general.theme': 'Theme',
   'settings.general.theme.system': 'System',
   'settings.general.theme.light': 'Light',

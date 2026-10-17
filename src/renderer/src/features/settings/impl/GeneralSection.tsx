@@ -7,6 +7,7 @@ import { MODE_LABELS } from '@shared/labels'
 import type { LangPref, MsgKey } from '@shared/i18n'
 import { ACCENTS, applyAccent, getAccent, type AccentId } from '../../../lib/accent'
 import { useT } from '../../../lib/i18n'
+import { READING_MODES, useReadingMode, useWorkView, type ReadingMode, type WorkSurface } from '../../../lib/reading-mode'
 import { applyTextSize, getTextSize, TEXT_SIZES, type TextSizeId } from '../../../lib/text-size'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
@@ -248,6 +249,7 @@ export function GeneralSection(): React.JSX.Element {
       {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
       {!phone && <AccentPicker />}
       {!phone && <TextSizePicker />}
+      {!phone && <WorkViewPicker />}
 
       <SubTitle>{t('settings.general.preferences')}</SubTitle>
       <Card>
@@ -418,5 +420,51 @@ function TextSizePicker(): React.JSX.Element {
         ))}
       </div>
     </>
+  )
+}
+
+/** Vista del trabajo del agente: cuánto se ve de lo que hizo en cada respuesta, por separado en Chat y en Code/Overdrive. */
+function WorkViewPicker(): React.JSX.Element {
+  const t = useT()
+  const rows: Array<{ surface: WorkSurface; label: MsgKey }> = [
+    { surface: 'chat', label: 'settings.general.workView.chat' },
+    { surface: 'code', label: 'settings.general.workView.code' }
+  ]
+  return (
+    <>
+      <h3 className="mt-6 mb-1 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-1 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+        {t('settings.general.workView')}
+      </h3>
+      <p className="mb-2.5 max-w-xl text-xs text-muted">{t('settings.general.workView.hint')}</p>
+      <div className="flex flex-col gap-2.5">
+        {rows.map(({ surface, label }) => (
+          <WorkViewRow key={surface} surface={surface} label={t(label)} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+function WorkViewRow({ surface, label }: { surface: WorkSurface; label: string }): React.JSX.Element {
+  const t = useT()
+  const mode = useWorkView(surface)
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="w-40 shrink-0 text-sm">{label}</span>
+      <div role="radiogroup" aria-label={label} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">
+        {READING_MODES.map((id: ReadingMode) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={mode === id}
+            onClick={() => useReadingMode.getState().setView(surface, id)}
+            className={`rounded-lg px-3 py-1.5 text-sm transition ${mode === id ? 'bg-elevated font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
+          >
+            {t(`code.reading.${id}` as const)}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

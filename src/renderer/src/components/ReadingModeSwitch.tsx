@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Eye } from 'lucide-react'
 import { useT } from '../lib/i18n'
-import { READING_MODES, useReadingMode, type ReadingMode } from '../lib/reading-mode'
+import { READING_MODES, useReadingMode, useWorkView, type ReadingMode, type WorkSurface } from '../lib/reading-mode'
 import { useDismiss } from '../lib/use-dismiss'
 
 /**
- * Selector «Resumen / Normal / Detallado» de la cabecera de la conversación (solo escritorio).
- * La preferencia es global (`lib/reading-mode.ts`) y la comparten Code, Chat y Overdrive.
+ * Selector «Resumida / Con pasos / Detallada» (vista del trabajo) de la cabecera de la conversación (solo escritorio).
+ * La preferencia es por superficie (`lib/reading-mode.ts`): Chat tiene la suya; Code y Overdrive comparten la de Code.
  * Si la cabecera (contenedor `@container`) mide menos de 44rem no cabe el selector segmentado: en su lugar
  * sale un botón compacto (ojo + modo actual) que abre un menú con los tres modos.
  */
-export function ReadingModeSwitch(): React.JSX.Element {
+export function ReadingModeSwitch({ surface }: { surface: WorkSurface }): React.JSX.Element {
   const t = useT()
-  const mode = useReadingMode((s) => s.mode)
-  const setMode = useReadingMode((s) => s.setMode)
+  const mode = useWorkView(surface)
+  const setMode = (m: ReadingMode): void => useReadingMode.getState().setView(surface, m)
   return (
     <>
       <div
@@ -34,16 +34,16 @@ export function ReadingModeSwitch(): React.JSX.Element {
           </button>
         ))}
       </div>
-      <ReadingModeMenu />
+      <ReadingModeMenu surface={surface} />
     </>
   )
 }
 
 /** Variante compacta (cabeceras angostas): botón con el modo actual y menú de selección única. */
-function ReadingModeMenu(): React.JSX.Element {
+function ReadingModeMenu({ surface }: { surface: WorkSurface }): React.JSX.Element {
   const t = useT()
-  const mode = useReadingMode((s) => s.mode)
-  const setMode = useReadingMode((s) => s.setMode)
+  const mode = useWorkView(surface)
+  const setMode = (m: ReadingMode): void => useReadingMode.getState().setView(surface, m)
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
   const ref = useDismiss(open, close)

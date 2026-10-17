@@ -698,7 +698,7 @@ export function TasksWorkspace(): React.JSX.Element {
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
-              <ReadingModeSwitch />
+              <ReadingModeSwitch surface="code" />
               {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
               {(phase === 'ready' || phase === 'error') && <TasksEnvironment disabled={folderBusy} />}
               <TaskMenu items={menuItems} />
