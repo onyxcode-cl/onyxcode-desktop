@@ -9,13 +9,14 @@ import type { NotifyTarget } from '@shared/types'
 import { previewSchedule } from '../scheduler/schedule'
 import { noTasksPort } from '../scheduler/no-tasks-port'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
+import { extrasPrefs } from '../extras/prefs'
 import { settingsStore } from '../store'
 import { emit, emitTo } from './event-bus'
 import { makeTasksHandle } from './tasks-handle'
 
 type TasksHandle = ReturnType<typeof makeTasksHandle>
 
-/** Registra los siete canales `routines:*` sobre un planificador ya creado. */
+/** Registra los nueve canales `routines:*` sobre un planificador ya creado. */
 export function registerRoutineChannels(handle: TasksHandle, scheduler: SchedulerService): void {
   handle('routines:list', () => scheduler.list())
   handle('routines:save', (input) => scheduler.saveRoutine(input))
@@ -24,6 +25,8 @@ export function registerRoutineChannels(handle: TasksHandle, scheduler: Schedule
   handle('routines:runNow', ({ id }) => scheduler.runNow(id))
   handle('routines:history', (req) => scheduler.history(req?.id, req?.limit))
   handle('routines:preview', ({ schedule }) => previewSchedule(schedule, 3))
+  handle('routines:inbox:list', () => scheduler.inboxList())
+  handle('routines:inbox:resolve', ({ id, action }) => scheduler.resolveInbox(id, action))
 }
 
 export interface RoutinesHandlerDeps {
@@ -60,6 +63,7 @@ export function registerRoutinesHandlers(
     tasks: noTasksPort,
     tasksSupported: false,
     getSettings: () => settingsStore.get(),
+    notificationsEnabled: () => extrasPrefs.get().notificationsEnabled,
     openTarget
   })
   const send = <C extends TasksEventChannel>(channel: C, payload: TasksEventContract[C]): void => {
@@ -67,6 +71,7 @@ export function registerRoutinesHandlers(
   }
   scheduler.on('changed', (list) => send('routines:changed', list))
   scheduler.on('run', (run) => send('routines:run', run))
+  scheduler.on('inbox', (list) => send('routines:inbox', list))
   registerRoutineChannels(makeTasksHandle(ipcMain), scheduler)
   scheduler.start()
   return {

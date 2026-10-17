@@ -76,6 +76,8 @@ const SCENARIOS = [
   'rutinas',
   'rutinas-detalle',
   'rutinas-editor',
+  'rutinas-evento',
+  'rutinas-bandeja',
   'ajustes-general',
   'ajustes-modelos',
   'ajustes-celular',
@@ -1566,6 +1568,39 @@ const S = {
       await ctx.page.keyboard.press('Escape')
       await sleep(300)
     }
+  },
+  // Editor con la pestaña «Archivo»: disparador por carpeta (filtro, estabilización, tope por hora).
+  async 'rutinas-evento'(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    await ctx.page.getByRole('button', { name: 'Nueva rutina' }).first().click()
+    await vis(ctx.page.getByRole('dialog', { name: 'Nueva rutina' }), 15_000)
+    await ctx.page.getByRole('button', { name: 'Archivo', exact: true }).click()
+    await vis(ctx.page.getByTestId('file-trigger-fields'), 10_000)
+    await ctx.page.getByLabel('Solo archivos como (opcional)').fill('*.pdf, factura-*.csv')
+    await sleep(600)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
+  },
+  // Bandeja «Resultados por revisar»: ejecuta dos rutinas con el motor falso y fotografía lo que queda por revisar (más el contador del riel).
+  async 'rutinas-bandeja'(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    for (const name of ['Resumen diario de ventas', 'Revisión semanal de dependencias']) {
+      await ctx.page.evaluate(async (n) => {
+        const list = (await window.api.tasks.invoke('routines:list')).data
+        const r = list.find((x) => x.name === n)
+        if (r) await window.api.tasks.invoke('routines:runNow', { id: r.id })
+      }, name)
+      await sleep(500)
+    }
+    await ctx.page.getByTestId('inbox-item').first().waitFor({ state: 'visible', timeout: 60_000 })
+    await sleep(1500)
+    const first = ctx.page.getByRole('button', { name: 'Ver detalle' }).first()
+    await first.click()
+    await sleep(600)
   },
   async 'ajustes-general'(ctx) {
     await openSettings(ctx.page, 'General')

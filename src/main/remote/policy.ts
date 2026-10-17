@@ -58,6 +58,8 @@ export interface PolicyContext {
   realpath?: (p: string) => string | null
   /** Carpeta de una rutina por id (`null` = sin carpeta, p. ej. Chat; `undefined` = desconocida → se rechaza). */
   routineFolder?: (routineId: string) => string | null | undefined
+  /** ¿La rutina ya tiene un disparador por archivo? (`undefined` = desconocida: editarla desde el celular se rechaza.) */
+  routineHasFileTrigger?: (routineId: string) => boolean | undefined
   /** Carpeta de una tarea de Tareas por id de sesión (`undefined` = desconocida → se rechaza). */
   taskFolder?: (sessionId: string) => string | undefined
   /** ¿Es carpeta? `undefined` = no se sabe → se trata como carpeta (D). */
@@ -341,13 +343,19 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
 
   // ── Rutinas ──
   'routines:list': 'R',
-  'routines:save': (p, ctx) =>
-    p.folder === undefined || p.folder === null || inDirs(p.folder, scopeIpc(ctx)) ? 'D' : deny('out-of-scope'),
+  'routines:save': (p, ctx) => {
+    // X: el celular no crea ni modifica disparadores por archivo (ni convierte una rutina que ya tiene uno).
+    if (rec(p.schedule).kind === 'file') return deny('file-trigger-forbidden')
+    if (isStr(p.id) && p.id !== '' && ctx.routineHasFileTrigger?.(p.id) !== false) return deny('file-trigger-forbidden')
+    return p.folder === undefined || p.folder === null || inDirs(p.folder, scopeIpc(ctx)) ? 'D' : deny('out-of-scope')
+  },
   'routines:delete': routineScoped('M'),
   'routines:toggle': (p, ctx) => (p.enabled === true ? 'D' : routineScoped('M')(p, ctx)), // activar una rutina la deja ejecutándose sola
   'routines:runNow': 'D',
   'routines:history': 'R',
   'routines:preview': 'R',
+  'routines:inbox:list': 'R',
+  'routines:inbox:resolve': 'X', // X: aprobar/descartar resultados y recuperar ejecuciones perdidas se hace en el Mac
 
   // ── Control del PC ──
   'computer:status': 'R',
@@ -620,6 +628,7 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'tasks:server': 'sanitize', // trae credenciales del motor de la tarea
   'routines:changed': 'allow',
   'routines:run': 'allow',
+  'routines:inbox': 'allow',
   'computer:action': 'deny', // capturas de pantalla
   'computer:stopped': 'allow',
   'computer:killState': 'allow',
@@ -1183,6 +1192,8 @@ function scheduleLine(s: unknown): string {
       return `cada ${String(o.hours)} h`
     case 'cron':
       return `cron ${String(o.expr)}`
+    case 'file':
+      return `archivo nuevo en ${String(o.folder)}`
     default:
       return JSON.stringify(s) ?? ''
   }

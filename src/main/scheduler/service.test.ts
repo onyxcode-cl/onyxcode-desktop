@@ -27,6 +27,7 @@ const routine = (over: Record<string, unknown> = {}): Record<string, unknown> =>
   model: { providerID: 'p', modelID: 'm' },
   schedule: { kind: 'interval', hours: 1 },
   enabled: true,
+  onMissed: 'run', // estas pruebas miden el aviso de términos, no la bandeja de perdidas
   createdAt: 0,
   updatedAt: 0,
   ...over

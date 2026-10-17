@@ -18,8 +18,9 @@ import { platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { isSubmitKey } from '../../../lib/textarea'
 import { dateLocale, useT } from '../../../lib/i18n'
+import { FileTriggerFields, defaultFileSchedule } from './FileTriggerFields'
 
-type Builder = 'days' | 'interval' | 'cron'
+type Builder = 'days' | 'interval' | 'cron' | 'file'
 
 /** Orden de los chips: lunes a domingo (0 = domingo). La inicial y el nombre salen del diccionario. */
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -28,6 +29,7 @@ const INTERVALS = [1, 2, 3, 4, 6, 8, 12, 24]
 
 function builderFor(s: RoutineSchedule): Builder {
   if (s.kind === 'interval') return 'interval'
+  if (s.kind === 'file') return 'file'
   return toDaysSpec(s) ? 'days' : 'cron'
 }
 
@@ -42,6 +44,8 @@ function toCron(s: RoutineSchedule): string {
       return s.hours === 1 ? '0 * * * *' : `0 */${s.hours} * * *`
     case 'cron':
       return s.expr
+    case 'file':
+      return '0 9 * * *'
   }
 }
 
@@ -93,6 +97,10 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
   // Vista previa de la programación (debounce).
   useEffect(() => {
+    if (form.schedule.kind === 'file') {
+      setPreview({ valid: true, cron: null, next: [], label: '' })
+      return
+    }
     const timer = setTimeout(() => {
       void cw('routines:preview', { schedule: form.schedule }).then(setPreview, (err: unknown) =>
         setPreview({ valid: false, error: String(err), cron: null, next: [], label: '' })
@@ -175,9 +183,10 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
 
   const s = form.schedule
   const days = toDaysSpec(s)
-  const human = s.kind === 'cron' ? describeCron(s.expr) : scheduleText(s)
+  const human = s.kind === 'cron' ? describeCron(s.expr) : s.kind === 'file' ? t('routines.file.summary') : scheduleText(s)
   const needsFolder = form.mode !== 'chat' && !form.folder
   const missing = [
+    s.kind === 'file' && !(s.folder || form.folder) && t('routines.file.missingFolder'),
     !form.name.trim() && t('routines.editor.missingName'),
     !form.prompt.trim() && t('routines.editor.missingPrompt'),
     needsFolder && t('routines.editor.missingFolder')
@@ -195,6 +204,7 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
       const tasks = form.mode === 'tasks'
       await saveRoutine({
         ...form,
+        schedule: form.schedule.kind === 'file' ? { ...form.schedule, folder: form.schedule.folder || form.folder || '' } : form.schedule,
         name: form.name.trim(),
         prompt: form.prompt.trim(),
         allow: tasks
@@ -344,7 +354,27 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                 >
                   {t('routines.editor.tabCron')}
                 </button>
+                <button
+                  type="button"
+                  className={tabCls(builder === 'file')}
+                  onClick={() => {
+                    setBuilder('file')
+                    if (s.kind !== 'file') setSchedule(defaultFileSchedule(form.folder))
+                  }}
+                >
+                  {t('routines.file.tab')}
+                </button>
               </div>
+
+              {builder === 'file' && s.kind === 'file' && (
+                <FileTriggerFields
+                  value={s}
+                  routineFolder={form.folder ?? null}
+                  mode={form.mode}
+                  onChange={setSchedule}
+                  onPick={async () => (await cw('tasks:pickFolder')) ?? null}
+                />
+              )}
 
               {builder === 'days' && days && (
                 <div className="flex flex-wrap items-center gap-3">
@@ -430,6 +460,22 @@ export function RoutineEditor({ initial }: { initial: RoutineInput }): React.JSX
                     ))}
                   </div>
                 </div>
+              )}
+
+              {builder !== 'file' && (
+                <label className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+                  <span>{t('routines.missed.label')}</span>
+                  <select
+                    className={`${inputCls} !w-auto`}
+                    value={form.onMissed ?? 'ask'}
+                    aria-label={t('routines.missed.label')}
+                    onChange={(e) => patch({ onMissed: e.target.value as 'ask' | 'run' | 'skip' })}
+                  >
+                    <option value="ask">{t('routines.missed.ask')}</option>
+                    <option value="run">{t('routines.missed.run')}</option>
+                    <option value="skip">{t('routines.missed.skip')}</option>
+                  </select>
+                </label>
               )}
 
               <div

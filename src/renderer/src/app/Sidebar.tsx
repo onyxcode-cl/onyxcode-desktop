@@ -1,4 +1,5 @@
 import { CircleHelp, Clock, FolderPlus, LayoutGrid, Moon, PanelLeft, PanelLeftOpen, Plus, Search, Settings, Sun, Zap } from 'lucide-react'
+import { useEffect } from 'react'
 import type { ModeId } from '@shared/types'
 import { IconButton } from '../components/IconButton'
 import { SidebarTree } from '../components/SidebarTreeRoot'
@@ -9,6 +10,7 @@ import { useServer } from '../stores/server'
 import { useSettings } from '../stores/settings'
 import { selectListCollapsed, useUi } from '../stores/ui'
 import { useTasks } from '../features/tasks/impl/store'
+import { selectInboxPending, syncInbox, useRoutines } from '../features/routines/impl/store'
 import { MODES, MODES_BY_ID } from './modes'
 import type { ModeDefinition } from './types'
 import { hintSuffix, hintText, useEffectiveBindings } from '../keybindings/bindings'
@@ -42,7 +44,7 @@ function RailButton({
   current?: boolean
   pressed?: boolean
   /** Punto de aviso (esquina superior derecha, con anillo del color de la barra). */
-  badge?: { label: string; tone: 'bg-warning' | 'bg-success' | 'bg-danger'; testId?: string }
+  badge?: { label: string; tone: 'bg-warning' | 'bg-success' | 'bg-danger' | 'bg-accent'; testId?: string; count?: number }
   children: React.ReactNode
 }): React.JSX.Element {
   return (
@@ -59,7 +61,17 @@ function RailButton({
           {children}
         </button>
       </Tooltip>
-      {badge && (
+      {badge && badge.count !== undefined && (
+        <span
+          role="img"
+          aria-label={badge.label}
+          data-testid={badge.testId}
+          className={`pointer-events-none absolute top-[2px] right-[2px] grid min-w-[15px] place-items-center rounded-full px-[3px] text-[10px] desk:text-meta leading-[15px] font-semibold text-white ring-2 ring-sidebar ${badge.tone}`}
+        >
+          {badge.count > 99 ? '99+' : badge.count}
+        </span>
+      )}
+      {badge && badge.count === undefined && (
         <span
           role="img"
           aria-label={badge.label}
@@ -120,6 +132,8 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
   const statusLabel = serverState in STATUS_KEY ? t(STATUS_KEY[serverState as keyof typeof STATUS_KEY]) : serverState
   // Aprobaciones pendientes de Tareas (el mismo dato que alimenta las tarjetas de permiso): punto de aviso en el modo.
   const approvalsPending = useTasks((s) => Object.keys(s.permissions).length > 0)
+  const inboxPending = useRoutines(selectInboxPending)
+  useEffect(() => syncInbox(), [])
   const themePref = useSettings((s) => s.settings.theme)
   const def = MODES_BY_ID[mode]
   const SidebarContent = def.SidebarContent
@@ -170,7 +184,14 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
               badge={
                 m.id === 'tasks' && approvalsPending
                   ? { label: t('app.sidebar.pendingApproval'), tone: 'bg-warning', testId: 'sidebar-approvals-dot' }
-                  : undefined
+                  : m.id === 'routines' && inboxPending > 0
+                    ? {
+                        label: t('app.sidebar.inboxPending', { count: inboxPending }),
+                        tone: 'bg-accent' as const,
+                        testId: 'sidebar-inbox-count',
+                        count: inboxPending
+                      }
+                    : undefined
               }
             >
               <Icon size={18} strokeWidth={1.8} aria-hidden="true" />

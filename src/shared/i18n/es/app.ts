@@ -18,6 +18,7 @@ export const app = {
   'app.sidebar.openFolder': 'Abrir carpeta como proyecto',
   'app.sidebar.recentProjects': 'Proyectos recientes',
   'app.sidebar.pendingApproval': 'Aprobaciones pendientes',
+  'app.sidebar.inboxPending': 'Rutinas: {count} resultados por revisar',
   'app.sidebar.emptyHint.generic': 'Abre una carpeta con + o empieza con {hint}.',
   'app.sidebar.emptyHint.genericNoKey': 'Abre una carpeta con + o empieza con «Nuevo».',
   'app.sidebar.projectActions': 'Más acciones',

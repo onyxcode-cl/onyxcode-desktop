@@ -158,6 +158,8 @@ export function scheduleText(s: RoutineSchedule): string {
       return s.hours === 1 ? t('routines.sched.everyHour') : t('routines.sched.everyNHoursCap', { n: s.hours })
     case 'cron':
       return describeCron(s.expr) ?? `Cron ${s.expr}`
+    case 'file':
+      return t('routines.file.summaryShort', { folder: s.folder.split(/[\\/]/).filter(Boolean).pop() ?? s.folder })
   }
 }
 

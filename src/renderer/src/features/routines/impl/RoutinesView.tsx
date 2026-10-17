@@ -42,6 +42,7 @@ import { useCode } from '../../code/impl/store'
 import { openProjectTrusted } from '../../code/impl/trust'
 import { MODE_META } from './meta'
 import { PendingLearnedReview } from './PendingLearnedReview'
+import { RoutineInbox } from './RoutineInbox'
 import { RoutineEditor } from './RoutineEditor'
 import { agoText, durationText, fullDate, scheduleText, untilText } from './schedule'
 import { deleteRoutine, loadRoutines, openEditor, runRoutineNow, subscribeRoutines, toggleRoutine, useRoutines } from './store'
@@ -96,7 +97,8 @@ function toInput(r: ScheduledRoutine): RoutineInput {
     allow: r.allow,
     allowHosts: r.allowHosts,
     fullAccess: r.fullAccess,
-    fullAccessConsentAt: r.fullAccessConsentAt ?? null
+    fullAccessConsentAt: r.fullAccessConsentAt ?? null,
+    onMissed: r.onMissed
   }
 }
 
@@ -189,6 +191,17 @@ export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selecte
           ) : (
             <StatusBadge status="running" />
           )
+        ) : r.enabled && r.schedule.kind === 'file' && r.fileWatch ? (
+          <span
+            className={r.fileWatch.capped || r.fileWatch.state === 'lost' ? 'font-medium text-warning' : 'text-muted'}
+            data-testid="file-watch-state"
+          >
+            {r.fileWatch.capped
+              ? t('routines.file.state.capped')
+              : r.fileWatch.state === 'watching'
+                ? t('routines.file.state.watching')
+                : t('routines.file.state.lost')}
+          </span>
         ) : r.enabled && r.nextRun ? (
           <span className="text-muted" title={fullDate(r.nextRun)}>
             {t('routines.card.next')} <span className="font-medium text-fg">{untilText(r.nextRun, now)}</span>
@@ -682,6 +695,7 @@ export function RoutinesView(): React.JSX.Element {
           </div>
         )}
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <RoutineInbox onOpen={(i) => openRunInCode(i as unknown as RoutineRunRecord)} />
           <PendingLearnedReview />
           {routines.length === 0 && !loading ? (
             <EmptyState onCreate={create} />

@@ -736,6 +736,19 @@ describe('hallazgo 10: ámbito de las acciones M identificadas solo por id y de 
     expect(cls(ipc('routines:delete', { id: 'r1' }))).toBe('deny:scope-unknown')
     expect(cls(ipc('routines:toggle', { id: 'r1', enabled: false }), c('/Users/me/otra'))).toBe('deny:out-of-scope')
   })
+  it('el celular no crea ni modifica disparadores por archivo, ni resuelve la bandeja (clase X)', () => {
+    const file = { kind: 'file', folder: P, patterns: [], on: 'create', settleSec: 3, maxPerHour: 6 }
+    const save = { name: 'r', prompt: 'p', mode: 'code', folder: P, enabled: true }
+    expect(cls(ipc('routines:save', { ...save, schedule: file }))).toBe('deny:file-trigger-forbidden')
+    // editar una rutina que ya tiene disparador por archivo, aunque sea para pasarla a reloj
+    const known = (hasFile: boolean | undefined): PolicyContext => ({ ...ctx, routineHasFileTrigger: () => hasFile })
+    const daily = { kind: 'daily', time: '09:00' }
+    expect(cls(ipc('routines:save', { ...save, id: 'r1', schedule: daily }), known(true))).toBe('deny:file-trigger-forbidden')
+    expect(cls(ipc('routines:save', { ...save, id: 'r1', schedule: daily }), known(undefined))).toBe('deny:file-trigger-forbidden')
+    expect(cls(ipc('routines:save', { ...save, id: 'r1', schedule: daily }), known(false))).toBe('confirm')
+    expect(cls(ipc('routines:inbox:resolve', { id: 'i', action: 'approve' }))).toBe('deny:forbidden')
+    expect(cls(ipc('routines:inbox:list', {}))).toBe('R')
+  })
   it('tasks:tasks:forget y tasks:restore:forget solo de tareas de una carpeta del ámbito', () => {
     const c = (f: string | undefined): PolicyContext => ({ ...ctx, taskFolder: () => f })
     for (const ch of ['tasks:tasks:forget', 'tasks:restore:forget']) {
