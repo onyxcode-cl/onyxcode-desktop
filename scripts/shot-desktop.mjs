@@ -3,7 +3,7 @@
 // Arranca la app compilada (`out/`, carga por lazunox://app) con un userData TEMPORAL, un OpenCode falso y datos inventados;
 // captura por CDP (`Page.captureScreenshot`, 2x). No toca la app instalada, su userData, su cloudflared ni el motor real.
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir, tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
@@ -87,6 +87,11 @@ const SCENARIOS = [
   'ajustes-celular',
   'ajustes-memoria',
   'ajustes-instrucciones',
+  // Buscador de Ajustes (⌘F, resultados agrupados con coincidencias resaltadas) e «Importar» (vista previa de una carpeta de ejemplo
+  // con secretos FALSOS armados en tiempo de ejecución: no deben aparecer en pantalla).
+  'ajustes-buscar',
+  'ajustes-importar',
+  'ajustes-importar-hecho',
   'paleta',
   'selector-modelo',
   'dialogo-confirmar',
@@ -1824,6 +1829,96 @@ const S = {
       '# Convenciones\n\n- Usa pnpm, no npm.\n- Las pruebas van con Vitest y viven junto al archivo.\n- No toques la carpeta `dist/`.'
     )
     await sleep(500)
+  },
+  // Buscador: ⌘F enfoca el campo, se escribe una palabra que está en varias secciones y se ven los resultados agrupados y resaltados.
+  async 'ajustes-buscar'(ctx) {
+    const { page } = ctx
+    await openSettings(page, 'General')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+f' : 'Control+f')
+    await sleep(300)
+    const box = page.locator('[data-testid="settings-search"]')
+    if (!(await box.evaluate((el) => el === document.activeElement))) throw new Error('⌘F no enfocó el buscador de Ajustes')
+    await page.keyboard.type('modelo', { delay: 30 })
+    await vis(page.locator('[data-testid="settings-search-panel"] [role="option"]').first(), 5000)
+    const n = await page.locator('[data-testid="settings-search-panel"] [role="option"]').count()
+    const marks = await page.locator('[data-testid="settings-search-panel"] mark').count()
+    const sidebarList = await page.locator('aside[data-rail][data-collapsed]').count()
+    console.log('VERIF-BUSCAR ' + JSON.stringify({ resultados: n, resaltados: marks, listaPlegada: sidebarList === 1 }))
+    await page.keyboard.press('ArrowDown')
+    await sleep(500)
+  },
+  async 'ajustes-importar'(ctx) {
+    const { page } = ctx
+    const fakeKey = ['sk', 'ant', 'api03', 'Zq8'.repeat(10)].join('-')
+    const fakeToken = ['ghp', 'Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4J3i2'].join('_')
+    const proj = mk(TMP, 'import-')
+    writeFileSync(join(proj, 'CLAUDE.md'), '# Convenciones\n\n- Responde siempre en español.\n- Las pruebas van con Vitest y viven junto al archivo.\n')
+    writeFileSync(
+      join(proj, '.mcp.json'),
+      JSON.stringify({
+        mcpServers: {
+          buscador: { command: 'npx', args: ['-y', '@acme/search-mcp'], env: { SEARCH_API_KEY: fakeKey, MODE: 'fast' } },
+          docs: { type: 'http', url: 'https://mcp.example.com/docs', headers: { Authorization: `Bearer ${fakeToken}` } },
+          limpiador: { command: 'sudo', args: ['rm', '-rf', '/tmp/x'] },
+          directo: { command: 'npx', args: ['-y', 'pkg', '--api-key', fakeKey] }
+        }
+      })
+    )
+    await stubDialog(ctx, [proj])
+    await openSettings(page, 'Importar')
+    await vis(page.locator('[data-import-pick="project-folder"]'), 15_000)
+    await page.locator('[data-import-pick="project-folder"]').click()
+    await vis(page.locator('[data-testid="import-preview"]'), 15_000)
+    await page.locator('[data-import-item="i0"] input').check()
+    await page.locator('[data-import-item="m0"] input').check()
+    const text = await page.locator('[data-testid="import-section"]').innerText()
+    const leaked = [fakeKey, fakeToken, 'fast'].filter((x) => text.includes(x))
+    const boxes = await page.locator('[data-testid="import-preview"] input[type="checkbox"]').count()
+    const discarded = await page.locator('[data-testid="import-discarded"] li').count()
+    console.log('VERIF-IMPORTAR ' + JSON.stringify({ casillas: boxes, descartados: discarded, secretosEnPantalla: leaked.length }))
+    if (leaked.length) throw new Error('un secreto falso apareció en pantalla')
+    // Sin importar nada todavía: lo marcado se importaría al pulsar el botón (se comprueba aparte en la prueba con la app real).
+    await sleep(500)
+    rmSync(proj, { recursive: true, force: true })
+  },
+  // Importar de verdad contra la app real (userData temporal): marca CLAUDE.md y un servidor, importa y comprueba en disco que el servidor
+  // quedó DESACTIVADO, que la clave falsa no está en ningún archivo y que AGENTS.md se creó.
+  async 'ajustes-importar-hecho'(ctx) {
+    const { page } = ctx
+    const fakeKey = ['sk', 'ant', 'api03', 'Zq8'.repeat(10)].join('-')
+    const proj = mk(TMP, 'import-')
+    writeFileSync(join(proj, 'CLAUDE.md'), '# Convenciones\n\n- Responde siempre en español.\n')
+    writeFileSync(
+      join(proj, '.mcp.json'),
+      JSON.stringify({ mcpServers: { buscador: { command: 'npx', args: ['-y', '@acme/search-mcp'], env: { SEARCH_API_KEY: fakeKey } } } })
+    )
+    await stubDialog(ctx, [proj])
+    await openSettings(page, 'Importar')
+    await page.locator('[data-import-pick="project-folder"]').click()
+    await vis(page.locator('[data-testid="import-preview"]'), 15_000)
+    await page.locator('[data-import-item="i0"] input').check()
+    await page.locator('[data-import-item="m0"] input').check()
+    await page.locator('[data-import-apply]').click()
+    await vis(page.locator('[data-testid="import-done"]'), 15_000)
+    await sleep(600)
+    const cfgPath = join(ctx.userData, 'opencode', 'opencode.json')
+    const cfg = existsSync(cfgPath) ? readFileSync(cfgPath, 'utf8') : ''
+    const agents = existsSync(join(proj, 'AGENTS.md')) ? readFileSync(join(proj, 'AGENTS.md'), 'utf8') : ''
+    const parsed = cfg ? JSON.parse(cfg) : {}
+    const screen = await page.locator('[data-testid="import-section"]').innerText()
+    const v = {
+      mcpGuardado: !!parsed.mcp?.buscador,
+      desactivado: parsed.mcp?.buscador?.enabled === false,
+      variablePorNombre: parsed.mcp?.buscador?.environment?.SEARCH_API_KEY === '{env:SEARCH_API_KEY}',
+      claveEnArchivo: cfg.includes(fakeKey) || agents.includes(fakeKey),
+      claveEnPantalla: screen.includes(fakeKey),
+      agentsCreado: agents.startsWith('# Convenciones')
+    }
+    console.log('VERIF-IMPORTAR-HECHO ' + JSON.stringify(v))
+    if (!v.mcpGuardado || !v.desactivado || !v.variablePorNombre || v.claveEnArchivo || v.claveEnPantalla || !v.agentsCreado) {
+      throw new Error('la importación real no cumplió las garantías: ' + JSON.stringify(v))
+    }
+    rmSync(proj, { recursive: true, force: true })
   },
   async 'ajustes-celular'(ctx) {
     await openSettings(ctx.page, /Celular|Móvil|Remoto/)

@@ -204,8 +204,8 @@ const networkSetHost: Validator<{ host: string; decision: 'allow' | 'block' | 'u
   if (!isPlainHostToken(base.host)) throw new ValidationError(`Parámetro "${path ? `${path}.` : ''}host" con formato inválido`)
   return { host: base.host, decision: base.decision }
 }
-const mcpName = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
-const mcpEntry = tagged('type', {
+export const mcpName = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
+export const mcpEntry = tagged('type', {
   local: obj({
     type: literal('local'),
     command: arr(str({ max: 4096 }), 200),
@@ -995,6 +995,11 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:quickToggle': none,
   'extras:suspendShortcut': obj({ suspended: bool }),
   'extras:takePendingPrompt': none,
+  'extras:import:pick': obj({ source: literal('project-folder', 'mcp-file') }),
+  'extras:import:apply': obj({
+    token: str({ max: 64, min: 16, pattern: /^[a-f0-9]+$/ }),
+    ids: arr(str({ max: 8, min: 2, pattern: /^[im][0-9]{1,4}$/ }), 200)
+  }),
   'mcp:getConfig': none,
   'mcp:save': obj({ name: mcpName, entry: mcpEntry, previousName: optional(mcpName) }),
   'mcp:remove': obj({ name: mcpName }),

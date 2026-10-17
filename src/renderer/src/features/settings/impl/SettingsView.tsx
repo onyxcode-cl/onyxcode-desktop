@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import '../../../app/mobile/switch.css'
 import {
   BarChart3,
@@ -6,7 +6,9 @@ import {
   Compass,
   Cpu,
   Globe,
+  Download,
   Info,
+  Search,
   BrainCircuit,
   NotebookPen,
   Keyboard,
@@ -26,7 +28,7 @@ import { IconButton } from '../../../components/IconButton'
 import { ConnectionCard } from '../../../app/mobile/ConnectionCard'
 import { ListGroup, ListRow } from '../../../components/mobile/List'
 import { useT } from '../../../lib/i18n'
-import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { isMacPlatform, isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { useUi } from '../../../stores/ui'
 import { AboutSection } from './AboutSection'
 import { AutoModeSection } from './AutoModeSection'
@@ -45,6 +47,9 @@ import { LEGACY_MODE } from '../../../../../main/migrations/legacy-names'
 import { RemoteSection } from './RemoteSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
+import { ImportSection } from './ImportSection'
+import { buildSearchIndex, findAnchorElement, highlightParts, searchSettings, type SearchEntry } from './search-index'
+import { getLang } from '@shared/i18n'
 
 export type SettingsSectionId =
   | 'general'
@@ -52,6 +57,7 @@ export type SettingsSectionId =
   | 'memory'
   | 'models'
   | 'mcp'
+  | 'import'
   | 'tasks'
   | 'network'
   | 'computer'
@@ -76,28 +82,85 @@ const GROUPS: { id: SettingsGroupId; label: () => string }[] = [
   { id: 'help', label: lazy('settings.group.help') }
 ]
 
+/** Lo que reciben las secciones (la mayoría no lo usa): saltar a otra sección. */
+export interface SectionProps {
+  goTo?: (id: SettingsSectionId) => void
+}
+
 const SECTIONS: {
   id: SettingsSectionId
   group: SettingsGroupId
   label: () => string
   icon: typeof Cpu
-  View: () => React.JSX.Element
+  View: (props: SectionProps) => React.JSX.Element
+  /** Prefijos de claves i18n que pintan la sección: de aquí sale el índice del buscador (sin copiar textos). */
+  keys: readonly string[]
 }[] = [
-  { id: 'general', group: 'app', label: lazy('settings.nav.general'), icon: SlidersHorizontal, View: GeneralSection },
-  { id: 'instructions', group: 'app', label: lazy('settings.nav.instructions'), icon: NotebookPen, View: InstructionsSection },
-  { id: 'memory', group: 'app', label: lazy('settings.nav.memory'), icon: BrainCircuit, View: MemorySection },
-  { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection },
-  { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection },
-  { id: 'shortcuts', group: 'app', label: lazy('settings.nav.shortcuts'), icon: Keyboard, View: ShortcutsSection },
-  { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection },
-  { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection },
-  { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection },
-  { id: 'computer', group: 'agents', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection },
-  { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection },
-  { id: 'mcp', group: 'agents', label: lazy('settings.nav.mcp'), icon: Blocks, View: McpSection },
-  { id: 'remote', group: 'connections', label: lazy('remote.nav'), icon: Smartphone, View: RemoteSection },
-  { id: 'diagnostics', group: 'help', label: lazy('settings.nav.diagnostics'), icon: LifeBuoy, View: DiagnosticsSection },
-  { id: 'about', group: 'help', label: lazy('settings.nav.about'), icon: Info, View: AboutSection }
+  {
+    id: 'general',
+    group: 'app',
+    label: lazy('settings.nav.general'),
+    icon: SlidersHorizontal,
+    View: GeneralSection,
+    keys: ['settings.general.', 'tasks.learn.', 'settings.extras.']
+  },
+  {
+    id: 'instructions',
+    group: 'app',
+    label: lazy('settings.nav.instructions'),
+    icon: NotebookPen,
+    View: InstructionsSection,
+    keys: ['instr.']
+  },
+  { id: 'memory', group: 'app', label: lazy('settings.nav.memory'), icon: BrainCircuit, View: MemorySection, keys: ['memory.'] },
+  { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection, keys: ['models.'] },
+  { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection, keys: ['settings.usage.'] },
+  {
+    id: 'shortcuts',
+    group: 'app',
+    label: lazy('settings.nav.shortcuts'),
+    icon: Keyboard,
+    View: ShortcutsSection,
+    keys: ['settings.shortcuts.']
+  },
+  { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection, keys: ['tasksSettings.'] },
+  { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection, keys: ['misc.net.'] },
+  { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection, keys: ['misc.auto.'] },
+  { id: 'computer', group: 'agents', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection, keys: ['misc.computer.'] },
+  { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection, keys: ['misc.browser.'] },
+  {
+    id: 'mcp',
+    group: 'agents',
+    label: lazy('settings.nav.mcp'),
+    icon: Blocks,
+    View: McpSection,
+    keys: ['mcp.header.', 'mcp.form.', 'mcp.catalog.', 'mcp.flags.', 'mcp.note.', 'mcp.badge.', 'mcp.add', 'mcp.refresh', 'mcp.viewFile']
+  },
+  {
+    id: 'import',
+    group: 'agents',
+    label: lazy('settings.nav.import'),
+    icon: Download,
+    View: ImportSection,
+    keys: ['import.title', 'import.intro', 'import.source.', 'import.guarantee.']
+  },
+  {
+    id: 'remote',
+    group: 'connections',
+    label: lazy('remote.nav'),
+    icon: Smartphone,
+    View: RemoteSection,
+    keys: ['remote.devices.', 'remote.qr.', 'remote.conn.', 'remote.travel.', 'remote.state.', 'remote.activity.', 'remote.title']
+  },
+  {
+    id: 'diagnostics',
+    group: 'help',
+    label: lazy('settings.nav.diagnostics'),
+    icon: LifeBuoy,
+    View: DiagnosticsSection,
+    keys: ['misc.diag.', 'settings.doctor.']
+  },
+  { id: 'about', group: 'help', label: lazy('settings.nav.about'), icon: Info, View: AboutSection, keys: ['settings.about.'] }
 ]
 
 const KEY = 'settings.section'
@@ -164,6 +227,12 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
   const t = useT()
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+  /** Opción a la que llevar tras abrir la sección elegida en la búsqueda (`anchor`: texto fijo de la opción). */
+  const [target, setTarget] = useState<{ section: SettingsSectionId; anchor: string; nonce: number } | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   // Tareas, su red/modo auto y Control del PC solo donde existen (macOS).
   const caps = platformCaps()
   const sections = SECTIONS.filter(
@@ -172,14 +241,49 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
       (s.id !== 'computer' || caps.computer) &&
       (s.id !== 'remote' || caps.remote) &&
       // PWA del celular: MCP, navegador integrado, atajos de teclado y diagnóstico son del Mac (prohibidos o sin sentido en el celular).
-      (!isRemoteSurface() || !['mcp', 'browser', 'shortcuts', 'diagnostics'].includes(s.id))
+      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics'].includes(s.id))
   )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 
   useEffect(() => initExtrasPrefs(), [])
 
+  // Índice del buscador: sale de las claves i18n de cada sección y sigue al idioma activo (`useT` re-renderiza al cambiarlo).
+  const lang = getLang()
+  const searchSections = sections.map((s) => ({ id: s.id, label: s.label(), prefixes: s.keys }))
+  const sectionIds = sections.map((s) => s.id).join(',')
+  const index = useMemo(
+    () => buildSearchIndex(searchSections, lang),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sectionIds, lang]
+  )
+  const groups = useMemo(() => searchSettings(searchSections, index, query), [index, query, lang]) // eslint-disable-line react-hooks/exhaustive-deps
+  /** Resultados planos en el orden en que se pintan (para el teclado). */
+  const flat = useMemo(
+    () =>
+      groups.flatMap((g) => [
+        ...(g.titleMatch ? [{ id: `${g.section}:title`, section: g.section, anchor: '', text: g.label }] : []),
+        ...g.entries.map((e: SearchEntry<SettingsSectionId>) => ({
+          id: `${g.section}:${e.key}`,
+          section: g.section,
+          anchor: e.anchor,
+          text: e.text
+        }))
+      ]),
+    [groups]
+  )
+  const searching = query.trim().length > 0
+
+  useEffect(() => setActive(0), [query])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // ⌘F / Ctrl+F dentro de Ajustes: enfoca el buscador (no abre el de la página).
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        searchRef.current?.focus()
+        searchRef.current?.select()
+        return
+      }
       if (e.key === 'Escape' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
         close(false)
       }
@@ -197,6 +301,64 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
     }
   }
 
+  const choose = (r: { section: SettingsSectionId; anchor: string }): void => {
+    select(r.section)
+    setQuery('')
+    setTarget({ section: r.section, anchor: r.anchor, nonce: Date.now() })
+  }
+
+  // Lleva a la opción elegida: la sección puede cargar datos antes de pintarla, así que se reintenta unos instantes.
+  useEffect(() => {
+    if (!target || target.section !== section) return
+    let tries = 0
+    let flashTimer: ReturnType<typeof setTimeout> | undefined
+    let marked: HTMLElement | null = null
+    const timer = setInterval(() => {
+      tries++
+      const root = contentRef.current
+      const el = root && target.anchor ? findAnchorElement(root, target.anchor) : null
+      if (el) {
+        clearInterval(timer)
+        el.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+        const focusable = el.matches('button,input,select,textarea,a[href]')
+          ? el
+          : (el.querySelector<HTMLElement>('input:not([type=hidden]),select,textarea,button,a[href]') ?? el)
+        if (focusable === el && !el.matches('button,input,select,textarea,a[href]')) el.tabIndex = -1
+        focusable.focus({ preventScroll: true })
+        marked = el
+        el.setAttribute('data-search-hit', '')
+        flashTimer = setTimeout(() => el.removeAttribute('data-search-hit'), 2400)
+      } else if (tries >= 12 || !target.anchor) {
+        clearInterval(timer)
+        contentRef.current?.parentElement?.scrollTo?.({ top: 0 })
+      }
+    }, 90)
+    return () => {
+      clearInterval(timer)
+      if (flashTimer) clearTimeout(flashTimer)
+      marked?.removeAttribute('data-search-hit')
+    }
+  }, [target, section])
+
+  const onSearchKey = (e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'ArrowDown' && flat.length > 0) {
+      e.preventDefault()
+      setActive((a) => (a + 1) % flat.length)
+    } else if (e.key === 'ArrowUp' && flat.length > 0) {
+      e.preventDefault()
+      setActive((a) => (a - 1 + flat.length) % flat.length)
+    } else if (e.key === 'Enter' && flat[active]) {
+      e.preventDefault()
+      choose(flat[active])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      if (searching) setQuery('')
+      else close(false)
+    }
+  }
+
+  const goTo = (id: SettingsSectionId): void => select(id)
   const Current = sections.find((s) => s.id === section)?.View ?? GeneralSection
 
   return (
@@ -217,6 +379,42 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
           className="w-52 shrink-0 space-y-0.5 overflow-y-auto desk:w-[232px] desk:xl:w-[232px] border-r border-border/70 bg-sidebar/50 p-3 desk:border-r-0 desk:bg-transparent desk:px-3 desk:py-2"
           aria-label={t('settings.navAria')}
         >
+          <div className="relative mb-2" role="search">
+            <Search size={14} aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle" />
+            <input
+              ref={searchRef}
+              type="text"
+              role="combobox"
+              aria-expanded={searching}
+              aria-controls="settings-search-results"
+              aria-activedescendant={searching && flat[active] ? `settings-hit-${active}` : undefined}
+              aria-autocomplete="list"
+              aria-label={t('settings.search.label')}
+              placeholder={t('settings.search.label')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={onSearchKey}
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="settings-search"
+              className="h-8 w-full rounded-ctl border border-border-strong bg-elevated pr-14 pl-8 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-focus"
+            />
+            {searching ? (
+              <button
+                type="button"
+                aria-label={t('settings.search.clear')}
+                onClick={() => {
+                  setQuery('')
+                  searchRef.current?.focus()
+                }}
+                className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center rounded text-muted hover:bg-hover hover:text-fg"
+              >
+                <X size={13} />
+              </button>
+            ) : (
+              <kbd className="kbd pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">{isMacPlatform() ? '⌘F' : 'Ctrl+F'}</kbd>
+            )}
+          </div>
           {GROUPS.map((g) => {
             const inGroup = sections.filter((x) => x.group === g.id)
             if (inGroup.length === 0) return null // un grupo vacío no pinta encabezado
@@ -229,16 +427,19 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                   {g.label()}
                 </div>
                 {inGroup.map(({ id, label, icon: Icon }) => {
-                  const active = section === id
+                  const current = section === id && !searching
                   return (
                     <button
                       key={id}
                       type="button"
-                      onClick={() => select(id)}
-                      aria-current={active ? 'page' : undefined}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 desk:gap-2 desk:px-2 desk:text-sm ${active ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70 desk:bg-active desk:shadow-none desk:ring-0' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      onClick={() => {
+                        setQuery('')
+                        select(id)
+                      }}
+                      aria-current={current ? 'page' : undefined}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 desk:gap-2 desk:px-2 desk:text-sm ${current ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70 desk:bg-active desk:shadow-none desk:ring-0' : 'text-muted hover:bg-hover hover:text-fg'}`}
                     >
-                      <Icon size={15} className={active ? 'shrink-0 text-accent desk:size-4' : 'shrink-0 desk:size-4'} />
+                      <Icon size={15} className={current ? 'shrink-0 text-accent desk:size-4' : 'shrink-0 desk:size-4'} />
                       {label()}
                     </button>
                   )
@@ -248,12 +449,92 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
           })}
         </nav>
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div
-            key={section}
-            className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8 desk:max-w-[640px] desk:px-8 desk:pt-7 desk:pb-12"
-          >
-            <Current />
-          </div>
+          {searching ? (
+            <div
+              className="mx-auto w-full max-w-2xl px-8 py-8 desk:max-w-[640px] desk:px-8 desk:pt-7 desk:pb-12"
+              data-testid="settings-search-panel"
+            >
+              <p className="sr-only" role="status" aria-live="polite">
+                {groups.length === 0
+                  ? t('settings.search.empty', { query: query.trim() })
+                  : t('settings.search.results', { count: groups.length })}
+              </p>
+              {groups.length === 0 ? (
+                <div
+                  className="rounded-xl border border-dashed border-border-strong px-5 py-8 text-center"
+                  data-testid="settings-search-empty"
+                >
+                  <p className="text-sm font-medium">{t('settings.search.empty', { query: query.trim() })}</p>
+                  <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted">{t('settings.search.emptyHelp')}</p>
+                </div>
+              ) : (
+                <div id="settings-search-results" role="listbox" aria-label={t('settings.search.listLabel')} className="space-y-5">
+                  {(() => {
+                    let n = -1
+                    return groups.map((g) => {
+                      const Icon = SECTIONS.find((s) => s.id === g.section)?.icon ?? Settings2
+                      const rows = [
+                        ...(g.titleMatch ? [{ id: `${g.section}:title`, anchor: '', text: g.label, title: true }] : []),
+                        ...g.entries.map((e: SearchEntry<SettingsSectionId>) => ({
+                          id: `${g.section}:${e.key}`,
+                          anchor: e.anchor,
+                          text: e.text,
+                          title: false
+                        }))
+                      ]
+                      return (
+                        <section key={g.section} aria-label={g.label}>
+                          <h3 className="mb-1.5 flex items-center gap-2 text-xs font-semibold tracking-[0.02em] text-subtle">
+                            <Icon size={13} aria-hidden /> {g.label}
+                          </h3>
+                          <ul className="overflow-hidden rounded-xl border border-border bg-elevated">
+                            {rows.map((r) => {
+                              n++
+                              const i = n
+                              return (
+                                <li key={r.id} role="presentation" className="border-b border-border last:border-b-0">
+                                  <button
+                                    type="button"
+                                    role="option"
+                                    id={`settings-hit-${i}`}
+                                    aria-selected={i === active}
+                                    onMouseEnter={() => setActive(i)}
+                                    onClick={() => choose({ section: g.section, anchor: r.anchor })}
+                                    className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm ${i === active ? 'bg-active' : 'hover:bg-hover'}`}
+                                  >
+                                    <span className="line-clamp-2 min-w-0">
+                                      {highlightParts(r.text, query).map((p, k) =>
+                                        p.hit ? (
+                                          <mark key={k} className="settings-mark">
+                                            {p.text}
+                                          </mark>
+                                        ) : (
+                                          <span key={k}>{p.text}</span>
+                                        )
+                                      )}
+                                    </span>
+                                    {r.title && <span className="shrink-0 text-xs text-subtle">{t('settings.search.sectionMatch')}</span>}
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        </section>
+                      )
+                    })
+                  })()}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              ref={contentRef}
+              key={section}
+              className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8 desk:max-w-[640px] desk:px-8 desk:pt-7 desk:pb-12"
+            >
+              <Current goTo={goTo} />
+            </div>
+          )}
         </div>
       </div>
     </div>

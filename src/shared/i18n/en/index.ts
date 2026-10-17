@@ -21,6 +21,7 @@ import { remote } from './remote'
 import { mobileShell } from './mobileShell'
 import { viewer } from './viewer'
 import { memory } from './memory'
+import { importSettings } from './importSettings'
 
 export const en = {
   ...common,
@@ -45,7 +46,8 @@ export const en = {
   ...remote,
   ...mobileShell,
   ...viewer,
-  ...memory
+  ...memory,
+  ...importSettings
 }
 
 export const AREAS = {
@@ -71,5 +73,6 @@ export const AREAS = {
   remote,
   mobileShell,
   viewer,
-  memory
+  memory,
+  importSettings
 }
