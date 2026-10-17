@@ -143,7 +143,7 @@ export function RoutineInbox({ onOpen }: { onOpen?: (item: RoutineInboxItem) => 
     <section aria-label={t('routines.inbox.title')} data-testid="routine-inbox" className="mx-auto mb-4 max-w-5xl desk:max-w-[760px]">
       <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-medium desk:px-2 desk:text-[11px] desk:font-semibold desk:tracking-[0.02em]">
         {t('routines.inbox.title')}
-        <span className="rounded-full bg-accent-soft px-1.5 text-[11px] text-accent" data-testid="inbox-count">
+        <span className="rounded-full bg-accent-soft px-1.5 text-[11px] desk:text-meta text-accent" data-testid="inbox-count">
           {pending}
         </span>
       </h2>
