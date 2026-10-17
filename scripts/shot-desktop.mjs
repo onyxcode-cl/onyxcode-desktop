@@ -103,6 +103,7 @@ const SCENARIOS = [
   'personalizacion-conectores',
   'personalizacion-detalle',
   'personalizacion-conectar',
+  'personalizacion-e2e', // verificación (no captura): instala y quita una habilidad desde una carpeta y conecta y quita un conector
   'paleta',
   'selector-modelo',
   // Caja de escribir de Code con el menú de permisos abierto (frase por opción, actual marcada, atajos 1-5).
@@ -635,7 +636,9 @@ async function seedChats(ctx) {
 
 // ---- escenarios: cada uno deja la pantalla lista y devuelve una función de limpieza opcional ----
 async function openPersonalizacion(page, tab) {
-  await page.locator('[data-testid="sidebar-personalization"]').click()
+  // El ítem de la barra alterna: solo se pulsa si la pantalla aún no está abierta (un escenario anterior pudo dejarla abierta).
+  if (!(await page.locator('[data-testid="personalizacion"]').count()))
+    await page.locator('[data-testid="sidebar-personalization"]').click()
   await vis(page.locator('[data-testid="personalizacion"]'), 15_000)
   const names = { habilidades: /Habilidades/, conectores: /Conectores/, tuyos: /Tuyos/ }
   await page.getByRole('tab', { name: names[tab] }).click()
@@ -2039,6 +2042,117 @@ const S = {
       .click()
     await vis(dlg.getByRole('checkbox').first(), 5000)
     await sleep(500)
+  },
+  async 'personalizacion-e2e'(ctx) {
+    const { page, userData } = ctx
+    const find = (dir, name) => {
+      try {
+        return execFileSync('find', [dir, '-name', name], { encoding: 'utf8' }).trim()
+      } catch {
+        return ''
+      }
+    }
+    const folder = mk(TMP, 'skill-')
+    const dir = join(folder, 'mi-habilidad-prueba')
+    mkdirSync(dir)
+    writeFileSync(
+      join(dir, 'SKILL.md'),
+      '---\nname: mi-habilidad-prueba\ndescription: Habilidad de ejemplo para la prueba.\n---\n\n# Ejemplo\n\nResponde con una sola frase.\n'
+    )
+    await stubDialog(ctx, [dir])
+    await openPersonalizacion(page, 'habilidades')
+    await page.locator('[data-testid="pers-add-folder"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 10_000)
+    const confirm = dlg.getByRole('button', { name: /Instalar/ }).last()
+    const disabledBefore = await confirm.isDisabled()
+    await dlg.getByRole('checkbox').last().check()
+    await confirm.click()
+    await sleep(1500)
+    const installed = find(userData, 'mi-habilidad-prueba') !== ''
+    await page.getByRole('tab', { name: /Tuyos/ }).click()
+    await vis(page.getByText('mi-habilidad-prueba').first(), 5000)
+    await page.getByRole('button', { name: /Quitar la habilidad/ }).click()
+    await page
+      .getByRole('button', { name: /^Quitar$/ })
+      .last()
+      .click()
+    await sleep(1500)
+    const removed = find(userData, 'mi-habilidad-prueba') === ''
+    // Conector sin cuenta: se conecta con la casilla «Entiendo» y se quita.
+    await page.getByRole('tab', { name: /Conectores/ }).click()
+    await page.locator('[data-testid="pers-conn-context7"]').click()
+    const d2 = page.locator('[role="dialog"]')
+    await vis(d2, 5000)
+    await d2
+      .getByRole('button', { name: /^Conectar$/ })
+      .first()
+      .click()
+    await d2.getByRole('checkbox').first().check()
+    await d2
+      .getByRole('button', { name: /^(Seguir|Conectar)$/ })
+      .last()
+      .click()
+    await sleep(800)
+    await d2
+      .getByRole('button', { name: /^Conectar$/ })
+      .last()
+      .click()
+    await sleep(2500)
+    const conn = (() => {
+      try {
+        return execFileSync('grep', ['-rl', 'context7', userData, '--include=*.json', '--include=*.jsonc'], { encoding: 'utf8' })
+      } catch {
+        return ''
+      }
+    })()
+      .trim()
+      .split('\n')
+      .filter((f) => !f.includes('Cache'))
+    await d2.getByRole('button', { name: /^Listo$/ }).click()
+    await page.getByRole('tab', { name: /Tuyos/ }).click()
+    await page
+      .getByRole('button', { name: /Context7/ })
+      .first()
+      .click()
+    await page
+      .locator('[role="dialog"]')
+      .getByRole('button', { name: /^Quitar/ })
+      .last()
+      .click()
+    await sleep(500)
+    await page.getByRole('button', { name: /^Eliminar$/ }).click()
+    await sleep(2000)
+    let left = 0
+    try {
+      left = execFileSync('grep', ['-rl', 'context7', userData, '--include=*.json', '--include=*.jsonc'], { encoding: 'utf8' })
+        .trim()
+        .split('\n')
+        .filter((f) => f && !f.includes('Cache')).length
+    } catch {
+      left = 0
+    }
+    try {
+      console.log(
+        'VERIF-ARCH ' +
+          execFileSync('grep', ['-rc', 'context7', userData, '--include=*.json', '--include=*.jsonc'], { encoding: 'utf8' })
+            .split('\n')
+            .filter((l) => /:[1-9]/.test(l))
+            .join(' | ')
+      )
+    } catch {}
+    console.log('VERIF-PERS-QUITAR ' + JSON.stringify({ archivosConConectorTrasQuitar: left }))
+    console.log(
+      'VERIF-PERS ' +
+        JSON.stringify({
+          botonInactivoSinCasilla: disabledBefore,
+          habilidadInstalada: installed,
+          habilidadQuitada: removed,
+          archivosConConector: conn.length
+        })
+    )
+    await page.screenshot({ path: join(TMP, 'pers-e2e.png') }).catch(() => {})
+    rmSync(folder, { recursive: true, force: true })
   },
   async 'ajustes-importar'(ctx) {
     const { page } = ctx

@@ -28,7 +28,8 @@
   - `tareas-lista-vacia` (antes de crear tareas) y `tareas-error` (tarea que termina con error del proveedor).
   - `rutinas-vigilante`: rutina por archivo cuya carpeta se borra: «Carpeta no disponible». `rutinas-sin-vigilar`: con el aviso de Rutinas sin aceptar: «Sin vigilar: falta aceptar el aviso de Rutinas».
   - `ajustes-modelos-vacio`: Ajustes › Modelos sin servicios conectados («Ningún servicio de IA conectado»).
-  Se piden con `--scenario`; los de Tareas/Rutinas necesitan `--size 1000x700` para sacar también el tamaño pequeño.
+    Se piden con `--scenario`; los de Tareas/Rutinas necesitan `--size 1000x700` para sacar también el tamaño pequeño.
+- `personalizacion-habilidades` / `personalizacion-conectores` / `personalizacion-detalle` / `personalizacion-conectar` (F8-B180): abren Personalización desde la barra lateral; pestañas Habilidades y Conectores, el detalle de una ficha (Context7) y el paso a paso para conectar (GitHub, hasta la casilla «Entiendo»; no se conecta nada). También se sacan a 1000x700.
 - `aviso-motor`: arranca con una ruta de motor elegida aparte (el falso, 1.18.32) y un motor incluido falso (`LAZUNOX_TEST_BUNDLED_DIR`, solo pruebas); captura la tarjeta «Estás usando un motor de IA instalado aparte…» con «Usar el motor incluido» y «Ahora no».
 - Sin argumentos: claro y oscuro, 1280x800 para todo y 1000x700 solo para `chat-*` y `ajustes-*` (~64 PNG; con tantos escenarios conviene partir en dos corridas por el tope de 330 s).
   Con `--size` se usa solo ese tamaño. Nombre: `<escenario>-<tema>-<tamaño>.png`, a 2x (2560x1600 para 1280x800).

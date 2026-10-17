@@ -365,6 +365,8 @@ export function PersonalizacionView(): React.JSX.Element {
     }
   }
   async function removeUserSkill(name: string): Promise<boolean> {
+    // El diálogo de confirmación queda por debajo de un detalle abierto (misma capa, montado antes): se cierra el detalle primero.
+    setDetail(null)
     const ok = await confirmDialog({
       title: t('pers.skill.removeTitle', { name }),
       message: t('pers.skill.removeMessage'),
@@ -385,6 +387,7 @@ export function PersonalizacionView(): React.JSX.Element {
   async function removeConnector(item: CatalogConnector): Promise<void> {
     const name = mcp.serverOf(item.id)
     if (!name) return
+    setDetail(null) // ver removeUserSkill
     const ok = await confirmDialog({
       title: t('mcp.remove.title'),
       message: t('mcp.remove.message', { name }),
