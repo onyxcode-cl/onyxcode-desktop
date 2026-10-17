@@ -422,6 +422,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.load().folders.some((x) => samePath(x.path, f, this.platform))
   }
 
+  /** Motivo por el que la política de carpetas no admite `folder` (disparadores de Rutinas), o null. */
+  folderForbidden(folder: string): string | null {
+    return this.forbidden(this.nf(folder))
+  }
+
   approveFolder(folder: string): TasksFolder {
     const f = this.nf(folder)
     // Windows: la política decide ANTES de tocar el disco (una ruta de red o de dispositivo no debe abrirse para comprobarla).

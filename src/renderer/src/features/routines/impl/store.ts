@@ -1,7 +1,7 @@
 /** Estado del modo Rutinas (lista, historial, edición). */
 import { create } from 'zustand'
-import type { RoutineInput, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
-import { cw, onTasks } from '../../tasks/impl/bridge'
+import type { RoutineInboxAction, RoutineInboxItem, RoutineInput, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
+import { cw, hasTasksBridge, onTasks } from '../../tasks/impl/bridge'
 
 interface RoutinesState {
   routines: ScheduledRoutine[]
@@ -13,6 +13,8 @@ interface RoutinesState {
   /** Aviso a mostrar en el editor (p. ej. al partir de una plantilla). */
   editingHint: string | null
   selectedId: string | null
+  /** Bandeja «Resultados por revisar» (todos los elementos; los pendientes cuentan en la barra lateral). */
+  inbox: RoutineInboxItem[]
 }
 
 export const useRoutines = create<RoutinesState>(() => ({
@@ -22,8 +24,35 @@ export const useRoutines = create<RoutinesState>(() => ({
   error: null,
   editing: null,
   editingHint: null,
-  selectedId: null
+  selectedId: null,
+  inbox: []
 }))
+
+/** Cantidad de elementos pendientes en la bandeja (contador de la barra lateral). */
+export const selectInboxPending = (s: { inbox: RoutineInboxItem[] }): number => s.inbox.filter((i) => i.status === 'pending').length
+
+export async function loadInbox(): Promise<void> {
+  try {
+    useRoutines.setState({ inbox: await cw('routines:inbox:list') })
+  } catch {
+    // sin puente o sin permiso: la bandeja queda vacía
+  }
+}
+
+/** Carga la bandeja y escucha sus cambios (se usa también desde la barra lateral). Devuelve la función para desuscribir. */
+export function syncInbox(): () => void {
+  if (!hasTasksBridge()) return () => undefined
+  void loadInbox()
+  return onTasks('routines:inbox', (inbox) => useRoutines.setState({ inbox }))
+}
+
+export async function resolveInbox(id: string, action: RoutineInboxAction): Promise<void> {
+  try {
+    useRoutines.setState({ inbox: await cw('routines:inbox:resolve', { id, action }) })
+  } catch (err) {
+    useRoutines.setState({ error: msg(err) })
+  }
+}
 
 export function openEditor(input: RoutineInput, hint: string | null = null): void {
   useRoutines.setState({ editing: input, editingHint: hint })
@@ -40,8 +69,12 @@ function msg(err: unknown): string {
 export async function loadRoutines(): Promise<void> {
   useRoutines.setState({ loading: true, error: null })
   try {
-    const [routines, history] = await Promise.all([cw('routines:list'), cw('routines:history', { limit: 100 })])
-    useRoutines.setState({ routines, history, loading: false })
+    const [routines, history, inbox] = await Promise.all([
+      cw('routines:list'),
+      cw('routines:history', { limit: 100 }),
+      cw('routines:inbox:list')
+    ])
+    useRoutines.setState({ routines, history, inbox, loading: false })
   } catch (err) {
     useRoutines.setState({ loading: false, error: msg(err) })
   }
@@ -50,6 +83,7 @@ export async function loadRoutines(): Promise<void> {
 /** Suscripción a cambios push desde main. Devuelve la función para desuscribir. */
 export function subscribeRoutines(): () => void {
   const off1 = onTasks('routines:changed', (routines) => useRoutines.setState({ routines }))
+  const off3 = onTasks('routines:inbox', (inbox) => useRoutines.setState({ inbox }))
   const off2 = onTasks('routines:run', (run) =>
     useRoutines.setState((s) => {
       const idx = s.history.findIndex((h) => h.id === run.id)
@@ -60,6 +94,7 @@ export function subscribeRoutines(): () => void {
   return () => {
     off1()
     off2()
+    off3()
   }
 }
 

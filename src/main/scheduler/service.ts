@@ -16,16 +16,25 @@
  * - Control total: exige consentimiento explícito al crear la rutina y la aprobación HUMANA del plan
  *   en cada ejecución (siempre en una tarea nueva, para que ninguna aprobación se arrastre).
  * - Notificación nativa al terminar.
+ * - Disparador por archivo (`schedule.kind === 'file'`): lo vigila `FileWatchManager`, que este servicio sincroniza con la lista
+ *   de rutinas (nunca hay un vigilante sin rutina activa que lo respalde). Ver `file-trigger.ts`.
+ * - Ejecuciones perdidas (app cerrada o equipo dormido): según `onMissed` se ejecuta UNA vez, se omite, o (por defecto) se
+ *   pone en la bandeja para que la persona decida. Nunca se acumulan.
+ * - Bandeja «Resultados por revisar» (`inbox`): cada ejecución terminada deja un elemento para aprobar o descartar.
  */
 import { getLang, t } from '@shared/i18n'
 import { app, Notification, powerMonitor } from 'electron'
 import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { createOpencodeClient, type AssistantMessage, type Message, type OpencodeClient, type Part } from '@opencode-ai/sdk/v2/client'
 import type {
   RoutineAllowRule,
+  RoutineFileSchedule,
+  RoutineInboxAction,
+  RoutineInboxItem,
   RoutineInput,
   RoutineMode,
   RoutineRunRecord,
@@ -45,7 +54,9 @@ import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents
 import { shouldRunUnattended } from '@shared/routines-terms'
 import { decideUnattended } from './approvals'
 import { pickRoutineModel } from './model'
-import { nextRunAfter, validateSchedule } from './schedule'
+import { nextRunAfter, missedRuns, validateSchedule } from './schedule'
+import { buildFilePrompt, isSameOrInside, parsePatterns, watchFolderReason } from './file-trigger'
+import { FileWatchManager, type FsLike } from './file-watch-manager'
 
 const TICK_MS = 30_000
 const FIRST_TICK_DELAY_MS = 8_000
@@ -55,6 +66,12 @@ const STATUS_POLL_MS = 2_000
 /** Si la sesión nunca llegó a verse ocupada ni hay respuesta, tras esto se da por terminada. */
 const START_GRACE_MS = 60_000
 const MAX_HISTORY = 300
+/** Una ejecución que llega con más retraso que esto (equipo dormido, app cerrada) cuenta como perdida. */
+export const MISSED_GRACE_MS = 3 * 60_000
+const MAX_INBOX_RESOLVED = 50
+const MAX_INBOX = 200
+const MAX_FILES_LISTED = 20
+const CAP_NOTE_MS = 30 * 60_000
 const SUMMARY_MAX = 800
 /** Límites del registro de permisos/hosts por ejecución (el historial se persiste en JSON). */
 const MAX_LOGGED = 40
@@ -73,6 +90,8 @@ export interface RoutineTasksPort {
   isApproved(folder: string): boolean
   /** ¿Puede arrancar Control total en esa carpeta? (consentimiento del equipo o concesión antigua de la carpeta.) */
   canStartFullAccess(folder: string): boolean
+  /** Motivo por el que la política de carpetas no admite `folder` (ya normalizada por el gestor), o null. */
+  folderForbidden?(folder: string): string | null
   start(folder: string, fullAccess: boolean): Promise<{ baseUrl: string; authorization: string; folder: string; directory?: string }>
   folderSet(folder: string): TasksFolderSet
   networkAllowOnce(folder: string, host: string): void
@@ -97,16 +116,26 @@ export interface SchedulerDeps {
   getSettings?: () => Settings
   /** Abre una tarea/sesión en la ventana principal (clic en una notificación de rutina). */
   openTarget?: (t: NotifyTarget) => void
+  /** ¿Se permiten avisos del sistema? (interruptor de la app). Por defecto sí. */
+  notificationsEnabled?: () => boolean
+  /** Archivos que dejó una ejecución en la carpeta (rutas relativas). */
+  deliverables?: (folder: string, since: number) => string[]
+  /** Acceso al sistema de archivos del disparador por archivo (solo pruebas). */
+  watchFs?: FsLike
+  /** Carpeta de datos de la app (para rechazarla como carpeta vigilada); por defecto `app.getPath('userData')`. */
+  userDataDir?: string
 }
 
 interface Persisted {
   routines: ScheduledRoutine[]
   history: RoutineRunRecord[]
+  inbox: RoutineInboxItem[]
 }
 
 interface SchedulerEvents {
   changed: [ScheduledRoutine[]]
   run: [RoutineRunRecord]
+  inbox: [RoutineInboxItem[]]
 }
 
 /** Estado de una ejecución en curso para responder permisos pendientes. */
@@ -216,9 +245,21 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
   private hostGrants = new Map<string, { count: number; owned: boolean }>()
   /** Referencias a las notificaciones vivas (si no, se recogen antes de poder hacer clic). */
   private liveNotifications = new Set<Notification>()
+  private started = false
+  private capNotedAt = new Map<string, number>()
+  private readonly watch: FileWatchManager
 
   constructor(private readonly deps: SchedulerDeps) {
     super()
+    this.watch = new FileWatchManager({
+      fs: deps.watchFs,
+      allowed: () => !loadManagedPolicy()?.disableRoutines && shouldRunUnattended(this.deps.getSettings?.()),
+      isRunning: (id) => this.running.has(id),
+      folderProblem: (r, s) => this.fileFolderProblem(r, s),
+      onFire: (r, names, folder) => this.fireFile(r.id, names, folder),
+      onCapped: (r) => this.noteCapped(r.id),
+      onLost: () => this.emit('changed', this.list())
+    })
   }
 
   // ───────────── persistencia ─────────────
@@ -229,13 +270,14 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
   private load(): Persisted {
     if (this.data) return this.data
-    let data: Persisted = { routines: [], history: [] }
+    let data: Persisted = { routines: [], history: [], inbox: [] }
     try {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
         data = {
           routines: Array.isArray(raw.routines) ? raw.routines.filter((r) => r && typeof r.id === 'string') : [],
-          history: Array.isArray(raw.history) ? raw.history.filter((h) => h && typeof h.id === 'string') : []
+          history: Array.isArray(raw.history) ? raw.history.filter((h) => h && typeof h.id === 'string') : [],
+          inbox: Array.isArray(raw.inbox) ? raw.inbox.filter((i) => i && typeof i.id === 'string') : []
         }
         // Ejecuciones "running" de una sesión anterior de la app quedaron interrumpidas.
         for (const h of data.history) {
@@ -270,7 +312,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const d = this.load()
     const clean: Persisted = {
       routines: d.routines.map(({ nextRun: _n, running: _r, ...rest }) => rest),
-      history: d.history.slice(0, MAX_HISTORY)
+      history: d.history.slice(0, MAX_HISTORY),
+      inbox: d.inbox
     }
     writeFileSync(`${file}.tmp`, JSON.stringify(clean, null, 2), 'utf8')
     renameSync(`${file}.tmp`, file)
@@ -285,14 +328,78 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         nextRun = null
       }
     }
-    return { ...r, nextRun, running: this.running.has(r.id) }
+    let fileWatch: ScheduledRoutine['fileWatch']
+    if (r.schedule.kind === 'file') {
+      const st = r.enabled ? this.watch.state(r.id) : { state: 'off' as const }
+      const snap = 'snapshot' in st ? st.snapshot : undefined
+      fileWatch = { state: st.state, firedLastHour: snap?.firedLastHour ?? 0, capped: snap?.capped ?? false }
+    }
+    return { ...r, nextRun, running: this.running.has(r.id), ...(fileWatch ? { fileWatch } : {}) }
   }
 
   private basis(r: ScheduledRoutine): number {
-    return Math.max(r.lastRun ?? 0, r.updatedAt)
+    return Math.max(r.lastRun ?? 0, r.updatedAt, r.missedHandledAt ?? 0)
   }
 
   private emitChanged(): void {
+    this.syncWatchers()
+    this.emit('changed', this.list())
+  }
+
+  private emitInbox(): void {
+    this.emit('inbox', this.inboxList())
+  }
+
+  /** Deja los vigilantes de carpeta exactamente como pide la lista de rutinas (solo con el planificador en marcha). */
+  private syncWatchers(): void {
+    if (!this.started) return
+    try {
+      this.watch.sync(this.load().routines)
+    } catch (err) {
+      console.error('[scheduler] vigilantes de carpeta:', err)
+    }
+  }
+
+  // ───────────── disparador por archivo ─────────────
+
+  /** Motivo por el que la carpeta vigilada no sirve ahora mismo (mensaje ya traducido), o null. */
+  private fileFolderProblem(r: ScheduledRoutine, s: RoutineFileSchedule): string | null {
+    const ctx = { home: homedir(), userData: this.deps.userDataDir ?? app.getPath('userData') }
+    const reason = watchFolderReason(s.folder, ctx)
+    if (reason) return t(`merr.routine.fileFolder.${reason}` as 'merr.routine.fileFolder.root')
+    try {
+      if (!statSync(s.folder).isDirectory()) return t('merr.task.noFolder', { folder: s.folder })
+    } catch {
+      return t('merr.task.noFolder', { folder: s.folder })
+    }
+    // Una carpeta enlazada fuera de lo permitido no cuela: se comprueba también la ruta real.
+    try {
+      const real = realpathSync(s.folder)
+      if (real !== s.folder && watchFolderReason(real, ctx)) return t('merr.routine.fileFolder.root')
+    } catch {
+      return t('merr.task.noFolder', { folder: s.folder })
+    }
+    if (r.mode !== 'chat') {
+      // Tareas y Code: la carpeta vigilada es la de la rutina (autorizada) o una dentro de ella.
+      if (!r.folder || !isSameOrInside(s.folder, r.folder)) return t('merr.routine.fileFolderOutside')
+      if (r.mode === 'tasks' && r.fullAccess !== true && !this.deps.tasks.isApproved(r.folder)) return t('merr.routine.folderNotAuthorized')
+    }
+    return this.deps.tasks.folderForbidden?.(s.folder) ?? null
+  }
+
+  private fireFile(routineId: string, names: string[], watchFolder: string): void {
+    const r = this.load().routines.find((x) => x.id === routineId)
+    if (!r || !r.enabled || this.running.has(routineId) || r.schedule.kind !== 'file') return
+    this.execute(r, 'file', { files: names, watchFolder })
+  }
+
+  private noteCapped(routineId: string): void {
+    const r = this.load().routines.find((x) => x.id === routineId)
+    if (!r) return
+    const at = Date.now()
+    if (at - (this.capNotedAt.get(routineId) ?? 0) < CAP_NOTE_MS) return
+    this.capNotedAt.set(routineId, at)
+    this.notifyPlain(t('merr.notif.routineCapped', { name: r.name }), t('merr.notif.routineCappedBody'))
     this.emit('changed', this.list())
   }
 
@@ -319,7 +426,11 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     if (!['chat', 'tasks', 'code'].includes(input.mode)) throw new Error(t('merr.routine.badMode'))
     if (input.mode === 'tasks' && this.deps.tasksSupported === false) throw new Error(t('merr.routine.platformUnsupported'))
     if (!input.model?.providerID || !input.model?.modelID) throw new Error(t('merr.routine.pickModel'))
-    validateSchedule(input.schedule)
+    let schedule: RoutineInput['schedule'] = input.schedule
+    if (schedule.kind === 'file') {
+      schedule = { ...schedule, folder: schedule.folder.trim(), patterns: parsePatterns(schedule.patterns) }
+    }
+    validateSchedule(schedule)
     const folder = input.folder?.trim() || null
     if (input.mode !== 'chat') {
       if (!folder) throw new Error(t('merr.routine.needsFolder'))
@@ -328,6 +439,15 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       if (input.mode === 'tasks' && input.fullAccess !== true && !this.deps.tasks.isApproved(folder)) {
         throw new Error(t('merr.routine.folderNotAuthorized'))
       }
+    }
+
+    if (schedule.kind === 'file') {
+      // La carpeta vigilada pasa por la misma validación que la de la rutina (autorizada, dentro de la de trabajo, política).
+      const problem = this.fileFolderProblem(
+        { ...({} as ScheduledRoutine), mode: input.mode, folder, fullAccess: input.fullAccess === true && input.mode === 'tasks' },
+        schedule
+      )
+      if (problem) throw new Error(problem)
     }
 
     const data = this.load()
@@ -372,7 +492,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         mode: input.mode,
         folder: input.mode === 'chat' ? null : folder,
         model: input.model,
-        schedule: input.schedule,
+        schedule,
+        onMissed: input.onMissed ?? prev?.onMissed ?? 'ask',
         enabled: input.enabled,
         originSessionId: input.originSessionId !== undefined ? input.originSessionId : prev.originSessionId,
         sessionMode: fullAccess ? 'fresh' : sessionMode,
@@ -394,7 +515,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         mode: input.mode,
         folder: input.mode === 'chat' ? null : folder,
         model: input.model,
-        schedule: input.schedule,
+        schedule,
+        onMissed: input.onMissed ?? 'ask',
         enabled: input.enabled,
         originSessionId: input.originSessionId ?? null,
         sessionMode: fullAccess ? 'fresh' : sessionMode,
@@ -418,8 +540,12 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const data = this.load()
     this.running.get(id)?.abort()
     data.routines = data.routines.filter((r) => r.id !== id)
+    // Sus avisos pendientes de decisión ya no tienen a quién ejecutar.
+    const before = data.inbox.length
+    data.inbox = data.inbox.filter((i) => !(i.routineId === id && i.kind === 'missed'))
     this.save()
     this.emitChanged()
+    if (data.inbox.length !== before) this.emitInbox()
   }
 
   toggle(id: string, enabled: boolean): ScheduledRoutine {
@@ -447,6 +573,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
   start(): void {
     if (this.timer) return
     this.load()
+    this.started = true
+    this.syncWatchers()
     setTimeout(() => void this.tick(), FIRST_TICK_DELAY_MS)
     this.timer = setInterval(() => void this.tick(), TICK_MS)
     const onResume = (): void => void this.tick()
@@ -459,7 +587,14 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     this.timer = null
     this.offResume?.()
     this.offResume = null
+    this.started = false
+    this.watch.stopAll() // sin vigilantes huérfanos al cerrar la app
     for (const c of this.running.values()) c.abort()
+  }
+
+  /** Cantidad de vigilantes de carpeta vivos (diagnóstico y pruebas). */
+  watcherCount(): number {
+    return this.watch.size
   }
 
   // ───────────── ejecución ─────────────
@@ -468,6 +603,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     const now = Date.now()
     const first = this.firstTick
     this.firstTick = false
+    this.syncWatchers() // reintenta carpetas que estaban desconectadas y respeta el aviso de términos
     // Sin el reconocimiento del aviso sobre los términos de OpenCode no se ejecuta nada por horario.
     // «Ejecutar ahora» (`runNow`) no pasa por aquí y sigue funcionando siempre.
     if (!shouldRunUnattended(this.deps.getSettings?.())) {
@@ -490,12 +626,120 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         continue
       }
       if (due == null || due > now) continue
-      const trigger: RoutineTrigger = first && due < this.bootAt ? 'catchup' : 'schedule'
-      this.execute(r, trigger)
+      if ((first && due < this.bootAt) || now - due > MISSED_GRACE_MS) {
+        this.handleMissed(r, now)
+        continue
+      }
+      this.execute(r, 'schedule')
     }
   }
 
-  private execute(r: ScheduledRoutine, trigger: RoutineTrigger): RoutineRunRecord {
+  /**
+   * La ejecución se perdió (app cerrada o equipo dormido). Se decide UNA vez por rutina, sobre la más reciente:
+   * `run` la ejecuta, `skip` la omite y `ask` (por defecto) la deja en la bandeja. En los tres casos el calendario
+   * sigue desde ahora, así que nunca se acumulan decenas de ejecuciones.
+   */
+  private handleMissed(r: ScheduledRoutine, now: number): void {
+    const missed = missedRuns(r.schedule, this.basis(r), now)
+    if (!missed) return
+    r.missedHandledAt = now
+    const mode = r.onMissed ?? 'ask'
+    if (mode === 'run') {
+      this.save()
+      this.execute(r, 'catchup')
+      return
+    }
+    if (mode === 'ask') {
+      const inbox = this.load().inbox
+      const existing = inbox.find((i) => i.kind === 'missed' && i.routineId === r.id && i.status === 'pending')
+      if (existing) {
+        existing.dueAt = missed.latest
+        existing.missedCount = (existing.missedCount ?? 0) + missed.count
+        existing.createdAt = now
+      } else {
+        inbox.unshift({
+          id: randomUUID(),
+          kind: 'missed',
+          routineId: r.id,
+          routineName: r.name,
+          status: 'pending',
+          createdAt: now,
+          dueAt: missed.latest,
+          missedCount: missed.count
+        })
+      }
+      this.pruneInbox()
+      this.save()
+      this.emitInbox()
+      this.notifyPlain(t('merr.notif.routineMissed', { name: r.name }), t('merr.notif.routineMissedBody'))
+      return
+    }
+    this.save()
+    this.emitChanged()
+  }
+
+  // ───────────── bandeja «Resultados por revisar» ─────────────
+
+  inboxList(): RoutineInboxItem[] {
+    return [...this.load().inbox].sort((a, b) => b.createdAt - a.createdAt)
+  }
+
+  /** Conserva todo lo pendiente y solo las últimas resueltas. */
+  private pruneInbox(): void {
+    const d = this.load()
+    const pending = d.inbox.filter((i) => i.status === 'pending')
+    const resolved = d.inbox.filter((i) => i.status !== 'pending').sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0))
+    d.inbox = [...pending, ...resolved.slice(0, MAX_INBOX_RESOLVED)].slice(0, MAX_INBOX)
+  }
+
+  /**
+   * Resuelve un elemento: `approve`/`dismiss` cierran un resultado; `run` vuelve a ejecutar la rutina (y cierra el
+   * elemento); `skip` omite una ejecución perdida. Una acción que no corresponde al tipo se rechaza.
+   */
+  resolveInbox(id: string, action: RoutineInboxAction): RoutineInboxItem[] {
+    const item = this.load().inbox.find((i) => i.id === id)
+    if (!item) throw new Error(t('merr.routine.inboxNotFound'))
+    if (item.status !== 'pending') return this.inboxList()
+    const allowed: RoutineInboxAction[] = item.kind === 'result' ? ['approve', 'dismiss', 'run'] : ['run', 'skip']
+    if (!allowed.includes(action)) throw new Error(t('merr.routine.inboxBadAction'))
+    if (action === 'run') {
+      const r = this.get(item.routineId)
+      if (this.running.has(r.id)) throw new Error(t('merr.routine.alreadyRunning'))
+      this.execute(r, item.kind === 'missed' ? 'catchup' : 'manual')
+    }
+    item.status = action === 'approve' ? 'approved' : action === 'run' && item.kind === 'missed' ? 'approved' : 'dismissed'
+    item.resolvedAt = Date.now()
+    this.pruneInbox()
+    this.save()
+    this.emitInbox()
+    return this.inboxList()
+  }
+
+  private addResultToInbox(r: ScheduledRoutine, record: RoutineRunRecord): void {
+    if (record.error === 'Cancelada' && !this.load().routines.some((x) => x.id === r.id)) return
+    const d = this.load()
+    d.inbox.unshift({
+      id: randomUUID(),
+      kind: 'result',
+      routineId: r.id,
+      routineName: r.name,
+      status: 'pending',
+      createdAt: record.finishedAt ?? Date.now(),
+      runId: record.id,
+      runStatus: record.status,
+      trigger: record.trigger,
+      summary: record.summary,
+      error: record.error,
+      files: record.files,
+      triggerFiles: record.triggerFiles,
+      sessionId: record.sessionId,
+      directory: record.directory,
+      rejectedCount: record.rejected?.length ?? 0
+    })
+    this.pruneInbox()
+  }
+
+  private execute(r: ScheduledRoutine, trigger: RoutineTrigger, opts?: { files: string[]; watchFolder: string }): RoutineRunRecord {
     const data = this.load()
     const record: RoutineRunRecord = {
       id: randomUUID(),
@@ -503,8 +747,10 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       routineName: r.name,
       trigger,
       status: 'running',
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      ...(opts ? { triggerFiles: opts.files.slice(0, MAX_FILES_LISTED) } : {})
     }
+    const fileCtx = opts ?? null
     const controller = new AbortController()
     this.running.set(r.id, controller)
     r.lastRun = record.startedAt
@@ -514,7 +760,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
     this.emit('run', { ...record })
     this.emitChanged()
 
-    void this.perform(r, record, controller.signal)
+    void this.perform(r, record, controller.signal, fileCtx)
       .then((summary) => {
         record.status = 'success'
         record.summary = summary
@@ -526,19 +772,36 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       .finally(() => {
         record.finishedAt = Date.now()
         this.running.delete(r.id)
+        if (record.status === 'success' && r.mode === 'tasks' && record.directory && this.deps.deliverables) {
+          try {
+            const trig = new Set(record.triggerFiles ?? [])
+            const files = this.deps.deliverables(record.directory, record.startedAt).filter((f) => !trig.has(f))
+            if (files.length > 0) record.files = files.slice(0, MAX_FILES_LISTED)
+          } catch {
+            // sin lista de archivos: el resumen basta
+          }
+        }
+        this.watch.runFinished(r.id)
         const current = this.load().routines.find((x) => x.id === r.id)
         if (current) current.lastResult = { ...record }
         const h = this.load().history.find((x) => x.id === record.id)
         if (h) Object.assign(h, record)
+        this.addResultToInbox(r, record)
         this.save()
         this.emit('run', { ...record })
         this.emitChanged()
+        this.emitInbox()
         this.notify(record)
       })
     return { ...record }
   }
 
-  private async perform(r: ScheduledRoutine, record: RoutineRunRecord, signal: AbortSignal): Promise<string> {
+  private async perform(
+    r: ScheduledRoutine,
+    record: RoutineRunRecord,
+    signal: AbortSignal,
+    fileCtx: { files: string[]; watchFolder: string } | null = null
+  ): Promise<string> {
     if (loadManagedPolicy()?.disableRoutines) {
       throw new Error(t('merr.routine.orgDisabled'))
     }
@@ -705,7 +968,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         agent,
         model,
         system,
-        parts: [{ type: 'text', text: r.prompt }]
+        parts: [{ type: 'text', text: this.promptFor(r, fileCtx, dirForSession) }]
       })
       if (res.error) throw new Error(errMsg(res.error))
       const final = await this.waitForCompletion(client, ocDirectory, sessionID, sentAt, signal, () => !!record.error)
@@ -737,6 +1000,13 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       for (const h of hostsToRelease) this.releaseHost(dirForSession, h)
       record.waiting = false
     }
+  }
+
+  /** Prompt de la ejecución: el de la rutina, y en disparos por archivo con las variables y el aviso de «datos». */
+  private promptFor(r: ScheduledRoutine, fileCtx: { files: string[]; watchFolder: string } | null, base: string): string {
+    if (r.schedule.kind !== 'file') return r.prompt
+    const abs = (fileCtx?.files ?? []).map((n) => join(fileCtx!.watchFolder, n))
+    return buildFilePrompt(r.prompt, fileCtx?.watchFolder ?? r.schedule.folder, abs, r.mode === 'chat' ? null : base)
   }
 
   // ───────────── sitios permitidos durante la ejecución ─────────────
@@ -932,6 +1202,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
 
   /** Notificación nativa; al hacer clic abre la tarea en la ventana principal. */
   private notifyPlain(title: string, body: string, target?: NotifyTarget): void {
+    if (this.deps.notificationsEnabled && !this.deps.notificationsEnabled()) return
     if (!Notification.isSupported()) return
     const n = new Notification({ title, body: truncate(body, 300), silent: false })
     this.liveNotifications.add(n)

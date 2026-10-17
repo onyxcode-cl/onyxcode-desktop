@@ -21,6 +21,7 @@ export const app = {
   'app.sidebar.openFolder': 'Open folder as project',
   'app.sidebar.recentProjects': 'Recent projects',
   'app.sidebar.pendingApproval': 'Pending approvals',
+  'app.sidebar.inboxPending': 'Routines: {count} results to review',
   'app.sidebar.emptyHint.generic': 'Open a folder with + or start with {hint}.',
   'app.sidebar.emptyHint.genericNoKey': 'Open a folder with + or start with “New”.',
   'app.sidebar.projectActions': 'More actions',

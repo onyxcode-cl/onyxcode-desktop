@@ -266,18 +266,20 @@ export class EngineProxy implements MuxDispatch {
       return r.ok && Array.isArray(r.data) ? r.data : []
     }
     const real = (f: unknown): string | undefined => (typeof f === 'string' ? (realpathLoose(f) ?? undefined) : undefined)
-    if (ch === 'routines:delete' || ch === 'routines:toggle') {
+    if (ch === 'routines:delete' || ch === 'routines:toggle' || ch === 'routines:save') {
       const map = new Map<string, string | null>()
+      const fileTrigger = new Map<string, boolean>()
       for (const x of await list('routines:list')) {
-        const o = (typeof x === 'object' && x !== null ? x : {}) as { id?: unknown; folder?: unknown }
+        const o = (typeof x === 'object' && x !== null ? x : {}) as { id?: unknown; folder?: unknown; schedule?: { kind?: unknown } }
         if (typeof o.id !== 'string') continue
+        fileTrigger.set(o.id, o.schedule?.kind === 'file')
         if (o.folder === undefined || o.folder === null) map.set(o.id, null)
         else {
           const f = real(o.folder)
           if (f !== undefined) map.set(o.id, f)
         }
       }
-      return { routineFolder: (id) => map.get(id) }
+      return { routineFolder: (id) => map.get(id), routineHasFileTrigger: (id) => fileTrigger.get(id) }
     }
     if (ch === 'tasks:tasks:forget' || ch === 'tasks:restore:forget') {
       const map = new Map<string, string>()

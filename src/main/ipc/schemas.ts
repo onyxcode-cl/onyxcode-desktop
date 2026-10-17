@@ -159,7 +159,15 @@ const schedule = tagged('kind', {
   daily: obj({ kind: literal('daily'), time: hhmm }),
   weekly: obj({ kind: literal('weekly'), day: num({ int: true, min: 0, max: 6 }), time: hhmm }),
   interval: obj({ kind: literal('interval'), hours: num({ min: 0.01, max: 24 * 365 }) }),
-  cron: obj({ kind: literal('cron'), expr: str({ max: 200, min: 1 }) })
+  cron: obj({ kind: literal('cron'), expr: str({ max: 200, min: 1 }) }),
+  file: obj({
+    kind: literal('file'),
+    folder: absPath,
+    patterns: arr(str({ max: 100 }), 10),
+    on: literal('create', 'both'),
+    settleSec: num({ int: true, min: 1, max: 120 }),
+    maxPerHour: num({ int: true, min: 1, max: 60 })
+  })
 })
 /** Carpeta de trabajo de la terminal: absoluta y sin segmentos `..` (F8-B69). */
 const ptyCwd: Validator<string> = (v, path = '') => {
@@ -739,13 +747,16 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     allow: optional(arr(obj({ permission: permName, pattern }), 50)),
     allowHosts: optional(arr(host, 50)),
     fullAccess: optional(bool),
-    fullAccessConsentAt: optNull(num({ min: 0 }))
+    fullAccessConsentAt: optNull(num({ min: 0 })),
+    onMissed: optional(literal('ask', 'run', 'skip'))
   }),
   'routines:delete': obj({ id }),
   'routines:toggle': obj({ id, enabled: bool }),
   'routines:runNow': obj({ id }),
   'routines:history': (v, p) => optional(obj({ id: optional(id), limit: optional(num({ int: true, min: 1, max: 1000 })) }))(v, p) ?? {},
   'routines:preview': obj({ schedule }),
+  'routines:inbox:list': none,
+  'routines:inbox:resolve': obj({ id, action: literal('approve', 'dismiss', 'run', 'skip') }),
   'computer:status': none,
   'computer:requestPermissions': none,
   'computer:reportPermsStall': none,

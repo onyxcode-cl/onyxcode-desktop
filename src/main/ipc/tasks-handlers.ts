@@ -6,6 +6,7 @@ import { t } from '@shared/i18n'
 import { type BrowserWindow, dialog, shell, type IpcMain } from 'electron'
 import type { TasksEventChannel, TasksEventContract } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
+import { extrasPrefs } from '../extras/prefs'
 import { settingsStore } from '../store'
 import { TasksManager } from '../tasks/manager'
 import { importFilesInto, previewFile } from '../tasks/files'
@@ -108,6 +109,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     tasks,
     projects,
     getSettings: () => settingsStore.get(),
+    notificationsEnabled: () => extrasPrefs.get().notificationsEnabled,
+    deliverables: (folder, since) => tasks.deliverables(folder, since).map((d) => d.relPath),
     openTarget
   })
 
@@ -134,6 +137,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   tasks.on('server', (info) => send('tasks:server', info))
   tasks.on('networkBlocked', (ev) => send('tasks:networkBlocked', ev))
   scheduler.on('changed', (list) => send('routines:changed', list))
+  scheduler.on('inbox', (list) => send('routines:inbox', list))
   scheduler.on('run', (run) => {
     send('routines:run', run)
     // La cola de pendientes solo puede cambiar al terminar (`perform()` encola justo antes de devolver el

@@ -480,8 +480,28 @@ export type RoutineSchedule =
   | { kind: 'weekly'; day: number; time: string }
   | { kind: 'interval'; hours: number }
   | { kind: 'cron'; expr: string }
+  /** Disparador por archivo: cuando aparece (o cambia) un archivo en `folder`. No usa reloj. */
+  | RoutineFileSchedule
 
-export type RoutineTrigger = 'schedule' | 'manual' | 'catchup'
+/** Disparador por archivo (no recursivo). Los archivos ocultos, temporales y los que la propia rutina genera se ignoran. */
+export interface RoutineFileSchedule {
+  kind: 'file'
+  /** Carpeta vigilada (absoluta, elegida por la persona). */
+  folder: string
+  /** Filtros de nombre (`*` y `?`), p. ej. `*.pdf`. Vacío = cualquier archivo. */
+  patterns: string[]
+  /** `create` = solo archivos nuevos; `both` = nuevos o modificados. */
+  on: 'create' | 'both'
+  /** Segundos sin cambios para dar un archivo por terminado de copiar (1–120). */
+  settleSec: number
+  /** Tope de ejecuciones por hora (1–60). */
+  maxPerHour: number
+}
+
+/** Qué hacer con la ejecución perdida de una rutina por reloj (app cerrada o equipo dormido). */
+export type RoutineOnMissed = 'ask' | 'run' | 'skip'
+
+export type RoutineTrigger = 'schedule' | 'manual' | 'catchup' | 'file'
 export type RoutineRunStatus = 'running' | 'success' | 'error'
 
 export interface RoutineRunRecord {
@@ -506,8 +526,39 @@ export interface RoutineRunRecord {
   blockedHosts?: string[]
   /** true = la ejecución está esperando la aprobación del usuario (`onAsk: 'wait'`). */
   waiting?: boolean
+  /** Disparo por archivo: nombres (relativos a la carpeta vigilada) que la activaron. Son DATOS, no instrucciones. */
+  triggerFiles?: string[]
+  /** Archivos que dejó la ejecución (relativos a la carpeta de la rutina), si se conocen. */
+  files?: string[]
 }
 
+/** Elemento de la bandeja «Resultados por revisar». */
+export interface RoutineInboxItem {
+  id: string
+  /** `result` = una ejecución terminada; `missed` = ejecución perdida que espera decisión. */
+  kind: 'result' | 'missed'
+  routineId: string
+  routineName: string
+  status: 'pending' | 'approved' | 'dismissed'
+  createdAt: number
+  resolvedAt?: number
+  /** `result`: id de la ejecución. */
+  runId?: string
+  runStatus?: RoutineRunStatus
+  trigger?: RoutineTrigger
+  summary?: string
+  error?: string
+  files?: string[]
+  triggerFiles?: string[]
+  sessionId?: string
+  directory?: string
+  rejectedCount?: number
+  /** `missed`: momento (epoch ms) de la ejecución perdida más reciente y cuántas hubo (sin acumularlas). */
+  dueAt?: number
+  missedCount?: number
+}
+
+export type RoutineInboxAction = 'approve' | 'dismiss' | 'run' | 'skip'
 export interface ScheduledRoutine {
   id: string
   name: string
@@ -542,6 +593,12 @@ export interface ScheduledRoutine {
   fullAccessConsentAt?: number | null
   /** Sesión de la última ejecución (para `sessionMode: 'continue'`). Lo rellena main. */
   lastSessionId?: string | null
+  /** Ejecución perdida por reloj: preguntar (por defecto), ejecutar sola u omitir. */
+  onMissed?: RoutineOnMissed
+  /** Hasta cuándo ya se decidió sobre ejecuciones perdidas (epoch ms). Lo rellena main. */
+  missedHandledAt?: number
+  /** Calculado por main: estado del vigilante del disparador por archivo. */
+  fileWatch?: { state: 'watching' | 'lost' | 'off'; firedLastHour: number; capped: boolean }
 }
 
 /** Datos editables al crear/actualizar (sin `id` = crear). */
@@ -561,6 +618,7 @@ export interface RoutineInput {
   allowHosts?: string[]
   fullAccess?: boolean
   fullAccessConsentAt?: number | null
+  onMissed?: RoutineOnMissed
 }
 
 export interface SchedulePreview {
@@ -1051,6 +1109,8 @@ export interface TasksInvokeContract {
   'routines:runNow': { req: { id: string }; res: RoutineRunRecord }
   'routines:history': { req: { id?: string; limit?: number }; res: RoutineRunRecord[] }
   'routines:preview': { req: { schedule: RoutineSchedule }; res: SchedulePreview }
+  'routines:inbox:list': { req: void; res: RoutineInboxItem[] }
+  'routines:inbox:resolve': { req: { id: string; action: RoutineInboxAction }; res: RoutineInboxItem[] }
 
   /** Estado del helper nativo y permisos de macOS. */
   'computer:status': { req: void; res: ComputerStatus }
@@ -1276,6 +1336,7 @@ export interface TasksEventContract {
   'tasks:server': TasksServerInfo
   'routines:changed': ScheduledRoutine[]
   'routines:run': RoutineRunRecord
+  'routines:inbox': RoutineInboxItem[]
   'computer:action': ComputerActionEvent
   /** Se detuvo el control (atajo global Cmd+Shift+Escape o computer:stop). */
   'computer:stopped': { at: number }
@@ -1373,6 +1434,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'routines:runNow',
   'routines:history',
   'routines:preview',
+  'routines:inbox:list',
+  'routines:inbox:resolve',
   'computer:status',
   'computer:requestPermissions',
   'computer:reportPermsStall',
@@ -1457,6 +1520,7 @@ export const TASKS_EVENT_CHANNELS = [
   'tasks:server',
   'routines:changed',
   'routines:run',
+  'routines:inbox',
   'computer:action',
   'computer:stopped',
   'computer:killState',
