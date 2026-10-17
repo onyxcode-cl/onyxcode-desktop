@@ -163,7 +163,7 @@ describe('ChipMenu: el menú', () => {
   it('el menú tiene altura máxima con scroll (no se recorta con muchas opciones)', () => {
     mount()
     act(() => trigger().click())
-    expect(menu()!.className).toContain('max-h-[min(24rem,calc(100vh-12rem))]')
+    expect(menu()!.className).toContain('max-h-[min(34rem,calc(100vh-10rem))]')
     expect(menu()!.className).toContain('overflow-y-auto')
   })
 })

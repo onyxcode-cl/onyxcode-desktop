@@ -201,7 +201,7 @@ export function ChipMenu({
             role="menu"
             aria-label={name}
             onKeyDown={onKeyDown}
-            className={`absolute bottom-full z-50 mb-2 max-h-[min(24rem,calc(100vh-12rem))] w-72 animate-pop-in overflow-y-auto rounded-xl border border-border bg-elevated p-1 shadow-xl ${align === 'right' ? 'right-0 origin-bottom-right' : 'left-0 origin-bottom-left'}`}
+            className={`absolute bottom-full z-50 mb-2 max-h-[min(34rem,calc(100vh-10rem))] w-80 animate-pop-in overflow-y-auto rounded-xl border border-border bg-elevated p-1 shadow-xl ${align === 'right' ? 'right-0 origin-bottom-right' : 'left-0 origin-bottom-left'}`}
           >
             <div className="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold text-subtle desk:text-meta">{name}</div>
             {items}
