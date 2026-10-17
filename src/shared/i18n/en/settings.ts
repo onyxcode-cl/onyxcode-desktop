@@ -56,6 +56,8 @@ export const settings = {
     'When you run a command from a reply with ▶, its output (keys removed) is sent to the same conversation by itself so the AI can continue. Off: it is attached to your next message.',
   'settings.general.sound.label': 'Sound',
   'settings.general.sound.description': 'Plays the system sound when a notification is shown.',
+  'settings.general.firstSteps.label': 'Getting started',
+  'settings.general.firstSteps.description': 'Shows the short list of basics in the sidebar.',
   'settings.general.keepAwake.label': 'Keep your Mac awake',
   'settings.general.keepAwake.label.win': 'Keep your PC awake',
   'settings.general.keepAwake.description': 'Prevents your Mac from sleeping while tasks are working in the background.',

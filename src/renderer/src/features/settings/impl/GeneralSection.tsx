@@ -17,6 +17,8 @@ import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs } from './extras'
+import { firstStepsVisible } from '@shared/first-steps'
+import { useFirstSteps } from '../../../stores/first-steps'
 import { useShareCommandOutput } from '../../code/impl/terminal-output'
 import { Badge, Card, ErrorText, Row, SectionHeader, Select, SubTitle, Toggle } from './ui'
 
@@ -43,6 +45,22 @@ function KeepAwakeRow(): React.JSX.Element | null {
           void cw('tasks:keepAwakeSetting', { enabled: v }).catch(() => undefined)
         }}
         label={t('settings.general.keepAwake.toggle')}
+      />
+    </Row>
+  )
+}
+
+/** Fila «Primeros pasos»: vuelve a mostrar (o a ocultar) la lista corta de la barra lateral. */
+function FirstStepsRow(): React.JSX.Element {
+  const t = useT()
+  const state = useFirstSteps((s) => s.state)
+  const shown = firstStepsVisible(state)
+  return (
+    <Row label={t('settings.general.firstSteps.label')} description={t('settings.general.firstSteps.description')}>
+      <Toggle
+        checked={shown}
+        onChange={(v) => (v ? useFirstSteps.getState().show() : useFirstSteps.getState().hide())}
+        label={t('settings.general.firstSteps.label')}
       />
     </Row>
   )
@@ -272,6 +290,7 @@ export function GeneralSection(): React.JSX.Element {
             </Row>
           </>
         )}
+        {!phone && <FirstStepsRow />}
         {caps.tasks && <KeepAwakeRow />}
       </Card>
       {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}

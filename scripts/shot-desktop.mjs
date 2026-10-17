@@ -41,6 +41,8 @@ const SCENARIOS = [
   'chat-adjunto-office',
   'chat-memoria-propuesta',
   'chat-exportar',
+  'chat-primeros-pasos',
+  'chat-instrucciones-conversacion',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -99,6 +101,9 @@ const SCENARIOS = [
   'selector-modelo',
   // Caja de escribir de Code con el menú de permisos abierto (frase por opción, actual marcada, atajos 1-5).
   'caja-menus',
+  'caja-proyecto',
+  'caja-esfuerzo',
+  'caja-esfuerzo-chip',
   'dialogo-confirmar',
   'comparar',
   'barra-lateral-colapsada',
@@ -684,6 +689,14 @@ async function openCode(ctx) {
 }
 
 let codeSeeded = false
+async function pickReasonerInCode(page) {
+  const trigger = page.getByRole('button', { name: /^Modelo:/ })
+  if (/Fake Reasoner/.test((await trigger.getAttribute('aria-label')) ?? '')) return
+  await trigger.click()
+  await page.getByRole('option', { name: /Fake Reasoner/ }).click()
+  await sleep(400)
+}
+
 async function seedCode(ctx) {
   await openCode(ctx)
   if (codeSeeded) return
@@ -952,16 +965,31 @@ async function makeOfficeFixtures(dir) {
     `<w:document ${W}><w:body>${p('Informe del trimestre', 'Heading1')}${p('Las ventas del trimestre cerraron en $48,2 millones, un 12 % más que el anterior.')}${p('Detalle por mes', 'Heading2')}` +
       `<w:tbl><w:tr>${cell('Mes')}${cell('Ventas')}</w:tr><w:tr>${cell('Enero')}${cell('120')}</w:tr><w:tr>${cell('Febrero')}${cell('135')}</w:tr></w:tbl></w:body></w:document>`
   )
-  docx.file('word/styles.xml', `<w:styles ${W}><w:style w:styleId="Heading1"><w:name w:val="heading 1"/></w:style><w:style w:styleId="Heading2"><w:name w:val="heading 2"/></w:style></w:styles>`)
+  docx.file(
+    'word/styles.xml',
+    `<w:styles ${W}><w:style w:styleId="Heading1"><w:name w:val="heading 1"/></w:style><w:style w:styleId="Heading2"><w:name w:val="heading 2"/></w:style></w:styles>`
+  )
   docx.file('docProps/app.xml', '<Properties><Pages>3</Pages></Properties>')
   writeFileSync(join(dir, 'informe-trimestre.docx'), await docx.generateAsync({ type: 'nodebuffer' }))
 
   const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet([['Mes', 'Ventas'], ['Enero', 120], ['Febrero', 135]])
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Mes', 'Ventas'],
+    ['Enero', 120],
+    ['Febrero', 135]
+  ])
   ws.B4 = { t: 'n', f: 'SUM(B2:B3)', v: 255 }
   ws['!ref'] = 'A1:B4'
   XLSX.utils.book_append_sheet(wb, ws, 'Ventas')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Zona', 'Meta'], ['Norte', 80], ['Centro', 60]]), 'Metas')
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.aoa_to_sheet([
+      ['Zona', 'Meta'],
+      ['Norte', 80],
+      ['Centro', 60]
+    ]),
+    'Metas'
+  )
   writeFileSync(join(dir, 'ventas-2026.xlsx'), XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
 
   const sld = (title, bullets) =>
@@ -978,6 +1006,34 @@ const S = {
   async 'chat-vacio'(ctx) {
     await closeOverlays(ctx.page)
     await newChat(ctx.page)
+  },
+  // «Primeros pasos» (0 de 4, tarjeta plegable al pie de la barra lateral) y una tarjeta de inicio ya pulsada: la caja queda rellena y sin enviar.
+  async 'chat-primeros-pasos'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await vis(ctx.page.locator('[data-testid="first-steps"]'), 15_000)
+    const idea = ctx.page.getByRole('button', { name: /Redactar/ }).first()
+    if (!(await idea.isVisible().catch(() => false)))
+      await ctx.page
+        .getByRole('button', { name: /Mostrar ideas/ })
+        .first()
+        .click()
+    await idea.click()
+    await sleep(500)
+  },
+  // «Instrucciones de esta conversación»: botón de la cabecera y panel con el texto escrito, el contador y el aviso honesto.
+  async 'chat-instrucciones-conversacion'(ctx) {
+    await seedChats(ctx)
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Chat')
+    await ctx.page.getByText('Plan del carrito de compras').first().click()
+    await vis(ctx.page.getByText('Plan para el carrito'), 15_000)
+    await ctx.page.locator('[data-testid="conv-instr-button"]').click()
+    await vis(ctx.page.getByRole('dialog', { name: /Instrucciones de esta conversación/ }), 10_000)
+    await ctx.page
+      .locator('[data-testid="conv-instr-text"]')
+      .fill('Responde en inglés y en frases cortas. Explícamelo como si no supiera nada del tema.')
+    await sleep(400)
   },
   async 'chat-conversacion'(ctx) {
     await seedChats(ctx)
@@ -1147,7 +1203,10 @@ const S = {
       const texts = parts
         .filter((x) => x.type === 'file')
         .map((x) => ({ name: x.filename, mime: x.mime, text: Buffer.from(String(x.url).split(',')[1] ?? '', 'base64').toString('utf8') }))
-      console.log('VERIF-OFFICE', JSON.stringify({ parts: parts.map((x) => x.type), files: texts.map((t) => ({ name: t.name, mime: t.mime, chars: t.text.length })) }))
+      console.log(
+        'VERIF-OFFICE',
+        JSON.stringify({ parts: parts.map((x) => x.type), files: texts.map((t) => ({ name: t.name, mime: t.mime, chars: t.text.length })) })
+      )
       for (const t of texts) console.log(`VERIF-OFFICE-TEXT ${t.name}\n${t.text}\n--`)
     }
   },
@@ -1781,7 +1840,9 @@ const S = {
     await goMode(ctx.page, 'Rutinas')
     const dir = mkdtempSync(join(homedir(), 'lazunox-shotd-evt-'))
     const inv = (ch, payload) =>
-      ctx.page.evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload]).then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
+      ctx.page
+        .evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload])
+        .then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
     const saved = await inv('routines:save', {
       name: 'Clasificar facturas (E2E)',
       prompt: 'Resume {{archivo}}',
@@ -1807,7 +1868,9 @@ const S = {
     writeFileSync(join(dir, 'salida-de-la-rutina.txt'), 'x') // lo que aparece justo al terminar es salida propia
     await sleep(9000)
     const r1b = await runs()
-    console.log('VERIF-EVENTO-1 ' + JSON.stringify({ ejecuciones: r1.length, tras_salida_propia: r1b.length, archivos: r1[0]?.triggerFiles }))
+    console.log(
+      'VERIF-EVENTO-1 ' + JSON.stringify({ ejecuciones: r1.length, tras_salida_propia: r1b.length, archivos: r1[0]?.triggerFiles })
+    )
     await sleep(6000) // pasa el margen anti-bucle
     for (let i = 1; i <= 5; i++) writeFileSync(join(dir, `lote${i}.txt`), String(i))
     const r2 = await waitRuns(2, 25_000)
@@ -1818,7 +1881,14 @@ const S = {
     const r3 = await runs()
     const info = (await inv('routines:list')).find((x) => x.id === saved.id)
     const inbox = await inv('routines:inbox:list')
-    console.log('VERIF-EVENTO-TOPE ' + JSON.stringify({ ejecuciones: r3.length, fileWatch: info.fileWatch, bandeja_pendiente: inbox.filter((i) => i.status === 'pending' && i.routineId === saved.id).length }))
+    console.log(
+      'VERIF-EVENTO-TOPE ' +
+        JSON.stringify({
+          ejecuciones: r3.length,
+          fileWatch: info.fileWatch,
+          bandeja_pendiente: inbox.filter((i) => i.status === 'pending' && i.routineId === saved.id).length
+        })
+    )
     await sleep(800)
     rmSync(dir, { recursive: true, force: true })
   },
@@ -1897,7 +1967,10 @@ const S = {
     const fakeKey = ['sk', 'ant', 'api03', 'Zq8'.repeat(10)].join('-')
     const fakeToken = ['ghp', 'Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4J3i2'].join('_')
     const proj = mk(TMP, 'import-')
-    writeFileSync(join(proj, 'CLAUDE.md'), '# Convenciones\n\n- Responde siempre en español.\n- Las pruebas van con Vitest y viven junto al archivo.\n')
+    writeFileSync(
+      join(proj, 'CLAUDE.md'),
+      '# Convenciones\n\n- Responde siempre en español.\n- Las pruebas van con Vitest y viven junto al archivo.\n'
+    )
     writeFileSync(
       join(proj, '.mcp.json'),
       JSON.stringify({
@@ -2105,6 +2178,44 @@ const S = {
     return async () => {
       await page.keyboard.press('Escape').catch(() => {})
     }
+  },
+  // Chip de proyecto de la caja de Code (carpeta + rama de ESTA sesión) con su menú abierto.
+  async 'caja-proyecto'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    const chip = page.getByRole('button', { name: /^Proyecto:/ })
+    await vis(chip, 15_000)
+    await chip.click()
+    await vis(page.getByRole('menuitem', { name: /Agregar proyecto/ }), 10_000)
+    await sleep(500)
+    return async () => {
+      await page.keyboard.press('Escape').catch(() => {})
+    }
+  },
+  // Esfuerzo como submenú del menú del modelo (modelo con variantes), abierto.
+  async 'caja-esfuerzo'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    await pickReasonerInCode(page)
+    await page.getByRole('button', { name: /^Modelo:/ }).click()
+    await page.locator('[data-effort-row]').click()
+    await vis(page.getByRole('menuitemradio', { name: 'High' }), 10_000)
+    await sleep(500)
+    return async () => {
+      await page.keyboard.press('Escape').catch(() => {})
+      await page.keyboard.press('Escape').catch(() => {})
+    }
+  },
+  // Con un esfuerzo distinto del predeterminado, el chip del modelo muestra el valor.
+  async 'caja-esfuerzo-chip'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    await pickReasonerInCode(page)
+    await page.getByRole('button', { name: /^Modelo:/ }).click()
+    await page.locator('[data-effort-row]').click()
+    await page.getByRole('menuitemradio', { name: 'High' }).click()
+    await vis(page.getByTestId('model-effort-badge'), 10_000)
+    await sleep(500)
   },
   async 'selector-modelo'(ctx) {
     await closeOverlays(ctx.page)

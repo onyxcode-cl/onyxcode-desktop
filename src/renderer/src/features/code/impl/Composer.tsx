@@ -34,7 +34,7 @@ import { handlePaste } from '../../../lib/paste-attachments'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { useClient } from './client'
-import { AgentChip, ComposerMoreMenu, ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
+import { AgentChip, ComposerMoreMenu, ModelControls, PermissionChip, ProjectChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
 import { usePendingTerminalOutput } from './terminal-output'
 import { TerminalOutputPill } from './TerminalOutputPill'
@@ -888,6 +888,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   <Paperclip size={14} />
                 </button>
                 <PermissionChip />
+                <ProjectChip />
                 <ComposerMoreMenu onMention={insertMention} onAttach={() => fileInputRef.current?.click()} />
                 <ModelControls />
                 {busy && (
