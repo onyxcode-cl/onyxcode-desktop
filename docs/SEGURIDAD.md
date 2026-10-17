@@ -1801,3 +1801,13 @@ Cuando la IA crea o menciona un archivo en el Chat, la tarjeta ofrece verlo en e
 - Nombres de secretos (`.env`, llaves, `credentials*`…) no se ofrecen.
 - Imagen y texto se leen en main con tope (10 MB / 512 KB) y se pintan como `<img>` (data URL) o texto/Markdown; no hay `iframe` ni HTML en bruto (la CSP no se tocó). PDF/Word/Excel/PowerPoint van por el visor nativo aislado (tipo por bytes mágicos, token de un solo uso; su validador de ruta revalida al servir). HTML usa la vista previa aislada de los bloques html.
 - Canales `extras:chatFile:{info,read,viewNative,open,reveal}`: esquema estricto y clase X (no remoto) en `remote/policy.ts`.
+
+## Disparador por archivo de las Rutinas (F8-B175)
+
+- **Qué es**: una rutina puede dispararse cuando aparece o cambia un archivo en una carpeta que la persona eligió. Corre con el mismo modo de acceso, lista blanca y aprobaciones que cualquier rutina: el disparador no añade permisos.
+- **Validación de carpeta** (`watchFolderReason`, `fileFolderProblem`): absoluta, existente, sin `..`, ni raíz, ni carpeta personal completa, ni datos de la app, ni UNC o rutas de red en Windows; se comprueba también la ruta real (`realpath`) y la política de carpetas del gestor de Tareas. En modos Tareas y Code debe ser la carpeta de la rutina (ya autorizada) o una dentro de ella. Se revalida en cada `sync`; si deja de ser válida el vigilante se cierra.
+- **Datos, no instrucciones**: el nombre del archivo se limpia (una línea, sin caracteres de control, acotado), se cita entre comillas y el prompt declara que son datos. El contenido nunca se lee ni se inserta.
+- **Anti-bucle y topes**: eventos durante la ejecución y un margen posterior se toman como salida propia; archivos preexistentes no disparan; tope por hora; ignora ocultos, temporales, carpetas y enlaces simbólicos.
+- **Sin vigilantes huérfanos**: un vigilante por rutina activa, creado y destruido solo por `FileWatchManager.sync`; se cierran al pausar, borrar, cambiar la configuración y al detener el planificador. Sin reconocer el aviso de términos no se vigila nada.
+- **Política remota**: guardar una rutina con `schedule.kind = 'file'`, o editar una que ya lo tenga, es **X** desde el celular (`file-trigger-forbidden`); `routines:inbox:list` es R y `routines:inbox:resolve` es X. Pruebas en `src/main/remote/policy.test.ts`.
+- **No verificado**: comportamiento en un Windows real (bloqueos de archivo, rutas).
