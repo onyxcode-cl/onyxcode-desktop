@@ -362,7 +362,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
               title={g.root ?? undefined}
             >
               <FolderOpen size={12} /> {g.root ? baseName(g.root) : t('tasks.deliv.taskFolder')}
-              <span className="text-subtle/70">· {g.files.length}</span>
+              <span className="text-subtle">· {g.files.length}</span>
             </div>
           )}
           <ul className="space-y-1.5">

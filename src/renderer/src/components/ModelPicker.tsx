@@ -180,7 +180,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
                     <span className={`flex-1 truncate ${selected ? 'font-medium' : ''}`}>{m.name}</span>
                     {m.capabilities.reasoning && (
                       <span
-                        className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] desk:text-meta text-subtle desk:bg-active desk:px-1.5 desk:text-caption"
+                        className="inline-flex items-center gap-0.5 rounded-md bg-hover px-1 py-px text-[10px] desk:text-meta text-subtle desk:text-muted desk:bg-active desk:px-1.5 desk:text-caption"
                         title={t('common.modelPicker.reasoningTitle')}
                       >
                         <Brain size={10} /> {t('common.modelPicker.reasons')}

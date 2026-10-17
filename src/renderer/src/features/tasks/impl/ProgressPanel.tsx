@@ -190,7 +190,7 @@ function ContextGroup({
   return (
     <div className="mb-2.5 last:mb-0">
       <div className="mb-1 flex items-center gap-1.5 text-[11px] desk:text-meta font-medium text-subtle">
-        <Icon size={12} /> {label} <span className="text-subtle/70">· {items.length}</span>
+        <Icon size={12} /> {label} <span className="text-subtle">· {items.length}</span>
       </div>
       <ul className="space-y-0.5">
         {items.map((it, i) => (
