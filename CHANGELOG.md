@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.37] - 2026-10-17
+
+### Mejoras
+
+- **Textos más claros, sin jerga.** «API key» pasa a «Clave de acceso», «Proveedor» a «Servicio de IA», «Entregables» a «Archivos creados», «MCP» a «Conectores», «Modo auto» a «Aprobación automática». Los estados vacíos de Chat, Code y Overdrive dicen ahora lo que corresponde a cada uno.
+- **«Conecta tu IA» más simple.** Un solo botón principal («Usar el modelo gratuito», con un aviso honesto de que es más lento y menos preciso) y todo lo demás recogido en «Otras formas de conectar».
+- **Aviso de Overdrive de una línea.** Solo aparece cuando el modelo elegido no sirve con «Solo en tu carpeta», y nunca en tareas terminadas.
+- **Caja de escribir con lo importante a la vista.** Los permisos y Build/Plan (en Code) y el acceso (en Overdrive) son botones con menú, cada opción con una frase que explica qué pasará. En el selector de modelo, ⌘1 a ⌘9 (Ctrl en Windows) eligen los primeros modelos y el predeterminado queda marcado.
+- **Ajustes con buscador y más espacio.** Buscas por lo que recuerdas y te lleva a la opción. Al abrir Ajustes, la lista de conversaciones se pliega.
+- **Importar desde otras herramientas.** En Ajustes puedes traer las instrucciones de un proyecto y los conectores de un archivo `.mcp.json` que elijas. Nada se importa sin tu confirmación, las claves no se copian y los conectores quedan desactivados hasta que los actives.
+- **Code más cómodo en ventana pequeña.** La cabecera ya no se corta: lo secundario pasa a un menú «…». Al abrir «Cambios» se selecciona el primer archivo y puedes moverte con las flechas. Las sesiones con error se marcan con un rombo rojo.
+- **Rutinas.** En la bandeja de resultados quedan a la vista «Aprobar» y «Descartar»; lo demás va en un menú «…». «Nueva rutina» aparece siempre en la cabecera.
+
 ## [0.5.36] - 2026-10-17
 
 ### Novedades
