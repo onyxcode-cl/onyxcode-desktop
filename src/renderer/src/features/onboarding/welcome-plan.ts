@@ -10,8 +10,6 @@ export type WelcomeItems = Partial<Record<WelcomeItemId, WelcomeItemState>>
 /** Orden en que se muestran y se instalan. */
 export const WELCOME_ORDER: readonly WelcomeItemId[] = ['engine', 'craft', 'sandbox']
 
-/** Cuenta atrás antes de empezar a descargar solo (la persona ve la lista y puede omitir o empezar ya). */
-export const WELCOME_COUNTDOWN_S = 6
 
 export type WelcomeOverall = 'working' | 'ready' | 'failed'
 

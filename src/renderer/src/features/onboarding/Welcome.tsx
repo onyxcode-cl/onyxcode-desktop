@@ -3,7 +3,7 @@
  * (ArtCraft, el diseñador de documentos, y el entorno aislado de Tareas en Windows).
  * Si todo está bien, solo se ve un saludo de una frase y «Empezar»; la lista de chequeos aparece únicamente cuando algo requiere
  * atención (falta el motor, hay algo por descargar o algo falló). Con algo por descargar la persona ve la lista con los tamaños y una
- * cuenta atrás; nada se descarga sin esa cuenta atrás visible. Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
+ * botón «Instalar lo que falta»; nada se descarga sin que la persona lo pida. Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, Clock, Loader2 } from 'lucide-react'
@@ -16,7 +16,6 @@ import { platformCaps } from '../../lib/platform'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import {
-  WELCOME_COUNTDOWN_S,
   WELCOME_ORDER,
   canRetry,
   engineState,
@@ -38,7 +37,6 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const [craftMb, setCraftMb] = useState(0)
   const [craftError, setCraftError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
-  const [left, setLeft] = useState<number | null>(null)
   /** La revisión del equipo terminó (hasta entonces el saludo dice «Revisando…» y «Empezar» espera). */
   const [scanned, setScanned] = useState(false)
   /** Una vez que algo requirió atención la lista se queda (no vuelve al saludo a mitad de una descarga). */
@@ -133,7 +131,6 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const startNow = useCallback((): void => {
     if (started.current) return
     started.current = true
-    setLeft(null)
     void install(toInstall(found))
   }, [found, install])
 
@@ -143,21 +140,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     void install(failed)
   }
 
-  // Cuenta atrás visible: solo corre si hay algo que descargar y aún no se empezó.
+  // Nada se descarga solo: si hay algo por descargar, la persona lo inicia con el botón (o sigue sin instalarlo).
   const pending = toInstall(items)
   const countingDown = !started.current && pending.length > 0
-  useEffect(() => {
-    if (!countingDown) {
-      setLeft(null)
-      return
-    }
-    setLeft((l) => l ?? WELCOME_COUNTDOWN_S)
-    const id = setInterval(() => setLeft((l) => (l === null ? l : Math.max(0, l - 1))), 1000)
-    return () => clearInterval(id)
-  }, [countingDown])
-  useEffect(() => {
-    if (left === 0) startNow()
-  }, [left, startNow])
 
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -311,7 +296,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
           <div className="flex items-center gap-2">
             {showList && countingDown && (
               <Button variant="secondary" onClick={startNow}>
-                {left === null ? t('wizard.setup.run') : `${t('wizard.setup.run')} (${left})`}
+                {t('wizard.setup.run')}
               </Button>
             )}
             {showList && canRetry(items) && overall === 'failed' && (

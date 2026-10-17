@@ -99,14 +99,15 @@ describe('Welcome: algo requiere atención → tarjeta con la lista', () => {
     expect(buttons()).toContain('Continuar')
   })
 
-  it('primera vez en Mac con el diseñador de documentos sin instalar: lista con la descarga y cuenta atrás', async () => {
+  it('primera vez en Mac con el diseñador de documentos sin instalar: lista con la descarga y sin descargar nada solo', async () => {
     craft = 'missing'
     await mount('darwin', info())
     expect(section().dataset.view).toBe('attention')
     expect(host.textContent).toContain('ArtCraft')
     expect(host.textContent).toContain('300 MB')
     expect(host.textContent).not.toContain('Permisos de macOS')
-    expect(buttons().some((b) => /^Preparar todo \(\d+\)$/.test(b))).toBe(true)
+    expect(buttons()).toContain('Preparar todo')
+    expect(buttons().some((b) => /^Preparar todo \(\d+\)$/.test(b))).toBe(false)
   })
 
   it('primera vez en Windows con el entorno aislado sin preparar: lista con ese componente', async () => {
