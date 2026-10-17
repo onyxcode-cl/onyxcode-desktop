@@ -8,6 +8,7 @@
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
 import type { PasteResult, PasteScope } from './paste-files'
+import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
 import type {
   AppInfo,
   NotifyTarget,
@@ -92,6 +93,11 @@ export interface IpcInvokeContract {
    * del sistema, valida (regulares, sin ejecutables, topes 10 / 25 MB / 50 MB) y devuelve los bytes en base64. Solo escritorio.
    */
   'clipboard:readFilesForPaste': { req: { scope: PasteScope }; res: PasteResult }
+  /**
+   * Adjuntar un documento de oficina al Chat: main lo convierte a texto Markdown (solo lectura, sin macros ni vínculos, con topes
+   * y avisos de recorte) y lo devuelve ya enmarcado como datos. El renderer manda los bytes que ya leyó; nunca una ruta.
+   */
+  'attach:extractOffice': { req: OfficeExtractRequest; res: OfficeExtractResult }
   /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
   /** La ventana avisa de un error suyo (error no capturado, fallo de render) para dejarlo en el registro de problemas. */
@@ -146,6 +152,7 @@ export const IPC_INVOKE_CHANNELS = [
   'diag:logs',
   'diag:copy',
   'clipboard:readFilesForPaste',
+  'attach:extractOffice',
   'diag:export',
   'diag:problem',
   'settings:get',

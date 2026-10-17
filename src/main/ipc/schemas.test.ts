@@ -460,3 +460,16 @@ describe('extras:chatDoc:open — gráficos de Excel y libertad de diseño de Po
     expect(() => v({ ...common, kind: 'pptx', data } as never)).toThrow()
   })
 })
+
+describe('attach:extractOffice', () => {
+  it('es solo de la ventana principal y su esquema es estricto', () => {
+    expect(IPC_INVOKE_CHANNELS).toContain('attach:extractOffice')
+    for (const set of Object.values(CHANNEL_ROLES)) expect(set.has('attach:extractOffice')).toBe(false) // solo la ventana principal invoca
+    const v = IPC_SCHEMAS['attach:extractOffice']
+    expect(v({ name: 'a.docx', base64: 'AAAA' })).toEqual({ name: 'a.docx', base64: 'AAAA' })
+    expect(() => v({ name: 'a.docx', base64: 'AAAA', path: '/etc/passwd' })).toThrow() // sin claves extra: nunca una ruta
+    expect(() => v({ name: '', base64: 'AAAA' })).toThrow()
+    expect(() => v({ name: 'a.docx' })).toThrow()
+    expect(() => v({ name: 'a.docx', base64: 'A'.repeat(15 * 1024 * 1024) })).toThrow() // > 10 MB de archivo
+  })
+})

@@ -2,6 +2,7 @@ import type { IpcMain } from 'electron'
 import type { OpencodeServer } from '../opencode/server'
 import type { MainWindowDeps } from '../extras/windows'
 import { registerAppHandlers } from './app'
+import { registerAttachHandlers } from './attach-handlers'
 import { registerClipboardHandlers } from './clipboard-handlers'
 import { registerDiagnosticsHandlers } from './diagnostics'
 import { registerNotifyHandlers } from './notify'
@@ -26,6 +27,7 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerOpencodeHandlers(ipcMain, ctx.server)
   registerDiagnosticsHandlers(ipcMain, ctx.server)
   registerClipboardHandlers(ipcMain)
+  registerAttachHandlers(ipcMain)
   registerProviderHandlers(ipcMain, ctx.server)
   registerSettingsHandlers(ipcMain)
   registerNotifyHandlers(ipcMain, ctx)

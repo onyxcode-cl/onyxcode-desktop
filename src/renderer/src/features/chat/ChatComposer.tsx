@@ -1,16 +1,29 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { fitTextarea, isSubmitKey, useAutosizeTextarea } from '../../lib/textarea'
-import { ArrowUp, FileText, Paperclip, Square, X } from 'lucide-react'
+import { ArrowUp, FileText, Paperclip, Presentation, Sheet, Square, X } from 'lucide-react'
 import { useT } from '../../lib/i18n'
 import { useDraft } from '../../stores/drafts'
 import { isRemoteSurface } from '../../lib/platform'
 import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
-import { attachmentBytes, toChatAttachment, validateFiles, type ChatAttachment } from '../../lib/attachments'
+import {
+  attachmentBytes,
+  classifyFile,
+  officeCardLabel,
+  toChatAttachment,
+  validateFiles,
+  type ChatAttachment,
+  type OfficeAttachmentInfo
+} from '../../lib/attachments'
 import { handlePaste } from '../../lib/paste-attachments'
 import { VoiceDictationButton } from '../../components/VoiceDictationButton'
 
 const NO_ATTACHMENTS: ChatAttachment[] = []
+
+function OfficeIcon({ family }: { family: OfficeAttachmentInfo['family'] }): ReactNode {
+  const Icon = family === 'spreadsheet' ? Sheet : family === 'presentation' ? Presentation : FileText
+  return <Icon size={18} className="shrink-0 text-accent" aria-hidden="true" />
+}
 
 interface Props {
   /** Devolver `false` (o rechazar) indica que no se envió: el borrador se restaura. */
@@ -79,6 +92,8 @@ export function ChatComposer({
   const [text, setText] = useDraft(`chat:${autoFocusKey ?? 'new'}`, '')
   const [attachments, setAttachments] = useDraft(`chat-att:${autoFocusKey ?? 'new'}`, NO_ATTACHMENTS)
   const [attachError, setAttachError] = useState<string | null>(null)
+  /** Nombres de documentos de oficina que main está convirtiendo a texto. */
+  const [reading, setReading] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -149,10 +164,20 @@ export function ChatComposer({
     })
     setAttachError(errors.length ? errors.join(' ') : null)
     if (accepted.length === 0) return
-    void Promise.all(accepted.map((i) => toChatAttachment(files[i]))).then(
-      (added) => setAttachments((cur) => [...cur, ...added]),
-      (err: unknown) => setAttachError(err instanceof Error ? err.message : String(err))
-    )
+    const reads = accepted.filter((i) => classifyFile(files[i])?.kind === 'office').map((i) => files[i].name)
+    if (reads.length > 0) setReading((cur) => [...cur, ...reads])
+    // Cada archivo cuenta por separado: si uno no se puede leer (p. ej. un Word con contraseña) los demás se adjuntan igual.
+    void Promise.allSettled(accepted.map((i) => toChatAttachment(files[i]))).then((results) => {
+      const added: ChatAttachment[] = []
+      const failed: string[] = []
+      for (const r of results) {
+        if (r.status === 'fulfilled') added.push(r.value)
+        else failed.push(r.reason instanceof Error ? r.reason.message : String(r.reason))
+      }
+      if (reads.length > 0) setReading((cur) => cur.filter((n) => !reads.includes(n)))
+      if (added.length > 0) setAttachments((cur) => [...cur, ...added])
+      if (failed.length > 0) setAttachError([...errors, ...failed].join(' '))
+    })
   }
 
   const submit = (): void => {
@@ -217,9 +242,22 @@ export function ChatComposer({
             {attachments.map((a) => (
               <li
                 key={a.id}
-                className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${mobile ? 'h-16 max-w-[9rem] min-w-16' : 'h-14 max-w-[9rem] min-w-14 overflow-hidden'}`}
+                data-testid={a.office ? 'chat-office-card' : undefined}
+                className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${a.office ? (mobile ? 'h-16 max-w-[17rem]' : 'h-14 max-w-[17rem] overflow-hidden') : mobile ? 'h-16 max-w-[9rem] min-w-16' : 'h-14 max-w-[9rem] min-w-14 overflow-hidden'}`}
               >
-                {a.mime.startsWith('image/') ? (
+                {a.office ? (
+                  <span className="flex min-w-0 items-center gap-2 pr-6 pl-2.5 text-left">
+                    <OfficeIcon family={a.office.family} />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-[11px] font-medium text-fg desk:text-meta" title={a.name}>
+                        {a.name}
+                      </span>
+                      <span className="truncate text-[10px] text-muted desk:text-meta" title={a.office.notes.join(' ') || undefined}>
+                        {officeCardLabel(a.office)}
+                      </span>
+                    </span>
+                  </span>
+                ) : a.mime.startsWith('image/') ? (
                   <img src={a.url} alt={a.name} className={`h-full object-cover ${mobile ? 'w-16 rounded-lg' : 'w-14'}`} />
                 ) : (
                   <span className="flex min-w-0 flex-col items-center gap-0.5 px-2 text-[10px] desk:text-meta text-muted">
@@ -258,7 +296,7 @@ export function ChatComposer({
             tabIndex={-1}
             aria-hidden="true"
             data-testid="chat-file-input"
-            accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/*,.md,.csv,.json,.yml,.yaml,.log"
+            accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/*,.md,.csv,.json,.yml,.yaml,.log,.docx,.docm,.xlsx,.xlsm,.xlsb,.xls,.pptx,.pptm,.odt,.ods,.odp,.rtf,.doc,.ppt"
             className="hidden"
             onChange={(e) => {
               if (e.target.files) addFiles(e.target.files)
@@ -359,6 +397,11 @@ export function ChatComposer({
           <div className="flex items-center gap-1 overflow-x-auto border-t border-border px-1.5 py-1">{footer}</div>
         )}
       </div>
+      {reading.length > 0 && (
+        <p role="status" className="mt-2 text-center text-[12px] text-muted">
+          {t('chat.attach.office.reading', { name: reading[0] })}
+        </p>
+      )}
       {attachError && (
         <p role="alert" className="mt-2 text-center text-[12px] text-danger">
           {attachError}

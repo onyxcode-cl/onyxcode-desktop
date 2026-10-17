@@ -38,6 +38,7 @@ const SCENARIOS = [
   'chat-pregunta',
   'chat-documento',
   'chat-archivo-ver',
+  'chat-adjunto-office',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -880,6 +881,42 @@ async function seedRoutines(ctx) {
   )
 }
 
+// Documentos de oficina de muestra (se generan al vuelo con las librerías del repo; nada binario versionado).
+async function makeOfficeFixtures(dir) {
+  const JSZip = require('jszip')
+  const XLSX = require('xlsx')
+  mkdirSync(dir, { recursive: true })
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+  const p = (t, style) => `<w:p>${style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : ''}<w:r><w:t>${t}</w:t></w:r></w:p>`
+  const cell = (t) => `<w:tc><w:p><w:r><w:t>${t}</w:t></w:r></w:p></w:tc>`
+  const docx = new JSZip()
+  docx.file(
+    'word/document.xml',
+    `<w:document ${W}><w:body>${p('Informe del trimestre', 'Heading1')}${p('Las ventas del trimestre cerraron en $48,2 millones, un 12 % más que el anterior.')}${p('Detalle por mes', 'Heading2')}` +
+      `<w:tbl><w:tr>${cell('Mes')}${cell('Ventas')}</w:tr><w:tr>${cell('Enero')}${cell('120')}</w:tr><w:tr>${cell('Febrero')}${cell('135')}</w:tr></w:tbl></w:body></w:document>`
+  )
+  docx.file('word/styles.xml', `<w:styles ${W}><w:style w:styleId="Heading1"><w:name w:val="heading 1"/></w:style><w:style w:styleId="Heading2"><w:name w:val="heading 2"/></w:style></w:styles>`)
+  docx.file('docProps/app.xml', '<Properties><Pages>3</Pages></Properties>')
+  writeFileSync(join(dir, 'informe-trimestre.docx'), await docx.generateAsync({ type: 'nodebuffer' }))
+
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet([['Mes', 'Ventas'], ['Enero', 120], ['Febrero', 135]])
+  ws.B4 = { t: 'n', f: 'SUM(B2:B3)', v: 255 }
+  ws['!ref'] = 'A1:B4'
+  XLSX.utils.book_append_sheet(wb, ws, 'Ventas')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Zona', 'Meta'], ['Norte', 80], ['Centro', 60]]), 'Metas')
+  writeFileSync(join(dir, 'ventas-2026.xlsx'), XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
+
+  const sld = (title, bullets) =>
+    `<p:sld xmlns:p="p" xmlns:a="a"><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>${title}</a:t></a:r></a:p></p:txBody></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph type="body"/></p:nvPr></p:nvSpPr><p:txBody>${bullets.map((b) => `<a:p><a:r><a:t>${b}</a:t></a:r></a:p>`).join('')}</p:txBody></p:sp></p:spTree></p:cSld></p:sld>`
+  const pptx = new JSZip()
+  pptx.file('ppt/slides/slide1.xml', sld('Resultados', ['Ventas al alza', 'Norte lidera']))
+  pptx.file('ppt/slides/slide2.xml', sld('Próximos pasos', ['Abrir sucursal', 'Contratar dos personas']))
+  pptx.file('ppt/slides/slide3.xml', sld('Preguntas', ['Gracias']))
+  writeFileSync(join(dir, 'presentacion-resultados.pptx'), await pptx.generateAsync({ type: 'nodebuffer' }))
+  return ['informe-trimestre.docx', 'ventas-2026.xlsx', 'presentacion-resultados.pptx'].map((n) => join(dir, n))
+}
+
 const S = {
   async 'chat-vacio'(ctx) {
     await closeOverlays(ctx.page)
@@ -994,6 +1031,33 @@ const S = {
     await ctx.page.locator('[data-chat-file]').first().getByRole('button', { name: 'Ver aquí' }).click()
     await vis(ctx.page.locator('[data-chat-file-panel]'), 15_000)
     await sleep(800)
+  },
+  // Adjuntar Word, Excel y PowerPoint al Chat: main los convierte a texto y la tarjeta muestra tipo y cantidad (páginas/hojas/diapositivas).
+  // Tras la captura envía el mensaje y comprueba en el motor falso que a la IA le llegó el contenido como TEXTO (VERIF-OFFICE).
+  async 'chat-adjunto-office'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    const files = await makeOfficeFixtures(join(ctx.userData, 'office-muestras'))
+    await ctx.page.locator('[data-testid="chat-file-input"]').setInputFiles(files)
+    await vis(ctx.page.locator('[data-testid="chat-office-card"]').nth(2), 20_000)
+    await ctx.page.getByPlaceholder('Escribe un mensaje…').fill('Resume estos tres documentos y dime qué falta para cerrar el trimestre')
+    await sleep(500)
+    // El `undo` corre tras todas las capturas de este escenario.
+    return async () => {
+      await ctx.page.getByRole('button', { name: 'Enviar' }).click()
+      await sleep(2500)
+      const res = await fetch(`${ctx.fake.conn.baseUrl}/__e2e/requests?path=/session&method=POST&limit=20`, {
+        headers: { authorization: ctx.fake.conn.authorization }
+      })
+      const reqs = await res.json()
+      const sent = reqs.find((r) => /prompt_async$/.test(r.path))
+      const parts = sent?.body?.parts ?? []
+      const texts = parts
+        .filter((x) => x.type === 'file')
+        .map((x) => ({ name: x.filename, mime: x.mime, text: Buffer.from(String(x.url).split(',')[1] ?? '', 'base64').toString('utf8') }))
+      console.log('VERIF-OFFICE', JSON.stringify({ parts: parts.map((x) => x.type), files: texts.map((t) => ({ name: t.name, mime: t.mime, chars: t.text.length })) }))
+      for (const t of texts) console.log(`VERIF-OFFICE-TEXT ${t.name}\n${t.text}\n--`)
+    }
   },
   async 'code-proyecto'(ctx) {
     await seedCode(ctx)

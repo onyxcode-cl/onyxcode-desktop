@@ -8,6 +8,7 @@
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { DIAG_SOURCES } from '@shared/diagnostics'
+import { OFFICE_MAX_BYTES } from '@shared/attach-office'
 import { PREFLIGHT_ORDER } from '@shared/preflight'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
 import { CODE_INVOKE_CHANNELS, EDITOR_IDS, FILES_SUB_ID_RE, type CodeInvokeChannel, type CodeRequest } from '@shared/ipc-code'
@@ -563,6 +564,11 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'diag:logs': obj({ source: literal(...DIAG_SOURCES), maxLines: optional(num({ int: true, min: 1, max: 5000 })) }),
   'diag:copy': obj({ source: literal(...DIAG_SOURCES) }),
   'clipboard:readFilesForPaste': obj({ scope: literal('images', 'any') }),
+  // base64 de ≤ 10 MB (4/3 de OFFICE_MAX_BYTES + margen); el nombre solo decide el formato, nunca es una ruta.
+  'attach:extractOffice': obj({
+    name: str({ max: 300, min: 1 }),
+    base64: str({ max: Math.ceil((OFFICE_MAX_BYTES * 4) / 3) + 16 })
+  }),
   'diag:export': none,
   'diag:problem': obj({ message: str({ max: 2000 }), stack: optional(str({ max: 4000 })), origin: optional(literal('chat-doc')) }),
   'settings:get': none,
