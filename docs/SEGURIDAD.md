@@ -1826,7 +1826,7 @@ Ajustes › Importar trae a Lazunox las instrucciones de un proyecto y servidore
 - **Control remoto:** `extras:import:pick` y `extras:import:apply` son clase **X** (`policy.ts`; el celular no importa). La sección está oculta en la superficie remota.
 - **No cubierto:** configuraciones en TOML; resolución de `${VAR}` del origen; las referencias `{env:…}` dependen de que la variable exista en el entorno de la app (una app abierta desde el Finder no hereda las de la terminal: se pueden definir editando el conector en MCP).
 
-## 3 quinquagies quater. Modos de permisos de Code (F8-B178)
+## 3 quinquagies quater. Modos de permisos de Code (F8-B179)
 
 Los modos del chip («Preguntar siempre», «Editar sin preguntar», «Solo explorar», «Automático», «Todo sin preguntar») no los aplica la app: **solo escribe reglas en la sesión del motor** y el motor decide. Qué hace el motor 1.19.0 (verificado con el motor real, `docs/estudio-competencia/permisos-arreglo.md`):
 
