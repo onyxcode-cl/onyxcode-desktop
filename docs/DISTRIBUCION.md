@@ -360,6 +360,46 @@ certificado» y se conservan entre versiones.
 
 (Esto lo hace el usuario; las pruebas del repositorio no crean certificados ni firman con uno.)
 
+### 10.4 Release de un solo comando: `scripts/release.sh`
+
+Los ~15 pasos de sacar una versión (Mac + Windows + GitHub + página) están encadenados por fases en `scripts/release.sh`. No
+reemplaza a los scripts de arriba: los llama en el orden que se aprendió a golpes (`docs/VPS.md` para la página; incidente 0.5.24 para
+las puertas `npm ls`, `verify:bundled` y `smoke-boot`). Cada fase se detiene al primer fallo, habla en español, y es idempotente: cada
+paso exitoso deja `dist/release-state/X.Y.Z/<paso>.ok` con el commit en que se hizo y se salta mientras el commit no cambie
+(`--force` lo repite). `--dry-run` solo imprime lo que haría.
+
+| Fase                           | Qué hace                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prepare X.Y.Z`                | Solo lectura: rama `main` y al día con `origin/main`, árbol limpio, versión en `package.json`, `package-lock.json` y sección en `CHANGELOG.md` (con `release-notes.mjs`), tag libre, `gh` instalado y `npm ls --omit=dev --all` sin `extraneous`/`missing`. Corre también con `--dry-run` (son lecturas).                    |
+| `mac X.Y.Z`                    | `npm run package` → `sign-release-mac.sh` → `publish-update.mjs` → `verify-update.mjs` → `npm run verify:bundled` (después de publicar, nunca antes) → `smoke-boot-mac.sh` sobre la `.app` y sobre el ZIP de la release.                                                                                                     |
+| `win X.Y.Z`                    | Comprueba el acceso al PC por ssh → `STEPS=ci,package win/sync.sh` → trae `win-unpacked` (por tar + scp) y el instalador → `publish-update.mjs --platform win32-x64` → `verify-update.mjs --platform win32-x64` → `win/pack-check.ps1` en el PC.                                                                              |
+| `draft X.Y.Z`                  | `publish-github.mjs` (carpeta `dist/github` con `SHA256SUMS`), notas con `release-notes.mjs` (cambiando `X.Y.Z` por la versión), `gh release create --draft --target main` y comparación del digest SHA-256 de CADA asset contra el archivo local. Si el borrador ya existe, solo compara; si ya está publicada, se niega. |
+| `publish X.Y.Z`                | Exige un **terminal interactivo** y que la persona escriba exactamente `publicar vX.Y.Z` (no hay `--yes`; por tubería o en automático se niega). Vuelve a comparar los digests, hace `gh release edit --draft=false --latest`, `site/publicar-descargas.sh`, cambia la versión en `site/lazunox/index.html` y lo sube por scp. |
+
+Al terminar `publish` imprime lo que **falta a mano**: purgar Cloudflare (el token vive en un MCP, no en el script) para el índice, el
+`.dmg`, el `.exe`, `latest.json` y `SHA256SUMS`; el comando que baja los instaladores desde el dominio sin caché y compara el SHA-256
+con `SHA256SUMS`; confirmar que la release figura como «Latest» y confirmar en git el cambio de `site/lazunox/index.html`.
+
+```bash
+export PATH=/opt/homebrew/opt/node@22/bin:$PATH
+scripts/release.sh prepare 0.5.36          # y arregla lo que falle
+scripts/release.sh --dry-run mac 0.5.36    # ver qué haría
+scripts/release.sh mac 0.5.36
+scripts/release.sh win 0.5.36
+scripts/release.sh draft 0.5.36            # revisar el borrador en GitHub
+scripts/release.sh publish 0.5.36          # pide la confirmación escrita
+```
+
+Variables de entorno (valores por defecto entre paréntesis): `ONYX_WIN_HOST` (`Bentec@100.64.0.6`, el PC de pruebas por Tailscale; es la
+misma que usa `win/sync.sh`), `ONYX_WIN_ROOT` (`C:/onyx`), `LAZUNOX_UPDATE_KEY_FILE` (`~/.lazunox-keys/update.pem`; el script solo
+comprueba que existe y se la pasa por entorno a `publish-update.mjs`, nunca la lee ni la imprime) y `RELEASE_ALLOW_BRANCH=1` (solo para
+probar `prepare` fuera de `main`). La llave `~/.ssh/lazunox_deploy_ed25519` solo la usan `ssh` y `scp` de la fase `publish`.
+
+Pruebas: `src/test/release-script.test.ts` (solo macOS) ejecuta `--dry-run` de todas las fases con un `gh` falso y comprueba el orden de
+las fases, el host de Windows por entorno y que `publish` sin terminal no llega a `gh release edit`. **No verificado:** de punta a punta
+con una versión real (solo `prepare` y `--dry-run`); `shellcheck` no estaba instalado. Si algo sale mal después de publicar:
+`scripts/retirar-release.sh MALA BUENA`.
+
 ## 11. Prueba manual del actualizador (dos builds de prueba, todo en directorios temporales)
 
 Comprueba de punta a punta, con dos apps empaquetadas reales, la descarga, verificación, reemplazo, arranque confirmado
