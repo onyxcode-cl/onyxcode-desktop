@@ -27,7 +27,7 @@ export const importSettings = {
   'import.source.folder.desc': 'Busca CLAUDE.md y los archivos .mcp.json de esa carpeta. Las instrucciones pasan a ser su AGENTS.md.',
   'import.source.folder.button': 'Elegir carpeta…',
   'import.source.file.title': 'Archivo de conectores',
-  'import.source.file.desc': 'Un archivo .json con servidores MCP de otra herramienta. Solo se lee el archivo que elijas.',
+  'import.source.file.desc': 'Un archivo .json con conectores (MCP) de otra herramienta. Solo se lee el archivo que elijas.',
   'import.source.file.button': 'Elegir archivo…',
   'import.dialog.folder': 'Elige la carpeta de un proyecto',
   'import.dialog.file': 'Elige un archivo de configuración de conectores',

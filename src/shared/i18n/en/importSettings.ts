@@ -28,7 +28,7 @@ export const importSettings = {
   'import.source.folder.desc': 'Looks for CLAUDE.md and .mcp.json files in that folder. Instructions become its AGENTS.md.',
   'import.source.folder.button': 'Choose folder…',
   'import.source.file.title': 'A connectors file',
-  'import.source.file.desc': 'A .json file with MCP servers from another tool. Only the file you choose is read.',
+  'import.source.file.desc': 'A .json file with connectors (MCP) from another tool. Only the file you choose is read.',
   'import.source.file.button': 'Choose file…',
   'import.dialog.folder': 'Choose a project folder',
   'import.dialog.file': 'Choose a connectors configuration file',
