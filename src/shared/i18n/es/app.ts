@@ -68,7 +68,7 @@ export const app = {
   'app.palette.theme.dark': 'Tema: oscuro',
   'app.palette.untitled': 'Conversación sin título',
   'app.palette.title': 'Paleta de comandos',
-  'app.palette.placeholder': 'Buscar comandos y conversaciones…',
+  'app.palette.placeholder': 'Buscar comandos y mensajes…',
   'app.palette.empty': 'Sin resultados para «{query}»',
   'app.palette.navigate': 'navegar',
   'app.palette.run': 'ejecutar',

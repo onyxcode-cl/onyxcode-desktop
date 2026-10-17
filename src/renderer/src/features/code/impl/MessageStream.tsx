@@ -407,7 +407,7 @@ const TurnView = memo(
     const inlinePerms = new Map<string, PendingPermission[]>()
     for (const p of perms) if (p.tool) inlinePerms.set(p.tool.callID, [...(inlinePerms.get(p.tool.callID) ?? []), p])
     return (
-      <div className={withCv('group/turn flex flex-col gap-3', old && perms.length === 0, true)}>
+      <div data-message-id={user?.info.id} className={withCv('group/turn flex flex-col gap-3', old && perms.length === 0, true)}>
         {user && <UserMessage entry={user} busy={busy} root={root} />}
         {blocks.length > 0 && (
           <div

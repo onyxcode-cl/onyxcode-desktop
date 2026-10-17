@@ -121,6 +121,10 @@ const SCENARIOS = [
   'personalizacion-conectar',
   'personalizacion-e2e', // verificación (no captura): instala y quita una habilidad desde una carpeta y conecta y quita un conector
   'paleta',
+  // Búsqueda por contenido (F8-B182): la paleta encuentra palabras que solo están en el cuerpo de los mensajes de Chat y Code;
+  // `busqueda-global-abrir` elige un resultado y comprueba que se abre la conversación en ese mensaje (resaltado un momento).
+  'busqueda-global',
+  'busqueda-global-abrir',
   'selector-modelo',
   // Caja de escribir de Code con el menú de permisos abierto (frase por opción, actual marcada, atajos 1-5).
   'caja-menus',
@@ -148,7 +152,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|busqueda-)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -648,6 +652,25 @@ async function seedChats(ctx) {
     await vis(page.getByText(done), 30_000)
     await sleep(500)
   }
+}
+
+// Abre la paleta, escribe `query` y espera a que termine de buscar. Devuelve cuántos resultados hay y el texto de estado.
+async function searchPalette(page, query) {
+  if (!(await page.getByRole('dialog', { name: /Paleta de comandos/ }).count())) {
+    await press(page, WIN ? 'Control+K' : 'Meta+K')
+    await vis(page.getByRole('dialog', { name: /Paleta de comandos/ }), 5000)
+  }
+  const box = page.getByPlaceholder(/Buscar comandos/)
+  await box.fill('')
+  await box.fill(query)
+  // Espera a que el índice esté listo (si aún prepara, el estado dice «Preparando…»).
+  await page.waitForFunction(() => !/Preparando la búsqueda/.test(document.querySelector('[data-testid="palette-search-status"]')?.textContent ?? ''), null, { timeout: 30_000 })
+  await sleep(500)
+  return page.evaluate(() => ({
+    hits: document.querySelectorAll('[data-testid="search-hit"]').length,
+    mark: document.querySelector('[data-testid="search-hit"] mark')?.textContent ?? '',
+    status: (document.querySelector('[data-testid="palette-search-status"]')?.textContent ?? '').trim()
+  }))
 }
 
 // ---- escenarios: cada uno deja la pantalla lista y devuelve una función de limpieza opcional ----
@@ -2353,6 +2376,64 @@ const S = {
     await press(ctx.page, 'Meta+Shift+P')
     await vis(ctx.page.getByRole('dialog'), 5000)
     await sleep(400)
+  },
+  // Búsqueda por contenido (F8-B182). Verificación real: la palabra solo está en el CUERPO de un mensaje (no en ningún título).
+  async 'busqueda-global'(ctx) {
+    const { page } = ctx
+    await seedChats(ctx)
+    await seedCode(ctx)
+    await closeOverlays(page)
+    await goMode(page, 'Chat')
+    const found = await searchPalette(page, 'levadura')
+    const titles = await page.evaluate(() => [...document.querySelectorAll('[role="group"]')].map((g) => g.getAttribute('aria-label')))
+    console.log('VERIF-BUSQUEDA cuerpo "levadura" => ' + JSON.stringify({ hits: found.hits, titles, mark: found.mark, status: found.status }))
+    if (found.hits < 1 || titles.some((t) => /levadura/i.test(t ?? '')) || !/levadura/i.test(found.mark)) {
+      throw new Error('la búsqueda por cuerpo no encontró la palabra: ' + JSON.stringify(found))
+    }
+    const code = await searchPalette(page, 'redondea')
+    console.log('VERIF-BUSQUEDA cuerpo Code "redondea" => ' + JSON.stringify({ hits: code.hits, status: code.status }))
+    if (code.hits < 1) throw new Error('la búsqueda no encontró texto de una conversación de Code')
+    const none = await searchPalette(page, 'zzqxjw')
+    console.log('VERIF-BUSQUEDA sin resultados => ' + JSON.stringify({ hits: none.hits, status: none.status }))
+    if (none.hits !== 0) throw new Error('una palabra inexistente devolvió resultados')
+    const many = await searchPalette(page, 'iva')
+    console.log('VERIF-BUSQUEDA "iva" => ' + JSON.stringify({ hits: many.hits, status: many.status }))
+    await sleep(500)
+  },
+  async 'busqueda-global-abrir'(ctx) {
+    const { page } = ctx
+    await seedChats(ctx)
+    await seedCode(ctx)
+    await closeOverlays(page)
+    await goMode(page, 'Chat')
+    // Code primero: elegir un resultado de Code cambia de modo y abre esa sesión en su mensaje.
+    const flashed = async (re, label) => {
+      const el = page.locator('[data-message-id][data-search-flash]').first()
+      await el.waitFor({ state: 'attached', timeout: 15_000 })
+      const info = await el.evaluate((n) => {
+        const r = n.getBoundingClientRect()
+        return { text: n.textContent ?? '', inView: r.top >= 0 && r.bottom <= innerHeight + 4 }
+      })
+      console.log('VERIF-ABRIR ' + label + ' => ' + JSON.stringify({ coincide: re.test(info.text), enPantalla: info.inView }))
+      if (!re.test(info.text)) throw new Error(label + ': el mensaje resaltado no contiene la palabra')
+      if (!info.inView) throw new Error(label + ': el mensaje resaltado no quedó a la vista')
+    }
+    await searchPalette(page, 'redondea')
+    await press(page, 'Enter')
+    await vis(page.getByText(/ahora aplica el IVA/), 15_000)
+    await flashed(/redondea/i, 'Code')
+    await sleep(2600)
+    await goMode(page, 'Chat')
+    await searchPalette(page, 'levadura')
+    await press(page, 'Enter')
+    await vis(page.getByText(/Mezcla 500 g/), 15_000)
+    await flashed(/levadura/i, 'Chat')
+    // Para la captura el resaltado se mantiene (el real dura ~2 s y las capturas de varios tamaños tardan más).
+    await sleep(2600)
+    await page.evaluate(() => {
+      const el = [...document.querySelectorAll('[data-message-id]')].find((n) => /levadura/i.test(n.textContent ?? ''))
+      el?.setAttribute('data-search-flash', '')
+    })
   },
   // ---- H24: estados de error, carga y vacío ----
   // La IA rechaza la conexión (ProviderAuthError): tarjeta de error del Chat con su mensaje llano y el botón de ayuda.

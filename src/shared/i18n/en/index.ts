@@ -25,6 +25,7 @@ import { importSettings } from './importSettings'
 import { personalizacion } from './personalizacion'
 import { personalizacionCatalogo } from './personalizacionCatalogo'
 import { gallery } from './gallery'
+import { search } from './search'
 
 export const en = {
   ...common,
@@ -53,7 +54,8 @@ export const en = {
   ...importSettings,
   ...personalizacion,
   ...personalizacionCatalogo,
-  ...gallery
+  ...gallery,
+  ...search
 }
 
 export const AREAS = {
@@ -83,5 +85,6 @@ export const AREAS = {
   importSettings,
   personalizacion,
   personalizacionCatalogo,
-  gallery
+  gallery,
+  search
 }

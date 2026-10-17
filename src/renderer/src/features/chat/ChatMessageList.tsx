@@ -187,7 +187,10 @@ const ChatUserRow = memo(function ChatUserRow({
     )
   }
   return (
-    <div className={withCv(`group flex ${animate ? 'animate-rise-in ' : ''}flex-col items-end gap-1 desk:relative`, old, true)}>
+    <div
+      data-message-id={entry.info.id}
+      className={withCv(`group flex ${animate ? 'animate-rise-in ' : ''}flex-col items-end gap-1 desk:relative`, old, true)}
+    >
       {elements.map((d, i) => (
         <ElementReadonlyChip key={i} detail={d} />
       ))}
@@ -307,6 +310,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const visibleBlocks = reading === 'normal' ? blocks : blocks.filter((b) => showBlock(reading, b))
   return (
     <div
+      data-message-id={entry.info.id}
       className={withCv('group flex flex-col gap-1.5 desk:gap-4', old, true)}
       {...(longPress && text ? { ...longPress, 'data-long-press': '' } : {})}
     >

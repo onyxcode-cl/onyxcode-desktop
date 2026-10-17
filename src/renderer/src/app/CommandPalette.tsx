@@ -1,8 +1,9 @@
 /**
  * Paleta de comandos (⌘K / ⌘⇧P): ir a un modo, crear algo nuevo, abrir Ajustes, cambiar el tema
- * y saltar a una conversación reciente. Solo navegación y acciones ya existentes: no toca stores ajenos.
+ * y saltar a una conversación reciente. Con 2 letras o más busca además DENTRO de los mensajes de Chat y Code
+ * (`features/search`, índice local solo en memoria). Solo navegación y acciones ya existentes: no toca stores ajenos.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { t } from '@shared/i18n'
 import { useLang, useT } from '../lib/i18n'
 import { isSubmitKey } from '../lib/textarea'
@@ -30,6 +31,11 @@ import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
 import { hintText, useEffectiveBindings } from '../keybindings/bindings'
+import { Spinner } from '../components/Spinner'
+import { ContentResults, contentItemId, flattenGroups, type ContentItem } from '../features/search/ContentResults'
+import { MIN_QUERY, fold } from '../features/search/search-index'
+import { clearSearchIndex, ensureSearchIndex, MAX_CONVERSATIONS, searchContent, useSearchStatus } from '../features/search/search-service'
+import { openSearchHit } from '../features/search/open-hit'
 
 interface Command {
   id: string
@@ -183,14 +189,21 @@ function PaletteDialog(): React.JSX.Element {
   const commands = useCommands()
   const [query, setQuery] = useState('')
   const [index, setIndex] = useState(0)
+  const [cleared, setCleared] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const status = useSearchStatus()
 
   // Devolver el foco a donde estaba al cerrar.
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null
     inputRef.current?.focus()
     return () => prev?.focus?.()
+  }, [])
+
+  // La primera vez que se abre la paleta se empieza a preparar la búsqueda en los mensajes (en segundo plano).
+  useEffect(() => {
+    ensureSearchIndex()
   }, [])
 
   const results = useMemo(() => {
@@ -208,7 +221,22 @@ function PaletteDialog(): React.JSX.Element {
       .map((x) => x.c)
   }, [commands, query])
 
-  useEffect(() => setIndex(0), [query])
+  // La búsqueda en mensajes sigue a lo que se escribe sin trabar la caja de texto.
+  const deferred = useDeferredValue(query)
+  const contentOn = fold(deferred.trim()).length >= MIN_QUERY
+  const content = useMemo(
+    () => (contentOn ? searchContent(deferred) : { groups: [], hitCount: 0 }),
+    // `status.version` cambia cada vez que el índice recibe conversaciones nuevas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contentOn, deferred, status.version]
+  )
+  const contentItems = useMemo(() => flattenGroups(content.groups), [content])
+  const total = results.length + contentItems.length
+
+  useEffect(() => {
+    setIndex(0)
+    setCleared(false)
+  }, [query])
 
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(`[data-index="${index}"]`)?.scrollIntoView({ block: 'nearest' })
@@ -219,22 +247,50 @@ function PaletteDialog(): React.JSX.Element {
     close(false)
     c.run()
   }
+  const openContent = (item: ContentItem | undefined): void => {
+    if (!item) return
+    close(false)
+    void openSearchHit(item.group, item.hit)
+  }
 
   const onKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setIndex((i) => (results.length ? (i + 1) % results.length : 0))
+      setIndex((i) => (total ? (i + 1) % total : 0))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setIndex((i) => (results.length ? (i - 1 + results.length) % results.length : 0))
+      setIndex((i) => (total ? (i - 1 + total) % total : 0))
     } else if (isSubmitKey(e, { allowShift: true })) {
+      // Enter sobre «Borrar lo leído» pulsa ese botón; en el resto ejecuta el resultado marcado.
+      if ((e.target as HTMLElement).closest('[data-palette-clear]')) return
       e.preventDefault()
-      run(results[index])
+      if (index < results.length) run(results[index])
+      else openContent(contentItems[index - results.length])
     } else if (e.key === 'Escape') {
       e.preventDefault()
       close(false)
     }
   }
+
+  const activeItem = contentItems[index - results.length]
+  const activeId =
+    index < results.length ? (results[index] ? `palette-${results[index].id}` : undefined) : activeItem && contentItemId(activeItem)
+
+  // Texto de estado de la búsqueda en mensajes (también lo lee el lector de pantalla).
+  const building = status.phase === 'building'
+  let statusText = ''
+  if (cleared) statusText = t('search.cleared')
+  else if (contentOn) {
+    if (content.groups.length > 0) {
+      statusText = t(content.groups.length === 1 ? 'search.countOneGroup' : 'search.count', {
+        count: content.hitCount,
+        groups: content.groups.length
+      })
+      if (building) statusText += ` ${t('search.partial')}`
+    } else if (building) statusText = t('search.preparing', { done: status.done, total: status.total })
+    else if (status.phase === 'error') statusText = t('search.error')
+    else statusText = t('search.none', { query: deferred.trim() })
+  } else if (building && query.trim()) statusText = t('search.preparing', { done: status.done, total: status.total })
 
   let lastGroup = ''
   return (
@@ -244,7 +300,7 @@ function PaletteDialog(): React.JSX.Element {
         aria-modal="true"
         aria-label={t('app.palette.title')}
         onKeyDown={onKeyDown}
-        className="flex max-h-[min(480px,72vh)] w-[600px] max-w-full animate-pop-in flex-col overflow-hidden rounded-modal border-0 bg-elevated shadow-modal"
+        className="flex max-h-[min(540px,78vh)] w-[600px] max-w-full animate-pop-in flex-col overflow-hidden rounded-modal border-0 bg-elevated shadow-modal"
       >
         <div className="flex h-[52px] items-center gap-3 border-b border-border/60 px-4">
           <Search size={20} className="shrink-0 text-muted" aria-hidden />
@@ -256,13 +312,23 @@ function PaletteDialog(): React.JSX.Element {
             role="combobox"
             aria-expanded="true"
             aria-controls="palette-list"
-            aria-activedescendant={results[index] ? `palette-${results[index].id}` : undefined}
+            aria-activedescendant={activeId}
             className="h-12 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
           />
         </div>
 
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="palette-search-status"
+          className={statusText ? 'flex items-center gap-2 border-b border-border/60 px-4 py-1.5 text-meta text-subtle' : 'sr-only'}
+        >
+          {building && contentOn && content.groups.length === 0 && <Spinner size={12} />}
+          <span>{statusText}</span>
+        </div>
+
         <div ref={listRef} id="palette-list" role="listbox" className="min-h-0 flex-1 overflow-y-auto px-2 pt-1.5 pb-2">
-          {results.length === 0 && (
+          {total === 0 && !(contentOn && building) && (
             <div className="flex flex-col items-center gap-2 px-3 py-10 text-center text-subtle">
               <SearchX size={20} aria-hidden />
               <p className="text-ui">{t('app.palette.empty', { query })}</p>
@@ -300,6 +366,26 @@ function PaletteDialog(): React.JSX.Element {
               </div>
             )
           })}
+          <ContentResults groups={content.groups} startIndex={results.length} activeIndex={index} onHover={setIndex} onPick={openContent} />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 border-t border-border/60 px-4 py-1.5 text-meta text-subtle">
+          <span className="min-w-0 flex-1">
+            {t('search.scope', { total: MAX_CONVERSATIONS })}
+            {status.failed > 0 && ` ${t('search.failedSome', { count: status.failed })}`}
+          </span>
+          <button
+            type="button"
+            data-palette-clear
+            title={t('search.clearTitle')}
+            onClick={() => {
+              clearSearchIndex()
+              setCleared(true)
+            }}
+            className="shrink-0 rounded-ctl-sm px-1.5 py-0.5 text-muted hover:bg-hover hover:text-fg"
+          >
+            {t('search.clear')}
+          </button>
         </div>
 
         <div className="flex h-9 shrink-0 items-center gap-4 border-t border-border/60 bg-bg px-4 text-meta text-subtle">

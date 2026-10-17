@@ -71,7 +71,7 @@ export const app = {
   'app.palette.theme.dark': 'Theme: dark',
   'app.palette.untitled': 'Untitled conversation',
   'app.palette.title': 'Command palette',
-  'app.palette.placeholder': 'Search commands and conversations…',
+  'app.palette.placeholder': 'Search commands and messages…',
   'app.palette.empty': 'No results for “{query}”',
   'app.palette.navigate': 'navigate',
   'app.palette.run': 'run',

@@ -54,6 +54,7 @@ export const MIGRATED: string[] = [
   'src/main/extras/tray.ts',
   'src/main/security/web-security.ts',
   'src/renderer/src/app/CommandPalette.tsx',
+  'src/renderer/src/features/search/ContentResults.tsx',
   'src/renderer/src/app/EngineNotice.tsx',
   'src/renderer/src/app/ServerBanner.tsx',
   'src/renderer/src/app/Sidebar.tsx',

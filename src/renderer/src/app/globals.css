@@ -229,6 +229,26 @@
     transform: translateY(6px);
   }
 }
+/* Mensaje al que salta la búsqueda por contenido: se tiñe un momento y vuelve a la normalidad. */
+[data-search-flash] {
+  border-radius: 12px;
+  animation: search-flash 2.2s ease-out both;
+}
+@keyframes search-flash {
+  0%,
+  55% {
+    background-color: var(--accent-soft);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-search-flash] {
+    animation: none;
+    background-color: var(--accent-soft);
+  }
+}
 @keyframes sheet-up {
   from {
     transform: translateY(100%);
