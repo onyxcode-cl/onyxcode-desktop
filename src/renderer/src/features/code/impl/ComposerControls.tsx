@@ -5,11 +5,12 @@
  */
 import { useDismiss } from '../../../lib/use-dismiss'
 import { useState } from 'react'
-import { AtSign, Brain, Check, CircleSlash, ListChecks, MoreHorizontal, Paperclip, PencilLine, Shield, Wand2 } from 'lucide-react'
+import { AtSign, Brain, Check, CircleSlash, Hammer, ListChecks, MoreHorizontal, Paperclip, PencilLine, Shield, Wand2 } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
-import { isRemoteSurface } from '../../../lib/platform'
+import { isRemoteSurface, isWindowsPlatform } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
+import { ChipMenu } from '../../../components/ChipMenu'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useAiGate, type AiGate } from '../../../lib/ai-gate'
@@ -68,63 +69,52 @@ function MenuItem({
   )
 }
 
-/** Modo de permisos de la sesión activa. */
+/** Modo de permisos de la sesión activa: chip siempre visible; la etiqueta solo se oculta (queda en `aria-label`/`title`) si no cabe. */
 export function PermissionChip(): React.JSX.Element {
   const t = useT()
   const mode = useCode((s) => s.permissionMode)
   const setPermissionMode = useCode((s) => s.setPermissionMode)
-  const [open, setOpen] = useState(false)
-  const ref = useDismiss(open && !isRemoteSurface(), () => setOpen(false))
   const current = PERMISSION_MODES.find((m) => m.id === mode) ?? PERMISSION_MODES[0]
-
   return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={t('code.mode.title')}
-        className={`${chip()} ${mode === 'bypass' ? 'bg-danger/10 text-danger' : 'text-muted hover:bg-hover hover:text-fg'} ${open ? 'bg-hover text-fg' : ''}`}
-      >
-        {current.icon}
-        <span className="inline whitespace-nowrap desk:@max-[36rem]:hidden">{t(current.label)}</span>
-      </button>
-      {(() => {
-        const items = PERMISSION_MODES.map((m) => (
-          <MenuItem
-            key={m.id}
-            active={mode === m.id}
-            icon={m.icon}
-            label={t(m.label)}
-            hint={t(m.hint)}
-            onClick={() => {
-              setOpen(false)
-              void setPermissionMode(m.id)
-            }}
-          />
-        ))
-        if (isRemoteSurface()) {
-          return (
-            <Sheet open={open} onClose={() => setOpen(false)} title={t('code.mode.title')} size="half">
-              <div role="menu" className="p-2">
-                {items}
-              </div>
-            </Sheet>
-          )
-        }
-        return (
-          open && (
-            <div
-              role="menu"
-              className="absolute bottom-full left-0 z-50 mb-2 w-72 animate-pop-in origin-bottom-left rounded-xl border border-border bg-elevated p-1 shadow-xl"
-            >
-              {items}
-            </div>
-          )
-        )
-      })()}
-    </div>
+    <ChipMenu
+      name={t('code.mode.title')}
+      valueLabel={t(current.label)}
+      icon={current.icon}
+      value={mode}
+      tone={mode === 'bypass' ? 'danger' : undefined}
+      collapseClass="inline desk:@max-[30rem]:sr-only"
+      testId="permission-chip"
+      options={PERMISSION_MODES.map((m) => ({
+        id: m.id,
+        label: t(m.label),
+        hint: t(m.hint),
+        icon: m.icon,
+        tone: m.id === 'bypass' ? 'danger' : undefined
+      }))}
+      onSelect={(id) => void setPermissionMode(id as PermissionMode)}
+    />
+  )
+}
+
+/** Build / Plan del agente: chip con menú (qué hace cada uno) y el atajo ⇧Tab en el `title`. */
+export function AgentChip({ agent, onChange }: { agent: 'build' | 'plan'; onChange: (a: 'build' | 'plan') => void }): React.JSX.Element {
+  const t = useT()
+  return (
+    <ChipMenu
+      name={t('code.agent.title')}
+      valueLabel={agent === 'plan' ? t('code.agent.plan') : t('code.agent.build')}
+      icon={agent === 'plan' ? <ListChecks size={14} /> : <Hammer size={14} />}
+      value={agent}
+      tone={agent === 'plan' ? 'accent' : undefined}
+      collapseClass="inline desk:@max-[26rem]:sr-only"
+      chipShortcut={isWindowsPlatform() ? 'Shift+Tab' : '⇧Tab'}
+      testId="agent-chip"
+      options={[
+        { id: 'build', label: t('code.agent.build'), hint: t('code.agent.build.hint'), icon: <Hammer size={14} /> },
+        { id: 'plan', label: t('code.agent.plan'), hint: t('code.agent.plan.hint'), icon: <ListChecks size={14} /> }
+      ]}
+      onSelect={(id) => onChange(id as 'build' | 'plan')}
+    />
   )
 }
 

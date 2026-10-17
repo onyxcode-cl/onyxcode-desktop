@@ -34,7 +34,7 @@ import { handlePaste } from '../../../lib/paste-attachments'
 import { isImeComposing, useAutosizeTextarea } from '../../../lib/textarea'
 import { VoiceDictationButton } from '../../../components/VoiceDictationButton'
 import { useClient } from './client'
-import { ComposerMoreMenu, ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
+import { AgentChip, ComposerMoreMenu, ModelControls, PermissionChip, useCodeAiGate } from './ComposerControls'
 import { subscribeComposerInbox } from './composer-inbox'
 import { usePendingTerminalOutput } from './terminal-output'
 import { TerminalOutputPill } from './TerminalOutputPill'
@@ -863,16 +863,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
               </>
             ) : (
               <div className="flex min-w-0 flex-nowrap items-center gap-1 px-3 pb-2.5 desk:@container">
-                <button
-                  type="button"
-                  onClick={() => setAgent(agent === 'plan' ? 'build' : 'plan')}
-                  title={t('code.composer.toggleAgent')}
-                  aria-label={t('code.composer.toggleAgent')}
-                  className={`flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:text-ui ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
-                >
-                  {agent === 'plan' ? <ListChecks size={13} /> : <Hammer size={13} />}
-                  <span className="inline desk:@max-[36rem]:sr-only">{agent === 'plan' ? 'Plan' : 'Build'}</span>
-                </button>
+                <AgentChip agent={agent} onChange={setAgent} />
                 <button
                   type="button"
                   title={t('code.composer.mention')}

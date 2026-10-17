@@ -89,6 +89,8 @@ const SCENARIOS = [
   'ajustes-instrucciones',
   'paleta',
   'selector-modelo',
+  // Caja de escribir de Code con el menú de permisos abierto (frase por opción, actual marcada, atajos 1-5).
+  'caja-menus',
   'dialogo-confirmar',
   'comparar',
   'barra-lateral-colapsada',
@@ -106,7 +108,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -1834,6 +1836,18 @@ const S = {
     await press(ctx.page, 'Meta+Shift+P')
     await vis(ctx.page.getByRole('dialog'), 5000)
     await sleep(400)
+  },
+  async 'caja-menus'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    const chip = page.getByRole('button', { name: /^Modo de permisos/ })
+    await vis(chip, 15_000)
+    await chip.click()
+    await vis(page.getByRole('menuitemradio', { name: /Automático/ }), 10_000)
+    await sleep(500)
+    return async () => {
+      await page.keyboard.press('Escape').catch(() => {})
+    }
   },
   async 'selector-modelo'(ctx) {
     await closeOverlays(ctx.page)
