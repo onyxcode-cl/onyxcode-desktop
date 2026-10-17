@@ -69,7 +69,10 @@ const BUILTIN: Record<string, ActionHandler> = {
       ui.setPaletteOpen(!ui.paletteOpen)
     }
   },
-  'sidebar.toggle': { run: () => useUi.getState().toggleSidebar() },
+  // Con Ajustes abierto la lista está plegada a propósito: el atajo vuelve a la vista con su lista en vez de no hacer nada.
+  'sidebar.toggle': {
+    run: () => (useUi.getState().settingsOpen ? useUi.getState().openSettings(false) : useUi.getState().toggleSidebar())
+  },
   'settings.toggle': {
     run: () => {
       const ui = useUi.getState()

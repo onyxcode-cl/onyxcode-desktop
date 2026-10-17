@@ -483,6 +483,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:quickToggle': 'X',
   'extras:suspendShortcut': 'X',
   'extras:takePendingPrompt': 'X',
+  // Importar de otras herramientas (diálogo nativo + lectura de archivos del Mac + escritura de AGENTS.md/MCP): nunca desde el celular.
+  'extras:import:pick': 'X',
+  'extras:import:apply': 'X',
   'mcp:getConfig': 'X', // puede traer variables y cabeceras con secretos
   'mcp:save': 'X',
   'mcp:remove': 'X',

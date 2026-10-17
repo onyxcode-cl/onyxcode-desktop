@@ -3,11 +3,12 @@
  *   registerExtrasHandlers(ipcMain, { server, createMainWindow, getMainWindow })
  * Además inicializa atajo global de Quick Entry y bandeja (idempotente).
  */
-import { app, shell, type IpcMain } from 'electron'
+import { app, dialog, shell, type IpcMain } from 'electron'
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { release } from 'node:os'
 import { join } from 'node:path'
+import { t } from '@shared/i18n'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
@@ -40,7 +41,10 @@ import {
   saveMcpServer,
   setMcpServerEnabled
 } from '../extras/mcp-config'
+import { createImportService } from '../extras/import-service'
 import { extrasPrefs } from '../extras/prefs'
+import { assertInstructionsFolder } from './tasks-memory-handlers'
+import { getAgentsMd, saveAgentsMd } from '../tasks/projects'
 import {
   deliverQuickPrompt,
   hideQuickEntry,
@@ -295,6 +299,32 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   }
 
   const provenance = new CatalogProvenanceStore(join(app.getPath('userData'), 'mcp-catalog-installs.json'))
+
+  // Importar de otras herramientas: el renderer solo pide «elegir» (diálogo nativo en main) y luego confirma por ficha.
+  const importService = createImportService({
+    pickPath: async (source) => {
+      const win = deps.getMainWindow?.() ?? null
+      const options: Electron.OpenDialogOptions =
+        source === 'project-folder'
+          ? { title: t('import.dialog.folder'), properties: ['openDirectory'] }
+          : {
+              title: t('import.dialog.file'),
+              properties: ['openFile', 'showHiddenFiles'],
+              filters: [{ name: 'JSON', extensions: ['json', 'jsonc'] }]
+            }
+      const res = win && !win.isDestroyed() ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+      return res.canceled ? null : (res.filePaths[0] ?? null)
+    },
+    validateFolder: (folder) => assertInstructionsFolder(folder),
+    existingMcpNames: () => new Set(Object.keys(readAppMcpConfig().servers)),
+    readAgents: (folder) => getAgentsMd(folder),
+    saveAgents: (folder, content) => void saveAgentsMd(folder, content),
+    saveMcp: (name, entry) => void saveMcpServer(name, entry),
+    maskedMcp: () => maskAppMcpConfig(readAppMcpConfig()),
+    afterMcpChange
+  })
+  handle(ipcMain, 'extras:import:pick', (req) => importService.pick(req))
+  handle(ipcMain, 'extras:import:apply', (req) => importService.apply(req))
 
   handle(ipcMain, 'mcp:getConfig', () => maskAppMcpConfig(readAppMcpConfig()))
   handle(ipcMain, 'mcp:save', async ({ name, entry, previousName }) => {

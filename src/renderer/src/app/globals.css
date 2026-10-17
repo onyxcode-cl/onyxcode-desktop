@@ -1073,3 +1073,32 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     animation: none;
   }
 }
+
+/* Ajustes › búsqueda: coincidencias resaltadas y la opción a la que se lleva a la persona. */
+.settings-mark {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--accent-soft);
+  font-weight: 600;
+}
+[data-search-hit] {
+  border-radius: 10px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  animation: settings-hit-fade 2.4s ease-out forwards;
+}
+@keyframes settings-hit-fade {
+  0%,
+  70% {
+    outline-color: var(--accent);
+  }
+  100% {
+    outline-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-search-hit] {
+    animation: none;
+  }
+}

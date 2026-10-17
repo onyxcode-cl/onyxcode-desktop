@@ -203,7 +203,11 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
       {!listShown && (
         <div className="mt-2 flex flex-col items-center gap-1.5 border-t border-border pt-2">
           {SidebarContent && (
-            <RailButton label={showLabel ?? t('app.sidebar.show', { hint: '' })} shortcut={hints['sidebar.toggle']} onClick={toggleSidebar}>
+            <RailButton
+              label={showLabel ?? t('app.sidebar.show', { hint: '' })}
+              shortcut={hints['sidebar.toggle']}
+              onClick={settingsOpen ? () => openSettings(false) : toggleSidebar}
+            >
               <PanelLeftOpen size={18} strokeWidth={1.8} aria-hidden="true" />
             </RailButton>
           )}

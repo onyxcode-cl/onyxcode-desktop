@@ -80,5 +80,6 @@ export const useUi = create<UiState>((set) => ({
 export const NARROW_WINDOW_PX = 860
 
 /** ¿La lista está oculta (solo riel)? Plegada a mano, o sola en ventana angosta mientras no se abra encima. */
-export const selectListCollapsed = (s: Pick<UiState, 'narrow' | 'narrowOpen' | 'sidebarCollapsed'>): boolean =>
-  s.narrow ? !s.narrowOpen : s.sidebarCollapsed
+export const selectListCollapsed = (s: Pick<UiState, 'narrow' | 'narrowOpen' | 'sidebarCollapsed' | 'settingsOpen'>): boolean =>
+  // Ajustes abierto: la lista de conversaciones no aporta y roba ancho (sobre todo a 1000x700); queda solo el riel y se restaura al salir.
+  s.settingsOpen || (s.narrow ? !s.narrowOpen : s.sidebarCollapsed)

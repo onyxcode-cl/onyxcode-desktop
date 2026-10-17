@@ -174,6 +174,70 @@ export interface ConversationExportResult {
   redactions: number
 }
 
+// ───────────────────────────── Importar desde otras herramientas (Ajustes > Importar) ─────────────────────────────
+/** Qué elige la persona en el diálogo nativo: una carpeta de proyecto (AGENTS.md/CLAUDE.md, `.mcp.json`) o un archivo de configuración MCP. */
+export type ImportSource = 'project-folder' | 'mcp-file'
+export type ImportItemKind = 'instructions' | 'mcp'
+/** Motivos (códigos) por los que algo se descarta o se avisa; el texto lo pone el renderer (`import.reason.<code>`). Nunca llevan valores del archivo. */
+export type ImportReasonCode =
+  | 'secret-in-args'
+  | 'secret-in-url'
+  | 'secret-in-text'
+  | 'url-credentials'
+  | 'dangerous-command'
+  | 'shell-wrapper'
+  | 'shell-metachar'
+  | 'invalid-entry'
+  | 'invalid-name'
+  | 'name-exists'
+  | 'too-big'
+  | 'empty'
+  | 'unsupported-type'
+  | 'refs-agents'
+  | 'same-content'
+  | 'already-native'
+  | 'cwd-dropped'
+  | 'values-referenced'
+  | 'insecure-http'
+  | 'unknown-command'
+  | 'renamed'
+  | 'append'
+export interface ImportReason {
+  code: ImportReasonCode
+  /** Dato no sensible que ayuda a entender el motivo (nombre de un comando, de una variable o de un archivo; líneas de un texto). */
+  detail?: string
+}
+export interface ImportItem {
+  /** `i0`, `m1`…: identificador opaco dentro de esta vista previa. */
+  id: string
+  kind: ImportItemKind
+  name: string
+  /** Archivo de origen (relativo a la carpeta elegida o nombre del archivo). */
+  origin: string
+  /** Resumen sin secretos: comando o URL, o el comienzo del texto. */
+  summary: string
+  /** `ok` = se puede importar (con casilla); `discarded` = se descarta y se explica por qué. */
+  status: 'ok' | 'discarded'
+  reasons: ImportReason[]
+  /** Variables de entorno que el servidor importado referencia por nombre (los valores NO se copian). */
+  envRefs: string[]
+}
+export interface ImportPreview {
+  token: string
+  /** Nombre (no la ruta completa) de lo elegido. */
+  label: string
+  items: ImportItem[]
+}
+export interface ImportApplyRequest {
+  token: string
+  ids: string[]
+}
+export interface ImportApplyResult {
+  results: { id: string; ok: boolean; error?: string }[]
+  /** Configuración MCP vigente (enmascarada) tras importar. */
+  mcp: AppMcpConfig
+}
+
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
   'extras:setPrefs': { req: Partial<ExtrasPrefs>; res: ExtrasPrefsState }
@@ -220,6 +284,10 @@ export interface IpcExtrasInvokeContract {
   'extras:suspendShortcut': { req: { suspended: boolean }; res: void }
   /** La ventana principal lo llama al montar: prompt de Quick Entry que llegó mientras cargaba. */
   'extras:takePendingPrompt': { req: void; res: QuickPromptEvent | null }
+  /** Diálogo nativo → lee SOLO lo elegido y devuelve una vista previa sin secretos (`null` si se cancela). No escribe nada. */
+  'extras:import:pick': { req: { source: ImportSource }; res: ImportPreview | null }
+  /** Importa los elementos marcados de la última vista previa (MCP siempre desactivado). */
+  'extras:import:apply': { req: ImportApplyRequest; res: ImportApplyResult }
   'mcp:getConfig': { req: void; res: AppMcpConfig }
   'mcp:save': { req: { name: string; entry: McpEntry; previousName?: string }; res: AppMcpConfig }
   'mcp:remove': { req: { name: string }; res: AppMcpConfig }
@@ -282,6 +350,8 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:quickToggle',
   'extras:suspendShortcut',
   'extras:takePendingPrompt',
+  'extras:import:pick',
+  'extras:import:apply',
   'mcp:getConfig',
   'mcp:save',
   'mcp:remove',
