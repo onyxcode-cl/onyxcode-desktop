@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.0.0] - 2026-10-18
+
+### Novedades
+
+- **«Lo que has creado».** Una pantalla nueva en la barra lateral reúne todo lo que la IA ha creado en tus conversaciones: imágenes, documentos, planillas, presentaciones y PDF, con miniaturas, buscador y filtros por tipo, fecha y origen. Desde cada tarjeta puedes verlo aquí mismo, abrirlo con tu programa o mostrarlo en su carpeta. Si un archivo ya no existe, lo quitas de la lista.
+- **Personalización.** Otra pantalla nueva, con pestañas Habilidades, Conectores y Tuyos. Cada ficha explica qué hace, qué no hace y qué permisos usa, y se quita cuando quieras. Las habilidades incluidas se activan o apagan con un interruptor; una habilidad tuya se instala solo desde una carpeta que elijas, con vista previa y confirmación. Conectar un servicio muestra un paso a paso con el aviso de qué datos se comparten, y no avanza hasta que marques «Entiendo».
+- **Inicio del Chat con ideas para empezar.** Al abrir una conversación nueva hay tarjetas de inicio y una lista corta de «Primeros pasos» para quien usa la app por primera vez. Cada conversación puede tener sus propias instrucciones.
+
+### Mejoras
+
+- **Accesibilidad y estados.** Mejor contraste en los textos atenuados, avisos para lectores de pantalla cuando algo cambia, y pantallas de cargando, vacío y error más claras en las secciones nuevas.
+- **Al quitar un conector** la confirmación ya no queda tapada por el detalle.
+
 ## [0.5.37] - 2026-10-17
 
 ### Mejoras
