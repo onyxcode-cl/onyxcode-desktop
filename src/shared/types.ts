@@ -16,6 +16,8 @@ export interface Settings {
   recentFolders: string[]
   /** Instrucciones globales aplicadas a todas las tareas de Tareas (además de las del proyecto). */
   tasksGlobalInstructions: string
+  /** Instrucciones personalizadas de la persona para Chat y Code («cómo quiero que me respondas»); tope 4000 caracteres. */
+  userInstructions: string
   /** true cuando el asistente de primer uso terminó, se omitió o no hacía falta (todo ya funcionaba). */
   onboarded: boolean
   /** true cuando el usuario reconoció el aviso sobre los términos de OpenCode y las Rutinas; sin él, las rutinas programadas no se ejecutan solas. */
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   recentFolders: [],
   tasksGlobalInstructions: '',
+  userInstructions: '',
   onboarded: false,
   routinesTermsAcknowledged: false,
   language: 'system',

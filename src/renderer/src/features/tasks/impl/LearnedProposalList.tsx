@@ -29,10 +29,13 @@ export interface Draft extends MemoryProposal {
 
 export function LearnedProposalList({
   drafts,
-  onUpdate
+  onUpdate,
+  scopes = SCOPES
 }: {
   drafts: Draft[]
   onUpdate: (i: number, patch: Partial<Draft>) => void
+  /** Alcances que se ofrecen en el selector (Chat solo tiene «para todo»). */
+  scopes?: readonly LearnedMemoryScope[]
 }): React.JSX.Element {
   const t = useT()
   return (
@@ -53,7 +56,7 @@ export function LearnedProposalList({
                 onChange={(e) => onUpdate(i, { alcance: e.target.value as LearnedMemoryScope })}
                 className="rounded-md border border-border bg-bg px-1.5 py-0.5 text-[11px] desk:text-meta text-subtle"
               >
-                {SCOPES.map((s) => (
+                {scopes.map((s) => (
                   <option key={s} value={s}>
                     {t(SCOPE_LABEL[s])}
                   </option>

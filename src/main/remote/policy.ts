@@ -186,6 +186,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   theme: 'M',
   language: 'M',
   tasksGlobalInstructions: 'D',
+  // Instrucciones personalizadas de Chat y Code: condicionan al modelo de forma persistente; no se tocan desde el celular.
+  userInstructions: 'X',
   // «Aprender de las tareas» (memoria aprendida, 2026-10-07): X, como el resto de lo que no se toca desde el celular.
   learningEnabled: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
@@ -320,6 +322,15 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:learn:accept': 'X',
   'tasks:learn:remove': 'X',
   'tasks:learn:clear': 'X',
+  // Memoria e instrucciones de Chat y Code (2026-10): contenido personal de la persona y escritura de AGENTS.md; solo en el Mac/PC.
+  'tasks:mem:get': 'X',
+  'tasks:mem:accept': 'X',
+  'tasks:mem:update': 'X',
+  'tasks:mem:remove': 'X',
+  'tasks:mem:clear': 'X',
+  'tasks:mem:forgetAll': 'X',
+  'tasks:instr:get': 'X',
+  'tasks:instr:save': 'X',
   'tasks:skill:accept': 'X',
   'tasks:skill:approved': 'X',
   'tasks:skill:trust': 'X',

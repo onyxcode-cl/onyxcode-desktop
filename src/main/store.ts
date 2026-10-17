@@ -64,6 +64,7 @@ function normalize(s: Settings): Settings {
     ? s.recentFolders.filter((p): p is string => typeof p === 'string').slice(0, MAX_RECENT)
     : []
   const tasksGlobalInstructions = typeof s.tasksGlobalInstructions === 'string' ? s.tasksGlobalInstructions.slice(0, 20_000) : ''
+  const userInstructions = typeof s.userInstructions === 'string' ? s.userInstructions.slice(0, 4000) : ''
   const onboarded = s.onboarded === true
   const routinesTermsAcknowledged = s.routinesTermsAcknowledged === true
   // Solo rutas absolutas sin bytes nulos; el resto se descarta (vuelve la detección automática).
@@ -76,6 +77,7 @@ function normalize(s: Settings): Settings {
     theme,
     recentFolders,
     tasksGlobalInstructions,
+    userInstructions,
     onboarded,
     routinesTermsAcknowledged,
     language: isLangPref(s.language) ? s.language : 'system',

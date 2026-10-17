@@ -48,6 +48,7 @@ import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
 import { diffStats } from '../../../components/DiffView'
 import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
+import { PersonalizeButton } from '../../memory/PersonalizeButton'
 import { Composer } from './Composer'
 import { CodeHomeBlocks, useCodeHome } from './CodeHomeBlocks'
 import { HomeIdeas } from '../../../components/HomeBlocks'
@@ -604,6 +605,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
+        <PersonalizeButton />
         <ReadingModeSwitch />
         {busy && (
           <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
@@ -889,7 +891,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       <ChangesBar directory={directory} />
       {sid && entries && !busy && (
         <div className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
-          <CodeMemoryProposalCard sessionId={sid} messages={entries} />
+          <CodeMemoryProposalCard sessionId={sid} messages={entries} folder={directory} />
         </div>
       )}
       <div className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>

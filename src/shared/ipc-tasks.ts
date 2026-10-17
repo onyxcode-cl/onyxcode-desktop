@@ -394,6 +394,10 @@ export interface LearnedMemoryProposal {
 }
 
 /** Por qué `tasks:skill:accept` no escribió nada (revalidado en `main`: nunca confía en el renderer). */
+/** Resultado de editar una entrada de memoria desde la pantalla «Memoria». */
+export type LearnedMemoryUpdateResult =
+  { ok: true; bundle: LearnedMemoryBundle } | { ok: false; reason: 'no-encontrado' | 'invalido' | 'secreto' | 'duplicado' }
+
 export type LearnedSkillReject = 'nombre-invalido' | 'campo-faltante' | 'demasiado-largo' | 'secreto' | 'ya-existe'
 export type LearnedSkillResult = { ok: true; path: string } | { ok: false; reason: LearnedSkillReject }
 
@@ -974,6 +978,19 @@ export interface TasksInvokeContract {
   'tasks:learn:accept': { req: { folder?: string; proposals: LearnedMemoryProposal[] }; res: LearnedMemoryBundle }
   'tasks:learn:remove': { req: { alcance: LearnedMemoryScope; folder?: string; id: string }; res: LearnedMemoryBundle }
   'tasks:learn:clear': { req: { alcance: LearnedMemoryScope; folder?: string }; res: LearnedMemoryBundle }
+  // Memoria de Chat y Code (pantalla «Memoria»): `folder` es la carpeta de un proyecto de Code (sin exigir que sea una carpeta de Tareas).
+  'tasks:mem:get': { req: { folder?: string }; res: LearnedMemoryBundle }
+  'tasks:mem:accept': { req: { folder?: string; proposals: LearnedMemoryProposal[] }; res: LearnedMemoryBundle }
+  'tasks:mem:update': {
+    req: { alcance: LearnedMemoryScope; folder?: string; id: string; tipo?: LearnedMemoryType; texto?: string }
+    res: LearnedMemoryUpdateResult
+  }
+  'tasks:mem:remove': { req: { alcance: LearnedMemoryScope; folder?: string; id: string }; res: LearnedMemoryBundle }
+  'tasks:mem:clear': { req: { alcance: LearnedMemoryScope; folder?: string }; res: LearnedMemoryBundle }
+  'tasks:mem:forgetAll': { req: void; res: void }
+  // Instrucciones del proyecto de Code: el AGENTS.md de la carpeta (el motor lo lee por su cuenta).
+  'tasks:instr:get': { req: { folder: string }; res: TasksAgentsMd }
+  'tasks:instr:save': { req: { folder: string; content: string }; res: TasksAgentsMd }
 
   /**
    * Skill APRENDIDA (decisión del dueño, 2026-10-07): el agente propone con un bloque ```lazunox-skill```,
@@ -1322,6 +1339,14 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:learn:accept',
   'tasks:learn:remove',
   'tasks:learn:clear',
+  'tasks:mem:get',
+  'tasks:mem:accept',
+  'tasks:mem:update',
+  'tasks:mem:remove',
+  'tasks:mem:clear',
+  'tasks:mem:forgetAll',
+  'tasks:instr:get',
+  'tasks:instr:save',
   'tasks:skill:accept',
   'tasks:skill:approved',
   'tasks:skill:trust',

@@ -15,7 +15,8 @@ import { currentAiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
 import { useSettings } from '../../../stores/settings'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
-import { useCodeLearnedMemory } from './learned-memory-store'
+import { loadCodeLearnedMemory, useCodeLearnedMemory } from './learned-memory-store'
+import { hasTasksBridge } from '../../tasks/impl/bridge'
 import { sendNotification } from '../../../lib/notify'
 import { debounce } from '../../../lib/debounce'
 import { lruMax } from '../../../lib/lru'
@@ -665,6 +666,9 @@ export const useCode = create<CodeState>((set, get) => {
     // celular no puede elegir elementos, pero sí reintentar uno: su política solo admite `{type,text}`, así que allí el
     // bloque sale sin `synthetic`/`metadata` (la burbuja lo reconoce igualmente por su marcador).
     const remote = isRemoteSurface()
+    // Memoria aprobada al día (de usuario y de este proyecto): se relee justo antes de enviar, así lo que se aprobó hace un
+    // momento ya vale en este mensaje. Nunca desde el celular (ver el comentario de `system` más abajo).
+    if (!remote && hasTasksBridge()) await loadCodeLearnedMemory(dir)
     const elementParts = [
       ...elementPartsOf(attachments.filter(isElementAttachment)),
       ...keptElementTexts.map((text) => ({ type: 'text' as const, text, synthetic: true as const, metadata: ELEMENT_METADATA }))
@@ -685,7 +689,10 @@ export const useCode = create<CodeState>((set, get) => {
             ? undefined
             : buildCodeSystemPrompt({
                 learningEnabled: useSettings.getState().settings.learningEnabled,
-                learnedUser: useCodeLearnedMemory.getState().learnedUser
+                instructions: useSettings.getState().settings.userInstructions,
+                learnedUser: useCodeLearnedMemory.getState().learnedUser,
+                learnedProject: useCodeLearnedMemory.getState().learnedProject,
+                projectName: dir.split(/[\\/]/).filter(Boolean).pop() ?? null
               }),
           // H1: un adjunto sin texto es un mensaje válido (solo partes `file`); no se manda un bloque de texto vacío.
           parts: [...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []), ...fileParts, ...elementParts, ...attachParts]

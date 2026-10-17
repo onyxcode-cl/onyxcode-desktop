@@ -39,6 +39,7 @@ const SCENARIOS = [
   'chat-documento',
   'chat-archivo-ver',
   'chat-adjunto-office',
+  'chat-memoria-propuesta',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -80,6 +81,8 @@ const SCENARIOS = [
   'ajustes-general',
   'ajustes-modelos',
   'ajustes-celular',
+  'ajustes-memoria',
+  'ajustes-instrucciones',
   'paleta',
   'selector-modelo',
   'dialogo-confirmar',
@@ -1059,6 +1062,24 @@ const S = {
       for (const t of texts) console.log(`VERIF-OFFICE-TEXT ${t.name}\n${t.text}\n--`)
     }
   },
+  // El modelo propone «recordar esto» al final de su respuesta: tarjeta con casillas y texto editable; nada se guarda sin aprobar.
+  async 'chat-memoria-propuesta'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await ctx.fake.script({
+      match: 'respuestas cortas',
+      title: 'Respuestas cortas',
+      steps: [
+        {
+          type: 'text',
+          text: 'Entendido, de ahora en adelante te respondo en pocas líneas.\n\n```lazunox-memoria\n[{"alcance":"usuario","tipo":"preferencia","texto":"Prefiere respuestas cortas, de una o dos frases.","porque":"Lo pidió al empezar la conversación."},{"alcance":"usuario","tipo":"preferencia","texto":"Trabaja en diseño y no programa."}]\n```'
+        }
+      ]
+    })
+    await sendChat(ctx.page, 'Prefiero respuestas cortas, no soy programadora')
+    await vis(ctx.page.locator('[data-testid="memory-proposal-card"]'), 45_000)
+    await sleep(600)
+  },
   async 'code-proyecto'(ctx) {
     await seedCode(ctx)
   },
@@ -1636,6 +1657,53 @@ const S = {
   },
   async 'ajustes-modelos'(ctx) {
     await openSettings(ctx.page, 'Modelos')
+  },
+  // Memoria aprobada (notas inventadas escritas en el formato del almacén, en el userData TEMPORAL): ver, buscar, editar, borrar.
+  async 'ajustes-memoria'(ctx) {
+    const dir = join(ctx.userData, 'memoria')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'usuario.md'),
+      [
+        '---',
+        'alcance: usuario',
+        'actualizado: 2026-10-16',
+        '---',
+        '# Memoria aprendida (global)',
+        '',
+        '## Preferencias',
+        '- Prefiere respuestas cortas, de una o dos frases. <!-- m-a1b2c3d4 · 2026-10-16 -->',
+        '- Escribe en español de Chile y tutea. <!-- m-a1b2c3d5 · 2026-10-15 -->',
+        '',
+        '## Convenciones',
+        '- Los informes llevan el total por mes arriba. <!-- m-a1b2c3d6 · 2026-10-14 -->',
+        '',
+        '## Decisiones',
+        '- Los montos van en millones de pesos. <!-- m-a1b2c3d7 · 2026-10-12 -->',
+        '',
+        '## Soluciones',
+        ''
+      ].join('\n')
+    )
+    await openSettings(ctx.page, 'Memoria')
+    await vis(ctx.page.locator('[data-testid="memory-entry"]').first(), 15_000)
+    await sleep(400)
+  },
+  // Instrucciones personalizadas (Chat y Code) y AGENTS.md del proyecto abierto en Code, con el texto escrito pero sin guardar.
+  async 'ajustes-instrucciones'(ctx) {
+    await seedCode(ctx)
+    await openSettings(ctx.page, 'Instrucciones')
+    const g = ctx.page.locator('[data-testid="user-instructions"]')
+    await vis(g, 15_000)
+    await g.fill('Respóndeme siempre en español de Chile y en una sola frase. Soy diseñadora y no sé programar.')
+    await g.blur()
+    await sleep(400)
+    const p = ctx.page.locator('[data-testid="project-instructions-text"]')
+    await vis(p, 15_000)
+    await p.fill(
+      '# Convenciones\n\n- Usa pnpm, no npm.\n- Las pruebas van con Vitest y viven junto al archivo.\n- No toques la carpeta `dist/`.'
+    )
+    await sleep(500)
   },
   async 'ajustes-celular'(ctx) {
     await openSettings(ctx.page, /Celular|Móvil|Remoto/)

@@ -8,7 +8,7 @@ import { acceptCodeLearnedMemory, loadCodeLearnedMemory, useCodeLearnedMemory } 
 beforeEach(() => {
   vi.clearAllMocks()
   bridge.hasTasksBridge.mockReturnValue(true)
-  useCodeLearnedMemory.setState({ learnedUser: null })
+  useCodeLearnedMemory.setState({ learnedUser: null, learnedProject: null })
 })
 
 describe('loadCodeLearnedMemory', () => {
@@ -25,7 +25,7 @@ describe('loadCodeLearnedMemory', () => {
       proyecto: []
     })
     await loadCodeLearnedMemory()
-    expect(bridge.cw).toHaveBeenCalledWith('tasks:learn:get', {})
+    expect(bridge.cw).toHaveBeenCalledWith('tasks:mem:get', {})
     expect(useCodeLearnedMemory.getState().learnedUser).toContain('prefiere tablas')
   })
 
@@ -43,7 +43,7 @@ describe('loadCodeLearnedMemory', () => {
 })
 
 describe('acceptCodeLearnedMemory', () => {
-  it('filtra las propuestas de alcance "proyecto" antes de mandar nada', async () => {
+  it('sin carpeta: filtra las propuestas de alcance "proyecto" antes de mandar nada', async () => {
     bridge.cw.mockResolvedValue({ usuario: [], proyecto: [] })
     await acceptCodeLearnedMemory([{ alcance: 'proyecto', tipo: 'convencion', texto: 'x' }])
     expect(bridge.cw).not.toHaveBeenCalled()
@@ -55,9 +55,20 @@ describe('acceptCodeLearnedMemory', () => {
       { alcance: 'usuario', tipo: 'preferencia', texto: 'global' },
       { alcance: 'proyecto', tipo: 'convencion', texto: 'de proyecto' }
     ])
-    expect(bridge.cw).toHaveBeenCalledWith('tasks:learn:accept', {
+    expect(bridge.cw).toHaveBeenCalledWith('tasks:mem:accept', {
       proposals: [{ alcance: 'usuario', tipo: 'preferencia', texto: 'global' }]
     })
-    expect(bridge.cw).toHaveBeenCalledWith('tasks:learn:get', {})
+    expect(bridge.cw).toHaveBeenCalledWith('tasks:mem:get', {})
+  })
+
+  it('con carpeta: manda también las de "proyecto" y relee con esa carpeta', async () => {
+    bridge.cw.mockResolvedValue({ usuario: [], proyecto: [{ id: '2', tipo: 'convencion', texto: 'usa pnpm', fecha: '2026-10-07' }] })
+    await acceptCodeLearnedMemory([{ alcance: 'proyecto', tipo: 'convencion', texto: 'usa pnpm' }], '/work/a')
+    expect(bridge.cw).toHaveBeenCalledWith('tasks:mem:accept', {
+      folder: '/work/a',
+      proposals: [{ alcance: 'proyecto', tipo: 'convencion', texto: 'usa pnpm' }]
+    })
+    expect(bridge.cw).toHaveBeenCalledWith('tasks:mem:get', { folder: '/work/a' })
+    expect(useCodeLearnedMemory.getState().learnedProject).toContain('usa pnpm')
   })
 })

@@ -28,6 +28,7 @@ import { ChatToolCall } from './ChatToolCall'
 import { ChatFiles } from './ChatFiles'
 import { rejectChatQuestion, replyChatQuestion } from './actions'
 import type { ChatPendingQuestion } from './store'
+import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { StepGroup } from '../code/impl/ToolCard'
 import type { ReadingMode } from '../../lib/reading-mode'
 import { expandStepGroups, showReasoning, showStepGroup, useReadingMode } from '../../lib/reading-mode'
@@ -50,6 +51,17 @@ function PartImage({ src, alt }: { src: string; alt: string }): React.JSX.Elemen
   )
 }
 
+/**
+ * El bloque ```lazunox-memoria``` es un contrato con el modelo (lo lee `MemoryProposalCard`), no texto para leer: se quita
+ * aquí, también el que todavía se está escribiendo (sin el cierre).
+ */
+export function hideMemoryBlock(text: string): string {
+  if (!text.includes('```lazunox-memoria')) return text
+  return stripMemoryProposalBlock(text)
+    .replace(/```lazunox-memoria[\s\S]*$/, '')
+    .trimEnd()
+}
+
 const PartView = memo(function PartView({
   part,
   live,
@@ -63,7 +75,7 @@ const PartView = memo(function PartView({
   switch (part.type) {
     case 'text':
       if (part.synthetic || part.ignored || !part.text) return null
-      return <DeferredMarkdown text={part.text} streaming={streaming} />
+      return <DeferredMarkdown text={hideMemoryBlock(part.text)} streaming={streaming} />
     case 'reasoning':
       return <Reasoning part={part} live={live} variant="chat" />
     case 'tool':

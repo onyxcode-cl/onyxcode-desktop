@@ -1,35 +1,29 @@
 /**
- * Memoria aprendida en Code (decisión del dueño, 2026-10-07): primera versión, SOLO alcance global
- * (`userData/memoria/usuario.md`, el mismo almacén que Tareas). Code no tiene el concepto de carpeta
- * aprobada de Tareas, así que no hay dónde validar una memoria "de este proyecto" todavía.
+ * Memoria aprendida en Code: lo aprobado de alcance usuario (compartido con Chat y Overdrive, `userData/memoria/usuario.md`)
+ * y del proyecto abierto (`userData/memoria/proyectos/…`, una por carpeta). Se relee justo antes de cada envío.
  */
 import { create } from 'zustand'
-import { formatForPrompt } from '@shared/memory-format'
 import type { LearnedMemoryProposal } from '@shared/ipc-tasks'
-import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
+import { loadPromptMemory, saveApprovedMemory } from '../../memory/memory-client'
 
 interface CodeLearnedMemoryState {
   /** Texto corto listo para el prompt (sin metadatos), o `null` si no hay nada aprobado todavía. */
   learnedUser: string | null
+  /** Lo mismo, del proyecto cuya memoria se leyó por última vez. */
+  learnedProject: string | null
 }
 
-export const useCodeLearnedMemory = create<CodeLearnedMemoryState>(() => ({ learnedUser: null }))
+export const useCodeLearnedMemory = create<CodeLearnedMemoryState>(() => ({ learnedUser: null, learnedProject: null }))
 
-/** Relee la memoria global aprobada (p. ej. al abrir Code, o tras aprobar una propuesta nueva). */
-export async function loadCodeLearnedMemory(): Promise<void> {
-  if (!hasTasksBridge()) return
-  try {
-    const bundle = await cw('tasks:learn:get', {})
-    useCodeLearnedMemory.setState({ learnedUser: formatForPrompt(bundle.usuario) || null })
-  } catch {
-    useCodeLearnedMemory.setState({ learnedUser: null })
-  }
+/** Relee la memoria aprobada (de usuario y, con `folder`, del proyecto). */
+export async function loadCodeLearnedMemory(folder?: string | null): Promise<void> {
+  const m = await loadPromptMemory(folder)
+  if (!m) return
+  useCodeLearnedMemory.setState({ learnedUser: m.usuario, learnedProject: m.proyecto })
 }
 
-/** Solo guarda las propuestas de alcance `usuario` (Code v1 no valida carpetas de proyecto). */
-export async function acceptCodeLearnedMemory(proposals: LearnedMemoryProposal[]): Promise<void> {
-  const globalOnly = proposals.filter((p) => p.alcance === 'usuario')
-  if (globalOnly.length === 0) return
-  await cw('tasks:learn:accept', { proposals: globalOnly })
-  await loadCodeLearnedMemory()
+/** Guarda las propuestas aprobadas; las de «proyecto» solo si se da la carpeta. */
+export async function acceptCodeLearnedMemory(proposals: LearnedMemoryProposal[], folder?: string | null): Promise<void> {
+  const saved = await saveApprovedMemory(proposals, folder)
+  if (saved) await loadCodeLearnedMemory(folder)
 }
