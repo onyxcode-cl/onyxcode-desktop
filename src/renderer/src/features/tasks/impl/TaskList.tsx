@@ -258,7 +258,7 @@ export function TaskRow({
   const remote = isRemoteSurface()
   const chipRemote = remote && (waitsUser || working)
   // 2c (árbol): esperando / trabajando / terminada se dicen con el punto de estado de 7 px; el resto conserva su icono.
-  const state: SessionState | null = waitsUser ? 'waiting' : working ? 'working' : status === 'done' ? 'done' : null
+  const state: SessionState | null = waitsUser ? 'waiting' : working ? 'working' : failed ? 'error' : status === 'done' ? 'done' : null
   const iconDesk = iconRight && !(tree && state === 'done') ? ' desk:order-1 desk:group-hover:hidden' : ' desk:hidden'
   const metaHide = tree ? ' desk:group-focus-within:hidden' : ''
   return (

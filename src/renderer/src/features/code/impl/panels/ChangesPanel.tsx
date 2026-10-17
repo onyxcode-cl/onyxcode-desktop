@@ -42,6 +42,7 @@ import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
 import { abbreviatePath, displayPath } from '../mobile-logic'
 import { useProjectWatch } from './useProjectWatch'
+import { moveSelection, nextPending, orderedRows, pickSelection, recallSelection, rememberSelection, rowKey } from './changes-select'
 import { sharedFullDiff } from '../full-diff'
 import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
 import {
@@ -158,7 +159,8 @@ function FileRow({
   onDiscard,
   stat,
   accepted,
-  onAccept
+  onAccept,
+  onRowKeyDown
 }: {
   file: ChangedFile
   directory: string
@@ -172,6 +174,8 @@ function FileRow({
   accepted?: boolean
   /** Marcar como revisado (escritorio, solo con sesión activa). */
   onAccept?: () => void
+  /** Teclado de la fila: ↑/↓ cambian de archivo y Enter/Espacio aceptan el seleccionado (escritorio). */
+  onRowKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void
 }): React.JSX.Element {
   const t = useT()
   const meta = KIND_META[file.kind] ?? KIND_META.modified
@@ -216,6 +220,9 @@ function FileRow({
       <button
         type="button"
         onClick={onSelect}
+        onKeyDown={onRowKeyDown}
+        data-row-key={rowKey({ path: file.path, staged })}
+        aria-current={selected ? 'true' : undefined}
         title={`${t(meta.label)}${staged ? t('code.changes.stagedSuffix') : ''}\n${file.origPath ? `${file.origPath} → ` : ''}${file.path}`}
         className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left text-[13px] desk:px-2"
       >
@@ -664,6 +671,10 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Selection | null>(null)
+  // El usuario cerró el diff a propósito: no se vuelve a abrir solo hasta que cambie de carpeta.
+  const closedByUser = useRef(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const focusKey = useRef<string | null>(null)
   const [diff, setDiff] = useState<string>('')
   const [diffLoading, setDiffLoading] = useState(false)
   const [diffError, setDiffError] = useState<string | null>(null)
@@ -746,6 +757,31 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
 
   const staged = useMemo(() => status?.files.filter((f) => f.staged) ?? [], [status])
   const unstaged = useMemo(() => status?.files.filter((f) => f.unstaged || !f.staged) ?? [], [status])
+
+  const rows = useMemo(() => orderedRows(staged, unstaged), [staged, unstaged])
+  // Escritorio: al abrir «Cambios» con archivos modificados se selecciona el primero (o el que ya estaba seleccionado / el de la
+  // última vez en esta carpeta, si sigue existiendo) para que el diff salga sin otro clic. El celular conserva su lista a pantalla completa.
+  useEffect(() => {
+    if (mobile || !status || statusDir !== directory) return
+    if (closedByUser.current && selected === null) return
+    const next = pickSelection(rows, selected, recallSelection(directory))
+    if (next?.path !== selected?.path || next?.staged !== selected?.staged) setSelected(next)
+  }, [mobile, status, statusDir, directory, rows, selected])
+  useEffect(() => {
+    closedByUser.current = false
+  }, [directory])
+  useEffect(() => {
+    if (!mobile && statusDir === directory) rememberSelection(directory, selected)
+  }, [mobile, statusDir, directory, selected])
+  // Tras moverse con el teclado, el foco acompaña a la selección (si no, la siguiente flecha se perdería).
+  useEffect(() => {
+    const key = focusKey.current
+    if (!key) return
+    focusKey.current = null
+    listRef.current?.querySelectorAll<HTMLElement>('[data-row-key]').forEach((el) => {
+      if (el.dataset.rowKey === key) el.focus()
+    })
+  }, [selected])
 
   const selectedFile = status?.files.find((f) => f.path === selected?.path) ?? null
   const selStaged = selected?.staged ?? false
@@ -888,6 +924,32 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     : (status?.files.filter(canDiscard).length ?? 0) > GIT_MAX_DISCARD_FILES
       ? t('code.changes.revertAllTooMany', { max: GIT_MAX_DISCARD_FILES })
       : null
+  const onRowKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, f: ChangedFile, isStaged: boolean): void => {
+    if (mobile || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+    const here = { path: f.path, staged: isStaged }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const next = moveSelection(rows, here, e.key === 'ArrowDown' ? 1 : -1)
+      if (next) {
+        focusKey.current = rowKey(next)
+        closedByUser.current = false
+        setSelected(next)
+      }
+      return
+    }
+    // Enter/Espacio en el archivo ya seleccionado (y aún sin revisar) lo acepta y pasa al siguiente pendiente; en otro, solo lo abre.
+    if ((e.key === 'Enter' || e.key === ' ') && canReview && selected?.path === f.path && selected.staged === isStaged) {
+      const info = infos.get(f.path)
+      if (!info || isAccepted(record, f.path, info.fingerprint)) return
+      e.preventDefault()
+      accept([f.path])
+      const nx = nextPending(rows, here, (p) => p !== f.path && pending.includes(p))
+      if (nx) {
+        focusKey.current = rowKey(nx)
+        setSelected(nx)
+      }
+    }
+  }
   const abs = selectedFile ? `${directory.replace(/[/\\]+$/, '')}/${selectedFile.path}` : ''
 
   if (status && !status.isRepo) {
@@ -1005,6 +1067,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         <>
           <div className="flex min-h-0 flex-1 flex-col desk:@min-[40rem]:flex-row">
             <div
+              ref={listRef}
               className={
                 mobile
                   ? `min-h-0 flex-1 overflow-y-auto ${selectedFile ? 'hidden' : ''}`
@@ -1022,7 +1085,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       selected={selected?.path === f.path && selected.staged}
                       onDiscard={native && canDiscard(f) ? () => void discard(f, 'all') : undefined}
                       {...rowReview(f)}
-                      onSelect={() => setSelected(selected?.path === f.path && selected.staged ? null : { path: f.path, staged: true })}
+                      onRowKeyDown={(e) => onRowKeyDown(e, f, true)}
+                      onSelect={() => ((closedByUser.current = false), setSelected({ path: f.path, staged: true }))}
                     />
                   ))}
                 </Section>
@@ -1042,7 +1106,8 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                       selected={selected?.path === f.path && !selected.staged}
                       onDiscard={native && canDiscard(f) ? () => void discard(f, 'unstaged') : undefined}
                       {...rowReview(f)}
-                      onSelect={() => setSelected(selected?.path === f.path && !selected.staged ? null : { path: f.path, staged: false })}
+                      onRowKeyDown={(e) => onRowKeyDown(e, f, false)}
+                      onSelect={() => ((closedByUser.current = false), setSelected({ path: f.path, staged: false }))}
                     />
                   ))}
                 </Section>
@@ -1166,7 +1231,11 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
                         )}
                       </>
                     )}
-                    <IconButton label={t('code.changes.closeDiff')} className="h-6 w-6" onClick={() => setSelected(null)}>
+                    <IconButton
+                      label={t('code.changes.closeDiff')}
+                      className="h-6 w-6"
+                      onClick={() => ((closedByUser.current = true), setSelected(null))}
+                    >
                       <X size={13} />
                     </IconButton>
                   </span>

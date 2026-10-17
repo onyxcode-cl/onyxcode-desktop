@@ -93,19 +93,22 @@ export function PortalMenuItem({
   icon,
   label,
   onClick,
-  danger
+  danger,
+  disabled
 }: {
   icon: React.ReactNode
   label: string
   onClick: () => void
   danger?: boolean
+  disabled?: boolean
 }): React.JSX.Element {
   return (
     <button
       type="button"
       role="menuitem"
+      disabled={disabled}
       onClick={onClick}
-      className={`no-drag flex h-8 w-full items-center gap-2.5 rounded-ctl px-2.5 text-left text-ui hover:bg-hover focus-visible:bg-hover ${danger ? 'text-danger' : ''}`}
+      className={`no-drag flex h-8 w-full items-center gap-2.5 rounded-ctl px-2.5 text-left text-ui hover:bg-hover focus-visible:bg-hover disabled:opacity-40 disabled:hover:bg-transparent ${danger ? 'text-danger' : ''}`}
     >
       {icon}
       {label}

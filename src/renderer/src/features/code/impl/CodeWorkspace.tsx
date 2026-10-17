@@ -19,7 +19,7 @@ import type { MsgKey } from '@shared/i18n'
 import { tildify } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
 import { LogoMark } from '../../../components/Logo'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -51,6 +51,7 @@ import { nativeCode, useClient } from './client'
 import { diffStats } from '../../../components/DiffView'
 import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
 import { PersonalizeButton } from '../../memory/PersonalizeButton'
+import { ToolbarMore } from './ToolbarMore'
 import { Composer } from './Composer'
 import { CodeHomeBlocks, useCodeHome } from './CodeHomeBlocks'
 import { HomeIdeas } from '../../../components/HomeBlocks'
@@ -386,7 +387,10 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   // Desktop: puede haber otros proyectos abiertos a la vez (en segundo plano); el celular reemplaza, como siempre.
   const others = isRemoteSurface() ? [] : openDirectories.filter((d) => d !== directory)
   return (
-    <div ref={ref} className="no-drag relative max-w-48 min-w-12 shrink-0 desk:max-w-[min(22rem,40%)] desk:min-w-[7.5rem] desk:shrink">
+    <div
+      ref={ref}
+      className="no-drag relative max-w-48 min-w-12 shrink-0 desk:max-w-[min(22rem,40%)] desk:min-w-[7.5rem] desk:shrink desk:@max-[40rem]:min-w-[5.5rem]"
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -572,6 +576,11 @@ const ALL_PANELS: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] =
   { id: 'files', label: 'code.panel.files', icon: <FileCode2 size={16} /> },
   { id: 'browser', label: 'code.panel.browser', icon: <Globe size={16} /> }
 ]
+/** Grupos lógicos de la barra: revisión (Cambios) y herramientas (Terminal, Archivos, Navegador). Separados por una línea fina. */
+const PANEL_GROUPS: { key: string; label: MsgKey; ids: RightPanel[] }[] = [
+  { key: 'review', label: 'code.toolbar.group.review', ids: ['changes'] },
+  { key: 'tools', label: 'code.toolbar.group.tools', ids: ['terminal', 'files', 'browser'] }
+]
 /** Sin terminal (pty) ni vista nativa del navegador en la PWA del celular; en Mac y Windows no cambia nada. */
 const PANEL_META = ALL_PANELS.filter(
   (p) => (p.id !== 'terminal' || platformCaps().terminal) && (p.id !== 'browser' || platformCaps().nativeBrowser)
@@ -597,81 +606,112 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       style={panel ? ({ '--controls-inset': '0px' } as React.CSSProperties) : undefined}
     >
       <ProjectMenu directory={directory} />
-      <BranchPill directory={directory} />
+      {/* La rama también está en «Entorno» y en el panel Cambios: con la barra estrecha cede el sitio al título de la sesión. */}
+      <span className="contents desk:@max-[40rem]:hidden">
+        <BranchPill directory={directory} />
+      </span>
       {session && (
-        // Escritorio: el título se muestra (truncado) según el ancho REAL de la barra (consulta de contenedor), no por punto de quiebre de la ventana.
-        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:flex desk:min-w-0 desk:flex-1 desk:shrink-[4] desk:@max-[16rem]:hidden">
+        // Escritorio: el título se muestra (truncado, con el título completo en el tooltip) según el ancho REAL de la barra
+        // (consulta de contenedor), no por punto de quiebre de la ventana; nunca baja de ~5 rem.
+        <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:flex desk:min-w-[5rem] desk:flex-1 desk:shrink-[4]">
           <span className="text-subtle">/</span>
-          <span className="truncate">{session.title || t('code.sessions.untitled')}</span>
+          <span className="truncate" title={session.title || t('code.sessions.untitled')} data-testid="toolbar-session-title">
+            {session.title || t('code.sessions.untitled')}
+          </span>
         </span>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
-        <PersonalizeButton />
-        {session && !isRemoteSurface() && <ExportMenuButton onAction={(a) => void exportCodeConversation(session, a)} />}
-        <ReadingModeSwitch />
         {busy && (
           <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
             <button
               type="button"
+              aria-label={t('code.toolbar.stop')}
               onClick={() => void abort()}
               className="no-drag flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10"
             >
-              <Square size={10} fill="currentColor" /> {t('code.toolbar.stop')}
+              <Square size={10} fill="currentColor" />
+              <span className="block desk:@max-[32rem]:hidden">{t('code.toolbar.stop')}</span>
             </button>
           </Tip>
         )}
-        {activeSessionID && (
-          <span className="contents desk:@max-[32rem]:hidden">
-            <Tip label={t('code.toolbar.fork')}>
-              <button
-                type="button"
-                disabled={busy}
-                aria-label={t('code.toolbar.fork')}
-                onClick={() => void forkSession(activeSessionID)}
-                className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
-              >
-                <GitFork size={14} />
-              </button>
-            </Tip>
-            <Tip label={t('code.toolbar.compact')}>
-              <button
-                type="button"
-                disabled={busy}
-                aria-label={t('code.toolbar.compact')}
-                onClick={() => void compactSession(activeSessionID)}
-                className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
-              >
-                <Sparkles size={14} />
-              </button>
-            </Tip>
+        {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
+        <ReadingModeSwitch />
+        {/* Conversación: memoria, exportar, bifurcar y compactar. Barra ancha: iconos con la etiqueta en el tooltip; estrecha: menú «…» con texto. */}
+        <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+        <div role="group" aria-label={t('code.toolbar.group.conversation')} className="flex items-center gap-1.5">
+          <span className="contents desk:@max-[44rem]:hidden">
+            <PersonalizeButton />
+            {session && !isRemoteSurface() && <ExportMenuButton onAction={(a) => void exportCodeConversation(session, a)} />}
+            {activeSessionID && (
+              <>
+                <Tip label={t('code.toolbar.fork')}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label={t('code.toolbar.fork')}
+                    onClick={() => void forkSession(activeSessionID)}
+                    className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+                  >
+                    <GitFork size={14} />
+                  </button>
+                </Tip>
+                <Tip label={t('code.toolbar.compact')}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label={t('code.toolbar.compact')}
+                    onClick={() => void compactSession(activeSessionID)}
+                    className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
+                  >
+                    <Sparkles size={14} />
+                  </button>
+                </Tip>
+              </>
+            )}
           </span>
-        )}
-        <span
-          className={panel ? 'mx-0.5 h-5 w-px bg-border desk:@max-[48rem]:hidden' : 'mx-0.5 h-5 w-px bg-border desk:@max-[32rem]:hidden'}
-        />
+          {!isRemoteSurface() && (
+            <ToolbarMore
+              hasSession={!!session}
+              busy={busy}
+              onExport={(a) => session && void exportCodeConversation(session, a)}
+              onFork={() => activeSessionID && void forkSession(activeSessionID)}
+              onCompact={() => activeSessionID && void compactSession(activeSessionID)}
+            />
+          )}
+        </div>
         {/* Con un panel abierto y la barra estrecha, sus pestañas ya están en el panel: se ocultan aquí y el título de la sesión cabe. */}
         <span className={panel ? 'contents desk:@max-[48rem]:hidden' : 'contents'}>
-          {PANEL_META.map((p) => (
-            <Tip
-              key={p.id}
-              label={t(p.label)}
-              shortcut={hintText(bindings[`code.panel.${p.id}`])}
-              align={p.id === 'browser' ? 'end' : 'center'}
-            >
-              <button
-                type="button"
-                aria-label={t(p.label)}
-                aria-pressed={panel === p.id}
-                onClick={() => togglePanel(p.id)}
-                className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
-              >
-                {p.icon}
-                {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
-                <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
-              </button>
-            </Tip>
-          ))}
+          {PANEL_GROUPS.map((group) => {
+            const items = PANEL_META.filter((p) => group.ids.includes(p.id))
+            if (items.length === 0) return null
+            return (
+              <Fragment key={group.key}>
+                <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
+                <div role="group" aria-label={t(group.label)} className="flex items-center gap-0.5">
+                  {items.map((p) => (
+                    <Tip
+                      key={p.id}
+                      label={t(p.label)}
+                      shortcut={hintText(bindings[`code.panel.${p.id}`])}
+                      align={p.id === 'browser' ? 'end' : 'center'}
+                    >
+                      <button
+                        type="button"
+                        aria-label={t(p.label)}
+                        aria-pressed={panel === p.id}
+                        onClick={() => togglePanel(p.id)}
+                        className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      >
+                        {p.icon}
+                        {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
+                        <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
+                      </button>
+                    </Tip>
+                  ))}
+                </div>
+              </Fragment>
+            )
+          })}
         </span>
       </div>
     </div>

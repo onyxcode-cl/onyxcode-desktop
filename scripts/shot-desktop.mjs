@@ -104,7 +104,7 @@ const SCENARIOS = [
   'code-cambios-archivo',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
-const SIZES = { '1280x800': [1280, 800], '1000x700': [1000, 700] }
+const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
 const SMALL_ALSO = /^(chat-|ajustes-)/
 const TOTAL_TIMEOUT_MS = 330_000

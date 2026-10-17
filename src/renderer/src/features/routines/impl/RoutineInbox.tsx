@@ -2,12 +2,57 @@
  * Bandeja «Resultados por revisar»: lo que dejó cada ejecución de una rutina (qué hizo, archivos, estado, errores) y
  * las ejecuciones perdidas que esperan decisión. Vive arriba de la lista de Rutinas y reutiliza su almacén.
  */
-import { useMemo, useState } from 'react'
-import { AlertCircle, CalendarX2, Check, CheckCircle2, ChevronDown, ExternalLink, FileText, Play, X } from 'lucide-react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { AlertCircle, CalendarX2, Check, CheckCircle2, ChevronDown, ExternalLink, FileText, MoreHorizontal, Play, X } from 'lucide-react'
 import type { RoutineInboxItem } from '@shared/ipc-tasks'
 import { useT } from '../../../lib/i18n'
+import { PortalMenu, PortalMenuItem } from '../../../components/PortalMenu'
 import { fullDate } from './schedule'
 import { resolveInbox, selectInboxPending, useRoutines } from './store'
+
+/** «…» de cada resultado: las acciones de consulta («Ver detalle», «Volver a ejecutar») no compiten con las decisiones (Aprobar / Descartar). */
+function InboxMoreMenu({
+  item,
+  open,
+  onToggleDetail
+}: {
+  item: RoutineInboxItem
+  open: boolean
+  onToggleDetail: () => void
+}): React.JSX.Element {
+  const t = useT()
+  const [menu, setMenu] = useState(false)
+  const anchor = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setMenu(false), [])
+  return (
+    <div ref={anchor} className="relative">
+      <button
+        type="button"
+        data-testid="inbox-more"
+        aria-label={t('routines.inbox.more', { name: item.routineName })}
+        title={t('routines.inbox.more', { name: item.routineName })}
+        aria-haspopup="menu"
+        aria-expanded={menu}
+        onClick={() => setMenu((o) => !o)}
+        className="inline-flex size-7 items-center justify-center rounded-ctl-sm text-muted hover:bg-hover hover:text-fg"
+      >
+        <MoreHorizontal size={14} />
+      </button>
+      <PortalMenu open={menu} anchor={anchor} onClose={close} label={t('routines.inbox.more', { name: item.routineName })}>
+        <PortalMenuItem
+          icon={<ChevronDown size={14} className={open ? 'rotate-180' : ''} />}
+          label={open ? t('routines.inbox.hideDetail') : t('routines.inbox.detail')}
+          onClick={() => (setMenu(false), onToggleDetail())}
+        />
+        <PortalMenuItem
+          icon={<Play size={14} />}
+          label={t('routines.inbox.rerun')}
+          onClick={() => (setMenu(false), void resolveInbox(item.id, 'run'))}
+        />
+      </PortalMenu>
+    </div>
+  )
+}
 
 export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (item: RoutineInboxItem) => void }): React.JSX.Element {
   const t = useT()
@@ -79,21 +124,7 @@ export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (
       <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
         {!missed && (
           <>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-ctl-sm px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
-              aria-expanded={open}
-              onClick={() => setOpen((o) => !o)}
-            >
-              <ChevronDown size={12} className={open ? 'rotate-180' : ''} /> {t('routines.inbox.detail')}
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-ctl-sm px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
-              onClick={() => void resolveInbox(item.id, 'run')}
-            >
-              <Play size={12} /> {t('routines.inbox.rerun')}
-            </button>
+            <InboxMoreMenu item={item} open={open} onToggleDetail={() => setOpen((o) => !o)} />
             <button
               type="button"
               className="inline-flex items-center gap-1 rounded-ctl-sm px-2 py-1 text-xs text-muted hover:bg-hover hover:text-fg"
@@ -103,6 +134,7 @@ export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (
             </button>
             <button
               type="button"
+              title={t('routines.inbox.approveHint')}
               className="inline-flex items-center gap-1 rounded-ctl-sm bg-accent-soft px-2 py-1 text-xs font-medium text-accent hover:opacity-90"
               onClick={() => void resolveInbox(item.id, 'approve')}
             >

@@ -24,4 +24,14 @@ describe('panel Cambios (escritorio, QA)', () => {
   it('diff de escritorio sin ajuste de línea', () => {
     expect(src).toContain('wrap={mobile ? wrap : false}')
   })
+  it('H17: al abrir se selecciona el primer archivo, la selección se recuerda y ↑/↓ + Enter/Espacio se manejan en la fila', () => {
+    expect(src).toContain('pickSelection(rows, selected, recallSelection(directory))')
+    expect(src).toContain('rememberSelection(directory, selected)')
+    expect(src).toContain("e.key === 'ArrowDown' || e.key === 'ArrowUp'")
+    expect(src).toContain("(e.key === 'Enter' || e.key === ' ')")
+    // El celular conserva su lista a pantalla completa: la selección automática solo corre en escritorio.
+    expect(src).toContain('if (mobile || !status || statusDir !== directory) return')
+    // Cerrar el diff a propósito no lo reabre solo.
+    expect(src).toContain('closedByUser.current = true')
+  })
 })

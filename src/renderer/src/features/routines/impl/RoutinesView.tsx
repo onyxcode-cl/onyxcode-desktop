@@ -558,14 +558,14 @@ export function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.El
       </div>
       <h2 className="mt-4 text-xl font-semibold tracking-tight">{t('routines.empty.title')}</h2>
       <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted">{t('routines.empty.desc')}</p>
-      <div className="mt-8 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
+      <Button variant="primary" className="mt-6" onClick={onCreate}>
+        <Plus size={15} /> {t('routines.empty.fromScratch')}
+      </Button>
+      <div className="mt-6 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
         {availableTemplates().map((tpl) => (
           <TemplateCard key={tpl.id} tpl={tpl} />
         ))}
       </div>
-      <Button variant="secondary" className="mt-6" onClick={onCreate}>
-        <Plus size={15} /> {t('routines.empty.fromScratch')}
-      </Button>
     </div>
   )
 }
@@ -664,12 +664,11 @@ export function RoutinesView(): React.JSX.Element {
           <PageHeader
             title={t('routines.view.title')}
             meta={headerMeta}
+            // «Nueva rutina» siempre arriba a la derecha (también sin rutinas), como «Nueva …» en los otros modos.
             actions={
-              routines.length > 0 ? (
-                <Button variant="primary" onClick={create}>
-                  <Plus size={15} /> {t('routines.view.new')}
-                </Button>
-              ) : undefined
+              <Button variant="primary" onClick={create}>
+                <Plus size={15} /> {t('routines.view.new')}
+              </Button>
             }
           />
         )}
