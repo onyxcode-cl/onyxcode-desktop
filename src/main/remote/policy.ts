@@ -469,6 +469,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:chatFile:open': 'X',
   'extras:chatFile:reveal': 'X',
   'extras:downloadChatDoc': 'X',
+  'extras:exportConversation': 'X', // guarda en el Mac con el diálogo nativo; nunca desde el celular
   'extras:quickSubmit': 'X',
   'extras:quickHide': 'X',
   'extras:quickToggle': 'X',

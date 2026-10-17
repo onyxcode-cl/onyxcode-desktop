@@ -1,12 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@opencode-ai/sdk/v2/client'
-import { Archive, ArchiveRestore, Check, MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from 'lucide-react'
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  ClipboardCopy,
+  FileDown,
+  FileText,
+  MoreHorizontal,
+  Pencil,
+  Pin,
+  PinOff,
+  SlidersHorizontal,
+  Trash2
+} from 'lucide-react'
 import { useT } from '../../lib/i18n'
 import { isSubmitKey } from '../../lib/textarea'
 import { confirmDialog } from '../../components/ConfirmDialog'
 import { PortalMenu, PortalMenuItem, PortalMenuSeparator } from '../../components/PortalMenu'
 import { StateDot, useSidebarTree } from '../../components/SidebarTree'
 import { timeAgo } from '../code/impl/ui'
+import { openExportOptions } from '../../components/ExportConversation'
+import { exportChatConversation } from './export'
 
 /**
  * Fila de conversación de la barra lateral de escritorio (árbol): igual que la de Overdrive y la de Code. Dos líneas (título y, debajo, el
@@ -208,6 +223,39 @@ export function ChatSidebarRow({
                   }}
                 />
               )}
+          <PortalMenuSeparator />
+          <PortalMenuItem
+            icon={<ClipboardCopy size={14} strokeWidth={1.75} />}
+            label={t('conv.export.copy')}
+            onClick={() => {
+              setMenu(false)
+              void exportChatConversation(session, 'copy')
+            }}
+          />
+          <PortalMenuItem
+            icon={<FileText size={14} strokeWidth={1.75} />}
+            label={t('conv.export.saveMd')}
+            onClick={() => {
+              setMenu(false)
+              void exportChatConversation(session, 'md')
+            }}
+          />
+          <PortalMenuItem
+            icon={<FileDown size={14} strokeWidth={1.75} />}
+            label={t('conv.export.savePdf')}
+            onClick={() => {
+              setMenu(false)
+              void exportChatConversation(session, 'pdf')
+            }}
+          />
+          <PortalMenuItem
+            icon={<SlidersHorizontal size={14} strokeWidth={1.75} />}
+            label={t('conv.export.options')}
+            onClick={() => {
+              setMenu(false)
+              openExportOptions()
+            }}
+          />
           <PortalMenuSeparator />
           <PortalMenuItem
             danger

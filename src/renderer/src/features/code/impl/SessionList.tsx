@@ -7,6 +7,9 @@ import {
   CheckCheck,
   ChevronDown,
   Circle,
+  ClipboardCopy,
+  FileDown,
+  FileText,
   FolderOpen,
   FolderPlus,
   GitBranchPlus,
@@ -17,10 +20,13 @@ import {
   Plus,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   Trash2,
   X
 } from 'lucide-react'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { openExportOptions } from '../../../components/ExportConversation'
+import { exportCodeConversation } from './export'
 import { displayTitle } from './session-title'
 import { focusNeutral, hasKeyboardFocus, newSessionHere } from './new-session-plus'
 import { dayBucket } from './day-bucket'
@@ -399,6 +405,23 @@ export function SessionRow({
                   archived ? t('code.sessions.unarchive') : t('code.sessions.archive'),
                   () => void (archived ? unarchiveSession(session.id) : archiveSession(session.id))
                 )}
+                <div className="mx-1.5 my-1 h-px bg-border" role="separator" />
+                {menuItem(
+                  <ClipboardCopy size={14} strokeWidth={1.75} />,
+                  t('conv.export.copy'),
+                  () => void exportCodeConversation(session, 'copy')
+                )}
+                {menuItem(
+                  <FileText size={14} strokeWidth={1.75} />,
+                  t('conv.export.saveMd'),
+                  () => void exportCodeConversation(session, 'md')
+                )}
+                {menuItem(
+                  <FileDown size={14} strokeWidth={1.75} />,
+                  t('conv.export.savePdf'),
+                  () => void exportCodeConversation(session, 'pdf')
+                )}
+                {menuItem(<SlidersHorizontal size={14} strokeWidth={1.75} />, t('conv.export.options'), openExportOptions)}
                 <div className="mx-1.5 my-1 h-px bg-border" role="separator" />
                 {menuItem(<Trash2 size={14} strokeWidth={1.75} />, t('code.sessions.delete'), askDelete, true)}
               </div>,
