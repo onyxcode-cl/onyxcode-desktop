@@ -98,6 +98,11 @@ const SCENARIOS = [
   'ajustes-buscar',
   'ajustes-importar',
   'ajustes-importar-hecho',
+  // Personalización (F8-B180): habilidades, conectores por tarea, detalle de una ficha y paso a paso para conectar.
+  'personalizacion-habilidades',
+  'personalizacion-conectores',
+  'personalizacion-detalle',
+  'personalizacion-conectar',
   'paleta',
   'selector-modelo',
   // Caja de escribir de Code con el menú de permisos abierto (frase por opción, actual marcada, atajos 1-5).
@@ -126,7 +131,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|personalizacion-)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -466,11 +471,15 @@ async function auditSmallTargets(ctx, name, theme, sizeKey) {
         const af = getComputedStyle(el, '::after')
         if (af.position === 'absolute' && parseFloat(af.height) >= 24 && parseFloat(af.width) >= 24) continue
         if (r.width >= 28 && r.height >= 28) continue
-        const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || '').trim().slice(0, 36)
+        const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || '')
+          .trim()
+          .slice(0, 36)
         const text = (el.textContent || '').trim()
         // Un control con texto visible largo no es «solo icono»: solo se mira la altura.
         if (text.length > 3 && r.height >= 24) continue
-        out.push(`${el.tagName.toLowerCase()} "${label}" ${Math.round(r.width)}x${Math.round(r.height)} [${(el.className?.toString?.() ?? '').slice(0, 70)}]`)
+        out.push(
+          `${el.tagName.toLowerCase()} "${label}" ${Math.round(r.width)}x${Math.round(r.height)} [${(el.className?.toString?.() ?? '').slice(0, 70)}]`
+        )
       }
       return out
     })
@@ -625,6 +634,14 @@ async function seedChats(ctx) {
 }
 
 // ---- escenarios: cada uno deja la pantalla lista y devuelve una función de limpieza opcional ----
+async function openPersonalizacion(page, tab) {
+  await page.locator('[data-testid="sidebar-personalization"]').click()
+  await vis(page.locator('[data-testid="personalizacion"]'), 15_000)
+  const names = { habilidades: /Habilidades/, conectores: /Conectores/, tuyos: /Tuyos/ }
+  await page.getByRole('tab', { name: names[tab] }).click()
+  await sleep(300)
+}
+
 async function openSettings(page, section) {
   await closeOverlays(page)
   await page
@@ -908,18 +925,20 @@ async function seedTaskList(ctx) {
 let routinesSeeded = false
 // Un guardado cualquiera hace que main vuelva a sincronizar los vigilantes de archivos (para provocar sus estados).
 async function resyncWatch(page) {
-  await page.evaluate(async (folder) =>
-    window.api.tasks.invoke('routines:save', {
-      name: 'Auxiliar',
-      prompt: 'Sin uso.',
-      mode: 'tasks',
-      schedule: { kind: 'interval', hours: 6 },
-      enabled: false,
-      folder,
-      model: { providerID: 'fake', modelID: 'fake-model' },
-      sessionMode: 'fresh',
-      onAsk: 'reject'
-    }), taskFolder
+  await page.evaluate(
+    async (folder) =>
+      window.api.tasks.invoke('routines:save', {
+        name: 'Auxiliar',
+        prompt: 'Sin uso.',
+        mode: 'tasks',
+        schedule: { kind: 'interval', hours: 6 },
+        enabled: false,
+        folder,
+        model: { providerID: 'fake', modelID: 'fake-model' },
+        sessionMode: 'fresh',
+        onAsk: 'reject'
+      }),
+    taskFolder
   )
   await sleep(1500)
   // La rutina auxiliar solo sirve para provocar la sincronización: se borra para que no salga en la captura.
@@ -1986,6 +2005,41 @@ const S = {
     await page.keyboard.press('ArrowDown')
     await sleep(500)
   },
+  // Personalización (F8-B180). Se abre desde el ítem de la barra lateral; sin servicios reales: el detalle y el paso a paso no guardan nada.
+  async 'personalizacion-habilidades'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'habilidades')
+    await vis(page.locator('[data-testid="pers-skill-docx"]'), 15_000)
+    await sleep(400)
+  },
+  async 'personalizacion-conectores'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-github"]'), 15_000)
+    await sleep(400)
+  },
+  async 'personalizacion-detalle'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-context7"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-context7"]').click()
+    await vis(page.locator('[role="dialog"]'), 5000)
+    await sleep(500)
+  },
+  async 'personalizacion-conectar'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-github"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-github"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 5000)
+    await dlg
+      .getByRole('button', { name: /^Conectar$/ })
+      .first()
+      .click()
+    await vis(dlg.getByRole('checkbox').first(), 5000)
+    await sleep(500)
+  },
   async 'ajustes-importar'(ctx) {
     const { page } = ctx
     const fakeKey = ['sk', 'ant', 'api03', 'Zq8'.repeat(10)].join('-')
@@ -2093,7 +2147,10 @@ const S = {
     await fake.script({
       match: 'tarea muy larga',
       title: 'Análisis largo',
-      steps: [{ type: 'text', text: 'Estoy revisando los 4.200 registros del año. Esto puede tardar un poco; sigo con el segundo trimestre…' }, { type: 'delay', ms: 120000 }]
+      steps: [
+        { type: 'text', text: 'Estoy revisando los 4.200 registros del año. Esto puede tardar un poco; sigo con el segundo trimestre…' },
+        { type: 'delay', ms: 120000 }
+      ]
     })
     await closeOverlays(page)
     await newChat(page)
@@ -2101,7 +2158,11 @@ const S = {
     await vis(page.getByText(/Estoy revisando los 4\.200 registros/), 30_000)
     await sleep(900)
     return async () => {
-      await page.getByRole('button', { name: /^(Detener|Parar)/ }).first().click({ timeout: 3000 }).catch(() => {})
+      await page
+        .getByRole('button', { name: /^(Detener|Parar)/ })
+        .first()
+        .click({ timeout: 3000 })
+        .catch(() => {})
       await sleep(400)
     }
   },
@@ -2135,20 +2196,17 @@ const S = {
     mkdirSync(base, { recursive: true })
     mkdirSync(gone, { recursive: true })
     const mkFile = (name, folder) =>
-      page.evaluate(
-        async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 160),
-        {
-          name,
-          prompt: 'Ordena el archivo nuevo que apareció en la carpeta.',
-          mode: 'tasks',
-          schedule: { kind: 'file', folder, patterns: ['*.pdf'], on: 'create', settleSec: 5, maxPerHour: 6 },
-          enabled: true,
-          folder: taskFolder,
-          model: { providerID: 'fake', modelID: 'fake-model' },
-          sessionMode: 'fresh',
-          onAsk: 'reject'
-        }
-      )
+      page.evaluate(async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 160), {
+        name,
+        prompt: 'Ordena el archivo nuevo que apareció en la carpeta.',
+        mode: 'tasks',
+        schedule: { kind: 'file', folder, patterns: ['*.pdf'], on: 'create', settleSec: 5, maxPerHour: 6 },
+        enabled: true,
+        folder: taskFolder,
+        model: { providerID: 'fake', modelID: 'fake-model' },
+        sessionMode: 'fresh',
+        onAsk: 'reject'
+      })
     console.log('  [rutinas] vigilante', await mkFile('Ordenar facturas nuevas', gone))
     console.log('  [rutinas] vigilante', await mkFile('Archivar informes recibidos', base))
     // Carpeta borrada y un guardado cualquiera para que el vigilante se vuelva a sincronizar: pasa a «Carpeta no disponible».
@@ -2156,7 +2214,9 @@ const S = {
     await resyncWatch(page)
     await goMode(page, 'Chat')
     await goMode(page, 'Rutinas')
-    await vis(page.getByText('Carpeta no disponible'), 20_000).catch(() => notes.push('rutinas-vigilante: no apareció «Carpeta no disponible»'))
+    await vis(page.getByText('Carpeta no disponible'), 20_000).catch(() =>
+      notes.push('rutinas-vigilante: no apareció «Carpeta no disponible»')
+    )
     await sleep(500)
   },
   // Rutinas con disparador por archivo sin haber aceptado el aviso de Rutinas: el vigilante queda en «Sin vigilar».
@@ -2179,7 +2239,11 @@ const S = {
     await openSettings(page, 'Modelos')
     await sleep(1000)
     // El estado vacío está en «Servicios de IA», más abajo que lo primero que se ve.
-    await page.getByText('Servicios de IA', { exact: true }).first().evaluate((el) => el.scrollIntoView({ block: 'start' })).catch(() => {})
+    await page
+      .getByText('Servicios de IA', { exact: true })
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'start' }))
+      .catch(() => {})
     await sleep(500)
     return async () => {
       await fake.set({ connectedProviders: ['fake', 'opencode-go'] })

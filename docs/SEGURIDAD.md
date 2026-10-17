@@ -1847,3 +1847,17 @@ Los modos del chip («Preguntar siempre», «Editar sin preguntar», «Solo expl
 - **Subagentes**: con «Preguntar siempre» se pregunta al lanzarlos, pero lo que hacen dentro no pasa por las reglas del padre (solo `external_directory` y `deny` se heredan).
 - La lista de reglas de una sesión solo crece (cada cambio de modo suma un bloque); no hay forma de quitar reglas del motor.
 - Overdrive (Tareas) y Chat no cambian: su agente y sus reglas son otros.
+
+## 3 quinquagies quinquies. Personalización: habilidades y conectores (F8-B180)
+
+Pantalla «Personalización» (Habilidades / Conectores / Tuyos). Catálogo: `resources/catalogo/catalogo.json` (sin servidor ni descargas; `docs/CATALOGO.md`).
+
+- **Habilidades = código de terceros.** Son instrucciones y, a veces, programas que el agente puede usar. La pantalla lo dice con un aviso claro y **nada se instala sin confirmación**.
+- **Solo desde una carpeta elegida en el diálogo nativo** (lo abre `main`; el renderer nunca manda una ruta). `skill-folder.ts` solo lee: exige `SKILL.md` con `name` y `description`, rechaza enlaces simbólicos, archivos especiales, binarios ejecutables (Mach-O, ELF, PE), tipos desconocidos y texto que parezca un secreto, y pone topes (200 archivos, profundidad 4, 2 MB por archivo, 8 MB en total). **No ejecuta ni importa nada.**
+- **Vista previa y confirmación**: `personalizacion:skills:pick` devuelve lo que se copiará (lo leído, no la carpeta viva) y una ficha de un solo uso de 10 minutos; `install` compara la huella y rechaza si la carpeta cambió. Instalación atómica (copia a un temporal y renombra). Nunca pisa una habilidad incluida ni una ya instalada.
+- **Interruptor de habilidades incluidas**: quita o restaura la copia de trabajo (`opencode-config/skills`); el paquete no se toca y aplica a conversaciones nuevas. `prepareOpencodeConfigDir` conserva las propias y no restaura las apagadas.
+- **Canales** `personalizacion:skills:{list,setEnabled,pick,install,remove}`: esquema estricto en `schemas.ts` (nombres `^[a-z0-9]+(-[a-z0-9]+)*$`, ficha hexadecimal de 32) y **clase X** en `policy.ts` (nunca desde el celular).
+- **Conectores**: solo remotos `https` del catálogo empaquetado; reutilizan `mcp:save`/`mcp:remove` de Ajustes (misma validación, mismo guardado cifrado de secretos, `useMcpConnections`). Desactivados por defecto: se conectan tras el paso a paso (qué podrá y qué NO, aviso de que verá los datos y se los pasa al modelo, casilla «Entiendo»). Los valores secretos van enmascarados, no se registran ni se reescriben en pantalla. Sin OAuth propio.
+- **Sello «Revisado por Lazunox»** solo en fichas del catálogo empaquetado.
+- **Pruebas**: `src/main/personalizacion/personalizacion.test.ts` (carpetas hostiles, topes, huella, ficha caducada, apagar/encender), `src/main/ipc/personalizacion-ipc.test.ts` (esquemas y clase X), `src/test/catalogo.test.ts`, `PersonalizacionView.test.tsx`.
+- **No verificado**: Windows real; conectores contra los servicios reales desde esta pantalla; habilidades con binarios propios de cada plataforma (se rechazan los ejecutables).

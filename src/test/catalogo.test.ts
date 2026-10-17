@@ -64,8 +64,8 @@ describe('catálogo de Personalización: archivo empaquetado', () => {
 })
 
 describe('catálogo de Personalización: el validador rechaza lo que no cumple', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bad = (mut: (c: Record<string, any>) => void): string[] => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
     const c = clone()
     mut(c)
     return validateCatalog(c)
