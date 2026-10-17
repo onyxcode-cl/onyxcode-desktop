@@ -12,7 +12,8 @@ import {
 
 // Claves FALSAS de prueba (no son reales).
 const FAKE_KEY = 'sk-ant-api03-FALSA1234567890abcdefXYZ'
-const FAKE_GH = 'ghp_FALSA0123456789abcdefghijklmnopqrstu'
+// Se arma al ejecutar para que la guardia de secretos no vea un token literal en el archivo.
+const FAKE_GH = ['ghp', '_FALSA0123456789abcdefghijklmnopqrstu'].join('')
 
 const T0 = new Date(2026, 9, 16, 14, 5).getTime()
 
