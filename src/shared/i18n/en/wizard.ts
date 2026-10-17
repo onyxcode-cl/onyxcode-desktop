@@ -51,11 +51,19 @@ export const wizard = {
   'wizard.opencode.openDocs': 'Open instructions',
   'wizard.opencode.pickBinary': 'Choose the program…',
 
-  'wizard.auth.lead': 'For the AI to answer, connect an AI service. You can change it or add others later in Settings › Models.',
-  'wizard.auth.recommended': 'Recommended',
+  'wizard.auth.lead':
+    'The AI needs a model to answer. You can start for free, with no account or key, and connect another service any time in Settings › Models.',
+  'wizard.auth.freeTitle': 'Start for free',
+  'wizard.auth.free': 'Free',
+  'wizard.auth.freeChosen': 'Free model chosen',
+  'wizard.auth.freeDescription':
+    'Use the free OpenCode models: no account, key or card needed. They can be slower or change over time. Pick the free model and continue.',
+  'wizard.auth.freeUse': 'Use the free model',
+  'wizard.auth.freeUnavailable': 'No free models are available right now. Try another service or try again later.',
+  'wizard.auth.paid': 'Subscription',
   'wizard.auth.goConnected': 'OpenCode Go connected',
   'wizard.auth.goDescription':
-    'OpenCode Go is an affordable subscription with access to open models for coding. Create your account, subscribe, and copy your key, then paste it here. It is stored only for {app}, in its own credential store, without sharing it with other programs.',
+    'OpenCode Go is a paid subscription with access to open models for coding. Only if you already have it or want it: create your account, subscribe, and copy your key, then paste it here. It is stored only for {app}, in its own credential store, without sharing it with other programs.',
   'wizard.auth.getKey': 'Get my key',
   'wizard.auth.learnGo': 'Learn about OpenCode Go',
   'wizard.auth.otherTitle': 'Another AI service',
@@ -95,7 +103,7 @@ export const wizard = {
   'wizard.setup.craft.hint': 'Downloaded just once (about {mb} MB) and checked to be genuine before use. No administrator password needed.',
   'wizard.setup.craft.retryHint': 'Press “Retry” or do it later from Settings.',
   'wizard.setup.sandbox': 'Isolated environment for Overdrive',
-  'wizard.setup.sandbox.hint': 'Set up once (about 2 GB of disk), using what the app already includes.',
+  'wizard.setup.sandbox.hint': 'Optional, only for Tasks mode. Set up once (about 2 GB of disk), using what the app already includes.',
   'wizard.setup.run': 'Set everything up',
   'wizard.setup.running': 'Setting up…',
   'wizard.setup.done': 'All set',
@@ -145,9 +153,9 @@ export const wizard = {
   'wizard.perms.help.copied': 'Copied',
   'wizard.perms.help.restart': 'Restart {app}',
   'preflight.title': 'Getting {app} ready',
-  'preflight.subtitle.blocking':
-    'Some components are missing for {app} to work. They are installed once and no administrator password is needed.',
-  'preflight.subtitle.optional': 'The essentials are ready. A few notices are worth fixing now; you can continue and do it later.',
+  'preflight.subtitle.blocking': 'Something essential is missing for {app} to work. You can fix it here.',
+  'preflight.subtitle.optional':
+    'You can already use {app}. These pieces are optional: install them now if you want them, or leave them for later (they are also in Settings).',
   'preflight.checking': 'Checking your computer…',
   'preflight.size': 'About {size} will be downloaded.',
   'preflight.size.mb': '{n} MB',
@@ -158,7 +166,7 @@ export const wizard = {
   'preflight.recheck': 'Check again',
   'preflight.copy': 'Copy details',
   'preflight.copied': 'Details copied',
-  'preflight.continueAnyway': 'Continue anyway',
+  'preflight.continueAnyway': 'Later',
   'preflight.continue': 'Continue',
   'preflight.cannotSkip': 'This cannot be skipped: {app} does not work without it.',
   'preflight.allReady': 'All set.',
@@ -184,11 +192,13 @@ export const wizard = {
   'preflight.hint.engine.not-responding':
     'The engine is there but does not respond. Reinstall {app} from the installer or choose another engine.',
   'preflight.hint.craft.missing':
-    'To create and view Word, Excel, PowerPoint and PDF files with good design. Downloaded from GitHub (about {mb} MB) and verified before use.',
+    'Optional, to create and view Word, Excel, PowerPoint and PDF files with good design. Downloaded from GitHub (about {mb} MB) and verified before use.',
   'preflight.hint.craft.incomplete':
     'Some pieces are missing or damaged; they are downloaded again (about {mb} MB) and verified before use.',
-  'preflight.hint.sandbox.needsSetup': 'Set up once (about 2 GB of disk), using what the app already includes.',
-  'preflight.hint.sandbox.broken': 'The environment is damaged; it is set up again from what the app includes.',
+  'preflight.hint.sandbox.needsSetup':
+    'Optional, only for Tasks mode. Set up once (about 2 GB of disk), using what the app already includes.',
+  'preflight.hint.sandbox.broken':
+    'Optional, only for Tasks mode. The environment is damaged; it is set up again from what the app includes.',
   'preflight.hint.sandbox.other':
     'Needs Windows features turned on (WSL or virtualization). The steps are in Overdrive; you can continue and do it later.',
   'preflight.hint.helper.not-found': 'The {app} control helper was not found. Reinstall the app to be able to control the computer.',
@@ -203,7 +213,7 @@ export const wizard = {
     '{app} is running from the installer (.dmg). Drag it to Applications, eject the installer and open it from there.',
   'preflight.hint.location.elsewhere':
     '{app} is not in the Applications folder. Drag it there and open it from there: that way macOS remembers the permissions and it can update itself.',
-  'preflight.hint.disk.low-space': 'There is not enough free space to install what is missing. Free up disk space and press “Retry”.',
+  'preflight.hint.disk.low-space': 'There is not enough free space to install what is missing. Free up disk space or leave it for later.',
   'preflight.hint.storage.not-writable':
     '{app} cannot write to its data folder. Check your user permissions on that folder and press “Retry”.',
   'preflight.hint.generic.essential': 'This component is missing and {app} needs it.',

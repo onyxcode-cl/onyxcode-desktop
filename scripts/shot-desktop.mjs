@@ -19,6 +19,10 @@ const DEFAULT_OUT = WIN
   ? join(tmpdir(), 'shots-desktop')
   : '/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/shots-desktop'
 const SCENARIOS = [
+  // Pantalla «Preparando Lazunox» (revisión de arranque, simulada con LAZUNOX_TEST_PREFLIGHT): `preparando` = primer uso con el motor
+  // listo (ArtCraft y avisos de macOS opcionales, «Más tarde»); `preparando-motor` = sin motor (lo único que bloquea).
+  'preparando',
+  'preparando-motor',
   // Asistente de primer uso. Arranque «sin motor» (OpenCode ausente): `onboarding` (primera pantalla con la tarjeta de atención) y
   // `onboarding-motor` (paso del motor). Arranque «motor incluido»: `onboarding-inicio` (saludo directo) y los cuatro pasos.
   'onboarding',
@@ -1679,6 +1683,14 @@ const S = {
     await sleep(900)
   },
   // Asistente de primer uso: `onbTo(n)` avanza o retrocede hasta «Paso n de m» (n = 0 es la primera pantalla, la bienvenida).
+  async preparando(ctx) {
+    await vis(ctx.page.getByTestId('preflight-screen'), 30_000)
+    await sleep(600)
+  },
+  async 'preparando-motor'(ctx) {
+    await vis(ctx.page.getByTestId('preflight-screen'), 30_000)
+    await sleep(600)
+  },
   async onboarding(ctx) {
     await onbTo(ctx, 0)
   },
@@ -1889,9 +1901,10 @@ try {
   // interfaz mezclaría mensajes entre ambos; con ids reales (únicos) no pasa.
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
   const isOnb = (s) => s.startsWith('onboarding')
+  const isPrep = (s) => s.startsWith('preparando')
   const isAviso = (s) => s === 'aviso-motor'
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
-  const main = scenarios.filter((s) => !isOnb(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
+  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
   const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {
     const ctx = await launch('main')
@@ -1914,6 +1927,16 @@ try {
   if (scenarios.includes('kit')) {
     const ctx = await launch('kit')
     await runKit(ctx)
+    await stop(ctx)
+  }
+  // Revisión de arranque simulada: cada escenario con su propio arranque (la pantalla bloquea la app, no hay más que fotografiar).
+  for (const [sc, kind] of [
+    ['preparando', 'primer-uso'],
+    ['preparando-motor', 'sin-motor']
+  ]) {
+    if (!scenarios.includes(sc)) continue
+    const ctx = await launch(sc, { settings: { onboarded: false }, env: { LAZUNOX_TEST_PREFLIGHT: kind } })
+    await runGroup(ctx, [sc])
     await stop(ctx)
   }
   const onb = scenarios.filter(isOnb).sort(byOrder)

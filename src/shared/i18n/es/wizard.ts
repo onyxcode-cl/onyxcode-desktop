@@ -48,11 +48,19 @@ export const wizard = {
   'wizard.opencode.openDocs': 'Abrir instrucciones',
   'wizard.opencode.pickBinary': 'Elegir el programa…',
 
-  'wizard.auth.lead': 'Para que la IA responda, conecta un servicio de IA. Puedes cambiarlo o añadir otros después en Ajustes › Modelos.',
-  'wizard.auth.recommended': 'Recomendado',
+  'wizard.auth.lead':
+    'Para que la IA responda hace falta un modelo. Puedes empezar gratis, sin cuenta ni clave, y conectar otro servicio cuando quieras en Ajustes › Modelos.',
+  'wizard.auth.freeTitle': 'Empezar gratis',
+  'wizard.auth.free': 'Gratis',
+  'wizard.auth.freeChosen': 'Modelo gratuito elegido',
+  'wizard.auth.freeDescription':
+    'Usa los modelos gratuitos de OpenCode: no hace falta cuenta, clave ni tarjeta. Pueden ser más lentos o cambiar con el tiempo. Elige el modelo gratuito y sigue.',
+  'wizard.auth.freeUse': 'Usar el modelo gratuito',
+  'wizard.auth.freeUnavailable': 'Ahora mismo no hay modelos gratuitos disponibles. Prueba otro servicio o inténtalo más tarde.',
+  'wizard.auth.paid': 'Con suscripción',
   'wizard.auth.goConnected': 'OpenCode Go conectado',
   'wizard.auth.goDescription':
-    'OpenCode Go es una suscripción económica con acceso a modelos abiertos para programar. Crea tu cuenta, suscríbete y copia tu clave; luego pégala aquí. Se guarda solo para {app}, en su propio almacén de credenciales, sin compartirla con otros programas.',
+    'OpenCode Go es una suscripción de pago con acceso a modelos abiertos para programar. Solo si ya la tienes o quieres contratarla: crea tu cuenta, suscríbete y copia tu clave; luego pégala aquí. Se guarda solo para {app}, en su propio almacén de credenciales, sin compartirla con otros programas.',
   'wizard.auth.getKey': 'Obtener mi clave',
   'wizard.auth.learnGo': 'Conocer OpenCode Go',
   'wizard.auth.otherTitle': 'Otro servicio de IA',
@@ -93,7 +101,8 @@ export const wizard = {
     'Se descarga una sola vez (unos {mb} MB) y se comprueba que es auténtico antes de usarlo. No pide contraseña de administrador.',
   'wizard.setup.craft.retryHint': 'Pulsa «Reintentar» o hazlo después desde Ajustes.',
   'wizard.setup.sandbox': 'Entorno aislado de Overdrive',
-  'wizard.setup.sandbox.hint': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
+  'wizard.setup.sandbox.hint':
+    'Opcional, solo para el modo Tareas. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'wizard.setup.run': 'Preparar todo',
   'wizard.setup.running': 'Preparando…',
   'wizard.setup.done': 'Todo listo',
@@ -143,9 +152,9 @@ export const wizard = {
   'wizard.perms.help.copied': 'Copiados',
   'wizard.perms.help.restart': 'Reiniciar {app}',
   'preflight.title': 'Preparando {app}',
-  'preflight.subtitle.blocking':
-    'Faltan algunos componentes para que {app} funcione. Se instalan una sola vez y no hace falta contraseña de administrador.',
-  'preflight.subtitle.optional': 'Lo esencial está listo. Quedan avisos que conviene resolver ahora; puedes seguir y hacerlo después.',
+  'preflight.subtitle.blocking': 'Falta algo imprescindible para que {app} funcione. Aquí puedes arreglarlo.',
+  'preflight.subtitle.optional':
+    'Ya puedes usar {app}. Estas piezas son opcionales: instálalas ahora si las quieres o déjalas para más tarde (también están en Ajustes).',
   'preflight.checking': 'Revisando tu equipo…',
   'preflight.size': 'Se descargarán unos {size}.',
   'preflight.size.mb': '{n} MB',
@@ -156,7 +165,7 @@ export const wizard = {
   'preflight.recheck': 'Revisar de nuevo',
   'preflight.copy': 'Copiar detalle',
   'preflight.copied': 'Detalle copiado',
-  'preflight.continueAnyway': 'Continuar de todos modos',
+  'preflight.continueAnyway': 'Más tarde',
   'preflight.continue': 'Continuar',
   'preflight.cannotSkip': 'No se puede omitir: sin esto {app} no funciona.',
   'preflight.allReady': 'Todo listo.',
@@ -181,11 +190,13 @@ export const wizard = {
     'No se encontró el motor que viene con la app. Reinstala {app} desde el instalador o elige un motor ya instalado.',
   'preflight.hint.engine.not-responding': 'El motor está pero no responde. Reinstala {app} desde el instalador o elige otro motor.',
   'preflight.hint.craft.missing':
-    'Para crear y ver Word, Excel, PowerPoint y PDF con buen diseño. Se descarga de GitHub (unos {mb} MB) y se verifica antes de usarlo.',
+    'Opcional, para crear y ver Word, Excel, PowerPoint y PDF con buen diseño. Se descarga de GitHub (unos {mb} MB) y se verifica antes de usarlo.',
   'preflight.hint.craft.incomplete':
     'Hay piezas que faltan o están dañadas; se vuelven a descargar (unos {mb} MB) y se verifican antes de usarlas.',
-  'preflight.hint.sandbox.needsSetup': 'Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
-  'preflight.hint.sandbox.broken': 'El entorno está dañado; se vuelve a preparar con lo que trae la app.',
+  'preflight.hint.sandbox.needsSetup':
+    'Opcional, solo para el modo Tareas. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
+  'preflight.hint.sandbox.broken':
+    'Opcional, solo para el modo Tareas. El entorno está dañado; se vuelve a preparar con lo que trae la app.',
   'preflight.hint.sandbox.other':
     'Necesita activar funciones de Windows (WSL o virtualización). Los pasos están en Overdrive; puedes continuar y hacerlo después.',
   'preflight.hint.helper.not-found': 'No se encontró el ayudante de control de {app}. Reinstala la app para poder controlar el equipo.',
@@ -201,7 +212,7 @@ export const wizard = {
   'preflight.hint.location.elsewhere':
     '{app} no está en la carpeta Aplicaciones. Arrástrala allí y ábrela desde ahí: así macOS recuerda los permisos y puede actualizarla.',
   'preflight.hint.disk.low-space':
-    'No hay espacio libre suficiente para instalar lo que falta. Libera espacio en el disco y pulsa «Reintentar».',
+    'No hay espacio libre suficiente para instalar lo que falta. Libera espacio en el disco o déjalo para más tarde.',
   'preflight.hint.storage.not-writable':
     '{app} no puede escribir en su carpeta de datos. Revisa los permisos de tu usuario sobre esa carpeta y pulsa «Reintentar».',
   'preflight.hint.generic.essential': 'Falta este componente y {app} lo necesita.',

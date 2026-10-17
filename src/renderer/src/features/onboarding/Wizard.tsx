@@ -1,7 +1,8 @@
 /**
  * Asistente de primer uso: «Conecta tu IA», modelo, modos y «Prepara tu equipo» (4 pasos). Solo con un motor propio o sin motor se
  * añade el paso del motor (OpenCode) al principio (5 pasos). Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
- * «Conecta tu IA» ofrece OpenCode Go (recomendado) y cualquier otro servicio del catálogo de OpenCode (clave u OAuth).
+ * «Conecta tu IA» ofrece primero lo gratuito (los modelos gratuitos de OpenCode, sin cuenta ni clave), luego OpenCode Go (con suscripción)
+ * y cualquier otro servicio del catálogo de OpenCode (clave u OAuth). Nada de pago se destaca como recomendado.
  * El último paso ofrece «Probar con un ejemplo» a la vista.
  * Solo aparece si `settings.onboarded !== true` y falta el binario o ningún proveedor está
  * configurado (`decideOnboarding`); si todo ya funciona, marca `onboarded` sin mostrar nada.
@@ -21,6 +22,7 @@ import {
   RotateCw,
   Shield
 } from 'lucide-react'
+import { firstFreeModel } from '@shared/ai-availability'
 import { DISPLAY_NAME } from '@shared/brand'
 import { MODE_LABELS } from '@shared/labels'
 import type { MsgKey } from '@shared/i18n'
@@ -425,6 +427,12 @@ function StepAuth({
     await Promise.all([refreshProviders(), reload(), client ? useProviders.getState().load(client, true) : Promise.resolve()])
   })
   const [savedIds, setSavedIds] = useState<string[]>([])
+  const providers = useProviders((s) => s.providers)
+  const providersLoaded = useProviders((s) => s.loaded)
+  const defaultModel = useSettings((s) => s.settings.defaultModel)
+  const updateSettings = useSettings((s) => s.update)
+  const freeModel = providersLoaded ? firstFreeModel(providers) : null
+  const freeChosen = freeModel !== null && defaultModel.providerID === freeModel.providerID && defaultModel.modelID === freeModel.modelID
   /** Tarjeta que originó la última acción, para mostrar el error bajo ella. */
   const [origin, setOrigin] = useState<'go' | 'other'>('go')
   const serverStatus = useServer((s) => s.status)
@@ -483,12 +491,37 @@ function StepAuth({
         </div>
       )}
 
-      <section aria-labelledby="onb-go" className="rounded-card border-0 bg-accent-soft p-4 ring-[1.5px] ring-accent ring-inset">
+      <section aria-labelledby="onb-free" className="rounded-card border-0 bg-accent-soft p-4 ring-[1.5px] ring-accent ring-inset">
+        <div className="flex items-center gap-2">
+          <h3 id="onb-free" className="text-sm font-semibold">
+            {t('wizard.auth.freeTitle')}
+          </h3>
+          <Badge tone="ok">{t('wizard.auth.free')}</Badge>
+          {freeChosen && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] desk:text-meta font-medium text-fg">
+              <Check size={11} className="text-success" /> {t('wizard.auth.freeChosen')}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{t('wizard.auth.freeDescription')}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            disabled={!freeModel || freeChosen}
+            onClick={() => freeModel && void updateSettings({ defaultModel: freeModel })}
+          >
+            {t('wizard.auth.freeUse')}
+          </Button>
+          {providersLoaded && !freeModel && <span className="text-xs text-muted">{t('wizard.auth.freeUnavailable')}</span>}
+        </div>
+      </section>
+
+      <section aria-labelledby="onb-go" className="rounded-card border-0 bg-elevated p-4 shadow-raised">
         <div className="flex items-center gap-2">
           <h3 id="onb-go" className="text-sm font-semibold">
             OpenCode Go
           </h3>
-          <Badge tone="accent">{t('wizard.auth.recommended')}</Badge>
+          <Badge>{t('wizard.auth.paid')}</Badge>
           {goConnected && (
             <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] desk:text-meta font-medium text-fg">
               <Check size={11} className="text-success" /> {t('wizard.auth.goConnected')}
