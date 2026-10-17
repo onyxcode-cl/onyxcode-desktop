@@ -4,9 +4,15 @@ import { usableMode } from '@shared/platform-caps'
 import { currentFlags, currentPlatform } from '../lib/platform'
 import { LEGACY_MODE } from '../../../main/migrations/legacy-names'
 
+/** Pestañas de la pantalla Personalización. */
+export type PersonalizationTab = 'habilidades' | 'conectores' | 'tuyos'
+
 interface UiState {
   mode: ModeId
   settingsOpen: boolean
+  /** Pantalla «Personalización» (habilidades y conectores) abierta en lugar del modo; excluyente con Ajustes. */
+  personalizationOpen: boolean
+  personalizationTab: PersonalizationTab
   sidebarCollapsed: boolean
   paletteOpen: boolean
   /** Ventana angosta (< NARROW_WINDOW_PX): la lista de la barra lateral se pliega sola a riel; el botón de la barra la abre encima. */
@@ -21,6 +27,9 @@ interface UiState {
   settingsFocus: 'providers' | null
   setMode: (mode: ModeId) => void
   openSettings: (open: boolean) => void
+  /** Abre (o cierra con `false`) Personalización; con `tab` la abre en esa pestaña. */
+  openPersonalization: (open: boolean, tab?: PersonalizationTab) => void
+  setPersonalizationTab: (tab: PersonalizationTab) => void
   /** Abre Ajustes directamente en una sección (y, si se indica, desplazada a un punto de ella). */
   openSettingsAt: (section: string, focus?: 'providers') => void
   clearSettingsFocus: () => void
@@ -44,6 +53,8 @@ function initialMode(): ModeId {
 export const useUi = create<UiState>((set) => ({
   mode: initialMode(),
   settingsOpen: false,
+  personalizationOpen: false,
+  personalizationTab: 'habilidades',
   sidebarCollapsed: false,
   paletteOpen: false,
   narrow: false,
@@ -61,16 +72,23 @@ export const useUi = create<UiState>((set) => ({
     } catch {
       // ignorar
     }
-    set({ mode, settingsOpen: false })
+    set({ mode, settingsOpen: false, personalizationOpen: false })
   },
-  openSettings: (settingsOpen) => set({ settingsOpen }),
+  openSettings: (settingsOpen) => set(settingsOpen ? { settingsOpen, personalizationOpen: false } : { settingsOpen }),
+  openPersonalization: (personalizationOpen, tab) =>
+    set((s) => ({
+      personalizationOpen,
+      settingsOpen: personalizationOpen ? false : s.settingsOpen,
+      personalizationTab: tab ?? s.personalizationTab
+    })),
+  setPersonalizationTab: (personalizationTab) => set({ personalizationTab }),
   openSettingsAt: (section, focus) => {
     try {
       localStorage.setItem('settings.section', section)
     } catch {
       // sin storage: se abre en la sección que estuviera
     }
-    set({ settingsOpen: true, settingsFocus: focus ?? null })
+    set({ settingsOpen: true, personalizationOpen: false, settingsFocus: focus ?? null })
   },
   clearSettingsFocus: () => set({ settingsFocus: null }),
   toggleSidebar: () => set((s) => (s.narrow ? { narrowOpen: !s.narrowOpen } : { sidebarCollapsed: !s.sidebarCollapsed }))
@@ -80,6 +98,8 @@ export const useUi = create<UiState>((set) => ({
 export const NARROW_WINDOW_PX = 860
 
 /** ¿La lista está oculta (solo riel)? Plegada a mano, o sola en ventana angosta mientras no se abra encima. */
-export const selectListCollapsed = (s: Pick<UiState, 'narrow' | 'narrowOpen' | 'sidebarCollapsed' | 'settingsOpen'>): boolean =>
+export const selectListCollapsed = (
+  s: Pick<UiState, 'narrow' | 'narrowOpen' | 'sidebarCollapsed' | 'settingsOpen'> & { personalizationOpen?: boolean }
+): boolean =>
   // Ajustes abierto: la lista de conversaciones no aporta y roba ancho (sobre todo a 1000x700); queda solo el riel y se restaura al salir.
-  s.settingsOpen || (s.narrow ? !s.narrowOpen : s.sidebarCollapsed)
+  s.settingsOpen || !!s.personalizationOpen || (s.narrow ? !s.narrowOpen : s.sidebarCollapsed)

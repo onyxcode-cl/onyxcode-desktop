@@ -1,0 +1,1 @@
+export { PersonalizacionView } from './PersonalizacionView'

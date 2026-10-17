@@ -54,6 +54,7 @@ import { unpacked } from '../util/asar'
 import { opencodeDataHome } from '../opencode/data-dir'
 import { bundledPythonEnv } from './python-runtime'
 import { officeService } from '../office/service'
+import { readPersonalizacionState } from '../personalizacion/store'
 
 // Ids únicos compartidos con el renderer (`src/shared/agents.ts`).
 export { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -209,14 +210,18 @@ export function getBundledOpencodeDir(): string {
 
 let prepared: string | null = null
 
-/** Copia `src` a `dest` recursivamente y borra de `dest` lo que ya no exista en `src`. */
-function syncDirRecursive(src: string, dest: string): void {
+/**
+ * Copia `src` a `dest` recursivamente y borra de `dest` lo que ya no exista en `src`.
+ * Solo en el primer nivel de las skills (F8-B180): `keep` = habilidades propias de la persona (no se borran) y `skip` = habilidades
+ * incluidas que apagó en Personalización (no se copian ni se dejan).
+ */
+export function syncDirRecursive(src: string, dest: string, opts?: { keep?: ReadonlySet<string>; skip?: ReadonlySet<string> }): void {
   mkdirSync(dest, { recursive: true })
-  const entries = readdirSync(src, { withFileTypes: true })
+  const entries = readdirSync(src, { withFileTypes: true }).filter((e) => !opts?.skip?.has(e.name))
   const names = new Set(entries.map((e) => e.name))
   // Quitar sobrantes (archivos o carpetas que ya no existen en el bundle).
   for (const old of readdirSync(dest)) {
-    if (!names.has(old)) rmSync(join(dest, old), { recursive: true, force: true })
+    if (!names.has(old) && !opts?.keep?.has(old)) rmSync(join(dest, old), { recursive: true, force: true })
   }
   for (const e of entries) {
     const from = join(src, e.name)
@@ -268,7 +273,9 @@ export function prepareOpencodeConfigDir(): string {
   // al actualizar desde una versión sin skills con el mismo sello).
   if (existsSync(skillsSrc) && (refresh || readdirSync(skillsDest).length === 0)) {
     try {
-      syncDirRecursive(skillsSrc, skillsDest)
+      // Habilidades propias y apagadas (Personalización): se conservan las instaladas por la persona y no se restauran las apagadas.
+      const pers = readPersonalizacionState(join(app.getPath('userData'), 'personalizacion.json'))
+      syncDirRecursive(skillsSrc, skillsDest, { keep: new Set(Object.keys(pers.userSkills)), skip: new Set(pers.disabledSkills) })
     } catch (err) {
       console.error('[opencode-config] no se pudieron copiar las skills:', err)
     }

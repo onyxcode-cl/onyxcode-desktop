@@ -8,6 +8,7 @@ import { useLang, useT } from '../lib/i18n'
 import { isSubmitKey } from '../lib/textarea'
 import {
   BarChart3,
+  Blocks,
   CornerDownLeft,
   Monitor,
   MessageSquare,
@@ -102,6 +103,15 @@ function useCommands(): Command[] {
       hint: hintText(bindings['settings.toggle']) || undefined,
       keywords: t('app.palette.kw.settings'),
       run: () => ui.openSettings(true)
+    })
+
+    list.push({
+      id: 'personalization',
+      group: t('app.palette.group.goto'),
+      label: t('app.palette.personalization'),
+      icon: Blocks,
+      keywords: t('app.palette.kw.personalization'),
+      run: () => ui.openPersonalization(true)
     })
 
     list.push({

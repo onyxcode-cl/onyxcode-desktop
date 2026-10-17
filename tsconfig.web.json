@@ -17,6 +17,7 @@
     "src/preload/remote-api.ts",
     "src/preload/*.d.ts",
     "src/shared/**/*",
+    "resources/catalogo/*.json",
     "src/main/migrations/legacy-names.ts",
     "src/test/**/*"
   ],

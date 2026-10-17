@@ -43,6 +43,9 @@ import {
 } from '../extras/mcp-config'
 import { createImportService } from '../extras/import-service'
 import { extrasPrefs } from '../extras/prefs'
+import { PersonalizacionStore } from '../personalizacion/store'
+import { createSkillsService } from '../personalizacion/skills-service'
+import { getBundledOpencodeDir, getOpencodeConfigDir } from '../tasks/opencode-config'
 import { assertInstructionsFolder } from './tasks-memory-handlers'
 import { getAgentsMd, saveAgentsMd } from '../tasks/projects'
 import {
@@ -325,6 +328,25 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   })
   handle(ipcMain, 'extras:import:pick', (req) => importService.pick(req))
   handle(ipcMain, 'extras:import:apply', (req) => importService.apply(req))
+
+  // Personalización › Habilidades: la carpeta la elige la persona en el diálogo nativo (main); el renderer solo confirma por ficha.
+  const skills = createSkillsService({
+    store: new PersonalizacionStore(join(app.getPath('userData'), 'personalizacion.json')),
+    skillsDir: () => join(getOpencodeConfigDir(), 'skills'),
+    bundledDir: () => join(getBundledOpencodeDir(), 'skills'),
+    pickFolder: async () => {
+      const win = deps.getMainWindow?.() ?? null
+      const options: Electron.OpenDialogOptions = { title: t('pers.skill.dialog'), properties: ['openDirectory'] }
+      const res = win && !win.isDestroyed() ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+      return res.canceled ? null : (res.filePaths[0] ?? null)
+    },
+    afterChange: () => reloadOpencodeConfig(deps.server)
+  })
+  handle(ipcMain, 'personalizacion:skills:list', () => skills.list())
+  handle(ipcMain, 'personalizacion:skills:setEnabled', (req) => skills.setEnabled(req))
+  handle(ipcMain, 'personalizacion:skills:pick', () => skills.pick())
+  handle(ipcMain, 'personalizacion:skills:install', (req) => skills.install(req))
+  handle(ipcMain, 'personalizacion:skills:remove', (req) => skills.remove(req))
 
   handle(ipcMain, 'mcp:getConfig', () => maskAppMcpConfig(readAppMcpConfig()))
   handle(ipcMain, 'mcp:save', async ({ name, entry, previousName }) => {

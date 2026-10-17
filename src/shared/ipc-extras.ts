@@ -174,6 +174,46 @@ export interface ConversationExportResult {
   redactions: number
 }
 
+// ───────────────────────────── Personalización: habilidades (F8-B180) ─────────────────────────────
+/** Habilidad que instaló la persona desde una carpeta (las incluidas en la app salen aparte). */
+export interface UserSkillInfo {
+  name: string
+  description: string
+  installedAt: number
+  fileCount: number
+  bytes: number
+  hasScripts: boolean
+  /** `true` si el contenido instalado ya no coincide con lo que se instaló (alguien lo tocó a mano). */
+  modified: boolean
+}
+export interface BundledSkillInfo {
+  id: string
+  enabled: boolean
+}
+export interface SkillsState {
+  bundled: BundledSkillInfo[]
+  user: UserSkillInfo[]
+}
+export interface SkillPreviewFile {
+  path: string
+  bytes: number
+  script: boolean
+}
+/** Vista previa de una carpeta de habilidad (sin escribir nada). La ficha `token` es de un solo uso y caduca a los 10 min. */
+export interface SkillFolderPreview {
+  token: string
+  /** Nombre de la carpeta elegida (solo para mostrar). */
+  folderLabel: string
+  name: string
+  description: string
+  fileCount: number
+  bytes: number
+  files: SkillPreviewFile[]
+  scripts: string[]
+  bodyPreview: string
+  bodyTruncated: boolean
+}
+
 // ───────────────────────────── Importar desde otras herramientas (Ajustes > Importar) ─────────────────────────────
 /** Qué elige la persona en el diálogo nativo: una carpeta de proyecto (AGENTS.md/CLAUDE.md, `.mcp.json`) o un archivo de configuración MCP. */
 export type ImportSource = 'project-folder' | 'mcp-file'
@@ -288,6 +328,14 @@ export interface IpcExtrasInvokeContract {
   'extras:import:pick': { req: { source: ImportSource }; res: ImportPreview | null }
   /** Importa los elementos marcados de la última vista previa (MCP siempre desactivado). */
   'extras:import:apply': { req: ImportApplyRequest; res: ImportApplyResult }
+  'personalizacion:skills:list': { req: void; res: SkillsState }
+  /** Enciende o apaga una habilidad INCLUIDA (la carpeta se quita o se restaura en la configuración del motor; nada se borra del paquete). */
+  'personalizacion:skills:setEnabled': { req: { id: string; enabled: boolean }; res: SkillsState }
+  /** Diálogo nativo de carpeta (lo abre `main`) → valida y devuelve la vista previa sin copiar nada. `null` si se cancela. */
+  'personalizacion:skills:pick': { req: void; res: SkillFolderPreview | null }
+  /** Copia la carpeta de la última vista previa (la ficha caduca y es de un solo uso). Si cambió desde la vista previa, rechaza. */
+  'personalizacion:skills:install': { req: { token: string }; res: SkillsState }
+  'personalizacion:skills:remove': { req: { name: string }; res: SkillsState }
   'mcp:getConfig': { req: void; res: AppMcpConfig }
   'mcp:save': { req: { name: string; entry: McpEntry; previousName?: string }; res: AppMcpConfig }
   'mcp:remove': { req: { name: string }; res: AppMcpConfig }
@@ -352,6 +400,11 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:takePendingPrompt',
   'extras:import:pick',
   'extras:import:apply',
+  'personalizacion:skills:list',
+  'personalizacion:skills:setEnabled',
+  'personalizacion:skills:pick',
+  'personalizacion:skills:install',
+  'personalizacion:skills:remove',
   'mcp:getConfig',
   'mcp:save',
   'mcp:remove',

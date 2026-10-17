@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  Blocks,
   FolderOpen,
   Globe,
   Info,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react'
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
 import type { TasksMcpInfo } from '@shared/ipc-tasks'
-import type { AppMcpConfig, McpEntry } from '@shared/ipc-extras'
+import type { McpEntry } from '@shared/ipc-extras'
 import { catalogText, type McpCatalogItem, type McpCatalogState } from '@shared/mcp-catalog'
 import { t as tr, type MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
@@ -25,12 +26,12 @@ import { IconButton } from '../../../components/IconButton'
 import { useLocale, useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { useServer } from '../../../stores/server'
+import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { getExtras, requireExtras } from './extras'
 import { McpCatalogDialog } from './McpCatalogDialog'
+import { useMcpConnections, type ExternalEntry } from './useMcpConnections'
 import { Badge, Card, ErrorText, Field, NOTICE_DESK, SectionHeader, SubTitle, TextArea, TextInput, Toggle } from './ui'
-
-type ExternalEntry = McpEntry | { enabled: boolean }
 
 interface Row {
   name: string
@@ -54,53 +55,21 @@ export function McpSection(): React.JSX.Element {
   const locale = useLocale()
   const client = useServer((s) => s.client)
   const directory = useServer((s) => s.connection?.chatDirectory)
-  const [appCfg, setAppCfg] = useState<AppMcpConfig | null>(null)
-  const [merged, setMerged] = useState<Record<string, ExternalEntry>>({})
-  const [status, setStatus] = useState<Record<string, McpStatus>>({})
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ name: string; entry: McpEntry } | 'new' | null>(null)
-  const [catalog, setCatalog] = useState<McpCatalogState | null>(null)
   const [catalogItem, setCatalogItem] = useState<McpCatalogItem | null>(null)
   // Marcas de Tareas por servidor (`tasks-mcp.json`), solo para los servidores de la app.
   const [tasksInfo, setTasksInfo] = useState<Record<string, TasksMcpInfo>>({})
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const extras = getExtras()
-      const own = extras ? await extras.invoke('mcp:getConfig') : null
-      setAppCfg(own)
-      if (extras) setCatalog(await extras.invoke('mcp:catalog').catch(() => null))
+  // Alta, baja, estado y conexión: la misma lógica que usa Personalización (`useMcpConnections`).
+  const { appCfg, merged, status, catalog, loading, error, setError, refresh } = useMcpConnections({
+    onRefresh: async () => {
       if (hasTasksBridge()) {
         const list = await cw('tasks:mcp:list').catch(() => [] as TasksMcpInfo[])
         setTasksInfo(Object.fromEntries(list.map((i) => [i.name, i])))
       }
-      if (client) {
-        const [st, cfg] = await Promise.all([client.mcp.status({ directory }), client.config.get({ directory })])
-        if (st.error) throw new Error(errorMessage(st.error))
-        setStatus(st.data ?? {})
-        setMerged((cfg.data?.mcp as Record<string, ExternalEntry> | undefined) ?? {})
-      }
-    } catch (err) {
-      setError(errorMessage(err))
-    } finally {
-      setLoading(false)
     }
-  }, [client, directory])
-
-  useEffect(() => {
-    void refresh()
-    const extras = getExtras()
-    if (!extras) return
-    return extras.on('mcp:changed', (cfg) => {
-      setAppCfg(cfg)
-      // El servidor recarga su config tras el cambio; volver a pedir estado.
-      setTimeout(() => void refresh(), 400)
-    })
-  }, [refresh])
+  })
 
   const rows = useMemo<Row[]>(() => {
     const names = new Set([...Object.keys(appCfg?.servers ?? {}), ...Object.keys(merged), ...Object.keys(status)])
@@ -182,6 +151,9 @@ export function McpSection(): React.JSX.Element {
         </Button>
         <Button variant="ghost" onClick={() => void refresh()} disabled={loading}>
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('mcp.refresh')}
+        </Button>
+        <Button variant="ghost" onClick={() => useUi.getState().openPersonalization(true, 'conectores')}>
+          <Blocks size={14} /> {t('pers.fromSettings')}
         </Button>
         {appCfg && (
           <Button variant="ghost" onClick={() => void requireExtras().invoke('mcp:revealConfig')}>

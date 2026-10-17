@@ -205,6 +205,8 @@ const networkSetHost: Validator<{ host: string; decision: 'allow' | 'block' | 'u
   return { host: base.host, decision: base.decision }
 }
 export const mcpName = str({ max: 64, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
+/** Nombre de habilidad (mismo formato que las habilidades propuestas: minúsculas, cifras y guiones). */
+export const skillId = str({ max: 64, min: 1, pattern: /^[a-z0-9]+(-[a-z0-9]+)*$/ })
 export const mcpEntry = tagged('type', {
   local: obj({
     type: literal('local'),
@@ -1000,6 +1002,11 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     token: str({ max: 64, min: 16, pattern: /^[a-f0-9]+$/ }),
     ids: arr(str({ max: 8, min: 2, pattern: /^[im][0-9]{1,4}$/ }), 200)
   }),
+  'personalizacion:skills:list': none,
+  'personalizacion:skills:setEnabled': obj({ id: skillId, enabled: bool }),
+  'personalizacion:skills:pick': none,
+  'personalizacion:skills:install': obj({ token: str({ max: 32, min: 32, pattern: /^[a-f0-9]+$/ }) }),
+  'personalizacion:skills:remove': obj({ name: skillId }),
   'mcp:getConfig': none,
   'mcp:save': obj({ name: mcpName, entry: mcpEntry, previousName: optional(mcpName) }),
   'mcp:remove': obj({ name: mcpName }),

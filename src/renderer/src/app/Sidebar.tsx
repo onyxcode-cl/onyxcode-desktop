@@ -1,4 +1,18 @@
-import { CircleHelp, Clock, FolderPlus, LayoutGrid, Moon, PanelLeft, PanelLeftOpen, Plus, Search, Settings, Sun, Zap } from 'lucide-react'
+import {
+  CircleHelp,
+  Clock,
+  FolderPlus,
+  LayoutGrid,
+  Moon,
+  Blocks,
+  PanelLeft,
+  PanelLeftOpen,
+  Plus,
+  Search,
+  Settings,
+  Sun,
+  Zap
+} from 'lucide-react'
 import { useEffect } from 'react'
 import type { ModeId } from '@shared/types'
 import { IconButton } from '../components/IconButton'
@@ -36,6 +50,7 @@ function RailButton({
   current,
   pressed,
   badge,
+  testId,
   children
 }: {
   label: string
@@ -43,6 +58,7 @@ function RailButton({
   onClick: () => void
   current?: boolean
   pressed?: boolean
+  testId?: string
   /** Punto de aviso (esquina superior derecha, con anillo del color de la barra). */
   badge?: { label: string; tone: 'bg-warning' | 'bg-success' | 'bg-danger' | 'bg-accent'; testId?: string; count?: number }
   children: React.ReactNode
@@ -55,6 +71,7 @@ function RailButton({
           aria-label={label}
           aria-current={current ? 'page' : undefined}
           aria-pressed={pressed}
+          data-testid={testId}
           onClick={onClick}
           className={`no-drag grid size-9 place-items-center rounded-[10px] transition-[background-color,color,transform] duration-[var(--dur-fast)] hover:text-fg active:scale-[0.985] motion-reduce:active:scale-100 ${current || pressed ? 'bg-active text-fg' : 'text-muted hover:bg-hover'}`}
         >
@@ -122,7 +139,17 @@ function FilterPills(): React.JSX.Element {
  * `showLabel`: nombre del botón «Mostrar barra lateral» (lo trae App, que ya conoce el atajo).
  */
 export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Element {
-  const { mode, setMode, settingsOpen, openSettings, openSettingsAt, toggleSidebar, setPaletteOpen } = useUi()
+  const {
+    mode,
+    setMode,
+    settingsOpen,
+    personalizationOpen,
+    openSettings,
+    openPersonalization,
+    openSettingsAt,
+    toggleSidebar,
+    setPaletteOpen
+  } = useUi()
   const listCollapsed = useUi(selectListCollapsed)
   const narrow = useUi((s) => s.narrow)
   const t = useT()
@@ -157,6 +184,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
 
   const newAction = (): void => {
     openSettings(false)
+    openPersonalization(false)
     def.newAction?.run()
   }
   const goMode = (id: ModeId): void => setMode(id)
@@ -179,7 +207,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
               key={m.id}
               label={m.label}
               shortcut={hintText(bindings[`mode.${m.id}`])}
-              current={m.id === mode && !settingsOpen}
+              current={m.id === mode && !settingsOpen && !personalizationOpen}
               onClick={() => goMode(m.id)}
               badge={
                 m.id === 'tasks' && approvalsPending
@@ -206,7 +234,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
             <RailButton
               label={showLabel ?? t('app.sidebar.show', { hint: '' })}
               shortcut={hints['sidebar.toggle']}
-              onClick={settingsOpen ? () => openSettings(false) : toggleSidebar}
+              onClick={settingsOpen || personalizationOpen ? () => (openSettings(false), openPersonalization(false)) : toggleSidebar}
             >
               <PanelLeftOpen size={18} strokeWidth={1.8} aria-hidden="true" />
             </RailButton>
@@ -223,6 +251,14 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
       )}
       <div className="min-h-2 flex-1" />
       <div className="flex flex-col items-center gap-1.5">
+        <RailButton
+          label={t('app.sidebar.personalization')}
+          pressed={personalizationOpen}
+          onClick={() => openPersonalization(!personalizationOpen)}
+          testId="sidebar-personalization"
+        >
+          <Blocks size={18} strokeWidth={1.8} aria-hidden="true" />
+        </RailButton>
         <RailButton label={t('app.sidebar.help')} onClick={() => openSettingsAt('shortcuts')}>
           <CircleHelp size={18} strokeWidth={1.8} aria-hidden="true" />
         </RailButton>
@@ -344,7 +380,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
 
       {/* Árbol del modo con su propio scroll. */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pt-1 pb-2">
-        <SidebarTree onClickCapture={() => settingsOpen && openSettings(false)}>
+        <SidebarTree onClickCapture={() => (settingsOpen && openSettings(false), personalizationOpen && openPersonalization(false))}>
           <SidebarContent />
         </SidebarTree>
       </div>

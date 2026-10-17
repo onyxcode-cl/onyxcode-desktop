@@ -22,6 +22,8 @@ import { mobileShell } from './mobileShell'
 import { viewer } from './viewer'
 import { memory } from './memory'
 import { importSettings } from './importSettings'
+import { personalizacion } from './personalizacion'
+import { personalizacionCatalogo } from './personalizacionCatalogo'
 
 export const es = {
   ...common,
@@ -47,7 +49,9 @@ export const es = {
   ...mobileShell,
   ...viewer,
   ...memory,
-  ...importSettings
+  ...importSettings,
+  ...personalizacion,
+  ...personalizacionCatalogo
 }
 
 export const AREAS = {
@@ -74,5 +78,7 @@ export const AREAS = {
   mobileShell,
   viewer,
   memory,
-  importSettings
+  importSettings,
+  personalizacion,
+  personalizacionCatalogo
 }

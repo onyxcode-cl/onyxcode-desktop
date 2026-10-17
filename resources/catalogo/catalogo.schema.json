@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "catalogo.schema.json",
+  "title": "Catálogo de Personalización de Lazunox",
+  "description": "Esquema de resources/catalogo/catalogo.json. El validador que decide es src/shared/catalogo.ts (validateCatalog) y lo exige src/test/catalogo.test.ts; este archivo es la misma regla en formato JSON Schema para editores y para quien proponga una ficha (docs/CATALOGO.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "catalogVersion", "updatedAt", "groups", "skills", "connectors"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "catalogVersion": { "type": "integer", "minimum": 1, "description": "Sube cada vez que cambia el contenido." },
+    "updatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+    "skills": { "type": "array", "items": { "$ref": "#/$defs/skill" } },
+    "connectors": { "type": "array", "items": { "$ref": "#/$defs/connector" } }
+  },
+  "$defs": {
+    "icon": {
+      "enum": [
+        "book-open", "bug", "briefcase", "calendar", "cloud", "compass", "file-text", "file-type", "folder", "git-branch",
+        "list-checks", "mail", "notebook", "plug", "presentation", "sparkles", "table", "terminal", "users", "wallet"
+      ]
+    },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 64 },
+    "httpsUrl": { "type": "string", "pattern": "^https://[^/?#@\\s]+(/[^?#\\s]*)?$" },
+    "lines": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 220 }, "minItems": 1, "maxItems": 6 },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "icon"],
+      "properties": { "id": { "$ref": "#/$defs/id" }, "icon": { "$ref": "#/$defs/icon" } }
+    },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "publisher", "icon", "description", "permissions", "examples", "verifiedAt", "verification", "reviewed"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id", "description": "Nombre de la carpeta en resources/opencode/skills; ahí tiene que existir su SKILL.md." },
+        "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "publisher": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "icon": { "$ref": "#/$defs/icon" },
+        "description": { "type": "string", "minLength": 10, "maxLength": 200 },
+        "permissions": { "$ref": "#/$defs/lines", "description": "Lo que le permite hacer al agente, en lenguaje llano." },
+        "examples": { "type": "array", "items": { "type": "string", "maxLength": 140 }, "minItems": 1, "maxItems": 4 },
+        "verifiedAt": { "$ref": "#/$defs/date" },
+        "verification": { "type": "string", "minLength": 20, "maxLength": 500, "description": "Cómo se comprobó que hace lo que dice." },
+        "reviewed": { "const": true, "description": "Solo se empaquetan fichas revisadas por el dueño." }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "kind", "pattern", "maxLength", "target"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "kind": { "enum": ["secret", "text"] },
+        "pattern": { "type": "string", "pattern": "^\\^.*\\$$", "description": "Expresión anclada (^…$)." },
+        "maxLength": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["header", "template"],
+          "properties": { "header": { "type": "string", "pattern": "^[A-Za-z0-9-]+$" }, "template": { "type": "string", "description": "Lleva exactamente un {value}." } }
+        },
+        "help": { "type": "string" }
+      }
+    },
+    "connector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "title", "publisher", "group", "icon", "description", "transport", "url", "auth", "inputs", "capabilities", "cannot",
+        "examples", "writes", "dataLeaves", "docsUrl", "verifiedAt", "verification", "reviewed"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "publisher": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "group": { "type": "string", "description": "Id de un grupo declarado en «groups»." },
+        "icon": { "$ref": "#/$defs/icon" },
+        "description": { "type": "string", "minLength": 10, "maxLength": 200 },
+        "transport": { "const": "remote", "description": "v1 solo admite conectores remotos: añadirlos no ejecuta ningún programa." },
+        "url": { "$ref": "#/$defs/httpsUrl" },
+        "auth": { "enum": ["none", "token", "oauth"] },
+        "inputs": { "type": "array", "items": { "$ref": "#/$defs/input" }, "description": "Exactamente uno o más si auth es «token»; vacío en los demás casos." },
+        "capabilities": { "$ref": "#/$defs/lines" },
+        "cannot": { "$ref": "#/$defs/lines", "description": "Lo que NO podrá hacer." },
+        "examples": { "type": "array", "items": { "type": "string", "maxLength": 140 }, "minItems": 1, "maxItems": 4 },
+        "writes": { "type": "boolean" },
+        "dataLeaves": { "type": "string", "minLength": 10, "maxLength": 400, "description": "Qué datos salen de este equipo hacia el servicio." },
+        "docsUrl": { "$ref": "#/$defs/httpsUrl" },
+        "verifiedAt": { "$ref": "#/$defs/date" },
+        "verification": { "type": "string", "minLength": 20, "maxLength": 500 },
+        "reviewed": { "const": true }
+      }
+    }
+  }
+}

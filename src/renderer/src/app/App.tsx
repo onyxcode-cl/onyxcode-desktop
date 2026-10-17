@@ -4,6 +4,7 @@ import { ExportConversationHost } from '../components/ExportConversation'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { OnboardingGate, PreflightGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
+import { PersonalizacionView } from '../features/personalizacion'
 import { onOpencodeEvent, useServer } from '../stores/server'
 import { routeEventToSessions } from '../stores/eventRouter'
 import { reportProviderError } from '../lib/provider-error-report'
@@ -151,6 +152,7 @@ function useAppRuntime(): void {
 function DesktopApp(): React.JSX.Element {
   const mode = useUi((s) => s.mode)
   const settingsOpen = useUi((s) => s.settingsOpen)
+  const personalizationOpen = useUi((s) => s.personalizationOpen)
   const listCollapsed = useUi(selectListCollapsed)
   const narrow = useUi((s) => s.narrow)
   const t = useT()
@@ -232,6 +234,12 @@ function DesktopApp(): React.JSX.Element {
           {settingsOpen ? (
             <div key="settings" className="h-full animate-fade-in">
               <SettingsView />
+            </div>
+          ) : personalizationOpen ? (
+            <div key="personalizacion" className="h-full animate-fade-in">
+              <ErrorBoundary label={t('pers.title')}>
+                <PersonalizacionView />
+              </ErrorBoundary>
             </div>
           ) : (
             <div key={mode} className="h-full animate-fade-in">

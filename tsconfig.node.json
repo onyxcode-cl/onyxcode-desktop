@@ -6,6 +6,7 @@
     "src/main/**/*",
     "src/preload/**/*",
     "src/shared/**/*",
+    "resources/catalogo/*.json",
     "src/test/platform.ts",
     "src/test/cu-mcp-kit.ts",
     "src/test/fixtures/chat-doc-gpt.ts",

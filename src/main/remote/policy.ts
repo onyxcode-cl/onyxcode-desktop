@@ -486,6 +486,12 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   // Importar de otras herramientas (diálogo nativo + lectura de archivos del Mac + escritura de AGENTS.md/MCP): nunca desde el celular.
   'extras:import:pick': 'X',
   'extras:import:apply': 'X',
+  // Personalización (F8-B180): habilidades de terceros = instrucciones y programas que el agente puede usar; solo con la persona delante del Mac.
+  'personalizacion:skills:list': 'X',
+  'personalizacion:skills:setEnabled': 'X',
+  'personalizacion:skills:pick': 'X',
+  'personalizacion:skills:install': 'X',
+  'personalizacion:skills:remove': 'X',
   'mcp:getConfig': 'X', // puede traer variables y cabeceras con secretos
   'mcp:save': 'X',
   'mcp:remove': 'X',

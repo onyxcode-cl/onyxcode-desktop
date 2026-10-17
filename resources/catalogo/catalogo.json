@@ -1,0 +1,373 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": 1,
+  "updatedAt": "2026-10-17",
+  "groups": [
+    {
+      "id": "correo-calendario",
+      "icon": "mail"
+    },
+    {
+      "id": "archivos-nube",
+      "icon": "folder"
+    },
+    {
+      "id": "hojas-datos",
+      "icon": "table"
+    },
+    {
+      "id": "contabilidad",
+      "icon": "wallet"
+    },
+    {
+      "id": "clientes-ventas",
+      "icon": "users"
+    },
+    {
+      "id": "desarrollo",
+      "icon": "terminal"
+    },
+    {
+      "id": "proyectos-notas",
+      "icon": "notebook"
+    }
+  ],
+  "skills": [
+    {
+      "id": "docx",
+      "title": "Documentos de Word",
+      "publisher": "Lazunox",
+      "icon": "file-text",
+      "description": "Crear, leer y corregir documentos de Word (.docx): informes, cartas, actas y contratos.",
+      "permissions": [
+        "Leer y crear archivos de Word en las carpetas que autorices",
+        "Usar los programas de Python que vienen con la app para armar y revisar el documento"
+      ],
+      "examples": [
+        "Hazme una carta formal de renuncia en Word",
+        "Revisa este contrato en Word y deja tus comentarios"
+      ],
+      "verifiedAt": "2026-10-01",
+      "verification": "Skill incluida en la app (resources/opencode/skills/docx); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    },
+    {
+      "id": "xlsx",
+      "title": "Planillas de Excel",
+      "publisher": "Lazunox",
+      "icon": "table",
+      "description": "Crear, corregir y revisar planillas de Excel (.xlsx) con fórmulas, formatos de Chile, gráficos y filtros.",
+      "permissions": [
+        "Leer y crear archivos de Excel en las carpetas que autorices",
+        "Usar los programas de Python que vienen con la app para calcular y verificar la planilla"
+      ],
+      "examples": [
+        "Arma una planilla de gastos del mes con totales por categoría",
+        "Arregla las fórmulas de esta planilla"
+      ],
+      "verifiedAt": "2026-10-01",
+      "verification": "Skill incluida en la app (resources/opencode/skills/xlsx); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    },
+    {
+      "id": "pptx",
+      "title": "Presentaciones de PowerPoint",
+      "publisher": "Lazunox",
+      "icon": "presentation",
+      "description": "Crear, editar y revisar presentaciones de PowerPoint (.pptx) editables, con gráficos, tablas e imágenes.",
+      "permissions": [
+        "Leer y crear archivos de PowerPoint en las carpetas que autorices",
+        "Usar los programas de Python que vienen con la app para armar y revisar las diapositivas"
+      ],
+      "examples": [
+        "Convierte este informe en una presentación de 8 diapositivas",
+        "Agrega una diapositiva con el gráfico de ventas"
+      ],
+      "verifiedAt": "2026-10-01",
+      "verification": "Skill incluida en la app (resources/opencode/skills/pptx); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    },
+    {
+      "id": "pdf",
+      "title": "Archivos PDF",
+      "publisher": "Lazunox",
+      "icon": "file-type",
+      "description": "Leer un PDF y sacar su texto y tablas, crear PDFs, unir, dividir o rotar páginas y rellenar formularios.",
+      "permissions": [
+        "Leer y crear archivos PDF en las carpetas que autorices",
+        "Usar los programas de Python que vienen con la app para procesar el PDF"
+      ],
+      "examples": [
+        "Une estos tres PDF en uno solo",
+        "Saca la tabla de la página 4 de este PDF a una planilla"
+      ],
+      "verifiedAt": "2026-10-01",
+      "verification": "Skill incluida en la app (resources/opencode/skills/pdf); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    },
+    {
+      "id": "ruta-rapida",
+      "title": "Elegir el camino más rápido",
+      "publisher": "Lazunox",
+      "icon": "compass",
+      "description": "Antes de empezar una tarea en el computador, elige la forma más rápida y segura de hacer cada paso.",
+      "permissions": [
+        "Solo son instrucciones para el agente: no abre archivos ni programas por sí sola"
+      ],
+      "examples": [
+        "Ordena mi carpeta de Descargas por tipo de archivo"
+      ],
+      "verifiedAt": "2026-10-01",
+      "verification": "Skill incluida en la app (resources/opencode/skills/ruta-rapida); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    },
+    {
+      "id": "soporte-remoto",
+      "title": "Ayuda en otro computador",
+      "publisher": "Lazunox",
+      "icon": "terminal",
+      "description": "Guía al agente para ayudar en un computador ajeno por escritorio remoto (AnyDesk y similares), siempre con tu permiso.",
+      "permissions": [
+        "Solo son instrucciones para el agente. Usarla exige además que actives el control del computador, que tiene su propio permiso"
+      ],
+      "examples": [
+        "Conéctate por AnyDesk al computador de mi mamá y averigua por qué va lento"
+      ],
+      "verifiedAt": "2026-10-01",
+      "verification": "Skill incluida en la app (resources/opencode/skills/soporte-remoto); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    }
+  ],
+  "connectors": [
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "context7",
+      "name": "context7",
+      "title": "Context7",
+      "publisher": "Upstash",
+      "group": "desarrollo",
+      "icon": "book-open",
+      "description": "Documentación y ejemplos de código actualizados de bibliotecas y frameworks.",
+      "url": "https://mcp.context7.com/mcp",
+      "auth": "none",
+      "inputs": [],
+      "capabilities": [
+        "Buscar la documentación vigente de una biblioteca o framework",
+        "Traer ejemplos de código de esa documentación"
+      ],
+      "cannot": [
+        "Ver tus archivos ni tu código",
+        "Cambiar nada en tu computador"
+      ],
+      "examples": [
+        "Cómo se usan los hooks de la última versión de React",
+        "Muéstrame un ejemplo de rutas con Next.js"
+      ],
+      "writes": false,
+      "dataLeaves": "El nombre de la biblioteca y el tema que la IA consulte se envían a Context7. No hace falta cuenta.",
+      "docsUrl": "https://github.com/upstash/context7",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog)."
+    },
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "cloudflare-docs",
+      "name": "cloudflare-docs",
+      "title": "Cloudflare Docs",
+      "publisher": "Cloudflare",
+      "group": "desarrollo",
+      "icon": "cloud",
+      "description": "Busca en la documentación oficial de Cloudflare (Workers, R2, DNS, etc.).",
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "auth": "none",
+      "inputs": [],
+      "capabilities": [
+        "Buscar en la documentación de Cloudflare",
+        "Leer páginas de esa documentación"
+      ],
+      "cannot": [
+        "Entrar a tu cuenta de Cloudflare",
+        "Cambiar nada en tus sitios"
+      ],
+      "examples": [
+        "Cómo configuro un registro DNS en Cloudflare",
+        "Qué límites tiene un Worker gratis"
+      ],
+      "writes": false,
+      "dataLeaves": "Las preguntas que la IA haga sobre la documentación se envían a Cloudflare. No accede a tu cuenta de Cloudflare.",
+      "docsUrl": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog)."
+    },
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "github",
+      "name": "github",
+      "title": "GitHub",
+      "publisher": "GitHub",
+      "group": "desarrollo",
+      "icon": "git-branch",
+      "description": "Repositorios, incidencias y pull requests de tu cuenta de GitHub.",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "auth": "token",
+      "inputs": [
+        {
+          "id": "token",
+          "label": "Token de acceso personal",
+          "kind": "secret",
+          "pattern": "^(ghp_[A-Za-z0-9]{20,255}|github_pat_[A-Za-z0-9_]{20,255})$",
+          "maxLength": 400,
+          "target": {
+            "header": "Authorization",
+            "template": "Bearer {value}"
+          },
+          "help": "Créalo en GitHub: Settings › Developer settings › Personal access tokens, con los permisos mínimos que necesites."
+        }
+      ],
+      "capabilities": [
+        "Leer repositorios, código, incidencias y pull requests",
+        "Crear y comentar incidencias y pull requests, según los permisos del token"
+      ],
+      "cannot": [
+        "Hacer más de lo que permita el token que tú crees",
+        "Ver repositorios a los que el token no llega"
+      ],
+      "examples": [
+        "Resume las incidencias abiertas de mi repositorio",
+        "Revisa el último pull request y dime qué cambia"
+      ],
+      "writes": true,
+      "dataLeaves": "Tu token y lo que la IA pida sobre tus repositorios (y su contenido) viajan a GitHub.",
+      "docsUrl": "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El token se guarda sin volver a mostrarse."
+    },
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "sentry",
+      "name": "sentry",
+      "title": "Sentry",
+      "publisher": "Sentry",
+      "group": "desarrollo",
+      "icon": "bug",
+      "description": "Errores, rendimiento e incidencias de tus proyectos en Sentry.",
+      "url": "https://mcp.sentry.dev/mcp",
+      "auth": "oauth",
+      "inputs": [],
+      "capabilities": [
+        "Buscar y analizar errores e incidencias",
+        "Consultar rendimiento y gestionar proyectos"
+      ],
+      "cannot": [
+        "Ver tu contraseña de Sentry",
+        "Entrar a proyectos a los que tu cuenta no llega"
+      ],
+      "examples": [
+        "Cuáles son los errores más frecuentes de esta semana",
+        "Explícame este error y dónde puede estar la causa"
+      ],
+      "writes": true,
+      "dataLeaves": "Los datos de errores que la IA consulte (pueden incluir trazas y contexto de tu código) viajan a Sentry. El acceso se concede iniciando sesión.",
+      "docsUrl": "https://docs.sentry.io/product/sentry-mcp/",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+    },
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "linear",
+      "name": "linear",
+      "title": "Linear",
+      "publisher": "Linear",
+      "group": "proyectos-notas",
+      "icon": "list-checks",
+      "description": "Incidencias, proyectos y ciclos de tu espacio de Linear.",
+      "url": "https://mcp.linear.app/mcp",
+      "auth": "oauth",
+      "inputs": [],
+      "capabilities": [
+        "Buscar y leer incidencias y proyectos",
+        "Crear y actualizar incidencias y comentarios"
+      ],
+      "cannot": [
+        "Ver tu contraseña de Linear",
+        "Entrar a espacios a los que tu cuenta no llega"
+      ],
+      "examples": [
+        "Qué tengo pendiente esta semana en Linear",
+        "Crea una incidencia para arreglar el botón de pago"
+      ],
+      "writes": true,
+      "dataLeaves": "Lo que la IA lea o escriba en tu espacio de Linear viaja a Linear. El acceso se concede iniciando sesión.",
+      "docsUrl": "https://linear.app/docs/mcp",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+    },
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "notion",
+      "name": "notion",
+      "title": "Notion",
+      "publisher": "Notion",
+      "group": "proyectos-notas",
+      "icon": "notebook",
+      "description": "Busca, lee y edita páginas y bases de datos de tu Notion.",
+      "url": "https://mcp.notion.com/mcp",
+      "auth": "oauth",
+      "inputs": [],
+      "capabilities": [
+        "Buscar y leer páginas y bases de datos",
+        "Crear y editar páginas y comentarios"
+      ],
+      "cannot": [
+        "Ver tu contraseña de Notion",
+        "Entrar a páginas que no compartiste con la conexión"
+      ],
+      "examples": [
+        "Busca mis notas de la reunión del lunes",
+        "Crea una página con el resumen de este documento"
+      ],
+      "writes": true,
+      "dataLeaves": "El contenido de Notion que la IA lea o escriba viaja a Notion. El acceso se concede iniciando sesión.",
+      "docsUrl": "https://developers.notion.com/docs/get-started-with-mcp",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+    },
+    {
+      "transport": "remote",
+      "reviewed": true,
+      "verifiedAt": "2026-10-01",
+      "id": "atlassian",
+      "name": "atlassian",
+      "title": "Atlassian (Jira y Confluence)",
+      "publisher": "Atlassian",
+      "group": "proyectos-notas",
+      "icon": "briefcase",
+      "description": "Incidencias de Jira y páginas de Confluence de tu organización.",
+      "url": "https://mcp.atlassian.com/v2/mcp",
+      "auth": "oauth",
+      "inputs": [],
+      "capabilities": [
+        "Buscar y leer incidencias y páginas",
+        "Crear y actualizar incidencias y páginas"
+      ],
+      "cannot": [
+        "Ver tu contraseña de Atlassian",
+        "Entrar a sitios a los que tu cuenta no llega"
+      ],
+      "examples": [
+        "Qué incidencias de Jira tengo asignadas",
+        "Resume la página de Confluence del proyecto"
+      ],
+      "writes": true,
+      "dataLeaves": "El contenido de Jira y Confluence que la IA lea o escriba viaja a Atlassian. El acceso se concede iniciando sesión.",
+      "docsUrl": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/",
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+    }
+  ]
+}
