@@ -20,12 +20,12 @@ import { CompareControls } from '../../compare'
 import { useCode } from './store'
 import type { PermissionMode } from './types'
 
-const PERMISSION_MODES: { id: PermissionMode; label: MsgKey; hint: MsgKey; icon: React.JSX.Element }[] = [
-  { id: 'manual', label: 'code.mode.manual', hint: 'code.mode.manual.hint', icon: <Shield size={14} /> },
-  { id: 'acceptEdits', label: 'code.mode.acceptEdits', hint: 'code.mode.acceptEdits.hint', icon: <PencilLine size={14} /> },
-  { id: 'plan', label: 'code.mode.plan', hint: 'code.mode.plan.hint', icon: <ListChecks size={14} /> },
-  { id: 'auto', label: 'code.mode.auto', hint: 'code.mode.auto.hint', icon: <Wand2 size={14} /> },
-  { id: 'bypass', label: 'code.mode.bypass', hint: 'code.mode.bypass.hint', icon: <CircleSlash size={14} /> }
+const PERMISSION_MODES: { id: PermissionMode; label: MsgKey; hint: MsgKey; short: MsgKey; icon: React.JSX.Element }[] = [
+  { id: 'manual', label: 'code.mode.manual', hint: 'code.mode.manual.hint', short: 'code.mode.manual.short', icon: <Shield size={14} /> },
+  { id: 'acceptEdits', label: 'code.mode.acceptEdits', hint: 'code.mode.acceptEdits.hint', short: 'code.mode.acceptEdits.short', icon: <PencilLine size={14} /> },
+  { id: 'plan', label: 'code.mode.plan', hint: 'code.mode.plan.hint', short: 'code.mode.plan.short', icon: <ListChecks size={14} /> },
+  { id: 'auto', label: 'code.mode.auto', hint: 'code.mode.auto.hint', short: 'code.mode.auto.short', icon: <Wand2 size={14} /> },
+  { id: 'bypass', label: 'code.mode.bypass', hint: 'code.mode.bypass.hint', short: 'code.mode.bypass.short', icon: <CircleSlash size={14} /> }
 ]
 
 /** Modelo pedido (el elegido en Code o el predeterminado) resuelto contra las IA conectadas. */
@@ -69,7 +69,7 @@ function MenuItem({
   )
 }
 
-/** Modo de permisos de la sesión activa: chip siempre visible; la etiqueta solo se oculta (queda en `aria-label`/`title`) si no cabe. */
+/** Modo de permisos de la sesión activa: chip siempre visible; si no cabe la etiqueta completa queda la corta («Preguntar», «Auto»…); `aria-label`/`title` llevan siempre «ajuste: valor». */
 export function PermissionChip(): React.JSX.Element {
   const t = useT()
   const mode = useCode((s) => s.permissionMode)
@@ -83,11 +83,13 @@ export function PermissionChip(): React.JSX.Element {
       value={mode}
       tone={mode === 'bypass' ? 'danger' : undefined}
       collapseClass="inline desk:@max-[30rem]:sr-only"
+      shortClass="hidden desk:@max-[30rem]:inline"
       testId="permission-chip"
       options={PERMISSION_MODES.map((m) => ({
         id: m.id,
         label: t(m.label),
         hint: t(m.hint),
+        shortLabel: t(m.short),
         icon: m.icon,
         tone: m.id === 'bypass' ? 'danger' : undefined
       }))}
@@ -147,7 +149,8 @@ export function EffortChip(): React.JSX.Element | null {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={t('code.effort.title')}
+        title={`${t('code.effort.title')}: ${variant ?? t('code.effort.standard')}`}
+        aria-label={`${t('code.effort.title')}: ${variant ?? t('code.effort.standard')}`}
         className={`${chip()} text-muted hover:bg-hover hover:text-fg ${open ? 'bg-hover text-fg' : ''}`}
       >
         <Brain size={14} />

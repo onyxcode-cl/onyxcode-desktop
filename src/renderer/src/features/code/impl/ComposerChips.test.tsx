@@ -43,6 +43,15 @@ describe('PermissionChip (Code)', () => {
     expect(label.className).toContain('desk:@max-[30rem]:sr-only')
   })
 
+  it('al no caber la etiqueta completa queda una etiqueta corta («Preguntar») en el mismo punto de corte, sin cambiar el nombre accesible', () => {
+    render(createElement(PermissionChip))
+    const short = Array.from(trigger().querySelectorAll('span')).find((x) => x.textContent === 'Preguntar')!
+    expect(short.className).toContain('desk:@max-[30rem]:inline')
+    expect(short.className).toContain('hidden')
+    expect(short.getAttribute('aria-hidden')).toBe('true')
+    expect(trigger().getAttribute('aria-label')).toBe('Modo de permisos: Preguntar siempre')
+  })
+
   it('el menú explica cada modo con una frase, marca el actual y mantiene el orden y los valores', () => {
     render(createElement(PermissionChip))
     act(() => trigger().click())

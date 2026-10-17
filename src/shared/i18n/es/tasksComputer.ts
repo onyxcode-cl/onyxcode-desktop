@@ -1,5 +1,8 @@
 export const tasksComputer = {
   'tasksComputer.access.aria': 'Modo de acceso',
+  'tasksComputer.access.sandboxShort': 'En tu carpeta',
+  'tasksComputer.access.fullShort': 'Todo el Mac',
+  'tasksComputer.access.fullShort.win': 'Todo el PC',
   'tasksComputer.access.pickFolder': 'Elige una carpeta primero',
   'tasksComputer.access.waitTask': 'Espera a que termine la tarea para cambiar el modo de acceso',
   'tasksComputer.access.sandboxTitle':

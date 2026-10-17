@@ -3,7 +3,7 @@
  * Cada opción lleva una frase que dice QUÉ PASARÁ (no solo el nombre), la actual va marcada y, si existe, su atajo.
  * - Teclado: el menú se abre con Enter/Espacio/↓ en el chip, enfoca la opción actual; ↑ ↓ Inicio Fin recorren, Enter elige,
  *   1-9 eligen la opción con ese número, Esc cierra y devuelve el foco al chip. Roles: `menu` + `menuitemradio`.
- * - Responsive: la etiqueta se oculta (queda solo el ícono) cuando el contenedor (`@container` de la fila) es más angosto que
+ * - Responsive: la etiqueta se oculta (queda la etiqueta corta `shortLabel` si la opción la tiene; si no, solo el ícono) cuando el contenedor (`@container` de la fila) es más angosto que
  *   `collapseClass`; el nombre accesible y el `title` llevan SIEMPRE la etiqueta y el valor actual, así que la información no desaparece.
  * - En el celular (PWA) el mismo contenido sale en una hoja inferior.
  */
@@ -19,6 +19,8 @@ export interface ChipMenuOption {
   /** Frase explicativa: qué pasará al elegirla. */
   hint?: string
   icon?: React.ReactNode
+  /** Etiqueta corta (1-2 palabras) que queda a la vista cuando no cabe la etiqueta completa (solo con `shortClass` en el chip). */
+  shortLabel?: string
   /** Atajo de teclado ya formateado para la plataforma (p. ej. «⇧Tab»). */
   shortcut?: string
   /** Color de aviso (opción peligrosa o que no es la predeterminada). */
@@ -40,6 +42,11 @@ interface Props {
   onSelect: (id: string) => void
   /** Clases de contenedor que ocultan la etiqueta visible (queda `sr-only`), p. ej. la variante de contenedor angosto con sr-only. */
   collapseClass?: string
+  /**
+   * Clases que muestran la etiqueta CORTA de la opción actual justo cuando `collapseClass` oculta la completa (mismo punto de corte),
+   * p. ej. `hidden desk:@max-[30rem]:inline`. Sin ella (o sin `shortLabel` en la opción) queda solo el ícono, como antes.
+   */
+  shortClass?: string
   /** Estilo del chip cuando el valor es especial (p. ej. «Todo sin preguntar»). */
   tone?: 'danger' | 'warning' | 'accent'
   /** Atajo del chip entero (se muestra en el `title`). */
@@ -63,6 +70,7 @@ export function ChipMenu({
   value,
   onSelect,
   collapseClass = '',
+  shortClass = '',
   tone,
   chipShortcut,
   align = 'left',
@@ -137,6 +145,7 @@ export function ChipMenu({
           ? 'bg-warning/10 text-warning'
           : 'text-muted hover:bg-hover hover:text-fg'
   const full = `${name}: ${valueLabel}`
+  const shortLabel = options.find((o) => o.id === value)?.shortLabel
 
   const items = options.map((o, n) => (
     <button
@@ -182,6 +191,11 @@ export function ChipMenu({
       >
         {icon}
         <span className={`whitespace-nowrap ${collapseClass}`}>{valueLabel}</span>
+        {shortLabel && shortClass && (
+          <span aria-hidden className={`whitespace-nowrap ${shortClass}`}>
+            {shortLabel}
+          </span>
+        )}
         <ChevronDown
           size={12}
           aria-hidden

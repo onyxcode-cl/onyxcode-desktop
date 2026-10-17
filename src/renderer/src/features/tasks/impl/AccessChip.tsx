@@ -27,11 +27,13 @@ export function AccessChip({ disabled }: { disabled?: boolean }): React.JSX.Elem
       tone={full ? 'warning' : undefined}
       disabled={disabled || phase === 'starting'}
       collapseClass="inline desk:@max-[34rem]:sr-only"
+      shortClass="hidden desk:@max-[34rem]:inline"
       testId="access-chip"
       options={[
         {
           id: 'sandbox',
           label: TASKS_TERMS.sandbox,
+          shortLabel: t('tasksComputer.access.sandboxShort'),
           hint: t('tasksComputer.access.sandboxDesc'),
           icon: <Shield size={14} className="text-accent" aria-hidden />
         },
@@ -40,6 +42,7 @@ export function AccessChip({ disabled }: { disabled?: boolean }): React.JSX.Elem
               {
                 id: 'full',
                 label: TASKS_TERMS.fullControl,
+                shortLabel: t('tasksComputer.access.fullShort'),
                 hint: t('tasksComputer.access.fullDesc'),
                 icon: <MonitorCog size={14} className="text-warning" aria-hidden />,
                 tone: 'warning' as const

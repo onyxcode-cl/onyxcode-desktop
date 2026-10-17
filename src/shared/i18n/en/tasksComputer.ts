@@ -3,6 +3,9 @@ import type { tasksComputer as es } from '../es/tasksComputer'
 
 export const tasksComputer = {
   'tasksComputer.access.aria': 'Access mode',
+  'tasksComputer.access.sandboxShort': 'Your folder',
+  'tasksComputer.access.fullShort': 'Whole Mac',
+  'tasksComputer.access.fullShort.win': 'Whole PC',
   'tasksComputer.access.pickFolder': 'Choose a folder first',
   'tasksComputer.access.waitTask': 'Wait for the task to finish before changing the access mode',
   'tasksComputer.access.sandboxTitle': '{name}: reads and writes only inside the chosen folder and any extra folders. Recommended.',

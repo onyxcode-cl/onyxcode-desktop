@@ -174,4 +174,14 @@ describe('modLabel', () => {
     ;(window as unknown as { api: { platform: string } }).api = { platform: 'win32' }
     expect(modLabel()).toBe('Ctrl+')
   })
+
+  it('con shortLabel y shortClass muestra la etiqueta corta de la opción actual; sin shortClass queda solo el ícono', () => {
+    const opts = OPTIONS.map((o) => ({ ...o, shortLabel: o.id === 'manual' ? 'Preguntar' : 'Otro' }))
+    mount({ options: opts, shortClass: 'hidden desk:@max-[30rem]:inline' })
+    const short = Array.from(trigger().querySelectorAll('span')).find((s) => s.textContent === 'Preguntar')!
+    expect(short.className).toContain('desk:@max-[30rem]:inline')
+    expect(trigger().getAttribute('aria-label')).toBe('Modo de permisos: Preguntar siempre')
+    mount({ options: opts, shortClass: '' })
+    expect(Array.from(trigger().querySelectorAll('span')).some((s) => s.textContent === 'Preguntar')).toBe(false)
+  })
 })
