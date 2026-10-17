@@ -180,8 +180,21 @@ function Thumb({ item }: { item: GalleryItem }): React.JSX.Element {
   )
 }
 
+/** El nombre mostrado puede ser el título del documento (sin extensión): el visor decide por la extensión, así que se le devuelve. */
+function withExtension(name: string, path: string): string {
+  const ext = /\.[A-Za-z0-9]{1,5}$/.exec(path.replace(/\\/g, '/'))?.[0] ?? ''
+  return ext && !name.toLowerCase().endsWith(ext.toLowerCase()) ? name + ext : name
+}
+
 function toInfo(item: GalleryItem): ChatFileInfo {
-  return { path: item.path, name: item.name, bytes: item.bytes, kind: item.kind, canView: item.canView, canOpen: item.canOpen }
+  return {
+    path: item.path,
+    name: withExtension(item.name, item.path),
+    bytes: item.bytes,
+    kind: item.kind,
+    canView: item.canView,
+    canOpen: item.canOpen
+  }
 }
 
 /** «Ver aquí» abre el archivo en el panel del Chat (el mismo visor de siempre). */
