@@ -10,7 +10,7 @@ import { useSettings } from '../../../stores/settings'
 import { MAX_USER_INSTRUCTIONS } from '@shared/personal-context'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { useCode } from '../../code/impl/store'
-import { Card, ErrorText, Row, SectionHeader, Select, SubTitle } from './ui'
+import { Card, ErrorText, SectionHeader, Select, SubTitle } from './ui'
 
 const TEXTAREA =
   'w-full resize-y rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none transition focus:border-border-strong focus:ring-2 focus:ring-accent/15 placeholder:text-subtle'
@@ -34,25 +34,25 @@ function GlobalInstructions(): React.JSX.Element {
 
   return (
     <Card>
-      <Row label={t('instr.global.label')} description={t('instr.global.help')} layout="stack-narrow">
-        <div className="w-full desk:@[34rem]:w-[26rem]">
-          <textarea
-            data-testid="user-instructions"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={save}
-            maxLength={MAX_USER_INSTRUCTIONS}
-            rows={6}
-            placeholder={t('instr.global.placeholder')}
-            aria-label={t('instr.global.label')}
-            className={`min-h-28 ${TEXTAREA}`}
-          />
-          <div className="mt-1 flex items-center justify-between text-xs text-subtle">
-            <span>{t('instr.global.count', { count: value.length, max: MAX_USER_INSTRUCTIONS })}</span>
-            {flash && <span className="text-accent">{t('instr.saved')}</span>}
-          </div>
+      <div className="px-4 py-3 desk:px-5 desk:py-4">
+        <div className="text-sm font-medium">{t('instr.global.label')}</div>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted">{t('instr.global.help')}</p>
+        <textarea
+          data-testid="user-instructions"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          maxLength={MAX_USER_INSTRUCTIONS}
+          rows={6}
+          placeholder={t('instr.global.placeholder')}
+          aria-label={t('instr.global.label')}
+          className={`mt-3 min-h-28 ${TEXTAREA}`}
+        />
+        <div className="mt-1 flex items-center justify-between text-xs text-subtle">
+          <span>{t('instr.global.count', { count: value.length, max: MAX_USER_INSTRUCTIONS })}</span>
+          {flash && <span className="text-accent">{t('instr.saved')}</span>}
         </div>
-      </Row>
+      </div>
     </Card>
   )
 }

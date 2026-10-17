@@ -21,7 +21,7 @@ const FRAME_TAG_RE = new RegExp(`</?\\s*(?:${FRAME_TAGS.join('|')})\\s*>`, 'gi')
 /** Texto recortado, sin etiquetas del marco ni caracteres de control (salvo saltos de línea y tabuladores). */
 export function sanitizeFrameText(text: string | null | undefined, max: number): string {
   if (typeof text !== 'string') return ''
-   
+
   const clean = text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(FRAME_TAG_RE, '')
   const trimmed = clean.trim()
   return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed
