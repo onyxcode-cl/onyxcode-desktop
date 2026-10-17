@@ -48,6 +48,7 @@ import { RemoteSection } from './RemoteSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 import { ImportSection } from './ImportSection'
+import { markFirstStepDone } from '../../../stores/first-steps'
 import { SECTION_KEYS } from './section-keys'
 import { buildSearchIndex, findAnchorElement, highlightParts, searchSettings, type SearchEntry } from './search-index'
 import { getLang } from '@shared/i18n'
@@ -127,7 +128,14 @@ const SECTIONS: {
   { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection, keys: SECTION_KEYS.tasks },
   { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection, keys: SECTION_KEYS.network },
   { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection, keys: SECTION_KEYS.automode },
-  { id: 'computer', group: 'agents', label: () => UI_LABELS.computer, icon: MonitorCog, View: ComputerSection, keys: SECTION_KEYS.computer },
+  {
+    id: 'computer',
+    group: 'agents',
+    label: () => UI_LABELS.computer,
+    icon: MonitorCog,
+    View: ComputerSection,
+    keys: SECTION_KEYS.computer
+  },
   { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection, keys: SECTION_KEYS.browser },
   {
     id: 'mcp',
@@ -249,6 +257,11 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 
   useEffect(() => initExtrasPrefs(), [])
+
+  // «Primeros pasos › Mira Ajustes › Instrucciones y memoria»: se marca al ver de verdad una de las dos secciones.
+  useEffect(() => {
+    if (section === 'instructions' || section === 'memory') markFirstStepDone('settings')
+  }, [section])
 
   // Índice del buscador: sale de las claves i18n de cada sección y sigue al idioma activo (`useT` re-renderiza al cambiarlo).
   const lang = getLang()
@@ -399,7 +412,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
               aria-activedescendant={searching && flat[active] ? `settings-hit-${active}` : undefined}
               aria-autocomplete="list"
               aria-label={t('settings.search.label')}
-              placeholder={t('settings.search.label')}
+              placeholder={t('settings.search.placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onSearchKey}

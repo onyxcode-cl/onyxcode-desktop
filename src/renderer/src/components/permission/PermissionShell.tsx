@@ -8,6 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { ReactNode } from 'react'
 import { ChevronDown, ShieldAlert, type LucideIcon } from 'lucide-react'
 import { useT } from '../../lib/i18n'
+import { announce } from '../../lib/announce'
 import { isMacPlatform } from '../../lib/platform'
 import { ARM_MS, decidePermKey, initialArmState, armState, type ArmState } from '../../lib/perm-guard'
 import { Button } from '../Button'
@@ -61,6 +62,11 @@ export function PermCardFrame({
   useEffect(() => {
     if (detailsOpen) setOpen(true)
   }, [detailsOpen])
+  // H20: al aparecer una tarjeta de aprobación se anuncia una vez (por id), sin leer el comando.
+  useEffect(() => {
+    announce(t('a11y.approvalNeeded', { title }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo cuando aparece otra tarjeta
+  }, [id])
   const detailsId = `perm-details-${id}`
   return (
     <div

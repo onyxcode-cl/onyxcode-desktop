@@ -5,6 +5,7 @@
  * el modelo configurado por modo (con fallback a `settings.defaultModel`).
  */
 import { create } from 'zustand'
+import { markFirstStepDone } from '../../../stores/first-steps'
 import { t } from '@shared/i18n'
 import { DEFAULT_EXTRAS_PREFS, type ExtrasPrefs, type ExtrasPrefsState, type ModelMode } from '@shared/ipc-extras'
 import type { ModelRef } from '@shared/types'
@@ -97,6 +98,8 @@ export function useModeModel(mode: ModelMode): ModelRef {
  * NUNCA toca `settings.defaultModel`: elegir un modelo en un modo no cambia el predeterminado global.
  */
 export function setModeModel(mode: ModelMode, value: ModelRef | null): void {
+  // «Primeros pasos › Elige tu IA»: la persona eligió un modelo de verdad.
+  if (value) markFirstStepDone('model')
   try {
     const extras = useExtrasPrefs.getState()
     void extras.update({ modelsByMode: withModeModel(extras.prefs.modelsByMode, mode, value) }).catch(() => undefined)

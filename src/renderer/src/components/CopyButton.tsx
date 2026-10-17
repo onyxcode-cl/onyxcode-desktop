@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { useT } from '../lib/i18n'
+import { announce } from '../lib/announce'
 
 /** Botón de copiar reutilizable (código, mensajes). */
 export function CopyButton({
@@ -23,6 +24,7 @@ export function CopyButton({
     const value = typeof text === 'function' ? text() : text
     void navigator.clipboard.writeText(value).then(() => {
       setCopied(true)
+      announce(tr('common.copied'))
       setTimeout(() => setCopied(false), 1500)
     })
   }
@@ -32,7 +34,7 @@ export function CopyButton({
       onClick={copy}
       title={copied ? tr('common.copied') : labelText}
       aria-label={labelText}
-      className={`no-drag inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-muted transition-colors hover:bg-hover hover:text-fg ${className}`}
+      className={`no-drag inline-flex items-center gap-1 rounded-md px-1.5 py-1 desk:justify-center desk:min-h-6 desk:min-w-6 text-muted transition-colors hover:bg-hover hover:text-fg ${className}`}
     >
       {copied ? <Check size={size} className="text-success" /> : <Copy size={size} />}
       {showLabel && <span>{copied ? tr('common.copied') : labelText}</span>}

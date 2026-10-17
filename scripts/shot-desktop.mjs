@@ -46,6 +46,8 @@ const SCENARIOS = [
   'chat-adjunto-office',
   'chat-memoria-propuesta',
   'chat-exportar',
+  'chat-primeros-pasos',
+  'chat-instrucciones-conversacion',
   'code-proyecto',
   'code-diff',
   'code-terminal',
@@ -62,10 +64,12 @@ const SCENARIOS = [
   'code-archivo',
   'code-entorno',
   'aviso-motor',
+  'motor-error', // H24: el motor no arranca (banner «No se pudo conectar con la IA»)
   // El orden dentro del grupo de Tareas importa (se respeta aunque se pidan en otro): `tareas-primer-uso` va primero (antes de
   // descartar la tarjeta), `tareas-nueva` y `rutinas-vacio` antes de crear tareas o rutinas, y `tareas-buscar`/`-archivadas` tras la lista.
   'tareas-primer-uso',
   'tareas-nueva',
+  'tareas-lista-vacia', // H24: lista de Tareas sin ninguna tarea (antes de crear tareas)
   'inicio-vacio',
   'tareas-lista',
   'tareas-buscar',
@@ -85,6 +89,8 @@ const SCENARIOS = [
   'rutinas-detalle',
   'rutinas-editor',
   'rutinas-evento',
+  'rutinas-vigilante', // H24: «Carpeta no disponible»
+  'rutinas-sin-vigilar', // H24: «Sin vigilar» (aviso de Rutinas sin aceptar)
   'rutinas-bandeja',
   'rutinas-evento-e2e',
   'ajustes-general',
@@ -101,6 +107,9 @@ const SCENARIOS = [
   'selector-modelo',
   // Caja de escribir de Code con el menú de permisos abierto (frase por opción, actual marcada, atajos 1-5).
   'caja-menus',
+  'caja-proyecto',
+  'caja-esfuerzo',
+  'caja-esfuerzo-chip',
   'dialogo-confirmar',
   'comparar',
   'barra-lateral-colapsada',
@@ -114,6 +123,10 @@ const SCENARIOS = [
   'inicio-code',
   'code-cambios',
   'code-cambios-archivo',
+  'chat-error-conexion', // H24: la IA rechaza la conexión (clave caducada)
+  'chat-carga-larga', // H24: respuesta larga en curso
+  'tareas-error', // H24: tarea que termina con error
+  'ajustes-modelos-vacio', // H24: ningún servicio de IA conectado
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
@@ -440,7 +453,43 @@ async function parkMouse(ctx) {
   notes.push('el ratón sigue sobre un elemento tras sacarlo de la ventana')
 }
 
+// --audit-targets: lista, por escenario, los controles visibles de menos de 28x28 px (H21). No cambia las capturas.
+const auditTargets = process.argv.includes('--audit-targets')
+const auditSeen = new Set()
+async function auditSmallTargets(ctx, name, theme, sizeKey) {
+  const rows = await ctx.page
+    .evaluate(() => {
+      const sel = 'button,a[href],[role=button],[role=tab],[role=menuitem],[role=checkbox],[role=switch],[role=option],input,select,summary'
+      const out = []
+      for (const el of document.querySelectorAll(sel)) {
+        const r = el.getBoundingClientRect()
+        const cs = getComputedStyle(el)
+        if (!r.width || !r.height || cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue
+        if (r.bottom < 0 || r.right < 0 || r.top > innerHeight || r.left > innerWidth) continue
+        if (el.disabled) continue
+        // Zona de clic ampliada con un ::after absoluto (Toggle): cuenta su caja.
+        const af = getComputedStyle(el, '::after')
+        if (af.position === 'absolute' && parseFloat(af.height) >= 24 && parseFloat(af.width) >= 24) continue
+        if (r.width >= 28 && r.height >= 28) continue
+        const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || '').trim().slice(0, 36)
+        const text = (el.textContent || '').trim()
+        // Un control con texto visible largo no es «solo icono»: solo se mira la altura.
+        if (text.length > 3 && r.height >= 24) continue
+        out.push(`${el.tagName.toLowerCase()} "${label}" ${Math.round(r.width)}x${Math.round(r.height)} [${(el.className?.toString?.() ?? '').slice(0, 70)}]`)
+      }
+      return out
+    })
+    .catch(() => [])
+  for (const r of rows) {
+    const key = `${name}|${r}`
+    if (auditSeen.has(key)) continue
+    auditSeen.add(key)
+    console.log(`AUDIT ${name} ${theme} ${sizeKey}: ${r}`)
+  }
+}
+
 async function snap(ctx, name, theme, sizeKey) {
+  if (auditTargets) await auditSmallTargets(ctx, name, theme, sizeKey)
   if (ctx.hover) {
     // Escenario con hover: el ratón se queda encima del elemento (centro de su caja) mientras dura la captura.
     const b = await ctx.hover.first().boundingBox()
@@ -646,6 +695,14 @@ async function openCode(ctx) {
 }
 
 let codeSeeded = false
+async function pickReasonerInCode(page) {
+  const trigger = page.getByRole('button', { name: /^Modelo:/ })
+  if (/Fake Reasoner/.test((await trigger.getAttribute('aria-label')) ?? '')) return
+  await trigger.click()
+  await page.getByRole('option', { name: /Fake Reasoner/ }).click()
+  await sleep(400)
+}
+
 async function seedCode(ctx) {
   await openCode(ctx)
   if (codeSeeded) return
@@ -854,6 +911,29 @@ async function seedTaskList(ctx) {
 
 // Tres rutinas inventadas (se crean una sola vez por arranque; `rutinas-vacio` corre antes de que existan).
 let routinesSeeded = false
+// Un guardado cualquiera hace que main vuelva a sincronizar los vigilantes de archivos (para provocar sus estados).
+async function resyncWatch(page) {
+  await page.evaluate(async (folder) =>
+    window.api.tasks.invoke('routines:save', {
+      name: 'Auxiliar',
+      prompt: 'Sin uso.',
+      mode: 'tasks',
+      schedule: { kind: 'interval', hours: 6 },
+      enabled: false,
+      folder,
+      model: { providerID: 'fake', modelID: 'fake-model' },
+      sessionMode: 'fresh',
+      onAsk: 'reject'
+    }), taskFolder
+  )
+  await sleep(1500)
+  // La rutina auxiliar solo sirve para provocar la sincronización: se borra para que no salga en la captura.
+  await page.evaluate(async () => {
+    const l = await window.api.tasks.invoke('routines:list')
+    for (const r of l?.data ?? []) if (r.name === 'Auxiliar') await window.api.tasks.invoke('routines:delete', { id: r.id })
+  })
+  await sleep(800)
+}
 async function seedRoutines(ctx) {
   const { page } = ctx
   await openTasks(ctx) // autoriza la carpeta de Tareas (las rutinas de Tareas la exigen)
@@ -914,16 +994,31 @@ async function makeOfficeFixtures(dir) {
     `<w:document ${W}><w:body>${p('Informe del trimestre', 'Heading1')}${p('Las ventas del trimestre cerraron en $48,2 millones, un 12 % más que el anterior.')}${p('Detalle por mes', 'Heading2')}` +
       `<w:tbl><w:tr>${cell('Mes')}${cell('Ventas')}</w:tr><w:tr>${cell('Enero')}${cell('120')}</w:tr><w:tr>${cell('Febrero')}${cell('135')}</w:tr></w:tbl></w:body></w:document>`
   )
-  docx.file('word/styles.xml', `<w:styles ${W}><w:style w:styleId="Heading1"><w:name w:val="heading 1"/></w:style><w:style w:styleId="Heading2"><w:name w:val="heading 2"/></w:style></w:styles>`)
+  docx.file(
+    'word/styles.xml',
+    `<w:styles ${W}><w:style w:styleId="Heading1"><w:name w:val="heading 1"/></w:style><w:style w:styleId="Heading2"><w:name w:val="heading 2"/></w:style></w:styles>`
+  )
   docx.file('docProps/app.xml', '<Properties><Pages>3</Pages></Properties>')
   writeFileSync(join(dir, 'informe-trimestre.docx'), await docx.generateAsync({ type: 'nodebuffer' }))
 
   const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet([['Mes', 'Ventas'], ['Enero', 120], ['Febrero', 135]])
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Mes', 'Ventas'],
+    ['Enero', 120],
+    ['Febrero', 135]
+  ])
   ws.B4 = { t: 'n', f: 'SUM(B2:B3)', v: 255 }
   ws['!ref'] = 'A1:B4'
   XLSX.utils.book_append_sheet(wb, ws, 'Ventas')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Zona', 'Meta'], ['Norte', 80], ['Centro', 60]]), 'Metas')
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.aoa_to_sheet([
+      ['Zona', 'Meta'],
+      ['Norte', 80],
+      ['Centro', 60]
+    ]),
+    'Metas'
+  )
   writeFileSync(join(dir, 'ventas-2026.xlsx'), XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
 
   const sld = (title, bullets) =>
@@ -1033,6 +1128,34 @@ const S = {
   async 'chat-vacio'(ctx) {
     await closeOverlays(ctx.page)
     await newChat(ctx.page)
+  },
+  // «Primeros pasos» (0 de 4, tarjeta plegable al pie de la barra lateral) y una tarjeta de inicio ya pulsada: la caja queda rellena y sin enviar.
+  async 'chat-primeros-pasos'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await vis(ctx.page.locator('[data-testid="first-steps"]'), 15_000)
+    const idea = ctx.page.getByRole('button', { name: /Redactar/ }).first()
+    if (!(await idea.isVisible().catch(() => false)))
+      await ctx.page
+        .getByRole('button', { name: /Mostrar ideas/ })
+        .first()
+        .click()
+    await idea.click()
+    await sleep(500)
+  },
+  // «Instrucciones de esta conversación»: botón de la cabecera y panel con el texto escrito, el contador y el aviso honesto.
+  async 'chat-instrucciones-conversacion'(ctx) {
+    await seedChats(ctx)
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Chat')
+    await ctx.page.getByText('Plan del carrito de compras').first().click()
+    await vis(ctx.page.getByText('Plan para el carrito'), 15_000)
+    await ctx.page.locator('[data-testid="conv-instr-button"]').click()
+    await vis(ctx.page.getByRole('dialog', { name: /Instrucciones de esta conversación/ }), 10_000)
+    await ctx.page
+      .locator('[data-testid="conv-instr-text"]')
+      .fill('Responde en inglés y en frases cortas. Explícamelo como si no supiera nada del tema.')
+    await sleep(400)
   },
   async 'chat-conversacion'(ctx) {
     await seedChats(ctx)
@@ -1202,7 +1325,10 @@ const S = {
       const texts = parts
         .filter((x) => x.type === 'file')
         .map((x) => ({ name: x.filename, mime: x.mime, text: Buffer.from(String(x.url).split(',')[1] ?? '', 'base64').toString('utf8') }))
-      console.log('VERIF-OFFICE', JSON.stringify({ parts: parts.map((x) => x.type), files: texts.map((t) => ({ name: t.name, mime: t.mime, chars: t.text.length })) }))
+      console.log(
+        'VERIF-OFFICE',
+        JSON.stringify({ parts: parts.map((x) => x.type), files: texts.map((t) => ({ name: t.name, mime: t.mime, chars: t.text.length })) })
+      )
       for (const t of texts) console.log(`VERIF-OFFICE-TEXT ${t.name}\n${t.text}\n--`)
     }
   },
@@ -1836,7 +1962,9 @@ const S = {
     await goMode(ctx.page, 'Rutinas')
     const dir = mkdtempSync(join(homedir(), 'lazunox-shotd-evt-'))
     const inv = (ch, payload) =>
-      ctx.page.evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload]).then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
+      ctx.page
+        .evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload])
+        .then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
     const saved = await inv('routines:save', {
       name: 'Clasificar facturas (E2E)',
       prompt: 'Resume {{archivo}}',
@@ -1862,7 +1990,9 @@ const S = {
     writeFileSync(join(dir, 'salida-de-la-rutina.txt'), 'x') // lo que aparece justo al terminar es salida propia
     await sleep(9000)
     const r1b = await runs()
-    console.log('VERIF-EVENTO-1 ' + JSON.stringify({ ejecuciones: r1.length, tras_salida_propia: r1b.length, archivos: r1[0]?.triggerFiles }))
+    console.log(
+      'VERIF-EVENTO-1 ' + JSON.stringify({ ejecuciones: r1.length, tras_salida_propia: r1b.length, archivos: r1[0]?.triggerFiles })
+    )
     await sleep(6000) // pasa el margen anti-bucle
     for (let i = 1; i <= 5; i++) writeFileSync(join(dir, `lote${i}.txt`), String(i))
     const r2 = await waitRuns(2, 25_000)
@@ -1873,7 +2003,14 @@ const S = {
     const r3 = await runs()
     const info = (await inv('routines:list')).find((x) => x.id === saved.id)
     const inbox = await inv('routines:inbox:list')
-    console.log('VERIF-EVENTO-TOPE ' + JSON.stringify({ ejecuciones: r3.length, fileWatch: info.fileWatch, bandeja_pendiente: inbox.filter((i) => i.status === 'pending' && i.routineId === saved.id).length }))
+    console.log(
+      'VERIF-EVENTO-TOPE ' +
+        JSON.stringify({
+          ejecuciones: r3.length,
+          fileWatch: info.fileWatch,
+          bandeja_pendiente: inbox.filter((i) => i.status === 'pending' && i.routineId === saved.id).length
+        })
+    )
     await sleep(800)
     rmSync(dir, { recursive: true, force: true })
   },
@@ -1952,7 +2089,10 @@ const S = {
     const fakeKey = ['sk', 'ant', 'api03', 'Zq8'.repeat(10)].join('-')
     const fakeToken = ['ghp', 'Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4J3i2'].join('_')
     const proj = mk(TMP, 'import-')
-    writeFileSync(join(proj, 'CLAUDE.md'), '# Convenciones\n\n- Responde siempre en español.\n- Las pruebas van con Vitest y viven junto al archivo.\n')
+    writeFileSync(
+      join(proj, 'CLAUDE.md'),
+      '# Convenciones\n\n- Responde siempre en español.\n- Las pruebas van con Vitest y viven junto al archivo.\n'
+    )
     writeFileSync(
       join(proj, '.mcp.json'),
       JSON.stringify({
@@ -2030,6 +2170,126 @@ const S = {
     await vis(ctx.page.getByRole('dialog'), 5000)
     await sleep(400)
   },
+  // ---- H24: estados de error, carga y vacío ----
+  // La IA rechaza la conexión (ProviderAuthError): tarjeta de error del Chat con su mensaje llano y el botón de ayuda.
+  async 'chat-error-conexion'(ctx) {
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'consulta con error de conexion',
+      title: 'Consulta con error',
+      steps: [{ type: 'error', name: 'ProviderAuthError', message: 'invalid x-api-key', statusCode: 401 }]
+    })
+    await closeOverlays(page)
+    await newChat(page)
+    await sendChat(page, 'Haz una consulta con error de conexion')
+    await vis(page.getByText('La IA rechazó la conexión'), 30_000)
+    await sleep(600)
+  },
+  // Respuesta larga en curso: texto parcial + indicador de trabajo (el guion se queda esperando; se detiene al terminar).
+  async 'chat-carga-larga'(ctx) {
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'tarea muy larga',
+      title: 'Análisis largo',
+      steps: [{ type: 'text', text: 'Estoy revisando los 4.200 registros del año. Esto puede tardar un poco; sigo con el segundo trimestre…' }, { type: 'delay', ms: 120000 }]
+    })
+    await closeOverlays(page)
+    await newChat(page)
+    await sendChat(page, 'Analiza esta tarea muy larga')
+    await vis(page.getByText(/Estoy revisando los 4\.200 registros/), 30_000)
+    await sleep(900)
+    return async () => {
+      await page.getByRole('button', { name: /^(Detener|Parar)/ }).first().click({ timeout: 3000 }).catch(() => {})
+      await sleep(400)
+    }
+  },
+  // Lista de Tareas sin ninguna tarea (antes de que otros escenarios creen tareas).
+  async 'tareas-lista-vacia'(ctx) {
+    await openTasks(ctx)
+    await sleep(700)
+  },
+  // Una tarea que termina con error del proveedor: fila de la lista y mensaje en la conversación.
+  async 'tareas-error'(ctx) {
+    const fake = await freshTasks(ctx)
+    await fake.script({
+      match: 'Genera el balance con error',
+      title: 'Generar balance',
+      steps: [
+        { type: 'text', text: 'Empiezo a preparar el balance.' },
+        { type: 'error', name: 'ProviderAuthError', message: 'invalid x-api-key', statusCode: 401 }
+      ]
+    })
+    await sendTask(ctx.page, 'Genera el balance con error de conexión')
+    await vis(ctx.page.getByText('La IA rechazó la conexión'), 45_000)
+    await sleep(800)
+  },
+  // Rutinas con disparador por archivo: una sin vigilar (aviso de Rutinas sin aceptar) y otra con la carpeta borrada.
+  async 'rutinas-vigilante'(ctx) {
+    const { page } = ctx
+    await seedRoutines(ctx)
+    // La carpeta vigilada debe colgar de la carpeta de la rutina (taskFolder).
+    const base = join(taskFolder, 'Recibidos')
+    const gone = join(taskFolder, 'Facturas')
+    mkdirSync(base, { recursive: true })
+    mkdirSync(gone, { recursive: true })
+    const mkFile = (name, folder) =>
+      page.evaluate(
+        async (input) => JSON.stringify(await window.api.tasks.invoke('routines:save', input)).slice(0, 160),
+        {
+          name,
+          prompt: 'Ordena el archivo nuevo que apareció en la carpeta.',
+          mode: 'tasks',
+          schedule: { kind: 'file', folder, patterns: ['*.pdf'], on: 'create', settleSec: 5, maxPerHour: 6 },
+          enabled: true,
+          folder: taskFolder,
+          model: { providerID: 'fake', modelID: 'fake-model' },
+          sessionMode: 'fresh',
+          onAsk: 'reject'
+        }
+      )
+    console.log('  [rutinas] vigilante', await mkFile('Ordenar facturas nuevas', gone))
+    console.log('  [rutinas] vigilante', await mkFile('Archivar informes recibidos', base))
+    // Carpeta borrada y un guardado cualquiera para que el vigilante se vuelva a sincronizar: pasa a «Carpeta no disponible».
+    rmSync(gone, { recursive: true, force: true })
+    await resyncWatch(page)
+    await goMode(page, 'Chat')
+    await goMode(page, 'Rutinas')
+    await vis(page.getByText('Carpeta no disponible'), 20_000).catch(() => notes.push('rutinas-vigilante: no apareció «Carpeta no disponible»'))
+    await sleep(500)
+  },
+  // Rutinas con disparador por archivo sin haber aceptado el aviso de Rutinas: el vigilante queda en «Sin vigilar».
+  async 'rutinas-sin-vigilar'(ctx) {
+    const { page } = ctx
+    await page.evaluate(async () => window.api.invoke('settings:set', { routinesTermsAcknowledged: false }))
+    await resyncWatch(page)
+    await goMode(page, 'Chat')
+    await goMode(page, 'Rutinas')
+    await vis(page.getByText(/Sin vigilar/).first(), 20_000).catch(() => notes.push('rutinas-sin-vigilar: no apareció «Sin vigilar»'))
+    await sleep(500)
+  },
+  // Ningún servicio de IA conectado: Ajustes › Modelos vacío.
+  async 'ajustes-modelos-vacio'(ctx) {
+    const { page, fake } = ctx
+    await fake.set({ connectedProviders: [] })
+    await page.reload()
+    await page.locator('nav[aria-label="Modo"]').first().waitFor({ timeout: 60_000 })
+    await sleep(1200)
+    await openSettings(page, 'Modelos')
+    await sleep(1000)
+    // El estado vacío está en «Servicios de IA», más abajo que lo primero que se ve.
+    await page.getByText('Servicios de IA', { exact: true }).first().evaluate((el) => el.scrollIntoView({ block: 'start' })).catch(() => {})
+    await sleep(500)
+    return async () => {
+      await fake.set({ connectedProviders: ['fake', 'opencode-go'] })
+      await page.reload()
+      await sleep(1200)
+    }
+  },
+  // El motor de IA no arranca (OpenCode ausente con la app ya configurada).
+  async 'motor-error'(ctx) {
+    await vis(ctx.page.getByRole('alert').filter({ hasText: /No se pudo|motor|IA/ }), 40_000)
+    await sleep(600)
+  },
   async 'caja-menus'(ctx) {
     await seedCode(ctx)
     const { page } = ctx
@@ -2041,6 +2301,44 @@ const S = {
     return async () => {
       await page.keyboard.press('Escape').catch(() => {})
     }
+  },
+  // Chip de proyecto de la caja de Code (carpeta + rama de ESTA sesión) con su menú abierto.
+  async 'caja-proyecto'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    const chip = page.getByRole('button', { name: /^Proyecto:/ })
+    await vis(chip, 15_000)
+    await chip.click()
+    await vis(page.getByRole('menuitem', { name: /Agregar proyecto/ }), 10_000)
+    await sleep(500)
+    return async () => {
+      await page.keyboard.press('Escape').catch(() => {})
+    }
+  },
+  // Esfuerzo como submenú del menú del modelo (modelo con variantes), abierto.
+  async 'caja-esfuerzo'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    await pickReasonerInCode(page)
+    await page.getByRole('button', { name: /^Modelo:/ }).click()
+    await page.locator('[data-effort-row]').click()
+    await vis(page.getByRole('menuitemradio', { name: 'High' }), 10_000)
+    await sleep(500)
+    return async () => {
+      await page.keyboard.press('Escape').catch(() => {})
+      await page.keyboard.press('Escape').catch(() => {})
+    }
+  },
+  // Con un esfuerzo distinto del predeterminado, el chip del modelo muestra el valor.
+  async 'caja-esfuerzo-chip'(ctx) {
+    await seedCode(ctx)
+    const { page } = ctx
+    await pickReasonerInCode(page)
+    await page.getByRole('button', { name: /^Modelo:/ }).click()
+    await page.locator('[data-effort-row]').click()
+    await page.getByRole('menuitemradio', { name: 'High' }).click()
+    await vis(page.getByTestId('model-effort-badge'), 10_000)
+    await sleep(500)
   },
   async 'selector-modelo'(ctx) {
     await closeOverlays(ctx.page)
@@ -2468,7 +2766,7 @@ try {
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
   const isOnb = (s) => s.startsWith('onboarding')
   const isPrep = (s) => s.startsWith('preparando')
-  const isAviso = (s) => s === 'aviso-motor'
+  const isAviso = (s) => s === 'aviso-motor' || s === 'motor-error'
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
   const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
   const tasks = scenarios.filter(isTasks).sort(byOrder)
@@ -2488,6 +2786,12 @@ try {
       env: { OPENCODE_BIN: '', LAZUNOX_TEST_BUNDLED_DIR: bundledDir }
     })
     await runGroup(ctx, ['aviso-motor'])
+    await stop(ctx)
+  }
+  if (scenarios.includes('motor-error')) {
+    // Motor ausente con la app ya configurada: el banner superior avisa que no se pudo conectar.
+    const ctx = await launch('motor-error', { env: { OPENCODE_BIN: join(binDir, 'no-existe', 'opencode') }, noServer: true })
+    await runGroup(ctx, ['motor-error'])
     await stop(ctx)
   }
   if (scenarios.includes('kit')) {

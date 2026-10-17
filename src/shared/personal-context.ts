@@ -11,7 +11,7 @@
 /** Tope de las instrucciones globales que escribe la persona (Ajustes). */
 export const MAX_USER_INSTRUCTIONS = 4000
 /** Tope de las instrucciones que valen solo para una conversación de Chat. */
-export const MAX_CONVERSATION_INSTRUCTIONS = 1500
+export const MAX_CONVERSATION_INSTRUCTIONS = 2000
 /** Tope de cada bloque de memoria al inyectarlo. */
 export const MAX_MEMORY_BLOCK_CHARS = 6000
 

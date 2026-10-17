@@ -11,6 +11,7 @@ import { useSettings } from '../stores/settings'
 import { selectListCollapsed, useUi } from '../stores/ui'
 import { useTasks } from '../features/tasks/impl/store'
 import { selectInboxPending, syncInbox, useRoutines } from '../features/routines/impl/store'
+import { FirstStepsCard } from '../features/onboarding/FirstStepsCard'
 import { MODES, MODES_BY_ID } from './modes'
 import type { ModeDefinition } from './types'
 import { hintSuffix, hintText, useEffectiveBindings } from '../keybindings/bindings'
@@ -100,7 +101,7 @@ function FilterPills(): React.JSX.Element {
           // Nombre accesible propio («Filtrar: con cambios»): «Cambios» a secas chocaba con el botón del panel Cambios de Code.
           aria-label={t(`app.sidebar.filterAria.${f}`)}
           onClick={() => setFilter(f)}
-          className={`no-drag inline-flex h-[22px] shrink-0 items-center rounded-full border px-[9px] text-[11.5px] desk:text-meta whitespace-nowrap transition-colors duration-[var(--dur-fast)] ${
+          className={`no-drag inline-flex h-[22px] shrink-0 items-center rounded-full border px-[9px] desk:h-6 text-[11.5px] desk:text-meta whitespace-nowrap transition-colors duration-[var(--dur-fast)] ${
             filter === f ? 'border-transparent bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
           }`}
         >
@@ -348,6 +349,9 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
           <SidebarContent />
         </SidebarTree>
       </div>
+
+      {/* «Primeros pasos»: tarjeta plegable y discreta, solo mientras la persona no la complete ni la oculte. */}
+      <FirstStepsCard />
 
       {/* Pie discreto: estado de la conexión (el punto cambia de color si arranca o falla). */}
       <div

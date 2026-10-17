@@ -80,5 +80,19 @@ export const app = {
   'app.boundary.onboarding': 'el asistente de inicio',
   'app.boundary.palette': 'la paleta de comandos',
   'app.boundary.sidebar': 'la barra lateral',
-  'app.boundary.server': 'el estado del servidor'
+  'app.boundary.server': 'el estado del servidor',
+  'firstSteps.title': 'Primeros pasos',
+  'firstSteps.aria': 'Primeros pasos: {done} de {total} hechos',
+  'firstSteps.progress': '{done} de {total}',
+  'firstSteps.step.model': 'Elige tu IA',
+  'firstSteps.step.message': 'Haz tu primera pregunta',
+  'firstSteps.step.attach': 'Prueba adjuntar un archivo',
+  'firstSteps.step.settings': 'Mira Ajustes › Instrucciones y memoria',
+  'firstSteps.stepDone': 'hecho',
+  'firstSteps.stepTodo': 'pendiente',
+  'firstSteps.hide': 'Ocultar',
+  'firstSteps.hideHint': 'Ocultar los primeros pasos. Puedes volver a mostrarlos en Ajustes › General.',
+  'firstSteps.collapse': 'Plegar los primeros pasos',
+  'firstSteps.expand': 'Mostrar los primeros pasos',
+  'firstSteps.finished': '¡Listo! Ya conoces lo básico.'
 } as const
