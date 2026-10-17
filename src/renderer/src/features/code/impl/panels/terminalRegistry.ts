@@ -10,8 +10,9 @@ import type { OutputView, ShareStatus } from '@shared/terminal-capture'
 /**
  * Registro de terminales de Code (F8-B32). El shell (pty) y su `Terminal` de xterm viven AQUÍ, fuera de React:
  * al cambiar de modo o abrir Ajustes la vista Code se desmonta, pero el pty sigue vivo con su scrollback y
- * `TerminalPanel` solo vuelve a enganchar el elemento DOM. Una terminal por proyecto (`directory`); se
- * descarta al cambiar/cerrar el proyecto (`disposeTerminalsExcept`), al reiniciarla o al salir.
+ * `TerminalPanel` solo vuelve a enganchar el elemento DOM. Cada proyecto (`directory`) tiene un grupo de PESTAÑAS (hasta
+ * `MAX_TABS`), cada una con su propio shell, xterm y captura de salida; se descartan al cambiar/cerrar el proyecto
+ * (`disposeTerminalsExcept`), al cerrar la pestaña, al reiniciarla o al salir (el proceso principal mata los ptys de la ventana).
  */
 
 function cssVar(name: string, fallback: string): string {
@@ -52,7 +53,15 @@ export class TerminalEntry {
   private capture: OutputCapture | null = null
   private readonly cleanups: Array<() => void> = []
 
-  constructor(readonly directory: string) {
+  constructor(
+    readonly directory: string,
+    /** Identificador estable de la pestaña (sobrevive a «Reiniciar»). */
+    readonly id: string,
+    /** Número de la pestaña (su nombre por defecto es «Terminal n»). */
+    readonly n: number,
+    /** Nombre puesto por la persona, o null para el nombre por defecto. */
+    public title: string | null = null
+  ) {
     this.el = document.createElement('div')
     this.el.style.height = '100%'
     this.term = new Terminal({
@@ -200,6 +209,11 @@ export class TerminalEntry {
     return this.capture
   }
 
+  /** Hay una ejecución con ▶ en curso o esperando entrada en esta pestaña. */
+  isBusy(): boolean {
+    return !!this.capture && this.capture.getSnapshot().status !== 'done'
+  }
+
   /** Texto seleccionado en la terminal, o '' si no hay selección. */
   getSelectionText(): string {
     return this.disposed ? '' : this.term.getSelection()
@@ -241,64 +255,178 @@ export class TerminalEntry {
   }
 }
 
-const entries = new Map<string, TerminalEntry>()
+/** Tope de pestañas por proyecto: cada una es un pty (un proceso de shell) vivo, así que se acota. */
+export const MAX_TABS = 8
 
-/** La terminal del proyecto; se crea (y arranca su shell) la primera vez. */
-export function getTerminal(directory: string): TerminalEntry {
-  let e = entries.get(directory)
-  if (!e) {
-    e = new TerminalEntry(directory)
-    entries.set(directory, e)
+export interface TabInfo {
+  id: string
+  n: number
+  /** Nombre puesto por la persona (null = «Terminal n»). */
+  title: string | null
+}
+export interface TabsSnapshot {
+  tabs: TabInfo[]
+  activeId: string
+}
+
+class TabGroup {
+  entries: TerminalEntry[] = []
+  activeId = ''
+  nextN = 1
+  snapshot: TabsSnapshot = { tabs: [], activeId: '' }
+  readonly listeners = new Set<() => void>()
+  constructor(readonly directory: string) {
+    this.add()
   }
+  add(): TerminalEntry {
+    const n = this.nextN++
+    const e = new TerminalEntry(this.directory, `tab-${++tabCounter}`, n)
+    this.entries.push(e)
+    this.activeId = e.id
+    return e
+  }
+  active(): TerminalEntry {
+    return this.entries.find((e) => e.id === this.activeId) ?? this.entries[0]
+  }
+  /** Reconstruye la foto inmutable y avisa (la vista la lee con useSyncExternalStore). */
+  emit(): void {
+    this.snapshot = { tabs: this.entries.map((e) => ({ id: e.id, n: e.n, title: e.title })), activeId: this.activeId }
+    for (const l of [...this.listeners]) l()
+  }
+}
+
+let tabCounter = 0
+const groups = new Map<string, TabGroup>()
+
+function groupFor(directory: string): TabGroup {
+  let g = groups.get(directory)
+  if (!g) {
+    g = new TabGroup(directory)
+    g.emit()
+    groups.set(directory, g)
+  }
+  return g
+}
+
+/** La pestaña indicada del proyecto (o la seleccionada); se crea (y arranca su shell) la primera vez. */
+export function getTerminal(directory: string, tabId?: string): TerminalEntry {
+  const g = groupFor(directory)
+  return (tabId ? g.entries.find((e) => e.id === tabId) : undefined) ?? g.active()
+}
+
+export function getTabs(directory: string): TabsSnapshot {
+  return groupFor(directory).snapshot
+}
+export function subscribeTabs(directory: string, cb: () => void): () => void {
+  const g = groupFor(directory)
+  g.listeners.add(cb)
+  return () => g.listeners.delete(cb)
+}
+
+/** Abre una pestaña nueva (shell nuevo) y la selecciona. `null` si ya hay `MAX_TABS`. */
+export function openTab(directory: string): TerminalEntry | null {
+  const g = groupFor(directory)
+  if (g.entries.length >= MAX_TABS) return null
+  const e = g.add()
+  g.emit()
   return e
 }
 
-/** Descarta (mata el shell) la terminal del proyecto. */
+export function selectTab(directory: string, tabId: string): void {
+  const g = groups.get(directory)
+  if (!g || g.activeId === tabId || !g.entries.some((e) => e.id === tabId)) return
+  g.activeId = tabId
+  g.emit()
+}
+
+/** Pestaña siguiente (+1) o anterior (-1), en círculo. */
+export function cycleTab(directory: string, delta: 1 | -1): void {
+  const g = groups.get(directory)
+  if (!g || g.entries.length < 2) return
+  const i = g.entries.findIndex((e) => e.id === g.activeId)
+  selectTab(directory, g.entries[(i + delta + g.entries.length) % g.entries.length].id)
+}
+
+/** Cierra la pestaña (mata su shell). La última no se cierra: para eso está «Reiniciar». */
+export function closeTab(directory: string, tabId: string): boolean {
+  const g = groups.get(directory)
+  if (!g || g.entries.length < 2) return false
+  const i = g.entries.findIndex((e) => e.id === tabId)
+  if (i < 0) return false
+  const [gone] = g.entries.splice(i, 1)
+  gone.dispose()
+  if (g.activeId === tabId) g.activeId = g.entries[Math.min(i, g.entries.length - 1)].id
+  g.emit()
+  return true
+}
+
+/** Renombra la pestaña (texto vacío = vuelve a «Terminal n»). */
+export function renameTab(directory: string, tabId: string, title: string): void {
+  const e = groups.get(directory)?.entries.find((x) => x.id === tabId)
+  if (!e) return
+  e.title = title.trim().slice(0, 40) || null
+  groups.get(directory)?.emit()
+}
+
+/** Descarta (mata los shells de) todas las pestañas del proyecto. */
 export function disposeTerminal(directory: string): void {
-  entries.get(directory)?.dispose()
-  entries.delete(directory)
+  const g = groups.get(directory)
+  if (!g) return
+  groups.delete(directory)
+  for (const e of g.entries) e.dispose()
+  g.entries = []
+  g.listeners.clear()
 }
 
-/** Descarta todas las terminales salvo la del proyecto indicado (o todas con null). */
+/** Descarta todas las terminales salvo las del proyecto indicado (o todas con null). */
 export function disposeTerminalsExcept(directory: string | null): void {
-  for (const dir of [...entries.keys()]) if (dir !== directory) disposeTerminal(dir)
+  for (const dir of [...groups.keys()]) if (dir !== directory) disposeTerminal(dir)
 }
 
-/** Reinicia la terminal del proyecto (shell nuevo, sin scrollback). */
-export function restartTerminal(directory: string): TerminalEntry {
-  disposeTerminal(directory)
-  const entry = getTerminal(directory)
-  replacedVersion += 1
-  for (const l of [...replacedListeners]) l()
-  return entry
+/** Reinicia una pestaña (shell nuevo, sin scrollback) conservando su sitio, su número y su nombre. */
+export function restartTerminal(directory: string, tabId?: string): TerminalEntry {
+  const g = groupFor(directory)
+  const i = Math.max(0, tabId ? g.entries.findIndex((e) => e.id === tabId) : g.entries.findIndex((e) => e.id === g.activeId))
+  const old = g.entries[i]
+  const fresh = new TerminalEntry(directory, old.id, old.n, old.title)
+  g.entries[i] = fresh
+  old.dispose()
+  g.emit()
+  return fresh
 }
 
-// Aviso a los paneles abiertos de que la terminal de un proyecto fue reemplazada (para releer la entrada).
-let replacedVersion = 0
-const replacedListeners = new Set<() => void>()
-export const subscribeTerminalReplaced = (cb: () => void): (() => void) => {
-  replacedListeners.add(cb)
-  return () => replacedListeners.delete(cb)
+export interface RunResult {
+  capture: OutputCapture
+  /** Pestaña donde corre el comando. */
+  tabId: string
 }
-export const getTerminalReplacedVersion = (): number => replacedVersion
 
 /**
- * Escribe `data` (comandos ya con su Enter) en la terminal del proyecto, capturando su salida. La crea si no existe y, si su shell
- * había terminado o no pudo abrirse, la reinicia antes. `null` (y no escribe nada) si una ejecución anterior sigue en curso.
+ * Escribe `data` (comandos ya con su Enter) en la pestaña seleccionada del proyecto (o en una nueva con `newTab`), capturando su
+ * salida. Si su shell había terminado o no pudo abrirse, la reinicia antes. `null` (y no escribe nada) si la pestaña sigue con una
+ * ejecución anterior en curso, o si no caben más pestañas.
  */
 export function runInTerminal(
   directory: string,
   data: string,
   command: string,
-  onShare: (view: OutputView, status: ShareStatus) => void
-): OutputCapture | null {
-  let entry = getTerminal(directory)
-  const { exited, error } = entry.getSnapshot()
-  if (exited !== null || error) entry = restartTerminal(directory)
+  onShare: (view: OutputView, status: ShareStatus) => void,
+  opts: { newTab?: boolean } = {}
+): RunResult | null {
+  let entry: TerminalEntry
+  if (opts.newTab) {
+    const fresh = openTab(directory)
+    if (!fresh) return null
+    entry = fresh
+  } else {
+    entry = getTerminal(directory)
+    const { exited, error } = entry.getSnapshot()
+    if (exited !== null || error) entry = restartTerminal(directory, entry.id)
+  }
   const capture = entry.startCapture(command, onShare)
   if (!capture) return null
   entry.sendInput(data)
-  return capture
+  return { capture, tabId: entry.id }
 }
 
 // Al cambiar o cerrar el proyecto se descartan las terminales de los demás (como antes del registro).

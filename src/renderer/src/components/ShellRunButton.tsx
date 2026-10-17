@@ -4,7 +4,7 @@ import { dangerousCommandReason, mayAskPassword, prepareTerminalCommand, type Pr
 import { useT } from '../lib/i18n'
 import { currentPlatform, isRemoteSurface } from '../lib/platform'
 import { ShellRunContext, type ShellRunHandle, type ShellRunSnapshot } from '../lib/shellRun'
-import { confirmDialog } from './ConfirmDialog'
+import { choiceDialog, confirmDialog } from './ConfirmDialog'
 import { CopyButton } from './CopyButton'
 
 type Prepared = Extract<PrepareResult, { ok: true }>
@@ -54,7 +54,7 @@ export function ShellRunBlock({
   const onClick = async (): Promise<void> => {
     if (!runner) return
     if (state === 'running') {
-      runner.showTerminal()
+      runner.showTerminal(run?.tabId)
       return
     }
     const danger = dangerousCommandReason(command)
@@ -77,16 +77,22 @@ export function ShellRunBlock({
       })
       if (!ok) return
     }
-    const handle = runner.run(lines)
+    let handle = runner.run(lines)
     if (!handle) {
-      void confirmDialog({
+      // La pestaña seleccionada sigue ocupada: se puede usar una pestaña nueva o ir a la terminal a detener lo que corre.
+      const choice = await choiceDialog({
         title: t('code.run.busy.title'),
         message: t('code.run.busy.message'),
-        confirmLabel: t('code.run.open')
-      }).then((open) => {
-        if (open) runner.showTerminal()
+        confirmLabel: t('code.run.newTab'),
+        altLabel: t('code.run.open')
       })
-      return
+      if (choice === 'alt') runner.showTerminal()
+      if (choice !== 'confirm') return
+      handle = runner.run(lines, { newTab: true })
+      if (!handle) {
+        void confirmDialog({ title: t('code.run.tabsFull.title'), message: t('code.run.tabsFull.message'), cancelLabel: null })
+        return
+      }
     }
     setRun(handle)
   }
@@ -116,7 +122,9 @@ export function ShellRunBlock({
         </div>
         {children}
       </div>
-      {run && snap && <OutputCard run={run} snap={snap} warnPassword={mayAskPassword(command)} onOpen={() => runner?.showTerminal()} />}
+      {run && snap && (
+        <OutputCard run={run} snap={snap} warnPassword={mayAskPassword(command)} onOpen={() => runner?.showTerminal(run.tabId)} />
+      )}
     </>
   )
 }
