@@ -3,6 +3,7 @@
  * Ajustes › búsqueda: filtra por título de sección y por texto de las opciones (claves i18n reales), resalta, agrupa, abre la sección
  * y lleva a la opción; ⌘F/Ctrl+F enfoca el campo; sin resultados explica qué hacer; el teclado alcanza todo.
  */
+import '../../../../../test/jsdom-first' // debe ir ANTES de react-dom (ver el comentario de ese archivo)
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
