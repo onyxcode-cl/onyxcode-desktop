@@ -117,6 +117,6 @@ describe('instrucciones por conversación en el system', () => {
     const { useFirstSteps } = await import('../../stores/first-steps')
     expect(useFirstSteps.getState().state.done).toEqual([])
     await send('hola')
-    expect(useFirstSteps.getState().state.done).toEqual(['message'])
+    expect(useFirstSteps.getState().state.done.sort()).toEqual(['message', 'model'])
   })
 })

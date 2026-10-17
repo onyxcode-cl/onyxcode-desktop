@@ -159,7 +159,7 @@ export const personalizacion = {
   'pers.install.instructions': 'Lo que le dice al agente',
   'pers.install.instructionsAria': 'Instrucciones de la habilidad',
   'pers.install.truncated': 'el resto no se muestra aquí',
-  'pers.install.fileList': 'Ver los {count} archivos',
+  'pers.install.fileList': 'Archivos incluidos ({count})',
   'pers.install.understand': 'Entiendo que es una habilidad de terceros que el agente podrá seguir y usar, y quiero instalarla.',
   'pers.install.noRun': 'Al instalar solo se copian los archivos a la configuración de Lazunox. No se ejecuta nada ni se descarga nada.',
   'pers.install.confirm': 'Instalar',

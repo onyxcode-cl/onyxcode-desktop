@@ -213,7 +213,10 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
     return false
   }
   // El motor aceptó el mensaje: paso «Haz tu primera pregunta» de los primeros pasos.
-  if (text.trim()) markFirstStepDone('message')
+  if (text.trim()) {
+    markFirstStepDone('message')
+    markFirstStepDone('model') // si el motor respondió, ya hay un modelo en uso (también el gratuito del asistente)
+  }
   return true
 }
 

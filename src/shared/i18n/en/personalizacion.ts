@@ -162,7 +162,7 @@ export const personalizacion = {
   'pers.install.instructions': 'What it tells the agent',
   'pers.install.instructionsAria': 'Skill instructions',
   'pers.install.truncated': 'the rest is not shown here',
-  'pers.install.fileList': 'See all {count} files',
+  'pers.install.fileList': 'Included files ({count})',
   'pers.install.understand':
     'I understand this is a third-party skill that the agent will be able to follow and use, and I want to install it.',
   'pers.install.noRun': 'Installing only copies the files into Lazunox’s settings. Nothing is run and nothing is downloaded.',
