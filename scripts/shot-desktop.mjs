@@ -36,6 +36,8 @@ const SCENARIOS = [
   'code-proyecto',
   'code-diff',
   'code-terminal',
+  'code-terminal-pestanas',
+  'code-terminal-pestanas-ocupada',
   'code-ejecutar',
   'code-ejecutar-confirmar',
   'code-ejecutar-mensaje',
@@ -998,6 +1000,72 @@ const S = {
     )
     await ctx.page.keyboard.press('Enter')
     await sleep(1200)
+  },
+  // Terminal con pestañas: la primera (renombrada «servidor») deja un proceso largo en marcha y la segunda, recién abierta con «+», corre
+  // otro comando a la vez; cada pestaña tiene su shell y su salida.
+  async 'code-terminal-pestanas'(ctx) {
+    const { page } = ctx
+    await seedCode(ctx)
+    await togglePanel(page, 'Terminal')
+    await sleep(800)
+    await page.mouse.click(1000, 300)
+    await page.keyboard.type(
+      WIN
+        ? "function prompt { 'demo@tienda-web > ' }; Clear-Host; Write-Output 'servidor escuchando en :3000'; Start-Sleep 300"
+        : "export PS1='demo@tienda-web % '; clear; echo 'servidor escuchando en :3000'; sleep 300"
+    )
+    await page.keyboard.press('Enter')
+    await sleep(1000)
+    await page.getByTestId('terminal-tab').first().getByRole('tab').dblclick()
+    await page.getByRole('textbox', { name: 'Cambiar el nombre de la pestaña' }).fill('servidor')
+    await page.keyboard.press('Enter')
+    await sleep(300)
+    await page.getByTestId('terminal-new-tab').click()
+    await vis(page.getByTestId('terminal-tab').nth(1), 10_000)
+    await sleep(1200)
+    await page.keyboard.type(
+      WIN
+        ? "function prompt { 'demo@tienda-web > ' }; Clear-Host; git status --short"
+        : "export PS1='demo@tienda-web % '; clear; git status --short"
+    )
+    await page.keyboard.press('Enter')
+    await sleep(1200)
+  },
+  // ▶ con la pestaña seleccionada ocupada: el aviso ofrece «Usar una pestaña nueva» o «Abrir en la terminal». Se captura el aviso; el
+  // guion además elige la pestaña nueva y comprueba que el segundo comando corre ahí (dos pestañas, cada una con su comando).
+  async 'code-terminal-pestanas-ocupada'(ctx) {
+    await openCode(ctx)
+    const { page, fake } = ctx
+    await fake.script({
+      match: 'dos comandos',
+      title: 'Dos comandos',
+      steps: [
+        {
+          type: 'text',
+          text: 'Primero este, que tarda:\n\n```bash\necho uno-corriendo && sleep 40\n```\n\nY luego este:\n\n```bash\necho dos-listo\n```'
+        }
+      ]
+    })
+    const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+    await box.fill('dame dos comandos')
+    await box.press('Enter')
+    const runs = page.getByRole('button', { name: 'Ejecutar en la terminal' })
+    await vis(runs.first(), 45_000)
+    await runs.first().click()
+    await vis(page.getByText('uno-corriendo').first(), 20_000)
+    await sleep(800)
+    await page.locator('[data-shell-block]').last().getByTestId('shell-run').click()
+    await vis(page.getByText('La terminal está ocupada'), 15_000)
+    await sleep(500)
+    return async () => {
+      await page.getByTestId('confirm-alt').waitFor({ state: 'visible', timeout: 5000 })
+      await page.getByRole('button', { name: 'Usar una pestaña nueva' }).click()
+      await vis(page.getByTestId('terminal-tab').nth(1), 10_000)
+      await sleep(2500)
+      console.log('VERIF-PESTANAS ' + JSON.stringify(await page.getByTestId('terminal-tab').allInnerTexts()))
+      console.log('VERIF-TARJETAS ' + JSON.stringify(await page.locator('[data-shell-output]').allInnerTexts()))
+      await sleep(300)
+    }
   },
   // Bloques de comando de una respuesta: compactos, con ▶ y copiar; al pulsar ▶ aparece la tarjeta con la salida en vivo
   // (aquí un comando que pide contraseña: «Esperando que escribas…») y la IA ve esa salida (envío automático sin claves).

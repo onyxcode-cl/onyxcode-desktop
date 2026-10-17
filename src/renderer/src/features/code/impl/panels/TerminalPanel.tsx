@@ -27,6 +27,7 @@ import {
 export function TerminalPanel({ directory, visible }: { directory: string; visible: boolean }): React.JSX.Element {
   const t = useT()
   const hostRef = useRef<HTMLDivElement>(null)
+  const tabsRef = useRef<HTMLDivElement>(null)
   const [emptyNote, setEmptyNote] = useState(false)
   // La foto de pestañas cambia al abrir/cerrar/seleccionar o al reiniciar una (aquí o al ejecutar con el shell terminado): releer la entrada.
   const subscribe = useCallback((cb: () => void) => subscribeTabs(directory, cb), [directory])
@@ -46,6 +47,11 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
     ro.observe(host)
     return () => ro.disconnect()
   }, [entry])
+
+  // La pestaña seleccionada siempre queda a la vista aunque la barra desborde.
+  useEffect(() => {
+    tabsRef.current?.querySelector('[data-active="true"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [tabs.activeId, tabs.tabs.length])
 
   useEffect(() => {
     if (!visible) return
@@ -90,7 +96,8 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
           role="tablist"
           aria-label={t('code.terminal.tabs')}
           data-testid="terminal-tabs"
-          className="flex min-w-0 items-center gap-0.5 overflow-x-auto"
+          ref={tabsRef}
+          className="flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {tabs.tabs.map((tab) => {
             const active = tab.id === tabs.activeId
@@ -126,9 +133,13 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
                     role="tab"
                     aria-selected={active}
                     title={t('code.terminal.renameTab')}
-                    onClick={() => {
+                    onClick={(e) => {
                       selectTab(directory, tab.id)
-                      requestAnimationFrame(() => getTerminal(directory, tab.id).term.focus())
+                      // Un doble clic abre el renombrado: no se le roba el foco a su campo.
+                      if (e.detail < 2)
+                        requestAnimationFrame(() => {
+                          if (document.activeElement?.tagName !== 'INPUT') getTerminal(directory, tab.id).term.focus()
+                        })
                     }}
                     onDoubleClick={() => setRenaming(tab.id)}
                     className={`no-drag max-w-[10rem] truncate py-1 pl-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${canClose ? 'pr-1' : 'pr-2.5'} rounded-md`}
@@ -179,7 +190,8 @@ export function TerminalPanel({ directory, visible }: { directory: string; visib
           className="no-drag ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-hover hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent desk:text-meta"
         >
           <MessageSquareText size={13} />
-          {t('code.terminal.ask')}
+          {/* Con varias pestañas el espacio de la barra es de ellas: la acción queda solo con su ícono (nombre accesible intacto). */}
+          {tabs.tabs.length < 2 && t('code.terminal.ask')}
         </button>
       </div>
       {(error || exited !== null) && (

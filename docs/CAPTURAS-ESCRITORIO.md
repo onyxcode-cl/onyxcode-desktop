@@ -2,11 +2,13 @@
 
 `node scripts/shot-desktop.mjs [--out DIR] [--scenario ESC[,ESC...]] [--theme dark|light] [--size 1280x800|1000x700]`
 
-- Escenarios (42): `onboarding`, `onboarding-motor`, `onboarding-inicio`, `onboarding-conecta`, `onboarding-modelo`, `onboarding-modos`, `onboarding-final`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`, `code-ejecutar`, `code-ejecutar-confirmar`, `code-ejecutar-mensaje`, `code-ejecutar-termina`, `code-terminal-ia`,
+- Escenarios (44): `onboarding`, `onboarding-motor`, `onboarding-inicio`, `onboarding-conecta`, `onboarding-modelo`, `onboarding-modos`, `onboarding-final`, `chat-vacio`, `chat-conversacion`, `chat-herramientas`, `code-proyecto`, `code-diff`, `code-terminal`, `code-terminal-pestanas`, `code-terminal-pestanas-ocupada`, `code-ejecutar`, `code-ejecutar-confirmar`, `code-ejecutar-mensaje`, `code-ejecutar-termina`, `code-terminal-ia`,
   `tareas-primer-uso`, `tareas-nueva`, `tareas-lista`, `tareas-buscar`, `tareas-archivadas`, `tareas-en-curso`, `tareas-permiso`,
   `tareas-plan-sin-apps`, `tareas-plan-sin-apps-cambio`, `code-entorno`, `tareas-entorno`, `inicio-vacio`, `inicio-pendientes`, `aviso-motor`,
   `rutinas-vacio`, `rutinas`, `rutinas-detalle`, `rutinas-editor`, `ajustes-general`, `ajustes-modelos`, `ajustes-celular`, `paleta`,
   `selector-modelo`, `dialogo-confirmar`, `comparar`, `barra-lateral-colapsada`, `inicio-chat`, `inicio-code`.
+- `code-terminal-pestanas`: terminal de Code con dos pestañas: la primera, renombrada «servidor», deja un proceso largo en marcha; la segunda (botón «+») corre otro comando a la vez.
+- `code-terminal-pestanas-ocupada`: pulsa ▶ en dos bloques de una respuesta; con el primero aún en marcha, el segundo muestra el aviso «La terminal está ocupada» con «Usar una pestaña nueva» / «Abrir en la terminal». Tras la captura elige la pestaña nueva y anota en consola (`VERIF-PESTANAS`, `VERIF-TARJETAS`) que cada comando corre en su pestaña.
 - `inicio-chat` / `inicio-code`: pantallas de inicio con trabajo previo (reutilizan los datos de `barra-chat` y `barra-code`). Chat: «Respondiendo ahora» arriba, «Retomar» con las recientes e ideas plegadas. Code: abre una sesión nueva y muestra «Esperando tu aprobación», «Retomar» e ideas plegadas.
 - `tareas-plan-sin-apps` / `tareas-plan-sin-apps-cambio`: pasan a Control total y usan el paso `request-access` del OpenCode falso (el mismo POST que `computer_request_access`, con `apps: []`) para mostrar la tarjeta del plan con «Cambiar a Solo en tu carpeta»; el segundo pulsa el botón y comprueba que vuelve a «Solo en tu carpeta».
 - `code-entorno` / `tareas-entorno`: abren el panel «Entorno» (botón de la barra de Code y de la cabecera de la tarea) y capturan el popover con el equipo, la carpeta, la rama (Code) o el modo y el punto de restauración (Tareas).
