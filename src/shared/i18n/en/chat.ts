@@ -198,6 +198,7 @@ export const chat = {
   'chat.msg.stopped': 'Response stopped.',
   'chat.msg.scrollEnd': 'Jump to bottom',
   'a11y.responseDone': 'Response finished',
+  'a11y.approvalNeeded': 'Your approval is needed: {title}',
   'a11y.responseError': 'Error: {message}',
   'a11y.conversationLog': 'Conversation notices',
   'chat.server.notReady': 'The AI isn’t ready yet. Wait a moment or restart the app.',

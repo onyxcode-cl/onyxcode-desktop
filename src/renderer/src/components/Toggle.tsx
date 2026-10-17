@@ -34,7 +34,7 @@ export function Toggle({
         if (stopPropagation) e.stopPropagation()
         onChange(!checked)
       }}
-      className={`relative inline-flex ${size === 'sm' ? 'h-4 w-7' : 'h-5 w-9'} shrink-0 items-center rounded-full transition-colors duration-200 desk:duration-[180ms] disabled:opacity-40 desk:disabled:cursor-not-allowed desk:disabled:opacity-50 ${checked ? 'bg-accent desk:bg-accent' : 'bg-border-strong desk:bg-transparent desk:shadow-[inset_0_0_0_1.5px_var(--fg-subtle)]'}`}
+      className={`relative inline-flex desk:after:absolute desk:after:inset-x-0 desk:after:-inset-y-1 ${size === 'sm' ? 'h-4 w-7' : 'h-5 w-9'} shrink-0 items-center rounded-full transition-colors duration-200 desk:duration-[180ms] disabled:opacity-40 desk:disabled:cursor-not-allowed desk:disabled:opacity-50 ${checked ? 'bg-accent desk:bg-accent' : 'bg-border-strong desk:bg-transparent desk:shadow-[inset_0_0_0_1.5px_var(--fg-subtle)]'}`}
     >
       <span
         className={`inline-block ${size === 'sm' ? 'h-3 w-3 desk:h-2.5 desk:w-2.5' : 'h-4 w-4 desk:h-3 desk:w-3'} rounded-full bg-white shadow-sm desk:shadow-none transition-transform duration-200 ease-out ${knobMove}`}

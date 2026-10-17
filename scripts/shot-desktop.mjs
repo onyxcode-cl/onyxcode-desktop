@@ -435,7 +435,43 @@ async function parkMouse(ctx) {
   notes.push('el ratón sigue sobre un elemento tras sacarlo de la ventana')
 }
 
+// --audit-targets: lista, por escenario, los controles visibles de menos de 28x28 px (H21). No cambia las capturas.
+const auditTargets = process.argv.includes('--audit-targets')
+const auditSeen = new Set()
+async function auditSmallTargets(ctx, name, theme, sizeKey) {
+  const rows = await ctx.page
+    .evaluate(() => {
+      const sel = 'button,a[href],[role=button],[role=tab],[role=menuitem],[role=checkbox],[role=switch],[role=option],input,select,summary'
+      const out = []
+      for (const el of document.querySelectorAll(sel)) {
+        const r = el.getBoundingClientRect()
+        const cs = getComputedStyle(el)
+        if (!r.width || !r.height || cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue
+        if (r.bottom < 0 || r.right < 0 || r.top > innerHeight || r.left > innerWidth) continue
+        if (el.disabled) continue
+        // Zona de clic ampliada con un ::after absoluto (Toggle): cuenta su caja.
+        const af = getComputedStyle(el, '::after')
+        if (af.position === 'absolute' && parseFloat(af.height) >= 24 && parseFloat(af.width) >= 24) continue
+        if (r.width >= 28 && r.height >= 28) continue
+        const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('title') || el.getAttribute('placeholder') || '').trim().slice(0, 36)
+        const text = (el.textContent || '').trim()
+        // Un control con texto visible largo no es «solo icono»: solo se mira la altura.
+        if (text.length > 3 && r.height >= 24) continue
+        out.push(`${el.tagName.toLowerCase()} "${label}" ${Math.round(r.width)}x${Math.round(r.height)} [${(el.className?.toString?.() ?? '').slice(0, 70)}]`)
+      }
+      return out
+    })
+    .catch(() => [])
+  for (const r of rows) {
+    const key = `${name}|${r}`
+    if (auditSeen.has(key)) continue
+    auditSeen.add(key)
+    console.log(`AUDIT ${name} ${theme} ${sizeKey}: ${r}`)
+  }
+}
+
 async function snap(ctx, name, theme, sizeKey) {
+  if (auditTargets) await auditSmallTargets(ctx, name, theme, sizeKey)
   if (ctx.hover) {
     // Escenario con hover: el ratón se queda encima del elemento (centro de su caja) mientras dura la captura.
     const b = await ctx.hover.first().boundingBox()

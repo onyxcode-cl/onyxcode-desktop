@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { ExportConversationHost } from '../components/ExportConversation'
+import { LiveAnnouncer } from '../components/LiveAnnouncer'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { OnboardingGate, PreflightGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
@@ -190,6 +191,7 @@ function DesktopApp(): React.JSX.Element {
   return (
     <div className="flex h-full bg-bg">
       <ConfirmDialogHost />
+      <LiveAnnouncer />
       <ExportConversationHost />
       <RemotePairHost />
       <RemoteConfirmHost />
