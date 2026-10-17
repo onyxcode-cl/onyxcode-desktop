@@ -200,7 +200,9 @@ export function RoutineCard({ r, selected, now }: { r: ScheduledRoutine; selecte
               ? t('routines.file.state.capped')
               : r.fileWatch.state === 'watching'
                 ? t('routines.file.state.watching')
-                : t('routines.file.state.lost')}
+                : r.fileWatch.state === 'off'
+                  ? t('routines.file.state.off')
+                  : t('routines.file.state.lost')}
           </span>
         ) : r.enabled && r.nextRun ? (
           <span className="text-muted" title={fullDate(r.nextRun)}>

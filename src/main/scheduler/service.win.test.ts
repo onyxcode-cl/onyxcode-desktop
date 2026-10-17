@@ -210,6 +210,20 @@ describe('causa raíz: la política de Windows caduca y solo Tareas la releía',
     svc2.stop()
   })
 
+  it('sin reconocer el aviso de términos el estado es «off» (la tarjeta lo dice con su texto), NO «lost» (Carpeta no disponible)', async () => {
+    const folder = 'C:\\Users\\Ben\\watch'
+    disk.add(folder)
+    const svc = make(false)
+    await svc.refreshFolderPolicy()
+    const r = svc.saveRoutine(input(folder))
+    svc.start()
+    await vi.waitFor(() => expect(disk.reads.drives).toBeGreaterThan(0))
+    await tick(svc)
+    expect(svc.watcherCount()).toBe(0)
+    expect(svc.list().find((x) => x.id === r.id)?.fileWatch?.state).toBe('off')
+    svc.stop()
+  })
+
   it('sin rutinas por archivo no se leen unidades (coste cero)', async () => {
     const svc = make()
     svc.start()

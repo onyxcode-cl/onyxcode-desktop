@@ -104,6 +104,7 @@ export const routines = {
   'routines.file.state.watching': 'Watching the folder',
   'routines.file.state.capped': 'Held back: hourly cap',
   'routines.file.state.lost': 'Folder unavailable',
+  'routines.file.state.off': 'Not watching: Routines notice not accepted yet',
   'routines.missed.label': 'If a run is missed',
   'routines.missed.ask': 'Ask me',
   'routines.missed.run': 'Run the most recent one',

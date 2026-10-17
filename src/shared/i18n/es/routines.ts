@@ -101,6 +101,7 @@ export const routines = {
   'routines.file.state.watching': 'Vigilando la carpeta',
   'routines.file.state.capped': 'Frenada: tope por hora',
   'routines.file.state.lost': 'Carpeta no disponible',
+  'routines.file.state.off': 'Sin vigilar: falta aceptar el aviso de Rutinas',
   'routines.missed.label': 'Si se pierde una ejecución',
   'routines.missed.ask': 'Preguntarme',
   'routines.missed.run': 'Ejecutar la más reciente',
