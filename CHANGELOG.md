@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [0.5.36] - 2026-10-17
+
+### Novedades
+
+- **Pestañas en la terminal de Code.** Puedes abrir varias terminales a la vez con el botón «+» (hasta 8 por proyecto), renombrarlas con doble clic y cerrarlas con la «x». Si pulsas ▶ y la terminal está ocupada, la app te ofrece usar una pestaña nueva.
+- **Archivos del Chat.** Cuando la IA crea o nombra un archivo, aparece una tarjeta con «Ver aquí» (imágenes, texto, Markdown, código, PDF y Office), «Abrir con tu programa» y «Mostrar en la carpeta». Los programas y scripts solo ofrecen «Mostrar en la carpeta».
+
+### Mejoras
+
+- **Primer uso sin bloqueos.** La pantalla «Preparando Lazunox» solo detiene la app si falta el motor; lo opcional (como el diseñador de documentos) se puede dejar para «Más tarde».
+- **El asistente empieza por lo gratuito.** «Empezar gratis» con un modelo gratuito va primero; el servicio con suscripción ya no aparece como recomendado.
+
 ## [0.5.35] - 2026-10-16
 
 ### Novedades
