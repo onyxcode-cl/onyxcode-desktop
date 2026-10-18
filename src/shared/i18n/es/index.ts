@@ -28,6 +28,7 @@ import { gallery } from './gallery'
 import { search } from './search'
 import { projects } from './projects'
 import { telegram } from './telegram'
+import { pr } from './pr'
 
 export const es = {
   ...common,
@@ -59,7 +60,8 @@ export const es = {
   ...gallery,
   ...search,
   ...projects,
-  ...telegram
+  ...telegram,
+  ...pr
 }
 
 export const AREAS = {
@@ -92,5 +94,6 @@ export const AREAS = {
   gallery,
   search,
   projects,
-  telegram
+  telegram,
+  pr
 }

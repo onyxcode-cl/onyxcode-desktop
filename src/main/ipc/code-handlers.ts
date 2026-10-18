@@ -21,6 +21,7 @@ import { createEntry, FileOpError, projectRoot, renameEntry, trashEntry } from '
 import { resolveE2eEditors, type EditorEnv } from '../editors/catalog'
 import { EditorError, listInstalled, openWithEditor, type EditorsDeps } from '../editors/service'
 import { extrasPrefs } from '../extras/prefs'
+import { registerPrHandlers } from '../pr/handlers'
 import { makeInvokeHandler } from './handle'
 import { publishToSender } from './event-bus'
 import { windowOfSender } from './sender-window'
@@ -162,6 +163,16 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   const active = (cwd: string, event: IpcMainInvokeEvent): void => {
     if (!hub.isActive(event.sender.id, cwd)) throw new FileOpError(t('common.files.notActive'))
   }
+  // Rama → subir → pull request → revisión (F8-B190): solo en una carpeta abierta en esta ventana o reciente.
+  registerPrHandlers(ipcMain, {
+    assertProject: (cwd, event) => {
+      const real = safeReal(cwd)
+      const recents = new Set(settingsStore.get().recentFolders.map((p) => safeReal(p)))
+      if (!hub.isActive(event.sender.id, real) && !hub.isActive(event.sender.id, cwd) && !recents.has(real)) {
+        throw new FileOpError(t('common.files.notActive'))
+      }
+    }
+  })
   on(ipcMain, 'files:watch', (r, event) => {
     const sender = event.sender
     const res = hub.subscribe(sender.id, req(r, 'req').folder, r.subId)

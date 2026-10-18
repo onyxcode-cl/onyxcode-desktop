@@ -1,0 +1,21 @@
+#!/bin/sh
+# `gh` FALSO para pruebas (nunca habla con GitHub). Copiarlo a una carpeta que vaya primero en el PATH.
+# Cada llamada se anota en `calls.log` (nombre de la orden + un ARG por argumento + ENV si le llegó algún token) y la entrada que
+# recibe (`--body-file -`, `--input -`) se guarda en `stdin.<orden>`. Las respuestas salen de archivos junto a este script:
+#   out.<orden> (salida estándar), err.<orden> (salida de error) y code.<orden> (código de salida, por defecto 0).
+# <orden> es `<1.er arg>-<2.º arg>` (auth-status, pr-view, pr-create, pr-diff) o `api`.
+D="$(cd "$(dirname "$0")" && pwd)"
+if [ "$1" = "api" ]; then key=api; else key="$1-$2"; fi
+{
+  echo "CALL $key"
+  for a in "$@"; do echo "ARG $a"; done
+  env | grep -E '^(GH_TOKEN|GITHUB_TOKEN|GH_ENTERPRISE_TOKEN)=' | sed 's/=.*//' | sed 's/^/ENV /'
+  echo "END"
+} >> "$D/calls.log"
+case "$key" in
+  pr-create|api) cat > "$D/stdin.$key" ;;
+esac
+[ -f "$D/err.$key" ] && cat "$D/err.$key" >&2
+[ -f "$D/out.$key" ] && cat "$D/out.$key"
+if [ -f "$D/code.$key" ]; then exit "$(cat "$D/code.$key")"; fi
+exit 0

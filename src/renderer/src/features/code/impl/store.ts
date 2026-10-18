@@ -1450,6 +1450,8 @@ export const useCode = create<CodeState>((set, get) => {
         case 'session.created':
         case 'session.updated': {
           const info = event.properties.info
+          // Sesión efímera del flujo de PR (mensaje de commit, revisión…): nunca entra en la lista de Code.
+          if ((info as { metadata?: { mode?: unknown } }).metadata?.mode === 'pr-helper') return
           const proj = projectFor(info)
           if (!proj) return
           set((s) => ({

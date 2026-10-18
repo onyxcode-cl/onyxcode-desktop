@@ -24,6 +24,7 @@ import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron } from 'playwright-core'
 import { startFakeTelegram } from '../e2e/fake-telegram/server.mjs'
+import { PR_SCENARIOS, createPrKit, isPrScenario } from './shot-desktop-pr.mjs'
 
 const require = createRequire(import.meta.url)
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -189,11 +190,13 @@ const SCENARIOS = [
   'chat-carga-larga', // H24: respuesta larga en curso
   'tareas-error', // H24: tarea que termina con error
   'ajustes-modelos-vacio', // H24: ningún servicio de IA conectado
+  // Rama → commit → subir → pull request → revisión (F8-B190): grupo propio, con remoto local y `gh` falso (scripts/shot-desktop-pr.mjs).
+  ...PR_SCENARIOS, // NO van en la tanda por defecto; se piden con --scenario code-pr,code-pr-commit,…
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(uso|rutinas-recetas|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-|telegram)/
+const SMALL_ALSO = /^(uso|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-|telegram)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -221,7 +224,7 @@ const selList = sel ? sel.split(',') : null
 for (const x of selList ?? []) if (!SCENARIOS.includes(x)) throw new Error(`escenario desconocido: ${x} (${SCENARIOS.join('|')})`)
 if (arg('theme') && !['dark', 'light'].includes(arg('theme'))) throw new Error('--theme dark|light')
 if (sizeSel && !SIZES[sizeSel]) throw new Error(`--size ${Object.keys(SIZES).join('|')}`)
-const scenarios = selList ?? SCENARIOS.filter((s) => s !== 'kit')
+const scenarios = selList ?? SCENARIOS.filter((s) => s !== 'kit' && !isPrScenario(s))
 const sizesFor = (sc) => (sizeSel ? [sizeSel] : SMALL_ALSO.test(sc) ? ['1280x800', '1000x700'] : ['1280x800'])
 mkdirSync(out, { recursive: true })
 
@@ -3879,7 +3882,7 @@ async function runGroup(ctx, names) {
     }
     ctx.hover = null
     if (undo) await undo().catch(() => {})
-    await closeOverlays(ctx.page).catch(() => {})
+    if (!fn.keepOverlays) await closeOverlays(ctx.page).catch(() => {})
   }
 }
 
@@ -3914,7 +3917,7 @@ try {
   const isTg = (s) => s.startsWith('telegram')
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
   const isUso = (s) => s === 'uso' || s === 'uso-vacio'
-  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && !isTg(s) && s !== 'kit' && !isTasks(s) && !isUso(s))
+  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && !isTg(s) && s !== 'kit' && !isTasks(s) && !isUso(s) && !isPrScenario(s))
   const uso = scenarios.filter(isUso).sort(byOrder)
   const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {
@@ -3946,6 +3949,18 @@ try {
     } finally {
       await tg.stop()
     }
+  }
+  const prList = scenarios.filter(isPrScenario).sort(byOrder)
+  if (prList.length) {
+    // Proyecto con remoto «bare» local + `gh` falso en el PATH. Con LAZUNOX_SHOT_REAL_ENGINE=<ruta de opencode> se usa el motor REAL con el
+    // modelo gratuito (la IA responde de verdad); sin ella, el motor falso con respuestas guionizadas.
+    const kit = createPrKit({ repo, mk, TMP, sleep, vis, goMode, stubDialog, press, REAL_ENGINE: process.env.LAZUNOX_SHOT_REAL_ENGINE || '' })
+    kit.setup()
+    Object.assign(S, kit.S)
+    const ctx = await launch('pr', kit.launchOpts())
+    await runGroup(ctx, prList)
+    console.log(`VERIF-PR ${JSON.stringify(kit.verify())}`)
+    await stop(ctx)
   }
   if (scenarios.includes('aviso-motor')) {
     const ctx = await launch('aviso', {

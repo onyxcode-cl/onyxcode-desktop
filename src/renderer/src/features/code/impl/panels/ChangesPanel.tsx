@@ -2,7 +2,7 @@
  * Panel "Cambios": estado git del proyecto, diff por archivo, commit y ramas/worktrees.
  * Usa `window.api.code.git` (preload); si no está disponible, cae al estado de archivos de OpenCode.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { t as tg, type MsgKey } from '@shared/i18n'
 import { GIT_MAX_DISCARD_FILES } from '@shared/ipc-code'
 import type { GitBranch as GitBranchInfo, GitChangeKind, GitDiscardResult, GitWorktreeDetailed } from '@shared/ipc-code'
@@ -17,8 +17,10 @@ import {
   GitBranch,
   GitBranchPlus,
   GitCommitHorizontal,
+  GitPullRequest,
   Loader2,
   RefreshCw,
+  Sparkles,
   Trash2,
   Undo2,
   WrapText,
@@ -42,6 +44,8 @@ import { confirmDialog } from '../../../../components/ConfirmDialog'
 import { canDiscard, discardMessage, hunkLines } from '../discard-logic'
 import { abbreviatePath, displayPath } from '../mobile-logic'
 import { useProjectWatch } from './useProjectWatch'
+import { buildCommitPrompt, parseCommitMessage } from '@shared/pr-prompts'
+import { getLang } from '@shared/i18n'
 import { moveSelection, nextPending, orderedRows, pickSelection, recallSelection, rememberSelection, rowKey } from './changes-select'
 import { sharedFullDiff } from '../full-diff'
 import { isSingleFileDiff, splitDiffHunks } from '@shared/diff-hunks'
@@ -54,6 +58,9 @@ import {
   summarySignature,
   type FileDiffInfo
 } from '../review-logic'
+
+// Perezoso: la ventana de rama y pull request es solo de escritorio y no debe pesar en el arranque ni en la PWA del celular.
+const PrDialog = lazy(() => import('../pr/PrDialog').then((m) => ({ default: m.PrDialog })))
 
 /** Igual que la barra sobre la caja de entrada: un diff mayor que esto no se trocea (solo se pierden los +/− por fila). */
 const ALL_DIFF_MAX_CHARS = 4_000_000
@@ -329,6 +336,29 @@ function CommitBox({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestNote, setSuggestNote] = useState<string | null>(null)
+  const canSuggest = !!native && !isRemoteSurface() && typeof native.pr?.workDiff === 'function'
+
+  const suggest = async (): Promise<void> => {
+    if (!native || suggesting) return
+    setSuggesting(true)
+    setError(null)
+    setSuggestNote(null)
+    try {
+      // Lo mismo que se va a guardar: lo preparado, o todo si se marcó «incluir todo».
+      const wd = await native.pr.workDiff(directory, stageAll ? undefined : true)
+      if (!wd.diff.trim()) throw new Error(t('pr.commit.nothingToRead'))
+      const { askModel } = await import('../pr/pr-ai')
+      const out = await askModel(directory, buildCommitPrompt({ lang: getLang(), files: wd.files, diff: wd.diff }))
+      setMessage(parseCommitMessage(out))
+      setSuggestNote(t('pr.commit.suggested'))
+    } catch (err) {
+      setError(t('pr.commit.suggestFailed', { error: errorMessage(err) }))
+    } finally {
+      setSuggesting(false)
+    }
+  }
 
   useEffect(() => {
     if (stagedCount === 0) setStageAll(true)
@@ -375,8 +405,26 @@ function CommitBox({
         placeholder={t('code.changes.commitMessage')}
         className="block w-full resize-none rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[13px] outline-none placeholder:text-subtle focus:border-border-strong"
       />
+      {suggestNote && (
+        <div role="status" className="mt-1.5 text-xs text-muted">
+          {suggestNote}
+        </div>
+      )}
       {error && <div className="mt-1.5 text-xs text-danger">{error}</div>}
       <div className="mt-2 flex items-center gap-2">
+        {canSuggest && (
+          <button
+            type="button"
+            onClick={() => void suggest()}
+            disabled={suggesting || willCommit === 0}
+            title={t('pr.commit.suggest')}
+            aria-label={t('pr.commit.suggest')}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-elevated px-2 py-1 text-xs hover:bg-hover disabled:opacity-40 desk:h-7"
+          >
+            {suggesting ? <Loader2 size={13} className="animate-spin" aria-hidden="true" /> : <Sparkles size={13} aria-hidden="true" />}
+            <span className="hidden @[24rem]:inline">{suggesting ? t('pr.commit.suggesting') : t('pr.commit.suggest')}</span>
+          </button>
+        )}
         <label
           className={`flex min-w-0 items-center gap-1.5 text-xs text-muted ${isRemoteSurface() ? 'min-h-11 text-[13px]' : ''}`}
           title={t('code.changes.stageAllTitle')}
@@ -679,6 +727,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
   const [diffLoading, setDiffLoading] = useState(false)
   const [diffError, setDiffError] = useState<string | null>(null)
   const [dialog, setDialog] = useState(false)
+  const [prDialog, setPrDialog] = useState(false)
   const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'error'; undoId?: string } | null>(null)
   // Revisión («Aceptar»): estado de interfaz por sesión, no toca el disco. Solo escritorio y con una sesión activa.
   const sessionID = useCode((s) => s.activeSessionID)
@@ -989,6 +1038,11 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
             <GitBranchPlus size={13} />
           </IconButton>
         )}
+        {native && !mobile && !isRemoteSurface() && typeof native.pr?.status === 'function' && (
+          <IconButton label={t('pr.open')} onClick={() => setPrDialog(true)} className={ib}>
+            <GitPullRequest size={13} />
+          </IconButton>
+        )}
         <IconButton label={t('code.changes.refresh')} onClick={() => void refresh()} className={ib}>
           {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
         </IconButton>
@@ -1290,6 +1344,11 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
         </>
       )}
       {dialog && <WorktreeDialog directory={directory} current={status?.branch ?? null} onClose={() => setDialog(false)} />}
+      {prDialog && (
+        <Suspense fallback={null}>
+          <PrDialog directory={directory} onClose={() => setPrDialog(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -70,6 +70,16 @@ import {
   type BrowserInvokeContract,
   type PickedElement
 } from '@shared/ipc-browser'
+import {
+  MAX_BRANCH_LEN,
+  MAX_PR_BODY,
+  MAX_PR_TITLE,
+  checkPrBody,
+  checkPrTitle,
+  isValidBranchName,
+  isValidRemoteName,
+  parsePrRef
+} from '@shared/pr-validate'
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
 import { parseSetTravelKeepRequest, parseTravelInstallRequest } from '@shared/remote/travel'
 import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
@@ -602,6 +612,39 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'settings:addRecentFolder': pathReq
 }
 
+// ── Flujo rama → subir → pull request (F8-B190): lista blanca de caracteres para todo lo que llega a git/gh ──
+const prBranch: Validator<string> = (v, path = '') => {
+  const s = str({ max: MAX_BRANCH_LEN, min: 1 })(v, path)
+  if (!isValidBranchName(s)) throw new ValidationError(`Parámetro "${path}" no es un nombre de rama válido`)
+  return s
+}
+const prRemote: Validator<string> = (v, path = '') => {
+  const s = str({ max: 64, min: 1 })(v, path)
+  if (!isValidRemoteName(s)) throw new ValidationError(`Parámetro "${path}" no es un nombre de remoto válido`)
+  return s
+}
+const prSha = str({ max: 64, min: 40, pattern: /^[0-9a-f]+$/ })
+const prTitle: Validator<string> = (v, path = '') => {
+  const s = str({ max: MAX_PR_TITLE, min: 1 })(v, path)
+  if (!checkPrTitle(s).ok) throw new ValidationError(`Parámetro "${path}" no es un título válido`)
+  return s
+}
+const prBody: Validator<string> = (v, path = '') => {
+  const s = str({ max: MAX_PR_BODY })(v, path)
+  if (!checkPrBody(s).ok) throw new ValidationError(`Parámetro "${path}" no es un texto válido`)
+  return s
+}
+const prRef: Validator<string> = (v, path = '') => {
+  const s = str({ max: 300, min: 1 })(v, path)
+  if (!parsePrRef(s).ok) throw new ValidationError(`Parámetro "${path}" no es un PR válido`)
+  return s
+}
+const prComment = obj({
+  path: str({ max: 1024, min: 1 }),
+  line: num({ int: true, min: 0, max: 10_000_000 }),
+  body: str({ max: 4000, min: 1 })
+})
+
 const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'pty:create': ptyCreate,
   'pty:write': obj({ id, data: str({ max: 1024 * 1024 }) }),
@@ -627,6 +670,39 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
     hunk: str({ max: 1_000_000, min: 1 })
   }),
   'git:discardUndo': obj({ cwd: absPath, undoId: str({ max: 64, min: 1, pattern: /^[0-9a-f-]{36}$/ }) }),
+  'pr:status': cwdReq,
+  'pr:gh': obj({ cwd: absPath, remote: optional(prRemote) }),
+  'pr:createBranch': obj({ cwd: absPath, name: prBranch }),
+  'pr:pushPlan': obj({ cwd: absPath, remote: prRemote }),
+  'pr:push': obj({
+    cwd: absPath,
+    remote: prRemote,
+    branch: prBranch,
+    expectHead: prSha,
+    typedBranch: optional(str({ max: MAX_BRANCH_LEN }))
+  }),
+  'pr:changes': obj({ cwd: absPath, remote: prRemote, base: prBranch }),
+  'pr:workDiff': obj({ cwd: absPath, staged: optional(bool) }),
+  'pr:view': obj({ cwd: absPath, remote: prRemote, branch: prBranch }),
+  'pr:create': obj({
+    cwd: absPath,
+    remote: prRemote,
+    title: prTitle,
+    body: prBody,
+    base: prBranch,
+    draft: bool,
+    branch: prBranch,
+    expectHead: prSha
+  }),
+  'pr:reviewInfo': obj({ cwd: absPath, remote: prRemote, ref: prRef }),
+  'pr:postReview': obj({
+    cwd: absPath,
+    remote: prRemote,
+    number: num({ int: true, min: 1, max: 9_999_999 }),
+    headSha: prSha,
+    summary: str({ max: 20_000 }),
+    comments: arr(prComment, 30)
+  }),
   // Comparar modelos: el renderer solo manda ids e índices; las rutas y las ramas las decide main.
   'compare:list': none,
   'compare:preflight': cwdReq,

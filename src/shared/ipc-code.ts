@@ -6,6 +6,22 @@
  *   `Error` si `ok === false`.
  */
 
+import type {
+  PrChanges,
+  PrCreateRequest,
+  PrCreateResult,
+  PrGhInfo,
+  PrPostReviewRequest,
+  PrPostReviewResult,
+  PrPushPlan,
+  PrPushRequest,
+  PrPushResult,
+  PrRepoStatus,
+  PrReviewInfo,
+  PrViewResult,
+  PrWorkDiff
+} from './ipc-pr'
+
 // ---------------------------------------------------------------------------
 // Canales
 // ---------------------------------------------------------------------------
@@ -32,6 +48,18 @@ export const CODE_CHANNELS = {
   gitDiscard: 'git:discard',
   gitDiscardUndo: 'git:discardUndo',
   gitDiscardHunk: 'git:discardHunk',
+  // rama → subir → pull request → revisión (F8-B190; todo lo que sale del equipo lo confirma la persona)
+  prStatus: 'pr:status',
+  prGh: 'pr:gh',
+  prCreateBranch: 'pr:createBranch',
+  prPushPlan: 'pr:pushPlan',
+  prPush: 'pr:push',
+  prChanges: 'pr:changes',
+  prWorkDiff: 'pr:workDiff',
+  prView: 'pr:view',
+  prCreate: 'pr:create',
+  prReviewInfo: 'pr:reviewInfo',
+  prPostReview: 'pr:postReview',
   // comparar modelos (main orquesta; el renderer solo pasa `{ id, index }`)
   compareList: 'compare:list',
   comparePreflight: 'compare:preflight',
@@ -410,6 +438,18 @@ export interface CodeInvokeContract {
   'git:discardHunk': { req: { cwd: string; path: string; index: number; hunk: string }; res: GitDiscardHunkResult }
   'git:discardUndo': { req: { cwd: string; undoId: string }; res: GitDiscardUndoResult }
 
+  'pr:status': { req: { cwd: string }; res: PrRepoStatus }
+  'pr:gh': { req: { cwd: string; remote?: string }; res: PrGhInfo }
+  'pr:createBranch': { req: { cwd: string; name: string }; res: { branch: string } }
+  'pr:pushPlan': { req: { cwd: string; remote: string }; res: PrPushPlan }
+  'pr:push': { req: PrPushRequest; res: PrPushResult }
+  'pr:changes': { req: { cwd: string; remote: string; base: string }; res: PrChanges }
+  'pr:workDiff': { req: { cwd: string; staged?: boolean }; res: PrWorkDiff }
+  'pr:view': { req: { cwd: string; remote: string; branch: string }; res: PrViewResult }
+  'pr:create': { req: PrCreateRequest; res: PrCreateResult }
+  'pr:reviewInfo': { req: { cwd: string; remote: string; ref: string }; res: PrReviewInfo }
+  'pr:postReview': { req: PrPostReviewRequest; res: PrPostReviewResult }
+
   'compare:list': { req: void; res: CompareManifest[] }
   'compare:preflight': { req: { cwd: string }; res: ComparePreflight }
   'compare:start': { req: CompareStartRequest; res: CompareManifest }
@@ -489,6 +529,19 @@ export interface CodeApi {
     discard(cwd: string, paths: string[], scope?: 'all' | 'unstaged'): Promise<GitDiscardResult>
     discardHunk(cwd: string, path: string, index: number, hunk: string): Promise<GitDiscardHunkResult>
     discardUndo(cwd: string, undoId: string): Promise<GitDiscardUndoResult>
+  }
+  pr: {
+    status(cwd: string): Promise<PrRepoStatus>
+    gh(cwd: string, remote?: string): Promise<PrGhInfo>
+    createBranch(cwd: string, name: string): Promise<{ branch: string }>
+    pushPlan(cwd: string, remote: string): Promise<PrPushPlan>
+    push(req: PrPushRequest): Promise<PrPushResult>
+    changes(cwd: string, remote: string, base: string): Promise<PrChanges>
+    workDiff(cwd: string, staged?: boolean): Promise<PrWorkDiff>
+    view(cwd: string, remote: string, branch: string): Promise<PrViewResult>
+    create(req: PrCreateRequest): Promise<PrCreateResult>
+    reviewInfo(cwd: string, remote: string, ref: string): Promise<PrReviewInfo>
+    postReview(req: PrPostReviewRequest): Promise<PrPostReviewResult>
   }
   compare: {
     list(): Promise<CompareManifest[]>
