@@ -923,6 +923,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     notify: partial({ enabled: bool, done: bool, approval: bool, question: bool, error: bool })
   }),
   'tasks:storage:report': none,
+  'tasks:usage:summary': none,
   'tasks:storage:clean': obj({ key: storageKey, scope: literal('cache', 'all') }),
   'tasks:storage:cleanScreenshots': none,
   'tasks:storage:cleanRestorePoints': none,

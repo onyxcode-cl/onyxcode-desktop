@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { downloadVerified, parseTeamId, type FetchLike } from './download'
+import { OfficeError, downloadVerified, parseTeamId, toOfficeError, type FetchLike } from './download'
 
 const BYTES = Buffer.from('contenido-simulado-del-instalador'.repeat(50))
 const SHA = createHash('sha256').update(BYTES).digest('hex')
@@ -38,6 +38,32 @@ describe('descarga verificada', () => {
     await expect(downloadVerified(f, URL0, join(dir, 'a'), { size: 1, sha256: SHA }, () => undefined)).rejects.toMatchObject({
       code: 'download'
     })
+  })
+  it('F8-B198: sin red → «offline»; cancelar → «cancelled»', async () => {
+    const down: FetchLike = async () => {
+      throw new TypeError('fetch failed')
+    }
+    await expect(downloadVerified(down, URL0, join(dir, 'a'), { size: 1, sha256: SHA }, () => undefined)).rejects.toMatchObject({
+      code: 'offline'
+    })
+    const ac = new AbortController()
+    ac.abort()
+    const aborted: FetchLike = async () => {
+      throw new DOMException('abortado', 'AbortError')
+    }
+    await expect(
+      downloadVerified(aborted, URL0, join(dir, 'a'), { size: 1, sha256: SHA }, () => undefined, ac.signal)
+    ).rejects.toMatchObject({ code: 'cancelled' })
+  })
+  it('F8-B198: toOfficeError separa disco lleno, falta de permiso y lo demás', () => {
+    const e = (code: string): Error => Object.assign(new Error(code), { code })
+    expect(toOfficeError(e('ENOSPC')).code).toBe('disk')
+    expect(toOfficeError(e('EACCES')).code).toBe('permission')
+    expect(toOfficeError(e('EPERM')).code).toBe('permission')
+    expect(toOfficeError(e('EROFS')).code).toBe('permission')
+    expect(toOfficeError(new Error('otra cosa')).code).toBe('copy')
+    const own = new OfficeError('hash', 'x')
+    expect(toOfficeError(own)).toBe(own)
   })
   it('rechaza hash distinto, tamaño distinto y descarga más larga que lo declarado, y no deja archivos', async () => {
     const dest = join(dir, 'b.zip')

@@ -15,6 +15,7 @@ import {
   removeRuntimes,
   runtimesStatus,
   scopedPath,
+  toRuntimeError,
   type RuntimeDeps
 } from './runtime-install'
 
@@ -244,13 +245,68 @@ describe.skipIf(!posixOnly)('instalación de Node.js y uv (con archivos de menti
     await expect(installRuntimes(mk({ fetch: f }))).rejects.toMatchObject({ code: 'unsafe' })
   })
 
-  it('sin red: error «download» y no queda nada a medias', async () => {
+  it('F8-B198: huella distinta → «hash» (la descarga no es la esperada) y no se instala nada', async () => {
+    const tampered = Buffer.from(nodeTgz)
+    tampered[tampered.length - 1] ^= 0xff
+    const d = mk({ fetch: fakeFetch({ node: tampered, uv: uvTgz }) })
+    await expect(installRuntimes(d)).rejects.toMatchObject({ code: 'hash' })
+    expect(readdirSync(join(dir, 'runtimes'))).toEqual([])
+  })
+
+  it('F8-B198: disco lleno al guardar (ENOSPC) → «disk», no «download»', async () => {
+    const d = mk({
+      download: async () => {
+        throw Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' })
+      }
+    })
+    await expect(installRuntimes(d)).rejects.toMatchObject({ code: 'disk' })
+    expect(readdirSync(join(dir, 'runtimes'))).toEqual([])
+  })
+
+  it('F8-B198: sin permiso de escritura (EACCES) al guardar → «permission»', async () => {
+    const d = mk({
+      download: async () => {
+        throw Object.assign(new Error('EACCES: permission denied, open'), { code: 'EACCES' })
+      }
+    })
+    await expect(installRuntimes(d)).rejects.toMatchObject({ code: 'permission' })
+  })
+
+  it('F8-B198: la carpeta de runtimes no se puede crear → falla antes de descargar y NO culpa a la conexión', async () => {
+    // Un archivo donde debería ir la carpeta: `mkdir` falla ANTES de descargar nada.
+    writeFileSync(join(dir, 'runtimes'), 'x')
+    const seen: string[] = []
+    const d = mk({ fetch: fakeFetch({ node: nodeTgz, uv: uvTgz }, seen) })
+    await expect(installRuntimes(d)).rejects.toMatchObject({ code: 'io' })
+    expect(seen).toEqual([])
+  })
+
+  it('F8-B198: errores sueltos del sistema de archivos se clasifican por su código', () => {
+    const e = (code: string): Error => Object.assign(new Error(code), { code })
+    expect(toRuntimeError(e('ENOSPC')).code).toBe('disk')
+    expect(toRuntimeError(e('EPERM')).code).toBe('permission')
+    expect(toRuntimeError(e('EROFS')).code).toBe('permission')
+    expect(toRuntimeError(new Error('raro')).code).toBe('io')
+  })
+
+  it('F8-B198: sin conexión → «offline»; el sitio responde mal (404) → «download»', async () => {
+    const offline = mk({
+      fetch: async () => {
+        throw new TypeError('fetch failed')
+      }
+    })
+    await expect(installRuntimes(offline)).rejects.toMatchObject({ code: 'offline' })
+    const notFound = mk({ fetch: async () => new Response('no', { status: 404 }) })
+    await expect(installRuntimes(notFound)).rejects.toMatchObject({ code: 'download' })
+  })
+
+  it('sin red: error «offline» y no queda nada a medias', async () => {
     const d = mk({
       fetch: async () => {
         throw new Error('offline')
       }
     })
-    await expect(installRuntimes(d)).rejects.toMatchObject({ code: 'download' })
+    await expect(installRuntimes(d)).rejects.toMatchObject({ code: 'offline' })
     expect(readdirSync(join(dir, 'runtimes'))).toEqual([])
   })
 

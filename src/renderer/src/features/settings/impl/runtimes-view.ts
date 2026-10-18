@@ -11,6 +11,10 @@ export function runtimesErrorKey(code: string | undefined): MsgKey {
   switch (code) {
     case 'disk':
       return 'settings.runtimes.error.disk'
+    case 'permission':
+      return 'settings.runtimes.error.permission'
+    case 'offline':
+      return 'settings.runtimes.error.offline'
     case 'hash':
       return 'settings.runtimes.error.hash'
     case 'unsafe':

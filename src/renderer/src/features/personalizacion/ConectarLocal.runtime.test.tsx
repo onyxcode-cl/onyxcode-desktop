@@ -147,7 +147,7 @@ describe('ficha de un conector local sin uv ni Node', () => {
   })
 
   it('si la descarga falla, «Instalar» NO instala el conector', async () => {
-    installResult = { ok: false, error: 'download', message: '' }
+    installResult = { ok: false, error: 'offline', message: '' }
     const p = await openStep2(MISSING)
     await click(q('pers-local-pick'))
     await click(q('pers-local-install'))

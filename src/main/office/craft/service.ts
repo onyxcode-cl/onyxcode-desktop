@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import type { CraftInstallResult, CraftUiSnapshot } from '@shared/craft'
 import { unpacked } from '../../util/asar'
 import { createManualFetch, type NetLike } from '../../remote/tunnel/manual-fetch'
-import { OfficeError } from '../download'
+import { toOfficeError } from '../download'
 import { recordCraftProblem } from './craft-problems'
 import { readAttempt, retryIncompleteInstall, writeAttempt, type RetryOutcome } from './craft-retry'
 import {
@@ -80,7 +80,7 @@ class CraftService {
       this.mark('ok')
       return { ok: true }
     } catch (e) {
-      const code = e instanceof OfficeError ? e.code : 'download'
+      const code = toOfficeError(e).code
       this.error = code
       this.mark(code === 'cancelled' ? 'cancelled' : 'failed')
       recordCraftProblem('instalación', e)

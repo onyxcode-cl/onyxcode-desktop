@@ -9,11 +9,15 @@ export function officeMb(bytes: number): number {
   return Math.round(Math.max(0, bytes) / 1e6)
 }
 
-/** Clave del mensaje humano de un fallo (`disk`, `hash`/`size`, `signature`, `download`, `cancelled`… o genérico). */
+/** Clave del mensaje humano de un fallo (`disk`, `permission`, `offline`, `hash`/`size`, `signature`, `download`, `cancelled`… o genérico). */
 export function officeErrorKey(code: string | undefined): MsgKey {
   switch (code) {
     case 'disk':
       return 'settings.craft.error.disk'
+    case 'permission':
+      return 'settings.craft.error.permission'
+    case 'offline':
+      return 'settings.craft.error.offline'
     case 'hash':
     case 'size':
       return 'settings.craft.error.hash'

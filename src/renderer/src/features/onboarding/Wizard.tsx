@@ -802,6 +802,17 @@ export function StepSetup({ onTryExample }: { onTryExample: () => void }): React
         <ul className="space-y-2">
           {rows.map((r) => {
             const st = items[r.id] ?? 'idle'
+            const detail =
+              (st === 'running' && (r.id === 'sandbox' || r.id === 'craft' || r.id === 'runtimes') && pct !== null ? `${pct} % · ` : '') +
+              (st === 'failed'
+                ? r.id === 'craft' && craftError
+                  ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
+                  : r.id === 'runtimes' && runtimesError
+                    ? `${t(runtimesErrorKey(runtimesError))} ${t('wizard.setup.runtimes.retryHint')}`
+                    : t('wizard.setup.status.failed')
+                : st === 'done'
+                  ? t('wizard.setup.status.ready')
+                  : r.hint)
             return (
               <li key={r.id} className="flex items-start gap-3 rounded-ctl bg-inset px-3.5 py-3">
                 <span className="mt-0.5 shrink-0">
@@ -815,30 +826,22 @@ export function StepSetup({ onTryExample }: { onTryExample: () => void }): React
                 </span>
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
                   {st === 'done' || st === 'running' ? (
-                    <p className="font-medium text-fg">{r.label}</p>
+                    <>
+                      <p className="font-medium text-fg">{r.label}</p>
+                      <p className="text-muted">{detail}</p>
+                    </>
                   ) : (
+                    // El texto de ayuda va DENTRO de la casilla para que quede enlazado con `aria-describedby` (igual que en la bienvenida).
                     <ComponentPick
                       id={r.id}
                       label={r.label}
                       checked={!unchecked.includes(r.id)}
                       disabled={busy}
                       onChange={(on) => setUnchecked((u) => (on ? u.filter((x) => x !== r.id) : [...u, r.id]))}
-                    />
+                    >
+                      {detail}
+                    </ComponentPick>
                   )}
-                  <p className={st === 'done' || st === 'running' ? 'text-muted' : 'mt-0.5 pl-6 text-muted'}>
-                    {st === 'running' && (r.id === 'sandbox' || r.id === 'craft' || r.id === 'runtimes') && pct !== null
-                      ? `${pct} % · `
-                      : ''}
-                    {st === 'failed'
-                      ? r.id === 'craft' && craftError
-                        ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
-                        : r.id === 'runtimes' && runtimesError
-                          ? `${t(runtimesErrorKey(runtimesError))} ${t('wizard.setup.runtimes.retryHint')}`
-                          : t('wizard.setup.status.failed')
-                      : st === 'done'
-                        ? t('wizard.setup.status.ready')
-                        : r.hint}
-                  </p>
                   {st === 'failed' && (
                     <Button className="mt-2" variant="secondary" size="sm" disabled={busy} onClick={() => void runAll(r.id)}>
                       {t('wizard.setup.retry')}

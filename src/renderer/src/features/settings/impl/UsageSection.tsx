@@ -27,6 +27,18 @@ import {
   type UsageRow
 } from './usage-aggregate'
 import { USAGE_LIMIT, isFreeModel, readUsage, type UsageRead } from './usage-source'
+import type { TasksUsageSummary } from '@shared/ipc-tasks'
+import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
+
+/** Resumen de Overdrive que calcula `main` (solo cifras de cada carpeta aprobada), o `null` si no se pudo pedir. */
+async function fetchTasksUsage(): Promise<TasksUsageSummary | null> {
+  if (!hasTasksBridge()) return null
+  try {
+    return await cw('tasks:usage:summary')
+  } catch {
+    return null
+  }
+}
 
 type Load =
   | { phase: 'idle' }
@@ -63,10 +75,12 @@ export function UsageSection(): React.JSX.Element {
     const id = ++run.current
     setLoad((l) => ({ phase: 'loading', ...(l.phase === 'ready' ? { read: l.read, at: l.at } : {}) }))
     try {
-      // Overdrive: cada carpeta tiene su propio motor; se suman las sesiones que la app ya tiene cargadas de esos motores.
+      // Overdrive: cada carpeta aprobada tiene su propio servidor y su propio registro; `main` resume sus cifras (F8-B198). Lo que la
+      // app tiene cargado en memoria completa lo que ese resumen no cubra (p. ej. Windows).
       const st = useSessions.getState()
       const tasks = Object.values(st.sessions).filter((s) => (st.sessionSource[s.id] ?? MAIN_SOURCE) !== MAIN_SOURCE)
-      const read = await readUsage(client as never, { chatDirectory, tasks }, errorMessage)
+      const tasksUsage = await fetchTasksUsage()
+      const read = await readUsage(client as never, { chatDirectory, tasks, tasksUsage }, errorMessage)
       if (id === run.current) setLoad({ phase: 'ready', read, at: Date.now() })
     } catch (err) {
       if (id === run.current) setLoad({ phase: 'error', error: errText(err) })
@@ -231,6 +245,10 @@ function UsageReportView({ report, read }: { report: UsageReport; read: UsageRea
         firstCol={t('settings.usage.col.mode')}
         rows={report.byMode}
         label={(r) => ({ text: MODE_LABELS[r.key as 'chat' | 'code' | 'tasks'] })}
+        // Si Overdrive no se pudo leer y no hay nada que sumar, un «0» engañaría: se dice con claridad que no se cuenta.
+        rowNote={(r) =>
+          r.key === 'tasks' && read.tasksSource !== 'read' && r.conversations === 0 ? t('settings.usage.mode.notCounted') : null
+        }
         showCost
         testId="usage-by-mode"
       />
@@ -242,7 +260,18 @@ function UsageReportView({ report, read }: { report: UsageReport; read: UsageRea
           {t('settings.usage.note.limit', { limit: USAGE_LIMIT })}
           {read.capped && <> {t('settings.usage.note.capped')}</>}
         </li>
-        <li>{t('settings.usage.note.tasks')}</li>
+        <li data-testid="usage-note-tasks">
+          {t(
+            read.tasksSource === 'read'
+              ? 'settings.usage.note.tasks'
+              : read.tasksSource === 'unsupported'
+                ? 'settings.usage.note.tasks.unsupported'
+                : 'settings.usage.note.tasks.unavailable'
+          )}
+          {read.tasksSource === 'read' && read.tasksUnreadable > 0 && (
+            <> {t('settings.usage.note.tasks.unreadable', { count: read.tasksUnreadable })}</>
+          )}
+        </li>
         <li>{t('settings.usage.note.cost')}</li>
       </ul>
     </div>
@@ -265,6 +294,7 @@ function UsageTable({
   firstCol,
   rows,
   label,
+  rowNote,
   showCost,
   testId
 }: {
@@ -272,6 +302,8 @@ function UsageTable({
   firstCol: string
   rows: UsageRow[]
   label: (r: UsageRow) => { text: string; title?: string }
+  /** Texto que sustituye a las cifras de una fila (p. ej. «no se cuenta aquí todavía»); `null`: fila normal. */
+  rowNote?: (r: UsageRow) => string | null
   showCost?: boolean
   testId: string
 }): React.JSX.Element {
@@ -310,6 +342,18 @@ function UsageTable({
             )}
             {rows.slice(0, 12).map((r) => {
               const l = label(r)
+              const note = rowNote?.(r) ?? null
+              if (note)
+                return (
+                  <tr key={r.key} className="border-t border-border align-top" data-testid={`usage-row-note-${r.key}`}>
+                    <th scope="row" className="truncate px-4 py-2 font-normal" title={l.title ?? l.text}>
+                      {l.text}
+                    </th>
+                    <td colSpan={showCost ? 3 : 2} className="px-2 py-2 text-muted">
+                      {note}
+                    </td>
+                  </tr>
+                )
               return (
                 <tr key={r.key} className="border-t border-border align-top">
                   <th scope="row" className="truncate px-4 py-2 font-normal" title={l.title ?? l.text}>

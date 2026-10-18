@@ -799,6 +799,33 @@ export interface TasksStorageEntry {
   running: boolean
 }
 
+/**
+ * Una sesión de Overdrive para «Ajustes › Uso» (F8-B198): solo cifras. Sin título, mensajes, rutas ni carpeta; el id es opaco.
+ * Misma forma que lee la agregación de uso del renderer.
+ */
+export interface TasksUsageSession {
+  id: string
+  parentID?: string
+  model?: { id: string; providerID: string }
+  cost?: number
+  tokens: { input: number; output: number; reasoning: number; cache: { read: number; write: number } }
+  /** Última actividad (epoch ms). */
+  updated: number
+}
+
+/** Resumen de uso de las carpetas aprobadas de Tareas (`tasks:usage:summary`). */
+export interface TasksUsageSummary {
+  /** `false`: en esta plataforma las tareas viven donde la app no puede leer su uso (Windows, dentro de WSL). */
+  supported: boolean
+  /** Carpetas cuyo registro se leyó. */
+  folders: number
+  /** Carpetas con registro que no se pudo leer (archivo dañado o de otra versión del motor). */
+  unreadable: number
+  sessions: TasksUsageSession[]
+  /** Se llegó al tope de lectura: puede haber tareas más antiguas sin contar. */
+  capped: boolean
+}
+
 export interface TasksStorageReport {
   entries: TasksStorageEntry[]
   screenshotsBytes: number
@@ -1275,6 +1302,8 @@ export interface TasksInvokeContract {
     res: TasksPrefs
   }
   'tasks:storage:report': { req: void; res: TasksStorageReport }
+  /** Uso (tokens y costo por sesión) de las tareas de las carpetas aprobadas, leído de sus registros aislados. Solo la ventana principal (clase X en el celular). */
+  'tasks:usage:summary': { req: void; res: TasksUsageSummary }
   /** Limpia la caché (`cache`) o todo el directorio, incluido el historial (`all`), de un servidor parado. */
   'tasks:storage:clean': { req: { key: string; scope: 'cache' | 'all' }; res: TasksStorageReport }
   'tasks:storage:cleanScreenshots': { req: void; res: TasksStorageReport }
@@ -1498,6 +1527,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:prefs:get',
   'tasks:prefs:set',
   'tasks:storage:report',
+  'tasks:usage:summary',
   'tasks:storage:clean',
   'tasks:storage:cleanScreenshots',
   'tasks:storage:cleanRestorePoints',

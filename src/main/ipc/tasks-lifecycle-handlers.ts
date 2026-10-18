@@ -16,6 +16,7 @@ import { createOsNotifier } from '../tasks/os-notify'
 import { TasksPrefsStore } from '../tasks/prefs'
 import { TasksTasksStore } from '../tasks/tasks-meta'
 import { storageClean, storageReport, type StorageEnv } from '../tasks/storage'
+import { tasksUsageSummary } from '../tasks/usage-summary'
 import { loadManagedPolicy } from '../tasks/policy'
 import { sandboxKey } from '../tasks/sandbox'
 import { extrasPrefs } from '../extras/prefs'
@@ -133,6 +134,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   handle('tasks:prefs:get', () => prefs.get())
   handle('tasks:prefs:set', (patch) => prefs.set(patch))
   handle('tasks:storage:report', () => report())
+  handle('tasks:usage:summary', () => tasksUsageSummary({ userData, sandboxKey }, folderPaths()))
   handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), tasksManager.liveServers(), key, scope))
   handle('tasks:storage:cleanScreenshots', () => {
     computer?.cleanScreenshots()

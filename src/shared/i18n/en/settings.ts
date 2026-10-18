@@ -145,7 +145,14 @@ export const settings = {
     'Each conversation is counted on the day of its last activity. Helpers the AI starts on its own add tokens but do not count as conversations.',
   'settings.usage.note.limit': 'To keep this screen fast, only the {limit} most recent Chat and Code conversations are read.',
   'settings.usage.note.capped': 'That limit was reached: older conversations are not counted.',
-  'settings.usage.note.tasks': 'Overdrive only counts the tasks from folders you have opened since the app started.',
+  'settings.usage.note.tasks':
+    "Overdrive adds up the tasks in your approved folders from each folder's local record: numbers only, never their content.",
+  'settings.usage.note.tasks.unsupported':
+    'Overdrive is not counted on this computer yet: only the tasks you have opened since the app started are added up.',
+  'settings.usage.note.tasks.unavailable':
+    'Could not read the Overdrive record: only the tasks you have opened since the app started are added up.',
+  'settings.usage.note.tasks.unreadable': '{count} Overdrive folder(s) have a record that could not be read; they are not counted.',
+  'settings.usage.mode.notCounted': 'Overdrive is not counted here yet',
   'settings.usage.note.cost':
     'The cost is reported by your AI service using each model’s public prices; with a subscription (for example OpenCode Go) it is only a reference. “No data” means the service did not report a cost, not that it is free.',
   'settings.usage.meter.aria': 'Usage and conversation space: {pct}% used',
@@ -277,10 +284,13 @@ export const settings = {
   'settings.craft.progress': '{done} of {total} MB',
   'settings.craft.remove': 'Remove',
   'settings.craft.retry': 'Retry',
-  'settings.craft.error.disk': 'Not enough disk space',
+  'settings.craft.error.disk': 'Not enough disk space; free some up and try again',
+  'settings.craft.error.permission':
+    'Lazunox cannot write to its data folder; check the permissions of that folder (or your antivirus) and try again',
+  'settings.craft.error.offline': 'No connection to the download site; check your connection and try again',
   'settings.craft.error.hash': 'The download does not match the expected one; nothing was installed',
   'settings.craft.error.signature': 'The signature is not valid; nothing was installed',
-  'settings.craft.error.download': 'Could not download; check your connection',
+  'settings.craft.error.download': 'The download site did not answer as expected; try again later',
   'settings.craft.error.cancelled': 'Installation cancelled',
   'settings.craft.name': 'Premium-design presentations and documents',
   'settings.craft.desc':
@@ -315,10 +325,13 @@ export const settings = {
   'settings.runtimes.removeBody':
     'Their folder is deleted. The email, calendar and files connectors you already installed stop working until you install this again. Their settings are not lost.',
   'settings.runtimes.removeConfirm': 'Remove',
-  'settings.runtimes.error.disk': 'There is not enough disk space',
+  'settings.runtimes.error.disk': 'There is not enough disk space; free some up and try again',
+  'settings.runtimes.error.permission':
+    'Lazunox cannot write to its data folder; check the permissions of that folder (or your antivirus) and try again',
+  'settings.runtimes.error.offline': 'No connection to the download site; check your connection and try again',
   'settings.runtimes.error.hash': 'The download does not match the expected one; nothing was installed',
   'settings.runtimes.error.unsafe': 'The downloaded file did not pass the check; nothing was installed',
-  'settings.runtimes.error.download': 'Could not download; check your connection',
+  'settings.runtimes.error.download': 'The download site did not answer as expected; try again later',
   'settings.runtimes.error.cancelled': 'Download cancelled',
   'settings.runtimes.error.unsupported': 'Not available on this system yet',
   'settings.runtimes.error.generic': 'Could not install. Try again.',

@@ -17,6 +17,31 @@ function gs(id: string, over: Record<string, unknown>): Record<string, unknown> 
 }
 
 let m: Mounted | null = null
+type Summary = {
+  supported: boolean
+  folders: number
+  unreadable: number
+  sessions: Array<Record<string, unknown>>
+  capped: boolean
+}
+const tasksSession = (id: string, over: Record<string, unknown> = {}): Record<string, unknown> => ({
+  id,
+  model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' },
+  cost: 0,
+  tokens: { input: 700, output: 300, reasoning: 0, cache: { read: 0, write: 0 } },
+  updated: Date.now() - HOUR,
+  ...over
+})
+/** Simula el puente de Tareas con `tasks:usage:summary` (o sin puente, o fallando). */
+function setSummary(summary: Summary | 'sin-puente' | 'falla'): ReturnType<typeof vi.fn> {
+  const invoke = vi.fn(async (channel: string) => {
+    if (channel !== 'tasks:usage:summary') throw new Error(`canal inesperado ${channel}`)
+    if (summary === 'falla') return { ok: false, error: 'no disponible' }
+    return { ok: true, data: summary }
+  })
+  ;(window as unknown as { api?: unknown }).api = summary === 'sin-puente' ? {} : { tasks: { invoke } }
+  return invoke
+}
 let list: ReturnType<typeof vi.fn>
 const fetchSpy = vi.fn()
 
@@ -59,6 +84,7 @@ beforeEach(() => {
     ] as never
   })
   useSessions.setState({ sessions: {}, sessionSource: {} })
+  setSummary({ supported: true, folders: 0, unreadable: 0, sessions: [], capped: false })
 })
 afterEach(() => {
   m?.unmount()
@@ -115,6 +141,8 @@ describe('UsageSection', () => {
       ['Code', '1', 'Gratuito'],
       ['Overdrive', '0', '—']
     ])
+    // Leído y sin tareas: un cero verdadero, no un «no se cuenta».
+    expect(tid('usage-row-note-tasks')).toBeNull()
   })
 
   it('costo informado y «sin dato» conviven sin inventar números', async () => {
@@ -194,7 +222,92 @@ describe('UsageSection', () => {
     expect(tid('usage-report')).not.toBeNull()
   })
 
+  it('F8-B198: suma las tareas de Overdrive que lee main de cada carpeta aprobada (aunque no estén cargadas) y lo aclara', async () => {
+    const invoke = setSummary({
+      supported: true,
+      folders: 2,
+      unreadable: 0,
+      sessions: [
+        tasksSession('o1'),
+        tasksSession('o2', { parentID: 'o1', tokens: { input: 50, output: 50, reasoning: 0, cache: { read: 0, write: 0 } } })
+      ],
+      capped: false
+    })
+    setClient(async () => ({ data: [] }))
+    await mountSection()
+    expect(invoke).toHaveBeenCalledTimes(1)
+    expect(rows('usage-by-mode').find((r) => r[0] === 'Overdrive')).toEqual(['Overdrive', '1', '1,1 k', 'Gratuito'])
+    expect(tid('usage-row-note-tasks')).toBeNull()
+    expect(tid('usage-note-tasks')!.textContent).toContain('suma las tareas de tus carpetas aprobadas')
+    expect(tid('usage-note-tasks')!.textContent).not.toContain('no se pudo leer')
+  })
+
+  it('F8-B198: una tarea que está a la vez en el resumen y en memoria no se cuenta dos veces', async () => {
+    useSessions.setState({
+      sessions: { o1: gs('o1', { agent: 'tasks', directory: '/x', model: FREE, cost: 0, tokens: tokens(700, 300) }) as never },
+      sessionSource: { o1: 'http://127.0.0.1:5555' }
+    })
+    setSummary({ supported: true, folders: 1, unreadable: 0, sessions: [tasksSession('o1')], capped: false })
+    setClient(async () => ({ data: [] }))
+    await mountSection()
+    expect(rows('usage-by-mode').find((r) => r[0] === 'Overdrive')![1]).toBe('1')
+  })
+
+  it('F8-B198: carpetas cuyo registro no se pudo leer: se dice cuántas y no se inventan cifras', async () => {
+    setSummary({ supported: true, folders: 1, unreadable: 2, sessions: [tasksSession('o1')], capped: false })
+    setClient(async () => ({ data: [] }))
+    await mountSection()
+    expect(tid('usage-note-tasks')!.textContent).toContain('Hay 2 carpeta(s) de Overdrive cuyo registro no se pudo leer')
+  })
+
+  it('F8-B198: si el tope de lectura de Overdrive se alcanza lo avisa', async () => {
+    setSummary({
+      supported: true,
+      folders: 1,
+      unreadable: 0,
+      sessions: [tasksSession('o1', { updated: Date.now() - 2 * HOUR })],
+      capped: true
+    })
+    setClient(async () => ({ data: [] }))
+    await mountSection()
+    expect(tid('usage-notes')!.textContent).toContain('hay conversaciones más antiguas que no se cuentan')
+  })
+
+  it('F8-B198: plataforma que no guarda Overdrive donde la app lo lea (Windows): dice «no se cuenta aquí todavía», no un 0', async () => {
+    setSummary({ supported: false, folders: 0, unreadable: 0, sessions: [], capped: false })
+    setClient(async () => ({ data: [] }))
+    await mountSection()
+    const row = tid('usage-row-note-tasks')!
+    expect(row.textContent).toContain('Overdrive')
+    expect(row.textContent).toContain('Overdrive no se cuenta aquí todavía')
+    expect(row.textContent).not.toContain('0')
+    expect(tid('usage-note-tasks')!.textContent).toContain('Overdrive no se cuenta todavía en este equipo')
+  })
+
+  it('F8-B198: si no se puede pedir el resumen (sin puente o con error) pasa lo mismo, y lo ya cargado en memoria sí se suma', async () => {
+    for (const fallo of ['sin-puente', 'falla'] as const) {
+      setSummary(fallo)
+      setClient(async () => ({ data: [] }))
+      await mountSection()
+      expect(tid('usage-row-note-tasks')!.textContent, fallo).toContain('no se cuenta aquí todavía')
+      expect(tid('usage-note-tasks')!.textContent, fallo).toContain('No se pudo leer el registro de Overdrive')
+      m!.unmount()
+      m = null
+    }
+    setSummary('falla')
+    useSessions.setState({
+      sessions: { t1: gs('t1', { agent: 'tasks', directory: '/x', model: FREE, cost: 0, tokens: tokens(700, 300) }) as never },
+      sessionSource: { t1: 'http://127.0.0.1:5555' }
+    })
+    setClient(async () => ({ data: [] }))
+    await mountSection()
+    // Hay algo que sumar (lo abierto): se muestran sus cifras, no el aviso.
+    expect(tid('usage-row-note-tasks')).toBeNull()
+    expect(rows('usage-by-mode').find((r) => r[0] === 'Overdrive')![1]).toBe('1')
+  })
+
   it('suma las tareas de Overdrive que la app tiene cargadas y lo aclara', async () => {
+    setSummary('falla')
     useSessions.setState({
       sessions: {
         t1: gs('t1', { agent: 'tasks', directory: '/home/x/Informes', model: FREE, cost: 0, tokens: tokens(700, 300) }) as never
@@ -204,7 +317,7 @@ describe('UsageSection', () => {
     setClient(async () => ({ data: [] }))
     await mountSection()
     expect(rows('usage-by-mode').find((r) => r[0] === 'Overdrive')![1]).toBe('1')
-    expect(tid('usage-notes')!.textContent).toContain('Overdrive solo cuenta las tareas de las carpetas que has abierto')
+    expect(tid('usage-notes')!.textContent).toContain('solo se suman las tareas que has abierto desde que se inició la app')
   })
 
   it('es accesible: tablas con título y encabezados, estado anunciado, barras ocultas al lector y explicación de «token»', async () => {

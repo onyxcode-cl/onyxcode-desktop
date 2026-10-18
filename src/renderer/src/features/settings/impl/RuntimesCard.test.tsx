@@ -86,8 +86,33 @@ describe('RuntimesCardView (Ajustes › Node.js y uv)', () => {
     expect(html).toContain('no coincide')
     expect(html).toContain('Reintentar')
   })
+  it('F8-B198: cada causa tiene su mensaje distinto (conexión, huella, espacio, permiso, cancelado), en español e inglés', () => {
+    const causas = ['offline', 'hash', 'disk', 'permission', 'cancelled'] as const
+    for (const lang of [es, en]) {
+      const textos = causas.map((c) => lang[runtimesErrorKey(c)])
+      expect(new Set(textos).size).toBe(causas.length)
+    }
+    // Sin espacio y sin permiso ya no culpan a la conexión.
+    expect(es[runtimesErrorKey('disk')]).not.toMatch(/conexión/)
+    expect(es[runtimesErrorKey('permission')]).not.toMatch(/conexión/)
+    expect(en[runtimesErrorKey('permission')]).not.toMatch(/connection/)
+    expect(es[runtimesErrorKey('permission')]).toMatch(/carpeta/)
+  })
   it('cada código de fallo tiene texto en español e inglés (nunca «falló» sin explicación)', () => {
-    for (const code of ['disk', 'hash', 'download', 'unsafe', 'broken', 'cancelled', 'unsupported', 'io', 'otro', undefined]) {
+    for (const code of [
+      'disk',
+      'permission',
+      'offline',
+      'hash',
+      'download',
+      'unsafe',
+      'broken',
+      'cancelled',
+      'unsupported',
+      'io',
+      'otro',
+      undefined
+    ]) {
       const k = runtimesErrorKey(code)
       expect(es[k], String(code)).toBeTruthy()
       expect(en[k], String(code)).toBeTruthy()

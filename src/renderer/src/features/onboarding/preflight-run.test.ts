@@ -141,6 +141,13 @@ describe('textos de la pantalla', () => {
     expect(failureKey('craft', 'disk')).toBe('settings.craft.error.disk')
     expect(failureKey('craft', 'hash')).toBe('settings.craft.error.hash')
     expect(failureKey('craft', undefined)).toBe('settings.craft.error.generic')
+    // F8-B198: cada causa tiene su motivo, también para Node.js y uv; ninguna de las otras culpa a la conexión.
+    expect(failureKey('craft', 'permission')).toBe('settings.craft.error.permission')
+    expect(failureKey('craft', 'offline')).toBe('settings.craft.error.offline')
+    expect(failureKey('runtimes', 'permission')).toBe('settings.runtimes.error.permission')
+    expect(failureKey('runtimes', 'offline')).toBe('settings.runtimes.error.offline')
+    expect(failureKey('runtimes', 'disk')).toBe('settings.runtimes.error.disk')
+    expect(failureKey('runtimes', 'cancelled')).toBe('settings.runtimes.error.cancelled')
     expect(failureKey('sandbox', 'offline')).toBe('tasks.sandbox.error.offline')
     expect(failureKey('sandbox', 'no-space')).toBe('tasks.sandbox.error.no-space')
     expect(failureKey('sandbox', 'rarisimo')).toBe('tasks.sandbox.error.generic')
