@@ -320,8 +320,10 @@ export async function makeRig(
 /** Espera hasta que la condición sea verdadera (sondeo corto). */
 export async function until(cond: () => boolean, ms = 3000, what = 'condición'): Promise<void> {
   const t0 = Date.now()
+  // Margen ×4: en un equipo ocupado (la suite completa en un contenedor con pocos núcleos) 3 s reales no alcanzaban y la prueba fallaba a veces.
+  const limit = ms * 4
   while (!cond()) {
-    if (Date.now() - t0 > ms) throw new Error(`tiempo agotado esperando: ${what}`)
+    if (Date.now() - t0 > limit) throw new Error(`tiempo agotado esperando: ${what}`)
     await new Promise((r) => setTimeout(r, 10))
   }
 }

@@ -48,6 +48,9 @@ function makeTgz(files: Array<{ name: string; data: string; mode?: number }>): B
 }
 const sha = (b: Buffer): string => createHash('sha256').update(b).digest('hex')
 
+// Plataforma FIJA de la prueba: el pin solo admite darwin-arm64 y win32-x64, así que no depende del equipo donde corre (el VPS es linux-x64).
+const PLAT = 'darwin'
+const ARCH = 'arm64'
 const NODE_V = '9.8.7'
 const UV_V = '1.2.3'
 const nodeTgz = makeTgz([
@@ -59,7 +62,7 @@ const uvTgz = makeTgz([{ name: 'uv-x/uv', data: `#!/bin/sh\necho "uv ${UV_V} (ab
 function pinFor(over: { node?: Buffer; uv?: Buffer } = {}): RuntimePin {
   const n = over.node ?? nodeTgz
   const u = over.uv ?? uvTgz
-  const key = `${process.platform}-${process.arch}`
+  const key = `${PLAT}-${ARCH}`
   const raw = {
     schema: 1,
     fetchedAt: '2026-10-18',
@@ -131,6 +134,8 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }))
 const mk = (over: Partial<RuntimeDeps> = {}): RuntimeDeps => ({
   runtimesDir: join(dir, 'runtimes'),
   pin: pinFor(),
+  platform: PLAT,
+  arch: ARCH,
   fetch: fakeFetch({ node: nodeTgz, uv: uvTgz }),
   freeBytes: async () => 1e12,
   ...over
