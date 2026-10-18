@@ -202,7 +202,8 @@ export async function startTasksServer(folder: string, options: StartTasksServer
       }
     }
     outboundPorts = [egress!.port, ...credentialProxies.map((c) => c.port), ...(options.extraOutboundPorts ?? [])]
-    const proxyUrl = `http://${egressToken}@127.0.0.1:${egress!.port}`
+    // `token:x`, no `token@`: Bun 1.3.x no se conecta al proxy con usuario sin contraseña (ver `EgressProxy.checkAuth`).
+    const proxyUrl = `http://${egressToken}:x@127.0.0.1:${egress!.port}`
     isolatedEnv = {
       ...(auth ? { OPENCODE_AUTH_CONTENT: placeholderAuthContent(auth) } : {}),
       HTTP_PROXY: proxyUrl,

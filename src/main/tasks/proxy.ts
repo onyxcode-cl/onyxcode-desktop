@@ -59,7 +59,7 @@ export function hostAllowed(host: string, allowlist: readonly string[]): boolean
 }
 
 export interface EgressProxyOptions {
-  /** Token para `Proxy-Authorization: Basic <base64(token:)>`. */
+  /** Token (usuario) para `Proxy-Authorization: Basic <base64(token:contraseña)>`; la contraseña se ignora. */
   token: string
   /** Lista blanca de hosts (mutable: se puede ampliar en caliente vía "Permitir siempre/una vez"). */
   allowlist: () => readonly string[]
@@ -70,11 +70,7 @@ export interface EgressProxyOptions {
 export class EgressProxy {
   private server = createNetServer((socket) => this.handleConnection(socket))
   port = 0
-  private readonly authHeader: string
-
-  constructor(private opts: EgressProxyOptions) {
-    this.authHeader = `Basic ${Buffer.from(`${opts.token}:`).toString('base64')}`
-  }
+  constructor(private opts: EgressProxyOptions) {}
 
   async start(): Promise<number> {
     this.port = await getFreePort()
@@ -141,9 +137,17 @@ export class EgressProxy {
     this.handlePlainHttp(socket, method ?? '', target ?? '', headerText, leftover)
   }
 
+  /**
+   * El token va en el USUARIO de `Basic`; la contraseña se ignora (el servidor sandboxeado usa `token:x`). El motor empaquetado
+   * (Bun 1.3.x) NO se conecta al proxy si la URL trae usuario sin contraseña (`http://token@host`): falla con «ConnectionRefused»
+   * sin abrir socket, y con ello los modelos gratuitos (que salen por el proxy de salida) no funcionaban en «Solo en tu carpeta».
+   */
   private checkAuth(headers: Map<string, string>): boolean {
     const auth = headers.get('proxy-authorization') ?? ''
-    return timingSafeStringEqual(auth, this.authHeader)
+    if (!/^Basic /i.test(auth)) return false
+    const decoded = Buffer.from(auth.slice(6).trim(), 'base64').toString('utf8')
+    const i = decoded.indexOf(':')
+    return timingSafeStringEqual(i === -1 ? decoded : decoded.slice(0, i), this.opts.token)
   }
 
   private splitHostPort(hostport: string, defaultPort: number): { host: string; port: number } {
