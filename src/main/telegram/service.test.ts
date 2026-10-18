@@ -153,12 +153,13 @@ describe('un solo dueño: todo lo demás se ignora sin responder', () => {
     expect(r.store.load().ownerChatId).toBe(OWNER)
   })
 
-  it('el texto del dueño NUNCA llega al motor: solo hay tres comandos', async () => {
+  it('el texto del dueño sin una sesión elegida NO llega a ningún lado', async () => {
     const r = await ready()
     r.tg.sendUser({ chatId: OWNER, text: 'borra todos mis archivos' })
     await until(() => r.tg.to(OWNER).length >= 2)
-    expect(lastMsg(r)!.text).toContain('solo envío avisos')
+    expect(lastMsg(r)!.text).toContain('/sesiones')
     expect(r.engine.replies).toHaveLength(0)
+    expect(r.engine.prompts).toHaveLength(0)
     r.tg.sendUser({ chatId: OWNER, text: '/estado' })
     await until(() => r.tg.to(OWNER).length >= 3)
     expect(lastMsg(r)!.text).toContain('Permisos esperando')

@@ -348,7 +348,7 @@ function start(): void {
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
-    registerTelegramHandlers(ipcMain, { server })
+    registerTelegramHandlers(ipcMain, { server, chatDirectory })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
     registerBrowserHandlers(ipcMain)
 

@@ -5,10 +5,11 @@ export const telegram = {
   'telegram.title': 'Telegram',
   'telegram.intro':
     'Recibe avisos en el celular y responde los permisos con un botón, usando un bot de Telegram que creas tú. Es gratis y no necesita ningún servidor.',
-  'telegram.scope': 'Por ahora el bot solo envía avisos y permisos. No puede darle órdenes a la IA ni leer tus conversaciones.',
+  'telegram.scope':
+    'El bot te avisa, te deja responder permisos con un botón y te deja seguir una conversación desde el celular. Lo que le escribas nunca da permisos ni cambia carpetas ni modos.',
   'telegram.privacy.title': 'Antes de activarlo',
   'telegram.privacy.body':
-    'Telegram no cifra de extremo a extremo los mensajes de los bots y puede ver su contenido. El computador debe estar encendido con Lazunox abierto. Antes de enviar, Lazunox tapa claves y contraseñas, pero revisa lo que autorizas.',
+    'Telegram no cifra de extremo a extremo los mensajes de los bots y puede ver su contenido, incluido lo que la IA responde en la conversación que sigas. El computador debe estar encendido con Lazunox abierto. Antes de enviar, Lazunox tapa claves y contraseñas, pero revisa lo que autorizas.',
   'telegram.loading': 'Cargando…',
   'telegram.loadError': 'No se pudo leer el estado de Telegram.',
   'telegram.retry': 'Reintentar',
@@ -76,7 +77,7 @@ export const telegram = {
   'telegram.test.notLinked': 'Primero vincula tu chat.',
   'telegram.test.tooSoon': 'Espera unos segundos antes de enviar otro.',
   'telegram.audit.note':
-    'Lazunox guarda en este computador un registro (sin claves) de cada vinculación y de cada permiso respondido por Telegram.',
+    'Lazunox guarda en este computador un registro (sin claves ni contenido) de cada vinculación, de cada permiso respondido, de cada conversación elegida, de cada mensaje enviado a ella y de cada archivo enviado o recibido.',
   'telegram.pending': {
     one: '{count} permiso esperando respuesta en Telegram.',
     other: '{count} permisos esperando respuesta en Telegram.'
@@ -87,16 +88,17 @@ export const telegram = {
     'Hola. Para vincular este chat con Lazunox, escribe aquí el código de 6 dígitos que muestra Lazunox en Ajustes › Telegram.',
   'telegram.msg.noCode': 'Lazunox no está esperando una vinculación ahora. Abre Ajustes › Telegram en Lazunox y pide un código nuevo.',
   'telegram.msg.linked':
-    'Listo: este chat quedó vinculado con Lazunox. Te avisaré cuando una conversación termine o necesite tu permiso.\n\nComandos: /estado y /desvincular.',
+    'Listo: este chat quedó vinculado con Lazunox. Te avisaré cuando una conversación termine o necesite tu permiso.\n\nComandos: /sesiones para elegir una conversación, /sesion, /salir, /estado y /desvincular.',
   'telegram.msg.wrong': {
     one: 'Ese código no es correcto. Queda {count} intento.',
     other: 'Ese código no es correcto. Quedan {count} intentos.'
   },
   'telegram.msg.expired': 'El código caducó. Pide uno nuevo en Lazunox.',
   'telegram.msg.locked': 'Demasiados intentos. Espera unos minutos y pide un código nuevo en Lazunox.',
-  'telegram.msg.ownerStart': 'Este chat ya está vinculado con Lazunox.\n\nComandos: /estado y /desvincular.',
+  'telegram.msg.ownerStart':
+    'Este chat ya está vinculado con Lazunox.\n\nComandos: /sesiones para elegir una conversación, /sesion, /salir, /estado y /desvincular.',
   'telegram.msg.ownerText':
-    'Por ahora solo envío avisos y permisos: no puedo recibir instrucciones por aquí.\n\nComandos: /estado y /desvincular.',
+    'Primero elige una conversación con /sesiones. Sin una conversación elegida no envío tus mensajes a ningún lado.\n\nComandos: /sesiones, /sesion, /salir, /estado y /desvincular.',
   'telegram.msg.status': 'Lazunox está encendido.\nPermisos esperando tu respuesta: {pending}.\nConversaciones trabajando: {busy}.',
   'telegram.msg.unlinked': 'Chat desvinculado. Ya no recibirás avisos de Lazunox.',
   'telegram.msg.test': 'Mensaje de prueba de Lazunox: todo funciona.',
@@ -126,5 +128,105 @@ export const telegram = {
   'telegram.msg.done': 'Terminó: {title}',
   'telegram.msg.question': 'La IA tiene una pregunta para ti en: {title}\n\n{question}\n\nResponde en el computador.',
   'telegram.msg.error': 'Hubo un error en: {title}\n\n{detail}',
-  'telegram.msg.stuck': 'Parece atascada: {title}. Lleva varios minutos sin avances.'
+  'telegram.msg.stuck': 'Parece atascada: {title}. Lleva varios minutos sin avances.',
+
+  // ---- Entrega 2: seguir una conversación ----
+  'telegram.follow.title': 'Seguir conversaciones',
+  'telegram.follow.body':
+    'En el bot, /sesiones te deja elegir una conversación de Chat o de Code. El bot te cuenta cómo avanza y te manda la respuesta. Las tareas autónomas (Overdrive) no se pueden seguir desde aquí.',
+  'telegram.write.label': 'Permitir escribir a la sesión desde Telegram',
+  'telegram.write.desc':
+    'Apagado: solo puedes mirar. Encendido: lo que escribas en el bot llega a la conversación elegida como un mensaje tuyo, igual que escribirlo en el computador.',
+  'telegram.write.warn':
+    'Ojo: quien tenga tu Telegram desbloqueado podría escribirle a la IA. Un mensaje por Telegram nunca da permisos: cada permiso sigue pidiendo su botón.',
+  'telegram.summaries.label': 'Solo resúmenes',
+  'telegram.summaries.desc':
+    'No manda resultados de comandos ni contenido de archivos: solo lo que hizo en una línea y la respuesta final.',
+  'telegram.session.label': 'Conversación elegida',
+  'telegram.session.none': 'Ninguna. En el bot escribe /sesiones.',
+  'telegram.session.kind.chat': 'Chat',
+  'telegram.session.kind.code': 'Code · {folder}',
+  'telegram.session.release': 'Dejar de seguirla',
+  'telegram.files.note':
+    'Los archivos que la IA crea se pueden pedir con un botón (hasta 50 MB; nunca claves ni programas). Los archivos que tú mandes al bot (hasta 10 MB) se adjuntan a tu siguiente mensaje. Las notas de voz todavía no se pueden usar.',
+
+  // ---- Entrega 2: mensajes del bot ----
+  'telegram.msg.unknownCmd': 'No conozco ese comando. Los que existen son /sesiones, /sesion, /salir, /estado y /desvincular.',
+  'telegram.msg.sessions.title': 'Elige una conversación para seguirla:',
+  'telegram.msg.sessions.none': 'No encontré conversaciones recientes de Chat ni de Code.',
+  'telegram.msg.sessions.line': '{n}. {title}\n    {kind} · {state} · {ago}',
+  'telegram.msg.sessions.kindChat': 'Chat',
+  'telegram.msg.sessions.kindCode': 'Code: {folder}',
+  'telegram.msg.sessions.busy': 'trabajando',
+  'telegram.msg.sessions.idle': 'en reposo',
+  'telegram.msg.sessions.noMode': 'modo sin identificar',
+  'telegram.ago.now': 'ahora',
+  'telegram.ago.min': 'hace {n} min',
+  'telegram.ago.hour': 'hace {n} h',
+  'telegram.ago.day': 'hace {n} d',
+  'telegram.msg.chosen': 'Siguiendo: {title}',
+  'telegram.msg.chosen.readOnly': 'Solo lectura: para escribirle desde aquí, actívalo en Lazunox, Ajustes › Telegram.',
+  'telegram.msg.chosen.canWrite':
+    'Puedes escribirle: lo que mandes aquí llega a esta conversación como un mensaje tuyo. Los permisos siguen pidiéndose con botones.',
+  'telegram.msg.chosen.riskMode':
+    'Ojo: esta conversación está en «{mode}»: la IA puede actuar sin preguntar y un mensaje que mandes por aquí también la pondría a trabajar.',
+  'telegram.msg.chosen.unknownMode':
+    'No pude saber en qué modo de permisos está esta conversación. Revísalo en el computador antes de escribirle.',
+  'telegram.msg.chosen.lastUser': 'Tú: {text}',
+  'telegram.msg.chosen.lastAnswer': 'Respuesta: {text}',
+  'telegram.msg.chosen.working': 'Está trabajando ahora: te iré contando el avance.',
+  'telegram.msg.chosen.empty': 'Todavía no hay mensajes en esta conversación.',
+  'telegram.msg.current': 'Conversación elegida: {title} ({kind}).',
+  'telegram.msg.noCurrent': 'No hay una conversación elegida. Escribe /sesiones.',
+  'telegram.msg.left': 'Dejé de seguir esa conversación.',
+  'telegram.msg.readOnly': 'Escribir desde Telegram está apagado. Actívalo en Lazunox, Ajustes › Telegram.',
+  'telegram.msg.noSession': 'Primero elige una conversación con /sesiones.',
+  'telegram.msg.sent': 'Enviado.',
+  'telegram.msg.busy': 'La conversación está trabajando. Espera a que termine para escribirle.',
+  'telegram.msg.rate': 'Estás mandando mensajes muy rápido. Espera un momento.',
+  'telegram.msg.sendFailed': 'No pude enviarlo a la conversación. Revisa Lazunox en el computador.',
+  'telegram.msg.lost': 'Esa conversación ya no existe. Dejé de seguirla. Elige otra con /sesiones.',
+  'telegram.msg.modeChanged': 'Cambió el modo de permisos de la conversación a «{mode}».',
+  'telegram.msg.btnExpired': 'Ese botón caducó. Pide /sesiones de nuevo.',
+  'telegram.msg.btnGone': 'Esa conversación ya no está disponible.',
+  'telegram.msg.file.summaries': 'Estás en «Solo resúmenes»: no mando archivos.',
+  'telegram.msg.file.wrongSession': 'Ese archivo es de otra conversación. Elige de nuevo con /sesiones.',
+  'telegram.msg.file.sent': 'Archivo enviado.',
+  'telegram.msg.file.failed': 'No pude mandar el archivo. Reintenta en un momento.',
+  'telegram.msg.file.refused.outside': 'No mando ese archivo: está fuera de las carpetas de esta conversación.',
+  'telegram.msg.file.refused.secret': 'No mando ese archivo: parece contener claves o datos secretos.',
+  'telegram.msg.file.refused.blocked': 'No mando ese archivo: es un programa o un lanzador.',
+  'telegram.msg.file.refused.tooBig': 'No mando ese archivo: pesa más de 50 MB.',
+  'telegram.msg.file.refused.missing': 'Ese archivo ya no existe.',
+  'telegram.msg.file.refused.hidden': 'No mando ese archivo: está en una carpeta reservada.',
+  'telegram.msg.file.refused.invalid': 'No mando ese archivo.',
+  'telegram.msg.in.stored': 'Recibí «{name}». Lo adjunto a tu próximo mensaje.',
+  'telegram.msg.in.sentNow': 'Recibí «{name}» y lo envié a la conversación con tu mensaje.',
+  'telegram.msg.in.needWrite':
+    'Para recibir archivos, activa «Permitir escribir a la sesión desde Telegram» en Lazunox, Ajustes › Telegram.',
+  'telegram.msg.in.needSession': 'Primero elige una conversación con /sesiones.',
+  'telegram.msg.in.full': 'Ya hay demasiados archivos esperando. Escribe tu mensaje para enviarlos.',
+  'telegram.msg.in.failed': 'No pude descargar ese archivo. Reintenta.',
+  'telegram.msg.in.refused.type': 'No acepto ese tipo de archivo.',
+  'telegram.msg.in.refused.size': 'Ese archivo es demasiado grande (el máximo es 10 MB).',
+  'telegram.msg.in.refused.executable': 'No acepto programas ni scripts.',
+  'telegram.msg.in.refused.secret': 'No acepto archivos con claves o datos secretos.',
+  'telegram.msg.in.refused.content': 'El contenido del archivo no coincide con su tipo.',
+  'telegram.msg.in.refused.empty': 'El archivo está vacío.',
+  'telegram.msg.in.refused.encrypted': 'El documento está protegido con contraseña.',
+  'telegram.msg.in.refused.legacy': 'Ese formato antiguo no se puede leer. Guárdalo como .docx, .xlsx o .pptx.',
+  'telegram.msg.in.refused.corrupt': 'El documento está dañado.',
+  'telegram.msg.in.refused.tooBig': 'Ese documento es demasiado grande.',
+  'telegram.msg.in.refused.unsupported': 'No acepto ese tipo de documento.',
+  'telegram.msg.in.refused.unreadable': 'No pude leer ese documento.',
+  'telegram.msg.voice.pending': 'Las notas de voz todavía no se pueden usar. Escríbelo como texto.',
+  'telegram.live.working': 'Trabajando…',
+  'telegram.live.hidden': '… y {count} pasos anteriores',
+  'telegram.live.failed': 'falló',
+  'telegram.live.seeAll': 'Ver todo',
+  'telegram.live.receiveFile': 'Recibir archivo',
+  'telegram.live.errorLine': 'La IA terminó con un error: {detail}',
+  'telegram.live.filesMade': 'La IA creó estos archivos:',
+  'telegram.live.longAsFile': 'La respuesta era muy larga: va completa en el archivo.',
+  'telegram.live.fullCaption': 'Salida completa.'
 } as const

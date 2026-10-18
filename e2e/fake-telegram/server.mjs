@@ -1,7 +1,9 @@
 /**
- * Servidor de Telegram FALSO (solo pruebas): implementa lo que usa el puente de la entrega 1.
+ * Servidor de Telegram FALSO (solo pruebas): implementa lo que usa el puente (entregas 1 y 2).
  *
  *   getMe · getUpdates (offset, long polling simulado) · sendMessage · editMessageText · answerCallbackQuery
+ *   sendDocument (multipart, ≤ 50 MB) · getFile · descarga `/file/bot<token>/<ruta>` · mensajes del usuario con documento, foto o voz
+ *   Opcional `editFloodMs`: una edición del mismo mensaje antes de ese tiempo responde 429 con `retry_after` (como el límite real).
  *
  * Imita las reglas de la API real que importan para nuestros errores: token en la ruta (`/bot<token>/<método>`), 401 si no
  * coincide, mensajes ≤ 4096 caracteres, `callback_data` ≤ 64 bytes, `parse_mode: HTML` estricto (un `<` o `&` sin escapar
@@ -68,6 +70,35 @@ function checkMarkup(markup) {
   return null
 }
 
+/** Parte un cuerpo `multipart/form-data` mínimo: campos de texto y archivos (con su nombre y bytes). */
+export function parseMultipart(body, contentType) {
+  const m = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType ?? '')
+  if (!m) return null
+  const boundary = Buffer.from('--' + (m[1] ?? m[2]))
+  const fields = {}
+  const files = {}
+  let pos = body.indexOf(boundary)
+  while (pos !== -1) {
+    const next = body.indexOf(boundary, pos + boundary.length)
+    if (next === -1) break
+    let part = body.subarray(pos + boundary.length, next)
+    if (part.subarray(0, 2).toString() === '--') break
+    if (part.subarray(0, 2).toString() === '\r\n') part = part.subarray(2)
+    const sep = part.indexOf('\r\n\r\n')
+    if (sep !== -1) {
+      const head = part.subarray(0, sep).toString('utf8')
+      let data = part.subarray(sep + 4)
+      if (data.subarray(data.length - 2).toString() === '\r\n') data = data.subarray(0, data.length - 2)
+      const name = /name="([^"]+)"/.exec(head)?.[1]
+      const filename = /filename="([^"]*)"/.exec(head)?.[1]
+      if (name && filename !== undefined) files[name] = { filename, bytes: Buffer.from(data) }
+      else if (name) fields[name] = data.toString('utf8')
+    }
+    pos = next
+  }
+  return { fields, files }
+}
+
 export async function startFakeTelegram(opts = {}) {
   const token = opts.token ?? '123456789:' + 'A'.repeat(35)
   const botId = token.split(':')[0]
@@ -91,7 +122,15 @@ export async function startFakeTelegram(opts = {}) {
     /** Offsets recibidos por getUpdates. */
     offsets: [],
     pollers: 0,
-    failures: new Map()
+    failures: new Map(),
+    /** Documentos enviados por el bot: { chat_id, message_id, filename, bytes, caption, reply_markup }. */
+    documents: [],
+    /** Archivos que el "usuario" subió y que `getFile` puede entregar: file_id -> { path, bytes, name }. */
+    files: new Map(),
+    nextFile: 1,
+    editFloodMs: opts.editFloodMs ?? 0,
+    /** Última edición por mensaje (para el límite de ritmo). */
+    lastEditAt: new Map()
   }
   const waiters = new Set()
 
@@ -148,11 +187,68 @@ export async function startFakeTelegram(opts = {}) {
       if (visibleText(p.text).length > 4096) return { error: [400, 'Bad Request: message is too long'] }
       const mk = checkMarkup(p.reply_markup)
       if (mk) return { error: [400, mk] }
+      if (state.editFloodMs > 0) {
+        const key = `${p.chat_id}:${p.message_id}`
+        const last = state.lastEditAt.get(key) ?? 0
+        const wait = last + state.editFloodMs - Date.now()
+        if (wait > 0) {
+          const secs = Math.max(1, Math.ceil(wait / 1000))
+          return { error: [429, 'Too Many Requests: retry after ' + secs], retry_after: secs }
+        }
+      }
       const cur = [...state.edits].reverse().find((e) => e.chat_id === p.chat_id && e.message_id === p.message_id) ?? orig
       if (cur.text === p.text && JSON.stringify(cur.reply_markup ?? null) === JSON.stringify(p.reply_markup ?? null))
         return { error: [400, 'Bad Request: message is not modified'] }
       state.edits.push({ chat_id: p.chat_id, message_id: p.message_id, text: p.text, reply_markup: p.reply_markup, at: Date.now() })
+      state.lastEditAt.set(`${p.chat_id}:${p.message_id}`, Date.now())
       return { result: true }
+    },
+    getFile: (p) => {
+      const f = state.files.get(String(p.file_id))
+      if (!f) return { error: [400, 'Bad Request: invalid file_id'] }
+      return { result: { file_id: p.file_id, file_unique_id: 'u' + p.file_id, file_size: f.bytes.length, file_path: f.path } }
+    },
+    sendDocument: (p) => {
+      const chat = Number(p.chat_id)
+      if (!Number.isSafeInteger(chat)) return { error: [400, 'Bad Request: chat not found'] }
+      const file = p.__files?.document
+      if (!file) return { error: [400, 'Bad Request: there is no document in the request'] }
+      if (file.bytes.length > 50 * 1024 * 1024) return { error: [413, 'Request Entity Too Large'] }
+      if (file.bytes.length === 0) return { error: [400, 'Bad Request: file must be non-empty'] }
+      if (p.caption !== undefined) {
+        if (String(p.caption).length > 1024) return { error: [400, 'Bad Request: message caption is too long'] }
+        if (p.parse_mode === 'HTML') {
+          const bad = htmlProblem(String(p.caption))
+          if (bad) return { error: [400, bad] }
+        }
+      }
+      let markup
+      try {
+        markup = p.reply_markup ? JSON.parse(p.reply_markup) : undefined
+      } catch {
+        return { error: [400, 'Bad Request: reply markup is invalid'] }
+      }
+      const mk = checkMarkup(markup)
+      if (mk) return { error: [400, mk] }
+      if (state.blocked?.has(chat)) return { error: [403, 'Forbidden: bot was blocked by the user'] }
+      const message_id = state.nextMessageId++
+      state.documents.push({
+        chat_id: chat,
+        message_id,
+        filename: file.filename,
+        bytes: file.bytes,
+        caption: p.caption,
+        reply_markup: markup,
+        at: Date.now()
+      })
+      return {
+        result: {
+          message_id,
+          chat: { id: chat, type: 'private' },
+          date: Math.floor(Date.now() / 1000),
+          document: { file_name: file.filename, file_size: file.bytes.length }
+        }
+      }
     },
     answerCallbackQuery: (p) => {
       state.callbackAnswers.push({ id: p.callback_query_id, text: p.text, show_alert: p.show_alert === true })
@@ -168,17 +264,35 @@ export async function startFakeTelegram(opts = {}) {
     const chunks = []
     req.on('data', (c) => chunks.push(c))
     req.on('end', async () => {
+      // Descarga de un archivo: GET /file/bot<token>/<ruta>
+      const fm = /^\/file\/bot([^/]+)\/(.+)$/.exec(req.url ?? '')
+      if (fm && req.method === 'GET') {
+        const okToken = decodeURIComponent(fm[1]) === token
+        state.requests.push({ method: 'download', params: { path: fm[2] }, tokenOk: okToken })
+        if (!okToken) return send(401, { ok: false, error_code: 401, description: 'Unauthorized' })
+        const f = [...state.files.values()].find((x) => x.path === fm[2])
+        if (!f) return send(404, { ok: false, error_code: 404, description: 'Not Found' })
+        res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': String(f.bytes.length) })
+        return res.end(f.bytes)
+      }
       const m = /^\/bot([^/]+)\/([A-Za-z]+)$/.exec(req.url ?? '')
       if (!m || req.method !== 'POST') return send(404, { ok: false, error_code: 404, description: 'Not Found' })
       let params = {}
-      try {
-        params = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}
-      } catch {
-        return send(400, { ok: false, error_code: 400, description: 'Bad Request: invalid JSON' })
+      const ctype = String(req.headers['content-type'] ?? '')
+      if (ctype.startsWith('multipart/form-data')) {
+        const mp = parseMultipart(Buffer.concat(chunks), ctype)
+        if (!mp) return send(400, { ok: false, error_code: 400, description: 'Bad Request: invalid multipart' })
+        params = { ...mp.fields, __files: mp.files }
+      } else {
+        try {
+          params = chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}
+        } catch {
+          return send(400, { ok: false, error_code: 400, description: 'Bad Request: invalid JSON' })
+        }
       }
       const tokenOk = decodeURIComponent(m[1]) === token
       const method = m[2]
-      state.requests.push({ method, params, tokenOk })
+      state.requests.push({ method, params: params.__files ? { ...params, __files: Object.keys(params.__files) } : params, tokenOk })
       if (!tokenOk) return send(401, { ok: false, error_code: 401, description: 'Unauthorized' })
       const fail = state.failures.get(method)
       if (fail && fail.times > 0) {
@@ -202,7 +316,13 @@ export async function startFakeTelegram(opts = {}) {
       try {
         const out = await fn(params, ac.signal)
         if (method === 'getUpdates' || method === 'getMe') return send(200, { ok: true, result: out })
-        if (out.error) return send(out.error[0], { ok: false, error_code: out.error[0], description: out.error[1] })
+        if (out.error)
+          return send(out.error[0], {
+            ok: false,
+            error_code: out.error[0],
+            description: out.error[1],
+            ...(out.retry_after ? { parameters: { retry_after: out.retry_after } } : {})
+          })
         return send(200, { ok: true, result: out.result })
       } finally {
         if (method === 'getUpdates') state.pollers--
@@ -243,16 +363,67 @@ export async function startFakeTelegram(opts = {}) {
       return state.pollers
     },
     /** Una persona escribe al bot. `chatType` 'private' (por defecto), 'group', 'supergroup' o 'channel'. */
-    sendUser({ chatId, text, fromId, firstName = 'Ana', chatType = 'private', isBot = false }) {
+    sendUser({ chatId, text, fromId, firstName = 'Ana', chatType = 'private', isBot = false, extra = {} }) {
       push({
         message: {
           message_id: state.nextMessageId++,
           from: { id: fromId ?? chatId, is_bot: isBot, first_name: firstName },
           chat: { id: chatId, type: chatType },
           date: Math.floor(Date.now() / 1000),
-          text
+          ...(text !== undefined ? { text } : {}),
+          ...extra
         }
       })
+    },
+    /** Sube un archivo "a Telegram" y devuelve su `file_id`. `declaredSize` miente sobre el tamaño en el mensaje. */
+    uploadFile({ name = 'archivo.bin', bytes, declaredSize }) {
+      const id = `file${state.nextFile++}`
+      const buf = Buffer.from(bytes)
+      state.files.set(id, { path: `documents/${id}_${name.replace(/[^A-Za-z0-9._-]/g, '_')}`, bytes: buf, name, declaredSize })
+      return id
+    },
+    /** El usuario manda un documento ya subido. */
+    sendDocument({ chatId, fileId, name = 'archivo.bin', mime = 'application/octet-stream', caption, size, fromId }) {
+      const f = state.files.get(fileId)
+      this.sendUser({
+        chatId,
+        fromId,
+        extra: {
+          document: {
+            file_id: fileId,
+            file_unique_id: 'u' + fileId,
+            file_name: name,
+            mime_type: mime,
+            file_size: size ?? f?.declaredSize ?? f?.bytes.length
+          },
+          ...(caption ? { caption } : {})
+        }
+      })
+    },
+    /** El usuario manda una foto ya subida (Telegram manda varios tamaños; aquí uno solo). */
+    sendPhoto({ chatId, fileId, caption, size }) {
+      const f = state.files.get(fileId)
+      this.sendUser({
+        chatId,
+        extra: {
+          photo: [{ file_id: fileId, file_unique_id: 'u' + fileId, width: 800, height: 600, file_size: size ?? f?.bytes.length }],
+          ...(caption ? { caption } : {})
+        }
+      })
+    },
+    /** El usuario manda una nota de voz (OGG/Opus en la API real). */
+    sendVoice({ chatId, fileId, seconds = 3 }) {
+      const f = state.files.get(fileId)
+      this.sendUser({
+        chatId,
+        extra: {
+          voice: { file_id: fileId, file_unique_id: 'u' + fileId, duration: seconds, mime_type: 'audio/ogg', file_size: f?.bytes.length }
+        }
+      })
+    },
+    /** Documentos que el bot mandó. */
+    get documents() {
+      return state.documents
     },
     /** Una persona pulsa un botón de un mensaje del bot. */
     press({ chatId, messageId, data, fromId, chatType = 'private' }) {
@@ -287,6 +458,11 @@ export async function startFakeTelegram(opts = {}) {
     block(chatId) {
       state.blocked ??= new Set()
       state.blocked.add(chatId)
+    },
+    /** La persona borra un mensaje del bot: editarlo después da «message to edit not found». */
+    deleteMessage(chatId, messageId) {
+      const i = state.messages.findIndex((m) => m.chat_id === chatId && m.message_id === messageId)
+      if (i >= 0) state.messages.splice(i, 1)
     },
     /** Mensajes del bot a un chat. */
     to(chatId) {

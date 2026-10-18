@@ -5,7 +5,9 @@
  *  - UN solo dueño: el chat privado que escribió el código de vinculación. Todo lo demás (otros chats, grupos, canales, bots) se
  *    ignora SIN responder. Los botones solo valen para el dueño, una vez, y caducan.
  *  - El código: 6 dígitos, 10 min, un solo uso, 5 intentos y bloqueo temporal.
- *  - Un texto que llegue por Telegram NUNCA llega al motor: solo hay tres comandos (/start, /estado, /desvincular) y los botones.
+ *  - Un texto que llegue por Telegram llega al motor SOLO si la persona activó «Permitir escribir a la sesión desde Telegram» (apagado por
+ *    defecto) Y eligió una sesión con /sesiones; nunca concede permisos (siguen exigiendo sus botones) ni cambia modo, carpetas o sesiones.
+ *    Comandos que existen: /start, /sesiones, /sesion, /salir, /estado, /desvincular (+ sus nombres en inglés). Ningún otro.
  *  - Lo que sale pasa por el tapado de secretos y se recorta (`text.ts`, `messages.ts`).
  *  - Mientras no hay dueño vinculado ni código activo, NO hay polling (sin servidor, sin puertos: solo `getUpdates` saliente).
  *  - Dos respondedores (pantalla y Telegram): gana el primero; el otro canal se actualiza.
@@ -22,12 +24,35 @@ import {
   type TelegramState,
   type TelegramTestResult
 } from '@shared/telegram'
-import { TelegramApi, TelegramApiError, type TgCallbackQuery, type TgMessage, type TgUpdate } from './api'
-import { EngineReplyError, type EngineEvent, type EngineLink, type EnginePermission } from './engine-link'
+import { basename } from 'node:path'
+import { ActionBook } from './actions'
+import { TelegramApi, TelegramApiError, type TgCallbackQuery, type TgFileRef, type TgMessage, type TgUpdate } from './api'
+import { EngineReplyError, agentFor, type EngineEvent, type EngineLink, type EnginePermission, type EngineSessionInfo } from './engine-link'
+import {
+  checkOutgoingFile,
+  prepareIncoming,
+  readOutgoingFile,
+  type IncomingPart,
+  type IncomingRefusal,
+  type OutgoingRefusal
+} from './files'
+import { SessionFollower } from './follow'
+import { agoParts, plainFileText } from './format'
 import { ButtonBook, LinkCode, MinuteLimiter } from './guards'
-import { buildPermissionMessage, doneMessage, errorMessage, plain, questionMessage, stuckMessage, untitled, withStatus } from './messages'
-import { TelegramStore, type AuditInput } from './store'
-import { scrubToken, stripControl } from './text'
+import {
+  buildPermissionMessage,
+  doneMessage,
+  errorMessage,
+  fill,
+  plain,
+  questionMessage,
+  stuckMessage,
+  untitled,
+  withStatus
+} from './messages'
+import { TelegramStore, type AuditInput, type PersistedActiveSession } from './store'
+import { redactForTelegram, safeBlock, safeLine, scrubToken, stripControl } from './text'
+import { analyzeTurn, baselineSeen } from './turn'
 
 export type Limits = { -readonly [K in keyof typeof TELEGRAM_LIMITS]: number }
 
@@ -42,6 +67,12 @@ export interface TelegramServiceDeps {
   pollTimeoutSec?: number
   /** Cada cuántos ms revisa caducidades y sesiones atascadas (0 = no lo hace solo; las pruebas llaman a `tick()`). */
   housekeepingMs?: number
+  /** Carpetas cuyas sesiones se pueden elegir: la de Chat y los proyectos recientes de Code (nunca Tareas/Overdrive). */
+  sessionDirs?: () => { directory: string; kind: 'chat' | 'code' }[]
+  /** Modelo que usa la pantalla para ese modo (si la sesión no tiene uno propio). */
+  modelFor?: (kind: 'chat' | 'code') => { providerID: string; modelID: string } | undefined
+  /** Carpetas desde las que se pueden mandar archivos de esa sesión (nunca otras). */
+  fileRoots?: (s: { directory: string; kind: 'chat' | 'code' }) => string[]
   /** Generador del código (pruebas). */
   codeGen?: () => string
   onState?: (s: TelegramState) => void
@@ -78,6 +109,14 @@ export class TelegramService {
   private readonly incoming: MinuteLimiter
   private readonly notices: MinuteLimiter
   private readonly answers: MinuteLimiter
+  private readonly writes: MinuteLimiter
+  private readonly fileSends: MinuteLimiter
+  private readonly actions: ActionBook
+  private readonly follower: SessionFollower
+  /** Archivos del dueño que esperan al siguiente mensaje de la sesión (ya validados). */
+  private pendingAttach: { part: IncomingPart; at: number }[] = []
+  private lastSessionCheck = 0
+  private lastWriteBlockAudit = 0
 
   private api: TelegramApi | null = null
   private token: string | null = null
@@ -104,6 +143,30 @@ export class TelegramService {
     this.incoming = new MinuteLimiter(this.L.incomingPerMinute, this.now)
     this.notices = new MinuteLimiter(this.L.noticesPerMinute, this.now)
     this.answers = new MinuteLimiter(this.L.answersPerHour, this.now, 3_600_000)
+    this.writes = new MinuteLimiter(this.L.writesPerMinute, this.now)
+    this.fileSends = new MinuteLimiter(this.L.fileSendsPerMinute, this.now)
+    this.actions = new ActionBook(this.now)
+    this.follower = new SessionFollower({
+      engine: d.engine,
+      api: () => this.api,
+      owner: () => this.persisted.ownerChatId,
+      now: this.now,
+      limits: this.L,
+      summariesOnly: () => this.persisted.summariesOnly,
+      fileRoots: (a) => this.rootsOf(a),
+      actions: this.actions,
+      saveSeen: (userId) => {
+        const a = this.persisted.active
+        if (a) this.d.store.save({ active: { ...a, seenUpTo: userId } })
+      },
+      onSendError: (err) => this.noteSendError(err),
+      audit: () => undefined,
+      log: (m) => this.log(m)
+    })
+  }
+
+  private rootsOf(s: { directory: string; kind: 'chat' | 'code' }): string[] {
+    return this.d.fileRoots ? this.d.fileRoots(s) : [s.directory]
   }
 
   // ---------------------------------------------------------------- estado
@@ -137,7 +200,17 @@ export class TelegramService {
       lockedUntil: p.ownerChatId === null ? this.code.lockUntil : null,
       error: this.error,
       secureStorage: this.d.store.secureAvailable(),
-      pendingPermissions: this.countPending()
+      pendingPermissions: this.countPending(),
+      allowWrite: p.allowWrite,
+      summariesOnly: p.summariesOnly,
+      activeSession:
+        p.active && p.ownerChatId !== null
+          ? {
+              title: stripControl(p.active.title).slice(0, 120),
+              kind: p.active.kind,
+              folder: p.active.kind === 'code' ? basename(p.active.directory) : null
+            }
+          : null
     }
   }
 
@@ -195,6 +268,8 @@ export class TelegramService {
     if (this.persisted.ownerChatId !== null && !this.engineOn) {
       this.engineOn = true
       this.d.engine.start((ev) => void this.onEngine(ev))
+      const a = this.persisted.active
+      if (a && !this.follower.session) void this.resumeActive(a)
     }
     if (!this.polling) {
       this.polling = true
@@ -215,6 +290,9 @@ export class TelegramService {
     this.questions.clear()
     this.busy.clear()
     this.buttons.clear()
+    this.follower.detach()
+    this.actions.clear()
+    this.pendingAttach = []
     this.api = null
   }
 
@@ -299,7 +377,16 @@ export class TelegramService {
     this.code.clear()
     this.d.store.deleteToken()
     this.token = null
-    this.d.store.save({ enabled: false, botId: null, botUsername: null, offset: 0, ownerChatId: null, ownerLabel: null })
+    this.d.store.save({
+      enabled: false,
+      botId: null,
+      botUsername: null,
+      offset: 0,
+      ownerChatId: null,
+      ownerLabel: null,
+      allowWrite: false,
+      active: null
+    })
     this.audit({ kind: 'token-removed' })
     this.error = null
     this.emit()
@@ -329,6 +416,33 @@ export class TelegramService {
     return { ok: true }
   }
 
+  /** Interruptor «Permitir escribir a la sesión desde Telegram». Apagarlo descarta también los archivos que esperaban. */
+  setAllowWrite(on: boolean): TelegramState {
+    if (this.persisted.allowWrite === on) return this.getState()
+    this.d.store.save({ allowWrite: on })
+    if (!on) this.pendingAttach = []
+    this.audit({ kind: 'write-toggled', on })
+    this.emit()
+    return this.getState()
+  }
+
+  /** Interruptor «Solo resúmenes». */
+  setSummariesOnly(on: boolean): TelegramState {
+    if (this.persisted.summariesOnly === on) return this.getState()
+    this.d.store.save({ summariesOnly: on })
+    this.audit({ kind: 'summaries-toggled', on })
+    this.emit()
+    return this.getState()
+  }
+
+  /** «Dejar de seguirla» desde la ventana. */
+  releaseSession(): TelegramState {
+    const a = this.persisted.active
+    if (a) this.dropActive('app')
+    this.emit()
+    return this.getState()
+  }
+
   /** Borra el vínculo. `notify`: avisa al chat antes de soltarlo. */
   private unlinkInternal(why: string, notify: boolean): void {
     const owner = this.persisted.ownerChatId
@@ -338,7 +452,10 @@ export class TelegramService {
     }
     if (notify && this.api) void this.api.sendMessage({ chatId: owner, text: plain('telegram.msg.unlinked') }).catch(() => undefined)
     this.audit({ kind: 'unlinked', why, chat: owner })
-    this.d.store.save({ ownerChatId: null, ownerLabel: null })
+    // Soltar el chat también apaga «escribir» y suelta la sesión: un vínculo nuevo empieza siempre en solo lectura.
+    this.follower.detach()
+    this.pendingAttach = []
+    this.d.store.save({ ownerChatId: null, ownerLabel: null, allowWrite: false, active: null })
     this.code.clear()
   }
 
@@ -428,10 +545,12 @@ export class TelegramService {
     if (!m.from || m.from.is_bot === true || m.from.id !== m.chat.id) return this.noteForeign('not-person')
     if (!this.incoming.take()) return // demasiados mensajes por minuto: se descarta sin responder
     const owner = this.persisted.ownerChatId
-    const text = typeof m.text === 'string' ? m.text.slice(0, 500) : ''
+    const raw = typeof m.text === 'string' ? m.text.slice(0, 4096) : ''
+    const text = raw.slice(0, 500)
     if (owner !== null) {
       if (m.chat.id !== owner) return this.noteForeign('other-chat', m.chat.id) // otro chat: sin respuesta
-      return this.onOwnerText(owner, text)
+      if (m.document || m.photo || m.voice || m.audio || m.video) return this.onOwnerMedia(owner, m)
+      return this.onOwnerText(owner, raw, m)
     }
     // Sin dueño: solo se atiende mientras hay una vinculación en curso (el polling solo corre entonces).
     if (!this.persisted.enabled || !this.token) return
@@ -482,7 +601,7 @@ export class TelegramService {
     this.emit()
   }
 
-  private async onOwnerText(owner: number, text: string): Promise<void> {
+  private async onOwnerText(owner: number, text: string, m: TgMessage): Promise<void> {
     const cmd = this.parseCommand(text)
     if (cmd === '') return
     if (cmd === 'desvincular' || cmd === 'unlink') {
@@ -501,8 +620,18 @@ export class TelegramService {
       await this.reply(owner, plain('telegram.msg.ownerStart'))
       return
     }
-    // Texto libre: JAMÁS se reenvía al motor en esta entrega.
-    await this.reply(owner, plain('telegram.msg.ownerText'))
+    if (cmd === 'sesiones' || cmd === 'sessions') return this.cmdSessions(owner)
+    if (cmd === 'sesion' || cmd === 'session') return this.cmdCurrent(owner)
+    if (cmd === 'salir' || cmd === 'leave') {
+      if (!this.persisted.active) return void (await this.reply(owner, plain('telegram.msg.noCurrent')))
+      this.dropActive('command')
+      this.emit()
+      return void (await this.reply(owner, plain('telegram.msg.left')))
+    }
+    // Cualquier otro «/algo» NO existe (no hay comando para crear sesiones, cambiar el modo o las carpetas): no se manda a la IA.
+    if (cmd !== null) return void (await this.reply(owner, plain('telegram.msg.unknownCmd')))
+    // Texto libre: solo llega a la sesión elegida y solo con «Permitir escribir» encendido.
+    await this.writeToSession(owner, text, m.message_id)
   }
 
   /** Sin dueño y sin código vigente no hay motivo para seguir escuchando. */
@@ -549,6 +678,7 @@ export class TelegramService {
         this.noteSendError(err)
       }
     }
+    if (ActionBook.isAction(cb.data)) return this.onAction(cb, owner)
     const r = this.buttons.take(cb.data, owner)
     if (!r.ok) {
       if (r.reason === 'used') return answer(r.entry?.by === 'screen' ? 'telegram.msg.perm.toastAnswered' : 'telegram.msg.perm.toastUsed')
@@ -651,6 +781,7 @@ export class TelegramService {
   /** Público para las pruebas. */
   async onEngine(ev: EngineEvent): Promise<void> {
     if (this.persisted.ownerChatId === null) return
+    this.follower.onEngine(ev)
     switch (ev.kind) {
       case 'connected': {
         for (const req of await this.d.engine.listPending()) this.onPermissionAsked(req)
@@ -708,7 +839,9 @@ export class TelegramService {
   private async onIdle(sessionID: string): Promise<void> {
     const b = this.busy.get(sessionID)
     this.busy.delete(sessionID)
-    if (!b) return // ya se trató (llegan `session.status` y `session.idle`) o nunca estuvo trabajando
+    if (!b) return
+    // La sesión que se sigue ya manda su respuesta final: no se repite con el aviso de «Terminó».
+    if (this.persisted.active?.id === sessionID) return // ya se trató (llegan `session.status` y `session.idle`) o nunca estuvo trabajando
     if (this.sessions.get(sessionID)?.parentID) return // subagente: avisa la conversación principal
     if (this.now() - b.since < this.L.minBusyForDoneMs) return // respuesta corta: no vale un aviso
     if (!this.notices.take()) return
@@ -773,6 +906,355 @@ export class TelegramService {
     await this.finishFromScreen(pend, reply)
   }
 
+  // ---------------------------------------------------------------- sesiones (entrega 2)
+
+  private modeLabel(mode: EngineSessionInfo['mode']): string {
+    return mode === 'unknown' ? t('telegram.msg.sessions.noMode') : t(`code.mode.${mode}` as 'code.mode.manual')
+  }
+
+  private kindLabel(s: { kind: 'chat' | 'code'; directory: string }): string {
+    return s.kind === 'chat'
+      ? t('telegram.msg.sessions.kindChat')
+      : t('telegram.msg.sessions.kindCode', { folder: stripControl(basename(s.directory)) })
+  }
+
+  /** Modos en los que la IA actúa sin preguntar (o casi): se avisa al elegir la sesión. */
+  private static readonly RISKY = new Set<string>(['bypass', 'auto', 'acceptEdits'])
+
+  private async cmdSessions(owner: number): Promise<void> {
+    const dirs = this.d.sessionDirs?.() ?? []
+    const list = (await this.d.engine.listSessions(dirs, this.L.sessionsListed)).slice(0, this.L.sessionsListed)
+    if (list.length === 0) return void (await this.reply(owner, plain('telegram.msg.sessions.none')))
+    const t0 = this.now()
+    const lines: string[] = [`<b>${plain('telegram.msg.sessions.title')}</b>`, '']
+    const rows: { text: string; callback_data: string }[][] = []
+    list.forEach((s, i) => {
+      const entry = this.actions.create('s', owner, { id: s.id, directory: s.directory, kind: s.kind }, 10 * 60_000)
+      const ago = agoParts(t0, s.updatedAt)
+      const when = ago.unit === 'now' ? t('telegram.ago.now') : t(`telegram.ago.${ago.unit}` as 'telegram.ago.min', { n: ago.n })
+      const kind = s.kind === 'chat' ? this.kindLabel(s) : `${this.kindLabel(s)} · ${this.modeLabel(s.mode)}`
+      lines.push(
+        fill('telegram.msg.sessions.line', {
+          n: String(i + 1),
+          title: `<b>${safeLine(s.title || untitled(), 60)}</b>`,
+          kind: safeLine(kind, 90),
+          state: escapeHtmlText(t(s.busy ? 'telegram.msg.sessions.busy' : 'telegram.msg.sessions.idle')),
+          ago: escapeHtmlText(when)
+        })
+      )
+      const label = `${i + 1}. ${stripControl(redactForTelegram(s.title || t('telegram.msg.untitled')))
+        .replace(/\s+/g, ' ')
+        .slice(0, 34)}`
+      rows.push([{ text: label, callback_data: ActionBook.data(entry) }])
+    })
+    try {
+      await this.api?.sendMessage({ chatId: owner, text: lines.join('\n'), markup: { inline_keyboard: rows } })
+    } catch (err) {
+      this.noteSendError(err)
+    }
+  }
+
+  private async cmdCurrent(owner: number): Promise<void> {
+    const a = this.persisted.active
+    if (!a) return void (await this.reply(owner, plain('telegram.msg.noCurrent')))
+    const text = fill('telegram.msg.current', {
+      title: `<b>${safeLine(a.title || untitled(), 100)}</b>`,
+      kind: safeLine(this.kindLabel(a), 90)
+    })
+    await this.reply(
+      owner,
+      `${text}\n${plain(this.persisted.allowWrite ? 'telegram.msg.chosen.canWrite' : 'telegram.msg.chosen.readOnly')}`
+    )
+  }
+
+  /** Suelta la sesión elegida (comando, ventana o porque dejó de existir). */
+  private dropActive(why: 'command' | 'app' | 'lost'): void {
+    const a = this.persisted.active
+    if (!a) return
+    this.audit({ kind: why === 'lost' ? 'session-lost' : 'session-released', why, sess: a.id, mode: a.kind })
+    this.follower.detach()
+    this.pendingAttach = []
+    this.d.store.save({ active: null })
+  }
+
+  private async lostSession(): Promise<void> {
+    const owner = this.persisted.ownerChatId
+    this.dropActive('lost')
+    this.emit()
+    if (owner !== null) await this.reply(owner, plain('telegram.msg.lost'))
+  }
+
+  /** Al arrancar con un vínculo y una sesión guardada: comprueba que existe y retoma sin repetir lo ya contado. */
+  private async resumeActive(a: PersistedActiveSession): Promise<void> {
+    const r = await this.d.engine.getSession(a.directory, a.id, a.kind)
+    if (this.persisted.active?.id !== a.id) return
+    if (r === null) return this.lostSession()
+    if (r === 'error') {
+      this.follower.attach(a) // el motor aún no responde: se retoma con lo guardado
+      this.follower.poke(true)
+      return
+    }
+    const msgs = await this.d.engine.messages(a.directory, a.id)
+    const next: PersistedActiveSession = { ...a, title: r.title || a.title, seenUpTo: msgs ? baselineSeen(msgs, r.busy) : a.seenUpTo }
+    this.d.store.save({ active: next })
+    this.follower.attach(next)
+    this.follower.poke(true)
+  }
+
+  /** Cada cierto tiempo: ¿sigue existiendo la sesión elegida?, ¿cambió su modo de permisos?, ¿quedó un turno sin contar? */
+  private async checkActive(): Promise<void> {
+    const a = this.persisted.active
+    const owner = this.persisted.ownerChatId
+    if (!a || owner === null || !this.follower.session) return
+    if (this.now() - this.lastSessionCheck < this.L.sessionCheckMs) return
+    this.lastSessionCheck = this.now()
+    const r = await this.d.engine.getSession(a.directory, a.id, a.kind)
+    if (this.persisted.active?.id !== a.id) return
+    if (r === 'error') return
+    if (r === null) return this.lostSession()
+    const before = this.sessionMode
+    this.sessionMode = r.mode
+    if (before !== null && before !== r.mode && a.kind === 'code') {
+      await this.reply(owner, fill('telegram.msg.modeChanged', { mode: safeLine(this.modeLabel(r.mode), 60) }) + this.riskLine(r))
+    }
+    if (r.title && r.title !== a.title) this.d.store.save({ active: { ...a, title: r.title.slice(0, 200) } })
+    this.follower.tick(r.busy)
+  }
+
+  private sessionMode: EngineSessionInfo['mode'] | null = null
+
+  private riskLine(info: Pick<EngineSessionInfo, 'kind' | 'mode'>): string {
+    if (info.kind !== 'code') return ''
+    if (info.mode === 'unknown') return `\n${plain('telegram.msg.chosen.unknownMode')}`
+    if (TelegramService.RISKY.has(info.mode))
+      return `\n${fill('telegram.msg.chosen.riskMode', { mode: safeLine(this.modeLabel(info.mode), 60) })}`
+    return ''
+  }
+
+  /** El dueño tocó una conversación de la lista de /sesiones. */
+  private async chooseSession(
+    cb: TgCallbackQuery,
+    owner: number,
+    pick: { id: string; directory: string; kind: 'chat' | 'code' }
+  ): Promise<void> {
+    const info = await this.d.engine.getSession(pick.directory, pick.id, pick.kind)
+    if (info === null || info === 'error') {
+      await this.toast(cb, info === null ? 'telegram.msg.btnGone' : 'telegram.msg.sendFailed')
+      return
+    }
+    const msgs = await this.d.engine.messages(info.directory, info.id)
+    const a: PersistedActiveSession = {
+      id: info.id,
+      directory: info.directory,
+      kind: info.kind,
+      title: info.title.slice(0, 200),
+      seenUpTo: msgs ? baselineSeen(msgs, info.busy) : ''
+    }
+    this.follower.detach()
+    this.pendingAttach = []
+    this.sessionMode = info.mode
+    this.lastSessionCheck = this.now()
+    this.d.store.save({ active: a })
+    this.follower.attach(a)
+    this.audit({ kind: 'session-chosen', sess: info.id, mode: info.kind, chat: owner })
+    await this.toast(cb, 'telegram.msg.perm.toastDone')
+    const out: string[] = [
+      fill('telegram.msg.chosen', { title: `<b>${safeLine(info.title || untitled(), 100)}</b>` }),
+      `<i>${safeLine(info.kind === 'chat' ? this.kindLabel(info) : `${this.kindLabel(info)} · ${this.modeLabel(info.mode)}`, 120)}</i>`
+    ]
+    const turn = msgs ? analyzeTurn(msgs, this.now(), info.kind === 'code' ? info.directory : null) : null
+    if (!turn?.userId) out.push('', plain('telegram.msg.chosen.empty'))
+    else {
+      out.push('')
+      if (turn.userText) out.push(fill('telegram.msg.chosen.lastUser', { text: `<i>${safeLine(turn.userText, 300)}</i>` }))
+      if (info.busy) out.push(plain('telegram.msg.chosen.working'))
+      else if (turn.finalText) {
+        out.push(fill('telegram.msg.chosen.lastAnswer', { text: `\n${safeBlock(turn.finalText, { max: 700, budget: 1400 })}` }))
+      }
+    }
+    out.push('', plain(this.persisted.allowWrite ? 'telegram.msg.chosen.canWrite' : 'telegram.msg.chosen.readOnly'))
+    const risk = this.riskLine(info).trim()
+    if (risk) out.push(risk)
+    await this.reply(owner, out.join('\n').slice(0, 4000))
+    this.emit()
+    this.follower.poke(true)
+  }
+
+  // ---------------------------------------------------------------- escribir a la sesión
+
+  /** Texto del dueño hacia la sesión elegida. Todas las reglas de seguridad pasan por aquí. */
+  private async writeToSession(owner: number, rawText: string, messageId: number, preAttached: IncomingPart[] = []): Promise<void> {
+    const a = this.persisted.active
+    if (!a) return void (await this.reply(owner, plain('telegram.msg.ownerText')))
+    if (!this.persisted.allowWrite) {
+      if (this.now() - this.lastWriteBlockAudit > 60_000) {
+        this.lastWriteBlockAudit = this.now()
+        this.audit({ kind: 'message-blocked', why: 'write-off', sess: a.id, mode: a.kind })
+      }
+      return void (await this.reply(owner, plain('telegram.msg.readOnly')))
+    }
+    const text = stripControl(rawText).trim()
+    this.pruneAttach()
+    const files = [...this.pendingAttach.map((x) => x.part), ...preAttached]
+    if (!text && files.length === 0) return
+    if (!this.writes.take()) return void (await this.reply(owner, plain('telegram.msg.rate')))
+    // Una repetición del mismo mensaje de Telegram (reinicio a mitad de atenderlo) no se envía dos veces.
+    if (messageId <= this.persisted.lastWriteId) return
+    const info = await this.d.engine.getSession(a.directory, a.id, a.kind)
+    if (info === null) return this.lostSession()
+    if (info === 'error') return void (await this.reply(owner, plain('telegram.msg.sendFailed')))
+    // Si la persona escribe en el computador a la vez, no se mezclan: mientras trabaja, no se le suma otro mensaje.
+    if (info.busy) return void (await this.reply(owner, plain('telegram.msg.busy')))
+    const msgs = await this.d.engine.messages(a.directory, a.id)
+    const lastUser = msgs ? [...msgs].reverse().find((m) => m.role === 'user') : undefined
+    const model = lastUser?.model ?? this.d.modelFor?.(a.kind)
+    this.d.store.save({ lastWriteId: messageId })
+    this.audit({ kind: 'message-sent', sess: a.id, mode: a.kind, bytes: Buffer.byteLength(text, 'utf8'), chat: owner })
+    try {
+      await this.d.engine.prompt(a.directory, a.id, {
+        agent: agentFor(a.kind, lastUser?.agent ?? info.agent),
+        ...(model ? { model } : {}),
+        text,
+        files: files.map((f) => ({ mime: f.mime, filename: f.filename, url: f.url }))
+      })
+    } catch (err) {
+      this.log(`no se pudo enviar a la sesión: ${err instanceof Error ? err.message : 'error'}`)
+      return void (await this.reply(
+        owner,
+        plain(err instanceof EngineReplyError && err.reason === 'not-found' ? 'telegram.msg.lost' : 'telegram.msg.sendFailed')
+      ))
+    }
+    this.pendingAttach = []
+    this.follower.poke(true)
+    await this.reply(owner, plain('telegram.msg.sent'))
+  }
+
+  private pruneAttach(): void {
+    const t0 = this.now()
+    this.pendingAttach = this.pendingAttach.filter((x) => t0 - x.at < this.L.pendingAttachTtlMs)
+  }
+
+  // ---------------------------------------------------------------- archivos del dueño
+
+  private async onOwnerMedia(owner: number, m: TgMessage): Promise<void> {
+    const a = this.persisted.active
+    if (m.voice || m.audio) return void (await this.reply(owner, plain('telegram.msg.voice.pending')))
+    if (m.video) return void (await this.reply(owner, plain('telegram.msg.in.refused.type')))
+    if (!a) return void (await this.reply(owner, plain('telegram.msg.in.needSession')))
+    if (!this.persisted.allowWrite) return void (await this.reply(owner, plain('telegram.msg.in.needWrite')))
+    this.pruneAttach()
+    if (this.pendingAttach.length >= this.L.maxPendingAttach) return void (await this.reply(owner, plain('telegram.msg.in.full')))
+    let ref: TgFileRef | undefined
+    let name = 'archivo'
+    let mime = ''
+    if (m.document) {
+      ref = m.document
+      name = m.document.file_name || 'archivo'
+      mime = m.document.mime_type || ''
+    } else if (m.photo?.length) {
+      // La foto más grande que quepa en el tope.
+      const ok = m.photo.filter((p) => !p.file_size || p.file_size <= this.L.maxIncomingFileBytes)
+      ref = ok[ok.length - 1] ?? m.photo[m.photo.length - 1]
+      name = 'foto.jpg'
+      mime = 'image/jpeg'
+    }
+    if (!ref?.file_id || !this.api) return
+    const refuse = async (why: IncomingRefusal): Promise<void> => {
+      this.audit({ kind: 'file-refused', why: `in-${why}`, sess: a.id, mode: a.kind })
+      await this.reply(owner, plain(`telegram.msg.in.refused.${why}` as 'telegram.msg.in.refused.type'))
+    }
+    if (typeof ref.file_size === 'number' && ref.file_size > this.L.maxIncomingFileBytes) return refuse('size')
+    let bytes: Uint8Array
+    try {
+      bytes = await this.api.downloadFile(ref.file_id, this.L.maxIncomingFileBytes)
+    } catch (err) {
+      if (err instanceof TelegramApiError && err.status === 413) return refuse('size')
+      this.noteSendError(err)
+      return void (await this.reply(owner, plain('telegram.msg.in.failed')))
+    }
+    const r = await prepareIncoming({ name, mime, bytes })
+    if (!r.ok) return refuse(r.reason)
+    this.audit({
+      kind: 'file-received',
+      sess: a.id,
+      mode: a.kind,
+      bytes: bytes.length,
+      ext: /\.([A-Za-z0-9]{1,8})$/.exec(r.part.filename)?.[1] ?? undefined
+    })
+    const caption = typeof m.caption === 'string' ? m.caption.trim() : ''
+    if (caption) {
+      // Con pie de foto/archivo, el pie es el mensaje: se envía ya, con este archivo y los que esperaban.
+      await this.writeToSession(owner, caption, m.message_id, [r.part])
+      return
+    }
+    this.pendingAttach.push({ part: r.part, at: this.now() })
+    await this.reply(owner, fill('telegram.msg.in.stored', { name: safeLine(r.part.filename, 80) }))
+  }
+
+  // ---------------------------------------------------------------- botones de sesiones, «Ver todo» y archivos
+
+  private async toast(cb: TgCallbackQuery, key: Parameters<typeof plainText>[0], alert = false): Promise<void> {
+    try {
+      await this.api?.answerCallbackQuery({ id: cb.id, text: plainText(key), alert })
+    } catch (err) {
+      this.noteSendError(err)
+    }
+  }
+
+  private async onAction(cb: TgCallbackQuery, owner: number): Promise<void> {
+    const r = this.actions.take<Record<string, unknown>>(cb.data, owner)
+    if (!r.ok) {
+      if (r.reason === 'wrong-chat') return
+      return this.toast(cb, 'telegram.msg.btnExpired')
+    }
+    const e = r.entry
+    if (e.kind === 's') {
+      const p = e.payload as { id: string; directory: string; kind: 'chat' | 'code' }
+      return this.chooseSession(cb, owner, p)
+    }
+    if (!this.fileSends.take()) return this.toast(cb, 'telegram.msg.rate', true)
+    if (this.persisted.summariesOnly) return this.toast(cb, 'telegram.msg.file.summaries', true)
+    const a = this.persisted.active
+    if (!this.api) return
+    if (e.kind === 'o') {
+      const p = e.payload as { name: string; text: string }
+      await this.toast(cb, 'telegram.msg.perm.toastDone')
+      const data = new TextEncoder().encode(plainFileText(p.text))
+      if (data.length > this.L.maxSendFileBytes) return
+      try {
+        await this.api.sendDocument({
+          chatId: owner,
+          filename: p.name.replace(/[^A-Za-z0-9._-]/g, '_') || 'salida.txt',
+          data,
+          caption: plain('telegram.live.fullCaption')
+        })
+        this.audit({ kind: 'file-sent', sess: a?.id, mode: a?.kind, bytes: data.length, ext: 'txt', why: 'output' })
+      } catch (err) {
+        this.noteSendError(err)
+      }
+      return
+    }
+    // 'f': archivo creado por la IA. Se vuelve a validar AHORA, con las carpetas de la sesión elegida ahora.
+    const p = e.payload as { path: string; sessionId: string }
+    if (!a || a.id !== p.sessionId) return this.toast(cb, 'telegram.msg.file.wrongSession', true)
+    const check = checkOutgoingFile(this.rootsOf(a), p.path, this.L.maxSendFileBytes)
+    if (!check.ok) {
+      this.audit({ kind: 'file-refused', why: `out-${check.reason}`, sess: a.id, mode: a.kind })
+      await this.toast(cb, 'telegram.msg.perm.toastDone')
+      return void (await this.reply(owner, plain(refusalKey(check.reason))))
+    }
+    const data = readOutgoingFile(check, this.L.maxSendFileBytes)
+    if (!data) return this.toast(cb, 'telegram.msg.file.failed', true)
+    await this.toast(cb, 'telegram.msg.perm.toastDone')
+    try {
+      await this.api.sendDocument({ chatId: owner, filename: check.name, data })
+      this.audit({ kind: 'file-sent', sess: a.id, mode: a.kind, bytes: check.bytes, ext: check.ext || undefined, why: 'created' })
+    } catch (err) {
+      this.noteSendError(err)
+      await this.reply(owner, plain('telegram.msg.file.failed'))
+    }
+  }
+
   // ---------------------------------------------------------------- envíos y mantenimiento
 
   private async sendToOwner(html: string): Promise<number | null> {
@@ -798,6 +1280,8 @@ export class TelegramService {
     }
     // 2) Botones caducados: se edita el mensaje.
     for (const e of this.buttons.expiredOpen()) await this.expire(e.permissionId)
+    // 2b) La sesión elegida: ¿sigue existiendo? ¿cambió de modo? ¿quedó algo sin contar?
+    await this.checkActive()
     // 3) Sesiones atascadas.
     if (this.persisted.ownerChatId !== null) {
       const t0 = this.now()
@@ -813,6 +1297,29 @@ export class TelegramService {
 
 function plainText(key: Parameters<typeof t>[0]): string {
   return t(key)
+}
+
+function escapeHtmlText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function refusalKey(r: OutgoingRefusal): Parameters<typeof t>[0] {
+  switch (r) {
+    case 'outside':
+      return 'telegram.msg.file.refused.outside'
+    case 'secret':
+      return 'telegram.msg.file.refused.secret'
+    case 'blocked':
+      return 'telegram.msg.file.refused.blocked'
+    case 'too-big':
+      return 'telegram.msg.file.refused.tooBig'
+    case 'missing':
+      return 'telegram.msg.file.refused.missing'
+    case 'hidden-dir':
+      return 'telegram.msg.file.refused.hidden'
+    default:
+      return 'telegram.msg.file.refused.invalid'
+  }
 }
 
 /** Tipo de permiso apto para el registro (solo letras, cifras y `_`). */

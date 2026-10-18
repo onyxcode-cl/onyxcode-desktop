@@ -140,3 +140,15 @@ export function stuckMessage(title: string): string {
 export function plain(key: MsgKey, params?: Record<string, string | number>): string {
   return escapeHtml(t(key, params))
 }
+
+/**
+ * Texto del diccionario con huecos reemplazados por HTML YA seguro (el llamador usa `safeLine`/`safeBlock` para cada valor).
+ * El texto fijo se escapa; los valores entran después, así nada dinámico se escapa dos veces ni se queda sin escapar.
+ */
+export function fill(key: MsgKey, vars: Record<string, string>, params: Record<string, string | number> = {}): string {
+  const marks: Record<string, string> = {}
+  for (const k of Object.keys(vars)) marks[k] = `\u0001${k}\u0001`
+  let out = escapeHtml(t(key, { ...params, ...marks }))
+  for (const [k, v] of Object.entries(vars)) out = out.split(`\u0001${k}\u0001`).join(v)
+  return out
+}

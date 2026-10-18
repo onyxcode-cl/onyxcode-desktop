@@ -1,5 +1,6 @@
 /**
- * Puente con Telegram (entrega 1: avisos y permisos con botones). Tipos y constantes compartidos entre `main` y la ventana.
+ * Puente con Telegram (entrega 1: avisos y permisos con botones; entrega 2: seguir y escribir a una sesión, archivos). Tipos y
+ * constantes compartidos entre `main` y la ventana.
  *
  * Lo que ve la ventana de ajustes es SOLO esto: nunca el token (únicamente «configurado sí/no» y sus últimos 4 caracteres).
  * Diseño y límites: `docs/telegram.md`; seguridad: `docs/SEGURIDAD.md` §3 (F8-B187).
@@ -55,6 +56,20 @@ export interface TelegramState {
   secureStorage: boolean
   /** Permisos enviados a Telegram que siguen esperando respuesta. */
   pendingPermissions: number
+  /** «Permitir escribir a la sesión desde Telegram» (apagado por defecto: solo seguimiento). */
+  allowWrite: boolean
+  /** «Solo resúmenes»: ni salidas de comandos ni contenido de archivos, solo lo que hizo en una línea y la respuesta final. */
+  summariesOnly: boolean
+  /** La sesión que se sigue desde el chat (sin datos de la conversación más allá del título), o `null`. */
+  activeSession: TelegramActiveSession | null
+}
+
+/** Lo que la ventana ve de la sesión activa del chat. */
+export interface TelegramActiveSession {
+  title: string
+  kind: 'chat' | 'code'
+  /** Nombre de la carpeta del proyecto (solo Code). */
+  folder: string | null
 }
 
 export const TELEGRAM_DEFAULT_STATE: TelegramState = {
@@ -70,7 +85,10 @@ export const TELEGRAM_DEFAULT_STATE: TelegramState = {
   lockedUntil: null,
   error: null,
   secureStorage: true,
-  pendingPermissions: 0
+  pendingPermissions: 0,
+  allowWrite: false,
+  summariesOnly: false,
+  activeSession: null
 }
 
 /** Resultado de guardar el token. */
@@ -115,5 +133,34 @@ export const TELEGRAM_LIMITS = {
   /** Avisos (no permisos) por minuto. */
   noticesPerMinute: 12,
   /** Permisos que se pueden responder desde Telegram por hora; pasado el tope, hay que responder en el computador. */
-  answersPerHour: 30
+  answersPerHour: 30,
+  // ---- entrega 2 ----
+  /** Separación mínima entre dos ediciones del mensaje de avance (Telegram limita las ediciones; también se respeta `retry_after`). */
+  liveEditGapMs: 3_000,
+  /** Mensajes del dueño que se envían a la sesión por minuto. */
+  writesPerMinute: 6,
+  /** Sesiones que lista `/sesiones`. */
+  sessionsListed: 8,
+  /** Largo (ya escapado) de cada trozo de la respuesta final; deja margen bajo el tope de 4096. */
+  chunkMax: 3800,
+  /** Más de tantos trozos y la respuesta final se manda como archivo. */
+  maxChunks: 6,
+  /** Tope de un archivo que el bot manda a Telegram (el de la API de bots). */
+  maxSendFileBytes: 50 * 1024 * 1024,
+  /** Tope de un archivo que el dueño manda al bot. */
+  maxIncomingFileBytes: 10 * 1024 * 1024,
+  /** Archivos que se ofrecen con botón por turno. */
+  maxFileButtons: 6,
+  /** Vida de un adjunto recibido que espera al siguiente mensaje. */
+  pendingAttachTtlMs: 15 * 60_000,
+  /** Adjuntos que esperan al siguiente mensaje. */
+  maxPendingAttach: 3,
+  /** Líneas de pasos visibles en el mensaje de avance (las anteriores se resumen en una). */
+  liveLines: 22,
+  /** Texto de salida de un comando que se muestra recortado en el mensaje de avance. */
+  outputPreviewMax: 700,
+  /** Cada cuánto se comprueba que la sesión elegida sigue existiendo y en qué modo está. */
+  sessionCheckMs: 20_000,
+  /** Archivos y salidas completas que el bot manda por minuto. */
+  fileSendsPerMinute: 10
 } as const

@@ -26,6 +26,24 @@ export interface PersistedTelegramState {
   botUsername: string | null
   /** Siguiente `offset` de `getUpdates`. */
   offset: number
+  /** «Permitir escribir a la sesión desde Telegram»: APAGADO por defecto (solo seguimiento). */
+  allowWrite: boolean
+  /** «Solo resúmenes». */
+  summariesOnly: boolean
+  /** La sesión que sigue el chat (se retoma al reiniciar). Sin contenido de la conversación. */
+  active: PersistedActiveSession | null
+  /** Id (de Telegram) del último mensaje enviado a la sesión: una repetición tras un reinicio no se envía dos veces. */
+  lastWriteId: number
+}
+
+export interface PersistedActiveSession {
+  id: string
+  /** Carpeta de la instancia del motor donde vive (hace falta para todas las llamadas). */
+  directory: string
+  kind: 'chat' | 'code'
+  title: string
+  /** Id del último mensaje del asistente que ya se dio por contado (no se repite al reiniciar). */
+  seenUpTo: string
 }
 
 export const EMPTY_PERSISTED: PersistedTelegramState = {
@@ -35,7 +53,27 @@ export const EMPTY_PERSISTED: PersistedTelegramState = {
   ownerLabel: null,
   botId: null,
   botUsername: null,
-  offset: 0
+  offset: 0,
+  allowWrite: false,
+  summariesOnly: false,
+  active: null,
+  lastWriteId: 0
+}
+
+function cleanActive(v: unknown): PersistedActiveSession | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const str = (x: unknown, max: number): string | null => (typeof x === 'string' && x.length > 0 && x.length <= max ? x : null)
+  const id = str(o.id, 100)
+  const directory = str(o.directory, 1000)
+  if (!id || !directory || (o.kind !== 'chat' && o.kind !== 'code')) return null
+  return {
+    id,
+    directory,
+    kind: o.kind,
+    title: typeof o.title === 'string' ? o.title.slice(0, 200) : '',
+    seenUpTo: typeof o.seenUpTo === 'string' ? o.seenUpTo.slice(0, 100) : ''
+  }
 }
 
 function writeAtomic(file: string, data: string | Buffer): void {
@@ -85,7 +123,12 @@ export class TelegramStore {
           ownerLabel: typeof raw.ownerLabel === 'string' ? raw.ownerLabel.slice(0, 80) : null,
           botId: typeof raw.botId === 'string' && /^\d{1,12}$/.test(raw.botId) ? raw.botId : null,
           botUsername: typeof raw.botUsername === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(raw.botUsername) ? raw.botUsername : null,
-          offset: typeof raw.offset === 'number' && Number.isSafeInteger(raw.offset) && raw.offset >= 0 ? raw.offset : 0
+          offset: typeof raw.offset === 'number' && Number.isSafeInteger(raw.offset) && raw.offset >= 0 ? raw.offset : 0,
+          allowWrite: raw.allowWrite === true,
+          summariesOnly: raw.summariesOnly === true,
+          active: cleanActive(raw.active),
+          lastWriteId:
+            typeof raw.lastWriteId === 'number' && Number.isSafeInteger(raw.lastWriteId) && raw.lastWriteId >= 0 ? raw.lastWriteId : 0
         }
       }
     } catch {
@@ -178,7 +221,18 @@ export const TELEGRAM_AUDIT_KINDS = [
   'permission-expired',
   'permission-screen',
   'test-sent',
-  'foreign-ignored'
+  'foreign-ignored',
+  // ---- entrega 2 ----
+  'session-chosen',
+  'session-released',
+  'session-lost',
+  'message-sent',
+  'message-blocked',
+  'file-sent',
+  'file-received',
+  'file-refused',
+  'write-toggled',
+  'summaries-toggled'
 ] as const
 export type TelegramAuditKind = (typeof TELEGRAM_AUDIT_KINDS)[number]
 
@@ -194,17 +248,32 @@ export interface AuditInput {
   perm?: string
   /** Chat (o usuario) afectado, como huella corta: nunca el número. */
   chat?: number
+  /** Sesión afectada, como huella corta (nunca el título ni el contenido). */
+  sess?: string
+  /** `chat` o `code`. */
+  mode?: 'chat' | 'code'
+  /** Tamaño en bytes de un archivo enviado o recibido (nunca su nombre ni su ruta). */
+  bytes?: number
+  /** Extensión (sin punto) de un archivo enviado o recibido. */
+  ext?: string
+  /** Interruptor: activado o no. */
+  on?: boolean
 }
 
-export interface AuditEntry extends Omit<AuditInput, 'chat'> {
+export interface AuditEntry extends Omit<AuditInput, 'chat' | 'sess'> {
   ts: number
   chat?: string
+  sess?: string
 }
 
 const WHY_RE = /^[A-Za-z0-9:._-]{1,40}$/
 
 export function chatFingerprint(chatId: number): string {
   return createHash('sha256').update(`lzx-tg:${chatId}`).digest('hex').slice(0, 8)
+}
+
+export function sessionFingerprint(sessionId: string): string {
+  return createHash('sha256').update(`lzx-tg-s:${sessionId}`).digest('hex').slice(0, 8)
 }
 
 export function sanitizeAudit(i: AuditInput, ts: number): AuditEntry | null {
@@ -215,6 +284,11 @@ export function sanitizeAudit(i: AuditInput, ts: number): AuditEntry | null {
   if (i.via === 'telegram' || i.via === 'screen') e.via = i.via
   if (typeof i.perm === 'string' && WHY_RE.test(i.perm)) e.perm = i.perm
   if (typeof i.chat === 'number' && Number.isSafeInteger(i.chat)) e.chat = chatFingerprint(i.chat)
+  if (typeof i.sess === 'string' && i.sess.length > 0 && i.sess.length <= 100) e.sess = sessionFingerprint(i.sess)
+  if (i.mode === 'chat' || i.mode === 'code') e.mode = i.mode
+  if (typeof i.bytes === 'number' && Number.isSafeInteger(i.bytes) && i.bytes >= 0) e.bytes = i.bytes
+  if (typeof i.ext === 'string' && /^[A-Za-z0-9]{1,8}$/.test(i.ext)) e.ext = i.ext.toLowerCase()
+  if (typeof i.on === 'boolean') e.on = i.on
   return e
 }
 

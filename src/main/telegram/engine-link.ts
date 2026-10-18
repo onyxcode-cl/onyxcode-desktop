@@ -11,6 +11,8 @@
  */
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
+import { CHAT_AGENT } from '@shared/types'
+import { effectiveModeFor, endsWithRuleset, rulesetForMode, type PermissionModeId, type PermissionRuleLike } from '@shared/permission-rules'
 
 export interface EnginePermission {
   id: string
@@ -36,6 +38,54 @@ export type EngineEvent =
   /** El flujo de eventos se abrió (de nuevo): puede haberse perdido algo mientras estuvo cortado. */
   | { kind: 'connected' }
 
+/** Una sesión del motor, reducida a lo que el puente necesita (nada de su contenido). */
+export interface EngineSessionInfo {
+  id: string
+  title: string
+  /** Carpeta de la instancia del motor donde vive (hace falta para todas las llamadas). */
+  directory: string
+  kind: 'chat' | 'code'
+  updatedAt: number
+  busy: boolean
+  /** Modo de permisos que reconoce la app por las reglas de la sesión; `unknown` si no coincide con ninguno. */
+  mode: PermissionModeId | 'unknown'
+  agent: string | null
+}
+
+/** Una parte de un mensaje, reducida. `output` solo viaja en herramientas terminadas (el puente decide si lo muestra). */
+export interface EnginePart {
+  id: string
+  type: 'text' | 'reasoning' | 'tool' | 'file' | 'other'
+  text?: string
+  synthetic?: boolean
+  ignored?: boolean
+  tool?: string
+  callID?: string
+  state?: {
+    status: string
+    input: Record<string, unknown>
+    title?: string
+    output?: string
+    error?: string
+    diff?: string
+    start?: number
+    end?: number
+  }
+  filename?: string
+  time?: { start?: number; end?: number }
+}
+
+export interface EngineMessage {
+  id: string
+  role: 'user' | 'assistant'
+  created: number
+  completed: boolean
+  error: string
+  agent: string | null
+  model: { providerID: string; modelID: string } | null
+  parts: EnginePart[]
+}
+
 export class EngineReplyError extends Error {
   constructor(
     readonly reason: 'not-found' | 'failed',
@@ -57,6 +107,24 @@ export interface EngineLink {
   pendingIds(req: EnginePermission): Promise<Set<string> | null>
   /** Permisos pendientes conocidos al reconectar (mejor esfuerzo). */
   listPending(): Promise<EnginePermission[]>
+  // ---- entrega 2: sesiones ----
+  /** Sesiones recientes (sin subsesiones ni Tareas) de las carpetas dadas, más recientes primero. */
+  listSessions(dirs: readonly { directory: string; kind: 'chat' | 'code' }[], limit: number): Promise<EngineSessionInfo[]>
+  /** Una sesión; `null` si ya no existe (borrada); `'error'` si no se pudo leer. */
+  getSession(directory: string, id: string, kind: 'chat' | 'code'): Promise<EngineSessionInfo | null | 'error'>
+  /** Mensajes de una sesión (orden cronológico), o `null` si no se pudo leer. */
+  messages(directory: string, id: string): Promise<EngineMessage[] | null>
+  /** Manda un mensaje del usuario a la sesión (como `promptAsync` de la pantalla). Lanza `EngineReplyError`. */
+  prompt(
+    directory: string,
+    id: string,
+    input: {
+      agent: string
+      model?: { providerID: string; modelID: string }
+      text: string
+      files: { mime: string; filename: string; url: string }[]
+    }
+  ): Promise<void>
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
@@ -179,6 +247,110 @@ export function normalizeEngineEvent(raw: unknown): EngineEvent | null {
   }
 }
 
+/** Modo de permisos que tiene una sesión, deducido de sus reglas (el último bloque que la app le puso). */
+export function permissionModeOf(
+  rules: readonly PermissionRuleLike[] | undefined,
+  agent: string | undefined
+): PermissionModeId | 'unknown' {
+  if (!rules || rules.length === 0) return 'unknown'
+  for (const m of ['bypass', 'auto', 'acceptEdits', 'plan', 'manual'] as const) {
+    if (endsWithRuleset(rules, rulesetForMode(m))) return effectiveModeFor(m, agent)
+  }
+  return 'unknown'
+}
+
+const toPart = (raw: unknown): EnginePart => {
+  const o = rec(raw) ?? {}
+  const type = str(o.type)
+  const id = str(o.id) ?? ''
+  if (type === 'text' || type === 'reasoning') {
+    const time = rec(o.time)
+    return {
+      id,
+      type,
+      text: str(o.text) ?? '',
+      synthetic: o.synthetic === true,
+      ignored: o.ignored === true,
+      time: { start: typeof time?.start === 'number' ? time.start : undefined, end: typeof time?.end === 'number' ? time.end : undefined }
+    }
+  }
+  if (type === 'tool') {
+    const st = rec(o.state) ?? {}
+    const time = rec(st.time)
+    return {
+      id,
+      type: 'tool',
+      tool: str(o.tool) ?? '',
+      callID: str(o.callID) ?? undefined,
+      state: {
+        status: str(st.status) ?? 'pending',
+        input: rec(st.input) ?? {},
+        title: str(st.title) ?? undefined,
+        output: str(st.output) ?? undefined,
+        error: str(st.error) ?? undefined,
+        diff: str(rec(st.metadata)?.diff) ?? undefined,
+        start: typeof time?.start === 'number' ? time.start : undefined,
+        end: typeof time?.end === 'number' ? time.end : undefined
+      }
+    }
+  }
+  if (type === 'file') return { id, type: 'file', filename: str(o.filename) ?? undefined }
+  return { id, type: 'other' }
+}
+
+/** Convierte `{info, parts}` del motor en un mensaje reducido; `null` si no es un mensaje válido. */
+export function toEngineMessage(raw: unknown): EngineMessage | null {
+  const o = rec(raw)
+  const info = rec(o?.info)
+  const id = str(info?.id)
+  const role = str(info?.role)
+  if (!info || !id || (role !== 'user' && role !== 'assistant')) return null
+  const time = rec(info.time)
+  const model = rec(info.model)
+  const err = rec(info.error)
+  const providerID = str(model?.providerID)
+  const modelID = str(model?.modelID)
+  return {
+    id,
+    role,
+    created: typeof time?.created === 'number' ? time.created : 0,
+    completed: typeof time?.completed === 'number',
+    error: err ? describeEngineError(err) || str(err.name) || 'error' : '',
+    agent: str(info.agent),
+    model: providerID && modelID ? { providerID, modelID } : null,
+    parts: Array.isArray(o?.parts) ? o.parts.map(toPart) : []
+  }
+}
+
+/** ¿Es una sesión de Tareas (Overdrive) o una subsesión? Esas nunca se ofrecen. */
+export function isHiddenSession(s: Record<string, unknown>): boolean {
+  return rec(s.metadata)?.mode === 'tasks' || !!str(s.parentID)
+}
+
+export function toSessionInfo(raw: unknown, directory: string, kind: 'chat' | 'code', busy: boolean): EngineSessionInfo | null {
+  const s = rec(raw)
+  const id = str(s?.id)
+  if (!s || !id || isHiddenSession(s)) return null
+  const time = rec(s.time)
+  const rules = Array.isArray(s.permission) ? (s.permission as PermissionRuleLike[]) : undefined
+  const agent = str(s.agent)
+  return {
+    id,
+    title: str(s.title) ?? '',
+    directory,
+    kind,
+    updatedAt: typeof time?.updated === 'number' ? time.updated : 0,
+    busy,
+    mode: kind === 'chat' ? 'unknown' : permissionModeOf(rules, agent ?? undefined),
+    agent
+  }
+}
+
+/** Agente con el que se escribe a una sesión: el de Chat, o `plan`/`build` en Code (como el celular). */
+export function agentFor(kind: 'chat' | 'code', agent: string | null | undefined): string {
+  return kind === 'chat' ? CHAT_AGENT : agent === 'plan' ? 'plan' : 'build'
+}
+
 export interface EngineLinkDeps {
   getConnection: () => Promise<OpencodeConnection>
   /** Tiempo entre reintentos (ms; crece al doble hasta 10 s). */
@@ -275,6 +447,79 @@ export function createEngineLink(deps: EngineLinkDeps): EngineLink {
       } catch {
         return null
       }
+    },
+    async listSessions(dirs, limit) {
+      const out: EngineSessionInfo[] = []
+      try {
+        const client = await clientOf()
+        await Promise.all(
+          dirs.map(async ({ directory, kind }) => {
+            const [list, status] = await Promise.all([
+              client.session.list({ directory, roots: true, limit }).catch(() => null),
+              client.session.status({ directory }).catch(() => null)
+            ])
+            const statuses = (rec((status as { data?: unknown } | null)?.data) ?? {}) as Record<string, unknown>
+            const data = (list as { data?: unknown } | null)?.data
+            if (!Array.isArray(data)) return
+            for (const x of data) {
+              const id = str(rec(x)?.id)
+              const busy = !!id && !!statuses[id] && str(rec(statuses[id])?.type) !== 'idle'
+              const info = toSessionInfo(x, directory, kind, busy)
+              if (info) out.push(info)
+            }
+          })
+        )
+      } catch {
+        return []
+      }
+      return out.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit)
+    },
+    async getSession(directory, id, kind) {
+      try {
+        const client = await clientOf()
+        const [res, status] = await Promise.all([
+          client.session.get({ sessionID: id, directory }),
+          client.session.status({ directory }).catch(() => null)
+        ])
+        const r = res as { data?: unknown; error?: unknown; response?: { status?: number } }
+        if (r.error || !r.data) return r.response?.status === 404 || rec(r.error)?._tag === 'NotFoundError' ? null : 'error'
+        const statuses = (rec((status as { data?: unknown } | null)?.data) ?? {}) as Record<string, unknown>
+        const busy = !!statuses[id] && str(rec(statuses[id])?.type) !== 'idle'
+        return toSessionInfo(r.data, directory, kind, busy) ?? null
+      } catch {
+        return 'error'
+      }
+    },
+    async messages(directory, id) {
+      try {
+        const client = await clientOf()
+        const res = (await client.session.messages({ sessionID: id, directory })) as { data?: unknown; error?: unknown }
+        if (res.error || !Array.isArray(res.data)) return null
+        const out = res.data.map(toEngineMessage).filter((m): m is EngineMessage => m !== null)
+        return out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      } catch {
+        return null
+      }
+    },
+    async prompt(directory, id, input) {
+      let res: { error?: unknown; response?: { status?: number } }
+      try {
+        const client = await clientOf()
+        res = (await client.session.promptAsync({
+          sessionID: id,
+          directory,
+          agent: input.agent,
+          model: input.model ? { providerID: input.model.providerID, modelID: input.model.modelID } : undefined,
+          parts: [
+            ...(input.text || input.files.length === 0 ? [{ type: 'text' as const, text: input.text }] : []),
+            ...input.files.map((f) => ({ type: 'file' as const, mime: f.mime, filename: f.filename, url: f.url }))
+          ]
+        })) as typeof res
+      } catch (err) {
+        throw new EngineReplyError('failed', err instanceof Error ? err.message : 'error')
+      }
+      if (res.error)
+        throw new EngineReplyError(res.response?.status === 404 ? 'not-found' : 'failed', `engine ${res.response?.status ?? '?'}`)
     },
     async listPending() {
       try {

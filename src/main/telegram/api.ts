@@ -8,6 +8,8 @@
  *  - El token vive solo en la URL de la petición; todo error y todo registro lo tapa (`TelegramApiError.message` nunca lo lleva).
  *  - 429: espera `retry_after` (con tope) y reintenta unas pocas veces; el resto de errores se devuelve con un código estable.
  *  - Las peticiones de escritura van en serie con una separación mínima (Telegram limita ~1 mensaje por segundo por chat).
+ *  - Archivos (entrega 2): `sendDocument` arma el multipart a mano (sin depender de `FormData` del `fetch` que se inyecte); `downloadFile`
+ *    pide `getFile`, valida la ruta que devuelve Telegram (sin `..`) y corta si el archivo pasa del tope, antes y durante la descarga.
  */
 import { scrubToken } from './text'
 
@@ -57,11 +59,31 @@ export interface TgChat {
   id: number
   type: 'private' | 'group' | 'supergroup' | 'channel' | string
 }
+export interface TgFileRef {
+  file_id: string
+  file_unique_id?: string
+  file_name?: string
+  mime_type?: string
+  file_size?: number
+}
+export interface TgPhotoSize extends TgFileRef {
+  width?: number
+  height?: number
+}
 export interface TgMessage {
   message_id: number
   from?: TgUser
   chat: TgChat
   text?: string
+  /** Pie de un archivo o foto. */
+  caption?: string
+  document?: TgFileRef
+  photo?: TgPhotoSize[]
+  voice?: TgFileRef & { duration?: number }
+  audio?: TgFileRef
+  video?: TgFileRef
+  /** Reenviado desde otro chat: no se trata como texto del dueño. */
+  forward_origin?: unknown
 }
 export interface TgCallbackQuery {
   id: string
@@ -175,14 +197,21 @@ export class TelegramApi {
     }
   }
 
-  private async once<T>(
+  private once<T>(method: string, params: Record<string, unknown>, opts: { signal?: AbortSignal; extraTimeoutMs?: number }): Promise<T> {
+    return this.onceRaw<T>(method, { 'content-type': 'application/json' }, JSON.stringify(params), opts.signal, opts.extraTimeoutMs)
+  }
+
+  private async onceRaw<T>(
     method: string,
-    params: Record<string, unknown>,
-    opts: { signal?: AbortSignal; extraTimeoutMs?: number }
+    headers: Record<string, string>,
+    payload: string | Buffer,
+    signal?: AbortSignal,
+    extraTimeoutMs = 0
   ): Promise<T> {
+    const opts = { signal }
     const url = `${this.base}/bot${this.o.token}/${method}`
     const ctl = new AbortController()
-    const timer = setTimeout(() => ctl.abort(), this.timeoutMs + (opts.extraTimeoutMs ?? 0))
+    const timer = setTimeout(() => ctl.abort(), this.timeoutMs + extraTimeoutMs + (typeof payload === 'string' ? 0 : 60_000))
     const onAbort = (): void => ctl.abort()
     opts.signal?.addEventListener('abort', onAbort, { once: true })
     try {
@@ -190,8 +219,8 @@ export class TelegramApi {
       try {
         res = await this.doFetch(url, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(params),
+          headers,
+          body: typeof payload === 'string' ? payload : new Uint8Array(payload),
           signal: ctl.signal,
           redirect: 'error'
         })
@@ -262,6 +291,106 @@ export class TelegramApi {
       },
       { signal }
     )
+  }
+
+  /** Manda un archivo como documento (multipart armado a mano). `data` ≤ 50 MB (tope de la API de bots; lo vigila quien llama). */
+  async sendDocument(
+    p: { chatId: number; filename: string; data: Uint8Array; caption?: string; markup?: ReplyMarkup },
+    signal?: AbortSignal
+  ): Promise<TgMessage> {
+    const boundary = `----lzx${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`
+    const field = (name: string, value: string): Buffer =>
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`, 'utf8')
+    const safeName = p.filename.replace(/[\r\n"\\]/g, '_').slice(0, 120) || 'archivo'
+    const parts: Buffer[] = [field('chat_id', String(p.chatId))]
+    if (p.caption) {
+      parts.push(field('caption', p.caption), field('parse_mode', 'HTML'))
+    }
+    if (p.markup) parts.push(field('reply_markup', JSON.stringify(p.markup)))
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="document"; filename="${safeName}"\r\nContent-Type: application/octet-stream\r\n\r\n`,
+        'utf8'
+      ),
+      Buffer.from(p.data),
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')
+    )
+    const body = Buffer.concat(parts)
+    return this.callMultipart<TgMessage>('sendDocument', boundary, body, signal)
+  }
+
+  /** Datos de un archivo que Telegram tiene (para descargarlo). */
+  getFile(fileId: string, signal?: AbortSignal): Promise<{ file_id: string; file_size?: number; file_path?: string }> {
+    return this.call('getFile', { file_id: fileId }, { signal, write: false })
+  }
+
+  /**
+   * Descarga un archivo del dueño. Falla (`TelegramApiError` `bad-request`) si Telegram no da una ruta válida o si pasa de `maxBytes`
+   * (se mira el tamaño que dice Telegram, la cabecera y, por último, lo realmente recibido).
+   */
+  async downloadFile(fileId: string, maxBytes: number, signal?: AbortSignal): Promise<Uint8Array> {
+    const info = await this.getFile(fileId, signal)
+    const path = info.file_path
+    if (!path || !/^[A-Za-z0-9_./-]{1,200}$/.test(path) || path.split('/').includes('..'))
+      throw new TelegramApiError('bad-request', 400, 'ruta de archivo inválida')
+    if (typeof info.file_size === 'number' && info.file_size > maxBytes)
+      throw new TelegramApiError('bad-request', 413, 'archivo demasiado grande')
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), Math.max(this.timeoutMs, 60_000))
+    const onAbort = (): void => ctl.abort()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    try {
+      let res: Response
+      try {
+        res = await this.doFetch(`${this.base}/file/bot${this.o.token}/${path}`, { method: 'GET', signal: ctl.signal, redirect: 'error' })
+      } catch (err) {
+        if (signal?.aborted) throw new TelegramApiError('aborted', null, 'cancelado')
+        throw new TelegramApiError(
+          'network',
+          null,
+          (err instanceof Error ? scrubToken(err.message, this.o.token) : 'error de red').slice(0, 200)
+        )
+      }
+      if (!res.ok)
+        throw new TelegramApiError(
+          res.status === 401 ? 'unauthorized' : res.status >= 500 ? 'server' : 'bad-request',
+          res.status,
+          `HTTP ${res.status}`
+        )
+      const declared = Number(res.headers.get('content-length') ?? '0')
+      if (declared > maxBytes) throw new TelegramApiError('bad-request', 413, 'archivo demasiado grande')
+      const buf = new Uint8Array(await res.arrayBuffer())
+      if (buf.length > maxBytes) throw new TelegramApiError('bad-request', 413, 'archivo demasiado grande')
+      return buf
+    } finally {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+    }
+  }
+
+  private async callMultipart<T>(method: string, boundary: string, body: Buffer, signal?: AbortSignal): Promise<T> {
+    const run = async (): Promise<T> => {
+      const wait = this.lastWriteAt + this.minGap - this.now()
+      if (wait > 0) await this.sleep(wait)
+      try {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            return await this.onceRaw<T>(method, { 'content-type': `multipart/form-data; boundary=${boundary}` }, body, signal)
+          } catch (err) {
+            if (err instanceof TelegramApiError && err.kind === 'rate-limited' && attempt < this.maxRetries && !signal?.aborted) {
+              await this.sleep(Math.min(Math.max(err.retryAfter ?? 1, 1), this.maxRetryAfter) * 1000)
+              continue
+            }
+            throw err
+          }
+        }
+      } finally {
+        this.lastWriteAt = this.now()
+      }
+    }
+    const p = this.writeChain.then(run, run)
+    this.writeChain = p.catch(() => undefined)
+    return p
   }
 
   answerCallbackQuery(p: { id: string; text?: string; alert?: boolean }, signal?: AbortSignal): Promise<boolean> {

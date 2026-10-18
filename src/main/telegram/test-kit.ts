@@ -8,7 +8,15 @@ import { join } from 'node:path'
 import { startFakeTelegram, type FakeTelegram } from '../../../e2e/fake-telegram/server.mjs'
 import type { SafeStorageLike } from '../remote/devices-store'
 import { TelegramApi } from './api'
-import { EngineReplyError, type EngineEvent, type EngineLink, type EnginePermission } from './engine-link'
+import {
+  EngineReplyError,
+  type EngineEvent,
+  type EngineLink,
+  type EngineMessage,
+  type EnginePart,
+  type EnginePermission,
+  type EngineSessionInfo
+} from './engine-link'
 import { TelegramService, type Limits } from './service'
 import { TelegramStore } from './store'
 
@@ -62,12 +70,149 @@ export class FakeEngine implements EngineLink {
   async listPending(): Promise<EnginePermission[]> {
     return this.listed
   }
+  // ---- sesiones (entrega 2) ----
+  sessions = new Map<string, { info: EngineSessionInfo; messages: EngineMessage[] }>()
+  prompts: {
+    directory: string
+    id: string
+    input: {
+      agent: string
+      model?: { providerID: string; modelID: string }
+      text: string
+      files: { mime: string; filename: string; url: string }[]
+    }
+  }[] = []
+  /** `prompt` falla con este comportamiento. */
+  promptBehavior: 'ok' | 'fail' | 'not-found' = 'ok'
+  /** `getSession`/`messages` fallan (motor caído). */
+  down = false
+  private seq = 0
+
+  async listSessions(dirs: readonly { directory: string; kind: 'chat' | 'code' }[], limit: number): Promise<EngineSessionInfo[]> {
+    if (this.down) return []
+    return [...this.sessions.values()]
+      .map((x) => x.info)
+      .filter((i) => dirs.some((d) => d.directory === i.directory && d.kind === i.kind))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit)
+  }
+  async getSession(directory: string, id: string): Promise<EngineSessionInfo | null | 'error'> {
+    if (this.down) return 'error'
+    const x = this.sessions.get(id)
+    return x && x.info.directory === directory ? { ...x.info } : null
+  }
+  async messages(directory: string, id: string): Promise<EngineMessage[] | null> {
+    if (this.down) return null
+    const x = this.sessions.get(id)
+    return x && x.info.directory === directory ? x.messages.map((m) => ({ ...m, parts: [...m.parts] })) : null
+  }
+  async prompt(
+    directory: string,
+    id: string,
+    input: {
+      agent: string
+      model?: { providerID: string; modelID: string }
+      text: string
+      files: { mime: string; filename: string; url: string }[]
+    }
+  ): Promise<void> {
+    if (this.promptBehavior === 'fail') throw new EngineReplyError('failed', 'caído')
+    if (this.promptBehavior === 'not-found') throw new EngineReplyError('not-found', 'no existe')
+    this.prompts.push({ directory, id, input })
+  }
+
+  /** Crea una sesión de prueba. */
+  addSession(o: Partial<EngineSessionInfo> & { id: string }): EngineSessionInfo {
+    const info: EngineSessionInfo = {
+      title: 'Conversación de prueba',
+      directory: '/chat',
+      kind: 'chat',
+      updatedAt: Date.now(),
+      busy: false,
+      mode: 'unknown',
+      agent: null,
+      ...o
+    }
+    this.sessions.set(info.id, { info, messages: [] })
+    return info
+  }
+  private nextId(prefix: string): string {
+    return `${prefix}${String(++this.seq).padStart(6, '0')}`
+  }
+  addUser(sid: string, text: string): string {
+    const id = this.nextId('msg_u')
+    this.sessions.get(sid)?.messages.push({
+      id,
+      role: 'user',
+      created: Date.now(),
+      completed: true,
+      error: '',
+      agent: 'build',
+      model: { providerID: 'opencode', modelID: 'modelo-de-prueba' },
+      parts: [{ id: this.nextId('prt'), type: 'text', text }]
+    })
+    return id
+  }
+  addAssistant(sid: string, parts: EnginePart[], o: { completed?: boolean; error?: string } = {}): string {
+    const id = this.nextId('msg_a')
+    this.sessions.get(sid)?.messages.push({
+      id,
+      role: 'assistant',
+      created: Date.now(),
+      completed: o.completed ?? true,
+      error: o.error ?? '',
+      agent: null,
+      model: null,
+      parts
+    })
+    return id
+  }
+  /** Cambia las partes del último mensaje del asistente (el avance en vivo). */
+  setLastAssistant(sid: string, parts: EnginePart[], completed: boolean): void {
+    const list = this.sessions.get(sid)?.messages ?? []
+    for (let i = list.length - 1; i >= 0; i--) {
+      const m = list[i] as EngineMessage
+      if (m.role === 'assistant') {
+        m.parts = parts
+        m.completed = completed
+        return
+      }
+    }
+  }
+  setBusy(sid: string, busy: boolean): void {
+    const x = this.sessions.get(sid)
+    if (x) x.info.busy = busy
+  }
+
   /** El motor emite un evento hacia el servicio. */
   emit(ev: EngineEvent): void {
     this.handler?.(ev)
   }
   get running(): boolean {
     return this.handler !== null
+  }
+}
+
+export function textPart(text: string, id = `prt_t${Math.random().toString(16).slice(2, 8)}`): EnginePart {
+  return { id, type: 'text', text }
+}
+export function toolPart(
+  tool: string,
+  input: Record<string, unknown>,
+  status: 'pending' | 'running' | 'completed' | 'error' = 'completed',
+  extra: { output?: string; diff?: string; error?: string; start?: number; end?: number } = {}
+): EnginePart {
+  return {
+    id: `prt_${tool}${Math.random().toString(16).slice(2, 8)}`,
+    type: 'tool',
+    tool,
+    state: {
+      status,
+      input,
+      start: extra.start ?? Date.now() - 2000,
+      end: status === 'completed' ? (extra.end ?? Date.now()) : undefined,
+      ...extra
+    }
   }
 }
 
@@ -103,10 +248,13 @@ export async function makeRig(
     secure?: boolean
     maxHoldMs?: number
     sleep?: (ms: number) => Promise<void>
+    editFloodMs?: number
+    sessionDirs?: { directory: string; kind: 'chat' | 'code' }[]
+    fileRoots?: (s: { directory: string; kind: 'chat' | 'code' }) => string[]
   } = {}
 ): Promise<Rig> {
   const token = o.token ?? fakeToken()
-  const tg = await startFakeTelegram({ token, maxHoldMs: o.maxHoldMs ?? 150 })
+  const tg = await startFakeTelegram({ token, maxHoldMs: o.maxHoldMs ?? 150, editFloodMs: o.editFloodMs })
   const dir = mkdtempSync(join(tmpdir(), 'lzx-tg-test-'))
   const safe = new MemorySafeStorage(o.secure ?? true)
   const clock = { now: Date.now() }
@@ -127,7 +275,14 @@ export async function makeRig(
           sleep: o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, Math.min(ms, 20))))
         }),
       now: () => clock.now,
-      limits: { permissionGraceMs: 0, ...o.limits },
+      limits: { permissionGraceMs: 0, liveEditGapMs: 40, sessionCheckMs: 0, ...o.limits },
+      sessionDirs: () =>
+        o.sessionDirs ?? [
+          { directory: '/chat', kind: 'chat' },
+          { directory: '/proj', kind: 'code' }
+        ],
+      fileRoots: o.fileRoots,
+      modelFor: () => ({ providerID: 'opencode', modelID: 'por-defecto' }),
       pollTimeoutSec: 1,
       codeGen: o.codeGen,
       log: (m) => logs.push(m)

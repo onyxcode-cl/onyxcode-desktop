@@ -1140,7 +1140,10 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'telegram:unlink': none,
   'telegram:removeBot': none,
   'telegram:panic': none,
-  'telegram:sendTest': none
+  'telegram:sendTest': none,
+  'telegram:setAllowWrite': obj({ enabled: bool }),
+  'telegram:setSummariesOnly': obj({ enabled: bool }),
+  'telegram:releaseSession': none
 }
 
 /** Envuelve un `parseX` estricto de `shared/` (devuelve `null` si es inválido) como validador que lanza `ValidationError`. */

@@ -1,5 +1,5 @@
 /**
- * Ajustes › Telegram (F8-B187, entrega 1): avisos y permisos con botones, con un bot que crea la propia persona.
+ * Ajustes › Telegram (F8-B187 y F8-B191): avisos y permisos con botones, seguir y (opcional) escribir a una conversación, con un bot que crea la propia persona.
  * La ventana nunca ve la clave del bot: la manda una vez a `main` (`telegram:saveToken`) y desde entonces solo recibe el estado
  * (¿hay bot?, últimos 4 caracteres, ¿vinculado?, código de vinculación). Diseño y límites: `docs/telegram.md`.
  */
@@ -107,7 +107,10 @@ export function TelegramSection(): React.JSX.Element {
 
   const s = state ?? TELEGRAM_DEFAULT_STATE
   const api = getExtras()
-  const act = (name: string, ch: 'telegram:unlink' | 'telegram:removeBot' | 'telegram:panic' | 'telegram:startLinking'): Promise<unknown> =>
+  const act = (
+    name: string,
+    ch: 'telegram:unlink' | 'telegram:removeBot' | 'telegram:panic' | 'telegram:startLinking' | 'telegram:releaseSession'
+  ): Promise<unknown> =>
     run(name, async () => {
       if (api) {
         setTestMsg(null)
@@ -115,6 +118,16 @@ export function TelegramSection(): React.JSX.Element {
       }
       return null
     })
+
+  const setFlag = (name: string, ch: 'telegram:setAllowWrite' | 'telegram:setSummariesOnly', enabled: boolean): void =>
+    void run(name, async () => {
+      if (api) setState(await api.invoke(ch, { enabled }))
+    })
+  const sessionKind = s.activeSession
+    ? s.activeSession.kind === 'chat'
+      ? t('telegram.session.kind.chat')
+      : t('telegram.session.kind.code', { folder: s.activeSession.folder ?? '' })
+    : ''
 
   const ownerName = s.ownerLabel || t('telegram.status.linkedYou')
   const statusText =
@@ -303,6 +316,46 @@ export function TelegramSection(): React.JSX.Element {
 
       {s.phase === 'linked' && (
         <>
+          <SubTitle>{t('telegram.follow.title')}</SubTitle>
+          <Card>
+            <Row label={t('telegram.session.label')} description={t('telegram.follow.body')} layout="stack-narrow">
+              <div className="flex flex-col items-end gap-1 text-right" data-telegram-session="">
+                {s.activeSession ? (
+                  <>
+                    <span className="max-w-[320px] truncate text-sm text-fg" title={s.activeSession.title}>
+                      {s.activeSession.title || t('telegram.msg.untitled')}
+                    </span>
+                    <span className="text-xs text-muted">{sessionKind}</span>
+                    <Button size="sm" disabled={busy !== null} onClick={() => void act('release', 'telegram:releaseSession')}>
+                      {t('telegram.session.release')}
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted">{t('telegram.session.none')}</span>
+                )}
+              </div>
+            </Row>
+            <Row label={t('telegram.write.label')} description={`${t('telegram.write.desc')} ${t('telegram.write.warn')}`}>
+              <Toggle
+                checked={s.allowWrite}
+                disabled={busy !== null}
+                label={t('telegram.write.label')}
+                onChange={(v) => setFlag('write', 'telegram:setAllowWrite', v)}
+              />
+            </Row>
+            <Row label={t('telegram.summaries.label')} description={t('telegram.summaries.desc')}>
+              <Toggle
+                checked={s.summariesOnly}
+                disabled={busy !== null}
+                label={t('telegram.summaries.label')}
+                onChange={(v) => setFlag('summaries', 'telegram:setSummariesOnly', v)}
+              />
+            </Row>
+          </Card>
+          <p className="mt-2 text-xs leading-relaxed text-subtle" data-telegram-files-note="">
+            {t('telegram.files.note')}
+          </p>
+
           <SubTitle>{t('telegram.test.label')}</SubTitle>
           <Card>
             <Row label={t('telegram.test.label')} description={t('telegram.test.desc')} layout="stack-narrow">

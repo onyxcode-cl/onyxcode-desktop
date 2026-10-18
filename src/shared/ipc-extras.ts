@@ -507,6 +507,9 @@ export interface IpcExtrasInvokeContract {
   'telegram:removeBot': { req: void; res: TelegramState }
   'telegram:panic': { req: void; res: TelegramState }
   'telegram:sendTest': { req: void; res: TelegramTestResult }
+  'telegram:setAllowWrite': { req: { enabled: boolean }; res: TelegramState }
+  'telegram:setSummariesOnly': { req: { enabled: boolean }; res: TelegramState }
+  'telegram:releaseSession': { req: void; res: TelegramState }
 }
 
 export interface IpcExtrasEventContract {
@@ -595,7 +598,10 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'telegram:unlink',
   'telegram:removeBot',
   'telegram:panic',
-  'telegram:sendTest'
+  'telegram:sendTest',
+  'telegram:setAllowWrite',
+  'telegram:setSummariesOnly',
+  'telegram:releaseSession'
 ] as const satisfies readonly IpcExtrasInvokeChannel[]
 
 export const IPC_EXTRAS_EVENT_CHANNELS = [

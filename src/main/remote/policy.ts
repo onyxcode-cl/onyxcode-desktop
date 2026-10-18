@@ -524,6 +524,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'telegram:removeBot': 'X',
   'telegram:panic': 'X',
   'telegram:sendTest': 'X',
+  'telegram:setAllowWrite': 'X',
+  'telegram:setSummariesOnly': 'X',
+  'telegram:releaseSession': 'X',
 
   // ── terminal (F1–F3: ninguna) ──
   'pty:create': 'X',

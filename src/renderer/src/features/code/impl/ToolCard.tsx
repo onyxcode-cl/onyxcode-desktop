@@ -100,57 +100,11 @@ function Output({ text, max = 'max-h-72' }: { text: string; max?: string }): Rea
 // Clasificación
 // ---------------------------------------------------------------------------
 
-export type ToolKind = 'edit' | 'bash' | 'read' | 'search' | 'web' | 'todo' | 'task' | 'other'
-
-export function toolKind(tool: string): ToolKind {
-  switch (tool) {
-    case 'edit':
-    case 'multiedit':
-    case 'write':
-    case 'patch':
-    case 'apply_patch':
-      return 'edit'
-    case 'bash':
-      return 'bash'
-    case 'read':
-      return 'read'
-    case 'grep':
-    case 'glob':
-    case 'list':
-    case 'ls':
-    case 'codesearch':
-      return 'search'
-    case 'webfetch':
-    case 'websearch':
-      return 'web'
-    case 'todowrite':
-    case 'todoread':
-      return 'todo'
-    case 'task':
-      return 'task'
-    default:
-      return 'other'
-  }
-}
+import { toolKind, summarizeSteps, type ToolKind } from '@shared/conversation-work'
+export { toolKind, summarizeSteps, type ToolKind }
 
 function plural(n: number, key: MsgKey): string {
   return t(key, { count: n })
-}
-
-/** "Leyó 3 archivos · Editó 2 archivos · Ejecutó 1 comando". */
-export function summarizeSteps(parts: ToolPart[]): string {
-  const c: Record<ToolKind, number> = { edit: 0, bash: 0, read: 0, search: 0, web: 0, todo: 0, task: 0, other: 0 }
-  for (const p of parts) c[toolKind(p.tool)]++
-  const out: string[] = []
-  if (c.read) out.push(t('code.sum.read', { items: plural(c.read, 'code.n.file') }))
-  if (c.search) out.push(t('code.sum.search', { count: c.search }))
-  if (c.edit) out.push(t('code.sum.edit', { items: plural(c.edit, 'code.n.file') }))
-  if (c.bash) out.push(t('code.sum.bash', { items: plural(c.bash, 'code.n.command') }))
-  if (c.web) out.push(c.web > 1 ? t('code.sum.webMany', { count: c.web }) : t('code.sum.web'))
-  if (c.task) out.push(plural(c.task, 'code.n.subagent'))
-  if (c.todo) out.push(t('code.tool.todoUpdated'))
-  if (c.other) out.push(plural(c.other, 'code.n.tool'))
-  return out.join(' · ')
 }
 
 // ---------------------------------------------------------------------------
