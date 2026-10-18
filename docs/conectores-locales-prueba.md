@@ -4,7 +4,7 @@ Lo hace Ben en su propio Mac y en su propio navegador. Nadie (ni un agente) nece
 
 ## Requisitos
 
-- Mac. Para Google: «uv» instalado (`https://docs.astral.sh/uv/getting-started/installation/`). Para Microsoft: Node.js instalado. Si falta, el asistente lo dice y no instala.
+- Mac. Ya no hace falta instalar uv ni Node.js a mano (F8-B195): la app descarga los suyos (`userData/runtimes`, fijados en `resources/runtimes/pin.json`) con «Instalar lo necesario»; uno del sistema solo se usa de respaldo.
 - Una cuenta de prueba (mejor que la principal). Microsoft: cuenta PERSONAL (Outlook.com, Hotmail, Live), no de trabajo.
 
 ## Google (Gmail, Calendar, Drive)

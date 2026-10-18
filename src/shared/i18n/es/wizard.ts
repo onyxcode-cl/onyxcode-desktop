@@ -99,6 +99,10 @@ export const wizard = {
   'wizard.setup.craft.hint':
     'Se descarga una sola vez (unos {mb} MB) y se comprueba que es auténtico antes de usarlo. No pide contraseña de administrador.',
   'wizard.setup.craft.retryHint': 'Pulsa «Reintentar» o hazlo después desde Ajustes.',
+  'wizard.setup.runtimes': 'Node.js y uv (para conectar tu correo y calendario)',
+  'wizard.setup.runtimes.hint':
+    'Dos programas que usan los conectores de correo, calendario y archivos. Se descargan una sola vez (unos {mb} MB) de nodejs.org y github.com y se comprueban antes de usarlos. No pide contraseña de administrador.',
+  'wizard.setup.runtimes.retryHint': 'Pulsa «Reintentar» o hazlo después desde Ajustes. Sin esto solo fallan esos conectores.',
   'wizard.setup.sandbox': 'Entorno aislado de Overdrive',
   'wizard.setup.sandbox.hint':
     'Opcional, solo para el modo Tareas. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
@@ -181,6 +185,7 @@ export const wizard = {
   'preflight.c.disk': 'Espacio en disco',
   'preflight.c.engine': 'Motor de agentes',
   'preflight.c.craft': 'Diseñador de documentos (ArtCraft)',
+  'preflight.c.runtimes': 'Node.js y uv (para conectar tu correo y calendario)',
   'preflight.c.sandbox': 'Entorno aislado de Overdrive',
   'preflight.c.helper': 'Ayudante de control del equipo',
   'preflight.c.perms': 'Permisos de macOS',
@@ -192,6 +197,10 @@ export const wizard = {
     'Opcional, para crear y ver Word, Excel, PowerPoint y PDF con buen diseño. Se descarga de GitHub (unos {mb} MB) y se verifica antes de usarlo.',
   'preflight.hint.craft.incomplete':
     'Hay piezas que faltan o están dañadas; se vuelven a descargar (unos {mb} MB) y se verifican antes de usarlas.',
+  'preflight.hint.runtimes.missing':
+    'Dos programas pequeños que usan los conectores de correo, calendario y archivos. Se descargan una sola vez (unos {mb} MB) de nodejs.org y github.com y se comprueba que son los archivos auténticos antes de usarlos. No pide contraseña de administrador. Sin ellos todo lo demás funciona.',
+  'preflight.hint.runtimes.broken':
+    'Hay piezas que faltan o están dañadas; se vuelven a descargar (unos {mb} MB) de nodejs.org y github.com y se verifican antes de usarlas.',
   'preflight.hint.sandbox.needsSetup':
     'Opcional, solo para el modo Tareas. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'preflight.hint.sandbox.broken':

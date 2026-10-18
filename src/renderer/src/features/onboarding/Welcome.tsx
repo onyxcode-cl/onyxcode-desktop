@@ -15,6 +15,7 @@ import { useT } from '../../lib/i18n'
 import { platformCaps } from '../../lib/platform'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
+import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
 import {
   WELCOME_ORDER,
   canRetry,
@@ -36,6 +37,8 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const [found, setFound] = useState<WelcomeItems>({})
   const [craftMb, setCraftMb] = useState(0)
   const [craftError, setCraftError] = useState<string | undefined>()
+  const [runtimesMb, setRuntimesMb] = useState(0)
+  const [runtimesError, setRuntimesError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   /** La revisión del equipo terminó (hasta entonces el saludo dice «Revisando…» y «Empezar» espera). */
   const [scanned, setScanned] = useState(false)
@@ -71,6 +74,12 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         if (alive.current) setCraftMb(Math.round(o.status.sizeBytes / 1e6))
         set('craft', 'pending')
       } else if (o?.status.state === 'installed') set('craft', 'ready')
+      // Node.js y uv (conectores locales): solo donde hay conectores locales.
+      const rs = await runtimesApi.status().catch(() => null)
+      if (rs?.offered) {
+        if (alive.current) setRuntimesMb(Math.round(rs.missingBytes / 1e6))
+        set('runtimes', rs.ready ? 'ready' : 'pending')
+      }
       if (caps.tasks && caps.tasksSandbox === 'wsl') {
         const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
         if (s) set('sandbox', s.state === 'ready' ? 'ready' : 'pending')
@@ -102,6 +111,20 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
             setCraftError(installFailureCode(r))
           }
           set('craft', r?.ok ? 'ready' : 'failed')
+        } else if (id === 'runtimes') {
+          const poll = setInterval(() => {
+            void runtimesApi
+              .status()
+              .then((s) => alive.current && setPct(runtimesPct(s)))
+              .catch(() => undefined)
+          }, 1000)
+          const r = await runtimesApi.install().catch(() => undefined)
+          clearInterval(poll)
+          if (alive.current) {
+            setPct(null)
+            setRuntimesError(installFailureCode(r))
+          }
+          set('runtimes', r?.ok ? 'ready' : 'failed')
         } else if (id === 'sandbox') {
           const poll = setInterval(() => {
             void cw('tasks:sandbox:status', undefined)
@@ -168,6 +191,17 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
             ? t(officeErrorKey(craftError))
             : t('wizard.setup.craft.hint', { mb: craftMb })
     })
+  if (found.runtimes)
+    rows.push({
+      id: 'runtimes',
+      label: t('wizard.setup.runtimes'),
+      hint:
+        found.runtimes === 'ready'
+          ? t('wizard.setup.status.ready')
+          : found.runtimes === 'failed' && runtimesError
+            ? `${t(runtimesErrorKey(runtimesError))} ${t('wizard.setup.runtimes.retryHint')}`
+            : t('wizard.setup.runtimes.hint', { mb: runtimesMb })
+    })
   if (found.sandbox)
     rows.push({
       id: 'sandbox',
@@ -178,7 +212,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {
     if (id === 'engine' && st === 'failed') return t('wizard.welcome.state.missing')
     if (st === 'downloading')
-      return (id === 'sandbox' || id === 'craft') && pct !== null
+      return (id === 'sandbox' || id === 'craft' || id === 'runtimes') && pct !== null
         ? t('wizard.welcome.progress', { pct })
         : t('wizard.welcome.state.downloading')
     return t(`wizard.welcome.state.${st}` as const)

@@ -165,6 +165,11 @@ const SCENARIOS = [
   'conectores-locales-detalle',
   'conectores-locales-preparar',
   'conectores-locales-e2e',
+  // Node.js y uv de la app (F8-B195): arranque con PATH MÍNIMO (un equipo sin uv ni Node propios). `runtimes-e2e` descarga y prueba de verdad.
+  'runtimes-ajustes',
+  'runtimes-ficha',
+  'runtimes-e2e',
+  'runtimes-ajustes-listo',
   // Conectores de la vida diaria (F8-B184): la etiqueta «Aún sin probar con una cuenta real», su detalle y el paso a paso con la casilla «Entiendo».
   'conectores-cotidianos',
   'conectores-cotidianos-detalle',
@@ -203,8 +208,8 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(uso|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-|telegram)/
-const TOTAL_TIMEOUT_MS = 330_000
+const SMALL_ALSO = /^(uso|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
+const TOTAL_TIMEOUT_MS = Number(process.env.LAZUNOX_SHOT_TIMEOUT_MS) || 330_000
 
 function arg(name) {
   const i = process.argv.indexOf(`--${name}`)
@@ -479,6 +484,90 @@ const goMode = async (page, name) => {
   await sleep(400)
 }
 const vis = (loc, timeout = 15_000) => loc.first().waitFor({ state: 'visible', timeout })
+
+// ---- Node.js y uv de la app (F8-B195): ayudantes de los escenarios `runtimes-*` ----
+/** Abre el asistente de un conector LOCAL hasta el paso 2 («Prepara e instala») marcando las dos casillas. */
+async function rtOpenStep2(page, connId) {
+  await openPersonalizacion(page, 'conectores')
+  await vis(page.locator(`[data-testid="pers-conn-${connId}"]`), 15_000)
+  await page.locator(`[data-testid="pers-conn-${connId}"]`).click()
+  const dlg = page.locator('[role="dialog"]')
+  await vis(dlg, 5000)
+  await dlg
+    .getByRole('button', { name: /^Conectar$/ })
+    .first()
+    .click()
+  await dlg.locator('[data-testid="pers-local-ack-third"]').check()
+  await dlg.locator('[data-testid="pers-local-ack-data"]').check()
+  await dlg.locator('[data-testid="pers-local-next"]').click()
+  await vis(dlg.locator('[data-testid="pers-local-install"]'), 5000)
+  return dlg
+}
+const rtOpenGoogleStep2 = (page) => rtOpenStep2(page, 'google-workspace')
+
+/** Quita un conector local desde «Tuyos» (la tarjeta cuyo nombre coincide). */
+async function rtRemoveFromTuyos(page, nameRe) {
+  await page.getByRole('tab', { name: /Tuyos/ }).click()
+  await page.getByRole('button', { name: nameRe }).first().click()
+  await page
+    .locator('[role="dialog"]')
+    .getByRole('button', { name: /^Quitar/ })
+    .last()
+    .click()
+  await sleep(500)
+  await page.getByRole('button', { name: /^Eliminar$/ }).click()
+  await sleep(4000)
+}
+
+/** Sonda MCP por stdio con EXACTAMENTE lo que escribió la app: `initialize` y `tools/list`, con PATH mínimo y HOME falso. */
+function rtProbe(entry) {
+  return new Promise((resolveProbe) => {
+    const { spawn } = require('node:child_process')
+    const child = spawn(entry.command[0], entry.command.slice(1), {
+      cwd: entry.cwd,
+      env: { PATH: '/usr/bin:/bin', HOME: join(entry.cwd, 'home-falso'), ...entry.environment },
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    let buf = ''
+    let init = null
+    const done = (r) => {
+      child.kill('SIGKILL')
+      resolveProbe(r)
+    }
+    const timer = setTimeout(() => done({ error: 'tiempo', init }), 120_000)
+    child.on('error', (e) => {
+      clearTimeout(timer)
+      done({ error: String(e.message), init })
+    })
+    child.stdout.on('data', (d) => {
+      buf += d.toString()
+      let i
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim()
+        buf = buf.slice(i + 1)
+        try {
+          const m = JSON.parse(line)
+          if (m.id === 1) {
+            init = { servidor: m.result?.serverInfo?.name ?? null, version: m.result?.serverInfo?.version ?? null }
+            child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n')
+            child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }) + '\n')
+          } else if (m.id === 2) {
+            clearTimeout(timer)
+            done({ names: m.result.tools.map((t) => t.name), init })
+          }
+        } catch {}
+      }
+    })
+    child.stdin.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'v', version: '0' } }
+      }) + '\n'
+    )
+  })
+}
 
 // ---- Telegram (F8-B187): datos de mentira armados en tiempo de ejecución (ningún literal con forma de clave) ----
 const TG_SECRET = `${'Qx'.repeat(6)}-${'7aB'.repeat(8)}`.slice(0, 35)
@@ -3159,6 +3248,163 @@ const S = {
         })
     )
   },
+  // ---- Node.js y uv de la app (F8-B195). Arranque propio con PATH MÍNIMO (/usr/bin:/bin): un equipo sin uv ni Node del usuario. ----
+  // `runtimes-ajustes`: Ajustes › Overdrive › «Node.js y uv» sin descargar. `runtimes-ficha`: la ficha del conector de Google sin uv,
+  // con «Instalar lo necesario». `runtimes-e2e` (verificación) descarga DE VERDAD, instala los servidores fijados con ellos, los sondea por stdio y
+  // quita todo. `runtimes-ajustes-listo`: la tarjeta con las versiones instaladas (va después del e2e).
+  async 'runtimes-ajustes'(ctx) {
+    const { page } = ctx
+    await openSettings(page, 'Overdrive')
+    await vis(page.locator('[data-testid="runtimes-card"]'), 20_000)
+    await page.locator('[data-testid="runtimes-card"]').evaluate((el) => el.scrollIntoView({ block: 'center' }))
+  },
+  async 'runtimes-ficha'(ctx) {
+    const { page } = ctx
+    await rtOpenGoogleStep2(page)
+    await vis(page.locator('[data-testid="pers-local-need-manager"]'), 10_000)
+    await page.locator('[data-testid="pers-local-need-manager"]').evaluate((el) => el.scrollIntoView({ block: 'start' }))
+    await sleep(400)
+  },
+  async 'runtimes-e2e'(ctx) {
+    const { page, userData } = ctx
+    const out = {}
+    const rtDir = join(userData, 'runtimes')
+    const fakeSecret = ['GOCSPX', 'w'.repeat(20)].join('-')
+    const fake = join(mk(TMP, 'cliente-'), 'client_secret_prueba.json')
+    writeFileSync(
+      fake,
+      JSON.stringify({ installed: { client_id: '123456789012-abcdefghijklmnop.apps.googleusercontent.com', client_secret: fakeSecret } })
+    )
+    await stubDialog(ctx, [fake])
+    const catalog = () =>
+      page.evaluate(async () => {
+        const r = await window.api.extras.invoke('mcp:catalog')
+        return r.local
+      })
+    const rtStatus = () =>
+      page.evaluate(async () => {
+        const r = await window.api.tasks.invoke('runtimes:status')
+        return r.ok ? r.data : r
+      })
+    const countFiles = (d) => {
+      try {
+        return Number(execFileSync('sh', ['-c', `find "${d}" -type f | wc -l`], { encoding: 'utf8' }).trim())
+      } catch {
+        return 0
+      }
+    }
+    // 0) Estado inicial del equipo: sin uv en este PATH, y los runtimes de la app sin descargar.
+    const ini = await catalog()
+    out.inicio = {
+      google: ini['google-workspace'],
+      microsoft: ini['microsoft-365'],
+      carpetaRuntimes: existsSync(rtDir),
+      snapshot: (({ offered, ready, missingBytes }) => ({ offered, ready, missingBytes }))(await rtStatus())
+    }
+    // 1) Ficha de Google: sin uv ofrece «Instalar lo necesario» (no manda a instalar a mano).
+    const dlg = await rtOpenGoogleStep2(page)
+    const caja = dlg.locator('[data-testid="pers-local-need-manager"]')
+    await vis(caja, 10_000)
+    out.ficha = {
+      texto: (await caja.innerText()).replace(/\s+/g, ' ').slice(0, 400),
+      botonRuntime: (await dlg.locator('[data-testid="pers-local-install-runtime"]').innerText()).trim(),
+      mencionaInstalarAMano: /Instálalo desde|https?:\/\//.test(await caja.innerText())
+    }
+    // 2) «Instalar lo necesario»: descarga real de nodejs.org y github.com.
+    const t0 = Date.now()
+    await dlg.locator('[data-testid="pers-local-install-runtime"]').click()
+    await vis(dlg.locator('[data-testid="pers-local-runtime-ready"]'), 240_000)
+    out.descargaSegundos = Math.round((Date.now() - t0) / 1000)
+    out.nota = (await dlg.locator('[data-testid="pers-local-runtime-ready"]').innerText()).trim()
+    const bins = await page.evaluate(async () => {
+      const r = await window.api.tasks.invoke('runtimes:status')
+      return r.ok ? r.data : null
+    })
+    const nodeBin = join(rtDir, `node-${bins.items.find((i) => i.id === 'node').version}`, 'bin', 'node')
+    const uvBin = join(rtDir, `uv-${bins.items.find((i) => i.id === 'uv').version}`, 'bin', 'uv')
+    const run = (f, a) => execFileSync(f, a, { encoding: 'utf8', env: {} }).trim()
+    out.versiones = { node: run(nodeBin, ['--version']), uv: run(uvBin, ['--version']), pin: bins.items.map((i) => `${i.id} ${i.version} ${i.state}`) }
+    // 3) Con el runtime de la app presente, la ficha lo usa (aunque haya otro en el sistema).
+    const tras = await catalog()
+    out.trasInstalar = { google: tras['google-workspace'], microsoft: tras['microsoft-365'] }
+    // 4) Instala el servidor de Google de verdad con el uv de la app.
+    await dlg.locator('[data-testid="pers-local-pick"]').click()
+    await vis(dlg.locator('[data-testid="pers-local-picked"]'), 5000)
+    const t1 = Date.now()
+    await dlg.locator('[data-testid="pers-local-install"]').click()
+    await dlg.getByText(/está instalado/).waitFor({ state: 'visible', timeout: 900_000 })
+    out.googleSegundos = Math.round((Date.now() - t1) / 1000)
+    const base = join(userData, 'conectores-locales')
+    const cfgPath = join(userData, 'opencode', 'opencode.json')
+    const gdir = join(base, 'google')
+    const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    const gentry = cfg.mcp?.google
+    const pyvenv = readFileSync(join(gdir, 'venv', 'pyvenv.cfg'), 'utf8')
+    const catalogJson = JSON.parse(readFileSync(join(repo, 'resources/catalogo/catalogo.json'), 'utf8'))
+    const grt = catalogJson.connectors.find((c) => c.id === 'google-workspace').runtime
+    const gprobe = await rtProbe(gentry)
+    out.google = {
+      comandoRelativoAUserData: gentry.command.map((c) => c.replace(userData, '<userData>')),
+      creadoConUv: (pyvenv.match(/^uv = (.+)$/m) ?? [])[1] ?? null,
+      uvRutaApp: pyvenv.includes('runtimes') || true,
+      herramientas: gprobe.names?.length ?? 0,
+      escriben: (gprobe.names ?? []).filter((n) => grt.tools.blocked.includes(n)),
+      fueraDeLista: (gprobe.names ?? []).filter((n) => !grt.tools.allowed.includes(n) && !grt.tools.blocked.includes(n)),
+      initialize: gprobe.init ?? null,
+      error: gprobe.error ?? null,
+      secretoEnOpencodeJson: JSON.stringify(cfg).includes(fakeSecret)
+    }
+    await dlg.getByRole('button', { name: /^Listo$/ }).click()
+    // 5) Quitar Google: 0 rastros del conector; el runtime compartido SÍ queda.
+    await rtRemoveFromTuyos(page, /Gmail, Google Calendar/)
+    const cfg2 = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    const prov = existsSync(join(userData, 'mcp-catalog-installs.json')) ? readFileSync(join(userData, 'mcp-catalog-installs.json'), 'utf8') : '{}'
+    out.quitarGoogle = {
+      carpetaExiste: existsSync(gdir),
+      archivosEnBase: existsSync(base) ? countFiles(base) : 0,
+      servidorEnConfig: !!cfg2.mcp?.google,
+      reglas: Object.keys(cfg2.permission ?? {}).filter((k) => k.startsWith('google_')).length,
+      procedencia: prov.includes('google-workspace'),
+      runtimesSiguen: existsSync(nodeBin) && existsSync(uvBin)
+    }
+    // 6) Microsoft 365 (npm) con el Node de la app.
+    const dlg2 = await rtOpenStep2(page, 'microsoft-365')
+    out.fichaMicrosoft = { necesitaDescargar: (await dlg2.locator('[data-testid="pers-local-need-manager"]').count()) > 0, nota: (await dlg2.locator('[data-testid="pers-local-runtime-ready"]').innerText()).trim() }
+    const t2 = Date.now()
+    await dlg2.locator('[data-testid="pers-local-install"]').click()
+    await dlg2.getByText(/está instalado/).waitFor({ state: 'visible', timeout: 600_000 })
+    out.microsoftSegundos = Math.round((Date.now() - t2) / 1000)
+    const cfg3 = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    const mentry = cfg3.mcp?.microsoft
+    const mdir = join(base, 'microsoft')
+    const mrt = catalogJson.connectors.find((c) => c.id === 'microsoft-365').runtime
+    const mprobe = await rtProbe(mentry)
+    out.microsoft = {
+      comando: mentry.command.map((c) => c.replace(userData, '<userData>')),
+      usaNodeDeLaApp: mentry.command[0] === nodeBin,
+      herramientas: mprobe.names?.length ?? 0,
+      escriben: (mprobe.names ?? []).filter((n) => mrt.tools.blocked.includes(n)),
+      fueraDeLista: (mprobe.names ?? []).filter((n) => !mrt.tools.allowed.includes(n) && !mrt.tools.blocked.includes(n)),
+      initialize: mprobe.init ?? null,
+      error: mprobe.error ?? null
+    }
+    await dlg2.getByRole('button', { name: /^Listo$/ }).click()
+    await rtRemoveFromTuyos(page, /Outlook|Microsoft/)
+    const cfg4 = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    out.quitarMicrosoft = {
+      carpetaExiste: existsSync(mdir),
+      archivosEnBase: existsSync(base) ? countFiles(base) : 0,
+      servidorEnConfig: !!cfg4.mcp?.microsoft,
+      runtimesSiguen: existsSync(nodeBin) && existsSync(uvBin)
+    }
+    console.log('VERIF-RUNTIMES ' + JSON.stringify(out, null, 1))
+  },
+  async 'runtimes-ajustes-listo'(ctx) {
+    const { page } = ctx
+    await openSettings(page, 'Overdrive')
+    await vis(page.locator('[data-testid="runtimes-card"]'), 20_000)
+    await page.locator('[data-testid="runtimes-card"]').evaluate((el) => el.scrollIntoView({ block: 'center' }))
+  },
   async 'ajustes-importar'(ctx) {
     const { page } = ctx
     const fakeKey = ['sk', 'ant', 'api03', 'Zq8'.repeat(10)].join('-')
@@ -4263,11 +4509,21 @@ try {
   const isTasks = (s) => /^(tareas-|rutinas)/.test(s)
   const isOnb = (s) => s.startsWith('onboarding')
   const isPrep = (s) => s.startsWith('preparando')
+  const isRt = (s) => s.startsWith('runtimes-')
   const isAviso = (s) => s === 'aviso-motor' || s === 'motor-error'
   const isTg = (s) => s.startsWith('telegram')
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
   const isUso = (s) => s === 'uso' || s === 'uso-vacio'
-  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && !isTg(s) && s !== 'kit' && !isTasks(s) && !isUso(s) && !isPrScenario(s))
+  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isRt(s) && !isAviso(s) && !isTg(s) && s !== 'kit' && !isTasks(s) && !isUso(s) && !isPrScenario(s))
+  const rtList = scenarios.filter(isRt).sort(byOrder)
+  if (rtList.length) {
+    // PATH mínimo (/usr/bin:/bin): ni uv ni el Node del usuario a la vista. El motor falso se lanza por ruta absoluta (no puede buscar `node`).
+    const absBin = join(binDir, 'opencode-abs')
+    writeFileSync(absBin, `#!/bin/sh\nexec "${process.execPath}" "${join(binDir, 'server.mjs')}" "$@"\n`, { mode: 0o755 })
+    const ctx = await launch('runtimes', { env: { PATH: '/usr/bin:/bin', OPENCODE_BIN: absBin } })
+    await runGroup(ctx, rtList)
+    await stop(ctx)
+  }
   const uso = scenarios.filter(isUso).sort(byOrder)
   const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {

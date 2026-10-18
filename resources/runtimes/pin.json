@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "fetchedAt": "2026-10-18",
+  "note": "Único lugar donde se fijan las versiones de Node.js y uv que Lazunox descarga para los conectores locales. Para cambiarlas: editar este archivo con los datos de las sumas oficiales y correr `node scripts/runtimes/verify-pin.mjs --download` (con red). docs/SEGURIDAD.md §3 quinquagies septendecies.",
+  "node": {
+    "version": "24.22.0",
+    "channel": "LTS Krypton",
+    "releasedAt": "2026-10-14",
+    "license": "MIT",
+    "source": "https://nodejs.org/dist/v24.22.0/SHASUMS256.txt",
+    "assets": {
+      "darwin-arm64": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-darwin-arm64.tar.gz",
+        "format": "tar.gz",
+        "size": 53049576,
+        "sha256": "6a9724d9b50a5f22b4816cded441b5a8d9ddae546191a5e5b7efa5a5e2ee26d5",
+        "strip": 1,
+        "into": "",
+        "bin": "bin/node",
+        "npmCli": "lib/node_modules/npm/bin/npm-cli.js",
+        "unpackedMax": 230000000,
+        "maxEntries": 7000
+      },
+      "win32-x64": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-win-x64.zip",
+        "format": "zip",
+        "size": 37733703,
+        "sha256": "f9683a19877e12a9b167305c8db71040d812876359de21f0d2e97c3f321f80c3",
+        "strip": 1,
+        "into": "",
+        "bin": "node.exe",
+        "npmCli": "node_modules/npm/bin/npm-cli.js",
+        "unpackedMax": 130000000,
+        "maxEntries": 4000
+      }
+    }
+  },
+  "uv": {
+    "version": "0.13.1",
+    "channel": "stable",
+    "releasedAt": "2026-10-14",
+    "license": "MIT OR Apache-2.0",
+    "source": "https://github.com/astral-sh/uv/releases/tag/0.13.1",
+    "assets": {
+      "darwin-arm64": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-aarch64-apple-darwin.tar.gz",
+        "format": "tar.gz",
+        "size": 14280170,
+        "sha256": "cfe454573412ff7380d15fc7dae5997ab53ffce72fce0a78e91ddbc84001acd2",
+        "strip": 1,
+        "into": "bin",
+        "bin": "bin/uv",
+        "unpackedMax": 40000000,
+        "maxEntries": 20
+      },
+      "win32-x64": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-x86_64-pc-windows-msvc.zip",
+        "format": "zip",
+        "size": 15308685,
+        "sha256": "3b2661a463a5baea7f5076ea2b25ab71d77f36a6c0d809e5350651792f80a672",
+        "strip": 0,
+        "into": "bin",
+        "bin": "bin/uv.exe",
+        "unpackedMax": 45000000,
+        "maxEntries": 20
+      }
+    }
+  }
+}

@@ -24,7 +24,7 @@ const c = (id: PreflightComponent['id'], o: Partial<PreflightComponent> = {}): P
   id,
   essential: ['storage', 'engine'].includes(id),
   ok: true,
-  installable: id === 'craft' || id === 'sandbox',
+  installable: id === 'craft' || id === 'runtimes' || id === 'sandbox',
   ...o
 })
 const report = (components: PreflightComponent[], o: Partial<PreflightReport> = {}): PreflightReport => ({
@@ -68,6 +68,37 @@ describe('qué es esencial y qué no', () => {
   it('ordena según PREFLIGHT_ORDER sin importar el orden de entrada', () => {
     const r = report([c('perms'), c('craft'), c('engine'), c('storage')])
     expect(ordered(r).map((x) => x.id)).toEqual(['storage', 'engine', 'craft', 'perms'])
+  })
+})
+
+describe('Node.js y uv en la preparación (F8-B195)', () => {
+  it('forman parte de «Preparar todo»: entre ArtCraft y el entorno aislado', () => {
+    const r = report([
+      c('sandbox', { ok: false, sizeBytes: 2e9 }),
+      c('runtimes', { ok: false, sizeBytes: 67e6 }),
+      c('craft', { ok: false, sizeBytes: 300e6 })
+    ])
+    expect(installPlan(r).map((x) => x.id)).toEqual(['craft', 'runtimes', 'sandbox'])
+    expect(downloadBytes(r)).toBe(2.367e9)
+    expect(requiredFreeBytes(r)).toBe(300e6 * 4 + 67e6 * 6 + 2e9)
+  })
+  it('NO bloquean: son opcionales, se pueden dejar para más tarde y no impiden continuar', () => {
+    const r = report([c('storage'), c('engine'), c('runtimes', { ok: false, sizeBytes: 67e6, reason: 'missing' })])
+    expect(blocking(r)).toEqual([])
+    expect(optionalPending(r).map((x) => x.id)).toEqual(['runtimes'])
+    expect(canContinue(r)).toBe(true)
+    expect(shouldShow(r, null)).toBe('optional')
+    expect(shouldShow(r, dismissalFor(r))).toBeNull()
+  })
+  it('si la descarga falla, la fila queda «No se pudo» y el resto de la app sigue disponible', () => {
+    const r = report([c('storage'), c('engine'), c('runtimes', { ok: false, sizeBytes: 67e6 })])
+    expect(rowState(r.components[2]!, { runtimes: { state: 'failed', error: 'download' } })).toBe('failed')
+    expect(canContinue(r, { runtimes: { state: 'failed' } })).toBe(true)
+  })
+  it('se reintenta: tras fallar sigue en el plan', () => {
+    const r = report([c('runtimes', { ok: false, sizeBytes: 67e6 })])
+    expect(installPlan(r).map((x) => x.id)).toEqual(['runtimes'])
+    expect(canInstall(r)).toBe(true)
   })
 })
 

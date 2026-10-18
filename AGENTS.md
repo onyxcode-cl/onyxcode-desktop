@@ -128,4 +128,5 @@ No se modifican sin una decisión explícita del dueño (son los controles de se
 - El `openssl` de `/usr/bin` (LibreSSL) no sabe Ed25519: para la clave del actualizador usa OpenSSL 3 (Homebrew). La clave privada nunca va en el repo.
 - Las pruebas con reloj falso (`vi.useFakeTimers`) deben avanzar el reloj del sistema (`vi.setSystemTime`) si el código usa `Date.now()`.
 - Un cambio que parece solo de texto puede romper una guardia (`visible-terms`, `i18n-coverage`): corre los tests de `src/test` antes de dar por bueno un cambio de copy.
+- Node.js y uv de la app (F8-B195): `resources/runtimes/pin.json` es el único lugar de las versiones; cámbialas con `scripts/runtimes/verify-pin.mjs --download` (red). Los conectores locales usan siempre `userData/runtimes` por ruta absoluta; nada de `npx` ni de usarlos para otra cosa.
 - Varios agentes en el mismo árbol: `git add` por rutas, no reformatees archivos ajenos y no uses `git stash`/`reset --hard` sobre trabajo que no es tuyo.

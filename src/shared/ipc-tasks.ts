@@ -7,6 +7,7 @@
 import type { PasteRejected } from './paste-files'
 import type { DoctorReport } from './doctor'
 import type { CraftInstallResult, CraftUiSnapshot } from './craft'
+import type { RuntimesInstallResult, RuntimesSnapshot } from './runtimes'
 import type { PreflightId, PreflightReport } from './preflight'
 import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
@@ -1226,6 +1227,15 @@ export interface TasksInvokeContract {
   'craft:cancel': { req: void; res: void }
   'craft:remove': { req: void; res: void }
 
+  /**
+   * Node.js y uv de la app (F8-B195), para los conectores locales: se descargan bajo demanda de las releases oficiales con huella fijada
+   * (la preparación inicial o el botón «Instalar lo necesario» ES el consentimiento). Clase X en el celular.
+   */
+  'runtimes:status': { req: void; res: RuntimesSnapshot }
+  'runtimes:install': { req: void; res: RuntimesInstallResult }
+  'runtimes:cancel': { req: void; res: void }
+  'runtimes:remove': { req: void; res: void }
+
   /** Revisión de arranque («Preparando Lazunox»): agrega motor, ArtCraft, permisos, ayudante, entorno aislado y disco. Solo mira, sin red. */
   'preflight:run': { req: void; res: PreflightReport }
   /** Una instalación de la pantalla falló: se anota en el registro de problemas y vuelve el detalle redactado para «Copiar detalle». */
@@ -1470,6 +1480,10 @@ export const TASKS_INVOKE_CHANNELS = [
   'craft:install',
   'craft:cancel',
   'craft:remove',
+  'runtimes:status',
+  'runtimes:install',
+  'runtimes:cancel',
+  'runtimes:remove',
   'preflight:run',
   'preflight:fail',
   'doctor:run',

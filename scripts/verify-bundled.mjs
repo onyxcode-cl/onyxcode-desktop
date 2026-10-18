@@ -181,6 +181,10 @@ async function main() {
   const craftPin = join(res, 'app.asar.unpacked/resources/craft/pin.json')
   const craftOk = existsSync(craftPin) && /"deckcraft"/.test(readFileSync(craftPin, 'utf8'))
   record('pin de ArtCraft incluido (descarga bajo demanda)', craftOk, craftOk ? 'presente' : 'falta resources/craft/pin.json en app.asar.unpacked')
+  // El pin de Node.js y uv (conectores locales) también: sin él no hay nada que descargar ni verificar.
+  const rtPin = join(res, 'app.asar.unpacked/resources/runtimes/pin.json')
+  const rtOk = existsSync(rtPin) && /"node"/.test(readFileSync(rtPin, 'utf8')) && /"uv"/.test(readFileSync(rtPin, 'utf8'))
+  record('pin de Node.js y uv incluido (descarga bajo demanda)', rtOk, rtOk ? 'presente' : 'falta resources/runtimes/pin.json en app.asar.unpacked')
   const skillsDir = join(root, 'resources/opencode/skills')
   for (const sk of ['docx', 'xlsx', 'pptx', 'pdf', 'ruta-rapida', 'soporte-remoto']) {
     const candidates = [join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'SKILL.md')]

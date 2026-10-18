@@ -8,7 +8,7 @@
  *      diálogo del sistema: su contenido NO pasa por esta pantalla. Luego «Instalar».
  *   3. «Listo»: cómo entrar a la cuenta (desde el chat; la contraseña se escribe en el sitio del servicio, no aquí).
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, ExternalLink, FileJson, Loader2, X } from 'lucide-react'
 import type { CatalogLocalConnector } from '@shared/catalogo'
 import type { LocalConnectorReadiness } from '@shared/mcp-catalog'
@@ -22,10 +22,10 @@ import { suggestName } from '../settings/impl/McpCatalogDialog'
 import { IconTile } from './Ficha'
 import { LocalFacts, LocalTools, previewLocalJson } from './LocalFacts'
 import { Modal } from './Modal'
+import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
+import { DISPLAY_NAME } from '@shared/brand'
 
 type Step = 1 | 2 | 3
-
-const MANAGER_URL = { uv: 'https://docs.astral.sh/uv/getting-started/installation/', npm: 'https://nodejs.org/' } as const
 
 /** Texto suelto de la ficha (pasos de preparación, cómo entrar): `pers.cat.conn.<id>.<clave>`; vacío si la ficha no lo trae. */
 export const localText = (item: CatalogLocalConnector, key: string): string => tx(`pers.cat.conn.${item.id}.${key}`, '')
@@ -46,6 +46,7 @@ export function LocalConnectWizard({
   readiness,
   onPickClient,
   onInstall,
+  onRuntimeChanged,
   onClose
 }: {
   item: CatalogLocalConnector
@@ -53,6 +54,8 @@ export function LocalConnectWizard({
   readiness: LocalConnectorReadiness | undefined
   onPickClient: (id: string) => Promise<{ fileName: string; hint: string } | null>
   onInstall: (req: { id: string; name: string; askEachUse: boolean }) => Promise<void>
+  /** Se instaló Node.js y uv de la app: vuelve a pedir el estado del equipo (la ficha pasa de «falta» a «listo»). */
+  onRuntimeChanged: () => Promise<void>
   onClose: () => void
 }): React.JSX.Element {
   const t = useT()
@@ -66,13 +69,24 @@ export function LocalConnectWizard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [rtBusy, setRtBusy] = useState(false)
+  const [rtPct, setRtPct] = useState<number | null>(null)
+  const [rtError, setRtError] = useState<string | null>(null)
+  const alive = useRef(true)
+  useEffect(
+    () => () => {
+      alive.current = false
+    },
+    []
+  )
   const name = suggestName(item.name, existingNames)
   const steps = prepSteps(item)
 
   const platformOk = readiness?.platformOk ?? false
   const managerFound = readiness?.managerFound ?? false
   const needsClient = !!rt.clientFile
-  const canInstall = !busy && platformOk && managerFound && (!needsClient || !!picked)
+  // Si falta Node.js o uv, «Instalar» los descarga primero (con su aviso a la vista) y sigue con el conector.
+  const canInstall = !busy && !rtBusy && platformOk && (!needsClient || !!picked)
   const stepLabel = (n: Step): string => (n === 1 ? t('pers.local.step1') : n === 2 ? t('pers.local.step2') : t('pers.local.step3'))
 
   const pick = async (): Promise<void> => {
@@ -85,8 +99,40 @@ export function LocalConnectWizard({
     }
   }
 
+  /** Descarga Node.js y uv de la app (con huella fijada) y devuelve `true` si quedaron listos. */
+  const installRuntime = async (): Promise<boolean> => {
+    setRtBusy(true)
+    setRtError(null)
+    setRtPct(null)
+    const poll = setInterval(() => {
+      void runtimesApi
+        .status()
+        .then((st) => alive.current && setRtPct(runtimesPct(st)))
+        .catch(() => undefined)
+    }, 1000)
+    try {
+      const r = await runtimesApi.install()
+      if (!r.ok) {
+        if (alive.current) setRtError(r.error)
+        return false
+      }
+      await onRuntimeChanged()
+      return true
+    } catch {
+      if (alive.current) setRtError('download')
+      return false
+    } finally {
+      clearInterval(poll)
+      if (alive.current) {
+        setRtBusy(false)
+        setRtPct(null)
+      }
+    }
+  }
+
   const install = async (): Promise<void> => {
     if (!canInstall) return
+    if (!managerFound && !(await installRuntime())) return
     setBusy(true)
     setError(null)
     try {
@@ -228,8 +274,38 @@ export function LocalConnectWizard({
             </p>
           )}
           {platformOk && !managerFound && (
-            <p role="alert" data-testid="pers-local-need-manager" className="text-sm text-danger">
-              {t(rt.manager === 'uv' ? 'pers.local.needUv' : 'pers.local.needNode', { url: MANAGER_URL[rt.manager] })}
+            <div data-testid="pers-local-need-manager" className="rounded-xl border border-warning/40 bg-warning/10 p-3.5 text-sm">
+              <p>
+                {t('pers.local.needRuntime', {
+                  what: t(rt.manager === 'uv' ? 'pers.local.what.uv' : 'pers.local.what.npm'),
+                  mb: Math.max(1, Math.round((readiness?.installBytes ?? 0) / 1e6)),
+                  app: DISPLAY_NAME
+                })}
+              </p>
+              <Button
+                variant="secondary"
+                className="mt-2.5"
+                data-testid="pers-local-install-runtime"
+                disabled={rtBusy || busy}
+                onClick={() => void installRuntime()}
+              >
+                {rtBusy ? <Loader2 size={14} className="animate-spin" /> : null}{' '}
+                {rtBusy
+                  ? rtPct !== null
+                    ? t('pers.local.installingRuntimePct', { pct: rtPct })
+                    : t('pers.local.installingRuntime')
+                  : t('pers.local.installRuntime')}
+              </Button>
+              {rtError && (
+                <p role="alert" data-testid="pers-local-runtime-error" className="mt-2 text-sm text-danger">
+                  {t(runtimesErrorKey(rtError))}
+                </p>
+              )}
+            </div>
+          )}
+          {platformOk && managerFound && readiness && readiness.runtime !== 'missing' && (
+            <p data-testid="pers-local-runtime-ready" className="text-xs text-muted">
+              {t(readiness.runtime === 'app' ? 'pers.local.runtime.app' : 'pers.local.runtime.system', { app: DISPLAY_NAME })}
             </p>
           )}
           {steps.length > 0 && (

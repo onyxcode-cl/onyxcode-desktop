@@ -412,6 +412,11 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'craft:install': 'X',
   'craft:cancel': 'X',
   'craft:remove': 'X',
+  // Node.js y uv de la app (F8-B195): descargan y ejecutan programas; solo desde el Mac, con la persona delante.
+  'runtimes:status': 'X',
+  'runtimes:install': 'X',
+  'runtimes:cancel': 'X',
+  'runtimes:remove': 'X',
   'preflight:run': 'X',
   'preflight:fail': 'X',
   'doctor:run': 'X', // revela permisos y software instalado de este Mac: solo en el Mac

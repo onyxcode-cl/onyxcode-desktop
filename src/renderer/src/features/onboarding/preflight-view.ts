@@ -6,12 +6,14 @@ import { localeTag, type MsgKey } from '@shared/i18n'
 import type { PreflightComponent, PreflightId, RowState } from '@shared/preflight'
 import { officeErrorKey } from '../settings/impl/component-install'
 import { SETUP_ERRORS } from '../tasks/impl/sandbox-view'
+import { runtimesErrorKey } from '../settings/impl/runtimes-view'
 
 export const LABELS: Record<PreflightId, MsgKey> = {
   storage: 'preflight.c.storage',
   disk: 'preflight.c.disk',
   engine: 'preflight.c.engine',
   craft: 'preflight.c.craft',
+  runtimes: 'preflight.c.runtimes',
   sandbox: 'preflight.c.sandbox',
   helper: 'preflight.c.helper',
   perms: 'preflight.c.perms',
@@ -30,6 +32,7 @@ export const STATE_LABELS: Record<RowState, MsgKey> = {
 const HINTS: Partial<Record<PreflightId, Record<string, MsgKey>>> = {
   engine: { 'not-found': 'preflight.hint.engine.not-found', 'not-responding': 'preflight.hint.engine.not-responding' },
   craft: { missing: 'preflight.hint.craft.missing', incomplete: 'preflight.hint.craft.incomplete' },
+  runtimes: { missing: 'preflight.hint.runtimes.missing', broken: 'preflight.hint.runtimes.broken' },
   sandbox: { needsSetup: 'preflight.hint.sandbox.needsSetup', broken: 'preflight.hint.sandbox.broken' },
   helper: { 'not-found': 'preflight.hint.helper.not-found' },
   perms: {
@@ -66,6 +69,7 @@ export function hintKey(c: PreflightComponent): MsgKey | null {
 export function failureKey(id: PreflightId, code: string | undefined): MsgKey {
   if (id === 'sandbox') return (code && SETUP_ERRORS[code]) || 'tasks.sandbox.error.generic'
   if (id === 'engine') return 'preflight.error.engine'
+  if (id === 'runtimes') return runtimesErrorKey(code)
   return officeErrorKey(code)
 }
 

@@ -56,7 +56,7 @@ function fakeRunner(calls: Call[], opts: { fail?: boolean; wrongVersion?: boolea
   return async (file, args, o) => {
     calls.push({ file, args, env: o.env, cwd: o.cwd })
     if (opts.fail) return { code: 1, output: 'boom: no hay red' }
-    const last = args.includes('install') || args[0] === 'ci'
+    const last = args.includes('install') || args.includes('ci')
     if (last) {
       const v = opts.wrongVersion ? '9.9.9' : undefined
       if (file.endsWith('uv')) {
@@ -109,7 +109,9 @@ describe('requisitos de este equipo', () => {
     expect(localReadiness(google, { platform: 'darwin', find: () => '/x' })).toEqual({
       platformOk: true,
       manager: 'uv',
-      managerFound: true
+      managerFound: true,
+      runtime: 'system',
+      installBytes: 0
     })
     expect(localReadiness(google, { platform: 'win32', find: () => '/x' }).platformOk).toBe(false)
     expect(localReadiness(google, { platform: 'darwin', find: () => null }).managerFound).toBe(false)
@@ -117,6 +119,76 @@ describe('requisitos de este equipo', () => {
       manager: 'npm',
       managerFound: false
     })
+  })
+})
+
+describe('runtime de la app (Node.js y uv descargados por Lazunox, F8-B195)', () => {
+  const app = {
+    uv: '/ud/runtimes/uv-0.13.1/bin/uv',
+    node: '/ud/runtimes/node-24.22.0/bin/node',
+    npmCli: '/ud/runtimes/node-24.22.0/lib/node_modules/npm/bin/npm-cli.js'
+  }
+  const none = { uv: null, node: null, npmCli: null }
+
+  it('readiness distingue «app», «sistema» y «falta», y ofrece cuánto bajaría instalar lo necesario', () => {
+    const find = (n: string): string | null => (['uv', 'npm', 'node'].includes(n) ? `/sys/${n}` : null)
+    expect(localReadiness(google, { platform: 'darwin', find, app: () => app }).runtime).toBe('app')
+    expect(localReadiness(microsoft, { platform: 'darwin', find, app: () => app }).runtime).toBe('app')
+    expect(localReadiness(google, { platform: 'darwin', find, app: () => none }).runtime).toBe('system')
+    const missing = localReadiness(google, { platform: 'darwin', find: () => null, app: () => none, appMissingBytes: () => 67_329_746 })
+    expect(missing).toMatchObject({ runtime: 'missing', managerFound: false, installBytes: 67_329_746 })
+    // Con runtime (de la app o del sistema) no hay nada que bajar; en una plataforma sin conectores locales tampoco.
+    expect(localReadiness(google, { platform: 'darwin', find, app: () => app, appMissingBytes: () => 5 }).installBytes).toBe(0)
+    expect(localReadiness(google, { platform: 'win32', find: () => null, appMissingBytes: () => 5 }).installBytes).toBe(0)
+    // npm necesita Node Y npm-cli.js de la app; un Node sin npm no cuenta como runtime de la app.
+    expect(localReadiness(microsoft, { platform: 'darwin', find: () => null, app: () => ({ ...none, node: app.node }) }).runtime).toBe(
+      'missing'
+    )
+  })
+
+  it('uv: usa SIEMPRE el de la app (ruta absoluta) aunque haya otro en el sistema, con PATH acotado', async () => {
+    const calls: Call[] = []
+    const client = { ...normalizeGoogleClientFile(goodClient), at: 1_000 }
+    await installLocalFiles(deps(calls, { app: () => app }), google, 'google', client)
+    expect(calls.map((c) => c.file)).toEqual([app.uv, app.uv])
+    for (const c of calls) {
+      expect(c.env.PATH).toBe('/ud/runtimes/uv-0.13.1/bin:/usr/bin:/bin')
+      expect(c.args).toContain('--no-config')
+    }
+    expect(calls[1].args).toEqual(expect.arrayContaining(['--require-hashes', '--only-binary', ':all:']))
+  })
+
+  it('npm: lanza node + npm-cli.js de la app por ruta absoluta (no `npm` del sistema), con --ignore-scripts y PATH acotado', async () => {
+    const calls: Call[] = []
+    const r = await installLocalFiles(deps(calls, { app: () => app }), microsoft, 'microsoft', null)
+    expect(calls).toHaveLength(1)
+    expect(calls[0].file).toBe(app.node)
+    expect(calls[0].args.slice(0, 3)).toEqual([app.npmCli, 'ci', '--ignore-scripts'])
+    expect(calls[0].env.PATH).toBe('/ud/runtimes/node-24.22.0/bin:/usr/bin:/bin')
+    expect(r.bin).toBe(app.node)
+    expect(r.entry.command[0]).toBe(app.node) // el servidor se lanza con el Node de la app
+  })
+
+  it('sin runtime de la app, el del sistema vale de respaldo (rutas absolutas y PATH acotado a sus carpetas)', async () => {
+    const calls: Call[] = []
+    await installLocalFiles(deps(calls, { app: () => none }), microsoft, 'microsoft', null)
+    expect(calls[0].file).toBe('/opt/fake/bin/npm')
+    expect(calls[0].env.PATH).toBe('/opt/fake/bin:/usr/bin:/bin')
+  })
+
+  it('sin ninguno: el error manda a «Instalar lo necesario», nunca a instalar a mano', async () => {
+    const calls: Call[] = []
+    await expect(
+      installLocalFiles(deps(calls, { find: () => null, app: () => none }), google, 'google', {
+        ...normalizeGoogleClientFile(goodClient),
+        at: 1_000
+      })
+    ).rejects.toThrow(/Instalar lo necesario/)
+    await expect(installLocalFiles(deps(calls, { find: () => null, app: () => none }), microsoft, 'microsoft', null)).rejects.toThrow(
+      /Instalar lo necesario/
+    )
+    expect(calls).toEqual([])
+    expect(existsSync(join(base, 'google'))).toBe(false)
   })
 })
 

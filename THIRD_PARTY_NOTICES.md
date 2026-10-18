@@ -133,3 +133,11 @@ de la app. Las skills de oficina lo emplean para crear y previsualizar documento
 
 Lazunox es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para
 indicar compatibilidad.
+
+### Conectores locales: Node.js y uv (se descargan bajo demanda)
+
+- **Node.js** 24.22.0 (licencia MIT, <https://github.com/nodejs/node/blob/main/LICENSE>) y **uv** 0.13.1 (MIT o Apache-2.0,
+  <https://github.com/astral-sh/uv>). **No se redistribuyen con Lazunox**: la preparación inicial o el botón «Instalar lo necesario» los descarga de
+  `nodejs.org` y de las releases de GitHub de astral-sh/uv, se verifican por tamaño y SHA-256 fijados (`resources/runtimes/pin.json`) y se guardan en la
+  carpeta de datos de la app; se pueden quitar desde Ajustes. Solo los usan los conectores locales aprobados por la persona. Lazunox no está afiliado a
+  la OpenJS Foundation ni a Astral.

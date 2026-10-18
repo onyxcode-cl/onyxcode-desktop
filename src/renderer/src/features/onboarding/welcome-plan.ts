@@ -2,14 +2,13 @@
  * Lógica pura de la pantalla de bienvenida del primer uso: qué estado tiene cada componente que la app prepara y cuándo se puede
  * decir «todo listo». Sin React ni IPC (se prueba con `welcome-plan.test.ts`).
  */
-export type WelcomeItemId = 'engine' | 'craft' | 'sandbox'
+export type WelcomeItemId = 'engine' | 'craft' | 'runtimes' | 'sandbox'
 export type WelcomeItemState = 'checking' | 'ready' | 'pending' | 'downloading' | 'failed'
 
 export type WelcomeItems = Partial<Record<WelcomeItemId, WelcomeItemState>>
 
 /** Orden en que se muestran y se instalan. */
-export const WELCOME_ORDER: readonly WelcomeItemId[] = ['engine', 'craft', 'sandbox']
-
+export const WELCOME_ORDER: readonly WelcomeItemId[] = ['engine', 'craft', 'runtimes', 'sandbox']
 
 export type WelcomeOverall = 'working' | 'ready' | 'failed'
 

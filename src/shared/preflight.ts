@@ -3,24 +3,34 @@
  * instala y en qué orden, cuánto se descarga y cuándo hay que mostrar la pantalla. Sin Electron, React ni IPC: la comparten el servicio de
  * main (`src/main/preflight`), la pantalla del renderer y el informe de Diagnóstico (se prueba con `preflight.test.ts`).
  *
- * Esencial = sin eso la app no arranca (solo el motor de agentes y la carpeta de datos). No esencial = todo lo demás: ArtCraft, el
+ * Esencial = sin eso la app no arranca (solo el motor de agentes y la carpeta de datos). No esencial = todo lo demás: ArtCraft, Node.js y uv (para los conectores locales), el
  * entorno aislado de Windows, el espacio en disco para instalarlos, permisos de macOS, ubicación de la app y ayudante de control. Se
  * avisan como «Pendiente», se puede continuar («Más tarde») y se ofrecen cuando se necesiten o desde Ajustes.
  */
 
-export type PreflightId = 'storage' | 'disk' | 'engine' | 'craft' | 'sandbox' | 'helper' | 'perms' | 'location'
+export type PreflightId = 'storage' | 'disk' | 'engine' | 'craft' | 'runtimes' | 'sandbox' | 'helper' | 'perms' | 'location'
 
 /** Orden en que se muestran y se instalan. */
-export const PREFLIGHT_ORDER: readonly PreflightId[] = ['storage', 'disk', 'engine', 'craft', 'sandbox', 'helper', 'perms', 'location']
+export const PREFLIGHT_ORDER: readonly PreflightId[] = [
+  'storage',
+  'disk',
+  'engine',
+  'craft',
+  'runtimes',
+  'sandbox',
+  'helper',
+  'perms',
+  'location'
+]
 
 /** Lo que el botón «Instalar lo que falta» instala, en este orden. El motor viene dentro de la app: no se descarga. */
-export const INSTALL_ORDER: readonly PreflightId[] = ['craft', 'sandbox']
+export const INSTALL_ORDER: readonly PreflightId[] = ['craft', 'runtimes', 'sandbox']
 
 /** Tamaño aproximado del entorno aislado de Windows (la distro propia): «unos 2 GB de disco». */
 export const SANDBOX_APPROX_BYTES = 2_000_000_000
 
-/** Cuánto espacio libre exige cada componente respecto de lo que descarga (el de ArtCraft = `CRAFT_DISK_FACTOR` de craft-install). */
-export const DISK_FACTOR: Partial<Record<PreflightId, number>> = { craft: 4, sandbox: 1 }
+/** Cuánto espacio libre exige cada componente respecto de lo que descarga (ArtCraft = `CRAFT_DISK_FACTOR` de craft-install; Node.js y uv = `RUNTIME_DISK_FACTOR`). */
+export const DISK_FACTOR: Partial<Record<PreflightId, number>> = { craft: 4, runtimes: 6, sandbox: 1 }
 
 export interface PreflightComponent {
   id: PreflightId
@@ -79,7 +89,7 @@ export function downloadBytes(report: PreflightReport): number {
   return installPlan(report).reduce((n, c) => n + (c.sizeBytes ?? 0), 0)
 }
 
-/** Espacio libre necesario para instalar lo que falta (ArtCraft ×4, entorno aislado ×1). */
+/** Espacio libre necesario para instalar lo que falta (ArtCraft ×4, Node.js y uv ×6, entorno aislado ×1). */
 export function requiredFreeBytes(report: PreflightReport): number {
   return installPlan(report).reduce((n, c) => n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1), 0)
 }

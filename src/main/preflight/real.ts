@@ -14,6 +14,7 @@ import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { makeRedactor } from '../diagnostics/redact'
 import { E2E_HEADLESS } from '../e2e-headless'
 import { craftService } from '../office/craft/service'
+import { runtimesService } from '../runtimes/service'
 import { getOpencodeInfo } from '../opencode/binary'
 import { resolveOpencodeAsync } from '../opencode/server'
 import type { ComputerService } from '../computer/service'
@@ -64,6 +65,16 @@ function realDeps(): PreflightDeps {
       return { found: info.found, version: info.version }
     },
     craft: () => craftService().check(),
+    runtimes: () => {
+      const snap = runtimesService().snapshot()
+      return {
+        offered: snap.offered,
+        ready: snap.ready,
+        broken: snap.items.some((i) => i.state === 'broken'),
+        sizeBytes: snap.missingBytes,
+        version: snap.items.find((i) => i.id === 'node')?.version
+      }
+    },
     sandbox: sandboxStatus
       ? async () => sandboxStatus().then((s) => (s.backend === 'wsl' ? { state: s.state, detail: s.detail } : null))
       : undefined,
@@ -108,6 +119,7 @@ function testDeps(kind: string): PreflightDeps {
     ...base,
     engine: async () => (kind === 'sin-motor' ? { found: false, version: null } : { found: true, version: '1.18.32' }),
     craft: () => ({ state: 'missing', version: '0.5.0', sizeBytes: 205_000_000, parts: [] }),
+    runtimes: () => ({ offered: process.platform === 'darwin', ready: false, broken: false, sizeBytes: 67_329_746 }),
     sandbox: undefined,
     helperPresent: undefined,
     mac:

@@ -208,10 +208,15 @@ export const personalizacion = {
   'pers.local.perm.account': 'Entras a tu cuenta en tu navegador; el programa guarda el acceso en su carpeta',
   'pers.local.perm.where': 'Todo queda en una carpeta de Lazunox y se borra al quitar el conector',
   'pers.local.signinTitle': 'Cómo entrar a tu cuenta',
-  'pers.local.needUv':
-    'Para instalarlo hace falta «uv», el instalador de programas de Python, y no lo encontré en este equipo. Instálalo desde {url} y vuelve a intentarlo.',
-  'pers.local.needNode':
-    'Para instalarlo hace falta Node.js, y no lo encontré en este equipo. Instálalo desde {url} y vuelve a intentarlo.',
+  'pers.local.needRuntime':
+    'Para instalarlo hace falta {what}, y no está en este equipo. {app} lo descarga por ti, una sola vez (unos {mb} MB en total, de nodejs.org y github.com) y comprueba que es auténtico antes de usarlo. No pide contraseña de administrador.',
+  'pers.local.what.uv': '«uv» (el instalador de programas de Python)',
+  'pers.local.what.npm': 'Node.js',
+  'pers.local.installRuntime': 'Instalar lo necesario',
+  'pers.local.installingRuntime': 'Descargando lo necesario…',
+  'pers.local.installingRuntimePct': 'Descargando lo necesario… {pct} %',
+  'pers.local.runtime.app': 'Listo: se usa el programa que {app} descargó y verificó.',
+  'pers.local.runtime.system': 'Listo: se usa el que ya tenías instalado en el equipo.',
   'pers.local.needPlatform': 'Todavía no está disponible en este sistema. Por ahora solo funciona en Mac.',
   'pers.local.step1': 'Lee esto',
   'pers.local.step2': 'Prepara e instala',
