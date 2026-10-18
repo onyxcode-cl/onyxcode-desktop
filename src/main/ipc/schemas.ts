@@ -1022,6 +1022,14 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     inputs: record(str({ max: 4096 }), 10),
     enable: bool,
     askEachUse: bool
+  }),
+  'mcp:localPickClient': obj({ id: str({ max: 64, min: 1, pattern: /^[a-z0-9-]+$/ }) }),
+  'mcp:installLocal': obj({
+    id: str({ max: 64, min: 1, pattern: /^[a-z0-9-]+$/ }),
+    name: mcpName,
+    understandThirdParty: literal(true),
+    understandData: literal(true),
+    askEachUse: bool
   })
 }
 

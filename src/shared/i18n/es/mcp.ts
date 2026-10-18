@@ -136,5 +136,21 @@ export const mcp = {
   'mcp.dlg.verified': 'Verificado el {date}',
   'mcp.dlg.docs': 'Documentación oficial',
   'mcp.dlg.cancel': 'Cancelar',
-  'mcp.dlg.submit': 'Añadir y conectar'
+  'mcp.dlg.submit': 'Añadir y conectar',
+  'mcp.cat.google-workspace.title': 'Gmail, Google Calendar y Google Drive',
+  'mcp.cat.google-workspace.description':
+    'Lee tu correo de Gmail, tu agenda de Google Calendar y tus archivos de Google Drive. Solo consulta: no cambia nada.',
+  'mcp.cat.google-workspace.cap1': 'Buscar y leer tus correos de Gmail, con sus conversaciones y etiquetas',
+  'mcp.cat.google-workspace.cap2': 'Ver tus calendarios, los eventos de tu agenda y cuándo estás libre',
+  'mcp.cat.google-workspace.cap3': 'Buscar y leer tus archivos de Google Drive y ver con quién están compartidos',
+  'mcp.cat.google-workspace.leaves':
+    'Instala un programa de un tercero en tu equipo. Lo que la IA pida (correos, eventos, archivos) pasa de Google a ese programa y de ahí al modelo que uses.',
+  'mcp.cat.microsoft-365.title': 'Outlook, Calendario y OneDrive',
+  'mcp.cat.microsoft-365.description':
+    'Lee tu correo de Outlook, tu calendario y tus archivos de OneDrive (cuentas personales de Microsoft). Solo consulta.',
+  'mcp.cat.microsoft-365.cap1': 'Buscar y leer tus correos de Outlook y ver tus carpetas',
+  'mcp.cat.microsoft-365.cap2': 'Ver tus calendarios y los eventos de tu agenda',
+  'mcp.cat.microsoft-365.cap3': 'Buscar y leer tus archivos de OneDrive',
+  'mcp.cat.microsoft-365.leaves':
+    'Instala un programa de un tercero en tu equipo. Lo que la IA pida (correos, eventos, archivos) pasa de Microsoft a ese programa y de ahí al modelo que uses.'
 } as const

@@ -183,5 +183,61 @@ export const personalizacion = {
   'merr.pers.skill.unreadable': 'No se pudo leer la carpeta.',
   'merr.pers.skill.changed': 'La carpeta cambió o la confirmación caducó. Elígela de nuevo.',
   'merr.pers.skill.reserved': 'Ese nombre lo usa una habilidad que viene con la app, o no se puede usar aquí.',
-  'merr.pers.skill.exists': 'Ya tienes una habilidad con ese nombre. Quítala primero si quieres reemplazarla.'
+  'merr.pers.skill.exists': 'Ya tienes una habilidad con ese nombre. Quítala primero si quieres reemplazarla.',
+  'pers.local.hint': 'Instala un programa en tu equipo',
+  'pers.local.tag.readOnly': 'Solo consulta',
+  'pers.local.installsTitle': 'Qué se instala en tu equipo',
+  'pers.local.fact.program': 'Un programa de {author} (licencia {license}), versión {version}, que queda fijada.',
+  'pers.local.fact.source': 'Código abierto, publicado en {host}.',
+  'pers.local.fact.download': 'Se descarga de {hosts}. Tamaño aproximado: {mb} MB.',
+  'pers.local.fact.verify':
+    'Lazunox comprueba la huella de cada archivo que baja contra una lista fijada dentro de la app. Si algo no coincide, no se instala nada.',
+  'pers.local.fact.where':
+    'Se instala solo en una carpeta de Lazunox. Al quitarlo se borra todo, incluido el acceso a tu cuenta que guarde el programa.',
+  'pers.local.fact.token': 'El acceso a tu cuenta lo guarda el propio programa en la subcarpeta «{dir}» de esa carpeta; Lazunox no lo ve.',
+  'pers.local.sandboxTitle': 'Cómo corre',
+  'pers.local.sandbox':
+    'Corre en tu equipo con los permisos de tu usuario, fuera del aislamiento de Overdrive (Overdrive nunca lo usa). Lazunox no revisó el código de este programa. Por eso es de solo consulta: todo lo que cambia algo está desactivado.',
+  'pers.local.toolsSummary': 'Herramientas: {allowed} se pueden usar y {blocked} están desactivadas',
+  'pers.local.toolsAllowed': 'Se pueden usar',
+  'pers.local.toolsBlocked': 'Desactivadas (cambian algo o guardan archivos en tu equipo)',
+  'pers.local.toolsAuth': 'Sirven para entrar a tu cuenta: {list}',
+  'pers.local.perm.readOnly': 'Solo consulta: todo lo que cambia algo está desactivado en esta versión',
+  'pers.local.perm.program': 'Instala y ejecuta un programa en tu equipo',
+  'pers.local.perm.account': 'Entras a tu cuenta en tu navegador; el programa guarda el acceso en su carpeta',
+  'pers.local.perm.where': 'Todo queda en una carpeta de Lazunox y se borra al quitar el conector',
+  'pers.local.signinTitle': 'Cómo entrar a tu cuenta',
+  'pers.local.needUv':
+    'Para instalarlo hace falta «uv», el instalador de programas de Python, y no lo encontré en este equipo. Instálalo desde {url} y vuelve a intentarlo.',
+  'pers.local.needNode':
+    'Para instalarlo hace falta Node.js, y no lo encontré en este equipo. Instálalo desde {url} y vuelve a intentarlo.',
+  'pers.local.needPlatform': 'Todavía no está disponible en este sistema. Por ahora solo funciona en Mac.',
+  'pers.local.step1': 'Lee esto',
+  'pers.local.step2': 'Prepara e instala',
+  'pers.local.step3': 'Listo',
+  'pers.local.title': 'Instala y ejecuta un programa en tu equipo',
+  'pers.local.ackThird': 'Entiendo que esto instala un programa de un tercero.',
+  'pers.local.ackData': 'Entiendo que {title} podrá ver mis datos cuando se lo pida, y que Lazunox se los pasará al modelo.',
+  'pers.local.ackNeed': 'Marca las dos casillas para seguir.',
+  'pers.local.prepareTitle': 'Antes de instalar',
+  'pers.local.once': 'Se hace una sola vez.',
+  'pers.local.openHelp': 'Abrir la página de Google',
+  'pers.local.pick': 'Elegir el archivo…',
+  'pers.local.picked': 'Archivo elegido: {name} (cliente {hint})',
+  'pers.local.pickNote':
+    'Lazunox lo guarda solo en la carpeta del conector, con permiso solo para tu usuario, y no lo muestra. Tampoco se lo pasa a la IA.',
+  'pers.local.pickTitle': 'Elige el archivo JSON del cliente de Google',
+  'pers.local.pickMissing': 'Elige el archivo del cliente para poder instalar.',
+  'pers.local.install': 'Instalar',
+  'pers.local.installing': 'Instalando… puede tardar unos minutos',
+  'pers.local.askEach': 'Preguntar antes de cada uso',
+  'pers.local.showExact': 'Ver exactamente qué se guarda',
+  'pers.local.done': '{title} está instalado',
+  'pers.local.doneNote': 'Falta un último paso: entrar a tu cuenta. Hazlo desde el chat, como se explica abajo.',
+  'pers.local.unverified': 'Aún sin probar con una cuenta real: si algo falla al entrar, quítalo y cuéntanos qué pasó.',
+  'pers.local.removeNote':
+    'Al quitarlo se borra su carpeta entera: el programa, el acceso a tu cuenta, el archivo del cliente y los registros.',
+  'pers.local.removeMessage':
+    'Se quitará el conector «{name}» y se borrará su carpeta entera (el programa y el acceso a tu cuenta que guardó). En tu cuenta de Google o Microsoft puedes además revocar el permiso en la página de seguridad de tu cuenta.',
+  'pers.local.editBlocked': 'Este conector se gestiona solo desde Personalización.'
 } as const

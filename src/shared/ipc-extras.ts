@@ -385,6 +385,21 @@ export interface IpcExtrasInvokeContract {
     req: { id: string; name: string; inputs: Record<string, string>; enable: boolean; askEachUse: boolean }
     res: AppMcpConfig
   }
+  /**
+   * Conector LOCAL (F8-B186): diálogo del sistema (lo abre `main`) para elegir el archivo del cliente OAuth de la persona. El contenido
+   * se valida y se guarda en memoria de `main`; NUNCA vuelve al renderer (solo el inicio del identificador, que no es secreto).
+   * `null` si se cancela.
+   */
+  'mcp:localPickClient': { req: { id: string }; res: { fileName: string; hint: string } | null }
+  /**
+   * Instala un conector LOCAL: descarga el programa fijado (versión y hashes del catálogo), lo deja en su carpeta y escribe el servidor
+   * con solo consulta. Exige las DOS casillas (`understandThirdParty`: instala un programa de un tercero; `understandData`: verá mis
+   * datos); el esquema rechaza cualquier otra cosa que `true`. Nada que escriba la persona entra en un comando.
+   */
+  'mcp:installLocal': {
+    req: { id: string; name: string; understandThirdParty: true; understandData: true; askEachUse: boolean }
+    res: AppMcpConfig
+  }
 }
 
 export interface IpcExtrasEventContract {
@@ -451,7 +466,9 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'mcp:setEnabled',
   'mcp:revealConfig',
   'mcp:catalog',
-  'mcp:installCatalog'
+  'mcp:installCatalog',
+  'mcp:localPickClient',
+  'mcp:installLocal'
 ] as const satisfies readonly IpcExtrasInvokeChannel[]
 
 export const IPC_EXTRAS_EVENT_CHANNELS = [

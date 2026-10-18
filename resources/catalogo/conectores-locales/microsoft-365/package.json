@@ -1,0 +1,9 @@
+{
+  "name": "lazunox-conector-microsoft-365",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Instalación fijada del servidor local de Microsoft 365 (solo consulta)",
+  "dependencies": {
+    "@softeria/ms-365-mcp-server": "0.157.2"
+  }
+}

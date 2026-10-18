@@ -11,6 +11,8 @@ import { openExternalUrl } from '../../lib/open-external'
 import { useLocale, useT } from '../../lib/i18n'
 import { errorMessage } from '../../lib/opencode'
 import { IconTile, ReviewedSeal, Tag } from './Ficha'
+import { localText } from './ConectarLocal'
+import { LocalFacts, LocalTools } from './LocalFacts'
 import { Modal } from './Modal'
 import { authKey, formatBytes, type ConnectorState } from './logic'
 
@@ -259,7 +261,7 @@ export function ConnectorDetail({
   const ct = catalogText(item)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const host = new URL(item.url).host
+  const host = item.transport === 'remote' ? new URL(item.url).host : ''
   const added = state !== 'none'
   const run = async (fn: () => Promise<void>, keepBusy = false): Promise<void> => {
     setBusy(true)
@@ -329,12 +331,22 @@ export function ConnectorDetail({
         </Section>
       </div>
       <Section title={t('pers.detail.asks')}>
-        <ul className="list-disc space-y-1 pl-5">
-          <li>{t(authKey(item))}</li>
-          <li>{item.writes ? t('pers.perm.writes') : t('pers.perm.readOnly')}</li>
-          <li>{t('pers.perm.host', { host })}</li>
-          <li>{t('pers.perm.askEach')}</li>
-        </ul>
+        {item.transport === 'local' ? (
+          <ul className="list-disc space-y-1 pl-5">
+            <li>{t('pers.local.perm.program')}</li>
+            <li>{t('pers.local.perm.readOnly')}</li>
+            <li>{t('pers.local.perm.account')}</li>
+            <li>{t('pers.local.perm.where')}</li>
+            <li>{t('pers.perm.askEach')}</li>
+          </ul>
+        ) : (
+          <ul className="list-disc space-y-1 pl-5">
+            <li>{t(authKey(item))}</li>
+            <li>{item.writes ? t('pers.perm.writes') : t('pers.perm.readOnly')}</li>
+            <li>{t('pers.perm.host', { host })}</li>
+            <li>{t('pers.perm.askEach')}</li>
+          </ul>
+        )}
         {item.accountTested === false && (
           <p data-testid="pers-untested-detail" className="mt-2 text-xs text-muted">
             {t('pers.note.untestedLong')}
@@ -344,6 +356,22 @@ export function ConnectorDetail({
           <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {ct.dataLeaves}
         </p>
       </Section>
+      {item.transport === 'local' && (
+        <>
+          <Section title={t('pers.local.installsTitle')}>
+            <LocalFacts item={item} />
+          </Section>
+          <Section title={t('pers.local.tag.readOnly')}>
+            <LocalTools item={item} />
+          </Section>
+          {added && localText(item, 'signin') && (
+            <Section title={t('pers.local.signinTitle')}>
+              <p className="text-muted">{localText(item, 'signin')}</p>
+            </Section>
+          )}
+          {added && <p className="mt-3 text-xs text-muted">{t('pers.local.removeNote')}</p>}
+        </>
+      )}
       <Section title={t('pers.detail.examples')}>
         <Examples items={ct.examples} />
       </Section>

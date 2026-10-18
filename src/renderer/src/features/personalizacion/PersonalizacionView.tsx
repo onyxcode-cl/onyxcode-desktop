@@ -33,6 +33,7 @@ import { useUi, type PersonalizationTab } from '../../stores/ui'
 import { getExtras } from '../settings/impl/extras'
 import { useMcpConnections } from '../settings/impl/useMcpConnections'
 import { ConnectWizard } from './Conectar'
+import { LocalConnectWizard } from './ConectarLocal'
 import { ConnectorDetail, SkillDetail, UserSkillDetail } from './Detalle'
 import { Ficha, IconTile, Tag } from './Ficha'
 import { InstallSkillDialog } from './InstalarHabilidad'
@@ -206,13 +207,15 @@ export function PersonalizacionView(): React.JSX.Element {
                     reviewed={c.reviewed}
                     note={c.accountTested === false ? t('pers.note.untested') : undefined}
                     hint={
-                      st === 'needs-login'
-                        ? t('pers.hint.needsLogin')
-                        : st === 'problem'
-                          ? t('pers.hint.problem')
-                          : st === 'off'
-                            ? t('pers.hint.off')
-                            : undefined
+                      st === 'none' && c.transport === 'local'
+                        ? t('pers.local.hint')
+                        : st === 'needs-login'
+                          ? t('pers.hint.needsLogin')
+                          : st === 'problem'
+                            ? t('pers.hint.problem')
+                            : st === 'off'
+                              ? t('pers.hint.off')
+                              : undefined
                     }
                     onOpen={() => setDetail({ kind: 'connector', id: c.id })}
                     tag={
@@ -391,7 +394,7 @@ export function PersonalizacionView(): React.JSX.Element {
     setDetail(null) // ver removeUserSkill
     const ok = await confirmDialog({
       title: t('mcp.remove.title'),
-      message: t('mcp.remove.message', { name }),
+      message: item.transport === 'local' ? t('pers.local.removeMessage', { name }) : t('mcp.remove.message', { name }),
       confirmLabel: t('mcp.remove.confirm'),
       danger: true
     })
@@ -538,7 +541,17 @@ export function PersonalizacionView(): React.JSX.Element {
           onRemove={() => removeConnector(detailConn)}
         />
       )}
-      {wizardItem && (
+      {wizardItem?.transport === 'local' && (
+        <LocalConnectWizard
+          item={wizardItem}
+          existingNames={existingNames}
+          readiness={mcp.catalog?.local[wizardItem.id]}
+          onPickClient={(id) => mcp.pickClient(id)}
+          onInstall={(req) => mcp.installLocal(req)}
+          onClose={() => setWizard(null)}
+        />
+      )}
+      {wizardItem?.transport === 'remote' && (
         <ConnectWizard
           item={wizardItem}
           existingNames={existingNames}

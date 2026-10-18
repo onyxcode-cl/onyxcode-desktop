@@ -502,6 +502,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'mcp:revealConfig': 'X',
   'mcp:catalog': 'R',
   'mcp:installCatalog': 'X',
+  'mcp:localPickClient': 'X', // diálogo del sistema en el Mac
+  'mcp:installLocal': 'X', // instala y ejecuta un programa de un tercero: solo desde el Mac
 
   // ── terminal (F1–F3: ninguna) ──
   'pty:create': 'X',

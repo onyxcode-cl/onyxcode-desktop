@@ -7,6 +7,14 @@
  *
  * El sello «Revisado por Lazunox» es solo de las fichas de este archivo (las revisa el dueño); lo que la persona instale por su
  * cuenta (una carpeta propia) nunca lo lleva.
+ *
+ * Esquema 2 / catálogo 3 (F8-B186): además de los conectores REMOTOS (una URL https; añadirlos no ejecuta nada), admite
+ * conectores LOCALES (`transport: "local"`): programas de terceros que la app descarga e instala EN EL EQUIPO de la persona. Eso
+ * cambia a propósito el contrato «añadir no ejecuta nada», y por eso la ficha local lleva un bloque `runtime` muy cerrado: gestor
+ * (`uv` o `npm`), paquete y versión EXACTOS, archivos de bloqueo con su SHA-256 (cada paquete lleva además su propio hash dentro
+ * del archivo de bloqueo, que el gestor comprueba al instalar), argumentos fijos con `--read-only` OBLIGATORIO, variables de
+ * entorno fijas (nunca texto de la persona) y la lista exacta de herramientas que se pueden usar y de las que se bloquean. Sin
+ * shell: se ejecuta un binario con una lista de argumentos. Ver `docs/CATALOGO.md` y `docs/SEGURIDAD.md` §3 (F8-B186).
  */
 import raw from '../../resources/catalogo/catalogo.json'
 import { SKILL_NAME_RE } from './skill-proposal'
@@ -39,7 +47,11 @@ export const CATALOG_ICONS = [
 ] as const
 export type CatalogIcon = (typeof CATALOG_ICONS)[number]
 
-export type McpCatalogAuth = 'oauth' | 'token' | 'none'
+/**
+ * `account` = el propio programa local pide entrar a la cuenta (en el navegador, con su flujo): ni la app ni el motor ven la
+ * contraseña ni los tokens. Solo lo usan los conectores locales.
+ */
+export type McpCatalogAuth = 'oauth' | 'token' | 'none' | 'account'
 
 export interface McpCatalogInput {
   id: string
@@ -75,8 +87,8 @@ export interface CatalogSkill {
   reviewed: boolean
 }
 
-/** Conector remoto (una URL https): añadirlo no ejecuta ningún programa en el equipo. */
-export interface CatalogConnector {
+/** Campos comunes de toda ficha de conector (remota o local). */
+interface CatalogConnectorBase {
   id: string
   /** Nombre sugerido del servidor (cumple `MCP_NAME_RE`); la persona puede cambiarlo. */
   name: string
@@ -85,8 +97,6 @@ export interface CatalogConnector {
   group: string
   icon: CatalogIcon
   description: string
-  transport: 'remote'
-  url: string
   auth: McpCatalogAuth
   inputs: McpCatalogInput[]
   /** Lo que podrá hacer la IA con él. */
@@ -94,7 +104,7 @@ export interface CatalogConnector {
   /** Lo que NO podrá hacer. */
   cannot: string[]
   examples: string[]
-  /** `true` si puede crear, cambiar o borrar cosas en el servicio. */
+  /** `true` si puede crear, cambiar o borrar cosas en el servicio. Los conectores locales son siempre `false` (solo consulta). */
   writes: boolean
   /** Qué datos salen de este equipo hacia el servicio. */
   dataLeaves: string
@@ -108,8 +118,77 @@ export interface CatalogConnector {
   reviewed: boolean
 }
 
+/** Conector remoto (una URL https): añadirlo no ejecuta ningún programa en el equipo. */
+export interface CatalogRemoteConnector extends CatalogConnectorBase {
+  transport: 'remote'
+  url: string
+  auth: 'oauth' | 'token' | 'none'
+}
+
+export type LocalManager = 'uv' | 'npm'
+
+/** Archivo de bloqueo que viaja con la app y se copia, verificado, a la carpeta del conector antes de instalar. */
+export interface LocalRuntimeFile {
+  name: string
+  sha256: string
+}
+
+/**
+ * Cómo se instala y se lanza un conector local. TODO es fijo y viene de este archivo: nada de lo que escriba la persona entra
+ * en un comando, un argumento ni una variable de entorno.
+ */
+export interface LocalRuntime {
+  manager: LocalManager
+  /** Nombre del paquete en PyPI (`uv`) o npm (`npm`). */
+  package: string
+  /** Versión EXACTA (sin rangos). */
+  version: string
+  /** Versión de Python que usa el entorno (solo `uv`). */
+  python?: string
+  /** Carpeta dentro de `resources/catalogo/conectores-locales/` donde viven los archivos de bloqueo. */
+  dir: string
+  /** Archivos de bloqueo: SHA-256 comprobado antes de usarlos. Cada paquete lleva su propio hash dentro de ellos. */
+  files: LocalRuntimeFile[]
+  /** Programa o script a lanzar, relativo a la carpeta del conector (nunca absoluto ni con «..»). */
+  entry: string
+  /** Argumentos fijos. Obligatoriamente incluyen `--read-only`. */
+  args: string[]
+  /** Variables de entorno fijas del programa. `{dir}` = carpeta del conector. Sin secretos. */
+  env: Record<string, string>
+  /** Archivo con el acceso del cliente OAuth propio de la persona (se elige con el diálogo del sistema; main lo copia sin pasarlo por la pantalla). */
+  clientFile?: { env: string; file: string; /** Página donde la persona crea su cliente (https). */ helpUrl: string }
+  author: string
+  license: string
+  sourceUrl: string
+  /** Sitios de los que se descarga (solo nombres de dominio). */
+  downloadFrom: string[]
+  /** Tamaño aproximado de lo que se instala, en MB. */
+  approxMB: number
+  /** Carpeta (dentro de la del conector) donde el programa guarda lo que necesita para volver a entrar a tu cuenta. */
+  tokenDir: string
+  platforms: string[]
+  tools: {
+    /** Herramientas que se pueden usar (todas de consulta, más las de entrar a la cuenta). */
+    allowed: string[]
+    /** Herramientas del programa que cambian algo (o escriben archivos): el motor las tiene en «denegar». */
+    blocked: string[]
+    /** Subconjunto de `allowed` que no consulta datos: sirven para entrar a la cuenta. */
+    auth: string[]
+  }
+}
+
+/** Conector local: un programa de un tercero que se instala y se ejecuta en el equipo (F8-B186). */
+export interface CatalogLocalConnector extends CatalogConnectorBase {
+  transport: 'local'
+  auth: 'account'
+  writes: false
+  runtime: LocalRuntime
+}
+
+export type CatalogConnector = CatalogRemoteConnector | CatalogLocalConnector
+
 export interface Catalog {
-  schemaVersion: 1
+  schemaVersion: 2
   catalogVersion: number
   updatedAt: string
   groups: CatalogGroup[]
@@ -133,6 +212,7 @@ const CONNECTOR_KEYS = [
   'description',
   'transport',
   'url',
+  'runtime',
   'auth',
   'inputs',
   'capabilities',
@@ -185,12 +265,181 @@ function checkCommon(o: Rec, where: string, updatedAt: string, errs: string[]): 
   }
 }
 
+// ---- conectores locales (F8-B186) ----
+
+const SEMVER_EXACT_RE = /^\d+\.\d+\.\d+$/
+const SHA256_RE = /^[0-9a-f]{64}$/
+const PACKAGE_RE = /^(@[a-z0-9][a-z0-9-]*\/)?[a-z0-9][a-z0-9._-]*$/
+const TOOL_RE = /^[A-Za-z0-9_-]{1,100}$/
+const FILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+const ENTRY_RE = /^[A-Za-z0-9._@-]+(\/[A-Za-z0-9._@-]+)*$/
+const HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/
+/** Argumentos: solo caracteres inocuos (nada de espacios, comillas, `$`, `;`, `|`, `&`, comillas invertidas…). */
+const ARG_RE = /^-{0,2}[A-Za-z0-9][A-Za-z0-9._,:=@+/-]*$/
+/** Opciones que convertirían el programa en un intérprete de texto: prohibidas en `args` aunque no haya shell. */
+const FORBIDDEN_ARGS = new Set([
+  '-c',
+  '-e',
+  '-p',
+  '-m',
+  '-r',
+  '--eval',
+  '--print',
+  '--exec',
+  '--command',
+  '--shell',
+  '--require',
+  '--import',
+  '--loader'
+])
+const ENV_KEY_RE = /^[A-Z][A-Z0-9_]{0,63}$/
+/** Variables que cambian cómo se carga un programa o dónde busca código: la ficha no puede tocarlas. */
+const FORBIDDEN_ENV_RE =
+  /^(PATH|HOME|SHELL|IFS|ENV|BASH_ENV|NODE_OPTIONS|NODE_PATH|NODE_EXTRA_CA_CERTS|LD_[A-Z_]*|DYLD_[A-Z_]*|PYTHON[A-Z_]*|PIP_[A-Z_]*|UV_[A-Z_]*|NPM_[A-Z_]*|OPENCODE_[A-Z_]*|LAZUNOX_[A-Z_]*)$/
+const ENV_VALUE_RE = /^[A-Za-z0-9._:/@=,-]*$/
+const KNOWN_PLATFORMS = ['darwin', 'win32', 'linux']
+const RUNTIME_KEYS = [
+  'manager',
+  'package',
+  'version',
+  'python',
+  'dir',
+  'files',
+  'entry',
+  'args',
+  'env',
+  'clientFile',
+  'author',
+  'license',
+  'sourceUrl',
+  'downloadFrom',
+  'approxMB',
+  'tokenDir',
+  'platforms',
+  'tools'
+]
+/** Archivos de bloqueo que exige cada gestor (nombres exactos). */
+export const LOCAL_LOCK_FILES: Record<LocalManager, string[]> = { uv: ['requirements.lock'], npm: ['package.json', 'package-lock.json'] }
+
+/** Valor de una variable fija sin su marcador `{dir}`: lo que queda tiene que ser inocuo. */
+const envValueOk = (v: string): boolean => ENV_VALUE_RE.test(v.split('{dir}').join('')) && v.length <= 300
+
+function checkLocal(c: Rec, where: string, errs: string[]): void {
+  if (c.url !== undefined) errs.push(`${where}: un conector local no lleva «url»`)
+  if (c.writes !== false) errs.push(`${where}: en esta versión todo conector local es de solo consulta («writes»: false)`)
+  if (Array.isArray(c.inputs) && c.inputs.length > 0)
+    errs.push(`${where}: un conector local no pide «inputs» (nada que escriba la persona entra en un comando)`)
+  const r = c.runtime
+  if (!isRec(r)) {
+    errs.push(`${where}: falta «runtime»`)
+    return
+  }
+  const w = `${where}.runtime`
+  strictKeys(r, RUNTIME_KEYS, w, errs)
+  const manager = r.manager === 'uv' || r.manager === 'npm' ? r.manager : null
+  if (!manager) errs.push(`${w}: «manager» debe ser "uv" o "npm"`)
+  if (typeof r.package !== 'string' || !PACKAGE_RE.test(r.package) || r.package.length > 100) errs.push(`${w}: «package» inválido`)
+  if (typeof r.version !== 'string' || !SEMVER_EXACT_RE.test(r.version))
+    errs.push(`${w}: «version» debe ser EXACTA (por ejemplo 1.2.3, sin rangos ni «latest»)`)
+  if (manager === 'uv') {
+    if (typeof r.python !== 'string' || !/^3\.\d{1,2}$/.test(r.python)) errs.push(`${w}: «python» debe ser una versión como 3.12`)
+  } else if (r.python !== undefined) errs.push(`${w}: «python» solo se usa con "uv"`)
+  if (typeof r.dir !== 'string' || !ID_RE.test(r.dir)) errs.push(`${w}: «dir» inválido`)
+  if (!Array.isArray(r.files) || r.files.length === 0) errs.push(`${w}: faltan los archivos de bloqueo («files»)`)
+  else {
+    const names: string[] = []
+    for (const [i, f] of r.files.entries()) {
+      if (!isRec(f)) {
+        errs.push(`${w}.files[${i}]: no es un objeto`)
+        continue
+      }
+      strictKeys(f, ['name', 'sha256'], `${w}.files[${i}]`, errs)
+      if (typeof f.name !== 'string' || !FILE_NAME_RE.test(f.name)) errs.push(`${w}.files[${i}]: «name» inválido`)
+      else names.push(f.name)
+      if (typeof f.sha256 !== 'string' || !SHA256_RE.test(f.sha256))
+        errs.push(`${w}.files[${i}]: «sha256» debe ser un hash SHA-256 en minúsculas (64 caracteres hex)`)
+    }
+    if (manager) {
+      const need = LOCAL_LOCK_FILES[manager]
+      if (names.length !== need.length || need.some((n) => !names.includes(n)))
+        errs.push(`${w}: con "${manager}" los archivos de bloqueo son exactamente ${need.join(' y ')}`)
+    }
+  }
+  if (typeof r.entry !== 'string' || !ENTRY_RE.test(r.entry) || r.entry.split('/').some((p) => p === '..' || p === '.'))
+    errs.push(`${w}: «entry» debe ser una ruta relativa dentro de la carpeta del conector`)
+  if (!Array.isArray(r.args) || r.args.length === 0 || r.args.length > 24) errs.push(`${w}: «args» necesita 1-24 argumentos fijos`)
+  else {
+    for (const a of r.args)
+      if (typeof a !== 'string' || a.length > 80 || !ARG_RE.test(a) || FORBIDDEN_ARGS.has(a))
+        errs.push(`${w}: argumento no permitido «${String(a)}» (solo caracteres simples y nada que convierta el programa en intérprete)`)
+    if (!r.args.includes('--read-only')) errs.push(`${w}: «args» debe incluir --read-only (todo conector local es de solo consulta)`)
+  }
+  if (!isRec(r.env)) errs.push(`${w}: «env» debe ser un objeto`)
+  else
+    for (const [k, v] of Object.entries(r.env)) {
+      if (!ENV_KEY_RE.test(k) || FORBIDDEN_ENV_RE.test(k)) errs.push(`${w}.env: variable no permitida «${k}»`)
+      else if (typeof v !== 'string' || !envValueOk(v))
+        errs.push(`${w}.env.${k}: valor no permitido (solo caracteres simples y el marcador {dir})`)
+    }
+  if (r.clientFile !== undefined) {
+    const cf = r.clientFile
+    if (!isRec(cf)) errs.push(`${w}: «clientFile» inválido`)
+    else {
+      strictKeys(cf, ['env', 'file', 'helpUrl'], `${w}.clientFile`, errs)
+      if (!httpsUrl(cf.helpUrl)) errs.push(`${w}.clientFile: «helpUrl» debe ser https`)
+      if (typeof cf.env !== 'string' || !ENV_KEY_RE.test(cf.env) || FORBIDDEN_ENV_RE.test(cf.env))
+        errs.push(`${w}.clientFile: «env» inválido`)
+      if (typeof cf.file !== 'string' || !FILE_NAME_RE.test(cf.file)) errs.push(`${w}.clientFile: «file» inválido`)
+      if (isRec(r.env) && typeof cf.env === 'string' && cf.env in r.env)
+        errs.push(`${w}.clientFile: «${cf.env}» no puede estar también en «env»`)
+    }
+  }
+  if (!isStr(r.author, 1, 80)) errs.push(`${w}: falta «author»`)
+  if (!isStr(r.license, 1, 40)) errs.push(`${w}: falta «license»`)
+  if (!httpsUrl(r.sourceUrl)) errs.push(`${w}: «sourceUrl» debe ser https`)
+  if (
+    !Array.isArray(r.downloadFrom) ||
+    r.downloadFrom.length === 0 ||
+    r.downloadFrom.length > 8 ||
+    !r.downloadFrom.every((h) => typeof h === 'string' && HOST_RE.test(h))
+  )
+    errs.push(`${w}: «downloadFrom» necesita 1-8 dominios`)
+  if (!Number.isInteger(r.approxMB) || (r.approxMB as number) < 1 || (r.approxMB as number) > 2000)
+    errs.push(`${w}: «approxMB» debe estar entre 1 y 2000`)
+  if (typeof r.tokenDir !== 'string' || !FILE_NAME_RE.test(r.tokenDir)) errs.push(`${w}: «tokenDir» inválido`)
+  if (
+    !Array.isArray(r.platforms) ||
+    r.platforms.length === 0 ||
+    !r.platforms.every((p) => typeof p === 'string' && KNOWN_PLATFORMS.includes(p))
+  )
+    errs.push(`${w}: «platforms» inválido`)
+  const tools = r.tools
+  if (!isRec(tools)) errs.push(`${w}: falta «tools»`)
+  else {
+    strictKeys(tools, ['allowed', 'blocked', 'auth'], `${w}.tools`, errs)
+    const okList = (v: unknown): v is string[] =>
+      Array.isArray(v) && v.length > 0 && v.length <= 200 && v.every((x) => typeof x === 'string' && TOOL_RE.test(x))
+    if (!okList(tools.allowed)) errs.push(`${w}.tools: «allowed» inválido`)
+    if (!okList(tools.blocked)) errs.push(`${w}.tools: «blocked» inválido`)
+    if (!Array.isArray(tools.auth) || !tools.auth.every((x) => typeof x === 'string' && TOOL_RE.test(x)))
+      errs.push(`${w}.tools: «auth» inválido`)
+    if (okList(tools.allowed) && okList(tools.blocked)) {
+      const dup = tools.allowed.filter((x) => (tools.blocked as string[]).includes(x))
+      if (dup.length) errs.push(`${w}.tools: herramientas a la vez permitidas y bloqueadas: ${dup.join(', ')}`)
+      if (new Set(tools.allowed).size !== tools.allowed.length || new Set(tools.blocked).size !== tools.blocked.length)
+        errs.push(`${w}.tools: nombres repetidos`)
+      if (Array.isArray(tools.auth) && tools.auth.some((x) => !(tools.allowed as string[]).includes(x as string)))
+        errs.push(`${w}.tools: «auth» debe ser un subconjunto de «allowed»`)
+    }
+  }
+}
+
 /** Devuelve la lista de problemas del catálogo (vacía = válido). Estricto: una clave desconocida también es un problema. */
 export function validateCatalog(input: unknown): string[] {
   const errs: string[] = []
   if (!isRec(input)) return ['el catálogo no es un objeto']
   strictKeys(input, ['$schema', 'schemaVersion', 'catalogVersion', 'updatedAt', 'groups', 'skills', 'connectors'], 'catálogo', errs)
-  if (input.schemaVersion !== 1) errs.push('schemaVersion debe ser 1')
+  if (input.schemaVersion !== 2) errs.push('schemaVersion debe ser 2')
   if (!Number.isInteger(input.catalogVersion) || (input.catalogVersion as number) < 1)
     errs.push('catalogVersion debe ser un entero positivo')
   const updatedAt = typeof input.updatedAt === 'string' && DATE_RE.test(input.updatedAt) ? input.updatedAt : ''
@@ -247,10 +496,15 @@ export function validateCatalog(input: unknown): string[] {
       else if (seenNames.has(c.name)) errs.push(`${where}: name repetido`)
       else seenNames.add(c.name)
       if (typeof c.group !== 'string' || !groupIds.has(c.group)) errs.push(`${where}: «group» no está declarado en groups`)
-      if (c.transport !== 'remote') errs.push(`${where}: solo se admiten conectores remotos («transport»: "remote")`)
-      if (!httpsUrl(c.url)) errs.push(`${where}: «url» debe ser https, sin credenciales, consulta ni fragmento`)
+      if (c.transport === 'local') checkLocal(c, where, errs)
+      else if (c.transport === 'remote') {
+        if (!httpsUrl(c.url)) errs.push(`${where}: «url» debe ser https, sin credenciales, consulta ni fragmento`)
+        if (c.runtime !== undefined) errs.push(`${where}: «runtime» solo existe en conectores locales`)
+      } else errs.push(`${where}: «transport» debe ser "remote" o "local"`)
       if (!httpsUrl(c.docsUrl)) errs.push(`${where}: «docsUrl» debe ser https`)
-      if (c.auth !== 'oauth' && c.auth !== 'token' && c.auth !== 'none') errs.push(`${where}: «auth» inválido`)
+      if (c.auth !== 'oauth' && c.auth !== 'token' && c.auth !== 'none' && c.auth !== 'account') errs.push(`${where}: «auth» inválido`)
+      else if ((c.auth === 'account') !== (c.transport === 'local'))
+        errs.push(`${where}: «auth» "account" es solo de los conectores locales (y ellos solo lo usan)`)
       if (typeof c.writes !== 'boolean') errs.push(`${where}: «writes» debe ser verdadero o falso`)
       if (!isStrList(c.capabilities, 1, 6, 200)) errs.push(`${where}: «capabilities» necesita 1-6 frases`)
       if (!isStrList(c.cannot, 1, 6, 200)) errs.push(`${where}: «cannot» necesita 1-6 frases (lo que NO podrá hacer)`)
@@ -298,7 +552,7 @@ export function validateCatalog(input: unknown): string[] {
   return errs
 }
 
-const EMPTY: Catalog = { schemaVersion: 1, catalogVersion: 1, updatedAt: '1970-01-01', groups: [], skills: [], connectors: [] }
+const EMPTY: Catalog = { schemaVersion: 2, catalogVersion: 1, updatedAt: '1970-01-01', groups: [], skills: [], connectors: [] }
 
 /** Problemas del archivo empaquetado (vacío = bien). Si hay alguno, el catálogo queda vacío y la pantalla muestra el aviso de error. */
 export const CATALOG_ERRORS: string[] = validateCatalog(raw)

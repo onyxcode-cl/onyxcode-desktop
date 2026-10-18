@@ -126,6 +126,12 @@ const SCENARIOS = [
   'personalizacion-detalle',
   'personalizacion-conectar',
   'personalizacion-e2e', // verificación (no captura): instala y quita una habilidad desde una carpeta y conecta y quita un conector
+  // Conectores LOCALES (F8-B186): ficha con las dos casillas, detalle con lo que instala y paso de elegir el archivo del cliente;
+  // `conectores-locales-e2e` (verificación, sin captura) instala el servidor de Google de verdad (necesita `uv` en el PATH y red).
+  'conectores-locales',
+  'conectores-locales-detalle',
+  'conectores-locales-preparar',
+  'conectores-locales-e2e',
   // Conectores de la vida diaria (F8-B184): la etiqueta «Aún sin probar con una cuenta real», su detalle y el paso a paso con la casilla «Entiendo».
   'conectores-cotidianos',
   'conectores-cotidianos-detalle',
@@ -162,7 +168,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|busqueda-|trabajo-legible)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -2502,6 +2508,206 @@ const S = {
     )
     await page.screenshot({ path: join(TMP, 'pers-e2e.png') }).catch(() => {})
     rmSync(folder, { recursive: true, force: true })
+  },
+  // Conectores LOCALES (F8-B186). Capturas: sin instalar nada (el archivo del cliente es FALSO y el diálogo del sistema está sustituido).
+  async 'conectores-locales'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-google-workspace"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-google-workspace"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 5000)
+    await dlg.getByRole('button', { name: /^Conectar$/ }).first().click()
+    await vis(dlg.locator('[data-testid="pers-local-ack-third"]'), 5000)
+    await sleep(500)
+  },
+  async 'conectores-locales-detalle'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-microsoft-365"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-microsoft-365"]').click()
+    await vis(page.locator('[role="dialog"]'), 5000)
+    await page.locator('[data-testid="pers-local-facts"]').scrollIntoViewIfNeeded()
+    await sleep(500)
+  },
+  async 'conectores-locales-preparar'(ctx) {
+    const { page } = ctx
+    const fake = join(mk(TMP, 'cliente-'), 'client_secret_prueba.json')
+    writeFileSync(
+      fake,
+      JSON.stringify({
+        installed: {
+          client_id: '123456789012-abcdefghijklmnop.apps.googleusercontent.com',
+          client_secret: ['GOCSPX', 'x'.repeat(20)].join('-')
+        }
+      })
+    )
+    await stubDialog(ctx, [fake])
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-google-workspace"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-google-workspace"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 5000)
+    await dlg.getByRole('button', { name: /^Conectar$/ }).first().click()
+    await dlg.locator('[data-testid="pers-local-ack-third"]').check()
+    await dlg.locator('[data-testid="pers-local-ack-data"]').check()
+    await dlg.locator('[data-testid="pers-local-next"]').click()
+    await vis(dlg.locator('[data-testid="pers-local-pick"]'), 5000)
+    await dlg.locator('[data-testid="pers-local-pick"]').click()
+    await vis(dlg.locator('[data-testid="pers-local-picked"]'), 5000)
+    await sleep(500)
+  },
+  // Verificación (no captura): instala de verdad el servidor de Google con uv del PATH (red), comprueba por stdio que solo expone consulta,
+  // que nada secreto queda fuera de su carpeta y que quitar deja 0 archivos y 0 entradas.
+  async 'conectores-locales-e2e'(ctx) {
+    const { page, userData } = ctx
+    const fakeSecret = ['GOCSPX', 'y'.repeat(20)].join('-')
+    const fake = join(mk(TMP, 'cliente-'), 'client_secret_prueba.json')
+    writeFileSync(
+      fake,
+      JSON.stringify({ installed: { client_id: '123456789012-abcdefghijklmnop.apps.googleusercontent.com', client_secret: fakeSecret } })
+    )
+    await stubDialog(ctx, [fake])
+    const base = join(userData, 'conectores-locales')
+    const cfgPath = join(userData, 'opencode', 'opencode.json')
+    const grepFiles = (needle) => {
+      try {
+        return execFileSync('grep', ['-rl', needle, userData], { encoding: 'utf8' })
+          .trim()
+          .split('\n')
+          .filter((f) => f && !f.includes('/Cache/') && !f.includes('/GPUCache/'))
+      } catch {
+        return []
+      }
+    }
+    const countFiles = (d) => {
+      try {
+        return Number(execFileSync('sh', ['-c', `find "${d}" -type f | wc -l`], { encoding: 'utf8' }).trim())
+      } catch {
+        return 0
+      }
+    }
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-google-workspace"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-google-workspace"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 5000)
+    await dlg.getByRole('button', { name: /^Conectar$/ }).first().click()
+    const next = dlg.locator('[data-testid="pers-local-next"]')
+    const nextSinCasillas = await next.isDisabled()
+    await dlg.locator('[data-testid="pers-local-ack-third"]').check()
+    const nextConUna = await next.isDisabled()
+    await dlg.locator('[data-testid="pers-local-ack-third"]').uncheck()
+    await dlg.locator('[data-testid="pers-local-ack-data"]').check()
+    const nextConOtra = await next.isDisabled()
+    await dlg.locator('[data-testid="pers-local-ack-third"]').check()
+    const nextConDos = await next.isDisabled()
+    await next.click()
+    const install = dlg.locator('[data-testid="pers-local-install"]')
+    const instalarSinArchivo = await install.isDisabled()
+    await dlg.locator('[data-testid="pers-local-pick"]').click()
+    await vis(dlg.locator('[data-testid="pers-local-picked"]'), 5000)
+    const instalarConArchivo = !(await install.isDisabled())
+    const t0 = Date.now()
+    await install.click()
+    await dlg.getByText(/está instalado/).waitFor({ state: 'visible', timeout: 280_000 })
+    const segundos = Math.round((Date.now() - t0) / 1000)
+    const dir = join(base, 'google')
+    const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    const entry = cfg.mcp?.google
+    const perm = cfg.permission ?? {}
+    const catalog = JSON.parse(readFileSync(join(repo, 'resources/catalogo/catalogo.json'), 'utf8'))
+    const rt = catalog.connectors.find((c) => c.id === 'google-workspace').runtime
+    const denegadas = rt.tools.blocked.filter((t) => perm[`google_${t}`] === 'deny').length
+    const permitidasConRegla = rt.tools.allowed.filter((t) => `google_${t}` in perm).length
+    const modo = (p) => execFileSync('stat', ['-f', '%Lp', p], { encoding: 'utf8' }).trim()
+    // Sonda MCP por stdio con EXACTAMENTE lo que escribió la app.
+    const probe = await new Promise((resolveProbe) => {
+      const { spawn } = require('node:child_process')
+      const child = spawn(entry.command[0], entry.command.slice(1), {
+        cwd: entry.cwd,
+        env: { PATH: process.env.PATH, HOME: join(userData, 'home-falso'), ...entry.environment },
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+      let buf = ''
+      const names = []
+      const done = (r) => {
+        child.kill('SIGKILL')
+        resolveProbe(r)
+      }
+      const timer = setTimeout(() => done({ error: 'tiempo' }), 120_000)
+      child.stdout.on('data', (d) => {
+        buf += d.toString()
+        let i
+        while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim()
+          buf = buf.slice(i + 1)
+          try {
+            const m = JSON.parse(line)
+            if (m.id === 1) {
+              child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n')
+              child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }) + '\n')
+            } else if (m.id === 2) {
+              clearTimeout(timer)
+              for (const t of m.result.tools) names.push(t.name)
+              done({ names })
+            }
+          } catch {}
+        }
+      })
+      child.stdin.write(
+        JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'v', version: '0' } } }) + '\n'
+      )
+    })
+    const expuestas = probe.names ?? []
+    console.log(
+      'VERIF-LOCALES-INSTALAR ' +
+        JSON.stringify({
+          nextSinCasillas,
+          nextConUna,
+          nextConOtra,
+          nextConDos,
+          instalarSinArchivo,
+          instalarConArchivo,
+          segundos,
+          readOnlyEnComando: entry.command.includes('--read-only'),
+          comando: entry.command.map((c) => c.replace(userData, '<userData>')),
+          cwdEsCarpeta: entry.cwd === dir,
+          envClaves: Object.keys(entry.environment),
+          denegadas: `${denegadas}/${rt.tools.blocked.length}`,
+          permitidasConRegla,
+          secretoEnOpencodeJson: JSON.stringify(cfg).includes(fakeSecret),
+          archivosConElSecreto: grepFiles(fakeSecret).map((f) => f.replace(userData, '<userData>')),
+          modoClient: modo(join(dir, 'client_secret.json')),
+          modoCarpeta: modo(dir),
+          archivos: countFiles(dir),
+          expuestas: expuestas.length,
+          expuestasQueEscriben: expuestas.filter((n) => rt.tools.blocked.includes(n)),
+          expuestasFueraDeLaLista: expuestas.filter((n) => !rt.tools.allowed.includes(n) && !rt.tools.blocked.includes(n)),
+          sondaError: probe.error ?? null
+        })
+    )
+    // Quitar desde Tuyos.
+    await dlg.getByRole('button', { name: /^Listo$/ }).click()
+    await page.getByRole('tab', { name: /Tuyos/ }).click()
+    await page.getByRole('button', { name: /Gmail, Google Calendar/ }).first().click()
+    await page.locator('[role="dialog"]').getByRole('button', { name: /^Quitar/ }).last().click()
+    await sleep(500)
+    await page.getByRole('button', { name: /^Eliminar$/ }).click()
+    await sleep(4000)
+    const cfg2 = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    const prov = existsSync(join(userData, 'mcp-catalog-installs.json')) ? readFileSync(join(userData, 'mcp-catalog-installs.json'), 'utf8') : '{}'
+    console.log(
+      'VERIF-LOCALES-QUITAR ' +
+        JSON.stringify({
+          carpetaExiste: existsSync(dir),
+          archivosEnBase: existsSync(base) ? countFiles(base) : 0,
+          servidorEnConfig: !!cfg2.mcp?.google,
+          reglasDePermisos: Object.keys(cfg2.permission ?? {}).filter((k) => k.startsWith('google_')).length,
+          procedencia: prov.includes('google-workspace'),
+          archivosConElSecreto: grepFiles(fakeSecret).length
+        })
+    )
   },
   async 'ajustes-importar'(ctx) {
     const { page } = ctx
