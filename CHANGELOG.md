@@ -15,6 +15,8 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Mejoras
 
+- **Documentos de Word en el visor.** Si el diseñador de documentos no estaba instalado, abrir un .docx con «Ver aquí» mostraba «No se pudo mostrar el documento». Ya se ve.
+- **Conectores solo para Mac.** En Windows, las fichas de correo y calendario dicen «Solo en Mac por ahora» desde el inicio, en vez de dejarte avanzar hasta el último paso.
 - Las fichas de conectores sin probar con una cuenta real lo muestran con una etiqueta.
 - «Elige tu IA» en «Primeros pasos» se marca también al usar el modelo gratuito.
 - Texto de la vista previa de habilidades sin plural roto.
