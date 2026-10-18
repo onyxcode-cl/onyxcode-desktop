@@ -4,6 +4,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.1.0] - 2026-10-18
+
+### Novedades
+
+- **Buscar dentro de los mensajes.** La paleta (⌘K o Ctrl+K) ahora también busca en el texto de tus conversaciones de Chat y de Code. Muestra el fragmento con la palabra resaltada, quién habló y la fecha, y al elegir un resultado se abre la conversación en ese mensaje. Todo se queda en tu equipo: el índice vive solo en la memoria mientras la app está abierta, tiene un botón «Borrar lo leído», y las claves y llaves privadas se tapan antes de indexar.
+- **Proyectos con archivos de conocimiento en el Chat.** Creas un proyecto con instrucciones propias y archivos (PDF, Word, Excel, PowerPoint, texto, Markdown…). En sus conversaciones, la IA recibe esos datos y cita el archivo de donde salen; si no encuentra nada, lo dice. Funciona sin servicios externos, no admite archivos de claves ni ejecutables, y un archivo no puede darle órdenes a la IA.
+- **Trabajo de la IA más legible.** Cada respuesta pliega lo que hizo en una línea («Trabajó durante 23 s · 4 pasos ›») que se abre para ver un paso por línea, y cada paso al detalle. Hay tres vistas, Resumida, Con pasos y Detallada, en las cabeceras y en Ajustes. Un permiso pendiente o un error siempre quedan a la vista.
+- **Conectores de correo, calendario y archivos (solo en Mac, solo consulta).** Gmail, Google Calendar y Drive (Google Workspace) y Outlook, Calendario y OneDrive de cuentas personales (Microsoft 365). Son programas de código abierto de terceros: la ficha dice con claridad qué se instala, su autor, su licencia y qué herramientas se pueden usar y cuáles quedan desactivadas. Tú autorizas en tu navegador; la app nunca ve tu contraseña. Aún no se han probado con una cuenta real, y la ficha lo dice. Necesitan tener `uv` o Node instalados.
+
+### Mejoras
+
+- Las fichas de conectores sin probar con una cuenta real lo muestran con una etiqueta.
+- «Elige tu IA» en «Primeros pasos» se marca también al usar el modelo gratuito.
+- Texto de la vista previa de habilidades sin plural roto.
+
 ## [1.0.0] - 2026-10-18
 
 ### Novedades
