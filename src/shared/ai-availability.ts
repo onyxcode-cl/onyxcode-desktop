@@ -80,6 +80,10 @@ export function resolveModel(wanted: ModelRef, providers: ProviderLike[] | null,
     const m = defaultOf(p, defaults)
     if (m) return m
   }
+  // Sin ninguna IA configurada: quien ya había elegido un modelo del proveedor gratuito sigue usando el gratuito aunque ese
+  // modelo ya no esté en la lista (catálogo viejo o recortado tras reiniciar, modelo retirado). No se cambia el predeterminado
+  // de fábrica por uno gratuito a escondidas: eso sigue exigiendo «Probar un modelo gratuito».
+  if (wanted.providerID === FREE_PROVIDER_ID) return firstFreeModel(providers)
   return null
 }
 
