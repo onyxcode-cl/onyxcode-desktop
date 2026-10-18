@@ -2040,7 +2040,9 @@ usuario (`~/.cargo`, `~/.rustup`, `~/.nvm`, `~/.bun`…); `~/.opencode` (puede a
 permitted», porque el kernel devuelve EPERM y no ENOENT/EACCES). Por eso `sandboxEnv` fija `GIT_CONFIG_GLOBAL` a
 `<directorio privado>/config/gitconfig` (propio, escribible, vacío al principio): git funciona y `git config --global`
 queda confinado al sandbox. Consecuencia: los commits del agente no usan el nombre/correo del `~/.gitconfig` del usuario
-(git cae en el nombre del sistema con aviso). Un efecto menor: `bash -c` puede imprimir por stderr «Operation not
+(git caía en el nombre completo del usuario de macOS y el nombre del equipo, datos personales que acababan en el historial;
+desde F8-B197 `sandboxEnv` fija `GIT_AUTHOR_*`/`GIT_COMMITTER_*` a «Lazunox» y `lazunox@localhost.invalid`; el backend WSL no
+cambia: su protocolo no admite `GIT_*` y corre con un usuario genérico). Un efecto menor: `bash -c` puede imprimir por stderr «Operation not
 permitted» al intentar leer `~/.bashrc` cuando su stdin es un socket; no falla.
 
 **Política de carpetas.** `folder-policy.ts` y `manager.ts` reutilizan la misma lista: ya no se puede autorizar como

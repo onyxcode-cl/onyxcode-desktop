@@ -48,6 +48,7 @@ import { SwitchNoticeBar } from '../settings/impl/SwitchNoticeBar'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
+import { ComponentPick } from './ComponentPick'
 import { Welcome } from './Welcome'
 import {
   canAdvance,
@@ -696,7 +697,7 @@ type SetupState = 'idle' | 'running' | 'done' | 'failed'
  * verificada por hash y firma); en Windows prepara el entorno aislado de Tareas. Pulsarlo ES el consentimiento de todo lo que la tarjeta
  * enumera; nada se hace antes. Cada pieza se puede reintentar y todo se puede hacer después desde Ajustes.
  */
-function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.Element {
+export function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.Element {
   const t = useT()
   const mac = isMacPlatform()
   const caps = platformCaps()
@@ -707,6 +708,8 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
   const [runtimesError, setRuntimesError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  /** Casillas desmarcadas: por defecto todo se instala junto; la persona elige qué. */
+  const [unchecked, setUnchecked] = useState<SetupItemId[]>([])
   const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -732,10 +735,12 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
     void refresh()
   }, [refresh])
 
-  const runAll = async (): Promise<void> => {
+  /** Instala `only` (reintento de una fila) o, sin ello, todo lo que sigue marcado. */
+  const runAll = async (only?: SetupItemId): Promise<void> => {
+    const wants = (id: SetupItemId): boolean => (only ? only === id : !unchecked.includes(id))
     setBusy(true)
     try {
-      if (items.craft && items.craft !== 'done') {
+      if (wants('craft') && items.craft && items.craft !== 'done') {
         set('craft', 'running')
         const poll = setInterval(() => {
           void cw('craft:status')
@@ -751,7 +756,7 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
         setCraftError(installFailureCode(r))
         set('craft', r?.ok ? 'done' : 'failed')
       }
-      if (items.runtimes && items.runtimes !== 'done') {
+      if (wants('runtimes') && items.runtimes && items.runtimes !== 'done') {
         set('runtimes', 'running')
         const poll = setInterval(() => {
           void runtimesApi
@@ -765,7 +770,7 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
         setRuntimesError(installFailureCode(r))
         set('runtimes', r?.ok ? 'done' : 'failed')
       }
-      if (items.sandbox && items.sandbox !== 'done') {
+      if (wants('sandbox') && items.sandbox && items.sandbox !== 'done') {
         set('sandbox', 'running')
         const poll = setInterval(() => {
           void cw('tasks:sandbox:status', undefined).then((s) => setPct(s.setup?.running ? s.setup.pct : null))
@@ -785,8 +790,10 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
   if (items.runtimes)
     rows.push({ id: 'runtimes', label: t('wizard.setup.runtimes'), hint: t('wizard.setup.runtimes.hint', { mb: runtimesMb }) })
   if (items.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
+  const checkedRows = rows.filter((r) => !unchecked.includes(r.id))
   const allDone = rows.length > 0 && rows.every((r) => items[r.id] === 'done')
-  const anyFailed = rows.some((r) => items[r.id] === 'failed')
+  const nothingToDo = checkedRows.every((r) => items[r.id] === 'done')
+  const anyFailed = checkedRows.some((r) => items[r.id] === 'failed')
 
   return (
     <div className="space-y-3">
@@ -807,8 +814,18 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
                   )}
                 </span>
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
-                  <p className="font-medium text-fg">{r.label}</p>
-                  <p className="text-muted">
+                  {st === 'done' || st === 'running' ? (
+                    <p className="font-medium text-fg">{r.label}</p>
+                  ) : (
+                    <ComponentPick
+                      id={r.id}
+                      label={r.label}
+                      checked={!unchecked.includes(r.id)}
+                      disabled={busy}
+                      onChange={(on) => setUnchecked((u) => (on ? u.filter((x) => x !== r.id) : [...u, r.id]))}
+                    />
+                  )}
+                  <p className={st === 'done' || st === 'running' ? 'text-muted' : 'mt-0.5 pl-6 text-muted'}>
                     {st === 'running' && (r.id === 'sandbox' || r.id === 'craft' || r.id === 'runtimes') && pct !== null
                       ? `${pct} % · `
                       : ''}
@@ -822,6 +839,11 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
                         ? t('wizard.setup.status.ready')
                         : r.hint}
                   </p>
+                  {st === 'failed' && (
+                    <Button className="mt-2" variant="secondary" size="sm" disabled={busy} onClick={() => void runAll(r.id)}>
+                      {t('wizard.setup.retry')}
+                    </Button>
+                  )}
                 </div>
               </li>
             )
@@ -830,7 +852,7 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
       )}
       {rows.length > 0 && (
         <div className="flex items-center gap-3">
-          <Button variant="primary" disabled={busy || allDone} onClick={() => void runAll()}>
+          <Button variant="primary" disabled={busy || allDone || nothingToDo} onClick={() => void runAll()}>
             {busy
               ? t('wizard.setup.running')
               : allDone

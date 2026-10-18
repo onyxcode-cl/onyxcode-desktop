@@ -13,6 +13,11 @@
  * dotfiles de shell, `.gitconfig`, `.config`, `.claude`, `.codex`, Group Containers, apps con sesión…) y (b) la
  * variable `GIT_CONFIG_GLOBAL` (archivo global de git propio en el directorio privado: con `~/.gitconfig` denegado
  * `git` moría). Nada del lanzamiento (comando, argumentos, red, escritura, proxies, limpieza) cambió.
+ *
+ * Actualización DELIBERADA (F8-B197, firma de los commits): el fixture se recapturó (y se pasó por Prettier, que lo guarda así) y el diff
+ * son SOLO 8 líneas: `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` («Lazunox» y
+ * `lazunox@localhost.invalid`) en el `env` de los dos lanzamientos con aislamiento. Sin ellas git firmaba con el nombre completo del usuario
+ * de macOS y el nombre del equipo. Comando, argumentos, perfil, red, escritura, proxies y limpieza no cambiaron.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

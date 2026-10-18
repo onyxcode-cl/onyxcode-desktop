@@ -90,14 +90,14 @@ export const wizard = {
   'wizard.permissions.review': 'Puedes revisarlos o quitarlos en Ajustes del Sistema › Privacidad y seguridad.',
   'wizard.stepTitle.setup': 'Prepara tu equipo',
   'wizard.setup.lead':
-    'Esto es opcional. {app} puede dejar listo ahora lo siguiente, para que después no te pida nada suelto. Al pulsar «Preparar todo» aceptas que lo haga:',
+    'Esto es opcional. {app} puede dejar listo ahora lo siguiente, para que después no te pida nada suelto. Elige con las casillas qué quieres (todo viene marcado). Al pulsar «Preparar todo» aceptas que instale solo lo marcado:',
   'wizard.setup.nothing': 'Tu equipo ya está listo: no hay nada más que instalar ni permitir.',
   'wizard.setup.perms': 'Permisos de macOS: Accesibilidad y Grabación de pantalla',
   'wizard.setup.perms.hint':
     'Para que el agente pueda mover el ratón y ver la pantalla cuando se lo pidas. macOS abrirá sus avisos: actívalos.',
   'wizard.setup.craft': 'Diseñador de documentos (ArtCraft), para crear y ver Word, Excel, PowerPoint y PDF con buen diseño',
   'wizard.setup.craft.hint':
-    'Se descarga una sola vez (unos {mb} MB) y se comprueba que es auténtico antes de usarlo. No pide contraseña de administrador.',
+    'Se descarga una sola vez de GitHub (unos {mb} MB) y se comprueba que es auténtico antes de usarlo. No pide contraseña de administrador.',
   'wizard.setup.craft.retryHint': 'Pulsa «Reintentar» o hazlo después desde Ajustes.',
   'wizard.setup.runtimes': 'Node.js y uv (para conectar tu correo y calendario)',
   'wizard.setup.runtimes.hint':
@@ -130,7 +130,9 @@ export const wizard = {
   'wizard.welcome.state.pending': 'En cola',
   'wizard.welcome.state.downloading': 'Descargando…',
   'wizard.welcome.state.failed': 'No se pudo',
+  'wizard.welcome.state.skipped': 'Más tarde',
   'wizard.welcome.state.missing': 'Falta',
+  'wizard.welcome.someSkipped': 'Listo. Lo que dejaste sin marcar lo puedes instalar después desde Ajustes.',
   'wizard.welcome.reviewed': 'Puedes seguir: en los pasos siguientes te ayudamos con lo que falte.',
   'wizard.welcome.restartHint': 'Si ya los activaste, reinicia {app}: macOS aplica Grabación de pantalla al abrirla de nuevo.',
   'wizard.welcome.restartNow': 'Reiniciar ahora',
@@ -157,9 +159,10 @@ export const wizard = {
   'preflight.title': 'Preparando {app}',
   'preflight.subtitle.blocking': 'Falta algo imprescindible para que {app} funcione. Aquí puedes arreglarlo.',
   'preflight.subtitle.optional':
-    'Ya puedes usar {app}. Estas piezas son opcionales: instálalas ahora si las quieres o déjalas para más tarde (también están en Ajustes).',
+    'Ya puedes usar {app}. Estas piezas son opcionales: marca las que quieras e instálalas ahora, o déjalas para más tarde (también están en Ajustes).',
   'preflight.checking': 'Revisando tu equipo…',
   'preflight.size': 'Se descargarán unos {size}.',
+  'preflight.size.none': 'No hay nada marcado: no se descargará nada.',
   'preflight.size.mb': '{n} MB',
   'preflight.size.gb': '{n} GB',
   'preflight.install': 'Instalar lo que falta',

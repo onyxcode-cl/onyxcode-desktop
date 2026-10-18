@@ -107,6 +107,7 @@ describe('ficha de un conector local sin uv ni Node', () => {
     await openStep2(MISSING)
     const box = q('pers-local-need-manager')!
     const text = box.textContent ?? ''
+    expect(text).toContain('Node.js y uv')
     expect(text).toContain('67 MB')
     expect(text).toContain('nodejs.org')
     expect(text).toContain('github.com')

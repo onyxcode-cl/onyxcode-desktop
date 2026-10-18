@@ -214,9 +214,9 @@ export const personalizacion = {
   'pers.local.perm.where': 'Everything stays in a Lazunox folder and is deleted when you remove the connector',
   'pers.local.signinTitle': 'How to sign in to your account',
   'pers.local.needRuntime':
-    'Installing it needs {what}, and it is not on this computer. {app} downloads it for you, once (about {mb} MB in total, from nodejs.org and github.com) and checks it is genuine before use. It does not ask for an administrator password.',
-  'pers.local.what.uv': '“uv” (the Python program installer)',
-  'pers.local.what.npm': 'Node.js',
+    'Installing it needs {what}, and they are not on this computer. {app} downloads them for you, once (about {mb} MB in total, from nodejs.org and github.com) and checks they are genuine before use. It does not ask for an administrator password.',
+  'pers.local.what.uv': 'Node.js and uv (two small programs that install and run connectors)',
+  'pers.local.what.npm': 'Node.js and uv (two small programs that install and run connectors)',
   'pers.local.installRuntime': 'Install what is needed',
   'pers.local.installingRuntime': 'Downloading what is needed…',
   'pers.local.installingRuntimePct': 'Downloading what is needed… {pct} %',

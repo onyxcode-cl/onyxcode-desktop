@@ -2,7 +2,7 @@
  * Bandeja «Resultados por revisar»: lo que dejó cada ejecución de una rutina (qué hizo, archivos, estado, errores) y
  * las ejecuciones perdidas que esperan decisión. Vive arriba de la lista de Rutinas y reutiliza su almacén.
  */
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, CalendarX2, Check, CheckCircle2, ChevronDown, ExternalLink, FileText, MoreHorizontal, Play, X } from 'lucide-react'
 import type { RoutineInboxItem } from '@shared/ipc-tasks'
 import { useT } from '../../../lib/i18n'
@@ -56,6 +56,58 @@ function InboxMoreMenu({
   )
 }
 
+/**
+ * Resumen del resultado: cerrado, una vista previa de ~5 líneas (recortada con un degradado, SIN barra de desplazamiento); abierto, el
+ * texto completo con la altura que necesite (el desplazamiento es el de la lista, no uno anidado). «Ver todo» solo sale si de verdad
+ * hay más que mostrar, y es un botón con `aria-expanded` ligado al texto que expande.
+ */
+function InboxSummary({ body, open, onToggle }: { body: string; open: boolean; onToggle: () => void }): React.JSX.Element {
+  const t = useT()
+  const ref = useRef<HTMLDivElement>(null)
+  const bodyId = useId()
+  const [clipped, setClipped] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Se mide solo cerrado: abierto el botón se queda para poder volver a «Ver menos».
+    const measure = (): void => {
+      if (!open) setClipped(el.scrollHeight > el.clientHeight + 1)
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [body, open])
+  const showToggle = clipped || open
+  return (
+    <div className="min-w-0 flex-1">
+      <div
+        id={bodyId}
+        ref={ref}
+        data-testid="inbox-summary"
+        data-expanded={open ? 'true' : 'false'}
+        className={`min-w-0 text-xs text-muted ${open ? '' : `max-h-[9.5rem] overflow-hidden ${clipped ? '[mask-image:linear-gradient(to_bottom,black_65%,transparent)]' : ''}`}`}
+      >
+        <Markdown text={body} />
+      </div>
+      {showToggle && (
+        <button
+          type="button"
+          data-testid="inbox-summary-toggle"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          className="mt-1 inline-flex items-center gap-1 rounded-ctl-sm text-xs font-medium text-accent hover:underline"
+          onClick={onToggle}
+        >
+          <ChevronDown size={12} className={open ? 'rotate-180' : ''} aria-hidden="true" />
+          {open ? t('routines.inbox.showLess') : t('routines.inbox.showAll')}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (item: RoutineInboxItem) => void }): React.JSX.Element {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -87,12 +139,7 @@ export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (
           {renderMarkdown ? (
             <div className="mt-0.5 flex items-start gap-1">
               {/* El resumen lo escribe la IA en markdown: se muestra formateado con el mismo visor seguro del Chat (sin HTML crudo). */}
-              <div
-                data-testid="inbox-summary"
-                className={`min-w-0 flex-1 overflow-y-auto text-xs text-muted ${open ? 'max-h-96' : 'max-h-20 overflow-hidden'}`}
-              >
-                <Markdown text={body} />
-              </div>
+              <InboxSummary body={body} open={open} onToggle={() => setOpen((o) => !o)} />
               <CopyButton text={body} label={t('routines.inbox.copySummary')} className="shrink-0" />
             </div>
           ) : (

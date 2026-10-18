@@ -123,6 +123,35 @@ describe('Ajustes › Telegram', () => {
     })
     await click(byText('Guardar clave'))
     expect(host.textContent).toContain('Esa clave no es válida')
+    // El campo queda vacío (y la clave fuera del estado del componente): para reintentar se escribe de nuevo.
+    expect((host.querySelector('input[type="password"]') as HTMLInputElement).value).toBe('')
+    expect(host.innerHTML).not.toContain(FAKE_KEY.split(':')[1])
+    // «Guardar clave» queda apagado hasta que haya algo escrito: no se reenvía la clave rechazada.
+    const save = byText('Guardar clave') as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+  })
+
+  it('tras un rechazo se puede escribir otra clave y se manda esa, no la anterior', async () => {
+    const OTHER = '999999:OtraClaveDePruebaQueNoEsReal'
+    let n = 0
+    invoke.mockImplementation(async (ch: string) => {
+      if (ch === 'telegram:saveToken') return ++n === 1 ? { ok: false, error: 'invalid-token' } : { ok: true, botUsername: 'mi_bot' }
+      return S({})
+    })
+    await mount()
+    const type = async (v: string): Promise<void> => {
+      const input = host.querySelector('input[type="password"]') as HTMLInputElement
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, v)
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+    }
+    await type(FAKE_KEY)
+    await click(byText('Guardar clave'))
+    await type(OTHER)
+    await click(byText('Guardar clave'))
+    const sent = invoke.mock.calls.filter((c) => c[0] === 'telegram:saveToken').map((c) => (c[1] as { token: string }).token)
+    expect(sent).toEqual([FAKE_KEY, OTHER])
   })
 
   it('esperando el código: lo muestra con su cuenta regresiva', async () => {

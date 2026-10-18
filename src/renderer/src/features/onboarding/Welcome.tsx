@@ -13,6 +13,7 @@ import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 import { platformCaps } from '../../lib/platform'
+import { ComponentPick } from './ComponentPick'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
@@ -20,7 +21,9 @@ import {
   WELCOME_ORDER,
   canRetry,
   engineState,
+  hasSkipped,
   toInstall,
+  toSkip,
   welcomeOverall,
   welcomeView,
   type WelcomeItemId,
@@ -40,6 +43,8 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const [runtimesMb, setRuntimesMb] = useState(0)
   const [runtimesError, setRuntimesError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
+  /** Casillas desmarcadas: por defecto todo lo opcional se prepara junto; la persona elige qué. */
+  const [unchecked, setUnchecked] = useState<WelcomeItemId[]>([])
   /** La revisión del equipo terminó (hasta entonces el saludo dice «Revisando…» y «Empezar» espera). */
   const [scanned, setScanned] = useState(false)
   /** Una vez que algo requirió atención la lista se queda (no vuelve al saludo a mitad de una descarga). */
@@ -154,8 +159,26 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const startNow = useCallback((): void => {
     if (started.current) return
     started.current = true
-    void install(toInstall(found))
-  }, [found, install])
+    // Lo desmarcado no se descarga: queda «para más tarde» (Ajustes lo instala cuando se necesite).
+    toSkip(found, unchecked).forEach((id) => set(id, 'skipped'))
+    void install(toInstall(found, unchecked))
+  }, [found, unchecked, install, set])
+
+  /** Marca o desmarca un componente; uno que se dejó para más tarde vuelve a la cola y reaparece «Preparar todo». */
+  const toggle = (id: WelcomeItemId): void => {
+    const nowChecked = unchecked.includes(id)
+    setUnchecked((u) => (nowChecked ? u.filter((x) => x !== id) : [...u, id]))
+    if (nowChecked && items[id] === 'skipped') {
+      started.current = false
+      set(id, 'pending')
+    }
+  }
+
+  /** Reintento de un solo componente (el resto conserva su estado). */
+  const retryOne = (id: WelcomeItemId): void => {
+    set(id, 'pending')
+    void install([id])
+  }
 
   const retry = (): void => {
     const failed = WELCOME_ORDER.filter((id) => id !== 'engine' && items[id] === 'failed')
@@ -164,8 +187,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   }
 
   // Nada se descarga solo: si hay algo por descargar, la persona lo inicia con el botón (o sigue sin instalarlo).
-  const pending = toInstall(items)
-  const countingDown = !started.current && pending.length > 0
+  const pending = toInstall(items, unchecked)
+  const busy = WELCOME_ORDER.some((id) => items[id] === 'downloading')
+  const countingDown = !started.current && WELCOME_ORDER.some((id) => id !== 'engine' && items[id] === 'pending')
 
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -210,6 +234,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
     })
 
   const stateText = (id: WelcomeItemId, st: WelcomeItemState): string => {
+    if (st === 'pending' && unchecked.includes(id)) return t('wizard.welcome.state.skipped')
     if (id === 'engine' && st === 'failed') return t('wizard.welcome.state.missing')
     if (st === 'downloading')
       return (id === 'sandbox' || id === 'craft' || id === 'runtimes') && pct !== null
@@ -227,7 +252,9 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
 
   const headline =
     overall === 'ready'
-      ? t('wizard.welcome.allReady')
+      ? hasSkipped(items)
+        ? t('wizard.welcome.someSkipped')
+        : t('wizard.welcome.allReady')
       : overall === 'failed'
         ? canRetry(items)
           ? t('wizard.welcome.someFailed')
@@ -297,8 +324,27 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
                       )}
                     </span>
                     <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
-                      <p className="font-medium text-fg">{r.label}</p>
-                      <p className="text-muted">{r.hint}</p>
+                      {r.id !== 'engine' && (st === 'pending' || st === 'skipped') ? (
+                        <ComponentPick
+                          id={r.id}
+                          label={r.label}
+                          checked={!unchecked.includes(r.id)}
+                          disabled={busy}
+                          onChange={() => toggle(r.id)}
+                        >
+                          {r.hint}
+                        </ComponentPick>
+                      ) : (
+                        <>
+                          <p className="font-medium text-fg">{r.label}</p>
+                          <p className="text-muted">{r.hint}</p>
+                        </>
+                      )}
+                      {r.id !== 'engine' && st === 'failed' && (
+                        <Button className="mt-2" variant="secondary" size="sm" onClick={() => retryOne(r.id)} disabled={busy}>
+                          {t('wizard.welcome.retry')}
+                        </Button>
+                      )}
                     </div>
                     <span className="shrink-0 pt-0.5 text-[12px] text-muted">{stateText(r.id, st)}</span>
                   </li>
@@ -329,7 +375,7 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
           )}
           <div className="flex items-center gap-2">
             {showList && countingDown && (
-              <Button variant="secondary" onClick={startNow}>
+              <Button variant="secondary" onClick={startNow} disabled={pending.length === 0}>
                 {t('wizard.setup.run')}
               </Button>
             )}

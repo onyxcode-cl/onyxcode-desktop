@@ -11,6 +11,7 @@ let craft: 'missing' | 'installed' = 'installed'
 let sandbox: 'ready' | 'missing' = 'ready'
 let runtimes: 'none' | 'ready' | 'missing' = 'none'
 const channels: string[] = []
+let craftResult: { ok: boolean; error?: string } = { ok: true }
 
 vi.mock('../tasks/impl/bridge', () => ({
   hasTasksBridge: () => true,
@@ -26,6 +27,8 @@ vi.mock('../tasks/impl/bridge', () => ({
         missingBytes: runtimes === 'missing' ? 67_329_746 : 0,
         installing: false
       }
+    if (channel === 'craft:install') return craftResult
+    if (channel === 'runtimes:install') return { ok: true }
     throw new Error(`canal inesperado ${channel}`)
   })
 }))
@@ -65,6 +68,7 @@ beforeEach(() => {
   sandbox = 'ready'
   runtimes = 'none'
   channels.length = 0
+  craftResult = { ok: true }
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -147,5 +151,76 @@ describe('Welcome: algo requiere atención → tarjeta con la lista', () => {
     expect(section().dataset.view).toBe('attention')
     expect(host.textContent).toContain('Entorno aislado')
     expect(host.querySelector('ul')).not.toBeNull()
+  })
+})
+
+describe('Welcome: casillas por componente (F8-B197)', () => {
+  const box = (id: string): HTMLInputElement => host.querySelector(`[data-testid="pick-${id}"]`) as HTMLInputElement
+  const press = async (label: string): Promise<void> => {
+    const b = [...host.querySelectorAll('button')].find((x) => x.textContent === label) as HTMLButtonElement
+    await act(async () => b.click())
+    await act(async () => {
+      await Promise.resolve()
+    })
+  }
+
+  it('ArtCraft y Node.js y uv salen con su casilla marcada, tamaño y origen', async () => {
+    craft = 'missing'
+    runtimes = 'missing'
+    await mount('darwin', info())
+    expect(box('craft').checked).toBe(true)
+    expect(box('runtimes').checked).toBe(true)
+    expect(host.textContent).toContain('300 MB')
+    expect(host.textContent).toContain('GitHub')
+    expect(host.textContent).toContain('67 MB')
+    expect(host.textContent).toContain('nodejs.org')
+    // El motor nunca se elige: no lleva casilla.
+    expect(box('engine')).toBeNull()
+  })
+
+  it('«Preparar todo» instala solo lo marcado y deja lo demás «para más tarde»', async () => {
+    craft = 'missing'
+    runtimes = 'missing'
+    await mount('darwin', info())
+    await act(async () => box('craft').click())
+    expect(box('craft').checked).toBe(false)
+    await press('Preparar todo')
+    expect(channels).toContain('runtimes:install')
+    expect(channels).not.toContain('craft:install')
+    expect(host.textContent).toContain('Más tarde')
+    expect(host.textContent).toContain('Lo que dejaste sin marcar')
+    // Lo dejado para más tarde se puede volver a marcar y reaparece «Preparar todo».
+    await act(async () => box('craft').click())
+    expect(box('craft').checked).toBe(true)
+    expect([...host.querySelectorAll('button')].some((x) => x.textContent === 'Preparar todo')).toBe(true)
+  })
+
+  it('con todo desmarcado «Preparar todo» no se puede pulsar', async () => {
+    craft = 'missing'
+    await mount('darwin', info())
+    await act(async () => box('craft').click())
+    const run = [...host.querySelectorAll('button')].find((x) => x.textContent === 'Preparar todo') as HTMLButtonElement
+    expect(run.disabled).toBe(true)
+  })
+
+  it('un fallo conserva su estado y se reintenta solo ese componente', async () => {
+    craft = 'missing'
+    runtimes = 'missing'
+    craftResult = { ok: false, error: 'hash' }
+    await mount('darwin', info())
+    await press('Preparar todo')
+    expect(channels).toContain('craft:install')
+    expect(channels).toContain('runtimes:install')
+    const row = host.querySelectorAll('li')
+    expect([...row].map((li) => li.textContent).join('|')).toContain('No se pudo')
+    craftResult = { ok: true }
+    channels.length = 0
+    const retry = [...host.querySelectorAll('li button')].find((x) => x.textContent === 'Reintentar') as HTMLButtonElement
+    await act(async () => retry.click())
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(channels).toContain('craft:install')
+    expect(channels).not.toContain('runtimes:install')
   })
 })

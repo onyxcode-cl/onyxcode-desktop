@@ -68,6 +68,15 @@ export function sandboxDirs(root: string): SandboxDirs {
  * OpenCode usa XDG_* para `~/.config/opencode`, `~/.local/share/opencode` (DB, auth.json,
  * binarios de LSP), `~/.cache/opencode` y `~/.local/state/opencode`.
  */
+/**
+ * Firma de los commits que hace la IA dentro del sandbox (F8-B197). Sin `user.name`/`user.email` (el `~/.gitconfig` real está denegado),
+ * git inventa el autor con el nombre completo del usuario de macOS y el nombre del equipo («Nombre Apellido <usuario@Equipo.local>»):
+ * datos personales que acabarían en el historial. Se fija una identidad fija y sin datos personales; el dominio `.invalid` (RFC 2606)
+ * no existe ni puede existir, así que el correo no apunta a nadie.
+ */
+export const SANDBOX_GIT_NAME = 'Lazunox'
+export const SANDBOX_GIT_EMAIL = 'lazunox@localhost.invalid'
+
 export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
   return {
     XDG_CONFIG_HOME: dirs.config,
@@ -78,6 +87,10 @@ export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
     // `~/.gitconfig` está denegado (puede llevar `url.<token>@…` o ayudantes de credenciales) y `git` MUERE con
     // «unable to access … Operation not permitted» si no puede leerlo: se le da un archivo global propio y privado.
     GIT_CONFIG_GLOBAL: join(dirs.config, 'gitconfig'),
+    GIT_AUTHOR_NAME: SANDBOX_GIT_NAME,
+    GIT_AUTHOR_EMAIL: SANDBOX_GIT_EMAIL,
+    GIT_COMMITTER_NAME: SANDBOX_GIT_NAME,
+    GIT_COMMITTER_EMAIL: SANDBOX_GIT_EMAIL,
     npm_config_cache: join(dirs.cache, 'npm'),
     BUN_INSTALL_CACHE_DIR: join(dirs.cache, 'bun'),
     PIP_CACHE_DIR: join(dirs.cache, 'pip'),

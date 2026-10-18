@@ -8,6 +8,7 @@ import {
   diskEnough,
   downloadBytes,
   installPlan,
+  installable,
   optionalPending,
   ordered,
   parseDismissal,
@@ -15,6 +16,7 @@ import {
   requiredFreeBytes,
   rowState,
   shouldShow,
+  toggleChecked,
   visibleRows,
   type PreflightComponent,
   type PreflightReport
@@ -201,5 +203,50 @@ describe('texto del informe', () => {
     expect(lines.join('\n')).toContain('engine: listo (esencial) — versión 1.2.3')
     expect(lines.join('\n')).toContain('craft: pendiente — motivo incomplete; piezas: wordcraft:truncated')
     expect(lines.at(-1)).toBe('  disco libre: 50000 MB')
+  })
+})
+
+describe('casillas por componente (F8-B197)', () => {
+  const falta = (): PreflightReport =>
+    report([
+      c('storage'),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, sizeBytes: 205e6 }),
+      c('runtimes', { ok: false, sizeBytes: 67e6 }),
+      c('sandbox', { ok: false, sizeBytes: 2e9 })
+    ])
+  it('sin desmarcar nada se instala todo, como siempre', () => {
+    expect(installPlan(falta()).map((x) => x.id)).toEqual(['craft', 'runtimes', 'sandbox'])
+    expect(installable(falta()).map((x) => x.id)).toEqual(['craft', 'runtimes', 'sandbox'])
+  })
+  it('lo desmarcado sale del plan, del tamaño y del espacio exigido', () => {
+    const r = falta()
+    expect(installPlan(r, ['craft', 'sandbox']).map((x) => x.id)).toEqual(['runtimes'])
+    expect(downloadBytes(r, ['craft', 'sandbox'])).toBe(67e6)
+    expect(requiredFreeBytes(r, ['craft', 'sandbox'])).toBe(67e6 * 6)
+    // La lista de casillas posibles no cambia al desmarcar.
+    expect(installable(r)).toHaveLength(3)
+  })
+  it('con todo desmarcado no hay nada que instalar y el botón se apaga', () => {
+    expect(canInstall(falta(), ['craft', 'runtimes', 'sandbox'])).toBe(false)
+    expect(canInstall(falta(), ['craft'])).toBe(true)
+  })
+  it('el disco se vuelve a medir solo con lo marcado: sin lo grande, lo pequeño cabe', () => {
+    const r = falta()
+    r.freeBytes = 1e9
+    r.components = r.components.map((x) => (x.id === 'disk' ? { ...x, ok: false, reason: 'low-space' } : x))
+    expect(canInstall(r)).toBe(false)
+    expect(canInstall(r, ['craft', 'sandbox'])).toBe(true)
+    expect(visibleRows(r).some((x) => x.id === 'disk')).toBe(true)
+    expect(visibleRows(r, ['craft', 'sandbox']).some((x) => x.id === 'disk')).toBe(false)
+  })
+  it('una carpeta de datos que falla bloquea aunque haya casillas marcadas', () => {
+    const r = report([c('storage', { ok: false }), c('craft', { ok: false, sizeBytes: 1e6 })])
+    expect(canInstall(r)).toBe(false)
+  })
+  it('toggleChecked marca y desmarca sin tocar los demás', () => {
+    expect(toggleChecked([], 'craft')).toEqual(['craft'])
+    expect(toggleChecked(['craft', 'runtimes'], 'craft')).toEqual(['runtimes'])
   })
 })
