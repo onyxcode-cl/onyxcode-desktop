@@ -4,7 +4,7 @@
  * La lógica y sus pruebas viven en `runtime-install.ts`; aquí solo se cablea Electron (`userData`, `net`, el registro de problemas).
  */
 import { app, net } from 'electron'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RuntimesInstallResult, RuntimesSnapshot } from '@shared/runtimes'
 import { LOCAL_CATALOG } from '@shared/mcp-catalog'
@@ -46,7 +46,11 @@ class RuntimesService {
   private pin: RuntimePin | null | undefined
 
   deps(): RuntimeDeps {
-    if (this.pin === undefined) this.pin = loadRuntimePin(unpacked(join(app.getAppPath(), 'resources', 'runtimes', 'pin.json')))
+    if (this.pin === undefined) {
+      // Empaquetada: `app.asar.unpacked/resources`. En desarrollo/pruebas el «app path» puede ser `out/main`: se prueba también la raíz del repo.
+      const candidates = [app.getAppPath(), join(__dirname, '..', '..')].map((b) => unpacked(join(b, 'resources', 'runtimes', 'pin.json')))
+      this.pin = loadRuntimePin(candidates.find((c) => existsSync(c)) ?? candidates[0]!)
+    }
     return {
       runtimesDir: join(app.getPath('userData'), 'runtimes'),
       pin: this.pin,

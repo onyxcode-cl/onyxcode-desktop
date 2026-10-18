@@ -2054,3 +2054,46 @@ directorio privado, zsh/bash/python/curl y `git` con el `GIT_CONFIG_GLOBAL` priv
 `sandbox-profile.test.ts` y el fixture `seatbelt-before.json` se actualizaron de forma deliberada (diff = solo estas
 rutas y `GIT_CONFIG_GLOBAL`). Verificado además contra el binario real del motor (`/global/health` sano con el HOME real y
 con uno temporal) y en la app (ver CHANGELOG-FASE8, F8-B194).
+
+
+## 3 quinquagies septendecies. Node.js y uv de la app para los conectores locales (F8-B195)
+
+Los conectores locales (Gmail/Calendar/Drive con `uv`, Outlook/Calendario/OneDrive con `npm`) ya no piden que la persona instale nada a mano:
+Lazunox descarga **Node.js** y **uv** a su propia carpeta, con versión, tamaño y SHA-256 fijados. Esto significa **ejecutar programas
+descargados de internet**; por eso todo es cerrado.
+
+**Dónde se fija.** Un solo archivo: `resources/runtimes/pin.json` (versión, URL oficial exacta, formato, tamaño, SHA-256, límites de
+descompresión, fecha y fuente). Hoy: Node.js 24.22.0 (LTS «Krypton», `nodejs.org/dist/v24.22.0/`) y uv 0.13.1 (`github.com/astral-sh/uv`),
+para `darwin-arm64` y `win32-x64`. `parseRuntimePin` es estricto (host y ruta de la release oficial de ESA versión, tamaño entero positivo, SHA-256
+de 64 hex en minúsculas, rutas sin `..`): un activo sin huella invalida todo el pin (prueba `runtime-pin.test.ts`). Para cambiar versiones:
+editar el pin con los datos de las sumas oficiales y correr `node scripts/runtimes/verify-pin.mjs --download` (con red; también
+`npm run check:runtimes-pin` sin `--download`), que compara cada hash con `SHASUMS256.txt` de nodejs.org y con el `.sha256` de la release de uv, y el
+tamaño con la descarga real. Los hashes actuales se verificaron así el 2026-10-18 (suma oficial = archivo descargado y calculado = pin).
+
+**Qué hace la descarga** (`src/main/runtimes/runtime-install.ts`, reutiliza `pinnedDownload` de WSL): solo https, **lista de hosts por runtime** (Node:
+únicamente `nodejs.org`; uv: `github.com` y su CDN de releases `objects`/`release-assets.githubusercontent.com`), cada redirección revisada, tope de
+bytes exacto y SHA-256 en flujo; si no coincide se borra y **no se extrae ni se ejecuta nada**. La extracción es propia y en JS puro
+(`archive.ts`, sin `tar`/`ditto`/`tar.exe` ni scripts de instalación): rechaza rutas absolutas, con `..`, con letra de unidad o `:` (zip),
+enlaces duros, dispositivos, enlaces simbólicos que salgan del destino, escritura a través de un enlace y cualquier bomba (tope de bytes
+descomprimidos y de entradas del pin); permisos normalizados (0755/0644, sin setuid). Se arma en una carpeta temporal y se renombra de una vez a
+`userData/runtimes/<runtime>-<versión>/`; antes de darlo por bueno se ejecuta `--version` y debe devolver exactamente la versión fijada.
+Sin administrador, sin tocar el PATH del sistema, sin instalar nada global ni `.pkg`/`.msi`.
+
+**Cómo se usan.** `local-connectors.ts` lanza `uv` o `node` + `npm-cli.js` **por ruta absoluta** (el runtime de la app SIEMPRE que exista; el del
+sistema solo de respaldo, buscado con rutas absolutas y sin carpetas relativas del PATH), con `execFile`, entorno mínimo y **PATH acotado** a la
+carpeta del runtime más `/usr/bin:/bin` (nunca el PATH del usuario). Se mantienen `uv … --require-hashes --only-binary :all:` y `npm ci --ignore-scripts`. El servidor
+instalado se lanza con el Node de la app. **Los runtimes no se usan para nada más** que los conectores locales que la persona aprobó con sus dos casillas: no hay
+`npx` ni instalación de paquetes arbitrarios, y no se exponen al agente.
+
+**Riesgos que quedan (dichos con honestidad).** (1) La confianza se apoya en el pin dentro del código firmado de la app: si el pin o las sumas oficiales
+fueran manipuladas antes de fijarlas, se descargaría eso (el script de verificación y la revisión humana son el control). No se verifica la firma GPG
+de `SHASUMS256.txt` ni la firma de Apple del binario (sí queda dentro del hash). (2) Node y uv corren con los permisos del usuario, fuera del
+sandbox de Overdrive (igual que los conectores). (3) Las versiones fijadas se quedan viejas: hay que actualizar el pin con cada versión de la app; una versión
+antigua de runtime no se borra sola (los conectores ya instalados apuntan a su ruta). (4) Quitar los runtimes desde Ajustes deja sin arrancar los conectores
+instalados hasta reinstalarlos. (5) uv, al crear el entorno de Google, descarga Python de GitHub por su cuenta (ya era así; ver §3 quinquagies decies).
+
+**IPC.** `runtimes:status|install|cancel|remove` (esquema estricto sin parámetros, clase **X** en `policy.ts`: nunca desde el celular). La instalación es siempre una acción de
+la persona (botón «Instalar lo necesario», «Preparar todo» o Ajustes); nada se descarga solo.
+
+**Qué NO bloquea.** Es un componente opcional de «Preparando Lazunox»: si la descarga falla o se deja para después, la app funciona y solo fallan los conectores locales; se reintenta desde la
+misma pantalla, la ficha o Ajustes › Overdrive › «Node.js y uv». En Windows las funciones están implementadas y probadas, pero no se ofrecen (los conectores locales siguen «Solo en Mac»).
