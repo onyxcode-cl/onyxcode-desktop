@@ -18,6 +18,7 @@ import {
 } from './actions'
 import { useCompare, useHiddenCompareSession } from '../compare'
 import { useChat } from './store'
+import { ProjectsSidebarSection } from '../projects/ProjectsSidebar'
 
 export function ChatSidebar(): React.JSX.Element {
   const t = useT()
@@ -92,6 +93,7 @@ export function ChatSidebar(): React.JSX.Element {
 
   return (
     <>
+      <ProjectsSidebarSection />
       {listError && <div className="px-3 py-2 text-xs text-danger">{listError}</div>}
       <SidebarTreeRegion>
         <ChatSessionList

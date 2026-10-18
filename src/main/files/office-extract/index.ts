@@ -16,6 +16,7 @@ import {
   officeExt,
   officeFamilyOf,
   type OfficeExtractRequest,
+  type OfficeFailReason,
   type OfficeExtractResult,
   type OfficeFamily,
   type OfficeUnit
@@ -98,7 +99,11 @@ async function run(ext: string, buf: Uint8Array): Promise<Extracted> {
   }
 }
 
-export async function extractOffice(req: OfficeExtractRequest): Promise<OfficeExtractResult> {
+/** Resultado interno sin marco: el texto Markdown del archivo y los avisos de recorte (lo usan «Proyectos» y el adjunto del Chat). */
+export type OfficeBodyResult =
+  { ok: true; body: string; family: OfficeFamily; units: number | null; notes: string[] } | { ok: false; reason: OfficeFailReason }
+
+export async function extractOfficeBody(req: OfficeExtractRequest): Promise<OfficeBodyResult> {
   const ext = officeExt(req.name)
   const family = officeFamilyOf(req.name)
   if (!family) return { ok: false, reason: 'unsupported' }
@@ -115,14 +120,20 @@ export async function extractOffice(req: OfficeExtractRequest): Promise<OfficeEx
   if (!ex.body.trim()) return { ok: false, reason: 'empty' }
   const notes = [...ex.notes]
   if (ex.truncated) notes.push(t('attach.office.note.chars', { max: String(OFFICE_MAX_CHARS) }))
-  const text = frameText({ name: req.name, family, units: ex.units, body: ex.body, notes })
+  return { ok: true, body: ex.body, family, units: ex.units, notes }
+}
+
+export async function extractOffice(req: OfficeExtractRequest): Promise<OfficeExtractResult> {
+  const r = await extractOfficeBody(req)
+  if (!r.ok) return r
+  const text = frameText({ name: req.name, family: r.family, units: r.units, body: r.body, notes: r.notes })
   return {
     ok: true,
     text,
-    family,
-    units: ex.units,
-    unit: OFFICE_UNIT_BY_FAMILY[family],
-    truncated: notes.length > 0,
-    notes
+    family: r.family,
+    units: r.units,
+    unit: OFFICE_UNIT_BY_FAMILY[r.family],
+    truncated: r.notes.length > 0,
+    notes: r.notes
   }
 }

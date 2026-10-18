@@ -59,6 +59,9 @@ import {
 import type { MainWindowDeps } from '../extras/windows'
 import { settingsStore } from '../store'
 import { galleryTypeOf } from '../files/gallery-index'
+import { KNOWLEDGE_EXTS } from '@shared/project-knowledge'
+import { ProjectStore } from '../projects/store'
+import { createProjectsService } from '../projects/service'
 import { galleryRecordChat, galleryThumbFor, getGallery, configureGalleryChat } from '../files/gallery-runtime'
 import { assertNativeViewable, assertOpenable, assertRevealable, chatFilesInfo, readChatFile, resolveChatFile } from '../files/chat-files'
 import { issueToken } from '../viewer/tokens'
@@ -371,6 +374,36 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     },
     afterChange: () => reloadOpencodeConfig(deps.server)
   })
+
+  // Proyectos del Chat (F8-B185): archivos de conocimiento con búsqueda local. Los elige la persona en el diálogo nativo (main) o los arrastra
+  // (bytes); main los lee, los copia al almacén del proyecto y los indexa. Nada sale del equipo salvo los pasajes que van al modelo.
+  const projects = createProjectsService({
+    store: new ProjectStore(join(app.getPath('userData'), 'projects')),
+    pickFiles: async () => {
+      const win = deps.getMainWindow?.() ?? null
+      const options: Electron.OpenDialogOptions = {
+        title: t('projects.dialog.title'),
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: t('projects.dialog.filter'), extensions: [...KNOWLEDGE_EXTS] },
+          { name: t('projects.dialog.all'), extensions: ['*'] }
+        ]
+      }
+      const res = win && !win.isDestroyed() ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+      return res.canceled ? [] : res.filePaths
+    }
+  })
+  handle(ipcMain, 'projects:list', () => projects.state())
+  handle(ipcMain, 'projects:create', (req) => projects.create(req))
+  handle(ipcMain, 'projects:update', (req) => projects.update(req))
+  handle(ipcMain, 'projects:delete', (req) => projects.remove(req))
+  handle(ipcMain, 'projects:pickFiles', (req) => projects.pickFiles(req))
+  handle(ipcMain, 'projects:addPicked', (req) => projects.addPicked(req))
+  handle(ipcMain, 'projects:addBytes', (req) => projects.addBytes(req))
+  handle(ipcMain, 'projects:removeFile', (req) => projects.removeFile(req))
+  handle(ipcMain, 'projects:assign', (req) => projects.assign(req))
+  handle(ipcMain, 'projects:context', (req) => projects.context(req))
+
   handle(ipcMain, 'personalizacion:skills:list', () => skills.list())
   handle(ipcMain, 'personalizacion:skills:setEnabled', (req) => skills.setEnabled(req))
   handle(ipcMain, 'personalizacion:skills:pick', () => skills.pick())

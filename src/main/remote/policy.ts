@@ -490,6 +490,17 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:import:pick': 'X',
   'extras:import:apply': 'X',
   // Personalización (F8-B181): habilidades de terceros = instrucciones y programas que el agente puede usar; solo con la persona delante del Mac.
+  // Proyectos del Chat (F8-B185): archivos de la persona leídos y guardados en el Mac; nunca desde el celular.
+  'projects:list': 'X',
+  'projects:create': 'X',
+  'projects:update': 'X',
+  'projects:delete': 'X',
+  'projects:pickFiles': 'X',
+  'projects:addPicked': 'X',
+  'projects:addBytes': 'X',
+  'projects:removeFile': 'X',
+  'projects:assign': 'X',
+  'projects:context': 'X',
   'personalizacion:skills:list': 'X',
   'personalizacion:skills:setEnabled': 'X',
   'personalizacion:skills:pick': 'X',

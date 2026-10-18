@@ -311,6 +311,87 @@ export interface ImportApplyResult {
   mcp: AppMcpConfig
 }
 
+/* ───────── Proyectos con archivos de conocimiento (F8-B185) ───────── */
+
+/** Por qué un archivo no se pudo leer o no se aceptó. Cada motivo tiene su texto en `projects.fail.<motivo>`. */
+export type ProjectFileFailReason =
+  | 'unsupported'
+  | 'tooBig'
+  | 'projectFull'
+  | 'tooManyFiles'
+  | 'reserved'
+  | 'encrypted'
+  | 'legacy'
+  | 'corrupt'
+  | 'empty'
+  | 'noText'
+  | 'unreadable'
+
+export interface ProjectFileInfo {
+  id: string
+  name: string
+  bytes: number
+  addedAt: number
+  status: 'ready' | 'error'
+  /** Solo si `status` es `error`. */
+  reason?: ProjectFileFailReason
+  /** Solo si `ready`: pasajes en que se partió y si el texto se recortó por el tope. */
+  chunks?: number
+  truncated?: boolean
+}
+
+export interface ProjectInfo {
+  id: string
+  name: string
+  instructions: string
+  createdAt: number
+  updatedAt: number
+  files: ProjectFileInfo[]
+  /** Espacio en disco: copias de los archivos + índice. */
+  usedBytes: number
+}
+
+export interface ProjectLimitsInfo {
+  maxProjects: number
+  maxFilesPerProject: number
+  maxFileBytes: number
+  maxProjectBytes: number
+  maxCharsPerFile: number
+  maxInstructionsChars: number
+  maxNameChars: number
+  maxPassages: number
+  maxInjectedChars: number
+  extensions: string[]
+}
+
+export interface ProjectsState {
+  projects: ProjectInfo[]
+  /** Conversación de Chat → proyecto al que pertenece. */
+  assignments: Record<string, string>
+  limits: ProjectLimitsInfo
+}
+
+/** Archivo elegido en el diálogo nativo: la ficha (de un solo uso) permite añadirlo sin que el renderer conozca la ruta. */
+export interface ProjectPickedFile {
+  token: string
+  name: string
+  bytes: number
+}
+
+export interface ProjectAddResult {
+  state: ProjectsState
+  file: ProjectFileInfo
+}
+
+/** Lo que `main` deja al mensaje de una conversación de proyecto: nombre, instrucciones y pasajes relacionados. */
+export interface ProjectContextResult {
+  projectId: string
+  name: string
+  instructions: string
+  hasFiles: boolean
+  passages: { file: string; part: number; text: string }[]
+}
+
 export interface IpcExtrasInvokeContract {
   'extras:getPrefs': { req: void; res: ExtrasPrefsState }
   'extras:setPrefs': { req: Partial<ExtrasPrefs>; res: ExtrasPrefsState }
@@ -365,6 +446,22 @@ export interface IpcExtrasInvokeContract {
   'extras:import:pick': { req: { source: ImportSource }; res: ImportPreview | null }
   /** Importa los elementos marcados de la última vista previa (MCP siempre desactivado). */
   'extras:import:apply': { req: ImportApplyRequest; res: ImportApplyResult }
+  /** Proyectos del Chat (instrucciones propias + archivos de conocimiento con búsqueda local). Todo en `userData`; nada sale del equipo salvo los pasajes que van al modelo elegido. */
+  'projects:list': { req: void; res: ProjectsState }
+  'projects:create': { req: { name: string; instructions?: string }; res: ProjectsState }
+  'projects:update': { req: { id: string; name?: string; instructions?: string }; res: ProjectsState }
+  /** Borra el proyecto, sus copias de archivos y su índice. */
+  'projects:delete': { req: { id: string }; res: ProjectsState }
+  /** Diálogo nativo de archivos (lo abre `main`): devuelve fichas, no rutas. `null` si se cancela. */
+  'projects:pickFiles': { req: { id: string }; res: ProjectPickedFile[] | null }
+  'projects:addPicked': { req: { id: string; token: string }; res: ProjectAddResult }
+  /** Archivos arrastrados: el renderer manda los bytes que ya leyó (nunca una ruta). */
+  'projects:addBytes': { req: { id: string; name: string; base64: string }; res: ProjectAddResult }
+  'projects:removeFile': { req: { id: string; fileId: string }; res: ProjectsState }
+  /** Pone (o quita, con `null`) la conversación en un proyecto. */
+  'projects:assign': { req: { sessionId: string; projectId: string | null }; res: ProjectsState }
+  /** Instrucciones del proyecto de la conversación y pasajes de sus archivos relacionados con `query`. `null` si no es de un proyecto. */
+  'projects:context': { req: { sessionId: string; query: string; recent?: string }; res: ProjectContextResult | null }
   'personalizacion:skills:list': { req: void; res: SkillsState }
   /** Enciende o apaga una habilidad INCLUIDA (la carpeta se quita o se restaura en la configuración del motor; nada se borra del paquete). */
   'personalizacion:skills:setEnabled': { req: { id: string; enabled: boolean }; res: SkillsState }
@@ -440,6 +537,16 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:takePendingPrompt',
   'extras:import:pick',
   'extras:import:apply',
+  'projects:list',
+  'projects:create',
+  'projects:update',
+  'projects:delete',
+  'projects:pickFiles',
+  'projects:addPicked',
+  'projects:addBytes',
+  'projects:removeFile',
+  'projects:assign',
+  'projects:context',
   'personalizacion:skills:list',
   'personalizacion:skills:setEnabled',
   'personalizacion:skills:pick',

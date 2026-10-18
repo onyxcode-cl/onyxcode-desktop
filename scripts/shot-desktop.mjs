@@ -76,6 +76,9 @@ const SCENARIOS = [
   'trabajo-legible-abierto',
   'trabajo-legible-code',
   'trabajo-legible-permiso',
+  // Proyectos del Chat con archivos de conocimiento: pantalla del proyecto (instrucciones, archivos leídos y uno rechazado, espacio usado) y chip en la caja de escribir.
+  'proyectos-conocimiento',
+  'proyectos-conocimiento-chat',
   'code-pregunta',
   'code-plan',
   'code-archivo',
@@ -162,7 +165,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|busqueda-|trabajo-legible)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|busqueda-|trabajo-legible|proyectos-)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -1252,6 +1255,66 @@ const S = {
     await ctx.page.locator('[data-gallery-card] button').first().focus()
     await sleep(300)
     return async () => goMode(ctx.page, 'Chat')
+  },
+  // Proyectos con archivos de conocimiento (F8-B185). Crea el proyecto por la interfaz, escribe sus instrucciones y suelta archivos de verdad
+  // (evento `drop` con `File`): uno de texto, uno de Word, uno de Excel, un PDF y un `.env` que se rechaza con su motivo.
+  async 'proyectos-conocimiento'(ctx) {
+    const page = ctx.page
+    await closeOverlays(page)
+    await newChat(page)
+    const NAME = 'Contratos de arriendo'
+    const row = page.locator('[data-testid="project-row"]', { hasText: NAME })
+    if (!(await row.count())) {
+      await page.locator('[data-testid="projects-new"]').click()
+      const dlg = page.getByRole('dialog')
+      await vis(dlg, 10_000)
+      await dlg.getByRole('textbox').fill(NAME)
+      await dlg.getByRole('button', { name: 'Crear' }).click()
+    } else await row.first().click()
+    await vis(page.locator('[data-testid="project-view"]'), 15_000)
+    if (!(await page.locator('[data-testid="project-file"]').count())) {
+      await page
+        .locator('[data-testid="project-instructions"]')
+        .fill('Responde en español formal y cita siempre el archivo de donde sacas cada dato. Si no está en los archivos, dilo.')
+      await page.locator('[data-testid="project-instructions-save"]').click()
+      const office = await makeOfficeFixtures(join(ctx.userData, 'office-muestras'))
+      const pdf = Buffer.from(
+        '%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n' +
+          '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n' +
+          '4 0 obj\n<< /Length 70 >>\nstream\nBT /F1 12 Tf 50 740 Td (Contrato Quillahue: canon mensual 412 UF) Tj ET\nendstream\nendobj\n' +
+          '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\ntrailer\n<< /Size 6 /Root 1 0 R >>\n%%EOF\n'
+      )
+      const files = [
+        { name: 'Notas de la reunión.md', b64: Buffer.from('# Notas\n\nLa garantía equivale a 3 meses de canon.\n').toString('base64') },
+        { name: 'Informe del trimestre.docx', b64: readFileSync(office[0]).toString('base64') },
+        { name: 'Presupuesto octubre.xlsx', b64: readFileSync(office[1]).toString('base64') },
+        { name: 'Contrato Quillahue.pdf', b64: pdf.toString('base64') },
+        { name: '.env', b64: Buffer.from('CLAVE=inventada\n').toString('base64') }
+      ]
+      await page.evaluate((list) => {
+        const region = document.querySelector('[data-testid="project-view"]')
+        const dt = new DataTransfer()
+        for (const f of list) {
+          const bytes = Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0))
+          dt.items.add(new File([bytes], f.name))
+        }
+        region.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      }, files)
+      await vis(page.locator('[data-testid="project-live"]', { hasText: /Listo|ninguno|Ningún/i }), 60_000)
+      await vis(page.locator('[data-testid="project-file"][data-status="error"]'), 15_000)
+    }
+    // Deja a la vista los archivos (también el rechazado) y no solo las instrucciones.
+    await page.locator('[data-testid="project-file"][data-status="error"]').first().scrollIntoViewIfNeeded()
+    await sleep(600)
+  },
+  // Chat nuevo con el proyecto elegido en el chip de la caja de escribir (y la lista de Proyectos en la barra lateral).
+  async 'proyectos-conocimiento-chat'(ctx) {
+    const page = ctx.page
+    await S['proyectos-conocimiento'](ctx)
+    await page.locator('[data-testid="project-new-chat"]').click()
+    await vis(page.locator('[data-testid="project-chip"]'), 15_000)
+    await page.getByPlaceholder('Escribe un mensaje…').fill('¿Cuánto es el canon mensual del contrato de Quillahue?')
+    await sleep(500)
   },
   async 'chat-vacio'(ctx) {
     await closeOverlays(ctx.page)
