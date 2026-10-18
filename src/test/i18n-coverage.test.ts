@@ -127,7 +127,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/routines/impl/meta.ts',
   'src/renderer/src/features/routines/impl/schedule.ts',
   'src/renderer/src/features/routines/impl/store.ts',
-  'src/renderer/src/features/routines/impl/templates.ts',
+  'src/renderer/src/features/routines/impl/RecipesDialog.tsx',
   'src/renderer/src/features/routines/impl/terms.ts',
   'src/renderer/src/features/routines/index.ts',
   'src/renderer/src/features/settings/impl/AboutSection.tsx',

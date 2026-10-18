@@ -8,21 +8,17 @@ import {
   ChevronDown,
   Clock,
   ExternalLink,
-  FileText,
   FolderOpen,
   Hourglass,
   Loader2,
-  Newspaper,
   Pencil,
   Play,
   Plus,
   ShieldAlert,
   ShieldCheck,
-  Terminal,
   Trash2,
   X,
-  XCircle,
-  type LucideIcon
+  XCircle
 } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { needsRoutinesNotice } from '@shared/routines-terms'
@@ -46,7 +42,7 @@ import { RoutineInbox } from './RoutineInbox'
 import { RoutineEditor } from './RoutineEditor'
 import { agoText, durationText, fullDate, scheduleText, untilText } from './schedule'
 import { deleteRoutine, loadRoutines, openEditor, runRoutineNow, subscribeRoutines, toggleRoutine, useRoutines } from './store'
-import { ROUTINE_TEMPLATES } from './templates'
+import { RecipeCard, RecipeGrid, RecipesDialog, availableRecipes } from './RecipesDialog'
 import { ensureRoutinesTermsAck, showRoutinesTermsDialog } from './terms'
 import { baseName } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
@@ -517,44 +513,10 @@ export function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }):
 // Estado vacío
 // ---------------------------------------------------------------------------
 
-const TEMPLATE_ICON: Record<string, LucideIcon> = { news: Newspaper, downloads: FolderOpen, inbox: FileText, repo: Terminal }
-
-/** Plantillas que se ofrecen en esta plataforma (Tareas solo donde existe). */
-function availableTemplates(): typeof ROUTINE_TEMPLATES {
-  return ROUTINE_TEMPLATES.filter((tpl) => tpl.input.mode !== 'tasks' || platformCaps().tasks)
-}
-
-/** Tarjeta de plantilla: abre el editor prellenado (estado vacío e «Ideas para empezar»). */
-export function TemplateCard({ tpl }: { tpl: (typeof ROUTINE_TEMPLATES)[number] }): React.JSX.Element {
-  const Icon = TEMPLATE_ICON[tpl.id] ?? CalendarClock
-  const ModeIcon = MODE_META[tpl.input.mode].icon
-  return (
-    <button
-      type="button"
-      onClick={() => openEditor({ ...tpl.input, model: resolveModelForMode(tpl.input.mode), enabled: true }, tpl.needs ?? null)}
-      className="group flex flex-col gap-2 rounded-xl border border-border bg-elevated p-4 text-left transition hover:-translate-y-px hover:border-border-strong hover:shadow-md desk:rounded-card desk:border-transparent desk:shadow-sm desk:hover:translate-y-0 desk:hover:border-transparent desk:hover:bg-hover desk:hover:shadow-sm"
-    >
-      <div className="flex items-center justify-between">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-hover text-muted transition group-hover:bg-accent-soft group-hover:text-accent desk:rounded-ctl desk:bg-active desk:text-accent desk:group-hover:bg-active">
-          <Icon size={16} />
-        </span>
-        <span className="flex items-center gap-1 text-[11px] desk:text-meta text-subtle">
-          <ModeIcon size={11} /> {MODE_META[tpl.input.mode].label}
-        </span>
-      </div>
-      <div className="text-sm font-medium">{tpl.title}</div>
-      <div className="text-xs leading-relaxed text-muted">{tpl.description}</div>
-      <div className="mt-auto flex items-center gap-1 pt-1 text-[11px] desk:text-meta text-subtle">
-        <Clock size={11} /> {scheduleText(tpl.input.schedule)}
-      </div>
-    </button>
-  )
-}
-
-export function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.Element {
+export function EmptyState({ onCreate, onPickRecipe }: { onCreate: () => void; onPickRecipe?: (id: string) => void }): React.JSX.Element {
   const t = useT()
   return (
-    <div className="mx-auto flex max-w-3xl flex-col items-center py-10 text-center">
+    <div className="mx-auto flex max-w-5xl flex-col items-center py-10 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
         <CalendarClock size={28} />
       </div>
@@ -563,11 +525,13 @@ export function EmptyState({ onCreate }: { onCreate: () => void }): React.JSX.El
       <Button variant="primary" className="mt-6" onClick={onCreate}>
         <Plus size={15} /> {t('routines.empty.fromScratch')}
       </Button>
-      <div className="mt-6 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
-        {availableTemplates().map((tpl) => (
-          <TemplateCard key={tpl.id} tpl={tpl} />
-        ))}
-      </div>
+      {availableRecipes().length > 0 && (
+        <div className="mt-8 w-full">
+          <h3 className="mb-1 text-sm font-semibold">{t('routines.recipes.start')}</h3>
+          <p className="mx-auto mb-4 max-w-xl text-xs text-muted">{t('routines.recipes.subtitle')}</p>
+          <RecipeGrid onPick={(id) => onPickRecipe?.(id)} />
+        </div>
+      )}
     </div>
   )
 }
@@ -585,6 +549,7 @@ export function RoutinesView(): React.JSX.Element {
   const editing = useRoutines((s) => s.editing)
   const selectedId = useRoutines((s) => s.selectedId)
   const acknowledged = useSettings((s) => s.settings.routinesTermsAcknowledged)
+  const [recipes, setRecipes] = useState<{ open: boolean; id: string | null }>({ open: false, id: null })
   const now = useNow(20_000)
   const hasRunning = routines.some((r) => r.running)
   const fastNow = useNow(hasRunning ? 1000 : 60_000)
@@ -699,7 +664,7 @@ export function RoutinesView(): React.JSX.Element {
           <RoutineInbox onOpen={(i) => openRunInCode(i as unknown as RoutineRunRecord)} />
           <PendingLearnedReview />
           {routines.length === 0 && !loading ? (
-            <EmptyState onCreate={create} />
+            <EmptyState onCreate={create} onPickRecipe={(id) => setRecipes({ open: true, id })} />
           ) : (
             <>
               <div
@@ -729,11 +694,16 @@ export function RoutinesView(): React.JSX.Element {
                     {t('routines.ideas.title')}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {availableTemplates()
+                    {availableRecipes()
                       .slice(0, 4)
-                      .map((tpl) => (
-                        <TemplateCard key={tpl.id} tpl={tpl} />
+                      .map((r) => (
+                        <RecipeCard key={r.id} recipe={r} onPick={(id) => setRecipes({ open: true, id })} />
                       ))}
+                  </div>
+                  <div className="mt-3">
+                    <Button variant="secondary" onClick={() => setRecipes({ open: true, id: null })}>
+                      {t('routines.recipes.open')}
+                    </Button>
                   </div>
                 </section>
               )}
@@ -750,6 +720,7 @@ export function RoutinesView(): React.JSX.Element {
       )}
 
       {editing && <RoutineEditor key={editing.id ?? 'new'} initial={editing} />}
+      {recipes.open && <RecipesDialog initialId={recipes.id} onClose={() => setRecipes({ open: false, id: null })} />}
     </div>
   )
 }

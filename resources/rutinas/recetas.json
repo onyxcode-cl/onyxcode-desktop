@@ -1,0 +1,1163 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-10-18",
+  "recipes": [
+    {
+      "id": "noticias-diarias",
+      "icon": "newspaper",
+      "audience": "everyone",
+      "title": {
+        "es": "Resumen informativo diario",
+        "en": "Daily news summary"
+      },
+      "description": {
+        "es": "Cada mañana, lo más importante de los temas que elijas, en pocas viñetas y con el enlace de cada fuente.",
+        "en": "Every morning, the most important news on the topics you choose, in a few bullets with a link to each source."
+      },
+      "does": [
+        {
+          "es": "Busca en la web las noticias de las últimas 24 horas sobre tus temas.",
+          "en": "Searches the web for the last 24 hours of news on your topics."
+        },
+        {
+          "es": "Te deja un resumen corto con el enlace de cada noticia.",
+          "en": "Leaves you a short summary with a link to each story."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No lee tus archivos ni tu correo.",
+          "en": "It does not read your files or your email."
+        },
+        {
+          "es": "No garantiza que una noticia sea cierta: revisa la fuente antes de confiar en ella.",
+          "en": "It cannot guarantee a story is true: check the source before trusting it."
+        }
+      ],
+      "mode": "chat",
+      "access": {
+        "level": "none",
+        "text": {
+          "es": "Ninguno: no toca tus archivos. Solo consulta la web.",
+          "en": "None: it never touches your files. It only looks things up on the web."
+        }
+      },
+      "usesWeb": true,
+      "dataNote": {
+        "es": "Los temas que escribas y lo que encuentre en la web pasan por el servicio de IA que tengas conectado.",
+        "en": "The topics you type and what it finds on the web go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "daily",
+        "time": "08:00"
+      },
+      "questions": [
+        {
+          "id": "temas",
+          "kind": "text",
+          "label": {
+            "es": "¿Qué temas quieres seguir?",
+            "en": "Which topics do you want to follow?"
+          },
+          "help": {
+            "es": "Sepáralos con comas.",
+            "en": "Separate them with commas."
+          },
+          "placeholder": {
+            "es": "Ej.: Chile, economía, tecnología",
+            "en": "E.g.: local news, economy, technology"
+          },
+          "default": {
+            "es": "Chile, economía y tecnología",
+            "en": "world news, economy and technology"
+          },
+          "required": true,
+          "maxLength": 200
+        }
+      ],
+      "name": {
+        "es": "Resumen informativo diario",
+        "en": "Daily news summary"
+      },
+      "prompt": {
+        "es": "Busca en la web las noticias más importantes de las últimas 24 horas sobre estos temas: {{ask:temas}}. Escribe un resumen en español de 5 a 8 viñetas (una o dos frases cada una), agrupadas por tema, y pon el enlace a la fuente de cada noticia. Si no encuentras algo fiable sobre un tema, dilo en vez de inventarlo. Termina con una línea «Para seguir de cerca» con el tema que más podría cambiar hoy.",
+        "en": "Search the web for the most important news from the last 24 hours on these topics: {{ask:temas}}. Write a summary of 5 to 8 bullets (one or two sentences each), grouped by topic, and include a link to the source of each story. If you cannot find anything reliable on a topic, say so instead of making something up. End with a line \"Keep an eye on\" naming the topic most likely to change today."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "descargas-resumen",
+      "icon": "folder-open",
+      "audience": "everyone",
+      "title": {
+        "es": "Qué llegó hoy a Descargas",
+        "en": "What landed in Downloads today"
+      },
+      "description": {
+        "es": "Cada tarde, un resumen de los archivos nuevos de una carpeta: cuántos son, de qué tipo y cuáles pesan más.",
+        "en": "Every evening, a summary of the new files in a folder: how many, what kind, and which are the biggest."
+      },
+      "does": [
+        {
+          "es": "Mira la carpeta que elijas y cuenta los archivos de las últimas 24 horas.",
+          "en": "Looks at the folder you choose and counts the files from the last 24 hours."
+        },
+        {
+          "es": "Los agrupa por tipo y avisa de los más pesados y de los que parecen repetidos.",
+          "en": "Groups them by type and points out the biggest ones and likely duplicates."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No mueve, renombra ni borra nada: se le indica que solo mire. Borrar siempre pide tu aprobación y en una rutina queda rechazado.",
+          "en": "It does not move, rename or delete anything: it is told to only look. Deleting always needs your approval and in a routine it is refused."
+        },
+        {
+          "es": "No abre instaladores ni programas.",
+          "en": "It does not open installers or programs."
+        },
+        {
+          "es": "No mira otras carpetas.",
+          "en": "It does not look at other folders."
+        }
+      ],
+      "mode": "tasks",
+      "access": {
+        "level": "read-folder",
+        "text": {
+          "es": "Solo la carpeta que elijas (debes aprobarla). Se le pide leer, no cambiar.",
+          "en": "Only the folder you choose (you must approve it). It is asked to read, not to change."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Los nombres, tamaños y fechas de los archivos pasan por el servicio de IA que tengas conectado.",
+        "en": "File names, sizes and dates go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "daily",
+        "time": "20:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Qué carpeta quieres revisar?",
+            "en": "Which folder do you want checked?"
+          },
+          "help": {
+            "es": "Por ejemplo, tu carpeta Descargas.",
+            "en": "For example, your Downloads folder."
+          }
+        }
+      ],
+      "name": {
+        "es": "Qué llegó hoy a Descargas",
+        "en": "What landed in Downloads today"
+      },
+      "prompt": {
+        "es": "Revisa SOLO esta carpeta (no entres en otras). Lista los archivos que llegaron o cambiaron en las últimas 24 horas, usando la fecha de modificación. Resume en una lista corta: cuántos son, de qué tipo (documentos, imágenes, instaladores, comprimidos, otros), los más pesados y los que parecen duplicados (nombres con « (1)» o «copia»). Si no hay nada nuevo, dilo en una línea. No abras ni ejecutes instaladores ni programas. No modifiques, muevas, renombres ni borres nada y no crees archivos: escribe todo en tu respuesta final.",
+        "en": "Check ONLY this folder (do not go into others). List the files that arrived or changed in the last 24 hours, using the modification date. Summarize in a short list: how many there are, what type (documents, images, installers, archives, other), the biggest ones and the likely duplicates (names with \" (1)\" or \"copy\"). If nothing is new, say so in one line. Do not open or run installers or programs. Do not modify, move, rename or delete anything and do not create files: write everything in your final reply."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [
+        {
+          "permission": "bash",
+          "pattern": "ls*"
+        }
+      ],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "descargas-ordenar",
+      "icon": "files",
+      "audience": "everyone",
+      "title": {
+        "es": "Ordenar Descargas por tipo (solo propone)",
+        "en": "Sort Downloads by type (proposal only)"
+      },
+      "description": {
+        "es": "Cada viernes, te propone cómo ordenar los archivos sueltos de una carpeta por tipo. Tú decides qué hacer.",
+        "en": "Every Friday, proposes how to sort the loose files in a folder by type. You decide what to do."
+      },
+      "does": [
+        {
+          "es": "Mira los archivos sueltos de la carpeta y los clasifica por tipo.",
+          "en": "Looks at the loose files in the folder and sorts them by type."
+        },
+        {
+          "es": "Te deja una tabla con la carpeta sugerida para cada archivo y el motivo.",
+          "en": "Leaves you a table with the suggested folder for each file and the reason."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No mueve, renombra, copia ni borra nada: solo propone. Se lo pedimos así a la IA y borrar además pide tu aprobación.",
+          "en": "It does not move, rename, copy or delete anything: it only proposes. We ask the AI to work that way, and deleting also needs your approval."
+        },
+        {
+          "es": "No ordena nada hasta que tú lo hagas, a mano o pidiéndoselo en una conversación.",
+          "en": "Nothing gets sorted until you do it, by hand or by asking in a conversation."
+        }
+      ],
+      "mode": "tasks",
+      "access": {
+        "level": "read-folder",
+        "text": {
+          "es": "Solo la carpeta que elijas (debes aprobarla). Se le pide leer, no cambiar.",
+          "en": "Only the folder you choose (you must approve it). It is asked to read, not to change."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Los nombres, tamaños y fechas de los archivos pasan por el servicio de IA que tengas conectado.",
+        "en": "File names, sizes and dates go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 5,
+        "time": "17:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Qué carpeta quieres ordenar?",
+            "en": "Which folder do you want sorted?"
+          },
+          "help": {
+            "es": "Solo se consideran los archivos sueltos, no las subcarpetas.",
+            "en": "Only loose files are considered, not subfolders."
+          }
+        }
+      ],
+      "name": {
+        "es": "Propuesta para ordenar Descargas",
+        "en": "Proposal to sort Downloads"
+      },
+      "prompt": {
+        "es": "Revisa los archivos sueltos en la raíz de esta carpeta (no entres en subcarpetas). Propón cómo ordenarlos en subcarpetas por tipo: Documentos, Imágenes, Instaladores, Comprimidos y Otros; marca aparte lo que parece duplicado y lo que dejarías para que la persona lo revise. Presenta la propuesta como una tabla con tres columnas: archivo, carpeta sugerida y motivo. SOLO PROPONES: no muevas, renombres, borres ni copies nada, y no crees carpetas ni archivos. Escribe todo en tu respuesta final; la persona decidirá qué hacer al leerla. Termina con un resumen de dos líneas: cuántos archivos hay y cuántos irían a cada carpeta.",
+        "en": "Review the loose files at the top level of this folder (do not go into subfolders). Propose how to sort them into subfolders by type: Documents, Images, Installers, Archives and Other; flag separately what looks like a duplicate and what you would leave for the person to review. Present the proposal as a table with three columns: file, suggested folder and reason. YOU ONLY PROPOSE: do not move, rename, delete or copy anything, and do not create folders or files. Write everything in your final reply; the person will decide what to do after reading it. End with a two-line summary: how many files there are and how many would go to each folder."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [
+        {
+          "permission": "bash",
+          "pattern": "ls*"
+        }
+      ],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "archivos-nuevos",
+      "icon": "inbox",
+      "audience": "everyone",
+      "title": {
+        "es": "Resumir cada archivo nuevo de una carpeta",
+        "en": "Summarize each new file in a folder"
+      },
+      "description": {
+        "es": "Cuando llega un archivo a la carpeta que elijas, lo lee y deja un resumen con lo más urgente primero.",
+        "en": "When a file arrives in the folder you choose, it reads it and leaves a summary with the most urgent first."
+      },
+      "does": [
+        {
+          "es": "Se activa solo cuando aparece un archivo nuevo en la carpeta (no mira el reloj).",
+          "en": "Starts only when a new file appears in the folder (not on a clock)."
+        },
+        {
+          "es": "Lee el archivo y resume en una o dos frases de qué trata.",
+          "en": "Reads the file and summarizes what it is about in a sentence or two."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No modifica, mueve, renombra ni borra ningún archivo: se le indica que solo lea.",
+          "en": "It does not modify, move, rename or delete any file: it is told to only read."
+        },
+        {
+          "es": "No inventa el contenido de lo que no pueda leer: lo dice.",
+          "en": "It does not invent the contents of anything it cannot read: it says so."
+        },
+        {
+          "es": "Se limita a pocas ejecuciones por hora para no gastar de más.",
+          "en": "It is limited to a few runs per hour so it does not use more than needed."
+        }
+      ],
+      "mode": "tasks",
+      "access": {
+        "level": "read-folder",
+        "text": {
+          "es": "Solo la carpeta que elijas (debes aprobarla). Se le pide leer, no cambiar.",
+          "en": "Only the folder you choose (you must approve it). It is asked to read, not to change."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "El contenido de cada archivo nuevo pasa por el servicio de IA que tengas conectado para poder resumirlo.",
+        "en": "The contents of each new file go through the AI service you have connected so it can summarize them."
+      },
+      "schedule": {
+        "kind": "file",
+        "folder": "",
+        "patterns": [],
+        "on": "create",
+        "settleSec": 10,
+        "maxPerHour": 6
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Qué carpeta quieres vigilar?",
+            "en": "Which folder do you want watched?"
+          },
+          "help": {
+            "es": "Se miran los archivos que lleguen a esa carpeta, no a sus subcarpetas.",
+            "en": "It watches files that arrive in that folder, not in its subfolders."
+          }
+        }
+      ],
+      "name": {
+        "es": "Resumen de archivos nuevos",
+        "en": "New file summaries"
+      },
+      "prompt": {
+        "es": "Llegaron archivos nuevos a esta carpeta: {{archivos}}. Para cada uno, ábrelo solo para leerlo (documento, planilla, PDF o texto), resume en una o dos frases de qué trata y di si parece urgente o qué haría falta hacer con él. Si no puedes leer un archivo (formato raro o protegido), dilo sin inventar su contenido. No modifiques, muevas, renombres ni borres ningún archivo y no crees archivos: escribe todo en tu respuesta final. Ordena la lista con lo más urgente primero.",
+        "en": "New files arrived in this folder: {{archivos}}. For each one, open it only to read it (document, spreadsheet, PDF or text), summarize in a sentence or two what it is about and say whether it looks urgent or what would need to be done with it. If you cannot read a file (unusual or protected format), say so without inventing its contents. Do not modify, move, rename or delete any file and do not create files: write everything in your final reply. Order the list with the most urgent first."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [
+        {
+          "permission": "bash",
+          "pattern": "ls*"
+        }
+      ],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "gastos-semana",
+      "icon": "wallet",
+      "audience": "everyone",
+      "title": {
+        "es": "Resumen semanal de gastos",
+        "en": "Weekly spending summary"
+      },
+      "description": {
+        "es": "Cada lunes, lee tu planilla de gastos y te cuenta cuánto gastaste, en qué y cómo se compara con la semana anterior.",
+        "en": "Every Monday, reads your spending sheet and tells you how much you spent, on what, and how it compares to the week before."
+      },
+      "does": [
+        {
+          "es": "Lee la planilla que indiques y suma los últimos 7 días.",
+          "en": "Reads the sheet you name and adds up the last 7 days."
+        },
+        {
+          "es": "Muestra el total, el gasto por categoría y los 3 gastos más grandes.",
+          "en": "Shows the total, spending by category and the 3 biggest expenses."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No modifica tu planilla ni crea archivos: se le indica que solo lea.",
+          "en": "It does not change your sheet or create files: it is told to only read."
+        },
+        {
+          "es": "No se conecta a tu banco ni a tus tarjetas.",
+          "en": "It does not connect to your bank or your cards."
+        },
+        {
+          "es": "Funciona de forma fiable con planillas en CSV. Con Excel (.xlsx) puede fallar: guárdala como CSV (Archivo › Guardar como › CSV).",
+          "en": "It works reliably with CSV sheets. With Excel (.xlsx) it may fail: save it as CSV (File > Save as > CSV)."
+        },
+        {
+          "es": "No inventa datos: si no entiende una columna o no puede leer el archivo, lo dice.",
+          "en": "It does not invent data: if it does not understand a column or cannot read the file, it says so."
+        }
+      ],
+      "mode": "tasks",
+      "access": {
+        "level": "read-folder",
+        "text": {
+          "es": "Solo la carpeta donde está la planilla (debes aprobarla). Se le pide leer, no cambiar.",
+          "en": "Only the folder that holds the sheet (you must approve it). It is asked to read, not to change."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "El contenido de la planilla (fechas, descripciones y montos) pasa por el servicio de IA que tengas conectado.",
+        "en": "The contents of the sheet (dates, descriptions and amounts) go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 1,
+        "time": "09:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿En qué carpeta está tu planilla?",
+            "en": "Which folder holds your sheet?"
+          },
+          "help": {
+            "es": "Es la carpeta que contiene el archivo de la planilla.",
+            "en": "It is the folder that contains the sheet file."
+          }
+        },
+        {
+          "id": "planilla",
+          "kind": "text",
+          "label": {
+            "es": "¿Cómo se llama el archivo de la planilla?",
+            "en": "What is the sheet file called?"
+          },
+          "help": {
+            "es": "Escribe el nombre con su extensión, sin la ruta.",
+            "en": "Type the name with its extension, without the path."
+          },
+          "placeholder": {
+            "es": "Ej.: gastos.csv",
+            "en": "E.g.: expenses.csv"
+          },
+          "default": {
+            "es": "gastos.csv",
+            "en": "expenses.csv"
+          },
+          "required": true,
+          "maxLength": 120
+        },
+        {
+          "id": "foco",
+          "kind": "text",
+          "label": {
+            "es": "¿Algo en lo que quieras fijarte? (opcional)",
+            "en": "Anything you want it to pay attention to? (optional)"
+          },
+          "placeholder": {
+            "es": "Ej.: comida y transporte",
+            "en": "E.g.: food and transport"
+          },
+          "default": {
+            "es": "las categorías con más gasto",
+            "en": "the categories with the most spending"
+          },
+          "required": false,
+          "maxLength": 160
+        }
+      ],
+      "name": {
+        "es": "Resumen semanal de gastos",
+        "en": "Weekly spending summary"
+      },
+      "prompt": {
+        "es": "Abre la planilla «{{ask:planilla}}» que está en esta carpeta, solo para leerla. Es un registro de gastos: detecta las columnas de fecha, descripción, categoría y monto (si no hay categorías, agrúpalas tú con criterio y dilo). Resume los últimos 7 días: total gastado, gasto por categoría de mayor a menor, los 3 gastos más grandes y, si hay datos, la comparación con los 7 días anteriores. Fíjate especialmente en: {{ask:foco}}. Usa los montos tal como están en la planilla y no inventes datos que no estén; si no puedes leerla, explica por qué. No modifiques la planilla ni ningún otro archivo y no crees archivos: escribe todo en tu respuesta final.",
+        "en": "Open the sheet \"{{ask:planilla}}\" in this folder, only to read it. It is a spending log: detect the date, description, category and amount columns (if there are no categories, group them yourself sensibly and say so). Summarize the last 7 days: total spent, spending by category from highest to lowest, the 3 biggest expenses and, if there is data, the comparison with the previous 7 days. Pay special attention to: {{ask:foco}}. Use the amounts exactly as they appear in the sheet and do not invent data that is not there; if you cannot read it, explain why. Do not modify the sheet or any other file and do not create files: write everything in your final reply."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [
+        {
+          "permission": "bash",
+          "pattern": "ls*"
+        }
+      ],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "compras-semana",
+      "icon": "shopping-cart",
+      "audience": "everyone",
+      "title": {
+        "es": "Menú y lista de compras de la semana",
+        "en": "Weekly menu and shopping list"
+      },
+      "description": {
+        "es": "Cada domingo, un menú simple para la semana y la lista de compras agrupada por sección del supermercado.",
+        "en": "Every Sunday, a simple menu for the week and a shopping list grouped by supermarket section."
+      },
+      "does": [
+        {
+          "es": "Arma un menú de almuerzo y cena para los siete días según tus datos.",
+          "en": "Builds a lunch and dinner menu for the seven days based on your answers."
+        },
+        {
+          "es": "Te deja la lista de compras con cantidades aproximadas.",
+          "en": "Leaves you the shopping list with approximate amounts."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No compra nada ni hace pedidos.",
+          "en": "It does not buy anything or place orders."
+        },
+        {
+          "es": "No conoce los precios de hoy: si estima alguno, lo dice.",
+          "en": "It does not know today's prices: if it estimates any, it says so."
+        },
+        {
+          "es": "No reemplaza a un nutricionista.",
+          "en": "It does not replace a nutritionist."
+        }
+      ],
+      "mode": "chat",
+      "access": {
+        "level": "none",
+        "text": {
+          "es": "Ninguno: no toca tus archivos ni usa la web.",
+          "en": "None: it never touches your files and does not use the web."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Lo que escribas aquí pasa por el servicio de IA que tengas conectado.",
+        "en": "What you type here goes through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 0,
+        "time": "18:00"
+      },
+      "questions": [
+        {
+          "id": "personas",
+          "kind": "text",
+          "label": {
+            "es": "¿Para cuántas personas?",
+            "en": "For how many people?"
+          },
+          "placeholder": {
+            "es": "Ej.: 2",
+            "en": "E.g.: 2"
+          },
+          "default": {
+            "es": "2",
+            "en": "2"
+          },
+          "required": true,
+          "maxLength": 20
+        },
+        {
+          "id": "presupuesto",
+          "kind": "text",
+          "label": {
+            "es": "¿Tienes un presupuesto? (opcional)",
+            "en": "Do you have a budget? (optional)"
+          },
+          "placeholder": {
+            "es": "Ej.: 60.000 pesos a la semana",
+            "en": "E.g.: 60 per week"
+          },
+          "default": {
+            "es": "sin tope definido",
+            "en": "no set limit"
+          },
+          "required": false,
+          "maxLength": 80
+        },
+        {
+          "id": "preferencias",
+          "kind": "text",
+          "label": {
+            "es": "¿Alguna preferencia o restricción? (opcional)",
+            "en": "Any preferences or restrictions? (optional)"
+          },
+          "placeholder": {
+            "es": "Ej.: sin mariscos, vegetariano los lunes",
+            "en": "E.g.: no shellfish, vegetarian on Mondays"
+          },
+          "default": {
+            "es": "ninguna",
+            "en": "none"
+          },
+          "required": false,
+          "maxLength": 200
+        }
+      ],
+      "name": {
+        "es": "Menú y lista de compras",
+        "en": "Menu and shopping list"
+      },
+      "prompt": {
+        "es": "Planifica las comidas de la próxima semana para esta cantidad de personas: {{ask:personas}}. Presupuesto: {{ask:presupuesto}}. Preferencias o restricciones: {{ask:preferencias}}. Usa ingredientes fáciles de encontrar en un supermercado corriente. Entrega: 1) un menú de almuerzo y cena de lunes a domingo, simple y con platos que se repitan para ahorrar; 2) una lista de compras agrupada por sección (verduras y frutas, carnes y pescados, lácteos, despensa, otros) con cantidades aproximadas. No inventes precios exactos: si das una estimación, di que es aproximada. No compras ni pides nada: solo propones.",
+        "en": "Plan next week's meals for this number of people: {{ask:personas}}. Budget: {{ask:presupuesto}}. Preferences or restrictions: {{ask:preferencias}}. Use ingredients that are easy to find in an ordinary supermarket. Deliver: 1) a lunch and dinner menu from Monday to Sunday, simple, with dishes that repeat to save money; 2) a shopping list grouped by section (fruit and vegetables, meat and fish, dairy, pantry, other) with approximate amounts. Do not invent exact prices: if you give an estimate, say it is approximate. You do not buy or order anything: you only propose."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "repaso-estudio",
+      "icon": "graduation-cap",
+      "audience": "everyone",
+      "title": {
+        "es": "Repaso de estudio con tus apuntes",
+        "en": "Study review from your notes"
+      },
+      "description": {
+        "es": "Cada tarde, prepara un repaso de 10 minutos con un resumen y preguntas de práctica sacadas de tus apuntes.",
+        "en": "Every evening, prepares a 10-minute review with a summary and practice questions drawn from your notes."
+      },
+      "does": [
+        {
+          "es": "Lee los apuntes de la carpeta que elijas.",
+          "en": "Reads the notes in the folder you choose."
+        },
+        {
+          "es": "Te deja las ideas clave, seis preguntas de práctica y las respuestas al final.",
+          "en": "Leaves you the key ideas, six practice questions and the answers at the end."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No modifica tus apuntes ni crea archivos: se le indica que solo lea.",
+          "en": "It does not change your notes or create files: it is told to only read."
+        },
+        {
+          "es": "Se basa solo en tus apuntes: no agrega materia que no esté ahí.",
+          "en": "It relies only on your notes: it does not add material that is not there."
+        }
+      ],
+      "mode": "tasks",
+      "access": {
+        "level": "read-folder",
+        "text": {
+          "es": "Solo la carpeta de tus apuntes (debes aprobarla). Se le pide leer, no cambiar.",
+          "en": "Only your notes folder (you must approve it). It is asked to read, not to change."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "El texto de los apuntes que lea pasa por el servicio de IA que tengas conectado.",
+        "en": "The text of the notes it reads goes through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "daily",
+        "time": "19:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Dónde están tus apuntes?",
+            "en": "Where are your notes?"
+          },
+          "help": {
+            "es": "Una carpeta con tus apuntes.",
+            "en": "A folder with your notes."
+          }
+        },
+        {
+          "id": "tema",
+          "kind": "text",
+          "label": {
+            "es": "¿De qué tema repasar? (opcional)",
+            "en": "Which topic to review? (optional)"
+          },
+          "placeholder": {
+            "es": "Ej.: derecho civil, unidad 3",
+            "en": "E.g.: civil law, unit 3"
+          },
+          "default": {
+            "es": "lo último que modifiqué",
+            "en": "whatever I changed most recently"
+          },
+          "required": false,
+          "maxLength": 160
+        }
+      ],
+      "name": {
+        "es": "Repaso de estudio",
+        "en": "Study review"
+      },
+      "prompt": {
+        "es": "Lee los apuntes de esta carpeta, solo para leerlos. Tema a repasar: {{ask:tema}}. Prepara un repaso de unos 10 minutos con tres partes: 1) las ideas clave en 5 a 8 viñetas; 2) seis preguntas de práctica sobre esos apuntes, de la más fácil a la más difícil; 3) las respuestas, al final y bajo el título «Respuestas». Basa todo SOLO en los apuntes; si no hay apuntes que leer o no puedes leerlos, dilo. No modifiques ningún archivo, no muevas ni borres nada y no crees archivos: escribe todo en tu respuesta final.",
+        "en": "Read the notes in this folder, only to read them. Topic to review: {{ask:tema}}. Prepare a review of about 10 minutes in three parts: 1) the key ideas in 5 to 8 bullets; 2) six practice questions about those notes, from easiest to hardest; 3) the answers, at the end under the heading \"Answers\". Base everything ONLY on the notes; if there are no notes to read or you cannot read them, say so. Do not modify any file, do not move or delete anything and do not create files: write everything in your final reply."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [
+        {
+          "permission": "bash",
+          "pattern": "ls*"
+        }
+      ],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "seguir-tema",
+      "icon": "telescope",
+      "audience": "everyone",
+      "title": {
+        "es": "Seguir un tema",
+        "en": "Follow a topic"
+      },
+      "description": {
+        "es": "Cada viernes, las novedades de la semana sobre un tema que te interese, con enlaces a las fuentes.",
+        "en": "Every Friday, the week's news on a topic you care about, with links to the sources."
+      },
+      "does": [
+        {
+          "es": "Busca en la web novedades de los últimos 7 días sobre tu tema.",
+          "en": "Searches the web for the last 7 days of news on your topic."
+        },
+        {
+          "es": "Resume en cinco viñetas, con enlaces, y dice qué mirar la semana siguiente.",
+          "en": "Summarizes in five bullets, with links, and says what to watch next week."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No lee tus archivos ni tu correo.",
+          "en": "It does not read your files or your email."
+        },
+        {
+          "es": "No asegura que lo que encuentre sea cierto: revisa las fuentes.",
+          "en": "It cannot promise what it finds is true: check the sources."
+        }
+      ],
+      "mode": "chat",
+      "access": {
+        "level": "none",
+        "text": {
+          "es": "Ninguno: no toca tus archivos. Solo consulta la web.",
+          "en": "None: it never touches your files. It only looks things up on the web."
+        }
+      },
+      "usesWeb": true,
+      "dataNote": {
+        "es": "El tema que escribas y lo que encuentre en la web pasan por el servicio de IA que tengas conectado.",
+        "en": "The topic you type and what it finds on the web go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 5,
+        "time": "09:00"
+      },
+      "questions": [
+        {
+          "id": "tema",
+          "kind": "text",
+          "label": {
+            "es": "¿Qué tema quieres seguir?",
+            "en": "Which topic do you want to follow?"
+          },
+          "placeholder": {
+            "es": "Ej.: energías renovables en Chile",
+            "en": "E.g.: renewable energy"
+          },
+          "required": true,
+          "maxLength": 160
+        }
+      ],
+      "name": {
+        "es": "Seguimiento semanal de un tema",
+        "en": "Weekly topic follow-up"
+      },
+      "prompt": {
+        "es": "Busca en la web las novedades de la última semana sobre este tema: {{ask:tema}}. Resume lo más importante en 5 viñetas con el enlace de cada fuente, explica qué cambió respecto de lo habitual y qué conviene mirar la semana próxima. Si no hay novedades fiables, dilo en vez de inventarlas.",
+        "en": "Search the web for the last week's news on this topic: {{ask:tema}}. Summarize the most important points in 5 bullets with a link to each source, explain what changed compared with the usual and what is worth watching next week. If there is no reliable news, say so instead of making it up."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "plan-entrenamiento",
+      "icon": "dumbbell",
+      "audience": "everyone",
+      "title": {
+        "es": "Plan de entrenamiento semanal",
+        "en": "Weekly training plan"
+      },
+      "description": {
+        "es": "Cada domingo, un plan simple para la semana según tu objetivo, tu nivel y los días que tienes.",
+        "en": "Every Sunday, a simple plan for the week based on your goal, your level and the days you have."
+      },
+      "does": [
+        {
+          "es": "Arma un plan día por día con calentamiento, duración y descanso.",
+          "en": "Builds a day-by-day plan with warm-up, duration and rest."
+        },
+        {
+          "es": "Te recuerda cuándo conviene consultar a un profesional.",
+          "en": "Reminds you when it is wise to see a professional."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No es consejo médico ni conoce tu estado físico.",
+          "en": "It is not medical advice and does not know your physical condition."
+        },
+        {
+          "es": "No lee tus archivos ni se conecta a relojes o aplicaciones de salud.",
+          "en": "It does not read your files or connect to watches or health apps."
+        }
+      ],
+      "mode": "chat",
+      "access": {
+        "level": "none",
+        "text": {
+          "es": "Ninguno: no toca tus archivos ni usa la web.",
+          "en": "None: it never touches your files and does not use the web."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Lo que escribas aquí pasa por el servicio de IA que tengas conectado.",
+        "en": "What you type here goes through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 0,
+        "time": "20:00"
+      },
+      "questions": [
+        {
+          "id": "objetivo",
+          "kind": "text",
+          "label": {
+            "es": "¿Cuál es tu objetivo?",
+            "en": "What is your goal?"
+          },
+          "placeholder": {
+            "es": "Ej.: correr 5 km sin parar",
+            "en": "E.g.: run 5 km without stopping"
+          },
+          "required": true,
+          "maxLength": 160
+        },
+        {
+          "id": "dias",
+          "kind": "text",
+          "label": {
+            "es": "¿Cuántos días a la semana puedes entrenar?",
+            "en": "How many days a week can you train?"
+          },
+          "placeholder": {
+            "es": "Ej.: 3",
+            "en": "E.g.: 3"
+          },
+          "default": {
+            "es": "3",
+            "en": "3"
+          },
+          "required": true,
+          "maxLength": 20
+        },
+        {
+          "id": "nivel",
+          "kind": "text",
+          "label": {
+            "es": "¿Cuál es tu nivel?",
+            "en": "What is your level?"
+          },
+          "placeholder": {
+            "es": "Ej.: principiante",
+            "en": "E.g.: beginner"
+          },
+          "default": {
+            "es": "principiante",
+            "en": "beginner"
+          },
+          "required": true,
+          "maxLength": 60
+        }
+      ],
+      "name": {
+        "es": "Plan de entrenamiento semanal",
+        "en": "Weekly training plan"
+      },
+      "prompt": {
+        "es": "Arma un plan de entrenamiento para la próxima semana. Objetivo: {{ask:objetivo}}. Días disponibles por semana: {{ask:dias}}. Nivel: {{ask:nivel}}. Entrega día por día qué hacer, cuánto dura y cómo saber si va bien; incluye calentamiento y días de descanso. Sé prudente: no propongas nada extremo. Cierra recordando que esto no es consejo médico y que, si hay dolor, una lesión o una condición de salud, conviene consultar a un profesional.",
+        "en": "Build a training plan for next week. Goal: {{ask:objetivo}}. Days available per week: {{ask:dias}}. Level: {{ask:nivel}}. Give day by day what to do, how long it takes and how to tell it is going well; include a warm-up and rest days. Be cautious: do not suggest anything extreme. Close by reminding that this is not medical advice and that, with pain, an injury or a health condition, it is wise to see a professional."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "repo-estado",
+      "icon": "git-branch",
+      "audience": "technical",
+      "title": {
+        "es": "Estado semanal de un repositorio",
+        "en": "Weekly repository status"
+      },
+      "description": {
+        "es": "Cada lunes, qué cambió en el repositorio la última semana, dónde hubo más movimiento y qué quedó pendiente.",
+        "en": "Every Monday, what changed in the repository over the last week, where most of the activity was and what is still pending."
+      },
+      "does": [
+        {
+          "es": "Lee el historial de git de los últimos 7 días (commits, ramas, archivos más tocados).",
+          "en": "Reads the git history of the last 7 days (commits, branches, most-touched files)."
+        },
+        {
+          "es": "Resume los cambios, los TODO nuevos y los riesgos.",
+          "en": "Summarizes the changes, new TODOs and risks."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No cambia archivos ni el repositorio: se le indica que solo lea y que no haga commit, ramas, etiquetas ni push.",
+          "en": "It does not change files or the repository: it is told to only read and not to commit, branch, tag or push."
+        },
+        {
+          "es": "No ejecuta pruebas ni el proyecto.",
+          "en": "It does not run tests or the project."
+        }
+      ],
+      "mode": "code",
+      "access": {
+        "level": "read-project",
+        "text": {
+          "es": "Solo la carpeta del proyecto que elijas. Se le pide solo leer y usar comandos de lectura de git.",
+          "en": "Only the project folder you choose. It is asked to only read and use read-only git commands."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Los mensajes de commit y el código que lea pasan por el servicio de IA que tengas conectado.",
+        "en": "Commit messages and the code it reads go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 1,
+        "time": "09:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Qué proyecto quieres revisar?",
+            "en": "Which project do you want checked?"
+          },
+          "help": {
+            "es": "Una carpeta con un repositorio de git.",
+            "en": "A folder with a git repository."
+          }
+        }
+      ],
+      "name": {
+        "es": "Estado semanal del repositorio",
+        "en": "Weekly repository status"
+      },
+      "prompt": {
+        "es": "Trabaja en tres pasos. 1) REVISA: analiza la actividad de este repositorio en los últimos 7 días con comandos de solo lectura de git (git log --since=\"7 days ago\", git shortlog, git diff --stat). 2) RESUME: commits destacados, áreas con más cambios y TODO o FIXME nuevos. 3) AVISA: riesgos y próximos pasos razonables. Escribe el reporte en Markdown en tu respuesta final. No modifiques ningún archivo, no hagas commit, ramas, etiquetas ni push y no crees archivos.",
+        "en": "Work in three steps. 1) REVIEW: analyze this repository's activity over the last 7 days with read-only git commands (git log --since=\"7 days ago\", git shortlog, git diff --stat). 2) SUMMARIZE: notable commits, areas with the most changes and new TODOs or FIXMEs. 3) FLAG: risks and reasonable next steps. Write the report in Markdown in your final reply. Do not modify any file, do not commit, branch, tag or push, and do not create files."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "notas-version",
+      "icon": "scroll-text",
+      "audience": "technical",
+      "title": {
+        "es": "Notas de versión desde git",
+        "en": "Release notes from git"
+      },
+      "description": {
+        "es": "Cada viernes, un borrador de notas de versión en lenguaje llano a partir de los commits recientes.",
+        "en": "Every Friday, a draft of release notes in plain language from the recent commits."
+      },
+      "does": [
+        {
+          "es": "Lee los commits del período que indiques.",
+          "en": "Reads the commits for the period you give."
+        },
+        {
+          "es": "Los agrupa en Novedades, Mejoras, Arreglos y Otros, con una frase llana cada uno.",
+          "en": "Groups them into New, Improvements, Fixes and Other, with a plain sentence each."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No cambia archivos ni el repositorio: se le indica que solo lea y que no haga commit, ramas, etiquetas ni push.",
+          "en": "It does not change files or the repository: it is told to only read and not to commit, branch, tag or push."
+        },
+        {
+          "es": "No publica nada: el borrador queda en tu bandeja para que lo revises.",
+          "en": "It publishes nothing: the draft waits in your tray for you to review."
+        },
+        {
+          "es": "Si un commit no se entiende, lo deja como «Por revisar» en vez de adivinar.",
+          "en": "If a commit is unclear, it lists it under \"To review\" instead of guessing."
+        }
+      ],
+      "mode": "code",
+      "access": {
+        "level": "read-project",
+        "text": {
+          "es": "Solo la carpeta del proyecto que elijas. Se le pide solo leer y usar comandos de lectura de git.",
+          "en": "Only the project folder you choose. It is asked to only read and use read-only git commands."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Los mensajes de commit y los cambios que lea pasan por el servicio de IA que tengas conectado.",
+        "en": "Commit messages and the changes it reads go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 5,
+        "time": "16:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Qué proyecto?",
+            "en": "Which project?"
+          },
+          "help": {
+            "es": "Una carpeta con un repositorio de git.",
+            "en": "A folder with a git repository."
+          }
+        },
+        {
+          "id": "desde",
+          "kind": "text",
+          "label": {
+            "es": "¿Desde cuándo? (opcional)",
+            "en": "Since when? (optional)"
+          },
+          "help": {
+            "es": "Puede ser un período, una etiqueta o una fecha.",
+            "en": "It can be a period, a tag or a date."
+          },
+          "placeholder": {
+            "es": "Ej.: la etiqueta v1.2.0",
+            "en": "E.g.: the tag v1.2.0"
+          },
+          "default": {
+            "es": "los últimos 7 días",
+            "en": "the last 7 days"
+          },
+          "required": false,
+          "maxLength": 120
+        }
+      ],
+      "name": {
+        "es": "Borrador de notas de versión",
+        "en": "Release notes draft"
+      },
+      "prompt": {
+        "es": "Prepara un borrador de notas de versión a partir del historial de git de este repositorio, desde: {{ask:desde}}. Usa solo comandos de lectura de git (git log, git diff, git show). Agrupa los cambios en Novedades, Mejoras, Arreglos y Otros, con una frase llana por cambio (sin jerga interna) y el identificador corto del commit entre paréntesis. Si un commit no se entiende, ponlo en «Por revisar» sin inventar su efecto. No modifiques archivos ni el repositorio, no hagas commit, etiquetas ni push y no crees archivos: escribe las notas en tu respuesta final.",
+        "en": "Prepare a draft of release notes from this repository's git history, since: {{ask:desde}}. Use only read-only git commands (git log, git diff, git show). Group the changes into New, Improvements, Fixes and Other, with one plain sentence per change (no internal jargon) and the short commit id in parentheses. If a commit is unclear, put it under \"To review\" without inventing its effect. Do not modify files or the repository, do not commit, tag or push, and do not create files: write the notes in your final reply."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    },
+    {
+      "id": "pendientes-codigo",
+      "icon": "list-checks",
+      "audience": "technical",
+      "title": {
+        "es": "Pendientes escritos en el código",
+        "en": "Pending notes left in the code"
+      },
+      "description": {
+        "es": "Cada miércoles, junta los TODO, FIXME y HACK de un proyecto, ordenados por carpeta y con una frase cada uno.",
+        "en": "Every Wednesday, gathers a project's TODO, FIXME and HACK notes, ordered by folder with one sentence each."
+      },
+      "does": [
+        {
+          "es": "Busca esas marcas en el código del proyecto.",
+          "en": "Searches the project's code for those markers."
+        },
+        {
+          "es": "Las agrupa por carpeta, con archivo y línea, y resume cada una.",
+          "en": "Groups them by folder, with file and line, and summarizes each."
+        }
+      ],
+      "doesNot": [
+        {
+          "es": "No cambia archivos ni el repositorio: se le indica que solo lea y que no haga commit, ramas, etiquetas ni push.",
+          "en": "It does not change files or the repository: it is told to only read and not to commit, branch, tag or push."
+        },
+        {
+          "es": "No arregla los pendientes por su cuenta.",
+          "en": "It does not fix the pending items on its own."
+        }
+      ],
+      "mode": "code",
+      "access": {
+        "level": "read-project",
+        "text": {
+          "es": "Solo la carpeta del proyecto que elijas. Se le pide solo leer y usar comandos de lectura de git.",
+          "en": "Only the project folder you choose. It is asked to only read and use read-only git commands."
+        }
+      },
+      "usesWeb": false,
+      "dataNote": {
+        "es": "Los comentarios y el código que lea pasan por el servicio de IA que tengas conectado.",
+        "en": "The comments and code it reads go through the AI service you have connected."
+      },
+      "schedule": {
+        "kind": "weekly",
+        "day": 3,
+        "time": "10:00"
+      },
+      "questions": [
+        {
+          "id": "carpeta",
+          "kind": "folder",
+          "label": {
+            "es": "¿Qué proyecto quieres revisar?",
+            "en": "Which project do you want checked?"
+          },
+          "help": {
+            "es": "Cualquier carpeta de código.",
+            "en": "Any folder of code."
+          }
+        }
+      ],
+      "name": {
+        "es": "Pendientes escritos en el código",
+        "en": "Pending notes left in the code"
+      },
+      "prompt": {
+        "es": "Busca en este proyecto los comentarios TODO, FIXME y HACK (con grep, ignorando carpetas de dependencias y de compilación como node_modules, dist y build). Agrúpalos por carpeta, indica archivo y línea, resume cada uno en una frase y marca los que parecen más urgentes. Si es fácil averiguarlo con git log o git blame (solo lectura), indica cuáles llevan más tiempo. No modifiques ningún archivo, no cambies el repositorio y no crees archivos: escribe todo en tu respuesta final.",
+        "en": "Search this project for TODO, FIXME and HACK comments (with grep, ignoring dependency and build folders such as node_modules, dist and build). Group them by folder, give file and line, summarize each in one sentence and flag the ones that look most urgent. If it is easy to find out with git log or git blame (read only), say which have been there the longest. Do not modify any file, do not change the repository and do not create files: write everything in your final reply."
+      },
+      "sessionMode": "fresh",
+      "onAsk": "reject",
+      "allow": [],
+      "verifiedAt": "2026-10-18",
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+    }
+  ]
+}
