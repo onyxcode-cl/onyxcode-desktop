@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.3.1] - 2026-10-18
+
+### Mejoras
+
+- **Ya no se pierde el modelo gratuito al abrir la app.** Si el catálogo de modelos tardaba en bajar justo al arrancar, la app podía quedarse con una lista recortada, sin el modelo que habías elegido, y decir «Aún no conectaste ninguna IA» hasta que pulsabas de nuevo «Probar un modelo gratuito». Ahora espera unos segundos a que el catálogo esté listo antes de consultarlo, y si el modelo que elegiste no aparece en la lista, sigue usando el gratuito en vez de bloquearte.
+- **Elige qué instalar en «Prepara tu equipo».** Cada componente opcional (ArtCraft, Node.js y uv, y el entorno de Windows) tiene su casilla, con su tamaño y de dónde se descarga, y «Instalar lo que falta» y «Preparar todo» instalan solo lo marcado. Si falla uno, se reintenta solo ese.
+- **Los commits de Overdrive ya no llevan tu nombre.** Dentro de «Solo en tu carpeta», git firma como «Lazunox» y no con el nombre de tu usuario del sistema ni el de tu equipo.
+- **Resultados de rutinas más cómodos.** La vista previa muestra unas cuatro o cinco líneas con «Ver todo» y «Ver menos», sin barra de desplazamiento dentro de la tarjeta.
+- **Telegram:** el campo de la clave se vacía si la clave se rechaza.
+- **La ficha de un conector local** dice «Node.js y uv» cuando falta instalarlos, en vez de solo «uv».
+
 ## [1.3.0] - 2026-10-18
 
 ### Novedades
