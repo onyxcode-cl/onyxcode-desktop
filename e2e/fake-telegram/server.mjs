@@ -125,6 +125,8 @@ export async function startFakeTelegram(opts = {}) {
     failures: new Map(),
     /** Documentos enviados por el bot: { chat_id, message_id, filename, bytes, caption, reply_markup }. */
     documents: [],
+    /** Lo que "escribió" el usuario (para reconstruir la conversación en las capturas). */
+    userMessages: [],
     /** Archivos que el "usuario" subió y que `getFile` puede entregar: file_id -> { path, bytes, name }. */
     files: new Map(),
     nextFile: 1,
@@ -364,6 +366,11 @@ export async function startFakeTelegram(opts = {}) {
     },
     /** Una persona escribe al bot. `chatType` 'private' (por defecto), 'group', 'supergroup' o 'channel'. */
     sendUser({ chatId, text, fromId, firstName = 'Ana', chatType = 'private', isBot = false, extra = {} }) {
+      state.userMessages.push({
+        chat_id: chatId,
+        text: text ?? (extra.caption ? `[archivo] ${extra.caption}` : '[archivo]'),
+        at: Date.now()
+      })
       push({
         message: {
           message_id: state.nextMessageId++,
@@ -420,6 +427,10 @@ export async function startFakeTelegram(opts = {}) {
           voice: { file_id: fileId, file_unique_id: 'u' + fileId, duration: seconds, mime_type: 'audio/ogg', file_size: f?.bytes.length }
         }
       })
+    },
+    /** Mensajes que escribió el usuario. */
+    get userMessages() {
+      return state.userMessages
     },
     /** Documentos que el bot mandó. */
     get documents() {

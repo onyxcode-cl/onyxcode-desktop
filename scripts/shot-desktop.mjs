@@ -139,6 +139,11 @@ const SCENARIOS = [
   'telegram-vinculado',
   'telegram-permiso',
   'telegram-e2e',
+  // Telegram, entrega 2 (F8-B191): seguir y escribir a una sesión, archivos. `telegram-sesiones` = Ajustes con una conversación elegida y
+  // «Permitir escribir» encendido; `telegram-sesiones-e2e` = verificación completa (avance editado, archivos, solo resúmenes, aislamiento) y
+  // deja el Chat a la vista con el mensaje que llegó por Telegram. También guarda `telegram-sesiones-telefono-*.png`: la conversación simulada.
+  'telegram-sesiones',
+  'telegram-sesiones-e2e',
   'ajustes-memoria',
   'ajustes-instrucciones',
   // Buscador de Ajustes (⌘F, resultados agrupados con coincidencias resaltadas) e «Importar» (vista previa de una carpeta de ejemplo
@@ -492,6 +497,122 @@ async function waitUntil(cond, timeout, what) {
     await sleep(100)
   }
 }
+// ---- Telegram, entrega 2 (F8-B191): ayudantes de los escenarios `telegram-sesiones*` ----
+const TG_SESSION_TITLE = 'Plan de la semana'
+let tgSess = null
+/** Deja el puente vinculado (idempotente): clave, interruptor y código. Así los escenarios nuevos corren solos o tras los anteriores. */
+async function tgEnsureLinked(ctx) {
+  const { page, tg } = ctx
+  await openSettings(page, /Telegram/)
+  if (await page.locator('[data-telegram-status="linked"]').count()) return
+  if (!(await page.getByText(/Clave guardada \(termina en/).count())) {
+    await page.locator('input[name="telegram-bot-key"]').fill(TG_TOKEN)
+    await page.getByRole('button', { name: 'Guardar clave' }).click()
+    await vis(page.getByText(/Clave guardada \(termina en/), 20_000)
+  }
+  if (!(await page.locator('[data-telegram-code]').count())) {
+    const sw = page.getByRole('switch', { name: 'Telegram activado' })
+    if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click()
+  }
+  await vis(page.locator('[data-telegram-code]'), 20_000)
+  const code = (await page.locator('[data-telegram-code] .font-mono').first().innerText()).trim()
+  tg.sendUser({ chatId: TG_CHAT, text: '/start', firstName: 'Ana' })
+  await sleep(600)
+  tg.sendUser({ chatId: TG_CHAT, text: code, firstName: 'Ana' })
+  await vis(page.locator('[data-telegram-status="linked"]'), 20_000)
+}
+/** Enciende o apaga un interruptor de Ajustes › Telegram por su nombre y espera a que main lo confirme. */
+async function tgToggle(page, label, on) {
+  await openSettings(page, /Telegram/)
+  const sw = page.getByRole('switch', { name: label })
+  await vis(sw, 15_000)
+  if (((await sw.getAttribute('aria-checked')) === 'true') !== on) await sw.click()
+  await waitUntil(async () => ((await sw.getAttribute('aria-checked')) === 'true') === on, 10_000, `interruptor «${label}»`)
+}
+/**
+ * Prepara lo necesario para seguir una sesión: conversaciones de Chat (una que se seguirá y otras que NO), una conversación de Code, el
+ * puente vinculado y la sesión elegida desde el servidor de Telegram falso. Devuelve su id y la carpeta del Chat.
+ */
+async function tgSessionsSetup(ctx) {
+  if (tgSess) return tgSess
+  const { page, fake, tg } = ctx
+  await tgEnsureLinked(ctx)
+  await seedChats(ctx) // otras conversaciones que NO se eligen
+  await fake.script({ match: 'plan de la semana', title: TG_SESSION_TITLE, steps: [{ type: 'text', text: 'Plan inicial: lunes pruebas, miércoles informe.' }] })
+  await newChat(page)
+  await sendChat(page, 'Hazme el plan de la semana')
+  await vis(page.getByText(/Plan inicial: lunes/), 30_000)
+  await sleep(700)
+  // Una conversación de Code: la lista muestra las dos clases.
+  await openCode(ctx)
+  await fake.script({ match: 'Revisa el carrito de Telegram', title: 'Revisión del carrito', steps: [{ type: 'text', text: 'El carrito está bien.' }] })
+  const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+  await box.fill('Revisa el carrito de Telegram')
+  await box.press('Enter')
+  await vis(page.getByText('El carrito está bien.'), 30_000)
+  await sleep(700)
+  // Elegir la conversación desde el "teléfono".
+  const n = tg.messages.length
+  tg.sendUser({ chatId: TG_CHAT, text: '/sesiones' })
+  await waitUntil(() => tg.messages.length > n && tg.messages.at(-1).reply_markup, 25_000, 'lista de sesiones')
+  const list = tg.messages.at(-1)
+  const btns = list.reply_markup.inline_keyboard.flat()
+  console.log('VERIF-TELEGRAM-SESIONES lista => ' + JSON.stringify({ botones: btns.map((b) => b.text), tieneCode: /Code: tienda-web/.test(list.text), tieneChat: /Chat/.test(list.text) }))
+  const pick = btns.find((b) => b.text.includes(TG_SESSION_TITLE))
+  if (!pick) throw new Error(`la lista no trae «${TG_SESSION_TITLE}»: ${list.text}`)
+  const m = tg.messages.length
+  tg.press({ chatId: TG_CHAT, messageId: list.message_id, data: pick.callback_data })
+  await waitUntil(() => tg.messages.length > m && /^Siguiendo:/.test(tg.messages.at(-1).text), 25_000, 'mensaje de selección')
+  const chatDir = join(ctx.userData, 'chat-workspace')
+  const res = await fetch(`${fake.conn.baseUrl}/session?directory=${encodeURIComponent(chatDir)}&roots=true`, {
+    headers: { authorization: fake.conn.authorization }
+  })
+  const sessionId = (await res.json()).find((s) => s.title === TG_SESSION_TITLE)?.id
+  if (!sessionId) throw new Error('no encuentro la sesión elegida en el motor falso')
+  tgSess = { sessionId, chatDir, list: list.text }
+  return tgSess
+}
+/** Dibuja la conversación del "teléfono" (mensajes del bot ya editados, y los del dueño) en una ventana oculta y la guarda como imagen. */
+async function tgPhoneShots(ctx) {
+  const { tg } = ctx
+  const items = []
+  for (const u of tg.userMessages) items.push({ at: u.at, me: true, text: escapeHtmlLocal(u.text) })
+  for (const m of tg.messages.filter((x) => x.chat_id === TG_CHAT)) {
+    const ed = tg.edits.findLast((e) => e.message_id === m.message_id)
+    items.push({ at: m.at, me: false, text: ed?.text ?? m.text, buttons: ((ed ? ed.reply_markup : m.reply_markup)?.inline_keyboard ?? []).flat().map((b) => b.text) })
+  }
+  for (const d of tg.documents) items.push({ at: d.at, me: false, text: `<i>[archivo] ${escapeHtmlLocal(d.filename)} · ${d.bytes.length} bytes</i>`, buttons: [] })
+  items.sort((a, b) => a.at - b.at)
+  const rows = items
+    .slice(-9)
+    .map(
+      (i) =>
+        `<div class="b ${i.me ? 'me' : 'bot'}">${i.text.replace(/\n/g, '<br>')}${(i.buttons ?? []).map((t) => `<div class="btn">${escapeHtmlLocal(t)}</div>`).join('')}</div>`
+    )
+    .join('')
+  for (const theme of themes) {
+    const dark = theme === 'dark'
+    const html = `<!doctype html><meta charset="utf-8"><style>
+      body{margin:0;padding:14px;background:${dark ? '#17212b' : '#e8eef3'};color:${dark ? '#f5f5f5' : '#111'};font:14px/1.35 -apple-system,Helvetica,sans-serif;width:430px}
+      .b{max-width:92%;margin:6px 0;padding:8px 10px;border-radius:12px;word-wrap:break-word;overflow-wrap:anywhere}
+      .bot{background:${dark ? '#182533' : '#fff'}}.me{background:${dark ? '#2b5278' : '#d9fdd3'};margin-left:auto}
+      pre{margin:4px 0;white-space:pre-wrap;font:12px/1.3 Menlo,monospace;background:rgba(127,127,127,.18);padding:6px;border-radius:6px}
+      code{font:12px Menlo,monospace}.btn{margin-top:6px;padding:6px;border-radius:8px;text-align:center;background:${dark ? '#2b5278' : '#d6e6f5'};font-size:13px}
+      h1{font-size:13px;margin:0 0 8px;opacity:.7;font-weight:600}
+    </style><h1>Conversación simulada con el servidor de Telegram falso (no es Telegram real)</h1>${rows}`
+    const b64 = await ctx.electronApp.evaluate(async ({ BrowserWindow }, page) => {
+      const w = new BrowserWindow({ show: false, width: 460, height: 1180, webPreferences: { offscreen: true } })
+      await w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page))
+      await new Promise((r) => setTimeout(r, 400))
+      const img = await w.webContents.capturePage()
+      w.destroy()
+      return img.toPNG().toString('base64')
+    }, html)
+    writeFileSync(join(out, `telegram-sesiones-telefono-${theme}${SFX}.png`), Buffer.from(b64, 'base64'))
+  }
+}
+const escapeHtmlLocal = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
 /** Pide a la IA (guion del motor falso) un comando que exige permiso; el comando lleva una clave de mentira. */
 async function tgAsk(ctx, prompt, command) {
   await ctx.fake.script({
@@ -3238,6 +3359,205 @@ const S = {
       out.E_claveEnDisco.length
     )
       throw new Error('la verificación de Telegram no cumplió: ' + JSON.stringify(out))
+    await sleep(300)
+  },
+  // ---- Telegram, entrega 2 (F8-B191): seguir y escribir a una sesión, archivos. Autosuficientes: dejan el puente vinculado si hace falta. ----
+  // `telegram-sesiones`: Ajustes › Telegram con una conversación elegida y «Permitir escribir» encendido.
+  // `telegram-sesiones-e2e`: verificación completa contra el servidor de Telegram falso y el motor falso (la pantalla termina en el Chat).
+  async 'telegram-sesiones'(ctx) {
+    const { page } = ctx
+    await tgSessionsSetup(ctx)
+    await tgToggle(page, 'Permitir escribir a la sesión desde Telegram', true)
+    await openSettings(page, /Telegram/)
+    await vis(page.locator('[data-telegram-session]'), 15_000)
+    const shown = await page.locator('[data-telegram-session]').innerText()
+    if (!shown.includes(TG_SESSION_TITLE)) throw new Error(`la sesión activa no se ve en Ajustes: ${shown}`)
+    await page.locator('[data-telegram-session]').first().evaluate((el) => el.scrollIntoView({ block: 'center' }))
+    await sleep(300)
+  },
+  async 'telegram-sesiones-e2e'(ctx) {
+    const { page, tg, fake } = ctx
+    const out = {}
+    const S0 = await tgSessionsSetup(ctx)
+    const buttonsOf = (m) => (m?.reply_markup?.inline_keyboard ?? []).flat()
+    // Envía un texto y espera el primer mensaje NUEVO que cumpla `re` (el bot puede estar contando otro turno a la vez).
+    const say = async (text, re) => {
+      const n = tg.messages.length
+      tg.sendUser({ chatId: TG_CHAT, text })
+      await waitUntil(() => tg.messages.slice(n).some((m) => re.test(m.text)), 20_000, `respuesta a «${text.slice(0, 30)}»`)
+      return tg.messages.slice(n).find((m) => re.test(m.text))
+    }
+    // Espera a que el motor falso no esté trabajando y a que el bot lleve 2 s sin mandar nada (se cerró el turno).
+    const quiet = async () => {
+      let last = -1
+      let since = Date.now()
+      await waitUntil(async () => {
+        const busy = (await fake.status()).sessions.some((x) => x.running)
+        const count = tg.messages.length + tg.edits.length + tg.documents.length
+        if (busy || count !== last) {
+          last = count
+          since = Date.now()
+          return false
+        }
+        return Date.now() - since > 2000
+      }, 60_000, 'turno terminado')
+    }
+    const prompts = async () => {
+      const res = await fetch(`${fake.conn.baseUrl}/__e2e/requests?path=/session&method=POST&limit=400`, { headers: { authorization: fake.conn.authorization } })
+      return (await res.json()).filter((r) => /prompt_async$/.test(r.path))
+    }
+    const idOf = (r) => /\/session\/([^/]+)\/prompt_async/.exec(r.path)?.[1]
+    const base = (await prompts()).length
+
+    // 1) Escribir con «Permitir escribir» APAGADO no llega al motor.
+    await tgToggle(page, 'Permitir escribir a la sesión desde Telegram', false)
+    const off = await say('Esto no debe llegar', /está apagado/)
+    out.escrituraApagada = /está apagado/.test(off.text) && (await prompts()).length === base
+
+    // 2) Encendido: llega a la sesión elegida (y solo a ella), como mensaje del usuario.
+    await tgToggle(page, 'Permitir escribir a la sesión desde Telegram', true)
+    await fake.script({
+      match: 'guarda todo en resumen.md',
+      title: TG_SESSION_TITLE,
+      steps: [
+        { type: 'text', text: 'Voy a correr las pruebas y guardar el resumen.' },
+        {
+          type: 'tool',
+          tool: 'bash',
+          input: { command: `npm test # clave: ${TG_FAKE_KEY}`, description: 'Corre las pruebas' },
+          output: `PRIMERA-LINEA\n${'prueba pasó con datos\n'.repeat(300)}token ${TG_FAKE_KEY}\nULTIMA-LINEA`,
+          title: 'Corre las pruebas',
+          delayMs: 1500
+        },
+        { type: 'fs', op: 'write', path: 'resumen.md', content: '# Resumen\n\n- lunes: pruebas\n- martes: informe\n' },
+        { type: 'tool', tool: 'write', input: { filePath: join(S0.chatDir, 'resumen.md'), content: 'x' }, output: 'ok', title: 'resumen.md', delayMs: 1500 },
+        { type: 'fs', op: 'write', path: '.env', content: 'CLAVE=nunca' },
+        { type: 'tool', tool: 'write', input: { filePath: join(S0.chatDir, '.env'), content: 'x' }, output: 'ok', title: '.env', delayMs: 800 },
+        { type: 'text', text: `Listo: guardé el plan en resumen.md. Ojo, esta clave no debe salir: ${TG_FAKE_KEY}` }
+      ]
+    })
+    const nMsgs = tg.messages.length
+    const sent = await say('Agrega el martes y guarda todo en resumen.md', /^Enviado/)
+    out.ack = sent.text
+    await waitUntil(async () => (await prompts()).length === base + 1, 20_000, 'el mensaje llegó al motor')
+    const promptsNow = await prompts()
+    out.soloLaElegida = promptsNow.slice(base).every((r) => idOf(r) === S0.sessionId)
+    out.textoExacto = promptsNow.at(-1).body?.parts?.[0]?.text === 'Agrega el martes y guarda todo en resumen.md'
+    // El avance en vivo: un solo mensaje que se edita.
+    await waitUntil(() => tg.messages.slice(nMsgs).some((m) => /Trabajando|Trabajó/.test(m.text)), 30_000, 'mensaje de avance')
+    const live = tg.messages.slice(nMsgs).find((m) => /Trabajando|Trabajó/.test(m.text))
+    await waitUntil(() => tg.edits.some((e) => e.message_id === live.message_id && /Trabajó durante/.test(e.text)), 40_000, 'avance cerrado')
+    out.avanceEditado = tg.edits.filter((e) => e.message_id === live.message_id).length
+    out.unSoloMensajeDeAvance = tg.messages.slice(nMsgs).filter((m) => /Trabajando|Trabajó/.test(m.text)).length === 1
+    const edits = tg.edits.filter((e) => e.message_id === live.message_id)
+    const times = [live.at, ...edits.map((e) => e.at)]
+    out.separacionMinimaMs = Math.min(...times.slice(1).map((t, i) => t - times[i]))
+    // La respuesta final llega como mensaje nuevo, con la clave tapada.
+    await waitUntil(() => tg.messages.slice(nMsgs).some((m) => /guardé el plan/.test(m.text)), 30_000, 'respuesta final')
+    const final = tg.messages.slice(nMsgs).find((m) => /guardé el plan/.test(m.text))
+    out.finalNueva = final.message_id !== live.message_id
+    const fileBtns = buttonsOf(final)
+    out.botonesDeArchivo = fileBtns.map((b) => b.text)
+    // 3) «Recibir archivo»: solo resumen.md (el .env no se ofrece), y llega con su contenido.
+    const recibir = fileBtns.find((b) => /resumen\.md/.test(b.text))
+    tg.press({ chatId: TG_CHAT, messageId: final.message_id, data: recibir.callback_data })
+    await waitUntil(() => tg.documents.length >= 1, 20_000, 'documento recibido')
+    out.archivoRecibido = tg.documents.at(-1).filename
+    out.archivoContenido = tg.documents.at(-1).bytes.toString().includes('martes: informe')
+    // 4) «Ver todo» de la salida del comando: archivo completo, sin la clave.
+    const verTodo = buttonsOf(tg.edits.findLast((e) => e.message_id === live.message_id)).find((b) => /^Ver todo/.test(b.text))
+    out.verTodoOfrecido = !!verTodo
+    if (verTodo) {
+      tg.press({ chatId: TG_CHAT, messageId: live.message_id, data: verTodo.callback_data })
+      await waitUntil(() => tg.documents.length >= 2, 20_000, 'salida completa')
+      const body = tg.documents.at(-1).bytes.toString()
+      out.salidaCompleta = body.includes('PRIMERA-LINEA') && body.includes('ULTIMA-LINEA') && body.split('\n').length > 250
+      out.salidaSinClave = !body.includes(TG_FAKE_KEY)
+    }
+    await quiet()
+    // 5) Un archivo del dueño se adjunta al siguiente mensaje (texto) y un ejecutable se rechaza.
+    const idTxt = tg.uploadFile({ name: 'notas.txt', bytes: Buffer.from('Apuntes de la reunión del lunes') })
+    const nBefore = (await prompts()).length
+    tg.sendDocument({ chatId: TG_CHAT, fileId: idTxt, name: 'notas.txt', mime: 'text/plain', caption: 'Mira estos apuntes' })
+    await waitUntil(async () => (await prompts()).length === nBefore + 1, 20_000, 'archivo con pie enviado')
+    const withFile = (await prompts()).at(-1).body.parts
+    out.adjuntoRecibido = withFile.some((p) => p.type === 'file' && /^data:text\/plain;base64,/.test(p.url) && p.filename === 'notas.txt')
+    const idExe = tg.uploadFile({ name: 'setup.exe', bytes: Buffer.concat([Buffer.from('MZ'), Buffer.alloc(40)]) })
+    await quiet()
+    const exe = await (async () => {
+      const n = tg.messages.length
+      tg.sendDocument({ chatId: TG_CHAT, fileId: idExe, name: 'setup.exe', mime: 'application/x-msdownload' })
+      await waitUntil(() => tg.messages.slice(n).some((m) => /programas ni scripts/.test(m.text)), 20_000, 'rechazo del ejecutable')
+      return tg.messages.slice(n).find((m) => /programas ni scripts/.test(m.text))
+    })()
+    out.ejecutableRechazado = /programas ni scripts/.test(exe.text) && (await prompts()).length === nBefore + 1
+    // 6) Una nota de voz todavía no se usa.
+    const idVoz = tg.uploadFile({ name: 'voz.ogg', bytes: Buffer.from('OggS') })
+    const nv = tg.messages.length
+    tg.sendVoice({ chatId: TG_CHAT, fileId: idVoz })
+    await waitUntil(() => tg.messages.slice(nv).some((m) => /notas de voz/.test(m.text)), 20_000, 'aviso de voz')
+    out.vozPendiente = true
+    // 7) Comandos que NO existen.
+    const nuevo = await say('/nuevo', /No conozco ese comando/)
+    const modo = await say('/modo bypass', /No conozco ese comando/)
+    out.sinComandosNuevos = !!nuevo && !!modo && (await prompts()).length === nBefore + 1
+    // 8) «Solo resúmenes»: ni la salida del comando ni botones.
+    await tgToggle(page, 'Solo resúmenes', true)
+    await fake.script({
+      match: 'una pasada en silencio',
+      title: TG_SESSION_TITLE,
+      steps: [
+        { type: 'tool', tool: 'bash', input: { command: 'ls' }, output: 'SALIDA-RESERVADA-DEL-COMANDO', title: 'Lista', delayMs: 800 },
+        { type: 'text', text: 'Hecho en silencio.' }
+      ]
+    })
+    const n8 = tg.messages.length
+    const e8 = tg.edits.length
+    await say('Haz una pasada en silencio', /^Enviado/)
+    await waitUntil(() => tg.messages.slice(n8).some((m) => /Hecho en silencio/.test(m.text)), 40_000, 'respuesta del modo resúmenes')
+    await sleep(1500)
+    const silent = [...tg.messages.slice(n8), ...tg.edits.slice(e8)]
+    out.resumenesSinSalida = silent.every((m) => !/SALIDA-RESERVADA/.test(m.text) && !/<pre>/.test(m.text)) && !tg.messages.slice(n8).some((m) => buttonsOf(m).length)
+    await tgToggle(page, 'Solo resúmenes', false)
+    const todos = (await prompts()).slice(base)
+    out.todoALaElegida = todos.length >= 3 && todos.every((r) => idOf(r) === S0.sessionId)
+    // 9) Nada se filtró: ni la clave en los mensajes, ediciones y documentos, ni contenido en la auditoría local.
+    const everything = [...tg.messages, ...tg.edits].map((m) => m.text).join('\n') + tg.documents.map((d) => d.bytes.toString()).join('\n')
+    out.claveEnTelegram = everything.includes(TG_FAKE_KEY)
+    const audit = existsSync(join(ctx.userData, 'telegram-audit.jsonl')) ? readFileSync(join(ctx.userData, 'telegram-audit.jsonl'), 'utf8') : ''
+    out.auditoriaSinContenido = !audit.includes(TG_FAKE_KEY) && !audit.includes('Agrega el martes') && !audit.includes(TG_SESSION_TITLE) && /session-chosen/.test(audit) && /message-sent/.test(audit)
+    out.claveDelBotEnDisco = tgScanForSecret(ctx.userData, TG_SECRET)
+    // 10) La conversación del Chat muestra el mensaje que llegó por Telegram.
+    await goMode(page, 'Chat')
+    await page.getByText(TG_SESSION_TITLE).first().click()
+    await vis(page.getByText('Agrega el martes y guarda todo en resumen.md'), 30_000)
+    out.mensajeVisibleEnPantalla = true
+    await tgPhoneShots(ctx)
+    console.log('VERIF-TELEGRAM-SESIONES ' + JSON.stringify(out))
+    if (
+      !out.escrituraApagada ||
+      !out.soloLaElegida ||
+      !out.todoALaElegida ||
+      !out.textoExacto ||
+      !out.unSoloMensajeDeAvance ||
+      out.avanceEditado < 1 ||
+      !out.finalNueva ||
+      out.botonesDeArchivo.length !== 1 ||
+      out.archivoRecibido !== 'resumen.md' ||
+      !out.archivoContenido ||
+      !out.verTodoOfrecido ||
+      !out.salidaCompleta ||
+      !out.salidaSinClave ||
+      !out.adjuntoRecibido ||
+      !out.ejecutableRechazado ||
+      !out.vozPendiente ||
+      !out.sinComandosNuevos ||
+      !out.resumenesSinSalida ||
+      out.claveEnTelegram ||
+      !out.auditoriaSinContenido ||
+      out.claveDelBotEnDisco.length
+    )
+      throw new Error('la verificación de sesiones de Telegram no cumplió: ' + JSON.stringify(out))
     await sleep(300)
   },
   async paleta(ctx) {

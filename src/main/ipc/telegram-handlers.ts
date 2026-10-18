@@ -2,7 +2,7 @@
  * Handlers IPC de Telegram (`telegram:*`, F8-B187). Todos son clase X en `remote/policy.ts`: el celular no los toca.
  * Aquí se arma el servicio real (almacén seguro, `net.fetch`, dirección base fija) y se difunde su estado a las ventanas.
  */
-import { app, net, safeStorage, type IpcMain } from 'electron'
+import { app, safeStorage, session, type IpcMain } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
@@ -44,11 +44,18 @@ export function registerTelegramHandlers(ipcMain: IpcMain, deps: { server: Openc
   // Dirección base: SIEMPRE https://api.telegram.org salvo en desarrollo/pruebas (app sin empaquetar) con la variable de entorno de
   // pruebas apuntando a un servidor local. Ningún ajuste, archivo ni mensaje de la ventana puede cambiarla.
   const base = resolveApiBase({ isPackaged: app.isPackaged, env: process.env })
+  // Sesión de red PROPIA, en memoria y sin caché: la dirección de descarga de un archivo lleva la clave del bot en la ruta, y la caché HTTP
+  // de la sesión por defecto la guardaría en claro en el disco (se vio en la verificación con la app real). Aquí nunca toca el disco.
+  const tgSession = session.fromPartition('lazunox-telegram-bridge', { cache: false })
   const svc = new TelegramService({
     store,
     engine: createEngineLink({ getConnection: () => deps.server.start() }),
     makeApi: (token) =>
-      new TelegramApi({ token, baseUrl: base, fetch: (url, init) => net.fetch(url as string, init) as Promise<Response> }),
+      new TelegramApi({
+        token,
+        baseUrl: base,
+        fetch: (url, init) => tgSession.fetch(url as string, { ...init, cache: 'no-store' }) as Promise<Response>
+      }),
     // Qué sesiones se pueden elegir: Chat y los proyectos recientes de Code que existen (Tareas/Overdrive vive en otros motores y nunca entra).
     sessionDirs: () => {
       const out: { directory: string; kind: 'chat' | 'code' }[] = [{ directory: deps.chatDirectory, kind: 'chat' }]

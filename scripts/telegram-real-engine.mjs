@@ -202,7 +202,7 @@ try {
     await box.press('Enter')
   }
   const allowBtn = page.getByRole('button', { name: 'Permitir una vez' })
-  const buttonsOf = (m) => m.reply_markup.inline_keyboard.flat()
+  const buttonsOf = (m) => (m?.reply_markup?.inline_keyboard ?? []).flat()
   const msgFor = (word) => tg.messages.findLast((m) => m.reply_markup && m.text.includes(word))
 
   // A) Permitir por Telegram.
@@ -253,6 +253,85 @@ try {
   await waitUntil(async () => (await allowBtn.count()) === 0, 30_000, 'la tarjeta C desaparece')
   report.C_rechazado = true
 
+  // F) Entrega 2: seguir la sesión de Code, escribirle desde el "chat" falso, ver el avance y la respuesta, recibir el archivo creado.
+  const conn = await page.evaluate(async () => {
+    for (let i = 0; i < 100; i++) {
+      const r = await window.api.invoke('opencode:connection')
+      if (r.ok && r.data) return r.data
+      await new Promise((res) => setTimeout(res, 200))
+    }
+    return null
+  })
+  const eng = async (path) => (await fetch(`${conn.baseUrl}${path}`, { headers: { authorization: conn.authorization } })).json()
+  const countsOf = async () => {
+    const out = {}
+    for (const dir of [project, join(userData, 'chat-workspace')]) {
+      for (const sess of await eng(`/session?directory=${encodeURIComponent(dir)}&roots=true`)) {
+        out[sess.id] = (await eng(`/session/${sess.id}/message?directory=${encodeURIComponent(dir)}`)).length
+      }
+    }
+    return out
+  }
+  // Una conversación de Chat que NO se elige: no debe recibir nada.
+  await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat', exact: true }).click()
+  await sleep(500)
+  const chatBox = page.getByPlaceholder('Escribe un mensaje…')
+  await chatBox.fill('Responde solo con la palabra: hola')
+  await page.getByRole('button', { name: 'Enviar' }).click()
+  await page.getByText(/hola/i).first().waitFor({ timeout: 90_000 })
+  await sleep(2500)
+  const cntBefore = await countsOf()
+  await page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Code', exact: true }).click()
+  await sleep(500)
+  // Elegir la sesión de Code desde Telegram.
+  const nL = tg.messages.length
+  tg.sendUser({ chatId: CHAT, text: '/sesiones' })
+  await waitUntil(() => tg.messages.length > nL && tg.messages.at(-1).reply_markup, 30_000, 'lista de sesiones')
+  const list = tg.messages.at(-1)
+  report.F_lista = list.text.split('\n').filter(Boolean).length
+  const codeIdx = list.text.split('\n').findIndex((l) => /Code: proyecto-prueba/.test(l))
+  const codeNumber = Number(/^(\d+)\./.exec(list.text.split('\n')[codeIdx - 1] ?? '')?.[1] ?? 0)
+  const target = list.reply_markup.inline_keyboard.flat()[codeNumber - 1]
+  const nS = tg.messages.length
+  tg.press({ chatId: CHAT, messageId: list.message_id, data: target.callback_data })
+  await waitUntil(() => tg.messages.slice(nS).some((m) => /^Siguiendo:/.test(m.text)), 30_000, 'selección')
+  report.F_soloLectura = /Solo lectura/.test(tg.messages.at(-1).text)
+  // Con «escribir» apagado no llega.
+  const nO = tg.messages.length
+  tg.sendUser({ chatId: CHAT, text: 'esto no debe llegar' })
+  await waitUntil(() => tg.messages.slice(nO).some((m) => /está apagado/.test(m.text)), 15_000, 'escritura apagada')
+  await page.getByRole('button', { name: /^Ajustes/ }).first().click()
+  await sleep(500)
+  await page.getByRole('navigation').getByRole('button', { name: /Telegram/ }).first().click()
+  await page.getByRole('switch', { name: 'Permitir escribir a la sesión desde Telegram' }).click()
+  await sleep(600)
+  const nW = tg.messages.length
+  tg.sendUser({ chatId: CHAT, text: 'Usa la herramienta write para crear el archivo nota-telegram.txt con el texto: hola desde el celular. Cuando termine responde solo "listo".' })
+  await waitUntil(() => tg.messages.slice(nW).some((m) => /^Enviado/.test(m.text)), 30_000, 'enviado')
+  // El permiso de escribir llega a Telegram con botones; se permite desde allí.
+  await waitUntil(() => tg.messages.slice(nW).some((m) => m.reply_markup && /nota-telegram/.test(m.text)), 120_000, 'permiso de escritura en Telegram')
+  const permMsg = tg.messages.slice(nW).find((m) => m.reply_markup && /nota-telegram/.test(m.text))
+  tg.press({ chatId: CHAT, messageId: permMsg.message_id, data: buttonsOf(permMsg).find((b) => b.text === 'Permitir una vez').callback_data })
+  await waitUntil(() => tg.messages.slice(nW).some((m) => /Trabajó durante|Trabajando/.test(m.text)) , 120_000, 'mensaje de avance')
+  await waitUntil(() => tg.edits.some((e) => /Trabajó durante/.test(e.text)), 120_000, 'avance cerrado')
+  const finalMsg = await (async () => {
+    await waitUntil(() => tg.messages.slice(nW).some((m) => /listo/i.test(m.text) && !/Trabaj/.test(m.text) && !m.reply_markup?.inline_keyboard?.flat().some((b) => /Permitir/.test(b.text))), 120_000, 'respuesta final')
+    return tg.messages.slice(nW).findLast((m) => /listo/i.test(m.text))
+  })()
+  report.F_avanceEditado = tg.edits.filter((e) => /Trabaj/.test(e.text)).length
+  const fileBtn = await (async () => {
+    await waitUntil(() => tg.messages.slice(nW).some((m) => buttonsOf(m).some((b) => /Recibir archivo/.test(b.text))), 30_000, 'botón de archivo')
+    return buttonsOf(tg.messages.slice(nW).findLast((m) => buttonsOf(m).some((b) => /Recibir archivo/.test(b.text)))).find((b) => /Recibir archivo/.test(b.text))
+  })()
+  const holder = tg.messages.slice(nW).findLast((m) => buttonsOf(m).some((b) => /Recibir archivo/.test(b.text)))
+  tg.press({ chatId: CHAT, messageId: holder.message_id, data: fileBtn.callback_data })
+  await waitUntil(() => tg.documents.length >= 1, 30_000, 'archivo recibido')
+  report.F_archivo = { nombre: tg.documents.at(-1).filename, contenido: tg.documents.at(-1).bytes.toString().trim() }
+  const after = await countsOf()
+  const changed = Object.keys(after).filter((id) => after[id] !== cntBefore[id])
+  report.F_sesionesQueCambiaron = changed.length
+  report.F_soloLaElegida = changed.length === 1
+  void finalMsg
   // D) Una vez dentro: el servidor del motor real contestó 404 a una respuesta repetida? (lo mide el botón tardío de B).
   // E) La clave del bot no está en claro en el perfil temporal.
   const hits = []
@@ -282,6 +361,10 @@ try {
     report.B_botonTardio === 'Ya respondido en el computador' &&
     report.C_rechazado &&
     hits.length === 0 &&
+    report.F_soloLectura &&
+    report.F_avanceEditado >= 1 &&
+    report.F_archivo?.nombre === 'nota-telegram.txt' &&
+    report.F_soloLaElegida &&
     report.A_botones.join('|') === 'Permitir una vez|Rechazar'
   if (!ok) throw new Error('la verificación con el motor real no cumplió: ' + JSON.stringify(report))
   console.log('OK')

@@ -34,6 +34,7 @@ export interface FakeTelegram {
   readonly offsets: number[]
   readonly pollers: number
   readonly documents: FakeDocument[]
+  readonly userMessages: { chat_id: number; text: string; at: number }[]
   sendUser(o: {
     chatId: number
     text?: string

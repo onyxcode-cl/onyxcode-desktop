@@ -342,7 +342,12 @@ export class TelegramApi {
     try {
       let res: Response
       try {
-        res = await this.doFetch(`${this.base}/file/bot${this.o.token}/${path}`, { method: 'GET', signal: ctl.signal, redirect: 'error' })
+        res = await this.doFetch(`${this.base}/file/bot${this.o.token}/${path}`, {
+          method: 'GET',
+          signal: ctl.signal,
+          redirect: 'error',
+          cache: 'no-store'
+        })
       } catch (err) {
         if (signal?.aborted) throw new TelegramApiError('aborted', null, 'cancelado')
         throw new TelegramApiError(

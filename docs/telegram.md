@@ -1,4 +1,4 @@
-# Telegram: avisos y permisos con botones (entrega 1, F8-B187)
+# Telegram: avisos, permisos y seguir sesiones (entregas 1 y 2, F8-B187 y F8-B191)
 
 Control de Lazunox desde el celular con **un bot de Telegram que crea cada persona** (gratis, sin empresa, sin servidor, sin puertos, sin
 `cloudflared`). Esta entrega hace solo dos cosas:
@@ -7,8 +7,8 @@ Control de Lazunox desde el celular con **un bot de Telegram que crea cada perso
 2. **Permisos con botones**: cuando el motor pide un permiso, el bot manda el comando o la acción completa y dos botones, «Permitir una vez» y
    «Rechazar» (no hay «siempre»). Al pulsar, se responde ese permiso en el motor igual que lo hace la pantalla.
 
-**No** inicia tareas, **no** lee ni continúa conversaciones, y **ningún texto que llegue por Telegram llega al motor** (eso es la entrega 2).
-Comandos del bot: `/start`, `/estado`, `/desvincular` (en inglés también `/status` y `/unlink`).
+**No** inicia tareas. En la entrega 1 ningún texto llegaba al motor; la entrega 2 (§7 a §11) añade seguir y, solo si la persona lo activa, escribir a una sesión.
+Comandos del bot: `/start`, `/estado`, `/desvincular`, `/sesiones`, `/sesion`, `/salir` (en inglés `/status`, `/unlink`, `/sessions`, `/session`, `/leave`).
 
 Código: `src/main/telegram/` · IPC: `src/main/ipc/telegram-handlers.ts` · Ajustes › Telegram:
 `src/renderer/src/features/settings/impl/TelegramSection.tsx` · servidor de Telegram falso: `e2e/fake-telegram/server.mjs`.
@@ -35,14 +35,14 @@ Código: `src/main/telegram/` · IPC: `src/main/ipc/telegram-handlers.ts` · Aju
 
 Solo **reglas e ideas**, ningún código sin auditar (el remoto está pausado y su rama `feat/remoto-por-sesion` no está auditada):
 
-| Idea del remoto | Cómo quedó en Telegram |
-| --- | --- |
-| Denegar por defecto; los canales nuevos tienen clase en `remote/policy.ts` | Los 8 canales `telegram:*` son clase **X** y el evento `telegram:state-changed` es `deny`: el celular/PWA no los toca. |
-| El código de 6 dígitos se confirma en el Mac; el vínculo tiene intentos limitados | Código de 6 dígitos que muestra la app, 10 min, un solo uso, 5 intentos y bloqueo de 15 min. |
-| Auditoría local sin secretos (`remote-audit.jsonl`) | `telegram-audit.jsonl`: solo tipo, hora, huella del chat (8 hex), tipo de permiso; nunca comando, token ni número de chat. |
-| Tope de aprobaciones de comandos por hora | Tope de 30 «Permitir» por hora (rechazar siempre se puede). |
-| Almacén cifrado con el auxiliar del Llavero que no cambia entre versiones | Mismo almacén (`KeyboxSafeStorage` / `safeStorage`), archivo propio `telegram-token.bin`. |
-| Aprobar comandos desde el celular = decisión explícita del dueño | Aquí la decisión es explícita: activar Telegram, crear el bot y vincular el chat. |
+| Idea del remoto                                                                   | Cómo quedó en Telegram                                                                                                     |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Denegar por defecto; los canales nuevos tienen clase en `remote/policy.ts`        | Los 8 canales `telegram:*` son clase **X** y el evento `telegram:state-changed` es `deny`: el celular/PWA no los toca.     |
+| El código de 6 dígitos se confirma en el Mac; el vínculo tiene intentos limitados | Código de 6 dígitos que muestra la app, 10 min, un solo uso, 5 intentos y bloqueo de 15 min.                               |
+| Auditoría local sin secretos (`remote-audit.jsonl`)                               | `telegram-audit.jsonl`: solo tipo, hora, huella del chat (8 hex), tipo de permiso; nunca comando, token ni número de chat. |
+| Tope de aprobaciones de comandos por hora                                         | Tope de 30 «Permitir» por hora (rechazar siempre se puede).                                                                |
+| Almacén cifrado con el auxiliar del Llavero que no cambia entre versiones         | Mismo almacén (`KeyboxSafeStorage` / `safeStorage`), archivo propio `telegram-token.bin`.                                  |
+| Aprobar comandos desde el celular = decisión explícita del dueño                  | Aquí la decisión es explícita: activar Telegram, crear el bot y vincular el chat.                                          |
 
 **No** se reutilizó la lista de denegación de comandos (`command-denylist.ts`, heurística no auditada para este uso): el mensaje muestra el comando
 completo para que la persona decida. Auditarla y sumarla queda para la entrega 2.
@@ -65,15 +65,15 @@ El motor es el árbitro: solo acepta una respuesta por permiso y devuelve 404 (`
 
 ### 1.4 Límites de la API de Telegram que cuentan
 
-| Límite | Cómo se respeta |
-| --- | --- |
-| `callback_data` ≤ 64 **bytes** | `p:<12 caracteres base64url aleatorios>:<a\|r>` = 16 bytes. `main` guarda el mapa id → permiso/chat; caduca (30 min) y es de un solo uso. Un id nunca contiene el id del permiso ni datos. |
-| Mensaje ≤ 4096 caracteres (se cuentan los visibles, después de entidades) | El cuerpo se arma tapar → recortar → escapar y se mide **ya escapado** (`safeBlock`); un comando de `<&>` repetido, que al escapar crece 4–5 veces, sigue cabiendo. Se deja una reserva de 220 caracteres para la línea de resultado al editar. |
-| 429 con `parameters.retry_after` | `TelegramApi` espera `retry_after` (tope 60 s) y reintenta hasta 3 veces las escrituras; `getUpdates` lo respeta en su bucle. Las escrituras van en serie con 350 ms de separación (~1 mensaje por segundo por chat). |
-| `parse_mode` | **HTML** (solo `<b>`, `<i>`, `<code>`, `<pre>`); todo texto dinámico se escapa (`& < >`) SIEMPRE. El servidor falso rechaza con 400 cualquier `<` o `&` sin escapar, como el real. |
-| Ediciones limitadas / «message is not modified» | Cada mensaje de permiso se edita una vez (resultado) y a lo sumo otra (caducidad); un error de edición se registra y no rompe nada. |
-| `getUpdates` y webhooks | Long polling de 25 s (`allowed_updates: message, callback_query`), con el `offset` guardado en disco **después** de atender cada mensaje. Un 409 (otra aplicación lee el bot) se informa y se reintenta cada 30 s; un 401 detiene todo y pide una clave nueva. |
-| Un bot solo puede escribir a quien le escribió primero | Por eso el orden `/start` → código. |
+| Límite                                                                    | Cómo se respeta                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `callback_data` ≤ 64 **bytes**                                            | `p:<12 caracteres base64url aleatorios>:<a\|r>` = 16 bytes. `main` guarda el mapa id → permiso/chat; caduca (30 min) y es de un solo uso. Un id nunca contiene el id del permiso ni datos.                                                                     |
+| Mensaje ≤ 4096 caracteres (se cuentan los visibles, después de entidades) | El cuerpo se arma tapar → recortar → escapar y se mide **ya escapado** (`safeBlock`); un comando de `<&>` repetido, que al escapar crece 4–5 veces, sigue cabiendo. Se deja una reserva de 220 caracteres para la línea de resultado al editar.                |
+| 429 con `parameters.retry_after`                                          | `TelegramApi` espera `retry_after` (tope 60 s) y reintenta hasta 3 veces las escrituras; `getUpdates` lo respeta en su bucle. Las escrituras van en serie con 350 ms de separación (~1 mensaje por segundo por chat).                                          |
+| `parse_mode`                                                              | **HTML** (solo `<b>`, `<i>`, `<code>`, `<pre>`); todo texto dinámico se escapa (`& < >`) SIEMPRE. El servidor falso rechaza con 400 cualquier `<` o `&` sin escapar, como el real.                                                                             |
+| Ediciones limitadas / «message is not modified»                           | Cada mensaje de permiso se edita una vez (resultado) y a lo sumo otra (caducidad); un error de edición se registra y no rompe nada.                                                                                                                            |
+| `getUpdates` y webhooks                                                   | Long polling de 25 s (`allowed_updates: message, callback_query`), con el `offset` guardado en disco **después** de atender cada mensaje. Un 409 (otra aplicación lee el bot) se informa y se reintenta cada 30 s; un 401 detiene todo y pide una clave nueva. |
+| Un bot solo puede escribir a quien le escribió primero                    | Por eso el orden `/start` → código.                                                                                                                                                                                                                            |
 
 ## 2. Diseño
 
@@ -99,20 +99,20 @@ Estados (`TelegramState.phase`): `off` (interruptor apagado, **por defecto**) �
 
 ## 3. Seguridad
 
-| Control | Dónde | Prueba |
-| --- | --- | --- |
-| Token **jamás** en logs, en `opencode.json` ni en la pantalla: la ventana solo ve `botConfigured` y los últimos 4 caracteres; el token entra una vez por `telegram:saveToken` y nunca vuelve | `service.ts` (`getState`), `api.ts` (errores tapados), `text.ts` (`scrubToken`) | `service.test.ts` «el token no aparece en ningún archivo en claro…», «el estado que ve la ventana…»; `api.test.ts` «error de red…»; escenario `telegram-codigo` (la clave no está en el DOM) y `telegram-e2e` (sin la clave en claro en todo el perfil temporal) |
-| Token cifrado en reposo; **sin almacén seguro NO se guarda** (no hay respaldo en texto plano) | `store.ts`, `ipc/telegram-handlers.ts` | «sin almacén seguro NO se guarda la clave» |
-| Dirección base **fija** `https://api.telegram.org`; solo en la app **sin empaquetar** una variable de entorno (`LAZUNOX_TELEGRAM_API_BASE`) puede apuntar a un servidor **local** (`127.0.0.1`/`localhost`/`[::1]` por `http`); nunca desde ajustes, archivos ni la ventana | `api.ts` (`resolveApiBase`) | `api.test.ts` «dirección base» (empaquetada ignora la variable; rechaza `evil.example`, `127.0.0.1.evil.example`, `127.0.0.1@evil.example`…) |
-| Allowlist de **un** chat privado; todo lo demás (otros chats, grupos, canales, bots, ediciones, otros tipos de update) se ignora **sin responder** | `service.ts` (`onMessage`, `onCallback`) | «un solo dueño…»: otro chat, grupo, canal, `edited_message`, `channel_post`, callback ajeno |
-| Código de vinculación: 6 dígitos, 10 min, un solo uso, 5 intentos y bloqueo de 15 min, comparación en tiempo constante, no se puede pedir otro durante el bloqueo | `guards.ts` (`LinkCode`) | `guards.test.ts`, «vinculación» en `service.test.ts` |
-| Límite de mensajes entrantes (30/min); el exceso se descarta sin responder | `guards.ts` (`MinuteLimiter`) | «límite de mensajes por minuto» |
-| Botones: id corto aleatorio (72 bits), vigencia 30 min, un solo uso, ligados al chat dueño y al permiso, tope de 30 «Permitir»/hora | `guards.ts` (`ButtonBook`), `service.ts` | `guards.test.ts`, «permisos con botones», «tope de “Permitir” por hora» |
-| El texto de Telegram **nunca** llega al motor (no hay ninguna llamada del puente al motor que lleve texto del chat; solo `permission.reply` con ids del propio motor) | `service.ts` (`onOwnerText`), `engine-link.ts` | «el texto del dueño NUNCA llega al motor», «el motor no recibe nada de Telegram» |
-| Lo que SALE: tapar → recortar → escapar; comando completo hasta 2400 caracteres, más allá inicio + final con aviso de lo omitido | `text.ts`, `messages.ts` | «lo que sale a Telegram…» (claves, HTML, 20 000 caracteres, `<&>` ×5000) |
-| Auditoría local sin secretos de vinculación, desvinculación, permiso enviado/respondido (por Telegram o por pantalla) | `store.ts` | «manda el comando completo…» (la auditoría no contiene el comando ni el número de chat) |
-| IPC: 8 canales `telegram:*`, esquema estricto (`schemas.ts`), clase **X** (`remote/policy.ts`), solo la ventana principal | `ipc-extras.ts`, `schemas.ts`, `policy.ts` | `policy.test.ts`, `schemas.test.ts` |
-| Reinicio sin repetir mensajes (offset en disco, por bot) | `service.ts` (`pollLoop`) | «retoma el vínculo y NO repite los mensajes ya atendidos» |
+| Control                                                                                                                                                                                                                                                                     | Dónde                                                                           | Prueba                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Token **jamás** en logs, en `opencode.json` ni en la pantalla: la ventana solo ve `botConfigured` y los últimos 4 caracteres; el token entra una vez por `telegram:saveToken` y nunca vuelve                                                                                | `service.ts` (`getState`), `api.ts` (errores tapados), `text.ts` (`scrubToken`) | `service.test.ts` «el token no aparece en ningún archivo en claro…», «el estado que ve la ventana…»; `api.test.ts` «error de red…»; escenario `telegram-codigo` (la clave no está en el DOM) y `telegram-e2e` (sin la clave en claro en todo el perfil temporal) |
+| Token cifrado en reposo; **sin almacén seguro NO se guarda** (no hay respaldo en texto plano)                                                                                                                                                                               | `store.ts`, `ipc/telegram-handlers.ts`                                          | «sin almacén seguro NO se guarda la clave»                                                                                                                                                                                                                       |
+| Dirección base **fija** `https://api.telegram.org`; solo en la app **sin empaquetar** una variable de entorno (`LAZUNOX_TELEGRAM_API_BASE`) puede apuntar a un servidor **local** (`127.0.0.1`/`localhost`/`[::1]` por `http`); nunca desde ajustes, archivos ni la ventana | `api.ts` (`resolveApiBase`)                                                     | `api.test.ts` «dirección base» (empaquetada ignora la variable; rechaza `evil.example`, `127.0.0.1.evil.example`, `127.0.0.1@evil.example`…)                                                                                                                     |
+| Allowlist de **un** chat privado; todo lo demás (otros chats, grupos, canales, bots, ediciones, otros tipos de update) se ignora **sin responder**                                                                                                                          | `service.ts` (`onMessage`, `onCallback`)                                        | «un solo dueño…»: otro chat, grupo, canal, `edited_message`, `channel_post`, callback ajeno                                                                                                                                                                      |
+| Código de vinculación: 6 dígitos, 10 min, un solo uso, 5 intentos y bloqueo de 15 min, comparación en tiempo constante, no se puede pedir otro durante el bloqueo                                                                                                           | `guards.ts` (`LinkCode`)                                                        | `guards.test.ts`, «vinculación» en `service.test.ts`                                                                                                                                                                                                             |
+| Límite de mensajes entrantes (30/min); el exceso se descarta sin responder                                                                                                                                                                                                  | `guards.ts` (`MinuteLimiter`)                                                   | «límite de mensajes por minuto»                                                                                                                                                                                                                                  |
+| Botones: id corto aleatorio (72 bits), vigencia 30 min, un solo uso, ligados al chat dueño y al permiso, tope de 30 «Permitir»/hora                                                                                                                                         | `guards.ts` (`ButtonBook`), `service.ts`                                        | `guards.test.ts`, «permisos con botones», «tope de “Permitir” por hora»                                                                                                                                                                                          |
+| El texto de Telegram **nunca** llega al motor (no hay ninguna llamada del puente al motor que lleve texto del chat; solo `permission.reply` con ids del propio motor)                                                                                                       | `service.ts` (`onOwnerText`), `engine-link.ts`                                  | «el texto del dueño NUNCA llega al motor», «el motor no recibe nada de Telegram»                                                                                                                                                                                 |
+| Lo que SALE: tapar → recortar → escapar; comando completo hasta 2400 caracteres, más allá inicio + final con aviso de lo omitido                                                                                                                                            | `text.ts`, `messages.ts`                                                        | «lo que sale a Telegram…» (claves, HTML, 20 000 caracteres, `<&>` ×5000)                                                                                                                                                                                         |
+| Auditoría local sin secretos de vinculación, desvinculación, permiso enviado/respondido (por Telegram o por pantalla)                                                                                                                                                       | `store.ts`                                                                      | «manda el comando completo…» (la auditoría no contiene el comando ni el número de chat)                                                                                                                                                                          |
+| IPC: 8 canales `telegram:*`, esquema estricto (`schemas.ts`), clase **X** (`remote/policy.ts`), solo la ventana principal                                                                                                                                                   | `ipc-extras.ts`, `schemas.ts`, `policy.ts`                                      | `policy.test.ts`, `schemas.test.ts`                                                                                                                                                                                                                              |
+| Reinicio sin repetir mensajes (offset en disco, por bot)                                                                                                                                                                                                                    | `service.ts` (`pollLoop`)                                                       | «retoma el vínculo y NO repite los mensajes ya atendidos»                                                                                                                                                                                                        |
 
 **Aviso honesto en la interfaz**: «Telegram no cifra de extremo a extremo los mensajes de los bots y puede ver su contenido. El computador debe estar
 encendido con Lazunox abierto.» (`telegram.privacy.body`.)
@@ -188,7 +188,81 @@ Lista de comprobación (marca cada una):
 - El código de vinculación se muestra en la pantalla y viaja por IPC a la ventana principal (es lo que la persona debe ver); no se escribe en disco.
 - La pestaña de Ajustes › Telegram no existe en el celular/PWA (a propósito).
 
-## 7. Entrega 2 (no hecha)
+## 7. Entrega 2: seguir sesiones, escribirles y archivos (F8-B191)
 
-Seguir sesiones con avance en vivo (mensaje editado cada pocos segundos, salidas largas como archivo), iniciar tareas y voz, auditoría de seguridad
-propia y, antes de eso, decidir si se suma la lista de denegación de comandos tras auditarla.
+Esta entrega añade, sobre lo anterior: `/sesiones`, `/sesion`, `/salir`, avance en vivo, escribir a la sesión (apagado por defecto), «Solo resúmenes»
+y archivos en los dos sentidos. Las secciones 8 a 11 documentan las decisiones; §1 a §6 siguen valiendo (el texto ya no «nunca llega al motor»: llega
+solo en las condiciones de §8.3).
+
+## 8. Decisiones de la entrega 2
+
+### 8.1 Cómo `main` lee sesiones y escribe (investigación)
+
+- `EngineLink` (cliente del SDK v2 que `main` ya tenía) ganó: `listSessions` (`session.list({directory, roots:true})` + `session.status` por carpeta),
+  `getSession`, `messages` (`session.messages`) y `prompt` (`session.promptAsync`). Carpetas elegibles: la del Chat y los proyectos recientes de Code
+  que existen (`sessionDirs` en `ipc/telegram-handlers.ts`); las sesiones de Tareas (`metadata.mode === 'tasks'`) y las subsesiones se descartan, y
+  Overdrive vive en otros servidores, así que no aparece.
+- Los eventos del motor solo AVISAN de que algo cambió (`SessionFollower.poke`); la verdad se lee con `messages`. Un evento perdido o repetido no
+  duplica ni deja el mensaje mal. Cada turno se identifica con el id del último mensaje de la persona; el último turno contado se guarda en disco
+  (`active.seenUpTo`), así que un reinicio no repite nada (al retomar, lo ya ocurrido se da por contado).
+- El mensaje a la sesión usa `promptAsync` con el agente y el modelo del último mensaje de la sesión (Chat: agente de Chat; Code: `plan` o `build`), sin
+  `system`: no lleva las instrucciones ni la memoria que la pantalla suma (igual que el celular).
+- El modo de permisos se deduce de las reglas de la sesión (`permissionModeOf`, mismas reglas que `rulesetForMode`).
+
+### 8.2 Avance en vivo
+
+Un mensaje que se edita (≥ 3 s entre ediciones; `TelegramApi` además espera `retry_after`): título «Trabajando… 12 s · 4 pasos» (la lógica pura de
+«Trabajo legible», extraída a `src/shared/conversation-work.ts`), una línea por paso (`stepLine`), la salida del último comando recortada con
+inicio y final y botones «Ver todo». Al terminar se cierra («Trabajó durante…») y llega la respuesta final en mensajes nuevos. Si la persona borra el
+mensaje de avance, el siguiente paso crea otro. Si escribe en el computador es otro turno: tiene su propio mensaje y su propio cierre.
+
+### 8.3 Reglas de escritura
+
+Interruptor apagado por defecto; sesión elegida; no se envía si la sesión está trabajando; 6 mensajes por minuto; un mismo mensaje de Telegram no se envía
+dos veces; texto que parece comando y no existe se contesta con «No conozco ese comando». Nunca toca permisos, modo, carpetas, sesiones nuevas ni Overdrive.
+
+### 8.4 Archivos
+
+Salen solo con las reglas del Chat y las carpetas de esa sesión (ver `docs/SEGURIDAD.md` §3 quinquagies terdecies). Entran con los topes y clases del
+compositor del Chat (`src/shared/attach-classify.ts`) y quedan esperando hasta 15 min, 3 como máximo.
+
+### 8.5 Hallazgo: la clave en la caché HTTP
+
+La descarga de un archivo del dueño es un GET cuya ruta lleva la clave del bot; la caché de la sesión por defecto de Electron la guardaba en
+`userData/Cache`. Se detectó con el escenario `telegram-sesiones-e2e` (búsqueda de la clave en todo el perfil) y se corrigió con una sesión de red propia,
+en memoria y sin caché.
+
+## 9. Límites conocidos de la entrega 2
+
+1. No verificado con Telegram real ni en Windows.
+2. Los mensajes por Telegram no llevan las instrucciones personalizadas ni la memoria aprobada del Chat.
+3. Overdrive/Tareas no se puede seguir ni escribir desde Telegram (su aprobador es propio).
+4. Los archivos ofrecidos son los que la IA creó con `write` o que aparecen como documentos (`detectDocFiles`: Excel, Word, PowerPoint, PDF, HTML); no se rastrea cualquier archivo que un comando haya generado.
+5. En «Todo sin preguntar» o «Automático», escribir por Telegram pone a la IA a actuar sin preguntar (se avisa al elegir la sesión y si cambia el modo).
+6. Quien controle tu Telegram con «escribir» encendido puede escribirle a la IA (los permisos siguen con sus botones y su tope).
+7. **Voz: pendiente, no implementada.** El dictado local existente (`voice-transcribe.ts`) recibe muestras PCM de 16 kHz, pero Telegram manda notas OGG/Opus y el proyecto no tiene decodificador de Opus (ni `ffmpeg` en el equipo de las personas). Añadirlo exige una dependencia nueva auditada; por eso hoy el bot responde que las notas de voz todavía no se pueden usar y no toca nada.
+
+## 10. Prueba contra Telegram REAL (la hace Ben; nadie la hizo)
+
+Tras los pasos de §5, con una conversación de Chat y una de Code:
+
+1. En el bot: `/sesiones`. Deben salir ambas con modo, estado y hace cuánto. Elige la de Chat: llega el último intercambio y «Solo lectura».
+2. Escribe un texto al bot: debe decir que escribir está apagado. Enciende «Permitir escribir…» en Ajustes › Telegram y repite: llega a esa conversación.
+3. En Code (modo «Preguntar siempre») pide crear un archivo: el permiso llega con botones; luego se ve UN mensaje de avance que se edita, la respuesta final y el botón «Recibir archivo».
+4. Una salida larga de comando: recortada con «Ver todo» (archivo completo, sin claves).
+5. Activa «Solo resúmenes»: sin salidas ni botones de archivo.
+6. Manda al bot un `.txt`, una foto y un `.docx`; luego un mensaje: se adjuntan. Manda un `.exe` o `.sh`: se rechaza.
+7. `/nuevo`, `/modo`: «No conozco ese comando». Desde otra cuenta de Telegram: ningún mensaje del bot.
+   Lista de comprobación (marca cada una):
+
+- [ ] Ningún archivo `.env`/llave se ofrece ni se manda; un archivo fuera del proyecto tampoco.
+- [ ] La clave del bot no aparece en `~/Library/Application Support/Lazunox` (incluida `Cache/`).
+- [ ] Un 429 real (muchas ediciones seguidas) no deja el mensaje roto.
+- [ ] «Detener todo ahora» corta el seguimiento y apaga «escribir».
+- [ ] `telegram-audit.jsonl` solo tiene huellas, extensiones y bytes.
+- [ ] Windows (cuando se pruebe): mismo recorrido.
+
+## 11. Pruebas de la entrega 2
+
+`npx vitest run src/main/telegram src/renderer/src/features/settings/impl/TelegramSection*.test.tsx`; app real con `node scripts/shot-desktop.mjs --scenario
+telegram-sesiones,telegram-sesiones-e2e` y motor real con `node scripts/telegram-real-engine.mjs --bin <opencode>` (`docs/CAPTURAS-ESCRITORIO.md`).
