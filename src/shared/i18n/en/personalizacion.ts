@@ -60,6 +60,9 @@ export const personalizacion = {
   'pers.tag.off': 'Off',
   'pers.tag.connected': 'Connected',
   'pers.tag.notConnected': 'Not connected',
+  'pers.note.untested': 'Not yet tested with a real account',
+  'pers.note.untestedLong':
+    'The address and sign-in method were checked, but nobody has tried it with a real account yet. If something fails, remove it and let us know.',
   'pers.hint.needsLogin': 'You still need to sign in',
   'pers.hint.problem': 'It is added but not responding',
   'pers.hint.off': 'It is added but turned off',

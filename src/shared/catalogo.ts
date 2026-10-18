@@ -99,6 +99,8 @@ export interface CatalogConnector {
   /** Qué datos salen de este equipo hacia el servicio. */
   dataLeaves: string
   docsUrl: string
+  /** `false` = nadie lo ha probado todavía con una cuenta real: la pantalla lo dice. Ausente = no se afirma nada. */
+  accountTested?: boolean
   /** Fecha (AAAA-MM-DD) en que se verificó contra la documentación y la red. */
   verifiedAt: string
   /** Cómo se verificó (texto corto, legible). */
@@ -139,6 +141,7 @@ const CONNECTOR_KEYS = [
   'writes',
   'dataLeaves',
   'docsUrl',
+  'accountTested',
   'verifiedAt',
   'verification',
   'reviewed'
@@ -288,6 +291,8 @@ export function validateCatalog(input: unknown): string[] {
           }
         }
       }
+      if (c.accountTested !== undefined && typeof c.accountTested !== 'boolean')
+        errs.push(`${where}: «accountTested» debe ser verdadero o falso`)
       checkCommon(c, where, updatedAt, errs)
     }
   return errs

@@ -93,6 +93,7 @@
         "writes": { "type": "boolean" },
         "dataLeaves": { "type": "string", "minLength": 10, "maxLength": 400, "description": "Qué datos salen de este equipo hacia el servicio." },
         "docsUrl": { "$ref": "#/$defs/httpsUrl" },
+        "accountTested": { "type": "boolean", "description": "false = nadie lo ha probado con una cuenta real; la pantalla lo dice. Ausente = no se afirma nada." },
         "verifiedAt": { "$ref": "#/$defs/date" },
         "verification": { "type": "string", "minLength": 20, "maxLength": 500 },
         "reviewed": { "const": true }

@@ -204,6 +204,7 @@ export function PersonalizacionView(): React.JSX.Element {
                     description={x.description}
                     publisher={c.publisher}
                     reviewed={c.reviewed}
+                    note={c.accountTested === false ? t('pers.note.untested') : undefined}
                     hint={
                       st === 'needs-login'
                         ? t('pers.hint.needsLogin')

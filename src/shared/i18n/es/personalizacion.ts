@@ -57,6 +57,9 @@ export const personalizacion = {
   'pers.tag.off': 'Apagada',
   'pers.tag.connected': 'Conectado',
   'pers.tag.notConnected': 'No conectado',
+  'pers.note.untested': 'Aún sin probar con una cuenta real',
+  'pers.note.untestedLong':
+    'Se comprobó la dirección y cómo inicia sesión, pero nadie lo ha probado todavía con una cuenta real. Si algo falla, quítalo y avísanos.',
   'pers.hint.needsLogin': 'Falta entrar a tu cuenta',
   'pers.hint.problem': 'Está añadido pero no responde',
   'pers.hint.off': 'Está añadido pero apagado',

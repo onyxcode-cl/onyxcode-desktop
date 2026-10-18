@@ -58,6 +58,7 @@ export function Ficha({
   reviewed,
   tag,
   hint,
+  note,
   onOpen,
   testId
 }: {
@@ -69,6 +70,8 @@ export function Ficha({
   tag: React.ReactNode
   /** Línea extra bajo la descripción (p. ej. «Falta entrar a tu cuenta»). */
   hint?: string
+  /** Aviso neutro bajo la descripción (p. ej. «Sin probar con una cuenta real»): dice la verdad, no alarma. */
+  note?: string
   onOpen: () => void
   testId?: string
 }): React.JSX.Element {
@@ -92,6 +95,11 @@ export function Ficha({
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-muted desk:text-meta">{description}</p>
           {hint && <p className="mt-1 text-meta text-warning">{hint}</p>}
+          {note && (
+            <p data-testid="pers-untested" className="mt-1 text-meta text-subtle">
+              {note}
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">

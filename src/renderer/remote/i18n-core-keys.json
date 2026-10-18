@@ -1247,6 +1247,8 @@
  "pers.install.warnTitle",
  "pers.loading",
  "pers.nobridge",
+ "pers.note.untested",
+ "pers.note.untestedLong",
  "pers.perm.askEach",
  "pers.perm.host",
  "pers.perm.readOnly",

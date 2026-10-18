@@ -374,6 +374,19 @@ describe('Personalización: conectores', () => {
     expect(byText('[role="dialog"] button', /Continuar en Notion/)).not.toBeNull()
   })
 
+  it('dice la verdad: los conectores sin prueba con cuenta real lo avisan en la tarjeta y en el detalle; los demás no', async () => {
+    useUi.setState({ personalizationTab: 'conectores' })
+    await mount()
+    const notion = document.querySelector('[data-testid="pers-conn-notion"]')!
+    expect(notion.textContent).toContain('Aún sin probar con una cuenta real')
+    expect(notion.textContent).toContain('No conectado') // y nunca «Conectado» por su cuenta
+    expect(document.querySelector('[data-testid="pers-conn-github"] [data-testid="pers-untested"]')).toBeNull()
+    await click(byText('button', 'Notion'))
+    expect(document.querySelector('[role="dialog"] [data-testid="pers-untested-detail"]')?.textContent).toContain(
+      'nadie lo ha probado todavía con una cuenta real'
+    )
+  })
+
   it('«Ahora no» cierra sin añadir nada', async () => {
     useUi.setState({ personalizationTab: 'conectores' })
     await mount()

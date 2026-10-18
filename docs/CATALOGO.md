@@ -5,6 +5,8 @@ Lo que ofrece la pantalla **Personalización** (habilidades incluidas y conector
 ## Reglas
 
 - **Solo se ofrece lo verificado de punta a punta.** Una ficha de conector exige `verifiedAt` (fecha) y `verification` (qué se comprobó: dirección contra la documentación oficial y respuesta real del servicio). Palabras como «próximamente», «pronto» o «beta» hacen fallar la prueba.
+- **Estado real**: `accountTested: false` en una ficha de conector significa que nadie la ha probado con una cuenta real; la tarjeta y el detalle lo dicen («Aún sin probar con una cuenta real») y la prueba exige que coincida con lo que admite `verification`. Si omites el campo no se afirma nada. Cuando alguien la pruebe de verdad, quita el campo y anota la fecha en `verification`.
+- **Correo, calendario y Drive**: investigados el 2026-10-17 y **no entran** por ahora (el motor no puede iniciar sesión en los servidores oficiales de Google ni limitarlos a solo lectura; Microsoft pide licencia de pago; los servidores locales no caben en v1). Fuentes, evidencia y qué decidir: `docs/conectores-cotidianos.md`.
 - **El sello «Revisado por Lazunox»** (`reviewed: true`) es solo de las fichas de este archivo. Lo que la persona instale por su cuenta desde una carpeta propia nunca lo lleva.
 - **Conectores** (v1): solo remotos (una URL `https`); añadirlos no ejecuta ningún programa en el equipo. Quedan desactivados hasta que la persona los conecta y confirma la casilla «Entiendo». Los secretos (`inputs[].kind = "secret"`) se piden en un campo enmascarado, se guardan donde ya guarda Ajustes › Conectores y no se vuelven a mostrar. Sin OAuth propio de la app.
 - **Habilidades incluidas**: el `id` debe ser una carpeta real de `resources/opencode/skills/` cuyo `SKILL.md` se llame igual.

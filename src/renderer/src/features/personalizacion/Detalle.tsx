@@ -335,6 +335,11 @@ export function ConnectorDetail({
           <li>{t('pers.perm.host', { host })}</li>
           <li>{t('pers.perm.askEach')}</li>
         </ul>
+        {item.accountTested === false && (
+          <p data-testid="pers-untested-detail" className="mt-2 text-xs text-muted">
+            {t('pers.note.untestedLong')}
+          </p>
+        )}
         <p className="mt-2 flex items-start gap-1.5 text-xs text-warning">
           <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {ct.dataLeaves}
         </p>

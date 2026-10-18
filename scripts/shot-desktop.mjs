@@ -126,6 +126,10 @@ const SCENARIOS = [
   'personalizacion-detalle',
   'personalizacion-conectar',
   'personalizacion-e2e', // verificación (no captura): instala y quita una habilidad desde una carpeta y conecta y quita un conector
+  // Conectores de la vida diaria (F8-B184): la etiqueta «Aún sin probar con una cuenta real», su detalle y el paso a paso con la casilla «Entiendo».
+  'conectores-cotidianos',
+  'conectores-cotidianos-detalle',
+  'conectores-cotidianos-e2e', // verificación (no captura): la casilla frena, el inicio de sesión no pide contraseña y «Ahora no» no escribe nada
   'paleta',
   // Búsqueda por contenido (F8-B182): la paleta encuentra palabras que solo están en el cuerpo de los mensajes de Chat y Code;
   // `busqueda-global-abrir` elige un resultado y comprueba que se abre la conversación en ese mensaje (resaltado un momento).
@@ -158,7 +162,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|busqueda-|trabajo-legible)/
+const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|busqueda-|trabajo-legible)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -670,7 +674,11 @@ async function searchPalette(page, query) {
   await box.fill('')
   await box.fill(query)
   // Espera a que el índice esté listo (si aún prepara, el estado dice «Preparando…»).
-  await page.waitForFunction(() => !/Preparando la búsqueda/.test(document.querySelector('[data-testid="palette-search-status"]')?.textContent ?? ''), null, { timeout: 30_000 })
+  await page.waitForFunction(
+    () => !/Preparando la búsqueda/.test(document.querySelector('[data-testid="palette-search-status"]')?.textContent ?? ''),
+    null,
+    { timeout: 30_000 }
+  )
   await sleep(500)
   return page.evaluate(() => ({
     hits: document.querySelectorAll('[data-testid="search-hit"]').length,
@@ -2312,6 +2320,78 @@ const S = {
     await vis(dlg.getByRole('checkbox').first(), 5000)
     await sleep(500)
   },
+  async 'conectores-cotidianos'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-notion"]'), 15_000)
+    const nota = (id) => page.locator(`[data-testid="pers-conn-${id}"] [data-testid="pers-untested"]`).count()
+    console.log(
+      'VERIF-COTIDIANOS ' +
+        JSON.stringify({
+          etiquetaEnNotion: (await nota('notion')) === 1,
+          etiquetaEnLinear: (await nota('linear')) === 1,
+          sinEtiquetaEnGithub: (await nota('github')) === 0,
+          grupos: await page.locator('main h2, [data-testid="personalizacion"] h2').allTextContents()
+        })
+    )
+    await page.locator('[data-testid="pers-conn-notion"]').scrollIntoViewIfNeeded()
+    await sleep(400)
+  },
+  async 'conectores-cotidianos-detalle'(ctx) {
+    const { page } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-notion"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-notion"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 5000)
+    await vis(dlg.locator('[data-testid="pers-untested-detail"]'), 5000)
+    await sleep(500)
+  },
+  async 'conectores-cotidianos-e2e'(ctx) {
+    const { page, userData } = ctx
+    await openPersonalizacion(page, 'conectores')
+    await vis(page.locator('[data-testid="pers-conn-notion"]'), 15_000)
+    await page.locator('[data-testid="pers-conn-notion"]').click()
+    const dlg = page.locator('[role="dialog"]')
+    await vis(dlg, 5000)
+    await dlg
+      .getByRole('button', { name: /^Conectar$/ })
+      .first()
+      .click()
+    const seguir = dlg.getByRole('button', { name: /^Seguir$/ })
+    await vis(seguir, 5000)
+    const frenaSinCasilla = await seguir.isDisabled()
+    await dlg.getByRole('checkbox').first().check()
+    const libreConCasilla = !(await seguir.isDisabled())
+    await seguir.click()
+    await sleep(500)
+    const texto = (await dlg.textContent()) ?? ''
+    const sinContrasena = (await dlg.locator('input[type="password"]').count()) === 0
+    const dice = /nunca ve tu contraseña/i.test(texto)
+    await dlg.getByRole('button', { name: /^Atrás$/ }).click()
+    await dlg.getByRole('button', { name: /^Ahora no$/ }).click()
+    await sleep(600)
+    let archivos = 0
+    try {
+      archivos = execFileSync('grep', ['-rl', 'notion', userData, '--include=*.json', '--include=*.jsonc'], { encoding: 'utf8' })
+        .trim()
+        .split('\n')
+        .filter((f) => f && !f.includes('Cache')).length
+    } catch {
+      archivos = 0
+    }
+    console.log(
+      'VERIF-COTIDIANOS-E2E ' +
+        JSON.stringify({
+          frenaSinCasilla,
+          libreConCasilla,
+          dice_nunca_ve_contrasena: dice,
+          sinCampoDeContrasena: sinContrasena,
+          cerroSinAnadir: (await page.locator('[role="dialog"]').count()) === 0,
+          archivosConNotion: archivos
+        })
+    )
+  },
   async 'personalizacion-e2e'(ctx) {
     const { page, userData } = ctx
     const find = (dir, name) => {
@@ -2518,7 +2598,9 @@ const S = {
     await goMode(page, 'Chat')
     const found = await searchPalette(page, 'levadura')
     const titles = await page.evaluate(() => [...document.querySelectorAll('[role="group"]')].map((g) => g.getAttribute('aria-label')))
-    console.log('VERIF-BUSQUEDA cuerpo "levadura" => ' + JSON.stringify({ hits: found.hits, titles, mark: found.mark, status: found.status }))
+    console.log(
+      'VERIF-BUSQUEDA cuerpo "levadura" => ' + JSON.stringify({ hits: found.hits, titles, mark: found.mark, status: found.status })
+    )
     if (found.hits < 1 || titles.some((t) => /levadura/i.test(t ?? '')) || !/levadura/i.test(found.mark)) {
       throw new Error('la búsqueda por cuerpo no encontró la palabra: ' + JSON.stringify(found))
     }

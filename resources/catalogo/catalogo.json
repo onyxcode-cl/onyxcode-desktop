@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "updatedAt": "2026-10-17",
   "groups": [
     {
@@ -274,7 +274,8 @@
       "writes": true,
       "dataLeaves": "Los datos de errores que la IA consulte (pueden incluir trazas y contexto de tu código) viajan a Sentry. El acceso se concede iniciando sesión.",
       "docsUrl": "https://docs.sentry.io/product/sentry-mcp/",
-      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real.",
+      "accountTested": false
     },
     {
       "transport": "remote",
@@ -305,7 +306,8 @@
       "writes": true,
       "dataLeaves": "Lo que la IA lea o escriba en tu espacio de Linear viaja a Linear. El acceso se concede iniciando sesión.",
       "docsUrl": "https://linear.app/docs/mcp",
-      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real.",
+      "accountTested": false
     },
     {
       "transport": "remote",
@@ -336,7 +338,8 @@
       "writes": true,
       "dataLeaves": "El contenido de Notion que la IA lea o escriba viaja a Notion. El acceso se concede iniciando sesión.",
       "docsUrl": "https://developers.notion.com/docs/get-started-with-mcp",
-      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real.",
+      "accountTested": false
     },
     {
       "transport": "remote",
@@ -367,7 +370,8 @@
       "writes": true,
       "dataLeaves": "El contenido de Jira y Confluence que la IA lea o escriba viaja a Atlassian. El acceso se concede iniciando sesión.",
       "docsUrl": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/",
-      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real."
+      "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real.",
+      "accountTested": false
     }
   ]
 }

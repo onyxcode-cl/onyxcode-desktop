@@ -123,6 +123,31 @@ describe('catálogo de Personalización: el validador rechaza lo que no cumple',
   })
 })
 
+describe('catálogo de Personalización: «aún sin probar con una cuenta real»', () => {
+  it('toda ficha cuya verificación admite que no se probó con una cuenta real lo declara (y viceversa)', () => {
+    for (const c of CATALOG.connectors) {
+      const admits = /no se probó con una cuenta real/i.test(c.verification)
+      expect(c.accountTested === false, c.id).toBe(admits)
+    }
+    expect(CATALOG.connectors.some((c) => c.accountTested === false)).toBe(true)
+  })
+
+  it('«accountTested» solo puede ser verdadero o falso', () => {
+    const c = clone()
+    c.connectors[0].accountTested = 'no'
+    expect(validateCatalog(c).join()).toMatch(/accountTested/)
+  })
+
+  it('el aviso existe en español e inglés', () => {
+    const E = es as unknown as Record<string, string>
+    const N = en as unknown as Record<string, string>
+    for (const k of ['pers.note.untested', 'pers.note.untestedLong']) {
+      expect(E[k], k).toBeTruthy()
+      expect(N[k], k).toBeTruthy()
+    }
+  })
+})
+
 describe('catálogo de Personalización: textos por idioma', () => {
   const E = es as unknown as Record<string, string>
   const N = en as unknown as Record<string, string>
