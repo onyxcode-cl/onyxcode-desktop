@@ -86,7 +86,8 @@ function stem(w: string): string {
   if (s.length >= 5 && s.endsWith('es')) s = s.slice(0, -2)
   else if (s.length > 3 && s.endsWith('s')) s = s.slice(0, -1)
   if (s.length >= 5 && /[aeo]$/.test(s)) s = s.slice(0, -1)
-  return s
+  // Raíz de 6 letras como máximo: «cosecha» y «cosecharon», «arriendo» y «arrienda» comparten raíz.
+  return s.length > 6 ? s.slice(0, 6) : s
 }
 
 /** Términos de búsqueda de un texto: normalizados, sin palabras vacías y sin duplicar el orden. */
@@ -251,14 +252,15 @@ export class Bm25Index {
 
   /**
    * Los pasajes más relevantes para la pregunta, de mayor a menor puntaje. Un pasaje cuenta solo si contiene suficientes términos
-   * de la pregunta (al menos 1 si la pregunta tiene 1–2 términos; si no, el 40 %): así una pregunta que nada tiene que ver con los
-   * archivos devuelve una lista vacía y no un pasaje al azar.
+   * de la pregunta (1 si la pregunta tiene 1–2 términos; si no, 2): así una pregunta que nada tiene que ver con los archivos
+   * devuelve una lista vacía y no un pasaje al azar, y una pregunta de varios temas («el código del portón y las cajas de
+   * cerezas») recupera un pasaje de cada archivo.
    */
   search(query: string, limit: number = PROJECT_LIMITS.maxPassages): ScoredChunk[] {
     const terms = [...new Set(tokenize(query))]
     if (terms.length === 0 || this.docs.length === 0) return []
     const n = this.docs.length
-    const minMatch = terms.length <= 2 ? 1 : Math.ceil(terms.length * 0.4)
+    const minMatch = terms.length <= 2 ? 1 : 2
     const scored: ScoredChunk[] = []
     for (const d of this.docs) {
       let score = 0

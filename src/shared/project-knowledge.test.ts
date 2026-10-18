@@ -16,7 +16,7 @@ describe('foldText / tokenize', () => {
     expect(foldText('ÁRBOL Canción Ñandú')).toBe('arbol cancion nandu')
   })
   it('descarta palabras vacías y signos, y deja los números', () => {
-    expect(tokenize('¿Cuál es el canon mensual de 412 UF?')).toEqual(['canon', 'mensual', '412', 'uf'])
+    expect(tokenize('¿Cuál es el canon mensual de 412 UF?')).toEqual(['canon', 'mensua', '412', 'uf'])
   })
   it('un plural encuentra el singular (archivos ~ archivo) y sin tildes (garantía ~ garantia)', () => {
     expect(tokenize('Garantías')).toEqual(tokenize('garantia'))
@@ -129,6 +129,16 @@ describe('Bm25Index.search', () => {
     expect(idx.search('manual de la bodega')[0].name).toBe('manual-bodega.txt')
   })
 
+  it('una pregunta de varios temas recupera un pasaje de cada archivo', () => {
+    const r = idx.search('¿Cuál es el canon mensual y dónde se entregan las llaves de la bodega 14?', 5)
+    expect(new Set(r.map((c) => c.name))).toEqual(new Set(['contrato-arriendo.md', 'manual-bodega.txt']))
+  })
+
+  it('verbos y sustantivos de la misma familia comparten raíz (cosecha ~ cosecharon)', () => {
+    expect(tokenize('cosecharon')).toEqual(tokenize('cosecha'))
+    expect(tokenize('arrendatario')).toEqual(tokenize('arrendamiento'))
+  })
+
   it('un plural y un singular son lo mismo', () => {
     expect(idx.search('llave')[0].name).toBe('manual-bodega.txt')
     expect(idx.search('garantias')[0].name).toBe('contrato-arriendo.md')
@@ -141,7 +151,7 @@ describe('Bm25Index.search', () => {
   })
 
   it('con varios términos exige que coincida una parte razonable de ellos', () => {
-    // Solo «mensual» coincide de cuatro términos: no alcanza.
+    // Solo «mensual» coincide de cuatro términos: no alcanza (se piden al menos dos).
     expect(idx.search('mensual futbol tenis natación')).toEqual([])
   })
 
