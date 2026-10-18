@@ -9,7 +9,7 @@ export const tasksComputer = {
   'tasksComputer.access.pickFolder': 'Choose a folder first',
   'tasksComputer.access.waitTask': 'Wait for the task to finish before changing the access mode',
   'tasksComputer.access.sandboxTitle':
-    '{name}: writes only in the chosen folder and in extra folders with write access. It can read other folders in your account, except your keys and the app’s data. No internet except allowed sites. Recommended.',
+    '{name}: writes only in the chosen folder and in extra folders with write access. It can read other folders in your account, except your keys, your terminal settings and apps’ data. No internet except allowed sites. Recommended.',
   'tasksComputer.access.sandboxTitle.win':
     '{name}: isolated Linux environment. It only sees the chosen folder and the extra folders (not the rest of the PC) and writes only where write access is given. No internet except allowed sites. Recommended.',
   'tasksComputer.access.sandboxName': 'Only in your folder',
@@ -30,7 +30,7 @@ export const tasksComputer = {
   'tasksComputer.confirm.title': 'Allow working in “{name}”?',
   'tasksComputer.confirm.b1': 'The agent will be able to read, create and modify files and run commands inside this folder.',
   'tasksComputer.confirm.b2':
-    'It works in a protected area of macOS: it writes only in the folder. It can read other folders in your account, but not your keys (~/.ssh, ~/.aws…) or the app’s data.',
+    'It works in a protected area of macOS: it writes only in the folder. It can read other folders in your account, but not your keys (~/.ssh, ~/.aws…), your terminal settings (~/.zshrc…) or apps’ data.',
   'tasksComputer.confirm.b2.win':
     'It runs in an isolated Linux environment on your PC: it only sees this folder and the extra folders you add; it can’t see the rest of the PC or your keys.',
   'tasksComputer.confirm.b3': 'It will ask for confirmation before deleting files.',
@@ -52,7 +52,7 @@ export const tasksComputer = {
   'tasksComputer.mode.sandboxTitle': 'It can only write in this folder',
   'tasksComputer.mode.sandboxTitle.win': 'Writes limited to this folder (isolated Linux environment)',
   'tasksComputer.mode.sandboxDesc':
-    'Writes only in this folder. It can read other folders in your account, except your keys and the app’s data. Recommended.',
+    'Writes only in this folder. It can read other folders in your account, except your keys, your terminal settings and apps’ data. Recommended.',
   'tasksComputer.mode.sandboxDesc.win':
     'It only sees and writes in this folder (isolated environment); it can’t see the rest of the PC. Recommended.',
   'tasksComputer.mode.fullDesc': 'No folder limit. It can move the mouse, type, take screenshots and change files anywhere.',
@@ -349,7 +349,7 @@ export const tasksComputer = {
   'tasksComputer.onb.step1Desc': 'The agent works inside it. You can add additional folders, read-write or read-only.',
   'tasksComputer.onb.step2': 'What it can and can’t do',
   'tasksComputer.onb.sandboxDesc':
-    'writes only in your folder; it can read other folders in your account, except your keys and the app’s data; and it asks permission to delete, move or rename.',
+    'writes only in your folder; it can read other folders in your account, except your keys, your terminal settings and apps’ data; and it asks permission to delete, move or rename.',
   'tasksComputer.onb.sandboxDesc.win':
     'only sees and writes in the folders you chose, can’t see the rest of the PC or your keys, and asks permission to delete, move or rename.',
   'tasksComputer.onb.fullDesc': 'no folder limit; uses the mouse, keyboard and screen and can touch any file. Requires approving a plan.',

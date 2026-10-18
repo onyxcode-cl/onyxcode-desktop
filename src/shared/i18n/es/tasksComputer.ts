@@ -6,7 +6,7 @@ export const tasksComputer = {
   'tasksComputer.access.pickFolder': 'Elige una carpeta primero',
   'tasksComputer.access.waitTask': 'Espera a que termine la tarea para cambiar el modo de acceso',
   'tasksComputer.access.sandboxTitle':
-    '{name}: escribe solo en la carpeta elegida y en las adicionales con escritura. Puede leer otras carpetas de tu cuenta, menos tus claves y los datos de la app. Sin internet salvo sitios permitidos. Recomendado.',
+    '{name}: escribe solo en la carpeta elegida y en las adicionales con escritura. Puede leer otras carpetas de tu cuenta, menos tus claves, tu configuración del terminal y los datos de las apps. Sin internet salvo sitios permitidos. Recomendado.',
   'tasksComputer.access.sandboxTitle.win':
     '{name}: entorno Linux aislado. Solo ve la carpeta elegida y las adicionales (no el resto del PC) y escribe solo donde hay escritura. Sin internet salvo sitios permitidos. Recomendado.',
   'tasksComputer.access.sandboxName': 'Solo en tu carpeta',
@@ -27,7 +27,7 @@ export const tasksComputer = {
   'tasksComputer.confirm.title': '¿Permitir trabajar en «{name}»?',
   'tasksComputer.confirm.b1': 'El agente podrá leer, crear y modificar archivos y ejecutar comandos dentro de esta carpeta.',
   'tasksComputer.confirm.b2':
-    'Trabaja en una zona protegida de macOS: solo escribe en la carpeta. Puede leer otras carpetas de tu cuenta, pero no tus claves (~/.ssh, ~/.aws…) ni los datos de la app.',
+    'Trabaja en una zona protegida de macOS: solo escribe en la carpeta. Puede leer otras carpetas de tu cuenta, pero no tus claves (~/.ssh, ~/.aws…), tu configuración del terminal (~/.zshrc…) ni los datos de las apps.',
   'tasksComputer.confirm.b2.win':
     'Se ejecuta en un entorno Linux aislado de tu PC: solo ve esta carpeta y las adicionales que añadas; no ve el resto del PC ni tus claves.',
   'tasksComputer.confirm.b3': 'Te pedirá confirmación antes de borrar archivos.',
@@ -49,7 +49,7 @@ export const tasksComputer = {
   'tasksComputer.mode.sandboxTitle': 'Solo puede escribir en esta carpeta',
   'tasksComputer.mode.sandboxTitle.win': 'Escrituras limitadas a esta carpeta (entorno Linux aislado)',
   'tasksComputer.mode.sandboxDesc':
-    'Escribe solo en esta carpeta. Puede leer otras carpetas de tu cuenta, menos tus claves y los datos de la app. Recomendado.',
+    'Escribe solo en esta carpeta. Puede leer otras carpetas de tu cuenta, menos tus claves, tu configuración del terminal y los datos de las apps. Recomendado.',
   'tasksComputer.mode.sandboxDesc.win': 'Solo ve y escribe en esta carpeta (entorno aislado); no ve el resto del PC. Recomendado.',
   'tasksComputer.mode.fullDesc':
     'Sin límite de carpeta. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar.',
@@ -349,7 +349,7 @@ export const tasksComputer = {
     'El agente trabaja dentro de ella. Puedes añadir carpetas adicionales, de lectura y escritura o de solo lectura.',
   'tasksComputer.onb.step2': 'Qué puede y qué no hacer',
   'tasksComputer.onb.sandboxDesc':
-    'escribe solo en tu carpeta; puede leer otras carpetas de tu cuenta, menos tus claves y los datos de la app; y pide permiso para borrar, mover o renombrar.',
+    'escribe solo en tu carpeta; puede leer otras carpetas de tu cuenta, menos tus claves, tu configuración del terminal y los datos de las apps; y pide permiso para borrar, mover o renombrar.',
   'tasksComputer.onb.sandboxDesc.win':
     'solo ve y escribe en tus carpetas elegidas, no ve el resto del PC ni tus claves, y pide permiso para borrar, mover o renombrar.',
   'tasksComputer.onb.fullDesc':

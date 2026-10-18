@@ -7,6 +7,12 @@
  * entradas fijas: perfil SBPL, `command`, `args`, `env` y opciones de `spawn`, constructores de los
  * proxies, `trackPid`, `killTree` y limpieza. NO regeneres el fixture para que pase: revisa el diff.
  * (Captura inicial: `LAZUNOX_CAPTURE_SEATBELT_BEFORE=1`; solo se usó una vez, con el código original.)
+ *
+ * Actualización DELIBERADA (F8-B194, endurecer lecturas): el fixture se recapturó una vez más y se revisó el diff,
+ * que contiene SOLO (a) las rutas nuevas de la lista de lectura denegada del perfil (`defaultDeniedReadPaths`:
+ * dotfiles de shell, `.gitconfig`, `.config`, `.claude`, `.codex`, Group Containers, apps con sesión…) y (b) la
+ * variable `GIT_CONFIG_GLOBAL` (archivo global de git propio en el directorio privado: con `~/.gitconfig` denegado
+ * `git` moría). Nada del lanzamiento (comando, argumentos, red, escritura, proxies, limpieza) cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

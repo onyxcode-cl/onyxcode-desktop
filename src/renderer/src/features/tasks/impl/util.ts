@@ -264,12 +264,24 @@ export function friendlyTool(part: ToolPart, showPath: (path: string) => string 
 // ───────────────────────────── Borrado bloqueado por el sandbox ─────────────────────────────
 
 const OPERATION_NOT_PERMITTED_RE = /operation not permitted/i
+/**
+ * Palabras de una orden que borra, mueve o renombra (en shell, git, Python, Node, PowerShell). Sin esto, CUALQUIER
+ * «Operation not permitted» (p. ej. leer un archivo de claves que el sandbox niega: `head ~/.zshrc`) ofrecía
+ * «Permitir borrar, mover y renombrar», que no arregla nada en ese caso.
+ */
+const DELETE_VERB_RE =
+  /(^|[\s;&|(`'"=])(rm|rmdir|unlink|mv|rename|trash|shred)(\s|$|;|&|\||:)|\s-delete\b|--delete\b|--remove-source-files|\bremove-item\b|\bgit\s+(clean|checkout|reset|restore|switch|rm|mv|stash)\b|\b(os|shutil|fs|pathlib)\.[\w.]*(remove|unlink|rmdir|rmtree|rename|replace|move|rm)\w*/i
 
 /** ¿Esta parte de herramienta parece un `rm`/`unlink` bloqueado por el sandbox (Seatbelt, EPERM)? */
 export function looksLikeBlockedDelete(part: ToolPart): boolean {
   if (part.tool !== 'bash') return false
   const text = part.state.status === 'completed' ? part.state.output : part.state.status === 'error' ? part.state.error : ''
-  return !!text && OPERATION_NOT_PERMITTED_RE.test(text)
+  if (!text || !OPERATION_NOT_PERMITTED_RE.test(text)) return false
+  const input = part.state.input as { command?: unknown } | undefined
+  const command = typeof input?.command === 'string' ? input.command : ''
+  // La orden o la propia línea del error nombra un borrado/movimiento (`rm: x: Operation not permitted`).
+  const errorLines = text.split('\n').filter((l) => OPERATION_NOT_PERMITTED_RE.test(l))
+  return DELETE_VERB_RE.test(command) || errorLines.some((l) => DELETE_VERB_RE.test(l))
 }
 
 // ───────────────────────────── Pasos por etapa del plan ─────────────────────────────

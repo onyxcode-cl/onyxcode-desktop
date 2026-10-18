@@ -75,6 +75,9 @@ export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
     XDG_CACHE_HOME: dirs.cache,
     XDG_STATE_HOME: dirs.state,
     TMPDIR: dirs.tmp,
+    // `~/.gitconfig` está denegado (puede llevar `url.<token>@…` o ayudantes de credenciales) y `git` MUERE con
+    // «unable to access … Operation not permitted» si no puede leerlo: se le da un archivo global propio y privado.
+    GIT_CONFIG_GLOBAL: join(dirs.config, 'gitconfig'),
     npm_config_cache: join(dirs.cache, 'npm'),
     BUN_INSTALL_CACHE_DIR: join(dirs.cache, 'bun'),
     PIP_CACHE_DIR: join(dirs.cache, 'pip'),
@@ -95,43 +98,122 @@ export function defaultWritablePaths(): string[] {
   ]
 }
 
-/** Rutas (subpath) con lectura y escritura denegadas. */
+/**
+ * Rutas (subpath) con lectura y escritura denegadas.
+ *
+ * Criterio (F8-B194): se niega lo que razonablemente guarda credenciales o configuración personal
+ * con claves, y NADA de lo que el servidor necesita para arrancar y trabajar (sus XDG, TMPDIR y cachés
+ * son privados, en `userData/tasks-sandbox/<hash>`; el binario, el catálogo de modelos y el sistema
+ * están fuera de `HOME` o no se tocan). Las rutas que no existen no cuestan nada.
+ */
 export function defaultDeniedReadPaths(home = homedir()): string[] {
   const h = (...p: string[]): string => join(home, ...p)
   const as = (...p: string[]): string => h('Library', 'Application Support', ...p)
   return [
-    // Claves SSH / nube / contenedores
+    // Claves SSH / GPG / nube / contenedores / clústeres
     h('.ssh'),
     h('.aws'),
     h('.gnupg'),
     h('.kube'),
     h('.docker'),
     h('.azure'),
-    h('.config', 'gcloud'),
+    h('.oci'),
+    h('.ibmcloud'),
+    h('.terraform.d'),
+    h('.vault-token'),
+    h('.boto'),
+    h('.s3cfg'),
+    h('.databrickscfg'),
+    h('.colima'),
+    h('.lima'),
+    // ~/.config entera: gcloud, op (1Password), gh, hub, doctl, wrangler, configstore, heroku,
+    // stripe… guardan aquí sus tokens. El servidor usa su propio XDG_CONFIG_HOME (privado), así
+    // que nada suyo vive aquí (ni `~/.config/opencode`, que ya se negaba).
+    h('.config'),
     // OpenCode del usuario: auth.json (claves de proveedores), DB de todas las sesiones, config/plugins
     h('.local', 'share', 'opencode'),
     h('.local', 'state', 'opencode'),
-    h('.config', 'opencode'),
-    // Tokens de CLIs
-    h('.config', 'gh'),
-    h('.config', 'hub'),
+    // Cachés del usuario (a veces con tokens o con salidas de otras herramientas): el servidor usa su XDG_CACHE_HOME privado
+    h('.cache'),
+    h('.npm'),
+    // Otros agentes de código y editores (sesiones, tokens, historiales de conversación)
+    h('.claude'),
+    h('.claude.json'),
+    h('.claude.json.backup'),
+    h('.codex'),
+    h('.cursor'),
+    h('.windsurf'),
+    h('.codeium'),
+    h('.gemini'),
+    h('.continue'),
+    h('.aider.conf.yml'),
+    h('.aider.chat.history.md'),
+    h('.vscode'),
+    h('.zed'),
+    // Servidores MCP del usuario guardan sus tokens en ~/.<algo>-mcp-server
+    h('.ms-365-mcp-server'),
+    h('.mcp-auth'),
+    h('.mcp.json'),
+    // Tokens de CLIs y gestores de paquetes
     h('.netrc'),
     h('.git-credentials'),
+    h('.gitconfig'),
     h('.npmrc'),
     h('.yarnrc'),
+    h('.yarnrc.yml'),
     h('.pypirc'),
+    h('.pgpass'),
+    h('.my.cnf'),
+    h('.mylogin.cnf'),
+    h('.terraformrc'),
     h('.cargo', 'credentials'),
     h('.cargo', 'credentials.toml'),
     h('.gem', 'credentials'),
-    h('.terraform.d'),
-    // Historiales de shell
+    h('.m2', 'settings.xml'),
+    h('.gradle', 'gradle.properties'),
+    h('.composer', 'auth.json'),
+    h('.bundle', 'config'),
+    h('.cloudflared'),
+    h('.wrangler'),
+    h('.vercel'),
+    h('.netlify'),
+    h('.fly'),
+    h('.railway'),
+    h('.stripe'),
+    h('.supabase'),
+    h('.expo'),
+    h('.eas'),
+    h('.firebase'),
+    // Archivos de arranque del intérprete de órdenes: suelen llevar `export TOKEN=…`
+    h('.zshrc'),
+    h('.zshenv'),
+    h('.zprofile'),
+    h('.zlogin'),
+    h('.zlogout'),
+    h('.bashrc'),
+    h('.bash_profile'),
+    h('.bash_login'),
+    h('.bash_logout'),
+    h('.profile'),
+    h('.envrc'),
+    h('.env'),
+    // Historiales (órdenes con claves pegadas)
     h('.zsh_history'),
     h('.bash_history'),
     h('.zsh_sessions'),
+    h('.zhistory'),
+    h('.sh_history'),
     h('.python_history'),
     h('.node_repl_history'),
+    h('.irb_history'),
+    h('.mysql_history'),
+    h('.psql_history'),
+    h('.sqlite_history'),
+    h('.rediscli_history'),
+    h('.lesshst'),
+    h('.viminfo'),
     // Navegadores, cookies, llavero, correo y mensajes
-    as('Google', 'Chrome'),
+    as('Google'),
     as('Chromium'),
     as('Firefox'),
     as('BraveSoftware'),
@@ -141,11 +223,38 @@ export function defaultDeniedReadPaths(home = homedir()): string[] {
     as('Vivaldi'),
     h('Library', 'Safari'),
     h('Library', 'Cookies'),
+    h('Library', 'HTTPStorages'),
+    h('Library', 'WebKit'),
     h('Library', 'Keychains'),
     h('Library', 'Mail'),
     h('Library', 'Messages'),
+    h('Library', 'Accounts'),
+    h('Library', 'IdentityServices'),
     h('Library', 'Containers', 'com.apple.Safari'),
-    h('Library', 'Group Containers', 'group.com.apple.notes')
+    // Contenedores de grupo (datos compartidos entre apps: Notas, Mensajes, Slack, Teams…)
+    h('Library', 'Group Containers'),
+    // Aplicaciones con sesión iniciada: guardan tokens y mensajes en Application Support
+    as('Claude'),
+    as('Code'),
+    as('Cursor'),
+    as('Windsurf'),
+    as('Zed'),
+    as('Slack'),
+    as('discord'),
+    as('Microsoft'),
+    as('Notion'),
+    as('1Password'),
+    as('Bitwarden'),
+    as('Dropbox'),
+    as('zoom.us'),
+    as('Signal'),
+    as('Telegram Desktop'),
+    as('WhatsApp'),
+    as('Postman'),
+    as('MobileSync'),
+    as('AddressBook'),
+    as('CallHistoryDB'),
+    as('com.apple.TCC')
   ]
 }
 

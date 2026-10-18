@@ -116,18 +116,20 @@ archivar/borrar. En el sandbox y en el sidecar principal el plugin no hace nada 
     `rw`, el directorio privado del servidor y temporales (`/private/tmp`, `/private/var/folders`); _lectura_ de TODO lo
     que el usuario puede leer salvo la lista `defaultDeniedReadPaths` (claves SSH/nube, `auth.json` y datos de
     OpenCode, tokens de CLIs, historiales de shell, navegadores, Safari, cookies, Llavero, Mail, Mensajes) y el
-    `userData` de la app. Medido con `sandbox-exec` y el perfil real: `~/Documents`, `~/Desktop`, `~/Downloads`,
-    `~/Pictures`, `~/.config` (salvo `gh`/`opencode`), `~/.zshrc`, `~/.zprofile`, `~/.gitconfig` se pueden listar o leer;
-    `~/.ssh`, `~/.docker`, `~/.config/gh`, `~/.local/share/opencode`, `~/Library/Keychains`, Chrome, Safari, Mail,
-    Mensajes y `userData` se niegan. Red: solo los proxies locales (lista blanca de sitios).
+    `userData` de la app. Desde F8-B194 la lista se endureció (ver abajo); sigue siendo legible todo lo demás:
+    `~/Documents`, `~/Desktop`, `~/Downloads`, `~/Pictures`, el resto de `~/Library` y los toolchains del usuario
+    (`~/.cargo`, `~/.rustup`, `~/.nvm`…). Red: solo los proxies locales (lista blanca de sitios).
   - **Windows (WSL2 + Landlock, `wsl.conf` sin automontaje):** la distro NO ve el resto del PC; solo existen los
     montajes de la carpeta principal y las adicionales (`rw`/`ro`) más el sistema Linux de la imagen (`/usr`, `/etc` de
-    solo lectura…). Escritura solo en las `rw` y el directorio privado. Es más estricto que macOS en lectura.
-  - **Lecturas permitidas en macOS que conviene valorar (NO cambiadas; decisión del dueño):** `~/.codex` (`auth.json`
-    de otro CLI), `~/.claude` y `~/.claude.json` (config y posibles tokens de MCP), `~/Library/Application Support/Claude`,
-    `~/.zshrc`/`~/.zprofile` (pueden exportar variables con claves), `~/.config/*` ajenos a la lista, `~/.npm`,
-    `~/.cache`, `~/Library/Group Containers`, `~/Library/HTTPStorages`. Como la red está limitada a sitios permitidos,
-    la fuga necesitaría un sitio permitido o escribir el dato en la carpeta de trabajo.
+    solo lectura…). Escritura solo en las `rw` y el directorio privado. Es más estricto que macOS en lectura; no hay
+    nada equivalente que endurecer (confirmado por lectura de `wsl-spec.ts`/`wsl.ts`: no hay montajes del `HOME`).
+  - **Lecturas endurecidas en macOS (F8-B194, antes eran legibles y se vigilaban como «a valorar»):** `~/.codex`
+    (`auth.json` de otro CLI), `~/.claude` y `~/.claude.json`, `~/Library/Application Support/Claude`,
+    `~/.zshrc`/`~/.zprofile`/`~/.zshenv`/`~/.bashrc`/`~/.bash_profile`/`~/.profile` (pueden exportar variables con
+    claves), `~/.gitconfig`, `~/.config` ENTERA, `~/.npm`, `~/.cache`, `~/Library/Group Containers`,
+    `~/Library/HTTPStorages`. Medido con `sandbox-exec` y el perfil real: antes se podían leer, ahora dan «Operation
+    not permitted» (leer, listar y escribir). Mantiene la limitación de red (sitios permitidos), pero ya no hace falta
+    confiar en ella para estos archivos.
 - Carpeta principal: escritura permitida; `unlink`/`rmdir`/`rename` denegados salvo la concesión
   «Permitir borrar, mover y renombrar» (`allowDelete`). Truncar no está protegido (mitigación:
   `session.revert`).
@@ -1999,3 +2001,56 @@ La persona reúne instrucciones y archivos en un proyecto; en sus conversaciones
 - **Validación**: `buildWslInit` exige que `modelsFile` sea una ruta de Windows válida (`toSandboxPath`), esté dentro del montaje de la config (`fromSandboxPath`) y se llame exactamente `models.json`; cualquier otra cosa falla cerrado (`bad-path`/`models-outside`). El valor de `OPENCODE_MODELS_PATH` que venga del entorno del anfitrión se descarta (es una ruta de Windows): solo existe la reconstruida desde el montaje.
 - **Sin shell ni protocolo nuevo**: no hay comando de `wsl.exe` ni trama nueva; la lista cerrada de `wsl-spec.ts` y el lanzador Python no cambian. La copia es un `copyFileSync` de `main` y nunca lanza (si falla, el servidor usa el catálogo embebido).
 - **Riesgo residual**: un catálogo manipulado en esa carpeta podría describir modelos o URLs distintas, pero la red del servidor sigue limitada por el proxy de salida y `provider-egress` (solo proveedores del usuario, deny-by-default) y las claves reales no entran al servidor; el archivo lo escribe solo la app, fuera del alcance del agente (montaje de solo lectura).
+
+## 3 quinquagies sedecies. Lecturas denegadas del sandbox de Tareas en macOS: endurecimiento (F8-B194)
+
+**Hallazgo.** El perfil Seatbelt (`(allow default)` + denegaciones) solo negaba una lista cerrada de rutas. Medido con
+`sandbox-exec` y el perfil real, un agente de «Solo en tu carpeta» podía LEER archivos que suelen guardar claves
+(`~/.zshrc`, `~/.zprofile`, `~/.gitconfig`, `~/.claude*`, `~/.codex`, `~/.config/*`, `~/.npm`, `~/.cache`,
+Group Containers, HTTPStorages…). Una inyección de instrucciones podría intentar sacarlos (la red solo sale por el proxy
+con lista blanca, pero un sitio permitido o la propia carpeta de trabajo bastan para exfiltrar).
+
+**Cambio** (`defaultDeniedReadPaths`, `sandboxEnv` en `src/main/tasks/sandbox-profile.ts`; zona intocable, con decisión
+del dueño). Lectura Y escritura denegadas, además de lo que ya había (SSH, nube, gh, OpenCode del usuario, navegadores,
+Llavero, Mail, Mensajes, userData):
+
+- _Shell y git:_ `.zshrc .zprofile .zshenv .zlogin .zlogout .bashrc .bash_profile .bash_login .bash_logout .profile
+.envrc .env .gitconfig`, y más historiales (`.zhistory .sh_history .irb_history .mysql_history .psql_history
+.sqlite_history .rediscli_history .lesshst .viminfo`).
+- _Configuración y cachés del usuario:_ `~/.config` entera, `~/.cache`, `~/.npm`.
+- _Otros agentes y editores:_ `.claude`, `.claude.json(.backup)`, `.codex`, `.cursor`, `.vscode`, `.windsurf`, `.codeium`,
+  `.gemini`, `.continue`, `.zed`, `.aider*`, `.mcp.json`, `.mcp-auth`, `.ms-365-mcp-server`.
+- _Nube y CLIs:_ `.oci .ibmcloud .vault-token .boto .s3cfg .databrickscfg .colima .lima .terraformrc .pgpass .my.cnf
+.mylogin.cnf .m2/settings.xml .gradle/gradle.properties .composer/auth.json .bundle/config .cloudflared .wrangler
+.vercel .netlify .fly .railway .stripe .supabase .expo .eas .firebase .yarnrc.yml`.
+- _Library:_ `Group Containers` entera, `HTTPStorages`, `WebKit`, `Accounts`, `IdentityServices`, y en
+  `Application Support`: `Google` (entera, no solo Chrome), `Claude`, `Code`, `Cursor`, `Windsurf`, `Zed`, `Slack`,
+  `discord`, `Microsoft`, `Notion`, `1Password`, `Bitwarden`, `Dropbox`, `zoom.us`, `Signal`, `Telegram Desktop`,
+  `WhatsApp`, `Postman`, `MobileSync` (copias del iPhone), `AddressBook`, `CallHistoryDB`, `com.apple.TCC`.
+
+**Lo que NO se niega (y por qué).** La carpeta elegida y las adicionales; el directorio privado del servidor
+(`userData/tasks-sandbox/<hash>`: sus `XDG_*`, `TMPDIR` y cachés de npm/bun/pip/uv ya apuntan allí, por eso no necesita
+`~/.config`, `~/.cache` ni `~/.npm`); el binario del motor y el catálogo de modelos (los copia el proceso principal, fuera
+del sandbox, al directorio privado); `/usr`, `/bin`, `/System`, `/Library`, `/private/var/folders`; `~/Library/Caches` y
+`~/Library/Preferences` (los frameworks del sistema los leen); `~/.local/bin`/`share` (uv, pipx); los toolchains del
+usuario (`~/.cargo`, `~/.rustup`, `~/.nvm`, `~/.bun`…); `~/.opencode` (puede alojar el binario elegido con `OPENCODE_BIN`).
+`~/Library/Containers` entera tampoco: solo `com.apple.Safari` (ya estaba).
+
+**Efecto colateral resuelto: git.** Con `~/.gitconfig` denegado, `git` MUERE («fatal: unable to access … Operation not
+permitted», porque el kernel devuelve EPERM y no ENOENT/EACCES). Por eso `sandboxEnv` fija `GIT_CONFIG_GLOBAL` a
+`<directorio privado>/config/gitconfig` (propio, escribible, vacío al principio): git funciona y `git config --global`
+queda confinado al sandbox. Consecuencia: los commits del agente no usan el nombre/correo del `~/.gitconfig` del usuario
+(git cae en el nombre del sistema con aviso). Un efecto menor: `bash -c` puede imprimir por stderr «Operation not
+permitted» al intentar leer `~/.bashrc` cuando su stdin es un socket; no falla.
+
+**Política de carpetas.** `folder-policy.ts` y `manager.ts` reutilizan la misma lista: ya no se puede autorizar como
+carpeta de trabajo nada dentro de las rutas nuevas (p. ej. `~/.config/algo`, `~/.claude`), ni las funciones de la
+interfaz de Control total las leen.
+
+**Pruebas.** `sandbox-profile.sentinels.test.ts`: estructura de la lista (qué sí y qué no) y, solo en macOS (omitida en
+otras plataformas), `sandbox-exec` real sobre un HOME TEMPORAL con archivos centinela falsos (nunca se lee el HOME real):
+cada ruta endurecida da «Operation not permitted» al leer, listar y escribir, y siguen funcionando la carpeta elegida, el
+directorio privado, zsh/bash/python/curl y `git` con el `GIT_CONFIG_GLOBAL` privado (y muere sin él). Los snapshots de
+`sandbox-profile.test.ts` y el fixture `seatbelt-before.json` se actualizaron de forma deliberada (diff = solo estas
+rutas y `GIT_CONFIG_GLOBAL`). Verificado además contra el binario real del motor (`/global/health` sano con el HOME real y
+con uno temporal) y en la app (ver CHANGELOG-FASE8, F8-B194).

@@ -63,6 +63,12 @@ const EXCEPTIONS: Exception[] = [
     rule: 'Claude|Anthropic',
     line: /~\/\.claude\/skills|\.claude\/skills/,
     reason: 'Ruta real del sistema de archivos `~/.claude/skills` (no se puede renombrar).'
+  },
+  {
+    file: 'src/main/tasks/sandbox-profile.ts',
+    rule: 'Claude|Anthropic',
+    line: /as\('Claude'\)/,
+    reason: 'Carpeta real `~/Library/Application Support/Claude` que el sandbox de Tareas niega leer (F8-B194): no es texto visible.'
   }
 ]
 
