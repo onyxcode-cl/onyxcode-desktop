@@ -64,7 +64,7 @@ describe('finishedAnswer', () => {
 })
 
 describe('askModel', () => {
-  it('sesión efímera SIN herramientas: todos los permisos denegados, agente de conversación, modelo elegido', async () => {
+  it('sesión efímera SIN herramientas reales: todo denegado salvo `read` de una ruta inexistente (el modelo gratuito la exige), agente de conversación, modelo elegido', async () => {
     client.session.messages
       .mockResolvedValueOnce({ data: [assistant('a medias', false)] })
       .mockResolvedValueOnce({ data: [assistant('respuesta final')] })
@@ -74,7 +74,10 @@ describe('askModel', () => {
       title: 'Lazunox',
       agent: 'chat',
       metadata: { mode: 'pr-helper' },
-      permission: [{ permission: '*', pattern: '*', action: 'deny' }]
+      permission: [
+        { permission: '*', pattern: '*', action: 'deny' },
+        { permission: 'read', pattern: '/__lazunox_sin_acceso__', action: 'allow' }
+      ]
     })
     expect(client.session.promptAsync).toHaveBeenCalledWith({
       sessionID: 'ses_1',

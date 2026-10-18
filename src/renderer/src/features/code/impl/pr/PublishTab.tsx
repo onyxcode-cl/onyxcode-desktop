@@ -9,7 +9,7 @@ import { checkBranchName, checkPrTitle } from '@shared/pr-validate'
 import type { SecretKind } from '@shared/secret-scan'
 import type { PrGhInfo, PrPushPlan, PrRepoStatus, PrViewResult } from '@shared/ipc-pr'
 import { maskSecretPatterns } from '@shared/redact-patterns'
-import { ExternalLink, GitBranchPlus, Loader2, RefreshCw, ShieldAlert, Sparkles } from 'lucide-react'
+import { GitBranchPlus, Loader2, RefreshCw, ShieldAlert, Sparkles } from 'lucide-react'
 import { getLang, useT } from '../../../../lib/i18n'
 import { openExternalUrl } from '../../../../lib/open-external'
 import { errorMessage, requireCode } from '../client'
@@ -516,11 +516,6 @@ export function PublishTab({ directory, status, reload }: Props): React.JSX.Elem
             setMakeErr(null)
           }}
         />
-      )}
-      {madeMsg && view.data?.pr && (
-        <button type="button" onClick={() => void openExternalUrl(view.data!.pr!.url)} className={btnSecondary}>
-          <ExternalLink size={13} aria-hidden="true" /> {t('pr.status.openWeb')}
-        </button>
       )}
     </div>
   )

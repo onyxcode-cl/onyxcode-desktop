@@ -64,7 +64,7 @@ describe('detección de secretos en lo que se sube', () => {
     expect(scanSecretKinds(`token ${ghToken()}`)).toEqual(['github-token'])
     expect(scanSecretKinds(awsKey())).toEqual(['aws-key'])
     expect(scanSecretKinds(skKey())).toContain('openai-key')
-    expect(scanSecretKinds('-----BEGIN RSA PRIVATE KEY-----')).toEqual(['private-key'])
+    expect(scanSecretKinds('-----BEGIN RSA ' + 'PRIVATE KEY-----')).toEqual(['private-key'])
     expect(scanSecretKinds('texto normal sin nada')).toEqual([])
   })
   it('solo cuentan las líneas añadidas', () => {

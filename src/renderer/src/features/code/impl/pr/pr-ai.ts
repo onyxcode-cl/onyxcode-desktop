@@ -14,6 +14,15 @@ import { errorMessage, requireClient } from '../client'
 /** Marca de las sesiones efímeras: el store de Code y las listas las ignoran. */
 export const PR_HELPER_MODE = 'pr-helper'
 
+/**
+ * Todo denegado, igual que el agente de conversación: la única excepción es `read` sobre una ruta que no existe, porque el modelo
+ * gratuito rechaza peticiones sin esa herramienta anunciada (probado con el motor real) y no lee nada de verdad.
+ */
+export const HELPER_PERMISSION = [
+  { permission: '*', pattern: '*', action: 'deny' as const },
+  { permission: 'read', pattern: '/__lazunox_sin_acceso__', action: 'allow' as const }
+]
+
 const POLL_MS = 700
 const DEFAULT_TIMEOUT_MS = 150_000
 
@@ -63,7 +72,7 @@ export async function askModel(directory: string, prompt: string, opts: AskOptio
     title: 'Lazunox',
     agent: CHAT_AGENT,
     metadata: { mode: PR_HELPER_MODE },
-    permission: [{ permission: '*', pattern: '*', action: 'deny' }]
+    permission: HELPER_PERMISSION
   })
   if (created.error || !created.data) throw new Error(errorMessage(created.error))
   const sessionID = created.data.id
