@@ -70,8 +70,8 @@ export function PrStatusCard({ loading, error, data, onRefresh, onOpen }: Props)
         <span className="font-medium">
           #{pr.number} {pr.title}
         </span>
-        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] text-accent">{t(stateKey)}</span>
-        {review && <span className="rounded-full bg-hover px-2 py-0.5 text-[11px] text-muted">{t(review)}</span>}
+        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">{t(stateKey)}</span>
+        {review && <span className="rounded-full bg-hover px-2 py-0.5 text-xs text-muted">{t(review)}</span>}
       </div>
       <div className="text-xs text-muted">
         <span className="font-mono">{pr.head}</span> → <span className="font-mono">{pr.base}</span>

@@ -226,7 +226,7 @@ export function ReviewTab({ directory, status }: Props): React.JSX.Element {
                       />
                       <span className="min-w-0 flex-1 truncate font-mono">{commentLabel(it)}</span>
                     </label>
-                    {it.line === 0 && <div className="mt-0.5 text-[11px] text-muted">{t('pr.rev.general')}</div>}
+                    {it.line === 0 && <div className="mt-0.5 text-xs text-muted">{t('pr.rev.general')}</div>}
                     <textarea
                       value={it.body}
                       aria-label={commentLabel(it)}
