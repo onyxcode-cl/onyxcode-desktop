@@ -21,6 +21,7 @@
  *   POST emit       { type, properties, directory?, id? } | { directory, payload } | { events: [...] }
  *   POST script     { steps:[...], model?, sessionID?, match?, forModel?: 'proveedor/modelo', sticky?, title?, startDelayMs?, cost? } | { scripts:[...] }
  *                   `forModel` solo lo toma el prompt_async cuyo `body.model` coincide (comparar modelos: un guion por modelo).
+ *   POST session-usage { sessions:[{ directory, title?, agent?, model?, tokens?, cost?, agoMs?, parentID? }] }  crea sesiones con uso registrado (Ajustes › Uso)
  *   GET  status     resumen del estado
  *   POST drop-sse   corta todos los streams SSE ({ blockMs? } rechaza SSE nuevos ese tiempo)
  *   GET  requests   ?limit=100&path=<prefijo>&method=GET&since=<seq>
@@ -1331,6 +1332,22 @@ export function createFakeServer(options = {}) {
       if (typeof b.text !== 'string') throw new Error('log: falta text')
       ;(b.stream === 'stdout' ? process.stdout : process.stderr).write(`${b.text}\n`)
       json(c.res, { written: b.text.length })
+    },
+    // Sesiones con uso ya registrado (para la pantalla Ajustes › Uso): { sessions:[{ directory, title?, agent?, model?:{providerID,modelID},
+    // tokens?:{input,output,reasoning?,cache?:{read,write}}, cost?, agoMs?, parentID? }] }. Devuelve los ids.
+    'POST session-usage': (c) => {
+      const b = c.body ?? {}
+      const list = Array.isArray(b.sessions) ? b.sessions : [b]
+      const created = list.map((x) => {
+        const s = createSession(x.directory ?? '/', { title: x.title, agent: x.agent, model: x.model, parentID: x.parentID })
+        const t = x.tokens
+        if (t) s.info.tokens = { input: t.input ?? 0, output: t.output ?? 0, reasoning: t.reasoning ?? 0, cache: { read: t.cache?.read ?? 0, write: t.cache?.write ?? 0 } }
+        if (typeof x.cost === 'number') s.info.cost = x.cost
+        const at = Date.now() - (x.agoMs ?? 0)
+        s.info.time = { created: at, updated: at }
+        return s.info.id
+      })
+      json(c.res, { created })
     },
     'POST script': (c) => {
       const b = c.body ?? {}

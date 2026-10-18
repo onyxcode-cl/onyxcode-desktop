@@ -105,6 +105,12 @@ const SCENARIOS = [
   'tareas-permiso-largo',
   'inicio-pendientes',
   'rutinas-vacio',
+  // Recetas de Rutinas (F8-B188): la pantalla vacía con las recetas, el detalle de una (qué hace, qué no, acceso, preguntas) y el formulario
+  // de «Nueva rutina» ya relleno. Van antes de `rutinas`, que crea rutinas. `rutinas-recetas-e2e` (verificación) comprueba que elegir una
+  // receta no crea nada hasta pulsar «Crear rutina» y que la rutina guardada es la de la receta.
+  'rutinas-recetas',
+  'rutinas-recetas-detalle',
+  'rutinas-recetas-formulario',
   'rutinas',
   'rutinas-detalle',
   'rutinas-editor',
@@ -113,6 +119,10 @@ const SCENARIOS = [
   'rutinas-sin-vigilar', // H24: «Sin vigilar» (aviso de Rutinas sin aceptar)
   'rutinas-bandeja',
   'rutinas-evento-e2e',
+  'rutinas-recetas-e2e',
+  // Ajustes › Uso (F8-B189): sin uso todavía y con uso de varias conversaciones (modelos gratuito, de pago y sin costo; Chat y Code).
+  'uso-vacio',
+  'uso',
   'ajustes-general',
   'ajustes-modelos',
   'ajustes-celular',
@@ -171,7 +181,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-)/
+const SMALL_ALSO = /^(uso|rutinas-recetas|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -429,6 +439,7 @@ function fakeClient(conn) {
   return {
     conn,
     script: (b) => call('POST', 'script', b),
+    usage: (b) => call('POST', 'session-usage', b),
     emit: (b) => call('POST', 'emit', b),
     set: (b) => call('POST', 'set', b),
     reset: () => call('POST', 'reset', {})
@@ -2284,6 +2295,127 @@ const S = {
     await sleep(800)
     rmSync(dir, { recursive: true, force: true })
   },
+  async 'rutinas-recetas'(ctx) {
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Rutinas')
+    await vis(ctx.page.getByTestId('recipe-noticias-diarias'), 15_000)
+    await sleep(600)
+  },
+  async 'rutinas-recetas-detalle'(ctx) {
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Rutinas')
+    await ctx.page.getByTestId('recipe-gastos-semana').click()
+    await vis(ctx.page.getByTestId('recipe-detail'), 15_000)
+    await sleep(600)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(200)
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
+  },
+  async 'rutinas-recetas-formulario'(ctx) {
+    await closeOverlays(ctx.page)
+    await goMode(ctx.page, 'Rutinas')
+    await ctx.page.getByTestId('recipe-gastos-semana').click()
+    await vis(ctx.page.getByTestId('recipe-detail'), 15_000)
+    await ctx.page.getByRole('button', { name: 'Usar esta receta' }).click()
+    await vis(ctx.page.getByRole('dialog', { name: 'Nueva rutina' }), 15_000)
+    await sleep(700)
+    return async () => {
+      await ctx.page.keyboard.press('Escape')
+      await sleep(300)
+    }
+  },
+  // Verificación (no captura): elegir una receta NO crea nada; la rutina nace al pulsar «Crear rutina» (tras aceptar el aviso de Rutinas,
+  // solo en este perfil temporal) y es la de la receta: modo, programación, instrucción con la respuesta, carpeta elegida y sin permisos de más.
+  async 'rutinas-recetas-e2e'(ctx) {
+    const { page } = ctx
+    await openTasks(ctx) // autoriza la carpeta de Overdrive del perfil temporal
+    await closeOverlays(page)
+    await goMode(page, 'Rutinas')
+    const inv = (ch, payload) =>
+      page.evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload]).then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
+    const before = (await inv('routines:list')).length
+    // Una receta de Overdrive, con una pregunta de texto obligatoria y una opcional.
+    await page.getByRole('button', { name: /Nueva rutina/ }).first().waitFor({ state: 'visible', timeout: 15_000 })
+    await page.getByTestId('recipe-gastos-semana').click()
+    await vis(page.getByTestId('recipe-detail'), 15_000)
+    const sections = await page.getByTestId('recipe-detail').innerText()
+    const dialog = page.getByTestId('recipes-dialog')
+    await dialog.getByLabel(/se llama el archivo/i).fill('abril.csv')
+    await page.getByRole('button', { name: 'Usar esta receta' }).click()
+    await vis(page.getByRole('dialog', { name: 'Nueva rutina' }), 15_000)
+    const afterPick = (await inv('routines:list')).length
+    const form = page.getByRole('dialog', { name: 'Nueva rutina' })
+    const prompt = await form.locator('#r-prompt').inputValue()
+    const name = await form.locator('#r-name').inputValue()
+    // Sin carpeta no se puede crear; la carpeta se elige entre las autorizadas.
+    await form.getByRole('button', { name: 'Informes' }).first().click()
+    await sleep(300)
+    await form.getByRole('button', { name: 'Crear rutina' }).click()
+    // Aviso de Rutinas (solo en el perfil temporal): se acepta para poder crear.
+    const terms = page.getByRole('button', { name: 'Entiendo, activar rutinas' })
+    await terms.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {})
+    if (await terms.isVisible().catch(() => false)) await terms.click()
+    let saved
+    for (let i = 0; i < 20 && !saved; i++) {
+      await sleep(400)
+      saved = (await inv('routines:list')).find((r) => r.name === 'Resumen semanal de gastos')
+    }
+    console.log(
+      'VERIF-RECETAS ' +
+        JSON.stringify({
+          antes: before,
+          tras_elegir_receta: afterPick,
+          creada: !!saved,
+          nombre: name,
+          modo: saved?.mode,
+          programacion: saved?.schedule,
+          carpeta_es_la_elegida: saved?.folder === taskFolder,
+          prompt_con_respuesta: /«abril\.csv»/.test(saved?.prompt ?? '') && !/\{\{/.test(saved?.prompt ?? ''),
+          prompt_en_formulario: prompt.includes('«abril.csv»'),
+          sin_modificar: /No modifiques la planilla/.test(saved?.prompt ?? ''),
+          onAsk: saved?.onAsk,
+          permisos: saved?.allow,
+          control_total: saved?.fullAccess ?? false,
+          sitios_extra: saved?.allowHosts ?? [],
+          detalle_dice_que_no_hace: /Qué no hace/.test(sections) && /No modifica tu planilla/.test(sections)
+        })
+    )
+    await sleep(500)
+  },
+  async 'uso-vacio'(ctx) {
+    await openSettings(ctx.page, 'Uso')
+    await vis(ctx.page.getByTestId('usage-report'), 20_000)
+    await sleep(500)
+  },
+  async uso(ctx) {
+    const DAY = 86_400_000
+    const code = '/Users/demo/proyectos/tienda-web'
+    const chat = '/Users/demo/Chat'
+    const free = { providerID: 'opencode', modelID: 'deepseek-v4.1-flash-free' }
+    const paid = { providerID: 'fake', modelID: 'fake-model' }
+    const own = { providerID: 'casa', modelID: 'modelo-propio' }
+    const t = (input, output, read = 0) => ({ input, output, reasoning: 0, cache: { read, write: 0 } })
+    await ctx.fake.usage({
+      sessions: [
+        { directory: chat, title: 'Receta de lentejas', agent: 'chat', model: free, cost: 0, tokens: t(18_400, 6_100), agoMs: 2 * 3_600_000 },
+        { directory: chat, title: 'Carta al arriendo', agent: 'chat', model: free, cost: 0, tokens: t(9_800, 3_300), agoMs: 1 * DAY },
+        { directory: chat, title: 'Resumen de un contrato', agent: 'chat', model: paid, cost: 0.42, tokens: t(61_000, 12_300), agoMs: 1 * DAY },
+        { directory: code, title: 'Agregar IVA al carrito', agent: 'build', model: paid, cost: 1.37, tokens: t(210_000, 38_000, 480_000), agoMs: 3 * DAY },
+        { directory: code, title: 'Revisar pruebas', agent: 'build', model: own, tokens: t(40_200, 9_100, 12_000), agoMs: 5 * DAY },
+        { directory: code, title: 'Ayudante de búsqueda', agent: 'build', parentID: 'ses_e2e_aux', model: paid, cost: 0.2, tokens: t(30_000, 2_000), agoMs: 3 * DAY },
+        { directory: code, title: 'Migrar a TypeScript', agent: 'build', model: paid, cost: 0.9, tokens: t(90_000, 20_000), agoMs: 20 * DAY }
+      ]
+    })
+    await openSettings(ctx.page, 'Uso')
+    await ctx.page.getByTestId('usage-refresh').click()
+    await sleep(900)
+    await vis(ctx.page.getByTestId('usage-by-model'), 20_000)
+    const status = await ctx.page.getByTestId('usage-status').innerText()
+    console.log('VERIF-USO ' + JSON.stringify({ estado: status.replace(/\s+/g, ' ') }))
+  },
   async 'ajustes-general'(ctx) {
     await openSettings(ctx.page, 'General')
   },
@@ -3526,11 +3658,19 @@ try {
   const isPrep = (s) => s.startsWith('preparando')
   const isAviso = (s) => s === 'aviso-motor' || s === 'motor-error'
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
-  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
+  const isUso = (s) => s === 'uso' || s === 'uso-vacio'
+  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && s !== 'kit' && !isTasks(s) && !isUso(s))
+  const uso = scenarios.filter(isUso).sort(byOrder)
   const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {
     const ctx = await launch('main')
     await runGroup(ctx, main)
+    await stop(ctx)
+  }
+  if (uso.length) {
+    // «Uso» va en un arranque limpio: sus cifras solo cuentan las conversaciones inventadas aquí.
+    const ctx = await launch('uso')
+    await runGroup(ctx, uso)
     await stop(ctx)
   }
   if (tasks.length) {

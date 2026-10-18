@@ -87,7 +87,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18)."
     },
     {
       "id": "descargas-resumen",
@@ -173,7 +173,7 @@
         }
       ],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). La ejecución de las recetas de Overdrive no se probó con un modelo real (el modelo gratuito no funciona en Overdrive)."
     },
     {
       "id": "descargas-ordenar",
@@ -256,7 +256,7 @@
         }
       ],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). La ejecución de las recetas de Overdrive no se probó con un modelo real (el modelo gratuito no funciona en Overdrive)."
     },
     {
       "id": "archivos-nuevos",
@@ -346,7 +346,7 @@
         }
       ],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). La ejecución de las recetas de Overdrive no se probó con un modelo real (el modelo gratuito no funciona en Overdrive)."
     },
     {
       "id": "gastos-semana",
@@ -477,7 +477,7 @@
         }
       ],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). La ejecución de las recetas de Overdrive no se probó con un modelo real (el modelo gratuito no funciona en Overdrive)."
     },
     {
       "id": "compras-semana",
@@ -601,7 +601,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). Ejecución real con un modelo gratuito: dejó el menú y la lista en el resultado."
     },
     {
       "id": "repaso-estudio",
@@ -701,7 +701,7 @@
         }
       ],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). La ejecución de las recetas de Overdrive no se probó con un modelo real (el modelo gratuito no funciona en Overdrive)."
     },
     {
       "id": "seguir-tema",
@@ -781,7 +781,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18)."
     },
     {
       "id": "plan-entrenamiento",
@@ -897,7 +897,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18)."
     },
     {
       "id": "repo-estado",
@@ -975,7 +975,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18)."
     },
     {
       "id": "notas-version",
@@ -1079,7 +1079,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18)."
     },
     {
       "id": "pendientes-codigo",
@@ -1157,7 +1157,7 @@
       "onAsk": "reject",
       "allow": [],
       "verifiedAt": "2026-10-18",
-      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario comprobado en la app."
+      "verification": "Estructura y reglas comprobadas por pruebas automáticas contra el validador de Rutinas; formulario y creación de la rutina comprobados en la app real (2026-10-18). Ejecución real con un modelo gratuito sobre un repositorio de prueba: encontró los pendientes y no cambió nada."
     }
   ]
 }
