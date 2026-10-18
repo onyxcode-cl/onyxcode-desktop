@@ -1055,7 +1055,16 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     understandThirdParty: literal(true),
     understandData: literal(true),
     askEachUse: bool
-  })
+  }),
+  // Telegram (F8-B187): el token entra una sola vez por `saveToken` (tope de largo, sin dejar rastro en el esquema); nada vuelve a la ventana salvo el estado.
+  'telegram:getState': none,
+  'telegram:setEnabled': obj({ enabled: bool }),
+  'telegram:saveToken': obj({ token: str({ min: 1, max: 200 }) }),
+  'telegram:startLinking': none,
+  'telegram:unlink': none,
+  'telegram:removeBot': none,
+  'telegram:panic': none,
+  'telegram:sendTest': none
 }
 
 /** Envuelve un `parseX` estricto de `shared/` (devuelve `null` si es inválido) como validador que lanza `ValidationError`. */

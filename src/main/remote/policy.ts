@@ -515,6 +515,15 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'mcp:installCatalog': 'X',
   'mcp:localPickClient': 'X', // diálogo del sistema en el Mac
   'mcp:installLocal': 'X', // instala y ejecuta un programa de un tercero: solo desde el Mac
+  // Telegram (F8-B187): vincula un chat y responde permisos; solo con la persona delante del computador, nunca desde el celular.
+  'telegram:getState': 'X',
+  'telegram:setEnabled': 'X',
+  'telegram:saveToken': 'X',
+  'telegram:startLinking': 'X',
+  'telegram:unlink': 'X',
+  'telegram:removeBot': 'X',
+  'telegram:panic': 'X',
+  'telegram:sendTest': 'X',
 
   // ── terminal (F1–F3: ninguna) ──
   'pty:create': 'X',
@@ -690,6 +699,7 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'mcp:changed': 'deny',
   'extras:chatDoc:event': 'deny', // avisos de una vista nativa de la ventana: no existe en el celular
   'extras:voiceModelProgress': 'deny', // dictado por voz: el celular no graba del micrófono del Mac
+  'telegram:state-changed': 'deny', // el estado del puente (código de vinculación incluido) no sale del computador
   'browser:state': 'sanitize',
   'browser:approval': 'sanitize',
   'browser:approvalDone': 'allow',

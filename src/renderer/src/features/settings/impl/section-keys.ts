@@ -14,6 +14,18 @@ export const SECTION_KEYS = {
   mcp: ['mcp.header.', 'mcp.form.', 'mcp.catalog.', 'mcp.flags.', 'mcp.note.', 'mcp.badge.', 'mcp.add', 'mcp.refresh', 'mcp.viewFile'],
   import: ['import.title', 'import.intro', 'import.source.', 'import.guarantee.'],
   remote: ['remote.devices.', 'remote.qr.', 'remote.conn.', 'remote.travel.', 'remote.state.', 'remote.activity.', 'remote.title'],
+  telegram: [
+    'telegram.title',
+    'telegram.intro',
+    'telegram.scope',
+    'telegram.privacy.',
+    'telegram.switch.',
+    'telegram.status.',
+    'telegram.step',
+    'telegram.actions.',
+    'telegram.test.',
+    'telegram.audit.'
+  ],
   diagnostics: ['misc.diag.', 'settings.doctor.'],
   about: ['settings.about.']
 } as const satisfies Record<string, readonly string[]>
