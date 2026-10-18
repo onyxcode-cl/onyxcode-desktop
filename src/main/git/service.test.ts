@@ -6,7 +6,7 @@ import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync, renameSync, 
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { diff, status } from './service'
+import { commit, diff, status } from './service'
 
 let dir: string
 const g = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8' })
@@ -69,5 +69,20 @@ describe('hardening core.fsmonitor (F7-B28)', () => {
       rmSync(hook, { force: true })
       rmSync(marker, { force: true })
     }
+  })
+})
+
+describe('guardar todo no incluye archivos de secretos', () => {
+  it('un .env nuevo y un archivo normal: solo entra el normal', async () => {
+    writeFileSync(join(dir, 'normal.txt'), 'hola\n')
+    writeFileSync(join(dir, '.env'), 'CLAVE=valor-de-prueba\n')
+    const res = await commit(dir, 'prueba', true)
+    expect(res.hash).toMatch(/^[0-9a-f]{40}$/)
+    const archivos = g('show', '--name-only', '--format=', 'HEAD').split('\n').filter(Boolean)
+    expect(archivos).toContain('normal.txt')
+    expect(archivos).not.toContain('.env')
+    // Sigue como archivo sin seguimiento: no se perdió ni se borró.
+    expect(existsSync(join(dir, '.env'))).toBe(true)
+    expect(g('status', '--porcelain')).toContain('?? .env')
   })
 })

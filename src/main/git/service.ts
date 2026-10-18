@@ -19,6 +19,7 @@ import {
   writeFileSync
 } from 'node:fs'
 import { samePath } from '../util/paths'
+import { isSensitivePath } from '../remote/path-guard'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { splitDiffHunks, isSingleFileDiff } from '@shared/diff-hunks'
 import { GIT_MAX_DISCARD_FILES } from '@shared/ipc-code'
@@ -503,7 +504,13 @@ export async function removeWorktree(cwd: string, path: string, force = false): 
 export async function commit(cwd: string, message: string, stageAll = false): Promise<GitCommitResult> {
   const root = await requireRoot(cwd)
   if (typeof message !== 'string' || !message.trim()) throw new GitError(t('common.git.emptyCommit'))
-  if (stageAll) await git(root, ['add', '-A'])
+  if (stageAll) {
+    await git(root, ['add', '-A'])
+    // «Guardar todo» nunca incluye archivos de secretos (.env, llaves…): se sacan del índice antes del commit.
+    const staged = (await git(root, ['diff', '--cached', '--name-only', '-z'])).split('\0').filter(Boolean)
+    const secretos = staged.filter((rel) => isSensitivePath(join(root, rel)))
+    if (secretos.length > 0) await git(root, ['reset', '-q', '--', ...secretos])
+  }
   await git(root, ['commit', '-F', '-'], { input: message })
   const out = (await git(root, ['log', '-1', '--format=%H%x1f%h%x1f%s'])).trim()
   const [hash = '', shortHash = '', summary = ''] = out.split('\x1f')
