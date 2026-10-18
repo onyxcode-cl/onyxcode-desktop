@@ -48,6 +48,11 @@ export const SWAPS: Record<string, Record<string, string>> = {
     './panels/FilesPanel': 'lazy/FilesPanel.tsx',
     '../../compare': 'shims/no-compare.tsx'
   },
+  // Rama y pull request (F8-B190): solo escritorio (los canales `pr:*` son clase X para el celular); el panel de Cambios del celular no los trae.
+  'src/renderer/src/features/code/impl/panels/ChangesPanel.tsx': {
+    '../pr/PrDialog': 'shims/no-pr-dialog.tsx',
+    '../pr/pr-ai': 'shims/no-pr-ai.ts'
+  },
   'src/renderer/src/features/code/impl/Composer.tsx': { '../../compare': 'shims/no-compare.tsx' },
   'src/renderer/src/features/code/impl/ComposerControls.tsx': { '../../compare': 'shims/no-compare.tsx' }
 }

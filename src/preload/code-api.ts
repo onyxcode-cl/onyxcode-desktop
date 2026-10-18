@@ -49,6 +49,19 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       discardHunk: (cwd, path, index, hunk) => call('git:discardHunk', { cwd, path, index, hunk }),
       discardUndo: (cwd, undoId) => call('git:discardUndo', { cwd, undoId })
     },
+    pr: {
+      status: (cwd) => call('pr:status', { cwd }),
+      gh: (cwd, remote) => call('pr:gh', remote === undefined ? { cwd } : { cwd, remote }),
+      createBranch: (cwd, name) => call('pr:createBranch', { cwd, name }),
+      pushPlan: (cwd, remote) => call('pr:pushPlan', { cwd, remote }),
+      push: (req) => call('pr:push', req),
+      changes: (cwd, remote, base) => call('pr:changes', { cwd, remote, base }),
+      workDiff: (cwd, staged) => call('pr:workDiff', staged === undefined ? { cwd } : { cwd, staged }),
+      view: (cwd, remote, branch) => call('pr:view', { cwd, remote, branch }),
+      create: (req) => call('pr:create', req),
+      reviewInfo: (cwd, remote, ref) => call('pr:reviewInfo', { cwd, remote, ref }),
+      postReview: (req) => call('pr:postReview', req)
+    },
     compare: {
       list: () => call('compare:list'),
       preflight: (cwd) => call('compare:preflight', { cwd }),

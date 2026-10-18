@@ -550,6 +550,20 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
     !inDirs(p.cwd, scopeIpc(ctx)) ? deny('out-of-scope') : childOk(p.cwd as string, p.path) ? 'M' : deny('path-escape'),
   'git:discardUndo': scoped('M', 'cwd'),
 
+  // ── rama → subir → pull request → revisión (F8-B190): ninguno desde el celular. Suben datos fuera del equipo con la sesión de
+  //    `gh`/credenciales de git de la persona; cada acción exige un diálogo de confirmación EN EL MAC. Clase X, sin excepciones. ──
+  'pr:status': 'X',
+  'pr:gh': 'X',
+  'pr:createBranch': 'X',
+  'pr:pushPlan': 'X',
+  'pr:push': 'X',
+  'pr:changes': 'X',
+  'pr:workDiff': 'X',
+  'pr:view': 'X',
+  'pr:create': 'X',
+  'pr:reviewInfo': 'X',
+  'pr:postReview': 'X',
+
   // ── comparar modelos: ninguno desde el celular (crean carpetas fuera del proyecto y aplican parches al árbol) ──
   'compare:list': 'X',
   'compare:preflight': 'X',
