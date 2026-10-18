@@ -294,7 +294,7 @@ export type CompareMode = 'code' | 'chat'
 export type CompareColumnState = 'queued' | 'starting' | 'running' | 'done' | 'error' | 'rateLimited' | 'cancelled'
 /** Modo de permisos de las sesiones de la comparación: mismos valores que Code, salvo «Solo explorar». */
 export type ComparePermissionMode = 'manual' | 'acceptEdits' | 'auto' | 'bypass'
-export type CompareErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
+export type CompareErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unavailable' | 'unknown'
 
 export interface CompareModelRef {
   providerID: string

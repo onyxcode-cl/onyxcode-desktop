@@ -51,6 +51,28 @@ describe('friendlyError', () => {
     }
   )
 
+  it('servicio del modelo caído (modelo gratuito): mensaje llano, reintentar y el detalle técnico se conserva', () => {
+    const casos: unknown[] = [
+      { name: 'UnknownError', data: { message: 'AI_APICallError: Upstream request failed: Endpoint is unavailable' } },
+      new Error('Service Unavailable'),
+      { name: 'APIError', data: { message: 'x', statusCode: 503 } },
+      { name: 'APIError', data: { message: 'Bad Gateway', statusCode: 502 } },
+      'Model is overloaded, try later'
+    ]
+    for (const c of casos) {
+      const f = friendlyError(c)
+      expect(f.kind).toBe('unavailable')
+      expect(f.message).toBe('El servicio de este modelo no responde ahora. Prueba con otro modelo o vuelve a intentarlo en un rato.')
+      expect(f.title).not.toBe('Algo salió mal')
+      expect(f.action).toBe('retry')
+      expect(f.detail).toBeTruthy()
+    }
+    expect(friendlyError(casos[0]).detail).toContain('Endpoint is unavailable')
+    // No tapa otros fallos: sin conexión y límites siguen siendo lo suyo.
+    expect(friendlyError(new Error('fetch failed ECONNREFUSED')).kind).toBe('network')
+    expect(friendlyError({ name: 'X', data: { message: 'm', statusCode: 429 } }).kind).toBe('quota')
+  })
+
   it('ECONNREFUSED es de red', () => {
     const f = friendlyError(new Error('connect ECONNREFUSED 127.0.0.1:443'))
     expect(f.kind).toBe('network')

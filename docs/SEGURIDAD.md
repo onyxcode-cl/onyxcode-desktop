@@ -110,6 +110,24 @@ archivar/borrar. En el sandbox y en el sidecar principal el plugin no hace nada 
 
 **Carpetas de trabajo** (`sandbox-profile.ts`, `folder-policy.ts`, `manager.ts`).
 
+- **Qué se puede leer y escribir de verdad (texto de la interfaz alineado en F8-B193).** La interfaz ya no dice
+  «lee y escribe solo en tus carpetas»: eso era falso en macOS.
+  - **macOS (Seatbelt, `(allow default)` + denegaciones):** _escritura_ solo en la carpeta principal, las adicionales
+    `rw`, el directorio privado del servidor y temporales (`/private/tmp`, `/private/var/folders`); _lectura_ de TODO lo
+    que el usuario puede leer salvo la lista `defaultDeniedReadPaths` (claves SSH/nube, `auth.json` y datos de
+    OpenCode, tokens de CLIs, historiales de shell, navegadores, Safari, cookies, Llavero, Mail, Mensajes) y el
+    `userData` de la app. Medido con `sandbox-exec` y el perfil real: `~/Documents`, `~/Desktop`, `~/Downloads`,
+    `~/Pictures`, `~/.config` (salvo `gh`/`opencode`), `~/.zshrc`, `~/.zprofile`, `~/.gitconfig` se pueden listar o leer;
+    `~/.ssh`, `~/.docker`, `~/.config/gh`, `~/.local/share/opencode`, `~/Library/Keychains`, Chrome, Safari, Mail,
+    Mensajes y `userData` se niegan. Red: solo los proxies locales (lista blanca de sitios).
+  - **Windows (WSL2 + Landlock, `wsl.conf` sin automontaje):** la distro NO ve el resto del PC; solo existen los
+    montajes de la carpeta principal y las adicionales (`rw`/`ro`) más el sistema Linux de la imagen (`/usr`, `/etc` de
+    solo lectura…). Escritura solo en las `rw` y el directorio privado. Es más estricto que macOS en lectura.
+  - **Lecturas permitidas en macOS que conviene valorar (NO cambiadas; decisión del dueño):** `~/.codex` (`auth.json`
+    de otro CLI), `~/.claude` y `~/.claude.json` (config y posibles tokens de MCP), `~/Library/Application Support/Claude`,
+    `~/.zshrc`/`~/.zprofile` (pueden exportar variables con claves), `~/.config/*` ajenos a la lista, `~/.npm`,
+    `~/.cache`, `~/Library/Group Containers`, `~/Library/HTTPStorages`. Como la red está limitada a sitios permitidos,
+    la fuga necesitaría un sitio permitido o escribir el dato en la carpeta de trabajo.
 - Carpeta principal: escritura permitida; `unlink`/`rmdir`/`rename` denegados salvo la concesión
   «Permitir borrar, mover y renombrar» (`allowDelete`). Truncar no está protegido (mitigación:
   `session.revert`).
@@ -1916,7 +1934,6 @@ La persona reúne instrucciones y archivos en un proyecto; en sus conversaciones
 - **Fuera de alcance.** Desde el celular no hay canales ni pantalla de proyectos (`projects:*` es X; el `system` no se manda desde el celular).
 - **Pruebas**: `projects.test.ts`, `projects-ipc.test.ts`, `actions.proyectos.test.ts`.
 
-
 ## 3 quinquagies decies. Conectores locales: Gmail, Calendar, Drive y Outlook, Calendario, OneDrive (F8-B186)
 
 **Cambia a propósito el contrato «añadir un conector no ejecuta nada».** Los conectores REMOTOS siguen igual. Las fichas con `transport: "local"` instalan y ejecutan en el equipo un programa de un tercero (hoy dos: `workspace-mcp` de Taylor Wilsdon, MIT, y `@softeria/ms-365-mcp-server`, MIT). La ficha lo dice con todas las letras («Instala y ejecuta un programa en tu equipo») y exige DOS casillas distintas: «Entiendo que esto instala un programa de un tercero» y «Entiendo que … podrá ver mis datos». Sin las dos, «Seguir» no se habilita, y el canal rechaza cualquier cosa que no sea `true` en ambas.
@@ -1953,7 +1970,6 @@ La persona reúne instrucciones y archivos en un proyecto; en sus conversaciones
 - **Auditoría local** (`userData/telegram-audit.jsonl`, rotada a 256 KB): vinculación, desvinculación, activar/desactivar, «Detener todo», permiso enviado, respondido por Telegram o por la pantalla, caducado. Solo tipo, hora, motivo fijo, tipo de permiso y una **huella** de 8 hex del chat; nunca comando, token ni número de chat.
 - **Aviso en la interfaz**: «Telegram no cifra de extremo a extremo los mensajes de los bots y puede ver su contenido. El computador debe estar encendido con Lazunox abierto.»
 - **No cubierto (dicho sin adornos).** (1) Quien controle la cuenta de Telegram de la persona puede aceptar permisos pendientes. (2) No se reutiliza la lista de denegación de comandos del remoto (sin auditar); la persona lee el comando completo. (3) El modo Tareas (Overdrive) no está conectado. (4) Nada probado contra Telegram real ni en Windows.
-
 
 ## 3 quinquagies terdecies. Rama, subida y pull request desde Code (F8-B190)
 

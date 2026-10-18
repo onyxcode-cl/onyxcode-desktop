@@ -31,6 +31,20 @@ export function PrDialog({ directory, onClose }: { directory: string; onClose: (
     void reload()
   }, [reload])
 
+  // Un commit hecho fuera de la app (terminal, otro editor) no avisa: al volver a esta ventana se relee el estado
+  // para que «Todavía no hay commits nuevos para subir» y el resto no queden desactualizados.
+  useEffect(() => {
+    const onBack = (): void => {
+      if (document.visibilityState !== 'hidden') void reload()
+    }
+    window.addEventListener('focus', onBack)
+    document.addEventListener('visibilitychange', onBack)
+    return () => {
+      window.removeEventListener('focus', onBack)
+      document.removeEventListener('visibilitychange', onBack)
+    }
+  }, [reload])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && !document.querySelector('[data-pr-confirm]')) onClose()

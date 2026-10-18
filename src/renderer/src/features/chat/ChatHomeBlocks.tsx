@@ -1,4 +1,5 @@
 /** Bloques del inicio de Chat para retomar conversaciones: «Respondiendo ahora» y «Retomar». Sin conversaciones no pintan nada. */
+import { displayTitle } from '@shared/session-title'
 import { useMemo } from 'react'
 import { HomeAttentionCard, HomeResume, type HomeRow } from '../../components/HomeBlocks'
 import { useT } from '../../lib/i18n'
@@ -47,7 +48,7 @@ export function useChatHome(): ChatHome {
 export function ChatHomeBlocks({ home, part }: { home: ChatHome; part: 'working' | 'resume' }): React.JSX.Element | null {
   const t = useT()
   const open = (id: string): void => void openChatSession(id)
-  const title = (i: ChatHomeItem): string => i.session.title || t('chat.list.untitled')
+  const title = (i: ChatHomeItem): string => displayTitle(i.session.title, t('chat.newConversation'))
   if (part === 'working') {
     const rows: HomeRow[] = home.working.map((i) => ({
       id: i.session.id,

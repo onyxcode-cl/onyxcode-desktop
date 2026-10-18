@@ -1,11 +1,2 @@
-/** OpenCode nombra una sesión nueva «New session - 2026-10-09T21:00:00.000Z» hasta que el agente le pone título: se muestra como «Nueva sesión». */
-const PLACEHOLDER = /^(new session|child session) - \d{4}-\d{2}-\d{2}T[\d:.]+Z?$/i
-
-export function isPlaceholderTitle(title: string | undefined | null): boolean {
-  return !title || PLACEHOLDER.test(title.trim())
-}
-
-/** Título para mostrar; `fallback` es el texto de «sin título». */
-export function displayTitle(title: string | undefined | null, fallback: string): string {
-  return isPlaceholderTitle(title) ? fallback : (title as string)
-}
+/** Ver `src/shared/session-title.ts`: el título provisorio de OpenCode se muestra como «Nueva sesión» (Code) o «Nueva conversación» (Chat). */
+export { isPlaceholderTitle, displayTitle } from '@shared/session-title'

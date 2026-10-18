@@ -6,9 +6,9 @@ export const tasksComputer = {
   'tasksComputer.access.pickFolder': 'Elige una carpeta primero',
   'tasksComputer.access.waitTask': 'Espera a que termine la tarea para cambiar el modo de acceso',
   'tasksComputer.access.sandboxTitle':
-    '{name}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales. Recomendado.',
+    '{name}: escribe solo en la carpeta elegida y en las adicionales con escritura. Puede leer otras carpetas de tu cuenta, menos tus claves y los datos de la app. Sin internet salvo sitios permitidos. Recomendado.',
   'tasksComputer.access.sandboxTitle.win':
-    '{name}: lee y escribe solo dentro de la carpeta elegida y de las carpetas adicionales (entorno Linux aislado). Recomendado.',
+    '{name}: entorno Linux aislado. Solo ve la carpeta elegida y las adicionales (no el resto del PC) y escribe solo donde hay escritura. Sin internet salvo sitios permitidos. Recomendado.',
   'tasksComputer.access.sandboxName': 'Solo en tu carpeta',
   'tasksComputer.access.fullName': 'Usar todo tu Mac',
   'tasksComputer.access.fullName.win': 'Usar todo tu PC',
@@ -27,9 +27,9 @@ export const tasksComputer = {
   'tasksComputer.confirm.title': '¿Permitir trabajar en «{name}»?',
   'tasksComputer.confirm.b1': 'El agente podrá leer, crear y modificar archivos y ejecutar comandos dentro de esta carpeta.',
   'tasksComputer.confirm.b2':
-    'Trabaja en una zona protegida de macOS: no puede escribir fuera de la carpeta ni leer tus claves (~/.ssh, ~/.aws…).',
+    'Trabaja en una zona protegida de macOS: solo escribe en la carpeta. Puede leer otras carpetas de tu cuenta, pero no tus claves (~/.ssh, ~/.aws…) ni los datos de la app.',
   'tasksComputer.confirm.b2.win':
-    'Se ejecuta en un entorno Linux aislado de tu PC: no puede escribir fuera de la carpeta ni leer tus claves (.ssh, .aws…).',
+    'Se ejecuta en un entorno Linux aislado de tu PC: solo ve esta carpeta y las adicionales que añadas; no ve el resto del PC ni tus claves.',
   'tasksComputer.confirm.b3': 'Te pedirá confirmación antes de borrar archivos.',
   'tasksComputer.confirm.cancel': 'Cancelar',
   'tasksComputer.confirm.allow': 'Permitir',
@@ -48,7 +48,9 @@ export const tasksComputer = {
   'tasksComputer.mode.fullTitle.win': 'Sin límite de carpeta: el agente puede controlar el PC y modificar archivos en cualquier lugar',
   'tasksComputer.mode.sandboxTitle': 'Solo puede escribir en esta carpeta',
   'tasksComputer.mode.sandboxTitle.win': 'Escrituras limitadas a esta carpeta (entorno Linux aislado)',
-  'tasksComputer.mode.sandboxDesc': 'Lee y escribe solo dentro de esta carpeta. Recomendado.',
+  'tasksComputer.mode.sandboxDesc':
+    'Escribe solo en esta carpeta. Puede leer otras carpetas de tu cuenta, menos tus claves y los datos de la app. Recomendado.',
+  'tasksComputer.mode.sandboxDesc.win': 'Solo ve y escribe en esta carpeta (entorno aislado); no ve el resto del PC. Recomendado.',
   'tasksComputer.mode.fullDesc':
     'Sin límite de carpeta. Puede mover el ratón, escribir, tomar capturas y modificar archivos en cualquier lugar.',
   'tasksComputer.full.title': '¿Permitir que el agente controle tu Mac?',
@@ -161,7 +163,7 @@ export const tasksComputer = {
   'tasksComputer.plan.denyAll.win': 'No, seguir sin controlar el PC',
   'tasksComputer.plan.filesHint': 'Para trabajar con tus archivos no hace falta.',
   'tasksComputer.plan.toFolder': 'Cambiar a Solo en tu carpeta',
-  'tasksComputer.plan.toFolderTitle': 'Cancela este plan y trabaja solo dentro de tu carpeta, sin usar el resto del Mac',
+  'tasksComputer.plan.toFolderTitle': 'Cancela este plan y vuelve a trabajar en tu carpeta, sin controlar el resto del Mac',
   'tasksComputer.plan.toFolderNoFolder':
     'No hay una carpeta autorizada para trabajar solo en ella. Elige una carpeta primero y vuelve a intentarlo.',
   'tasksComputer.plan.edit': 'Editar',
@@ -322,9 +324,9 @@ export const tasksComputer = {
   'tasksComputer.auto.taskDesc': 'Vale mientras exista esta tarea.',
   'tasksComputer.auto.taskNone': 'Abre o empieza una tarea primero.',
   'tasksComputer.onb.tip1':
-    'Empieza en {sandbox}: solo toca la carpeta elegida y las carpetas adicionales que añadas. Usa {full} solo cuando de verdad lo necesites.',
+    'Empieza en {sandbox}: solo escribe en la carpeta elegida y en las adicionales que añadas (puede leer otras carpetas de tu cuenta, menos claves). Usa {full} solo cuando de verdad lo necesites.',
   'tasksComputer.onb.tip1.win':
-    'Las tareas solo tocan la carpeta elegida y las carpetas adicionales que añadas: se ejecutan en un entorno aislado ({sandbox}).',
+    'Las tareas solo ven y escriben en la carpeta elegida y en las adicionales que añadas: se ejecutan en un entorno aislado ({sandbox}).',
   'tasksComputer.onb.tip2':
     'Pide primero un resumen y un plan: «Primero revisa… y muéstrame un resumen; luego propón…; cuando lo apruebe, hazlo».',
   'tasksComputer.onb.tip3': 'Mover, renombrar y borrar piden el permiso «{grant}». Concédelo solo en carpetas que tengas respaldadas.',
@@ -346,7 +348,10 @@ export const tasksComputer = {
   'tasksComputer.onb.step1Desc':
     'El agente trabaja dentro de ella. Puedes añadir carpetas adicionales, de lectura y escritura o de solo lectura.',
   'tasksComputer.onb.step2': 'Qué puede y qué no hacer',
-  'tasksComputer.onb.sandboxDesc': 'lee y escribe solo en tus carpetas, no ve tus claves y pide permiso para borrar, mover o renombrar.',
+  'tasksComputer.onb.sandboxDesc':
+    'escribe solo en tu carpeta; puede leer otras carpetas de tu cuenta, menos tus claves y los datos de la app; y pide permiso para borrar, mover o renombrar.',
+  'tasksComputer.onb.sandboxDesc.win':
+    'solo ve y escribe en tus carpetas elegidas, no ve el resto del PC ni tus claves, y pide permiso para borrar, mover o renombrar.',
   'tasksComputer.onb.fullDesc':
     'sin límite de carpeta; usa ratón, teclado y pantalla y puede tocar cualquier archivo. Exige aprobar un plan.',
   'tasksComputer.onb.step3': 'Prueba una tarea',

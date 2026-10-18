@@ -463,6 +463,23 @@ describe('PrDialog · publicar', () => {
   })
 })
 
+describe('PrDialog · estado al volver a la ventana', () => {
+  it('un commit hecho fuera de la app se ve al volver: el aviso «Todavía no hay commits nuevos» se refresca', async () => {
+    pr.status.mockResolvedValue(baseStatus({ upstream: 'origin/feat/a', ahead: 0 }))
+    await render(createElement(PrDialog, { directory: '/p', onClose: vi.fn() }))
+    expect(document.body.textContent).toContain('Todavía no hay commits nuevos para subir.')
+    const calls = pr.status.mock.calls.length
+    // Commit hecho en la terminal mientras la app estaba en segundo plano.
+    pr.status.mockResolvedValue(baseStatus({ upstream: 'origin/feat/a', ahead: 1, head: 'b'.repeat(40) }))
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+    })
+    await flush()
+    expect(pr.status.mock.calls.length).toBeGreaterThan(calls)
+    expect(document.body.textContent).not.toContain('Todavía no hay commits nuevos para subir.')
+  })
+})
+
 describe('PrDialog · revisar un PR', () => {
   const info = {
     number: 42,

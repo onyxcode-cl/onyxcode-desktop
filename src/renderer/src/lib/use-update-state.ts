@@ -3,6 +3,7 @@ import type { UpdateState } from '@shared/update-check'
 import { api, call } from './api'
 import { downloadUrl, type UpdateActionId } from './update-notice'
 import { isRemoteSurface } from './platform'
+import { t } from '@shared/i18n'
 
 /** Estado del aviso de versión nueva: lectura inicial + evento `app:updateState`. */
 export function useUpdateState(): [UpdateState | null, (s: UpdateState) => void] {
@@ -27,14 +28,22 @@ export function useUpdateState(): [UpdateState | null, (s: UpdateState) => void]
 }
 
 /** Ejecuta la acción de un botón del aviso. El renderer solo pide acciones: URLs y rutas las decide main. */
-export function runUpdateAction(id: UpdateActionId, state: UpdateState, setState: (s: UpdateState) => void): void {
+export function runUpdateAction(
+  id: UpdateActionId,
+  state: UpdateState,
+  setState: (s: UpdateState) => void,
+  onError?: (message: string) => void
+): void {
   const apply = (p: Promise<UpdateState>): void => {
-    p.then(setState).catch(() =>
-      // Si main rechaza (p.ej. la carpeta ya no es escribible), se relee el estado: «installable» habrá cambiado.
+    onError?.('')
+    p.then(setState).catch((err: unknown) => {
+      // Si main rechaza (p.ej. la copia no se puede actualizar sola), se dice por qué y se relee el estado: «installable» habrá cambiado.
+      const msg = err instanceof Error ? err.message : typeof err === 'string' ? err : ''
+      onError?.(msg || t('notices.update.actionFailed'))
       call('app:updateState')
         .then(setState)
         .catch(() => undefined)
-    )
+    })
   }
   switch (id) {
     case 'install':

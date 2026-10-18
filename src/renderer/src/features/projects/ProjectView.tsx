@@ -3,6 +3,7 @@
  * arrastrando; estado de lectura con aviso para lectores de pantalla), espacio usado y conversaciones del proyecto.
  * Todo el contenido de los archivos lo lee y lo guarda `main`; aquí solo se muestra el estado.
  */
+import { displayTitle } from '@shared/session-title'
 import { AlertCircle, ArrowLeft, CheckCircle2, FileText, FolderOpen, Lock, MessageSquarePlus, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectFileFailReason, ProjectFileInfo, ProjectInfo } from '@shared/ipc-extras'
@@ -457,7 +458,7 @@ export function ProjectView(): React.JSX.Element {
                       data-testid="project-conversation"
                       className="no-drag w-full truncate rounded-lg px-3 py-1.5 text-left text-ui hover:bg-hover"
                     >
-                      {s.title || t('projects.convs.untitled')}
+                      {displayTitle(s.title, t('projects.convs.untitled'))}
                     </button>
                   </li>
                 ))}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { displayTitle } from '@shared/session-title'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import { Archive, Check, Loader2, MessagesSquare, MoreHorizontal, Pencil, Search, Trash2, X } from 'lucide-react'
 import { t as tr, localeTag } from '@shared/i18n'
@@ -126,8 +127,8 @@ function PlainRow({
       aria-level={tree ? 1 : undefined}
       aria-label={
         tree
-          ? (tree.stateAria(session.title || t('chat.list.untitled'), busy ? 'working' : null) ??
-            (session.title || t('chat.list.untitled')))
+          ? (tree.stateAria(displayTitle(session.title, t('chat.newConversation')), busy ? 'working' : null) ??
+            displayTitle(session.title, t('chat.newConversation')))
           : undefined
       }
       aria-current={active && tree ? 'page' : undefined}
@@ -151,7 +152,7 @@ function PlainRow({
         {tree && busy && <StateDot state="working" />}
         {/* En el árbol la fila activa muestra «⋯» fijo: el título le deja su hueco y se trunca con «…» en vez de pisarlo. */}
         <span className={`flex-1 truncate group-hover:pr-5${tree && (active || menu) ? ' desk:pr-5' : ''}`}>
-          {session.title || t('chat.list.untitled')}
+          {displayTitle(session.title, t('chat.newConversation'))}
         </span>
         {busy && !showTime && <Loader2 size={13} className="shrink-0 animate-spin text-accent group-hover:opacity-0" />}
         {showTime &&
@@ -185,7 +186,7 @@ function PlainRow({
           setMenu(false)
           setConfirmDelete(false)
         }}
-        title={session.title || t('chat.list.untitled')}
+        title={displayTitle(session.title, t('chat.newConversation'))}
         className="absolute top-full right-0 z-40 mt-1 w-44 origin-top-right animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated p-1 text-sm shadow-lg"
       >
         <button

@@ -7,13 +7,13 @@ import { ChatSidebarRow } from './ChatSidebarRow'
 
 const mk = (title: string, updated: number): Session => ({ id: 's1', title, time: { created: updated, updated } }) as unknown as Session
 
-const row = (over: { active?: boolean; busy?: boolean; updated?: number } = {}): string =>
+const row = (over: { active?: boolean; busy?: boolean; updated?: number; title?: string } = {}): string =>
   renderToStaticMarkup(
     createElement(
       SidebarTree,
       null,
       createElement(ChatSidebarRow, {
-        session: mk('Receta de pan casero', over.updated ?? Date.now() - 5 * 60_000),
+        session: mk(over.title ?? 'Receta de pan casero', over.updated ?? Date.now() - 5 * 60_000),
         active: over.active ?? false,
         busy: over.busy ?? false,
         onSelect: () => undefined,
@@ -53,5 +53,15 @@ describe('ChatSidebarRow: fila de dos líneas de la barra lateral de escritorio'
     expect(html).toContain('aria-current="page"')
     expect(html).toContain('bg-active')
     expect(html).not.toContain('hidden group-focus-within:flex')
+  })
+
+  it('título provisorio del motor («New session - 2026-10-18T13:40:00.000Z»): se muestra «Nueva conversación»', () => {
+    for (const title of ['New session - 2026-10-18T13:40:00.000Z', 'new session - 2026-10-18T13:40:12.345Z', '']) {
+      const html = row({ title })
+      expect(html).toContain('>Nueva conversación</div>')
+      expect(html).not.toContain('New session')
+    }
+    // Un título real que menciona «new session» no se toca.
+    expect(row({ title: 'New session ideas' })).toContain('>New session ideas</div>')
   })
 })

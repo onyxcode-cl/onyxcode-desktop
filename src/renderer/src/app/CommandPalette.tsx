@@ -3,6 +3,7 @@
  * y saltar a una conversación reciente. Con 2 letras o más busca además DENTRO de los mensajes de Chat y Code
  * (`features/search`, índice local solo en memoria). Solo navegación y acciones ya existentes: no toca stores ajenos.
  */
+import { displayTitle } from '@shared/session-title'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { t } from '@shared/i18n'
 import { useLang, useT } from '../lib/i18n'
@@ -163,7 +164,7 @@ function useCommands(): Command[] {
         list.push({
           id: `chat:${s.id}`,
           group: t('app.palette.group.recent'),
-          label: s.title || t('app.palette.untitled'),
+          label: displayTitle(s.title, t('app.palette.untitled')),
           icon: MessageSquare,
           keywords: t('app.palette.kw.recent'),
           run: () => {

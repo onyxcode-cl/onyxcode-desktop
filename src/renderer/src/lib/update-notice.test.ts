@@ -61,7 +61,7 @@ describe('updateView', () => {
 
   it('sin instalador: el aviso de siempre (Descargar / Más tarde)', () => {
     expect(ids(base)).toEqual(['download-manual', 'later'])
-    expect(updateView(base)?.actions[0].label).toBe('Descargar')
+    expect(updateView(base)?.actions[0].label).toBe('Ver descarga')
   })
   it('con instalador: Actualizar (principal) y Más tarde', () => {
     const v = updateView({ ...base, installable: true })

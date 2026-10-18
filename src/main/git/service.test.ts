@@ -6,7 +6,7 @@ import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync, renameSync, 
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { commit, diff, status } from './service'
+import { GitError, commit, diff, status } from './service'
 
 let dir: string
 const g = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8' })
@@ -84,5 +84,31 @@ describe('guardar todo no incluye archivos de secretos', () => {
     // Sigue como archivo sin seguimiento: no se perdió ni se borró.
     expect(existsSync(join(dir, '.env'))).toBe(true)
     expect(g('status', '--porcelain')).toContain('?? .env')
+  })
+})
+
+describe('guardar sin nada que guardar avisa en llano (no en inglés)', () => {
+  it('solo hay un archivo de secretos: error claro, el archivo sigue ahí y no se crea commit', async () => {
+    // `.env` quedó sin seguimiento en la prueba anterior.
+    const antes = g('rev-parse', 'HEAD')
+    const err = await commit(dir, 'prueba', true).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(GitError)
+    expect((err as Error).message).toBe('No hay nada que guardar. Los archivos de secretos (como .env) no se incluyen en los commits.')
+    expect((err as Error).message).not.toMatch(/nothing added|untracked/i)
+    expect(g('rev-parse', 'HEAD')).toBe(antes)
+    expect(existsSync(join(dir, '.env'))).toBe(true)
+  })
+  it('árbol limpio, con y sin «guardar todo»: «No hay nada que guardar.»', async () => {
+    rmSync(join(dir, '.env'), { force: true })
+    for (const all of [true, false]) {
+      const err = await commit(dir, 'prueba', all).catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(GitError)
+      expect((err as Error).message).toBe('No hay nada que guardar.')
+    }
+  })
+  it('con algo preparado sí guarda', async () => {
+    writeFileSync(join(dir, 'otro.txt'), 'z\n')
+    g('add', 'otro.txt')
+    expect((await commit(dir, 'otro')).hash).toMatch(/^[0-9a-f]{40}$/)
   })
 })

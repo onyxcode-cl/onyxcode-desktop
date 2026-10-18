@@ -7,6 +7,8 @@ import { AlertCircle, CalendarX2, Check, CheckCircle2, ChevronDown, ExternalLink
 import type { RoutineInboxItem } from '@shared/ipc-tasks'
 import { useT } from '../../../lib/i18n'
 import { PortalMenu, PortalMenuItem } from '../../../components/PortalMenu'
+import { Markdown } from '../../../components/Markdown'
+import { CopyButton } from '../../../components/CopyButton'
 import { fullDate } from './schedule'
 import { resolveInbox, selectInboxPending, useRoutines } from './store'
 
@@ -66,6 +68,7 @@ export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (
     : failed
       ? (item.error ?? '')
       : (item.summary ?? '')
+  const renderMarkdown = !missed && !failed && body.trim() !== ''
   const files = item.files ?? []
   const triggers = item.triggerFiles ?? []
   return (
@@ -81,7 +84,20 @@ export function InboxCard({ item, onOpen }: { item: RoutineInboxItem; onOpen?: (
             <span className="truncate text-sm font-medium">{item.routineName}</span>
             <span className="text-[11px] desk:text-meta text-subtle">{fullDate(item.createdAt)}</span>
           </div>
-          <p className={`mt-0.5 text-xs text-muted ${open ? '' : 'line-clamp-2'}`}>{body}</p>
+          {renderMarkdown ? (
+            <div className="mt-0.5 flex items-start gap-1">
+              {/* El resumen lo escribe la IA en markdown: se muestra formateado con el mismo visor seguro del Chat (sin HTML crudo). */}
+              <div
+                data-testid="inbox-summary"
+                className={`min-w-0 flex-1 overflow-y-auto text-xs text-muted ${open ? 'max-h-96' : 'max-h-20 overflow-hidden'}`}
+              >
+                <Markdown text={body} />
+              </div>
+              <CopyButton text={body} label={t('routines.inbox.copySummary')} className="shrink-0" />
+            </div>
+          ) : (
+            <p className={`mt-0.5 text-xs text-muted ${open ? '' : 'line-clamp-2'}`}>{body}</p>
+          )}
           {(files.length > 0 || triggers.length > 0 || (item.rejectedCount ?? 0) > 0) && (
             <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] desk:text-meta text-muted">
               {triggers.length > 0 && (

@@ -62,6 +62,28 @@ describe('bandeja «Resultados por revisar»', () => {
     expect(html).not.toContain('Aprobar')
     expect(html).toContain('data-kind="missed"')
   })
+  it('el resumen en markdown se muestra formateado (sin `#` ni `**` crudos) y se puede copiar', () => {
+    const summary = '# Menú\n\nHoy: **lentejas** y [receta](https://example.com/r)\n\n- arroz\n- ensalada'
+    const html = renderToStaticMarkup(<InboxCard item={{ ...result, summary }} />)
+    expect(html).toContain('<h1>Menú</h1>')
+    expect(html).toContain('<strong>lentejas</strong>')
+    expect(html).toContain('<li>arroz</li>')
+    expect(html).not.toContain('# Menú')
+    expect(html).not.toContain('**lentejas**')
+    expect(html).toContain('aria-label="Copiar el resumen"')
+  })
+  it('HTML crudo, scripts y enlaces javascript: salen inertes', () => {
+    const summary = '<script>alert(1)</script>\n\n<img src=x onerror=alert(2)>\n\n[clic](javascript:alert(3))'
+    const html = renderToStaticMarkup(<InboxCard item={{ ...result, summary }} />)
+    expect(html).not.toContain('<script')
+    expect(html).not.toContain('<img')
+    expect(html).not.toMatch(/href="javascript:/i)
+  })
+  it('un error sigue siendo texto plano', () => {
+    const html = renderToStaticMarkup(<InboxCard item={{ ...result, runStatus: 'error', error: '# no es título' }} />)
+    expect(html).toContain('# no es título')
+    expect(html).not.toContain('<h1>')
+  })
   it('la bandeja lista solo lo pendiente con su contador; vacía no pinta nada', () => {
     override.inbox = [result, missed, { ...result, id: 'i3', status: 'approved' }]
     const html = renderToStaticMarkup(<RoutineInbox />)

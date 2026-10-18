@@ -134,7 +134,7 @@ describe('aviso de versión nueva', () => {
     expect(req.headers.cookie).toBeUndefined()
     expect(req.headers.authorization).toBeUndefined()
 
-    await notice(app.page).getByRole('button', { name: 'Descargar' }).click()
+    await notice(app.page).getByRole('button', { name: 'Ver descarga' }).click()
     await expect.poll(() => opened(app)).toEqual([`https://github.com/${REPO}/releases/tag/v99.9.9`])
     await openAbout(app.page)
     await expectVisible(app.page.getByText(/Última comprobación: \d/))
@@ -148,7 +148,7 @@ describe('aviso de versión nueva', () => {
     const app = await launch(srv.url)
     await stubOpenExternal(app)
     await expectVisible(notice(app.page))
-    await notice(app.page).getByRole('button', { name: 'Descargar' }).click()
+    await notice(app.page).getByRole('button', { name: 'Ver descarga' }).click()
     await expect.poll(() => opened(app)).toEqual([`https://github.com/${REPO}/releases/tag/v99.9.9`])
     await stopApp(app)
   })

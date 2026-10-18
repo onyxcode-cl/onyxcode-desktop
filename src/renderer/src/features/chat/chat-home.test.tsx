@@ -64,7 +64,7 @@ describe('bloques del inicio de Chat', () => {
     expect(html).toContain('Retomar')
     expect(html).toContain('Carta al banco')
     expect(html).toContain('Terminado · hace 12 min')
-    expect(html).toContain('Sin título')
+    expect(html).toContain('Nueva conversación')
     expect(html).toContain('<button')
   })
 

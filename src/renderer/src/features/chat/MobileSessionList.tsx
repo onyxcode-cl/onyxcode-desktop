@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { displayTitle } from '@shared/session-title'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import { Loader2, MessagesSquare, MoreHorizontal, Pencil, Search, SquarePen, Trash2, X } from 'lucide-react'
 import { t as tr, localeTag } from '@shared/i18n'
@@ -51,7 +52,7 @@ function MobileRow({
 }): React.JSX.Element {
   const t = useT()
   const [sheet, setSheet] = useState(false)
-  const title = session.title || t('chat.list.untitled')
+  const title = displayTitle(session.title, t('chat.newConversation'))
   const press = useLongPress(() => setSheet(true))
 
   const rename = (): void => {

@@ -1,4 +1,5 @@
 import type { Session } from '@opencode-ai/sdk/v2/client'
+import { displayTitle } from '@shared/session-title'
 import { t } from '@shared/i18n'
 import { runExportAction, type ExportAction } from '../../components/ExportConversation'
 import { entriesToExportDoc } from '../../lib/conversation/export'
@@ -14,6 +15,6 @@ export function exportChatConversation(session: Pick<Session, 'id' | 'title' | '
       if (client && connection) await st.loadMessages(client, session.id, connection.chatDirectory)
     }
     const entries = useSessions.getState().messages[session.id] ?? []
-    return entriesToExportDoc(entries, { title: session.title || t('conv.export.untitled'), createdAt: session.time.created })
+    return entriesToExportDoc(entries, { title: displayTitle(session.title, t('conv.export.untitled')), createdAt: session.time.created })
   })
 }

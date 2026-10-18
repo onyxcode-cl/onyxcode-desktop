@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { displayTitle } from '@shared/session-title'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
   Archive,
@@ -68,7 +69,7 @@ export function ChatSidebarRow({
     if (editing) inputRef.current?.select()
   }, [editing])
 
-  const title = session.title || t('chat.list.untitled')
+  const title = displayTitle(session.title, t('chat.newConversation'))
   const state = busy ? 'working' : null
 
   const commit = (): void => {

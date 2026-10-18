@@ -29,6 +29,7 @@ export function AboutSection(): React.JSX.Element {
   const [engine, setEngine] = useState<OpencodeInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [update, setUpdate] = useUpdateState()
+  const [updateError, setUpdateError] = useState('')
   const checkUpdates = useSettings((s) => s.settings.checkUpdates)
   const [checkResult, setCheckResult] = useState<string | null>(null)
 
@@ -193,6 +194,11 @@ export function AboutSection(): React.JSX.Element {
                       {view.text}
                       {view.percent !== null && <span className="ml-1.5 font-mono tabular-nums text-muted">{view.percent} %</span>}
                     </span>
+                    {updateError && (
+                      <span role="alert" data-testid="update-action-error" className="mt-1 block text-danger">
+                        {updateError}
+                      </span>
+                    )}
                     {view.progress && view.phase !== 'installing' && view.phase !== 'restarting' && (
                       <span className="mt-1.5 block">
                         <ProgressBar percent={view.percent} label={view.text} />
@@ -207,7 +213,7 @@ export function AboutSection(): React.JSX.Element {
                       key={a.id}
                       size="sm"
                       variant={a.primary ? 'primary' : 'secondary'}
-                      onClick={() => runUpdateAction(a.id, update, setUpdate)}
+                      onClick={() => runUpdateAction(a.id, update, setUpdate, setUpdateError)}
                     >
                       {a.label}
                     </Button>

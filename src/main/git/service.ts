@@ -501,16 +501,29 @@ export async function removeWorktree(cwd: string, path: string, force = false): 
 // Commit / log
 // ---------------------------------------------------------------------------
 
+async function gitDir(root: string): Promise<string> {
+  const d = (await git(root, ['rev-parse', '--git-dir'])).trim()
+  return isAbsolute(d) ? d : join(root, d)
+}
+
 export async function commit(cwd: string, message: string, stageAll = false): Promise<GitCommitResult> {
   const root = await requireRoot(cwd)
   if (typeof message !== 'string' || !message.trim()) throw new GitError(t('common.git.emptyCommit'))
+  let secretosExcluidos = false
   if (stageAll) {
     await git(root, ['add', '-A'])
     // «Guardar todo» nunca incluye archivos de secretos (.env, llaves…): se sacan del índice antes del commit.
     const staged = (await git(root, ['diff', '--cached', '--name-only', '-z'])).split('\0').filter(Boolean)
     const secretos = staged.filter((rel) => isSensitivePath(join(root, rel)))
     if (secretos.length > 0) await git(root, ['reset', '-q', '--', ...secretos])
+    secretosExcluidos = secretos.length > 0
   }
+  // Índice vacío (nada que guardar, o solo había secretos excluidos): git lo diría en inglés; se avisa en llano.
+  // Un merge sin cambios sí se puede concluir, y `--allow-empty` no se usa nunca.
+  const hayCambios = (await run(root, ['diff', '--cached', '--quiet'], { okCodes: [1] })).code === 1
+  const mergeEnCurso = existsSync(join(await gitDir(root), 'MERGE_HEAD'))
+  if (!hayCambios && !mergeEnCurso)
+    throw new GitError(t(secretosExcluidos ? 'common.git.nothingToCommitSecrets' : 'common.git.nothingToCommit'))
   await git(root, ['commit', '-F', '-'], { input: message })
   const out = (await git(root, ['log', '-1', '--format=%H%x1f%h%x1f%s'])).trim()
   const [hash = '', shortHash = '', summary = ''] = out.split('\x1f')

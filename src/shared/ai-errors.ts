@@ -8,7 +8,7 @@ import { t as tr } from './i18n'
 import { es } from './i18n/es'
 import { maskSecretPatterns } from './redact-patterns'
 
-export type FriendlyErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unknown'
+export type FriendlyErrorKind = 'no-ai' | 'model-not-found' | 'auth' | 'network' | 'quota' | 'context' | 'unavailable' | 'unknown'
 
 export type FriendlyErrorAction = 'connect' | 'retry' | 'compact'
 
@@ -102,6 +102,10 @@ const NETWORK_RE = /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|fetch 
 const QUOTA_RE = /rate.?limit|quota|insufficient|credit|too many requests/i
 const AUTH_RE =
   /unauthorized|invalid api key|invalid_api_key|token refresh failed|oauth callback timeout|login cancell?ed|failed to initiate device authorization/i
+/** El servicio del modelo (no tu conexión) no responde: típico de modelos gratuitos caídos o saturados. Sin depender del proveedor. */
+const UNAVAILABLE_RE =
+  /upstream request failed|endpoint is unavailable|service unavailable|temporarily unavailable|model is overloaded|bad gateway|gateway time-?out/i
+
 const NOT_FOUND_RE = /ProviderModelNotFoundError|Model not found:/
 
 /**
@@ -186,6 +190,15 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
       kind: 'network',
       title: tr('errors.network.title'),
       message: tr('errors.network.message'),
+      detail,
+      action: 'retry'
+    }
+  }
+  if (n.statusCode === 502 || n.statusCode === 503 || n.statusCode === 504 || UNAVAILABLE_RE.test(text)) {
+    return {
+      kind: 'unavailable',
+      title: tr('errors.unavailable.title'),
+      message: tr('errors.unavailable.message'),
       detail,
       action: 'retry'
     }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Download, Loader2, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
@@ -14,8 +15,9 @@ export function UpdateNotice(): React.JSX.Element | null {
   const t = useT()
   const [state, setState] = useUpdateState()
   const view = updateView(state)
+  const [actionError, setActionError] = useState('')
   if (!platformCaps().updater || !view || !state) return null
-  const act = (id: Parameters<typeof runUpdateAction>[0]): void => runUpdateAction(id, state, setState)
+  const act = (id: Parameters<typeof runUpdateAction>[0]): void => runUpdateAction(id, state, setState, setActionError)
   const busy = view.phase === 'installing' || view.phase === 'restarting'
   const Icon = view.progress ? Loader2 : view.phase === 'ready' ? RefreshCw : view.phase === 'error' ? TriangleAlert : Download
 
@@ -30,6 +32,11 @@ export function UpdateNotice(): React.JSX.Element | null {
       <span className="min-w-0 flex-1 truncate" data-testid="update-notice-text">
         {view.text}
       </span>
+      {actionError && (
+        <span role="alert" data-testid="update-action-error" className="min-w-0 max-w-[45%] truncate text-danger" title={actionError}>
+          {actionError}
+        </span>
+      )}
       {view.progress && !busy && <ProgressBar percent={view.percent} label={view.text} />}
       {view.percent !== null && (
         <span data-testid="update-percent" className="w-9 shrink-0 text-right font-mono tabular-nums text-muted">

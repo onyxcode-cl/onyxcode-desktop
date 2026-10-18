@@ -14,6 +14,8 @@ export const errors = {
   'errors.quota.message': 'Tu IA alcanzó su límite de uso o de cuota. Espera unos minutos o revisa tu plan.',
   'errors.network.title': 'Sin conexión',
   'errors.network.message': 'No se pudo contactar con la IA. Revisa tu conexión a internet e inténtalo de nuevo.',
+  'errors.unavailable.title': 'El modelo no responde ahora',
+  'errors.unavailable.message': 'El servicio de este modelo no responde ahora. Prueba con otro modelo o vuelve a intentarlo en un rato.',
   'errors.system.permission':
     'No se pudo acceder a un archivo o carpeta porque no hay permiso. Revisa que esté dentro de la carpeta elegida o dale acceso a la app y vuelve a intentarlo.',
   'errors.system.missing': 'No se encontró un archivo o carpeta que hacía falta. Revisa que siga en su lugar y vuelve a intentarlo.',

@@ -8,9 +8,10 @@ export const tasksComputer = {
   'tasksComputer.access.fullShort.win': 'Whole PC',
   'tasksComputer.access.pickFolder': 'Choose a folder first',
   'tasksComputer.access.waitTask': 'Wait for the task to finish before changing the access mode',
-  'tasksComputer.access.sandboxTitle': '{name}: reads and writes only inside the chosen folder and any extra folders. Recommended.',
+  'tasksComputer.access.sandboxTitle':
+    '{name}: writes only in the chosen folder and in extra folders with write access. It can read other folders in your account, except your keys and the app’s data. No internet except allowed sites. Recommended.',
   'tasksComputer.access.sandboxTitle.win':
-    '{name}: reads and writes only inside the chosen folder and any additional folders (isolated Linux environment). Recommended.',
+    '{name}: isolated Linux environment. It only sees the chosen folder and the extra folders (not the rest of the PC) and writes only where write access is given. No internet except allowed sites. Recommended.',
   'tasksComputer.access.sandboxName': 'Only in your folder',
   'tasksComputer.access.fullName': 'Use your whole Mac',
   'tasksComputer.access.fullName.win': 'Use your whole PC',
@@ -29,9 +30,9 @@ export const tasksComputer = {
   'tasksComputer.confirm.title': 'Allow working in “{name}”?',
   'tasksComputer.confirm.b1': 'The agent will be able to read, create and modify files and run commands inside this folder.',
   'tasksComputer.confirm.b2':
-    'It works in a protected area of macOS: it can’t write outside the folder or read your keys (~/.ssh, ~/.aws…).',
+    'It works in a protected area of macOS: it writes only in the folder. It can read other folders in your account, but not your keys (~/.ssh, ~/.aws…) or the app’s data.',
   'tasksComputer.confirm.b2.win':
-    'It runs in an isolated Linux environment on your PC: it can’t write outside the folder or read your keys (.ssh, .aws…).',
+    'It runs in an isolated Linux environment on your PC: it only sees this folder and the extra folders you add; it can’t see the rest of the PC or your keys.',
   'tasksComputer.confirm.b3': 'It will ask for confirmation before deleting files.',
   'tasksComputer.confirm.cancel': 'Cancel',
   'tasksComputer.confirm.allow': 'Allow',
@@ -50,7 +51,10 @@ export const tasksComputer = {
   'tasksComputer.mode.fullTitle.win': 'No folder limit: the agent can control the PC and change files anywhere',
   'tasksComputer.mode.sandboxTitle': 'It can only write in this folder',
   'tasksComputer.mode.sandboxTitle.win': 'Writes limited to this folder (isolated Linux environment)',
-  'tasksComputer.mode.sandboxDesc': 'Reads and writes only inside this folder. Recommended.',
+  'tasksComputer.mode.sandboxDesc':
+    'Writes only in this folder. It can read other folders in your account, except your keys and the app’s data. Recommended.',
+  'tasksComputer.mode.sandboxDesc.win':
+    'It only sees and writes in this folder (isolated environment); it can’t see the rest of the PC. Recommended.',
   'tasksComputer.mode.fullDesc': 'No folder limit. It can move the mouse, type, take screenshots and change files anywhere.',
   'tasksComputer.full.title': 'Allow the agent to control your Mac?',
   'tasksComputer.full.title.win': 'Allow the agent to control your PC?',
@@ -162,7 +166,7 @@ export const tasksComputer = {
   'tasksComputer.plan.denyAll.win': 'No, keep going without controlling the PC',
   'tasksComputer.plan.filesHint': 'It isn’t needed to work with your files.',
   'tasksComputer.plan.toFolder': 'Switch to Only in your folder',
-  'tasksComputer.plan.toFolderTitle': 'Cancels this plan and works only inside your folder, without using the rest of the Mac',
+  'tasksComputer.plan.toFolderTitle': 'Cancels this plan and goes back to working in your folder, without controlling the rest of the Mac',
   'tasksComputer.plan.toFolderNoFolder': 'There is no authorized folder to work in. Choose a folder first and try again.',
   'tasksComputer.plan.edit': 'Edit',
   'tasksComputer.plan.approve': 'Approve and start',
@@ -321,9 +325,9 @@ export const tasksComputer = {
   'tasksComputer.auto.taskDesc': 'Applies for as long as this task exists.',
   'tasksComputer.auto.taskNone': 'Open or start a task first.',
   'tasksComputer.onb.tip1':
-    'Start in {sandbox}: it only touches the chosen folder and any additional folders you add. Use {full} only when you really need it.',
+    'Start in {sandbox}: it writes only in the chosen folder and in any additional folders you add (it can read other folders in your account, except keys). Use {full} only when you really need it.',
   'tasksComputer.onb.tip1.win':
-    'Overdrive only touches the chosen folder and any additional folders you add: they run in an isolated environment ({sandbox}).',
+    'Overdrive only sees and writes in the chosen folder and any additional folders you add: tasks run in an isolated environment ({sandbox}).',
   'tasksComputer.onb.tip2':
     'Ask for a summary and a plan first: “First review… and show me a summary; then propose…; once I approve, do it.”',
   'tasksComputer.onb.tip3': 'Moving, renaming and deleting require the “{grant}” permission. Grant it only on folders you have backed up.',
@@ -345,7 +349,9 @@ export const tasksComputer = {
   'tasksComputer.onb.step1Desc': 'The agent works inside it. You can add additional folders, read-write or read-only.',
   'tasksComputer.onb.step2': 'What it can and can’t do',
   'tasksComputer.onb.sandboxDesc':
-    'reads and writes only in your folders, can’t see your keys and asks permission to delete, move or rename.',
+    'writes only in your folder; it can read other folders in your account, except your keys and the app’s data; and it asks permission to delete, move or rename.',
+  'tasksComputer.onb.sandboxDesc.win':
+    'only sees and writes in the folders you chose, can’t see the rest of the PC or your keys, and asks permission to delete, move or rename.',
   'tasksComputer.onb.fullDesc': 'no folder limit; uses the mouse, keyboard and screen and can touch any file. Requires approving a plan.',
   'tasksComputer.onb.step3': 'Try a task',
   'tasksComputer.onb.fillSample': 'Write a sample task',

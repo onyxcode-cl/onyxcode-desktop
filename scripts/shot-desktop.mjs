@@ -62,6 +62,7 @@ const SCENARIOS = [
   'chat-memoria-propuesta',
   'chat-exportar',
   'chat-primeros-pasos',
+  'chat-titulo-provisorio', // F8-B193: «New session - <fecha>» se muestra como «Nueva conversación»
   'chat-instrucciones-conversacion',
   'code-proyecto',
   'code-diff',
@@ -122,6 +123,7 @@ const SCENARIOS = [
   'rutinas-vigilante', // H24: «Carpeta no disponible»
   'rutinas-sin-vigilar', // H24: «Sin vigilar» (aviso de Rutinas sin aceptar)
   'rutinas-bandeja',
+  'rutinas-lote121', // F8-B193: el resumen de «Resultados por revisar» se ve formateado (markdown seguro)
   'rutinas-evento-e2e',
   'rutinas-recetas-e2e',
   // Ajustes › Uso (F8-B189): sin uso todavía y con uso de varias conversaciones (modelos gratuito, de pago y sin costo; Chat y Code).
@@ -1553,6 +1555,13 @@ const S = {
     await idea.click()
     await sleep(500)
   },
+  // F8-B193: una conversación nueva cuyo título aún es el provisorio del motor («New session - <fecha>») se muestra como «Nueva conversación».
+  async 'chat-titulo-provisorio'(ctx) {
+    await closeOverlays(ctx.page)
+    await newChat(ctx.page)
+    await sendChat(ctx.page, 'Hola, ¿me ayudas con una duda breve?')
+    await sleep(2500)
+  },
   // «Instrucciones de esta conversación»: botón de la cabecera y panel con el texto escrito, el contador y el aviso honesto.
   async 'chat-instrucciones-conversacion'(ctx) {
     await seedChats(ctx)
@@ -2437,6 +2446,27 @@ const S = {
     const first = ctx.page.getByRole('button', { name: 'Ver detalle' }).first()
     await first.click()
     await sleep(600)
+  },
+  // F8-B193: el resumen de una ejecución llega en markdown (títulos, negritas, listas) y la bandeja lo muestra formateado, con HTML inerte.
+  async 'rutinas-lote121'(ctx) {
+    await seedRoutines(ctx)
+    await goMode(ctx.page, 'Rutinas')
+    await ctx.fake.script({
+      match: 'Resume las ventas de ayer',
+      steps: [
+        {
+          type: 'text',
+          text: '# Menú de la semana\n\nEl **lunes** toca *lentejas* y el martes `pasta`.\n\n- Arroz con pollo\n- Ensalada\n\n<script>alert(1)</script>\n\n[ver receta](https://example.com/receta)'
+        }
+      ]
+    })
+    await ctx.page.evaluate(async () => {
+      const list = (await window.api.tasks.invoke('routines:list')).data
+      const r = list.find((x) => x.name === 'Resumen diario de ventas')
+      if (r) await window.api.tasks.invoke('routines:runNow', { id: r.id })
+    })
+    await ctx.page.getByTestId('inbox-summary').first().waitFor({ state: 'visible', timeout: 60_000 })
+    await sleep(1500)
   },
   // Prueba de punta a punta del disparador por archivo con el motor falso y userData temporal: un archivo = una ejecución,
   // lo que aparece justo al terminar no dispara, cinco seguidos = una ejecución agrupada y el tope por hora frena la siguiente.

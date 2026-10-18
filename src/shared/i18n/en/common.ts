@@ -74,6 +74,8 @@ export const common = {
   'common.git.invalidWorktreePath': 'Invalid worktree path: {path}',
   'common.git.notWorktree': 'Not a worktree of this repository: {path}',
   'common.git.cantRemoveMain': 'The main worktree cannot be removed',
+  'common.git.nothingToCommit': 'There is nothing to save.',
+  'common.git.nothingToCommitSecrets': 'There is nothing to save. Secret files (such as .env) are not included in commits.',
   'common.git.emptyCommit': 'The commit message is empty',
   'common.git.discard.none': 'There are no files to discard.',
   'common.git.discard.tooMany': 'Too many files at once (maximum {max}).',

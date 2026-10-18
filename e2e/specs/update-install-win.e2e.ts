@@ -298,7 +298,7 @@ describe.skipIf(!IS_WIN)('actualizador propio (Windows)', () => {
     const f = await fixture()
     publish(srv, f)
     const app = await launch(srv, { withKey: false })
-    await expectVisible(button(app.page, 'Descargar'))
+    await expectVisible(button(app.page, 'Ver descarga'))
     expect(await button(app.page, 'Actualizar').count()).toBe(0)
     expect(srv.assetRequests()).toHaveLength(0)
     await stopApp(app)

@@ -17,6 +17,8 @@ export const errors = {
   'errors.quota.message': 'Your AI has reached its usage or quota limit. Wait a few minutes or check your plan.',
   'errors.network.title': 'No connection',
   'errors.network.message': 'Couldn’t reach the AI. Check your internet connection and try again.',
+  'errors.unavailable.title': 'The model isn’t responding right now',
+  'errors.unavailable.message': 'This model’s service isn’t responding right now. Try another model or try again in a while.',
   'errors.system.permission':
     'A file or folder couldn’t be accessed because permission is missing. Make sure it is inside the chosen folder, or give the app access, and try again.',
   'errors.system.missing': 'A file or folder that was needed couldn’t be found. Check that it is still where it was and try again.',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { displayTitle } from '@shared/session-title'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
@@ -386,7 +387,7 @@ export function ChatView(): React.JSX.Element {
           data-mobile="hide"
           className="drag relative flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:@container desk:px-[max(15rem,calc(var(--controls-inset,0px)+8px))] desk:@max-[44rem]:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
         >
-          <span className="truncate text-[13.5px] font-medium">{session?.title || t('chat.newConversation')}</span>
+          <span className="truncate text-[13.5px] font-medium">{displayTitle(session?.title, t('chat.newConversation'))}</span>
           <div className="absolute right-3 top-0 hidden h-12 items-center gap-1.5 desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
             <ConversationInstructionsButton sessionId={activeId} />
             <PersonalizeButton />
