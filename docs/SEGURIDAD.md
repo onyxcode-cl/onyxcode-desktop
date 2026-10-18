@@ -1965,7 +1965,7 @@ La persona reúne instrucciones y archivos en un proyecto; en sus conversaciones
 - **gh**: sesión propia de la persona (`gh auth login`); Lazunox no pide, ve ni guarda tokens. No probado contra GitHub real.
 - **Pruebas**: ver `CHANGELOG-FASE8.md` F8-B190.
 
-## 3 quinquagies terdecies. Puente con Telegram, entrega 2: seguir y escribir a una sesión, archivos (F8-B191)
+## 3 quinquagies quaterdecies. Puente con Telegram, entrega 2: seguir y escribir a una sesión, archivos (F8-B191)
 
 - **Un solo dueño** (igual que la entrega 1): botones y mensajes de otro chat, grupo o canal se ignoran sin responder; los botones nuevos (`s:`, `o:`, `f:`) llevan un id aleatorio de 72 bits ligado al chat dueño, con caducidad; lo que representan (sesión, texto, ruta) vive solo en `main`.
 - **Escribir está apagado por defecto** y se apaga solo al desvincular, apagar Telegram, quitar el bot o «Detener todo». Con él encendido el texto es un mensaje de usuario normal: no concede permisos (`permission.reply` solo ocurre por los botones y su tope por hora), no cambia modo ni carpetas, no crea sesiones ni inicia Overdrive; solo hay 6 comandos (más sus nombres en inglés) y el resto responde «No conozco ese comando». Límite de 6 mensajes por minuto, no se suma a una sesión ocupada, un mismo mensaje de Telegram no se envía dos veces tras un reinicio (`lastWriteId`). Límite honesto: el mensaje va SIN la memoria ni las instrucciones personalizadas que la pantalla agrega (igual que el celular).
