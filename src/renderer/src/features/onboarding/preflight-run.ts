@@ -1,6 +1,6 @@
 /**
  * Instalación de lo que falta en la pantalla «Preparando Lazunox», sin React ni IPC directo (se prueba con `preflight-run.test.ts`).
- * Instala en el orden del plan (ArtCraft y luego el entorno aislado), informa el avance de cada componente y, si uno falla, anota el
+ * Instala en el orden del plan (ArtCraft, Node.js y uv, y luego el entorno aislado), informa el avance de cada componente y, si uno falla, anota el
  * motivo real y sigue con el resto: cada componente es independiente.
  */
 import type { PreflightId, Runtime } from '@shared/preflight'
@@ -11,6 +11,10 @@ export interface InstallApi {
   craftInstall: () => Promise<{ ok: boolean; error?: string; message?: string } | undefined>
   /** Porcentaje real de la descarga de ArtCraft (de `craft:status`), o `null` si aún no se conoce. */
   craftProgress: () => Promise<number | null>
+  /** `runtimes:install` (Node.js y uv, F8-B195): resuelve al terminar, con éxito o con el código del fallo. */
+  runtimesInstall: () => Promise<{ ok: boolean; error?: string; message?: string } | undefined>
+  /** Porcentaje real de la descarga de Node.js y uv (de `runtimes:status`), o `null`. */
+  runtimesProgress: () => Promise<number | null>
   /** `tasks:sandbox:setup`: devuelve enseguida; la instalación sigue en main. */
   sandboxSetup: () => Promise<unknown>
   sandboxStatus: () => Promise<{ state: string; setup: { running: boolean; pct: number; error?: string } | null }>
@@ -60,6 +64,26 @@ async function installCraft(api: InstallApi, ev: InstallEvents): Promise<Install
   return { id: 'craft', ok: false, code, message: result?.message }
 }
 
+async function installRuntimes(api: InstallApi, ev: InstallEvents): Promise<InstallOutcome> {
+  let result: Awaited<ReturnType<InstallApi['runtimesInstall']>>
+  let settled = false
+  const run = api
+    .runtimesInstall()
+    .catch(() => undefined)
+    .then((r) => {
+      result = r
+      settled = true
+    })
+  while (!settled && api.alive()) {
+    const pct = await api.runtimesProgress().catch(() => null)
+    if (!settled) ev.onRuntime('runtimes', { state: 'downloading', ...(pct !== null ? { pct } : {}) })
+    await Promise.race([run, api.sleep(CRAFT_POLL_MS)])
+  }
+  await run
+  if (result?.ok) return { id: 'runtimes', ok: true }
+  return { id: 'runtimes', ok: false, code: installFailureCode(result), message: result?.message }
+}
+
 async function installSandbox(api: InstallApi, ev: InstallEvents): Promise<InstallOutcome> {
   await api.sandboxSetup().catch(() => undefined)
   for (let i = 0; i < SANDBOX_MAX_POLLS && api.alive(); i++) {
@@ -84,9 +108,11 @@ export async function runInstall(ids: readonly PreflightId[], api: InstallApi, e
     const r: InstallOutcome =
       id === 'craft'
         ? await installCraft(api, ev)
-        : id === 'sandbox'
-          ? await installSandbox(api, ev)
-          : { id, ok: false, code: 'unsupported' }
+        : id === 'runtimes'
+          ? await installRuntimes(api, ev)
+          : id === 'sandbox'
+            ? await installSandbox(api, ev)
+            : { id, ok: false, code: 'unsupported' }
     out.push(r)
     if (r.ok) ev.onRuntime(id, null)
     else {

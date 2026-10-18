@@ -213,9 +213,15 @@ export const personalizacion = {
   'pers.local.perm.account': 'You sign in to your account in your browser; the program keeps the access in its folder',
   'pers.local.perm.where': 'Everything stays in a Lazunox folder and is deleted when you remove the connector',
   'pers.local.signinTitle': 'How to sign in to your account',
-  'pers.local.needUv':
-    'Installing it needs “uv”, the Python program installer, and I could not find it on this computer. Install it from {url} and try again.',
-  'pers.local.needNode': 'Installing it needs Node.js, and I could not find it on this computer. Install it from {url} and try again.',
+  'pers.local.needRuntime':
+    'Installing it needs {what}, and it is not on this computer. {app} downloads it for you, once (about {mb} MB in total, from nodejs.org and github.com) and checks it is genuine before use. It does not ask for an administrator password.',
+  'pers.local.what.uv': '“uv” (the Python program installer)',
+  'pers.local.what.npm': 'Node.js',
+  'pers.local.installRuntime': 'Install what is needed',
+  'pers.local.installingRuntime': 'Downloading what is needed…',
+  'pers.local.installingRuntimePct': 'Downloading what is needed… {pct} %',
+  'pers.local.runtime.app': 'Ready: using the program that {app} downloaded and verified.',
+  'pers.local.runtime.system': 'Ready: using the one you already had installed on this computer.',
   'pers.local.needPlatform': 'It is not available on this system yet. For now it only works on Mac.',
   'pers.local.step1': 'Read this',
   'pers.local.step2': 'Prepare and install',

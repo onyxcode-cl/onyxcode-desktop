@@ -20,6 +20,7 @@ import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { PreflightScreen } from './PreflightScreen'
 import { waitForMacPerms } from './perms-wait'
 import { runInstall, type InstallApi } from './preflight-run'
+import { runtimesApi, runtimesPct } from '../settings/impl/runtimes-view'
 
 /** Plazo máximo de espera de la revisión: pasado, se entra a la app (la revisión nunca debe dejarla bloqueada). */
 export const PREFLIGHT_TIMEOUT_MS = 3500
@@ -105,6 +106,8 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
         const total = s.progress?.total ?? 0
         return s.installing && total > 0 ? Math.min(100, Math.round(((s.progress?.done ?? 0) / total) * 100)) : null
       },
+      runtimesInstall: () => runtimesApi.install().catch(() => undefined),
+      runtimesProgress: async () => runtimesPct(await runtimesApi.status()),
       sandboxSetup: () => cw('tasks:sandbox:setup'),
       sandboxStatus: () => cw('tasks:sandbox:status', { force: true }),
       fail: (id, code, message) =>

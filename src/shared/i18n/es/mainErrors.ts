@@ -437,8 +437,10 @@ export const mainErrors = {
   'merr.local.clientMissing': 'Elige primero el archivo del cliente de Google (si ya lo habías elegido, venció: elígelo de nuevo).',
   'merr.local.stepFailed': 'La instalación falló en «{step}»: {detail}',
   'merr.local.platform': 'Este conector todavía no está disponible en este sistema.',
-  'merr.local.noUv': 'Hace falta tener instalado «uv» (el instalador de programas de Python). Instálalo y vuelve a intentarlo.',
-  'merr.local.noNode': 'Hace falta tener instalado Node.js. Instálalo y vuelve a intentarlo.',
+  'merr.local.noUv':
+    'Falta «uv», el programa que instala este conector, y todavía no se descargó. Vuelve a la ficha y pulsa «Instalar lo necesario».',
+  'merr.local.noNode':
+    'Falta Node.js, el programa que instala este conector, y todavía no se descargó. Vuelve a la ficha y pulsa «Instalar lo necesario».',
   'merr.local.versionMismatch': 'Lo instalado no es la versión {version} que revisó Lazunox. Se borró todo.',
   'merr.local.noEdit':
     'Este conector se gestiona desde Personalización: editar su programa le quitaría el modo de solo consulta. Quítalo y vuélvelo a añadir.'

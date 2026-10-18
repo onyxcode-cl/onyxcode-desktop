@@ -102,6 +102,10 @@ export const wizard = {
   'wizard.setup.craft.hint': 'Downloaded just once (about {mb} MB) and checked to be genuine before use. No administrator password needed.',
   'wizard.setup.craft.retryHint': 'Press “Retry” or do it later from Settings.',
   'wizard.setup.sandbox': 'Isolated environment for Overdrive',
+  'wizard.setup.runtimes': 'Node.js and uv (to connect your email and calendar)',
+  'wizard.setup.runtimes.hint':
+    'Two programs used by the email, calendar and files connectors. Downloaded once (about {mb} MB) from nodejs.org and github.com and checked before use. It does not ask for an administrator password.',
+  'wizard.setup.runtimes.retryHint': 'Press “Try again” or do it later from Settings. Without this only those connectors fail.',
   'wizard.setup.sandbox.hint': 'Optional, only for Tasks mode. Set up once (about 2 GB of disk), using what the app already includes.',
   'wizard.setup.run': 'Set everything up',
   'wizard.setup.running': 'Setting up…',
@@ -182,6 +186,7 @@ export const wizard = {
   'preflight.c.disk': 'Disk space',
   'preflight.c.engine': 'Agent engine',
   'preflight.c.craft': 'Document designer (ArtCraft)',
+  'preflight.c.runtimes': 'Node.js and uv (to connect your email and calendar)',
   'preflight.c.sandbox': 'Overdrive isolated environment',
   'preflight.c.helper': 'Computer control helper',
   'preflight.c.perms': 'macOS permissions',
@@ -194,6 +199,10 @@ export const wizard = {
     'Optional, to create and view Word, Excel, PowerPoint and PDF files with good design. Downloaded from GitHub (about {mb} MB) and verified before use.',
   'preflight.hint.craft.incomplete':
     'Some pieces are missing or damaged; they are downloaded again (about {mb} MB) and verified before use.',
+  'preflight.hint.runtimes.missing':
+    'Two small programs used by the email, calendar and files connectors. Downloaded once (about {mb} MB) from nodejs.org and github.com and checked to be the genuine files before use. It does not ask for an administrator password. Everything else works without them.',
+  'preflight.hint.runtimes.broken':
+    'Some pieces are missing or damaged; they are downloaded again (about {mb} MB) from nodejs.org and github.com and verified before use.',
   'preflight.hint.sandbox.needsSetup':
     'Optional, only for Tasks mode. Set up once (about 2 GB of disk), using what the app already includes.',
   'preflight.hint.sandbox.broken':

@@ -39,6 +39,7 @@ import {
   installLocalFromCatalog,
   removeLocalFromCatalog
 } from '../extras/mcp-catalog-install'
+import { runtimesService } from '../runtimes/service'
 import { defaultRunner, findExecutable, stageClientFileFromDisk, type LocalDeps, type StagedClient } from '../extras/local-connectors'
 import { LOCK_FILE_TEXT } from '../extras/local-connector-files'
 import { findLocalItem } from '@shared/mcp-catalog'
@@ -427,6 +428,12 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     files: LOCK_FILE_TEXT,
     run: defaultRunner,
     find: (name) => findExecutable(name),
+    // Node.js y uv de la app (F8-B195): se usan SIEMPRE que existan; el del sistema es solo respaldo.
+    app: () => runtimesService().bins(),
+    appMissingBytes: () => {
+      const st = runtimesService().check()
+      return st.unsupported ? 0 : st.missingBytes
+    },
     now: () => Date.now()
   })
   const stagedClients = new Map<string, StagedClient>()

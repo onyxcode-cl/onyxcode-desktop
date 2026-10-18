@@ -9,6 +9,7 @@ import type { OpencodeInfo } from '@shared/types'
 
 let craft: 'missing' | 'installed' = 'installed'
 let sandbox: 'ready' | 'missing' = 'ready'
+let runtimes: 'none' | 'ready' | 'missing' = 'none'
 const channels: string[] = []
 
 vi.mock('../tasks/impl/bridge', () => ({
@@ -17,6 +18,14 @@ vi.mock('../tasks/impl/bridge', () => ({
     channels.push(channel)
     if (channel === 'craft:status') return { status: craft === 'missing' ? { state: 'missing', sizeBytes: 300e6 } : { state: 'installed' } }
     if (channel === 'tasks:sandbox:status') return { state: sandbox }
+    if (channel === 'runtimes:status')
+      return {
+        offered: runtimes !== 'none',
+        items: [],
+        ready: runtimes === 'ready',
+        missingBytes: runtimes === 'missing' ? 67_329_746 : 0,
+        installing: false
+      }
     throw new Error(`canal inesperado ${channel}`)
   })
 }))
@@ -54,6 +63,7 @@ beforeEach(() => {
   vi.unstubAllGlobals()
   craft = 'installed'
   sandbox = 'ready'
+  runtimes = 'none'
   channels.length = 0
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -108,6 +118,27 @@ describe('Welcome: algo requiere atención → tarjeta con la lista', () => {
     expect(host.textContent).not.toContain('Permisos de macOS')
     expect(buttons()).toContain('Preparar todo')
     expect(buttons().some((b) => /^Preparar todo \(\d+\)$/.test(b))).toBe(false)
+  })
+
+  it('Mac con Node.js y uv sin descargar: fila en lenguaje llano con tamaño y orígenes, dentro de «Preparar todo»', async () => {
+    runtimes = 'missing'
+    await mount('darwin', info())
+    expect(section().dataset.view).toBe('attention')
+    const text = host.textContent ?? ''
+    expect(text).toContain('Node.js y uv (para conectar tu correo y calendario)')
+    expect(text).toContain('67 MB')
+    expect(text).toContain('nodejs.org y github.com')
+    expect(buttons()).toContain('Preparar todo')
+    expect(channels).not.toContain('runtimes:install') // nada se descarga solo
+  })
+
+  it('con Node.js y uv ya listos (o sin conectores locales, p. ej. Windows) la fila no aparece', async () => {
+    runtimes = 'ready'
+    await mount('darwin', info())
+    expect(section().dataset.view).toBe('greeting')
+    runtimes = 'none'
+    await mount('win32', info())
+    expect(host.textContent).not.toContain('Node.js y uv')
   })
 
   it('primera vez en Windows con el entorno aislado sin preparar: lista con ese componente', async () => {

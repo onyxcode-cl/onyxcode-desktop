@@ -119,9 +119,16 @@ export interface McpCatalogProvenance {
 export interface LocalConnectorReadiness {
   /** La plataforma está entre las que la ficha admite. */
   platformOk: boolean
-  /** Gestor necesario (`uv` o `npm`) y si se encontró en este equipo. */
+  /** Gestor necesario (`uv` o `npm`) y si se encontró en este equipo (el de la app o, de respaldo, el del sistema). */
   manager: 'uv' | 'npm'
   managerFound: boolean
+  /**
+   * De dónde sale el gestor (F8-B195): `app` = Node.js/uv que Lazunox descargó y verificó; `system` = el que ya había en el equipo
+   * (respaldo, solo si la app no tiene el suyo); `missing` = no hay ninguno y la ficha ofrece «Instalar lo necesario».
+   */
+  runtime: 'app' | 'system' | 'missing'
+  /** Bytes que bajaría «Instalar lo necesario» (0 si no hace falta o esta plataforma no lo permite). */
+  installBytes: number
 }
 
 export interface McpCatalogState {

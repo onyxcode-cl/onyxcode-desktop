@@ -12,6 +12,8 @@ function harness(over: Partial<InstallApi> = {}) {
   const api: InstallApi = {
     craftInstall: vi.fn(async () => (log.push('craft'), { ok: true })),
     craftProgress: vi.fn(async () => 42),
+    runtimesInstall: vi.fn(async () => (log.push('runtimes'), { ok: true })),
+    runtimesProgress: vi.fn(async () => 55),
     sandboxSetup: vi.fn(async () => log.push('sandbox')),
     sandboxStatus: vi.fn(async () => ({ state: 'ready', setup: null })),
     fail: vi.fn(async (id, code) => ({ detail: `detalle ${id} ${code}` })),
@@ -25,6 +27,45 @@ function harness(over: Partial<InstallApi> = {}) {
   }
   return { api, ev, log, runtime, details }
 }
+
+describe('Node.js y uv en la preparación', () => {
+  it('se instalan entre ArtCraft y el entorno aislado, en el orden del plan', async () => {
+    const h = harness()
+    const out = await runInstall(['craft', 'runtimes', 'sandbox'], h.api, h.ev)
+    expect(h.log).toEqual(['craft', 'runtimes', 'sandbox'])
+    expect(out.map((o) => o.ok)).toEqual([true, true, true])
+    expect(h.runtime).toContainEqual(['runtimes', null])
+  })
+  it('un fallo de la descarga NO bloquea el resto: queda el motivo real y sigue con el entorno aislado', async () => {
+    const h = harness({ runtimesInstall: async () => ({ ok: false, error: 'hash', message: 'x' }) })
+    const out = await runInstall(['runtimes', 'sandbox'], h.api, h.ev)
+    expect(out[0]).toEqual({ id: 'runtimes', ok: false, code: 'hash', message: 'x' })
+    expect(out[1]).toEqual({ id: 'sandbox', ok: true })
+    expect(h.runtime).toContainEqual(['runtimes', { state: 'failed', error: 'hash' }])
+    expect(h.api.fail).toHaveBeenCalledWith('runtimes', 'hash', 'x')
+  })
+  it('si el IPC ni responde, el motivo es «download» (nunca un fallo mudo) y se puede reintentar', async () => {
+    const h = harness({ runtimesInstall: async () => undefined })
+    const out = await runInstall(['runtimes'], h.api, h.ev)
+    expect(out[0]).toMatchObject({ id: 'runtimes', ok: false, code: 'download' })
+    expect(es[failureKey('runtimes', 'download')]).toBeTruthy()
+    expect(en[failureKey('runtimes', 'download')]).toBeTruthy()
+  })
+  it('informa el porcentaje real de la descarga', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    let ticks = 0
+    const h = harness({
+      runtimesInstall: async () => (await gate, { ok: true }),
+      runtimesProgress: async () => (ticks++ === 1 ? (release(), 90) : 10),
+      sleep: () => new Promise((r) => setTimeout(r, 0))
+    })
+    await runInstall(['runtimes'], h.api, h.ev)
+    const pcts = h.runtime.filter(([, rt]) => rt?.state === 'downloading' && rt.pct !== undefined).map(([, rt]) => rt?.pct)
+    expect(pcts).toContain(10)
+    expect(pcts).toContain(90)
+  })
+})
 
 describe('instalación en orden con progreso', () => {
   it('instala ArtCraft y luego el entorno aislado, y limpia el estado de cada uno al terminar', async () => {

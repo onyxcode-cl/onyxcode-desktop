@@ -40,8 +40,9 @@ import {
   statSync,
   writeFileSync
 } from 'node:fs'
-import { delimiter, join, resolve, sep } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { augmentedPath, minimalEnv } from '../process/child-env'
+import { scopedPath, type AppRuntimeBins } from '../runtimes/runtime-install'
 
 /** Tiempo máximo de la instalación (descarga de ~100 paquetes) y de cada paso. */
 const INSTALL_TIMEOUT_MS = 15 * 60_000
@@ -74,10 +75,11 @@ export const defaultRunner: Runner = (file, args, opts) =>
     )
   })
 
-/** Busca un programa en el PATH ampliado (apps abiertas desde el Finder traen un PATH mínimo). */
+/** Busca un programa del SISTEMA en el PATH ampliado (respaldo: la app usa primero el suyo). Devuelve una ruta absoluta. */
 export function findExecutable(name: string, pathValue: string = augmentedPath()): string | null {
   for (const dir of pathValue.split(delimiter)) {
-    if (!dir) continue
+    // Solo carpetas absolutas: un «.» o una ruta relativa en el PATH nunca puede hacer ejecutar algo de la carpeta actual.
+    if (!dir || !isAbsolute(dir)) continue
     const candidate = join(dir, name)
     try {
       accessSync(candidate, constants.X_OK)
@@ -96,8 +98,39 @@ export interface LocalDeps {
   /** Archivos de bloqueo (`local-connector-files.ts`). */
   files: Readonly<Record<string, string>>
   run: Runner
+  /** Respaldo: busca un programa del sistema por nombre (ruta absoluta). Solo se usa si la app no tiene el suyo. */
   find: (name: string) => string | null
+  /** Node.js y uv de la app (`userData/runtimes`), por ruta absoluta; sin esto solo vale el del sistema. */
+  app?: () => AppRuntimeBins
+  /** Bytes que bajaría «Instalar lo necesario» (0 si no hay nada que instalar o no se puede). */
+  appMissingBytes?: () => number
   now: () => number
+}
+
+/** Con qué se ejecuta el instalador de un conector: lo de la app si existe y, si no, lo del sistema (rutas absolutas siempre). */
+export interface Toolchain {
+  source: 'app' | 'system'
+  /** Ejecutable a lanzar (`uv`, o `node` cuando el gestor es npm con el `npm-cli.js` de la app, o `npm` del sistema). */
+  file: string
+  /** Argumentos que van antes de los del gestor (el `npm-cli.js` de la app). */
+  pre: string[]
+  /** `node` para lanzar el servidor (solo gestor npm). */
+  node: string | null
+  /** Carpetas que se ponen en el PATH del instalador (además de las del sistema). */
+  binDirs: string[]
+}
+
+export function resolveToolchain(rt: LocalRuntime, deps: Pick<LocalDeps, 'find' | 'app'>): Toolchain | null {
+  const app = deps.app?.()
+  if (rt.manager === 'uv') {
+    if (app?.uv) return { source: 'app', file: app.uv, pre: [], node: null, binDirs: [dirname(app.uv)] }
+    const uv = deps.find('uv')
+    return uv ? { source: 'system', file: uv, pre: [], node: null, binDirs: [dirname(uv)] } : null
+  }
+  if (app?.node && app.npmCli) return { source: 'app', file: app.node, pre: [app.npmCli], node: app.node, binDirs: [dirname(app.node)] }
+  const npm = deps.find('npm')
+  const node = deps.find('node')
+  return npm && node ? { source: 'system', file: npm, pre: [], node, binDirs: [...new Set([dirname(node), dirname(npm)])] } : null
 }
 
 const sha256 = (text: string): string => createHash('sha256').update(Buffer.from(text, 'utf8')).digest('hex')
@@ -121,13 +154,20 @@ export function isInside(baseDir: string, dir: string): boolean {
   }
 }
 
-export function localReadiness(item: CatalogLocalConnector, deps: Pick<LocalDeps, 'platform' | 'find'>): LocalConnectorReadiness {
+export function localReadiness(
+  item: CatalogLocalConnector,
+  deps: Pick<LocalDeps, 'platform' | 'find' | 'app' | 'appMissingBytes'>
+): LocalConnectorReadiness {
   const rt = item.runtime
-  const need = rt.manager === 'uv' ? ['uv'] : ['npm', 'node']
+  const tc = resolveToolchain(rt, deps)
+  const platformOk = rt.platforms.includes(deps.platform)
   return {
-    platformOk: rt.platforms.includes(deps.platform),
+    platformOk,
     manager: rt.manager,
-    managerFound: need.every((n) => deps.find(n) !== null)
+    managerFound: tc !== null,
+    // De dónde saldrá el programa que instala el conector: el de la app, el del sistema (respaldo) o falta (la ficha ofrece «Instalar lo necesario»).
+    runtime: tc ? tc.source : 'missing',
+    installBytes: platformOk && !tc ? (deps.appMissingBytes?.() ?? 0) : 0
   }
 }
 
@@ -276,9 +316,12 @@ export async function installLocalFiles(
   if (rt.clientFile) {
     if (!client || deps.now() - client.at > STAGED_TTL_MS) throw new Error(t('merr.local.clientMissing'))
   }
-  const tool = rt.manager === 'uv' ? deps.find('uv') : deps.find('npm')
-  const nodeBin = rt.manager === 'npm' ? deps.find('node') : null
-  if (!tool || (rt.manager === 'npm' && !nodeBin)) throw new Error(t(rt.manager === 'uv' ? 'merr.local.noUv' : 'merr.local.noNode'))
+  const tc = resolveToolchain(rt, deps)
+  if (!tc) throw new Error(t(rt.manager === 'uv' ? 'merr.local.noUv' : 'merr.local.noNode'))
+  const tool = tc.file
+  const nodeBin = tc.node
+  // PATH acotado: solo la carpeta del runtime y las del sistema (nunca el PATH del usuario ni el ampliado de la app).
+  const pathOnly = scopedPath(deps.platform, tc.binDirs)
 
   mkdirSync(deps.baseDir, { recursive: true, mode: 0o700 })
   mkdirSync(dir, { mode: 0o700 })
@@ -292,6 +335,7 @@ export async function installLocalFiles(
     }
     if (rt.manager === 'uv') {
       const env = minimalEnv({
+        PATH: pathOnly,
         UV_PYTHON_INSTALL_DIR: join(dir, 'python'),
         UV_NO_PROGRESS: '1',
         UV_NO_CONFIG: '1',
@@ -326,12 +370,13 @@ export async function installLocalFiles(
       writeFileSync(emptyRc, '', { encoding: 'utf8', mode: 0o600 })
       writeFileSync(emptyGlobalRc, '', { encoding: 'utf8', mode: 0o600 })
       const cache = join(dir, '.npm-cache')
-      const env = minimalEnv({ npm_config_cache: cache, npm_config_update_notifier: 'false', NO_COLOR: '1' })
+      const env = minimalEnv({ PATH: pathOnly, npm_config_cache: cache, npm_config_update_notifier: 'false', NO_COLOR: '1' })
       await step(
         deps,
         'npm ci',
         tool,
         [
+          ...tc.pre,
           'ci',
           '--ignore-scripts',
           '--no-audit',

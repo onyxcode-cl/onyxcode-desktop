@@ -31,6 +31,60 @@ describe('revisión de arranque: todo listo', () => {
   })
 })
 
+describe('Node.js y uv (conectores locales, F8-B195)', () => {
+  const rt =
+    (o: Partial<ReturnType<NonNullable<PreflightDeps['runtimes']>>> = {}): NonNullable<PreflightDeps['runtimes']> =>
+    () => ({
+      offered: true,
+      ready: false,
+      broken: false,
+      sizeBytes: 67_329_746,
+      version: '24.22.0',
+      ...o
+    })
+  it('faltan: componente opcional e instalable, con su tamaño; no bloquea', async () => {
+    const r = await runPreflightChecks(deps({ runtimes: rt() }))
+    expect(r.components.find((c) => c.id === 'runtimes')).toMatchObject({
+      essential: false,
+      ok: false,
+      installable: true,
+      reason: 'missing',
+      sizeBytes: 67_329_746
+    })
+    expect(blocking(r)).toEqual([])
+    expect(installPlan(r).map((c) => c.id)).toEqual(['runtimes'])
+  })
+  it('dañados: el motivo es «broken» (se vuelven a bajar)', async () => {
+    expect(await get({ runtimes: rt({ broken: true }) }, 'runtimes')).toMatchObject({ ok: false, reason: 'broken' })
+  })
+  it('listos: ok y sin nada pendiente', async () => {
+    const r = await runPreflightChecks(deps({ runtimes: rt({ ready: true, sizeBytes: 0 }) }))
+    expect(r.components.find((c) => c.id === 'runtimes')).toMatchObject({ ok: true })
+    expect(optionalPending(r)).toEqual([])
+  })
+  it('en una plataforma sin conectores locales no aparece (Windows hoy)', async () => {
+    expect(await get({ platform: 'win32', runtimes: rt({ offered: false }) }, 'runtimes')).toBeUndefined()
+  })
+  it('si la comprobación se rompe no bloquea y no aparece', async () => {
+    const onCheckError = vi.fn()
+    const c = await get(
+      {
+        runtimes: () => {
+          throw new Error('x')
+        },
+        onCheckError
+      },
+      'runtimes'
+    )
+    expect(c).toBeUndefined()
+    expect(onCheckError).toHaveBeenCalledWith('runtimes', expect.any(Error))
+  })
+  it('el disco avisa si no alcanza para ArtCraft + Node.js y uv', async () => {
+    const r = await runPreflightChecks(deps({ runtimes: rt(), freeBytes: () => 300e6 }))
+    expect(r.components.find((c) => c.id === 'disk')).toMatchObject({ ok: false, reason: 'low-space' })
+  })
+})
+
 describe('motor', () => {
   it('ausente: esencial y no instalable', async () => {
     expect(await get({ engine: async () => ({ found: false, version: null }) }, 'engine')).toMatchObject({

@@ -110,6 +110,8 @@ module.exports = {
     'resources/opencode/skills/**',
     // Pin de ArtCraft (descarga bajo demanda): lo lee `main/office/craft/service.ts` desde app.asar.unpacked.
     'resources/craft/**',
+    // Pin de Node.js y uv para los conectores locales (descarga bajo demanda): lo lee `main/runtimes/service.ts` desde app.asar.unpacked.
+    'resources/runtimes/**',
     ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : []),
     // Control remoto (F8-B48): el addon nativo de WebRTC (`@node-datachannel/<plataforma>/node_datachannel.node`) no puede cargarse desde el .asar.
     'node_modules/@node-datachannel/**',

@@ -177,7 +177,7 @@ export function computeInstalled(prov: ProvenanceMap, cfg: AppMcpConfig): McpCat
 export function catalogState(
   prov: ProvenanceMap,
   cfg: AppMcpConfig,
-  deps: Pick<LocalDeps, 'platform' | 'find'> = { platform: process.platform, find: () => null }
+  deps: Pick<LocalDeps, 'platform' | 'find' | 'app' | 'appMissingBytes'> = { platform: process.platform, find: () => null }
 ): McpCatalogState {
   const local: Record<string, LocalConnectorReadiness> = {}
   for (const item of LOCAL_CATALOG) local[item.id] = localReadiness(item, deps)

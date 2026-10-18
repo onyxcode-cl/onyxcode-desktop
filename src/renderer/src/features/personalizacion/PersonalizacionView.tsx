@@ -551,6 +551,7 @@ export function PersonalizacionView(): React.JSX.Element {
           readiness={mcp.catalog?.local[wizardItem.id]}
           onPickClient={(id) => mcp.pickClient(id)}
           onInstall={(req) => mcp.installLocal(req)}
+          onRuntimeChanged={() => mcp.refresh()}
           onClose={() => setWizard(null)}
         />
       )}

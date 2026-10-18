@@ -47,6 +47,7 @@ import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderC
 import { SwitchNoticeBar } from '../settings/impl/SwitchNoticeBar'
 import { Badge, ErrorText } from '../settings/impl/ui'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
+import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
 import { Welcome } from './Welcome'
 import {
   canAdvance,
@@ -687,7 +688,7 @@ function StepModes(): React.JSX.Element {
 
 // ───────────── Paso 5: prepara tu equipo (permisos + componentes) ─────────────
 
-type SetupItemId = 'craft' | 'sandbox'
+type SetupItemId = 'craft' | 'runtimes' | 'sandbox'
 type SetupState = 'idle' | 'running' | 'done' | 'failed'
 
 /**
@@ -702,6 +703,8 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
   const [items, setItems] = useState<Partial<Record<SetupItemId, SetupState>>>({})
   const [craftMb, setCraftMb] = useState(0)
   const [craftError, setCraftError] = useState<string | undefined>()
+  const [runtimesMb, setRuntimesMb] = useState(0)
+  const [runtimesError, setRuntimesError] = useState<string | undefined>()
   const [pct, setPct] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
@@ -713,6 +716,12 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
       setCraftMb(Math.round(o.status.sizeBytes / 1e6))
       set('craft', 'idle')
     } else if (o?.status.state === 'installed') set('craft', 'done')
+    // Node.js y uv (conectores locales): solo donde hay conectores locales.
+    const rs = await runtimesApi.status().catch(() => null)
+    if (rs?.offered) {
+      setRuntimesMb(Math.round(rs.missingBytes / 1e6))
+      set('runtimes', rs.ready ? 'done' : 'idle')
+    }
     if (caps.tasks && caps.tasksSandbox === 'wsl') {
       const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
       if (s) set('sandbox', s.state === 'ready' ? 'done' : 'idle')
@@ -742,6 +751,20 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
         setCraftError(installFailureCode(r))
         set('craft', r?.ok ? 'done' : 'failed')
       }
+      if (items.runtimes && items.runtimes !== 'done') {
+        set('runtimes', 'running')
+        const poll = setInterval(() => {
+          void runtimesApi
+            .status()
+            .then((s) => setPct(runtimesPct(s)))
+            .catch(() => undefined)
+        }, 1000)
+        const r = await runtimesApi.install().catch(() => undefined)
+        clearInterval(poll)
+        setPct(null)
+        setRuntimesError(installFailureCode(r))
+        set('runtimes', r?.ok ? 'done' : 'failed')
+      }
       if (items.sandbox && items.sandbox !== 'done') {
         set('sandbox', 'running')
         const poll = setInterval(() => {
@@ -759,6 +782,8 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
 
   const rows: Array<{ id: SetupItemId; label: string; hint: string }> = []
   if (items.craft) rows.push({ id: 'craft', label: t('wizard.setup.craft'), hint: t('wizard.setup.craft.hint', { mb: craftMb }) })
+  if (items.runtimes)
+    rows.push({ id: 'runtimes', label: t('wizard.setup.runtimes'), hint: t('wizard.setup.runtimes.hint', { mb: runtimesMb }) })
   if (items.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
   const allDone = rows.length > 0 && rows.every((r) => items[r.id] === 'done')
   const anyFailed = rows.some((r) => items[r.id] === 'failed')
@@ -784,11 +809,15 @@ function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.El
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
                   <p className="font-medium text-fg">{r.label}</p>
                   <p className="text-muted">
-                    {st === 'running' && (r.id === 'sandbox' || r.id === 'craft') && pct !== null ? `${pct} % · ` : ''}
+                    {st === 'running' && (r.id === 'sandbox' || r.id === 'craft' || r.id === 'runtimes') && pct !== null
+                      ? `${pct} % · `
+                      : ''}
                     {st === 'failed'
                       ? r.id === 'craft' && craftError
                         ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
-                        : t('wizard.setup.status.failed')
+                        : r.id === 'runtimes' && runtimesError
+                          ? `${t(runtimesErrorKey(runtimesError))} ${t('wizard.setup.runtimes.retryHint')}`
+                          : t('wizard.setup.status.failed')
                       : st === 'done'
                         ? t('wizard.setup.status.ready')
                         : r.hint}

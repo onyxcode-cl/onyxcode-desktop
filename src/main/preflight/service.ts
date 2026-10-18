@@ -22,6 +22,18 @@ export interface CraftCheck {
   parts: CraftPart[]
 }
 
+/** Node.js y uv de la app (conectores locales). Solo disco. */
+export interface RuntimesCheck {
+  /** Esta plataforma ofrece conectores locales (si no, no se pinta ni se descarga nada). */
+  offered: boolean
+  ready: boolean
+  /** Hay algo instalado pero dañado o de otra versión. */
+  broken: boolean
+  /** Bytes que faltan por descargar. */
+  sizeBytes: number
+  version?: string
+}
+
 export interface PreflightDeps {
   platform: string
   appVersion: string
@@ -29,6 +41,8 @@ export interface PreflightDeps {
   /** Motor de agentes: ¿está y ejecuta (`--version`)? */
   engine: () => Promise<{ found: boolean; version: string | null }>
   craft: () => CraftCheck
+  /** Node.js y uv de la app; ausente = no aplica. */
+  runtimes?: () => RuntimesCheck
   /** Entorno aislado de Tareas (solo Windows con WSL); `null` = no aplica. */
   sandbox?: () => Promise<{ state: string; detail?: string } | null>
   /** Ayudante de control (`cu-helper`): solo si esta plataforma ofrece Control del PC. */
@@ -88,6 +102,21 @@ function craftComponent(c: CraftCheck): PreflightComponent | null {
   }
 }
 
+function runtimesComponent(r: RuntimesCheck): PreflightComponent | null {
+  if (!r.offered) return null
+  // Opcional: sin Node.js y uv todo funciona salvo los conectores locales de correo, calendario y archivos; se reintenta cuando se quiera.
+  if (r.ready) return { id: 'runtimes', essential: false, ok: true, installable: true, ...(r.version ? { version: r.version } : {}) }
+  return {
+    id: 'runtimes',
+    essential: false,
+    ok: false,
+    installable: true,
+    reason: r.broken ? 'broken' : 'missing',
+    sizeBytes: r.sizeBytes,
+    ...(r.version ? { version: r.version } : {})
+  }
+}
+
 export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightReport> {
   const ms = d.timeoutMs ?? CHECK_TIMEOUT_MS
   const out: PreflightComponent[] = []
@@ -105,9 +134,10 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     }
   }
 
-  const [engine, craft, sandbox, mac, free, writable] = await Promise.all([
+  const [engine, craft, runtimes, sandbox, mac, free, writable] = await Promise.all([
     guard('engine', d.engine),
     guard('craft', d.craft),
+    d.runtimes ? guard('runtimes', d.runtimes) : Promise.resolve(null),
     d.sandbox ? guard('sandbox', d.sandbox, Math.max(ms, SANDBOX_TIMEOUT_MS)) : Promise.resolve(null),
     d.mac ? guard('perms', d.mac.status) : Promise.resolve(null),
     guard('disk', d.freeBytes),
@@ -139,6 +169,9 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
   const cc = craft ? craftComponent(craft) : null
   if (cc) out.push(cc)
 
+  const rc = runtimes ? runtimesComponent(runtimes) : null
+  if (rc) out.push(rc)
+
   if (sandbox && !SANDBOX_IGNORED.has(sandbox.state)) {
     const ok = sandbox.state === 'ready'
     const installable = sandboxInstallable(sandbox)
@@ -153,7 +186,7 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     })
   }
 
-  // Disco: avisa si no alcanza para lo que falte instalar (ArtCraft ×4, entorno aislado ×1); no bloquea la app, solo la instalación.
+  // Disco: avisa si no alcanza para lo que falte instalar (ArtCraft ×4, Node.js y uv ×6, entorno aislado ×1); no bloquea la app, solo la instalación.
   const need = out.reduce((n, c) => (!c.ok && c.installable ? n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1) : n), 0)
   const freeBytes = typeof free === 'number' ? free : null
   const diskOk = need === 0 || freeBytes === null || freeBytes >= need
