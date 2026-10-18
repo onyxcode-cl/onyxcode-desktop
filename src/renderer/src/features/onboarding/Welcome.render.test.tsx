@@ -164,6 +164,22 @@ describe('Welcome: casillas por componente (F8-B197)', () => {
     })
   }
 
+  // F8-B198: cada casilla queda descrita por su texto de ayuda (tamaño y origen) para lectores de pantalla.
+  const described = (id: string): string => {
+    const el = host.querySelector(`[data-testid="pick-${id}"]`) as HTMLInputElement
+    const ref = el.getAttribute('aria-describedby')
+    expect(ref).toBeTruthy()
+    return host.querySelector(`[id="${ref}"]`)?.textContent ?? ''
+  }
+
+  it('cada casilla queda descrita por su ayuda (aria-describedby), con tamaño y origen', async () => {
+    craft = 'missing'
+    runtimes = 'missing'
+    await mount('darwin', info())
+    expect(described('craft')).toContain('300 MB')
+    expect(described('runtimes')).toContain('nodejs.org')
+  })
+
   it('ArtCraft y Node.js y uv salen con su casilla marcada, tamaño y origen', async () => {
     craft = 'missing'
     runtimes = 'missing'

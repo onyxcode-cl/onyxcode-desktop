@@ -53,6 +53,21 @@ afterEach(() => {
 })
 
 describe('«Prepara tu equipo»: casillas por componente', () => {
+  // F8-B198: cada casilla queda descrita por su texto de ayuda (tamaño y origen) para lectores de pantalla.
+  const described = (id: string): string => {
+    const el = host.querySelector(`[data-testid="pick-${id}"]`) as HTMLInputElement
+    const ref = el.getAttribute('aria-describedby')
+    expect(ref).toBeTruthy()
+    return host.querySelector(`[id="${ref}"]`)?.textContent ?? ''
+  }
+
+  it('cada casilla queda descrita por su ayuda (aria-describedby), con tamaño y origen', () => {
+    expect(described('craft')).toContain('205 MB')
+    expect(described('craft')).toContain('GitHub')
+    expect(described('runtimes')).toContain('67 MB')
+    expect(described('runtimes')).toContain('nodejs.org')
+  })
+
   it('ArtCraft y Node.js y uv salen marcados, con su tamaño y de dónde se bajan', () => {
     expect(box('craft').checked).toBe(true)
     expect(box('runtimes').checked).toBe(true)

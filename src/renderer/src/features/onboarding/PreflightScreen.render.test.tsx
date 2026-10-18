@@ -191,6 +191,18 @@ describe('casillas por componente (F8-B197)', () => {
     expect(id).toBeTruthy()
     expect(html).toContain(`id="${id}"`)
   })
+  it('cada casilla (no solo la primera) apunta a un texto de ayuda que existe y lleva su tamaño', () => {
+    const html = render(faltaTodo())
+    for (const [id, texto] of [
+      ['craft', 'unos 205 MB'],
+      ['runtimes', 'unos 67 MB']
+    ] as const) {
+      const input = new RegExp(`<input[^>]*data-testid="pick-${id}"[^>]*>`).exec(html)?.[0] ?? ''
+      const ref = /aria-describedby="([^"]+)"/.exec(input)?.[1]
+      expect(ref).toBeTruthy()
+      expect(new RegExp(`id="${ref}"[^>]*>[^<]*${texto}`).test(html)).toBe(true)
+    }
+  })
   it('desmarcada no cuenta: el tamaño baja y el botón sigue activo', () => {
     const html = render(faltaTodo(), { unchecked: ['craft'] })
     expect(html).not.toMatch(/data-testid="pick-craft"[^>]*checked=""/)
