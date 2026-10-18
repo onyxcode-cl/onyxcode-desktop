@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.3.0] - 2026-10-18
+
+### Novedades
+
+- **Lazunox instala lo que necesitan tus conectores de correo y calendario.** Antes, para conectar Gmail, Google Calendar, Drive u Outlook había que tener instalados `uv` o Node en tu equipo, y la ficha te decía «instálalo a mano». Ahora «Prepara tu equipo» incluye, marcado por defecto, **Node.js y uv** (unos 67 MB). Se bajan solo de sus sitios oficiales (nodejs.org y GitHub), con una versión exacta y una huella que se comprueba antes de usarlos; si no coincide, se borran sin ejecutarse. Quedan en una carpeta propia de Lazunox: no hacen falta permisos de administrador y no se toca nada de tu sistema. Se usan solo para los conectores que tú apruebas.
+- **«Instalar lo necesario» en la ficha del conector.** Si falta algo, el botón lo descarga y sigue con la instalación del conector, sin que tengas que ir a otra parte.
+- **Ajustes › Overdrive › Node.js y uv.** Ves su estado y versión, y puedes quitarlos (los conectores ya instalados dejan de arrancar hasta que los reinstales).
+
+### Mejoras
+
+- Si la descarga falla o la omites con «Más tarde», la app sigue funcionando igual: solo los conectores locales de correo y calendario necesitan estos programas, y puedes reintentar cuando quieras.
+
 ## [1.2.1] - 2026-10-18
 
 ### Mejoras
