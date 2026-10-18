@@ -2042,7 +2042,8 @@ permitted», porque el kernel devuelve EPERM y no ENOENT/EACCES). Por eso `sandb
 queda confinado al sandbox. Consecuencia: los commits del agente no usan el nombre/correo del `~/.gitconfig` del usuario
 (git caía en el nombre completo del usuario de macOS y el nombre del equipo, datos personales que acababan en el historial;
 desde F8-B197 `sandboxEnv` fija `GIT_AUTHOR_*`/`GIT_COMMITTER_*` a «Lazunox» y `lazunox@localhost.invalid`; el backend WSL no
-cambia: su protocolo no admite `GIT_*` y corre con un usuario genérico). Un efecto menor: `bash -c` puede imprimir por stderr «Operation not
+cambia por variables —su protocolo no admite `GIT_*`—: en Windows la firma se fija en `/etc/gitconfig` de la imagen, F8-B198,
+ver §3 quinquagies octies). Un efecto menor: `bash -c` puede imprimir por stderr «Operation not
 permitted» al intentar leer `~/.bashrc` cuando su stdin es un socket; no falla.
 
 **Política de carpetas.** `folder-policy.ts` y `manager.ts` reutilizan la misma lista: ya no se puede autorizar como
@@ -2099,3 +2100,51 @@ la persona (botón «Instalar lo necesario», «Preparar todo» o Ajustes); nada
 
 **Qué NO bloquea.** Es un componente opcional de «Preparando Lazunox»: si la descarga falla o se deja para después, la app funciona y solo fallan los conectores locales; se reintenta desde la
 misma pantalla, la ficha o Ajustes › Overdrive › «Node.js y uv». En Windows las funciones están implementadas y probadas, pero no se ofrecen (los conectores locales siguen «Solo en Mac»).
+
+
+## 3 quinquagies octies. Uso de Overdrive, causas de fallo de instalación y firma de commits en Windows (F8-B198)
+
+**Uso de Overdrive (`tasks:usage:summary`, clase X).** «Ajustes › Uso» sumaba Overdrive solo con las tareas que la app tenía cargadas
+en memoria. Cada carpeta aprobada tiene su servidor aislado y, dentro de su directorio privado
+(`userData/tasks-sandbox/<clave>/data/opencode/opencode.db`), su propia base de datos de sesiones, donde el motor ya guarda los
+totales (tokens y costo) de cada sesión. `src/main/tasks/usage-summary.ts` los LEE sin arrancar ningún servidor (`node:sqlite`, incluido en
+Electron 44). Qué sale de `main`: por sesión, id opaco, id del padre, modelo (id y servicio), costo, tokens y fecha de la última actividad; **nunca**
+títulos, mensajes, rutas, carpetas ni nombres de proyecto (prueba: el JSON no contiene el título ni la ruta sembrados). El canal no tiene
+parámetros (esquema `none`), la clave del directorio la calcula `main` con `sandboxKey` a partir de las carpetas aprobadas (nada que venga del
+renderer decide qué archivo se abre) y es **X**: el celular nunca lo ve. **El archivo no es de fiar**: el servidor aislado puede escribir en su propio
+directorio, así que un archivo manipulado es posible. Controles: solo archivos normales en la ruta fija (`lstat`, sin enlaces), apertura de solo
+lectura (`readOnly` + `PRAGMA query_only`), sin extensiones, `session` debe ser una TABLA (no una vista) con las columnas esperadas, cada valor se
+valida (texto corto, números finitos y no negativos) y todo tiene tope (300 sesiones por carpeta, 1000 en total). Lo peor que logra un archivo
+manipulado es falsear sus propias cifras de uso. Si el archivo no se puede leer o es de otra versión del motor, la carpeta cuenta como «no leída» y la
+pantalla lo dice. **Límites dichos con honestidad:** (1) en Windows las tareas viven en el disco virtual de WSL, donde la app no lee: `supported: false` y
+la pantalla dice «Overdrive no se cuenta aquí todavía» en vez de un 0; (2) el esquema de `session` es del motor fijado (`opencode.db`, 1.19.0): al
+actualizarlo hay que repasar `usage-summary.ts` (la lectura falla cerrada, no inventa cifras); (3) una lectura de solo lectura sobre una base en modo WAL
+puede crear los archivos `-wal`/`-shm` junto al registro (inocuos; el servidor sigue escribiendo con normalidad, probado); (4) las tareas de Control total
+comparten el almacén del motor principal, así que ya se contaban por su agente; (5) la consulta es síncrona en `main` (decenas de milisegundos con cientos de sesiones).
+
+**Causas de fallo de instalación.** Node.js y uv y ArtCraft distinguen ahora `offline` (sin conexión), `hash`/`size` (huella o tamaño incorrectos),
+`disk` (sin espacio), `permission` (sin permiso de escritura en la carpeta de datos de Lazunox) y `cancelled`; antes un fallo de escritura
+(`EACCES`, `ENOSPC`) se mostraba como «revisa tu conexión». La clasificación mira solo el código del error del sistema (`src/main/util/fs-error.ts`),
+no su texto, y `pinnedDownload` la aplica sin cambiar de contrato (los códigos nuevos son más específicos que `io`; `wsl-setup.ts` los trata como
+cualquier fallo de descarga, sin cambios). No cambia ninguna garantía de verificación.
+
+**Firma de commits en Windows (investigación; solo se implementó lo que no toca zonas intocables).** Síntoma: dentro del sandbox WSL el commit sale
+como `Lazunox <lazunox@NOMBRE-DEL-PC.localdomain>`. Medido en el PC de pruebas con una distro desechable importada de la imagen incluida (2026.10.10),
+usuario 1000 y Landlock aplicado con `landlock.py`/`protocol.py` reales: WSL pone a la distro el nombre del equipo (`hostname` y `/etc/hostname`
+valen el del PC aunque la imagen escriba `lazunox`) y el sistema arma el correo con él. Caminos:
+
+1. **`/etc/gitconfig` en la imagen** (`scripts/wsl-rootfs/customize.sh`, fuera de las zonas intocables). Medido: git lo lee con el usuario 1000 y
+   con Landlock (`/etc` es `ro`) y los commits salen como `Lazunox <lazunox@localhost.invalid>`, igual que en macOS; el agente aún puede cambiarlo
+   con `git config --global` (HOME privado), como en macOS (no es un límite de seguridad: solo evita filtrar el nombre del PC). **Implementado**, con
+   la guardia `src/main/tasks/firma-commits.test.ts` (misma identidad que `SANDBOX_GIT_*`). **Falta una acción del dueño:** surte efecto solo con una
+   imagen nueva (reconstruir, subir `version`, regla «solo se avanza de versión»); las distros ya instaladas no cambian. Lo que NO se probó: la
+   reconstrucción real de la imagen con Docker (se verificó el mecanismo editando `/etc/gitconfig` en una distro importada de la imagen actual).
+2. **`[network] hostname=lazunox` en `resources/wsl/wsl.conf`**: medido, la distro de prueba pasa a llamarse `lazunox` (el correo sería
+   `lazunox@lazunox.localdomain`). Es zona intocable (`resources/wsl/*`; la imagen exige `wsl.conf` byte a byte) y también necesita imagen nueva. No implementado.
+3. **Permitir `GIT_AUTHOR_*`/`GIT_COMMITTER_*` en el protocolo** (`resources/wsl/protocol.py` y `wsl-spec.ts`): funciona en las distros ya instaladas
+   sin imagen nueva, pero es zona intocable y amplía la lista de variables aceptadas del anfitrión. No implementado.
+4. **Un gancho `shell.env` en el plugin `lazunox-env`** (`src/main/tasks/opencode-config.ts`, zona intocable: puerta del plan): una sola implementación para
+   macOS y Windows y sin imagen nueva, pero hay que distinguir bien los servidores aislados (`LAZUNOX_TASKS_FOLDER` sin `LAZUNOX_FULL_ACCESS`) para no firmar con la
+   identidad fija los commits de Chat/Code ni de Control total. No implementado.
+
+Recomendación mínima: el camino 1 (ya hecho) en la próxima imagen; si no se quiere esperar a una imagen, el camino 4 con la condición anterior.

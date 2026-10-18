@@ -70,6 +70,14 @@ chown -R 0:0 "$PYSITE"
 find "$PYSITE" -type d -exec chmod 0755 {} +
 find "$PYSITE" -type f -exec chmod u+rw,go+r,go-w {} +
 
+# 6c. Firma de los commits de las tareas (F8-B198). WSL pone a la distro el nombre del equipo de Windows y, sin configuración, git firma
+# «Lazunox <lazunox@NOMBRE-DEL-PC.localdomain>»: el nombre del PC acabaría en el historial. `/etc/gitconfig` (configuración del sistema) fija la
+# misma firma sin datos personales que macOS (`SANDBOX_GIT_NAME`/`SANDBOX_GIT_EMAIL` de sandbox-profile.ts; dominio `.invalid`, RFC 2606).
+# Ni el protocolo del lanzador (que no admite `GIT_*`) ni el montaje de solo lectura de `/etc` bajo Landlock lo impiden; la guardia
+# `src/main/tasks/firma-commits.test.ts` vigila que sigan iguales. Es solo lectura para el agente, pero `git config --global` (HOME privado) lo supera.
+printf '[user]\n\tname = Lazunox\n\temail = lazunox@localhost.invalid\n' >"$ROOT/etc/gitconfig"
+chmod 0644 "$ROOT/etc/gitconfig"
+
 # 7. Limpieza de lo que varía entre construcciones.
 : >"$ROOT/etc/machine-id"
 printf 'lazunox\n' >"$ROOT/etc/hostname"

@@ -4,6 +4,7 @@
 // captura por CDP (`Page.captureScreenshot`, 2x). No toca la app instalada, su userData, su cloudflared ni el motor real.
 import { execFileSync } from 'node:child_process'
 import {
+  chmodSync,
   copyFileSync,
   cpSync,
   existsSync,
@@ -45,6 +46,10 @@ const SCENARIOS = [
   'preparando-motor',
   // F8-B197: casillas por componente. `preparando-casillas` = la misma pantalla con ArtCraft desmarcado (cambia el tamaño a descargar).
   'preparando-casillas',
+  // F8-B198: causa real del fallo de instalación, con la app real y sin descargar nada: `preparando-permiso` = las carpetas de datos de
+  // ArtCraft y de Node.js y uv sin permiso de escritura (falla ANTES de bajar nada); `preparando-sin-conexion` = proxy muerto (no hay conexión).
+  'preparando-permiso',
+  'preparando-sin-conexion',
   // Asistente de primer uso. Arranque «sin motor» (OpenCode ausente): `onboarding` (primera pantalla con la tarjeta de atención) y
   // `onboarding-motor` (paso del motor). Arranque «motor incluido»: `onboarding-inicio` (saludo directo) y los cuatro pasos.
   'onboarding',
@@ -135,6 +140,9 @@ const SCENARIOS = [
   // Ajustes › Uso (F8-B189): sin uso todavía y con uso de varias conversaciones (modelos gratuito, de pago y sin costo; Chat y Code).
   'uso-vacio',
   'uso',
+  // F8-B198: Overdrive se lee de los registros aislados de las carpetas aprobadas (una con tareas, otra con el registro dañado). El estado «no se
+  // cuenta aquí todavía» (Windows) no se puede fotografiar aquí: el puente de Electron no se deja sustituir; lo cubre UsageSection.test.tsx.
+  'uso-overdrive',
   'ajustes-general',
   'ajustes-modelos',
   'ajustes-celular',
@@ -215,7 +223,8 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(uso|preparando-casillas|onboarding-casillas|rutinas-bandeja-larga|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
+const SMALL_ALSO =
+  /^(uso|preparando-casillas|preparando-permiso|preparando-sin-conexion|onboarding-casillas|rutinas-bandeja-larga|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
 const TOTAL_TIMEOUT_MS = Number(process.env.LAZUNOX_SHOT_TIMEOUT_MS) || 330_000
 
 function arg(name) {
@@ -365,7 +374,7 @@ process.on('exit', () => {
 })
 
 // ---- arranque de la app ----
-async function launch(name, { settings = {}, env = {}, noServer = false } = {}) {
+async function launch(name, { settings = {}, env = {}, noServer = false, args = [], seed = null } = {}) {
   const userData = mk(TMP, `ud-${name}-`)
   const xdg = (n) => {
     const d = join(userData, 'xdg', n)
@@ -386,6 +395,8 @@ async function launch(name, { settings = {}, env = {}, noServer = false } = {}) 
       ...settings
     })
   )
+  // Preparar el perfil temporal ANTES de arrancar (carpetas sin permiso, registros de Overdrive de muestra…).
+  if (seed) await seed(userData)
   const e = {}
   for (const [k, v] of Object.entries(process.env)) if (typeof v === 'string') e[k] = v
   delete e.ELECTRON_RUN_AS_NODE
@@ -409,7 +420,7 @@ async function launch(name, { settings = {}, env = {}, noServer = false } = {}) 
     try {
       electronApp = await _electron.launch({
         executablePath: require('electron'),
-        args: ['--use-mock-keychain', join(repo, 'out/main/index.js'), `--user-data-dir=${userData}`],
+        args: ['--use-mock-keychain', ...args, join(repo, 'out/main/index.js'), `--user-data-dir=${userData}`],
         cwd: repo,
         env: e,
         timeout: 10_000
@@ -636,14 +647,22 @@ async function tgSessionsSetup(ctx) {
   const { page, fake, tg } = ctx
   await tgEnsureLinked(ctx)
   await seedChats(ctx) // otras conversaciones que NO se eligen
-  await fake.script({ match: 'plan de la semana', title: TG_SESSION_TITLE, steps: [{ type: 'text', text: 'Plan inicial: lunes pruebas, miércoles informe.' }] })
+  await fake.script({
+    match: 'plan de la semana',
+    title: TG_SESSION_TITLE,
+    steps: [{ type: 'text', text: 'Plan inicial: lunes pruebas, miércoles informe.' }]
+  })
   await newChat(page)
   await sendChat(page, 'Hazme el plan de la semana')
   await vis(page.getByText(/Plan inicial: lunes/), 30_000)
   await sleep(700)
   // Una conversación de Code: la lista muestra las dos clases.
   await openCode(ctx)
-  await fake.script({ match: 'Revisa el carrito de Telegram', title: 'Revisión del carrito', steps: [{ type: 'text', text: 'El carrito está bien.' }] })
+  await fake.script({
+    match: 'Revisa el carrito de Telegram',
+    title: 'Revisión del carrito',
+    steps: [{ type: 'text', text: 'El carrito está bien.' }]
+  })
   const box = page.getByRole('combobox', { name: 'Mensaje para el asistente' })
   await box.fill('Revisa el carrito de Telegram')
   await box.press('Enter')
@@ -655,7 +674,10 @@ async function tgSessionsSetup(ctx) {
   await waitUntil(() => tg.messages.length > n && tg.messages.at(-1).reply_markup, 25_000, 'lista de sesiones')
   const list = tg.messages.at(-1)
   const btns = list.reply_markup.inline_keyboard.flat()
-  console.log('VERIF-TELEGRAM-SESIONES lista => ' + JSON.stringify({ botones: btns.map((b) => b.text), tieneCode: /Code: tienda-web/.test(list.text), tieneChat: /Chat/.test(list.text) }))
+  console.log(
+    'VERIF-TELEGRAM-SESIONES lista => ' +
+      JSON.stringify({ botones: btns.map((b) => b.text), tieneCode: /Code: tienda-web/.test(list.text), tieneChat: /Chat/.test(list.text) })
+  )
   const pick = btns.find((b) => b.text.includes(TG_SESSION_TITLE))
   if (!pick) throw new Error(`la lista no trae «${TG_SESSION_TITLE}»: ${list.text}`)
   const m = tg.messages.length
@@ -677,9 +699,15 @@ async function tgPhoneShots(ctx) {
   for (const u of tg.userMessages) items.push({ at: u.at, me: true, text: escapeHtmlLocal(u.text) })
   for (const m of tg.messages.filter((x) => x.chat_id === TG_CHAT)) {
     const ed = tg.edits.findLast((e) => e.message_id === m.message_id)
-    items.push({ at: m.at, me: false, text: ed?.text ?? m.text, buttons: ((ed ? ed.reply_markup : m.reply_markup)?.inline_keyboard ?? []).flat().map((b) => b.text) })
+    items.push({
+      at: m.at,
+      me: false,
+      text: ed?.text ?? m.text,
+      buttons: ((ed ? ed.reply_markup : m.reply_markup)?.inline_keyboard ?? []).flat().map((b) => b.text)
+    })
   }
-  for (const d of tg.documents) items.push({ at: d.at, me: false, text: `<i>[archivo] ${escapeHtmlLocal(d.filename)} · ${d.bytes.length} bytes</i>`, buttons: [] })
+  for (const d of tg.documents)
+    items.push({ at: d.at, me: false, text: `<i>[archivo] ${escapeHtmlLocal(d.filename)} · ${d.bytes.length} bytes</i>`, buttons: [] })
   items.sort((a, b) => a.at - b.at)
   const rows = items
     .slice(-9)
@@ -1383,7 +1411,10 @@ async function seedLongInbox(ctx) {
   await goMode(ctx.page, 'Rutinas')
   if (longInboxSeeded) return
   longInboxSeeded = true
-  const bullets = Array.from({ length: 14 }, (_, i) => `- Pedido ${1000 + i}: cliente ${['Norte', 'Sur', 'Centro', 'Oriente'][i % 4]}, total ${(i + 3) * 12500} pesos`).join('\n')
+  const bullets = Array.from(
+    { length: 14 },
+    (_, i) => `- Pedido ${1000 + i}: cliente ${['Norte', 'Sur', 'Centro', 'Oriente'][i % 4]}, total ${(i + 3) * 12500} pesos`
+  ).join('\n')
   await ctx.fake.script({
     match: 'Resume las ventas de ayer',
     steps: [
@@ -2610,9 +2641,14 @@ const S = {
     await toggle.click()
     await sleep(400)
     const sum = ctx.page.getByTestId('inbox-summary').first()
-    const m = await sum.evaluate((el) => ({ overflowY: getComputedStyle(el).overflowY, noClip: el.scrollHeight <= el.clientHeight + 1, h: Math.round(el.clientHeight) }))
+    const m = await sum.evaluate((el) => ({
+      overflowY: getComputedStyle(el).overflowY,
+      noClip: el.scrollHeight <= el.clientHeight + 1,
+      h: Math.round(el.clientHeight)
+    }))
     console.log(`VERIF-INBOX abierta => ${JSON.stringify(m)} aria-expanded=${await toggle.getAttribute('aria-expanded')}`)
-    if (!m.noClip || m.overflowY === 'auto' || m.overflowY === 'scroll') throw new Error('abierta debe mostrar todo sin desplazamiento anidado')
+    if (!m.noClip || m.overflowY === 'auto' || m.overflowY === 'scroll')
+      throw new Error('abierta debe mostrar todo sin desplazamiento anidado')
     await sum.evaluate((el) => el.scrollIntoView({ block: 'center' }))
     return async () => {
       await toggle.click().catch(() => {})
@@ -2717,10 +2753,15 @@ const S = {
     await closeOverlays(page)
     await goMode(page, 'Rutinas')
     const inv = (ch, payload) =>
-      page.evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload]).then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
+      page
+        .evaluate(([c, p]) => window.api.tasks.invoke(c, p), [ch, payload])
+        .then((r) => (r.ok ? r.data : Promise.reject(new Error(JSON.stringify(r)))))
     const before = (await inv('routines:list')).length
     // Una receta de Overdrive, con una pregunta de texto obligatoria y una opcional.
-    await page.getByRole('button', { name: /Nueva rutina/ }).first().waitFor({ state: 'visible', timeout: 15_000 })
+    await page
+      .getByRole('button', { name: /Nueva rutina/ })
+      .first()
+      .waitFor({ state: 'visible', timeout: 15_000 })
     await page.getByTestId('recipe-gastos-semana').click()
     await vis(page.getByTestId('recipe-detail'), 15_000)
     const sections = await page.getByTestId('recipe-detail').innerText()
@@ -2782,13 +2823,54 @@ const S = {
     const t = (input, output, read = 0) => ({ input, output, reasoning: 0, cache: { read, write: 0 } })
     await ctx.fake.usage({
       sessions: [
-        { directory: chat, title: 'Receta de lentejas', agent: 'chat', model: free, cost: 0, tokens: t(18_400, 6_100), agoMs: 2 * 3_600_000 },
+        {
+          directory: chat,
+          title: 'Receta de lentejas',
+          agent: 'chat',
+          model: free,
+          cost: 0,
+          tokens: t(18_400, 6_100),
+          agoMs: 2 * 3_600_000
+        },
         { directory: chat, title: 'Carta al arriendo', agent: 'chat', model: free, cost: 0, tokens: t(9_800, 3_300), agoMs: 1 * DAY },
-        { directory: chat, title: 'Resumen de un contrato', agent: 'chat', model: paid, cost: 0.42, tokens: t(61_000, 12_300), agoMs: 1 * DAY },
-        { directory: code, title: 'Agregar IVA al carrito', agent: 'build', model: paid, cost: 1.37, tokens: t(210_000, 38_000, 480_000), agoMs: 3 * DAY },
+        {
+          directory: chat,
+          title: 'Resumen de un contrato',
+          agent: 'chat',
+          model: paid,
+          cost: 0.42,
+          tokens: t(61_000, 12_300),
+          agoMs: 1 * DAY
+        },
+        {
+          directory: code,
+          title: 'Agregar IVA al carrito',
+          agent: 'build',
+          model: paid,
+          cost: 1.37,
+          tokens: t(210_000, 38_000, 480_000),
+          agoMs: 3 * DAY
+        },
         { directory: code, title: 'Revisar pruebas', agent: 'build', model: own, tokens: t(40_200, 9_100, 12_000), agoMs: 5 * DAY },
-        { directory: code, title: 'Ayudante de búsqueda', agent: 'build', parentID: 'ses_e2e_aux', model: paid, cost: 0.2, tokens: t(30_000, 2_000), agoMs: 3 * DAY },
-        { directory: code, title: 'Migrar a TypeScript', agent: 'build', model: paid, cost: 0.9, tokens: t(90_000, 20_000), agoMs: 20 * DAY }
+        {
+          directory: code,
+          title: 'Ayudante de búsqueda',
+          agent: 'build',
+          parentID: 'ses_e2e_aux',
+          model: paid,
+          cost: 0.2,
+          tokens: t(30_000, 2_000),
+          agoMs: 3 * DAY
+        },
+        {
+          directory: code,
+          title: 'Migrar a TypeScript',
+          agent: 'build',
+          model: paid,
+          cost: 0.9,
+          tokens: t(90_000, 20_000),
+          agoMs: 20 * DAY
+        }
       ]
     })
     await openSettings(ctx.page, 'Uso')
@@ -2797,6 +2879,16 @@ const S = {
     await vis(ctx.page.getByTestId('usage-by-model'), 20_000)
     const status = await ctx.page.getByTestId('usage-status').innerText()
     console.log('VERIF-USO ' + JSON.stringify({ estado: status.replace(/\s+/g, ' ') }))
+  },
+  // F8-B198: Overdrive desde los registros aislados (una carpeta con tareas de dos modelos, otra con el registro dañado).
+  async 'uso-overdrive'(ctx) {
+    await openSettings(ctx.page, 'Uso')
+    await ctx.page.getByTestId('usage-refresh').click()
+    await sleep(900)
+    await vis(ctx.page.getByTestId('usage-by-mode'), 20_000)
+    const modo = await ctx.page.getByTestId('usage-by-mode').innerText()
+    const nota = await ctx.page.getByTestId('usage-note-tasks').innerText()
+    console.log('VERIF-USO-OVERDRIVE ' + JSON.stringify({ filas: modo.replace(/\s+/g, ' '), nota: nota.replace(/\s+/g, ' ') }))
   },
   async 'ajustes-general'(ctx) {
     await openSettings(ctx.page, 'General')
@@ -3384,7 +3476,11 @@ const S = {
     const nodeBin = join(rtDir, `node-${bins.items.find((i) => i.id === 'node').version}`, 'bin', 'node')
     const uvBin = join(rtDir, `uv-${bins.items.find((i) => i.id === 'uv').version}`, 'bin', 'uv')
     const run = (f, a) => execFileSync(f, a, { encoding: 'utf8', env: {} }).trim()
-    out.versiones = { node: run(nodeBin, ['--version']), uv: run(uvBin, ['--version']), pin: bins.items.map((i) => `${i.id} ${i.version} ${i.state}`) }
+    out.versiones = {
+      node: run(nodeBin, ['--version']),
+      uv: run(uvBin, ['--version']),
+      pin: bins.items.map((i) => `${i.id} ${i.version} ${i.state}`)
+    }
     // 3) Con el runtime de la app presente, la ficha lo usa (aunque haya otro en el sistema).
     const tras = await catalog()
     out.trasInstalar = { google: tras['google-workspace'], microsoft: tras['microsoft-365'] }
@@ -3419,7 +3515,9 @@ const S = {
     // 5) Quitar Google: 0 rastros del conector; el runtime compartido SÍ queda.
     await rtRemoveFromTuyos(page, /Gmail, Google Calendar/)
     const cfg2 = JSON.parse(readFileSync(cfgPath, 'utf8'))
-    const prov = existsSync(join(userData, 'mcp-catalog-installs.json')) ? readFileSync(join(userData, 'mcp-catalog-installs.json'), 'utf8') : '{}'
+    const prov = existsSync(join(userData, 'mcp-catalog-installs.json'))
+      ? readFileSync(join(userData, 'mcp-catalog-installs.json'), 'utf8')
+      : '{}'
     out.quitarGoogle = {
       carpetaExiste: existsSync(gdir),
       archivosEnBase: existsSync(base) ? countFiles(base) : 0,
@@ -3430,7 +3528,10 @@ const S = {
     }
     // 6) Microsoft 365 (npm) con el Node de la app.
     const dlg2 = await rtOpenStep2(page, 'microsoft-365')
-    out.fichaMicrosoft = { necesitaDescargar: (await dlg2.locator('[data-testid="pers-local-need-manager"]').count()) > 0, nota: (await dlg2.locator('[data-testid="pers-local-runtime-ready"]').innerText()).trim() }
+    out.fichaMicrosoft = {
+      necesitaDescargar: (await dlg2.locator('[data-testid="pers-local-need-manager"]').count()) > 0,
+      nota: (await dlg2.locator('[data-testid="pers-local-runtime-ready"]').innerText()).trim()
+    }
     const t2 = Date.now()
     await dlg2.locator('[data-testid="pers-local-install"]').click()
     await dlg2.getByText(/está instalado/).waitFor({ state: 'visible', timeout: 600_000 })
@@ -3723,7 +3824,10 @@ const S = {
     await vis(page.locator('[data-telegram-session]'), 15_000)
     const shown = await page.locator('[data-telegram-session]').innerText()
     if (!shown.includes(TG_SESSION_TITLE)) throw new Error(`la sesión activa no se ve en Ajustes: ${shown}`)
-    await page.locator('[data-telegram-session]').first().evaluate((el) => el.scrollIntoView({ block: 'center' }))
+    await page
+      .locator('[data-telegram-session]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'center' }))
     await sleep(300)
   },
   async 'telegram-sesiones-e2e'(ctx) {
@@ -3742,19 +3846,25 @@ const S = {
     const quiet = async () => {
       let last = -1
       let since = Date.now()
-      await waitUntil(async () => {
-        const busy = (await fake.status()).sessions.some((x) => x.running)
-        const count = tg.messages.length + tg.edits.length + tg.documents.length
-        if (busy || count !== last) {
-          last = count
-          since = Date.now()
-          return false
-        }
-        return Date.now() - since > 2000
-      }, 60_000, 'turno terminado')
+      await waitUntil(
+        async () => {
+          const busy = (await fake.status()).sessions.some((x) => x.running)
+          const count = tg.messages.length + tg.edits.length + tg.documents.length
+          if (busy || count !== last) {
+            last = count
+            since = Date.now()
+            return false
+          }
+          return Date.now() - since > 2000
+        },
+        60_000,
+        'turno terminado'
+      )
     }
     const prompts = async () => {
-      const res = await fetch(`${fake.conn.baseUrl}/__e2e/requests?path=/session&method=POST&limit=400`, { headers: { authorization: fake.conn.authorization } })
+      const res = await fetch(`${fake.conn.baseUrl}/__e2e/requests?path=/session&method=POST&limit=400`, {
+        headers: { authorization: fake.conn.authorization }
+      })
       return (await res.json()).filter((r) => /prompt_async$/.test(r.path))
     }
     const idOf = (r) => /\/session\/([^/]+)\/prompt_async/.exec(r.path)?.[1]
@@ -3781,9 +3891,23 @@ const S = {
           delayMs: 1500
         },
         { type: 'fs', op: 'write', path: 'resumen.md', content: '# Resumen\n\n- lunes: pruebas\n- martes: informe\n' },
-        { type: 'tool', tool: 'write', input: { filePath: join(S0.chatDir, 'resumen.md'), content: 'x' }, output: 'ok', title: 'resumen.md', delayMs: 1500 },
+        {
+          type: 'tool',
+          tool: 'write',
+          input: { filePath: join(S0.chatDir, 'resumen.md'), content: 'x' },
+          output: 'ok',
+          title: 'resumen.md',
+          delayMs: 1500
+        },
         { type: 'fs', op: 'write', path: '.env', content: 'CLAVE=nunca' },
-        { type: 'tool', tool: 'write', input: { filePath: join(S0.chatDir, '.env'), content: 'x' }, output: 'ok', title: '.env', delayMs: 800 },
+        {
+          type: 'tool',
+          tool: 'write',
+          input: { filePath: join(S0.chatDir, '.env'), content: 'x' },
+          output: 'ok',
+          title: '.env',
+          delayMs: 800
+        },
         { type: 'text', text: `Listo: guardé el plan en resumen.md. Ojo, esta clave no debe salir: ${TG_FAKE_KEY}` }
       ]
     })
@@ -3797,7 +3921,11 @@ const S = {
     // El avance en vivo: un solo mensaje que se edita.
     await waitUntil(() => tg.messages.slice(nMsgs).some((m) => /Trabajando|Trabajó/.test(m.text)), 30_000, 'mensaje de avance')
     const live = tg.messages.slice(nMsgs).find((m) => /Trabajando|Trabajó/.test(m.text))
-    await waitUntil(() => tg.edits.some((e) => e.message_id === live.message_id && /Trabajó durante/.test(e.text)), 40_000, 'avance cerrado')
+    await waitUntil(
+      () => tg.edits.some((e) => e.message_id === live.message_id && /Trabajó durante/.test(e.text)),
+      40_000,
+      'avance cerrado'
+    )
     out.avanceEditado = tg.edits.filter((e) => e.message_id === live.message_id).length
     out.unSoloMensajeDeAvance = tg.messages.slice(nMsgs).filter((m) => /Trabajando|Trabajó/.test(m.text)).length === 1
     const edits = tg.edits.filter((e) => e.message_id === live.message_id)
@@ -3868,15 +3996,24 @@ const S = {
     await waitUntil(() => tg.messages.slice(n8).some((m) => /Hecho en silencio/.test(m.text)), 40_000, 'respuesta del modo resúmenes')
     await sleep(1500)
     const silent = [...tg.messages.slice(n8), ...tg.edits.slice(e8)]
-    out.resumenesSinSalida = silent.every((m) => !/SALIDA-RESERVADA/.test(m.text) && !/<pre>/.test(m.text)) && !tg.messages.slice(n8).some((m) => buttonsOf(m).length)
+    out.resumenesSinSalida =
+      silent.every((m) => !/SALIDA-RESERVADA/.test(m.text) && !/<pre>/.test(m.text)) &&
+      !tg.messages.slice(n8).some((m) => buttonsOf(m).length)
     await tgToggle(page, 'Solo resúmenes', false)
     const todos = (await prompts()).slice(base)
     out.todoALaElegida = todos.length >= 3 && todos.every((r) => idOf(r) === S0.sessionId)
     // 9) Nada se filtró: ni la clave en los mensajes, ediciones y documentos, ni contenido en la auditoría local.
     const everything = [...tg.messages, ...tg.edits].map((m) => m.text).join('\n') + tg.documents.map((d) => d.bytes.toString()).join('\n')
     out.claveEnTelegram = everything.includes(TG_FAKE_KEY)
-    const audit = existsSync(join(ctx.userData, 'telegram-audit.jsonl')) ? readFileSync(join(ctx.userData, 'telegram-audit.jsonl'), 'utf8') : ''
-    out.auditoriaSinContenido = !audit.includes(TG_FAKE_KEY) && !audit.includes('Agrega el martes') && !audit.includes(TG_SESSION_TITLE) && /session-chosen/.test(audit) && /message-sent/.test(audit)
+    const audit = existsSync(join(ctx.userData, 'telegram-audit.jsonl'))
+      ? readFileSync(join(ctx.userData, 'telegram-audit.jsonl'), 'utf8')
+      : ''
+    out.auditoriaSinContenido =
+      !audit.includes(TG_FAKE_KEY) &&
+      !audit.includes('Agrega el martes') &&
+      !audit.includes(TG_SESSION_TITLE) &&
+      /session-chosen/.test(audit) &&
+      /message-sent/.test(audit)
     out.claveDelBotEnDisco = tgScanForSecret(ctx.userData, TG_SECRET)
     // 10) La conversación del Chat muestra el mensaje que llegó por Telegram.
     await goMode(page, 'Chat')
@@ -4368,6 +4505,7 @@ const S = {
   async preparando(ctx) {
     await vis(ctx.page.getByTestId('preflight-screen'), 30_000)
     await sleep(600)
+    await logDescribed(ctx.page, 'Preparando Lazunox')
   },
   async 'preparando-motor'(ctx) {
     await vis(ctx.page.getByTestId('preflight-screen'), 30_000)
@@ -4381,7 +4519,19 @@ const S = {
     await craft.click()
     await sleep(400)
     const size = await ctx.page.getByTestId('preflight-size').innerText()
-    console.log(`VERIF-CASILLAS preparando => craft=${await craft.isChecked()} runtimes=${await ctx.page.getByTestId('pick-runtimes').isChecked()} tamaño="${size}"`)
+    await logDescribed(ctx.page, 'Preparando Lazunox (casillas)')
+    console.log(
+      `VERIF-CASILLAS preparando => craft=${await craft.isChecked()} runtimes=${await ctx.page.getByTestId('pick-runtimes').isChecked()} tamaño="${size}"`
+    )
+  },
+  // F8-B198: pulsa «Instalar lo que falta» en la app real; las carpetas sin permiso hacen fallar la instalación ANTES de descargar nada.
+  async 'preparando-permiso'(ctx) {
+    await failInstall(ctx, /Lazunox no puede escribir en su carpeta de datos/)
+    // Devolver el permiso para poder borrar el perfil temporal.
+    for (const d of ['bin', 'runtimes']) chmodSync(join(ctx.userData, d), 0o700)
+  },
+  async 'preparando-sin-conexion'(ctx) {
+    await failInstall(ctx, /No hay conexión con el sitio de descarga/)
   },
   async onboarding(ctx) {
     await onbTo(ctx, 0)
@@ -4403,6 +4553,8 @@ const S = {
   },
   async 'onboarding-final'(ctx) {
     await onbTo(ctx, 4 + ONB_OFFSET)
+    await sleep(500)
+    await logDescribed(ctx.page, 'Prepara tu equipo (paso 4)')
   },
   // F8-B197: bienvenida con la lista de lo que falta (cada componente con su casilla); se desmarca ArtCraft.
   async 'onboarding-casillas'(ctx) {
@@ -4411,6 +4563,7 @@ const S = {
     await vis(craft, 10_000)
     await craft.click()
     await sleep(400)
+    await logDescribed(ctx.page, 'Bienvenida')
     console.log(`VERIF-CASILLAS bienvenida => runtimes=${await craft.isChecked()}`)
   }
 }
@@ -4418,6 +4571,101 @@ const S = {
 // `ONB_OFFSET=1` (solo para comparar con versiones anteriores del asistente, que llevaban un paso más del motor siempre).
 const ONB_OFFSET = Number(process.env.ONB_OFFSET ?? 0)
 // Lleva el asistente al paso `n` (0 = bienvenida). Con el motor incluido hay 4 pasos; sin motor, 5 (el 1 es el del motor).
+async function failInstall(ctx, expected) {
+  const { page } = ctx
+  await vis(page.getByTestId('preflight-screen'), 30_000)
+  const install = page.getByRole('button', { name: /Instalar lo que falta/ })
+  await vis(install, 10_000)
+  await install.click()
+  await page.waitForFunction(
+    (src) => new RegExp(src).test(document.querySelector('[data-testid="preflight-screen"]')?.textContent ?? ''),
+    expected.source,
+    { timeout: 60_000 }
+  )
+  await sleep(600)
+  const codes = await page.evaluate(async () => ({
+    craft: (await window.api.tasks.invoke('craft:status')).data?.error ?? null,
+    runtimes: (await window.api.tasks.invoke('runtimes:status')).data?.error ?? null
+  }))
+  console.log('VERIF-CODIGOS ' + JSON.stringify(codes))
+  const text = (await page.getByTestId('preflight-screen').innerText()).replace(/\s+/g, ' ')
+  console.log(
+    'VERIF-FALLO ' +
+      JSON.stringify({
+        muestra: text.match(/(Lazunox no puede escribir[^.]*\.|No hay conexión con el sitio de descarga[^.]*\.|revisa tu conexión)/g) ?? [],
+        dice_conexion_sin_ser_offline: /revisa tu conexión/.test(text)
+      })
+  )
+}
+
+// F8-B198: carpetas de datos sin permiso de escritura (la instalación falla antes de descargar nada).
+function seedSinPermiso(userData) {
+  for (const d of ['bin', 'runtimes']) {
+    mkdirSync(join(userData, d), { recursive: true })
+    chmodSync(join(userData, d), 0o500)
+  }
+}
+
+// F8-B198: registros aislados de Overdrive de muestra: una carpeta aprobada con tareas de dos modelos y otra con el registro dañado.
+async function seedOverdrive(userData) {
+  const { DatabaseSync } = require('node:sqlite')
+  const { createHash } = require('node:crypto')
+  const key = (folder) => createHash('sha256').update(realpathSync(folder)).digest('hex').slice(0, 16)
+  const good = mk(TMP, 'ov-informes-')
+  const bad = mk(TMP, 'ov-facturas-')
+  const dir = (folder) => {
+    const d = join(userData, 'tasks-sandbox', key(folder), 'data', 'opencode')
+    mkdirSync(d, { recursive: true })
+    return join(d, 'opencode.db')
+  }
+  const db = new DatabaseSync(dir(good))
+  db.exec(`CREATE TABLE session (id text PRIMARY KEY, project_id text NOT NULL, parent_id text, directory text NOT NULL, title text NOT NULL,
+    cost real DEFAULT 0 NOT NULL, tokens_input integer DEFAULT 0 NOT NULL, tokens_output integer DEFAULT 0 NOT NULL,
+    tokens_reasoning integer DEFAULT 0 NOT NULL, tokens_cache_read integer DEFAULT 0 NOT NULL, tokens_cache_write integer DEFAULT 0 NOT NULL,
+    model text, time_updated integer NOT NULL, time_archived integer)`)
+  const ins = db.prepare(
+    'INSERT INTO session (id, project_id, parent_id, directory, title, cost, tokens_input, tokens_output, model, time_updated) VALUES (?,?,?,?,?,?,?,?,?,?)'
+  )
+  const now = Date.now()
+  const free = JSON.stringify({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode' })
+  const paid = JSON.stringify({ id: 'fake-model', providerID: 'fake' })
+  ins.run('ses_ov_1', 'p', null, good, 'Resumen de gastos de septiembre', 0, 52_000, 11_000, free, now - 2 * 3_600_000)
+  ins.run('ses_ov_2', 'p', null, good, 'Ordenar facturas por proveedor', 0.35, 120_000, 24_000, paid, now - 26 * 3_600_000)
+  ins.run('ses_ov_3', 'p', 'ses_ov_2', good, 'Subtarea', 0.05, 8_000, 2_000, paid, now - 26 * 3_600_000)
+  db.close()
+  writeFileSync(dir(bad), 'esto no es una base de datos '.repeat(40))
+  writeFileSync(
+    join(userData, 'tasks-folders.json'),
+    JSON.stringify({
+      folders: [
+        { path: realpathSync(good), name: 'Informes', approvedAt: now - 5 * 86_400_000 },
+        { path: realpathSync(bad), name: 'Facturas', approvedAt: now - 4 * 86_400_000 }
+      ],
+      fullAccess: [],
+      deleteGrants: [],
+      linked: {},
+      trusted: []
+    })
+  )
+}
+
+// F8-B198: cada casilla `pick-*` visible debe estar descrita (aria-describedby) por un texto con el tamaño y el origen.
+async function logDescribed(page, surface) {
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid^="pick-"]')].map((el) => {
+      const id = el.getAttribute('aria-describedby')
+      const desc = id ? document.getElementById(id) : null
+      return {
+        pick: el.getAttribute('data-testid'),
+        describedby: !!id,
+        existe: !!desc,
+        texto: (desc?.textContent ?? '').trim().slice(0, 90)
+      }
+    })
+  )
+  console.log(`VERIF-A11Y ${surface} => ${JSON.stringify(rows)}`)
+}
+
 async function onbTo(ctx, n) {
   const { page } = ctx
   await vis(page.getByRole('dialog'), 30_000)
@@ -4608,7 +4856,20 @@ try {
   const isTg = (s) => s.startsWith('telegram')
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
   const isUso = (s) => s === 'uso' || s === 'uso-vacio'
-  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isRt(s) && !isAviso(s) && !isTg(s) && s !== 'kit' && !isTasks(s) && !isUso(s) && !isPrScenario(s))
+  const isUsoOv = (s) => s.startsWith('uso-overdrive')
+  const main = scenarios.filter(
+    (s) =>
+      !isOnb(s) &&
+      !isPrep(s) &&
+      !isRt(s) &&
+      !isAviso(s) &&
+      !isTg(s) &&
+      s !== 'kit' &&
+      !isTasks(s) &&
+      !isUso(s) &&
+      !isUsoOv(s) &&
+      !isPrScenario(s)
+  )
   const rtList = scenarios.filter(isRt).sort(byOrder)
   if (rtList.length) {
     // PATH mínimo (/usr/bin:/bin): ni uv ni el Node del usuario a la vista. El motor falso se lanza por ruta absoluta (no puede buscar `node`).
@@ -4629,6 +4890,16 @@ try {
     // «Uso» va en un arranque limpio: sus cifras solo cuentan las conversaciones inventadas aquí.
     const ctx = await launch('uso')
     await runGroup(ctx, uso)
+    await stop(ctx)
+  }
+  const usoOv = scenarios.filter(isUsoOv).sort(byOrder)
+  if (usoOv.length) {
+    // Overdrive en «Uso»: perfil con registros aislados de muestra (ver `seedOverdrive`).
+    const ctx = await launch('uso-ov', { seed: seedOverdrive })
+    await runGroup(
+      ctx,
+      usoOv.filter((s) => s === 'uso-overdrive')
+    )
     await stop(ctx)
   }
   if (tasks.length) {
@@ -4654,7 +4925,17 @@ try {
   if (prList.length) {
     // Proyecto con remoto «bare» local + `gh` falso en el PATH. Con LAZUNOX_SHOT_REAL_ENGINE=<ruta de opencode> se usa el motor REAL con el
     // modelo gratuito (la IA responde de verdad); sin ella, el motor falso con respuestas guionizadas.
-    const kit = createPrKit({ repo, mk, TMP, sleep, vis, goMode, stubDialog, press, REAL_ENGINE: process.env.LAZUNOX_SHOT_REAL_ENGINE || '' })
+    const kit = createPrKit({
+      repo,
+      mk,
+      TMP,
+      sleep,
+      vis,
+      goMode,
+      stubDialog,
+      press,
+      REAL_ENGINE: process.env.LAZUNOX_SHOT_REAL_ENGINE || ''
+    })
     kit.setup()
     Object.assign(S, kit.S)
     const ctx = await launch('pr', kit.launchOpts())
@@ -4685,10 +4966,18 @@ try {
   for (const [sc, kind] of [
     ['preparando', 'primer-uso'],
     ['preparando-motor', 'sin-motor'],
-    ['preparando-casillas', 'primer-uso']
+    ['preparando-casillas', 'primer-uso'],
+    ['preparando-permiso', 'primer-uso'],
+    ['preparando-sin-conexion', 'primer-uso']
   ]) {
     if (!scenarios.includes(sc)) continue
-    const ctx = await launch(sc, { settings: { onboarded: false }, env: { LAZUNOX_TEST_PREFLIGHT: kind } })
+    const extra =
+      sc === 'preparando-permiso'
+        ? { seed: seedSinPermiso }
+        : sc === 'preparando-sin-conexion'
+          ? { args: ['--proxy-server=http://127.0.0.1:9'] }
+          : {}
+    const ctx = await launch(sc, { settings: { onboarded: false }, env: { LAZUNOX_TEST_PREFLIGHT: kind }, ...extra })
     await runGroup(ctx, [sc])
     await stop(ctx)
   }

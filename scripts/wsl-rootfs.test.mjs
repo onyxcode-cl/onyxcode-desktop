@@ -465,6 +465,9 @@ test('los scripts de shell piden --inside, no ejecutan nada por sí solos y fija
   assert.match(c, /SOURCE_DATE_EPOCH/)
   assert.match(c, /chmod ug-s/)
   assert.match(c, /lazunox:x:1000:1000:Lazunox:\/home\/lazunox:\/usr\/sbin\/nologin/)
+  // F8-B198: firma de commits sin el nombre del PC (la identidad exacta la compara src/main/tasks/firma-commits.test.ts).
+  assert.match(c, /\/etc\/gitconfig/)
+  assert.match(c, /lazunox@localhost\.invalid/)
   // Nada no determinista en el gancho.
   assert.ok(!/\$\(date(?! -u -d)|\$RANDOM|uuidgen|useradd/.test(c.replace(/^\s*#.*$/gm, '')))
   const pk = readFileSync(resolve(root, 'scripts/wsl-rootfs/packages.txt'), 'utf8')
