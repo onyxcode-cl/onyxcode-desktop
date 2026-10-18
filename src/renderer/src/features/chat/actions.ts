@@ -5,6 +5,7 @@
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
 import { buildChatSystemPrompt } from '@shared/chat-prompt'
+import type { ChatProjectContext } from '@shared/personal-context'
 import { CHAT_AGENT } from '@shared/types'
 import { isRemoteSurface } from '../../lib/platform'
 import { useSettings } from '../../stores/settings'
@@ -20,6 +21,8 @@ import { resolveModelForMode } from '../settings/impl/extras'
 import { isArchivedSession } from '../tasks/impl/util'
 import { useChat, type ChatPendingQuestion } from './store'
 import { clearConversationInstructions, getConversationInstructions } from './conversation-instructions'
+import { getExtras } from '../../lib/extrasApi'
+import { useProjects } from '../projects/store'
 import { markFirstStepDone, noteFirstStepsActivity } from '../../stores/first-steps'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 
@@ -125,6 +128,9 @@ export async function syncChatRunStatus(): Promise<void> {
 
 export async function openChatSession(sessionID: string | null): Promise<void> {
   useChat.getState().setActive(sessionID)
+  // Abrir una conversación saca de la pantalla de proyecto y suelta el proyecto elegido para la conversación nueva.
+  useProjects.getState().closeProject()
+  useProjects.getState().setPending(null)
   if (!sessionID) return
   const { client, directory } = ctx()
   const store = useSessions.getState()
@@ -143,6 +149,8 @@ export async function openChatSession(sessionID: string | null): Promise<void> {
 
 export function newChat(): void {
   useChat.getState().setActive(null)
+  useProjects.getState().closeProject()
+  useProjects.getState().setPending(null)
 }
 
 /** Adjunto de un mensaje de usuario que se vuelve a enviar tal cual (reintento / edición). */
@@ -180,6 +188,12 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       loaded: { ...s.loaded, [res.data.id]: true } // sesión nueva: no hay historial que cargar
     }))
     useChat.getState().setActive(sessionID)
+    // La conversación nueva nace en el proyecto elegido en el chip (si hay): se anota ANTES de armar el `system`.
+    const pending = useProjects.getState().pendingId
+    if (pending) {
+      await useProjects.getState().assign(sessionID, pending)
+      useProjects.getState().setPending(null)
+    }
   }
 
   sessions.touchSession(sessionID)
@@ -194,7 +208,7 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       model: { providerID: model.providerID, modelID: model.modelID },
       // Instrucciones personalizadas + memoria aprobada (relevada justo ahora, para que lo aprobado hace un momento ya valga).
       // Nunca desde el celular: ver el comentario equivalente en `code/impl/store.ts`.
-      system: await chatSystemPrompt(sessionID),
+      system: await chatSystemPrompt(sessionID, text),
       // Un mensaje sin texto es válido si lleva adjuntos (reintento de un mensaje solo con archivos).
       parts: [
         ...(text || files.length === 0 ? [{ type: 'text' as const, text }] : []),
@@ -220,8 +234,28 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
   return true
 }
 
-/** `system` de Chat: instrucciones de la persona + las de esta conversación + memoria de usuario aprobada. `undefined` desde el celular. */
-async function chatSystemPrompt(sessionID: string): Promise<string | undefined> {
+/** Instrucciones y pasajes del proyecto de la conversación (`null` si no es de un proyecto o no hay puente). Nunca bloquea el envío. */
+async function chatProjectContext(sessionID: string, text: string): Promise<ChatProjectContext | null> {
+  const x = getExtras()
+  if (!x) return null
+  const known = useProjects.getState().state
+  if (known && !known.assignments[sessionID]) return null // la mayoría de las conversaciones: sin llamada
+  try {
+    // Una pregunta de seguimiento muy corta se apoya en el mensaje anterior de la persona.
+    const entries = useSessions.getState().messages[sessionID] ?? []
+    const prevId = lastUserMessageId(entries)
+    const prev = prevId ? entries.find((e) => e.info.id === prevId) : undefined
+    const recent = prev ? userMessageContent(prev).text.slice(0, 1000) : ''
+    const r = await x.invoke('projects:context', { sessionId: sessionID, query: text.slice(0, 20_000), ...(recent ? { recent } : {}) })
+    if (!r) return null
+    return { name: r.name, instructions: r.instructions, passages: r.passages, hasFiles: r.hasFiles }
+  } catch {
+    return null
+  }
+}
+
+/** `system` de Chat: instrucciones de la persona + las de esta conversación + las del proyecto y sus pasajes + memoria de usuario aprobada. `undefined` desde el celular. */
+async function chatSystemPrompt(sessionID: string, text: string): Promise<string | undefined> {
   if (isRemoteSurface()) return undefined
   const s = useSettings.getState().settings
   const mem = s.learningEnabled === false ? null : await loadPromptMemory()
@@ -230,7 +264,8 @@ async function chatSystemPrompt(sessionID: string): Promise<string | undefined> 
     instructions: s.userInstructions,
     // Solo las de ESTA conversación (guardadas por sesión en este computador).
     conversationInstructions: getConversationInstructions(sessionID),
-    learnedUser: mem?.usuario ?? null
+    learnedUser: mem?.usuario ?? null,
+    project: await chatProjectContext(sessionID, text)
   })
 }
 
@@ -346,6 +381,7 @@ export async function deleteChat(sessionID: string): Promise<void> {
   await client.session.delete({ sessionID, directory })
   useSessions.getState().removeSession(sessionID)
   clearConversationInstructions(sessionID)
+  if (useProjects.getState().state?.assignments[sessionID]) void useProjects.getState().assign(sessionID, null)
   if (useChat.getState().activeSessionId === sessionID) useChat.getState().setActive(null)
   if (useChat.getState().pinned[directory]?.includes(sessionID)) useChat.getState().togglePin(directory, sessionID)
 }

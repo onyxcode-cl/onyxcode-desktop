@@ -9,6 +9,7 @@
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
+import { PROJECT_LIMITS } from '@shared/project-knowledge'
 import { EXPORT_LIMITS, type ExportDoc } from '@shared/conversation-export'
 import { PREFLIGHT_ORDER } from '@shared/preflight'
 import { OPENCODE_ACTIONS } from '@shared/opencode-links'
@@ -112,6 +113,8 @@ const learnedProposal = obj({
   porque: optional(str({ max: 300 }))
 })
 /** Comparar modelos: uuid de la comparación, índice de columna (0..3) y modelo con `variant` opcional. */
+/** Id de proyecto o de archivo de proyecto: 16 hex que genera `main`. */
+const projectId = str({ max: 16, min: 16, pattern: /^[a-f0-9]+$/ })
 const compareId = str({ max: 36, min: 36, pattern: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i })
 const compareIndex = num({ int: true, min: 0, max: 3 })
 const compareModel = obj({
@@ -1005,6 +1008,28 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     token: str({ max: 64, min: 16, pattern: /^[a-f0-9]+$/ }),
     ids: arr(str({ max: 8, min: 2, pattern: /^[im][0-9]{1,4}$/ }), 200)
   }),
+  // Proyectos del Chat (F8-B185): ids de 16 hex generados por main; el renderer nunca manda una ruta (diálogo nativo → ficha de 32 hex o bytes en base64).
+  'projects:list': none,
+  'projects:create': obj({
+    name: str({ max: PROJECT_LIMITS.maxNameChars, min: 1 }),
+    instructions: optional(str({ max: PROJECT_LIMITS.maxInstructionsChars }))
+  }),
+  'projects:update': obj({
+    id: projectId,
+    name: optional(str({ max: PROJECT_LIMITS.maxNameChars, min: 1 })),
+    instructions: optional(str({ max: PROJECT_LIMITS.maxInstructionsChars }))
+  }),
+  'projects:delete': obj({ id: projectId }),
+  'projects:pickFiles': obj({ id: projectId }),
+  'projects:addPicked': obj({ id: projectId, token: str({ max: 32, min: 32, pattern: /^[a-f0-9]+$/ }) }),
+  'projects:addBytes': obj({
+    id: projectId,
+    name: str({ max: 300, min: 1 }),
+    base64: str({ max: Math.ceil((PROJECT_LIMITS.maxFileBytes * 4) / 3) + 16 })
+  }),
+  'projects:removeFile': obj({ id: projectId, fileId: projectId }),
+  'projects:assign': obj({ sessionId, projectId: nullable(projectId) }),
+  'projects:context': obj({ sessionId, query: str({ max: 20_000 }), recent: optional(str({ max: 4000 })) }),
   'personalizacion:skills:list': none,
   'personalizacion:skills:setEnabled': obj({ id: skillId, enabled: bool }),
   'personalizacion:skills:pick': none,

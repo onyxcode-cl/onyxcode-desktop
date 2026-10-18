@@ -50,6 +50,9 @@ import { ChatProgressHud } from './ChatProgressHud'
 import { ChatHomeBlocks, useChatHome } from './ChatHomeBlocks'
 import { HomeIdeas } from '../../components/HomeBlocks'
 import { useChatDocPanel } from './useChatDocPanel'
+import { ProjectChip } from '../projects/ProjectChip'
+import { ProjectView } from '../projects/ProjectView'
+import { useProjects } from '../projects/store'
 
 const EMPTY: MessageEntry[] = []
 
@@ -90,6 +93,7 @@ export function ChatView(): React.JSX.Element {
   useCompareBoot()
   const compareId = useShownCompare('chat', null)
   const home = useChatHome()
+  const projectViewId = useProjects((s) => s.viewId)
 
   // Si la conversación abierta se eliminó (aquí o desde otro cliente), volver a "nueva".
   const listLoading = useChat((s) => s.listLoading)
@@ -154,6 +158,7 @@ export function ChatView(): React.JSX.Element {
 
   const picker = (
     <div className="flex w-full items-center">
+      <ProjectChip />
       <CompareControls mode="chat" directory={null} current={effective ?? model} />
       <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={(m) => setModeModel('chat', m)} />
       <span className="ml-auto" />
@@ -212,6 +217,8 @@ export function ChatView(): React.JSX.Element {
       />
     </div>
   )
+
+  if (projectViewId && !isRemoteSurface()) return <ProjectView />
 
   if (compareId) {
     return (
