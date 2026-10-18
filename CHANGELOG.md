@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.2.0] - 2026-10-18
+
+### Novedades
+
+- **Rama y pull request desde Code.** En el panel de Cambios, el botón «Rama y pull request» te guía para crear una rama, guardar los cambios con un mensaje que propone la IA, subirlos y abrir el pull request con título y descripción propuestos. También puedes pedirle a la IA que revise un pull request, propio o ajeno: lee los cambios y propone comentarios, y no publica nada hasta que tú lo apruebes. Cada acción que sale de tu equipo pide confirmación mostrando exactamente qué se envía y adónde; nunca fuerza el envío, las ramas protegidas piden escribir su nombre, y antes de subir se revisa que no vayan claves ni archivos de secretos. Lazunox no ve ni guarda tus claves de GitHub: usa la sesión de `gh` de cada persona.
+- **Recetas para tus Rutinas.** Al abrir Rutinas ahora ves 12 recetas listas, con su horario sugerido: resumen informativo diario, qué llegó hoy a Descargas, ordenar Descargas (solo propone), gastos semanales, menú y lista de compras, repaso de estudio, estado de un repositorio y más. Elegir una abre «Nueva rutina» ya rellena; no se crea nada hasta que confirmas.
+- **Pantalla de Uso.** En Ajustes › Uso ves cuánto has usado de la IA hoy, en 7 y en 30 días, por modelo y por modo (Chat, Code, Overdrive), con una frase clara de estado. Todo se calcula en tu equipo; si tu servicio no informa el costo, dice «sin dato».
+- **Telegram: control desde el celular con un bot propio.** En Ajustes › Telegram creas tu propio bot (gratis, con @BotFather), lo vinculas con un código y queda como único dueño. Recibes avisos cuando una tarea termina o se atasca, y los permisos llegan con los botones «Permitir una vez» y «Rechazar», con el comando completo a la vista y las claves tapadas. Puedes elegir una conversación de Chat o de Code y seguir cómo avanza en un mensaje que se va editando, recibir los archivos que la IA crea y mandarle fotos o documentos. Escribirle a la conversación desde Telegram viene apagado hasta que lo actives. No puedes crear tareas, cambiar permisos ni iniciar Overdrive desde Telegram. Telegram no cifra de extremo a extremo los mensajes de bots y el computador debe estar encendido con Lazunox abierto. Las notas de voz todavía no se pueden usar.
+
+### Mejoras
+
+- **«Guardar todo» ya no incluye archivos de secretos** (como `.env` o llaves) en el commit.
+
 ## [1.1.0] - 2026-10-18
 
 ### Novedades
