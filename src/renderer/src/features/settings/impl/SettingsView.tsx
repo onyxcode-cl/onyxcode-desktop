@@ -15,6 +15,7 @@ import {
   LifeBuoy,
   MonitorCog,
   Settings2,
+  Send,
   Smartphone,
   SlidersHorizontal,
   Users,
@@ -45,6 +46,7 @@ import { ModelsSection } from './ModelsSection'
 import { NetworkSection } from './NetworkSection'
 import { LEGACY_MODE } from '../../../../../main/migrations/legacy-names'
 import { RemoteSection } from './RemoteSection'
+import { TelegramSection } from './TelegramSection'
 import { ShortcutsSection } from './ShortcutsSection'
 import { UsageSection } from './UsageSection'
 import { ImportSection } from './ImportSection'
@@ -66,6 +68,7 @@ export type SettingsSectionId =
   | 'automode'
   | 'browser'
   | 'remote'
+  | 'telegram'
   | 'usage'
   | 'shortcuts'
   | 'diagnostics'
@@ -162,6 +165,14 @@ const SECTIONS: {
     keys: SECTION_KEYS.remote
   },
   {
+    id: 'telegram',
+    group: 'connections',
+    label: lazy('telegram.nav'),
+    icon: Send,
+    View: TelegramSection,
+    keys: SECTION_KEYS.telegram
+  },
+  {
     id: 'diagnostics',
     group: 'help',
     label: lazy('settings.nav.diagnostics'),
@@ -252,7 +263,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
       (s.id !== 'computer' || caps.computer) &&
       (s.id !== 'remote' || caps.remote) &&
       // PWA del celular: MCP, navegador integrado, atajos de teclado y diagnóstico son del Mac (prohibidos o sin sentido en el celular).
-      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics'].includes(s.id))
+      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics', 'telegram'].includes(s.id))
   )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 

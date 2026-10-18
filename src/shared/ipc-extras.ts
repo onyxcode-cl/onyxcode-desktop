@@ -11,6 +11,7 @@ import type { ModelRef } from './types'
 import type { ViewerEventType, ViewerRect } from './ipc-tasks'
 import type { DocxSpec, PptxSpec, XlsxSpec } from './chat-doc-spec'
 import type { ExportDoc, ExportOptions } from './conversation-export'
+import type { TelegramSaveTokenResult, TelegramState, TelegramTestResult } from './telegram'
 
 /** Modos que usan un modelo (Rutinas elige el suyo por rutina). */
 export type ModelMode = 'chat' | 'code' | 'tasks'
@@ -497,6 +498,15 @@ export interface IpcExtrasInvokeContract {
     req: { id: string; name: string; understandThirdParty: true; understandData: true; askEachUse: boolean }
     res: AppMcpConfig
   }
+  /** Telegram (F8-B187). El token entra por `saveToken` y NO vuelve nunca: el estado solo dice si hay bot y sus últimos 4 caracteres. */
+  'telegram:getState': { req: void; res: TelegramState }
+  'telegram:setEnabled': { req: { enabled: boolean }; res: TelegramState }
+  'telegram:saveToken': { req: { token: string }; res: TelegramSaveTokenResult }
+  'telegram:startLinking': { req: void; res: TelegramState }
+  'telegram:unlink': { req: void; res: TelegramState }
+  'telegram:removeBot': { req: void; res: TelegramState }
+  'telegram:panic': { req: void; res: TelegramState }
+  'telegram:sendTest': { req: void; res: TelegramTestResult }
 }
 
 export interface IpcExtrasEventContract {
@@ -517,6 +527,8 @@ export interface IpcExtrasEventContract {
    * `voice-transcribe.ts`) — sin esto, la primera transcripción se sentía colgada sin avisar que en
    * realidad estaba bajando el modelo. `progress` de 0 a 100. */
   'extras:voiceModelProgress': { status: 'downloading' | 'ready'; progress: number }
+  /** Main → ventana: el estado de Telegram cambió. */
+  'telegram:state-changed': TelegramState
 }
 
 export type IpcExtrasInvokeChannel = keyof IpcExtrasInvokeContract
@@ -575,7 +587,15 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'mcp:catalog',
   'mcp:installCatalog',
   'mcp:localPickClient',
-  'mcp:installLocal'
+  'mcp:installLocal',
+  'telegram:getState',
+  'telegram:setEnabled',
+  'telegram:saveToken',
+  'telegram:startLinking',
+  'telegram:unlink',
+  'telegram:removeBot',
+  'telegram:panic',
+  'telegram:sendTest'
 ] as const satisfies readonly IpcExtrasInvokeChannel[]
 
 export const IPC_EXTRAS_EVENT_CHANNELS = [
@@ -586,7 +606,8 @@ export const IPC_EXTRAS_EVENT_CHANNELS = [
   'extras:quick-shown',
   'mcp:changed',
   'extras:chatDoc:event',
-  'extras:voiceModelProgress'
+  'extras:voiceModelProgress',
+  'telegram:state-changed'
 ] as const satisfies readonly IpcExtrasEventChannel[]
 
 type Missing<All extends string, Listed extends string> = Exclude<All, Listed>

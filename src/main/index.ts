@@ -31,6 +31,7 @@ import { craftService } from './office/craft/service'
 import { cleanLegacyLibreOffice } from './office/legacy-clean'
 import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
+import { disposeTelegram, registerTelegramHandlers } from './ipc/telegram-handlers'
 import { disposeRemote, getOrgPolicy, remoteMode, setRemoteWin } from './remote/loader'
 import { shouldQuitWhenAllWindowsClosed } from './remote/lifecycle'
 import { hasTray } from './extras/tray'
@@ -347,6 +348,7 @@ function start(): void {
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
+    registerTelegramHandlers(ipcMain, { server })
     embeddedBrowser.init({ getMainWindow: () => mainWindow, getMainConnection: () => server.start() })
     registerBrowserHandlers(ipcMain)
 
@@ -438,6 +440,7 @@ function start(): void {
     }
     quitting = true
     event.preventDefault()
+    disposeTelegram()
     try {
       shutdownEmbeddedBrowser()
     } catch (err) {
