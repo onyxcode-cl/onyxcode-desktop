@@ -56,3 +56,28 @@ export function seedModelsCache(folderCacheDir: string, mainCacheDir: string = m
     return false
   }
 }
+
+/** Subcarpeta de la config de la app donde el backend WSL deja la copia del catálogo (solo lectura para el servidor). */
+export const CONFIG_CATALOG_DIR = 'catalogo'
+
+/**
+ * Backend WSL (Windows): el servidor de la carpeta vive en una distro cuyo caché (`/home/lazunox/xdg/<clave>/cache`) no se
+ * puede escribir desde Windows, así que el catálogo viaja por la carpeta de config (ya montada de solo lectura) y el servidor
+ * lo lee con `OPENCODE_MODELS_PATH`. Copia `models.json` del caché principal a `<configDir>/catalogo/models.json` (si falta
+ * o es más viejo) y devuelve la ruta de Windows del archivo, o null si no hay catálogo. Nunca lanza.
+ */
+export function seedConfigModels(configDir: string, mainCacheDir: string = mainOpencodeCacheDir()): string | null {
+  try {
+    const src = join(mainCacheDir, 'models.json')
+    if (!existsSync(src)) return null
+    const destDir = join(configDir, CONFIG_CATALOG_DIR)
+    const dest = join(destDir, 'models.json')
+    if (!existsSync(dest) || statSync(dest).mtimeMs < statSync(src).mtimeMs) {
+      mkdirSync(destDir, { recursive: true })
+      copyFileSync(src, dest)
+    }
+    return dest
+  } catch {
+    return null
+  }
+}

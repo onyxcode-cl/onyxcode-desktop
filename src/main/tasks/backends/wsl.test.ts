@@ -167,6 +167,29 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect(made[0]!.length).toBeGreaterThan(spec.folder.length)
   })
 
+  it('launch: el catálogo de modelos viaja por la config de solo lectura (OPENCODE_MODELS_PATH); sin catálogo o si falla, se lanza igual', async () => {
+    const asked: string[] = []
+    const cfg = 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config'
+    const t = deps({ seedModels: (c) => (asked.push(c), `${c}\\catalogo\\models.json`) })
+    const l = await createWslBackend(t.d).launch(launchSpec())
+    await flush()
+    expect(asked).toEqual([cfg])
+    expect(JSON.parse(t.spawned[0]!.proc.frames[0]!.data.toString('utf8')).env.OPENCODE_MODELS_PATH).toBe(
+      '/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config/catalogo/models.json'
+    )
+    await l.dispose()
+    const boom = (): never => {
+      throw new Error('disco')
+    }
+    for (const seedModels of [() => null, boom]) {
+      const u = deps({ seedModels })
+      const l2 = await createWslBackend(u.d).launch(launchSpec())
+      await flush()
+      expect(JSON.parse(u.spawned[0]!.proc.frames[0]!.data.toString('utf8')).env.OPENCODE_MODELS_PATH).toBeUndefined()
+      await l2.dispose()
+    }
+  })
+
   it('launch: spawn de wsl.exe con entorno mínimo, trama INIT sin claves reales y relés solo a los puertos del proxy', async () => {
     const t = deps()
     const b = createWslBackend(t.d)

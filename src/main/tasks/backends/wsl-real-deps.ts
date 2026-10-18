@@ -9,6 +9,7 @@ import { connect as netConnect, createServer } from 'node:net'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join, parse } from 'node:path'
 import type { Duplex, Readable } from 'node:stream'
+import { seedConfigModels } from '../models-cache'
 import { sha256File, type FetchLike } from '../../remote/tunnel/binary'
 import { pinnedDownload } from './pinned-download'
 import type { WslDeps, WslProcess, WslSetupExtras } from './wsl'
@@ -215,6 +216,7 @@ export function createRealWslDeps(o: RealWslDepsOptions): WslDeps {
     listen: realListen,
     policyDisabled: o.policyDisabled,
     setup: createRealSetupExtras(o),
-    ensureDir: (p) => mkdirSync(p, { recursive: true })
+    ensureDir: (p) => mkdirSync(p, { recursive: true }),
+    seedModels: (configDir) => seedConfigModels(configDir)
   }
 }

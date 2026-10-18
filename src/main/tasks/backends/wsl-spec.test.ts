@@ -416,3 +416,31 @@ describe('vectores compartidos con el lanzador de Python (resources/wsl/vectors.
     expect(vectors.init).toEqual(init)
   })
 })
+
+describe('catálogo de modelos del servidor WSL (OPENCODE_MODELS_PATH)', () => {
+  const CFG = 'C:\\Users\\Ben\\AppData\\Roaming\\Lazunox\\opencode-config'
+  const MODELS = `${CFG}\\catalogo\\models.json`
+  it('modelsFile dentro de la config se traduce a la ruta de la distro (montada de solo lectura)', () => {
+    const { init } = buildWslInit(base({ modelsFile: MODELS }))
+    expect(init.env.OPENCODE_MODELS_PATH).toBe('/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config/catalogo/models.json')
+    const cfg = init.mounts.find((m) => m.linux === init.env.OPENCODE_CONFIG_DIR)
+    expect(cfg?.mode).toBe('ro')
+    expect(init.env.OPENCODE_MODELS_PATH!.startsWith(`${cfg!.linux}/`)).toBe(true)
+  })
+  it('sin modelsFile no hay variable (y el valor que traiga el anfitrión se ignora: es una ruta de Windows)', () => {
+    expect(buildWslInit(base()).init.env.OPENCODE_MODELS_PATH).toBeUndefined()
+    const env = { ...base().env, OPENCODE_MODELS_PATH: 'C:\\Windows\\win.ini' }
+    expect(buildWslInit(base({ env })).init.env.OPENCODE_MODELS_PATH).toBeUndefined()
+  })
+  it('un modelsFile fuera de la config, con otro nombre o con ruta inválida falla cerrado', () => {
+    for (const bad of [
+      'C:\\Users\\Ben\\Documents\\models.json',
+      `${CFG}\\catalogo\\otro.json`,
+      `${CFG}\\..\\models.json`,
+      '\\\\srv\\x\\models.json',
+      'models.json'
+    ]) {
+      expect(['bad-path', 'models-outside']).toContain(throwsReason(() => buildWslInit(base({ modelsFile: bad }))))
+    }
+  })
+})

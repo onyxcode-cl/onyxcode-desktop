@@ -53,6 +53,12 @@ export interface WslDeps {
    * primera tarea de una carpeta fallaba con «la ruta de la política no existe».
    */
   ensureDir?: (hostPath: string) => void
+  /**
+   * Deja el catálogo de modelos dentro de la config (ver `seedConfigModels`) y devuelve la ruta de Windows del archivo (o null).
+   * Sin catálogo el servidor de la distro usa el embebido en su binario y falla con modelos nuevos («Model not found»).
+   * Nunca debe lanzar; si lo hace, se ignora.
+   */
+  seedModels?: (configDir: string) => string | null
 }
 
 const STATUS_TIMEOUT_MS = 20_000
@@ -87,10 +93,17 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
       const sandboxKey = win32.basename(spec.isolation.privateDir)
       deps.ensureDir?.(win32.join(spec.folder, '.lazunox', 'trabajo'))
       const env = { ...spec.baseEnv, ...spec.proxyEnv, ...spec.extraEnv }
+      let modelsFile: string | null = null
+      try {
+        modelsFile = deps.seedModels?.(spec.configDir) ?? null
+      } catch {
+        modelsFile = null
+      }
       const { frame, mounts } = buildWslInit({
         folder: spec.folder,
         extraFolders: (spec.extraFolders ?? []).map((e) => ({ path: e.path, mode: e.mode })),
         configDir: spec.configDir,
+        ...(modelsFile ? { modelsFile } : {}),
         allowDelete: spec.allowDelete,
         sandboxKey,
         serverPort: spec.serverPort,
