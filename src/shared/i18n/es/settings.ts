@@ -141,7 +141,14 @@ export const settings = {
     'Cada conversación se cuenta en el día de su última actividad. Los ayudantes que la IA lanza por su cuenta suman tokens, pero no cuentan como conversaciones.',
   'settings.usage.note.limit': 'Para que la pantalla sea rápida, solo se leen las {limit} conversaciones más recientes de Chat y Code.',
   'settings.usage.note.capped': 'Se llegó a ese tope: hay conversaciones más antiguas que no se cuentan.',
-  'settings.usage.note.tasks': 'Overdrive solo cuenta las tareas de las carpetas que has abierto desde que se inició la app.',
+  'settings.usage.note.tasks':
+    'Overdrive suma las tareas de tus carpetas aprobadas a partir del registro local de cada una: solo cifras, nunca su contenido.',
+  'settings.usage.note.tasks.unsupported':
+    'Overdrive no se cuenta todavía en este equipo: solo se suman las tareas que has abierto desde que se inició la app.',
+  'settings.usage.note.tasks.unavailable':
+    'No se pudo leer el registro de Overdrive: solo se suman las tareas que has abierto desde que se inició la app.',
+  'settings.usage.note.tasks.unreadable': 'Hay {count} carpeta(s) de Overdrive cuyo registro no se pudo leer; no se cuentan.',
+  'settings.usage.mode.notCounted': 'Overdrive no se cuenta aquí todavía',
   'settings.usage.note.cost':
     'El costo lo informa tu servicio de IA con las tarifas públicas de cada modelo; con una suscripción (por ejemplo OpenCode Go) es solo una referencia. «Sin dato» quiere decir que el servicio no informó el costo, no que sea gratis.',
   'settings.usage.meter.aria': 'Uso y espacio de conversación: {pct}% usado',
@@ -273,10 +280,13 @@ export const settings = {
   'settings.craft.progress': '{done} de {total} MB',
   'settings.craft.remove': 'Quitar',
   'settings.craft.retry': 'Reintentar',
-  'settings.craft.error.disk': 'No hay espacio suficiente',
+  'settings.craft.error.disk': 'No hay espacio suficiente en el disco; libera espacio e inténtalo de nuevo',
+  'settings.craft.error.permission':
+    'Lazunox no puede escribir en su carpeta de datos; revisa los permisos de esa carpeta (o tu antivirus) e inténtalo de nuevo',
+  'settings.craft.error.offline': 'No hay conexión con el sitio de descarga; revisa tu conexión e inténtalo de nuevo',
   'settings.craft.error.hash': 'La descarga no coincide con la esperada; no se instaló nada',
   'settings.craft.error.signature': 'La firma no es válida; no se instaló nada',
-  'settings.craft.error.download': 'No se pudo descargar; revisa tu conexión',
+  'settings.craft.error.download': 'El sitio de descarga no respondió como se esperaba; inténtalo más tarde',
   'settings.craft.error.cancelled': 'Instalación cancelada',
   'settings.craft.name': 'Presentaciones y documentos con diseño premium',
   'settings.craft.desc':
@@ -311,10 +321,13 @@ export const settings = {
   'settings.runtimes.removeBody':
     'Se borra su carpeta. Los conectores de correo, calendario y archivos que ya instalaste dejan de funcionar hasta que vuelvas a instalar esto. No pierdes su configuración.',
   'settings.runtimes.removeConfirm': 'Quitar',
-  'settings.runtimes.error.disk': 'No hay espacio suficiente en el disco',
+  'settings.runtimes.error.disk': 'No hay espacio suficiente en el disco; libera espacio e inténtalo de nuevo',
+  'settings.runtimes.error.permission':
+    'Lazunox no puede escribir en su carpeta de datos; revisa los permisos de esa carpeta (o tu antivirus) e inténtalo de nuevo',
+  'settings.runtimes.error.offline': 'No hay conexión con el sitio de descarga; revisa tu conexión e inténtalo de nuevo',
   'settings.runtimes.error.hash': 'La descarga no coincide con la esperada; no se instaló nada',
   'settings.runtimes.error.unsafe': 'El archivo descargado no pasó la revisión; no se instaló nada',
-  'settings.runtimes.error.download': 'No se pudo descargar; revisa tu conexión',
+  'settings.runtimes.error.download': 'El sitio de descarga no respondió como se esperaba; inténtalo más tarde',
   'settings.runtimes.error.cancelled': 'Descarga cancelada',
   'settings.runtimes.error.unsupported': 'Todavía no está disponible en este sistema',
   'settings.runtimes.error.generic': 'No se pudo instalar. Inténtalo de nuevo.',

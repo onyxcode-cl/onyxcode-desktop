@@ -18,10 +18,31 @@ import { chmod, lstat, mkdir, mkdtemp, readdir, rename, rm, statfs, writeFile } 
 import { delimiter, isAbsolute, join, sep } from 'node:path'
 import { PinnedDownloadError, pinnedDownload, type PinnedDownloadOptions } from '../tasks/backends/pinned-download'
 import type { FetchLike } from '../remote/tunnel/binary'
+import { fsFailureKind } from '../util/fs-error'
 import { ArchiveError, extractArchive } from './archive'
 import { RUNTIME_IDS, assetFor, downloadHosts, platformKey, type RuntimeId, type RuntimePin, type RuntimePinAsset } from './runtime-pin'
 
-export type RuntimeErrorCode = 'unsupported' | 'disk' | 'hash' | 'download' | 'unsafe' | 'broken' | 'cancelled' | 'busy' | 'io'
+export type RuntimeErrorCode =
+  | 'unsupported'
+  | 'disk'
+  /** Sin permiso de escritura en la carpeta de Lazunox (F8-B198). */
+  | 'permission'
+  | 'hash'
+  /** Sin conexión (no se pudo llegar al sitio de descarga o se cortó a mitad) (F8-B198). */
+  | 'offline'
+  | 'download'
+  | 'unsafe'
+  | 'broken'
+  | 'cancelled'
+  | 'busy'
+  | 'io'
+
+/** Un fallo suelto del sistema de archivos con su causa real (disco lleno, sin permiso); `io` si no se reconoce. */
+export function toRuntimeError(e: unknown): RuntimeError {
+  if (e instanceof RuntimeError) return e
+  const detail = e instanceof Error ? e.message.slice(0, 120) : 'io'
+  return new RuntimeError(fsFailureKind(e) ?? 'io', detail)
+}
 
 export class RuntimeError extends Error {
   constructor(
@@ -191,7 +212,9 @@ async function installOne(
   const dir = runtimeDir(d, id)
   if (!asset || !dir || !d.pin) throw new RuntimeError('unsupported')
   const version = d.pin[id].version
-  const work = await mkdtemp(join(d.runtimesDir, '.tmp-'))
+  const work = await mkdtemp(join(d.runtimesDir, '.tmp-')).catch((e: unknown) => {
+    throw toRuntimeError(e)
+  })
   try {
     const archive = join(work, 'archivo')
     const stage = join(work, 'stage')
@@ -206,9 +229,10 @@ async function installOne(
         onBytes: (done) => onProgress({ phase: 'download', id, done: base.before + done, total: base.total })
       })
     } catch (e) {
-      const code = e instanceof PinnedDownloadError ? e.code : signal?.aborted ? 'aborted' : 'io'
+      const code = e instanceof PinnedDownloadError ? e.code : signal?.aborted ? 'aborted' : (fsFailureKind(e) ?? 'io')
       if (code === 'aborted') throw new RuntimeError('cancelled')
       if (code === 'bad-hash' || code === 'bad-size' || code === 'too-big') throw new RuntimeError('hash', code)
+      if (code === 'disk' || code === 'permission' || code === 'offline') throw new RuntimeError(code, code)
       if (code === 'bad-url' || code === 'bad-host' || code === 'too-many-redirects') throw new RuntimeError('unsafe', code)
       throw new RuntimeError('download', code)
     }
@@ -247,8 +271,7 @@ async function installOne(
     await rm(dir, { recursive: true, force: true })
     await rename(stage, dir)
   } catch (e) {
-    if (e instanceof RuntimeError) throw e
-    throw new RuntimeError('io', e instanceof Error ? e.message.slice(0, 120) : 'io')
+    throw toRuntimeError(e)
   } finally {
     await rm(work, { recursive: true, force: true }).catch(() => undefined)
   }
@@ -267,7 +290,9 @@ export async function installRuntimes(
   signal?: AbortSignal
 ): Promise<RuntimesStatus> {
   if (!d.pin || RUNTIME_IDS.every((id) => !assetOf(d, id))) throw new RuntimeError('unsupported', keyOf(d))
-  await mkdir(d.runtimesDir, { recursive: true, mode: 0o700 })
+  await mkdir(d.runtimesDir, { recursive: true, mode: 0o700 }).catch((e: unknown) => {
+    throw toRuntimeError(e)
+  })
   const before = runtimesStatus(d)
   const todo = RUNTIME_IDS.filter((id) => {
     const s = id === 'node' ? before.node : before.uv

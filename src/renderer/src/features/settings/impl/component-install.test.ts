@@ -23,10 +23,12 @@ describe('componentes opcionales › utilidades', () => {
 
   it.each([
     ['disk', 'No hay espacio suficiente'],
+    ['permission', 'no puede escribir en su carpeta de datos'],
+    ['offline', 'revisa tu conexión'],
     ['hash', 'no coincide'],
     ['size', 'no coincide'],
     ['signature', 'La firma no es válida'],
-    ['download', 'revisa tu conexión'],
+    ['download', 'no respondió como se esperaba'],
     ['cancelled', 'Instalación cancelada'],
     ['mount', 'No se pudo instalar'],
     [undefined, 'No se pudo instalar']

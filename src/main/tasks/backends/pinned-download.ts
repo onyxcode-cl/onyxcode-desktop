@@ -10,9 +10,23 @@
 import { createHash } from 'node:crypto'
 import { lstat, open, rename, rm } from 'node:fs/promises'
 import { DOWNLOAD_HOSTS, sha256File, type FetchLike } from '../../remote/tunnel/binary'
+import { fsFailureKind } from '../../util/fs-error'
 
 export type PinnedDownloadErrorCode =
-  'bad-url' | 'bad-host' | 'offline' | 'http' | 'too-many-redirects' | 'too-big' | 'bad-size' | 'bad-hash' | 'aborted' | 'io'
+  | 'bad-url'
+  | 'bad-host'
+  | 'offline'
+  | 'http'
+  | 'too-many-redirects'
+  | 'too-big'
+  | 'bad-size'
+  | 'bad-hash'
+  | 'aborted'
+  /** Se acabó el espacio al guardar (F8-B198). */
+  | 'disk'
+  /** No hay permiso para escribir en la carpeta de destino (F8-B198). */
+  | 'permission'
+  | 'io'
 
 export class PinnedDownloadError extends Error {
   constructor(readonly code: PinnedDownloadErrorCode) {
@@ -80,7 +94,7 @@ export async function pinnedDownload(url: string, dest: string, o: PinnedDownloa
   } catch (err) {
     await rm(part, { force: true }).catch(() => undefined)
     if (err instanceof PinnedDownloadError) throw err
-    throw new PinnedDownloadError(o.signal?.aborted ? 'aborted' : 'io')
+    throw new PinnedDownloadError(o.signal?.aborted ? 'aborted' : (fsFailureKind(err) ?? 'io'))
   }
 }
 
@@ -144,7 +158,9 @@ async function fetchToPart(url: string, part: string, hosts: readonly string[], 
   } catch (err) {
     void reader.cancel().catch(() => undefined)
     if (err instanceof PinnedDownloadError) throw err
-    throw new PinnedDownloadError(o.signal?.aborted ? 'aborted' : 'offline')
+    // Un fallo al ESCRIBIR (disco lleno, sin permiso) no es una caída de la red.
+    const fsKind = fsFailureKind(err)
+    throw new PinnedDownloadError(o.signal?.aborted ? 'aborted' : (fsKind ?? 'offline'))
   } finally {
     o.signal?.removeEventListener('abort', onAbort)
     await fh.close().catch(() => undefined)

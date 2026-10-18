@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -138,6 +138,30 @@ describe('pinnedDownload', () => {
     expect(await code(pinnedDownload(URL0, dest, base(server({}))))).toBe('offline')
   })
 
+  it('F8-B198: disco lleno al escribir (ENOSPC) → «disk», no «offline», y sin .part', async () => {
+    const enospc = (): never => {
+      throw Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' })
+    }
+    expect(await code(pinnedDownload(URL0, dest, base(server({ [URL0]: ok() }), { onBytes: enospc })))).toBe('disk')
+    expect(existsSync(`${dest}.part`)).toBe(false)
+  })
+  it('F8-B198: sin permiso de escritura (EACCES) → «permission»', async () => {
+    const eacces = (): never => {
+      throw Object.assign(new Error('EACCES: permission denied, write'), { code: 'EACCES' })
+    }
+    expect(await code(pinnedDownload(URL0, dest, base(server({ [URL0]: ok() }), { onBytes: eacces })))).toBe('permission')
+  })
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'F8-B198: carpeta de destino de solo lectura (EACCES real al abrir el .part) → «permission»',
+    async () => {
+      chmodSync(dir, 0o500)
+      try {
+        expect(await code(pinnedDownload(URL0, dest, base(server({ [URL0]: ok() }))))).toBe('permission')
+      } finally {
+        chmodSync(dir, 0o700)
+      }
+    }
+  )
   it('cancelación por AbortSignal a mitad de flujo borra el .part', async () => {
     const ac = new AbortController()
     const h: Handler = () =>

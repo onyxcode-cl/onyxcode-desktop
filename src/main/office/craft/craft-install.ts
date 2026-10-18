@@ -26,7 +26,7 @@ import {
 } from 'node:fs'
 import { join, normalize, sep } from 'node:path'
 import { cleanStaleCraft } from './craft-clean'
-import { OfficeError, downloadVerified, parseTeamId, realRun, type FetchLike, type RunFile } from '../download'
+import { OfficeError, downloadVerified, parseTeamId, realRun, toOfficeError, type FetchLike, type RunFile } from '../download'
 
 export interface CraftPinAsset {
   url: string
@@ -322,6 +322,19 @@ type InstallItem = { kind: 'cli'; tool: string; asset: CraftPinAsset } | { kind:
 export async function installCraft(
   d: CraftDeps,
   onProgress: (p: CraftProgress) => void = () => undefined,
+  signal?: AbortSignal
+): Promise<Record<string, string>> {
+  try {
+    return await installCraftInner(d, onProgress, signal)
+  } catch (e) {
+    // Un fallo suelto de `fs` (carpeta sin permiso, disco lleno) sale con su causa real, no como «falló la descarga».
+    throw toOfficeError(e)
+  }
+}
+
+async function installCraftInner(
+  d: CraftDeps,
+  onProgress: (p: CraftProgress) => void,
   signal?: AbortSignal
 ): Promise<Record<string, string>> {
   const st = craftStatus(d)

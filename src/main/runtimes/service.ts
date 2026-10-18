@@ -18,7 +18,7 @@ import {
   installRuntimes,
   removeRuntimes,
   runtimesStatus,
-  RuntimeError,
+  toRuntimeError,
   type AppRuntimeBins,
   type RuntimeDeps,
   type RuntimeState
@@ -96,7 +96,7 @@ class RuntimesService {
       await installRuntimes(this.deps(), (p) => (this.progress = { phase: p.phase, done: p.done, total: p.total }), ac.signal)
       return { ok: true }
     } catch (e) {
-      const code = e instanceof RuntimeError ? e.code : 'io'
+      const code = toRuntimeError(e).code
       this.error = code
       if (code !== 'cancelled') {
         const { message, stack } = describeError(e)

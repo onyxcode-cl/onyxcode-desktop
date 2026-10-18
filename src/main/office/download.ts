@@ -8,9 +8,23 @@ import { execFile } from 'node:child_process'
 import { createWriteStream, rmSync } from 'node:fs'
 import { pipeline } from 'node:stream/promises'
 import { Readable, Transform } from 'node:stream'
+import { fsFailureKind } from '../util/fs-error'
 
 export type OfficeErrorCode =
-  'unsupported' | 'no-pin' | 'disk' | 'download' | 'size' | 'hash' | 'mount' | 'signature' | 'copy' | 'cancelled'
+  | 'unsupported'
+  | 'no-pin'
+  | 'disk'
+  /** Sin permiso de escritura en la carpeta de Lazunox (F8-B198). */
+  | 'permission'
+  /** Sin conexión: no se llegó al sitio de descarga o se cortó a mitad (F8-B198). */
+  | 'offline'
+  | 'download'
+  | 'size'
+  | 'hash'
+  | 'mount'
+  | 'signature'
+  | 'copy'
+  | 'cancelled'
 
 export class OfficeError extends Error {
   constructor(
@@ -22,6 +36,19 @@ export class OfficeError extends Error {
     super(message)
     this.name = 'OfficeError'
   }
+}
+
+/**
+ * Convierte un fallo suelto (típicamente de `fs`) en un `OfficeError` con su causa real: disco lleno → `disk`, sin permiso de
+ * escritura → `permission`; lo demás, `copy` (mensaje general). Así nunca se acaba culpando a la conexión de lo que fue el disco.
+ */
+export function toOfficeError(e: unknown): OfficeError {
+  if (e instanceof OfficeError) return e
+  const msg = e instanceof Error ? e.message : String(e)
+  const kind = fsFailureKind(e)
+  if (kind === 'disk') return new OfficeError('disk', `Sin espacio en el disco: ${msg}`)
+  if (kind === 'permission') return new OfficeError('permission', `Sin permiso de escritura: ${msg}`)
+  return new OfficeError('copy', `No se pudo guardar: ${msg}`)
 }
 
 export type RunFile = (file: string, args: string[]) => Promise<{ code: number; stdout: string; stderr: string }>
@@ -52,7 +79,7 @@ export async function downloadVerified(
     if (!current.startsWith('https://')) throw new OfficeError('download', 'La descarga debe ser por https')
     res = await fetchFn(current, { signal, redirect: 'manual' }).catch((e: unknown) => {
       if (signal?.aborted) throw new OfficeError('cancelled', 'Descarga cancelada')
-      throw new OfficeError('download', `No se pudo descargar: ${e instanceof Error ? e.message : String(e)}`)
+      throw new OfficeError('offline', `No se pudo descargar: ${e instanceof Error ? e.message : String(e)}`)
     })
     if (res.status >= 300 && res.status < 400) {
       const loc = res.headers.get('location')
@@ -84,7 +111,12 @@ export async function downloadVerified(
     rmSync(dest, { force: true })
     if (e instanceof OfficeError) throw e
     if (signal?.aborted) throw new OfficeError('cancelled', 'Descarga cancelada')
-    throw new OfficeError('download', `Descarga interrumpida: ${e instanceof Error ? e.message : String(e)}`, received)
+    const msg = e instanceof Error ? e.message : String(e)
+    // Escribir el archivo falló (disco lleno, sin permiso): no es la red.
+    const kind = fsFailureKind(e)
+    if (kind === 'disk') throw new OfficeError('disk', `Sin espacio en el disco: ${msg}`, received)
+    if (kind === 'permission') throw new OfficeError('permission', `Sin permiso de escritura: ${msg}`, received)
+    throw new OfficeError('offline', `Descarga interrumpida: ${msg}`, received)
   }
   if (received !== expect.size) {
     rmSync(dest, { force: true })

@@ -281,6 +281,52 @@ describe('instalación de Craft', () => {
   it('poco espacio libre → error de disco antes de descargar', async () => {
     await expect(installCraft(deps({ freeBytes: () => 1 }))).rejects.toMatchObject({ code: 'disk' })
   })
+  it('F8-B198: sin conexión → «offline» (no «download») y sin restos', async () => {
+    const f: CraftDeps['fetch'] = async () => {
+      throw new TypeError('fetch failed')
+    }
+    await expect(installCraft(deps({ fetch: f }))).rejects.toMatchObject({ code: 'offline' })
+    expect(readdirSync(dir).filter((n) => n.startsWith('.craft-tmp-'))).toEqual([])
+  })
+  it('F8-B198: la respuesta del sitio no es 200 → «download» (el sitio no respondió bien)', async () => {
+    const f: CraftDeps['fetch'] = async () => new Response('no', { status: 404 })
+    await expect(installCraft(deps({ fetch: f }))).rejects.toMatchObject({ code: 'download' })
+  })
+  it('F8-B198: la descarga se corta con ENOSPC al escribir → «disk», no «offline»', async () => {
+    const f: CraftDeps['fetch'] = async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(c) {
+            c.error(Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' }))
+          }
+        }),
+        { status: 200 }
+      )
+    await expect(installCraft(deps({ fetch: f }))).rejects.toMatchObject({ code: 'disk' })
+  })
+  it('F8-B198: sin permiso de escritura (EACCES al descomprimir o mover) → «permission»', async () => {
+    const run: RunFile = async () => {
+      throw Object.assign(new Error("EACCES: permission denied, mkdir '/x'"), { code: 'EACCES' })
+    }
+    await expect(installCraft(deps({ run }))).rejects.toMatchObject({ code: 'permission' })
+  })
+  it('F8-B198: disco lleno al mover (ENOSPC suelto) → «disk»; un error raro sin código → «copy» (mensaje general)', async () => {
+    const full: RunFile = async () => {
+      throw Object.assign(new Error('ENOSPC'), { code: 'ENOSPC' })
+    }
+    await expect(installCraft(deps({ run: full }))).rejects.toMatchObject({ code: 'disk' })
+    const odd: RunFile = async () => {
+      throw new Error('algo raro')
+    }
+    await expect(installCraft(deps({ run: odd }))).rejects.toMatchObject({ code: 'copy' })
+  })
+  it('F8-B198: la carpeta de datos no se puede crear → falla antes de descargar y NO culpa a la conexión', async () => {
+    // La carpeta de datos queda dentro de un archivo: `mkdir` falla ANTES de descargar nada.
+    const file = join(dir, 'archivo')
+    writeFileSync(file, 'x')
+    const bad = deps({ binDir: join(file, 'bin'), fetch: async () => Promise.reject(new Error('no debe llamarse')) })
+    await expect(installCraft(bad)).rejects.toMatchObject({ code: 'copy' })
+  })
   it('quitar borra la copia (también la web)', async () => {
     await installCraft(deps())
     removeCraft(deps())
