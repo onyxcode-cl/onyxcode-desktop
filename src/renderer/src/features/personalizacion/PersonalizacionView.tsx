@@ -37,7 +37,8 @@ import { LocalConnectWizard } from './ConectarLocal'
 import { ConnectorDetail, SkillDetail, UserSkillDetail } from './Detalle'
 import { Ficha, IconTile, Tag } from './Ficha'
 import { InstallSkillDialog } from './InstalarHabilidad'
-import { connectorState, visibleGroups, type ConnectorState } from './logic'
+import { connectorState, localUnsupported, visibleGroups, type ConnectorState } from './logic'
+import { currentPlatform } from '../../lib/platform'
 import { matchesQuery } from './search'
 import { useSkills } from './useSkills'
 
@@ -207,15 +208,17 @@ export function PersonalizacionView(): React.JSX.Element {
                     reviewed={c.reviewed}
                     note={c.accountTested === false ? t('pers.note.untested') : undefined}
                     hint={
-                      st === 'none' && c.transport === 'local'
-                        ? t('pers.local.hint')
-                        : st === 'needs-login'
-                          ? t('pers.hint.needsLogin')
-                          : st === 'problem'
-                            ? t('pers.hint.problem')
-                            : st === 'off'
-                              ? t('pers.hint.off')
-                              : undefined
+                      st === 'none' && localUnsupported(c, currentPlatform())
+                        ? t('pers.local.macOnly')
+                        : st === 'none' && c.transport === 'local'
+                          ? t('pers.local.hint')
+                          : st === 'needs-login'
+                            ? t('pers.hint.needsLogin')
+                            : st === 'problem'
+                              ? t('pers.hint.problem')
+                              : st === 'off'
+                                ? t('pers.hint.off')
+                                : undefined
                     }
                     onOpen={() => setDetail({ kind: 'connector', id: c.id })}
                     tag={

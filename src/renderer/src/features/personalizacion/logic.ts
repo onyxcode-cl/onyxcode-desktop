@@ -54,3 +54,8 @@ export function formatBytes(n: number, locale: string): string {
   if (kb < 1024) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(kb)} KB`
   return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(kb / 1024)} MB`
 }
+
+/** Una ficha local que no corre en esta plataforma (hoy: las de correo y calendario solo en Mac). Se avisa en la ficha, antes del asistente. */
+export function localUnsupported(item: CatalogConnector, platform: string): boolean {
+  return item.transport === 'local' && !item.runtime.platforms.includes(platform)
+}

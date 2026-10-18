@@ -185,6 +185,7 @@ export const personalizacion = {
   'merr.pers.skill.reserved': 'Ese nombre lo usa una habilidad que viene con la app, o no se puede usar aquí.',
   'merr.pers.skill.exists': 'Ya tienes una habilidad con ese nombre. Quítala primero si quieres reemplazarla.',
   'pers.local.hint': 'Instala un programa en tu equipo',
+  'pers.local.macOnly': 'Solo en Mac por ahora',
   'pers.local.tag.readOnly': 'Solo consulta',
   'pers.local.installsTitle': 'Qué se instala en tu equipo',
   'pers.local.fact.program': 'Un programa de {author} (licencia {license}), versión {version}, que queda fijada.',

@@ -1299,6 +1299,7 @@
  "pers.local.install",
  "pers.local.installing",
  "pers.local.installsTitle",
+ "pers.local.macOnly",
  "pers.local.needNode",
  "pers.local.needPlatform",
  "pers.local.needUv",

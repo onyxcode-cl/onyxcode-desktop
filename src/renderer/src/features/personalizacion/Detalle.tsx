@@ -14,7 +14,8 @@ import { IconTile, ReviewedSeal, Tag } from './Ficha'
 import { localText } from './ConectarLocal'
 import { LocalFacts, LocalTools } from './LocalFacts'
 import { Modal } from './Modal'
-import { authKey, formatBytes, type ConnectorState } from './logic'
+import { authKey, formatBytes, localUnsupported, type ConnectorState } from './logic'
+import { currentPlatform } from '../../lib/platform'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.JSX.Element {
   return (
@@ -314,8 +315,8 @@ export function ConnectorDetail({
             </Button>
           )}
           {state === 'none' && (
-            <Button variant="primary" onClick={onConnect}>
-              <Plug size={14} /> {t('pers.connect')}
+            <Button variant="primary" disabled={localUnsupported(item, currentPlatform())} onClick={onConnect}>
+              <Plug size={14} /> {localUnsupported(item, currentPlatform()) ? t('pers.local.macOnly') : t('pers.connect')}
             </Button>
           )}
         </>

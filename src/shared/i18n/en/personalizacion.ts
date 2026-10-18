@@ -189,6 +189,7 @@ export const personalizacion = {
   'merr.pers.skill.reserved': 'That name belongs to a skill that comes with the app, or cannot be used here.',
   'merr.pers.skill.exists': 'You already have a skill with that name. Remove it first if you want to replace it.',
   'pers.local.hint': 'Installs a program on your computer',
+  'pers.local.macOnly': 'Mac only for now',
   'pers.local.tag.readOnly': 'Read-only',
   'pers.local.installsTitle': 'What gets installed on your computer',
   'pers.local.fact.program': 'A program by {author} (license {license}), version {version}, which stays pinned.',

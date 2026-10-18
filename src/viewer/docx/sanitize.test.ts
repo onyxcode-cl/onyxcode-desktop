@@ -90,3 +90,19 @@ describe('sanitizeDocxDom', () => {
     expect(root.innerHTML).toBe(before)
   })
 })
+
+describe('selectores de atributos con «:»', () => {
+  it('escapa xlink:href (sin escapar, Chrome lanza SyntaxError y el visor de Word no muestra el documento)', () => {
+    const root = new Window().document.createElement('div')
+    const usados: string[] = []
+    const original = root.querySelectorAll.bind(root)
+    root.querySelectorAll = ((sel: string) => {
+      usados.push(sel)
+      return original(sel)
+    }) as typeof root.querySelectorAll
+    sanitizeDocxDom(root as never)
+    const conAtributo = usados.filter((s) => s.includes('href'))
+    expect(conAtributo.length).toBeGreaterThan(0)
+    for (const s of conAtributo) expect(s).not.toMatch(/\[xlink:href\]/)
+  })
+})

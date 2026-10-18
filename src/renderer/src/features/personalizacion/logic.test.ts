@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { McpStatus } from '@opencode-ai/sdk/v2/client'
 import type { AppMcpConfig } from '@shared/ipc-extras'
 import { CATALOG } from '@shared/catalogo'
-import { authKey, connectorState, formatBytes, skillTag, visibleGroups } from './logic'
+import { authKey, connectorState, formatBytes, localUnsupported, skillTag, visibleGroups } from './logic'
 import { matchesQuery, normalize } from './search'
 
 const cfg = (servers: AppMcpConfig['servers']): AppMcpConfig => ({ path: '/x', servers })
@@ -65,5 +65,16 @@ describe('buscador', () => {
     expect(matchesQuery('', ['x'])).toBe(true)
     expect(matchesQuery('  ', [])).toBe(true)
     expect(matchesQuery('a', [undefined])).toBe(false)
+  })
+})
+
+describe('fichas locales según la plataforma', () => {
+  const locales = CATALOG.connectors.filter((c) => c.transport === 'local')
+  it('las de correo y calendario solo valen en Mac', () => {
+    expect(locales.length).toBeGreaterThan(0)
+    for (const c of locales) {
+      expect(localUnsupported(c, 'darwin')).toBe(false)
+      expect(localUnsupported(c, 'win32')).toBe(true)
+    }
   })
 })
