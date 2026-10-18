@@ -7,7 +7,7 @@ import { app, dialog, shell, type IpcMain } from 'electron'
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { release } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { t } from '@shared/i18n'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
@@ -32,7 +32,16 @@ import { craftService } from '../office/craft/service'
 import { onWebEvent } from '../office/craft/web-view'
 import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
-import { catalogState, CatalogProvenanceStore, installFromCatalog } from '../extras/mcp-catalog-install'
+import {
+  catalogState,
+  CatalogProvenanceStore,
+  installFromCatalog,
+  installLocalFromCatalog,
+  removeLocalFromCatalog
+} from '../extras/mcp-catalog-install'
+import { defaultRunner, findExecutable, stageClientFileFromDisk, type LocalDeps, type StagedClient } from '../extras/local-connectors'
+import { LOCK_FILE_TEXT } from '../extras/local-connector-files'
+import { findLocalItem } from '@shared/mcp-catalog'
 import {
   ensureAppOpencodeConfig,
   maskAppMcpConfig,
@@ -411,17 +420,57 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'personalizacion:skills:remove', (req) => skills.remove(req))
 
   handle(ipcMain, 'mcp:getConfig', () => maskAppMcpConfig(readAppMcpConfig()))
+  // Conectores LOCALES del catálogo (F8-B186): carpeta propia, instalación fijada y archivo del cliente elegido en un diálogo.
+  const localDeps = (): LocalDeps => ({
+    baseDir: join(app.getPath('userData'), 'conectores-locales'),
+    platform: process.platform,
+    files: LOCK_FILE_TEXT,
+    run: defaultRunner,
+    find: (name) => findExecutable(name),
+    now: () => Date.now()
+  })
+  const stagedClients = new Map<string, StagedClient>()
+
   handle(ipcMain, 'mcp:save', async ({ name, entry, previousName }) => {
+    // Un conector local del catálogo se gestiona solo desde Personalización: editar su programa o sus argumentos quitaría el «solo consulta».
+    if (provenance.isLocal(previousName ?? name) || provenance.isLocal(name)) throw new Error(t('merr.local.noEdit'))
     saveMcpServer(name, entry, previousName)
     if (previousName && previousName !== name) provenance.rename(previousName, name)
     return afterMcpChange()
   })
   handle(ipcMain, 'mcp:remove', async ({ name }) => {
+    if (provenance.isLocal(name)) {
+      // Local: quita el servidor y sus reglas, recarga el motor (el programa deja de correr) y BORRA su carpeta entera.
+      await removeLocalFromCatalog(provenance, localDeps().baseDir, name, async () => void (await reloadOpencodeConfig(deps.server)))
+      return afterMcpChange()
+    }
     removeMcpServer(name) // también limpia su «Preguntar antes de cada uso»
     provenance.forget(name)
     return afterMcpChange()
   })
-  handle(ipcMain, 'mcp:catalog', () => catalogState(provenance.read(), readAppMcpConfig()))
+  handle(ipcMain, 'mcp:catalog', () => catalogState(provenance.read(), readAppMcpConfig(), localDeps()))
+  handle(ipcMain, 'mcp:localPickClient', async ({ id }) => {
+    const item = findLocalItem(id)
+    if (!item?.runtime.clientFile) throw new Error(t('merr.mcp.notInCatalog'))
+    const win = deps.getMainWindow?.() ?? null
+    const options: Electron.OpenDialogOptions = {
+      title: t('pers.local.pickTitle'),
+      properties: ['openFile', 'showHiddenFiles'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    }
+    const res = win && !win.isDestroyed() ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    const file = res.canceled ? null : (res.filePaths[0] ?? null)
+    if (!file) return null
+    const staged = stageClientFileFromDisk(file, Date.now())
+    stagedClients.set(id, staged)
+    return { fileName: basename(file), hint: staged.hint }
+  })
+  handle(ipcMain, 'mcp:installLocal', async ({ id, name, askEachUse }) => {
+    const client = stagedClients.get(id) ?? null
+    await installLocalFromCatalog(provenance, localDeps(), { id, name, askEachUse }, client)
+    stagedClients.delete(id) // de un solo uso: el secreto del cliente ya está solo en la carpeta del conector
+    return afterMcpChange()
+  })
   handle(ipcMain, 'mcp:installCatalog', async (req) => {
     installFromCatalog(provenance, req)
     return afterMcpChange()

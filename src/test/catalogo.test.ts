@@ -41,9 +41,19 @@ describe('catálogo de Personalización: archivo empaquetado', () => {
     }
   })
 
-  it('los conectores son los de la lista verificada de Ajustes (nada más) y llevan su dominio', () => {
+  it('los conectores son los de la lista verificada de Ajustes más los dos locales (nada más)', () => {
     const ids = CATALOG.connectors.map((c) => c.id).sort()
-    expect(ids).toEqual(['atlassian', 'cloudflare-docs', 'context7', 'github', 'linear', 'notion', 'sentry'])
+    expect(ids).toEqual([
+      'atlassian',
+      'cloudflare-docs',
+      'context7',
+      'github',
+      'google-workspace',
+      'linear',
+      'microsoft-365',
+      'notion',
+      'sentry'
+    ])
   })
 
   it('los grupos vacíos existen en el archivo pero ninguna ficha usa uno no declarado', () => {
@@ -73,7 +83,7 @@ describe('catálogo de Personalización: el validador rechaza lo que no cumple',
 
   it('no es un objeto / versión incorrecta', () => {
     expect(validateCatalog(null)).not.toEqual([])
-    expect(bad((c) => (c.schemaVersion = 2)).join()).toMatch(/schemaVersion/)
+    expect(bad((c) => (c.schemaVersion = 99)).join()).toMatch(/schemaVersion/)
   })
 
   it('clave desconocida en la raíz o en una ficha', () => {
@@ -94,7 +104,8 @@ describe('catálogo de Personalización: el validador rechaza lo que no cumple',
   })
 
   it('conector local, sin https, con credenciales en la URL o con grupo no declarado', () => {
-    expect(bad((c) => (c.connectors[0].transport = 'local')).join()).toMatch(/remotos/)
+    expect(bad((c) => (c.connectors[0].transport = 'local')).join()).toMatch(/runtime/)
+    expect(bad((c) => (c.connectors[0].transport = 'ssh')).join()).toMatch(/transport/)
     expect(bad((c) => (c.connectors[0].url = 'http://mcp.example.com/mcp')).join()).toMatch(/https/)
     expect(bad((c) => (c.connectors[0].url = 'https://u:p@mcp.example.com/mcp')).join()).toMatch(/https/)
     expect(bad((c) => (c.connectors[0].group = 'inventado')).join()).toMatch(/group/)
@@ -130,6 +141,11 @@ describe('catálogo de Personalización: «aún sin probar con una cuenta real»
       expect(c.accountTested === false, c.id).toBe(admits)
     }
     expect(CATALOG.connectors.some((c) => c.accountTested === false)).toBe(true)
+  })
+
+  it('los dos conectores locales llevan «Aún sin probar con una cuenta real» hasta que Ben los pruebe', () => {
+    for (const id of ['google-workspace', 'microsoft-365'])
+      expect(CATALOG.connectors.find((x) => x.id === id)?.accountTested, id).toBe(false)
   })
 
   it('«accountTested» solo puede ser verdadero o falso', () => {

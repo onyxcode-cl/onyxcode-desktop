@@ -425,5 +425,21 @@ export const mainErrors = {
   // Visor de documentos (Fase 0 del plan del visor)
   'merr.viewer.openFailed': 'No se pudo abrir el documento.',
   'merr.viewer.unsupported': 'Este tipo de archivo no se puede mostrar adentro de la app.',
-  'merr.viewer.tooLarge': 'El archivo es demasiado grande para mostrarlo adentro de la app.'
+  'merr.viewer.tooLarge': 'El archivo es demasiado grande para mostrarlo adentro de la app.',
+  'merr.local.lockMissing': 'Falta un archivo de la instalación ({file}). Vuelve a instalar Lazunox.',
+  'merr.local.lockHash': 'El archivo de la instalación ({file}) no es el que revisó Lazunox. No se instaló nada.',
+  'merr.local.clientBadJson': 'El archivo no es un JSON válido. Usa el que descargaste de la consola de Google.',
+  'merr.local.clientIsWeb': 'Ese cliente es de tipo «Aplicación web». Crea uno de tipo «Aplicación de escritorio» y descarga su archivo.',
+  'merr.local.clientNoInstalled': 'No encontré los datos del cliente en ese archivo. Descárgalo de nuevo desde la consola de Google.',
+  'merr.local.clientBadId': 'El identificador del cliente no tiene el formato de Google.',
+  'merr.local.clientBadSecret': 'La clave secreta del cliente no tiene el formato de Google.',
+  'merr.local.clientBadFile': 'Ese archivo no sirve: debe ser un archivo de texto pequeño (.json).',
+  'merr.local.clientMissing': 'Elige primero el archivo del cliente de Google (si ya lo habías elegido, venció: elígelo de nuevo).',
+  'merr.local.stepFailed': 'La instalación falló en «{step}»: {detail}',
+  'merr.local.platform': 'Este conector todavía no está disponible en este sistema.',
+  'merr.local.noUv': 'Hace falta tener instalado «uv» (el instalador de programas de Python). Instálalo y vuelve a intentarlo.',
+  'merr.local.noNode': 'Hace falta tener instalado Node.js. Instálalo y vuelve a intentarlo.',
+  'merr.local.versionMismatch': 'Lo instalado no es la versión {version} que revisó Lazunox. Se borró todo.',
+  'merr.local.noEdit':
+    'Este conector se gestiona desde Personalización: editar su programa le quitaría el modo de solo consulta. Quítalo y vuélvelo a añadir.'
 } as const

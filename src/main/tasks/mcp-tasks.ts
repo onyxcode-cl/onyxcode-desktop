@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { McpEntry } from '@shared/ipc-extras'
+import { CatalogProvenanceStore } from '../extras/mcp-catalog-install'
 import { readAppMcpConfig } from '../extras/mcp-config'
 import { hostOf } from '../util/url'
 import type { McpRouteClientConfig, McpRouteSpec } from './mcp-proxy'
@@ -76,6 +77,20 @@ export const MCP_ENV_WRAPPER: readonly string[] = [
   '-u',
   'LAZUNOX_PLAN_GATE_URL'
 ]
+
+/** Nombres de los servidores que son conectores LOCALES del catálogo (se leen de la procedencia; vacío si no se puede leer). */
+function localCatalogServers(): Set<string> {
+  try {
+    const prov = new CatalogProvenanceStore(join(app.getPath('userData'), 'mcp-catalog-installs.json')).read()
+    return new Set(
+      Object.entries(prov)
+        .filter(([, p]) => !!p.local)
+        .map(([n]) => n)
+    )
+  } catch {
+    return new Set()
+  }
+}
 
 function flagsFile(): string {
   return join(app.getPath('userData'), 'tasks-mcp.json')
@@ -148,9 +163,15 @@ export function tasksMcpContribution(opts: { sandboxed: boolean; registerRoute?:
   }
   const flags = readFlags().servers
   const hosts = new Set<string>()
+  const catalogLocal = localCatalogServers()
   for (const [name, entry] of Object.entries(servers)) {
     const f = flags[name]
     if (!f?.tasks || entry.enabled === false) continue
+    if (catalogLocal.has(name)) {
+      // Programas de terceros instalados desde el catálogo (F8-B186): nunca dentro de Overdrive, ni con sandbox ni sin él.
+      out.blocked.push(name)
+      continue
+    }
     if (opts.sandboxed && entry.type === 'local' && mcpEntryHasSecrets(entry)) {
       // Sus variables de entorno irían al entorno del proceso del sandbox (legible con `ps eww`): no entra.
       out.blocked.push(name)

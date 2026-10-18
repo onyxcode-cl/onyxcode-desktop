@@ -64,7 +64,7 @@ const type = async (el: HTMLInputElement, value: string): Promise<void> => {
 function setup(over: Record<string, (req?: unknown) => unknown> = {}): void {
   const handlers: Record<string, (req?: unknown) => unknown> = {
     'mcp:getConfig': () => ({ path: '/x/opencode.json', servers: {} }),
-    'mcp:catalog': () => ({ items: [...MCP_CATALOG], installed: {} }),
+    'mcp:catalog': () => ({ items: [...MCP_CATALOG], installed: {}, local: {} }),
     'personalizacion:skills:list': () => skillsState,
     ...over
   }
@@ -267,8 +267,7 @@ describe('Personalización: conectores', () => {
     useUi.setState({ personalizationTab: 'conectores' })
     await mount()
     const headings = Array.from(document.querySelectorAll('h2')).map((h) => h.textContent)
-    expect(headings).toEqual(['Desarrollo', 'Proyectos y notas'])
-    expect(document.body.textContent).not.toContain('Correo y calendario')
+    expect(headings).toEqual(['Correo y calendario', 'Desarrollo', 'Proyectos y notas'])
     expect(document.body.textContent).not.toContain('Contabilidad')
     for (const c of CATALOG.connectors) expect(document.querySelector(`[data-testid="pers-conn-${c.id}"]`), c.id).not.toBeNull()
     expect(document.body.textContent).toContain('No conectado')
@@ -448,5 +447,98 @@ describe('Personalización: vacío y error', () => {
     await click(byText('button', 'Reintentar'))
     expect(document.querySelector('[data-testid="pers-error"]')).toBeNull()
     expect(document.querySelector('[data-testid="pers-skill-docx"]')).not.toBeNull()
+  })
+})
+
+describe('Personalización: conectores locales (instalan un programa en el equipo)', () => {
+  const READY = { platformOk: true, manager: 'uv', managerFound: true }
+  const check = async (testId: string, checked: boolean): Promise<void> => {
+    const el = document.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!
+    const key = Object.keys(el).find((k) => k.startsWith('__reactProps$'))!
+    const props = (el as unknown as Record<string, { onChange: (e: unknown) => void }>)[key]
+    await act(async () => props.onChange({ target: { checked }, currentTarget: { checked } }))
+  }
+  const btn = (testId: string): HTMLButtonElement => document.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!
+
+  async function openWizard(local = { 'google-workspace': READY } as Record<string, unknown>): Promise<void> {
+    setup({ 'mcp:catalog': () => ({ items: [...MCP_CATALOG], installed: {}, local }) })
+    useUi.setState({ personalizationTab: 'conectores' })
+    await mount()
+    await click(document.querySelector('[data-testid="pers-conn-google-workspace"] h3 button'))
+    await click(byText('[role="dialog"] button', 'Conectar'))
+  }
+
+  it('la tarjeta dice que instala un programa y que aún no se probó con una cuenta real', async () => {
+    useUi.setState({ personalizationTab: 'conectores' })
+    await mount()
+    const card = document.querySelector('[data-testid="pers-conn-google-workspace"]')!
+    expect(card.textContent).toContain('Instala un programa en tu equipo')
+    expect(card.textContent).toContain('Aún sin probar con una cuenta real')
+    expect(document.querySelector('[data-testid="pers-conn-microsoft-365"]')!.textContent).toContain('Aún sin probar con una cuenta real')
+  })
+
+  it('el detalle muestra autor, licencia, versión fijada, descarga, tamaño, que no hay aislamiento y las herramientas', async () => {
+    useUi.setState({ personalizationTab: 'conectores' })
+    await mount()
+    await click(document.querySelector('[data-testid="pers-conn-google-workspace"] h3 button'))
+    const d = document.querySelector('[role="dialog"]')!.textContent ?? ''
+    expect(d).toContain('Taylor Wilsdon')
+    expect(d).toContain('MIT')
+    expect(d).toContain('2.0.1')
+    expect(d).toContain('pypi.org')
+    expect(d).toContain('230 MB')
+    expect(d).toContain('fuera del aislamiento de Overdrive')
+    expect(d).toContain('Lazunox no revisó el código')
+    expect(d).toContain('Solo consulta')
+    expect(d).toContain('Herramientas: 17 se pueden usar y 21 están desactivadas')
+    expect(d).toContain('send_gmail_message')
+  })
+
+  it('«Seguir» no se habilita hasta marcar LAS DOS casillas, y «Instalar» hasta elegir el archivo del cliente', async () => {
+    await openWizard()
+    expect(document.querySelector('[role="dialog"]')!.textContent).toContain('Entiendo que esto instala un programa de un tercero.')
+    expect(btn('pers-local-next').disabled).toBe(true)
+    await check('pers-local-ack-third', true)
+    expect(btn('pers-local-next').disabled).toBe(true)
+    await check('pers-local-ack-data', true)
+    expect(btn('pers-local-next').disabled).toBe(false)
+    await check('pers-local-ack-third', false)
+    expect(btn('pers-local-next').disabled).toBe(true)
+    await check('pers-local-ack-third', true)
+    await click(btn('pers-local-next'))
+    expect(btn('pers-local-install').disabled).toBe(true)
+    expect(invoke).not.toHaveBeenCalledWith('mcp:installLocal', expect.anything())
+  })
+
+  it('elige el archivo (sin ver su contenido), instala con las dos confirmaciones y llega al paso de entrar a la cuenta', async () => {
+    const calls: unknown[] = []
+    await openWizard()
+    setup({
+      'mcp:catalog': () => ({ items: [...MCP_CATALOG], installed: {}, local: { 'google-workspace': READY } }),
+      'mcp:localPickClient': () => ({ fileName: 'client_secret_1.json', hint: '12345678…' }),
+      'mcp:installLocal': (req) => {
+        calls.push(req)
+        return { path: '/x', servers: {} }
+      }
+    })
+    await check('pers-local-ack-third', true)
+    await check('pers-local-ack-data', true)
+    await click(btn('pers-local-next'))
+    await click(btn('pers-local-pick'))
+    expect(document.querySelector('[data-testid="pers-local-picked"]')!.textContent).toContain('client_secret_1.json')
+    expect(document.body.textContent).not.toMatch(/GOCSPX|client_secret"/)
+    expect(btn('pers-local-install').disabled).toBe(false)
+    await click(btn('pers-local-install'))
+    expect(calls).toEqual([{ id: 'google-workspace', name: 'google', understandThirdParty: true, understandData: true, askEachUse: true }])
+    expect(document.querySelector('[role="dialog"]')!.textContent).toContain('Conecta mi cuenta de Google')
+  })
+
+  it('sin «uv» en el equipo explica qué falta y no deja instalar', async () => {
+    await openWizard({ 'google-workspace': { ...READY, managerFound: false } })
+    await check('pers-local-ack-third', true)
+    await check('pers-local-ack-data', true)
+    await click(btn('pers-local-next'))
+    expect(document.querySelector('[data-testid="pers-local-need-manager"]')!.textContent).toContain('uv')
+    expect(btn('pers-local-install').disabled).toBe(true)
   })
 })

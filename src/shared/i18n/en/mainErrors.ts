@@ -417,5 +417,21 @@ export const mainErrors = {
   // Document viewer (viewer plan, Phase 0)
   'merr.viewer.openFailed': 'Couldn’t open the document.',
   'merr.viewer.unsupported': 'This file type can’t be shown inside the app.',
-  'merr.viewer.tooLarge': 'The file is too large to show inside the app.'
+  'merr.viewer.tooLarge': 'The file is too large to show inside the app.',
+  'merr.local.lockMissing': 'An installation file is missing ({file}). Reinstall Lazunox.',
+  'merr.local.lockHash': 'The installation file ({file}) is not the one Lazunox reviewed. Nothing was installed.',
+  'merr.local.clientBadJson': 'The file is not valid JSON. Use the one you downloaded from the Google console.',
+  'merr.local.clientIsWeb': 'That client is a “Web application”. Create a “Desktop app” one and download its file.',
+  'merr.local.clientNoInstalled': 'I could not find the client data in that file. Download it again from the Google console.',
+  'merr.local.clientBadId': 'The client identifier does not have Google’s format.',
+  'merr.local.clientBadSecret': 'The client secret does not have Google’s format.',
+  'merr.local.clientBadFile': 'That file will not do: it must be a small text file (.json).',
+  'merr.local.clientMissing': 'Choose the Google client file first (if you already did, it expired: choose it again).',
+  'merr.local.stepFailed': 'The installation failed at “{step}”: {detail}',
+  'merr.local.platform': 'This connector is not available on this system yet.',
+  'merr.local.noUv': '“uv” (the Python program installer) must be installed. Install it and try again.',
+  'merr.local.noNode': 'Node.js must be installed. Install it and try again.',
+  'merr.local.versionMismatch': 'What got installed is not version {version}, the one Lazunox reviewed. Everything was deleted.',
+  'merr.local.noEdit':
+    'This connector is managed from Personalization: editing its program would remove the read-only mode. Remove it and add it again.'
 } as const satisfies Messages<typeof es>

@@ -139,5 +139,21 @@ export const mcp = {
   'mcp.dlg.verified': 'Verified on {date}',
   'mcp.dlg.docs': 'Official documentation',
   'mcp.dlg.cancel': 'Cancel',
-  'mcp.dlg.submit': 'Add and connect'
+  'mcp.dlg.submit': 'Add and connect',
+  'mcp.cat.google-workspace.title': 'Gmail, Google Calendar and Google Drive',
+  'mcp.cat.google-workspace.description':
+    'Reads your Gmail email, your Google Calendar agenda and your Google Drive files. Read-only: it changes nothing.',
+  'mcp.cat.google-workspace.cap1': 'Search and read your Gmail emails, with their conversations and labels',
+  'mcp.cat.google-workspace.cap2': 'See your calendars, the events in your agenda and when you are free',
+  'mcp.cat.google-workspace.cap3': 'Search and read your Google Drive files and see who they are shared with',
+  'mcp.cat.google-workspace.leaves':
+    'It installs a third-party program on your computer. What the AI asks for (emails, events, files) goes from Google to that program and from there to the model you use.',
+  'mcp.cat.microsoft-365.title': 'Outlook, Calendar and OneDrive',
+  'mcp.cat.microsoft-365.description':
+    'Reads your Outlook email, your calendar and your OneDrive files (personal Microsoft accounts). Read-only.',
+  'mcp.cat.microsoft-365.cap1': 'Search and read your Outlook emails and see your folders',
+  'mcp.cat.microsoft-365.cap2': 'See your calendars and the events in your agenda',
+  'mcp.cat.microsoft-365.cap3': 'Search and read your OneDrive files',
+  'mcp.cat.microsoft-365.leaves':
+    'It installs a third-party program on your computer. What the AI asks for (emails, events, files) goes from Microsoft to that program and from there to the model you use.'
 } as const satisfies Messages<typeof es>

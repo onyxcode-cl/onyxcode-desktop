@@ -8,7 +8,7 @@
   "required": ["schemaVersion", "catalogVersion", "updatedAt", "groups", "skills", "connectors"],
   "properties": {
     "$schema": { "type": "string" },
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2, "description": "2 = conectores remotos y locales (F8-B186)." },
     "catalogVersion": { "type": "integer", "minimum": 1, "description": "Sube cada vez que cambia el contenido." },
     "updatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
     "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
@@ -68,12 +68,74 @@
         "help": { "type": "string" }
       }
     },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manager", "package", "version", "dir", "files", "entry", "args", "env", "author", "license", "sourceUrl", "downloadFrom", "approxMB", "tokenDir", "platforms", "tools"],
+      "description": "Cómo se instala y se lanza un conector local. Todo es fijo: nada de lo que escriba la persona entra en un comando, un argumento ni una variable de entorno. El validador que decide es validateCatalog.",
+      "properties": {
+        "manager": { "enum": ["uv", "npm"] },
+        "package": { "type": "string", "pattern": "^(@[a-z0-9][a-z0-9-]*/)?[a-z0-9][a-z0-9._-]*$", "maxLength": 100 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$", "description": "Versión EXACTA, sin rangos." },
+        "python": { "type": "string", "pattern": "^3\\.\\d{1,2}$", "description": "Solo con uv." },
+        "dir": { "$ref": "#/$defs/id", "description": "Carpeta de resources/catalogo/conectores-locales/ con los archivos de bloqueo." },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "sha256"],
+            "properties": { "name": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+          },
+          "description": "Archivos de bloqueo (uv: requirements.lock; npm: package.json y package-lock.json). Cada paquete lleva además su propio hash dentro de ellos."
+        },
+        "entry": { "type": "string", "pattern": "^[A-Za-z0-9._@-]+(/[A-Za-z0-9._@-]+)*$", "description": "Ruta relativa dentro de la carpeta del conector, sin «..»." },
+        "args": { "type": "array", "minItems": 1, "maxItems": 24, "contains": { "const": "--read-only" }, "items": { "type": "string", "pattern": "^-{0,2}[A-Za-z0-9][A-Za-z0-9._,:=@+/-]*$", "maxLength": 80 }, "description": "Argumentos fijos; --read-only es obligatorio." },
+        "env": { "type": "object", "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]{0,63}$" }, "additionalProperties": { "type": "string", "maxLength": 300 }, "description": "Variables fijas; {dir} = carpeta del conector. Sin secretos." },
+        "clientFile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["env", "file", "helpUrl"],
+          "properties": {
+            "env": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,63}$" },
+            "file": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+            "helpUrl": { "$ref": "#/$defs/httpsUrl" }
+          },
+          "description": "Archivo del cliente OAuth propio de la persona: main lo copia sin pasarlo por la pantalla."
+        },
+        "author": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "license": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "sourceUrl": { "$ref": "#/$defs/httpsUrl" },
+        "downloadFrom": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" } },
+        "approxMB": { "type": "integer", "minimum": 1, "maximum": 2000 },
+        "tokenDir": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+        "platforms": { "type": "array", "minItems": 1, "items": { "enum": ["darwin", "win32", "linux"] } },
+        "tools": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allowed", "blocked", "auth"],
+          "properties": {
+            "allowed": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,100}$" } },
+            "blocked": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,100}$" } },
+            "auth": { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,100}$" } }
+          }
+        }
+      }
+    },
     "connector": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "title", "publisher", "group", "icon", "description", "transport", "url", "auth", "inputs", "capabilities", "cannot",
+        "id", "name", "title", "publisher", "group", "icon", "description", "transport", "auth", "inputs", "capabilities", "cannot",
         "examples", "writes", "dataLeaves", "docsUrl", "verifiedAt", "verification", "reviewed"
+      ],
+      "allOf": [
+        { "if": { "properties": { "transport": { "const": "remote" } } }, "then": { "required": ["url"], "not": { "required": ["runtime"] } } },
+        {
+          "if": { "properties": { "transport": { "const": "local" } } },
+          "then": { "required": ["runtime"], "not": { "required": ["url"] }, "properties": { "auth": { "const": "account" }, "writes": { "const": false }, "inputs": { "maxItems": 0 } } }
+        }
       ],
       "properties": {
         "id": { "$ref": "#/$defs/id" },
@@ -83,9 +145,10 @@
         "group": { "type": "string", "description": "Id de un grupo declarado en «groups»." },
         "icon": { "$ref": "#/$defs/icon" },
         "description": { "type": "string", "minLength": 10, "maxLength": 200 },
-        "transport": { "const": "remote", "description": "v1 solo admite conectores remotos: añadirlos no ejecuta ningún programa." },
+        "transport": { "enum": ["remote", "local"], "description": "remote = una URL https (añadirlo no ejecuta nada). local = un programa de un tercero que la app instala y ejecuta en el equipo (F8-B186): exige «runtime»." },
         "url": { "$ref": "#/$defs/httpsUrl" },
-        "auth": { "enum": ["none", "token", "oauth"] },
+        "runtime": { "$ref": "#/$defs/runtime" },
+        "auth": { "enum": ["none", "token", "oauth", "account"], "description": "account = el propio programa local pide entrar a la cuenta; solo conectores locales." },
         "inputs": { "type": "array", "items": { "$ref": "#/$defs/input" }, "description": "Exactamente uno o más si auth es «token»; vacío en los demás casos." },
         "capabilities": { "$ref": "#/$defs/lines" },
         "cannot": { "$ref": "#/$defs/lines", "description": "Lo que NO podrá hacer." },

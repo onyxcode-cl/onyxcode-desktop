@@ -9,18 +9,33 @@
  *   el servidor se marca «modificado».
  */
 import { t } from '@shared/i18n'
+import type { CatalogLocalConnector } from '@shared/catalogo'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpRemoteEntry } from '@shared/ipc-extras'
 import {
+  findAnyConnector,
   findCatalogItem,
+  findLocalItem,
+  LOCAL_CATALOG,
   MCP_CATALOG,
   MCP_CATALOG_VERSION,
   MCP_NAME_RE,
+  type LocalConnectorReadiness,
   type McpCatalogItem,
   type McpCatalogProvenance,
   type McpCatalogState
 } from '@shared/mcp-catalog'
+import {
+  installLocalFiles,
+  localEntryDrifted,
+  localPermissionKeys,
+  localPermissions,
+  localReadiness,
+  removeLocalFiles,
+  type LocalDeps,
+  type StagedClient
+} from './local-connectors'
 import { removeMcpServer, saveMcpServer } from './mcp-config'
 
 /** Nombres de cabecera que el catálogo coloca (para comparar el desvío). */
@@ -63,6 +78,11 @@ export type ProvenanceMap = Record<string, McpCatalogProvenance>
 function isProvenance(v: unknown): v is McpCatalogProvenance {
   if (!v || typeof v !== 'object') return false
   const o = v as Record<string, unknown>
+  if (o.local !== undefined) {
+    const l = o.local as Record<string, unknown> | null
+    if (!l || typeof l !== 'object' || typeof l.dir !== 'string' || typeof l.bin !== 'string' || typeof l.packageVersion !== 'string')
+      return false
+  }
   return typeof o.catalogId === 'string' && typeof o.version === 'number' && typeof o.installedAt === 'number' && typeof o.url === 'string'
 }
 
@@ -94,6 +114,24 @@ export class CatalogProvenanceStore {
     const map = this.read()
     map[name] = { catalogId: item.id, version: MCP_CATALOG_VERSION, installedAt: now, url: item.url }
     this.write(map)
+  }
+
+  /** Procedencia de un conector LOCAL: dónde quedó su carpeta y con qué programa se lanza. */
+  recordLocal(name: string, item: CatalogLocalConnector, local: { dir: string; bin: string }, now = Date.now()): void {
+    const map = this.read()
+    map[name] = {
+      catalogId: item.id,
+      version: MCP_CATALOG_VERSION,
+      installedAt: now,
+      url: '',
+      local: { dir: local.dir, bin: local.bin, packageVersion: item.runtime.version }
+    }
+    this.write(map)
+  }
+
+  /** ¿Es un conector local instalado desde el catálogo? (los cambios por la vía general se rechazan). */
+  isLocal(name: string): boolean {
+    return !!this.read()[name]?.local
   }
 
   forget(name: string): void {
@@ -128,13 +166,22 @@ export function computeInstalled(prov: ProvenanceMap, cfg: AppMcpConfig): McpCat
   for (const [name, p] of Object.entries(prov)) {
     const entry = cfg.servers[name]
     if (!entry) continue // el servidor ya no está en el archivo: la procedencia quedó huérfana
-    out[name] = { catalogId: p.catalogId, drift: entryDrifted(findCatalogItem(p.catalogId), p, entry) }
+    if (p.local) {
+      const item = findLocalItem(p.catalogId)
+      out[name] = { catalogId: p.catalogId, drift: !item || localEntryDrifted(item, p, cfg, name), local: true }
+    } else out[name] = { catalogId: p.catalogId, drift: entryDrifted(findCatalogItem(p.catalogId), p, entry) }
   }
   return out
 }
 
-export function catalogState(prov: ProvenanceMap, cfg: AppMcpConfig): McpCatalogState {
-  return { items: [...MCP_CATALOG], installed: computeInstalled(prov, cfg) }
+export function catalogState(
+  prov: ProvenanceMap,
+  cfg: AppMcpConfig,
+  deps: Pick<LocalDeps, 'platform' | 'find'> = { platform: process.platform, find: () => null }
+): McpCatalogState {
+  const local: Record<string, LocalConnectorReadiness> = {}
+  for (const item of LOCAL_CATALOG) local[item.id] = localReadiness(item, deps)
+  return { items: [...MCP_CATALOG], installed: computeInstalled(prov, cfg), local }
 }
 
 export interface InstallCatalogRequest {
@@ -163,4 +210,64 @@ export function installFromCatalog(store: CatalogProvenanceStore, req: InstallCa
     throw err
   }
   return cfg
+}
+
+export interface InstallLocalRequest {
+  id: string
+  name: string
+  askEachUse: boolean
+}
+
+/**
+ * Instala un conector LOCAL del catálogo (F8-B186): descarga el programa fijado en su carpeta, escribe el servidor y sus permisos
+ * por herramienta (preguntar + denegar todo lo que cambia algo) y anota la procedencia. Si cualquier paso falla se deshace TODO
+ * (carpeta, servidor y permisos). Las dos casillas de consentimiento ya las comprobó el esquema del canal.
+ * No recarga el motor: eso lo hace el handler (`afterMcpChange`).
+ */
+export async function installLocalFromCatalog(
+  store: CatalogProvenanceStore,
+  deps: LocalDeps,
+  req: InstallLocalRequest,
+  client: StagedClient | null
+): Promise<AppMcpConfig> {
+  const item = findAnyConnector(req.id)
+  if (!item || item.transport !== 'local') throw new Error(t('merr.mcp.notInCatalog'))
+  const name = validateCatalogName(req.name)
+  const installed = await installLocalFiles(deps, item, name, client)
+  const permissions = localPermissions(name, item, req.askEachUse)
+  let cfg: AppMcpConfig
+  try {
+    cfg = saveMcpServer(name, installed.entry, undefined, { permissions })
+  } catch (err) {
+    removeLocalFiles(deps.baseDir, installed.dir)
+    throw err
+  }
+  try {
+    store.recordLocal(name, item, installed)
+  } catch (err) {
+    removeMcpServer(name, { permissionKeys: localPermissionKeys(name, item) })
+    removeLocalFiles(deps.baseDir, installed.dir)
+    throw err
+  }
+  return cfg
+}
+
+/**
+ * Quita un conector local: servidor, reglas por herramienta y la carpeta entera (programa, acceso guardado por el servidor,
+ * archivo del cliente, registros). Devuelve cuántos archivos se borraron. La procedencia se olvida al final.
+ */
+export async function removeLocalFromCatalog(
+  store: CatalogProvenanceStore,
+  baseDir: string,
+  name: string,
+  /** Se llama entre quitar el servidor y borrar los archivos: el handler recarga el motor para que el programa ya no esté corriendo. */
+  afterConfigRemoved?: () => Promise<void>
+): Promise<{ files: number }> {
+  const prov = store.read()[name]
+  const item = prov ? findLocalItem(prov.catalogId) : undefined
+  removeMcpServer(name, { permissionKeys: item ? localPermissionKeys(name, item) : [] })
+  if (afterConfigRemoved) await afterConfigRemoved()
+  const files = prov?.local ? removeLocalFiles(baseDir, prov.local.dir) : 0
+  store.forget(name)
+  return { files }
 }

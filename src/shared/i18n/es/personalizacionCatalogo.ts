@@ -65,5 +65,39 @@ export const personalizacionCatalogo = {
   'pers.cat.conn.atlassian.cannot1': 'Ver tu contraseña de Atlassian',
   'pers.cat.conn.atlassian.cannot2': 'Entrar a sitios a los que tu cuenta no llega',
   'pers.cat.conn.atlassian.ex1': 'Qué incidencias de Jira tengo asignadas',
-  'pers.cat.conn.atlassian.ex2': 'Resume la página de Confluence del proyecto'
+  'pers.cat.conn.atlassian.ex2': 'Resume la página de Confluence del proyecto',
+  'pers.cat.conn.google-workspace.cannot1': 'Enviar correos, crear borradores ni cambiar etiquetas, filtros o carpetas',
+  'pers.cat.conn.google-workspace.cannot2': 'Crear, cambiar ni borrar eventos de tu agenda',
+  'pers.cat.conn.google-workspace.cannot3': 'Crear, cambiar, mover ni borrar archivos de Drive, ni cambiar con quién se comparten',
+  'pers.cat.conn.google-workspace.cannot4': 'Descargar archivos adjuntos a tu equipo',
+  'pers.cat.conn.google-workspace.ex1': '¿Qué tengo en la agenda esta semana?',
+  'pers.cat.conn.google-workspace.ex2': 'Busca el último correo de mi contador',
+  'pers.cat.conn.google-workspace.ex3': 'Encuentra en mi Drive el contrato de arriendo',
+  'pers.cat.conn.google-workspace.prep1': 'Entra a la consola de Google Cloud y crea un proyecto (o usa uno tuyo). Es gratis.',
+  'pers.cat.conn.google-workspace.prep2':
+    'En «APIs y servicios › Biblioteca» activa tres: Gmail API, Google Calendar API y Google Drive API.',
+  'pers.cat.conn.google-workspace.prep3':
+    'En «Pantalla de consentimiento de OAuth» elige «Externo», pon tu correo y añade tu propia cuenta de Google en «Usuarios de prueba».',
+  'pers.cat.conn.google-workspace.prep4':
+    'En «Credenciales › Crear credenciales › ID de cliente de OAuth» elige «Aplicación de escritorio» y créalo.',
+  'pers.cat.conn.google-workspace.prep5': 'Pulsa «Descargar JSON» y elige aquí ese archivo.',
+  'pers.cat.conn.google-workspace.prepNote':
+    'Mientras tu aplicación de Google esté en «Prueba», Google te pedirá volver a entrar cada 7 días.',
+  'pers.cat.conn.google-workspace.signin':
+    'Para entrar a tu cuenta, escribe en el chat: «Conecta mi cuenta de Google». Se abre tu navegador, entras como siempre y aceptas solo los permisos de lectura.',
+  'pers.cat.conn.microsoft-365.cannot1': 'Enviar, responder ni borrar correos',
+  'pers.cat.conn.microsoft-365.cannot2': 'Crear, cambiar ni borrar eventos del calendario',
+  'pers.cat.conn.microsoft-365.cannot3': 'Subir, cambiar, mover ni borrar archivos de OneDrive',
+  'pers.cat.conn.microsoft-365.cannot4':
+    'Funcionar con cuentas de trabajo o de escuela: solo cuentas personales (Outlook.com, Hotmail, Live)',
+  'pers.cat.conn.microsoft-365.ex1': '¿Qué reuniones tengo mañana en mi calendario?',
+  'pers.cat.conn.microsoft-365.ex2': 'Busca el último correo de mi banco en Outlook',
+  'pers.cat.conn.microsoft-365.ex3': 'Encuentra en mi OneDrive la planilla de gastos',
+  'pers.cat.conn.microsoft-365.prep1': 'No necesitas crear nada: el programa usa la aplicación de Microsoft que registró su autor.',
+  'pers.cat.conn.microsoft-365.prep2':
+    'Solo funciona con cuentas personales de Microsoft (Outlook.com, Hotmail, Live), no con cuentas de trabajo o de escuela.',
+  'pers.cat.conn.microsoft-365.prepNote':
+    'Microsoft te mostrará qué permisos pide antes de que aceptes: solo lectura de correo, calendario y archivos.',
+  'pers.cat.conn.microsoft-365.signin':
+    'Para entrar a tu cuenta, escribe en el chat: «Inicia sesión en Microsoft». La IA te dará una dirección y un código: ábrela en tu navegador, escribe el código y entra con tu cuenta; después dile que ya entraste.'
 } as const

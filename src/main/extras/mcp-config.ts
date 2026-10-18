@@ -193,7 +193,18 @@ export function mcpAsksEachUse(name: string): boolean {
   return permissionObject(readRaw())[mcpPermissionKey(name)] === 'ask'
 }
 
-export function saveMcpServer(name: string, entry: McpEntry, previousName?: string, opts: { askEachUse?: boolean } = {}): AppMcpConfig {
+export function saveMcpServer(
+  name: string,
+  entry: McpEntry,
+  previousName?: string,
+  opts: {
+    askEachUse?: boolean
+    /** Reglas por herramienta a escribir tal cual, en este orden (después de «preguntar»; gana la última). */ permissions?: Record<
+      string,
+      'ask' | 'deny'
+    >
+  } = {}
+): AppMcpConfig {
   const clean = name.trim()
   if (!NAME_RE.test(clean)) {
     throw new Error(t('merr.mcp.invalidNameAlt'))
@@ -217,18 +228,24 @@ export function saveMcpServer(name: string, entry: McpEntry, previousName?: stri
         perm[mcpPermissionKey(clean)] = 'ask'
       }
       if (opts.askEachUse) perm[mcpPermissionKey(clean)] = 'ask'
+      for (const [key, rule] of Object.entries(opts.permissions ?? {})) {
+        // Se reescribe para que la regla quede después de las anteriores (gana la última que coincide).
+        delete perm[key]
+        perm[key] = rule
+      }
     }
   )
 }
 
-export function removeMcpServer(name: string): AppMcpConfig {
+export function removeMcpServer(name: string, opts: { permissionKeys?: string[] } = {}): AppMcpConfig {
   return mutate(
     (mcp) => {
       delete mcp[name]
     },
-    // Solo se limpia lo que puso la app («ask»): una regla propia de la persona se respeta.
+    // Solo se limpia lo que puso la app («ask» y las negaciones de un conector local): una regla propia de la persona se respeta.
     (perm) => {
       if (perm[mcpPermissionKey(name)] === 'ask') delete perm[mcpPermissionKey(name)]
+      for (const key of opts.permissionKeys ?? []) if (perm[key] === 'deny' || perm[key] === 'ask') delete perm[key]
     }
   )
 }

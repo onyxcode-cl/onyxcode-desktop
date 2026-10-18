@@ -8,7 +8,7 @@
  */
 import { useState } from 'react'
 import { AlertTriangle, Check, ExternalLink, Loader2, X } from 'lucide-react'
-import type { CatalogConnector } from '@shared/catalogo'
+import type { CatalogRemoteConnector } from '@shared/catalogo'
 import { catalogText } from '@shared/mcp-catalog'
 import { Button } from '../../components/Button'
 import { useT } from '../../lib/i18n'
@@ -30,7 +30,7 @@ export function ConnectWizard({
   onLogin,
   onClose
 }: {
-  item: CatalogConnector
+  item: CatalogRemoteConnector
   existingNames: string[]
   /** Estado real del conector tras añadirlo (lo informa el motor). */
   stateOf: (server: string) => ConnectorState

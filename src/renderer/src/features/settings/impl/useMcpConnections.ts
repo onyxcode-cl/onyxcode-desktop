@@ -20,6 +20,13 @@ export interface InstallRequest {
   askEachUse: boolean
 }
 
+/** Instalación de un conector LOCAL (F8-B186): las dos casillas de consentimiento ya van marcadas (el botón no se habilita sin ellas). */
+export interface InstallLocalRequest {
+  id: string
+  name: string
+  askEachUse: boolean
+}
+
 export interface McpConnections {
   appCfg: AppMcpConfig | null
   /** Definición efectiva (merge de todas las configs) que reporta el servidor. */
@@ -37,6 +44,10 @@ export interface McpConnections {
   setEnabled: (name: string, enabled: boolean) => Promise<void>
   remove: (name: string) => Promise<void>
   install: (req: InstallRequest) => Promise<void>
+  /** Diálogo del sistema para elegir el archivo del cliente de la persona; el contenido no vuelve a la pantalla. `null` si se cancela. */
+  pickClient: (id: string) => Promise<{ fileName: string; hint: string } | null>
+  /** Instala un conector local (descarga el programa fijado). Tarda unos minutos. */
+  installLocal: (req: InstallLocalRequest) => Promise<void>
   /** Inicia el inicio de sesión del servicio (el flujo del motor; la app nunca ve la contraseña). */
   authenticate: (name: string) => Promise<void>
 }
@@ -122,6 +133,14 @@ export function useMcpConnections(opts?: { onRefresh?: () => Promise<void> }): M
     },
     [refresh]
   )
+  const pickClient = useCallback((id: string) => requireExtras().invoke('mcp:localPickClient', { id }), [])
+  const installLocal = useCallback(
+    async (req: InstallLocalRequest) => {
+      await requireExtras().invoke('mcp:installLocal', { ...req, understandThirdParty: true, understandData: true })
+      await refresh()
+    },
+    [refresh]
+  )
   const authenticate = useCallback(
     async (name: string) => {
       if (!client) return
@@ -132,5 +151,22 @@ export function useMcpConnections(opts?: { onRefresh?: () => Promise<void> }): M
     [client, directory, refresh]
   )
 
-  return { appCfg, merged, status, catalog, loading, loaded, error, setError, refresh, serverOf, setEnabled, remove, install, authenticate }
+  return {
+    appCfg,
+    merged,
+    status,
+    catalog,
+    loading,
+    loaded,
+    error,
+    setError,
+    refresh,
+    serverOf,
+    setEnabled,
+    remove,
+    install,
+    pickClient,
+    installLocal,
+    authenticate
+  }
 }

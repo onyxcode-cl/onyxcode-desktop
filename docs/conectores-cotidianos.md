@@ -81,3 +81,8 @@ No hace falta darle a nadie contraseñas ni claves. Todo lo hace Ben en su naveg
 4. Pedir «Crea un evento mañana a las 10» o «Borra este correo»: debe **negarse** o pedir confirmación; si lo ejecuta sin preguntar, no dar por bueno el conector.
 5. Revisar en la cuenta de Google (Seguridad › Conexiones con terceros) que la app tiene solo permisos de lectura, y **quitar** el conector en Personalización › Tuyos; confirmar que el acceso desaparece también allí.
 6. Si todo sale bien, subir la ficha con `accountTested` omitido (o `true`) y la fecha de la prueba en `verification`.
+
+
+## 7. Actualización F8-B186: la opción A se implementó
+
+Se implementó la opción A (§4): conectores locales de solo consulta para Google Workspace (`workspace-mcp` 2.0.1) y Microsoft 365 (`@softeria/ms-365-mcp-server` 0.157.2, cuentas personales). Comprobado el 2026-10-17: ambos arrancan por stdio, responden `initialize` y `tools/list` y en modo solo consulta exponen 18 de 38 (Google) y 44 de 101 (Microsoft) herramientas; Google pide únicamente `gmail.readonly`, `calendar.readonly` y `drive.readonly`; Microsoft, solo `Mail.Read`, `Calendars.Read`, `Files.Read`, `MailboxSettings.Read` y `User.Read` (con `--preset personal` pedía `Files.ReadWrite`, por eso se usa `--preset mail,calendar,files`). El motor respalda el solo-consulta con permisos por herramienta en `deny`. Diseño, límites y lo que no se verificó: `docs/SEGURIDAD.md` §3 quinquagies novies; cómo probarlos con una cuenta real: `docs/conectores-locales-prueba.md`. Los hallazgos de §1.1 (el motor no inicia sesión en los servidores oficiales de Google) siguen vigentes: por eso se usan los locales, que hacen su propio inicio de sesión.

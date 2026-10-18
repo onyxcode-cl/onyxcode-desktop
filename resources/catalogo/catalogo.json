@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "catalogVersion": 2,
+  "schemaVersion": 2,
+  "catalogVersion": 3,
   "updatedAt": "2026-10-17",
   "groups": [
     {
@@ -372,6 +372,318 @@
       "docsUrl": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/getting-started-with-the-atlassian-remote-mcp-server/",
       "verification": "Dirección y modo de acceso comprobados contra la documentación oficial del proveedor y respondiendo como conector MCP el 2026-10-01 (npm run check:mcp-catalog). El inicio de sesión lo hace el flujo del motor; no se probó con una cuenta real.",
       "accountTested": false
+    },
+    {
+      "transport": "local",
+      "reviewed": true,
+      "verifiedAt": "2026-10-17",
+      "id": "google-workspace",
+      "name": "google",
+      "title": "Gmail, Google Calendar y Google Drive",
+      "publisher": "Taylor Wilsdon (comunidad)",
+      "group": "correo-calendario",
+      "icon": "mail",
+      "description": "Lee tu correo de Gmail, tu agenda de Google Calendar y tus archivos de Google Drive. Solo consulta: no cambia nada.",
+      "auth": "account",
+      "inputs": [],
+      "capabilities": [
+        "Buscar y leer tus correos de Gmail, con sus conversaciones y etiquetas",
+        "Ver tus calendarios, los eventos de tu agenda y cuándo estás libre",
+        "Buscar y leer tus archivos de Google Drive y ver con quién están compartidos"
+      ],
+      "cannot": [
+        "Enviar correos, crear borradores ni cambiar etiquetas, filtros o carpetas",
+        "Crear, cambiar ni borrar eventos de tu agenda",
+        "Crear, cambiar, mover ni borrar archivos de Drive, ni cambiar con quién se comparten",
+        "Descargar archivos adjuntos a tu equipo"
+      ],
+      "examples": [
+        "¿Qué tengo en la agenda esta semana?",
+        "Busca el último correo de mi contador",
+        "Encuentra en mi Drive el contrato de arriendo"
+      ],
+      "writes": false,
+      "dataLeaves": "Instala un programa de un tercero en tu equipo. Lo que la IA pida (correos, eventos, archivos) pasa de Google a ese programa y de ahí al modelo que uses.",
+      "docsUrl": "https://github.com/taylorwilsdon/google_workspace_mcp",
+      "accountTested": false,
+      "verification": "Programa local con versión y hashes fijados, comprobado el 2026-10-17: arranca, responde a initialize y tools/list con solo consulta (17 de 38 herramientas), pide únicamente permisos de lectura y el motor lo lista. No se probó con una cuenta real.",
+      "runtime": {
+        "manager": "uv",
+        "package": "workspace-mcp",
+        "version": "2.0.1",
+        "python": "3.12",
+        "dir": "google-workspace",
+        "files": [
+          {
+            "name": "requirements.lock",
+            "sha256": "98398f6bd0b3fe6e64d053e00bdb53331a5b988ed8825ef4d96552e7491976f4"
+          }
+        ],
+        "entry": "venv/bin/workspace-mcp",
+        "args": [
+          "--tools",
+          "gmail",
+          "calendar",
+          "drive",
+          "--read-only"
+        ],
+        "env": {
+          "WORKSPACE_MCP_PORT": "8765",
+          "WORKSPACE_MCP_CREDENTIALS_DIR": "{dir}/credenciales",
+          "WORKSPACE_MCP_LOG_DIR": "{dir}/registros"
+        },
+        "clientFile": {
+          "env": "GOOGLE_CLIENT_SECRET_PATH",
+          "file": "client_secret.json",
+          "helpUrl": "https://console.cloud.google.com/apis/credentials"
+        },
+        "author": "Taylor Wilsdon",
+        "license": "MIT",
+        "sourceUrl": "https://github.com/taylorwilsdon/google_workspace_mcp",
+        "downloadFrom": [
+          "pypi.org",
+          "files.pythonhosted.org",
+          "github.com"
+        ],
+        "approxMB": 230,
+        "tokenDir": "credenciales",
+        "platforms": [
+          "darwin"
+        ],
+        "tools": {
+          "allowed": [
+            "start_google_auth",
+            "search_gmail_messages",
+            "get_gmail_message_content",
+            "get_gmail_messages_content_batch",
+            "get_gmail_thread_content",
+            "get_gmail_threads_content_batch",
+            "list_gmail_labels",
+            "list_calendars",
+            "get_events",
+            "query_freebusy",
+            "search_drive_files",
+            "get_drive_file_content",
+            "get_drive_file_download_url",
+            "list_drive_items",
+            "get_drive_file_permissions",
+            "check_drive_file_public_access",
+            "get_drive_shareable_link"
+          ],
+          "blocked": [
+            "get_gmail_attachment_content",
+            "send_gmail_message",
+            "draft_gmail_message",
+            "manage_gmail_label",
+            "list_gmail_filters",
+            "manage_gmail_filter",
+            "modify_gmail_message_labels",
+            "batch_modify_gmail_message_labels",
+            "manage_event",
+            "manage_out_of_office",
+            "manage_focus_time",
+            "create_calendar",
+            "create_drive_folder",
+            "create_drive_file",
+            "import_to_google_doc",
+            "import_to_google_slides",
+            "import_to_google_sheets",
+            "update_drive_file",
+            "manage_drive_access",
+            "copy_drive_file",
+            "set_drive_file_permissions"
+          ],
+          "auth": [
+            "start_google_auth"
+          ]
+        }
+      }
+    },
+    {
+      "transport": "local",
+      "reviewed": true,
+      "verifiedAt": "2026-10-17",
+      "id": "microsoft-365",
+      "name": "microsoft",
+      "title": "Outlook, Calendario y OneDrive",
+      "publisher": "Softeria (comunidad)",
+      "group": "correo-calendario",
+      "icon": "calendar",
+      "description": "Lee tu correo de Outlook, tu calendario y tus archivos de OneDrive (cuentas personales de Microsoft). Solo consulta.",
+      "auth": "account",
+      "inputs": [],
+      "capabilities": [
+        "Buscar y leer tus correos de Outlook y ver tus carpetas",
+        "Ver tus calendarios y los eventos de tu agenda",
+        "Buscar y leer tus archivos de OneDrive"
+      ],
+      "cannot": [
+        "Enviar, responder ni borrar correos",
+        "Crear, cambiar ni borrar eventos del calendario",
+        "Subir, cambiar, mover ni borrar archivos de OneDrive",
+        "Funcionar con cuentas de trabajo o de escuela: solo cuentas personales (Outlook.com, Hotmail, Live)"
+      ],
+      "examples": [
+        "¿Qué reuniones tengo mañana en mi calendario?",
+        "Busca el último correo de mi banco en Outlook",
+        "Encuentra en mi OneDrive la planilla de gastos"
+      ],
+      "writes": false,
+      "dataLeaves": "Instala un programa de un tercero en tu equipo. Lo que la IA pida (correos, eventos, archivos) pasa de Microsoft a ese programa y de ahí al modelo que uses.",
+      "docsUrl": "https://github.com/Softeria/ms-365-mcp-server",
+      "accountTested": false,
+      "verification": "Programa local con versión y hashes fijados, comprobado el 2026-10-17: arranca, responde a initialize y tools/list con solo consulta (41 de 101 herramientas), pide únicamente permisos de lectura y el inicio de sesión por código llega hasta Microsoft. No se probó con una cuenta real.",
+      "runtime": {
+        "manager": "npm",
+        "package": "@softeria/ms-365-mcp-server",
+        "version": "0.157.2",
+        "dir": "microsoft-365",
+        "files": [
+          {
+            "name": "package.json",
+            "sha256": "db07779e4dde77523414d67c395d536c6f88a6950b244ea1fb8719551d7f4856"
+          },
+          {
+            "name": "package-lock.json",
+            "sha256": "40ec9091098ea0bdf1c8b81a6bc602b418f136c8e28037e37730959bfe223a3f"
+          }
+        ],
+        "entry": "node_modules/@softeria/ms-365-mcp-server/dist/index.js",
+        "args": [
+          "--preset",
+          "mail,calendar,files",
+          "--read-only"
+        ],
+        "env": {
+          "MS365_MCP_TENANT_ID": "consumers",
+          "MS365_MCP_TOKEN_CACHE_PATH": "{dir}/credenciales/token-cache.json",
+          "MS365_MCP_SELECTED_ACCOUNT_PATH": "{dir}/credenciales/cuenta-elegida.json",
+          "MS365_MCP_LOG_DIR": "{dir}/registros"
+        },
+        "author": "Softeria",
+        "license": "MIT",
+        "sourceUrl": "https://github.com/Softeria/ms-365-mcp-server",
+        "downloadFrom": [
+          "registry.npmjs.org"
+        ],
+        "approxMB": 95,
+        "tokenDir": "credenciales",
+        "platforms": [
+          "darwin"
+        ],
+        "tools": {
+          "allowed": [
+            "login",
+            "verify-login",
+            "list-accounts",
+            "select-account",
+            "get-drive-item",
+            "list-folder-files",
+            "get-drive-delta",
+            "list-drive-item-permissions",
+            "list-drive-item-thumbnails",
+            "list-drive-item-versions",
+            "get-drive-root-item",
+            "search-onedrive-files",
+            "list-my-calendar-permissions",
+            "list-calendars",
+            "get-specific-calendar-view",
+            "list-specific-calendar-events",
+            "get-specific-calendar-event",
+            "list-calendar-event-instances",
+            "get-calendar-view",
+            "list-calendar-view-delta",
+            "list-drives",
+            "list-calendar-events",
+            "get-calendar-event",
+            "list-calendar-events-delta",
+            "get-mail-tips",
+            "list-focused-inbox-overrides",
+            "get-mailbox-settings",
+            "list-mail-folders",
+            "list-mail-child-folders",
+            "list-mail-rules",
+            "list-mail-folder-messages",
+            "list-mail-folder-messages-delta",
+            "list-mail-messages",
+            "get-mail-message",
+            "get-mail-message-mime",
+            "list-mail-attachments",
+            "list-outlook-categories",
+            "list-supported-languages",
+            "list-supported-time-zones",
+            "download-bytes",
+            "get-download-url"
+          ],
+          "blocked": [
+            "logout",
+            "remove-account",
+            "move-rename-onedrive-item",
+            "delete-onedrive-file",
+            "create-onedrive-folder",
+            "upload-file-content",
+            "copy-drive-item",
+            "create-drive-item-share-link",
+            "create-upload-session",
+            "share-drive-item",
+            "delete-drive-item-permission",
+            "create-drive-item-preview",
+            "create-my-calendar-permission",
+            "update-my-calendar-permission",
+            "delete-my-calendar-permission",
+            "create-calendar",
+            "update-calendar",
+            "delete-calendar",
+            "create-specific-calendar-event",
+            "update-specific-calendar-event",
+            "delete-specific-calendar-event",
+            "create-calendar-event",
+            "update-calendar-event",
+            "delete-calendar-event",
+            "accept-calendar-event",
+            "cancel-calendar-event",
+            "decline-calendar-event",
+            "dismiss-calendar-event-reminder",
+            "forward-calendar-event",
+            "snooze-calendar-event-reminder",
+            "tentatively-accept-calendar-event",
+            "create-focused-inbox-override",
+            "update-focused-inbox-override",
+            "delete-focused-inbox-override",
+            "update-mailbox-settings",
+            "create-mail-folder",
+            "update-mail-folder",
+            "delete-mail-folder",
+            "create-mail-child-folder",
+            "create-mail-rule",
+            "update-mail-rule",
+            "delete-mail-rule",
+            "create-draft-email",
+            "update-mail-message",
+            "delete-mail-message",
+            "add-mail-attachment",
+            "delete-mail-attachment",
+            "create-mail-attachment-upload-session",
+            "copy-mail-message",
+            "create-forward-draft",
+            "create-reply-draft",
+            "create-reply-all-draft",
+            "forward-mail-message",
+            "move-mail-message",
+            "reply-mail-message",
+            "reply-all-mail-message",
+            "send-draft-message",
+            "create-outlook-category",
+            "send-mail",
+            "download-bytes-to-file"
+          ],
+          "auth": [
+            "login",
+            "verify-login",
+            "select-account"
+          ]
+        }
+      }
     }
   ]
 }

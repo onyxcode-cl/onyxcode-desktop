@@ -65,5 +65,38 @@ export const personalizacionCatalogo = {
   'pers.cat.conn.atlassian.cannot1': 'See your Atlassian password',
   'pers.cat.conn.atlassian.cannot2': 'Open sites your account cannot reach',
   'pers.cat.conn.atlassian.ex1': 'Which Jira issues are assigned to me',
-  'pers.cat.conn.atlassian.ex2': 'Summarize the Confluence page for the project'
+  'pers.cat.conn.atlassian.ex2': 'Summarize the Confluence page for the project',
+  'pers.cat.conn.google-workspace.cannot1': 'Send emails, create drafts or change labels, filters or folders',
+  'pers.cat.conn.google-workspace.cannot2': 'Create, change or delete events in your calendar',
+  'pers.cat.conn.google-workspace.cannot3': 'Create, change, move or delete Drive files, or change who they are shared with',
+  'pers.cat.conn.google-workspace.cannot4': 'Download attachments to your computer',
+  'pers.cat.conn.google-workspace.ex1': 'What is on my calendar this week?',
+  'pers.cat.conn.google-workspace.ex2': 'Find the latest email from my accountant',
+  'pers.cat.conn.google-workspace.ex3': 'Find the lease contract in my Drive',
+  'pers.cat.conn.google-workspace.prep1': 'Open the Google Cloud console and create a project (or use one of yours). It is free.',
+  'pers.cat.conn.google-workspace.prep2':
+    'In “APIs & Services › Library” turn on three: Gmail API, Google Calendar API and Google Drive API.',
+  'pers.cat.conn.google-workspace.prep3':
+    'In “OAuth consent screen” choose “External”, enter your email and add your own Google account under “Test users”.',
+  'pers.cat.conn.google-workspace.prep4': 'In “Credentials › Create credentials › OAuth client ID” choose “Desktop app” and create it.',
+  'pers.cat.conn.google-workspace.prep5': 'Click “Download JSON” and choose that file here.',
+  'pers.cat.conn.google-workspace.prepNote':
+    'While your Google application is in “Testing”, Google will ask you to sign in again every 7 days.',
+  'pers.cat.conn.google-workspace.signin':
+    'To sign in to your account, type in the chat: “Connect my Google account”. Your browser opens, you sign in as usual and accept only the read permissions.',
+  'pers.cat.conn.microsoft-365.cannot1': 'Send, reply to or delete emails',
+  'pers.cat.conn.microsoft-365.cannot2': 'Create, change or delete calendar events',
+  'pers.cat.conn.microsoft-365.cannot3': 'Upload, change, move or delete OneDrive files',
+  'pers.cat.conn.microsoft-365.cannot4': 'Work with work or school accounts: personal accounts only (Outlook.com, Hotmail, Live)',
+  'pers.cat.conn.microsoft-365.ex1': 'What meetings do I have tomorrow on my calendar?',
+  'pers.cat.conn.microsoft-365.ex2': 'Find the latest email from my bank in Outlook',
+  'pers.cat.conn.microsoft-365.ex3': 'Find the expenses spreadsheet in my OneDrive',
+  'pers.cat.conn.microsoft-365.prep1':
+    'You do not need to create anything: the program uses the Microsoft application its author registered.',
+  'pers.cat.conn.microsoft-365.prep2':
+    'It only works with personal Microsoft accounts (Outlook.com, Hotmail, Live), not work or school accounts.',
+  'pers.cat.conn.microsoft-365.prepNote':
+    'Microsoft will show you which permissions it asks for before you accept: read-only access to mail, calendar and files.',
+  'pers.cat.conn.microsoft-365.signin':
+    'To sign in to your account, type in the chat: “Sign in to Microsoft”. The AI will give you an address and a code: open it in your browser, type the code and sign in with your account; then tell it you are done.'
 } as const satisfies Messages<typeof es>

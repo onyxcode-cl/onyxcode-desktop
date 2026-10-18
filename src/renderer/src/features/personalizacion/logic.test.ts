@@ -37,7 +37,7 @@ describe('estado de un conector', () => {
 describe('grupos y etiquetas', () => {
   it('los grupos sin fichas se ocultan y se respeta el orden del catálogo', () => {
     const g = visibleGroups(CATALOG.groups, CATALOG.connectors)
-    expect(g.map((x) => x.group.id)).toEqual(['desarrollo', 'proyectos-notas'])
+    expect(g.map((x) => x.group.id)).toEqual(['correo-calendario', 'desarrollo', 'proyectos-notas'])
     expect(g.every((x) => x.items.length > 0)).toBe(true)
     expect(visibleGroups(CATALOG.groups, [])).toEqual([])
   })
