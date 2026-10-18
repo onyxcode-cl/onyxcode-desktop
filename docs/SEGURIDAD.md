@@ -2102,7 +2102,7 @@ la persona (botón «Instalar lo necesario», «Preparar todo» o Ajustes); nada
 misma pantalla, la ficha o Ajustes › Overdrive › «Node.js y uv». En Windows las funciones están implementadas y probadas, pero no se ofrecen (los conectores locales siguen «Solo en Mac»).
 
 
-## 3 quinquagies octies. Uso de Overdrive, causas de fallo de instalación y firma de commits en Windows (F8-B198)
+## 3 quinquagies duodevicies. Uso de Overdrive, causas de fallo de instalación y firma de commits en Windows (F8-B198)
 
 **Uso de Overdrive (`tasks:usage:summary`, clase X).** «Ajustes › Uso» sumaba Overdrive solo con las tareas que la app tenía cargadas
 en memoria. Cada carpeta aprobada tiene su servidor aislado y, dentro de su directorio privado

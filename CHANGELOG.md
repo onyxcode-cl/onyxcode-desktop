@@ -4,6 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.3.2] - 2026-10-19
+
+### Mejoras
+
+- **Mensajes de fallo más claros al preparar tu equipo.** Si falla la descarga de un componente (Node.js y uv, ArtCraft), la app ya no dice siempre «revisa tu conexión»: distingue entre sin conexión, huella incorrecta, sin espacio en disco, sin permiso para escribir en la carpeta de Lazunox y cancelado, cada uno con su explicación.
+- **El uso de Overdrive aparece en Ajustes › Uso.** Antes mostraba 0 aunque hubieras hecho tareas. Ahora suma sus conversaciones, tokens y costo leyendo el registro que Overdrive ya guarda en cada carpeta aprobada, sin leer ningún mensaje ni ruta. Si una carpeta no se puede leer, lo avisa; en Windows dice «Overdrive no se cuenta aquí todavía».
+- **Accesibilidad.** La casilla de «Prepara tu equipo» en el asistente queda descrita para lectores de pantalla, igual que en las otras pantallas.
+- **Windows:** en la próxima imagen del entorno aislado, los commits de Overdrive firmarán como «Lazunox» sin el nombre de tu equipo. Las instalaciones actuales no cambian hasta que se publique esa imagen.
+
 ## [1.3.1] - 2026-10-18
 
 ### Mejoras
