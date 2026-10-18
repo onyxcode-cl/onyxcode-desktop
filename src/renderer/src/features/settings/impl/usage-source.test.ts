@@ -74,6 +74,73 @@ describe('readUsage', () => {
     expect(r.tasksSessions).toBe(1)
   })
 
+  it('F8-B198: el resumen de main aporta las tareas de las carpetas aprobadas, con su origen y sin duplicar lo cargado', async () => {
+    const { c } = client([])
+    const tok = { input: 10, output: 5, reasoning: 0, cache: { read: 0, write: 0 } }
+    const r = await readUsage(
+      c,
+      {
+        chatDirectory: '/chat',
+        tasks: [{ id: 'o1', time: { updated: 5 } } as unknown as Session],
+        tasksUsage: {
+          supported: true,
+          folders: 2,
+          unreadable: 1,
+          capped: false,
+          sessions: [
+            { id: 'o1', tokens: tok, cost: 0, updated: 7, model: { id: 'm', providerID: 'p' } },
+            { id: 'o2', parentID: 'o1', tokens: tok, updated: 6 }
+          ]
+        }
+      },
+      msg
+    )
+    expect(r.sessions.map((s) => [s.id, s.mode])).toEqual([
+      ['o1', 'tasks'],
+      ['o2', 'tasks']
+    ])
+    expect(r.sessions[0]).toMatchObject({ model: { id: 'm', providerID: 'p' }, updated: 7 })
+    expect(r.sessions[1]).toMatchObject({ parentID: 'o1' })
+    expect(r).toMatchObject({ tasksSessions: 2, tasksSource: 'read', tasksUnreadable: 1, capped: false })
+  })
+
+  it('F8-B198: sin resumen (no soportado o no disponible) lo dice, y las tareas en memoria se siguen sumando', async () => {
+    const { c } = client([])
+    const mem = [{ id: 't1', time: { updated: 5 } } as unknown as Session]
+    const unsupported = { supported: false, folders: 0, unreadable: 0, sessions: [], capped: false }
+    expect(await readUsage(c, { chatDirectory: null, tasks: mem, tasksUsage: unsupported }, msg)).toMatchObject({
+      tasksSource: 'unsupported',
+      tasksSessions: 1
+    })
+    expect(await readUsage(c, { chatDirectory: null, tasks: mem, tasksUsage: null }, msg)).toMatchObject({
+      tasksSource: 'unavailable',
+      tasksSessions: 1
+    })
+    expect(await readUsage(c, { chatDirectory: null }, msg)).toMatchObject({ tasksSource: 'unavailable', tasksSessions: 0 })
+  })
+
+  it('F8-B198: si Overdrive llegó a su tope, el período es incompleto desde su sesión más antigua leída', async () => {
+    const tok = { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } }
+    const { c } = client([gs('a', { time: { created: 1, updated: 100 } })])
+    const r = await readUsage(
+      c,
+      {
+        chatDirectory: null,
+        tasksUsage: {
+          supported: true,
+          folders: 1,
+          unreadable: 0,
+          capped: true,
+          sessions: [{ id: 'o1', tokens: tok, updated: 500 }]
+        }
+      },
+      msg
+    )
+    // El motor principal no llegó al tope (1 < 300); Overdrive sí: manda su fecha.
+    expect(r.capped).toBe(true)
+    expect(r.oldestRead).toBe(500)
+  })
+
   it('un error del motor se propaga con su mensaje; sin datos también', async () => {
     await expect(readUsage(client(undefined, new Error('motor caído')).c, { chatDirectory: null }, msg)).rejects.toThrow('motor caído')
     await expect(readUsage(client(undefined).c, { chatDirectory: null }, msg)).rejects.toThrow()

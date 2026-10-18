@@ -20,6 +20,7 @@ const NEUTRAL_TASKS: Record<string, () => unknown> = {
   'tasks:listFolders': () => [],
   'tasks:trusted:list': () => [],
   'tasks:policy': () => null,
+  'tasks:usage:summary': () => ({ supported: false, folders: 0, unreadable: 0, sessions: [], capped: false }),
   'tasks:sandbox:status': () => ({ backend: 'none', state: 'unsupported', setup: null }),
   // Sin Tareas no hay nada que revisar al arrancar: informe vacío y omitido (la pantalla no se muestra).
   'preflight:run': () => ({

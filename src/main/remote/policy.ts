@@ -432,6 +432,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:prefs:get': 'R',
   'tasks:prefs:set': fieldwise(TASKS_PREF_FIELDS),
   'tasks:storage:report': 'R',
+  // Uso de Overdrive (F8-B198): cifras de tareas de todas las carpetas, solo para la pantalla del Mac; nunca al celular.
+  'tasks:usage:summary': 'X',
   'tasks:storage:clean': 'D',
   'tasks:storage:cleanScreenshots': 'D',
   'tasks:storage:cleanRestorePoints': 'D',
