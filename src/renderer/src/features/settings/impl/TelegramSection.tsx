@@ -149,10 +149,11 @@ export function TelegramSection(): React.JSX.Element {
     if (!api || !token.trim()) return
     setTokenError(null)
     const res = await run('token', () => api.invoke('telegram:saveToken', { token }))
+    // La clave se manda una sola vez y NO se queda en pantalla ni en memoria, la acepten o la rechacen (antes un rechazo dejaba los
+    // puntos en el campo): para reintentar se escribe de nuevo.
+    setToken('')
     if (!res) return
-    if (res.ok)
-      setToken('') // la clave no se queda en pantalla
-    else setTokenError(res.error)
+    if (!res.ok) setTokenError(res.error)
     await load()
   }
 

@@ -11,6 +11,7 @@ import {
   installPlan,
   parseDismissal,
   shouldShow,
+  toggleChecked,
   type PreflightId,
   type PreflightReport,
   type RuntimeMap
@@ -55,6 +56,8 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   const [report, setReport] = useState<PreflightReport | null>(null)
   const [runtime, setRuntime] = useState<RuntimeMap>({})
   const [installing, setInstalling] = useState(false)
+  /** Casillas desmarcadas: por defecto todo lo opcional se instala junto; la persona elige qué. */
+  const [unchecked, setUnchecked] = useState<PreflightId[]>([])
   const [details, setDetails] = useState<Partial<Record<PreflightId, string>>>({})
   const [copied, setCopied] = useState<PreflightId | null>(null)
   const [permsWaiting, setPermsWaiting] = useState(false)
@@ -93,43 +96,48 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
     return () => window.removeEventListener('focus', onFocus)
   }, [phase, installing, check])
 
-  const install = useCallback(async (): Promise<void> => {
-    if (!report || installing) return
-    const ids = installPlan(report).map((c) => c.id)
-    if (ids.length === 0) return
-    setInstalling(true)
-    setDetails({})
-    const api: InstallApi = {
-      craftInstall: () => cw('craft:install').catch(() => undefined),
-      craftProgress: async () => {
-        const s = await cw('craft:status')
-        const total = s.progress?.total ?? 0
-        return s.installing && total > 0 ? Math.min(100, Math.round(((s.progress?.done ?? 0) / total) * 100)) : null
-      },
-      runtimesInstall: () => runtimesApi.install().catch(() => undefined),
-      runtimesProgress: async () => runtimesPct(await runtimesApi.status()),
-      sandboxSetup: () => cw('tasks:sandbox:setup'),
-      sandboxStatus: () => cw('tasks:sandbox:status', { force: true }),
-      fail: (id, code, message) =>
-        cw('preflight:fail', { id, ...(code ? { code } : {}), ...(message ? { message: message.slice(0, 1000) } : {}) }).catch(() => null),
-      sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
-      alive: () => alive.current
-    }
-    await runInstall(ids, api, {
-      onRuntime: (id, rt) =>
-        alive.current &&
-        setRuntime((prev) => {
-          const next = { ...prev }
-          if (rt) next[id] = rt
-          else delete next[id]
-          return next
-        }),
-      onDetail: (id, d) => alive.current && setDetails((prev) => ({ ...prev, [id]: d }))
-    })
-    if (!alive.current) return
-    setInstalling(false)
-    await check()
-  }, [report, installing, check])
+  const install = useCallback(
+    async (only?: PreflightId[]): Promise<void> => {
+      if (!report || installing) return
+      const ids = only ?? installPlan(report, unchecked).map((c) => c.id)
+      if (ids.length === 0) return
+      setInstalling(true)
+      setDetails({})
+      const api: InstallApi = {
+        craftInstall: () => cw('craft:install').catch(() => undefined),
+        craftProgress: async () => {
+          const s = await cw('craft:status')
+          const total = s.progress?.total ?? 0
+          return s.installing && total > 0 ? Math.min(100, Math.round(((s.progress?.done ?? 0) / total) * 100)) : null
+        },
+        runtimesInstall: () => runtimesApi.install().catch(() => undefined),
+        runtimesProgress: async () => runtimesPct(await runtimesApi.status()),
+        sandboxSetup: () => cw('tasks:sandbox:setup'),
+        sandboxStatus: () => cw('tasks:sandbox:status', { force: true }),
+        fail: (id, code, message) =>
+          cw('preflight:fail', { id, ...(code ? { code } : {}), ...(message ? { message: message.slice(0, 1000) } : {}) }).catch(
+            () => null
+          ),
+        sleep: (ms) => new Promise((res) => setTimeout(res, ms)),
+        alive: () => alive.current
+      }
+      await runInstall(ids, api, {
+        onRuntime: (id, rt) =>
+          alive.current &&
+          setRuntime((prev) => {
+            const next = { ...prev }
+            if (rt) next[id] = rt
+            else delete next[id]
+            return next
+          }),
+        onDetail: (id, d) => alive.current && setDetails((prev) => ({ ...prev, [id]: d }))
+      })
+      if (!alive.current) return
+      setInstalling(false)
+      await check()
+    },
+    [report, installing, unchecked, check]
+  )
 
   const recheck = useCallback((): void => {
     setRuntime({})
@@ -201,7 +209,9 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       copied={copied}
       permsStalled={permsStalled}
       permsWaiting={permsWaiting}
-      onInstall={() => void install()}
+      unchecked={unchecked}
+      onToggle={(id) => setUnchecked((u) => toggleChecked(u, id))}
+      onInstall={(ids) => void install(ids)}
       onCopy={copy}
       onContinue={proceed}
       onRecheck={recheck}

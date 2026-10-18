@@ -8,7 +8,7 @@ const c = (id: PreflightComponent['id'], o: Partial<PreflightComponent> = {}): P
   id,
   essential: ['storage', 'engine'].includes(id),
   ok: true,
-  installable: id === 'craft' || id === 'sandbox',
+  installable: id === 'craft' || id === 'sandbox' || id === 'runtimes',
   ...o
 })
 const report = (components: PreflightComponent[]): PreflightReport => ({
@@ -29,6 +29,8 @@ const render = (r: PreflightReport, o: Partial<PreflightScreenProps> & { runtime
       copied: null,
       permsStalled: false,
       permsWaiting: false,
+      unchecked: [],
+      onToggle: noop,
       onInstall: noop,
       onCopy: noop,
       onContinue: noop,
@@ -157,5 +159,58 @@ describe('avisos no esenciales', () => {
   it('todo listo (tras instalar): botón «Continuar»', () => {
     const html = render(report([c('storage'), c('disk'), c('engine'), c('craft')]))
     expect(html).toContain('>Continuar<')
+  })
+})
+
+describe('casillas por componente (F8-B197)', () => {
+  const faltaTodo = (): PreflightReport =>
+    report([
+      c('storage'),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, reason: 'missing', sizeBytes: 205e6 }),
+      c('runtimes', { ok: false, reason: 'missing', sizeBytes: 67e6 }),
+      c('perms', { ok: false, reason: 'both' })
+    ])
+  it('cada componente instalable lleva su casilla, marcada, con el tamaño y de dónde se baja', () => {
+    const html = render(faltaTodo())
+    expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*data-testid="pick-craft"[^>]*checked=""/)
+    expect(html).toMatch(/<input[^>]*type="checkbox"[^>]*data-testid="pick-runtimes"[^>]*checked=""/)
+    expect(html).toContain('unos 205 MB')
+    expect(html).toContain('GitHub')
+    expect(html).toContain('unos 67 MB')
+    expect(html).toContain('nodejs.org')
+    expect(html).toContain('Se descargarán unos 272 MB.')
+  })
+  it('lo que no se instala (permisos) no lleva casilla', () => {
+    expect(render(faltaTodo())).not.toContain('pick-perms')
+  })
+  it('la casilla enlaza su texto de ayuda para lectores de pantalla', () => {
+    const html = render(faltaTodo())
+    const id = /aria-describedby="([^"]+)"/.exec(html)?.[1]
+    expect(id).toBeTruthy()
+    expect(html).toContain(`id="${id}"`)
+  })
+  it('desmarcada no cuenta: el tamaño baja y el botón sigue activo', () => {
+    const html = render(faltaTodo(), { unchecked: ['craft'] })
+    expect(html).not.toMatch(/data-testid="pick-craft"[^>]*checked=""/)
+    expect(html).toMatch(/data-testid="pick-runtimes"[^>]*checked=""/)
+    expect(html).toContain('Se descargarán unos 67 MB.')
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Instalar lo que falta/)
+  })
+  it('con todo desmarcado no se descarga nada y «Instalar lo que falta» se apaga; «Más tarde» sigue', () => {
+    const html = render(faltaTodo(), { unchecked: ['craft', 'runtimes'] })
+    expect(html).toContain('No hay nada marcado')
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Instalar lo que falta/)
+    expect(html).toContain('Más tarde')
+  })
+  it('durante la instalación las casillas quedan fijas', () => {
+    const html = render(faltaTodo(), { installing: true })
+    expect(html).toMatch(/<input[^>]*data-testid="pick-craft"[^>]*disabled=""/)
+  })
+  it('cada fila fallida tiene su propio estado; la otra conserva el suyo', () => {
+    const html = render(faltaTodo(), { runtime: { craft: { state: 'failed', error: 'hash' } } })
+    expect(html).toMatch(/data-testid="preflight-row-craft" data-state="failed"/)
+    expect(html).toMatch(/data-testid="preflight-row-runtimes" data-state="pending"/)
   })
 })

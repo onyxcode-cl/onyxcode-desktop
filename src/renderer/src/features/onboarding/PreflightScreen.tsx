@@ -11,6 +11,7 @@ import {
   canInstall,
   downloadBytes,
   installPlan,
+  installable,
   optionalPending,
   rowState,
   visibleRows,
@@ -22,6 +23,7 @@ import {
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
+import { ComponentPick } from './ComponentPick'
 import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
 import { LABELS, STATE_LABELS, failureKey, hintKey, sizeParts } from './preflight-view'
 import { officeMb } from '../settings/impl/component-install'
@@ -39,7 +41,11 @@ export interface PreflightScreenProps {
   permsStalled: boolean
   /** Se está esperando que la persona active los permisos en Ajustes del Sistema. */
   permsWaiting: boolean
-  onInstall: () => void
+  /** Casillas desmarcadas (por defecto todo lo opcional va marcado). */
+  unchecked: readonly PreflightId[]
+  onToggle: (id: PreflightId) => void
+  /** Sin ids instala lo marcado; con ids (reintento de una fila) solo esos. */
+  onInstall: (ids?: PreflightId[]) => void
   onCopy: (id: PreflightId) => void
   onContinue: () => void
   onRecheck: () => void
@@ -50,11 +56,12 @@ export interface PreflightScreenProps {
 export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const t = useT()
   const { report, runtime } = p
-  const rows = visibleRows(report)
+  const rows = visibleRows(report, p.unchecked)
   const block = blocking(report)
   const optional = optionalPending(report)
-  const plan = installPlan(report)
-  const bytes = downloadBytes(report)
+  const choices = installable(report).map((c) => c.id)
+  const plan = installPlan(report, p.unchecked)
+  const bytes = downloadBytes(report, p.unchecked)
   const anyFailed = Object.values(runtime).some((r) => r?.state === 'failed')
   const location = report.components.find((c) => c.id === 'location' && !c.ok)?.reason
   const perms = report.components.find((c) => c.id === 'perms')
@@ -122,11 +129,25 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                   )}
                 </span>
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
-                  <p className="font-medium text-fg">{t(LABELS[c.id])}</p>
-                  {hint && <p className="text-muted">{hint}</p>}
+                  {choices.includes(c.id) ? (
+                    <ComponentPick
+                      id={c.id}
+                      label={t(LABELS[c.id])}
+                      checked={!p.unchecked.includes(c.id)}
+                      disabled={p.installing}
+                      onChange={() => p.onToggle(c.id)}
+                    >
+                      {hint}
+                    </ComponentPick>
+                  ) : (
+                    <>
+                      <p className="font-medium text-fg">{t(LABELS[c.id])}</p>
+                      {hint && <p className="text-muted">{hint}</p>}
+                    </>
+                  )}
                   {st === 'failed' && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <Button variant="secondary" size="sm" onClick={p.onInstall} disabled={p.installing}>
+                      <Button variant="secondary" size="sm" onClick={() => p.onInstall([c.id])} disabled={p.installing}>
                         <RefreshCw size={13} /> {t('preflight.retry')}
                       </Button>
                       {p.details[c.id] && (
@@ -162,8 +183,10 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         {perms && !perms.ok && perms.reason === 'restart' && <ScreenRestartNotice />}
         {perms && !perms.ok && p.permsStalled && <PermsHelp />}
 
-        {plan.length > 0 && !p.installing && (
-          <p className="mt-4 text-[13px] text-muted">{t('preflight.size', { size: t(size.key, { n: size.n }) })}</p>
+        {choices.length > 0 && !p.installing && (
+          <p className="mt-4 text-[13px] text-muted" data-testid="preflight-size">
+            {plan.length > 0 ? t('preflight.size', { size: t(size.key, { n: size.n }) }) : t('preflight.size.none')}
+          </p>
         )}
         {block.length > 0 && <p className="mt-2 text-[12px] text-subtle">{t('preflight.cannotSkip', { app: DISPLAY_NAME })}</p>}
 
@@ -182,8 +205,13 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                 {t('preflight.continue')}
               </Button>
             )}
-            {plan.length > 0 && (
-              <Button variant="primary" onClick={p.onInstall} disabled={p.installing || !canInstall(report)} loading={p.installing}>
+            {choices.length > 0 && (
+              <Button
+                variant="primary"
+                onClick={() => p.onInstall()}
+                disabled={p.installing || !canInstall(report, p.unchecked)}
+                loading={p.installing}
+              >
                 {p.installing ? t('preflight.installing') : anyFailed ? t('preflight.retry') : t('preflight.install')}
               </Button>
             )}

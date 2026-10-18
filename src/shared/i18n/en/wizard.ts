@@ -93,13 +93,14 @@ export const wizard = {
   'wizard.permissions.review': 'You can review or remove them in System Settings › Privacy & Security.',
   'wizard.stepTitle.setup': 'Set up your computer',
   'wizard.setup.lead':
-    'This is optional. {app} can get the following ready now so it doesn’t ask for things one by one later. By clicking “Set everything up” you agree to it doing this:',
+    'This is optional. {app} can get the following ready now so it doesn’t ask for things one by one later. Choose what you want with the checkboxes (everything starts checked). By clicking “Set everything up” you agree to it installing only what is checked:',
   'wizard.setup.nothing': 'Your computer is already ready: nothing more to install or allow.',
   'wizard.setup.perms': 'macOS permissions: Accessibility and Screen Recording',
   'wizard.setup.perms.hint':
     'So the agent can move the mouse and see the screen when you ask it to. macOS will show its prompts: turn them on.',
   'wizard.setup.craft': 'Document designer (ArtCraft), to create and view well-designed Word, Excel, PowerPoint and PDF files',
-  'wizard.setup.craft.hint': 'Downloaded just once (about {mb} MB) and checked to be genuine before use. No administrator password needed.',
+  'wizard.setup.craft.hint':
+    'Downloaded just once from GitHub (about {mb} MB) and checked to be genuine before use. No administrator password needed.',
   'wizard.setup.craft.retryHint': 'Press “Retry” or do it later from Settings.',
   'wizard.setup.sandbox': 'Isolated environment for Overdrive',
   'wizard.setup.runtimes': 'Node.js and uv (to connect your email and calendar)',
@@ -131,7 +132,9 @@ export const wizard = {
   'wizard.welcome.state.pending': 'Queued',
   'wizard.welcome.state.downloading': 'Downloading…',
   'wizard.welcome.state.failed': 'Failed',
+  'wizard.welcome.state.skipped': 'Later',
   'wizard.welcome.state.missing': 'Missing',
+  'wizard.welcome.someSkipped': 'All set. Anything you left unchecked can be installed later from Settings.',
   'wizard.welcome.reviewed': 'You can continue: the next steps will help with anything missing.',
   'wizard.welcome.restartHint': 'If you already turned them on, restart {app}: macOS applies Screen Recording when it opens again.',
   'wizard.welcome.restartNow': 'Restart now',
@@ -158,9 +161,10 @@ export const wizard = {
   'preflight.title': 'Getting {app} ready',
   'preflight.subtitle.blocking': 'Something essential is missing for {app} to work. You can fix it here.',
   'preflight.subtitle.optional':
-    'You can already use {app}. These pieces are optional: install them now if you want them, or leave them for later (they are also in Settings).',
+    'You can already use {app}. These pieces are optional: check the ones you want and install them now, or leave them for later (they are also in Settings).',
   'preflight.checking': 'Checking your computer…',
   'preflight.size': 'About {size} will be downloaded.',
+  'preflight.size.none': 'Nothing is checked: nothing will be downloaded.',
   'preflight.size.mb': '{n} MB',
   'preflight.size.gb': '{n} GB',
   'preflight.install': 'Install what is missing',

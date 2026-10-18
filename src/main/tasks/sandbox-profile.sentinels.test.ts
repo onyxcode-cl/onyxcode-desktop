@@ -10,7 +10,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { hostname, tmpdir, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { macOnly } from '../../test/platform'
@@ -100,6 +100,18 @@ describe('defaultDeniedReadPaths (F8-B194)', () => {
     const env = sandboxEnv(sandboxDirs('/x/ud/tasks-sandbox/k'))
     expect(env.GIT_CONFIG_GLOBAL).toBe('/x/ud/tasks-sandbox/k/config/gitconfig')
     expect(env.XDG_CONFIG_HOME).toBe('/x/ud/tasks-sandbox/k/config')
+  })
+
+  it('los commits de la IA se firman con una identidad fija y sin datos personales (F8-B197)', () => {
+    const env = sandboxEnv(sandboxDirs('/x/ud/tasks-sandbox/k'))
+    expect(env.GIT_AUTHOR_NAME).toBe('Lazunox')
+    expect(env.GIT_COMMITTER_NAME).toBe('Lazunox')
+    expect(env.GIT_AUTHOR_EMAIL).toBe('lazunox@localhost.invalid')
+    expect(env.GIT_COMMITTER_EMAIL).toBe('lazunox@localhost.invalid')
+    // Ni el nombre del usuario de macOS ni el del equipo se cuelan en la identidad.
+    const identity = [env.GIT_AUTHOR_NAME, env.GIT_AUTHOR_EMAIL, env.GIT_COMMITTER_NAME, env.GIT_COMMITTER_EMAIL].join(' ')
+    expect(identity).not.toContain(userInfo().username)
+    expect(identity).not.toContain(hostname())
   })
 })
 
@@ -281,5 +293,38 @@ describe.skipIf(!macOnly)('Seatbelt real: lecturas denegadas con archivos centin
     expect(without.status).not.toBe(0)
     expect(without.out).toContain('Operation not permitted')
     expect(dirname(env.GIT_CONFIG_GLOBAL)).toBe(sandboxDirs(priv).config)
+  })
+
+  it('un commit hecho DENTRO de sandbox-exec se firma como «Lazunox», sin el nombre del usuario ni del equipo (F8-B197)', () => {
+    const repo = join(base, 'repo-firma')
+    mkdirSync(repo, { recursive: true })
+    const prepare = (args: string[]): ReturnType<typeof spawnSync> =>
+      spawnSync('/usr/bin/git', args, {
+        cwd: repo,
+        encoding: 'utf8',
+        env: { PATH: '/usr/bin:/bin', HOME: join(base, 'sin-gitconfig'), GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+      })
+    expect(prepare(['init', '-q']).status).toBe(0)
+    writeFileSync(join(repo, 'a.txt'), 'a\n')
+    const repoProfile = join(base, 'perfil-firma.sb')
+    // `allowDelete`: sin borrar bloqueos (`index.lock`) git no puede ni hacer `add`; es la tarea que deja borrar.
+    writeFileSync(repoProfile, buildSandboxProfile({ folder: repo, privateDir: priv, home, allowDelete: true }))
+    // Sin `-c user.*`: es exactamente lo que hace la IA. El entorno es el de `sandboxEnv`, nada más.
+    const inSandbox = (args: string[]): { out: string; status: number | null } => {
+      const r = spawnSync('/usr/bin/sandbox-exec', ['-f', repoProfile, '/usr/bin/git', ...args], {
+        cwd: repo,
+        encoding: 'utf8',
+        env: { PATH: '/usr/bin:/bin', HOME: home, ...env }
+      })
+      return { out: `${r.stdout}${r.stderr}`.trim(), status: r.status }
+    }
+    const added = inSandbox(['add', 'a.txt'])
+    expect(added.status, added.out).toBe(0)
+    const c = inSandbox(['commit', '-q', '-m', 'firma'])
+    expect(c.status, c.out).toBe(0)
+    const who = inSandbox(['log', '-1', '--format=%an <%ae>|%cn <%ce>'])
+    expect(who.out).toBe('Lazunox <lazunox@localhost.invalid>|Lazunox <lazunox@localhost.invalid>')
+    expect(who.out).not.toContain(userInfo().username)
+    expect(who.out).not.toContain(hostname())
   })
 })

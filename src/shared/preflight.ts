@@ -77,21 +77,29 @@ export function optionalPending(report: PreflightReport): PreflightComponent[] {
   return ordered(report).filter((c) => !c.essential && !c.ok)
 }
 
-/** Lo que instala el botón, en orden: componentes instalables que faltan. */
-export function installPlan(report: PreflightReport): PreflightComponent[] {
+/** Lo que se PUEDE instalar, en orden: componentes instalables que faltan (cada uno lleva su casilla en la pantalla). */
+export function installable(report: PreflightReport): PreflightComponent[] {
   return INSTALL_ORDER.map((id) => report.components.find((c) => c.id === id)).filter(
     (c): c is PreflightComponent => c !== undefined && !c.ok && c.installable
   )
 }
 
-/** Tamaño aproximado de lo que se va a descargar. */
-export function downloadBytes(report: PreflightReport): number {
-  return installPlan(report).reduce((n, c) => n + (c.sizeBytes ?? 0), 0)
+/**
+ * Lo que instala el botón, en orden: lo instalable que falta MENOS lo que la persona desmarcó (`unchecked`). Por defecto todo va marcado,
+ * así que sin lista el resultado es el de siempre.
+ */
+export function installPlan(report: PreflightReport, unchecked: readonly PreflightId[] = []): PreflightComponent[] {
+  return installable(report).filter((c) => !unchecked.includes(c.id))
 }
 
-/** Espacio libre necesario para instalar lo que falta (ArtCraft ×4, Node.js y uv ×6, entorno aislado ×1). */
-export function requiredFreeBytes(report: PreflightReport): number {
-  return installPlan(report).reduce((n, c) => n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1), 0)
+/** Tamaño aproximado de lo que se va a descargar (solo lo marcado). */
+export function downloadBytes(report: PreflightReport, unchecked: readonly PreflightId[] = []): number {
+  return installPlan(report, unchecked).reduce((n, c) => n + (c.sizeBytes ?? 0), 0)
+}
+
+/** Espacio libre necesario para instalar lo marcado (ArtCraft ×4, Node.js y uv ×6, entorno aislado ×1). */
+export function requiredFreeBytes(report: PreflightReport, unchecked: readonly PreflightId[] = []): number {
+  return installPlan(report, unchecked).reduce((n, c) => n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1), 0)
 }
 
 /** ¿Alcanza el disco? `null` = no se pudo medir (se intenta igual). */
@@ -99,10 +107,20 @@ export function diskEnough(freeBytes: number | null, needBytes: number): boolean
   return freeBytes === null || freeBytes >= needBytes
 }
 
-/** El botón «Instalar lo que falta» se puede pulsar: hay algo que instalar y ni la carpeta de datos ni el disco lo impiden. */
-export function canInstall(report: PreflightReport): boolean {
-  if (installPlan(report).length === 0) return false
-  return !report.components.some((c) => (c.id === 'storage' || c.id === 'disk') && !c.ok)
+/**
+ * El botón «Instalar lo que falta» se puede pulsar: hay algo MARCADO que instalar y ni la carpeta de datos ni el disco lo impiden.
+ * El disco se vuelve a medir solo con lo marcado (si se desmarca lo grande, lo pequeño puede caber); sin medida se usa el aviso de main.
+ */
+export function canInstall(report: PreflightReport, unchecked: readonly PreflightId[] = []): boolean {
+  if (installPlan(report, unchecked).length === 0) return false
+  if (report.components.some((c) => c.id === 'storage' && !c.ok)) return false
+  if (!report.components.some((c) => c.id === 'disk' && !c.ok)) return true
+  return unchecked.length > 0 && report.freeBytes !== null && diskEnough(report.freeBytes, requiredFreeBytes(report, unchecked))
+}
+
+/** Marca o desmarca un componente en la lista de desmarcados (los componentes nuevos nacen marcados). */
+export function toggleChecked(unchecked: readonly PreflightId[], id: PreflightId): PreflightId[] {
+  return unchecked.includes(id) ? unchecked.filter((x) => x !== id) : [...unchecked, id]
 }
 
 /** Estado de un componente tal como se pinta, mezclando la revisión con lo que pasa durante la instalación. */
@@ -126,8 +144,11 @@ export function rowState(c: PreflightComponent, rt: RuntimeMap = {}): RowState {
 }
 
 /** Filas visibles: lo que no está listo y los componentes que se instalan; disco y carpeta de datos solo si fallan. */
-export function visibleRows(report: PreflightReport): PreflightComponent[] {
-  return ordered(report).filter((c) => !(c.ok && (c.id === 'disk' || c.id === 'storage')))
+export function visibleRows(report: PreflightReport, unchecked: readonly PreflightId[] = []): PreflightComponent[] {
+  // El aviso de disco de main cuenta TODO lo que falta; si lo marcado sí cabe, no se enseña (la persona ya lo resolvió desmarcando).
+  const diskFitsChecked =
+    unchecked.length > 0 && report.freeBytes !== null && diskEnough(report.freeBytes, requiredFreeBytes(report, unchecked))
+  return ordered(report).filter((c) => !(c.ok && (c.id === 'disk' || c.id === 'storage')) && !(c.id === 'disk' && diskFitsChecked))
 }
 
 /** ¿Se puede entrar a la app? Solo si no queda nada esencial sin resolver ni en curso. */

@@ -430,9 +430,9 @@ export const mainErrors = {
   'merr.local.stepFailed': 'The installation failed at “{step}”: {detail}',
   'merr.local.platform': 'This connector is not available on this system yet.',
   'merr.local.noUv':
-    '“uv”, the program that installs this connector, is missing and has not been downloaded yet. Go back to the card and press “Install what is needed”.',
+    'Node.js and uv, the programs that install this connector, are missing and have not been downloaded yet. Go back to the card and press “Install what is needed”.',
   'merr.local.noNode':
-    'Node.js, the program that installs this connector, is missing and has not been downloaded yet. Go back to the card and press “Install what is needed”.',
+    'Node.js and uv, the programs that install this connector, are missing and have not been downloaded yet. Go back to the card and press “Install what is needed”.',
   'merr.local.versionMismatch': 'What got installed is not version {version}, the one Lazunox reviewed. Everything was deleted.',
   'merr.local.noEdit':
     'This connector is managed from Personalization: editing its program would remove the read-only mode. Remove it and add it again.'

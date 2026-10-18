@@ -166,3 +166,28 @@ describe('textos de la pantalla', () => {
     for (const k of keys) expect(en, k).toHaveProperty([k])
   })
 })
+
+describe('instalar solo lo marcado y reintentar por componente (F8-B197)', () => {
+  it('instala únicamente los ids que recibe: lo desmarcado ni se toca', async () => {
+    const h = harness()
+    const out = await runInstall(['runtimes'], h.api, h.ev)
+    expect(h.log).toEqual(['runtimes'])
+    expect(out.map((o) => o.id)).toEqual(['runtimes'])
+    expect(h.api.craftInstall).not.toHaveBeenCalled()
+    expect(h.api.sandboxSetup).not.toHaveBeenCalled()
+  })
+  it('reintentar un componente fallido no vuelve a instalar los que ya salieron bien', async () => {
+    const h = harness({ craftInstall: vi.fn(async () => ({ ok: false, error: 'download' })) })
+    const first = await runInstall(['craft', 'runtimes'], h.api, h.ev)
+    expect(first.map((o) => o.ok)).toEqual([false, true])
+    const retry = harness()
+    const second = await runInstall(['craft'], retry.api, retry.ev)
+    expect(second).toEqual([{ id: 'craft', ok: true }])
+    expect(retry.api.runtimesInstall).not.toHaveBeenCalled()
+  })
+  it('una lista vacía no instala nada', async () => {
+    const h = harness()
+    expect(await runInstall([], h.api, h.ev)).toEqual([])
+    expect(h.runtime).toEqual([])
+  })
+})

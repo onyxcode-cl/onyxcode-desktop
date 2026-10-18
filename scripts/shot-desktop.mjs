@@ -43,6 +43,8 @@ const SCENARIOS = [
   // listo (ArtCraft y avisos de macOS opcionales, «Más tarde»); `preparando-motor` = sin motor (lo único que bloquea).
   'preparando',
   'preparando-motor',
+  // F8-B197: casillas por componente. `preparando-casillas` = la misma pantalla con ArtCraft desmarcado (cambia el tamaño a descargar).
+  'preparando-casillas',
   // Asistente de primer uso. Arranque «sin motor» (OpenCode ausente): `onboarding` (primera pantalla con la tarjeta de atención) y
   // `onboarding-motor` (paso del motor). Arranque «motor incluido»: `onboarding-inicio` (saludo directo) y los cuatro pasos.
   'onboarding',
@@ -52,6 +54,8 @@ const SCENARIOS = [
   'onboarding-modelo',
   'onboarding-modos',
   'onboarding-final',
+  // F8-B197: bienvenida con la lista de lo que falta y una casilla desmarcada; el paso «Prepara tu equipo» (`onboarding-final`) lleva las suyas.
+  'onboarding-casillas',
   'chat-vacio',
   'chat-conversacion',
   'chat-herramientas',
@@ -124,6 +128,8 @@ const SCENARIOS = [
   'rutinas-sin-vigilar', // H24: «Sin vigilar» (aviso de Rutinas sin aceptar)
   'rutinas-bandeja',
   'rutinas-lote121', // F8-B193: el resumen de «Resultados por revisar» se ve formateado (markdown seguro)
+  'rutinas-bandeja-larga', // F8-B197: resumen largo recortado a una vista previa de ~5 líneas, sin barra de desplazamiento y con «Ver todo»
+  'rutinas-bandeja-larga-abierta', // F8-B197: el mismo resumen con «Ver todo» pulsado (tarjeta expandida)
   'rutinas-evento-e2e',
   'rutinas-recetas-e2e',
   // Ajustes › Uso (F8-B189): sin uso todavía y con uso de varias conversaciones (modelos gratuito, de pago y sin costo; Chat y Code).
@@ -137,6 +143,7 @@ const SCENARIOS = [
   // `telegram-e2e` (verificación: Permitir/Rechazar por Telegram, la carrera con la pantalla y la clave ausente del disco y de la pantalla).
   // Todos comparten un arranque con `LAZUNOX_TELEGRAM_API_BASE` apuntando al servidor falso local (e2e/fake-telegram).
   'telegram',
+  'telegram-clave-rechazada', // F8-B197: tras un rechazo («Esa clave no es válida») el campo queda vacío
   'telegram-codigo',
   'telegram-vinculado',
   'telegram-permiso',
@@ -208,7 +215,7 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(uso|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
+const SMALL_ALSO = /^(uso|preparando-casillas|onboarding-casillas|rutinas-bandeja-larga|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
 const TOTAL_TIMEOUT_MS = Number(process.env.LAZUNOX_SHOT_TIMEOUT_MS) || 330_000
 
 function arg(name) {
@@ -1369,6 +1376,30 @@ async function resyncWatch(page) {
     for (const r of l?.data ?? []) if (r.name === 'Auxiliar') await window.api.tasks.invoke('routines:delete', { id: r.id })
   })
   await sleep(800)
+}
+let longInboxSeeded = false
+async function seedLongInbox(ctx) {
+  await seedRoutines(ctx)
+  await goMode(ctx.page, 'Rutinas')
+  if (longInboxSeeded) return
+  longInboxSeeded = true
+  const bullets = Array.from({ length: 14 }, (_, i) => `- Pedido ${1000 + i}: cliente ${['Norte', 'Sur', 'Centro', 'Oriente'][i % 4]}, total ${(i + 3) * 12500} pesos`).join('\n')
+  await ctx.fake.script({
+    match: 'Resume las ventas de ayer',
+    steps: [
+      {
+        type: 'text',
+        text: `# Ventas de ayer\n\nEn total se registraron **14 pedidos** y no hubo anomalías graves.\n\n## Detalle\n\n${bullets}\n\nAl final del día quedaron dos pedidos por confirmar con el cliente.`
+      }
+    ]
+  })
+  await ctx.page.evaluate(async () => {
+    const list = (await window.api.tasks.invoke('routines:list')).data
+    const r = list.find((x) => x.name === 'Resumen diario de ventas')
+    if (r) await window.api.tasks.invoke('routines:runNow', { id: r.id })
+  })
+  await ctx.page.getByTestId('inbox-summary').first().waitFor({ state: 'visible', timeout: 60_000 })
+  await sleep(1500)
 }
 async function seedRoutines(ctx) {
   const { page } = ctx
@@ -2557,6 +2588,36 @@ const S = {
     await ctx.page.getByTestId('inbox-summary').first().waitFor({ state: 'visible', timeout: 60_000 })
     await sleep(1500)
   },
+  // F8-B197: un resumen LARGO (el motor falso responde con markdown de ~20 líneas). Cerrado: vista previa de ~5 líneas con degradado, sin barra
+  // de desplazamiento y con «Ver todo»; abierto: el texto completo sin desplazamiento anidado.
+  async 'rutinas-bandeja-larga'(ctx) {
+    await seedLongInbox(ctx)
+    const sum = ctx.page.getByTestId('inbox-summary').first()
+    const m = await sum.evaluate((el) => ({
+      overflowY: getComputedStyle(el).overflowY,
+      clipped: el.scrollHeight > el.clientHeight,
+      h: Math.round(el.clientHeight)
+    }))
+    console.log(`VERIF-INBOX cerrada => ${JSON.stringify(m)}`)
+    if (m.overflowY === 'auto' || m.overflowY === 'scroll') throw new Error('el resumen cerrado todavía tiene barra de desplazamiento')
+    await vis(ctx.page.getByTestId('inbox-summary-toggle').first())
+    await sum.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+  },
+  async 'rutinas-bandeja-larga-abierta'(ctx) {
+    await seedLongInbox(ctx)
+    const toggle = ctx.page.getByTestId('inbox-summary-toggle').first()
+    await vis(toggle)
+    await toggle.click()
+    await sleep(400)
+    const sum = ctx.page.getByTestId('inbox-summary').first()
+    const m = await sum.evaluate((el) => ({ overflowY: getComputedStyle(el).overflowY, noClip: el.scrollHeight <= el.clientHeight + 1, h: Math.round(el.clientHeight) }))
+    console.log(`VERIF-INBOX abierta => ${JSON.stringify(m)} aria-expanded=${await toggle.getAttribute('aria-expanded')}`)
+    if (!m.noClip || m.overflowY === 'auto' || m.overflowY === 'scroll') throw new Error('abierta debe mostrar todo sin desplazamiento anidado')
+    await sum.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+    return async () => {
+      await toggle.click().catch(() => {})
+    }
+  },
   // Prueba de punta a punta del disparador por archivo con el motor falso y userData temporal: un archivo = una ejecución,
   // lo que aparece justo al terminar no dispara, cinco seguidos = una ejecución agrupada y el tope por hora frena la siguiente.
   async 'rutinas-evento-e2e'(ctx) {
@@ -3491,6 +3552,20 @@ const S = {
     await vis(ctx.page.locator('[data-telegram-status="off"]'))
     await sleep(300)
   },
+  // F8-B197: una clave que el servidor rechaza («Esa clave no es válida») ya no deja los puntos en el campo.
+  async 'telegram-clave-rechazada'(ctx) {
+    const { page } = ctx
+    await openSettings(page, /Telegram/)
+    const field = page.locator('input[name="telegram-bot-key"]')
+    await field.fill(`${'8'.repeat(9)}:${'Zz'.repeat(17)}x`)
+    const antes = await field.inputValue()
+    await page.getByRole('button', { name: 'Guardar clave' }).click()
+    await vis(page.getByText('Esa clave no es válida', { exact: false }), 20_000)
+    const despues = await field.inputValue()
+    console.log(`VERIF-TELEGRAM clave-rechazada => antes=${antes.length} caracteres, despues=${despues.length} caracteres`)
+    if (despues !== '') throw new Error('el campo conserva la clave rechazada')
+    await sleep(300)
+  },
   async 'telegram-codigo'(ctx) {
     const { page } = ctx
     await openSettings(page, /Telegram/)
@@ -4298,6 +4373,16 @@ const S = {
     await vis(ctx.page.getByTestId('preflight-screen'), 30_000)
     await sleep(600)
   },
+  // F8-B197: ArtCraft desmarcado; el tamaño a descargar baja a lo de Node.js y uv y «Instalar lo que falta» sigue activo.
+  async 'preparando-casillas'(ctx) {
+    await vis(ctx.page.getByTestId('preflight-screen'), 30_000)
+    const craft = ctx.page.getByTestId('pick-craft')
+    await vis(craft)
+    await craft.click()
+    await sleep(400)
+    const size = await ctx.page.getByTestId('preflight-size').innerText()
+    console.log(`VERIF-CASILLAS preparando => craft=${await craft.isChecked()} runtimes=${await ctx.page.getByTestId('pick-runtimes').isChecked()} tamaño="${size}"`)
+  },
   async onboarding(ctx) {
     await onbTo(ctx, 0)
   },
@@ -4318,6 +4403,15 @@ const S = {
   },
   async 'onboarding-final'(ctx) {
     await onbTo(ctx, 4 + ONB_OFFSET)
+  },
+  // F8-B197: bienvenida con la lista de lo que falta (cada componente con su casilla); se desmarca ArtCraft.
+  async 'onboarding-casillas'(ctx) {
+    await onbTo(ctx, 0)
+    const craft = ctx.page.getByTestId('pick-runtimes')
+    await vis(craft, 10_000)
+    await craft.click()
+    await sleep(400)
+    console.log(`VERIF-CASILLAS bienvenida => runtimes=${await craft.isChecked()}`)
   }
 }
 
@@ -4590,7 +4684,8 @@ try {
   // Revisión de arranque simulada: cada escenario con su propio arranque (la pantalla bloquea la app, no hay más que fotografiar).
   for (const [sc, kind] of [
     ['preparando', 'primer-uso'],
-    ['preparando-motor', 'sin-motor']
+    ['preparando-motor', 'sin-motor'],
+    ['preparando-casillas', 'primer-uso']
   ]) {
     if (!scenarios.includes(sc)) continue
     const ctx = await launch(sc, { settings: { onboarded: false }, env: { LAZUNOX_TEST_PREFLIGHT: kind } })

@@ -438,9 +438,9 @@ export const mainErrors = {
   'merr.local.stepFailed': 'La instalación falló en «{step}»: {detail}',
   'merr.local.platform': 'Este conector todavía no está disponible en este sistema.',
   'merr.local.noUv':
-    'Falta «uv», el programa que instala este conector, y todavía no se descargó. Vuelve a la ficha y pulsa «Instalar lo necesario».',
+    'Faltan Node.js y uv, los programas que instalan este conector, y todavía no se descargaron. Vuelve a la ficha y pulsa «Instalar lo necesario».',
   'merr.local.noNode':
-    'Falta Node.js, el programa que instala este conector, y todavía no se descargó. Vuelve a la ficha y pulsa «Instalar lo necesario».',
+    'Faltan Node.js y uv, los programas que instalan este conector, y todavía no se descargaron. Vuelve a la ficha y pulsa «Instalar lo necesario».',
   'merr.local.versionMismatch': 'Lo instalado no es la versión {version} que revisó Lazunox. Se borró todo.',
   'merr.local.noEdit':
     'Este conector se gestiona desde Personalización: editar su programa le quitaría el modo de solo consulta. Quítalo y vuélvelo a añadir.'

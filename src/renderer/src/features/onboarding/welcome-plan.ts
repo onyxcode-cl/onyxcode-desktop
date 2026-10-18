@@ -3,7 +3,8 @@
  * decir «todo listo». Sin React ni IPC (se prueba con `welcome-plan.test.ts`).
  */
 export type WelcomeItemId = 'engine' | 'craft' | 'runtimes' | 'sandbox'
-export type WelcomeItemState = 'checking' | 'ready' | 'pending' | 'downloading' | 'failed'
+/** `skipped` = la persona desmarcó el componente y se dejó para más tarde (no cuenta como pendiente ni como fallo). */
+export type WelcomeItemState = 'checking' | 'ready' | 'pending' | 'downloading' | 'failed' | 'skipped'
 
 export type WelcomeItems = Partial<Record<WelcomeItemId, WelcomeItemState>>
 
@@ -20,9 +21,19 @@ export function welcomeOverall(items: WelcomeItems): WelcomeOverall {
   return 'ready'
 }
 
-/** Componentes que hay que descargar o preparar (los que esperan su turno). */
-export function toInstall(items: WelcomeItems): WelcomeItemId[] {
-  return WELCOME_ORDER.filter((id) => id !== 'engine' && items[id] === 'pending')
+/** Componentes que hay que descargar o preparar: los que esperan su turno y siguen marcados (`unchecked` = casillas desmarcadas). */
+export function toInstall(items: WelcomeItems, unchecked: readonly WelcomeItemId[] = []): WelcomeItemId[] {
+  return WELCOME_ORDER.filter((id) => id !== 'engine' && items[id] === 'pending' && !unchecked.includes(id))
+}
+
+/** Lo que esperaba su turno pero la persona desmarcó: al empezar se queda para más tarde. */
+export function toSkip(items: WelcomeItems, unchecked: readonly WelcomeItemId[]): WelcomeItemId[] {
+  return WELCOME_ORDER.filter((id) => id !== 'engine' && items[id] === 'pending' && unchecked.includes(id))
+}
+
+/** ¿Hay algo que la persona dejó para más tarde? (Cambia el titular: «todo listo» no sería cierto.) */
+export function hasSkipped(items: WelcomeItems): boolean {
+  return WELCOME_ORDER.some((id) => items[id] === 'skipped')
 }
 
 /** ¿Hay que reintentar algo? Solo lo descargable: el motor ausente se resuelve en el paso siguiente. */

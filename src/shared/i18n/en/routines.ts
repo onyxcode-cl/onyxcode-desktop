@@ -117,6 +117,8 @@ export const routines = {
   'routines.inbox.more': 'More actions for “{name}”',
   'routines.inbox.hideDetail': 'Hide details',
   'routines.inbox.approveHint': 'Mark as reviewed: it does not change any file.',
+  'routines.inbox.showAll': 'Show all',
+  'routines.inbox.showLess': 'Show less',
   'routines.inbox.copySummary': 'Copy the summary',
   'routines.inbox.skip': 'Skip',
   'routines.inbox.runMissed': 'Run now',
