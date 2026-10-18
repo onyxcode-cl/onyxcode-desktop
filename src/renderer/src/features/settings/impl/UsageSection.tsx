@@ -1,233 +1,337 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
-import type { GlobalSession } from '@opencode-ai/sdk/v2/client'
-import { getLang, type MsgKey } from '@shared/i18n'
+/**
+ * Ajustes › Uso (F8-B189): cuánto se ha usado la IA en este equipo, en palabras llanas. Los números salen del motor local
+ * (tokens por conversación y costo cuando el servicio lo informa); no hay cuentas, facturación ni envío de datos. Ver
+ * `usage-aggregate.ts` (qué se suma y qué se dice) y `usage-source.ts` (de dónde se lee, con tope).
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, CheckCircle2, Info, Loader2, RefreshCw } from 'lucide-react'
+import { getLang } from '@shared/i18n'
+import { MODE_LABELS } from '@shared/labels'
 import { Button } from '../../../components/Button'
-import { baseName } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
+import { errText } from '../../../lib/format'
 import { errorMessage } from '../../../lib/opencode'
+import { useProviders } from '../../../stores/providers'
+import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { useServer } from '../../../stores/server'
-import { Card, ErrorText, SectionHeader, SubTitle, formatCost, formatNumber, formatTokens } from './ui'
+import { Card, ErrorText, SectionHeader, formatCost, formatNumber, formatTokens } from './ui'
+import {
+  UNKNOWN_MODEL,
+  USAGE_PERIODS,
+  aggregateUsage,
+  costKind,
+  usageStatus,
+  type CostTotals,
+  type UsagePeriod,
+  type UsageReport,
+  type UsageRow
+} from './usage-aggregate'
+import { USAGE_LIMIT, isFreeModel, readUsage, type UsageRead } from './usage-source'
 
-type Period = 'today' | '7d' | '30d' | 'all'
+type Load =
+  | { phase: 'idle' }
+  | { phase: 'loading'; read?: UsageRead; at?: number }
+  | { phase: 'ready'; read: UsageRead; at: number }
+  | { phase: 'error'; error: string }
 
-const PERIODS: { id: Period; labelKey: MsgKey }[] = [
-  { id: 'today', labelKey: 'settings.usage.period.today' },
-  { id: '7d', labelKey: 'settings.usage.period.7d' },
-  { id: '30d', labelKey: 'settings.usage.period.30d' },
-  { id: 'all', labelKey: 'settings.usage.period.all' }
-]
+const locale = (): string => (getLang() === 'en' ? 'en-US' : 'es-CL')
 
-/** Clave interna del grupo «modelo desconocido» (se muestra traducida). */
-const UNKNOWN = '\u0000unknown'
-
-const PAGE = 500
-const MAX_SESSIONS = 5000
-
-interface Totals {
-  sessions: number
-  cost: number
-  input: number
-  output: number
-  reasoning: number
-  cacheRead: number
-  cacheWrite: number
-}
-
-const EMPTY: Totals = { sessions: 0, cost: 0, input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 }
-
-function add(t: Totals, s: GlobalSession): Totals {
-  const k = s.tokens
-  return {
-    sessions: t.sessions + 1,
-    cost: t.cost + (s.cost ?? 0),
-    input: t.input + (k?.input ?? 0),
-    output: t.output + (k?.output ?? 0),
-    reasoning: t.reasoning + (k?.reasoning ?? 0),
-    cacheRead: t.cacheRead + (k?.cache.read ?? 0),
-    cacheWrite: t.cacheWrite + (k?.cache.write ?? 0)
+function costText(c: CostTotals, t: ReturnType<typeof useT>): string {
+  switch (costKind(c)) {
+    case 'amount':
+      return c.unknown > 0 ? t('settings.usage.cost.mixed', { cost: formatCost(c.usd) }) : formatCost(c.usd)
+    case 'free':
+      return t('settings.usage.cost.free')
+    case 'unknown':
+      return t('settings.usage.cost.unknown')
+    default:
+      return t('settings.usage.cost.none')
   }
 }
 
-function since(period: Period): number {
-  const now = new Date()
-  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  if (period === '7d') return now.getTime() - 7 * 86_400_000
-  if (period === '30d') return now.getTime() - 30 * 86_400_000
-  return 0
-}
-
-/**
- * Uso: OpenCode guarda `cost` y `tokens` agregados por sesión (incluye subagentes como sesiones
- * hijas). Se listan todas las sesiones de todos los proyectos (`experimental.session.list`).
- */
 export function UsageSection(): React.JSX.Element {
   const t = useT()
   const client = useServer((s) => s.client)
-  const [sessions, setSessions] = useState<GlobalSession[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [period, setPeriod] = useState<Period>('30d')
+  const chatDirectory = useServer((s) => s.connection?.chatDirectory ?? null)
+  const providers = useProviders((s) => s.providers)
+  const [load, setLoad] = useState<Load>({ phase: 'idle' })
+  const [period, setPeriod] = useState<UsagePeriod>('7d')
+  const run = useRef(0)
 
-  const load = useCallback(async () => {
+  const refresh = useCallback(async () => {
     if (!client) return
-    setLoading(true)
-    setError(null)
+    const id = ++run.current
+    setLoad((l) => ({ phase: 'loading', ...(l.phase === 'ready' ? { read: l.read, at: l.at } : {}) }))
     try {
-      const all: GlobalSession[] = []
-      let cursor: number | undefined
-      while (all.length < MAX_SESSIONS) {
-        const r = await client.experimental.session.list({ limit: PAGE, ...(cursor !== undefined ? { cursor } : {}) })
-        if (r.error || !r.data) throw new Error(errorMessage(r.error))
-        all.push(...r.data)
-        if (r.data.length < PAGE) break
-        const last = r.data[r.data.length - 1]
-        const next = last.time.updated
-        if (cursor === next) break
-        cursor = next
-      }
-      // Dedupe por si la paginación por cursor repite la última.
-      const seen = new Set<string>()
-      setSessions(all.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true))))
+      // Overdrive: cada carpeta tiene su propio motor; se suman las sesiones que la app ya tiene cargadas de esos motores.
+      const st = useSessions.getState()
+      const tasks = Object.values(st.sessions).filter((s) => (st.sessionSource[s.id] ?? MAIN_SOURCE) !== MAIN_SOURCE)
+      const read = await readUsage(client as never, { chatDirectory, tasks }, errorMessage)
+      if (id === run.current) setLoad({ phase: 'ready', read, at: Date.now() })
     } catch (err) {
-      setError(errorMessage(err))
-    } finally {
-      setLoading(false)
+      if (id === run.current) setLoad({ phase: 'error', error: errText(err) })
     }
-  }, [client])
+  }, [client, chatDirectory])
 
+  // Lectura perezosa: solo al abrir esta pantalla (o con «Actualizar»), nunca en segundo plano.
   useEffect(() => {
-    void load()
-  }, [load])
+    void refresh()
+    return () => {
+      // Al salir de la pantalla, una lectura en vuelo ya no actualiza nada (el contador es un contador, no un nodo).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      run.current++
+    }
+  }, [refresh])
 
-  const filtered = useMemo(() => {
-    const from = since(period)
-    return (sessions ?? []).filter((s) => s.time.updated >= from)
-  }, [sessions, period])
-
-  const totals = useMemo(() => filtered.reduce(add, EMPTY), [filtered])
-
-  const byModel = useMemo(() => groupBy(filtered, (s) => (s.model ? `${s.model.providerID}/${s.model.id}` : UNKNOWN)), [filtered])
-  const byProject = useMemo(
+  const shown = load.phase === 'ready' ? load : load.phase === 'loading' && load.read && load.at ? { read: load.read, at: load.at } : null
+  const report = useMemo<UsageReport | null>(
     () =>
-      groupBy(
-        filtered,
-        (s) => s.project?.name ?? (s.project?.worktree ? baseName(s.project.worktree) : undefined) ?? baseName(s.directory)
-      ),
-    [filtered]
+      shown
+        ? aggregateUsage(shown.read.sessions, {
+            now: shown.at,
+            period,
+            capped: shown.read.capped,
+            ...(shown.read.oldestRead !== undefined ? { oldestRead: shown.read.oldestRead } : {}),
+            isFree: (p, m) => isFreeModel(p, m, providers)
+          })
+        : null,
+    // `shown` cambia de identidad en cada render; sus dos piezas son las que importan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shown?.read, shown?.at, period, providers]
   )
-  const top = useMemo(() => [...filtered].sort((a, b) => (b.cost ?? 0) - (a.cost ?? 0)).slice(0, 10), [filtered])
+  const loading = load.phase === 'loading'
 
   return (
     <div>
       <SectionHeader title={t('settings.usage.title')} description={t('settings.usage.subtitle')} />
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex rounded-lg border border-border p-0.5 text-xs">
-          {PERIODS.map((p) => (
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div role="group" aria-label={t('settings.usage.period.aria')} className="flex rounded-lg border border-border p-0.5 text-xs">
+          {USAGE_PERIODS.map((p) => (
             <button
-              key={p.id}
+              key={p}
               type="button"
-              onClick={() => setPeriod(p.id)}
-              className={`rounded-md px-3 py-1 ${period === p.id ? 'bg-active font-medium text-fg' : 'text-muted hover:text-fg'}`}
+              aria-pressed={period === p}
+              data-testid={`usage-period-${p}`}
+              onClick={() => setPeriod(p)}
+              className={`rounded-md px-3 py-1 ${period === p ? 'bg-active font-medium text-fg' : 'text-muted hover:text-fg'}`}
             >
-              {t(p.labelKey)}
+              {t(`settings.usage.period.${p}`)}
             </button>
           ))}
         </div>
-        <Button variant="ghost" onClick={() => void load()} disabled={loading || !client}>
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('settings.usage.refresh')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {shown && !loading && (
+            <span className="text-[11px] desk:text-meta text-subtle" data-testid="usage-updated">
+              {t('settings.usage.updatedAt', {
+                time: new Date(shown.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+              })}
+            </span>
+          )}
+          <Button variant="ghost" onClick={() => void refresh()} disabled={loading || !client} data-testid="usage-refresh">
+            {loading ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <RefreshCw size={14} aria-hidden />}{' '}
+            {t('settings.usage.refresh')}
+          </Button>
+        </div>
       </div>
 
-      {error && <ErrorText>{error}</ErrorText>}
       {!client && <p className="text-sm text-muted">{t('settings.usage.waiting')}</p>}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label={t('settings.usage.stat.cost')} value={formatCost(totals.cost)} />
-        <Stat label={t('settings.usage.stat.sessions')} value={formatNumber(totals.sessions)} />
-        <Stat label={t('settings.usage.stat.input')} value={formatTokens(totals.input)} />
-        <Stat label={t('settings.usage.stat.output')} value={formatTokens(totals.output)} />
-        <Stat label={t('settings.usage.stat.reasoning')} value={formatTokens(totals.reasoning)} />
-        <Stat label={t('settings.usage.stat.cacheRead')} value={formatTokens(totals.cacheRead)} />
-        <Stat label={t('settings.usage.stat.cacheWrite')} value={formatTokens(totals.cacheWrite)} />
-        <Stat
-          label={t('settings.usage.stat.total')}
-          value={formatTokens(totals.input + totals.output + totals.reasoning + totals.cacheRead + totals.cacheWrite)}
-        />
-      </div>
-      <p className="mt-2 text-[11px] desk:text-meta text-subtle">{t('settings.usage.costNote')}</p>
+      {client && load.phase === 'error' && (
+        <div className="space-y-3" data-testid="usage-error">
+          <ErrorText>{t('settings.usage.error', { error: load.error })}</ErrorText>
+          <Button variant="secondary" onClick={() => void refresh()}>
+            {t('settings.usage.retry')}
+          </Button>
+        </div>
+      )}
 
-      <SubTitle>{t('settings.usage.byModel')}</SubTitle>
-      <Breakdown groups={byModel} />
+      {client && !shown && (load.phase === 'loading' || load.phase === 'idle') && (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted" data-testid="usage-loading">
+          <Loader2 size={14} className="animate-spin" aria-hidden /> {t('settings.usage.loading')}
+        </p>
+      )}
 
-      <SubTitle>{t('settings.usage.byProject')}</SubTitle>
-      <Breakdown groups={byProject} />
-
-      <SubTitle>{t('settings.usage.topSessions')}</SubTitle>
-      <Card>
-        {top.length === 0 && <div className="px-4 py-4 text-sm text-muted">{t('settings.usage.noSessions')}</div>}
-        {top.map((s) => (
-          <div key={s.id} className="flex items-center gap-3 border-b border-border px-4 py-2 text-sm last:border-b-0">
-            <div className="min-w-0 flex-1">
-              <div className="truncate">{s.title || t('settings.usage.untitled')}</div>
-              <div className="truncate text-xs text-muted">
-                {new Date(s.time.updated).toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL')} · {s.model?.id ?? '—'}
-              </div>
-            </div>
-            <div className="text-right text-xs text-muted tabular-nums">
-              {t('settings.usage.tok', { count: formatTokens((s.tokens?.input ?? 0) + (s.tokens?.output ?? 0)) })}
-            </div>
-            <div className="w-20 text-right font-medium tabular-nums">{formatCost(s.cost ?? 0)}</div>
-          </div>
-        ))}
-      </Card>
+      {report && shown && <UsageReportView report={report} read={shown.read} />}
     </div>
   )
 }
 
-interface Group {
-  key: string
-  totals: Totals
-}
-
-function groupBy(list: GlobalSession[], keyOf: (s: GlobalSession) => string): Group[] {
-  const map = new Map<string, Totals>()
-  for (const s of list) {
-    const k = keyOf(s)
-    map.set(k, add(map.get(k) ?? EMPTY, s))
-  }
-  return [...map.entries()].map(([key, totals]) => ({ key, totals })).sort((a, b) => b.totals.cost - a.totals.cost)
-}
-
-function Breakdown({ groups }: { groups: Group[] }): React.JSX.Element {
+function UsageReportView({ report, read }: { report: UsageReport; read: UsageRead }): React.JSX.Element {
   const t = useT()
-  const max = Math.max(...groups.map((g) => g.totals.cost), 0)
+  const providers = useProviders((s) => s.providers)
+  const status = usageStatus(report)
+  const Icon = status.tone === 'warn' ? AlertTriangle : status.tone === 'empty' ? Info : CheckCircle2
+  const tone = status.tone === 'warn' ? 'text-warning' : status.tone === 'empty' ? 'text-muted' : 'text-success'
+  const whenKey = `settings.usage.when.${report.period}` as const
+  const costSentence = status.costKey ? t(status.costKey, { cost: formatCost(report.cost.usd), count: report.cost.unknown }) : null
+
+  const modelLabel = (key: string): { text: string; title?: string } => {
+    if (key === UNKNOWN_MODEL) return { text: t('settings.usage.unknown') }
+    const [pid, ...rest] = key.split('/')
+    const mid = rest.join('/')
+    const name = providers.find((p) => p.id === pid)?.models[mid]?.name
+    return { text: name || mid, title: key }
+  }
+
+  const dateFmt = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short' })
+  const dayFmt = new Intl.DateTimeFormat(locale(), { weekday: 'short', day: 'numeric', month: 'short' })
+
   return (
-    <Card>
-      {groups.length === 0 && <div className="px-4 py-4 text-sm text-muted">{t('settings.usage.noData')}</div>}
-      {groups.slice(0, 12).map((g) => (
-        <div key={g.key} className="border-b border-border px-4 py-2 text-sm last:border-b-0">
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1 truncate font-mono text-xs">{g.key === UNKNOWN ? t('settings.usage.unknown') : g.key}</div>
-            <div className="text-xs text-muted tabular-nums">
-              {t('settings.usage.sessionsShort', { count: g.totals.sessions, tokens: formatTokens(g.totals.input + g.totals.output) })}
-            </div>
-            <div className="w-20 text-right font-medium tabular-nums">{formatCost(g.totals.cost)}</div>
-          </div>
-          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-hover">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${max > 0 ? (g.totals.cost / max) * 100 : 0}%` }} />
+    <div data-testid="usage-report">
+      <Card className="mb-4 px-4 py-3.5">
+        <div role="status" aria-live="polite" className="flex items-start gap-2.5">
+          <Icon size={18} className={`mt-0.5 shrink-0 ${tone}`} aria-hidden />
+          <div className="min-w-0 text-sm leading-relaxed" data-testid="usage-status">
+            <p className="font-medium">
+              {t(status.key, { when: t(whenKey), tokens: formatTokens(report.total), count: report.conversations })}
+            </p>
+            {costSentence && <p className="mt-0.5 text-muted">{costSentence}</p>}
           </div>
         </div>
-      ))}
-    </Card>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Stat label={t('settings.usage.stat.conversations')} value={formatNumber(report.conversations)} />
+        <Stat
+          label={t('settings.usage.stat.tokens')}
+          value={formatTokens(report.total)}
+          hint={`${t('settings.usage.stat.cache')}: ${formatTokens(report.tokens.cacheRead + report.tokens.cacheWrite)}`}
+        />
+        <Stat label={t('settings.usage.stat.cost')} value={costText(report.cost, t)} />
+      </div>
+
+      <details className="mt-3 rounded-lg px-1 text-sm" data-testid="usage-tokens-help">
+        <summary className="cursor-pointer text-muted hover:text-fg">{t('settings.usage.tokens.summary')}</summary>
+        <p className="mt-1.5 max-w-prose text-xs leading-relaxed text-muted">{t('settings.usage.tokens.body')}</p>
+      </details>
+
+      {report.bucketUnit && (
+        <UsageTable
+          caption={t(report.bucketUnit === 'day' ? 'settings.usage.byDay' : 'settings.usage.byWeek')}
+          firstCol={t(report.bucketUnit === 'day' ? 'settings.usage.col.day' : 'settings.usage.col.week')}
+          rows={report.buckets}
+          label={(r) =>
+            report.bucketUnit === 'day'
+              ? { text: dayFmt.format(new Date(Number(r.key))) }
+              : { text: t('settings.usage.weekOf', { date: dateFmt.format(new Date(Number(r.key))) }) }
+          }
+          testId="usage-by-bucket"
+        />
+      )}
+      <UsageTable
+        caption={t('settings.usage.byModel')}
+        firstCol={t('settings.usage.col.model')}
+        rows={report.byModel}
+        label={(r) => modelLabel(r.key)}
+        showCost
+        testId="usage-by-model"
+      />
+      <UsageTable
+        caption={t('settings.usage.byMode')}
+        firstCol={t('settings.usage.col.mode')}
+        rows={report.byMode}
+        label={(r) => ({ text: MODE_LABELS[r.key as 'chat' | 'code' | 'tasks'] })}
+        showCost
+        testId="usage-by-mode"
+      />
+
+      <ul className="mt-6 space-y-1.5 text-[11px] desk:text-meta leading-relaxed text-subtle" data-testid="usage-notes">
+        <li>{t('settings.usage.note.limits')}</li>
+        <li>{t('settings.usage.note.counting')}</li>
+        <li>
+          {t('settings.usage.note.limit', { limit: USAGE_LIMIT })}
+          {read.capped && <> {t('settings.usage.note.capped')}</>}
+        </li>
+        <li>{t('settings.usage.note.tasks')}</li>
+        <li>{t('settings.usage.note.cost')}</li>
+      </ul>
+    </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }): React.JSX.Element {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }): React.JSX.Element {
   return (
     <Card className="px-3 py-2.5">
       <div className="text-[11px] desk:text-meta text-muted">{label}</div>
       <div className="mt-0.5 text-base font-semibold tabular-nums">{value}</div>
+      {hint && <div className="text-[11px] desk:text-meta text-subtle">{hint}</div>}
     </Card>
+  )
+}
+
+/** Tabla con barras: los números van en la tabla (lo que lee un lector de pantalla) y la barra es solo un apoyo visual. */
+function UsageTable({
+  caption,
+  firstCol,
+  rows,
+  label,
+  showCost,
+  testId
+}: {
+  caption: string
+  firstCol: string
+  rows: UsageRow[]
+  label: (r: UsageRow) => { text: string; title?: string }
+  showCost?: boolean
+  testId: string
+}): React.JSX.Element {
+  const t = useT()
+  const max = Math.max(...rows.map((r) => r.total), 0)
+  return (
+    <div className="mt-6" data-testid={testId}>
+      <Card>
+        <table className="w-full table-fixed border-collapse text-left text-sm">
+          <caption className="px-4 pt-3 pb-1 text-left text-[11.5px] desk:text-meta font-semibold text-muted">{caption}</caption>
+          <thead>
+            <tr className="text-[11px] desk:text-meta text-subtle">
+              <th scope="col" className="w-[34%] px-4 py-1.5 font-medium">
+                {firstCol}
+              </th>
+              <th scope="col" className="w-[17%] px-2 py-1.5 text-right font-medium">
+                {t('settings.usage.col.conversations')}
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-right font-medium">
+                {t('settings.usage.col.tokens')}
+              </th>
+              {showCost && (
+                <th scope="col" className="w-[20%] px-4 py-1.5 text-right font-medium">
+                  {t('settings.usage.col.cost')}
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={showCost ? 4 : 3} className="px-4 py-3 text-muted">
+                  {t('settings.usage.noData')}
+                </td>
+              </tr>
+            )}
+            {rows.slice(0, 12).map((r) => {
+              const l = label(r)
+              return (
+                <tr key={r.key} className="border-t border-border align-top">
+                  <th scope="row" className="truncate px-4 py-2 font-normal" title={l.title ?? l.text}>
+                    {l.text}
+                  </th>
+                  <td className="px-2 py-2 text-right tabular-nums">{formatNumber(r.conversations)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">
+                    {formatTokens(r.total)}
+                    <div className="mt-1 h-1 overflow-hidden rounded-full bg-hover" aria-hidden>
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${max > 0 ? Math.max((r.total / max) * 100, r.total > 0 ? 2 : 0) : 0}%` }}
+                      />
+                    </div>
+                  </td>
+                  {showCost && <td className="px-4 py-2 text-right tabular-nums">{costText(r.cost, t)}</td>}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </Card>
+    </div>
   )
 }
