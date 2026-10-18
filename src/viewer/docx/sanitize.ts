@@ -9,6 +9,11 @@ const URL_ATTRS = ['src', 'poster', 'srcset', 'background', 'action', 'formactio
 const LINK_ATTRS = ['href', 'xlink:href']
 const DEAD_TAGS = ['script', 'iframe', 'object', 'embed', 'link', 'meta', 'form']
 
+/** Nombre de atributo como selector CSS: los «:» (xlink:href) se escapan o `querySelectorAll` lanza SyntaxError (el visor de Word quedaba en «No se pudo mostrar»). */
+function cssAttr(name: string): string {
+  return name.replace(/:/g, '\\:')
+}
+
 function isSafeUrl(value: string): boolean {
   const v = value.trim().toLowerCase()
   return v === '' || v.startsWith('data:') || v.startsWith('#')
@@ -23,7 +28,7 @@ export function sanitizeDocxDom(root: ParentNode & Element): void {
   for (const tag of DEAD_TAGS) for (const el of Array.from(root.querySelectorAll(tag))) el.remove()
 
   // Todo enlace queda inerte, aunque apunte a algo "inofensivo": este visor no navega a ningún lado.
-  for (const link of LINK_ATTRS) for (const el of Array.from(root.querySelectorAll(`[${link}]`))) el.removeAttribute(link)
+  for (const link of LINK_ATTRS) for (const el of Array.from(root.querySelectorAll(`[${cssAttr(link)}]`))) el.removeAttribute(link)
 
   for (const el of Array.from(root.querySelectorAll('*'))) {
     for (const attr of Array.from(el.attributes)) {
