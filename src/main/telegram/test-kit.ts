@@ -340,5 +340,8 @@ export async function linkOwner(rig: Rig, chatId = 5001): Promise<string> {
   if (st.phase !== 'linking') throw new Error(`se esperaba «linking», hay «${st.phase}»`)
   rig.tg.sendUser({ chatId, text: st.code ?? code })
   await until(() => rig.svc.getState().phase === 'linked', 3000, 'vinculación')
+  // El bot confirma la vinculación con un mensaje que llega un instante DESPUÉS de pasar a «linked». Si una prueba toma «antes = mensajes»
+  // sin esperarlo, en un equipo ocupado ese mensaje cae dentro de su ventana de «no debe llegar nada» y la prueba falla a veces.
+  await until(() => rig.tg.to(chatId).length >= 1, 3000, 'confirmación de la vinculación')
   return st.code as string
 }
