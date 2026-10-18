@@ -15,6 +15,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Mejoras
 
+- **Overdrive funciona con los modelos gratuitos.** Con «Solo en tu carpeta», las tareas y las rutinas que usan un modelo gratuito (como DeepSeek V4.1 Flash o MiMo) fallaban con «Cannot connect to API». Ahora responden. En Windows, además, el servidor de tareas no conocía los modelos más nuevos y decía que no existían; ahora los conoce.
 - **«Guardar todo» ya no incluye archivos de secretos** (como `.env` o llaves) en el commit.
 
 ## [1.1.0] - 2026-10-18
