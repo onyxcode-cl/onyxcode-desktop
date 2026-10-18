@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.2.1] - 2026-10-18
+
+### Mejoras
+
+- **Overdrive lee menos de tu equipo.** Las tareas de Overdrive en Mac siguen escribiendo solo en tu carpeta, pero antes podían leer varios archivos personales que suelen guardar claves (como `.zshrc`, `.gitconfig`, la configuración de otras herramientas de IA y los datos de varias apps). Ahora esos archivos y carpetas quedan fuera de su alcance. Si la tarea usa `git`, usa una configuración propia y aislada, así que los commits que haga no llevan tu nombre de `.gitconfig`.
+- **Los textos de Overdrive dicen exactamente lo que pasa.** «Solo en tu carpeta» ya no afirma que solo lee tus carpetas: en Mac escribe solo en tu carpeta y puede leer el resto de tu cuenta menos tus claves, tu configuración y los datos de las apps; en Windows solo ve la carpeta que elegiste. Sigue sin internet salvo sitios permitidos.
+- **Resultados de las rutinas con formato.** En «Resultados por revisar» el texto se ve con títulos, negritas y listas, y hay un botón «Copiar el resumen».
+- **Mensajes más claros.** Si un modelo gratuito no responde porque su servicio está caído, la app lo dice y ofrece «Reintentar», en vez de «Algo salió mal». Si «Guardar todo» no deja nada que guardar porque solo había archivos de secretos, lo explica en tu idioma. Las conversaciones nuevas del Chat dicen «Nueva conversación» hasta que tienen título. Tampoco aparece más la tarjeta «el agente intentó borrar» cuando lo que se negó fue otra cosa.
+- **Aviso de versión nueva.** Si tu copia de Lazunox no se puede actualizar sola (por ejemplo, una copia portable), el botón ahora dice «Ver descarga» y abre la página, en vez de no hacer nada.
+
 ## [1.2.0] - 2026-10-18
 
 ### Novedades
