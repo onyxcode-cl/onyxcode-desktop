@@ -22,6 +22,7 @@ import { buildInlineConfig } from './config'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
 import { killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
+import { catalogFile, waitForCatalog } from './catalog-wait'
 import { withDisclaim } from '../process/disclaim'
 import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
@@ -162,15 +163,16 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       embeddedBrowserMcp.setApi(embeddedBrowser)
       const browserMcp = await embeddedBrowserMcp.configFor({ product: 'code', sandboxed: false, folder: null })
 
+      const childEnv = minimalEnv({
+        ...getOpencodeEnv(),
+        ...appOpencodeConfigEnv(),
+        OPENCODE_SERVER_USERNAME: username,
+        OPENCODE_SERVER_PASSWORD: password,
+        OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))
+      })
       const child = spawn(exec.command, exec.args, {
         cwd: this.options.chatDirectory,
-        env: minimalEnv({
-          ...getOpencodeEnv(),
-          ...appOpencodeConfigEnv(),
-          OPENCODE_SERVER_USERNAME: username,
-          OPENCODE_SERVER_PASSWORD: password,
-          OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))
-        }),
+        env: childEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
         // Líder de su propio grupo POSIX: `killTree` mata también MCP/bash (AUDIT.md B3). En Windows
         // `detached` abriría una consola y no hay grupos: se mata el árbol con `taskkill /T`.
@@ -193,6 +195,15 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         timeoutMs: HEALTH_TIMEOUT_MS,
         intervalMs: HEALTH_INTERVAL_MS
       })
+      if (this.child !== child) throw new Error(t('merr.engine.stoppedAtStart'))
+
+      // Sin caché del catálogo de modelos el motor lo baja al arrancar; si le piden la lista antes se queda con la de respaldo
+      // (sin los modelos gratuitos nuevos). Nadie lo consulta hasta que `ready` se emite, así que se espera aquí (con tope).
+      // Con un binario indicado por entorno (OPENCODE_BIN, pruebas con el motor falso) no hay catálogo que esperar.
+      if (!process.env.OPENCODE_BIN && !process.env[TEST_BUNDLED_ENV]) {
+        const catalog = await waitForCatalog(catalogFile(childEnv))
+        if (catalog !== 'present') console.log(`[opencode] catálogo de modelos: ${catalog}`)
+      }
       if (this.child !== child) throw new Error(t('merr.engine.stoppedAtStart'))
 
       const connection: OpencodeConnection = {
@@ -252,7 +263,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   }
 
   private setStatus(patch: Partial<ServerStatus>): void {
-    if (patch.state === 'error' && patch.error) recordProblem({ source: 'engine', message: patch.error, detail: { reinicios: this.status.restarts } })
+    if (patch.state === 'error' && patch.error)
+      recordProblem({ source: 'engine', message: patch.error, detail: { reinicios: this.status.restarts } })
     this.status = { ...this.status, ...patch }
     this.emit('status', this.status)
   }

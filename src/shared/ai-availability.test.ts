@@ -150,3 +150,27 @@ describe('reconcileChoices', () => {
     expect(reconcileChoices(base, [openai, g2], defaults, ['openai']).choices.defaultModel.modelID).toBe('other-go')
   })
 })
+
+describe('modelo gratuito guardado que el catálogo ya no trae (reinicio con catálogo recortado)', () => {
+  const freeList: ProviderLike = { id: 'opencode', source: 'custom', models: { 'ling-3.1-flash-free': {}, 'big-pickle': {} } }
+  const savedFree = { providerID: 'opencode', modelID: 'otro-modelo-free' }
+
+  it('sin IA configurada sigue usando el gratuito (no «Aún no conectaste ninguna IA»)', () => {
+    const eff = resolveModel(savedFree, [freeList], {})
+    expect(eff).toEqual({ providerID: 'opencode', modelID: 'ling-3.1-flash-free' })
+    const gate = sendGate(aiAvailability([freeList]), eff)
+    expect(gate).toEqual({ blocked: false, reason: null, freeNote: true })
+  })
+
+  it('con otro proveedor configurado manda el configurado, como antes', () => {
+    expect(resolveModel(savedFree, [freeList, other], defaults)).toEqual({ providerID: 'acme', modelID: 'acme-2' })
+  })
+
+  it('el predeterminado de fábrica sigue sin sustituirse por uno gratuito a escondidas', () => {
+    expect(resolveModel(DEFAULT_MODEL, [freeList], {})).toBeNull()
+  })
+
+  it('proveedor gratuito sin modelos vigentes: sigue sin haber ninguno', () => {
+    expect(resolveModel(savedFree, [{ ...freeList, models: { x: { status: 'deprecated' } } }], {})).toBeNull()
+  })
+})
