@@ -122,6 +122,7 @@ export const telegram = {
   'telegram.msg.perm.toastExpired': 'Estos botones caducaron',
   'telegram.msg.perm.toastUsed': 'Ya usaste este botón',
   'telegram.msg.perm.toastFailed': 'No se pudo responder. Hazlo en el computador.',
+  'telegram.msg.perm.toastLimit': 'Demasiados permisos aceptados por Telegram en esta hora. Respóndelo en el computador.',
   'telegram.msg.done': 'Terminó: {title}',
   'telegram.msg.question': 'La IA tiene una pregunta para ti en: {title}\n\n{question}\n\nResponde en el computador.',
   'telegram.msg.error': 'Hubo un error en: {title}\n\n{detail}',

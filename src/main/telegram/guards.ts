@@ -99,18 +99,19 @@ export class LinkCode {
 
 // ---------------------------------------------------------------- límite por minuto
 
-/** Ventana deslizante: admite como mucho `max` eventos en los últimos 60 s. */
+/** Ventana deslizante: admite como mucho `max` eventos en los últimos `windowMs` (60 s por defecto; una hora para el tope de respuestas). */
 export class MinuteLimiter {
   private stamps: number[] = []
   constructor(
     private readonly max: number,
-    private readonly now: Clock = Date.now
+    private readonly now: Clock = Date.now,
+    private readonly windowMs = 60_000
   ) {}
 
   /** `true` si el evento cabe (y lo cuenta). */
   take(): boolean {
     const t = this.now()
-    this.stamps = this.stamps.filter((s) => t - s < 60_000)
+    this.stamps = this.stamps.filter((s) => t - s < this.windowMs)
     if (this.stamps.length >= this.max) return false
     this.stamps.push(t)
     return true

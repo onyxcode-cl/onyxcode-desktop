@@ -3,6 +3,8 @@ import { visibleText } from '../../../e2e/fake-telegram/server.mjs'
 import { escapeHtml, redactForTelegram, safeBlock, safeLine, scrubToken, stripControl, truncateMiddle } from './text'
 
 const key = (): string => ['sk', 'live', 'abcDEF123456ghiJKL'].join('-')
+const PEM_HEAD = ['-----BEGIN', 'PRIVATE', 'KEY-----'].join(' ')
+const PEM_TAIL = ['-----END', 'PRIVATE', 'KEY-----'].join(' ')
 const botToken = (): string => `${'8'.repeat(9)}:${'AAH'.repeat(11)}`
 
 describe('tapado', () => {
@@ -10,7 +12,7 @@ describe('tapado', () => {
     const k = key()
     const t = botToken()
     const out = redactForTelegram(
-      `curl -H "Authorization: Bearer ${'xyz123ABC'.repeat(3)}" ${k} https://api.telegram.org/bot${t}/getMe\n-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----`
+      `curl -H "Authorization: Bearer ${'xyz123ABC'.repeat(3)}" ${k} https://api.telegram.org/bot${t}/getMe\n${PEM_HEAD}\nMIIE...\n${PEM_TAIL}`
     )
     expect(out).not.toContain(k)
     expect(out).not.toContain(t)

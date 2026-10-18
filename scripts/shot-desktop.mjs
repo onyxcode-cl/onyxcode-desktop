@@ -9,9 +9,11 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync
 } from 'node:fs'
@@ -21,6 +23,7 @@ import { homedir, tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { _electron } from 'playwright-core'
+import { startFakeTelegram } from '../e2e/fake-telegram/server.mjs'
 
 const require = createRequire(import.meta.url)
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -116,6 +119,15 @@ const SCENARIOS = [
   'ajustes-general',
   'ajustes-modelos',
   'ajustes-celular',
+  // Telegram (F8-B187): `telegram` (apagado, los cuatro pasos), `telegram-codigo` (clave guardada y código a la vista), `telegram-vinculado` (chat vinculado;
+  // un chat ajeno no recibe respuesta), `telegram-permiso` (Code pide un permiso y el servidor de Telegram FALSO recibe el mensaje con botones) y
+  // `telegram-e2e` (verificación: Permitir/Rechazar por Telegram, la carrera con la pantalla y la clave ausente del disco y de la pantalla).
+  // Todos comparten un arranque con `LAZUNOX_TELEGRAM_API_BASE` apuntando al servidor falso local (e2e/fake-telegram).
+  'telegram',
+  'telegram-codigo',
+  'telegram-vinculado',
+  'telegram-permiso',
+  'telegram-e2e',
   'ajustes-memoria',
   'ajustes-instrucciones',
   // Buscador de Ajustes (⌘F, resultados agrupados con coincidencias resaltadas) e «Importar» (vista previa de una carpeta de ejemplo
@@ -171,7 +183,8 @@ const SCENARIOS = [
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
-const SMALL_ALSO = /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-)/
+const SMALL_ALSO =
+  /^(chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|busqueda-|trabajo-legible|proyectos-|telegram)/
 const TOTAL_TIMEOUT_MS = 330_000
 
 function arg(name) {
@@ -431,7 +444,8 @@ function fakeClient(conn) {
     script: (b) => call('POST', 'script', b),
     emit: (b) => call('POST', 'emit', b),
     set: (b) => call('POST', 'set', b),
-    reset: () => call('POST', 'reset', {})
+    reset: () => call('POST', 'reset', {}),
+    status: () => call('GET', 'status')
   }
 }
 
@@ -445,6 +459,71 @@ const goMode = async (page, name) => {
   await sleep(400)
 }
 const vis = (loc, timeout = 15_000) => loc.first().waitFor({ state: 'visible', timeout })
+
+// ---- Telegram (F8-B187): datos de mentira armados en tiempo de ejecución (ningún literal con forma de clave) ----
+const TG_SECRET = `${'Qx'.repeat(6)}-${'7aB'.repeat(8)}`.slice(0, 35)
+const TG_TOKEN = `${'7'.repeat(9)}:${TG_SECRET}`
+const TG_CHAT = 424242
+let tgRef = null
+const TG_FAKE_KEY = ['sk', 'prueba', 'Zz9Yy8Xx7Ww6Vv5Uu4'].join('-')
+async function waitUntil(cond, timeout, what) {
+  const t0 = Date.now()
+  while (!(await cond())) {
+    if (Date.now() - t0 > timeout)
+      throw new Error(
+        `tiempo agotado esperando: ${what}` +
+          (tgRef
+            ? ` | respuestas a botones: ${JSON.stringify(tgRef.callbackAnswers.map((a) => a.text))} | ediciones: ${tgRef.edits.length}`
+            : '')
+      )
+    await sleep(100)
+  }
+}
+/** Pide a la IA (guion del motor falso) un comando que exige permiso; el comando lleva una clave de mentira. */
+async function tgAsk(ctx, prompt, command) {
+  await ctx.fake.script({
+    match: prompt,
+    title: 'Prueba de Telegram',
+    steps: [
+      { type: 'text', text: 'Voy a ejecutar un comando.' },
+      {
+        type: 'permission',
+        permission: 'bash',
+        patterns: [command],
+        metadata: { command: `${command} # clave: ${TG_FAKE_KEY}`, description: 'Prueba del puente con Telegram.' }
+      },
+      { type: 'text', text: 'Listo, terminé la instalación.' }
+    ]
+  })
+  const box = ctx.page.getByRole('combobox', { name: 'Mensaje para el asistente' })
+  await box.fill(prompt)
+  await box.press('Enter')
+}
+/** Archivos bajo `dir` (de cualquier tamaño razonable) que contienen `secret` en claro. */
+function tgScanForSecret(dir, secret) {
+  const hits = []
+  const walk = (d) => {
+    let names = []
+    try {
+      names = readdirSync(d, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const e of names) {
+      const p = join(d, e.name)
+      if (e.isDirectory()) walk(p)
+      else if (e.isFile()) {
+        try {
+          if (statSync(p).size < 30_000_000 && readFileSync(p).includes(secret)) hits.push(p.slice(dir.length))
+        } catch {
+          /* ilegible */
+        }
+      }
+    }
+  }
+  walk(dir)
+  return hits
+}
 const press = (page, k) => page.keyboard.press(k)
 async function closeOverlays(page) {
   for (let i = 0; i < 3; i++) {
@@ -2580,7 +2659,10 @@ const S = {
     await page.locator('[data-testid="pers-conn-google-workspace"]').click()
     const dlg = page.locator('[role="dialog"]')
     await vis(dlg, 5000)
-    await dlg.getByRole('button', { name: /^Conectar$/ }).first().click()
+    await dlg
+      .getByRole('button', { name: /^Conectar$/ })
+      .first()
+      .click()
     await vis(dlg.locator('[data-testid="pers-local-ack-third"]'), 5000)
     await sleep(500)
   },
@@ -2611,7 +2693,10 @@ const S = {
     await page.locator('[data-testid="pers-conn-google-workspace"]').click()
     const dlg = page.locator('[role="dialog"]')
     await vis(dlg, 5000)
-    await dlg.getByRole('button', { name: /^Conectar$/ }).first().click()
+    await dlg
+      .getByRole('button', { name: /^Conectar$/ })
+      .first()
+      .click()
     await dlg.locator('[data-testid="pers-local-ack-third"]').check()
     await dlg.locator('[data-testid="pers-local-ack-data"]').check()
     await dlg.locator('[data-testid="pers-local-next"]').click()
@@ -2655,7 +2740,10 @@ const S = {
     await page.locator('[data-testid="pers-conn-google-workspace"]').click()
     const dlg = page.locator('[role="dialog"]')
     await vis(dlg, 5000)
-    await dlg.getByRole('button', { name: /^Conectar$/ }).first().click()
+    await dlg
+      .getByRole('button', { name: /^Conectar$/ })
+      .first()
+      .click()
     const next = dlg.locator('[data-testid="pers-local-next"]')
     const nextSinCasillas = await next.isDisabled()
     await dlg.locator('[data-testid="pers-local-ack-third"]').check()
@@ -2719,7 +2807,12 @@ const S = {
         }
       })
       child.stdin.write(
-        JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'v', version: '0' } } }) + '\n'
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'v', version: '0' } }
+        }) + '\n'
       )
     })
     const expuestas = probe.names ?? []
@@ -2753,13 +2846,22 @@ const S = {
     // Quitar desde Tuyos.
     await dlg.getByRole('button', { name: /^Listo$/ }).click()
     await page.getByRole('tab', { name: /Tuyos/ }).click()
-    await page.getByRole('button', { name: /Gmail, Google Calendar/ }).first().click()
-    await page.locator('[role="dialog"]').getByRole('button', { name: /^Quitar/ }).last().click()
+    await page
+      .getByRole('button', { name: /Gmail, Google Calendar/ })
+      .first()
+      .click()
+    await page
+      .locator('[role="dialog"]')
+      .getByRole('button', { name: /^Quitar/ })
+      .last()
+      .click()
     await sleep(500)
     await page.getByRole('button', { name: /^Eliminar$/ }).click()
     await sleep(4000)
     const cfg2 = JSON.parse(readFileSync(cfgPath, 'utf8'))
-    const prov = existsSync(join(userData, 'mcp-catalog-installs.json')) ? readFileSync(join(userData, 'mcp-catalog-installs.json'), 'utf8') : '{}'
+    const prov = existsSync(join(userData, 'mcp-catalog-installs.json'))
+      ? readFileSync(join(userData, 'mcp-catalog-installs.json'), 'utf8')
+      : '{}'
     console.log(
       'VERIF-LOCALES-QUITAR ' +
         JSON.stringify({
@@ -2850,6 +2952,159 @@ const S = {
   },
   async 'ajustes-celular'(ctx) {
     await openSettings(ctx.page, /Celular|Móvil|Remoto/)
+  },
+  // ---- Telegram (F8-B187). Un solo arranque con el servidor de Telegram FALSO (ctx.tg); el orden de SCENARIOS importa. ----
+  async telegram(ctx) {
+    await openSettings(ctx.page, /Telegram/)
+    await vis(ctx.page.locator('[data-telegram-section]'), 15_000)
+    await vis(ctx.page.locator('[data-telegram-status="off"]'))
+    await sleep(300)
+  },
+  async 'telegram-codigo'(ctx) {
+    const { page } = ctx
+    await openSettings(page, /Telegram/)
+    await page.locator('input[name="telegram-bot-key"]').fill(TG_TOKEN)
+    await page.getByRole('button', { name: 'Guardar clave' }).click()
+    await vis(page.getByText(/Clave guardada \(termina en/), 20_000)
+    await page.getByRole('switch', { name: 'Telegram activado' }).click()
+    await vis(page.locator('[data-telegram-code]'), 20_000)
+    // La clave no se queda en la pantalla (ni en el HTML ni en el campo).
+    const shown = await page.evaluate(() => document.documentElement.outerHTML)
+    if (shown.includes(TG_SECRET)) throw new Error('la clave del bot aparece en la pantalla')
+    console.log('VERIF-TELEGRAM clave-no-en-pantalla => ok')
+    await sleep(300)
+  },
+  async 'telegram-vinculado'(ctx) {
+    const { page, tg } = ctx
+    await openSettings(page, /Telegram/)
+    const code = (await page.locator('[data-telegram-code] .font-mono').first().innerText()).trim()
+    if (!/^\d{6}$/.test(code)) throw new Error(`código inesperado: ${code}`)
+    tg.sendUser({ chatId: TG_CHAT, text: '/start', firstName: 'Ana' })
+    await waitUntil(() => tg.to(TG_CHAT).length >= 1, 15_000, 'respuesta a /start')
+    // Código equivocado primero: no vincula y dice cuántos intentos quedan.
+    tg.sendUser({ chatId: TG_CHAT, text: code === '000000' ? '111111' : '000000', firstName: 'Ana' })
+    await waitUntil(() => tg.to(TG_CHAT).length >= 2, 15_000, 'respuesta al código equivocado')
+    const wrongReply = tg.to(TG_CHAT).at(-1).text
+    tg.sendUser({ chatId: TG_CHAT, text: code, firstName: 'Ana' })
+    await vis(page.locator('[data-telegram-status="linked"]'), 20_000)
+    // Un chat ajeno y un grupo no reciben NADA (el servidor falso cuenta los mensajes que salieron).
+    const before = tg.messages.length
+    tg.sendUser({ chatId: 777, text: '/estado' })
+    tg.sendUser({ chatId: -1001, fromId: TG_CHAT, text: '/estado', chatType: 'supergroup' })
+    await sleep(3500)
+    const leaked = tg.messages.length - before
+    console.log('VERIF-TELEGRAM vinculado => ' + JSON.stringify({ wrongReply: wrongReply.slice(0, 60), mensajesAAjenos: leaked }))
+    if (leaked !== 0) throw new Error('el bot respondió a un chat ajeno o a un grupo')
+    await sleep(300)
+  },
+  async 'telegram-permiso'(ctx) {
+    const { page, fake, tg } = ctx
+    await openCode(ctx)
+    await tgAsk(ctx, 'Instala las dependencias de Telegram', 'npm install --foreground-scripts')
+    await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await waitUntil(() => tg.messages.some((m) => m.reply_markup && /npm install/.test(m.text)), 20_000, 'mensaje de permiso en Telegram')
+    const m = tg.messages.findLast((x) => x.reply_markup)
+    console.log(
+      'VERIF-TELEGRAM permiso-enviado => ' +
+        JSON.stringify({
+          botones: m.reply_markup.inline_keyboard.flat().map((b) => b.text),
+          bytes: m.reply_markup.inline_keyboard.flat().map((b) => b.callback_data.length)
+        })
+    )
+    await sleep(500)
+    // Al terminar las capturas, el permiso pendiente se resuelve en la pantalla (así `telegram-e2e` parte limpio).
+    return async () => {
+      await page
+        .getByRole('button', { name: 'Permitir una vez' })
+        .first()
+        .click({ timeout: 5000 })
+        .catch(() => {})
+      await waitUntil(async () => (await fake.status()).pendingPermissions.length === 0, 30_000, 'sin pendientes')
+      await sleep(1500)
+    }
+  },
+  async 'telegram-e2e'(ctx) {
+    const { page, tg, fake } = ctx
+    await openCode(ctx)
+    const replies = async () => (await fake.status()).permissionReplies.map((r) => r.reply)
+    const pending = async () => (await fake.status()).pendingPermissions.length
+    const buttonsOf = (m) => m.reply_markup.inline_keyboard.flat()
+    const findMsg = (re) => tg.messages.findLast((x) => x.reply_markup && re.test(x.text))
+    const out = {}
+    // A: Telegram contesta «Permitir una vez» y el motor sigue (un permiso nuevo: el que dejó `telegram-permiso` lo cierra el Esc de la limpieza).
+    await tgAsk(ctx, 'Prepara el entorno de Telegram', 'npm ci --ignore-scripts')
+    await waitUntil(() => findMsg(/npm ci/), 25_000, 'mensaje A')
+    const mA = findMsg(/npm ci/)
+    // La clave que venía en el comando no sale a Telegram.
+    out.secretoTapado = !mA.text.includes(TG_FAKE_KEY)
+    const dataA = buttonsOf(mA).find((b) => b.text === 'Permitir una vez').callback_data
+    tg.press({ chatId: TG_CHAT, messageId: mA.message_id, data: dataA })
+    await waitUntil(async () => (await replies()).includes('once'), 20_000, 'el motor recibió «once»')
+    await waitUntil(
+      () => tg.edits.some((e) => e.message_id === mA.message_id && /Permitido una vez desde Telegram/.test(e.text)),
+      20_000,
+      'edición A'
+    )
+    await vis(page.getByText('Listo, terminé la instalación.'), 30_000)
+    out.A_pantallaContinua = true
+    out.A_cardQuitada = (await page.getByRole('button', { name: 'Permitir una vez' }).count()) === 0
+
+    // B: la PANTALLA responde primero; el mensaje de Telegram se edita y el botón tardío ya no responde.
+    await tgAsk(ctx, 'Compila el proyecto de Telegram', 'npm run build')
+    await vis(page.getByRole('button', { name: 'Permitir una vez' }), 45_000)
+    await waitUntil(() => findMsg(/npm run build/), 20_000, 'mensaje B')
+    const mB = findMsg(/npm run build/)
+    const nBefore = (await replies()).length
+    await page.getByRole('button', { name: 'Permitir una vez' }).first().click()
+    await waitUntil(
+      () => tg.edits.some((e) => e.message_id === mB.message_id && /Respondido en el computador: permitido/.test(e.text)),
+      20_000,
+      'edición B'
+    )
+    out.B_editado = true
+    out.B_sinBotones = JSON.stringify(tg.edits.findLast((e) => e.message_id === mB.message_id).reply_markup) === '{"inline_keyboard":[]}'
+    const answersBefore = tg.callbackAnswers.length
+    tg.press({ chatId: TG_CHAT, messageId: mB.message_id, data: buttonsOf(mB)[0].callback_data })
+    await waitUntil(() => tg.callbackAnswers.length > answersBefore, 15_000, 'respuesta al botón tardío')
+    out.B_botonTardio = tg.callbackAnswers.at(-1).text
+    out.B_respuestasAlMotor = (await replies()).length - nBefore // solo la de la pantalla
+
+    // C: «Rechazar» por Telegram.
+    await tgAsk(ctx, 'Borra la carpeta de Telegram', 'rm -rf ./build')
+    await waitUntil(() => findMsg(/rm -rf/), 25_000, 'mensaje C')
+    const mC = findMsg(/rm -rf/)
+    tg.press({ chatId: TG_CHAT, messageId: mC.message_id, data: buttonsOf(mC).find((b) => b.text === 'Rechazar').callback_data })
+    await waitUntil(async () => (await replies()).includes('reject'), 20_000, 'el motor recibió «reject»')
+    out.C_rechazado = true
+
+    // D: un chat ajeno intenta pulsar un botón: sin efecto.
+    await tgAsk(ctx, 'Lee el archivo de Telegram', 'cat secreto.txt')
+    await waitUntil(() => findMsg(/cat secreto/), 25_000, 'mensaje D')
+    const mD = findMsg(/cat secreto/)
+    const nD = (await replies()).length
+    tg.press({ chatId: 777, messageId: mD.message_id, data: buttonsOf(mD)[0].callback_data })
+    await sleep(3500)
+    out.D_ajenoSinEfecto = (await replies()).length === nD && (await pending()) === 1
+    // se resuelve desde la pantalla para dejar todo limpio
+    await page.getByRole('button', { name: 'Permitir una vez' }).first().click()
+    await waitUntil(async () => (await pending()) === 0, 20_000, 'sin pendientes')
+
+    // E: la clave del bot no está en ningún archivo en claro del perfil temporal.
+    out.E_claveEnDisco = tgScanForSecret(ctx.userData, TG_SECRET)
+    console.log('VERIF-TELEGRAM e2e => ' + JSON.stringify(out))
+    if (
+      !out.secretoTapado ||
+      !out.A_cardQuitada ||
+      !out.B_editado ||
+      !out.B_sinBotones ||
+      out.B_botonTardio !== 'Ya respondido en el computador' ||
+      out.B_respuestasAlMotor !== 1 ||
+      !out.C_rechazado ||
+      !out.D_ajenoSinEfecto ||
+      out.E_claveEnDisco.length
+    )
+      throw new Error('la verificación de Telegram no cumplió: ' + JSON.stringify(out))
+    await sleep(300)
   },
   async paleta(ctx) {
     await closeOverlays(ctx.page)
@@ -3525,8 +3780,9 @@ try {
   const isOnb = (s) => s.startsWith('onboarding')
   const isPrep = (s) => s.startsWith('preparando')
   const isAviso = (s) => s === 'aviso-motor' || s === 'motor-error'
+  const isTg = (s) => s.startsWith('telegram')
   const byOrder = (a, b) => SCENARIOS.indexOf(a) - SCENARIOS.indexOf(b)
-  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && s !== 'kit' && !isTasks(s))
+  const main = scenarios.filter((s) => !isOnb(s) && !isPrep(s) && !isAviso(s) && !isTg(s) && s !== 'kit' && !isTasks(s))
   const tasks = scenarios.filter(isTasks).sort(byOrder)
   if (main.length) {
     const ctx = await launch('main')
@@ -3537,6 +3793,20 @@ try {
     const ctx = await launch('tareas')
     await runGroup(ctx, tasks)
     await stop(ctx)
+  }
+  const tgScenarios = scenarios.filter(isTg).sort(byOrder)
+  if (tgScenarios.length) {
+    // Servidor de Telegram FALSO local; la app lo usa solo por la variable de entorno de pruebas (app sin empaquetar).
+    const tg = await startFakeTelegram({ token: TG_TOKEN })
+    try {
+      const ctx = await launch('telegram', { env: { LAZUNOX_TELEGRAM_API_BASE: tg.url } })
+      ctx.tg = tg
+      tgRef = tg
+      await runGroup(ctx, tgScenarios)
+      await stop(ctx)
+    } finally {
+      await tg.stop()
+    }
   }
   if (scenarios.includes('aviso-motor')) {
     const ctx = await launch('aviso', {

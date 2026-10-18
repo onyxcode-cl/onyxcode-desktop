@@ -77,6 +77,7 @@ export class TelegramService {
   private readonly buttons: ButtonBook
   private readonly incoming: MinuteLimiter
   private readonly notices: MinuteLimiter
+  private readonly answers: MinuteLimiter
 
   private api: TelegramApi | null = null
   private token: string | null = null
@@ -102,6 +103,7 @@ export class TelegramService {
     this.buttons = new ButtonBook(this.now, this.L.buttonTtlMs)
     this.incoming = new MinuteLimiter(this.L.incomingPerMinute, this.now)
     this.notices = new MinuteLimiter(this.L.noticesPerMinute, this.now)
+    this.answers = new MinuteLimiter(this.L.answersPerHour, this.now, 3_600_000)
   }
 
   // ---------------------------------------------------------------- estado
@@ -563,6 +565,11 @@ export class TelegramService {
       // Ya no está pendiente: lo contestó la pantalla (o no existe).
       this.buttons.retire(r.entry.permissionId)
       return answer('telegram.msg.perm.toastAnswered')
+    }
+    // Tope de «Permitir» por hora (rechazar siempre se puede): pasado el tope, se responde en el computador.
+    if (r.action === 'a' && !this.answers.take()) {
+      this.buttons.release(r.entry.id)
+      return answer('telegram.msg.perm.toastLimit', true)
     }
     // ¿Sigue pendiente en el motor? (mejor esfuerzo: si la lista falla, se intenta responder igual)
     pend.answering = true

@@ -113,5 +113,7 @@ export const TELEGRAM_LIMITS = {
   /** Una sesión que terminó antes de este tiempo no se avisa (respuestas cortas). */
   minBusyForDoneMs: 8_000,
   /** Avisos (no permisos) por minuto. */
-  noticesPerMinute: 12
+  noticesPerMinute: 12,
+  /** Permisos que se pueden responder desde Telegram por hora; pasado el tope, hay que responder en el computador. */
+  answersPerHour: 30
 } as const

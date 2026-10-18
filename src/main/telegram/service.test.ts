@@ -258,6 +258,35 @@ describe('permisos con botones', () => {
     expect(r.tg.callbackAnswers.slice(1).map((a) => a.text)).toEqual(['Ya usaste este botón', 'Ya usaste este botón'])
   })
 
+  it('tope de «Permitir» por hora: pasado el tope hay que responder en el computador (rechazar siempre se puede)', async () => {
+    const r = await ready({ limits: { answersPerHour: 2 } })
+    const ask = async (id: string): Promise<{ allow: string; reject: string; mid: number }> => {
+      r.engine.pendingSet = new Set([id])
+      r.engine.emit({ kind: 'permission-asked', req: permission({ id, metadata: { command: `echo ${id}` } }) })
+      await until(() => r.tg.to(OWNER).some((m) => m.text.includes(`echo ${id}`) && buttons(m).length > 0))
+      const m = r.tg.to(OWNER).find((x) => x.text.includes(`echo ${id}`))!
+      return { allow: buttons(m)[0]!.callback_data!, reject: buttons(m)[1]!.callback_data!, mid: m.message_id }
+    }
+    for (const id of ['lim_1', 'lim_2']) {
+      const b = await ask(id)
+      r.tg.press({ chatId: OWNER, messageId: b.mid, data: b.allow })
+      await until(() => r.engine.replies.some((x) => x.id === id))
+    }
+    const third = await ask('lim_3')
+    r.tg.press({ chatId: OWNER, messageId: third.mid, data: third.allow })
+    await until(() => r.tg.callbackAnswers.some((a) => a.text?.includes('Demasiados permisos')))
+    expect(r.engine.replies.map((x) => x.id)).toEqual(['lim_1', 'lim_2'])
+    // El botón no se gastó: «Rechazar» del mismo permiso sigue valiendo.
+    r.tg.press({ chatId: OWNER, messageId: third.mid, data: third.reject })
+    await until(() => r.engine.replies.some((x) => x.id === 'lim_3'))
+    expect(r.engine.replies.at(-1)).toEqual({ id: 'lim_3', reply: 'reject' })
+    // Pasada la hora, vuelve a valer.
+    r.clock.now += 3_600_001
+    const fourth = await ask('lim_4')
+    r.tg.press({ chatId: OWNER, messageId: fourth.mid, data: fourth.allow })
+    await until(() => r.engine.replies.some((x) => x.id === 'lim_4'))
+  })
+
   it('un botón caduca: no responde y el mensaje se edita', async () => {
     const r = await ready({ limits: { buttonTtlMs: 60_000 } })
     r.engine.pendingSet = new Set(['per_4'])
