@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { setLang } from '@shared/i18n'
 import { visibleText } from '../../../e2e/fake-telegram/server.mjs'
 import { readAudit } from './store'
-import { linkOwner, makeRig, permission, settle, until, type Rig } from './test-kit'
+import { linkOwner, makeRig, permission, settle, until, untilQuiet, type Rig } from './test-kit'
 
 /** Armado de «claves» de mentira en tiempo de ejecución: ningún literal con forma de clave en el repositorio. */
 const fakeApiKey = (): string => ['sk', 'proj', 'A1b2C3d4E5f6G7h8I9j0'].join('-')
@@ -628,6 +628,7 @@ describe('interruptores', () => {
     expect(r.store.load()).toMatchObject({ enabled: false, ownerChatId: null })
     expect(r.engine.running).toBe(false)
     await until(() => r.tg.pollers === 0)
+    await untilQuiet(() => r.tg.requests.length) // deja llegar lo que ya iba en camino
     const n = r.tg.requests.length
     await settle(300)
     expect(r.tg.requests.length).toBe(n)

@@ -328,6 +328,26 @@ export async function until(cond: () => boolean, ms = 3000, what = 'condición')
   }
 }
 
+/**
+ * Espera a que un contador deje de crecer durante `quietMs`. Las peticiones que el servicio ya había enviado antes de apagarse pueden
+ * LLEGAR al servidor falso un rato después (con el equipo ocupado, cientos de ms): hay que dejar que terminen antes de medir que
+ * «ya no hay más», o la prueba falla a veces por una petición rezagada que no es un fallo del servicio.
+ */
+export async function untilQuiet(count: () => number, quietMs = 300, maxMs = 8000): Promise<void> {
+  const t0 = Date.now()
+  let last = count()
+  let since = Date.now()
+  while (Date.now() - since < quietMs) {
+    if (Date.now() - t0 > maxMs) throw new Error('el contador no se estabilizó')
+    await new Promise((r) => setTimeout(r, 20))
+    const now = count()
+    if (now !== last) {
+      last = now
+      since = Date.now()
+    }
+  }
+}
+
 /** Pausa corta para comprobar que algo NO ocurre. */
 export const settle = (ms = 250): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
