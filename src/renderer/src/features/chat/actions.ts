@@ -11,6 +11,9 @@ import { isRemoteSurface } from '../../lib/platform'
 import { useSettings } from '../../stores/settings'
 import { loadPromptMemory } from '../memory/memory-client'
 import { isSafeAttachmentUrl } from '../../lib/attachments'
+import { pdfRoute } from '@shared/attach-adapt'
+import { pdfToImages, pdfToText } from '../../lib/pdf-pages'
+import { useProviders } from '../../stores/providers'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
 import { reconcilePending, reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
@@ -160,6 +163,34 @@ export interface ResendFile {
   url: string
 }
 
+/**
+ * Cada PDF viaja como el modelo lo sabe leer: directo si lo acepta (ve el diseño), si no como imágenes de las páginas, y
+ * si el modelo solo lee texto, como texto. Si no se sabe qué lee el modelo, se envía tal cual (como antes).
+ */
+async function adaptFilesForModel(files: ResendFile[], providerID: string, modelID: string): Promise<ResendFile[]> {
+  if (!files.some((f) => f.mime === 'application/pdf')) return files
+  const caps = useProviders.getState().providers.find((p) => p.id === providerID)?.models[modelID]?.capabilities.input
+  const route = pdfRoute(caps)
+  if (!route || route === 'direct') return files
+  const out: ResendFile[] = []
+  for (const f of files) {
+    if (f.mime !== 'application/pdf') {
+      out.push(f)
+      continue
+    }
+    const name = f.filename ?? t('chat.attach.defaultName')
+    const r = route === 'images' ? await pdfToImages(f.url, name) : await pdfToText(f.url, name)
+    if (!r.ok) throw new Error(t(`chat.attach.pdf.err.${r.reason}.${route}`, { name }))
+    out.push(...r.parts)
+    if (r.truncated) out.push({ mime: 'text/plain', filename: `${name}.nota.txt`, url: textNote(t(`chat.attach.pdf.truncated.${route}`, { name })) })
+  }
+  return out
+}
+
+function textNote(text: string): string {
+  return `data:text/plain;base64,${btoa(unescape(encodeURIComponent(text)))}`
+}
+
 /** Devuelve `true` si el motor aceptó el mensaje; `false` si lo rechazó (el error queda en la sesión). Lanza si no pudo ni intentarlo. */
 export async function sendChatMessage(text: string, files: ResendFile[] = []): Promise<boolean> {
   // Seguridad: el agente `chat` no tiene acceso al disco, pero el motor LEE cualquier parte `file` con URL `file://`
@@ -174,6 +205,7 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
   if (gate.reason === 'model-unavailable') throw new Error(t('chat.modelUnavailable.send', { model: wanted.modelID }))
   if (gate.blocked || !effective) throw NO_AI_ERROR
   const model = effective
+  files = await adaptFilesForModel(files, model.providerID, model.modelID)
   let sessionID = useChat.getState().activeSessionId
   // «Primeros pasos»: desde aquí hay actividad real de esta persona (no se la trata de usuaria antigua por la conversación que va a crear).
   noteFirstStepsActivity()
