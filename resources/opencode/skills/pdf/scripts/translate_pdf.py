@@ -100,6 +100,7 @@ def _obstaculos(pagina, resaltados):
 
 def segmentos_de_pagina(pagina):
     """Párrafos de la página: líneas consecutivas del mismo bloque, misma sangría y estilo, sin línea en blanco entre ellas."""
+    enlaces = [fitz.Rect(k["from"]) for k in pagina.get_links()]
     segs = []
     for b in pagina.get_text("dict")["blocks"]:
         if b["type"] != 0:
@@ -111,15 +112,34 @@ def segmentos_de_pagina(pagina):
                 continue
             todo_neg = all(x["flags"] & 16 for x in spans)
             alguna_neg = any(x["flags"] & 16 for x in spans)
-            if alguna_neg and not todo_neg:
-                partes = []
-                for x in l["spans"]:
-                    t = x["text"]
-                    partes.append("<b>%s</b>" % t.strip() + (" " if t.endswith(" ") else "") if (x["flags"] & 16 and t.strip()) else t)
-                txt = "".join(partes).strip()
-            else:
-                txt = "".join(x["text"] for x in l["spans"]).strip()
+            cuenta = {}
+            for x in spans:
+                cuenta[x["color"]] = cuenta.get(x["color"], 0) + len(x["text"].strip())
+            dominante = max(cuenta, key=cuenta.get)
+            partes = []
+            hay_etiqueta = False
+            for x in l["spans"]:
+                t = x["text"]
+                if not t.strip():
+                    partes.append(t)
+                    continue
+                cuerpo = t.strip()
+                if alguna_neg and not todo_neg and x["flags"] & 16:
+                    cuerpo = "<b>%s</b>" % cuerpo
+                    hay_etiqueta = True
+                if x["color"] != dominante:
+                    cuerpo = "<c=#%06x>%s</c>" % (x["color"] & 0xFFFFFF, cuerpo)
+                    hay_etiqueta = True
+                cx_, cy_ = (x["bbox"][0] + x["bbox"][2]) / 2, (x["bbox"][1] + x["bbox"][3]) / 2
+                for i_, r_ in enumerate(enlaces):
+                    if r_.contains(fitz.Point(cx_, cy_)):
+                        cuerpo = "<l=%d>%s</l>" % (i_, cuerpo)
+                        hay_etiqueta = True
+                        break
+                partes.append((" " if t.startswith(" ") else "") + cuerpo + (" " if t.endswith(" ") else ""))
+            txt = "".join(partes).strip() if hay_etiqueta else "".join(x["text"] for x in l["spans"]).strip()
             s = spans[0] if todo_neg or not alguna_neg else next(x for x in spans if not x["flags"] & 16)
+            s = dict(s, color=dominante)
             fam = "mono" if s["flags"] & 8 else "serif" if s["flags"] & 4 else "sans"
             lineas.append({"bbox": list(l["bbox"]), "text": txt, "bold": todo_neg, "fam": fam,
                            "italic": bool(s["flags"] & 2), "size": s["size"], "color": s["color"]})
@@ -246,9 +266,9 @@ def cmd_extraer(a):
 # ---------------------------------------------------------------- aplicar
 
 def _palabras(texto, negrita_base=False):
-    """[(palabra, resaltada, negrita)] respetando los marcadores [[ ]] y las etiquetas <b> </b>."""
-    out, hl, neg = [], False, negrita_base
-    for tok in re.split(r"(\[\[|\]\]|</?b>)", texto):
+    """[(palabra, resaltada, negrita, color, enlace)] respetando [[ ]], <b>, <c=#rrggbb> y <l=N>."""
+    out, hl, neg, col, lnk = [], False, negrita_base, None, None
+    for tok in re.split(r"(\[\[|\]\]|</?b>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>)", texto):
         if tok == "[[":
             hl = True
         elif tok == "]]":
@@ -257,8 +277,16 @@ def _palabras(texto, negrita_base=False):
             neg = True
         elif tok == "</b>":
             neg = negrita_base
+        elif tok.startswith("<c="):
+            col = int(tok[4:10], 16)
+        elif tok == "</c>":
+            col = None
+        elif tok.startswith("<l="):
+            lnk = int(tok[3:-1])
+        elif tok == "</l>":
+            lnk = None
         else:
-            out.extend((w, hl, neg) for w in tok.split())
+            out.extend((w, hl, neg, col, lnk) for w in tok.split())
     return out
 
 
@@ -316,6 +344,8 @@ def cmd_aplicar(a):
         segs = segmentos_de_pagina(pag)
         hl = _resaltados(pag)
         obst = _obstaculos(pag, hl)
+        enlaces_orig = pag.get_links()
+        nuevos_enlaces = {}
         trabajo = []
         for i, s in enumerate(segs):
             sid = "p%d-%d" % (n + 1, i)
@@ -325,7 +355,7 @@ def cmd_aplicar(a):
                 informe["sin_traduccion"].append(sid)
                 continue
             usados.add(sid)
-            if " ".join(str(tr[sid]).replace("[[", "").replace("]]", "").split()) == " ".join(re.sub(r"</?b>", "", s["text"]).split()):
+            if " ".join(re.sub(r"</?b>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>", "", str(tr[sid]).replace("[[", "").replace("]]", "")).split()) == " ".join(re.sub(r"</?b>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>", "", s["text"]).split()):
                 informe["iguales"] = informe.get("iguales", 0) + 1   # nombres propios, códigos, cifras: se dejan como están
                 continue
             trabajo.append((sid, s))
@@ -348,7 +378,7 @@ def cmd_aplicar(a):
             if not palabras:
                 continue
             if _info_resaltado(pag, s, hl) == "todo" and not any(w[1] for w in palabras):
-                palabras = [(w[0], True, w[2]) for w in palabras]
+                palabras = [(w[0], True, w[2], w[3], w[4]) for w in palabras]
             fuentes_s = _juego(s["fam"], s["italic"])
             x0, y0, x1, y1 = s["bbox"]
             otros = [o for o in segs if o is not s]
@@ -424,8 +454,9 @@ def cmd_aplicar(a):
                 lw = _ancho_linea(fuentes_s, ln, sz)
                 x = (x1 - lw) if alin == "der" else (cx - lw / 2) if alin == "centro" else x0
                 tramo = None
-                tw = fitz.TextWriter(pag.rect)
-                for (wd, h, neg) in ln:
+                escritores = {}
+                enl = {}
+                for (wd, h, neg, col, lnk) in ln:
                     fw = fuentes_s["bold" if neg else "regular"]
                     ancho_w = fw.text_length(wd, fontsize=sz)
                     if h:
@@ -433,13 +464,32 @@ def cmd_aplicar(a):
                     elif tramo is not None:
                         _resalta(pag, tramo, y, sz, color_hl)
                         tramo = None
-                    tw.append((x, y), wd, font=fw, fontsize=sz)
+                    c_ = rgb if col is None else _rgb(col)
+                    if c_ not in escritores:
+                        escritores[c_] = fitz.TextWriter(pag.rect)
+                    escritores[c_].append((x, y), wd, font=fw, fontsize=sz)
+                    if lnk is not None:
+                        enl[lnk] = [enl[lnk][0], x + ancho_w] if lnk in enl else [x, x + ancho_w]
                     x += ancho_w + gap
                 if tramo is not None:
                     _resalta(pag, tramo, y, sz, color_hl)
-                tw.write_text(pag, color=rgb)
+                for c_, tw_ in escritores.items():
+                    tw_.write_text(pag, color=c_)
+                for idx_, (xa, xb) in enl.items():
+                    nuevos_enlaces.setdefault(idx_, []).append(fitz.Rect(xa, y - sz * 0.85, xb, y + sz * 0.25))
                 y += sz * INTERLINEA
             informe["traducidos"] += 1
+        # los enlaces que caían sobre texto traducido se mueven a las palabras nuevas (si el modelo conservó <l=N>) o se quitan
+        zonas = [fitz.Rect(s_["bbox"]) for _, s_ in trabajo]
+        for i_, k_ in enumerate(enlaces_orig):
+            if not any(z.intersects(fitz.Rect(k_["from"])) for z in zonas):
+                continue
+            pag.delete_link(k_)
+            base = {kk: k_[kk] for kk in ("kind", "uri", "page", "to", "file", "zoom", "name") if kk in k_}
+            for r_ in nuevos_enlaces.get(i_, []):
+                pag.insert_link(dict(base, **{"from": r_}))
+            if i_ not in nuevos_enlaces:
+                informe.setdefault("enlaces_quitados", []).append(i_)
     extra = sorted(set(tr) - usados)
     if extra:
         informe["ids_desconocidos"] = extra

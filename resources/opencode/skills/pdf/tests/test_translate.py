@@ -121,6 +121,35 @@ class TestTraducir(unittest.TestCase):
         self.assertIn("Hannover", pag.get_text())
         self.assertIn("Hello", pag.get_text())
 
+    def test_enlaces_y_colores_se_conservan(self):
+        def build(p):
+            p.insert_text((87, 100), "Visite ", fontname="helv", fontsize=10)
+            x = 87 + fitz.get_text_length("Visite ", fontname="helv", fontsize=10)
+            p.insert_text((x, 100), "nuestro sitio", fontname="helv", fontsize=10, color=(0, 0, 1))
+            w = fitz.get_text_length("nuestro sitio", fontname="helv", fontsize=10)
+            p.insert_link({"kind": fitz.LINK_URI, "from": fitz.Rect(x, 90, x + w, 103), "uri": "https://example.com/x"})
+            p.insert_text((x + w, 100), " hoy.", fontname="helv", fontsize=10)
+        src = os.path.join(self.d, "enlace.pdf")
+        doc = fitz.open()
+        build(doc.new_page(width=612, height=792))
+        doc.save(src)
+        seg = src + ".json"
+        run("extraer", src, "-o", seg)
+        with open(seg, encoding="utf-8") as f:
+            datos = json.load(f)["segmentos"]
+        self.assertIn("<l=0>", datos[0]["texto"])
+        self.assertIn("<c=#0000ff>", datos[0]["texto"])
+        tfile = src + ".tr.json"
+        with open(tfile, "w", encoding="utf-8") as f:
+            json.dump({datos[0]["id"]: "Visit <l=0><c=#0000ff>our site</c></l> today."}, f)
+        out = src + ".out.pdf"
+        run("aplicar", src, "-t", tfile, "-o", out)
+        pag = fitz.open(out)[0]
+        enl = pag.get_links()
+        self.assertEqual(len(enl), 1)
+        self.assertEqual(enl[0]["uri"], "https://example.com/x")
+        self.assertIn("our site", pag.get_textbox(fitz.Rect(enl[0]["from"])))
+
 
 if __name__ == "__main__":
     unittest.main()
