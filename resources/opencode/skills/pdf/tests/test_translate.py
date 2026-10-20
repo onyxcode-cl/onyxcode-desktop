@@ -150,6 +150,22 @@ class TestTraducir(unittest.TestCase):
         self.assertEqual(enl[0]["uri"], "https://example.com/x")
         self.assertIn("our site", pag.get_textbox(fitz.Rect(enl[0]["from"])))
 
+    def test_frase_cortada_por_la_hoja_se_marca(self):
+        src = os.path.join(self.d, "dospag.pdf")
+        doc = fitz.open()
+        p1 = doc.new_page(width=612, height=792)
+        p1.insert_text((87, 700), "El proyecto se entregará en la", fontname="helv", fontsize=10)
+        p2 = doc.new_page(width=612, height=792)
+        p2.insert_text((87, 80), "ciudad antes de fin de año.", fontname="helv", fontsize=10)
+        p2.insert_text((87, 120), "Otra frase completa.", fontname="helv", fontsize=10)
+        doc.save(src)
+        seg = src + ".json"
+        run("extraer", src, "-o", seg)
+        with open(seg, encoding="utf-8") as f:
+            datos = json.load(f)["segmentos"]
+        self.assertEqual(datos[0].get("sigue"), datos[1]["id"])
+        self.assertNotIn("sigue", datos[1])
+
 
 if __name__ == "__main__":
     unittest.main()

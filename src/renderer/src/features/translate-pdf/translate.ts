@@ -62,7 +62,8 @@ async function translateBatch(
   target: TranslateLangCode,
   glossary: Glossary,
   docName: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  context: { before?: string; continuations?: Record<string, { id: string; texto: string }> } = {}
 ): Promise<{ translations: Record<string, string>; glossary: Glossary }> {
   const translations: Record<string, string> = {}
   let pending = batch
@@ -70,7 +71,7 @@ async function translateBatch(
   // Hasta 3 intentos: el modelo a veces devuelve JSON roto o se salta algunos ids; solo se reintentan los que faltan.
   for (let attempt = 0; attempt < 3 && pending.length > 0; attempt++) {
     if (signal.aborted) throw new TranslateError('aborted')
-    const prompt = buildTranslatePrompt({ target, batch: pending, glossary: { ...glossary, ...newTerms }, docName })
+    const prompt = buildTranslatePrompt({ target, batch: pending, glossary: { ...glossary, ...newTerms }, docName, ...context })
     let answer: string
     try {
       answer = await deps.ask(prompt, signal)
@@ -101,13 +102,21 @@ export async function translatePdf(
   const jobId = ex.jobId
   try {
     const batches = batchSegments(ex.segments)
+    const byId = new Map(ex.segments.map((s) => [s.id, s]))
     const translations: Record<string, string> = {}
     let glossary: Glossary = {}
     let failed = 0
     for (let i = 0; i < batches.length; i++) {
       if (opts.signal.aborted) throw new TranslateError('aborted')
       opts.onProgress({ phase: 'translating', done: i, total: batches.length })
-      const r = await translateBatch(deps, batches[i], opts.target, glossary, opts.name, opts.signal)
+      const inBatch = new Set(batches[i].map((s) => s.id))
+      const continuations: Record<string, { id: string; texto: string }> = {}
+      for (const s of batches[i]) {
+        const next = s.sigue && !inBatch.has(s.sigue) ? byId.get(s.sigue) : undefined
+        if (next) continuations[s.id] = { id: next.id, texto: next.texto }
+      }
+      const prev = i > 0 ? batches[i - 1].at(-1)?.texto : undefined
+      const r = await translateBatch(deps, batches[i], opts.target, glossary, opts.name, opts.signal, { before: prev, continuations })
       Object.assign(translations, r.translations)
       glossary = { ...glossary, ...r.glossary }
       failed += batches[i].filter((s) => !r.translations[s.id]).length

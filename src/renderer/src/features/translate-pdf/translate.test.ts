@@ -54,6 +54,20 @@ describe('translatePdf', () => {
     expect(deps.discard).not.toHaveBeenCalled()
   })
 
+  it('pasa al modelo el contexto: texto anterior y la continuación de una frase cortada por la hoja', async () => {
+    const segsC = segs(30)
+    segsC[9] = { ...segsC[9], sigue: 'p1-25' }
+    const prompts: string[] = []
+    const deps = makeDeps(
+      { ask: vi.fn(async (p: string) => (prompts.push(p), answerAll(p))) },
+      { ok: true, jobId: 'aaaaaaaaaaaaaaaa', pages: 2, segments: segsC, pagesWithoutText: [] }
+    )
+    await translatePdf(deps, opts())
+    expect(prompts[1]).toContain('just before the first item is')
+    const withHint = prompts.find((p) => p.includes('p1-9 continues in p1-25'))
+    expect(withHint).toBeTruthy()
+  })
+
   it('el glosario que devuelve un lote viaja en el prompt del siguiente', async () => {
     const prompts: string[] = []
     const deps = makeDeps({

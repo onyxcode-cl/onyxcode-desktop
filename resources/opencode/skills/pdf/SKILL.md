@@ -68,6 +68,7 @@ MISMO PDF: cambia solo los textos; logos, imágenes, líneas, resaltados y numer
 2. Lee `segmentos.json` y escribe `traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en segmentos.json):
    - Traduce TODO el texto con significado; si un texto es un nombre propio, código o cifra, déjalo igual (o no lo incluyas).
    - Conserva las etiquetas `<b>…</b>` (negrita), `<c=#rrggbb>…</c>` (color) y `<l=N>…</l>` (enlace) alrededor de la parte traducida equivalente (así el enlace sigue funcionando), y los números, fechas y referencias exactos.
+   - Si un segmento trae `"sigue": "p2-0"`, su frase continúa en ese otro id (la hoja cortó la frase): traduce ambos de modo que juntos se lean como una sola frase natural.
    - Si el segmento trae `"resaltado"`, envuelve en `[[ ]]` la parte traducida que corresponde a lo resaltado (si es «todo», no hace falta).
    - NO traduzcas código, comandos, rutas, URLs, correos, nombres de archivo ni claves de configuración: déjalos idénticos (o no los incluyas).
    - Mantén cada traducción de largo parecido al original; el script reduce la letra si no cabe, pero no inventes texto.

@@ -31,6 +31,8 @@ export interface PdfSegment {
   /** Texto original (puede llevar las etiquetas `<b>`, `<c=#rrggbb>`, `<l=N>`). */
   texto: string
   negrita?: boolean
+  /** Id del texto de la página siguiente donde continúa esta frase (cortada por el cambio de hoja). */
+  sigue?: string
   /** Partes resaltadas del texto, o `'todo'`. */
   resaltado?: string[] | 'todo'
 }
@@ -90,6 +92,10 @@ export function buildTranslatePrompt(opts: {
   batch: PdfSegment[]
   glossary: Glossary
   docName: string
+  /** Último texto original del lote anterior: solo contexto, no se traduce. */
+  before?: string
+  /** Textos de otros lotes donde continúan frases de este (id → texto), solo contexto. */
+  continuations?: Record<string, { id: string; texto: string }>
 }): string {
   const lang = TRANSLATE_LANGS.find((l) => l.code === opts.target)?.name ?? opts.target
   const items: Record<string, string> = {}
@@ -107,6 +113,17 @@ export function buildTranslatePrompt(opts: {
       ? `- These ids contain highlighted text; wrap in [[ ]] the translated words that correspond to the highlighted part: ${marks.join(', ')}.`
       : '',
     '- Never merge, split, drop or reorder the items: answer every id you received.',
+    ...(Object.keys(opts.continuations ?? {}).length
+      ? [
+          '- Some texts are cut by a page break: the sentence continues in a text that is NOT in this list (shown below as context). Translate the piece you receive so it reads naturally and joins well with its continuation:',
+          ...Object.entries(opts.continuations ?? {}).map(
+            ([id, c]) => `  ${id} continues in ${c.id}: ${JSON.stringify(c.texto.slice(0, 200))}`
+          )
+        ]
+      : []),
+    opts.before
+      ? `- For context only (do NOT translate or return it), the text just before the first item is: ${JSON.stringify(opts.before.slice(0, 300))}`
+      : '',
     Object.keys(gl).length
       ? '- Use this glossary for consistency (source → target):\n' +
         Object.entries(gl)

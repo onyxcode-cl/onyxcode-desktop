@@ -249,6 +249,12 @@ def cmd_extraer(a):
                 item["resaltado"] = marc
             salida.append(item)
             total_chars += len(s["text"])
+    # una frase que sigue en la hoja siguiente: el último texto de una página (sin punto final) y el primero de la siguiente (en minúscula)
+    for a_, b_ in zip(salida, salida[1:]):
+        if (b_["pagina"] == a_["pagina"] + 1 and a_["pagina"] != b_["pagina"]
+                and not re.sub(r"</?[a-z][^>]*>", "", a_["texto"]).rstrip().endswith((".", "!", "?", ":", ";", "\u201d", '"'))
+                and re.sub(r"<[^>]+>", "", b_["texto"]).lstrip()[:1].islower()):
+            a_["sigue"] = b_["id"]
     paginas_con_texto = {s["pagina"] for s in salida}
     if not salida:
         print("AVISO: el PDF no tiene texto extraíble (parece ESCANEADO). No hay OCR: no se puede traducir con este método.", file=sys.stderr)
@@ -259,7 +265,8 @@ def cmd_extraer(a):
     print("OK: %d textos a traducir (%d caracteres) en %d páginas -> %s" % (len(salida), total_chars, len(paginas_con_texto), a.salida))
     if sin_texto:
         print("AVISO: páginas sin texto (imágenes): %s. Quedarán tal cual, en el idioma original." % ",".join(map(str, sin_texto)))
-    print("Traduce cada \"texto\" (id -> traducción) y guarda un JSON {\"p1-0\": \"...\"}. "
+    print("Los textos con \"sigue\": la frase continúa en ese otro id (traduce ambos como una sola frase natural). "
+          "Traduce cada \"texto\" (id -> traducción) y guarda un JSON {\"p1-0\": \"...\"}. "
           "En los textos con \"resaltado\", envuelve en [[ ]] la parte traducida que corresponde a lo resaltado.")
 
 

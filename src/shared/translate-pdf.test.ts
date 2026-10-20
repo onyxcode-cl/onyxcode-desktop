@@ -51,6 +51,22 @@ describe('buildTranslatePrompt', () => {
   })
 })
 
+describe('buildTranslatePrompt: frases cortadas por la hoja y contexto', () => {
+  it('avisa de la continuación en otro lote y del texto anterior, solo como contexto', () => {
+    const p = buildTranslatePrompt({
+      target: 'en',
+      batch: [seg('p1-9', 'la obra de la')],
+      glossary: {},
+      docName: 'a.pdf',
+      before: 'Texto previo.',
+      continuations: { 'p1-9': { id: 'p2-0', texto: 'ciudad se entregará pronto.' } }
+    })
+    expect(p).toContain('p1-9 continues in p2-0: "ciudad se entregará pronto."')
+    expect(p).toContain('just before the first item is: "Texto previo."')
+    expect(p).toContain('do NOT translate or return it')
+  })
+})
+
 describe('firstJsonObject', () => {
   it('extrae el JSON aunque venga entre ``` o con texto alrededor', () => {
     expect(firstJsonObject('Claro:\n```json\n{"a": "x}y"}\n```\nlisto')).toBe('{"a": "x}y"}')
