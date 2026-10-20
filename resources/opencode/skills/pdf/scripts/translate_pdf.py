@@ -275,6 +275,9 @@ def cmd_aplicar(a):
                 informe["sin_traduccion"].append(sid)
                 continue
             usados.add(sid)
+            if " ".join(str(tr[sid]).replace("[[", "").replace("]]", "").split()) == " ".join(re.sub(r"</?b>", "", s["text"]).split()):
+                informe["iguales"] = informe.get("iguales", 0) + 1   # nombres propios, códigos, cifras: se dejan como están
+                continue
             trabajo.append((sid, s))
         # 1) borrar el texto viejo (y los resaltados que lo cubrían; se vuelven a dibujar donde corresponda)
         hl_viejos = [(r, c) for (r, c) in hl if any(fitz.Rect(s["bbox"]).intersects(r) for _, s in trabajo)]
@@ -310,6 +313,8 @@ def cmd_aplicar(a):
             if not derechos and (s["multi"] or plano_ancho(s["size"]) > ancho_orig):
                 derecha = max(x1, 506.0 if x0 > 150 else MARGEN_DER)
             derecha = max(min(derecha, MARGEN_DER if not derechos else derecha), x1)
+            if not derechos and not s["multi"]:   # una sola línea sin nada a su derecha: no se parte, crece hasta el borde de la hoja
+                derecha = max(derecha, min(pag.rect.width - 24, x0 + plano_ancho(s["size"]) + 2))
             w = derecha - x0
             # celda de tabla centrada (hay vecinos a ambos lados de la fila y el texto estaba entre ellos): se mantiene centrada
             izq = [o["bbox"][2] for o in otros if o["bbox"][2] < x0 + 1 and o["bbox"][1] < y1 - 1 and o["bbox"][3] > y0 + 1]
@@ -334,10 +339,13 @@ def cmd_aplicar(a):
             if sz < s["size"] - 0.01:
                 informe["letra_reducida"].append({"id": sid, "de": round(s["size"], 1), "a": round(sz, 1)})
             rgb = _rgb(s["color"])
+            # solo se justifica lo que el original justificaba: todas sus líneas menos la última llegan al mismo borde derecho
+            lx = [l_["bbox"][2] for l_ in s["lines"]]
+            es_justificado = (not s["bold"]) and len(lx) >= 3 and max(lx[:-1]) - min(lx[:-1]) < 2.5
             y = y0 + sz * 0.86
             x_ini = (cx - _ancho_linea(fuentes, lineas[0], sz) / 2) if (centrada and len(lineas) == 1) else x0
             for k, ln in enumerate(lineas):
-                justificar = (not s["bold"]) and (s["multi"] or len(lineas) > 1) and k < len(lineas) - 1 and len(ln) > 1
+                justificar = es_justificado and k < len(lineas) - 1 and len(ln) > 1
                 esp = fuentes["regular"].text_length(" ", fontsize=sz)
                 gap = ((w - sum(_ancho_pal(fuentes, x, sz) for x in ln)) / (len(ln) - 1)) if justificar else esp
                 x, tramo = x_ini if k == 0 else x0, None
