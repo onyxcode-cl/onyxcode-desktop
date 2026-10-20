@@ -73,13 +73,13 @@ test(
   }
 )
 
-test('requirements.txt fija las 9 librerías con versión exacta', () => {
+test('requirements.txt fija las 10 librerías con versión exacta', () => {
   const lines = parseRequirements(readFileSync(REQUIREMENTS_PATH, 'utf8'))
   assert.ok(
     lines.every((l) => /^[A-Za-z0-9_.-]+==\d[\w.]*$/.test(l)),
     'todas con =='
   )
-  for (const name of ['python-docx', 'openpyxl', 'python-pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'pillow', 'lxml']) {
+  for (const name of ['python-docx', 'openpyxl', 'python-pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'pillow', 'lxml', 'pymupdf']) {
     assert.ok(
       lines.some((l) => l.startsWith(`${name}==`)),
       name

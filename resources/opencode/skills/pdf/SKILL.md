@@ -61,6 +61,23 @@ Usa los nombres exactos que muestra `listar`. Casillas: pasa el valor que figure
 `PY scripts/stamp_pdf.py in.pdf -o out.pdf --marca BORRADOR --numerar --titulo "Informe" --autor "Ana"`
 (cualquier combinación; al menos una acción).
 
+### F. Traducir un PDF SIN cambiar el diseño
+Úsalo cuando pidan «traduce este PDF» y quieran que se vea igual (mismas hojas, fuente, tamaño y posiciones). Funciona sobre el
+MISMO PDF: cambia solo los textos; logos, imágenes, líneas, resaltados y numeración quedan donde estaban. Solo PDF con texto.
+1. `PY scripts/translate_pdf.py extraer doc.pdf -o segmentos.json`. Si dice «ESCANEADO» (código 2): no hay OCR, avísalo y para.
+2. Lee `segmentos.json` y escribe `traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en segmentos.json):
+   - Traduce TODO el texto con significado; si un texto es un nombre propio, código o cifra, déjalo igual (o no lo incluyas).
+   - Conserva las etiquetas `<b>…</b>` (negrita) donde estaban, y los números, fechas y referencias exactos.
+   - Si el segmento trae `"resaltado"`, envuelve en `[[ ]]` la parte traducida que corresponde a lo resaltado (si es «todo», no hace falta).
+   - Mantén cada traducción de largo parecido al original; el script reduce la letra si no cabe, pero no inventes texto.
+   - Traduce por tandas de ~40 segmentos y usa el contexto del documento (un mismo término se traduce igual en todo el documento).
+3. `PY scripts/translate_pdf.py aplicar doc.pdf -t traduccion.json -o doc-en.pdf --informe informe.json`
+   El informe lista `sin_traduccion`, `letra_reducida` y `no_cabe`. Código de salida 3 = algo no cabe: revisa esas páginas.
+4. Verifica como siempre (`check_pdf.py --render`) y **mira las páginas PNG junto al original**: textos que chocan, celdas de tabla
+   apretadas, resaltados mal puestos. Corrige la traducción de esos segmentos (más corta) y vuelve a aplicar con otro nombre de salida.
+Idiomas: fuentes Arial/Liberation (Latin: español, inglés, francés, alemán, portugués…). Para chino, árabe, ruso, etc. no hay fuente
+todavía: dilo en vez de entregar un PDF con cuadritos.
+
 ### Verificar (obligatorio antes de entregar)
 `PY scripts/check_pdf.py salida.pdf --render --outdir ./.lazunox/trabajo/render`
 Imprime páginas, tamaño, texto extraíble, páginas en blanco y rutas de los PNG (usa `_shared/render.py`).
@@ -73,7 +90,7 @@ Resume qué hiciste, nombre del archivo y páginas. Lo no resuelto va en **«Par
 
 ## Limitaciones (dilas siempre que apliquen)
 - **PDF escaneado: sin OCR.** No se puede extraer su texto; no inventes. Pide versión con texto.
-- **No se puede modificar el texto de un PDF ya hecho** (cambiar una frase, corregir una cifra). Ofrece **regenerarlo**
+- **No se puede modificar el texto de un PDF ya hecho** (cambiar una frase, corregir una cifra), salvo traducirlo entero (sección F). Ofrece **regenerarlo**
   (con `build_pdf.py` a partir del contenido extraído, corregido) o editar la fuente original (Word/Excel) y exportarlo de nuevo.
   El diseño original no se reproduce idéntico al regenerar: avísalo.
 - **PDFs con contraseña:** hay que pedir la clave al usuario y pasarla con `--clave`. No se eliminan protecciones ni se adivinan claves.

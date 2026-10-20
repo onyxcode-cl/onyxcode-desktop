@@ -9,7 +9,7 @@
 //   --arch        arquitectura destino (por defecto la del proceso). Para x64 en un Mac arm64 hace falta Rosetta.
 //
 // Garantías: el .tar.gz se verifica (tamaño y SHA-256) ANTES de extraer; si no coincide no se extrae nada. Todo se prepara
-// en una carpeta temporal y solo se mueve a su sitio si la verificación final (importar las 9 librerías y generar un .docx)
+// en una carpeta temporal y solo se mueve a su sitio si la verificación final (importar las 10 librerías y generar un .docx)
 // pasa. Sin red falla con un error explícito. Solo se engancha en `npm run package`.
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -36,8 +36,8 @@ export const PIN_PATH = join(PY_DIR, 'pin.json')
 export const REQUIREMENTS_PATH = join(PY_DIR, 'requirements.txt')
 export const SEAL_NAME = '.lazunox-python'
 export const ARCHS = ['arm64', 'x64']
-/** Módulos de importación de las 9 librerías de oficina. */
-export const OFFICE_MODULES = ['docx', 'openpyxl', 'pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'PIL', 'lxml']
+/** Módulos de importación de las 10 librerías de oficina. */
+export const OFFICE_MODULES = ['docx', 'openpyxl', 'pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'PIL', 'lxml', 'fitz']
 
 const URL_RE = /^https:\/\/github\.com\/astral-sh\/python-build-standalone\/releases\/download\/[^\s]+\.tar\.gz$/
 const validAsset = (a) =>
@@ -98,7 +98,7 @@ export function parseRequirements(text) {
 
 export const sha256Text = (t) => createHash('sha256').update(t).digest('hex')
 
-/** Rutas (relativas a python/) que se borran para reducir tamaño. Ninguna es necesaria para las 9 librerías. */
+/** Rutas (relativas a python/) que se borran para reducir tamaño. Ninguna es necesaria para las 10 librerías. */
 export const PRUNE_PATHS = [
   'include',
   'share',
@@ -200,7 +200,7 @@ function dirSize(dir) {
   return total
 }
 
-/** Importa las 9 librerías y genera un .docx mínimo con el intérprete dado. Devuelve la versión de Python. */
+/** Importa las 10 librerías y genera un .docx mínimo con el intérprete dado. Devuelve la versión de Python. */
 export async function verifyInstall(pyBin, home) {
   const out = await run(pyBin, ['-I', '-c', VERIFY_PY], { cwd: home, env: pyEnv(home) })
   return JSON.parse(out.split('\n').pop()).python

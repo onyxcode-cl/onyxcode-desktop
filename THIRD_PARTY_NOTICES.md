@@ -120,6 +120,10 @@ Ubicación en la app: `Contents/Resources/python/`. Las licencias de cada librer
   empaquetadas; sus textos están en `pypdfium2-5.14.0.dist-info/licenses/`.
 - `pillow` 12.3.0: MIT-CMU (HPND), <https://github.com/python-pillow/Pillow>. Las bibliotecas nativas que trae la rueda (libjpeg, libpng,
   libtiff, freetype, etc.) conservan sus licencias.
+- `pymupdf` 1.26.5 (PyMuPDF, de Artifex Software; incluye MuPDF): **GNU AGPL-3.0**, <https://github.com/pymupdf/PyMuPDF>. Solo la usa la skill
+  `pdf` para traducir un PDF conservando su diseño (`translate_pdf.py`). Al repartir Lazunox con PyMuPDF dentro, el programa distribuido queda
+  bajo la AGPL-3.0 y su código fuente completo está público en <https://github.com/onyxcode-cl/onyxcode-desktop>. Una versión sin esa
+  función no necesita PyMuPDF.
 - `lxml` 6.1.3: BSD-3-Clause (incluye libxml2 y libxslt, licencia MIT), <https://lxml.de>.
 - Dependencias transitivas: `cryptography` 50.0.2 (Apache-2.0 o BSD-3-Clause; la rueda incluye OpenSSL, Apache-2.0), `cffi` 2.1.1 (MIT-0),
   `pycparser` 3.11 (BSD-3-Clause), `charset-normalizer` 3.5.2 (MIT), `typing_extensions` 4.16.0 (PSF-2.0).

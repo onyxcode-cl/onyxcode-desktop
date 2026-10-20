@@ -133,7 +133,7 @@ async function main() {
   }
   const py = join(res, 'python/bin/python3')
   if (existsSync(py)) {
-    const r = run(py, ['-I', '-c', 'import docx, openpyxl, pptx, pypdf, pdfplumber, reportlab, pypdfium2, lxml, PIL; print("ok-libs")'])
+    const r = run(py, ['-I', '-c', 'import docx, openpyxl, pptx, pypdf, pdfplumber, reportlab, pypdfium2, lxml, PIL, fitz; print("ok-libs")'])
     record(
       'Python incluido con las librerías de Word/Excel/PowerPoint/PDF',
       r.status === 0 && /ok-libs/.test(r.stdout || ''),
