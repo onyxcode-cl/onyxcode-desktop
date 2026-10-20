@@ -80,6 +80,47 @@ class TestTraducir(unittest.TestCase):
         self.assertEqual(p.returncode, 2)
         self.assertIn("ESCANEADO", p.stderr)
 
+    def _traducir(self, doc_builder, mapa):
+        src = os.path.join(self.d, "al_%d.pdf" % id(mapa))
+        doc = fitz.open()
+        doc_builder(doc.new_page(width=612, height=792))
+        doc.save(src)
+        seg = src + ".json"
+        run("extraer", src, "-o", seg)
+        with open(seg, encoding="utf-8") as f:
+            datos = json.load(f)["segmentos"]
+        tr = {s["id"]: mapa[s["texto"]] for s in datos if s["texto"] in mapa}
+        tfile = src + ".tr.json"
+        with open(tfile, "w", encoding="utf-8") as f:
+            json.dump(tr, f)
+        out = src + ".out.pdf"
+        run("aplicar", src, "-t", tfile, "-o", out, ok=(0, 3))
+        return fitz.open(out)[0]
+
+    def test_conserva_alineacion_derecha_y_centrada(self):
+        def build(p):
+            p.insert_text((87, 100), "Texto normal a la izquierda del documento.", fontname="helv", fontsize=9)
+            w = fitz.get_text_length("Fecha de emisión", fontname="helv", fontsize=9)
+            p.insert_text((525 - w, 140), "Fecha de emisión", fontname="helv", fontsize=9)           # pegado a la derecha
+            wc = fitz.get_text_length("Título centrado", fontname="hebo", fontsize=14)
+            p.insert_text((306 - wc / 2, 180), "Título centrado", fontname="hebo", fontsize=14)       # centrado en la hoja
+            p.insert_text((87, 400), "Pie de página", fontname="helv", fontsize=9)
+            p.insert_text((525 - fitz.get_text_length("x", fontname="helv", fontsize=9), 400), "x", fontname="helv", fontsize=9)
+        pag = self._traducir(build, {"Texto normal a la izquierda del documento.": "Plain text on the left of the document.",
+                                     "Fecha de emisión": "Date of issue (long form)", "Título centrado": "Centered heading"})
+        r = pag.search_for("Date of issue (long form)")[0]
+        self.assertAlmostEqual(r.x1, 530, delta=3)            # sigue pegado a la derecha (el borde real del texto original es 530)
+        c = pag.search_for("Centered heading")[0]
+        self.assertAlmostEqual((c.x0 + c.x1) / 2, 306, delta=3)  # sigue centrado
+
+    def test_no_reescribe_si_la_traduccion_es_igual(self):
+        def build(p):
+            p.insert_text((87, 100), "Hannover Rück Se", fontname="helv", fontsize=9)
+            p.insert_text((87, 130), "Hola", fontname="helv", fontsize=9)
+        pag = self._traducir(build, {"Hannover Rück Se": "Hannover Rück Se", "Hola": "Hello"})
+        self.assertIn("Hannover", pag.get_text())
+        self.assertIn("Hello", pag.get_text())
+
 
 if __name__ == "__main__":
     unittest.main()

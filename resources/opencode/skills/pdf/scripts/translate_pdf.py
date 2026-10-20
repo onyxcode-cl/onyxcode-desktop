@@ -35,6 +35,8 @@ FUENTES = {
              "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"],
     "italic": ["/System/Library/Fonts/Supplemental/Arial Italic.ttf", "C:/Windows/Fonts/ariali.ttf",
                "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf"],
+    "bolditalic": ["/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf", "C:/Windows/Fonts/arialbi.ttf",
+                   "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf"],
 }
 
 
@@ -42,7 +44,7 @@ def _fuente(estilo):
     for ruta in FUENTES[estilo]:
         if os.path.isfile(ruta):
             return fitz.Font(fontfile=ruta)
-    return fitz.Font("helv" if estilo != "bold" else "hebo")  # Helvetica base: solo Latin-1
+    return fitz.Font({"regular": "helv", "bold": "hebo", "italic": "heit", "bolditalic": "hebi"}[estilo])  # Helvetica base: solo Latin-1
 
 
 # ---------------------------------------------------------------- segmentación
@@ -59,11 +61,30 @@ def _resaltados(pagina):
         if not fill:
             continue
         r = d["rect"]
-        if r.height > 24 or r.width < 3 or r.height < 2:
+        if r.height > 20 or r.width < 3 or r.height < 2:
             continue
         if max(fill) - min(fill) < 0.25:   # blanco / gris / negro: no es un resaltado
             continue
+        if 0.299 * fill[0] + 0.587 * fill[1] + 0.114 * fill[2] < 0.6:   # fondos oscuros (cabeceras de tabla, bandas): no son resaltados
+            continue
         out.append((fitz.Rect(r), tuple(fill)))
+    return out
+
+
+def _obstaculos(pagina, resaltados):
+    """Líneas, cajas y bordes de celda de la página: un texto que crece no debe pisarlos. Se excluyen fondos de página y resaltados."""
+    ancho, alto = pagina.rect.width, pagina.rect.height
+    hl = [tuple(round(v, 1) for v in r) for r, _c in resaltados]
+    out = []
+    for d in pagina.get_drawings():
+        r = fitz.Rect(d["rect"])
+        if r.width > 0.7 * ancho and r.height > 0.5 * alto:
+            continue
+        if tuple(round(v, 1) for v in r) in hl:
+            continue
+        if r.width < 0.5 and r.height < 0.5:
+            continue
+        out.append(r)
     return out
 
 
@@ -260,12 +281,14 @@ def cmd_aplicar(a):
     if doc.needs_pass:
         error("el PDF tiene contraseña; este script no la maneja.")
     fuentes = {"regular": _fuente("regular"), "bold": _fuente("bold")}
+    fuentes_it = {"regular": _fuente("italic"), "bold": _fuente("bolditalic")}
     informe = {"traducidos": 0, "sin_traduccion": [], "letra_reducida": [], "no_cabe": [], "caracteres_sin_fuente": []}
     usados = set()
 
     for n, pag in enumerate(doc):
         segs = segmentos_de_pagina(pag)
         hl = _resaltados(pag)
+        obst = _obstaculos(pag, hl)
         trabajo = []
         for i, s in enumerate(segs):
             sid = "p%d-%d" % (n + 1, i)
@@ -299,59 +322,84 @@ def cmd_aplicar(a):
                 continue
             if _info_resaltado(pag, s, hl) == "todo" and not any(w[1] for w in palabras):
                 palabras = [(w[0], True, w[2]) for w in palabras]
-            f = fuentes["regular"]
+            fuentes_s = fuentes_it if s["italic"] else fuentes
             x0, y0, x1, y1 = s["bbox"]
             otros = [o for o in segs if o is not s]
-            derechos = [o["bbox"][0] for o in otros
-                        if o["bbox"][0] > x1 - 1 and o["bbox"][1] < y1 - 1 and o["bbox"][3] > y0 + 1 and o["bbox"][0] > x0 + 20]
-            ancho_orig = x1 - x0
-            plano_ancho = lambda sz_: _ancho_linea(fuentes, palabras, sz_)
-            if derechos:
-                derecha = min(derechos) - 8
+            en_fila = lambda o: o["bbox"][1] < y1 - 1 and o["bbox"][3] > y0 + 1
+            der_txt = [o["bbox"][0] for o in otros if en_fila(o) and o["bbox"][0] > x1 - 1 and o["bbox"][0] > x0 + 20]
+            izq_txt = [o["bbox"][2] for o in otros if en_fila(o) and o["bbox"][2] < x0 + 1]
+            der_obs = [r.x0 for r in obst if r.x0 >= x1 - 1 and r.y1 >= y0 - 2 and r.y0 <= y1 + 5]   # líneas, cajas y bordes de celda
+            izq_obs = [r.x1 for r in obst if r.x1 <= x0 + 1 and r.y1 >= y0 - 2 and r.y0 <= y1 + 5]
+            borde_der = max(o["bbox"][2] for o in segs)
+            borde_izq = min(o["bbox"][0] for o in segs)
+            zona_der = min(der_txt + der_obs + [max(borde_der, x1) + 2])
+            zona_izq = max(izq_txt + izq_obs + [min(borde_izq, x0) - 2])
+            tope_der = zona_der - (8 if der_txt else 3 if der_obs else 0)
+            tope_izq = zona_izq + (8 if izq_txt else 3 if izq_obs else 0)
+            plano_ancho = lambda sz_: _ancho_linea(fuentes_s, palabras, sz_)
+            cx = (x0 + x1) / 2
+            alin = "izq"
+            if not s["multi"] and (izq_obs or izq_txt) and (der_obs or der_txt):
+                # texto dentro de una celda (bordes o vecinos a ambos lados): se conserva su alineación respecto de la celda
+                hueco_i, hueco_d = x0 - zona_izq, zona_der - x1
+                if abs(hueco_i - hueco_d) <= 3 and hueco_i >= 3:
+                    alin = "centro"
+                elif hueco_d + 3 < hueco_i and hueco_d <= 14:
+                    alin = "der"
+            if alin != "izq":
+                pass
+            elif not s["multi"]:
+                sin_vecinos = not der_txt and not izq_txt
+                if sin_vecinos and abs(x1 - borde_der) < 2.0 and x0 > pag.rect.width * 0.4:
+                    alin = "der"          # texto pegado al borde derecho (fechas, referencias, números de página)
+                elif sin_vecinos and abs(cx - pag.rect.width / 2) < 3.5 and x0 - borde_izq > 15:
+                    alin = "centro"       # título o pie centrado en la hoja
+                elif der_txt and izq_txt and len(palabras) <= 4:
+                    # celda de tabla centrada: vecinos a ambos lados y el texto estaba entre ellos
+                    if abs((x0 - max(izq_txt)) - (min(der_txt) - x1)) < 40 and x0 - max(izq_txt) >= 3:
+                        alin = "centro"
+            if s["multi"]:
+                derecha = max(x1, min(x1 + 3, tope_der)) if (der_txt or der_obs) else x1 + 3
+                w = derecha - x0
+            elif alin == "izq":
+                derecha = max(x1, tope_der)
+                w = derecha - x0
+            elif alin == "der":
+                w = max(ancho_orig := x1 - x0, x1 - tope_izq)
+                derecha = x1
             else:
-                derecha = 526.0
-            if not derechos and (s["multi"] or plano_ancho(s["size"]) > ancho_orig):
-                derecha = max(x1, 506.0 if x0 > 150 else MARGEN_DER)
-            derecha = max(min(derecha, MARGEN_DER if not derechos else derecha), x1)
-            if not derechos and not s["multi"]:   # una sola línea sin nada a su derecha: no se parte, crece hasta el borde de la hoja
-                derecha = max(derecha, min(pag.rect.width - 24, x0 + plano_ancho(s["size"]) + 2))
-            w = derecha - x0
-            # celda de tabla centrada (hay vecinos a ambos lados de la fila y el texto estaba entre ellos): se mantiene centrada
-            izq = [o["bbox"][2] for o in otros if o["bbox"][2] < x0 + 1 and o["bbox"][1] < y1 - 1 and o["bbox"][3] > y0 + 1]
-            centrada = False
-            if derechos and izq and not s["multi"] and len(palabras) <= 4:
-                cx = (x0 + x1) / 2
-                semi = min(cx - max(izq), min(derechos) - cx) - 2.0
-                if semi > 0 and 3 <= (x0 - max(izq)) and abs((x0 - max(izq)) - (min(derechos) - x1)) < 40:
-                    centrada, w = True, 2 * semi
+                semi = min(cx - zona_izq, zona_der - cx) - 2.0
+                w = max(x1 - x0, 2 * semi)
+                derecha = cx + w / 2
             debajo = [o["bbox"][1] for o in otros if o["bbox"][1] >= y1 - 2 and o["bbox"][0] < derecha and o["bbox"][2] > x0 and o["bbox"][1] > y0 + 2]
             libre = max((min(debajo) - y0 - 1) if debajo else (y1 - y0 + 40), y1 - y0)
             sz = s["size"]
             while True:
-                lineas = _envolver(fuentes, palabras, sz, w)
-                cabe_ancho = all(_ancho_pal(fuentes, p_, sz) <= w + 0.5 for p_ in palabras)   # ninguna palabra se sale de su espacio
+                lineas = _envolver(fuentes_s, palabras, sz, w)
+                cabe_ancho = all(_ancho_pal(fuentes_s, p_, sz) <= w + 0.5 for p_ in palabras)   # ninguna palabra se sale de su espacio
                 alto = (len(lineas) - 1) * sz * INTERLINEA + sz * 0.95
                 if (cabe_ancho and alto <= libre - 1.0) or sz <= TAM_MIN:
                     break
                 sz -= 0.2
-            if not all(_ancho_pal(fuentes, p_, sz) <= w + 0.5 for p_ in palabras) or (len(lineas) - 1) * sz * INTERLINEA + sz * 0.95 > libre - 1.0 + 0.01:
+            if not all(_ancho_pal(fuentes_s, p_, sz) <= w + 0.5 for p_ in palabras) or (len(lineas) - 1) * sz * INTERLINEA + sz * 0.95 > libre - 1.0 + 0.01:
                 informe["no_cabe"].append(sid)
             if sz < s["size"] - 0.01:
                 informe["letra_reducida"].append({"id": sid, "de": round(s["size"], 1), "a": round(sz, 1)})
             rgb = _rgb(s["color"])
             # solo se justifica lo que el original justificaba: todas sus líneas menos la última llegan al mismo borde derecho
             lx = [l_["bbox"][2] for l_ in s["lines"]]
-            es_justificado = (not s["bold"]) and len(lx) >= 3 and max(lx[:-1]) - min(lx[:-1]) < 2.5
+            es_justificado = (not s["bold"]) and alin == "izq" and len(lx) >= 3 and max(lx[:-1]) - min(lx[:-1]) < 2.5
             y = y0 + sz * 0.86
-            x_ini = (cx - _ancho_linea(fuentes, lineas[0], sz) / 2) if (centrada and len(lineas) == 1) else x0
             for k, ln in enumerate(lineas):
                 justificar = es_justificado and k < len(lineas) - 1 and len(ln) > 1
-                esp = fuentes["regular"].text_length(" ", fontsize=sz)
-                gap = ((w - sum(_ancho_pal(fuentes, x, sz) for x in ln)) / (len(ln) - 1)) if justificar else esp
-                x, tramo = x_ini if k == 0 else x0, None
+                esp = fuentes_s["regular"].text_length(" ", fontsize=sz)
+                gap = ((w - sum(_ancho_pal(fuentes_s, x, sz) for x in ln)) / (len(ln) - 1)) if justificar else esp
+                lw = _ancho_linea(fuentes_s, ln, sz)
+                x = (x1 - lw) if alin == "der" else (cx - lw / 2) if alin == "centro" else x0
+                tramo = None
                 tw = fitz.TextWriter(pag.rect)
                 for (wd, h, neg) in ln:
-                    fw = fuentes["bold" if neg else "regular"]
+                    fw = fuentes_s["bold" if neg else "regular"]
                     ancho_w = fw.text_length(wd, fontsize=sz)
                     if h:
                         tramo = [x, x + ancho_w] if tramo is None else [tramo[0], x + ancho_w]
