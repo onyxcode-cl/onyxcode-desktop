@@ -138,10 +138,10 @@ class TestTraducir(unittest.TestCase):
         with open(seg, encoding="utf-8") as f:
             datos = json.load(f)["segmentos"]
         self.assertIn("<l=0>", datos[0]["texto"])
-        self.assertIn("<c=#0000ff>", datos[0]["texto"])
+        self.assertIn("<c=#000000>", datos[0]["texto"])   # el color dominante de la línea es el del enlace (azul); lo negro va etiquetado
         tfile = src + ".tr.json"
         with open(tfile, "w", encoding="utf-8") as f:
-            json.dump({datos[0]["id"]: "Visit <l=0><c=#0000ff>our site</c></l> today."}, f)
+            json.dump({datos[0]["id"]: "<c=#000000>Visit</c> <l=0>our site</l> <c=#000000>today.</c>"}, f)
         out = src + ".out.pdf"
         run("aplicar", src, "-t", tfile, "-o", out)
         pag = fitz.open(out)[0]
