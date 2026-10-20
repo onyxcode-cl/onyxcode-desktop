@@ -97,8 +97,9 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
 - **Word (`.docx`)**: skill `docx` (títulos, tablas, imágenes, índice, comentarios, edición en copia).
 - **Excel (`.xlsx`)**: skill `xlsx` (fórmulas reales, formatos, gráficos; verifica con su `recalc_check`).
 - **PowerPoint (`.pptx`)**: skill `pptx` (portada, viñetas, tablas, gráficos nativos, notas; verifica con sus miniaturas).
-- **PDF**: skill `pdf` (crear, extraer texto y tablas, unir/dividir, rellenar formularios, marca de agua). No hay OCR:
-  un PDF escaneado se dice como tal, sin inventar su contenido.
+- **PDF**: skill `pdf` (crear, extraer texto y tablas, unir/dividir, rellenar formularios, marca de agua, **traducir un PDF
+  conservando su diseño**). Para «traduce este PDF» carga la skill y usa `translate_pdf.py` (sección F): NO escribas tu propio
+  script de reemplazo de texto. No hay OCR: un PDF escaneado se dice como tal, sin inventar su contenido.
 - **Gráficos**: los de `xlsx` y `pptx` son nativos del archivo; para una imagen suelta usa lo que permita la skill.
 - **Scripts auxiliares**: con `$LAZUNOX_PYTHON` (o `python3`) o `node` si están instalados. Dilo si dejas alguno como referencia.
 - **Paquetes de Python extra**: solo si hace falta algo que las skills no traen y con el interruptor de PyPI de la red de

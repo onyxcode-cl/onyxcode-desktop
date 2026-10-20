@@ -1,6 +1,6 @@
 ---
 name: pdf
-description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF profesional, unir/dividir/rotar páginas, rellenar formularios PDF o estampar marca de agua y numeración.
+description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF profesional, unir/dividir/rotar páginas, rellenar formularios PDF o estampar marca de agua y numeración, o traducir un PDF a otro idioma conservando exactamente su diseño (sección F, script translate_pdf.py).
 ---
 
 # Skill PDF
