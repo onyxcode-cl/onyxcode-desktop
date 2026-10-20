@@ -17,9 +17,10 @@ function dataUrlToBytes(url: string): Uint8Array {
   return out
 }
 
-async function openPdf(url: string): Promise<
-  | { ok: true; doc: import('pdfjs-dist').PDFDocumentProxy; close: () => void }
-  | { ok: false; reason: 'encrypted' | 'unreadable' }
+async function openPdf(
+  url: string
+): Promise<
+  { ok: true; doc: import('pdfjs-dist').PDFDocumentProxy; close: () => void } | { ok: false; reason: 'encrypted' | 'unreadable' }
 > {
   const pdfjs = await import('pdfjs-dist')
   const worker = (await import('pdfjs-dist/build/pdf.worker.mjs?url')).default
@@ -96,7 +97,11 @@ export async function pdfToText(url: string, name: string): Promise<PdfConvertRe
       }
     }
     if (!text.replace(/--- página \d+ ---/g, '').trim()) return { ok: false, reason: 'empty' }
-    return { ok: true, parts: [{ mime: 'text/plain', filename: name.replace(/\.pdf$/i, '') + '.txt', url: textToDataUrl(text) }], truncated }
+    return {
+      ok: true,
+      parts: [{ mime: 'text/plain', filename: name.replace(/\.pdf$/i, '') + '.txt', url: textToDataUrl(text) }],
+      truncated
+    }
   } catch {
     return { ok: false, reason: 'unreadable' }
   } finally {

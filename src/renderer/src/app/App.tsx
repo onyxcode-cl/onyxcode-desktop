@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ConfirmDialogHost } from '../components/ConfirmDialog'
 import { ExportConversationHost } from '../components/ExportConversation'
+import { TranslatePdfHost } from '../features/translate-pdf/TranslatePdfDialog'
 import { LiveAnnouncer } from '../components/LiveAnnouncer'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { OnboardingGate, PreflightGate } from '../features/onboarding'
@@ -195,6 +196,7 @@ function DesktopApp(): React.JSX.Element {
       <ConfirmDialogHost />
       <LiveAnnouncer />
       <ExportConversationHost />
+      <TranslatePdfHost />
       <RemotePairHost />
       <RemoteConfirmHost />
       <ErrorBoundary label={t('app.boundary.onboarding')}>

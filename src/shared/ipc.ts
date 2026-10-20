@@ -9,6 +9,7 @@
  */
 import type { PasteResult, PasteScope } from './paste-files'
 import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
+import type { PdfApplyRequest, PdfApplyResult, PdfExtractRequest, PdfExtractResult } from './translate-pdf'
 import type {
   AppInfo,
   NotifyTarget,
@@ -98,6 +99,16 @@ export interface IpcInvokeContract {
    * y avisos de recorte) y lo devuelve ya enmarcado como datos. El renderer manda los bytes que ya leyó; nunca una ruta.
    */
   'attach:extractOffice': { req: OfficeExtractRequest; res: OfficeExtractResult }
+  /**
+   * Traducir un PDF sin cambiar su diseño (F8-B200). `pdfExtract`: main guarda los bytes en una carpeta propia del trabajo y lista
+   * los textos con PyMuPDF; `pdfApply`: escribe las traducciones (que el renderer pidió al modelo) sobre el mismo PDF;
+   * `pdfOpen`/`pdfSave`: lo abre con el visor del sistema o diálogo «Guardar como…»; `pdfDiscard`: borra el trabajo. Nunca rutas.
+   */
+  'translate:pdfExtract': { req: PdfExtractRequest; res: PdfExtractResult }
+  'translate:pdfApply': { req: PdfApplyRequest; res: PdfApplyResult }
+  'translate:pdfOpen': { req: { jobId: string }; res: { opened: boolean } }
+  'translate:pdfSave': { req: { jobId: string }; res: { saved: boolean } }
+  'translate:pdfDiscard': { req: { jobId: string }; res: void }
   /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
   /** La ventana avisa de un error suyo (error no capturado, fallo de render) para dejarlo en el registro de problemas. */
@@ -153,6 +164,11 @@ export const IPC_INVOKE_CHANNELS = [
   'diag:copy',
   'clipboard:readFilesForPaste',
   'attach:extractOffice',
+  'translate:pdfExtract',
+  'translate:pdfApply',
+  'translate:pdfOpen',
+  'translate:pdfSave',
+  'translate:pdfDiscard',
   'diag:export',
   'diag:problem',
   'settings:get',

@@ -9,6 +9,7 @@
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
+import { TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
 import { PROJECT_LIMITS } from '@shared/project-knowledge'
 import { EXPORT_LIMITS, type ExportDoc } from '@shared/conversation-export'
 import { PREFLIGHT_ORDER } from '@shared/preflight'
@@ -593,6 +594,19 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     name: str({ max: 300, min: 1 }),
     base64: str({ max: Math.ceil((OFFICE_MAX_BYTES * 4) / 3) + 16 })
   }),
+  // PDF a traducir: base64 de ≤ 20 MB; el nombre solo se usa para nombrar el resultado.
+  'translate:pdfExtract': obj({
+    name: str({ max: 300, min: 1 }),
+    base64: str({ max: Math.ceil((TRANSLATE_PDF_MAX_BYTES * 4) / 3) + 16 })
+  }),
+  'translate:pdfApply': obj({
+    jobId: str({ max: 16, min: 16 }),
+    translations: record(str({ max: 20_000 }), TRANSLATE_PDF_MAX_SEGMENTS),
+    target: literal(...TRANSLATE_LANGS.map((l) => l.code))
+  }),
+  'translate:pdfOpen': obj({ jobId: str({ max: 16, min: 16 }) }),
+  'translate:pdfSave': obj({ jobId: str({ max: 16, min: 16 }) }),
+  'translate:pdfDiscard': obj({ jobId: str({ max: 16, min: 16 }) }),
   'diag:export': none,
   'diag:problem': obj({ message: str({ max: 2000 }), stack: optional(str({ max: 4000 })), origin: optional(literal('chat-doc')) }),
   'settings:get': none,

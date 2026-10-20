@@ -182,7 +182,8 @@ async function adaptFilesForModel(files: ResendFile[], providerID: string, model
     const r = route === 'images' ? await pdfToImages(f.url, name) : await pdfToText(f.url, name)
     if (!r.ok) throw new Error(t(`chat.attach.pdf.err.${r.reason}.${route}`, { name }))
     out.push(...r.parts)
-    if (r.truncated) out.push({ mime: 'text/plain', filename: `${name}.nota.txt`, url: textNote(t(`chat.attach.pdf.truncated.${route}`, { name })) })
+    if (r.truncated)
+      out.push({ mime: 'text/plain', filename: `${name}.nota.txt`, url: textNote(t(`chat.attach.pdf.truncated.${route}`, { name })) })
   }
   return out
 }

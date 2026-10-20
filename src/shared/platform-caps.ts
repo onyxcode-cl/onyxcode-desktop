@@ -54,6 +54,11 @@ export interface PlatformCaps {
    * ejecución, no va acá.
    */
   docViewer: boolean
+  /**
+   * Traducir un PDF sin cambiar su diseño (F8-B200): usa el Python incluido con PyMuPDF, que hoy solo viaja en macOS. En el celular
+   * no existe (necesita la ventana nativa) y en Windows queda apagada hasta que el paquete incluya Python.
+   */
+  translatePdf: boolean
 }
 
 export type TasksSandbox = 'seatbelt' | 'wsl' | 'none'
@@ -95,7 +100,8 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
       nativeDialogs: false,
       openExternal: false,
       nativeBrowser: false,
-      docViewer: false
+      docViewer: false,
+      translatePdf: false
     }
   }
   const mac = platform === 'darwin'
@@ -116,7 +122,8 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     nativeDialogs: true,
     openExternal: true,
     nativeBrowser: true,
-    docViewer: mac || (win && flags.tasksWin === true)
+    docViewer: mac || (win && flags.tasksWin === true),
+    translatePdf: mac
   }
 }
 

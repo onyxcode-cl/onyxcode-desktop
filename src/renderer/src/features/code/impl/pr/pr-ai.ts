@@ -27,6 +27,8 @@ const POLL_MS = 700
 const DEFAULT_TIMEOUT_MS = 150_000
 
 export interface AskOptions {
+  /** Modelo de qué modo se usa (por defecto el de Code; la traducción de PDF usa el de Chat). */
+  mode?: 'chat' | 'code'
   signal?: AbortSignal
   timeoutMs?: number
   /** Prueba: sustituye al reloj/espera. */
@@ -63,7 +65,7 @@ const realSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r
 
 export async function askModel(directory: string, prompt: string, opts: AskOptions = {}): Promise<string> {
   const client = requireClient()
-  const wanted = resolveModelForMode('code')
+  const wanted = resolveModelForMode(opts.mode ?? 'code')
   const { effective, gate } = currentAiGate(wanted)
   if (gate.blocked || !effective) throw NO_AI_ERROR
   const sleep = opts.sleep ?? realSleep

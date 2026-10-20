@@ -3,6 +3,7 @@ import type { OpencodeServer } from '../opencode/server'
 import type { MainWindowDeps } from '../extras/windows'
 import { registerAppHandlers } from './app'
 import { registerAttachHandlers } from './attach-handlers'
+import { registerTranslatePdfHandlers } from './translate-pdf-handlers'
 import { registerClipboardHandlers } from './clipboard-handlers'
 import { registerDiagnosticsHandlers } from './diagnostics'
 import { registerNotifyHandlers } from './notify'
@@ -28,6 +29,7 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerDiagnosticsHandlers(ipcMain, ctx.server)
   registerClipboardHandlers(ipcMain)
   registerAttachHandlers(ipcMain)
+  registerTranslatePdfHandlers(ipcMain)
   registerProviderHandlers(ipcMain, ctx.server)
   registerSettingsHandlers(ipcMain)
   registerNotifyHandlers(ipcMain, ctx)

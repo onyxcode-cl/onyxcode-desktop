@@ -16,7 +16,8 @@ describe('capsFor', () => {
       keepAwakeText: true,
       quickLook: true,
       remote: true,
-      docViewer: true
+      docViewer: true,
+      translatePdf: true
     })
   })
   it('win32 no tiene ninguna de las funciones de macOS (Tareas apagada; sandbox previsto: wsl)', () => {
@@ -30,7 +31,8 @@ describe('capsFor', () => {
       keepAwakeText: false,
       quickLook: false,
       remote: false,
-      docViewer: false
+      docViewer: false,
+      translatePdf: false
     })
   })
   it.each(['linux', 'freebsd'])('%s no tiene ninguna de las funciones de macOS', (p) => {
@@ -44,7 +46,8 @@ describe('capsFor', () => {
       keepAwakeText: false,
       quickLook: false,
       remote: false,
-      docViewer: false
+      docViewer: false,
+      translatePdf: false
     })
   })
   it('docViewer sigue exactamente a tasks en Mac/Windows/Linux (misma condición: lo necesita la ventana nativa de Tareas)', () => {
@@ -108,7 +111,8 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       updater: true,
       keepAwakeText: true,
       remote: true,
-      docViewer: true
+      docViewer: true,
+      translatePdf: true
     },
     win32: {
       tasks: false,
@@ -118,7 +122,8 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       updater: true, // actualizador de Windows (plan win-D): antes apagado
       keepAwakeText: false,
       remote: false,
-      docViewer: false
+      docViewer: false,
+      translatePdf: false
     }
   } as const
   const OFF: Array<CapsFlags | undefined> = [undefined, {}, { tasksWin: false }]
@@ -163,7 +168,8 @@ describe('superficie remote (PWA del celular)', () => {
       nativeDialogs: false,
       openExternal: false,
       nativeBrowser: false,
-      docViewer: false
+      docViewer: false,
+      translatePdf: false
     })
   })
   it('Tareas disponible; un modo guardado sigue siendo usable', () => {

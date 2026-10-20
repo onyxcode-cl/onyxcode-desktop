@@ -1,6 +1,7 @@
 node_modules
 out
 dist
+dist-*
 # Sitio del control remoto armado por scripts/build-site.mjs (se publica a mano; no se versiona)
 pwa/dist-site/
 site-archive/

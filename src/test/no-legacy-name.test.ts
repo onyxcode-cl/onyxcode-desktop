@@ -28,7 +28,7 @@ const SKIP_EXT = new Set([
   '.wasm',
   '.tsbuildinfo'
 ])
-const SKIP_DIRS = new Set(['node_modules', 'out', 'dist', '.git', 'coverage', 'test-results'])
+const SKIP_DIRS = new Set(['node_modules', 'out', 'dist', 'dist-pdf', '.git', 'coverage', 'test-results'])
 const MAX_BYTES = 4 * 1024 * 1024
 
 /** Archivos del repo (rutas con `/`): `git ls-files` (incluye los nuevos sin añadir) o, sin git, un recorrido del árbol. */

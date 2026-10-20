@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { fitTextarea, isSubmitKey, useAutosizeTextarea } from '../../lib/textarea'
-import { ArrowUp, FileText, Paperclip, Presentation, Sheet, Square, X } from 'lucide-react'
+import { ArrowUp, FileText, Languages, Paperclip, Presentation, Sheet, Square, X } from 'lucide-react'
 import { useT } from '../../lib/i18n'
 import { useDraft } from '../../stores/drafts'
-import { isRemoteSurface } from '../../lib/platform'
+import { isRemoteSurface, platformCaps } from '../../lib/platform'
+import { openTranslatePdf } from '../translate-pdf/TranslatePdfDialog'
 import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
 import {
@@ -358,6 +359,20 @@ export function ChatComposer({
               className={`no-drag inline-flex shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent desk:rounded-lg ${mobile ? (hero ? 'h-9 w-9' : 'h-10 w-10') : 'h-8 w-8'}`}
             >
               <Paperclip size={mobile ? 20 : 16} />
+            </button>
+          )}
+          {showAttach && !mobile && platformCaps().translatePdf && (
+            <button
+              type="button"
+              onMouseDown={keepFocus}
+              onClick={openTranslatePdf}
+              disabled={disabled}
+              title={t('translate.pdf.open')}
+              aria-label={t('translate.pdf.open')}
+              data-testid="translate-pdf-button"
+              className="no-drag inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Languages size={16} />
             </button>
           )}
           <VoiceDictationButton onText={insertDictated} />

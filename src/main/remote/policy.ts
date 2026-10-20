@@ -281,6 +281,11 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'diag:logs': 'X',
   'diag:copy': 'X',
   'clipboard:readFilesForPaste': 'X', // lee el portapapeles del Mac: el celular no lo usa
+  'translate:pdfExtract': 'X', // procesa bytes con Python en el Mac y guarda archivos: solo la ventana principal
+  'translate:pdfApply': 'X',
+  'translate:pdfOpen': 'X',
+  'translate:pdfSave': 'X',
+  'translate:pdfDiscard': 'X',
   'attach:extractOffice': 'X', // parsea documentos en el Mac con bytes que manda la ventana: el celular no lo usa
   'diag:export': 'X',
   'diag:problem': 'X',

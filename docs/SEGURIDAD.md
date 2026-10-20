@@ -2148,3 +2148,34 @@ valen el del PC aunque la imagen escriba `lazunox`) y el sistema arma el correo 
    identidad fija los commits de Chat/Code ni de Control total. No implementado.
 
 Recomendación mínima: el camino 1 (ya hecho) en la próxima imagen; si no se quiere esperar a una imagen, el camino 4 con la condición anterior.
+
+
+## 3 quinquagies undevicies. Traducir un PDF sin cambiar el diseño (F8-B200)
+
+**Qué hace.** El botón «Traducir un PDF sin cambiar el diseño» del compositor del Chat (solo macOS, `caps.translatePdf`) lee los textos de un PDF con
+PyMuPDF y los vuelve a escribir sobre el MISMO PDF (`resources/opencode/skills/pdf/scripts/translate_pdf.py`, el mismo script que usa la skill
+`pdf` en Code y Overdrive). La traducción la pide el renderer al modelo que la persona tiene elegido en el Chat; `main` no habla con ningún modelo
+ni con la red.
+
+**Canales** (`translate:pdfExtract`, `pdfApply`, `pdfOpen`, `pdfSave`, `pdfDiscard`; todos clase **X** en `policy.ts`: el celular no los ve; solo la
+ventana principal, ninguna otra los tiene en `CHANNEL_ROLES`). Esquemas estrictos: el PDF viaja como base64 (≤ 20 MB), el `jobId` es de 16
+hexadecimales (`PDF_JOB_ID_RE`) y las traducciones son un mapa de ≤ 3000 ids con valores de ≤ 20 000 caracteres. **Nunca viaja una ruta**: `main`
+guarda los bytes en `userData/translate-jobs/<jobId>/` (carpeta 0700, archivos 0600, id aleatorio) y solo abre o copia archivos de esa carpeta.
+
+**Qué sale de la app y adónde.** Los textos del documento van al modelo elegido; si es de un servicio externo, ese servicio los recibe. La ventana lo
+dice antes de empezar («El texto del documento se envía al modelo que tengas elegido…»). No se envía el PDF ni imágenes, solo texto por lotes, con
+un glosario de términos que el propio modelo propone. El resultado se abre con el visor del sistema o se guarda con el diálogo nativo «Guardar
+como…» (el renderer no elige rutas).
+
+**Un PDF es un archivo no confiable que se interpreta con una biblioteca nativa** (MuPDF, escrita en C). Controles: (1) Python incluido en la app
+(`LAZUNOX_PYTHON`), sin shell, con argumentos fijos y entorno mínimo (`PATH=/usr/bin:/bin`, `HOME` apuntando a la carpeta del trabajo, sin
+variables del usuario); (2) tope de tiempo de 4 minutos y de salida de 4 MB por ejecución; (3) el nombre del PDF solo sirve para nombrar el
+resultado (se limpia de separadores de ruta); (4) se comprueba la firma `%PDF-` antes de ejecutar nada; (5) topes de 3000 textos y 400 000
+caracteres por documento; (6) los ids de los textos devueltos por Python se validan con una expresión estricta antes de usarse; (7) los
+trabajos se borran al cancelar o fallar, y los terminados a las 24 h (limpieza en cada extracción). **Límite dicho con honestidad:** Python corre
+con los permisos de la app, sin el aislamiento Seatbelt de Overdrive; un PDF malicioso que explotara un fallo de MuPDF podría ejecutar código con
+esos permisos. Es el mismo riesgo que abrir el PDF en cualquier lector, y el del visor de documentos de la app (pdf.js); no se mitiga más sin
+mover este paso al sandbox de Tareas (pendiente, no implementado).
+
+**Licencia.** PyMuPDF es AGPL-3.0: el aviso está en `THIRD_PARTY_NOTICES.md` y el código fuente completo de cada versión es público. Una versión
+sin esta función no necesita PyMuPDF (el motor es una sola pieza, `translate_pdf.py`).
