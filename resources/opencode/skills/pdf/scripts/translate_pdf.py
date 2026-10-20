@@ -28,23 +28,33 @@ MARGEN_DER = 526.0     # tope derecho si no hay vecino (hoja carta/A4 con margen
 INTERLINEA = 1.18
 TAM_MIN = 6.0
 
+_SUP = "/System/Library/Fonts/Supplemental/"
+_WIN = "C:/Windows/Fonts/"
+_LIN = "/usr/share/fonts/truetype/liberation/"
+# Familia (sans = Arial, serif = Times New Roman, mono = Courier New) × estilo → rutas en macOS, Windows y Linux (Liberation).
 FUENTES = {
-    "regular": ["/System/Library/Fonts/Supplemental/Arial.ttf", "C:/Windows/Fonts/arial.ttf",
-                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"],
-    "bold": ["/System/Library/Fonts/Supplemental/Arial Bold.ttf", "C:/Windows/Fonts/arialbd.ttf",
-             "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"],
-    "italic": ["/System/Library/Fonts/Supplemental/Arial Italic.ttf", "C:/Windows/Fonts/ariali.ttf",
-               "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf"],
-    "bolditalic": ["/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf", "C:/Windows/Fonts/arialbi.ttf",
-                   "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf"],
+    "sans": {"regular": [_SUP + "Arial.ttf", _WIN + "arial.ttf", _LIN + "LiberationSans-Regular.ttf"],
+             "bold": [_SUP + "Arial Bold.ttf", _WIN + "arialbd.ttf", _LIN + "LiberationSans-Bold.ttf"],
+             "italic": [_SUP + "Arial Italic.ttf", _WIN + "ariali.ttf", _LIN + "LiberationSans-Italic.ttf"],
+             "bolditalic": [_SUP + "Arial Bold Italic.ttf", _WIN + "arialbi.ttf", _LIN + "LiberationSans-BoldItalic.ttf"]},
+    "serif": {"regular": [_SUP + "Times New Roman.ttf", _WIN + "times.ttf", _LIN + "LiberationSerif-Regular.ttf"],
+              "bold": [_SUP + "Times New Roman Bold.ttf", _WIN + "timesbd.ttf", _LIN + "LiberationSerif-Bold.ttf"],
+              "italic": [_SUP + "Times New Roman Italic.ttf", _WIN + "timesi.ttf", _LIN + "LiberationSerif-Italic.ttf"],
+              "bolditalic": [_SUP + "Times New Roman Bold Italic.ttf", _WIN + "timesbi.ttf", _LIN + "LiberationSerif-BoldItalic.ttf"]},
+    "mono": {"regular": [_SUP + "Courier New.ttf", _WIN + "cour.ttf", _LIN + "LiberationMono-Regular.ttf"],
+             "bold": [_SUP + "Courier New Bold.ttf", _WIN + "courbd.ttf", _LIN + "LiberationMono-Bold.ttf"],
+             "italic": [_SUP + "Courier New Italic.ttf", _WIN + "couri.ttf", _LIN + "LiberationMono-Italic.ttf"],
+             "bolditalic": [_SUP + "Courier New Bold Italic.ttf", _WIN + "courbi.ttf", _LIN + "LiberationMono-BoldItalic.ttf"]},
 }
+_BASE = {"sans": ("helv", "hebo", "heit", "hebi"), "serif": ("tiro", "tibo", "tiit", "tibi"), "mono": ("cour", "cobo", "coit", "cobi")}
 
 
-def _fuente(estilo):
-    for ruta in FUENTES[estilo]:
+def _fuente(estilo, familia="sans"):
+    for ruta in FUENTES[familia][estilo]:
         if os.path.isfile(ruta):
             return fitz.Font(fontfile=ruta)
-    return fitz.Font({"regular": "helv", "bold": "hebo", "italic": "heit", "bolditalic": "hebi"}[estilo])  # Helvetica base: solo Latin-1
+    nombres = _BASE[familia]
+    return fitz.Font(nombres[["regular", "bold", "italic", "bolditalic"].index(estilo)])  # fuente base del PDF: solo Latin-1
 
 
 # ---------------------------------------------------------------- segmentación
@@ -110,10 +120,23 @@ def segmentos_de_pagina(pagina):
             else:
                 txt = "".join(x["text"] for x in l["spans"]).strip()
             s = spans[0] if todo_neg or not alguna_neg else next(x for x in spans if not x["flags"] & 16)
-            lineas.append({"bbox": list(l["bbox"]), "text": txt, "bold": todo_neg,
+            fam = "mono" if s["flags"] & 8 else "serif" if s["flags"] & 4 else "sans"
+            lineas.append({"bbox": list(l["bbox"]), "text": txt, "bold": todo_neg, "fam": fam,
                            "italic": bool(s["flags"] & 2), "size": s["size"], "color": s["color"]})
         if not lineas:
             continue
+        # el texto justificado a veces llega como «líneas» de una sola palabra sobre la misma base: se vuelven a unir
+        lineas.sort(key=lambda l_: (round(l_["bbox"][1]), l_["bbox"][0]))
+        unidas = []
+        for l_ in lineas:
+            p_ = unidas[-1] if unidas else None
+            if (p_ and abs(p_["bbox"][1] - l_["bbox"][1]) < 1.5 and abs(p_["size"] - l_["size"]) < 0.3 and p_["bold"] == l_["bold"]
+                    and -1 <= l_["bbox"][0] - p_["bbox"][2] <= 1.4 * l_["size"]):
+                p_["bbox"] = [p_["bbox"][0], min(p_["bbox"][1], l_["bbox"][1]), l_["bbox"][2], max(p_["bbox"][3], l_["bbox"][3])]
+                p_["text"] = p_["text"] + " " + l_["text"]
+            else:
+                unidas.append(dict(l_))
+        lineas = unidas
         maxx = max(l["bbox"][2] for l in lineas)
         cur = None
         for l in lineas:
@@ -155,7 +178,7 @@ def segmentos_de_pagina(pagina):
         sg["bbox"] = [min(b[0] for b in bb), min(b[1] for b in bb), max(b[2] for b in bb), max(b[3] for b in bb)]
         sg["text"] = " ".join(l["text"] for l in sg["lines"])
         pr = sg["lines"][0]
-        sg["bold"], sg["italic"], sg["size"], sg["color"] = pr["bold"], pr["italic"], pr["size"], pr["color"]
+        sg["bold"], sg["italic"], sg["size"], sg["color"], sg["fam"] = pr["bold"], pr["italic"], pr["size"], pr["color"], pr["fam"]
         sg["multi"] = len(sg["lines"]) > 1
     return segs
 
@@ -280,8 +303,12 @@ def cmd_aplicar(a):
     doc = fitz.open(a.pdf)
     if doc.needs_pass:
         error("el PDF tiene contraseña; este script no la maneja.")
-    fuentes = {"regular": _fuente("regular"), "bold": _fuente("bold")}
-    fuentes_it = {"regular": _fuente("italic"), "bold": _fuente("bolditalic")}
+    familias = {}   # se cargan solo las que el documento usa
+    def _juego(fam, it):
+        k = (fam, it)
+        if k not in familias:
+            familias[k] = {"regular": _fuente("italic" if it else "regular", fam), "bold": _fuente("bolditalic" if it else "bold", fam)}
+        return familias[k]
     informe = {"traducidos": 0, "sin_traduccion": [], "letra_reducida": [], "no_cabe": [], "caracteres_sin_fuente": []}
     usados = set()
 
@@ -322,7 +349,7 @@ def cmd_aplicar(a):
                 continue
             if _info_resaltado(pag, s, hl) == "todo" and not any(w[1] for w in palabras):
                 palabras = [(w[0], True, w[2]) for w in palabras]
-            fuentes_s = fuentes_it if s["italic"] else fuentes
+            fuentes_s = _juego(s["fam"], s["italic"])
             x0, y0, x1, y1 = s["bbox"]
             otros = [o for o in segs if o is not s]
             en_fila = lambda o: o["bbox"][1] < y1 - 1 and o["bbox"][3] > y0 + 1

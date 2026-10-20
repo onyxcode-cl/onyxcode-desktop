@@ -69,13 +69,16 @@ MISMO PDF: cambia solo los textos; logos, imágenes, líneas, resaltados y numer
    - Traduce TODO el texto con significado; si un texto es un nombre propio, código o cifra, déjalo igual (o no lo incluyas).
    - Conserva las etiquetas `<b>…</b>` (negrita) donde estaban, y los números, fechas y referencias exactos.
    - Si el segmento trae `"resaltado"`, envuelve en `[[ ]]` la parte traducida que corresponde a lo resaltado (si es «todo», no hace falta).
+   - NO traduzcas código, comandos, rutas, URLs, correos, nombres de archivo ni claves de configuración: déjalos idénticos (o no los incluyas).
    - Mantén cada traducción de largo parecido al original; el script reduce la letra si no cabe, pero no inventes texto.
    - Traduce por tandas de ~40 segmentos y usa el contexto del documento (un mismo término se traduce igual en todo el documento).
 3. `PY scripts/translate_pdf.py aplicar doc.pdf -t traduccion.json -o doc-en.pdf --informe informe.json`
    El informe lista `sin_traduccion`, `letra_reducida` y `no_cabe`. Código de salida 3 = algo no cabe: revisa esas páginas.
 4. Verifica como siempre (`check_pdf.py --render`) y **mira las páginas PNG junto al original**: textos que chocan, celdas de tabla
    apretadas, resaltados mal puestos. Corrige la traducción de esos segmentos (más corta) y vuelve a aplicar con otro nombre de salida.
-Idiomas: fuentes Arial/Liberation (Latin: español, inglés, francés, alemán, portugués…). Para chino, árabe, ruso, etc. no hay fuente
+Limitaciones conocidas (dilas si aplican): una línea con varios colores o con un enlace dentro sale de un solo color y el enlace sigue en su
+posición original; texto dentro de imágenes y texto vertical no se traducen; PDF escaneado: sin OCR.
+Idiomas: fuentes Arial/Times/Courier (o Liberation) (Latin: español, inglés, francés, alemán, portugués…). Para chino, árabe, ruso, etc. no hay fuente
 todavía: dilo en vez de entregar un PDF con cuadritos.
 
 ### Verificar (obligatorio antes de entregar)
