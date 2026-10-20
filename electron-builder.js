@@ -62,6 +62,8 @@ module.exports = {
   },
   files: [
     '!**/.vscode/*',
+    // Salidas de otras compilaciones (instaladores viejos): una carpeta de salida distinta de `dist` se coló una vez y el .asar pesó 92 GB.
+    '!{dist,dist-*}/**',
     '!src/*',
     '!pwa/**',
     '!e2e/**',
