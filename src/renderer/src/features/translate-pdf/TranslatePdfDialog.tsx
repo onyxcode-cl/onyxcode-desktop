@@ -12,15 +12,24 @@ import { call } from '../../lib/api'
 import { announce } from '../../lib/announce'
 import { useServer } from '../../stores/server'
 import { askModel } from '../code/impl/pr/pr-ai'
+import { chatModelInfo } from './model-info'
 import { TranslateError, translatePdf, type TranslateDeps, type TranslateOutcome, type TranslateProgress } from './translate'
+
+/** Traducción ya decidida (la tarjeta del compositor): la ventana arranca sola con este PDF e idioma. */
+export interface TranslatePreset {
+  name: string
+  base64: string
+  target: TranslateLangCode
+}
 
 interface Ui {
   open: boolean
+  preset: TranslatePreset | null
 }
-const useUi = create<Ui>(() => ({ open: false }))
+const useUi = create<Ui>(() => ({ open: false, preset: null }))
 
-export function openTranslatePdf(): void {
-  useUi.setState({ open: true })
+export function openTranslatePdf(preset?: TranslatePreset): void {
+  useUi.setState({ open: true, preset: preset ?? null })
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -78,7 +87,10 @@ export function TranslatePdfHost(): React.JSX.Element | null {
 function TranslatePdfDialog(): React.JSX.Element {
   const t = useT()
   const [file, setFile] = useState<File | null>(null)
-  const [target, setTarget] = useState<TranslateLangCode>(defaultTarget())
+  const preset = useRef(useUi.getState().preset).current
+  const [target, setTarget] = useState<TranslateLangCode>(preset?.target ?? defaultTarget())
+  const model = useRef(chatModelInfo()).current
+  const lastRun = useRef<TranslatePreset | null>(null)
   const [view, setView] = useState<View>({ kind: 'pick' })
   const [fileError, setFileError] = useState<string | null>(null)
   const ctrl = useRef<AbortController | null>(null)
@@ -87,7 +99,7 @@ function TranslatePdfDialog(): React.JSX.Element {
 
   const close = (): void => {
     ctrl.current?.abort() // si estaba traduciendo, `translatePdf` borra el trabajo; si ya terminó, el archivo queda hasta el limpiado diario
-    useUi.setState({ open: false })
+    useUi.setState({ open: false, preset: null })
   }
 
   useEffect(() => {
@@ -109,17 +121,16 @@ function TranslatePdfDialog(): React.JSX.Element {
     setFile(f)
   }
 
-  const start = async (): Promise<void> => {
-    if (!file) return
+  const run = async (job: TranslatePreset): Promise<void> => {
+    lastRun.current = job
     const c = new AbortController()
     ctrl.current = c
     setView({ kind: 'running', progress: { phase: 'reading', done: 0, total: 0 } })
     try {
-      const base64 = bytesToBase64(new Uint8Array(await file.arrayBuffer()))
       const outcome = await translatePdf(realDeps(), {
-        name: file.name,
-        base64,
-        target,
+        name: job.name,
+        base64: job.base64,
+        target: job.target,
         signal: c.signal,
         onProgress: (progress) => setView({ kind: 'running', progress })
       })
@@ -130,6 +141,18 @@ function TranslatePdfDialog(): React.JSX.Element {
       else setView({ kind: 'error', reason: 'failed' })
     }
   }
+
+  const start = async (): Promise<void> => {
+    if (!file) return
+    const base64 = bytesToBase64(new Uint8Array(await file.arrayBuffer()))
+    await run({ name: file.name, base64, target })
+  }
+
+  // Desde la tarjeta del compositor ya está decidido el PDF y el idioma: arranca sola.
+  useEffect(() => {
+    if (preset) void run(preset)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir
+  }, [])
 
   const sizeMb = file ? (file.size / 1024 / 1024).toFixed(1) : ''
 
@@ -198,11 +221,17 @@ function TranslatePdfDialog(): React.JSX.Element {
               >
                 {TRANSLATE_LANGS.map((l) => (
                   <option key={l.code} value={l.code}>
-                    {l.name}
+                    {t(`translate.pdf.langName.${l.code}`)}
                   </option>
                 ))}
               </select>
             </label>
+            {model && (
+              <p className="mt-3 text-[12px] leading-snug text-muted">
+                {t('translate.pdf.model', { model: model.label })}
+                {model.free && <span className="mt-1 block text-warning">{t('translate.pdf.modelFree')}</span>}
+              </p>
+            )}
             <p className="mt-3 text-[12px] leading-snug text-muted">{t('translate.pdf.privacy')}</p>
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={close} className="no-drag rounded-ctl px-3 py-1.5 text-ui text-muted hover:bg-hover">
@@ -259,10 +288,10 @@ function TranslatePdfDialog(): React.JSX.Element {
               <button type="button" onClick={close} className="no-drag rounded-ctl px-3 py-1.5 text-ui text-muted hover:bg-hover">
                 {t('translate.pdf.close')}
               </button>
-              {view.reason !== 'aborted' && file && (
+              {view.reason !== 'aborted' && (file || lastRun.current) && (
                 <button
                   type="button"
-                  onClick={() => setView({ kind: 'pick' })}
+                  onClick={() => (preset && lastRun.current ? void run(lastRun.current) : setView({ kind: 'pick' }))}
                   className="no-drag rounded-ctl bg-accent px-3.5 py-1.5 text-ui font-medium text-accent-fg"
                 >
                   {t('translate.pdf.retry')}

@@ -5,6 +5,10 @@ import { useT } from '../../lib/i18n'
 import { useDraft } from '../../stores/drafts'
 import { isRemoteSurface, platformCaps } from '../../lib/platform'
 import { openTranslatePdf } from '../translate-pdf/TranslatePdfDialog'
+import { chatModelInfo } from '../translate-pdf/model-info'
+import { detectTranslateIntent } from '@shared/translate-intent'
+import type { TranslateIntent } from '@shared/translate-intent'
+import type { TranslateLangCode } from '@shared/translate-pdf'
 import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
 import {
@@ -94,6 +98,8 @@ export function ChatComposer({
   const [text, setText] = useDraft(`chat:${autoFocusKey ?? 'new'}`, '')
   const [attachments, setAttachments] = useDraft(`chat-att:${autoFocusKey ?? 'new'}`, NO_ATTACHMENTS)
   const [attachError, setAttachError] = useState<string | null>(null)
+  /** Tarjeta «¿traducir este PDF sin cambiar el diseño?»: aparece al enviar un PDF con una petición de traducir. */
+  const [offer, setOffer] = useState<{ intent: TranslateIntent; model: string | null } | null>(null)
   /** Nombres de documentos de oficina que main está convirtiendo a texto. */
   const [reading, setReading] = useState<string[]>([])
   const [dragging, setDragging] = useState(false)
@@ -138,6 +144,8 @@ export function ChatComposer({
   // Celular: tocar enviar/detener no debe quitar el foco (si no, el teclado se cierra y el pie reaparece moviendo el botón).
   const keepFocus = mobile ? (e: React.MouseEvent): void => e.preventDefault() : undefined
 
+  // Si la persona cambia el mensaje o los adjuntos, la oferta de traducir ya no corresponde.
+  useEffect(() => setOffer(null), [text, attachments])
   const canSend = !disabled && !busy && (text.trim().length > 0 || attachments.length > 0)
 
   /** Inserta el texto dictado en la posición del cursor (o al final si no hay foco en el textarea). */
@@ -185,10 +193,18 @@ export function ChatComposer({
     })
   }
 
-  const submit = (): void => {
+  const submit = (skipOffer = false): void => {
     if (!canSend) return
     const value = text.trim()
     const files = attachments
+    if (!skipOffer && !mobile && platformCaps().translatePdf) {
+      const intent = detectTranslateIntent(value, files, document.documentElement.lang === 'en' ? 'en' : 'es')
+      if (intent) {
+        setOffer({ intent, model: chatModelInfo()?.label ?? null })
+        return
+      }
+    }
+    setOffer(null)
     setText('')
     setAttachments([])
     setAttachError(null)
@@ -202,6 +218,18 @@ export function ChatComposer({
       .then((ok) => {
         if (ok === false) restore()
       }, restore)
+  }
+
+  /** «Traducir así»: la ventana arranca sola con el PDF y el idioma de la tarjeta; el mensaje no se envía. */
+  const acceptOffer = (): void => {
+    if (!offer) return
+    const file = attachments[offer.intent.fileIndex]
+    if (!file) return
+    const base64 = file.url.slice(file.url.indexOf(',') + 1)
+    openTranslatePdf({ name: file.name, base64, target: offer.intent.target })
+    setOffer(null)
+    setText('')
+    setAttachments([])
   }
 
   return (
@@ -242,6 +270,46 @@ export function ChatComposer({
           }
         }}
       >
+        {offer && attachments[offer.intent.fileIndex] && (
+          <div
+            role="group"
+            aria-label={t('translate.pdf.title')}
+            data-testid="translate-offer"
+            className="mx-2 mt-2 rounded-ctl border border-border bg-hover/60 p-3"
+          >
+            <p className="flex items-start gap-2 text-ui font-medium">
+              <Languages size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                {t('translate.pdf.offer.title', {
+                  name: attachments[offer.intent.fileIndex].name,
+                  lang: t(`translate.pdf.langName.${offer.intent.target as TranslateLangCode}`)
+                })}
+              </span>
+            </p>
+            {offer.model && (
+              <p className="mt-1 pl-[23px] text-[12px] text-muted">{t('translate.pdf.offer.note', { model: offer.model })}</p>
+            )}
+            <div className="mt-2.5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => submit(true)}
+                className="no-drag rounded-ctl px-3 py-1.5 text-ui text-muted hover:bg-hover"
+                data-testid="translate-offer-no"
+              >
+                {t('translate.pdf.offer.no')}
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={acceptOffer}
+                className="no-drag rounded-ctl bg-accent px-3.5 py-1.5 text-ui font-medium text-accent-fg"
+                data-testid="translate-offer-yes"
+              >
+                {t('translate.pdf.offer.yes')}
+              </button>
+            </div>
+          </div>
+        )}
         {showAttach && attachments.length > 0 && (
           <ul className={`flex flex-wrap gap-1.5 px-4 ${mobile ? 'pt-5' : 'pt-3'}`} aria-label={t('chat.composer.attach')}>
             {attachments.map((a) => (
@@ -365,7 +433,7 @@ export function ChatComposer({
             <button
               type="button"
               onMouseDown={keepFocus}
-              onClick={openTranslatePdf}
+              onClick={() => openTranslatePdf()}
               disabled={disabled}
               title={t('translate.pdf.open')}
               aria-label={t('translate.pdf.open')}
@@ -402,7 +470,7 @@ export function ChatComposer({
             <button
               type="button"
               onMouseDown={keepFocus}
-              onClick={submit}
+              onClick={() => submit()}
               disabled={!canSend}
               title={t('chat.composer.sendTitle')}
               aria-label={t('chat.composer.send')}
