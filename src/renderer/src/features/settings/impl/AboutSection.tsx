@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
-import { DISPLAY_NAME, INTERNAL_NAME } from '@shared/brand'
+import { DISPLAY_NAME, INTERNAL_NAME, RELEASES_REPO } from '@shared/brand'
 import type { VersionsInfo } from '@shared/ipc-extras'
 import type { AppInfo, OpencodeInfo } from '@shared/types'
 import { Button } from '../../../components/Button'
@@ -111,6 +111,11 @@ export function AboutSection(): React.JSX.Element {
           <span className="text-sm desk:text-meta desk:text-muted">{t('settings.about.creatorsNames')}</span>
         </Row>
         <Row label={t('settings.about.disclaimer')} />
+        <Row label={t('settings.about.license')} description={t('settings.about.licenseText')}>
+          <Button size="sm" onClick={() => open(`https://github.com/${RELEASES_REPO}`)}>
+            <ExternalLink size={13} /> {t('settings.about.seeSource')}
+          </Button>
+        </Row>
         <Row label={t('settings.about.craft')}>
           <span className="flex items-center gap-2">
             <span className="text-sm desk:text-meta desk:text-muted">{t('settings.about.craftCredit')}</span>

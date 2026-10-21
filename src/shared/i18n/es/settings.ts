@@ -248,6 +248,10 @@ export const settings = {
   'settings.about.creators': 'Creadores',
   'settings.about.creatorsNames': 'Benjamín Sánchez · Sebastián Rodríguez',
   'settings.about.disclaimer': 'Proyecto independiente, no afiliado a OpenCode ni a Anthropic.',
+  'settings.about.license': 'Licencia y código fuente',
+  'settings.about.licenseText':
+    'El código de Lazunox es abierto. La traducción de PDF usa PyMuPDF (licencia AGPL-3.0), por eso el código fuente completo de cada versión es público.',
+  'settings.about.seeSource': 'Ver el código',
   'settings.about.craft': 'Documentos',
   'settings.about.craftCredit': 'ArtCraft · storytold',
   'settings.about.seeMore': 'Ver más',

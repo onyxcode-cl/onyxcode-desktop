@@ -4,6 +4,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.4.0] - 2026-10-21
+
+### Novedades
+
+- **Traduce un PDF sin cambiar su diseño (Mac).** Adjunta un PDF en el Chat y escribe «tradúcelo al inglés»: Lazunox te pregunta si quieres traducirlo sin cambiar el diseño y, con un clic, escribe la traducción sobre el mismo PDF. Quedan las mismas hojas, la misma letra y tamaño, los colores, las tablas, los resaltados y los enlaces. También puedes empezar desde el ícono de traducir junto al clip. Elige entre inglés, español, portugués, francés, alemán e italiano, y al terminar lo abres o lo guardas donde quieras. La calidad depende del modelo que tengas elegido: con uno de pago sale mucho mejor que con uno gratuito (la ventana te lo avisa). Lazunox no paga nada por esto: usa tu propio modelo.
+- **También en Code y Overdrive.** Si le pides a la IA que traduzca un PDF, ahora usa esta misma herramienta en vez de armar su propio script.
+- **Los PDF que adjuntas llegan mejor al modelo.** Si el modelo lee PDF, se le envía el PDF tal cual (así ve las tablas y el diseño); si solo ve imágenes, se envían las páginas como imágenes; si solo lee texto, se envía el texto. Antes todos recibían lo mismo.
+
+### Mejoras
+
+- **«Acerca de» muestra la licencia y el enlace al código.** La traducción de PDF usa PyMuPDF (licencia AGPL-3.0), así que el código fuente completo de cada versión es público.
+
+### Para tener en cuenta
+
+- **Windows:** por ahora el botón de traducir PDF no aparece en Windows; llegará cuando la app de Windows incluya lo necesario.
+- **No traduce** PDF escaneados (sin texto), texto dentro de imágenes ni texto vertical. Word sigue enviándose al modelo como texto.
+- **Al actualizar, macOS puede pedirte una vez la contraseña del Llavero** («Lazunox Safe Storage»), porque cambia la firma de la app.
+
 ## [1.3.2] - 2026-10-19
 
 ### Mejoras

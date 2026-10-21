@@ -190,7 +190,7 @@ la seguridad, en [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md) y la verificación, 
 Pendiente: firma con Developer ID y notarización, y firma de código en Windows. Las actualizaciones se publican en GitHub Releases (ver
 [`docs/RELEASE.md`](./docs/RELEASE.md); el servidor propio queda como alternativa en [`docs/VPS.md`](./docs/VPS.md)) y la firma, en [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md).
 
-Licencia: pendiente de definir.
+Licencia: pendiente de definir. Piezas incluidas con licencia propia: ver `THIRD_PARTY_NOTICES.md`; en particular PyMuPDF (AGPL-3.0, traducción de PDF), por lo que el código fuente completo de cada versión distribuida es público.
 
 ## Privacidad
 
