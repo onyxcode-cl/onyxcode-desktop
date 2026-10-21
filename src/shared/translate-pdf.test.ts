@@ -40,13 +40,22 @@ describe('buildTranslatePrompt', () => {
     expect(p).toContain('into English')
     expect(p).toContain('"p1-0": "Hola <b>mundo</b>"')
     expect(p).toContain('siniestro → loss')
-    expect(p).toContain('highlighted text; wrap in [[ ]]')
-    expect(p).toContain('p1-1')
+    expect(p).toContain('highlighted parts')
+    expect(p).toContain('p1-1: "Excluye"') // se le dice QUÉ parte está resaltada, no solo el id
     expect(p).toContain('Do NOT translate code')
+  })
+  it('un texto resaltado entero no pide marcas [[ ]] (las pone la herramienta)', () => {
+    const p = buildTranslatePrompt({
+      target: 'en',
+      batch: [seg('p5-1', 'Todo resaltado', { resaltado: 'todo' })],
+      glossary: {},
+      docName: 'a.pdf'
+    })
+    expect(p).not.toContain('highlighted parts')
   })
   it('sin resaltados ni glosario no nombra [[ ]] por id ni glosario', () => {
     const p = buildTranslatePrompt({ target: 'es', batch: [seg('p1-0', 'Hello')], glossary: {}, docName: 'a.pdf' })
-    expect(p).not.toContain('These ids contain highlighted')
+    expect(p).not.toContain('highlighted parts')
     expect(p).not.toContain('glossary (source')
   })
 })

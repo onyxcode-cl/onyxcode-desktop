@@ -100,7 +100,8 @@ export function buildTranslatePrompt(opts: {
   const lang = TRANSLATE_LANGS.find((l) => l.code === opts.target)?.name ?? opts.target
   const items: Record<string, string> = {}
   for (const s of opts.batch) items[s.id] = s.texto
-  const marks = opts.batch.filter((s) => s.resaltado).map((s) => s.id)
+  // Solo los resaltados parciales: si todo el texto está resaltado, `translate_pdf.py` ya lo marca entero.
+  const marks = opts.batch.filter((s): s is PdfSegment & { resaltado: string[] } => Array.isArray(s.resaltado) && s.resaltado.length > 0)
   const gl = trimGlossary(opts.glossary)
   return [
     `You are a professional translator. Translate every text below into ${lang}. The texts come from the PDF "${opts.docName}"; each one sits in a fixed place of the page, so keep each translation about as long as the original.`,
@@ -110,7 +111,8 @@ export function buildTranslatePrompt(opts: {
     '- Do NOT translate code, commands, file names, paths, URLs, e-mail addresses or configuration keys. Proper names of people and companies stay as they are.',
     '- Keep the tags exactly where they belong around the equivalent translated words: <b>…</b> (bold), <c=#rrggbb>…</c> (color), <l=N>…</l> (link) and [[…]] (highlight).',
     marks.length
-      ? `- These ids contain highlighted text; wrap in [[ ]] the translated words that correspond to the highlighted part: ${marks.join(', ')}.`
+      ? '- Some texts have highlighted parts. For each id below, wrap in [[ ]] the words of YOUR translation that correspond to the highlighted part of the original (and only those):\n' +
+        marks.map((s) => `  ${s.id}: ${s.resaltado.map((r) => JSON.stringify(r)).join(' + ')}`).join('\n')
       : '',
     '- Never merge, split, drop or reorder the items: answer every id you received.',
     ...(Object.keys(opts.continuations ?? {}).length
