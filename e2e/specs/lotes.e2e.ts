@@ -154,10 +154,11 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3
     await a.page.keyboard.press('Escape')
     await act('Archivar')
     await expect.poll(() => a.page.locator('[aria-label^="Más acciones de la tarea «"]').count()).toBe(0)
-    await a.page.getByRole('button', { name: /^Archivadas/ }).click()
+    // En escritorio «Archivadas» es un botón de ícono (aria-label «Ver las tareas archivadas»); el de texto «Archivadas (n)» es solo del celular y está oculto.
+    await a.page.getByRole('button', { name: 'Ver las tareas archivadas' }).click()
     await expectVisible(a.page.getByRole('button', { name: 'Restaurar' }))
     await a.page.getByRole('button', { name: 'Restaurar' }).click()
-    await a.page.getByTitle('Volver a las tareas').click()
+    await a.page.getByRole('button', { name: 'Volver a las tareas' }).click() // el botón de texto del celular está oculto: solo cuenta el visible
     await expectVisible(a.page.locator('[aria-label^="Más acciones de la tarea «"]').first().locator('..'))
   })
 
@@ -168,11 +169,11 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3
     const more = a.page.locator('[aria-label^="Más acciones de la tarea «"]').first()
     await more.locator('xpath=ancestor::div[contains(@class,"group")][1]//button[contains(@class,"flex-1")]').click()
     await a.page.getByLabel('Más acciones de la tarea', { exact: true }).click()
-    await a.page.getByText('Exportar a Markdown', { exact: true }).click()
+    await a.page.getByText('Guardar como Markdown…', { exact: true }).click()
     await expect.poll(() => existsSync(out), { timeout: 15_000 }).toBe(true)
     const md = readFileSync(out, 'utf8')
     expect(md).toContain('Resume los informes de otra carpeta')
-    await expectVisible(a.page.getByText(`Conversación guardada en ${out}`))
+    await expectVisible(a.page.getByText(`Guardada en ${out}.`))
   })
 })
 
