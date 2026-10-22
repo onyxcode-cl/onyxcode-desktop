@@ -866,9 +866,15 @@ async function capture(tabId: string, maxLongSide: number): Promise<{ jpeg: Buff
   if (!tab || tab.destroyed) throw new Error('La pestaña ya no existe')
   // D0 corrección 1: NUNCA `webContents.capturePage` (cuelga si la vista no está visible). Siempre CDP.
   const session = await cdp(tabId)
-  const metrics = await session.send<{ contentSize: { width: number; height: number } }>('Page.getLayoutMetrics')
-  const cw = Math.max(1, Math.round(metrics.contentSize.width))
-  const ch = Math.max(1, Math.round(metrics.contentSize.height))
+  const metrics = await session.send<{
+    contentSize: { width: number; height: number }
+    cssContentSize?: { width: number; height: number }
+  }>('Page.getLayoutMetrics')
+  // `clip` va en píxeles CSS. `contentSize` (obsoleto) viene en píxeles de dispositivo: en una pantalla Retina (x2) medía el doble y la
+  // captura salía con la página en una esquina y el resto en blanco. `cssContentSize` es el valor correcto; el otro solo es respaldo.
+  const content = metrics.cssContentSize ?? metrics.contentSize
+  const cw = Math.max(1, Math.round(content.width))
+  const ch = Math.max(1, Math.round(content.height))
   const scale = Math.min(1, maxLongSide / Math.max(cw, ch))
   const res = await session.send<{ data: string }>('Page.captureScreenshot', {
     format: 'jpeg',
