@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
+import { normalizeEngineExperiments } from '@shared/engine-experiments'
 import { isLangPref, migrateLanguage } from '@shared/i18n'
 import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
 
@@ -83,7 +84,8 @@ function normalize(s: Settings): Settings {
     language: isLangPref(s.language) ? s.language : 'system',
     opencodeBin,
     checkUpdates: s.checkUpdates !== false,
-    learningEnabled: s.learningEnabled !== false
+    learningEnabled: s.learningEnabled !== false,
+    engineExperiments: normalizeEngineExperiments(s.engineExperiments)
   }
 }
 

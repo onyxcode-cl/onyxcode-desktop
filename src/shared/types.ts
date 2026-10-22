@@ -1,5 +1,6 @@
 /** Tipos de dominio compartidos entre main, preload y renderer. */
 import type { LangPref } from './i18n'
+import { ENGINE_EXPERIMENTS_DEFAULTS } from './engine-experiments'
 
 export type ModeId = 'chat' | 'code' | 'tasks' | 'routines' | 'gallery'
 
@@ -8,6 +9,19 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 export interface ModelRef {
   providerID: string
   modelID: string
+}
+
+/** Interruptor por modo (Overdrive = `tasks`). */
+export interface ModeFlags {
+  chat: boolean
+  code: boolean
+  tasks: boolean
+}
+
+/** Funciones experimentales del motor; ver `engine-experiments.ts`. Cambiarlas exige reiniciar el motor. */
+export interface EngineExperiments {
+  codeMode: ModeFlags
+  backgroundSubagents: ModeFlags
 }
 
 export interface Settings {
@@ -34,6 +48,8 @@ export interface Settings {
    * apruebe la tarjeta; esto solo decide si el agente puede proponer. `true` por defecto.
    */
   learningEnabled: boolean
+  /** Funciones experimentales del motor por modo (Modo código, subagentes en segundo plano). Apagadas por defecto; el celular no las escribe. */
+  engineExperiments: EngineExperiments
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -49,7 +65,8 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'system',
   opencodeBin: '',
   checkUpdates: true,
-  learningEnabled: true
+  learningEnabled: true,
+  engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'

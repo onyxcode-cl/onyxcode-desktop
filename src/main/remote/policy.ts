@@ -192,6 +192,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   userInstructions: 'X',
   // «Aprender de las tareas» (memoria aprendida, 2026-10-07): X, como el resto de lo que no se toca desde el celular.
   learningEnabled: 'X',
+  // Funciones experimentales del motor (Modo código, subagentes de fondo): superficie de ataque; el celular NO las enciende.
+  engineExperiments: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
   opencodeBin: 'X',
   checkUpdates: 'X',

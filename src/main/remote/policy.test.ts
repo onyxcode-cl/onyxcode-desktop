@@ -410,6 +410,13 @@ describe('settings:set y setters por campos', () => {
       expect(cls(ipc('settings:set', { [f]: true })), f).toBe(`deny:field-forbidden:${f}`)
     expect(cls(ipc('settings:set', {}))).toBe('deny:empty-payload')
   })
+  it('settings:set{engineExperiments} es X: el celular no activa Code Mode ni subagentes de fondo', () => {
+    const off = { chat: false, code: false, tasks: false }
+    const ee = { codeMode: { ...off, code: true }, backgroundSubagents: off }
+    expect(cls(ipc('settings:set', { engineExperiments: ee }))).toBe('deny:field-forbidden:engineExperiments')
+    expect(cls(ipc('settings:set', { theme: 'dark', engineExperiments: ee }))).toBe('deny:field-forbidden:engineExperiments')
+    expect(cls(ipc('settings:set', { engineExperiments: {} }))).toBe('deny:field-forbidden:engineExperiments')
+  })
   it('settings:set solo defaultModel/theme/language son M', () => {
     expect(cls(ipc('settings:set', { theme: 'dark' }))).toBe('M')
     expect(cls(ipc('settings:set', { defaultModel: model, language: 'en' }))).toBe('M')

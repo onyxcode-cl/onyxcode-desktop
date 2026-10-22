@@ -110,6 +110,9 @@ const id = str({ max: 200, min: 1 })
 const shortText = str({ max: 500 })
 /** Id de sesión de OpenCode (`ses_…`). */
 const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
+const modeFlags = obj({ chat: bool, code: bool, tasks: bool })
+/** `settings:set.engineExperiments`: booleanos exactos, todas las claves obligatorias, sin extras. */
+const engineExperimentsShape = obj({ codeMode: modeFlags, backgroundSubagents: modeFlags })
 const modelRef = obj({ providerID: str({ max: 200, min: 1 }), modelID: str({ max: 200, min: 1 }) })
 const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
@@ -621,7 +624,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     routinesTermsAcknowledged: bool,
     checkUpdates: bool,
     learningEnabled: bool,
-    language: literal('system', 'es', 'en')
+    language: literal('system', 'es', 'en'),
+    engineExperiments: engineExperimentsShape
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq
