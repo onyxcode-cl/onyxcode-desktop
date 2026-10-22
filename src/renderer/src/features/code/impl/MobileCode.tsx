@@ -17,7 +17,7 @@ import { errorMessage } from './client'
 import { SheetAction } from './SheetAction'
 import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
-import { useCode } from './store'
+import { selectCodeRunOf, useCode } from './store'
 import './mobile.css'
 
 /**
@@ -101,7 +101,7 @@ export function CodeActionsSheet({ open }: { open: boolean }): React.JSX.Element
   const nav = useMobileNavStore
   const close = (): void => nav.getState().pop()
   const activeSessionID = useCode((s) => s.activeSessionID)
-  const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
+  const run = useCode((s) => selectCodeRunOf(s, s.activeSessionID))
   const forkSession = useCode((s) => s.forkSession)
   const compactSession = useCode((s) => s.compactSession)
   const closeProject = useCode((s) => s.closeProject)

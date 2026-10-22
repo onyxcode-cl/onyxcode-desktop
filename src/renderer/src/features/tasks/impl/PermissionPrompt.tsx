@@ -23,6 +23,7 @@ import { metadataJson, parseMcpPermission, showAlways } from './conversation-log
 import { FolderRequestCard } from './FolderRequestCard'
 import { permActions } from './perm-actions'
 import { useShowPath } from './conn-paths'
+import { useTaskSubagentOfRequest } from './subagent-of-request'
 import { useTasks } from './store'
 import { baseName, rememberablePatterns } from './util'
 
@@ -164,6 +165,14 @@ export function describePermission(
   }
 }
 
+/** Título de la solicitud; si la pide un ayudante (subagente) lo dice: «Ayudante «X»: …». */
+export function useRequestTitle(request: PermissionRequest, title: string): string {
+  const t = useT()
+  const sub = useTaskSubagentOfRequest(request.sessionID)
+  if (!sub.child) return title
+  return sub.name ? t('tasks.perm.subagentTitle', { name: sub.name, title }) : t('tasks.perm.subagentTitleAnon', { title })
+}
+
 /** Nombres de los conectores MCP del usuario (una sola consulta): sirven para separar «servidor_herramienta». */
 let mcpNamesPromise: Promise<string[]> | null = null
 export function useMcpServers(): string[] {
@@ -272,6 +281,9 @@ export function RejectWithNote({
 /** ¿Se ofrece «Siempre»? Oculto con la política `disableAlwaysAllow` o si nada de la petición se puede recordar. */
 export function useCanAlways(request: PermissionRequest, danger: boolean): boolean {
   const disable = useTasks((s) => s.policy?.disableAlwaysAllow === true)
+  // Un ayudante (subagente) nunca ofrece «Siempre»: la regla se guardaría para la carpeta y ampliaría lo que la persona permitió.
+  const { child } = useTaskSubagentOfRequest(request.sessionID)
+  if (child) return false
   return showAlways({ danger, disableAlwaysAllow: disable, rememberableCount: rememberablePatterns(request).length })
 }
 
@@ -300,6 +312,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
   const servers = useMcpServers()
   const showPath = useShowPath()
   const d = describePermission(request, servers, showPath)
+  const title = useRequestTitle(request, d.title)
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
@@ -322,7 +335,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
           <Icon size={16} className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[17px] leading-6 font-semibold">{d.title}</p>
+          <p className="text-[17px] leading-6 font-semibold">{title}</p>
           <p className="mt-0.5 text-sm leading-5 text-muted">{d.effect}</p>
           {d.detail && (
             <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-code px-2.5 py-1.5 font-mono text-xs leading-[18px] whitespace-pre-wrap">
@@ -486,6 +499,7 @@ function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more
   const servers = useMcpServers()
   const showPath = useShowPath()
   const d = describePermission(request, servers, showPath)
+  const title = useRequestTitle(request, d.title)
   const { busy, error, answer } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon
@@ -504,7 +518,7 @@ function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more
         <Icon size={16} className={`shrink-0 ${d.danger ? 'text-danger' : 'text-warning'}`} />
         <button type="button" className="min-w-0 flex-1 text-left" title={t('tasksComputer.perm.details')} onClick={review}>
           <span className="block truncate text-sm font-medium">
-            {d.title}
+            {title}
             {more > 0 && <span className="ml-1.5 text-xs font-normal text-muted">{t('tasksComputer.perm.more', { more })}</span>}
           </span>
           <span className="block truncate font-mono text-[11px] desk:text-meta text-muted">{error ?? d.detail}</span>

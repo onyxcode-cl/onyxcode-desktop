@@ -68,7 +68,7 @@ import { TerminalPanel } from './panels/TerminalPanel'
 import { ShellRunProvider } from './ShellRunProvider'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
 import { askCloseProject, SessionList } from './SessionList'
-import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
+import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootSessionID, selectCodeRunOf, useCode } from './store'
 import { TodoList } from './ToolCard'
 import { PlanCard } from './PlanCard'
 import type { RightPanel } from './types'
@@ -591,7 +591,9 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const bindings = useEffectiveBindings()
   const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
   const activeSessionID = useCode((s) => s.activeSessionID)
-  const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
+  // Cuenta también a los ayudantes en segundo plano: la raíz puede figurar `idle` mientras ellos trabajan.
+  const run = useCode((s) => selectCodeRunOf(s, s.activeSessionID))
+  const helpers = useCode((s) => (s.activeSessionID ? liveHelperCount(s, s.activeSessionID) : 0))
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const abort = useCode((s) => s.abort)
@@ -622,7 +624,10 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {busy && (
-          <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
+          <Tip
+            label={helpers > 0 ? t('code.toolbar.stopAll', { count: helpers }) : t('code.toolbar.stop')}
+            shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}
+          >
             <button
               type="button"
               aria-label={t('code.toolbar.stop')}

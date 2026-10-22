@@ -681,10 +681,13 @@ export function handleEvent(event: OcEvent, directory: string): void {
     }
   } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'approval', t('tasks.notify.approval'), taskTitle(id))
+    // Un ayudante (subagente) pide permiso: el aviso lo dice y abre la tarea raíz.
+    const sub = id !== event.properties.sessionID
+    notifyTask(id, 'approval', t(sub ? 'tasks.notify.approvalSub' : 'tasks.notify.approval'), taskTitle(id))
   } else if (event.type === 'question.asked' && !st.questions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'question', t('tasks.notify.question'), taskTitle(id))
+    const sub = id !== event.properties.sessionID
+    notifyTask(id, 'question', t(sub ? 'tasks.notify.questionSub' : 'tasks.notify.question'), taskTitle(id))
   }
   switch (event.type) {
     case 'todo.updated':

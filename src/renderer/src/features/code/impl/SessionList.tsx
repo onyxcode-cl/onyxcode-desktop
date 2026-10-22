@@ -35,7 +35,8 @@ import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
 import { openProjectTrusted } from './trust'
-import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
+import { rootSessionID, selectCodeBackgroundBusyRoots, selectProjectIsLive, selectProjectSessions, useCode } from './store'
+import { withBackgroundBusy } from './child-sessions'
 import { timeAgo } from './ui'
 import { waitingRoots } from './code-home'
 import { deriveSessionState, legacyBaseline, matchesSessionFilter, sessionNeedsReview, summarySignature } from './review-logic'
@@ -577,7 +578,10 @@ function ProjectGroup({
   const t = useT()
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const activeSessionID = useCode((s) => s.activeSessionID)
-  const runState = useCode((s) => s.runState)
+  const rawRunState = useCode((s) => s.runState)
+  // Una conversación con ayudantes trabajando en segundo plano figura «trabajando» aunque su propia sesión esté en reposo.
+  const bgBusyRoots = useCode(useShallow(selectCodeBackgroundBusyRoots))
+  const runState = useMemo(() => withBackgroundBusy(rawRunState, bgBusyRoots), [rawRunState, bgBusyRoots])
   const convErrors = useCode((s) => s.errors)
   const unread = useCode((s) => s.unread)
   const reviewed = useCode((s) => s.reviewed)

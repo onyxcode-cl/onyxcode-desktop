@@ -22,6 +22,7 @@ import { isMacPlatform } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
 import { DiffStats, relPath } from './ToolCard'
 import { useCode } from './store'
+import { useSubagentOfRequest } from './subagent-of-request'
 import type { PendingPermission } from './types'
 
 const PERMISSION_LABEL: Record<string, MsgKey> = {
@@ -51,6 +52,7 @@ export function PermissionCardDesk({
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
   const mac = isMacPlatform()
+  const sub = useSubagentOfRequest(request.sessionID)
   const run = useCallback(
     (r: 'once' | 'always' | 'reject'): void => {
       if (busyRef.current) return
@@ -78,15 +80,20 @@ export function PermissionCardDesk({
     request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
 
   const actions: PermAction[] = [
-    {
-      label: t('code.perm.always'),
-      variant: 'secondary',
-      side: 'left',
-      permit: true,
-      act: 'always',
-      title: request.always.length ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') }) : undefined,
-      onClick: () => run('always')
-    },
+    // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
+    ...(sub.child
+      ? []
+      : [
+          {
+            label: t('code.perm.always'),
+            variant: 'secondary' as const,
+            side: 'left' as const,
+            permit: true,
+            act: 'always' as const,
+            title: request.always.length ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') }) : undefined,
+            onClick: () => run('always')
+          }
+        ]),
     { label: t('code.perm.reject'), variant: 'secondary', side: 'right', kbd: t('code.perm.kbdReject'), onClick: () => run('reject') },
     {
       label: t('code.perm.once'),
@@ -148,7 +155,13 @@ export function PermissionCardDesk({
       armed={armed}
       busy={busy}
       icon={Icon}
-      title={t('code.perm.agentWants', { label })}
+      title={
+        sub.child
+          ? sub.name
+            ? t('code.perm.subagentWants', { name: sub.name, label })
+            : t('code.perm.subagentWantsAnon', { label })
+          : t('code.perm.agentWants', { label })
+      }
       preview={previewNode}
       details={details}
       detailsOpen={openDetails}

@@ -4,6 +4,7 @@ import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } 
 import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
 import { SessionsBackgroundJobs } from '../code/impl/BackgroundJobsConnectors'
+import { rootOf } from '../code/impl/child-sessions'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { LogoMark } from '../../components/Logo'
 import { ChatMessageList } from './ChatMessageList'
@@ -79,7 +80,13 @@ export function ChatView(): React.JSX.Element {
   const activeId = useChat((s) => s.activeSessionId)
   const session = useSessions((s) => (activeId ? s.sessions[activeId] : undefined))
   const allQuestions = useChat((s) => s.questions)
-  const questions = useMemo(() => Object.values(allQuestions).filter((q) => q.sessionID === activeId), [allQuestions, activeId])
+  const allSessions = useSessions((s) => s.sessions)
+  // Las preguntas de un ayudante (sesión hija) se ven en la conversación de su raíz.
+  const questions = useMemo(
+    () =>
+      Object.values(allQuestions).filter((q) => !!activeId && (q.sessionID === activeId || rootOf(allSessions, q.sessionID) === activeId)),
+    [allQuestions, allSessions, activeId]
+  )
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   /** El motor está reintentando (p. ej. el modelo no está disponible): se dice en vez de quedarse en «Pensando…». */

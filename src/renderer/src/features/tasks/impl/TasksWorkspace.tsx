@@ -85,6 +85,7 @@ import { NetworkBlockedCards } from './NetworkBlocked'
 import { RestoreNotices } from './RestoreNotices'
 import { ApprovalBar } from './PermissionPrompt'
 import { QuestionCard } from './QuestionPrompt'
+import { backgroundBusyRoots } from '../../code/impl/child-sessions'
 import { ProgressPanel } from './ProgressPanel'
 import { ProjectPanel } from './ProjectPanel'
 import { SideChat } from './SideChat'
@@ -349,6 +350,13 @@ export function TasksWorkspace(): React.JSX.Element {
   const session = activeId ? sessions[activeId] : undefined
   const allEntries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const run = useSessions((s) => (activeId ? s.status[activeId] : undefined))
+  // Solo para el ESTADO visible de la tarea: si sus ayudantes en segundo plano siguen trabajando, no figura «lista». El compositor
+  // (enviar / detener) sigue usando `run` de la propia sesión para no impedir escribir mientras ellos trabajan.
+  const helpersWorking = useSessions(
+    (s) =>
+      !!activeId &&
+      backgroundBusyRoots({ sessions: s.sessions, status: s.status, messages: s.messages, errors: s.errors }).includes(activeId)
+  )
   const interrupted = useTasks((s) => (activeId ? !!s.interrupted[activeId] : false))
   const taskError = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const requestedFullAccess = useTasks((s) => s.fullAccess)
@@ -550,7 +558,7 @@ export function TasksWorkspace(): React.JSX.Element {
 
   const status = activeId
     ? taskStatus({
-        run,
+        run: helpersWorking && (!run || run === 'idle') ? 'busy' : run,
         waiting: pendingForTask.length > 0,
         hasQuestion: pendingQuestionsForTask.length > 0,
         error: taskError,

@@ -48,6 +48,7 @@ import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { phoneSafeAttachments } from './mobile-logic'
 import { mentionMime } from './mention-mime'
+import { backgroundBusyRoots, effectiveRun, isChildRequest, liveBackgroundChildIds, type RunStatus } from './child-sessions'
 import { acceptFilesIn, acceptSessionIn, parseReviewed, trimReviewed, withBaseline, type ReviewRecord } from './review-logic'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import { ELEMENT_METADATA, elementPartsOf, elementTextsOf, isElementAttachment } from '../../browser/element-context'
@@ -743,13 +744,16 @@ export const useCode = create<CodeState>((set, get) => {
   }
 
   /** Notificación nativa para `sessionID` (salvo que sea la activa y la ventana tenga el foco). */
-  const notifyCode = (sessionID: string, title: string): void => {
+  const notifyCode = (sessionID: string, title: string, subTitle?: string): void => {
     const s = get()
-    if (s.activeSessionID === sessionID && windowIsFocused()) return
     const root = rootSessionID(s.sessions, sessionID)
+    // La petición de un subagente se ve en la conversación de su raíz: si esa está abierta y con foco, no se avisa.
+    if (s.activeSessionID === root && windowIsFocused()) return
     const directory = s.sessionProject[root] ?? s.directory ?? undefined
-    const body = s.sessions[sessionID]?.title || t('code.store.sessionTitle')
-    sendNotification(title, body, { mode: 'code', id: root, directory })
+    // Una hija avisa con el título de la conversación (raíz) y dice que es un ayudante; el aviso abre la raíz.
+    const isSub = root !== sessionID
+    const body = s.sessions[isSub ? root : sessionID]?.title || t('code.store.sessionTitle')
+    sendNotification(isSub && subTitle ? subTitle : title, body, { mode: 'code', id: root, directory })
   }
 
   /** Si hay mensajes en cola para `sessionID`, envía el primero (se llama al quedar libre). */
@@ -1023,7 +1027,19 @@ export const useCode = create<CodeState>((set, get) => {
     abort: async () => {
       try {
         const { client, dir, sid } = activeDir()
+        // Detener la conversación también detiene a sus ayudantes en segundo plano (el motor lo hace con la raíz; aquí se pide
+        // explícitamente para no depender de ello y para cubrir hijas que sigan vivas tras abortar).
+        const s = get()
+        const kids = liveBackgroundChildIds({
+          rootId: sid,
+          sessions: s.sessions,
+          status: s.runState,
+          messages: s.messages,
+          errors: s.errors,
+          pending: [...Object.values(s.permissions), ...Object.values(s.questions)].map((x) => x.sessionID)
+        })
         sdkData(await client.session.abort({ sessionID: sid, directory: dir }))
+        await Promise.allSettled(kids.map((id) => client.session.abort({ sessionID: id, directory: s.sessionProject[id] ?? dir })))
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }
@@ -1129,10 +1145,13 @@ export const useCode = create<CodeState>((set, get) => {
       }
     },
 
-    replyPermission: async (p, reply) => {
+    replyPermission: async (p, requested) => {
       try {
         const client = requireClient()
         const dir = get().sessionProject[p.sessionID] ?? get().directory ?? undefined
+        // «Siempre» desde un subagente NO se concede: el motor lo guardaría para todo el proyecto y ampliaría lo que la persona
+        // permitió a la conversación. Una hija solo recibe «una vez» o «rechazar» (la tarjeta tampoco ofrece «siempre»).
+        const reply = requested === 'always' && isChildRequest(get().sessions, p.sessionID, get().activeSessionID) ? 'once' : requested
         if (p.api === 'v2') {
           sdkData(await client.v2.session.permission.reply({ sessionID: p.sessionID, requestID: p.id, reply }))
         } else {
@@ -1567,7 +1586,7 @@ export const useCode = create<CodeState>((set, get) => {
           }
           if (autoApproveReadOnly(pending)) break
           markUnread(rootSessionID(get().sessions, p.sessionID))
-          notifyCode(p.sessionID, t('code.store.notifyApproval'))
+          notifyCode(p.sessionID, t('code.store.notifyApproval'), t('code.store.notifyApprovalSub'))
           set((s) => ({ permissions: { ...s.permissions, [p.id]: pending } }))
           break
         }
@@ -1586,7 +1605,7 @@ export const useCode = create<CodeState>((set, get) => {
           }
           if (autoApproveReadOnly(pending)) break
           markUnread(rootSessionID(get().sessions, p.sessionID))
-          notifyCode(p.sessionID, t('code.store.notifyApproval'))
+          notifyCode(p.sessionID, t('code.store.notifyApproval'), t('code.store.notifyApprovalSub'))
           set((s) => ({ permissions: { ...s.permissions, [p.id]: pending } }))
           break
         }
@@ -1605,7 +1624,7 @@ export const useCode = create<CodeState>((set, get) => {
           const q = event.properties
           if (!adopt(q.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, q.sessionID))
-          notifyCode(q.sessionID, t('code.store.notifyQuestion'))
+          notifyCode(q.sessionID, t('code.store.notifyQuestion'), t('code.store.notifyQuestionSub'))
           set((s) => ({ questions: { ...s.questions, [q.id]: { id: q.id, sessionID: q.sessionID, questions: q.questions } } }))
           break
         }
@@ -1636,6 +1655,40 @@ export function rootSessionID(sessions: Record<string, Session>, sessionID: stri
     id = parent
   }
   return id
+}
+
+/** Raíces que figuran `idle` pero cuyas hijas (subagentes en segundo plano) siguen trabajando. Para `useShallow`. */
+export function selectCodeBackgroundBusyRoots(s: Pick<CodeState, 'sessions' | 'runState' | 'messages' | 'errors'>): string[] {
+  return backgroundBusyRoots({ sessions: s.sessions, status: s.runState, messages: s.messages, errors: s.errors })
+}
+
+/** Estado de ejecución «visible» de una conversación: el suyo, o `busy` si solo trabajan sus ayudantes en segundo plano. */
+export function selectCodeRunOf(
+  s: Pick<CodeState, 'sessions' | 'runState' | 'messages' | 'errors'>,
+  sessionID: string | null | undefined
+): RunStatus | undefined {
+  if (!sessionID) return undefined
+  const run = s.runState[sessionID] as RunStatus | undefined
+  if (run === 'busy' || run === 'retry') return run
+  return effectiveRun(run, sessionID, selectCodeBackgroundBusyRoots(s))
+}
+
+/** Cuántos ayudantes en segundo plano de `sessionID` siguen vivos (trabajando o esperando permiso). */
+export function liveHelperCount(
+  s: Pick<CodeState, 'sessions' | 'runState' | 'messages' | 'errors' | 'permissions' | 'questions'>,
+  sessionID: string
+): number {
+  // Salida rápida (es el caso normal): sin ninguna hija trabajando no hay nada que contar.
+  if (!selectCodeBackgroundBusyRoots(s).includes(sessionID) && !(s.runState[sessionID] === 'busy' || s.runState[sessionID] === 'retry'))
+    return 0
+  return liveBackgroundChildIds({
+    rootId: sessionID,
+    sessions: s.sessions,
+    status: s.runState,
+    messages: s.messages,
+    errors: s.errors,
+    pending: [...Object.values(s.permissions), ...Object.values(s.questions)].map((x) => x.sessionID)
+  }).length
 }
 
 /** Sesiones raíz (no archivadas) del proyecto, más recientes primero. */
