@@ -30,6 +30,10 @@ function report(view: string, v: Record<'light' | 'dark', AxeViolation[]>): void
 
 /** axe sobre la página; falla con violaciones serias/críticas/moderadas (RC_AUDIT=1 solo las imprime). */
 async function clean(page: Page, view: string): Promise<void> {
+  // Un tooltip (role=tooltip, en el body, fuera de todo landmark) sale solo porque el ratón quedó sobre un control tras el último
+  // clic; no es contenido de la vista. Se aparta el puntero y se espera a que se cierre antes de medir.
+  await page.mouse.move(1, 1)
+  await expectCount(page.locator('body > [role="tooltip"]'), 0, 5_000) // el de `Tooltip.tsx` (portal); los de ui.tsx viven en su botón, ocultos por CSS
   const v = await runAxe(page)
   report(view, v)
   const bad = [...v.light, ...v.dark].filter((x) => x.impact && SERIOUS.has(x.impact))
@@ -73,6 +77,14 @@ const routine = (id: string, name: string, enabled: boolean): Record<string, unk
   createdAt: Date.now(),
   updatedAt: Date.now()
 })
+/**
+ * Abre un panel del proyecto (Cambios, Terminal, Archivos) si no es el que ya está abierto. El nombre del botón se repite: la barra del
+ * proyecto lo tiene (y se oculta cuando el panel derecho la cubre) y el panel abierto lleva sus pestañas; se pulsa el visible.
+ */
+async function openPanel(page: Page, name: string): Promise<void> {
+  if ((await page.getByRole('complementary', { name, exact: true }).count()) > 0) return
+  await page.locator(`button[aria-label="${name}"]:visible`).first().click()
+}
 const nav = (page: Page, name: string): Promise<void> => page.locator('nav[aria-label="Modo"]').getByRole('button', { name }).click()
 
 // ───────────────────────── Ajustes, Rutinas, diálogos y ventanas propias ─────────────────────────
@@ -236,14 +248,14 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     const a = app
     await passWelcome(a.page)
     const d = a.page.getByRole('dialog')
-    await expectVisible(d.getByRole('heading', { name: 'Instala o localiza OpenCode' }))
-    await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el binario' }))
+    await expectVisible(d.getByRole('heading', { name: 'Falta el programa de la IA' }))
+    await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el motor de la IA' }))
     await clean(a.page, 'asistente:paso1-error')
     await shot(a, SHOTS, 'asistente-paso1')
     await expectFocusContract(a.page, d, null, false)
 
     await stubDialog(a.electronApp, { openPaths: [fakeBin.bin] })
-    await d.getByRole('button', { name: 'Elegir binario…' }).click()
+    await d.getByRole('button', { name: 'Elegir el programa…' }).click()
     await expectVisible(d.getByText('OpenCode está en marcha.'))
     await expect.poll(() => d.getByRole('button', { name: 'Continuar' }).isEnabled()).toBe(true)
     await clean(a.page, 'asistente:paso1-listo')
@@ -313,8 +325,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
       ['Terminal', null],
       ['Archivos', /README\.md/]
     ] as const) {
-      const btn = a.page.locator(`button[aria-label="${name}"]`)
-      if ((await btn.getAttribute('aria-pressed')) !== 'true') await btn.click()
+      await openPanel(a.page, name)
       if (text) await expectVisible(a.page.getByText(text).first(), 20_000)
       await a.page.waitForTimeout(700)
       await clean(a.page, `code:panel-${name}`)
@@ -335,7 +346,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
   it('Code: diálogo «Nueva rama en un worktree» con foco contenido', async () => {
     const a = app()
     const opener = a.page.getByRole('button', { name: 'Nueva rama / worktree' }).first()
-    if (!(await opener.isVisible())) await a.page.locator('button[aria-label="Cambios"]').click()
+    if (!(await opener.isVisible())) await openPanel(a.page, 'Cambios')
     await expectVisible(opener, 20_000)
     await opener.click()
     const dlg = a.page.getByRole('dialog', { name: 'Nueva rama en un worktree' })
@@ -429,7 +440,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Code y Tareas (${MODE})`, () => 
     await shot(a, SHOTS, 'tareas-pregunta')
     await a.page.getByRole('button', { name: 'Omitir', exact: true }).first().click()
     // Escalada
-    await scriptFor(fake, 'tarea que escala', 'Esto necesita control total del Mac. [[LAZUNOX:NEEDS_FULL_CONTROL]]')
+    await scriptFor(fake, 'tarea que escala', 'Esto necesita control total del Mac.\n[[LAZUNOX:NEEDS_FULL_CONTROL]]')
     await send('tarea que escala')
     const esc = a.page.getByRole('button', { name: /control total/i }).first()
     await expectVisible(esc, 30_000)
