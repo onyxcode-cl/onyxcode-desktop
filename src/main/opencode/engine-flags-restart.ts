@@ -55,10 +55,44 @@ export interface EngineFlagsRestartDeps {
 
 const sameEnv = (a: Env, b: Env): boolean => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
 
-/** Consulta real a `GET /session/status?directory=…` de cada directorio; cualquier fallo = no ocioso. */
+/** Tope de sesiones recientes que se piden para descubrir carpetas que Lazunox no tiene anotadas. */
+const DISCOVER_LIMIT = 200
+
+/**
+ * Carpetas donde el motor tiene sesiones recientes (`GET /experimental/session`, de todos los proyectos), incluidas las
+ * hijas (subagentes). Sirve para no depender solo de `chatDirectory` y `recentFolders`: un subagente de fondo o una
+ * sesión de una carpeta que ya no figura en recientes también cuenta como «en curso». Mejor esfuerzo: si el motor no
+ * tiene la ruta o falla, se devuelve `[]` y se sigue con las carpetas conocidas.
+ */
+async function discoverDirectories(baseUrl: string, authorization: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${baseUrl}/experimental/session?limit=${DISCOVER_LIMIT}&archived=false`, {
+      headers: { Authorization: authorization },
+      signal: AbortSignal.timeout(3000)
+    })
+    if (!res.ok) return []
+    const body = (await res.json()) as unknown
+    if (!Array.isArray(body)) return []
+    const dirs = new Set<string>()
+    for (const row of body) {
+      const dir = (row as { directory?: unknown } | null)?.directory
+      if (typeof dir === 'string' && dir) dirs.add(dir)
+    }
+    return [...dirs]
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Consulta real a `GET /session/status?directory=…` de cada carpeta (las dadas MÁS las que el motor conoce); cualquier fallo
+ * = no ocioso. El mapa de estados es por sesión e incluye a las HIJAS: un subagente `busy` (también uno en segundo plano,
+ * cuya sesión raíz figura ociosa mientras trabaja) hace que la carpeta no esté ociosa.
+ */
 export async function fetchSessionsIdle(baseUrl: string, authorization: string, directories: string[]): Promise<boolean> {
   try {
-    for (const dir of directories) {
+    const dirs = [...new Set([...directories, ...(await discoverDirectories(baseUrl, authorization))])]
+    for (const dir of dirs) {
       const res = await fetch(`${baseUrl}/session/status?directory=${encodeURIComponent(dir)}`, {
         headers: { Authorization: authorization },
         signal: AbortSignal.timeout(3000)
