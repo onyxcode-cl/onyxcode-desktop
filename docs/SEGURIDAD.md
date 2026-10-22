@@ -1347,7 +1347,7 @@ instalación del plugin por red no funcionan bajo el arnés de pruebas y son aje
 
 - El token de sesión SÍ es legible por el agente (está en el entorno de `opencode serve`) y sirve contra el proxy mientras el servidor viva: el agente puede llamar a esos MCP con `curl` saltándose «Preguntar en cada uso», que es un permiso de OpenCode, no del proxy. Antes podía lo mismo con el token real y
   además usarlo desde cualquier sitio y para siempre; ahora el alcance es un solo servidor MCP, solo mientras vive el servidor de la Tarea (y ≤ 12 h). Lo mismo ocurre con el token del `CredentialProxy` en el `baseURL` del proveedor.
-- `OPENCODE_SERVER_PASSWORD` sigue en ese entorno: da acceso al propio servidor sandboxeado (el mismo agente), no a nada de fuera. Desde F8-B208 el perfil permite además la SALIDA hacia ese puerto (cliente de los plugins), así que un comando del sandbox puede usarla: ver §3 sexagies ter.
+- `OPENCODE_SERVER_PASSWORD` sigue en ese entorno: da acceso al propio servidor sandboxeado (el mismo agente), no a nada de fuera. El perfil NO permite la salida hacia ese puerto desde el sandbox, y así debe seguir: con la salida abierta un comando del sandbox usa la API completa del motor (comprobado; §3 sexagies ter).
 - Secretos puestos por el usuario en `command` (p. ej. `--token xyz`) o `cwd` de un MCP local no se detectan: siguen yendo al proceso.
 - Servidor remoto con SSE antiguo que anuncie un `endpoint` en forma ABSOLUTA (otro host): el cliente iría directo por la red de salida sin credenciales y fallaría; el transporte HTTP en streaming y el SSE con ruta relativa funcionan (la ruta del destino se conserva en el proxy).
 - Un MCP remoto configurado por el usuario hacia un host local/privado se alcanza tal cual (es el destino que él eligió); el proxy no filtra por IP, solo por la lista cerrada de rutas registradas.
@@ -2278,41 +2278,61 @@ Pruebas: `src/main/opencode/code-mcp-permission.test.ts`, `server.engine-flags.t
 `src/renderer/src/features/code/impl/store.permisos.test.ts`, `EngineExperimentsSection.test.tsx`; y `scripts/engine-probe/run.mjs`
 (manual, motor real; `--shell-bg <cjs>` añade el `bgshell` real).
 
-## 3 sexagies ter. Overdrive con Seatbelt: salida al puerto propio del servidor (F8-B208, ZONA INTOCABLE)
+## 3 sexagies ter. Overdrive con Seatbelt: canal de solo lectura para el guardián de subagentes (F8-B208, ZONA INTOCABLE)
 
 Contexto: la prueba real con OpenCode Go (2026-10-22) halló que en Overdrive (servidor de Tareas con Seatbelt) **todo** `task` se
-bloqueaba con «Lanzamiento de subagente bloqueado por Lazunox: sesion desconocida.», también el de `lazunox-helper`, mientras que en
-Code (sidecar sin Seatbelt) el mismo guardián funcionaba.
+bloqueaba con «Lanzamiento de subagente bloqueado por Lazunox: sesion desconocida.», también el de `lazunox-helper`; en Code (sin
+Seatbelt) el mismo guardián funcionaba.
 
-**Causa (comprobada).** En el motor 1.19 el cliente que reciben los plugins se crea con `baseUrl = Server.url` (el puerto real del
-`opencode serve`) y SIN `fetch` interno cuando el servidor escucha; es decir, `client.session.get` y `client.app.agents` son peticiones
-HTTP a `127.0.0.1:<puerto propio>` (con la cabecera Basic del propio servidor). El perfil Seatbelt solo concedía `network-bind` y
-`network-inbound` en ese puerto: la SALIDA hacia él estaba denegada. El registro del sistema lo muestra en el momento del `task`:
-`Sandbox: opencode(<pid>) deny(1) network-outbound remote:*:<puerto>`. El cliente fallaba, `sessionGet` devolvía `null` y el guardián
-fallaba cerrado con un motivo engañoso («sesión desconocida»). Lo mismo afectaba en silencio al `session.abort` tras un `reject` en Code
-Mode. No era la autenticación, ni el `directory`, ni la ruta `/agent`.
+**Causa (comprobada).** En el motor 1.19 el cliente que reciben los plugins usa `baseUrl = Server.url` (el puerto real del `opencode
+serve`) y SIN `fetch` interno cuando el servidor escucha: `client.session.get` y `client.app.agents` son HTTP a `127.0.0.1:<puerto
+propio>`. El perfil Seatbelt solo concede `network-bind`/`network-inbound` en ese puerto; la salida está denegada. Registro del
+sistema en el momento del `task`: `Sandbox: opencode(<pid>) deny(1) network-outbound remote:*:<puerto>`. No era la autenticación, ni
+`directory`, ni la ruta `/agent`.
+
+**Primer intento descartado (53901267, revertido).** Permitir la salida al puerto propio arreglaba el guardián, pero se comprobó con
+Seatbelt real que un proceso del sandbox lee `OPENCODE_SERVER_PASSWORD` del servidor por `sysctl(KERN_PROCARGS2)` (`ps eww`, `ps -E` y
+`lsof` sí quedan bloqueados por `process-info*`; `/proc` no existe; la contraseña no se guarda en ningún archivo) y con ella usaba la
+API completa del motor: crear sesiones, responder permisos, `PATCH /config`. Sin la contraseña todo da 401 (`/`, `/global/health`,
+`/doc`, `/session`, `/event`…). Se revirtió: el puerto del motor sigue inalcanzable desde dentro.
 
 **Qué se hizo.**
-1. `sandbox-profile.ts` (ZONA INTOCABLE, una línea): con `serverPort`, `(allow network-outbound (remote ip "localhost:<serverPort>"))`.
-   Ningún otro destino cambia; sin `serverPort` no se abre nada. El fixture de equivalencia se recapturó y su diff es solo esa línea.
-2. `subagent-guard.ts`: si ninguna llamada a `session.get` llega al motor (excepción o `{ error }` sin respuesta HTTP) el bloqueo dice
-   «no se pudo consultar la sesion al motor»; con respuesta del motor sigue diciendo «sesion desconocida». La decisión no cambia: sin
-   sesión, siempre se bloquea.
+1. `src/main/tasks/guard-info.ts`: manejador de main con SOLO dos lecturas. `GET <base>/session?id=<ses_…>` → `{ id, parentID?,
+   agent?, permission }` de una sesión (el `agent` ya resuelto con la misma precedencia que el guardián: hija = agente de la sesión;
+   raíz = agente del último mensaje de usuario, si no el de la sesión; nada del contenido de los mensajes sale de main). `GET
+   <base>/agents` → `[{ name, permission }]`. Main consulta al servidor de ESA tarea con su `authorization` y su `?directory=`, solo
+   GET, sin redirecciones, 3 s, respuestas acotadas (1 MiB; 8 MiB la lista de mensajes, y si falla queda el agente de la sesión).
+   Id validado (`^ses_[A-Za-z0-9]{8,64}$`, un solo `id`, sin otras claves) ANTES de consultar; servidor no listo = 503; cualquier
+   error = 502; reglas de permiso con forma inválida = 502.
+2. `McpProxy.setLocalHandler` (`mcp-proxy.ts`): el canal se sirve en el puerto del proxy MCP de ese servidor (ya en
+   `extraOutboundPorts`; no se abre ningún puerto nuevo en Seatbelt), ligado a 127.0.0.1, con su propio token aleatorio en memoria,
+   comparado por hash en tiempo constante, mismo control de `Host` y rechazo de `Origin`, solo GET sin cuerpo, URL ≤ 512, ruta
+   `/<letras>` exacta, tope de concurrencia, `stop()` lo anula. El token entra en la lista que oculta el redactor de Diagnóstico.
+3. ZONA INTOCABLE (`manager.ts`, `opencode-config.ts`): el servidor sandboxeado recibe `LAZUNOX_GUARD_URL`/`LAZUNOX_GUARD_TOKEN`
+   (solo si hay proxy MCP, es decir, solo con sandbox) y ambas están en `HIDDEN_SHELL_ENV` (no llegan al entorno de `bash`).
+4. `lazunox-subagent-guard`: con `LAZUNOX_GUARD_URL` usa SOLO el canal; sin ella (Code, Control total) el cliente del motor, como
+   antes. Fallo de red, token rechazado o servidor no listo = «no se pudo consultar la sesion al motor»; 404/400 = «sesion desconocida»;
+   agentes ilegibles = «no se pudo leer la lista de agentes». La decisión (escalada de permisos) no cambia y siempre falla cerrado.
 
-**Qué abre y qué no.** Los procesos del sandbox (el servidor y lo que lance, p. ej. `bash`) pueden ahora conectarse a la API HTTP de su
-PROPIO servidor. Para usarla necesitan `OPENCODE_SERVER_PASSWORD`, que está en el entorno del servidor y es legible con `ps eww` (límite
-de §3 tricies quater: KERN_PROCARGS2 no pasa por Seatbelt). Con ella un comando del agente podría responder a sus propias peticiones de
-permiso, crear sesiones con otro agente (p. ej. `general`, saltándose este guardián) o lanzar comandos del servidor. Todo eso corre en el
-MISMO perfil Seatbelt y con el mismo proxy de salida: no da escritura, red ni lectura nuevas fuera de lo que `bash` (`"*": allow` en
-`tasks.md`) ya tenía; lo que se debilita son las preguntas del motor DENTRO del sandbox (p. ej. `rm *: ask`; el borrado real lo sigue
-cerrando Seatbelt sin «Permitir borrar»). Se acepta porque es lo que ya decía esta guía de esa contraseña (§3 tricies sexies: «da acceso al propio servidor
-sandboxeado, el mismo agente») y porque la alternativa (un canal lateral en main para que el plugin lea sesiones y agentes) es mucho más
-código en la zona intocable. Control total (sin Seatbelt) y Code no cambian. En Windows (WSL) no se comprobó si el plugin alcanza a su servidor.
+**Qué garantiza.** En Overdrive con sandbox, `lazunox-helper` se puede lanzar (también en segundo plano) y `general`/`explore` siguen
+bloqueados; el puerto del motor NO es alcanzable desde el sandbox; quien lea el token del canal (sí es posible, por KERN_PROCARGS2)
+solo obtiene los permisos y el agente de sesiones de SU propio servidor y la lista de agentes: no puede crear, aprobar, configurar ni
+leer mensajes.
 
-**Herencia del plan.** El plan-gate solo existe en Control total (`LAZUNOX_PLAN_GATE_URL`), que no usa Seatbelt: su `session.get` ya
-llegaba al motor. En Overdrive con sandbox no hay plan que heredar (no hay tarjeta de plan; la contención es Seatbelt + guardián).
+**Qué NO garantiza.**
+- El token del canal y la contraseña del motor siguen siendo legibles desde el sandbox (KERN_PROCARGS2). Lo primero expone solo esos
+  metadatos; lo segundo es inútil mientras el puerto del motor siga cerrado: no se debe volver a abrir.
+- El `session.abort` que el guardián lanza tras un `reject` dentro de Code Mode sigue usando el cliente del motor: en Tareas con sandbox
+  no llega (el bloqueo de las llamadas internas siguientes del mismo `execute` sí se aplica). El canal no ofrece escrituras a propósito.
+- La herencia del plan (`lazunox-plan-gate`) solo existe en Control total, sin Seatbelt; no usa este canal.
+- Windows (WSL): el canal usa el mismo puerto de proxy que ya se reenvía a la distro; no se probó en el PC.
+- Solo se probó con el binario 1.19 (`GET /session/:id`, `/session/:id/message`, `/agent`). Reverificar al subir de versión.
 
-Pruebas: `src/main/tasks/sandbox-profile.selfport.test.ts` (Seatbelt real: el propio puerto sí, otro puerto local que escucha no, y sin
-`serverPort` nada), `sandbox-profile.test.ts`, `sandbox.equivalence.test.ts`, `src/main/opencode/subagent-guard.test.ts` (cliente que
-lanza EPERM o devuelve `{ error }` sin respuesta: bloqueo; con 404: «sesión desconocida»). App real (OpenCode Go, Claude Haiku 5.5):
-dos `lazunox-helper` en segundo plano se lanzaron, terminaron y el padre entregó sus resultados; `general` siguió bloqueado.
+Pruebas: `src/main/tasks/guard-info.test.ts` (validación, 400/404/502/503, sin contenido de mensajes, solo GET con la autorización y
+la carpeta de la tarea), `mcp-proxy.test.ts` (token propio, 401/403/405/413/414/404, error sin detalle, `stop()`),
+`guard-info.seatbelt.test.ts` (Seatbelt REAL: la contraseña y el token se leen por KERN_PROCARGS2; con ellos el motor no responde —
+GET, crear, aprobar y configurar fallan sin conexión—; el canal da solo metadatos; POST/PATCH 405, otras rutas 404, sin token 401; el
+motor solo recibió GET de main), `manager.winpaths.test.ts`, `src/main/opencode/subagent-guard.test.ts` (ambos caminos, cliente que
+falla como dentro de Seatbelt). App real (OpenCode Go, Claude Haiku 5.5): dos `lazunox-helper` en segundo plano se lanzaron,
+terminaron y el padre entregó sus resultados; `general` siguió bloqueado; el registro del sistema no mostró denegaciones de red del
+servidor de la tarea.
