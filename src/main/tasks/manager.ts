@@ -230,6 +230,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       computerWin?: boolean
       /** Ids de proveedores con credencial que vería un servidor sandbox al arrancar (pruebas); por defecto se leen de `auth.json` (solo ids). */
       credentialIds?: () => string[]
+      /** Variables de entorno de las funciones experimentales del motor (Modo código, subagentes de fondo), ya validadas por `engineFlagEnvFor`. */
+      extraEngineEnv?: () => Record<string, string>
     } = {}
   ) {
     super()
@@ -1048,6 +1050,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
               userData: app.getPath('userData')
             },
         extraEnv: {
+          // Solo las dos variables OPENCODE_EXPERIMENTAL_* de `engineFlagEnvFor` (valor 'true', sin secretos). Va PRIMERO para que
+          // ninguna clave de abajo (config, puerta del plan, proxys) pueda ser pisada; no toca plan ni permisos ni el perfil Seatbelt.
+          ...(this.opts.extraEngineEnv?.() ?? {}),
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { LAZUNOX_FULL_ACCESS: '1' } : {}),
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
