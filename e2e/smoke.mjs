@@ -249,7 +249,8 @@ async function main() {
     }
     try {
       const dom = await evalJs(`(() => {
-        const alert = document.querySelector('[role="alert"]')
+        // Hay una región viva vacía (role="alert") permanente para lectores de pantalla: solo cuenta la que trae texto.
+        const alert = [...document.querySelectorAll('[role="alert"]')].find((e) => e.textContent.trim()) || null
         const overlay = document.querySelector('vite-error-overlay')
         return { fallback: alert && alert.textContent.includes(${JSON.stringify(FALLBACK_TEXT)}) ? alert.textContent.slice(0, 300) : null,
                  overlay: overlay ? (overlay.shadowRoot?.textContent || 'vite-error-overlay').slice(0, 600) : null }

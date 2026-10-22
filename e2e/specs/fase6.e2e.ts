@@ -168,7 +168,7 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await expectVisible(alert.getByRole('button', { name: 'Reintentar' }))
     await hook(a.page, 'throwIn', null)
     await alert.getByRole('button', { name: 'Reintentar' }).click()
-    await expectCount(a.page.locator('[role="alert"]'), 0)
+    await expectCount(a.page.locator('[role="alert"]:not(:empty)'), 0)
     await expectVisible(a.page.getByPlaceholder('Escribe un mensaje…'))
     // El error fue intencional (console.error del ErrorBoundary + pageerror de React): se consume para el afterEach.
     expect(a.unexpectedErrors().length).toBeGreaterThan(0)
