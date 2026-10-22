@@ -29,6 +29,11 @@
  * `execute` como revocado y bloquea toda llamada interna posterior suya (`callID` = `<execute>/<n>`),
  * y (b) aborta la sesión (`session.abort`), que es lo que pasa tras un rechazo fuera de Code Mode.
  *
+ * DE DONDE SALEN LOS DATOS: en Code y Control total, del cliente del motor que recibe el plugin (HTTP al propio
+ * servidor). En Tareas con sandbox Seatbelt NO deja salir al puerto del motor (y no debe: la contraseña del motor es
+ * legible desde dentro por KERN_PROCARGS2), así que la sesión y los agentes llegan por el canal de solo lectura de main
+ * (`LAZUNOX_GUARD_URL`/`LAZUNOX_GUARD_TOKEN`, `src/main/tasks/guard-info.ts`, F8-B208). La decisión es la misma.
+ *
  * Todo es fail-closed: si no se puede evaluar (cliente sin API, agente desconocido, error del motor),
  * el `task` se bloquea. Qué NO garantiza: ver `docs/SEGURIDAD.md` §3 sexagies.
  */
@@ -64,6 +69,15 @@ const AGENTS_TTL_MS = 10000
 const REVOKE_TTL_MS = 600000
 const MAX_TRACKED = 500
 const BS = String.fromCharCode(92)
+// Canal de solo lectura de main (F8-B208): solo en servidores de Tareas con sandbox, donde Seatbelt no deja al cliente
+// del plugin llegar al puerto del motor. Sin la variable (Code, Control total) se usa el cliente del motor.
+const GUARD_URL = process.env.LAZUNOX_GUARD_URL || ''
+const GUARD_TOKEN = process.env.LAZUNOX_GUARD_TOKEN || ''
+const GUARD_TIMEOUT_MS = 5000
+const viaGuard = async (path) => {
+  const r = await fetch(GUARD_URL + path, { headers: { authorization: 'Bearer ' + GUARD_TOKEN }, redirect: 'error', signal: AbortSignal.timeout(GUARD_TIMEOUT_MS) })
+  return { status: r.status, json: r.status === 200 ? await r.json() : null }
+}
 const SPECIAL = '.+^$' + String.fromCharCode(123, 125) + '()|[]' + BS
 
 // Mismo comparador que el motor 1.19 (Wildcard.match): * = cualquier cosa, ? = un caracter y un " *"
@@ -146,6 +160,15 @@ export default {
     // sin respuesta HTTP), p. ej. un sandbox sin salida a su propio puerto (F8-B208). Solo cambia el motivo
     // del bloqueo, no la decision: sin info siempre se bloquea.
     const sessionGet = async (id) => {
+      if (GUARD_URL) {
+        try {
+          const r = await viaGuard('/session?id=' + encodeURIComponent(id))
+          if (r.status === 200 && r.json && typeof r.json === 'object' && r.json.id === id) return { info: r.json, reached: true }
+          return { info: null, reached: r.status === 404 || r.status === 400 }
+        } catch {
+          return { info: null, reached: false }
+        }
+      }
       let reached = false
       for (const args of [{ path: { id } }, { sessionID: id }]) {
         try {
@@ -160,6 +183,8 @@ export default {
       return { info: null, reached }
     }
     const lastUserAgent = async (id) => {
+      // Con el canal de main, el agente de la raiz ya viene resuelto en la sesion (misma precedencia).
+      if (GUARD_URL) return null
       for (const args of [{ path: { id }, query: { limit: 30 } }, { sessionID: id, limit: 30 }]) {
         try {
           const r = await client.session.messages(args)
@@ -180,8 +205,13 @@ export default {
       if (agentsCache && now - agentsCache.at < AGENTS_TTL_MS) return agentsCache.map
       let list = null
       try {
-        const r = await client.app.agents()
-        list = r && typeof r === 'object' && 'data' in r ? r.data : r
+        if (GUARD_URL) {
+          const r = await viaGuard('/agents')
+          list = r.status === 200 ? r.json : null
+        } else {
+          const r = await client.app.agents()
+          list = r && typeof r === 'object' && 'data' in r ? r.data : r
+        }
       } catch {
         list = null
       }
@@ -198,7 +228,7 @@ export default {
       }
       const type = output && output.args && output.args.subagent_type
       if (typeof type !== 'string' || !type) deny('falta subagent_type.')
-      if (!client || !client.session || !client.app) deny('no se puede verificar el permiso del subagente.')
+      if (!GUARD_URL && (!client || !client.session || !client.app)) deny('no se puede verificar el permiso del subagente.')
       const got = await sessionGet(input.sessionID)
       const session = got.info
       if (!session) deny(got.reached ? 'sesion desconocida.' : 'no se pudo consultar la sesion al motor (sin conexion con el propio servidor).')

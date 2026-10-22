@@ -10,6 +10,8 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { subagentGuardPluginSource } from './subagent-guard'
+import { McpProxy } from '../tasks/mcp-proxy'
+import { createGuardInfoHandler, GUARD_PATH_PREFIX } from '../tasks/guard-info'
 
 interface Rule {
   permission: string
@@ -371,5 +373,121 @@ describe('lazunox-subagent-guard: rechazo dentro de execute (Code Mode)', () => 
     await g.event({ event: replied('p1', 's1', 'reject') })
     await g.after({ tool: 'execute', sessionID: 's1', callID: 'ex1' })
     await expect(inner(g.before, 's1', 'ex1/0')).resolves.toBeUndefined()
+  })
+})
+
+describe('lazunox-subagent-guard por el canal de solo lectura de main (Tareas con sandbox, F8-B208)', () => {
+  // Cliente del motor que falla como dentro de Seatbelt (sin salida al puerto del motor): en este camino NO se usa.
+  const sandboxedClient = {
+    session: {
+      get: async () => {
+        throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'EPERM' } })
+      },
+      messages: async () => {
+        throw new TypeError('fetch failed')
+      },
+      abort: async () => ({})
+    },
+    app: {
+      agents: async () => {
+        throw new TypeError('fetch failed')
+      }
+    }
+  }
+  const ROOT = 'ses_rootAAAAAAAAAAAAAAAA'
+  const KID = 'ses_kidBBBBBBBBBBBBBBBBB'
+  const engineSessions: Record<string, unknown> = {
+    [ROOT]: { id: ROOT, agent: 'tasks', permission: [] },
+    [KID]: { id: KID, parentID: ROOT, agent: 'lazunox-helper', permission: [] }
+  }
+  let engineDown = false
+  let agentsBroken = false
+  // Motor simulado al que llama MAIN (no el plugin): sesión, mensajes y agentes del 1.19.
+  const engineFetch = (async (input: string | URL) => {
+    if (engineDown) throw new TypeError('fetch failed')
+    const path = new URL(String(input)).pathname
+    const body = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status })
+    if (path === '/agent') {
+      return agentsBroken
+        ? body({}, 500)
+        : body(Object.entries(AGENTS).map(([name, permission]) => ({ name, mode: 'subagent', permission })))
+    }
+    const m = /^\/session\/([^/]+)(\/message)?$/.exec(path)
+    if (m && engineSessions[m[1]!])
+      return m[2] ? body([{ info: { role: 'user', agent: 'tasks', time: { created: 1 } } }]) : body(engineSessions[m[1]!])
+    return body({ name: 'NotFoundError' }, 404)
+  }) as typeof fetch
+
+  async function loadChannel(opts: { token?: string; ready?: boolean } = {}): Promise<{ before: Before }> {
+    const p = new McpProxy()
+    await p.start()
+    const g = p.setLocalHandler(
+      GUARD_PATH_PREFIX,
+      createGuardInfoHandler({
+        server: () => (opts.ready === false ? null : { baseUrl: 'http://127.0.0.1:1', authorization: 'Basic x', directory: '/d' }),
+        fetchImpl: engineFetch
+      })
+    )
+    cleanups.push(() => p.stop())
+    const prev = { url: process.env.LAZUNOX_GUARD_URL, token: process.env.LAZUNOX_GUARD_TOKEN }
+    process.env.LAZUNOX_GUARD_URL = g.url
+    process.env.LAZUNOX_GUARD_TOKEN = opts.token ?? g.token
+    try {
+      const file = join(dir, `guard-ch-${n++}.mjs`)
+      writeFileSync(file, subagentGuardPluginSource(), 'utf8')
+      const mod = (await import(/* @vite-ignore */ pathToFileURL(file).href)) as {
+        default: { server: (i: unknown) => Promise<Record<string, unknown>> }
+      }
+      const h = await mod.default.server({ client: sandboxedClient })
+      return { before: h['tool.execute.before'] as Before }
+    } finally {
+      if (prev.url === undefined) delete process.env.LAZUNOX_GUARD_URL
+      else process.env.LAZUNOX_GUARD_URL = prev.url
+      if (prev.token === undefined) delete process.env.LAZUNOX_GUARD_TOKEN
+      else process.env.LAZUNOX_GUARD_TOKEN = prev.token
+    }
+  }
+  const cleanups: Array<() => Promise<void>> = []
+  afterEach(async () => {
+    engineDown = false
+    agentsBroken = false
+    await Promise.all(cleanups.splice(0).map((f) => f()))
+  })
+
+  it('con el canal: tasks → lazunox-helper pasa y tasks → general sigue bloqueado (sin tocar el cliente del motor)', async () => {
+    const g = await loadChannel()
+    await expect(task(g.before, ROOT, 'lazunox-helper')).resolves.toBeUndefined()
+    await expect(task(g.before, ROOT, 'general')).rejects.toThrow(/mas libertad/)
+    // Una hija (lazunox-helper) no puede lanzar general.
+    await expect(task(g.before, KID, 'general')).rejects.toThrow(/bloqueado por Lazunox/)
+  })
+
+  it('fail-closed por el canal: sesión inexistente o malformada = «sesion desconocida»; motor caído, token malo o servidor no listo = «no se pudo consultar»', async () => {
+    const g = await loadChannel()
+    await expect(task(g.before, 'ses_noexisteCCCCCCCCCC', 'lazunox-helper')).rejects.toThrow(/sesion desconocida/)
+    await expect(task(g.before, '../config', 'lazunox-helper')).rejects.toThrow(/sesion desconocida/)
+    engineDown = true
+    await expect(task(g.before, ROOT, 'lazunox-helper')).rejects.toThrow(/no se pudo consultar la sesion al motor/)
+    engineDown = false
+    await expect(task((await loadChannel({ token: 'robado-o-falso' })).before, ROOT, 'lazunox-helper')).rejects.toThrow(
+      /no se pudo consultar la sesion al motor/
+    )
+    await expect(task((await loadChannel({ ready: false })).before, ROOT, 'lazunox-helper')).rejects.toThrow(
+      /no se pudo consultar la sesion al motor/
+    )
+    agentsBroken = true
+    await expect(task((await loadChannel()).before, ROOT, 'lazunox-helper')).rejects.toThrow(/lista de agentes/)
+  })
+
+  it('sin canal y con el cliente bloqueado por Seatbelt (el fallo original): bloquea con «no se pudo consultar»', async () => {
+    const file = join(dir, `guard-nc-${n++}.mjs`)
+    writeFileSync(file, subagentGuardPluginSource(), 'utf8')
+    const mod = (await import(/* @vite-ignore */ pathToFileURL(file).href)) as {
+      default: { server: (i: unknown) => Promise<Record<string, unknown>> }
+    }
+    const h = await mod.default.server({ client: sandboxedClient })
+    await expect(task(h['tool.execute.before'] as Before, ROOT, 'lazunox-helper')).rejects.toThrow(
+      /no se pudo consultar la sesion al motor/
+    )
   })
 })
