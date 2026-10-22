@@ -12,6 +12,8 @@ import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
 import { settingsStore } from './store'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
+import { installExecuteWatchdog, tripMessage } from './opencode/execute-watchdog'
+import { normalizeEngineExperiments } from '@shared/engine-experiments'
 import { extrasPrefs } from './extras/prefs'
 import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
@@ -364,6 +366,42 @@ function start(): void {
         }).show()
       }
     })
+    // Vigilante de Modo código: el motor no limita `execute`; si un programa pasa de tiempo/llamadas/salida se aborta su sesión.
+    // Solo observa mientras Modo código esté encendido en algún modo (sidecar principal y servidores vivos de Overdrive).
+    const executeWatchdog = installExecuteWatchdog({
+      enabled: () => {
+        const cm = normalizeEngineExperiments(settingsStore.get().engineExperiments).codeMode
+        return cm.chat || cm.code || cm.tasks
+      },
+      engines: () => {
+        const main = server.getConnection()
+        const list = main ? [{ key: main.baseUrl, baseUrl: main.baseUrl, authorization: main.authorization }] : []
+        for (const s of tasksMod?.tasks?.liveServers() ?? [])
+          list.push({ key: s.baseUrl, baseUrl: s.baseUrl, authorization: s.authorization })
+        return list
+      },
+      onTrip: (trip) => {
+        const msg = tripMessage(trip)
+        const body = t(msg.key, msg.params)
+        recordProblem({
+          source: 'engine',
+          level: 'warn',
+          message: 'Modo código: se abortó un programa execute por pasar un tope',
+          detail: {
+            tope: trip.limit,
+            sesion: trip.sessionID,
+            segundos: Math.round(trip.elapsedMs / 1000),
+            llamadas: trip.calls,
+            bytes: trip.outputBytes
+          }
+        })
+        if (!extrasPrefs.get().notificationsEnabled || !Notification.isSupported()) return
+        new Notification({ title: t('merr.engine.execute.title'), body, silent: true }).show()
+      }
+    })
+    settingsStore.onChange(() => executeWatchdog.refresh())
+    app.once('before-quit', () => executeWatchdog.dispose())
+    server.on('connection', () => executeWatchdog.refresh())
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
