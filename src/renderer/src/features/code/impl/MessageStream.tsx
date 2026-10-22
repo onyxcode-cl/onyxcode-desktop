@@ -48,7 +48,7 @@ type Block =
   | { kind: 'steps'; key: string; parts: ToolPart[] }
   | { kind: 'retry'; key: string; text: string; attempt: number }
   | { kind: 'subtask'; key: string; text: string }
-  | { kind: 'error'; key: string; info: AssistantMessage }
+  | { kind: 'error'; key: string; info: AssistantMessage; parts: Part[] }
 
 /** Partes que no rompen un grupo de pasos (no se muestran). */
 const TRANSPARENT = new Set<Part['type']>(['step-start', 'step-finish', 'snapshot', 'patch', 'compaction', 'agent'])
@@ -84,7 +84,7 @@ function buildBlocks(messages: CodeMessage[]): Block[] {
     }
     if (m.info.role === 'assistant' && m.info.error) {
       flush()
-      blocks.push({ kind: 'error', key: `${m.info.id}-err`, info: m.info })
+      blocks.push({ kind: 'error', key: `${m.info.id}-err`, info: m.info, parts: m.parts })
     }
   }
   flush()
@@ -472,6 +472,7 @@ const TurnView = memo(
               key={b.key}
               info={b.info}
               abortedLabel={t('code.msg.aborted')}
+              parts={b.parts}
               onRetry={canAct ? () => retryLast() : undefined}
               onCompact={canAct && sessionID ? () => compactSession(sessionID) : undefined}
             />

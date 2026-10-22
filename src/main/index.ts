@@ -380,6 +380,10 @@ function start(): void {
           list.push({ key: s.baseUrl, baseUrl: s.baseUrl, authorization: s.authorization })
         return list
       },
+      describe: (trip) => {
+        const msg = tripMessage(trip)
+        return t(msg.key, msg.params)
+      },
       onTrip: (trip) => {
         const msg = tripMessage(trip)
         const body = t(msg.key, msg.params)

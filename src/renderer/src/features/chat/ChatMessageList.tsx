@@ -378,6 +378,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
       <AssistantError
         info={entry.info}
         abortedLabel={t('chat.msg.stopped')}
+        parts={entry.parts}
         variant="chat"
         onRetry={live ? undefined : onRetry}
         onCompact={live ? undefined : onCompact}

@@ -48,7 +48,7 @@ type Block =
   | { kind: 'user'; id: string; text: string; files: string[]; elements: string[]; partIds: string[] }
   | { kind: 'text'; id: string; text: string; partIds: string[] }
   | { kind: 'steps'; id: string; parts: Array<ToolPart | ReasoningPart>; partIds: string[] }
-  | { kind: 'error'; id: string; info: AssistantMessage; partIds: string[] }
+  | { kind: 'error'; id: string; info: AssistantMessage; parts: Part[]; partIds: string[] }
   | { kind: 'retry'; id: string; text: string; partIds: string[] }
   | { kind: 'file'; id: string; name: string; partIds: string[] }
 
@@ -113,7 +113,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
     }
     if (entry.info.role === 'assistant' && entry.info.error) {
       steps = null
-      blocks.push({ kind: 'error', id: `${entry.info.id}-err`, info: entry.info, partIds: [] })
+      blocks.push({ kind: 'error', id: `${entry.info.id}-err`, info: entry.info, parts: entry.parts, partIds: [] })
     }
   }
   return blocks
@@ -516,6 +516,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                     key={b.id}
                     info={b.info}
                     abortedLabel={t('tasks.conv.stopped')}
+                    parts={b.parts}
                     onCompact={taskId && i === blocks.length - 1 && !busy ? onCompact : undefined}
                   />
                 )

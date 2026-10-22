@@ -12,6 +12,7 @@
  * sesión, al caer el motor o al apagar el vigilante.
  */
 import { createOpencodeClient } from '@opencode-ai/sdk/v2/client'
+import { buildWatchdogMark, type WatchdogMarkLimit } from '@shared/watchdog-mark'
 
 /** Tope de tiempo de UNA ejecución de `execute` (ms). Un programa legítimo que encadena unas cuantas llamadas MCP tarda segundos. */
 export const EXECUTE_MAX_MS = 60_000
@@ -42,6 +43,16 @@ export interface WatchdogTrip {
   outputBytes: number
 }
 
+/** Lo que se escribe en el mensaje abortado para que la conversación diga la causa real. */
+export interface WatchdogMarkInput {
+  sessionID: string
+  messageID: string
+  directory?: string
+  limit: WatchdogMarkLimit
+  value: number
+  text: string
+}
+
 export interface GlobalEventLike {
   directory?: string
   payload?: { type?: string; properties?: Record<string, unknown> }
@@ -60,6 +71,10 @@ export interface ExecuteWatchdogDeps {
   abort?: (engine: WatchdogEngine, sessionID: string, directory?: string) => Promise<boolean>
   /** ¿La sesión sigue ocupada? Se consulta antes de abortar por tiempo (el fin pudo perderse con el flujo cortado). */
   isBusy?: (engine: WatchdogEngine, sessionID: string, directory?: string) => Promise<boolean>
+  /** Texto (en el idioma de la app) de la parte sintética que explica el aborto; por defecto, uno en inglés. */
+  describe?: (trip: WatchdogTrip) => string
+  /** Escribe en el mensaje abortado la parte sintética con la marca. Por defecto, `part.update` del SDK. Su fallo no impide el aviso. */
+  mark?: (engine: WatchdogEngine, input: WatchdogMarkInput) => Promise<void>
   maxMs?: number
   maxCalls?: number
   maxOutputBytes?: number
@@ -78,6 +93,7 @@ interface Running {
   engine: WatchdogEngine
   sessionID: string
   directory?: string
+  messageID?: string
   startedAt: number
   timer: NodeJS.Timeout
   calls: number
@@ -105,6 +121,27 @@ const defaultIsBusy = async (e: WatchdogEngine, sessionID: string, directory?: s
   const res = await clientFor(e).session.status({ directory })
   const type = (res.data as Record<string, { type?: string }> | undefined)?.[sessionID]?.type
   return type === 'busy' || type === 'retry'
+}
+
+const defaultMark = async (e: WatchdogEngine, m: WatchdogMarkInput): Promise<void> => {
+  // Los ids de parte del motor ordenan por texto: la `z` inicial la deja detrás de las que él crea (hexadecimales).
+  const partID = `prt_zwatchdog${Date.now().toString(36)}`
+  const res = await clientFor(e).part.update({
+    sessionID: m.sessionID,
+    messageID: m.messageID,
+    partID,
+    directory: m.directory,
+    part: {
+      id: partID,
+      sessionID: m.sessionID,
+      messageID: m.messageID,
+      type: 'text',
+      text: m.text,
+      synthetic: true,
+      metadata: buildWatchdogMark({ limit: m.limit, value: m.value })
+    }
+  } as never)
+  if (res.error) throw new Error('part.update rechazado')
 }
 
 const rec = (v: unknown): Record<string, unknown> | null =>
@@ -146,6 +183,7 @@ export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchd
   const openStream = deps.openStream ?? defaultOpen
   const abortSession = deps.abort ?? defaultAbort
   const isBusy = deps.isBusy ?? defaultIsBusy
+  const markAborted = deps.mark ?? defaultMark
   const backoffBase = deps.backoffMs ?? 500
   const streams = new Map<string, Stream>()
   const running = new Map<string, Running>()
@@ -184,6 +222,18 @@ export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchd
       }
       const ok = await abortSession(r.engine, r.sessionID, r.directory)
       if (disposed) return
+      if (ok && r.messageID) {
+        // Deja la causa real en la conversación (si no, diría «Detenido por el usuario»). Un fallo no impide el aviso.
+        try {
+          const msg = tripMessage(info, { maxMs, maxCalls, maxOutputBytes: maxOutput })
+          const value = Number(Object.values(msg.params)[0])
+          const text = deps.describe?.(info) ?? `Code mode program stopped by the safety limit (${info.limit}).`
+          await markAborted(r.engine, { sessionID: r.sessionID, messageID: r.messageID, directory: r.directory, limit, value, text })
+        } catch (err) {
+          console.error('[execute-watchdog] no se pudo dejar la causa en la conversación:', err)
+        }
+        if (disposed) return
+      }
       if (!ok) {
         // El motor no lo aceptó: se permite reintentar con la próxima actualización de la parte.
         r.tripped = false
@@ -211,7 +261,17 @@ export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchd
     if (!r) {
       const timer = setTimeout(() => void trip(key, 'time'), maxMs)
       timer.unref?.()
-      r = { engine, sessionID, directory, startedAt: Date.now(), timer, calls: 0, outputBytes: 0, tripped: false }
+      r = {
+        engine,
+        sessionID,
+        directory,
+        messageID: typeof part.messageID === 'string' ? part.messageID : undefined,
+        startedAt: Date.now(),
+        timer,
+        calls: 0,
+        outputBytes: 0,
+        tripped: false
+      }
       running.set(key, r)
     }
     const m = measureExecutePart(part)

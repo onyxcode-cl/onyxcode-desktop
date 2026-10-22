@@ -80,6 +80,7 @@ function setup(over: Partial<Parameters<typeof installExecuteWatchdog>[0]> = {})
     openStream: streams.open,
     abort,
     isBusy,
+    mark: async () => undefined,
     backoffMs: 10,
     rescanMs: 1000,
     ...over
@@ -302,5 +303,68 @@ describe('vigilante de execute', () => {
     h.opens[0].push(part({ calls: EXECUTE_MAX_CALLS + 10 }))
     await vi.advanceTimersByTimeAsync(EXECUTE_MAX_MS * 2)
     expect(h.abort).not.toHaveBeenCalled()
+  })
+})
+
+describe('marca de la causa en la conversación', () => {
+  it('por tiempo: abre la marca en el mensaje abortado, después de abortar y antes del aviso', async () => {
+    const order: string[] = []
+    const mark = vi.fn(async () => void order.push('mark'))
+    const h = setup({ mark, describe: (t) => `texto ${t.limit}`, onTrip: () => order.push('trip') })
+    h.abort.mockImplementation(async () => (order.push('abort'), true))
+    await h.flush()
+    h.opens[0].push(part())
+    await h.flush()
+    await vi.advanceTimersByTimeAsync(EXECUTE_MAX_MS + 10)
+    expect(mark).toHaveBeenCalledWith(ENG, {
+      sessionID: 's1',
+      messageID: 'm1',
+      directory: '/proj',
+      limit: 'time',
+      value: 60,
+      text: 'texto time'
+    })
+    expect(order).toEqual(['abort', 'mark', 'trip'])
+    h.w.dispose()
+  })
+
+  it('por llamadas y por salida lleva el valor del tope', async () => {
+    const mark = vi.fn(async () => undefined)
+    const h = setup({ mark })
+    await h.flush()
+    h.opens[0].push(part({ id: 'a', calls: EXECUTE_MAX_CALLS + 1 }))
+    await h.flush()
+    h.opens[0].push(part({ id: 'b', output: 'x'.repeat(EXECUTE_MAX_OUTPUT_BYTES + 1) }))
+    await h.flush()
+    expect(
+      mark.mock.calls.map((c) => [(c as unknown[])[1]]).map(([m]) => [(m as { limit: string }).limit, (m as { value: number }).value])
+    ).toEqual([
+      ['calls', 200],
+      ['output', 256]
+    ])
+    h.w.dispose()
+  })
+
+  it('si la marca falla, igual se avisa; si el motor no acepta el aborto, no se marca', async () => {
+    const mark = vi.fn(async () => {
+      throw new Error('boom')
+    })
+    const h = setup({ mark })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await h.flush()
+    h.opens[0].push(part())
+    await h.flush()
+    await vi.advanceTimersByTimeAsync(EXECUTE_MAX_MS + 10)
+    expect(h.trips).toHaveLength(1)
+    h.w.dispose()
+
+    const mark2 = vi.fn(async () => undefined)
+    const h2 = setup({ mark: mark2 })
+    h2.abort.mockResolvedValue(false)
+    await h2.flush()
+    h2.opens[0].push(part({ calls: EXECUTE_MAX_CALLS + 1 }))
+    await h2.flush()
+    expect(mark2).not.toHaveBeenCalled()
+    h2.w.dispose()
   })
 })
