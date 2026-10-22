@@ -401,7 +401,7 @@ export const settings = {
   'settings.engine.modesAria': 'Modes where it applies',
   'settings.engine.codeMode.title': 'Code mode',
   'settings.engine.codeMode.desc':
-    'The AI writes a small program that uses several connected tools at once: faster and cheaper on long tasks; each tool still asks for permission.',
+    'The AI writes a small program that uses several connected tools at once: faster and cheaper on long tasks; connectors you haven’t marked as trusted ask for permission on every call.',
   'settings.engine.codeMode.change':
     'When on, on long tasks you will see a single action that groups several tool calls instead of one card for each.',
   'settings.engine.background.title': 'Background subagents',

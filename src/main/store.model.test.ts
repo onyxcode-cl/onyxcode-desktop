@@ -59,6 +59,28 @@ describe('settings: defaultModel (modelo de Chat)', () => {
   })
 })
 
+describe('settings: codeTrustedMcp', () => {
+  it('sin el campo en disco -> vacío (ningún conector de confianza: Code pregunta)', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
+    expect((await openStore(dir)).get().codeTrustedMcp).toEqual([])
+  })
+  it('basura en disco -> se limpia sin lanzar', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ codeTrustedMcp: ['gmail', 7, 'a b', 'gmail', 'browser', { x: 1 }] }))
+    expect((await openStore(dir)).get().codeTrustedMcp).toEqual(['gmail'])
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ codeTrustedMcp: 'todos' }))
+    expect((await openStore(dir)).get().codeTrustedMcp).toEqual([])
+  })
+  it('se guarda y relee de disco', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ codeTrustedMcp: ['crm'] })
+    store.set({ theme: 'dark' })
+    expect((await openStore(dir)).get().codeTrustedMcp).toEqual(['crm'])
+  })
+})
+
 describe('settings: engineExperiments', () => {
   const OFF = { chat: false, code: false, tasks: false }
   it('sin el campo en disco -> todo apagado', async () => {

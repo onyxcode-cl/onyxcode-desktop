@@ -50,6 +50,12 @@ export interface Settings {
   learningEnabled: boolean
   /** Funciones experimentales del motor por modo (Modo código, subagentes en segundo plano). Apagadas por defecto; el celular no las escribe. */
   engineExperiments: EngineExperiments
+  /**
+   * Conectores (servidores MCP) en los que la persona confía en Code: se usan SIN pedir permiso en cada llamada. Los demás preguntan
+   * (por defecto, como Claude Code). Vacío por defecto; los internos de la app (`browser`…) son de confianza fija y no figuran aquí.
+   * Ver `mcp-permissions.ts`. El celular no lo escribe.
+   */
+  codeTrustedMcp: string[]
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -66,7 +72,8 @@ export const DEFAULT_SETTINGS: Settings = {
   opencodeBin: '',
   checkUpdates: true,
   learningEnabled: true,
-  engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS
+  engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS,
+  codeTrustedMcp: []
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'

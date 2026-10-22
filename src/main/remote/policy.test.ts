@@ -417,6 +417,11 @@ describe('settings:set y setters por campos', () => {
     expect(cls(ipc('settings:set', { theme: 'dark', engineExperiments: ee }))).toBe('deny:field-forbidden:engineExperiments')
     expect(cls(ipc('settings:set', { engineExperiments: {} }))).toBe('deny:field-forbidden:engineExperiments')
   })
+  it('settings:set{codeTrustedMcp} es X: el celular no marca conectores como de confianza en Code', () => {
+    expect(cls(ipc('settings:set', { codeTrustedMcp: ['gmail'] }))).toBe('deny:field-forbidden:codeTrustedMcp')
+    expect(cls(ipc('settings:set', { theme: 'dark', codeTrustedMcp: [] }))).toBe('deny:field-forbidden:codeTrustedMcp')
+    expect(cls(ipc('settings:set', { codeTrustedMcp: 'todos' }))).toBe('deny:field-forbidden:codeTrustedMcp')
+  })
   it('settings:set solo defaultModel/theme/language son M', () => {
     expect(cls(ipc('settings:set', { theme: 'dark' }))).toBe('M')
     expect(cls(ipc('settings:set', { defaultModel: model, language: 'en' }))).toBe('M')

@@ -398,7 +398,7 @@ export const settings = {
   'settings.engine.modesAria': 'Modos donde se aplica',
   'settings.engine.codeMode.title': 'Modo código',
   'settings.engine.codeMode.desc':
-    'La IA escribe un pequeño programa que usa varias herramientas conectadas de una vez: más rápido y barato en tareas largas; cada herramienta sigue pidiendo permiso.',
+    'La IA escribe un pequeño programa que usa varias herramientas conectadas de una vez: más rápido y barato en tareas largas; los conectores que no marcaste como de confianza piden permiso en cada llamada.',
   'settings.engine.codeMode.change':
     'Al encenderlo, en tareas largas verás una sola acción que agrupa varias llamadas a herramientas en lugar de una tarjeta por cada una.',
   'settings.engine.background.title': 'Subagentes en segundo plano',

@@ -24,6 +24,22 @@ describe('settings:set', () => {
   })
 })
 
+describe('settings:set codeTrustedMcp', () => {
+  const v = IPC_SCHEMAS['settings:set']
+  it('acepta una lista de nombres de conector válidos', () => {
+    expect(v({ codeTrustedMcp: [] })).toEqual({ codeTrustedMcp: [] })
+    expect(v({ codeTrustedMcp: ['gmail', 'mi-crm_2'] })).toEqual({ codeTrustedMcp: ['gmail', 'mi-crm_2'] })
+  })
+  it('rechaza tipos, nombres inválidos y listas desmedidas', () => {
+    expect(() => v({ codeTrustedMcp: 'gmail' })).toThrow()
+    expect(() => v({ codeTrustedMcp: [1] })).toThrow()
+    expect(() => v({ codeTrustedMcp: ['a b'] })).toThrow()
+    expect(() => v({ codeTrustedMcp: [''] })).toThrow()
+    expect(() => v({ codeTrustedMcp: ['x'.repeat(65)] })).toThrow()
+    expect(() => v({ codeTrustedMcp: Array.from({ length: 201 }, (_, i) => `s${i}`) })).toThrow()
+  })
+})
+
 describe('settings:set engineExperiments', () => {
   const v = IPC_SCHEMAS['settings:set']
   const off = { chat: false, code: false, tasks: false }

@@ -625,7 +625,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     checkUpdates: bool,
     learningEnabled: bool,
     language: literal('system', 'es', 'en'),
-    engineExperiments: engineExperimentsShape
+    engineExperiments: engineExperimentsShape,
+    // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
+    codeTrustedMcp: arr(mcpName, 200)
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq
