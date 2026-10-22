@@ -192,6 +192,13 @@ export const wizard = {
   'preflight.c.sandbox': 'Entorno aislado de Overdrive',
   'preflight.c.helper': 'Ayudante de control del equipo',
   'preflight.c.perms': 'Permisos de macOS',
+  'preflight.c.files': 'Acceso a tus archivos (opcional)',
+  'preflight.hint.files.denied':
+    'Permite que {app} lea tus carpetas sin preguntar carpeta por carpeta (Documentos, Escritorio, Descargas…). Es un permiso amplio: puedes dejarlo apagado y {app} te preguntará carpeta por carpeta. Tras activarlo, macOS puede pedir reiniciar {app}.',
+  'preflight.hint.files.unknown':
+    'No se pudo comprobar el Acceso total al disco. Es opcional: si lo dejas apagado, {app} te preguntará carpeta por carpeta.',
+  'preflight.files.open': 'Abrir Ajustes del Sistema',
+  'preflight.files.restart': 'Reiniciar {app}',
   'preflight.c.location': 'Ubicación de la app',
   'preflight.hint.engine.not-found':
     'No se encontró el motor que viene con la app. Reinstala {app} desde el instalador o elige un motor ya instalado.',

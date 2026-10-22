@@ -17,6 +17,7 @@ export const LABELS: Record<PreflightId, MsgKey> = {
   sandbox: 'preflight.c.sandbox',
   helper: 'preflight.c.helper',
   perms: 'preflight.c.perms',
+  files: 'preflight.c.files',
   location: 'preflight.c.location'
 }
 
@@ -41,6 +42,7 @@ const HINTS: Partial<Record<PreflightId, Record<string, MsgKey>>> = {
     restart: 'preflight.hint.perms.restart',
     unknown: 'preflight.hint.perms.unknown'
   },
+  files: { denied: 'preflight.hint.files.denied', unknown: 'preflight.hint.files.unknown' },
   location: {
     translocated: 'preflight.hint.location.translocated',
     volume: 'preflight.hint.location.volume',
@@ -51,7 +53,8 @@ const HINTS: Partial<Record<PreflightId, Record<string, MsgKey>>> = {
 }
 const FALLBACK: Partial<Record<PreflightId, MsgKey>> = {
   sandbox: 'preflight.hint.sandbox.other',
-  perms: 'preflight.hint.perms.both'
+  perms: 'preflight.hint.perms.both',
+  files: 'preflight.hint.files.denied'
 }
 
 /** Clave del texto que explica por qué un componente no está listo, o `null` si está listo. */

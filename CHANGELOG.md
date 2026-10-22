@@ -6,6 +6,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ## [Sin publicar]
 
+- **Code avisa cuando macOS no deja leer una carpeta.** Si negaste el permiso a Documentos, Escritorio, Descargas, iCloud o un disco, Code ahora lo explica y ofrece «Volver a preguntar a macOS», abrir Ajustes del Sistema o elegir otra carpeta. En la pantalla de arranque hay un aviso opcional para el Acceso total al disco.
 - **Code pide permiso antes de usar un conector.** En Code la IA ya no usa tus conectores (correo, CRM…) sin preguntar: te pide permiso en cada uso, salvo en los que marques «Sin preguntar en Code» en Ajustes › Conectores. Las acciones que un conector tiene bloqueadas siguen bloqueadas. Además, con las funciones experimentales, Code puede dejar comandos largos trabajando en segundo plano (te avisa al terminar) y el Chat puede lanzar un ayudante que investiga en la web.
 - **Traducir un Word sin cambiar el formato.** Igual que con los PDF: en el Chat adjunta un Word (.docx) y pide traducirlo (o usa el ícono de traducir). Se escribe sobre el mismo documento: estilos, fuentes, tablas, listas, encabezados, pies y enlaces quedan como estaban; solo cambia el texto. Lo que no se puede reescribir sin dañarlo (párrafos con imágenes, números de página, índices, cuadros de texto, cambios controlados) se deja igual y se avisa.
 

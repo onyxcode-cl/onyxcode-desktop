@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Clock, FolderCode, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
+import { ArrowLeft, Clock, FolderCode, FolderLock, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
 import { t } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { IconButton } from '../../../components/IconButton'
@@ -13,12 +13,136 @@ import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
 import { timeAgo } from './ui'
 import { openProjectTrusted, resolveTrust, usePendingTrust } from './trust'
+import { askMacAgain, setBlockedFolder, useBlockedFolder } from './folder-access'
 
 export { baseName }
 export { openProjectTrusted }
 
-/** Diálogo de confianza de carpeta ("Trust this workspace?"), montado una vez en `ProjectPicker`/`CodeWorkspace`. */
-export function TrustGate(): React.JSX.Element | null {
+/** Diálogo de confianza de carpeta ("Trust this workspace?") y, aparte, la tarjeta de permisos de macOS; montado en `ProjectPicker`/`CodeWorkspace`. */
+export function TrustGate(): React.JSX.Element {
+  return (
+    <>
+      <TrustDialog />
+      <FolderAccessCard />
+    </>
+  )
+}
+
+/**
+ * Tarjeta de carpeta que macOS no deja leer (F8-B210). Sustituye al «proyecto medio abierto»: el motor no se arranca para esta
+ * carpeta. «Volver a comprobar» y «Elegir otra carpeta» reintentan desde cero (sin recordar la negativa).
+ */
+function FolderAccessCard(): React.JSX.Element | null {
+  const t = useT()
+  const blocked = useBlockedFolder()
+  const firstRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!blocked) return
+    firstRef.current?.focus()
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setBlockedFolder(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [blocked])
+  if (!blocked) return null
+  const { dir, reason, canReset, resetFailed } = blocked
+  const close = (): void => setBlockedFolder(null)
+  const btn =
+    'rounded-lg px-3 py-1.5 text-sm font-medium desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] bg-elevated text-fg border border-border hover:bg-hover'
+  const primaryBtn =
+    'rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover'
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-fg/30 p-6">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="folder-access-title"
+        aria-describedby="folder-access-desc"
+        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[460px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
+      >
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent desk:mb-4 desk:rounded-card">
+          <FolderLock size={20} aria-hidden="true" />
+        </div>
+        <h3 id="folder-access-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
+          {reason === 'denied' ? t('code.folderAccess.title') : t('code.folderAccess.titleTimeout')}
+        </h3>
+        <p className="mt-1.5 truncate font-mono text-xs text-subtle desk:text-meta" title={dir}>
+          {tildify(dir)}
+        </p>
+        <p id="folder-access-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
+          {reason === 'denied' ? t('code.folderAccess.body') : t('code.folderAccess.bodyTimeout')}
+        </p>
+        {canReset && !resetFailed && (
+          <p className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">{t('code.folderAccess.askAgainTip')}</p>
+        )}
+        {resetFailed && (
+          <p role="status" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
+            {t('code.folderAccess.resetFailed')}
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap justify-end gap-2 desk:mt-6">
+          <button type="button" className={btn} onClick={close}>
+            {t('code.ui.cancel')}
+          </button>
+          <button
+            type="button"
+            className={btn}
+            onClick={() => {
+              close()
+              void pickAndOpenFolder()
+            }}
+          >
+            {t('code.folderAccess.other')}
+          </button>
+          <button
+            type="button"
+            className={btn}
+            onClick={() => {
+              close()
+              void openProjectTrusted(dir)
+            }}
+          >
+            {t('code.folderAccess.retry')}
+          </button>
+          <button
+            type="button"
+            className={btn}
+            onClick={() =>
+              void nativeCode('dialogs')
+                ?.dialog.openFolderPrivacy('allFiles')
+                .catch(() => undefined)
+            }
+          >
+            {t('code.folderAccess.fullDisk')}
+          </button>
+          <button
+            ref={canReset ? undefined : firstRef}
+            type="button"
+            onClick={() =>
+              void nativeCode('dialogs')
+                ?.dialog.openFolderPrivacy('files')
+                .catch(() => undefined)
+            }
+            className={canReset ? btn : primaryBtn}
+          >
+            {t('code.folderAccess.openSettings')}
+          </button>
+          {canReset && (
+            <button ref={firstRef} type="button" className={primaryBtn} onClick={() => void askMacAgain(dir, openProjectTrusted)}>
+              {t('code.folderAccess.askAgain')}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TrustDialog(): React.JSX.Element | null {
   const t = useT()
   const dir = usePendingTrust()
   const confirmRef = useRef<HTMLButtonElement>(null)

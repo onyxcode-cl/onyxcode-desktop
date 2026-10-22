@@ -282,3 +282,27 @@ describe('utilidades', () => {
     expect(t).toBe('Componente: craft\nMotivo: disk\nMensaje: Sin espacio\nApp: 0.5.12\nSistema: darwin arm64')
   })
 })
+
+describe('Acceso total al disco (id files, solo macOS; F8-B210)', () => {
+  it('concedido: listo', async () => {
+    expect(await get({ fullDisk: async () => 'granted' }, 'files')).toMatchObject({ essential: false, ok: true })
+  })
+  it('no concedido: pendiente opcional con motivo denied', async () => {
+    expect(await get({ fullDisk: async () => 'denied' }, 'files')).toMatchObject({ essential: false, ok: false, reason: 'denied' })
+  })
+  it('indeterminado o con la comprobación rota: pendiente unknown, sin bloquear', async () => {
+    expect(await get({ fullDisk: async () => 'unknown' }, 'files')).toMatchObject({ ok: false, reason: 'unknown' })
+    const r = await runPreflightChecks(
+      deps({
+        fullDisk: async () => {
+          throw new Error('x')
+        }
+      })
+    )
+    expect(r.components.find((x) => x.id === 'files')).toMatchObject({ ok: false, reason: 'unknown' })
+    expect(blocking(r)).toEqual([])
+  })
+  it('sin la dependencia (otras plataformas) no hay fila', async () => {
+    expect(await get({}, 'files')).toBeUndefined()
+  })
+})

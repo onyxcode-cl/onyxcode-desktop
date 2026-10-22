@@ -2336,3 +2336,42 @@ motor solo recibió GET de main), `manager.winpaths.test.ts`, `src/main/opencode
 falla como dentro de Seatbelt). App real (OpenCode Go, Claude Haiku 5.5): dos `lazunox-helper` en segundo plano se lanzaron,
 terminaron y el padre entregó sus resultados; `general` siguió bloqueado; el registro del sistema no mostró denegaciones de red del
 servidor de la tarea.
+
+## 3 sexagies quater. Permisos de macOS sobre carpetas: comprobación, «Volver a preguntar» y Acceso total al disco (F8-B210)
+
+Contexto: en macOS las carpetas protegidas (Documentos, Escritorio, Descargas, iCloud Drive, volúmenes externos y de red) piden permiso a
+la app (TCC). Si la persona pulsa «No permitir», macOS recuerda la negativa y leer esas carpetas falla (`EPERM`/`EACCES`) sin volver a
+preguntar; el motor (hijo de Lazunox) no puede leer y Code «no funciona» sin explicación.
+
+**Qué hace.**
+1. `dialog:checkFolderAccess` (clase X): antes de abrir un proyecto en Code (después del diálogo de confianza, que es aparte) main abre la
+   carpeta y lee UNA entrada con plazo de 20 s (mientras el aviso de macOS sigue sin contestar la lectura se queda bloqueada). Resultado:
+   `ok` / `denied` / `missing` / `timeout`. Sin caché: cada intento vuelve a leer. Si no es `ok`, el renderer muestra una tarjeta y NO
+   arranca el motor para esa carpeta. Solo lee; fuera de macOS `denied` no se informa.
+2. `dialog:openFolderPrivacy` (X): abre Ajustes del Sistema en `Privacy_FilesAndFolders` o `Privacy_AllFiles` (enum `files|allFiles`
+   validado por el esquema; las URL son constantes de main, el renderer no manda ninguna).
+3. `dialog:resetFolderPermission` (X): **solo cuando la persona pulsa «Volver a preguntar a macOS»**, main ejecuta
+   `/usr/bin/tccutil reset <servicio> <APP_ID>` con `execFile` (sin shell, sin `sudo`, ruta absoluta, plazo de 5 s). El servicio sale de
+   una LISTA FIJA derivada de la RUTA que main valida (nunca de texto libre del renderer): `~/Documents` → `SystemPolicyDocumentsFolder`,
+   `~/Desktop` → `SystemPolicyDesktopFolder`, `~/Downloads` → `SystemPolicyDownloadsFolder`, `/Volumes/*` → `SystemPolicyRemovableVolumes`
+   y `SystemPolicyNetworkVolumes` (por ruta no se distingue externo de red), iCloud Drive → `Ubiquity` (**sin verificar en un Mac real**; si
+   el nombre no valiera `tccutil` falla y la tarjeta lo dice). Cualquier otra ruta: no se ejecuta nada. El `APP_ID` es la constante de
+   `brand.ts`. Solo borra la entrada de privacidad de Lazunox para esa zona (no toca otras apps ni otros servicios). Tras el reset se
+   vuelve a comprobar la carpeta, lo que hace que macOS muestre de nuevo «Permitir / No permitir». Si falla, o macOS no pregunta (puede
+   exigir cerrar y abrir Lazunox), la tarjeta sigue ofreciendo «Abrir Ajustes del Sistema». **Nunca se ejecuta sin clic**: ni al arrancar, ni al
+   abrir una carpeta, ni desde el celular (los tres canales son X en `policy.ts`).
+4. Revisión de arranque, fila opcional «Acceso a tus archivos» (id `files`, solo macOS): `detectFullDiskAccess` intenta ABRIR Y CERRAR (sin leer
+   contenido) `~/Library/Safari` y las bases `TCC.db` del usuario y del sistema; se concede si alguna abre, no se concede si alguna da
+   `EPERM`/`EACCES`, indeterminado si todas faltan o vencen (1 s). No se escribe ni se muestra nada de esos archivos. Probar el acceso
+   no muestra ninguna ventana (este permiso no se pregunta). Es **opcional y silencioso**: pendiente por sí solo no abre la pantalla ni entra en la huella de
+   «Más tarde» (`QUIET_IDS`). Pedirlo solo abre el panel de Ajustes por un clic; Lazunox no lo activa ni lo puede activar.
+
+**Qué implica «Acceso total al disco».** Es un permiso amplio: la app (y el motor, si hereda la identidad) podría leer cualquier archivo del
+usuario sin preguntar carpeta por carpeta (la barrera de TCC desaparece; siguen valiendo la confianza de carpeta de Code y el sandbox de
+Overdrive, que no dependen de TCC). Por eso es opcional, explicado en lenguaje llano, apagado por defecto y nunca se solicita sin clic. macOS
+puede pedir reiniciar la app al activarlo (la fila ofrece «Reiniciar Lazunox»).
+
+**No verificado.** Un TCC real (negar, restablecer, volver a preguntar), el nombre de servicio de iCloud Drive, si el motor (que corre
+desvinculado de TCC con `disclaim`) hereda el permiso concedido a Lazunox, y que `~/Library/Safari` dé `EPERM` en todas las versiones de macOS.
+Pruebas: `folder-access.test.ts` (errores simulados, `execFile` simulado, `chmod 000` real), `full-disk.test.ts`, `service.test.ts`,
+`preflight.test.ts`, `FolderAccessCard.render.test.tsx`, `PreflightScreen.render.test.tsx`.

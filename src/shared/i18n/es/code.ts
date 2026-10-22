@@ -255,6 +255,21 @@ export const code = {
   'code.trust.body':
     'El agente podrá leer, escribir y ejecutar archivos dentro de esta carpeta. Solo confía en carpetas cuyo contenido conoces.',
   'code.trust.confirm': 'Confiar y continuar',
+  'code.folderAccess.title': 'macOS no dejó a Lazunox leer esta carpeta',
+  'code.folderAccess.body':
+    'Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (o Acceso total al disco), activa Lazunox y vuelve a abrir la carpeta.',
+  'code.folderAccess.titleTimeout': 'Esta carpeta no responde',
+  'code.folderAccess.bodyTimeout':
+    'No se pudo leer a tiempo. Si macOS está preguntando si Lazunox puede acceder, respóndele «Permitir»; si es un disco externo o de red, comprueba que esté conectado. Luego vuelve a comprobar.',
+  'code.folderAccess.openSettings': 'Abrir Ajustes del Sistema',
+  'code.folderAccess.other': 'Elegir otra carpeta',
+  'code.folderAccess.askAgain': 'Volver a preguntar a macOS',
+  'code.folderAccess.fullDisk': 'Acceso total al disco',
+  'code.folderAccess.resetFailed':
+    'No se pudo pedir a macOS que vuelva a preguntar. Abre Ajustes del Sistema y actívalo a mano. Si no aparece la ventana, cierra y abre Lazunox.',
+  'code.folderAccess.askAgainTip':
+    '«Volver a preguntar a macOS» borra solo la respuesta de Lazunox para esta zona y macOS vuelve a mostrar «Permitir / No permitir». Si no aparece la ventana, cierra y abre Lazunox.',
+  'code.folderAccess.retry': 'Volver a comprobar',
   'code.picker.dialogTitle': 'Abrir carpeta de proyecto',
   'code.picker.worktreeDesktopOnly': 'Los worktrees requieren la app de escritorio (no disponible en este cliente).',
   'code.worktree.title': 'Nueva sesión en worktree',

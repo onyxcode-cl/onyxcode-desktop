@@ -257,6 +257,21 @@ export const code = {
   'code.trust.title': 'Trust this folder?',
   'code.trust.body': 'The agent will be able to read, write and run files inside this folder. Only trust folders whose contents you know.',
   'code.trust.confirm': 'Trust and continue',
+  'code.folderAccess.title': 'macOS did not let Lazunox read this folder',
+  'code.folderAccess.body':
+    'Open System Settings › Privacy & Security › Files & Folders (or Full Disk Access), turn Lazunox on and open the folder again.',
+  'code.folderAccess.titleTimeout': 'This folder is not responding',
+  'code.folderAccess.bodyTimeout':
+    'It could not be read in time. If macOS is asking whether Lazunox can access it, answer "Allow"; if it is an external or network drive, check that it is connected. Then check again.',
+  'code.folderAccess.openSettings': 'Open System Settings',
+  'code.folderAccess.other': 'Choose another folder',
+  'code.folderAccess.askAgain': 'Ask macOS again',
+  'code.folderAccess.fullDisk': 'Full Disk Access',
+  'code.folderAccess.resetFailed':
+    'Could not ask macOS to prompt again. Open System Settings and turn it on by hand. If the window does not appear, quit and reopen Lazunox.',
+  'code.folderAccess.askAgainTip':
+    '"Ask macOS again" clears only Lazunox\'s answer for this area so macOS shows "Allow / Don\'t Allow" again. If the window does not appear, quit and reopen Lazunox.',
+  'code.folderAccess.retry': 'Check again',
   'code.picker.dialogTitle': 'Open project folder',
   'code.picker.worktreeDesktopOnly': 'Worktrees require the desktop app (not available in this client).',
   'code.worktree.title': 'New session in a worktree',

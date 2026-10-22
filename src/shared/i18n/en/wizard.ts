@@ -194,6 +194,13 @@ export const wizard = {
   'preflight.c.sandbox': 'Overdrive isolated environment',
   'preflight.c.helper': 'Computer control helper',
   'preflight.c.perms': 'macOS permissions',
+  'preflight.c.files': 'Access to your files (optional)',
+  'preflight.hint.files.denied':
+    'Let {app} read your folders without asking folder by folder (Documents, Desktop, Downloads…). It is a broad permission: you can leave it off and {app} will ask you for each folder. After turning it on, macOS may ask you to restart {app}.',
+  'preflight.hint.files.unknown':
+    'Full Disk Access could not be checked. It is optional: if you leave it off, {app} will ask you for each folder.',
+  'preflight.files.open': 'Open System Settings',
+  'preflight.files.restart': 'Restart {app}',
   'preflight.c.location': 'App location',
   'preflight.hint.engine.not-found':
     'The engine that ships with the app was not found. Reinstall {app} from the installer or choose an engine that is already installed.',

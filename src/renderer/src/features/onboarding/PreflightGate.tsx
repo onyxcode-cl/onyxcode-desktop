@@ -17,6 +17,7 @@ import {
   type RuntimeMap
 } from '@shared/preflight'
 import { call } from '../../lib/api'
+import { nativeCode } from '../code/impl/client'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { PreflightScreen } from './PreflightScreen'
 import { waitForMacPerms } from './perms-wait'
@@ -218,6 +219,11 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       onContinue={proceed}
       onRecheck={recheck}
       onGrantPerms={() => void grantPerms()}
+      onOpenFullDisk={() =>
+        void nativeCode()
+          ?.dialog.openFolderPrivacy('allFiles')
+          .catch(() => undefined)
+      }
       onPickEngine={() => void pickEngine()}
     />
   )

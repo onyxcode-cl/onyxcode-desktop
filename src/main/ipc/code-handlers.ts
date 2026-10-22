@@ -7,6 +7,7 @@ import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeIn
 import * as git from '../git/service'
 import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
+import { checkFolderAccess, PANE_ALL_FILES, PANE_FILES_AND_FOLDERS, resetFolderPermission, tccServicesFor } from '../dialog/folder-access'
 import { PtyService } from '../pty/service'
 import { shouldKillOnNavigation } from '../pty/lifecycle'
 import { settingsStore } from '../store'
@@ -148,6 +149,17 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     return path
   })
   on(ipcMain, 'dialog:revealInFinder', (r) => dialogService.revealInFinder(req(r, 'req').path))
+  // Sin caché: cada llamada vuelve a leer la carpeta (la persona puede haber activado el permiso entre dos intentos).
+  on(ipcMain, 'dialog:checkFolderAccess', async (r) => {
+    const path = req(r, 'req').path
+    const status = await checkFolderAccess(path)
+    return { status, canReset: process.platform === 'darwin' && tccServicesFor(path).length > 0 }
+  })
+  on(ipcMain, 'dialog:openFolderPrivacy', async (r) => {
+    if (process.platform === 'darwin') await shell.openExternal(r?.pane === 'allFiles' ? PANE_ALL_FILES : PANE_FILES_AND_FOLDERS)
+  })
+  // Solo cuando la persona pulsa «Volver a preguntar a macOS»; nunca automático. Ver docs/SEGURIDAD.md §3 sexagies quater.
+  on(ipcMain, 'dialog:resetFolderPermission', async (r) => ({ result: await resetFolderPermission(req(r, 'req').path) }))
 
   // ---- archivos del proyecto: vigilante (fs.watch, sin polling), gestor y «Abrir en…» ----
   // Solo la ventana principal (ninguno de estos canales está en CHANNEL_ROLES). El «proyecto activo» de una ventana

@@ -22,6 +22,7 @@ import {
 } from '@shared/preflight'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
+import { call } from '../../lib/api'
 import { useT } from '../../lib/i18n'
 import { ComponentPick } from './ComponentPick'
 import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
@@ -41,6 +42,8 @@ export interface PreflightScreenProps {
   permsStalled: boolean
   /** Se está esperando que la persona active los permisos en Ajustes del Sistema. */
   permsWaiting: boolean
+  /** Abre Ajustes del Sistema › Acceso total al disco (solo con clic). */
+  onOpenFullDisk?: () => void
   /** Casillas desmarcadas (por defecto todo lo opcional va marcado). */
   unchecked: readonly PreflightId[]
   onToggle: (id: PreflightId) => void
@@ -162,6 +165,16 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                     <div className="mt-2">
                       <Button variant="secondary" size="sm" onClick={p.onPickEngine}>
                         {t('preflight.engine.pick')}
+                      </Button>
+                    </div>
+                  )}
+                  {c.id === 'files' && st === 'pending' && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => p.onOpenFullDisk?.()}>
+                        {t('preflight.files.open')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => void call('app:relaunch')}>
+                        {t('preflight.files.restart', { app: DISPLAY_NAME })}
                       </Button>
                     </div>
                   )}
