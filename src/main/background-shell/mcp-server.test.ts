@@ -17,7 +17,7 @@ type Msg = Record<string, any> // eslint-disable-line @typescript-eslint/no-expl
 
 describe('esquemas y validador', () => {
   it('cinco herramientas con esquemas estrictos y descripciones útiles para el modelo', () => {
-    expect(TOOLS.map((t) => t.name)).toEqual(['shell_bg_start', 'shell_bg_status', 'shell_bg_read', 'shell_bg_stop', 'shell_bg_list'])
+    expect(TOOLS.map((t) => t.name)).toEqual(['start', 'status', 'read', 'stop', 'list'])
     for (const t of TOOLS) {
       expect(t.inputSchema.additionalProperties).toBe(false)
       expect(t.description.length).toBeGreaterThan(60)
@@ -104,7 +104,7 @@ describe.skipIf(!posixOnly)('servidor MCP en proceso', () => {
         params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } }
       })
     )
-    expect(out[0].result).toMatchObject({ protocolVersion: '2025-06-18', serverInfo: { name: 'shell_bg' }, capabilities: { tools: {} } })
+    expect(out[0].result).toMatchObject({ protocolVersion: '2025-06-18', serverInfo: { name: 'bgshell' }, capabilities: { tools: {} } })
     await server.handleLine(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }))
     expect(out).toHaveLength(1) // una notificación no recibe respuesta
     await server.handleLine(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }))
@@ -118,7 +118,7 @@ describe.skipIf(!posixOnly)('servidor MCP en proceso', () => {
   })
 
   it('flujo start -> read -> aviso de fin -> list', async () => {
-    const r = await call('shell_bg_start', { command: 'echo mcp-ok' })
+    const r = await call('start', { command: 'echo mcp-ok' })
     expect(r.result.isError).toBe(false)
     const started = JSON.parse(r.result.content[0].text)
     expect(started.id).toMatch(/^bg_/)
@@ -127,27 +127,42 @@ describe.skipIf(!posixOnly)('servidor MCP en proceso', () => {
     const note = out.find((m) => m.method === 'notifications/message')!
     expect(note.params.data.message).toMatch(/exited with code 0/)
     expect(note.params.data.message).toMatch(/mcp-ok/)
-    const read = JSON.parse((await call('shell_bg_read', { id: started.id })).result.content[0].text)
+    const read = JSON.parse((await call('read', { id: started.id })).result.content[0].text)
     expect(read).toMatchObject({ text: 'mcp-ok\n', nextByte: 7, state: 'exited' })
-    const list = JSON.parse((await call('shell_bg_list', {})).result.content[0].text)
+    const list = JSON.parse((await call('list', {})).result.content[0].text)
     expect(list.jobs).toHaveLength(1)
-    const st = JSON.parse((await call('shell_bg_status', { id: started.id })).result.content[0].text)
+    const st = JSON.parse((await call('status', { id: started.id })).result.content[0].text)
     expect(st).toMatchObject({ state: 'exited', exitCode: 0 })
   })
 
   it('errores de herramienta salen como isError con texto claro', async () => {
-    expect((await call('shell_bg_start', { command: 'x', foo: 1 })).result).toMatchObject({ isError: true })
-    const bad = await call('shell_bg_start', { command: 'echo', cwd: 'rel' })
+    expect((await call('start', { command: 'x', foo: 1 })).result).toMatchObject({ isError: true })
+    const bad = await call('start', { command: 'echo', cwd: 'rel' })
     expect(bad.result.isError).toBe(true)
     expect(bad.result.content[0].text).toMatch(/INVALID_INPUT.*absolute/)
-    expect((await call('shell_bg_status', { id: 'bg_zz' })).result.content[0].text).toMatch(/NOT_FOUND/)
-    const secret = await call('shell_bg_start', { command: 'env', env: { AWS_SECRET_ACCESS_KEY: 'x' } })
+    expect((await call('status', { id: 'bg_zz' })).result.content[0].text).toMatch(/NOT_FOUND/)
+    const secret = await call('start', { command: 'env', env: { AWS_SECRET_ACCESS_KEY: 'x' } })
     expect(secret.result.content[0].text).toMatch(/not allowed/)
   })
 
+  it('lazunox_session se separa antes de validar y queda como dueña del trabajo', async () => {
+    const r = await call('start', { command: 'sleep 300', lazunox_session: 'ses_abc123' })
+    expect(r.result.isError).toBe(false)
+    const id = JSON.parse(r.result.content[0].text).id
+    expect(server.ownerOf(id)).toBe('ses_abc123')
+    // Un valor con forma rara no se acepta como dueño, pero tampoco rompe la llamada.
+    const r2 = await call('start', { command: 'sleep 300', lazunox_session: '../../etc' })
+    expect(r2.result.isError).toBe(false)
+    expect(server.ownerOf(JSON.parse(r2.result.content[0].text).id)).toBeUndefined()
+    // Un argumento desconocido sigue rechazándose.
+    expect((await call('start', { command: 'x', foo: 1, lazunox_session: 'ses_abc123' })).result.isError).toBe(true)
+    // El esquema que ve el modelo no lo anuncia.
+    expect(JSON.stringify(TOOLS)).not.toContain('lazunox_session')
+  })
+
   it('stop devuelve el estado final', async () => {
-    const started = JSON.parse((await call('shell_bg_start', { command: 'sleep 300' })).result.content[0].text)
-    const stopped = JSON.parse((await call('shell_bg_stop', { id: started.id })).result.content[0].text)
+    const started = JSON.parse((await call('start', { command: 'sleep 300' })).result.content[0].text)
+    const stopped = JSON.parse((await call('stop', { id: started.id })).result.content[0].text)
     expect(stopped.state).toBe('stopped')
   })
 })
@@ -190,19 +205,19 @@ describe.skipIf(!posixOnly)('paquete esbuild real como proceso aparte', () => {
     try {
       send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } })
       await waitFor(() => lines.some((l) => l.id === 1))
-      send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'shell_bg_start', arguments: { command: 'echo bundle-ok' } } })
+      send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'start', arguments: { command: 'echo bundle-ok' } } })
       await waitFor(() => lines.some((l) => l.method === 'notifications/message' && l.params.data.type === 'exit'))
       send({
         jsonrpc: '2.0',
         id: 3,
         method: 'tools/call',
-        params: { name: 'shell_bg_start', arguments: { command: 'sleep 300 & echo $!; wait' } }
+        params: { name: 'start', arguments: { command: 'sleep 300 & echo $!; wait' } }
       })
       await waitFor(() => lines.some((l) => l.id === 3))
       const jobId = JSON.parse(lines.find((l) => l.id === 3)!.result.content[0].text).id
       let grandchild = 0
       await waitFor(async () => {
-        send({ jsonrpc: '2.0', id: 100 + lines.length, method: 'tools/call', params: { name: 'shell_bg_read', arguments: { id: jobId } } })
+        send({ jsonrpc: '2.0', id: 100 + lines.length, method: 'tools/call', params: { name: 'read', arguments: { id: jobId } } })
         await new Promise((r) => setTimeout(r, 60))
         const r = [...lines].reverse().find((l) => l.result?.content?.[0]?.text?.includes('"text"'))
         const t = r ? JSON.parse(r.result.content[0].text).text.trim() : ''

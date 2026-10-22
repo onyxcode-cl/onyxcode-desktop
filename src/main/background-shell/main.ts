@@ -22,7 +22,7 @@
  *   LAZUNOX_SHELL_BG_QUIET_MS      silencio antes de `possibly-stuck` (por defecto 15 min)
  *   LAZUNOX_SHELL_BG_MAX_RUNTIME_MS tope absoluto para todos los trabajos (por defecto ninguno)
  *   LAZUNOX_SHELL_BG_MAX_JOBS      concurrencia (por defecto 8)
- *   LAZUNOX_SHELL_BG_EVENTS        archivo opcional donde se añaden los avisos como JSON por línea (para un plugin que despierte al modelo)
+ *   LAZUNOX_SHELL_BG_EVENTS        archivo opcional donde se añaden los avisos como JSON por línea (`src/main/opencode/shell-bg-wake.ts` lo vigila y despierta a la sesión dueña; cada línea lleva `sessionID` si el plugin la inyectó)
  *
  * Cierre: al cerrarse stdin, SIGTERM/SIGINT/SIGHUP o `exit` se terminan todos los grupos de procesos.
  */
@@ -54,7 +54,11 @@ async function main(): Promise<void> {
       sink.server?.notifyEvent(e)
       if (eventsFile) {
         try {
-          appendFileSync(eventsFile, JSON.stringify({ ...e, message: formatEvent(e), at: Date.now() }) + '\n', { mode: 0o600 })
+          appendFileSync(
+            eventsFile,
+            JSON.stringify({ ...e, sessionID: sink.server?.ownerOf(e.id), message: formatEvent(e), at: Date.now() }) + '\n',
+            { mode: 0o600 }
+          )
         } catch {
           /* el archivo de avisos es opcional */
         }

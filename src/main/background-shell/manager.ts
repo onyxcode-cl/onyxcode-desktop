@@ -179,7 +179,7 @@ export class BackgroundShellManager {
         'TOO_MANY_JOBS',
         `Too many background jobs are running (${live.length}/${this.o.maxConcurrent}). ` +
           `Nothing was started and no running job was touched. Wait for one to finish (you will be notified) ` +
-          `or stop one with shell_bg_stop. Running: ${live.map((j) => j.id).join(', ')}.`
+          `or stop one with bgshell_stop. Running: ${live.map((j) => j.id).join(', ')}.`
       )
     }
 
@@ -388,7 +388,7 @@ export class BackgroundShellManager {
 
   private get(id: string): Job {
     const job = this.jobs.get(id)
-    if (!job) throw new ShellBgError('NOT_FOUND', `Unknown job id "${id}". Use shell_bg_list to see the known jobs.`)
+    if (!job) throw new ShellBgError('NOT_FOUND', `Unknown job id "${id}". Use bgshell_list to see the known jobs.`)
     return job
   }
 

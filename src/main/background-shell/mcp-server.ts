@@ -10,7 +10,16 @@
 import type { BackgroundShellManager } from './manager'
 import { ShellBgError, type ShellBgEvent } from './types'
 
-export const SERVER_NAME = 'shell_bg'
+/**
+ * Nombre del servidor MCP. El motor llama a cada herramienta `<servidor>_<herramienta>` (comprobado: el conector `lz_shell_bg`
+ * mostraba `lz_shell_bg_start`), así que con este nombre CORTO el modelo ve `bgshell_start|status|read|stop|list`.
+ * Quien escriba el bloque `mcp` del motor debe registrarlo con esta misma clave (`src/main/opencode/shell-bg-mcp.ts`).
+ */
+export const SERVER_NAME = 'bgshell'
+/** Argumento reservado que el plugin `lazunox-session` rellena con la sesión que llama (nunca figura en el esquema del modelo). */
+export const SESSION_ARG = 'lazunox_session'
+const SESSION_ID_RE = /^[A-Za-z0-9_.-]{1,128}$/
+const MAX_OWNERS = 2000
 export const SERVER_VERSION = '0.1.0'
 const SUPPORTED_PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05']
 
@@ -40,14 +49,14 @@ export interface ToolDef {
 
 const ID_PROP: PropSchema = {
   type: 'string',
-  description: 'Job id returned by shell_bg_start (looks like "bg_1a2b3c4d").',
+  description: 'Job id returned by bgshell_start (looks like "bg_1a2b3c4d").',
   minLength: 1,
   maxLength: 64
 }
 
 export const TOOLS: ToolDef[] = [
   {
-    name: 'shell_bg_start',
+    name: 'start',
     description:
       'Start a shell command in the background and return immediately with a job id. Use it for anything that can take more than ' +
       'a minute or two (builds, test suites, dev servers, installs, long scripts) instead of the normal shell tool, which has a ' +
@@ -101,7 +110,7 @@ export const TOOLS: ToolDef[] = [
     }
   },
   {
-    name: 'shell_bg_status',
+    name: 'status',
     description:
       'Get the state of one background job: running, possibly-stuck, exited, stopped or killed-limit, with exit code, duration, ' +
       'seconds since the last sign of life, output size and the last few lines. Do NOT call this repeatedly to wait for a job: ' +
@@ -109,7 +118,7 @@ export const TOOLS: ToolDef[] = [
     inputSchema: { type: 'object', properties: { id: ID_PROP }, required: ['id'], additionalProperties: false }
   },
   {
-    name: 'shell_bg_read',
+    name: 'read',
     description:
       'Read the combined stdout+stderr of a job in small pieces. Pass fromByte (start at 0) and then use the returned nextByte ' +
       'for the next call; each call returns at most maxBytes (default 16 KiB, max 64 KiB), so read a little at a time and prefer ' +
@@ -127,14 +136,14 @@ export const TOOLS: ToolDef[] = [
     }
   },
   {
-    name: 'shell_bg_stop',
+    name: 'stop',
     description:
       'Stop a background job and ALL the processes it started (SIGTERM, then SIGKILL after a short grace period). Use it when the ' +
       'job is no longer needed or was reported possibly-stuck and the user agreed to cut it. Returns the final status.',
     inputSchema: { type: 'object', properties: { id: ID_PROP }, required: ['id'], additionalProperties: false }
   },
   {
-    name: 'shell_bg_list',
+    name: 'list',
     description: 'List all known background jobs (running and recently finished) with their state. Takes no arguments.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   }
@@ -201,7 +210,7 @@ export function formatEvent(e: ShellBgEvent): string {
     case 'possibly-stuck':
       return (
         `Background job ${e.id} (${e.command.slice(0, 120)}) has shown no output, CPU use or file growth for ${secs(e.idleMs)} ` +
-        `(notice #${e.repeat}). It has NOT been stopped. Ask the user whether to keep waiting or cut it with shell_bg_stop; ` +
+        `(notice #${e.repeat}). It has NOT been stopped. Ask the user whether to keep waiting or cut it with bgshell_stop; ` +
         `it returns to running by itself if it shows any sign of life.${tail(e.lastLines)}`
       )
     case 'resumed':
@@ -227,6 +236,13 @@ export class ShellBgMcpServer {
   private readonly m: BackgroundShellManager
   private readonly write: (line: string) => void
   private readonly defaultCwd: string
+  /** Trabajo → sesión que lo lanzó (la que llamó a `start`; la raíz se resuelve fuera). Acotado: se descartan los más viejos. */
+  private readonly owners = new Map<string, string>()
+
+  /** Sesión que lanzó el trabajo, o `undefined` si el plugin no la inyectó. */
+  ownerOf(id: string): string | undefined {
+    return this.owners.get(id)
+  }
 
   constructor(o: McpServerOptions) {
     this.m = o.manager
@@ -289,7 +305,7 @@ export class ShellBgMcpServer {
           capabilities: { tools: { listChanged: false }, logging: {} },
           serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
           instructions:
-            'Background shell. Start long commands with shell_bg_start and keep working: you are notified when they finish or look stuck. Never poll with sleep.'
+            'Background shell. Start long commands with bgshell_start and keep working: you are notified when they finish or look stuck. Never poll with sleep.'
         }
       }
       case 'notifications/initialized':
@@ -311,13 +327,21 @@ export class ShellBgMcpServer {
     const p = params as { name?: unknown; arguments?: unknown } | undefined
     const def = typeof p?.name === 'string' ? TOOLS.find((t) => t.name === p.name) : undefined
     if (!def) throw new RpcError(-32602, `Unknown tool: ${String(p?.name)}`)
-    const args = p?.arguments ?? {}
+    let args = p?.arguments ?? {}
+    // La sesión que llama la inyecta el plugin (el modelo no la ve ni puede fijarla: el plugin la sobrescribe siempre). Se separa
+    // ANTES de validar para que el resto del esquema siga siendo estricto (`additionalProperties: false`).
+    let session: string | undefined
+    if (typeof args === 'object' && args !== null && !Array.isArray(args) && SESSION_ARG in args) {
+      const { [SESSION_ARG]: raw, ...rest } = args as Record<string, unknown>
+      if (typeof raw === 'string' && SESSION_ID_RE.test(raw)) session = raw
+      args = rest
+    }
     const bad = validateArgs(def.inputSchema, args)
     if (bad) return toolError(`Invalid arguments for ${def.name}: ${bad}`)
     const a = args as Record<string, unknown>
     try {
       switch (def.name) {
-        case 'shell_bg_start': {
+        case 'start': {
           const id = await this.m.start(a.command as string, {
             cwd: (a.cwd as string | undefined) ?? this.defaultCwd,
             env: a.env as Record<string, string> | undefined,
@@ -326,23 +350,30 @@ export class ShellBgMcpServer {
             watchPaths: a.watchPaths as string[] | undefined
           })
           const s = this.m.status(id)
+          if (session) {
+            if (this.owners.size >= MAX_OWNERS) {
+              const oldest = this.owners.keys().next().value
+              if (oldest !== undefined) this.owners.delete(oldest)
+            }
+            this.owners.set(id, session)
+          }
           return toolOk({
             id,
             state: s.state,
             pid: s.pid,
             cwd: s.cwd,
-            note: 'Started. Do not poll or sleep: you will be notified when it exits or looks stuck. Read output a little at a time with shell_bg_read.'
+            note: 'Started. Do not poll or sleep: you will be notified when it exits or looks stuck. Read output a little at a time with bgshell_read.'
           })
         }
-        case 'shell_bg_status':
+        case 'status':
           return toolOk(this.m.status(a.id as string))
-        case 'shell_bg_read':
+        case 'read':
           return toolOk(
             this.m.read(a.id as string, { fromByte: a.fromByte as number | undefined, maxBytes: a.maxBytes as number | undefined })
           )
-        case 'shell_bg_stop':
+        case 'stop':
           return toolOk(await this.m.stop(a.id as string))
-        case 'shell_bg_list':
+        case 'list':
           return toolOk({ jobs: this.m.list() })
       }
     } catch (e) {

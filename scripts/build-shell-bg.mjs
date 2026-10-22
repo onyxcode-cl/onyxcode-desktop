@@ -2,7 +2,7 @@
 /**
  * Empaqueta el servidor MCP `shell_bg` (src/main/background-shell/main.ts) en UN archivo CommonJS autocontenido que ejecuta el
  * Node incluido de la app (sin Electron, sin node_modules). Uso: `node scripts/build-shell-bg.mjs [--out ruta.cjs]`.
- * Por defecto escribe `resources/shell-bg/shell-bg-mcp.cjs` (generado: no se versiona; el paquete de integración lo cablea al build).
+ * Por defecto escribe `resources/shell-bg/shell-bg-mcp.cjs` (generado: no se versiona; `npm run build`/`dev` lo regenera y electron-builder lo saca del asar con asarUnpack).
  */
 import { build } from 'esbuild'
 import { dirname, resolve } from 'node:path'
