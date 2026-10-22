@@ -184,6 +184,9 @@ export interface CodeState {
   /** Al arrancar (o reconectar con un cliente nuevo): carga en paralelo las sesiones de los proyectos abiertos que NO
    *  tienen el foco (el que tiene foco lo maneja `openProjectTrusted` como siempre). Descarta los que no son de confianza. */
   restoreOpenProjects: () => Promise<void>
+  /** El usuario NO confió en el proyecto con foco restaurado al arrancar: lo quita de los abiertos y el foco pasa a uno
+   *  de confianza (o a `null`: pantalla de elegir proyecto). Nunca deja enfocada una carpeta sin confianza. */
+  declineFocusedProject: (directory: string) => void
   /** Muestra la pantalla de recientes ENCIMA del proyecto con foco, para agregar uno más. */
   showProjectPicker: () => void
   hideProjectPicker: () => void
@@ -891,6 +894,18 @@ export const useCode = create<CodeState>((set, get) => {
       const all = openDirs(s)
       const others = all.filter((d) => !sameDir(d, s.directory ?? '') && s.isTrusted(d))
       await Promise.all(others.map((d) => get().loadSessions(d)))
+    },
+
+    declineFocusedProject: (directory) => {
+      const s = get()
+      if (!s.directory || !sameDir(s.directory, directory) || s.isTrusted(directory)) return
+      get().closeOneProject(directory)
+      const after = get()
+      // `closeOneProject` pasa el foco a otro abierto: si tampoco es de confianza, no se le da el foco sin preguntar.
+      if (after.directory && !after.isTrusted(after.directory)) {
+        writeOpenProjects(openDirs(after), null)
+        set({ directory: null, activeSessionID: null })
+      }
     },
 
     showProjectPicker: () => set({ projectPickerOpen: true }),
