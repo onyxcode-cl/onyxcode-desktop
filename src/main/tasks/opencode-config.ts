@@ -55,6 +55,7 @@ import { opencodeDataHome } from '../opencode/data-dir'
 import { bundledPythonEnv } from './python-runtime'
 import { officeService } from '../office/service'
 import { readPersonalizacionState } from '../personalizacion/store'
+import { subagentGuardPluginSource } from '../opencode/subagent-guard'
 
 // Ids únicos compartidos con el renderer (`src/shared/agents.ts`).
 export { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -88,6 +89,7 @@ export const HIDDEN_SHELL_ENV = [
 const ENV_PLUGIN_FILE = 'lazunox-env.js'
 const PLAN_GATE_PLUGIN_FILE = 'lazunox-plan-gate.js'
 const SESSION_PLUGIN_FILE = 'lazunox-session.js'
+const SUBAGENT_GUARD_PLUGIN_FILE = 'lazunox-subagent-guard.js'
 const STAMP_FILE = '.lazunox-version'
 
 export function envScrubPluginSource(): string {
@@ -343,6 +345,7 @@ export function prepareOpencodeConfigDir(): string {
   writeFileSync(join(pluginsDest, ENV_PLUGIN_FILE), envScrubPluginSource(), 'utf8')
   writeFileSync(join(pluginsDest, PLAN_GATE_PLUGIN_FILE), planGatePluginSource(), 'utf8')
   writeFileSync(join(pluginsDest, SESSION_PLUGIN_FILE), sessionPluginSource(), 'utf8')
+  writeFileSync(join(pluginsDest, SUBAGENT_GUARD_PLUGIN_FILE), subagentGuardPluginSource(), 'utf8')
   // OpenCode escribe este .gitignore si falta, y en un servidor sandboxeado (sin escritura aquí)
   // ese EPERM es FATAL (`Config.ensureGitignore`): crearlo siempre desde main.
   const gitignore = join(dest, '.gitignore')

@@ -70,7 +70,8 @@ describe('buildInlineConfig: ids de agente', () => {
   it('los ids actuales son los del bundle de agentes', () => {
     expect(TASKS_AGENT_ID).toBe('tasks')
     expect(COMPUTER_AGENT_ID).toBe('computer')
-    expect(definedAgents()).toEqual([CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID].sort())
+    // + el subagente de solo lectura (lazunox-helper), sin clave agent.<id> en la config inline
+    expect(definedAgents()).toEqual([CHAT_AGENT_ID, COMPUTER_AGENT_ID, 'lazunox-helper', TASKS_AGENT_ID].sort())
   })
 
   it.each(scenarios)('%s: toda clave agent.<id> tiene su agente definido (o es un disable del computer)', (_n, input) => {

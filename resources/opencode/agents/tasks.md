@@ -12,7 +12,11 @@ permission:
   todowrite: allow
   webfetch: allow
   websearch: allow
-  task: allow
+  # Subagentes: SOLO el ayudante de solo lectura. `general` y `explore` (integrados) no heredan los permisos de este
+  # agente (rm *: ask, git push: deny…), así que quedan fuera; ver src/main/opencode/subagent-guard.ts.
+  task:
+    "*": deny
+    lazunox-helper: allow
   question: allow
   external_directory: ask
   doom_loop: ask
