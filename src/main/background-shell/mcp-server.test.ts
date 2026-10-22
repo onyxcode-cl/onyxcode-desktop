@@ -59,7 +59,7 @@ describe.skipIf(!posixOnly)('muestreo real con ps', () => {
     const port = createNodeProcessPort()
     const s = await port.sampleCpu(process.pid)
     expect(s?.pids).toContain(process.pid)
-    expect(s?.cpuSeconds).toBeGreaterThan(0)
+    expect(s?.cpuSeconds).toBeGreaterThanOrEqual(0) // ps da segundos enteros: en Linux un proceso recién creado marca 0
     expect(await port.identity(process.pid)).toMatch(/\d{4}/)
     expect(await port.identity(2147483000)).toBeNull()
   })
