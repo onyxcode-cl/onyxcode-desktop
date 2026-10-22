@@ -1,5 +1,5 @@
 // Idioma T4c: lo que construye main y las ventanas con preload propio, con la interfaz en inglés.
-//  (1) error del asistente «no se encontró el binario» en inglés;
+//  (1) error del asistente «no se encontró el motor de la IA» en inglés;
 //  (2) motivo de una carpeta de confianza (check.reason) en inglés y con es el texto de siempre;
 //  (3) Quick Entry, píldora (plan, toma de control) y globo de guía leen `?lang=` sin tocar sus preloads;
 //      cambiar el idioma recrea Quick Entry en el otro idioma.
@@ -36,10 +36,10 @@ describe.skipIf(!DEV)('T4c: error del asistente en inglés', () => {
     for (const d of dirs) rmSync(d, { recursive: true, force: true })
   })
 
-  it('«No se encontró el binario opencode» sale en inglés (y en español con es)', async () => {
+  it('«No se encontró el motor de la IA» sale en inglés (y en español con es)', async () => {
     for (const [lang, expected, other] of [
-      ['en', 'Couldn’t find the `opencode` binary', 'No se encontró el binario'],
-      ['es', 'No se encontró el binario', 'Couldn’t find the']
+      ['en', 'The AI engine wasn’t found', 'No se encontró el motor'],
+      ['es', 'No se encontró el motor de la IA', 'The AI engine wasn’t found']
     ] as const) {
       const userData = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-t4c-')))
       const home = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-t4c-home-')))
