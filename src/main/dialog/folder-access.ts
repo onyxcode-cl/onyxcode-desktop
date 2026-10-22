@@ -11,7 +11,6 @@ import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { opendir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { sep } from 'node:path'
 import { APP_ID } from '@shared/brand'
 import type { FolderAccess, FolderResetResult } from '@shared/ipc-code'
 
@@ -96,12 +95,12 @@ function realOrSame(p: string): string {
   }
 }
 
-/** Servicios a restablecer para `path`, o `[]` si la carpeta no está en una zona protegida por TCC. */
+/** Servicios a restablecer para `path` (solo tiene sentido en macOS: rutas con `/`, por eso no usa `path.sep`), o `[]` si la carpeta no está en una zona protegida por TCC. */
 export function tccServicesFor(path: string, home: string = homedir()): TccFolderService[] {
   const inside = (p: string, base: string): boolean => {
     const a = p.toLowerCase()
     const b = base.toLowerCase()
-    return a === b || a.startsWith(b + sep)
+    return a === b || a.startsWith(b + '/')
   }
   const real = realOrSame(path)
   const h = realOrSame(home)
