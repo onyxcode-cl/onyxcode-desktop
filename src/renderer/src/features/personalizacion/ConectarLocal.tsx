@@ -73,12 +73,13 @@ export function LocalConnectWizard({
   const [rtPct, setRtPct] = useState<number | null>(null)
   const [rtError, setRtError] = useState<string | null>(null)
   const alive = useRef(true)
-  useEffect(
-    () => () => {
+  // Se vuelve a marcar vivo al montar (StrictMode monta, desmonta y monta de nuevo: sin esto las respuestas se descartaban).
+  useEffect(() => {
+    alive.current = true
+    return () => {
       alive.current = false
-    },
-    []
-  )
+    }
+  }, [])
   const name = suggestName(item.name, existingNames)
   const steps = prepSteps(item)
 
