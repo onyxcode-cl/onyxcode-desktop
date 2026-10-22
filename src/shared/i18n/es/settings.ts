@@ -383,5 +383,26 @@ export const settings = {
   'settings.doctor.item.disk.title': 'Espacio en disco',
   'settings.doctor.item.disk.ok': 'Espacio suficiente',
   'settings.doctor.item.disk.warn': 'Queda poco espacio en disco',
-  'settings.doctor.item.screens.title': 'Pantallas'
+  'settings.doctor.item.screens.title': 'Pantallas',
+  // Funciones experimentales del motor (Ajustes › Funciones experimentales)
+  'settings.engine.nav': 'Funciones experimentales',
+  'settings.engine.title': 'Funciones experimentales',
+  'settings.engine.desc':
+    'Capacidades nuevas de la IA que aún están en prueba. Están apagadas por defecto; enciéndelas solo en los modos donde quieras probarlas.',
+  'settings.engine.experimental': 'Experimental',
+  'settings.engine.restartNote':
+    'Al cambiar un interruptor, el motor de la IA se reinicia para aplicarlo, pero solo cuando no haya nada en curso.',
+  'settings.engine.sharedNote':
+    'Chat y Code comparten el mismo motor: encender una función en uno la enciende en el motor de ambos (los permisos siguen distinguiéndolos). Overdrive corre aislado, con su propio motor.',
+  'settings.engine.toggleAria': '{feature} en {mode}',
+  'settings.engine.modesAria': 'Modos donde se aplica',
+  'settings.engine.codeMode.title': 'Modo código',
+  'settings.engine.codeMode.desc':
+    'La IA escribe un pequeño programa que usa varias herramientas conectadas de una vez: más rápido y barato en tareas largas; cada herramienta sigue pidiendo permiso.',
+  'settings.engine.codeMode.change':
+    'Al encenderlo, en tareas largas verás una sola acción que agrupa varias llamadas a herramientas en lugar de una tarjeta por cada una.',
+  'settings.engine.background.title': 'Subagentes en segundo plano',
+  'settings.engine.background.desc': 'La IA puede lanzar ayudantes que trabajan en paralelo mientras sigues conversando.',
+  'settings.engine.background.change':
+    'Al encenderlo, la IA podrá repartir el trabajo y avisarte cuando cada ayudante termine; puedes seguir usando la conversación mientras tanto.'
 } as const
