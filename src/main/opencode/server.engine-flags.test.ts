@@ -3,7 +3,13 @@ import { EventEmitter } from 'node:events'
 import { ENGINE_EXPERIMENTS_DEFAULTS } from '@shared/engine-experiments'
 import type { EngineExperiments } from '@shared/types'
 
-const state = vi.hoisted(() => ({ settings: {} as Record<string, unknown>, spawnEnv: null as Record<string, string> | null }))
+const state = vi.hoisted(() => ({
+  settings: {} as Record<string, unknown>,
+  spawnEnv: null as Record<string, string> | null,
+  appServers: {} as Record<string, unknown>,
+  appPermission: {} as Record<string, unknown>,
+  global: { servers: [] as string[], permission: {} as Record<string, unknown> }
+}))
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => '/tmp/lazunox-test' } }))
 vi.mock('node:child_process', async (orig) => {
@@ -25,7 +31,16 @@ vi.mock('node:child_process', async (orig) => {
   }
 })
 vi.mock('../store', () => ({ settingsStore: { get: () => state.settings } }))
-vi.mock('../extras/mcp-config', () => ({ appOpencodeConfigEnv: () => ({}) }))
+vi.mock('../extras/mcp-config', () => ({
+  appOpencodeConfigEnv: () => ({}),
+  readAppMcpConfig: () => ({ path: '/x', servers: state.appServers }),
+  readAppPermission: () => state.appPermission
+}))
+// La config global REAL del usuario no entra en las pruebas.
+vi.mock('./code-mcp-permission', async (orig) => ({
+  ...(await orig<typeof import('./code-mcp-permission')>()),
+  readGlobalOpencodeConfig: () => state.global
+}))
 vi.mock('../tasks/opencode-config', () => ({ getOpencodeEnv: () => ({}) }))
 vi.mock('../embedded-browser/mcp-server', () => ({ embeddedBrowserMcp: { setApi: () => {}, configFor: async () => null } }))
 vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
@@ -82,5 +97,56 @@ describe('sidecar principal: variables de las funciones experimentales', () => {
     )
     expect(env.OPENCODE_EXPERIMENTAL_CODE_MODE).toBeUndefined()
     expect(env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBeUndefined()
+  })
+})
+
+describe('sidecar principal: permisos de los conectores en Code (F8-B203)', () => {
+  const prevBin = process.env.OPENCODE_BIN
+  beforeEach(() => {
+    process.env.OPENCODE_BIN = '/bin/sh'
+  })
+  afterEach(() => {
+    if (prevBin === undefined) delete process.env.OPENCODE_BIN
+    else process.env.OPENCODE_BIN = prevBin
+    state.appServers = {}
+    state.appPermission = {}
+    state.global = { servers: [], permission: {} }
+  })
+
+  async function inline(settings: Record<string, unknown>): Promise<{ cfg: Record<string, unknown>; server: OpencodeServer }> {
+    state.settings = { engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS, language: 'es', ...settings }
+    state.spawnEnv = null
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    await server.start()
+    return { cfg: JSON.parse(state.spawnEnv!.OPENCODE_CONFIG_CONTENT) as Record<string, unknown>, server }
+  }
+
+  it('conector de la app y externo (config global) sin confianza → ask; de confianza → allow; navegador → allow', async () => {
+    state.appServers = { gmail: {}, crm: {} }
+    state.global = { servers: ['ext'], permission: {} }
+    const { cfg, server } = await inline({ codeTrustedMcp: ['gmail'] })
+    expect(cfg.permission).toMatchObject({ 'crm_*': 'ask', 'ext_*': 'ask', 'gmail_*': 'allow', 'browser_*': 'allow' })
+    expect(server.appliedInlineKey()).toBe(server.wantedInlineKey())
+    expect(server.inlineStale()).toBe(false)
+  })
+
+  it('herramienta bloqueada del archivo de la app: alias exacto al final', async () => {
+    state.appServers = { gmail: {} }
+    state.appPermission = { gmail_send: 'deny' }
+    const { cfg } = await inline({ codeTrustedMcp: ['gmail'] })
+    const keys = Object.keys(cfg.permission as object)
+    expect((cfg.permission as Record<string, string>)['gmail_send *']).toBe('deny')
+    expect(keys.indexOf('gmail_send *')).toBeGreaterThan(keys.indexOf('gmail_*'))
+  })
+
+  it('cambiar la confianza o añadir un conector deja la config vieja (para relanzar)', async () => {
+    state.appServers = { gmail: {} }
+    const { server } = await inline({ codeTrustedMcp: [] })
+    expect(server.inlineStale()).toBe(false)
+    state.settings = { ...state.settings, codeTrustedMcp: ['gmail'] }
+    expect(server.inlineStale()).toBe(true)
+    state.settings = { ...state.settings, codeTrustedMcp: [] }
+    state.appServers = { gmail: {}, nuevo: {} }
+    expect(server.inlineStale()).toBe(true)
   })
 })

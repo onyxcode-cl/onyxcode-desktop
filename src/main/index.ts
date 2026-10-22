@@ -352,20 +352,34 @@ function start(): void {
       tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
     }
     // Cambiar Modo código / subagentes de fondo en Ajustes reinicia el motor afectado (solo si cambió su familia y sin turnos en curso).
-    installEngineFlagsRestart({
+    // También relanza (con la misma espera) si cambia la config inline: permisos de conectores en Code y subagentes del Chat (F8-B203).
+    const engineFlags = installEngineFlagsRestart({
       settings: settingsStore,
       server,
       tasks: tasksMod?.tasks,
       chatDirectory,
-      notify: (kind) => {
+      mainInline: { wanted: () => server.wantedInlineKey(), applied: () => server.appliedInlineKey() },
+      notify: (kind, cause) => {
         if (!extrasPrefs.get().notificationsEnabled || !Notification.isSupported()) return
-        new Notification({
-          title: t('merr.engine.flags.title'),
-          body: t(kind === 'pending' ? 'merr.engine.flags.pending' : 'merr.engine.flags.restarted'),
-          silent: true
-        }).show()
+        const key =
+          cause === 'connectors'
+            ? kind === 'pending'
+              ? 'merr.engine.mcp.pending'
+              : 'merr.engine.mcp.restarted'
+            : kind === 'pending'
+              ? 'merr.engine.flags.pending'
+              : 'merr.engine.flags.restarted'
+        new Notification({ title: t('merr.engine.flags.title'), body: t(key), silent: true }).show()
       }
     })
+    // Al arrancar, el motor dice qué conectores cargó (también los de ~/.config/opencode y del proyecto): si alguno no tiene regla, se
+    // relanza en cuanto no haya turnos. Un conector añadido desde Ajustes pide lo mismo (`inlineStale`, desde extras-handlers).
+    server.on('connection', () => {
+      void server.refreshEngineMcpServers().then((stale) => {
+        if (stale) engineFlags.recheck()
+      })
+    })
+    server.on('inlineStale', () => engineFlags.recheck())
     // Vigilante de Modo código: el motor no limita `execute`; si un programa pasa de tiempo/llamadas/salida se aborta su sesión.
     // Solo observa mientras Modo código esté encendido en algún modo (sidecar principal y servidores vivos de Overdrive).
     const executeWatchdog = installExecuteWatchdog({

@@ -15,6 +15,9 @@ export const mainErrors = {
   'merr.engine.execute.calls': 'Un programa del Modo código hizo más de {count} llamadas y se detuvo.',
   'merr.engine.execute.output': 'Un programa del Modo código produjo demasiada salida (más de {kb} KB) y se detuvo.',
   'merr.engine.flags.restarted': 'Funciones experimentales aplicadas: el motor se reinició.',
+  'merr.engine.mcp.pending':
+    'Los cambios en los conectores o en sus permisos se aplicarán en cuanto termine lo que está en curso (hace falta reiniciar el motor).',
+  'merr.engine.mcp.restarted': 'Cambios de conectores aplicados: el motor se reinició.',
   'merr.engine.closed': 'El motor de la IA se cerró de forma inesperada.',
   'merr.engine.failedRepeatedly': 'El motor de la IA se cerró {max} veces seguidas. Reinicia la app; si sigue igual, reinstálala.',
   'merr.engine.retrying': '{reason}; reintentando…',

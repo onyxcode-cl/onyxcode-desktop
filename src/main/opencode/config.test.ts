@@ -12,6 +12,20 @@ describe('buildInlineConfig (sidecar principal)', () => {
     }
     expect(buildInlineConfig().share).toBe('disabled')
   })
+
+  it('conectores en Code (F8-B203): el bloque `permission` va tal cual y solo si trae reglas; el agente chat sigue con su deny', () => {
+    expect(buildInlineConfig()).not.toHaveProperty('permission')
+    expect(buildInlineConfig({ permission: {} })).not.toHaveProperty('permission')
+    const permission = { 'crm_*': 'ask', 'gmail_*': 'allow', 'gmail_send *': 'deny' }
+    const c = buildInlineConfig({ permission }) as {
+      permission: Record<string, string>
+      agent: { chat: { permission: Record<string, unknown> } }
+    }
+    expect(Object.entries(c.permission)).toEqual(Object.entries(permission))
+    // Sin reglas de bash/edit: esas viven en el bloque de modo de cada sesión.
+    expect(Object.keys(c.permission).some((k) => /^(bash|edit|write|read|webfetch|task)$/.test(k))).toBe(false)
+    expect(c.agent.chat.permission['*']).toBe('deny')
+  })
 })
 
 describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () => {

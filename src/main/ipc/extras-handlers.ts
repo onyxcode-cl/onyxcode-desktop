@@ -338,7 +338,11 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   const afterMcpChange = async (): Promise<ReturnType<typeof readAppMcpConfig>> => {
     // Al renderer SIEMPRE valores enmascarados (F8-B69): los secretos no salen de main.
     const cfg = maskAppMcpConfig(readAppMcpConfig())
-    await reloadOpencodeConfig(deps.server)
+    // F8-B203: si el cambio pide reglas nuevas en la config inline (p. ej. un conector nuevo, que en Code debe preguntar), NO se
+    // recarga en caliente: el conector quedaría cargado sin regla (y en Code sin preguntar) hasta el reinicio. Se pide el reinicio,
+    // que espera a que no haya turnos en curso y carga conector y regla a la vez.
+    if (deps.server.inlineStale()) deps.server.requestInlineReload()
+    else await reloadOpencodeConfig(deps.server)
     broadcastExtras('mcp:changed', cfg)
     return cfg
   }

@@ -8,6 +8,11 @@
  * Solo si cambió el entorno de una familia se reinicia ESA familia, y nunca a mitad de un turno: se espera a que todas las
  * sesiones estén ociosas (se avisa una vez a la persona y se reintenta). Cambiar otra cosa de Ajustes no reinicia nada.
  *
+ * Además (F8-B203) el sidecar principal se relanza, con la misma espera, cuando cambia la parte de su config inline que depende de
+ * Ajustes y conectores (`mainInline`: reglas de los conectores en Code, subagentes del Chat): `OPENCODE_CONFIG_CONTENT` también se lee
+ * solo al lanzar. `recheck()` del valor devuelto vuelve a mirar sin esperar a un cambio de Ajustes (conector añadido, motor que
+ * reporta servidores externos al arrancar).
+ *
  * Los servidores de Control total (sin sandbox) no se relanzan aquí: `restartSandbox` solo cubre el sandbox y pararlos
  * dejaría la interfaz sin servidor; toman el entorno nuevo en su próximo arranque (el monitor los apaga ociosos).
  */
@@ -46,8 +51,16 @@ export interface EngineFlagsRestartDeps {
   chatDirectory: string
   /** ¿Todas las sesiones de esos directorios están ociosas? Si no se puede saber, `false` (no se reinicia). */
   isIdle?: (baseUrl: string, authorization: string, directories: string[]) => Promise<boolean>
-  /** Aviso visible a la persona: hay un cambio esperando, o ya se aplicó. */
-  notify?: (kind: 'pending' | 'restarted') => void
+  /**
+   * Aviso visible a la persona: hay un cambio esperando, o ya se aplicó. `cause: 'connectors'` = solo cambió la config inline
+   * (permisos de conectores, subagentes del Chat), no las funciones experimentales: el texto debe decirlo así.
+   */
+  notify?: (kind: 'pending' | 'restarted', cause?: 'connectors') => void
+  /**
+   * Huella de la config inline del sidecar principal: la que corresponde ahora (`wanted`) y con la que arrancó el proceso actual
+   * (`applied`, `null` si aún no arrancó). Si difieren, se reinicia como con el entorno.
+   */
+  mainInline?: { wanted(): string; applied(): string | null }
   /** Reintento mientras haya turnos en curso (ms). */
   retryMs?: number
   now?: () => number
@@ -107,8 +120,11 @@ export async function fetchSessionsIdle(baseUrl: string, authorization: string, 
   }
 }
 
-/** Instala el listener. Devuelve una función que lo quita y cancela los reintentos. */
-export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => void {
+/** Función que quita el listener (y cancela reintentos) y, como método, `recheck()` para volver a mirar a demanda. */
+export type EngineFlagsRestartHandle = (() => void) & { recheck(): void }
+
+/** Instala el listener. Devuelve una función que lo quita y cancela los reintentos (con `recheck()`). */
+export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineFlagsRestartHandle {
   const isIdle = deps.isIdle ?? fetchSessionsIdle
   const retryMs = deps.retryMs ?? 15_000
   const now = deps.now ?? Date.now
@@ -125,13 +141,29 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => v
   let disposed = false
   /** Llegó un cambio mientras se atendía otro: se vuelve a evaluar al terminar. */
   let dirty = false
+  /** Causa de lo pendiente en la familia principal (para el texto del aviso). */
+  let mainCause: 'connectors' | undefined
 
   const mainDirs = (): string[] => [deps.chatDirectory, ...(deps.settings.get().recentFolders ?? [])]
+
+  /** ¿La config inline con la que corre el sidecar principal es la que corresponde? (sin arrancar aún = sí). Un fallo = sí (no se reinicia a ciegas). */
+  const inlineCurrent = (): boolean => {
+    if (!deps.mainInline) return true
+    try {
+      const applied = deps.mainInline.applied()
+      return applied === null || applied === deps.mainInline.wanted()
+    } catch (err) {
+      console.error('[engine-flags] no se pudo calcular la config inline:', err)
+      return true
+    }
+  }
 
   /** true = nada pendiente en la familia principal. */
   async function settleMain(): Promise<boolean> {
     const want = engineFlagEnvForMainSidecar(deps.settings.get())
-    if (sameEnv(want, mainApplied)) return true
+    const envSame = sameEnv(want, mainApplied)
+    if (envSame && inlineCurrent()) return true
+    mainCause = envSame ? 'connectors' : undefined
     const state = deps.server.getStatus().state
     // Parado: el próximo arranque ya lee los Ajustes nuevos.
     if (state === 'stopped' || state === 'error') {
@@ -148,7 +180,8 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => v
     } catch (err) {
       console.error('[engine-flags] no se pudo reiniciar el motor:', err)
     }
-    deps.notify?.('restarted')
+    if (mainCause) deps.notify?.('restarted', mainCause)
+    else deps.notify?.('restarted')
     return true
   }
 
@@ -188,6 +221,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => v
     }
     running = true
     try {
+      mainCause = undefined
       const mainOk = await settleMain()
       const tasksOk = await settleTasks()
       if (mainOk && tasksOk) {
@@ -196,7 +230,8 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => v
       }
       if (!warned) {
         warned = true
-        deps.notify?.('pending')
+        if (!mainOk && tasksOk && mainCause) deps.notify?.('pending', mainCause)
+        else deps.notify?.('pending')
       }
       if (!disposed) {
         timer = setTimeout(() => {
@@ -216,7 +251,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => v
 
   const off = deps.settings.onChange((next) => {
     if (disposed) return
-    const mainChanged = !sameEnv(engineFlagEnvForMainSidecar(next), mainApplied)
+    const mainChanged = !sameEnv(engineFlagEnvForMainSidecar(next), mainApplied) || !inlineCurrent()
     const tasksChanged = !sameEnv(engineFlagEnvFor(next, 'tasks'), tasksApplied)
     if (tasksChanged) {
       tasksChangedAt = now()
@@ -230,10 +265,20 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): () => v
     void attempt()
   })
 
-  return () => {
+  const dispose = (): void => {
     disposed = true
     off()
     if (timer) clearTimeout(timer)
     timer = null
   }
+  return Object.assign(dispose, {
+    recheck: (): void => {
+      if (disposed) return
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+      void attempt()
+    }
+  })
 }

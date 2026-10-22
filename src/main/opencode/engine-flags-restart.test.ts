@@ -153,3 +153,100 @@ describe('reinicio al cambiar las funciones experimentales', () => {
     expect(h.server.restart).not.toHaveBeenCalled()
   })
 })
+
+describe('config inline del sidecar principal (conectores en Code, F8-B203)', () => {
+  type T = S & { codeTrustedMcp?: string[] }
+  /** El «servidor» arranca con la huella de los Ajustes de ese momento (como `server.ts`). */
+  function inlineHarness(opts: { idle?: boolean } = {}) {
+    let current: T = { ...base, codeTrustedMcp: [] }
+    const listeners = new Set<(s: S) => void>()
+    const idle = { value: opts.idle ?? true }
+    const extra = { value: '' }
+    const wanted = (): string => JSON.stringify(current.codeTrustedMcp) + extra.value
+    let applied: string | null = wanted()
+    const server = {
+      restart: vi.fn(async () => {
+        applied = wanted()
+      }),
+      getStatus: () => ({ state: 'ready' as ServerState, restarts: 0 }),
+      getConnection: () => ({ baseUrl: 'http://main', authorization: 'a', username: 'u', chatDirectory: '/chat' })
+    }
+    const notify = vi.fn()
+    const handle = installEngineFlagsRestart({
+      settings: {
+        get: () => current,
+        onChange: (l) => {
+          listeners.add(l)
+          return () => listeners.delete(l)
+        }
+      },
+      server,
+      chatDirectory: '/chat',
+      isIdle: async () => idle.value,
+      notify,
+      retryMs: 1000,
+      mainInline: { wanted, applied: () => applied }
+    })
+    const change = async (next: Partial<T>): Promise<void> => {
+      current = { ...current, ...next }
+      listeners.forEach((l) => l(current))
+      await vi.advanceTimersByTimeAsync(0)
+    }
+    return { server, notify, idle, extra, change, handle }
+  }
+
+  it('marcar un conector de confianza reinicia (ocioso) y avisa con el texto de conectores', async () => {
+    const h = inlineHarness()
+    await h.change({ codeTrustedMcp: ['gmail'] })
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.notify).toHaveBeenCalledWith('restarted', 'connectors')
+  })
+
+  it('con turnos en curso NO reinicia: avisa una vez y espera a que quede ocioso', async () => {
+    const h = inlineHarness({ idle: false })
+    await h.change({ codeTrustedMcp: ['gmail'] })
+    expect(h.server.restart).not.toHaveBeenCalled()
+    expect(h.notify).toHaveBeenCalledWith('pending', 'connectors')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(h.server.restart).not.toHaveBeenCalled()
+    h.idle.value = true
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.notify).toHaveBeenCalledTimes(2)
+  })
+
+  it('recheck(): un conector nuevo (sin cambio de Ajustes) también reinicia; sin cambios no hace nada', async () => {
+    const h = inlineHarness()
+    h.handle.recheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(h.server.restart).not.toHaveBeenCalled()
+    h.extra.value = '+crm'
+    h.handle.recheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+  })
+
+  it('un fallo al calcular la huella no reinicia a ciegas', async () => {
+    const h = inlineHarness()
+    h.extra.value = '+x'
+    const boom = vi.spyOn(console, 'error').mockImplementation(() => {})
+    Object.defineProperty(h.extra, 'value', {
+      get: () => {
+        throw new Error('ilegible')
+      }
+    })
+    h.handle.recheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(h.server.restart).not.toHaveBeenCalled()
+    boom.mockRestore()
+  })
+
+  it('tras dispose, recheck no hace nada', async () => {
+    const h = inlineHarness()
+    h.handle()
+    h.extra.value = '+crm'
+    h.handle.recheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(h.server.restart).not.toHaveBeenCalled()
+  })
+})

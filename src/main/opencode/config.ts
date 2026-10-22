@@ -23,6 +23,12 @@ export const CHAT_READ_SENTINEL = '/__lazunox_sin_acceso__'
 export interface InlineConfigOptions {
   /** Bloque `mcp.browser` ya resuelto (o null si el MCP del navegador integrado no arrancó). */
   browserMcp?: Record<string, unknown> | null
+  /**
+   * Bloque `permission` de la config (vale para todos los agentes del sidecar; los de `'*': deny` como `chat` siguen denegando porque
+   * su permiso de agente va después). Lo construye `buildCodeMcpPermission` (`code-mcp-permission.ts`): conectores en Code (F8-B203).
+   * NO lleva reglas de bash/edit/etc.: esas siguen en el bloque de modo de cada sesión.
+   */
+  permission?: Record<string, unknown> | null
 }
 
 export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string, unknown> {
@@ -34,6 +40,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
     ...(opts.browserMcp ? { mcp: { browser: opts.browserMcp } } : {}),
+    ...(opts.permission && Object.keys(opts.permission).length ? { permission: opts.permission } : {}),
     agent: {
       [CHAT_AGENT]: {
         description: 'Conversación general, sin acceso a archivos ni terminal',

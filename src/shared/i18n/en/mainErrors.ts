@@ -13,6 +13,9 @@ export const mainErrors = {
   'merr.engine.execute.calls': 'A Code mode program made more than {count} calls and was stopped.',
   'merr.engine.execute.output': 'A Code mode program produced too much output (over {kb} KB) and was stopped.',
   'merr.engine.flags.restarted': 'Experimental features applied: the engine was restarted.',
+  'merr.engine.mcp.pending':
+    'Changes to connectors or their permissions will apply as soon as what’s running finishes (the engine needs a restart).',
+  'merr.engine.mcp.restarted': 'Connector changes applied: the engine was restarted.',
   'merr.engine.closed': 'The AI engine closed unexpectedly.',
   'merr.engine.failedRepeatedly': 'The AI engine closed {max} times in a row. Restart the app; if it keeps happening, reinstall it.',
   'merr.engine.retrying': '{reason}; retrying…',

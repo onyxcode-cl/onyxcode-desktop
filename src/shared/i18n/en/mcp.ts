@@ -44,7 +44,8 @@ export const mcp = {
   'mcp.catalog.addAria': 'Add {title}',
   'mcp.catalog.addBtn': 'Add…',
   'mcp.codeTrust.label': 'Don’t ask in Code',
-  'mcp.codeTrust.desc': 'If you turn this on, the AI uses this connector in Code without asking your permission each time.',
+  'mcp.codeTrust.desc':
+    'If you turn this on, the AI uses this connector in Code without asking your permission each time. If the connector has “Ask before every use”, it still asks, and its blocked actions stay blocked.',
   'mcp.flags.tasks': 'Available in Overdrive',
   'mcp.flags.ask': 'Ask on every use',
   'mcp.flags.oauthWarn':

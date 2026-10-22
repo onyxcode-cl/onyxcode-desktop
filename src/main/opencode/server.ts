@@ -4,7 +4,7 @@
  * espera a `/global/health`, reinicia con backoff si se cae y lo mata al salir.
  */
 import { t } from '@shared/i18n'
-import { appOpencodeConfigEnv } from '../extras/mcp-config'
+import { appOpencodeConfigEnv, readAppMcpConfig, readAppPermission } from '../extras/mcp-config'
 import { getOpencodeEnv } from '../tasks/opencode-config'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { embeddedBrowser } from '../embedded-browser/service'
@@ -28,6 +28,14 @@ import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
 import { engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import { LineRing } from '../diagnostics/log-ring'
+import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
+import {
+  buildCodeMcpPermission,
+  cleanServerNames,
+  fetchEngineMcpServers,
+  permissionFingerprint,
+  readGlobalOpencodeConfig
+} from './code-mcp-permission'
 
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
@@ -47,6 +55,8 @@ export interface OpencodeServerOptions {
 interface ServerEvents {
   status: [ServerStatus]
   connection: [OpencodeConnection]
+  /** La config inline que corresponde ya no es la del proceso (p. ej. un conector nuevo sin regla): hay que relanzar en cuanto se pueda. */
+  inlineStale: []
 }
 
 export class OpencodeServer extends EventEmitter<ServerEvents> {
@@ -60,6 +70,10 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private readonly logRing = new LineRing()
   /** Contraseña y credencial Basic del sidecar de este arranque: Diagnóstico las oculta de lo que muestra. */
   private secretValues: string[] = []
+  /** Servidores MCP que reportaron los motores de esta sesión de la app (externos incluidos); solo crece. */
+  private engineMcpServers: string[] = []
+  /** Huella de la parte de la config inline que depende de Ajustes y conectores con la que arrancó el proceso actual. */
+  private appliedInline: string | null = null
 
   constructor(private readonly options: OpencodeServerOptions) {
     super()
@@ -81,6 +95,66 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
 
   getConnection(): OpencodeConnection | null {
     return this.status.state === 'ready' ? this.connection : null
+  }
+
+  /**
+   * Bloque `permission` de la config inline (F8-B203): conectores en Code preguntan salvo los internos y los marcados «Sin preguntar
+   * en Code». Servidores = los de la app ∪ los de la config global del usuario ∪ los que ya reportó el motor. Nunca lanza.
+   */
+  codeMcpPermission(): Record<string, unknown> {
+    let trusted: string[] = []
+    try {
+      trusted = settingsStore.get().codeTrustedMcp ?? []
+    } catch {
+      trusted = []
+    }
+    let appServers: string[] = []
+    try {
+      appServers = Object.keys(readAppMcpConfig().servers)
+    } catch {
+      appServers = []
+    }
+    const global = readGlobalOpencodeConfig()
+    return buildCodeMcpPermission({
+      servers: cleanServerNames([...appServers, ...global.servers, ...this.engineMcpServers]),
+      trusted,
+      internal: CODE_INTERNAL_MCP,
+      // Lo que el motor fusiona ANTES de la inline: config global y archivo de conectores de la app (en ese orden).
+      base: { ...global.permission, ...readAppPermission() }
+    })
+  }
+
+  /** Huella de la parte de la config inline que depende de Ajustes y conectores, tal como corresponde AHORA. */
+  wantedInlineKey(): string {
+    return permissionFingerprint(this.codeMcpPermission())
+  }
+
+  /** Huella con la que arrancó el proceso actual (`null` si no arrancó). */
+  appliedInlineKey(): string | null {
+    return this.appliedInline
+  }
+
+  /** ¿El proceso en marcha corre con una config inline vieja? */
+  inlineStale(): boolean {
+    return this.appliedInline !== null && this.appliedInline !== this.wantedInlineKey()
+  }
+
+  /** Pide relanzar cuando se pueda (lo atiende `engine-flags-restart.ts`, que espera a que no haya turnos en curso). */
+  requestInlineReload(): void {
+    this.emit('inlineStale')
+  }
+
+  /**
+   * Pregunta al motor qué servidores MCP cargó (incluidos los externos de `~/.config/opencode` y del proyecto del Chat) y los suma a
+   * los conocidos. Devuelve si con eso la config inline quedó vieja (hay un servidor sin regla).
+   */
+  async refreshEngineMcpServers(): Promise<boolean> {
+    const conn = this.getConnection()
+    if (!conn) return false
+    const found = await fetchEngineMcpServers(conn, this.options.chatDirectory)
+    if (!found) return false
+    this.engineMcpServers = cleanServerNames([...this.engineMcpServers, ...found])
+    return this.inlineStale()
   }
 
   /** Arranca (o espera el arranque en curso) y resuelve con la conexión lista. */
@@ -168,6 +242,9 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // se asegura de que el MCP del navegador conoce la implementación real.
       embeddedBrowserMcp.setApi(embeddedBrowser)
       const browserMcp = await embeddedBrowserMcp.configFor({ product: 'code', sandboxed: false, folder: null })
+      // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
+      const permission = this.codeMcpPermission()
+      this.appliedInline = permissionFingerprint(permission)
 
       const childEnv = minimalEnv({
         ...getOpencodeEnv(),
@@ -177,7 +254,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         ...engineFlagEnvForMainSidecar(settingsStore.get()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
-        OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))
+        OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp, permission }))
       })
       const child = spawn(exec.command, exec.args, {
         cwd: this.options.chatDirectory,
