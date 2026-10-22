@@ -12,7 +12,8 @@ describe('ruta del .cjs de bgshell', () => {
       dirname: '/Applications/Lazunox.app/Contents/Resources/app.asar/out/main',
       cwd: '/'
     })
-    expect(c[0]).toBe('/Applications/Lazunox.app/Contents/Resources/app.asar.unpacked/resources/shell-bg/shell-bg-mcp.cjs')
+    // `join` usa el separador del sistema: se compara con el mismo `join` (en Windows, barras invertidas).
+    expect(c[0]).toBe(join('/Applications/Lazunox.app/Contents/Resources/app.asar.unpacked', SHELL_BG_SCRIPT))
     expect(c.every((p) => !/app\.asar[/\\]/.test(p))).toBe(true)
   })
   it('desarrollo: raíz del repo aunque el app path sea out/main', () => {

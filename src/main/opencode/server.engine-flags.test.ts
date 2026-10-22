@@ -239,7 +239,12 @@ describe('sidecar principal: bgshell (F8-B204)', () => {
     const { server, cfg } = await boot()
     const mcp = cfg.mcp as Record<string, { command: string[]; environment: Record<string, string> }>
     const bg = mcp.bgshell
-    expect(bg.command).toEqual(['/usr/bin/env', '-u', 'OPENCODE_SERVER_PASSWORD', '/abs/node', '/abs/shell-bg-mcp.cjs'])
+    // El envoltorio `env -u` solo existe en macOS/Linux; en Windows (server.ts) el comando va sin prefijo.
+    expect(bg.command).toEqual(
+      process.platform === 'win32'
+        ? ['/abs/node', '/abs/shell-bg-mcp.cjs']
+        : ['/usr/bin/env', '-u', 'OPENCODE_SERVER_PASSWORD', '/abs/node', '/abs/shell-bg-mcp.cjs']
+    )
     expect(bg.environment.LAZUNOX_SHELL_BG_DIR).toBe(join(root, 'work'))
     expect(bg.environment.LAZUNOX_SHELL_BG_EVENTS).toBe(join(root, 'events.jsonl'))
     if (process.platform !== 'win32') expect(statSync(root).mode & 0o777).toBe(0o700)
