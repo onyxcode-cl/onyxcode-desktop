@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Primera pantalla del asistente: todo bien → saludo directo; algo mal → tarjeta de atención (primera vez en Mac y en Windows).
-import { act, createElement } from 'react'
+import { StrictMode, act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OpencodeInfo } from '@shared/types'
@@ -92,6 +92,18 @@ describe('Welcome: todo bien → saludo directo', () => {
     expect(start.disabled).toBe(false)
     act(() => start.click())
     expect(onDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('bajo StrictMode (desarrollo y E2E) la revisión termina y «Empezar» queda habilitado', async () => {
+    ;(window as unknown as { api: unknown }).api = { platform: 'darwin', capsFlags: { tasksWin: true } }
+    await act(async () => {
+      root.render(createElement(StrictMode, null, createElement(Welcome, { info: info(), onDone: vi.fn() })))
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(section().dataset.view).toBe('greeting')
+    expect((host.querySelector('button') as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('Windows con el entorno aislado ya preparado: también saludo directo', async () => {

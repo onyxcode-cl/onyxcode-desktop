@@ -52,12 +52,14 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
   const checked = useRef(false)
   const started = useRef(false)
   const alive = useRef(true)
-  useEffect(
-    () => () => {
+  // Se vuelve a marcar vivo al montar: con StrictMode (desarrollo y E2E) React monta, desmonta y monta de nuevo, y sin esto la revisión
+  // del equipo se descartaba (`alive` quedaba en false) y la bienvenida se quedaba en «Revisando…» con «Empezar» deshabilitado.
+  useEffect(() => {
+    alive.current = true
+    return () => {
       alive.current = false
-    },
-    []
-  )
+    }
+  }, [])
 
   const items: WelcomeItems = { ...found, engine: engineState(info === null ? null : info.found) }
   const overall = welcomeOverall(items)
