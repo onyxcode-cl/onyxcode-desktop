@@ -3,6 +3,7 @@ import { displayTitle } from '@shared/session-title'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
+import { SessionsBackgroundJobs } from '../code/impl/BackgroundJobsConnectors'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { LogoMark } from '../../components/Logo'
 import { ChatMessageList } from './ChatMessageList'
@@ -169,6 +170,7 @@ export function ChatView(): React.JSX.Element {
   const composerEl = (hero: boolean): React.JSX.Element => (
     <>
       <CompareConfirmDialog mode="chat" directory={null} />
+      {!hero && <ChatBackgroundJobs sessionId={activeId} />}
       <ChatComposer
         onSend={send}
         onAbort={() => activeId && void abortChat(activeId)}
@@ -413,4 +415,12 @@ export function ChatView(): React.JSX.Element {
       {docPanelEl}
     </div>
   )
+}
+
+/** Trabajos en segundo plano de la conversación abierta (hoy el agente de Chat no lanza subagentes: sin trabajos no pinta nada). */
+function ChatBackgroundJobs({ sessionId }: { sessionId: string | null }): React.JSX.Element | null {
+  const client = useServer((s) => s.client)
+  const directory = useServer((s) => s.connection?.chatDirectory)
+  if (!sessionId || !directory) return null
+  return <SessionsBackgroundJobs rootId={sessionId} directory={directory} client={client} />
 }

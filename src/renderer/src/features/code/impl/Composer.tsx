@@ -48,6 +48,7 @@ import { maybeInterceptSubmit, useCompareArmed } from '../../compare'
 import { Kbd, MOD } from './ui'
 import { validatePhoneAttachments } from './mobile-logic'
 import { SheetAction } from './SheetAction'
+import { CodeBackgroundJobs } from './BackgroundJobsConnectors'
 
 /** Lee un `File`/`Blob` como `data:` URL (imágenes pegadas/arrastradas o adjuntos por botón). */
 function readAsDataURL(file: File): Promise<string> {
@@ -585,6 +586,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
 
   return (
     <div className={`group/cc ${mobile ? 'pb-2' : 'pb-4'}`}>
+      <CodeBackgroundJobs />
       {activeSessionID && <QueueList sessionID={activeSessionID} />}
       <div
         className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${mobile ? 'px-3' : 'px-6'}`}

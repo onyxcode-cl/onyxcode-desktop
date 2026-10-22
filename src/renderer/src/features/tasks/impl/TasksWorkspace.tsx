@@ -73,6 +73,7 @@ import { useFolderDrop } from './useFolderDrop'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
+import { TasksBackgroundJobs } from './TasksBackgroundJobs'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { EscalateCard } from './EscalateCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
@@ -781,6 +782,7 @@ export function TasksWorkspace(): React.JSX.Element {
               </p>
             )}
             <VisionModelHint />
+            <TasksBackgroundJobs />
             <TasksComposer
               ref={composerRef}
               onSend={send}
