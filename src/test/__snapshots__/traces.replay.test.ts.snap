@@ -211,7 +211,7 @@ exports[`traza code-subagent > useSessions (store genérico, sin origen) 1`] = `
         "parts": [
           {
             "id": "prt_103",
-            "status": "running",
+            "status": "error",
             "tool": "bash",
             "type": "tool",
           },

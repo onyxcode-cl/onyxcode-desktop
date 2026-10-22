@@ -417,10 +417,11 @@ export function interruptRunningParts(entries: MessageEntry[] | undefined): Mess
     const parts = m.parts.map((p) => {
       if (p.type !== 'tool' || (p.state.status !== 'running' && p.state.status !== 'pending')) return p
       partsChanged = true
-      const start = p.state.status === 'running' ? p.state.time.start : Date.now()
+      // Sin `Date.now()`: el resultado debe ser idéntico procesando uno a uno o en lotes (y reproducible). Duración 0.
+      const start = p.state.status === 'running' ? p.state.time.start : 0
       return {
         ...p,
-        state: { status: 'error' as const, input: p.state.input ?? {}, error: t('code.tool.interrupted'), time: { start, end: Date.now() } }
+        state: { status: 'error' as const, input: p.state.input ?? {}, error: t('code.tool.interrupted'), time: { start, end: start } }
       } as Part
     })
     if (!partsChanged) return m
