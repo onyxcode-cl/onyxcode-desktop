@@ -109,6 +109,18 @@ describe('buildCodeMcpPermission', () => {
     expect(evaluate([base, q], 'crm_list')).toBe('ask') // por defecto se pregunta en Code
   })
 
+  it('servidor cuyo nombre es prefijo de otro: confiar en `a` NO confía en `a_b`', () => {
+    const p = buildCodeMcpPermission({ servers: ['a', 'a_b', 'browser_x'], trusted: ['a'], internal })
+    // Sin alias, `a_*: allow` (después) ganaría sobre `a_b_*: ask`.
+    expect(evaluate([{ 'a_b_*': 'ask', 'a_*': 'allow' }], 'a_b_list')).toBe('allow')
+    expect(p['a_b_* *']).toBe('ask')
+    expect(evaluate([p], 'a_b_list')).toBe('ask')
+    expect(evaluate([p], 'a_list')).toBe('allow')
+    // Igual con el interno `browser`: un conector `browser_x` sigue preguntando.
+    expect(evaluate([p], 'browser_x_go')).toBe('ask')
+    expect(evaluate([p], 'browser_navigate')).toBe('allow')
+  })
+
   it('mapas por patrón: solo se re-afirman sus deny/ask', () => {
     const base = { crm_query: { '*': 'allow', 'drop*': 'deny' } }
     const p = buildCodeMcpPermission({ servers: ['crm'], trusted: ['crm'], internal, base })

@@ -94,6 +94,23 @@ for (const [mode, env, call] of [
   )
 }
 
+// Servidor cuyo nombre es prefijo de otro: `p_*: allow` taparía `p_q_*: ask`; el alias `p_q_* *` lo re-afirma (comodín + " *").
+check(
+  'prefijo: sin alias, confiar en `p` deja pasar `p_q_start` (el hueco)',
+  { mcpServers: ['p', 'p_q'], inline: { permission: { 'p_q_*': 'ask', 'p_*': 'allow' } }, call: direct('p_q_start') },
+  (r) => outcome(r) === 'ejecutada' && r.asked.length === 0
+)
+check(
+  'prefijo: con el alias `p_q_* *` el conector `p_q` vuelve a preguntar y `p` sigue sin preguntar',
+  { mcpServers: ['p', 'p_q'], inline: { permission: { 'p_q_*': 'ask', 'p_*': 'allow', 'p_q_* *': 'ask' } }, call: direct('p_q_start') },
+  (r) => r.asked.some((a) => a.permission === 'p_q_start')
+)
+check(
+  'prefijo: con el alias, `p_start` sigue sin preguntar',
+  { mcpServers: ['p', 'p_q'], inline: { permission: { 'p_q_*': 'ask', 'p_*': 'allow', 'p_q_* *': 'ask' } }, call: direct('p_start') },
+  (r) => outcome(r) === 'ejecutada' && r.asked.length === 0
+)
+
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
 const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)

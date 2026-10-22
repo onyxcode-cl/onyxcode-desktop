@@ -72,8 +72,10 @@ export interface CodeMcpPermissionInput {
  *     - Si el archivo de la app pide «Preguntar antes de cada uso» (`<servidor>_*: ask`) o hay un `deny` para el servidor entero,
  *       se respeta: la confianza en Code nunca afloja una regla más estricta ya escrita (gana la más estricta).
  *  2. Las reglas fijas (`bgshell_*`), con el mismo criterio de «gana la más estricta» si la base trae la misma clave.
- *  3. Alias exactos (`"<clave> *"`) de cada `deny`/`ask` de la base más específico que una de nuestras claves y más estricto que lo
- *     que nuestra clave diría: así siguen DESPUÉS de nuestros `allow`/`ask`.
+ *  3. Alias exactos (`"<clave> *"`) de nuestras reglas `ask` que un `allow` posterior taparía (servidor cuyo nombre es prefijo de
+ *     otro: `a_*` casa `a_b_<herramienta>`).
+ *  4. Alias exactos de cada `deny`/`ask` de la base más específico que una de nuestras claves y más estricto que lo que nuestra clave
+ *     diría: así siguen DESPUÉS de nuestros `allow`/`ask`.
  * Nunca lanza; ignora lo que no sean textos.
  */
 export function buildCodeMcpPermission(i: CodeMcpPermissionInput): Record<string, RuleValue> {
@@ -95,6 +97,21 @@ export function buildCodeMcpPermission(i: CodeMcpPermissionInput): Record<string
   }
   for (const [k, a] of Object.entries(rules)) out[k] = stricter(k, a)
   for (const [k, a] of Object.entries(i.fixed ?? {})) if (isAction(a)) out[k] = stricter(k, a)
+
+  // Un servidor cuyo nombre es prefijo de otro (`a` y `a_b`): `a_*: allow` casa también `a_b_<herramienta>` y, por ir después,
+  // ganaría sobre `a_b_*: ask` (confiar en `a` confiaría en `a_b` sin decirlo). Se re-afirma la regla más estricta al final.
+  const mine = Object.entries(out)
+  for (let x = 0; x < mine.length; x++) {
+    const [k1, a1] = mine[x]!
+    if (!isAction(a1)) continue
+    for (let y = x + 1; y < mine.length; y++) {
+      const [k2, a2] = mine[y]!
+      if (isAction(a2) && STRICT[a2] < STRICT[a1] && wildcardMatch(k1, k2)) {
+        out[k1 + EXACT_ALIAS_SUFFIX] = a1
+        break
+      }
+    }
+  }
 
   // Alias exactos de las reglas más específicas de la base que nuestras claves taparían.
   const ours = Object.entries(out).filter((e): e is [string, Action] => isAction(e[1]))
