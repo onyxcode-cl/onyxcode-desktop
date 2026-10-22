@@ -12,6 +12,12 @@ export interface BlockedFolder {
   reason: 'denied' | 'timeout'
   /** La carpeta está en una zona que macOS protege con permiso propio: se puede pedir que vuelva a preguntar. */
   canReset?: boolean
+  /**
+   * `engine`: Lazunox sí puede leerla, pero el motor (lanzado con `lazunox-disclaim`, identidad TCC propia) no. Entonces NO se ofrece
+   * «Volver a preguntar a macOS»: `tccutil reset … <APP_ID>` solo borra la decisión de Lazunox y no puede restablecer un ejecutable
+   * suelto como el motor; la salida es activarlo en Ajustes del Sistema y «Volver a comprobar».
+   */
+  cause?: 'app' | 'engine'
   /** El último «Volver a preguntar» no pudo borrar la decisión: la tarjeta lo dice y queda «Abrir Ajustes del Sistema». */
   resetFailed?: boolean
 }
@@ -45,9 +51,16 @@ export async function ensureFolderReadable(dir: string): Promise<boolean> {
   const native = nativeCode('dialogs')
   if (!native || typeof native.dialog?.checkFolderAccess !== 'function') return true
   try {
-    const { status, canReset } = await native.dialog.checkFolderAccess(dir)
+    const { status, canReset, cause } = await native.dialog.checkFolderAccess(dir)
     if (status === 'denied' || status === 'timeout') {
-      setBlockedFolder({ dir, reason: status, canReset: canReset === true && status === 'denied', resetFailed: prevResetFailed(dir) })
+      const engine = cause === 'engine'
+      setBlockedFolder({
+        dir,
+        reason: status,
+        cause: engine ? 'engine' : 'app',
+        canReset: !engine && canReset === true && status === 'denied',
+        resetFailed: !engine && prevResetFailed(dir)
+      })
       return false
     }
   } catch {

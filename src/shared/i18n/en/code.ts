@@ -271,6 +271,11 @@ export const code = {
     'Could not ask macOS to prompt again. Open System Settings and turn it on by hand. If the window does not appear, quit and reopen Lazunox.',
   'code.folderAccess.askAgainTip':
     '"Ask macOS again" clears only Lazunox\'s answer for this area so macOS shows "Allow / Don\'t Allow" again. If the window does not appear, quit and reopen Lazunox.',
+  'code.folderAccess.engineTitle': 'macOS did not let the Lazunox engine read this folder',
+  'code.folderAccess.engineBody':
+    'Open System Settings › Privacy & Security › Files and Folders (or Full Disk Access), turn on “opencode” (or “Lazunox”) and open the folder again with “Check again”.',
+  'code.folderAccess.engineBodyTimeout':
+    'macOS may be asking whether the Lazunox engine (“opencode”) can read this folder. Answer “Allow” in the prompt and press “Check again”. If you see no prompt, open System Settings › Privacy & Security › Files and Folders and turn on “opencode” (or “Lazunox”).',
   'code.folderAccess.retry': 'Check again',
   'code.picker.dialogTitle': 'Open project folder',
   'code.picker.worktreeDesktopOnly': 'Worktrees require the desktop app (not available in this client).',

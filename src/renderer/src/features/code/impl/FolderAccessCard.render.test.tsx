@@ -48,6 +48,28 @@ afterEach(async () => {
 })
 
 describe('carpeta denegada por macOS', () => {
+  it('causa «motor»: texto propio, sin «Volver a preguntar a macOS» y sin abrir; «Volver a comprobar» re-ejecuta la sonda', async () => {
+    native.dialog.checkFolderAccess.mockResolvedValue({ status: 'denied', canReset: false, cause: 'engine' } as never)
+    let ok = true
+    await act(async () => {
+      ok = await openProjectTrusted(dir)
+    })
+    expect(ok).toBe(false)
+    expect(openProject).not.toHaveBeenCalled()
+    const card = host.querySelector('[role="alertdialog"]')!
+    expect(card.textContent).toContain('macOS no dejó al motor de Lazunox leer esta carpeta')
+    expect(card.textContent).toContain('Archivos y carpetas')
+    expect(card.textContent).toContain('«opencode»')
+    expect(card.textContent).not.toContain('Volver a preguntar a macOS')
+    expect(card.textContent).not.toMatch(/tccutil|sudo|Terminal/)
+    expect(card.textContent).toContain('Elegir otra carpeta')
+    expect(document.activeElement?.textContent).toBe('Abrir Ajustes del Sistema')
+    const btn = (label: string): HTMLElement => [...host.querySelectorAll('button')].find((b) => b.textContent === label)!
+    native.dialog.checkFolderAccess.mockResolvedValue({ status: 'ok', canReset: false, cause: 'app' } as never)
+    await act(async () => btn('Volver a comprobar').click())
+    expect(native.dialog.checkFolderAccess).toHaveBeenCalledTimes(2)
+    expect(openProject).toHaveBeenCalledWith(dir)
+  })
   it('no abre el proyecto ni arranca el motor y muestra la tarjeta accesible', async () => {
     native.dialog.checkFolderAccess.mockResolvedValue({ status: 'denied', canReset: true })
     let ok = true

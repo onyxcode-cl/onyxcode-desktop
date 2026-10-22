@@ -49,7 +49,10 @@ function FolderAccessCard(): React.JSX.Element | null {
     return () => window.removeEventListener('keydown', onKey)
   }, [blocked])
   if (!blocked) return null
-  const { dir, reason, canReset, resetFailed } = blocked
+  const { dir, reason, cause, resetFailed } = blocked
+  // Causa «motor»: «Volver a preguntar a macOS» no sirve (tccutil no restablece un ejecutable suelto); ver folder-access.ts.
+  const engine = cause === 'engine'
+  const canReset = !engine && blocked.canReset
   const close = (): void => setBlockedFolder(null)
   const btn =
     'rounded-lg px-3 py-1.5 text-sm font-medium desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] bg-elevated text-fg border border-border hover:bg-hover'
@@ -68,18 +71,22 @@ function FolderAccessCard(): React.JSX.Element | null {
           <FolderLock size={20} aria-hidden="true" />
         </div>
         <h3 id="folder-access-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
-          {reason === 'denied' ? t('code.folderAccess.title') : t('code.folderAccess.titleTimeout')}
+          {reason === 'denied'
+            ? t(engine ? 'code.folderAccess.engineTitle' : 'code.folderAccess.title')
+            : t('code.folderAccess.titleTimeout')}
         </h3>
         <p className="mt-1.5 truncate font-mono text-xs text-subtle desk:text-meta" title={dir}>
           {tildify(dir)}
         </p>
         <p id="folder-access-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
-          {reason === 'denied' ? t('code.folderAccess.body') : t('code.folderAccess.bodyTimeout')}
+          {reason === 'denied'
+            ? t(engine ? 'code.folderAccess.engineBody' : 'code.folderAccess.body')
+            : t(engine ? 'code.folderAccess.engineBodyTimeout' : 'code.folderAccess.bodyTimeout')}
         </p>
         {canReset && !resetFailed && (
           <p className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">{t('code.folderAccess.askAgainTip')}</p>
         )}
-        {resetFailed && (
+        {resetFailed && !engine && (
           <p role="status" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
             {t('code.folderAccess.resetFailed')}
           </p>

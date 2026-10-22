@@ -478,7 +478,11 @@ export interface CodeInvokeContract {
   'dialog:revealInFinder': { req: { path: string }; res: void }
   'dialog:openInEditor': { req: { path: string }; res: { via: 'code' | 'open' } }
   /** Lee una entrada de la carpeta (con tiempo límite) para saber si macOS deja a la app leerla antes de abrir el proyecto. */
-  'dialog:checkFolderAccess': { req: { path: string }; res: { status: FolderAccess; canReset: boolean } }
+  'dialog:checkFolderAccess': {
+    req: { path: string }
+    /** `cause: 'engine'`: Lazunox sí puede leerla, pero el motor (identidad TCC propia, `lazunox-disclaim`) no. */
+    res: { status: FolderAccess; canReset: boolean; cause?: 'app' | 'engine' }
+  }
   /** Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (solo macOS). */
   'dialog:openFolderPrivacy': { req: { pane?: FolderPrivacyPane } | undefined; res: void }
   /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
@@ -576,7 +580,7 @@ export interface CodeApi {
     openFolder(opts?: { title?: string; defaultPath?: string }): Promise<string | null>
     revealInFinder(path: string): Promise<void>
     openInEditor(path: string): Promise<{ via: 'code' | 'open' }>
-    checkFolderAccess(path: string): Promise<{ status: FolderAccess; canReset: boolean }>
+    checkFolderAccess(path: string): Promise<{ status: FolderAccess; canReset: boolean; cause?: 'app' | 'engine' }>
     openFolderPrivacy(pane?: FolderPrivacyPane): Promise<void>
     resetFolderPermission(path: string): Promise<{ result: FolderResetResult }>
   }
