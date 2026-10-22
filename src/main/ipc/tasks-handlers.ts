@@ -3,6 +3,7 @@
  * Contrato en src/shared/ipc-tasks.ts; expuesto en `window.api.tasks`.
  */
 import { t } from '@shared/i18n'
+import { engineFlagEnvFor } from '@shared/engine-experiments'
 import { type BrowserWindow, dialog, shell, type IpcMain } from 'electron'
 import type { TasksEventChannel, TasksEventContract } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
@@ -92,7 +93,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
       : undefined,
     tasksWin: deps.tasksWin,
     computerWin: deps.computerWin,
-    winBackend: deps.winBackend
+    winBackend: deps.winBackend,
+    extraEngineEnv: () => engineFlagEnvFor(settingsStore.get(), 'tasks')
   })
   // Abre una tarea/sesión en la ventana principal (clic en una notificación): la trae al frente y
   // avisa al renderer con `app:openTarget` (mismo canal que usa `ipc/notify.ts`).

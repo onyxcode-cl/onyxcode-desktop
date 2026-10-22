@@ -6,6 +6,9 @@ export const mainErrors = {
   'merr.engine.noBinary':
     'The AI engine wasn’t found on this computer. Reinstall Lazunox or pick the program by hand in the setup assistant.',
   'merr.engine.noBinaryShort': 'The AI engine wasn’t found. Reinstall Lazunox or pick it in the setup assistant.',
+  'merr.engine.flags.title': 'Engine features',
+  'merr.engine.flags.pending': 'You changed the engine’s experimental features. They will apply as soon as what’s running finishes.',
+  'merr.engine.flags.restarted': 'Experimental features applied: the engine was restarted.',
   'merr.engine.closed': 'The AI engine closed unexpectedly.',
   'merr.engine.failedRepeatedly': 'The AI engine closed {max} times in a row. Restart the app; if it keeps happening, reinstall it.',
   'merr.engine.retrying': '{reason}; retrying…',

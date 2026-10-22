@@ -8,6 +8,9 @@ export const mainErrors = {
   'merr.engine.noBinary':
     'No se encontró el motor de la IA en este equipo. Reinstala Lazunox o elige el programa a mano en el asistente de configuración.',
   'merr.engine.noBinaryShort': 'No se encontró el motor de la IA. Reinstala Lazunox o elígelo en el asistente de configuración.',
+  'merr.engine.flags.title': 'Funciones del motor',
+  'merr.engine.flags.pending': 'Cambiaste las funciones experimentales del motor. Se aplicarán en cuanto termine lo que está en curso.',
+  'merr.engine.flags.restarted': 'Funciones experimentales aplicadas: el motor se reinició.',
   'merr.engine.closed': 'El motor de la IA se cerró de forma inesperada.',
   'merr.engine.failedRepeatedly': 'El motor de la IA se cerró {max} veces seguidas. Reinicia la app; si sigue igual, reinstálala.',
   'merr.engine.retrying': '{reason}; reintentando…',

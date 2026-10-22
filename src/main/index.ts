@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerMonitor, screen } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, Notification, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
@@ -11,6 +11,8 @@ import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
 import { settingsStore } from './store'
+import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
+import { extrasPrefs } from './extras/prefs'
 import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
 import { cleanLegacyAccountSession } from './legacy-account-cleanup'
@@ -77,6 +79,8 @@ let computerWinOn = false
 let caps = capsOf(false)
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
+  /** Solo con modo Tareas (macOS/Windows con la función activa): lo usa el reinicio por cambio de funciones del motor. */
+  tasks?: EngineFlagsTasks
   busyTaskCount: () => number
   shutdown: () => Promise<void>
   killSync: () => void
@@ -345,6 +349,21 @@ function start(): void {
       // Sin modo Tareas: Rutinas de Chat y Code, y el resto de canales de Tareas/Control/actualizador responden «no disponible».
       tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
     }
+    // Cambiar Modo código / subagentes de fondo en Ajustes reinicia el motor afectado (solo si cambió su familia y sin turnos en curso).
+    installEngineFlagsRestart({
+      settings: settingsStore,
+      server,
+      tasks: tasksMod?.tasks,
+      chatDirectory,
+      notify: (kind) => {
+        if (!extrasPrefs.get().notificationsEnabled || !Notification.isSupported()) return
+        new Notification({
+          title: t('merr.engine.flags.title'),
+          body: t(kind === 'pending' ? 'merr.engine.flags.pending' : 'merr.engine.flags.restarted'),
+          silent: true
+        }).show()
+      }
+    })
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })

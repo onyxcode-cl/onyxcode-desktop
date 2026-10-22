@@ -400,11 +400,22 @@ test('credenciales: OPENCODE_AUTH_CONTENT sustituye al auth.json, PUT /auth escr
     s = await start({ OPENCODE_AUTH_CONTENT: JSON.stringify({ anthropic: { type: 'api', key: 'sandboxed-placeholder-abc' } }) })
     assert.deepEqual((await s.get('/__e2e/status')).authProviders, ['anthropic'])
     const env1 = await s.get('/__e2e/env')
-    assert.deepEqual(env1, { xdgDataHome: xdg, authContent: { providers: ['anthropic'], allPlaceholder: true } })
+    assert.deepEqual(env1, {
+      xdgDataHome: xdg,
+      authContent: { providers: ['anthropic'], allPlaceholder: true },
+      flags: { codeMode: false, backgroundSubagents: false }
+    })
     assert.ok(!JSON.stringify(env1).includes('abc'))
     await s.f.close()
     s = await start({ OPENCODE_AUTH_CONTENT: JSON.stringify({ anthropic: { type: 'api', key: 'real-secret' } }) })
     assert.equal((await s.get('/__e2e/env')).authContent.allPlaceholder, false)
+    await s.f.close()
+    // 5) banderas experimentales del motor: solo 'true' exacto enciende; cada una por separado
+    s = await start({ OPENCODE_EXPERIMENTAL_CODE_MODE: 'true' })
+    assert.deepEqual((await s.get('/__e2e/env')).flags, { codeMode: true, backgroundSubagents: false })
+    await s.f.close()
+    s = await start({ OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'true', OPENCODE_EXPERIMENTAL_CODE_MODE: '1' })
+    assert.deepEqual((await s.get('/__e2e/env')).flags, { codeMode: false, backgroundSubagents: true })
     await s.f.close()
   } finally {
     rmSync(xdg, { recursive: true, force: true })

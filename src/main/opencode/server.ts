@@ -26,6 +26,7 @@ import { catalogFile, waitForCatalog } from './catalog-wait'
 import { withDisclaim } from '../process/disclaim'
 import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
+import { engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import { LineRing } from '../diagnostics/log-ring'
 
 const HOST = '127.0.0.1'
@@ -166,6 +167,9 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const childEnv = minimalEnv({
         ...getOpencodeEnv(),
         ...appOpencodeConfigEnv(),
+        // Funciones experimentales del motor (Modo código, subagentes de fondo): solo las dos variables concretas y solo si
+        // los Ajustes las encienden para Chat o Code (comparten este proceso). Cambiarlas exige reiniciar (`engine-flags-restart.ts`).
+        ...engineFlagEnvForMainSidecar(settingsStore.get()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))

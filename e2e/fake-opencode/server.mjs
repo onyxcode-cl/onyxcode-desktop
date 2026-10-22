@@ -27,7 +27,7 @@
  *   GET  requests   ?limit=100&path=<prefijo>&method=GET&since=<seq>
  *   GET  config     OPENCODE_CONFIG_CONTENT recibido: { raw, content, config }
  *   GET  unknown-routes
- *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder } }: NUNCA devuelve valores secretos;
+ *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder }, flags:{ codeMode, backgroundSubagents } }: NUNCA devuelve valores secretos;
  *                   allPlaceholder = todas las claves de OPENCODE_AUTH_CONTENT son centinelas (sandboxed-placeholder-*)
  *   POST set        { failPrompt: N|-1|0 (prompt_async corta la conexión N veces / siempre / nunca), sessionStatus:{id:'idle'|'busy'}, mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
  *                     commands:[...], connectedProviders:[ids] }
@@ -1790,7 +1790,12 @@ export function createFakeServer(options = {}) {
       const allPlaceholder = Object.values(content).every(
         (e) => e && typeof e === 'object' && typeof e.key === 'string' && e.key.startsWith('sandboxed-placeholder-')
       )
-      json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder } })
+      // `flags`: solo booleanos de OPENCODE_EXPERIMENTAL_CODE_MODE / _BACKGROUND_SUBAGENTS (los E2E comprueban qué familia de motor las recibió).
+      const flags = {
+        codeMode: env.OPENCODE_EXPERIMENTAL_CODE_MODE === 'true',
+        backgroundSubagents: env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS === 'true'
+      }
+      json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder }, flags })
     },
     'GET unknown-routes': (c) => json(c.res, [...state.unknownRoutes.values()]),
     'POST set': (c) => {
