@@ -28,6 +28,7 @@ export function idsFromBrand(root = defaultRoot) {
     helperId: `cl.${alias}.lazunox.cu-helper`,
     keysId: `cl.${alias}.lazunox.cu-keys`,
     disclaimId: `${appId}.disclaim`,
+    motorId: `${appId}.motor`,
     keyboxId: `${appId}.keybox`
   }
 }
@@ -84,11 +85,14 @@ export function verifySigned({ app, dmg, expect, team, ids, run = defaultRun }) 
 
   const keysRel = 'Contents/Resources/computer-use/bin/cu-keys'
   const keyboxRel = 'Contents/Resources/keybox/lazunox-keybox'
+  const motorRel = 'Contents/Resources/opencode/Lazunox Motor.app'
   for (const [rel, id] of [
     ['Contents/Resources/computer-use/bin/cu-helper', ids.helperId],
     // cu-keys solo se comprueba si viaja en el paquete (se compila con swiftc: puede faltar en un build sin Xcode).
     ...(existsSync(join(app, keysRel)) ? [[keysRel, ids.keysId ?? ids.helperId.replace(/cu-helper$/, 'cu-keys')]] : []),
     ['Contents/Resources/launcher/lazunox-disclaim', ids.disclaimId],
+    // Mini-app del motor (macOS): si viaja, su Identifier es la identidad que TCC recuerda para el motor.
+    ...(existsSync(join(app, motorRel)) ? [[motorRel, ids.motorId ?? `${ids.appId}.motor`]] : []),
     // El auxiliar del Llavero (resources/keybox) viaja en el paquete; su identificador fijo es su identidad ante el Llavero.
     ...(existsSync(join(app, keyboxRel)) ? [[keyboxRel, ids.keyboxId ?? `${ids.appId}.keybox`]] : [])
   ]) {

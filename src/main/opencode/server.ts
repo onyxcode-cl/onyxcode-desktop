@@ -16,7 +16,7 @@ import { app } from 'electron'
 import { randomBytes } from 'node:crypto'
 import { delimiter, join } from 'node:path'
 import { getFreePort, waitForHealth } from '../util/net'
-import { APP_SLUG } from '@shared/brand'
+import { APP_SLUG, MOTOR_APP_NAME } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
@@ -483,7 +483,8 @@ export interface BundledOptions {
 }
 
 /**
- * OpenCode incluido en la app: `<Resources>/opencode/opencode` (`opencode.exe` en Windows), solo si la app está empaquetada y
+ * OpenCode incluido en la app: `<Resources>/opencode/Lazunox Motor.app/Contents/MacOS/opencode` en macOS (con respaldo a
+ * `<Resources>/opencode/opencode`) y `<Resources>/opencode/opencode.exe` en Windows, solo si la app está empaquetada y
  * el archivo existe y es ejecutable. En desarrollo es null (el repo vive en ~/Documents y un binario
  * bajo `resources/` fallaría por TCC): allí se usa el CLI del usuario u `OPENCODE_BIN`. Para tests,
  * `LAZUNOX_TEST_BUNDLED_DIR` (honrada ÚNICAMENTE si `!isPackaged`) apunta a un directorio que
@@ -494,7 +495,15 @@ export function bundledOpencodePath(o: BundledOptions = {}): string | null {
   let candidate: string | null = null
   if (packaged) {
     const res = o.resourcesPath ?? process.resourcesPath
-    if (res) candidate = join(res, 'opencode', bundledBinaryName(o.platform))
+    if (res) {
+      candidate = join(res, 'opencode', bundledBinaryName(o.platform))
+      // macOS: el motor viaja como ejecutable de la mini-app «Lazunox Motor» (identidad propia ante TCC: el aviso la nombra y se
+      // puede restablecer por id). Si falta (paquete viejo o a medias) se usa el binario suelto de siempre.
+      if ((o.platform ?? process.platform) === 'darwin') {
+        const motor = join(res, 'opencode', MOTOR_APP_NAME, 'Contents', 'MacOS', 'opencode')
+        if (existsSync(motor) && isExecutable(motor)) candidate = motor
+      }
+    }
   } else {
     const dir = o.testDir ?? process.env[TEST_BUNDLED_ENV]
     if (dir) {

@@ -24,6 +24,7 @@ function idsFromBrandSource(src) {
     helperId: `cl.${alias}.lazunox.cu-helper`,
     keysId: `cl.${alias}.lazunox.cu-keys`,
     disclaimId: `${appId}.disclaim`,
+    motorId: `${appId}.motor`,
     keyboxId: `${appId}.keybox`
   }
 }
@@ -116,6 +117,10 @@ function resignBundle({ appPath, identity, ids, mode, entitlements, keychain, ru
   // Auxiliar del Llavero: identificador FIJO (su `cdhash` es la identidad que el Llavero recuerda entre versiones; resources/keybox/build.sh).
   const keyboxBin = join(res, 'keybox', 'lazunox-keybox')
   if (existsSync(keyboxBin)) sign(keyboxBin, ids.keyboxId ?? `${ids.appId}.keybox`)
+  // Mini-app «Lazunox Motor» (motor OpenCode con identidad TCC propia): se firma el BUNDLE (no el Mach-O suelto) para sellar su
+  // Info.plist, y ANTES que la app. Con el certificado local el requisito queda `identifier "<id>" and certificate leaf = H"<pin>"`.
+  const motorApp = join(res, 'opencode', 'Lazunox Motor.app')
+  if (existsSync(motorApp)) sign(motorApp, ids.motorId ?? `${ids.appId}.motor`)
   sign(appPath, ids.appId)
   run('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath])
 }

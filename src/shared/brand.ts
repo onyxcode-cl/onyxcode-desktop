@@ -29,6 +29,10 @@ export const HELPER_ID = `cl.${AUTHOR_ALIAS}.lazunox.cu-helper`
 export const DICTATE_ID = `cl.${AUTHOR_ALIAS}.lazunox.dictate`
 /** Firma del lanzador «disclaim». */
 export const DISCLAIM_ID = `${APP_ID}.disclaim`
+/** Id de la mini-app «Lazunox Motor» (macOS): el motor OpenCode vive como ejecutable de este bundle para tener identidad propia ante TCC. */
+export const MOTOR_ID = `${APP_ID}.motor`
+/** Nombre de esa mini-app dentro de `Resources/opencode`. */
+export const MOTOR_APP_NAME = 'Lazunox Motor.app'
 /** Slug en minúsculas, útil para usuarios/identificadores técnicos. */
 export const APP_SLUG = 'lazunox'
 

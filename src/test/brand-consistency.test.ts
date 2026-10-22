@@ -2,7 +2,7 @@ import { createPublicKey } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { APP_ID, AUTHOR_ALIAS, DICTATE_ID, DISCLAIM_ID, HELPER_ID, UPDATE_KEY_ID, UPDATE_PUBLIC_KEY } from '../shared/brand'
+import { APP_ID, AUTHOR_ALIAS, DICTATE_ID, DISCLAIM_ID, HELPER_ID, MOTOR_ID, UPDATE_KEY_ID, UPDATE_PUBLIC_KEY } from '../shared/brand'
 
 /**
  * Guardia: los literales de identidad que no pueden importar `brand.ts` (electron-builder.js,
@@ -16,6 +16,7 @@ describe('identidad centralizada en brand.ts', () => {
     expect(APP_ID).toBe(`cl.${AUTHOR_ALIAS}.lazunox`)
     expect(DISCLAIM_ID).toBe(`${APP_ID}.disclaim`)
     expect(HELPER_ID).toBe(`${APP_ID}.cu-helper`)
+    expect(MOTOR_ID).toBe(`${APP_ID}.motor`)
     expect(DICTATE_ID).toBe(`${APP_ID}.dictate`)
   })
 

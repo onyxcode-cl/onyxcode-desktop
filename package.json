@@ -22,7 +22,7 @@
     "typecheck:viewer": "tsc --noEmit -p tsconfig.viewer.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web && npm run typecheck:pwa && npm run typecheck:viewer",
     "fetch:python": "node scripts/fetch-python.mjs --if-missing",
-    "package": "node scripts/check-node-modules.mjs && node scripts/fetch-opencode.mjs --if-missing && npm run fetch:python && npm run build && electron-builder --mac --arm64",
+    "package": "node scripts/check-node-modules.mjs && node scripts/fetch-opencode.mjs --if-missing && node scripts/stage-motor-app.mjs && npm run fetch:python && npm run build && electron-builder --mac --arm64",
     "package:win": "node scripts/fetch-opencode.mjs --if-missing && npm run build && node scripts/check-win-bundle.mjs --config-only && node node_modules/electron-builder/cli.js --win nsis --x64",
     "test": "vitest run",
     "test:watch": "vitest",

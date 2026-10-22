@@ -22,6 +22,7 @@ e2e/.artifacts/
 docs/analisis-claude/
 # OpenCode oficial descargado por scripts/fetch-opencode.mjs (segun resources/opencode-bin/pin.json)
 resources/opencode-bin/bin/
+resources/opencode-bin/Lazunox Motor.app/
 
 # Permisos locales de Claude Code (no publicar)
 .claude/settings.local.json

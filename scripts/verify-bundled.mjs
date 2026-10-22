@@ -23,7 +23,10 @@ const arg = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : unde
 const appPath = resolve(arg('--app') ?? join(root, 'dist/mac-arm64/Lazunox.app'))
 const dmgPath = resolve(arg('--dmg') ?? join(root, 'dist', `${pkg.name}-${pkg.version}-arm64.dmg`))
 const res = join(appPath, 'Contents/Resources')
-const bin = join(res, 'opencode/opencode')
+// macOS: el motor es el ejecutable de la mini-app «Lazunox Motor» (identidad TCC propia, docs/DISENO-LAZUNOX-MOTOR.md).
+const motorApp = join(res, 'opencode/Lazunox Motor.app')
+const bin = join(motorApp, 'Contents/MacOS/opencode')
+const motorId = `${pkg.build?.appId ?? /appId: '([^']*)'/.exec(readFileSync(join(root, 'electron-builder.js'), 'utf8'))?.[1]}.motor`
 // Medido: ~302 MiB con OpenCode y Python incluidos; por encima de 400 MiB algo va mal (p. ej. se empaquetó dos veces).
 const DMG_LIMIT = 400 * 1024 * 1024
 
@@ -64,6 +67,17 @@ async function main() {
     cs.status === 0,
     cs.status === 0 ? 'válida' : (cs.stderr || '').trim().split('\n').slice(-2).join(' | ')
   )
+
+  // 1b. Mini-app del motor: bundle sellado, id propio, sin binario suelto duplicado
+  const mcs = run('codesign', ['--verify', '--strict', '--verbose=2', motorApp])
+  record('codesign --verify --strict de Lazunox Motor.app', mcs.status === 0, mcs.status === 0 ? 'válida' : (mcs.stderr || '').trim().split('\n').slice(-2).join(' | '))
+  const mInfo = run('codesign', ['-dv', '--verbose=2', motorApp])
+  const mOut = `${mInfo.stdout}${mInfo.stderr}`
+  record(`Identifier de Lazunox Motor.app = ${motorId}`, new RegExp(`^Identifier=${motorId.replace(/\./g, '\\.')}$`, 'm').test(mOut), /^Identifier=(.*)$/m.exec(mOut)?.[1])
+  record('Lazunox Motor.app: Info.plist sellado por la firma', /Info\.plist entries=[1-9]/.test(mOut), /Info\.plist entries=\S+/.exec(mOut)?.[0])
+  const plist = run('plutil', ['-extract', 'CFBundleIdentifier', 'raw', join(motorApp, 'Contents/Info.plist')])
+  record('Info.plist: CFBundleIdentifier del motor', (plist.stdout || '').trim() === motorId, (plist.stdout || '').trim())
+  record('no queda un opencode suelto en Resources/opencode', !existsSync(join(res, 'opencode/opencode')), join(res, 'opencode/opencode'))
 
   // 2. Binario embebido presente, versión == pin.version
   if (!existsSync(bin)) {

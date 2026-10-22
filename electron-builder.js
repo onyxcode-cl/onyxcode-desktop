@@ -193,10 +193,12 @@ module.exports = {
       // scripts/fetch-opencode.mjs) → Contents/Resources/opencode/opencode. Dentro del .app (no en
       // userData) para que el perfil Seatbelt de Tareas pueda ejecutarlo. electron-builder/osx-sign
       // recorre TODO el bundle y vuelve a firmar cada Mach-O que encuentra (aquí también este).
+      // En macOS el motor viaja como ejecutable de la mini-app «Lazunox Motor.app» (scripts/stage-motor-app.mjs; identidad TCC
+      // propia, docs/DISENO-LAZUNOX-MOTOR.md) → Contents/Resources/opencode/Lazunox Motor.app/Contents/MacOS/opencode.
       {
-        from: 'resources/opencode-bin/bin',
+        from: 'resources/opencode-bin',
         to: 'opencode',
-        filter: ['opencode']
+        filter: ['Lazunox Motor.app/**']
       },
       // Python propio con las librerías de oficina (scripts/fetch-python.mjs, solo macOS) → Contents/Resources/python/bin/python3,
       // para que las skills de oficina no dependan del Python del Mac del usuario. Solo si se descargó (en desarrollo no existe).
@@ -228,7 +230,7 @@ module.exports = {
             'Contents/Resources/computer-use/bin/cu-keys',
             'Contents/Resources/launcher/lazunox-disclaim',
             'Contents/Resources/keybox/lazunox-keybox',
-            'Contents/Resources/opencode/opencode'
+            'Contents/Resources/opencode/Lazunox Motor.app'
           ]
         }
       : {}),
