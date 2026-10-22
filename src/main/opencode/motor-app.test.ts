@@ -63,8 +63,31 @@ describe('Lazunox Motor.app: copia externa', () => {
     // La carpeta no deja restos temporales.
     expect(readdirSync(p.installDir).sort()).toEqual([MOTOR_APP_NAME, 'fuente.sha256'].sort())
     calls.length = 0
+    // Al día: no copia, solo comprueba la firma de lo ya instalado.
     expect(installMotorApp(p, { run: fakeRun(calls) })).toBe('current')
-    expect(calls).toEqual([])
+    expect(calls.map((c) => c[0].split('/').pop())).toEqual(['codesign'])
+  })
+
+  it.skipIf(!posixOnly)('copia «al día» pero con la firma rota (alterada): se reinstala desde la maestra', () => {
+    const { res, appData } = fixture()
+    const p = motorPaths(res, appData)
+    installMotorApp(p, { run: fakeRun([]) })
+    writeFileSync(p.exe, '#!/bin/sh\necho manipulado!!\n') // mismo tamaño no hace falta: lo simulamos con la firma
+    let verifs = 0
+    const run = (cmd: string, args: string[]): void => {
+      if (cmd.endsWith('codesign')) {
+        verifs++
+        if (verifs === 1) throw new Error('a sealed resource is missing or invalid') // primera verificación: la copia vieja
+        return
+      }
+      cpSync(args[0], args[1], { recursive: true })
+    }
+    // El tamaño cambió, así que ya no se considera vigente; forzamos el caso «mismo tamaño» igualándolo.
+    writeFileSync(p.exe, readFileSync(join(p.source, 'Contents', 'MacOS', 'opencode')))
+    writeFileSync(join(p.installDir, 'fuente.sha256'), `${sourceFingerprint(p.source)}\n`)
+    expect(installedMotorCurrent(p)).toBe(true)
+    expect(installMotorApp(p, { run })).toBe('installed')
+    expect(readFileSync(p.exe, 'utf8')).toBe(readFileSync(join(p.source, 'Contents', 'MacOS', 'opencode'), 'utf8'))
   })
 
   it.skipIf(!posixOnly)('una versión nueva de la maestra reemplaza la copia (la anterior deja de ser vigente)', () => {

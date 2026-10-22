@@ -25,7 +25,8 @@ const dmgPath = resolve(arg('--dmg') ?? join(root, 'dist', `${pkg.name}-${pkg.ve
 const res = join(appPath, 'Contents/Resources')
 // macOS: el motor es el ejecutable de la mini-app «Lazunox Motor» (identidad TCC propia, docs/DISENO-LAZUNOX-MOTOR.md).
 const motorApp = join(res, 'opencode/Lazunox Motor.app')
-const bin = join(motorApp, 'Contents/MacOS/opencode')
+// `--engine <ruta>`: probar OTRO ejecutable del motor (p. ej. la copia externa de ~/Library/Application Support/Lazunox Motor) con las mismas pruebas.
+const bin = resolve(arg('--engine') ?? join(motorApp, 'Contents/MacOS/opencode'))
 const motorId = `${pkg.build?.appId ?? /appId: '([^']*)'/.exec(readFileSync(join(root, 'electron-builder.js'), 'utf8'))?.[1]}.motor`
 // Medido: ~302 MiB con OpenCode y Python incluidos; por encima de 400 MiB algo va mal (p. ej. se empaquetó dos veces).
 const DMG_LIMIT = 400 * 1024 * 1024

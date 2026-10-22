@@ -188,10 +188,15 @@ a medias, el empaquetado falla nombrando las que faltan).
 
 ## 9. Motor embebido (OpenCode dentro del instalador)
 
-El instalador lleva el **OpenCode oficial** como motor, para que nadie tenga que instalar nada. Se copia a
-`Lazunox.app/Contents/Resources/opencode/opencode` (dentro del `.app` y no en `userData`, para que el perfil
-Seatbelt de Tareas pueda ejecutarlo). En desarrollo (`npm run dev`) no se usa: allí manda el CLI del usuario u
-`OPENCODE_BIN`.
+El instalador lleva el **OpenCode oficial** como motor, para que nadie tenga que instalar nada. En Windows se copia a
+`resources\opencode\opencode.exe`. En macOS viaja como ejecutable de una mini-app firmada, `Lazunox.app/Contents/Resources/opencode/
+Lazunox Motor.app` (id `<appId>.motor`, armada por `scripts/stage-motor-app.mjs`, que corre dentro de `npm run package`), y al arrancar
+Lazunox la **copia** a `~/Library/Application Support/Lazunox Motor/` (`src/main/opencode/motor-app.ts`). La copia es necesaria: medido en
+el registro de TCC, una mini-app anidada en el `.app` se evalúa a nombre de Lazunox y hereda su decisión de privacidad; suelta, macOS la
+evalúa como «Lazunox Motor» (el aviso la nombra y `tccutil reset … <appId>.motor` la restablece). La carpeta es hermana de `userData` (el
+sandbox de Tareas deniega leer `userData`). La copia se rehace cuando cambia la huella de la maestra y se comprueba su firma en cada
+arranque. Si la copia falta o no valida, se usa la maestra anidada y, como último recurso, un `opencode` suelto de un paquete viejo.
+Diseño y pruebas: `docs/DISENO-LAZUNOX-MOTOR.md`. En desarrollo (`npm run dev`) no se usa: allí manda el CLI del usuario u `OPENCODE_BIN`.
 
 **Origen y versión.** Es el binario del release oficial de GitHub (`opencode-darwin-arm64.zip`, sin modificar).
 Versión, URL, tamaño y **SHA-256** del ZIP están fijados en `resources/opencode-bin/pin.json` (hoy 1.18.33). Cambiar

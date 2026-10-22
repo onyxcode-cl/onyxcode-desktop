@@ -2375,3 +2375,31 @@ puede pedir reiniciar la app al activarlo (la fila ofrece «Reiniciar Lazunox»)
 desvinculado de TCC con `disclaim`) hereda el permiso concedido a Lazunox, y que `~/Library/Safari` dé `EPERM` en todas las versiones de macOS.
 Pruebas: `folder-access.test.ts` (errores simulados, `execFile` simulado, `chmod 000` real), `full-disk.test.ts`, `service.test.ts`,
 `preflight.test.ts`, `FolderAccessCard.render.test.tsx`, `PreflightScreen.render.test.tsx`.
+
+## 3 sexagies quinquies. «Lazunox Motor»: el motor como mini-app con identidad propia ante macOS (F8-B211, ZONA INTOCABLE)
+
+**Qué cambia.** En macOS el motor OpenCode viaja como ejecutable de `Lazunox Motor.app` (id `<appId>.motor`) y se lanza igual que antes, con
+`lazunox-disclaim` (no hereda Accesibilidad ni Grabación de pantalla de Lazunox). Una copia firmada vive en
+`~/Library/Application Support/Lazunox Motor/` (`src/main/opencode/motor-app.ts`).
+
+**Por qué fuera del `.app`.** Medido (registro de TCC, `subsystem == "com.apple.TCC"`): anidada, `subject=<appId>` (hereda la decisión de
+Lazunox y deniega sin avisar); suelta, `subject=<appId>.motor` y macOS pregunta. Por eso la copia externa.
+
+**Superficie y mitigaciones.**
+- La carpeta externa es escribible por la misma persona (como `userData`). TCC guarda «identificador + certificado» (requisito designado
+  `identifier "<appId>.motor" and certificate leaf = H"<pin>"`), así que un ejecutable alterado o reemplazado NO hereda la concesión de
+  Documentos. Además `installMotorApp` comprueba `codesign --verify --strict` de la copia en cada arranque y, si no valida, la reinstala desde
+  la maestra firmada (sellada por la firma de la app). La instalación copia con `ditto` a un nombre temporal, verifica la firma y sustituye
+  por `rename` (nunca queda una copia a medias en uso).
+- Sandbox de Tareas: la ruta externa no está en la lista de lectura denegada y el perfil no permite escribir ahí; `verify:bundled --engine`
+  prueba el motor desde esa ruta DENTRO del Seatbelt real (healthy, y control negativo de `userData`).
+- Firma: `resignBundle` firma el BUNDLE de la mini-app (sella el Info.plist) antes que la app; `verify-signed` y `verify-bundled` comprueban
+  su `Identifier`, que el Info.plist esté sellado, que no quede un `opencode` suelto y el requisito atado al certificado.
+- Re-preguntar: al elegir una carpeta (acción explícita) con un «No permitir» guardado, `ensureFolderReadable(dir, {reask})` borra la
+  decisión de Lazunox y del motor (`tccutil reset` con ids de constantes, nunca del renderer) y vuelve a comprobar UNA vez; sin bucle y
+  nunca en comprobaciones pasivas (restaurar al arrancar, foco).
+
+**Sin verificar.** Modo Developer ID con hardened runtime (no hay certificado de Apple en este entorno); actualización real de la versión
+anterior a esta (quien ya dio permiso al `opencode` suelto verá una vez el aviso de «Lazunox Motor»); comportamiento de TCC tras actualizar la
+app con el mismo certificado (debería conservar la concesión: el requisito no cambia).
+

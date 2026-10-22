@@ -97,7 +97,16 @@ export function installMotorApp(p: MotorPaths, deps: MotorInstallDeps = {}): Mot
   const run = deps.run ?? defaultRun
   const fp = sourceFingerprint(p.source)
   if (!fp) return 'no-source'
-  if (installedMotorCurrent(p)) return 'current'
+  if (installedMotorCurrent(p)) {
+    // «Al día» solo mira sello y tamaño: además se comprueba la firma completa (≈0,1 s). Si la copia fue alterada o quedó a medias, no se
+    // da por buena y se reinstala desde la maestra firmada.
+    try {
+      run('/usr/bin/codesign', ['--verify', '--strict', p.app])
+      return 'current'
+    } catch {
+      console.error('[motor] la copia de «Lazunox Motor.app» no valida su firma: se reinstala')
+    }
+  }
   const id = deps.pid ?? process.pid
   const tmpApp = join(p.installDir, `.nuevo-${id}`, MOTOR_APP_NAME)
   const oldApp = join(p.installDir, `.viejo-${id}`)
