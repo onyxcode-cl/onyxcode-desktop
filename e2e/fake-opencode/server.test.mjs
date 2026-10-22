@@ -554,3 +554,336 @@ test('guion por modelo (forModel), error de cuota, /instance/dispose y metadata/
   assert.equal((await call('POST', '/instance/dispose', {})).data, true)
   assert.equal((await ctl('GET', 'status')).data.instanceDisposeCount, 1)
 })
+
+// ───────────── subagentes en segundo plano y Code Mode ─────────────
+
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms))
+/** Sondea hasta que `fn` devuelva algo no vacío. */
+async function until(label, fn, ms = 3000) {
+  const t0 = Date.now()
+  for (;;) {
+    const v = await fn()
+    if (v) return v
+    if (Date.now() - t0 > ms) throw new Error('timeout esperando: ' + label)
+    await sleepMs(15)
+  }
+}
+const msgsOf = async (sid) => (await call('GET', `/session/${sid}/message?${q()}`)).data
+const statusOf = async () => (await call('GET', `/session/status?${q()}`)).data
+const childrenOf = async (sid) => (await call('GET', `/session/${sid}/children?${q()}`)).data
+/** Crea una sesión padre, encola su guion y la prompta; devuelve su id. */
+async function runParent(steps, extra = {}) {
+  const sid = (await call('POST', `/session?${q()}`, { title: 'padre' })).data.id
+  await ctl('POST', 'script', { steps, ...extra })
+  await call('POST', `/session/${sid}/prompt_async?${q()}`, { parts: [{ type: 'text', text: 'lanza' }] })
+  return sid
+}
+const taskPart = (msgs) => msgs.flatMap((m) => m.parts).find((p) => p.type === 'tool' && p.tool === 'task')
+const syntheticOf = (msgs) => msgs.filter((m) => m.info.role === 'user').flatMap((m) => m.parts).filter((p) => p.synthetic)
+
+test('task en segundo plano: vuelve de inmediato, el hijo corre aparte y al terminar avisa al padre y despierta un turno', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true })
+  const sse = await openSse()
+  // Guion del turno de despertar (lo consume el aviso sintético).
+  await ctl('POST', 'script', { match: 'Background task', steps: [{ type: 'text', text: 'Resumen tras el aviso' }] })
+  const sid = await runParent([
+    { type: 'task', background: true, title: 'Buscar', prompt: 'busca cosas', steps: [{ type: 'text', text: 'hallazgos' }] },
+    { type: 'text', text: 'lancé el hijo' }
+  ])
+  await until('padre inactivo', async () => (await msgsOf(sid)).length >= 2 && !(await statusOf())[sid])
+  const first = await msgsOf(sid)
+  const part = taskPart(first)
+  assert.equal(part.state.status, 'completed')
+  assert.match(part.state.output, /Background task started/)
+  assert.equal(part.state.metadata.background, true)
+  const kids = await childrenOf(sid)
+  assert.equal(kids.length, 1)
+  assert.equal(kids[0].parentID, sid)
+  assert.equal(part.state.metadata.sessionId, kids[0].id)
+  // El hijo espera su compuerta: ocupado, y el padre sin aviso todavía.
+  assert.equal((await statusOf())[kids[0].id]?.type, 'busy')
+  assert.equal(syntheticOf(first).length, 0)
+  assert.equal((await ctl('GET', 'bg')).data[0].status, 'running')
+
+  await ctl('POST', 'bg-release', { sessionID: kids[0].id })
+  await until('aviso en el padre', async () => syntheticOf(await msgsOf(sid)).length === 1)
+  await until('turno del padre terminado', async () => {
+    const m = await msgsOf(sid)
+    return m.filter((x) => x.info.role === 'assistant').length === 2 && !(await statusOf())[sid]
+  })
+  const after = await msgsOf(sid)
+  const note = syntheticOf(after)[0]
+  assert.match(note.text, /state: completed/)
+  assert.match(note.text, /Background task completed: Buscar/)
+  assert.match(note.text, /<task_result>\nhallazgos\n<\/task_result>/)
+  assert.equal(after[after.length - 1].parts.find((p) => p.type === 'text').text, 'Resumen tras el aviso')
+  // Eventos de la hija llegaron por SSE (creada, mensajes y partes de la hija).
+  const evs = sse.events.map((e) => e.payload)
+  assert.ok(evs.some((e) => e.type === 'session.created' && e.properties.info.parentID === sid))
+  assert.ok(evs.some((e) => e.type === 'message.part.updated' && e.properties.sessionID === kids[0].id))
+  assert.ok(evs.some((e) => e.type === 'session.idle' && e.properties.sessionID === kids[0].id))
+  const job = (await ctl('GET', 'bg')).data[0]
+  assert.equal(job.status, 'completed')
+  assert.equal(job.notified, true)
+  sse.close()
+})
+
+test('retraso del hijo (bg-set delayMs) y abortar al padre NO cancela al hijo en segundo plano', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { delayMs: 120, hold: false })
+  await ctl('POST', 'script', { match: 'Background task', steps: [{ type: 'text', text: 'ok' }] })
+  const sid = await runParent([
+    { type: 'task', background: true, title: 'Lento', steps: [{ type: 'text', text: 'listo' }] },
+    { type: 'delay', ms: 400 }
+  ])
+  const kids = await until('hijo creado', async () => {
+    const k = await childrenOf(sid)
+    return k.length ? k : null
+  })
+  assert.equal((await call('POST', `/session/${sid}/abort?${q()}`)).data, true)
+  await until('padre inactivo', async () => !(await statusOf())[sid])
+  // El hijo sigue y termina; el padre recibe el aviso aun habiendo sido abortado.
+  await until('aviso', async () => syntheticOf(await msgsOf(sid)).length === 1)
+  assert.equal((await ctl('GET', 'bg')).data[0].status, 'completed')
+  assert.equal((await childrenOf(sid))[0].id, kids[0].id)
+})
+
+test('cancelar al hijo (abort de su sesión) no avisa al padre', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true })
+  const sid = await runParent([{ type: 'task', background: true, title: 'Cancelable' }])
+  const [kid] = await until('hijo', async () => {
+    const k = await childrenOf(sid)
+    return k.length ? k : null
+  })
+  await until('hijo ocupado', async () => (await statusOf())[kid.id]?.type === 'busy')
+  assert.equal((await call('POST', `/session/${kid.id}/abort?${q()}`)).data, true)
+  await until('trabajo cancelado', async () => (await ctl('GET', 'bg')).data[0].status === 'cancelled')
+  await sleepMs(80)
+  assert.equal(syntheticOf(await msgsOf(sid)).length, 0)
+  assert.equal((await ctl('GET', 'bg')).data[0].notified, false)
+  const kidMsgs = await msgsOf(kid.id)
+  assert.equal(kidMsgs[kidMsgs.length - 1].info.error.name, 'MessageAbortedError')
+})
+
+test('fallo del hijo (failNext y bg-fail): session.error en la hija y aviso de error al padre', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { failNext: 1, failMessage: 'boom 1', hold: false, delayMs: 0 })
+  const sse = await openSse()
+  await ctl('POST', 'script', { match: 'Background task', steps: [{ type: 'text', text: 'visto' }] })
+  const sid = await runParent([{ type: 'task', background: true, title: 'Falla' }])
+  await until('aviso de error', async () => syntheticOf(await msgsOf(sid)).length === 1)
+  const note = syntheticOf(await msgsOf(sid))[0].text
+  assert.match(note, /state: error/)
+  assert.match(note, /Background task failed: Falla/)
+  assert.match(note, /boom 1/)
+  const [kid] = await childrenOf(sid)
+  await sse.until((e) => e.some((x) => x.payload.type === 'session.error' && x.payload.properties.sessionID === kid.id))
+  sse.close()
+
+  // bg-fail sobre un hijo en espera.
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true, failNext: 0 })
+  await ctl('POST', 'script', { match: 'Background task', steps: [{ type: 'text', text: 'visto 2' }] })
+  const sid2 = await runParent([{ type: 'task', background: true, title: 'Falla ya' }])
+  const [kid2] = await until('hijo 2', async () => {
+    const k = await childrenOf(sid2)
+    return k.length ? k : null
+  })
+  assert.equal((await ctl('POST', 'bg-fail', { sessionID: kid2.id, message: 'forzado' })).status, 200)
+  await until('aviso 2', async () => syntheticOf(await msgsOf(sid2)).length === 1)
+  assert.match(syntheticOf(await msgsOf(sid2))[0].text, /forzado/)
+  assert.equal((await ctl('POST', 'bg-fail', { sessionID: 'ses_nope' })).status, 404)
+})
+
+test('task en primer plano bloquea al padre; la ruta experimental /background lo manda al fondo', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true })
+  await ctl('POST', 'script', { match: 'Background task', steps: [{ type: 'text', text: 'despierto' }] })
+  const sid = await runParent([
+    { type: 'task', title: 'Bloquea', steps: [{ type: 'text', text: 'resultado largo' }] },
+    { type: 'text', text: 'sigo' }
+  ])
+  const [kid] = await until('hijo', async () => {
+    const k = await childrenOf(sid)
+    return k.length ? k : null
+  })
+  await sleepMs(60)
+  // Bloqueado: la herramienta sigue en ejecución y el padre ocupado.
+  assert.equal(taskPart(await msgsOf(sid)).state.status, 'running')
+  assert.equal((await statusOf())[sid]?.type, 'busy')
+  const sent = await call('POST', `/experimental/session/${sid}/background?${q()}`)
+  assert.equal(sent.status, 200)
+  assert.equal(sent.data, true)
+  await until('tool completada', async () => taskPart(await msgsOf(sid)).state.status === 'completed')
+  assert.match(taskPart(await msgsOf(sid)).state.output, /Background task started/)
+  await until('padre inactivo', async () => !(await statusOf())[sid])
+  // Sin nada en primer plano la ruta responde false.
+  assert.equal((await call('POST', `/experimental/session/${sid}/background?${q()}`)).data, false)
+  assert.equal((await call('POST', `/experimental/session/ses_nope/background?${q()}`)).status, 404)
+  await ctl('POST', 'bg-release', { sessionID: kid.id })
+  await until('aviso', async () => syntheticOf(await msgsOf(sid)).length === 1)
+  assert.match(syntheticOf(await msgsOf(sid))[0].text, /resultado largo/)
+})
+
+test('task en primer plano: termina solo (sin aviso) y abortar al padre cancela al hijo', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: false, delayMs: 40 })
+  const sid = await runParent([{ type: 'task', title: 'Corto', steps: [{ type: 'text', text: 'fin' }] }])
+  await until('padre inactivo', async () => (await msgsOf(sid)).length >= 2 && !(await statusOf())[sid])
+  const part = taskPart(await msgsOf(sid))
+  assert.equal(part.state.status, 'completed')
+  assert.match(part.state.output, /<task_result>\nfin\n<\/task_result>/)
+  assert.equal(syntheticOf(await msgsOf(sid)).length, 0)
+
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true })
+  const sid2 = await runParent([{ type: 'task', title: 'Largo' }])
+  const [kid] = await until('hijo', async () => {
+    const k = await childrenOf(sid2)
+    return k.length ? k : null
+  })
+  await until('hijo ocupado', async () => (await statusOf())[kid.id]?.type === 'busy')
+  await call('POST', `/session/${sid2}/abort?${q()}`)
+  await until('hijo inactivo', async () => !(await statusOf())[kid.id])
+  assert.equal((await ctl('GET', 'bg')).data[0].status, 'cancelled')
+  assert.equal(syntheticOf(await msgsOf(sid2)).length, 0)
+})
+
+test('los permisos de la hija llegan por permission.asked con su propio sessionID', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: false, delayMs: 0 })
+  const sid = await runParent([
+    { type: 'task', background: true, title: 'Con permiso', steps: [{ type: 'permission', permission: 'bash', patterns: ['rm x'] }, { type: 'text', text: 'hecho' }] }
+  ])
+  const req = await until('permiso pendiente', async () => (await call('GET', `/permission?${q()}`)).data[0])
+  const [kid] = await childrenOf(sid)
+  assert.equal(req.sessionID, kid.id)
+  await call('POST', `/permission/${req.id}/reply?${q()}`, { reply: 'once' })
+  await until('trabajo completado', async () => (await ctl('GET', 'bg')).data[0]?.status === 'completed')
+})
+
+test('restart: "lose" pierde el trabajo sin avisar; "resume" lo reanuda y avisa', async () => {
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true })
+  const sid = await runParent([{ type: 'task', background: true, title: 'Reinicio' }])
+  const [kid] = await until('hijo', async () => {
+    const k = await childrenOf(sid)
+    return k.length ? k : null
+  })
+  await until('hijo ocupado', async () => (await statusOf())[kid.id]?.type === 'busy')
+  const lost = await ctl('POST', 'restart', { mode: 'lose' })
+  assert.deepEqual(lost.data.lost, [kid.id])
+  await sleepMs(80)
+  assert.equal((await ctl('GET', 'bg')).data[0].status, 'cancelled')
+  assert.equal((await ctl('GET', 'bg')).data[0].lost, true)
+  assert.equal(syntheticOf(await msgsOf(sid)).length, 0)
+  assert.equal((await ctl('GET', 'status')).data.restartCount, 1)
+  assert.equal((await statusOf())[kid.id], undefined)
+
+  await ctl('POST', 'reset', {})
+  await ctl('POST', 'bg-set', { hold: true })
+  await ctl('POST', 'script', { match: 'Background task', steps: [{ type: 'text', text: 'tras reinicio' }] })
+  const sid2 = await runParent([{ type: 'task', background: true, title: 'Reanuda', steps: [{ type: 'text', text: 'sobrevivió' }] }])
+  const [kid2] = await until('hijo 2', async () => {
+    const k = await childrenOf(sid2)
+    return k.length ? k : null
+  })
+  const res = await ctl('POST', 'restart', { mode: 'resume' })
+  assert.deepEqual(res.data.resumed, [kid2.id])
+  await until('hijo reanudado en espera', async () => (await ctl('GET', 'bg')).data[0].waiting)
+  await ctl('POST', 'bg-release', { sessionID: kid2.id })
+  await until('aviso tras reiniciar', async () => syntheticOf(await msgsOf(sid2)).length === 1)
+  assert.match(syntheticOf(await msgsOf(sid2))[0].text, /sobrevivió/)
+  assert.equal((await ctl('GET', 'bg')).data[0].generation >= 2, true)
+})
+
+test('code_mode: pide permiso por CADA llamada interna (clave MCP) y respeta allow/deny/always/reject', async () => {
+  await ctl('POST', 'reset', {})
+  const sse = await openSse()
+  const calls = [
+    { tool: 'github_list_issues', input: { repo: 'a/b' }, output: ['#1'] },
+    { tool: 'github_get_issue', input: { n: 1 }, output: { title: 'x' } },
+    { tool: 'files_read', output: 'hola' }
+  ]
+  const sid = await runParent([{ type: 'code_mode', calls, rules: [{ permission: 'files_*', action: 'allow' }] }, { type: 'text', text: 'fin' }])
+  const ask1 = await until('permiso 1', async () => (await call('GET', `/permission?${q()}`)).data[0])
+  assert.equal(ask1.permission, 'github_list_issues')
+  assert.deepEqual(ask1.patterns, ['*'])
+  assert.deepEqual(ask1.always, ['*'])
+  assert.equal(ask1.sessionID, sid)
+  const running = taskLike(await msgsOf(sid))
+  assert.equal(running.tool, 'execute')
+  assert.match(running.state.input.code, /tools\.github\.list_issues/)
+  assert.deepEqual(running.state.metadata.toolCalls.map((t) => [t.tool, t.status]), [['github_list_issues', 'running']])
+  assert.equal(ask1.tool.callID, running.callID)
+  await call('POST', `/permission/${ask1.id}/reply?${q()}`, { reply: 'once' })
+  const ask2 = await until('permiso 2', async () => {
+    const l = (await call('GET', `/permission?${q()}`)).data
+    return l[0] && l[0].id !== ask1.id ? l[0] : null
+  })
+  assert.equal(ask2.permission, 'github_get_issue')
+  await call('POST', `/permission/${ask2.id}/reply?${q()}`, { reply: 'always' })
+  await until('turno terminado', async () => !(await statusOf())[sid] && (await msgsOf(sid)).length >= 2)
+  const done = taskLike(await msgsOf(sid))
+  assert.equal(done.state.status, 'completed')
+  assert.deepEqual(done.state.metadata.toolCalls.map((t) => t.status), ['completed', 'completed', 'completed'])
+  assert.deepEqual(JSON.parse(done.state.output), [['#1'], { title: 'x' }, 'hola'])
+  // files_read estaba en allow: nunca se preguntó. Solo 2 preguntas en total.
+  assert.equal(sse.events.filter((e) => e.payload.type === 'permission.asked').length, 2)
+
+  // «always» recuerda la clave: otra sesión ya no pregunta por github_get_issue.
+  const sid2 = await runParent([{ type: 'code_mode', calls: [calls[1]] }])
+  await until('sin preguntas', async () => (await msgsOf(sid2)).length >= 2 && !(await statusOf())[sid2])
+  assert.equal(taskLike(await msgsOf(sid2)).state.status, 'completed')
+  assert.equal(sse.events.filter((e) => e.payload.type === 'permission.asked').length, 2)
+  sse.close()
+})
+
+const taskLike = (msgs) => msgs.flatMap((m) => m.parts).find((p) => p.type === 'tool' && p.tool === 'execute')
+
+test('code_mode: deny hace la herramienta invisible, reject corta la ejecución y las reglas salen de la config', async () => {
+  await ctl('POST', 'reset', {})
+  const sse = await openSse()
+  // deny por regla del paso: sin permission.asked, error UnknownTool y la 2.ª llamada no corre.
+  const sid = await runParent([
+    { type: 'code_mode', calls: [{ tool: 'shell_run' }, { tool: 'github_x' }], rules: [{ permission: 'shell_*', action: 'deny' }] }
+  ])
+  await until('termina', async () => (await msgsOf(sid)).length >= 2 && !(await statusOf())[sid])
+  const denied = taskLike(await msgsOf(sid))
+  assert.equal(denied.state.status, 'error')
+  assert.match(denied.state.error, /UnknownTool: shell_run/)
+  assert.deepEqual(denied.state.metadata.toolCalls.map((t) => t.status), ['error'])
+  assert.equal(sse.events.filter((e) => e.payload.type === 'permission.asked').length, 0)
+
+  // reject: la ejecución se corta tras la primera llamada.
+  const sid2 = await runParent([{ type: 'code_mode', calls: [{ tool: 'a_one' }, { tool: 'a_two' }] }])
+  const ask = await until('permiso', async () => (await call('GET', `/permission?${q()}`)).data[0])
+  assert.equal(ask.permission, 'a_one')
+  await call('POST', `/permission/${ask.id}/reply?${q()}`, { reply: 'reject' })
+  await until('termina 2', async () => !(await statusOf())[sid2] && (await msgsOf(sid2)).length >= 2)
+  const rej = taskLike(await msgsOf(sid2))
+  assert.equal(rej.state.status, 'error')
+  assert.match(rej.state.error, /rejected permission/)
+  assert.equal(sse.events.filter((e) => e.payload.type === 'permission.asked').length, 1)
+
+  // Reglas de la config (allow para todo b_*): ninguna pregunta; y el patrón más específico posterior gana.
+  await ctl('POST', 'set', { config: { permission: { 'b_*': 'allow', b_secret: 'ask' } } })
+  const sid3 = await runParent([{ type: 'code_mode', calls: [{ tool: 'b_open' }, { tool: 'b_secret' }] }])
+  const ask3 = await until('permiso b_secret', async () => (await call('GET', `/permission?${q()}`)).data[0])
+  assert.equal(ask3.permission, 'b_secret')
+  await call('POST', `/permission/${ask3.id}/reply?${q()}`, { reply: 'once' })
+  await until('termina 3', async () => !(await statusOf())[sid3] && (await msgsOf(sid3)).length >= 2)
+  assert.equal(taskLike(await msgsOf(sid3)).state.status, 'completed')
+  sse.close()
+})
+
+test('code_mode: abortar mientras espera un permiso deja la herramienta en error y sin pendientes', async () => {
+  await ctl('POST', 'reset', {})
+  const sid = await runParent([{ type: 'code_mode', calls: [{ tool: 'c_one' }] }])
+  await until('permiso', async () => (await call('GET', `/permission?${q()}`)).data[0])
+  await call('POST', `/session/${sid}/abort?${q()}`)
+  await until('sin pendientes', async () => (await call('GET', `/permission?${q()}`)).data.length === 0 && !(await statusOf())[sid])
+  assert.equal(taskLike(await msgsOf(sid)).state.status, 'error')
+})
