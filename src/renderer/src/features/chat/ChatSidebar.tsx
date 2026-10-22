@@ -35,7 +35,9 @@ export function ChatSidebar(): React.JSX.Element {
 
   useEffect(() => {
     if (!connection) return
-    void loadChatSessions()
+    // También al conectar (no solo al reconectar el stream): tras reiniciar el sidecar la conexión es nueva y el aviso de «stream
+    // reconectado» puede haber salido antes de suscribirse aquí; sin esto `status[id]` de una sesión que ya no existe quedaba `busy`.
+    void loadChatSessions().then(() => syncChatRunStatus())
     return onStreamReconnect(() => {
       // Primero la lista y después el estado (F7-B10): así las sesiones que el servidor ya no conoce no dejan `busy`.
       void loadChatSessions().then(() => syncChatRunStatus()) // limpia spinners de sesiones cuyo evento de fin se perdió (F6-B5)
