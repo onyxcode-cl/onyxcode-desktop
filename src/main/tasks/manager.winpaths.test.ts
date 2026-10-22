@@ -32,6 +32,10 @@ vi.mock('./mcp-proxy', () => ({
     addRoute(): never {
       throw new Error('sin rutas')
     }
+    // Canal del guardián de subagentes (F8-B208).
+    setLocalHandler(prefix: string): { url: string; token: string } {
+      return { url: `http://127.0.0.1:1${prefix}`, token: 'tok' }
+    }
   }
 }))
 vi.mock('./mcp-tasks', () => ({ tasksMcpContribution: () => ({ mcp: {}, permission: {}, hosts: [], blocked: [] }) }))
@@ -351,6 +355,11 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     expect(started[0]).toMatchObject({ platform: 'win32', noSandbox: false })
     expect(started[0]!.tasksWin).toBeUndefined()
     expect(started[0]!.winBackend).toBeUndefined()
+    // Servidor con sandbox: recibe el canal de solo lectura del guardián (F8-B208) en el puerto del proxy MCP.
+    const env = (started[0]!.extraEnv ?? {}) as Record<string, string>
+    expect(env.LAZUNOX_GUARD_URL).toBe('http://127.0.0.1:1/__lazunox-guard')
+    expect(env.LAZUNOX_GUARD_TOKEN).toBe('tok')
+    expect(started[0]!.extraOutboundPorts).toEqual([1])
     await m.stopAll()
   })
   it('reescaneo al arrancar: una junction creada DESPUÉS de aprobar impide el arranque', async () => {

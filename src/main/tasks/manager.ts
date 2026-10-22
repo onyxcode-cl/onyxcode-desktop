@@ -43,6 +43,7 @@ import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from '.
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
+import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
 import { applyComputerAgent } from './computer-agent'
@@ -1031,6 +1032,19 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         // El proxy MCP muere con el servidor: los tokens de sesión dejan de valer y no queda puerto abierto.
         void mcpProxy?.stop().catch(() => undefined)
       }
+      // Canal de SOLO LECTURA del guardián de subagentes (F8-B208, `guard-info.ts`): en el puerto del proxy MCP (ya
+      // permitido por Seatbelt), con token propio. El puerto del motor sigue cerrado para el sandbox.
+      const guard = mcpProxy
+        ? mcpProxy.setLocalHandler(
+            GUARD_PATH_PREFIX,
+            createGuardInfoHandler({
+              server: () => {
+                const h = this.servers.get(key)?.handle
+                return h ? { baseUrl: h.baseUrl, authorization: h.authorization, directory: h.paths.directory } : null
+              }
+            })
+          )
+        : null
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
@@ -1058,6 +1072,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
           // SOLO en servidores de acceso total; `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
           ...(gateUrl ? { LAZUNOX_PLAN_GATE_URL: gateUrl } : {}),
+          // Canal del guardián (solo sandbox); `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
+          ...(guard ? { LAZUNOX_GUARD_URL: guard.url, LAZUNOX_GUARD_TOKEN: guard.token } : {}),
           // Solo sandbox: sin esto la búsqueda web de OpenCode alterna entre mcp.exa.ai y
           // search.parallel.ai según el hash de la sesión. Fijar el proveedor deja UN único host
           // (`WEB_SEARCH_HOSTS`) que la lista blanca del proxy de egress puede permitir.
