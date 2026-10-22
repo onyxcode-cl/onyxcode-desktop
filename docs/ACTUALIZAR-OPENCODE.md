@@ -31,6 +31,7 @@ El test unitario `src/test/opencode-contract.test.ts` no arranca el binario ni u
 4. `node scripts/fetch-opencode.mjs` para descargar el binario nuevo (verifica tamaño y SHA-256).
 5. `npm run check:opencode -- --update-snapshot` para regenerar `api-routes.json` con el binario fijado. Revisar el diff de la instantánea en git.
 6. `npm run verify`.
+   Además `node scripts/engine-probe/run.mjs` (manual, sin red ni modelo): permisos de conectores en Code, alias `" *"`, plugin `lazunox-session` en Code Mode y subagentes del Chat contra el binario nuevo (`docs/SEGURIDAD.md` §3 sexagies bis). Si falla, no se sube.
 7. `npm run package` y probar el `.dmg` a mano.
 8. Actualizar la versión en `THIRD_PARTY_NOTICES.md` si la menciona.
 

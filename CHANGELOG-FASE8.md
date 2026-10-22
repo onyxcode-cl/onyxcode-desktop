@@ -3772,3 +3772,26 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Qué.** (A) El plan-gate resuelve la raíz de la hija por `parentID` y usa su aprobación (fail-closed). (B) Agente `lazunox-helper` (solo lectura), `tasks.md` con lista blanca de `task` y plugin `lazunox-subagent-guard` que bloquea un `task` cuya hija tendría más libertad que el padre. (C) Un `reject` dentro de `execute` revoca ese programa y aborta la sesión. (D) El modo automático no aprueba solo peticiones de hijas.
 - **Pruebas.** `plan-gate.inheritance.test.ts` (19), `subagent-guard.test.ts` (20), `auto-approver.children.test.ts` (7); verificado con el binario 1.19 real (sin modelo): forma del cliente del plugin, `plan` → `general` bloqueado, `plan` → `lazunox-helper` crea la hija.
 - **No verificado.** El corte de `execute` tras un `reject` con el motor real (carrera de eventos), una corrida de punta a punta con modelo. Detalle y límites: `docs/SEGURIDAD.md` §3 sexagies.
+
+## F8-B203 — Code: los conectores (MCP) piden permiso en el motor; «Sin preguntar en Code» por conector
+
+- **Qué.** Bloque `permission` en la config inline del sidecar principal (`code-mcp-permission.ts`): `<srv>_*: ask` para cada conector (app, `~/.config/opencode`, y los que reporta el motor) y `allow` para los internos y los de confianza (`Settings.codeTrustedMcp`, paquete A). Las herramientas bloqueadas y «Preguntar antes de cada uso» no se aflojan (alias exacto `"<clave> *"`); un conector cuyo nombre extiende a otro no hereda su confianza. Relanzamiento sin turnos en curso al cambiar la confianza, añadir un conector o descubrir uno externo (`engine-flags-restart.ts`, `mainInline`), con aviso propio.
+- **Pruebas.** `code-mcp-permission.test.ts`, `server.engine-flags.test.ts`, `engine-flags-restart.test.ts`, `config.test.ts`; motor 1.19 real con `scripts/engine-probe/run.mjs` (sin regla no pregunta; `ask` pregunta y `allow` pasa, directo y en Code Mode; el hueco del `allow` nuevo sobre un `deny` del archivo y el del prefijo, y su arreglo).
+- **No verificado.** En la app real con un modelo; conectores solo de la config de un proyecto (ventana hasta el relanzamiento). `docs/SEGURIDAD.md` §3 sexagies bis.
+
+## F8-B204 — `bgshell` conectado al sidecar principal (Code)
+
+- **Qué.** `mcp.bgshell` con el Node incluido y `MCP_ENV_WRAPPER`, carpeta `userData/shell-bg/code` preparada antes de cada arranque, permisos `bgshell_start` = `bash` (config y bloque de modo de la sesión, delante del bloque), despertador `ShellBgWake` atado a la conexión. Las funciones puras de permisos pasan a `src/shared/shell-bg-permissions.ts`.
+- **Pruebas.** `server.engine-flags.test.ts` (bloque, envoltorio, permisos, carpeta vaciada, despertador al arrancar/reiniciar/parar; sin Node no hay `bgshell`), `config.test.ts`, `store.permisos.test.ts`; `scripts/engine-probe/run.mjs --shell-bg` (bgshell real: el aviso `exit` lleva la sesión).
+- **No verificado.** El aviso que despierta al modelo en la app real con OpenCode Go.
+
+## F8-B205 — Plugin `lazunox-session` también para `bgshell_*` (ZONA INTOCABLE)
+
+- **Qué.** Solo la condición del plugin: `browser_*` o `bgshell_*`; el valor del modelo se sigue sobrescribiendo.
+- **Pruebas.** `src/main/tasks/session-plugin.test.ts` (texto real del plugin); motor 1.19 real: la inyección se aplica también a las llamadas internas de Code Mode (`execute`).
+
+## F8-B206 — Chat: subagentes sin escalar permisos
+
+- **Qué.** Agente `lazunox-chat-helper` (permisos exactos del Chat salvo `question`) y `task` del Chat abierto solo a él cuando los subagentes están encendidos para el Chat. Nota en Ajustes: Modo código no aplica en el Chat.
+- **Pruebas.** `config.test.ts`, `subagent-guard.test.ts`, `engine-flags-restart.test.ts`, `server.engine-flags.test.ts`, `EngineExperimentsSection.test.tsx`; motor 1.19 real con la config inline y el guardián reales (primer y segundo plano; `general`/`explore`/`lazunox-helper` denegados).
+- **No verificado.** Cómo muestra la interfaz del Chat los subagentes en segundo plano.

@@ -2213,3 +2213,67 @@ Contexto: la prueba real con el binario 1.19 (`docs/PRUEBA-CODE-MODE-Y-SEGUNDO-P
 - Quien ya puede leer el entorno del servidor (p. ej. `ps eww` en Control total, sin sandbox) puede obtener el canal del plan-gate; es una limitación previa, no nueva.
 
 Pruebas: `src/main/tasks/plan-gate.inheritance.test.ts`, `src/main/opencode/subagent-guard.test.ts`, `src/main/tasks/auto-approver.children.test.ts`.
+
+## 3 sexagies bis. Conectores en Code, `bgshell` y subagentes del Chat (motor 1.19; F8-B203 a F8-B206)
+
+Contexto: la prueba real con OpenCode Go (`docs/PRUEBA-REAL-GO.md`) halló que en Code los conectores MCP se ejecutaban **sin pedir permiso**
+(directos y desde `execute`), que `shell_bg` no despertaba al modelo y que el Chat no podía usar subagentes. Esta sección cubre la
+integración. Todo lo que se afirma del motor está comprobado con el binario 1.19 real, aislado (entorno mínimo, HOME/XDG temporales), sin
+modelo ni red: un proveedor falso compatible con OpenAI en 127.0.0.1 pide UNA llamada a herramienta y un MCP de prueba devuelve los
+argumentos que recibe (`scripts/engine-probe/run.mjs`, manual; 27 comprobaciones; reverificar al subir de versión).
+
+**Cómo se comporta el motor (comprobado).**
+- Sin regla, el agente `build` (`'*': allow`) ejecuta cualquier herramienta MCP sin preguntar, directa o como llamada interna de
+  `execute` (`tools.<srv>.<herr>`). Las llamadas internas piden permiso con la MISMA clave `<srv>_<herr>` que la directa y disparan
+  `tool.execute.before` con esa clave y el MISMO objeto de argumentos que recibe el MCP (`callID` `<execute>/<n>`).
+- Las configs se fusionan como objetos: una clave que ya existía (archivo de conectores de la app, config global) conserva su posición;
+  una clave nueva de la inline va al final. Gana la última regla que casa: un `<srv>_*: allow` nuevo anulaba el `<srv>_<herr>: deny`
+  de una herramienta bloqueada (reproducido: la herramienta bloqueada se ejecutó).
+- El comparador del motor (`Wildcard.match`) trata un `" *"` final como opcional: `"x_secret *"` casa exactamente `x_secret` (los
+  nombres de herramienta no tienen espacios) y, como clave nueva, queda al final.
+
+**Qué se hizo.**
+1. _Conectores en Code_ (F8-B203, `src/main/opencode/code-mcp-permission.ts`, `server.ts`, `config.ts`): el bloque `permission` de la
+   config inline lleva `<srv>_*: ask` para cada conector conocido (los de la app, los de `~/.config/opencode` leídos antes de arrancar y
+   los que reporte el motor ya arrancado: `GET /mcp` y `GET /config`) y `allow` para los internos (`browser`, `computer`) y los marcados
+   «Sin preguntar en Code». No toca `bash`/`edit`/etc. Reglas de precedencia: «Preguntar antes de cada uso» y un `deny` del servidor
+   entero ganan sobre la confianza; cada `deny`/`ask` más específico de la base se re-afirma con el alias exacto `"<clave> *"`; un
+   servidor cuyo nombre es prefijo de otro (`a` / `a_b`, `browser` / `browser_x`) no le transmite la confianza (alias de la regla `ask`).
+   El motor se relanza (esperando a que no haya turnos en curso, como con las funciones experimentales) si cambia la confianza, si se
+   añade un conector (en ese caso NO se recarga en caliente: quedaría cargado sin regla) o si al arrancar reporta uno sin regla.
+2. _`bgshell`_ (F8-B204): bloque `mcp.bgshell` con el Node incluido y `MCP_ENV_WRAPPER` (macOS/Linux), carpeta privada por motor
+   (`userData/shell-bg/code`, 0700, avisos vaciados antes de cada arranque); `bgshell_start` pregunta como `bash` (config:
+   `bgshellConfigPermission`; sesión de Code: `bgshellSessionRules` delante del bloque del modo) y queda fuera de la regla general de
+   conectores, así que marcarlo «de confianza» no lo abre. El despertador (`ShellBgWake`) vive y muere con la conexión del motor.
+3. _Plugin `lazunox-session`_ (F8-B205, ZONA INTOCABLE `src/main/tasks/opencode-config.ts`): inyecta `lazunox_session` también en
+   `bgshell_*` (antes solo `browser_*`), sobrescribiendo lo que ponga el modelo. Comprobado con el motor real: directa y desde
+   `execute` llega la sesión que llama, no la que inventa el modelo; con el `bgshell` real el aviso `exit` lleva ese `sessionID`.
+4. _Subagentes del Chat_ (F8-B206): con la función encendida para el Chat, el agente `chat` recibe `task: { '*': deny,
+   'lazunox-chat-helper': allow }`. `lazunox-chat-helper` tiene exactamente los permisos del Chat (salvo `question`): web y el `read`
+   centinela, nada más; el motor le añade `task: deny`. El guardián de subagentes lo deja pasar y bloquea `general`, `explore` y
+   `lazunox-helper` (comprobado con la config inline y el guardián reales). La variable de subagentes es por proceso (Chat y Code
+   comparten motor): lo que separa al Chat es este permiso. Modo código en el Chat no aplica (el Chat no tiene conectores); Ajustes lo dice.
+
+**Qué garantiza.** En Code, un conector no marcado de confianza pregunta en cada uso, directo o desde Modo código; uno de confianza
+no pregunta; las herramientas bloqueadas de un conector local siguen bloqueadas aunque se confíe en él; `bgshell_start` nunca corre
+sin la misma pregunta que `bash` (salvo «Todo sin preguntar»); el aviso de fin de `bgshell` va a la sesión raíz del motor que lo lanzó
+y el modelo no puede elegir otra; el Chat solo puede lanzar un ayudante que no tiene más permisos que él.
+
+**Qué NO garantiza.**
+- Un conector que solo declara la config de un PROYECTO (o `OPENCODE_CONFIG_DIR`) y no está en la de la app ni en la global queda sin
+  regla (y en Code sin preguntar) desde que arranca el motor hasta el relanzamiento automático; si en ese momento hay un turno en curso,
+  ese turno puede usarlo. Tampoco se leen las reglas por herramienta de la config de un proyecto: si se confía en ese conector, un
+  `deny` por herramienta del proyecto puede quedar tapado.
+- El alias `" *"` depende del comparador del motor 1.19; si una versión futura lo cambia, `scripts/engine-probe/run.mjs` lo detecta
+  (las comprobaciones de alias fallan). No hay prueba automática en `npm test` contra el binario.
+- «Todo sin preguntar» no abre los conectores no confiados (los bloques de modo no tocan MCP): siguen preguntando. Las Rutinas de Code
+  (sin nadie que apruebe) verán rechazadas las llamadas a conectores no confiados salvo que su lista de reglas las permita.
+- Un servidor externo llamado `bgshell` recibiría el `sessionID` (no es un secreto). En Windows el proceso MCP de `bgshell` no usa
+  `MCP_ENV_WRAPPER` (hereda el entorno del motor); los trabajos que lanza solo reciben la lista blanca de variables de `buildChildEnv`.
+- El despertador y el aviso de fin con un modelo de verdad, el comportamiento de la interfaz del Chat con subagentes en segundo plano y
+  el relanzamiento con turnos reales en curso no se probaron en la app (solo con el motor real, el arnés y pruebas unitarias).
+
+Pruebas: `src/main/opencode/code-mcp-permission.test.ts`, `server.engine-flags.test.ts`, `engine-flags-restart.test.ts`,
+`config.test.ts`, `subagent-guard.test.ts`, `src/main/tasks/session-plugin.test.ts`,
+`src/renderer/src/features/code/impl/store.permisos.test.ts`, `EngineExperimentsSection.test.tsx`; y `scripts/engine-probe/run.mjs`
+(manual, motor real; `--shell-bg <cjs>` añade el `bgshell` real).

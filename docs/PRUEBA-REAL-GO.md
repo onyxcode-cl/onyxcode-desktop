@@ -23,3 +23,22 @@ temporal con 4 archivos. La copia y su perfil se borraron al terminar. Los conec
    mensaje en la sesión (necesita saber la sesión dueña).
 3. Mensaje del vigilante: «Detenido por el usuario» → debe decir que fue el límite de seguridad.
 4. No se probó Overdrive (con llavero falso su motor no arranca) ni Chat (el agente `chat` no tiene `task`).
+
+## Estado tras la integración (2026-10-22, rama `feat/engine-client`)
+
+Comprobado con el motor 1.19 real, aislado y sin modelo (proveedor falso local, `scripts/engine-probe/run.mjs`, 27 comprobaciones), y con
+pruebas unitarias. Falta repetir esta prueba en la app real con OpenCode Go.
+
+| Hallazgo | Estado |
+| --- | --- |
+| 1. Conectores MCP sin permiso en Code | CORREGIDO (F8-B203): preguntan salvo los internos y los marcados «Sin preguntar en Code», directos y desde `execute`; las herramientas bloqueadas siguen bloqueadas aunque se confíe en el conector. El texto de Ajustes ya es cierto. Ver `docs/SEGURIDAD.md` §3 sexagies bis |
+| 1a. `shell_bg` esquivaría el permiso de `bash` | CORREGIDO (F8-B204): ahora es `bgshell` (`bgshell_start`, …) y `bgshell_start` pregunta como `bash` en cada modo; no se abre marcándolo de confianza |
+| 1c. Gmail/CRM externos (`~/.config/opencode`) alcanzables sin aprobación | CORREGIDO para los de la config global (se leen antes de arrancar) y para los que el motor reporte (relanzamiento sin turnos en curso). Queda una ventana para los que solo declara la config de un proyecto |
+| 2. `shell_bg` no despierta al modelo | CABLEADO (F8-B204/F8-B205): el plugin `lazunox-session` inyecta la sesión en `bgshell_*` (también desde `execute`), el aviso `exit` la lleva y `ShellBgWake` despierta a la sesión raíz. Comprobado hasta el JSONL con el `bgshell` real; el turno nuevo con un modelo real, sin probar |
+| 3. «Detenido por el usuario» del vigilante | Corregido antes (commit 78b7c2a1) |
+| 4. Chat sin `task` | CORREGIDO (F8-B206): con los subagentes encendidos para el Chat puede lanzar SOLO `lazunox-chat-helper` (web, sin archivos ni terminal). Modo código en el Chat no aplica (sin conectores) y Ajustes lo dice |
+
+Qué mirar en la próxima prueba real: que un conector externo pida permiso en Code y deje de pedirlo al marcarlo; que una herramienta
+bloqueada de un conector local no se ofrezca; `bgshell_start` con una orden larga y el aviso de fin que retoma la conversación; el Chat
+lanzando el ayudante en segundo plano y cómo lo muestra la interfaz; el aviso «Cambios de conectores aplicados» y la espera si hay un
+turno en curso.
