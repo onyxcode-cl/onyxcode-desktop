@@ -91,7 +91,7 @@ describe.skipIf(!DEV)('Probar clave', () => {
     seedKey(KEYS.down)
     await probar()
     await expect.poll(() => noticeStatus(page), { timeout: 20_000 }).toBe('provider-down')
-    await expectVisible(page.getByText('El proveedor tiene problemas'))
+    await expectVisible(page.getByText('El servicio tiene problemas'))
     await showProviders()
     await shot(app(), SHOTS, 'modelos-probar-proveedor-caido')
   })
