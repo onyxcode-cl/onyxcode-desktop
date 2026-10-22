@@ -258,8 +258,9 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     const a = app()
     if (!projectDir) projectDir = makeGitRepo() // autosuficiente si se corre solo (normalmente lo abrió el caso 4)
     await openCodeProject(a, projectDir)
-    const changes = a.page.getByRole('button', { name: 'Cambios', exact: true })
-    await expectVisible(changes)
+    // «Cambios» también es un filtro de la barra lateral y una pestaña del panel abierto; el botón de la barra del proyecto es el único con aria-pressed.
+    const changes = a.page.locator('button[aria-label="Cambios"][aria-pressed]')
+    await expectCount(changes, 1)
     if ((await changes.first().getAttribute('aria-pressed')) !== 'true') await changes.first().click()
     await expectAttr(changes, 'aria-pressed', 'true')
     const git = await countIpc(a.electronApp, 'git:status')
@@ -318,7 +319,8 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     const a = app()
     if (!projectDir) projectDir = makeGitRepo()
     await openCodeProject(a, projectDir)
-    const changes = a.page.getByRole('button', { name: 'Cambios', exact: true })
+    // «Cambios» también es un filtro de la barra lateral y una pestaña del panel abierto; el botón de la barra del proyecto es el único con aria-pressed.
+    const changes = a.page.locator('button[aria-label="Cambios"][aria-pressed]')
     if ((await changes.first().getAttribute('aria-pressed')) !== 'true') await changes.first().click()
     await expectAttr(changes, 'aria-pressed', 'true')
     const git = await countIpc(a.electronApp, 'git:status')
@@ -387,20 +389,28 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
     await expect.poll(() => storeState<string>(a.page, 'useServer', 'connection.baseUrl'), { timeout: 60_000 }).not.toBe(oldUrl)
     const fake2 = new FakeClient(await connection(a.page))
     expect((await fake2.status()).pid as number).not.toBe(oldPid)
-    // La sesión no existe en el sidecar nuevo: la lista se vacía y la vista de Chat vuelve a estado libre.
-    await expect
-      .poll(() => storeState<string[]>(a.page, 'useSessions', 'sessions').then((x) => Object.keys(x)), { timeout: 30_000 })
-      .not.toContain(sid)
+    // Con Ajustes abiertos la barra lateral de Chat no está montada y es ella quien recarga la lista al cambiar la conexión
+    // (`ChatSidebar`): se vuelve a Chat primero y entonces la lista debe vaciarse (la sesión no existe en el sidecar nuevo).
     await a.page.keyboard.press('Escape')
     await expectCount(a.page.locator('nav[aria-label="Secciones de ajustes"]'), 0)
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
+    await expect
+      .poll(() => storeState<string[]>(a.page, 'useSessions', 'sessions').then((x) => Object.keys(x)), { timeout: 30_000 })
+      .not.toContain(sid)
     await expectCount(a.page.getByRole('button', { name: 'Detener' }), 0)
     await expectVisible(a.page.getByRole('button', { name: 'Enviar' }))
     expect(await storeState(a.page, 'useChat', 'activeSessionId')).toBeNull()
-    // Efecto residual observado (ver 3b): `status[sid]` sigue 'busy' para una sesión que ya no existe.
-    orphanBusy = Object.entries(await storeState<Record<string, string>>(a.page, 'useSessions', 'status'))
-      .filter(([, v]) => v !== 'idle')
-      .map(([k]) => k)
+    // Efecto residual observado (ver 3b): `status[sid]` sigue 'busy' para una sesión que ya no existe. Se espera (hasta 10 s) a que
+    // `syncChatRunStatus` (se encadena tras la recarga de la lista, con una petición HTTP más) lo limpie; si no, queda registrado.
+    const busyNow = async (): Promise<string[]> =>
+      Object.entries(await storeState<Record<string, string>>(a.page, 'useSessions', 'status'))
+        .filter(([, v]) => v !== 'idle')
+        .map(([k]) => k)
+    orphanBusy = await busyNow()
+    for (let i = 0; i < 40 && orphanBusy.length > 0; i++) {
+      await new Promise((r) => setTimeout(r, 250))
+      orphanBusy = await busyNow()
+    }
     // El único aviso de red esperado es el corte del SSE por el reinicio.
     consumeErrors(a, /\/global\/event/)
 
