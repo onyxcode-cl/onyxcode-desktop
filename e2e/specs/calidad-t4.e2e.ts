@@ -193,7 +193,8 @@ describe.skipIf(!DEV)('T4: más de 200 sesiones en Chat', () => {
     }
     await a.page.reload()
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
-    const rows = a.page.getByText(/^sesion-fantasma-\d{3}$/)
+    // Solo la lista de la barra lateral (el árbol): la portada del Chat repite las 5 más recientes en «Recientes».
+    const rows = a.page.getByRole('tree').getByText(/^sesion-fantasma-\d{3}$/)
     await expect.poll(() => rows.count(), { timeout: 20_000 }).toBe(200)
     const more = a.page.getByRole('treeitem', { name: 'Cargar más' })
     await expectVisible(more)
@@ -208,7 +209,8 @@ describe.skipIf(!DEV)('T4: más de 200 sesiones en Chat', () => {
     const a = app()
     await a.page.reload()
     await a.page.locator('nav[aria-label="Modo"]').getByRole('button', { name: 'Chat' }).click()
-    const rows = a.page.getByText(/^sesion-fantasma-\d{3}$/)
+    // Solo la lista de la barra lateral (el árbol): la portada del Chat repite las 5 más recientes en «Recientes».
+    const rows = a.page.getByRole('tree').getByText(/^sesion-fantasma-\d{3}$/)
     await expect.poll(() => rows.count(), { timeout: 20_000 }).toBe(200)
     await expect(a.page.getByText('sesion-fantasma-000', { exact: true }).count()).resolves.toBe(0)
     await a.page
