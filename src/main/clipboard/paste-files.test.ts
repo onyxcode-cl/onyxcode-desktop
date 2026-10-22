@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { posixOnly } from '../../test/platform'
 import { PASTE_MAX_FILE_BYTES, PASTE_MAX_FILES } from '@shared/paste-files'
 import { IPC_SCHEMAS } from '../ipc/schemas'
 import { decide } from '../remote/policy'
@@ -16,6 +18,11 @@ import {
 } from './paste-files'
 
 let dir: string
+/** Hay enlaces simbólicos: en Windows crearlos exige privilegio (modo desarrollador/admin); el CI sí los permite. */
+let linked = false
+/** Ruta absoluta de la plataforma para un nombre ficticio (en Windows `C:\tmp\…`) y su URL `file:`. */
+const abs = (n: string): string => resolve('/tmp', n)
+const furl = (n: string): string => pathToFileURL(abs(n)).href
 const p = (n: string): string => join(dir, n)
 
 beforeAll(() => {
@@ -25,9 +32,14 @@ beforeAll(() => {
   writeFileSync(p('doc.pdf'), '%PDF')
   writeFileSync(p('run.sh'), 'echo')
   writeFileSync(p('lanzador'), 'x')
-  chmodSync(p('lanzador'), 0o755)
+  if (posixOnly) chmodSync(p('lanzador'), 0o755) // Windows no tiene bit de ejecución
   mkdirSync(p('carpeta'))
-  symlinkSync(p('nota.txt'), p('enlace.txt'))
+  try {
+    symlinkSync(p('nota.txt'), p('enlace.txt'))
+    linked = true
+  } catch {
+    linked = false
+  }
   writeFileSync(p('grande.txt'), Buffer.alloc(PASTE_MAX_FILE_BYTES + 1))
 })
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
@@ -35,7 +47,8 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }))
 function reader(raw: Record<string, Buffer>, png: Buffer | null = null): ClipboardReader {
   return { readRaw: async (f) => raw[f] ?? null, readImagePng: async () => png }
 }
-const plist = (paths: string[]): Buffer => Buffer.from(`<plist><array>${paths.map((x) => `<string>${x}</string>`).join('')}</array></plist>`)
+const plist = (paths: string[]): Buffer =>
+  Buffer.from(`<plist><array>${paths.map((x) => `<string>${x}</string>`).join('')}</array></plist>`)
 
 describe('análisis de formatos', () => {
   it('plist de Finder, con entidades XML', () => {
@@ -45,13 +58,14 @@ describe('análisis de formatos', () => {
     expect(parseFileNameW(Buffer.from('C:\\u\\a.txt\0', 'utf16le'))).toEqual(['C:\\u\\a.txt'])
   })
   it('file-url y uri-list; rechaza lo que no es file:', () => {
-    expect(fileUrlToLocalPath('file:///tmp/a%20b.txt\n')).toBe('/tmp/a b.txt')
+    // Las URLs se construyen con rutas de la plataforma: `file:///tmp/…` no es una ruta absoluta en Windows (`file:///C:/tmp/…`).
+    expect(fileUrlToLocalPath(`${furl('a b.txt')}\n`)).toBe(abs('a b.txt'))
     expect(fileUrlToLocalPath('http://x/a')).toBeNull()
-    expect(parseUriList('# c\nfile:///a.txt\r\nhttp://x\nfile:///b.txt')).toEqual(['/a.txt', '/b.txt'])
+    expect(parseUriList(`# c\n${furl('a.txt')}\r\nhttp://x\n${furl('b.txt')}`)).toEqual([abs('a.txt'), abs('b.txt')])
   })
   it('macOS: plist primero, luego file-url; Windows: FileNameW', async () => {
     expect(await readClipboardPaths(reader({ NSFilenamesPboardType: plist(['/a.txt']) }), 'darwin')).toEqual(['/a.txt'])
-    expect(await readClipboardPaths(reader({ 'public.file-url': Buffer.from('file:///b.txt') }), 'darwin')).toEqual(['/b.txt'])
+    expect(await readClipboardPaths(reader({ 'public.file-url': Buffer.from(furl('b.txt')) }), 'darwin')).toEqual([abs('b.txt')])
     expect(await readClipboardPaths(reader({ FileNameW: Buffer.from('C:\\a.txt\0', 'utf16le') }), 'win32')).toEqual(['C:\\a.txt'])
     expect(await readClipboardPaths(reader({}), 'darwin')).toEqual([])
   })
@@ -75,10 +89,23 @@ describe('readPasteFiles: validación', () => {
     ])
     expect(Buffer.from(r.files[0]!.base64, 'base64').toString()).toBe('hola')
   })
-  it('rechaza carpeta, enlace simbólico, ejecutable, script, inexistente y ruta relativa', async () => {
-    const r = await darwin([p('carpeta'), p('enlace.txt'), p('lanzador'), p('run.sh'), p('no-existe.txt'), 'relativa.txt'])
+  it('rechaza carpeta, enlace simbólico, script, inexistente y ruta relativa', async () => {
+    const withLink = linked ? [p('enlace.txt')] : []
+    const r = await darwin([p('carpeta'), ...withLink, p('run.sh'), p('no-existe.txt'), 'relativa.txt'])
     expect(r.files).toEqual([])
-    expect(r.rejected.map((x) => x.reason)).toEqual(['notRegular', 'notRegular', 'blockedType', 'blockedType', 'unreadable', 'notRegular'])
+    expect(r.rejected.map((x) => x.reason)).toEqual([
+      'notRegular',
+      ...withLink.map(() => 'notRegular'),
+      'blockedType',
+      'unreadable',
+      'notRegular'
+    ])
+  })
+  // El bit de ejecución no existe en Windows (allí `readOne` lo ignora a propósito): solo se comprueba en POSIX.
+  it.skipIf(!posixOnly)('rechaza un lanzador sin extensión conocida por su bit de ejecución', async () => {
+    const r = await darwin([p('lanzador')])
+    expect(r.files).toEqual([])
+    expect(r.rejected.map((x) => x.reason)).toEqual(['blockedType'])
   })
   it('rechaza archivos por encima de 25 MB', async () => {
     const r = await darwin([p('grande.txt')])

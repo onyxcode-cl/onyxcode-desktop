@@ -38,7 +38,8 @@ describe('archivos que SALEN: mismas reglas que el Chat', () => {
   it('fuera de las carpetas autorizadas: rechazado (incluida otra carpeta de proyecto)', () => {
     const f = put(outside, 'datos.csv', 'a,b')
     expect(checkOutgoingFile([proj], f)).toEqual({ ok: false, reason: 'outside' })
-    expect(checkOutgoingFile([proj], '/etc/hosts')).toEqual({ ok: false, reason: 'outside' })
+    // Un archivo real y absoluto de otra parte (en Windows `/etc/hosts` no existe y daría «missing»).
+    expect(checkOutgoingFile([proj], process.execPath)).toEqual({ ok: false, reason: 'outside' })
   })
 
   it.skipIf(!posixOnly)('un enlace simbólico que escapa de la carpeta se rechaza (se mira la ruta real)', () => {

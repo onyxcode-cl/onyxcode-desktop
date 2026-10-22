@@ -11,16 +11,22 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { hostname, tmpdir, userInfo } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { macOnly } from '../../test/platform'
 import { buildSandboxProfile, defaultDeniedReadPaths, sandboxDirs, sandboxEnv } from './sandbox-profile'
 
-const HOME = '/Users/fixture'
+// `resolve` da una ruta absoluta de la plataforma (en Windows `C:\Users\fixture`); las rutas relativas se comparan con '/'.
+const HOME = resolve('/Users/fixture')
 
 describe('defaultDeniedReadPaths (F8-B194)', () => {
   const list = defaultDeniedReadPaths(HOME)
-  const rel = list.map((p) => p.slice(HOME.length + 1))
+  const rel = list.map((p) =>
+    p
+      .slice(HOME.length + 1)
+      .split(sep)
+      .join('/')
+  )
 
   it('niega los archivos de arranque del intérprete y la config con claves', () => {
     for (const r of [
@@ -93,13 +99,17 @@ describe('defaultDeniedReadPaths (F8-B194)', () => {
 
   it('todas son absolutas, están dentro del HOME y sin duplicados', () => {
     expect(new Set(list).size).toBe(list.length)
-    for (const p of list) expect(p.startsWith(`${HOME}/`), p).toBe(true)
+    for (const p of list) {
+      expect(isAbsolute(p), p).toBe(true)
+      expect(p.startsWith(`${HOME}${sep}`), p).toBe(true)
+    }
   })
 
   it('el entorno aislado da a git un archivo global PROPIO (~/.gitconfig denegado haría morir a git)', () => {
-    const env = sandboxEnv(sandboxDirs('/x/ud/tasks-sandbox/k'))
-    expect(env.GIT_CONFIG_GLOBAL).toBe('/x/ud/tasks-sandbox/k/config/gitconfig')
-    expect(env.XDG_CONFIG_HOME).toBe('/x/ud/tasks-sandbox/k/config')
+    const base = join('/x/ud/tasks-sandbox/k')
+    const env = sandboxEnv(sandboxDirs(base))
+    expect(env.GIT_CONFIG_GLOBAL).toBe(join(base, 'config', 'gitconfig'))
+    expect(env.XDG_CONFIG_HOME).toBe(join(base, 'config'))
   })
 
   it('los commits de la IA se firman con una identidad fija y sin datos personales (F8-B197)', () => {
