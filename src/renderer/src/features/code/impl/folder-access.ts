@@ -47,17 +47,32 @@ export function useBlockedFolder(): BlockedFolder | null {
  * `true` si se puede seguir abriendo la carpeta. Si macOS la deniega (o no responde) deja la tarjeta visible y devuelve `false`.
  * Falla abierto: sin API nativa (celular) o ante un error de la propia comprobación, sigue adelante y que el motor informe.
  */
-export async function ensureFolderReadable(dir: string): Promise<boolean> {
+export async function ensureFolderReadable(dir: string, opts: { reask?: boolean } = {}): Promise<boolean> {
   const native = nativeCode('dialogs')
   if (!native || typeof native.dialog?.checkFolderAccess !== 'function') return true
   try {
-    const { status, canReset, cause } = await native.dialog.checkFolderAccess(dir)
+    let { status, canReset, cause } = await native.dialog.checkFolderAccess(dir)
+    // Acción EXPLÍCITA de la persona (elegir carpeta, abrir un reciente…) y macOS tiene guardado un «No permitir» para esa zona: se borra
+    // esa decisión (la de Lazunox y la de su motor) y se vuelve a comprobar UNA vez, lo que hace que macOS muestre otra vez «Permitir /
+    // No permitir». Así un clic equivocado en «No permitir» no deja la zona bloqueada para siempre. Si vuelve a decir que no, queda la
+    // tarjeta (nunca hay bucle). Las comprobaciones pasivas (`reask` falso) jamás insisten.
+    if (opts.reask && status === 'denied' && canReset === true && typeof native.dialog.resetFolderPermission === 'function') {
+      const reset = await native.dialog
+        .resetFolderPermission(dir)
+        .then((r) => r?.result)
+        .catch(() => 'failed' as const)
+      if (reset === 'reset') {
+        lastResetFailed = null
+        ;({ status, canReset, cause } = await native.dialog.checkFolderAccess(dir))
+      } else {
+        lastResetFailed = dir
+      }
+    }
     if (status === 'denied' || status === 'timeout') {
-      const engine = cause === 'engine'
       setBlockedFolder({
         dir,
         reason: status,
-        cause: engine ? 'engine' : 'app',
+        cause: cause === 'engine' ? 'engine' : 'app',
         canReset: canReset === true && status === 'denied',
         resetFailed: prevResetFailed(dir)
       })
