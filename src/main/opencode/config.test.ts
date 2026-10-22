@@ -26,6 +26,15 @@ describe('buildInlineConfig (sidecar principal)', () => {
     expect(Object.keys(c.permission).some((k) => /^(bash|edit|write|read|webfetch|task)$/.test(k))).toBe(false)
     expect(c.agent.chat.permission['*']).toBe('deny')
   })
+
+  it('bgshell (F8-B204): `mcp.bgshell` junto al navegador, solo si hay bloque', () => {
+    const bgshellMcp = { type: 'local', command: ['/n', '/s.cjs'] }
+    const browserMcp = { type: 'remote', url: 'http://127.0.0.1:1/mcp' }
+    expect(buildInlineConfig({ bgshellMcp })).toMatchObject({ mcp: { bgshell: bgshellMcp } })
+    expect(buildInlineConfig({ bgshellMcp, browserMcp })).toMatchObject({ mcp: { bgshell: bgshellMcp, browser: browserMcp } })
+    expect(buildInlineConfig({ bgshellMcp: null, browserMcp: null })).not.toHaveProperty('mcp')
+    expect((buildInlineConfig({ browserMcp }) as { mcp: object }).mcp).not.toHaveProperty('bgshell')
+  })
 })
 
 describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () => {

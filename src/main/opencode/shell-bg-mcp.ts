@@ -11,19 +11,22 @@
  * absoluta). Si no está instalado (`null`) o falta el `.cjs`, `shellBgMcpConfig` devuelve `null` y el motor arranca igual, sin
  * `bgshell` (mismo patrón que `browserMcp`): el modelo simplemente no tiene la herramienta y sigue con `bash`.
  *
- * PERMISOS. `bgshell_start` EJECUTA comandos, así que no puede esquivar la política de `bash`: ver `bgshellToolAction`.
+ * PERMISOS. `bgshell_start` EJECUTA comandos, así que no puede esquivar la política de `bash`: ver `bgshellToolAction`
+ * (`@shared/shell-bg-permissions`, re-exportado aquí: el renderer de Code también lo usa).
  * (Hallazgo 1 de `docs/PRUEBA-REAL-GO.md`: en Code las herramientas MCP corren SIN preguntar si no hay regla; por eso se les da una.)
  */
 import { chmodSync, lstatSync, mkdirSync, truncateSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
-import { effectiveModeFor, rulesetForMode, type PermissionModeId, type PermissionRuleLike, type RuleAction } from '@shared/permission-rules'
 
-/** Clave del servidor en el bloque `mcp` del motor (y prefijo de las herramientas). */
-export const SHELL_BG_SERVER = 'bgshell'
-export const SHELL_BG_TOOLS = ['start', 'status', 'read', 'stop', 'list'] as const
-export type ShellBgTool = (typeof SHELL_BG_TOOLS)[number]
-/** Nombre final de la herramienta tal como lo ve el modelo y como lo nombran las reglas de permiso. */
-export const shellBgToolId = (tool: ShellBgTool): string => `${SHELL_BG_SERVER}_${tool}`
+export {
+  SHELL_BG_SERVER,
+  SHELL_BG_TOOLS,
+  shellBgToolId,
+  bgshellToolAction,
+  bgshellSessionRules,
+  bgshellConfigPermission,
+  type ShellBgTool
+} from '@shared/shell-bg-permissions'
 
 // ── Carpetas ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -116,46 +119,4 @@ export function shellBgMcpConfig(o: ShellBgMcpOptions): Record<string, unknown> 
     enabled: true,
     timeout: posInt(o.timeoutMs) ? Number(posInt(o.timeoutMs)) : 15_000
   }
-}
-
-// ── Permisos ──────────────────────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Acción del motor para `bgshell_start` en un modo/agente: LA MISMA que la regla efectiva de `bash` con patrón `*`
- * (`rulesetForMode(effectiveModeFor(modo, agente))`, de `src/shared/permission-rules.ts`, la misma fuente que usa el bloque de modo de
- * Code al hacer `session.update({ permission })`):
- *   Preguntar siempre / Editar sin preguntar / Solo explorar / Automático → `ask`;  Todo sin preguntar → `allow`.
- * `bgshell_start` no hereda la aprobación automática de comandos de solo lectura de «Automático» (la hace la app mirando el comando de
- * `bash`): un trabajo en segundo plano siempre pregunta salvo en «Todo sin preguntar». Si no hubiera regla de `bash *` se devuelve `ask`.
- */
-export function bgshellToolAction(mode: PermissionModeId, agent?: string): RuleAction {
-  const block = rulesetForMode(effectiveModeFor(mode, agent))
-  for (let i = block.length - 1; i >= 0; i--) {
-    const r = block[i]!
-    if (r.permission === 'bash' && r.pattern === '*') return r.action
-  }
-  return 'ask'
-}
-
-/**
- * Reglas de sesión para las cinco herramientas, para enviar JUNTO al bloque de modo (`session.update({ permission })`):
- * `bgshell_start` igual que `bash`; `status|read|list|stop` en `allow` (solo miran o paran trabajos propios, no ejecutan nada).
- * Van ANTES del bloque del modo, no después: `endsWithRuleset`/`approvalKindOf` reconocen el modo porque la sesión TERMINA con su bloque.
- * Úsese como `[...bgshellSessionRules(modo, agente), ...rulesetForMode(...)]`.
- */
-export function bgshellSessionRules(mode: PermissionModeId, agent?: string): PermissionRuleLike[] {
-  return SHELL_BG_TOOLS.map((t) => ({
-    permission: shellBgToolId(t),
-    pattern: '*',
-    action: t === 'start' ? bgshellToolAction(mode, agent) : ('allow' as const)
-  }))
-}
-
-/**
- * Suelo de la configuración (bloque `permission` de la config inline, vale para TODOS los agentes y sesiones, también las hijas de
- * `task` y los motores donde no se envía bloque de modo): `bgshell_start` pregunta y el resto pasa. El bloque de sesión de
- * `bgshellSessionRules` lo sobrescribe después (p. ej. «Todo sin preguntar» → `allow`).
- */
-export function bgshellConfigPermission(): Record<string, RuleAction> {
-  return Object.fromEntries(SHELL_BG_TOOLS.map((t) => [shellBgToolId(t), t === 'start' ? 'ask' : 'allow'])) as Record<string, RuleAction>
 }

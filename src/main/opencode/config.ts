@@ -10,9 +10,10 @@
  * Navegador integrado (Lote D, B.7): `server.ts` resuelve `mcp.browser` con
  * `embeddedBrowserMcp.configFor({product:'code'})` ANTES de arrancar y se lo pasa a
  * `buildInlineConfig({ browserMcp })`. Si el MCP no arrancó (`browserMcp` es null), el sidecar
- * arranca igual, sin navegador: `mcp.browser` simplemente no se incluye.
+ * arranca igual, sin navegador: `mcp.browser` simplemente no se incluye. Igual con `mcp.bgshell` (F8-B204).
  */
 import { CHAT_AGENT } from '@shared/types'
+import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
 
 /**
  * Patrón de `read` que no corresponde a ningún archivo real (ver `permission.read` del agente `chat`). Debe
@@ -23,6 +24,12 @@ export const CHAT_READ_SENTINEL = '/__lazunox_sin_acceso__'
 export interface InlineConfigOptions {
   /** Bloque `mcp.browser` ya resuelto (o null si el MCP del navegador integrado no arrancó). */
   browserMcp?: Record<string, unknown> | null
+  /**
+   * Bloque `mcp.bgshell` (shell en segundo plano supervisado, F8-B204) ya resuelto con `shellBgMcpConfig`, o null si no se puede
+   * ofrecer (sin Node incluido o sin el `.cjs`): el motor arranca igual, sin la herramienta. Sus permisos (`bgshell_start` pregunta como
+   * `bash`) van en `permission` (`bgshellConfigPermission`) y en el bloque de modo de cada sesión de Code (`bgshellSessionRules`).
+   */
+  bgshellMcp?: Record<string, unknown> | null
   /**
    * Bloque `permission` de la config (vale para todos los agentes del sidecar; los de `'*': deny` como `chat` siguen denegando porque
    * su permiso de agente va después). Lo construye `buildCodeMcpPermission` (`code-mcp-permission.ts`): conectores en Code (F8-B203).
@@ -39,7 +46,14 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
-    ...(opts.browserMcp ? { mcp: { browser: opts.browserMcp } } : {}),
+    ...(opts.browserMcp || opts.bgshellMcp
+      ? {
+          mcp: {
+            ...(opts.browserMcp ? { browser: opts.browserMcp } : {}),
+            ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {})
+          }
+        }
+      : {}),
     ...(opts.permission && Object.keys(opts.permission).length ? { permission: opts.permission } : {}),
     agent: {
       [CHAT_AGENT]: {
