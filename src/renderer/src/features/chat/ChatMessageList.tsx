@@ -24,6 +24,8 @@ import { useStickToBottom } from '../../lib/conversation/use-stick-to-bottom'
 import { isOldRow, withCv } from '../../lib/conversation/cv'
 import { lastAssistantFailed } from '../../lib/conversation/errors'
 import { ConversationAnnouncer } from '../../components/conversation/ConversationAnnouncer'
+import { ShellBgWakeNote } from '../../components/conversation/ShellBgWakeNote'
+import { shellBgWakeOf } from '@shared/shell-bg-wake-marker'
 import { ChatToolCall } from './ChatToolCall'
 import { ChatFiles } from './ChatFiles'
 import { rejectChatQuestion, replyChatQuestion } from './actions'
@@ -508,8 +510,11 @@ export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCom
           {rows.map((entry, i) => {
             const isLast = i === rows.length - 1
             const old = isOldRow(i, rows.length)
-            if (entry.info.role === 'user')
+            if (entry.info.role === 'user') {
+              const wake = shellBgWakeOf(entry.parts)
+              if (wake) return <ShellBgWakeNote key={entry.info.id} info={wake} />
               return <ChatUserRow key={entry.info.id} entry={entry} old={old} animate={i >= firstRows.current.count} onEdit={onEdit} />
+            }
             return (
               <ChatAssistantRow
                 key={entry.info.id}

@@ -59,8 +59,9 @@ Lectura: Code Mode redujo a la mitad los tokens en una tarea con muchas llamadas
 rápidos: los subagentes valen la pena para trabajo grande e independiente, no para tareas pequeñas.
 
 ## Hallazgos de esta segunda ronda
-1. El aviso de fin que despierta al modelo FUNCIONA (se vio en la conversación), pero cada trabajo que termina genera un turno nuevo y un mensaje largo y visible: con 6 trabajos, 6 despertares.
-   Mejora pendiente: agrupar avisos que lleguen en una ventana corta en un solo despertar y mostrarlos compactos.
+1. El aviso de fin que despierta al modelo FUNCIONA (se vio en la conversación), pero cada trabajo que termina generaba un turno nuevo y un mensaje largo y visible: con 6 trabajos, 6 despertares.
+   **Resuelto (F8-B207):** los avisos de la misma sesión raíz que llegan en 2 s se mandan en un solo despertar con un resumen compacto, y la conversación los muestra como una línea
+   «Terminaron N trabajos en segundo plano» con el detalle plegable. Sin probar aún con un modelo real.
 2. En «Preguntar siempre», seis `bgshell_start` lanzados a la vez generan seis tarjetas de permiso; si la sesión no está a la vista, quedan esperando sin que la persona lo note (el escudo en
    la lista de sesiones lo indica).
 3. `npm run dev`/`build` generan el `.cjs` de `bgshell`; un `electron-vite build` suelto no, y entonces `bgshell` simplemente no aparece (degrada sin error).

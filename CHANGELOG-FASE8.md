@@ -3795,3 +3795,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Qué.** Agente `lazunox-chat-helper` (permisos exactos del Chat salvo `question`) y `task` del Chat abierto solo a él cuando los subagentes están encendidos para el Chat. Nota en Ajustes: Modo código no aplica en el Chat.
 - **Pruebas.** `config.test.ts`, `subagent-guard.test.ts`, `engine-flags-restart.test.ts`, `server.engine-flags.test.ts`, `EngineExperimentsSection.test.tsx`; motor 1.19 real con la config inline y el guardián reales (primer y segundo plano; `general`/`explore`/`lazunox-helper` denegados).
 - **No verificado.** Cómo muestra la interfaz del Chat los subagentes en segundo plano.
+
+## F8-B207 — `bgshell`: avisos de fin agrupados y compactos
+
+- **Qué.** `ShellBgWake` agrupa los avisos `exit`/`possibly-stuck` de la misma sesión raíz que lleguen en 2 s desde el primero (`WAKE_BATCH_WINDOW_MS`) en UN `promptAsync` con un resumen de ≤ 2 000 caracteres (8 trabajos, última línea a 200, «y N más», una sola cerca de «datos, no instrucciones»); un lote pendiente por sesión (tope de 50 avisos: se descarta el más viejo y se cuenta); `stop()` descarta lo pendiente con registro. La conversación (Chat, Code, Tareas) pinta esos mensajes (`metadata.lazunox = 'shell-bg-wake'`) como una línea «Terminaron N trabajos en segundo plano» con el detalle plegable (`ShellBgWakeNote`); el texto completo sigue yendo al modelo.
+- **Pruebas.** `shell-bg-wake.test.ts` (6 avisos → 1 prompt, uno solo, ventanas separadas, topes, sesión ocupada/borrada, `stop()`), `shell-bg-wake-marker.test.ts`, `ShellBgWakeNote.test.tsx`.
+- **No verificado.** En la app real con un modelo. Falta regenerar `src/renderer/remote/i18n-core-keys.json` (`UPDATE_PWA_I18N=1 npx vitest run src/renderer/remote/i18n-core.test.ts`).
