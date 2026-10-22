@@ -73,6 +73,9 @@ export const PLAN_GATE_ALLOWED_TOOLS = [
   'skill'
 ] as const
 
+/** Niveles máximos que el plan-gate sube por `parentID` para hallar la raíz (más → se deniega). */
+export const PLAN_GATE_MAX_DEPTH = 6
+
 /** Variables del entorno de `opencode serve` que bash/pty NO deben ver. */
 export const HIDDEN_SHELL_ENV = [
   'OPENCODE_SERVER_PASSWORD',
@@ -108,10 +111,24 @@ export default {
  * Plugin `tool.execute.before`: bloquea, del lado del servidor, toda herramienta que no sea de
  * solo-planificación hasta que `GET <LAZUNOX_PLAN_GATE_URL>/plan-status?session=<id>` confirme
  * `{ approved: true }`. Se aplica a TODA sesión del servidor con la variable (también las sesiones
- * hijas de `task` y cualquier agente que no sea `computer`), con clave en su propio `sessionID`:
- * una sesión sin plan aprobado queda bloqueada (fail-closed). Sin la variable de entorno (sandbox /
+ * hijas de `task` y cualquier agente que no sea `computer`). Sin la variable de entorno (sandbox /
  * sidecar principal), es un no-op. Ya no se distingue el agente: el atajo anterior
  * (`agentBySession.get(...) !== 'computer' → return`) dejaba sin puerta a las hijas.
+ *
+ * HERENCIA DEL PLAN (subagentes, motor 1.19): una hija de `task` nunca tiene plan aprobado propio
+ * (la tarjeta del plan es de la tarea, no de la hija), así que la puerta consulta la aprobación de la
+ * RAÍZ de la jerarquía. La raíz se resuelve subiendo por `parentID` con `client.session.get` (el cliente
+ * interno del plugin; el `parentID` lo fija el motor al crear la hija, el modelo no lo controla), con
+ * estas reglas, todas fail-closed:
+ *  - sesión desconocida (el motor no la devuelve o devuelve otra) → denegar;
+ *  - ciclo en la cadena → denegar; cadena de más de MAX_DEPTH niveles → denegar;
+ *  - la aprobación que cuenta es SOLO la de la raíz: una hija «aprobada» por sí misma (p. ej. tras una
+ *    tarjeta de `computer_request_access` de la hija) NO abre nada si la raíz no está aprobada;
+ *  - raíz revocada → todas las hijas vuelven a quedar bloqueadas (la caché de estado dura 250 ms).
+ * Solo si el cliente del plugin no ofrece `session.get` (versión del motor sin esa API) se cae al
+ * comportamiento anterior: se consulta la sesión que llama, sin herencia (una hija queda bloqueada).
+ * NO se toca la inyección de `lazunox_session` de `computer_*`: sigue siendo la sesión que llama, así
+ * que el MCP del Mac sigue exigiendo la aprobación propia de cada sesión para sus herramientas.
  */
 export function planGatePluginSource(): string {
   return `// Generado por la app: no editar (se regenera al arrancar).
@@ -121,6 +138,8 @@ export function planGatePluginSource(): string {
 const GATE_URL = process.env.LAZUNOX_PLAN_GATE_URL || ''
 const ALLOWED = new Set(${JSON.stringify(PLAN_GATE_ALLOWED_TOOLS)})
 const CACHE_MS = 250
+const MAX_DEPTH = ${PLAN_GATE_MAX_DEPTH}
+const PARENT_CACHE_MAX = 1000
 const DENY_MSG =
   'Todavia no hay un plan aprobado para esta tarea (flujo Plan -> Aprobar -> Ejecutar). Antes de tocar la ' +
   'pantalla, editar o crear archivos, usar la terminal o consultar la web: llama a computer_request_access ' +
@@ -130,18 +149,59 @@ const DENY_MSG =
 
 export default {
   id: 'lazunox-plan-gate',
-  server: async () => {
+  server: async (pluginInput) => {
     if (!GATE_URL) return {}
+    const client = pluginInput && pluginInput.client
+    const canResolve = !!(client && client.session && typeof client.session.get === 'function')
     const cache = new Map()
+    // sessionID -> parentID ('' = es raíz). El parentID de una sesión no cambia: solo se guardan aciertos.
+    const parents = new Map()
+    const getSession = async (id) => {
+      // Cliente del plugin en el motor 1.19 (verificado con el binario real): { path: { id } } y la
+      // respuesta { data }. Se prueba tambien la forma plana { sessionID } por si cambia en otra version.
+      for (const args of [{ path: { id } }, { sessionID: id }]) {
+        try {
+          const r = await client.session.get(args)
+          const info = r && typeof r === 'object' && 'data' in r ? r.data : r
+          if (info && typeof info === 'object' && info.id === id) return info
+        } catch {
+          // probar la otra forma de llamar; si ninguna sirve, la sesión es desconocida
+        }
+      }
+      return null
+    }
+    // Raíz de la jerarquía de la sesión, o null (= denegar) si no se puede determinar con certeza.
+    const rootOf = async (sessionID) => {
+      if (typeof sessionID !== 'string' || !sessionID) return null
+      if (!canResolve) return sessionID
+      const seen = new Set()
+      let cur = sessionID
+      for (let depth = 0; depth <= MAX_DEPTH; depth++) {
+        if (seen.has(cur)) return null
+        seen.add(cur)
+        let parent = parents.get(cur)
+        if (parent === undefined) {
+          const info = await getSession(cur)
+          if (!info) return null
+          parent = typeof info.parentID === 'string' ? info.parentID : ''
+          if (parents.size >= PARENT_CACHE_MAX) parents.clear()
+          parents.set(cur, parent)
+        }
+        if (!parent) return cur
+        cur = parent
+      }
+      return null
+    }
     const isApproved = async (sessionID) => {
-      const key = sessionID || ''
+      const root = await rootOf(sessionID)
+      if (!root) return false
+      const key = root
       const now = Date.now()
       const hit = cache.get(key)
       if (hit && now - hit.at < CACHE_MS) return hit.ok
       let ok = false
       try {
-        const q = sessionID ? '?session=' + encodeURIComponent(sessionID) : ''
-        const r = await fetch(GATE_URL + '/plan-status' + q, { signal: AbortSignal.timeout(1500) })
+        const r = await fetch(GATE_URL + '/plan-status?session=' + encodeURIComponent(root), { signal: AbortSignal.timeout(1500) })
         if (r.ok) {
           const j = await r.json()
           ok = j && j.approved === true
@@ -160,9 +220,9 @@ export default {
         if (typeof input.tool === 'string' && input.tool.startsWith('computer_') && output && output.args && typeof output.args === 'object') {
           output.args.lazunox_session = input.sessionID
         }
-        // 2) Control del plan, por sesion. Se aplica a TODA sesion del servidor (tambien las hijas
-        // creadas con la herramienta task y cualquier otro agente), con clave en su propio
-        // sessionID: una sesion sin plan aprobado queda bloqueada (fail-closed).
+        // 2) Control del plan. Se aplica a TODA sesion del servidor (tambien las hijas creadas con la
+        // herramienta task y cualquier otro agente); una hija hereda SOLO la aprobacion de su raiz
+        // (ver rootOf) y una sesion que no se puede resolver queda bloqueada (fail-closed).
         if (ALLOWED.has(input.tool)) return
         if (await isApproved(input.sessionID)) return
         throw new Error(DENY_MSG)
