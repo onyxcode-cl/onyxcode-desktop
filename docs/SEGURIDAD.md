@@ -2185,3 +2185,31 @@ sin esta función no necesita PyMuPDF (el motor es una sola pieza, `translate_pd
 (`%PDF-` o el zip `PK\x03\x04`) antes de guardar nada, el archivo se escribe como `input.docx` en la carpeta del trabajo y Python corre con el
 mismo entorno mínimo y los mismos topes. Un `.docx` es un zip: `python-docx` lo abre con `zipfile`, sin ejecutar macros ni contenido activo, y el
 resultado es un archivo nuevo (nunca se sobrescribe el original). Los ids de los textos (`d<parte>-<n>`) se validan con `^[pd]\d{1,5}-\d{1,5}$`.
+
+## 3 sexagies. Contención de subagentes y de Code Mode (motor 1.19; F8-B202)
+
+Contexto: la prueba real con el binario 1.19 (`docs/PRUEBA-CODE-MODE-Y-SEGUNDO-PLANO.md`) halló que un padre con `bash: deny` lanzó una hija `general` que ejecutó `bash` sin preguntar, que el plan-gate bloqueaba a las hijas (su sesión nunca tiene plan) y que un `reject` dentro de `execute` (Code Mode) lo puede atrapar el programa. Lo que sigue sale de leer `TaskTool` del binario y de comprobarlo con ese binario (sin modelo: sesiones por HTTP y partes `subtask`).
+
+**Cómo decide el motor los permisos de una hija.** `merge(permisos del AGENTE de la hija, permisos de SU sesión)`; el último que coincide gana; sin regla = `ask`. La sesión de la hija recibe del padre solo las reglas de `session.permission` que sean `deny` o `external_directory`, más `todowrite: deny` y `task: deny` si el subagente no los declara. **Los permisos del agente del padre (los `.md` y la config inline) NO se heredan.**
+
+**Qué se hizo** (`src/main/opencode/subagent-guard.ts`, plugin `lazunox-subagent-guard`, y los agentes de `resources/opencode/agents/`):
+
+1. _Estática_: `tasks.md` solo puede lanzar `lazunox-helper` (`task` con lista blanca, no `allow`); `computer.md` mantiene `task: deny`; `chat.md` `'*': deny`. `lazunox-helper` es un subagente de solo lectura (`read` con las excepciones de `.env` de los agentes integrados, `glob`, `grep`, `list`; todo lo demás `deny`, sin `task`). `general` y `explore` quedan fuera de Chat, Overdrive y Control total.
+2. _Dinámica_ (`tool.execute.before` sobre `task`, en TODOS los servidores, también Code): se calcula el permiso efectivo del padre (agente + `session.permission`) y el de la hija (agente + lo que el motor le añade) y se **bloquea** el `task` si la hija tendría más libertad que el padre (`deny` < `ask` < `allow`) en alguna herramienta o patrón de las reglas de ambos o de una lista fija (`bash`, `edit`, `write`, web, `task`, `external_directory`, `computer_*`, `browser_*`, `*`…). Fail-closed: cliente del plugin sin API, agente o sesión desconocidos o error del motor = bloquear.
+3. _Plan-gate_ (zona intocable, `opencode-config.ts`): una hija hereda SOLO la aprobación de su **raíz**, resuelta por `parentID` con `client.session.get` (la hace el plugin; `/plan-status` y `service.ts` no cambian). Sesión desconocida, ciclo, más de 6 niveles o error = denegar; una hija aprobada por sí misma o una raíz ajena no abren nada; revocar la raíz bloquea a las hijas (caché de 250 ms). `lazunox_session` de `computer_*` sigue siendo la sesión que llama: el MCP del Mac exige la aprobación propia de cada sesión.
+4. _Code Mode_: el plugin escucha `permission.asked`/`permission.replied` (el gancho `permission.ask` que lista la documentación del motor **no existe** en 1.19). Un `reject` sobre una petición de una llamada interna de un `execute` en curso marca ese `execute` como revocado, bloquea sus llamadas internas siguientes (`callID` `<execute>/<n>`) y aborta la sesión, como ocurre tras un rechazo fuera de Code Mode.
+5. _Modo automático_ (`auto-approver.ts`): nunca aprueba solo una petición cuyo `sessionID` no sea la raíz (hija, nieta o raíz irresoluble), ni en el sondeo, ni en `considerOne`, ni el «Solo ver» de apps. `task` y el resto de `NEVER_ALONE_PERMISSIONS` no cambian.
+
+**Qué garantiza.** Con estos agentes, ningún subagente que Lazunox permita lanzar puede ejecutar algo que su padre tenga denegado o con pregunta; una hija no actúa sin plan aprobado en su raíz ni se aprueba sola; el modo automático no responde por una hija; un rechazo dentro de `execute` no deja seguir llamando herramientas desde ese programa.
+
+**Qué NO garantiza.**
+- Es una comparación sobre reglas (heurística conservadora), no una prueba formal: se comparan las herramientas y los patrones que aparecen en las reglas y una lista fija. Una herramienta MCP con nombre propio queda cubierta solo a través de `*` o de una regla con su nombre/prefijo.
+- No ve las aprobaciones «siempre» ya guardadas (`approved` del motor) ni los permisos que un MCP aplique por su cuenta.
+- Un subagente permitido (`lazunox-helper`) sigue pudiendo leer lo que su padre lee, y el texto que devuelve al padre es dato no confiable (inyección).
+- Un `deny` por regla dentro de `execute` no es una revocación del usuario: la llamada falla y el programa puede seguir con otras herramientas permitidas. Solo el `reject` del usuario corta el programa.
+- El corte tras un `reject` depende de que el evento `permission.replied` llegue al plugin antes de la siguiente llamada interna (el motor lo publica antes de fallar la petición, pero el gancho `event` no es síncrono con ella); el aborto de la sesión es el respaldo. Esa carrera no se pudo provocar con el binario real (no hay modelo gratuito disponible): solo está probada con ganchos simulados.
+- Sin tiempo, memoria ni número de llamadas límite en `execute` (otro trabajo: vigilante de tiempo) ni reanudación tras reiniciar el motor.
+- Si una versión futura del motor cambia la forma del cliente del plugin, el plan-gate vuelve al comportamiento anterior (hijas bloqueadas) y el guardián bloquea todo `task`: falla cerrado, no abierto. Reverificar al subir de versión (`docs/ACTUALIZAR-OPENCODE.md`).
+- Quien ya puede leer el entorno del servidor (p. ej. `ps eww` en Control total, sin sandbox) puede obtener el canal del plan-gate; es una limitación previa, no nueva.
+
+Pruebas: `src/main/tasks/plan-gate.inheritance.test.ts`, `src/main/opencode/subagent-guard.test.ts`, `src/main/tasks/auto-approver.children.test.ts`.
