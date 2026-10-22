@@ -799,6 +799,7 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 )
 (allow network-bind (local ip "localhost:40555"))
 (allow network-inbound (local ip "localhost:40555"))
+(allow network-outbound (remote ip "localhost:40555"))
 (allow network-bind (local ip "localhost:*"))
 
 ;; Borrado/renombrado NO concedido: unlink/rmdir/rename denegados (principal sin permiso y carpetas adicionales rw).
