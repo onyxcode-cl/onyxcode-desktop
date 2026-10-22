@@ -24,7 +24,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 /**
  * @param {string} bin binario del motor
  * @param {{ plugins?: Record<string,string>, mcpServers?: string[], env?: Record<string,string>, file?: object, inline?: object,
- *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject' }} sc
+ *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number }} sc
  */
 export async function runEngine(bin, sc) {
   const root = mkdtempSync(join(tmpdir(), 'lz-engine-probe-'))
@@ -184,6 +184,7 @@ export async function runEngine(bin, sc) {
         .map((p) => ({ tool: p.tool, status: p.state.status, input: p.state.input, output: String(p.state.output ?? p.state.error ?? '') }))
     )
     out.toolsOffered = seen.toolsOffered
+    if (sc.settleMs) await sleep(sc.settleMs)
   } catch (e) {
     out.error = String(e?.stack ?? e)
     out.log = log.slice(-3000)

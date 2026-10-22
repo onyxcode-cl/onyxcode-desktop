@@ -238,20 +238,21 @@ export default {
 /**
  * Plugin `tool.execute.before` (Lote D, B.7): en TODO servidor (sidecar de Code y cada servidor de
  * Tareas, sandbox o Control total), inyecta `lazunox_session` en los args de cualquier herramienta
- * `browser_*` con el `sessionID` de quien llama, MUTANDO el objeto en sitio (opencode llama al MCP
+ * `browser_*` (y `bgshell_*`, F8-B205: el MCP del shell en segundo plano guarda la sesión como dueña del trabajo para el aviso de fin)
+ * con el `sessionID` de quien llama, MUTANDO el objeto en sitio (opencode llama al MCP
  * con ese mismo objeto `output.args`) y SIEMPRE sobrescribiendo lo que ponga el modelo — igual que
  * `lazunox-plan-gate` hace con `computer_*`. Sin variable de entorno que lo condicione: a diferencia
  * del plan-gate (solo acceso total), el navegador integrado existe en todos los servidores.
  */
 export function sessionPluginSource(): string {
   return `// Generado por la app: no editar (se regenera al arrancar).
-// Inyecta lazunox_session en las herramientas browser_* del MCP del navegador integrado (Lote D).
+// Inyecta lazunox_session en las herramientas browser_* del navegador integrado (Lote D) y bgshell_* del shell en segundo plano.
 // Ver src/main/tasks/opencode-config.ts para el contexto completo.
 export default {
   id: 'lazunox-session',
   server: async () => ({
     'tool.execute.before': async (input, output) => {
-      if (typeof input.tool === 'string' && input.tool.startsWith('browser_') && output && output.args && typeof output.args === 'object') {
+      if (typeof input.tool === 'string' && (input.tool.startsWith('browser_') || input.tool.startsWith('bgshell_')) && output && output.args && typeof output.args === 'object') {
         output.args.lazunox_session = input.sessionID
       }
     }
