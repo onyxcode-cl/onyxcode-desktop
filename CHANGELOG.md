@@ -4,6 +4,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [Sin publicar]
+
+- **Traducir un Word sin cambiar el formato.** Igual que con los PDF: en el Chat adjunta un Word (.docx) y pide traducirlo (o usa el ícono de traducir). Se escribe sobre el mismo documento: estilos, fuentes, tablas, listas, encabezados, pies y enlaces quedan como estaban; solo cambia el texto. Lo que no se puede reescribir sin dañarlo (párrafos con imágenes, números de página, índices, cuadros de texto, cambios controlados) se deja igual y se avisa.
+
 ## [1.4.0] - 2026-10-21
 
 ### Novedades

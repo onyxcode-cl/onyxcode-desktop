@@ -226,7 +226,7 @@ export function ChatComposer({
     const file = attachments[offer.intent.fileIndex]
     if (!file) return
     const base64 = file.url.slice(file.url.indexOf(',') + 1)
-    openTranslatePdf({ name: file.name, base64, target: offer.intent.target })
+    openTranslatePdf({ name: file.name, base64, kind: offer.intent.kind, target: offer.intent.target })
     setOffer(null)
     setText('')
     setAttachments([])

@@ -25,14 +25,15 @@ import {
   type PdfExtractRequest,
   type PdfExtractResult,
   type PdfFailReason,
-  type PdfSegment
+  type PdfSegment,
+  type TranslateKind
 } from '@shared/translate-pdf'
 import { bundledPythonEnv } from '../tasks/python-runtime'
 import { unpacked } from '../util/asar'
 
 const JOB_TTL_MS = 24 * 60 * 60 * 1000
 const RUN_TIMEOUT_MS = 4 * 60 * 1000
-const SEGMENT_ID_RE = /^p\d{1,5}-\d{1,5}$/
+const SEGMENT_ID_RE = /^[pd]\d{1,5}-\d{1,5}$/
 const MAX_TRANSLATION_CHARS = 20_000
 
 export interface RunResult {
@@ -45,13 +46,14 @@ export interface RunResult {
 export interface ServiceDeps {
   jobsDir: () => string
   python: () => string | null
-  script: () => string
+  script: (kind: TranslateKind) => string
   run: (python: string, args: string[], cwd: string) => Promise<RunResult>
   now: () => number
 }
 
-function defaultScript(): string {
-  return unpacked(join(app.getAppPath(), 'resources', 'opencode', 'skills', 'pdf', 'scripts', 'translate_pdf.py'))
+function defaultScript(kind: TranslateKind = 'pdf'): string {
+  const [skill, file] = kind === 'docx' ? ['docx', 'translate_docx.py'] : ['pdf', 'translate_pdf.py']
+  return unpacked(join(app.getAppPath(), 'resources', 'opencode', 'skills', skill, 'scripts', file))
 }
 
 export function runPythonReal(python: string, args: string[], cwd: string): Promise<RunResult> {
@@ -85,6 +87,7 @@ const realDeps: ServiceDeps = {
 interface JobMeta {
   name: string
   createdAt: number
+  kind?: TranslateKind
   outName?: string
 }
 
@@ -121,9 +124,12 @@ export class PdfTranslateService {
 
   async extract(req: PdfExtractRequest): Promise<PdfExtractResult> {
     const python = this.d.python()
-    if (!python || !existsSync(this.d.script())) return { ok: false, reason: 'noPython' }
+    const kind: TranslateKind = req.kind === 'docx' ? 'docx' : 'pdf'
+    if (!python || !existsSync(this.d.script(kind))) return { ok: false, reason: 'noPython' }
     const buf = Buffer.from(req.base64, 'base64')
-    if (buf.length === 0 || buf.subarray(0, 5).toString('latin1') !== '%PDF-') return { ok: false, reason: 'unreadable' }
+    // %PDF- o, para Word, un zip («PK\x03\x04»): lo demás ni se guarda.
+    const magic = kind === 'docx' ? buf.subarray(0, 4).toString('latin1') === 'PK\u0003\u0004' : buf.subarray(0, 5).toString('latin1') === '%PDF-'
+    if (buf.length === 0 || !magic) return { ok: false, reason: 'unreadable' }
     if (buf.length > TRANSLATE_PDF_MAX_BYTES) return { ok: false, reason: 'tooBig' }
     await this.cleanup()
     const jobId = randomBytes(8).toString('hex')
@@ -133,9 +139,9 @@ export class PdfTranslateService {
       await rm(dir, { recursive: true, force: true }).catch(() => undefined)
       return { ok: false, reason }
     }
-    await writeFile(join(dir, 'input.pdf'), buf, { mode: 0o600 })
-    await writeFile(join(dir, 'meta.json'), JSON.stringify({ name: req.name, createdAt: this.d.now() } satisfies JobMeta), { mode: 0o600 })
-    const r = await this.d.run(python, [this.d.script(), 'extraer', 'input.pdf', '-o', 'segmentos.json'], dir)
+    await writeFile(join(dir, `input.${kind}`), buf, { mode: 0o600 })
+    await writeFile(join(dir, 'meta.json'), JSON.stringify({ name: req.name, createdAt: this.d.now(), kind } satisfies JobMeta), { mode: 0o600 })
+    const r = await this.d.run(python, [this.d.script(kind), 'extraer', `input.${kind}`, '-o', 'segmentos.json'], dir)
     if (r.timedOut) return fail('timeout')
     if (r.code === 2) return fail('scanned')
     if (r.code !== 0)
@@ -172,33 +178,34 @@ export class PdfTranslateService {
     }
     if (Object.keys(clean).length === 0) return { ok: false, reason: 'failed' }
     await writeFile(join(dir, 'traduccion.json'), JSON.stringify(clean), { mode: 0o600 })
-    await rm(join(dir, 'salida.pdf'), { force: true })
+    const kind: TranslateKind = meta.kind === 'docx' ? 'docx' : 'pdf'
+    await rm(join(dir, `salida.${kind}`), { force: true })
     const r = await this.d.run(
       python,
-      [this.d.script(), 'aplicar', 'input.pdf', '-t', 'traduccion.json', '-o', 'salida.pdf', '--informe', 'informe.json'],
+      [this.d.script(kind), 'aplicar', `input.${kind}`, '-t', 'traduccion.json', '-o', `salida.${kind}`, '--informe', 'informe.json'],
       dir
     )
     if (r.timedOut) return { ok: false, reason: 'timeout' }
     // 3 = algún texto no cabe aunque se redujo la letra: el PDF se genera igual y se avisa.
     if (r.code !== 0 && r.code !== 3) return { ok: false, reason: 'failed' }
     try {
-      await stat(join(dir, 'salida.pdf'))
+      await stat(join(dir, `salida.${kind}`))
       const inf = JSON.parse(await readFile(join(dir, 'informe.json'), 'utf8')) as {
         traducidos?: number
         sin_traduccion?: string[]
         letra_reducida?: unknown[]
         no_cabe?: string[]
-        enlaces_quitados?: unknown[]
+        enlaces_quitados?: unknown[] | number
       }
       const report: PdfApplyReport = {
         translated: inf.traducidos ?? 0,
         untranslated: inf.sin_traduccion?.length ?? 0,
         shrunk: inf.letra_reducida?.length ?? 0,
         overflow: (inf.no_cabe ?? []).filter((id) => SEGMENT_ID_RE.test(id)),
-        linksDropped: inf.enlaces_quitados?.length ?? 0
+        linksDropped: Array.isArray(inf.enlaces_quitados) ? inf.enlaces_quitados.length : (inf.enlaces_quitados ?? 0)
       }
-      const outName = translatedName(meta.name, req.target)
-      await copyFile(join(dir, 'salida.pdf'), join(dir, outName))
+      const outName = translatedName(meta.name, req.target, kind)
+      await copyFile(join(dir, `salida.${kind}`), join(dir, outName))
       await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, outName } satisfies JobMeta), { mode: 0o600 })
       return { ok: true, report, outName }
     } catch {
@@ -219,7 +226,8 @@ export class PdfTranslateService {
   async save(jobId: string, parent: BrowserWindow | null): Promise<{ saved: boolean }> {
     const f = await this.outFile(jobId)
     if (!f) return { saved: false }
-    const options = { defaultPath: join(app.getPath('downloads'), f.name), filters: [{ name: 'PDF', extensions: ['pdf'] }] }
+    const ext = f.name.toLowerCase().endsWith('.docx') ? 'docx' : 'pdf'
+    const options = { defaultPath: join(app.getPath('downloads'), f.name), filters: [{ name: ext === 'docx' ? 'Word' : 'PDF', extensions: [ext] }] }
     const res = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options)
     if (res.canceled || !res.filePath) return { saved: false }
     await copyFile(f.path, res.filePath)

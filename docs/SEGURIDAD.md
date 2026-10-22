@@ -2179,3 +2179,9 @@ mover este paso al sandbox de Tareas (pendiente, no implementado).
 
 **Licencia.** PyMuPDF es AGPL-3.0: el aviso está en `THIRD_PARTY_NOTICES.md` y el código fuente completo de cada versión es público. Una versión
 sin esta función no necesita PyMuPDF (el motor es una sola pieza, `translate_pdf.py`).
+
+**Word (F8-B201).** El mismo flujo y los mismos canales aceptan un `.docx` (`kind: 'docx'`, opcional; por omisión `pdf`) y usan
+`resources/opencode/skills/docx/scripts/translate_docx.py` (python-docx, lxml). Nada nuevo en la superficie: `main` comprueba los bytes mágicos
+(`%PDF-` o el zip `PK\x03\x04`) antes de guardar nada, el archivo se escribe como `input.docx` en la carpeta del trabajo y Python corre con el
+mismo entorno mínimo y los mismos topes. Un `.docx` es un zip: `python-docx` lo abre con `zipfile`, sin ejecutar macros ni contenido activo, y el
+resultado es un archivo nuevo (nunca se sobrescribe el original). Los ids de los textos (`d<parte>-<n>`) se validan con `^[pd]\d{1,5}-\d{1,5}$`.

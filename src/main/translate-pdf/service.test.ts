@@ -38,6 +38,29 @@ const segJson = (n: number) =>
     segmentos: Array.from({ length: n }, (_, i) => ({ id: `p${i < 2 ? 1 : 3}-${i}`, pagina: i < 2 ? 1 : 3, texto: `texto ${i}` }))
   })
 
+describe('extract (Word)', () => {
+  const DOCX_B64 = Buffer.from('PK\u0003\u0004fake').toString('base64')
+  it('un .docx usa su propia herramienta y archivos .docx; ids d<parte>-<n>', async () => {
+    const run = vi.fn(async (_py: string, args: string[], cwd: string) => {
+      expect(args.slice(1)).toEqual(['extraer', 'input.docx', '-o', 'segmentos.json'])
+      writeFileSync(join(cwd, 'segmentos.json'), JSON.stringify({ paginas: 1, segmentos: [{ id: 'd1-0', pagina: 1, texto: 'Hola' }] }))
+      return ok()
+    })
+    const r = await new PdfTranslateService(deps(run)).extract({ name: 'a.docx', base64: DOCX_B64, kind: 'docx' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.segments.map((s) => s.id)).toEqual(['d1-0'])
+    expect(existsSync(join(root, 'jobs', r.jobId, 'input.docx'))).toBe(true)
+  })
+  it('un PDF presentado como Word (y al revés) se rechaza sin llamar a Python', async () => {
+    const run = vi.fn()
+    const s = new PdfTranslateService(deps(run))
+    expect(await s.extract({ name: 'a.docx', base64: PDF_B64, kind: 'docx' })).toEqual({ ok: false, reason: 'unreadable' })
+    expect(await s.extract({ name: 'a.pdf', base64: DOCX_B64 })).toEqual({ ok: false, reason: 'unreadable' })
+    expect(run).not.toHaveBeenCalled()
+  })
+})
+
 describe('extract', () => {
   it('guarda el PDF en una carpeta propia y devuelve los textos y las páginas sin texto', async () => {
     const run = vi.fn(async (_py: string, args: string[], cwd: string) => {

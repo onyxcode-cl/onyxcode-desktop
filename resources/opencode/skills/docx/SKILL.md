@@ -1,6 +1,6 @@
 ---
 name: docx
-description: Crear, inspeccionar, editar y revisar documentos Word (.docx) profesionales: informes, cartas, contratos, actas, con tablas, imágenes, listas, comentarios y verificación visual.
+description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.docx) profesionales: informes, cartas, contratos, actas, con tablas, imágenes, listas, comentarios y verificación visual. Para traducir un Word sin cambiar su formato usa translate_docx.py (sección E), no escribas tu propio script.
 ---
 
 # Skill docx (documentos Word)
@@ -73,6 +73,13 @@ PY S/edit_docx.py original.docx original-v2.docx \
 ## C. Comentarios de Word
 - Listar: `PY S/comments_docx.py listar documento.docx`
 - Añadir (copia nueva): `PY S/comments_docx.py añadir documento.docx documento-revisado.docx --texto-ancla "frase exacta" --comentario "Verificar esta cifra" [--autor Lazunox]` (los pares se pueden repetir).
+
+## E. Traducir un Word sin cambiar el formato
+Usa SIEMPRE `translate_docx.py` (no escribas tu propio script): reescribe cada párrafo en su sitio y conserva estilos, fuentes, tablas, listas, encabezados, pies, enlaces e imágenes.
+1. `PY S/translate_docx.py extraer documento.docx -o segmentos.json` (lista los textos con id `d<parte>-<n>`; código 2 = sin texto).
+2. Traduce cada `texto` y guarda `traduccion.json` = `{"d1-0": "texto traducido", ...}`. Conserva las etiquetas: `<b>…</b>` negrita, `<i>…</i>` cursiva, `<u>…</u>` subrayado, `<c=#rrggbb>…</c>` color, `<l=N>…</l>` enlace; `\t` tabulador y `\n` salto de línea. No traduzcas nombres propios, cifras, códigos, rutas ni correos.
+3. `PY S/translate_docx.py aplicar documento.docx -t traduccion.json -o documento-en.docx --informe informe.json` (el archivo de salida debe ser NUEVO).
+4. Declara en «Para revisar» lo que el informe deja sin traducir: párrafos con imágenes, campos (números de página, índices), cuadros de texto o cambios controlados no se pueden reescribir sin dañarlos.
 
 ## D. Verificar siempre
 `PY S/check_docx.py archivo.docx` abre el archivo, cuenta tablas/imágenes/encabezados y avisa de: párrafos vacíos consecutivos, estilos no definidos, saltos de nivel de encabezado, tablas sin encabezado, cambios registrados sin resolver y (si está WordCraft de ArtCraft) páginas en blanco. Ejemplo de salida final: `RESULTADO: OK con 1 aviso(s)`. Con `--no-render` solo revisa la estructura. Si ArtCraft no está instalado lo dice y sigue: en ese caso decláralo en «Para revisar» («no se pudo comprobar el aspecto visual»).

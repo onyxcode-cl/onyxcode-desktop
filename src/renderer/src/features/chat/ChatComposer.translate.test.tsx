@@ -67,7 +67,7 @@ describe('tarjeta «¿traducir este PDF sin cambiar el diseño?»', () => {
     const { onSend } = setup('tradúcelo al portugués', [pdf])
     send()
     click(m!.q('[data-testid="translate-offer-yes"]'))
-    expect(openTranslatePdf).toHaveBeenCalledWith({ name: 'informe.pdf', base64: 'JVBERi0xLjQK', target: 'pt' })
+    expect(openTranslatePdf).toHaveBeenCalledWith({ kind: 'pdf', name: 'informe.pdf', base64: 'JVBERi0xLjQK', target: 'pt' })
     expect(onSend).not.toHaveBeenCalled()
     expect(m!.q('[data-testid="translate-offer"]')).toBeNull()
   })

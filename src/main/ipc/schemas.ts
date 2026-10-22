@@ -597,7 +597,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   // PDF a traducir: base64 de ≤ 20 MB; el nombre solo se usa para nombrar el resultado.
   'translate:pdfExtract': obj({
     name: str({ max: 300, min: 1 }),
-    base64: str({ max: Math.ceil((TRANSLATE_PDF_MAX_BYTES * 4) / 3) + 16 })
+    base64: str({ max: Math.ceil((TRANSLATE_PDF_MAX_BYTES * 4) / 3) + 16 }),
+    kind: optional(literal('pdf', 'docx'))
   }),
   'translate:pdfApply': obj({
     jobId: str({ max: 16, min: 16 }),
