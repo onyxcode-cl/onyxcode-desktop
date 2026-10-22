@@ -28,6 +28,7 @@ import {
   createLoadTracker,
   evictMessages,
   forgetOrphansOf,
+  interruptRunningParts,
   isChildOfAny,
   markSeen,
   messageEventSessionID,
@@ -49,6 +50,10 @@ export type { MessageEntry }
 export { appendWithoutOverlap, upsertSorted }
 
 export type SessionRunState = 'idle' | 'busy' | 'retry'
+
+/** Recién cargado el historial de una sesión que SE SABE ociosa: lo «en curso» que traiga la base del motor es un fantasma. */
+const settleLoaded = (entries: MessageEntry[], run: SessionRunState | undefined): MessageEntry[] =>
+  run === 'idle' ? (interruptRunningParts(entries) ?? entries) : entries
 
 /** Origen del sidecar principal (Chat/Code). */
 export const MAIN_SOURCE = 'main'
@@ -274,7 +279,10 @@ export const useSessions = create<SessionsState>((set, get) => {
           deltaQueue.flush() // los deltas de la carga ya están en `messages` y en el tracker
           const entries = res.data.map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) })).sort((a, b) => byId(a.info, b.info))
           set((s) => ({
-            messages: { ...s.messages, [sessionID]: mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker) },
+            messages: {
+              ...s.messages,
+              [sessionID]: settleLoaded(mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker), s.status[sessionID])
+            },
             loaded: { ...s.loaded, [sessionID]: true }
           }))
           scheduleEvict()

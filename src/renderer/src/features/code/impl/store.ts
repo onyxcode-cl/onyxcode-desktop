@@ -35,6 +35,8 @@ import {
   pinClosure,
   messageEventSessionID,
   reconcilePending,
+  interruptRunningParts,
+  interruptSettledSessions,
   reconcileRunStatus,
   reduceEvent,
   unchangedSince,
@@ -455,7 +457,13 @@ export const useCode = create<CodeState>((set, get) => {
         if (dropped()) return
         deltaQueue.flush() // los deltas de la carga ya están en `messages` y en el tracker
         const entries = data.map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) })).sort((a, b) => byId(a.info, b.info))
-        set((s) => ({ messages: { ...s.messages, [sessionID]: mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker) } }))
+        set((s) => {
+          const merged = mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker)
+          // Sesión que SE SABE ociosa: lo «en curso» que traiga la base del motor es un fantasma (reinicio del motor).
+          return {
+            messages: { ...s.messages, [sessionID]: s.runState[sessionID] === 'idle' ? (interruptRunningParts(merged) ?? merged) : merged }
+          }
+        })
         scheduleEvict()
         const todo = await client.session.todo({ sessionID, directory: dir }).catch(() => null)
         if (todo?.data && !dropped()) {
@@ -586,7 +594,9 @@ export const useCode = create<CodeState>((set, get) => {
           s.runState
         )
         const runState = reconcileRunStatus(s.runState, map, scope)
-        return runState ? { runState } : {}
+        if (!runState) return {}
+        const messages = interruptSettledSessions(s.runState, runState, s.messages)
+        return messages ? { runState, messages } : { runState }
       })
     }
   }

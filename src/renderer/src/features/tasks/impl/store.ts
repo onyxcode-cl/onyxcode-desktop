@@ -35,7 +35,7 @@ import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
-import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
+import { interruptSettledSessions, reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
@@ -1106,7 +1106,10 @@ async function syncRunStatus(client: OpencodeClient, folder: string): Promise<vo
     status
   )
   const next = reconcileRunStatus(status, data, scope)
-  if (next) useSessions.setState({ status: next })
+  if (next) {
+    const messages = interruptSettledSessions(status, next, useSessions.getState().messages)
+    useSessions.setState(messages ? { status: next, messages } : { status: next })
+  }
 }
 
 export async function loadTask(sessionID: string): Promise<void> {

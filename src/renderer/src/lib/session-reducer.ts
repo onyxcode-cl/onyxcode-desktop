@@ -8,6 +8,7 @@
  * (6.6 añade correcciones declaradas F6-B2..B5, ver CHANGELOG-FASE6.md).
  */
 import type { Message, Part, Session } from '@opencode-ai/sdk/v2/client'
+import { t } from '@shared/i18n'
 import type { OcEvent } from './opencode'
 
 export interface MessageEntry {
@@ -268,6 +269,12 @@ export function reduceEvent(slice: ConvSlice, ev: OcEvent, b: Buffers, opt: Redu
     return { ...s, messages: { ...s.messages, [sessionID]: next } }
   }
 
+  /** Al pasar a ociosa, lo que siga «en curso» es un fantasma: se marca interrumpido (`out` es nuevo, se puede mutar). */
+  const settleParts = (out: ConvSlice, sessionID: string): void => {
+    const fixed = interruptRunningParts(out.messages[sessionID])
+    if (fixed && fixed !== out.messages[sessionID]) out.messages = { ...out.messages, [sessionID]: fixed }
+  }
+
   switch (ev.type) {
     case 'session.status': {
       const { sessionID, status } = ev.properties
@@ -275,6 +282,7 @@ export function reduceEvent(slice: ConvSlice, ev: OcEvent, b: Buffers, opt: Redu
       const next: RunState = status.type === 'busy' || status.type === 'retry' ? status.type : 'idle'
       const prev = slice.status[sessionID]
       const out: ConvSlice = { ...slice, status: { ...slice.status, [sessionID]: next } }
+      if (next === 'idle' && prev && prev !== 'idle') settleParts(out, sessionID)
       const effects: Effect[] = prev !== 'idle' && next === 'idle' ? [{ type: 'became-idle', sessionID, prev }] : []
       return { slice: out, effects }
     }
@@ -283,6 +291,7 @@ export function reduceEvent(slice: ConvSlice, ev: OcEvent, b: Buffers, opt: Redu
       if (!opt.accept(sessionID)) return none
       const prev = slice.status[sessionID]
       const out: ConvSlice = { ...slice, status: { ...slice.status, [sessionID]: 'idle' } }
+      if (prev && prev !== 'idle') settleParts(out, sessionID)
       return { slice: out, effects: prev !== 'idle' ? [{ type: 'became-idle', sessionID, prev }] : [] }
     }
     case 'session.error': {
@@ -392,6 +401,51 @@ export function reduceEvent(slice: ConvSlice, ev: OcEvent, b: Buffers, opt: Redu
     default:
       return none
   }
+}
+
+/**
+ * Partes de herramienta que quedaron `running`/`pending` en una sesión que ya NO está ocupada: son fantasmas (el motor se
+ * reinició o se cortó el flujo y el fin nunca llegó; la parte sigue «en curso» en su base de datos). Se pasan a `error`
+ * con un texto de «interrumpida». Devuelve la MISMA referencia si no hay nada que cambiar. Solo debe llamarse cuando se SABE
+ * que la sesión está ociosa (evento de fin o `session.status` reconciliado): en una sesión ocupada esas partes son reales.
+ */
+export function interruptRunningParts(entries: MessageEntry[] | undefined): MessageEntry[] | undefined {
+  if (!entries) return entries
+  let changed = false
+  const out = entries.map((m) => {
+    let partsChanged = false
+    const parts = m.parts.map((p) => {
+      if (p.type !== 'tool' || (p.state.status !== 'running' && p.state.status !== 'pending')) return p
+      partsChanged = true
+      const start = p.state.status === 'running' ? p.state.time.start : Date.now()
+      return {
+        ...p,
+        state: { status: 'error' as const, input: p.state.input ?? {}, error: t('code.tool.interrupted'), time: { start, end: Date.now() } }
+      } as Part
+    })
+    if (!partsChanged) return m
+    changed = true
+    return { info: m.info, parts }
+  })
+  return changed ? out : entries
+}
+
+/**
+ * Tras reconciliar `session.status`: aplica `interruptRunningParts` a las sesiones que pasaron de ocupadas a ociosas.
+ * Devuelve el mapa de mensajes nuevo, o `null` si no cambió nada.
+ */
+export function interruptSettledSessions(
+  prev: Record<string, RunState>,
+  next: Record<string, RunState>,
+  messages: Record<string, MessageEntry[]>
+): Record<string, MessageEntry[]> | null {
+  let out: Record<string, MessageEntry[]> | null = null
+  for (const [id, run] of Object.entries(next)) {
+    if (run !== 'idle' || !prev[id] || prev[id] === 'idle') continue
+    const fixed = interruptRunningParts(messages[id])
+    if (fixed && fixed !== messages[id]) out = { ...(out ?? messages), [id]: fixed }
+  }
+  return out
 }
 
 /**

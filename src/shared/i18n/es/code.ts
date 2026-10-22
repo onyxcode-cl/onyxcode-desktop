@@ -192,6 +192,7 @@ export const code = {
   'code.tool.execute.empty': 'Todavía no hizo ninguna llamada.',
   'code.tool.execute.list': 'Llamadas que hizo el código',
   'code.tool.execute.running': 'En curso',
+  'code.tool.interrupted': 'Interrumpida: el motor se reinició o la sesión terminó antes de que acabara.',
   'code.tool.execute.completed': 'Lista',
   'code.tool.execute.error': 'Falló',
   'code.tool.execute.pending': 'Esperando',

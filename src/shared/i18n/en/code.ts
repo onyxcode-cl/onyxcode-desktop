@@ -195,6 +195,7 @@ export const code = {
   'code.tool.execute.empty': 'It has not made any calls yet.',
   'code.tool.execute.list': 'Calls made by the code',
   'code.tool.execute.running': 'In progress',
+  'code.tool.interrupted': 'Interrupted: the engine restarted or the session ended before it finished.',
   'code.tool.execute.completed': 'Done',
   'code.tool.execute.error': 'Failed',
   'code.tool.execute.pending': 'Waiting',
