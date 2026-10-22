@@ -20,7 +20,16 @@ import {
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
-import { alwaysHint, describePermission, hasHiddenChars, RejectWithNote, useCanAlways, useMcpServers, useReply } from './PermissionPrompt'
+import {
+  alwaysHint,
+  describePermission,
+  hasHiddenChars,
+  RejectWithNote,
+  useCanAlways,
+  useMcpServers,
+  useReply,
+  useRequestTitle
+} from './PermissionPrompt'
 import { useShowPath } from './conn-paths'
 import { useTasks } from './store'
 
@@ -37,6 +46,7 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
   const servers = useMcpServers()
   const showPath = useShowPath()
   const d = describePermission(request, servers, showPath)
+  const title = useRequestTitle(request, d.title)
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
@@ -169,7 +179,7 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
         armed={armed}
         busy={busy}
         icon={d.icon}
-        title={d.title}
+        title={title}
         effect={d.effect}
         preview={d.detail ? <PermPreview text={d.detail} prompt={isBash} danger={d.danger} /> : undefined}
         details={details}
@@ -194,6 +204,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
   const servers = useMcpServers()
   const showPath = useShowPath()
   const d = describePermission(request, servers, showPath)
+  const title = useRequestTitle(request, d.title)
   const { busy, answer } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon
@@ -245,7 +256,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
             <Icon size={16} className="mt-0.5 shrink-0 text-accent" />
             <button type="button" className="min-w-0 flex-1 text-left" title={d.detail || undefined} onClick={review}>
               <span className="block text-ui font-medium text-fg">
-                {d.title}
+                {title}
                 {more > 0 && <span className="ml-1.5 text-meta font-normal text-muted">{t('tasksComputer.perm.more', { more })}</span>}
               </span>
               {d.detail && <span className="mt-0.5 block truncate font-mono text-caption text-muted">{d.detail}</span>}
@@ -297,7 +308,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
         <Icon size={16} className={`shrink-0 ${d.danger ? 'text-danger' : 'text-accent'}`} />
         <button type="button" className="min-w-0 flex-1 text-left" title={d.detail || undefined} onClick={review}>
           <span className="block truncate text-ui font-medium text-fg">
-            {d.title}
+            {title}
             {more > 0 && <span className="ml-1.5 text-meta font-normal text-muted">{t('tasksComputer.perm.more', { more })}</span>}
           </span>
           <span className="block truncate font-mono text-caption text-muted">{d.detail}</span>

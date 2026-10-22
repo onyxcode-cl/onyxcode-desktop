@@ -42,3 +42,6 @@ resources/wsl-images/
 # Bytecode de Python (generado al ejecutar las skills; no se versiona ni se empaqueta)
 __pycache__/
 *.pyc
+
+# Servidor MCP del shell en segundo plano generado por scripts/build-shell-bg.mjs (npm run build:shell-bg); se regenera en cada build
+resources/shell-bg/

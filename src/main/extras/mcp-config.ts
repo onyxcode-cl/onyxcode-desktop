@@ -188,6 +188,18 @@ function permissionObject(raw: RawConfig): PermissionRaw {
   return {}
 }
 
+/**
+ * Bloque `permission` del archivo de la app como objeto (solo lectura; `{}` si falta o es ilegible). Lo usa el sidecar principal
+ * para que las reglas de Code (F8-B203) no aflojen las que ya hay aquí («Preguntar antes de cada uso», herramientas bloqueadas).
+ */
+export function readAppPermission(): Record<string, unknown> {
+  try {
+    return permissionObject(readRaw())
+  } catch {
+    return {}
+  }
+}
+
 /** ¿El servidor tiene «Preguntar antes de cada uso» (`permission["<nombre>_*"] = "ask"`)? */
 export function mcpAsksEachUse(name: string): boolean {
   return permissionObject(readRaw())[mcpPermissionKey(name)] === 'ask'

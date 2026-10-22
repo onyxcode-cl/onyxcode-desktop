@@ -194,6 +194,7 @@
   "usedSchemas": {
     "DELETE /auth/{providerID}": "630f9f629bcd7351",
     "DELETE /session/{sessionID}": "f893e0536782d4e9",
+    "GET /agent": "4d00f839001b278e",
     "GET /command": "10cd99e9dd870fa1",
     "GET /config": "27b807b534b4711b",
     "GET /config/providers": "84199e6a0545a360",

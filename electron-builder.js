@@ -114,6 +114,9 @@ module.exports = {
     'resources/craft/**',
     // Pin de Node.js y uv para los conectores locales (descarga bajo demanda): lo lee `main/runtimes/service.ts` desde app.asar.unpacked.
     'resources/runtimes/**',
+    // Servidor MCP del shell en segundo plano (`npm run build:shell-bg` → un .cjs autocontenido): lo ejecuta el Node incluido de la app
+    // como script suelto, y Node no lee un script de dentro de un .asar. Lo resuelve `main/opencode/shell-bg-bundled.ts`.
+    'resources/shell-bg/**',
     ...(process.platform === 'win32' ? ['node_modules/node-pty/**'] : []),
     // Control remoto (F8-B48): el addon nativo de WebRTC (`@node-datachannel/<plataforma>/node_datachannel.node`) no puede cargarse desde el .asar.
     'node_modules/@node-datachannel/**',

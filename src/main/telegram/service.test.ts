@@ -224,6 +224,8 @@ describe('permisos con botones', () => {
     await until(() => r.tg.edits.length === 1)
     expect(r.tg.edits[0]!.text).toContain('Permitido una vez desde Telegram')
     expect(r.tg.edits[0]!.reply_markup).toEqual({ inline_keyboard: [] }) // botones quitados
+    // La respuesta al botón («Listo») se manda DESPUÉS de editar el mensaje: se espera, en vez de suponer que ya llegó.
+    await until(() => r.tg.callbackAnswers.length >= 1, 3000, 'respuesta al botón')
     expect(r.tg.callbackAnswers.at(-1)!.text).toBe('Listo')
     const audit = readAudit(r.store.auditFile)
     expect(audit.find((a) => a.kind === 'permission-answered')).toMatchObject({ via: 'telegram', reply: 'once', perm: 'bash' })

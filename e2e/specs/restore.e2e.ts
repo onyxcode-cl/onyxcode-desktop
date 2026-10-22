@@ -73,7 +73,7 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Permitir', exact: true }).click()
     await expect.poll(() => storeState(page, 'useTasks', 'phase'), { timeout: 60_000 }).toBe('ready')
     // El sandbox solo deja borrar con «Permitir borrar»: se activa desde el panel del proyecto (reinicia el servidor).
-    await page.getByRole('treeitem', { name: 'Proyecto e instrucciones' }).click()
+    await page.getByRole('button', { name: 'Proyecto e instrucciones' }).click()
     const grant = page.getByRole('switch', { name: TASKS_TERMS.deleteGrant })
     await expectVisible(grant)
     await grant.click()
@@ -176,6 +176,8 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     await page.getByRole('button', { name: 'Enviar' }).click()
     const card = page.locator('[id^="perm-"]')
     await expectVisible(card.getByText('El agente quiere modificar «a.txt»'), 30_000)
+    // La tarjeta es un resumen (archivo y título): el diff va plegado tras «Ver detalles».
+    await card.getByRole('button', { name: 'Ver detalles' }).click()
     await expectVisible(card.locator('table'))
     expect(await card.locator('table').innerText()).toContain('dos')
     await shot(a, 'permiso')

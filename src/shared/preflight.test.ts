@@ -250,3 +250,35 @@ describe('casillas por componente (F8-B197)', () => {
     expect(toggleChecked(['craft', 'runtimes'], 'craft')).toEqual(['runtimes'])
   })
 })
+
+describe('«Acceso total al disco» (id files): opcional y silencioso (F8-B210)', () => {
+  const rep = (components: PreflightComponent[]): PreflightReport => ({
+    at: 1,
+    platform: 'darwin',
+    appVersion: '0.5.12',
+    freeBytes: 50e9,
+    components
+  })
+  const base = [c('storage'), c('disk'), c('engine')]
+  const files = c('files', { ok: false, reason: 'denied' })
+  it('pendiente por sí solo NO abre la pantalla ni entra en la huella', () => {
+    const r = rep([...base, files])
+    expect(shouldShow(r, null)).toBeNull()
+    expect(dismissalFor(r).ids).toEqual([])
+  })
+  it('con otro pendiente la pantalla se abre; «Más tarde» no la reabre aunque files siga pendiente', () => {
+    const r = rep([...base, files, c('craft', { ok: false, reason: 'missing' })])
+    expect(shouldShow(r, null)).toBe('optional')
+    expect(dismissalFor(r).ids).toEqual(['craft'])
+    expect(shouldShow(r, dismissalFor(r))).toBeNull()
+  })
+  it('una huella antigua (sin files) tampoco reabre por files', () => {
+    const r = rep([...base, files, c('craft', { ok: false })])
+    expect(shouldShow(r, { version: '0.5.11', ids: ['craft'] })).toBeNull()
+  })
+  it('la fila files se ordena antes que la ubicación y sigue visible en el listado', () => {
+    const r = rep([c('location'), files, ...base])
+    expect(ordered(r).map((x) => x.id)).toEqual(['storage', 'disk', 'engine', 'files', 'location'])
+    expect(visibleRows(r).map((x) => x.id)).toContain('files')
+  })
+})

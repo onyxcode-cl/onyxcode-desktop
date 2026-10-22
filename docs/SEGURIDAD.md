@@ -1347,7 +1347,7 @@ instalación del plugin por red no funcionan bajo el arnés de pruebas y son aje
 
 - El token de sesión SÍ es legible por el agente (está en el entorno de `opencode serve`) y sirve contra el proxy mientras el servidor viva: el agente puede llamar a esos MCP con `curl` saltándose «Preguntar en cada uso», que es un permiso de OpenCode, no del proxy. Antes podía lo mismo con el token real y
   además usarlo desde cualquier sitio y para siempre; ahora el alcance es un solo servidor MCP, solo mientras vive el servidor de la Tarea (y ≤ 12 h). Lo mismo ocurre con el token del `CredentialProxy` en el `baseURL` del proveedor.
-- `OPENCODE_SERVER_PASSWORD` sigue en ese entorno: da acceso al propio servidor sandboxeado (el mismo agente), no a nada de fuera.
+- `OPENCODE_SERVER_PASSWORD` sigue en ese entorno: da acceso al propio servidor sandboxeado (el mismo agente), no a nada de fuera. El perfil NO permite la salida hacia ese puerto desde el sandbox, y así debe seguir: con la salida abierta un comando del sandbox usa la API completa del motor (comprobado; §3 sexagies ter).
 - Secretos puestos por el usuario en `command` (p. ej. `--token xyz`) o `cwd` de un MCP local no se detectan: siguen yendo al proceso.
 - Servidor remoto con SSE antiguo que anuncie un `endpoint` en forma ABSOLUTA (otro host): el cliente iría directo por la red de salida sin credenciales y fallaría; el transporte HTTP en streaming y el SSE con ruta relativa funcionan (la ruta del destino se conserva en el proxy).
 - Un MCP remoto configurado por el usuario hacia un host local/privado se alcanza tal cual (es el destino que él eligió); el proxy no filtra por IP, solo por la lista cerrada de rutas registradas.
@@ -2179,3 +2179,199 @@ mover este paso al sandbox de Tareas (pendiente, no implementado).
 
 **Licencia.** PyMuPDF es AGPL-3.0: el aviso está en `THIRD_PARTY_NOTICES.md` y el código fuente completo de cada versión es público. Una versión
 sin esta función no necesita PyMuPDF (el motor es una sola pieza, `translate_pdf.py`).
+
+**Word (F8-B201).** El mismo flujo y los mismos canales aceptan un `.docx` (`kind: 'docx'`, opcional; por omisión `pdf`) y usan
+`resources/opencode/skills/docx/scripts/translate_docx.py` (python-docx, lxml). Nada nuevo en la superficie: `main` comprueba los bytes mágicos
+(`%PDF-` o el zip `PK\x03\x04`) antes de guardar nada, el archivo se escribe como `input.docx` en la carpeta del trabajo y Python corre con el
+mismo entorno mínimo y los mismos topes. Un `.docx` es un zip: `python-docx` lo abre con `zipfile`, sin ejecutar macros ni contenido activo, y el
+resultado es un archivo nuevo (nunca se sobrescribe el original). Los ids de los textos (`d<parte>-<n>`) se validan con `^[pd]\d{1,5}-\d{1,5}$`.
+
+## 3 sexagies. Contención de subagentes y de Code Mode (motor 1.19; F8-B202)
+
+Contexto: la prueba real con el binario 1.19 (`docs/PRUEBA-CODE-MODE-Y-SEGUNDO-PLANO.md`) halló que un padre con `bash: deny` lanzó una hija `general` que ejecutó `bash` sin preguntar, que el plan-gate bloqueaba a las hijas (su sesión nunca tiene plan) y que un `reject` dentro de `execute` (Code Mode) lo puede atrapar el programa. Lo que sigue sale de leer `TaskTool` del binario y de comprobarlo con ese binario (sin modelo: sesiones por HTTP y partes `subtask`).
+
+**Cómo decide el motor los permisos de una hija.** `merge(permisos del AGENTE de la hija, permisos de SU sesión)`; el último que coincide gana; sin regla = `ask`. La sesión de la hija recibe del padre solo las reglas de `session.permission` que sean `deny` o `external_directory`, más `todowrite: deny` y `task: deny` si el subagente no los declara. **Los permisos del agente del padre (los `.md` y la config inline) NO se heredan.**
+
+**Qué se hizo** (`src/main/opencode/subagent-guard.ts`, plugin `lazunox-subagent-guard`, y los agentes de `resources/opencode/agents/`):
+
+1. _Estática_: `tasks.md` solo puede lanzar `lazunox-helper` (`task` con lista blanca, no `allow`); `computer.md` mantiene `task: deny`; `chat.md` `'*': deny`. `lazunox-helper` es un subagente de solo lectura (`read` con las excepciones de `.env` de los agentes integrados, `glob`, `grep`, `list`; todo lo demás `deny`, sin `task`). `general` y `explore` quedan fuera de Chat, Overdrive y Control total.
+2. _Dinámica_ (`tool.execute.before` sobre `task`, en TODOS los servidores, también Code): se calcula el permiso efectivo del padre (agente + `session.permission`) y el de la hija (agente + lo que el motor le añade) y se **bloquea** el `task` si la hija tendría más libertad que el padre (`deny` < `ask` < `allow`) en alguna herramienta o patrón de las reglas de ambos o de una lista fija (`bash`, `edit`, `write`, web, `task`, `external_directory`, `computer_*`, `browser_*`, `*`…). Fail-closed: cliente del plugin sin API, agente o sesión desconocidos o error del motor = bloquear.
+3. _Plan-gate_ (zona intocable, `opencode-config.ts`): una hija hereda SOLO la aprobación de su **raíz**, resuelta por `parentID` con `client.session.get` (la hace el plugin; `/plan-status` y `service.ts` no cambian). Sesión desconocida, ciclo, más de 6 niveles o error = denegar; una hija aprobada por sí misma o una raíz ajena no abren nada; revocar la raíz bloquea a las hijas (caché de 250 ms). `lazunox_session` de `computer_*` sigue siendo la sesión que llama: el MCP del Mac exige la aprobación propia de cada sesión.
+4. _Code Mode_: el plugin escucha `permission.asked`/`permission.replied` (el gancho `permission.ask` que lista la documentación del motor **no existe** en 1.19). Un `reject` sobre una petición de una llamada interna de un `execute` en curso marca ese `execute` como revocado, bloquea sus llamadas internas siguientes (`callID` `<execute>/<n>`) y aborta la sesión, como ocurre tras un rechazo fuera de Code Mode.
+5. _Modo automático_ (`auto-approver.ts`): nunca aprueba solo una petición cuyo `sessionID` no sea la raíz (hija, nieta o raíz irresoluble), ni en el sondeo, ni en `considerOne`, ni el «Solo ver» de apps. `task` y el resto de `NEVER_ALONE_PERMISSIONS` no cambian.
+
+**Qué garantiza.** Con estos agentes, ningún subagente que Lazunox permita lanzar puede ejecutar algo que su padre tenga denegado o con pregunta; una hija no actúa sin plan aprobado en su raíz ni se aprueba sola; el modo automático no responde por una hija; un rechazo dentro de `execute` no deja seguir llamando herramientas desde ese programa.
+
+**Qué NO garantiza.**
+- Es una comparación sobre reglas (heurística conservadora), no una prueba formal: se comparan las herramientas y los patrones que aparecen en las reglas y una lista fija. Una herramienta MCP con nombre propio queda cubierta solo a través de `*` o de una regla con su nombre/prefijo.
+- No ve las aprobaciones «siempre» ya guardadas (`approved` del motor) ni los permisos que un MCP aplique por su cuenta.
+- Un subagente permitido (`lazunox-helper`) sigue pudiendo leer lo que su padre lee, y el texto que devuelve al padre es dato no confiable (inyección).
+- Un `deny` por regla dentro de `execute` no es una revocación del usuario: la llamada falla y el programa puede seguir con otras herramientas permitidas. Solo el `reject` del usuario corta el programa.
+- El corte tras un `reject` depende de que el evento `permission.replied` llegue al plugin antes de la siguiente llamada interna (el motor lo publica antes de fallar la petición, pero el gancho `event` no es síncrono con ella); el aborto de la sesión es el respaldo. Esa carrera no se pudo provocar con el binario real (no hay modelo gratuito disponible): solo está probada con ganchos simulados.
+- Sin tiempo, memoria ni número de llamadas límite en `execute` (otro trabajo: vigilante de tiempo) ni reanudación tras reiniciar el motor.
+- Si una versión futura del motor cambia la forma del cliente del plugin, el plan-gate vuelve al comportamiento anterior (hijas bloqueadas) y el guardián bloquea todo `task`: falla cerrado, no abierto. Reverificar al subir de versión (`docs/ACTUALIZAR-OPENCODE.md`).
+- Quien ya puede leer el entorno del servidor (p. ej. `ps eww` en Control total, sin sandbox) puede obtener el canal del plan-gate; es una limitación previa, no nueva.
+
+Pruebas: `src/main/tasks/plan-gate.inheritance.test.ts`, `src/main/opencode/subagent-guard.test.ts`, `src/main/tasks/auto-approver.children.test.ts`.
+
+## 3 sexagies bis. Conectores en Code, `bgshell` y subagentes del Chat (motor 1.19; F8-B203 a F8-B206)
+
+Contexto: la prueba real con OpenCode Go (`docs/PRUEBA-REAL-GO.md`) halló que en Code los conectores MCP se ejecutaban **sin pedir permiso**
+(directos y desde `execute`), que `shell_bg` no despertaba al modelo y que el Chat no podía usar subagentes. Esta sección cubre la
+integración. Todo lo que se afirma del motor está comprobado con el binario 1.19 real, aislado (entorno mínimo, HOME/XDG temporales), sin
+modelo ni red: un proveedor falso compatible con OpenAI en 127.0.0.1 pide UNA llamada a herramienta y un MCP de prueba devuelve los
+argumentos que recibe (`scripts/engine-probe/run.mjs`, manual; 27 comprobaciones; reverificar al subir de versión).
+
+**Cómo se comporta el motor (comprobado).**
+- Sin regla, el agente `build` (`'*': allow`) ejecuta cualquier herramienta MCP sin preguntar, directa o como llamada interna de
+  `execute` (`tools.<srv>.<herr>`). Las llamadas internas piden permiso con la MISMA clave `<srv>_<herr>` que la directa y disparan
+  `tool.execute.before` con esa clave y el MISMO objeto de argumentos que recibe el MCP (`callID` `<execute>/<n>`).
+- Las configs se fusionan como objetos: una clave que ya existía (archivo de conectores de la app, config global) conserva su posición;
+  una clave nueva de la inline va al final. Gana la última regla que casa: un `<srv>_*: allow` nuevo anulaba el `<srv>_<herr>: deny`
+  de una herramienta bloqueada (reproducido: la herramienta bloqueada se ejecutó).
+- El comparador del motor (`Wildcard.match`) trata un `" *"` final como opcional: `"x_secret *"` casa exactamente `x_secret` (los
+  nombres de herramienta no tienen espacios) y, como clave nueva, queda al final.
+
+**Qué se hizo.**
+1. _Conectores en Code_ (F8-B203, `src/main/opencode/code-mcp-permission.ts`, `server.ts`, `config.ts`): el bloque `permission` de la
+   config inline lleva `<srv>_*: ask` para cada conector conocido (los de la app, los de `~/.config/opencode` leídos antes de arrancar y
+   los que reporte el motor ya arrancado: `GET /mcp` y `GET /config`) y `allow` para los internos (`browser`, `computer`) y los marcados
+   «Sin preguntar en Code». No toca `bash`/`edit`/etc. Reglas de precedencia: «Preguntar antes de cada uso» y un `deny` del servidor
+   entero ganan sobre la confianza; cada `deny`/`ask` más específico de la base se re-afirma con el alias exacto `"<clave> *"`; un
+   servidor cuyo nombre es prefijo de otro (`a` / `a_b`, `browser` / `browser_x`) no le transmite la confianza (alias de la regla `ask`).
+   El motor se relanza (esperando a que no haya turnos en curso, como con las funciones experimentales) si cambia la confianza, si se
+   añade un conector (en ese caso NO se recarga en caliente: quedaría cargado sin regla) o si al arrancar reporta uno sin regla.
+2. _`bgshell`_ (F8-B204): bloque `mcp.bgshell` con el Node incluido y `MCP_ENV_WRAPPER` (macOS/Linux), carpeta privada por motor
+   (`userData/shell-bg/code`, 0700, avisos vaciados antes de cada arranque); `bgshell_start` pregunta como `bash` (config:
+   `bgshellConfigPermission`; sesión de Code: `bgshellSessionRules` delante del bloque del modo) y queda fuera de la regla general de
+   conectores, así que marcarlo «de confianza» no lo abre. El despertador (`ShellBgWake`) vive y muere con la conexión del motor.
+3. _Plugin `lazunox-session`_ (F8-B205, ZONA INTOCABLE `src/main/tasks/opencode-config.ts`): inyecta `lazunox_session` también en
+   `bgshell_*` (antes solo `browser_*`), sobrescribiendo lo que ponga el modelo. Comprobado con el motor real: directa y desde
+   `execute` llega la sesión que llama, no la que inventa el modelo; con el `bgshell` real el aviso `exit` lleva ese `sessionID`.
+4. _Subagentes del Chat_ (F8-B206): con la función encendida para el Chat, el agente `chat` recibe `task: { '*': deny,
+   'lazunox-chat-helper': allow }`. `lazunox-chat-helper` tiene exactamente los permisos del Chat (salvo `question`): web y el `read`
+   centinela, nada más; el motor le añade `task: deny`. El guardián de subagentes lo deja pasar y bloquea `general`, `explore` y
+   `lazunox-helper` (comprobado con la config inline y el guardián reales). La variable de subagentes es por proceso (Chat y Code
+   comparten motor): lo que separa al Chat es este permiso. Modo código en el Chat no aplica (el Chat no tiene conectores); Ajustes lo dice.
+
+**Qué garantiza.** En Code, un conector no marcado de confianza pregunta en cada uso, directo o desde Modo código; uno de confianza
+no pregunta; las herramientas bloqueadas de un conector local siguen bloqueadas aunque se confíe en él; `bgshell_start` nunca corre
+sin la misma pregunta que `bash` (salvo «Todo sin preguntar»); el aviso de fin de `bgshell` va a la sesión raíz del motor que lo lanzó
+y el modelo no puede elegir otra; el Chat solo puede lanzar un ayudante que no tiene más permisos que él.
+
+**Qué NO garantiza.**
+- Un conector que solo declara la config de un PROYECTO (o `OPENCODE_CONFIG_DIR`) y no está en la de la app ni en la global queda sin
+  regla (y en Code sin preguntar) desde que arranca el motor hasta el relanzamiento automático; si en ese momento hay un turno en curso,
+  ese turno puede usarlo. Tampoco se leen las reglas por herramienta de la config de un proyecto: si se confía en ese conector, un
+  `deny` por herramienta del proyecto puede quedar tapado.
+- El alias `" *"` depende del comparador del motor 1.19; si una versión futura lo cambia, `scripts/engine-probe/run.mjs` lo detecta
+  (las comprobaciones de alias fallan). No hay prueba automática en `npm test` contra el binario.
+- «Todo sin preguntar» no abre los conectores no confiados (los bloques de modo no tocan MCP): siguen preguntando. Las Rutinas de Code
+  (sin nadie que apruebe) verán rechazadas las llamadas a conectores no confiados salvo que su lista de reglas las permita.
+- Un servidor externo llamado `bgshell` recibiría el `sessionID` (no es un secreto). En Windows el proceso MCP de `bgshell` no usa
+  `MCP_ENV_WRAPPER` (hereda el entorno del motor); los trabajos que lanza solo reciben la lista blanca de variables de `buildChildEnv`.
+- El despertador y el aviso de fin con un modelo de verdad, el comportamiento de la interfaz del Chat con subagentes en segundo plano y
+  el relanzamiento con turnos reales en curso no se probaron en la app (solo con el motor real, el arnés y pruebas unitarias).
+
+Pruebas: `src/main/opencode/code-mcp-permission.test.ts`, `server.engine-flags.test.ts`, `engine-flags-restart.test.ts`,
+`config.test.ts`, `subagent-guard.test.ts`, `src/main/tasks/session-plugin.test.ts`,
+`src/renderer/src/features/code/impl/store.permisos.test.ts`, `EngineExperimentsSection.test.tsx`; y `scripts/engine-probe/run.mjs`
+(manual, motor real; `--shell-bg <cjs>` añade el `bgshell` real).
+
+## 3 sexagies ter. Overdrive con Seatbelt: canal de solo lectura para el guardián de subagentes (F8-B208, ZONA INTOCABLE)
+
+Contexto: la prueba real con OpenCode Go (2026-10-22) halló que en Overdrive (servidor de Tareas con Seatbelt) **todo** `task` se
+bloqueaba con «Lanzamiento de subagente bloqueado por Lazunox: sesion desconocida.», también el de `lazunox-helper`; en Code (sin
+Seatbelt) el mismo guardián funcionaba.
+
+**Causa (comprobada).** En el motor 1.19 el cliente que reciben los plugins usa `baseUrl = Server.url` (el puerto real del `opencode
+serve`) y SIN `fetch` interno cuando el servidor escucha: `client.session.get` y `client.app.agents` son HTTP a `127.0.0.1:<puerto
+propio>`. El perfil Seatbelt solo concede `network-bind`/`network-inbound` en ese puerto; la salida está denegada. Registro del
+sistema en el momento del `task`: `Sandbox: opencode(<pid>) deny(1) network-outbound remote:*:<puerto>`. No era la autenticación, ni
+`directory`, ni la ruta `/agent`.
+
+**Primer intento descartado (53901267, revertido).** Permitir la salida al puerto propio arreglaba el guardián, pero se comprobó con
+Seatbelt real que un proceso del sandbox lee `OPENCODE_SERVER_PASSWORD` del servidor por `sysctl(KERN_PROCARGS2)` (`ps eww`, `ps -E` y
+`lsof` sí quedan bloqueados por `process-info*`; `/proc` no existe; la contraseña no se guarda en ningún archivo) y con ella usaba la
+API completa del motor: crear sesiones, responder permisos, `PATCH /config`. Sin la contraseña todo da 401 (`/`, `/global/health`,
+`/doc`, `/session`, `/event`…). Se revirtió: el puerto del motor sigue inalcanzable desde dentro.
+
+**Qué se hizo.**
+1. `src/main/tasks/guard-info.ts`: manejador de main con SOLO dos lecturas. `GET <base>/session?id=<ses_…>` → `{ id, parentID?,
+   agent?, permission }` de una sesión (el `agent` ya resuelto con la misma precedencia que el guardián: hija = agente de la sesión;
+   raíz = agente del último mensaje de usuario, si no el de la sesión; nada del contenido de los mensajes sale de main). `GET
+   <base>/agents` → `[{ name, permission }]`. Main consulta al servidor de ESA tarea con su `authorization` y su `?directory=`, solo
+   GET, sin redirecciones, 3 s, respuestas acotadas (1 MiB; 8 MiB la lista de mensajes, y si falla queda el agente de la sesión).
+   Id validado (`^ses_[A-Za-z0-9]{8,64}$`, un solo `id`, sin otras claves) ANTES de consultar; servidor no listo = 503; cualquier
+   error = 502; reglas de permiso con forma inválida = 502.
+2. `McpProxy.setLocalHandler` (`mcp-proxy.ts`): el canal se sirve en el puerto del proxy MCP de ese servidor (ya en
+   `extraOutboundPorts`; no se abre ningún puerto nuevo en Seatbelt), ligado a 127.0.0.1, con su propio token aleatorio en memoria,
+   comparado por hash en tiempo constante, mismo control de `Host` y rechazo de `Origin`, solo GET sin cuerpo, URL ≤ 512, ruta
+   `/<letras>` exacta, tope de concurrencia, `stop()` lo anula. El token entra en la lista que oculta el redactor de Diagnóstico.
+3. ZONA INTOCABLE (`manager.ts`, `opencode-config.ts`): el servidor sandboxeado recibe `LAZUNOX_GUARD_URL`/`LAZUNOX_GUARD_TOKEN`
+   (solo si hay proxy MCP, es decir, solo con sandbox) y ambas están en `HIDDEN_SHELL_ENV` (no llegan al entorno de `bash`).
+4. `lazunox-subagent-guard`: con `LAZUNOX_GUARD_URL` usa SOLO el canal; sin ella (Code, Control total) el cliente del motor, como
+   antes. Fallo de red, token rechazado o servidor no listo = «no se pudo consultar la sesion al motor»; 404/400 = «sesion desconocida»;
+   agentes ilegibles = «no se pudo leer la lista de agentes». La decisión (escalada de permisos) no cambia y siempre falla cerrado.
+
+**Qué garantiza.** En Overdrive con sandbox, `lazunox-helper` se puede lanzar (también en segundo plano) y `general`/`explore` siguen
+bloqueados; el puerto del motor NO es alcanzable desde el sandbox; quien lea el token del canal (sí es posible, por KERN_PROCARGS2)
+solo obtiene los permisos y el agente de sesiones de SU propio servidor y la lista de agentes: no puede crear, aprobar, configurar ni
+leer mensajes.
+
+**Qué NO garantiza.**
+- El token del canal y la contraseña del motor siguen siendo legibles desde el sandbox (KERN_PROCARGS2). Lo primero expone solo esos
+  metadatos; lo segundo es inútil mientras el puerto del motor siga cerrado: no se debe volver a abrir.
+- El `session.abort` que el guardián lanza tras un `reject` dentro de Code Mode sigue usando el cliente del motor: en Tareas con sandbox
+  no llega (el bloqueo de las llamadas internas siguientes del mismo `execute` sí se aplica). El canal no ofrece escrituras a propósito.
+- La herencia del plan (`lazunox-plan-gate`) solo existe en Control total, sin Seatbelt; no usa este canal.
+- Windows (WSL): el canal usa el mismo puerto de proxy que ya se reenvía a la distro; no se probó en el PC.
+- Solo se probó con el binario 1.19 (`GET /session/:id`, `/session/:id/message`, `/agent`). Reverificar al subir de versión.
+
+Pruebas: `src/main/tasks/guard-info.test.ts` (validación, 400/404/502/503, sin contenido de mensajes, solo GET con la autorización y
+la carpeta de la tarea), `mcp-proxy.test.ts` (token propio, 401/403/405/413/414/404, error sin detalle, `stop()`),
+`guard-info.seatbelt.test.ts` (Seatbelt REAL: la contraseña y el token se leen por KERN_PROCARGS2; con ellos el motor no responde —
+GET, crear, aprobar y configurar fallan sin conexión—; el canal da solo metadatos; POST/PATCH 405, otras rutas 404, sin token 401; el
+motor solo recibió GET de main), `manager.winpaths.test.ts`, `src/main/opencode/subagent-guard.test.ts` (ambos caminos, cliente que
+falla como dentro de Seatbelt). App real (OpenCode Go, Claude Haiku 5.5): dos `lazunox-helper` en segundo plano se lanzaron,
+terminaron y el padre entregó sus resultados; `general` siguió bloqueado; el registro del sistema no mostró denegaciones de red del
+servidor de la tarea.
+
+## 3 sexagies quater. Permisos de macOS sobre carpetas: comprobación, «Volver a preguntar» y Acceso total al disco (F8-B210)
+
+Contexto: en macOS las carpetas protegidas (Documentos, Escritorio, Descargas, iCloud Drive, volúmenes externos y de red) piden permiso a
+la app (TCC). Si la persona pulsa «No permitir», macOS recuerda la negativa y leer esas carpetas falla (`EPERM`/`EACCES`) sin volver a
+preguntar; el motor (hijo de Lazunox) no puede leer y Code «no funciona» sin explicación.
+
+**Qué hace.**
+1. `dialog:checkFolderAccess` (clase X): antes de abrir un proyecto en Code (después del diálogo de confianza, que es aparte) main abre la
+   carpeta y lee UNA entrada con plazo de 20 s (mientras el aviso de macOS sigue sin contestar la lectura se queda bloqueada). Resultado:
+   `ok` / `denied` / `missing` / `timeout`. Sin caché: cada intento vuelve a leer. Si no es `ok`, el renderer muestra una tarjeta y NO
+   arranca el motor para esa carpeta. Solo lee; fuera de macOS `denied` no se informa.
+2. `dialog:openFolderPrivacy` (X): abre Ajustes del Sistema en `Privacy_FilesAndFolders` o `Privacy_AllFiles` (enum `files|allFiles`
+   validado por el esquema; las URL son constantes de main, el renderer no manda ninguna).
+3. `dialog:resetFolderPermission` (X): **solo cuando la persona pulsa «Volver a preguntar a macOS»**, main ejecuta
+   `/usr/bin/tccutil reset <servicio> <APP_ID>` con `execFile` (sin shell, sin `sudo`, ruta absoluta, plazo de 5 s). El servicio sale de
+   una LISTA FIJA derivada de la RUTA que main valida (nunca de texto libre del renderer): `~/Documents` → `SystemPolicyDocumentsFolder`,
+   `~/Desktop` → `SystemPolicyDesktopFolder`, `~/Downloads` → `SystemPolicyDownloadsFolder`, `/Volumes/*` → `SystemPolicyRemovableVolumes`
+   y `SystemPolicyNetworkVolumes` (por ruta no se distingue externo de red), iCloud Drive → `Ubiquity` (**sin verificar en un Mac real**; si
+   el nombre no valiera `tccutil` falla y la tarjeta lo dice). Cualquier otra ruta: no se ejecuta nada. El `APP_ID` es la constante de
+   `brand.ts`. Solo borra la entrada de privacidad de Lazunox para esa zona (no toca otras apps ni otros servicios). Tras el reset se
+   vuelve a comprobar la carpeta, lo que hace que macOS muestre de nuevo «Permitir / No permitir». Si falla, o macOS no pregunta (puede
+   exigir cerrar y abrir Lazunox), la tarjeta sigue ofreciendo «Abrir Ajustes del Sistema». **Nunca se ejecuta sin clic**: ni al arrancar, ni al
+   abrir una carpeta, ni desde el celular (los tres canales son X en `policy.ts`).
+4. Revisión de arranque, fila opcional «Acceso a tus archivos» (id `files`, solo macOS): `detectFullDiskAccess` intenta ABRIR Y CERRAR (sin leer
+   contenido) `~/Library/Safari` y las bases `TCC.db` del usuario y del sistema; se concede si alguna abre, no se concede si alguna da
+   `EPERM`/`EACCES`, indeterminado si todas faltan o vencen (1 s). No se escribe ni se muestra nada de esos archivos. Probar el acceso
+   no muestra ninguna ventana (este permiso no se pregunta). Es **opcional y silencioso**: pendiente por sí solo no abre la pantalla ni entra en la huella de
+   «Más tarde» (`QUIET_IDS`). Pedirlo solo abre el panel de Ajustes por un clic; Lazunox no lo activa ni lo puede activar.
+
+**Qué implica «Acceso total al disco».** Es un permiso amplio: la app (y el motor, si hereda la identidad) podría leer cualquier archivo del
+usuario sin preguntar carpeta por carpeta (la barrera de TCC desaparece; siguen valiendo la confianza de carpeta de Code y el sandbox de
+Overdrive, que no dependen de TCC). Por eso es opcional, explicado en lenguaje llano, apagado por defecto y nunca se solicita sin clic. macOS
+puede pedir reiniciar la app al activarlo (la fila ofrece «Reiniciar Lazunox»).
+
+**No verificado.** Un TCC real (negar, restablecer, volver a preguntar), el nombre de servicio de iCloud Drive, si el motor (que corre
+desvinculado de TCC con `disclaim`) hereda el permiso concedido a Lazunox, y que `~/Library/Safari` dé `EPERM` en todas las versiones de macOS.
+Pruebas: `folder-access.test.ts` (errores simulados, `execFile` simulado, `chmod 000` real), `full-disk.test.ts`, `service.test.ts`,
+`preflight.test.ts`, `FolderAccessCard.render.test.tsx`, `PreflightScreen.render.test.tsx`.

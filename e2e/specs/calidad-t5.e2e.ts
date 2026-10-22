@@ -48,8 +48,9 @@ describe.skipIf(MODE === 'prod')(`calidad T5 (${MODE})`, () => {
     await expectVisible(a.page.getByText('Respuesta simulada: hola accesible'), 30_000)
     const log = a.page.getByRole('log', { name: 'Avisos de la conversación' })
     await expect.poll(() => log.textContent(), { timeout: 10_000 }).toBe('Respuesta terminada')
-    // La transcripción no es una región viva: solo `role="log"` (acotado) y el «Pensando» puntual.
-    expect(await a.page.locator('[aria-live]:not([role="status"]):not([role="log"])').count()).toBe(0)
+    // La transcripción no es una región viva: solo `role="log"` (acotado) y el «Pensando» puntual. La app mantiene además UNA región
+    // `role="alert"` global y vacía (anuncia errores cuando los hay): vacía no anuncia nada, una con texto sí contaría.
+    expect(await a.page.locator('[aria-live]:not([role="status"]):not([role="log"]):not([role="alert"]:empty)').count()).toBe(0)
     await shot(a, SHOTS, 'chat-a11y')
     await expectClean('chat')
   })

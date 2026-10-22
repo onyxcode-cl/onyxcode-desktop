@@ -30,13 +30,13 @@ afterEach(() => rmSync(userData, { recursive: true, force: true }))
 const agentsOf = (dir: string): string[] => readdirSync(join(dir, 'agents')).sort()
 
 describe('agentes del bundle', () => {
-  it('los ids del bundle son exactamente chat, computer y tasks', async () => {
+  it('los ids del bundle son exactamente chat, computer, lazunox-chat-helper, lazunox-helper y tasks', async () => {
     const { getBundledOpencodeDir } = await import('./opencode-config')
     const ids = readdirSync(join(getBundledOpencodeDir(), 'agents'))
       .filter((n) => n.endsWith('.md'))
       .map((n) => n.replace(/\.md$/, ''))
       .sort()
-    expect(ids).toEqual(['chat', 'computer', 'tasks'])
+    expect(ids).toEqual(['chat', 'computer', 'lazunox-chat-helper', 'lazunox-helper', 'tasks'])
   })
 })
 
@@ -51,7 +51,7 @@ describe('prepareOpencodeConfigDir: refresco por versión', () => {
     const { prepareOpencodeConfigDir } = await import('./opencode-config')
     const dir = prepareOpencodeConfigDir()
     expect(existsSync(join(dir, 'agents', `${LEGACY_AGENT_ID}.md`))).toBe(false)
-    expect(agentsOf(dir)).toEqual(['chat.md', 'computer.md', 'tasks.md'])
+    expect(agentsOf(dir)).toEqual(['chat.md', 'computer.md', 'lazunox-chat-helper.md', 'lazunox-helper.md', 'tasks.md'])
     expect(readFileSync(join(dir, 'agents', 'chat.md'), 'utf8')).not.toBe('viejo')
     expect(readFileSync(join(dir, '.lazunox-version'), 'utf8')).toBe('0.3.0')
   })

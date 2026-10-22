@@ -6,6 +6,16 @@ export const mainErrors = {
   'merr.engine.noBinary':
     'The AI engine wasn’t found on this computer. Reinstall Lazunox or pick the program by hand in the setup assistant.',
   'merr.engine.noBinaryShort': 'The AI engine wasn’t found. Reinstall Lazunox or pick it in the setup assistant.',
+  'merr.engine.flags.title': 'Engine features',
+  'merr.engine.flags.pending': 'You changed the engine’s experimental features. They will apply as soon as what’s running finishes.',
+  'merr.engine.execute.title': 'Code mode stopped',
+  'merr.engine.execute.time': 'A Code mode program had been running for more than {seconds} s and was stopped.',
+  'merr.engine.execute.calls': 'A Code mode program made more than {count} calls and was stopped.',
+  'merr.engine.execute.output': 'A Code mode program produced too much output (over {kb} KB) and was stopped.',
+  'merr.engine.flags.restarted': 'Experimental features applied: the engine was restarted.',
+  'merr.engine.mcp.pending':
+    'Changes to connectors or their permissions will apply as soon as what’s running finishes (the engine needs a restart).',
+  'merr.engine.mcp.restarted': 'Connector changes applied: the engine was restarted.',
   'merr.engine.closed': 'The AI engine closed unexpectedly.',
   'merr.engine.failedRepeatedly': 'The AI engine closed {max} times in a row. Restart the app; if it keeps happening, reinstall it.',
   'merr.engine.retrying': '{reason}; retrying…',

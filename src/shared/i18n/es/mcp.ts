@@ -40,6 +40,9 @@ export const mcp = {
   'mcp.catalog.added': 'Añadido',
   'mcp.catalog.addAria': 'Añadir {title}',
   'mcp.catalog.addBtn': 'Añadir…',
+  'mcp.codeTrust.label': 'Sin preguntar en Code',
+  'mcp.codeTrust.desc':
+    'Si lo activas, la IA usa este conector en Code sin pedirte permiso en cada uso. Si el conector tiene «Preguntar antes de cada uso», sigue preguntando, y sus acciones bloqueadas siguen bloqueadas.',
   'mcp.flags.tasks': 'Disponible en Overdrive',
   'mcp.flags.ask': 'Preguntar en cada uso',
   'mcp.flags.oauthWarn':

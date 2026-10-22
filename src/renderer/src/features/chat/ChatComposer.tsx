@@ -8,7 +8,7 @@ import { openTranslatePdf } from '../translate-pdf/TranslatePdfDialog'
 import { chatModelInfo } from '../translate-pdf/model-info'
 import { detectTranslateIntent } from '@shared/translate-intent'
 import type { TranslateIntent } from '@shared/translate-intent'
-import type { TranslateLangCode } from '@shared/translate-pdf'
+import { DOCX_MIME, type TranslateLangCode } from '@shared/translate-pdf'
 import { m } from '../../app/mobile/m'
 import { mobileComposerMax } from '../../app/mobile/viewport'
 import {
@@ -198,7 +198,11 @@ export function ChatComposer({
     const value = text.trim()
     const files = attachments
     if (!skipOffer && !mobile && platformCaps().translatePdf) {
-      const intent = detectTranslateIntent(value, files, document.documentElement.lang === 'en' ? 'en' : 'es')
+      const intent = detectTranslateIntent(
+        value,
+        files.map((f) => ({ mime: f.originalDocx ? DOCX_MIME : f.mime })),
+        document.documentElement.lang === 'en' ? 'en' : 'es'
+      )
       if (intent) {
         setOffer({ intent, model: chatModelInfo()?.label ?? null })
         return
@@ -225,8 +229,8 @@ export function ChatComposer({
     if (!offer) return
     const file = attachments[offer.intent.fileIndex]
     if (!file) return
-    const base64 = file.url.slice(file.url.indexOf(',') + 1)
-    openTranslatePdf({ name: file.name, base64, target: offer.intent.target })
+    const base64 = file.originalDocx ?? file.url.slice(file.url.indexOf(',') + 1)
+    openTranslatePdf({ name: file.name, base64, kind: offer.intent.kind, target: offer.intent.target })
     setOffer(null)
     setText('')
     setAttachments([])

@@ -3,6 +3,8 @@ import { displayTitle } from '@shared/session-title'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
+import { SessionsBackgroundJobs } from '../code/impl/BackgroundJobsConnectors'
+import { rootOf } from '../code/impl/child-sessions'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { LogoMark } from '../../components/Logo'
 import { ChatMessageList } from './ChatMessageList'
@@ -78,7 +80,13 @@ export function ChatView(): React.JSX.Element {
   const activeId = useChat((s) => s.activeSessionId)
   const session = useSessions((s) => (activeId ? s.sessions[activeId] : undefined))
   const allQuestions = useChat((s) => s.questions)
-  const questions = useMemo(() => Object.values(allQuestions).filter((q) => q.sessionID === activeId), [allQuestions, activeId])
+  const allSessions = useSessions((s) => s.sessions)
+  // Las preguntas de un ayudante (sesión hija) se ven en la conversación de su raíz.
+  const questions = useMemo(
+    () =>
+      Object.values(allQuestions).filter((q) => !!activeId && (q.sessionID === activeId || rootOf(allSessions, q.sessionID) === activeId)),
+    [allQuestions, allSessions, activeId]
+  )
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   /** El motor está reintentando (p. ej. el modelo no está disponible): se dice en vez de quedarse en «Pensando…». */
@@ -169,6 +177,7 @@ export function ChatView(): React.JSX.Element {
   const composerEl = (hero: boolean): React.JSX.Element => (
     <>
       <CompareConfirmDialog mode="chat" directory={null} />
+      {!hero && <ChatBackgroundJobs sessionId={activeId} />}
       <ChatComposer
         onSend={send}
         onAbort={() => activeId && void abortChat(activeId)}
@@ -413,4 +422,12 @@ export function ChatView(): React.JSX.Element {
       {docPanelEl}
     </div>
   )
+}
+
+/** Trabajos en segundo plano de la conversación abierta (hoy el agente de Chat no lanza subagentes: sin trabajos no pinta nada). */
+function ChatBackgroundJobs({ sessionId }: { sessionId: string | null }): React.JSX.Element | null {
+  const client = useServer((s) => s.client)
+  const directory = useServer((s) => s.connection?.chatDirectory)
+  if (!sessionId || !directory) return null
+  return <SessionsBackgroundJobs rootId={sessionId} directory={directory} client={client} />
 }

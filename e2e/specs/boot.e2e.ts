@@ -8,7 +8,7 @@ import { IS_WIN } from '../lib/proc'
 const app = useApp()
 
 // Windows v1: sin modo Tareas ni sus ajustes (Tareas, Red, Control del PC, Modo automático) ni Actualizaciones.
-const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines] as readonly string[]
+const MODES = [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines, MODE_LABELS.gallery] as readonly string[]
 const SETTINGS = IS_WIN
   ? ['General', 'Modelos', 'Conectores', 'Navegador', 'Uso', 'Atajos', 'Diagnóstico', 'Acerca de']
   : [
@@ -45,7 +45,7 @@ describe(`arranque (${MODE})`, () => {
     await nav.getByRole('button', { name: 'Chat' }).click()
     for (let i = 0; i < MODES.length; i++) {
       await expectAttr(nav.getByRole('button', { name: MODES[i] }), 'aria-current', 'page')
-      await expectCount(page.locator('[role="alert"]'), 0)
+      await expectCount(page.locator('[role="alert"]:not(:empty)'), 0)
       await expectVisible(page.locator('main'))
       await page.keyboard.press('Control+Tab')
     }
@@ -60,7 +60,7 @@ describe(`arranque (${MODE})`, () => {
       await nav.getByRole('button', { name: m }).click()
       await expectAttr(nav.getByRole('button', { name: m }), 'aria-current', 'page')
       await page.waitForTimeout(300)
-      await expectCount(page.locator('[role="alert"]'), 0)
+      await expectCount(page.locator('[role="alert"]:not(:empty)'), 0)
     }
   })
 
@@ -74,7 +74,7 @@ describe(`arranque (${MODE})`, () => {
       await nav.getByRole('button', { name: label, exact: true }).click()
       await expectAttr(nav.getByRole('button', { name: label, exact: true }), 'aria-current', 'page')
       await page.waitForTimeout(250)
-      await expectCount(page.locator('[role="alert"]'), 0)
+      await expectCount(page.locator('[role="alert"]:not(:empty)'), 0)
     }
     await page.keyboard.press('Escape')
   })

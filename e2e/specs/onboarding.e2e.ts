@@ -49,10 +49,10 @@ describe('asistente de primer uso', () => {
     app = await startApp({ userData, keepUserData: true, noServer: true, env, settings: { onboarded: false } })
     await passWelcome(app.page)
     const d = dialog()
-    await expectVisible(d.getByRole('heading', { name: 'Instala o localiza OpenCode' }))
+    await expectVisible(d.getByRole('heading', { name: 'Falta el programa de la IA' }))
     await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL}`))
-    await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el binario' }))
-    for (const name of ['Copiar comando de instalación', 'Abrir instrucciones', 'Elegir binario…', 'Reintentar']) {
+    await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el motor de la IA' }))
+    for (const name of ['Copiar comando de instalación', 'Abrir instrucciones', 'Elegir el programa…', 'Reintentar']) {
       await expectVisible(d.getByRole('button', { name }))
     }
     // «Continuar» exige que OpenCode funcione.
@@ -60,14 +60,14 @@ describe('asistente de primer uso', () => {
 
     // «Reintentar» vuelve a intentarlo y, con el mismo binario inexistente, el error sigue ahí.
     await d.getByRole('button', { name: 'Reintentar' }).click()
-    await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el binario' }))
+    await expectVisible(d.getByRole('alert').filter({ hasText: 'No se encontró el motor de la IA' }))
     expect(settingsOf(userData).onboarded).toBe(false)
   })
 
-  it('(b) «Elegir binario…» con el falso copiado a tmp: valida, guarda y avanza', async () => {
+  it('(b) «Elegir el programa…» con el falso copiado a tmp: valida, guarda y avanza', async () => {
     const a = app!
     await stubDialog(a.electronApp, { openPaths: [fakeBin.bin] })
-    await dialog().getByRole('button', { name: 'Elegir binario…' }).click()
+    await dialog().getByRole('button', { name: 'Elegir el programa…' }).click()
     await expectVisible(dialog().getByText('OpenCode encontrado'))
     await expectVisible(dialog().getByText('OpenCode está en marcha.'))
     await expect.poll(() => dialog().getByRole('button', { name: 'Continuar' }).isEnabled()).toBe(true)
@@ -153,7 +153,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
     for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true })
   })
 
-  it('(e) sin CLI ni proveedor: abre en el paso 2 y el paso 1 es informativo, sin instalar nada', async () => {
+  it('(e) sin CLI ni proveedor: abre directo en «Conecta tu IA» (paso 1 de 4), sin paso del motor ni nada que instalar', async () => {
     // El falso arranca sin proveedores conectados (lee `connected.json` de su carpeta).
     writeFileSync(join(dirname(fakeBin.bin), 'connected.json'), '[]')
     // OPENCODE_BIN vacío (no gana), HOME/PATH sin CLI y el «Resources/opencode» simulado con el falso en un tmp fuera del userData.
@@ -169,29 +169,23 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
     })
     await passWelcome(app.page)
     const d = app.page.getByRole('dialog')
-    // Sin proveedor conectado, el asistente abre directamente en el paso 2 (con el motor incluido el paso 1 no falta nada).
+    // Con el motor incluido no hay paso del motor (engineStepNeeded): sin proveedor conectado el asistente abre directo en
+    // «Conecta tu IA», que es el paso 1 de 4 (no 1 de 5), y no hay «Atrás» porque no hay nada antes.
     await expectVisible(d.getByRole('heading', { name: 'Conecta tu IA' }))
-    await d.getByRole('button', { name: 'Atrás' }).click()
-
-    await expectVisible(d.getByRole('heading', { name: 'Todo listo para empezar' }))
-    await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL}`))
-    await expectVisible(d.getByText('Incluido: OpenCode 1.18.32'))
-    await expectVisible(d.getByRole('button', { name: 'Usar mi CLI…' }))
-    // Nada que instalar: ni comando, ni instrucciones, ni binario a elegir, ni error.
-    for (const name of ['Copiar comando de instalación', 'Abrir instrucciones', 'Elegir binario…']) {
+    await expectVisible(d.getByText(`Paso 1 de ${STEPS_TOTAL - 1}`))
+    await expectCount(d.getByRole('button', { name: 'Atrás' }), 0)
+    // Nada que instalar: ni paso del motor, ni comando, ni instrucciones, ni programa a elegir, ni error.
+    await expectCount(d.getByRole('heading', { name: /Todo listo para empezar|Falta el programa de la IA/ }), 0)
+    for (const name of ['Copiar comando de instalación', 'Abrir instrucciones', 'Elegir el programa…', 'Usar un programa que ya tengo…']) {
       await expectCount(d.getByRole('button', { name }), 0)
     }
     await expectCount(d.getByRole('alert'), 0)
-    // «Continuar» no queda bloqueado por la instalación.
-    expect(await d.getByRole('button', { name: 'Continuar' }).isEnabled()).toBe(true)
     // El motor incluido no persiste ninguna ruta en ajustes.
     expect(settingsOf(userData).opencodeBin ?? null).toBeNull()
     expect(settingsOf(userData).onboarded).toBe(false)
 
     // OAuth con un proveedor del catálogo (falso): abre la URL en el navegador, pide el código y lo confirma.
     await stubOpenExternal(app.electronApp)
-    await d.getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d.getByRole('heading', { name: 'Conecta tu IA' }))
     await d.getByText('Otras formas de conectar').click()
     const other = d.getByRole('region', { name: 'Otro servicio de IA' })
     await other.getByLabel('Servicio de IA').selectOption('openai')

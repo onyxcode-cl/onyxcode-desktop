@@ -110,6 +110,9 @@ const id = str({ max: 200, min: 1 })
 const shortText = str({ max: 500 })
 /** Id de sesión de OpenCode (`ses_…`). */
 const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
+const modeFlags = obj({ chat: bool, code: bool, tasks: bool })
+/** `settings:set.engineExperiments`: booleanos exactos, todas las claves obligatorias, sin extras. */
+const engineExperimentsShape = obj({ codeMode: modeFlags, backgroundSubagents: modeFlags })
 const modelRef = obj({ providerID: str({ max: 200, min: 1 }), modelID: str({ max: 200, min: 1 }) })
 const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
@@ -597,7 +600,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   // PDF a traducir: base64 de ≤ 20 MB; el nombre solo se usa para nombrar el resultado.
   'translate:pdfExtract': obj({
     name: str({ max: 300, min: 1 }),
-    base64: str({ max: Math.ceil((TRANSLATE_PDF_MAX_BYTES * 4) / 3) + 16 })
+    base64: str({ max: Math.ceil((TRANSLATE_PDF_MAX_BYTES * 4) / 3) + 16 }),
+    kind: optional(literal('pdf', 'docx'))
   }),
   'translate:pdfApply': obj({
     jobId: str({ max: 16, min: 16 }),
@@ -620,7 +624,10 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     routinesTermsAcknowledged: bool,
     checkUpdates: bool,
     learningEnabled: bool,
-    language: literal('system', 'es', 'en')
+    language: literal('system', 'es', 'en'),
+    engineExperiments: engineExperimentsShape,
+    // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
+    codeTrustedMcp: arr(mcpName, 200)
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq
@@ -738,6 +745,9 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'dialog:openFolder': openFolderOpts,
   'dialog:revealInFinder': pathReq,
   'dialog:openInEditor': pathReq,
+  'dialog:checkFolderAccess': pathReq,
+  'dialog:openFolderPrivacy': optional(obj({ pane: optional(literal('files', 'allFiles')) })),
+  'dialog:resetFolderPermission': pathReq,
   'files:watch': obj({ folder: absPath, subId: filesSubId }),
   'files:setDirs': obj({ subId: filesSubId, dirs: arr(str({ max: 4096 }), 100) }),
   'files:unwatch': obj({ subId: filesSubId }),

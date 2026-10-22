@@ -32,6 +32,8 @@ import { blockIdForPart } from './conversation-logic'
 import { ScrollToEnd } from '../../../components/conversation/ScrollToEnd'
 import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
 import { ElementReadonlyChip } from '../../browser/ElementChip'
+import { ShellBgWakeNote } from '../../../components/conversation/ShellBgWakeNote'
+import { shellBgWakeOf, type ShellBgWakeInfo } from '@shared/shell-bg-wake-marker'
 import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
@@ -45,10 +47,10 @@ import { stripSkillProposalBlock } from '@shared/skill-proposal'
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
 
 type Block =
-  | { kind: 'user'; id: string; text: string; files: string[]; elements: string[]; partIds: string[] }
+  | { kind: 'user'; id: string; text: string; files: string[]; elements: string[]; partIds: string[]; wake?: ShellBgWakeInfo }
   | { kind: 'text'; id: string; text: string; partIds: string[] }
   | { kind: 'steps'; id: string; parts: Array<ToolPart | ReasoningPart>; partIds: string[] }
-  | { kind: 'error'; id: string; info: AssistantMessage; partIds: string[] }
+  | { kind: 'error'; id: string; info: AssistantMessage; parts: Part[]; partIds: string[] }
   | { kind: 'retry'; id: string; text: string; partIds: string[] }
   | { kind: 'file'; id: string; name: string; partIds: string[] }
 
@@ -63,6 +65,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic && !isElementContextText(p.text))
         .map((p) => p.text)
         .join('\n')
+      const wake = shellBgWakeOf(entry.parts)
       const idx = raw.indexOf(ATTACH_MARKER)
       const text = idx >= 0 ? raw.slice(0, idx) : raw
       const files =
@@ -80,7 +83,8 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         text,
         files,
         elements: elementTextsOf(entry.parts),
-        partIds: entry.parts.map((p) => p.id)
+        partIds: entry.parts.map((p) => p.id),
+        ...(wake ? { wake } : {})
       })
       continue
     }
@@ -113,7 +117,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
     }
     if (entry.info.role === 'assistant' && entry.info.error) {
       steps = null
-      blocks.push({ kind: 'error', id: `${entry.info.id}-err`, info: entry.info, partIds: [] })
+      blocks.push({ kind: 'error', id: `${entry.info.id}-err`, info: entry.info, parts: entry.parts, partIds: [] })
     }
   }
   return blocks
@@ -482,6 +486,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
           {blocks.map((b, i) => {
             switch (b.kind) {
               case 'user':
+                if (b.wake) return <ShellBgWakeNote key={b.id} info={b.wake} />
                 return (
                   <UserMessage key={b.id} block={b} taskId={taskId} flash={flashId === b.id} old={!noCv && isOldRow(i, blocks.length)} />
                 )
@@ -516,6 +521,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                     key={b.id}
                     info={b.info}
                     abortedLabel={t('tasks.conv.stopped')}
+                    parts={b.parts}
                     onCompact={taskId && i === blocks.length - 1 && !busy ? onCompact : undefined}
                   />
                 )

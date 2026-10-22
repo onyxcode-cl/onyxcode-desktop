@@ -8,7 +8,7 @@
  * avisan como «Pendiente», se puede continuar («Más tarde») y se ofrecen cuando se necesiten o desde Ajustes.
  */
 
-export type PreflightId = 'storage' | 'disk' | 'engine' | 'craft' | 'runtimes' | 'sandbox' | 'helper' | 'perms' | 'location'
+export type PreflightId = 'storage' | 'disk' | 'engine' | 'craft' | 'runtimes' | 'sandbox' | 'helper' | 'perms' | 'files' | 'location'
 
 /** Orden en que se muestran y se instalan. */
 export const PREFLIGHT_ORDER: readonly PreflightId[] = [
@@ -20,6 +20,7 @@ export const PREFLIGHT_ORDER: readonly PreflightId[] = [
   'sandbox',
   'helper',
   'perms',
+  'files',
   'location'
 ]
 
@@ -31,6 +32,12 @@ export const SANDBOX_APPROX_BYTES = 2_000_000_000
 
 /** Cuánto espacio libre exige cada componente respecto de lo que descarga (ArtCraft = `CRAFT_DISK_FACTOR` de craft-install; Node.js y uv = `RUNTIME_DISK_FACTOR`). */
 export const DISK_FACTOR: Partial<Record<PreflightId, number>> = { craft: 4, runtimes: 6, sandbox: 1 }
+
+/**
+ * Pendientes «silenciosos»: se muestran en la pantalla cuando esta se abre por otra causa, pero por sí solos NO la abren ni entran en la
+ * huella de «Más tarde» (p. ej. «Acceso total al disco», un permiso amplio y opcional: dejarlo apagado no debe volver a avisar nunca).
+ */
+export const QUIET_IDS: readonly PreflightId[] = ['files']
 
 export interface PreflightComponent {
   id: PreflightId
@@ -163,7 +170,12 @@ export interface Dismissal {
 }
 
 export function dismissalFor(report: PreflightReport): Dismissal {
-  return { version: report.appVersion, ids: optionalPending(report).map((c) => c.id) }
+  return {
+    version: report.appVersion,
+    ids: optionalPending(report)
+      .filter((c) => !QUIET_IDS.includes(c.id))
+      .map((c) => c.id)
+  }
 }
 
 /** ¿Todos los pendientes de ahora ya estaban en lo que la persona dejó para más tarde? (Un pendiente nuevo vuelve a avisar.) */
@@ -178,7 +190,7 @@ function coversDismissal(saved: Dismissal, now: Dismissal): boolean {
 export function shouldShow(report: PreflightReport, dismissed: Dismissal | null): 'blocking' | 'optional' | null {
   if (report.skipped) return null
   if (blocking(report).length > 0) return 'blocking'
-  const pending = optionalPending(report)
+  const pending = optionalPending(report).filter((c) => !QUIET_IDS.includes(c.id))
   if (pending.length === 0) return null
   return dismissed && coversDismissal(dismissed, dismissalFor(report)) ? null : 'optional'
 }

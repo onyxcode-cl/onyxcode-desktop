@@ -27,7 +27,7 @@
  *   GET  requests   ?limit=100&path=<prefijo>&method=GET&since=<seq>
  *   GET  config     OPENCODE_CONFIG_CONTENT recibido: { raw, content, config }
  *   GET  unknown-routes
- *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder } }: NUNCA devuelve valores secretos;
+ *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder }, flags:{ codeMode, backgroundSubagents } }: NUNCA devuelve valores secretos;
  *                   allPlaceholder = todas las claves de OPENCODE_AUTH_CONTENT son centinelas (sandboxed-placeholder-*)
  *   POST set        { failPrompt: N|-1|0 (prompt_async corta la conexión N veces / siempre / nunca), sessionStatus:{id:'idle'|'busy'}, mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
  *                     commands:[...], connectedProviders:[ids] }
@@ -35,12 +35,34 @@
  *                   que la app recoge como registro del motor (prueba de Diagnóstico)
  *   GET  access-responses  respuestas que recibió el paso de guion `request-access` (tarjeta de plan/acceso de Control total)
  *   POST reset      vuelve al estado inicial (aborta ejecuciones; no corta los SSE)
+ *   --- Subagentes en segundo plano y Code Mode (motor 1.19 con OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS / _CODE_MODE) ---
+ *   POST bg-set     { delayMs?, hold?, failNext?, failMessage? } valores por defecto de los HIJOS en segundo plano que se creen DESPUÉS:
+ *                   `delayMs` = cuánto tardan en arrancar su guion (0 = al instante), `hold: true` = esperan hasta `bg-release`,
+ *                   `failNext: N|-1` = los próximos N hijos fallan (con `failMessage`) en cuanto se abre su compuerta.
+ *   POST bg-release { sessionID? }  abre la compuerta de un hijo (o de todos los que esperan): salta el retraso y el `hold`.
+ *   POST bg-fail    { sessionID, message? }  fuerza el fallo de un hijo en curso (session.error + aviso de error al padre).
+ *   POST restart    { mode?: 'lose'|'resume', blockMs? } simula reiniciar el servidor con hijos en curso: aborta TODAS las ejecuciones, corta
+ *                   los SSE y pierde los permisos «siempre». 'lose' (1.19, por defecto): los trabajos se pierden SIN aviso al padre.
+ *                   'resume' (2.x): los hijos en segundo plano se reanudan desde cero y avisan al padre al terminar.
+ *   GET  bg         lista de trabajos: { childID, parentID, status, background, generation, delayMs, hold, notified, ... }
+ *   POST /experimental/session/{id}/background  (ruta del motor, no de control) manda al fondo los subagentes en primer plano que bloquean
+ *                   a esa sesión; responde true si alguno pasó al fondo.
  *
  * Pasos de un guion (todos aceptan delayMs): text|reasoning {text|deltas, chunkDelayMs}, tool {tool,input,output,title,
  * error,metadata}, request-access {apps?,plan?,reason?} (espera la tarjeta de acceso de Control total, solo ahí), permission {permission,patterns,tool?,input?,output?}, question {questions}, todo {todos},
  * error {message,name?,statusCode?}, retry {attempt,message,nextMs}, title {title}, emit {event:{type,properties}},
  * child {title,text,agent?}, delay {ms}, fs {op:'write'|'delete', path, content?} (escribe o borra un archivo REAL, siempre
  * dentro del `directory` de la sesión: una ruta que salga de él hace fallar el paso; sirve para probar puntos de restauración).
+ *   task {title?, prompt?, agent?, steps?|text?, background?, childDelayMs?, hold?, fail?, notify?}: herramienta `task` del motor. Crea una sesión
+ *   hija (parentID). Con `background: true` el padre recibe de inmediato «Background task started» y el hijo corre aparte; al terminar
+ *   (completed o error; la cancelación NO avisa, como el motor) se inyecta en el padre un mensaje de usuario sintético y se arranca un
+ *   turno nuevo (consume el siguiente guion encolado, p. ej. con `match: 'Background task'`). Sin `background` el padre espera al hijo
+ *   (se puede mandar al fondo con la ruta experimental; abortar al padre cancela al hijo). `fail: 'msg'` hace fallar a ese hijo.
+ *   code_mode {calls:[{tool,input?,output?,error?,delayMs?}], code?, value?, rules?:[{permission,pattern?,action}], tool?}: herramienta
+ *   `execute` ({code}) del Code Mode del 1.19. Cada llamada interna a una herramienta MCP (`servidor_herramienta`) evalúa las reglas
+ *   (config `permission`, `permission` de la sesión y `rules`; la última que casa gana, por defecto ask): allow = sin pregunta, deny =
+ *   herramienta invisible (UnknownTool), ask = permission.asked {permission:<clave MCP>, patterns:['*'], always:['*']} y espera.
+ *   La metadata de la parte trae `toolCalls:[{tool,status,input?}]` actualizada en cada llamada.
  */
 import http from 'node:http'
 import { timingSafeEqual } from 'node:crypto'
@@ -151,6 +173,10 @@ export function createFakeServer(options = {}) {
       unknownRoutes: new Map(),
       permissionReplies: [],
       questionReplies: [],
+      jobs: new Map(), // childID -> trabajo de subagente (task)
+      bg: { delayMs: 0, hold: false, failNext: 0, failMessage: 'Fallo simulado del hijo' }, // valores por defecto de bg-set
+      permissionSaved: new Set(), // claves MCP con «siempre» (en memoria de la instancia, como el 1.19)
+      restartCount: 0,
       disposeCount: 0,
       instanceDisposeCount: 0
     }
@@ -439,6 +465,11 @@ export function createFakeServer(options = {}) {
     const steps = script?.steps ?? [{ type: 'text', text: `Respuesta simulada: ${text}` }]
     try {
       for (const step of steps) {
+        // Fallo forzado desde fuera (bg-fail): se aplica en el siguiente límite de paso.
+        if (run.failure && !ctx.failed && !run.aborted) {
+          ctx.failed = { name: 'UnknownError', data: { message: run.failure } }
+          emit('session.error', { sessionID: s.info.id, error: ctx.failed }, dir)
+        }
         if (run.aborted || ctx.failed) break
         if (step.delayMs) await sleep(run, step.delayMs)
         if (run.aborted) break
@@ -557,6 +588,12 @@ export function createFakeServer(options = {}) {
         return runRequestAccess(ctx, step)
       case 'child':
         return runChild(ctx, step)
+      case 'task':
+        return runTask(ctx, step)
+      case 'bg-gate': // interno: compuerta de arranque de un hijo en segundo plano
+        return runBgGate(ctx, step)
+      case 'code_mode':
+        return runCodeMode(ctx, step)
       case 'fs':
         return runFs(ctx, step)
       case 'tool':
@@ -717,6 +754,318 @@ export function createFakeServer(options = {}) {
         output: out,
         title: input.description,
         metadata: { sessionId: child.info.id },
+        time: { start, end: Date.now() }
+      })
+    )
+  }
+
+
+  // ───────────── subagentes en segundo plano (herramienta `task`) ─────────────
+
+  /** Texto de resultado de la herramienta `task` (aproximación del formato del 1.19: `task_id` + `<task_result>`). */
+  const taskResult = (id, st, summary, text) => `task_id: ${id}\nstate: ${st}\nsummary: ${summary}\n\n<task_result>\n${text}\n</task_result>`
+  const BG_HINT = 'The subagent runs in the background. Do not sleep or poll: you will be notified when it finishes.'
+
+  const jobView = (j) => ({
+    childID: j.childID,
+    parentID: j.parentID,
+    status: j.status,
+    background: j.background,
+    generation: j.generation,
+    delayMs: j.delayMs,
+    hold: j.hold,
+    released: j.released,
+    waiting: !!j.gate,
+    notified: j.notified,
+    lost: j.lost,
+    description: j.description
+  })
+
+  /** Arranca (o reanuda) el trabajo: el hijo corre su guion tras la compuerta. */
+  function startJob(job) {
+    const gen = ++job.generation
+    job.status = 'running'
+    job.released = false
+    const child = state.sessions.get(job.childID)
+    if (!child) return settleJob(job, gen, null, new Error('Sesión hija inexistente'))
+    const steps = [{ type: 'bg-gate', jobID: job.childID }, ...job.steps]
+    job.done = execute(child, { parts: [{ type: 'text', text: job.prompt }], agent: job.agent }, { steps }).then(
+      (res) => settleJob(job, gen, res, null),
+      (err) => settleJob(job, gen, null, err)
+    )
+  }
+
+  /** Cierra el trabajo según cómo terminó el hijo y, si va al fondo, avisa al padre. */
+  function settleJob(job, gen, res, err) {
+    if (job.generation !== gen || state.jobs.get(job.childID) !== job) return // reiniciado o reseteado: este final ya no cuenta
+    const failed = res?.info.error
+    if (err || (failed && failed.name !== 'MessageAbortedError')) {
+      job.status = 'error'
+      job.error = err ? String(err.message ?? err) : (failed.data?.message ?? failed.name)
+    } else if (failed || !res) {
+      job.status = 'cancelled'
+    } else {
+      job.status = 'completed'
+      job.output = res.parts
+        .filter((p) => p.type === 'text')
+        .map((p) => p.text)
+        .join('')
+    }
+    for (const w of [...job.waiters]) w('done')
+    job.waiters.clear()
+    // Como el motor: solo completed y error avisan; cancelled no. Solo los trabajos que ya van al fondo.
+    if (job.background && job.status !== 'cancelled') notifyParent(job)
+  }
+
+  /** Aviso de fin: mensaje de usuario sintético en el padre + turno nuevo del padre (como `injectBackgroundResult`). */
+  function notifyParent(job) {
+    const parent = state.sessions.get(job.parentID)
+    if (!parent) return
+    job.notified = true
+    const ok = job.status === 'completed'
+    const text = taskResult(
+      job.childID,
+      job.status,
+      ok ? `Background task completed: ${job.description}` : `Background task failed: ${job.description}`,
+      ok ? (job.output ?? '') : (job.error ?? '')
+    )
+    enqueue(parent, { parts: [{ type: 'text', synthetic: true, text }], agent: parent.info.agent }, {}).catch(() => undefined)
+  }
+
+  /** Paso interno: espera el retraso/`hold` del hijo (o la apertura por bg-release) antes de ejecutar su guion. */
+  async function runBgGate(ctx, step) {
+    const job = state.jobs.get(step.jobID)
+    if (!job) return
+    const outcome = await waitFor(ctx.run, (done) => {
+      if (job.released) return done('open')
+      job.gate = (v) => {
+        if (job.gateTimer) clearTimeout(job.gateTimer)
+        job.gateTimer = null
+        job.gate = null
+        done(v)
+      }
+      if (!job.hold) {
+        job.gateTimer = setTimeout(() => job.gate?.('open'), Math.max(0, job.delayMs))
+        job.gateTimer.unref?.()
+      }
+    })
+    if (job.gateTimer) clearTimeout(job.gateTimer)
+    job.gateTimer = null
+    job.gate = null
+    if (outcome === 'aborted') return
+    if (job.failMessage) ctx.run.failure = job.failMessage
+  }
+
+  /** Paso `task`: crea la sesión hija y la ejecuta en primer plano (bloquea) o en segundo plano (vuelve de inmediato). */
+  async function runTask(ctx, step) {
+    const { s, run, dir, asst, asstId } = ctx
+    const background = step.background === true
+    const description = step.title ?? 'Subagente'
+    const agent = step.agent ?? 'explore'
+    const child = createSession(dir, { parentID: s.info.id, title: description, agent })
+    const prompt = step.prompt ?? description
+    const cfg = state.bg
+    const job = {
+      childID: child.info.id,
+      parentID: s.info.id,
+      description,
+      agent,
+      prompt,
+      steps: step.steps ?? [{ type: 'text', text: step.text ?? 'Listo.' }],
+      status: 'running',
+      background,
+      generation: 0,
+      delayMs: step.childDelayMs ?? cfg.delayMs,
+      hold: step.hold ?? cfg.hold,
+      released: false,
+      gate: null,
+      gateTimer: null,
+      failMessage: typeof step.fail === 'string' ? step.fail : null,
+      waiters: new Set(),
+      notified: false,
+      lost: false
+    }
+    if (!job.failMessage && cfg.failNext !== 0) {
+      job.failMessage = cfg.failMessage
+      if (cfg.failNext > 0) cfg.failNext--
+    }
+    state.jobs.set(job.childID, job)
+
+    const id = nextId('part', 'prt')
+    const callID = `call_${String(++state.seq.call).padStart(4, '0')}`
+    const input = { description, prompt, subagent_type: agent, ...(background ? { background: true } : {}) }
+    const meta = { parentSessionId: s.info.id, sessionId: child.info.id, ...(background ? { background: true } : {}) }
+    const start = Date.now()
+    const mk = (st) => ({ id, sessionID: s.info.id, messageID: asstId, type: 'tool', callID, tool: 'task', state: st })
+    upsertPart(s, asst, mk({ status: 'running', input, metadata: meta, time: { start } }))
+    startJob(job)
+
+    const started = () =>
+      upsertPart(
+        s,
+        asst,
+        mk({
+          status: 'completed',
+          input,
+          output: taskResult(child.info.id, 'running', 'Background task started', BG_HINT),
+          title: description,
+          metadata: { ...meta, background: true, jobId: child.info.id },
+          time: { start, end: Date.now() }
+        })
+      )
+    if (background) return started()
+
+    // Primer plano: espera al hijo; la ruta experimental `background` lo puede mandar al fondo.
+    const outcome = await waitFor(run, (done) => {
+      if (job.status !== 'running') return done('done')
+      job.waiters.add(done)
+    })
+    job.waiters.clear()
+    if (outcome === 'aborted') {
+      // Interrumpir al padre mientras espera cancela al hijo (en segundo plano NO pasa).
+      const c = state.sessions.get(job.childID)
+      if (c) abortSession(c)
+      return
+    }
+    if (outcome === 'promoted') return started()
+    const end = Date.now()
+    if (job.status === 'completed')
+      upsertPart(
+        s,
+        asst,
+        mk({
+          status: 'completed',
+          input,
+          output: taskResult(child.info.id, 'completed', description, job.output ?? ''),
+          title: description,
+          metadata: meta,
+          time: { start, end }
+        })
+      )
+    else
+      upsertPart(
+        s,
+        asst,
+        mk({
+          status: 'error',
+          input,
+          error: job.status === 'cancelled' ? 'Task cancelled' : `Subagent failed (task_id: ${child.info.id}): ${job.error}`,
+          time: { start, end }
+        })
+      )
+  }
+
+  // ───────────── Code Mode (herramienta `execute` del 1.19) ─────────────
+
+  const wildcard = (pattern, value) =>
+    new RegExp('^' + String(pattern).replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$').test(String(value))
+
+  /** Reglas de la config (`permission`: clave→acción o clave→{patrón→acción}) como lista ordenada. */
+  function configRules() {
+    const perm = mergedConfig().permission
+    if (!perm || typeof perm !== 'object') return []
+    const out = []
+    for (const [k, v] of Object.entries(perm)) {
+      if (typeof v === 'string') out.push({ permission: k, pattern: '*', action: v })
+      else if (v && typeof v === 'object') for (const [pat, action] of Object.entries(v)) out.push({ permission: k, pattern: pat, action })
+    }
+    return out
+  }
+  /** Última regla que casa (comodín) con la acción; por defecto `ask`. */
+  function evalRules(rules, permission, pattern = '*') {
+    let effect = 'ask'
+    for (const r of rules) if (wildcard(r.permission, permission) && wildcard(r.pattern ?? '*', pattern)) effect = r.action
+    return effect
+  }
+
+  async function runCodeMode(ctx, step) {
+    const { s, run, dir, asst, asstId } = ctx
+    const tool = step.tool ?? 'execute' // nombre de la herramienta en el 1.19 (CODE_MODE_TOOL = "execute")
+    const calls = step.calls ?? []
+    const code =
+      step.code ??
+      calls
+        .map((c) => {
+          const i = String(c.tool).indexOf('_')
+          const path = i > 0 ? `${c.tool.slice(0, i)}.${c.tool.slice(i + 1)}` : c.tool
+          return `await tools.${path}(${JSON.stringify(c.input ?? {})})`
+        })
+        .join('\n')
+    const input = { code }
+    const id = nextId('part', 'prt')
+    const callID = `call_${String(++state.seq.call).padStart(4, '0')}`
+    const mk = (st) => ({ id, sessionID: s.info.id, messageID: asstId, type: 'tool', callID, tool, state: st })
+    const start = Date.now()
+    const toolCalls = []
+    const publish = () =>
+      upsertPart(s, asst, mk({ status: 'running', input, metadata: { toolCalls: toolCalls.map((t) => ({ ...t })) }, time: { start } }))
+    upsertPart(s, asst, mk({ status: 'pending', input: {}, raw: '' }))
+    publish()
+    const rules = [...configRules(), ...(Array.isArray(s.info.permission) ? s.info.permission : []), ...(step.rules ?? [])]
+
+    const fail = (message, reject = false) => {
+      if (reject) ctx.failed = { name: 'UnknownError', data: { message } }
+      upsertPart(
+        s,
+        asst,
+        mk({ status: 'error', input, error: message, metadata: { toolCalls, error: true }, time: { start, end: Date.now() } })
+      )
+    }
+
+    const results = []
+    for (let i = 0; i < calls.length; i++) {
+      if (run.aborted) return
+      const call = calls[i]
+      toolCalls[i] = { tool: call.tool, status: 'running', ...(call.input && Object.keys(call.input).length ? { input: call.input } : {}) }
+      publish()
+      if (call.delayMs) await sleep(run, call.delayMs)
+      if (run.aborted) return
+      const effect = evalRules(rules, call.tool)
+      if (effect === 'deny') {
+        toolCalls[i].status = 'error'
+        return fail(`UnknownTool: ${call.tool} is not available in Code Mode (denied by permission rules).`)
+      }
+      if (effect !== 'allow' && !state.permissionSaved.has(call.tool)) {
+        const reqId = nextId('permission', 'per_e2e')
+        const req = {
+          id: reqId,
+          sessionID: s.info.id,
+          permission: call.tool, // en el 1.19 el permiso es la clave MCP, no `execute`
+          patterns: ['*'],
+          metadata: {},
+          always: ['*'],
+          tool: { messageID: asstId, callID }
+        }
+        const reply = await waitFor(run, (done) => {
+          state.permissions.set(reqId, { req, resolve: done })
+          emit('permission.asked', req, dir)
+        })
+        state.permissions.delete(reqId)
+        if (reply === 'aborted') return
+        if (reply === 'reject') {
+          toolCalls[i].status = 'error'
+          return fail('The user rejected permission to use this specific tool call.', true)
+        }
+        if (reply === 'always') state.permissionSaved.add(call.tool)
+      }
+      if (call.error) {
+        toolCalls[i].status = 'error'
+        return fail(String(call.error))
+      }
+      toolCalls[i].status = 'completed'
+      results.push(call.output ?? null)
+      publish()
+    }
+    const value = step.value !== undefined ? step.value : results
+    upsertPart(
+      s,
+      asst,
+      mk({
+        status: 'completed',
+        input,
+        output: typeof value === 'string' ? value : JSON.stringify(value, null, 2),
+        title: tool,
+        metadata: { toolCalls },
         time: { start, end: Date.now() }
       })
     )
@@ -964,6 +1313,20 @@ export function createFakeServer(options = {}) {
         c.res,
         [...state.sessions.values()].filter((x) => x.info.parentID === s.info.id).map((x) => x.info)
       )
+  })
+  // Manda al fondo los subagentes en primer plano que bloquean a la sesión (responde si alguno pasó).
+  route('POST', '/experimental/session/{sessionID}/background', (c) => {
+    const s = getSession(c)
+    if (!s) return
+    let any = false
+    for (const job of state.jobs.values()) {
+      if (job.parentID !== s.info.id || job.status !== 'running' || job.background || job.waiters.size === 0) continue
+      job.background = true
+      for (const w of [...job.waiters]) w('promoted')
+      job.waiters.clear()
+      any = true
+    }
+    json(c.res, any)
   })
   route('GET', '/session/{sessionID}/todo', (c) => {
     const s = getSession(c)
@@ -1385,6 +1748,8 @@ export function createFakeServer(options = {}) {
         authProviders: Object.keys(state.authProviders),
         disposeCount: state.disposeCount,
         instanceDisposeCount: state.instanceDisposeCount,
+        restartCount: state.restartCount,
+        jobs: [...state.jobs.values()].map(jobView),
         requestCount: state.seq.request,
         unknownRoutes: state.unknownRoutes.size,
         recentEvents: events.slice(-50).map((e) => ({ directory: e.directory, id: e.payload.id, type: e.payload.type }))
@@ -1425,7 +1790,12 @@ export function createFakeServer(options = {}) {
       const allPlaceholder = Object.values(content).every(
         (e) => e && typeof e === 'object' && typeof e.key === 'string' && e.key.startsWith('sandboxed-placeholder-')
       )
-      json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder } })
+      // `flags`: solo booleanos de OPENCODE_EXPERIMENTAL_CODE_MODE / _BACKGROUND_SUBAGENTS (los E2E comprueban qué familia de motor las recibió).
+      const flags = {
+        codeMode: env.OPENCODE_EXPERIMENTAL_CODE_MODE === 'true',
+        backgroundSubagents: env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS === 'true'
+      }
+      json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder }, flags })
     },
     'GET unknown-routes': (c) => json(c.res, [...state.unknownRoutes.values()]),
     'POST set': (c) => {
@@ -1441,6 +1811,58 @@ export function createFakeServer(options = {}) {
       if (b.sessionStatus)
         for (const [k, v] of Object.entries(b.sessionStatus)) if (state.sessions.get(k)) state.sessions.get(k).status = { type: v }
       json(c.res, true)
+    },
+    'POST bg-set': (c) => {
+      const b = c.body ?? {}
+      if (b.delayMs !== undefined) state.bg.delayMs = Number(b.delayMs)
+      if (b.hold !== undefined) state.bg.hold = !!b.hold
+      if (b.failNext !== undefined) state.bg.failNext = Number(b.failNext)
+      if (typeof b.failMessage === 'string') state.bg.failMessage = b.failMessage
+      json(c.res, state.bg)
+    },
+    'POST bg-release': (c) => {
+      let n = 0
+      for (const job of state.jobs.values()) {
+        if (c.body?.sessionID && job.childID !== c.body.sessionID) continue
+        if (job.status !== 'running') continue
+        job.released = true
+        if (job.gate) {
+          job.gate('open')
+          n++
+        }
+      }
+      json(c.res, { released: n })
+    },
+    'POST bg-fail': (c) => {
+      const job = state.jobs.get(c.body?.sessionID)
+      if (!job || job.status !== 'running') return notFound(c.res, `Trabajo en curso no encontrado: ${c.body?.sessionID}`)
+      job.failMessage = c.body?.message ?? state.bg.failMessage
+      const child = state.sessions.get(job.childID)
+      if (child?.run) child.run.failure = job.failMessage
+      if (job.gate) job.gate('open')
+      else if (child?.run) for (const w of [...child.run.wakers]) w()
+      json(c.res, true)
+    },
+    'GET bg': (c) => json(c.res, [...state.jobs.values()].map(jobView)),
+    'POST restart': async (c) => {
+      const mode = c.body?.mode === 'resume' ? 'resume' : 'lose'
+      const blockMs = Number(c.body?.blockMs) || 0
+      state.restartCount++
+      const running = [...state.jobs.values()].filter((j) => j.status === 'running')
+      for (const job of running) job.generation++ // los finales de la ejecución anterior ya no cuentan
+      const resumable = mode === 'resume' ? running.filter((j) => j.background) : []
+      for (const job of running) if (!resumable.includes(job)) Object.assign(job, { status: 'cancelled', lost: true })
+      const previous = running.map((j) => j.done)
+      for (const s of state.sessions.values()) abortSession(s) // un reinicio pierde TODA ejecución en curso
+      await Promise.all(previous)
+      state.permissionSaved.clear() // el «siempre» del 1.19 vive en la memoria de la instancia
+      if (blockMs > 0) sseBlockedUntil = Date.now() + blockMs
+      for (const client of [...sse]) {
+        sse.delete(client)
+        client.res.destroy()
+      }
+      for (const job of resumable) startJob(job)
+      json(c.res, { mode, resumed: resumable.map((j) => j.childID), lost: running.filter((j) => !resumable.includes(j)).map((j) => j.childID) })
     },
     'POST reset': (c) => {
       for (const s of state.sessions.values()) abortSession(s)

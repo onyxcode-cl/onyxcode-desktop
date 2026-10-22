@@ -40,7 +40,11 @@ export interface PdfSegment {
 export type PdfFailReason =
   'tooBig' | 'unreadable' | 'encrypted' | 'scanned' | 'tooLong' | 'noPython' | 'unsupported' | 'timeout' | 'failed'
 
-export type PdfExtractRequest = { name: string; base64: string }
+/** Qué se traduce: un PDF (PyMuPDF) o un Word (python-docx). El resto del flujo es el mismo. */
+export type TranslateKind = 'pdf' | 'docx'
+export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+export type PdfExtractRequest = { name: string; base64: string; kind?: TranslateKind }
 export type PdfExtractResult =
   { ok: true; jobId: string; pages: number; segments: PdfSegment[]; pagesWithoutText: number[] } | { ok: false; reason: PdfFailReason }
 
@@ -54,6 +58,8 @@ export interface PdfApplyReport {
   overflow: string[]
   /** Enlaces que no se pudieron conservar. */
   linksDropped: number
+  /** Word: textos cuya traducción perdió parte del formato (negrita, color…). */
+  formatLost?: number
 }
 export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string } | { ok: false; reason: PdfFailReason }
 
@@ -92,6 +98,7 @@ export function buildTranslatePrompt(opts: {
   batch: PdfSegment[]
   glossary: Glossary
   docName: string
+  kind?: TranslateKind
   /** Último texto original del lote anterior: solo contexto, no se traduce. */
   before?: string
   /** Textos de otros lotes donde continúan frases de este (id → texto), solo contexto. */
@@ -104,12 +111,12 @@ export function buildTranslatePrompt(opts: {
   const marks = opts.batch.filter((s): s is PdfSegment & { resaltado: string[] } => Array.isArray(s.resaltado) && s.resaltado.length > 0)
   const gl = trimGlossary(opts.glossary)
   return [
-    `You are a professional translator. Translate every text below into ${lang}. The texts come from the PDF "${opts.docName}"; each one sits in a fixed place of the page, so keep each translation about as long as the original.`,
+    `You are a professional translator. Translate every text below into ${lang}. The texts come from the ${opts.kind === 'docx' ? 'Word document' : 'PDF'} "${opts.docName}"; each one sits in a fixed place of the page, so keep each translation about as long as the original.`,
     '',
     'Rules:',
     '- Translate ALL human-readable text, even short labels and headings. Keep numbers, dates, amounts, references and codes exactly.',
     '- Do NOT translate code, commands, file names, paths, URLs, e-mail addresses or configuration keys. Proper names of people and companies stay as they are.',
-    '- Keep the tags exactly where they belong around the equivalent translated words: <b>…</b> (bold), <c=#rrggbb>…</c> (color), <l=N>…</l> (link) and [[…]] (highlight).',
+    `- Keep the tags exactly where they belong around the equivalent translated words: <b>…</b> (bold), ${opts.kind === 'docx' ? '<i>…</i> (italic), <u>…</u> (underline), ' : ''}<c=#rrggbb>…</c> (color), <l=N>…</l> (link) and [[…]] (highlight).`,
     marks.length
       ? '- Some texts have highlighted parts. For each id below, wrap in [[ ]] the words of YOUR translation that correspond to the highlighted part of the original (and only those):\n' +
         marks.map((s) => `  ${s.id}: ${s.resaltado.map((r) => JSON.stringify(r)).join(' + ')}`).join('\n')
@@ -198,11 +205,11 @@ export function parseTranslateAnswer(text: string, batch: PdfSegment[]): ParsedA
 }
 
 /** Nombre del archivo traducido: «informe.pdf» → «informe (en).pdf». */
-export function translatedName(name: string, target: TranslateLangCode): string {
+export function translatedName(name: string, target: TranslateLangCode, kind: TranslateKind = 'pdf'): string {
   const base =
     name
-      .replace(/\.pdf$/i, '')
+      .replace(kind === 'docx' ? /\.docx$/i : /\.pdf$/i, '')
       .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
       .trim() || 'documento'
-  return `${base} (${target}).pdf`
+  return `${base} (${target}).${kind}`
 }

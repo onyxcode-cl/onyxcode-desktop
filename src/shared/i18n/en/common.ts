@@ -127,5 +127,9 @@ export const common = {
   'env.restore.on': 'active',
   'env.restore.off': 'not available in Full control over the home folder',
   'perm.details.show': 'Show details',
-  'perm.details.hide': 'Hide details'
+  'perm.details.hide': 'Hide details',
+  'conv.shellBgWake.exit': { one: '{count} background job finished', other: '{count} background jobs finished' },
+  'conv.shellBgWake.stuck': { one: '{count} background job with no activity', other: '{count} background jobs with no activity' },
+  'conv.shellBgWake.batch': { one: 'Notice about {count} background job', other: 'Notice about {count} background jobs' },
+  'conv.shellBgWake.auto': 'Automatic notice: the person did not write it.'
 } as const satisfies Messages<typeof es>

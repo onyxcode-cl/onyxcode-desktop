@@ -15,6 +15,7 @@ import {
   type PdfExtractResult,
   type PdfFailReason,
   type PdfSegment,
+  type TranslateKind,
   type TranslateLangCode
 } from '@shared/translate-pdf'
 
@@ -39,6 +40,7 @@ export interface TranslateOutcome {
   outName: string
   report: PdfApplyReport
   pages: number
+  kind?: TranslateKind
   pagesWithoutText: number[]
   /** Textos que el modelo no devolvió ni tras reintentar: quedan en el idioma original. */
   failedSegments: number
@@ -63,7 +65,7 @@ async function translateBatch(
   glossary: Glossary,
   docName: string,
   signal: AbortSignal,
-  context: { before?: string; continuations?: Record<string, { id: string; texto: string }> } = {}
+  context: { kind?: TranslateKind; before?: string; continuations?: Record<string, { id: string; texto: string }> } = {}
 ): Promise<{ translations: Record<string, string>; glossary: Glossary }> {
   const translations: Record<string, string> = {}
   let pending = batch
@@ -94,10 +96,10 @@ async function translateBatch(
 
 export async function translatePdf(
   deps: TranslateDeps,
-  opts: { name: string; base64: string; target: TranslateLangCode; signal: AbortSignal; onProgress: (p: TranslateProgress) => void }
+  opts: { name: string; base64: string; kind?: TranslateKind; target: TranslateLangCode; signal: AbortSignal; onProgress: (p: TranslateProgress) => void }
 ): Promise<TranslateOutcome> {
   opts.onProgress({ phase: 'reading', done: 0, total: 0 })
-  const ex = await deps.extract({ name: opts.name, base64: opts.base64 })
+  const ex = await deps.extract({ name: opts.name, base64: opts.base64, kind: opts.kind })
   if (!ex.ok) throw new TranslateError(ex.reason)
   const jobId = ex.jobId
   try {
@@ -116,7 +118,7 @@ export async function translatePdf(
         if (next) continuations[s.id] = { id: next.id, texto: next.texto }
       }
       const prev = i > 0 ? batches[i - 1].at(-1)?.texto : undefined
-      const r = await translateBatch(deps, batches[i], opts.target, glossary, opts.name, opts.signal, { before: prev, continuations })
+      const r = await translateBatch(deps, batches[i], opts.target, glossary, opts.name, opts.signal, { kind: opts.kind, before: prev, continuations })
       Object.assign(translations, r.translations)
       glossary = { ...glossary, ...r.glossary }
       failed += batches[i].filter((s) => !r.translations[s.id]).length
@@ -132,6 +134,7 @@ export async function translatePdf(
       outName: res.outName,
       report: res.report,
       pages: ex.pages,
+      kind: opts.kind,
       pagesWithoutText: ex.pagesWithoutText,
       failedSegments: failed
     }

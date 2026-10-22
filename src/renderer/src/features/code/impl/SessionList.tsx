@@ -35,7 +35,8 @@ import { useT } from '../../../lib/i18n'
 import { baseName, NewWorktreeDialog, pickAndOpenFolder } from './ProjectPicker'
 import { sameDir } from './open-projects'
 import { openProjectTrusted } from './trust'
-import { rootSessionID, selectProjectIsLive, selectProjectSessions, useCode } from './store'
+import { rootSessionID, selectCodeBackgroundBusyRoots, selectProjectIsLive, selectProjectSessions, useCode } from './store'
+import { withBackgroundBusy } from './child-sessions'
 import { timeAgo } from './ui'
 import { waitingRoots } from './code-home'
 import { deriveSessionState, legacyBaseline, matchesSessionFilter, sessionNeedsReview, summarySignature } from './review-logic'
@@ -577,7 +578,10 @@ function ProjectGroup({
   const t = useT()
   const { sessions, sessionProject } = useCode(useShallow((s) => ({ sessions: s.sessions, sessionProject: s.sessionProject })))
   const activeSessionID = useCode((s) => s.activeSessionID)
-  const runState = useCode((s) => s.runState)
+  const rawRunState = useCode((s) => s.runState)
+  // Una conversación con ayudantes trabajando en segundo plano figura «trabajando» aunque su propia sesión esté en reposo.
+  const bgBusyRoots = useCode(useShallow(selectCodeBackgroundBusyRoots))
+  const runState = useMemo(() => withBackgroundBusy(rawRunState, bgBusyRoots), [rawRunState, bgBusyRoots])
   const convErrors = useCode((s) => s.errors)
   const unread = useCode((s) => s.unread)
   const reviewed = useCode((s) => s.reviewed)
@@ -778,6 +782,9 @@ function ProjectGroup({
             <button
               type="button"
               data-testid="code-sidebar-new-here"
+              // Dentro del árbol ARIA solo caben `treeitem` (como «Cargar más»): sin esto axe marca «aria-required-children» en un proyecto sin sesiones.
+              role={tree ? 'treeitem' : undefined}
+              aria-level={tree ? 2 : undefined}
               onClick={() => focusThen(() => void useCode.getState().newSessionAt(directory))}
               className="no-drag flex h-8 w-full items-center justify-center gap-2 rounded-ctl border border-border bg-elevated text-ui font-medium text-fg transition hover:border-border-strong hover:bg-hover"
             >
@@ -828,6 +835,9 @@ function ProjectGroup({
             <button
               type="button"
               onClick={() => setShowArchived((o) => !o)}
+              role={tree ? 'treeitem' : undefined}
+              aria-level={tree ? 2 : undefined}
+              aria-expanded={tree ? showArchived : undefined}
               className={`no-drag flex w-full items-center gap-1.5 rounded-lg px-2 text-[11.5px] desk:text-meta font-medium text-subtle hover:text-fg ${isRemoteSurface() ? 'min-h-11' : 'py-1'}`}
             >
               <ChevronDown size={11} className={`transition-transform ${showArchived ? 'rotate-180' : ''}`} />

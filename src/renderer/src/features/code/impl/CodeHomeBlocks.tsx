@@ -8,7 +8,8 @@ import { useT } from '../../../lib/i18n'
 import { displayTitle } from './session-title'
 import { pickCodeHome, waitingRoots, type CodeHome, type CodeHomeItem } from './code-home'
 import { deriveSessionState, sessionNeedsReview } from './review-logic'
-import { rootSessionID, selectProjectSessions, useCode } from './store'
+import { rootSessionID, selectCodeBackgroundBusyRoots, selectProjectSessions, useCode } from './store'
+import { withBackgroundBusy } from './child-sessions'
 import { timeAgo } from './ui'
 
 /** Sesiones del proyecto con el mismo estado que pinta la barra lateral (esperando, trabajando, por revisar, lista). */
@@ -26,10 +27,12 @@ export function useCodeHome(directory: string): CodeHome {
       activeSessionID: s.activeSessionID
     }))
   )
+  const bgBusyRoots = useCode(useShallow(selectCodeBackgroundBusyRoots))
   return useMemo(() => {
+    const runs = withBackgroundBusy(runState, bgBusyRoots)
     const waiting = waitingRoots(permissions, questions, (id) => rootSessionID(sessions, id))
     const stateOf = (x: Session): SessionState | null => {
-      const run = runState[x.id]
+      const run = runs[x.id]
       return deriveSessionState({
         waiting: waiting.has(x.id),
         busy: run === 'busy' || run === 'retry',
@@ -38,7 +41,7 @@ export function useCodeHome(directory: string): CodeHome {
       })
     }
     return pickCodeHome(selectProjectSessions({ sessions, sessionProject }, directory), stateOf, activeSessionID)
-  }, [sessions, sessionProject, permissions, questions, runState, unread, reviewed, reviewedSince, activeSessionID, directory])
+  }, [sessions, sessionProject, permissions, questions, runState, bgBusyRoots, unread, reviewed, reviewedSince, activeSessionID, directory])
 }
 
 export function CodeHomeBlocks({ home, part }: { home: CodeHome; part: 'waiting' | 'resume' }): React.JSX.Element | null {

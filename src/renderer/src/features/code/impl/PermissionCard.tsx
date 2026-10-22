@@ -10,6 +10,7 @@ import { DiffStats, relPath } from './ToolCard'
 import { phoneReplies } from './mobile-logic'
 import { PermissionCardDesk } from './PermissionCardDesk'
 import { useCode } from './store'
+import { useSubagentOfRequest } from './subagent-of-request'
 import type { PendingPermission, PendingQuestion } from './types'
 
 const PERMISSION_LABEL: Record<string, MsgKey> = {
@@ -54,6 +55,7 @@ function MobilePermissionCard({
   const mobile = isRemoteSurface()
   const allowed = mobile ? phoneReplies(request.permission) : null
   const reply = useCode((s) => s.replyPermission)
+  const sub = useSubagentOfRequest(request.sessionID)
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
   const run = useCallback(
@@ -93,7 +95,10 @@ function MobilePermissionCard({
     { key: '3', label: t('code.perm.reject'), reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
   ]
 
-  const allowedActions = allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions
+  // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
+  const allowedActions = (allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions).filter(
+    (a) => !(sub.child && a.reply === 'always')
+  )
   // Celular: la acción principal va a la derecha (Rechazar a la izquierda, Permitir una vez a la derecha).
   const shown = mobile
     ? [...allowedActions]
@@ -114,7 +119,13 @@ function MobilePermissionCard({
           <Icon size={14} />
         </span>
         <div className={`min-w-0 flex-1 ${mobile ? 'text-[15px]' : 'text-sm'}`}>
-          <div className="font-medium">{t('code.perm.agentWants', { label })}</div>
+          <div className="font-medium">
+            {sub.child
+              ? sub.name
+                ? t('code.perm.subagentWants', { name: sub.name, label })
+                : t('code.perm.subagentWantsAnon', { label })
+              : t('code.perm.agentWants', { label })}
+          </div>
           {description && <div className={`mt-0.5 ${mobile ? 'text-[14px]' : 'text-xs'} text-muted`}>{description}</div>}
           {file && (
             <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted">
@@ -174,9 +185,18 @@ function MobilePermissionCard({
 }
 
 export function QuestionCard({ request }: { request: PendingQuestion }): React.JSX.Element {
+  const t = useT()
   const reply = useCode((s) => s.replyQuestion)
   const reject = useCode((s) => s.rejectQuestion)
+  const sub = useSubagentOfRequest(request.sessionID)
   return (
-    <SharedQuestionCard questions={request.questions} onReply={(answers) => reply(request, answers)} onReject={() => reject(request)} />
+    <>
+      {sub.child && (
+        <p className="mt-2 -mb-1 text-xs font-medium text-muted">
+          {sub.name ? t('code.q.fromSubagent', { name: sub.name }) : t('code.q.fromSubagentAnon')}
+        </p>
+      )}
+      <SharedQuestionCard questions={request.questions} onReply={(answers) => reply(request, answers)} onReject={() => reject(request)} />
+    </>
   )
 }

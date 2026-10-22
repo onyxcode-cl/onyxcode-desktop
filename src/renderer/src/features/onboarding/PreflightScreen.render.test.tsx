@@ -226,3 +226,30 @@ describe('casillas por componente (F8-B197)', () => {
     expect(html).toMatch(/data-testid="preflight-row-runtimes" data-state="pending"/)
   })
 })
+
+describe('pantalla «Preparando»: Acceso a tus archivos (opcional, F8-B210)', () => {
+  const files = (o: Partial<PreflightComponent> = {}): PreflightComponent[] => [
+    c('storage'),
+    c('disk'),
+    c('engine'),
+    c('craft', { ok: false, reason: 'missing', sizeBytes: 300e6 }),
+    c('files', { ok: false, reason: 'denied', ...o })
+  ]
+  it('pendiente: explica en llano que es opcional, ofrece Ajustes y reinicio, y no es bloqueante', () => {
+    const html = render(report(files()))
+    expect(html).toMatch(/data-testid="preflight-row-files" data-state="pending"/)
+    expect(html).toContain('Acceso a tus archivos (opcional)')
+    expect(html).toContain('puedes dejarlo apagado')
+    expect(html).toContain('Abrir Ajustes del Sistema')
+    expect(html).toContain('Reiniciar Lazunox')
+    expect(html).not.toContain('No se puede omitir')
+  })
+  it('concedido: fila lista y sin botones', () => {
+    const html = render(report(files({ ok: true, reason: undefined })))
+    expect(html).toMatch(/data-testid="preflight-row-files" data-state="ready"/)
+    expect(html).not.toContain('Abrir Ajustes del Sistema')
+  })
+  it('indeterminado: texto de que no se pudo comprobar', () => {
+    expect(render(report(files({ reason: 'unknown' })))).toContain('No se pudo comprobar el Acceso total al disco')
+  })
+})

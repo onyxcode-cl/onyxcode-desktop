@@ -185,6 +185,10 @@ async function main() {
   const rtPin = join(res, 'app.asar.unpacked/resources/runtimes/pin.json')
   const rtOk = existsSync(rtPin) && /"node"/.test(readFileSync(rtPin, 'utf8')) && /"uv"/.test(readFileSync(rtPin, 'utf8'))
   record('pin de Node.js y uv incluido (descarga bajo demanda)', rtOk, rtOk ? 'presente' : 'falta resources/runtimes/pin.json en app.asar.unpacked')
+  // El servidor MCP del shell en segundo plano (generado por `npm run build:shell-bg`) debe viajar FUERA del asar: Node no ejecuta scripts de dentro.
+  const bgMcp = join(res, 'app.asar.unpacked/resources/shell-bg/shell-bg-mcp.cjs')
+  const bgOk = existsSync(bgMcp) && statSync(bgMcp).size > 1000 && /bgshell/.test(readFileSync(bgMcp, 'utf8'))
+  record('servidor MCP del shell en segundo plano fuera del asar', bgOk, bgOk ? `${statSync(bgMcp).size} bytes` : 'falta resources/shell-bg/shell-bg-mcp.cjs en app.asar.unpacked (¿corrió `npm run build:shell-bg`?)')
   const skillsDir = join(root, 'resources/opencode/skills')
   for (const sk of ['docx', 'xlsx', 'pptx', 'pdf', 'ruta-rapida', 'soporte-remoto']) {
     const candidates = [join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'SKILL.md')]

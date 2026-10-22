@@ -113,14 +113,17 @@ describe.skipIf(!posixOnly)('runFile (sin shell)', () => {
 describe('localizar gh', () => {
   it('busca en el PATH (entradas absolutas) y luego en las carpetas habituales', () => {
     const present = new Set(['/opt/algo/gh', '/opt/homebrew/bin/gh'])
-    const isFile = (p: string): boolean => present.has(p)
-    expect(findGh({ platform: 'darwin', pathEnv: '/usr/bin:/opt/algo', home: '/h', isFile })).toBe('/opt/algo/gh')
-    expect(findGh({ platform: 'darwin', pathEnv: '/usr/bin', home: '/h', isFile })).toBe('/opt/homebrew/bin/gh')
+    // Se compara con '/': al simular otra plataforma en Windows, `join` devuelve `\opt\algo\gh`.
+    const posix = (p: string | null): string | null => p?.replaceAll('\\', '/') ?? null
+    const isFile = (p: string): boolean => present.has(p.replaceAll('\\', '/'))
+    expect(posix(findGh({ platform: 'darwin', pathEnv: '/usr/bin:/opt/algo', home: '/h', isFile }))).toBe('/opt/algo/gh')
+    expect(posix(findGh({ platform: 'darwin', pathEnv: '/usr/bin', home: '/h', isFile }))).toBe('/opt/homebrew/bin/gh')
     expect(findGh({ platform: 'darwin', pathEnv: '', home: '/h', isFile: () => false })).toBeNull()
   })
   it('ignora entradas relativas del PATH y la carpeta del proyecto', () => {
     const present = new Set(['bin/gh', '/proyecto/gh', '/proyecto/node_modules/.bin/gh'])
-    const isFile = (p: string): boolean => present.has(p)
+    // Se compara con '/': al simular otra plataforma en Windows, `join` devuelve `\opt\algo\gh`.
+    const isFile = (p: string): boolean => present.has(p.replaceAll('\\', '/'))
     expect(
       findGh({ platform: 'linux', pathEnv: 'bin:.:/proyecto:/proyecto/node_modules/.bin', home: '/h', isFile, projectDir: '/proyecto' })
     ).toBeNull()

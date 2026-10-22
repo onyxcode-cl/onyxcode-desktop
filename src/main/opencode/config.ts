@@ -10,9 +10,10 @@
  * Navegador integrado (Lote D, B.7): `server.ts` resuelve `mcp.browser` con
  * `embeddedBrowserMcp.configFor({product:'code'})` ANTES de arrancar y se lo pasa a
  * `buildInlineConfig({ browserMcp })`. Si el MCP no arrancó (`browserMcp` es null), el sidecar
- * arranca igual, sin navegador: `mcp.browser` simplemente no se incluye.
+ * arranca igual, sin navegador: `mcp.browser` simplemente no se incluye. Igual con `mcp.bgshell` (F8-B204).
  */
 import { CHAT_AGENT } from '@shared/types'
+import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
 
 /**
  * Patrón de `read` que no corresponde a ningún archivo real (ver `permission.read` del agente `chat`). Debe
@@ -20,9 +21,34 @@ import { CHAT_AGENT } from '@shared/types'
  */
 export const CHAT_READ_SENTINEL = '/__lazunox_sin_acceso__'
 
+/**
+ * Único subagente que el Chat puede lanzar (F8-B206): `resources/opencode/agents/lazunox-chat-helper.md`, con EXACTAMENTE los
+ * permisos del agente `chat` (todo denegado salvo web y el `read` centinela), así que no escala nada y el guardián de subagentes
+ * (`subagent-guard.ts`) lo deja pasar; `general`, `explore` y los demás quedan en `deny`.
+ */
+export const CHAT_HELPER_AGENT = 'lazunox-chat-helper'
+
 export interface InlineConfigOptions {
   /** Bloque `mcp.browser` ya resuelto (o null si el MCP del navegador integrado no arrancó). */
   browserMcp?: Record<string, unknown> | null
+  /**
+   * Bloque `mcp.bgshell` (shell en segundo plano supervisado, F8-B204) ya resuelto con `shellBgMcpConfig`, o null si no se puede
+   * ofrecer (sin Node incluido o sin el `.cjs`): el motor arranca igual, sin la herramienta. Sus permisos (`bgshell_start` pregunta como
+   * `bash`) van en `permission` (`bgshellConfigPermission`) y en el bloque de modo de cada sesión de Code (`bgshellSessionRules`).
+   */
+  bgshellMcp?: Record<string, unknown> | null
+  /**
+   * Subagentes en el Chat (F8-B206): con `true` el agente `chat` puede lanzar `lazunox-chat-helper` (y solo ese) con `task`. Se pasa
+   * `engineExperimentsFor(ajustes, 'chat').backgroundSubagents`: la variable de subagentes en segundo plano es POR PROCESO y Chat y
+   * Code comparten motor, así que lo que separa al Chat es este permiso, no la variable. Apagado = `task` denegado como siempre.
+   */
+  chatSubagents?: boolean
+  /**
+   * Bloque `permission` de la config (vale para todos los agentes del sidecar; los de `'*': deny` como `chat` siguen denegando porque
+   * su permiso de agente va después). Lo construye `buildCodeMcpPermission` (`code-mcp-permission.ts`): conectores en Code (F8-B203).
+   * NO lleva reglas de bash/edit/etc.: esas siguen en el bloque de modo de cada sesión.
+   */
+  permission?: Record<string, unknown> | null
 }
 
 export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string, unknown> {
@@ -33,7 +59,15 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
-    ...(opts.browserMcp ? { mcp: { browser: opts.browserMcp } } : {}),
+    ...(opts.browserMcp || opts.bgshellMcp
+      ? {
+          mcp: {
+            ...(opts.browserMcp ? { browser: opts.browserMcp } : {}),
+            ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {})
+          }
+        }
+      : {}),
+    ...(opts.permission && Object.keys(opts.permission).length ? { permission: opts.permission } : {}),
     agent: {
       [CHAT_AGENT]: {
         description: 'Conversación general, sin acceso a archivos ni terminal',
@@ -226,7 +260,9 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           // rechaza toda petición cuya lista de herramientas no incluya `read`. Con `read: deny` (o `'*': deny` a secas)
           // el motor lo quita de la lista. Truco: la última regla de `read` no es `'*'`, así que el motor lo anuncia,
           // pero ninguna ruta real coincide con el patrón permitido y toda lectura se deniega.
-          read: { '*': 'deny', [CHAT_READ_SENTINEL]: 'allow' }
+          read: { '*': 'deny', [CHAT_READ_SENTINEL]: 'allow' },
+          // Subagentes (F8-B206): solo el ayudante del Chat, y solo con la función encendida para el Chat.
+          ...(opts.chatSubagents ? { task: { '*': 'deny', [CHAT_HELPER_AGENT]: 'allow' } } : {})
         }
       },
       computer: { disable: true }

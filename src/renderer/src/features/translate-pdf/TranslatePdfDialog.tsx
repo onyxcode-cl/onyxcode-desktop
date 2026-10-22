@@ -6,7 +6,14 @@ import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { AlertCircle, CheckCircle2, FileText, Languages, Loader2, X } from 'lucide-react'
 import { t as tr } from '@shared/i18n'
-import { TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, type PdfFailReason, type TranslateLangCode } from '@shared/translate-pdf'
+import {
+  DOCX_MIME,
+  TRANSLATE_LANGS,
+  TRANSLATE_PDF_MAX_BYTES,
+  type PdfFailReason,
+  type TranslateKind,
+  type TranslateLangCode
+} from '@shared/translate-pdf'
 import { useT } from '../../lib/i18n'
 import { call } from '../../lib/api'
 import { announce } from '../../lib/announce'
@@ -19,6 +26,7 @@ import { TranslateError, translatePdf, type TranslateDeps, type TranslateOutcome
 export interface TranslatePreset {
   name: string
   base64: string
+  kind?: TranslateKind
   target: TranslateLangCode
 }
 
@@ -36,6 +44,13 @@ function bytesToBase64(bytes: Uint8Array): string {
   let bin = ''
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
   return btoa(bin)
+}
+
+/** PDF o Word según el tipo/extensión del archivo; `null` si no es ninguno. */
+function fileKind(f: { type: string; name: string }): TranslateKind | null {
+  if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) return 'pdf'
+  if (f.type === DOCX_MIME || /\.docx$/i.test(f.name)) return 'docx'
+  return null
 }
 
 function realDeps(): TranslateDeps {
@@ -116,7 +131,7 @@ function TranslatePdfDialog(): React.JSX.Element {
   const choose = (f: File | undefined): void => {
     setFileError(null)
     if (!f) return
-    if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) return setFileError(tr('translate.pdf.err.unreadable'))
+    if (!fileKind(f)) return setFileError(tr('translate.pdf.err.unreadable'))
     if (f.size > TRANSLATE_PDF_MAX_BYTES) return setFileError(tr('translate.pdf.err.tooBig'))
     setFile(f)
   }
@@ -130,6 +145,7 @@ function TranslatePdfDialog(): React.JSX.Element {
       const outcome = await translatePdf(realDeps(), {
         name: job.name,
         base64: job.base64,
+        kind: job.kind,
         target: job.target,
         signal: c.signal,
         onProgress: (progress) => setView({ kind: 'running', progress })
@@ -145,7 +161,7 @@ function TranslatePdfDialog(): React.JSX.Element {
   const start = async (): Promise<void> => {
     if (!file) return
     const base64 = bytesToBase64(new Uint8Array(await file.arrayBuffer()))
-    await run({ name: file.name, base64, target })
+    await run({ name: file.name, base64, kind: fileKind(file) ?? 'pdf', target })
   }
 
   // Desde la tarjeta del compositor ya está decidido el PDF y el idioma: arranca sola.
@@ -202,7 +218,7 @@ function TranslatePdfDialog(): React.JSX.Element {
               <input
                 ref={input}
                 type="file"
-                accept="application/pdf,.pdf"
+                accept="application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="hidden"
                 onChange={(e) => choose(e.target.files?.[0])}
               />
@@ -323,6 +339,7 @@ function DoneView({
   const untranslated = r.untranslated + outcome.failedSegments
   if (untranslated > 0) notes.push(t('translate.pdf.doneUntranslated', { n: untranslated }))
   if (outcome.pagesWithoutText.length > 0) notes.push(t('translate.pdf.doneNoText', { pages: outcome.pagesWithoutText.join(', ') }))
+  if ((r.formatLost ?? 0) > 0) notes.push(t('translate.pdf.doneFormat', { n: r.formatLost ?? 0 }))
   if (r.linksDropped > 0) notes.push(t('translate.pdf.doneLinks', { n: r.linksDropped }))
   return (
     <>
@@ -330,7 +347,7 @@ function DoneView({
         <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
         <span className="min-w-0 break-words">{t('translate.pdf.doneTitle', { name: outcome.outName })}</span>
       </p>
-      <p className="mt-2 text-ui text-muted">{t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}</p>
+      <p className="mt-2 text-ui text-muted">{outcome.kind === 'docx' ? t('translate.pdf.doneStatsDoc', { n: r.translated }) : t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}</p>
       {notes.length > 0 && (
         <ul className="mt-2 list-disc space-y-1 pl-5 text-[12.5px] text-muted">
           {notes.map((n) => (

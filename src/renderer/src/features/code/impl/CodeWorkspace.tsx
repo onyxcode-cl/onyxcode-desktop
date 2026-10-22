@@ -66,9 +66,10 @@ import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
 import { TerminalPanel } from './panels/TerminalPanel'
 import { ShellRunProvider } from './ShellRunProvider'
+import { ensureFolderReadable } from './folder-access'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
 import { askCloseProject, SessionList } from './SessionList'
-import { ensureCodeSubscription, isCodeTranscriptLoading, rootSessionID, useCode } from './store'
+import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootSessionID, selectCodeRunOf, useCode } from './store'
 import { TodoList } from './ToolCard'
 import { PlanCard } from './PlanCard'
 import type { RightPanel } from './types'
@@ -591,7 +592,9 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const bindings = useEffectiveBindings()
   const session = useCode((s) => (s.activeSessionID ? s.sessions[s.activeSessionID] : undefined))
   const activeSessionID = useCode((s) => s.activeSessionID)
-  const run = useCode((s) => (s.activeSessionID ? s.runState[s.activeSessionID] : undefined))
+  // Cuenta también a los ayudantes en segundo plano: la raíz puede figurar `idle` mientras ellos trabajan.
+  const run = useCode((s) => selectCodeRunOf(s, s.activeSessionID))
+  const helpers = useCode((s) => (s.activeSessionID ? liveHelperCount(s, s.activeSessionID) : 0))
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const abort = useCode((s) => s.abort)
@@ -622,7 +625,10 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       )}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {busy && (
-          <Tip label={t('code.toolbar.stop')} shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}>
+          <Tip
+            label={helpers > 0 ? t('code.toolbar.stopAll', { count: helpers }) : t('code.toolbar.stop')}
+            shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}
+          >
             <button
               type="button"
               aria-label={t('code.toolbar.stop')}
@@ -981,8 +987,28 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     if (!dir || loadedFor.current === client) return
     loadedFor.current = client
     void useCode.getState().restoreOpenProjects()
-    void openProjectTrusted(dir)
+    // Si no confía en la carpeta restaurada, no se queda enfocada (sin sesiones cargadas ni motor para ella).
+    void openProjectTrusted(dir).then((ok) => {
+      if (!ok) useCode.getState().declineFocusedProject(dir)
+    })
   }, [client])
+
+  // Cualquier carpeta que reciba el foco (barra lateral, chip, búsqueda…) se comprueba igual que al abrirla: la comprobación de «Abrir carpeta»
+  // no cubre esas vías, y con el permiso del motor denegado la persona solo vería «Unexpected server error».
+  const focusedDir = useCode((s) => s.directory)
+  useEffect(() => {
+    if (!focusedDir) return
+    let live = true
+    void ensureFolderReadable(focusedDir).then((ok) => {
+      if (!live || ok) return
+      // El «Unexpected server error» viene del intento anterior del motor contra esa carpeta: la tarjeta de permisos ya explica la causa.
+      useCode.getState().setGlobalError(null)
+      useCode.getState().declineFocusedProject(focusedDir)
+    })
+    return () => {
+      live = false
+    }
+  }, [focusedDir])
 
   const [rootRef, containerWidth] = useElementWidth()
   const projectPickerOpen = useCode((s) => s.projectPickerOpen)

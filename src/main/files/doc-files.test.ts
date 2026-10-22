@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync, chmodSync, realpath
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { posixOnly } from '../../test/platform'
 
 vi.mock('@shared/i18n', () => ({ t: (k: string) => k }))
 import { docFilesInfo, resolveDocFile } from './doc-files'
@@ -31,12 +32,16 @@ describe('resolveDocFile', () => {
     expect(() => resolveDocFile(root, join(root, 'nada.pdf'))).toThrow()
     expect(() => resolveDocFile(root, join(outside, 'a.pdf'))).toThrow(/fuera/)
   })
-  it('rechaza extensiones que no son documento y archivos con bit de ejecución', () => {
+  it('rechaza extensiones que no son documento', () => {
     const { root } = setup()
     for (const n of ['run.sh', 'a.app', 'a.txt', 'a.command']) {
       writeFileSync(join(root, n), 'x')
       expect(() => resolveDocFile(root, join(root, n))).toThrow()
     }
+  })
+  // Windows no tiene bit de ejecución (`assertSafeToOpen` solo lo mira en POSIX): no hay equivalente que probar allí.
+  it.skipIf(!posixOnly)('rechaza archivos con bit de ejecución', () => {
+    const { root } = setup()
     const exec = join(root, 'x.pdf')
     writeFileSync(exec, 'x')
     chmodSync(exec, 0o755)

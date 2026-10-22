@@ -16,7 +16,7 @@ import { pdfToImages, pdfToText } from '../../lib/pdf-pages'
 import { useProviders } from '../../stores/providers'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
-import { reconcilePending, reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
+import { interruptSettledSessions, reconcilePending, reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
 import { sameDir } from '../../stores/eventRouter'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../stores/sessions'
@@ -126,7 +126,10 @@ export async function syncChatRunStatus(): Promise<void> {
     status
   )
   const next = reconcileRunStatus(status, data, scope)
-  if (next) useSessions.setState({ status: next })
+  if (next) {
+    const messages = interruptSettledSessions(status, next, useSessions.getState().messages)
+    useSessions.setState(messages ? { status: next, messages } : { status: next })
+  }
 }
 
 export async function openChatSession(sessionID: string | null): Promise<void> {

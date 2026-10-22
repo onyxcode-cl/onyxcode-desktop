@@ -89,16 +89,23 @@ describe('safeSegments', () => {
 })
 
 describe('tar.gz', () => {
-  it('extrae archivos y carpetas quitando la carpeta de primer nivel, y conserva el bit de ejecución', async () => {
-    const f = writeTgz([
-      { name: 'raiz/', type: '5' },
-      { name: 'raiz/bin/', type: '5' },
-      { name: 'raiz/bin/node', data: 'binario', mode: 0o755 },
-      { name: 'raiz/lib/leeme.txt', data: 'hola', mode: 0o644 }
-    ])
+  const ENTRIES = [
+    { name: 'raiz/', type: '5' },
+    { name: 'raiz/bin/', type: '5' },
+    { name: 'raiz/bin/node', data: 'binario', mode: 0o755 },
+    { name: 'raiz/lib/leeme.txt', data: 'hola', mode: 0o644 }
+  ]
+  it('extrae archivos y carpetas quitando la carpeta de primer nivel', async () => {
+    const f = writeTgz(ENTRIES)
     const r = await extractArchive(f, 'tar.gz', dest(), LIM)
     expect(r.files).toBe(2)
     expect(readFileSync(join(dest(), 'bin/node'), 'utf8')).toBe('binario')
+    expect(readFileSync(join(dest(), 'lib/leeme.txt'), 'utf8')).toBe('hola')
+  })
+  // Windows (NTFS) no tiene bit de ejecución: `stat().mode` siempre trae 0o666/0o444, así que solo se comprueba en POSIX.
+  it.skipIf(!posixOnly)('conserva el bit de ejecución', async () => {
+    const f = writeTgz(ENTRIES)
+    await extractArchive(f, 'tar.gz', dest(), LIM)
     expect(statSync(join(dest(), 'bin/node')).mode & 0o111).not.toBe(0)
     expect(statSync(join(dest(), 'lib/leeme.txt')).mode & 0o111).toBe(0)
   })

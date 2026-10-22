@@ -7,6 +7,7 @@ import {
   Cpu,
   Globe,
   Download,
+  FlaskConical,
   Info,
   Search,
   BrainCircuit,
@@ -36,6 +37,7 @@ import { AutoModeSection } from './AutoModeSection'
 import { BrowserSection } from './BrowserSection'
 import { ComputerSection } from './ComputerSection'
 import { DiagnosticsSection } from './DiagnosticsSection'
+import { EngineExperimentsSection } from './EngineExperimentsSection'
 import { TasksSection } from './TasksSection'
 import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
@@ -66,6 +68,7 @@ export type SettingsSectionId =
   | 'network'
   | 'computer'
   | 'automode'
+  | 'engine'
   | 'browser'
   | 'remote'
   | 'telegram'
@@ -131,6 +134,14 @@ const SECTIONS: {
   { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection, keys: SECTION_KEYS.tasks },
   { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection, keys: SECTION_KEYS.network },
   { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection, keys: SECTION_KEYS.automode },
+  {
+    id: 'engine',
+    group: 'agents',
+    label: lazy('settings.engine.nav'),
+    icon: FlaskConical,
+    View: EngineExperimentsSection,
+    keys: SECTION_KEYS.engine
+  },
   {
     id: 'computer',
     group: 'agents',
@@ -263,7 +274,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
       (s.id !== 'computer' || caps.computer) &&
       (s.id !== 'remote' || caps.remote) &&
       // PWA del celular: MCP, navegador integrado, atajos de teclado y diagnóstico son del Mac (prohibidos o sin sentido en el celular).
-      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics', 'telegram'].includes(s.id))
+      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics', 'telegram', 'engine'].includes(s.id))
   )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 

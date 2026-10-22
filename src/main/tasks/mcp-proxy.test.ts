@@ -396,3 +396,77 @@ describe('McpProxy: límites', () => {
     expect(await r.text()).not.toContain('real-bbbbbbb')
   })
 })
+
+describe('McpProxy: manejador local de solo lectura (canal del guardián, F8-B208)', () => {
+  const ok = async (path: string, q: URLSearchParams) => ({ status: 200, body: { path, q: q.toString() } })
+  const raw = (port: number, lines: string): Promise<string> =>
+    new Promise((resolve) => {
+      const s = connect(port, '127.0.0.1', () => s.end(lines))
+      let out = ''
+      s.on('data', (c) => (out += c.toString()))
+      s.on('close', () => resolve(out))
+    })
+
+  it('con su token: GET responde JSON del manejador; sin token, otro token o token de una ruta MCP: 401', async () => {
+    const p = await proxy()
+    const up = await fake()
+    const route = p.addRoute({ name: 'srv', url: up.url() })
+    const g = p.setLocalHandler('/__lazunox-guard', ok)
+    expect(g.url).toBe(`http://127.0.0.1:${p.port}/__lazunox-guard`)
+    const r = await fetch(`${g.url}/session?id=ses_abc`, { headers: { authorization: `Bearer ${g.token}` } })
+    expect(r.status).toBe(200)
+    expect(r.headers.get('content-type')).toBe('application/json')
+    expect(await r.json()).toEqual({ path: '/session', q: 'id=ses_abc' })
+    expect((await fetch(`${g.url}/session`)).status).toBe(401)
+    expect((await fetch(`${g.url}/session`, { headers: { authorization: 'Bearer otro' } })).status).toBe(401)
+    // El token de una ruta MCP no abre el canal: va al destino MCP (que no conoce esa ruta), nunca al manejador.
+    await fetch(`http://127.0.0.1:${p.port}/__lazunox-guard/session`, { headers: { authorization: `Bearer ${route.token}` } })
+    expect(up.seen.at(-1)?.url).toBe('/__lazunox-guard/session')
+    // Y el token del canal no sirve para el destino MCP.
+    expect(up.seen.every((s) => s.headers.authorization !== `Bearer ${g.token}`)).toBe(true)
+  })
+
+  it('solo GET, sin cuerpo, URL acotada, prefijo exacto y mismo Host/Origin que el proxy', async () => {
+    const p = await proxy()
+    const g = p.setLocalHandler('/__lazunox-guard', ok)
+    const auth = { authorization: `Bearer ${g.token}` }
+    for (const method of ['POST', 'PUT', 'DELETE', 'PATCH'])
+      expect((await fetch(`${g.url}/session`, { method, headers: auth })).status).toBe(405)
+    expect((await fetch(`${g.url}/session?id=${'a'.repeat(600)}`, { headers: auth })).status).toBe(414)
+    expect((await fetch(`http://127.0.0.1:${p.port}/otra/session`, { headers: auth })).status).toBe(404)
+    expect((await fetch(`${g.url}x/session`, { headers: auth })).status).toBe(404)
+    // Sin normalizar (petición cruda): cualquier ruta que no sea `/<letras>` no llega al manejador.
+    const dotdot = await raw(
+      p.port,
+      `GET /__lazunox-guard/session/../config HTTP/1.1\r\nHost: 127.0.0.1:${p.port}\r\nAuthorization: Bearer ${g.token}\r\nConnection: close\r\n\r\n`
+    )
+    expect(dotdot).toMatch(/^HTTP\/1\.1 404/)
+    expect((await fetch(`${g.url}/session`, { headers: { ...auth, origin: 'http://evil' } })).status).toBe(403)
+    const bodyGet = await raw(
+      p.port,
+      `GET /__lazunox-guard/session HTTP/1.1\r\nHost: 127.0.0.1:${p.port}\r\nAuthorization: Bearer ${g.token}\r\nContent-Length: 3\r\nConnection: close\r\n\r\nabc`
+    )
+    expect(bodyGet).toMatch(/^HTTP\/1\.1 413/)
+    const badHost = await raw(
+      p.port,
+      `GET /__lazunox-guard/session HTTP/1.1\r\nHost: evil:${p.port}\r\nAuthorization: Bearer ${g.token}\r\nConnection: close\r\n\r\n`
+    )
+    expect(badHost).toMatch(/^HTTP\/1\.1 403/)
+  })
+
+  it('error del manejador → 502 sin detalle; stop() anula el token', async () => {
+    const p = new McpProxy()
+    await p.start()
+    const g = p.setLocalHandler('/__lazunox-guard', async () => {
+      throw new Error('detalle-interno')
+    })
+    const r = await fetch(`${g.url}/session`, { headers: { authorization: `Bearer ${g.token}` } })
+    expect(r.status).toBe(502)
+    expect(await r.text()).not.toContain('detalle-interno')
+    await p.stop()
+    await expect(fetch(`${g.url}/session`, { headers: { authorization: `Bearer ${g.token}` } })).rejects.toThrow()
+    expect(() => p.setLocalHandler('/x', ok)).toThrow()
+    const q = await proxy()
+    expect(() => q.setLocalHandler('/a/b', ok)).toThrow()
+  })
+})

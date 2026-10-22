@@ -7,6 +7,11 @@ import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeIn
 import * as git from '../git/service'
 import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
+import { checkFolderAccess, PANE_ALL_FILES, PANE_FILES_AND_FOLDERS, resetFolderPermission, tccServicesFor } from '../dialog/folder-access'
+import { ENGINE_PROBE_TIMEOUT_MS, probeFolderAsEngine, type RunResult } from '../dialog/engine-folder-probe'
+import { findOpencodeBinary } from '../opencode/server'
+import { withDisclaim } from '../process/disclaim'
+import { execFile } from 'node:child_process'
 import { PtyService } from '../pty/service'
 import { shouldKillOnNavigation } from '../pty/lifecycle'
 import { settingsStore } from '../store'
@@ -148,6 +153,35 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     return path
   })
   on(ipcMain, 'dialog:revealInFinder', (r) => dialogService.revealInFinder(req(r, 'req').path))
+  // Sin caché: cada llamada vuelve a leer la carpeta (la persona puede haber activado el permiso entre dos intentos).
+  on(ipcMain, 'dialog:checkFolderAccess', async (r) => {
+    const path = req(r, 'req').path
+    const status = await checkFolderAccess(path)
+    const canReset = process.platform === 'darwin' && tccServicesFor(path).length > 0
+    if (status !== 'ok' || process.platform !== 'darwin') return { status, canReset, cause: 'app' as const }
+    // Lazunox puede leerla; el motor tiene identidad TCC propia (lazunox-disclaim) y puede que no. Ver engine-folder-probe.ts.
+    const engine = await probeFolderAsEngine(path, {
+      binary: () => findOpencodeBinary(),
+      wrap: withDisclaim,
+      timeoutMs: ENGINE_PROBE_TIMEOUT_MS,
+      run: (file, args, o) =>
+        new Promise<RunResult>((resolve) => {
+          execFile(
+            file,
+            args,
+            { cwd: o.cwd, env: o.env, timeout: o.timeoutMs, killSignal: 'SIGKILL', maxBuffer: 4 * 1024 * 1024, windowsHide: true },
+            (error, stdout, stderr) => resolve({ error, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') })
+          )
+        })
+    })
+    if (engine === 'denied' || engine === 'timeout') return { status: engine, canReset: false, cause: 'engine' as const }
+    return { status, canReset, cause: 'app' as const }
+  })
+  on(ipcMain, 'dialog:openFolderPrivacy', async (r) => {
+    if (process.platform === 'darwin') await shell.openExternal(r?.pane === 'allFiles' ? PANE_ALL_FILES : PANE_FILES_AND_FOLDERS)
+  })
+  // Solo cuando la persona pulsa «Volver a preguntar a macOS»; nunca automático. Ver docs/SEGURIDAD.md §3 sexagies quater.
+  on(ipcMain, 'dialog:resetFolderPermission', async (r) => ({ result: await resetFolderPermission(req(r, 'req').path) }))
 
   // ---- archivos del proyecto: vigilante (fs.watch, sin polling), gestor y «Abrir en…» ----
   // Solo la ventana principal (ninguno de estos canales está en CHANNEL_ROLES). El «proyecto activo» de una ventana

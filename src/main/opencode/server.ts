@@ -4,7 +4,7 @@
  * espera a `/global/health`, reinicia con backoff si se cae y lo mata al salir.
  */
 import { t } from '@shared/i18n'
-import { appOpencodeConfigEnv } from '../extras/mcp-config'
+import { appOpencodeConfigEnv, readAppMcpConfig, readAppPermission } from '../extras/mcp-config'
 import { getOpencodeEnv } from '../tasks/opencode-config'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { embeddedBrowser } from '../embedded-browser/service'
@@ -20,13 +20,27 @@ import { APP_SLUG } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
-import { killTree, trackPid, untrackPid } from './pids'
+import { killPids, killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
 import { catalogFile, waitForCatalog } from './catalog-wait'
 import { withDisclaim } from '../process/disclaim'
 import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
+import { engineExperimentsFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import { LineRing } from '../diagnostics/log-ring'
+import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
+import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
+import { runtimesService } from '../runtimes/service'
+import { SHELL_BG_SERVER, bgshellConfigPermission, prepareShellBgDirs, shellBgMcpConfig, shellBgPaths } from './shell-bg-mcp'
+import { bundledShellBgPath } from './shell-bg-bundled'
+import { ShellBgWake, createSdkWakeEngine } from './shell-bg-wake'
+import {
+  buildCodeMcpPermission,
+  cleanServerNames,
+  fetchEngineMcpServers,
+  permissionFingerprint,
+  readGlobalOpencodeConfig
+} from './code-mcp-permission'
 
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
@@ -46,6 +60,8 @@ export interface OpencodeServerOptions {
 interface ServerEvents {
   status: [ServerStatus]
   connection: [OpencodeConnection]
+  /** La config inline que corresponde ya no es la del proceso (p. ej. un conector nuevo sin regla): hay que relanzar en cuanto se pueda. */
+  inlineStale: []
 }
 
 export class OpencodeServer extends EventEmitter<ServerEvents> {
@@ -59,6 +75,12 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private readonly logRing = new LineRing()
   /** Contraseña y credencial Basic del sidecar de este arranque: Diagnóstico las oculta de lo que muestra. */
   private secretValues: string[] = []
+  /** Servidores MCP que reportaron los motores de esta sesión de la app (externos incluidos); solo crece. */
+  private engineMcpServers: string[] = []
+  /** Huella de la parte de la config inline que depende de Ajustes y conectores con la que arrancó el proceso actual. */
+  private appliedInline: string | null = null
+  /** Despertador de `bgshell` (aviso de fin al modelo) del proceso actual; vive y muere con la conexión (F8-B204). */
+  private shellBgWake: ShellBgWake | null = null
 
   constructor(private readonly options: OpencodeServerOptions) {
     super()
@@ -82,6 +104,78 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     return this.status.state === 'ready' ? this.connection : null
   }
 
+  /**
+   * Bloque `permission` de la config inline (F8-B203): conectores en Code preguntan salvo los internos y los marcados «Sin preguntar
+   * en Code». Servidores = los de la app ∪ los de la config global del usuario ∪ los que ya reportó el motor. Nunca lanza.
+   */
+  codeMcpPermission(): Record<string, unknown> {
+    let trusted: string[] = []
+    try {
+      trusted = settingsStore.get().codeTrustedMcp ?? []
+    } catch {
+      trusted = []
+    }
+    let appServers: string[] = []
+    try {
+      appServers = Object.keys(readAppMcpConfig().servers)
+    } catch {
+      appServers = []
+    }
+    const global = readGlobalOpencodeConfig()
+    return buildCodeMcpPermission({
+      servers: cleanServerNames([...appServers, ...global.servers, ...this.engineMcpServers]),
+      trusted,
+      internal: CODE_INTERNAL_MCP,
+      // Lo que el motor fusiona ANTES de la inline: config global y archivo de conectores de la app (en ese orden).
+      base: { ...global.permission, ...readAppPermission() },
+      // `bgshell` (F8-B204): `bgshell_start` pregunta como `bash`, el resto pasa; el bloque de modo de cada sesión lo ajusta después.
+      fixed: bgshellConfigPermission(),
+      fixedServers: [SHELL_BG_SERVER]
+    })
+  }
+
+  /** Subagentes en el Chat (F8-B206): `task` del agente `chat` abierto solo a `lazunox-chat-helper` si la función está encendida. */
+  chatSubagents(): boolean {
+    try {
+      return engineExperimentsFor(settingsStore.get(), 'chat').backgroundSubagents
+    } catch {
+      return false
+    }
+  }
+
+  /** Huella de la parte de la config inline que depende de Ajustes y conectores, tal como corresponde AHORA. */
+  wantedInlineKey(): string {
+    return inlineKey(this.codeMcpPermission(), this.chatSubagents())
+  }
+
+  /** Huella con la que arrancó el proceso actual (`null` si no arrancó). */
+  appliedInlineKey(): string | null {
+    return this.appliedInline
+  }
+
+  /** ¿El proceso en marcha corre con una config inline vieja? */
+  inlineStale(): boolean {
+    return this.appliedInline !== null && this.appliedInline !== this.wantedInlineKey()
+  }
+
+  /** Pide relanzar cuando se pueda (lo atiende `engine-flags-restart.ts`, que espera a que no haya turnos en curso). */
+  requestInlineReload(): void {
+    this.emit('inlineStale')
+  }
+
+  /**
+   * Pregunta al motor qué servidores MCP cargó (incluidos los externos de `~/.config/opencode` y del proyecto del Chat) y los suma a
+   * los conocidos. Devuelve si con eso la config inline quedó vieja (hay un servidor sin regla).
+   */
+  async refreshEngineMcpServers(): Promise<boolean> {
+    const conn = this.getConnection()
+    if (!conn) return false
+    const found = await fetchEngineMcpServers(conn, this.options.chatDirectory)
+    if (!found) return false
+    this.engineMcpServers = cleanServerNames([...this.engineMcpServers, ...found])
+    return this.inlineStale()
+  }
+
   /** Arranca (o espera el arranque en curso) y resuelve con la conexión lista. */
   start(): Promise<OpencodeConnection> {
     if (this.status.state === 'ready' && this.connection) return Promise.resolve(this.connection)
@@ -102,6 +196,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   /** Detiene el proceso (SIGTERM y SIGKILL tras un período de gracia). */
   async stop(): Promise<void> {
     this.stopping = true
+    this.stopShellBgWake()
     if (this.restartTimer) {
       clearTimeout(this.restartTimer)
       this.restartTimer = null
@@ -111,17 +206,22 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     this.connection = null
     if (child && child.exitCode === null && child.signalCode === null) {
       await new Promise<void>((resolve) => {
+        // Descendientes vistos al pedir el cierre: al morir el líder (p. ej. un `sleep` que lanzó un subagente) pasan a
+        // ser huérfanos y `killTree` ya no los encuentra por parentesco; hay que rematarlos por PID.
+        let seen: number[] = []
         const timer = setTimeout(() => {
           killTree(child.pid, 'SIGKILL')
+          killPids(seen, 'SIGKILL')
           resolve()
         }, KILL_GRACE_MS)
         child.once('exit', () => {
           clearTimeout(timer)
-          // El líder terminó: rematar el resto del grupo (MCP, bash…).
+          // El líder terminó: rematar el resto del grupo (MCP, bash…) y lo que ya no cuelga de él.
           killTree(child.pid, 'SIGKILL')
+          killPids(seen, 'SIGKILL')
           resolve()
         })
-        killTree(child.pid, 'SIGTERM')
+        seen = killTree(child.pid, 'SIGTERM') ?? []
       })
     }
     this.setStatus({ state: 'stopped' })
@@ -130,6 +230,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   /** Kill síncrono para `process.on('exit')`. */
   killSync(): void {
     this.stopping = true
+    this.stopShellBgWake()
     if (this.child) killTree(this.child.pid, 'SIGKILL')
   }
 
@@ -162,13 +263,26 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // se asegura de que el MCP del navegador conoce la implementación real.
       embeddedBrowserMcp.setApi(embeddedBrowser)
       const browserMcp = await embeddedBrowserMcp.configFor({ product: 'code', sandboxed: false, folder: null })
+      // Shell en segundo plano (F8-B204): carpetas privadas recién vaciadas (avisos de un proceso anterior no cuentan) y bloque `mcp`.
+      // Sin Node incluido o sin el `.cjs`, el motor arranca igual sin `bgshell`.
+      this.stopShellBgWake()
+      const shellBg = prepareMainShellBg()
+      // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
+      const permission = this.codeMcpPermission()
+      const chatSubagents = this.chatSubagents()
+      this.appliedInline = inlineKey(permission, chatSubagents)
 
       const childEnv = minimalEnv({
         ...getOpencodeEnv(),
         ...appOpencodeConfigEnv(),
+        // Funciones experimentales del motor (Modo código, subagentes de fondo): solo las dos variables concretas y solo si
+        // los Ajustes las encienden para Chat o Code (comparten este proceso). Cambiarlas exige reiniciar (`engine-flags-restart.ts`).
+        ...engineFlagEnvForMainSidecar(settingsStore.get()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
-        OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp }))
+        OPENCODE_CONFIG_CONTENT: JSON.stringify(
+          buildInlineConfig({ browserMcp, bgshellMcp: shellBg?.block ?? null, permission, chatSubagents })
+        )
       })
       const child = spawn(exec.command, exec.args, {
         cwd: this.options.chatDirectory,
@@ -216,6 +330,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       this.connection = connection
       console.log(`[opencode] listo en ${baseUrl} (v${version ?? '?'}) pid=${child.pid}${launch.disclaimed ? ' (TCC desvinculado)' : ''}`)
       this.setStatus({ state: 'ready', error: undefined, version })
+      if (shellBg) this.startShellBgWake(shellBg.eventsFile, connection)
       this.emit('connection', connection)
       return connection
     } catch (err) {
@@ -231,9 +346,27 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     }
   }
 
+  /** Vigila los avisos de `bgshell` de ESTE proceso y despierta a la sesión raíz dueña del trabajo (`shell-bg-wake.ts`). */
+  private startShellBgWake(eventsFile: string, conn: OpencodeConnection): void {
+    this.stopShellBgWake()
+    const wake = new ShellBgWake({
+      eventsFile,
+      engine: createSdkWakeEngine(conn),
+      onError: (err) => console.warn('[opencode] bgshell: aviso de fin no entregado:', err instanceof Error ? err.message : err)
+    })
+    wake.start()
+    this.shellBgWake = wake
+  }
+
+  private stopShellBgWake(): void {
+    this.shellBgWake?.stop()
+    this.shellBgWake = null
+  }
+
   private onExit(child: ChildProcess, code: number | null, signal: NodeJS.Signals | null, spawnedAt: number): void {
     console.log(`[opencode] proceso terminó code=${code} signal=${signal}`)
     if (this.child !== child) return // ya reemplazado o detenido intencionalmente
+    this.stopShellBgWake()
     this.child = null
     this.connection = null
     if (this.stopping) return
@@ -272,6 +405,37 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private log(chunk: string): void {
     if (process.env.OPENCODE_SIDECAR_LOG) process.stdout.write(`[opencode] ${chunk}`)
     this.logRing.push(chunk)
+  }
+}
+
+/** Huella de la parte de la config inline que depende de Ajustes y conectores (permisos de conectores y subagentes del Chat). */
+function inlineKey(permission: Record<string, unknown>, chatSubagents: boolean): string {
+  return `${chatSubagents ? 'chat-task' : 'no-chat-task'}|${permissionFingerprint(permission)}`
+}
+
+/**
+ * `bgshell` del sidecar principal (F8-B204): `userData/shell-bg/code` (una carpeta por motor), preparada ANTES de cada arranque (0700,
+ * avisos vaciados) y su bloque `mcp`. El MCP se lanza con el Node incluido de la app y, en macOS/Linux, con `MCP_ENV_WRAPPER` (no
+ * hereda la contraseña del motor ni la config inline). `null` si no se puede ofrecer o algo falla: el motor arranca igual sin él.
+ */
+function prepareMainShellBg(): { block: Record<string, unknown>; eventsFile: string } | null {
+  try {
+    const nodePath = runtimesService().bins().node
+    const scriptPath = bundledShellBgPath()
+    if (!nodePath || !scriptPath) return null
+    const paths = shellBgPaths(join(app.getPath('userData'), 'shell-bg', 'code'))
+    prepareShellBgDirs(paths)
+    const block = shellBgMcpConfig({
+      nodePath,
+      scriptPath,
+      baseDir: paths.baseDir,
+      eventsFile: paths.eventsFile,
+      ...(process.platform === 'win32' ? {} : { commandPrefix: MCP_ENV_WRAPPER })
+    })
+    return block ? { block, eventsFile: paths.eventsFile } : null
+  } catch (err) {
+    console.warn('[opencode] bgshell no disponible:', err instanceof Error ? err.message : err)
+    return null
   }
 }
 

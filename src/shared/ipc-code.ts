@@ -75,6 +75,9 @@ export const CODE_CHANNELS = {
   dialogOpenFolder: 'dialog:openFolder',
   dialogRevealInFinder: 'dialog:revealInFinder',
   dialogOpenInEditor: 'dialog:openInEditor',
+  dialogCheckFolderAccess: 'dialog:checkFolderAccess',
+  dialogOpenFolderPrivacy: 'dialog:openFolderPrivacy',
+  dialogResetFolderPermission: 'dialog:resetFolderPermission',
   // archivos del proyecto: vigilante, gestor y «Abrir en…»
   filesWatch: 'files:watch',
   filesSetDirs: 'files:setDirs',
@@ -100,6 +103,13 @@ export const CODE_EVENTS = {
 // ---------------------------------------------------------------------------
 // Tipos de dominio
 // ---------------------------------------------------------------------------
+
+/** Resultado de leer una carpeta antes de abrirla: `denied` = macOS (u otro permiso) no deja leerla; `timeout` = no respondió. */
+export type FolderAccess = 'ok' | 'denied' | 'missing' | 'timeout'
+/** Resultado de pedir a macOS que vuelva a preguntar por una carpeta. */
+export type FolderResetResult = 'reset' | 'failed' | 'unsupported'
+/** Panel de Ajustes del Sistema que se abre: Archivos y carpetas, o Acceso total al disco. */
+export type FolderPrivacyPane = 'files' | 'allFiles'
 
 export interface PtyCreateRequest {
   cwd: string
@@ -467,6 +477,16 @@ export interface CodeInvokeContract {
   'dialog:openFolder': { req: { title?: string; defaultPath?: string } | undefined; res: string | null }
   'dialog:revealInFinder': { req: { path: string }; res: void }
   'dialog:openInEditor': { req: { path: string }; res: { via: 'code' | 'open' } }
+  /** Lee una entrada de la carpeta (con tiempo límite) para saber si macOS deja a la app leerla antes de abrir el proyecto. */
+  'dialog:checkFolderAccess': {
+    req: { path: string }
+    /** `cause: 'engine'`: Lazunox sí puede leerla, pero el motor (identidad TCC propia, `lazunox-disclaim`) no. */
+    res: { status: FolderAccess; canReset: boolean; cause?: 'app' | 'engine' }
+  }
+  /** Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (solo macOS). */
+  'dialog:openFolderPrivacy': { req: { pane?: FolderPrivacyPane } | undefined; res: void }
+  /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
+  'dialog:resetFolderPermission': { req: { path: string }; res: { result: FolderResetResult } }
 
   'files:watch': { req: { folder: string; subId: string }; res: { mode: FilesWatchMode } }
   'files:setDirs': { req: { subId: string; dirs: string[] }; res: void }
@@ -560,6 +580,9 @@ export interface CodeApi {
     openFolder(opts?: { title?: string; defaultPath?: string }): Promise<string | null>
     revealInFinder(path: string): Promise<void>
     openInEditor(path: string): Promise<{ via: 'code' | 'open' }>
+    checkFolderAccess(path: string): Promise<{ status: FolderAccess; canReset: boolean; cause?: 'app' | 'engine' }>
+    openFolderPrivacy(pane?: FolderPrivacyPane): Promise<void>
+    resetFolderPermission(path: string): Promise<{ result: FolderResetResult }>
   }
   files: {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>

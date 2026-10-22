@@ -1,0 +1,85 @@
+# Cómo resuelve Claude Code los trabajos en segundo plano
+
+Investigación de lectura (2026-10-22) para diseñar los de Lazunox. Leyenda: **[DOC]** = documentación oficial de Anthropic; **[ISSUE]** = solo aparece en issues de github.com/anthropics/claude-code; **[3ROS]** = blogs de terceros (menos fiable); **[NO VERIFICADO]** = no pude leerlo completo.
+
+Fuentes oficiales principales (todas en code.claude.com/docs/en/):
+- Herramientas: https://code.claude.com/docs/en/tools-reference
+- Modo interactivo (backgrounding, Ctrl+B): https://code.claude.com/docs/en/interactive-mode
+- Subagentes: https://code.claude.com/docs/en/sub-agents
+- Variables de entorno: https://code.claude.com/docs/en/env-vars
+- Comandos: https://code.claude.com/docs/en/commands
+- Modo no interactivo: https://code.claude.com/docs/en/headless
+- Hooks: https://code.claude.com/docs/en/hooks
+
+Nota: algunas páginas (sub-agents, env-vars, hooks) se leyeron solo hasta ~100 000 caracteres; el resto **[NO VERIFICADO]**.
+
+## 1. Cómo se lanza, identifica, lista, lee y cancela
+
+### Comando de shell
+- **Lanzar [DOC]**: el modelo pasa `run_in_background: true` a la herramienta Bash (idem PowerShell). Vuelve de inmediato con un **ID de tarea** y la **ruta de un archivo** donde se escribe la salida. El usuario también puede pulsar **Ctrl+B** sobre un Bash en curso (en tmux, dos veces). (tools-reference#background-commands; interactive-mode#how-backgrounding-works)
+- **Auto-segundo plano [DOC]**: si un comando en primer plano llega a su timeout, NO se mata: se mueve a segundo plano (salvo que empiece por `sleep`). El resultado dice «Command did not complete within its 120s timeout and was moved to the background» + ID + ruta de salida. Un `cd` dentro del comando movido no cambia el cwd de la sesión.
+- **Identificar [DOC]**: ID único de tarea; para subagentes, `agent_id` (también visible en hooks).
+- **Listar [DOC]**: comando `/tasks` (alias `/bashes`) muestra shells y subagentes de la sesión, incluidos los terminados. Para el modelo existe `ListAgents` (lista agentes a los que se puede escribir con `SendMessage`). **No hay herramienta documentada para listar shells en segundo plano**; un issue antiguo ya lo pedía [ISSUE #13847 https://github.com/anthropics/claude-code/issues/13847, sin confirmar estado].
+- **Leer salida [DOC]**: la salida se vuelca en streaming a un archivo; el modelo la lee con `Read` (puede leer por rangos/buscar). La herramienta `TaskOutput` fue **eliminada en v2.1.277** (tools-reference). Antes devolvía la salida por ID. No hay API incremental propia: es leer el archivo.
+- **Cancelar [DOC]**: herramienta `TaskStop` (por ID; también acepta teammate o agente en segundo plano por ID o nombre; si el ID no existe, el error lista los agentes en segundo plano). El usuario: `/tasks`. Tras parar desde `/tasks` el modelo «sigue adelante» sin esperar. En macOS/Linux, al parar o al salir se matan también procesos desacoplados (`setsid`, `timeout`).
+
+### Vigilar eventos: herramienta `Monitor` [DOC]
+- Ejecuta un comando en segundo plano y **cada línea de salida llega al modelo como evento** (reacciona a logs, CI, cambios de archivos). Alternativa: abrir un **WebSocket** (`ws` con `url` y `protocols`; mensaje de texto = evento; binario = marcador; >1 MiB termina la vigilancia; cierre del socket termina).
+- Hereda las reglas de permisos de Bash. No está en Bedrock/Vertex/Foundry ni con telemetría desactivada. En Windows requiere Git Bash. Los plugins pueden declarar monitores autoarrancables.
+- Tercero [3ROS]: introducido en v2.1.98 (https://claudelog.com/faqs/what-is-monitor-tool-in-claude-code/).
+
+### Subagente
+- **Lanzar [DOC]**: herramienta `Agent` (antes `Task`). Por defecto, «un subagente que Claude lanza desde la conversación principal empieza en segundo plano». Se puede forzar con `background: true` en el frontmatter del subagente; mover uno en curso con **Ctrl+B** (o botón «Run in background» en VS Code). Variable `CLAUDE_CODE_FORK_SUBAGENT=0` permite que Claude espere en primer plano. (sub-agents#run-subagents-in-foreground-or-background)
+- **Identificar/reanudar [DOC]**: cada invocación crea instancia nueva con `agent_id`; para continuar, el modelo usa `SendMessage` con el ID o nombre en `to`. Los reanudados conservan todo su historial. Explore y Plan son de un solo uso (sin ID, no reanudables). Un subagente detenido por el usuario no se reanuda solo.
+- **Transcripción [DOC]**: `~/.claude/projects/{proyecto}/{sesión}/subagents/agent-{agentId}.jsonl`, se borra tras `cleanupPeriodDays` (30 por defecto).
+- **Listar/cancelar [DOC]**: `/tasks`, `ListAgents`/`/list-agents`, `TaskStop`; atajo **Ctrl+X Ctrl+K** (dos veces en 3 s) para parar todos los subagentes en segundo plano de la sesión.
+- Los nombres exactos de parámetros del `Agent` (descripción, prompt, tipo, etc.) no aparecen en las páginas leídas; sí `name` (equipos), `maxTurns` y `isolation: worktree` como campos de definición del subagente. Parámetros de Bash citados: `run_in_background`, `timeout`.
+
+## 2. Supervisión
+
+| Tema | Valor [DOC] |
+|---|---|
+| Timeout Bash en primer plano | 2 min por defecto (`BASH_DEFAULT_TIMEOUT_MS=120000`), máximo 10 min (`BASH_MAX_TIMEOUT_MS=600000`); el modelo sube el `timeout` por llamada |
+| Límite de tiempo en segundo plano | **Sesión local (terminal/escritorio/VS Code): sin límite.** Sesiones desatendidas (`-p`, SDK, CI, nube): 30 min por defecto (10 min en `-p` con prompt de texto), máximo 2 h; al llegar, se mata y se avisa al modelo («was stopped after reaching its background time limit») |
+| `Monitor` | 5 min por defecto, máximo 30 min (10 min en `-p`); al vencer, un solo aviso al modelo |
+| Sin salida / atascado | Subagentes: `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS`, 10 min. Herramientas MCP: inactividad 5 min (red) / 30 min (stdio), `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`. Una llamada MCP larga pasa a segundo plano a los 2 min (`CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS`). Para shells no hay vigilancia de «sin salida» documentada |
+| Salida | Se escribe a archivo; **>5 GB mata la tarea**. Al terminar: ~30 000 caracteres en línea (máx. 128 000 con `bashOutputMaxChars`); si excede, ruta del archivo (truncado a 64 MiB) + vista previa de 2000 caracteres. Fallo: ~10 000 (cabeza y cola) |
+| Memoria | Linux/WSL: `CLAUDE_CODE_TOOL_MEMORY_LIMIT` (p. ej. `4G`) topa Bash+PowerShell+Monitor de la sesión en conjunto (v2.1.233+). macOS/Linux: con presión crítica de memoria, sesión inactiva ≥30 min y sin turno ni subagente, se paran los shells en segundo plano (`CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1` lo desactiva) |
+| Concurrencia subagentes | 20 simultáneos (`CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`); al pasar, error «Concurrent subagent limit reached». Sin tope de total por sesión (el antiguo tope de 200 se eliminó en v2.1.224). No hay tope documentado de shells |
+| Aviso al terminar | **Subagentes [DOC]**: «los resultados llegan como notificación de finalización en un turno posterior», marcada como evento automático (no mensaje del usuario); Claude espera esa notificación antes de informar. Si falla por error de API, el mensaje incluye su última salida. **Shells**: la propia herramienta dice «You will be notified when it completes» [ISSUE #83627 https://github.com/anthropics/claude-code/issues/83627]; la doc oficial lo implica (en `-p` Claude «toma un turno más con el resultado»: headless#background-tasks-at-exit) pero no lo detalla para modo interactivo |
+| Hooks de aviso [DOC] | `Notification` con tipos `agent_completed`, `agent_needs_input`, `idle_prompt`, `permission_prompt`; `SubagentStart`/`SubagentStop` (con `agent_id`, `agent_type`, `last_assistant_message`; `SubagentStop` puede bloquear con exit 2) |
+| Al cerrar la app [DOC] | Las tareas en segundo plano se limpian al salir (incluye procesos desacoplados en macOS/Linux). Si se «manda la sesión a segundo plano» (`/background`, flecha izquierda) siguen vivas en esa sesión. En `claude -p`: espera hasta 10 min de inactividad (`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS`; 0 = sin tope), salvo mientras un comando del hilo principal siga corriendo. Con SIGTERM mata el árbol de procesos de los Bash activos y ejecuta `SessionEnd` (presupuesto 1,5 s) |
+| Un subagente en primer plano | Sus comandos en segundo plano **terminan cuando termina el subagente**; los del hilo principal o de subagente en segundo plano siguen hasta salir, parar o llegar al límite |
+
+## 3. Seguridad, permisos e interfaz
+
+- **Permisos [DOC]**: los subagentes en segundo plano **elevan cada solicitud de permiso a la sesión principal**, nombrando al subagente. Aprobar permite seguir; **Esc deniega esa llamada sin parar al subagente**. Una concesión «para toda la sesión» dada ahí vale para toda la sesión, también para el hilo principal. `permissionMode` del subagente se ignora si la principal está en `bypassPermissions`, `acceptEdits` o auto. Los mensajes de otros agentes nunca cuentan como aprobación.
+- `Monitor` y Bash comparten reglas allow/deny; en modo auto un clasificador revisa también los comandos de Monitor. El WebSocket pide aprobación propia y se deniegan IPs privadas/link-local/metadata y dominios de `sandbox.network.deniedDomains`.
+- **Sandbox/hooks**: hooks `PreToolUse`/`PermissionRequest` aplican a las llamadas del subagente (reglas de permisos se comprueban en cada llamada; lanzar el subagente no pide permiso). Detalle de sandbox para tareas en segundo plano: **[NO VERIFICADO]**.
+- **Interfaz [DOC]**: `/tasks` (alias `/bashes`) abre el panel de trabajo en segundo plano (filas de subagentes exitosos se quitan al instante; fallidos o parados quedan 30 s; `x` los limpia); Ctrl+B para mandar al fondo; Ctrl+X Ctrl+K para parar subagentes; `Ctrl+T` es la lista de tareas del modelo (otra cosa); `/background` (`/bg`) y `claude agents` / vista de agentes para sesiones enteras en segundo plano; `/stop` para pararlas. `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` lo apaga todo (incluye Ctrl+B y auto-fondo).
+
+## 4. Subagentes: aislamiento, herramientas, profundidad
+
+- **Contexto [DOC]**: ventana nueva y aislada; no ve el historial. Recibe su prompt de sistema, el mensaje de tarea que escribe el padre, CLAUDE.md, snapshot de git status, skills precargadas y lista de hermanos; no hereda memoria automática ni estilo de salida. Solo el **fork** hereda toda la conversación. `isolation: worktree` da copia aislada del repo.
+- **Resultado [DOC]**: el padre solo ve el resultado final, no las llamadas intermedias. Con `maxTurns` alcanzado, el resultado se marca parcial y se puede reanudar. Existe `SubagentHandback` (solo en modo auto) para entregar el informe final, revisado por el clasificador.
+- **Herramientas [DOC]**: sin `tools` ni `disallowedTools` hereda todas las disponibles a subagentes; `tools` = lista blanca; `disallowedTools` = lista negra y gana si hay conflicto. Un subagente **en segundo plano** pierde herramientas: solo conserva Read, Grep, Glob, LSP, Bash, PowerShell, Edit, Write, NotebookEdit, WebFetch, WebSearch, TodoWrite, Skill, ToolSearch, EnterWorktree/ExitWorktree, Monitor, TaskStop, SendMessage, Artifact, SubagentHandback (+ MCP).
+- **Profundidad [DOC]**: hasta 3 capas bajo la principal (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`, 1 = sin anidar); en el límite se retira `Agent` salvo a los forks.
+- **Paralelismo [DOC]**: ver tabla (20 simultáneos). Advertencia oficial: muchos resultados detallados consumen mucho contexto del padre.
+- **Workflow [DOC]**: la herramienta `Workflow` orquesta muchos subagentes en segundo plano y devuelve un resultado consolidado (https://code.claude.com/docs/en/workflows, no leída).
+
+## 5. Limitaciones y quejas conocidas (solo issues; estado incierto, muchos cerrados por inactividad)
+- Tarea en segundo plano lanzada por un subagente en primer plano **muere al volver el subagente** y la notificación prometida nunca llega: #83627 (cerrado «not planned»). Relacionados: #76461, #77554 (huérfanos al acabar el turno del subagente). https://github.com/anthropics/claude-code/issues/83627
+- En `-p`, las tareas se matan al acabar el turno y se pierde la salida: #85129 https://github.com/anthropics/claude-code/issues/85129 (la doc actual ya describe una espera de hasta 10 min, así que puede estar mitigado).
+- Tareas Bash rastreadas muertas 30-90 s tras acabar el turno; `nohup`/`disown` sobreviven: #87496 https://github.com/anthropics/claude-code/issues/87496
+- Windows: marcadas «stopped» aunque el árbol sigue vivo (#84464); Claude Desktop mata el árbol del CLI tras ~15 min de inactividad (#68625); procesos huérfanos bloquean la actualización por archivos en uso (#87813). https://github.com/anthropics/claude-code/issues/84464 · /68625 · /87813
+- `claude -p` por turno: avisos falsos «no completion record from previous session» (#72171).
+- Shells en segundo plano que generan system-reminders repetidos y gastan tokens, incluso tras matarlos: #11716 https://github.com/anthropics/claude-code/issues/11716
+- No hay forma nativa del modelo de listar shells activos (ver §1).
+
+## Lecciones para Lazunox (derivadas, no oficiales)
+1. Archivo de salida por tarea + ID; el modelo lee por rangos (sin `TaskOutput` incremental): barato y simple.
+2. Notificación de fin que despierta al modelo como evento automático, no como mensaje de usuario.
+3. Separar «supervisor de procesos» (límites 5 GB / memoria / tiempo en modo desatendido) de la tarea.
+4. Definir desde el diseño qué pasa con los hijos al terminar el subagente padre y al cerrar la app (la fuente principal de bugs de Claude Code).
+5. Permisos de segundo plano elevados a la UI principal, con denegación por llamada sin matar la tarea.
+6. Herramienta de listar tareas para el modelo (hueco de Claude Code).

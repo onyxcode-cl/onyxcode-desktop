@@ -15,7 +15,7 @@
 import { execFile } from 'node:child_process'
 import { lstatSync, readFileSync, statSync } from 'node:fs'
 import { chmod, lstat, mkdir, mkdtemp, readdir, rename, rm, statfs, writeFile } from 'node:fs/promises'
-import { delimiter, isAbsolute, join, sep } from 'node:path'
+import { isAbsolute, join, sep } from 'node:path'
 import { PinnedDownloadError, pinnedDownload, type PinnedDownloadOptions } from '../tasks/backends/pinned-download'
 import type { FetchLike } from '../remote/tunnel/binary'
 import { fsFailureKind } from '../util/fs-error'
@@ -180,7 +180,7 @@ export function runtimesStatus(d: RuntimeDeps): RuntimesStatus {
 export function scopedPath(platform: string, binDirs: string[]): string {
   const win = platform === 'win32'
   const sys = win ? [join(process.env.SystemRoot || 'C:\\Windows', 'System32')] : ['/usr/bin', '/bin']
-  return [...binDirs, ...sys].join(win ? ';' : delimiter)
+  return [...binDirs, ...sys].join(win ? ';' : ':')
 }
 
 /** Entorno MÍNIMO para ejecutar un runtime: PATH acotado a la propia carpeta del runtime y a las del sistema, sin variables del usuario. */

@@ -14,7 +14,7 @@ import { IS_WIN } from '../lib/proc'
 
 const GO_MODEL = { providerID: 'opencode-go', modelID: 'fake-go-model' }
 const BANNER_TITLE = 'Aún no conectaste ninguna IA'
-const FREE_NOTE = 'Estás usando un modelo gratuito de OpenCode. Conecta una IA para acceder a más modelos.'
+const FREE_NOTE = 'Estás usando un modelo gratuito (más lento y menos preciso). Conecta una IA para acceder a más modelos.'
 const SHOTS = process.env.NOAI_SHOTS_DIR
 
 const apps: E2EApp[] = []

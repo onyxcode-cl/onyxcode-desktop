@@ -387,5 +387,29 @@ export const settings = {
   'settings.doctor.item.disk.title': 'Disk space',
   'settings.doctor.item.disk.ok': 'Enough space',
   'settings.doctor.item.disk.warn': 'Disk space is running low',
-  'settings.doctor.item.screens.title': 'Screens'
+  'settings.doctor.item.screens.title': 'Screens',
+  // Experimental engine features (Settings › Experimental features)
+  'settings.engine.nav': 'Experimental features',
+  'settings.engine.title': 'Experimental features',
+  'settings.engine.desc':
+    'New AI capabilities that are still being tested. They are off by default; turn them on only in the modes where you want to try them.',
+  'settings.engine.experimental': 'Experimental',
+  'settings.engine.restartNote': 'When you change a switch, the AI engine restarts to apply it, but only when nothing is in progress.',
+  'settings.engine.sharedNote':
+    'Chat and Code share the same engine: turning a feature on in one turns it on in the engine for both (permissions still tell them apart). Overdrive runs isolated, with its own engine.',
+  'settings.engine.toggleAria': '{feature} in {mode}',
+  'settings.engine.modesAria': 'Modes where it applies',
+  'settings.engine.codeMode.title': 'Code mode',
+  'settings.engine.codeMode.desc':
+    'The AI writes a small program that uses several connected tools at once: faster and cheaper on long tasks; connectors you haven’t marked as trusted ask for permission on every call.',
+  'settings.engine.codeMode.change':
+    'When on, on long tasks you will see a single action that groups several tool calls instead of one card for each.',
+  'settings.engine.codeMode.chatNote':
+    'Not applicable in Chat: Chat doesn’t use connectors, so there are no tools to group. Turning it on there only turns it on in the engine it shares with Code.',
+  'settings.engine.background.title': 'Background subagents',
+  'settings.engine.background.desc': 'The AI can launch helpers that work in parallel while you keep chatting.',
+  'settings.engine.background.change':
+    'When on, the AI can split up the work and let you know when each helper finishes; you can keep using the conversation meanwhile.',
+  'settings.engine.background.chatNote':
+    'In Chat the AI can only start a helper that searches and reads the web, with the same permissions as Chat (no files or terminal).'
 } as const satisfies Messages<typeof es>

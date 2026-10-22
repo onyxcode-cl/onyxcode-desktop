@@ -192,6 +192,10 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   userInstructions: 'X',
   // «Aprender de las tareas» (memoria aprendida, 2026-10-07): X, como el resto de lo que no se toca desde el celular.
   learningEnabled: 'X',
+  // Funciones experimentales del motor (Modo código, subagentes de fondo): superficie de ataque; el celular NO las enciende.
+  engineExperiments: 'X',
+  // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
+  codeTrustedMcp: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
   opencodeBin: 'X',
   checkUpdates: 'X',
@@ -604,6 +608,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'dialog:openFolder': 'X',
   'dialog:revealInFinder': 'X',
   'dialog:openInEditor': 'X',
+  'dialog:checkFolderAccess': 'X',
+  'dialog:openFolderPrivacy': 'X',
+  'dialog:resetFolderPermission': 'X',
   'editors:list': scoped('R', 'cwd'),
   'editors:open': 'X',
 

@@ -24,6 +24,40 @@ describe('settings:set', () => {
   })
 })
 
+describe('settings:set codeTrustedMcp', () => {
+  const v = IPC_SCHEMAS['settings:set']
+  it('acepta una lista de nombres de conector válidos', () => {
+    expect(v({ codeTrustedMcp: [] })).toEqual({ codeTrustedMcp: [] })
+    expect(v({ codeTrustedMcp: ['gmail', 'mi-crm_2'] })).toEqual({ codeTrustedMcp: ['gmail', 'mi-crm_2'] })
+  })
+  it('rechaza tipos, nombres inválidos y listas desmedidas', () => {
+    expect(() => v({ codeTrustedMcp: 'gmail' })).toThrow()
+    expect(() => v({ codeTrustedMcp: [1] })).toThrow()
+    expect(() => v({ codeTrustedMcp: ['a b'] })).toThrow()
+    expect(() => v({ codeTrustedMcp: [''] })).toThrow()
+    expect(() => v({ codeTrustedMcp: ['x'.repeat(65)] })).toThrow()
+    expect(() => v({ codeTrustedMcp: Array.from({ length: 201 }, (_, i) => `s${i}`) })).toThrow()
+  })
+})
+
+describe('settings:set engineExperiments', () => {
+  const v = IPC_SCHEMAS['settings:set']
+  const off = { chat: false, code: false, tasks: false }
+  const ok = { codeMode: { ...off, code: true }, backgroundSubagents: off }
+  it('acepta el objeto completo de booleanos', () => {
+    expect(v({ engineExperiments: ok })).toEqual({ engineExperiments: ok })
+  })
+  it('rechaza claves extra, no booleanos y objetos incompletos', () => {
+    expect(() => v({ engineExperiments: { ...ok, otro: off } })).toThrow()
+    expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, extra: true } } })).toThrow()
+    expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, code: 'true' } } })).toThrow()
+    expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, code: 1 } } })).toThrow()
+    expect(() => v({ engineExperiments: { codeMode: off } })).toThrow()
+    expect(() => v({ engineExperiments: { codeMode: { chat: true }, backgroundSubagents: off } })).toThrow()
+    expect(() => v({ engineExperiments: true })).toThrow()
+  })
+})
+
 describe('canales de Probar clave y Diagnóstico', () => {
   const CHANNELS = ['app:testProviderKey', 'diag:logs', 'diag:copy', 'diag:export']
 

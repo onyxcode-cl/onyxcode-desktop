@@ -18,6 +18,7 @@ import { runtimesService } from '../runtimes/service'
 import { getOpencodeInfo } from '../opencode/binary'
 import { resolveOpencodeAsync } from '../opencode/server'
 import type { ComputerService } from '../computer/service'
+import { detectFullDiskAccess } from './full-disk'
 import { failureDetail, placementOf, runPreflightChecks, skippedReport, type PreflightDeps } from './service'
 
 export interface PreflightSources {
@@ -79,6 +80,7 @@ function realDeps(): PreflightDeps {
       ? async () => sandboxStatus().then((s) => (s.backend === 'wsl' ? { state: s.state, detail: s.detail } : null))
       : undefined,
     helperPresent: computer ? () => computer.helperPath() !== null : undefined,
+    fullDisk: process.platform === 'darwin' ? () => detectFullDiskAccess() : undefined,
     mac: mac
       ? {
           status: () => computer.status(),
@@ -122,6 +124,7 @@ function testDeps(kind: string): PreflightDeps {
     runtimes: () => ({ offered: process.platform === 'darwin', ready: false, broken: false, sizeBytes: 67_329_746 }),
     sandbox: undefined,
     helperPresent: undefined,
+    fullDisk: process.platform === 'darwin' ? async () => 'denied' : undefined,
     mac:
       process.platform === 'darwin'
         ? { status: async () => ({ accessibility: false, screenRecording: false }), placement: () => 'elsewhere' }

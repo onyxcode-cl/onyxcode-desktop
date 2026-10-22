@@ -74,6 +74,8 @@ describe.skipIf(!DEV)('Ajustes › Diagnóstico', () => {
     await openDiagnostics(page)
     await expectVisible(page.getByText('Funcionando', { exact: true }))
     await expect.poll(() => page.getByTestId('diag-restarts').innerText()).toBe('0')
+    // La fuente por defecto es «Problemas de la app (guardados)» (fcf6d2bc): el registro en vivo del motor se elige a mano.
+    await page.getByLabel('Fuente de registros').selectOption('engine')
     await page.getByRole('button', { name: 'Actualizar', exact: true }).click()
     await expect.poll(() => logText(page), { timeout: 15_000 }).toContain('motor listo para el diagnóstico')
     const text = await logText(page)

@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeSession, resetEventIds, sessionCreated, type TraceEvent } from '../../../../../test/fixtures/events'
 import { rulesetFor } from './permission-rules'
+import { approvalKindOf, rulesetForMode } from '@shared/permission-rules'
 
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
@@ -56,7 +57,25 @@ describe('modo de permisos → sesión del motor', () => {
     expect(st().permissionMode).toBe('manual')
     const rules = rulesetFor('manual') ?? []
     const asked = rules.filter((r) => r.action === 'ask' && r.pattern === '*').map((r) => r.permission)
-    expect(asked).toEqual(['edit', 'write', 'bash', 'webfetch', 'websearch', 'external_directory', 'task'])
+    // `bgshell_start` (F8-B204) pregunta igual que `bash` y va delante del bloque del modo.
+    expect(asked).toEqual(['bgshell_start', 'edit', 'write', 'bash', 'webfetch', 'websearch', 'external_directory', 'task'])
+  })
+
+  it('bgshell (F8-B204): sus reglas van ANTES del bloque del modo y la sesión sigue terminando con él', () => {
+    for (const mode of ['manual', 'acceptEdits', 'plan', 'auto', 'bypass'] as const) {
+      const rules = rulesetFor(mode)
+      expect(rules.slice(0, 5).map((r) => r.permission)).toEqual([
+        'bgshell_start',
+        'bgshell_status',
+        'bgshell_read',
+        'bgshell_stop',
+        'bgshell_list'
+      ])
+      expect(rules.slice(5)).toEqual(rulesetForMode(mode))
+      expect(rules[0]!.action).toBe(mode === 'bypass' ? 'allow' : 'ask')
+    }
+    expect(approvalKindOf(rulesetFor('auto'))).toBe('auto')
+    expect(approvalKindOf(rulesetFor('plan'))).toBe('plan')
   })
 
   it('una sesión NUEVA nace con el ruleset del modo elegido', async () => {

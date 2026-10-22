@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { detectTranslateIntent, languageIn } from './translate-intent'
+import { DOCX_MIME } from './translate-pdf'
 
 const pdf = { mime: 'application/pdf' }
 const txt = { mime: 'text/plain' }
@@ -28,6 +29,14 @@ describe('detectTranslateIntent', () => {
 
   it('devuelve la posición del PDF entre los adjuntos', () => {
     expect(detectTranslateIntent('traduce al inglés', [txt, pdf], 'es')?.fileIndex).toBe(1)
+  })
+
+  it('también ofrece traducir un Word (.docx) y dice de qué tipo es', () => {
+    const word = { mime: DOCX_MIME }
+    expect(detectTranslateIntent('traduce al inglés', [word], 'es')).toEqual({ fileIndex: 0, kind: 'docx', target: 'en' })
+    expect(detectTranslateIntent('traduce al inglés', [pdf], 'es')?.kind).toBe('pdf')
+    // un PDF y un Word a la vez: ambiguo, no se ofrece
+    expect(detectTranslateIntent('traduce al inglés', [pdf, word], 'es')).toBeNull()
   })
 
   it.each([

@@ -14,6 +14,7 @@ import { confirmDialog } from '../../../components/ConfirmDialog'
 import { currentAiGate } from '../../../lib/ai-gate'
 import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
+import { isChildRequest, liveBackgroundChildIds } from '../../code/impl/child-sessions'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
@@ -547,12 +548,15 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
   const text = withAttachments(rawText)
   // Elementos del navegador: texto sintético (+ captura `data:` si la casilla está marcada). El modo selección se apaga al enviar.
   const elementParts = elementPartsOf(useTasks.getState().elements)
+  const prevAttachments = useTasks.getState().attachments
+  const prevElements = useTasks.getState().elements
   useTasks.setState({ attachments: [], elements: [], draft: '' })
   stopPicking({ kind: 'tasks', folder })
   const useModel = sendModel
   const variant = opts?.variant ?? currentTasksVariant()
   const sessions = useSessions.getState()
   let sessionID = useTasks.getState().activeTaskId
+  const createdHere = !sessionID
   if (!sessionID) {
     const folders = extraFolders()
     const res = await client.session.create({
@@ -581,18 +585,49 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
   sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
-  const res = await client.session.promptAsync({
-    sessionID,
-    directory: sdkDir(folder),
-    agent: fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID,
-    model: { providerID: useModel.providerID, modelID: useModel.modelID },
-    ...(variant ? { variant } : {}),
-    system: buildSystemPrompt(),
-    parts: [{ type: 'text', text }, ...elementParts]
-  })
-  if (res.error) {
+  const created = sessionID
+  // Tarea recién creada en este envío cuyo primer mensaje no salió: se deshace para que la persona no pierda lo escrito
+  // (vuelve la pantalla de inicio con el borrador y los adjuntos). En una tarea ya existente el error se queda en ella.
+  const rollbackNew = (): void => {
+    void client.session.delete({ sessionID: created, directory: sdkDir(folder) }).catch(() => undefined)
+    useSessions.getState().removeSession(created)
+    useSessions.setState((s) => {
+      const status = { ...s.status }
+      const errors = { ...s.errors }
+      delete status[created]
+      delete errors[created]
+      return { status, errors }
+    })
+    if (useTasks.getState().activeTaskId === created) useTasks.setState({ activeTaskId: null })
+    forgetTaskMeta(created)
+    void cw('tasks:restore:forget', { sessionId: created }).catch(() => {})
+    setRestoreWarning(created, null)
+    useTasks.setState({ draft: rawText, attachments: prevAttachments, elements: prevElements })
+  }
+  let promptError: unknown
+  try {
+    const res = await client.session.promptAsync({
+      sessionID,
+      directory: sdkDir(folder),
+      agent: fullAccess ? COMPUTER_AGENT_ID : TASKS_AGENT_ID,
+      model: { providerID: useModel.providerID, modelID: useModel.modelID },
+      ...(variant ? { variant } : {}),
+      system: buildSystemPrompt(),
+      parts: [{ type: 'text', text }, ...elementParts]
+    })
+    promptError = res.error
+  } catch (err) {
+    if (!createdHere) throw err
+    rollbackNew()
+    throw err
+  }
+  if (promptError) {
+    if (createdHere) {
+      rollbackNew()
+      throw new Error(errorMessage(promptError))
+    }
     sessions.setStatus(sessionID, 'idle')
-    sessions.setError(sessionID, errorMessage(res.error))
+    sessions.setError(sessionID, errorMessage(promptError))
   }
 }
 
@@ -745,7 +780,19 @@ export async function abortTask(): Promise<void> {
   const { activeTaskId } = useTasks.getState()
   if (!activeTaskId) return
   const { client, folder } = ctx()
+  // Detener la tarea también detiene a sus ayudantes en segundo plano (se piden aparte para no depender de que el motor lo propague).
+  const { sessions, status, messages, errors } = useSessions.getState()
+  const { permissions, questions } = useTasks.getState()
+  const kids = liveBackgroundChildIds({
+    rootId: activeTaskId,
+    sessions,
+    status,
+    messages,
+    errors,
+    pending: [...Object.values(permissions), ...Object.values(questions)].map((x) => x.sessionID)
+  })
   await client.session.abort({ sessionID: activeTaskId, directory: sdkDir(folder) })
+  await Promise.allSettled(kids.map((sessionID) => client.session.abort({ sessionID, directory: sdkDir(folder) })))
 }
 
 export async function replyPermission(requestID: string, reply: 'once' | 'always' | 'reject', message?: string): Promise<void> {
@@ -1017,8 +1064,9 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
  * (solo vale para esta sesión). Con `policy.disableAlwaysAllow` se responde solo `once`.
  */
 export async function replyPermissionAlways(req: PermissionRequest): Promise<void> {
-  const { folder, policy } = useTasks.getState()
-  if (policy?.disableAlwaysAllow) {
+  const { folder, policy, activeTaskId } = useTasks.getState()
+  // Un ayudante (subagente) nunca amplía lo permitido a la tarea: «Siempre» desde una hija vale solo «una vez» y no guarda regla.
+  if (policy?.disableAlwaysAllow || isChildRequest(useSessions.getState().sessions, req.sessionID, activeTaskId)) {
     await replyPermission(req.id, 'once')
     return
   }

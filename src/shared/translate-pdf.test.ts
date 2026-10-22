@@ -53,6 +53,12 @@ describe('buildTranslatePrompt', () => {
     })
     expect(p).not.toContain('highlighted parts')
   })
+  it('para Word dice «Word document» y permite cursiva y subrayado', () => {
+    const p = buildTranslatePrompt({ target: 'en', batch: [seg('d1-0', 'Hola')], glossary: {}, docName: 'a.docx', kind: 'docx' })
+    expect(p).toContain('Word document "a.docx"')
+    expect(p).toContain('<i>…</i> (italic)')
+    expect(buildTranslatePrompt({ target: 'en', batch: [seg('p1-0', 'Hola')], glossary: {}, docName: 'a.pdf' })).not.toContain('italic')
+  })
   it('sin resaltados ni glosario no nombra [[ ]] por id ni glosario', () => {
     const p = buildTranslatePrompt({ target: 'es', batch: [seg('p1-0', 'Hello')], glossary: {}, docName: 'a.pdf' })
     expect(p).not.toContain('highlighted parts')
@@ -120,5 +126,6 @@ describe('trimGlossary / translatedName', () => {
     expect(translatedName('Informe final.PDF', 'en')).toBe('Informe final (en).pdf')
     expect(translatedName('../../etc/x.pdf', 'es')).toBe('.._.._etc_x (es).pdf')
     expect(translatedName('', 'fr')).toBe('documento (fr).pdf')
+    expect(translatedName('Acta final.DOCX', 'en', 'docx')).toBe('Acta final (en).docx')
   })
 })

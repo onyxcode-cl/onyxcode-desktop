@@ -291,6 +291,9 @@ export class AutoApprover {
     if (this.seen.has(key)) return false
     const rootId = await this.resolveRoot(server, p.sessionID)
     if (!this.optedIn(server.folder, rootId)) return false
+    // Una petición de una HIJA (subagente) nunca se aprueba sola: el opt-in es de la tarea raíz y lo que
+    // pide un subagente lo decide la persona. Si la raíz no se pudo resolver, tampoco (podría ser una hija).
+    if (rootId !== p.sessionID) return false
     const verdict = classifyPermission(
       { permission: p.permission, patterns: p.patterns ?? [], metadata: p.metadata },
       { mcpServers: this.deps.mcpServers() }
@@ -376,6 +379,8 @@ export class AutoApprover {
     }
     if (!folder) return null
     if (!this.optedIn(folder, rootId)) return null
+    // Igual que en los permisos: el acceso a apps que pide una hija no se concede solo.
+    if (rootId !== q.sessionId) return null
     const verdict = classifyAccess({ apps: q.apps, plan: q.plan, kind: q.kind, reason: q.reason }, { viewApps: this.load().viewApps })
     if (verdict.decision !== 'allow') return null
     if (rootId) {

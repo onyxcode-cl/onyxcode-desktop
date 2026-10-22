@@ -35,7 +35,7 @@ import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
-import { reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
+import { interruptSettledSessions, reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
@@ -681,10 +681,13 @@ export function handleEvent(event: OcEvent, directory: string): void {
     }
   } else if (event.type === 'permission.asked' && !st.permissions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'approval', t('tasks.notify.approval'), taskTitle(id))
+    // Un ayudante (subagente) pide permiso: el aviso lo dice y abre la tarea raíz.
+    const sub = id !== event.properties.sessionID
+    notifyTask(id, 'approval', t(sub ? 'tasks.notify.approvalSub' : 'tasks.notify.approval'), taskTitle(id))
   } else if (event.type === 'question.asked' && !st.questions[event.properties.id]) {
     const id = rootTaskId(event.properties.sessionID)
-    notifyTask(id, 'question', t('tasks.notify.question'), taskTitle(id))
+    const sub = id !== event.properties.sessionID
+    notifyTask(id, 'question', t(sub ? 'tasks.notify.questionSub' : 'tasks.notify.question'), taskTitle(id))
   }
   switch (event.type) {
     case 'todo.updated':
@@ -1106,7 +1109,10 @@ async function syncRunStatus(client: OpencodeClient, folder: string): Promise<vo
     status
   )
   const next = reconcileRunStatus(status, data, scope)
-  if (next) useSessions.setState({ status: next })
+  if (next) {
+    const messages = interruptSettledSessions(status, next, useSessions.getState().messages)
+    useSessions.setState(messages ? { status: next, messages } : { status: next })
+  }
 }
 
 export async function loadTask(sessionID: string): Promise<void> {

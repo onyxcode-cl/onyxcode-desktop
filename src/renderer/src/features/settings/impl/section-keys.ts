@@ -9,6 +9,7 @@ export const SECTION_KEYS = {
   tasks: ['tasksSettings.'],
   network: ['misc.net.'],
   automode: ['misc.auto.'],
+  engine: ['settings.engine.'],
   computer: ['misc.computer.'],
   browser: ['misc.browser.'],
   mcp: ['mcp.header.', 'mcp.form.', 'mcp.catalog.', 'mcp.flags.', 'mcp.note.', 'mcp.badge.', 'mcp.add', 'mcp.refresh', 'mcp.viewFile'],

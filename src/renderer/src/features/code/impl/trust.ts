@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useCode } from './store'
+import { ensureFolderReadable } from './folder-access'
 
 let pendingTrustResolve: ((trust: boolean) => void) | null = null
 const trustListeners = new Set<(dir: string | null) => void>()
@@ -51,9 +52,13 @@ export function resolveTrust(trust: boolean): void {
   resolve?.(trust)
 }
 
-/** Confirma la confianza (si hace falta) y abre el proyecto. Devuelve `false` si el usuario no confió. */
+/**
+ * Confirma la confianza (si hace falta), comprueba que macOS deja leer la carpeta (F8-B210) y abre el proyecto. Devuelve `false`
+ * si el usuario no confió o si la carpeta no se puede leer (en ese caso queda la tarjeta de permisos y no se arranca el motor).
+ */
 export async function openProjectTrusted(dir: string): Promise<boolean> {
   if (!(await ensureTrusted(dir))) return false
+  if (!(await ensureFolderReadable(dir))) return false
   await useCode.getState().openProject(dir)
   return true
 }

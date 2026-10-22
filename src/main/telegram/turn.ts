@@ -15,6 +15,7 @@ import {
   type TimedFacts,
   type WorkRole
 } from '@shared/conversation-work'
+import { isAbsolute } from 'node:path'
 import { detectDocFiles } from '@shared/doc-files'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import type { EngineMessage, EnginePart } from './engine-link'
@@ -147,7 +148,7 @@ export function analyzeTurn(
   if (opts.files) {
     for (const p of tools) {
       const f = p.state?.input?.filePath ?? p.state?.input?.path
-      if (p.tool === 'write' && p.state?.status === 'completed' && typeof f === 'string' && f.startsWith('/')) created.add(f)
+      if (p.tool === 'write' && p.state?.status === 'completed' && typeof f === 'string' && isAbsolute(f)) created.add(f) // `/x` en POSIX, `C:\x` en Windows
     }
     try {
       // Las salidas se recortan antes de buscar rutas: una salida enorme sin espacios haría lento el detector.

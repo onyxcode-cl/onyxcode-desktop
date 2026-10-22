@@ -1,10 +1,11 @@
-Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `tasks` y `computer`;
+Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `tasks`, `computer`, el subagente de solo lectura `lazunox-helper`
+y `lazunox-chat-helper`, el único que puede lanzar el Chat, con sus mismos permisos;
 `skills/<nombre>/SKILL.md` → `docx`, `xlsx`, `pdf` y `pptx`).
 
 Este directorio es SOLO LECTURA (va dentro del bundle firmado). Al arrancar, main copia `agents/` y
 `skills/` a `userData/opencode-config/` (sobrescribe si cambia la versión de la app, y borra lo que
 ya no exista en el bundle) junto con los plugins generados `plugins/lazunox-env.js` y
-`plugins/lazunox-plan-gate.js`, y es ESE directorio el que se pasa como `OPENCODE_CONFIG_DIR`
+`plugins/lazunox-plan-gate.js` y `plugins/lazunox-subagent-guard.js`, y es ESE directorio el que se pasa como `OPENCODE_CONFIG_DIR`
 (OpenCode escribe en su config dir: `node_modules`, `bun.lock`…). Ver
 `src/main/tasks/opencode-config.ts`. Se fusiona con ~/.config/opencode del usuario. En el
 empaquetado, `agents/**` y `skills/**` van en `asarUnpack` (`electron-builder.js`).

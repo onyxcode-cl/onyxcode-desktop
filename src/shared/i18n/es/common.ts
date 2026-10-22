@@ -125,5 +125,12 @@ export const common = {
   'env.restore.on': 'activo',
   'env.restore.off': 'no disponible en Control total sobre la carpeta personal',
   'perm.details.show': 'Ver detalles',
-  'perm.details.hide': 'Ocultar detalles'
+  'perm.details.hide': 'Ocultar detalles',
+  'conv.shellBgWake.exit': { one: 'Terminó {count} trabajo en segundo plano', other: 'Terminaron {count} trabajos en segundo plano' },
+  'conv.shellBgWake.stuck': {
+    one: '{count} trabajo en segundo plano sin actividad',
+    other: '{count} trabajos en segundo plano sin actividad'
+  },
+  'conv.shellBgWake.batch': { one: 'Aviso de {count} trabajo en segundo plano', other: 'Aviso de {count} trabajos en segundo plano' },
+  'conv.shellBgWake.auto': 'Aviso automático: no lo escribió la persona.'
 } as const

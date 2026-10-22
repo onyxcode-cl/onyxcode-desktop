@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerMonitor, screen } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, Notification, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
@@ -11,6 +11,10 @@ import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
 import { settingsStore } from './store'
+import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
+import { installExecuteWatchdog, tripMessage } from './opencode/execute-watchdog'
+import { normalizeEngineExperiments } from '@shared/engine-experiments'
+import { extrasPrefs } from './extras/prefs'
 import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
 import { cleanLegacyAccountSession } from './legacy-account-cleanup'
@@ -77,6 +81,8 @@ let computerWinOn = false
 let caps = capsOf(false)
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
+  /** Solo con modo Tareas (macOS/Windows con la función activa): lo usa el reinicio por cambio de funciones del motor. */
+  tasks?: EngineFlagsTasks
   busyTaskCount: () => number
   shutdown: () => Promise<void>
   killSync: () => void
@@ -345,6 +351,75 @@ function start(): void {
       // Sin modo Tareas: Rutinas de Chat y Code, y el resto de canales de Tareas/Control/actualizador responden «no disponible».
       tasksMod = registerRoutinesHandlers(ipcMain, () => mainWindow, { getMainConnection: () => server.start(), chatDirectory })
     }
+    // Cambiar Modo código / subagentes de fondo en Ajustes reinicia el motor afectado (solo si cambió su familia y sin turnos en curso).
+    // También relanza (con la misma espera) si cambia la config inline: permisos de conectores en Code y subagentes del Chat (F8-B203).
+    const engineFlags = installEngineFlagsRestart({
+      settings: settingsStore,
+      server,
+      tasks: tasksMod?.tasks,
+      chatDirectory,
+      mainInline: { wanted: () => server.wantedInlineKey(), applied: () => server.appliedInlineKey() },
+      notify: (kind, cause) => {
+        if (!extrasPrefs.get().notificationsEnabled || !Notification.isSupported()) return
+        const key =
+          cause === 'connectors'
+            ? kind === 'pending'
+              ? 'merr.engine.mcp.pending'
+              : 'merr.engine.mcp.restarted'
+            : kind === 'pending'
+              ? 'merr.engine.flags.pending'
+              : 'merr.engine.flags.restarted'
+        new Notification({ title: t('merr.engine.flags.title'), body: t(key), silent: true }).show()
+      }
+    })
+    // Al arrancar, el motor dice qué conectores cargó (también los de ~/.config/opencode y del proyecto): si alguno no tiene regla, se
+    // relanza en cuanto no haya turnos. Un conector añadido desde Ajustes pide lo mismo (`inlineStale`, desde extras-handlers).
+    server.on('connection', () => {
+      void server.refreshEngineMcpServers().then((stale) => {
+        if (stale) engineFlags.recheck()
+      })
+    })
+    server.on('inlineStale', () => engineFlags.recheck())
+    // Vigilante de Modo código: el motor no limita `execute`; si un programa pasa de tiempo/llamadas/salida se aborta su sesión.
+    // Solo observa mientras Modo código esté encendido en algún modo (sidecar principal y servidores vivos de Overdrive).
+    const executeWatchdog = installExecuteWatchdog({
+      enabled: () => {
+        const cm = normalizeEngineExperiments(settingsStore.get().engineExperiments).codeMode
+        return cm.chat || cm.code || cm.tasks
+      },
+      engines: () => {
+        const main = server.getConnection()
+        const list = main ? [{ key: main.baseUrl, baseUrl: main.baseUrl, authorization: main.authorization }] : []
+        for (const s of tasksMod?.tasks?.liveServers() ?? [])
+          list.push({ key: s.baseUrl, baseUrl: s.baseUrl, authorization: s.authorization })
+        return list
+      },
+      describe: (trip) => {
+        const msg = tripMessage(trip)
+        return t(msg.key, msg.params)
+      },
+      onTrip: (trip) => {
+        const msg = tripMessage(trip)
+        const body = t(msg.key, msg.params)
+        recordProblem({
+          source: 'engine',
+          level: 'warn',
+          message: 'Modo código: se abortó un programa execute por pasar un tope',
+          detail: {
+            tope: trip.limit,
+            sesion: trip.sessionID,
+            segundos: Math.round(trip.elapsedMs / 1000),
+            llamadas: trip.calls,
+            bytes: trip.outputBytes
+          }
+        })
+        if (!extrasPrefs.get().notificationsEnabled || !Notification.isSupported()) return
+        new Notification({ title: t('merr.engine.execute.title'), body, silent: true }).show()
+      }
+    })
+    settingsStore.onChange(() => executeWatchdog.refresh())
+    app.once('before-quit', () => executeWatchdog.dispose())
+    server.on('connection', () => executeWatchdog.refresh())
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
     registerRemoteHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })

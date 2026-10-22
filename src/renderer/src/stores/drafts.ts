@@ -23,8 +23,10 @@ function attachBytes(v: unknown): number {
   if (!Array.isArray(v)) return 0
   let n = 0
   for (const a of v) {
-    const url = a && typeof a === 'object' ? (a as { url?: unknown }).url : null
-    if (typeof url === 'string') n += url.length
+    const o = a && typeof a === 'object' ? (a as { url?: unknown; originalDocx?: unknown }) : null
+    if (typeof o?.url === 'string') n += o.url.length
+    // El Word original (para «traducir sin cambiar el diseño») vive en el borrador igual que la URL: cuenta para los topes.
+    if (typeof o?.originalDocx === 'string') n += o.originalDocx.length
   }
   return n
 }

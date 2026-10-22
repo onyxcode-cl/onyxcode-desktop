@@ -85,7 +85,9 @@ describe.skipIf(MODE === 'prod')(`archivos del proyecto: vigilante, gestor y «A
   it('el panel Cambios también se pone al día con un cambio externo', async () => {
     const a = app()
     const page = a.page
-    await page.locator('button[aria-label="Cambios"]').click()
+    // «Cambios» y «Archivos» existen también fuera del panel (filtro de la barra lateral, botón de la barra del proyecto):
+    // las pestañas del panel derecho se buscan dentro de su región, que se nombra con el panel abierto (role=complementary).
+    await page.getByRole('complementary', { name: 'Archivos' }).getByRole('button', { name: 'Cambios', exact: true }).click()
     await expectVisible(
       page
         .getByText('cambiado-fuera.txt')
@@ -95,8 +97,10 @@ describe.skipIf(MODE === 'prod')(`archivos del proyecto: vigilante, gestor y «A
     )
     writeFileSync(join(repo, 'cambiado-fuera.txt'), 'x')
     await expectVisible(page.getByText('cambiado-fuera.txt').first(), 10_000)
+    // Se vuelve a Archivos ANTES de borrar: con el panel Cambios abierto y el archivo seleccionado, borrarlo hace que el panel
+    // pida el contenido de un archivo que ya no existe (404 en consola, ruido que el arnés no permite).
+    await page.getByRole('complementary', { name: 'Cambios' }).getByRole('button', { name: 'Archivos', exact: true }).click()
     rmSync(join(repo, 'cambiado-fuera.txt'))
-    await page.locator('button[aria-label="Archivos"]').click()
     await expectVisible(row(page, 'README.md'), 20_000)
   })
 

@@ -13,3 +13,35 @@ describe('electron-builder: archivos que nunca van en el paquete', () => {
     expect(cfg).toContain(`'${glob}'`)
   })
 })
+
+/**
+ * El servidor MCP de `bgshell` es un `.cjs` GENERADO (`scripts/build-shell-bg.mjs`): tiene que generarse en `build`/`dev`, no
+ * versionarse y viajar FUERA del .asar (Node no ejecuta un script de dentro), y `verify:bundled` tiene que comprobarlo.
+ */
+describe('bgshell: servidor MCP empaquetado', () => {
+  const root = resolve(__dirname, '../..')
+  const read = (f: string): string => readFileSync(resolve(root, f), 'utf8')
+  const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+
+  it('lo generan build y dev (antes de empaquetar)', () => {
+    expect(pkg.scripts['build:shell-bg']).toBe('node scripts/build-shell-bg.mjs')
+    expect(pkg.scripts.build).toContain('npm run build:shell-bg')
+    expect(pkg.scripts.dev).toContain('npm run build:shell-bg')
+    // `package` y `package:win` pasan por `npm run build`.
+    expect(pkg.scripts.package).toContain('npm run build')
+    expect(pkg.scripts['package:win']).toContain('npm run build')
+  })
+  it('sale del asar (asarUnpack) y no se versiona', () => {
+    const cfg = read('electron-builder.js')
+    const unpack = /asarUnpack:\s*\[([\s\S]*?)\n  \]/.exec(cfg)?.[1] ?? ''
+    expect(unpack).toContain("'resources/shell-bg/**'")
+    expect(read('.gitignore')).toMatch(/^resources\/shell-bg\/$/m)
+  })
+  it('el script escribe donde asarUnpack y bundledShellBgPath() esperan', () => {
+    expect(read('scripts/build-shell-bg.mjs')).toContain("'resources/shell-bg/shell-bg-mcp.cjs'")
+    expect(read('src/main/opencode/shell-bg-bundled.ts')).toContain("join('resources', 'shell-bg', 'shell-bg-mcp.cjs')")
+  })
+  it('verify:bundled comprueba el archivo dentro de app.asar.unpacked', () => {
+    expect(read('scripts/verify-bundled.mjs')).toContain('app.asar.unpacked/resources/shell-bg/shell-bg-mcp.cjs')
+  })
+})

@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Circle,
   CircleDot,
+  Code,
   FilePen,
   FilePlus,
   FileSearch,
@@ -238,6 +239,92 @@ export function EditChip({ part, root }: { part: ToolPart; root: string | null }
   )
 }
 
+interface InnerCall {
+  tool: string
+  status: string
+  input: string
+}
+
+/** Entrada de una llamada interna en una línea: lo más reconocible (comando, ruta, URL, búsqueda) o el JSON compacto, recortado. */
+export function summarizeCallInput(input: unknown): string {
+  if (input == null) return ''
+  if (typeof input === 'string') return input.replace(/\s+/g, ' ').trim().slice(0, 120)
+  if (typeof input !== 'object') return String(input)
+  const o = input as Record<string, unknown>
+  for (const k of ['command', 'filePath', 'path', 'url', 'query', 'pattern', 'description']) {
+    if (typeof o[k] === 'string' && o[k]) return (o[k] as string).replace(/\s+/g, ' ').trim().slice(0, 120)
+  }
+  let json = ''
+  try {
+    json = JSON.stringify(o) ?? ''
+  } catch {
+    json = ''
+  }
+  return json === '{}' ? '' : json.length > 120 ? `${json.slice(0, 117)}...` : json
+}
+
+/** Las llamadas que hizo el código del modo código (`metadata.toolCalls`), ya normalizadas; lo que no tiene forma se descarta. */
+export function innerCalls(meta: unknown): InnerCall[] {
+  const raw = meta && typeof meta === 'object' ? (meta as { toolCalls?: unknown }).toolCalls : undefined
+  if (!Array.isArray(raw)) return []
+  const out: InnerCall[] = []
+  for (const c of raw) {
+    if (!c || typeof c !== 'object') continue
+    const o = c as Record<string, unknown>
+    if (typeof o.tool !== 'string' || !o.tool) continue
+    out.push({ tool: o.tool, status: str(o.status) || 'pending', input: summarizeCallInput(o.input) })
+  }
+  return out
+}
+
+const CALL_STATUS_KEY: Record<string, MsgKey> = {
+  running: 'code.tool.execute.running',
+  completed: 'code.tool.execute.completed',
+  error: 'code.tool.execute.error',
+  pending: 'code.tool.execute.pending'
+}
+
+/** Tarjeta del modo código: el código que escribió el agente llama a otras herramientas; cada llamada pide permiso por su cuenta. */
+function ExecuteRow({ part, errorBlock, output }: { part: ToolPart; errorBlock: ReactNode; output: string }): React.JSX.Element {
+  const t = useT()
+  const state = part.state
+  const meta = ('metadata' in state && state.metadata) || {}
+  const calls = innerCalls(meta)
+  const running = state.status === 'running' || state.status === 'pending'
+  return (
+    <Row
+      icon={<Code size={14} />}
+      verb={t('code.tool.execute')}
+      detail={<span className="text-xs">{t('code.tool.execute.calls', { count: calls.length })}</span>}
+      status={state.status}
+      autoOpen={running}
+    >
+      <p className="px-3 pt-2 text-xs text-muted">{t('code.tool.execute.perm')}</p>
+      {calls.length === 0 ? (
+        <p className="px-3 py-2 text-xs text-subtle">{t('code.tool.execute.empty')}</p>
+      ) : (
+        <ul aria-label={t('code.tool.execute.list')} className="flex flex-col gap-1 px-3 py-2 text-xs">
+          {calls.map((c, i) => (
+            <li key={i} className="flex items-baseline gap-2">
+              <span className="shrink-0 font-mono text-fg">{c.tool}</span>
+              <span className={`shrink-0 ${c.status === 'error' ? 'text-danger' : 'text-muted'}`}>
+                {t(CALL_STATUS_KEY[c.status] ?? 'code.tool.execute.pending')}
+              </span>
+              {c.input && (
+                <span className="min-w-0 truncate font-mono text-subtle" title={c.input}>
+                  {c.input}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {errorBlock}
+      {output && <Output text={output} max="max-h-60" />}
+    </Row>
+  )
+}
+
 // Memoizada (F7-B44): `part` conserva su referencia en el store mientras no cambia.
 export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const t = useT()
@@ -253,6 +340,9 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
   const running = state.status === 'running' || state.status === 'pending'
   const tool = part.tool
   const kind = toolKind(tool)
+
+  // Modo código (herramienta `execute`): lista legible de las llamadas internas.
+  if (tool === 'execute') return <ExecuteRow part={part} errorBlock={errorBlock} output={output} />
 
   switch (kind) {
     case 'edit':

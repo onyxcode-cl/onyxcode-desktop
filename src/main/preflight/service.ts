@@ -52,6 +52,8 @@ export interface PreflightDeps {
     status: () => Promise<{ accessibility: boolean; screenRecording: boolean } | null>
     placement: () => AppPlacement
   }
+  /** Solo macOS: ¿tiene la app «Acceso total al disco»? (solo lectura, sin pedir nada). Opcional y silencioso. */
+  fullDisk?: () => Promise<'granted' | 'denied' | 'unknown'>
   freeBytes: () => number | null
   userDataWritable: () => boolean
   /** Un fallo inesperado de una comprobación (se anota en el registro de problemas). */
@@ -143,6 +145,7 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     guard('disk', d.freeBytes),
     guard('storage', d.userDataWritable)
   ])
+  const fullDisk = d.fullDisk ? await guard('files', d.fullDisk, Math.max(ms, 3000)) : null
   const helper = d.helperPresent ? await guard('helper', d.helperPresent) : null
 
   // Carpeta de datos: si no se puede escribir, nada se instala ni se guarda.
@@ -211,6 +214,17 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     } else out.push({ id: 'perms', essential: false, ok: false, installable: false, reason: 'unknown' })
     const place = d.mac.placement()
     out.push({ id: 'location', essential: false, ok: place === null, installable: false, ...(place ? { reason: place } : {}) })
+  }
+
+  // Opcional y silencioso: `ok` solo si está concedido; si no se pudo saber, queda pendiente con `unknown`.
+  if (d.fullDisk) {
+    out.push({
+      id: 'files',
+      essential: false,
+      ok: fullDisk === 'granted',
+      installable: false,
+      ...(fullDisk === 'granted' ? {} : { reason: fullDisk === 'denied' ? 'denied' : 'unknown' })
+    })
   }
 
   return { at: d.now(), platform: d.platform, appVersion: d.appVersion, components: out, freeBytes }

@@ -249,7 +249,8 @@ async function main() {
     }
     try {
       const dom = await evalJs(`(() => {
-        const alert = document.querySelector('[role="alert"]')
+        // Hay una región viva vacía (role="alert") permanente para lectores de pantalla: solo cuenta la que trae texto.
+        const alert = [...document.querySelectorAll('[role="alert"]')].find((e) => e.textContent.trim()) || null
         const overlay = document.querySelector('vite-error-overlay')
         return { fallback: alert && alert.textContent.includes(${JSON.stringify(FALLBACK_TEXT)}) ? alert.textContent.slice(0, 300) : null,
                  overlay: overlay ? (overlay.shadowRoot?.textContent || 'vite-error-overlay').slice(0, 600) : null }
@@ -319,13 +320,14 @@ async function main() {
   for (const mode of ['Chat', 'Code', 'Overdrive', 'Rutinas', 'Chat']) {
     const ok = await step(
       `modo ${mode}`,
-      () => clickBy('nav[aria-label="Modo"]', mode),
-      `document.querySelector('nav[aria-label="Modo"] button[aria-current="page"]')?.textContent.trim().startsWith(${JSON.stringify(mode)})`
+      // El riel de modos es solo íconos: el nombre del modo está en el aria-label del botón, no en su texto.
+      () => clickBy('nav[aria-label="Modo"]', mode, true),
+      `(document.querySelector('nav[aria-label="Modo"] button[aria-current="page"]')?.getAttribute('aria-label') || '').startsWith(${JSON.stringify(mode)})`
     )
     if (!ok) return failures
   }
   if (
-    !(await step('Ajustes', () => clickBy('body', 'Ajustes (', true), `!!document.querySelector('nav[aria-label="Secciones de ajustes"]')`))
+    !(await step('Ajustes', () => clickBy('body', 'Ajustes', true), `!!document.querySelector('nav[aria-label="Secciones de ajustes"]')`))
   )
     return failures
   const sections = await evalJs(

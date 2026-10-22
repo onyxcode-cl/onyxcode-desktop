@@ -1,0 +1,115 @@
+# Prueba real de Code Mode y subagentes en segundo plano (binario 1.19.0 empaquetado)
+
+Fecha: 2026-10-22. Rama `feat/engine-client`. No se tocó código del repo; solo este documento.
+Complementa `ANALISIS-OPENCODE-2-FUNCIONES.md` (§0) y `DISENO-SEGUNDO-PLANO.md`.
+
+## 0. Cómo se probó
+
+- Binario: `resources/opencode-bin/bin/opencode` 1.19.0, `serve --port 47311 --hostname 127.0.0.1`, un solo proceso a la vez, lanzado con `env -i`
+  y `PATH=/usr/bin:/bin`; `HOME` y `XDG_*` en un directorio temporal nuevo (borrado al terminar). No se leyó el `auth.json` ni los datos reales de Lazunox.
+- Config reproducida como la siembra la app: `OPENCODE_CONFIG_DIR` con `agents/{chat,tasks}.md` y `skills/ruta-rapida` copiados de `resources/opencode/`,
+  los plugins `lazunox-env`, `lazunox-session` y `lazunox-plan-gate` (código copiado de `src/main/tasks/opencode-config.ts`) y `OPENCODE_CONFIG_CONTENT` con
+  `autoupdate:false`, `share:'disabled'` y `agent.computer.disable`. El canal lateral del plan-gate fue un servidor HTTP local mío (`/plan-status?session=`,
+  aprobación por sesión). Se añadió un plugin de sondeo que registra cada `tool.execute.before/after`.
+- MCP: dos servidores stdio de Node míos (uno llamado `prueba`, otro `browser`, para ver la inyección de `lazunox_session`) con `eco`, `suma`, `leer` (un archivo de prueba mío) y `ver` (devuelve sus argumentos).
+- Variables: `OPENCODE_EXPERIMENTAL_CODE_MODE=1` y `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1`, por separado y juntas; `OPENCODE_DISABLE_AUTOUPDATE=1`.
+- Modelo: `opencode/deepseek-v4.1-flash-free`. **A mitad de la prueba el nivel gratuito se agotó** (`Free usage exceeded`, `free_tier_limit`, se reabre
+  2026-10-23 00:00 UTC) y `mimo-v2.6-flash-free` también devolvió lo mismo. Por eso quedaron sin probar con modelo los puntos marcados «NO PROBADO».
+- Vía HTTP: `/session`, `prompt_async`, `/session/status`, `/permission`, `/session/:id/children`, `/session/:id/abort`, `/experimental/session/:id/background`, `/global/event` (SSE).
+  Procesos propios muertos por PID; sin Electron, vitest ni commits.
+
+## 1. Code Mode (`OPENCODE_EXPERIMENTAL_CODE_MODE`)
+
+| Pregunta | Resultado | Evidencia |
+| --- | --- | --- |
+| ¿Aparece la herramienta? | Sí: `execute` (`{ code }`). Con la variable, `GET /experimental/tool/ids` añade `execute`; sin ella no está. Su descripción lista las MCP conectadas como `tools.<servidor>.<herramienta>(input)`. | ids con y sin variable |
+| ¿Un programa con 3 herramientas MCP? | Sí. Un solo `execute` con `Promise.all` de `eco`, `suma`, `leer` devolvió los tres resultados; el log del MCP muestra las 3 llamadas. | sesión `cm1` |
+| ¿Cada llamada interna dispara `tool.execute.before/after`? | **Sí.** Por cada interna llega `before` con `tool=prueba_eco` (nombre MCP plano) y `callID=<callID de execute>/<n>`, y `after`. Además se dispara `before` para `execute` mismo. | `probe.log` |
+| ¿Pasa por el plan-gate? | **Sí, doble.** (a) Sin plan aprobado, `execute` mismo se bloquea (no está en `PLAN_GATE_ALLOWED_TOOLS`) y no se llama a ningún MCP. (b) Variante de prueba que dejaba pasar `execute` pero no las internas: el `throw` del gancho en la llamada interna llegó al programa como excepción (`Todavia no hay un plan aprobado…`) y el MCP **no** se ejecutó. | `gate.log`, `mcp.log` vacío |
+| ¿Inyección `lazunox_session` en `browser_*`/`computer_*` dentro de Code Mode? | **Sí.** `tools.browser.ver({x:"1", lazunox_session:"FALSO"})` llegó al MCP con `lazunox_session=<sessionID real>`: el gancho muta `output.args` también en llamadas internas y pisa lo que ponga el modelo. | sesión `g3` |
+| Permiso `deny` sobre una herramienta MCP | **Respetado**: la herramienta desaparece del catálogo del programa (`Unknown tool 'prueba.suma'`); el MCP no se llama. | sesión `cm2` |
+| Permiso `ask` | **Respetado por llamada interna**: aparece `permission.asked` con `permission="prueba_leer"`, `patterns=["*"]` y el `sessionID` de la sesión; con `once` sigue, con `reject` la llamada interna lanza `The user rejected permission…` (el MCP no se llama). Ojo: el programa puede **atrapar** ese error con `try/catch` y seguir con las demás llamadas (no aborta el turno). | sesiones `cm2`, `cm3` |
+| Agente `chat` (`'*': deny`) | **No ve `execute`** (lista: `question, read, webfetch, websearch`). No hace falta nada más. | sesión `chat` |
+| Agentes `tasks` y `build` | Ven `execute`; las MCP quedan accesibles desde el programa. | `t4.py` |
+| ¿Red, archivos, procesos? | **No hay.** Con `typeof`: `fetch`, `require`, `process`, `Bun`, `globalThis`, `Function`, `eval`, `setTimeout`, `Buffer`, `XMLHttpRequest`, `WebSocket` son `undefined`; `import()` da `Syntax 'ImportExpression' is not supported`; `(()=>{}).constructor` → `runtime references are opaque`; `[].constructor` → `Property 'constructor' is not available`. Solo `console`, `JSON`, `Math`, `Date`, `Promise`, etc. | 8 programas de sondeo |
+| Límites | **Sin tiempo máximo ni tope de llamadas ni de salida** (confirma el análisis: Lazunox/1.19 no pasan límites). 1500 llamadas MCP en un programa: todas ejecutadas. Cadena que se duplica 40 veces: `Out of memory` (tope interno de cadena). Un arreglo de 20 millones de `push` se completó en ~2 min (el tope de 10 M es por paso, no total). | sesiones de límites |
+| Bucle infinito | `while(true){ n++ }`: el `execute` queda `running` indefinidamente (probado 76 s, 100 % de un núcleo, memoria del servidor 0,4 → 1,4 GB). **El servidor sigue respondiendo** (`/global/health` ok, otras sesiones usables) porque el intérprete cede el hilo. `POST /session/:id/abort` lo detiene al instante (CPU vuelve a ~0). No hay tiempo límite propio: hay que ponerlo desde fuera. | sesión `loop` |
+
+Notas:
+- Corre **dentro del proceso del servidor** de OpenCode: el bucle consume un núcleo y memoria hasta que alguien aborte.
+- El modelo gratuito a veces se niega a ejecutar un bucle infinito; hizo falta un agente «arnés» de pruebas para forzarlo (no es una defensa).
+- Con la variable, `GET /experimental/tool/ids` mantiene `task`, `bash`, etc.; Code Mode no sustituye las herramientas propias, solo añade `execute` y mete las MCP en su catálogo.
+- `suma` devolvió `"5"` (texto): los resultados MCP de texto llegan como cadena.
+
+## 2. Subagentes en segundo plano (`OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`)
+
+| Pregunta | Resultado | Evidencia |
+| --- | --- | --- |
+| ¿`task` acepta `background=true`? | Con la variable, el esquema de `task` gana el campo `background`; sin ella el parámetro no existe (probado con `/experimental/tool`, y por el código citado en el análisis la herramienta lo rechaza). Con ella, devolvió al instante `<task id="ses_…" state="running">…DO NOT sleep, poll…</task>`. | `/experimental/tool` ×4 combinaciones |
+| ¿El padre recibe el aviso y arranca otro turno solo? | **Sí.** Tras terminar el hijo (~25 s), llegó a la sesión padre un mensaje de usuario `synthetic` `<task id=… state="completed"><summary>…</summary><task_result>hijo listo</task_result></task>` y el padre respondió solo (nuevo `busy` → `idle`). Funcionó siempre (5 de 5 ejecuciones). | sesión `bg1` |
+| Eventos y sesiones hijas | `session.created` del hijo con `parentID` (visible también en `GET /session/:parent/children`). Eventos: `session.status` (`busy`/`idle`), `session.idle`, `message.*` y `session.updated` por cada sesión. Mientras el hijo trabaja, **el padre queda `idle`** y solo el hijo está `busy`: la interfaz no puede deducir «sigue trabajando» mirando solo la sesión padre; hay que mirar los hijos. | `events1.log` |
+| `POST /experimental/session/:id/background` | **Funciona**: con un `task` en primer plano (sleep 45) en curso, la llamada devolvió `true`, el `task` del padre se resolvió con `state="running"` («Background task started»), el padre cerró su turno y, al terminar el hijo (~55 s), llegó el aviso sintético y el padre respondió. | sesión `bg2` |
+| ¿Puerta del plan en la hija? | **Sí, pero por sesión**: el plan-gate corre en la hija con *su* `sessionID`. Con el padre aprobado y la hija no, la hija (agente `general`) recibió `Todavia no hay un plan aprobado…` en `bash` y terminó con ese texto (2 de 2). Con el padre sin aprobar, el propio `task` del padre se bloqueó. Es el mismo comportamiento que en primer plano, pero en segundo plano la hija falla sin que el usuario vea nada hasta el aviso. Para que sirva, el `/plan-status` de main debe resolver `parentID` y heredar la aprobación del padre. | sesión `bg3` |
+| ¿Permisos del padre se aplican a la hija? | **No se heredan.** Padre con `bash: deny` lanzó una hija `general` que ejecutó `bash echo` sin pregunta (la hija solo recibe `task: deny` del sistema). Es un escape de permisos propio de `task` (también en primer plano). El agente `chat` queda a salvo porque `'*': deny` le oculta `task`. Si el subagente declara `bash: ask`, la petición `permission.asked` llega con el `sessionID` **de la hija** (y `tool.callID`), mientras el padre sigue `idle`: la interfaz debe mostrar permisos de sesiones hijas. | sesiones `bg3`, `b4` |
+| Abortar el padre con hijo corriendo | `POST /session/:padre/abort` (padre ya `idle`) **abortó también al hijo** (bash marcado «User aborted the command», `MessageAbortedError`); no llegó aviso al padre. | sesión `bg5-abort` |
+| Reiniciar/matar el servidor con hijo corriendo | **No hay recuperación.** Tras matar el servidor y reiniciarlo, el hijo quedó con su `bash` en estado `running` eterno (parte huérfana), el padre sin aviso, `status` vacío y nadie reanudó nada. El `sleep` lanzado por el hijo siguió vivo como proceso huérfano hasta terminar solo (comprobado con `pgrep`). | sesión `bg5-restart` |
+| ¿Una tarea lanzada por un hijo sobrevive cuando el hijo vuelve? | **NO PROBADO** (se acabó el modelo gratuito). Dato observado: la hija recibe automáticamente `task: deny`, así que por defecto un hijo no puede lanzar nietos; el análisis cita `experimental.subagent_depth` (se dejó en 3 para probar, sin resultado). | — |
+
+## 3. Compatibilidad con lo que usa Lazunox
+
+- Las dos variables, solas o juntas, **no cambian** los permisos efectivos de `chat` (`'*': deny`, `read` con el centinela) ni de `tasks`, ni la lista de skills (`ruta-rapida`, `customize-opencode`), ni el estado de los MCP (`connected`). `GET /agent` y `GET /skill` idénticos en las 4 combinaciones (sin variables, solo CM, solo BG, ambas). Con ambas, `execute` y `background` aparecen a la vez.
+- Los agentes `chat` y `tasks` siguen funcionando con CM+BG; `chat` no recibe `execute` ni `task`.
+- No se determinó con certeza si, con Code Mode activo, las MCP siguen llamables también por su nombre plano (el modelo las usó siempre vía `execute`: `tools.<servidor>.<herramienta>`). Los gates/hooks reciben el nombre plano `servidor_herramienta`, igual que sin Code Mode, así que `browser_*` y `computer_*` se siguen reconociendo.
+- Nada de lo probado exige `OPENCODE_EXPERIMENTAL` a secas; no se usó.
+
+## 4. Tabla por función
+
+| Función | Veredicto | Motivo breve |
+| --- | --- | --- |
+| Code Mode: aparece `execute` y llama varias MCP en un programa | FUNCIONA | 3 herramientas en una llamada. |
+| Code Mode: permisos `deny` por herramienta | FUNCIONA | Sale del catálogo. |
+| Code Mode: permisos `ask` por llamada interna | FUNCIONA CON RESERVAS | Se pide y se respeta, pero el programa puede atrapar el rechazo con `try/catch` y seguir. |
+| Code Mode: ganchos `tool.execute.before/after` y plan-gate en cada llamada interna | FUNCIONA | Bloquea y muta args (`lazunox_session`). |
+| Code Mode: aislamiento (sin `fetch`/`require`/`process`/`Bun`/`Function`/`import`) | FUNCIONA | Todo `undefined` o error. |
+| Code Mode: límites de tiempo, memoria y llamadas | NO FUNCIONA | No hay tiempo ni tope de llamadas ni de salida; el bucle infinito corre hasta abortar y se come un núcleo y memoria en el proceso del servidor. |
+| `task background=true` | FUNCIONA | Con la variable aparece el campo y devuelve `running`. |
+| Aviso de fin y turno automático del padre | FUNCIONA | Mensaje sintético `<task …>`, el padre responde solo. |
+| `/session/:id/children`, `parentID`, eventos | FUNCIONA CON RESERVAS | Visibles; el padre figura `idle` mientras la hija trabaja. |
+| `POST /experimental/session/:id/background` | FUNCIONA | Convierte el `task` en curso y llega el aviso. |
+| Plan-gate en la hija | FUNCIONA CON RESERVAS | Se aplica, pero por `sessionID` de la hija: sin herencia de aprobación, la hija queda bloqueada. |
+| Permisos del padre sobre la hija | NO FUNCIONA | No se heredan (`bash: deny` del padre no frena a `general`). |
+| Abortar el padre con hijo vivo | FUNCIONA CON RESERVAS | Aborta al hijo; el trabajo se pierde sin aviso. |
+| Reinicio del servidor con hijo vivo | NO FUNCIONA | Sin recuperación; parte `running` huérfana; procesos hijos del shell huérfanos. |
+| Hijo lanza nietos / sobreviven | NO PROBADO | Cuota gratuita agotada; por defecto el hijo tiene `task: deny`. |
+| Compatibilidad con agentes `chat`/`tasks`, skills y MCP | FUNCIONA | Sin cambios en `/agent`, `/skill`, `/mcp`. |
+
+## 5. Riesgos de seguridad concretos
+
+1. **Sin límites en Code Mode**: un programa del modelo (o inyectado en un resultado MCP o un documento) puede ocupar un núcleo y gigas del proceso de OpenCode sin tiempo máximo. El servidor sigue vivo, pero la tarea no termina sola.
+2. **Rechazo atrapable**: un `reject` en una llamada interna no detiene el programa; este puede reintentar o seguir con otras herramientas permitidas. El `reject` del usuario debe tratarse como «una llamada», no como «parar».
+3. **Escape de permisos por `task`** (ya existe en primer plano, la variable lo amplifica porque el usuario no mira): la hija no hereda `deny`/`ask` del padre. Hay que declarar subagentes propios con permisos explícitos y negar `general`/`explore` donde no corresponda, o negar `task`.
+4. **Plan-gate por sesión**: las hijas quedan bloqueadas (seguro, fail-closed) pero inútiles hasta resolver herencia; si se «arregla» dejando pasar a hijas sin verificar `parentID`, se abre un hueco.
+5. **Procesos huérfanos**: matar el servidor con un hijo ejecutando `bash` no mata el proceso del comando; reinicio sin reanudación deja partes `running` en la BD.
+6. **Permisos en sesiones hijas**: `permission.asked` llega con el `sessionID` de la hija; el control remoto/celular y la UI deben aceptarlo (si solo filtran por la sesión visible, el hijo queda colgado esperando).
+7. El agente de pruebas confirmó que `lazunox-env` y `lazunox-session` siguen funcionando en llamadas internas; no se detectó fuga del canal `LAZUNOX_PLAN_GATE_URL` (no se probó que `process.env` sea inaccesible desde bash de hijos más allá del plugin existente).
+
+## 6. Qué habría que añadir en Lazunox para activarlas de forma segura
+
+Code Mode:
+- Poner `OPENCODE_EXPERIMENTAL_CODE_MODE=1` en `getOpencodeEnv()` solo para Code y Overdrive (no `OPENCODE_EXPERIMENTAL` a secas). Chat no lo necesita: `'*': deny` ya oculta `execute`.
+- **Vigilante de tiempo en main**: escuchar `message.part.updated` de la herramienta `execute` y, si pasa de N segundos (propuesta: 60), `POST /session/:id/abort`; avisar al usuario. Es lo único que frena un bucle infinito.
+- Mantener `execute` fuera de `PLAN_GATE_ALLOWED_TOOLS` (hoy ya lo está) y no aprobar jamás por nombre; los permisos `ask` deben seguir llegando a la UI y al celular con la regla de siempre.
+- Considerar una regla `deny` sobre `execute` para los agentes donde no se quiera (es el interruptor oficial) y un ajuste visible en Ajustes.
+- Pruebas propias (sin Electron): `tool.execute.before` bloquea dentro de `execute`, deny filtra el catálogo, abort corta un bucle.
+
+Segundo plano:
+- Poner `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1` en Code y Overdrive; **no en Chat** (no tiene `task`).
+- `/plan-status` de `src/main/tasks` debe resolver `parentID` (consultar `GET /session/:id`) y heredar la aprobación del padre (y su revocación), para que las hijas no queden bloqueadas ni queden libres sin plan.
+- Definir subagentes propios (`mode: subagent`) con permisos explícitos (sin `bash: allow` global) en `resources/opencode/agents/`, y negar `general`/`explore` en `tasks`/`computer` si se quiere que el padre no pueda escalar.
+- Estado en la UI: considerar «trabajando» si cualquier sesión hija está `busy` (hoy el padre queda `idle`), suscribirse a `session.created` con `parentID`, mostrar permisos de sesiones hijas, botón «mandar al fondo» con `POST /experimental/session/:id/background`.
+- Tratar el aborto del padre como cancelación del árbol y registrar que se pierde el trabajo; al arrancar tras reinicio, marcar como interrumpidas las partes `running` de hijas y avisar (no hay reanudación; el diseño completo con persistencia es de 2.x).
+- Antes de activarlo: repetir con modelo la prueba de nietos (`subagent_depth`) y una corrida con ambas variables juntas de extremo a extremo (esta quedó solo verificada por esquema y por pruebas separadas), cuando se reabra el nivel gratuito.
+
+## 7. Limpieza
+
+Se mataron solo los PID propios (servidor, canal del plan-gate, lector SSE); no quedaron procesos ni puertos abiertos (47311, 47399); el directorio temporal se borró; `git status` sin cambios salvo este documento.

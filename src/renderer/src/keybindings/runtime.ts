@@ -6,7 +6,7 @@
  */
 import { capsFor, modeAvailable } from '@shared/platform-caps'
 import type { ModeId } from '@shared/types'
-import { useCode } from '../features/code/impl/store'
+import { selectCodeRunOf, useCode } from '../features/code/impl/store'
 import type { RightPanel } from '../features/code/impl/types'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from '../app/modes'
@@ -108,7 +108,7 @@ const BUILTIN: Record<string, ActionHandler> = {
     enabled: () => {
       if (!inCodeProject()) return false
       const st = useCode.getState()
-      const run = st.activeSessionID ? st.runState[st.activeSessionID] : undefined
+      const run = selectCodeRunOf(st, st.activeSessionID)
       return run === 'busy' || run === 'retry'
     },
     run: () => {
