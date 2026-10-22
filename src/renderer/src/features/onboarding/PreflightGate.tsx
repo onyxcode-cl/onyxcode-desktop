@@ -64,12 +64,14 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   const [permsStalled, setPermsStalled] = useState(false)
   const alive = useRef(true)
   const started = useRef(false)
-  useEffect(
-    () => () => {
+  // Se vuelve a marcar vivo al montar: con StrictMode (desarrollo) React monta, desmonta y monta de nuevo el mismo componente, y sin esto la
+  // primera revisión se descartaba (`alive` quedaba en false) y la pantalla se quedaba en «checking» para siempre.
+  useEffect(() => {
+    alive.current = true
+    return () => {
       alive.current = false
-    },
-    []
-  )
+    }
+  }, [])
 
   /** Revisa y decide: mostrar la pantalla o dejar pasar. Con `keepOnClear` (revisión manual) no se cierra sola si no hay nada. */
   const check = useCallback(async (): Promise<void> => {

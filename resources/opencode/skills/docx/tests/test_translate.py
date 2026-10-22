@@ -135,5 +135,97 @@ class TestTraducirWord(unittest.TestCase):
         run("extraer", vacio, "-o", os.path.join(self.d, "v.json"), ok=(2,))
 
 
+@unittest.skipIf(docx is None, "python-docx no instalado")
+class TestCasosBorde(unittest.TestCase):
+    """Hallazgos de la revisión: nada debe perder texto ni tumbar el documento."""
+
+    @classmethod
+    def setUpClass(cls):
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        cls.d = tempfile.mkdtemp(prefix="trdocx2-")
+        d = docx.Document()
+        p = d.add_paragraph("Inicio ")
+        st = OxmlElement("w:smartTag")
+        r = OxmlElement("w:r")
+        t = OxmlElement("w:t")
+        t.text = "Paris city"
+        r.append(t)
+        st.append(r)
+        p._p.append(st)
+        p.add_run(" fin del texto")                                   # 0: smartTag
+        p = d.add_paragraph("Nota importante")
+        r = OxmlElement("w:r")
+        r.append(OxmlElement("w:footnoteReference"))
+        p._p.append(r)                                                # 1: referencia de nota
+        p = d.add_paragraph("Antes")
+        p.add_run().add_break(docx.enum.text.WD_BREAK.PAGE)
+        p.add_run("después del salto")                                # 2: salto de página
+        p = d.add_paragraph("Area en m")
+        p.add_run("2").font.superscript = True                        # 3: superíndice
+        p = d.add_paragraph()
+        p.add_run("Frase larga toda en negrita aquí ").bold = True
+        p.add_run("y un trozo normal")                                # 4: mayoría negrita
+        p = d.add_paragraph()
+        r = p.add_run("Texto con idioma")
+        r.bold = True
+        r.font.color.rgb = RGBColor(0x11, 0x22, 0x33)
+        rpr = r._r.get_or_add_rPr()
+        lang = OxmlElement("w:lang")
+        lang.set(qn("w:val"), "en-US")
+        rpr.append(lang)                                              # 5: w:lang
+        cls.src = os.path.join(cls.d, "src.docx")
+        d.save(cls.src)
+
+    def extraer(self):
+        out = os.path.join(self.d, "s.json")
+        run("extraer", self.src, "-o", out)
+        with open(out, encoding="utf-8") as f:
+            data = json.load(f)
+        return {s["id"]: s["texto"] for s in data["segmentos"]}, data["omitidos"]
+
+    def test_omite_lo_que_no_puede_reescribir_sin_perder_texto(self):
+        segs, omitidos = self.extraer()
+        textos = " | ".join(segs.values())
+        for no_debe in ("Inicio", "Nota importante", "Antes", "Area en m"):
+            self.assertNotIn(no_debe, textos)
+        self.assertEqual(sum(omitidos.values()), 4)
+
+    def test_negrita_mayoritaria_no_contagia_al_trozo_normal(self):
+        segs, _ = self.extraer()
+        self.assertIn("<b>Frase larga toda en negrita aquí </b>y un trozo normal", segs.values())
+        sid = next(k for k, v in segs.items() if v.startswith("<b>Frase"))
+        tj = os.path.join(self.d, "t.json")
+        with open(tj, "w", encoding="utf-8") as f:
+            json.dump({sid: "<b>Long bold sentence here </b>and a plain bit"}, f)
+        out = os.path.join(self.d, "o.docx")
+        run("aplicar", self.src, "-t", tj, "-o", out)
+        runs = {r.text: r for r in docx.Document(out).paragraphs[4].runs}
+        self.assertTrue(runs["Long bold sentence here "].bold)
+        self.assertFalse(runs["and a plain bit"].bold)
+
+    def test_control_en_la_traduccion_no_tumba_el_documento_y_se_quita_el_idioma(self):
+        segs, _ = self.extraer()
+        sid = next(k for k, v in segs.items() if "idioma" in v)
+        tj = os.path.join(self.d, "t2.json")
+        with open(tj, "w", encoding="utf-8") as f:
+            json.dump({sid: "<b><c=#112233>Text\x0b\x00 with language</c></b>"}, f)
+        out = os.path.join(self.d, "o2.docx")
+        run("aplicar", self.src, "-t", tj, "-o", out)
+        r = docx.Document(out).paragraphs[5].runs[0]
+        self.assertEqual(r.text, "Text with language")
+        self.assertIsNone(r._r.find(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lang"))
+        hijos = [h.tag.split("}")[1] for h in r._r.rPr]   # orden del esquema: b antes que color
+        self.assertEqual(hijos, ["b", "color"])
+
+    def test_docx_con_demasiado_contenido_al_descomprimir_se_rechaza(self):
+        import zipfile
+        bomba = os.path.join(self.d, "bomba.docx")
+        with zipfile.ZipFile(bomba, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr("[Content_Types].xml", "<x/>")
+            z.writestr("relleno.bin", b"\0" * (310 * 1024 * 1024))
+        run("extraer", bomba, "-o", os.path.join(self.d, "b.json"), ok=(1,))
+
+
 if __name__ == "__main__":
     unittest.main()

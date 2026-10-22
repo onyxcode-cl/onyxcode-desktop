@@ -50,6 +50,7 @@ except ImportError:  # pragma: no cover
 
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+_SIN_CONTROL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
 TAGS = r"</?[biu]>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>"
 
 
@@ -107,29 +108,59 @@ def _motivo_omision(p):
         return "cuadro de texto"
     if el.xpath(".//w:ins | .//w:del | .//w:moveFrom | .//w:moveTo"):
         return "cambios controlados"
-    if el.xpath(".//w:sdt") or el.xpath(".//w:commentReference"):
+    if el.xpath(".//w:sdt") or el.xpath(".//w:commentReference | .//w:commentRangeStart | .//w:commentRangeEnd"):
         return "control de contenido o comentario"
+    # contenedores de texto que `_runs_de` no recorre: reescribir el párrafo borraría su texto sin que el modelo lo viera
+    if el.xpath(".//w:smartTag | .//w:customXml | .//w:bdo | .//w:dir | .//w:subDoc"):
+        return "etiquetas inteligentes o XML personalizado"
+    if el.xpath(".//w:footnoteReference | .//w:endnoteReference | .//w:sym | .//w:ptab | .//w:annotationRef"):
+        return "nota al pie, símbolo o tabulador de posición"
+    if el.xpath(".//w:br[@w:type='page' or @w:type='column']"):
+        return "salto de página o de columna"
+    if _props_mixtas(p):
+        return "tipos de letra, tamaños, superíndices o estilos de carácter distintos dentro del párrafo"
     return None
 
 
 # ---------------------------------------------------------------- texto <-> etiquetas
 
+def _activo(e, apagados=("0", "false", "off")):
+    return e is not None and e.get(W + "val") not in apagados
+
+
 def _fmt_run(r):
-    """(negrita, cursiva, subrayado, color) efectivos de un <w:r> (solo lo que él declara)."""
+    """(negrita, cursiva, subrayado, color) de un <w:r> (solo lo que él declara)."""
     rpr = r.find(W + "rPr")
     neg = cur = sub = False
     col = None
     if rpr is not None:
-        b = rpr.find(W + "b")
-        neg = b is not None and b.get(W + "val") not in ("0", "false")
-        i = rpr.find(W + "i")
-        cur = i is not None and i.get(W + "val") not in ("0", "false")
-        u = rpr.find(W + "u")
-        sub = u is not None and u.get(W + "val") not in ("none", "0", "false")
+        neg = _activo(rpr.find(W + "b"))
+        cur = _activo(rpr.find(W + "i"))
+        sub = _activo(rpr.find(W + "u"), ("none", "0", "false", "off"))
         c = rpr.find(W + "color")
         if c is not None and c.get(W + "val") not in (None, "auto"):
             col = c.get(W + "val").lower()
     return neg, cur, sub, col
+
+
+# propiedades de letra que NO se etiquetan: si cambian dentro de un párrafo, se deja sin traducir antes que perderlas
+_PROPS_FIJAS = ("rStyle", "rFonts", "sz", "szCs", "vertAlign", "highlight", "shd", "caps", "smallCaps", "strike", "dstrike")
+
+
+def _clave_props(r):
+    rpr = r.find(W + "rPr")
+    if rpr is None:
+        return ()
+    out = []
+    for n in _PROPS_FIJAS:
+        for e in rpr.findall(W + n):
+            out.append((n, tuple(sorted(e.attrib.items()))))
+    return tuple(out)
+
+
+def _props_mixtas(p):
+    claves = {_clave_props(r) for r, _ in _runs_de(p) if _texto_run(r) != ""}
+    return len(claves) > 1
 
 
 def _texto_run(r):
@@ -164,27 +195,22 @@ def _hipervinculos(p):
 
 
 def segmento_de(p):
-    """Texto del párrafo con etiquetas. Lo que todos los runs comparten (p. ej. todo en negrita) no se etiqueta."""
+    """Texto del párrafo con etiquetas: <b> <i> <u> <c=#…> por run y <l=N> por hipervínculo."""
     runs = [(r, k) for r, k in _runs_de(p) if _texto_run(r) != ""]
     if not runs:
         return ""
-    fmts = [_fmt_run(r) for r, _ in runs]
-    # formato base = el que cubre más caracteres; solo se etiqueta lo que se aparta de él
-    peso = {}
-    for (r, _), f in zip(runs, fmts):
-        peso[f] = peso.get(f, 0) + len(_texto_run(r))
-    base = max(peso, key=peso.get)
     partes = []
-    for (r, k), f in zip(runs, fmts):
+    for r, k in runs:
+        neg, cur, sub, col = _fmt_run(r)
         t = _texto_run(r)
-        if f[0] != base[0]:
-            t = "<b>%s</b>" % t if f[0] else t
-        if f[1] != base[1] and f[1]:
+        if neg:
+            t = "<b>%s</b>" % t
+        if cur:
             t = "<i>%s</i>" % t
-        if f[2] != base[2] and f[2]:
+        if sub:
             t = "<u>%s</u>" % t
-        if f[3] != base[3] and f[3]:
-            t = "<c=#%s>%s</c>" % (f[3], t)
+        if col:
+            t = "<c=#%s>%s</c>" % (col, t)
         if k is not None:
             t = "<l=%d>%s</l>" % (k, t)
         partes.append(t)
@@ -251,48 +277,65 @@ def _poner_texto(run_el, texto):
             run_el.append(t)
 
 
+# orden de los hijos de <w:rPr> según el esquema de Word (un orden distinto hace que Word lo repare o lo rechace)
+_ORDEN_RPR = ["rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps", "strike", "dstrike", "outline", "shadow", "emboss", "imprint",
+              "noProof", "snapToGrid", "vanish", "webHidden", "color", "spacing", "w", "kern", "position", "sz", "szCs", "highlight", "u",
+              "effect", "bdr", "shd", "fitText", "vertAlign", "rtl", "cs", "em", "lang", "eastAsianLayout", "specVanish", "oMath"]
+
+
+def _insertar_en_rpr(rpr, el):
+    nombre = el.tag.replace(W, "")
+    pos = _ORDEN_RPR.index(nombre) if nombre in _ORDEN_RPR else len(_ORDEN_RPR)
+    for i, hijo in enumerate(list(rpr)):
+        n = hijo.tag.replace(W, "")
+        if (_ORDEN_RPR.index(n) if n in _ORDEN_RPR else len(_ORDEN_RPR)) > pos:
+            rpr.insert(i, el)
+            return
+    rpr.append(el)
+
+
+def _formatear(r, neg, cur, sub, col):
+    rpr = r.find(W + "rPr")
+    if rpr is None:
+        rpr = OxmlElement("w:rPr")
+        r.insert(0, rpr)
+    if neg:
+        _insertar_en_rpr(rpr, OxmlElement("w:b"))
+    if cur:
+        _insertar_en_rpr(rpr, OxmlElement("w:i"))
+    if sub:
+        u = OxmlElement("w:u")
+        u.set(qn("w:val"), "single")
+        _insertar_en_rpr(rpr, u)
+    if col:
+        c = OxmlElement("w:color")
+        c.set(qn("w:val"), col)
+        _insertar_en_rpr(rpr, c)
+
+
 def reescribir(p, traduccion):
-    """Reemplaza el texto del párrafo `p` por `traduccion` (con etiquetas), conservando el formato del primer run y los enlaces."""
+    """Reemplaza el texto del párrafo `p` por `traduccion` (con etiquetas). Cada trozo parte del primer run (fuente, tamaño…) sin
+    negrita/cursiva/subrayado/color/idioma y recibe solo el formato que pide su etiqueta; los enlaces se conservan."""
     runs = [(r, k) for r, k in _runs_de(p) if _texto_run(r) != ""]
     if not runs:
         return False
-    fmts = [_fmt_run(r) for r, _ in runs]
-    peso = {}
-    for (r, _), f in zip(runs, fmts):
-        peso[f] = peso.get(f, 0) + len(_texto_run(r))
-    base_fmt = max(peso, key=peso.get)
-    # run plantilla: el que tiene el formato base (conserva fuente, tamaño, idioma…)
-    plantilla = next(r for (r, _), f in zip(runs, fmts) if f == base_fmt)
-    plantilla = copy.deepcopy(plantilla)
+    plantilla = copy.deepcopy(runs[0][0])
+    rpr0 = plantilla.find(W + "rPr")
+    if rpr0 is not None:
+        # sin `w:lang`: el idioma original (p. ej. en-US) marcaría la traducción como mal escrita
+        for n in ("b", "bCs", "i", "iCs", "u", "color", "lang"):
+            for e in rpr0.findall(W + n):
+                rpr0.remove(e)
     enlaces = _hipervinculos(p)
     # quitar lo viejo (runs, hipervínculos y marcas de ortografía) y conservar el resto (marcadores, propiedades del párrafo)
     for hijo in list(p._p):
-        if hijo.tag in (W + "r", W + "hyperlink", W + "proofErr", W + "smartTag"):
+        if hijo.tag in (W + "r", W + "hyperlink", W + "proofErr"):
             p._p.remove(hijo)
-    tokens = _tokens(traduccion)
     contenedor_actual, indice_actual = p._p, None
-    for trozo, neg, cur, sub, col, lnk in tokens:
+    for trozo, neg, cur, sub, col, lnk in _tokens(traduccion):
         r = copy.deepcopy(plantilla)
         _poner_texto(r, trozo)
-        # formato: partimos del base y aplicamos lo que pide la etiqueta (la negrita base se conserva si no hay etiqueta)
-        rpr = r.find(W + "rPr")
-        if rpr is None:
-            rpr = OxmlElement("w:rPr")
-            r.insert(0, rpr)
-        if neg and not base_fmt[0]:
-            rpr.append(OxmlElement("w:b"))
-        if cur and not base_fmt[1]:
-            rpr.append(OxmlElement("w:i"))
-        if sub and not base_fmt[2]:
-            u = OxmlElement("w:u")
-            u.set(qn("w:val"), "single")
-            rpr.append(u)
-        if col and col != base_fmt[3]:
-            for viejo in rpr.findall(W + "color"):
-                rpr.remove(viejo)
-            c = OxmlElement("w:color")
-            c.set(qn("w:val"), col)
-            rpr.append(c)
+        _formatear(r, neg, cur, sub, col)
         if lnk is not None and lnk < len(enlaces):
             if indice_actual != lnk:
                 h = OxmlElement("w:hyperlink")
@@ -323,10 +366,23 @@ def _recorrer(documento):
             i += 1
 
 
+MAX_DESCOMPRIMIDO = 300 * 1024 * 1024   # un .docx normal pesa unos MB descomprimido; más que esto es una bomba de compresión
+MAX_ENTRADAS = 5000
+
+
+def _revisar_zip(ruta):
+    if not zipfile.is_zipfile(ruta):
+        error("no es un .docx válido (¿es un .doc antiguo? Guárdalo como .docx).")
+    with zipfile.ZipFile(ruta) as z:
+        info = z.infolist()
+        total = sum(i.file_size for i in info)
+        if len(info) > MAX_ENTRADAS or total > MAX_DESCOMPRIMIDO:
+            error("el .docx es demasiado grande al descomprimirse (%d archivos, %d MB): no se traduce." % (len(info), total // 1048576))
+
+
 def cmd_extraer(a):
     exigir_entrada(a.docx)
-    if not zipfile.is_zipfile(a.docx):
-        error("no es un .docx válido (¿es un .doc antiguo? Guárdalo como .docx).")
+    _revisar_zip(a.docx)
     try:
         d = docx.Document(a.docx)
     except Exception as e:  # noqa: BLE001
@@ -355,6 +411,7 @@ def cmd_aplicar(a):
     exigir_entrada(a.docx)
     exigir_entrada(a.traduccion)
     exigir_salida_nueva(a.salida)
+    _revisar_zip(a.docx)
     with open(a.traduccion, encoding="utf-8") as f:
         tr = json.load(f)
     if isinstance(tr, dict) and "segmentos" in tr:
@@ -371,7 +428,7 @@ def cmd_aplicar(a):
             informe["sin_traduccion"].append(sid)
             continue
         usados.add(sid)
-        nuevo = str(tr[sid])
+        nuevo = _SIN_CONTROL.sub("", str(tr[sid]))   # los caracteres de control no caben en XML: tumbarían todo el documento
         if re.sub(r"\s+", " ", re.sub(TAGS, "", nuevo)).strip() == re.sub(r"\s+", " ", re.sub(TAGS, "", txt)).strip():
             informe["iguales"] += 1   # nombres propios, cifras: se dejan como están
             continue
@@ -380,7 +437,12 @@ def cmd_aplicar(a):
         if len(etq(nuevo)) < len(etq(txt)):
             informe["formato_perdido"] += 1
         n_enlaces = len(_hipervinculos(p))
-        if reescribir(p, nuevo):
+        try:
+            hecho = reescribir(p, nuevo)
+        except Exception:  # noqa: BLE001 — un párrafo malo no debe tumbar el documento entero
+            informe["sin_traduccion"].append(sid)
+            continue
+        if hecho:
             informe["traducidos"] += 1
             usados_l = set(int(m) for m in re.findall(r"<l=(\d+)>", nuevo))
             informe["enlaces_quitados"] += max(0, n_enlaces - len(usados_l))
