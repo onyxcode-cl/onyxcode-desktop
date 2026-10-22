@@ -18,11 +18,6 @@
  * son SOLO 8 líneas: `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` («Lazunox» y
  * `lazunox@localhost.invalid`) en el `env` de los dos lanzamientos con aislamiento. Sin ellas git firmaba con el nombre completo del usuario
  * de macOS y el nombre del equipo. Comando, argumentos, perfil, red, escritura, proxies y limpieza no cambiaron.
- *
- * Actualización DELIBERADA (F8-B208, salida al propio puerto): el fixture se recapturó (y se pasó por Prettier) y el diff es SOLO la línea
- * `(allow network-outbound (remote ip "localhost:51000"))` (el `serverPort`) en los 5 perfiles con puerto del servidor. Sin ella el cliente
- * interno de los plugins del motor no alcanzaba a su propio servidor y `lazunox-subagent-guard` bloqueaba todo `task` en Tareas. Ningún
- * otro destino de red, ni escritura, comando, entorno, proxies o limpieza cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

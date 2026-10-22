@@ -407,13 +407,9 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     lines.push('(allow network-outbound', ...outboundPorts.map((p) => `  (remote ip "localhost:${p}")`), ')')
   }
   if (opts.serverPort) {
-    // Salida SOLO hacia el propio puerto: el cliente interno de los plugins del motor (1.19) llama al servidor por
-    // HTTP (`client.session.get`, `client.app.agents`); sin esto `lazunox-subagent-guard` fallaba cerrado con
-    // «sesión desconocida» en todo `task` de Tareas. No da red: es el mismo proceso sandboxeado (SEGURIDAD.md §3 sexagies ter).
     lines.push(
       `(allow network-bind (local ip "localhost:${opts.serverPort}"))`,
-      `(allow network-inbound (local ip "localhost:${opts.serverPort}"))`,
-      `(allow network-outbound (remote ip "localhost:${opts.serverPort}"))`
+      `(allow network-inbound (local ip "localhost:${opts.serverPort}"))`
     )
   }
   // Puertos efímeros para las conexiones salientes propias del proceso (el kernel asigna el

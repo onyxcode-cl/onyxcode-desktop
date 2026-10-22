@@ -61,16 +61,6 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     expect(out).toMatchSnapshot()
     expect(out).toContain('(remote ip "localhost:40001")')
     expect(out).toContain('(allow network-bind (local ip "localhost:40555"))')
-    // Salida hacia el PROPIO puerto (cliente interno de los plugins del motor), y a ningún otro puerto local.
-    expect(out).toContain('(allow network-outbound (remote ip "localhost:40555"))')
-    const outbound = [...out.matchAll(/\(remote ip "localhost:(\d+)"\)/g)].map((m) => Number(m[1])).sort()
-    expect(outbound).toEqual([40001, 40002, 40555])
-    expect(out).not.toContain('(remote ip "localhost:*")')
-  })
-
-  it('sin serverPort no hay salida hacia ningún puerto local salvo los proxies', () => {
-    const out = buildSandboxProfile({ ...base, allowedOutboundPorts: [40001] })
-    expect([...out.matchAll(/\(remote ip "localhost:(\d+)"\)/g)].map((m) => Number(m[1]))).toEqual([40001])
   })
 
   it('"Permitir borrar" concedido: sin deny de unlink en la principal, scratch sin regla extra', () => {
