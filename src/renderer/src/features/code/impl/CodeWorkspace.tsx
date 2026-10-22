@@ -1000,7 +1000,10 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     if (!focusedDir) return
     let live = true
     void ensureFolderReadable(focusedDir).then((ok) => {
-      if (live && !ok) useCode.getState().declineFocusedProject(focusedDir)
+      if (!live || ok) return
+      // El «Unexpected server error» viene del intento anterior del motor contra esa carpeta: la tarjeta de permisos ya explica la causa.
+      useCode.getState().setGlobalError(null)
+      useCode.getState().declineFocusedProject(focusedDir)
     })
     return () => {
       live = false
