@@ -58,6 +58,8 @@ export interface PdfApplyReport {
   overflow: string[]
   /** Enlaces que no se pudieron conservar. */
   linksDropped: number
+  /** Word: textos cuya traducción perdió parte del formato (negrita, color…). */
+  formatLost?: number
 }
 export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string } | { ok: false; reason: PdfFailReason }
 

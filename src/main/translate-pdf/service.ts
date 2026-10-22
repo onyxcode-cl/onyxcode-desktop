@@ -196,12 +196,14 @@ export class PdfTranslateService {
         letra_reducida?: unknown[]
         no_cabe?: string[]
         enlaces_quitados?: unknown[] | number
+        formato_perdido?: number
       }
       const report: PdfApplyReport = {
         translated: inf.traducidos ?? 0,
         untranslated: inf.sin_traduccion?.length ?? 0,
         shrunk: inf.letra_reducida?.length ?? 0,
         overflow: (inf.no_cabe ?? []).filter((id) => SEGMENT_ID_RE.test(id)),
+        formatLost: inf.formato_perdido ?? 0,
         linksDropped: Array.isArray(inf.enlaces_quitados) ? inf.enlaces_quitados.length : (inf.enlaces_quitados ?? 0)
       }
       const outName = translatedName(meta.name, req.target, kind)

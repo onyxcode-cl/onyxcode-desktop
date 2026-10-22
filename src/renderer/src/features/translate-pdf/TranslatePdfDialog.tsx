@@ -339,6 +339,7 @@ function DoneView({
   const untranslated = r.untranslated + outcome.failedSegments
   if (untranslated > 0) notes.push(t('translate.pdf.doneUntranslated', { n: untranslated }))
   if (outcome.pagesWithoutText.length > 0) notes.push(t('translate.pdf.doneNoText', { pages: outcome.pagesWithoutText.join(', ') }))
+  if ((r.formatLost ?? 0) > 0) notes.push(t('translate.pdf.doneFormat', { n: r.formatLost ?? 0 }))
   if (r.linksDropped > 0) notes.push(t('translate.pdf.doneLinks', { n: r.linksDropped }))
   return (
     <>
@@ -346,7 +347,7 @@ function DoneView({
         <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
         <span className="min-w-0 break-words">{t('translate.pdf.doneTitle', { name: outcome.outName })}</span>
       </p>
-      <p className="mt-2 text-ui text-muted">{t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}</p>
+      <p className="mt-2 text-ui text-muted">{outcome.kind === 'docx' ? t('translate.pdf.doneStatsDoc', { n: r.translated }) : t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}</p>
       {notes.length > 0 && (
         <ul className="mt-2 list-disc space-y-1 pl-5 text-[12.5px] text-muted">
           {notes.map((n) => (

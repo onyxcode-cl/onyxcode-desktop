@@ -72,6 +72,15 @@ describe('tarjeta «¿traducir este PDF sin cambiar el diseño?»', () => {
     expect(m!.q('[data-testid="translate-offer"]')).toBeNull()
   })
 
+  it('un Word adjunto (convertido a texto para la IA) también ofrece la tarjeta y traduce los bytes ORIGINALES', () => {
+    const word = { id: 'w1', name: 'acta.docx', mime: 'text/plain', url: 'data:text/plain;base64,aG9sYQ==', originalDocx: 'UEsDBAo=' }
+    const { onSend } = setup('traduce al inglés', [word])
+    send()
+    expect(onSend).not.toHaveBeenCalled()
+    click(m!.q('[data-testid="translate-offer-yes"]'))
+    expect(openTranslatePdf).toHaveBeenCalledWith({ kind: 'docx', name: 'acta.docx', base64: 'UEsDBAo=', target: 'en' })
+  })
+
   it('«Enviar como mensaje» manda el mensaje tal cual, con el PDF', async () => {
     const { onSend } = setup('traduce esto al inglés', [pdf])
     send()

@@ -40,6 +40,7 @@ export interface TranslateOutcome {
   outName: string
   report: PdfApplyReport
   pages: number
+  kind?: TranslateKind
   pagesWithoutText: number[]
   /** Textos que el modelo no devolvió ni tras reintentar: quedan en el idioma original. */
   failedSegments: number
@@ -133,6 +134,7 @@ export async function translatePdf(
       outName: res.outName,
       report: res.report,
       pages: ex.pages,
+      kind: opts.kind,
       pagesWithoutText: ex.pagesWithoutText,
       failedSegments: failed
     }

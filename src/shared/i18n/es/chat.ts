@@ -174,6 +174,8 @@ export const chat = {
   'translate.pdf.translating': 'Traduciendo… lote {done} de {total}',
   'translate.pdf.writing': 'Escribiendo el documento traducido…',
   'translate.pdf.doneTitle': 'Listo: {name}',
+  'translate.pdf.doneStatsDoc': '{n} textos traducidos.',
+  'translate.pdf.doneFormat': '{n} textos perdieron parte del formato (negrita, color…): revísalos.',
   'translate.pdf.doneStats': '{n} textos traducidos en {pages} páginas.',
   'translate.pdf.doneShrunk': '{n} textos tienen la letra un poco más chica para caber.',
   'translate.pdf.doneOverflow': '{n} textos no caben aunque se achicó la letra: revisa esas partes.',

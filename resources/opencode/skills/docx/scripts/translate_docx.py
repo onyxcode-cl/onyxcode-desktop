@@ -360,7 +360,7 @@ def cmd_aplicar(a):
     if isinstance(tr, dict) and "segmentos" in tr:
         tr = {s["id"]: s.get("traduccion", "") for s in tr["segmentos"] if s.get("traduccion")}
     d = docx.Document(a.docx)
-    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "omitidos": {}, "enlaces_quitados": 0}
+    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "omitidos": {}, "enlaces_quitados": 0, "formato_perdido": 0}
     usados = set()
     for sid, _etq, p, txt in _recorrer(d):
         motivo = _motivo_omision(p)
@@ -375,6 +375,10 @@ def cmd_aplicar(a):
         if re.sub(r"\s+", " ", re.sub(TAGS, "", nuevo)).strip() == re.sub(r"\s+", " ", re.sub(TAGS, "", txt)).strip():
             informe["iguales"] += 1   # nombres propios, cifras: se dejan como están
             continue
+        # el modelo a veces se come etiquetas (<b>, <c=…>…): el texto se traduce igual, pero ese formato se pierde y se avisa
+        etq = lambda t: sorted(re.findall(r"<(?:/?[biu]|c=#[0-9a-fA-F]{6}|/c)>", t))
+        if len(etq(nuevo)) < len(etq(txt)):
+            informe["formato_perdido"] += 1
         n_enlaces = len(_hipervinculos(p))
         if reescribir(p, nuevo):
             informe["traducidos"] += 1
@@ -392,6 +396,8 @@ def cmd_aplicar(a):
         print("AVISO: %d textos sin traducir (quedan en el idioma original): %s" % (len(informe["sin_traduccion"]), ", ".join(informe["sin_traduccion"][:12])))
     for m, n in informe["omitidos"].items():
         print("AVISO: %d párrafos con %s quedaron sin traducir." % (n, m))
+    if informe["formato_perdido"]:
+        print("AVISO: %d textos perdieron parte de su formato (negrita, color…) porque la traducción no trajo las etiquetas." % informe["formato_perdido"])
     if informe["enlaces_quitados"]:
         print("AVISO: %d enlaces no se conservaron (faltó la etiqueta <l=N> en la traducción)." % informe["enlaces_quitados"])
 

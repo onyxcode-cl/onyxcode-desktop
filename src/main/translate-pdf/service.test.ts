@@ -166,7 +166,7 @@ describe('apply / open / save / discard', () => {
     expect(r).toEqual({
       ok: true,
       outName: 'Informe (en).pdf',
-      report: { translated: 2, untranslated: 0, shrunk: 3, overflow: ['p1-1'], linksDropped: 1 }
+      report: { translated: 2, untranslated: 0, shrunk: 3, overflow: ['p1-1'], linksDropped: 1, formatLost: 0 }
     })
     const sent = JSON.parse(readFileSync(join(root, 'jobs', jobId, 'traduccion.json'), 'utf8'))
     expect(sent).toEqual({ 'p1-0': 'one', 'p1-1': 'two' })

@@ -105,6 +105,18 @@ class TestTraducirWord(unittest.TestCase):
         self.assertEqual(d.paragraphs[1].text, "El siniestro fue cubierto.")
         self.assertGreater(len(json.load(open(inf, encoding="utf-8"))["sin_traduccion"]), 3)
 
+    def test_avisa_si_la_traduccion_perdio_etiquetas(self):
+        s = self.segs()
+        sid = next(k for k, v in s.items() if v.startswith("El <b>"))
+        tj = os.path.join(self.d, "tr3.json")
+        with open(tj, "w", encoding="utf-8") as f:
+            json.dump({sid: "The claim was covered."}, f)
+        out = os.path.join(self.d, "out3.docx")
+        inf = os.path.join(self.d, "inf3.json")
+        run("aplicar", self.src, "-t", tj, "-o", out, "--informe", inf)
+        with open(inf, encoding="utf-8") as f:
+            self.assertEqual(json.load(f)["formato_perdido"], 1)
+
     def test_no_sobrescribe_y_rechaza_lo_que_no_es_docx(self):
         out = os.path.join(self.d, "existe.docx")
         open(out, "w").write("x")
