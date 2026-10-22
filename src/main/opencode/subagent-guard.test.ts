@@ -104,6 +104,12 @@ interface World {
   agents?: Record<string, Rule[]>
   agentsFail?: boolean
   noApp?: boolean
+  /**
+   * F8-B208: cómo falla `session.get` cuando el plugin no alcanza a su propio servidor (Overdrive con Seatbelt sin salida al
+   * propio puerto): `throw` = el fetch del cliente lanza (EPERM); `noresponse` = el cliente devuelve `{ error }` sin respuesta
+   * HTTP; `404` = el motor responde que la sesión no existe.
+   */
+  sessionFail?: 'throw' | 'noresponse' | '404'
 }
 
 let dir = ''
@@ -119,7 +125,12 @@ async function load(
   const aborts: string[] = []
   const client = {
     session: {
-      get: async (a: { path?: { id: string } }) => ({ data: a.path ? w.sessions[a.path.id] : undefined }),
+      get: async (a: { path?: { id: string } }) => {
+        if (w.sessionFail === 'throw') throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'EPERM' } })
+        if (w.sessionFail === 'noresponse') return { error: new TypeError('fetch failed'), request: {}, response: undefined }
+        if (w.sessionFail === '404') return { error: { name: 'NotFoundError' }, request: {}, response: { status: 404 } }
+        return { data: a.path ? w.sessions[a.path.id] : undefined }
+      },
       messages: async (a: { path?: { id: string } }) => {
         const agent = a.path && w.userAgent?.[a.path.id]
         return { data: agent ? [{ info: { role: 'user', agent, time: { created: 1 } } }] : [] }
@@ -240,6 +251,23 @@ describe('lazunox-subagent-guard: task no puede dar más libertad que el padre',
     await expect(task(g.before, 'fantasma', 'lazunox-helper')).rejects.toThrow(/sesion desconocida/)
     const g2 = await load({ sessions: { root: { id: 'root' } } }) // sin mensajes de usuario ni session.agent
     await expect(task(g2.before, 'root', 'lazunox-helper')).rejects.toThrow(/agente que lo lanza/)
+  })
+
+  it('F8-B208: si el plugin no alcanza a su propio motor (Seatbelt sin salida al puerto), se bloquea con un motivo distinto', async () => {
+    for (const sessionFail of ['throw', 'noresponse'] as const) {
+      const g = await load(rootOf('tasks', { sessionFail }))
+      // Fail-closed: ni siquiera el ayudante de solo lectura pasa sin poder leer la sesión.
+      await expect(task(g.before, 'root', 'lazunox-helper')).rejects.toThrow(/no se pudo consultar la sesion al motor/)
+      await expect(task(g.before, 'root', 'general')).rejects.toThrow(/bloqueado por Lazunox/)
+    }
+    // El motor responde (404): sigue siendo «sesión desconocida».
+    await expect(task((await load(rootOf('tasks', { sessionFail: '404' }))).before, 'root', 'lazunox-helper')).rejects.toThrow(
+      /sesion desconocida/
+    )
+    // Con el motor alcanzable (perfil corregido) el mismo caso pasa y `general` sigue bloqueado.
+    const ok = await load(rootOf('tasks'))
+    await expect(task(ok.before, 'root', 'lazunox-helper')).resolves.toBeUndefined()
+    await expect(task(ok.before, 'root', 'general')).rejects.toThrow(/mas libertad/)
   })
 
   it('fail-closed: error del motor al listar agentes o cliente sin app', async () => {

@@ -142,17 +142,22 @@ export default {
 
     // El cliente del plugin en el motor 1.19 usa { path: { id } } y responde { data } (verificado con
     // el binario real); se prueba tambien la forma plana por si cambia en otra version.
+    // Devuelve { info, reached }: reached = false si ninguna llamada llego al motor (excepcion, o { error }
+    // sin respuesta HTTP), p. ej. un sandbox sin salida a su propio puerto (F8-B208). Solo cambia el motivo
+    // del bloqueo, no la decision: sin info siempre se bloquea.
     const sessionGet = async (id) => {
+      let reached = false
       for (const args of [{ path: { id } }, { sessionID: id }]) {
         try {
           const r = await client.session.get(args)
+          if (!(r && typeof r === 'object' && 'response' in r && !r.response)) reached = true
           const info = r && typeof r === 'object' && 'data' in r ? r.data : r
-          if (info && typeof info === 'object' && info.id === id) return info
+          if (info && typeof info === 'object' && info.id === id) return { info, reached: true }
         } catch {
           // probar la otra forma
         }
       }
-      return null
+      return { info: null, reached }
     }
     const lastUserAgent = async (id) => {
       for (const args of [{ path: { id }, query: { limit: 30 } }, { sessionID: id, limit: 30 }]) {
@@ -194,8 +199,9 @@ export default {
       const type = output && output.args && output.args.subagent_type
       if (typeof type !== 'string' || !type) deny('falta subagent_type.')
       if (!client || !client.session || !client.app) deny('no se puede verificar el permiso del subagente.')
-      const session = await sessionGet(input.sessionID)
-      if (!session) deny('sesion desconocida.')
+      const got = await sessionGet(input.sessionID)
+      const session = got.info
+      if (!session) deny(got.reached ? 'sesion desconocida.' : 'no se pudo consultar la sesion al motor (sin conexion con el propio servidor).')
       const map = await agents()
       if (!map) deny('no se pudo leer la lista de agentes.')
       const childAgent = map.get(type)
