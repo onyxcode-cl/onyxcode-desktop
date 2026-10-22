@@ -68,11 +68,21 @@ const PLAN: Rule[] = [...BUILD, r('edit', 'deny')]
 const EXPLORE: Rule[] = [r('*', 'deny'), r('read', 'allow'), r('grep', 'allow'), r('glob', 'allow'), r('list', 'allow')]
 const BASH_DENIED: Rule[] = [r('*', 'allow'), r('bash', 'deny')]
 const CHAT: Rule[] = [r('*', 'deny'), r('webfetch', 'allow'), r('websearch', 'allow'), r('question', 'allow')]
+// Chat con subagentes encendidos (F8-B206, config inline de `config.ts`): `read` centinela y `task` con lista blanca.
+const CHAT_SUB: Rule[] = [
+  ...CHAT,
+  r('read', 'deny'),
+  r('read', 'allow', '/__lazunox_sin_acceso__'),
+  r('task', 'deny'),
+  r('task', 'allow', 'lazunox-chat-helper')
+]
 
 const AGENTS: Record<string, Rule[]> = {
   tasks: rulesFromAgentMd('tasks.md'),
   computer: rulesFromAgentMd('computer.md'),
   'lazunox-helper': rulesFromAgentMd('lazunox-helper.md'),
+  'lazunox-chat-helper': rulesFromAgentMd('lazunox-chat-helper.md'),
+  chatsub: CHAT_SUB,
   general: GENERAL,
   build: BUILD,
   plan: PLAN,
@@ -180,6 +190,25 @@ describe('lazunox-subagent-guard: task no puede dar más libertad que el padre',
     const g = await load(rootOf('chat'))
     await expect(task(g.before, 'root', 'general')).rejects.toThrow(/bloqueado/)
     await expect(task(g.before, 'root', 'explore')).rejects.toThrow(/read/) // chat no lee archivos
+  })
+
+  it('Chat con subagentes (F8-B206): chat → lazunox-chat-helper pasa; chat → general / explore / lazunox-helper, bloqueado', async () => {
+    const g = await load(rootOf('chatsub'))
+    await expect(task(g.before, 'root', 'lazunox-chat-helper')).resolves.toBeUndefined()
+    await expect(task(g.before, 'root', 'general')).rejects.toThrow(/bloqueado/)
+    await expect(task(g.before, 'root', 'explore')).rejects.toThrow(/bloqueado/)
+    await expect(task(g.before, 'root', 'lazunox-helper')).rejects.toThrow(/read/)
+    // El `read` centinela del ayudante cuenta: frente a un padre SIN él (CHAT simplificado), el guardián lo ve como escalada.
+    await expect(task((await load(rootOf('chat'))).before, 'root', 'lazunox-chat-helper')).rejects.toThrow(/__lazunox_sin_acceso__/)
+  })
+
+  it('el ayudante del Chat lanzado por una hija del Chat sigue sin poder lanzar nada (task: deny añadido por el motor)', async () => {
+    const g = await load({
+      sessions: { root: { id: 'root' }, kid: { id: 'kid', parentID: 'root', agent: 'lazunox-chat-helper' } },
+      userAgent: { root: 'chatsub' }
+    })
+    await expect(task(g.before, 'kid', 'lazunox-chat-helper')).resolves.toBeUndefined()
+    await expect(task(g.before, 'kid', 'general')).rejects.toThrow(/bloqueado/)
   })
 
   it('computer (Control total) → general / explore: bloqueado o denegado (computer.md ya tiene task: deny)', async () => {

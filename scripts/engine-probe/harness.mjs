@@ -3,7 +3,7 @@
 // El motor corre aislado: entorno mínimo, HOME/XDG temporales (nunca la config real), carpeta de config propia y proceso en su grupo.
 // Uso: `runEngine(bin, escenario)` desde `run.mjs`. Manual: no lo corre `npm test`.
 import { spawn } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
@@ -24,7 +24,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 /**
  * @param {string} bin binario del motor
  * @param {{ plugins?: Record<string,string>, mcpServers?: string[], env?: Record<string,string>, file?: object, inline?: object,
- *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number }} sc
+ *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number, agentsDir?: string }} sc
  */
 export async function runEngine(bin, sc) {
   const root = mkdtempSync(join(tmpdir(), 'lz-engine-probe-'))
@@ -35,6 +35,7 @@ export async function runEngine(bin, sc) {
   mkdirSync(proj)
   mkdirSync(join(cfgdir, 'plugins'), { recursive: true })
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
+  if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
   const seen = { toolsOffered: null, toolMessages: [] }
   const sse = (res, chunks) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })

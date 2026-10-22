@@ -177,6 +177,35 @@ describe('sidecar principal: permisos de los conectores en Code (F8-B203)', () =
   })
 })
 
+describe('sidecar principal: subagentes del Chat (F8-B206)', () => {
+  const prevBin = process.env.OPENCODE_BIN
+  beforeEach(() => {
+    process.env.OPENCODE_BIN = '/bin/sh'
+  })
+  afterEach(() => {
+    if (prevBin === undefined) delete process.env.OPENCODE_BIN
+    else process.env.OPENCODE_BIN = prevBin
+  })
+
+  const chatTask = async (engineExperiments: EngineExperiments): Promise<{ task: unknown; server: OpencodeServer }> => {
+    state.settings = { engineExperiments, language: 'es' }
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    await server.start()
+    const cfg = JSON.parse(state.spawnEnv!.OPENCODE_CONFIG_CONTENT) as { agent: { chat: { permission: { task?: unknown } } } }
+    return { task: cfg.agent.chat.permission.task, server }
+  }
+
+  it('solo con la función encendida para el Chat se abre `task` (únicamente a lazunox-chat-helper)', async () => {
+    expect((await chatTask(exp({ backgroundSubagents: { chat: false, code: true, tasks: false } }))).task).toBeUndefined()
+    const { task, server } = await chatTask(exp({ backgroundSubagents: { chat: true, code: false, tasks: false } }))
+    expect(task).toEqual({ '*': 'deny', 'lazunox-chat-helper': 'allow' })
+    expect(state.spawnEnv!.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBe('true')
+    // Apagarla en el Chat deja la config inline vieja aunque Code mantenga la variable (hay que relanzar).
+    state.settings = { ...state.settings, engineExperiments: exp({ backgroundSubagents: { chat: false, code: true, tasks: false } }) }
+    expect(server.inlineStale()).toBe(true)
+  })
+})
+
 describe('sidecar principal: bgshell (F8-B204)', () => {
   const prevBin = process.env.OPENCODE_BIN
   let dir = ''

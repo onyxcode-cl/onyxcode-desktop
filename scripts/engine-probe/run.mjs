@@ -6,7 +6,8 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { build } from 'esbuild'
 import { runEngine } from './harness.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -166,6 +167,60 @@ if (shellBgCjs) {
   }
   process.on('exit', () => rmSync(sb, { recursive: true, force: true }))
 }
+
+// ── Subagentes en el Chat (F8-B206): config inline REAL (buildInlineConfig) y guardián REAL (subagentGuardPluginSource) ────
+const work = mkdtempSync(join(tmpdir(), 'lz-engine-probe-ts-'))
+process.on('exit', () => rmSync(work, { recursive: true, force: true }))
+/** Importa un módulo TS del repo (empaquetado con esbuild, alias `@shared`). */
+async function tsModule(rel) {
+  const out = join(work, rel.replace(/[\\/]/g, '_') + '.mjs')
+  await build({
+    entryPoints: [join(repo, rel)],
+    bundle: true,
+    format: 'esm',
+    platform: 'node',
+    outfile: out,
+    alias: { '@shared': join(repo, 'src', 'shared') },
+    external: ['electron'],
+    logLevel: 'silent'
+  })
+  return import(pathToFileURL(out).href)
+}
+const { buildInlineConfig } = await tsModule('src/main/opencode/config.ts')
+const { subagentGuardPluginSource } = await tsModule('src/main/opencode/subagent-guard.ts')
+const agentsDir = join(repo, 'resources', 'opencode', 'agents')
+const guard = { 'lazunox-subagent-guard.js': subagentGuardPluginSource() }
+const chatInline = (chatSubagents) => {
+  const { agent } = buildInlineConfig({ chatSubagents })
+  return { agent }
+}
+const task = (subagent_type, extra = {}) => ({
+  name: 'task',
+  args: { subagent_type, description: 'buscar', prompt: 'busca algo', ...extra }
+})
+const taskPart = (r) => r.toolParts.find((p) => p.tool === 'task')
+for (const [label, env, extra] of [
+  ['primer plano', {}, {}],
+  ['segundo plano', { OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'true' }, { background: true }]
+]) {
+  check(
+    `Chat (${label}): con la función encendida lanza lazunox-chat-helper y el guardián lo deja pasar`,
+    { agent: 'chat', agentsDir, plugins: guard, env, inline: chatInline(true), call: task('lazunox-chat-helper', extra) },
+    (r) => taskPart(r)?.status === 'completed' && r.asked.length === 0
+  )
+  for (const other of ['general', 'explore', 'lazunox-helper']) {
+    check(
+      `Chat (${label}): ${other} queda denegado`,
+      { agent: 'chat', agentsDir, plugins: guard, env, inline: chatInline(true), call: task(other, extra) },
+      (r) => !taskPart(r) || taskPart(r).status === 'error'
+    )
+  }
+}
+check(
+  'Chat: con la función apagada no se le ofrece `task`',
+  { agent: 'chat', agentsDir, plugins: guard, inline: chatInline(false), call: task('lazunox-chat-helper') },
+  (r) => Array.isArray(r.toolsOffered) && !r.toolsOffered.includes('task') && !taskPart(r)
+)
 
 let failed = 0
 for (const c of checks) {

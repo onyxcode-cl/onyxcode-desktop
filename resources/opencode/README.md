@@ -1,4 +1,5 @@
-Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `tasks`, `computer` y el subagente de solo lectura `lazunox-helper`;
+Agentes y skills de OpenCode propios de la app (`agents/*.md` → `chat`, `tasks`, `computer`, el subagente de solo lectura `lazunox-helper`
+y `lazunox-chat-helper`, el único que puede lanzar el Chat, con sus mismos permisos;
 `skills/<nombre>/SKILL.md` → `docx`, `xlsx`, `pdf` y `pptx`).
 
 Este directorio es SOLO LECTURA (va dentro del bundle firmado). Al arrancar, main copia `agents/` y

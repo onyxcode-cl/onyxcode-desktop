@@ -16,7 +16,7 @@
  * Los servidores de Control total (sin sandbox) no se relanzan aquí: `restartSandbox` solo cubre el sandbox y pararlos
  * dejaría la interfaz sin servidor; toman el entorno nuevo en su próximo arranque (el monitor los apaga ociosos).
  */
-import { engineFlagEnvFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
+import { engineExperimentsFor, engineFlagEnvFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import type { OpencodeConnection, ServerStatus, Settings } from '@shared/types'
 
 type Env = Record<string, string>
@@ -64,6 +64,15 @@ export interface EngineFlagsRestartDeps {
   /** Reintento mientras haya turnos en curso (ms). */
   retryMs?: number
   now?: () => number
+}
+
+/**
+ * «Entorno» de la familia principal: las variables del sidecar MÁS los subagentes del Chat (F8-B206), que no cambian la variable si
+ * Code ya la tiene encendida pero sí el permiso `task` del agente `chat` en la config inline: también es una función experimental.
+ */
+function mainFlagsOf(s: SettingsLike): Env {
+  const env = engineFlagEnvForMainSidecar(s)
+  return engineExperimentsFor(s, 'chat').backgroundSubagents ? { ...env, 'chat:subagents': 'on' } : env
 }
 
 const sameEnv = (a: Env, b: Env): boolean => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
@@ -130,7 +139,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
   const now = deps.now ?? Date.now
   const first = deps.settings.get()
   // Entorno con el que (se supone) corre cada familia ahora: el de los Ajustes al instalar, y luego el último aplicado.
-  let mainApplied = engineFlagEnvForMainSidecar(first)
+  let mainApplied = mainFlagsOf(first)
   let tasksApplied = engineFlagEnvFor(first, 'tasks')
   let tasksChangedAt = 0
   /** Carpetas de sandbox ya relanzadas desde el último cambio. */
@@ -160,7 +169,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
 
   /** true = nada pendiente en la familia principal. */
   async function settleMain(): Promise<boolean> {
-    const want = engineFlagEnvForMainSidecar(deps.settings.get())
+    const want = mainFlagsOf(deps.settings.get())
     const envSame = sameEnv(want, mainApplied)
     if (envSame && inlineCurrent()) return true
     mainCause = envSame ? 'connectors' : undefined
@@ -251,7 +260,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
 
   const off = deps.settings.onChange((next) => {
     if (disposed) return
-    const mainChanged = !sameEnv(engineFlagEnvForMainSidecar(next), mainApplied) || !inlineCurrent()
+    const mainChanged = !sameEnv(mainFlagsOf(next), mainApplied) || !inlineCurrent()
     const tasksChanged = !sameEnv(engineFlagEnvFor(next, 'tasks'), tasksApplied)
     if (tasksChanged) {
       tasksChangedAt = now()

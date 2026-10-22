@@ -24,12 +24,15 @@ function FeatureBlock({
   feature,
   title,
   desc,
-  change
+  change,
+  chatNote
 }: {
   feature: Feature
   title: string
   desc: string
   change: string
+  /** Qué significa esta función en el Chat (F8-B206). */
+  chatNote: string
 }): React.JSX.Element {
   const t = useT()
   const id = useId()
@@ -57,7 +60,8 @@ function FeatureBlock({
       <p id={`${id}-d`} className="mb-1 text-sm leading-relaxed text-muted">
         {desc}
       </p>
-      <p className="mb-3 text-xs leading-relaxed text-muted">{change}</p>
+      <p className="mb-1 text-xs leading-relaxed text-muted">{change}</p>
+      <p className="mb-3 text-xs leading-relaxed text-muted">{chatNote}</p>
       <Card>
         <div role="group" aria-label={t('settings.engine.modesAria')}>
           {MODES.map((mode) => (
@@ -86,12 +90,14 @@ export function EngineExperimentsSection(): React.JSX.Element {
         title={t('settings.engine.codeMode.title')}
         desc={t('settings.engine.codeMode.desc')}
         change={t('settings.engine.codeMode.change')}
+        chatNote={t('settings.engine.codeMode.chatNote')}
       />
       <FeatureBlock
         feature="backgroundSubagents"
         title={t('settings.engine.background.title')}
         desc={t('settings.engine.background.desc')}
         change={t('settings.engine.background.change')}
+        chatNote={t('settings.engine.background.chatNote')}
       />
       <p className="text-xs leading-relaxed text-muted">{t('settings.engine.sharedNote')}</p>
     </div>

@@ -26,7 +26,7 @@ import { catalogFile, waitForCatalog } from './catalog-wait'
 import { withDisclaim } from '../process/disclaim'
 import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
-import { engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
+import { engineExperimentsFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
@@ -134,9 +134,18 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     })
   }
 
+  /** Subagentes en el Chat (F8-B206): `task` del agente `chat` abierto solo a `lazunox-chat-helper` si la función está encendida. */
+  chatSubagents(): boolean {
+    try {
+      return engineExperimentsFor(settingsStore.get(), 'chat').backgroundSubagents
+    } catch {
+      return false
+    }
+  }
+
   /** Huella de la parte de la config inline que depende de Ajustes y conectores, tal como corresponde AHORA. */
   wantedInlineKey(): string {
-    return permissionFingerprint(this.codeMcpPermission())
+    return inlineKey(this.codeMcpPermission(), this.chatSubagents())
   }
 
   /** Huella con la que arrancó el proceso actual (`null` si no arrancó). */
@@ -260,7 +269,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const shellBg = prepareMainShellBg()
       // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
       const permission = this.codeMcpPermission()
-      this.appliedInline = permissionFingerprint(permission)
+      const chatSubagents = this.chatSubagents()
+      this.appliedInline = inlineKey(permission, chatSubagents)
 
       const childEnv = minimalEnv({
         ...getOpencodeEnv(),
@@ -270,7 +280,9 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         ...engineFlagEnvForMainSidecar(settingsStore.get()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
-        OPENCODE_CONFIG_CONTENT: JSON.stringify(buildInlineConfig({ browserMcp, bgshellMcp: shellBg?.block ?? null, permission }))
+        OPENCODE_CONFIG_CONTENT: JSON.stringify(
+          buildInlineConfig({ browserMcp, bgshellMcp: shellBg?.block ?? null, permission, chatSubagents })
+        )
       })
       const child = spawn(exec.command, exec.args, {
         cwd: this.options.chatDirectory,
@@ -394,6 +406,11 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     if (process.env.OPENCODE_SIDECAR_LOG) process.stdout.write(`[opencode] ${chunk}`)
     this.logRing.push(chunk)
   }
+}
+
+/** Huella de la parte de la config inline que depende de Ajustes y conectores (permisos de conectores y subagentes del Chat). */
+function inlineKey(permission: Record<string, unknown>, chatSubagents: boolean): string {
+  return `${chatSubagents ? 'chat-task' : 'no-chat-task'}|${permissionFingerprint(permission)}`
 }
 
 /**

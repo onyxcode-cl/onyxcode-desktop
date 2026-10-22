@@ -21,6 +21,13 @@ import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
  */
 export const CHAT_READ_SENTINEL = '/__lazunox_sin_acceso__'
 
+/**
+ * Único subagente que el Chat puede lanzar (F8-B206): `resources/opencode/agents/lazunox-chat-helper.md`, con EXACTAMENTE los
+ * permisos del agente `chat` (todo denegado salvo web y el `read` centinela), así que no escala nada y el guardián de subagentes
+ * (`subagent-guard.ts`) lo deja pasar; `general`, `explore` y los demás quedan en `deny`.
+ */
+export const CHAT_HELPER_AGENT = 'lazunox-chat-helper'
+
 export interface InlineConfigOptions {
   /** Bloque `mcp.browser` ya resuelto (o null si el MCP del navegador integrado no arrancó). */
   browserMcp?: Record<string, unknown> | null
@@ -30,6 +37,12 @@ export interface InlineConfigOptions {
    * `bash`) van en `permission` (`bgshellConfigPermission`) y en el bloque de modo de cada sesión de Code (`bgshellSessionRules`).
    */
   bgshellMcp?: Record<string, unknown> | null
+  /**
+   * Subagentes en el Chat (F8-B206): con `true` el agente `chat` puede lanzar `lazunox-chat-helper` (y solo ese) con `task`. Se pasa
+   * `engineExperimentsFor(ajustes, 'chat').backgroundSubagents`: la variable de subagentes en segundo plano es POR PROCESO y Chat y
+   * Code comparten motor, así que lo que separa al Chat es este permiso, no la variable. Apagado = `task` denegado como siempre.
+   */
+  chatSubagents?: boolean
   /**
    * Bloque `permission` de la config (vale para todos los agentes del sidecar; los de `'*': deny` como `chat` siguen denegando porque
    * su permiso de agente va después). Lo construye `buildCodeMcpPermission` (`code-mcp-permission.ts`): conectores en Code (F8-B203).
@@ -247,7 +260,9 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           // rechaza toda petición cuya lista de herramientas no incluya `read`. Con `read: deny` (o `'*': deny` a secas)
           // el motor lo quita de la lista. Truco: la última regla de `read` no es `'*'`, así que el motor lo anuncia,
           // pero ninguna ruta real coincide con el patrón permitido y toda lectura se deniega.
-          read: { '*': 'deny', [CHAT_READ_SENTINEL]: 'allow' }
+          read: { '*': 'deny', [CHAT_READ_SENTINEL]: 'allow' },
+          // Subagentes (F8-B206): solo el ayudante del Chat, y solo con la función encendida para el Chat.
+          ...(opts.chatSubagents ? { task: { '*': 'deny', [CHAT_HELPER_AGENT]: 'allow' } } : {})
         }
       },
       computer: { disable: true }

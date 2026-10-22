@@ -77,4 +77,11 @@ describe('EngineExperimentsSection', () => {
     expect(host.textContent).toContain('Chat y Code comparten el mismo motor')
     expect(host.textContent).toContain('Overdrive corre aislado')
   })
+
+  it('explica qué significa cada función en el Chat (F8-B206: Modo código no aplica; subagentes = ayudante web)', () => {
+    mount()
+    const groups = [...host.querySelectorAll('section[role="group"]')]
+    expect(groups[0]!.textContent).toContain('En el Chat no aplica')
+    expect(groups[1]!.textContent).toContain('ayudante que busca y lee en la web')
+  })
 })

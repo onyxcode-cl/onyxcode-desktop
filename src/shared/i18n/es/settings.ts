@@ -401,8 +401,12 @@ export const settings = {
     'La IA escribe un pequeño programa que usa varias herramientas conectadas de una vez: más rápido y barato en tareas largas; los conectores que no marcaste como de confianza piden permiso en cada llamada.',
   'settings.engine.codeMode.change':
     'Al encenderlo, en tareas largas verás una sola acción que agrupa varias llamadas a herramientas en lugar de una tarjeta por cada una.',
+  'settings.engine.codeMode.chatNote':
+    'En el Chat no aplica: el Chat no usa conectores, así que no hay herramientas que agrupar. Encenderlo ahí solo enciende el motor que comparte con Code.',
   'settings.engine.background.title': 'Subagentes en segundo plano',
   'settings.engine.background.desc': 'La IA puede lanzar ayudantes que trabajan en paralelo mientras sigues conversando.',
   'settings.engine.background.change':
-    'Al encenderlo, la IA podrá repartir el trabajo y avisarte cuando cada ayudante termine; puedes seguir usando la conversación mientras tanto.'
+    'Al encenderlo, la IA podrá repartir el trabajo y avisarte cuando cada ayudante termine; puedes seguir usando la conversación mientras tanto.',
+  'settings.engine.background.chatNote':
+    'En el Chat la IA solo puede lanzar un ayudante que busca y lee en la web, con los mismos permisos que el Chat (sin archivos ni terminal).'
 } as const

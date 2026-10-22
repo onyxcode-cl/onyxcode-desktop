@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildInlineConfig, CHAT_READ_SENTINEL } from './config'
+import { buildInlineConfig, CHAT_HELPER_AGENT, CHAT_READ_SENTINEL } from './config'
 
 describe('buildInlineConfig (sidecar principal)', () => {
   it('fija share:disabled y autoupdate:false, con y sin navegador', () => {
@@ -110,5 +110,38 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
     expect(CHAT_READ_SENTINEL.startsWith('/')).toBe(true)
     expect(CHAT_READ_SENTINEL).not.toMatch(/[*?]/)
     expect(chatMd).toContain(`read: "*": deny "${CHAT_READ_SENTINEL}": allow`)
+  })
+})
+
+describe('Chat: subagentes (F8-B206)', () => {
+  type ChatPerm = Record<string, unknown>
+  const chatPerm = (chatSubagents?: boolean): ChatPerm =>
+    (buildInlineConfig({ chatSubagents }) as { agent: { chat: { permission: ChatPerm } } }).agent.chat.permission
+  const helperMd = readFileSync(resolve(__dirname, '../../../resources/opencode/agents/lazunox-chat-helper.md'), 'utf8')
+
+  it('apagado (por defecto): sin `task`, como siempre', () => {
+    expect(chatPerm()).not.toHaveProperty('task')
+    expect(chatPerm(false)).not.toHaveProperty('task')
+  })
+
+  it('encendido: `task` solo para lazunox-chat-helper (lista blanca, no allow global) y lo demás igual', () => {
+    const p = chatPerm(true)
+    expect(Object.entries(p.task as Record<string, string>)).toEqual([
+      ['*', 'deny'],
+      [CHAT_HELPER_AGENT, 'allow']
+    ])
+    const { task: _t, ...rest } = p
+    expect(rest).toEqual(chatPerm(false))
+  })
+
+  it('el ayudante tiene EXACTAMENTE los permisos del Chat salvo `question` (no escala nada) y no lanza subagentes', () => {
+    const head = helperMd
+      .split('\n---\n')[0]!
+      .replace(/\s*#.*$/gm, '')
+      .replace(/\s+/g, ' ')
+    expect(head).toContain('mode: subagent')
+    expect(head).toContain(`permission: "*": deny webfetch: allow websearch: allow read: "*": deny "${CHAT_READ_SENTINEL}": allow`)
+    expect(head).not.toMatch(/\b(task|bash|edit|write|question|glob|grep|list):/)
+    expect(CHAT_HELPER_AGENT).toBe('lazunox-chat-helper')
   })
 })

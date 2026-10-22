@@ -404,8 +404,12 @@ export const settings = {
     'The AI writes a small program that uses several connected tools at once: faster and cheaper on long tasks; connectors you haven’t marked as trusted ask for permission on every call.',
   'settings.engine.codeMode.change':
     'When on, on long tasks you will see a single action that groups several tool calls instead of one card for each.',
+  'settings.engine.codeMode.chatNote':
+    'Not applicable in Chat: Chat doesn’t use connectors, so there are no tools to group. Turning it on there only turns it on in the engine it shares with Code.',
   'settings.engine.background.title': 'Background subagents',
   'settings.engine.background.desc': 'The AI can launch helpers that work in parallel while you keep chatting.',
   'settings.engine.background.change':
-    'When on, the AI can split up the work and let you know when each helper finishes; you can keep using the conversation meanwhile.'
+    'When on, the AI can split up the work and let you know when each helper finishes; you can keep using the conversation meanwhile.',
+  'settings.engine.background.chatNote':
+    'In Chat the AI can only start a helper that searches and reads the web, with the same permissions as Chat (no files or terminal).'
 } as const satisfies Messages<typeof es>

@@ -78,6 +78,13 @@ describe('reinicio al cambiar las funciones experimentales', () => {
     expect(h.server.restart).not.toHaveBeenCalled()
   })
 
+  it('subagentes del Chat (F8-B206): con Code ya encendido la variable no cambia, pero sí el permiso del Chat → reinicia', async () => {
+    const h = harness({ engineExperiments: on({ backgroundSubagents: flag(false, true, false) }) })
+    await h.change({ engineExperiments: on({ backgroundSubagents: flag(true, true, false) }) })
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.notify).toHaveBeenCalledWith('restarted')
+  })
+
   it('un cambio solo de Tareas no toca el sidecar principal', async () => {
     const live: EngineFlagsLiveServer[] = [
       { folder: '/p', directory: '/p', fullAccess: false, baseUrl: 'http://t', authorization: 'b', startedAt: 1 }
