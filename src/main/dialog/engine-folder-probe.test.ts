@@ -49,6 +49,13 @@ describe('probeFolderAsEngine (execFile simulado)', () => {
   })
   it('otros fallos no bloquean; un nombre de archivo en stdout no cuenta como denegado', () => {
     expect(classifyEngineProbe({ error: err(1), stdout: '', stderr: 'Unknown command' })).toBe('ok')
+    // TCC real, medido en la app instalada: el motor oculta el EPERM y solo dice «Unexpected» con código 1.
+    expect(classifyEngineProbe({ error: err(1), stdout: '', stderr: 'error: An unknown error occurred (Unexpected)\n' })).toBe('denied')
+    expect(classifyEngineProbe({ error: err(1), stdout: '', stderr: 'Error: Unexpected error\n\nPath escapes the location' })).toBe(
+      'denied'
+    )
+    // …pero un subcomando desconocido o el uso del comando NO bloquea.
+    expect(classifyEngineProbe({ error: err(1), stdout: '', stderr: 'Usage: opencode debug file <command>' })).toBe('ok')
     expect(classifyEngineProbe({ error: err('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', { killed: true }), stdout: '', stderr: '' })).toBe('ok')
     expect(classifyEngineProbe({ error: null, stdout: 'operation not permitted', stderr: '' })).toBe('ok')
     expect(classifyEngineProbe({ error: err('EACCES'), stdout: '', stderr: '' })).toBe('denied')

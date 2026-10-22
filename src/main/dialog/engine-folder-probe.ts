@@ -51,6 +51,11 @@ export function classifyEngineProbe(r: RunResult): EngineProbeResult {
   if (r.error.code === 'EACCES' || r.error.code === 'EPERM') return 'denied'
   if (r.error.code === 'ENOENT') return 'unavailable'
   if (DENIED_RE.test(text)) return 'denied'
+  // Con TCC el motor NO escribe EPERM: envuelve el error y solo dice «An unknown error occurred (Unexpected)» con código 1 (el EPERM queda
+  // en su registro). Medido en la app instalada: carpeta legible → lista JSON y código 0; carpeta denegada → «Unexpected» y código 1. Como
+  // esta sonda solo corre cuando Lazunox SÍ puede leer la carpeta, ese fallo es el permiso del motor. Solo se acepta con ese texto exacto,
+  // para no bloquear por otros fallos (p. ej. una versión del motor sin este subcomando, que muestra el uso, no «Unexpected»).
+  if (typeof r.error.code === 'number' && /\(Unexpected\)|\bUnexpected error\b/i.test(text)) return 'denied'
   // Cualquier otro fallo (versión del motor sin este subcomando, etc.): no bloquea; lo informará el motor.
   return 'ok'
 }

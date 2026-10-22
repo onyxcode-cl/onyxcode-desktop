@@ -66,6 +66,7 @@ import { ChangesPanel } from './panels/ChangesPanel'
 import { FilesPanel } from './panels/FilesPanel'
 import { TerminalPanel } from './panels/TerminalPanel'
 import { ShellRunProvider } from './ShellRunProvider'
+import { ensureFolderReadable } from './folder-access'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
 import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootSessionID, selectCodeRunOf, useCode } from './store'
@@ -991,6 +992,20 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
       if (!ok) useCode.getState().declineFocusedProject(dir)
     })
   }, [client])
+
+  // Cualquier carpeta que reciba el foco (barra lateral, chip, búsqueda…) se comprueba igual que al abrirla: la comprobación de «Abrir carpeta»
+  // no cubre esas vías, y con el permiso del motor denegado la persona solo vería «Unexpected server error».
+  const focusedDir = useCode((s) => s.directory)
+  useEffect(() => {
+    if (!focusedDir) return
+    let live = true
+    void ensureFolderReadable(focusedDir).then((ok) => {
+      if (live && !ok) useCode.getState().declineFocusedProject(focusedDir)
+    })
+    return () => {
+      live = false
+    }
+  }, [focusedDir])
 
   const [rootRef, containerWidth] = useElementWidth()
   const projectPickerOpen = useCode((s) => s.projectPickerOpen)
