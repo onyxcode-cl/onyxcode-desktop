@@ -48,8 +48,8 @@ afterEach(async () => {
 })
 
 describe('carpeta denegada por macOS', () => {
-  it('causa «motor»: texto propio, sin «Volver a preguntar a macOS» y sin abrir; «Volver a comprobar» re-ejecuta la sonda', async () => {
-    native.dialog.checkFolderAccess.mockResolvedValue({ status: 'denied', canReset: false, cause: 'engine' } as never)
+  it('causa «motor»: texto propio que nombra «Lazunox Motor», con «Volver a preguntar a macOS» y sin abrir; «Volver a comprobar» re-ejecuta la sonda', async () => {
+    native.dialog.checkFolderAccess.mockResolvedValue({ status: 'denied', canReset: true, cause: 'engine' } as never)
     let ok = true
     await act(async () => {
       ok = await openProjectTrusted(dir)
@@ -59,11 +59,12 @@ describe('carpeta denegada por macOS', () => {
     const card = host.querySelector('[role="alertdialog"]')!
     expect(card.textContent).toContain('macOS no dejó al motor de Lazunox leer esta carpeta')
     expect(card.textContent).toContain('Archivos y carpetas')
-    expect(card.textContent).toContain('«opencode»')
-    expect(card.textContent).not.toContain('Volver a preguntar a macOS')
+    expect(card.textContent).toContain('«Lazunox Motor»')
+    expect(card.textContent).not.toContain('opencode')
+    expect(card.textContent).toContain('Volver a preguntar a macOS')
     expect(card.textContent).not.toMatch(/tccutil|sudo|Terminal/)
     expect(card.textContent).toContain('Elegir otra carpeta')
-    expect(document.activeElement?.textContent).toBe('Abrir Ajustes del Sistema')
+    expect(document.activeElement?.textContent).toBe('Volver a preguntar a macOS')
     const btn = (label: string): HTMLElement => [...host.querySelectorAll('button')].find((b) => b.textContent === label)!
     native.dialog.checkFolderAccess.mockResolvedValue({ status: 'ok', canReset: false, cause: 'app' } as never)
     await act(async () => btn('Volver a comprobar').click())

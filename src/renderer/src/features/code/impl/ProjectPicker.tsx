@@ -50,9 +50,10 @@ function FolderAccessCard(): React.JSX.Element | null {
   }, [blocked])
   if (!blocked) return null
   const { dir, reason, cause, resetFailed } = blocked
-  // Causa «motor»: «Volver a preguntar a macOS» no sirve (tccutil no restablece un ejecutable suelto); ver folder-access.ts.
+  // Causa «motor»: el motor es la mini-app «Lazunox Motor» (id propio), así que «Volver a preguntar a macOS» también sirve: el
+  // restablecimiento incluye su id (folder-access.ts, resetFolderPermission).
   const engine = cause === 'engine'
-  const canReset = !engine && blocked.canReset
+  const canReset = blocked.canReset
   const close = (): void => setBlockedFolder(null)
   const btn =
     'rounded-lg px-3 py-1.5 text-sm font-medium desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] bg-elevated text-fg border border-border hover:bg-hover'
@@ -86,7 +87,7 @@ function FolderAccessCard(): React.JSX.Element | null {
         {canReset && !resetFailed && (
           <p className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">{t('code.folderAccess.askAgainTip')}</p>
         )}
-        {resetFailed && !engine && (
+        {resetFailed && (
           <p role="status" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
             {t('code.folderAccess.resetFailed')}
           </p>

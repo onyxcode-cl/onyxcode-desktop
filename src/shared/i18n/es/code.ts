@@ -268,12 +268,12 @@ export const code = {
   'code.folderAccess.resetFailed':
     'No se pudo pedir a macOS que vuelva a preguntar. Abre Ajustes del Sistema y actívalo a mano. Si no aparece la ventana, cierra y abre Lazunox.',
   'code.folderAccess.askAgainTip':
-    '«Volver a preguntar a macOS» borra solo la respuesta de Lazunox para esta zona y macOS vuelve a mostrar «Permitir / No permitir». Si no aparece la ventana, cierra y abre Lazunox.',
+    '«Volver a preguntar a macOS» borra solo la respuesta de Lazunox y de su motor («Lazunox Motor») para esta zona y macOS vuelve a mostrar «Permitir / No permitir». Si no aparece la ventana, cierra y abre Lazunox.',
   'code.folderAccess.engineTitle': 'macOS no dejó al motor de Lazunox leer esta carpeta',
   'code.folderAccess.engineBody':
-    'Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (o Acceso total al disco), activa «opencode» (o «Lazunox») y vuelve a abrir la carpeta con «Volver a comprobar».',
+    'Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (o Acceso total al disco), activa «Lazunox Motor» y vuelve a abrir la carpeta con «Volver a comprobar». Si dijiste «No permitir» y ya no te lo pregunta, pulsa «Volver a preguntar a macOS»: macOS volverá a mostrar el aviso.',
   'code.folderAccess.engineBodyTimeout':
-    'macOS puede estar preguntando si el motor de Lazunox («opencode») puede leer esta carpeta. Responde «Permitir» en el aviso y pulsa «Volver a comprobar». Si no ves ningún aviso, abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas y activa «opencode» (o «Lazunox»).',
+    'macOS puede estar preguntando si el motor de Lazunox («Lazunox Motor») puede leer esta carpeta. Responde «Permitir» en el aviso y pulsa «Volver a comprobar». Si no ves ningún aviso, abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas y activa «Lazunox Motor».',
   'code.folderAccess.retry': 'Volver a comprobar',
   'code.picker.dialogTitle': 'Abrir carpeta de proyecto',
   'code.picker.worktreeDesktopOnly': 'Los worktrees requieren la app de escritorio (no disponible en este cliente).',

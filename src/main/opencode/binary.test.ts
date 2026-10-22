@@ -222,15 +222,18 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
     writeFileSync(loose, '#!/bin/sh\n')
     chmodSync(loose, 0o755)
     // Sin mini-app: el suelto de siempre (paquete viejo o a medias, que no deja la app sin motor).
-    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: macRes, platform: 'darwin' })).toBe(loose)
+    const noAppData = join(dir, 'AppDataVacio')
+    const mac = (extra: object = {}): string | null =>
+      bundledOpencodePath({ isPackaged: true, resourcesPath: macRes, platform: 'darwin', appDataPath: noAppData, ...extra })
+    expect(mac()).toBe(loose)
     const motor = join(macRes, 'opencode', 'Lazunox Motor.app', 'Contents', 'MacOS', 'opencode')
     mkdirSync(join(macRes, 'opencode', 'Lazunox Motor.app', 'Contents', 'MacOS'), { recursive: true })
     writeFileSync(motor, '#!/bin/sh\n')
     chmodSync(motor, 0o755)
-    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: macRes, platform: 'darwin' })).toBe(motor)
+    expect(mac()).toBe(motor)
     // Mini-app presente pero sin permiso de ejecución: no se elige (se usa el suelto).
     chmodSync(motor, 0o644)
-    expect(bundledOpencodePath({ isPackaged: true, resourcesPath: macRes, platform: 'darwin' })).toBe(loose)
+    expect(mac()).toBe(loose)
     // Otras plataformas no miran la mini-app.
     chmodSync(motor, 0o755)
     expect(bundledOpencodePath({ isPackaged: true, resourcesPath: macRes, platform: 'linux' })).toBe(loose)

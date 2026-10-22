@@ -58,8 +58,8 @@ export async function ensureFolderReadable(dir: string): Promise<boolean> {
         dir,
         reason: status,
         cause: engine ? 'engine' : 'app',
-        canReset: !engine && canReset === true && status === 'denied',
-        resetFailed: !engine && prevResetFailed(dir)
+        canReset: canReset === true && status === 'denied',
+        resetFailed: prevResetFailed(dir)
       })
       return false
     }

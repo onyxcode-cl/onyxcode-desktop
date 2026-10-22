@@ -17,6 +17,7 @@ import { randomBytes } from 'node:crypto'
 import { delimiter, join } from 'node:path'
 import { getFreePort, waitForHealth } from '../util/net'
 import { APP_SLUG, MOTOR_APP_NAME } from '@shared/brand'
+import { installedMotorCurrent, motorPaths } from './motor-app'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
@@ -460,6 +461,14 @@ function configuredBinary(): string {
 /** Variable SOLO para tests (se ignora en la app empaquetada): directorio que hace de `Resources/opencode`. */
 const TEST_BUNDLED_ENV = 'LAZUNOX_TEST_BUNDLED_DIR'
 
+function appDataDir(): string | null {
+  try {
+    return app.getPath('appData')
+  } catch {
+    return null
+  }
+}
+
 function appIsPackaged(): boolean {
   try {
     return app.isPackaged === true
@@ -480,6 +489,8 @@ export interface BundledOptions {
   resourcesPath?: string
   /** Valor de `LAZUNOX_TEST_BUNDLED_DIR` (por defecto, el de `process.env`). */
   testDir?: string
+  /** Application Support (solo macOS): dónde mira la copia externa de «Lazunox Motor.app». Por defecto `app.getPath('appData')`. */
+  appDataPath?: string
 }
 
 /**
@@ -497,11 +508,16 @@ export function bundledOpencodePath(o: BundledOptions = {}): string | null {
     const res = o.resourcesPath ?? process.resourcesPath
     if (res) {
       candidate = join(res, 'opencode', bundledBinaryName(o.platform))
-      // macOS: el motor viaja como ejecutable de la mini-app «Lazunox Motor» (identidad propia ante TCC: el aviso la nombra y se
-      // puede restablecer por id). Si falta (paquete viejo o a medias) se usa el binario suelto de siempre.
+      // macOS: el motor es el ejecutable de la mini-app «Lazunox Motor» (identidad propia ante TCC: el aviso la nombra y se puede
+      // restablecer por id). Orden: la copia EXTERNA vigente (única que TCC evalúa como el motor; la deja `installMotorApp` al arrancar),
+      // luego la maestra anidada en la app (funciona, pero TCC la evalúa a nombre de Lazunox) y, si falta (paquete viejo o a medias), el
+      // binario suelto de siempre.
       if ((o.platform ?? process.platform) === 'darwin') {
-        const motor = join(res, 'opencode', MOTOR_APP_NAME, 'Contents', 'MacOS', 'opencode')
-        if (existsSync(motor) && isExecutable(motor)) candidate = motor
+        const appData = o.appDataPath ?? appDataDir()
+        const paths = appData ? motorPaths(res, appData) : null
+        const nested = join(res, 'opencode', MOTOR_APP_NAME, 'Contents', 'MacOS', 'opencode')
+        if (paths && installedMotorCurrent(paths)) candidate = paths.exe
+        else if (existsSync(nested) && isExecutable(nested)) candidate = nested
       }
     }
   } else {

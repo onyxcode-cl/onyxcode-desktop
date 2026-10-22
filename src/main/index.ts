@@ -11,6 +11,7 @@ import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
 import { settingsStore } from './store'
+import { installMotorApp, motorPaths } from './opencode/motor-app'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
 import { installExecuteWatchdog, tripMessage } from './opencode/execute-watchdog'
 import { normalizeEngineExperiments } from '@shared/engine-experiments'
@@ -290,6 +291,15 @@ function start(): void {
     electronApp.setAppUserModelId(APP_ID)
     app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
+    // macOS: deja al día la copia externa de «Lazunox Motor.app» (identidad TCC propia del motor) ANTES de lanzar ningún motor.
+    if (process.platform === 'darwin' && app.isPackaged) {
+      try {
+        const r = installMotorApp(motorPaths(process.resourcesPath, app.getPath('appData')))
+        if (r === 'installed' || r === 'failed') console.log(`[main] Lazunox Motor.app: ${r}`)
+      } catch (err) {
+        console.error('[main] Lazunox Motor.app:', err)
+      }
+    }
     // Servidores `opencode serve` huérfanos de una ejecución anterior que no salió limpia (B3).
     try {
       killStaleServers()

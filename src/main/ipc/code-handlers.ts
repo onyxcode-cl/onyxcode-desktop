@@ -174,7 +174,7 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
           )
         })
     })
-    if (engine === 'denied' || engine === 'timeout') return { status: engine, canReset: false, cause: 'engine' as const }
+    if (engine === 'denied' || engine === 'timeout') return { status: engine, canReset, cause: 'engine' as const }
     return { status, canReset, cause: 'app' as const }
   })
   on(ipcMain, 'dialog:openFolderPrivacy', async (r) => {
