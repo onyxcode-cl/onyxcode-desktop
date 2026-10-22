@@ -20,7 +20,7 @@ import { APP_SLUG } from '@shared/brand'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
-import { killTree, trackPid, untrackPid } from './pids'
+import { killPids, killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
 import { catalogFile, waitForCatalog } from './catalog-wait'
 import { withDisclaim } from '../process/disclaim'
@@ -112,17 +112,22 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     this.connection = null
     if (child && child.exitCode === null && child.signalCode === null) {
       await new Promise<void>((resolve) => {
+        // Descendientes vistos al pedir el cierre: al morir el líder (p. ej. un `sleep` que lanzó un subagente) pasan a
+        // ser huérfanos y `killTree` ya no los encuentra por parentesco; hay que rematarlos por PID.
+        let seen: number[] = []
         const timer = setTimeout(() => {
           killTree(child.pid, 'SIGKILL')
+          killPids(seen, 'SIGKILL')
           resolve()
         }, KILL_GRACE_MS)
         child.once('exit', () => {
           clearTimeout(timer)
-          // El líder terminó: rematar el resto del grupo (MCP, bash…).
+          // El líder terminó: rematar el resto del grupo (MCP, bash…) y lo que ya no cuelga de él.
           killTree(child.pid, 'SIGKILL')
+          killPids(seen, 'SIGKILL')
           resolve()
         })
-        killTree(child.pid, 'SIGTERM')
+        seen = killTree(child.pid, 'SIGTERM') ?? []
       })
     }
     this.setStatus({ state: 'stopped' })

@@ -31,7 +31,7 @@ vi.mock('../embedded-browser/mcp-server', () => ({ embeddedBrowserMcp: { setApi:
 vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../diagnostics/problem-log', () => ({ recordProblem: () => {} }))
 vi.mock('../util/net', () => ({ getFreePort: async () => 4999, waitForHealth: async () => '1.19.0' }))
-vi.mock('./pids', () => ({ killTree: () => {}, trackPid: () => {}, untrackPid: () => {} }))
+vi.mock('./pids', () => ({ killTree: () => [], killPids: () => {}, trackPid: () => {}, untrackPid: () => {} }))
 vi.mock('./catalog-wait', () => ({ catalogFile: () => '/x', waitForCatalog: async () => 'present' }))
 vi.mock('../process/disclaim', () => ({ withDisclaim: (command: string, args: string[]) => ({ command, args, disclaimed: false }) }))
 

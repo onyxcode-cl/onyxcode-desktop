@@ -235,10 +235,12 @@ function signalSafe(pid: number, signal: NodeJS.Signals): boolean {
 /**
  * Envía `signal` al árbol de `pid`: su grupo de procesos (si lo encabeza) y además cada
  * descendiente con su propio grupo (OpenCode lanza bash/MCP `detached`, en grupos propios, y
- * sobrevivirían a un `kill(-pid)`). Nunca lanza.
+ * sobrevivirían a un `kill(-pid)`). Nunca lanza. Devuelve los PID de los descendientes que vio
+ * (vacío en Windows): quien espera a que el líder muera debe volver a matarlos con `killPids`, porque
+ * al morir el líder sus hijos pasan a ser de `init` y `killTree` ya no los encuentra por parentesco.
  */
-export function killTree(pid: number | undefined, signal: NodeJS.Signals = 'SIGKILL'): void {
-  if (!pid) return
+export function killTree(pid: number | undefined, signal: NodeJS.Signals = 'SIGKILL'): number[] {
+  if (!pid) return []
   if (isWin()) {
     // Sin grupos POSIX: `taskkill /T` recorre el árbol por PID padre; /F porque no hay SIGTERM.
     try {
@@ -246,7 +248,7 @@ export function killTree(pid: number | undefined, signal: NodeJS.Signals = 'SIGK
     } catch {
       // ya muerto o sin permiso
     }
-    return
+    return []
   }
   const tree = descendants(pid)
   for (const d of tree) {
@@ -254,6 +256,21 @@ export function killTree(pid: number | undefined, signal: NodeJS.Signals = 'SIGK
     signalSafe(d, signal)
   }
   if (!signalSafe(-pid, signal)) signalSafe(pid, signal)
+  return tree
+}
+
+/**
+ * Remata PID ya conocidos (los que devolvió `killTree` antes de que el líder muriera): su grupo, si lo encabezan, y ellos.
+ * Un proceso que ignoró SIGTERM (`trap '' TERM`) o tardó en salir no queda huérfano. Un PID reciclado entre las dos
+ * llamadas es improbable en el intervalo de gracia (segundos) y solo recibe la señal si encabeza grupo propio. Nunca lanza.
+ */
+export function killPids(pids: readonly number[], signal: NodeJS.Signals = 'SIGKILL'): void {
+  if (isWin()) return
+  for (const p of pids) {
+    if (!Number.isInteger(p) || p <= 1 || p === process.pid) continue
+    signalSafe(-p, signal)
+    signalSafe(p, signal)
+  }
 }
 
 /** Al arrancar: mata servidores huérfanos de una ejecución anterior que terminó mal. */
