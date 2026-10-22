@@ -5,7 +5,7 @@
  */
 import { execFile } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
-import { delimiter, isAbsolute, join, resolve } from 'node:path'
+import { isAbsolute, join, resolve, sep } from 'node:path'
 import { homedir } from 'node:os'
 
 export class PrError extends Error {
@@ -175,10 +175,10 @@ export function findGh(deps: FindDeps = {}): string | null {
   const home = deps.home ?? homedir()
   const exe = platform === 'win32' ? 'gh.exe' : 'gh'
   const proj = deps.projectDir ? resolve(deps.projectDir) : null
-  const dirs = [...pathEnv.split(platform === 'win32' ? ';' : delimiter), ...knownGhDirs(platform, home)]
+  const dirs = [...pathEnv.split(platform === 'win32' ? ';' : ':'), ...knownGhDirs(platform, home)]
   for (const d of dirs) {
     if (!d || !isAbsolute(d)) continue
-    if (proj && (resolve(d) === proj || resolve(d).startsWith(proj + (platform === 'win32' ? '\\' : '/')))) continue
+    if (proj && (resolve(d) === proj || resolve(d).startsWith(proj + sep))) continue
     const full = join(d, exe)
     if (isFile(full)) return full
   }
