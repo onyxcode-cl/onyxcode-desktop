@@ -123,11 +123,20 @@ function log(...a: unknown[]): void {
   console.log('[tasks-mcp-proxy]', ...a.map(String))
 }
 
+/**
+ * Manejador LOCAL de solo lectura servido en el mismo puerto (F8-B208, canal del guardián de subagentes): lo atiende
+ * main, no se reenvía a ningún destino. Recibe la ruta tras el prefijo y la consulta; devuelve estado y cuerpo JSON.
+ */
+export type McpProxyLocalHandler = (path: string, query: URLSearchParams) => Promise<{ status: number; body: unknown }>
+/** Longitud máxima de la URL de una petición al manejador local. */
+const LOCAL_MAX_URL = 512
+
 export class McpProxy {
   private readonly limits: McpProxyLimits
   private readonly now: () => number
   private server: Server | null = null
   private routes: Route[] = []
+  private local: { prefix: string; hash: Buffer; handler: McpProxyLocalHandler } | null = null
   private total = 0
   private readonly upstreams = new Set<ClientRequest>()
   port = 0
@@ -167,6 +176,7 @@ export class McpProxy {
     this.server = null
     for (const r of this.routes) r.revoked = true
     this.routes = []
+    this.local = null
     for (const u of this.upstreams) u.destroy()
     this.upstreams.clear()
     if (!server) return
@@ -218,6 +228,56 @@ export class McpProxy {
     return { url: `http://${HOST}:${this.port}${basePath}`, headers: { Authorization: `Bearer ${token}` }, token }
   }
 
+  /**
+   * Registra el manejador local (uno por proxy) bajo `prefix` y devuelve su URL base y su token (aleatorio, solo en
+   * memoria; se compara en tiempo constante). Solo GET, sin cuerpo, URL acotada; nunca se reenvía a otro destino.
+   */
+  setLocalHandler(prefix: string, handler: McpProxyLocalHandler): { url: string; token: string } {
+    if (!this.server) throw new Error('El proxy MCP no está activo.')
+    if (!/^\/[A-Za-z0-9_-]+$/.test(prefix)) throw new Error('Prefijo local no válido.')
+    const token = randomBytes(32).toString('base64url')
+    issuedTokens.push(token)
+    if (issuedTokens.length > 512) issuedTokens.splice(0, issuedTokens.length - 512)
+    this.local = { prefix, hash: sha256(token), handler }
+    return { url: `http://${HOST}:${this.port}${prefix}`, token }
+  }
+
+  private handleLocal(req: IncomingMessage, res: ServerResponse): void {
+    const local = this.local!
+    if (req.method !== 'GET') return this.reply(res, 405, 'method not allowed', { allow: 'GET' })
+    const raw = req.url ?? ''
+    if (raw.length > LOCAL_MAX_URL) return this.reply(res, 414, 'uri too long')
+    const declared = Number(req.headers['content-length'] ?? 0)
+    if (declared > 0 || req.headers['transfer-encoding'] !== undefined) return this.reply(res, 413, 'too large')
+    if (raw !== local.prefix && !raw.startsWith(local.prefix + '/') && !raw.startsWith(local.prefix + '?')) {
+      return this.reply(res, 404, 'not found')
+    }
+    const rest = raw.slice(local.prefix.length)
+    const q = rest.indexOf('?')
+    const path = q === -1 ? rest : rest.slice(0, q)
+    if (!/^\/[a-z]{1,32}$/.test(path)) return this.reply(res, 404, 'not found')
+    if (this.total >= this.limits.maxConcurrent) return this.reply(res, 429, 'too many requests', { 'retry-after': '1' })
+    this.total++
+    let released = false
+    const release = (): void => {
+      if (!released) {
+        released = true
+        this.total--
+      }
+    }
+    res.once('close', release)
+    local
+      .handler(path, new URLSearchParams(q === -1 ? '' : rest.slice(q + 1)))
+      .then(
+        (r) => {
+          if (res.headersSent || res.destroyed) return
+          res.writeHead(r.status, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(r.body))
+        },
+        () => this.reply(res, 502, 'error')
+      )
+      .finally(release)
+  }
+
   /** Revoca la ruta de ese nombre (su token deja de valer). `false` si no existía. */
   revokeRoute(name: string): boolean {
     let any = false
@@ -260,6 +320,8 @@ export class McpProxy {
     if (req.headers.origin !== undefined) return this.reply(res, 403, 'origin not allowed')
     const auth = req.headers.authorization
     const token = typeof auth === 'string' && /^Bearer /.test(auth) ? auth.slice(7) : undefined
+    // Manejador local (canal del guardián): mismo Host/Origin, su propio token en tiempo constante.
+    if (this.local && token && timingSafeEqual(sha256(token), this.local.hash)) return this.handleLocal(req, res)
     const route = this.lookup(token)
     if (!route) return this.reply(res, 401, 'unauthorized', { 'www-authenticate': 'Bearer' })
     const method = req.method ?? ''
