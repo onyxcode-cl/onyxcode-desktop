@@ -42,3 +42,25 @@ Qué mirar en la próxima prueba real: que un conector externo pida permiso en C
 bloqueada de un conector local no se ofrezca; `bgshell_start` con una orden larga y el aviso de fin que retoma la conversación; el Chat
 lanzando el ayudante en segundo plano y cómo lo muestra la interfaz; el aviso «Cambios de conectores aplicados» y la espera si hay un
 turno en curso.
+
+## Medición de tokens y tiempo (2026-10-22, Claude Haiku 5.5 de OpenCode Go, «Todo sin preguntar», proyecto temporal con 6 notas de 200 líneas)
+
+Una sola corrida por caso (no es un estudio estadístico). «Total procesado» = entrada + salida + razonamiento + caché leída + caché escrita (de los mensajes del asistente
+en la base del motor, sumando las sesiones hijas).
+
+| Caso | Pared | Sesiones | Mensajes | Total procesado |
+| --- | --- | --- | --- | --- |
+| R1: 6 trabajos `bgshell`, llamadas directas (sin Code Mode) | 23 s | 1 | 3 | 158 785 |
+| R2: la misma tarea con Code Mode | 17 s | 1 | 3 | 73 013 (−54 %) |
+| R3: leer la línea 3 de 6 archivos con `read`, sin subagentes | 14 s | 1 | 2 | 46 382 |
+| R4: la misma tarea con 6 subagentes en segundo plano | 21 s | 7 | 17 | 239 417 (5,2× R3) |
+
+Lectura: Code Mode redujo a la mitad los tokens en una tarea con muchas llamadas a conectores. Seis subagentes para una tarea trivial costaron 5 veces más y no fueron más
+rápidos: los subagentes valen la pena para trabajo grande e independiente, no para tareas pequeñas.
+
+## Hallazgos de esta segunda ronda
+1. El aviso de fin que despierta al modelo FUNCIONA (se vio en la conversación), pero cada trabajo que termina genera un turno nuevo y un mensaje largo y visible: con 6 trabajos, 6 despertares.
+   Mejora pendiente: agrupar avisos que lleguen en una ventana corta en un solo despertar y mostrarlos compactos.
+2. En «Preguntar siempre», seis `bgshell_start` lanzados a la vez generan seis tarjetas de permiso; si la sesión no está a la vista, quedan esperando sin que la persona lo note (el escudo en
+   la lista de sesiones lo indica).
+3. `npm run dev`/`build` generan el `.cjs` de `bgshell`; un `electron-vite build` suelto no, y entonces `bgshell` simplemente no aparece (degrada sin error).
