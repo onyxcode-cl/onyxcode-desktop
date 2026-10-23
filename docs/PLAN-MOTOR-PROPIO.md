@@ -62,6 +62,17 @@ Fuente de referencia: `docs/ANALISIS-OPENCODE-2-FUNCIONES.md` (con rutas y líne
 
 **No se traen:** servicio compartido por usuario (rompe el sidecar por carpeta con Seatbelt/WSL), demonio PTY persistente (Lazunox tiene su PTY), SDK en proceso, credenciales en SQLite sin cifrar, `fetch` de Code Mode sin permiso.
 
+### Hecho el 2026-10-23 (probado)
+
+- Motor nuestro en la app: pin apuntando a `v1.19.0-lazunox.1`, contrato y 27 comprobaciones OK en Mac; el `.exe` arranca en Windows sin conexiones externas.
+- Subagentes en segundo plano: encendidos por defecto en la app. Probado en la app real empaquetada (Mac, modelo gratuito): el ayudante corrió en segundo plano, apareció en «Trabajos en segundo plano» con botón Cancelar y al terminar despertó la conversación con el resultado.
+- Code Mode con límites por defecto (300 s, 200 llamadas, 1 MB; variables `LAZUNOX_CODE_MODE_*`). Al llegar a un límite el script se corta pero **lo hecho no se deshace** y el error le dice al modelo qué ya se obtuvo (pruebas en `packages/codemode/test/lazunox-limites.test.ts`).
+- Investigado (2026-10-23): Claude (API) limita 90 s por celda, ~4 min por llamada pendiente y conserva el estado entre celdas; Codex no mata el script, lo **pausa** («Script running» + `wait`/terminar, salida final con tope de 10 000 tokens).
+
+### Primera tarea después de la presentación: pausa y espera para Code Mode (lo mejor de Codex y Claude)
+
+En vez de cortar al pasarse el tiempo, el script sigue vivo: `execute` devuelve «script en curso» con un `cell_id` y el modelo usa `execute_wait` (esperar más / leer lo avanzado / terminar). Pendiente de diseño: las herramientas internas piden permisos y se cancelan con la llamada original, así que hay que desacoplarlas (contexto propio de la celda). Pruebas: permisos desde una celda en segundo plano, cancelar al cerrar sesión, tope de celdas vivas.
+
 Orden de trabajo: 1 → 2 (+3) → 5 → 4 → 7 → 8 → 10 → 9/11 según haga falta.
 Cada función: pruebas `bun test` en el fork, ampliar `scripts/engine-probe` (que sigan pasando las 27 y se sumen las nuevas), prueba con la app real por CDP (modelo gratuito) en Mac y Windows, y su nota en `CHANGELOG.md` y `docs/SEGURIDAD.md`. La parte visual (lista de trabajos de fondo, botones, tarjetas) va en la app y se prueba aparte.
 
