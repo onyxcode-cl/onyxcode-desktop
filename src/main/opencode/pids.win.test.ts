@@ -35,7 +35,9 @@ describe('isOpencodeServe', () => {
     'opencode serve --hostname 127.0.0.1',
     '"C:\\Program Files\\Lazunox\\resources\\opencode\\opencode.exe" serve --port 5000 --hostname 127.0.0.1',
     'C:\\lazunox\\opencode.exe serve --port 5000',
-    'sandbox-exec -f p.sb /a/opencode serve --port 1'
+    'sandbox-exec -f p.sb /a/opencode serve --port 1',
+    '/Applications/Lazunox.app/Contents/Resources/opencode/Lazunox Motor.app/Contents/MacOS/opencode serve --port 4096',
+    'sandbox-exec -f p.sb /Applications/Lazunox.app/Contents/Resources/opencode/Lazunox Motor.app/Contents/MacOS/opencode serve --port 1'
   ])('reconoce %s', (cmd) => expect(isOpencodeServe(cmd)).toBe(true))
   it.each(['/usr/bin/sleep 60', '"C:\\x\\opencode.exe" --version', 'C:\\opencode-helper.exe serve', 'node server.js serve'])(
     'rechaza %s',

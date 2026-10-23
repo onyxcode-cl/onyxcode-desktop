@@ -2,7 +2,10 @@
 // build/notarize-dmg.js y scripts/verify-signed.mjs. Todo con dobles: nada firma, notariza ni empaqueta de verdad.
 //   node --test scripts/*.test.mjs
 import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { MODES, parseCodesignInfo, plannedCommands, verifySigned, main } from './verify-signed.mjs'
 
@@ -94,6 +97,31 @@ test('A1 afterSign: API key (prioridad) y Apple ID notarizan después de firmar;
   assert.deepEqual(d.calls, [])
 })
 
+test(
+  'A2 resignBundle: firma el BUNDLE de «Lazunox Motor.app» con su id, antes que la app, solo si existe',
+  { skip: process.platform === 'win32' ? 'rutas POSIX de macOS' : false },
+  () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'resign-motor-'))
+    try {
+      const app = join(tmp, 'Lazunox.app')
+      const motor = join(app, 'Contents/Resources/opencode/Lazunox Motor.app')
+      mkdirSync(motor, { recursive: true })
+      const calls = []
+      const ids = { ...IDS, motorId: 'cl.t.lazunox.motor' }
+      common.resignBundle({ appPath: app, identity: 'Local', ids, mode: 'self', run: (c, a) => calls.push([c, ...a]) })
+      const signed = calls.filter((c) => c.includes('--force')).map((c) => c[c.length - 1])
+      assert.deepEqual(signed.slice(-2), [motor, app], 'motor antes que la app')
+      assert.deepEqual(calls.find((c) => c.at(-1) === motor), ['/usr/bin/codesign', '--force', '--sign', 'Local', '--identifier', ids.motorId, motor])
+      // Sin motorId explícito se deriva del appId.
+      const calls2 = []
+      common.resignBundle({ appPath: app, identity: 'Local', ids: IDS, mode: 'self', run: (c, a) => calls2.push([c, ...a]) })
+      assert.ok(calls2.some((c) => c.includes('cl.t.lazunox.motor')))
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  }
+)
+
 // ---- A2: identificadores de helpers con Developer ID -------------------------------------------
 
 test(
@@ -155,6 +183,7 @@ test('A2 el gancho autofirmado conserva su contrato (resign con 4 args) y los id
     helperId: 'cl.zz.lazunox.cu-helper',
     keysId: 'cl.zz.lazunox.cu-keys',
     disclaimId: 'cl.zz.lazunox.disclaim',
+    motorId: 'cl.zz.lazunox.motor',
     keyboxId: 'cl.zz.lazunox.keybox'
   })
 })

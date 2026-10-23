@@ -172,6 +172,14 @@ describe('resetFolderPermission (execFile simulado; NUNCA se ejecuta tccutil de 
     expect(await resetFolderPermission('/Users/yo/Documents/p', d)).toBe('reset')
     expect(d.run).toHaveBeenCalledExactlyOnceWith('/usr/bin/tccutil', ['reset', 'SystemPolicyDocumentsFolder', 'cl.test.app'], 5000)
   })
+  it('con motorId restablece también la decisión del motor (identidad aparte ante macOS)', async () => {
+    const d = mk({ motorId: 'cl.test.app.motor' })
+    expect(await resetFolderPermission('/Users/yo/Documents/p', d)).toBe('reset')
+    expect(d.run.mock.calls.map((c) => c[1])).toEqual([
+      ['reset', 'SystemPolicyDocumentsFolder', 'cl.test.app'],
+      ['reset', 'SystemPolicyDocumentsFolder', 'cl.test.app.motor']
+    ])
+  })
   it('volúmenes: restablece los dos servicios fijos', async () => {
     const d = mk()
     expect(await resetFolderPermission('/Volumes/X/p', d)).toBe('reset')
@@ -193,5 +201,7 @@ describe('resetFolderPermission (execFile simulado; NUNCA se ejecuta tccutil de 
     const { defaultResetDeps } = await import('./folder-access')
     const { APP_ID } = await import('@shared/brand')
     expect(defaultResetDeps().appId).toBe(APP_ID)
+    const { MOTOR_ID } = await import('@shared/brand')
+    expect(defaultResetDeps().motorId).toBe(MOTOR_ID)
   })
 })

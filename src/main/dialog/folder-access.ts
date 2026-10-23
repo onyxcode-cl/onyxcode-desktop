@@ -11,7 +11,7 @@ import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { opendir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { APP_ID } from '@shared/brand'
+import { APP_ID, MOTOR_ID } from '@shared/brand'
 import type { FolderAccess, FolderResetResult } from '@shared/ipc-code'
 
 export interface FolderAccessDeps {
@@ -119,6 +119,8 @@ export interface ResetDeps {
   platform: NodeJS.Platform
   home: string
   appId: string
+  /** Id de «Lazunox Motor» (el motor, con identidad TCC propia): su decisión se restablece junto con la de la app. */
+  motorId?: string
   /** `execFile` sin shell; rechaza si el proceso sale con error o vence el plazo. */
   run: (file: string, args: string[], timeoutMs: number) => Promise<void>
   timeoutMs: number
@@ -129,6 +131,7 @@ export function defaultResetDeps(): ResetDeps {
     platform: process.platform,
     home: homedir(),
     appId: APP_ID,
+    motorId: MOTOR_ID,
     timeoutMs: 5000,
     run: (file, args, timeoutMs) =>
       new Promise((resolve, reject) => {
@@ -138,16 +141,23 @@ export function defaultResetDeps(): ResetDeps {
 }
 
 /**
- * Borra SOLO la decisión de privacidad de Lazunox para la zona de esa carpeta (`/usr/bin/tccutil reset <servicio> <APP_ID>`), para que
+ * Borra SOLO la decisión de privacidad de Lazunox y de su motor («Lazunox Motor») para la zona de esa carpeta (`/usr/bin/tccutil reset <servicio> <APP_ID|MOTOR_ID>`), para que
  * macOS vuelva a preguntar «Permitir / No permitir». Solo macOS, sin shell ni sudo, ruta absoluta del binario, servicio de la lista
  * fija y el identificador de la app tomado de la constante (nunca del renderer). Se llama únicamente cuando la persona pulsa el botón.
  */
-export async function resetFolderPermission(path: string, deps: ResetDeps = defaultResetDeps()): Promise<FolderResetResult> {
+export async function resetFolderPermission(
+  path: string,
+  deps: ResetDeps = defaultResetDeps(),
+  scope: 'all' | 'engine' = 'all'
+): Promise<FolderResetResult> {
   if (deps.platform !== 'darwin') return 'unsupported'
   const services = tccServicesFor(path, deps.home)
   if (services.length === 0) return 'unsupported'
   try {
-    for (const svc of services) await deps.run('/usr/bin/tccutil', ['reset', svc, deps.appId], deps.timeoutMs)
+    // La app y el motor son identidades distintas ante macOS: se restablecen las dos, para que vuelva a preguntar por ambas.
+    // `engine`: lo único denegado es el motor; no se toca la concesión (válida) de Lazunox ni se vuelve a molestar por ella.
+    const ids = scope === 'engine' && deps.motorId ? [deps.motorId] : [deps.appId, ...(deps.motorId ? [deps.motorId] : [])]
+    for (const svc of services) for (const id of ids) await deps.run('/usr/bin/tccutil', ['reset', svc, id], deps.timeoutMs)
     return 'reset'
   } catch {
     return 'failed'

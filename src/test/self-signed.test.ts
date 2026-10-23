@@ -72,6 +72,7 @@ describe('after-sign-self-signed.js', () => {
       // `cu-keys` (teclado por teclas físicas) viaja junto a `cu-helper`: mismo prefijo de marca, su propio identificador.
       keysId: HELPER_ID.replace(/cu-helper$/, 'cu-keys'),
       disclaimId: DISCLAIM_ID,
+      motorId: `${APP_ID}.motor`,
       keyboxId: `${APP_ID}.keybox`
     })
   })

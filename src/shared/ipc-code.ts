@@ -108,6 +108,8 @@ export const CODE_EVENTS = {
 export type FolderAccess = 'ok' | 'denied' | 'missing' | 'timeout'
 /** Resultado de pedir a macOS que vuelva a preguntar por una carpeta. */
 export type FolderResetResult = 'reset' | 'failed' | 'unsupported'
+/** Qué decisión de macOS se restablece: `all` (Lazunox y su motor, por defecto) o solo `engine` (cuando lo único denegado es el motor). */
+export type FolderResetScope = 'all' | 'engine'
 /** Panel de Ajustes del Sistema que se abre: Archivos y carpetas, o Acceso total al disco. */
 export type FolderPrivacyPane = 'files' | 'allFiles'
 
@@ -486,7 +488,7 @@ export interface CodeInvokeContract {
   /** Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (solo macOS). */
   'dialog:openFolderPrivacy': { req: { pane?: FolderPrivacyPane } | undefined; res: void }
   /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
-  'dialog:resetFolderPermission': { req: { path: string }; res: { result: FolderResetResult } }
+  'dialog:resetFolderPermission': { req: { path: string; scope?: FolderResetScope }; res: { result: FolderResetResult } }
 
   'files:watch': { req: { folder: string; subId: string }; res: { mode: FilesWatchMode } }
   'files:setDirs': { req: { subId: string; dirs: string[] }; res: void }
@@ -582,7 +584,7 @@ export interface CodeApi {
     openInEditor(path: string): Promise<{ via: 'code' | 'open' }>
     checkFolderAccess(path: string): Promise<{ status: FolderAccess; canReset: boolean; cause?: 'app' | 'engine' }>
     openFolderPrivacy(pane?: FolderPrivacyPane): Promise<void>
-    resetFolderPermission(path: string): Promise<{ result: FolderResetResult }>
+    resetFolderPermission(path: string, scope?: FolderResetScope): Promise<{ result: FolderResetResult }>
   }
   files: {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>

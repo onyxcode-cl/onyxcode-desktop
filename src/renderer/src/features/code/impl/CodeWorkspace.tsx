@@ -988,7 +988,7 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     loadedFor.current = client
     void useCode.getState().restoreOpenProjects()
     // Si no confía en la carpeta restaurada, no se queda enfocada (sin sesiones cargadas ni motor para ella).
-    void openProjectTrusted(dir).then((ok) => {
+    void openProjectTrusted(dir, { passive: true }).then((ok) => {
       if (!ok) useCode.getState().declineFocusedProject(dir)
     })
   }, [client])

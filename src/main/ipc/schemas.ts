@@ -747,7 +747,7 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'dialog:openInEditor': pathReq,
   'dialog:checkFolderAccess': pathReq,
   'dialog:openFolderPrivacy': optional(obj({ pane: optional(literal('files', 'allFiles')) })),
-  'dialog:resetFolderPermission': pathReq,
+  'dialog:resetFolderPermission': obj({ path: absPath, scope: optional(literal('all', 'engine')) }),
   'files:watch': obj({ folder: absPath, subId: filesSubId }),
   'files:setDirs': obj({ subId: filesSubId, dirs: arr(str({ max: 4096 }), 100) }),
   'files:unwatch': obj({ subId: filesSubId }),

@@ -81,7 +81,7 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       openInEditor: (path) => call('dialog:openInEditor', { path }),
       checkFolderAccess: (path) => call('dialog:checkFolderAccess', { path }),
       openFolderPrivacy: (pane) => call('dialog:openFolderPrivacy', pane ? { pane } : undefined),
-      resetFolderPermission: (path) => call('dialog:resetFolderPermission', { path })
+      resetFolderPermission: (path, scope) => call('dialog:resetFolderPermission', scope ? { path, scope } : { path })
     },
     files: {
       watch: (folder, subId) => call('files:watch', { folder, subId }),
