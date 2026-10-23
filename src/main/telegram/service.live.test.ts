@@ -756,6 +756,9 @@ describe('archivos que manda el dueño', () => {
     const n = r.tg.to(OWNER).length
     r.tg.sendDocument({ chatId: OWNER, fileId: up('e.txt'), name: 'e.txt', mime: 'text/plain' })
     await sent(r, n)
+    // La confirmación del bot sale un instante ANTES de que el adjunto quede pendiente: en un runner lento, apagar «escribir» enseguida
+    // todavía no tenía nada que descartar y el adjunto llegaba al mensaje siguiente.
+    await settle(400)
     r.svc.setAllowWrite(false)
     r.svc.setAllowWrite(true)
     r.clock.now += 61_000

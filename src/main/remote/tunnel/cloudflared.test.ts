@@ -284,6 +284,8 @@ describe('CloudflaredProcess con el cloudflared falso', { timeout: 20_000 }, () 
     const pid = p.pid() as number
     await p.stop()
     expect(alive(pid)).toBe(false)
+    // El mensaje del falso llega por su salida estándar: en un runner lento puede tardar un instante tras stop().
+    await until(() => lines.join('\n').includes('SIGTERM ignorado'), 3000)
     expect(lines.join('\n')).toContain('SIGTERM ignorado')
     expect(guards()).toEqual([])
   })
