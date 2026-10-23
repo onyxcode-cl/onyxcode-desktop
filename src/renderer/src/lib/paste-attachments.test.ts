@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { collectClipboardFiles, handlePaste, pasteFilesToFileObjects, pasteRejectedMessages, shouldTryFallback, type PasteData } from './paste-attachments'
+import {
+  collectClipboardFiles,
+  handlePaste,
+  pasteFilesToFileObjects,
+  pasteRejectedMessages,
+  shouldTryFallback,
+  type PasteData
+} from './paste-attachments'
 
 const file = (name: string, type: string): File => new File(['x'], name, { type })
 
@@ -81,7 +88,12 @@ describe('handlePaste', () => {
   })
   it('respaldo que falla: inserta el texto', async () => {
     const insertText = vi.fn()
-    handlePaste(ev(data({ text: 'hola' })), { scope: 'any', addFiles: vi.fn(), insertText, readFallback: () => Promise.reject(new Error('x')) })
+    handlePaste(ev(data({ text: 'hola' })), {
+      scope: 'any',
+      addFiles: vi.fn(),
+      insertText,
+      readFallback: () => Promise.reject(new Error('x'))
+    })
     await flush()
     expect(insertText).toHaveBeenCalledWith('hola')
   })
@@ -101,7 +113,12 @@ describe('handlePaste', () => {
   })
   it('Tareas: handled=true no inserta texto', async () => {
     const insertText = vi.fn()
-    handlePaste(ev(data({})), { scope: 'any', addFiles: vi.fn(), insertText, readFallback: async () => ({ files: [], rejected: [], handled: true }) })
+    handlePaste(ev(data({})), {
+      scope: 'any',
+      addFiles: vi.fn(),
+      insertText,
+      readFallback: async () => ({ files: [], rejected: [], handled: true })
+    })
     await flush()
     expect(insertText).not.toHaveBeenCalled()
   })

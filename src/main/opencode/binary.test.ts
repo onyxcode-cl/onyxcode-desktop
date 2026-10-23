@@ -215,7 +215,8 @@ describe('bundledOpencodePath: resourcesPath inyectado', () => {
     // Windows: no hay bit de ejecución, así que «existe pero no es ejecutable» no se puede construir.
     if (posixOnly) expect(bundledOpencodePath({ isPackaged: true, resourcesPath: noexec })).toBeNull()
   })
-  it('macOS: prefiere el motor dentro de «Lazunox Motor.app» y cae al binario suelto si la mini-app falta', () => {
+  // Depende del bit de ejecución de Unix (en Windows todo archivo cuenta como ejecutable).
+  it.skipIf(!posixOnly)('macOS: prefiere el motor dentro de «Lazunox Motor.app» y cae al binario suelto si la mini-app falta', () => {
     const macRes = join(dir, 'ResMac')
     mkdirSync(join(macRes, 'opencode'), { recursive: true })
     const loose = join(macRes, 'opencode', 'opencode')

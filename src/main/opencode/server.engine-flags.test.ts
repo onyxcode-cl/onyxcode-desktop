@@ -91,7 +91,8 @@ async function envFor(engineExperiments: EngineExperiments): Promise<Record<stri
 describe('sidecar principal: variables de las funciones experimentales', () => {
   const prevBin = process.env.OPENCODE_BIN
   beforeEach(() => {
-    process.env.OPENCODE_BIN = '/bin/sh'
+    // Cualquier ejecutable que exista en todas las plataformas hace de motor falso (`spawn` está simulado); `/bin/sh` no existe en Windows.
+    process.env.OPENCODE_BIN = process.execPath
   })
   afterEach(() => {
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
@@ -129,7 +130,8 @@ describe('sidecar principal: variables de las funciones experimentales', () => {
 describe('sidecar principal: permisos de los conectores en Code (F8-B203)', () => {
   const prevBin = process.env.OPENCODE_BIN
   beforeEach(() => {
-    process.env.OPENCODE_BIN = '/bin/sh'
+    // Cualquier ejecutable que exista en todas las plataformas hace de motor falso (`spawn` está simulado); `/bin/sh` no existe en Windows.
+    process.env.OPENCODE_BIN = process.execPath
   })
   afterEach(() => {
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
@@ -180,7 +182,8 @@ describe('sidecar principal: permisos de los conectores en Code (F8-B203)', () =
 describe('sidecar principal: subagentes del Chat (F8-B206)', () => {
   const prevBin = process.env.OPENCODE_BIN
   beforeEach(() => {
-    process.env.OPENCODE_BIN = '/bin/sh'
+    // Cualquier ejecutable que exista en todas las plataformas hace de motor falso (`spawn` está simulado); `/bin/sh` no existe en Windows.
+    process.env.OPENCODE_BIN = process.execPath
   })
   afterEach(() => {
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
@@ -210,7 +213,8 @@ describe('sidecar principal: bgshell (F8-B204)', () => {
   const prevBin = process.env.OPENCODE_BIN
   let dir = ''
   beforeEach(() => {
-    process.env.OPENCODE_BIN = '/bin/sh'
+    // Cualquier ejecutable que exista en todas las plataformas hace de motor falso (`spawn` está simulado); `/bin/sh` no existe en Windows.
+    process.env.OPENCODE_BIN = process.execPath
     dir = mkdtempSync(join(tmpdir(), 'lazunox-bg-srv-'))
     state.userData = dir
     state.wakes = []

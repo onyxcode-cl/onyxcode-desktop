@@ -187,7 +187,13 @@ export function startSwapWin(deps: SwapDepsWin, stagedApp: string, version: stri
   // `cwd` FUERA de la carpeta de la app: si el proceso del reemplazo heredara como carpeta de trabajo la de instalación (así abre Windows
   // la app desde el acceso directo del menú Inicio o del escritorio), Windows no deja renombrar esa carpeta («el archivo está siendo
   // utilizado por otro proceso») y la actualización fallaba siempre tras 20 s de reintentos.
-  const child = run(cmd, ['/d', '/c', 'start', '""', '/B', ps, ...psArguments], { detached: true, stdio: 'ignore', windowsHide: true, cwd: sr, env })
+  const child = run(cmd, ['/d', '/c', 'start', '""', '/B', ps, ...psArguments], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    cwd: sr,
+    env
+  })
   child.unref()
   updating = true
   deps.quit()

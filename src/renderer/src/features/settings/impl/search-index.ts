@@ -109,7 +109,10 @@ function clip(text: string, max: number): string {
  * de palabra con «…» solo al final. Si la coincidencia quedaría fuera del recorte, se parte la oración antes de la coincidencia.
  */
 export function shownText(text: string, words: readonly string[], max = SHOWN_MAX): string {
-  const sentences = text.split(/(?<=(?<![.\p{L}])\p{L}{2,}[.!?]|[»”)][.!?]?)\s+(?=[A-ZÁÉÍÓÚÑ¿¡«“])|\n+/u).map((x) => x.trim()).filter(Boolean)
+  const sentences = text
+    .split(/(?<=(?<![.\p{L}])\p{L}{2,}[.!?]|[»”)][.!?]?)\s+(?=[A-ZÁÉÍÓÚÑ¿¡«“])|\n+/u)
+    .map((x) => x.trim())
+    .filter(Boolean)
   if (sentences.length === 0) return text
   const hit = sentences.find((x) => words.every((w) => normalize(x).includes(w)))
   const pick = hit ?? sentences.find((x) => words.some((w) => normalize(x).includes(w))) ?? sentences[0]

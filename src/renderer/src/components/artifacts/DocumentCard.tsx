@@ -119,16 +119,27 @@ export function DocumentCard({ kind, rawText, isSlides = false, title, codeShown
   const name = docFileName(title, type)
   const count = docCardCount(kind, rawText)
   // Peso real: solo cuando main ya generó el archivo (al abrir el panel); antes no se muestra nada, nunca un número inventado.
-  const bytes = useSyncExternalStore(subscribeChatDocSize, () => getChatDocSize(kind, rawText), () => getChatDocSize(kind, rawText))
+  const bytes = useSyncExternalStore(
+    subscribeChatDocSize,
+    () => getChatDocSize(kind, rawText),
+    () => getChatDocSize(kind, rawText)
+  )
   const size = bytes ? formatFileSize(bytes, getLang()) : null
-  const meta = [t(KIND_KEY[type]), count ? t(count.key === 'sheets' ? 'chat.doc.card.sheets' : 'chat.doc.card.slides', { n: count.n }) : null, size]
+  const meta = [
+    t(KIND_KEY[type]),
+    count ? t(count.key === 'sheets' ? 'chat.doc.card.sheets' : 'chat.doc.card.slides', { n: count.n }) : null,
+    size
+  ]
     .filter(Boolean)
     .join(' · ')
 
   const open = (): void => {
     // Mismo panel de documento que ya se abre solo; sin panel registrado, el HTML cae en su ventana aislada de siempre.
     if (previewInChatDocPanel(kind, rawText, title, isSlides)) return
-    if (kind === 'html') void getExtras()?.openArtifact({ title, html: rawText }).catch(() => undefined)
+    if (kind === 'html')
+      void getExtras()
+        ?.openArtifact({ title, html: rawText })
+        .catch(() => undefined)
   }
 
   const download = async (): Promise<void> => {
@@ -189,7 +200,12 @@ export function DocumentCard({ kind, rawText, isSlides = false, title, codeShown
             {error ? t('chat.doc.card.downloadFailed') : t('chat.doc.card.download')}
           </button>
           {onToggleCode && (
-            <button type="button" onClick={onToggleCode} aria-expanded={!!codeShown} className={`${btn} text-muted hover:bg-hover hover:text-fg`}>
+            <button
+              type="button"
+              onClick={onToggleCode}
+              aria-expanded={!!codeShown}
+              className={`${btn} text-muted hover:bg-hover hover:text-fg`}
+            >
               <Code2 size={14} aria-hidden="true" />
               {t('chat.doc.card.code')}
             </button>

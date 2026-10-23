@@ -24,7 +24,12 @@ describe('docFileName', () => {
 
 describe('docCardCount', () => {
   it('cuenta hojas de un Excel válido y nada si no se puede leer', () => {
-    const raw = JSON.stringify({ sheets: [{ name: 'A', rows: [['x']] }, { name: 'B', rows: [['y']] }] })
+    const raw = JSON.stringify({
+      sheets: [
+        { name: 'A', rows: [['x']] },
+        { name: 'B', rows: [['y']] }
+      ]
+    })
     expect(docCardCount('xlsx', raw)).toEqual({ key: 'sheets', n: 2 })
     expect(docCardCount('xlsx', '{roto')).toBeNull()
     expect(docCardCount('docx', raw)).toBeNull()

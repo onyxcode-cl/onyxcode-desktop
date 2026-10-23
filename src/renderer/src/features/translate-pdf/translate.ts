@@ -96,7 +96,14 @@ async function translateBatch(
 
 export async function translatePdf(
   deps: TranslateDeps,
-  opts: { name: string; base64: string; kind?: TranslateKind; target: TranslateLangCode; signal: AbortSignal; onProgress: (p: TranslateProgress) => void }
+  opts: {
+    name: string
+    base64: string
+    kind?: TranslateKind
+    target: TranslateLangCode
+    signal: AbortSignal
+    onProgress: (p: TranslateProgress) => void
+  }
 ): Promise<TranslateOutcome> {
   opts.onProgress({ phase: 'reading', done: 0, total: 0 })
   const ex = await deps.extract({ name: opts.name, base64: opts.base64, kind: opts.kind })
@@ -118,7 +125,11 @@ export async function translatePdf(
         if (next) continuations[s.id] = { id: next.id, texto: next.texto }
       }
       const prev = i > 0 ? batches[i - 1].at(-1)?.texto : undefined
-      const r = await translateBatch(deps, batches[i], opts.target, glossary, opts.name, opts.signal, { kind: opts.kind, before: prev, continuations })
+      const r = await translateBatch(deps, batches[i], opts.target, glossary, opts.name, opts.signal, {
+        kind: opts.kind,
+        before: prev,
+        continuations
+      })
       Object.assign(translations, r.translations)
       glossary = { ...glossary, ...r.glossary }
       failed += batches[i].filter((s) => !r.translations[s.id]).length

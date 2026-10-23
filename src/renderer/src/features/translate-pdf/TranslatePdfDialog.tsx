@@ -347,7 +347,11 @@ function DoneView({
         <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" aria-hidden="true" />
         <span className="min-w-0 break-words">{t('translate.pdf.doneTitle', { name: outcome.outName })}</span>
       </p>
-      <p className="mt-2 text-ui text-muted">{outcome.kind === 'docx' ? t('translate.pdf.doneStatsDoc', { n: r.translated }) : t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}</p>
+      <p className="mt-2 text-ui text-muted">
+        {outcome.kind === 'docx'
+          ? t('translate.pdf.doneStatsDoc', { n: r.translated })
+          : t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}
+      </p>
       {notes.length > 0 && (
         <ul className="mt-2 list-disc space-y-1 pl-5 text-[12.5px] text-muted">
           {notes.map((n) => (

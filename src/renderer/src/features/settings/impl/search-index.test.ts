@@ -86,7 +86,8 @@ describe('índice de búsqueda de Ajustes', () => {
     expect(normalize(out)).toContain('claves')
     expect(shownText('Texto corto', ['corto'])).toBe('Texto corto')
     // Parte por oraciones, pero no en abreviaturas como «p.ej.».
-    const intro = 'Cuéntale a la IA cómo quieres que te responda y qué debe saber de ti. Se envían con cada mensaje de Chat y de Code, con el modelo que tengas conectado.'
+    const intro =
+      'Cuéntale a la IA cómo quieres que te responda y qué debe saber de ti. Se envían con cada mensaje de Chat y de Code, con el modelo que tengas conectado.'
     expect(shownText(intro, ['modelo'])).toBe('Se envían con cada mensaje de Chat y de Code, con el modelo que tengas conectado.')
     expect(shownText('El costo usa los precios (p.ej. OpenCode Go) es sólo referencial.', ['costo'])).toContain('p.ej. OpenCode')
   })
@@ -109,7 +110,10 @@ describe('índice de búsqueda de Ajustes', () => {
   })
 
   for (const lang of ['es', 'en'] as const) {
-    const q = lang === 'es' ? ['clave', 'modelo', 'memoria', 'permisos', 'celular', 'idioma'] : ['key', 'model', 'memory', 'permissions', 'phone', 'language']
+    const q =
+      lang === 'es'
+        ? ['clave', 'modelo', 'memoria', 'permisos', 'celular', 'idioma']
+        : ['key', 'model', 'memory', 'permissions', 'phone', 'language']
     it(`consultas reales (${lang}): frases completas, sin «{»/«}» ni «…» en medio, y cada resultado enlaza a una opción existente`, () => {
       const idx = buildSearchIndex(REAL, lang)
       for (const query of q) {

@@ -128,7 +128,8 @@ export class PdfTranslateService {
     if (!python || !existsSync(this.d.script(kind))) return { ok: false, reason: 'noPython' }
     const buf = Buffer.from(req.base64, 'base64')
     // %PDF- o, para Word, un zip («PK\x03\x04»): lo demás ni se guarda.
-    const magic = kind === 'docx' ? buf.subarray(0, 4).toString('latin1') === 'PK\u0003\u0004' : buf.subarray(0, 5).toString('latin1') === '%PDF-'
+    const magic =
+      kind === 'docx' ? buf.subarray(0, 4).toString('latin1') === 'PK\u0003\u0004' : buf.subarray(0, 5).toString('latin1') === '%PDF-'
     if (buf.length === 0 || !magic) return { ok: false, reason: 'unreadable' }
     if (buf.length > TRANSLATE_PDF_MAX_BYTES) return { ok: false, reason: 'tooBig' }
     await this.cleanup()
@@ -140,7 +141,9 @@ export class PdfTranslateService {
       return { ok: false, reason }
     }
     await writeFile(join(dir, `input.${kind}`), buf, { mode: 0o600 })
-    await writeFile(join(dir, 'meta.json'), JSON.stringify({ name: req.name, createdAt: this.d.now(), kind } satisfies JobMeta), { mode: 0o600 })
+    await writeFile(join(dir, 'meta.json'), JSON.stringify({ name: req.name, createdAt: this.d.now(), kind } satisfies JobMeta), {
+      mode: 0o600
+    })
     const r = await this.d.run(python, [this.d.script(kind), 'extraer', `input.${kind}`, '-o', 'segmentos.json'], dir)
     if (r.timedOut) return fail('timeout')
     if (r.code === 2) return fail('scanned')
@@ -229,7 +232,10 @@ export class PdfTranslateService {
     const f = await this.outFile(jobId)
     if (!f) return { saved: false }
     const ext = f.name.toLowerCase().endsWith('.docx') ? 'docx' : 'pdf'
-    const options = { defaultPath: join(app.getPath('downloads'), f.name), filters: [{ name: ext === 'docx' ? 'Word' : 'PDF', extensions: [ext] }] }
+    const options = {
+      defaultPath: join(app.getPath('downloads'), f.name),
+      filters: [{ name: ext === 'docx' ? 'Word' : 'PDF', extensions: [ext] }]
+    }
     const res = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options)
     if (res.canceled || !res.filePath) return { saved: false }
     await copyFile(f.path, res.filePath)

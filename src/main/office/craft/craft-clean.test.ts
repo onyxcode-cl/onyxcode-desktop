@@ -67,7 +67,17 @@ describe('cleanStaleCraft', () => {
     mk('.craft-otro', STALE_TMP_MS + HOUR)
     const removed = cleanStaleCraft({ binDir: bin, currentDir: cur, now: NOW })
     expect(removed).toEqual([])
-    for (const n of ['craft-intento.json', 'craft-0.3.0', 'otra-cosa', 'craft-0.4.0-beta', 'craft-1.2', 'craft-0.4.0.bak', 'xcraft-0.4.0', 'craft-vieja', '.craft-otro'])
+    for (const n of [
+      'craft-intento.json',
+      'craft-0.3.0',
+      'otra-cosa',
+      'craft-0.4.0-beta',
+      'craft-1.2',
+      'craft-0.4.0.bak',
+      'xcraft-0.4.0',
+      'craft-vieja',
+      '.craft-otro'
+    ])
       expect(existsSync(join(bin, n))).toBe(true)
   })
 

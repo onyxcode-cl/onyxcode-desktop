@@ -148,7 +148,12 @@ export class UpdateInstaller {
         const code = err instanceof InstallError ? err.code : 'unknown'
         console.warn(`[update] descarga fallida (${code}): ${err instanceof Error ? err.message : String(err)}`)
         const e = describeError(err)
-        recordProblem({ source: 'update', level: 'warn', message: `descarga de la actualización fallida (${code}): ${e.message}`, stack: e.stack })
+        recordProblem({
+          source: 'update',
+          level: 'warn',
+          message: `descarga de la actualización fallida (${code}): ${e.message}`,
+          stack: e.stack
+        })
         this.emit({ type: 'fail', code })
         void this.d.fs.rmrf(join(stagingRoot(this.d.userData), release.version)).catch(() => undefined)
         void this.discardExtra(release.version).catch(() => undefined)

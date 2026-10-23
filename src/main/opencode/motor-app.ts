@@ -13,7 +13,18 @@
 import { MOTOR_APP_NAME } from '@shared/brand'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, accessSync, constants } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  accessSync,
+  constants
+} from 'node:fs'
 import { join } from 'node:path'
 
 /** Carpeta (dentro de Application Support) donde vive la copia externa. */

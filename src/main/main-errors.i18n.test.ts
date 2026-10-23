@@ -49,7 +49,9 @@ describe('errores que construye main: idioma activo', () => {
         'Your organization doesn’t allow using folders in Overdrive.'
       )
     }
-    expect(ruleRejectionReason('bash', '*')).toBe('A permission this broad for commands can’t be remembered: it would also cover commands that delete files.')
+    expect(ruleRejectionReason('bash', '*')).toBe(
+      'A permission this broad for commands can’t be remembered: it would also cover commands that delete files.'
+    )
     expect(scheduleLabel({ kind: 'weekly', day: 1, time: '09:30' })).toBe('Every Monday at 09:30')
     expect(scheduleLabel({ kind: 'interval', hours: 6 })).toBe('Every 6 hours')
     expect(() => nextRunAfter({ kind: 'daily', time: '99:99' }, Date.now())).toThrow('Invalid time "99:99"')

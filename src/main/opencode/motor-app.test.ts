@@ -96,29 +96,32 @@ describe('Lazunox Motor.app: huella de la maestra', () => {
 })
 
 describe('Lazunox Motor.app: copia externa', () => {
-  it.skipIf(!posixOnly)('instala, verifica la copia contra el requisito de la maestra antes de ponerla, y la segunda vez solo verifica', () => {
-    const { res, appData } = fixture()
-    const p = motorPaths(res, appData)
-    const f: Fake = { cdhash: 'a'.repeat(40), dr: DR }
-    const calls: string[][] = []
-    expect(installedMotorCurrent(p, fakeRun([], f))).toBe(false)
-    expect(installMotorApp(p, { run: fakeRun(calls, f) })).toBe('installed')
-    expect(calls.map((c) => c[0])).toContain('ditto')
-    const v = verifyCalls(calls)
-    expect(v).toHaveLength(1)
-    expect(v[0].slice(1, 4)).toEqual(['--verify', '--strict', `-R=${DR}`])
-    expect(v[0][4]).toContain('.nuevo-') // se verifica ANTES de ponerla en su sitio
-    expect(existsSync(p.exe)).toBe(true)
-    expect(installedMotorCurrent(p, fakeRun([], f))).toBe(true)
-    // Sin restos temporales.
-    expect(readdirSync(p.installDir).sort()).toEqual([MOTOR_APP_NAME, 'fuente.sha256'].sort())
+  it.skipIf(!posixOnly)(
+    'instala, verifica la copia contra el requisito de la maestra antes de ponerla, y la segunda vez solo verifica',
+    () => {
+      const { res, appData } = fixture()
+      const p = motorPaths(res, appData)
+      const f: Fake = { cdhash: 'a'.repeat(40), dr: DR }
+      const calls: string[][] = []
+      expect(installedMotorCurrent(p, fakeRun([], f))).toBe(false)
+      expect(installMotorApp(p, { run: fakeRun(calls, f) })).toBe('installed')
+      expect(calls.map((c) => c[0])).toContain('ditto')
+      const v = verifyCalls(calls)
+      expect(v).toHaveLength(1)
+      expect(v[0].slice(1, 4)).toEqual(['--verify', '--strict', `-R=${DR}`])
+      expect(v[0][4]).toContain('.nuevo-') // se verifica ANTES de ponerla en su sitio
+      expect(existsSync(p.exe)).toBe(true)
+      expect(installedMotorCurrent(p, fakeRun([], f))).toBe(true)
+      // Sin restos temporales.
+      expect(readdirSync(p.installDir).sort()).toEqual([MOTOR_APP_NAME, 'fuente.sha256'].sort())
 
-    calls.length = 0
-    // Al día: no copia, solo verifica la firma y el requisito de la copia instalada.
-    expect(installMotorApp(p, { run: fakeRun(calls, f) })).toBe('current')
-    expect(calls.some((c) => c[0] === 'ditto')).toBe(false)
-    expect(verifyCalls(calls)[0].slice(-2)).toEqual([`-R=${DR}`, p.app])
-  })
+      calls.length = 0
+      // Al día: no copia, solo verifica la firma y el requisito de la copia instalada.
+      expect(installMotorApp(p, { run: fakeRun(calls, f) })).toBe('current')
+      expect(calls.some((c) => c[0] === 'ditto')).toBe(false)
+      expect(verifyCalls(calls)[0].slice(-2)).toEqual([`-R=${DR}`, p.app])
+    }
+  )
 
   it.skipIf(!posixOnly)('una versión nueva de la maestra (otro CDHash) reemplaza la copia', () => {
     const { res, appData } = fixture()
@@ -194,7 +197,8 @@ describe('Lazunox Motor.app: copia externa', () => {
     const { res, appData } = fixture()
     const p = motorPaths(res, appData)
     const nested = join(p.source, 'Contents', 'MacOS', 'opencode')
-    const pick = (): string | null => bundledOpencodePath({ isPackaged: true, resourcesPath: res, platform: 'darwin', appDataPath: appData })
+    const pick = (): string | null =>
+      bundledOpencodePath({ isPackaged: true, resourcesPath: res, platform: 'darwin', appDataPath: appData })
     expect(pick()).toBe(nested)
     // La maestra de pruebas no está firmada: la huella es la del contenido, igual en la instalación y en la resolución de la ruta.
     installMotorApp(p, { run: fakeRun([]) })

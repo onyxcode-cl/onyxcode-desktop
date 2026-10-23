@@ -1,1 +1,72 @@
-[{"prompt_kind": "largo", "cols": 40, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep \r\u001b[K \r 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "largo", "cols": 50, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\bec \r\u001b[Kh\rho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "largo", "cols": 60, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-de \r\u001b[Ks\rsde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "largo", "cols": 80, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep \r\u001b[K \r 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "largo", "cols": 100, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "corto", "cols": 40, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazuno \r\u001b[Kx\rx && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "corto", "cols": 50, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep \r\u001b[K \r 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "corto", "cols": 60, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep 2 && echo \r\u001b[K \r fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "corto", "cols": 80, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"}, {"prompt_kind": "corto", "cols": 100, "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin", "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h", "raw": "e\becho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"}]
+[
+  {
+    "prompt_kind": "largo",
+    "cols": 40,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep \r\u001b[K \r 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "largo",
+    "cols": 50,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\bec \r\u001b[Kh\rho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "largo",
+    "cols": 60,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-de \r\u001b[Ks\rsde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "largo",
+    "cols": 80,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep \r\u001b[K \r 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "largo",
+    "cols": 100,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jben@MacBook-Pro-de-Benjamin-2 prueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "corto",
+    "cols": 40,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazuno \r\u001b[Kx\rx && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                       \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "corto",
+    "cols": 50,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep \r\u001b[K \r 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                 \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "corto",
+    "cols": 60,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep 2 && echo \r\u001b[K \r fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                           \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "corto",
+    "cols": 80,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                               \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"
+  },
+  {
+    "prompt_kind": "corto",
+    "cols": 100,
+    "cmd": "echo hola-desde-lazunox && sleep 2 && echo fin",
+    "first": "\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h",
+    "raw": "e\becho hola-desde-lazunox && sleep 2 && echo fin\u001b[?2004l\r\r\nhola-desde-lazunox\r\nfin\r\n\u001b[1m\u001b[7m%\u001b[27m\u001b[1m\u001b[0m                                                                                                   \r \r\r\u001b[0m\u001b[27m\u001b[24m\u001b[Jprueba-ejecutar % \u001b[K\u001b[?2004h"
+  }
+]
