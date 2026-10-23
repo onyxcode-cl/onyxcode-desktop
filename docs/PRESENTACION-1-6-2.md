@@ -1,4 +1,4 @@
-# Presentación de Lazunox 1.6.1: guion y límites
+# Presentación de Lazunox 1.6.2: guion y límites
 
 Todo lo de aquí está probado (resultados en `docs/PLAN-MOTOR-PROPIO.md` y `docs/SEGURIDAD.md` §3 sexagies septies). Lo que NO está probado figura al final: no lo afirmes.
 
