@@ -4,6 +4,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.5.2] - 2026-10-23
+
+### Seguridad
+
+Una revisión independiente de los cambios de seguridad de la 1.5.0 confirmó que cumplen lo que prometen y encontró estos huecos, que se verificaron uno por uno antes de corregirlos:
+
+- **Editar la configuración de git ya no puede ejecutar comandos sin preguntar.** En los modos «Automático» y «Editar sin preguntar», la IA podía cambiar `.git/config` (por ejemplo `core.fsmonitor`) y después un `git status`, que la app aprueba sola por ser de lectura, ejecutaba ese comando. Ahora editar `.git/`, `.gitattributes` y `.gitmodules` siempre pregunta. `.gitignore` y `.github/` no cambian.
+- **Los subagentes no pueden usar «reanudar» para saltarse sus límites.** Solo se puede reanudar un subagente que lanzó esa misma sesión, con los permisos con los que nació.
+- **Los datos de un conector ya no se leen sin preguntar.** Las herramientas de «recursos» de un conector (listar y leer sus archivos o fichas) saltaban la pregunta; ahora preguntan en Code, en Overdrive y en Control total, y el ayudante de solo lectura no puede usarlas.
+- **Un sitio permitido en Overdrive ya no puede apuntar a servicios de tu propio Mac.** El proxy de salida ahora comprueba a qué dirección resuelve cada sitio y rechaza las locales (incluido el puerto del propio motor). Las redes privadas de empresa (10.x, 192.168.x) siguen funcionando.
+- **Los conectores locales ya no ven el canal interno del guardián de subagentes**, igual que ya pasaba con el terminal.
+
+### Mejoras
+
+- **Las pruebas y el desarrollo ya no pisan la copia del motor de tu Mac.** Cuando se abre Lazunox con un perfil temporal (pruebas, desarrollo), su copia del motor vive junto a ese perfil y no en tu carpeta real.
+- **La integración continua de GitHub vuelve a pasar** (formato, pruebas en Windows y en macOS con la regional «C»).
+
 ## [1.5.1] - 2026-10-22
 
 ### Novedades
