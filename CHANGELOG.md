@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.5.1] - 2026-10-22
+
+### Novedades
+
+- **Si sin querer pulsas «No permitir» en macOS, ya no queda bloqueado.** Al volver a elegir esa carpeta (o cualquier otra de Documentos, Escritorio, Descargas, iCloud o un disco), Lazunox pide a macOS que vuelva a preguntar y te sale otra vez el aviso con «Permitir», sin pasar por Ajustes del Sistema. Lo hace una sola vez por intento, solo cuando eliges tú la carpeta, y nunca al abrir la app.
+- **El aviso de macOS ahora dice «Lazunox Motor».** Antes mencionaba «opencode», un nombre que nadie reconoce. El motor de la IA ahora viaja como una pequeña app propia, así que el permiso aparece con ese nombre en Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas, y el botón «Volver a preguntar a macOS» también sirve para el motor.
+
+### Mejoras
+
+- **El motor se comprueba en cada arranque.** Lazunox deja una copia firmada del motor en tu Mac y, si esa copia se altera o no valida su firma, la rehace desde la que viene dentro de la app.
+- **«Volver a preguntar» borra solo lo necesario:** si lo único denegado era el motor, no toca el permiso que ya habías dado a Lazunox, y no hace nada si la carpeta no se puede leer por permisos de archivo normales.
+
+### Para tener en cuenta
+
+- Solo macOS. **Quien ya había dado permiso al motor con el nombre «opencode» verá una vez el aviso nuevo de «Lazunox Motor»**; después queda recordado también al actualizar.
+
 ## [1.5.0] - 2026-10-22
 
 ### Novedades
