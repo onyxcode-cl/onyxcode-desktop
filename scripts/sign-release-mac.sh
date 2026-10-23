@@ -13,7 +13,7 @@ APP=dist/mac-arm64/Lazunox.app
 PIN=$(sed -n 's/^PINNED_CERT_SHA1="\([0-9a-f]\{40\}\)"/\1/p' scripts/install/install.sh)
 [ -n "$PIN" ] || { echo "ERROR: no encuentro PINNED_CERT_SHA1 en scripts/install/install.sh." >&2; exit 1; }
 
-echo "Firmando $APP con «$ID»…"
+echo "Firmando $APP con «${ID}»…"
 codesign --force --deep --sign "$ID" "$APP"
 node -e "
 const {readFileSync}=require('fs');const sc=require('./build/sign-common.js');

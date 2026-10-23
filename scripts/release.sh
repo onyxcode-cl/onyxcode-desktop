@@ -48,7 +48,7 @@ PHASE="${ARGS[0]:-}"
 VERSION="${ARGS[1]:-}"
 [ "${#ARGS[@]}" -le 2 ] || { echo "Sobran argumentos. Uso: scripts/release.sh [--dry-run] <prepare|mac|win|draft|publish> X.Y.Z" >&2; exit 2; }
 case "$PHASE" in prepare|mac|win|draft|publish) ;; *) echo "Uso: scripts/release.sh [--dry-run] [--force] <prepare|mac|win|draft|publish> X.Y.Z" >&2; exit 2 ;; esac
-[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Versión no válida: «$VERSION» (se espera X.Y.Z)." >&2; exit 2; }
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Versión no válida: «${VERSION}» (se espera X.Y.Z)." >&2; exit 2; }
 
 TAG="v$VERSION"
 REPO="$(sed -n "s/^export const RELEASES_REPO = '\([^']*\)'.*/\1/p" src/shared/brand.ts)"
@@ -102,7 +102,7 @@ phase_prepare() {
   ok()  { printf '   ok: %s\n' "$*"; }
 
   local br; br="$(git branch --show-current)"
-  if [ "$br" = "main" ] || [ "${RELEASE_ALLOW_BRANCH:-0}" = "1" ]; then ok "rama «$br»"; else bad "estás en «$br»; la release sale de «main» (RELEASE_ALLOW_BRANCH=1 solo para probar el script)."; fi
+  if [ "$br" = "main" ] || [ "${RELEASE_ALLOW_BRANCH:-0}" = "1" ]; then ok "rama «${br}»"; else bad "estás en «${br}»; la release sale de «main» (RELEASE_ALLOW_BRANCH=1 solo para probar el script)."; fi
 
   if [ -z "$(git status --porcelain)" ]; then ok "árbol limpio"; else bad "hay cambios sin confirmar (git status)."; fi
 
@@ -122,8 +122,8 @@ phase_prepare() {
   pv="$(jsonver package.json 'j.version')" || pv=""
   lv="$(jsonver package-lock.json 'j.version')" || lv=""
   lv2="$(jsonver package-lock.json 'j.packages[""].version')" || lv2=""
-  [ "$pv" = "$VERSION" ] && ok "package.json = $VERSION" || bad "package.json dice «$pv», no $VERSION."
-  [ "$lv" = "$VERSION" ] && [ "$lv2" = "$VERSION" ] && ok "package-lock.json = $VERSION" || bad "package-lock.json dice «$lv» / «$lv2», no $VERSION."
+  [ "$pv" = "$VERSION" ] && ok "package.json = $VERSION" || bad "package.json dice «${pv}», no $VERSION."
+  [ "$lv" = "$VERSION" ] && [ "$lv2" = "$VERSION" ] && ok "package-lock.json = $VERSION" || bad "package-lock.json dice «${lv}» / «${lv2}», no $VERSION."
   if node scripts/release-notes.mjs "$VERSION" --no-install >/dev/null 2>&1; then ok "CHANGELOG.md tiene la sección [$VERSION] con contenido"; else bad "CHANGELOG.md no tiene la sección [$VERSION] (o está vacía)."; fi
 
   if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then bad "el tag $TAG ya existe en git."; fi
@@ -323,7 +323,7 @@ phase_publish() {
 
   local phrase="publicar $TAG"
   if [ "$DRY" -eq 1 ]; then
-    info "(--dry-run) pediría escribir exactamente «$phrase» en un terminal interactivo; sin eso no se avanza."
+    info "(--dry-run) pediría escribir exactamente «${phrase}» en un terminal interactivo; sin eso no se avanza."
   else
     [ -t 0 ] && [ -t 1 ] || die "publish exige un terminal interactivo: una persona debe escribir la confirmación (no se acepta entrada por tubería ni en automático)."
     printf '\nVa a publicar %s en %s y a subir la página de descargas al VPS.\nPara continuar escribe exactamente:  %s\n> ' "$TAG" "$REPO" "$phrase"

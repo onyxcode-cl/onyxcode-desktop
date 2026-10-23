@@ -10,7 +10,7 @@ ROOT="${1:?uso: customize.sh <raíz>}"
 : "${SOURCE_DATE_EPOCH:?falta SOURCE_DATE_EPOCH}" "${LAZUNOX_ROOTFS_VERSION:?falta LAZUNOX_ROOTFS_VERSION}" "${LAZUNOX_SNAPSHOT:?falta LAZUNOX_SNAPSHOT}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-[ -d "$ROOT/etc" ] || { echo "customize: «$ROOT» no parece una raíz" >&2; exit 1; }
+[ -d "$ROOT/etc" ] || { echo "customize: «${ROOT}» no parece una raíz" >&2; exit 1; }
 [[ "$LAZUNOX_ROOTFS_VERSION" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]{1,2}$ ]] || { echo "customize: versión inválida" >&2; exit 1; }
 [[ "$LAZUNOX_SNAPSHOT" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || { echo "customize: instantánea inválida" >&2; exit 1; }
 [[ "$SOURCE_DATE_EPOCH" =~ ^[0-9]+$ ]] || { echo "customize: SOURCE_DATE_EPOCH inválido" >&2; exit 1; }
