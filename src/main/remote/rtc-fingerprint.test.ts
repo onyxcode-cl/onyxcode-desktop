@@ -33,16 +33,37 @@ function negotiate(tamper: 'none' | 'offer' | 'answer'): Promise<Result> {
   const A = new lib.PeerConnection('A', { iceServers: [] })
   const B = new lib.PeerConnection('B', { iceServers: [] })
   const r: Result = { aOpen: false, bOpen: false, bRemote: null, offerFp: null }
+  // Un candidato ICE NO puede llegar a un par que aún no tiene su descripción remota: libdatachannel lanza una excepción de C++ desde su
+  // hilo y TERMINA el proceso de pruebas entero («Got a remote candidate without remote description»), sobre todo en equipos lentos. Se
+  // guardan hasta que el destino esté listo (igual que hace el servicio real: fija la descripción en el mismo tramo síncrono).
+  const ready = { A: false, B: false }
+  const pending: { A: Array<[string, string]>; B: Array<[string, string]> } = { A: [], B: [] }
+  const peers = { A, B }
+  const deliver = (to: 'A' | 'B', c: string, m: string): void => {
+    if (!ready[to]) return void pending[to].push([c, m])
+    try {
+      peers[to].addRemoteCandidate(c, m)
+    } catch {
+      /* candidato inválido: se ignora */
+    }
+  }
+  const markReady = (to: 'A' | 'B'): void => {
+    ready[to] = true
+    for (const [c, m] of pending[to].splice(0)) deliver(to, c, m)
+  }
   A.onLocalDescription((sdp, type) => {
     if (type !== 'offer') return
     r.offerFp = sdpFingerprintStrict(sdp)
     B.setRemoteDescription(tamper === 'offer' ? forge(sdp) : sdp, 'offer')
+    markReady('B')
   })
   B.onLocalDescription((sdp, type) => {
-    if (type === 'answer') A.setRemoteDescription(tamper === 'answer' ? forge(sdp) : sdp, 'answer')
+    if (type !== 'answer') return
+    A.setRemoteDescription(tamper === 'answer' ? forge(sdp) : sdp, 'answer')
+    markReady('A')
   })
-  A.onLocalCandidate((c, m) => B.addRemoteCandidate(c, m))
-  B.onLocalCandidate((c, m) => A.addRemoteCandidate(c, m))
+  A.onLocalCandidate((c, m) => deliver('B', c, m))
+  B.onLocalCandidate((c, m) => deliver('A', c, m))
   B.onDataChannel((dc) =>
     dc.onOpen(() => {
       r.bOpen = true
