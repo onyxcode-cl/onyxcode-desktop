@@ -123,7 +123,12 @@ check(
   },
   (r) => {
     const p = r.toolParts[0]
-    return !!p && p.status === 'completed' && /Script en curso \(cell_id=cm_\w+\)/.test(p.output) && (r.toolsOffered ?? []).includes('execute_wait')
+    return (
+      !!p &&
+      p.status === 'completed' &&
+      /Script en curso \(cell_id=cm_\w+\)/.test(p.output) &&
+      (r.toolsOffered ?? []).includes('execute_wait')
+    )
   }
 )
 check(

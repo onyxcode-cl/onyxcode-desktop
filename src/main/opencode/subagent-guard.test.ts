@@ -442,10 +442,7 @@ describe('lazunox-subagent-guard: execute que sigue vivo en segundo plano (pausa
   it('si el execute terminó normalmente, se limpia como siempre', async () => {
     const g = await load({ sessions: {} })
     await g.before({ tool: 'execute', sessionID: 's1', callID: 'ex2' }, { args: {} })
-    await (g.after as (i: unknown, o: unknown) => Promise<void>)(
-      { tool: 'execute', sessionID: 's1', callID: 'ex2' },
-      { output: '42' }
-    )
+    await (g.after as (i: unknown, o: unknown) => Promise<void>)({ tool: 'execute', sessionID: 's1', callID: 'ex2' }, { output: '42' })
     await g.event({ event: asked('p2', 's1', 'ex2/0') })
     await g.event({ event: replied('p2', 's1', 'reject') })
     await expect(inner(g.before, 's1', 'ex2/1')).resolves.toBeUndefined()

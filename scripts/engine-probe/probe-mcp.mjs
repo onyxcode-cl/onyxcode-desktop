@@ -28,7 +28,11 @@ rl.on('line', (line) => {
         tools: [
           { name: 'start', description: 'echo args', inputSchema: schema },
           { name: 'secret', description: 'echo args', inputSchema: schema },
-          { name: 'slow', description: 'responde tras ms milisegundos', inputSchema: { type: 'object', properties: { ms: { type: 'number' } } } }
+          {
+            name: 'slow',
+            description: 'responde tras ms milisegundos',
+            inputSchema: { type: 'object', properties: { ms: { type: 'number' } } }
+          }
         ]
       }
     })
