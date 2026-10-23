@@ -43,10 +43,11 @@ describe.skipIf(!isMac)('scripts/release.sh', () => {
   afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 
   it('rechaza fase o versión no válidas', () => {
-    expect(run(['volar', '0.5.35']).code).toBe(2)
-    expect(run(['prepare', 'abc']).code).toBe(2)
-    expect(run(['mac']).code).toBe(2)
-    expect(run(['--nada', 'mac', '0.5.35']).code).toBe(2)
+    // Con la salida del script como mensaje: si falla en otro entorno (CI), se ve POR QUÉ salió con otro código.
+    for (const args of [['volar', '0.5.35'], ['prepare', 'abc'], ['mac'], ['--nada', 'mac', '0.5.35']]) {
+      const r = run(args)
+      expect(r.code, `release.sh ${args.join(' ')} → ${r.out.slice(0, 400)}`).toBe(2)
+    }
   })
 
   it('--dry-run mac imprime la cadena completa y en orden, con verify:bundled DESPUÉS de publish-update', () => {
@@ -85,7 +86,7 @@ describe.skipIf(!isMac)('scripts/release.sh', () => {
     expect(d.out).toContain('gh release create v0.5.35')
     expect(d.out).toContain('--draft')
     const p = run(['--dry-run', 'publish', '0.5.35'])
-    expect(p.code).toBe(0)
+    expect(p.code, `release.sh --dry-run publish → ${p.out.slice(0, 400)}`).toBe(0)
     expect(p.out).toContain('publicar v0.5.35')
     expect(p.out).toContain('Purgar Cloudflare')
     expect(calls()).not.toMatch(/release (create|edit)/)

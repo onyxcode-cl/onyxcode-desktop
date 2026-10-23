@@ -42,6 +42,9 @@ describe('vinculación', () => {
     rig.tg.sendUser({ chatId: OWNER, text: '482915' })
     await until(() => rig!.svc.getState().phase === 'linked')
     expect(rig.svc.getState()).toMatchObject({ phase: 'linked', code: null, ownerLabel: 'Ana' })
+    // El estado pasa a «linked» un instante ANTES de que salga la confirmación: se espera el mensaje (en equipos lentos, como los
+    // runners de CI, leer `lastMsg` de inmediato devolvía todavía el mensaje anterior).
+    await until(() => lastMsg(rig!)?.text.includes('vinculado') === true, 3000, 'confirmación «vinculado»')
     expect(lastMsg(rig)!.text).toContain('vinculado')
     expect(rig.store.load().ownerChatId).toBe(OWNER)
     expect(rig.engine.running).toBe(true)
