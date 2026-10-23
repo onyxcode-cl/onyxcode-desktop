@@ -47,6 +47,7 @@
  * con el MISMO objeto `output.args`, así que hay que MUTARLO (no reasignarlo). Reverificar al subir
  * de versión de opencode; si la inyección fallara, main cae al modo global (con aviso en el log).
  */
+import { HIDDEN_SHELL_ENV } from './hidden-env'
 import { app } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -77,16 +78,8 @@ export const PLAN_GATE_ALLOWED_TOOLS = [
 /** Niveles máximos que el plan-gate sube por `parentID` para hallar la raíz (más → se deniega). */
 export const PLAN_GATE_MAX_DEPTH = 6
 
-/** Variables del entorno de `opencode serve` que bash/pty NO deben ver. */
-export const HIDDEN_SHELL_ENV = [
-  'OPENCODE_SERVER_PASSWORD',
-  'OPENCODE_SERVER_USERNAME',
-  'OPENCODE_AUTH_CONTENT',
-  'OPENCODE_CONFIG_CONTENT',
-  'LAZUNOX_PLAN_GATE_URL',
-  'LAZUNOX_GUARD_URL',
-  'LAZUNOX_GUARD_TOKEN'
-] as const
+/** Variables del entorno de `opencode serve` que bash/pty NO deben ver (lista única en `hidden-env.ts`; se reexporta para quien ya la importa de aquí). */
+export { HIDDEN_SHELL_ENV }
 
 const ENV_PLUGIN_FILE = 'lazunox-env.js'
 const PLAN_GATE_PLUGIN_FILE = 'lazunox-plan-gate.js'

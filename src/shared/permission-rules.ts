@@ -82,8 +82,22 @@ function approvalMarks(kind: ApprovalKind): PermissionRuleLike[] {
 function readRules(protectEnv: boolean): PermissionRuleLike[] {
   const out = [rule('read', '*', 'allow')]
   if (protectEnv) out.push(rule('read', '*.env', 'ask'), rule('read', '*.env.*', 'ask'), rule('read', '*.env.example', 'allow'))
+  // Las herramientas de RECURSOS de un conector MCP (`list_mcp_resources`, `read_mcp_resource`…) piden permiso `read` con patrón
+  // `mcp:<servidor>:*` (no `<servidor>_*`): sin esta regla el `read: * allow` las dejaría pasar sin tarjeta y un conector no confiado se leería
+  // sin preguntar. Verificado en el binario del motor 1.19. «Todo sin preguntar» (bypass) no usa `readRules` y lo levanta como siempre.
+  if (protectEnv) out.push(rule('read', 'mcp:*', 'ask'))
   return out
 }
+
+/**
+ * Editar la configuración de git del proyecto SIEMPRE pregunta en los modos que dejan editar sin preguntar. Motivo (medido con git 2.54):
+ * `core.fsmonitor` en `.git/config` hace que un `git status` EJECUTE ese comando, y `git status/diff/log/show` los aprueba sola la app
+ * como «solo lectura» en «Automático»: editar `.git/config` + un `git status` aprobado sería ejecución de comandos sin ninguna pregunta.
+ * Mismo riesgo con los hooks (`.git/hooks/*`), `.gitattributes` (filtros/textconv) y `.gitmodules`. Rutas relativas al proyecto; `*` casa
+ * también con «/». No afecta a `.gitignore` ni a `.github/`.
+ */
+const GIT_CONFIG_PATTERNS = ['.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
+const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /** Carpetas fuera del proyecto: preguntan en todos los modos menos «Todo sin preguntar». */
 const EXTERNAL_ASK = rule('external_directory', '*', 'ask')
@@ -107,6 +121,7 @@ export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOn
       return [
         rule('edit', '*', 'allow'),
         rule('write', '*', 'allow'),
+        ...GIT_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
         rule('webfetch', '*', 'ask'),
@@ -134,6 +149,7 @@ export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOn
       return [
         rule('edit', '*', 'allow'),
         rule('write', '*', 'allow'),
+        ...GIT_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
         // Comparar no tiene quién apruebe en la interfaz: allí las cinco órdenes de siempre las permite el propio motor.

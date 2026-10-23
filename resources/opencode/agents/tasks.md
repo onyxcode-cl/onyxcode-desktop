@@ -4,7 +4,10 @@ mode: primary
 temperature: 0.3
 permission:
   "*": allow
-  read: allow
+  read:
+    "*": allow
+    # Recursos de un conector MCP (list_mcp_resources / read_mcp_resource piden `read` con patron `mcp:<servidor>:*`): preguntan.
+    "mcp:*": ask
   edit: allow
   glob: allow
   grep: allow

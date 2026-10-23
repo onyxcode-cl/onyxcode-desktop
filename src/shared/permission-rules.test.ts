@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   approvalKindOf,
@@ -214,5 +216,96 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
     expect(isAutoApprovableCommand('auto', 'npm run build && npm publish')).toBe(false)
     expect(isAutoApprovableCommand('auto', 'npm install')).toBe(false)
     expect(isAutoApprovableCommand('auto', undefined)).toBe(false)
+  })
+})
+
+// Las herramientas de recursos de un conector MCP piden `read` con patrón `mcp:<servidor>:*` (verificado en el binario del motor 1.19):
+// el `read: * allow` de cada modo las dejaba pasar sin tarjeta. «Todo sin preguntar» (bypass) lo levanta como siempre.
+describe('recursos de conectores MCP (read con patrón mcp:<servidor>:*)', () => {
+  // Misma semántica del motor: gana la ÚLTIMA regla que coincide; `*` casa con cualquier texto (también con «:»).
+  const wild = (pattern: string, text: string): boolean =>
+    new RegExp(
+      '^' +
+        pattern
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.') +
+        '$'
+    ).test(text)
+  const actionFor = (mode: Parameters<typeof rulesetForMode>[0], text: string): string | null => {
+    const hit = rulesetForMode(mode)
+      .filter((r) => r.permission === 'read' && wild(r.pattern, text))
+      .at(-1)
+    return hit?.action ?? null
+  }
+
+  it.each(['manual', 'acceptEdits', 'plan', 'auto'] as const)(
+    '%s: un recurso de conector pregunta, pero leer un archivo sigue permitido',
+    (mode) => {
+      expect(actionFor(mode, 'mcp:gmail:*')).toBe('ask')
+      expect(actionFor(mode, 'mcp:mi-crm:file:///datos/clientes.csv')).toBe('ask')
+      expect(actionFor(mode, '/proyecto/src/index.ts')).toBe('allow')
+      expect(actionFor(mode, '/proyecto/.env')).toBe('ask') // sin cambios
+    }
+  )
+  it('bypass («Todo sin preguntar») no pregunta, como siempre', () => {
+    expect(actionFor('bypass', 'mcp:gmail:*')).toBe('allow')
+  })
+})
+
+describe('agentes empaquetados: recursos de conectores', () => {
+  const read = (f: string): string => readFileSync(join(__dirname, '../../resources/opencode/agents', f), 'utf8')
+  it('tasks y computer preguntan por mcp:*; lazunox-helper lo deniega', () => {
+    expect(read('tasks.md')).toMatch(/read:\n\s+"\*": allow\n(?:\s+#.*\n)*\s+"mcp:\*": ask/)
+    expect(read('computer.md')).toMatch(/read:\n\s+"\*": allow\n(?:\s+#.*\n)*\s+"mcp:\*": ask/)
+    expect(read('lazunox-helper.md')).toMatch(/"mcp:\*": deny/)
+  })
+})
+
+// Editar la config de git pregunta en los modos que dejan editar sin preguntar: `core.fsmonitor` en `.git/config` hace que un `git status`
+// (aprobado solo por la app como «solo lectura» en Automático) EJECUTE un comando.
+describe('editar la configuración de git', () => {
+  const wild = (pattern: string, text: string): boolean =>
+    new RegExp(
+      '^' +
+        pattern
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.') +
+        '$'
+    ).test(text)
+  const lastAction = (mode: Parameters<typeof rulesetForMode>[0], permission: 'edit' | 'write', path: string): string | null =>
+    rulesetForMode(mode)
+      .filter((r) => r.permission === permission && wild(r.pattern, path))
+      .at(-1)?.action ?? null
+
+  const SENSIBLES = [
+    '.git/config',
+    '.git/hooks/pre-commit',
+    'sub/proyecto/.git/config',
+    '.gitattributes',
+    'sub/.gitattributes',
+    '.gitmodules'
+  ]
+  const NORMALES = ['src/index.ts', 'README.md', '.gitignore', '.github/workflows/ci.yml', 'docs/git.md', 'src/.gitkeep']
+
+  it.each(['acceptEdits', 'auto'] as const)(
+    '%s: editar/escribir archivos sensibles de git pregunta; el resto de archivos sigue permitido',
+    (mode) => {
+      for (const permission of ['edit', 'write'] as const) {
+        for (const p of SENSIBLES) expect(lastAction(mode, permission, p), `${mode} ${permission} ${p}`).toBe('ask')
+        for (const p of NORMALES) expect(lastAction(mode, permission, p), `${mode} ${permission} ${p}`).toBe('allow')
+      }
+    }
+  )
+  it('manual ya pregunta por todo; plan no deja editar; «Todo sin preguntar» queda como elección explícita', () => {
+    expect(lastAction('manual', 'edit', '.git/config')).toBe('ask')
+    expect(lastAction('plan', 'edit', '.git/config')).toBe('deny')
+    expect(lastAction('bypass', 'edit', '.git/config')).toBe('allow')
+  })
+  it('la app sigue aprobando sola solo comandos simples de lectura (la mitad de la cadena: no se amplía la lista)', () => {
+    expect(isAutoApprovableCommand('auto', 'git status')).toBe(true)
+    expect(isAutoApprovableCommand('auto', 'git -c core.fsmonitor=touch status')).toBe(false)
+    expect(isAutoApprovableCommand('auto', 'git config core.fsmonitor "touch x"')).toBe(false)
   })
 })

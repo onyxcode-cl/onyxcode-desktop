@@ -243,7 +243,20 @@ export default {
       if (!parentAgent) deny('no se pudo determinar el agente que lo lanza.')
       const parentSession = validRules(session.permission) ? session.permission : []
       const parent = parentAgent.concat(parentSession)
-      const child = childRules(childAgent, parentSession)
+      // task_id REANUDA una sesion existente en vez de crear una: el motor no comprueba de quien es ni con que permisos nacio. Sin esta
+      // comprobacion, el guardian calcularia los permisos de una hija NUEVA y se saltaria las reglas de la sesion reanudada (de una hija vieja
+      // que nacio con otros permisos, o de una sesion ajena mas permisiva). Solo se reanuda una hija DIRECTA de quien llama, y sus permisos
+      // son los de esa sesion.
+      const resume = output.args.task_id
+      let kidSession = parentSession
+      if (resume !== undefined && resume !== null && resume !== '') {
+        if (typeof resume !== 'string') deny('task_id no es valido.')
+        const t = await sessionGet(resume)
+        if (!t.info) deny('no se pudo verificar la sesion a reanudar (task_id).')
+        if (t.info.parentID !== input.sessionID) deny('task_id no es un subagente de esta sesion.')
+        kidSession = validRules(t.info.permission) ? t.info.permission : []
+      }
+      const child = childRules(childAgent, kidSession)
       const bad = escalations(parent, child)
       if (bad.length) {
         deny(

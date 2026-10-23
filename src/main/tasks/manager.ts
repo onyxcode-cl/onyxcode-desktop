@@ -54,6 +54,7 @@ import { defaultDeniedReadPaths } from './sandbox-profile'
 import type { WinBackendProvider } from './backends'
 import { isApprovedPath, resolveUiPath } from './ui-path'
 import { IDENTITY_MAP, toSandboxOrNull, type PathMapWire } from '@shared/tasks-path-map'
+import { onlyExperimentalEngineEnv } from '@shared/engine-experiments'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
 import { sandboxCredentialIds } from './sandbox-credentials'
@@ -1066,7 +1067,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         extraEnv: {
           // Solo las dos variables OPENCODE_EXPERIMENTAL_* de `engineFlagEnvFor` (valor 'true', sin secretos). Va PRIMERO para que
           // ninguna clave de abajo (config, puerta del plan, proxys) pueda ser pisada; no toca plan ni permisos ni el perfil Seatbelt.
-          ...(this.opts.extraEngineEnv?.() ?? {}),
+          ...onlyExperimentalEngineEnv(this.opts.extraEngineEnv?.() ?? {}),
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { LAZUNOX_FULL_ACCESS: '1' } : {}),
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):

@@ -18,6 +18,7 @@ import type { McpEntry } from '@shared/ipc-extras'
 import { CatalogProvenanceStore } from '../extras/mcp-catalog-install'
 import { readAppMcpConfig } from '../extras/mcp-config'
 import { hostOf } from '../util/url'
+import { HIDDEN_SHELL_ENV } from './hidden-env'
 import type { McpRouteClientConfig, McpRouteSpec } from './mcp-proxy'
 
 export interface TasksMcpContribution {
@@ -64,19 +65,7 @@ interface Persisted {
  * Prefijo que quita del entorno del MCP local las credenciales del propio servidor OpenCode
  * (el MCP hereda `process.env` del servidor y no debe ver contraseñas ni la puerta del plan).
  */
-export const MCP_ENV_WRAPPER: readonly string[] = [
-  '/usr/bin/env',
-  '-u',
-  'OPENCODE_SERVER_PASSWORD',
-  '-u',
-  'OPENCODE_SERVER_USERNAME',
-  '-u',
-  'OPENCODE_AUTH_CONTENT',
-  '-u',
-  'OPENCODE_CONFIG_CONTENT',
-  '-u',
-  'LAZUNOX_PLAN_GATE_URL'
-]
+export const MCP_ENV_WRAPPER: readonly string[] = ['/usr/bin/env', ...HIDDEN_SHELL_ENV.flatMap((name) => ['-u', name])]
 
 /** Nombres de los servidores que son conectores LOCALES del catálogo (se leen de la procedencia; vacío si no se puede leer). */
 function localCatalogServers(): Set<string> {

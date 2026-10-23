@@ -79,3 +79,27 @@ describe('engineFlagEnvForMainSidecar (Chat y Code comparten sidecar)', () => {
     expect(engineFlagEnvForMainSidecar(DEFAULT_SETTINGS)).toEqual({})
   })
 })
+
+describe('onlyExperimentalEngineEnv (defensa en profundidad del entorno extra de Tareas)', () => {
+  it('deja pasar solo las dos variables experimentales con valor «true»', async () => {
+    const { onlyExperimentalEngineEnv } = await import('./engine-experiments')
+    expect(
+      onlyExperimentalEngineEnv({
+        OPENCODE_EXPERIMENTAL_CODE_MODE: 'true',
+        OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'true',
+        HOME: '/tmp/x',
+        XDG_CONFIG_HOME: '/tmp/x',
+        HTTP_PROXY: 'http://evil',
+        OPENCODE_EXPERIMENTAL: 'true',
+        OPENCODE_SERVER_PASSWORD: 'x'
+      })
+    ).toEqual({ OPENCODE_EXPERIMENTAL_CODE_MODE: 'true', OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'true' })
+  })
+  it('descarta valores distintos de «true» y devuelve vacío sin entrada', async () => {
+    const { onlyExperimentalEngineEnv } = await import('./engine-experiments')
+    expect(
+      onlyExperimentalEngineEnv({ OPENCODE_EXPERIMENTAL_CODE_MODE: '1', OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'false' })
+    ).toEqual({})
+    expect(onlyExperimentalEngineEnv({})).toEqual({})
+  })
+})

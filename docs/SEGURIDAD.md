@@ -2403,3 +2403,24 @@ Lazunox y deniega sin avisar); suelta, `subject=<appId>.motor` y macOS pregunta.
 anterior a esta (quien ya dio permiso al `opencode` suelto verá una vez el aviso de «Lazunox Motor»); comportamiento de TCC tras actualizar la
 app con el mismo certificado (debería conservar la concesión: el requisito no cambia).
 
+## 3 sexagies sexies. Revisión de la 1.5.0: correcciones (F8-B212, ZONA INTOCABLE)
+
+Una revisión independiente de los 13 commits ZONA INTOCABLE de la 1.5.0 (solo lectura del código y de las cadenas del motor 1.19, sin
+ejecutar) concluyó que **cumplen** las preguntas de `docs/REVISION-1-5-0.md` y encontró estos huecos adicionales. Cada uno se verificó en el
+código (o en el binario / con git real) antes de corregirlo y tiene prueba propia:
+
+| Hallazgo | Qué pasaba | Corrección |
+| --- | --- | --- |
+| B1 | En «Automático» (y «Editar sin preguntar») la IA podía editar `.git/config` (`core.fsmonitor=<comando>`) y luego un `git status` aprobado solo por la app lo EJECUTABA (comprobado con git 2.54). | Esos dos modos preguntan al editar/escribir `.git/*`, `.gitattributes` y `.gitmodules` (`permission-rules.ts`, `GIT_CONFIG_ASK`). |
+| B2 | El guardián de `task` ignoraba `task_id` (reanudar una sesión existente): calculaba los permisos de una hija NUEVA. | Con `task_id`, la sesión debe existir y ser hija directa de quien llama; sus permisos son los de esa sesión; si no, bloquea (falla cerrado). |
+| B3 | `list_mcp_resources` / `read_mcp_resource` piden `read` con patrón `mcp:<servidor>:*` (verificado en el binario): el `read: *: allow` las dejaba leer recursos de un conector sin tarjeta. | `read mcp:* ask` en los modos de Code, en `tasks.md` y `computer.md`; `deny` en `lazunox-helper.md`. |
+| B4 | El proxy de salida conectaba por NOMBRE: un dominio permitido que resolviera a `127.0.0.1` reabría desde el sandbox el puerto del propio motor (cuya contraseña se lee de `ps`). | Se resuelve el nombre, se rechazan loopback / `0.0.0.0` / enlace local / multicast (y si ALGUNA dirección lo es), y se conecta a la IP ya comprobada (anti-rebinding). Las redes privadas (10/8, 192.168/16…) siguen permitidas a propósito (empresa). |
+| B6 | El filtro de `extraEngineEnv` era solo «por convención». | `onlyExperimentalEngineEnv`: solo las dos variables `OPENCODE_EXPERIMENTAL_*` con valor `'true'`. |
+| B9 | El envoltorio de entorno de los MCP locales no quitaba `LAZUNOX_GUARD_URL` / `LAZUNOX_GUARD_TOKEN`. | Se deriva de la lista única `HIDDEN_SHELL_ENV` (`hidden-env.ts`), la misma que usa el shell. |
+
+**No corregido (decisión consciente o fuera de alcance):** B5 (un `deny` con comodín en la config global del usuario puede quedar tapado por
+la confianza de un conector; solo conectores marcados «Sin preguntar en Code», ya documentado en §3 sexagies bis); B7 (no hay comprobación en
+caliente de que el plugin del guardián se haya cargado: el motor no ofrece una API para listar plugins; hoy solo lo cubre la prueba manual
+`scripts/engine-probe/run.mjs` y las pruebas reales con el motor empaquetado); B8 (el guardián prueba las cadenas que aparecen como patrones;
+con los agentes actuales no es explotable) y B10 (Code Mode en Overdrive no aborta la sesión tras un rechazo; ya documentado).
+

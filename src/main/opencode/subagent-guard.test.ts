@@ -32,7 +32,8 @@ function rulesFromAgentMd(file: string): Rule[] {
   const unq = (v: string): string => v.trim().replace(/^"(.*)"$/, '$1')
   for (const raw of head.slice(start + 1)) {
     if (!raw.startsWith('  ') || raw.trim().startsWith('#') || !raw.trim()) continue
-    const m = /^( +)(.+?):\s*(.*)$/.exec(raw)
+    // La clave puede ir entre comillas y contener «:» (p. ej. "mcp:*"): se toma entera.
+    const m = /^( +)("[^"]*"|[^:]+?):\s*(.*)$/.exec(raw)
     if (!m) continue
     const [, ind, k, v] = m
     if (ind.length === 2) {
@@ -244,6 +245,45 @@ describe('lazunox-subagent-guard: task no puede dar más libertad que el padre',
       userAgent: { root: 'build' }
     })
     await expect(task(g.before, 'kid', 'general')).rejects.toThrow(/lazunox-helper/)
+  })
+
+  describe('task_id (reanudar una sesión existente)', () => {
+    const resume = (b: Before, sessionID: string, subagent_type: string, task_id: unknown) =>
+      b({ tool: 'task', sessionID, callID: 'c-resume' }, { args: { subagent_type, prompt: 'x', description: 'd', task_id } })
+    const world = (kidPermission: Rule[] = []): World => ({
+      sessions: {
+        root: { id: 'root' },
+        kid: { id: 'kid', parentID: 'root', agent: 'lazunox-helper', permission: kidPermission },
+        other: { id: 'other', permission: [] },
+        stranger: { id: 'stranger', parentID: 'otro-padre', agent: 'lazunox-helper' }
+      },
+      userAgent: { root: 'tasks' }
+    })
+
+    it('reanudar una hija DIRECTA con un agente permitido pasa', async () => {
+      const g = await load(world())
+      await expect(resume(g.before, 'root', 'lazunox-helper', 'kid')).resolves.toBeUndefined()
+    })
+    it('una sesión AJENA o raíz (no es hija de quien llama) se bloquea aunque el agente sea permitido', async () => {
+      const g = await load(world())
+      await expect(resume(g.before, 'root', 'lazunox-helper', 'other')).rejects.toThrow(/task_id no es un subagente de esta sesion/)
+      await expect(resume(g.before, 'root', 'lazunox-helper', 'stranger')).rejects.toThrow(/task_id no es un subagente de esta sesion/)
+    })
+    it('task_id inexistente, no cadena o motor caído: falla cerrado', async () => {
+      const g = await load(world())
+      await expect(resume(g.before, 'root', 'lazunox-helper', 'fantasma')).rejects.toThrow(/no se pudo verificar la sesion a reanudar/)
+      await expect(resume(g.before, 'root', 'lazunox-helper', 42)).rejects.toThrow(/task_id no es valido/)
+      await expect(resume(g.before, 'root', 'lazunox-helper', { id: 'kid' })).rejects.toThrow(/task_id no es valido/)
+    })
+    it('sin task_id (undefined, null o vacío) se comporta como siempre: crea una hija nueva', async () => {
+      const g = await load(world())
+      for (const v of [undefined, null, '']) await expect(resume(g.before, 'root', 'lazunox-helper', v)).resolves.toBeUndefined()
+    })
+    it('los permisos de la sesión reanudada cuentan: el agente destino no puede superar al padre con esos permisos', async () => {
+      const g = await load({ ...world(), sessions: { ...world().sessions, root: { id: 'root', permission: [r('bash', 'deny')] } } })
+      // `general` (bash allow) lanzado desde un padre con bash: deny sigue bloqueado también al reanudar.
+      await expect(resume(g.before, 'root', 'general', 'kid')).rejects.toThrow(/bash/)
+    })
   })
 
   it('fail-closed: agente destino inexistente, sin subagent_type, sesión o agente padre desconocidos', async () => {

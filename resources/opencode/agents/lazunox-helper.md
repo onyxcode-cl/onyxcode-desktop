@@ -11,6 +11,8 @@ permission:
     "*.env": ask
     "*.env.*": ask
     "*.env.example": allow
+    # El ayudante es de solo lectura de ARCHIVOS: no lee recursos de conectores (patron `mcp:<servidor>:*`).
+    "mcp:*": deny
   glob: allow
   grep: allow
   list: allow

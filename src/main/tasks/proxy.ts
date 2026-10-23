@@ -25,7 +25,8 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer as createHttpServer, request as httpRequest, type IncomingMessage, type ServerResponse } from 'node:http'
 import { request as httpsRequest } from 'node:https'
-import { connect as netConnect, createServer as createNetServer, type Socket } from 'node:net'
+import { lookup } from 'node:dns/promises'
+import { connect as netConnect, createServer as createNetServer, isIP, type Socket } from 'node:net'
 import { getFreePort } from '../util/net'
 
 export interface EgressBlockedEvent {
@@ -58,6 +59,47 @@ export function hostAllowed(host: string, allowlist: readonly string[]): boolean
   return false
 }
 
+/**
+ * ¿Es una dirección a la que el sandbox NUNCA debe llegar por el proxy aunque el nombre esté permitido? Loopback (el puerto del propio motor,
+ * el del proxy MCP y cualquier servicio local), «esta máquina» (0.0.0.0/::), enlace local (169.254/16 y fe80::/10: incluye los servicios de
+ * metadatos) y multicast/reservadas. Las redes PRIVADAS (10/8, 172.16/12, 192.168/16, CGNAT) NO se bloquean a propósito: son un uso legítimo
+ * (intranet de empresa, NAS) y la persona las permite por nombre. Cualquier cosa que no sea una IP válida se trata como prohibida.
+ */
+export function isForbiddenEgressAddress(ip: string): boolean {
+  let a = ip.toLowerCase().replace(/^\[|\]$/g, '')
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(a)
+  if (mapped) a = mapped[1]
+  const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(a) // IPv4 mapeada en forma hexadecimal (::ffff:7f00:1)
+  if (hex) {
+    const hi = parseInt(hex[1], 16)
+    const lo = parseInt(hex[2], 16)
+    a = `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`
+  }
+  const v = isIP(a)
+  if (v === 4) {
+    const [p, q] = a.split('.').map(Number)
+    return p === 127 || p === 0 || (p === 169 && q === 254) || p >= 224
+  }
+  if (v === 6) return a === '::1' || a === '::' || /^fe[89ab]/.test(a) || a.startsWith('ff')
+  return true
+}
+
+/** Resuelve el nombre y devuelve la IP a la que conectar, o `null` si no resuelve o ALGUNA de sus direcciones es prohibida (anti-rebinding). */
+export async function resolveEgressTarget(
+  host: string,
+  forbidden: (ip: string) => boolean = isForbiddenEgressAddress
+): Promise<string | null> {
+  const bare = host.replace(/^\[|\]$/g, '')
+  if (isIP(bare)) return forbidden(bare) ? null : bare
+  try {
+    const found = await lookup(bare, { all: true, verbatim: true })
+    if (found.length === 0 || found.some((r) => forbidden(r.address))) return null
+    return found[0].address
+  } catch {
+    return null
+  }
+}
+
 export interface EgressProxyOptions {
   /** Token (usuario) para `Proxy-Authorization: Basic <base64(token:contraseña)>`; la contraseña se ignora. */
   token: string
@@ -65,6 +107,8 @@ export interface EgressProxyOptions {
   allowlist: () => readonly string[]
   onBlocked?: (ev: EgressBlockedEvent) => void
   onLog?: (entry: EgressLogEntry) => void
+  /** Solo pruebas: resolución de nombres. Por defecto `resolveEgressTarget` (DNS real + rechazo de direcciones locales). */
+  resolve?: (host: string) => Promise<string | null>
 }
 
 export class EgressProxy {
@@ -167,15 +211,24 @@ export class EgressProxy {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lazunox sandbox egress policy\r\n')
       return
     }
-    const upstream = netConnect(port, host, () => {
-      socket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
-      upstream.pipe(socket)
-      socket.pipe(upstream)
+    // Se conecta a la IP YA comprobada (no al nombre): un nombre permitido que resuelva a una dirección local no abre el puerto del motor.
+    void (this.opts.resolve ?? resolveEgressTarget)(host).then((ip) => {
+      if (socket.destroyed) return
+      if (!ip) {
+        this.opts.onLog?.({ ...entry, allowed: false })
+        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost resolves to a local or unresolvable address\r\n')
+        return
+      }
+      const upstream = netConnect(port, ip, () => {
+        socket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+        upstream.pipe(socket)
+        socket.pipe(upstream)
+      })
+      upstream.on('error', () => socket.destroy())
+      socket.on('error', () => upstream.destroy())
+      socket.on('close', () => upstream.destroy())
+      upstream.on('close', () => socket.destroy())
     })
-    upstream.on('error', () => socket.destroy())
-    socket.on('error', () => upstream.destroy())
-    socket.on('close', () => upstream.destroy())
-    upstream.on('close', () => socket.destroy())
   }
 
   private handlePlainHttp(socket: Socket, method: string, target: string, headerText: string, leftover: Buffer): void {
@@ -196,7 +249,19 @@ export class EgressProxy {
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lazunox sandbox egress policy\r\n')
       return
     }
-    const upstream = netConnect(port, host, () => {
+    void (this.opts.resolve ?? resolveEgressTarget)(host).then((ip) => {
+      if (socket.destroyed) return
+      if (!ip) {
+        this.opts.onLog?.({ ...entry, allowed: false })
+        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost resolves to a local or unresolvable address\r\n')
+        return
+      }
+      this.forwardPlain(socket, method, url, headerText, leftover, port, ip)
+    })
+  }
+
+  private forwardPlain(socket: Socket, method: string, url: URL, headerText: string, leftover: Buffer, port: number, ip: string): void {
+    const upstream = netConnect(port, ip, () => {
       // Reescribe la línea de petición a forma "origin" (RFC 7230 §5.3.1) y reenvía cabeceras
       // salvo Proxy-Authorization/Proxy-Connection.
       const lines = headerText.split('\r\n')

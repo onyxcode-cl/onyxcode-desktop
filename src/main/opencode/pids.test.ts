@@ -89,8 +89,15 @@ describe('killStaleServers con pids.json de una versión anterior', () => {
     const c = fakeServer()
     await wait(isWin ? 1500 : 300)
     expect(isDead(c.pid as number)).toBe(false)
-    writeFileSync(join(userData, 'pids.json'), JSON.stringify([{ pid: c.pid, kind, startedAt: 1 }]))
-    expect(killStaleServers()).toBe(1)
+    // En el runner de Windows de GitHub (cargado) el proceso falso puede tardar en aparecer en el listado con su línea de comandos y la
+    // primera llamada devolver 0: se reintenta (acotado) en vez de fiar todo a una espera fija. En el resto basta un intento.
+    let killed = 0
+    for (let intento = 0; intento < (isWin ? 4 : 1) && killed !== 1; intento++) {
+      if (intento > 0) await wait(2000)
+      writeFileSync(join(userData, 'pids.json'), JSON.stringify([{ pid: c.pid, kind, startedAt: 1 }]))
+      killed = killStaleServers()
+    }
+    expect(killed).toBe(1)
     await wait(isWin ? 1000 : 300)
     expect(isDead(c.pid as number)).toBe(true)
     expect(JSON.parse(readFileSync(join(userData, 'pids.json'), 'utf8'))).toEqual([])

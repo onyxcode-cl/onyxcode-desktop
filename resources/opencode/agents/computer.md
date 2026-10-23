@@ -4,7 +4,10 @@ mode: primary
 temperature: 0.2
 permission:
   "*": allow
-  read: allow
+  read:
+    "*": allow
+    # Recursos de un conector MCP (piden `read` con patron `mcp:<servidor>:*`): preguntan.
+    "mcp:*": ask
   edit:
     "*": allow
     "*lazunox-killswitch*": deny

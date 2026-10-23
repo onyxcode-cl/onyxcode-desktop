@@ -59,6 +59,17 @@ export function engineFlagEnvFor(settings: SettingsLike, mode: EngineExperimentM
 }
 
 /**
+ * Filtro de DEFENSA EN PROFUNDIDAD para el entorno extra que se mezcla en el servidor de Tareas: solo pasan las dos variables experimentales
+ * conocidas y solo con el valor `'true'`. En el lanzamiento, el entorno extra gana sobre el básico, el del sandbox y el del proxy, así que
+ * sin este filtro una clave inesperada (`HOME`, `XDG_*`, `HTTP_PROXY`…) rompería el aislamiento. Hoy el único llamador ya produce solo estas.
+ */
+export function onlyExperimentalEngineEnv(env: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const k of [ENGINE_ENV_CODE_MODE, ENGINE_ENV_BACKGROUND_SUBAGENTS]) if (env[k] === 'true') out[k] = 'true'
+  return out
+}
+
+/**
  * Entorno del sidecar PRINCIPAL. Chat y Code comparten un solo proceso `opencode serve` y la variable vale por
  * proceso, así que se enciende si CUALQUIERA de chat o code la tiene encendida (lo que separa a Chat de Code
  * después es el agente: `chat` tiene `'*': deny`). Overdrive (Tareas) usa `engineFlagEnvFor(settings, 'tasks')`
