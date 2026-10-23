@@ -256,7 +256,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
 
     await stubDialog(a.electronApp, { openPaths: [fakeBin.bin] })
     await d.getByRole('button', { name: 'Elegir el programa…' }).click()
-    await expectVisible(d.getByText('OpenCode está en marcha.'))
+    await expectVisible(d.getByText('Lazunox Motor está en marcha.'))
     await expect.poll(() => d.getByRole('button', { name: 'Continuar' }).isEnabled()).toBe(true)
     await clean(a.page, 'asistente:paso1-listo')
     await a.connectFake()

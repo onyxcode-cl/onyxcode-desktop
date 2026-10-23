@@ -162,11 +162,11 @@ describe.skipIf(!DEV)('Ajustes › Diagnóstico', () => {
     for (const s of secrets) expect(text, `exportación con ${s}`).not.toContain(s)
   })
 
-  it('(6) «Reiniciar OpenCode» reinicia el motor y el registro en vivo conserva la historia', async () => {
+  it('(6) «Reiniciar el motor» reinicia el motor y el registro en vivo conserva la historia', async () => {
     const a = app()
     const { page } = a
     const oldUrl = (await connection(page)).baseUrl
-    await page.getByRole('button', { name: 'Reiniciar OpenCode' }).click()
+    await page.getByRole('button', { name: 'Reiniciar el motor' }).click()
     await expect.poll(async () => (await connection(page)).baseUrl, { timeout: 60_000 }).not.toBe(oldUrl)
     await expectVisible(page.getByText('Funcionando', { exact: true }), 60_000)
     // El único aviso de red esperado es el corte del SSE por el reinicio.

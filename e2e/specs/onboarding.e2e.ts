@@ -68,8 +68,8 @@ describe('asistente de primer uso', () => {
     const a = app!
     await stubDialog(a.electronApp, { openPaths: [fakeBin.bin] })
     await dialog().getByRole('button', { name: 'Elegir el programa…' }).click()
-    await expectVisible(dialog().getByText('OpenCode encontrado'))
-    await expectVisible(dialog().getByText('OpenCode está en marcha.'))
+    await expectVisible(dialog().getByText('Lazunox Motor encontrado'))
+    await expectVisible(dialog().getByText('Lazunox Motor está en marcha.'))
     await expect.poll(() => dialog().getByRole('button', { name: 'Continuar' }).isEnabled()).toBe(true)
     // El binario elegido se persistió (solo main lo escribe).
     expect(settingsOf(userData).opencodeBin).toBe(fakeBin.bin)

@@ -2405,7 +2405,7 @@ app con el mismo certificado (debería conservar la concesión: el requisito no 
 
 ## 3 sexagies septies. Motor propio de Lazunox (1.6.0)
 
-Estado: el motor deja de ser el binario oficial de OpenCode y pasa a ser una copia propia de OpenCode 1.19.0 (`onyxcode-cl/lazunox-motor`, release `v1.19.0-lazunox.1`). Plan: `docs/PLAN-MOTOR-PROPIO.md`.
+Estado: el motor deja de ser el binario oficial de OpenCode y pasa a ser una copia propia de OpenCode 1.19.0 (repositorio del motor propio, release `v1.19.0-lazunox.1`). Plan: `docs/PLAN-MOTOR-PROPIO.md`.
 
 | Qué | Efecto de seguridad | Verificación |
 |---|---|---|
