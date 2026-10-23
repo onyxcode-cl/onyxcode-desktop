@@ -2,19 +2,19 @@
   "version": "1.19.0",
   "assets": {
     "darwin-arm64": {
-      "url": "https://github.com/anomalyco/opencode/releases/download/v1.19.0/opencode-darwin-arm64.zip",
-      "sha256": "0d5f511948d6fbfedf9bb16753c0ac42613dcc8de75d9deb7e8d0cf584c8fba6",
-      "size": 45555805
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.1/lazunox-motor-darwin-arm64.zip",
+      "sha256": "d8fdaea1c963613d193376db1e537a69e2ef75d26e008d567fadf47087d6cad8",
+      "size": 35157564
     },
     "win32-x64": {
-      "url": "https://github.com/anomalyco/opencode/releases/download/v1.19.0/opencode-windows-x64.zip",
-      "sha256": "17108e9448c4fdad48eb8714c4ed6f5dfc9cf86c2eb8f2ce5d02043fef806eb5",
-      "size": 62173956
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.1/lazunox-motor-windows-x64.zip",
+      "sha256": "f136e56acb449c1aee6013694b55567db3f833d67b2773b2eacbcb2a01a63169",
+      "size": 50249600
     },
     "linux-x64": {
-      "url": "https://github.com/anomalyco/opencode/releases/download/v1.19.0/opencode-linux-x64.tar.gz",
-      "sha256": "7bb9e61ad6feacf2e89c10a6a2c1840e3de4220bb50ba1fc7110f31806076aec",
-      "size": 60685698
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.1/lazunox-motor-linux-x64.tar.gz",
+      "sha256": "f00e8b9f698cc663c6ee1d25ca161197ee0242345de357cf644fc8538eb8b774",
+      "size": 50344153
     }
   },
   "wsl-rootfs": {

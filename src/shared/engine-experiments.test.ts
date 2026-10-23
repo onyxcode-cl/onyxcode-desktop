@@ -9,6 +9,7 @@ import {
 import { DEFAULT_SETTINGS, type EngineExperiments } from './types'
 
 const off = { chat: false, code: false, tasks: false }
+const on = { chat: true, code: true, tasks: true }
 const mk = (codeMode: Partial<typeof off>, backgroundSubagents: Partial<typeof off> = {}): { engineExperiments: EngineExperiments } => ({
   engineExperiments: { codeMode: { ...off, ...codeMode }, backgroundSubagents: { ...off, ...backgroundSubagents } }
 })
@@ -16,8 +17,8 @@ const CM = 'OPENCODE_EXPERIMENTAL_CODE_MODE'
 const BG = 'OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS'
 
 describe('engine-experiments: valores por defecto', () => {
-  it('todo apagado en los tres modos y DEFAULT_SETTINGS usa la constante única', () => {
-    expect(ENGINE_EXPERIMENTS_DEFAULTS).toEqual({ codeMode: off, backgroundSubagents: off })
+  it('Modo código apagado y subagentes en segundo plano encendidos en los tres modos; DEFAULT_SETTINGS usa la constante única', () => {
+    expect(ENGINE_EXPERIMENTS_DEFAULTS).toEqual({ codeMode: off, backgroundSubagents: on })
     expect(DEFAULT_SETTINGS.engineExperiments).toBe(ENGINE_EXPERIMENTS_DEFAULTS)
   })
 })
@@ -29,7 +30,7 @@ describe('normalizeEngineExperiments', () => {
   })
   it('conserva booleanos válidos y descarta claves extra', () => {
     const r = normalizeEngineExperiments({ codeMode: { chat: true, code: 'x', tasks: false, extra: true }, otro: 1 })
-    expect(r).toEqual({ codeMode: { chat: true, code: false, tasks: false }, backgroundSubagents: off })
+    expect(r).toEqual({ codeMode: { chat: true, code: false, tasks: false }, backgroundSubagents: on })
   })
 })
 
@@ -41,14 +42,14 @@ describe('engineExperimentsFor', () => {
     expect(engineExperimentsFor(s, 'chat')).toEqual({ codeMode: false, backgroundSubagents: false })
   })
   it('tolera ajustes sin el campo', () => {
-    expect(engineExperimentsFor({} as never, 'code')).toEqual({ codeMode: false, backgroundSubagents: false })
+    expect(engineExperimentsFor({} as never, 'code')).toEqual({ codeMode: false, backgroundSubagents: true })
   })
 })
 
 describe('engineFlagEnvFor', () => {
   it('objeto vacío si nada está encendido', () => {
     expect(engineFlagEnvFor(mk({}), 'code')).toEqual({})
-    expect(engineFlagEnvFor(DEFAULT_SETTINGS, 'tasks')).toEqual({})
+    expect(engineFlagEnvFor(DEFAULT_SETTINGS, 'tasks')).toEqual({ [BG]: 'true' })
   })
   it('solo las variables encendidas, valor exacto "true"', () => {
     expect(engineFlagEnvFor(mk({ tasks: true }), 'tasks')).toEqual({ [CM]: 'true' })
@@ -76,7 +77,7 @@ describe('engineFlagEnvForMainSidecar (Chat y Code comparten sidecar)', () => {
     expect(engineFlagEnvForMainSidecar(mk({ tasks: true }, { tasks: true }))).toEqual({})
   })
   it('todo apagado -> vacío', () => {
-    expect(engineFlagEnvForMainSidecar(DEFAULT_SETTINGS)).toEqual({})
+    expect(engineFlagEnvForMainSidecar(DEFAULT_SETTINGS)).toEqual({ [BG]: 'true' })
   })
 })
 

@@ -90,7 +90,7 @@ describe('reinicio al cambiar las funciones experimentales', () => {
       { folder: '/p', directory: '/p', fullAccess: false, baseUrl: 'http://t', authorization: 'b', startedAt: 1 }
     ]
     const h = harness(base, { live })
-    await h.change({ engineExperiments: on({ backgroundSubagents: flag(false, false, true) }) })
+    await h.change({ engineExperiments: on({ backgroundSubagents: flag(true, true, false) }) })
     expect(h.server.restart).not.toHaveBeenCalled()
     expect(h.tasks.restartSandbox).toHaveBeenCalledWith('/p')
   })

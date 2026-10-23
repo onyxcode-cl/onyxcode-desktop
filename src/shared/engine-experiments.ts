@@ -14,13 +14,13 @@ export const ENGINE_ENV_BACKGROUND_SUBAGENTS = 'OPENCODE_EXPERIMENTAL_BACKGROUND
 
 /**
  * Valor por defecto ÚNICO de `Settings.engineExperiments`.
- * Decisión de Ben: se quieren ENCENDIDOS en Chat, Code y Overdrive (Tareas); por ahora todo apagado porque
- * la activación real depende de una prueba de seguridad en curso.
- * TODO: se enciende por defecto cuando pase la prueba de seguridad (cambiar aquí los `false` por `true`; nada más).
+ * Decisión de Ben: se quieren ENCENDIDOS en Chat, Code y Overdrive (Tareas). Subagentes en segundo plano: encendidos
+ * (2026-10-23, tras pasar las 27 comprobaciones de `scripts/engine-probe`, que cubren al ayudante del Chat y al guardián).
+ * Modo código sigue apagado hasta probarlo con la app real (`docs/ANALISIS-OPENCODE-2-FUNCIONES.md` §4).
  */
 export const ENGINE_EXPERIMENTS_DEFAULTS: EngineExperiments = {
   codeMode: { chat: false, code: false, tasks: false },
-  backgroundSubagents: { chat: false, code: false, tasks: false }
+  backgroundSubagents: { chat: true, code: true, tasks: true }
 }
 
 function normalizeModeFlags(raw: unknown, fallback: ModeFlags): ModeFlags {

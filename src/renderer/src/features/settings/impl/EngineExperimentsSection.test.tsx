@@ -33,7 +33,7 @@ afterEach(() => {
 })
 
 describe('EngineExperimentsSection', () => {
-  it('muestra dos grupos con nombre accesible y seis interruptores apagados por defecto', () => {
+  it('muestra dos grupos con nombre accesible y seis interruptores (Modo código apagado, subagentes en segundo plano encendidos)', () => {
     mount()
     const groups = [...host.querySelectorAll('section[role="group"]')]
     expect(groups).toHaveLength(2)
@@ -44,7 +44,8 @@ describe('EngineExperimentsSection', () => {
     }
     const sw = switches()
     expect(sw).toHaveLength(6)
-    expect(sw.every((b) => b.getAttribute('aria-checked') === 'false' && !!b.getAttribute('aria-label'))).toBe(true)
+    expect(sw.every((b) => !!b.getAttribute('aria-label'))).toBe(true)
+    expect(sw.filter((b) => b.getAttribute('aria-checked') === 'true')).toHaveLength(3)
     expect(new Set(sw.map((b) => b.getAttribute('aria-label'))).size).toBe(6)
   })
 

@@ -83,11 +83,12 @@ describe('settings: codeTrustedMcp', () => {
 
 describe('settings: engineExperiments', () => {
   const OFF = { chat: false, code: false, tasks: false }
+  const ON = { chat: true, code: true, tasks: true }
   it('sin el campo en disco -> todo apagado', async () => {
     const dir = userData()
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: OFF })
+    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
   })
   it('basura en disco -> defaults, sin lanzar', async () => {
     const dir = userData()
@@ -96,7 +97,7 @@ describe('settings: engineExperiments', () => {
       JSON.stringify({ engineExperiments: { codeMode: 'x', backgroundSubagents: { chat: 'si', code: 1 } } })
     )
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: OFF })
+    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
   })
   it('se guarda, sobrevive a otras escrituras y relee de disco', async () => {
     const dir = userData()
