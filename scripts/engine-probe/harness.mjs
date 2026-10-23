@@ -63,8 +63,21 @@ export async function runEngine(bin, sc) {
       const toolMsgs = (j.messages ?? []).filter((m) => m.role === 'tool')
       if (tools.length && !seen.toolsOffered) seen.toolsOffered = tools
       seen.toolMessages.push(...toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
-      if (tools.includes(sc.call.name) && !toolMsgs.length) {
-        const tc = { index: 0, id: 'call_1', type: 'function', function: { name: sc.call.name, arguments: JSON.stringify(sc.call.args) } }
+      // `sc.steps`: varias llamadas encadenadas; cada paso recibe los textos de los resultados anteriores y devuelve la siguiente llamada.
+      const step = sc.steps
+        ? toolMsgs.length < sc.steps.length
+          ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
+          : null
+        : tools.includes(sc.call.name) && !toolMsgs.length
+          ? sc.call
+          : null
+      if (step && tools.includes(step.name)) {
+        const tc = {
+          index: 0,
+          id: `call_${toolMsgs.length + 1}`,
+          type: 'function',
+          function: { name: step.name, arguments: JSON.stringify(step.args) }
+        }
         sse(res, [chunk({ role: 'assistant', tool_calls: [tc] }), chunk({}, 'tool_calls')])
       } else sse(res, [chunk({ role: 'assistant', content: 'listo' }), chunk({}, 'stop')])
     })

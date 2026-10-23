@@ -145,6 +145,49 @@ check(
   }
 )
 
+const cellOf = (msgs) => /cell_id=(cm_\w+)/.exec(msgs.join('\n'))?.[1] ?? 'cm_no-encontrado'
+const slowCode = (ms) => `return await tools.x.slow({ ms: ${ms} })`
+check(
+  'Code Mode: execute_wait con el cell_id entrega el resultado final del script lento',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    steps: [
+      () => ({ name: 'execute', args: { code: slowCode(3000), yield_ms: 1000 } }),
+      (m) => ({ name: 'execute_wait', args: { cell_id: cellOf(m), yield_ms: 8000 } })
+    ]
+  },
+  (r) =>
+    r.toolParts.length === 2 &&
+    /Script en curso/.test(r.toolParts[0].output) &&
+    r.toolParts[1].status === 'completed' &&
+    r.toolParts[1].output.includes('LENTO-LISTO')
+)
+check(
+  'Code Mode: execute_wait con terminate: true para el script y avisa que lo hecho no se deshace',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    steps: [
+      () => ({ name: 'execute', args: { code: slowCode(30000), yield_ms: 1000 } }),
+      (m) => ({ name: 'execute_wait', args: { cell_id: cellOf(m), terminate: true } })
+    ]
+  },
+  (r) => r.toolParts.length === 2 && r.toolParts[1].status === 'completed' && /Script terminado/.test(r.toolParts[1].output)
+)
+check(
+  'Code Mode: execute_wait de una celda que no existe falla con un mensaje claro',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    steps: [() => ({ name: 'execute_wait', args: { cell_id: 'cm_inexistente' } })]
+  },
+  (r) => r.toolParts.length === 1 && /No existe la celda/.test(r.toolParts[0].output)
+)
+
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
 const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)
