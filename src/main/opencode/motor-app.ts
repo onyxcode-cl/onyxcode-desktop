@@ -31,6 +31,16 @@ import { join } from 'node:path'
 export const MOTOR_INSTALL_DIRNAME = 'Lazunox Motor'
 const FINGERPRINT_FILE = 'fuente.sha256'
 
+/**
+ * Carpeta que contiene `Lazunox Motor/`: `~/Library/Application Support` en el uso normal. Con `--user-data-dir=` EXPLÍCITO en la línea de
+ * comandos (pruebas, desarrollo, `smoke-boot-mac.sh`, CDP) se usa una carpeta HERMANA de ese userData (`<userData>-motor`): así una copia de
+ * Lazunox firmada distinto (build de desarrollo, ad-hoc, de prueba) no sustituye la copia del motor del usuario real. Hermana y no dentro,
+ * porque el sandbox de Tareas deniega leer userData. Un `HOME` distinto NO sirve: Electron toma `appData` del usuario real.
+ */
+export function motorHomeDir(appData: string, argv: readonly string[], userData: string): string {
+  return argv.some((a) => a.startsWith('--user-data-dir=')) ? `${userData}-motor` : appData
+}
+
 export interface MotorPaths {
   /** `<Resources>/opencode/Lazunox Motor.app` (copia maestra, dentro de la app). */
   source: string

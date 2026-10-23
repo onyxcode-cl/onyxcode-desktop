@@ -17,7 +17,7 @@ import { randomBytes } from 'node:crypto'
 import { delimiter, join } from 'node:path'
 import { getFreePort, waitForHealth } from '../util/net'
 import { APP_SLUG, MOTOR_APP_NAME } from '@shared/brand'
-import { installedMotorCurrent, motorPaths } from './motor-app'
+import { installedMotorCurrent, motorHomeDir, motorPaths } from './motor-app'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
@@ -463,7 +463,7 @@ const TEST_BUNDLED_ENV = 'LAZUNOX_TEST_BUNDLED_DIR'
 
 function appDataDir(): string | null {
   try {
-    return app.getPath('appData')
+    return motorHomeDir(app.getPath('appData'), process.argv, app.getPath('userData'))
   } catch {
     return null
   }
@@ -489,7 +489,7 @@ export interface BundledOptions {
   resourcesPath?: string
   /** Valor de `LAZUNOX_TEST_BUNDLED_DIR` (por defecto, el de `process.env`). */
   testDir?: string
-  /** Application Support (solo macOS): dónde mira la copia externa de «Lazunox Motor.app». Por defecto `app.getPath('appData')`. */
+  /** Carpeta que contiene `Lazunox Motor/` (solo macOS): dónde mira la copia externa de «Lazunox Motor.app». Por defecto `motorHomeDir(...)`. */
   appDataPath?: string
 }
 

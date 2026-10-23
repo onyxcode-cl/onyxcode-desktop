@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { MOTOR_APP_NAME } from '@shared/brand'
 import { bundledOpencodePath } from './server'
-import { installMotorApp, installedMotorCurrent, motorPaths, sourceFingerprint, type MotorRun } from './motor-app'
+import { installMotorApp, installedMotorCurrent, motorHomeDir, motorPaths, sourceFingerprint, type MotorRun } from './motor-app'
 import { posixOnly } from '../../test/platform'
 
 const dirs: string[] = []
@@ -67,6 +67,22 @@ function fakeRun(calls: string[][], f: Fake = {}): MotorRun {
 }
 
 const verifyCalls = (calls: string[][]): string[][] => calls.filter((c) => c[1] === '--verify')
+
+describe('Lazunox Motor.app: carpeta de la copia externa', () => {
+  const real = '/Users/x/Library/Application Support'
+  it('uso normal: Application Support del usuario', () => {
+    expect(motorHomeDir(real, ['/Applications/Lazunox.app/Contents/MacOS/Lazunox'], '/Users/x/Library/Application Support/Lazunox')).toBe(
+      real
+    )
+    expect(motorHomeDir(real, ['Lazunox', '--remote-debugging-port=9333'], '/u')).toBe(real)
+  })
+  it('con --user-data-dir explícito (pruebas/desarrollo): carpeta hermana del userData, nunca el Application Support real', () => {
+    expect(motorHomeDir(real, ['Lazunox', '--user-data-dir=/tmp/t/ud', '--use-mock-keychain'], '/tmp/t/ud')).toBe('/tmp/t/ud-motor')
+  })
+  it('«--user-data-dir» sin «=» (valor aparte) no cuenta: Electron solo lo lee con «=»', () => {
+    expect(motorHomeDir(real, ['Lazunox', '--user-data-dir', '/tmp/t/ud'], '/tmp/t/ud')).toBe(real)
+  })
+})
 
 describe('Lazunox Motor.app: huella de la maestra', () => {
   it('firmada: es el CDHash (cambia aunque el tamaño del motor sea el mismo)', () => {

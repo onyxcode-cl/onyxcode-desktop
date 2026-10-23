@@ -11,7 +11,7 @@ import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
 import { settingsStore } from './store'
-import { installMotorApp, motorPaths } from './opencode/motor-app'
+import { installMotorApp, motorHomeDir, motorPaths } from './opencode/motor-app'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
 import { installExecuteWatchdog, tripMessage } from './opencode/execute-watchdog'
 import { normalizeEngineExperiments } from '@shared/engine-experiments'
@@ -294,7 +294,9 @@ function start(): void {
     // macOS: deja al día la copia externa de «Lazunox Motor.app» (identidad TCC propia del motor) ANTES de lanzar ningún motor.
     if (process.platform === 'darwin' && app.isPackaged) {
       try {
-        const r = installMotorApp(motorPaths(process.resourcesPath, app.getPath('appData')))
+        const r = installMotorApp(
+          motorPaths(process.resourcesPath, motorHomeDir(app.getPath('appData'), process.argv, app.getPath('userData')))
+        )
         if (r === 'installed' || r === 'failed') console.log(`[main] Lazunox Motor.app: ${r}`)
       } catch (err) {
         console.error('[main] Lazunox Motor.app:', err)
