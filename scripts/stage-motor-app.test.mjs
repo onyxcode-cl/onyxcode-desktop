@@ -34,7 +34,8 @@ test('stageMotorApp: arma el bundle con el mismo binario, es idempotente y rehac
     const a = stageMotorApp({ rootDir: tmp })
     const exe = join(a.outApp, 'Contents/MacOS/opencode')
     assert.equal(readFileSync(exe, 'utf8'), 'binario-v1')
-    assert.ok((statSync(exe).mode & 0o111) !== 0)
+    // El bit de ejecución solo existe en Unix.
+    if (process.platform !== 'win32') assert.ok((statSync(exe).mode & 0o111) !== 0)
     assert.match(readFileSync(join(a.outApp, 'Contents/Info.plist'), 'utf8'), /cl\.bentec\.lazunox\.motor/)
     assert.equal(stageMotorApp({ rootDir: tmp, ifMissing: true }).reused, true)
     writeFileSync(src, 'binario-v2')
