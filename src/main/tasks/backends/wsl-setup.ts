@@ -203,8 +203,10 @@ export function parseSetupPin(raw: unknown): SetupPin | null {
   const asset = (r.assets as Record<string, unknown> | undefined)?.['linux-x64'] as Record<string, unknown> | undefined
   if (!rootfs || typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version) || !asset || typeof asset !== 'object') return null
   const { url, sha256, size } = asset
+  // Motor propio de Lazunox (onyxcode-cl/lazunox-motor, etiqueta `v<versión>-lazunox.<n>`) o, por compatibilidad, la release oficial de la misma versión.
+  const v = version.replace(/\./g, '\\.')
   const re = new RegExp(
-    `^https://github\\.com/anomalyco/opencode/releases/download/v${version.replace(/\./g, '\\.')}/[0-9A-Za-z._-]+\\.tar\\.gz$`
+    `^https://github\\.com/(?:anomalyco/opencode/releases/download/v${v}|onyxcode-cl/lazunox-motor/releases/download/v${v}-lazunox\\.\\d+)/[0-9A-Za-z._-]+\\.tar\\.gz$`
   )
   if (typeof url !== 'string' || !re.test(url)) return null
   if (typeof sha256 !== 'string' || !HEX64.test(sha256)) return null

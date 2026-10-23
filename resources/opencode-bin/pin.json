@@ -12,7 +12,7 @@
       "size": 50249600
     },
     "linux-x64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.1/lazunox-motor-linux-x64.tar.gz",
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.1/opencode-linux-x64.tar.gz",
       "sha256": "f00e8b9f698cc663c6ee1d25ca161197ee0242345de357cf644fc8538eb8b774",
       "size": 50344153
     }

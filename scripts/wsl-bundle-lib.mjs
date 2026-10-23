@@ -36,9 +36,9 @@ export function bundleFilesFromPin(pin) {
   }
   if (
     typeof oc.url !== 'string' ||
-    !/^https:\/\/github\.com\/anomalyco\/opencode\/releases\/download\/v[\d.]+\/[0-9A-Za-z._-]+\.tar\.gz$/.test(oc.url)
+    !/^https:\/\/github\.com\/(?:anomalyco\/opencode\/releases\/download\/v[\d.]+|onyxcode-cl\/lazunox-motor\/releases\/download\/v[\d.]+-lazunox\.\d+)\/[0-9A-Za-z._-]+\.tar\.gz$/.test(oc.url)
   )
-    bad('linux-x64.url no es del release oficial')
+    bad('linux-x64.url no es de una release permitida (motor de Lazunox u oficial)')
   return {
     files: [
       { kind: 'rootfs', name: rootfsFileName(rootfs.version), size: rootfs.size, sha256: rootfs.sha256 },

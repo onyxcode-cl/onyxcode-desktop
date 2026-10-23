@@ -15,7 +15,7 @@ const pin = JSON.parse(readFileSync(pinPath, 'utf8'))
 pin.assets = {
   'darwin-arm64': { url: `${base}/lazunox-motor-darwin-arm64.zip`, sha256: 'd8fdaea1c963613d193376db1e537a69e2ef75d26e008d567fadf47087d6cad8', size: 35157564 },
   'win32-x64': { url: `${base}/lazunox-motor-windows-x64.zip`, sha256: 'f136e56acb449c1aee6013694b55567db3f833d67b2773b2eacbcb2a01a63169', size: 50249600 },
-  'linux-x64': { url: `${base}/lazunox-motor-linux-x64.tar.gz`, sha256: 'f00e8b9f698cc663c6ee1d25ca161197ee0242345de357cf644fc8538eb8b774', size: 50344153 }
+  'linux-x64': { url: `${base}/opencode-linux-x64.tar.gz`, sha256: 'f00e8b9f698cc663c6ee1d25ca161197ee0242345de357cf644fc8538eb8b774', size: 50344153 }
 }
 writeFileSync(pinPath, JSON.stringify(pin, null, 2) + '\n')
 console.log('pin.json actualizado: version', pin.version, '->', Object.keys(pin.assets).join(', '))
