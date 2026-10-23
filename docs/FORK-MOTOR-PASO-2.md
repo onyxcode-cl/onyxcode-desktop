@@ -49,7 +49,7 @@ docker run -d --name lzx-fork2 --cpus=4 --memory=12g -v /opt/lzx-fork:/w -v <bui
 - Repositorio: **`github.com/onyxcode-cl/lazunox-motor`** (público: Lazunox y el motor son de código abierto, MIT). Copia de trabajo local: `~/Documents/lazunox-motor`.
 - Historia: `1011a77` **Importación de OpenCode v1.19.0** (un solo commit con el código sin modificar; cita el commit original `733b2c62…`; etiqueta `upstream-v1.19.0`) → `62ab777` aviso del fork (`LAZUNOX.md`) y sin los
   flujos de GitHub Actions de OpenCode → fusión con el «Initial commit» que creó GitHub (se conserva el `LICENSE` original de OpenCode). Todo lo nuestro va encima de la etiqueta.
-- **Trampas encontradas:** (1) `onyxcode-cl` es una cuenta de USUARIO, no una organización: `djbenja10-dev` es colaboradora (`push`, no `admin`), así que el repositorio lo crea la cuenta `onyxcode-cl` y
+- **Trampas encontradas:** (1) la cuenta dueña del repositorio es una cuenta de USUARIO, no una organización: `djbenja10-dev` es colaboradora (`push`, no `admin`), así que el repositorio lo crea la cuenta la cuenta dueña y
   añade a `djbenja10-dev` como colaboradora (Write); no se puede crear, borrar ni cambiar su visibilidad desde la cuenta personal. (2) Un clon superficial (`--depth 1`) NO se puede subir tal cual: el
   commit apunta a un padre que no tenemos y GitHub rechaza el envío («did not receive expected object»); se importa el árbol como un commit nuevo (`git commit-tree <commit>^{tree}`).
 

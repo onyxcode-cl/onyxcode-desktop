@@ -361,11 +361,11 @@ describe('pin.json', () => {
   it('la versión fijada es compatible con el SDK (misma mayor.menor)', () => {
     expect(isCompatible(pin.version as string, OPENCODE_SDK_VERSION)).toBe(true)
   })
-  it.each(['darwin-arm64', 'win32-x64'])('asset %s: sha256 de 64 hex, url https de la release oficial y size entero positivo', (key) => {
+  it.each(['darwin-arm64', 'win32-x64'])('asset %s: sha256 de 64 hex, url https de una release permitida (motor de Lazunox) y size entero positivo', (key) => {
     const asset = (pin.assets as Record<string, { url: string; sha256: string; size: number }>)[key]
     expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/)
-    expect(asset.url).toMatch(/^https:\/\/github\.com\/anomalyco\/opencode\/releases\/download\/v[^/]+\/[^/]+\.zip$/)
-    expect(asset.url).toContain(`/v${pin.version as string}/`)
+    expect(asset.url).toMatch(/^https:\/\/github\.com\/onyxcode-cl\/lazunox-motor\/releases\/download\/v[^/]+-lazunox\.\d+\/[^/]+\.zip$/)
+    expect(asset.url).toContain(`/v${pin.version as string}-lazunox.`)
     expect(Number.isInteger(asset.size) && asset.size > 0).toBe(true)
   })
 })

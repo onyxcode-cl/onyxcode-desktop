@@ -154,9 +154,9 @@ describe('fetch-opencode (puro)', () => {
   it('readPin acepta el pin real del repo con assets darwin-arm64 y win32-x64', () => {
     const pin = fetcher.readPin()
     expect(pin.version).toMatch(/^\d+\.\d+\.\d+$/)
-    expect(fetcher.assetFor(pin, 'darwin-arm64').url).toMatch(/opencode-darwin-arm64\.zip$/)
+    expect(fetcher.assetFor(pin, 'darwin-arm64').url).toMatch(/lazunox-motor-darwin-arm64\.zip$/)
     const win = fetcher.assetFor(pin, 'win32-x64')
-    expect(win.url).toMatch(/opencode-windows-x64\.zip$/)
+    expect(win.url).toMatch(/lazunox-motor-windows-x64\.zip$/)
     expect(win.sha256).toMatch(/^[0-9a-f]{64}$/)
   })
 

@@ -13,6 +13,13 @@ export interface LegacyException {
 }
 
 export const LEGACY_NAME_ALLOWLIST: readonly LegacyException[] = [
+  // --- Motor propio de Lazunox (fork de OpenCode 1.19.0): su repositorio se llama onyxcode-cl/lazunox-motor ---
+  {
+    path: /^(docs\/(FORK-MOTOR-PASO-2|PLAN-MOTOR-PROPIO|DISENO-LAZUNOX-MOTOR)\.md|src\/main\/opencode\/binary\.test\.ts|scripts\/(fork-motor\/[\w.-]+|wsl-bundle-lib\.mjs)|src\/main\/tasks\/backends\/(wsl-setup\.ts|wsl-real-pin\.test\.ts)|resources\/opencode-bin\/pin\.json)$/,
+    token: /onyxcode-cl\\?\/lazunox-motor/i,
+    reason: 'Repositorio del motor propio (release con los binarios fijados en pin.json)'
+  },
+
   // --- Historial: no se reescribe ---
   { path: 'CHANGELOG.md', reason: 'Historial (secciones anteriores a 0.5.0 y la nota del renombre)' },
   { path: 'CHANGELOG-FASE*.md', reason: 'Historial de las fases 6, 7 y 8' },
