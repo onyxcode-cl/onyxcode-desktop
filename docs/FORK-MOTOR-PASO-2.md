@@ -53,3 +53,11 @@ docker run -d --name lzx-fork2 --cpus=4 --memory=12g -v /opt/lzx-fork:/w -v <bui
   añade a `djbenja10-dev` como colaboradora (Write); no se puede crear, borrar ni cambiar su visibilidad desde la cuenta personal. (2) Un clon superficial (`--depth 1`) NO se puede subir tal cual: el
   commit apunta a un padre que no tenemos y GitHub rechaza el envío («did not receive expected object»); se importa el árbol como un commit nuevo (`git commit-tree <commit>^{tree}`).
 
+
+## Paso 3.1 — copia limpia (2026-10-23)
+
+Fork `onyxcode-cl/lazunox-motor` commits 55455a4 y 9092a5c (sin auto-actualización, compartir, proxy a `app.opencode.ai`, descargas LSP; modelos desde `models.dev`; ver `LAZUNOX.md` del fork).
+Compilación con `scripts/fork-motor/build-targets-vps.sh darwin-arm64 win32-x64 linux-x64` (VPS, 167 s en total, dos compilaciones por plataforma, las tres **idénticas byte a byte**):
+darwin-arm64 `5989555a6f351dee…` (109 151 330 B), win32-x64 `c268d2baf0e61e32…` (144 929 280 B), linux-x64 `0910d7cb5c975fd5…` (149 977 216 B).
+Darwin con firma ad-hoc: `--version` 1.19.0, `check-opencode --bin` OK (46 rutas usadas, 0 faltantes), `engine-probe` 27/27 OK. Falta probar el .exe en el PC Windows.
+Pruebas del fork en VPS: tipos limpios; `test/lazunox` + installation/share/ui/runtime-flags/lsp/provider (172) y core models/plugin (236), 0 fallos.
