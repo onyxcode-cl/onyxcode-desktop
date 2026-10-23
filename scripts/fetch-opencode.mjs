@@ -22,7 +22,8 @@ import {
   renameSync,
   rmSync,
   statSync,
-  chmodSync
+  chmodSync,
+  writeFileSync
 } from 'node:fs'
 import { get as httpGet } from 'node:http'
 import { get as httpsGet } from 'node:https'
@@ -33,6 +34,8 @@ import { fileURLToPath } from 'node:url'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export const PIN_PATH = join(ROOT, 'resources', 'opencode-bin', 'pin.json')
 export const BIN_DIR = join(ROOT, 'resources', 'opencode-bin', 'bin')
+/** Archivo junto al binario con el SHA-256 (del ZIP) con el que se extrajo. */
+export const PIN_MARKER = '.pin-sha256'
 const MAX_REDIRECTS = 5
 const NET_TIMEOUT_MS = 60_000
 
@@ -192,10 +195,16 @@ export async function fetchOpencode({
   const asset = assetFor(pin, key)
   const name = binaryName(platform)
   const target = join(binDir, name)
+  const marker = join(binDir, PIN_MARKER)
   if (ifMissing && existsSync(target)) {
     try {
       const version = await versionOf(target)
-      if (version === pin.version) {
+      // Además de la versión se exige que el binario sea el MISMO archivo fijado (huella del pin guardada al extraerlo):
+      // un motor distinto con el mismo número de versión (p. ej. el oficial frente al nuestro) no se da por bueno.
+      const sameFile = existsSync(marker) && readFileSync(marker, 'utf8').trim() === asset.sha256
+      if (version === pin.version && !sameFile) {
+        log(`[fetch-opencode] el binario existente es ${version} pero no es el archivo fijado en el pin: se vuelve a descargar`)
+      } else if (version === pin.version) {
         log(`[fetch-opencode] ya presente: OpenCode ${version} (${target})`)
         return { status: 'present', path: target, version }
       }
@@ -228,6 +237,7 @@ export async function fetchOpencode({
     rmSync(binDir, { recursive: true, force: true })
     mkdirSync(binDir, { recursive: true })
     renameSync(bin, target)
+    writeFileSync(marker, asset.sha256 + '\n')
     log(`[fetch-opencode] OK: OpenCode ${version} → ${target}`)
     return { status: 'fetched', path: target, version }
   } finally {

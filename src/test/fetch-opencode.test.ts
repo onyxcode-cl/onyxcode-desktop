@@ -89,7 +89,7 @@ describe.skipIf(!supported)('fetch-opencode', () => {
     const r = await fetcher.fetchOpencode({ pin: pinFor(), ...fetchOpts(binDir) })
     expect(r).toMatchObject({ status: 'fetched', version: VERSION, path: join(binDir, EXE) })
     if (isMac) expect(execFileSync('stat', ['-f', '%Lp', r.path]).toString().trim()).toBe('755')
-    expect(readdirSync(binDir)).toEqual([EXE])
+    expect(readdirSync(binDir).sort()).toEqual(['.pin-sha256', EXE])
     expect(readdirSync(join(root, 'ok')).filter((f) => f.startsWith('.fetch-'))).toEqual([])
   })
 
@@ -130,6 +130,23 @@ describe.skipIf(!supported)('fetch-opencode', () => {
     // sin --if-missing sí descarga de nuevo
     expect((await fetcher.fetchOpencode({ pin: pinFor(), ...fetchOpts(binDir) })).status).toBe('fetched')
     expect(hits).toEqual(['/opencode.zip'])
+  })
+
+  it('--if-missing: un binario con la misma versión pero que NO es el archivo fijado se vuelve a descargar', async () => {
+    const binDir = binDirs('otrobin')
+    await fetcher.fetchOpencode({ pin: pinFor(), ...fetchOpts(binDir) })
+    // Simula el motor oficial con el mismo número de versión: sin la huella del pin (o con otra) no se acepta.
+    writeFileSync(join(binDir, '.pin-sha256'), 'f'.repeat(64) + '\n')
+    hits = []
+    const r = await fetcher.fetchOpencode({ pin: pinFor(), ...fetchOpts(binDir), ifMissing: true })
+    expect(r.status).toBe('fetched')
+    expect(hits).toEqual(['/opencode.zip'])
+    // Ya con la huella correcta (la dejó la descarga anterior), ahora sí se da por bueno.
+    hits = []
+    expect((await fetcher.fetchOpencode({ pin: pinFor(), ...fetchOpts(binDir), ifMissing: true })).status).toBe('present')
+    // Sin huella (binario de una descarga antigua) también se descarga de nuevo.
+    rmSync(join(binDir, '.pin-sha256'))
+    expect((await fetcher.fetchOpencode({ pin: pinFor(), ...fetchOpts(binDir), ifMissing: true })).status).toBe('fetched')
   })
 
   it('sin red (servidor inexistente): error explícito y sin restos', async () => {

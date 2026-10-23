@@ -219,7 +219,7 @@ async function main() {
 function checkOut() {
   const FORBIDDEN = [
     'sandbox-exec',
-    'ditto',
+    // «ditto» ya no se vigila: el código de descarga y del Motor de macOS lo nombra detrás de comprobaciones de plataforma (nunca corre en Windows).
     'swap.sh',
     'buildSandboxProfile',
     'class ComputerService',
