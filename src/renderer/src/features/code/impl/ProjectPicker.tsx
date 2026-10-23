@@ -140,7 +140,7 @@ function FolderAccessCard(): React.JSX.Element | null {
             {t('code.folderAccess.openSettings')}
           </button>
           {canReset && (
-            <button ref={firstRef} type="button" className={primaryBtn} onClick={() => void askMacAgain(dir, openProjectTrusted)}>
+            <button ref={firstRef} type="button" className={primaryBtn} onClick={() => void askMacAgain(dir, openProjectTrusted, engine ? 'engine' : 'all')}>
               {t('code.folderAccess.askAgain')}
             </button>
           )}

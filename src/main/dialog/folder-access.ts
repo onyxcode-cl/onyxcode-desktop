@@ -145,13 +145,18 @@ export function defaultResetDeps(): ResetDeps {
  * macOS vuelva a preguntar «Permitir / No permitir». Solo macOS, sin shell ni sudo, ruta absoluta del binario, servicio de la lista
  * fija y el identificador de la app tomado de la constante (nunca del renderer). Se llama únicamente cuando la persona pulsa el botón.
  */
-export async function resetFolderPermission(path: string, deps: ResetDeps = defaultResetDeps()): Promise<FolderResetResult> {
+export async function resetFolderPermission(
+  path: string,
+  deps: ResetDeps = defaultResetDeps(),
+  scope: 'all' | 'engine' = 'all'
+): Promise<FolderResetResult> {
   if (deps.platform !== 'darwin') return 'unsupported'
   const services = tccServicesFor(path, deps.home)
   if (services.length === 0) return 'unsupported'
   try {
     // La app y el motor son identidades distintas ante macOS: se restablecen las dos, para que vuelva a preguntar por ambas.
-    const ids = [deps.appId, ...(deps.motorId ? [deps.motorId] : [])]
+    // `engine`: lo único denegado es el motor; no se toca la concesión (válida) de Lazunox ni se vuelve a molestar por ella.
+    const ids = scope === 'engine' && deps.motorId ? [deps.motorId] : [deps.appId, ...(deps.motorId ? [deps.motorId] : [])]
     for (const svc of services) for (const id of ids) await deps.run('/usr/bin/tccutil', ['reset', svc, id], deps.timeoutMs)
     return 'reset'
   } catch {

@@ -78,7 +78,8 @@ describe('carpeta denegada por macOS', () => {
     await act(async () => {
       ok = await openProjectTrusted(dir)
     })
-    expect(native.dialog.resetFolderPermission).toHaveBeenCalledExactlyOnceWith(dir)
+    // Lo único denegado era el motor: solo se restablece su decisión (la concesión válida de Lazunox no se toca).
+    expect(native.dialog.resetFolderPermission).toHaveBeenCalledExactlyOnceWith(dir, 'engine')
     expect(native.dialog.checkFolderAccess).toHaveBeenCalledTimes(2)
     expect(ok).toBe(true)
     expect(openProject).toHaveBeenCalledWith(dir)

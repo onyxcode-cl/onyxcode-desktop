@@ -12,6 +12,7 @@ import { ENGINE_PROBE_TIMEOUT_MS, probeFolderAsEngine, type RunResult } from '..
 import { findOpencodeBinary } from '../opencode/server'
 import { withDisclaim } from '../process/disclaim'
 import { execFile } from 'node:child_process'
+import { access, constants as fsConstants } from 'node:fs/promises'
 import { PtyService } from '../pty/service'
 import { shouldKillOnNavigation } from '../pty/lifecycle'
 import { settingsStore } from '../store'
@@ -157,7 +158,13 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   on(ipcMain, 'dialog:checkFolderAccess', async (r) => {
     const path = req(r, 'req').path
     const status = await checkFolderAccess(path)
-    const canReset = process.platform === 'darwin' && tccServicesFor(path).length > 0
+    // `canReset` solo si la denegación puede ser de macOS (TCC): con permisos Unix reales (chmod 000, otra cuenta) `access(R_OK)` falla y
+    // borrar la decisión de privacidad no serviría de nada.
+    const unixReadable = await access(path, fsConstants.R_OK).then(
+      () => true,
+      () => false
+    )
+    const canReset = process.platform === 'darwin' && tccServicesFor(path).length > 0 && unixReadable
     if (status !== 'ok' || process.platform !== 'darwin') return { status, canReset, cause: 'app' as const }
     // Lazunox puede leerla; el motor tiene identidad TCC propia (lazunox-disclaim) y puede que no. Ver engine-folder-probe.ts.
     const engine = await probeFolderAsEngine(path, {
@@ -181,7 +188,10 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     if (process.platform === 'darwin') await shell.openExternal(r?.pane === 'allFiles' ? PANE_ALL_FILES : PANE_FILES_AND_FOLDERS)
   })
   // Solo cuando la persona pulsa «Volver a preguntar a macOS»; nunca automático. Ver docs/SEGURIDAD.md §3 sexagies quater.
-  on(ipcMain, 'dialog:resetFolderPermission', async (r) => ({ result: await resetFolderPermission(req(r, 'req').path) }))
+  on(ipcMain, 'dialog:resetFolderPermission', async (r) => {
+    const q = req(r, 'req')
+    return { result: await resetFolderPermission(q.path, undefined, q.scope ?? 'all') }
+  })
 
   // ---- archivos del proyecto: vigilante (fs.watch, sin polling), gestor y «Abrir en…» ----
   // Solo la ventana principal (ninguno de estos canales está en CHANNEL_ROLES). El «proyecto activo» de una ventana
