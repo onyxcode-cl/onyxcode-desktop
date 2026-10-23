@@ -8,7 +8,17 @@ APP="${1:-dist/mac-arm64/Lazunox.app}"
 [ -d "$APP" ] || { echo "No existe $APP" >&2; exit 2; }
 T="$(mktemp -d /tmp/lzx-smoke.XXXXXX)"
 PORT=$((20000 + RANDOM % 20000))
-cleanup() { [ -f "$T/pid" ] && kill "$(cat "$T/pid")" 2>/dev/null; sleep 1; pkill -f "user-data-dir=$T" 2>/dev/null; rm -rf "$T"; }
+# Todos los descendientes de un proceso (el motor `opencode serve` es hijo de la app: si solo se cierra la app queda huérfano y gasta recursos).
+descendants() { local c; for c in $(pgrep -P "$1" 2>/dev/null); do echo "$c"; descendants "$c"; done; }
+cleanup() {
+  local kids=""
+  [ -f "$T/pid" ] && kids="$(descendants "$(cat "$T/pid")")"
+  [ -f "$T/pid" ] && kill "$(cat "$T/pid")" 2>/dev/null
+  sleep 1
+  pkill -f "user-data-dir=$T" 2>/dev/null
+  [ -n "$kids" ] && kill $kids 2>/dev/null
+  rm -rf "$T"
+}
 trap cleanup EXIT
 ditto "$APP" "$T/Lazunox.app"
 EXE="$(ls "$T/Lazunox.app/Contents/MacOS" | head -1)"
