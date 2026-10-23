@@ -18,7 +18,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Para tener en cuenta
 
-- Solo macOS. **Quien ya había dado permiso al motor con el nombre «opencode» verá una vez el aviso nuevo de «Lazunox Motor»**; después queda recordado también al actualizar.
+- Solo macOS. **Quien ya había dado permiso al motor con el nombre «opencode» verá una vez el aviso nuevo de «Lazunox Motor»**.
 
 ## [1.5.0] - 2026-10-22
 
