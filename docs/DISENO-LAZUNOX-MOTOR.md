@@ -1,6 +1,19 @@
 # Diseño: «Lazunox Motor.app» (motor OpenCode con identidad TCC propia, macOS)
 
-Estado: **diseño + prototipo** (2026-10-22, rama `feat/engine-client`). Nada de esto está en el código todavía.
+Estado: **implementado y publicado en la 1.5.1** (2026-10-22), con UNA corrección importante al diseño original que se mide más abajo
+(§1 y §2 describen el diseño inicial; léase primero esta nota).
+
+**Corrección medida en la app real (registro de TCC, `/usr/bin/log show` con `subsystem == "com.apple.TCC"`):** una mini-app ANIDADA en
+`Lazunox.app/Contents/Resources/opencode/` se evalúa a nombre de la app contenedora (`subject=<appId>`: hereda su decisión guardada y
+deniega sin avisar). Suelta, fuera del `.app`, TCC la evalúa como `subject=<appId>.motor`, el aviso la nombra y se puede restablecer por id.
+Por eso **la copia maestra firmada viaja dentro del `.app` pero se COPIA al arrancar a `~/Library/Application Support/Lazunox Motor/`**
+(`src/main/opencode/motor-app.ts`): huella = CDHash de la maestra (el sello `_CodeSignature/CodeResources` va vacío, `files=0`, y NO sirve),
+copia con `ditto`, verificación `codesign --verify --strict -R=<requisito designado de la maestra>` antes de ponerla y en cada arranque,
+reemplazo por `rename`. Orden de resolución en `bundledOpencodePath`: copia externa vigente → maestra anidada → binario suelto.
+Además, al elegir una carpeta con un «No permitir» guardado (acción explícita, no al restaurar) la interfaz borra la decisión (Lazunox y el
+motor, o solo el motor si es lo único denegado) y vuelve a comprobar una vez. Detalle de seguridad: `docs/SEGURIDAD.md` §3 sexagies quinquies;
+empaquetado: `docs/DISTRIBUCION.md` §9. **Sin verificar:** modo Developer ID con hardened runtime (no hay certificado de Apple) y que la
+concesión de TCC sobreviva a una actualización real con el mismo certificado.
 
 ## 0. Problema y decisión
 
