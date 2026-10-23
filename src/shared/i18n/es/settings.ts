@@ -69,7 +69,7 @@ export const settings = {
   'settings.general.instructions.description': 'Se aplican a todas las tareas, además de las instrucciones de cada proyecto (carpeta).',
   'settings.general.instructions.placeholder': 'Ej.: escribe siempre en tono formal; usa formato de fecha es-CL…',
   'settings.general.saved': 'Guardado',
-  'settings.general.server': 'Motor de IA (OpenCode)',
+  'settings.general.server': 'Motor de IA (Lazunox Motor)',
   'settings.general.server.status': 'Estado',
   'settings.general.server.restarts': '· {count} reinicio(s) automáticos',
   'settings.general.server.restart': 'Reiniciar',
@@ -239,10 +239,10 @@ export const settings = {
 
   // Acerca de
   'settings.about.title': 'Acerca de {app}',
-  'settings.about.subtitle': 'Cliente de escritorio sobre OpenCode.',
+  'settings.about.subtitle': 'Cliente de escritorio con motor propio, basado en OpenCode (licencia MIT).',
   'settings.about.devMode': 'Modo desarrollo',
   'settings.about.engine': 'Motor',
-  'settings.about.server': 'Motor de IA (OpenCode)',
+  'settings.about.server': 'Motor de IA (Lazunox Motor)',
   'settings.about.noConnection': 'Sin conexión',
   'settings.about.system': 'Sistema',
   'settings.about.creators': 'Creadores',

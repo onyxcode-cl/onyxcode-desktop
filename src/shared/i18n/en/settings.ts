@@ -72,7 +72,7 @@ export const settings = {
   'settings.general.instructions.description': 'Applied to every task, in addition to each project (folder) instructions.',
   'settings.general.instructions.placeholder': 'E.g. always write in a formal tone; use the en-US date format…',
   'settings.general.saved': 'Saved',
-  'settings.general.server': 'AI engine (OpenCode)',
+  'settings.general.server': 'AI engine (Lazunox Motor)',
   'settings.general.server.status': 'Status',
   'settings.general.server.restarts': '· {count} automatic restart(s)',
   'settings.general.server.restart': 'Restart',
@@ -243,10 +243,10 @@ export const settings = {
 
   // About
   'settings.about.title': 'About {app}',
-  'settings.about.subtitle': 'Desktop client for OpenCode.',
+  'settings.about.subtitle': 'Desktop client with its own engine, based on OpenCode (MIT license).',
   'settings.about.devMode': 'Development mode',
   'settings.about.engine': 'Engine',
-  'settings.about.server': 'AI engine (OpenCode)',
+  'settings.about.server': 'AI engine (Lazunox Motor)',
   'settings.about.noConnection': 'Not connected',
   'settings.about.system': 'System',
   'settings.about.creators': 'Creators',
