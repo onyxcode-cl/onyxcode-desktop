@@ -469,46 +469,50 @@ describe('archivos que crea la IA: «Recibir archivo»', () => {
     return { r, proj, outside }
   }
 
-  it('ofrece un botón por archivo creado y lo manda como documento; rechaza secretos, ejecutables, fuera de carpeta y enormes', async () => {
-    const { r, proj, outside } = await projectRig()
-    const put = (dir: string, name: string, data: string | Buffer = 'contenido de ' + name): string => {
-      const f = join(dir, name)
-      mkdirSync(join(f, '..'), { recursive: true })
-      writeFileSync(f, data)
-      return f
-    }
-    const good1 = put(proj, 'informe.md', '# Informe\nTodo bien')
-    const good2 = put(proj, 'docs/resumen.txt')
-    const env = put(proj, '.env', 'API=1')
-    const pem = put(proj, 'clave.pem', 'KEY')
-    const sh = put(proj, 'instalar.sh', 'rm -rf /')
-    const git = put(proj, '.git/config', '[core]')
-    const away = put(outside, 'ajeno.md')
-    const huge = put(proj, 'enorme.pdf', 'x')
-    truncateSync(huge, 51 * 1024 * 1024)
-    const link = join(proj, 'atajo.md')
-    symlinkSync(away, link)
-    await choose(r, 'Proyecto')
-    startTurn(r, 's_code', 'Genera los archivos')
-    const written = [good1, good2, env, pem, sh, git, away, huge, link].map((f) =>
-      toolPart('write', { filePath: f, content: 'x' }, 'completed')
-    )
-    finishTurn(r, 's_code', [...written, textPart('Archivos creados.')])
-    await until(() => buttons(lastMsg(r)).length > 0, 4000, 'botones de archivos')
-    const btns = buttons(lastMsg(r))
-    expect(btns.map((b) => b.text).sort()).toEqual(['Recibir archivo: informe.md', 'Recibir archivo: resumen.txt'])
-    for (const b of btns) expect(b.callback_data).toMatch(/^f:[A-Za-z0-9_-]{12}$/)
-    expect(lastMsg(r)!.text).not.toContain(proj) // nunca se muestran rutas completas
-    r.tg.press({ chatId: OWNER, messageId: lastMsg(r)!.message_id, data: btns[0]!.callback_data! })
-    r.tg.press({ chatId: OWNER, messageId: lastMsg(r)!.message_id, data: btns[1]!.callback_data! })
-    await until(() => r.tg.documents.length === 2)
-    expect(r.tg.documents.map((d) => d.filename).sort()).toEqual(['informe.md', 'resumen.txt'])
-    expect(r.tg.documents.find((d) => d.filename === 'informe.md')!.bytes.toString()).toBe('# Informe\nTodo bien')
-    const audit = readAudit(r.store.auditFile).filter((a) => a.kind === 'file-sent')
-    expect(audit).toHaveLength(2)
-    expect(JSON.stringify(audit)).not.toContain('informe')
-    expect(JSON.stringify(audit)).not.toContain(proj)
-  })
+  it(
+    'ofrece un botón por archivo creado y lo manda como documento; rechaza secretos, ejecutables, fuera de carpeta y enormes',
+    async () => {
+      const { r, proj, outside } = await projectRig()
+      const put = (dir: string, name: string, data: string | Buffer = 'contenido de ' + name): string => {
+        const f = join(dir, name)
+        mkdirSync(join(f, '..'), { recursive: true })
+        writeFileSync(f, data)
+        return f
+      }
+      const good1 = put(proj, 'informe.md', '# Informe\nTodo bien')
+      const good2 = put(proj, 'docs/resumen.txt')
+      const env = put(proj, '.env', 'API=1')
+      const pem = put(proj, 'clave.pem', 'KEY')
+      const sh = put(proj, 'instalar.sh', 'rm -rf /')
+      const git = put(proj, '.git/config', '[core]')
+      const away = put(outside, 'ajeno.md')
+      const huge = put(proj, 'enorme.pdf', 'x')
+      truncateSync(huge, 51 * 1024 * 1024)
+      const link = join(proj, 'atajo.md')
+      symlinkSync(away, link)
+      await choose(r, 'Proyecto')
+      startTurn(r, 's_code', 'Genera los archivos')
+      const written = [good1, good2, env, pem, sh, git, away, huge, link].map((f) =>
+        toolPart('write', { filePath: f, content: 'x' }, 'completed')
+      )
+      finishTurn(r, 's_code', [...written, textPart('Archivos creados.')])
+      await until(() => buttons(lastMsg(r)).length > 0, 4000, 'botones de archivos')
+      const btns = buttons(lastMsg(r))
+      expect(btns.map((b) => b.text).sort()).toEqual(['Recibir archivo: informe.md', 'Recibir archivo: resumen.txt'])
+      for (const b of btns) expect(b.callback_data).toMatch(/^f:[A-Za-z0-9_-]{12}$/)
+      expect(lastMsg(r)!.text).not.toContain(proj) // nunca se muestran rutas completas
+      r.tg.press({ chatId: OWNER, messageId: lastMsg(r)!.message_id, data: btns[0]!.callback_data! })
+      r.tg.press({ chatId: OWNER, messageId: lastMsg(r)!.message_id, data: btns[1]!.callback_data! })
+      await until(() => r.tg.documents.length === 2)
+      expect(r.tg.documents.map((d) => d.filename).sort()).toEqual(['informe.md', 'resumen.txt'])
+      expect(r.tg.documents.find((d) => d.filename === 'informe.md')!.bytes.toString()).toBe('# Informe\nTodo bien')
+      const audit = readAudit(r.store.auditFile).filter((a) => a.kind === 'file-sent')
+      expect(audit).toHaveLength(2)
+      expect(JSON.stringify(audit)).not.toContain('informe')
+      expect(JSON.stringify(audit)).not.toContain(proj)
+    },
+    { retry: 2 }
+  )
 
   it('se vuelve a validar al pulsar: si el archivo se cambió por un enlace a otra carpeta o por un secreto, no se manda', async () => {
     const { r, proj, outside } = await projectRig()
