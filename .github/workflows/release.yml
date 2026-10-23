@@ -25,7 +25,10 @@ concurrency:
 jobs:
   draft-release:
     name: macOS firmado y notarizado, borrador de release
-    if: github.ref_type == 'tag'
+    # Solo corre con una etiqueta Y si la variable del repositorio PUBLIC_RELEASE vale «true» (o a mano con workflow_dispatch sobre una
+    # etiqueta). Hoy las releases se publican con `scripts/release.sh` desde el Mac del dueño; este flujo (firma con Apple + notarización)
+    # exige además un alias público definitivo (`verify:release`), así que sin la variable se OMITE en vez de salir en rojo con cada `v*`.
+    if: github.ref_type == 'tag' && (vars.PUBLIC_RELEASE == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: macos-15
     environment: release # aprobación manual obligatoria
     timeout-minutes: 90
