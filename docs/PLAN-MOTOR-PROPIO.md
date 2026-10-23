@@ -40,18 +40,30 @@ Este documento es el plan único. Si algo cambia, se cambia aquí y se avisa; no
 Lo que la app usa hoy y no se debe romper a ciegas: nombre del binario `opencode`/`opencode.exe`, variables `OPENCODE_*`, carpeta de datos (`opencode.db`), API HTTP.
 Etapas: (a) textos que ve el usuario (ayuda, `--version`, prompts del sistema que dicen «OpenCode»); (b) nombre del binario, con cambio en `fetch-opencode`, `motor-app`, `verify-*`; (c) variables `LAZUNOX_*` con alias a las `OPENCODE_*` un tiempo; (d) carpeta de datos, con migración. La API HTTP y el SDK no se renombran (rompería el contrato).
 
-## Paso 4 — funciones propias (lo de OpenCode 2.0), dentro del motor
+## Paso 4 — traer TODAS las funciones útiles de OpenCode 2.x al motor nuestro, y mejorarlas
 
-Orden:
+Objetivo de Ben (2026-10-23): partir de la base 1.19 y habilitar dentro del motor las funciones nuevas de OpenCode 2.0, mejorándolas, para Lazunox. No se migra a 2.x ni se usa su código tal cual:
+se reimplementan sobre la base 1.19 (modelos de datos distintos), conservando la licencia MIT y el aviso de copyright de OpenCode en lo que se copie (`THIRD_PARTY_NOTICES.md`).
+Fuente de referencia: `docs/ANALISIS-OPENCODE-2-FUNCIONES.md` (con rutas y líneas de 2.x).
 
-1. **Subagentes en segundo plano.** La función ya está en 1.19 tras `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`. En el motor nuestro: activa por defecto (sin variable). En la app: lista de trabajos de fondo, botón «mandar al fondo» (`POST /experimental/session/{id}/background`), cancelar, tope de simultáneos, permisos de las sesiones hijas, plan-gate verificado con la hija.
-   *Hecho ya en la app (sin publicar):* por defecto encendidos (`src/shared/engine-experiments.ts`) y pruebas ajustadas.
-2. **Shell en segundo plano nativo.** En 1.19 el comando se mata a los 2 min. En el motor: parámetro `background` en `tool/shell.ts`, `BackgroundJob`, archivo de salida con tope, herramienta leer/matar, aviso al terminar, matar el grupo de procesos al cerrar. Ya existe `bgshell` en la app (`src/main/background-shell`, «listo para conectar»): revisar qué cubre y decidir si el motor lo reemplaza o solo se integra; no duplicar.
-3. **`permission.ask` cableado** en `Permission.ask` (hoy el gancho está tipado y no se dispara); lo usa `lazunox-plan-gate`.
-4. **Code Mode** (`OPENCODE_EXPERIMENTAL_CODE_MODE`): detrás de un ajuste y tras probar; **no** se porta el `fetch` sin permiso de 2.x.
-5. Otras ideas de 2.x, solo si hacen falta: diff por turno, «siempre permitir» por proyecto, compactación.
+| # | Función de 2.x | En 1.19 hoy | Qué hacemos en el motor | Mejora nuestra sobre 2.x |
+|---|---|---|---|---|
+| 1 | Subagentes en segundo plano | Está, tras bandera experimental | Activa por defecto en el motor; endpoint «mandar al fondo» ya existe | Tope de simultáneos; cancelar al cerrar sesión/app; permisos de las hijas visibles; el plan-gate resuelve la hija; (opcional) sobrevivir a reinicios con marcador en disco |
+| 2 | Shell en segundo plano | No existe (mata a los 2 min) | `background` en `tool/shell.ts` + `BackgroundJob` + archivo de salida + leer/matar + aviso de fin que despierta la sesión | Tiempo máximo también en segundo plano (2.x no pone ninguno), matar el grupo de procesos, tope de salida y retención, dentro del sandbox de la sesión, mismo filtro de entorno que `lazunox-env`. Revisar el `bgshell` que ya tiene la app para no duplicar |
+| 3 | Aviso sintético que despierta la sesión (`<subagent>`, `<shell>`) | Parcial (subagentes) | Unificar el mecanismo para subagentes y shell | Marcar el texto como no confiable y pasarlo por la puerta del plan (es un canal de inyección) |
+| 4 | Code Mode | Está (solo MCP, sin `fetch`), tras bandera | Activo detrás de un ajuste de Lazunox | Límites por defecto (`timeoutMs`, `maxToolCalls`, `maxOutputBytes`, que 2.x no fija); NO traer el `fetch` sin permiso; el «siempre» no aprueba la herramienta entera |
+| 5 | Gancho `permission.ask` / `permission.evaluate` | Tipado pero no se dispara | Cablearlo en `Permission.ask` | Lo usa el plan-gate; sustituye parches actuales |
+| 6 | Gancho `shell.create.before` (entorno mutable) | `shell.env` ya existe | Mantener `shell.env`; añadir cwd/timeout mutables si hace falta | — |
+| 7 | Permisos «siempre» guardados por proyecto (persisten) | En memoria de la instancia | Guardar en disco por carpeta | Revocables desde ajustes; nunca para acciones de `NEVER_ALONE_PERMISSIONS` |
+| 8 | Diff por turno | No | Evaluar sobre el sistema de puntos de restauración que ya tiene Lazunox | Reusar nuestros restore points |
+| 9 | Compactación de sesión mejorada | Básica | Evaluar tras medir | — |
+| 10 | Reanudar trabajos tras reinicio | No | Solo marcadores (cancelar con aviso claro, como 2.x para shell) | Aviso visible en la UI |
+| 11 | Proveedores/modelos nuevos | Se portan a mano cuando haga falta | Por commit | — |
 
-Cada función: pruebas `bun test` en el fork, 27 comprobaciones del `engine-probe` ampliadas, prueba con la app real por CDP (modelo gratuito), Mac y Windows.
+**No se traen:** servicio compartido por usuario (rompe el sidecar por carpeta con Seatbelt/WSL), demonio PTY persistente (Lazunox tiene su PTY), SDK en proceso, credenciales en SQLite sin cifrar, `fetch` de Code Mode sin permiso.
+
+Orden de trabajo: 1 → 2 (+3) → 5 → 4 → 7 → 8 → 10 → 9/11 según haga falta.
+Cada función: pruebas `bun test` en el fork, ampliar `scripts/engine-probe` (que sigan pasando las 27 y se sumen las nuevas), prueba con la app real por CDP (modelo gratuito) en Mac y Windows, y su nota en `CHANGELOG.md` y `docs/SEGURIDAD.md`. La parte visual (lista de trabajos de fondo, botones, tarjetas) va en la app y se prueba aparte.
 
 ## Paso 5 — mantenimiento
 
