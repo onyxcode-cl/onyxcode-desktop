@@ -99,6 +99,19 @@ describe('settings: engineExperiments', () => {
     const store = await openStore(dir)
     expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
   })
+  it('1.6.0: un settings.json antiguo con «todo apagado» enciende los ayudantes una vez y respeta que luego se apaguen', async () => {
+    const dir = userData()
+    writeFileSync(
+      join(dir, 'settings.json'),
+      JSON.stringify({ theme: 'dark', engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
+    )
+    const store = await openStore(dir)
+    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineBgMigrated).toBe(true)
+    store.set({ engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
+    const reopened = await openStore(dir)
+    expect(reopened.get().engineExperiments.backgroundSubagents).toEqual(OFF)
+  })
   it('se guarda, sobrevive a otras escrituras y relee de disco', async () => {
     const dir = userData()
     const store = await openStore(dir)

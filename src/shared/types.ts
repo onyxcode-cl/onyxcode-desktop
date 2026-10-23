@@ -50,6 +50,8 @@ export interface Settings {
   learningEnabled: boolean
   /** Funciones experimentales del motor por modo (Modo código, subagentes en segundo plano). Apagadas por defecto; el celular no las escribe. */
   engineExperiments: EngineExperiments
+  /** Marca de la migración de 1.6.0: los ayudantes en segundo plano pasan a estar encendidos por defecto, también para quien ya tenía guardado «todo apagado». Se hace una sola vez. */
+  engineBgMigrated?: boolean
   /**
    * Conectores (servidores MCP) en los que la persona confía en Code: se usan SIN pedir permiso en cada llamada. Los demás preguntan
    * (por defecto, como Claude Code). Vacío por defecto; los internos de la app (`browser`…) son de confianza fija y no figuran aquí.

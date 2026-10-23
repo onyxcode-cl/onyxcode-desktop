@@ -14,13 +14,14 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Novedades
 
-- **Ayudantes en segundo plano, encendidos por defecto.** La IA puede lanzar un ayudante para una tarea larga, seguir conversando contigo y recibir el resultado cuando termine; aparecen en «Trabajos en segundo plano», con botón para cancelar. Puedes apagarlos en Ajustes.
+- **Ayudantes en segundo plano, encendidos por defecto.** La IA puede lanzar un ayudante para una tarea larga, seguir conversando contigo y recibir el resultado cuando termine; aparecen en «Trabajos en segundo plano», con botón para cancelar. Puedes apagarlos en Ajustes. Si ya usabas Lazunox, se encienden una sola vez al actualizar (antes venían apagados); si los apagas, no vuelven a encenderse solos.
 - **Modo código con límites.** Si activas el Modo código, un script de la IA ahora se detiene si pasa de 5 minutos, de 200 llamadas o de 1 MB de salida. Al detenerse **no se pierde lo ya hecho**: lo ejecutado se conserva y la IA recibe un resumen de lo obtenido para continuar por tandas.
 
 ### Mejoras
 
 - El instalador comprueba que el motor incluido sea exactamente el archivo fijado, no solo que tenga el mismo número de versión.
 - Las Tareas en Windows (WSL) aceptan el motor propio.
+- En «Acerca de», el motor incluido aparece como «Lazunox Motor».
 
 ## [1.5.3] - 2026-10-23
 

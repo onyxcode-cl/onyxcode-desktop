@@ -80,3 +80,25 @@ export function engineFlagEnvForMainSidecar(settings: SettingsLike): Record<stri
   const code = engineFlagEnvFor(settings, 'code')
   return { ...chat, ...code }
 }
+
+/**
+ * Migración única de 1.6.0. Antes de 1.6.0 el valor por defecto era «todo apagado» y el almacén lo GUARDABA en disco, así que quien
+ * ya usaba la app no recibiría el nuevo valor por defecto (ayudantes en segundo plano encendidos). Si todavía no se migró y los
+ * ayudantes están apagados en los tres modos, se encienden una vez; la persona puede volver a apagarlos en Ajustes y no se vuelve a tocar.
+ * El Modo código no se toca. Función pura: devuelve lo que hay que guardar y si cambió algo.
+ */
+export function migrateBackgroundSubagentsDefault(
+  raw: unknown,
+  alreadyMigrated: boolean | undefined
+): { value: EngineExperiments; migrated: true; changed: boolean } {
+  const current = normalizeEngineExperiments(raw)
+  if (alreadyMigrated === true) return { value: current, migrated: true, changed: false }
+  const bg = current.backgroundSubagents
+  const allOff = !bg.chat && !bg.code && !bg.tasks
+  if (!allOff) return { value: current, migrated: true, changed: true }
+  return {
+    value: { ...current, backgroundSubagents: { ...ENGINE_EXPERIMENTS_DEFAULTS.backgroundSubagents } },
+    migrated: true,
+    changed: true
+  }
+}

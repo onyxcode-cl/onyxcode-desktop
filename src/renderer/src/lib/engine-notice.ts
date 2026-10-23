@@ -16,11 +16,12 @@ export function engineSourceLabel(source: OpencodeSource | null): string | null 
   return null
 }
 
-/** «OpenCode 1.18.33 (incluido)», o null si no hay motor. */
+/** «Lazunox Motor 1.19.0 (incluido)» (el propio) u «OpenCode 1.19.0 (tu CLI)» (uno externo), o null si no hay motor. */
 export function engineSummary(info: EngineInfo | null): string | null {
   if (!info || !info.found) return null
   const origin = engineSourceLabel(info.source)
-  return `OpenCode${info.version ? ` ${info.version}` : ''}${origin ? ` (${origin})` : ''}`
+  const name = info.source === 'bundled' ? 'Lazunox Motor' : 'OpenCode'
+  return `${name}${info.version ? ` ${info.version}` : ''}${origin ? ` (${origin})` : ''}`
 }
 
 export type EngineNoticeKind = 'older' | 'newer'

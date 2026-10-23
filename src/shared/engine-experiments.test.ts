@@ -4,6 +4,7 @@ import {
   engineExperimentsFor,
   engineFlagEnvFor,
   engineFlagEnvForMainSidecar,
+  migrateBackgroundSubagentsDefault,
   normalizeEngineExperiments
 } from './engine-experiments'
 import { DEFAULT_SETTINGS, type EngineExperiments } from './types'
@@ -102,5 +103,31 @@ describe('onlyExperimentalEngineEnv (defensa en profundidad del entorno extra de
       onlyExperimentalEngineEnv({ OPENCODE_EXPERIMENTAL_CODE_MODE: '1', OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'false' })
     ).toEqual({})
     expect(onlyExperimentalEngineEnv({})).toEqual({})
+  })
+})
+
+describe('migrateBackgroundSubagentsDefault (1.6.0)', () => {
+  const guardadoApagado = { codeMode: off, backgroundSubagents: off }
+  it('quien tenía «todo apagado» guardado recibe los ayudantes encendidos, una vez', () => {
+    const r = migrateBackgroundSubagentsDefault(guardadoApagado, undefined)
+    expect(r.value.backgroundSubagents).toEqual(on)
+    expect(r.value.codeMode).toEqual(off)
+    expect(r.migrated).toBe(true)
+    expect(r.changed).toBe(true)
+  })
+  it('ya migrado: no toca lo que la persona dejó (apagado a propósito)', () => {
+    const r = migrateBackgroundSubagentsDefault(guardadoApagado, true)
+    expect(r.value.backgroundSubagents).toEqual(off)
+    expect(r.changed).toBe(false)
+  })
+  it('si ya tenía algún modo encendido se respeta tal cual', () => {
+    const raw = { codeMode: off, backgroundSubagents: { chat: true, code: false, tasks: false } }
+    const r = migrateBackgroundSubagentsDefault(raw, undefined)
+    expect(r.value.backgroundSubagents).toEqual(raw.backgroundSubagents)
+    expect(r.changed).toBe(true)
+  })
+  it('sin nada guardado: valores por defecto nuevos; el Modo código sigue apagado', () => {
+    const r = migrateBackgroundSubagentsDefault(undefined, undefined)
+    expect(r.value).toEqual({ codeMode: off, backgroundSubagents: on })
   })
 })

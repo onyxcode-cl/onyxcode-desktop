@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
-import { normalizeEngineExperiments } from '@shared/engine-experiments'
+import { migrateBackgroundSubagentsDefault, normalizeEngineExperiments } from '@shared/engine-experiments'
 import { normalizeCodeTrustedMcp } from '@shared/mcp-permissions'
 import { isLangPref, migrateLanguage } from '@shared/i18n'
 import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
@@ -27,7 +27,22 @@ class SettingsStore {
     } catch (err) {
       console.error('[store] settings.json inválido, usando valores por defecto:', err)
     }
-    this.cache = normalize({ ...DEFAULT_SETTINGS, ...loaded, language: migrateLanguage(loaded) })
+    const bg = migrateBackgroundSubagentsDefault(loaded.engineExperiments, loaded.engineBgMigrated)
+    this.cache = normalize({
+      ...DEFAULT_SETTINGS,
+      ...loaded,
+      engineExperiments: bg.value,
+      engineBgMigrated: bg.migrated,
+      language: migrateLanguage(loaded)
+    })
+    // Solo se escribe si ya existía un settings.json (una instalación nueva no necesita migrar nada en disco todavía).
+    if (bg.changed && existsSync(this.file)) {
+      try {
+        this.write(this.cache)
+      } catch (err) {
+        console.error('[store] no se pudo guardar la migración de ajustes:', err)
+      }
+    }
     return this.cache
   }
 
@@ -87,6 +102,7 @@ function normalize(s: Settings): Settings {
     checkUpdates: s.checkUpdates !== false,
     learningEnabled: s.learningEnabled !== false,
     engineExperiments: normalizeEngineExperiments(s.engineExperiments),
+    engineBgMigrated: s.engineBgMigrated === true,
     codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp)
   }
 }

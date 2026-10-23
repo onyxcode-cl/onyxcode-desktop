@@ -54,7 +54,7 @@ describe('engineNoticeText', () => {
 
 describe('engineSummary / engineSourceLabel', () => {
   it('describe versión y origen', () => {
-    expect(engineSummary({ ...base, source: 'bundled', version: '1.18.33', compatible: true })).toBe('OpenCode 1.18.33 (incluido)')
+    expect(engineSummary({ ...base, source: 'bundled', version: '1.18.33', compatible: true })).toBe('Lazunox Motor 1.18.33 (incluido)')
     expect(engineSummary({ ...base, source: 'cli' })).toBe('OpenCode 1.18.32 (tu CLI)')
     expect(engineSummary(base)).toBe('OpenCode 1.18.32 (ruta elegida)')
     expect(engineSummary({ ...base, source: 'env', version: null })).toBe('OpenCode (ruta elegida)')
