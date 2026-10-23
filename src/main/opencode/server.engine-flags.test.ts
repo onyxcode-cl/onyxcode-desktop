@@ -102,14 +102,14 @@ describe('sidecar principal: variables de las funciones experimentales', () => {
   it('por defecto solo lleva la de subagentes en segundo plano (nunca la general)', async () => {
     const env = await envFor(ENGINE_EXPERIMENTS_DEFAULTS)
     expect(env.OPENCODE_EXPERIMENTAL_CODE_MODE).toBeUndefined()
-    expect(env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBe("true")
+    expect(env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBe('true')
     expect(env.OPENCODE_EXPERIMENTAL).toBeUndefined()
   })
 
   it('Code encendido: lleva solo la variable de esa función', async () => {
     const env = await envFor(exp({ codeMode: { chat: false, code: true, tasks: false } }))
     expect(env.OPENCODE_EXPERIMENTAL_CODE_MODE).toBe('true')
-    expect(env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBe("true")
+    expect(env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBe('true')
     expect(env.OPENCODE_EXPERIMENTAL).toBeUndefined()
   })
 
