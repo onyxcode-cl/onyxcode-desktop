@@ -18,7 +18,7 @@ Este documento es el plan único. Si algo cambia, se cambia aquí y se avisa; no
 | 1 | Fork con la base 1.19.0 + LICENSE + `LAZUNOX.md` | Hecho |
 | 2 | Compilar desde el código fuente, repetible | Hecho (3 plataformas idénticas byte a byte) |
 | 3.1 | Quitar conexiones a servicios de OpenCode | Hecho, con prueba que lo vigila (`test/lazunox/sin-red-de-opencode.test.ts`) |
-| 3.2 | Release del motor en GitHub | Hecho: `v1.19.0-lazunox.1` (verificada: las 3 huellas coinciden) |
+| 3.2 | Release del motor en GitHub | Hecho: `v1.19.0-lazunox.1` y `v1.19.0-lazunox.2` (con pausa y espera de Code Mode; verificadas: las huellas coinciden con lo publicado) |
 | 3.3 | `pin.json` apunta a nuestra release | **Pendiente** (el permiso del sistema lo bloqueó; ver «Bloqueado») |
 | 3.4 | Probar el motor nuestro en la app real | Pendiente (Mac y Windows) |
 | 3.5 | Renombrar para que no diga «OpenCode» | Pendiente, por etapas |
@@ -69,9 +69,9 @@ Fuente de referencia: `docs/ANALISIS-OPENCODE-2-FUNCIONES.md` (con rutas y líne
 - Code Mode con límites por defecto (300 s, 200 llamadas, 1 MB; variables `LAZUNOX_CODE_MODE_*`). Al llegar a un límite el script se corta pero **lo hecho no se deshace** y el error le dice al modelo qué ya se obtuvo (pruebas en `packages/codemode/test/lazunox-limites.test.ts`).
 - Investigado (2026-10-23): Claude (API) limita 90 s por celda, ~4 min por llamada pendiente y conserva el estado entre celdas; Codex no mata el script, lo **pausa** («Script running» + `wait`/terminar, salida final con tope de 10 000 tokens).
 
-### Primera tarea después de la presentación: pausa y espera para Code Mode (lo mejor de Codex y Claude)
+### Hecho (1.6.1): pausa y espera para Code Mode (lo mejor de Codex y Claude)
 
-En vez de cortar al pasarse el tiempo, el script sigue vivo: `execute` devuelve «script en curso» con un `cell_id` y el modelo usa `execute_wait` (esperar más / leer lo avanzado / terminar). Pendiente de diseño: las herramientas internas piden permisos y se cancelan con la llamada original, así que hay que desacoplarlas (contexto propio de la celda). Pruebas: permisos desde una celda en segundo plano, cancelar al cerrar sesión, tope de celdas vivas.
+En vez de cortar al pasarse el tiempo, el script sigue vivo: `execute` devuelve «script en curso» con un `cell_id` y el modelo usa `execute_wait` (esperar más / leer lo avanzado / terminar). Implementado en el motor (`execute` con `yield_ms` + `execute_wait`): la celda corre como trabajo en segundo plano con señal de cancelación propia (la del turno se dispara al terminar la respuesta), tope de 3 celdas vivas, y el guardián de subagentes de la app mantiene el seguimiento de permisos mientras la celda vive. Probado: `bun test` del fork, 29 comprobaciones de `engine-probe` contra el motor real. Pendiente: probar a mano `execute_wait`/`terminate` con un conector real en la app, y que la app muestre la celda en «Trabajos en segundo plano».
 
 Orden de trabajo: 1 → 2 (+3) → 5 → 4 → 7 → 8 → 10 → 9/11 según haga falta.
 Cada función: pruebas `bun test` en el fork, ampliar `scripts/engine-probe` (que sigan pasando las 27 y se sumen las nuevas), prueba con la app real por CDP (modelo gratuito) en Mac y Windows, y su nota en `CHANGELOG.md` y `docs/SEGURIDAD.md`. La parte visual (lista de trabajos de fondo, botones, tarjetas) va en la app y se prueba aparte.

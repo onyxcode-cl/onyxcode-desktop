@@ -2405,18 +2405,18 @@ app con el mismo certificado (debería conservar la concesión: el requisito no 
 
 ## 3 sexagies septies. Motor propio de Lazunox (1.6.0)
 
-Estado: el motor deja de ser el binario oficial de OpenCode y pasa a ser una copia propia de OpenCode 1.19.0 (repositorio del motor propio, release `v1.19.0-lazunox.1`). Plan: `docs/PLAN-MOTOR-PROPIO.md`.
+Estado: el motor deja de ser el binario oficial de OpenCode y pasa a ser una copia propia de OpenCode 1.19.0 (repositorio del motor propio, release `v1.19.0-lazunox.2`). Plan: `docs/PLAN-MOTOR-PROPIO.md`.
 
 | Qué | Efecto de seguridad | Verificación |
 |---|---|---|
 | Sin autoactualización, sin compartir sesiones (`opncd.ai`), sin proxy a `app.opencode.ai`, sin descarga automática de LSP | Menos superficie de red y ningún dato de conversaciones sale hacia servidores de terceros | Prueba `packages/opencode/test/lazunox/sin-red-de-opencode.test.ts` en el fork; el `.exe` en Windows no abre conexiones externas con el catálogo de modelos apagado; `strings` del binario de macOS ya no contiene `app.opencode.ai` |
 | Compilación repetible | Se puede comprobar que el binario corresponde al código | Dos compilaciones por plataforma (darwin-arm64, win32-x64, linux-x64) con la misma huella |
 | Descarga fijada | El instalador y `fetch-opencode` verifican tamaño y SHA-256 del `pin.json` antes de extraer; además `--if-missing` exige la huella del pin (antes solo comparaba el número de versión: un motor distinto con la misma versión se habría empaquetado) | `src/test/fetch-opencode.test.ts` |
-| Code Mode con límites (300 s, 200 llamadas, 1 MB) | Un script no puede encadenar llamadas sin tope; al llegar al límite lo ya ejecutado no se deshace y el modelo recibe el resumen | `packages/codemode/test/lazunox-limites.test.ts` |
+| Code Mode con límites (300 s, 200 llamadas, 1 MB) y pausa/espera (`execute_wait`, 30 s, hasta 3 celdas vivas) | Un script no puede encadenar llamadas sin tope; al llegar al límite lo ya ejecutado no se deshace y el modelo recibe el resumen. Un script lento sigue vivo detrás de la llamada: el guardián de subagentes mantiene su seguimiento (y la revocación tras un rechazo) hasta que vence el tope de vida de una celda | `packages/codemode/test/lazunox-limites.test.ts`, `test/tool/code-mode.test.ts` («pausa y espera»), `subagent-guard.test.ts`, `scripts/engine-probe` (29 comprobaciones) |
 | Catálogo de modelos desde `models.dev` | Única conexión externa del motor por sí mismo (se puede apagar con `OPENCODE_DISABLE_MODELS_FETCH=1`); es un GET público sin datos del usuario | Medido en Windows: 1 conexión con la descarga activa, 0 con ella apagada |
 
 No cambia el perfil Seatbelt ni la política de plan: las 27 comprobaciones de `scripts/engine-probe` pasan contra el motor nuevo.
-Pendiente: `permission.ask` (gancho que hoy no se dispara), pausa y espera en Code Mode, y revisar las variables y textos que aún dicen «opencode».
+Pendiente: `permission.ask` (gancho que hoy no se dispara) y revisar las variables y textos que aún dicen «opencode».
 
 ## 3 sexagies sexies. Revisión de la 1.5.0: correcciones (F8-B212, ZONA INTOCABLE)
 

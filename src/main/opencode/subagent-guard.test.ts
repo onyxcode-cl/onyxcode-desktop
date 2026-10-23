@@ -416,6 +416,42 @@ describe('lazunox-subagent-guard: rechazo dentro de execute (Code Mode)', () => 
   })
 })
 
+describe('lazunox-subagent-guard: execute que sigue vivo en segundo plano (pausa y espera del motor propio)', () => {
+  const asked = (id: string, sessionID: string, callID: string) => ({
+    type: 'permission.asked',
+    properties: { id, sessionID, permission: 'prueba_leer', patterns: ['*'], always: ['*'], tool: { messageID: 'm', callID } }
+  })
+  const replied = (requestID: string, sessionID: string, reply: string) => ({
+    type: 'permission.replied',
+    properties: { sessionID, requestID, reply }
+  })
+  const inner = (b: Before, sid: string, call: string) => b({ tool: 'prueba_leer', sessionID: sid, callID: call }, { args: {} })
+
+  it('si el execute devolvió «Script en curso», un rechazo posterior sigue bloqueando las demás llamadas del programa', async () => {
+    const g = await load({ sessions: {} })
+    await g.before({ tool: 'execute', sessionID: 's1', callID: 'ex1' }, { args: {} })
+    await (g.after as (i: unknown, o: unknown) => Promise<void>)(
+      { tool: 'execute', sessionID: 's1', callID: 'ex1' },
+      { output: 'Script en curso (cell_id=cm_abc123). Lleva 1 llamada(s) completada(s)' }
+    )
+    await g.event({ event: asked('p1', 's1', 'ex1/2') })
+    await g.event({ event: replied('p1', 's1', 'reject') })
+    await expect(inner(g.before, 's1', 'ex1/3')).rejects.toThrow(/rechazo un permiso/)
+  })
+
+  it('si el execute terminó normalmente, se limpia como siempre', async () => {
+    const g = await load({ sessions: {} })
+    await g.before({ tool: 'execute', sessionID: 's1', callID: 'ex2' }, { args: {} })
+    await (g.after as (i: unknown, o: unknown) => Promise<void>)(
+      { tool: 'execute', sessionID: 's1', callID: 'ex2' },
+      { output: '42' }
+    )
+    await g.event({ event: asked('p2', 's1', 'ex2/0') })
+    await g.event({ event: replied('p2', 's1', 'reject') })
+    await expect(inner(g.before, 's1', 'ex2/1')).resolves.toBeUndefined()
+  })
+})
+
 describe('lazunox-subagent-guard por el canal de solo lectura de main (Tareas con sandbox, F8-B208)', () => {
   // Cliente del motor que falla como dentro de Seatbelt (sin salida al puerto del motor): en este camino NO se usa.
   const sandboxedClient = {

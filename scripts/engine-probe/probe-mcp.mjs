@@ -27,10 +27,16 @@ rl.on('line', (line) => {
       result: {
         tools: [
           { name: 'start', description: 'echo args', inputSchema: schema },
-          { name: 'secret', description: 'echo args', inputSchema: schema }
+          { name: 'secret', description: 'echo args', inputSchema: schema },
+          { name: 'slow', description: 'responde tras ms milisegundos', inputSchema: { type: 'object', properties: { ms: { type: 'number' } } } }
         ]
       }
     })
+  else if (m.method === 'tools/call' && m.params.name === 'slow')
+    setTimeout(
+      () => send({ jsonrpc: '2.0', id: m.id, result: { content: [{ type: 'text', text: 'LENTO-LISTO' }] } }),
+      Number(m.params.arguments?.ms ?? 100)
+    )
   else if (m.method === 'tools/call')
     send({
       jsonrpc: '2.0',

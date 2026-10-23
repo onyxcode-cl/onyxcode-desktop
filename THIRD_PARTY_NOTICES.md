@@ -12,7 +12,7 @@ componentes de terceros; si `LICENSE` cambia, esta línea debe cambiar a la vez 
 ## 1. OpenCode (motor incluido)
 
 - Componente: «Lazunox Motor», copia **modificada** de OpenCode 1.19.0 (commit 733b2c62, etiqueta `upstream-v1.19.0` en nuestro repositorio), compilada por Lazunox. Cambios: sin conexiones a servicios de OpenCode, límites de Code Mode y otros descritos en `LAZUNOX.md` del repositorio.
-- Origen del código modificado: <https://github.com/onyxcode-cl/lazunox-motor> (release `v1.19.0-lazunox.1`); código original: <https://github.com/anomalyco/opencode/releases/tag/v1.19.0>
+- Origen del código modificado: <https://github.com/onyxcode-cl/lazunox-motor> (release `v1.19.0-lazunox.2`); código original: <https://github.com/anomalyco/opencode/releases/tag/v1.19.0>
 - Ubicación en la app: `Contents/Resources/opencode/opencode` (en macOS, dentro de «Lazunox Motor.app»).
 - Licencia: MIT.
 

@@ -4,7 +4,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
-## [1.6.0] - 2026-10-23
+## [1.6.1] - 2026-10-23
 
 ### Motor propio
 
@@ -15,7 +15,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Novedades
 
 - **Ayudantes en segundo plano, encendidos por defecto.** La IA puede lanzar un ayudante para una tarea larga, seguir conversando contigo y recibir el resultado cuando termine; aparecen en «Trabajos en segundo plano», con botón para cancelar. Puedes apagarlos en Ajustes. Si ya usabas Lazunox, se encienden una sola vez al actualizar (antes venían apagados); si los apagas, no vuelven a encenderse solos.
-- **Modo código con límites.** Si activas el Modo código, un script de la IA ahora se detiene si pasa de 5 minutos, de 200 llamadas o de 1 MB de salida. Al detenerse **no se pierde lo ya hecho**: lo ejecutado se conserva y la IA recibe un resumen de lo obtenido para continuar por tandas.
+- **Modo código con límites y con pausa.** Si activas el Modo código, un script de la IA ahora se detiene si pasa de 5 minutos, de 200 llamadas o de 1 MB de salida, y **no se pierde lo ya hecho**: lo ejecutado se conserva y la IA recibe un resumen de lo obtenido. Además, si un script tarda más de 30 segundos ya no bloquea la conversación: sigue trabajando y la IA puede esperarlo, leer su resultado o pararlo (hasta 3 a la vez).
 
 ### Mejoras
 

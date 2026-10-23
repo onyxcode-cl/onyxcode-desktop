@@ -111,6 +111,35 @@ check(
   (r) => outcome(r) === 'ejecutada' && r.asked.length === 0
 )
 
+// ── Code Mode del motor propio: pausa y espera (execute_wait) ─────────────────────────────────────────────────────
+check(
+  'Code Mode: un script lento devuelve «Script en curso» con cell_id y execute_wait queda ofrecido',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    call: { name: 'execute', args: { code: 'return await tools.x.slow({ ms: 5000 })', yield_ms: 1000 } },
+    settleMs: 2500
+  },
+  (r) => {
+    const p = r.toolParts[0]
+    return !!p && p.status === 'completed' && /Script en curso \(cell_id=cm_\w+\)/.test(p.output) && (r.toolsOffered ?? []).includes('execute_wait')
+  }
+)
+check(
+  'Code Mode: un script rápido devuelve el resultado directo, sin pausa',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    call: { name: 'execute', args: { code: 'return await tools.x.slow({ ms: 50 })', yield_ms: 1000 } }
+  },
+  (r) => {
+    const p = r.toolParts[0]
+    return !!p && p.status === 'completed' && p.output.includes('LENTO-LISTO') && !p.output.includes('Script en curso')
+  }
+)
+
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
 const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)

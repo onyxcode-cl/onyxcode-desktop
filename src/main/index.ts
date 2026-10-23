@@ -392,7 +392,7 @@ function start(): void {
       })
     })
     server.on('inlineStale', () => engineFlags.recheck())
-    // Vigilante de Modo código: el motor no limita `execute`; si un programa pasa de tiempo/llamadas/salida se aborta su sesión.
+    // Vigilante de Modo código: segunda barrera. El motor propio ya limita `execute` (y lo pausa, ver execute_wait); aquí se aborta la sesión si una ejecución sigue «running» pasados los topes de la app.
     // Solo observa mientras Modo código esté encendido en algún modo (sidecar principal y servidores vivos de Overdrive).
     const executeWatchdog = installExecuteWatchdog({
       enabled: () => {

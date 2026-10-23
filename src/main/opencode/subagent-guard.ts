@@ -323,8 +323,22 @@ export default {
         }
         if (input.tool === 'task') await guardTask(input, output)
       },
-      'tool.execute.after': async (input) => {
+      'tool.execute.after': async (input, output) => {
         if (input && input.tool === 'execute' && typeof input.callID === 'string') {
+          // Motor propio: si el programa sigue vivo en segundo plano (pausa y espera), sus llamadas internas siguen pidiendo
+          // permisos despues de esta respuesta. Se mantiene el seguimiento (y con el la revocacion tras un rechazo) hasta que
+          // venza el tope de vida de una celda; si ya termino, se limpia como siempre.
+          const alive = output && typeof output.output === 'string' && output.output.indexOf('Script en curso (cell_id=') >= 0
+          if (alive) {
+            const callID = input.callID
+            const sid = input.sessionID
+            const timer = setTimeout(() => {
+              executing.delete(callID)
+              revoked.delete(sid + '|' + callID)
+            }, REVOKE_TTL_MS)
+            if (timer && typeof timer.unref === 'function') timer.unref()
+            return
+          }
           executing.delete(input.callID)
           revoked.delete(input.sessionID + '|' + input.callID)
         }
