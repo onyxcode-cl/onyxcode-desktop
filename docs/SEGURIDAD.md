@@ -2417,9 +2417,9 @@ código (o en el binario / con git real) antes de corregirlo y tiene prueba prop
 | B4 | El proxy de salida conectaba por NOMBRE: un dominio permitido que resolviera a `127.0.0.1` reabría desde el sandbox el puerto del propio motor (cuya contraseña se lee de `ps`). | Se resuelve el nombre, se rechazan loopback / `0.0.0.0` / enlace local / multicast (y si ALGUNA dirección lo es), y se conecta a la IP ya comprobada (anti-rebinding). Las redes privadas (10/8, 192.168/16…) siguen permitidas a propósito (empresa). |
 | B6 | El filtro de `extraEngineEnv` era solo «por convención». | `onlyExperimentalEngineEnv`: solo las dos variables `OPENCODE_EXPERIMENTAL_*` con valor `'true'`. |
 | B9 | El envoltorio de entorno de los MCP locales no quitaba `LAZUNOX_GUARD_URL` / `LAZUNOX_GUARD_TOKEN`. | Se deriva de la lista única `HIDDEN_SHELL_ENV` (`hidden-env.ts`), la misma que usa el shell. |
+| B5 | Un `deny`/`ask` con COMODÍN en la config global del usuario (`*_send: deny`) no coincidía con nuestra clave `<servidor>_*` y un conector de confianza lo anulaba. | `code-mcp-permission.ts`: todo `deny`/`ask` de texto con comodín de la base se re-afirma al final con alias exacto. |
 
-**No corregido (decisión consciente o fuera de alcance):** B5 (un `deny` con comodín en la config global del usuario puede quedar tapado por
-la confianza de un conector; solo conectores marcados «Sin preguntar en Code», ya documentado en §3 sexagies bis); B7 (no hay comprobación en
+**No corregido (decisión consciente o fuera de alcance):** B7 (no hay comprobación en
 caliente de que el plugin del guardián se haya cargado: el motor no ofrece una API para listar plugins; hoy solo lo cubre la prueba manual
 `scripts/engine-probe/run.mjs` y las pruebas reales con el motor empaquetado); B8 (el guardián prueba las cadenas que aparecen como patrones;
 con los agentes actuales no es explotable) y B10 (Code Mode en Overdrive no aborta la sesión tras un rechazo; ya documentado).

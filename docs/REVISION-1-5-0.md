@@ -51,3 +51,32 @@ Rama `feat/engine-client` (71+ commits sobre `main`, sin push). Esta lista es lo
 2. `scripts/release.sh prepare 1.5.0` y luego las fases `mac`, `win`, `draft`.
 3. `publish` lo ejecuta la persona en su Terminal (exige frase de confirmación).
 4. Antes de cualquier push: revisión de secretos (guardia y gancho pre-push).
+
+## Resultado de la revisión (2026-10-23)
+
+Revisados los 13 commits y las 9 preguntas leyendo el código actual (no solo el diff), y contrastados con una lectura independiente hecha por otro
+agente (que además extrajo cadenas del binario del motor 1.19). **Salvedad:** ambas lecturas son de modelos de IA y yo escribí gran parte de ese
+código; no sustituyen la lectura de una persona. Lo verificado con ejecución real está marcado.
+
+| # | Pregunta | Veredicto | Evidencia principal |
+| --- | --- | --- | --- |
+| 1 | Herencia del plan | Cumple | `rootOf` sube por `parentID` (máx. 7 niveles), niega sesión desconocida, ciclo, profundidad, error del motor o `id` distinto del pedido; solo cuenta la raíz. |
+| 2 | Guardián de `task` | Cumple (+ B2 corregido) | Mismo comparador que el motor (última regla gana, sin regla = ask); escalada contra permisos efectivos; falla cerrado. Ignoraba `task_id`: corregido. |
+| 3 | Modo automático | Cumple | `rootId === sessionID` en `tryApprovePermission` (sondeo y `considerOne`) y en `considerAccess`; raíz `null` no aprueba; `NEVER_ALONE` intacta. |
+| 4 | `manager.ts` | Cumple (+ B6 corregido) | El entorno extra iba primero «por convención»; ahora un filtro lo limita a las dos variables `OPENCODE_EXPERIMENTAL_*` con valor `true`. |
+| 5 | Sandbox de Overdrive | Cumple | **Verificado:** `git diff 53901267^ HEAD` sobre el perfil, fixtures y snapshots está vacío. El canal expone solo `{id, parentID, agent, permission}` / `[{name, permission}]`, solo GET, token de 32 bytes en tiempo constante, id validado, sin contenido de mensajes. |
+| 6 | Plugin `lazunox-session` | Cumple | Siempre sobrescribe `lazunox_session` con la sesión que llama; comprobado en el motor real (llamada directa y de Code Mode). |
+| 7 | Conectores en Code | Cumple (+ B5 corregido) | `ask` por defecto; los `deny` más específicos se re-afirman con alias exactos. Hueco: un `deny` con COMODÍN de la config global (`*_send`) quedaba anulado por `<servidor>_*: allow`; ahora se re-afirma. |
+| 8 | `afterMcpChange` | Cumple | Si el cambio exige reglas nuevas en la config inline NO recarga en caliente (pediría un conector sin su regla) sino reinicio diferido a sin turnos. |
+| 9 | Permisos de carpeta de macOS | Cumple | `tccutil` con ruta absoluta, sin shell, servicios de lista fija según la zona, ids de constantes, canal bloqueado para el celular (`'X'`). Desde la 1.5.2 también se invoca al ELEGIR una carpeta con un «No permitir» guardado (una vez, solo acción explícita). |
+
+**Hallazgos nuevos corregidos en la 1.5.2:** B1 (`.git/config` + `git status` ejecutaba comandos; **reproducido con git 2.54**), B2, B3 (recursos de
+conectores, **confirmado en el binario**), B4 (el proxy de salida no miraba a qué IP resolvía un nombre), B6, B9; y B5 después. Detalle en
+`docs/SEGURIDAD.md` §3 sexagies sexies. **No corregidos:** B7 (sin comprobación en caliente de que el plugin del guardián se cargó; el motor no
+expone una API para listar plugins), B8 (el guardián solo prueba cadenas que aparecen como patrones; sin ataque con los agentes actuales) y B10
+(Code Mode en Overdrive no aborta la sesión tras un rechazo).
+
+**Sigue sin verificar:** Windows/WSL (guardián, `bgshell`, canal), la carrera `permission.replied` frente a la siguiente llamada interna de
+Code Mode con el motor real, y si un plugin de proyecto escrito por la IA en `.opencode/plugins/` se cargaría y podría mutar `output.args`
+después del guardián (sería ejecución de código al nivel de `bash`).
+

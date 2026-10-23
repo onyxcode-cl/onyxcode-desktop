@@ -224,3 +224,31 @@ describe('fetchEngineMcpServers', () => {
     expect(await fetchEngineMcpServers(conn, '/c')).toBeNull()
   })
 })
+
+describe('buildCodeMcpPermission: reglas con comodín de la config global del usuario', () => {
+  it('`*_send: deny` y `*delete*: ask` se re-afirman DESPUÉS de `<servidor>_*: allow` (un conector de confianza no las anula)', () => {
+    const out = buildCodeMcpPermission({
+      servers: ['gmail'],
+      trusted: ['gmail'],
+      internal: [],
+      base: { '*_send': 'deny', '*delete*': 'ask', gmail_read: 'allow' }
+    })
+    const keys = Object.keys(out)
+    expect(out['gmail_*']).toBe('allow')
+    expect(out['*_send *']).toBe('deny')
+    expect(out['*delete* *']).toBe('ask')
+    // Orden: gana la última que casa, así que deben ir después de nuestro allow.
+    expect(keys.indexOf('*_send *')).toBeGreaterThan(keys.indexOf('gmail_*'))
+    expect(keys.indexOf('*delete* *')).toBeGreaterThan(keys.indexOf('gmail_*'))
+    // Un allow de la base no se re-afirma, ni las claves exactas (ya las resuelve la lógica anterior).
+    expect(Object.keys(out).some((k) => k.startsWith('gmail_read'))).toBe(false)
+  })
+  it('con el mismo criterio del motor, la última regla que casa gana: el deny con comodín vence al allow del conector', () => {
+    const out = buildCodeMcpPermission({ servers: ['gmail'], trusted: ['gmail'], internal: [], base: { '*_send': 'deny' } })
+    const wild = (p: string, t: string): boolean =>
+      new RegExp('^' + p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '( .*)?$').test(t)
+    let last: unknown
+    for (const [k, v] of Object.entries(out)) if (wild(k.replace(/ \*$/, ''), 'gmail_send')) last = v
+    expect(last).toBe('deny')
+  })
+})

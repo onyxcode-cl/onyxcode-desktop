@@ -134,6 +134,15 @@ export function buildCodeMcpPermission(i: CodeMcpPermissionInput): Record<string
       if (strict.length) out[key + EXACT_ALIAS_SUFFIX] = Object.fromEntries(strict)
     }
   }
+  // Reglas de la base con COMODÍN en la clave (`*_send: deny`, `*delete*: ask`): `wildcardMatch(<clave de la base>, <nuestra clave>)` no las
+  // reconoce como «cubiertas» por `<servidor>_*` (comparan textos, no solapamiento de patrones) y, al ir nuestras claves DESPUÉS en la
+  // configuración inline, un `<servidor>_*: allow` las anularía. Se re-afirma todo `deny`/`ask` de texto de la base CON comodín al final, con alias exacto:
+  // volver a escribir una regla estricta después no puede aflojar nada (solo cambia algo donde se solapaba con una nuestra más laxa).
+  for (const [key, value] of Object.entries(base)) {
+    if (key === '*' || key.includes(' ') || !/[*?]/.test(key) || !isAction(value) || value === 'allow') continue
+    const alias = key + EXACT_ALIAS_SUFFIX
+    if (!(alias in out)) out[alias] = value
+  }
   return out
 }
 
