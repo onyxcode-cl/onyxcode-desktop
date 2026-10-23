@@ -4,12 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
-## [1.6.1] - 2026-10-23
+## [1.6.2] - 2026-10-23
 
 ### Motor propio
 
 - **Lazunox ya no depende de los servidores de OpenCode.** El motor que hace funcionar la IA es ahora una copia propia de OpenCode 1.19.0 (licencia MIT, con su aviso de copyright), compilada por nosotros y verificada antes de usarse (tamaño y huella SHA-256). En esa copia se quitaron las conexiones a sus servicios: ya no consulta si hay una versión nueva por su cuenta, no sube conversaciones a ningún servidor para compartirlas, no reenvía la interfaz web a sus servidores y no descarga servidores de lenguaje por sí solo. El motor se actualiza junto con la app.
-- **Se ve en la app:** en Ajustes y en el asistente el motor aparece como «Lazunox Motor». Los modelos gratuitos y la suscripción OpenCode Go siguen funcionando igual (son servicios de OpenCode y se nombran como tales).
+- **Se ve en la app:** en Ajustes y en el asistente el motor aparece como «Lazunox Motor». Y en Code la IA se presenta como Lazunox (antes decía «OpenCode») y ya no consulta la documentación de OpenCode en internet cuando le preguntan por su propio funcionamiento. Los modelos gratuitos y la suscripción OpenCode Go siguen funcionando igual (son servicios de OpenCode y se nombran como tales).
 - **Compilación repetible:** compilar dos veces el mismo código da el mismo archivo, byte a byte, en macOS, Windows y Linux (WSL). Así se puede comprobar que lo que usas es lo que está en el código.
 
 ### Novedades

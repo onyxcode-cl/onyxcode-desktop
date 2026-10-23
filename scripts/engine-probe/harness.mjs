@@ -62,6 +62,11 @@ export async function runEngine(bin, sc) {
       const tools = (j.tools ?? []).map((t) => t.function?.name)
       const toolMsgs = (j.messages ?? []).filter((m) => m.role === 'tool')
       if (tools.length && !seen.toolsOffered) seen.toolsOffered = tools
+      if (!seen.system)
+        seen.system = (j.messages ?? [])
+          .filter((m) => m.role === 'system')
+          .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
+          .join('\n---\n')
       seen.toolMessages.push(...toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
       // `sc.steps`: varias llamadas encadenadas; cada paso recibe los textos de los resultados anteriores y devuelve la siguiente llamada.
       const step = sc.steps
@@ -198,6 +203,7 @@ export async function runEngine(bin, sc) {
         .map((p) => ({ tool: p.tool, status: p.state.status, input: p.state.input, output: String(p.state.output ?? p.state.error ?? '') }))
     )
     out.toolsOffered = seen.toolsOffered
+    out.system = seen.system
     if (sc.settleMs) await sleep(sc.settleMs)
   } catch (e) {
     out.error = String(e?.stack ?? e)
