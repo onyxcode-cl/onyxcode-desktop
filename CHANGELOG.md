@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.5.3] - 2026-10-23
+
+### Seguridad
+
+- **Tus reglas de bloqueo con comodín ya no las anula un conector de confianza.** Si en tu configuración de OpenCode tienes reglas como «bloquear todo lo que termine en `_send`» o «preguntar siempre antes de borrar», y marcaste un conector como «Sin preguntar en Code», esa confianza podía saltarse esas reglas. Ahora siguen valiendo siempre.
+
 ## [1.5.2] - 2026-10-23
 
 ### Seguridad
