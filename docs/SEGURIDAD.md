@@ -2403,6 +2403,26 @@ Lazunox y deniega sin avisar); suelta, `subject=<appId>.motor` y macOS pregunta.
 anterior a esta (quien ya dio permiso al `opencode` suelto verá una vez el aviso de «Lazunox Motor»); comportamiento de TCC tras actualizar la
 app con el mismo certificado (debería conservar la concesión: el requisito no cambia).
 
+## 3 sexagies nonies. «Siempre» persistentes, rutas protegidas y tope de ayudantes (F8-B214)
+
+**Qué cambia.** El motor propio guarda los permisos «Permitir siempre» por carpeta de proyecto y los vuelve a aplicar tras reiniciar, pregunta
+SIEMPRE al editar rutas protegidas (`.git`, `.opencode`, `.claude`, `.vscode`, `.idea`, `.husky`, `.mcp.json`, `.gitmodules`…) y limita los
+ayudantes en segundo plano. La app lo controla desde Ajustes › Funciones experimentales.
+
+**Superficie y mitigaciones.**
+- Recordar «siempre» (`Settings.rememberAlways`, encendido por defecto): al motor se le pasa `LAZUNOX_PERMISSION_PERSIST=1`,
+  `LAZUNOX_PERMISSION_DIR` (siempre `userData/permisos-siempre`, modo 0700; en servidores aislados de Overdrive, su directorio privado, el único
+  sitio donde el Seatbelt deja escribir) y `LAZUNOX_PERMISSION_NO_PERSIST` (`NEVER_ALONE_PERMISSIONS` de `src/shared/permission-persist.ts` más
+  `computer_*` y `browser_*`: el motor admite nombres exactos o con «*» al final). En Windows con WSL no se pasa nada (la ruta no existe para el
+  motor aislado). Apagar el interruptor reinicia el motor con la espera de siempre (`engine-flags-restart.ts`) y deja de guardar y de aplicar.
+  «Olvidar los permisos guardados» (`settings:forgetAlways`, X para el celular) vacía esas carpetas; los permisos ya cargados en el motor en
+  marcha se olvidan al reiniciarlo.
+- Rutas protegidas: `metadata.lazunoxProtegido === true` (solo el booleano exacto, `src/shared/protected-path.ts`). Ninguna aprobación automática
+  la aprueba: el modo Auto de Tareas (`classifyPermission`), Code «Automático»/«Solo explorar» (`autoApproveReadOnly`) y las reglas de las
+  rutinas desatendidas la dejan a la persona. Las tarjetas (Code, Tareas, celular) avisan con una línea y no ofrecen «Permitir siempre»; un
+  «siempre» que llegara igual se degrada a «una vez» y no se anota en las reglas de Tareas. La app NUNCA pasa `LAZUNOX_PROTECTED_PATHS=0`.
+- `rememberAlways` y `settings:forgetAlways` son clase X: el celular no amplía ni recorta lo recordado.
+
 ## 3 sexagies octies. Trabajos en segundo plano y aviso al terminar (1.7.0)
 
 Estado: motor `v1.19.0-lazunox.5`. Una revisión independiente de solo lectura (2026-10-24) no encontró hallazgos críticos ni altos; los dos medios que sí eran reales se corrigieron antes de publicar. Plan y carriles: `docs/PLAN-MAESTRO-1-7.md`.

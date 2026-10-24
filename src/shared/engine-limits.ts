@@ -14,7 +14,7 @@
 import type { Settings } from './types'
 
 export type EngineLimitKey =
-  'codeTimeoutMin' | 'codeMaxCalls' | 'codeOutputMb' | 'codeYieldSec' | 'codeMaxCells' | 'shellLifeMin' | 'shellOutputMb'
+  'codeTimeoutMin' | 'codeMaxCalls' | 'codeOutputMb' | 'codeYieldSec' | 'codeMaxCells' | 'shellLifeMin' | 'shellOutputMb' | 'maxSubagents'
 
 /** Solo las claves cambiadas por la persona; ausente = valor por defecto. */
 export type EngineLimits = Partial<Record<EngineLimitKey, number>>
@@ -41,7 +41,9 @@ export const ENGINE_LIMIT_SPECS: readonly LimitSpec[] = [
   { key: 'codeYieldSec', env: 'LAZUNOX_CODE_MODE_YIELD_MS', min: 5, max: 50, def: 30, toEngine: (n) => n * SEC_MS },
   { key: 'codeMaxCells', env: 'LAZUNOX_CODE_MODE_MAX_CELLS', min: 1, max: 6, def: 3, toEngine: (n) => n },
   { key: 'shellLifeMin', env: 'LAZUNOX_SHELL_BG_MAX_MS', min: 1, max: 240, def: 30, toEngine: (n) => n * MIN_MS },
-  { key: 'shellOutputMb', env: 'LAZUNOX_SHELL_BG_MAX_OUTPUT', min: 1, max: 100, def: 10, toEngine: (n) => n * SHELL_MB }
+  { key: 'shellOutputMb', env: 'LAZUNOX_SHELL_BG_MAX_OUTPUT', min: 1, max: 100, def: 10, toEngine: (n) => n * SHELL_MB },
+  // Ayudantes (subagentes) en segundo plano a la vez; el motor ya usa 8 si la variable no llega.
+  { key: 'maxSubagents', env: 'LAZUNOX_MAX_SUBAGENTS', min: 1, max: 64, def: 8, toEngine: (n) => n }
 ]
 
 export const ENGINE_LIMIT_ENV_NAMES: readonly string[] = ENGINE_LIMIT_SPECS.map((s) => s.env)

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
 import { t } from '@shared/i18n'
+import { isProtectedPermission } from '@shared/protected-path'
 import { Button } from '../../../components/Button'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import { useT } from '../../../lib/i18n'
@@ -382,6 +383,12 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
               <p className="text-[11px] desk:text-meta font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
               <p className="mt-0.5 text-xs text-muted">{d.aiDescription}</p>
             </div>
+          )}
+          {isProtectedPermission(request.metadata) && (
+            <p role="note" className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-warning">
+              <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+              {t('tasksComputer.perm.protectedPath')}
+            </p>
           )}
           {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
         </div>

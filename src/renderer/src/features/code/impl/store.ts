@@ -8,6 +8,7 @@ import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { rulesetForState, sessionHasRuleset } from './permission-rules'
 import { approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
+import { isProtectedPermission } from '@shared/protected-path'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
@@ -619,7 +620,7 @@ export const useCode = create<CodeState>((set, get) => {
    * su redirección). Solo si la sesión termina con el bloque de ese modo; cualquier otra cosa sigue su camino normal (la tarjeta).
    */
   const autoApproveReadOnly = (p: PendingPermission): boolean => {
-    if (p.permission !== 'bash') return false
+    if (p.permission !== 'bash' || isProtectedPermission(p.metadata)) return false
     const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
     if (!kind) return false
     const command = (p.metadata as Record<string, unknown> | undefined)?.command
@@ -1166,7 +1167,11 @@ export const useCode = create<CodeState>((set, get) => {
         const dir = get().sessionProject[p.sessionID] ?? get().directory ?? undefined
         // «Siempre» desde un subagente NO se concede: el motor lo guardaría para todo el proyecto y ampliaría lo que la persona
         // permitió a la conversación. Una hija solo recibe «una vez» o «rechazar» (la tarjeta tampoco ofrece «siempre»).
-        const reply = requested === 'always' && isChildRequest(get().sessions, p.sessionID, get().activeSessionID) ? 'once' : requested
+        const reply =
+          requested === 'always' &&
+          (isProtectedPermission(p.metadata) || isChildRequest(get().sessions, p.sessionID, get().activeSessionID))
+            ? 'once'
+            : requested
         if (p.api === 'v2') {
           sdkData(await client.v2.session.permission.reply({ sessionID: p.sessionID, requestID: p.id, reply }))
         } else {

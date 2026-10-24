@@ -410,6 +410,18 @@ export const settings = {
   'settings.engine.background.desc': 'The AI can launch helpers that work in parallel while you keep chatting.',
   'settings.engine.background.change':
     'When on, the AI can split up the work and let you know when each helper finishes; you can keep using the conversation meanwhile.',
+  'settings.engine.remember.title': '“Always” permissions',
+  'settings.engine.remember.desc':
+    'When you answer “Always allow”, the AI remembers that permission for the project folder. Here you choose whether that memory survives closing the app.',
+  'settings.engine.remember.toggle': 'Remember my “always” answers between sessions',
+  'settings.engine.remember.toggleDesc':
+    'Saves on this computer the permissions you grant with “Always allow” and applies them again next time. Permissions to edit files, use other folders, the network, helpers or computer control are never saved. When you change it, the engine restarts once nothing is running.',
+  'settings.engine.remember.forgetLabel': 'Forget saved permissions',
+  'settings.engine.remember.forgetDesc':
+    'Deletes everything remembered for every folder. Permissions already loaded in the running engine are forgotten when it restarts.',
+  'settings.engine.remember.forget': 'Forget saved permissions',
+  'settings.engine.remember.forgotten': 'Done: {n} saved items were deleted.',
+  'settings.engine.remember.nothing': 'There were no saved permissions.',
   'settings.engine.limits.title': 'Limits',
   'settings.engine.limits.desc':
     'Caps for Code Mode and background commands. The defaults suit almost everything; raise them only if a long job gets cut off before it finishes, or lower them to be stricter.',
@@ -436,6 +448,9 @@ export const settings = {
   'settings.engine.limits.shellLifeMin.desc': 'A command started in the background is stopped after this time.',
   'settings.engine.limits.shellOutputMb.label': 'Maximum output of a command',
   'settings.engine.limits.shellOutputMb.desc': 'How much text a background command keeps.',
+  'settings.engine.limits.helpersGroup': 'Background helpers',
+  'settings.engine.limits.maxSubagents.label': 'Background helpers at a time',
+  'settings.engine.limits.maxSubagents.desc': 'How many helpers the AI can have working at the same time; the rest wait their turn.',
   'settings.engine.limits.note':
     'A value outside the allowed range is adjusted to the nearest one. When a limit changes, the engine restarts to apply it, only when nothing is running.',
   'settings.engine.background.chatNote':

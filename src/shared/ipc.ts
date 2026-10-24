@@ -125,6 +125,8 @@ export interface IpcInvokeContract {
   'settings:get': { req: void; res: Settings }
   'settings:set': { req: Partial<Settings>; res: Settings }
   'settings:addRecentFolder': { req: { path: string }; res: Settings }
+  /** «Olvidar los permisos guardados»: borra lo que el motor recordó con «Permitir siempre». Devuelve cuántos elementos quitó. */
+  'settings:forgetAlways': { req: void; res: { removed: number } }
 }
 
 export interface IpcEventContract {
@@ -182,7 +184,8 @@ export const IPC_INVOKE_CHANNELS = [
   'diag:problem',
   'settings:get',
   'settings:set',
-  'settings:addRecentFolder'
+  'settings:addRecentFolder',
+  'settings:forgetAlways'
 ] as const satisfies readonly IpcInvokeChannel[]
 
 export const IPC_EVENT_CHANNELS = [

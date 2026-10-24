@@ -2,6 +2,7 @@
 import type { PasteRejected } from '@shared/paste-files'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { getLang, t } from '@shared/i18n'
+import { isProtectedPermission } from '@shared/protected-path'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -1066,7 +1067,11 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
 export async function replyPermissionAlways(req: PermissionRequest): Promise<void> {
   const { folder, policy, activeTaskId } = useTasks.getState()
   // Un ayudante (subagente) nunca amplía lo permitido a la tarea: «Siempre» desde una hija vale solo «una vez» y no guarda regla.
-  if (policy?.disableAlwaysAllow || isChildRequest(useSessions.getState().sessions, req.sessionID, activeTaskId)) {
+  if (
+    policy?.disableAlwaysAllow ||
+    isProtectedPermission(req.metadata) ||
+    isChildRequest(useSessions.getState().sessions, req.sessionID, activeTaskId)
+  ) {
     await replyPermission(req.id, 'once')
     return
   }

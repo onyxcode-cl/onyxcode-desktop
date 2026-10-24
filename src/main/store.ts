@@ -99,6 +99,8 @@ function normalize(s: Settings): Settings {
     learningEnabled: s.learningEnabled !== false,
     engineExperiments: normalizeEngineExperiments(s.engineExperiments),
     engineLimits: normalizeEngineLimits(s.engineLimits),
+    // Solo `false` exacto lo apaga: ausente o basura = encendido (defecto).
+    rememberAlways: s.rememberAlways !== false,
     engineBgMigrated: s.engineBgMigrated === true,
     codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp)
   }

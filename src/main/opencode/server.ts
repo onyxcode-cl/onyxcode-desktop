@@ -29,6 +29,8 @@ import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
 import { engineExperimentsFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import { engineLimitEnvFor } from '@shared/engine-limits'
+import { permissionPersistEnvFor } from '@shared/permission-persist'
+import { ensurePermissionDir, permissionDir } from './permission-store'
 import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
@@ -274,6 +276,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const chatSubagents = this.chatSubagents()
       this.appliedInline = inlineKey(permission, chatSubagents)
 
+      const persistEnv = permissionPersistEnvFor(settingsStore.get(), permissionDir())
+      if (persistEnv.LAZUNOX_PERMISSION_DIR) ensurePermissionDir(persistEnv.LAZUNOX_PERMISSION_DIR)
       const childEnv = minimalEnv({
         ...getOpencodeEnv(),
         ...appOpencodeConfigEnv(),
@@ -282,6 +286,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         ...engineFlagEnvForMainSidecar(settingsStore.get()),
         // Límites de Modo código y shell en segundo plano: solo los que la persona cambió (el motor usa su defecto en el resto).
         ...engineLimitEnvFor(settingsStore.get()),
+        // «Recordar mis siempre»: el motor guarda los permisos «siempre» por carpeta en `userData/permisos-siempre` (0700) solo si va encendido.
+        ...persistEnv,
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(

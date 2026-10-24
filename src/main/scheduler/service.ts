@@ -52,6 +52,7 @@ import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { stripSkillProposalBlock } from '@shared/skill-proposal'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { shouldRunUnattended } from '@shared/routines-terms'
+import { isProtectedPermission } from '@shared/protected-path'
 import { decideUnattended } from './approvals'
 import { pickRoutineModel } from './model'
 import { nextRunAfter, missedRuns, validateSchedule } from './schedule'
@@ -1188,7 +1189,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       for (const p of perms.data ?? []) {
         if (!mine(p.sessionID)) continue
         const patterns = Array.isArray(p.patterns) ? p.patterns : []
-        if (decideUnattended({ permission: p.permission, patterns }, run.allow) === 'allow') {
+        // Ruta protegida del motor: ninguna regla de la rutina la aprueba sola.
+        if (!isProtectedPermission(p.metadata) && decideUnattended({ permission: p.permission, patterns }, run.allow) === 'allow') {
           const res = await client.permission.reply({ requestID: p.id, directory, reply: 'once' })
           if (!res.error) {
             logEntry((record.approved ??= []), p.permission, patterns)

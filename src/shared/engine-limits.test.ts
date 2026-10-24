@@ -60,6 +60,14 @@ describe('engineLimitEnvFor', () => {
       LAZUNOX_SHELL_BG_MAX_OUTPUT: '12582912'
     })
   })
+  it('ayudantes en segundo plano: LAZUNOX_MAX_SUBAGENTS en el rango 1-64, defecto 8 (no se pasa)', () => {
+    expect(engineLimitEnvFor({ engineLimits: { maxSubagents: 8 } })).toEqual({})
+    expect(engineLimitEnvFor({ engineLimits: { maxSubagents: 20 } })).toEqual({ LAZUNOX_MAX_SUBAGENTS: '20' })
+    expect(engineLimitEnvFor({ engineLimits: { maxSubagents: 1 } })).toEqual({ LAZUNOX_MAX_SUBAGENTS: '1' })
+    expect(engineLimitEnvFor({ engineLimits: { maxSubagents: 64 } })).toEqual({ LAZUNOX_MAX_SUBAGENTS: '64' })
+    for (const bad of [0, 65, 1.5, '8x']) expect(engineLimitEnvFor({ engineLimits: { maxSubagents: bad } as never })).toEqual({})
+    expect(onlyEngineLimitEnv({ LAZUNOX_MAX_SUBAGENTS: '20', LAZUNOX_MAX_SUBAGENTS_X: '1' })).toEqual({ LAZUNOX_MAX_SUBAGENTS: '20' })
+  })
   it('un valor corrupto en memoria no llega al entorno', () => {
     expect(engineLimitEnvFor({ engineLimits: { codeTimeoutMin: 99999, codeMaxCalls: -1 } as never })).toEqual({})
   })
@@ -91,6 +99,6 @@ describe('onlyEngineLimitEnv', () => {
         HTTP_PROXY: 'x'
       })
     ).toEqual({ LAZUNOX_CODE_MODE_MAX_CELLS: '2', LAZUNOX_CODE_MODE_TIMEOUT_MS: '600000' })
-    expect(ENGINE_LIMIT_ENV_NAMES).toHaveLength(7)
+    expect(ENGINE_LIMIT_ENV_NAMES).toHaveLength(8)
   })
 })

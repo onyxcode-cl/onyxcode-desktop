@@ -17,6 +17,7 @@ import {
   usePermGuard,
   type PermAction
 } from '../../../components/permission/PermissionShell'
+import { isProtectedPermission } from '@shared/protected-path'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
@@ -68,6 +69,8 @@ export function PermissionCardDesk({
   const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => run(kind), busy })
 
   const md = request.metadata
+  // Ruta protegida del motor: el motor ya manda `always: []`; aquí tampoco se ofrece «Permitir siempre» y se avisa con una línea clara.
+  const protectedPath = isProtectedPermission(md)
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''
@@ -81,7 +84,7 @@ export function PermissionCardDesk({
 
   const actions: PermAction[] = [
     // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
-    ...(sub.child
+    ...(sub.child || protectedPath
       ? []
       : [
           {
@@ -112,10 +115,16 @@ export function PermissionCardDesk({
     <PermPreview text={previewText} prompt={!!command} extra={!command && stats ? <DiffStats {...stats} /> : undefined} />
   ) : undefined
   // Nace abierto si el resumen de una línea no muestra todo el comando (largo, varias líneas o caracteres ocultos).
-  const openDetails = !!previewText && !previewFits(previewText, hasHiddenChars(previewText))
+  const openDetails = protectedPath || (!!previewText && !previewFits(previewText, hasHiddenChars(previewText)))
 
   const details = (
     <>
+      {protectedPath && (
+        <p role="note" className="flex items-start gap-1.5 text-meta font-medium text-warning">
+          <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+          {t('code.perm.protectedPath')}
+        </p>
+      )}
       {command && (
         <PermCommand text={command} prompt hasHidden={false} hiddenMessage="" longMessage={(n) => t('code.perm.cmdLong', { n })} />
       )}

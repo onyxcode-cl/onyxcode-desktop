@@ -196,6 +196,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   engineExperiments: 'X',
   // Límites del Modo código y del shell en segundo plano: igual que las funciones experimentales, solo en el Mac.
   engineLimits: 'X',
+  // «Recordar mis "siempre"»: ampliar o recortar lo que el motor da por permitido es decisión de la persona en el Mac; el celular NO.
+  rememberAlways: 'X',
   // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
   codeTrustedMcp: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
@@ -301,6 +303,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'settings:get': 'R',
   'settings:set': fieldwise(SETTINGS_FIELDS),
   'settings:addRecentFolder': 'D',
+  'settings:forgetAlways': 'X', // borra los permisos «siempre» guardados: solo la ventana principal
 
   // ── Tareas: carpetas, acceso total, archivos ──
   'tasks:pickFolder': 'X', // diálogo nativo

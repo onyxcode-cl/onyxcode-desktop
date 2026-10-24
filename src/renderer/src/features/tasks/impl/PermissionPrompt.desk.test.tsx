@@ -191,3 +191,29 @@ describe('red bloqueada en escritorio (decisión ND #2)', () => {
     expect(html).toMatch(/disabled=""[^>]*>[^<]*Permitir esta vez/)
   })
 })
+
+describe('ruta protegida del motor en Tareas (escritorio)', () => {
+  const protectedReq = (): PermissionRequest =>
+    req({
+      permission: 'edit',
+      patterns: ['.claude/settings.json'],
+      metadata: { filepath: '/Users/ana/proyectos/.claude/settings.json', lazunoxProtegido: true },
+      always: []
+    })
+
+  it('avisa con la línea clara y NO ofrece «Permitir siempre» (aunque `patterns` tenga algo que recordar)', () => {
+    const html = render(protectedReq(), base)
+    expect(html).toContain('Ruta protegida: cambia cómo se ejecuta código o la configuración de la IA')
+    expect(html).not.toContain('Permitir siempre')
+    expect(html).toContain('Permitir una vez')
+  })
+
+  it('una petición normal del mismo permiso conserva «Permitir siempre» y no lleva el aviso', () => {
+    const html = render(
+      req({ permission: 'edit', patterns: ['a.txt'], metadata: { filepath: '/Users/ana/proyectos/a.txt' }, always: ['a.txt'] }),
+      base
+    )
+    expect(html).not.toContain('Ruta protegida')
+    expect(html).toContain('Permitir siempre')
+  })
+})

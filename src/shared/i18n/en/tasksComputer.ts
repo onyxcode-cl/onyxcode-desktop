@@ -241,6 +241,7 @@ export const tasksComputer = {
   'tasksComputer.perm.rejectSend': 'Reject and send instructions',
   'tasksComputer.perm.alwaysHint': 'It won’t ask again in this folder for: {list}. You can remove this in Settings.',
   'tasksComputer.perm.alwaysHintNone': 'It won’t ask about this again',
+  'tasksComputer.perm.protectedPath': 'Protected path: changes how code runs or the AI’s configuration',
   'tasksComputer.perm.hidden': 'Contains control or invisible characters that aren’t shown above. Review carefully before allowing.',
   'tasksComputer.perm.aiDesc': 'Agent’s description (unverified)',
   'tasksComputer.perm.once': 'Allow once',

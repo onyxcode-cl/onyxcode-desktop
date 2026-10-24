@@ -645,11 +645,13 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     language: literal('system', 'es', 'en'),
     engineExperiments: engineExperimentsShape,
     engineLimits: engineLimitsShape,
+    rememberAlways: bool,
     // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
     codeTrustedMcp: arr(mcpName, 200)
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
-  'settings:addRecentFolder': pathReq
+  'settings:addRecentFolder': pathReq,
+  'settings:forgetAlways': none
 }
 
 // ── Flujo rama → subir → pull request (F8-B190): lista blanca de caracteres para todo lo que llega a git/gh ──

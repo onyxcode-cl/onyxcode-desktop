@@ -11,6 +11,7 @@ import type { EngineExperiments } from '@shared/types'
 import { useT } from '../../../lib/i18n'
 import { useSettings } from '../../../stores/settings'
 import { EngineLimitsBlock } from './EngineLimitsBlock'
+import { RememberAlwaysBlock } from './RememberAlwaysBlock'
 import { Badge, Card, Row, SectionHeader, Toggle } from './ui'
 
 type Feature = keyof EngineExperiments
@@ -100,6 +101,7 @@ export function EngineExperimentsSection(): React.JSX.Element {
         change={t('settings.engine.background.change')}
         chatNote={t('settings.engine.background.chatNote')}
       />
+      <RememberAlwaysBlock />
       <EngineLimitsBlock />
       <p className="text-xs leading-relaxed text-muted">{t('settings.engine.sharedNote')}</p>
     </div>

@@ -5,7 +5,8 @@
  * vale tras relanzar el proceso. Este módulo compara el entorno que corresponde a cada familia de motor ANTES y DESPUÉS:
  *  - sidecar principal (Chat + Code comparten proceso): `engineFlagEnvForMainSidecar`;
  *  - Overdrive (Tareas, sandbox): `engineFlagEnvFor(_, 'tasks')`.
- * A ese entorno se suman los límites de Modo código y del shell en segundo plano (`engineLimitEnvFor`, solo los cambiados).
+ * A ese entorno se suman los límites de Modo código y del shell en segundo plano (`engineLimitEnvFor`, solo los cambiados) y las
+ * variables de «Recordar mis "siempre"» (`permissionPersistEnvFor`: el motor las lee una sola vez al lanzar, así que el interruptor reinicia).
  * Solo si cambió el entorno de una familia se reinicia ESA familia, y nunca a mitad de un turno: se espera a que todas las
  * sesiones estén ociosas (se avisa una vez a la persona y se reintenta). Cambiar otra cosa de Ajustes no reinicia nada.
  *
@@ -19,10 +20,11 @@
  */
 import { engineExperimentsFor, engineFlagEnvFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
 import { engineLimitEnvFor } from '@shared/engine-limits'
+import { permissionPersistEnvFor } from '@shared/permission-persist'
 import type { OpencodeConnection, ServerStatus, Settings } from '@shared/types'
 
 type Env = Record<string, string>
-type SettingsLike = Pick<Settings, 'engineExperiments'> & Partial<Pick<Settings, 'recentFolders' | 'engineLimits'>>
+type SettingsLike = Pick<Settings, 'engineExperiments'> & Partial<Pick<Settings, 'recentFolders' | 'engineLimits' | 'rememberAlways'>>
 
 export interface EngineFlagsServer {
   restart(): Promise<unknown>
@@ -63,6 +65,11 @@ export interface EngineFlagsRestartDeps {
    * (`applied`, `null` si aún no arrancó). Si difieren, se reinicia como con el entorno.
    */
   mainInline?: { wanted(): string; applied(): string | null }
+  /**
+   * Carpeta de los permisos «siempre» guardados (la misma que recibe el motor). Ausente = el motor no guarda nada y el interruptor no
+   * cuenta como cambio de entorno.
+   */
+  permissionDir?: string
   /** Reintento mientras haya turnos en curso (ms). */
   retryMs?: number
   now?: () => number
@@ -72,14 +79,18 @@ export interface EngineFlagsRestartDeps {
  * «Entorno» de la familia principal: las variables del sidecar MÁS los subagentes del Chat (F8-B206), que no cambian la variable si
  * Code ya la tiene encendida pero sí el permiso `task` del agente `chat` en la config inline: también es una función experimental.
  */
-function mainFlagsOf(s: SettingsLike): Env {
+function mainFlagsOf(s: SettingsLike, permissionDir?: string): Env {
   // Los límites (Modo código, shell de fondo) también se leen una sola vez al lanzar: cambiarlos reinicia como cambiar una bandera.
-  const env = { ...engineFlagEnvForMainSidecar(s), ...engineLimitEnvFor(s) }
+  const env = { ...engineFlagEnvForMainSidecar(s), ...engineLimitEnvFor(s), ...permissionPersistEnvFor(s, permissionDir) }
   return engineExperimentsFor(s, 'chat').backgroundSubagents ? { ...env, 'chat:subagents': 'on' } : env
 }
 
 /** Entorno de Overdrive: sus banderas más los límites (valen igual para sus servidores). */
-const tasksFlagsOf = (s: SettingsLike): Env => ({ ...engineFlagEnvFor(s, 'tasks'), ...engineLimitEnvFor(s) })
+const tasksFlagsOf = (s: SettingsLike, permissionDir?: string): Env => ({
+  ...engineFlagEnvFor(s, 'tasks'),
+  ...engineLimitEnvFor(s),
+  ...permissionPersistEnvFor(s, permissionDir)
+})
 
 const sameEnv = (a: Env, b: Env): boolean => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort())
 
@@ -145,8 +156,8 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
   const now = deps.now ?? Date.now
   const first = deps.settings.get()
   // Entorno con el que (se supone) corre cada familia ahora: el de los Ajustes al instalar, y luego el último aplicado.
-  let mainApplied = mainFlagsOf(first)
-  let tasksApplied = tasksFlagsOf(first)
+  let mainApplied = mainFlagsOf(first, deps.permissionDir)
+  let tasksApplied = tasksFlagsOf(first, deps.permissionDir)
   let tasksChangedAt = 0
   /** Carpetas de sandbox ya relanzadas desde el último cambio. */
   const tasksDone = new Set<string>()
@@ -175,7 +186,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
 
   /** true = nada pendiente en la familia principal. */
   async function settleMain(): Promise<boolean> {
-    const want = mainFlagsOf(deps.settings.get())
+    const want = mainFlagsOf(deps.settings.get(), deps.permissionDir)
     const envSame = sameEnv(want, mainApplied)
     if (envSame && inlineCurrent()) return true
     mainCause = envSame ? 'connectors' : undefined
@@ -204,7 +215,7 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
   async function settleTasks(): Promise<boolean> {
     const tasks = deps.tasks
     if (!tasks) return true
-    const want = tasksFlagsOf(deps.settings.get())
+    const want = tasksFlagsOf(deps.settings.get(), deps.permissionDir)
     if (sameEnv(want, tasksApplied)) return true
     let pending = false
     let restarted = false
@@ -266,8 +277,8 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
 
   const off = deps.settings.onChange((next) => {
     if (disposed) return
-    const mainChanged = !sameEnv(mainFlagsOf(next), mainApplied) || !inlineCurrent()
-    const tasksChanged = !sameEnv(tasksFlagsOf(next), tasksApplied)
+    const mainChanged = !sameEnv(mainFlagsOf(next, deps.permissionDir), mainApplied) || !inlineCurrent()
+    const tasksChanged = !sameEnv(tasksFlagsOf(next, deps.permissionDir), tasksApplied)
     if (tasksChanged) {
       tasksChangedAt = now()
       tasksDone.clear()

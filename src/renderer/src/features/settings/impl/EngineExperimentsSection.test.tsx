@@ -13,7 +13,7 @@ let host: HTMLDivElement
 let root: Root
 let update: ReturnType<typeof vi.fn>
 
-const switches = (): HTMLButtonElement[] => [...host.querySelectorAll<HTMLButtonElement>('button[role="switch"]')]
+const switches = (): HTMLButtonElement[] => [...host.querySelectorAll<HTMLButtonElement>('section[role="group"] button[role="switch"]')]
 
 function mount(engineExperiments = DEFAULT_SETTINGS.engineExperiments): void {
   update = vi.fn(async () => undefined)

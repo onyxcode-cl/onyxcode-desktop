@@ -90,6 +90,7 @@ export const code = {
   'code.perm.todowrite': 'actualizar la lista de tareas',
   'code.perm.once': 'Permitir una vez',
   'code.perm.always': 'Permitir siempre',
+  'code.perm.protectedPath': 'Ruta protegida: cambia cómo se ejecuta código o la configuración de la IA',
   'code.perm.alwaysTitle': 'No volver a preguntar para: {patterns}',
   'code.perm.reject': 'Rechazar',
   'code.perm.agentWants': 'El agente quiere {label}',

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { FilePen, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
+import { isProtectedPermission } from '@shared/protected-path'
 import { QuestionCard as SharedQuestionCard } from '../../../components/QuestionCard'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -72,6 +73,7 @@ function MobilePermissionCard({
   )
 
   const md = request.metadata
+  const protectedPath = isProtectedPermission(md)
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''
@@ -97,7 +99,7 @@ function MobilePermissionCard({
 
   // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
   const allowedActions = (allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions).filter(
-    (a) => !(sub.child && a.reply === 'always')
+    (a) => !((sub.child || protectedPath) && a.reply === 'always')
   )
   // Celular: la acción principal va a la derecha (Rechazar a la izquierda, Permitir una vez a la derecha).
   const shown = mobile
@@ -151,6 +153,12 @@ function MobilePermissionCard({
         </pre>
       )}
       {diff && <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80 border-t border-border" />}
+      {protectedPath && (
+        <div role="note" className="flex items-start gap-2 border-t border-border bg-warning/10 px-3.5 py-2.5 text-[13px]">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
+          <span className="min-w-0 font-medium text-fg">{t('code.perm.protectedPath')}</span>
+        </div>
+      )}
       {macOnly && (
         <div role="note" className="flex items-start gap-2 border-t border-border bg-warning/10 px-3.5 py-2.5 text-[13px]">
           <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />

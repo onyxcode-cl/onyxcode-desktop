@@ -56,6 +56,8 @@ import { isApprovedPath, resolveUiPath } from './ui-path'
 import { IDENTITY_MAP, toSandboxOrNull, type PathMapWire } from '@shared/tasks-path-map'
 import { onlyExperimentalEngineEnv } from '@shared/engine-experiments'
 import { onlyEngineLimitEnv } from '@shared/engine-limits'
+import { onlyPermissionPersistEnv } from '@shared/permission-persist'
+import { ensurePermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
 import { sandboxCredentialIds } from './sandbox-credentials'
@@ -1047,6 +1049,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             })
           )
         : null
+      const permDirOverride = fullAccess
+        ? undefined
+        : this.platform === 'win32'
+          ? null
+          : sandboxPermissionDir(join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)))
+      if (permDirOverride && this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1') ensurePermissionDir(permDirOverride)
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
@@ -1071,6 +1079,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           ...onlyExperimentalEngineEnv(this.opts.extraEngineEnv?.() ?? {}),
           // Límites de Modo código/shell de fondo (enteros positivos, solo las variables conocidas); mismo filtro de defensa en profundidad.
           ...onlyEngineLimitEnv(this.opts.extraEngineEnv?.() ?? {}),
+          // «Recordar mis siempre»: con sandbox el servidor solo escribe en su directorio privado (userData está denegado), así que ahí
+          // guarda; en Windows con WSL esa ruta no existe para él y no se pasa nada. Control total usa la carpeta general.
+          ...onlyPermissionPersistEnv(this.opts.extraEngineEnv?.() ?? {}, permDirOverride),
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { LAZUNOX_FULL_ACCESS: '1' } : {}),
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):

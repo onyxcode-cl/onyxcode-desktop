@@ -157,6 +157,15 @@ export function EngineLimitsBlock(): React.JSX.Element {
     }
   ]
 
+  const helperFields: FieldDef[] = [
+    {
+      key: 'maxSubagents',
+      label: t('settings.engine.limits.maxSubagents.label'),
+      desc: t('settings.engine.limits.maxSubagents.desc'),
+      unitLabel: unit('cells')
+    }
+  ]
+
   return (
     <section aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`} className="mb-8">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
@@ -179,9 +188,17 @@ export function EngineLimitsBlock(): React.JSX.Element {
         </div>
       </Card>
       <h4 className="mb-1 text-xs font-semibold text-muted">{t('settings.engine.limits.shellGroup')}</h4>
-      <Card className="mb-2">
+      <Card className="mb-4">
         <div role="group" aria-label={t('settings.engine.limits.shellGroup')}>
           {shellFields.map((f) => (
+            <LimitField key={f.key} def={f} stored={current[f.key]} commit={commit} />
+          ))}
+        </div>
+      </Card>
+      <h4 className="mb-1 text-xs font-semibold text-muted">{t('settings.engine.limits.helpersGroup')}</h4>
+      <Card className="mb-2">
+        <div role="group" aria-label={t('settings.engine.limits.helpersGroup')}>
+          {helperFields.map((f) => (
             <LimitField key={f.key} def={f} stored={current[f.key]} commit={commit} />
           ))}
         </div>

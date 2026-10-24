@@ -17,6 +17,7 @@ import {
   usePermGuard,
   type PermAction
 } from '../../../components/permission/PermissionShell'
+import { isProtectedPermission } from '@shared/protected-path'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
@@ -148,6 +149,12 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
           <p className="text-caption font-medium text-subtle">{t('tasksComputer.perm.aiDesc')}</p>
           <p className="mt-0.5 text-ui text-muted">{d.aiDescription}</p>
         </div>
+      )}
+      {isProtectedPermission(request.metadata) && (
+        <p role="note" className="flex items-start gap-1.5 text-meta font-medium text-warning">
+          <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+          {t('tasksComputer.perm.protectedPath')}
+        </p>
       )}
       <PermScope>
         {folder && (

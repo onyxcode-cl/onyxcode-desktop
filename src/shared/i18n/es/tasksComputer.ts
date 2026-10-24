@@ -239,6 +239,7 @@ export const tasksComputer = {
   'tasksComputer.perm.rejectSend': 'Rechazar y enviar indicaciones',
   'tasksComputer.perm.alwaysHint': 'No volverá a preguntar en esta carpeta para: {list}. Puedes quitarlo en Ajustes.',
   'tasksComputer.perm.alwaysHintNone': 'No volverá a preguntar por esto',
+  'tasksComputer.perm.protectedPath': 'Ruta protegida: cambia cómo se ejecuta código o la configuración de la IA',
   'tasksComputer.perm.hidden':
     'Contiene caracteres de control o invisibles que no se muestran arriba. Revisa con cuidado antes de permitir.',
   'tasksComputer.perm.aiDesc': 'Descripción del agente (no verificada)',

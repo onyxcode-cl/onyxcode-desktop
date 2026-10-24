@@ -13,6 +13,7 @@ import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir
 import { settingsStore } from './store'
 import { installMotorApp, motorHomeDir, motorPaths } from './opencode/motor-app'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
+import { permissionDir } from './opencode/permission-store'
 import { installExecuteWatchdog, tripMessage, watchdogLimitsFor } from './opencode/execute-watchdog'
 import { normalizeEngineExperiments } from '@shared/engine-experiments'
 import { extrasPrefs } from './extras/prefs'
@@ -370,6 +371,7 @@ function start(): void {
       server,
       tasks: tasksMod?.tasks,
       chatDirectory,
+      permissionDir: permissionDir(),
       mainInline: { wanted: () => server.wantedInlineKey(), applied: () => server.appliedInlineKey() },
       notify: (kind, cause) => {
         if (!extrasPrefs.get().notificationsEnabled || !Notification.isSupported()) return

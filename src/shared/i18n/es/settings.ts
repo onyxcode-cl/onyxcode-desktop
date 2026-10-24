@@ -407,6 +407,18 @@ export const settings = {
   'settings.engine.background.desc': 'La IA puede lanzar ayudantes que trabajan en paralelo mientras sigues conversando.',
   'settings.engine.background.change':
     'Al encenderlo, la IA podrá repartir el trabajo y avisarte cuando cada ayudante termine; puedes seguir usando la conversación mientras tanto.',
+  'settings.engine.remember.title': 'Permisos «siempre»',
+  'settings.engine.remember.desc':
+    'Cuando respondes «Permitir siempre», la IA recuerda ese permiso para la carpeta del proyecto. Aquí eliges si ese recuerdo sobrevive al cierre de la app.',
+  'settings.engine.remember.toggle': 'Recordar mis «siempre» entre sesiones',
+  'settings.engine.remember.toggleDesc':
+    'Guarda en este equipo los permisos que concedes con «Permitir siempre» y los vuelve a aplicar la próxima vez. Nunca se guardan los de editar archivos, otras carpetas, red, ayudantes ni control del equipo. Al cambiarlo, el motor se reinicia cuando no haya nada en curso.',
+  'settings.engine.remember.forgetLabel': 'Olvidar los permisos guardados',
+  'settings.engine.remember.forgetDesc':
+    'Borra todo lo recordado de todas las carpetas. Los permisos ya cargados en el motor en marcha se olvidan al reiniciarlo.',
+  'settings.engine.remember.forget': 'Olvidar los permisos guardados',
+  'settings.engine.remember.forgotten': 'Listo: se borraron {n} elementos guardados.',
+  'settings.engine.remember.nothing': 'No había permisos guardados.',
   'settings.engine.limits.title': 'Límites',
   'settings.engine.limits.desc':
     'Topes del Modo código y de los comandos en segundo plano. Los valores por defecto sirven para casi todo; súbelos solo si un trabajo largo se corta antes de terminar, o bájalos para ser más estricto.',
@@ -433,6 +445,9 @@ export const settings = {
   'settings.engine.limits.shellLifeMin.desc': 'Un comando lanzado en segundo plano se detiene pasado este tiempo.',
   'settings.engine.limits.shellOutputMb.label': 'Salida máxima de un comando',
   'settings.engine.limits.shellOutputMb.desc': 'Cuánto texto guarda un comando en segundo plano.',
+  'settings.engine.limits.helpersGroup': 'Ayudantes en segundo plano',
+  'settings.engine.limits.maxSubagents.label': 'Ayudantes en segundo plano a la vez',
+  'settings.engine.limits.maxSubagents.desc': 'Cuántos ayudantes puede tener trabajando la IA al mismo tiempo; los demás esperan su turno.',
   'settings.engine.limits.note':
     'Si el valor escrito queda fuera del rango permitido, se ajusta al más cercano. Al cambiar un límite, el motor se reinicia para aplicarlo, solo cuando no haya nada en curso.',
   'settings.engine.background.chatNote':

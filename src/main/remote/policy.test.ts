@@ -417,6 +417,11 @@ describe('settings:set y setters por campos', () => {
     expect(cls(ipc('settings:set', { theme: 'dark', engineExperiments: ee }))).toBe('deny:field-forbidden:engineExperiments')
     expect(cls(ipc('settings:set', { engineExperiments: {} }))).toBe('deny:field-forbidden:engineExperiments')
   })
+  it('settings:set{rememberAlways} y settings:forgetAlways son X: el celular no toca los «siempre» guardados', () => {
+    expect(cls(ipc('settings:set', { rememberAlways: false }))).toBe('deny:field-forbidden:rememberAlways')
+    expect(cls(ipc('settings:set', { theme: 'dark', rememberAlways: true }))).toBe('deny:field-forbidden:rememberAlways')
+    expect(cls(ipc('settings:forgetAlways', undefined))).toMatch(/^deny/)
+  })
   it('settings:set{codeTrustedMcp} es X: el celular no marca conectores como de confianza en Code', () => {
     expect(cls(ipc('settings:set', { codeTrustedMcp: ['gmail'] }))).toBe('deny:field-forbidden:codeTrustedMcp')
     expect(cls(ipc('settings:set', { theme: 'dark', codeTrustedMcp: [] }))).toBe('deny:field-forbidden:codeTrustedMcp')

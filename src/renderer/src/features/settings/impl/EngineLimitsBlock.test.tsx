@@ -51,7 +51,7 @@ afterEach(() => {
 })
 
 describe('EngineLimitsBlock', () => {
-  it('muestra los siete campos con los defectos, mínimo/máximo y nombre accesible (sin el campo guardado también)', () => {
+  it('muestra los ocho campos con los defectos, mínimo/máximo y nombre accesible (sin el campo guardado también)', () => {
     for (const stored of [{}, undefined]) {
       mount(stored)
       for (const s of ENGINE_LIMIT_SPECS) {

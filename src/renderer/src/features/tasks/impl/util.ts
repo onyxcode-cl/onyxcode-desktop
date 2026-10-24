@@ -5,6 +5,7 @@ import type { ConvError } from '../../../lib/session-reducer'
 import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { t, type MsgKey } from '@shared/i18n'
+import { isProtectedPermission } from '@shared/protected-path'
 import { dateLocale } from '../../../lib/i18n'
 import { plainBash } from './plain-bash'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
@@ -459,6 +460,8 @@ export function isRememberablePermission(permission: string, pattern: string): b
 
 /** Patrones de una petición que se guardarían como regla (`always`, o los `patterns` si no hay). */
 export function rememberablePatterns(p: PermissionRequest): string[] {
+  // Ruta protegida del motor: nada se recuerda (el motor manda `always: []`, pero aquí el respaldo sería `patterns`).
+  if (isProtectedPermission(p.metadata)) return []
   const list = p.always.length > 0 ? p.always : p.patterns
   return list.filter((pat) => isRememberablePermission(p.permission, pat))
 }

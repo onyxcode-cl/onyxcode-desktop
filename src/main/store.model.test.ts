@@ -155,3 +155,32 @@ describe('settings: engineLimits', () => {
     expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineLimits).toEqual({})
   })
 })
+
+describe('settings: rememberAlways (recordar «siempre»)', () => {
+  it('un settings.json anterior sin el campo lo recibe ENCENDIDO (sin migración: campo nuevo, no cambia valores guardados)', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
+    expect((await openStore(dir)).get().rememberAlways).toBe(true)
+  })
+  it('sin settings.json también encendido', async () => {
+    expect((await openStore(userData())).get().rememberAlways).toBe(true)
+  })
+  it('solo `false` exacto lo apaga; basura en disco = encendido', async () => {
+    for (const raw of ['no', 0, null, 'false']) {
+      const dir = userData()
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ rememberAlways: raw }))
+      expect((await openStore(dir)).get().rememberAlways, String(raw)).toBe(true)
+    }
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ rememberAlways: false }))
+    expect((await openStore(dir)).get().rememberAlways).toBe(false)
+  })
+  it('se guarda, sobrevive a otras escrituras y relee de disco', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ rememberAlways: false })
+    store.set({ theme: 'dark' })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).rememberAlways).toBe(false)
+    expect((await openStore(dir)).get().rememberAlways).toBe(false)
+  })
+})

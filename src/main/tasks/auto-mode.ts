@@ -10,6 +10,8 @@
  */
 import type { AppTier, AutoRuleId } from '@shared/ipc-tasks'
 import { looksLikeInjection } from '@shared/injection-patterns'
+import { NEVER_ALONE_PERMISSIONS as NEVER_ALONE_LIST } from '@shared/permission-persist'
+import { isProtectedPermission } from '@shared/protected-path'
 export { looksLikeInjection } from '@shared/injection-patterns'
 
 export type AutoVerdict = { decision: 'allow'; rule: AutoRuleId; summary: string } | { decision: 'ask'; reason: string }
@@ -275,15 +277,8 @@ function findMcpServer(permission: string, servers: string[]): { server: string;
 
 // ───────────────────────────── permisos que nunca se aprueban solos ─────────────────────────────
 
-const NEVER_ALONE_PERMISSIONS: ReadonlySet<string> = new Set([
-  'external_directory',
-  'doom_loop',
-  'edit',
-  'write',
-  'task',
-  'webfetch',
-  'websearch'
-])
+// Lista única en `@shared/permission-persist` (también es la que el motor nunca guarda como «siempre»).
+const NEVER_ALONE_PERMISSIONS: ReadonlySet<string> = new Set(NEVER_ALONE_LIST)
 
 /**
  * Clasifica una petición de permiso (`GET /permission`) del servidor de OpenCode. Puro: solo
@@ -298,6 +293,8 @@ export function classifyPermission(
   const metadata = p.metadata && typeof p.metadata === 'object' && !Array.isArray(p.metadata) ? p.metadata : undefined
 
   if (!permission) return ask('petición sin permiso')
+  // Ruta protegida del motor (.git, .claude…): la decide siempre la persona, sea cual sea el permiso.
+  if (isProtectedPermission(p.metadata)) return ask('ruta protegida: la decide la persona')
   if (NEVER_ALONE_PERMISSIONS.has(permission) || permission.startsWith('computer_') || permission.startsWith('browser_')) {
     return ask(`"${permission}" nunca se aprueba en automático`)
   }

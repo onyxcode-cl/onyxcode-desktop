@@ -53,6 +53,12 @@ export interface Settings {
   engineExperiments: EngineExperiments
   /** Límites del Modo código y del shell en segundo plano. Escaso: solo lo que la persona cambió (ausente = defecto); ver `engine-limits.ts`. */
   engineLimits: EngineLimits
+  /**
+   * «Recordar mis "siempre" entre sesiones»: el motor guarda en disco los permisos que la persona respondió con «Permitir siempre» (por
+   * carpeta de proyecto) y los vuelve a aplicar tras reiniciar. Encendido por defecto; campo NUEVO, así que quien tenía un `settings.json`
+   * anterior lo recibe encendido al leer (no hace falta migración: no cambia ningún valor ya guardado). Ver `permission-persist.ts`.
+   */
+  rememberAlways: boolean
   /** Marca de la migración de 1.6.0: los ayudantes en segundo plano pasan a estar encendidos por defecto, también para quien ya tenía guardado «todo apagado». Se hace una sola vez. */
   engineBgMigrated?: boolean
   /**
@@ -79,6 +85,7 @@ export const DEFAULT_SETTINGS: Settings = {
   learningEnabled: true,
   engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS,
   engineLimits: {},
+  rememberAlways: true,
   codeTrustedMcp: []
 }
 

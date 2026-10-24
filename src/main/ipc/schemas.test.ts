@@ -519,7 +519,8 @@ describe('settings:set engineLimits', () => {
       codeYieldSec: 5,
       codeMaxCells: 6,
       shellLifeMin: 240,
-      shellOutputMb: 1
+      shellOutputMb: 1,
+      maxSubagents: 64
     }
     expect(v({ engineLimits: ok })).toEqual({ engineLimits: ok })
   })
@@ -532,11 +533,28 @@ describe('settings:set engineLimits', () => {
     expect(() => v({ engineLimits: { codeYieldSec: 51 } })).toThrow()
     expect(() => v({ engineLimits: { codeMaxCells: 7 } })).toThrow()
     expect(() => v({ engineLimits: { shellLifeMin: 241 } })).toThrow()
+    expect(() => v({ engineLimits: { maxSubagents: 0 } })).toThrow()
+    expect(() => v({ engineLimits: { maxSubagents: 65 } })).toThrow()
+    expect(() => v({ engineLimits: { maxSubagents: 2.5 } })).toThrow()
     expect(() => v({ engineLimits: { codeOutputMb: 1.5 } })).toThrow()
     expect(() => v({ engineLimits: { codeOutputMb: '5' } })).toThrow()
     expect(() => v({ engineLimits: { codeOutputMb: NaN } })).toThrow()
     expect(() => v({ engineLimits: { otro: 5 } })).toThrow()
     expect(() => v({ engineLimits: [] })).toThrow()
     expect(() => v({ engineLimits: 5 })).toThrow()
+  })
+})
+
+describe('settings:set rememberAlways y settings:forgetAlways', () => {
+  const v = IPC_SCHEMAS['settings:set']
+  it('rememberAlways solo acepta booleanos', () => {
+    expect(v({ rememberAlways: false })).toEqual({ rememberAlways: false })
+    expect(v({ rememberAlways: true })).toEqual({ rememberAlways: true })
+    for (const bad of ['true', 1, {}, []]) expect(() => v({ rememberAlways: bad })).toThrow()
+  })
+  it('forgetAlways no lleva parámetros', () => {
+    const f = IPC_SCHEMAS['settings:forgetAlways']
+    expect(() => f(undefined)).not.toThrow()
+    expect(() => f({ dir: '/' })).toThrow()
   })
 })

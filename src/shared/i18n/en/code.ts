@@ -93,6 +93,7 @@ export const code = {
   'code.perm.todowrite': 'update the to-do list',
   'code.perm.once': 'Allow once',
   'code.perm.always': 'Always allow',
+  'code.perm.protectedPath': 'Protected path: changes how code runs or the AI’s configuration',
   'code.perm.alwaysTitle': 'Don’t ask again for: {patterns}',
   'code.perm.reject': 'Deny',
   'code.perm.agentWants': 'The agent wants to {label}',
