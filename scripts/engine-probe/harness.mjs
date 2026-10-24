@@ -123,6 +123,8 @@ export async function runEngine(bin, sc) {
           SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
           ComSpec: process.env.ComSpec ?? 'C:\\Windows\\System32\\cmd.exe',
           USERPROFILE: home,
+          // Los alias de la Tienda (pwsh.exe) y muchos programas necesitan estas variables para arrancar.
+          ...Object.fromEntries(['LOCALAPPDATA', 'APPDATA', 'ProgramFiles', 'ProgramData', 'windir', 'PATHEXT', 'OS'].filter((k) => process.env[k]).map((k) => [k, process.env[k]])),
           TEMP: root,
           TMP: root
         }
@@ -226,6 +228,7 @@ export async function runEngine(bin, sc) {
       sleep(25_000).then(() => 'timeout')
     ])
     out.sessionID = s.id
+    if (out.promptStatus !== 200) out.log = log.slice(-3000) // un 500/timeout sin explicación: se adjunta la salida del motor
     const msgs = await (await q(`/session/${s.id}/message`)).json()
     out.toolParts = msgs.flatMap((m) =>
       m.parts
