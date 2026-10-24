@@ -122,7 +122,7 @@ describe('UserHooksBlock', () => {
     type(area(), text)
     await act(async () => btn(/^Guardar$/).click())
     expect(callMock).toHaveBeenCalledWith('settings:hooksWrite', { text })
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('Guardado: 1 ganchos')
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Guardado. Ganchos configurados: 1')
     expect(host.querySelector('[role="alert"]')).toBeNull()
   })
 
