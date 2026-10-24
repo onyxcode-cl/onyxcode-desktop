@@ -80,3 +80,4 @@ expone una API para listar plugins), B8 (el guardián solo prueba cadenas que ap
 Code Mode con el motor real, y si un plugin de proyecto escrito por la IA en `.opencode/plugins/` se cargaría y podría mutar `output.args`
 después del guardián (sería ejecución de código al nivel de `bash`).
 
+> **Nota (2026-10-24):** el dueño decidió que no necesita leer estos commits uno por uno. La regla de las zonas intocables ahora se hace cumplir por prueba (`src/test/zonas-intocables.test.ts`, `docs/zonas-intocables.json`) y por revisión independiente; esta revisión (B1–B10) ya se aplicó en la 1.5.2 y 1.5.3.

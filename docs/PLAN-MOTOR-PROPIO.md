@@ -78,6 +78,17 @@ En vez de cortar al pasarse el tiempo, el script sigue vivo: `execute` devuelve 
 Orden de trabajo: 1 → 2 (+3) → 5 → 4 → 7 → 8 → 10 → 9/11 según haga falta.
 Cada función: pruebas `bun test` en el fork, ampliar `scripts/engine-probe` (que sigan pasando las 27 y se sumen las nuevas), prueba con la app real por CDP (modelo gratuito) en Mac y Windows, y su nota en `CHANGELOG.md` y `docs/SEGURIDAD.md`. La parte visual (lista de trabajos de fondo, botones, tarjetas) va en la app y se prueba aparte.
 
+### Hecho el 2026-10-24 (1.7.1 y 1.7.2, probado con la app real)
+
+- Acentos correctos en PowerShell de Windows (lazunox.6/7). `cmd` sigue sin arreglo (límite conocido).
+- Rutas protegidas (`.git`, `.opencode`, `.claude`, `.vscode`, `.mcp.json`…): editar SIEMPRE pregunta, sin «siempre» ni plugin que lo levante (tabla fila 7 y comparativa #1).
+- Permisos «siempre» persistentes por carpeta (fila 7), apagados salvo que la app los encienda; nunca el comodín en herramientas propias.
+- Tope de ayudantes en segundo plano (`LAZUNOX_MAX_SUBAGENTS`, defecto 8).
+- Ganchos de usuario por comando (`PreToolUse`, `PostToolUse`, `PreCompact`, `Stop`) desde el archivo que fija la app (`LAZUNOX_HOOKS_FILE`), con pantalla en Ajustes.
+- En el fork, rama `feat/compactacion` (sin publicar): la lista de tareas de la sesión viaja en el contexto del resumen (fila 9, parcial).
+- Comparativa con Claude Code, Codex y OpenCode 2.x: `docs/COMPARATIVA-MOTOR.md`. Pendiente de ella: lista de dominios para el shell, subagentes con worktree, tareas programadas, búsqueda diferida de herramientas.
+- Zonas intocables: se hacen cumplir por prueba (`docs/zonas-intocables.json`), ya no por lectura del dueño.
+
 ## Paso 5 — mantenimiento
 
 Revisión mensual de avisos de seguridad (Bun, `@ai-sdk/*`, `hono`, `effect`, MCP SDK) y de proveedores; portar lo necesario por commit; registrar en `LAZUNOX.md`. Criterio de salida: si cuesta más de ~1 semana al mes, reevaluar.
