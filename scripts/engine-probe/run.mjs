@@ -238,7 +238,17 @@ check(
 // ── Shell en segundo plano del motor propio (`bash` con background + `shell_wait`) ─────────────────────────────────
 const shellOf = (msgs) => /shell_id=(sh_\w+)/.exec(msgs.join('\n'))?.[1] ?? 'sh_no-encontrado'
 const bg = (command, yield_ms = 1000) => ({ name: 'bash', args: { command, background: true, yield_ms, description: 'prueba' } })
-const stillRunning = (needle) => spawnSync('pgrep', ['-f', needle]).status === 0
+// ¿Hay algún proceso cuya línea de comandos contiene `needle`? (pgrep en Unix; CIM en Windows, sin contarse a sí mismo)
+const stillRunning = (needle) =>
+  process.platform === 'win32'
+    ? Number(
+        spawnSync(
+          'powershell',
+          ['-NoProfile', '-Command', `@(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${needle}*' -and $_.ProcessId -ne $PID }).Count`],
+          { encoding: 'utf8' }
+        ).stdout.trim()
+      ) > 0
+    : spawnSync('pgrep', ['-f', needle]).status === 0
 check(
   'shell en segundo plano: un comando rápido termina dentro de yield_ms y devuelve su salida',
   { steps: [() => bg('echo hola', 5000)], call: { name: 'bash', args: {} } },
@@ -424,7 +434,7 @@ check(
       const id = mia.body?.trabajos?.[0]?.id
       const deOtra = await getJson(await q(`/experimental/session/${otra.id}/trabajos`))
       const ajena = await getJson(await q(`/experimental/session/${otra.id}/trabajos/${id}/terminar`, post({})))
-      const vivoTrasAjena = spawnSync('pgrep', ['-f', 'sleep 296']).status === 0
+      const vivoTrasAjena = stillRunning('sleep 296')
       const propia = await getJson(await q(`/experimental/session/${sessionID}/trabajos/${id}/terminar`, post({})))
       const segunda = await getJson(await q(`/experimental/session/${sessionID}/trabajos/${id}/terminar`, post({})))
       await new Promise((res) => setTimeout(res, 800))
