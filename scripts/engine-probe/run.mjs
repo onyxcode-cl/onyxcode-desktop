@@ -653,7 +653,11 @@ for (const [persist, nombre, espera] of [
       const b = await runEngine(bin, { ...base, reply: 'reject' })
       return espera ? b.asked.some((p) => p.permission === 'x_start') : b.asked.length === 0 && outcome(b) === 'ejecutada'
     } finally {
-      rmSync(root, { recursive: true, force: true })
+      try {
+        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }) // Windows tarda en soltar los .node del motor
+      } catch {
+        /* temporal */
+      }
     }
   })
 }
