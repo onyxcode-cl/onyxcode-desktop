@@ -599,6 +599,7 @@ writeFileSync(
   JSON.stringify({
     hooks: {
       PreToolUse: [{ matcher: 'write', command: `"${process.execPath}" -e "console.error('prohibido por el gancho');process.exit(2)"` }],
+      Stop: [{ command: `"${process.execPath}" -e "require('fs').writeFileSync('${join(hooksDir, 'stop.txt').replaceAll('\\', '/')}', 'ok')"` }],
       PostToolUse: [{ matcher: 'read', command: `"${process.execPath}" -e "console.error('aviso post');process.exit(2)"` }]
     }
   })
@@ -614,6 +615,11 @@ check(
   'ganchos de usuario: PostToolUse con código 2 añade su aviso al resultado',
   { env: conGanchos, call: { name: 'read', args: { filePath: '.' } } },
   (r) => /aviso post/.test(r.toolParts[0]?.output ?? '')
+)
+check(
+  'ganchos de usuario: Stop se ejecuta cuando la sesión queda ociosa',
+  { env: conGanchos, settleMs: 2500, call: { name: 'read', args: { filePath: '.' } } },
+  () => existsSync(join(hooksDir, 'stop.txt'))
 )
 check(
   'ganchos de usuario: sin LAZUNOX_HOOKS_FILE no se ejecuta ningún gancho',
