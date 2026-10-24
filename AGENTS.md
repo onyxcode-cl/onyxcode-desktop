@@ -78,7 +78,12 @@ El nombre de la app vive solo en `src/shared/brand.ts`, `package.json` y `electr
 
 ## 7. ZONAS INTOCABLES y por qué
 
-No se modifican sin una decisión explícita del dueño (son los controles de seguridad; un cambio «inocente» los rompe en silencio):
+Son los controles de seguridad: un cambio «inocente» los rompe en silencio. **La regla se hace cumplir por prueba, no por memoria de nadie**:
+`src/test/zonas-intocables.test.ts` compara la huella de cada archivo de estas zonas con `docs/zonas-intocables.json` y falla (también en la CI) si
+alguno cambió sin registro. Cambiarlos sigue siendo posible, pero a propósito: (1) haz el cambio mínimo, con pruebas del comportamiento de seguridad
+que tocas; (2) pide una revisión independiente (un agente que no lo escribió) y anota el resultado en el commit; (3) registra el motivo con
+`npm run zonas:actualizar -- "motivo en una frase"`, que deja fecha, archivos y motivo en el manifiesto. El dueño no tiene que leer cada cambio:
+la prueba y el historial garantizan que ninguno pasa sin dejar rastro. Qué archivos cubre: `scripts/zonas-intocables-lib.mjs`. Zonas:
 
 | Zona                                                                                                   | Dónde                                                                                                                                                                                                                       | Por qué                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
