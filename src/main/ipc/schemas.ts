@@ -602,6 +602,13 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'opencode:restart': none,
   'diag:logs': obj({ source: literal(...DIAG_SOURCES), maxLines: optional(num({ int: true, min: 1, max: 5000 })) }),
   'diag:copy': obj({ source: literal(...DIAG_SOURCES) }),
+  // Ids de sesión/trabajo del motor (`ses_…`, `sh_…`, `cm_…`): solo caracteres de id; la carpeta es opcional y no se interpreta en main.
+  'jobs:list': obj({ sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }), directory: optional(str({ min: 1, max: 4096 })) }),
+  'jobs:stop': obj({
+    sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
+    jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
+    directory: optional(str({ min: 1, max: 4096 }))
+  }),
   'clipboard:readFilesForPaste': obj({ scope: literal('images', 'any') }),
   // base64 de ≤ 10 MB (4/3 de OFFICE_MAX_BYTES + margen); el nombre solo decide el formato, nunca es una ruta.
   'attach:extractOffice': obj({
