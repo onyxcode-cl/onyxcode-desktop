@@ -8,6 +8,13 @@ import { t } from '@shared/i18n'
 
 const PLAN_GATE_RE = /todav[ií]a no hay un plan aprobado/i
 
+const REJECTED_RE = /user rejected permission|rejected permission to use/i
+
+/** El motor devuelve este texto cuando la persona pulsó «Rechazar» (o el modo de permisos lo denegó): no es un fallo de la herramienta. */
+export function isRejectedText(text: string | undefined | null): boolean {
+  return !!text && REJECTED_RE.test(text)
+}
+
 export function isPlanGateText(text: string | undefined | null): boolean {
   return !!text && PLAN_GATE_RE.test(text)
 }
@@ -20,6 +27,7 @@ export function isPlanGateText(text: string | undefined | null): boolean {
  */
 export function friendlyToolError(text: string, technical = false): string {
   if (isPlanGateText(text)) return t('tasks.gate.waiting')
+  if (isRejectedText(text)) return t('code.tool.rejectedHint')
   if (!technical && text && !text.trim().includes('\n')) return humanizeSystemError(text) ?? text
   return text
 }

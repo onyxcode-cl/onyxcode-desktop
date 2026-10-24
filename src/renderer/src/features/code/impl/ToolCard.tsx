@@ -8,7 +8,7 @@ import { memo, useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { t, type MsgKey } from '@shared/i18n'
 import { splitPath } from '../../../lib/paths'
-import { friendlyToolError, isPlanGateText } from '../../../lib/plan-gate'
+import { friendlyToolError, isPlanGateText, isRejectedText } from '../../../lib/plan-gate'
 import { useLocale, useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { m } from '../../../app/mobile/m'
@@ -196,11 +196,12 @@ export function EditChip({ part, root }: { part: ToolPart; root: string | null }
   const [open, setOpen] = useState(false)
   const t = useT()
   const { file, patch } = useMemo(() => editInfo(part, root), [part, root])
-  const label = part.tool === 'write' ? t('code.tool.created') : t('code.tool.edited')
+  const rejected = part.state.status === 'error' && isRejectedText(part.state.error)
+  const label = rejected ? t('code.tool.notDone') : part.tool === 'write' ? t('code.tool.created') : t('code.tool.edited')
   const stats = useMemo(() => (patch ? diffStats(patch) : { additions: 0, deletions: 0 }), [patch])
   const { dir, name } = splitPath(file)
   const status = part.state.status
-  const error = status === 'error' ? part.state.error : ''
+  const error = status === 'error' ? friendlyToolError(part.state.error, true) : ''
   const Icon = part.tool === 'write' ? FilePlus : FilePen
   const mobile = isRemoteSurface()
   return (
@@ -355,7 +356,13 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       return (
         <Row
           icon={<SquareTerminal size={14} />}
-          verb={running ? t('code.tool.running') : t('code.tool.ran')}
+          verb={
+            running
+              ? t('code.tool.running')
+              : state.status === 'error' && isRejectedText(state.error)
+                ? t('code.tool.notRun')
+                : t('code.tool.ran')
+          }
           detail={
             <span className="rounded bg-code px-1.5 py-0.5 font-mono text-xs text-fg" title={desc || command}>
               {command.split('\n')[0]}
@@ -487,10 +494,12 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       )
     default: {
       const title = ('title' in state && state.title) || str(input.description) || str(input.filePath) || str(input.path)
+      // Herramientas propias del motor: nombre en llano en vez del identificador técnico.
+      const friendly = tool === 'shell_wait' ? t('code.tool.waitShell') : tool === 'execute_wait' ? t('code.tool.waitScript') : tool
       return (
         <Row
           icon={<Wrench size={14} />}
-          verb={tool}
+          verb={friendly}
           detail={title ? <span className="text-xs">{title}</span> : undefined}
           status={state.status}
         >
