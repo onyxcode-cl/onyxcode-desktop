@@ -4,7 +4,7 @@
 //   (motor por defecto: resources/opencode-bin/bin/opencode; el .cjs se genera con `node scripts/build-shell-bg.mjs --out <ruta>`)
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -589,6 +589,54 @@ check(
   'Chat: con la función apagada no se le ofrece `task`',
   { agent: 'chat', agentsDir, plugins: guard, inline: chatInline(false), call: task('lazunox-chat-helper') },
   (r) => Array.isArray(r.toolsOffered) && !r.toolsOffered.includes('task') && !taskPart(r)
+)
+
+// ── Ganchos de usuario (LAZUNOX_HOOKS_FILE; solo el archivo que fija la app) ───────────────────────────────────
+const hooksDir = mkdtempSync(join(tmpdir(), 'lz-hooks-'))
+const hooksFile = join(hooksDir, 'hooks.json')
+writeFileSync(
+  hooksFile,
+  JSON.stringify({
+    hooks: {
+      PreToolUse: [{ matcher: 'write', command: `"${process.execPath}" -e "console.error('prohibido por el gancho');process.exit(2)"` }],
+      PostToolUse: [{ matcher: 'read', command: `"${process.execPath}" -e "console.error('aviso post');process.exit(2)"` }]
+    }
+  })
+)
+process.on('exit', () => rmSync(hooksDir, { recursive: true, force: true }))
+const conGanchos = { OPENCODE_DISABLE_DEFAULT_PLUGINS: '0', LAZUNOX_HOOKS_FILE: hooksFile }
+check(
+  'ganchos de usuario: PreToolUse con código 2 bloquea la herramienta y el modelo recibe el motivo',
+  { env: conGanchos, call: { name: 'write', args: { filePath: 'a.txt', content: 'x' } } },
+  (r) => r.toolParts[0]?.status === 'error' && /prohibido por el gancho/.test(r.toolParts[0].output)
+)
+check(
+  'ganchos de usuario: PostToolUse con código 2 añade su aviso al resultado',
+  { env: conGanchos, call: { name: 'read', args: { filePath: '.' } } },
+  (r) => /aviso post/.test(r.toolParts[0]?.output ?? '')
+)
+check(
+  'ganchos de usuario: sin LAZUNOX_HOOKS_FILE no se ejecuta ningún gancho',
+  { env: { OPENCODE_DISABLE_DEFAULT_PLUGINS: '0' }, call: { name: 'write', args: { filePath: 'a.txt', content: 'x' } } },
+  (r) => r.toolParts[0]?.status === 'completed'
+)
+
+// ── Rutas protegidas: editar .git/.claude/.opencode/.mcp.json siempre pregunta (salvo deny) ─────────────────────
+const editCall = (file) => ({ name: 'write', args: { filePath: file, content: 'x' } })
+check(
+  'rutas protegidas: editar un archivo normal con `edit: allow` NO pregunta',
+  { inline: { permission: { edit: 'allow' } }, call: editCall('nota.txt') },
+  (r) => r.asked.length === 0 && r.toolParts[0]?.status === 'completed'
+)
+check(
+  'rutas protegidas: con `edit: allow`, escribir en .git/hooks SÍ pregunta (y rechazado no se escribe)',
+  { inline: { permission: { edit: 'allow' } }, call: editCall('.git/hooks/pre-commit'), reply: 'reject' },
+  (r) => r.asked.some((a) => a.permission === 'edit') && r.toolParts[0]?.status === 'error'
+)
+check(
+  'rutas protegidas: .mcp.json y .claude/ también preguntan aunque todo esté permitido',
+  { inline: { permission: { '*': 'allow' } }, steps: [() => editCall('.mcp.json')], call: editCall('.claude/x.json'), reply: 'reject' },
+  (r) => r.asked.length >= 1 && r.asked.every((a) => a.permission === 'edit')
 )
 
 // ── Permisos «siempre» guardados en disco (solo si la app los enciende) ───────────────────────────────────────
