@@ -2,7 +2,7 @@
 // llamada a herramienta y luego termina, y un MCP de prueba (`probe-mcp.mjs`) que devuelve los argumentos que recibe.
 // El motor corre aislado: entorno mínimo, HOME/XDG temporales (nunca la config real), carpeta de config propia y proceso en su grupo.
 // Uso: `runEngine(bin, escenario)` desde `run.mjs`. Manual: no lo corre `npm test`.
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import net from 'node:net'
@@ -115,6 +115,18 @@ export async function runEngine(bin, sc) {
   }
   const fileCfg = join(root, 'file.json')
   writeFileSync(fileCfg, JSON.stringify(sc.file ?? {}))
+  // En Windows el motor necesita el entorno mínimo del sistema (PATH con System32 y Git, ComSpec, SystemRoot) para encontrar un shell.
+  const winEnv =
+    process.platform === 'win32'
+      ? {
+          PATH: [process.env.SystemRoot + '\\System32', process.env.SystemRoot, 'C:\\Program Files\\Git\\cmd', 'C:\\Program Files\\Git\\usr\\bin'].join(';'),
+          SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
+          ComSpec: process.env.ComSpec ?? 'C:\\Windows\\System32\\cmd.exe',
+          USERPROFILE: home,
+          TEMP: root,
+          TMP: root
+        }
+      : {}
   const env = {
     PATH: '/usr/bin:/bin',
     HOME: home,
@@ -133,6 +145,8 @@ export async function runEngine(bin, sc) {
     OPENCODE_CONFIG: fileCfg,
     OPENCODE_CONFIG_DIR: cfgdir,
     OPENCODE_CONFIG_CONTENT: JSON.stringify(inline),
+    ...winEnv,
+    ...(process.env.PROBE_SHELL ? { SHELL: process.env.PROBE_SHELL } : {}),
     ...(sc.env ?? {})
   }
   const child = spawn(bin, ['serve', '--port', String(port), '--hostname', '127.0.0.1'], {
@@ -231,12 +245,20 @@ export async function runEngine(bin, sc) {
   } finally {
     events.abort()
     try {
-      process.kill(-child.pid, 'SIGKILL')
+      // En Windows no existen los grupos de procesos con pid negativo: taskkill /T mata el árbol (el motor y sus hijos).
+      if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
+      else process.kill(-child.pid, 'SIGKILL')
     } catch {
       /* ya terminó */
     }
     provider.close()
-    rmSync(root, { recursive: true, force: true })
+    // Windows suelta los archivos del motor (.node extraídos) unos instantes después de morir: se reintenta y, si no se puede,
+    // la comprobación ya tiene su resultado y la carpeta temporal queda para el sistema.
+    try {
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 })
+    } catch {
+      /* temporal: no debe tumbar la corrida */
+    }
   }
   return out
 }

@@ -249,6 +249,11 @@ check(
     /terminó con código 0/.test(r.toolParts[0].output)
 )
 check(
+  'shell en segundo plano: la salida con acentos y eñes llega intacta (UTF-8)',
+  { steps: [() => bg('echo áéíóú ñ Ñ ¿qué? ü', 5000)], call: { name: 'bash', args: {} } },
+  (r) => r.toolParts.length === 1 && r.toolParts[0].status === 'completed' && r.toolParts[0].output.includes('áéíóú ñ Ñ ¿qué? ü')
+)
+check(
   'shell en segundo plano: uno lento pasa a «en curso» y shell_wait entrega SOLO lo que faltaba',
   {
     steps: [() => bg('echo uno; sleep 3; echo dos'), (m) => ({ name: 'shell_wait', args: { shell_id: shellOf(m), yield_ms: 8000 } })]
@@ -574,8 +579,10 @@ check(
   (r) => Array.isArray(r.toolsOffered) && !r.toolsOffered.includes('task') && !taskPart(r)
 )
 
+// `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
+const only = process.env.PROBE_ONLY
 let failed = 0
-for (const c of checks) {
+for (const c of only ? checks.filter((x) => x.name.includes(only)) : checks) {
   const r = await runEngine(bin, c.sc)
   const ok = !r.error && c.expect(r)
   if (!ok) failed++
