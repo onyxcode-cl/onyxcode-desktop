@@ -145,14 +145,26 @@ export async function runEngine(bin, sc) {
   child.stdout.on('data', (d) => (log += d))
   child.stderr.on('data', (d) => (log += d))
   const url = `http://127.0.0.1:${port}`
-  const q = (p, init) => fetch(url + p + (p.includes('?') ? '&' : '?') + 'directory=' + encodeURIComponent(proj), init)
+  // Cada llamada al motor tiene tope propio (antes, una que no recibía respuesta esperaba los 300 s de undici y la comprobación
+  // seguía en silencio): ahora falla pronto y dice QUÉ ruta se quedó sin respuesta.
+  const q = async (p, init = {}) => {
+    const t0 = Date.now()
+    try {
+      return await fetch(url + p + (p.includes('?') ? '&' : '?') + 'directory=' + encodeURIComponent(proj), {
+        ...init,
+        signal: init.signal ?? AbortSignal.timeout(90_000)
+      })
+    } catch (e) {
+      throw new Error(`motor sin respuesta: ${init.method ?? 'GET'} ${p.split('?')[0]} tras ${Math.round((Date.now() - t0) / 1000)} s (${e?.name ?? e})`)
+    }
+  }
   const post = (o) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(o) })
   const out = { ok: false, asked: [], toolParts: [] }
   const events = new AbortController()
   try {
     for (let i = 0; i < 150 && !out.ok; i++) {
       try {
-        out.ok = (await fetch(url + '/global/health')).ok
+        out.ok = (await fetch(url + '/global/health', { signal: AbortSignal.timeout(5_000) })).ok
       } catch {
         /* aún no */
       }
