@@ -1,6 +1,6 @@
 {
   "opencodeVersion": "1.19.0",
-  "routeCount": 188,
+  "routeCount": 190,
   "routes": [
     "DELETE /api/credential/{credentialID}",
     "DELETE /api/integration/attempt/{attemptID}",
@@ -59,6 +59,7 @@
     "GET /experimental/console/orgs",
     "GET /experimental/resource",
     "GET /experimental/session",
+    "GET /experimental/session/{sessionID}/trabajos",
     "GET /experimental/tool",
     "GET /experimental/tool/ids",
     "GET /experimental/workspace",
@@ -134,6 +135,7 @@
     "POST /experimental/project/{projectID}/copy/generate-name",
     "POST /experimental/project/{projectID}/copy/refresh",
     "POST /experimental/session/{sessionID}/background",
+    "POST /experimental/session/{sessionID}/trabajos/{id}/terminar",
     "POST /experimental/workspace",
     "POST /experimental/workspace/sync-list",
     "POST /experimental/workspace/warp",

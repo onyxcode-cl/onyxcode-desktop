@@ -51,8 +51,14 @@ describe('instantánea api-routes.json', () => {
   it('coincide en número de rutas con el SDK fijado (detecta desalineación al subir el pin)', () => {
     expect(sdk.routes.size).toBe(188)
     expect(snapshot.routeCount).toBe(snapshot.routes.length)
-    expect(snapshot.routes.length).toBe(sdk.routes.size)
-    expect([...snapshot.routes].sort()).toEqual([...sdk.routes].sort())
+    // El motor propio de Lazunox añade dos rutas que el SDK oficial no conoce (panel de trabajos); el resto debe coincidir con el SDK.
+    const propias = snapshot.routes.filter((r: string) => /\/experimental\/session\/[^\s]*\/trabajos/.test(r))
+    expect(propias.sort()).toEqual([
+      'GET /experimental/session/{sessionID}/trabajos',
+      'POST /experimental/session/{sessionID}/trabajos/{id}/terminar'
+    ])
+    expect(snapshot.routes.length - propias.length).toBe(sdk.routes.size)
+    expect([...snapshot.routes].filter((r: string) => !propias.includes(r)).sort()).toEqual([...sdk.routes].sort())
   })
 
   it('contiene todas las rutas usadas y un resumen de esquema de cada una', () => {

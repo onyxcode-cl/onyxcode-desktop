@@ -206,6 +206,8 @@ export async function runEngine(bin, sc) {
         .filter((p) => p.type === 'tool')
         .map((p) => ({ tool: p.tool, status: p.state.status, input: p.state.input, output: String(p.state.output ?? p.state.error ?? '') }))
     )
+    // `sc.http`: llamadas HTTP propias al motor (rutas de trabajos) con la sesión ya usada.
+    if (sc.http) out.http = await sc.http({ q, post, sessionID: s.id })
     out.toolsOffered = seen.toolsOffered
     out.system = seen.system
     if (sc.settleMs) await sleep(sc.settleMs)

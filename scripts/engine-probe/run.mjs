@@ -322,6 +322,130 @@ check(
   (r) => !/<shell_aviso /.test(textos(r))
 )
 
+// ── Celda viva de Code Mode (motor propio): rechazo de permiso y resumen al pausar ──────────────────────────────────
+const REVOCADA = 'El usuario rechazó un permiso dentro de este programa'
+check(
+  'celda viva: un rechazo de permiso detiene el resto del script aunque atrape el error (antes de ceder)',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { x_start: 'ask', x_secret: 'allow' } },
+    reply: 'reject',
+    call: {
+      name: 'execute',
+      args: {
+        code: "try { await tools.x.start({ command: 'a' }) } catch (e) {} try { await tools.x.secret({ command: 'b' }) } catch (e) {} return 'seguí'"
+      }
+    }
+  },
+  (r) => {
+    const o = r.toolParts[0]?.output ?? ''
+    return o.includes(REVOCADA) && !o.includes('seguí')
+  }
+)
+check(
+  'celda viva: el rechazo después de ceder el control también detiene el script y execute_wait lo explica',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { x_start: 'ask', x_secret: 'allow' } },
+    reply: 'reject',
+    steps: [
+      () => ({
+        name: 'execute',
+        args: {
+          code: "await tools.x.slow({ ms: 2500 }); try { await tools.x.start({ command: 'a' }) } catch (e) {} try { await tools.x.secret({ command: 'b' }) } catch (e) {} return 'seguí'",
+          yield_ms: 1000
+        }
+      }),
+      (m) => ({ name: 'execute_wait', args: { cell_id: cellOf(m), yield_ms: 8000 } })
+    ]
+  },
+  (r) => {
+    const o1 = r.toolParts[0]?.output ?? ''
+    const o2 = r.toolParts[1]?.output ?? ''
+    return /Script en curso/.test(o1) && o2.includes(REVOCADA) && !o2.includes('seguí')
+  }
+)
+check(
+  'celda viva: al pausar, el texto trae un resumen acotado (llamadas completadas y últimas 3)',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    call: {
+      name: 'execute',
+      args: {
+        code: 'for (const i of [1, 2, 3, 4]) await tools.x.slow({ ms: 50 }); return await tools.x.slow({ ms: 6000 })',
+        yield_ms: 1500
+      }
+    }
+  },
+  (r) => {
+    const o = r.toolParts[0]?.output ?? ''
+    return (
+      /Script en curso/.test(o) && /Resumen:/.test(o) && /llamada\(s\) completada\(s\)/.test(o) && (o.match(/^- /gm) ?? []).length === 3
+    )
+  }
+)
+
+// ── Rutas HTTP de trabajos del motor propio (lo que usa el panel de la app) ────────────────────────────────────────
+const getJson = async (res) => ({ status: res.status, body: await res.json().catch(() => null) })
+check(
+  'rutas de trabajos: una sesión nueva devuelve la lista vacía y terminar un id inexistente da ok:false',
+  {
+    steps: [() => ({ name: 'shell_wait', args: { shell_id: 'sh_x' } })],
+    http: async ({ q, post }) => {
+      const nueva = await (await q('/session', post({}))).json()
+      const lista = await getJson(await q(`/experimental/session/${nueva.id}/trabajos`))
+      const term = await getJson(await q(`/experimental/session/${nueva.id}/trabajos/sh_noexiste/terminar`, post({})))
+      return { lista, term }
+    }
+  },
+  (r) =>
+    r.http?.lista?.status === 200 &&
+    Array.isArray(r.http.lista.body?.trabajos) &&
+    r.http.lista.body.trabajos.length === 0 &&
+    r.http.term?.body?.ok === false
+)
+check(
+  'rutas de trabajos: un shell en segundo plano aparece solo en SU sesión; otra sesión no lo ve ni lo puede terminar; el dueño sí',
+  {
+    steps: [() => bg('sleep 296', 1000)],
+    settleMs: 500,
+    http: async ({ q, post, sessionID }) => {
+      const otra = await (await q('/session', post({}))).json()
+      const mia = await getJson(await q(`/experimental/session/${sessionID}/trabajos`))
+      const id = mia.body?.trabajos?.[0]?.id
+      const deOtra = await getJson(await q(`/experimental/session/${otra.id}/trabajos`))
+      const ajena = await getJson(await q(`/experimental/session/${otra.id}/trabajos/${id}/terminar`, post({})))
+      const vivoTrasAjena = spawnSync('pgrep', ['-f', 'sleep 296']).status === 0
+      const propia = await getJson(await q(`/experimental/session/${sessionID}/trabajos/${id}/terminar`, post({})))
+      const segunda = await getJson(await q(`/experimental/session/${sessionID}/trabajos/${id}/terminar`, post({})))
+      await new Promise((res) => setTimeout(res, 800))
+      const final = await getJson(await q(`/experimental/session/${sessionID}/trabajos`))
+      return { mia, deOtra, ajena, vivoTrasAjena, propia, segunda, final }
+    }
+  },
+  (r) => {
+    const h = r.http ?? {}
+    const t = h.mia?.body?.trabajos?.[0]
+    return (
+      t?.tipo === 'shell' &&
+      /^sh_/.test(t.id) &&
+      t.estado === 'en_curso' &&
+      t.codigo === null &&
+      h.deOtra?.body?.trabajos?.length === 0 &&
+      h.ajena?.body?.ok === false &&
+      h.vivoTrasAjena === true &&
+      h.propia?.body?.ok === true &&
+      h.segunda?.body?.ok === false &&
+      h.final?.body?.trabajos?.[0]?.estado === 'terminado_por_ti' &&
+      !stillRunning('sleep 296')
+    )
+  }
+)
+
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
 const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)
