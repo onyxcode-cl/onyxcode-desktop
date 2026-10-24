@@ -3,6 +3,7 @@
 // Uso: node scripts/engine-probe/run.mjs [ruta/al/opencode] [--shell-bg ruta/al/shell-bg-mcp.cjs]
 //   (motor por defecto: resources/opencode-bin/bin/opencode; el .cjs se genera con `node scripts/build-shell-bg.mjs --out <ruta>`)
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
+import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -232,6 +233,58 @@ check(
     reply: 'reject'
   },
   (r) => r.asked.length === 1 && outcome(r) === 'preguntó'
+)
+
+// ── Shell en segundo plano del motor propio (`bash` con background + `shell_wait`) ─────────────────────────────────
+const shellOf = (msgs) => /shell_id=(sh_\w+)/.exec(msgs.join('\n'))?.[1] ?? 'sh_no-encontrado'
+const bg = (command, yield_ms = 1000) => ({ name: 'bash', args: { command, background: true, yield_ms, description: 'prueba' } })
+const stillRunning = (needle) => spawnSync('pgrep', ['-f', needle]).status === 0
+check(
+  'shell en segundo plano: un comando rápido termina dentro de yield_ms y devuelve su salida',
+  { steps: [() => bg('echo hola', 5000)], call: { name: 'bash', args: {} } },
+  (r) =>
+    r.toolParts.length === 1 &&
+    r.toolParts[0].status === 'completed' &&
+    /hola/.test(r.toolParts[0].output) &&
+    /terminó con código 0/.test(r.toolParts[0].output)
+)
+check(
+  'shell en segundo plano: uno lento pasa a «en curso» y shell_wait entrega SOLO lo que faltaba',
+  {
+    steps: [() => bg('echo uno; sleep 3; echo dos'), (m) => ({ name: 'shell_wait', args: { shell_id: shellOf(m), yield_ms: 8000 } })]
+  },
+  (r) =>
+    r.toolParts.length === 2 &&
+    /uno/.test(r.toolParts[0].output) &&
+    /Comando en curso \(shell_id=sh_/.test(r.toolParts[0].output) &&
+    /dos/.test(r.toolParts[1].output) &&
+    !/uno/.test(r.toolParts[1].output.replace(/shell_id=\S+/g, '')) &&
+    /terminó con código 0/.test(r.toolParts[1].output) &&
+    (r.toolsOffered ?? []).includes('shell_wait')
+)
+check(
+  'shell en segundo plano: terminate mata de verdad el proceso (sin huérfanos)',
+  { steps: [() => bg('sleep 297'), (m) => ({ name: 'shell_wait', args: { shell_id: shellOf(m), terminate: true } })], settleMs: 500 },
+  (r) => r.toolParts.length === 2 && /terminado por ti/.test(r.toolParts[1].output) && !stillRunning('sleep 297')
+)
+check(
+  'shell en segundo plano: tope de 3 vivos por sesión (el cuarto se rechaza con un mensaje claro)',
+  { steps: [() => bg('sleep 61'), () => bg('sleep 62'), () => bg('sleep 63'), () => bg('sleep 64')], settleMs: 500 },
+  (r) => r.toolParts.length === 4 && r.toolParts[3].status !== 'completed' && /Ya hay 3 shells/.test(r.toolParts[3].output)
+)
+check(
+  'shell en segundo plano: shell_wait de un id que no existe falla sin revelar nada',
+  { steps: [() => ({ name: 'shell_wait', args: { shell_id: 'sh_inexistente' } })] },
+  (r) => r.toolParts.length === 1 && /No existe el shell/.test(r.toolParts[0].output)
+)
+check(
+  'shell en segundo plano: con LAZUNOX_SHELL_BG_MAX_MS el tope de vida lo termina',
+  {
+    env: { LAZUNOX_SHELL_BG_MAX_MS: '2000' },
+    steps: [() => bg('sleep 298'), (m) => ({ name: 'shell_wait', args: { shell_id: shellOf(m), yield_ms: 8000 } })],
+    settleMs: 500
+  },
+  (r) => r.toolParts.length === 2 && /tope de vida/.test(r.toolParts[1].output) && !stillRunning('sleep 298')
 )
 
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────

@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.6.3] - 2026-10-23
+
+### Novedades
+
+- **Comandos largos en segundo plano.** La IA ahora puede lanzar un comando que tarda (un servidor de pruebas, una compilación larga, un vigilante de archivos) sin bloquear la conversación: si no termina en unos segundos, sigue trabajando por detrás y la IA puede esperarlo, leer solo lo nuevo que fue escribiendo o pararlo. Al pararlo se detienen también los procesos que haya dejado abiertos. Hasta 3 a la vez por conversación, con tope de vida (30 minutos) y de salida. Funciona en macOS y en las Tareas con WSL; en Windows nativo se sigue usando el conector de siempre.
+- **Los límites de Modo código son más amplios** (10 minutos, 1000 llamadas, 5 MB por script) y se pueden cambiar. Una ejecución en segundo plano solo la puede esperar o parar la conversación que la lanzó, y si esa conversación se borra, se cancela.
+
+### Mejoras
+
+- El motor propio ya dispara los ganchos de permisos de los complementos internos (antes estaban definidos pero no se usaban); los usa el control del plan.
+- Una revisión de seguridad independiente de todo lo cambiado en la 1.6.x no encontró problemas críticos ni altos; los medios que sí eran reales se corrigieron.
+
 ## [1.6.2] - 2026-10-23
 
 ### Motor propio

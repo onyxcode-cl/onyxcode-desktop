@@ -18,7 +18,7 @@ Este documento es el plan único. Si algo cambia, se cambia aquí y se avisa; no
 | 1 | Fork con la base 1.19.0 + LICENSE + `LAZUNOX.md` | Hecho |
 | 2 | Compilar desde el código fuente, repetible | Hecho (3 plataformas idénticas byte a byte) |
 | 3.1 | Quitar conexiones a servicios de OpenCode | Hecho, con prueba que lo vigila (`test/lazunox/sin-red-de-opencode.test.ts`) |
-| 3.2 | Release del motor en GitHub | Hecho: `v1.19.0-lazunox.1` a `v1.19.0-lazunox.3` (pausa y espera de Code Mode, identidad Lazunox en los textos del modelo; verificadas: las huellas coinciden con lo publicado) |
+| 3.2 | Release del motor en GitHub | Hecho: `v1.19.0-lazunox.1` a `v1.19.0-lazunox.4` (pausa y espera de Code Mode, identidad Lazunox en los textos del modelo; verificadas: las huellas coinciden con lo publicado) |
 | 3.3 | `pin.json` apunta a nuestra release | **Pendiente** (el permiso del sistema lo bloqueó; ver «Bloqueado») |
 | 3.4 | Probar el motor nuestro en la app real | Pendiente (Mac y Windows) |
 | 3.5 | Renombrar para que no diga «OpenCode» | Pendiente, por etapas |
@@ -49,7 +49,7 @@ Fuente de referencia: `docs/ANALISIS-OPENCODE-2-FUNCIONES.md` (con rutas y líne
 | # | Función de 2.x | En 1.19 hoy | Qué hacemos en el motor | Mejora nuestra sobre 2.x |
 |---|---|---|---|---|
 | 1 | Subagentes en segundo plano | Está, tras bandera experimental | Activa por defecto en el motor; endpoint «mandar al fondo» ya existe | Tope de simultáneos; cancelar al cerrar sesión/app; permisos de las hijas visibles; el plan-gate resuelve la hija; (opcional) sobrevivir a reinicios con marcador en disco |
-| 2 | Shell en segundo plano | No existe (mata a los 2 min) | `background` en `tool/shell.ts` + `BackgroundJob` + archivo de salida + leer/matar + aviso de fin que despierta la sesión | Tiempo máximo también en segundo plano (2.x no pone ninguno), matar el grupo de procesos, tope de salida y retención, dentro del sandbox de la sesión, mismo filtro de entorno que `lazunox-env`. Revisar el `bgshell` que ya tiene la app para no duplicar |
+| 2 | Shell en segundo plano ✅ (1.6.3) | No existía (mata a los 2 min) | `background` en `tool/shell.ts` + `BackgroundJob` + archivo de salida + leer/matar + aviso de fin que despierta la sesión | Tiempo máximo también en segundo plano (2.x no pone ninguno), matar el grupo de procesos, tope de salida y retención, dentro del sandbox de la sesión, mismo filtro de entorno que `lazunox-env`. Revisar el `bgshell` que ya tiene la app para no duplicar |
 | 3 | Aviso sintético que despierta la sesión (`<subagent>`, `<shell>`) | Parcial (subagentes) | Unificar el mecanismo para subagentes y shell | Marcar el texto como no confiable y pasarlo por la puerta del plan (es un canal de inyección) |
 | 4 | Code Mode | Está (solo MCP, sin `fetch`), tras bandera | Activo detrás de un ajuste de Lazunox | Límites por defecto (`timeoutMs`, `maxToolCalls`, `maxOutputBytes`, que 2.x no fija); NO traer el `fetch` sin permiso; el «siempre» no aprueba la herramienta entera |
 | 5 | Gancho `permission.ask` / `permission.evaluate` | Tipado pero no se dispara | Cablearlo en `Permission.ask` | Lo usa el plan-gate; sustituye parches actuales |
