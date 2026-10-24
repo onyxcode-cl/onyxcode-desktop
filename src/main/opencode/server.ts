@@ -28,6 +28,7 @@ import { withDisclaim } from '../process/disclaim'
 import { testLauncher } from './test-launcher'
 import { settingsStore } from '../store'
 import { engineExperimentsFor, engineFlagEnvForMainSidecar } from '@shared/engine-experiments'
+import { engineLimitEnvFor } from '@shared/engine-limits'
 import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
@@ -279,6 +280,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         // Funciones experimentales del motor (Modo código, subagentes de fondo): solo las dos variables concretas y solo si
         // los Ajustes las encienden para Chat o Code (comparten este proceso). Cambiarlas exige reiniciar (`engine-flags-restart.ts`).
         ...engineFlagEnvForMainSidecar(settingsStore.get()),
+        // Límites de Modo código y shell en segundo plano: solo los que la persona cambió (el motor usa su defecto en el resto).
+        ...engineLimitEnvFor(settingsStore.get()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(

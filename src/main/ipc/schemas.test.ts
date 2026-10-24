@@ -507,3 +507,36 @@ describe('attach:extractOffice', () => {
     expect(() => v({ name: 'a.docx', base64: 'A'.repeat(15 * 1024 * 1024) })).toThrow() // > 10 MB de archivo
   })
 })
+
+describe('settings:set engineLimits', () => {
+  const v = IPC_SCHEMAS['settings:set']
+  it('acepta un objeto escaso de enteros en rango y el vacío (restablecer)', () => {
+    expect(v({ engineLimits: {} })).toEqual({ engineLimits: {} })
+    const ok = {
+      codeTimeoutMin: 30,
+      codeMaxCalls: 10,
+      codeOutputMb: 50,
+      codeYieldSec: 5,
+      codeMaxCells: 6,
+      shellLifeMin: 240,
+      shellOutputMb: 1
+    }
+    expect(v({ engineLimits: ok })).toEqual({ engineLimits: ok })
+  })
+  it('rechaza fuera de rango, decimales, texto, claves extra y no objetos', () => {
+    expect(() => v({ engineLimits: { codeTimeoutMin: 0 } })).toThrow()
+    expect(() => v({ engineLimits: { codeTimeoutMin: 121 } })).toThrow()
+    expect(() => v({ engineLimits: { codeMaxCalls: 9 } })).toThrow()
+    expect(() => v({ engineLimits: { codeMaxCalls: 10_001 } })).toThrow()
+    expect(() => v({ engineLimits: { codeYieldSec: 4 } })).toThrow()
+    expect(() => v({ engineLimits: { codeYieldSec: 51 } })).toThrow()
+    expect(() => v({ engineLimits: { codeMaxCells: 7 } })).toThrow()
+    expect(() => v({ engineLimits: { shellLifeMin: 241 } })).toThrow()
+    expect(() => v({ engineLimits: { codeOutputMb: 1.5 } })).toThrow()
+    expect(() => v({ engineLimits: { codeOutputMb: '5' } })).toThrow()
+    expect(() => v({ engineLimits: { codeOutputMb: NaN } })).toThrow()
+    expect(() => v({ engineLimits: { otro: 5 } })).toThrow()
+    expect(() => v({ engineLimits: [] })).toThrow()
+    expect(() => v({ engineLimits: 5 })).toThrow()
+  })
+})

@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
 import { migrateBackgroundSubagentsDefault, normalizeEngineExperiments } from '@shared/engine-experiments'
+import { normalizeEngineLimits } from '@shared/engine-limits'
 import { normalizeCodeTrustedMcp } from '@shared/mcp-permissions'
 import { isLangPref, migrateLanguage } from '@shared/i18n'
 import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
@@ -102,6 +103,7 @@ function normalize(s: Settings): Settings {
     checkUpdates: s.checkUpdates !== false,
     learningEnabled: s.learningEnabled !== false,
     engineExperiments: normalizeEngineExperiments(s.engineExperiments),
+    engineLimits: normalizeEngineLimits(s.engineLimits),
     engineBgMigrated: s.engineBgMigrated === true,
     codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp)
   }

@@ -194,6 +194,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   learningEnabled: 'X',
   // Funciones experimentales del motor (Modo código, subagentes de fondo): superficie de ataque; el celular NO las enciende.
   engineExperiments: 'X',
+  // Límites del Modo código y del shell en segundo plano: igual que las funciones experimentales, solo en el Mac.
+  engineLimits: 'X',
   // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
   codeTrustedMcp: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.

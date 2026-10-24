@@ -1,6 +1,7 @@
 /** Tipos de dominio compartidos entre main, preload y renderer. */
 import type { LangPref } from './i18n'
 import { ENGINE_EXPERIMENTS_DEFAULTS } from './engine-experiments'
+import type { EngineLimits } from './engine-limits'
 
 export type ModeId = 'chat' | 'code' | 'tasks' | 'routines' | 'gallery'
 
@@ -50,6 +51,8 @@ export interface Settings {
   learningEnabled: boolean
   /** Funciones experimentales del motor por modo (Modo código, subagentes en segundo plano). Apagadas por defecto; el celular no las escribe. */
   engineExperiments: EngineExperiments
+  /** Límites del Modo código y del shell en segundo plano. Escaso: solo lo que la persona cambió (ausente = defecto); ver `engine-limits.ts`. */
+  engineLimits: EngineLimits
   /** Marca de la migración de 1.6.0: los ayudantes en segundo plano pasan a estar encendidos por defecto, también para quien ya tenía guardado «todo apagado». Se hace una sola vez. */
   engineBgMigrated?: boolean
   /**
@@ -75,6 +78,7 @@ export const DEFAULT_SETTINGS: Settings = {
   checkUpdates: true,
   learningEnabled: true,
   engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS,
+  engineLimits: {},
   codeTrustedMcp: []
 }
 

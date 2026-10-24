@@ -4,6 +4,7 @@
  */
 import { t } from '@shared/i18n'
 import { engineFlagEnvFor } from '@shared/engine-experiments'
+import { engineLimitEnvFor } from '@shared/engine-limits'
 import { type BrowserWindow, dialog, shell, type IpcMain } from 'electron'
 import type { TasksEventChannel, TasksEventContract } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
@@ -94,7 +95,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     tasksWin: deps.tasksWin,
     computerWin: deps.computerWin,
     winBackend: deps.winBackend,
-    extraEngineEnv: () => engineFlagEnvFor(settingsStore.get(), 'tasks')
+    extraEngineEnv: () => ({ ...engineFlagEnvFor(settingsStore.get(), 'tasks'), ...engineLimitEnvFor(settingsStore.get()) })
   })
   // Abre una tarea/sesión en la ventana principal (clic en una notificación): la trae al frente y
   // avisa al renderer con `app:openTarget` (mismo canal que usa `ipc/notify.ts`).

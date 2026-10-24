@@ -7,6 +7,7 @@
  *   del overlay tienen su lista mínima (el overlay a pantalla completa no invoca nada).
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
+import { ENGINE_LIMIT_SPECS, type EngineLimitKey } from '@shared/engine-limits'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
 import { TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
@@ -113,6 +114,16 @@ const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const modeFlags = obj({ chat: bool, code: bool, tasks: bool })
 /** `settings:set.engineExperiments`: booleanos exactos, todas las claves obligatorias, sin extras. */
 const engineExperimentsShape = obj({ codeMode: modeFlags, backgroundSubagents: modeFlags })
+/**
+ * `settings:set.engineLimits`: enteros dentro del rango de cada límite (`engine-limits.ts`), todas las claves opcionales, sin extras.
+ * Un objeto vacío = todo por defecto (así «Restablecer» borra lo guardado).
+ */
+const engineLimitsShape = obj(
+  Object.fromEntries(ENGINE_LIMIT_SPECS.map((s) => [s.key, optional(num({ min: s.min, max: s.max, int: true }))])) as Record<
+    EngineLimitKey,
+    Validator<number | undefined>
+  >
+)
 const modelRef = obj({ providerID: str({ max: 200, min: 1 }), modelID: str({ max: 200, min: 1 }) })
 const cwdReq = obj({ cwd: absPath })
 const folderReq = obj({ folder: absPath })
@@ -626,6 +637,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     learningEnabled: bool,
     language: literal('system', 'es', 'en'),
     engineExperiments: engineExperimentsShape,
+    engineLimits: engineLimitsShape,
     // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
     codeTrustedMcp: arr(mcpName, 200)
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).

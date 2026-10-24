@@ -12,6 +12,8 @@
  * sesión, al caer el motor o al apagar el vigilante.
  */
 import { createOpencodeClient } from '@opencode-ai/sdk/v2/client'
+import { ENGINE_LIMIT_SPEC, normalizeEngineLimits, type EngineLimitKey } from '@shared/engine-limits'
+import type { Settings } from '@shared/types'
 import { buildWatchdogMark, type WatchdogMarkLimit } from '@shared/watchdog-mark'
 
 /** Tope de tiempo de UNA ejecución de `execute` (ms). Un programa legítimo que encadena unas cuantas llamadas MCP tarda segundos. */
@@ -75,9 +77,10 @@ export interface ExecuteWatchdogDeps {
   describe?: (trip: WatchdogTrip) => string
   /** Escribe en el mensaje abortado la parte sintética con la marca. Por defecto, `part.update` del SDK. Su fallo no impide el aviso. */
   mark?: (engine: WatchdogEngine, input: WatchdogMarkInput) => Promise<void>
-  maxMs?: number
-  maxCalls?: number
-  maxOutputBytes?: number
+  /** Topes de la segunda barrera; pueden ser funciones para leer los Ajustes en cada ejecución (los límites del motor se configuran). */
+  maxMs?: number | (() => number)
+  maxCalls?: number | (() => number)
+  maxOutputBytes?: number | (() => number)
   rescanMs?: number
   /** Espera base de los reintentos del flujo (ms; crece al doble hasta 10 s). */
   backoffMs?: number
@@ -162,6 +165,25 @@ export function measureExecutePart(part: Record<string, unknown>): { calls: numb
   return { calls: list.length, outputBytes: bytes }
 }
 
+/**
+ * Topes de la segunda barrera según los Ajustes. Si la persona SUBIÓ un límite del motor (Ajustes › Límites), la barrera no puede quedar por
+ * debajo o abortaría antes que el motor: se usa el mayor entre el tope propio de la app y el límite elegido. Si no cambió nada (o lo bajó),
+ * se mantienen los topes de la app (el motor ya corta antes).
+ */
+export function watchdogLimitsFor(settings: Partial<Pick<Settings, 'engineLimits'>>): {
+  maxMs: number
+  maxCalls: number
+  maxOutputBytes: number
+} {
+  const n = normalizeEngineLimits(settings.engineLimits)
+  const engine = (k: EngineLimitKey): number | undefined => (n[k] === undefined ? undefined : ENGINE_LIMIT_SPEC[k].toEngine(n[k]))
+  return {
+    maxMs: Math.max(EXECUTE_MAX_MS, engine('codeTimeoutMin') ?? 0),
+    maxCalls: Math.max(EXECUTE_MAX_CALLS, engine('codeMaxCalls') ?? 0),
+    maxOutputBytes: Math.max(EXECUTE_MAX_OUTPUT_BYTES, engine('codeOutputMb') ?? 0)
+  }
+}
+
 /** Clave de mensaje (`merr.engine.execute.*`) y parámetros para avisar de un aborto. */
 export function tripMessage(
   trip: WatchdogTrip,
@@ -177,9 +199,10 @@ export function tripMessage(
 }
 
 export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchdog {
-  const maxMs = deps.maxMs ?? EXECUTE_MAX_MS
-  const maxCalls = deps.maxCalls ?? EXECUTE_MAX_CALLS
-  const maxOutput = deps.maxOutputBytes ?? EXECUTE_MAX_OUTPUT_BYTES
+  const lim = (v: number | (() => number) | undefined, fallback: number): number => (typeof v === 'function' ? v() : (v ?? fallback))
+  const maxMsNow = (): number => lim(deps.maxMs, EXECUTE_MAX_MS)
+  const maxCallsNow = (): number => lim(deps.maxCalls, EXECUTE_MAX_CALLS)
+  const maxOutputNow = (): number => lim(deps.maxOutputBytes, EXECUTE_MAX_OUTPUT_BYTES)
   const openStream = deps.openStream ?? defaultOpen
   const abortSession = deps.abort ?? defaultAbort
   const isBusy = deps.isBusy ?? defaultIsBusy
@@ -225,7 +248,7 @@ export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchd
       if (ok && r.messageID) {
         // Deja la causa real en la conversación (si no, diría «Detenido por el usuario»). Un fallo no impide el aviso.
         try {
-          const msg = tripMessage(info, { maxMs, maxCalls, maxOutputBytes: maxOutput })
+          const msg = tripMessage(info, { maxMs: maxMsNow(), maxCalls: maxCallsNow(), maxOutputBytes: maxOutputNow() })
           const value = Number(Object.values(msg.params)[0])
           const text = deps.describe?.(info) ?? `Code mode program stopped by the safety limit (${info.limit}).`
           await markAborted(r.engine, { sessionID: r.sessionID, messageID: r.messageID, directory: r.directory, limit, value, text })
@@ -259,7 +282,7 @@ export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchd
     }
     let r = running.get(key)
     if (!r) {
-      const timer = setTimeout(() => void trip(key, 'time'), maxMs)
+      const timer = setTimeout(() => void trip(key, 'time'), maxMsNow())
       timer.unref?.()
       r = {
         engine,
@@ -277,8 +300,8 @@ export function installExecuteWatchdog(deps: ExecuteWatchdogDeps): ExecuteWatchd
     const m = measureExecutePart(part)
     r.calls = m.calls
     r.outputBytes = m.outputBytes
-    if (r.calls > maxCalls) void trip(key, 'calls')
-    else if (r.outputBytes > maxOutput) void trip(key, 'output')
+    if (r.calls > maxCallsNow()) void trip(key, 'calls')
+    else if (r.outputBytes > maxOutputNow()) void trip(key, 'output')
   }
 
   function onEvent(engine: WatchdogEngine, raw: unknown): void {

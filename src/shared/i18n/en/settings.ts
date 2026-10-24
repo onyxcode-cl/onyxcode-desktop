@@ -410,6 +410,34 @@ export const settings = {
   'settings.engine.background.desc': 'The AI can launch helpers that work in parallel while you keep chatting.',
   'settings.engine.background.change':
     'When on, the AI can split up the work and let you know when each helper finishes; you can keep using the conversation meanwhile.',
+  'settings.engine.limits.title': 'Limits',
+  'settings.engine.limits.desc':
+    'Caps for Code Mode and background commands. The defaults suit almost everything; raise them only if a long job gets cut off before it finishes, or lower them to be stricter.',
+  'settings.engine.limits.reset': 'Restore default values',
+  'settings.engine.limits.codeGroup': 'Code Mode',
+  'settings.engine.limits.shellGroup': 'Background commands',
+  'settings.engine.limits.range': 'Default {def} {unit}; allowed from {min} to {max}.',
+  'settings.engine.limits.unit.min': 'min',
+  'settings.engine.limits.unit.sec': 's',
+  'settings.engine.limits.unit.mb': 'MB',
+  'settings.engine.limits.unit.calls': 'calls',
+  'settings.engine.limits.unit.cells': 'at a time',
+  'settings.engine.limits.codeTimeoutMin.label': 'Maximum time per program',
+  'settings.engine.limits.codeTimeoutMin.desc': 'A Code Mode program that runs longer is stopped.',
+  'settings.engine.limits.codeMaxCalls.label': 'Tool calls per program',
+  'settings.engine.limits.codeMaxCalls.desc': 'How many tools a single program can use before it is stopped.',
+  'settings.engine.limits.codeOutputMb.label': 'Maximum result per program',
+  'settings.engine.limits.codeOutputMb.desc': 'Largest size of what a program returns.',
+  'settings.engine.limits.codeYieldSec.label': 'Wait before moving to the background',
+  'settings.engine.limits.codeYieldSec.desc': 'How long the AI waits for the result before leaving the program running and moving on.',
+  'settings.engine.limits.codeMaxCells.label': 'Programs at a time',
+  'settings.engine.limits.codeMaxCells.desc': 'How many Code Mode programs can run at the same time in a conversation.',
+  'settings.engine.limits.shellLifeMin.label': 'Maximum life of a command',
+  'settings.engine.limits.shellLifeMin.desc': 'A command started in the background is stopped after this time.',
+  'settings.engine.limits.shellOutputMb.label': 'Maximum output of a command',
+  'settings.engine.limits.shellOutputMb.desc': 'How much text a background command keeps.',
+  'settings.engine.limits.note':
+    'A value outside the allowed range is adjusted to the nearest one. When a limit changes, the engine restarts to apply it, only when nothing is running.',
   'settings.engine.background.chatNote':
     'In Chat the AI can only start a helper that searches and reads the web, with the same permissions as Chat (no files or terminal).'
 } as const satisfies Messages<typeof es>

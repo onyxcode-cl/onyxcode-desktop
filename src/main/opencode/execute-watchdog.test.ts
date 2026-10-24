@@ -5,6 +5,7 @@ import {
   EXECUTE_MAX_OUTPUT_BYTES,
   installExecuteWatchdog,
   measureExecutePart,
+  watchdogLimitsFor,
   type WatchdogEngine,
   type WatchdogTrip
 } from './execute-watchdog'
@@ -366,5 +367,33 @@ describe('marca de la causa en la conversación', () => {
     await h2.flush()
     expect(mark2).not.toHaveBeenCalled()
     h2.w.dispose()
+  })
+})
+
+describe('topes de la segunda barrera según los Ajustes', () => {
+  it('sin cambios o con límites bajados mantiene los topes de la app', () => {
+    const base = { maxMs: EXECUTE_MAX_MS, maxCalls: EXECUTE_MAX_CALLS, maxOutputBytes: EXECUTE_MAX_OUTPUT_BYTES }
+    expect(watchdogLimitsFor({})).toEqual(base)
+    expect(watchdogLimitsFor({ engineLimits: { codeTimeoutMin: 1, codeMaxCalls: 10 } })).toEqual(base)
+  })
+  it('si la persona sube un límite del motor, la barrera no corta antes', () => {
+    expect(watchdogLimitsFor({ engineLimits: { codeTimeoutMin: 30, codeMaxCalls: 5000, codeOutputMb: 20 } })).toEqual({
+      maxMs: 30 * 60_000,
+      maxCalls: 5000,
+      maxOutputBytes: 20_000_000
+    })
+  })
+  it('el tope de tiempo se lee en cada ejecución (función): un cambio de Ajustes vale sin reinstalar', async () => {
+    let ms = EXECUTE_MAX_MS
+    const h = setup({ maxMs: () => ms })
+    await h.flush()
+    ms = EXECUTE_MAX_MS * 3
+    h.opens[0].push(part())
+    await h.flush()
+    await vi.advanceTimersByTimeAsync(EXECUTE_MAX_MS * 2)
+    expect(h.abort).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(EXECUTE_MAX_MS + 10)
+    expect(h.abort).toHaveBeenCalledTimes(1)
+    h.w.dispose()
   })
 })

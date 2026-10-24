@@ -13,7 +13,7 @@ import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir
 import { settingsStore } from './store'
 import { installMotorApp, motorHomeDir, motorPaths } from './opencode/motor-app'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
-import { installExecuteWatchdog, tripMessage } from './opencode/execute-watchdog'
+import { installExecuteWatchdog, tripMessage, watchdogLimitsFor } from './opencode/execute-watchdog'
 import { normalizeEngineExperiments } from '@shared/engine-experiments'
 import { extrasPrefs } from './extras/prefs'
 import { migrateLegacyUserData, runMigrations } from './migrations'
@@ -395,6 +395,10 @@ function start(): void {
     // Vigilante de Modo código: segunda barrera. El motor propio ya limita `execute` (y lo pausa, ver execute_wait); aquí se aborta la sesión si una ejecución sigue «running» pasados los topes de la app.
     // Solo observa mientras Modo código esté encendido en algún modo (sidecar principal y servidores vivos de Overdrive).
     const executeWatchdog = installExecuteWatchdog({
+      // Si la persona subió un límite en Ajustes › Límites, la segunda barrera no puede cortar antes que el motor.
+      maxMs: () => watchdogLimitsFor(settingsStore.get()).maxMs,
+      maxCalls: () => watchdogLimitsFor(settingsStore.get()).maxCalls,
+      maxOutputBytes: () => watchdogLimitsFor(settingsStore.get()).maxOutputBytes,
       enabled: () => {
         const cm = normalizeEngineExperiments(settingsStore.get().engineExperiments).codeMode
         return cm.chat || cm.code || cm.tasks
@@ -407,11 +411,11 @@ function start(): void {
         return list
       },
       describe: (trip) => {
-        const msg = tripMessage(trip)
+        const msg = tripMessage(trip, watchdogLimitsFor(settingsStore.get()))
         return t(msg.key, msg.params)
       },
       onTrip: (trip) => {
-        const msg = tripMessage(trip)
+        const msg = tripMessage(trip, watchdogLimitsFor(settingsStore.get()))
         const body = t(msg.key, msg.params)
         recordProblem({
           source: 'engine',

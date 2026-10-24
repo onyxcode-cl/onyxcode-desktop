@@ -122,3 +122,35 @@ describe('settings: engineExperiments', () => {
     expect(reopened.get().engineExperiments).toEqual({ codeMode: { ...OFF, code: true }, backgroundSubagents: OFF })
   })
 })
+
+describe('settings: engineLimits', () => {
+  it('un settings.json antiguo sin el campo recibe los defectos (objeto vacío)', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
+    const store = await openStore(dir)
+    expect(store.get().engineLimits).toEqual({})
+  })
+  it('basura y valores fuera de rango o iguales al defecto en disco se descartan', async () => {
+    const dir = userData()
+    writeFileSync(
+      join(dir, 'settings.json'),
+      JSON.stringify({ engineLimits: { codeTimeoutMin: 9999, codeMaxCalls: '5', codeMaxCells: 3, shellLifeMin: 45, extra: 1 } })
+    )
+    const store = await openStore(dir)
+    expect(store.get().engineLimits).toEqual({ shellLifeMin: 45 })
+    const bad = userData()
+    writeFileSync(join(bad, 'settings.json'), JSON.stringify({ engineLimits: 'x' }))
+    expect((await openStore(bad)).get().engineLimits).toEqual({})
+  })
+  it('se guarda solo lo cambiado, sobrevive a otras escrituras y «restablecer» lo borra', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ engineLimits: { codeTimeoutMin: 20, codeMaxCells: 3 } })
+    store.set({ theme: 'dark' })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineLimits).toEqual({ codeTimeoutMin: 20 })
+    expect((await openStore(dir)).get().engineLimits).toEqual({ codeTimeoutMin: 20 })
+    const again = await openStore(dir)
+    again.set({ engineLimits: {} })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineLimits).toEqual({})
+  })
+})

@@ -407,6 +407,34 @@ export const settings = {
   'settings.engine.background.desc': 'La IA puede lanzar ayudantes que trabajan en paralelo mientras sigues conversando.',
   'settings.engine.background.change':
     'Al encenderlo, la IA podrá repartir el trabajo y avisarte cuando cada ayudante termine; puedes seguir usando la conversación mientras tanto.',
+  'settings.engine.limits.title': 'Límites',
+  'settings.engine.limits.desc':
+    'Topes del Modo código y de los comandos en segundo plano. Los valores por defecto sirven para casi todo; súbelos solo si un trabajo largo se corta antes de terminar, o bájalos para ser más estricto.',
+  'settings.engine.limits.reset': 'Restablecer valores por defecto',
+  'settings.engine.limits.codeGroup': 'Modo código',
+  'settings.engine.limits.shellGroup': 'Comandos en segundo plano',
+  'settings.engine.limits.range': 'Por defecto {def} {unit}; permitido de {min} a {max}.',
+  'settings.engine.limits.unit.min': 'min',
+  'settings.engine.limits.unit.sec': 's',
+  'settings.engine.limits.unit.mb': 'MB',
+  'settings.engine.limits.unit.calls': 'llamadas',
+  'settings.engine.limits.unit.cells': 'a la vez',
+  'settings.engine.limits.codeTimeoutMin.label': 'Tiempo máximo por programa',
+  'settings.engine.limits.codeTimeoutMin.desc': 'Si un programa del Modo código dura más, se corta.',
+  'settings.engine.limits.codeMaxCalls.label': 'Llamadas a herramientas por programa',
+  'settings.engine.limits.codeMaxCalls.desc': 'Cuántas herramientas puede usar un solo programa antes de cortarse.',
+  'settings.engine.limits.codeOutputMb.label': 'Resultado máximo por programa',
+  'settings.engine.limits.codeOutputMb.desc': 'Tamaño máximo de lo que devuelve un programa.',
+  'settings.engine.limits.codeYieldSec.label': 'Espera antes de pasar a segundo plano',
+  'settings.engine.limits.codeYieldSec.desc': 'Cuánto espera la IA el resultado antes de dejar el programa trabajando y seguir.',
+  'settings.engine.limits.codeMaxCells.label': 'Programas a la vez',
+  'settings.engine.limits.codeMaxCells.desc': 'Cuántos programas de Modo código pueden correr al mismo tiempo en una conversación.',
+  'settings.engine.limits.shellLifeMin.label': 'Vida máxima de un comando',
+  'settings.engine.limits.shellLifeMin.desc': 'Un comando lanzado en segundo plano se detiene pasado este tiempo.',
+  'settings.engine.limits.shellOutputMb.label': 'Salida máxima de un comando',
+  'settings.engine.limits.shellOutputMb.desc': 'Cuánto texto guarda un comando en segundo plano.',
+  'settings.engine.limits.note':
+    'Si el valor escrito queda fuera del rango permitido, se ajusta al más cercano. Al cambiar un límite, el motor se reinicia para aplicarlo, solo cuando no haya nada en curso.',
   'settings.engine.background.chatNote':
     'En el Chat la IA solo puede lanzar un ayudante que busca y lee en la web, con los mismos permisos que el Chat (sin archivos ni terminal).'
 } as const

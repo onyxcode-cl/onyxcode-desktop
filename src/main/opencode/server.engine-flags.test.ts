@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ENGINE_EXPERIMENTS_DEFAULTS } from '@shared/engine-experiments'
+import type { EngineLimits } from '@shared/engine-limits'
 import type { EngineExperiments } from '@shared/types'
 
 const state = vi.hoisted(() => ({
@@ -80,8 +81,8 @@ import { OpencodeServer } from './server'
 
 const exp = (over: Partial<EngineExperiments>): EngineExperiments => ({ ...ENGINE_EXPERIMENTS_DEFAULTS, ...over })
 
-async function envFor(engineExperiments: EngineExperiments): Promise<Record<string, string>> {
-  state.settings = { engineExperiments, language: 'es' }
+async function envFor(engineExperiments: EngineExperiments, engineLimits?: EngineLimits): Promise<Record<string, string>> {
+  state.settings = { engineExperiments, engineLimits, language: 'es' }
   state.spawnEnv = null
   const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
   await server.start()
@@ -124,6 +125,32 @@ describe('sidecar principal: variables de las funciones experimentales', () => {
     )
     expect(env.OPENCODE_EXPERIMENTAL_CODE_MODE).toBeUndefined()
     expect(env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS).toBeUndefined()
+  })
+})
+
+describe('sidecar principal: límites de Modo código y shell', () => {
+  const prevBin = process.env.OPENCODE_BIN
+  beforeEach(() => {
+    process.env.OPENCODE_BIN = process.execPath
+  })
+  afterEach(() => {
+    if (prevBin === undefined) delete process.env.OPENCODE_BIN
+    else process.env.OPENCODE_BIN = prevBin
+  })
+
+  it('sin cambios no lleva ninguna variable de límites (el motor usa sus defectos)', async () => {
+    for (const lim of [undefined, {}, { codeTimeoutMin: 10 }]) {
+      const env = await envFor(ENGINE_EXPERIMENTS_DEFAULTS, lim)
+      expect(Object.keys(env).filter((k) => k.startsWith('LAZUNOX_CODE_MODE_') || k.startsWith('LAZUNOX_SHELL_BG_'))).toEqual([])
+    }
+  })
+
+  it('lleva solo las que la persona cambió, en unidades del motor', async () => {
+    const env = await envFor(ENGINE_EXPERIMENTS_DEFAULTS, { codeTimeoutMin: 45, shellOutputMb: 20 })
+    expect(env.LAZUNOX_CODE_MODE_TIMEOUT_MS).toBe('2700000')
+    expect(env.LAZUNOX_SHELL_BG_MAX_OUTPUT).toBe('20971520')
+    expect(env.LAZUNOX_CODE_MODE_MAX_CELLS).toBeUndefined()
+    expect(env.LAZUNOX_SHELL_BG_MAX_MS).toBeUndefined()
   })
 })
 

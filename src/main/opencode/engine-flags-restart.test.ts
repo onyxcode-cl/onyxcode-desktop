@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ENGINE_EXPERIMENTS_DEFAULTS } from '@shared/engine-experiments'
+import type { EngineLimits } from '@shared/engine-limits'
 import type { EngineExperiments, ServerState } from '@shared/types'
 import { installEngineFlagsRestart, type EngineFlagsLiveServer, type EngineFlagsRestartDeps } from './engine-flags-restart'
 
-type S = { engineExperiments: EngineExperiments; recentFolders?: string[]; theme?: string }
+type S = { engineExperiments: EngineExperiments; engineLimits?: EngineLimits; recentFolders?: string[]; theme?: string }
 
 const on = (over: Partial<EngineExperiments>): EngineExperiments => ({ ...ENGINE_EXPERIMENTS_DEFAULTS, ...over })
 const flag = (chat: boolean, code: boolean, tasks: boolean) => ({ chat, code, tasks })
@@ -255,5 +256,49 @@ describe('config inline del sidecar principal (conectores en Code, F8-B203)', ()
     h.handle.recheck()
     await vi.advanceTimersByTimeAsync(0)
     expect(h.server.restart).not.toHaveBeenCalled()
+  })
+})
+
+describe('reinicio al cambiar los límites de Modo código y shell', () => {
+  const lim = (engineLimits: S['engineLimits']): S => ({ ...base, engineLimits })
+
+  it('cambiar un límite reinicia el sidecar principal (ocioso) y avisa', async () => {
+    const h = harness(base)
+    await h.change(lim({ codeTimeoutMin: 30 }))
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.notify).toHaveBeenCalledWith('restarted')
+  })
+
+  it('el campo ausente y el vacío son lo mismo: no reinicia; guardar el defecto tampoco', async () => {
+    const h = harness(base)
+    await h.change(lim({}))
+    await h.change(lim({ shellLifeMin: 30 }))
+    expect(h.server.restart).not.toHaveBeenCalled()
+  })
+
+  it('restablecer (vuelta a vacío) reinicia otra vez', async () => {
+    const h = harness(base)
+    await h.change(lim({ codeMaxCells: 5 }))
+    await h.change(lim({}))
+    expect(h.server.restart).toHaveBeenCalledTimes(2)
+  })
+
+  it('con turnos en curso espera como con las banderas', async () => {
+    const h = harness(base, { idle: false })
+    await h.change(lim({ shellOutputMb: 20 }))
+    expect(h.server.restart).not.toHaveBeenCalled()
+    expect(h.notify).toHaveBeenLastCalledWith('pending')
+    h.idle.value = true
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+  })
+
+  it('también relanza el sandbox de Overdrive', async () => {
+    const live: EngineFlagsLiveServer[] = [
+      { folder: '/p', directory: '/p', fullAccess: false, baseUrl: 'http://t', authorization: 'b', startedAt: 1 }
+    ]
+    const h = harness(base, { live })
+    await h.change(lim({ codeMaxCalls: 50 }))
+    expect(h.tasks.restartSandbox).toHaveBeenCalledWith('/p')
   })
 })
