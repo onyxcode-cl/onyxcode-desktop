@@ -36,7 +36,7 @@ export async function runEngine(bin, sc) {
   mkdirSync(join(cfgdir, 'plugins'), { recursive: true })
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
   if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
-  const seen = { toolsOffered: null, toolMessages: [] }
+  const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0 }
   const sse = (res, chunks) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     for (const c of chunks) res.write('data: ' + JSON.stringify(c) + '\n\n')
@@ -62,6 +62,10 @@ export async function runEngine(bin, sc) {
       const tools = (j.tools ?? []).map((t) => t.function?.name)
       const toolMsgs = (j.messages ?? []).filter((m) => m.role === 'tool')
       if (tools.length && !seen.toolsOffered) seen.toolsOffered = tools
+      seen.requests += 1
+      seen.userTexts = (j.messages ?? [])
+        .filter((m) => m.role === 'user')
+        .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
       if (!seen.system)
         seen.system = (j.messages ?? [])
           .filter((m) => m.role === 'system')
@@ -205,6 +209,8 @@ export async function runEngine(bin, sc) {
     out.toolsOffered = seen.toolsOffered
     out.system = seen.system
     if (sc.settleMs) await sleep(sc.settleMs)
+    out.requests = seen.requests
+    out.userTexts = seen.userTexts
   } catch (e) {
     out.error = String(e?.stack ?? e)
     out.log = log.slice(-3000)

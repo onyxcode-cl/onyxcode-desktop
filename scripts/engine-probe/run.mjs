@@ -287,6 +287,41 @@ check(
   (r) => r.toolParts.length === 2 && /tope de vida/.test(r.toolParts[1].output) && !stillRunning('sleep 298')
 )
 
+// ── Despertar la conversación al terminar un trabajo en segundo plano (motor propio) ───────────────────────────────
+const textos = (r) => (r.userTexts ?? []).join('\n---\n')
+check(
+  'despertar: un shell en segundo plano que termina solo avisa a la conversación UNA vez, marcado como dato',
+  { steps: [() => bg('sleep 2; echo FIN-SOLO', 1000)], settleMs: 7000 },
+  (r) => {
+    const t = textos(r)
+    return (t.match(/<shell_aviso /g) ?? []).length === 1 && /FIN-SOLO/.test(t) && /no instrucciones/i.test(t) && r.requests >= 2
+  }
+)
+check(
+  'despertar: si el modelo ya esperó el resultado con shell_wait, NO hay aviso',
+  {
+    steps: [() => bg('sleep 2; echo YA-LEIDO', 1000), (m) => ({ name: 'shell_wait', args: { shell_id: shellOf(m), yield_ms: 8000 } })],
+    settleMs: 4000
+  },
+  (r) => !/<shell_aviso /.test(textos(r)) && r.toolParts.length === 2 && /YA-LEIDO/.test(r.toolParts[1].output)
+)
+check(
+  'despertar: una celda de Code Mode que termina sola avisa UNA vez',
+  {
+    env: CODE_MODE,
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow' } },
+    steps: [() => ({ name: 'execute', args: { code: slowCode(2500), yield_ms: 1000 } })],
+    settleMs: 7000
+  },
+  (r) => (textos(r).match(/<execute_aviso /g) ?? []).length === 1 && /LENTO-LISTO/.test(textos(r))
+)
+check(
+  'despertar: LAZUNOX_WAKE_ON_FINISH=0 lo apaga',
+  { env: { LAZUNOX_WAKE_ON_FINISH: '0' }, steps: [() => bg('sleep 2; echo APAGADO', 1000)], settleMs: 5000 },
+  (r) => !/<shell_aviso /.test(textos(r))
+)
+
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
 const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)
