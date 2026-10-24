@@ -281,6 +281,8 @@
   "chat.msg.editSend",
   "chat.msg.retry",
   "chat.msg.retryAttempt",
+  "chat.msg.retryFree",
+  "chat.msg.retryWhy",
   "chat.msg.retrying",
   "chat.msg.scrollEnd",
   "chat.msg.stopped",

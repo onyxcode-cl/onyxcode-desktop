@@ -51,6 +51,7 @@ import { phoneSafeAttachments } from './mobile-logic'
 import { mentionMime } from './mention-mime'
 import { backgroundBusyRoots, effectiveRun, isChildRequest, liveBackgroundChildIds, type RunStatus } from './child-sessions'
 import { acceptFilesIn, acceptSessionIn, parseReviewed, trimReviewed, withBaseline, type ReviewRecord } from './review-logic'
+import { noteRetryStatus } from '../../../lib/retry-info'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import { ELEMENT_METADATA, elementPartsOf, elementTextsOf, isElementAttachment } from '../../browser/element-context'
 import { MAX_OPEN_PROJECTS, nextFocusAfterClose, parseOpenProjects, planOpen, sameDir } from './open-projects'
@@ -1519,6 +1520,7 @@ export const useCode = create<CodeState>((set, get) => {
         case 'session.status': {
           const { sessionID, status } = event.properties
           if (!known(sessionID)) return
+          noteRetryStatus(event as never)
           const next = toRunState(status)
           if (next === 'idle' && isDupIdle(sessionID, 'status')) return // duplicado de `session.idle` ya tratado (F7-B18)
           if (next !== 'idle') idleSeen.delete(sessionID) // `busy` confirmado por el servidor: nueva ejecución

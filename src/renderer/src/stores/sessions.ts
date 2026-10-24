@@ -44,6 +44,7 @@ import {
   type LoadTracker,
   type MessageEntry
 } from '../lib/session-reducer'
+import { noteRetryStatus } from '../lib/retry-info'
 
 export type { MessageEntry }
 // Re-exportadas: viven en lib/session-reducer (6.4); se mantienen aquí por compatibilidad.
@@ -179,6 +180,7 @@ const deltaQueue = createFrameQueue<{ event: OcEvent; source: string }>((items) 
   const cur = useSessions.getState()
   let slice: ConvSlice = cur
   for (const { event, source } of items) {
+    noteRetryStatus(event as never)
     slice = reduceEvent(slice, event, buffersFor(source), { accept: () => true, dedupe: false }).slice
   }
   if (slice !== cur) useSessions.setState(slicePatch(cur, slice))

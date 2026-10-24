@@ -16,6 +16,7 @@ import { t as tr, type MsgKey } from '@shared/i18n'
 import { isRemoteSurface } from '../../lib/platform'
 import { useAiGate } from '../../lib/ai-gate'
 import { useT } from '../../lib/i18n'
+import { useRetryLabel } from '../../lib/retry-info'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { ExportMenuButton } from '../../components/ExportConversation'
 import { exportChatConversation } from './export'
@@ -91,6 +92,7 @@ export function ChatView(): React.JSX.Element {
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   /** El motor está reintentando (p. ej. el modelo no está disponible): se dice en vez de quedarse en «Pensando…». */
   const retrying = useSessions((s) => (activeId ? s.status[activeId] === 'retry' : false))
+  const retryLabel = useRetryLabel(activeId)
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const docPanel = useChatDocPanel(activeId, entries)
   // Cada modo recuerda su propio modelo (`modelsByMode.chat`); sin elección propia vale el predeterminado global.
@@ -410,6 +412,7 @@ export function ChatView(): React.JSX.Element {
           entries={entries}
           busy={busy}
           retrying={retrying}
+          retryLabel={retryLabel}
           error={error}
           onRetry={retry}
           onCompact={compact}

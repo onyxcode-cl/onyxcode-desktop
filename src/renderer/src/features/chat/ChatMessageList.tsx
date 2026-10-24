@@ -440,6 +440,8 @@ interface Props extends ErrorActions {
   busy: boolean
   /** El motor reintenta la respuesta (modelo caído o con error temporal). */
   retrying?: boolean
+  /** Motivo conocido del reintento (p. ej. se acabó el uso gratuito); si falta se usa el texto genérico. */
+  retryLabel?: string
   error?: ConvError | null
   /** Si se entrega, cada mensaje del usuario con texto ofrece «Editar y reintentar». */
   onEdit?: (messageID: string, text: string) => Promise<unknown>
@@ -477,7 +479,17 @@ export function mergeAssistantRuns(entries: MessageEntry[]): MessageEntry[] {
   return out
 }
 
-export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCompact, onEdit, questions = [] }: Props): React.JSX.Element {
+export function ChatMessageList({
+  entries,
+  busy,
+  retrying,
+  retryLabel,
+  error,
+  onRetry,
+  onCompact,
+  onEdit,
+  questions = []
+}: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
   const mobile = isRemoteSurface()
@@ -535,7 +547,7 @@ export function ChatMessageList({ entries, busy, retrying, error, onRetry, onCom
               onReject={() => rejectChatQuestion(q)}
             />
           ))}
-          {showThinking && <ThinkingIndicator label={retrying ? t('chat.msg.retrying') : undefined} />}
+          {showThinking && <ThinkingIndicator label={retrying ? (retryLabel ?? t('chat.msg.retrying')) : undefined} />}
           {error && !lastAssistantFailed(entries) && (
             <ErrorNotice error={error} variant="chat" onRetry={canRetry ? onRetry : undefined} onCompact={onCompact} />
           )}

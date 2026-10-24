@@ -7,6 +7,7 @@
  *  │          │ composer (Plan / Build)       │ Archivos         │
  *  └──────────┴──────────────────────────────┴──────────────────┘
  */
+import { useRetryLabel } from '../../../lib/retry-info'
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
 import { ExportMenuButton } from '../../../components/ExportConversation'
@@ -865,6 +866,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const sid = useCode((s) => s.activeSessionID)
   const entries = useCode((s) => (sid ? s.messages[sid] : undefined))
   const run = useCode((s) => (sid ? s.runState[sid] : undefined))
+  const retryLabel = useRetryLabel(sid)
   const error = useCode((s) => (sid ? (s.errors[sid] ?? null) : null))
   const loading = useCode((s) => (sid ? !!s.loadingMessages[sid] : false))
   const evictedLoading = useCode((s) => isCodeTranscriptLoading(s, sid))
@@ -914,6 +916,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           entries={entries}
           busy={busy}
           retrying={run === 'retry'}
+          retryLabel={retryLabel}
           error={error}
           root={directory}
           permissions={permissions}

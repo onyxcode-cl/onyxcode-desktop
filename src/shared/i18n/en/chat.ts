@@ -254,6 +254,8 @@ export const chat = {
   'chat.msg.retryAttempt': 'Retry {attempt}:',
   'chat.msg.thinking': 'Thinking',
   'chat.msg.retrying': 'The model isn’t responding; retrying…',
+  'chat.msg.retryFree': 'The free usage for this model has run out. Try another free model later or connect your own AI.',
+  'chat.msg.retryWhy': 'The model isn’t responding ({message}); retrying…',
   'chat.msg.copyMessage': 'Copy message',
   'chat.msg.copyReply': 'Copy reply',
   'chat.msg.retry': 'Retry',
