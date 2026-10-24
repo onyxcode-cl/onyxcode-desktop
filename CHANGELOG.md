@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.0] - 2026-10-24
+
+### Novedades
+
+- **Un solo panel de trabajos en segundo plano.** Además de los ayudantes, ahora ves en el mismo lugar los **comandos largos** y los **programas de Modo código** que siguen corriendo, con su estado (en curso, terminado, parado, tope de vida o «se perdió al reiniciar»), el tiempo que llevan y un botón **Parar**.
+- **La conversación despierta sola cuando un trabajo termina.** Si lanzaste un comando largo o un programa de Modo código y no esperaste su resultado, al terminar llega un aviso breve con las últimas líneas de salida (marcado como salida de un comando, no como instrucciones). Si detienes la conversación después de lanzar el trabajo, no se reanuda sola. Hasta 5 avisos por hora y conversación.
+- **Los comandos largos del motor funcionan también en Windows.** Probado en el PC de pruebas con `cmd`, PowerShell, `pwsh` y Git Bash; al parar un comando se detienen también los procesos que dejó abiertos.
+- **Límites ajustables.** En Ajustes › Funciones experimentales hay una sección «Límites» para el tiempo máximo, las llamadas y el tamaño del resultado de un programa de Modo código, y para la vida y la salida de un comando en segundo plano.
+- **Si el motor se reinicia con trabajos en marcha, no se pierden en silencio:** se detiene lo que haya quedado huérfano y la IA recibe un mensaje claro de qué se perdió.
+- **Modo código:** si rechazas un permiso que pide un programa, el programa se detiene por completo (antes podía seguir llamando a otras herramientas), y al pausarse la IA recibe un resumen de lo avanzado.
+
+### Seguridad
+
+- Una revisión independiente de todo lo nuevo no encontró problemas críticos ni altos. Se corrigieron dos medios: el limpiador de procesos huérfanos solo actúa sobre procesos que son líder de su grupo y nunca sobre el proceso 1, el propio motor, su padre ni una aplicación de escritorio; y un aviso automático no reanuda una conversación detenida.
+- Se rompió un ciclo de módulos que dejaba sin su dependencia al servicio de permisos en ciertas pruebas.
+
 ## [1.6.3] - 2026-10-23
 
 ### Novedades
