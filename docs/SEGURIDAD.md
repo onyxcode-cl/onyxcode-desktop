@@ -2419,6 +2419,8 @@ Estado: motor `v1.19.0-lazunox.5`. Una revisión independiente de solo lectura (
 
 **Conocido y aceptado:** el conjunto de reglas de una celda viva queda fijado al empezar el turno (la puerta del plan sí ve cada llamada interna); el contador y el registro de avisos viven en memoria; los hijos de un shell cuyo líder ya murió no se matan (no se puede validar su pid); en Windows no hay equivalente a matar el grupo de un comando que termina solo; un plugin que responda `allow` en `permission.ask` salta incluso los avisos de directorio externo (solo plugins internos de Lazunox lo usan hoy).
 
+**Auditoría del gancho `permission.ask` (2026-10-24):** una respuesta `allow` de un plugin solo se consulta cuando ninguna regla rechazó la acción (las reglas `deny` se evalúan antes y nunca llegan al gancho) y solo reemplaza la pregunta a la persona. Un plugin ya corre código dentro del proceso del motor, así que el gancho no amplía su poder. Residual aceptado: con varios plugins, el último que escribe el estado decide (un `allow` posterior puede pisar un `deny` anterior del hook); hoy Lazunox no instala ningún plugin propio que lo use. Probado con la app real y el modelo gratuito: con «Preguntar antes de cada uso» el Modo código pide permiso por cada llamada interna y un rechazo detiene la celda.
+
 ## 3 sexagies septies. Motor propio de Lazunox (1.6.0)
 
 Estado: el motor deja de ser el binario oficial de OpenCode y pasa a ser una copia propia de OpenCode 1.19.0 (repositorio del motor propio, release `v1.19.0-lazunox.5`). Plan: `docs/PLAN-MOTOR-PROPIO.md`.
