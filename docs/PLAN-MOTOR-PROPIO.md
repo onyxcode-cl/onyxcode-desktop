@@ -87,6 +87,7 @@ Cada función: pruebas `bun test` en el fork, ampliar `scripts/engine-probe` (qu
 - Ganchos de usuario por comando (`PreToolUse`, `PostToolUse`, `PreCompact`, `Stop`) desde el archivo que fija la app (`LAZUNOX_HOOKS_FILE`), con pantalla en Ajustes.
 - En el fork, rama `feat/compactacion` (sin publicar): la lista de tareas de la sesión viaja en el contexto del resumen (fila 9, parcial).
 - Comparativa con Claude Code, Codex y OpenCode 2.x: `docs/COMPARATIVA-MOTOR.md`. Pendiente de ella: lista de dominios para el shell, subagentes con worktree, tareas programadas, búsqueda diferida de herramientas.
+- Decisiones de NO hacer (2026-10-24): (a) subagentes con su propio worktree: la sesión hija viviría en otra carpeta y sus eventos y permisos saldrían por el canal de esa carpeta, que la app no escucha (los permisos quedarían esperando para siempre); (b) lista de dominios para el shell fuera del sandbox: un proxy solo frena a los programas que lo respetan y da falsa seguridad; en Overdrive ya existe el proxy de salida del sandbox. Reabrir solo si cambia el diseño por carpeta de la app.
 - Zonas intocables: se hacen cumplir por prueba (`docs/zonas-intocables.json`), ya no por lectura del dueño.
 
 ## Paso 5 — mantenimiento
