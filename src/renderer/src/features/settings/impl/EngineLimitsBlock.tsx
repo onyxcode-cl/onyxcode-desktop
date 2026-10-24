@@ -71,7 +71,7 @@ function LimitField({
           onKeyDown={(e) => {
             if (e.key === 'Enter') finish()
           }}
-          aria-labelledby={`${id}-l ${id}-u`}
+          aria-label={`${def.label} (${def.unitLabel})`}
           aria-describedby={`${id}-d`}
           className="w-24 text-right"
           data-limit={def.key}

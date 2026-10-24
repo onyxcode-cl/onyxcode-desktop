@@ -36,14 +36,9 @@ class SettingsStore {
       engineBgMigrated: bg.migrated,
       language: migrateLanguage(loaded)
     })
-    // Solo se escribe si ya existía un settings.json (una instalación nueva no necesita migrar nada en disco todavía).
-    if (bg.changed && existsSync(this.file)) {
-      try {
-        this.write(this.cache)
-      } catch (err) {
-        console.error('[store] no se pudo guardar la migración de ajustes:', err)
-      }
-    }
+    // NO se escribe al leer: este `get()` puede correr antes de las migraciones de datos viejos (`runMigrations`), que necesitan el
+    // archivo tal como está en disco. El marcador `engineBgMigrated` se guarda con la siguiente escritura normal (`set`); mientras
+    // tanto la migración es idempotente (da lo mismo en cada arranque).
     return this.cache
   }
 

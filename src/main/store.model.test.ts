@@ -99,16 +99,17 @@ describe('settings: engineExperiments', () => {
     const store = await openStore(dir)
     expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
   })
-  it('1.6.0: un settings.json antiguo con «todo apagado» enciende los ayudantes una vez y respeta que luego se apaguen', async () => {
+  it('1.6.0: un settings.json antiguo con «todo apagado» enciende los ayudantes (sin escribir al leer) y respeta que luego se apaguen', async () => {
     const dir = userData()
-    writeFileSync(
-      join(dir, 'settings.json'),
-      JSON.stringify({ theme: 'dark', engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
-    )
+    const antiguo = JSON.stringify({ theme: 'dark', engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
+    writeFileSync(join(dir, 'settings.json'), antiguo)
     const store = await openStore(dir)
     expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
-    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineBgMigrated).toBe(true)
+    // Leer NO toca el archivo (las migraciones de datos viejos lo necesitan intacto).
+    expect(readFileSync(join(dir, 'settings.json'), 'utf8')).toBe(antiguo)
+    // Una escritura normal guarda el marcador, y a partir de ahí lo que la persona apague se respeta.
     store.set({ engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineBgMigrated).toBe(true)
     const reopened = await openStore(dir)
     expect(reopened.get().engineExperiments.backgroundSubagents).toEqual(OFF)
   })

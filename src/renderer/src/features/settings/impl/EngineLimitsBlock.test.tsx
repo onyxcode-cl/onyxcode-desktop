@@ -61,13 +61,9 @@ describe('EngineLimitsBlock', () => {
         expect(el.value).toBe(String(s.def))
         expect(el.min).toBe(String(s.min))
         expect(el.max).toBe(String(s.max))
-        const names = el.getAttribute('aria-labelledby')!.split(' ')
-        expect(
-          names
-            .map((id) => document.getElementById(id)?.textContent)
-            .join(' ')
-            .trim().length
-        ).toBeGreaterThan(5)
+        // Nombre accesible directo (axe exige una etiqueta que pueda resolver): «<título> (<unidad>)».
+        expect((el.getAttribute('aria-label') ?? '').length).toBeGreaterThan(5)
+        expect(el.getAttribute('aria-label')).toMatch(/\(.+\)$/)
         expect(document.getElementById(el.getAttribute('aria-describedby')!)?.textContent).toBeTruthy()
       }
       expect(host.textContent).toContain('Por defecto 10 min; permitido de 1 a 120.')
