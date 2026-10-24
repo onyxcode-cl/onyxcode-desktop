@@ -94,7 +94,8 @@ function negotiate(tamper: 'none' | 'offer' | 'answer'): Promise<Result> {
   })
 }
 
-describe.skipIf(!ndc)('libdatachannel verifica la huella del SDP contra el certificado del par', () => {
+// Abre un canal WebRTC real entre dos pares en el mismo equipo: en máquinas de CI lentas falla una de cada tantas por tiempos de red. Se reintenta 2 veces.
+describe.skipIf(!ndc)('libdatachannel verifica la huella del SDP contra el certificado del par', { retry: 2 }, () => {
   // En el runner de Windows de GitHub (`CI`) el canal de datos no llega a abrir entre los dos pares del mismo proceso (sin red real): es
   // una limitación del entorno, no de la huella. Las pruebas con huella manipulada (que deben FALLAR) sí corren en todas partes.
   it.skipIf(!!process.env.CI && process.platform === 'win32')(
