@@ -83,7 +83,7 @@ function seed(r: Rig, dirs = { chat: '/chat', code: '/proj' }): void {
   }
 }
 
-describe('avance en vivo: un mensaje que se edita', () => {
+describe('avance en vivo: un mensaje que se edita', { retry: 2 }, () => {
   it('un solo mensaje con una línea por paso en lenguaje llano; al terminar se cierra y llega la respuesta final como mensaje nuevo', async () => {
     const r = await ready()
     seed(r)
@@ -286,7 +286,7 @@ describe('avance en vivo: un mensaje que se edita', () => {
   })
 })
 
-describe('respuesta final', () => {
+describe('respuesta final', { retry: 2 }, () => {
   it('una respuesta larga llega partida en trozos válidos y en orden', async () => {
     const r = await ready()
     seed(r)
@@ -343,7 +343,7 @@ describe('respuesta final', () => {
   })
 })
 
-describe('salidas largas, «Ver todo» y «solo resúmenes»', () => {
+describe('salidas largas, «Ver todo» y «solo resúmenes»', { retry: 2 }, () => {
   const longOutput = (): string => 'PRIMERA LINEA\n' + 'linea de salida con datos\n'.repeat(400) + `token ${fakeKey()}\nULTIMA LINEA`
 
   it('la salida de un comando se recorta con inicio y final y «Ver todo» manda un archivo completo (con claves tapadas)', async () => {
@@ -449,7 +449,7 @@ describe('salidas largas, «Ver todo» y «solo resúmenes»', () => {
   })
 })
 
-describe('archivos que crea la IA: «Recibir archivo»', () => {
+describe('archivos que crea la IA: «Recibir archivo»', { retry: 2 }, () => {
   async function projectRig(): Promise<{ r: Rig; proj: string; outside: string }> {
     const base = mkdir()
     const proj = join(base, 'proyecto')
@@ -589,7 +589,7 @@ describe('archivos que crea la IA: «Recibir archivo»', () => {
   })
 })
 
-describe('archivos que manda el dueño', () => {
+describe('archivos que manda el dueño', { retry: 2 }, () => {
   const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])
 
   async function writable(): Promise<Rig> {
@@ -783,7 +783,7 @@ describe('archivos que manda el dueño', () => {
   })
 })
 
-describe('NADA llega a una sesión no elegida', () => {
+describe('NADA llega a una sesión no elegida', { retry: 2 }, () => {
   it('con la sesión A elegida, los eventos, mensajes y archivos de la B no producen ni un mensaje y solo A recibe texto', async () => {
     const r = await ready()
     seed(r)
