@@ -27,12 +27,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
  *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number, agentsDir?: string }} sc
  */
 export async function runEngine(bin, sc) {
-  const root = mkdtempSync(join(tmpdir(), 'lz-engine-probe-'))
+  // `sc.root`: carpeta fija (para probar que algo sobrevive al reinicio del motor); en ese caso quien llama la borra.
+  const root = sc.root ?? mkdtempSync(join(tmpdir(), 'lz-engine-probe-'))
+  mkdirSync(root, { recursive: true })
   const home = join(root, 'home')
   const proj = join(root, 'proj')
   const cfgdir = join(root, 'cfgdir')
-  mkdirSync(home)
-  mkdirSync(proj)
+  mkdirSync(home, { recursive: true })
+  mkdirSync(proj, { recursive: true })
   mkdirSync(join(cfgdir, 'plugins'), { recursive: true })
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
   if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
@@ -258,7 +260,7 @@ export async function runEngine(bin, sc) {
     // Windows suelta los archivos del motor (.node extraídos) unos instantes después de morir: se reintenta y, si no se puede,
     // la comprobación ya tiene su resultado y la carpeta temporal queda para el sistema.
     try {
-      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 })
+      if (!sc.root) rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 })
     } catch {
       /* temporal: no debe tumbar la corrida */
     }

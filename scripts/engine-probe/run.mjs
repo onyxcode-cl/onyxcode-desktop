@@ -39,6 +39,8 @@ const outcome = (r) => {
 
 const checks = []
 const check = (name, sc, expect) => checks.push({ name, sc, expect })
+/** Comprobación que arma ella misma varias corridas del motor (`run` devuelve true/false o lanza). */
+const checkRun = (name, run) => checks.push({ name, run })
 
 // ── Conectores en Code (F8-B203): el bloque `permission` que arma `buildCodeMcpPermission` ─────────────────────
 for (const [mode, env, call] of [
@@ -589,10 +591,41 @@ check(
   (r) => Array.isArray(r.toolsOffered) && !r.toolsOffered.includes('task') && !taskPart(r)
 )
 
+// ── Permisos «siempre» guardados en disco (solo si la app los enciende) ───────────────────────────────────────
+for (const [persist, nombre, espera] of [
+  ['1', 'con LAZUNOX_PERMISSION_PERSIST=1 un «siempre» sobrevive al reinicio del motor (no vuelve a preguntar)', false],
+  [undefined, 'sin esa variable el «siempre» NO sobrevive al reinicio (vuelve a preguntar)', true]
+]) {
+  checkRun(`permisos siempre: ${nombre}`, async () => {
+    const root = mkdtempSync(join(tmpdir(), 'lz-engine-persist-'))
+    try {
+      const base = { root, env: { ...(persist ? { LAZUNOX_PERMISSION_PERSIST: persist } : {}) }, mcpServers: ['x'], inline: { permission: { 'x_*': 'ask' } }, call: direct('x_start') }
+      const a = await runEngine(bin, { ...base, reply: 'always' })
+      if (!a.asked.some((p) => p.permission === 'x_start')) throw new Error('la primera corrida no preguntó')
+      const b = await runEngine(bin, { ...base, reply: 'reject' })
+      return espera ? b.asked.some((p) => p.permission === 'x_start') : b.asked.length === 0 && outcome(b) === 'ejecutada'
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+}
+
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
 const only = process.env.PROBE_ONLY
 let failed = 0
 for (const c of only ? checks.filter((x) => x.name.includes(only)) : checks) {
+  if (c.run) {
+    let ok = false
+    let why = ''
+    try {
+      ok = (await c.run()) === true
+    } catch (e) {
+      why = String(e?.message ?? e)
+    }
+    if (!ok) failed++
+    console.log(`${ok ? 'OK  ' : 'FALLA'} ${c.name}${ok ? '' : `\n      → ${why || 'no se cumplió'}`}`)
+    continue
+  }
   const r = await runEngine(bin, c.sc)
   const ok = !r.error && c.expect(r)
   if (!ok) failed++
