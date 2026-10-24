@@ -47,7 +47,8 @@ export function archivosDeZonas() {
   for (const [dir, filtro] of CARPETAS) {
     const abs = join(ROOT, dir)
     if (!existsSync(abs)) continue
-    for (const n of readdirSync(abs).sort()) if (statSync(join(abs, n)).isFile() && filtro(n)) out.push(relative(ROOT, join(abs, n)))
+    for (const n of readdirSync(abs).sort())
+      if (statSync(join(abs, n)).isFile() && filtro(n)) out.push(relative(ROOT, join(abs, n)).split('\\').join('/')) // claves con «/» también en Windows
   }
   return [...new Set(out)].sort()
 }
