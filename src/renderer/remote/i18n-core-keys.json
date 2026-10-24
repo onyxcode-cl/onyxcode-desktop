@@ -597,6 +597,7 @@
   "code.perm.edit",
   "code.perm.external_directory",
   "code.perm.once",
+  "code.perm.protectedPath",
   "code.perm.read",
   "code.perm.reject",
   "code.perm.subagentWants",
