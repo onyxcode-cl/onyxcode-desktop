@@ -6,6 +6,7 @@ import { registerAttachHandlers } from './attach-handlers'
 import { registerTranslatePdfHandlers } from './translate-pdf-handlers'
 import { registerClipboardHandlers } from './clipboard-handlers'
 import { registerDiagnosticsHandlers } from './diagnostics'
+import { registerEngineJobsHandlers } from './engine-jobs'
 import { registerNotifyHandlers } from './notify'
 import { registerOnboardingHandlers } from './onboarding'
 import { registerOpencodeHandlers } from './opencode'
@@ -27,6 +28,7 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerOnboardingHandlers(ipcMain)
   registerOpencodeHandlers(ipcMain, ctx.server)
   registerDiagnosticsHandlers(ipcMain, ctx.server)
+  registerEngineJobsHandlers(ipcMain, ctx.server)
   registerClipboardHandlers(ipcMain)
   registerAttachHandlers(ipcMain)
   registerTranslatePdfHandlers(ipcMain)

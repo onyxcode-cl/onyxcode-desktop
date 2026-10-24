@@ -215,6 +215,17 @@ export const code = {
   'code.bg.cancel': 'Cancel',
   'code.bg.cancelFor': 'Cancel "{title}"',
   'code.bg.cancelFailed': 'Could not cancel.',
+  'code.bg.engine.running': 'Running',
+  'code.bg.engine.done': 'Finished',
+  'code.bg.engine.stopped': 'Stopped',
+  'code.bg.engine.expired': 'Reached its time limit',
+  'code.bg.engine.lost': 'Lost on restart',
+  'code.bg.engine.exitCode': 'code {code}',
+  'code.bg.engine.kindShell': 'Command',
+  'code.bg.engine.kindCell': 'Code script',
+  'code.bg.engine.stop': 'Stop',
+  'code.bg.engine.stopFor': 'Stop "{title}"',
+  'code.bg.engine.stopFailed': 'Could not stop it.',
   'code.bg.over': {
     one: '{count} job is running at once; showing {shown}.',
     other: '{count} jobs are running at once; showing {shown}. That many together can slow the computer down.'

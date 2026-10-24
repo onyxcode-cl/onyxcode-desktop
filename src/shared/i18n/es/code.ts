@@ -212,6 +212,17 @@ export const code = {
   'code.bg.cancel': 'Cancelar',
   'code.bg.cancelFor': 'Cancelar «{title}»',
   'code.bg.cancelFailed': 'No se pudo cancelar.',
+  'code.bg.engine.running': 'En curso',
+  'code.bg.engine.done': 'Terminó',
+  'code.bg.engine.stopped': 'Parado',
+  'code.bg.engine.expired': 'Alcanzó su tope de vida',
+  'code.bg.engine.lost': 'Se perdió al reiniciar',
+  'code.bg.engine.exitCode': 'código {code}',
+  'code.bg.engine.kindShell': 'Comando',
+  'code.bg.engine.kindCell': 'Script de Code',
+  'code.bg.engine.stop': 'Parar',
+  'code.bg.engine.stopFor': 'Parar «{title}»',
+  'code.bg.engine.stopFailed': 'No se pudo parar.',
   'code.bg.over': {
     one: 'Hay {count} trabajo a la vez; se muestran {shown}.',
     other: 'Hay {count} trabajos a la vez; se muestran {shown}. Tantos juntos pueden volver lento el equipo.'

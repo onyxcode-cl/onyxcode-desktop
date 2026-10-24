@@ -25,6 +25,7 @@ import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
 import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
+import type { EngineJobsResult } from './engine-jobs'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
 /** `PLATFORM_UNSUPPORTED`: función solo de macOS (Tareas, Control del PC, actualizador) en otra plataforma. */
@@ -87,6 +88,12 @@ export interface IpcInvokeContract {
 
   // diagnóstico: todo texto sale redactado desde main (claves, contraseña del motor, rutas del usuario)
   'diag:logs': { req: { source: DiagSource; maxLines?: number }; res: DiagLogs }
+  /**
+   * Trabajos en segundo plano del motor propio de una sesión (comandos y Code Mode). Main llama al sidecar; `available: false` si el
+   * motor no tiene la ruta. `jobs:stop` termina uno (`ok: false` si ya no existe o terminó). Nunca rutas ni comandos del renderer.
+   */
+  'jobs:list': { req: { sessionID: string; directory?: string }; res: EngineJobsResult }
+  'jobs:stop': { req: { sessionID: string; jobId: string; directory?: string }; res: { ok: boolean } }
   /** Copia al portapapeles (lo hace main) el texto redactado de la fuente. */
   'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
   /**
@@ -162,6 +169,8 @@ export const IPC_INVOKE_CHANNELS = [
   'opencode:restart',
   'diag:logs',
   'diag:copy',
+  'jobs:list',
+  'jobs:stop',
   'clipboard:readFilesForPaste',
   'attach:extractOffice',
   'translate:pdfExtract',
