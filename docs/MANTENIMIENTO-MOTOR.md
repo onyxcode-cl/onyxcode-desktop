@@ -36,6 +36,10 @@ Este documento es la rutina. Marco general: `docs/PLAN-MOTOR-PROPIO.md` (paso 5)
 - Probar una actualización con una carpeta de datos propia confunde al actualizador (la app nueva abre con la carpeta normal).
 - El catálogo `models.json` se descarga sin huella al compilar: dos compilaciones el mismo día coinciden; si cambia el catálogo entre una y otra, no. Anotarlo si una compilación no sale idéntica.
 
+- Al sincronizar el código al servidor con `rsync --delete`, se borra `/opt/lzx-fork/src/.github/TEAM_MEMBERS` (archivo vacío que la compilación lee y el fork no versiona): la compilación falla con `ENOENT ... TEAM_MEMBERS`. Excluir `.github` del rsync o recrearlo con `: > .github/TEAM_MEMBERS`.
+- El `targets.sh` del servidor corre DENTRO de un contenedor: `docker run --rm -v /opt/lzx-fork:/w oven/bun:1.3.14 bash /w/targets.sh win32-x64` (lanzarlo directo en el servidor no hace nada).
+- En Windows, PowerShell 5 escribía la salida en cp850 y los acentos llegaban rotos; se corrige fijando UTF-8 antes del comando (`tool/shell/utf8-windows.ts`). `cmd` sigue sin arreglo (solo se usa si no hay PowerShell ni Git Bash). Comprobación: `PROBE_ONLY=acentos node scripts/engine-probe/run.mjs <motor>` en el PC Windows, con `PROBE_SHELL=<ruta del shell>`.
+
 ## 5. Criterio de salida
 
 Si en dos meses seguidos la revisión supera ~1 semana de trabajo, o 2.x se estabiliza y trae lo que necesitamos, retomar la migración (`docs/SPIKE-OPENCODE-2.md`).

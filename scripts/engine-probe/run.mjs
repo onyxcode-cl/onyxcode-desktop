@@ -250,7 +250,7 @@ check(
 )
 check(
   'shell en segundo plano: la salida con acentos y eñes llega intacta (UTF-8)',
-  { steps: [() => bg('echo áéíóú ñ Ñ ¿qué? ü', 5000)], call: { name: 'bash', args: {} } },
+  { steps: [() => bg('echo "áéíóú ñ Ñ ¿qué? ü"', 5000)], call: { name: 'bash', args: {} } },
   (r) => r.toolParts.length === 1 && r.toolParts[0].status === 'completed' && r.toolParts[0].output.includes('áéíóú ñ Ñ ¿qué? ü')
 )
 check(
