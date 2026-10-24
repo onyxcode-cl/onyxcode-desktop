@@ -18,7 +18,7 @@ Este documento es el plan único. Si algo cambia, se cambia aquí y se avisa; no
 | 1 | Fork con la base 1.19.0 + LICENSE + `LAZUNOX.md` | Hecho |
 | 2 | Compilar desde el código fuente, repetible | Hecho (3 plataformas idénticas byte a byte) |
 | 3.1 | Quitar conexiones a servicios de OpenCode | Hecho, con prueba que lo vigila (`test/lazunox/sin-red-de-opencode.test.ts`) |
-| 3.2 | Release del motor en GitHub | Hecho: `v1.19.0-lazunox.1` a `v1.19.0-lazunox.5` (pausa y espera de Code Mode, identidad Lazunox en los textos del modelo; verificadas: las huellas coinciden con lo publicado) |
+| 3.2 | Release del motor en GitHub | Hecho: `v1.19.0-lazunox.1` a `v1.19.0-lazunox.6` (pausa y espera de Code Mode, identidad Lazunox en los textos del modelo; verificadas: las huellas coinciden con lo publicado) |
 | 3.3 | `pin.json` apunta a nuestra release | **Pendiente** (el permiso del sistema lo bloqueó; ver «Bloqueado») |
 | 3.4 | Probar el motor nuestro en la app real | Pendiente (Mac y Windows) |
 | 3.5 | Renombrar para que no diga «OpenCode» | Pendiente, por etapas |
