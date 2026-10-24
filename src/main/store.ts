@@ -101,6 +101,8 @@ function normalize(s: Settings): Settings {
     engineLimits: normalizeEngineLimits(s.engineLimits),
     // Solo `false` exacto lo apaga: ausente o basura = encendido (defecto).
     rememberAlways: s.rememberAlways !== false,
+    // Solo `true` exacto lo enciende: ausente o basura = apagado (ejecuta comandos de la persona).
+    userHooksEnabled: s.userHooksEnabled === true,
     engineBgMigrated: s.engineBgMigrated === true,
     codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp)
   }

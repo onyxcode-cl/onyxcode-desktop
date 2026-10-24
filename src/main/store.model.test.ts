@@ -184,3 +184,29 @@ describe('settings: rememberAlways (recordar «siempre»)', () => {
     expect((await openStore(dir)).get().rememberAlways).toBe(false)
   })
 })
+
+describe('settings: userHooksEnabled (ganchos de usuario)', () => {
+  it('apagado por defecto, con y sin settings.json', async () => {
+    expect((await openStore(userData())).get().userHooksEnabled).toBe(false)
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
+    expect((await openStore(dir)).get().userHooksEnabled).toBe(false)
+  })
+  it('solo `true` exacto lo enciende; basura en disco = apagado', async () => {
+    for (const raw of ['true', 1, 'yes', {}, null]) {
+      const dir = userData()
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ userHooksEnabled: raw }))
+      expect((await openStore(dir)).get().userHooksEnabled, String(raw)).toBe(false)
+    }
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ userHooksEnabled: true }))
+    expect((await openStore(dir)).get().userHooksEnabled).toBe(true)
+  })
+  it('se guarda y relee de disco', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ userHooksEnabled: true })
+    store.set({ theme: 'dark' })
+    expect((await openStore(dir)).get().userHooksEnabled).toBe(true)
+  })
+})

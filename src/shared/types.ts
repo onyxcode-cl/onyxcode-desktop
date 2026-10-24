@@ -59,6 +59,12 @@ export interface Settings {
    * anterior lo recibe encendido al leer (no hace falta migración: no cambia ningún valor ya guardado). Ver `permission-persist.ts`.
    */
   rememberAlways: boolean
+  /**
+   * «Activar ganchos» (Ajustes › Funciones experimentales › Ganchos): el motor ejecuta los comandos de `userData/hooks/hooks.json` antes o después
+   * de las herramientas. APAGADO por defecto (ejecuta comandos de la persona); solo `true` exacto lo enciende. Nunca llega al sandbox de Tareas.
+   * Ver `user-hooks.ts`. El celular no lo escribe.
+   */
+  userHooksEnabled: boolean
   /** Marca de la migración de 1.6.0: los ayudantes en segundo plano pasan a estar encendidos por defecto, también para quien ya tenía guardado «todo apagado». Se hace una sola vez. */
   engineBgMigrated?: boolean
   /**
@@ -86,6 +92,7 @@ export const DEFAULT_SETTINGS: Settings = {
   engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS,
   engineLimits: {},
   rememberAlways: true,
+  userHooksEnabled: false,
   codeTrustedMcp: []
 }
 

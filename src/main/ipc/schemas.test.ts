@@ -558,3 +558,25 @@ describe('settings:set rememberAlways y settings:forgetAlways', () => {
     expect(() => f({ dir: '/' })).toThrow()
   })
 })
+
+describe('settings:set userHooksEnabled y canales de ganchos', () => {
+  it('userHooksEnabled solo acepta booleanos', () => {
+    const v = IPC_SCHEMAS['settings:set']
+    expect(v({ userHooksEnabled: true })).toEqual({ userHooksEnabled: true })
+    for (const bad of ['true', 1, {}, []]) expect(() => v({ userHooksEnabled: bad })).toThrow()
+  })
+  it('hooksRead no lleva parámetros', () => {
+    const f = IPC_SCHEMAS['settings:hooksRead']
+    expect(() => f(undefined)).not.toThrow()
+    expect(() => f({ text: 'x' })).toThrow()
+  })
+  it('hooksWrite exige exactamente { text } de texto y con tope', () => {
+    const f = IPC_SCHEMAS['settings:hooksWrite']
+    expect(f({ text: '{"hooks":{}}' })).toEqual({ text: '{"hooks":{}}' })
+    expect(() => f({})).toThrow()
+    expect(() => f({ text: 5 })).toThrow()
+    expect(() => f({ text: 'x', path: '/etc/passwd' })).toThrow()
+    expect(() => f({ text: 'x'.repeat(64 * 1024 + 1) })).toThrow()
+    expect(() => f(undefined)).toThrow()
+  })
+})

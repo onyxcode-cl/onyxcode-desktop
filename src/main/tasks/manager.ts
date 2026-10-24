@@ -57,6 +57,7 @@ import { IDENTITY_MAP, toSandboxOrNull, type PathMapWire } from '@shared/tasks-p
 import { onlyExperimentalEngineEnv } from '@shared/engine-experiments'
 import { onlyEngineLimitEnv } from '@shared/engine-limits'
 import { onlyPermissionPersistEnv } from '@shared/permission-persist'
+import { userHooksEnvForTasksServer } from '@shared/user-hooks'
 import { ensurePermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
@@ -1082,6 +1083,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // «Recordar mis siempre»: con sandbox el servidor solo escribe en su directorio privado (userData está denegado), así que ahí
           // guarda; en Windows con WSL esa ruta no existe para él y no se pasa nada. Control total usa la carpeta general.
           ...onlyPermissionPersistEnv(this.opts.extraEngineEnv?.() ?? {}, permDirOverride),
+          // Ganchos de usuario: SOLO Control total (sin sandbox). Con sandbox nunca: un gancho es un comando con los permisos de la persona,
+          // fuera de lo que Seatbelt/WSL permiten, y userData ni siquiera es legible allí.
+          ...userHooksEnvForTasksServer(this.opts.extraEngineEnv?.() ?? {}, fullAccess),
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { LAZUNOX_FULL_ACCESS: '1' } : {}),
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):

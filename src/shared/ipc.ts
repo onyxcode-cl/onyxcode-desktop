@@ -127,6 +127,13 @@ export interface IpcInvokeContract {
   'settings:addRecentFolder': { req: { path: string }; res: Settings }
   /** «Olvidar los permisos guardados»: borra lo que el motor recordó con «Permitir siempre». Devuelve cuántos elementos quitó. */
   'settings:forgetAlways': { req: void; res: { removed: number } }
+  /** Lee el archivo de ganchos de usuario (`''` si aún no existe). El contenido nunca va a logs ni a telemetría. */
+  'settings:hooksRead': { req: void; res: { text: string; exists: boolean } }
+  /** Valida y guarda el archivo de ganchos (escritura atómica). Si no pasa la validación, devuelve los problemas (códigos, no el texto). */
+  'settings:hooksWrite': {
+    req: { text: string }
+    res: { ok: true } | { ok: false; issues: Array<{ code: string; params?: Record<string, string | number> }> }
+  }
 }
 
 export interface IpcEventContract {
@@ -185,7 +192,9 @@ export const IPC_INVOKE_CHANNELS = [
   'settings:get',
   'settings:set',
   'settings:addRecentFolder',
-  'settings:forgetAlways'
+  'settings:forgetAlways',
+  'settings:hooksRead',
+  'settings:hooksWrite'
 ] as const satisfies readonly IpcInvokeChannel[]
 
 export const IPC_EVENT_CHANNELS = [

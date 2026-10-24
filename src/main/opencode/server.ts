@@ -31,6 +31,8 @@ import { engineExperimentsFor, engineFlagEnvForMainSidecar } from '@shared/engin
 import { engineLimitEnvFor } from '@shared/engine-limits'
 import { permissionPersistEnvFor } from '@shared/permission-persist'
 import { ensurePermissionDir, permissionDir } from './permission-store'
+import { hooksFile } from './user-hooks-store'
+import { userHooksEnvFor } from '@shared/user-hooks'
 import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
@@ -288,6 +290,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         ...engineLimitEnvFor(settingsStore.get()),
         // «Recordar mis siempre»: el motor guarda los permisos «siempre» por carpeta en `userData/permisos-siempre` (0700) solo si va encendido.
         ...persistEnv,
+        // Ganchos de usuario: solo con «Activar ganchos» (apagado por defecto); el motor lee `userData/hooks/hooks.json` y relee si cambia.
+        ...userHooksEnvFor(settingsStore.get(), hooksFile()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(

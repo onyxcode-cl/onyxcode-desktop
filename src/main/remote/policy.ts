@@ -198,6 +198,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   engineLimits: 'X',
   // «Recordar mis "siempre"»: ampliar o recortar lo que el motor da por permitido es decisión de la persona en el Mac; el celular NO.
   rememberAlways: 'X',
+  // «Activar ganchos»: ejecuta comandos de la persona en el Mac; el celular NO lo enciende.
+  userHooksEnabled: 'X',
   // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
   codeTrustedMcp: 'X',
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
@@ -304,6 +306,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'settings:set': fieldwise(SETTINGS_FIELDS),
   'settings:addRecentFolder': 'D',
   'settings:forgetAlways': 'X', // borra los permisos «siempre» guardados: solo la ventana principal
+  'settings:hooksRead': 'X', // el archivo de ganchos contiene comandos de la persona: solo la ventana principal
+  'settings:hooksWrite': 'X', // escribir ganchos = ejecución de comandos: el celular NO
 
   // ── Tareas: carpetas, acceso total, archivos ──
   'tasks:pickFolder': 'X', // diálogo nativo

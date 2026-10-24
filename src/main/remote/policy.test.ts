@@ -422,6 +422,12 @@ describe('settings:set y setters por campos', () => {
     expect(cls(ipc('settings:set', { theme: 'dark', rememberAlways: true }))).toBe('deny:field-forbidden:rememberAlways')
     expect(cls(ipc('settings:forgetAlways', undefined))).toMatch(/^deny/)
   })
+  it('settings:set{userHooksEnabled} y los canales de ganchos son X: el celular no activa ni lee comandos del Mac', () => {
+    expect(cls(ipc('settings:set', { userHooksEnabled: true }))).toBe('deny:field-forbidden:userHooksEnabled')
+    expect(cls(ipc('settings:set', { theme: 'dark', userHooksEnabled: false }))).toBe('deny:field-forbidden:userHooksEnabled')
+    expect(cls(ipc('settings:hooksRead', undefined))).toMatch(/^deny/)
+    expect(cls(ipc('settings:hooksWrite', { text: '{"hooks":{}}' }))).toMatch(/^deny/)
+  })
   it('settings:set{codeTrustedMcp} es X: el celular no marca conectores como de confianza en Code', () => {
     expect(cls(ipc('settings:set', { codeTrustedMcp: ['gmail'] }))).toBe('deny:field-forbidden:codeTrustedMcp')
     expect(cls(ipc('settings:set', { theme: 'dark', codeTrustedMcp: [] }))).toBe('deny:field-forbidden:codeTrustedMcp')

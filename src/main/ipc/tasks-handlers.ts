@@ -7,6 +7,8 @@ import { engineFlagEnvFor } from '@shared/engine-experiments'
 import { engineLimitEnvFor } from '@shared/engine-limits'
 import { permissionPersistEnvFor } from '@shared/permission-persist'
 import { permissionDir } from '../opencode/permission-store'
+import { hooksFile } from '../opencode/user-hooks-store'
+import { userHooksEnvFor } from '@shared/user-hooks'
 import { type BrowserWindow, dialog, shell, type IpcMain } from 'electron'
 import type { TasksEventChannel, TasksEventContract } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
@@ -100,7 +102,9 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     extraEngineEnv: () => ({
       ...engineFlagEnvFor(settingsStore.get(), 'tasks'),
       ...engineLimitEnvFor(settingsStore.get()),
-      ...permissionPersistEnvFor(settingsStore.get(), permissionDir())
+      ...permissionPersistEnvFor(settingsStore.get(), permissionDir()),
+      // Ganchos: el manager SOLO los pasa a servidores de Control total (sin sandbox); ver `onlyUserHooksEnv`.
+      ...userHooksEnvFor(settingsStore.get(), hooksFile())
     })
   })
   // Abre una tarea/sesión en la ventana principal (clic en una notificación): la trae al frente y

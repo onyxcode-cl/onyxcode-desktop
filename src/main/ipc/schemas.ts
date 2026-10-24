@@ -8,6 +8,7 @@
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { ENGINE_LIMIT_SPECS, type EngineLimitKey } from '@shared/engine-limits'
+import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
 import { TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
@@ -646,12 +647,16 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     engineExperiments: engineExperimentsShape,
     engineLimits: engineLimitsShape,
     rememberAlways: bool,
+    userHooksEnabled: bool,
     // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
     codeTrustedMcp: arr(mcpName, 200)
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq,
-  'settings:forgetAlways': none
+  'settings:forgetAlways': none,
+  'settings:hooksRead': none,
+  // El texto se valida por completo en main (`validateHooksText`); aquí solo el tope de longitud (64 KB en bytes ≤ 64 K caracteres de 1 byte; el resto lo corta la validación).
+  'settings:hooksWrite': obj({ text: str({ max: HOOKS_MAX_FILE_BYTES }) })
 }
 
 // ── Flujo rama → subir → pull request (F8-B190): lista blanca de caracteres para todo lo que llega a git/gh ──

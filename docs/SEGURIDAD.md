@@ -2403,6 +2403,37 @@ Lazunox y deniega sin avisar); suelta, `subject=<appId>.motor` y macOS pregunta.
 anterior a esta (quien ya dio permiso al `opencode` suelto verá una vez el aviso de «Lazunox Motor»); comportamiento de TCC tras actualizar la
 app con el mismo certificado (debería conservar la concesión: el requisito no cambia).
 
+## 3 septuagies. Ganchos de usuario por comando (F8-B215)
+
+**Qué cambia.** Ajustes › Funciones experimentales › «Ganchos» permite escribir comandos propios que el motor propio ejecuta antes o después de una
+herramienta (`PreToolUse`: el código de salida 2 la bloquea; `PostToolUse`, `PreCompact`, `Stop`). Es ejecución de comandos elegidos por la persona,
+así que el diseño la acota a propósito.
+
+**Modelo de amenaza y mitigaciones.**
+
+- **Solo el archivo de la app.** El motor lee ganchos únicamente de `LAZUNOX_HOOKS_FILE`, que la app fija a `userData/hooks/hooks.json` (carpeta 0700,
+  archivo 0600, escritura atómica con temporal 0600 + `rename`). Un proyecto NO puede traer ganchos propios: abrir un repositorio ajeno no ejecuta
+  nada. La app crea el archivo solo cuando la persona guarda algo. No se pasa ninguna otra variable ni ruta.
+- **Apagado por defecto.** `Settings.userHooksEnabled` es `false` salvo `true` exacto (basura en disco = apagado); sin él, el motor no recibe la
+  variable y no existe ningún gancho en marcha. Cambiarlo reinicia el motor con la espera de siempre (`engine-flags-restart.ts`, solo si no hay turnos
+  en curso). Editar el archivo con el interruptor encendido no reinicia: el motor lo relee si cambia (tope 64 KB).
+- **No en el sandbox de Tareas.** `LAZUNOX_HOOKS_FILE` llega al sidecar principal (Chat y Code) y a los servidores de Overdrive SIN sandbox
+  (Control total), nunca a los que corren con Seatbelt (macOS) o WSL (Windows): un gancho es un comando con los permisos de la persona que corre
+  FUERA del aislamiento, y `userData` está denegado dentro del sandbox; permitirlo rompería la garantía de Overdrive. Lo decide
+  `userHooksEnvForTasksServer(env, fullAccess)` (`src/shared/user-hooks.ts`, con prueba) y los servidores de Control total toman el valor en su
+  próximo arranque. Ni `sandbox-profile.ts` ni el resto de zonas intocables cambian.
+- **Validación con las mismas cotas que el motor** (`validateHooksText`, replicando `leerConfig`): máx. 20 ganchos por evento, `timeout` entero de
+  1 a 60, comando ≤ 2000 caracteres, archivo ≤ 64 KB, `matcher` ≤ 300 caracteres y que compile como `^(?:matcher)$`. El motor descarta en silencio lo
+  inválido; la app lo rechaza con un mensaje claro antes de escribir (en la ventana y otra vez en `main`).
+- **Contenido fuera de los registros.** Los errores de validación y de disco llevan solo códigos y números (evento, posición, cotas), nunca el texto
+  de un comando ni la ruta; el contenido no va a logs, telemetría ni diagnósticos.
+- **Clase X para el celular.** `settings:hooksRead` y `settings:hooksWrite` (esquema estricto `{ text }` con tope) y el campo `userHooksEnabled` de
+  `settings:set` son X en `policy.ts`: el celular no lee, escribe ni enciende ganchos.
+- **Advertencia visible** junto al editor: «Los ganchos ejecutan comandos con tus permisos. Solo pon aquí lo que tú entiendas.»
+
+**Límite conocido.** Un gancho puede hacer todo lo que haría la persona en su terminal; la app no lo inspecciona ni lo aísla (no es un límite de
+seguridad frente a la propia persona). Lo que protege es quién puede escribirlos (solo la ventana principal) y dónde corren (nunca en el sandbox).
+
 ## 3 sexagies nonies. «Siempre» persistentes, rutas protegidas y tope de ayudantes (F8-B214)
 
 **Qué cambia.** El motor propio guarda los permisos «Permitir siempre» por carpeta de proyecto y los vuelve a aplicar tras reiniciar, pregunta

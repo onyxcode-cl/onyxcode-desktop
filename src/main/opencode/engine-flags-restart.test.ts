@@ -8,6 +8,7 @@ type S = {
   engineExperiments: EngineExperiments
   engineLimits?: EngineLimits
   rememberAlways?: boolean
+  userHooksEnabled?: boolean
   recentFolders?: string[]
   theme?: string
 }
@@ -17,7 +18,7 @@ const flag = (chat: boolean, code: boolean, tasks: boolean) => ({ chat, code, ta
 
 function harness(
   initial: S,
-  opts: { idle?: boolean; serverState?: ServerState; live?: EngineFlagsLiveServer[]; permissionDir?: string } = {}
+  opts: { idle?: boolean; serverState?: ServerState; live?: EngineFlagsLiveServer[]; permissionDir?: string; hooksFile?: string } = {}
 ) {
   let current = initial
   const listeners = new Set<(s: S) => void>()
@@ -43,6 +44,7 @@ function harness(
     tasks,
     chatDirectory: '/chat',
     permissionDir: opts.permissionDir,
+    hooksFile: opts.hooksFile,
     isIdle,
     notify,
     retryMs: 1000,
@@ -355,6 +357,53 @@ describe('reinicio al cambiar «Recordar mis siempre» (rememberAlways)', () => 
   it('sin carpeta de permisos (no hay nada que pasar al motor) el interruptor no reinicia', async () => {
     const h = harness(base)
     await h.change(rem(false))
+    expect(h.server.restart).not.toHaveBeenCalled()
+  })
+})
+
+describe('reinicio al cambiar «Activar ganchos» (userHooksEnabled)', () => {
+  const HF = '/u/hooks/hooks.json'
+  const hk = (userHooksEnabled: boolean | undefined): S => ({ ...base, userHooksEnabled })
+
+  it('encenderlo reinicia el sidecar principal (ocioso) y avisa; apagarlo reinicia de nuevo', async () => {
+    const h = harness(base, { hooksFile: HF })
+    await h.change(hk(true))
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.notify).toHaveBeenCalledWith('restarted')
+    await h.change(hk(false))
+    expect(h.server.restart).toHaveBeenCalledTimes(2)
+  })
+
+  it('ausente y apagado son lo mismo: no reinicia', async () => {
+    const h = harness(base, { hooksFile: HF })
+    await h.change(hk(false))
+    await h.change(hk(undefined))
+    expect(h.server.restart).not.toHaveBeenCalled()
+  })
+
+  it('con turnos en curso espera (aviso pendiente) y reinicia al quedar ocioso', async () => {
+    const h = harness(base, { idle: false, hooksFile: HF })
+    await h.change(hk(true))
+    expect(h.server.restart).not.toHaveBeenCalled()
+    expect(h.notify).toHaveBeenLastCalledWith('pending')
+    h.idle.value = true
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+  })
+
+  it('NO relanza el sandbox de Overdrive: los ganchos nunca entran allí', async () => {
+    const live: EngineFlagsLiveServer[] = [
+      { folder: '/p', directory: '/p', fullAccess: false, baseUrl: 'http://t', authorization: 'b', startedAt: 1 }
+    ]
+    const h = harness(base, { live, hooksFile: HF })
+    await h.change(hk(true))
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.tasks.restartSandbox).not.toHaveBeenCalled()
+  })
+
+  it('sin archivo de ganchos (nada que pasar al motor) el interruptor no reinicia', async () => {
+    const h = harness(base)
+    await h.change(hk(true))
     expect(h.server.restart).not.toHaveBeenCalled()
   })
 })
