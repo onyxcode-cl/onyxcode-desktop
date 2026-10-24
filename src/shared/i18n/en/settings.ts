@@ -392,7 +392,7 @@ export const settings = {
   'settings.engine.nav': 'Experimental features',
   'settings.engine.title': 'Experimental features',
   'settings.engine.desc':
-    'New AI capabilities that are still being tested. They are off by default; turn them on only in the modes where you want to try them.',
+    'New AI capabilities that are still being tested. Most are off by default (background helpers and remembering your “always” choices start on); turn each one on or off in the modes you want.',
   'settings.engine.experimental': 'Experimental',
   'settings.engine.restartNote': 'When you change a switch, the AI engine restarts to apply it, but only when nothing is in progress.',
   'settings.engine.sharedNote':
@@ -436,7 +436,7 @@ export const settings = {
   'settings.engine.hooks.useExample': 'Use the example',
   'settings.engine.hooks.save': 'Save',
   'settings.engine.hooks.saved': 'Saved. The engine rereads it by itself; no restart needed.',
-  'settings.engine.hooks.savedCount': 'Saved: {n} hooks. The engine rereads it by itself; no restart needed.',
+  'settings.engine.hooks.savedCount': 'Saved. Hooks configured: {n}. The engine rereads it by itself; no restart needed.',
   'settings.engine.hooks.loadFailed': 'Could not read the hooks file.',
   'settings.engine.hooks.errorsTitle': 'Not saved. Fix this:',
   'settings.engine.hooks.err.badJson': 'The text is not valid JSON.',

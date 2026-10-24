@@ -193,7 +193,7 @@ export function SessionRow({
   const askDelete = (): void => {
     void confirmDialog({
       title: t('code.sessions.deleteTitle'),
-      message: t('code.sessions.deleteMessage', { title: session.title || t('code.sessions.untitledLower') }),
+      message: t('code.sessions.deleteMessage', { title: displayTitle(session.title, t('code.sessions.untitledLower')) }),
       confirmLabel: t('code.sessions.deleteConfirm'),
       danger: true
     }).then((ok) => {

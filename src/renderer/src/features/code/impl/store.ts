@@ -1057,6 +1057,14 @@ export const useCode = create<CodeState>((set, get) => {
         })
         sdkData(await client.session.abort({ sessionID: sid, directory: dir }))
         await Promise.allSettled(kids.map((id) => client.session.abort({ sessionID: id, directory: s.sessionProject[id] ?? dir })))
+        // Detener con una tarjeta de permiso abierta: el motor sigue esperando esa respuesta y, si la persona la aprobaba después, la acción
+        // se ejecutaba tras «Detenido». Se rechazan las pendientes de la conversación detenida y de sus ayudantes (la tarjeta se va).
+        const stopped = new Set([sid, ...kids])
+        await Promise.allSettled(
+          Object.values(get().permissions)
+            .filter((p) => stopped.has(p.sessionID))
+            .map((p) => get().replyPermission(p, 'reject'))
+        )
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }

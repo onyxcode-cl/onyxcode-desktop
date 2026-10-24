@@ -8,6 +8,7 @@
  *  └──────────┴──────────────────────────────┴──────────────────┘
  */
 import { useRetryLabel } from '../../../lib/retry-info'
+import { displayTitle } from '@shared/session-title'
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
 import { ExportMenuButton } from '../../../components/ExportConversation'
@@ -619,8 +620,8 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         // (consulta de contenedor), no por punto de quiebre de la ventana; nunca baja de ~5 rem.
         <span className="hidden min-w-0 items-center gap-2 text-sm text-muted lg:flex desk:flex desk:min-w-[5rem] desk:flex-1 desk:shrink-[4]">
           <span className="text-subtle">/</span>
-          <span className="truncate" title={session.title || t('code.sessions.untitled')} data-testid="toolbar-session-title">
-            {session.title || t('code.sessions.untitled')}
+          <span className="truncate" title={displayTitle(session.title, t('code.sessions.untitled'))} data-testid="toolbar-session-title">
+            {displayTitle(session.title, t('code.sessions.untitled'))}
           </span>
         </span>
       )}

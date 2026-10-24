@@ -388,7 +388,7 @@ export const settings = {
   'settings.engine.nav': 'Funciones experimentales',
   'settings.engine.title': 'Funciones experimentales',
   'settings.engine.desc':
-    'Capacidades nuevas de la IA que aún están en prueba. Están apagadas por defecto; enciéndelas solo en los modos donde quieras probarlas.',
+    'Capacidades nuevas de la IA que aún están en prueba. Casi todas están apagadas por defecto (los ayudantes en segundo plano y recordar tus «siempre» vienen encendidos); enciende o apaga cada una en los modos donde quieras.',
   'settings.engine.experimental': 'Experimental',
   'settings.engine.restartNote':
     'Al cambiar un interruptor, el motor de la IA se reinicia para aplicarlo, pero solo cuando no haya nada en curso.',
@@ -433,7 +433,7 @@ export const settings = {
   'settings.engine.hooks.useExample': 'Usar el ejemplo',
   'settings.engine.hooks.save': 'Guardar',
   'settings.engine.hooks.saved': 'Guardado. El motor lo relee solo; no hace falta reiniciar.',
-  'settings.engine.hooks.savedCount': 'Guardado: {n} ganchos. El motor lo relee solo; no hace falta reiniciar.',
+  'settings.engine.hooks.savedCount': 'Guardado. Ganchos configurados: {n}. El motor lo relee solo; no hace falta reiniciar.',
   'settings.engine.hooks.loadFailed': 'No se pudo leer el archivo de ganchos.',
   'settings.engine.hooks.errorsTitle': 'No se guardó. Corrige esto:',
   'settings.engine.hooks.err.badJson': 'El texto no es un JSON válido.',

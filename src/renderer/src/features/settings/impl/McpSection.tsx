@@ -333,7 +333,8 @@ function McpCatalogBlock({
                   <Button
                     size="sm"
                     aria-label={t('mcp.catalog.addAria', { title: text.title })}
-                    disabled={disabled}
+                    disabled={disabled || addedIds.has(item.id)}
+                    title={addedIds.has(item.id) ? t('mcp.catalog.added') : undefined}
                     onClick={() => onPick(item)}
                   >
                     <Plus size={13} /> {t('mcp.catalog.addBtn')}

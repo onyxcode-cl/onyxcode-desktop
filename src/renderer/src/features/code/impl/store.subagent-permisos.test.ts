@@ -108,6 +108,19 @@ describe('permisos de un subagente (sesión hija)', () => {
     expect(st().permissions['perm_kid']).toBeUndefined()
   })
 
+  it('detener la conversación rechaza los permisos pendientes de ella y de sus ayudantes (no se pueden aprobar después)', async () => {
+    const { reply, abort } = install()
+    openWithHelper()
+    ask('perm_root', 'root')
+    ask('perm_kid', 'kid')
+    await st().abort()
+    expect(abort).toHaveBeenCalled()
+    expect(reply).toHaveBeenCalledWith({ requestID: 'perm_root', reply: 'reject', directory: D })
+    expect(reply).toHaveBeenCalledWith({ requestID: 'perm_kid', reply: 'reject', directory: D })
+    expect(st().permissions['perm_root']).toBeUndefined()
+    expect(st().permissions['perm_kid']).toBeUndefined()
+  })
+
   it('«rechazar» llega tal cual', async () => {
     const { reply } = install()
     openWithHelper()
