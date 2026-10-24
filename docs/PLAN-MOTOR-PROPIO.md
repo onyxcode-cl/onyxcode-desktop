@@ -40,6 +40,8 @@ Este documento es el plan único. Si algo cambia, se cambia aquí y se avisa; no
 Lo que la app usa hoy y no se debe romper a ciegas: nombre del binario `opencode`/`opencode.exe`, variables `OPENCODE_*`, carpeta de datos (`opencode.db`), API HTTP.
 Etapas: (a) textos que ve el usuario (ayuda, `--version`, prompts del sistema que dicen «OpenCode»); (b) nombre del binario, con cambio en `fetch-opencode`, `motor-app`, `verify-*`; (c) variables `LAZUNOX_*` con alias a las `OPENCODE_*` un tiempo; (d) carpeta de datos, con migración. La API HTTP y el SDK no se renombran (rompería el contrato).
 
+**Decisión 2026-10-24 (medida, no supuesta):** la etapa (a) ya está hecha. Lo que queda (b, c, d) casi no se ve: la carpeta de datos ya vive dentro de `Application Support/Lazunox/opencode-data`, y el binario solo aparece como `opencode` dentro de la mini-app «Lazunox Motor». A cambio tocaría ~100 referencias al binario y ~50 a las rutas de datos, y (d) pone en riesgo las sesiones guardadas (`opencode.db`). Se deja para una versión aparte y, si se hace, en este orden: (c) alias `LAZUNOX_*` → `OPENCODE_*` (barato, sin migrar nada), (b) nombre del binario, y (d) solo con copia de seguridad y prueba de migración con datos reales. Mientras tanto no se renombra nada.
+
 ## Paso 4 — traer TODAS las funciones útiles de OpenCode 2.x al motor nuestro, y mejorarlas
 
 Objetivo de Ben (2026-10-23): partir de la base 1.19 y habilitar dentro del motor las funciones nuevas de OpenCode 2.0, mejorándolas, para Lazunox. No se migra a 2.x ni se usa su código tal cual:
