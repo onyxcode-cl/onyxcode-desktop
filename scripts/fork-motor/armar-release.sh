@@ -1,7 +1,7 @@
 #!/bin/bash
 # Arma los archivos de una release del motor propio (onyxcode-cl/lazunox-motor) a partir de los binarios compilados en el VPS
 # (scripts/fork-motor/build-targets-vps.sh). No publica nada: deja una carpeta con los .zip/.tar.gz, SHA256SUMS y release.json
-# (huellas y tamaños) que usan publicar-motor.sh y aplicar-pin.sh.
+# (huellas y tamaños) que usa publicar-motor.sh.
 # Uso: scripts/fork-motor/armar-release.sh <etiqueta> <carpeta-de-salida>      p. ej. v1.19.0-lazunox.2 /tmp/motor-2
 set -euo pipefail
 TAG="${1:?falta la etiqueta (p. ej. v1.19.0-lazunox.2)}"
@@ -10,6 +10,10 @@ K="$HOME/.ssh/lazunox_deploy_ed25519"
 VPS="root@72.60.55.136"
 SSH_O=(-i "$K" -o IdentitiesOnly=yes -o BatchMode=yes)
 mkdir -p "$OUT/d" "$OUT/w" "$OUT/l"
+# Reproducibilidad: antes de empaquetar se exige que las dos compilaciones de cada plataforma (-1 y -2) sean idénticas.
+for t in darwin-arm64 win32-x64 linux-x64; do
+  ssh "${SSH_O[@]}" "$VPS" "cmp -s /opt/lzx-fork/out-$t-1 /opt/lzx-fork/out-$t-2" || { echo "ERROR: las dos compilaciones de $t NO son idénticas; no se empaqueta" >&2; exit 3; }
+done
 scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-darwin-arm64-1" "$OUT/d/opencode"
 scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-win32-x64-1" "$OUT/w/opencode.exe"
 scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-linux-x64-1" "$OUT/l/opencode"

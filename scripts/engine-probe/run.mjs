@@ -188,6 +188,52 @@ check(
   (r) => r.toolParts.length === 1 && /No existe la celda/.test(r.toolParts[0].output)
 )
 
+// ── Gancho de plugin `permission.ask` del motor propio (en OpenCode está tipado pero nunca se dispara) ─────────────
+const askPlugin = (decision) => ({
+  'ask-hook.js': `export default {
+  id: 'ask-hook',
+  server: async () => ({
+    'permission.ask': async (input, output) => {
+      if (input && input.type === 'x_start') output.status = '${decision}'
+    }
+  })
+}
+`
+})
+check(
+  'permission.ask: un plugin que responde «deny» rechaza la herramienta sin preguntar a nadie',
+  {
+    plugins: askPlugin('deny'),
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'ask' } },
+    call: direct('x_start'),
+    reply: 'once'
+  },
+  (r) => r.asked.length === 0 && outcome(r) !== 'ejecutada'
+)
+check(
+  'permission.ask: un plugin que responde «allow» aprueba sin preguntar y la herramienta se ejecuta',
+  {
+    plugins: askPlugin('allow'),
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'ask' } },
+    call: direct('x_start'),
+    reply: 'reject'
+  },
+  (r) => r.asked.length === 0 && outcome(r) === 'ejecutada'
+)
+check(
+  'permission.ask: sin decisión del plugin («ask») se pregunta a la persona como siempre',
+  {
+    plugins: askPlugin('ask'),
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'ask' } },
+    call: direct('x_start'),
+    reply: 'reject'
+  },
+  (r) => r.asked.length === 1 && outcome(r) === 'preguntó'
+)
+
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
 const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)
