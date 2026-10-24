@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.2] - 2026-10-24
+
+### Novedades
+
+- **Tus «Permitir siempre» ahora se recuerdan.** Antes se olvidaban al cerrar la app; ahora se guardan por carpeta de proyecto, en tu equipo, y se vuelven a aplicar la próxima vez. Solo se recuerdan los permisos estrechos (por ejemplo «git log *»): nunca editar archivos, salir de la carpeta, red, ayudantes ni el control del equipo. Está en Ajustes › Funciones experimentales › «Permisos «siempre»», con un interruptor y un botón para olvidarlo todo.
+- **Las rutas delicadas siempre te preguntan.** Si la IA quiere cambiar `.git` (por ejemplo los hooks de git), `.claude`, `.opencode`, `.vscode`, `.mcp.json` o archivos parecidos, la app te lo pregunta aunque estés en «Todo sin preguntar», y ahí no ofrece «Permitir siempre» ni la aprobación automática lo aprueba.
+- **Tope de ayudantes en segundo plano.** La IA ya no puede lanzar decenas a la vez: el máximo es 8 y lo cambias en Ajustes › Límites.
+- **Motor `lazunox.7`:** además de lo anterior, trae ganchos de usuario por comando (para configuradores avanzados; todavía sin pantalla) y un «Permitir siempre» que ya no puede saltarse una regla de rechazo.
+
+### Seguridad
+
+- Los «siempre» guardados no se pueden usar para levantar una regla de rechazo vigente. Los ganchos de usuario solo se leen del archivo que fija la app, nunca de un proyecto ajeno.
+
 ## [1.7.1] - 2026-10-24
 
 ### Correcciones
