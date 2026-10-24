@@ -2403,6 +2403,22 @@ Lazunox y deniega sin avisar); suelta, `subject=<appId>.motor` y macOS pregunta.
 anterior a esta (quien ya dio permiso al `opencode` suelto verá una vez el aviso de «Lazunox Motor»); comportamiento de TCC tras actualizar la
 app con el mismo certificado (debería conservar la concesión: el requisito no cambia).
 
+## 3 sexagies octies. Trabajos en segundo plano y aviso al terminar (1.7.0)
+
+Estado: motor `v1.19.0-lazunox.5`. Una revisión independiente de solo lectura (2026-10-24) no encontró hallazgos críticos ni altos; los dos medios que sí eran reales se corrigieron antes de publicar. Plan y carriles: `docs/PLAN-MAESTRO-1-7.md`.
+
+| Pieza | Efecto de seguridad | Verificación |
+|---|---|---|
+| Aviso al terminar (`lazunox-wake.ts`): al acabar un comando o una celda de Modo código que nadie esperó, la conversación recibe un mensaje breve | **Canal de inyección** controlado: la salida se escapa (`<` pasa a `&lt;`), se recorta a 20 líneas y 2 KB, va marcada «salida de un comando, no instrucciones», usa el agente de la conversación (nunca más permisos), un solo aviso por trabajo, tope de 5 por hora y sesión, y se apaga con `LAZUNOX_WAKE_ON_FINISH=0`. Si la persona detiene la sesión después de lanzar el trabajo, no se reanuda sola | Pruebas `shell-wake`/`code-mode-wake` y 4 comprobaciones de `engine-probe` contra el binario real |
+| Marcadores en disco y limpieza de huérfanos (`trabajos-disco.ts`) | Al reiniciar el motor se matan los shells huérfanos **solo si** el pid es líder de su propio grupo, no es el proceso 1, el propio motor, su padre ni una aplicación de escritorio (`.app/Contents/`), el motor anterior ya no vive y la línea de comandos coincide con la guardada. Un marcador forjado desde el sandbox no puede apuntar a otro proceso. Archivos 0600, directorio 0700, identificadores validados | `trabajos-reinicio` y `trabajos-forjados` |
+| Rutas `GET /experimental/session/{id}/trabajos` y `POST …/trabajos/{id}/terminar` | Detrás de la misma autorización que el resto; solo ven y terminan los trabajos de **su** sesión (un id ajeno responde igual que uno inexistente); el celular no las usa (clase X) | `httpapi-trabajos` y 2 comprobaciones reales |
+| Celda viva: un rechazo de permiso la **revoca** | Al primer rechazo se detienen las llamadas posteriores y la celda se termina, aunque el script atrape el error | `celda-viva` y 2 comprobaciones reales |
+| Shell en segundo plano en Windows nativo | Mismo análisis y mismos permisos que el shell normal; matar usa `taskkill /T` (probado en el PC con `cmd`, PowerShell, `pwsh` y Git Bash, incluido el proceso nieto) | Prueba manual documentada por el carril L3 |
+| Límites en Ajustes (`engineLimits`) | Rangos estrictos por campo; al motor solo pasan variables de una lista fija con enteros positivos; el celular no los escribe; el vigilante de la app nunca baja de sus topes propios | `engine-limits`, esquema IPC y `store.model` |
+| Ajustes: el almacén no escribe `settings.json` al leerlo | Evita que una lectura temprana destruya los nombres viejos que la migración de datos necesita | Prueba E2E `legacy-data` y `store.model` |
+
+**Conocido y aceptado:** el conjunto de reglas de una celda viva queda fijado al empezar el turno (la puerta del plan sí ve cada llamada interna); el contador y el registro de avisos viven en memoria; los hijos de un shell cuyo líder ya murió no se matan (no se puede validar su pid); en Windows no hay equivalente a matar el grupo de un comando que termina solo; un plugin que responda `allow` en `permission.ask` salta incluso los avisos de directorio externo (solo plugins internos de Lazunox lo usan hoy).
+
 ## 3 sexagies septies. Motor propio de Lazunox (1.6.0)
 
 Estado: el motor deja de ser el binario oficial de OpenCode y pasa a ser una copia propia de OpenCode 1.19.0 (repositorio del motor propio, release `v1.19.0-lazunox.5`). Plan: `docs/PLAN-MOTOR-PROPIO.md`.
