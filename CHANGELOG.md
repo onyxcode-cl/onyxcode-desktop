@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.5] - 2026-10-26
+
+### Novedades
+
+- **Conectar muchos conectores ya no hincha cada conversación.** Antes, la app le enviaba a la IA el detalle de TODAS las herramientas de todos tus conectores en cada mensaje (con Gmail y un par más, miles de palabras); ahora, cuando son muchas, la IA primero busca la que necesita y solo entonces la usa. En una prueba con un conector de 40 herramientas, lo que se envía de ese conector bajó un 95 %. Los permisos son los mismos de siempre: cada herramienta sigue pidiendo tu aprobación por su nombre real, y las reglas que tengas siguen mandando. Está en Ajustes › Funciones experimentales (encendido en Chat y Code).
+- **Los conectores pueden pedirte datos con un formulario.** Si un conector necesita que escribas algo (nombre, una fecha, elegir una opción), aparece una tarjeta clara que dice qué conector lo pide, si es de confianza, y que el texto es suyo. Puedes enviar o no enviar, y «Detener» lo cancela. Si el conector pide una contraseña o una clave, la app lo rechaza sin mostrarte nada. Solo en Chat y Code; el celular no los recibe. Se puede apagar en Ajustes › Funciones experimentales.
+- Motor `lazunox.9`.
+
 ## [1.7.4] - 2026-10-25
 
 ### Correcciones

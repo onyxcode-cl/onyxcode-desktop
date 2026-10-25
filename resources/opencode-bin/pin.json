@@ -2,19 +2,19 @@
   "version": "1.19.0",
   "assets": {
     "darwin-arm64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.8/lazunox-motor-darwin-arm64.zip",
-      "sha256": "70e8148c7825b7b4e44004ac150e452773da45e40119c52b61ece9005e289b50",
-      "size": 35169038
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.9/lazunox-motor-darwin-arm64.zip",
+      "sha256": "aa4c05ab7409c1ee783d0d1e8cca68fdb0dc8c2f2698ad69c590c756e3829e03",
+      "size": 35178950
     },
     "win32-x64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.8/lazunox-motor-windows-x64.zip",
-      "sha256": "a5856f3757905b3cf61229d1eee33f116869491fbba21ed57c5e49d7a8922805",
-      "size": 50257869
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.9/lazunox-motor-windows-x64.zip",
+      "sha256": "9b12d888066654363a8d79082c71063344c82c5d7e694bc39fb38ce939173cd4",
+      "size": 50271177
     },
     "linux-x64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.8/opencode-linux-x64.tar.gz",
-      "sha256": "628f25771b297cabe28d65e73809a2dfba8bd8f9e952942ca6ba6458e1805496",
-      "size": 50352024
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.9/opencode-linux-x64.tar.gz",
+      "sha256": "c3edfed628a7f60a600e799400d2e7b4136f92dd9792ee258991d285b0c7e0f9",
+      "size": 50365722
     }
   },
   "wsl-rootfs": {
