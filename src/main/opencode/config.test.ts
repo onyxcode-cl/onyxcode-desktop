@@ -49,7 +49,7 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
       expect(text).toContain('NO se edita')
       expect(text).toContain('Presentar')
       expect(text).toContain('para proyectar')
-      expect(text).toContain('¿Cuál preferís?')
+      expect(text).toContain('¿Cuál prefieres?')
     }
   })
 
