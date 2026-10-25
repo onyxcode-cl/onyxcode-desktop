@@ -1110,6 +1110,12 @@ const HTTP_X_ROUTES = [
   'POST /mcp/{name}/disconnect',
   // Formularios de conectores (`elicitation`, motor propio): los contesta SOLO la persona en el Mac. Todavía no están en
   // `api-routes.json` (se regenera con el motor nuevo): la prueba de cobertura los admite aparte (ver `policy.test.ts`).
+  // Rebobinar por turno: ver los cambios de un turno y volver atrás (código/conversación) es una decisión de quien está en el Mac.
+  'GET /experimental/session/{sessionID}/turnos',
+  'GET /experimental/session/{sessionID}/turnos/{messageID}/diff',
+  'GET /experimental/session/{sessionID}/rebobinar/{messageID}',
+  'POST /experimental/session/{sessionID}/rebobinar',
+  'POST /experimental/session/{sessionID}/rebobinar/deshacer',
   'GET /mcp/elicitation',
   'POST /mcp/elicitation/{requestID}/reply',
   // experimentales (espacios de trabajo, worktrees, consola, herramientas)

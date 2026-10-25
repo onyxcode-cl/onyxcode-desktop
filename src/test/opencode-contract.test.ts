@@ -54,13 +54,26 @@ describe('instantánea api-routes.json', () => {
     // El motor propio de Lazunox añade dos rutas que el SDK oficial no conoce (panel de trabajos); el resto debe coincidir con el SDK.
     // Formularios de conectores (`elicitation`): rutas del motor propio; entran en la instantánea al regenerarla con el motor nuevo (antes no están).
     const FORMULARIOS = ['GET /mcp/elicitation', 'POST /mcp/elicitation/{requestID}/reply']
-    const propias = snapshot.routes.filter((r: string) => /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r))
+    // Rebobinar por turno: cinco rutas propias del motor (`/turnos` y `/rebobinar`).
+    const REBOBINAR = [
+      'GET /experimental/session/{sessionID}/rebobinar/{messageID}',
+      'GET /experimental/session/{sessionID}/turnos',
+      'GET /experimental/session/{sessionID}/turnos/{messageID}/diff',
+      'POST /experimental/session/{sessionID}/rebobinar',
+      'POST /experimental/session/{sessionID}/rebobinar/deshacer'
+    ]
+    const propias = snapshot.routes.filter(
+      (r: string) => /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r) || REBOBINAR.includes(r)
+    )
     const enSnapshot = propias.filter((r: string) => FORMULARIOS.includes(r))
     expect(enSnapshot.length === 0 || enSnapshot.length === FORMULARIOS.length).toBe(true) // las dos o ninguna
-    expect(propias.filter((r: string) => !FORMULARIOS.includes(r)).sort()).toEqual([
-      'GET /experimental/session/{sessionID}/trabajos',
-      'POST /experimental/session/{sessionID}/trabajos/{id}/terminar'
-    ])
+    expect(propias.filter((r: string) => !FORMULARIOS.includes(r)).sort()).toEqual(
+      [
+        ...REBOBINAR,
+        'GET /experimental/session/{sessionID}/trabajos',
+        'POST /experimental/session/{sessionID}/trabajos/{id}/terminar'
+      ].sort()
+    )
     expect(snapshot.routes.length - propias.length).toBe(sdk.routes.size)
     expect([...snapshot.routes].filter((r: string) => !propias.includes(r)).sort()).toEqual([...sdk.routes].sort())
   })
