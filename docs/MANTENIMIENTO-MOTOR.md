@@ -27,6 +27,18 @@ Este documento es la rutina. Marco general: `docs/PLAN-MOTOR-PROPIO.md` (paso 5)
 5. Actualizar `src/main/tasks/backends/wsl-real-pin.test.ts` (huella y tamaño de Linux), el staging de WSL (`npm run stage:wsl-bundle`; en el PC Windows copiar el `.tar.gz` a `C:\onyx\staging` y `C:\onyx\wt\resources\wsl-images` y borrar `C:\onyx\wt\resources\opencode-bin\bin`), subir la versión de la app y su `CHANGELOG.md`.
 6. Flujo normal de publicación de la app: `scripts/release.sh prepare|mac|win|draft|publish X.Y.Z` (`docs/RELEASE.md`), probando ANTES de publicar.
 
+## 3 bis. Banco de tareas del motor (`scripts/engine-bench/`, plan maestro 1A)
+
+Mide «el motor mejoró» antes/después con el modelo gratuito: 18 tareas pequeñas y reproducibles (15 de programación y 3 de oficina; `--lista`), cada una con su carpeta inicial generada por el script, un pedido natural en español y un verificador determinista (comando o comprobación de archivos, nunca un juez con modelo). Necesita un motor con las banderas de `run` del fork (`--permisos ninguno`, `--max-steps`, `--presupuesto-tokens`, `--informe`, `LAZUNOX.md` del fork).
+
+- **Solo en contenedor del VPS** (nunca el motor real en el Mac; el ejecutor se niega fuera de un contenedor). Comando, con el binario linux-x64 compilado por `targets.sh`:
+  `docker run --rm --cpus=4 --memory=8g -e BENCH_EN_CONTENEDOR=1 -v /opt/lzx-b1app:/app -v <binario>:/motor:ro -v <salida>:/out -v /opt/lzx-fork/src/node_modules/typescript:/ts:ro -w /app node:22-bookworm node scripts/engine-bench/run.mjs --motor /motor --repeticiones 3 --typescript /ts --salida /out`
+- Cada corrida: carpeta temporal con `git init` y un commit; el motor con `HOME` y `XDG_*` temporales, permisos acotados (`external_directory`, `webfetch`, `websearch` y `question` denegados) y `run --format json --permisos ninguno --max-steps 60 --presupuesto-tokens 400000`, con el pedido por stdin y tope de 15 min. T09 encadena 8 pedidos en la misma sesión (`--session`); T12 levanta un conector MCP propio de 40 herramientas (`mcp-bench.mjs`); T07 necesita `--typescript <carpeta>` (sin ella se omite y no cuenta como fallo).
+- Salida: `bench-<fecha>.json` y una tabla (éxito k/n, mediana de tokens enviados `input + cache.read`, tokens de salida, % de caché, pasos, llamadas, minutos, tokens por éxito; agregados: tasa de éxito, mediana de tokens por éxito, p90 de minutos). Cuota gratuita agotada («Free usage limit reached»): reintenta una vez tras esperar y la marca `cuota` (no cuenta como fallo).
+- `--comparar antes.json despues.json` imprime el antes/después y aplica el criterio de ola (el éxito total no baja más de 1 tarea; ninguna pasa de estable a 0).
+- Sin red ni modelo: `--proveedor-falso` (servidor local compatible con OpenAI, determinista, con guiones que resuelven las tareas con las herramientas reales del motor; `--sin-guion T05` deja una sin guion para ver que el banco distingue el fallo). `--autoprueba` comprueba, sin motor, que cada verificador falla en la carpeta inicial y pasa con el guion.
+- Líneas base guardadas en `scripts/engine-bench/linea-base/` (`--comparar` contra ellas tras cada ola). Los modelos gratuitos cambian: anotar siempre fecha y modelo (el JSON los trae).
+
 ## 4. Cosas que ya nos mordieron (no repetir)
 
 - Una herramienta nueva del motor hay que **registrarla también en la lista `builtin`** de `tool/registry.ts`, si no el modelo nunca la recibe (las pruebas unitarias no lo ven; `engine-probe` sí).
