@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { EngineJob } from '@shared/engine-jobs'
+import type { EngineJob, EngineJobResumeResult } from '@shared/engine-jobs'
 import { call } from '../../../lib/api'
 import { isRemoteSurface } from '../../../lib/platform'
 import { ENGINE_JOBS_POLL_MS } from './engine-jobs'
@@ -13,6 +13,8 @@ import { ENGINE_JOBS_POLL_MS } from './engine-jobs'
 export function useEngineJobs(opts: { sessionId: string | null | undefined; directory?: string; active: boolean }): {
   jobs: EngineJob[]
   stop: (jobId: string) => Promise<void>
+  /** Reanuda un ayudante perdido; devuelve lo que contestó el motor (`motivo` si no pudo). */
+  resume: (jobId: string) => Promise<EngineJobResumeResult>
   refresh: () => Promise<void>
 } {
   const { sessionId, directory, active } = opts
@@ -62,5 +64,15 @@ export function useEngineJobs(opts: { sessionId: string | null | undefined; dire
     },
     [sessionId, directory, refresh]
   )
-  return { jobs, stop, refresh }
+  const resume = useCallback(
+    async (jobId: string): Promise<EngineJobResumeResult> => {
+      if (!sessionId) throw new Error('no-session')
+      const res = await call('jobs:resume', { sessionID: sessionId, jobId, ...(directory ? { directory } : {}) })
+      // Con éxito (o si ya no hay nada que reanudar) la lápida desaparece: se vuelve a consultar.
+      await refresh()
+      return res
+    },
+    [sessionId, directory, refresh]
+  )
+  return { jobs, stop, resume, refresh }
 }

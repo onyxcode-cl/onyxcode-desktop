@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ENGINE_JOBS_MAX, parseEngineJobs } from './engine-jobs'
+import { ENGINE_JOBS_MAX, parseEngineJobs, parseResumeResult } from './engine-jobs'
 
 const row = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
   id: 'sh_1',
@@ -36,6 +36,19 @@ describe('parseEngineJobs', () => {
     expect(parseEngineJobs({ trabajos: bad }).map((j) => j.id)).toEqual(['ok'])
   })
 
+  it('acepta ayudantes de fondo (vivos y perdidos tras un reinicio)', () => {
+    const jobs = parseEngineJobs({
+      trabajos: [
+        row({ id: 'ses_h1', tipo: 'ayudante', titulo: 'Revisar tests', estado: 'perdido', fin: 9000 }),
+        row({ id: 'ses_h2', tipo: 'ayudante', estado: 'en_curso' })
+      ]
+    })
+    expect(jobs.map((j) => [j.id, j.kind, j.state])).toEqual([
+      ['ses_h1', 'ayudante', 'perdido'],
+      ['ses_h2', 'ayudante', 'en_curso']
+    ])
+  })
+
   it('cuerpos que no son el contrato dan lista vacía', () => {
     for (const body of [null, undefined, [], 'x', {}, { trabajos: 'x' }]) expect(parseEngineJobs(body)).toEqual([])
   })
@@ -44,5 +57,15 @@ describe('parseEngineJobs', () => {
     const many = Array.from({ length: ENGINE_JOBS_MAX + 10 }, (_, i) => row({ id: `sh_${i}` }))
     expect(parseEngineJobs({ trabajos: many })).toHaveLength(ENGINE_JOBS_MAX)
     expect(parseEngineJobs({ trabajos: [row({ titulo: 'a'.repeat(5000) })] })[0]!.title.length).toBe(300)
+  })
+})
+
+describe('parseResumeResult', () => {
+  it('solo {ok:true} es éxito; el motivo se valida contra el contrato', () => {
+    expect(parseResumeResult({ ok: true })).toEqual({ ok: true })
+    expect(parseResumeResult({ ok: false, motivo: 'tope' })).toEqual({ ok: false, motivo: 'tope' })
+    expect(parseResumeResult({ ok: false, motivo: 'ya_en_curso' })).toEqual({ ok: false, motivo: 'ya_en_curso' })
+    expect(parseResumeResult({ ok: false, motivo: 'inventado' })).toEqual({ ok: false, motivo: null })
+    for (const body of [null, undefined, 'ok', [], { ok: 'true' }, {}]) expect(parseResumeResult(body)).toEqual({ ok: false, motivo: null })
   })
 })

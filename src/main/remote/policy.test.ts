@@ -85,6 +85,9 @@ const ROUTES: string[] = (
 /** Rutas de los formularios de conectores (`elicitation`): clase X, el celular nunca las usa. */
 const ELICITATION_ROUTES = ['GET /mcp/elicitation', 'POST /mcp/elicitation/{requestID}/reply']
 
+/** Rutas del motor nuevo todavía ausentes de `api-routes.json`; la política las conoce (clase X) y las ve el test de abajo. */
+const EXTRA_ENGINE_ROUTES = ['POST /experimental/session/{sessionID}/trabajos/{id}/reanudar']
+
 describe('cobertura 100 %', () => {
   it('hay canales que clasificar y todos tienen entrada explícita', () => {
     expect(ALL_INVOKE.length).toBeGreaterThan(200)
@@ -101,7 +104,8 @@ describe('cobertura 100 %', () => {
     expect(ROUTES.length).toBeGreaterThan(150)
     expect(ROUTES.filter((r) => !Object.hasOwn(CELULAR_HTTP_POLICY, r))).toEqual([])
     // Las dos rutas de formularios de conectores son del motor nuevo: no están en `api-routes.json` hasta que se regenere con él.
-    expect(Object.keys(CELULAR_HTTP_POLICY).filter((r) => !ROUTES.includes(r))).toEqual([])
+    // Salvo las rutas del motor nuevo que aún no están en `api-routes.json` (se regenera con el motor candidato): ver `EXTRA_ENGINE_ROUTES`.
+    expect(Object.keys(CELULAR_HTTP_POLICY).filter((r) => !ROUTES.includes(r) && !EXTRA_ENGINE_ROUTES.includes(r))).toEqual([])
   })
   it('cada acción que puede ser D tiene resumen es/en y todo D estático lo tiene', () => {
     for (const [k, v] of Object.entries({ ...CELULAR_POLICY, ...CELULAR_HTTP_POLICY }))
@@ -538,6 +542,13 @@ describe('prompts', () => {
     expect(cls(http('POST', '/session/ses_1/summarize', dq, { providerID: 'x', modelID: 'y' }))).toBe('deny:model-unknown')
     expect(cls(http('POST', '/session/ses_1/summarize', dq, { providerID: 'anthropic', modelID: 'sonnet' }))).toBe('M')
   })
+  it('«Compactar hasta aquí»: el celular no puede mandar upTo (ni ningún otro campo extra) en summarize', () => {
+    expect(cls(http('POST', '/session/ses_1/summarize', dq, { providerID: 'anthropic', modelID: 'sonnet', upTo: 'msg_3' }))).toBe(
+      'deny:body-field-forbidden'
+    )
+    expect(cls(http('POST', '/session/ses_1/summarize', dq, { upTo: 'msg_3' }))).toBe('deny:body-field-forbidden')
+    expect(cls(http('POST', '/session/ses_1/summarize', dq, { providerID: 'anthropic', modelID: 'sonnet', auto: true }))).toBe('M')
+  })
   it('el agente computer solo en carpetas con control total confirmado', () => {
     const body = { agent: 'computer', parts: [text] }
     expect(prompt(body, { directory: '/work/tasks/a' })).toBe('M')
@@ -831,5 +842,19 @@ describe('rebobinar por turno: solo desde el Mac (clase X)', () => {
     expect(cls(http('DELETE', '/experimental/session/ses_1/rebobinar', dq))).toBe('deny:unknown-route')
     expect(cls(http('PUT', '/experimental/session/ses_1/turnos', dq))).toBe('deny:unknown-route')
     expect(cls(http('POST', '/experimental/session/ses_1/turnos', dq))).toBe('deny:unknown-route')
+  })
+})
+
+describe('reanudar un ayudante perdido: solo desde el Mac (clase X)', () => {
+  const R = 'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar'
+  it('la ruta está clasificada X y el canal jobs:resume también', () => {
+    expect(CELULAR_HTTP_POLICY[R]).toBe('X')
+    expect(CELULAR_POLICY['jobs:resume']).toBe('X')
+  })
+  it('el celular no puede reanudar, ni con rutas parecidas u otro método', () => {
+    expect(cls(http('POST', '/experimental/session/ses_1/trabajos/ses_h/reanudar', dq))).toBe('deny:forbidden')
+    expect(cls(ipc('jobs:resume', { sessionID: 'ses_1', jobId: 'ses_h' }))).toBe('deny:forbidden')
+    expect(cls(http('GET', '/experimental/session/ses_1/trabajos/ses_h/reanudar', dq))).toBe('deny:unknown-route')
+    expect(cls(http('DELETE', '/experimental/session/ses_1/trabajos/ses_h/reanudar', dq))).toBe('deny:unknown-route')
   })
 })

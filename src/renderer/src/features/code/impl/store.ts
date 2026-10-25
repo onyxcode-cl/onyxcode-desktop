@@ -37,6 +37,7 @@ import {
   type TurnSummary
 } from '@shared/rewind'
 import { mergeTurns, noticeFromResult, noticeFromUndo, type RewindNotice } from './rewind-logic'
+import { compactBlockReason, postSummarize, type CompactBlockReason } from '@shared/compaction'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
@@ -316,6 +317,11 @@ export interface CodeState {
   // -- Fork / compactar --
   forkSession: (sessionID: string, messageID?: string) => Promise<string | null>
   compactSession: (sessionID: string) => Promise<void>
+  /**
+   * «Compactar hasta aquí»: resume todo lo anterior al mensaje `upTo` (de la persona) y conserva lo posterior íntegro. Solo con el motor
+   * propio nuevo (el SDK fijado no conoce `upTo`). `true` = el motor empezó a compactar; `false` = no, y `globalError` dice por qué.
+   */
+  compactUpTo: (sessionID: string, upTo: string) => Promise<boolean>
   /**
    * «Editar y reintentar»: detiene si hace falta, revierte desde ese mensaje (archivos incluidos, como «Revertir»)
    * y reenvía el texto editado con los mismos adjuntos. `false` = no se envió (la sesión queda como estaba).
@@ -1697,6 +1703,29 @@ export const useCode = create<CodeState>((set, get) => {
       }
     },
 
+    compactUpTo: async (sessionID, upTo) => {
+      const conn = elicitationConn()
+      const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+      if (!conn || isRemoteSurface() || get().rewindSupport[sessionID] !== true) return false
+      // Misma comprobación que hará el motor (409): si ya se sabe que no, no se molesta.
+      const blocked = compactBlockOf(get(), sessionID)
+      if (blocked) {
+        set({ globalError: t(`code.compaction.upTo.blocked.${blocked}`) })
+        return false
+      }
+      const m = get().model ?? resolveModelForMode('code')
+      set((s) => ({ runState: { ...s.runState, [sessionID]: 'busy' } }))
+      const res = await postSummarize(conn, { sessionID, providerID: m.providerID, modelID: m.modelID, upTo, directory: dir })
+      if (res.ok) return true
+      set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' } }))
+      let text: string
+      if (res.kind === 'conflict') text = t(`code.compaction.upTo.blocked.${res.motivo ?? 'ocupada'}`)
+      else if (res.kind === 'invalid') text = t(`code.compaction.upTo.err.${res.reason ?? 'invalido'}`)
+      else text = t('code.compaction.upTo.err.generic', { detail: res.error })
+      set({ globalError: text })
+      return false
+    },
+
     // -- Confianza de carpeta --
     isTrusted: (dir) => get().trustedFolders.includes(dir),
     trustFolder: (dir) => {
@@ -1967,6 +1996,27 @@ export const useCode = create<CodeState>((set, get) => {
 })
 
 /** Sesión raíz (sube por `parentID`) de una sesión; útil para agrupar permisos de subagentes. */
+/**
+ * Por qué no se puede compactar ahora la sesión (el motor responde 409 por lo mismo): trabajando, algo esperando respuesta (permiso,
+ * pregunta o formulario, de la sesión o de sus ayudantes) o un revert sin confirmar. `null` = se puede.
+ */
+export function compactBlockOf(
+  s: Pick<CodeState, 'sessions' | 'runState' | 'permissions' | 'questions' | 'elicitations'>,
+  sessionID: string
+): CompactBlockReason | null {
+  const root = rootSessionID(s.sessions, sessionID)
+  const mine = (id: string): boolean => rootSessionID(s.sessions, id) === root
+  const pending =
+    Object.values(s.permissions).some((p) => mine(p.sessionID)) ||
+    Object.values(s.questions).some((q) => mine(q.sessionID)) ||
+    Object.values(s.elicitations).some((e) => mine(e.sessionID))
+  return compactBlockReason({
+    busy: (s.runState[sessionID] ?? 'idle') !== 'idle',
+    pending,
+    revertPending: !!s.sessions[sessionID]?.revert
+  })
+}
+
 export function rootSessionID(sessions: Record<string, Session>, sessionID: string): string {
   let id = sessionID
   for (let i = 0; i < 20; i++) {

@@ -4,6 +4,7 @@
  * llegan por `jobs:list` / `jobs:stop` (main habla con el motor, ver `useEngineJobs`).
  */
 import { useMemo } from 'react'
+import type { EngineJobResumeResult } from '@shared/engine-jobs'
 import { useSessions } from '../../../stores/sessions'
 import type { OpencodeClient } from '../../../lib/opencode'
 import { BackgroundJobs, useNow } from './BackgroundJobs'
@@ -37,7 +38,9 @@ export function CodeBackgroundJobs(): React.JSX.Element | null {
     sdkData(await client.session.abort({ sessionID: id, directory: dir }))
   }
   const engine = useEngineView(rootId, rootId ? (sessionProject[rootId] ?? sessions[rootId]?.directory) : undefined, status, view.liveCount)
-  return <BackgroundJobs view={view} onCancel={abort} engineJobs={engine.rows} onStopEngineJob={engine.stop} />
+  return (
+    <BackgroundJobs view={view} onCancel={abort} engineJobs={engine.rows} onStopEngineJob={engine.stop} onResumeEngineJob={engine.resume} />
+  )
 }
 
 /** Tareas y Chat: comparten `useSessions`; el que monta dice qué sesión es la raíz, dónde vive y quién tiene algo pendiente. */
@@ -62,7 +65,9 @@ export function SessionsBackgroundJobs({
     sdkData(await client.session.abort({ sessionID: id, directory }))
   }
   const engine = useEngineView(rootId, directory, status, view.liveCount)
-  return <BackgroundJobs view={view} onCancel={abort} engineJobs={engine.rows} onStopEngineJob={engine.stop} />
+  return (
+    <BackgroundJobs view={view} onCancel={abort} engineJobs={engine.rows} onStopEngineJob={engine.stop} onResumeEngineJob={engine.resume} />
+  )
 }
 
 /**
@@ -74,13 +79,17 @@ function useEngineView(
   directory: string | undefined,
   status: Record<string, 'idle' | 'busy' | 'retry' | undefined>,
   liveHelpers: number
-): { rows: ReturnType<typeof selectEngineJobs>; stop: (jobId: string) => Promise<void> } {
+): {
+  rows: ReturnType<typeof selectEngineJobs>
+  stop: (jobId: string) => Promise<void>
+  resume: (jobId: string) => Promise<EngineJobResumeResult>
+} {
   const rootRun = rootId ? status[rootId] : undefined
   const active = rootRun === 'busy' || rootRun === 'retry' || liveHelpers > 0
-  const { jobs, stop } = useEngineJobs({ sessionId: rootId, directory, active })
+  const { jobs, stop, resume } = useEngineJobs({ sessionId: rootId, directory, active })
   const hasLive = jobs.some((j) => j.state === 'en_curso')
   const now = useNow(hasLive)
-  return { rows: selectEngineJobs(jobs, hasLive ? now : Date.now()), stop }
+  return { rows: selectEngineJobs(jobs, hasLive ? now : Date.now()), stop, resume }
 }
 
 /** Recalcula la vista cada segundo mientras haya algo vivo (el tiempo transcurrido avanza solo). */

@@ -233,6 +233,13 @@ export const code = {
   'code.bg.engine.stop': 'Parar',
   'code.bg.engine.stopFor': 'Parar «{title}»',
   'code.bg.engine.stopFailed': 'No se pudo parar.',
+  'code.bg.engine.kindHelper': 'Ayudante',
+  'code.bg.engine.resume': 'Reanudar',
+  'code.bg.engine.resumeFor': 'Reanudar «{title}»',
+  'code.bg.engine.resume.gone': 'Ya no se puede reanudar.',
+  'code.bg.engine.resume.running': 'Ya está en marcha.',
+  'code.bg.engine.resume.limit': 'Hay demasiados ayudantes en marcha. Espera a que termine alguno.',
+  'code.bg.engine.resume.failed': 'No se pudo reanudar.',
   'code.bg.over': {
     one: 'Hay {count} trabajo a la vez; se muestran {shown}.',
     other: 'Hay {count} trabajos a la vez; se muestran {shown}. Tantos juntos pueden volver lento el equipo.'
@@ -732,5 +739,37 @@ export const code = {
   'code.rewind.skip.enlace-fuera-del-proyecto': 'enlace que apunta fuera del proyecto',
   'code.rewind.skip.era-una-carpeta': 'es una carpeta',
   'code.rewind.skip.no-se-pudo-restaurar': 'no se pudo restaurar',
-  'code.rewind.skip.other': 'otro motivo'
+  'code.rewind.skip.other': 'otro motivo',
+  'code.compaction.title': 'Conversación resumida',
+  'code.compaction.running': 'Resumiendo la conversación…',
+  'code.compaction.done': 'Se resumió la conversación',
+  'code.compaction.doneCount': { one: 'Se resumió 1 mensaje', other: 'Se resumieron {count} mensajes' },
+  'code.compaction.doneUpTo': 'Se resumió la conversación hasta aquí; lo posterior se mantuvo tal cual',
+  'code.compaction.doneUpToCount': {
+    one: 'Se resumió 1 mensaje anterior; lo posterior se mantuvo tal cual',
+    other: 'Se resumieron {count} mensajes anteriores; lo posterior se mantuvo tal cual'
+  },
+  'code.compaction.auto': 'Compactación automática: el contexto estaba casi lleno.',
+  'code.compaction.context': 'Contexto ≈{before} → ≈{after} tokens',
+  'code.compaction.freed': '(≈{freed} liberados)',
+  'code.compaction.contextAria': 'Contexto aproximado: de {before} a {after} tokens, unos {freed} liberados',
+  'code.compaction.kept': 'Se mantuvieron: {items}',
+  'code.compaction.keep.plan': 'plan ({count})',
+  'code.compaction.keep.habilidades': { one: '{count} habilidad', other: '{count} habilidades' },
+  'code.compaction.keep.instrucciones': { one: '{count} instrucción de carpeta', other: '{count} instrucciones de carpeta' },
+  'code.compaction.keep.ayudantes': { one: '{count} ayudante activo', other: '{count} ayudantes activos' },
+  'code.compaction.keep.gancho': 'salida del gancho PostCompact',
+  'code.compaction.view': 'Ver resumen',
+  'code.compaction.hide': 'Ocultar resumen',
+  'code.compaction.upTo': 'Compactar hasta aquí',
+  'code.compaction.upTo.title': 'Compactar hasta este mensaje',
+  'code.compaction.upTo.body':
+    'Se resume todo lo anterior a este mensaje; este y lo que sigue se mantienen tal cual. No cambia ningún archivo.',
+  'code.compaction.upTo.confirm': 'Compactar',
+  'code.compaction.upTo.blocked.ocupada': 'No se puede compactar mientras la conversación trabaja.',
+  'code.compaction.upTo.blocked.pendiente': 'Responde antes lo que está esperando (un permiso, una pregunta o un formulario).',
+  'code.compaction.upTo.blocked.revert': 'Hay cambios deshechos sin confirmar: restáuralos o sigue la conversación antes de compactar.',
+  'code.compaction.upTo.err.invalido': 'Ese mensaje no se puede usar como punto de corte.',
+  'code.compaction.upTo.err.cola-grande': 'Lo que quieres conservar ya no cabe. Elige un mensaje más reciente.',
+  'code.compaction.upTo.err.generic': 'No se pudo compactar: {detail}'
 } as const

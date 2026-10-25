@@ -4,7 +4,7 @@ import { CHANNEL_ROLES, IPC_SCHEMAS } from './schemas'
 
 describe('canales jobs:* (trabajos del motor)', () => {
   it('existen en el contrato, tienen esquema y son solo de la ventana principal', () => {
-    for (const c of ['jobs:list', 'jobs:stop']) {
+    for (const c of ['jobs:list', 'jobs:stop', 'jobs:resume']) {
       expect(IPC_INVOKE_CHANNELS as readonly string[], c).toContain(c)
       expect(IPC_SCHEMAS[c], c).toBeTypeOf('function')
       for (const [role, set] of Object.entries(CHANNEL_ROLES)) expect(set.has(c), `${c} en ${role}`).toBe(false)
@@ -30,5 +30,17 @@ describe('canales jobs:* (trabajos del motor)', () => {
     expect(() => v({ sessionID: 'ses_a', jobId: 'sh_1/../x' })).toThrow()
     expect(() => v({ sessionID: 'ses_a', jobId: 'sh 1' })).toThrow()
     expect(() => v({ sessionID: 'ses_a', jobId: 'sh_1', command: 'rm' })).toThrow()
+  })
+
+  it('jobs:resume: mismas cotas que jobs:stop (ids de sesión y de ayudante, sin rutas ni claves extra)', () => {
+    const v = IPC_SCHEMAS['jobs:resume']!
+    expect(v({ sessionID: 'ses_a', jobId: 'ses_hija', directory: '/p' })).toEqual({
+      sessionID: 'ses_a',
+      jobId: 'ses_hija',
+      directory: '/p'
+    })
+    expect(() => v({ sessionID: 'ses_a' })).toThrow()
+    expect(() => v({ sessionID: 'ses_a', jobId: '../x' })).toThrow()
+    expect(() => v({ sessionID: 'ses_a', jobId: 'ses_h', message: 'hola' })).toThrow()
   })
 })

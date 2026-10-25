@@ -93,14 +93,16 @@ describe('validateHooksText', () => {
       PreToolUse: [hook({ matcher: 'bash|edit', timeout: 5 })],
       PostToolUse: [hook()],
       PreCompact: [hook({ timeout: 60 })],
+      PostCompact: [hook({ timeout: 30 })],
       Stop: [hook({ matcher: '*' })]
     })
     const v = validateHooksText(texto)
-    expect(v).toMatchObject({ ok: true, count: 4 })
+    expect(v).toMatchObject({ ok: true, count: 5 })
     const cfg = leerConfig(texto)
     expect(cfg.PreToolUse).toEqual([{ command: 'echo hola', matcher: 'bash|edit', timeout: 5 }])
     expect(cfg.PostToolUse).toEqual([{ command: 'echo hola', matcher: undefined, timeout: undefined }])
     expect(cfg.PreCompact[0].timeout).toBe(60)
+    expect(cfg.PostCompact[0].timeout).toBe(30)
     expect(cfg.Stop[0].matcher).toBe('*')
   })
 })

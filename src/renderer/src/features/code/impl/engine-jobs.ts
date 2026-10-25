@@ -22,12 +22,17 @@ export interface EngineJobRow {
   elapsedMs: number
   /** Sigue en curso (se puede parar). */
   live: boolean
+  /** Ayudante de fondo perdido tras un reinicio del motor: se puede reanudar. */
+  resumable: boolean
 }
 
 export function selectEngineJobs(jobs: readonly EngineJob[], now: number): EngineJobRow[] {
   const live: EngineJobRow[] = []
   const finished: EngineJobRow[] = []
   for (const j of jobs) {
+    // Ayudantes de fondo: los vivos ya salen en la lista de ayudantes de la app (con «Cancelar»); aquí solo los PERDIDOS tras un
+    // reinicio del motor, que se quedan a la vista (la lápida dura 24 h) con «Reanudar», sin el plazo de gracia de los demás.
+    if (j.kind === 'ayudante' && j.state !== 'perdido') continue
     const isLive = j.state === 'en_curso'
     const endedAt = isLive ? null : (j.endedAt ?? j.startedAt)
     const row: EngineJobRow = {
@@ -39,12 +44,13 @@ export function selectEngineJobs(jobs: readonly EngineJob[], now: number): Engin
       startedAt: j.startedAt,
       endedAt,
       elapsedMs: Math.max(0, (endedAt ?? now) - j.startedAt),
-      live: isLive
+      live: isLive,
+      resumable: j.kind === 'ayudante' && j.state === 'perdido'
     }
-    if (isLive) live.push(row)
+    if (isLive || row.resumable) live.push(row)
     else if (endedAt !== null && now - endedAt <= ENGINE_FINISHED_GRACE_MS) finished.push(row)
   }
-  live.sort((a, b) => a.startedAt - b.startedAt)
+  live.sort((a, b) => a.startedAt - b.startedAt) // vivos y ayudantes por reanudar
   // De los terminados, los más recientes; luego se ordenan como el resto (por inicio).
   finished.sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
   const shown = finished.slice(0, MAX_FINISHED_ENGINE_JOBS).sort((a, b) => a.startedAt - b.startedAt)

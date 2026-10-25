@@ -432,14 +432,14 @@ export const settings = {
   'settings.engine.remember.nothing': 'There were no saved permissions.',
   'settings.engine.hooks.title': 'Hooks',
   'settings.engine.hooks.desc':
-    'Your own commands that run automatically before or after the AI uses a tool, when the conversation is compacted, or when a turn ends. For example, they can block dangerous commands.',
+    'Your own commands that run automatically before or after the AI uses a tool, before or after the conversation is compacted, or when a turn ends. For example, they can block dangerous commands.',
   'settings.engine.hooks.warning': 'Hooks run commands with your permissions. Only put here what you understand.',
   'settings.engine.hooks.toggle': 'Turn on hooks',
   'settings.engine.hooks.toggleDesc':
     'Off by default. When you change it, the engine restarts once nothing is in progress; editing the hooks while the switch is on does not restart it. They do not apply in the Tasks sandbox (only in Chat, Code and Tasks with Full control).',
   'settings.engine.hooks.editorLabel': 'Hooks file (JSON)',
   'settings.engine.hooks.editorHelp':
-    'Events: PreToolUse (before a tool; exit code 2 blocks it), PostToolUse, PreCompact and Stop. “matcher” is a regular expression on the tool name; “timeout” is 1 to 60 seconds. At most 20 hooks per event, a command of up to 2000 characters and 64 KB in total.',
+    'Events: PreToolUse (before a tool; exit code 2 blocks it), PostToolUse, PreCompact (before the conversation is compacted), PostCompact (after it is compacted; what it prints with exit code 0, up to 4000 characters, is added to the context that is kept) and Stop. “matcher” is a regular expression on the tool name; “timeout” is 1 to 60 seconds. At most 20 hooks per event, a command of up to 2000 characters and 64 KB in total.',
   'settings.engine.hooks.exampleTitle': 'Example: block “rm -rf”',
   'settings.engine.hooks.useExample': 'Use the example',
   'settings.engine.hooks.save': 'Save',
@@ -450,7 +450,7 @@ export const settings = {
   'settings.engine.hooks.err.badJson': 'The text is not valid JSON.',
   'settings.engine.hooks.err.noHooks': 'The “hooks” object is missing at the root of the JSON.',
   'settings.engine.hooks.err.tooBig': 'The file is larger than {kb} KB.',
-  'settings.engine.hooks.err.unknownEvent': 'Unknown event “{event}”. Use PreToolUse, PostToolUse, PreCompact or Stop.',
+  'settings.engine.hooks.err.unknownEvent': 'Unknown event “{event}”. Use PreToolUse, PostToolUse, PreCompact, PostCompact or Stop.',
   'settings.engine.hooks.err.notList': '{event} must be a list of hooks.',
   'settings.engine.hooks.err.tooMany': '{event} has too many hooks (maximum {max}).',
   'settings.engine.hooks.err.notObject': '{event}, hook {n}: must be an object with “command”.',

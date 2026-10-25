@@ -29,6 +29,7 @@ const row = (over: Partial<EngineJobRow> = {}): EngineJobRow => ({
   endedAt: null,
   elapsedMs: 65_000,
   live: true,
+  resumable: false,
   ...over
 })
 
@@ -119,5 +120,75 @@ describe('BackgroundJobs con trabajos del motor', () => {
     await flush()
     expect(host.querySelector('[role="alert"]')?.textContent).toBe('No se pudo parar.')
     expect(host.querySelector('button')!.disabled).toBe(false)
+  })
+
+  describe('ayudantes perdidos (Reanudar)', () => {
+    const lost = (over: Partial<EngineJobRow> = {}): EngineJobRow =>
+      row({ id: 'ses_h1', kind: 'ayudante', title: 'Revisar pruebas', state: 'perdido', live: false, resumable: true, ...over })
+
+    it('un ayudante perdido muestra «Reanudar» (y no «Parar») con etiqueta accesible', () => {
+      render(
+        createElement(BackgroundJobs, {
+          view: view([]),
+          onCancel: vi.fn(),
+          engineJobs: [lost()],
+          onStopEngineJob: vi.fn(),
+          onResumeEngineJob: vi.fn()
+        })
+      )
+      const btns = [...host.querySelectorAll('button')]
+      expect(btns).toHaveLength(1)
+      expect(btns[0]!.getAttribute('aria-label')).toBe('Reanudar «Revisar pruebas»')
+      expect(host.textContent).toContain('Ayudante')
+      expect(host.textContent).toContain('Se perdió al reiniciar')
+    })
+
+    it('Reanudar llama a onResumeEngineJob con el id de la sesión hija', async () => {
+      const onResume = vi.fn(async () => ({ ok: true as const }))
+      render(createElement(BackgroundJobs, { view: view([]), onCancel: vi.fn(), engineJobs: [lost()], onResumeEngineJob: onResume }))
+      act(() => host.querySelector('button')!.click())
+      await flush()
+      expect(onResume).toHaveBeenCalledWith('ses_h1')
+      expect(host.querySelector('[role="alert"]')).toBeNull()
+    })
+
+    it('si el motor no puede, dice el motivo en la fila (tope, ya en curso, no existe) y el botón sigue disponible', async () => {
+      for (const [motivo, texto] of [
+        ['tope', 'demasiados ayudantes'],
+        ['ya_en_curso', 'Ya está en marcha'],
+        ['no_existe', 'Ya no se puede reanudar']
+      ] as const) {
+        const onResume = vi.fn(async () => ({ ok: false as const, motivo }))
+        render(createElement(BackgroundJobs, { view: view([]), onCancel: vi.fn(), engineJobs: [lost()], onResumeEngineJob: onResume }))
+        act(() => host.querySelector('button')!.click())
+        await flush()
+        expect(host.querySelector('[role="alert"]')?.textContent).toContain(texto)
+        expect(host.querySelector('button')!.disabled).toBe(false)
+      }
+    })
+
+    it('si la llamada falla (red), avisa y no rompe', async () => {
+      const onResume = vi.fn(async () => {
+        throw new Error('x')
+      })
+      render(createElement(BackgroundJobs, { view: view([]), onCancel: vi.fn(), engineJobs: [lost()], onResumeEngineJob: onResume }))
+      act(() => host.querySelector('button')!.click())
+      await flush()
+      expect(host.querySelector('[role="alert"]')?.textContent).toBe('No se pudo reanudar.')
+    })
+
+    it('un comando perdido NO ofrece Reanudar; sin onResumeEngineJob tampoco', () => {
+      render(
+        createElement(BackgroundJobs, {
+          view: view([]),
+          onCancel: vi.fn(),
+          engineJobs: [row({ state: 'perdido', live: false })],
+          onResumeEngineJob: vi.fn()
+        })
+      )
+      expect(host.querySelector('button')).toBeNull()
+      render(createElement(BackgroundJobs, { view: view([]), onCancel: vi.fn(), engineJobs: [lost()] }))
+      expect(host.querySelector('button')).toBeNull()
+    })
   })
 })

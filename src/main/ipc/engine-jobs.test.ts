@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchEngineJobs, stopEngineJob } from './engine-jobs'
+import { fetchEngineJobs, resumeEngineJob, stopEngineJob } from './engine-jobs'
 
 const conn = { baseUrl: 'http://127.0.0.1:4096', authorization: 'Basic abc' }
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status })
@@ -64,5 +64,43 @@ describe('stopEngineJob', () => {
     expect(await stopEngineJob(conn, { sessionID: 's', jobId: 'j' }, (async () => json(404, {})) as never)).toEqual({ ok: false })
     expect(await stopEngineJob(conn, { sessionID: 's', jobId: 'j' }, (async () => json(200, { ok: 'sí' })) as never)).toEqual({ ok: false })
     await expect(stopEngineJob(conn, { sessionID: 's', jobId: 'j' }, (async () => json(500, {})) as never)).rejects.toThrow('500')
+  })
+})
+
+describe('resumeEngineJob', () => {
+  it('POST a …/trabajos/{hija}/reanudar con la autorización y devuelve ok', async () => {
+    const f = vi.fn(async () => json(200, { ok: true }))
+    expect(await resumeEngineJob(conn, { sessionID: 'ses_1', jobId: 'ses_h', directory: '/p' }, f as never)).toEqual({ ok: true })
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe(`http://127.0.0.1:4096/experimental/session/ses_1/trabajos/ses_h/reanudar?directory=${encodeURIComponent('/p')}`)
+    expect(init.method).toBe('POST')
+    expect((init.headers as Record<string, string>).Authorization).toBe('Basic abc')
+  })
+
+  it('devuelve el motivo del motor y descarta los desconocidos', async () => {
+    for (const motivo of ['no_existe', 'ya_en_curso', 'tope']) {
+      expect(await resumeEngineJob(conn, { sessionID: 's', jobId: 'h' }, (async () => json(200, { ok: false, motivo })) as never)).toEqual({
+        ok: false,
+        motivo
+      })
+    }
+    expect(
+      await resumeEngineJob(conn, { sessionID: 's', jobId: 'h' }, (async () => json(200, { ok: false, motivo: 'otro' })) as never)
+    ).toEqual({
+      ok: false,
+      motivo: null
+    })
+  })
+
+  it('404/405 = no_existe; otros errores HTTP se propagan; cuerpo ilegible no es éxito', async () => {
+    expect(await resumeEngineJob(conn, { sessionID: 's', jobId: 'h' }, (async () => json(404, {})) as never)).toEqual({
+      ok: false,
+      motivo: 'no_existe'
+    })
+    await expect(resumeEngineJob(conn, { sessionID: 's', jobId: 'h' }, (async () => json(500, {})) as never)).rejects.toThrow('500')
+    expect(await resumeEngineJob(conn, { sessionID: 's', jobId: 'h' }, (async () => new Response('x', { status: 200 })) as never)).toEqual({
+      ok: false,
+      motivo: null
+    })
   })
 })

@@ -20,7 +20,7 @@ export const HOOKS_MAX_MATCHER = 300
 export const HOOKS_TIMEOUT_MIN = 1
 export const HOOKS_TIMEOUT_MAX = 60
 
-export const HOOK_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'Stop'] as const
+export const HOOK_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'PostCompact', 'Stop'] as const
 export type HookEvent = (typeof HOOK_EVENTS)[number]
 
 export interface UserHook {
@@ -47,7 +47,7 @@ export const HOOKS_EXAMPLE = `{
 }
 `
 
-const VACIO = (): UserHooksConfig => ({ PreToolUse: [], PostToolUse: [], PreCompact: [], Stop: [] })
+const VACIO = (): UserHooksConfig => ({ PreToolUse: [], PostToolUse: [], PreCompact: [], PostCompact: [], Stop: [] })
 
 /** Réplica de `leerConfig` del motor (mismas cotas, mismo descarte silencioso). Nunca lanza. Sirve para comprobar que la app y el motor coinciden. */
 export function leerConfig(text: string): UserHooksConfig {
@@ -83,6 +83,7 @@ export function leerConfig(text: string): UserHooksConfig {
     PreToolUse: lista(hooks.PreToolUse),
     PostToolUse: lista(hooks.PostToolUse),
     PreCompact: lista(hooks.PreCompact),
+    PostCompact: lista(hooks.PostCompact),
     Stop: lista(hooks.Stop)
   }
 }

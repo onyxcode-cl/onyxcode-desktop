@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
-import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Undo2 } from 'lucide-react'
+import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Sparkles, Undo2 } from 'lucide-react'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { CopyButton } from '../../../components/Markdown'
@@ -33,8 +33,11 @@ import { WorkFold } from './WorkFold'
 import type { ElicitationNotice } from '@shared/mcp-elicitation'
 import type { CodeMessage, PendingElicitation, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
-import { useCode } from './store'
+import { compactBlockOf, useCode } from './store'
 import { GeneratedFiles } from './GeneratedFiles'
+import { CompactionCard } from '../../../components/conversation/CompactionCard'
+import { parseCompaction } from '@shared/compaction'
+import { COMPACT_BLOCK_KEY, compactableTurns, compactionPartOf, splitCompactionTurn, summaryTextOf } from './compaction-logic'
 import { RewindCard } from './RewindCard'
 import { RewindDialogHost, RewindNoticeHost } from './RewindHost'
 import { turnsWithChanges } from './rewind-logic'
@@ -152,14 +155,21 @@ function UserImage({ src, alt }: { src: string; alt: string }): React.JSX.Elemen
 const UserMessage = memo(function UserMessage({
   entry,
   busy,
-  root
+  root,
+  compactable
 }: {
   entry: CodeMessage
   busy: boolean
   root: string | null
+  /** Se puede compactar «hasta aquí» desde este mensaje (después de la última compactación y no el primero). */
+  compactable: boolean
 }): React.JSX.Element | null {
   const t = useT()
   const revertTo = useCode((s) => s.revertTo)
+  // «Compactar hasta aquí»: solo con el motor propio nuevo y en el Mac; deshabilitado con el motivo si el motor se negaría (409).
+  const compactOk = useCode((s) => compactable && s.rewindSupport[entry.info.sessionID] === true)
+  const compactBlock = useCode((s) => (compactable ? compactBlockOf(s, entry.info.sessionID) : null))
+  const compactUpTo = useCode((s) => s.compactUpTo)
   // Motor con rebobinar por turno: «Revertir» abre el diálogo «Volver a antes de este turno». Sin él, el «Revertir» de siempre.
   const rewindOk = useCode((s) => s.rewindSupport[entry.info.sessionID] === true)
   const openRewind = useCode((s) => s.openRewind)
@@ -211,6 +221,14 @@ const UserMessage = memo(function UserMessage({
     } finally {
       setPending(false)
     }
+  }
+  const compactHere = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('code.compaction.upTo.title'),
+      message: t('code.compaction.upTo.body'),
+      confirmLabel: t('code.compaction.upTo.confirm')
+    })
+    if (ok) await compactUpTo(entry.info.sessionID, entry.info.id)
   }
   if (editing) {
     return (
@@ -369,6 +387,20 @@ const UserMessage = memo(function UserMessage({
                 <Pencil size={12} />
               </button>
             )}
+            {compactOk && (
+              <button
+                type="button"
+                title={compactBlock ? t(COMPACT_BLOCK_KEY[compactBlock]) : t('code.compaction.upTo')}
+                aria-label={
+                  compactBlock ? `${t('code.compaction.upTo')}. ${t(COMPACT_BLOCK_KEY[compactBlock])}` : t('code.compaction.upTo')
+                }
+                disabled={!!compactBlock}
+                onClick={() => void compactHere()}
+                className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40 desk:h-7 desk:min-w-7 desk:justify-center"
+              >
+                <Sparkles size={12} /> {t('code.compaction.upTo')}
+              </button>
+            )}
             {rewindOk ? (
               <button
                 type="button"
@@ -420,6 +452,8 @@ interface TurnViewProps {
   hotkeyID: string | undefined
   /** «Cambios de este turno» (motor con rebobinar por turno); `undefined` si el turno no cambió archivos o el motor no lo tiene. */
   changes?: TurnSummary
+  /** «Compactar hasta aquí» disponible desde el mensaje de este turno. */
+  compactable?: boolean
 }
 
 const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (a.length === b.length && a.every((x, i) => x === b[i]))
@@ -430,7 +464,18 @@ const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (
  * reconstruyen en cada render del padre, por eso el comparador mira los mensajes y no los objetos de turno.
  */
 const TurnView = memo(
-  function TurnView({ user, assistant, isLastTurn, old, busy, root, perms, hotkeyID, changes }: TurnViewProps): React.JSX.Element {
+  function TurnView({
+    user,
+    assistant,
+    isLastTurn,
+    old,
+    busy,
+    root,
+    perms,
+    hotkeyID,
+    changes,
+    compactable
+  }: TurnViewProps): React.JSX.Element {
     const t = useT()
     const retryLast = useCode((s) => s.retryLast)
     const compactSession = useCode((s) => s.compactSession)
@@ -439,7 +484,13 @@ const TurnView = memo(
     // «Reintentar» / «Compactar» solo en el último turno y con la sesión libre.
     const canAct = isLastTurn && !busy
     const sessionID = user?.info.sessionID ?? assistant[0]?.info.sessionID
-    const blocks = buildBlocks(assistant)
+    // Turno de compactación: el mensaje de la persona lleva la parte `compaction` y la respuesta es el resumen. Se muestra una tarjeta
+    // (qué se resumió, tokens liberados, lo que se mantuvo) y el resumen queda tras «Ver resumen»; lo demás se pinta como siempre.
+    const compactionPart = user ? compactionPartOf(user.parts) : undefined
+    const compaction = useMemo(() => (compactionPart ? splitCompactionTurn(assistant) : null), [compactionPart, assistant])
+    const compactionMeta = useMemo(() => parseCompaction(compactionPart), [compactionPart])
+    const summaryText = compaction ? summaryTextOf(compaction.summary) : ''
+    const blocks = buildBlocks(compaction ? compaction.rest : assistant)
     const replyText = blocks
       .flatMap((b) => (b.kind === 'text' ? [b.part.text] : []))
       .join('\n\n')
@@ -552,7 +603,16 @@ const TurnView = memo(
     const wakeInfo = user ? shellBgWakeOf(user.parts) : null
     return (
       <div data-message-id={user?.info.id} className={withCv('group/turn flex flex-col gap-3', old && perms.length === 0, true)}>
-        {user && (wakeInfo ? <ShellBgWakeNote info={wakeInfo} /> : <UserMessage entry={user} busy={busy} root={root} />)}
+        {user &&
+          (compactionPart ? (
+            <CompactionCard meta={compactionMeta} running={isLastTurn && busy && !summaryText}>
+              {summaryText ? <DeferredMarkdown text={summaryText} highlight /> : null}
+            </CompactionCard>
+          ) : wakeInfo ? (
+            <ShellBgWakeNote info={wakeInfo} />
+          ) : (
+            <UserMessage entry={user} busy={busy} root={root} compactable={!!compactable} />
+          ))}
         {blocks.length > 0 && (
           <div
             className={mobile ? 'flex flex-col gap-2.5' : 'flex flex-col gap-2'}
@@ -597,6 +657,7 @@ const TurnView = memo(
     a.root === b.root &&
     a.hotkeyID === b.hotkeyID &&
     a.changes === b.changes &&
+    a.compactable === b.compactable &&
     sameList(a.assistant, b.assistant) &&
     sameList(a.perms, b.perms)
 )
@@ -653,6 +714,13 @@ export function MessageStream(props: Props): React.JSX.Element {
   )
   const hidden = entries.length - visible.length
   const turns = useMemo(() => buildTurns(visible), [visible])
+  const compactableAt = useMemo(
+    () =>
+      compactableTurns(turns, (u) =>
+        u.parts.some((p) => (p.type === 'text' && !p.synthetic && !p.ignored && !!p.text) || p.type === 'file')
+      ),
+    [turns]
+  )
 
   // Permisos ligados a una llamada de herramienta visible se muestran junto a ella (en el turno que la contiene).
   const loosePerms: PendingPermission[] = []
@@ -719,6 +787,7 @@ export function MessageStream(props: Props): React.JSX.Element {
               perms={turnPerms[ti]}
               hotkeyID={hotkeyID}
               changes={turn.user ? changesByUser.get(turn.user.info.id) : undefined}
+              compactable={compactableAt[ti]}
             />
           ))}
           {hidden > 0 && (

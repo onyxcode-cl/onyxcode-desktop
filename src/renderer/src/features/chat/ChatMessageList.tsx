@@ -33,6 +33,8 @@ import type { ElicitationNotice, ElicitationRequest } from '@shared/mcp-elicitat
 import { rejectChatQuestion, replyChatElicitation, replyChatQuestion } from './actions'
 import { useChat, type ChatPendingQuestion } from './store'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
+import { parseCompaction } from '@shared/compaction'
+import { CompactionCard } from '../../components/conversation/CompactionCard'
 import { StepGroup } from '../code/impl/ToolCard'
 import type { ReadingMode } from '../../lib/reading-mode'
 import { expandStepGroups, showReasoning, showStepGroup, useWorkView } from '../../lib/reading-mode'
@@ -533,6 +535,13 @@ export function ChatMessageList({
             if (entry.info.role === 'user') {
               const wake = shellBgWakeOf(entry.parts)
               if (wake) return <ShellBgWakeNote key={entry.info.id} info={wake} />
+              // Compactación: una tarjeta (qué se resumió y cuánto contexto se liberó) delante del resumen, que sigue como respuesta.
+              const compaction = entry.parts.find((p) => p.type === 'compaction')
+              if (compaction) {
+                const next = rows[i + 1]
+                const running = busy && (!next || next.info.role !== 'assistant' || !next.parts.some((p) => p.type === 'text' && !!p.text))
+                return <CompactionCard key={entry.info.id} meta={parseCompaction(compaction)} running={running} />
+              }
               return <ChatUserRow key={entry.info.id} entry={entry} old={old} animate={i >= firstRows.current.count} onEdit={onEdit} />
             }
             return (

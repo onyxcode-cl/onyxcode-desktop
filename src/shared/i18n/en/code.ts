@@ -236,6 +236,13 @@ export const code = {
   'code.bg.engine.stop': 'Stop',
   'code.bg.engine.stopFor': 'Stop "{title}"',
   'code.bg.engine.stopFailed': 'Could not stop it.',
+  'code.bg.engine.kindHelper': 'Helper',
+  'code.bg.engine.resume': 'Resume',
+  'code.bg.engine.resumeFor': 'Resume "{title}"',
+  'code.bg.engine.resume.gone': 'It can no longer be resumed.',
+  'code.bg.engine.resume.running': 'It is already running.',
+  'code.bg.engine.resume.limit': 'Too many helpers are running. Wait for one to finish.',
+  'code.bg.engine.resume.failed': 'Could not resume it.',
   'code.bg.over': {
     one: '{count} job is running at once; showing {shown}.',
     other: '{count} jobs are running at once; showing {shown}. That many together can slow the computer down.'
@@ -727,5 +734,37 @@ export const code = {
   'code.rewind.skip.enlace-fuera-del-proyecto': 'link pointing outside the project',
   'code.rewind.skip.era-una-carpeta': 'it is a folder',
   'code.rewind.skip.no-se-pudo-restaurar': 'could not be restored',
-  'code.rewind.skip.other': 'other reason'
+  'code.rewind.skip.other': 'other reason',
+  'code.compaction.title': 'Conversation summarized',
+  'code.compaction.running': 'Summarizing the conversation…',
+  'code.compaction.done': 'The conversation was summarized',
+  'code.compaction.doneCount': { one: '1 message was summarized', other: '{count} messages were summarized' },
+  'code.compaction.doneUpTo': 'The conversation was summarized up to here; everything after it was kept as is',
+  'code.compaction.doneUpToCount': {
+    one: '1 earlier message was summarized; everything after it was kept as is',
+    other: '{count} earlier messages were summarized; everything after them was kept as is'
+  },
+  'code.compaction.auto': 'Automatic compaction: the context was almost full.',
+  'code.compaction.context': 'Context ≈{before} → ≈{after} tokens',
+  'code.compaction.freed': '(≈{freed} freed)',
+  'code.compaction.contextAria': 'Approximate context: from {before} to {after} tokens, about {freed} freed',
+  'code.compaction.kept': 'Kept: {items}',
+  'code.compaction.keep.plan': 'plan ({count})',
+  'code.compaction.keep.habilidades': { one: '{count} skill', other: '{count} skills' },
+  'code.compaction.keep.instrucciones': { one: '{count} folder instruction', other: '{count} folder instructions' },
+  'code.compaction.keep.ayudantes': { one: '{count} active helper', other: '{count} active helpers' },
+  'code.compaction.keep.gancho': 'PostCompact hook output',
+  'code.compaction.view': 'View summary',
+  'code.compaction.hide': 'Hide summary',
+  'code.compaction.upTo': 'Compact up to here',
+  'code.compaction.upTo.title': 'Compact up to this message',
+  'code.compaction.upTo.body':
+    'Everything before this message is summarized; this message and what follows are kept as is. No file changes.',
+  'code.compaction.upTo.confirm': 'Compact',
+  'code.compaction.upTo.blocked.ocupada': 'Cannot compact while the conversation is working.',
+  'code.compaction.upTo.blocked.pendiente': 'Answer what is waiting first (a permission, a question or a form).',
+  'code.compaction.upTo.blocked.revert': 'There are undone changes waiting: restore them or continue the conversation before compacting.',
+  'code.compaction.upTo.err.invalido': 'That message cannot be used as a cut point.',
+  'code.compaction.upTo.err.cola-grande': 'What you want to keep no longer fits. Pick a more recent message.',
+  'code.compaction.upTo.err.generic': 'Could not compact: {detail}'
 } as const satisfies Messages<typeof es>

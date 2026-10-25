@@ -41,6 +41,20 @@ describe('selectEngineJobs', () => {
     expect(rows.slice(2).map((r) => r.id)).toEqual(['d3', 'd4', 'd5', 'd6', 'd7'])
   })
 
+  it('ayudantes: los vivos no se repiten aquí; los perdidos se quedan a la vista (reanudables) sin plazo de gracia', () => {
+    const alive = job({ id: 'ses_a', kind: 'ayudante', state: 'en_curso' })
+    const doneKid = job({ id: 'ses_b', kind: 'ayudante', state: 'terminado', endedAt: NOW - 1000 })
+    const lost = job({ id: 'ses_c', kind: 'ayudante', state: 'perdido', startedAt: NOW - 20 * 3_600_000, endedAt: NOW - 19 * 3_600_000 })
+    const rows = selectEngineJobs([alive, doneKid, lost], NOW)
+    expect(rows.map((r) => r.id)).toEqual(['ses_c'])
+    expect(rows[0]).toMatchObject({ kind: 'ayudante', resumable: true, live: false })
+  })
+
+  it('un comando o celda perdido no es reanudable', () => {
+    const [r] = selectEngineJobs([job({ state: 'perdido', endedAt: NOW - 1000 })], NOW)
+    expect(r).toMatchObject({ resumable: false })
+  })
+
   it('terminado sin fin informado no se queda colgado: usa el inicio', () => {
     const [r] = selectEngineJobs([job({ state: 'tope_de_vida', endedAt: null, startedAt: NOW - 1000 })], NOW)
     expect(r).toMatchObject({ live: false, elapsedMs: 0 })

@@ -436,7 +436,7 @@ export const settings = {
     'Apagado por defecto. Al cambiarlo, el motor se reinicia cuando no haya nada en curso; editar los ganchos con el interruptor encendido no lo reinicia. No se aplican en el sandbox de Tareas (solo en Chat, Code y Tareas con Control total).',
   'settings.engine.hooks.editorLabel': 'Archivo de ganchos (JSON)',
   'settings.engine.hooks.editorHelp':
-    'Eventos: PreToolUse (antes de una herramienta; el código de salida 2 la bloquea), PostToolUse, PreCompact y Stop. «matcher» es una expresión regular sobre el nombre de la herramienta; «timeout» va de 1 a 60 segundos. Máximo 20 ganchos por evento, comando de hasta 2000 caracteres y 64 KB en total.',
+    'Eventos: PreToolUse (antes de una herramienta; el código de salida 2 la bloquea), PostToolUse, PreCompact (antes de compactar la conversación), PostCompact (después de compactarla; lo que imprima con código 0, hasta 4000 caracteres, se suma al contexto que se conserva) y Stop. «matcher» es una expresión regular sobre el nombre de la herramienta; «timeout» va de 1 a 60 segundos. Máximo 20 ganchos por evento, comando de hasta 2000 caracteres y 64 KB en total.',
   'settings.engine.hooks.exampleTitle': 'Ejemplo: bloquear «rm -rf»',
   'settings.engine.hooks.useExample': 'Usar el ejemplo',
   'settings.engine.hooks.save': 'Guardar',
@@ -447,7 +447,7 @@ export const settings = {
   'settings.engine.hooks.err.badJson': 'El texto no es un JSON válido.',
   'settings.engine.hooks.err.noHooks': 'Falta el objeto «hooks» en la raíz del JSON.',
   'settings.engine.hooks.err.tooBig': 'El archivo pesa más de {kb} KB.',
-  'settings.engine.hooks.err.unknownEvent': 'Evento desconocido «{event}». Usa PreToolUse, PostToolUse, PreCompact o Stop.',
+  'settings.engine.hooks.err.unknownEvent': 'Evento desconocido «{event}». Usa PreToolUse, PostToolUse, PreCompact, PostCompact o Stop.',
   'settings.engine.hooks.err.notList': '{event} debe ser una lista de ganchos.',
   'settings.engine.hooks.err.tooMany': '{event} tiene demasiados ganchos (máximo {max}).',
   'settings.engine.hooks.err.notObject': '{event}, gancho {n}: debe ser un objeto con «command».',

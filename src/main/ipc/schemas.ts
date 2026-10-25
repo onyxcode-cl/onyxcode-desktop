@@ -616,6 +616,11 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
     directory: optional(str({ min: 1, max: 4096 }))
   }),
+  'jobs:resume': obj({
+    sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
+    jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
+    directory: optional(str({ min: 1, max: 4096 }))
+  }),
   'clipboard:readFilesForPaste': obj({ scope: literal('images', 'any') }),
   // base64 de ≤ 10 MB (4/3 de OFFICE_MAX_BYTES + margen); el nombre solo decide el formato, nunca es una ruta.
   'attach:extractOffice': obj({

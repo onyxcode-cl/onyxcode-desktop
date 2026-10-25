@@ -8,8 +8,8 @@
  * se ofrece para los trabajos del motor.
  */
 import { useEffect, useState } from 'react'
-import { AlertCircle, Ban, Bot, Check, Loader2, ShieldQuestion, TimerOff, X } from 'lucide-react'
-import type { EngineJobState } from '@shared/engine-jobs'
+import { AlertCircle, Ban, Bot, Check, Loader2, Play, ShieldQuestion, TimerOff, X } from 'lucide-react'
+import type { EngineJobResumeResult, EngineJobState } from '@shared/engine-jobs'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { formatElapsed, MAX_VISIBLE_JOBS, type BackgroundJob, type BackgroundJobsView } from './background-jobs'
@@ -35,6 +35,8 @@ interface Props {
   engineJobs?: readonly EngineJobRow[]
   /** Termina un trabajo del motor. Si rechaza, se avisa en la propia fila. */
   onStopEngineJob?: (jobId: string) => Promise<void> | void
+  /** Reanuda un ayudante perdido (el motor se reinició). Sin él no se ofrece «Reanudar». */
+  onResumeEngineJob?: (jobId: string) => Promise<EngineJobResumeResult>
 }
 
 const ENGINE_STATE_KEY = {
@@ -45,7 +47,16 @@ const ENGINE_STATE_KEY = {
   perdido: 'code.bg.engine.lost'
 } as const satisfies Record<EngineJobState, string>
 
-const KIND_KEY = { shell: 'code.bg.engine.kindShell', celda: 'code.bg.engine.kindCell' } as const
+const KIND_KEY = {
+  shell: 'code.bg.engine.kindShell',
+  celda: 'code.bg.engine.kindCell',
+  ayudante: 'code.bg.engine.kindHelper'
+} as const
+const RESUME_FAIL_KEY = {
+  no_existe: 'code.bg.engine.resume.gone',
+  ya_en_curso: 'code.bg.engine.resume.running',
+  tope: 'code.bg.engine.resume.limit'
+} as const
 
 function EngineStateIcon({ state }: { state: EngineJobState }): React.JSX.Element {
   switch (state) {
@@ -82,12 +93,14 @@ function StateIcon({ state }: { state: BackgroundJob['state'] }): React.JSX.Elem
   }
 }
 
-export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJob }: Props): React.JSX.Element | null {
+export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJob, onResumeEngineJob }: Props): React.JSX.Element | null {
   const t = useT()
   const [cancelling, setCancelling] = useState<Record<string, boolean>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [stopping, setStopping] = useState<Record<string, boolean>>({})
   const [stopFailed, setStopFailed] = useState<Record<string, boolean>>({})
+  const [resuming, setResuming] = useState<Record<string, boolean>>({})
+  const [resumeMsg, setResumeMsg] = useState<Record<string, string>>({})
   if (view.jobs.length === 0 && engineJobs.length === 0) return null
   const liveCount = view.liveCount + engineJobs.filter((j) => j.live).length
 
@@ -112,6 +125,19 @@ export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJo
       setStopFailed((f) => ({ ...f, [id]: true }))
     } finally {
       setStopping((c) => ({ ...c, [id]: false }))
+    }
+  }
+
+  const resume = async (id: string): Promise<void> => {
+    setResuming((c) => ({ ...c, [id]: true }))
+    setResumeMsg((f) => ({ ...f, [id]: '' }))
+    try {
+      const res = await onResumeEngineJob?.(id)
+      if (res && !res.ok) setResumeMsg((f) => ({ ...f, [id]: t(RESUME_FAIL_KEY[res.motivo ?? 'no_existe']) }))
+    } catch {
+      setResumeMsg((f) => ({ ...f, [id]: t('code.bg.engine.resume.failed') }))
+    } finally {
+      setResuming((c) => ({ ...c, [id]: false }))
     }
   }
 
@@ -182,6 +208,23 @@ export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJo
                 <span role="alert" className="shrink-0 text-xs text-danger">
                   {t('code.bg.engine.stopFailed')}
                 </span>
+              )}
+              {resumeMsg[job.id] && (
+                <span role="alert" className="shrink-0 text-xs text-danger">
+                  {resumeMsg[job.id]}
+                </span>
+              )}
+              {job.resumable && onResumeEngineJob && (
+                <button
+                  type="button"
+                  disabled={resuming[job.id]}
+                  aria-label={t('code.bg.engine.resumeFor', { title: job.title })}
+                  onClick={() => void resume(job.id)}
+                  className={`flex shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted hover:bg-hover hover:text-fg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 ${touch ? 'h-11' : 'h-6'}`}
+                >
+                  <Play size={12} aria-hidden />
+                  {t('code.bg.engine.resume')}
+                </button>
               )}
               {job.live && onStopEngineJob && (
                 <button

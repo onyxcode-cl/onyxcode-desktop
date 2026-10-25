@@ -124,6 +124,42 @@ describe('SessionsBackgroundJobs con trabajos del motor (jobs:list / jobs:stop)'
     expect(host.textContent).toContain('Parado')
   })
 
+  it('un ayudante perdido sale con «Reanudar», llama a jobs:resume con la sesión raíz y vuelve a consultar', async () => {
+    let lostNow = true
+    const spy = setup((ch) => {
+      if (ch === 'jobs:resume') {
+        lostNow = false
+        return { ok: true }
+      }
+      return {
+        available: true as const,
+        jobs: lostNow
+          ? [
+              {
+                id: 'ses_h1',
+                kind: 'ayudante' as const,
+                title: 'Revisar pruebas',
+                state: 'perdido' as never,
+                code: null,
+                startedAt: now - 3_600_000,
+                endedAt: now - 3_000_000
+              }
+            ]
+          : []
+      }
+    })
+    act(() => root.render(createElement(SessionsBackgroundJobs, { rootId: 'root', directory: '/proj', client: null })))
+    await settle()
+    const btn = [...host.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.startsWith('Reanudar'))!
+    expect(btn).toBeDefined()
+    const before = spy.mock.calls.filter((c) => c[0] === 'jobs:list').length
+    act(() => btn.click())
+    await settle()
+    expect(spy).toHaveBeenCalledWith('jobs:resume', { sessionID: 'root', jobId: 'ses_h1', directory: '/proj' })
+    expect(spy.mock.calls.filter((c) => c[0] === 'jobs:list').length).toBeGreaterThan(before)
+    expect([...host.querySelectorAll('button')].some((b) => b.getAttribute('aria-label')?.startsWith('Reanudar'))).toBe(false)
+  })
+
   it('404 del motor (available:false): solo ayudantes y ninguna alerta', async () => {
     const spy = setup(() => ({ available: false }))
     act(() => root.render(createElement(SessionsBackgroundJobs, { rootId: 'root', directory: '/proj', client: null })))

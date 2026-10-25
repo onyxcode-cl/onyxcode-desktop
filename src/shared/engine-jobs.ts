@@ -4,10 +4,12 @@
  * Contrato con el motor (plan maestro 1.7, «Contrato motor ↔ app»):
  * - `GET  /experimental/session/{sessionID}/trabajos` → `{ trabajos: [{ id, tipo, titulo, estado, codigo, inicio, fin }] }`.
  * - `POST /experimental/session/{sessionID}/trabajos/{id}/terminar` → `{ ok: boolean }`.
+ * - `POST /experimental/session/{sessionID}/trabajos/{id}/reanudar` → `{ ok: true }` o `{ ok: false, motivo }` (solo ayudantes `perdido`).
+ * Los ayudantes de fondo (`tipo: "ayudante"`) también salen aquí: vivos como `en_curso`, y tras un reinicio del motor como `perdido`.
  * Este módulo solo describe y normaliza lo que llega; la red la hace main (`src/main/ipc/engine-jobs.ts`).
  */
 
-export const ENGINE_JOB_KINDS = ['shell', 'celda'] as const
+export const ENGINE_JOB_KINDS = ['shell', 'celda', 'ayudante'] as const
 export type EngineJobKind = (typeof ENGINE_JOB_KINDS)[number]
 
 export const ENGINE_JOB_STATES = ['en_curso', 'terminado', 'terminado_por_ti', 'tope_de_vida', 'perdido'] as const
@@ -24,6 +26,19 @@ export interface EngineJob {
   startedAt: number
   /** `null` mientras sigue en curso. */
   endedAt: number | null
+}
+
+/** Por qué el motor no reanudó un ayudante perdido. */
+export const RESUME_REASONS = ['no_existe', 'ya_en_curso', 'tope'] as const
+export type ResumeReason = (typeof RESUME_REASONS)[number]
+export type EngineJobResumeResult = { ok: true } | { ok: false; motivo: ResumeReason | null }
+
+/** Normaliza la respuesta de `…/reanudar`: solo `{ok:true}` es éxito; un motivo desconocido se vuelve `null`. */
+export function parseResumeResult(body: unknown): EngineJobResumeResult {
+  if (!isRec(body)) return { ok: false, motivo: null }
+  if (body.ok === true) return { ok: true }
+  const m = body.motivo
+  return { ok: false, motivo: (RESUME_REASONS as readonly unknown[]).includes(m) ? (m as ResumeReason) : null }
 }
 
 /** `available: false` = el motor no tiene la ruta (oficial/externo/anterior): el panel sigue solo con los ayudantes. */

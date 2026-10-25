@@ -25,7 +25,7 @@ import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
 import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
-import type { EngineJobsResult } from './engine-jobs'
+import type { EngineJobResumeResult, EngineJobsResult } from './engine-jobs'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
 /** `PLATFORM_UNSUPPORTED`: función solo de macOS (Tareas, Control del PC, actualizador) en otra plataforma. */
@@ -94,6 +94,8 @@ export interface IpcInvokeContract {
    */
   'jobs:list': { req: { sessionID: string; directory?: string }; res: EngineJobsResult }
   'jobs:stop': { req: { sessionID: string; jobId: string; directory?: string }; res: { ok: boolean } }
+  /** Reanuda un ayudante de fondo `perdido` (el motor se reinició). `motivo` si el motor no pudo: `no_existe`, `ya_en_curso` o `tope`. */
+  'jobs:resume': { req: { sessionID: string; jobId: string; directory?: string }; res: EngineJobResumeResult }
   /** Copia al portapapeles (lo hace main) el texto redactado de la fuente. */
   'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
   /**
@@ -180,6 +182,7 @@ export const IPC_INVOKE_CHANNELS = [
   'diag:copy',
   'jobs:list',
   'jobs:stop',
+  'jobs:resume',
   'clipboard:readFilesForPaste',
   'attach:extractOffice',
   'translate:pdfExtract',

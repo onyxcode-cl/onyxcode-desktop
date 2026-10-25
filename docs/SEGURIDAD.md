@@ -2518,6 +2518,20 @@ cambió mientras tanto: se etiqueta «otro origen» y los conflictos solo se det
 (oficial, externo, anterior o `LAZUNOX_REBOBINAR=0`) la app sigue con «Revertir» de siempre, cuyo aviso ya no promete deshacer archivos en
 carpetas sin git. (4) La app no modifica las zonas intocables.
 
+## 3 octogies ter. Compactación visible, «Compactar hasta aquí» y «Reanudar» ayudantes (F8-B219)
+
+Parte de la APP del plan `docs/PLAN-REBOBINAR-Y-COMPACTACION.md` (§2.B, tarea T4). Lo que cambia el historial lo hace el motor; la app
+solo lo pide y lo muestra.
+
+| Amenaza | Defensa |
+| --- | --- |
+| `upTo` o cualquier campo extra de `summarize` desde el celular. | La política (`sessionSummarize`) solo admite `providerID`, `modelID` y `auto`; `upTo` da `deny:body-field-forbidden` (prueba explícita en `policy.test.ts`). «Compactar hasta aquí» no existe en el celular (`isRemoteSurface()`). |
+| Texto del motor con instrucciones en la tarjeta (etiquetas de lo reinyectado). | `parseCompaction` solo acepta cifras y etiquetas con la forma `plan:N`, `habilidades:N`, `instrucciones:N`, `ayudantes:N`, `gancho:N`; lo demás se descarta. La tarjeta no pinta contenido reinyectado, solo cuántos elementos. El resumen se muestra como Markdown normal de la conversación (igual que antes). |
+| Compactar todo creyendo que se compacta una parte (motor que ignora `upTo`). | La acción solo se ofrece cuando el motor ya respondió a las rutas de turnos (`rewindSupport`), es decir, con el motor propio nuevo. |
+| Compactar con algo esperando respuesta. | La app se niega sin llamar si hay trabajo en marcha, permiso/pregunta/formulario pendiente (también de ayudantes) o revert sin confirmar; el motor responde 409 por lo mismo y la app lo traduce. |
+| Reanudar un ayudante sin persona delante. | Canal `jobs:resume` y ruta `POST …/trabajos/{id}/reanudar` clase **X**; esquema estricto (ids de sesión y trabajo con solo caracteres de id, sin claves extra). El mensaje con que el motor reanuda es fijo (nunca texto de la persona). |
+| Gancho `PostCompact` como vía de ejecución. | Mismas reglas que el resto de ganchos (apagado por defecto, solo el archivo de la app); la app solo valida el evento. |
+
 ## 3 sexagies nonies. «Siempre» persistentes, rutas protegidas y tope de ayudantes (F8-B214)
 
 **Qué cambia.** El motor propio guarda los permisos «Permitir siempre» por carpeta de proyecto y los vuelve a aplicar tras reiniciar, pregunta
