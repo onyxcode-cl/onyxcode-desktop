@@ -1525,7 +1525,10 @@ export const useCode = create<CodeState>((set, get) => {
         const { client, dir } = activeDir()
         setError(sessionID, null)
         set((s) => ({ runState: { ...s.runState, [sessionID]: 'busy' } }))
-        sdkData(await client.session.summarize({ sessionID, directory: dir }))
+        // El motor publicado (hasta lazunox.9) EXIGE el modelo en `summarize`; sin él respondía 400 y «Compactar historial» no hacía nada.
+        // Se manda el modelo elegido en esta sesión (o el de Code); los motores nuevos también aceptan que falte.
+        const m = get().model ?? resolveModelForMode('code')
+        sdkData(await client.session.summarize({ sessionID, directory: dir, providerID: m.providerID, modelID: m.modelID }))
       } catch (err) {
         set({ globalError: errorMessage(err) })
         set((s) => ({ runState: { ...s.runState, [sessionID]: 'idle' } }))
