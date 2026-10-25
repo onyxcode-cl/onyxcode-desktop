@@ -261,6 +261,7 @@ function Launcher({
               data-idx={i}
               onMouseEnter={() => setCursor(i)}
               onClick={() => toggle(r.ref)}
+              title={`${r.name} · ${r.provider}`}
               className={`flex h-9 cursor-pointer items-center gap-2.5 rounded-lg px-3 ${i === cursor ? 'bg-hover' : ''} ${full ? 'opacity-50' : ''}`}
             >
               <span
@@ -269,13 +270,13 @@ function Launcher({
               >
                 {on && <Check size={11} strokeWidth={3} />}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px]">{r.name}</span>
+              <span className="min-w-[7rem] flex-1 truncate text-[13px]">{r.name}</span>
               {isLimitedProvider(r.ref.providerID) && (
                 <span className="shrink-0 text-[10.5px] desk:text-meta tracking-[0.06em] text-subtle uppercase">
                   {t('compare.launcher.goLimit')}
                 </span>
               )}
-              <span className="max-w-[90px] shrink-0 truncate text-[11.5px] desk:text-meta text-subtle">{r.provider}</span>
+              <span className="max-w-[72px] shrink truncate text-[11.5px] desk:text-meta text-subtle">{r.provider}</span>
             </div>
           )
         })}
