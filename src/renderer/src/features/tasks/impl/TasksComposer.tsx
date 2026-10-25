@@ -21,7 +21,7 @@ import { UsageMeter } from '../../../components/UsageMeter'
 import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey, useAutosizeTextarea } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
-import { useModeModel } from '../../settings/impl/extras'
+import { adoptFreeModel, useModeModel } from '../../settings/impl/extras'
 import { handlePaste, pasteRejectedMessages } from '../../../lib/paste-attachments'
 import { attachFiles, pasteFromClipboard, removeAttachment, removeElement, setElementInclude, unlinkFolder } from './actions'
 import { ElementChipRow } from '../../browser/ElementChip'
@@ -130,7 +130,14 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
 
   return (
     <div className={`mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)] ${hero ? '' : 'pb-4'}`}>
-      <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setTaskModel} />
+      <NoAiBanner
+        gate={aiGate.gate}
+        freeModel={aiGate.free}
+        onUseFree={(m) => {
+          setTaskModel(m)
+          adoptFreeModel(m)
+        }}
+      />
       <div
         className={`rounded-2xl border border-border bg-elevated shadow-sm transition focus-within:border-border-strong desk:border-transparent desk:shadow-[var(--elev-edge),var(--shadow-md)] desk:focus-within:border-accent/40${
           hero ? ' desk:rounded-[20px]' : ''

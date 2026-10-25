@@ -21,7 +21,7 @@ import { onStreamReconnect, useServer } from '../../stores/server'
 import { ExportMenuButton } from '../../components/ExportConversation'
 import { exportChatConversation } from './export'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
-import { setModeModel, useModeModel } from '../settings/impl/extras'
+import { adoptFreeModel, setModeModel, useModeModel } from '../settings/impl/extras'
 import type { ChatAttachment } from '../../lib/attachments'
 import {
   CompareConfirmDialog,
@@ -225,7 +225,10 @@ export function ChatView(): React.JSX.Element {
       <NoAiBanner
         gate={unavailable ? { blocked: false, reason: null, freeNote: false } : gate}
         freeModel={free}
-        onUseFree={(m) => setModeModel('chat', m)}
+        onUseFree={(m) => {
+          setModeModel('chat', m)
+          adoptFreeModel(m)
+        }}
       />
     </div>
   )

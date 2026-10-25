@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ModelRef } from '@shared/types'
-import { pickModeModel, withModeModel } from './extras'
+import { adoptFreeModel, pickModeModel, useExtrasPrefs, withModeModel } from './extras'
 
 const DEF: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
 const GPT: ModelRef = { providerID: 'opencode-go', modelID: 'gpt-5.6' }
@@ -33,5 +33,15 @@ describe('withModeModel', () => {
   })
   it('compatibilidad: sin overrides previos (solo defaultModel) todo sigue igual', () => {
     expect(pickModeModel({}, 'tasks', DEF)).toBe(DEF)
+  })
+})
+
+describe('adoptFreeModel', () => {
+  it('deja el modelo gratuito en los modos sin elección propia y respeta los que ya tienen una', () => {
+    const FREE: ModelRef = { providerID: 'opencode', modelID: 'mimo-v2.6-flash-free' }
+    const update = vi.fn(() => Promise.resolve())
+    useExtrasPrefs.setState({ prefs: { ...useExtrasPrefs.getState().prefs, modelsByMode: { code: CLAUDE } }, update } as never)
+    adoptFreeModel(FREE)
+    expect(update).toHaveBeenCalledWith({ modelsByMode: { code: CLAUDE, chat: FREE, tasks: FREE } })
   })
 })

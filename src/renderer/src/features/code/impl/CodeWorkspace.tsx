@@ -9,6 +9,7 @@
  */
 import { useRetryLabel } from '../../../lib/retry-info'
 import { displayTitle } from '@shared/session-title'
+import { adoptFreeModel } from '../../settings/impl/extras'
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
 import { ExportMenuButton } from '../../../components/ExportConversation'
@@ -948,7 +949,14 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
         </div>
       )}
       <div className={`mx-auto w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>
-        <NoAiBanner gate={aiGate.gate} freeModel={aiGate.free} onUseFree={setModel} />
+        <NoAiBanner
+          gate={aiGate.gate}
+          freeModel={aiGate.free}
+          onUseFree={(m) => {
+            setModel(m)
+            adoptFreeModel(m)
+          }}
+        />
       </div>
       <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />
     </div>

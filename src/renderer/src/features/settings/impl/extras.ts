@@ -108,6 +108,22 @@ export function setModeModel(mode: ModelMode, value: ModelRef | null): void {
   }
 }
 
+/**
+ * «Probar un modelo gratuito» en un modo: lo deja también en los otros modos que todavía no tienen una elección propia, para que la persona
+ * no tenga que repetirlo en Chat, Code y Overdrive (los modos con elección propia no se tocan).
+ */
+export function adoptFreeModel(value: ModelRef): void {
+  if (value) markFirstStepDone('model')
+  try {
+    const extras = useExtrasPrefs.getState()
+    let next = extras.prefs.modelsByMode
+    for (const mode of ['chat', 'code', 'tasks'] as ModelMode[]) if (!next?.[mode]) next = withModeModel(next, mode, value)
+    void extras.update({ modelsByMode: next }).catch(() => undefined)
+  } catch {
+    // sin puente "extras": vale solo para esta sesión de la app
+  }
+}
+
 /** Espera a que las preferencias de extras estén cargadas (para no resolver un modo con el predeterminado por llegar antes). */
 export function whenExtrasLoaded(timeoutMs = 3000): Promise<void> {
   return new Promise<void>((resolve) => {
