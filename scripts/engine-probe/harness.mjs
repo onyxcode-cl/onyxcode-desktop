@@ -19,12 +19,47 @@ const freePort = () =>
       s.close(() => res(p))
     })
   })
+/** Sustituto mínimo de `rg` (solo `--files`, con `--glob` y `--hidden`) para equipos sin ripgrep ni red (el contenedor del VPS): la herramienta `skill` lista así los archivos de la habilidad. */
+const RG_SHIM = (nodeBin) => `#!${nodeBin}
+const fs = require('node:fs'), path = require('node:path')
+const a = process.argv.slice(2)
+if (!a.includes('--files')) { process.stderr.write('rg de pruebas: solo --files\\n'); process.exit(2) }
+const hidden = a.includes('--hidden')
+const globs = a.filter((x) => x.startsWith('--glob=')).map((x) => x.slice(7))
+const roots = a.filter((x) => !x.startsWith('-'))
+const rx = (g) => new RegExp('^' + (g.includes('/') ? '' : '(?:.*/)?') + g.replace(/[.+^$()|{}\\[\\]\\\\]/g, '\\\\$&').replace(/\\*\\*\\//g, '\\u0001').replace(/\\*\\*/g, '\\u0002').replace(/\\*/g, '[^/]*').replace(/\\?/g, '[^/]').replace(/\\u0001/g, '(?:.*/)?').replace(/\\u0002/g, '.*') + '$')
+const excl = globs.filter((g) => g.startsWith('!')).map((g) => rx(g.slice(1)))
+const incl = globs.filter((g) => !g.startsWith('!')).map(rx)
+const out = []
+const walk = (d, rel) => {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    if (!hidden && e.name.startsWith('.')) continue
+    const r = rel ? rel + '/' + e.name : e.name
+    if (e.isDirectory()) { if (!excl.some((x) => x.test(r + '/')) && e.name !== '.git') walk(path.join(d, e.name), r); continue }
+    if (excl.some((x) => x.test(r))) continue
+    if (incl.length && !incl.some((x) => x.test(r))) continue
+    out.push('./' + r)
+  }
+}
+for (const r of roots.length ? roots : ['.']) walk(r, '')
+process.stdout.write(out.join('\\n') + (out.length ? '\\n' : ''))
+`
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /**
  * @param {string} bin binario del motor
  * @param {{ mcpMany?: number, decide?: Function, plugins?: Record<string,string>, mcpServers?: string[], env?: Record<string,string>, file?: object, inline?: object,
- *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number, agentsDir?: string }} sc
+ *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number, agentsDir?: string,
+ *   projectFiles?: Record<string,string>, git?: boolean, modelLimit?: { context: number, output: number } }} sc
+ *   `sc.projectFiles`: archivos (ruta relativa → texto) escritos en la carpeta del proyecto antes de arrancar el motor.
+ *   `sc.git`: `git init` + commit inicial en la carpeta del proyecto (las instantáneas del motor solo existen en proyectos con git).
+ *   `sc.usage`: objeto `usage` (tokens) que añade cada respuesta; `sc.reply: 'ninguna'`: no contesta los permisos (quedan pendientes).
+ *   `sc.rgShim`: pone un `rg` mínimo (solo `--files`) en el PATH del motor, para la herramienta `skill` en equipos sin ripgrep ni red.
+ *   `sc.modelLimit`: límites de contexto del modelo falso (sin ellos el motor no conoce el tamaño y no compacta por tamaño).
+ *   `decide` también recibe `messages` (cuerpo completo de la petición) y puede devolver, además de una llamada,
+ *   `{ text }` (respuesta de texto), `{ hang: true }` (no contesta nunca: simula un ayudante lento) o `{ delayMs, ... }`.
+ *   `sc.http({ q, post, sessionID, prompt, restart, proj, root, home, bodies })`: `prompt(texto, { agent })` manda otro turno y espera
+ *   su fin; `restart({ signal })` mata el motor (SIGKILL por defecto) y lo arranca de nuevo con la misma carpeta, puerto y proveedor.
  */
 export async function runEngine(bin, sc) {
   // `sc.root`: carpeta fija (para probar que algo sobrevive al reinicio del motor); en ese caso quien llama la borra.
@@ -36,12 +71,30 @@ export async function runEngine(bin, sc) {
   mkdirSync(home, { recursive: true })
   mkdirSync(proj, { recursive: true })
   mkdirSync(join(cfgdir, 'plugins'), { recursive: true })
+  for (const [rel, texto] of Object.entries(sc.projectFiles ?? {})) {
+    mkdirSync(dirname(join(proj, rel)), { recursive: true })
+    writeFileSync(join(proj, rel), texto)
+  }
+  if (sc.rgShim) {
+    mkdirSync(join(root, 'bin'), { recursive: true })
+    writeFileSync(join(root, 'bin', 'rg'), RG_SHIM(process.execPath), { mode: 0o755 })
+  }
+  if (sc.git) {
+    // Identidad y fechas fijas: el commit inicial no depende del equipo. Sin la configuración global de la persona.
+    const genv = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }
+    const git = (...a) => spawnSync('git', ['-c', 'user.name=probe', '-c', 'user.email=probe@example.invalid', '-c', 'commit.gpgsign=false', ...a], { cwd: proj, env: genv, stdio: 'ignore' })
+    git('init', '-q', '-b', 'main')
+    git('add', '-A')
+    git('commit', '-q', '-m', 'inicial', '--allow-empty')
+  }
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
   if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
-  const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0, toolsBytes: [], requestTools: [] }
+  const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0, toolsBytes: [], requestTools: [], bodies: [] }
   const sse = (res, chunks) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     for (const c of chunks) res.write('data: ' + JSON.stringify(c) + '\n\n')
+    // `sc.usage`: la respuesta informa de tokens (la compactación mide el contexto real con esto).
+    if (sc.usage) res.write('data: ' + JSON.stringify({ id: 'x', object: 'chat.completion.chunk', created: 1, model: 'm', choices: [], usage: sc.usage }) + '\n\n')
     res.end('data: [DONE]\n\n')
   }
   const chunk = (delta, finish = null) => ({
@@ -62,6 +115,7 @@ export async function runEngine(bin, sc) {
         /* vacío */
       }
       const tools = (j.tools ?? []).map((t) => t.function?.name)
+      seen.bodies.push(j)
       // Peso de la lista de herramientas de ESTA petición (0 si no lleva): base de las mediciones de `medir-herramientas.mjs` y de A-2.
       seen.toolsBytes.push(j.tools ? JSON.stringify(j.tools).length : 0)
       seen.requestTools.push(tools)
@@ -81,7 +135,7 @@ export async function runEngine(bin, sc) {
       // `sc.decide({ tools, toolTexts, userTexts })`: decisión libre por petición (p. ej. un subagente que hace algo distinto del padre).
       const toolTexts = toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
       const step = sc.decide
-        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts })
+        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts, messages: j.messages ?? [], body: j, n: seen.requests })
         : sc.steps
           ? toolMsgs.length < sc.steps.length
             ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
@@ -89,6 +143,18 @@ export async function runEngine(bin, sc) {
           : tools.includes(sc.call.name) && !toolMsgs.length
             ? sc.call
             : null
+      // `step.hang`: no contesta (un ayudante lento); `step.delayMs`: espera antes de contestar; `step.text`: responde con ese texto.
+      const responder = () => {
+        if (step?.text !== undefined) return sse(res, [chunk({ role: 'assistant', content: step.text }), chunk({}, 'stop')])
+        return responderLlamada()
+      }
+      if (step?.hang) {
+        req.on('close', () => {})
+        return
+      }
+      if (step?.delayMs) return void setTimeout(responder, step.delayMs)
+      return responder()
+      function responderLlamada() {
       // `step.force`: pide la herramienta aunque el motor no la ofrezca (para probar que NO se ejecuta).
       if (step && (step.force || tools.includes(step.name))) {
         const tc = {
@@ -99,6 +165,7 @@ export async function runEngine(bin, sc) {
         }
         sse(res, [chunk({ role: 'assistant', tool_calls: [tc] }), chunk({}, 'tool_calls')])
       } else sse(res, [chunk({ role: 'assistant', content: 'listo' }), chunk({}, 'stop')])
+      }
     })
   })
   const pport = await freePort()
@@ -111,7 +178,7 @@ export async function runEngine(bin, sc) {
         npm: '@ai-sdk/openai-compatible',
         name: 'Fake',
         options: { baseURL: `http://127.0.0.1:${pport}/v1`, apiKey: 'no-usado' },
-        models: { m: { name: 'm', tool_call: true } }
+        models: { m: { name: 'm', tool_call: true, ...(sc.modelLimit ? { limit: sc.modelLimit } : {}) } }
       }
     },
     model: 'fake/m',
@@ -162,7 +229,7 @@ export async function runEngine(bin, sc) {
         }
       : {}
   const env = {
-    PATH: '/usr/bin:/bin',
+    PATH: sc.rgShim ? `${join(root, 'bin')}:/usr/bin:/bin` : '/usr/bin:/bin',
     HOME: home,
     XDG_CONFIG_HOME: join(home, '.config'),
     XDG_DATA_HOME: join(home, '.local/share'),
@@ -183,15 +250,19 @@ export async function runEngine(bin, sc) {
     ...(process.env.PROBE_SHELL ? { SHELL: process.env.PROBE_SHELL } : {}),
     ...(sc.env ?? {})
   }
-  const child = spawn(bin, ['serve', '--port', String(port), '--hostname', '127.0.0.1'], {
-    cwd: proj,
-    env,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true
-  })
   let log = ''
-  child.stdout.on('data', (d) => (log += d))
-  child.stderr.on('data', (d) => (log += d))
+  let child
+  const startChild = () => {
+    child = spawn(bin, ['serve', '--port', String(port), '--hostname', '127.0.0.1'], {
+      cwd: proj,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true
+    })
+    child.stdout.on('data', (d) => (log += d))
+    child.stderr.on('data', (d) => (log += d))
+  }
+  startChild()
   const url = `http://127.0.0.1:${port}`
   // Cada llamada al motor tiene tope propio (antes, una que no recibía respuesta esperaba los 300 s de undici y la comprobación
   // seguía en silencio): ahora falla pronto y dice QUÉ ruta se quedó sin respuesta.
@@ -210,7 +281,7 @@ export async function runEngine(bin, sc) {
   }
   const post = (o) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(o) })
   const out = { ok: false, asked: [], toolParts: [], elicitation: [], elicitReplies: [] }
-  const events = new AbortController()
+  let events = new AbortController()
   const t0 = Date.now()
   /**
    * `sc.elicit`: cómo contestar los formularios MCP al verlos (`mcp.elicitation.asked`):
@@ -251,7 +322,8 @@ export async function runEngine(bin, sc) {
     if (sc.agentsOf) out.agents = await (await q('/agent')).json()
     const s = await (await q('/session', post({}))).json()
     out.sessionID = s.id // desde ya: un escenario puede abortar la sesión mientras el mensaje sigue en curso
-    void fetch(url + '/event?directory=' + encodeURIComponent(proj), { signal: events.signal })
+    const subscribe = (signal) =>
+      void fetch(url + '/event?directory=' + encodeURIComponent(proj), { signal })
       .then(async (r) => {
         const rd = r.body.getReader()
         let buf = ''
@@ -278,14 +350,17 @@ export async function runEngine(bin, sc) {
                   void responderFormulario(e.properties).catch((err) => (out.elicitError = String(err)))
                 continue
               }
+              if (e.type === 'session.compacted') (out.compacted ??= []).push(e.properties)
               if (e.type !== 'permission.asked') continue
               out.asked.push({ permission: e.properties.permission, callID: e.properties.tool?.callID })
+              if (sc.reply === 'ninguna') continue // el permiso queda pendiente (para probar los 409 «pendiente»)
               await q(`/permission/${e.properties.id}/reply`, post({ reply: sc.reply ?? 'reject' }))
             }
           }
         }
       })
       .catch(() => {})
+    subscribe(events.signal)
     const body = { agent: sc.agent ?? 'build', model: { providerID: 'fake', modelID: 'm' }, parts: [{ type: 'text', text: 'hola' }] }
     out.promptStatus = await Promise.race([
       q(`/session/${s.id}/message`, post(body)).then((x) => x.status),
@@ -299,7 +374,43 @@ export async function runEngine(bin, sc) {
         .map((p) => ({ tool: p.tool, status: p.state.status, input: p.state.input, output: String(p.state.output ?? p.state.error ?? '') }))
     )
     // `sc.http`: llamadas HTTP propias al motor (rutas de trabajos) con la sesión ya usada.
-    if (sc.http) out.http = await sc.http({ q, post, sessionID: s.id })
+    if (sc.http) {
+      const prompt = async (texto, o = {}) => {
+        const r = await Promise.race([
+          q(`/session/${s.id}/message`, post({ ...body, agent: o.agent ?? body.agent, parts: [{ type: 'text', text: texto }] })).then((x) => x.status),
+          sleep(o.timeoutMs ?? 40_000).then(() => 'timeout')
+        ])
+        return r
+      }
+      const restart = async ({ signal = 'SIGKILL' } = {}) => {
+        events.abort()
+        try {
+          process.kill(-child.pid, signal)
+        } catch {
+          /* ya había muerto */
+        }
+        await sleep(1500)
+        startChild()
+        let vivo = false
+        for (let i = 0; i < 150 && !vivo; i++) {
+          try {
+            vivo = (await fetch(url + '/global/health', { signal: AbortSignal.timeout(5_000) })).ok
+          } catch {
+            /* aún no */
+          }
+          if (!vivo) await sleep(200)
+        }
+        if (!vivo) throw new Error('el motor no volvió a arrancar tras el reinicio')
+        events = new AbortController()
+        subscribe(events.signal)
+        for (let i = 0; i < 50; i++) {
+          const st = await (await q('/mcp')).json()
+          if ((sc.mcpServers ?? []).every((n) => st[n]?.status === 'connected')) break
+          await sleep(200)
+        }
+      }
+      out.http = await sc.http({ q, post, sessionID: s.id, prompt, restart, proj, root, home, bodies: seen.bodies, seen, log: () => log })
+    }
     out.toolsOffered = seen.toolsOffered
     out.system = seen.system
     if (sc.settleMs) await sleep(sc.settleMs)
@@ -309,6 +420,10 @@ export async function runEngine(bin, sc) {
     out.requestTools = seen.requestTools // nombres ofrecidos en cada petición
     out.toolMessages = seen.toolMessages // resultados de herramientas vistos por el modelo (de cualquier sesión, con repetidos)
     out.userTexts = seen.userTexts
+    out.bodies = seen.bodies // cuerpo completo de cada petición al proveedor falso (en orden)
+    out.proj = proj
+    out.root = root
+    out.home = home
   } catch (e) {
     out.error = String(e?.stack ?? e)
     out.log = log.slice(-3000)
