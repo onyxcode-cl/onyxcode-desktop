@@ -7,12 +7,16 @@
  * en un diálogo sin controles.
  */
 
-const FOCUSABLE = [
+export const FOCUSABLE = [
   'a[href]',
   'button:not([disabled])',
   'input:not([disabled]):not([type="hidden"])',
   'select:not([disabled])',
   'textarea:not([disabled])',
+  // `<summary>` (el «Otras formas de conectar» del asistente) y los campos editables también reciben foco con Tab: sin ellos aquí el
+  // control creía que el foco estaba «fuera» y devolvía el foco al primero, y los botones de abajo («Saltar», «Continuar») eran inalcanzables.
+  'summary',
+  '[contenteditable="true"]',
   '[tabindex]:not([tabindex="-1"])'
 ].join(',')
 

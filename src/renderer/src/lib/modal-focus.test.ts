@@ -1,5 +1,6 @@
+import { JSDOM } from 'jsdom'
 import { describe, expect, it } from 'vitest'
-import { tabTarget } from './modal-focus'
+import { FOCUSABLE, tabTarget } from './modal-focus'
 
 describe('tabTarget (trampa de foco de los diálogos)', () => {
   it('sin controles no hace nada', () => {
@@ -20,5 +21,20 @@ describe('tabTarget (trampa de foco de los diálogos)', () => {
   it('con un solo control, Tab y Mayús+Tab se quedan en él', () => {
     expect(tabTarget(1, 0, false)).toBe(0)
     expect(tabTarget(1, 0, true)).toBe(0)
+  })
+})
+
+describe('FOCUSABLE (qué controles cuentan dentro de un diálogo)', () => {
+  it('incluye <summary> y los campos editables, para que los botones de abajo no queden fuera del recorrido con Tab', () => {
+    // La configuración global de pruebas sustituye `document`; se usa un DOM propio solo para evaluar el selector.
+    const dom = new JSDOM(`<div id="d" role="dialog" aria-modal="true">
+      <button id="a">Usar</button>
+      <details><summary id="s">Otras formas</summary><p>texto</p></details>
+      <div id="e" contenteditable="true"></div>
+      <button id="z">Continuar</button>
+      <button id="x" disabled>no</button>
+    </div>`)
+    const ids = Array.from(dom.window.document.querySelectorAll(FOCUSABLE)).map((el) => el.id)
+    expect(ids).toEqual(['a', 's', 'e', 'z'])
   })
 })
