@@ -914,6 +914,120 @@ tsCheck(
   }
 )
 
+// ── Formularios MCP (elicitation/create): B-1..B-6 ──────────────────────────────────────────────────────────────
+// Necesitan un motor con formularios (LAZUNOX_MCP_ELICITATION, rutas /mcp/elicitation). Con un motor sin la función:
+// `PROBE_SKIP_FORMULARIOS=1` las salta. Ejecutables solas con `PROBE_ONLY=formularios`.
+// El servidor de prueba (`probe-mcp.mjs`) anota en un archivo lo que le llega del cliente; aquí se lee con `fmEngine`.
+if (!process.env.PROBE_SKIP_FORMULARIOS) {
+  const FM = { LAZUNOX_MCP_ELICITATION: '1' }
+  const VALORES = { nombre: 'Ana', edad: 30, peso: 61.5, activo: true, color: 'verde' }
+  /** Corre el motor con el conector `x` y devuelve { r, srv: líneas que anotó el servidor MCP }. */
+  const fmEngine = async (sc) => {
+    const dir = mkdtempSync(join(tmpdir(), 'lz-fm-'))
+    const archivo = join(dir, 'servidor.jsonl')
+    try {
+      const r = await runEngine(bin, { mcpServers: ['x'], settleMs: 1500, ...sc, mcpEnv: { ...(sc.mcpEnv ?? {}), PROBE_MCP_OUT: archivo } })
+      if (r.error) throw new Error(r.error)
+      const srv = existsSync(archivo)
+        ? readFileSync(archivo, 'utf8')
+            .split('\n')
+            .filter(Boolean)
+            .map((l) => JSON.parse(l))
+        : []
+      return { r, srv }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }
+  const tipos = (r, t) => r.elicitation.filter((e) => e.type === t)
+  const resumen = (r, srv) => JSON.stringify({ out: r.toolParts[0]?.output?.slice(0, 200), eventos: r.elicitation.map((e) => `${e.type}${e.reason ? ':' + e.reason : ''}${e.action ? ':' + e.action : ''}`), replies: r.elicitReplies, srv })
+  const eco = (r) => {
+    const m = /FORM:(\{.*\})/s.exec(r.toolParts[0]?.output ?? '')
+    return m ? JSON.parse(m[1]) : null
+  }
+  const aviso = (cond, msg, r, srv) => {
+    if (!cond) throw new Error(`${msg} → ${resumen(r, srv)}`)
+  }
+
+  checkRun('formularios B-1: sin LAZUNOX_MCP_ELICITATION el servidor no ve la capacidad (y con ella sí)', async () => {
+    const sin = await fmEngine({ call: direct('x_caps', {}) })
+    const o1 = sin.r.toolParts[0]?.output ?? ''
+    aviso(outcome(sin.r) === 'ejecutada' && o1.startsWith('CAPS:'), 'sin variable: la herramienta caps no corrió', sin.r, sin.srv)
+    aviso(!/elicitation/i.test(o1), 'sin variable el servidor ve la capacidad elicitation: ' + o1, sin.r, sin.srv)
+    const con = await fmEngine({ env: FM, call: direct('x_caps', {}) })
+    const o2 = con.r.toolParts[0]?.output ?? ''
+    aviso(/"elicitation":\{[^}]*"form"/.test(o2), 'con variable el servidor NO ve elicitation.form: ' + o2, con.r, con.srv)
+    return true
+  })
+
+  checkRun('formularios B-2: con la variable, aceptar → el eco trae los valores (texto, número, boolean, enum) y los eventos no los llevan', async () => {
+    const { r, srv } = await fmEngine({ env: FM, call: direct('x_form', {}), elicit: { action: 'accept', content: VALORES } })
+    aviso(outcome(r) === 'ejecutada', 'la llamada no terminó bien', r, srv)
+    const e = eco(r)
+    aviso(e?.action === 'accept', 'el eco no trae action=accept', r, srv)
+    aviso(JSON.stringify(e.content) === JSON.stringify(VALORES) || Object.entries(VALORES).every(([k, v]) => e.content?.[k] === v), 'el eco no trae los valores (con sus tipos)', r, srv)
+    const asked = tipos(r, 'asked')
+    aviso(asked.length === 1 && asked[0].server === 'x' && ['nombre', 'edad', 'peso', 'activo', 'color'].every((n) => asked[0].fields?.some((f) => f.name === n)), 'evento asked ausente o sin los 5 campos', r, srv)
+    aviso(r.elicitList?.[0]?.ids?.includes(asked[0].id), 'GET /mcp/elicitation no listaba el formulario abierto', r, srv)
+    aviso(r.elicitReplies[0]?.status === 200, 'la respuesta HTTP no fue 200', r, srv)
+    const rep = tipos(r, 'replied')
+    aviso(rep.length === 1 && rep[0].action === 'accept' && rep[0].id === asked[0].id, 'evento replied ausente o distinto', r, srv)
+    aviso(!/Ana|61\.5/.test(JSON.stringify(r.elicitation)), 'un evento lleva los valores', r, srv)
+    return true
+  })
+
+  checkRun('formularios B-3: campo password → decline sin evento asked (y sí rejected/secret)', async () => {
+    const { r, srv } = await fmEngine({ env: FM, call: direct('x_form_password', {}), elicit: { action: 'accept', content: { usuario: 'a' } } })
+    aviso(outcome(r) === 'ejecutada', 'la llamada no terminó bien', r, srv)
+    aviso(eco(r)?.action === 'decline', 'el eco no es decline', r, srv)
+    aviso(tipos(r, 'asked').length === 0 && r.elicitReplies.length === 0, 'hubo evento asked / respuesta', r, srv)
+    const rej = tipos(r, 'rejected')
+    aviso(rej.length === 1 && rej[0].reason === 'secret', 'falta rejected con reason=secret', r, srv)
+    return true
+  })
+
+  checkRun('formularios B-4: solicitud sin llamada viva (el servidor la manda por su cuenta) → decline', async () => {
+    const { r, srv } = await fmEngine({ env: FM, call: direct('x_late', {}), settleMs: 2500, elicit: { action: 'accept', content: VALORES } })
+    aviso(outcome(r) === 'ejecutada' && /LATE-OK/.test(r.toolParts[0]?.output ?? ''), 'la llamada late no terminó bien', r, srv)
+    const resp = srv.filter((l) => l.evento === 'respuesta-formulario')
+    aviso(resp.length === 1 && resp[0].action === 'decline', 'el servidor no recibió decline', r, srv)
+    aviso(tipos(r, 'asked').length === 0 && r.elicitReplies.length === 0, 'hubo evento asked (se atribuyó a una sesión)', r, srv)
+    return true
+  })
+
+  checkRun('formularios B-5: abortar la sesión con un formulario abierto → rejected con reason abort', async () => {
+    const { r, srv } = await fmEngine({ env: FM, call: direct('x_form', {}), elicit: { action: 'abort' }, settleMs: 2500 })
+    aviso(tipos(r, 'asked').length === 1, 'no llegó a abrirse el formulario', r, srv)
+    aviso(r.elicitReplies[0]?.action === 'abort' && r.elicitReplies[0].status < 300, 'el aborto HTTP no se aceptó', r, srv)
+    const rej = tipos(r, 'rejected')
+    aviso(rej.length === 1 && rej[0].reason === 'abort' && rej[0].id === tipos(r, 'asked')[0].id, 'falta rejected con reason=abort del mismo formulario', r, srv)
+    aviso(tipos(r, 'replied').length === 0, 'hubo replied tras abortar', r, srv)
+    // Dato informativo (no se exige): qué vio el servidor MCP del lado suyo (respuesta/cancelación).
+    if (process.env.PROBE_VERBOSE) console.log('      servidor MCP vio:', JSON.stringify(srv), '| llamada:', r.toolParts[0]?.status)
+    return true
+  })
+
+  checkRun('formularios B-6: tiempo máximo corto (1,5 s) NO corta la llamada con el formulario abierto, pero sí si pasa sin formulario', async () => {
+    const base = { env: { ...FM, LAZUNOX_ELICITATION_TIMEOUT_MS: '20000' }, mcpTimeout: 1500 }
+    // Con formulario: la persona tarda 3,5 s (más del doble del tope) y la llamada sigue viva y recibe la respuesta.
+    const a = await fmEngine({ ...base, call: direct('x_form', {}), elicit: { action: 'accept', content: VALORES, delayMs: 3500 } })
+    aviso(outcome(a.r) === 'ejecutada' && eco(a.r)?.action === 'accept', 'con formulario abierto la llamada se cortó o no recibió accept', a.r, a.srv)
+    // Sin formulario: 3,5 s de espera con tope de 1,5 s → se corta.
+    const b = await fmEngine({ ...base, call: direct('x_slow', { ms: 3500 }) })
+    aviso(/time/i.test(b.r.toolParts[0]?.output ?? '') && b.r.toolParts[0]?.status === 'error', 'sin formulario la llamada lenta NO se cortó', b.r, b.srv)
+    aviso(tipos(b.r, 'asked').length === 0, 'hubo formulario en la llamada lenta', b.r, b.srv)
+    return true
+  })
+
+  checkRun('formularios B-6b: formulario sin contestar con LAZUNOX_ELICITATION_TIMEOUT_MS=1000 → rejected/timeout y el servidor recibe cancel', async () => {
+    const { r, srv } = await fmEngine({ env: { ...FM, LAZUNOX_ELICITATION_TIMEOUT_MS: '1000' }, call: direct('x_form', {}), elicit: { action: 'none' }, mcpTimeout: 15000 })
+    const rej = tipos(r, 'rejected')
+    aviso(tipos(r, 'asked').length === 1 && rej.length === 1 && rej[0].reason === 'timeout', 'falta rejected con reason=timeout', r, srv)
+    aviso(eco(r)?.action === 'cancel', 'el servidor no recibió cancel', r, srv)
+    return true
+  })
+}
+
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
 const only = process.env.PROBE_ONLY
 let failed = 0

@@ -126,7 +126,9 @@ export async function runEngine(bin, sc) {
             command: [process.execPath, join(here, 'probe-mcp.mjs')],
             enabled: true,
             // `sc.mcpMany`: n herramientas extra realistas (~800 caracteres) por conector.
-            ...(sc.mcpMany ? { environment: { PROBE_MCP_MANY: String(sc.mcpMany) } } : {})
+            // `sc.mcpTimeout` (ms): tiempo máximo de cada llamada al conector; `sc.mcpEnv`: variables para el proceso del conector.
+            ...(sc.mcpTimeout ? { timeout: sc.mcpTimeout } : {}),
+            ...(sc.mcpMany || sc.mcpEnv ? { environment: { ...(sc.mcpEnv ?? {}), ...(sc.mcpMany ? { PROBE_MCP_MANY: String(sc.mcpMany) } : {}) } } : {})
           }
         ])
       )
@@ -205,8 +207,30 @@ export async function runEngine(bin, sc) {
     }
   }
   const post = (o) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(o) })
-  const out = { ok: false, asked: [], toolParts: [] }
+  const out = { ok: false, asked: [], toolParts: [], elicitation: [], elicitReplies: [] }
   const events = new AbortController()
+  const t0 = Date.now()
+  /**
+   * `sc.elicit`: cómo contestar los formularios MCP al verlos (`mcp.elicitation.asked`):
+   *   { action: 'accept'|'decline'|'cancel', content?, delayMs? } por las rutas HTTP del motor;
+   *   action 'abort' = abortar la sesión (POST /session/{id}/abort) con el formulario abierto; 'none' = dejarlo abierto.
+   * Puede ser una función (evento) => especificación. Cada acción queda en `out.elicitReplies`; antes de contestar se lee
+   * `GET /mcp/elicitation` y se guarda lo pendiente en `out.elicitList`.
+   */
+  const responderFormulario = async (ev) => {
+    const spec = typeof sc.elicit === 'function' ? sc.elicit(ev) : sc.elicit
+    if (!spec || spec.action === 'none') return
+    if (spec.delayMs) await sleep(spec.delayMs)
+    const list = await q('/mcp/elicitation')
+    ;(out.elicitList ??= []).push({ status: list.status, ids: list.ok ? (await list.json()).map((x) => x.id) : [] })
+    if (spec.action === 'abort') {
+      const r = await q(`/session/${out.sessionID}/abort`, post({}))
+      out.elicitReplies.push({ id: ev.id, action: 'abort', status: r.status })
+      return
+    }
+    const r = await q(`/mcp/elicitation/${ev.id}/reply`, post({ action: spec.action, ...(spec.content ? { content: spec.content } : {}) }))
+    out.elicitReplies.push({ id: ev.id, action: spec.action, status: r.status })
+  }
   try {
     for (let i = 0; i < 150 && !out.ok; i++) {
       try {
@@ -224,6 +248,7 @@ export async function runEngine(bin, sc) {
     }
     if (sc.agentsOf) out.agents = await (await q('/agent')).json()
     const s = await (await q('/session', post({}))).json()
+    out.sessionID = s.id // desde ya: un escenario puede abortar la sesión mientras el mensaje sigue en curso
     void fetch(url + '/event?directory=' + encodeURIComponent(proj), { signal: events.signal })
       .then(async (r) => {
         const rd = r.body.getReader()
@@ -244,6 +269,12 @@ export async function runEngine(bin, sc) {
               } catch {
                 continue
               }
+              // Formularios MCP: se registran los eventos `mcp.elicitation.*` (sin valores) y, si el escenario lo pide, se responden.
+              if (typeof e.type === 'string' && e.type.startsWith('mcp.elicitation.')) {
+                out.elicitation.push({ type: e.type.slice('mcp.elicitation.'.length), at: Date.now() - t0, ...e.properties })
+                if (e.type === 'mcp.elicitation.asked' && sc.elicit) void responderFormulario(e.properties).catch((err) => (out.elicitError = String(err)))
+                continue
+              }
               if (e.type !== 'permission.asked') continue
               out.asked.push({ permission: e.properties.permission, callID: e.properties.tool?.callID })
               await q(`/permission/${e.properties.id}/reply`, post({ reply: sc.reply ?? 'reject' }))
@@ -257,7 +288,6 @@ export async function runEngine(bin, sc) {
       q(`/session/${s.id}/message`, post(body)).then((x) => x.status),
       sleep(25_000).then(() => 'timeout')
     ])
-    out.sessionID = s.id
     if (out.promptStatus !== 200) out.log = log.slice(-3000) // un 500/timeout sin explicación: se adjunta la salida del motor
     const msgs = await (await q(`/session/${s.id}/message`)).json()
     out.toolParts = msgs.flatMap((m) =>
