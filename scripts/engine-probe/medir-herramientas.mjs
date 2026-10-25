@@ -61,7 +61,9 @@ if (json) {
   console.log(`Motor: ${bin}`)
   console.log(`Conector de prueba: 3 herramientas mínimas${many ? ` + ${many} realistas` : ''}; variables extra: ${JSON.stringify(env)}`)
   console.log('')
-  console.log('conectores | herramientas | caracteres | tokens (≈ car/4) | + vs 0 conectores (car / tokens) | car por herramienta de conector')
+  console.log(
+    'conectores | herramientas | caracteres | tokens (≈ car/4) | + vs 0 conectores (car / tokens) | car por herramienta de conector'
+  )
   for (const f of filas)
     console.log(
       `${String(f.conectores).padStart(10)} | ${String(f.herramientas).padStart(12)} | ${String(f.bytes).padStart(10)} | ${String(f.tokens).padStart(16)} | ${`${f.masQueSin} / ${f.tokensMasQueSin}`.padStart(32)} | ${f.porHerramienta || '-'}`

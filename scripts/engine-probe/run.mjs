@@ -249,7 +249,11 @@ const stillRunning = (needle) =>
     ? Number(
         spawnSync(
           'powershell',
-          ['-NoProfile', '-Command', `@(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${needle}*' -and $_.ProcessId -ne $PID }).Count`],
+          [
+            '-NoProfile',
+            '-Command',
+            `@(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${needle}*' -and $_.ProcessId -ne $PID }).Count`
+          ],
           { encoding: 'utf8' }
         ).stdout.trim()
       ) > 0
@@ -602,7 +606,9 @@ writeFileSync(
   JSON.stringify({
     hooks: {
       PreToolUse: [{ matcher: 'write', command: `"${process.execPath}" -e "console.error('prohibido por el gancho');process.exit(2)"` }],
-      Stop: [{ command: `"${process.execPath}" -e "require('fs').writeFileSync('${join(hooksDir, 'stop.txt').replaceAll('\\', '/')}', 'ok')"` }],
+      Stop: [
+        { command: `"${process.execPath}" -e "require('fs').writeFileSync('${join(hooksDir, 'stop.txt').replaceAll('\\', '/')}', 'ok')"` }
+      ],
       PostToolUse: [{ matcher: 'read', command: `"${process.execPath}" -e "console.error('aviso post');process.exit(2)"` }]
     }
   })
@@ -656,7 +662,13 @@ for (const [persist, nombre, espera] of [
   checkRun(`permisos siempre: ${nombre}`, async () => {
     const root = mkdtempSync(join(tmpdir(), 'lz-engine-persist-'))
     try {
-      const base = { root, env: { ...(persist ? { LAZUNOX_PERMISSION_PERSIST: persist } : {}) }, mcpServers: ['x'], inline: { permission: { 'x_*': 'ask' } }, call: direct('x_start') }
+      const base = {
+        root,
+        env: { ...(persist ? { LAZUNOX_PERMISSION_PERSIST: persist } : {}) },
+        mcpServers: ['x'],
+        inline: { permission: { 'x_*': 'ask' } },
+        call: direct('x_start')
+      }
       const a = await runEngine(bin, { ...base, reply: 'always' })
       if (!a.asked.some((p) => p.permission === 'x_start')) throw new Error('la primera corrida no preguntó')
       const b = await runEngine(bin, { ...base, reply: 'reject' })
@@ -677,7 +689,12 @@ for (const [persist, nombre, espera] of [
 const MANY = Number(process.env.PROBE_MCP_MANY ?? 40) || 40
 const TS_ON = { LAZUNOX_TOOL_SEARCH: 'on' }
 const tsCheck = (id, text, sc, expect) =>
-  checks.push({ name: `tool-search ${id}: ${text}`, sc: { mcpMany: MANY, ...sc, env: { ...TS_ON, ...(sc.env ?? {}) } }, expect, gate: 'tool-search' })
+  checks.push({
+    name: `tool-search ${id}: ${text}`,
+    sc: { mcpMany: MANY, ...sc, env: { ...TS_ON, ...(sc.env ?? {}) } },
+    expect,
+    gate: 'tool-search'
+  })
 const tsRun = (id, text, run) => checks.push({ name: `tool-search ${id}: ${text}`, run, gate: 'tool-search' })
 const mcpCall = (tool, args = { command: 'a' }, force = true) => ({ name: 'mcp_call', args: { tool, arguments: args }, force })
 const offered = (r) => r.toolsOffered ?? []
@@ -768,7 +785,10 @@ tsCheck(
     const t = seesTS(r)
     if (t !== true) return t
     return veredicto(
-      r.toolParts.length === 2 && ran(r, 0, 'ECHO:start:') && r.toolParts[1].status !== 'completed' && !(r.toolParts[1].output ?? '').includes('ECHO:secret'),
+      r.toolParts.length === 2 &&
+        ran(r, 0, 'ECHO:start:') &&
+        r.toolParts[1].status !== 'completed' &&
+        !(r.toolParts[1].output ?? '').includes('ECHO:secret'),
       JSON.stringify({ asked: r.asked, parts: r.toolParts })
     )
   }
@@ -788,7 +808,10 @@ tsCheck(
     const t = seesTS(r)
     if (t !== true) return t
     return veredicto(
-      r.toolParts.length === 2 && ran(r, 0, 'ECHO:start:') && r.toolParts[1].status !== 'completed' && !(r.toolParts[1].output ?? '').includes('ECHO:secret'),
+      r.toolParts.length === 2 &&
+        ran(r, 0, 'ECHO:start:') &&
+        r.toolParts[1].status !== 'completed' &&
+        !(r.toolParts[1].output ?? '').includes('ECHO:secret'),
       JSON.stringify({ asked: r.asked, parts: r.toolParts })
     )
   }
@@ -827,7 +850,8 @@ tsRun('A-7', 'un plugin en tool.execute.before recibe «x_start» (no «mcp_call
   if (t !== true) throw new Error(t)
   const l = hookLines()
   if (!l.some((x) => x.startsWith('before:x_start:'))) throw new Error(`el gancho no recibió x_start; vio: ${JSON.stringify(l)}`)
-  if (l.some((x) => x.startsWith('before:mcp_call') || x.startsWith('after:mcp_call'))) throw new Error(`el gancho vio mcp_call: ${JSON.stringify(l)}`)
+  if (l.some((x) => x.startsWith('before:mcp_call') || x.startsWith('after:mcp_call')))
+    throw new Error(`el gancho vio mcp_call: ${JSON.stringify(l)}`)
   if (!l.some((x) => x === 'after:x_start')) throw new Error(`falta el after de x_start: ${JSON.stringify(l)}`)
   return true
 })
@@ -844,7 +868,8 @@ tsRun('A-8', 'el plugin muta args en before y el eco del servidor lo refleja', a
   if (r.error) throw new Error(r.error)
   const t = seesTS(r)
   if (t !== true) throw new Error(t)
-  if (!ran(r, 0, 'ECHO:start:{"command":"MUTADO"}')) throw new Error(`el servidor no recibió el argumento mutado: ${JSON.stringify(r.toolParts)}`)
+  if (!ran(r, 0, 'ECHO:start:{"command":"MUTADO"}'))
+    throw new Error(`el servidor no recibió el argumento mutado: ${JSON.stringify(r.toolParts)}`)
   return true
 })
 // Subagente con x_*: deny: lo lanza el padre (que sí ve x_*); la hija busca en tool_search y no debe encontrar ni ver nada de x.
@@ -859,7 +884,8 @@ tsCheck(
     },
     decide: ({ tools, toolTexts, userTexts }) => {
       if (toolTexts.length) return null
-      if (userTexts.some((t) => t.includes('busca algo'))) return tools.includes('tool_search') ? { name: 'tool_search', args: { query: 'ticket start secret' } } : null
+      if (userTexts.some((t) => t.includes('busca algo')))
+        return tools.includes('tool_search') ? { name: 'tool_search', args: { query: 'ticket start secret' } } : null
       return { name: 'task', args: { subagent_type: 'sin-x', description: 'buscar', prompt: 'busca algo' } }
     }
   },
@@ -868,12 +894,16 @@ tsCheck(
     if (t !== true) return t
     // La petición de la hija: la que ofrece herramientas pero no `task` (la hija no lanza más ayudantes).
     const hija = (r.requestTools ?? []).find((ts, i) => i > 0 && ts.length && !ts.includes('task'))
-    if (!hija) return `no se vio la petición de la hija (herramientas por petición: ${JSON.stringify((r.requestTools ?? []).map((x) => x.length))})`
+    if (!hija)
+      return `no se vio la petición de la hija (herramientas por petición: ${JSON.stringify((r.requestTools ?? []).map((x) => x.length))})`
     const sueltas = hija.filter((n) => n.startsWith('x_'))
     if (sueltas.length) return `la hija ve herramientas x_* sueltas: ${sueltas.slice(0, 3).join(', ')}`
     // El padre no busca: cualquier resultado con nombres de x es lo que vio la hija.
     const fuga = (r.toolMessages ?? []).filter((m) => /x_start|x_secret|x_create_ticket/.test(m))
-    return veredicto(fuga.length === 0, `la búsqueda de la hija devolvió herramientas de x: ${fuga.map((m) => m.slice(0, 200)).join(' | ')}`)
+    return veredicto(
+      fuga.length === 0,
+      `la búsqueda de la hija devolvió herramientas de x: ${fuga.map((m) => m.slice(0, 200)).join(' | ')}`
+    )
   }
 )
 
@@ -888,7 +918,9 @@ const selected = only ? checks.filter((x) => x.name.includes(only)) : checks
 for (const c of selected) {
   if (c.gate === 'tool-search' && !hasToolSearch()) {
     skipped++
-    console.log(`SALTA ${c.name}\n      → este motor no trae LAZUNOX_TOOL_SEARCH (aún no tiene la búsqueda diferida); PROBE_FORCE_TOOL_SEARCH=1 la corre igual`)
+    console.log(
+      `SALTA ${c.name}\n      → este motor no trae LAZUNOX_TOOL_SEARCH (aún no tiene la búsqueda diferida); PROBE_FORCE_TOOL_SEARCH=1 la corre igual`
+    )
     continue
   }
   if (c.run) {
@@ -913,5 +945,7 @@ for (const c of selected) {
   )
 }
 if (skipped) console.log(`\n${skipped} comprobación(es) saltada(s): este motor no trae LAZUNOX_TOOL_SEARCH.`)
-console.log(failed ? `\n${failed} comprobación(es) fallaron.` : `\nTodo OK (${selected.length - skipped}${skipped ? ` + ${skipped} saltadas` : ''}).`)
+console.log(
+  failed ? `\n${failed} comprobación(es) fallaron.` : `\nTodo OK (${selected.length - skipped}${skipped ? ` + ${skipped} saltadas` : ''}).`
+)
 process.exit(failed ? 1 : 0)

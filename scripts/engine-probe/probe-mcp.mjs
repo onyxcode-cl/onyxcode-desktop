@@ -5,7 +5,20 @@ const send = (m) => process.stdout.write(JSON.stringify(m) + '\n')
 // PROBE_MCP_MANY=<n>: n herramientas extra con descripción y esquema realistas (~900 caracteres de JSON cada una, como las de Gmail o Jira),
 // para medir cuánto pesa la lista de herramientas (`medir-herramientas.mjs`) y probar la búsqueda diferida. Determinista.
 const VERBS = ['create', 'update', 'delete', 'list', 'get', 'search', 'archive', 'assign']
-const NOUNS = ['ticket', 'comment', 'project', 'label', 'milestone', 'sprint', 'attachment', 'user', 'board', 'webhook', 'release', 'filter']
+const NOUNS = [
+  'ticket',
+  'comment',
+  'project',
+  'label',
+  'milestone',
+  'sprint',
+  'attachment',
+  'user',
+  'board',
+  'webhook',
+  'release',
+  'filter'
+]
 const manyTool = (i) => {
   const verb = VERBS[i % VERBS.length]
   const noun = NOUNS[Math.floor(i / VERBS.length) % NOUNS.length]

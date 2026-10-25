@@ -83,12 +83,12 @@ export async function runEngine(bin, sc) {
       const step = sc.decide
         ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts })
         : sc.steps
-        ? toolMsgs.length < sc.steps.length
-          ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
-          : null
-        : tools.includes(sc.call.name) && !toolMsgs.length
-          ? sc.call
-          : null
+          ? toolMsgs.length < sc.steps.length
+            ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
+            : null
+          : tools.includes(sc.call.name) && !toolMsgs.length
+            ? sc.call
+            : null
       // `step.force`: pide la herramienta aunque el motor no la ofrezca (para probar que NO se ejecuta).
       if (step && (step.force || tools.includes(step.name))) {
         const tc = {
@@ -138,12 +138,21 @@ export async function runEngine(bin, sc) {
   const winEnv =
     process.platform === 'win32'
       ? {
-          PATH: [process.env.SystemRoot + '\\System32', process.env.SystemRoot, 'C:\\Program Files\\Git\\cmd', 'C:\\Program Files\\Git\\usr\\bin'].join(';'),
+          PATH: [
+            process.env.SystemRoot + '\\System32',
+            process.env.SystemRoot,
+            'C:\\Program Files\\Git\\cmd',
+            'C:\\Program Files\\Git\\usr\\bin'
+          ].join(';'),
           SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
           ComSpec: process.env.ComSpec ?? 'C:\\Windows\\System32\\cmd.exe',
           USERPROFILE: home,
           // Los alias de la Tienda (pwsh.exe) y muchos programas necesitan estas variables para arrancar.
-          ...Object.fromEntries(['LOCALAPPDATA', 'APPDATA', 'ProgramFiles', 'ProgramData', 'windir', 'PATHEXT', 'OS'].filter((k) => process.env[k]).map((k) => [k, process.env[k]])),
+          ...Object.fromEntries(
+            ['LOCALAPPDATA', 'APPDATA', 'ProgramFiles', 'ProgramData', 'windir', 'PATHEXT', 'OS']
+              .filter((k) => process.env[k])
+              .map((k) => [k, process.env[k]])
+          ),
           TEMP: root,
           TMP: root
         }
@@ -190,7 +199,9 @@ export async function runEngine(bin, sc) {
         signal: init.signal ?? AbortSignal.timeout(90_000)
       })
     } catch (e) {
-      throw new Error(`motor sin respuesta: ${init.method ?? 'GET'} ${p.split('?')[0]} tras ${Math.round((Date.now() - t0) / 1000)} s (${e?.name ?? e})`)
+      throw new Error(
+        `motor sin respuesta: ${init.method ?? 'GET'} ${p.split('?')[0]} tras ${Math.round((Date.now() - t0) / 1000)} s (${e?.name ?? e})`
+      )
     }
   }
   const post = (o) => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(o) })
