@@ -71,7 +71,8 @@ describe('instantánea api-routes.json', () => {
       [
         ...REBOBINAR,
         'GET /experimental/session/{sessionID}/trabajos',
-        'POST /experimental/session/{sessionID}/trabajos/{id}/terminar'
+        'POST /experimental/session/{sessionID}/trabajos/{id}/terminar',
+        'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar'
       ].sort()
     )
     expect(snapshot.routes.length - propias.length).toBe(sdk.routes.size)

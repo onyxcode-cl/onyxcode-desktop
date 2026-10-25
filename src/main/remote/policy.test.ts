@@ -86,7 +86,7 @@ const ROUTES: string[] = (
 const ELICITATION_ROUTES = ['GET /mcp/elicitation', 'POST /mcp/elicitation/{requestID}/reply']
 
 /** Rutas del motor nuevo todavía ausentes de `api-routes.json`; la política las conoce (clase X) y las ve el test de abajo. */
-const EXTRA_ENGINE_ROUTES = ['POST /experimental/session/{sessionID}/trabajos/{id}/reanudar']
+const EXTRA_ENGINE_ROUTES: string[] = []
 
 describe('cobertura 100 %', () => {
   it('hay canales que clasificar y todos tienen entrada explícita', () => {
