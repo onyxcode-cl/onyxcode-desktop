@@ -101,7 +101,7 @@ describe('cobertura 100 %', () => {
     expect(ROUTES.length).toBeGreaterThan(150)
     expect(ROUTES.filter((r) => !Object.hasOwn(CELULAR_HTTP_POLICY, r))).toEqual([])
     // Las dos rutas de formularios de conectores son del motor nuevo: no están en `api-routes.json` hasta que se regenere con él.
-    expect(Object.keys(CELULAR_HTTP_POLICY).filter((r) => !ROUTES.includes(r) && !ELICITATION_ROUTES.includes(r))).toEqual([])
+    expect(Object.keys(CELULAR_HTTP_POLICY).filter((r) => !ROUTES.includes(r))).toEqual([])
   })
   it('cada acción que puede ser D tiene resumen es/en y todo D estático lo tiene', () => {
     for (const [k, v] of Object.entries({ ...CELULAR_POLICY, ...CELULAR_HTTP_POLICY }))

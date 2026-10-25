@@ -1,6 +1,6 @@
 {
   "opencodeVersion": "1.19.0",
-  "routeCount": 190,
+  "routeCount": 192,
   "routes": [
     "DELETE /api/credential/{credentialID}",
     "DELETE /api/integration/attempt/{attemptID}",
@@ -78,6 +78,7 @@
     "GET /global/health",
     "GET /lsp",
     "GET /mcp",
+    "GET /mcp/elicitation",
     "GET /path",
     "GET /permission",
     "GET /project",
@@ -146,6 +147,7 @@
     "POST /instance/dispose",
     "POST /log",
     "POST /mcp",
+    "POST /mcp/elicitation/{requestID}/reply",
     "POST /mcp/{name}/auth",
     "POST /mcp/{name}/auth/authenticate",
     "POST /mcp/{name}/auth/callback",
@@ -205,7 +207,7 @@
     "GET /file/content": "26e43c17874e1236",
     "GET /file/status": "30a413eae2c3ccbd",
     "GET /find/file": "462d3bfab6ca09d2",
-    "GET /global/event": "26a531d89bd4bb2b",
+    "GET /global/event": "bce0e69dde1ed45b",
     "GET /global/health": "9b33d31cb2ae31ce",
     "GET /mcp": "46d8055d42561228",
     "GET /permission": "ad6024f906017d4e",
