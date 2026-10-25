@@ -1108,6 +1108,10 @@ const HTTP_X_ROUTES = [
   'POST /mcp/{name}/auth/callback',
   'POST /mcp/{name}/connect',
   'POST /mcp/{name}/disconnect',
+  // Formularios de conectores (`elicitation`, motor propio): los contesta SOLO la persona en el Mac. Todavía no están en
+  // `api-routes.json` (se regenera con el motor nuevo): la prueba de cobertura los admite aparte (ver `policy.test.ts`).
+  'GET /mcp/elicitation',
+  'POST /mcp/elicitation/{requestID}/reply',
   // experimentales (espacios de trabajo, worktrees, consola, herramientas)
   'DELETE /experimental/project/{projectID}/copy',
   'DELETE /experimental/workspace/{id}',

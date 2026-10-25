@@ -490,5 +490,11 @@ export const settings = {
   'settings.engine.limits.note':
     'Si el valor escrito queda fuera del rango permitido, se ajusta al más cercano. Al cambiar un límite, el motor se reinicia para aplicarlo, solo cuando no haya nada en curso.',
   'settings.engine.background.chatNote':
-    'En el Chat la IA solo puede lanzar un ayudante que busca y lee en la web, con los mismos permisos que el Chat (sin archivos ni terminal).'
+    'En el Chat la IA solo puede lanzar un ayudante que busca y lee en la web, con los mismos permisos que el Chat (sin archivos ni terminal).',
+  'settings.engine.forms.title': 'Formularios de conectores',
+  'settings.engine.forms.desc':
+    'Un conector puede pedirte un dato con un formulario en medio de una acción (una fecha, un destinatario…). Lazunox lo muestra con el nombre del conector, en texto plano y sin enlaces, y solo envía lo que tú escribes y confirmas.',
+  'settings.engine.forms.change':
+    'Apagado, los conectores no pueden pedir formularios: si necesitan un dato, la acción falla en lugar de preguntarte. Esc cancela un formulario y Detener los cancela todos. Lazunox nunca envía contraseñas ni claves por esta vía, con el interruptor encendido o no.',
+  'settings.engine.forms.note': 'Solo Chat y Code: Overdrive no recibe formularios porque no hay nadie delante para contestarlos.'
 } as const

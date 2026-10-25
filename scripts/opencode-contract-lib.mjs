@@ -149,11 +149,15 @@ export function sdkCallsInSource(src, tree) {
 }
 
 /**
- * Rutas que SOLO tiene el motor propio de Lazunox (contrato 1.7: trabajos en segundo plano de una sesión) y que por eso no
+ * Rutas que SOLO tiene el motor propio de Lazunox (contrato 1.7: trabajos en segundo plano de una sesión; formularios de conectores) y que por eso no
  * están en el SDK oficial fijado. La app las pide con `fetch` directo (`src/main/ipc/engine-jobs.ts`) y trata el 404 como
  * «motor sin la ruta». No cuentan como «rutas sin SDK»; se retiran de aquí cuando el SDK/instantánea del motor las traigan.
  */
-const ENGINE_ONLY_DIRECT = [/\/experimental\/session\/[^\s]*\/trabajos/]
+const ENGINE_ONLY_DIRECT = [
+  /\/experimental\/session\/[^\s]*\/trabajos/,
+  // Formularios de conectores (MCP `elicitation`, motor propio): `src/shared/mcp-elicitation.ts`, también `fetch` directo con 404/405 = «motor sin la ruta».
+  /\/mcp\/elicitation/
+]
 
 const DIRECT_METHOD = /['"](GET|POST|PUT|PATCH|DELETE)['"]/
 

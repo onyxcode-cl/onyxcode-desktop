@@ -47,7 +47,8 @@ function FeatureBlock({
     const next: EngineExperiments = {
       codeMode: { ...current.codeMode },
       backgroundSubagents: { ...current.backgroundSubagents },
-      toolSearch: { ...current.toolSearch }
+      toolSearch: { ...current.toolSearch },
+      mcpElicitation: { ...current.mcpElicitation }
     }
     next[feature][mode] = on
     void update({ engineExperiments: next })
@@ -98,7 +99,8 @@ function ToolSearchBlock(): React.JSX.Element {
       engineExperiments: {
         codeMode: { ...current.codeMode },
         backgroundSubagents: { ...current.backgroundSubagents },
-        toolSearch: { ...current.toolSearch, [mode]: on ? 'auto' : 'off' }
+        toolSearch: { ...current.toolSearch, [mode]: on ? 'auto' : 'off' },
+        mcpElicitation: { ...current.mcpElicitation }
       }
     })
   }
@@ -132,6 +134,55 @@ function ToolSearchBlock(): React.JSX.Element {
   )
 }
 
+/** Modos con formularios de conectores: Overdrive nunca (no hay nadie delante para contestarlos). */
+const FORM_MODES: readonly EngineExperimentMode[] = ['chat', 'code']
+
+/** «Formularios de conectores»: un interruptor por modo (solo Chat y Code). Encendido por defecto; ver `docs/SEGURIDAD.md`. */
+function FormsBlock(): React.JSX.Element {
+  const t = useT()
+  const id = useId()
+  const stored = useSettings((s) => s.settings.engineExperiments)
+  const update = useSettings((s) => s.update)
+  const current = normalizeEngineExperiments(stored)
+  const title = t('settings.engine.forms.title')
+
+  const set = (mode: EngineExperimentMode, on: boolean): void => {
+    const next: EngineExperiments = {
+      codeMode: { ...current.codeMode },
+      backgroundSubagents: { ...current.backgroundSubagents },
+      toolSearch: { ...current.toolSearch },
+      mcpElicitation: { ...current.mcpElicitation, [mode]: on, tasks: false }
+    }
+    void update({ engineExperiments: next })
+  }
+
+  return (
+    <section aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`} className="mb-8">
+      <h3 id={`${id}-t`} className="mb-1 text-sm font-semibold">
+        {title}
+      </h3>
+      <p id={`${id}-d`} className="mb-1 text-sm leading-relaxed text-muted">
+        {t('settings.engine.forms.desc')}
+      </p>
+      <p className="mb-1 text-xs leading-relaxed text-muted">{t('settings.engine.forms.change')}</p>
+      <p className="mb-3 text-xs leading-relaxed text-muted">{t('settings.engine.forms.note')}</p>
+      <Card>
+        <div role="group" aria-label={t('settings.engine.modesAria')}>
+          {FORM_MODES.map((mode) => (
+            <Row key={mode} label={modeLabel(mode)}>
+              <Toggle
+                checked={current.mcpElicitation[mode]}
+                onChange={(v) => set(mode, v)}
+                label={tr('settings.engine.toggleAria', { feature: title, mode: modeLabel(mode) })}
+              />
+            </Row>
+          ))}
+        </div>
+      </Card>
+    </section>
+  )
+}
+
 export function EngineExperimentsSection(): React.JSX.Element {
   const t = useT()
   return (
@@ -153,6 +204,7 @@ export function EngineExperimentsSection(): React.JSX.Element {
         chatNote={t('settings.engine.background.chatNote')}
       />
       <ToolSearchBlock />
+      <FormsBlock />
       <RememberAlwaysBlock />
       <UserHooksBlock />
       <EngineLimitsBlock />

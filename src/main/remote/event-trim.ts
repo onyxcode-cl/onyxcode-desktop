@@ -87,6 +87,8 @@ export function trimIpcEvent(channel: string, payload: unknown, d: TrimDeps): un
 // ─────────────────────────────── eventos del motor (SSE) ───────────────────────────────
 
 /** Tipos de evento del motor que el celular puede recibir (por prefijo o nombre exacto). */
+// OJO: `mcp.*` NO está (a propósito): los formularios de conectores (`mcp.elicitation.*`) los contesta solo la persona en el Mac y sus
+// textos son de un servidor de terceros. `sse-hub.test.ts` fija que no salen hacia el celular.
 const OC_ALLOWED_PREFIX = ['session.', 'message.', 'permission.', 'question.', 'todo.']
 const OC_ALLOWED_EXACT = new Set(['file.edited', 'vcs.branch.updated', 'server.connected', 'global.disposed'])
 const OC_URGENT = /^(permission|question)\.asked$/

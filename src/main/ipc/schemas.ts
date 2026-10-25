@@ -118,7 +118,8 @@ const toolSearchMode = literal('auto', 'off')
 const engineExperimentsShape = obj({
   codeMode: modeFlags,
   backgroundSubagents: modeFlags,
-  toolSearch: obj({ chat: toolSearchMode, code: toolSearchMode, tasks: toolSearchMode })
+  toolSearch: obj({ chat: toolSearchMode, code: toolSearchMode, tasks: toolSearchMode }),
+  mcpElicitation: modeFlags
 })
 /**
  * `settings:set.engineLimits`: enteros dentro del rango de cada límite (`engine-limits.ts`), todas las claves opcionales, sin extras.

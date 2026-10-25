@@ -82,6 +82,9 @@ const ROUTES: string[] = (
   JSON.parse(readFileSync(join(__dirname, '../../../resources/opencode-bin/api-routes.json'), 'utf8')) as { routes: string[] }
 ).routes
 
+/** Rutas de los formularios de conectores (`elicitation`): clase X, el celular nunca las usa. */
+const ELICITATION_ROUTES = ['GET /mcp/elicitation', 'POST /mcp/elicitation/{requestID}/reply']
+
 describe('cobertura 100 %', () => {
   it('hay canales que clasificar y todos tienen entrada explícita', () => {
     expect(ALL_INVOKE.length).toBeGreaterThan(200)
@@ -97,7 +100,8 @@ describe('cobertura 100 %', () => {
   it('todas las rutas del motor fijado tienen entrada explícita y no hay sobrantes', () => {
     expect(ROUTES.length).toBeGreaterThan(150)
     expect(ROUTES.filter((r) => !Object.hasOwn(CELULAR_HTTP_POLICY, r))).toEqual([])
-    expect(Object.keys(CELULAR_HTTP_POLICY).filter((r) => !ROUTES.includes(r))).toEqual([])
+    // Las dos rutas de formularios de conectores son del motor nuevo: no están en `api-routes.json` hasta que se regenere con él.
+    expect(Object.keys(CELULAR_HTTP_POLICY).filter((r) => !ROUTES.includes(r) && !ELICITATION_ROUTES.includes(r))).toEqual([])
   })
   it('cada acción que puede ser D tiene resumen es/en y todo D estático lo tiene', () => {
     for (const [k, v] of Object.entries({ ...CELULAR_POLICY, ...CELULAR_HTTP_POLICY }))
@@ -412,7 +416,7 @@ describe('settings:set y setters por campos', () => {
   })
   it('settings:set{engineExperiments} es X: el celular no activa Code Mode ni subagentes de fondo', () => {
     const off = { chat: false, code: false, tasks: false }
-    const ee = { codeMode: { ...off, code: true }, backgroundSubagents: off }
+    const ee = { codeMode: { ...off, code: true }, backgroundSubagents: off, mcpElicitation: off }
     expect(cls(ipc('settings:set', { engineExperiments: ee }))).toBe('deny:field-forbidden:engineExperiments')
     expect(cls(ipc('settings:set', { theme: 'dark', engineExperiments: ee }))).toBe('deny:field-forbidden:engineExperiments')
     expect(cls(ipc('settings:set', { engineExperiments: {} }))).toBe('deny:field-forbidden:engineExperiments')
@@ -780,5 +784,21 @@ describe('hallazgo 10: ámbito de las acciones M identificadas solo por id y de 
       expect(cls(ipc(ch, { sessionId: 's1' }), c(undefined)), ch).toBe('deny:scope-unknown')
       expect(cls(ipc(ch, { sessionId: 's1' })), ch).toBe('deny:scope-unknown')
     }
+  })
+})
+
+describe('formularios de conectores (elicitation): solo desde el Mac', () => {
+  it('las dos rutas están clasificadas X en la tabla', () => {
+    for (const r of ELICITATION_ROUTES) expect(CELULAR_HTTP_POLICY[r], r).toBe('X')
+  })
+  it('el celular no puede listarlos ni contestarlos (ni siquiera con un cuerpo válido)', () => {
+    expect(cls(http('GET', '/mcp/elicitation', dq))).toBe('deny:forbidden')
+    expect(cls(http('POST', '/mcp/elicitation/eli_123/reply', dq, { action: 'accept', content: { a: 'b' } }))).toBe('deny:forbidden')
+    expect(cls(http('POST', '/mcp/elicitation/eli_123/reply', dq, { action: 'cancel' }))).toBe('deny:forbidden')
+  })
+  it('no se cuela por rutas parecidas ni con otro método', () => {
+    expect(cls(http('DELETE', '/mcp/elicitation/eli_123/reply', dq))).toBe('deny:unknown-route')
+    expect(cls(http('PUT', '/mcp/elicitation', dq))).toBe('deny:unknown-route')
+    expect(cls(http('POST', '/mcp/elicitation/eli_123', dq))).toBe('deny:unknown-route')
   })
 })

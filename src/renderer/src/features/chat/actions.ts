@@ -12,10 +12,19 @@ import { useSettings } from '../../stores/settings'
 import { loadPromptMemory } from '../memory/memory-client'
 import { isSafeAttachmentUrl } from '../../lib/attachments'
 import { pdfRoute } from '@shared/attach-adapt'
+import {
+  listElicitations,
+  replyElicitation,
+  type ElicitationAction,
+  type ElicitationReplyResult,
+  type ElicitationRequest,
+  type ElicitationValue
+} from '@shared/mcp-elicitation'
 import { pdfToImages, pdfToText } from '../../lib/pdf-pages'
 import { useProviders } from '../../stores/providers'
 import { currentAiGate } from '../../lib/ai-gate'
 import { errorMessage } from '../../lib/opencode'
+import { elicitationConn } from '../../lib/elicitation-conn'
 import { interruptSettledSessions, reconcilePending, reconcileRunStatus, runStatusScope, unchangedSince } from '../../lib/session-reducer'
 import { sameDir } from '../../stores/eventRouter'
 import { onStreamReconnect, useServer } from '../../stores/server'
@@ -48,6 +57,7 @@ onStreamReconnect(() => {
   const active = useChat.getState().activeSessionId
   useSessions.getState().invalidateLoaded((src) => src === MAIN_SOURCE, active ? [active] : [])
   void loadChatQuestions() // una pregunta pudo llegar (o contestarse desde otro cliente) mientras no había stream
+  void loadChatElicitations() // y un formulario de conector, igual
 })
 
 /**
@@ -91,6 +101,65 @@ export async function rejectChatQuestion(q: ChatPendingQuestion): Promise<void> 
   const res = await client.question.reject({ requestID: q.id, directory })
   if (res.error) throw new Error(errorMessage(res.error))
   useChat.getState().removeQuestion(q.id)
+}
+
+/**
+ * Formularios de conectores pendientes de Chat (`GET /mcp/elicitation`, ruta propia del motor: `fetch` y no SDK). Se reconstruyen desde
+ * el servidor como las preguntas. Si el motor no tiene la ruta (oficial, externo o anterior) o falla, no se toca nada.
+ */
+export async function loadChatElicitations(): Promise<void> {
+  const { connection } = useServer.getState()
+  const conn = elicitationConn()
+  if (!conn || !connection) return
+  const directory = connection.chatDirectory
+  const before = useChat.getState().elicitations
+  const res = await listElicitations(conn, directory).catch(() => null)
+  if (!res?.available) return
+  const inChat = (sid: string): boolean => {
+    const { sessions, sessionSource } = useSessions.getState()
+    const s = sessions[sid]
+    return !!s && (sessionSource[sid] ?? MAIN_SOURCE) === MAIN_SOURCE && sameDir(s.directory, directory)
+  }
+  const server: ElicitationRequest[] = res.list.filter((e) => inChat(e.sessionID))
+  useChat
+    .getState()
+    .setElicitations(reconcilePending({ cur: useChat.getState().elicitations, before, server, inScope: (e) => inChat(e.sessionID) }))
+}
+
+/**
+ * Contesta un formulario de conector. Contestado o inexistente (404): la tarjeta se va. 400 (contenido inválido) u otro error: queda
+ * abierta y el resultado trae los motivos.
+ */
+export async function replyChatElicitation(
+  e: ElicitationRequest,
+  action: ElicitationAction,
+  content?: Record<string, ElicitationValue>
+): Promise<ElicitationReplyResult> {
+  const conn = elicitationConn()
+  if (!conn) return { ok: false, error: t('chat.server.notReady') }
+  const res = await replyElicitation(conn, e.id, action, content, useServer.getState().connection?.chatDirectory)
+  if (res.ok || 'gone' in res) useChat.getState().removeElicitation(e.id)
+  return res
+}
+
+/** Detener: cancela los formularios de la conversación detenida y de sus ayudantes (el motor además los cierra al abortar la llamada). */
+export async function cancelChatElicitationsOf(sessionID: string): Promise<void> {
+  const sessions = useSessions.getState().sessions
+  const mine = Object.values(useChat.getState().elicitations).filter(
+    (e) => e.sessionID === sessionID || rootSessionOf(sessions, e.sessionID) === sessionID
+  )
+  await Promise.allSettled(mine.map((e) => replyChatElicitation(e, 'cancel')))
+}
+
+/** Raíz de una sesión (sube por `parentID`). */
+function rootSessionOf(sessions: Record<string, { parentID?: string | null }>, sessionID: string): string {
+  let id = sessionID
+  for (let i = 0; i < 20; i++) {
+    const parent = sessions[id]?.parentID
+    if (!parent) return id
+    id = parent
+  }
+  return id
 }
 
 export async function loadChatSessions(): Promise<void> {
@@ -151,6 +220,7 @@ export async function openChatSession(sessionID: string | null): Promise<void> {
     }
   }
   void loadChatQuestions() // una pregunta pendiente de esta conversación (p. ej. la app estaba cerrada) se muestra al abrirla
+  void loadChatElicitations() // y un formulario de conector pendiente
 }
 
 export function newChat(): void {
@@ -404,6 +474,8 @@ export async function compactChat(sessionID: string): Promise<void> {
 export async function abortChat(sessionID: string): Promise<void> {
   const { client, directory } = ctx()
   await client.session.abort({ sessionID, directory })
+  // Un formulario de conector abierto no debe poder contestarse tras «Detenido».
+  await cancelChatElicitationsOf(sessionID)
 }
 
 export async function renameChat(sessionID: string, title: string): Promise<void> {

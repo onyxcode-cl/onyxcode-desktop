@@ -65,6 +65,18 @@ describe('recorte de eventos del motor', () => {
     expect(trimOcEvent('basura', 'main', trim)).toBeNull()
   })
 
+  it('los formularios de conectores (mcp.elicitation.*) NUNCA salen hacia el celular, ni dentro del ámbito ni sin carpeta', async () => {
+    const { scope, trim } = setup(async () => feed([]))
+    await scope.get()
+    const asked = { id: 'eli_1', sessionID: 's', server: 'x', message: 'hola', fields: [], expiresAt: Date.now() + 1000 }
+    for (const type of ['mcp.elicitation.asked', 'mcp.elicitation.replied', 'mcp.elicitation.rejected']) {
+      expect(trimOcEvent(ge(type, proj, asked), 'main', trim), type).toBeNull()
+      expect(trimOcEvent({ payload: { type, properties: asked } }, 'main', trim), `${type} global`).toBeNull()
+    }
+    // El control: un evento permitido de la misma carpeta sí sale (la prueba no pasa por estar mal armada).
+    expect(trimOcEvent(ge('question.asked', proj, { id: 'q', sessionID: 's' }), 'main', trim)).not.toBeNull()
+  })
+
   it('una sesión de otro proyecto no sale ni se aprende; una del ámbito sí', async () => {
     const { scope, trim, knowledge } = setup(async () => feed([]))
     await scope.get()

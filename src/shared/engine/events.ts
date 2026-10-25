@@ -6,6 +6,7 @@
  * conoce llega como `unknown` con el evento original, para no perder eventos nuevos del motor.
  * El orden, los duplicados y la reconexión NO se tocan aquí: el adaptador solo traduce.
  */
+import type { ElicitationAction, ElicitationRejectReason, ElicitationRequest } from '../mcp-elicitation'
 import type { EngineError } from './errors'
 import type {
   Message,
@@ -46,6 +47,10 @@ export type EngineEvent =
   | (EventBase & { type: 'question.asked'; request: QuestionRequest })
   | (EventBase & { type: 'question.replied'; sessionID: string; requestID: string; answers: QuestionAnswer[] })
   | (EventBase & { type: 'question.rejected'; sessionID: string; requestID: string })
+  /** Formularios de conectores (MCP `elicitation`). `rejected` puede llegar SIN `asked` previo (rechazo inmediato). */
+  | (EventBase & { type: 'mcp.elicitation.asked'; request: ElicitationRequest })
+  | (EventBase & { type: 'mcp.elicitation.replied'; id: string; sessionID: string; action: ElicitationAction })
+  | (EventBase & { type: 'mcp.elicitation.rejected'; id: string; sessionID: string; reason: ElicitationRejectReason })
   | (EventBase & { type: 'todo.updated'; sessionID: string; todos: Todo[] })
   | (EventBase & { type: 'file.edited'; file: string })
   | (EventBase & { type: 'vcs.branch'; branch?: string })

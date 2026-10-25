@@ -83,6 +83,12 @@ export class Engine2Adapter implements EngineClient {
     reject: () => unsupported('(formulario: rechazo sin ruta probada)')
   }
 
+  readonly elicitations: EngineClient['elicitations'] = {
+    // Formularios de conectores: solo existen en el motor propio (motor 1 fork); el motor 2 aún no los tiene.
+    list: async () => [],
+    reply: () => unsupported('POST /mcp/elicitation/{id}/reply')
+  }
+
   readonly events: EngineClient['events'] = {
     // v2: GET /api/event (SSE `{id,created,type,location,data}`; primero `server.connected`, latido `: heartbeat`)
     subscribe: () => {

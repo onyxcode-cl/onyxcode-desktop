@@ -44,7 +44,7 @@ describe('settings:set engineExperiments', () => {
   const v = IPC_SCHEMAS['settings:set']
   const off = { chat: false, code: false, tasks: false }
   const ts = { chat: 'auto', code: 'off', tasks: 'off' }
-  const ok = { codeMode: { ...off, code: true }, backgroundSubagents: off, toolSearch: ts }
+  const ok = { codeMode: { ...off, code: true }, backgroundSubagents: off, toolSearch: ts, mcpElicitation: off }
   it('acepta el objeto completo de booleanos', () => {
     expect(v({ engineExperiments: ok })).toEqual({ engineExperiments: ok })
   })
@@ -54,7 +54,11 @@ describe('settings:set engineExperiments', () => {
     expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, code: 'true' } } })).toThrow()
     expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, code: 1 } } })).toThrow()
     expect(() => v({ engineExperiments: { codeMode: off } })).toThrow()
-    expect(() => v({ engineExperiments: { codeMode: { chat: true }, backgroundSubagents: off, toolSearch: ts } })).toThrow()
+    expect(() =>
+      v({ engineExperiments: { codeMode: { chat: true }, backgroundSubagents: off, toolSearch: ts, mcpElicitation: off } })
+    ).toThrow()
+    expect(() => v({ engineExperiments: { codeMode: off, backgroundSubagents: off, toolSearch: ts } })).toThrow() // falta «formularios de conectores»
+    expect(() => v({ engineExperiments: { ...ok, mcpElicitation: { ...off, chat: 'true' } } })).toThrow()
     expect(() => v({ engineExperiments: true })).toThrow()
     // búsqueda de herramientas: solo «auto»/«off», las tres claves y sin extras
     expect(() => v({ engineExperiments: { ...ok, toolSearch: { ...ts, chat: 'on' } } })).toThrow()

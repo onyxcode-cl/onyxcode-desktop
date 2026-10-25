@@ -27,7 +27,7 @@
  *   GET  requests   ?limit=100&path=<prefijo>&method=GET&since=<seq>
  *   GET  config     OPENCODE_CONFIG_CONTENT recibido: { raw, content, config }
  *   GET  unknown-routes
- *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder }, flags:{ codeMode, backgroundSubagents } }: NUNCA devuelve valores secretos;
+ *   GET  env        { xdgDataHome, authContent:{ providers:[ids], allPlaceholder }, flags:{ codeMode, backgroundSubagents, mcpElicitation } }: NUNCA devuelve valores secretos;
  *                   allPlaceholder = todas las claves de OPENCODE_AUTH_CONTENT son centinelas (sandboxed-placeholder-*)
  *   POST set        { failPrompt: N|-1|0 (prompt_async corta la conexión N veces / siempre / nunca), sessionStatus:{id:'idle'|'busy'}, mcp:{name:{status,error?}}, config:{...}, todos:{sessionID:[...]}, fileStatus:{dir:[...]},
  *                     commands:[...], connectedProviders:[ids] }
@@ -50,6 +50,11 @@
  *
  * Pasos de un guion (todos aceptan delayMs): text|reasoning {text|deltas, chunkDelayMs}, tool {tool,input,output,title,
  * error,metadata}, request-access {apps?,plan?,reason?} (espera la tarjeta de acceso de Control total, solo ahí), permission {permission,patterns,tool?,input?,output?}, question {questions}, todo {todos},
+ * elicitation {server?,message?,fields?,expiresInMs?,requestID?}: formulario de un conector (MCP `elicitation`, motor propio): publica
+ *   `mcp.elicitation.asked {id,sessionID,server,callID,message,fields,expiresAt}` y espera `POST /mcp/elicitation/{id}/reply` (valida como el
+ *   motor: obligatorios y tope de `maxLength`; 400 con `errors:[{campo,motivo}]` deja el formulario abierto, 404 si ya no existe). Abortar la
+ *   sesión publica `mcp.elicitation.rejected {reason:'abort'}`. Un rechazo inmediato (secreto, esquema, ambiguo) se simula con el paso `emit`
+ *   de `mcp.elicitation.rejected` SIN `asked` previo. Lo recibido se ve en GET /__e2e/state (`elicitationReplies`, solo nombres de campo).
  * error {message,name?,statusCode?}, retry {attempt,message,nextMs}, title {title}, emit {event:{type,properties}},
  * child {title,text,agent?}, delay {ms}, fs {op:'write'|'delete', path, content?} (escribe o borra un archivo REAL, siempre
  * dentro del `directory` de la sesión: una ruta que salga de él hace fallar el paso; sirve para probar puntos de restauración).
@@ -152,10 +157,12 @@ export function createFakeServer(options = {}) {
 
   function freshState() {
     return {
-      seq: { session: 0, message: 0, part: 0, permission: 0, question: 0, call: 0, request: 0 },
+      seq: { session: 0, message: 0, part: 0, permission: 0, question: 0, elicitation: 0, call: 0, request: 0 },
       sessions: new Map(), // id -> { info, messages:[{info,parts}], status, run, chain }
       permissions: new Map(), // id -> { req, resolve }
       questions: new Map(),
+      elicitations: new Map(), // id -> { req, resolve } (formularios de conectores pendientes)
+      elicitationReplies: [], // { requestID, action, fields } (solo NOMBRES de campo: los valores no se guardan)
       accessResponses: [], // respuestas a pasos `request-access` (lo que recibió el "MCP")
       scripts: [],
       failPrompt: 0, // prompt_async corta la conexión (red caída) las próximas N veces; -1 = siempre
@@ -596,6 +603,8 @@ export function createFakeServer(options = {}) {
         return runCodeMode(ctx, step)
       case 'fs':
         return runFs(ctx, step)
+      case 'elicitation':
+        return runElicitation(ctx, step)
       case 'tool':
       case 'permission':
       case 'question':
@@ -721,6 +730,43 @@ export function createFakeServer(options = {}) {
         asst,
         mk({ status: 'completed', input, output, title: step.title ?? tool, metadata: step.metadata ?? {}, time: { start, end } })
       )
+  }
+
+  /** Paso `elicitation`: una herramienta de un conector que pide un formulario y espera la respuesta de la persona. */
+  async function runElicitation(ctx, step) {
+    const { s, run, dir, asst, asstId } = ctx
+    const server = step.server ?? 'forms'
+    const tool = `${server}_form`
+    const input = step.input ?? {}
+    const id = nextId('part', 'prt')
+    const callID = `call_${String(++state.seq.call).padStart(4, '0')}`
+    const mk = (st) => ({ id, sessionID: s.info.id, messageID: asstId, type: 'tool', callID, tool, state: st })
+    const start = Date.now()
+    upsertPart(s, asst, mk({ status: 'pending', input: {}, raw: '' }))
+    upsertPart(s, asst, mk({ status: 'running', input, time: { start } }))
+    const reqId = step.requestID ?? nextId('elicitation', 'eli_e2e')
+    const req = {
+      id: reqId,
+      sessionID: s.info.id,
+      server,
+      callID,
+      message: step.message ?? '',
+      fields: step.fields ?? [],
+      expiresAt: Date.now() + (step.expiresInMs ?? 600_000)
+    }
+    const reply = await waitFor(run, (done) => {
+      state.elicitations.set(reqId, { req, resolve: done })
+      emit('mcp.elicitation.asked', req, dir)
+    })
+    state.elicitations.delete(reqId)
+    if (reply === 'aborted') {
+      // Como el motor: todo cierre sin respuesta publica `rejected`.
+      emit('mcp.elicitation.rejected', { id: reqId, sessionID: s.info.id, reason: 'abort' }, dir)
+      return
+    }
+    const output =
+      reply.action === 'accept' ? `El conector recibió: ${JSON.stringify(reply.content ?? {})}` : `La persona respondió: ${reply.action}`
+    upsertPart(s, asst, mk({ status: 'completed', input, output, title: tool, metadata: {}, time: { start, end: Date.now() } }))
   }
 
   async function runChild(ctx, step) {
@@ -1493,6 +1539,34 @@ export function createFakeServer(options = {}) {
     e.resolve(reply)
     json(c.res, true)
   })
+  // --- formularios de conectores (motor propio) ---
+  route('GET', '/mcp/elicitation', (c) => json(c.res, pending(state.elicitations, c.directory)))
+  route('POST', '/mcp/elicitation/{requestID}/reply', (c) => {
+    const e = state.elicitations.get(c.params.requestID)
+    if (!e) return notFound(c.res, `Elicitation not found: ${c.params.requestID}`)
+    const action = c.body?.action
+    if (!['accept', 'decline', 'cancel'].includes(action)) return badRequest(c.res, 'action inválida')
+    const content = c.body?.content && typeof c.body.content === 'object' ? c.body.content : {}
+    if (action === 'accept') {
+      const errors = []
+      for (const f of e.req.fields) {
+        const v = content[f.name]
+        if (f.required && (v === undefined || v === '')) errors.push({ campo: f.name, motivo: 'obligatorio' })
+        else if (typeof v === 'string' && typeof f.maxLength === 'number' && v.length > f.maxLength) errors.push({ campo: f.name, motivo: 'demasiado largo' })
+        else if (f.type === 'string' && f.forbid && typeof v === 'string' && v.includes(f.forbid)) errors.push({ campo: f.name, motivo: 'valor no permitido' })
+      }
+      for (const k of Object.keys(content)) if (!e.req.fields.some((f) => f.name === k)) errors.push({ campo: k, motivo: 'campo desconocido' })
+      if (errors.length) return json(c.res, { errors }, 400)
+    }
+    state.elicitationReplies.push({ requestID: e.req.id, action, fields: action === 'accept' ? Object.keys(content) : [] })
+    emit(
+      'mcp.elicitation.replied',
+      { id: e.req.id, sessionID: e.req.sessionID, action },
+      state.sessions.get(e.req.sessionID)?.info.directory ?? c.directory
+    )
+    e.resolve({ action, content })
+    json(c.res, true)
+  })
   route('GET', '/question', (c) => json(c.res, pending(state.questions, c.directory)))
   route('POST', '/question/{requestID}/reply', (c) => {
     const e = state.questions.get(c.params.requestID)
@@ -1744,6 +1818,8 @@ export function createFakeServer(options = {}) {
         pendingQuestions: [...state.questions.values()].map((e) => e.req),
         permissionReplies: state.permissionReplies,
         questionReplies: state.questionReplies,
+        pendingElicitations: [...state.elicitations.values()].map((e) => e.req),
+        elicitationReplies: state.elicitationReplies,
         mcp: mcpStatus(),
         authProviders: Object.keys(state.authProviders),
         disposeCount: state.disposeCount,
@@ -1793,7 +1869,9 @@ export function createFakeServer(options = {}) {
       // `flags`: solo booleanos de OPENCODE_EXPERIMENTAL_CODE_MODE / _BACKGROUND_SUBAGENTS (los E2E comprueban qué familia de motor las recibió).
       const flags = {
         codeMode: env.OPENCODE_EXPERIMENTAL_CODE_MODE === 'true',
-        backgroundSubagents: env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS === 'true'
+        backgroundSubagents: env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS === 'true',
+        // Formularios de conectores: `LAZUNOX_MCP_ELICITATION=1` (solo el sidecar principal; nunca Overdrive).
+        mcpElicitation: env.LAZUNOX_MCP_ELICITATION === '1'
       }
       json(c.res, { xdgDataHome: env.XDG_DATA_HOME ?? null, authContent: { providers, allPlaceholder }, flags })
     },

@@ -34,6 +34,11 @@ export interface EngineExperiments {
   codeMode: ModeFlags
   backgroundSubagents: ModeFlags
   toolSearch: ToolSearchFlags
+  /**
+   * «Formularios de conectores» (MCP `elicitation`): el conector puede pedir datos con un formulario. Solo Chat y Code (hay una persona
+   * delante); `tasks` existe por forma pero SIEMPRE vale `false` (se normaliza así y nunca llega la variable a Overdrive).
+   */
+  mcpElicitation: ModeFlags
 }
 
 export interface Settings {

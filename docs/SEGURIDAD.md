@@ -2466,6 +2466,35 @@ Overdrive siempre apagado).
 `pin.json` la función no hace nada. Que Overdrive no tenga la búsqueda dependerá del valor por defecto del motor si no recibe la variable (ver
 `CHANGELOG-FASE8.md`, F8-B216, «No verificado»).
 
+## 3 septuagies bis. Formularios de conectores (MCP `elicitation`, modo formulario; F8-B217)
+
+Un conector (servidor MCP) puede, en medio de una acción, pedirle datos a la persona con un formulario. Lo escribe un tercero y la
+persona tiende a creerle a la interfaz de Lazunox: es un vector de suplantación (phishing) por diseño. Plan:
+`docs/PLAN-HERRAMIENTAS-DIFERIDAS-Y-FORMULARIOS-MCP.md` (§2.B, §3.B). Esta sección es la parte de la APP (tarea T5); el motor propio
+valida, atribuye y publica los eventos (tarea T4, `LAZUNOX.md` del fork).
+
+**Modelo de amenazas**
+
+| Amenaza | Defensa |
+| --- | --- |
+| El conector pide una contraseña, clave o tarjeta. | El MOTOR rechaza el formulario sin mostrarlo si algún campo (nombre, título o descripción) parece un secreto, para cualquier conector, y publica `rejected {reason:'secret'}`; la app solo enseña un aviso fijo («Lazunox no envía contraseñas ni claves por formularios de conectores»). La tarjeta no tiene `<input type="password">`, nunca autocompleta (`autocomplete="off"`) y dice «Nunca escribas aquí contraseñas ni claves». |
+| El mensaje se hace pasar por Lazunox o trae un enlace de phishing. | **Texto plano**: mensaje, títulos, descripciones y opciones se pintan como nodos de texto de React (nunca HTML ni Markdown) y NO hay enlaces activos (un `<a>` escrito por el conector se ve como texto). Se quitan caracteres de control y de dirección (U+202A–202E, U+2066–2069…) y se acota todo (mensaje 2000, título 120, descripción 500, ≤ 20 campos, ≤ 50 opciones; `parseElicitationRequest`). La **cabecera es fija** y la pone Lazunox: «Formulario del conector <nombre>», si la persona marcó ese conector como de confianza (`codeTrustedMcp`; en Chat no se dice nada porque esa marca es de Code) y «Lo pide el conector, no Lazunox». |
+| Respuesta sin persona (celular, modo automático, Rutinas, Overdrive). | Contestar es clase **X**: `GET /mcp/elicitation` y `POST /mcp/elicitation/{requestID}/reply` están en `HTTP_X_ROUTES` (`policy.ts`, prueba en `policy.test.ts`); el prefijo `mcp.` no está en la lista blanca de `event-trim.ts` (prueba explícita en `sse-hub.test.ts`): el celular NO recibe `mcp.elicitation.*`. La variable `LAZUNOX_MCP_ELICITATION=1` solo se pasa al sidecar principal y solo si Chat o Code tienen el interruptor encendido; Overdrive NUNCA la recibe (`engineFlagEnvFor(_, 'tasks')` no la emite, `normalizeEngineExperiments` fuerza `tasks:false` y `onlyExperimentalEngineEnv` la descarta aunque alguien la pase). |
+| Datos enviados sin querer. | Nada se rellena salvo el `default` del esquema; «Enviar a <conector>» exige la acción explícita; los opcionales vacíos no viajan; la validación local (tipos, rango, longitudes, formatos email/uri/date/date-time, enum cerrado) replica la del motor, que vuelve a validar y manda (400 con `errors:[{campo,motivo}]` deja la tarjeta abierta). Los valores viajan solo a esa ruta del motor local: no se registran, no entran en la conversación ni se guardan en el estado de la app. |
+| Aprobar tras Detener. | Esc = `cancel`. «Detener» (`abort()` de Code y `abortChat` de Chat) responde `cancel` a los formularios de la conversación detenida y de TODAS sus hijas (además de lo que el motor ya hace al abortar la llamada). El `cancel` va después de detener la ejecución. |
+| Inundación o tarjetas huérfanas. | Topes en el motor (1 pendiente por servidor y sesión, 5 por llamada, tiempo máximo); todo cierre sin respuesta publica `rejected` y la tarjeta se va. La lista de pendientes (`GET /mcp/elicitation`) reconstruye el estado al reconectar. |
+| Teclado y accesibilidad. | `role="dialog"` + `aria-modal`, nombre y descripción accesibles, foco atrapado (Tab/Mayús+Tab dan la vuelta), el foco entra al primer campo, errores con `role="alert"` y `aria-invalid`. |
+
+**Límites conocidos.** (1) Chat y Code comparten sidecar y la variable vale por proceso, así que las Rutinas que NO son de Overdrive
+(mismo sidecar principal) también ven la capacidad; si una rutina llama a un conector que pide formulario, el motor espera hasta su tiempo
+máximo (el plan lo anota como riesgo y pendiente). (2) Un servidor puede escribir lo que quiera en el mensaje: la defensa es mostrarlo
+como texto con la cabecera fija, no impedir que mienta. (3) Sin el motor propio (oficial o externo) la variable no hace nada y las rutas
+responden 404/405: la app sigue como antes. (4) La app no modifica las zonas intocables.
+
+**Interruptor.** Ajustes › Funciones experimentales › «Formularios de conectores» (solo Chat y Code; **encendido por defecto**, también para
+quien ya tenía ajustes guardados: la clave nueva `engineExperiments.mcpElicitation` se rellena con su valor por defecto al leerla). Apagado,
+el conector ni ve la capacidad y no puede pedir formularios. Cambiarlo reinicia el motor cuando no hay nada en curso (`engine-flags-restart`).
+
 ## 3 sexagies nonies. «Siempre» persistentes, rutas protegidas y tope de ayudantes (F8-B214)
 
 **Qué cambia.** El motor propio guarda los permisos «Permitir siempre» por carpeta de proyecto y los vuelve a aplicar tras reiniciar, pregunta

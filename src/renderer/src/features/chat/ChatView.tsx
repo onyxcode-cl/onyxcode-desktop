@@ -88,6 +88,21 @@ export function ChatView(): React.JSX.Element {
       Object.values(allQuestions).filter((q) => !!activeId && (q.sessionID === activeId || rootOf(allSessions, q.sessionID) === activeId)),
     [allQuestions, allSessions, activeId]
   )
+  const allElicitations = useChat((s) => s.elicitations)
+  const allNotices = useChat((s) => s.elicitationNotices)
+  // Igual que las preguntas: los formularios de un ayudante se ven en la conversación de su raíz.
+  const elicitations = useMemo(
+    () =>
+      Object.values(allElicitations).filter(
+        (e) => !!activeId && (e.sessionID === activeId || rootOf(allSessions, e.sessionID) === activeId)
+      ),
+    [allElicitations, allSessions, activeId]
+  )
+  const elicitationNotices = useMemo(
+    () =>
+      Object.values(allNotices).filter((n) => !!activeId && (n.sessionID === activeId || rootOf(allSessions, n.sessionID) === activeId)),
+    [allNotices, allSessions, activeId]
+  )
   const entries = useSessions((s) => (activeId ? (s.messages[activeId] ?? EMPTY) : EMPTY))
   const busy = useSessions((s) => (activeId ? (s.status[activeId] ?? 'idle') !== 'idle' : false))
   /** El motor está reintentando (p. ej. el modelo no está disponible): se dice en vez de quedarse en «Pensando…». */
@@ -421,6 +436,8 @@ export function ChatView(): React.JSX.Element {
           onCompact={compact}
           onEdit={edit}
           questions={questions}
+          elicitations={elicitations}
+          elicitationNotices={elicitationNotices}
         />
         {notices}
         {composer}

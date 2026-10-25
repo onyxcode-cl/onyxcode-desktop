@@ -13,6 +13,13 @@
  * No usa nada de Node: sirve en main, renderer y PWA.
  */
 import { createOpencodeClient, type GlobalEvent, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
+import {
+  listElicitations,
+  parseElicitationRejected,
+  parseElicitationReplied,
+  parseElicitationRequest,
+  replyElicitation
+} from '../../mcp-elicitation'
 import type { EngineClient, EngineConnection } from '../client'
 import { EngineError, toEngineError } from '../errors'
 import type { EngineEvent, EngineEventHandler, EngineEventOptions } from '../events'
@@ -79,10 +86,36 @@ function buildClient(conn: EngineConnection, timeoutMs: number | undefined): Ope
 
 // ───────────────────────────── normalización de eventos ─────────────────────────────
 
+/** `mcp.elicitation.*` (motor propio). Un evento mal formado no se descarta: llega como `unknown` para no perderlo de vista. */
+function elicitationEvent(directory: string, p: { type: string; properties?: unknown }): EngineEvent | null {
+  if (typeof p.type !== 'string' || !p.type.startsWith('mcp.elicitation.')) return null
+  switch (p.type) {
+    case 'mcp.elicitation.asked': {
+      const request = parseElicitationRequest(p.properties)
+      if (request) return { directory, type: 'mcp.elicitation.asked', request }
+      break
+    }
+    case 'mcp.elicitation.replied': {
+      const r = parseElicitationReplied(p.properties)
+      if (r) return { directory, type: 'mcp.elicitation.replied', id: r.id, sessionID: r.sessionID, action: r.action }
+      break
+    }
+    case 'mcp.elicitation.rejected': {
+      const r = parseElicitationRejected(p.properties)
+      if (r) return { directory, type: 'mcp.elicitation.rejected', id: r.id, sessionID: r.sessionID, reason: r.reason }
+      break
+    }
+  }
+  return { directory, type: 'unknown', rawType: p.type, raw: p }
+}
+
 /** Traduce un evento del stream global del motor 1 al `EngineEvent` propio. Pura y sin estado. */
 export function normalizeEvent(g: GlobalEvent): EngineEvent {
   const directory = g.directory
   const p = g.payload
+  // Eventos del motor propio que el SDK fijado no conoce (no están en su unión de tipos): se leen aparte y se sanean.
+  const own = elicitationEvent(directory, p)
+  if (own) return own
   switch (p.type) {
     case 'server.connected':
       return { directory, type: 'connected' }
@@ -169,6 +202,7 @@ export class Engine1Adapter implements EngineClient {
   readonly sessions: EngineClient['sessions']
   readonly permissions: EngineClient['permissions']
   readonly questions: EngineClient['questions']
+  readonly elicitations: EngineClient['elicitations']
   readonly events: EngineClient['events']
   readonly providers: EngineClient['providers']
   readonly mcp: EngineClient['mcp']
@@ -270,6 +304,15 @@ export class Engine1Adapter implements EngineClient {
       reject: (id, o) => done(sdk.question.reject({ requestID: id, ...dir(o) }))
     }
 
+    // Rutas propias del motor (el SDK fijado no las trae): `fetch` crudo con la misma autorización y el mismo `fetch` inyectable.
+    this.elicitations = {
+      list: async (o) => {
+        const r = await listElicitations(this.rawConn(), o?.directory ?? conn.directory, conn.fetch)
+        return r.available ? r.list : []
+      },
+      reply: (id, action, content, o) => replyElicitation(this.rawConn(), id, action, content, o?.directory ?? conn.directory, conn.fetch)
+    }
+
     this.events = {
       subscribe: (handler, o) => this.subscribe(handler, o)
     }
@@ -356,6 +399,11 @@ export class Engine1Adapter implements EngineClient {
    * Stream global (`global.event`) con reconexión, copiado de `startEventStream` del renderer.
    * Usa un cliente SIN tope de tiempo por petición: el stream dura horas.
    */
+  /** Conexión para las rutas sin SDK: URL base y autorización de siempre. */
+  private rawConn(): { baseUrl: string; authorization?: string } {
+    return { baseUrl: this.conn.baseUrl, ...(this.conn.authorization ? { authorization: this.conn.authorization } : {}) }
+  }
+
   private subscribe(handler: EngineEventHandler, o: EngineEventOptions = {}): () => void {
     const sdk = this.conn.timeoutMs ? buildClient(this.conn, undefined) : this.sdk
     const controller = new AbortController()

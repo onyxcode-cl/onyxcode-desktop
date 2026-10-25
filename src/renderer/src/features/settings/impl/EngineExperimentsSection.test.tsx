@@ -19,7 +19,11 @@ function mount(
   engineExperiments: Pick<EngineExperiments, 'codeMode' | 'backgroundSubagents'> &
     Partial<EngineExperiments> = DEFAULT_SETTINGS.engineExperiments
 ): void {
-  const full = { toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch, ...engineExperiments }
+  const full = {
+    toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch,
+    mcpElicitation: DEFAULT_SETTINGS.engineExperiments.mcpElicitation,
+    ...engineExperiments
+  }
   update = vi.fn(async () => undefined)
   useSettings.setState({ settings: { ...DEFAULT_SETTINGS, engineExperiments: full }, update })
   act(() => root.render(createElement(EngineExperimentsSection)))
@@ -74,7 +78,8 @@ describe('EngineExperimentsSection', () => {
       engineExperiments: {
         codeMode: { chat: true, code: true, tasks: false },
         backgroundSubagents: { chat: true, code: false, tasks: false },
-        toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' }
+        toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' },
+        mcpElicitation: { chat: true, code: true, tasks: false }
       }
     })
     act(() => switches()[5].click()) // Subagentes · Overdrive
@@ -82,7 +87,8 @@ describe('EngineExperimentsSection', () => {
       engineExperiments: {
         codeMode: { chat: false, code: true, tasks: false },
         backgroundSubagents: { chat: true, code: false, tasks: true },
-        toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' }
+        toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' },
+        mcpElicitation: { chat: true, code: true, tasks: false }
       }
     })
   })
@@ -99,7 +105,8 @@ describe('EngineExperimentsSection', () => {
       engineExperiments: {
         codeMode: { chat: false, code: false, tasks: false },
         backgroundSubagents: { chat: true, code: true, tasks: true },
-        toolSearch: { chat: 'auto', code: 'off', tasks: 'off' }
+        toolSearch: { chat: 'auto', code: 'off', tasks: 'off' },
+        mcpElicitation: { chat: true, code: true, tasks: false }
       }
     })
   })
@@ -116,5 +123,34 @@ describe('EngineExperimentsSection', () => {
     const groups = [...host.querySelectorAll('section[role="group"]')]
     expect(groups[0]!.textContent).toContain('En el Chat no aplica')
     expect(groups[1]!.textContent).toContain('ayudante que busca y lee en la web')
+  })
+
+  describe('Formularios de conectores', () => {
+    const formSwitches = (): HTMLButtonElement[] => {
+      const sec = [...host.querySelectorAll('section')].find((x) => x.textContent?.includes('Formularios de conectores'))!
+      return [...sec.querySelectorAll<HTMLButtonElement>('button[role="switch"]')]
+    }
+    it('hay un interruptor por modo SOLO para Chat y Code (Overdrive no), encendidos por defecto, con nombre accesible', () => {
+      mount()
+      const sw = formSwitches()
+      expect(sw).toHaveLength(2)
+      expect(sw.map((b) => b.getAttribute('aria-checked'))).toEqual(['true', 'true'])
+      expect(sw[0].getAttribute('aria-label')).toBe('Formularios de conectores en Chat')
+      expect(sw[1].getAttribute('aria-label')).toBe('Formularios de conectores en Code')
+      expect(host.textContent).toContain('Overdrive no recibe formularios')
+      expect(host.textContent).toContain('Lazunox nunca envía contraseñas ni claves')
+    })
+    it('apagar uno envía el objeto completo (con búsqueda de herramientas intacta), cambia solo esa bandera y deja Overdrive en falso', () => {
+      mount()
+      act(() => formSwitches()[1].click()) // Code
+      expect(update).toHaveBeenLastCalledWith({
+        engineExperiments: {
+          codeMode: DEFAULT_SETTINGS.engineExperiments.codeMode,
+          backgroundSubagents: DEFAULT_SETTINGS.engineExperiments.backgroundSubagents,
+          toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch,
+          mcpElicitation: { chat: true, code: false, tasks: false }
+        }
+      })
+    })
   })
 })

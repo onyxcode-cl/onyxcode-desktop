@@ -26,9 +26,12 @@ import { Reasoning } from '../../../components/conversation/Reasoning'
 import { friendlyError } from '@shared/ai-errors'
 import type { ConvError } from '../../../lib/session-reducer'
 import { PermissionCard, QuestionCard } from './PermissionCard'
+import { CodeElicitationCard } from './CodeElicitationCard'
+import { ElicitationNoticeRow } from './ElicitationCard'
 import { StepGroup, ToolRow, relPath } from './ToolCard'
 import { WorkFold } from './WorkFold'
-import type { CodeMessage, PendingPermission, PendingQuestion } from './types'
+import type { ElicitationNotice } from '@shared/mcp-elicitation'
+import type { CodeMessage, PendingElicitation, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
 import { GeneratedFiles } from './GeneratedFiles'
@@ -569,6 +572,9 @@ const TurnView = memo(
 // Stream
 // ---------------------------------------------------------------------------
 
+const NO_ELICITATIONS: PendingElicitation[] = []
+const NO_NOTICES: ElicitationNotice[] = []
+
 interface Props {
   entries: CodeMessage[]
   busy: boolean
@@ -576,6 +582,10 @@ interface Props {
   root: string | null
   permissions: PendingPermission[]
   questions: PendingQuestion[]
+  /** Formularios de conectores pendientes de esta conversación (y sus ayudantes). */
+  elicitations?: PendingElicitation[]
+  /** Avisos breves de rechazos de formularios (secreto, esquema…), con su cierre. */
+  elicitationNotices?: ElicitationNotice[]
   /** Mensaje desde el que la sesión está revertida (se ocultan este y los siguientes). */
   revertMessageID?: string
   onUnrevert: () => void
@@ -588,6 +598,9 @@ interface Props {
 
 export function MessageStream(props: Props): React.JSX.Element {
   const { entries, busy, error, root, permissions, questions, revertMessageID, onUnrevert, loading, retrying, retryLabel } = props
+  const elicitations = props.elicitations ?? NO_ELICITATIONS
+  const elicitationNotices = props.elicitationNotices ?? NO_NOTICES
+  const dismissNotice = useCode((s) => s.dismissElicitationNotice)
   const t = useT()
   const retryLast = useCode((s) => s.retryLast)
   const compactSession = useCode((s) => s.compactSession)
@@ -624,7 +637,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   const hotkeyID = permissions[0]?.id
 
   // Celular: un permiso o pregunta nuevo siempre se lleva a la vista (aunque hubieras subido en la conversación).
-  const pending = permissions.length + questions.length
+  const pending = permissions.length + questions.length + elicitations.length
   const [barShown, setBarShown] = useState(false)
   const prevPending = useRef(pending)
   useEffect(() => {
@@ -639,7 +652,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   const lastTurn = turns[turns.length - 1]
   const lastAssistant = lastTurn?.assistant[lastTurn.assistant.length - 1]
   const lastHasOutput = !!lastAssistant?.parts.some((p) => (p.type === 'text' && p.text) || p.type === 'tool' || p.type === 'reasoning')
-  const showThinking = busy && !lastHasOutput && permissions.length === 0
+  const showThinking = busy && !lastHasOutput && permissions.length === 0 && elicitations.length === 0
 
   return (
     <div className="relative min-h-0 flex-1 desk:before:pointer-events-none desk:before:absolute desk:before:inset-x-0 desk:before:bottom-0 desk:before:h-6 desk:before:bg-gradient-to-t desk:before:from-bg desk:before:to-transparent">
@@ -681,6 +694,12 @@ export function MessageStream(props: Props): React.JSX.Element {
           ))}
           {questions.map((q) => (
             <QuestionCard key={q.id} request={q} />
+          ))}
+          {elicitations.map((e) => (
+            <CodeElicitationCard key={e.id} request={e} />
+          ))}
+          {elicitationNotices.map((n) => (
+            <ElicitationNoticeRow key={n.id} notice={n} onDismiss={() => dismissNotice(n.id)} />
           ))}
           {showThinking && <ThinkingIndicator label={retrying ? (retryLabel ?? t('chat.msg.retrying')) : t('code.msg.working')} />}
           {error && !lastAssistantFailed(entries) && (

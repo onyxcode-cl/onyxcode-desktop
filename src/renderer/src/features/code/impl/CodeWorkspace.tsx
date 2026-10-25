@@ -878,6 +878,8 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const unrevert = useCode((s) => s.unrevert)
   const permissionsAll = useCode(useShallow((s) => Object.values(s.permissions)))
   const questionsAll = useCode(useShallow((s) => Object.values(s.questions)))
+  const elicitationsAll = useCode(useShallow((s) => Object.values(s.elicitations)))
+  const noticesAll = useCode(useShallow((s) => Object.values(s.elicitationNotices)))
   const sessions = useCode((s) => s.sessions)
   const permissions = useMemo(
     // Permisos de sesiones desconocidas (subagentes aún no listados) se muestran en la sesión activa.
@@ -885,6 +887,15 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
     [permissionsAll, sessions, sid]
   )
   const questions = useMemo(() => questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid)), [questionsAll, sessions, sid])
+  // Formularios de conectores y avisos de la conversación visible (y de sus ayudantes).
+  const elicitations = useMemo(
+    () => elicitationsAll.filter((e) => !!sid && belongs(sessions, e.sessionID, sid)),
+    [elicitationsAll, sessions, sid]
+  )
+  const elicitationNotices = useMemo(
+    () => noticesAll.filter((n) => !!sid && belongs(sessions, n.sessionID, sid)),
+    [noticesAll, sessions, sid]
+  )
   const client = useClient()
   const aiGate = useCodeAiGate()
   const setModel = useCode((s) => s.setModel)
@@ -923,6 +934,8 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           root={directory}
           permissions={permissions}
           questions={questions}
+          elicitations={elicitations}
+          elicitationNotices={elicitationNotices}
           revertMessageID={revertID}
           onUnrevert={() => void unrevert()}
           loading={loading}

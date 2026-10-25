@@ -1,6 +1,7 @@
 /**
  * Tipos locales del modo Code.
  */
+import type { ElicitationRequest } from '@shared/mcp-elicitation'
 import type { ElementAttachment } from '../../browser/element-context'
 import type { Part, Message, PermissionRequest, QuestionInfo, Todo } from '@opencode-ai/sdk/v2/client'
 
@@ -34,6 +35,9 @@ export interface PendingQuestion {
   sessionID: string
   questions: QuestionInfo[]
 }
+
+/** Formulario de un conector pendiente (`mcp.elicitation.asked`), ya saneado por `parseElicitationRequest`. */
+export type PendingElicitation = ElicitationRequest
 
 export type { PermissionRequest, Todo }
 

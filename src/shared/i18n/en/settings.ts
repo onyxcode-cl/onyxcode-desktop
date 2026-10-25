@@ -493,5 +493,11 @@ export const settings = {
   'settings.engine.limits.note':
     'A value outside the allowed range is adjusted to the nearest one. When a limit changes, the engine restarts to apply it, only when nothing is running.',
   'settings.engine.background.chatNote':
-    'In Chat the AI can only start a helper that searches and reads the web, with the same permissions as Chat (no files or terminal).'
+    'In Chat the AI can only start a helper that searches and reads the web, with the same permissions as Chat (no files or terminal).',
+  'settings.engine.forms.title': 'Connector forms',
+  'settings.engine.forms.desc':
+    'A connector can ask you for a piece of information with a form in the middle of an action (a date, a recipient…). Lazunox shows it with the connector’s name, as plain text and without links, and only sends what you type and confirm.',
+  'settings.engine.forms.change':
+    'When off, connectors cannot ask for forms: if they need a value, the action fails instead of asking you. Esc cancels a form and Stop cancels them all. Lazunox never sends passwords or keys this way, whether the switch is on or off.',
+  'settings.engine.forms.note': 'Chat and Code only: Overdrive does not receive forms because nobody is there to answer them.'
 } as const satisfies Messages<typeof es>

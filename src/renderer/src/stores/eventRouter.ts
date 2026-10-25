@@ -3,7 +3,7 @@
  * recibir lo de Chat (y lo que Tareas aplica por su cuenta con su origen); Code tiene su propio store.
  */
 import type { OcEvent } from '../lib/opencode'
-import { applyChatQuestionEvent } from '../features/chat/store'
+import { applyChatElicitationEvent, applyChatQuestionEvent } from '../features/chat/store'
 import { useServer } from './server'
 import { MAIN_SOURCE, useSessions } from './sessions'
 
@@ -59,6 +59,11 @@ export function routeEventToSessions(ev: OcEvent, dir: string): void {
   const knownChat = (sid: string): boolean => {
     const s = st.sessions[sid]
     return !!s && (st.sessionSource[sid] ?? MAIN_SOURCE) === MAIN_SOURCE && sameDir(s.directory, chatDirectory)
+  }
+  // Formularios de conectores (eventos del motor propio, fuera de la unión de tipos del SDK): solo el estado propio de Chat.
+  if ((ev.type as string).startsWith('mcp.elicitation.')) {
+    applyChatElicitationEvent(ev, () => shouldApplyToSessions(ev, dir, { chatDirectory, knownChat }))
+    return
   }
   if (!shouldApplyToSessions(ev, dir, { chatDirectory, knownChat })) return
   // Alarma dev: sesión de Chat conocida que llega con otro directorio = desajuste de rutas (solo entra por fail-open).

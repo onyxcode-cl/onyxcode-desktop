@@ -13,6 +13,7 @@
  * - Esta interfaz es ESTABLE: los demás paquetes del plan la consumen sin editarla. Si falta un
  *   método, se pide al paquete P0 en lugar de añadirlo desde fuera.
  */
+import type { ElicitationAction, ElicitationReplyResult, ElicitationRequest, ElicitationValue } from '../mcp-elicitation'
 import type { EngineEventHandler, EngineEventOptions } from './events'
 import type {
   AgentInfo,
@@ -119,6 +120,15 @@ export interface EngineQuestions {
   reject(id: string, o?: Scope): Promise<void>
 }
 
+/**
+ * Formularios de conectores (MCP `elicitation`). Rutas del motor propio que el SDK fijado no trae: `GET /mcp/elicitation` y
+ * `POST /mcp/elicitation/{id}/reply`. `list` devuelve `[]` si el motor no las tiene; `reply` informa 400/404 en el resultado.
+ */
+export interface EngineElicitations {
+  list(o?: Scope): Promise<ElicitationRequest[]>
+  reply(id: string, action: ElicitationAction, content?: Record<string, ElicitationValue>, o?: Scope): Promise<ElicitationReplyResult>
+}
+
 export interface EngineEvents {
   /**
    * Abre el stream global de eventos (todas las carpetas) y entrega cada uno ya normalizado. Se
@@ -195,6 +205,7 @@ export interface EngineClient {
   readonly sessions: EngineSessions
   readonly permissions: EnginePermissions
   readonly questions: EngineQuestions
+  readonly elicitations: EngineElicitations
   readonly events: EngineEvents
   readonly providers: EngineProviders
   readonly mcp: EngineMcp

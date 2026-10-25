@@ -107,6 +107,15 @@ describe('sidecar principal: variables de las funciones experimentales', () => {
     expect(env.OPENCODE_EXPERIMENTAL).toBeUndefined()
   })
 
+  it('formularios de conectores: por defecto encendidos (valor «1»); apagados en Chat y Code, no se pasa; solo Overdrive no cuenta', async () => {
+    expect((await envFor(ENGINE_EXPERIMENTS_DEFAULTS)).LAZUNOX_MCP_ELICITATION).toBe('1')
+    const off = { chat: false, code: false, tasks: false }
+    expect((await envFor(exp({ mcpElicitation: off }))).LAZUNOX_MCP_ELICITATION).toBeUndefined()
+    expect((await envFor(exp({ mcpElicitation: { chat: false, code: true, tasks: false } }))).LAZUNOX_MCP_ELICITATION).toBe('1')
+    // `tasks: true` no enciende nada en el sidecar principal ni en ningún lado (se normaliza a false).
+    expect((await envFor(exp({ mcpElicitation: { chat: false, code: false, tasks: true } }))).LAZUNOX_MCP_ELICITATION).toBeUndefined()
+  })
+
   it('Code encendido: lleva solo la variable de esa función', async () => {
     const env = await envFor(exp({ codeMode: { chat: false, code: true, tasks: false } }))
     expect(env.OPENCODE_EXPERIMENTAL_CODE_MODE).toBe('true')

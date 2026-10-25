@@ -52,8 +52,12 @@ describe('instantánea api-routes.json', () => {
     expect(sdk.routes.size).toBe(188)
     expect(snapshot.routeCount).toBe(snapshot.routes.length)
     // El motor propio de Lazunox añade dos rutas que el SDK oficial no conoce (panel de trabajos); el resto debe coincidir con el SDK.
-    const propias = snapshot.routes.filter((r: string) => /\/experimental\/session\/[^\s]*\/trabajos/.test(r))
-    expect(propias.sort()).toEqual([
+    // Formularios de conectores (`elicitation`): rutas del motor propio; entran en la instantánea al regenerarla con el motor nuevo (antes no están).
+    const FORMULARIOS = ['GET /mcp/elicitation', 'POST /mcp/elicitation/{requestID}/reply']
+    const propias = snapshot.routes.filter((r: string) => /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r))
+    const enSnapshot = propias.filter((r: string) => FORMULARIOS.includes(r))
+    expect(enSnapshot.length === 0 || enSnapshot.length === FORMULARIOS.length).toBe(true) // las dos o ninguna
+    expect(propias.filter((r: string) => !FORMULARIOS.includes(r)).sort()).toEqual([
       'GET /experimental/session/{sessionID}/trabajos',
       'POST /experimental/session/{sessionID}/trabajos/{id}/terminar'
     ])

@@ -407,3 +407,30 @@ describe('reinicio al cambiar «Activar ganchos» (userHooksEnabled)', () => {
     expect(h.server.restart).not.toHaveBeenCalled()
   })
 })
+
+describe('formularios de conectores (LAZUNOX_MCP_ELICITATION): reinicio', () => {
+  const live: EngineFlagsLiveServer = {
+    folder: '/work/a',
+    directory: '/work/a',
+    fullAccess: false,
+    baseUrl: 'http://task',
+    authorization: 'b',
+    startedAt: 1
+  }
+
+  it('apagarlos en Chat y en Code (el entorno del sidecar principal cambia) reinicia el principal y NO el sandbox de Overdrive', async () => {
+    const h = harness(base, { live: [live] })
+    await h.change({ engineExperiments: on({ mcpElicitation: flag(false, true, false) }) }) // Code aún los tiene: no cambia
+    expect(h.server.restart).not.toHaveBeenCalled()
+    await h.change({ engineExperiments: on({ mcpElicitation: flag(false, false, false) }) })
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.tasks.restartSandbox).not.toHaveBeenCalled()
+  })
+
+  it('encender «tasks» a la fuerza no cambia nada: Overdrive nunca recibe la variable (no reinicia ninguna familia)', async () => {
+    const h = harness(base, { live: [live] })
+    await h.change({ engineExperiments: on({ mcpElicitation: flag(true, true, true) }) })
+    expect(h.server.restart).not.toHaveBeenCalled()
+    expect(h.tasks.restartSandbox).not.toHaveBeenCalled()
+  })
+})

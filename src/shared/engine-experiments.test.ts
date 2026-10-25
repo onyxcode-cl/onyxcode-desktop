@@ -1,24 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ENGINE_ENV_MCP_ELICITATION,
   ENGINE_EXPERIMENTS_DEFAULTS,
   engineExperimentsFor,
   engineFlagEnvFor,
   engineFlagEnvForMainSidecar,
   migrateBackgroundSubagentsDefault,
-  normalizeEngineExperiments
+  normalizeEngineExperiments,
+  onlyExperimentalEngineEnv
 } from './engine-experiments'
 import { DEFAULT_SETTINGS, type EngineExperiments, type ToolSearchFlags } from './types'
 
 const off = { chat: false, code: false, tasks: false }
 const on = { chat: true, code: true, tasks: true }
 const TS_DEFAULT: ToolSearchFlags = { chat: 'auto', code: 'auto', tasks: 'off' }
+const formsDefault = { chat: true, code: true, tasks: false }
 const mk = (
   codeMode: Partial<typeof off>,
   backgroundSubagents: Partial<typeof off> = {},
-  toolSearch: ToolSearchFlags = TS_DEFAULT
+  toolSearch: ToolSearchFlags = TS_DEFAULT,
+  mcpElicitation: Partial<typeof off> = {}
 ): { engineExperiments: EngineExperiments } => ({
-  engineExperiments: { codeMode: { ...off, ...codeMode }, backgroundSubagents: { ...off, ...backgroundSubagents }, toolSearch }
+  engineExperiments: {
+    codeMode: { ...off, ...codeMode },
+    backgroundSubagents: { ...off, ...backgroundSubagents },
+    toolSearch,
+    mcpElicitation: { ...off, ...mcpElicitation }
+  }
 })
+const EL = 'LAZUNOX_MCP_ELICITATION'
 const TSE = 'LAZUNOX_TOOL_SEARCH'
 const TSK = 'LAZUNOX_TOOL_SEARCH_KEEP'
 const KEEP = 'browser,computer,bgshell'
@@ -27,7 +37,12 @@ const BG = 'OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS'
 
 describe('engine-experiments: valores por defecto', () => {
   it('Modo código apagado y subagentes en segundo plano encendidos en los tres modos; DEFAULT_SETTINGS usa la constante única', () => {
-    expect(ENGINE_EXPERIMENTS_DEFAULTS).toEqual({ codeMode: off, backgroundSubagents: on, toolSearch: TS_DEFAULT })
+    expect(ENGINE_EXPERIMENTS_DEFAULTS).toEqual({
+      codeMode: off,
+      backgroundSubagents: on,
+      toolSearch: TS_DEFAULT,
+      mcpElicitation: formsDefault
+    })
     expect(DEFAULT_SETTINGS.engineExperiments).toBe(ENGINE_EXPERIMENTS_DEFAULTS)
   })
 })
@@ -39,7 +54,12 @@ describe('normalizeEngineExperiments', () => {
   })
   it('conserva booleanos válidos y descarta claves extra', () => {
     const r = normalizeEngineExperiments({ codeMode: { chat: true, code: 'x', tasks: false, extra: true }, otro: 1 })
-    expect(r).toEqual({ codeMode: { chat: true, code: false, tasks: false }, backgroundSubagents: on, toolSearch: TS_DEFAULT })
+    expect(r).toEqual({
+      codeMode: { chat: true, code: false, tasks: false },
+      backgroundSubagents: on,
+      toolSearch: TS_DEFAULT,
+      mcpElicitation: formsDefault
+    })
   })
   it('búsqueda de herramientas: un settings.json viejo sin la clave recibe el valor por defecto (auto en Chat y Code, off en Overdrive)', () => {
     const viejo = { codeMode: { chat: true, code: false, tasks: false }, backgroundSubagents: off }
@@ -60,12 +80,12 @@ describe('normalizeEngineExperiments', () => {
 describe('engineExperimentsFor', () => {
   it('lee el modo pedido', () => {
     const s = mk({ code: true }, { tasks: true })
-    expect(engineExperimentsFor(s, 'code')).toEqual({ codeMode: true, backgroundSubagents: false })
-    expect(engineExperimentsFor(s, 'tasks')).toEqual({ codeMode: false, backgroundSubagents: true })
-    expect(engineExperimentsFor(s, 'chat')).toEqual({ codeMode: false, backgroundSubagents: false })
+    expect(engineExperimentsFor(s, 'code')).toEqual({ codeMode: true, backgroundSubagents: false, mcpElicitation: false })
+    expect(engineExperimentsFor(s, 'tasks')).toEqual({ codeMode: false, backgroundSubagents: true, mcpElicitation: false })
+    expect(engineExperimentsFor(s, 'chat')).toEqual({ codeMode: false, backgroundSubagents: false, mcpElicitation: false })
   })
   it('tolera ajustes sin el campo', () => {
-    expect(engineExperimentsFor({} as never, 'code')).toEqual({ codeMode: false, backgroundSubagents: true })
+    expect(engineExperimentsFor({} as never, 'code')).toEqual({ codeMode: false, backgroundSubagents: true, mcpElicitation: true })
   })
 })
 
@@ -110,7 +130,7 @@ describe('engineFlagEnvForMainSidecar (Chat y Code comparten sidecar)', () => {
     expect(engineFlagEnvForMainSidecar(mk({ tasks: true }, { tasks: true }))).toEqual({ [TSE]: 'auto', [TSK]: KEEP })
   })
   it('valores por defecto: subagentes de fondo y búsqueda de herramientas en «auto»', () => {
-    expect(engineFlagEnvForMainSidecar(DEFAULT_SETTINGS)).toEqual({ [BG]: 'true', [TSE]: 'auto', [TSK]: KEEP })
+    expect(engineFlagEnvForMainSidecar(DEFAULT_SETTINGS)).toEqual({ [BG]: 'true', [EL]: '1', [TSE]: 'auto', [TSK]: KEEP })
   })
   it('búsqueda de herramientas: «auto» si Chat O Code la tienen en auto; «off» explícito si las dos la apagan (el motor usa auto sin variable)', () => {
     const t = (chat: 'auto' | 'off', code: 'auto' | 'off'): ReturnType<typeof mk> => mk({}, {}, { chat, code, tasks: 'off' })
@@ -120,7 +140,7 @@ describe('engineFlagEnvForMainSidecar (Chat y Code comparten sidecar)', () => {
   })
   it('un ajuste guardado sin la clave nueva equivale al defecto', () => {
     const viejo = { engineExperiments: { codeMode: off, backgroundSubagents: off } } as never
-    expect(engineFlagEnvForMainSidecar(viejo)).toEqual({ [TSE]: 'auto', [TSK]: KEEP })
+    expect(engineFlagEnvForMainSidecar(viejo)).toEqual({ [EL]: '1', [TSE]: 'auto', [TSK]: KEEP })
   })
 })
 
@@ -170,6 +190,50 @@ describe('migrateBackgroundSubagentsDefault (1.6.0)', () => {
   })
   it('sin nada guardado: valores por defecto nuevos; el Modo código sigue apagado', () => {
     const r = migrateBackgroundSubagentsDefault(undefined, undefined)
-    expect(r.value).toEqual({ codeMode: off, backgroundSubagents: on, toolSearch: TS_DEFAULT })
+    expect(r.value).toEqual({ codeMode: off, backgroundSubagents: on, toolSearch: TS_DEFAULT, mcpElicitation: formsDefault })
+  })
+})
+
+describe('Formularios de conectores (LAZUNOX_MCP_ELICITATION)', () => {
+  it('nombre exacto de la variable y valor «1» (contrato del motor)', () => {
+    expect(ENGINE_ENV_MCP_ELICITATION).toBe('LAZUNOX_MCP_ELICITATION')
+    expect(engineFlagEnvFor(mk({}, {}, TS_DEFAULT, { code: true }), 'code')).toEqual({ [EL]: '1' })
+  })
+  it('por defecto: encendido en Chat y Code, apagado en Tareas', () => {
+    expect(ENGINE_EXPERIMENTS_DEFAULTS.mcpElicitation).toEqual(formsDefault)
+    expect(engineFlagEnvFor(DEFAULT_SETTINGS, 'chat')[EL]).toBe('1')
+    expect(engineFlagEnvFor(DEFAULT_SETTINGS, 'code')[EL]).toBe('1')
+    expect(engineFlagEnvFor(DEFAULT_SETTINGS, 'tasks')[EL]).toBeUndefined()
+  })
+  it('Tareas (Overdrive) NUNCA la recibe, ni forzando el ajuste a verdadero', () => {
+    const forced = { engineExperiments: { ...DEFAULT_SETTINGS.engineExperiments, mcpElicitation: on } }
+    expect(normalizeEngineExperiments(forced.engineExperiments).mcpElicitation.tasks).toBe(false)
+    expect(engineFlagEnvFor(forced, 'tasks')[EL]).toBeUndefined()
+    expect(engineExperimentsFor(forced, 'tasks').mcpElicitation).toBe(false)
+  })
+  it('el filtro de defensa del entorno de Tareas la descarta aunque alguien la pase', () => {
+    expect(onlyExperimentalEngineEnv({ [EL]: '1', [CM]: 'true' })).toEqual({ [CM]: 'true' })
+    expect(onlyExperimentalEngineEnv({ [EL]: 'true' })).toEqual({})
+  })
+  it('sidecar principal: se enciende si Chat O Code la tienen; apagada en ambos, no se pasa (y convive con la búsqueda de herramientas)', () => {
+    expect(engineFlagEnvForMainSidecar(mk({}, {}, TS_DEFAULT, { chat: true }))).toEqual({ [EL]: '1', [TSE]: 'auto', [TSK]: KEEP })
+    expect(engineFlagEnvForMainSidecar(mk({}, {}, TS_DEFAULT, { code: true }))).toEqual({ [EL]: '1', [TSE]: 'auto', [TSK]: KEEP })
+    expect(engineFlagEnvForMainSidecar(mk({}, {}, { chat: 'off', code: 'off', tasks: 'off' }, {}))).toEqual({ [TSE]: 'off' })
+  })
+  it('migración: un settings.json de antes (sin la clave) recibe el defecto encendido; lo apagado a propósito se respeta', () => {
+    const viejo = { codeMode: off, backgroundSubagents: on }
+    expect(normalizeEngineExperiments(viejo).mcpElicitation).toEqual(formsDefault)
+    expect(migrateBackgroundSubagentsDefault(viejo, true).value.mcpElicitation).toEqual(formsDefault)
+    const apagado = { ...viejo, mcpElicitation: off }
+    expect(normalizeEngineExperiments(apagado).mcpElicitation).toEqual(off)
+    expect(migrateBackgroundSubagentsDefault(apagado, true).value.mcpElicitation).toEqual(off)
+  })
+  it('basura en la clave -> defecto; claves extra descartadas', () => {
+    expect(normalizeEngineExperiments({ mcpElicitation: 'si' }).mcpElicitation).toEqual(formsDefault)
+    expect(normalizeEngineExperiments({ mcpElicitation: { chat: false, code: 'x', tasks: true, extra: 1 } }).mcpElicitation).toEqual({
+      chat: false,
+      code: true,
+      tasks: false
+    })
   })
 })

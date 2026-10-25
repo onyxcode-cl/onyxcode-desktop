@@ -12,6 +12,18 @@ import { isProtectedPermission } from '@shared/protected-path'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
+import {
+  listElicitations,
+  parseElicitationRejected,
+  parseElicitationReplied,
+  parseElicitationRequest,
+  rejectionNeedsNotice,
+  replyElicitation,
+  type ElicitationAction,
+  type ElicitationNotice,
+  type ElicitationReplyResult,
+  type ElicitationValue
+} from '@shared/mcp-elicitation'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
@@ -23,6 +35,7 @@ import { sendNotification } from '../../../lib/notify'
 import { debounce } from '../../../lib/debounce'
 import { lruMax } from '../../../lib/lru'
 import { createFrameQueue } from '../../../lib/frame-queue'
+import { elicitationConn } from '../../../lib/elicitation-conn'
 import {
   byId,
   createBuffers,
@@ -60,6 +73,7 @@ import type {
   FileAttachment,
   CodeAgent,
   CodeMessage,
+  PendingElicitation,
   PendingPermission,
   PendingQuestion,
   PermissionMode,
@@ -147,6 +161,10 @@ export interface CodeState {
   errors: Record<string, ConvError | null>
   permissions: Record<string, PendingPermission>
   questions: Record<string, PendingQuestion>
+  /** Formularios de conectores pendientes (`mcp.elicitation.asked`), por id. Solo texto plano; ver `ElicitationCard`. */
+  elicitations: Record<string, PendingElicitation>
+  /** Avisos breves (rechazos que la persona no llegó a ver o formularios caducados), por id, hasta que se cierran. */
+  elicitationNotices: Record<string, ElicitationNotice>
   todos: Record<string, Todo[]>
   agent: CodeAgent
   model: ModelRef | null
@@ -215,6 +233,13 @@ export interface CodeState {
   replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject') => Promise<void>
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
   rejectQuestion: (q: PendingQuestion) => Promise<void>
+  /** Contesta un formulario de conector. 400 deja el formulario abierto (el resultado trae los motivos); 404 lo quita. */
+  replyElicitation: (
+    e: PendingElicitation,
+    action: ElicitationAction,
+    content?: Record<string, ElicitationValue>
+  ) => Promise<ElicitationReplyResult>
+  dismissElicitationNotice: (id: string) => void
   setAgent: (agent: CodeAgent) => void
   /** `remember` (por defecto sí): lo guarda como el modelo del modo Code (`modelsByMode.code`); nunca toca el predeterminado global. */
   setModel: (model: ModelRef, remember?: boolean) => void
@@ -433,6 +458,44 @@ export const useCode = create<CodeState>((set, get) => {
     return true
   }
 
+  /** `mcp.elicitation.asked|replied|rejected` → estado. Un evento mal formado se ignora (no se muestra nada que no cumpla el contrato). */
+  const applyElicitationEvent = (type: string, props: unknown, eventDir: string): void => {
+    if (type === 'mcp.elicitation.asked') {
+      const req = parseElicitationRequest(props)
+      if (!req || !adopt(req.sessionID, eventDir)) return
+      markUnread(rootSessionID(get().sessions, req.sessionID))
+      notifyCode(req.sessionID, t('code.store.notifyElicitation'), t('code.store.notifyElicitationSub'))
+      set((s) => ({ elicitations: { ...s.elicitations, [req.id]: req } }))
+    } else if (type === 'mcp.elicitation.replied') {
+      const r = parseElicitationReplied(props)
+      if (!r || !(r.id in get().elicitations)) return
+      set((s) => {
+        const elicitations = { ...s.elicitations }
+        delete elicitations[r.id]
+        return { elicitations }
+      })
+    } else if (type === 'mcp.elicitation.rejected') {
+      const r = parseElicitationRejected(props)
+      if (!r) return
+      const hadCard = r.id in get().elicitations
+      // Un rechazo inmediato (secreto, esquema, ambiguo) llega SIN `asked`: se acepta si la sesión es de un proyecto abierto.
+      const mine = hadCard || adopt(r.sessionID, eventDir)
+      if (!mine) return
+      set((s) => {
+        const patch: Partial<CodeState> = {}
+        if (hadCard) {
+          const elicitations = { ...s.elicitations }
+          delete elicitations[r.id]
+          patch.elicitations = elicitations
+        }
+        if (rejectionNeedsNotice(r.reason, hadCard)) {
+          patch.elicitationNotices = { ...s.elicitationNotices, [r.id]: { id: r.id, sessionID: r.sessionID, reason: r.reason } }
+        }
+        return patch
+      })
+    }
+  }
+
   const setError = (sessionID: string, error: ConvError | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
 
   /** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
@@ -526,6 +589,8 @@ export const useCode = create<CodeState>((set, get) => {
       loadingMessages: without(s.loadingMessages),
       permissions: bySession(s.permissions),
       questions: bySession(s.questions),
+      elicitations: bySession(s.elicitations),
+      elicitationNotices: bySession(s.elicitationNotices),
       activeSessionID: s.activeSessionID && ids.has(s.activeSessionID) ? null : s.activeSessionID
     }
   }
@@ -549,12 +614,27 @@ export const useCode = create<CodeState>((set, get) => {
     if (!client || !dir) return
     const beforePerms = get().permissions
     const beforeQs = get().questions
+    const beforeEls = get().elicitations
     const beforeRun = get().runState
-    const [perms, questions, status] = await Promise.all([
+    const conn = elicitationConn()
+    const [perms, questions, status, forms] = await Promise.all([
       client.permission.list({ directory: dir }).catch(() => null),
       client.question.list({ directory: dir }).catch(() => null),
-      client.session.status({ directory: dir }).catch(() => null)
+      client.session.status({ directory: dir }).catch(() => null),
+      // Ruta propia del motor (el SDK no la trae): si no existe o falla, simplemente no hay formularios que reconstruir.
+      conn ? listElicitations(conn, dir).catch(() => null) : Promise.resolve(null)
     ])
+    if (forms?.available) {
+      const list = forms.list.filter((e) => known(e.sessionID))
+      set((s) => ({
+        elicitations: reconcilePending({
+          cur: s.elicitations,
+          before: beforeEls,
+          server: list,
+          inScope: (e) => s.sessionProject[e.sessionID] === dir
+        })
+      }))
+    }
     // F7-B16: se RECONSTRUYEN desde el servidor (filtrando por proyecto) en vez de solo acumular: uno respondido
     // desde otro cliente o mientras la app no escuchaba quedaba pegado. Si la petición falló no se toca nada.
     if (perms?.data) {
@@ -793,6 +873,8 @@ export const useCode = create<CodeState>((set, get) => {
     errors: {},
     permissions: {},
     questions: {},
+    elicitations: {},
+    elicitationNotices: {},
     todos: {},
     agent: initialAgent(),
     model: null,
@@ -1053,7 +1135,9 @@ export const useCode = create<CodeState>((set, get) => {
           status: s.runState,
           messages: s.messages,
           errors: s.errors,
-          pending: [...Object.values(s.permissions), ...Object.values(s.questions)].map((x) => x.sessionID)
+          pending: [...Object.values(s.permissions), ...Object.values(s.questions), ...Object.values(s.elicitations)].map(
+            (x) => x.sessionID
+          )
         })
         sdkData(await client.session.abort({ sessionID: sid, directory: dir }))
         await Promise.allSettled(kids.map((id) => client.session.abort({ sessionID: id, directory: s.sessionProject[id] ?? dir })))
@@ -1064,6 +1148,14 @@ export const useCode = create<CodeState>((set, get) => {
           Object.values(get().permissions)
             .filter((p) => stopped.has(p.sessionID))
             .map((p) => get().replyPermission(p, 'reject'))
+        )
+        // Lo mismo con los formularios de conectores: el motor ya los cancela al abortar la llamada, pero aquí se piden explícitamente
+        // (`cancel`) para no depender de él ni dejar una tarjeta a la que se podría contestar tras «Detenido».
+        await Promise.allSettled(
+          Object.values(get().elicitations)
+            // Ayudantes en segundo plano vivos Y cualquier hija de la conversación (también las de primer plano).
+            .filter((e) => stopped.has(e.sessionID) || rootSessionID(get().sessions, e.sessionID) === sid)
+            .map((e) => get().replyElicitation(e, 'cancel'))
         )
       } catch (err) {
         set({ globalError: errorMessage(err) })
@@ -1225,6 +1317,31 @@ export const useCode = create<CodeState>((set, get) => {
         set({ globalError: errorMessage(err) })
       }
     },
+
+    replyElicitation: async (e, action, content) => {
+      const conn = elicitationConn()
+      if (!conn) return { ok: false, error: t('code.client.notConnected') }
+      const dir = get().sessionProject[e.sessionID] ?? get().directory ?? undefined
+      const res = await replyElicitation(conn, e.id, action, content, dir)
+      // Contestado, o ya no existe (caducó o se cerró en otro lado): la tarjeta se va. Con 400 u otro error queda abierta.
+      if (res.ok || 'gone' in res) {
+        set((s) => {
+          if (!(e.id in s.elicitations)) return {}
+          const elicitations = { ...s.elicitations }
+          delete elicitations[e.id]
+          return { elicitations }
+        })
+      }
+      return res
+    },
+
+    dismissElicitationNotice: (id) =>
+      set((s) => {
+        if (!(id in s.elicitationNotices)) return {}
+        const elicitationNotices = { ...s.elicitationNotices }
+        delete elicitationNotices[id]
+        return { elicitationNotices }
+      }),
 
     setAgent: (agent) => {
       lsSet(LS_AGENT, agent)
@@ -1455,6 +1572,7 @@ export const useCode = create<CodeState>((set, get) => {
       for (const [id, q] of Object.entries(cur.queue)) if (q.length > 0) seeds.add(id)
       for (const p of Object.values(cur.permissions)) seeds.add(p.sessionID)
       for (const q of Object.values(cur.questions)) seeds.add(q.sessionID)
+      for (const e of Object.values(cur.elicitations)) seeds.add(e.sessionID)
       const ids = pickEvictions({
         candidates: Object.keys(cur.messages),
         pinned: pinClosure(cur.sessions, seeds),
@@ -1504,6 +1622,11 @@ export const useCode = create<CodeState>((set, get) => {
         return
       }
       deltaQueue.flush() // orden: lo encolado va antes que este evento
+      // Formularios de conectores: eventos del motor propio que no están en la unión de tipos del SDK fijado.
+      if ((event.type as string).startsWith('mcp.elicitation.')) {
+        applyElicitationEvent(event.type as string, (event as { properties?: unknown }).properties, eventDir)
+        return
+      }
       switch (event.type) {
         case 'session.created':
         case 'session.updated': {
@@ -1731,7 +1854,7 @@ export function selectProjectSessions(s: Pick<CodeState, 'sessions' | 'sessionPr
 /** ¿`directory` tiene alguna sesión trabajando, con cola pendiente o con un permiso/pregunta sin responder? Para avisar
  *  antes de cerrarlo (`closeOneProject` lo hace de todos modos; esto es solo para la confirmación en la UI). */
 export function selectProjectIsLive(
-  s: Pick<CodeState, 'sessionProject' | 'runState' | 'queue' | 'permissions' | 'questions'>,
+  s: Pick<CodeState, 'sessionProject' | 'runState' | 'queue' | 'permissions' | 'questions'> & Partial<Pick<CodeState, 'elicitations'>>,
   directory: string
 ): boolean {
   const ids = new Set(
@@ -1747,6 +1870,7 @@ export function selectProjectIsLive(
   }
   for (const p of Object.values(s.permissions)) if (ids.has(p.sessionID)) return true
   for (const q of Object.values(s.questions)) if (ids.has(q.sessionID)) return true
+  for (const e of Object.values(s.elicitations ?? {})) if (ids.has(e.sessionID)) return true
   return false
 }
 
@@ -1767,10 +1891,14 @@ export function isCodeTranscriptLoading(
  * Conteo combinado (para el badge del Dock): sesiones raíz con actividad sin ver (terminaron) o
  * que esperan algo del usuario (permiso o pregunta pendiente), sin duplicar la misma raíz.
  */
-export function selectCodeAttentionCount(s: Pick<CodeState, 'unread' | 'permissions' | 'questions' | 'sessions'>): number {
+export function selectCodeAttentionCount(
+  s: Pick<CodeState, 'unread' | 'permissions' | 'questions' | 'sessions'> & Partial<Pick<CodeState, 'elicitations'>>
+): number {
   const ids = new Set<string>(Object.keys(s.unread))
   for (const p of Object.values(s.permissions)) ids.add(rootSessionID(s.sessions, p.sessionID))
   for (const q of Object.values(s.questions)) ids.add(rootSessionID(s.sessions, q.sessionID))
+  // Un formulario de conector también espera a la persona.
+  for (const e of Object.values(s.elicitations ?? {})) ids.add(rootSessionID(s.sessions, e.sessionID))
   return ids.size
 }
 

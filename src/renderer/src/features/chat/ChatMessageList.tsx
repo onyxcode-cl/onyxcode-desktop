@@ -28,8 +28,10 @@ import { ShellBgWakeNote } from '../../components/conversation/ShellBgWakeNote'
 import { shellBgWakeOf } from '@shared/shell-bg-wake-marker'
 import { ChatToolCall } from './ChatToolCall'
 import { ChatFiles } from './ChatFiles'
-import { rejectChatQuestion, replyChatQuestion } from './actions'
-import type { ChatPendingQuestion } from './store'
+import { ElicitationCard, ElicitationNoticeRow } from '../code/impl/ElicitationCard'
+import type { ElicitationNotice, ElicitationRequest } from '@shared/mcp-elicitation'
+import { rejectChatQuestion, replyChatElicitation, replyChatQuestion } from './actions'
+import { useChat, type ChatPendingQuestion } from './store'
 import { stripMemoryProposalBlock } from '@shared/memory-proposal'
 import { StepGroup } from '../code/impl/ToolCard'
 import type { ReadingMode } from '../../lib/reading-mode'
@@ -447,6 +449,10 @@ interface Props extends ErrorActions {
   onEdit?: (messageID: string, text: string) => Promise<unknown>
   /** Preguntas con opciones que el agente espera que se contesten (herramienta `question`). */
   questions?: ChatPendingQuestion[]
+  /** Formularios de conectores que esperan datos de la persona (sin marca de confianza: esa es de Code). */
+  elicitations?: ElicitationRequest[]
+  /** Avisos breves de formularios rechazados sin mostrarse. */
+  elicitationNotices?: ElicitationNotice[]
 }
 
 /**
@@ -488,7 +494,9 @@ export function ChatMessageList({
   onRetry,
   onCompact,
   onEdit,
-  questions = []
+  questions = [],
+  elicitations = [],
+  elicitationNotices = []
 }: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
@@ -503,7 +511,7 @@ export function ChatMessageList({
   const last = entries[entries.length - 1]
   const lastHasOutput = last?.info.role === 'assistant' && last.parts.some((p) => (p.type === 'text' && p.text) || p.type === 'tool')
   // Mientras espera una respuesta tuya el agente sigue «ocupado», pero no está pensando: no se muestra el indicador.
-  const showThinking = busy && !lastHasOutput && questions.length === 0
+  const showThinking = busy && !lastHasOutput && questions.length === 0 && elicitations.length === 0
 
   // Sin ningún mensaje de usuario no hay nada que reenviar: no se ofrece «Reintentar».
   const canRetry = entries.some((e) => e.info.role === 'user')
@@ -546,6 +554,12 @@ export function ChatMessageList({
               onReply={(answers) => replyChatQuestion(q, answers)}
               onReject={() => rejectChatQuestion(q)}
             />
+          ))}
+          {elicitations.map((e) => (
+            <ElicitationCard key={e.id} request={e} onSubmit={(action, content) => replyChatElicitation(e, action, content)} />
+          ))}
+          {elicitationNotices.map((n) => (
+            <ElicitationNoticeRow key={n.id} notice={n} onDismiss={() => useChat.getState().dismissElicitationNotice(n.id)} />
           ))}
           {showThinking && <ThinkingIndicator label={retrying ? (retryLabel ?? t('chat.msg.retrying')) : undefined} />}
           {error && !lastAssistantFailed(entries) && (
