@@ -720,19 +720,26 @@ tsCheck(
     return veredicto(sueltas.length === 0, `siguen sueltas ${sueltas.length} herramientas x_* (p. ej. ${sueltas.slice(0, 3).join(', ')})`)
   }
 )
-tsRun('A-2', 'toolsBytes baja ≥ 70 % frente a LAZUNOX_TOOL_SEARCH=off con el mismo conector', async () => {
-  const base = { mcpServers: ['x'], mcpMany: MANY, call: { name: 'tool_search', args: { query: 'ticket' } } }
-  const off = await runEngine(bin, { ...base, env: { LAZUNOX_TOOL_SEARCH: 'off' } })
-  const on = await runEngine(bin, { ...base, env: TS_ON })
-  if (off.error || on.error) throw new Error(off.error ?? on.error)
-  const baja = 1 - on.toolsBytesFirst / off.toolsBytesFirst
-  console.log(
-    `      · toolsBytes off=${off.toolsBytesFirst} on=${on.toolsBytesFirst} (baja ${(baja * 100).toFixed(1)} %; ≈ ${Math.round(off.toolsBytesFirst / 4)} → ${Math.round(on.toolsBytesFirst / 4)} tokens)`
-  )
-  if (!offered(on).includes('tool_search')) throw new Error('con LAZUNOX_TOOL_SEARCH=on el motor no ofreció tool_search')
-  if (baja < 0.7) throw new Error(`la lista solo bajó ${(baja * 100).toFixed(1)} % (se pide ≥ 70 %)`)
-  return true
-})
+tsRun(
+  'A-2',
+  'el peso de las herramientas DEL CONECTOR baja ≥ 85 % con LAZUNOX_TOOL_SEARCH=on (las integradas del motor no cuentan)',
+  async () => {
+    const base = { mcpServers: ['x'], mcpMany: MANY, call: { name: 'tool_search', args: { query: 'ticket' } } }
+    const off = await runEngine(bin, { ...base, env: { LAZUNOX_TOOL_SEARCH: 'off' } })
+    const on = await runEngine(bin, { ...base, env: TS_ON })
+    const none = await runEngine(bin, { call: { name: 'read', args: { filePath: '.' } }, env: { LAZUNOX_TOOL_SEARCH: 'off' } })
+    if (off.error || on.error || none.error) throw new Error(off.error ?? on.error ?? none.error)
+    const conectorOff = off.toolsBytesFirst - none.toolsBytesFirst
+    const conectorOn = on.toolsBytesFirst - none.toolsBytesFirst
+    const baja = 1 - conectorOn / conectorOff
+    console.log(
+      `      · lista completa: off=${off.toolsBytesFirst} on=${on.toolsBytesFirst} (≈ ${Math.round(off.toolsBytesFirst / 4)} → ${Math.round(on.toolsBytesFirst / 4)} tokens); solo el conector: ${Math.round(conectorOff / 4)} → ${Math.round(conectorOn / 4)} tokens (baja ${(baja * 100).toFixed(1)} %)`
+    )
+    if (!offered(on).includes('tool_search')) throw new Error('con LAZUNOX_TOOL_SEARCH=on el motor no ofreció tool_search')
+    if (baja < 0.85) throw new Error(`lo del conector solo bajó ${(baja * 100).toFixed(1)} % (se pide ≥ 85 %)`)
+    return true
+  }
+)
 tsCheck(
   'A-3',
   'x_*: ask → mcp_call x_start pregunta por «x_start» (no por mcp_call) y, rechazado, no se ejecuta',
