@@ -2,6 +2,9 @@
 // Comprobaciones MANUALES contra el motor OpenCode real (sin modelo, sin red, aislado): ver `harness.mjs`.
 // Uso: node scripts/engine-probe/run.mjs [ruta/al/opencode] [--shell-bg ruta/al/shell-bg-mcp.cjs]
 //   (motor por defecto: resources/opencode-bin/bin/opencode; el .cjs se genera con `node scripts/build-shell-bg.mjs --out <ruta>`)
+//   PROBE_ONLY=<texto>  corre solo las comprobaciones cuyo nombre lo contiene (p. ej. `PROBE_ONLY=tool-search`: solo la búsqueda diferida).
+//   PROBE_MCP_MANY=<n>  herramientas extra del conector de las comprobaciones `tool-search` (defecto 40).
+//   PROBE_FORCE_TOOL_SEARCH=1  corre las `tool-search` aunque el motor no traiga `LAZUNOX_TOOL_SEARCH` (para ver POR QUÉ fallan).
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -668,10 +671,226 @@ for (const [persist, nombre, espera] of [
   })
 }
 
+// ── Búsqueda diferida de herramientas (docs/PLAN-HERRAMIENTAS-DIFERIDAS-Y-FORMULARIOS-MCP.md, fase A2: A-1..A-9) ─────────
+// Contrato del motor: `tool_search` + `mcp_call` en lugar de las herramientas del conector, con `LAZUNOX_TOOL_SEARCH=on|auto|off`
+// (+ `_MIN_TOKENS`, `_KEEP`). Con un motor sin esa variable se SALTAN (mensaje claro); `PROBE_FORCE_TOOL_SEARCH=1` las corre igual.
+const MANY = Number(process.env.PROBE_MCP_MANY ?? 40) || 40
+const TS_ON = { LAZUNOX_TOOL_SEARCH: 'on' }
+const tsCheck = (id, text, sc, expect) =>
+  checks.push({ name: `tool-search ${id}: ${text}`, sc: { mcpMany: MANY, ...sc, env: { ...TS_ON, ...(sc.env ?? {}) } }, expect, gate: 'tool-search' })
+const tsRun = (id, text, run) => checks.push({ name: `tool-search ${id}: ${text}`, run, gate: 'tool-search' })
+const mcpCall = (tool, args = { command: 'a' }, force = true) => ({ name: 'mcp_call', args: { tool, arguments: args }, force })
+const offered = (r) => r.toolsOffered ?? []
+/** La parte de la sesión es `mcp_call` (no se ejecutó por otro camino). */
+const viaMcpCall = (r, i = 0) => r.toolParts[i]?.tool === 'mcp_call'
+const ran = (r, i, echo) => r.toolParts[i]?.status === 'completed' && (r.toolParts[i].output ?? '').includes(echo)
+/** Devuelve true o el motivo (texto) del fallo: el corredor lo imprime en vez de un volcado. */
+const veredicto = (cond, msg) => (cond ? true : msg)
+const seesTS = (r) =>
+  veredicto(
+    offered(r).includes('tool_search') && offered(r).includes('mcp_call'),
+    `el motor no ofreció tool_search/mcp_call (herramientas ofrecidas: ${offered(r).length}, entre ellas ${offered(r).filter((n) => n.startsWith('x_')).length} x_*)`
+  )
+
+tsCheck(
+  'A-1',
+  `la lista ofrecida tiene tool_search y mcp_call y NINGUNA x_* (conector con ${MANY + 3} herramientas)`,
+  { mcpServers: ['x'], call: { name: 'tool_search', args: { query: 'ticket' } } },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    const sueltas = offered(r).filter((n) => n.startsWith('x_'))
+    return veredicto(sueltas.length === 0, `siguen sueltas ${sueltas.length} herramientas x_* (p. ej. ${sueltas.slice(0, 3).join(', ')})`)
+  }
+)
+tsRun('A-2', 'toolsBytes baja ≥ 70 % frente a LAZUNOX_TOOL_SEARCH=off con el mismo conector', async () => {
+  const base = { mcpServers: ['x'], mcpMany: MANY, call: { name: 'tool_search', args: { query: 'ticket' } } }
+  const off = await runEngine(bin, { ...base, env: { LAZUNOX_TOOL_SEARCH: 'off' } })
+  const on = await runEngine(bin, { ...base, env: TS_ON })
+  if (off.error || on.error) throw new Error(off.error ?? on.error)
+  const baja = 1 - on.toolsBytesFirst / off.toolsBytesFirst
+  console.log(
+    `      · toolsBytes off=${off.toolsBytesFirst} on=${on.toolsBytesFirst} (baja ${(baja * 100).toFixed(1)} %; ≈ ${Math.round(off.toolsBytesFirst / 4)} → ${Math.round(on.toolsBytesFirst / 4)} tokens)`
+  )
+  if (!offered(on).includes('tool_search')) throw new Error('con LAZUNOX_TOOL_SEARCH=on el motor no ofreció tool_search')
+  if (baja < 0.7) throw new Error(`la lista solo bajó ${(baja * 100).toFixed(1)} % (se pide ≥ 70 %)`)
+  return true
+})
+tsCheck(
+  'A-3',
+  'x_*: ask → mcp_call x_start pregunta por «x_start» (no por mcp_call) y, rechazado, no se ejecuta',
+  { mcpServers: ['x'], inline: { permission: { 'x_*': 'ask' } }, call: mcpCall('x_start', { command: 'a' }, false), reply: 'reject' },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    return veredicto(
+      viaMcpCall(r) && r.asked.length >= 1 && r.asked.every((a) => a.permission === 'x_start') && r.toolParts[0].status !== 'completed',
+      `asked=${JSON.stringify(r.asked.map((a) => a.permission))} partes=${JSON.stringify(r.toolParts.map((p) => [p.tool, p.status]))}`
+    )
+  }
+)
+tsCheck(
+  'A-3b',
+  'x_*: ask y la persona aprueba → mcp_call ejecuta x_start y el servidor recibe los argumentos',
+  { mcpServers: ['x'], inline: { permission: { 'x_*': 'ask' } }, call: mcpCall('x_start', { command: 'hola' }, false), reply: 'once' },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    return veredicto(
+      viaMcpCall(r) && r.asked.some((a) => a.permission === 'x_start') && ran(r, 0, 'ECHO:start:{"command":"hola"}'),
+      JSON.stringify({ asked: r.asked, parts: r.toolParts })
+    )
+  }
+)
+tsCheck(
+  'A-4',
+  'x_*: deny (con otro conector «y» permitido para que mcp_call exista) → mcp_call x_start ni se ejecuta ni pregunta',
+  { mcpServers: ['x', 'y'], inline: { permission: { 'x_*': 'deny', 'y_*': 'allow' } }, call: mcpCall('x_start') },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    return veredicto(
+      r.asked.length === 0 && viaMcpCall(r) && r.toolParts[0].status !== 'completed' && !(r.toolParts[0].output ?? '').includes('ECHO:'),
+      JSON.stringify({ asked: r.asked, parts: r.toolParts })
+    )
+  }
+)
+tsCheck(
+  'A-5',
+  'x_secret: deny con x_*: allow → x_start se ejecuta y x_secret no',
+  {
+    mcpServers: ['x'],
+    inline: { permission: { 'x_*': 'allow', x_secret: 'deny' } },
+    steps: [() => mcpCall('x_start'), () => mcpCall('x_secret')],
+    call: { name: 'mcp_call', args: {} }
+  },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    return veredicto(
+      r.toolParts.length === 2 && ran(r, 0, 'ECHO:start:') && r.toolParts[1].status !== 'completed' && !(r.toolParts[1].output ?? '').includes('ECHO:secret'),
+      JSON.stringify({ asked: r.asked, parts: r.toolParts })
+    )
+  }
+)
+// Agente primario con "*": deny y solo x_start permitido: el catálogo diferido respeta las reglas del AGENTE.
+tsCheck(
+  'A-6',
+  'agente con "*": deny y "x_start": allow → x_start sí, x_secret no',
+  {
+    mcpServers: ['x'],
+    agent: 'solo-start',
+    inline: { agent: { 'solo-start': { mode: 'primary', description: 'prueba', permission: { '*': 'deny', x_start: 'allow' } } } },
+    steps: [() => mcpCall('x_start'), () => mcpCall('x_secret')],
+    call: { name: 'mcp_call', args: {} }
+  },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    return veredicto(
+      r.toolParts.length === 2 && ran(r, 0, 'ECHO:start:') && r.toolParts[1].status !== 'completed' && !(r.toolParts[1].output ?? '').includes('ECHO:secret'),
+      JSON.stringify({ asked: r.asked, parts: r.toolParts })
+    )
+  }
+)
+// Ganchos de plugin: reciben el nombre REAL (x_start), nunca mcp_call, y lo que mutan llega al servidor.
+const hookLog = join(work, 'tool-search-hook.log')
+const hookPlugin = (mutate) => ({
+  'ts-hook.js': `import { appendFileSync } from 'node:fs'
+export default {
+  id: 'ts-hook',
+  server: async () => ({
+    'tool.execute.before': async (input, output) => {
+      appendFileSync(process.env.PROBE_HOOK_LOG, 'before:' + input.tool + ':' + JSON.stringify(output.args) + '\\n')
+      ${mutate ? "if (input.tool === 'x_start') output.args.command = 'MUTADO'" : ''}
+    },
+    'tool.execute.after': async (input) => {
+      appendFileSync(process.env.PROBE_HOOK_LOG, 'after:' + input.tool + '\\n')
+    }
+  })
+}
+`
+})
+const hookLines = () => (existsSync(hookLog) ? readFileSync(hookLog, 'utf8').trim().split('\n').filter(Boolean) : [])
+tsRun('A-7', 'un plugin en tool.execute.before recibe «x_start» (no «mcp_call») y también el after', async () => {
+  rmSync(hookLog, { force: true })
+  const r = await runEngine(bin, {
+    mcpServers: ['x'],
+    mcpMany: MANY,
+    plugins: hookPlugin(false),
+    env: { ...TS_ON, PROBE_HOOK_LOG: hookLog },
+    inline: { permission: { 'x_*': 'allow' } },
+    call: mcpCall('x_start', { command: 'a' }, false)
+  })
+  if (r.error) throw new Error(r.error)
+  const t = seesTS(r)
+  if (t !== true) throw new Error(t)
+  const l = hookLines()
+  if (!l.some((x) => x.startsWith('before:x_start:'))) throw new Error(`el gancho no recibió x_start; vio: ${JSON.stringify(l)}`)
+  if (l.some((x) => x.startsWith('before:mcp_call') || x.startsWith('after:mcp_call'))) throw new Error(`el gancho vio mcp_call: ${JSON.stringify(l)}`)
+  if (!l.some((x) => x === 'after:x_start')) throw new Error(`falta el after de x_start: ${JSON.stringify(l)}`)
+  return true
+})
+tsRun('A-8', 'el plugin muta args en before y el eco del servidor lo refleja', async () => {
+  rmSync(hookLog, { force: true })
+  const r = await runEngine(bin, {
+    mcpServers: ['x'],
+    mcpMany: MANY,
+    plugins: hookPlugin(true),
+    env: { ...TS_ON, PROBE_HOOK_LOG: hookLog },
+    inline: { permission: { 'x_*': 'allow' } },
+    call: mcpCall('x_start', { command: 'ORIGINAL' }, false)
+  })
+  if (r.error) throw new Error(r.error)
+  const t = seesTS(r)
+  if (t !== true) throw new Error(t)
+  if (!ran(r, 0, 'ECHO:start:{"command":"MUTADO"}')) throw new Error(`el servidor no recibió el argumento mutado: ${JSON.stringify(r.toolParts)}`)
+  return true
+})
+// Subagente con x_*: deny: lo lanza el padre (que sí ve x_*); la hija busca en tool_search y no debe encontrar ni ver nada de x.
+tsCheck(
+  'A-9',
+  'un subagente con x_*: deny no ve x_* (ni suelto ni en tool_search) aunque el padre sí',
+  {
+    mcpServers: ['x', 'y'],
+    inline: {
+      permission: { 'x_*': 'allow', 'y_*': 'allow' },
+      agent: { 'sin-x': { mode: 'subagent', description: 'ayudante sin el conector x', permission: { 'x_*': 'deny', 'y_*': 'allow' } } }
+    },
+    decide: ({ tools, toolTexts, userTexts }) => {
+      if (toolTexts.length) return null
+      if (userTexts.some((t) => t.includes('busca algo'))) return tools.includes('tool_search') ? { name: 'tool_search', args: { query: 'ticket start secret' } } : null
+      return { name: 'task', args: { subagent_type: 'sin-x', description: 'buscar', prompt: 'busca algo' } }
+    }
+  },
+  (r) => {
+    const t = seesTS(r)
+    if (t !== true) return t
+    // La petición de la hija: la que ofrece herramientas pero no `task` (la hija no lanza más ayudantes).
+    const hija = (r.requestTools ?? []).find((ts, i) => i > 0 && ts.length && !ts.includes('task'))
+    if (!hija) return `no se vio la petición de la hija (herramientas por petición: ${JSON.stringify((r.requestTools ?? []).map((x) => x.length))})`
+    const sueltas = hija.filter((n) => n.startsWith('x_'))
+    if (sueltas.length) return `la hija ve herramientas x_* sueltas: ${sueltas.slice(0, 3).join(', ')}`
+    // El padre no busca: cualquier resultado con nombres de x es lo que vio la hija.
+    const fuga = (r.toolMessages ?? []).filter((m) => /x_start|x_secret|x_create_ticket/.test(m))
+    return veredicto(fuga.length === 0, `la búsqueda de la hija devolvió herramientas de x: ${fuga.map((m) => m.slice(0, 200)).join(' | ')}`)
+  }
+)
+
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
 const only = process.env.PROBE_ONLY
 let failed = 0
-for (const c of only ? checks.filter((x) => x.name.includes(only)) : checks) {
+let skipped = 0
+/** ¿El motor trae la búsqueda diferida? (busca la variable en el binario compilado; se calcula una sola vez). */
+let tsSupport = null
+const hasToolSearch = () => (tsSupport ??= process.env.PROBE_FORCE_TOOL_SEARCH === '1' || readFileSync(bin).includes('LAZUNOX_TOOL_SEARCH'))
+const selected = only ? checks.filter((x) => x.name.includes(only)) : checks
+for (const c of selected) {
+  if (c.gate === 'tool-search' && !hasToolSearch()) {
+    skipped++
+    console.log(`SALTA ${c.name}\n      → este motor no trae LAZUNOX_TOOL_SEARCH (aún no tiene la búsqueda diferida); PROBE_FORCE_TOOL_SEARCH=1 la corre igual`)
+    continue
+  }
   if (c.run) {
     let ok = false
     let why = ''
@@ -685,11 +904,14 @@ for (const c of only ? checks.filter((x) => x.name.includes(only)) : checks) {
     continue
   }
   const r = await runEngine(bin, c.sc)
-  const ok = !r.error && c.expect(r)
+  // `expect` devuelve boolean; las de tool-search pueden devolver un texto (el motivo del fallo).
+  const res = r.error ? false : c.expect(r)
+  const ok = !!res && typeof res !== 'string'
   if (!ok) failed++
   console.log(
-    `${ok ? 'OK  ' : 'FALLA'} ${c.name}${ok ? '' : `\n      → ${r.error ?? JSON.stringify({ outcome: outcome(r), asked: r.asked, parts: r.toolParts })}`}`
+    `${ok ? 'OK  ' : 'FALLA'} ${c.name}${ok ? '' : `\n      → ${r.error ?? (typeof res === 'string' ? res : JSON.stringify({ outcome: outcome(r), asked: r.asked, parts: r.toolParts }))}`}`
   )
 }
-console.log(failed ? `\n${failed} comprobación(es) fallaron.` : `\nTodo OK (${checks.length}).`)
+if (skipped) console.log(`\n${skipped} comprobación(es) saltada(s): este motor no trae LAZUNOX_TOOL_SEARCH.`)
+console.log(failed ? `\n${failed} comprobación(es) fallaron.` : `\nTodo OK (${selected.length - skipped}${skipped ? ` + ${skipped} saltadas` : ''}).`)
 process.exit(failed ? 1 : 0)

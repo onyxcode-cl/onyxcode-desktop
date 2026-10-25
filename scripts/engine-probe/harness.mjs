@@ -23,7 +23,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /**
  * @param {string} bin binario del motor
- * @param {{ plugins?: Record<string,string>, mcpServers?: string[], env?: Record<string,string>, file?: object, inline?: object,
+ * @param {{ mcpMany?: number, decide?: Function, plugins?: Record<string,string>, mcpServers?: string[], env?: Record<string,string>, file?: object, inline?: object,
  *   call: { name: string, args: object }, agent?: string, reply?: 'once'|'reject', settleMs?: number, agentsDir?: string }} sc
  */
 export async function runEngine(bin, sc) {
@@ -38,7 +38,7 @@ export async function runEngine(bin, sc) {
   mkdirSync(join(cfgdir, 'plugins'), { recursive: true })
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
   if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
-  const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0 }
+  const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0, toolsBytes: [], requestTools: [] }
   const sse = (res, chunks) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     for (const c of chunks) res.write('data: ' + JSON.stringify(c) + '\n\n')
@@ -62,6 +62,9 @@ export async function runEngine(bin, sc) {
         /* vacío */
       }
       const tools = (j.tools ?? []).map((t) => t.function?.name)
+      // Peso de la lista de herramientas de ESTA petición (0 si no lleva): base de las mediciones de `medir-herramientas.mjs` y de A-2.
+      seen.toolsBytes.push(j.tools ? JSON.stringify(j.tools).length : 0)
+      seen.requestTools.push(tools)
       const toolMsgs = (j.messages ?? []).filter((m) => m.role === 'tool')
       if (tools.length && !seen.toolsOffered) seen.toolsOffered = tools
       seen.requests += 1
@@ -75,17 +78,22 @@ export async function runEngine(bin, sc) {
           .join('\n---\n')
       seen.toolMessages.push(...toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
       // `sc.steps`: varias llamadas encadenadas; cada paso recibe los textos de los resultados anteriores y devuelve la siguiente llamada.
-      const step = sc.steps
+      // `sc.decide({ tools, toolTexts, userTexts })`: decisión libre por petición (p. ej. un subagente que hace algo distinto del padre).
+      const toolTexts = toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
+      const step = sc.decide
+        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts })
+        : sc.steps
         ? toolMsgs.length < sc.steps.length
           ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
           : null
         : tools.includes(sc.call.name) && !toolMsgs.length
           ? sc.call
           : null
-      if (step && tools.includes(step.name)) {
+      // `step.force`: pide la herramienta aunque el motor no la ofrezca (para probar que NO se ejecuta).
+      if (step && (step.force || tools.includes(step.name))) {
         const tc = {
           index: 0,
-          id: `call_${toolMsgs.length + 1}`,
+          id: `call_${seen.requests}_${toolMsgs.length + 1}`,
           type: 'function',
           function: { name: step.name, arguments: JSON.stringify(step.args) }
         }
@@ -111,7 +119,16 @@ export async function runEngine(bin, sc) {
     mcp: {
       ...(sc.inline?.mcp ?? {}),
       ...Object.fromEntries(
-        (sc.mcpServers ?? []).map((n) => [n, { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')], enabled: true }])
+        (sc.mcpServers ?? []).map((n) => [
+          n,
+          {
+            type: 'local',
+            command: [process.execPath, join(here, 'probe-mcp.mjs')],
+            enabled: true,
+            // `sc.mcpMany`: n herramientas extra realistas (~800 caracteres) por conector.
+            ...(sc.mcpMany ? { environment: { PROBE_MCP_MANY: String(sc.mcpMany) } } : {})
+          }
+        ])
       )
     }
   }
@@ -243,6 +260,10 @@ export async function runEngine(bin, sc) {
     out.system = seen.system
     if (sc.settleMs) await sleep(sc.settleMs)
     out.requests = seen.requests
+    out.toolsBytes = seen.toolsBytes // bytes de `tools` por petición, en orden
+    out.toolsBytesFirst = seen.toolsBytes.find((b) => b > 0) ?? 0 // la primera petición que lleva herramientas
+    out.requestTools = seen.requestTools // nombres ofrecidos en cada petición
+    out.toolMessages = seen.toolMessages // resultados de herramientas vistos por el modelo (de cualquier sesión, con repetidos)
     out.userTexts = seen.userTexts
   } catch (e) {
     out.error = String(e?.stack ?? e)
