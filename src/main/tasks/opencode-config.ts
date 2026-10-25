@@ -72,7 +72,8 @@ export const PLAN_GATE_ALLOWED_TOOLS = [
   'grep',
   'list',
   // Solo carga las instrucciones de una skill (lectura): el agente debe poder leer `ruta-rapida` ANTES de escribir el plan.
-  'skill'
+  'skill',
+  'tool_search'
 ] as const
 
 /** Niveles máximos que el plan-gate sube por `parentID` para hallar la raíz (más → se deniega). */

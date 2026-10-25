@@ -252,6 +252,10 @@ export function stepLine(p: StepFacts): string {
     case 'task':
       return `${t('code.tool.subagent')}: ${s(input.description) || s(p.state.title)}`.trim()
     default:
+      // Búsqueda diferida de herramientas de conectores: el motor pone `title` = nombre real de la herramienta en `mcp_call`.
+      if (p.tool === 'tool_search')
+        return `${t(running ? 'code.tool.toolSearchRunning' : 'code.tool.toolSearch')}: ${s(input.query)}`.replace(/: $/, '')
+      if (p.tool === 'mcp_call') return s(p.state.title) || s(input.tool) || p.tool
       return s(p.state.title) || p.tool
   }
 }

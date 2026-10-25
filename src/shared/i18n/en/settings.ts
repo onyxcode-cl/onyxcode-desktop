@@ -410,6 +410,14 @@ export const settings = {
   'settings.engine.background.desc': 'The AI can launch helpers that work in parallel while you keep chatting.',
   'settings.engine.background.change':
     'When on, the AI can split up the work and let you know when each helper finishes; you can keep using the conversation meanwhile.',
+  'settings.engine.toolSearch.title': 'Connector tool search',
+  'settings.engine.toolSearch.desc':
+    'With many connectors, the AI doesn’t get every tool description in each message: it looks tools up when it needs them. Uses less context and works better with small or free models.',
+  'settings.engine.toolSearch.change':
+    'Automatic: only turns on when your connectors’ tools are numerous; with few connectors nothing changes. Permissions are the same as always: each tool asks you just as if it were in plain view. You’ll see a “Searched connector tools” row.',
+  'settings.engine.toolSearch.chatNote':
+    'Overdrive doesn’t use this feature. When off, the AI always gets every connector tool. The built-in browser and Mac control are never searched: they are always in view.',
+  'settings.engine.toolSearch.toggleAria': 'Automatic tool search in {mode}',
   'settings.engine.remember.title': '“Always” permissions',
   'settings.engine.remember.desc':
     'When you answer “Always allow”, the AI remembers that permission for the project folder. Here you choose whether that memory survives closing the app.',

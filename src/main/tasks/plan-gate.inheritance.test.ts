@@ -200,6 +200,15 @@ describe('lazunox-plan-gate: herencia del plan por la raíz', () => {
     expect(g.gets).toEqual([])
   })
 
+  it('`tool_search` (solo lectura) pasa sin plan; `mcp_call` (ejecuta herramientas de conectores) NO: la puerta sigue bloqueándola', async () => {
+    expect(PLAN_GATE_ALLOWED_TOOLS as readonly string[]).toContain('tool_search')
+    expect(PLAN_GATE_ALLOWED_TOOLS as readonly string[]).not.toContain('mcp_call')
+    const g = await load({ sessions: tree, approved: new Set() })
+    await expect(call(g.before, 'tool_search', 'child')).resolves.toBeUndefined()
+    await expect(call(g.before, 'mcp_call', 'root')).rejects.toThrow(/plan aprobado/)
+    await expect(call(g.before, 'mcp_call', 'child')).rejects.toThrow(/plan aprobado/)
+  })
+
   it('`task` y `execute` no están entre las herramientas libres: una hija sin plan de raíz no las usa', async () => {
     expect(PLAN_GATE_ALLOWED_TOOLS as readonly string[]).not.toContain('task')
     expect(PLAN_GATE_ALLOWED_TOOLS as readonly string[]).not.toContain('execute')

@@ -114,7 +114,12 @@ const shortText = str({ max: 500 })
 const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const modeFlags = obj({ chat: bool, code: bool, tasks: bool })
 /** `settings:set.engineExperiments`: booleanos exactos, todas las claves obligatorias, sin extras. */
-const engineExperimentsShape = obj({ codeMode: modeFlags, backgroundSubagents: modeFlags })
+const toolSearchMode = literal('auto', 'off')
+const engineExperimentsShape = obj({
+  codeMode: modeFlags,
+  backgroundSubagents: modeFlags,
+  toolSearch: obj({ chat: toolSearchMode, code: toolSearchMode, tasks: toolSearchMode })
+})
 /**
  * `settings:set.engineLimits`: enteros dentro del rango de cada límite (`engine-limits.ts`), todas las claves opcionales, sin extras.
  * Un objeto vacío = todo por defecto (así «Restablecer» borra lo guardado).

@@ -2,7 +2,7 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS } from '@shared/types'
+import { DEFAULT_SETTINGS, type EngineExperiments } from '@shared/types'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -15,9 +15,13 @@ let update: ReturnType<typeof vi.fn>
 
 const switches = (): HTMLButtonElement[] => [...host.querySelectorAll<HTMLButtonElement>('section[role="group"] button[role="switch"]')]
 
-function mount(engineExperiments = DEFAULT_SETTINGS.engineExperiments): void {
+function mount(
+  engineExperiments: Pick<EngineExperiments, 'codeMode' | 'backgroundSubagents'> &
+    Partial<EngineExperiments> = DEFAULT_SETTINGS.engineExperiments
+): void {
+  const full = { toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch, ...engineExperiments }
   update = vi.fn(async () => undefined)
-  useSettings.setState({ settings: { ...DEFAULT_SETTINGS, engineExperiments }, update })
+  useSettings.setState({ settings: { ...DEFAULT_SETTINGS, engineExperiments: full }, update })
   act(() => root.render(createElement(EngineExperimentsSection)))
 }
 
@@ -33,25 +37,34 @@ afterEach(() => {
 })
 
 describe('EngineExperimentsSection', () => {
-  it('muestra dos grupos con nombre accesible y seis interruptores (Modo código apagado, subagentes en segundo plano encendidos)', () => {
+  it('muestra tres grupos con nombre accesible y ocho interruptores (Modo código apagado; subagentes en segundo plano y búsqueda de herramientas encendidos)', () => {
     mount()
     const groups = [...host.querySelectorAll('section[role="group"]')]
-    expect(groups).toHaveLength(2)
+    expect(groups).toHaveLength(3)
     for (const g of groups) {
       const labelId = g.getAttribute('aria-labelledby')!
       expect(document.getElementById(labelId)?.textContent).toBeTruthy()
       expect(g.textContent).toContain('Experimental')
     }
     const sw = switches()
-    expect(sw).toHaveLength(6)
+    expect(sw).toHaveLength(8)
     expect(sw.every((b) => !!b.getAttribute('aria-label'))).toBe(true)
-    expect(sw.filter((b) => b.getAttribute('aria-checked') === 'true')).toHaveLength(3)
-    expect(new Set(sw.map((b) => b.getAttribute('aria-label'))).size).toBe(6)
+    expect(sw.filter((b) => b.getAttribute('aria-checked') === 'true')).toHaveLength(5)
+    expect(new Set(sw.map((b) => b.getAttribute('aria-label'))).size).toBe(8)
   })
 
   it('refleja el estado guardado', () => {
     mount({ codeMode: { chat: false, code: true, tasks: false }, backgroundSubagents: { chat: true, code: false, tasks: true } })
-    expect(switches().map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'true', 'false', 'true'])
+    expect(switches().map((b) => b.getAttribute('aria-checked'))).toEqual([
+      'false',
+      'true',
+      'false',
+      'true',
+      'false',
+      'true',
+      'true',
+      'true'
+    ])
   })
 
   it('al cambiar uno envía el objeto completo y solo cambia esa bandera', () => {
@@ -60,14 +73,33 @@ describe('EngineExperimentsSection', () => {
     expect(update).toHaveBeenLastCalledWith({
       engineExperiments: {
         codeMode: { chat: true, code: true, tasks: false },
-        backgroundSubagents: { chat: true, code: false, tasks: false }
+        backgroundSubagents: { chat: true, code: false, tasks: false },
+        toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' }
       }
     })
     act(() => switches()[5].click()) // Subagentes · Overdrive
     expect(update).toHaveBeenLastCalledWith({
       engineExperiments: {
         codeMode: { chat: false, code: true, tasks: false },
-        backgroundSubagents: { chat: true, code: false, tasks: true }
+        backgroundSubagents: { chat: true, code: false, tasks: true },
+        toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' }
+      }
+    })
+  })
+
+  it('búsqueda de herramientas: solo Chat y Code tienen interruptor; apagar uno guarda «off» y deja Overdrive en «off»', () => {
+    mount()
+    const g = [...host.querySelectorAll('section[role="group"]')][2]!
+    expect(g.textContent).toContain('Búsqueda de herramientas de conectores')
+    expect(g.textContent).toContain('Overdrive no usa esta función')
+    const sw = [...g.querySelectorAll<HTMLButtonElement>('button[role="switch"]')]
+    expect(sw).toHaveLength(2)
+    act(() => sw[1].click()) // Code
+    expect(update).toHaveBeenLastCalledWith({
+      engineExperiments: {
+        codeMode: { chat: false, code: false, tasks: false },
+        backgroundSubagents: { chat: true, code: true, tasks: true },
+        toolSearch: { chat: 'auto', code: 'off', tasks: 'off' }
       }
     })
   })

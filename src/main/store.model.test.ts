@@ -84,11 +84,20 @@ describe('settings: codeTrustedMcp', () => {
 describe('settings: engineExperiments', () => {
   const OFF = { chat: false, code: false, tasks: false }
   const ON = { chat: true, code: true, tasks: true }
+  const TS = { chat: 'auto', code: 'auto', tasks: 'off' }
   it('sin el campo en disco -> todo apagado', async () => {
     const dir = userData()
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
+    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON, toolSearch: TS })
+  })
+  it('búsqueda de herramientas: un settings.json anterior a la clave la recibe con el defecto y lo apagado a propósito se respeta', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ engineExperiments: { codeMode: OFF, backgroundSubagents: ON } }))
+    const store = await openStore(dir)
+    expect(store.get().engineExperiments.toolSearch).toEqual(TS)
+    store.set({ engineExperiments: { codeMode: OFF, backgroundSubagents: ON, toolSearch: { chat: 'off', code: 'auto', tasks: 'off' } } })
+    expect((await openStore(dir)).get().engineExperiments.toolSearch).toEqual({ chat: 'off', code: 'auto', tasks: 'off' })
   })
   it('basura en disco -> defaults, sin lanzar', async () => {
     const dir = userData()
@@ -97,18 +106,18 @@ describe('settings: engineExperiments', () => {
       JSON.stringify({ engineExperiments: { codeMode: 'x', backgroundSubagents: { chat: 'si', code: 1 } } })
     )
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
+    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON, toolSearch: TS })
   })
   it('1.6.0: un settings.json antiguo con «todo apagado» enciende los ayudantes (sin escribir al leer) y respeta que luego se apaguen', async () => {
     const dir = userData()
     const antiguo = JSON.stringify({ theme: 'dark', engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
     writeFileSync(join(dir, 'settings.json'), antiguo)
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON })
+    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON, toolSearch: TS })
     // Leer NO toca el archivo (las migraciones de datos viejos lo necesitan intacto).
     expect(readFileSync(join(dir, 'settings.json'), 'utf8')).toBe(antiguo)
     // Una escritura normal guarda el marcador, y a partir de ahí lo que la persona apague se respeta.
-    store.set({ engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
+    store.set({ engineExperiments: { codeMode: OFF, backgroundSubagents: OFF, toolSearch: TS as never } })
     expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineBgMigrated).toBe(true)
     const reopened = await openStore(dir)
     expect(reopened.get().engineExperiments.backgroundSubagents).toEqual(OFF)
@@ -116,11 +125,11 @@ describe('settings: engineExperiments', () => {
   it('se guarda, sobrevive a otras escrituras y relee de disco', async () => {
     const dir = userData()
     const store = await openStore(dir)
-    store.set({ engineExperiments: { codeMode: { ...OFF, code: true }, backgroundSubagents: OFF } })
+    store.set({ engineExperiments: { codeMode: { ...OFF, code: true }, backgroundSubagents: OFF, toolSearch: TS as never } })
     store.set({ theme: 'dark' })
     expect(store.get().engineExperiments.codeMode.code).toBe(true)
     const reopened = await openStore(dir)
-    expect(reopened.get().engineExperiments).toEqual({ codeMode: { ...OFF, code: true }, backgroundSubagents: OFF })
+    expect(reopened.get().engineExperiments).toEqual({ codeMode: { ...OFF, code: true }, backgroundSubagents: OFF, toolSearch: TS })
   })
 })
 

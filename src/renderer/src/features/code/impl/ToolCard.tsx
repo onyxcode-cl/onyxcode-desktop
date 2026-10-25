@@ -28,6 +28,7 @@ import {
   Globe,
   ListTodo,
   Loader2,
+  Search,
   SquareTerminal,
   Wrench,
   XCircle
@@ -42,6 +43,21 @@ function str(v: unknown): string {
 
 function num(v: unknown): number | undefined {
   return typeof v === 'number' ? v : undefined
+}
+
+/** Texto de metadatos del motor (no confiable): solo cadena, sin saltos de línea y con tope. */
+function metaText(v: unknown): string {
+  return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 200) : ''
+}
+
+/**
+ * Búsqueda diferida de herramientas: el motor marca `mcp_call` con `metadata.lazunoxMcp = { tool, server }`, donde `tool` es el
+ * nombre real (`servidor_herramienta`). Sin metadatos (versión de motor anterior o llamada rota) se usa lo que dijo el modelo.
+ */
+export function realMcpCall(meta: unknown, input: Record<string, unknown>): { tool: string; server: string } {
+  const lz = meta && typeof meta === 'object' ? (meta as { lazunoxMcp?: unknown }).lazunoxMcp : undefined
+  const o = lz && typeof lz === 'object' ? (lz as Record<string, unknown>) : {}
+  return { tool: metaText(o.tool) || metaText(input.tool), server: metaText(o.server) }
 }
 
 /** Ruta relativa al proyecto si cae dentro. */
@@ -493,6 +509,42 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
         </Row>
       )
     default: {
+      // Búsqueda diferida de herramientas de conectores (`tool_search` busca, `mcp_call` ejecuta la herramienta real).
+      if (tool === 'tool_search') {
+        const query = str(input.query)
+        return (
+          <Row
+            icon={<Search size={14} />}
+            verb={running ? t('code.tool.toolSearchRunning') : t('code.tool.toolSearch')}
+            detail={query ? <span className="text-xs">{query}</span> : undefined}
+            status={state.status}
+          >
+            <Output text={output} />
+            {errorBlock}
+          </Row>
+        )
+      }
+      if (tool === 'mcp_call') {
+        const real = realMcpCall(meta, input)
+        const args = input.arguments
+        return (
+          <Row
+            icon={<Wrench size={14} />}
+            verb={real.tool || tool}
+            detail={real.server ? <span className="text-xs">{t('code.tool.mcpCallServer', { server: real.server })}</span> : undefined}
+            status={state.status}
+          >
+            <pre
+              aria-label={t('code.tool.mcpCallArgs')}
+              className={`${isRemoteSurface() ? 'max-h-[40dvh]' : 'max-h-48'} overflow-auto px-3 py-2 font-mono text-xs whitespace-pre-wrap text-muted`}
+            >
+              {JSON.stringify(args ?? {}, null, 2)}
+            </pre>
+            <Output text={output} />
+            {errorBlock}
+          </Row>
+        )
+      }
       const title = ('title' in state && state.title) || str(input.description) || str(input.filePath) || str(input.path)
       // Herramientas propias del motor: nombre en llano en vez del identificador técnico.
       const friendly = tool === 'shell_wait' ? t('code.tool.waitShell') : tool === 'execute_wait' ? t('code.tool.waitScript') : tool

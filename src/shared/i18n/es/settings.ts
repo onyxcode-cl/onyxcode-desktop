@@ -407,6 +407,14 @@ export const settings = {
   'settings.engine.background.desc': 'La IA puede lanzar ayudantes que trabajan en paralelo mientras sigues conversando.',
   'settings.engine.background.change':
     'Al encenderlo, la IA podrá repartir el trabajo y avisarte cuando cada ayudante termine; puedes seguir usando la conversación mientras tanto.',
+  'settings.engine.toolSearch.title': 'Búsqueda de herramientas de conectores',
+  'settings.engine.toolSearch.desc':
+    'Con muchos conectores, la IA no recibe la descripción de todas sus herramientas en cada mensaje: las busca cuando las necesita. Gasta menos contexto y funciona mejor con modelos pequeños o gratuitos.',
+  'settings.engine.toolSearch.change':
+    'Automático: solo se activa si las herramientas de tus conectores son muchas; con pocos conectores no cambia nada. Los permisos son los mismos de siempre: cada herramienta te pregunta igual que si estuviera a la vista. Verás una fila «Buscó herramientas del conector».',
+  'settings.engine.toolSearch.chatNote':
+    'Overdrive no usa esta función. Apagada, la IA recibe siempre todas las herramientas de los conectores. El navegador integrado y el control del Mac nunca se buscan: siempre están a la vista.',
+  'settings.engine.toolSearch.toggleAria': 'Búsqueda de herramientas automática en {mode}',
   'settings.engine.remember.title': 'Permisos «siempre»',
   'settings.engine.remember.desc':
     'Cuando respondes «Permitir siempre», la IA recuerda ese permiso para la carpeta del proyecto. Aquí eliges si ese recuerdo sobrevive al cierre de la app.',

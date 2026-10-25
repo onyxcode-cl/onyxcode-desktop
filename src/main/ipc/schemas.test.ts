@@ -43,7 +43,8 @@ describe('settings:set codeTrustedMcp', () => {
 describe('settings:set engineExperiments', () => {
   const v = IPC_SCHEMAS['settings:set']
   const off = { chat: false, code: false, tasks: false }
-  const ok = { codeMode: { ...off, code: true }, backgroundSubagents: off }
+  const ts = { chat: 'auto', code: 'off', tasks: 'off' }
+  const ok = { codeMode: { ...off, code: true }, backgroundSubagents: off, toolSearch: ts }
   it('acepta el objeto completo de booleanos', () => {
     expect(v({ engineExperiments: ok })).toEqual({ engineExperiments: ok })
   })
@@ -53,8 +54,14 @@ describe('settings:set engineExperiments', () => {
     expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, code: 'true' } } })).toThrow()
     expect(() => v({ engineExperiments: { ...ok, codeMode: { ...off, code: 1 } } })).toThrow()
     expect(() => v({ engineExperiments: { codeMode: off } })).toThrow()
-    expect(() => v({ engineExperiments: { codeMode: { chat: true }, backgroundSubagents: off } })).toThrow()
+    expect(() => v({ engineExperiments: { codeMode: { chat: true }, backgroundSubagents: off, toolSearch: ts } })).toThrow()
     expect(() => v({ engineExperiments: true })).toThrow()
+    // búsqueda de herramientas: solo «auto»/«off», las tres claves y sin extras
+    expect(() => v({ engineExperiments: { ...ok, toolSearch: { ...ts, chat: 'on' } } })).toThrow()
+    expect(() => v({ engineExperiments: { ...ok, toolSearch: { ...ts, chat: true } } })).toThrow()
+    expect(() => v({ engineExperiments: { ...ok, toolSearch: { chat: 'auto', code: 'off' } } })).toThrow()
+    expect(() => v({ engineExperiments: { ...ok, toolSearch: { ...ts, extra: 'off' } } })).toThrow()
+    expect(() => v({ engineExperiments: { codeMode: { ...off }, backgroundSubagents: off } })).toThrow()
   })
 })
 

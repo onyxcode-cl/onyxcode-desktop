@@ -4,13 +4,18 @@
  *
  * Solo se usan las dos variables concretas; NUNCA `OPENCODE_EXPERIMENTAL` a secas (enciende todas las experimentales).
  */
-import type { EngineExperiments, ModeFlags, Settings } from './types'
+import type { EngineExperiments, ModeFlags, Settings, ToolSearchFlags, ToolSearchMode } from './types'
 
 /** Modos con interruptor propio. */
 export type EngineExperimentMode = 'chat' | 'code' | 'tasks'
 
 export const ENGINE_ENV_CODE_MODE = 'OPENCODE_EXPERIMENTAL_CODE_MODE'
 export const ENGINE_ENV_BACKGROUND_SUBAGENTS = 'OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS'
+/** Búsqueda diferida de herramientas de conectores (contrato con el motor propio, rama `feat/tool-search` del fork): `auto` | `off`. */
+export const ENGINE_ENV_TOOL_SEARCH = 'LAZUNOX_TOOL_SEARCH'
+/** Servidores que el motor NUNCA difiere (los agentes y la puerta del plan cuentan con ellos). */
+export const ENGINE_ENV_TOOL_SEARCH_KEEP = 'LAZUNOX_TOOL_SEARCH_KEEP'
+export const TOOL_SEARCH_KEEP_SERVERS = 'browser,computer,bgshell'
 
 /**
  * Valor por defecto ÚNICO de `Settings.engineExperiments`.
@@ -20,7 +25,9 @@ export const ENGINE_ENV_BACKGROUND_SUBAGENTS = 'OPENCODE_EXPERIMENTAL_BACKGROUND
  */
 export const ENGINE_EXPERIMENTS_DEFAULTS: EngineExperiments = {
   codeMode: { chat: false, code: false, tasks: false },
-  backgroundSubagents: { chat: true, code: true, tasks: true }
+  backgroundSubagents: { chat: true, code: true, tasks: true },
+  // Búsqueda diferida: `auto` en Chat y Code (el motor solo la activa si los conectores pesan mucho); Overdrive siempre `off`.
+  toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' }
 }
 
 function normalizeModeFlags(raw: unknown, fallback: ModeFlags): ModeFlags {
@@ -29,12 +36,21 @@ function normalizeModeFlags(raw: unknown, fallback: ModeFlags): ModeFlags {
   return { chat: pick('chat'), code: pick('code'), tasks: pick('tasks') }
 }
 
+function normalizeToolSearch(raw: unknown, fallback: ToolSearchFlags): ToolSearchFlags {
+  const r = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const pick = (k: 'chat' | 'code'): ToolSearchMode => (r[k] === 'auto' || r[k] === 'off' ? (r[k] as ToolSearchMode) : fallback[k])
+  // Overdrive no es configurable: siempre `off` (la puerta del plan y el sandbox cuentan con las herramientas sueltas).
+  return { chat: pick('chat'), code: pick('code'), tasks: 'off' }
+}
+
 /** Normaliza lo leído de disco: si falta, trae basura o claves raras, se usan los valores por defecto. Nunca lanza. */
 export function normalizeEngineExperiments(raw: unknown): EngineExperiments {
   const r = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
   return {
     codeMode: normalizeModeFlags(r.codeMode, ENGINE_EXPERIMENTS_DEFAULTS.codeMode),
-    backgroundSubagents: normalizeModeFlags(r.backgroundSubagents, ENGINE_EXPERIMENTS_DEFAULTS.backgroundSubagents)
+    backgroundSubagents: normalizeModeFlags(r.backgroundSubagents, ENGINE_EXPERIMENTS_DEFAULTS.backgroundSubagents),
+    // Un `settings.json` anterior a esta clave no la trae: recibe el valor por defecto (el almacén guarda los defectos en disco).
+    toolSearch: normalizeToolSearch(r.toolSearch, ENGINE_EXPERIMENTS_DEFAULTS.toolSearch)
   }
 }
 
@@ -78,7 +94,19 @@ export function onlyExperimentalEngineEnv(env: Record<string, string>): Record<s
 export function engineFlagEnvForMainSidecar(settings: SettingsLike): Record<string, string> {
   const chat = engineFlagEnvFor(settings, 'chat')
   const code = engineFlagEnvFor(settings, 'code')
-  return { ...chat, ...code }
+  return { ...chat, ...code, ...toolSearchEnvForMainSidecar(settings) }
+}
+
+/**
+ * Búsqueda diferida de herramientas: SOLO el sidecar principal (Chat y Code comparten proceso: `auto` si cualquiera de los dos la
+ * tiene en `auto`). El motor propio usa `auto` si no hay variable, así que apagada se manda `off` de forma explícita. Overdrive (Tareas)
+ * no recibe nada de esto (`engineFlagEnvFor` no la incluye): su ajuste es siempre `off` y no se pasa por `onlyExperimentalEngineEnv`.
+ */
+export function toolSearchEnvForMainSidecar(settings: SettingsLike): Record<string, string> {
+  const t = normalizeEngineExperiments(settings.engineExperiments).toolSearch
+  if (t.chat === 'auto' || t.code === 'auto')
+    return { [ENGINE_ENV_TOOL_SEARCH]: 'auto', [ENGINE_ENV_TOOL_SEARCH_KEEP]: TOOL_SEARCH_KEEP_SERVERS }
+  return { [ENGINE_ENV_TOOL_SEARCH]: 'off' }
 }
 
 /**

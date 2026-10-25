@@ -15,7 +15,7 @@ import { RememberAlwaysBlock } from './RememberAlwaysBlock'
 import { UserHooksBlock } from './UserHooksBlock'
 import { Badge, Card, Row, SectionHeader, Toggle } from './ui'
 
-type Feature = keyof EngineExperiments
+type Feature = 'codeMode' | 'backgroundSubagents'
 
 const MODES: readonly EngineExperimentMode[] = ['chat', 'code', 'tasks']
 
@@ -46,7 +46,8 @@ function FeatureBlock({
   const set = (mode: EngineExperimentMode, on: boolean): void => {
     const next: EngineExperiments = {
       codeMode: { ...current.codeMode },
-      backgroundSubagents: { ...current.backgroundSubagents }
+      backgroundSubagents: { ...current.backgroundSubagents },
+      toolSearch: { ...current.toolSearch }
     }
     next[feature][mode] = on
     void update({ engineExperiments: next })
@@ -82,6 +83,55 @@ function FeatureBlock({
   )
 }
 
+/**
+ * Búsqueda diferida de herramientas de conectores. Aparte de `FeatureBlock` porque su valor es `auto`/`off` (no booleano) y Overdrive
+ * (Tareas) queda siempre apagado: solo Chat y Code tienen interruptor. Encendido = `auto` (el motor decide por tamaño).
+ */
+function ToolSearchBlock(): React.JSX.Element {
+  const t = useT()
+  const id = useId()
+  const stored = useSettings((s) => s.settings.engineExperiments)
+  const update = useSettings((s) => s.update)
+  const current = normalizeEngineExperiments(stored)
+  const set = (mode: 'chat' | 'code', on: boolean): void => {
+    void update({
+      engineExperiments: {
+        codeMode: { ...current.codeMode },
+        backgroundSubagents: { ...current.backgroundSubagents },
+        toolSearch: { ...current.toolSearch, [mode]: on ? 'auto' : 'off' }
+      }
+    })
+  }
+  return (
+    <section role="group" aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`} className="mb-8">
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <h3 id={`${id}-t`} className="text-sm font-semibold">
+          {t('settings.engine.toolSearch.title')}
+        </h3>
+        <Badge tone="muted">{t('settings.engine.experimental')}</Badge>
+      </div>
+      <p id={`${id}-d`} className="mb-1 text-sm leading-relaxed text-muted">
+        {t('settings.engine.toolSearch.desc')}
+      </p>
+      <p className="mb-1 text-xs leading-relaxed text-muted">{t('settings.engine.toolSearch.change')}</p>
+      <p className="mb-3 text-xs leading-relaxed text-muted">{t('settings.engine.toolSearch.chatNote')}</p>
+      <Card>
+        <div role="group" aria-label={t('settings.engine.modesAria')}>
+          {(['chat', 'code'] as const).map((mode) => (
+            <Row key={mode} label={modeLabel(mode)}>
+              <Toggle
+                checked={current.toolSearch[mode] === 'auto'}
+                onChange={(v) => set(mode, v)}
+                label={tr('settings.engine.toolSearch.toggleAria', { mode: modeLabel(mode) })}
+              />
+            </Row>
+          ))}
+        </div>
+      </Card>
+    </section>
+  )
+}
+
 export function EngineExperimentsSection(): React.JSX.Element {
   const t = useT()
   return (
@@ -102,6 +152,7 @@ export function EngineExperimentsSection(): React.JSX.Element {
         change={t('settings.engine.background.change')}
         chatNote={t('settings.engine.background.chatNote')}
       />
+      <ToolSearchBlock />
       <RememberAlwaysBlock />
       <UserHooksBlock />
       <EngineLimitsBlock />

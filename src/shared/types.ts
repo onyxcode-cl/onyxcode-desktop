@@ -19,10 +19,21 @@ export interface ModeFlags {
   tasks: boolean
 }
 
+/** Búsqueda diferida de herramientas de conectores (`tool_search` + `mcp_call`): `auto` = el motor decide por tamaño; `off` = todas sueltas. */
+export type ToolSearchMode = 'auto' | 'off'
+
+/** Igual que `ModeFlags` pero con `auto`/`off`. Overdrive (`tasks`) queda siempre en `off`. */
+export interface ToolSearchFlags {
+  chat: ToolSearchMode
+  code: ToolSearchMode
+  tasks: ToolSearchMode
+}
+
 /** Funciones experimentales del motor; ver `engine-experiments.ts`. Cambiarlas exige reiniciar el motor. */
 export interface EngineExperiments {
   codeMode: ModeFlags
   backgroundSubagents: ModeFlags
+  toolSearch: ToolSearchFlags
 }
 
 export interface Settings {

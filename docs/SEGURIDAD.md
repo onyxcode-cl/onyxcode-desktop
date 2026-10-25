@@ -2434,6 +2434,38 @@ así que el diseño la acota a propósito.
 **Límite conocido.** Un gancho puede hacer todo lo que haría la persona en su terminal; la app no lo inspecciona ni lo aísla (no es un límite de
 seguridad frente a la propia persona). Lo que protege es quién puede escribirlos (solo la ventana principal) y dónde corren (nunca en el sandbox).
 
+## 3 octogies. Búsqueda diferida de herramientas de conectores: `tool_search` y `mcp_call` (F8-B216, ZONA INTOCABLE)
+
+**Qué cambia.** Con muchos conectores el motor propio ya no envía todas sus herramientas en cada mensaje: expone `tool_search` (devuelve nombre, descripción
+y esquema de lo que se busca) y `mcp_call { tool, arguments }` (ejecuta una herramienta de conector). Es un ahorro de contexto, no un permiso nuevo: la
+app no concede nada que antes no concediera. Ajustes › Funciones experimentales › «Búsqueda de herramientas de conectores» (Chat y Code en automático;
+Overdrive siempre apagado).
+
+**Modelo de amenaza y mitigaciones.**
+
+- **`mcp_call` no es una puerta trasera de permisos.** El motor la ejecuta por el MISMO camino que la llamada directa: la regla de permisos se evalúa con el
+  nombre REAL de la herramienta (`servidor_herramienta`), no con `mcp_call`; por eso las reglas `servidor_*: ask|allow|deny` de «Sin preguntar en Code»,
+  los «siempre» y las rutas protegidas se aplican igual, y un `deny` sigue negando. Los ganchos (`tool.execute.before`/`after`) ven el nombre real y el
+  mismo objeto de argumentos que llega al servidor, así que la inyección de `lazunox_session` en `computer_*`/`browser_*`/`bgshell_*` y los ganchos de
+  usuario `PreToolUse` por nombre no se esquivan. El motor además recalcula el catálogo permitido al ejecutar y rechaza (sin ejecutar) un nombre que no
+  coincida exactamente. Esto es el contrato con el motor (rama `feat/tool-search` del fork); la app no puede comprobarlo por sí sola, lo prueban las
+  comprobaciones A-3..A-9 de `scripts/engine-probe` contra el binario.
+- **`tool_search` es de solo lectura.** Solo devuelve texto (nombres, descripciones y esquemas, con tope de tamaño). Por eso es la ÚNICA herramienta nueva
+  en `PLAN_GATE_ALLOWED_TOOLS` (puerta del plan, zona intocable): el agente de Overdrive puede buscar antes de que apruebes el plan. `mcp_call` NO está en
+  esa lista: sin un plan aprobado la puerta la bloquea, como a cualquier herramienta de acción (prueba en `plan-gate.inheritance.test.ts`). Las
+  descripciones de las herramientas las escribe el servidor del conector: ya viajaban al modelo antes, no hay una vía nueva de inyección.
+- **Overdrive no la usa.** Las variables `LAZUNOX_TOOL_SEARCH` y `LAZUNOX_TOOL_SEARCH_KEEP` solo salen al sidecar principal (Chat y Code); el ajuste de
+  Overdrive se normaliza siempre a `off`. `LAZUNOX_TOOL_SEARCH_KEEP=browser,computer,bgshell` impide que el motor difiera el navegador integrado, el control
+  del equipo y el shell en segundo plano, de los que dependen los agentes y la puerta del plan.
+- **Metadatos no confiables en la interfaz.** El nombre y el servidor que muestran las tarjetas salen de `metadata.lazunoxMcp`; se pintan como texto
+  (nunca como HTML), en una sola línea y con tope de 200 caracteres.
+- **Interruptor de emergencia.** Apagarlo en Ajustes envía `LAZUNOX_TOOL_SEARCH=off` y reinicia el motor (con la espera de siempre); el motor, sin la
+  variable, usaría `auto`, por eso se manda `off` de forma explícita.
+
+**Límite conocido.** La garantía de que `mcp_call` pasa por el mismo camino de permisos vive en el motor, no en la app; hasta fijar ese motor en
+`pin.json` la función no hace nada. Que Overdrive no tenga la búsqueda dependerá del valor por defecto del motor si no recibe la variable (ver
+`CHANGELOG-FASE8.md`, F8-B216, «No verificado»).
+
 ## 3 sexagies nonies. «Siempre» persistentes, rutas protegidas y tope de ayudantes (F8-B214)
 
 **Qué cambia.** El motor propio guarda los permisos «Permitir siempre» por carpeta de proyecto y los vuelve a aplicar tras reiniciar, pregunta
