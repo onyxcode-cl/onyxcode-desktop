@@ -134,12 +134,18 @@ rl.on('line', (line) => {
           ...many,
           // Herramientas de formularios: solo si el escenario pide anotar lo que llega al servidor (PROBE_MCP_OUT), para no cambiar
           // el tamaño de la lista de herramientas que miden A-2 y `medir-herramientas.mjs`.
-          ...(process.env.PROBE_MCP_OUT ? [
-          { name: 'caps', description: 'capacidades que declaró el cliente', inputSchema: obj() },
-          { name: 'form', description: 'pide un formulario (texto, número, boolean, enum) y devuelve lo recibido', inputSchema: obj({ message: { type: 'string' } }) },
-          { name: 'form_password', description: 'pide un formulario con campo password', inputSchema: obj() },
-          { name: 'late', description: 'responde ya y pide un formulario 400 ms DESPUÉS (sin llamada viva)', inputSchema: obj() }
-          ] : [])
+          ...(process.env.PROBE_MCP_OUT
+            ? [
+                { name: 'caps', description: 'capacidades que declaró el cliente', inputSchema: obj() },
+                {
+                  name: 'form',
+                  description: 'pide un formulario (texto, número, boolean, enum) y devuelve lo recibido',
+                  inputSchema: obj({ message: { type: 'string' } })
+                },
+                { name: 'form_password', description: 'pide un formulario con campo password', inputSchema: obj() },
+                { name: 'late', description: 'responde ya y pide un formulario 400 ms DESPUÉS (sin llamada viva)', inputSchema: obj() }
+              ]
+            : [])
         ]
       }
     })
@@ -148,7 +154,8 @@ rl.on('line', (line) => {
       () => send({ jsonrpc: '2.0', id: m.id, result: { content: [{ type: 'text', text: 'LENTO-LISTO' }] } }),
       Number(m.params.arguments?.ms ?? 100)
     )
-  else if (m.method === 'tools/call' && m.params.name === 'caps') send({ jsonrpc: '2.0', id: m.id, result: text('CAPS:' + JSON.stringify(clientCaps ?? {})) })
+  else if (m.method === 'tools/call' && m.params.name === 'caps')
+    send({ jsonrpc: '2.0', id: m.id, result: text('CAPS:' + JSON.stringify(clientCaps ?? {})) })
   else if (m.method === 'tools/call' && (m.params.name === 'form' || m.params.name === 'form_password'))
     pedir(m.params.name === 'form' ? FORM : FORM_PASSWORD, m.params.arguments?.message ?? '¿Quién eres?').then((eco) =>
       send({ jsonrpc: '2.0', id: m.id, result: text('FORM:' + JSON.stringify(eco)) })

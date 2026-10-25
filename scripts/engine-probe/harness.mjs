@@ -128,7 +128,9 @@ export async function runEngine(bin, sc) {
             // `sc.mcpMany`: n herramientas extra realistas (~800 caracteres) por conector.
             // `sc.mcpTimeout` (ms): tiempo máximo de cada llamada al conector; `sc.mcpEnv`: variables para el proceso del conector.
             ...(sc.mcpTimeout ? { timeout: sc.mcpTimeout } : {}),
-            ...(sc.mcpMany || sc.mcpEnv ? { environment: { ...(sc.mcpEnv ?? {}), ...(sc.mcpMany ? { PROBE_MCP_MANY: String(sc.mcpMany) } : {}) } } : {})
+            ...(sc.mcpMany || sc.mcpEnv
+              ? { environment: { ...(sc.mcpEnv ?? {}), ...(sc.mcpMany ? { PROBE_MCP_MANY: String(sc.mcpMany) } : {}) } }
+              : {})
           }
         ])
       )
@@ -272,7 +274,8 @@ export async function runEngine(bin, sc) {
               // Formularios MCP: se registran los eventos `mcp.elicitation.*` (sin valores) y, si el escenario lo pide, se responden.
               if (typeof e.type === 'string' && e.type.startsWith('mcp.elicitation.')) {
                 out.elicitation.push({ type: e.type.slice('mcp.elicitation.'.length), at: Date.now() - t0, ...e.properties })
-                if (e.type === 'mcp.elicitation.asked' && sc.elicit) void responderFormulario(e.properties).catch((err) => (out.elicitError = String(err)))
+                if (e.type === 'mcp.elicitation.asked' && sc.elicit)
+                  void responderFormulario(e.properties).catch((err) => (out.elicitError = String(err)))
                 continue
               }
               if (e.type !== 'permission.asked') continue
