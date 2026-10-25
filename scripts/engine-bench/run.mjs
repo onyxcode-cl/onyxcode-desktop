@@ -6,7 +6,7 @@
 // REGLA: corre SOLO dentro de un contenedor del VPS (el motor real ejecuta comandos con permisos de bash; nunca en el Mac de Ben).
 // El ejecutor se niega a correr motores en macOS/Windows o fuera de un contenedor (`/.dockerenv` o BENCH_EN_CONTENEDOR=1).
 //
-//   ssh -i ~/.ssh/lazunox_deploy_ed25519 root@72.60.55.136
+//   (en el VPS de pruebas, por ssh con la clave de despliegue)
 //   docker run --rm --cpus=4 --memory=8g -e BENCH_EN_CONTENEDOR=1 \
 //     -v /opt/lzx-b1app:/app -v /opt/lzx-fork/out-linux-x64-1:/motor:ro -v /opt/lzx-b1/salida:/out \
 //     -v /opt/lzx-fork/src/node_modules/typescript:/ts:ro -w /app node:22-bookworm \
@@ -17,6 +17,8 @@
 //   node scripts/engine-bench/run.mjs --motor <binario> [--tareas T01,T05] [--repeticiones 3] [--modelo opencode/deepseek-v4.1-flash-free]
 //        [--proveedor-falso [--sin-guion T05,T09]] [--env K=V ...] [--max-pasos 60] [--presupuesto-tokens 400000] [--timeout-min 15]
 //        [--typescript <carpeta de typescript>] [--salida <archivo|carpeta>] [--conservar] [--espera-cuota-seg 60]
+//   node scripts/engine-bench/run.mjs --motor <binario> --tareas T17,T18 --reanudar bench-….json   (repite SOLO esas tareas, p. ej. tras agotar la cuota,
+//        y deja un archivo nuevo con el resto tal cual estaba; mismo modelo y motor)
 //   node scripts/engine-bench/run.mjs --comparar antes.json despues.json     (imprime el antes/después; no corre el motor)
 //   node scripts/engine-bench/run.mjs --lista                                (las tareas)
 //   node scripts/engine-bench/run.mjs --autoprueba [--tareas T01] [--typescript <dir>]   (sin motor: cada verificador debe FALLAR en la carpeta
@@ -65,6 +67,7 @@ function leerArgs(argv) {
       case '--comparar': a.comparar = [valor(i, n), argv[i + 2]]; if (!a.comparar[1]) throw new Error('--comparar necesita dos archivos'); i += 2; break
       case '--proveedor-falso': a.falso = true; break
       case '--conservar': a.conservar = true; break
+      case '--reanudar': a.reanudar = valor(i++, n); break
       case '--sin-guion': a.sinGuion = valor(i++, n).split(',').map((x) => x.trim().toUpperCase()); break
       case '--lista': a.lista = true; break
       case '--autoprueba': a.autoprueba = true; break
@@ -78,7 +81,7 @@ function leerArgs(argv) {
 }
 
 // ── Una corrida de una tarea ──────────────────────────────────────────────────────────────────────────────────────────────
-const CUOTA = /free usage limit|usage limit reached|rate.?limit|quota|too many requests|\b429\b/i
+const CUOTA = /free usage|usage limit|rate.?limit|quota|too many requests|\b429\b/i
 
 function configMotor(cfg, tarea, proveedor) {
   const config = {
@@ -240,7 +243,7 @@ async function unaCorrida(cfg, tarea, ctx) {
     await proveedor?.detener()
     if (!cfg.conservar) rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   }
-  const cuota = !verificacion.ok && CUOTA.test(`${m.errores.join(' ')} ${m.stderr}`)
+  const cuota = !verificacion.ok && CUOTA.test(`${m.errores.join(' ')} ${m.stderr} ${m.motor?.detalle ?? ''}`)
   const enviados = m.entrada + m.cache_leida
   return {
     ok: verificacion.ok,
@@ -437,7 +440,13 @@ async function principal() {
   const modelo = cfg.falso ? 'fake/m' : (cfg.modelo ?? MODELO_GRATIS)
   console.error(`Motor ${cfg.motor} (${version}) · ${cfg.falso ? 'proveedor falso' : modelo} · ${sel.length} tareas × ${cfg.repeticiones}`)
 
-  const salida = {
+  let base = null
+  if (cfg.reanudar) {
+    if (!cfg.tareas) throw new Error('--reanudar necesita --tareas (las que se repiten)')
+    base = JSON.parse(readFileSync(cfg.reanudar, 'utf8'))
+    if (base.modelo !== modelo || base.proveedorFalso !== !!cfg.falso) throw new Error(`--reanudar: el archivo es de ${base.proveedorFalso ? 'proveedor falso' : base.modelo}, no de ${cfg.falso ? 'proveedor falso' : modelo}`)
+  }
+  const salida = base ? { ...base, fecha: new Date().toISOString(), reanudado_de: cfg.reanudar } : {
     version: 1,
     fecha: new Date().toISOString(),
     motor: { ruta: cfg.motor, version },
