@@ -23,7 +23,7 @@
     "src/main/tasks/backends/wsl.ts": "f88cff85590d03109263cddc9fc5002f7660d75220e62dc34c0c01e24fc5e36e",
     "src/main/tasks/folder-policy-win.ts": "5483ac4eedc3a8ac1c38a30b87a936995a8ac85bda6cb6ef4225d1cfabb52f41",
     "src/main/tasks/folder-policy.ts": "aa174c0cfe2d651b4dcaa2a24768db0a195c19afc75639b73d8d6356f6a19545",
-    "src/main/tasks/opencode-config.ts": "04802d1065239af81c8655d559ac0970a4ec8ef61a5bb716f308e9cb41dee9a4",
+    "src/main/tasks/opencode-config.ts": "2b0cc32c0d8eacc8c1427b202e0403cda8f3911a825c72f2d16f3a80d81f11e0",
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "21f36a387c0a460419338425ddf248ea238a5ec608cd05e97c22f3b478e8af3f",
     "src/main/tasks/proxy.ts": "50c6898856c97a23a4b577f509bff653ad10f406cf51102f00bda246458955a5",
@@ -83,6 +83,15 @@
         "src/renderer/index.html",
         "src/shared/wsl-paths.ts"
       ],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-10-25",
+      "motivo": "tool_search se permite antes de aprobar el plan: solo busca en un catálogo en memoria del motor (revisado el código de tool/tool-search.ts: sin red ni disco ni ejecución); mcp_call sigue bloqueada",
+      "cambiados": [
+        "src/main/tasks/opencode-config.ts"
+      ],
+      "nuevos": [],
       "desaparecidos": []
     }
   ]
