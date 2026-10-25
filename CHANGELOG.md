@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.3] - 2026-10-25
+
+### Novedades
+
+- **Ganchos de usuario con pantalla.** En Ajustes › Funciones experimentales hay una sección «Ganchos» para quien quiera que la app ejecute un comando suyo antes o después de una herramienta (por ejemplo, bloquear `rm -rf`). Está apagada por defecto, solo usa el archivo que guarda la app, no se aplica dentro del sandbox de Overdrive y avisa que ejecuta comandos con tus permisos.
+- **La compactación conserva tu lista de tareas.** Al resumir una conversación larga, el plan que la IA llevaba ya no se pierde.
+- **Si se acaba el uso gratuito del modelo, la app lo dice.** Antes se quedaba en «El modelo no responde; reintentando…» sin explicar; ahora te cuenta que el uso gratuito de ese modelo se agotó y que pruebes otro o conectes tu IA.
+
+### Correcciones
+
+- **Detener la respuesta con una tarjeta de permiso abierta** (Esc o «Detener») ahora rechaza esos permisos: antes la tarjeta seguía viva y, si la aprobabas después, la acción se ejecutaba aunque ya hubiera dicho «Detenido».
+- Una acción que rechazaste se ve como «No se ejecutó» / «No se hizo», con «Rechazaste esta acción: no se hizo nada», en vez de «Ejecutó» o «Editó».
+- El asistente de inicio se puede recorrer con el teclado hasta «Saltar» y «Continuar» (antes Tab daba vueltas entre dos controles).
+- Los pasos de espera de comandos y programas se muestran con nombre en llano; los títulos de sesión sin nombre salen en español; el catálogo de conectores ya no deja añadir dos veces el mismo conector; y el texto de Funciones experimentales dice cuáles vienen encendidas.
+- Motor `lazunox.8`.
+
 ## [1.7.2] - 2026-10-24
 
 ### Novedades
