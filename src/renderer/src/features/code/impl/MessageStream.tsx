@@ -35,6 +35,10 @@ import type { CodeMessage, PendingElicitation, PendingPermission, PendingQuestio
 import { ConfirmButton } from './ui'
 import { useCode } from './store'
 import { GeneratedFiles } from './GeneratedFiles'
+import { RewindCard } from './RewindCard'
+import { RewindDialogHost, RewindNoticeHost } from './RewindHost'
+import { turnsWithChanges } from './rewind-logic'
+import type { TurnSummary } from '@shared/rewind'
 import { ElementReadonlyChip } from '../../browser/ElementChip'
 import { ShellBgWakeNote } from '../../../components/conversation/ShellBgWakeNote'
 import { shellBgWakeOf } from '@shared/shell-bg-wake-marker'
@@ -156,6 +160,9 @@ const UserMessage = memo(function UserMessage({
 }): React.JSX.Element | null {
   const t = useT()
   const revertTo = useCode((s) => s.revertTo)
+  // Motor con rebobinar por turno: «Revertir» abre el diálogo «Volver a antes de este turno». Sin él, el «Revertir» de siempre.
+  const rewindOk = useCode((s) => s.rewindSupport[entry.info.sessionID] === true)
+  const openRewind = useCode((s) => s.openRewind)
   const forkSession = useCode((s) => s.forkSession)
   const editAndRetry = useCode((s) => s.editAndRetry)
   const [copied, setCopied] = useState(false)
@@ -362,17 +369,30 @@ const UserMessage = memo(function UserMessage({
                 <Pencil size={12} />
               </button>
             )}
-            <ConfirmButton
-              title={t('code.msg.revertTitle')}
-              body={t('code.msg.revertBody')}
-              confirmLabel={t('code.msg.revert')}
-              danger
-              disabled={busy}
-              onConfirm={() => revertTo(entry.info.id)}
-              className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40 desk:h-7 desk:min-w-7 desk:justify-center"
-            >
-              <Undo2 size={12} /> {t('code.msg.revert')}
-            </ConfirmButton>
+            {rewindOk ? (
+              <button
+                type="button"
+                title={t('code.turn.rewind')}
+                aria-label={t('code.turn.rewind')}
+                disabled={busy}
+                onClick={() => openRewind(entry.info.id)}
+                className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40 desk:h-7 desk:min-w-7 desk:justify-center"
+              >
+                <Undo2 size={12} /> {t('code.msg.revert')}
+              </button>
+            ) : (
+              <ConfirmButton
+                title={t('code.msg.revertTitle')}
+                body={t('code.msg.revertBody')}
+                confirmLabel={t('code.msg.revert')}
+                danger
+                disabled={busy}
+                onConfirm={() => revertTo(entry.info.id)}
+                className="flex h-6 items-center gap-1 rounded-md px-1.5 hover:bg-hover hover:text-fg disabled:opacity-40 desk:h-7 desk:min-w-7 desk:justify-center"
+              >
+                <Undo2 size={12} /> {t('code.msg.revert')}
+              </ConfirmButton>
+            )}
           </span>
         </div>
       )}
@@ -398,6 +418,8 @@ interface TurnViewProps {
   /** Permisos ligados a llamadas de herramienta de ESTE turno (`NO_PERMS` si no hay). */
   perms: PendingPermission[]
   hotkeyID: string | undefined
+  /** «Cambios de este turno» (motor con rebobinar por turno); `undefined` si el turno no cambió archivos o el motor no lo tiene. */
+  changes?: TurnSummary
 }
 
 const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (a.length === b.length && a.every((x, i) => x === b[i]))
@@ -408,10 +430,12 @@ const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (
  * reconstruyen en cada render del padre, por eso el comparador mira los mensajes y no los objetos de turno.
  */
 const TurnView = memo(
-  function TurnView({ user, assistant, isLastTurn, old, busy, root, perms, hotkeyID }: TurnViewProps): React.JSX.Element {
+  function TurnView({ user, assistant, isLastTurn, old, busy, root, perms, hotkeyID, changes }: TurnViewProps): React.JSX.Element {
     const t = useT()
     const retryLast = useCode((s) => s.retryLast)
     const compactSession = useCode((s) => s.compactSession)
+    const loadTurnDiff = useCode((s) => s.loadTurnDiff)
+    const openRewind = useCode((s) => s.openRewind)
     // «Reintentar» / «Compactar» solo en el último turno y con la sesión libre.
     const canAct = isLastTurn && !busy
     const sessionID = user?.info.sessionID ?? assistant[0]?.info.sessionID
@@ -541,6 +565,14 @@ const TurnView = memo(
           </div>
         )}
         {!mobile && <GeneratedFiles parts={assistant.flatMap((a) => a.parts)} root={root} done={!(busy && isLastTurn)} />}
+        {!mobile && changes && user && sessionID && !(busy && isLastTurn) && (
+          <RewindCard
+            summary={changes}
+            disabled={busy}
+            onRewind={() => openRewind(user.info.id)}
+            loadDiff={(file) => loadTurnDiff(sessionID, user.info.id, file)}
+          />
+        )}
         {mobile && replyText && <MessageActionsSheet open={sheet} onClose={() => setSheet(false)} text={replyText} />}
         {mobile && showCopy && isLastTurn && (
           <div className="-ml-1.5 flex items-center gap-0.5">
@@ -564,6 +596,7 @@ const TurnView = memo(
     a.busy === b.busy &&
     a.root === b.root &&
     a.hotkeyID === b.hotkeyID &&
+    a.changes === b.changes &&
     sameList(a.assistant, b.assistant) &&
     sameList(a.perms, b.perms)
 )
@@ -604,6 +637,14 @@ export function MessageStream(props: Props): React.JSX.Element {
   const t = useT()
   const retryLast = useCode((s) => s.retryLast)
   const compactSession = useCode((s) => s.compactSession)
+  const streamSessionID = entries[0]?.info.sessionID
+  const turnList = useCode((s) => (streamSessionID ? s.turnsBySession[streamSessionID] : undefined))
+  const loadTurns = useCode((s) => s.loadTurns)
+  const changesByUser = useMemo(() => turnsWithChanges(turnList), [turnList])
+  // «Cambios de este turno»: se piden al abrir la conversación y cuando termina de trabajar (el celular no los pide).
+  useEffect(() => {
+    if (streamSessionID && !busy && !isRemoteSurface()) void loadTurns(streamSessionID)
+  }, [streamSessionID, busy, loadTurns, entries.length])
   const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
 
   const visible = useMemo(
@@ -677,6 +718,7 @@ export function MessageStream(props: Props): React.JSX.Element {
               root={root}
               perms={turnPerms[ti]}
               hotkeyID={hotkeyID}
+              changes={turn.user ? changesByUser.get(turn.user.info.id) : undefined}
             />
           ))}
           {hidden > 0 && (
@@ -689,6 +731,8 @@ export function MessageStream(props: Props): React.JSX.Element {
               </button>
             </div>
           )}
+          {streamSessionID && <RewindNoticeHost sessionID={streamSessionID} busy={busy} />}
+          {streamSessionID && <RewindDialogHost sessionID={streamSessionID} />}
           {loosePerms.map((perm) => (
             <PermissionCard key={perm.id} request={perm} root={root} hotkeys={perm.id === hotkeyID} />
           ))}

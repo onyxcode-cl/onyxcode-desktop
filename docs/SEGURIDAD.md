@@ -2495,6 +2495,29 @@ responden 404/405: la app sigue como antes. (4) La app no modifica las zonas int
 quien ya tenía ajustes guardados: la clave nueva `engineExperiments.mcpElicitation` se rellena con su valor por defecto al leerla). Apagado,
 el conector ni ve la capacidad y no puede pedir formularios. Cambiarlo reinicia el motor cuando no hay nada en curso (`engine-flags-restart`).
 
+## 3 octogies bis. Rebobinar por turno: «Cambios de este turno» y «Volver a antes de este turno» (F8-B218)
+
+Volver atrás en archivos es la acción más destructiva que ofrece Code: escribe y borra en la carpeta de la persona. La parte que toca
+archivos vive TODA en el motor propio (plan `docs/PLAN-REBOBINAR-Y-COMPACTACION.md`, §2.A y §3; `LAZUNOX.md` del fork, «Rebobinar por turno»).
+Esta sección es la parte de la APP (tarea T3): qué le muestra a la persona y qué le pide al motor.
+
+| Amenaza | Defensa |
+| --- | --- |
+| Restaurar o borrar fuera del proyecto (ruta con `..`, enlace simbólico, carpeta cambiada). | La app NUNCA escribe ni borra archivos: solo pide al motor `POST …/rebobinar`. El motor normaliza las rutas, rechaza enlaces simbólicos en cada componente, no sale de la carpeta del proyecto, no toca `.git` y, si falta un objeto, responde «caducado» sin tocar nada. La app solo muestra los `omitidos` (`fuera-del-proyecto`, `enlace-simbolico`, `git`…) con su motivo en llano. |
+| Pisar trabajo de la persona (editado después del turno) o configuración que da poder (`.mcp.json`, `.claude/`, `.vscode`). | Los `conflictos` y los `protegidos` de la revisión previa llegan **desmarcados** y el motor los salta. Solo viajan en `sobrescribir` las rutas que la persona marca una por una Y que figuran en la revisión (`overwriteSelection`: una ruta inventada, ya resuelta o marcada antes de cambiar de modo no sale). En «solo la conversación» nunca se manda `sobrescribir`. |
+| Prometer lo que no se puede deshacer. | El diálogo dice qué NO se deshace: lo que hicieron los comandos fuera de la carpeta, en archivos ignorados o fuera de Lazunox; los commits posteriores (los archivos quedan como cambios sin confirmar). En carpetas sin git, sin copias o con el punto caducado (`restaurable:false`) solo ofrece «Solo la conversación» y lo dice; la lista de cambios avisa que lo hecho por comandos puede no aparecer completo. |
+| Nombres de archivo, asuntos de commit o títulos de ayudantes hostiles (Markdown, HTML, enlaces, caracteres de dirección). | Todo lo del motor se trata como NO confiable: los parseadores (`src/shared/rewind.ts`) descartan lo que no encaja con el contrato, acotan las listas (100 turnos, 500 archivos, 50 commits) y quitan caracteres de control y de dirección; la interfaz los pinta SIEMPRE como nodos de texto de React: sin Markdown, sin HTML y sin enlaces activos (pruebas con `<a>`, `<img>` y `[x](https://…)`). Un motivo desconocido cae en «otro motivo» y un 409 con motivo inventado no se acepta como uno del contrato. |
+| Rebobinar sin persona delante (celular, modo automático, Rutinas, Tareas). | Las cinco rutas son clase **X** (`HTTP_X_ROUTES` en `policy.ts`; prueba explícita en `policy.test.ts`): el celular no ve la lista de turnos, ni la revisión previa, ni el parche, ni puede rebobinar o deshacer. La app tampoco las pide desde el celular (`isRemoteSurface()`). Tareas conserva sus puntos de restauración propios y no usa estas rutas. |
+| Carrera con trabajo en marcha. | La revisión trae `bloqueado` (`ocupada`, `hija-ocupada`, `trabajo-vivo`, `pendiente`): el diálogo lo explica y no deja confirmar; el botón de la tarjeta se deshabilita mientras la conversación trabaja; si aun así el motor contesta 409, se muestra el motivo en llano. |
+| Deshacer pisando más de lo debido. | «Deshacer» usa `…/rebobinar/deshacer` (solo los archivos tocados; lo que la persona cambió después se salta y se lista). Si el motor dice «nada que deshacer», se cae al `unrevert` de siempre; un error real NO cae a él. |
+| Teclado y accesibilidad. | `role="dialog"` + `aria-modal`, nombre accesible, grupo de radio con el foco en el primer modo, Esc cancela, foco atrapado, +/− y estado en texto (el color no es la única señal), resultado en región `aria-live`. |
+
+**Límites conocidos.** (1) El diff de un turno mezcla lo que hizo el agente, un ayudante, un comando y lo que la persona u otro programa
+cambió mientras tanto: se etiqueta «otro origen» y los conflictos solo se detectan si ocurren después del último paso (el diálogo lo dice).
+(2) `commitsDespues` se calcula por fechas: un commit con fecha falsa puede escapar; es solo un aviso. (3) Con un motor sin estas rutas
+(oficial, externo, anterior o `LAZUNOX_REBOBINAR=0`) la app sigue con «Revertir» de siempre, cuyo aviso ya no promete deshacer archivos en
+carpetas sin git. (4) La app no modifica las zonas intocables.
+
 ## 3 sexagies nonies. «Siempre» persistentes, rutas protegidas y tope de ayudantes (F8-B214)
 
 **Qué cambia.** El motor propio guarda los permisos «Permitir siempre» por carpeta de proyecto y los vuelve a aplicar tras reiniciar, pregunta

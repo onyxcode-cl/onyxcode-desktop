@@ -14,6 +14,7 @@
  *   método, se pide al paquete P0 en lugar de añadirlo desde fuera.
  */
 import type { ElicitationAction, ElicitationReplyResult, ElicitationRequest, ElicitationValue } from '../mcp-elicitation'
+import type { RewindMode, RewindOutcome, RewindReviewResult, TurnDiffResult, TurnSummary, UndoOutcome } from '../rewind'
 import type { EngineEventHandler, EngineEventOptions } from './events'
 import type {
   AgentInfo,
@@ -129,6 +130,19 @@ export interface EngineElicitations {
   reply(id: string, action: ElicitationAction, content?: Record<string, ElicitationValue>, o?: Scope): Promise<ElicitationReplyResult>
 }
 
+/**
+ * Rebobinar por turno (motor propio). Rutas que el SDK fijado no trae: `GET …/turnos`, `GET …/turnos/{id}/diff`, `GET …/rebobinar/{id}`,
+ * `POST …/rebobinar` y `POST …/rebobinar/deshacer`. `turns` devuelve `null` si el motor no las tiene (oficial, externo, anterior o
+ * apagado): la app sigue con `sessions.revert` de siempre. Los demás informan 404/409/400 en el resultado (ver `@shared/rewind`).
+ */
+export interface EngineRewind {
+  turns(sessionID: string, o?: Scope & { antesDe?: string; limite?: number }): Promise<TurnSummary[] | null>
+  turnDiff(sessionID: string, messageID: string, file: string, o?: Scope): Promise<TurnDiffResult>
+  review(sessionID: string, messageID: string, o?: Scope): Promise<RewindReviewResult>
+  rewind(sessionID: string, messageID: string, modo: RewindMode, o?: Scope & { sobrescribir?: readonly string[] }): Promise<RewindOutcome>
+  undo(sessionID: string, o?: Scope & { sobrescribir?: readonly string[] }): Promise<UndoOutcome>
+}
+
 export interface EngineEvents {
   /**
    * Abre el stream global de eventos (todas las carpetas) y entrega cada uno ya normalizado. Se
@@ -206,6 +220,7 @@ export interface EngineClient {
   readonly permissions: EnginePermissions
   readonly questions: EngineQuestions
   readonly elicitations: EngineElicitations
+  readonly rewind: EngineRewind
   readonly events: EngineEvents
   readonly providers: EngineProviders
   readonly mcp: EngineMcp

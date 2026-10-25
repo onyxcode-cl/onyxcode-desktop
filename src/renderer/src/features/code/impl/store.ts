@@ -24,6 +24,19 @@ import {
   type ElicitationReplyResult,
   type ElicitationValue
 } from '@shared/mcp-elicitation'
+import {
+  fetchRewindReview,
+  fetchTurnDiff,
+  listTurns,
+  postRewind,
+  postUndoRewind,
+  type RewindMode,
+  type RewindOutcome,
+  type RewindReviewResult,
+  type TurnDiffResult,
+  type TurnSummary
+} from '@shared/rewind'
+import { mergeTurns, noticeFromResult, noticeFromUndo, type RewindNotice } from './rewind-logic'
 import type { ModelRef } from '@shared/types'
 import { currentAiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
@@ -165,6 +178,14 @@ export interface CodeState {
   elicitations: Record<string, PendingElicitation>
   /** Avisos breves (rechazos que la persona no llegó a ver o formularios caducados), por id, hasta que se cierran. */
   elicitationNotices: Record<string, ElicitationNotice>
+  /** «Cambios de este turno» (motor propio): turnos con sus archivos, por sesión. Solo escritorio; el celular no los pide. */
+  turnsBySession: Record<string, readonly TurnSummary[]>
+  /** `true` si el motor tiene las rutas de rebobinar para esa sesión; `false` (404) = se usa «Revertir» de siempre; ausente = aún no se sabe. */
+  rewindSupport: Record<string, boolean>
+  /** Diálogo «Volver a antes de este turno» abierto (uno a la vez). */
+  rewindDialog: { sessionID: string; messageID: string } | null
+  /** Aviso tras rebobinar o deshacer, por sesión, hasta que se cierra. */
+  rewindNotices: Record<string, RewindNotice>
   todos: Record<string, Todo[]>
   agent: CodeAgent
   model: ModelRef | null
@@ -229,7 +250,22 @@ export interface CodeState {
   revertLast: () => Promise<void>
   /** Revierte la sesión hasta (e incluyendo) el mensaje de usuario indicado. */
   revertTo: (messageID: string) => Promise<void>
+  /** Con rebobinado deshacible, «Restaurar»/«Deshacer» usan la ruta nueva (solo los archivos tocados); si no, `unrevert` de siempre. */
   unrevert: () => Promise<void>
+  /** Recarga los turnos de la sesión (`GET …/turnos`). Un 404 marca el motor como sin soporte y deja todo como antes. */
+  loadTurns: (sessionID: string) => Promise<void>
+  loadTurnDiff: (sessionID: string, messageID: string, file: string) => Promise<TurnDiffResult>
+  /** Abre el diálogo de rebobinar si el motor lo soporta; devuelve `false` si no (quien llama sigue con «Revertir» de siempre). */
+  openRewind: (messageID: string) => boolean
+  closeRewind: () => void
+  rewindReview: (sessionID: string, messageID: string) => Promise<RewindReviewResult>
+  /** Rebobina. `overwrite` = SOLO lo que la persona marcó. Con éxito deja el aviso con «Deshacer». */
+  rewindTo: (sessionID: string, messageID: string, modo: RewindMode, overwrite: readonly string[]) => Promise<RewindOutcome>
+  /** `fallback`: el motor no tiene nada que deshacer por esta vía (se usa `unrevert`); `error`: ya quedó en `globalError`. */
+  undoRewind: () => Promise<'undone' | 'fallback' | 'error'>
+  dismissRewindNotice: (sessionID: string) => void
+  /** El motor contestó 404 a una ruta de rebobinar: se recuerda y se vuelve al flujo antiguo. */
+  markRewindUnavailable: (sessionID: string) => void
   replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject') => Promise<void>
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
   rejectQuestion: (q: PendingQuestion) => Promise<void>
@@ -354,6 +390,21 @@ const bumpFsDebounced = debounce(() => useCode.setState((s) => ({ fsVersion: s.f
   wait: FS_BUMP_WAIT_MS,
   maxWait: FS_BUMP_MAX_WAIT_MS
 })
+
+/** Recarga de turnos (`GET …/turnos`) 700 ms después del último `session.diff` de cada sesión. Sin soporte (404) o en el celular no hace nada. */
+const turnsTimers = new Map<string, ReturnType<typeof setTimeout>>()
+function scheduleTurnsLoad(sessionID: string): void {
+  if (isRemoteSurface() || useCode.getState().rewindSupport[sessionID] === false) return
+  const prev = turnsTimers.get(sessionID)
+  if (prev) clearTimeout(prev)
+  turnsTimers.set(
+    sessionID,
+    setTimeout(() => {
+      turnsTimers.delete(sessionID)
+      void useCode.getState().loadTurns(sessionID)
+    }, 700)
+  )
+}
 
 const trimSlash = (p: string): string => (p.length > 1 ? p.replace(/[\\/]+$/, '') : p)
 
@@ -591,6 +642,10 @@ export const useCode = create<CodeState>((set, get) => {
       questions: bySession(s.questions),
       elicitations: bySession(s.elicitations),
       elicitationNotices: bySession(s.elicitationNotices),
+      turnsBySession: without(s.turnsBySession),
+      rewindSupport: without(s.rewindSupport),
+      rewindNotices: without(s.rewindNotices),
+      rewindDialog: s.rewindDialog && ids.has(s.rewindDialog.sessionID) ? null : s.rewindDialog,
       activeSessionID: s.activeSessionID && ids.has(s.activeSessionID) ? null : s.activeSessionID
     }
   }
@@ -875,6 +930,10 @@ export const useCode = create<CodeState>((set, get) => {
     questions: {},
     elicitations: {},
     elicitationNotices: {},
+    turnsBySession: {},
+    rewindSupport: {},
+    rewindDialog: null,
+    rewindNotices: {},
     todos: {},
     agent: initialAgent(),
     model: null,
@@ -1255,12 +1314,115 @@ export const useCode = create<CodeState>((set, get) => {
     unrevert: async () => {
       try {
         const { client, dir, sid } = activeDir()
+        // Tras un rebobinado nuevo se deshace con la ruta del motor (solo los archivos tocados); sin él, `unrevert` de siempre.
+        if (get().rewindNotices[sid]?.puedeDeshacer && get().rewindSupport[sid]) {
+          if ((await get().undoRewind()) !== 'fallback') return
+        }
         const updated = sdkData(await client.session.unrevert({ sessionID: sid, directory: dir }))
         set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated }, fsVersion: s.fsVersion + 1 }))
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }
     },
+
+    loadTurns: async (sessionID) => {
+      const conn = elicitationConn()
+      const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+      if (!conn || isRemoteSurface() || get().rewindSupport[sessionID] === false) return
+      try {
+        const r = await listTurns(conn, { sessionID, directory: dir })
+        if (!r.available) {
+          set((s) => ({ rewindSupport: { ...s.rewindSupport, [sessionID]: false } }))
+          return
+        }
+        set((s) => {
+          const merged = mergeTurns(s.turnsBySession[sessionID], r.turns)
+          if (merged === s.turnsBySession[sessionID] && s.rewindSupport[sessionID] === true) return {}
+          return { turnsBySession: { ...s.turnsBySession, [sessionID]: merged }, rewindSupport: { ...s.rewindSupport, [sessionID]: true } }
+        })
+      } catch {
+        // Un fallo pasajero (red, 5xx) no cambia nada: se reintenta en el próximo cambio.
+      }
+    },
+
+    loadTurnDiff: async (sessionID, messageID, file) => {
+      const conn = elicitationConn()
+      if (!conn) return { ok: false, kind: 'error', error: t('code.client.notConnected') }
+      const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+      return fetchTurnDiff(conn, { sessionID, messageID, file, directory: dir })
+    },
+
+    openRewind: (messageID) => {
+      const sid = get().activeSessionID
+      if (!sid || isRemoteSurface() || get().rewindSupport[sid] !== true) return false
+      set({ rewindDialog: { sessionID: sid, messageID } })
+      return true
+    },
+
+    closeRewind: () => set({ rewindDialog: null }),
+
+    rewindReview: async (sessionID, messageID) => {
+      const conn = elicitationConn()
+      if (!conn) return { ok: false, kind: 'error', error: t('code.client.notConnected') }
+      const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+      return fetchRewindReview(conn, { sessionID, messageID, directory: dir })
+    },
+
+    rewindTo: async (sessionID, messageID, modo, overwrite) => {
+      const conn = elicitationConn()
+      if (!conn) return { ok: false, kind: 'error', error: t('code.client.notConnected') }
+      const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
+      const res = await postRewind(conn, { sessionID, messageID, modo, sobrescribir: overwrite, directory: dir })
+      if (!res.ok) return res
+      set((s) => ({ rewindNotices: { ...s.rewindNotices, [sessionID]: noticeFromResult(res.result) }, fsVersion: s.fsVersion + 1 }))
+      // La sesión ahora puede traer `revert` (ocultar mensajes): se relee para no depender de que llegue el evento.
+      const client = getClient()
+      if (client && dir) {
+        const fresh = await client.session.get({ sessionID, directory: dir }).catch(() => null)
+        if (fresh?.data) set((s) => ({ sessions: { ...s.sessions, [fresh.data!.id]: fresh.data! } }))
+      }
+      void get().loadTurns(sessionID)
+      return res
+    },
+
+    undoRewind: async () => {
+      try {
+        const { dir, sid } = activeDir()
+        const conn = elicitationConn()
+        if (!conn) throw new Error(t('code.client.notConnected'))
+        const res = await postUndoRewind(conn, { sessionID: sid, directory: dir })
+        if (!res.ok) {
+          // «Nada que deshacer» (o motor sin la ruta): el aviso deja de ofrecer «Deshacer» y `unrevert` de siempre se encarga.
+          if (res.kind === 'unavailable' || (res.kind === 'conflict' && res.motivo === 'nada-que-deshacer')) {
+            set((s) => {
+              const cur = s.rewindNotices[sid]
+              return cur ? { rewindNotices: { ...s.rewindNotices, [sid]: { ...cur, puedeDeshacer: false } } } : {}
+            })
+            return 'fallback'
+          }
+          throw new Error(res.kind === 'error' ? res.error : res.message || t('code.rewind.undoFailed'))
+        }
+        set((s) => ({ rewindNotices: { ...s.rewindNotices, [sid]: noticeFromUndo(res.result) }, fsVersion: s.fsVersion + 1 }))
+        const client = getClient()
+        const fresh = client ? await client.session.get({ sessionID: sid, directory: dir }).catch(() => null) : null
+        if (fresh?.data) set((s) => ({ sessions: { ...s.sessions, [fresh.data!.id]: fresh.data! } }))
+        void get().loadTurns(sid)
+        return 'undone'
+      } catch (err) {
+        set({ globalError: errorMessage(err) })
+        return 'error'
+      }
+    },
+
+    dismissRewindNotice: (sessionID) =>
+      set((s) => {
+        if (!(sessionID in s.rewindNotices)) return {}
+        const rewindNotices = { ...s.rewindNotices }
+        delete rewindNotices[sessionID]
+        return { rewindNotices }
+      }),
+
+    markRewindUnavailable: (sessionID) => set((s) => ({ rewindSupport: { ...s.rewindSupport, [sessionID]: false }, rewindDialog: null })),
 
     replyPermission: async (p, requested) => {
       try {
@@ -1700,6 +1862,8 @@ export const useCode = create<CodeState>((set, get) => {
         case 'file.watcher.updated':
           // Pf1: solo eventos del proyecto (o del worktree de una de sus sesiones) y con debounce.
           if (isProjectDir(eventDir)) bumpFsDebounced()
+          // «Cambios de este turno»: el diff de la sesión cambió, se vuelve a pedir la lista de turnos de esa sesión (con espera).
+          if (event.type === 'session.diff' && known(event.properties.sessionID)) scheduleTurnsLoad(event.properties.sessionID)
           break
         case 'message.updated':
         case 'message.removed':

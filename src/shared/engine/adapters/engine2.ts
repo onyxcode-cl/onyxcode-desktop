@@ -89,6 +89,15 @@ export class Engine2Adapter implements EngineClient {
     reply: () => unsupported('POST /mcp/elicitation/{id}/reply')
   }
 
+  readonly rewind: EngineClient['rewind'] = {
+    // Rebobinar por turno solo existe en el motor propio (motor 1 fork); el motor 2 aún no lo tiene.
+    turns: async () => null,
+    turnDiff: async () => ({ ok: false, kind: 'unavailable' }),
+    review: async () => ({ ok: false, kind: 'unavailable' }),
+    rewind: async () => ({ ok: false, kind: 'unavailable' }),
+    undo: async () => ({ ok: false, kind: 'unavailable' })
+  }
+
   readonly events: EngineClient['events'] = {
     // v2: GET /api/event (SSE `{id,created,type,location,data}`; primero `server.connected`, latido `: heartbeat`)
     subscribe: () => {

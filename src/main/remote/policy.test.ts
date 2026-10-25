@@ -802,3 +802,34 @@ describe('formularios de conectores (elicitation): solo desde el Mac', () => {
     expect(cls(http('POST', '/mcp/elicitation/eli_123', dq))).toBe('deny:unknown-route')
   })
 })
+
+describe('rebobinar por turno: solo desde el Mac (clase X)', () => {
+  const REBOBINAR_ROUTES = [
+    'GET /experimental/session/{sessionID}/turnos',
+    'GET /experimental/session/{sessionID}/turnos/{messageID}/diff',
+    'GET /experimental/session/{sessionID}/rebobinar/{messageID}',
+    'POST /experimental/session/{sessionID}/rebobinar',
+    'POST /experimental/session/{sessionID}/rebobinar/deshacer'
+  ]
+  it('las cinco rutas están en el contrato del motor y clasificadas X', () => {
+    for (const r of REBOBINAR_ROUTES) {
+      expect(ROUTES, r).toContain(r)
+      expect(CELULAR_HTTP_POLICY[r], r).toBe('X')
+    }
+  })
+  it('el celular no ve los cambios de un turno, ni la revisión previa, ni puede rebobinar o deshacer', () => {
+    expect(cls(http('GET', '/experimental/session/ses_1/turnos', dq))).toBe('deny:forbidden')
+    expect(cls(http('GET', '/experimental/session/ses_1/turnos/msg_1/diff', { ...dq, file: 'a.txt' }))).toBe('deny:forbidden')
+    expect(cls(http('GET', '/experimental/session/ses_1/rebobinar/msg_1', dq))).toBe('deny:forbidden')
+    expect(cls(http('POST', '/experimental/session/ses_1/rebobinar', dq, { messageID: 'msg_1', modo: 'todo' }))).toBe('deny:forbidden')
+    expect(
+      cls(http('POST', '/experimental/session/ses_1/rebobinar', dq, { messageID: 'msg_1', modo: 'codigo', sobrescribir: ['.mcp.json'] }))
+    ).toBe('deny:forbidden')
+    expect(cls(http('POST', '/experimental/session/ses_1/rebobinar/deshacer', dq, {}))).toBe('deny:forbidden')
+  })
+  it('no se cuela por rutas parecidas ni con otro método', () => {
+    expect(cls(http('DELETE', '/experimental/session/ses_1/rebobinar', dq))).toBe('deny:unknown-route')
+    expect(cls(http('PUT', '/experimental/session/ses_1/turnos', dq))).toBe('deny:unknown-route')
+    expect(cls(http('POST', '/experimental/session/ses_1/turnos', dq))).toBe('deny:unknown-route')
+  })
+})

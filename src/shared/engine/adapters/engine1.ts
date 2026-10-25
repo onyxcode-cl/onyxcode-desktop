@@ -20,6 +20,7 @@ import {
   parseElicitationRequest,
   replyElicitation
 } from '../../mcp-elicitation'
+import { fetchRewindReview, fetchTurnDiff, listTurns, postRewind, postUndoRewind } from '../../rewind'
 import type { EngineClient, EngineConnection } from '../client'
 import { EngineError, toEngineError } from '../errors'
 import type { EngineEvent, EngineEventHandler, EngineEventOptions } from '../events'
@@ -203,6 +204,7 @@ export class Engine1Adapter implements EngineClient {
   readonly permissions: EngineClient['permissions']
   readonly questions: EngineClient['questions']
   readonly elicitations: EngineClient['elicitations']
+  readonly rewind: EngineClient['rewind']
   readonly events: EngineClient['events']
   readonly providers: EngineClient['providers']
   readonly mcp: EngineClient['mcp']
@@ -311,6 +313,30 @@ export class Engine1Adapter implements EngineClient {
         return r.available ? r.list : []
       },
       reply: (id, action, content, o) => replyElicitation(this.rawConn(), id, action, content, o?.directory ?? conn.directory, conn.fetch)
+    }
+
+    // Rebobinar por turno: rutas propias del motor, mismo `fetch` crudo (ver `@shared/rewind`).
+    this.rewind = {
+      turns: async (sessionID, o) => {
+        const r = await listTurns(
+          this.rawConn(),
+          { sessionID, directory: o?.directory ?? conn.directory, antesDe: o?.antesDe, limite: o?.limite },
+          conn.fetch
+        )
+        return r.available ? r.turns : null
+      },
+      turnDiff: (sessionID, messageID, file, o) =>
+        fetchTurnDiff(this.rawConn(), { sessionID, messageID, file, directory: o?.directory ?? conn.directory }, conn.fetch),
+      review: (sessionID, messageID, o) =>
+        fetchRewindReview(this.rawConn(), { sessionID, messageID, directory: o?.directory ?? conn.directory }, conn.fetch),
+      rewind: (sessionID, messageID, modo, o) =>
+        postRewind(
+          this.rawConn(),
+          { sessionID, messageID, modo, sobrescribir: o?.sobrescribir, directory: o?.directory ?? conn.directory },
+          conn.fetch
+        ),
+      undo: (sessionID, o) =>
+        postUndoRewind(this.rawConn(), { sessionID, sobrescribir: o?.sobrescribir, directory: o?.directory ?? conn.directory }, conn.fetch)
     }
 
     this.events = {
