@@ -41,7 +41,7 @@ export const settings = {
   'settings.general.preferences': 'Preferencias',
   'settings.general.language': 'Idioma',
   'settings.general.language.description':
-    'Idioma de la interfaz. Con English cambian Chat y Ajustes; Code, Overdrive y Rutinas se mantienen en español.',
+    'Idioma de la interfaz. English está en beta: puede quedar algún texto suelto en español; las respuestas de la IA siguen el idioma en que le escribas.',
   'settings.general.language.system': 'Sistema',
   'settings.general.language.es': 'Español',
   'settings.general.language.en': 'English (beta)',

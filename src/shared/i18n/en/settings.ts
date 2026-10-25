@@ -44,7 +44,7 @@ export const settings = {
   'settings.general.preferences': 'Preferences',
   'settings.general.language': 'Language',
   'settings.general.language.description':
-    'Interface language. With English, Chat and Settings change; Code, Overdrive and Routines stay in Spanish.',
+    'Interface language. English is in beta: a stray text may stay in Spanish; the AI answers in the language you write to it.',
   'settings.general.language.system': 'System',
   'settings.general.language.es': 'Español',
   'settings.general.language.en': 'English (beta)',
