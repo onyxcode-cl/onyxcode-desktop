@@ -4,6 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.4] - 2026-10-25
+
+### Correcciones
+
+- **La IA responde en tuteo.** Los textos con los que la app le explica su trabajo al asistente estaban escritos en voseo («podés», «querés», «¿Cuál preferís?») y el modelo los copiaba. Ahora están en español neutro, incluida la pregunta que ves al pedir una presentación.
+- **«Probar un modelo gratuito» vale para todo.** Al elegirlo en Chat, Code u Overdrive se usa también en los otros modos que aún no tengan un modelo propio; ya no hay que repetirlo ni ves «Aún no conectaste ninguna IA» en otro modo.
+- **Comparar modelos:** cada fila muestra el nombre completo al pasar el cursor y deja más sitio al nombre, para distinguir modelos con nombres parecidos.
+- Ajustes › Idioma ya no dice que Code, Overdrive y Rutinas siguen en español: están traducidos (English sigue en beta).
+
 ## [1.7.3] - 2026-10-25
 
 ### Novedades
