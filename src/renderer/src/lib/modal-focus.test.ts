@@ -1,3 +1,4 @@
+// @ts-expect-error jsdom no trae tipos en este repositorio (solo se usa en pruebas)
 import { JSDOM } from 'jsdom'
 import { describe, expect, it } from 'vitest'
 import { FOCUSABLE, tabTarget } from './modal-focus'
@@ -34,7 +35,7 @@ describe('FOCUSABLE (qué controles cuentan dentro de un diálogo)', () => {
       <button id="z">Continuar</button>
       <button id="x" disabled>no</button>
     </div>`)
-    const ids = Array.from(dom.window.document.querySelectorAll(FOCUSABLE)).map((el) => el.id)
+    const ids = Array.from(dom.window.document.querySelectorAll(FOCUSABLE)).map((el) => (el as Element).id)
     expect(ids).toEqual(['a', 's', 'e', 'z'])
   })
 })
