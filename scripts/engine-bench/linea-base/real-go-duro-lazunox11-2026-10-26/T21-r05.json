@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "fecha": "2026-10-26T15:01:56.962Z",
+  "tarea": "T21",
+  "repeticion": 5,
+  "nombre": "Migración de 5 pasos con dependencias",
+  "mide": "Tareas con dependencias",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9405,
+      "salida": 737,
+      "cache_leida": 71296,
+      "enviados": 80701
+    },
+    "pasos": 8,
+    "tokens_por_paso": {
+      "med": 10378.5,
+      "p90": 10912
+    },
+    "llamadas": 7,
+    "herramientas": {
+      "bash": 7
+    },
+    "bytes_resultados": 4297,
+    "permisos_negados": 0,
+    "tiempo_ms": 33288,
+    "peticiones_modelo": null
+  }
+}

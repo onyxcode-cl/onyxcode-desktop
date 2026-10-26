@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "fecha": "2026-10-26T15:31:12.025Z",
+  "tarea": "T22",
+  "repeticion": 4,
+  "nombre": "Pruebas con 20 000 líneas de salida y un fallo escondido",
+  "mide": "Salida larga (ganchos de salida, poda)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 23651,
+      "salida": 526,
+      "cache_leida": 99072,
+      "enviados": 122723
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 22826,
+      "p90": 23402
+    },
+    "llamadas": 7,
+    "herramientas": {
+      "bash": 4,
+      "read": 2,
+      "edit": 1
+    },
+    "bytes_resultados": 31951,
+    "permisos_negados": 0,
+    "tiempo_ms": 12366,
+    "peticiones_modelo": null
+  }
+}

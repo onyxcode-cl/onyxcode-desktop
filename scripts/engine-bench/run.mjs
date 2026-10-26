@@ -15,7 +15,7 @@
 //
 // Uso:
 //   node scripts/engine-bench/run.mjs --motor <binario> [--tareas T01,T05] [--repeticiones 3] [--modelo opencode/deepseek-v4.1-flash-free]
-//        [--proveedor-falso [--sin-guion T05,T09]] [--env K=V ...] [--max-pasos 60] [--presupuesto-tokens 400000] [--timeout-min 15]
+//        [--proveedor-falso [--sin-guion T05,T09]] [--env K=V ...] [--config-global '<json>'] [--max-pasos 60] [--presupuesto-tokens 400000] [--timeout-min 15]
 //        [--auth-archivo <auth.json>] [--typescript <carpeta de typescript>] [--salida <archivo|carpeta>] [--conservar] [--espera-cuota-seg 60]
 //        [--guardar-corridas <carpeta>]   (un JSON por tarea y repetición, escrito apenas termina cada corrida: `T19-r03.json`; si ya existe
 //        y no es de cuota, esa repetición se SALTA y se reutiliza, así una tanda de ≥5 repeticiones se reparte en varios días)
@@ -62,6 +62,7 @@ function leerArgs(argv) {
       case '--repeticiones': a.repeticiones = Number(valor(i++, n)); break
       case '--modelo': a.modelo = valor(i++, n); break
       case '--env': a.env.push(valor(i++, n)); break
+      case '--config-global': a.configGlobal = valor(i++, n); break
       case '--max-pasos': a.maxPasos = Number(valor(i++, n)); break
       case '--presupuesto-tokens': a.presupuesto = Number(valor(i++, n)); break
       case '--timeout-min': a.timeoutMin = Number(valor(i++, n)); break
@@ -224,6 +225,12 @@ async function unaCorrida(cfg, tarea, ctx) {
       mkdirSync(dst, { recursive: true })
       copyFileSync(auth, join(dst, 'auth.json'))
       chmodSync(join(dst, 'auth.json'), 0o600)
+    }
+    // Configuración GLOBAL del motor (p. ej. {"compaction":{"umbral":60000}}): va al opencode.json del HOME temporal, nunca al proyecto.
+    if (cfg.configGlobal) {
+      const dc = join(home, '.config/opencode')
+      mkdirSync(dc, { recursive: true })
+      writeFileSync(join(dc, 'opencode.json'), cfg.configGlobal)
     }
     spawnSync('git', ['init', '-q'], { cwd: proj })
     spawnSync('git', ['add', '-A'], { cwd: proj })
@@ -532,7 +539,7 @@ async function principal() {
     modelo,
     proveedorFalso: !!cfg.falso,
     repeticiones: cfg.repeticiones,
-    config: { max_pasos: cfg.maxPasos, presupuesto_tokens: cfg.presupuesto, timeout_min: cfg.timeoutMin, env: cfg.env },
+    config: { config_global: cfg.configGlobal ?? null, max_pasos: cfg.maxPasos, presupuesto_tokens: cfg.presupuesto, timeout_min: cfg.timeoutMin, env: cfg.env },
     tareas: {}
   }
   for (const tarea of sel) {
