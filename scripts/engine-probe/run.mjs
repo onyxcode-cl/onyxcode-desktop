@@ -6,6 +6,9 @@
 //   PROBE_ONLY=agentes | task-wait | rebobinar | compactar   Ola 2 y plan «rebobinar y compactación» (checks-ola2.mjs): subagentes de usuario (2A),
 //     task_wait/reanudar (2B), R-1..R-11 y C-1..C-7. Necesitan un motor con esas funciones (el integrado de la Ola 2); en equipos sin ripgrep ni
 //     red el arnés pone un `rg` mínimo (`rgShim`) para la herramienta `skill`. Correrlas en el VPS dentro de un contenedor, nunca en el Mac.
+//   PROBE_ONLY=plan | todo-verificar | presupuesto | ganchos2 | monitor | objetivo | revisor | skills | lsp | lote | reglas   Olas 3 y 4 del motor
+//     lazunox.10 (checks-ola3.mjs): una familia por vez (se eligen por familia exacta, no por texto). Mac: carpeta temporal sin enlaces
+//     simbólicos (`TMPDIR=/private/var/tmp/... nice -n 19 node …`); Linux: contenedor sin red en el VPS.
 //   PROBE_MCP_MANY=<n>  herramientas extra del conector de las comprobaciones `tool-search` (defecto 40).
 //   PROBE_FORCE_TOOL_SEARCH=1  corre las `tool-search` aunque el motor no traiga `LAZUNOX_TOOL_SEARCH` (para ver POR QUÉ fallan).
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
