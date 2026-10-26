@@ -1,0 +1,28 @@
+Antes: scripts/engine-bench/linea-base/real-go-pro-lazunox12c-2026-10-26/12c-off (motor 1.19.0, opencode-go/deepseek-v4-pro, 2026-10-26T19:56:44.471Z)
+Después: scripts/engine-bench/linea-base/real-go-pro-lazunox12c-2026-10-26/12c-on (motor 1.19.0, opencode-go/deepseek-v4-pro, 2026-10-26T19:59:02.728Z)
+
+| Tarea | Éxito antes → después | Tokens enviados: mediana [rango] antes → después | Δ tokens | Pasos: mediana [rango] antes → después | Δ pasos | Minutos Δ | Ruido |
+|---|---|---|---:|---|---:|---:|---|
+| T03 «¿Dónde se valida X?» en un repo de 60 archivos | 5/5 → 5/5 | 34.958 [26.110–56.857] → 36.240 [26.396–54.300] | +4 % | 4 [3–6] → 4 [3–6] | +0 % | -5 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 9.035 · 9.260 → 9.093 · 9.451 | +1 % | | | | |
+| T08 Resumir 3 módulos con 3 ayudantes en paralelo | 5/5 → 5/5 | 48.093 [36.477–48.580] → 36.907 [36.811–49.078] | -23 % | 5 [4–5] → 4 [4–5] | -20 % | -15 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 9.593 · 11.081 → 9.128 · 10.297 | -5 % | | | | |
+| T09 Sesión larga: 8 pedidos encadenados | 5/5 → 5/5 | 279.178 [234.471–317.185] → 265.380 [239.108–381.860] | -5 % | 26 [23–29] → 25 [23–33] | -4 % | -11 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 10.285 · 13.316 → 10.206 · 13.000 | -1 % | | | | |
+| T15 Lote: 3 módulos independientes | 5/5 → 5/5 | 47.198 [46.567–47.860] → 47.795 [47.497–58.170] | +1 % | 5 [5–5] → 5 [5–6] | +0 % | -17 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 9.544 · 10.389 → 9.819 · 10.501 | +3 % | | | | |
+| T19 Sesión larga: 20 pedidos con referencias a decisiones | 5/5 → 5/5 | 732.766 [708.779–1.063.144] → 903.859 [708.037–1.154.029] | +23 % | 55 [53–71] → 64 [55–73] | +16 % | +10 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 13.124 · 18.456 → 14.450 · 19.356 | +10 % | | | | |
+| T20 Oficina: editar frases con «», “” y — | 5/5 → 5/5 | 27.116 [27.038–35.863] → 27.354 [27.310–27.673] | +1 % | 3 [3–4] → 3 [3–3] | +0 % | -12 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 8.991 · 9.681 → 9.078 · 9.754 | +1 % | | | | |
+| T21 Migración de 5 pasos con dependencias | 5/5 → 5/5 | 117.248 [83.269–154.874] → 134.265 [82.877–220.636] | +15 % | 11 [8–14] → 12 [8–19] | +9 % | -3 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 10.883 · 11.758 → 11.164 · 11.947 | +3 % | | | | |
+| T22 Pruebas con 20 000 líneas de salida y un fallo escondido | 5/5 → 5/5 | 48.062 [38.891–155.410] → 39.077 [35.729–58.856] | -19 % | 4 [4–8] → 4 [4–5] | +0 % | +6 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 9.194 · 12.606 → 9.073 · 12.456 | -1 % | | | | |
+| T23 Un archivo cambia mientras trabajas | 5/5 → 5/5 | 67.591 [56.979–71.733] → 59.644 [57.614–61.727] | -12 % | 7 [6–7] → 6 [6–6] | -14 % | +27 % | dentro del ruido |
+| ↳ tokens por paso (med · p90) | | 9.985 · 10.620 → 10.019 · 11.303 | +0 % | | | | |
+
+Éxito total: 45/45 → 45/45 · tokens por éxito (med): 57.248 → 54.617 (-5 %) · p90 de minutos: 2,74 → 2,7
+RUIDO: diferencia dentro del ruido (los rangos de tokens enviados se solapan) en T03, T08, T09, T15, T19, T20, T21, T22, T23; no cuenta como mejora ni como empeoramiento.
+
+CRITERIO DE OLA (éxito): se cumple (no baja más de 1 tarea y ninguna cae de estable a 0).

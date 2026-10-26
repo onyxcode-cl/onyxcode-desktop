@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "fecha": "2026-10-26T19:44:58.224Z",
+  "tarea": "T15",
+  "repeticion": 5,
+  "nombre": "Lote: 3 módulos independientes",
+  "mide": "/lote (ola 4)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4-pro",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9781,
+      "salida": 959,
+      "cache_leida": 39040,
+      "enviados": 48821
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 9928,
+      "p90": 10788
+    },
+    "llamadas": 11,
+    "herramientas": {
+      "bash": 2,
+      "read": 6,
+      "edit": 3
+    },
+    "bytes_resultados": 2623,
+    "permisos_negados": 0,
+    "tiempo_ms": 25243,
+    "peticiones_modelo": null
+  }
+}

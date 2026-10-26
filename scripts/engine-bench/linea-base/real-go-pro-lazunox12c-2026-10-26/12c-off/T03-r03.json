@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "fecha": "2026-10-26T19:22:51.161Z",
+  "tarea": "T03",
+  "repeticion": 3,
+  "nombre": "«¿Dónde se valida X?» en un repo de 60 archivos",
+  "mide": "Ayudante de lectura, modelo pequeño",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4-pro",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9216,
+      "salida": 203,
+      "cache_leida": 26368,
+      "enviados": 35584
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 9034.5,
+      "p90": 9260
+    },
+    "llamadas": 3,
+    "herramientas": {
+      "grep": 1,
+      "read": 1,
+      "write": 1
+    },
+    "bytes_resultados": 2118,
+    "permisos_negados": 0,
+    "tiempo_ms": 10215,
+    "peticiones_modelo": null
+  }
+}
