@@ -660,6 +660,146 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
     return true
   })
 
+  // ═══ minimos (6.3): ayudantes con contexto mínimo y exhaustividad de explore ═══════════════════════════════════
+  const MIN_ENV = { LAZUNOX_AYUDANTES_MINIMOS: '1' }
+  const MIN_ARCHIVOS = {
+    'AGENTS.md': 'Instrucciones del proyecto. MARCA-AGENTS: responde siempre con cortesía.\n',
+    '.opencode/skills/demo/SKILL.md': ['---', 'name: demo', 'description: Habilidad de demostración MARCA-SKILL', '---', 'Cuerpo de la habilidad demo.'].join('\n'),
+    'a.ts': 'export const a = 1\n'
+  }
+  const esRevisor = (body) => textoDe(body).includes('Eres el revisor de código')
+  const contextoFijo = async (q, id) => (await J(await q(`/experimental/session/${id}/contexto-fijo`))).body
+  const reglaDe = (a, permiso) => (a?.permission ?? []).filter((r) => (r.permission === permiso || r.permission === '*') && r.pattern === '*').at(-1)?.action
+  /** `/review` (agente revisor, sesión hija) + un turno normal de la raíz; devuelve lo que vio el proveedor y el peso del contexto fijo. */
+  const corridaRevisor = (env) =>
+    motor({
+      git: true,
+      env,
+      rgShim: true,
+      projectFiles: MIN_ARCHIVOS,
+      agentsOf: true,
+      skipFirst: true,
+      pre: async () => undefined,
+      decide: (ctx) => (!ctx.tools.length ? { text: 'titulo' } : esRevisor(ctx.body) ? { text: JSON.stringify({ findings: [], overall_correctness: 'correct', overall_explanation: 'ok' }) } : null),
+      http: async (h) => {
+        await h.prompt('RAIZ_NORMAL')
+        writeFileSync(join(h.proj, 'a.ts'), 'export const a = 2\n')
+        const res = await h.q(`/session/${h.sessionID}/command`, h.post({ command: 'review', arguments: '', model: 'fake/m' }))
+        const hs = await hijas(h.q, h.sessionID)
+        const agente = (await J(await h.q('/agent'))).body.find((x) => x.name === 'revisor')
+        const hija = await contextoFijo(h.q, hs.at(-1)?.id)
+        const raiz = await contextoFijo(h.q, h.sessionID)
+        return {
+          status: res.status,
+          hijas: hs.length,
+          revisor: h.bodies.filter(esRevisor),
+          raiz: detrabajo(h.bodies).filter((b) => !esRevisor(b) && textoDe(b).includes('RAIZ_NORMAL')),
+          hija,
+          raizFijo: raiz,
+          edit: reglaDe(agente, 'edit'),
+          task: reglaDe(agente, 'task')
+        }
+      }
+    })
+  const revisorSin = {}
+  checkRun('minimos (a): SIN la bandera, /review: la petición de la hija (revisor) lleva el AGENTS.md (MARCA-AGENTS) y la sesión raíz también', async () => {
+    const r = await corridaRevisor({})
+    const h = r.http
+    exige(h.status === 200 && h.hijas >= 1 && h.revisor.length >= 1, '/review no llegó a pedirle nada al revisor', { status: h.status, hijas: h.hijas })
+    exige(textoDe(h.revisor[0]).includes('MARCA-AGENTS'), 'sin la bandera la hija no trae AGENTS.md (cambió el comportamiento por defecto)')
+    exige(h.raiz.length >= 1 && textoDe(h.raiz[0]).includes('MARCA-AGENTS'), 'la sesión raíz no trae AGENTS.md')
+    Object.assign(revisorSin, { hija: h.hija, edit: h.edit, task: h.task })
+    return true
+  })
+  checkRun('minimos (b): CON la bandera, la petición de la hija NO trae AGENTS.md ni <available_skills>, su contexto-fijo baja, la raíz no cambia y edit/task del revisor siguen en deny igual que sin bandera', async () => {
+    const r = await corridaRevisor(MIN_ENV)
+    const h = r.http
+    exige(h.status === 200 && h.revisor.length >= 1, '/review no llegó a pedirle nada al revisor', { status: h.status })
+    const t = textoDe(h.revisor[0])
+    exige(!t.includes('MARCA-AGENTS'), 'la hija en contexto mínimo aún lleva AGENTS.md')
+    exige(!t.includes('<available_skills>') && !t.includes('MARCA-SKILL'), 'la hija en contexto mínimo aún lleva la lista de skills')
+    exige(h.raiz.length >= 1 && textoDe(h.raiz[0]).includes('MARCA-AGENTS'), 'la sesión raíz perdió AGENTS.md con la bandera (solo debe recortar a la hija)')
+    exige(h.hija?.partes && h.hija.partes.instrucciones === 0 && h.hija.partes.skills === 0, 'contexto-fijo de la hija no marca instrucciones/skills en 0', h.hija)
+    exige(h.raizFijo?.partes?.instrucciones > 0, 'contexto-fijo de la raíz perdió las instrucciones', h.raizFijo)
+    if (revisorSin.hija) exige(h.hija.tokens < revisorSin.hija.tokens, `contexto-fijo de la hija no bajó (${h.hija.tokens} frente a ${revisorSin.hija.tokens} sin la bandera)`)
+    exige(h.edit === 'deny' && h.task === 'deny' && (revisorSin.edit === undefined || (revisorSin.edit === h.edit && revisorSin.task === h.task)), 'GET /agent cambió los permisos del revisor', { edit: h.edit, task: h.task, sin: revisorSin })
+    return true
+  })
+
+  /** Raíz que lanza `task` con los argumentos dados cuando el turno dice LANZA; el ayudante se reconoce por la marca en su ÚLTIMO mensaje de la persona. */
+  const motorTask = (env, args, { marca, ayudante = () => null, inline, projectFiles = MIN_ARCHIVOS } = {}) =>
+    motor({
+      git: true,
+      env,
+      rgShim: true,
+      projectFiles,
+      inline: { permission: { task: 'allow', glob: 'allow', read: 'allow' }, ...(inline ?? {}) },
+      decide: (ctx) => {
+        if (!ctx.tools.length) return { text: 'titulo' }
+        const u = ultimo(ctx.messages)
+        if (u.texto.includes(marca)) return ayudante(ctx, u)
+        if (ctx.userTexts.some((x) => x.includes('LANZA_AYUDANTE')) && u.n === 0 && !ctx.toolTexts.length) return { name: 'task', args }
+        return null
+      },
+      firstPrompt: 'LANZA_AYUDANTE',
+      firstTimeoutMs: 120_000,
+      http: async (h) => {
+        const esHija = (b) => ultimo(b.messages ?? []).texto.includes(marca)
+        return { hijas: h.bodies.filter(esHija), raiz: h.bodies.filter((b) => !esHija(b) && (b.tools ?? []).length), tools: (h.bodies.find((b) => (b.tools ?? []).length)?.tools ?? []) }
+      }
+    })
+  // Al llegar al tope de pasos el motor NO quita las herramientas: añade un aviso («CRITICAL - MAXIMUM STEPS REACHED… Tools are disabled») y confía en que el modelo
+  // conteste con texto. El proveedor falso de estas pruebas obedece ese aviso; uno que lo ignore sigue pidiendo herramientas (ver el informe).
+  const MAX_PASOS = 'MAXIMUM STEPS REACHED'
+  const globPaso = (ctx) => ({ name: 'glob', args: { pattern: `*${ctx.toolTexts.length}*`, path: undefined } })
+  const taskSchema = (tools) => tools.find((t) => t.function?.name === 'task')?.function?.parameters?.properties ?? {}
+
+  checkRun('minimos (c): un ayudante `general` lanzado con task SIGUE trayendo AGENTS.md aunque la bandera esté encendida', async () => {
+    const r = await motorTask(MIN_ENV, { subagent_type: 'general', description: 'x', prompt: 'AYUDANTE_GENERAL haz algo' }, { marca: 'AYUDANTE_GENERAL', ayudante: () => ({ text: 'hecho' }) })
+    exige(r.http.hijas.length >= 1, 'el ayudante general no hizo ninguna petición', r.http.hijas.length)
+    exige(textoDe(r.http.hijas[0]).includes('MARCA-AGENTS'), 'el ayudante general perdió AGENTS.md (no debe pasar: general/build nunca van en mínimo)')
+    return true
+  })
+
+  for (const [nivel, linea, tope] of [['rapida', 'Thoroughness: quick', 6], ['a_fondo', 'Thoroughness: very thorough', 40], [undefined, null, null]])
+    checkRun(`minimos (d): explore ${nivel ? `con exhaustividad "${nivel}": la orden empieza con «${linea}» y el aviso de «MAXIMUM STEPS REACHED» llega justo en la petición ${tope} y no antes` : 'sin exhaustividad: no se añade tope ni aviso de pasos (60 pasos del guion sin el aviso)'}`, async () => {
+      const args = { subagent_type: 'explore', description: 'x', prompt: 'EXPLORA_AQUI busca algo', ...(nivel ? { exhaustividad: nivel } : {}) }
+      const r = await motorTask(MIN_ENV, args, { marca: 'EXPLORA_AQUI', ayudante: (ctx, u) => (u.n < 60 && !textoDe(ctx.body).includes(MAX_PASOS) ? globPaso(ctx) : { text: 'fin' }) })
+      const hijas = r.http.hijas
+      exige(hijas.length >= 1, 'el explore no hizo ninguna petición', r.http.raiz.length)
+      if (nivel) {
+        exige(ultimo(hijas[0].messages).texto.trimStart().startsWith(linea), `la orden no empieza con «${linea}»`, ultimo(hijas[0].messages).texto.slice(0, 160))
+        const primera = hijas.findIndex((b) => textoDe(b).includes(MAX_PASOS)) + 1
+        exige(primera === tope, `el aviso de pasos máximos llegó en la petición ${primera || 'ninguna'} (se esperaba la ${tope})`, hijas.length)
+        exige(hijas.length === tope, `la hija recibió ${hijas.length} peticiones (se esperaban ${tope} con un modelo que obedece el aviso)`)
+      } else {
+        exige(hijas.length >= 60 && !hijas.some((b) => textoDe(b).includes(MAX_PASOS)), `sin exhaustividad la hija recibió ${hijas.length} peticiones y/o el aviso de pasos máximos (¿tope añadido?)`)
+      }
+      return true
+    })
+
+  checkRun('minimos (d2): SIN la bandera, el esquema de task no tiene el campo `exhaustividad` (y CON ella sí lo tiene)', async () => {
+    const sin = await motorTask({}, { subagent_type: 'explore', description: 'x', prompt: 'EXPLORA_AQUI', exhaustividad: 'rapida' }, { marca: 'EXPLORA_AQUI', ayudante: () => ({ text: 'fin' }) })
+    exige(sin.http.tools.some((t) => t.function?.name === 'task'), 'no se ofreció task')
+    exige(!('exhaustividad' in taskSchema(sin.http.tools)), 'sin la bandera el esquema de task trae `exhaustividad`')
+    const con = await motorTask(MIN_ENV, { subagent_type: 'explore', description: 'x', prompt: 'EXPLORA_AQUI' }, { marca: 'EXPLORA_AQUI', ayudante: () => ({ text: 'fin' }) })
+    exige('exhaustividad' in taskSchema(con.http.tools), 'con la bandera el esquema de task no trae `exhaustividad`', Object.keys(taskSchema(con.http.tools)))
+    return true
+  })
+
+  checkRun('minimos (e): un agente de la config con contexto:"minimo" y edit:allow se RECHAZA (conserva AGENTS.md y skills); el mismo con edit:deny sí se recorta', async () => {
+    const agentes = (edit) => ({ agent: { chico: { mode: 'subagent', description: 'ayudante chico', contexto: 'minimo', prompt: 'Eres chico.', permission: { edit } } } })
+    const marca = 'AYUDANTE_CHICO'
+    const args = { subagent_type: 'chico', description: 'x', prompt: `${marca} haz algo` }
+    const permite = await motorTask(MIN_ENV, args, { marca, inline: agentes('allow'), ayudante: () => ({ text: 'hecho' }) })
+    exige(permite.http.hijas.length >= 1 && textoDe(permite.http.hijas[0]).includes('MARCA-AGENTS'), 'el agente que edita y se declara mínimo perdió AGENTS.md (debía rechazarse)')
+    const niega = await motorTask(MIN_ENV, args, { marca, inline: agentes('deny'), ayudante: () => ({ text: 'hecho' }) })
+    exige(niega.http.hijas.length >= 1 && !textoDe(niega.http.hijas[0]).includes('MARCA-AGENTS'), 'el agente de solo lectura en mínimo conserva AGENTS.md')
+    const sinBandera = await motorTask({}, args, { marca, inline: agentes('deny'), ayudante: () => ({ text: 'hecho' }) })
+    exige(sinBandera.http.hijas.length >= 1 && textoDe(sinBandera.http.hijas[0]).includes('MARCA-AGENTS'), 'sin la bandera el agente mínimo perdió AGENTS.md')
+    return true
+  })
+
   // ═══ unicode (6.5): edición tolerante a comillas, rayas y NBSP ══════════════════════════════════════════════
   const CARTA = ['línea uno', '“Gracias” — atte.', 'hola mundo', 'cierre ‘simple’…', ''].join('\n')
   const edicion = (proj, oldString, newString) => ({ name: 'edit', args: { filePath: join(proj, 'carta.txt'), oldString, newString } })
