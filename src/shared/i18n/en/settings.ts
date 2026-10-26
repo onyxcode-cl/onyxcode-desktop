@@ -554,6 +554,9 @@ export const settings = {
   'settings.helpers.form.model.custom': 'Other (service/model)',
   'settings.helpers.form.modelId': 'Service and model',
   'settings.helpers.form.modelIdHint': 'In the service/model format.',
+  'settings.helpers.form.allowed': 'Allowed tools',
+  'settings.helpers.form.allowedHint':
+    'Separated by commas, for example: Read, Grep. Leave it empty to use the tools of the conversation. It can only use these and never more than the conversation that starts it; the blocked tools below win.',
   'settings.helpers.form.blocked': 'Blocked tools',
   'settings.helpers.form.blockedHint': 'Separated by commas, for example: edit, bash. It will never be able to use them.',
   'settings.helpers.form.turns': 'Maximum turns',
@@ -583,6 +586,7 @@ export const settings = {
   'settings.helpers.field.description': 'when to use it',
   'settings.helpers.field.prompt': 'instructions',
   'settings.helpers.field.model': 'model',
+  'settings.helpers.field.allowedTools': 'allowed tools',
   'settings.helpers.field.disallowedTools': 'blocked tools',
   'settings.helpers.field.maxTurns': 'maximum turns',
   'settings.helpers.field.skills': 'skills',

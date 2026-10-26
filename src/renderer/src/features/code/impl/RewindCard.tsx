@@ -42,9 +42,11 @@ function FileRow({
   file,
   open,
   diff,
+  reverted,
   onToggle
 }: {
   file: TurnFile
+  reverted: boolean
   open: boolean
   diff: DiffState | undefined
   onToggle: () => void
@@ -65,7 +67,9 @@ function FileRow({
         <span className="min-w-0 flex-1 font-mono text-[12px] break-all" title={file.file}>
           {file.file}
         </span>
-        <span className="shrink-0 rounded border border-border px-1.5 text-meta text-muted">{t(STATUS_KEY[file.status])}</span>
+        <span className="shrink-0 rounded border border-border px-1.5 text-meta text-muted">
+          {reverted ? t('code.turn.reverted') : t(STATUS_KEY[file.status])}
+        </span>
         <span className="shrink-0 rounded border border-border px-1.5 text-meta text-muted">{t(ORIGIN_KEY[file.origen])}</span>
         <span className="shrink-0 font-mono text-meta tabular-nums" aria-hidden>
           {t('code.turn.totals', { add: file.additions, del: file.deletions })}
@@ -101,9 +105,11 @@ export interface RewindCardProps {
   onRewind: () => void
   /** La conversación está trabajando: no se puede volver atrás ahora. */
   disabled?: boolean
+  /** Archivos que un rebobinado activo ya dejó como estaban antes: se marcan «ya revertido» hasta que se deshaga. */
+  revertedFiles?: ReadonlySet<string>
 }
 
-export function RewindCard({ summary, loadDiff, onRewind, disabled }: RewindCardProps): React.JSX.Element | null {
+export function RewindCard({ summary, loadDiff, onRewind, disabled, revertedFiles }: RewindCardProps): React.JSX.Element | null {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [openFiles, setOpenFiles] = useState<ReadonlySet<string>>(new Set())
@@ -113,6 +119,9 @@ export function RewindCard({ summary, loadDiff, onRewind, disabled }: RewindCard
   if (summary.files.length === 0) return null
   const totals = turnTotals(summary.files)
   const shown = summary.files.slice(0, LIST_MAX)
+  const isReverted = (f: string): boolean => !!revertedFiles?.has(f)
+  const anyReverted = summary.files.some((f) => isReverted(f.file))
+  const allReverted = summary.files.every((f) => isReverted(f.file))
 
   const toggleFile = (file: string): void => {
     const opening = !openFiles.has(file)
@@ -157,7 +166,14 @@ export function RewindCard({ summary, loadDiff, onRewind, disabled }: RewindCard
         <div id={listId} className="border-t border-border">
           <ul aria-label={t('code.turn.list.aria')} className="max-h-96 overflow-y-auto">
             {shown.map((f) => (
-              <FileRow key={f.file} file={f} open={openFiles.has(f.file)} diff={diffs[f.file]} onToggle={() => toggleFile(f.file)} />
+              <FileRow
+                key={f.file}
+                file={f}
+                open={openFiles.has(f.file)}
+                diff={diffs[f.file]}
+                reverted={isReverted(f.file)}
+                onToggle={() => toggleFile(f.file)}
+              />
             ))}
           </ul>
           <div className="flex flex-col gap-1 border-t border-border px-3 py-2 text-xs text-muted">
@@ -165,10 +181,11 @@ export function RewindCard({ summary, loadDiff, onRewind, disabled }: RewindCard
             {summary.truncated && <p>{t('code.turn.truncated')}</p>}
             {turnHasCommandOrigin(summary.files) && <p>{t('code.turn.commandWarn')}</p>}
             {summary.files.some((f) => f.origen === 'otro') && <p>{t('code.turn.otherWarn')}</p>}
+            {anyReverted && <p>{allReverted ? t('code.turn.revertedAll') : t('code.turn.revertedSome')}</p>}
             {!summary.restaurable && summary.motivo && <p>{t(NOT_RESTORABLE_KEY[summary.motivo])}</p>}
           </div>
           <div className="flex justify-end border-t border-border px-3 py-2">
-            <Button variant="secondary" size="sm" disabled={disabled} onClick={onRewind}>
+            <Button variant="secondary" size="sm" disabled={disabled || allReverted} onClick={onRewind}>
               <Undo2 size={13} aria-hidden /> {t('code.turn.rewind')}
             </Button>
           </div>

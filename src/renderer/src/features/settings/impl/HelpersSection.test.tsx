@@ -82,6 +82,7 @@ beforeEach(() => {
           description: 'd',
           prompt: 'p',
           model: 'small',
+          allowedTools: ['Read'],
           disallowedTools: ['edit'],
           maxTurns: 3,
           background: false,
@@ -167,6 +168,33 @@ describe('Ajustes › Ayudantes', () => {
       mode: 'edit',
       def: { name: 'lector', maxTurns: 3 }
     })
+  })
+
+  it('herramientas permitidas: se rellena con lo leído, se guarda como lista y avisa que no superan a la sesión', async () => {
+    await mount()
+    await act(async () => btn(/^Editar$/).click())
+    const inputs = [...host.querySelectorAll<HTMLInputElement>('input')]
+    const allowed = inputs.find((i) => i.value === 'Read')!
+    expect(allowed).toBeTruthy()
+    expect(host.textContent).toContain('Herramientas permitidas')
+    expect(host.textContent).toContain('nunca más que la conversación')
+    type(allowed, 'Read, Grep, mcp__srv__tool')
+    await act(async () => btn(/Guardar/).click())
+    expect(callMock.mock.calls.find((c) => c[0] === 'helpers:save')![1]).toMatchObject({
+      def: { allowedTools: ['Read', 'Grep', 'mcp__srv__tool'], disallowedTools: ['edit'] }
+    })
+  })
+
+  it('herramientas permitidas: un nombre inválido o más de 30 no llama a main y nombra el campo', async () => {
+    await mount()
+    await act(async () => btn(/^Editar$/).click())
+    const allowed = [...host.querySelectorAll<HTMLInputElement>('input')].find((i) => i.value === 'Read')!
+    for (const bad of ['Re ad', 'a:b', 'x'.repeat(65), Array.from({ length: 31 }, (_, i) => `t${i}`).join(', ')]) {
+      type(allowed, bad)
+      await act(async () => btn(/Guardar/).click())
+      expect(callMock.mock.calls.some((c) => c[0] === 'helpers:save')).toBe(false)
+      expect(host.querySelector('[role="alert"]')?.textContent).toContain('herramientas permitidas')
+    }
   })
 
   it('sin carpeta pide elegir una; el motor sin la ruta lo dice', async () => {

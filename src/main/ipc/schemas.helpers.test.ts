@@ -10,6 +10,7 @@ const DEF = {
   description: 'Lee',
   prompt: 'Lee.',
   model: 'small',
+  allowedTools: [],
   disallowedTools: ['edit'],
   maxTurns: 3,
   background: false,
@@ -42,6 +43,10 @@ describe('canales helpers:* (Ajustes › Ayudantes)', () => {
     expect(() => v({ directory: DIR, mode: 'borrar', def: DEF })).toThrow()
     expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, path: '/etc' } })).toThrow()
     expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, name: '../x' } })).toThrow()
+    for (const bad of [['a b'], ['x\ny'], ['a:b'], ['a'.repeat(65)], Array.from({ length: 31 }, (_, i) => `t${i}`), 'Read'])
+      expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, allowedTools: bad } }), JSON.stringify(bad).slice(0, 30)).toThrow()
+    expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, allowedTools: undefined } })).toThrow()
+    expect(v({ directory: DIR, mode: 'edit', def: { ...DEF, allowedTools: ['Read', 'mcp__s__t', '*'] } })).toBeTruthy()
     expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, maxTurns: 0 } })).toThrow()
     expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, maxTurns: 2.5 } })).toThrow()
     expect(() => v({ directory: DIR, mode: 'edit', def: { ...DEF, disallowedTools: ['a b'] } })).toThrow()

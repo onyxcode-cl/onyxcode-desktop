@@ -113,6 +113,7 @@ export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'bro
 const id = str({ max: 200, min: 1 })
 const shortText = str({ max: 500 })
 const helperName = str({ min: 1, max: HELPER_LIMITS.name, pattern: HELPER_NAME_RE })
+const helperAllowedItem = str({ min: 1, max: HELPER_LIMITS.allowedToolName, pattern: /^[A-Za-z0-9_.*-]{1,64}$/ })
 const helperItem = str({ min: 1, max: HELPER_LIMITS.toolName, pattern: /^[A-Za-z0-9_][A-Za-z0-9_.:*-]*$/ })
 /** Id de sesión de OpenCode (`ses_…`). */
 const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
@@ -634,6 +635,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
       description: str({ max: HELPER_LIMITS.description }),
       prompt: str({ max: HELPER_LIMITS.prompt }),
       model: str({ min: 1, max: HELPER_LIMITS.model }),
+      allowedTools: arr(helperAllowedItem, HELPER_LIMITS.allowedTools),
       disallowedTools: arr(helperItem, HELPER_LIMITS.tools),
       maxTurns: nullable(num({ int: true, min: 1, max: HELPER_LIMITS.maxTurns })),
       background: bool,

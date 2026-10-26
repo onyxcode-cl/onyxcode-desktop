@@ -653,6 +653,10 @@ export const code = {
   'code.turn.notRestorable.sin-git': 'This folder doesn’t use git: files can’t be undone, only the conversation.',
   'code.turn.notRestorable.sin-instantaneas': 'There is no copy of this turn’s files: you can only go back in the conversation.',
   'code.turn.notRestorable.caducado': 'The copy of this turn’s files has expired: you can only go back in the conversation.',
+  'code.turn.reverted': 'already reverted',
+  'code.turn.revertedAll':
+    'These files are already back to how they were before this turn. Use “Undo” in the notice to get the changes back.',
+  'code.turn.revertedSome': 'Some of these files are already back to how they were before this turn.',
   'code.turn.rewind': 'Go back to before this turn…',
   'code.turn.file.aria': 'See the changes in {file}',
   'code.turn.diff.loading': 'Loading changes…',

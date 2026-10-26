@@ -46,6 +46,7 @@ const EMPTY_DEF: HelperDef = {
   description: '',
   prompt: '',
   model: 'inherit',
+  allowedTools: [],
   disallowedTools: [],
   maxTurns: null,
   background: false,
@@ -174,6 +175,7 @@ function HelperForm({
   const known = initial.model === 'small' || initial.model === 'inherit'
   const [modelKind, setModelKind] = useState<'small' | 'inherit' | 'custom'>(known ? (initial.model as 'small' | 'inherit') : 'custom')
   const [modelId, setModelId] = useState(known ? '' : initial.model)
+  const [allowed, setAllowed] = useState(initial.allowedTools.join(', '))
   const [blocked, setBlocked] = useState(initial.disallowedTools.join(', '))
   const [turns, setTurns] = useState(initial.maxTurns === null ? '' : String(initial.maxTurns))
   const [background, setBackground] = useState(initial.background)
@@ -187,6 +189,7 @@ function HelperForm({
     description: description.replace(/\s*\n\s*/g, ' ').trim(),
     prompt,
     model: modelKind === 'custom' ? modelId.trim() : modelKind,
+    allowedTools: splitList(allowed),
     disallowedTools: splitList(blocked),
     maxTurns: turns.trim() === '' ? null : Number(turns.trim()),
     background,
@@ -256,6 +259,9 @@ function HelperForm({
           <TextInput value={modelId} maxLength={HELPER_LIMITS.model} spellCheck={false} onChange={(e) => setModelId(e.target.value)} />
         </Field>
       )}
+      <Field label={t('settings.helpers.form.allowed')} hint={t('settings.helpers.form.allowedHint')}>
+        <TextInput value={allowed} spellCheck={false} autoCapitalize="off" autoCorrect="off" onChange={(e) => setAllowed(e.target.value)} />
+      </Field>
       <Field label={t('settings.helpers.form.blocked')} hint={t('settings.helpers.form.blockedHint')}>
         <TextInput value={blocked} spellCheck={false} onChange={(e) => setBlocked(e.target.value)} />
       </Field>

@@ -454,6 +454,8 @@ interface TurnViewProps {
   changes?: TurnSummary
   /** «Compactar hasta aquí» disponible desde el mensaje de este turno. */
   compactable?: boolean
+  /** Archivos de este turno que un rebobinado activo ya revirtió (`undefined` si ninguno). */
+  revertedFiles?: ReadonlySet<string>
 }
 
 const sameList = <T,>(a: readonly T[], b: readonly T[]): boolean => a === b || (a.length === b.length && a.every((x, i) => x === b[i]))
@@ -474,7 +476,8 @@ const TurnView = memo(
     perms,
     hotkeyID,
     changes,
-    compactable
+    compactable,
+    revertedFiles
   }: TurnViewProps): React.JSX.Element {
     const t = useT()
     const retryLast = useCode((s) => s.retryLast)
@@ -629,6 +632,7 @@ const TurnView = memo(
           <RewindCard
             summary={changes}
             disabled={busy}
+            revertedFiles={revertedFiles}
             onRewind={() => openRewind(user.info.id)}
             loadDiff={(file) => loadTurnDiff(sessionID, user.info.id, file)}
           />
@@ -658,6 +662,7 @@ const TurnView = memo(
     a.hotkeyID === b.hotkeyID &&
     a.changes === b.changes &&
     a.compactable === b.compactable &&
+    a.revertedFiles === b.revertedFiles &&
     sameList(a.assistant, b.assistant) &&
     sameList(a.perms, b.perms)
 )
@@ -702,6 +707,8 @@ export function MessageStream(props: Props): React.JSX.Element {
   const turnList = useCode((s) => (streamSessionID ? s.turnsBySession[streamSessionID] : undefined))
   const loadTurns = useCode((s) => s.loadTurns)
   const changesByUser = useMemo(() => turnsWithChanges(turnList), [turnList])
+  const rewound = useCode((s) => (streamSessionID ? s.rewoundFiles[streamSessionID] : undefined))
+  const rewoundSet = useMemo(() => (rewound ? new Set(rewound.files) : undefined), [rewound])
   // «Cambios de este turno»: se piden al abrir la conversación y cuando termina de trabajar (el celular no los pide).
   useEffect(() => {
     if (streamSessionID && !busy && !isRemoteSurface()) void loadTurns(streamSessionID)
@@ -788,6 +795,7 @@ export function MessageStream(props: Props): React.JSX.Element {
               hotkeyID={hotkeyID}
               changes={turn.user ? changesByUser.get(turn.user.info.id) : undefined}
               compactable={compactableAt[ti]}
+              revertedFiles={rewoundSet && turn.user && turn.user.info.id >= rewound!.fromMessageID ? rewoundSet : undefined}
             />
           ))}
           {hidden > 0 && (

@@ -33,6 +33,9 @@ export const HELPER_LIMITS = {
   fileBytes: 64 * 1024,
   tools: 50,
   toolName: 80,
+  /** Herramientas permitidas (lista blanca `tools`): tope y largo de cada nombre. */
+  allowedTools: 30,
+  allowedToolName: 64,
   skills: 50,
   maxTurns: 1000,
   model: 200,
@@ -42,6 +45,8 @@ export const HELPER_LIMITS = {
 
 /** Nombre de herramienta o de skill en las listas del encabezado. */
 const ITEM_RE = /^[A-Za-z0-9_][A-Za-z0-9_.:*-]*$/
+/** Nombre de una herramienta de la lista blanca `tools` (`Read`, `mcp__srv__tool`, `*`…). */
+export const ALLOWED_TOOL_RE = /^[A-Za-z0-9_.*-]{1,64}$/
 /** `proveedor/modelo` (el motor lo parte en el primer `/`). */
 const MODEL_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._:@+-]*$/
 
@@ -175,6 +180,8 @@ export interface HelperDef {
   prompt: string
   /** `small`, `inherit` o `proveedor/modelo`. */
   model: string
+  /** Lista blanca (`tools`): vacía = no se limita (las de la sesión). El motor la traduce y nunca supera los permisos de la sesión. */
+  allowedTools: string[]
   disallowedTools: string[]
   maxTurns: number | null
   background: boolean
@@ -183,7 +190,7 @@ export interface HelperDef {
 }
 
 /** Claves del encabezado que la pantalla escribe; el resto se conserva tal cual al editar. */
-const MANAGED_KEYS = ['description', 'mode', 'model', 'disallowed_tools', 'max_turns', 'background', 'skills'] as const
+const MANAGED_KEYS = ['description', 'mode', 'model', 'tools', 'disallowed_tools', 'max_turns', 'background', 'skills'] as const
 
 export type HelperDefCheck = { ok: true } | { ok: false; field: string }
 
@@ -198,6 +205,12 @@ export function validateHelperDef(def: HelperDef): HelperDefCheck {
   const okList = (l: string[] | null, max: number): boolean =>
     l === null ||
     (Array.isArray(l) && l.length <= max && l.every((x) => typeof x === 'string' && x.length <= HELPER_LIMITS.toolName && ITEM_RE.test(x)))
+  if (
+    !Array.isArray(def.allowedTools) ||
+    def.allowedTools.length > HELPER_LIMITS.allowedTools ||
+    !def.allowedTools.every((x) => typeof x === 'string' && ALLOWED_TOOL_RE.test(x))
+  )
+    return { ok: false, field: 'allowedTools' }
   if (def.disallowedTools === null || !okList(def.disallowedTools, HELPER_LIMITS.tools)) return { ok: false, field: 'disallowedTools' }
   if (!okList(def.skills, HELPER_LIMITS.skills)) return { ok: false, field: 'skills' }
   if (def.maxTurns !== null && !(Number.isInteger(def.maxTurns) && def.maxTurns >= 1 && def.maxTurns <= HELPER_LIMITS.maxTurns))
@@ -308,6 +321,27 @@ function listOf(block: Block): string[] | null {
   return items
 }
 
+/** `tools` como lista YAML o, al estilo de Claude Code, como una sola cadena separada por comas (`Read, Grep`). */
+function toolsOf(block: Block | undefined): string[] | null {
+  if (!block) return null
+  const first = block.lines[0]!
+  const rest = first.slice(first.indexOf(':') + 1).trim()
+  let items: string[] | null
+  if (block.lines.length === 1 && rest !== '' && !rest.startsWith('[') && !rest.startsWith('#')) {
+    const v = scalarOf(block)
+    items =
+      v === null
+        ? null
+        : v
+            .split(',')
+            .map((x) => x.trim())
+            .filter((x) => x !== '')
+  } else {
+    items = listOf(block)
+  }
+  return items && items.length <= HELPER_LIMITS.allowedTools && items.every((x) => ALLOWED_TOOL_RE.test(x)) ? items : null
+}
+
 export type ReadHelperResult =
   | { ok: true; def: HelperDef; mode: string }
   /** `complex`: claves cuyo formato la pantalla no sabe editar (se piden a mano). */
@@ -350,6 +384,8 @@ export function readHelperFile(name: string, text: string): ReadHelperResult {
   const modelRaw = str('model', 'inherit')
   const turnsRaw = str('max_turns', '')
   const bgRaw = str('background', '')
+  const allowed = toolsOf(find('tools'))
+  if (find('tools') && allowed === null) complex.push('tools')
   const disallowed = list('disallowed_tools')
   const skills = list('skills')
   let maxTurns: number | null = null
@@ -368,6 +404,7 @@ export function readHelperFile(name: string, text: string): ReadHelperResult {
       description,
       prompt: parsed.body.replace(/^\n+/, '').replace(/\s+$/, ''),
       model: modelRaw === '' ? 'inherit' : modelRaw,
+      allowedTools: allowed ?? [],
       disallowedTools: disallowed ?? [],
       maxTurns,
       background,
@@ -390,6 +427,7 @@ export function buildHelperFile(def: HelperDef, existing?: string): string | nul
     model: [`model: ${def.model}`],
     disallowed_tools: [`disallowed_tools: ${yamlList(def.disallowedTools)}`]
   }
+  if (def.allowedTools.length > 0) managed.tools = [`tools: ${yamlList(def.allowedTools)}`]
   if (def.maxTurns !== null) managed.max_turns = [`max_turns: ${def.maxTurns}`]
   if (def.background) managed.background = ['background: true']
   if (def.skills !== null) managed.skills = [`skills: ${yamlList(def.skills)}`]

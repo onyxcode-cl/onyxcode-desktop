@@ -551,6 +551,9 @@ export const settings = {
   'settings.helpers.form.model.custom': 'Otro (servicio/modelo)',
   'settings.helpers.form.modelId': 'Servicio y modelo',
   'settings.helpers.form.modelIdHint': 'Con el formato servicio/modelo.',
+  'settings.helpers.form.allowed': 'Herramientas permitidas',
+  'settings.helpers.form.allowedHint':
+    'Separadas por comas, por ejemplo: Read, Grep. Si la dejas vacía, usa las de la conversación. Solo puede usar estas y nunca más que la conversación que lo lanza; las bloqueadas de abajo ganan.',
   'settings.helpers.form.blocked': 'Herramientas bloqueadas',
   'settings.helpers.form.blockedHint': 'Separadas por comas, por ejemplo: edit, bash. Nunca podrá usarlas.',
   'settings.helpers.form.turns': 'Máximo de turnos',
@@ -580,6 +583,7 @@ export const settings = {
   'settings.helpers.field.description': 'cuándo usarlo',
   'settings.helpers.field.prompt': 'instrucciones',
   'settings.helpers.field.model': 'modelo',
+  'settings.helpers.field.allowedTools': 'herramientas permitidas',
   'settings.helpers.field.disallowedTools': 'herramientas bloqueadas',
   'settings.helpers.field.maxTurns': 'máximo de turnos',
   'settings.helpers.field.skills': 'skills',

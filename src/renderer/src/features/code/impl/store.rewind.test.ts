@@ -189,6 +189,29 @@ describe('rebobinar', () => {
     await vi.waitFor(() => expect(st().turnsBySession.s1).toBeDefined())
   })
 
+  it('rewoundFiles: guarda archivos restaurados y borrados; «solo conversación» no; «Deshacer» y volver a trabajar lo limpian', async () => {
+    install()
+    open()
+    const reply = (modo: string): Response =>
+      json({ modo, restaurados: ['a.ts'], borrados: ['b.ts'], omitidos: [], mensajesOcultos: 1, puedeDeshacer: true })
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => (init?.method === 'POST' ? reply('conversacion') : json([])))
+    await st().rewindTo('s1', 'm1', 'conversacion', [])
+    expect(st().rewoundFiles.s1).toBeUndefined()
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) => (init?.method === 'POST' ? reply('todo') : json([])))
+    await st().rewindTo('s1', 'm1', 'todo', [])
+    expect(st().rewoundFiles.s1).toEqual({ fromMessageID: 'm1', files: ['a.ts', 'b.ts'] })
+    useCode.setState({ rewindSupport: { s1: true } })
+    fetchMock.mockImplementation(async (_url: string, init?: RequestInit) =>
+      init?.method === 'POST' ? json({ restaurados: ['a.ts'], borrados: [], omitidos: [], conflictos: [] }) : json([])
+    )
+    await st().unrevert()
+    expect(st().rewoundFiles.s1).toBeUndefined()
+    st().clearRewoundFiles('s1') // sin nada que limpiar: no falla
+    useCode.setState({ rewoundFiles: { s1: { fromMessageID: 'm1', files: ['a.ts'] } } })
+    st().clearRewoundFiles('s1')
+    expect(st().rewoundFiles).toEqual({})
+  })
+
   it('un 409 no deja aviso ni cambia nada', async () => {
     install()
     open()
@@ -196,6 +219,7 @@ describe('rebobinar', () => {
     const r = await st().rewindTo('s1', 'm1', 'codigo', [])
     expect(r).toMatchObject({ ok: false, kind: 'conflict', motivo: 'ocupada' })
     expect(st().rewindNotices).toEqual({})
+    expect(st().rewoundFiles).toEqual({})
   })
 
   it('«Deshacer» (unrevert) con aviso deshacible usa la ruta nueva y deja el aviso de deshecho', async () => {

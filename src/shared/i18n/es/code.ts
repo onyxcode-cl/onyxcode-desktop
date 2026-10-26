@@ -654,6 +654,10 @@ export const code = {
   'code.turn.notRestorable.sin-git': 'Esta carpeta no usa git: no se pueden deshacer archivos, solo la conversación.',
   'code.turn.notRestorable.sin-instantaneas': 'No hay copia de los archivos de este turno: solo se puede volver atrás en la conversación.',
   'code.turn.notRestorable.caducado': 'La copia de los archivos de este turno ya caducó: solo se puede volver atrás en la conversación.',
+  'code.turn.reverted': 'ya revertido',
+  'code.turn.revertedAll':
+    'Estos archivos ya volvieron a como estaban antes de este turno. Usa «Deshacer» en el aviso para recuperar los cambios.',
+  'code.turn.revertedSome': 'Algunos de estos archivos ya volvieron a como estaban antes de este turno.',
   'code.turn.rewind': 'Volver a antes de este turno…',
   'code.turn.file.aria': 'Ver los cambios de {file}',
   'code.turn.diff.loading': 'Cargando cambios…',
