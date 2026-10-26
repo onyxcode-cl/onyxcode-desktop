@@ -105,11 +105,19 @@ describe('settings: engineExperiments', () => {
   const TS = { chat: 'auto', code: 'auto', tasks: 'off' }
   /** «Formularios de conectores»: encendido en Chat y Code por defecto; Tareas nunca. */
   const FORMS = { chat: true, code: true, tasks: false }
+  /** Objetivo, presupuesto y revisión: apagados por defecto. */
+  const EXTRAS_OFF = { goal: false, budget: false, review: false }
   it('sin el campo en disco -> todo apagado', async () => {
     const dir = userData()
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON, toolSearch: TS, mcpElicitation: FORMS })
+    expect(store.get().engineExperiments).toEqual({
+      codeMode: OFF,
+      backgroundSubagents: ON,
+      toolSearch: TS,
+      mcpElicitation: FORMS,
+      codeExtras: EXTRAS_OFF
+    })
   })
   it('búsqueda de herramientas: un settings.json anterior a la clave la recibe con el defecto y lo apagado a propósito se respeta', async () => {
     const dir = userData()
@@ -121,7 +129,8 @@ describe('settings: engineExperiments', () => {
         codeMode: OFF,
         backgroundSubagents: ON,
         toolSearch: { chat: 'off', code: 'auto', tasks: 'off' },
-        mcpElicitation: FORMS
+        mcpElicitation: FORMS,
+        codeExtras: EXTRAS_OFF
       }
     })
     expect((await openStore(dir)).get().engineExperiments.toolSearch).toEqual({ chat: 'off', code: 'auto', tasks: 'off' })
@@ -133,18 +142,32 @@ describe('settings: engineExperiments', () => {
       JSON.stringify({ engineExperiments: { codeMode: 'x', backgroundSubagents: { chat: 'si', code: 1 } } })
     )
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON, toolSearch: TS, mcpElicitation: FORMS })
+    expect(store.get().engineExperiments).toEqual({
+      codeMode: OFF,
+      backgroundSubagents: ON,
+      toolSearch: TS,
+      mcpElicitation: FORMS,
+      codeExtras: EXTRAS_OFF
+    })
   })
   it('1.6.0: un settings.json antiguo con «todo apagado» enciende los ayudantes (sin escribir al leer) y respeta que luego se apaguen', async () => {
     const dir = userData()
     const antiguo = JSON.stringify({ theme: 'dark', engineExperiments: { codeMode: OFF, backgroundSubagents: OFF } })
     writeFileSync(join(dir, 'settings.json'), antiguo)
     const store = await openStore(dir)
-    expect(store.get().engineExperiments).toEqual({ codeMode: OFF, backgroundSubagents: ON, toolSearch: TS, mcpElicitation: FORMS })
+    expect(store.get().engineExperiments).toEqual({
+      codeMode: OFF,
+      backgroundSubagents: ON,
+      toolSearch: TS,
+      mcpElicitation: FORMS,
+      codeExtras: EXTRAS_OFF
+    })
     // Leer NO toca el archivo (las migraciones de datos viejos lo necesitan intacto).
     expect(readFileSync(join(dir, 'settings.json'), 'utf8')).toBe(antiguo)
     // Una escritura normal guarda el marcador, y a partir de ahí lo que la persona apague se respeta.
-    store.set({ engineExperiments: { codeMode: OFF, backgroundSubagents: OFF, toolSearch: TS as never, mcpElicitation: FORMS } })
+    store.set({
+      engineExperiments: { codeMode: OFF, backgroundSubagents: OFF, toolSearch: TS as never, mcpElicitation: FORMS, codeExtras: EXTRAS_OFF }
+    })
     expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).engineBgMigrated).toBe(true)
     const reopened = await openStore(dir)
     expect(reopened.get().engineExperiments.backgroundSubagents).toEqual(OFF)
@@ -153,7 +176,13 @@ describe('settings: engineExperiments', () => {
     const dir = userData()
     const store = await openStore(dir)
     store.set({
-      engineExperiments: { codeMode: { ...OFF, code: true }, backgroundSubagents: OFF, toolSearch: TS as never, mcpElicitation: OFF }
+      engineExperiments: {
+        codeMode: { ...OFF, code: true },
+        backgroundSubagents: OFF,
+        toolSearch: TS as never,
+        mcpElicitation: OFF,
+        codeExtras: EXTRAS_OFF
+      }
     })
     store.set({ theme: 'dark' })
     expect(store.get().engineExperiments.codeMode.code).toBe(true)
@@ -162,7 +191,8 @@ describe('settings: engineExperiments', () => {
       codeMode: { ...OFF, code: true },
       backgroundSubagents: OFF,
       toolSearch: TS,
-      mcpElicitation: OFF
+      mcpElicitation: OFF,
+      codeExtras: EXTRAS_OFF
     })
   })
   it('formularios de conectores: un settings.json de antes (sin la clave) los recibe ENCENDIDOS sin tocar el archivo; apagarlos se respeta; Tareas siempre apagado', async () => {
@@ -178,11 +208,33 @@ describe('settings: engineExperiments', () => {
         codeMode: OFF,
         backgroundSubagents: ON,
         toolSearch: TS as never,
-        mcpElicitation: { chat: true, code: false, tasks: true }
+        mcpElicitation: { chat: true, code: false, tasks: true },
+        codeExtras: EXTRAS_OFF
       }
     })
     const reopened = await openStore(dir)
     expect(reopened.get().engineExperiments.mcpElicitation).toEqual({ chat: true, code: false, tasks: false })
+  })
+  it('objetivo, presupuesto y revisión: un settings.json anterior los recibe APAGADOS sin tocar el archivo; encenderlos se guarda y la basura se ignora', async () => {
+    const dir = userData()
+    const antiguo = JSON.stringify({ engineBgMigrated: true, engineExperiments: { codeMode: OFF, backgroundSubagents: ON } })
+    writeFileSync(join(dir, 'settings.json'), antiguo)
+    const store = await openStore(dir)
+    expect(store.get().engineExperiments.codeExtras).toEqual(EXTRAS_OFF)
+    expect(readFileSync(join(dir, 'settings.json'), 'utf8')).toBe(antiguo)
+    store.set({
+      engineExperiments: {
+        codeMode: OFF,
+        backgroundSubagents: ON,
+        toolSearch: TS as never,
+        mcpElicitation: FORMS,
+        codeExtras: { goal: true, budget: false, review: true }
+      }
+    })
+    const reopened = await openStore(dir)
+    expect(reopened.get().engineExperiments.codeExtras).toEqual({ goal: true, budget: false, review: true })
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ engineExperiments: { codeExtras: { goal: 'si', budget: 1, extra: true } } }))
+    expect((await openStore(dir)).get().engineExperiments.codeExtras).toEqual(EXTRAS_OFF)
   })
 })
 

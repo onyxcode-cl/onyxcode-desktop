@@ -39,6 +39,15 @@ export interface EngineExperiments {
    * delante); `tasks` existe por forma pero SIEMPRE vale `false` (se normaliza así y nunca llega la variable a Overdrive).
    */
   mcpElicitation: ModeFlags
+  /** Tres funciones de Code que usan rutas del motor propio. Todas APAGADAS por defecto (experimentales). Sin reinicio del motor. */
+  codeExtras: CodeExtrasFlags
+}
+
+/** «Objetivo», «Presupuesto» y «Revisar cambios» de Code (`engine-code-extras.ts`). Solo escritorio, solo Code. */
+export interface CodeExtrasFlags {
+  goal: boolean
+  budget: boolean
+  review: boolean
 }
 
 export interface Settings {

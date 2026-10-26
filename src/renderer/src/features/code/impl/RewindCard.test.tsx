@@ -130,6 +130,42 @@ describe('lista abierta', () => {
   })
 })
 
+describe('tras volver atrás (rebobinado activo)', () => {
+  it('los archivos revertidos dicen «ya revertido» en vez de «nuevo» y los demás no cambian', async () => {
+    await mount({ revertedFiles: new Set(['b.txt']) })
+    await click(header())
+    const rows = [...host.querySelectorAll('ul > li')]
+    expect(rows[1].textContent).toContain('ya revertido')
+    expect(rows[1].textContent).not.toContain('nuevo')
+    expect(rows[0].textContent).toContain('modificado')
+    expect(host.textContent).toContain('Algunos de estos archivos ya volvieron')
+    expect(byText('Volver a antes de este turno').disabled).toBe(false)
+  })
+
+  it('si todos están revertidos se deshabilita la acción y se explica cómo recuperar', async () => {
+    await mount({ revertedFiles: new Set(['src/a.ts', 'b.txt', 'old.log']) })
+    await click(header())
+    expect(byText('Volver a antes de este turno').disabled).toBe(true)
+    expect(host.textContent).toContain('«Deshacer»')
+    expect([...host.querySelectorAll('ul > li')].every((li) => li.textContent?.includes('ya revertido'))).toBe(true)
+  })
+
+  it('vuelve a la normalidad sin revertidos (tras «Deshacer»)', async () => {
+    await mount({ revertedFiles: new Set(['b.txt']) })
+    await mount({ revertedFiles: undefined })
+    await click(header())
+    expect(host.textContent).not.toContain('ya revertido')
+    expect(byText('Volver a antes de este turno').disabled).toBe(false)
+  })
+
+  it('en inglés', async () => {
+    useLang.setState({ lang: 'en' })
+    await mount({ revertedFiles: new Set(['b.txt']) })
+    await click(header())
+    expect(host.textContent).toContain('already reverted')
+  })
+})
+
 describe('parche bajo demanda', () => {
   it('se pide solo al abrir el archivo y se pinta con DiffView', async () => {
     const loadDiff = vi.fn(async (f: string) => okDiff(f))

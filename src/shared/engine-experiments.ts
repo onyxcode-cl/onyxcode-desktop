@@ -4,7 +4,7 @@
  *
  * Solo se usan las dos variables concretas; NUNCA `OPENCODE_EXPERIMENTAL` a secas (enciende todas las experimentales).
  */
-import type { EngineExperiments, ModeFlags, Settings, ToolSearchFlags, ToolSearchMode } from './types'
+import type { CodeExtrasFlags, EngineExperiments, ModeFlags, Settings, ToolSearchFlags, ToolSearchMode } from './types'
 
 /** Modos con interruptor propio. */
 export type EngineExperimentMode = 'chat' | 'code' | 'tasks'
@@ -34,7 +34,9 @@ export const ENGINE_EXPERIMENTS_DEFAULTS: EngineExperiments = {
   // Búsqueda diferida: `auto` en Chat y Code (el motor solo la activa si los conectores pesan mucho); Overdrive siempre `off`.
   toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' },
   // Encendido en Chat y Code (hay una persona delante); Tareas (Overdrive) nunca: sin nadie que conteste el formulario quedaría esperando.
-  mcpElicitation: { chat: true, code: true, tasks: false }
+  mcpElicitation: { chat: true, code: true, tasks: false },
+  // Objetivo, Presupuesto y Revisar cambios (solo Code): experimentales, APAGADOS hasta que la persona los encienda en Ajustes.
+  codeExtras: { goal: false, budget: false, review: false }
 }
 
 function normalizeModeFlags(raw: unknown, fallback: ModeFlags): ModeFlags {
@@ -50,6 +52,12 @@ function normalizeToolSearch(raw: unknown, fallback: ToolSearchFlags): ToolSearc
   return { chat: pick('chat'), code: pick('code'), tasks: 'off' }
 }
 
+function normalizeCodeExtras(raw: unknown, fallback: CodeExtrasFlags): CodeExtrasFlags {
+  const r = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const pick = (k: keyof CodeExtrasFlags): boolean => (typeof r[k] === 'boolean' ? (r[k] as boolean) : fallback[k])
+  return { goal: pick('goal'), budget: pick('budget'), review: pick('review') }
+}
+
 /** Normaliza lo leído de disco: si falta, trae basura o claves raras, se usan los valores por defecto. Nunca lanza. */
 export function normalizeEngineExperiments(raw: unknown): EngineExperiments {
   const r = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
@@ -59,7 +67,9 @@ export function normalizeEngineExperiments(raw: unknown): EngineExperiments {
     // Un `settings.json` anterior a esta clave no la trae: recibe el valor por defecto (el almacén guarda los defectos en disco).
     toolSearch: normalizeToolSearch(r.toolSearch, ENGINE_EXPERIMENTS_DEFAULTS.toolSearch),
     // Un `settings.json` anterior no trae la clave: recibe el defecto (encendido en Chat y Code). `tasks` se fuerza a `false` siempre.
-    mcpElicitation: { ...normalizeModeFlags(r.mcpElicitation, ENGINE_EXPERIMENTS_DEFAULTS.mcpElicitation), tasks: false }
+    mcpElicitation: { ...normalizeModeFlags(r.mcpElicitation, ENGINE_EXPERIMENTS_DEFAULTS.mcpElicitation), tasks: false },
+    // Un `settings.json` anterior no trae la clave: las tres funciones quedan apagadas.
+    codeExtras: normalizeCodeExtras(r.codeExtras, ENGINE_EXPERIMENTS_DEFAULTS.codeExtras)
   }
 }
 

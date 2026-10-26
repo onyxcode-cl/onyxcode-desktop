@@ -7,6 +7,7 @@
  *   del overlay tienen su lista mínima (el overlay a pantalla completa no invoca nada).
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
+import { BUDGET_LIMITS, GOAL_LIMITS } from '@shared/engine-code-extras'
 import { ENGINE_LIMIT_SPECS, type EngineLimitKey } from '@shared/engine-limits'
 import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
 import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
@@ -112,6 +113,7 @@ export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'bro
 const id = str({ max: 200, min: 1 })
 const shortText = str({ max: 500 })
 const helperName = str({ min: 1, max: HELPER_LIMITS.name, pattern: HELPER_NAME_RE })
+const helperAllowedItem = str({ min: 1, max: HELPER_LIMITS.allowedToolName, pattern: /^[A-Za-z0-9_.*-]{1,64}$/ })
 const helperItem = str({ min: 1, max: HELPER_LIMITS.toolName, pattern: /^[A-Za-z0-9_][A-Za-z0-9_.:*-]*$/ })
 /** Id de sesión de OpenCode (`ses_…`). */
 const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
@@ -122,7 +124,8 @@ const engineExperimentsShape = obj({
   codeMode: modeFlags,
   backgroundSubagents: modeFlags,
   toolSearch: obj({ chat: toolSearchMode, code: toolSearchMode, tasks: toolSearchMode }),
-  mcpElicitation: modeFlags
+  mcpElicitation: modeFlags,
+  codeExtras: obj({ goal: bool, budget: bool, review: bool })
 })
 /**
  * `settings:set.engineLimits`: enteros dentro del rango de cada límite (`engine-limits.ts`), todas las claves opcionales, sin extras.
@@ -632,6 +635,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
       description: str({ max: HELPER_LIMITS.description }),
       prompt: str({ max: HELPER_LIMITS.prompt }),
       model: str({ min: 1, max: HELPER_LIMITS.model }),
+      allowedTools: arr(helperAllowedItem, HELPER_LIMITS.allowedTools),
       disallowedTools: arr(helperItem, HELPER_LIMITS.tools),
       maxTurns: nullable(num({ int: true, min: 1, max: HELPER_LIMITS.maxTurns })),
       background: bool,
@@ -639,6 +643,34 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     })
   }),
   'helpers:inspectForeign': obj({ directory: absPath }),
+  // Objetivo / Presupuesto / Revisar cambios (Code). Ids como los de `jobs:*`; textos y números acotados; sin claves extra.
+  'goal:get': obj({ sessionID: sessionId, directory: optional(str({ min: 1, max: 4096 })) }),
+  'goal:set': obj({
+    sessionID: sessionId,
+    directory: optional(str({ min: 1, max: 4096 })),
+    condition: str({ min: 1, max: GOAL_LIMITS.condition }),
+    verify: optional(str({ min: 1, max: GOAL_LIMITS.verify })),
+    cap: optional(num({ int: true, min: 1, max: GOAL_LIMITS.capMax })),
+    resume: optional(bool)
+  }),
+  'goal:clear': obj({ sessionID: sessionId, directory: optional(str({ min: 1, max: 4096 })) }),
+  'budget:get': obj({ sessionID: sessionId, directory: optional(str({ min: 1, max: 4096 })) }),
+  'budget:set': obj({
+    sessionID: sessionId,
+    directory: optional(str({ min: 1, max: 4096 })),
+    config: obj({
+      tokens: optional(num({ int: true, min: BUDGET_LIMITS.tokens.min, max: BUDGET_LIMITS.tokens.max })),
+      steps: optional(num({ int: true, min: BUDGET_LIMITS.steps.min, max: BUDGET_LIMITS.steps.max })),
+      minutes: optional(num({ int: true, min: BUDGET_LIMITS.minutes.min, max: BUDGET_LIMITS.minutes.max })),
+      continueOnCut: bool
+    })
+  }),
+  // `model` = «proveedor/modelo» tal como lo usa el motor; sin espacios ni saltos de línea.
+  'review:run': obj({
+    sessionID: sessionId,
+    directory: optional(str({ min: 1, max: 4096 })),
+    model: optional(str({ min: 3, max: 200, pattern: /^[^\s]+$/ }))
+  }),
   'jobs:resume': obj({
     sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
     jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),

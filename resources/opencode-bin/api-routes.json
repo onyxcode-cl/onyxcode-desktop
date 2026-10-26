@@ -210,7 +210,7 @@
     "DELETE /session/{sessionID}": "f893e0536782d4e9",
     "GET /agent": "d14cce532c15c406",
     "GET /command": "10cd99e9dd870fa1",
-    "GET /config": "007e56bc9f2b1a26",
+    "GET /config": "5f81e71271940d1a",
     "GET /config/providers": "84199e6a0545a360",
     "GET /experimental/session": "5956346bb1f2544e",
     "GET /file": "9d7fb72c90a8c97c",

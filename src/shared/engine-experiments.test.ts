@@ -15,6 +15,7 @@ const off = { chat: false, code: false, tasks: false }
 const on = { chat: true, code: true, tasks: true }
 const TS_DEFAULT: ToolSearchFlags = { chat: 'auto', code: 'auto', tasks: 'off' }
 const formsDefault = { chat: true, code: true, tasks: false }
+const extrasOff = { goal: false, budget: false, review: false }
 const mk = (
   codeMode: Partial<typeof off>,
   backgroundSubagents: Partial<typeof off> = {},
@@ -25,7 +26,8 @@ const mk = (
     codeMode: { ...off, ...codeMode },
     backgroundSubagents: { ...off, ...backgroundSubagents },
     toolSearch,
-    mcpElicitation: { ...off, ...mcpElicitation }
+    mcpElicitation: { ...off, ...mcpElicitation },
+    codeExtras: extrasOff
   }
 })
 const EL = 'LAZUNOX_MCP_ELICITATION'
@@ -41,9 +43,34 @@ describe('engine-experiments: valores por defecto', () => {
       codeMode: off,
       backgroundSubagents: on,
       toolSearch: TS_DEFAULT,
-      mcpElicitation: formsDefault
+      mcpElicitation: formsDefault,
+      codeExtras: extrasOff
     })
     expect(DEFAULT_SETTINGS.engineExperiments).toBe(ENGINE_EXPERIMENTS_DEFAULTS)
+  })
+})
+
+describe('codeExtras (objetivo, presupuesto y revisión)', () => {
+  it('apagados por defecto y NO producen variables de entorno ni reinicio del motor', () => {
+    expect(ENGINE_EXPERIMENTS_DEFAULTS.codeExtras).toEqual(extrasOff)
+    const allOn = { engineExperiments: { ...mk({}).engineExperiments, codeExtras: { goal: true, budget: true, review: true } } }
+    expect(engineFlagEnvFor(allOn, 'code')).toEqual(engineFlagEnvFor(mk({}), 'code'))
+    expect(engineFlagEnvForMainSidecar(allOn)).toEqual(engineFlagEnvForMainSidecar(mk({})))
+    expect(onlyExperimentalEngineEnv({ LAZUNOX_GOAL: '1' })).toEqual({})
+  })
+  it('normaliza: conserva booleanos, ignora basura y claves extra, completa lo que falta apagado', () => {
+    expect(normalizeEngineExperiments({ codeExtras: { goal: true, budget: 'x', review: 1, extra: true } }).codeExtras).toEqual({
+      goal: true,
+      budget: false,
+      review: false
+    })
+    for (const bad of [undefined, null, 5, 'x', [], { codeExtras: 'si' }, { codeExtras: [] }])
+      expect(normalizeEngineExperiments(bad).codeExtras).toEqual(extrasOff)
+    expect(normalizeEngineExperiments({ codeExtras: { goal: true, budget: true, review: true } }).codeExtras).toEqual({
+      goal: true,
+      budget: true,
+      review: true
+    })
   })
 })
 
@@ -58,7 +85,8 @@ describe('normalizeEngineExperiments', () => {
       codeMode: { chat: true, code: false, tasks: false },
       backgroundSubagents: on,
       toolSearch: TS_DEFAULT,
-      mcpElicitation: formsDefault
+      mcpElicitation: formsDefault,
+      codeExtras: extrasOff
     })
   })
   it('búsqueda de herramientas: un settings.json viejo sin la clave recibe el valor por defecto (auto en Chat y Code, off en Overdrive)', () => {
@@ -190,7 +218,13 @@ describe('migrateBackgroundSubagentsDefault (1.6.0)', () => {
   })
   it('sin nada guardado: valores por defecto nuevos; el Modo código sigue apagado', () => {
     const r = migrateBackgroundSubagentsDefault(undefined, undefined)
-    expect(r.value).toEqual({ codeMode: off, backgroundSubagents: on, toolSearch: TS_DEFAULT, mcpElicitation: formsDefault })
+    expect(r.value).toEqual({
+      codeMode: off,
+      backgroundSubagents: on,
+      toolSearch: TS_DEFAULT,
+      mcpElicitation: formsDefault,
+      codeExtras: extrasOff
+    })
   })
 })
 

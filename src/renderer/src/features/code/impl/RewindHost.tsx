@@ -44,9 +44,13 @@ export function RewindNoticeHost({ sessionID, busy }: { sessionID: string; busy:
   const notice = useCode((s) => s.rewindNotices[sessionID])
   const unrevert = useCode((s) => s.unrevert)
   const dismiss = useCode((s) => s.dismissRewindNotice)
+  const clearRewound = useCode((s) => s.clearRewoundFiles)
   useEffect(() => {
-    if (busy && notice) dismiss(sessionID)
-  }, [busy, notice, dismiss, sessionID])
+    if (!busy) return
+    if (notice) dismiss(sessionID)
+    // Ya no se puede deshacer limpio: las tarjetas de los turnos dejan de decir «ya revertido».
+    clearRewound(sessionID)
+  }, [busy, notice, dismiss, clearRewound, sessionID])
   if (!notice) return null
   return (
     <RewindResultNotice

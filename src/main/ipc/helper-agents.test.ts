@@ -25,6 +25,7 @@ const DEF: HelperDef = {
   description: 'Lee cosas',
   prompt: 'Lee y resume.',
   model: 'small',
+  allowedTools: [],
   disallowedTools: ['edit'],
   maxTurns: 4,
   background: false,
@@ -118,6 +119,19 @@ describe('guardar', () => {
       reason: 'invalid',
       field: 'disallowedTools'
     })
+  })
+
+  it('escribe `tools`, lo conserva al editar sin tocarlo y rechaza nombres inválidos', async () => {
+    const def = { ...DEF, allowedTools: ['Read', 'Grep'] }
+    expect(await saveHelper(deps(), { directory: root, def, mode: 'create' })).toEqual({ ok: true })
+    expect(readFileSync(file('lector'), 'utf8')).toContain('tools: [Read, Grep]')
+    expect(await saveHelper(deps(), { directory: root, def: { ...def, description: 'otra' }, mode: 'edit' })).toEqual({ ok: true })
+    expect(readFileSync(file('lector'), 'utf8')).toContain('tools: [Read, Grep]')
+    expect(await saveHelper(deps(), { directory: root, def: { ...def, allowedTools: ['a b'] }, mode: 'edit' })).toMatchObject({
+      reason: 'invalid',
+      field: 'allowedTools'
+    })
+    expect(readFileSync(file('lector'), 'utf8')).toContain('tools: [Read, Grep]')
   })
 
   it('una carpeta que no eligió la persona no se toca', async () => {
@@ -224,6 +238,7 @@ describe('listar', () => {
     expect(r.helpers.find((h) => h.name === 'lector')?.pending).toBeUndefined()
     const nuevo = r.helpers.find((h) => h.name === 'nuevo')
     expect(nuevo).toMatchObject({ origin: 'opencode', editable: true, pending: true, model: 'small' })
+    expect(nuevo?.whitelist).toBe(false)
     // texto plano: el contenido llega tal cual, sin transformarlo en marcado
     expect(nuevo?.description).toBe('<b>**hola**</b> [x](https://a.b)')
   })

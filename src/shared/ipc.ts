@@ -26,6 +26,7 @@ import type { InstallState } from './update-install'
 import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
 import type { EngineJobResumeResult, EngineJobsResult } from './engine-jobs'
+import type { BudgetConfig, BudgetResult, GoalResult, GoalSetRequest, GoalSetResult, ReviewResult } from './engine-code-extras'
 import type { ForeignAgentsResult, HelperDef, HelperReadResult, HelperSaveResult, HelpersListResult } from './helper-agents'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
@@ -97,6 +98,18 @@ export interface IpcInvokeContract {
   'jobs:stop': { req: { sessionID: string; jobId: string; directory?: string }; res: { ok: boolean } }
   /** Reanuda un ayudante de fondo `perdido` (el motor se reinició). `motivo` si el motor no pudo: `no_existe`, `ya_en_curso` o `tope`. */
   'jobs:resume': { req: { sessionID: string; jobId: string; directory?: string }; res: EngineJobResumeResult }
+  /**
+   * Objetivo, Presupuesto y Revisar cambios de Code (experimentales, `engineExperiments.codeExtras`; ver `engine-code-extras.ts`). Main
+   * llama al sidecar; `available: false` si el motor no tiene la ruta. Cada canal exige su bandera encendida (si no, `FORBIDDEN`).
+   * El presupuesto lee la sesión y reenvía TODAS las claves de `metadata` (no se sabe si el motor reemplaza o fusiona).
+   */
+  'goal:get': { req: { sessionID: string; directory?: string }; res: GoalResult }
+  'goal:set': { req: GoalSetRequest; res: GoalSetResult }
+  'goal:clear': { req: { sessionID: string; directory?: string }; res: { available: boolean; ok: boolean } }
+  'budget:get': { req: { sessionID: string; directory?: string }; res: BudgetResult }
+  'budget:set': { req: { sessionID: string; directory?: string; config: BudgetConfig }; res: BudgetResult }
+  /** Lanza `/review` en la sesión (agente de solo lectura) y devuelve los hallazgos YA validados; el texto del modelo no pasa tal cual. */
+  'review:run': { req: { sessionID: string; directory?: string; model?: string }; res: ReviewResult }
   /**
    * Ajustes › Ayudantes: carpeta elegida con el diálogo del sistema (main la recuerda como permitida), lista de `GET /agent`, lectura y
    * escritura del `.md` de `.opencode/agents/` (solo dentro de esa carpeta) y aviso de `.claude/agents`. Ver `helper-agents.ts`.
@@ -193,6 +206,12 @@ export const IPC_INVOKE_CHANNELS = [
   'jobs:list',
   'jobs:stop',
   'jobs:resume',
+  'goal:get',
+  'goal:set',
+  'goal:clear',
+  'budget:get',
+  'budget:set',
+  'review:run',
   'helpers:pickFolder',
   'helpers:list',
   'helpers:read',

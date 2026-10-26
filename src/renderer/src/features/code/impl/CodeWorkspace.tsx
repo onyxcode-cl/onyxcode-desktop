@@ -54,6 +54,7 @@ import { nativeCode, useClient } from './client'
 import { diffStats } from '../../../components/DiffView'
 import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
 import { PersonalizeButton } from '../../memory/PersonalizeButton'
+import { SessionToolsMenu } from './SessionToolsMenu'
 import { ToolbarMore } from './ToolbarMore'
 import { Composer } from './Composer'
 import { CodeHomeBlocks, useCodeHome } from './CodeHomeBlocks'
@@ -681,6 +682,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
               </>
             )}
           </span>
+          <SessionToolsMenu sessionId={activeSessionID} directory={directory} busy={busy} />
           {!isRemoteSurface() && (
             <ToolbarMore
               hasSession={!!session}

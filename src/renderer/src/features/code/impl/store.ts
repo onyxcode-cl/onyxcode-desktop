@@ -175,6 +175,8 @@ export interface CodeState {
   runState: Record<string, RunState>
   errors: Record<string, ConvError | null>
   permissions: Record<string, PendingPermission>
+  /** Momento (ms) del último permiso que la persona rechazó a mano; 0 si ninguno. Lo usa Revisar cambios para explicar por qué se cortó. */
+  permissionRejectedAt: number
   questions: Record<string, PendingQuestion>
   /** Formularios de conectores pendientes (`mcp.elicitation.asked`), por id. Solo texto plano; ver `ElicitationCard`. */
   elicitations: Record<string, PendingElicitation>
@@ -190,6 +192,8 @@ export interface CodeState {
   rewindDialog: { sessionID: string; messageID: string } | null
   /** Aviso tras rebobinar o deshacer, por sesión, hasta que se cierra. */
   rewindNotices: Record<string, RewindNotice>
+  /** Archivos que el último rebobinado de esa sesión dejó como estaban antes del turno `fromMessageID` (y de los siguientes). Sale al deshacer. */
+  rewoundFiles: Record<string, { fromMessageID: string; files: readonly string[] }>
   todos: Record<string, Todo[]>
   agent: CodeAgent
   model: ModelRef | null
@@ -268,6 +272,8 @@ export interface CodeState {
   /** `fallback`: el motor no tiene nada que deshacer por esta vía (se usa `unrevert`); `error`: ya quedó en `globalError`. */
   undoRewind: () => Promise<'undone' | 'fallback' | 'error'>
   dismissRewindNotice: (sessionID: string) => void
+  /** Olvida qué archivos dejó el último rebobinado (la conversación volvió a trabajar y ya no se puede deshacer limpio). */
+  clearRewoundFiles: (sessionID: string) => void
   /** El motor contestó 404 a una ruta de rebobinar: se recuerda y se vuelve al flujo antiguo. */
   markRewindUnavailable: (sessionID: string) => void
   replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject') => Promise<void>
@@ -431,6 +437,14 @@ const touchFocus = (dir: string): void => {
 function writeOpenProjects(open: string[], focus: string | null): void {
   lsSetJSON(LS_PROJECTS, { v: 1, open, focus })
   lsSet(LS_PROJECT, focus)
+}
+
+/** Copia del registro sin esa clave (devuelve el mismo objeto si no estaba). */
+function withoutKey<V>(rec: Record<string, V>, key: string): Record<string, V> {
+  if (!(key in rec)) return rec
+  const out = { ...rec }
+  delete out[key]
+  return out
 }
 
 export const useCode = create<CodeState>((set, get) => {
@@ -682,6 +696,7 @@ export const useCode = create<CodeState>((set, get) => {
       turnsBySession: without(s.turnsBySession),
       rewindSupport: without(s.rewindSupport),
       rewindNotices: without(s.rewindNotices),
+      rewoundFiles: without(s.rewoundFiles),
       rewindDialog: s.rewindDialog && ids.has(s.rewindDialog.sessionID) ? null : s.rewindDialog,
       activeSessionID: s.activeSessionID && ids.has(s.activeSessionID) ? null : s.activeSessionID
     }
@@ -964,6 +979,7 @@ export const useCode = create<CodeState>((set, get) => {
     runState: {},
     errors: {},
     permissions: {},
+    permissionRejectedAt: 0,
     questions: {},
     plans: {},
     elicitations: {},
@@ -972,6 +988,7 @@ export const useCode = create<CodeState>((set, get) => {
     rewindSupport: {},
     rewindDialog: null,
     rewindNotices: {},
+    rewoundFiles: {},
     todos: {},
     agent: initialAgent(),
     model: null,
@@ -1357,7 +1374,11 @@ export const useCode = create<CodeState>((set, get) => {
           if ((await get().undoRewind()) !== 'fallback') return
         }
         const updated = sdkData(await client.session.unrevert({ sessionID: sid, directory: dir }))
-        set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated }, fsVersion: s.fsVersion + 1 }))
+        set((s) => ({
+          sessions: { ...s.sessions, [updated.id]: updated },
+          rewoundFiles: withoutKey(s.rewoundFiles, sid),
+          fsVersion: s.fsVersion + 1
+        }))
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }
@@ -1412,7 +1433,17 @@ export const useCode = create<CodeState>((set, get) => {
       const dir = get().sessionProject[sessionID] ?? get().directory ?? undefined
       const res = await postRewind(conn, { sessionID, messageID, modo, sobrescribir: overwrite, directory: dir })
       if (!res.ok) return res
-      set((s) => ({ rewindNotices: { ...s.rewindNotices, [sessionID]: noticeFromResult(res.result) }, fsVersion: s.fsVersion + 1 }))
+      set((s) => {
+        const files = res.result.modo === 'conversacion' ? [] : [...res.result.restaurados, ...res.result.borrados]
+        const rewoundFiles = { ...s.rewoundFiles }
+        if (files.length > 0) rewoundFiles[sessionID] = { fromMessageID: messageID, files }
+        else delete rewoundFiles[sessionID]
+        return {
+          rewindNotices: { ...s.rewindNotices, [sessionID]: noticeFromResult(res.result) },
+          rewoundFiles,
+          fsVersion: s.fsVersion + 1
+        }
+      })
       // La sesión ahora puede traer `revert` (ocultar mensajes): se relee para no depender de que llegue el evento.
       const client = getClient()
       if (client && dir) {
@@ -1440,7 +1471,11 @@ export const useCode = create<CodeState>((set, get) => {
           }
           throw new Error(res.kind === 'error' ? res.error : res.message || t('code.rewind.undoFailed'))
         }
-        set((s) => ({ rewindNotices: { ...s.rewindNotices, [sid]: noticeFromUndo(res.result) }, fsVersion: s.fsVersion + 1 }))
+        set((s) => ({
+          rewindNotices: { ...s.rewindNotices, [sid]: noticeFromUndo(res.result) },
+          rewoundFiles: withoutKey(s.rewoundFiles, sid),
+          fsVersion: s.fsVersion + 1
+        }))
         const client = getClient()
         const fresh = client ? await client.session.get({ sessionID: sid, directory: dir }).catch(() => null) : null
         if (fresh?.data) set((s) => ({ sessions: { ...s.sessions, [fresh.data!.id]: fresh.data! } }))
@@ -1459,6 +1494,9 @@ export const useCode = create<CodeState>((set, get) => {
         delete rewindNotices[sessionID]
         return { rewindNotices }
       }),
+
+    clearRewoundFiles: (sessionID) =>
+      set((s) => (sessionID in s.rewoundFiles ? { rewoundFiles: withoutKey(s.rewoundFiles, sessionID) } : {})),
 
     markRewindUnavailable: (sessionID) => set((s) => ({ rewindSupport: { ...s.rewindSupport, [sessionID]: false }, rewindDialog: null })),
 
@@ -1481,7 +1519,7 @@ export const useCode = create<CodeState>((set, get) => {
         set((s) => {
           const permissions = { ...s.permissions }
           delete permissions[p.id]
-          return { permissions }
+          return reply === 'reject' ? { permissions, permissionRejectedAt: Date.now() } : { permissions }
         })
       } catch (err) {
         set({ globalError: errorMessage(err) })

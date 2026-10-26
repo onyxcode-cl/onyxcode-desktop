@@ -3,7 +3,7 @@
 // El motor corre aislado: entorno mínimo, HOME/XDG temporales (nunca la config real), carpeta de config propia y proceso en su grupo.
 // Uso: `runEngine(bin, escenario)` desde `run.mjs`. Manual: no lo corre `npm test`.
 import { spawn, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
@@ -92,11 +92,14 @@ export async function runEngine(bin, sc) {
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
   if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
   const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0, toolsBytes: [], requestTools: [], bodies: [] }
+  let ctxUso = { n: 0, body: {} }
   const sse = (res, chunks) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     for (const c of chunks) res.write('data: ' + JSON.stringify(c) + '\n\n')
     // `sc.usage`: la respuesta informa de tokens (la compactación mide el contexto real con esto).
-    if (sc.usage) res.write('data: ' + JSON.stringify({ id: 'x', object: 'chat.completion.chunk', created: 1, model: 'm', choices: [], usage: sc.usage }) + '\n\n')
+    // `sc.usage` también puede ser una función ({ n, body }) => usage: el uso informado crece con los pasos (Ola 6, umbral de compactación).
+    const usage = typeof sc.usage === 'function' ? sc.usage(ctxUso) : sc.usage
+    if (usage) res.write('data: ' + JSON.stringify({ id: 'x', object: 'chat.completion.chunk', created: 1, model: 'm', choices: [], usage }) + '\n\n')
     res.end('data: [DONE]\n\n')
   }
   const chunk = (delta, finish = null) => ({
@@ -121,6 +124,7 @@ export async function runEngine(bin, sc) {
       // Peso de la lista de herramientas de ESTA petición (0 si no lleva): base de las mediciones de `medir-herramientas.mjs` y de A-2.
       seen.toolsBytes.push(j.tools ? JSON.stringify(j.tools).length : 0)
       seen.requestTools.push(tools)
+      ctxUso = { n: seen.requests + 1, body: j, url: req.url }
       const toolMsgs = (j.messages ?? []).filter((m) => m.role === 'tool')
       if (tools.length && !seen.toolsOffered) seen.toolsOffered = tools
       seen.requests += 1
@@ -137,7 +141,7 @@ export async function runEngine(bin, sc) {
       // `sc.decide({ tools, toolTexts, userTexts })`: decisión libre por petición (p. ej. un subagente que hace algo distinto del padre).
       const toolTexts = toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
       const step = sc.decide
-        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts, messages: j.messages ?? [], body: j, n: seen.requests })
+        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts, messages: j.messages ?? [], body: j, n: seen.requests, url: req.url, model: j.model })
         : sc.steps
           ? toolMsgs.length < sc.steps.length
             ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
@@ -147,8 +151,13 @@ export async function runEngine(bin, sc) {
             : null
       // `step.hang`: no contesta (un ayudante lento); `step.delayMs`: espera antes de contestar; `step.text`: responde con ese texto.
       const responder = () => {
-        if (step?.text !== undefined) return sse(res, [chunk({ role: 'assistant', content: step.text }), chunk({}, 'stop')])
+        if (step?.text !== undefined) return sse(res, [chunk({ role: 'assistant', content: step.text }), chunk({}, step.finish ?? 'stop')])
         return responderLlamada()
+      }
+      // `step.status` (+ `step.rawBody`): el proveedor responde con ese estado HTTP y ese cuerpo (429 de cuota, 503 de sobrecarga, 500…).
+      if (step?.status) {
+        res.writeHead(step.status, { 'content-type': 'application/json', ...(step.headers ?? {}) })
+        return void res.end(typeof step.rawBody === 'string' ? step.rawBody : JSON.stringify(step.rawBody ?? {}))
       }
       if (step?.hang) {
         req.on('close', () => {})
@@ -157,6 +166,16 @@ export async function runEngine(bin, sc) {
       if (step?.delayMs) return void setTimeout(responder, step.delayMs)
       return responder()
       function responderLlamada() {
+      // `step.calls`: VARIAS llamadas a herramienta en la misma respuesta (lecturas en paralelo): [{ name, args }].
+      if (step?.calls) {
+        const tcs = step.calls.map((c, i) => ({
+          index: i,
+          id: `call_${seen.requests}_${toolMsgs.length + 1}_${i}`,
+          type: 'function',
+          function: { name: c.name, arguments: JSON.stringify(c.args) }
+        }))
+        return sse(res, [chunk({ role: 'assistant', tool_calls: tcs }), chunk({}, 'tool_calls')])
+      }
       // `step.force`: pide la herramienta aunque el motor no la ofrezca (para probar que NO se ejecuta).
       if (step && (step.force || tools.includes(step.name))) {
         const tc = {
@@ -175,16 +194,20 @@ export async function runEngine(bin, sc) {
   const port = await freePort()
   const inline = {
     ...(sc.inline ?? {}),
-    provider: {
-      fake: {
-        npm: '@ai-sdk/openai-compatible',
-        name: 'Fake',
-        options: { baseURL: `http://127.0.0.1:${pport}/v1`, apiKey: 'no-usado' },
-        models: { m: { name: 'm', tool_call: true, ...(sc.modelLimit ? { limit: sc.modelLimit } : {}) } }
-      }
-    },
-    model: 'fake/m',
-    small_model: 'fake/m',
+    // `sc.providers(pport)`: sustituye el mapa de proveedores (varios proveedores falsos en el MISMO servidor, distinguidos por ruta `/A/v1`);
+    // `sc.model` / `sc.smallModel`: modelo y modelo pequeño (por defecto `fake/m`).
+    provider: sc.providers
+      ? sc.providers(pport)
+      : {
+          fake: {
+            npm: '@ai-sdk/openai-compatible',
+            name: 'Fake',
+            options: { baseURL: `http://127.0.0.1:${pport}/v1`, apiKey: 'no-usado' },
+            models: { m: { name: 'm', tool_call: true, ...(sc.modelLimit ? { limit: sc.modelLimit } : {}) } }
+          }
+        },
+    model: sc.model ?? 'fake/m',
+    small_model: sc.smallModel ?? 'fake/m',
     mcp: {
       ...(sc.inline?.mcp ?? {}),
       ...Object.fromEntries(
@@ -207,12 +230,19 @@ export async function runEngine(bin, sc) {
   }
   const fileCfg = join(root, 'file.json')
   writeFileSync(fileCfg, JSON.stringify(sc.file ?? {}))
+  // `sc.globalConfig`: configuración GLOBAL del usuario (XDG_CONFIG_HOME/opencode/opencode.json), la única de la que el motor acepta comandos propios (p. ej. `lsp`).
+  if (sc.globalConfig) {
+    mkdirSync(join(home, '.config', 'opencode'), { recursive: true })
+    writeFileSync(join(home, '.config', 'opencode', 'opencode.json'), JSON.stringify(sc.globalConfig))
+  }
   // En Windows el motor necesita el entorno mínimo del sistema (PATH con System32 y Git, ComSpec, SystemRoot) para encontrar un shell.
   const winEnv =
     process.platform === 'win32'
       ? {
           PATH: [
             process.env.SystemRoot + '\\System32',
+            // El motor descomprime ripgrep (que descarga la primera vez, como en la app real) con PowerShell: sin esta carpeta las habilidades no cargan.
+            process.env.SystemRoot + '\\System32\\WindowsPowerShell\\v1.0',
             process.env.SystemRoot,
             'C:\\Program Files\\Git\\cmd',
             'C:\\Program Files\\Git\\usr\\bin'
@@ -249,6 +279,11 @@ export async function runEngine(bin, sc) {
     OPENCODE_CONFIG_DIR: cfgdir,
     OPENCODE_CONFIG_CONTENT: JSON.stringify(inline),
     ...winEnv,
+    // En Windows, con PowerShell en el PATH (hace falta para descomprimir ripgrep) el motor lo elegiría como terminal y los chequeos escritos para Bash
+    // fallarían: se fija Git Bash salvo que se pida otro con PROBE_SHELL.
+    ...(process.platform === 'win32' && !process.env.PROBE_SHELL && existsSync('C:\\Program Files\\Git\\bin\\bash.exe')
+      ? { SHELL: 'C:\\Program Files\\Git\\bin\\bash.exe' }
+      : {}),
     ...(process.env.PROBE_SHELL ? { SHELL: process.env.PROBE_SHELL } : {}),
     ...(sc.env ?? {})
   }
@@ -322,7 +357,8 @@ export async function runEngine(bin, sc) {
       await sleep(200)
     }
     if (sc.agentsOf) out.agents = await (await q('/agent')).json()
-    const s = await (await q('/session', post({}))).json()
+    // `sc.sessionBody`: cuerpo de POST /session (p. ej. `permission` de la sesión o `metadata`).
+    const s = await (await q('/session', post(sc.sessionBody ?? {}))).json()
     out.sessionID = s.id // desde ya: un escenario puede abortar la sesión mientras el mensaje sigue en curso
     const subscribe = (signal) =>
       void fetch(url + '/event?directory=' + encodeURIComponent(proj), { signal })
@@ -353,21 +389,30 @@ export async function runEngine(bin, sc) {
                 continue
               }
               if (e.type === 'session.compacted') (out.compacted ??= []).push(e.properties)
+              // `sc.recordEvents`: prefijos de tipos de evento a guardar en `out.events` (con su momento); `sc.onEvent(e, ctx)`: gancho libre (no se espera).
+              if (sc.recordEvents?.some((pre) => e.type.startsWith(pre))) (out.events ??= []).push({ type: e.type, at: Date.now() - t0, properties: e.properties })
+              if (sc.onEvent) void Promise.resolve(sc.onEvent(e, { q, post, out, sessionID: out.sessionID, proj })).catch((err) => (out.eventError = String(err)))
               if (e.type !== 'permission.asked') continue
-              out.asked.push({ permission: e.properties.permission, callID: e.properties.tool?.callID })
+              out.asked.push({ permission: e.properties.permission, patterns: e.properties.patterns, callID: e.properties.tool?.callID })
               if (sc.reply === 'ninguna') continue // el permiso queda pendiente (para probar los 409 «pendiente»)
-              await q(`/permission/${e.properties.id}/reply`, post({ reply: sc.reply ?? 'reject' }))
+              // `sc.reply` puede ser una función (propiedades del permiso) => 'once' | 'reject' | 'always' | 'ninguna'.
+              const resp = typeof sc.reply === 'function' ? await sc.reply(e.properties, { proj, out }) : (sc.reply ?? 'reject')
+              if (resp === 'ninguna') continue
+              await q(`/permission/${e.properties.id}/reply`, post({ reply: resp }))
             }
           }
         }
       })
       .catch(() => {})
     subscribe(events.signal)
-    const body = { agent: sc.agent ?? 'build', model: { providerID: 'fake', modelID: 'm' }, parts: [{ type: 'text', text: 'hola' }] }
-    out.promptStatus = await Promise.race([
-      q(`/session/${s.id}/message`, post(body)).then((x) => x.status),
-      sleep(25_000).then(() => 'timeout')
-    ])
+    const [provID, modID] = (sc.model ?? 'fake/m').split('/')
+    const body = { agent: sc.agent ?? 'build', model: { providerID: provID, modelID: modID }, parts: [{ type: 'text', text: sc.firstPrompt ?? 'hola' }] }
+    // `sc.pre({ q, post, sessionID, proj, root, home })`: se ejecuta antes del primer mensaje (fijar metadata, crear un objetivo…).
+    if (sc.pre) out.pre = await sc.pre({ q, post, sessionID: s.id, proj, root, home, log: () => log })
+    // `sc.skipFirst`: no manda el primer mensaje (todo el guion va en `sc.http` con `prompt`).
+    out.promptStatus = sc.skipFirst
+      ? 200
+      : await Promise.race([q(`/session/${s.id}/message`, post(body)).then((x) => x.status), sleep(sc.firstTimeoutMs ?? 25_000).then(() => 'timeout')])
     if (out.promptStatus !== 200) out.log = log.slice(-3000) // un 500/timeout sin explicación: se adjunta la salida del motor
     const msgs = await (await q(`/session/${s.id}/message`)).json()
     out.toolParts = msgs.flatMap((m) =>

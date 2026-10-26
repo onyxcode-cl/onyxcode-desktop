@@ -16,6 +16,7 @@ const DEF: HelperDef = {
   description: 'Revisa copias de seguridad',
   prompt: 'Eres un revisor.\nSé breve.',
   model: 'small',
+  allowedTools: ['Read', 'Grep'],
   disallowedTools: ['edit', 'bash'],
   maxTurns: 5,
   background: true,
@@ -157,6 +158,7 @@ describe('archivo .md: construir', () => {
         'description: "Revisa copias de seguridad"',
         'mode: subagent',
         'model: small',
+        'tools: [Read, Grep]',
         'disallowed_tools: [edit, bash]',
         'max_turns: 5',
         'background: true',
@@ -169,8 +171,16 @@ describe('archivo .md: construir', () => {
     )
   })
   it('sin tope, sin segundo plano y sin skills no escribe esas claves', () => {
-    const text = buildHelperFile({ ...DEF, maxTurns: null, background: false, skills: null, disallowedTools: [], model: 'inherit' })!
-    expect(text).not.toMatch(/max_turns|background|skills|disallowed_tools/)
+    const text = buildHelperFile({
+      ...DEF,
+      maxTurns: null,
+      background: false,
+      skills: null,
+      disallowedTools: [],
+      allowedTools: [],
+      model: 'inherit'
+    })!
+    expect(text).not.toMatch(/max_turns|background|skills|disallowed_tools|tools/)
     expect(text).toContain('model: inherit')
   })
   it('una descripción con comillas, dos puntos o # queda como una sola cadena YAML (no inyecta claves)', () => {
@@ -242,7 +252,7 @@ describe('archivo .md: leer y editar conservando lo demás', () => {
 
   it('quitar el tope borra max_turns; añadir una clave gestionada nueva la agrega', () => {
     const edited = buildHelperFile(
-      { ...DEF, name: 'hace', maxTurns: null, background: true, skills: ['a'], disallowedTools: [], model: 'inherit' },
+      { ...DEF, name: 'hace', maxTurns: null, background: true, skills: ['a'], disallowedTools: [], allowedTools: [], model: 'inherit' },
       ORIGINAL
     )!
     expect(edited).not.toContain('max_turns')
@@ -281,6 +291,40 @@ describe('archivo .md: leer y editar conservando lo demás', () => {
   })
 })
 
+describe('herramientas permitidas (tools)', () => {
+  it('se escriben como lista y se leen de vuelta', () => {
+    const text = buildHelperFile({ ...DEF, allowedTools: ['Read', 'mcp__srv__tool', '*'] })!
+    expect(text).toContain('tools: [Read, mcp__srv__tool, "*"]')
+    const back = readHelperFile(DEF.name, text)
+    expect(back.ok && back.def.allowedTools).toEqual(['Read', 'mcp__srv__tool', '*'])
+  })
+  it('lee el formato de Claude Code (cadena con comas) y la lista en varias líneas', () => {
+    const a = readHelperFile('x', '---\ntools: Read, Grep, Glob\n---\nx\n')
+    expect(a.ok && a.def.allowedTools).toEqual(['Read', 'Grep', 'Glob'])
+    const b = readHelperFile('x', '---\ntools:\n  - Read\n  - Bash\n---\nx\n')
+    expect(b.ok && b.def.allowedTools).toEqual(['Read', 'Bash'])
+    const none = readHelperFile('x', '---\nmodel: small\n---\nx\n')
+    expect(none.ok && none.def.allowedTools).toEqual([])
+  })
+  it('una lista con nombres raros o demasiado larga no se edita aquí (complex)', () => {
+    expect(readHelperFile('x', '---\ntools: "Re ad"\n---\nx\n')).toMatchObject({ ok: false, reason: 'complex', complex: ['tools'] })
+    expect(readHelperFile('x', '---\ntools: {a: 1}\n---\nx\n')).toMatchObject({ ok: false, reason: 'complex', complex: ['tools'] })
+    const many = Array.from({ length: 31 }, (_, i) => `t${i}`).join(', ')
+    expect(readHelperFile('x', `---\ntools: ${many}\n---\nx\n`)).toMatchObject({ ok: false, reason: 'complex' })
+  })
+  it('al editar reemplaza `tools` en su sitio y conserva permission; vaciarla la quita', () => {
+    const orig = '---\ndescription: d\ntools: Read\npermission:\n  bash: ask\nmodel: small\n---\nx\n'
+    const edited = buildHelperFile({ ...DEF, name: 'x', allowedTools: ['Read', 'Grep'] }, orig)!
+    expect(edited).toContain('tools: [Read, Grep]')
+    expect(edited).not.toContain('tools: Read\n')
+    expect(edited).toContain('permission:\n  bash: ask')
+    expect(edited.indexOf('tools:')).toBeLessThan(edited.indexOf('permission:'))
+    const cleared = buildHelperFile({ ...DEF, name: 'x', allowedTools: [] }, orig)!
+    expect(cleared).not.toMatch(/^tools:/m)
+    expect(cleared).toContain('permission:\n  bash: ask')
+  })
+})
+
 describe('validar la definición', () => {
   it('acepta la definición completa', () => {
     expect(validateHelperDef(DEF)).toEqual({ ok: true })
@@ -294,6 +338,11 @@ describe('validar la definición', () => {
     ['model', { model: 'a/b c' }],
     ['disallowedTools', { disallowedTools: ['ed it'] }],
     ['disallowedTools', { disallowedTools: ['x\ny: 1'] }],
+    ['allowedTools', { allowedTools: ['Re ad'] }],
+    ['allowedTools', { allowedTools: ['x\ny: 1'] }],
+    ['allowedTools', { allowedTools: ['a:b'] }],
+    ['allowedTools', { allowedTools: ['a'.repeat(65)] }],
+    ['allowedTools', { allowedTools: Array.from({ length: 31 }, (_, i) => `t${i}`) }],
     ['maxTurns', { maxTurns: 0 }],
     ['maxTurns', { maxTurns: 1.5 }],
     ['maxTurns', { maxTurns: 1001 }],
