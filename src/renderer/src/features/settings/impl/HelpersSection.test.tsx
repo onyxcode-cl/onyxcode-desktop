@@ -122,6 +122,17 @@ describe('Ajustes › Ayudantes', () => {
     expect(host.textContent).toContain('Los permisos de un ayudante nunca superan los de la sesión que lo lanza.')
   })
 
+  it('marca como pendiente el ayudante que el motor aún no cargó y no promete una conversación nueva', async () => {
+    callMock.mockImplementation(async (channel: string) =>
+      channel === 'helpers:list' ? { available: true, helpers: [{ ...HELPERS[0], name: 'recien', pending: true }], claudeNames: [] } : null
+    )
+    await mount()
+    const text = host.textContent ?? ''
+    expect(text).toContain('Pendiente: se activa al reiniciar Lazunox')
+    expect(text).toContain('Los ayudantes nuevos se activan al reiniciar Lazunox.')
+    expect(text).not.toContain('conversación nueva')
+  })
+
   it('solo los de .opencode/agents tienen «Editar»', async () => {
     await mount()
     expect([...host.querySelectorAll('button')].filter((b) => b.textContent === 'Editar')).toHaveLength(1)

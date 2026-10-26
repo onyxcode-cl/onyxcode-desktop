@@ -108,6 +108,7 @@ function HelperRow({ h, onEdit }: { h: HelperView; onEdit: () => void }): React.
         <span className="flex flex-wrap items-center gap-2">
           <span className="break-all">{h.name}</span>
           <Badge tone={h.origin === 'native' ? 'muted' : 'accent'}>{t(ORIGIN_KEY[h.origin])}</Badge>
+          {h.pending && <Badge tone="muted">{t('settings.helpers.pending')}</Badge>}
         </span>
       }
       description={
@@ -448,7 +449,7 @@ export function HelpersSection(): React.JSX.Element {
           mode={view.mode}
           onClose={() => setView({ kind: 'list' })}
           onSaved={(name) => {
-            setNote(t('settings.helpers.form.saved', { path: `.opencode/agents/${name}.md` }))
+            setNote(`${t('settings.helpers.form.saved', { path: `.opencode/agents/${name}.md` })}. ${t('settings.helpers.refreshHint')}`)
             setView({ kind: 'list' })
             setTick((n) => n + 1)
           }}

@@ -15,6 +15,7 @@ import {
   type HelperDef,
   type HelperOrigin,
   type HelperReadResult,
+  type HelperView,
   type HelperSaveResult,
   type HelpersListResult
 } from '@shared/helper-agents'
@@ -167,6 +168,53 @@ async function opencodeNames(root: string): Promise<Set<string>> {
   return out
 }
 
+/**
+ * Ayudantes de `.opencode/agents/` que el motor aún no cargó (guarda en memoria lo que leyó de la carpeta): se leen del disco con las
+ * mismas protecciones que la escritura (nombre válido, sin enlaces, tope de tamaño). Solo texto plano para la pantalla.
+ */
+async function pendingHelpers(root: string, known: ReadonlySet<string>): Promise<HelperView[]> {
+  const a = await agentsDir(root, false)
+  if (!a.ok) return []
+  let entries
+  try {
+    entries = await readdir(a.dir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+  const out: HelperView[] = []
+  for (const e of entries.sort((x, y) => (x.name < y.name ? -1 : 1))) {
+    if (out.length >= HELPER_LIMITS.claudeScan) break
+    if (!e.isFile() || e.isSymbolicLink()) continue
+    const name = claudeAgentLabel(e.name)
+    if (!name || known.has(name) || !checkHelperName(name).ok) continue
+    const file = join(a.dir, e.name)
+    try {
+      const st = await lstat(file)
+      if (st.isSymbolicLink() || !st.isFile() || st.size > HELPER_LIMITS.fileBytes) continue
+      const r = readHelperFile(name, await readFile(file, 'utf8'))
+      const def = r.ok ? r.def : null
+      out.push({
+        name,
+        description: def?.description ?? '',
+        model: def?.model ?? 'inherit',
+        maxTurns: def?.maxTurns ?? null,
+        background: def?.background ?? false,
+        skills: def?.skills ?? null,
+        allowedTools: [],
+        blockedTools: def?.disallowedTools ?? [],
+        whitelist: false,
+        native: false,
+        origin: 'opencode',
+        editable: true,
+        pending: true
+      })
+    } catch {
+      // ilegible: se ignora
+    }
+  }
+  return out
+}
+
 export async function listHelpers(deps: HelperDeps, req: { directory: string }): Promise<HelpersListResult> {
   const root = await resolveHelperFolder(req.directory, deps.recentFolders())
   if (!root) throw new IpcError('FORBIDDEN', 'Carpeta no permitida')
@@ -186,7 +234,9 @@ export async function listHelpers(deps: HelperDeps, req: { directory: string }):
     const origin: HelperOrigin = h.native ? 'native' : own.has(h.name) ? 'opencode' : claudeSet.has(h.name) ? 'claude' : 'other'
     return { ...h, origin, editable: origin === 'opencode' && checkHelperName(h.name).ok }
   })
-  return { available: true, helpers, claudeNames: claude }
+  const known = new Set(helpers.map((h) => h.name))
+  const pending = await pendingHelpers(root, known)
+  return { available: true, helpers: [...helpers, ...pending], claudeNames: claude }
 }
 
 export async function readHelper(deps: HelperDeps, req: { directory: string; name: string }): Promise<HelperReadResult> {

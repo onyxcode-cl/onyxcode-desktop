@@ -211,6 +211,47 @@ describe('listar', () => {
     expect(r.claudeNames).toEqual(['de-claude'])
   })
 
+  it('los .md que el motor aún no cargó salen como pendientes, sin duplicar los que sí cargó', async () => {
+    await saveHelper(deps(), { directory: root, def: DEF, mode: 'create' })
+    await saveHelper(deps(), {
+      directory: root,
+      def: { ...DEF, name: 'nuevo', description: '<b>**hola**</b> [x](https://a.b)' },
+      mode: 'create'
+    })
+    const r = await listHelpers(deps({ fetchImpl: ok(agents) }), { directory: root })
+    if (!r.available) throw new Error('debía estar disponible')
+    expect(r.helpers.filter((h) => h.name === 'lector')).toHaveLength(1)
+    expect(r.helpers.find((h) => h.name === 'lector')?.pending).toBeUndefined()
+    const nuevo = r.helpers.find((h) => h.name === 'nuevo')
+    expect(nuevo).toMatchObject({ origin: 'opencode', editable: true, pending: true, model: 'small' })
+    // texto plano: el contenido llega tal cual, sin transformarlo en marcado
+    expect(nuevo?.description).toBe('<b>**hola**</b> [x](https://a.b)')
+  })
+
+  it.skipIf(!posixOnly)('ignora nombres inválidos, enlaces y archivos enormes', async () => {
+    const dir = join(root, '.opencode', 'agents')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(outside, 'secreto.md'), '---\ndescription: fuga\n---\nx')
+    symlinkSync(join(outside, 'secreto.md'), join(dir, 'enlace.md'))
+    writeFileSync(join(dir, '-malo.md'), '---\n---\nx')
+    writeFileSync(join(dir, 'con espacio.md'), '---\n---\nx')
+    writeFileSync(join(dir, 'enorme.md'), `---\nmodel: small\n---\n${'x'.repeat(70_000)}`)
+    writeFileSync(join(dir, 'nota.txt'), 'x')
+    writeFileSync(join(dir, 'bueno.md'), '---\ndescription: ok\n---\nx')
+    const r = await listHelpers(deps({ fetchImpl: ok([]) }), { directory: root })
+    if (!r.available) throw new Error('debía estar disponible')
+    expect(r.helpers.map((h) => h.name)).toEqual(['bueno'])
+  })
+
+  it.skipIf(!posixOnly)('si .opencode/agents es un enlace no lee nada de fuera', async () => {
+    mkdirSync(join(root, '.opencode'), { recursive: true })
+    writeFileSync(join(outside, 'fuera.md'), '---\n---\nx')
+    symlinkSync(outside, join(root, '.opencode', 'agents'))
+    const r = await listHelpers(deps({ fetchImpl: ok([]) }), { directory: root })
+    if (!r.available) throw new Error('debía estar disponible')
+    expect(r.helpers).toEqual([])
+  })
+
   it('pide /agent con la carpeta y la autorización; 404 = no disponible; carpeta ajena = prohibido', async () => {
     const f = vi.fn(async () => new Response('', { status: 404 }))
     expect(await listHelpers(deps({ fetchImpl: f as never }), { directory: root })).toEqual({ available: false })

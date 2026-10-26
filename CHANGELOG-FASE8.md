@@ -3901,3 +3901,11 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Seguridad.** `session.plan.*` NO sale hacia el celular (`event-trim.ts`: lista de prefijos negados, con prueba en `sse-hub.test.ts`); `modoPlan` es clase X en `policy.ts`. El texto del plan se limpia (`plainText`) y se pinta en un nodo de texto.
 - **Pruebas.** `plan-mode.test.ts`, `store.plan.test.ts`, `PlanReadyCard.test.tsx`, `sse-hub.test.ts`, `store.model.test.ts` (normalización de la bandera), `schemas.helpers.test.ts`.
 - **No verificado.** Con el motor real y `LAZUNOX_PLAN=1` (nunca se encendió); el celular sigue pudiendo CONTESTAR una pregunta de este tipo si llegara a verla como pregunta común (ver `docs/SEGURIDAD.md`); lector de pantalla.
+
+## F8-B222 — Ayudantes recién creados visibles como «pendientes» (el motor no recarga la carpeta)
+
+- **Bug.** Un ayudante creado en Ajustes › Ayudantes se escribía bien en `.opencode/agents/<nombre>.md`, pero no aparecía en la lista: el motor guarda en memoria lo que cargó de esa carpeta y `GET /agent` no lo devuelve hasta reiniciar. El aviso «abre una conversación nueva en esa carpeta» era falso.
+- **Arreglo.** `listHelpers` (main) agrega los `.md` de `.opencode/agents/` que el motor no devolvió, marcados `pending` y con la etiqueta «Pendiente: se activa al reiniciar Lazunox»; los que el motor sí devolvió no se duplican. El aviso (tras guardar y al pie de la pantalla) ahora dice «Los ayudantes nuevos se activan al reiniciar Lazunox». NO se llama a `/instance/dispose` ni a `/global/dispose` (detendrían lo que corre).
+- **Seguridad.** La lectura de disco usa las mismas protecciones que la escritura: carpeta elegida/reciente con `realpath`, `.opencode` y `agents` sin enlaces, nombre `^[A-Za-z0-9][A-Za-z0-9._-]*$`, `lstat` sin seguir enlaces, tope de `HELPER_LIMITS.fileBytes` y de `claudeScan` archivos; los textos se pintan como texto plano.
+- **Pruebas.** `main/ipc/helper-agents.test.ts` (pendientes, sin duplicar, enlace/nombre inválido/enorme ignorados, `agents` como enlace), `HelpersSection.test.tsx`.
+- **No hecho.** La tarjeta «Cambios de este turno» (`RewindCard.tsx`) sigue mostrando «nuevo» tras rebobinar: el componente no recibe el estado «ya revertido» y ponerlo exige llevarlo desde el store; queda pendiente. **No verificado** con la app empaquetada ni el motor real.

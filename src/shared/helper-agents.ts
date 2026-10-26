@@ -439,6 +439,8 @@ export interface HelperView extends HelperInfo {
   origin: HelperOrigin
   /** `true` si hay un `.md` en `.opencode/agents/` de la carpeta que la pantalla puede editar. */
   editable: boolean
+  /** `true` = el archivo existe en `.opencode/agents/` pero el motor aún no lo cargó: se activa al reiniciar Lazunox. */
+  pending?: boolean
 }
 
 export type HelpersListResult = { available: false } | { available: true; helpers: HelperView[]; claudeNames: string[] }
