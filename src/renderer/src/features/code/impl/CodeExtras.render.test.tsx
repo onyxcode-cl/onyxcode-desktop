@@ -6,7 +6,8 @@ vi.hoisted(() => vi.unstubAllGlobals())
 const h = vi.hoisted(() => ({
   impl: null as null | ((ch: string, req?: Record<string, unknown>) => unknown),
   calls: [] as Array<{ ch: string; req?: Record<string, unknown> }>,
-  abort: vi.fn(async () => undefined)
+  abort: vi.fn(async () => undefined),
+  permissions: {} as Record<string, unknown>
 }))
 vi.mock('../../../lib/api', () => ({
   call: async (ch: string, req?: Record<string, unknown>) => {
@@ -15,7 +16,10 @@ vi.mock('../../../lib/api', () => ({
     return h.impl(ch, req)
   }
 }))
-vi.mock('./store', () => ({ useCode: { getState: () => ({ model: { providerID: 'opencode', modelID: 'big-pickle' }, abort: h.abort }) } }))
+vi.mock('./store', () => {
+  const state = (): Record<string, unknown> => ({ model: { providerID: 'opencode', modelID: 'big-pickle' }, abort: h.abort, permissions: h.permissions })
+  return { useCode: Object.assign((sel: (s: Record<string, unknown>) => unknown) => sel(state()), { getState: state }) }
+})
 vi.mock('../../settings/impl/extras', () => ({ resolveModelForMode: () => ({ providerID: 'p', modelID: 'm' }) }))
 
 import { act, createElement } from 'react'
@@ -333,6 +337,20 @@ describe('ReviewDialog', () => {
     }
     await click(button('Empezar revisión'))
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('500')
+  })
+
+  it('mientras revisa avisa si el ayudante espera un permiso (la tarjeta queda detrás del diálogo)', async () => {
+    h.impl = () => new Promise(() => undefined)
+    await mount()
+    await click(button('Empezar revisión'))
+    expect(host.textContent).not.toContain('espera tu permiso')
+    await act(async () => root.unmount())
+    root = createRoot(host)
+    h.permissions = { per_1: { id: 'per_1' } }
+    await mount()
+    await click(button('Empezar revisión'))
+    expect(host.textContent).toContain('espera tu permiso')
+    h.permissions = {}
   })
 
   it('mientras revisa se puede cancelar (aborta la sesión) y el resultado tardío se ignora; con la IA ocupada no deja empezar', async () => {

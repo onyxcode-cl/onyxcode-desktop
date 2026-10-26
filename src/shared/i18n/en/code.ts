@@ -866,6 +866,7 @@ export const code = {
   'code.review.start': 'Start review',
   'code.review.cancel': 'Cancel review',
   'code.review.running': 'Reviewing the changes… this can take a few minutes.',
+  'code.review.waitingPermission': 'The helper is waiting for your permission: close this window to answer; the review continues in the conversation.',
   'code.review.cancelled': 'Review cancelled.',
   'code.review.unreadable':
     'The review result could not be read (it did not come in the expected format). You can see it in the conversation.',

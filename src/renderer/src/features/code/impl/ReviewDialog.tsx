@@ -91,6 +91,9 @@ export function ReviewDialog({
 }): React.JSX.Element {
   const t = useT()
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
+  // El ayudante puede estar esperando un permiso (p. ej. `git diff`). La tarjeta vive en la conversación, DETRÁS de este diálogo modal:
+  // sin este aviso la revisión parecía colgada hasta que la persona cerraba la ventana por su cuenta.
+  const waitingPermission = useCode((s) => Object.keys(s.permissions).length > 0)
   const run = useRef(0)
   const alive = useRef(true)
   useEffect(() => {
@@ -146,6 +149,7 @@ export function ReviewDialog({
         {busy && phase.kind !== 'running' && <p>{t('code.review.busyNow')}</p>}
         <p role="status" aria-live="polite" className="text-fg">
           {phase.kind === 'running' && t('code.review.running')}
+          {phase.kind === 'running' && waitingPermission && ` ${t('code.review.waitingPermission')}`}
           {phase.kind === 'cancelled' && t('code.review.cancelled')}
         </p>
         {phase.kind === 'error' && (

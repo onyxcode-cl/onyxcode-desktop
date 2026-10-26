@@ -870,6 +870,7 @@ export const code = {
   'code.review.start': 'Empezar revisión',
   'code.review.cancel': 'Cancelar revisión',
   'code.review.running': 'Revisando los cambios… esto puede tardar unos minutos.',
+  'code.review.waitingPermission': 'El ayudante espera tu permiso: cierra esta ventana para responder; la revisión sigue en la conversación.',
   'code.review.cancelled': 'Revisión cancelada.',
   'code.review.unreadable':
     'No se pudo leer el resultado de la revisión (no venía en el formato esperado). Puedes verla en la conversación.',
