@@ -78,6 +78,8 @@ export async function runEngine(bin, sc) {
   if (sc.rgShim) {
     mkdirSync(join(root, 'bin'), { recursive: true })
     writeFileSync(join(root, 'bin', 'rg'), RG_SHIM(process.execPath), { mode: 0o755 })
+    // En Windows el motor lanza `rg` sin shell y no ejecuta un script ni un .cmd: allí no se usa el sustituto y el motor descarga ripgrep solo
+    // (como en la app real; el PC de pruebas tiene red).
   }
   if (sc.git) {
     // Identidad y fechas fijas: el commit inicial no depende del equipo. Sin la configuración global de la persona.
@@ -385,7 +387,9 @@ export async function runEngine(bin, sc) {
       const restart = async ({ signal = 'SIGKILL' } = {}) => {
         events.abort()
         try {
-          process.kill(-child.pid, signal)
+          // En Windows no hay grupos de procesos con pid negativo: taskkill /T /F mata el árbol (equivale a SIGKILL).
+          if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
+          else process.kill(-child.pid, signal)
         } catch {
           /* ya había muerto */
         }

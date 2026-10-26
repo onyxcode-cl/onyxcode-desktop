@@ -88,7 +88,12 @@ export function registrarOla2({ bin, checkRun, runEngine }) {
     try {
       return await fn(root, join(root, 'proj'))
     } finally {
-      rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+      // Windows suelta los .node extraídos del motor unos instantes después de morir: no debe tumbar la comprobación.
+      try {
+        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 })
+      } catch {
+        /* temporal */
+      }
     }
   }
   const motor = async (sc) => {
@@ -514,7 +519,7 @@ export function registrarOla2({ bin, checkRun, runEngine }) {
         const id = await a.turno('TURNO_DIR')
         // Después del turno, la carpeta `d` pasa a ser un enlace al directorio de fuera.
         rmSync(join(proj, 'd'), { recursive: true, force: true })
-        symlinkSync(fuera, join(proj, 'd'))
+        symlinkSync(fuera, join(proj, 'd'), process.platform === 'win32' ? 'junction' : 'dir') // en Windows, una unión (junction) no pide privilegios
         const res = await a.rebob(id, 'todo')
         return { res, fueraDespues: readdirSync(fuera), contenido: existsSync(join(fuera, 'x.txt')) ? readFileSync(join(fuera, 'x.txt'), 'utf8') : null }
       })
