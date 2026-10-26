@@ -3940,3 +3940,12 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Seguridad.** `tools` solo restringe: el motor lo traduce a lista blanca y los permisos de un ayudante son la intersección con los del padre (`LAZUNOX.md` 2A); `docs/SEGURIDAD.md` actualizado.
 - **Pruebas.** `RewindCard.test.tsx`, `store.rewind.test.ts`, `shared/helper-agents.test.ts`, `main/ipc/helper-agents.test.ts`, `main/ipc/schemas.helpers.test.ts`, `HelpersSection.test.tsx`.
 - **No verificado.** Con la app empaquetada ni con el motor real (que la lista blanca se aplique de verdad); el cableado `MessageStream` → `RewindCard` (solo por tipos); lector de pantalla.
+
+## F8-B227 — «Revisar cambios»: si rechazas un permiso, el diálogo dice que la revisión se interrumpió
+
+- **Bug.** Si la persona rechazaba el permiso que pedía el ayudante revisor (p. ej. `git diff`), la revisión quedaba sin resultado y el diálogo decía «No se pudo leer el resultado de la revisión (no venía en el formato esperado)», que es engañoso.
+- **Arreglo.** El store de Code guarda `permissionRejectedAt` (ms del último permiso rechazado a mano con `replyPermission(..., 'reject')`; 0 si ninguno). `ReviewDialog` anota cuándo empezó la revisión y, si el resultado es ilegible y el rechazo ocurrió durante ella (`permissionRejectedAt >= inicio`), muestra `code.review.interrupted` («La revisión se interrumpió porque rechazaste un permiso que el ayudante necesitaba…»). Sin rechazo, el texto de siempre. Claves en `es` y `en`; regenerada `src/renderer/remote/i18n-core-keys.json` (PWA).
+- **Límite.** Se distingue por el rechazo hecho en la propia app durante la revisión; un permiso rechazado desde el celular o por regla de denegación del motor sigue mostrando el texto de «ilegible».
+- **Pruebas.** `CodeExtras.render.test.tsx` (rechazo durante la revisión y caso sin rechazo).
+- **No verificado.** Con el motor real y la app empaquetada.
+

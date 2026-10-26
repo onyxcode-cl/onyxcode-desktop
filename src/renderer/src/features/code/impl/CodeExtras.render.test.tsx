@@ -7,7 +7,8 @@ const h = vi.hoisted(() => ({
   impl: null as null | ((ch: string, req?: Record<string, unknown>) => unknown),
   calls: [] as Array<{ ch: string; req?: Record<string, unknown> }>,
   abort: vi.fn(async () => undefined),
-  permissions: {} as Record<string, unknown>
+  permissions: {} as Record<string, unknown>,
+  rejectedAt: 0
 }))
 vi.mock('../../../lib/api', () => ({
   call: async (ch: string, req?: Record<string, unknown>) => {
@@ -17,7 +18,12 @@ vi.mock('../../../lib/api', () => ({
   }
 }))
 vi.mock('./store', () => {
-  const state = (): Record<string, unknown> => ({ model: { providerID: 'opencode', modelID: 'big-pickle' }, abort: h.abort, permissions: h.permissions })
+  const state = (): Record<string, unknown> => ({
+    model: { providerID: 'opencode', modelID: 'big-pickle' },
+    abort: h.abort,
+    permissions: h.permissions,
+    permissionRejectedAt: h.rejectedAt
+  })
   return { useCode: Object.assign((sel: (s: Record<string, unknown>) => unknown) => sel(state()), { getState: state }) }
 })
 vi.mock('../../settings/impl/extras', () => ({ resolveModelForMode: () => ({ providerID: 'p', modelID: 'm' }) }))
@@ -337,6 +343,18 @@ describe('ReviewDialog', () => {
     }
     await click(button('Empezar revisión'))
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('500')
+  })
+
+  it('si rechazaste un permiso durante la revisión, dice que se interrumpió (y no «formato inesperado»)', async () => {
+    h.impl = () => {
+      h.rejectedAt = Date.now() + 1000 // el rechazo ocurre mientras corre
+      return { status: 'unreadable' }
+    }
+    await mount()
+    await click(button('Empezar revisión'))
+    expect(host.textContent).toContain('se interrumpió porque rechazaste un permiso')
+    expect(host.textContent).not.toContain('No se pudo leer el resultado')
+    h.rejectedAt = 0
   })
 
   it('mientras revisa avisa si el ayudante espera un permiso (la tarjeta queda detrás del diálogo)', async () => {

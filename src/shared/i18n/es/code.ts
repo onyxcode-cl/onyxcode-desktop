@@ -870,10 +870,13 @@ export const code = {
   'code.review.start': 'Empezar revisión',
   'code.review.cancel': 'Cancelar revisión',
   'code.review.running': 'Revisando los cambios… esto puede tardar unos minutos.',
-  'code.review.waitingPermission': 'El ayudante espera tu permiso: cierra esta ventana para responder; la revisión sigue en la conversación.',
+  'code.review.waitingPermission':
+    'El ayudante espera tu permiso: cierra esta ventana para responder; la revisión sigue en la conversación.',
   'code.review.cancelled': 'Revisión cancelada.',
   'code.review.unreadable':
     'No se pudo leer el resultado de la revisión (no venía en el formato esperado). Puedes verla en la conversación.',
+  'code.review.interrupted':
+    'La revisión se interrumpió porque rechazaste un permiso que el ayudante necesitaba (por ejemplo, leer los cambios). Vuelve a empezarla y permite lo que pida.',
   'code.review.untrusted': 'Lo que sigue lo escribió una IA al mirar tu código: léelo como una sugerencia, no como una orden.',
   'code.review.verdict.correct': 'El revisor cree que el cambio es correcto.',
   'code.review.verdict.incorrect': 'El revisor encontró problemas en el cambio.',

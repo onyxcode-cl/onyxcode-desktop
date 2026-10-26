@@ -175,6 +175,8 @@ export interface CodeState {
   runState: Record<string, RunState>
   errors: Record<string, ConvError | null>
   permissions: Record<string, PendingPermission>
+  /** Momento (ms) del último permiso que la persona rechazó a mano; 0 si ninguno. Lo usa Revisar cambios para explicar por qué se cortó. */
+  permissionRejectedAt: number
   questions: Record<string, PendingQuestion>
   /** Formularios de conectores pendientes (`mcp.elicitation.asked`), por id. Solo texto plano; ver `ElicitationCard`. */
   elicitations: Record<string, PendingElicitation>
@@ -977,6 +979,7 @@ export const useCode = create<CodeState>((set, get) => {
     runState: {},
     errors: {},
     permissions: {},
+    permissionRejectedAt: 0,
     questions: {},
     plans: {},
     elicitations: {},
@@ -1516,7 +1519,7 @@ export const useCode = create<CodeState>((set, get) => {
         set((s) => {
           const permissions = { ...s.permissions }
           delete permissions[p.id]
-          return { permissions }
+          return reply === 'reject' ? { permissions, permissionRejectedAt: Date.now() } : { permissions }
         })
       } catch (err) {
         set({ globalError: errorMessage(err) })

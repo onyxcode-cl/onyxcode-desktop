@@ -866,10 +866,13 @@ export const code = {
   'code.review.start': 'Start review',
   'code.review.cancel': 'Cancel review',
   'code.review.running': 'Reviewing the changes… this can take a few minutes.',
-  'code.review.waitingPermission': 'The helper is waiting for your permission: close this window to answer; the review continues in the conversation.',
+  'code.review.waitingPermission':
+    'The helper is waiting for your permission: close this window to answer; the review continues in the conversation.',
   'code.review.cancelled': 'Review cancelled.',
   'code.review.unreadable':
     'The review result could not be read (it did not come in the expected format). You can see it in the conversation.',
+  'code.review.interrupted':
+    'The review was interrupted because you rejected a permission the helper needed (for example, reading the changes). Start it again and allow what it asks for.',
   'code.review.untrusted': 'What follows was written by an AI looking at your code: read it as a suggestion, not as an order.',
   'code.review.verdict.correct': 'The reviewer thinks the change is correct.',
   'code.review.verdict.incorrect': 'The reviewer found problems in the change.',

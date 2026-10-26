@@ -93,7 +93,11 @@ export function ReviewDialog({
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
   // El ayudante puede estar esperando un permiso (p. ej. `git diff`). La tarjeta vive en la conversación, DETRÁS de este diálogo modal:
   // sin este aviso la revisión parecía colgada hasta que la persona cerraba la ventana por su cuenta.
+  const startedAt = useRef(0)
   const waitingPermission = useCode((s) => Object.keys(s.permissions).length > 0)
+  // Si la persona rechazó un permiso mientras corría la revisión, la salida quedó cortada: se dice eso y no «formato inesperado».
+  const rejectedAt = useCode((s) => s.permissionRejectedAt ?? 0)
+  const interrupted = rejectedAt > 0 && rejectedAt >= startedAt.current
   const run = useRef(0)
   const alive = useRef(true)
   useEffect(() => {
@@ -105,6 +109,7 @@ export function ReviewDialog({
 
   const start = async (): Promise<void> => {
     const mine = ++run.current
+    startedAt.current = Date.now()
     setPhase({ kind: 'running' })
     try {
       const picked = useCode.getState().model ?? resolveModelForMode('code')
@@ -158,7 +163,9 @@ export function ReviewDialog({
           </p>
         )}
         {phase.kind === 'done' && phase.result.status === 'unavailable' && <p className="text-fg">{t('code.extras.noEngine')}</p>}
-        {phase.kind === 'done' && phase.result.status === 'unreadable' && <p className="text-fg">{t('code.review.unreadable')}</p>}
+        {phase.kind === 'done' && phase.result.status === 'unreadable' && (
+          <p className="text-fg">{t(interrupted ? 'code.review.interrupted' : 'code.review.unreadable')}</p>
+        )}
         {phase.kind === 'done' && phase.result.status === 'ok' && (
           <ReviewReportView report={phase.result.report} skipped={phase.result.skipped} />
         )}

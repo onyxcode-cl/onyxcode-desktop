@@ -4,6 +4,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.7] - 2026-10-26
+
+### Novedades
+
+- **Tres pantallas nuevas en Code, apagadas por defecto.** «Objetivo» (una condición que la IA debe cumplir y que se comprueba sola, con tope de intentos), «Presupuesto» (límite de tokens, pasos y minutos por conversación) y «Revisar cambios» (un ayudante de solo lectura revisa lo que aún no confirmaste y lista los problemas por archivo y línea, como texto). Son experimentales: se encienden una por una en Ajustes › Funciones experimentales › «Objetivo, presupuesto y revisión (Code)» y entonces aparecen en el menú de la barra de Code. Con el motor oficial de OpenCode no funcionan.
+- **«Ya revertido» al volver atrás.** Después de «Volver a antes de este turno», la tarjeta «Cambios de este turno» marca los archivos revertidos en vez de seguir diciendo «nuevo», y no te deja repetir el rebobinado de algo que ya está revertido.
+- **Ayudantes: herramientas permitidas.** En Ajustes › Ayudantes puedes limitar a qué herramientas tiene acceso un ayudante tuyo (nunca más de las de la conversación).
+- Motor `lazunox.12`.
+
+### Correcciones
+
+- **«Revisar cambios» ya no se corta a los 5 minutos** (la conexión se cerraba antes de que el ayudante terminara) y avisa en la ventana cuando el ayudante está esperando un permiso, que antes quedaba escondido detrás del diálogo. Si rechazas ese permiso, ahora dice que la revisión se interrumpió por eso, en vez de «no se pudo leer el resultado».
+- **Revisor y verificador con modos de permisos.** Ya no quedan bloqueados cuando la conversación está en «Preguntar siempre», «Automático» o tras pasar por «Todo sin preguntar»: sus lecturas de git piden permiso como cualquier otra orden, y nunca leen fuera del proyecto sin preguntar.
+
+### Qué no cambia
+
+- No prometemos ahorro de tokens en esta versión: lo medimos con un modelo real y las diferencias quedaron dentro del ruido (en una tarea, con las opciones de ahorro encendidas, pareció salir peor). Por eso esas opciones del motor siguen apagadas y la app no las enciende.
+- El motor `lazunox.12` trae además dos funciones apagadas por defecto que la app todavía no ofrece: cambiar a un modelo gratuito cuando el elegido se queda sin cuota o falla, y un ayudante que parte con la conversación copiada.
+
 ## [1.7.6] - 2026-10-26
 
 ### Novedades
