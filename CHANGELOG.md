@@ -13,7 +13,8 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Ayudantes que se pueden esperar y reanudar.** La IA puede lanzar varios ayudantes y esperarlos con una sola llamada. Si la app se reinicia con ayudantes en marcha, quedan marcados como «perdidos» en «Trabajos en segundo plano» y puedes pulsar «Reanudar».
 - **Ayudantes definidos por ti.** Puedes escribir tus propios ayudantes en `.opencode/agents` (o usar los de `.claude/agents` de Claude Code): con herramientas permitidas y prohibidas, un tope de turnos y un modelo pequeño. Nunca pueden hacer más de lo que puede quien los lanza.
 - **Gasto de tokens más cuidado.** Salidas muy largas de comandos y lecturas se acotan, los ayudantes devuelven informes cortos, y no se vuelve a leer un archivo que no cambió. (Todavía no medimos cuánto se ahorra con un modelo real; no prometemos un número.)
-- Motor `lazunox.10`.
+- **La lista de tareas de la IA gana dos funciones.** Cada tarea puede llevar un comando de comprobación (por ejemplo, correr las pruebas) que se ejecuta pidiendo permiso como cualquier orden, y puede depender de otras tareas. Si la IA marca varias tareas «en curso» a la vez, el motor lo arregla solo en vez de fallar.
+- Motor `lazunox.11`.
 
 ### Correcciones
 
