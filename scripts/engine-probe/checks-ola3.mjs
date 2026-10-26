@@ -1122,5 +1122,143 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
     exige(ms[3] <= 600, `el cuarto write tardó ${ms[3]} ms: el LSP no se apagó tras dos plazos agotados`, ms)
     return true
   })
+  // ═══ lote (4C): plantilla `/lote` con ayudantes de fondo ════════════════════════════════════════════════════════
+  const BG_ENV = { OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: 'true' }
+  const taskCall = (subagent_type, prompt, extra = {}) => ({ name: 'task', args: { subagent_type, description: prompt.slice(0, 30), prompt, ...extra } })
+  const idsEnCurso = (textos) => textos.flatMap((t) => [...t.matchAll(/<task id="([^"]+)" state="running"/g)].map((m) => m[1]))
+  const TRABAJO_LOTE = 'renombrar calcular a computar en src/a.ts, src/b.ts y src/c.ts (una unidad por archivo)'
+
+  checkRun('lote (a): /lote con 3 unidades sobre archivos distintos → 3 sesiones hijas de fondo con parentID, UNA llamada task_wait, 3 verificador y resumen «Lote: 3 de 3»', async () => {
+    const r = await motor({
+      git: true,
+      env: BG_ENV,
+      skipFirst: true,
+      sessionBody: { permission: TODO_ALLOW },
+      decide: ({ body, messages, toolTexts }) => {
+        if (!(body.tools ?? []).length) return null
+        const ult = str(messages.find((m) => m.role === 'user')?.content ?? '') // primer mensaje: el prompt del ayudante (el padre empieza con la plantilla; sus avisos citan las descripciones)
+        const k = /(?:UNIDAD|VERIFICAR)_(\d)/.exec(ult)?.[1]
+        if (/UNIDAD_\d/.test(ult)) return { text: `informe de la unidad ${k}: hecho`, delayMs: 600 }
+        if (/VERIFICAR_\d/.test(ult)) return { text: `PASA\nevidencia de la unidad ${k}` }
+        const n = toolTexts.length
+        if (n < 3) return taskCall('general', `UNIDAD_${n + 1} renombra calcular en src/${'abc'[n]}.ts. No toques ningún otro archivo.`, { background: true })
+        if (n === 3) return { name: 'task_wait', args: { ids: idsEnCurso(toolTexts), timeout: 30 } }
+        if (n < 7) return taskCall('verificador', `VERIFICAR_${n - 3} comprueba src/${'abc'[n - 4]}.ts. No edites nada.`)
+        return { text: 'Lote: 3 de 3 unidades PASAN.' }
+      },
+      http: async ({ q, post, sessionID, bodies }) => {
+        const res = await comando(q, post, sessionID, 'lote', TRABAJO_LOTE)
+        const hs = await hijas(q, sessionID)
+        const agentes = []
+        for (const h of hs) agentes.push((await mensajes(q, h.id)).find((m) => m.info.role === 'assistant')?.info.agent)
+        const padre = await mensajes(q, sessionID)
+        return { status: res.status, hs: hs.map((h) => h.parentID), agentes, partes: herramientas(padre), final: padre.filter((m) => m.info.role === 'assistant').at(-1)?.parts?.map((p) => p.text ?? '').join('') }
+      }
+    })
+    const h = r.http
+    exige(h.status === 200, '/lote no devolvió 200', h.status)
+    exige(h.hs.length === 6 && h.hs.every((p) => p === r.sessionID), `se esperaban 6 sesiones hijas con parentID de la sesión y hay ${h.hs.length}`, { hs: h.hs, agentes: h.agentes, partes: h.partes.map((x) => [x.tool, x.status, x.output.slice(0, 160)]) })
+    exige(h.agentes.filter((a) => a === 'general').length === 3 && h.agentes.filter((a) => a === 'verificador').length === 3, 'no hay 3 hijas general y 3 verificador', h.agentes)
+    const espera = h.partes.filter((p) => p.tool === 'task_wait')
+    exige(espera.length === 1 && /3 de 3 ayudantes con respuesta/.test(espera[0].output), 'se esperaba UNA llamada task_wait con «3 de 3 ayudantes con respuesta»', espera.map((p) => p.output.slice(0, 200)))
+    exige(/Lote: 3 de 3/.test(h.final), 'el resumen final no dice «Lote: 3 de 3»', h.final)
+    return true
+  })
+
+  checkRun('lote (b): la plantilla que recibe el modelo manda cruzar los archivos de las unidades, avisar de los compartidos y no lanzarlos en paralelo', async () => {
+    const r = await motor({
+      git: true,
+      env: BG_ENV,
+      skipFirst: true,
+      decide: () => null,
+      http: async ({ q, post, sessionID, bodies }) => {
+        const res = await comando(q, post, sessionID, 'lote', 'U1 toca src/x.ts y src/a.ts; U2 toca src/x.ts y src/b.ts')
+        return { status: res.status, plantilla: textoDe(bodies.find((b) => (b.tools ?? []).length) ?? {}) }
+      }
+    })
+    exige(r.http.status === 200 && r.http.plantilla.includes('U1 toca src/x.ts'), '/lote no entregó el trabajo al modelo', r.http.status)
+    for (const frase of ['Nunca lances en paralelo dos unidades que comparten un archivo', 'EN SERIE', 'task_wait', 'verificador', 'Lote: N de M'])
+      exige(r.http.plantilla.includes(frase), `la plantilla no contiene «${frase}»`)
+    return true
+  })
+
+  checkRun('lote (c): sin OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS no hay task_wait y `task` con background se rechaza (la plantilla manda proponer el modo en serie sin editar)', async () => {
+    const r = await motor({
+      git: true,
+      skipFirst: true,
+      sessionBody: { permission: TODO_ALLOW },
+      decide: ({ body, toolTexts }) => ((body.tools ?? []).length && !toolTexts.length ? { ...taskCall('general', 'UNIDAD_1 haz algo', { background: true }), force: true } : null),
+      http: async ({ q, post, sessionID, bodies }) => {
+        const res = await comando(q, post, sessionID, 'lote', TRABAJO_LOTE)
+        const trabajo = detrabajo(bodies)
+        return { status: res.status, ofrecidas: nombres(trabajo[0] ?? {}), plantilla: textoDe(trabajo[0] ?? {}), partes: herramientas(await mensajes(q, sessionID)) }
+      }
+    })
+    exige(!r.http.ofrecidas.includes('task_wait'), 'sin la bandera el modelo ve task_wait', r.http.ofrecidas)
+    exige(r.http.ofrecidas.includes('task'), 'el modelo no ve task', r.http.ofrecidas)
+    exige(r.http.plantilla.includes('MODO EN SERIE') && r.http.plantilla.includes('No empieces a editar hasta que la persona acepte'), 'la plantilla no manda proponer el modo en serie sin editar')
+    const t = r.http.partes.find((p) => p.tool === 'task')
+    exige(t && t.status === 'error', '`task` con background:true sin la bandera no se rechazó', t)
+    return true
+  })
+
+  // ═══ reglas (4D): reglas por ruta + GET …/contexto-fijo ═══════════════════════════════════════════════════════
+  const REGLA_TS = ['---', 'paths:', '  - "src/**/*.ts"', '---', 'REGLA_TS_MARCADOR_111: usa comillas simples'].join('\n')
+  const REGLA_DOCS = ['---', 'paths: docs/**/*.md', '---', 'REGLA_DOCS_MARCADOR_222: escribe en español'].join('\n')
+  const conteo = (texto, marca) => texto.split(marca).length - 1
+
+  checkRun('reglas: .opencode/rules/ts.md se adjunta UNA vez al leer src/a.ts, no al leer README.md; al escribir docs/n.md sale la regla de .claude/rules; un enlace hacia fuera no recibe reglas; GET contexto-fijo cuadra', () =>
+    conRaiz(async (root, proj) => {
+      const fuera = join(root, 'fuera')
+      mkdirSync(fuera, { recursive: true })
+      writeFileSync(join(fuera, 'z.ts'), 'export const z = 1\n')
+      const r = await motor({
+        root,
+        git: true,
+        reply: 'once',
+        sessionBody: { permission: TODO_ALLOW },
+        env: { OPENCODE_DISABLE_CLAUDE_CODE_PROMPT: '0', OPENCODE_DISABLE_CLAUDE_CODE: '0' },
+        projectFiles: {
+          '.opencode/rules/ts.md': REGLA_TS,
+          '.claude/rules/docs.md': REGLA_DOCS,
+          'src/a.ts': 'export const a = 1\n',
+          'src/b.ts': 'export const b = 1\n',
+          'README.md': 'hola\n'
+        },
+        pre: async () => {
+          if (!WIN) symlinkSync(fuera, join(proj, 'src', 'enlace'), 'dir')
+        },
+        decide: ({ toolTexts, body }) =>
+          (body.tools ?? []).length
+            ? [
+                { name: 'read', args: { filePath: 'src/a.ts' } },
+                { name: 'read', args: { filePath: 'README.md' } },
+                { name: 'read', args: { filePath: 'src/b.ts' } },
+                { name: 'write', args: { filePath: 'docs/n.md', content: '# nota\n' } },
+                { name: 'read', args: { filePath: 'src/enlace/z.ts' } }
+              ][toolTexts.length] ?? null
+            : null,
+        http: async ({ q, sessionID }) => ({ cf: await J(await q(`/experimental/session/${sessionID}/contexto-fijo`)), cf404: (await q('/experimental/session/ses_000000000000abcdefghijklmn/contexto-fijo')).status })
+      })
+      const p = r.toolParts
+      exige(p.length === 5 && p.every((x) => x.status === 'completed'), 'las 5 llamadas no terminaron bien', p.map((x) => [x.tool, x.status, x.output.slice(0, 80)]))
+      exige(p[0].output.includes('REGLA_TS_MARCADOR_111'), 'leer src/a.ts no adjuntó la regla de .opencode/rules', p[0].output.slice(-400))
+      exige(!p[1].output.includes('MARCADOR'), 'leer README.md adjuntó una regla', p[1].output.slice(-300))
+      exige(!p[2].output.includes('REGLA_TS_MARCADOR_111'), 'la regla se repitió al leer otro .ts (debe ir una sola vez por conversación)', p[2].output.slice(-300))
+      exige(p[3].output.includes('REGLA_DOCS_MARCADOR_222'), 'escribir docs/n.md no adjuntó la regla de .claude/rules', p[3].output.slice(-400))
+      if (!WIN) exige(!p[4].output.includes('MARCADOR'), 'un archivo al que se llega por un enlace hacia fuera recibió reglas', p[4].output.slice(-300))
+      // el modelo vio la regla una sola vez en toda la conversación
+      const todo = p.map((x) => x.output).join('\n')
+      exige(conteo(todo, 'REGLA_TS_MARCADOR_111') === 1, `la regla de ts aparece ${conteo(todo, 'REGLA_TS_MARCADOR_111')} veces en los resultados`)
+      const cf = r.http.cf
+      exige(cf.status === 200 && cf.body?.aproximado === true, 'GET contexto-fijo no devolvió aproximado:true', cf)
+      exige(cf.body.reglasPorRuta === 2, `reglasPorRuta debe ser 2 y es ${cf.body.reglasPorRuta}`, cf.body)
+      const suma = Object.values(cf.body.partes ?? {}).reduce((a, b) => a + b, 0)
+      exige(cf.body.tokens === suma, `tokens (${cf.body.tokens}) no es la suma de partes (${suma})`, cf.body)
+      exige(['agentes', 'skills', 'mcp', 'instrucciones'].every((k) => typeof cf.body.partes?.[k] === 'number'), 'faltan partes (agentes, skills, mcp, instrucciones)', cf.body)
+      exige(r.http.cf404 === 404, 'contexto-fijo de una sesión inexistente no da 404', r.http.cf404)
+      return true
+    })
+  )
   return FAMILIAS
 }
