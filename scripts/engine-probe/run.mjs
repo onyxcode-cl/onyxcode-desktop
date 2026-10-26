@@ -6,6 +6,9 @@
 //   PROBE_ONLY=agentes | task-wait | rebobinar | compactar   Ola 2 y plan «rebobinar y compactación» (checks-ola2.mjs): subagentes de usuario (2A),
 //     task_wait/reanudar (2B), R-1..R-11 y C-1..C-7. Necesitan un motor con esas funciones (el integrado de la Ola 2); en equipos sin ripgrep ni
 //     red el arnés pone un `rg` mínimo (`rgShim`) para la herramienta `skill`. Correrlas en el VPS dentro de un contenedor, nunca en el Mac.
+//   PROBE_ONLY=plan | todo-verificar | presupuesto | ganchos2 | monitor | objetivo | revisor | skills | lsp | lote | reglas   Olas 3 y 4 del motor
+//     lazunox.10 (checks-ola3.mjs): una familia por vez (se eligen por familia exacta, no por texto). Mac: carpeta temporal sin enlaces
+//     simbólicos (`TMPDIR=/private/var/tmp/... nice -n 19 node …`); Linux: contenedor sin red en el VPS.
 //   PROBE_MCP_MANY=<n>  herramientas extra del conector de las comprobaciones `tool-search` (defecto 40).
 //   PROBE_FORCE_TOOL_SEARCH=1  corre las `tool-search` aunque el motor no traiga `LAZUNOX_TOOL_SEARCH` (para ver POR QUÉ fallan).
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
@@ -16,6 +19,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build } from 'esbuild'
 import { registrarOla2 } from './checks-ola2.mjs'
+import { registrarOla3 } from './checks-ola3.mjs'
 import { runEngine } from './harness.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -47,7 +51,7 @@ const outcome = (r) => {
 const checks = []
 const check = (name, sc, expect) => checks.push({ name, sc, expect })
 /** Comprobación que arma ella misma varias corridas del motor (`run` devuelve true/false o lanza). */
-const checkRun = (name, run) => checks.push({ name, run })
+const checkRun = (name, run, familia) => checks.push({ name, run, familia })
 
 // ── Conectores en Code (F8-B203): el bloque `permission` que arma `buildCodeMcpPermission` ─────────────────────
 for (const [mode, env, call] of [
@@ -1090,6 +1094,8 @@ if (!process.env.PROBE_SKIP_FORMULARIOS) {
 
 // Ola 2 y plan «rebobinar y compactación»: PROBE_ONLY=agentes | task-wait | rebobinar | compactar (ver checks-ola2.mjs).
 registrarOla2({ bin, checkRun, runEngine })
+// Olas 3 y 4 del motor lazunox.10: PROBE_ONLY=plan | todo-verificar | presupuesto | ganchos2 | monitor | objetivo | revisor | skills | lsp | lote | reglas (checks-ola3.mjs).
+const FAMILIAS_OLA3 = registrarOla3({ bin, checkRun, runEngine })
 
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
 const only = process.env.PROBE_ONLY
@@ -1098,7 +1104,8 @@ let skipped = 0
 /** ¿El motor trae la búsqueda diferida? (busca la variable en el binario compilado; se calcula una sola vez). */
 let tsSupport = null
 const hasToolSearch = () => (tsSupport ??= process.env.PROBE_FORCE_TOOL_SEARCH === '1' || readFileSync(bin).includes('LAZUNOX_TOOL_SEARCH'))
-const selected = only ? checks.filter((x) => x.name.includes(only)) : checks
+// Las comprobaciones de las olas 3 y 4 llevan `familia` y se eligen por ella (el texto «plan» también está en «segundo plano»).
+const selected = only ? checks.filter((x) => (x.familia ? x.familia === only : x.name.includes(only) && !FAMILIAS_OLA3.includes(only))) : checks
 for (const c of selected) {
   if (c.gate === 'tool-search' && !hasToolSearch()) {
     skipped++

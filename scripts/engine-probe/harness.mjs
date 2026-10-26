@@ -147,7 +147,7 @@ export async function runEngine(bin, sc) {
             : null
       // `step.hang`: no contesta (un ayudante lento); `step.delayMs`: espera antes de contestar; `step.text`: responde con ese texto.
       const responder = () => {
-        if (step?.text !== undefined) return sse(res, [chunk({ role: 'assistant', content: step.text }), chunk({}, 'stop')])
+        if (step?.text !== undefined) return sse(res, [chunk({ role: 'assistant', content: step.text }), chunk({}, step.finish ?? 'stop')])
         return responderLlamada()
       }
       if (step?.hang) {
@@ -207,6 +207,11 @@ export async function runEngine(bin, sc) {
   }
   const fileCfg = join(root, 'file.json')
   writeFileSync(fileCfg, JSON.stringify(sc.file ?? {}))
+  // `sc.globalConfig`: configuración GLOBAL del usuario (XDG_CONFIG_HOME/opencode/opencode.json), la única de la que el motor acepta comandos propios (p. ej. `lsp`).
+  if (sc.globalConfig) {
+    mkdirSync(join(home, '.config', 'opencode'), { recursive: true })
+    writeFileSync(join(home, '.config', 'opencode', 'opencode.json'), JSON.stringify(sc.globalConfig))
+  }
   // En Windows el motor necesita el entorno mínimo del sistema (PATH con System32 y Git, ComSpec, SystemRoot) para encontrar un shell.
   const winEnv =
     process.platform === 'win32'
@@ -322,7 +327,8 @@ export async function runEngine(bin, sc) {
       await sleep(200)
     }
     if (sc.agentsOf) out.agents = await (await q('/agent')).json()
-    const s = await (await q('/session', post({}))).json()
+    // `sc.sessionBody`: cuerpo de POST /session (p. ej. `permission` de la sesión o `metadata`).
+    const s = await (await q('/session', post(sc.sessionBody ?? {}))).json()
     out.sessionID = s.id // desde ya: un escenario puede abortar la sesión mientras el mensaje sigue en curso
     const subscribe = (signal) =>
       void fetch(url + '/event?directory=' + encodeURIComponent(proj), { signal })
@@ -353,21 +359,29 @@ export async function runEngine(bin, sc) {
                 continue
               }
               if (e.type === 'session.compacted') (out.compacted ??= []).push(e.properties)
+              // `sc.recordEvents`: prefijos de tipos de evento a guardar en `out.events` (con su momento); `sc.onEvent(e, ctx)`: gancho libre (no se espera).
+              if (sc.recordEvents?.some((pre) => e.type.startsWith(pre))) (out.events ??= []).push({ type: e.type, at: Date.now() - t0, properties: e.properties })
+              if (sc.onEvent) void Promise.resolve(sc.onEvent(e, { q, post, out, sessionID: out.sessionID, proj })).catch((err) => (out.eventError = String(err)))
               if (e.type !== 'permission.asked') continue
-              out.asked.push({ permission: e.properties.permission, callID: e.properties.tool?.callID })
+              out.asked.push({ permission: e.properties.permission, patterns: e.properties.patterns, callID: e.properties.tool?.callID })
               if (sc.reply === 'ninguna') continue // el permiso queda pendiente (para probar los 409 «pendiente»)
-              await q(`/permission/${e.properties.id}/reply`, post({ reply: sc.reply ?? 'reject' }))
+              // `sc.reply` puede ser una función (propiedades del permiso) => 'once' | 'reject' | 'always' | 'ninguna'.
+              const resp = typeof sc.reply === 'function' ? await sc.reply(e.properties, { proj, out }) : (sc.reply ?? 'reject')
+              if (resp === 'ninguna') continue
+              await q(`/permission/${e.properties.id}/reply`, post({ reply: resp }))
             }
           }
         }
       })
       .catch(() => {})
     subscribe(events.signal)
-    const body = { agent: sc.agent ?? 'build', model: { providerID: 'fake', modelID: 'm' }, parts: [{ type: 'text', text: 'hola' }] }
-    out.promptStatus = await Promise.race([
-      q(`/session/${s.id}/message`, post(body)).then((x) => x.status),
-      sleep(25_000).then(() => 'timeout')
-    ])
+    const body = { agent: sc.agent ?? 'build', model: { providerID: 'fake', modelID: 'm' }, parts: [{ type: 'text', text: sc.firstPrompt ?? 'hola' }] }
+    // `sc.pre({ q, post, sessionID, proj, root, home })`: se ejecuta antes del primer mensaje (fijar metadata, crear un objetivo…).
+    if (sc.pre) out.pre = await sc.pre({ q, post, sessionID: s.id, proj, root, home, log: () => log })
+    // `sc.skipFirst`: no manda el primer mensaje (todo el guion va en `sc.http` con `prompt`).
+    out.promptStatus = sc.skipFirst
+      ? 200
+      : await Promise.race([q(`/session/${s.id}/message`, post(body)).then((x) => x.status), sleep(sc.firstTimeoutMs ?? 25_000).then(() => 'timeout')])
     if (out.promptStatus !== 200) out.log = log.slice(-3000) // un 500/timeout sin explicación: se adjunta la salida del motor
     const msgs = await (await q(`/session/${s.id}/message`)).json()
     out.toolParts = msgs.flatMap((m) =>
