@@ -165,6 +165,278 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
     return true
   })
 
+  // ═══ resumen (6.4): resumen robusto ════════════════════════════════════════════════════════════════════════════
+  const VALIDO = ['## Objective', 'o', '', '## Important Details', 'd', '', '## Work State', 'w', '', '## Next Move', 'n', '', '## Relevant Files', 'f'].join('\n')
+  const MALO = 'MALO_MARCA_55: texto sin ninguna de las secciones pedidas'
+  const ultimoUsuario = (body) => ultimo(body.messages ?? []).texto
+  /** Motor para el resumen: `respuestas(k)` = texto de la k-ésima (0..) petición de resumen; el resto del guion lo da `plan` (turno → llamadas). */
+  const motorResumen = (sc, respuestas, plan = {}, extraHttp) => {
+    let k = 0
+    return motor({
+      git: true,
+      skipFirst: true,
+      modelLimit: { context: 200000, output: 8000 },
+      inline: { permission: { bash: 'allow' } },
+      decide: (ctx) => {
+        if (esResumen(ctx.body)) return { text: respuestas(k++) }
+        if (!ctx.tools.length) return { text: 'titulo' }
+        return guion(plan)(ctx)
+      },
+      ...sc,
+      http: async (h) => {
+        for (const t of sc.turnos ?? ['PRIMER_TURNO', 'SEGUNDO_TURNO']) await h.prompt(t)
+        const res = await J(await h.q(`/session/${h.sessionID}/summarize`, h.post({ providerID: 'fake', modelID: 'm' })))
+        const msgs = await mensajes(h.q, h.sessionID)
+        const extra = extraHttp ? await extraHttp(h, msgs) : {}
+        return { res, msgs, resumenes: h.bodies.filter(esResumen), ...extra }
+      }
+    })
+  }
+  const partesResumen = (msgs) => msgs.filter((m) => m.info.role === 'assistant' && m.info.summary).flatMap((m) => m.parts.filter((p) => p.type === 'text'))
+
+  checkRun('resumen (a): con LAZUNOX_RESUMEN_ROBUSTO=1 un resumen sin secciones se reintenta UNA vez: 2 peticiones, la 2.ª con el recordatorio y sin el texto del resumen malo, y el historial queda con un solo resumen (el bueno)', async () => {
+    const r = await motorResumen({ env: { LAZUNOX_RESUMEN_ROBUSTO: '1' } }, (k) => (k === 0 ? MALO : VALIDO))
+    const h = r.http
+    exige(h.res.status === 200, 'summarize no dio 200', h.res)
+    exige(h.resumenes.length === 2, `se esperaban exactamente 2 peticiones de resumen y hubo ${h.resumenes.length}`)
+    const [u1, u2] = h.resumenes.map(ultimoUsuario)
+    exige(u2.length > u1.length && u2.startsWith(u1.slice(0, 200)), 'la 2.ª petición no es la 1.ª con un recordatorio añadido', { u1: u1.slice(-200), u2: u2.slice(-300) })
+    exige(!textoDe(h.resumenes[1]).includes('MALO_MARCA_55'), 'la 2.ª petición contiene el texto del primer resumen malo')
+    const partes = partesResumen(h.msgs)
+    exige(partes.length === 1, `el historial tiene ${partes.length} resúmenes (se esperaba 1)`, partes.map((p) => p.text.slice(0, 60)))
+    exige(partes[0].text.includes('## Next Move') && !partes[0].text.includes('MALO_MARCA_55'), 'el resumen conservado no es el bueno', partes[0].text.slice(0, 200))
+    exige(!partes[0].metadata?.lazunox_resumen, 'el resumen bueno lleva la marca de incompleto', partes[0].metadata)
+    return true
+  })
+
+  checkRun('resumen (b): resumen siempre malo → exactamente 2 peticiones, el resumen queda con metadata.lazunox_resumen="incompleto" y la sesión sigue respondiendo', async () => {
+    const r = await motorResumen({ env: { LAZUNOX_RESUMEN_ROBUSTO: '1' } }, () => MALO, {}, async (h) => ({ despues: await h.prompt('TURNO_DESPUES', { timeoutMs: 30_000 }) }))
+    const h = r.http
+    exige(h.res.status === 200, 'summarize no dio 200 con un resumen malo (OpenCode fallaba; este motor no debe fallar)', h.res)
+    exige(h.resumenes.length === 2, `se esperaban exactamente 2 peticiones y hubo ${h.resumenes.length} (¿tercera petición?)`)
+    const partes = partesResumen(h.msgs)
+    exige(partes.length === 1 && partes[0].metadata?.lazunox_resumen === 'incompleto', 'el resumen conservado no lleva lazunox_resumen:"incompleto"', partes.map((p) => [p.text.slice(0, 40), p.metadata]))
+    exige(h.despues === 200, 'la sesión no siguió respondiendo tras el resumen incompleto', h.despues)
+    return true
+  })
+
+  checkRun('resumen (c): resumen válido → 1 sola petición, sin marca de incompleto', async () => {
+    const r = await motorResumen({ env: { LAZUNOX_RESUMEN_ROBUSTO: '1' } }, () => VALIDO)
+    exige(r.http.resumenes.length === 1, `con un resumen válido hubo ${r.http.resumenes.length} peticiones`)
+    exige(!partesResumen(r.http.msgs)[0]?.metadata?.lazunox_resumen, 'el resumen válido lleva marca de incompleto')
+    return true
+  })
+
+  checkRun('resumen (d): la petición de resumen trae la línea de herramientas usadas («read x2, bash x2»)', async () => {
+    const plan = {
+      PASOS_CON_HERRAMIENTAS: [
+        { name: 'read', args: { filePath: 'a.txt' } },
+        { name: 'read', args: { filePath: 'a.txt', offset: 1 } },
+        shellDe('echo uno'),
+        shellDe('echo dos')
+      ]
+    }
+    const r = await motorResumen({ env: { LAZUNOX_RESUMEN_ROBUSTO: '1' }, projectFiles: { 'a.txt': 'x\ny\n' }, turnos: ['PASOS_CON_HERRAMIENTAS por favor', 'SEGUNDO'] }, () => VALIDO, plan)
+    const t = textoDe(r.http.resumenes[0])
+    const m = /Tools used[^\n]*\n?[^\n]*/i.exec(t)
+    exige(m, 'la petición de resumen no trae la línea de herramientas usadas', t.slice(-800))
+    exige(/read x2/.test(t) && /bash x2/.test(t), 'la línea no cuenta read x2 y bash x2', m[0])
+    return true
+  })
+
+  checkRun('resumen (f): SIN la variable un resumen malo no se reintenta (1 petición, sin marca de incompleto)', async () => {
+    const r = await motorResumen({}, () => MALO)
+    exige(r.http.resumenes.length === 1, `sin la variable hubo ${r.http.resumenes.length} peticiones de resumen (se esperaba 1)`)
+    exige(!partesResumen(r.http.msgs)[0]?.metadata?.lazunox_resumen, 'sin la variable el resumen lleva marca lazunox_resumen')
+    return true
+  })
+
+  for (const [etiqueta, env, espera] of [['con la variable', { LAZUNOX_RESUMEN_ROBUSTO: '1' }, true], ['SIN la variable', {}, false]])
+    checkRun(`resumen (e): ${etiqueta}, con ventana pequeña y mensajes enormes el bloque <contexto-vigente> ${espera ? 'dice «N mensajes antiguos no entraron en este resumen»' : 'NO lleva esa sección'}`, async () => {
+      const GRANDE = (k) => `TURNO_GRANDE_${k} ` + 'palabra '.repeat(7000)
+      const r = await motorResumen(
+        { env, modelLimit: { context: 16000, output: 2000 }, turnos: [GRANDE(1), GRANDE(2), GRANDE(3), GRANDE(4)] },
+        () => VALIDO,
+        {},
+        async (h) => {
+          await h.prompt('FIN_DESPUES_DE_RESUMIR', { timeoutMs: 30_000 })
+          return { final: textoDe(detrabajo(h.bodies).at(-1)) }
+        }
+      )
+      const m = /(\d+) mensajes antiguos no entraron en este resumen/.exec(r.http.final)
+      if (espera) exige(m && Number(m[1]) >= 1, 'el bloque reinyectado no dice cuántos mensajes antiguos no entraron en el resumen', r.http.final.slice(-1200))
+      else exige(!m && /RESUMEN|Objective|## Next Move/.test(r.http.final), 'sin la variable el bloque dice o la petición no lleva ni el resumen que hay mensajes fuera del resumen', m?.[0])
+      return true
+    })
+
+  // ═══ ganchos3 (6.8): updatedToolOutput, PostToolUseFailure, PermissionDenied ═══════════════════════════════════
+  const GANCHOS_ENV = (file) => ({ OPENCODE_DISABLE_DEFAULT_PLUGINS: '0', LAZUNOX_HOOKS_FILE: file })
+  /** Escribe los scripts de gancho en `dir` y el archivo de ganchos; devuelve su ruta. `evento -> [{matcher?, js}]`. */
+  const archivoGanchos = (dir, ganchos) => {
+    mkdirSync(dir, { recursive: true })
+    const hooks = {}
+    let i = 0
+    for (const [evento, lista] of Object.entries(ganchos)) {
+      hooks[evento] = lista.map(({ matcher, js }) => {
+        const f = join(dir, `gancho${++i}.cjs`)
+        writeFileSync(f, js)
+        return { ...(matcher ? { matcher } : {}), command: `"${process.execPath}" "${f}"`, timeout: 10 }
+      })
+    }
+    const file = join(dir, 'hooks.json')
+    writeFileSync(file, JSON.stringify({ hooks }))
+    return file
+  }
+  const SALIDA = (o) => `process.stdout.write(${JSON.stringify(typeof o === 'string' ? o : JSON.stringify(o))})`
+  const STDIN = "const e = JSON.parse(require('fs').readFileSync(0, 'utf8'));"
+  /** Primera ruta absoluta de un archivo que el aviso del gancho da como «El original completo (N bytes) está en <ruta>». */
+  const rutaOriginal = (texto) => /está en (\S+?)(?:;|\s)/.exec(texto)?.[1]
+  const FILTRO = STDIN + "const l = String(e.output || '').split('\\n'); const k = l.filter((x) => /FAIL|Tests:/.test(x)); process.stdout.write(JSON.stringify({ updatedToolOutput: k.join('\\n') }))"
+  const cuatrocientas = "for i in $(seq 1 400); do echo \"ok test $i\"; done; echo 'FAIL test uno'; echo 'FAIL test dos'; echo 'Tests: 400 passed, 2 failed'"
+
+  checkRun('ganchos3 (a): PostToolUse con updatedToolOutput sobre bash → el modelo ve solo FAIL/resumen, con «filtró esta salida» y la ruta del original (que tiene las 400 líneas y se lee con read)', () =>
+    conRaiz(async (root) => {
+      const file = archivoGanchos(join(root, 'g'), { PostToolUse: [{ matcher: 'bash|shell', js: FILTRO }] })
+      let ruta
+      const r = await motor({
+        root,
+        git: true,
+        env: GANCHOS_ENV(file),
+        inline: { permission: { bash: 'allow', external_directory: 'allow' } },
+        reply: 'once',
+        decide: ({ tools, toolTexts }) => {
+          if (!tools.length) return { text: 'titulo' }
+          if (toolTexts.length === 0) return shellDe(cuatrocientas)
+          if (toolTexts.length === 1) {
+            ruta = rutaOriginal(toolTexts[0])
+            return ruta ? { name: 'read', args: { filePath: ruta } } : null
+          }
+          return null
+        }
+      })
+      const sh = r.toolParts[0]?.output ?? ''
+      exige(/filtró esta salida/.test(sh), 'la salida que ve el modelo no dice «filtró esta salida»', sh.slice(0, 400))
+      exige(sh.includes('FAIL test uno') && sh.includes('FAIL test dos') && sh.includes('Tests: 400 passed') && !sh.includes('ok test 17\n') && !/ok test 200/.test(sh), 'la salida filtrada no es solo FAIL + resumen', sh.slice(0, 600))
+      exige(ruta && existsSync(ruta), 'el aviso no trae una ruta existente del original', { ruta, sh: sh.slice(0, 300) })
+      const original = readFileSync(ruta, 'utf8')
+      exige((original.match(/^ok test \d+$/gm) ?? []).length === 400, 'el original guardado no tiene las 400 líneas', original.slice(0, 200))
+      exige(r.toolParts[1]?.tool === 'read' && r.toolParts[1].status === 'completed' && /ok test 123/.test(r.toolParts[1].output), 'el modelo no pudo leer el original con read', r.toolParts[1])
+      return true
+    })
+  )
+
+  checkRun('ganchos3 (b): un gancho que siempre responde «todo bien» sobre un comando que FALLA no oculta el fallo: el original sigue legible por la ruta', () =>
+    conRaiz(async (root) => {
+      const file = archivoGanchos(join(root, 'g'), { PostToolUse: [{ matcher: 'bash|shell', js: SALIDA({ updatedToolOutput: 'todo bien' }) }] })
+      const r = await motor({ root, git: true, env: GANCHOS_ENV(file), inline: { permission: { bash: 'allow' } }, decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? shellDe('echo FALLO_REAL_XYZ; exit 3') : null) })
+      const sh = r.toolParts[0]?.output ?? ''
+      exige(sh.includes('todo bien') && /filtró esta salida/.test(sh), 'el modelo no ve el texto del gancho con el aviso', sh.slice(0, 300))
+      const ruta = rutaOriginal(sh)
+      exige(ruta && existsSync(ruta) && readFileSync(ruta, 'utf8').includes('FALLO_REAL_XYZ'), 'el original con el fallo no quedó guardado/legible', { ruta, sh })
+      return true
+    })
+  )
+
+  checkRun('ganchos3 (b2): updatedToolOutput de más de 64 KB o no-texto se ignora (la salida original llega intacta)', () =>
+    conRaiz(async (root) => {
+      const grande = archivoGanchos(join(root, 'g1'), { PostToolUse: [{ matcher: 'bash|shell', js: "process.stdout.write(JSON.stringify({ updatedToolOutput: 'X'.repeat(70000) }))" }] })
+      const noTexto = archivoGanchos(join(root, 'g2'), { PostToolUse: [{ matcher: 'bash|shell', js: SALIDA({ updatedToolOutput: { a: 1 } }) }] })
+      for (const [k, file] of [['grande', grande], ['no-texto', noTexto]]) {
+        const r = await motor({ root: join(root, k), git: true, env: GANCHOS_ENV(file), inline: { permission: { bash: 'allow' } }, decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? shellDe('echo ORIGINAL_INTACTO') : null) })
+        const sh = r.toolParts[0]?.output ?? ''
+        exige(sh.includes('ORIGINAL_INTACTO') && !/filtró/.test(sh) && !sh.includes('XXXXXXXXXX'), `updatedToolOutput ${k} no se ignoró`, sh.slice(0, 300))
+      }
+      return true
+    })
+  )
+
+  checkRun('ganchos3 (c): PostToolUseFailure → un read de un archivo inexistente llega al modelo como error con «[Gancho de usuario]: pista» y la parte queda en error', () =>
+    conRaiz(async (root, proj) => {
+      const file = archivoGanchos(join(root, 'g'), { PostToolUseFailure: [{ js: SALIDA('pista') }] })
+      const r = await motor({ root, git: true, env: GANCHOS_ENV(file), reply: 'once', decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { name: 'read', args: { filePath: join(proj, 'no-existe.txt') } } : null) })
+      const p = r.toolParts[0]
+      exige(p?.status === 'error', 'el read inexistente no terminó en error (el gancho no puede convertir el fallo en éxito)', p)
+      exige(/\[Gancho de usuario\]: pista/.test(p.output), 'el error no lleva «[Gancho de usuario]: pista»', p.output)
+      exige(r.toolMessages.some((t) => /\[Gancho de usuario\]: pista/.test(t)), 'el modelo no vio la pista en el resultado de la herramienta', r.toolMessages)
+      return true
+    })
+  )
+
+  checkRun('ganchos3 (d): PermissionDenied → una regla bash deny dispara el gancho (archivo con tool:"bash", origen "regla", SIN el comando) y la herramienta sigue negada', () =>
+    conRaiz(async (root, proj) => {
+      const marca = join(root, 'denegado.json')
+      const file = archivoGanchos(join(root, 'g'), { PermissionDenied: [{ js: `require('fs').writeFileSync(${JSON.stringify(marca)}, require('fs').readFileSync(0, 'utf8'))` }] })
+      const r = await motor({
+        root,
+        git: true,
+        env: GANCHOS_ENV(file),
+        inline: { permission: { bash: { '*': 'allow', 'rm *': 'deny' } } },
+        decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? shellDe('rm -rf SECRETO_DEL_COMANDO_QWE') : null),
+        http: async () => {
+          await espera(() => existsSync(marca), 6000)
+          return existsSync(marca) ? readFileSync(marca, 'utf8') : null
+        }
+      })
+      exige(r.toolParts[0]?.status === 'error', 'la herramienta negada no terminó en error', r.toolParts[0])
+      exige(r.http, 'el gancho PermissionDenied no escribió su archivo')
+      const e = JSON.parse(r.http)
+      exige(e.tool === 'bash' && e.origen === 'regla', 'el gancho no recibió tool:"bash" y origen:"regla"', e)
+      exige(!r.http.includes('SECRETO_DEL_COMANDO_QWE'), 'el gancho recibió el comando (no debe ver los argumentos)', r.http)
+      return true
+    })
+  )
+
+  checkRun('ganchos3 (e): PostToolUse sobre un conector MCP: el gancho ve la salida real del conector y el modelo recibe el texto de reemplazo', () =>
+    conRaiz(async (root) => {
+      const vistas = join(root, 'vista.txt')
+      const file = archivoGanchos(join(root, 'g'), {
+        PostToolUse: [{ matcher: 'x_start', js: STDIN + `require('fs').writeFileSync(${JSON.stringify(vistas)}, String(e.output)); process.stdout.write(JSON.stringify({ updatedToolOutput: 'TEXTO_NUEVO_DEL_GANCHO' }))` }]
+      })
+      const r = await motor({ root, git: true, env: GANCHOS_ENV(file), mcpServers: ['x'], inline: { permission: { 'x_*': 'allow' } }, call: { name: 'x_start', args: { command: 'ECO_DEL_CONECTOR' } } })
+      const p = r.toolParts[0]
+      exige(p?.status === 'completed' && p.output.includes('TEXTO_NUEVO_DEL_GANCHO'), 'el modelo no recibió el texto de reemplazo del gancho', p)
+      exige(existsSync(vistas) && readFileSync(vistas, 'utf8').includes('ECO_DEL_CONECTOR'), 'el gancho no vio la salida real del conector en `output`', existsSync(vistas) ? readFileSync(vistas, 'utf8') : 'sin archivo')
+      return true
+    })
+  )
+
+  checkRun('ganchos3 (f): ganchos plantados en el proyecto (.claude/settings.json y settings.local.json) NO se ejecutan; solo LAZUNOX_HOOKS_FILE', () =>
+    conRaiz(async (root, proj) => {
+      const cmd = (n) => `"${process.execPath}" -e "require('fs').writeFileSync('${join(root, n)}', 'ejecutado')"`
+      const plantado = (n) => JSON.stringify({ hooks: { PostToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: cmd(n) }] }], SessionStart: [{ hooks: [{ type: 'command', command: cmd(n + '-ini') }] }] } })
+      const r = await motor({
+        root,
+        git: true,
+        env: { OPENCODE_DISABLE_DEFAULT_PLUGINS: '0' },
+        projectFiles: { 'a.txt': 'x\n', '.claude/settings.json': plantado('pwn1'), '.claude/settings.local.json': plantado('pwn2') },
+        reply: 'once',
+        decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { name: 'read', args: { filePath: join(proj, 'a.txt') } } : null),
+        http: async () => {
+          await sleep(1500)
+          return readdirSync(root).filter((f) => f.startsWith('pwn'))
+        }
+      })
+      exige(r.toolParts[0]?.status === 'completed', 'la lectura de control no se completó', r.toolParts[0])
+      exige(r.http.length === 0, 'se ejecutó un gancho plantado en el proyecto', r.http)
+      // Control: un gancho equivalente (formato plano del archivo de ganchos), dado por la vía legítima (LAZUNOX_HOOKS_FILE), sí se ejecuta: así la prueba no pasa en vacío.
+      writeFileSync(join(root, 'legitimo.json'), JSON.stringify({ hooks: { PostToolUse: [{ matcher: '*', command: cmd('ctrl'), timeout: 10 }] } }))
+      const c = await motor({
+        root: join(root, 'c'),
+        git: true,
+        env: GANCHOS_ENV(join(root, 'legitimo.json')),
+        projectFiles: { 'a.txt': 'x\n' },
+        reply: 'once',
+        decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { name: 'read', args: { filePath: join(root, 'c', 'proj', 'a.txt') } } : null),
+        http: async () => {
+          await sleep(1500)
+          return readdirSync(root).filter((f) => f.startsWith('ctrl'))
+        }
+      })
+      exige(c.http.length >= 1, 'control: el gancho dado por LAZUNOX_HOOKS_FILE tampoco se ejecutó (la prueba sería en vacío)', c.http)
+      return true
+    })
+  )
+
   // ═══ unicode (6.5): edición tolerante a comillas, rayas y NBSP ══════════════════════════════════════════════
   const CARTA = ['línea uno', '“Gracias” — atte.', 'hola mundo', 'cierre ‘simple’…', ''].join('\n')
   const edicion = (proj, oldString, newString) => ({ name: 'edit', args: { filePath: join(proj, 'carta.txt'), oldString, newString } })
