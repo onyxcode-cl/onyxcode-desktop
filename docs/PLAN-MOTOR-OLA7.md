@@ -498,6 +498,12 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 Después de cada tanda: motor nuevo (`lazunox.13` en adelante) con compilación reproducible, probe 100 % en las 3 plataformas, y **publicar solo con la confirmación de Ben**. La app no dice «paridad» ni «mejor» hasta que se cumpla el cierre de la §1.
 
+### Estado de la tanda A (2026-10-26, noche)
+
+Hecho en el fork (ramas locales sin push; integradas en `feat/ola7-a` y probadas en el Mac, typecheck limpio): **7.3, 7.4, 7.8, 7.9 (`@imports`), 7.13, 7.18, 7.21 y 7.22**. Pruebas de la integración: `test/lazunox` 1285, `test/session` 420, `test/tool` 349, `test/permission` 106, `test/mcp` 65, `test/patch` 39, todas sin fallos; `test/server` tiene 2 fallos que **ya existen en la base** (PTY y registros HTTP); el ejercicio de cobertura HTTP da 226/226 en sus tres modos. Una primera corrida de `test/lazunox` mostró 2 fallos intermitentes (uno por tiempo de espera, 5 s, bajo carga) que no se repitieron al correr la carpeta de nuevo: se anotan como intermitentes, sin causa confirmada.
+Hecho en la app: **7.1** (tareas T24-T30 y proveedor falso, rama `feat/ola7-banco`).
+**Pendiente de la tanda A:** 7.2 (medir y decidir qué se enciende) y la línea base real de 7.1, ambas con modelo, y la primera corrida de 7.19. Nada de esto está publicado ni integrado en la app: faltan las rutas nuevas (`/permission/siempre`, `/session/:id/uso`) en `api-routes.json` y en la política remota.
+
 ## 5. Reglas operativas
 
 - Todo lo pesado (compilar, `bun test` completo, banco) va al VPS; en el Mac, a lo sumo 1 o 2 agentes pesados.
