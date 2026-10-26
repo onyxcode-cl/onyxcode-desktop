@@ -16,7 +16,7 @@
 // Uso:
 //   node scripts/engine-bench/run.mjs --motor <binario> [--tareas T01,T05] [--repeticiones 3] [--modelo opencode/deepseek-v4.1-flash-free]
 //        [--proveedor-falso [--sin-guion T05,T09]] [--env K=V ...] [--max-pasos 60] [--presupuesto-tokens 400000] [--timeout-min 15]
-//        [--typescript <carpeta de typescript>] [--salida <archivo|carpeta>] [--conservar] [--espera-cuota-seg 60]
+//        [--auth-archivo <auth.json>] [--typescript <carpeta de typescript>] [--salida <archivo|carpeta>] [--conservar] [--espera-cuota-seg 60]
 //   node scripts/engine-bench/run.mjs --motor <binario> --tareas T17,T18 --reanudar bench-….json   (repite SOLO esas tareas, p. ej. tras agotar la cuota,
 //        y deja un archivo nuevo con el resto tal cual estaba; mismo modelo y motor)
 //   node scripts/engine-bench/run.mjs --comparar antes.json despues.json     (imprime el antes/después; no corre el motor)
@@ -32,7 +32,7 @@
 // Salida: `bench-<fecha>.json` + tabla Markdown. Métricas por tarea (mediana de las corridas): éxito (k de n), tokens enviados
 // (`input + cache.read`), tokens de salida, caché leída / enviados, pasos, llamadas, minutos y tokens por éxito.
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -67,6 +67,7 @@ function leerArgs(argv) {
       case '--comparar': a.comparar = [valor(i, n), argv[i + 2]]; if (!a.comparar[1]) throw new Error('--comparar necesita dos archivos'); i += 2; break
       case '--proveedor-falso': a.falso = true; break
       case '--conservar': a.conservar = true; break
+      case '--auth-archivo': a.authArchivo = valor(i++, n); break
       case '--reanudar': a.reanudar = valor(i++, n); break
       case '--sin-guion': a.sinGuion = valor(i++, n).split(',').map((x) => x.trim().toUpperCase()); break
       case '--lista': a.lista = true; break
@@ -209,6 +210,15 @@ async function unaCorrida(cfg, tarea, ctx) {
   let verificacion
   try {
     tarea.preparar(proj, ctx)
+    // Proveedor con clave (p. ej. un plan de pago): se copia el auth.json indicado al HOME temporal de la corrida (0600). La clave nunca
+    // se lee ni se guarda en el resultado; el HOME temporal se borra al terminar.
+    const auth = cfg.authArchivo ?? process.env.BENCH_AUTH_FILE
+    if (auth && !cfg.falso) {
+      const dst = join(home, '.local/share/opencode')
+      mkdirSync(dst, { recursive: true })
+      copyFileSync(auth, join(dst, 'auth.json'))
+      chmodSync(join(dst, 'auth.json'), 0o600)
+    }
     spawnSync('git', ['init', '-q'], { cwd: proj })
     spawnSync('git', ['add', '-A'], { cwd: proj })
     spawnSync('git', ['-c', 'user.name=banco', '-c', 'user.email=banco@lazunox.local', 'commit', '-qm', 'inicio', '--allow-empty'], { cwd: proj })
@@ -473,6 +483,13 @@ async function principal() {
         c = await unaCorrida(cfg, tarea, ctx)
       }
       corridas.push(c)
+      if (cfg.salida && /\.json$/.test(cfg.salida)) {
+        // Escritura incremental: si algo se corta, lo medido hasta aquí queda en el archivo (parcial).
+        const parcial = { ...salida, parcial: true, tareas: { ...salida.tareas, [tarea.id]: { ...base, corridas, resumen: resumir(corridas) } } }
+        parcial.agregados = agregados(parcial.tareas)
+        mkdirSync(dirname(resolve(cfg.salida)), { recursive: true })
+        writeFileSync(cfg.salida, JSON.stringify(parcial, null, 2) + '\n')
+      }
       console.error(`${tarea.id} #${i}: ${c.cuota ? 'CUOTA' : c.ok ? 'ok' : 'FALLA'} (${c.motivo}) · ${c.pasos} pasos · ${c.tokens.enviados + c.tokens.salida} tokens · ${(c.tiempo_ms / 1000).toFixed(1)} s${c.ok ? '' : ' · ' + (c.detalle ?? '').slice(0, 140)}`)
     }
     salida.tareas[tarea.id] = { ...base, corridas, resumen: resumir(corridas) }

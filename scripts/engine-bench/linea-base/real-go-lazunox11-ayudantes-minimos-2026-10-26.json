@@ -1,0 +1,1591 @@
+{
+  "version": 1,
+  "fecha": "2026-10-26T10:06:12.979Z",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "repeticiones": 3,
+  "config": {
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": [
+      "LAZUNOX_AYUDANTES_MINIMOS=1"
+    ]
+  },
+  "tareas": {
+    "T01": {
+      "nombre": "Arreglar un bug con prueba que falla (JS)",
+      "mide": "Lectura justa, edición",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16791,
+            "salida": 378,
+            "cache_leida": 30208,
+            "enviados": 46999
+          },
+          "pasos": 5,
+          "llamadas": 6,
+          "herramientas": {
+            "bash": 2,
+            "glob": 1,
+            "read": 2,
+            "edit": 1
+          },
+          "bytes_resultados": 2649,
+          "permisos_negados": 0,
+          "tiempo_ms": 10183,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8179,
+            "salida": 353,
+            "cache_leida": 38528,
+            "enviados": 46707
+          },
+          "pasos": 5,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 3,
+            "read": 1,
+            "edit": 1
+          },
+          "bytes_resultados": 2419,
+          "permisos_negados": 0,
+          "tiempo_ms": 10388,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16494,
+            "salida": 345,
+            "cache_leida": 30208,
+            "enviados": 46702
+          },
+          "pasos": 5,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 2,
+            "read": 2,
+            "edit": 1
+          },
+          "bytes_resultados": 2569,
+          "permisos_negados": 0,
+          "tiempo_ms": 10176,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 46707,
+        "tokens_salida_med": 353,
+        "cache_pct_med": 64.68245471286026,
+        "pasos_med": 5,
+        "llamadas_med": 5,
+        "minutos_med": 0.16971666666666665,
+        "tokens_por_exito": 47060
+      }
+    },
+    "T02": {
+      "nombre": "Añadir función + prueba (Python)",
+      "mide": "Plan corto",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10415,
+            "salida": 765,
+            "cache_leida": 45184,
+            "enviados": 55599
+          },
+          "pasos": 6,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 1676,
+          "permisos_negados": 0,
+          "tiempo_ms": 19097,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10177,
+            "salida": 625,
+            "cache_leida": 45440,
+            "enviados": 55617
+          },
+          "pasos": 6,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 4,
+            "edit": 1
+          },
+          "bytes_resultados": 1885,
+          "permisos_negados": 0,
+          "tiempo_ms": 13087,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 17201,
+            "salida": 896,
+            "cache_leida": 39808,
+            "enviados": 57009
+          },
+          "pasos": 6,
+          "llamadas": 8,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "read": 2,
+            "edit": 2
+          },
+          "bytes_resultados": 2389,
+          "permisos_negados": 0,
+          "tiempo_ms": 12974,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 55617,
+        "tokens_salida_med": 765,
+        "cache_pct_med": 81.26764869871761,
+        "pasos_med": 6,
+        "llamadas_med": 5,
+        "minutos_med": 0.21811666666666665,
+        "tokens_por_exito": 56364
+      }
+    },
+    "T03": {
+      "nombre": "«¿Dónde se valida X?» en un repo de 60 archivos",
+      "mide": "Ayudante de lectura, modelo pequeño",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10119,
+            "salida": 321,
+            "cache_leida": 45440,
+            "enviados": 55559
+          },
+          "pasos": 6,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 4,
+            "write": 1
+          },
+          "bytes_resultados": 2248,
+          "permisos_negados": 0,
+          "tiempo_ms": 11030,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10458,
+            "salida": 228,
+            "cache_leida": 27008,
+            "enviados": 37466
+          },
+          "pasos": 4,
+          "llamadas": 3,
+          "herramientas": {
+            "bash": 2,
+            "write": 1
+          },
+          "bytes_resultados": 3703,
+          "permisos_negados": 0,
+          "tiempo_ms": 7488,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16443,
+            "salida": 234,
+            "cache_leida": 20864,
+            "enviados": 37307
+          },
+          "pasos": 4,
+          "llamadas": 4,
+          "herramientas": {
+            "bash": 1,
+            "grep": 1,
+            "read": 1,
+            "write": 1
+          },
+          "bytes_resultados": 2401,
+          "permisos_negados": 0,
+          "tiempo_ms": 9067,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 37466,
+        "tokens_salida_med": 234,
+        "cache_pct_med": 72.08669193402018,
+        "pasos_med": 4,
+        "llamadas_med": 4,
+        "minutos_med": 0.15111666666666668,
+        "tokens_por_exito": 37694
+      }
+    },
+    "T04": {
+      "nombre": "Renombrar un símbolo en 5 archivos",
+      "mide": "Ediciones múltiples",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8934,
+            "salida": 799,
+            "cache_leida": 40064,
+            "enviados": 48998
+          },
+          "pasos": 5,
+          "llamadas": 8,
+          "herramientas": {
+            "bash": 3,
+            "edit": 5
+          },
+          "bytes_resultados": 3422,
+          "permisos_negados": 0,
+          "tiempo_ms": 12056,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8156,
+            "salida": 310,
+            "cache_leida": 29056,
+            "enviados": 37212
+          },
+          "pasos": 4,
+          "llamadas": 3,
+          "herramientas": {
+            "grep": 1,
+            "bash": 2
+          },
+          "bytes_resultados": 3106,
+          "permisos_negados": 0,
+          "tiempo_ms": 10571,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8564,
+            "salida": 741,
+            "cache_leida": 39424,
+            "enviados": 47988
+          },
+          "pasos": 5,
+          "llamadas": 8,
+          "herramientas": {
+            "bash": 3,
+            "edit": 5
+          },
+          "bytes_resultados": 3058,
+          "permisos_negados": 0,
+          "tiempo_ms": 11973,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 47988,
+        "tokens_salida_med": 741,
+        "cache_pct_med": 81.76660271847831,
+        "pasos_med": 5,
+        "llamadas_med": 8,
+        "minutos_med": 0.19955,
+        "tokens_por_exito": 48729
+      }
+    },
+    "T05": {
+      "nombre": "Leer un log de 3 MB y escribir la causa",
+      "mide": "Truncado y poda",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 43413,
+            "salida": 2382,
+            "cache_leida": 262656,
+            "enviados": 306069
+          },
+          "pasos": 13,
+          "llamadas": 21,
+          "herramientas": {
+            "bash": 20,
+            "write": 1
+          },
+          "bytes_resultados": 41013,
+          "permisos_negados": 0,
+          "tiempo_ms": 61444,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 25296,
+            "salida": 633,
+            "cache_leida": 134400,
+            "enviados": 159696
+          },
+          "pasos": 9,
+          "llamadas": 8,
+          "herramientas": {
+            "bash": 7,
+            "write": 1
+          },
+          "bytes_resultados": 36794,
+          "permisos_negados": 0,
+          "tiempo_ms": 26255,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16157,
+            "salida": 666,
+            "cache_leida": 82688,
+            "enviados": 98845
+          },
+          "pasos": 7,
+          "llamadas": 6,
+          "herramientas": {
+            "bash": 5,
+            "write": 1
+          },
+          "bytes_resultados": 17747,
+          "permisos_negados": 0,
+          "tiempo_ms": 17374,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 159696,
+        "tokens_salida_med": 666,
+        "cache_pct_med": 84.15990381725278,
+        "pasos_med": 9,
+        "llamadas_med": 8,
+        "minutos_med": 0.4375833333333333,
+        "tokens_por_exito": 160329
+      }
+    },
+    "T06": {
+      "nombre": "Refactor que obliga a releer el mismo archivo",
+      "mide": "No releer",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11376,
+            "salida": 1020,
+            "cache_leida": 29696,
+            "enviados": 41072
+          },
+          "pasos": 4,
+          "llamadas": 10,
+          "herramientas": {
+            "read": 4,
+            "bash": 2,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 3855,
+          "permisos_negados": 0,
+          "tiempo_ms": 14917,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9486,
+            "salida": 1057,
+            "cache_leida": 51456,
+            "enviados": 60942
+          },
+          "pasos": 6,
+          "llamadas": 11,
+          "herramientas": {
+            "bash": 2,
+            "glob": 1,
+            "read": 4,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 4015,
+          "permisos_negados": 0,
+          "tiempo_ms": 13844,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11381,
+            "salida": 1042,
+            "cache_leida": 29440,
+            "enviados": 40821
+          },
+          "pasos": 4,
+          "llamadas": 9,
+          "herramientas": {
+            "bash": 2,
+            "read": 3,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 3685,
+          "permisos_negados": 0,
+          "tiempo_ms": 10694,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 41072,
+        "tokens_salida_med": 1042,
+        "cache_pct_med": 72.30229840280484,
+        "pasos_med": 4,
+        "llamadas_med": 10,
+        "minutos_med": 0.23073333333333335,
+        "tokens_por_exito": 42092
+      }
+    },
+    "T07": {
+      "nombre": "Arreglar error de tipos (TS)",
+      "mide": "LSP (ola 4)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 18930,
+            "salida": 514,
+            "cache_leida": 18304,
+            "enviados": 37234
+          },
+          "pasos": 4,
+          "llamadas": 4,
+          "herramientas": {
+            "bash": 4
+          },
+          "bytes_resultados": 2089,
+          "permisos_negados": 0,
+          "tiempo_ms": 14257,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10244,
+            "salida": 822,
+            "cache_leida": 51584,
+            "enviados": 61828
+          },
+          "pasos": 6,
+          "llamadas": 9,
+          "herramientas": {
+            "bash": 4,
+            "read": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 4536,
+          "permisos_negados": 0,
+          "tiempo_ms": 23106,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11051,
+            "salida": 832,
+            "cache_leida": 48000,
+            "enviados": 59051
+          },
+          "pasos": 6,
+          "llamadas": 9,
+          "herramientas": {
+            "bash": 4,
+            "read": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 2647,
+          "permisos_negados": 0,
+          "tiempo_ms": 18686,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 59051,
+        "tokens_salida_med": 822,
+        "cache_pct_med": 81.28566832060423,
+        "pasos_med": 6,
+        "llamadas_med": 9,
+        "minutos_med": 0.31143333333333334,
+        "tokens_por_exito": 59883
+      }
+    },
+    "T08": {
+      "nombre": "Resumir 3 módulos con 3 ayudantes en paralelo",
+      "mide": "Ayudantes, resultado acotado",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10672,
+            "salida": 927,
+            "cache_leida": 27264,
+            "enviados": 37936
+          },
+          "pasos": 4,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 1,
+            "task": 3,
+            "write": 1
+          },
+          "bytes_resultados": 2208,
+          "permisos_negados": 0,
+          "tiempo_ms": 15974,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11152,
+            "salida": 1339,
+            "cache_leida": 37120,
+            "enviados": 48272
+          },
+          "pasos": 5,
+          "llamadas": 6,
+          "herramientas": {
+            "bash": 2,
+            "task": 3,
+            "write": 1
+          },
+          "bytes_resultados": 2823,
+          "permisos_negados": 0,
+          "tiempo_ms": 23397,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9514,
+            "salida": 1609,
+            "cache_leida": 53248,
+            "enviados": 62762
+          },
+          "pasos": 6,
+          "llamadas": 10,
+          "herramientas": {
+            "bash": 2,
+            "glob": 1,
+            "task": 3,
+            "read": 3,
+            "write": 1
+          },
+          "bytes_resultados": 6357,
+          "permisos_negados": 0,
+          "tiempo_ms": 21896,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 48272,
+        "tokens_salida_med": 1339,
+        "cache_pct_med": 76.8975803778588,
+        "pasos_med": 5,
+        "llamadas_med": 6,
+        "minutos_med": 0.36493333333333333,
+        "tokens_por_exito": 49611
+      }
+    },
+    "T09": {
+      "nombre": "Sesión larga: 8 pedidos encadenados",
+      "mide": "Compactación, coherencia",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 17360,
+            "salida": 4302,
+            "cache_leida": 311040,
+            "enviados": 328400
+          },
+          "pasos": 29,
+          "llamadas": 21,
+          "herramientas": {
+            "bash": 8,
+            "write": 3,
+            "read": 2,
+            "edit": 8
+          },
+          "bytes_resultados": 2934,
+          "permisos_negados": 0,
+          "tiempo_ms": 77604,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 20303,
+            "salida": 4805,
+            "cache_leida": 429184,
+            "enviados": 449487
+          },
+          "pasos": 36,
+          "llamadas": 28,
+          "herramientas": {
+            "bash": 9,
+            "write": 3,
+            "read": 6,
+            "edit": 10
+          },
+          "bytes_resultados": 8392,
+          "permisos_negados": 0,
+          "tiempo_ms": 87904,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 13105,
+            "salida": 4898,
+            "cache_leida": 357120,
+            "enviados": 370225
+          },
+          "pasos": 31,
+          "llamadas": 23,
+          "herramientas": {
+            "bash": 6,
+            "write": 3,
+            "read": 2,
+            "edit": 12
+          },
+          "bytes_resultados": 2360,
+          "permisos_negados": 0,
+          "tiempo_ms": 80469,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 370225,
+        "tokens_salida_med": 4805,
+        "cache_pct_med": 95.48307292535713,
+        "pasos_med": 31,
+        "llamadas_med": 23,
+        "minutos_med": 1.34115,
+        "tokens_por_exito": 375123
+      }
+    },
+    "T10": {
+      "nombre": "Tarea de 6 pasos con lista de tareas",
+      "mide": "Plan ejecutable",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 13831,
+            "salida": 3027,
+            "cache_leida": 162560,
+            "enviados": 176391
+          },
+          "pasos": 15,
+          "llamadas": 14,
+          "herramientas": {
+            "todowrite": 7,
+            "write": 6,
+            "bash": 1
+          },
+          "bytes_resultados": 7437,
+          "permisos_negados": 0,
+          "tiempo_ms": 36977,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 14693,
+            "salida": 2663,
+            "cache_leida": 145664,
+            "enviados": 160357
+          },
+          "pasos": 14,
+          "llamadas": 13,
+          "herramientas": {
+            "todowrite": 6,
+            "write": 6,
+            "bash": 1
+          },
+          "bytes_resultados": 6286,
+          "permisos_negados": 0,
+          "tiempo_ms": 35629,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16089,
+            "salida": 3209,
+            "cache_leida": 164352,
+            "enviados": 180441
+          },
+          "pasos": 15,
+          "llamadas": 14,
+          "herramientas": {
+            "todowrite": 7,
+            "write": 6,
+            "bash": 1
+          },
+          "bytes_resultados": 8137,
+          "permisos_negados": 0,
+          "tiempo_ms": 38304,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 176391,
+        "tokens_salida_med": 3027,
+        "cache_pct_med": 91.08351206211448,
+        "pasos_med": 15,
+        "llamadas_med": 14,
+        "minutos_med": 0.6162833333333333,
+        "tokens_por_exito": 179418
+      }
+    },
+    "T11": {
+      "nombre": "Migración con verificación por paso",
+      "mide": "Plan ejecutable",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11603,
+            "salida": 913,
+            "cache_leida": 99840,
+            "enviados": 111443
+          },
+          "pasos": 11,
+          "llamadas": 12,
+          "herramientas": {
+            "bash": 6,
+            "read": 2,
+            "write": 4
+          },
+          "bytes_resultados": 3255,
+          "permisos_negados": 0,
+          "tiempo_ms": 22820,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 17985,
+            "salida": 840,
+            "cache_leida": 91904,
+            "enviados": 109889
+          },
+          "pasos": 11,
+          "llamadas": 11,
+          "herramientas": {
+            "bash": 7,
+            "write": 4
+          },
+          "bytes_resultados": 2905,
+          "permisos_negados": 0,
+          "tiempo_ms": 24639,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9726,
+            "salida": 989,
+            "cache_leida": 101504,
+            "enviados": 111230
+          },
+          "pasos": 11,
+          "llamadas": 11,
+          "herramientas": {
+            "bash": 6,
+            "read": 1,
+            "write": 4
+          },
+          "bytes_resultados": 3091,
+          "permisos_negados": 0,
+          "tiempo_ms": 18942,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 111230,
+        "tokens_salida_med": 913,
+        "cache_pct_med": 89.58839945084034,
+        "pasos_med": 11,
+        "llamadas_med": 11,
+        "minutos_med": 0.38033333333333336,
+        "tokens_por_exito": 112219
+      }
+    },
+    "T12": {
+      "nombre": "Usar un conector MCP de prueba con 40 herramientas",
+      "mide": "Búsqueda diferida, topes MCP",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 21596,
+            "salida": 258,
+            "cache_leida": 47744,
+            "enviados": 69340
+          },
+          "pasos": 3,
+          "llamadas": 4,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "write": 1
+          },
+          "bytes_resultados": 87,
+          "permisos_negados": 0,
+          "tiempo_ms": 7730,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 46499,
+            "salida": 320,
+            "cache_leida": 45696,
+            "enviados": 92195
+          },
+          "pasos": 4,
+          "llamadas": 5,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "bash": 1,
+            "write": 1
+          },
+          "bytes_resultados": 97,
+          "permisos_negados": 0,
+          "tiempo_ms": 11109,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 23519,
+            "salida": 314,
+            "cache_leida": 68736,
+            "enviados": 92255
+          },
+          "pasos": 4,
+          "llamadas": 5,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "write": 1,
+            "read": 1
+          },
+          "bytes_resultados": 257,
+          "permisos_negados": 0,
+          "tiempo_ms": 10346,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 92195,
+        "tokens_salida_med": 314,
+        "cache_pct_med": 68.85491779636574,
+        "pasos_med": 4,
+        "llamadas_med": 5,
+        "minutos_med": 0.17243333333333333,
+        "tokens_por_exito": 92515
+      }
+    },
+    "T13": {
+      "nombre": "«Haz pasar las pruebas» (3 fallos)",
+      "mide": "Modo objetivo (ola 3)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10414,
+            "salida": 573,
+            "cache_leida": 37248,
+            "enviados": 47662
+          },
+          "pasos": 5,
+          "llamadas": 7,
+          "herramientas": {
+            "bash": 4,
+            "edit": 3
+          },
+          "bytes_resultados": 3208,
+          "permisos_negados": 0,
+          "tiempo_ms": 11437,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10444,
+            "salida": 568,
+            "cache_leida": 36992,
+            "enviados": 47436
+          },
+          "pasos": 5,
+          "llamadas": 6,
+          "herramientas": {
+            "bash": 3,
+            "edit": 3
+          },
+          "bytes_resultados": 3263,
+          "permisos_negados": 0,
+          "tiempo_ms": 12982,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10105,
+            "salida": 418,
+            "cache_leida": 27008,
+            "enviados": 37113
+          },
+          "pasos": 4,
+          "llamadas": 3,
+          "herramientas": {
+            "bash": 3
+          },
+          "bytes_resultados": 3090,
+          "permisos_negados": 0,
+          "tiempo_ms": 10291,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 47436,
+        "tokens_salida_med": 568,
+        "cache_pct_med": 77.98296652331562,
+        "pasos_med": 5,
+        "llamadas_med": 6,
+        "minutos_med": 0.19061666666666666,
+        "tokens_por_exito": 48004
+      }
+    },
+    "T14": {
+      "nombre": "Revisar un diff con un bug sembrado",
+      "mide": "Revisor (ola 3)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11259,
+            "salida": 482,
+            "cache_leida": 26880,
+            "enviados": 38139
+          },
+          "pasos": 4,
+          "llamadas": 3,
+          "herramientas": {
+            "bash": 2,
+            "write": 1
+          },
+          "bytes_resultados": 2164,
+          "permisos_negados": 0,
+          "tiempo_ms": 20374,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9218,
+            "salida": 518,
+            "cache_leida": 49408,
+            "enviados": 58626
+          },
+          "pasos": 6,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 4,
+            "write": 1
+          },
+          "bytes_resultados": 2872,
+          "permisos_negados": 0,
+          "tiempo_ms": 16443,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11063,
+            "salida": 654,
+            "cache_leida": 37248,
+            "enviados": 48311
+          },
+          "pasos": 5,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 4,
+            "write": 1
+          },
+          "bytes_resultados": 2290,
+          "permisos_negados": 0,
+          "tiempo_ms": 15990,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 48311,
+        "tokens_salida_med": 518,
+        "cache_pct_med": 77.1004533129101,
+        "pasos_med": 5,
+        "llamadas_med": 5,
+        "minutos_med": 0.27405,
+        "tokens_por_exito": 48965
+      }
+    },
+    "T15": {
+      "nombre": "Lote: 3 módulos independientes",
+      "mide": "/lote (ola 4)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10214,
+            "salida": 806,
+            "cache_leida": 35840,
+            "enviados": 46054
+          },
+          "pasos": 5,
+          "llamadas": 6,
+          "herramientas": {
+            "bash": 3,
+            "edit": 3
+          },
+          "bytes_resultados": 1610,
+          "permisos_negados": 0,
+          "tiempo_ms": 12556,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8567,
+            "salida": 918,
+            "cache_leida": 39168,
+            "enviados": 47735
+          },
+          "pasos": 5,
+          "llamadas": 11,
+          "herramientas": {
+            "bash": 2,
+            "read": 6,
+            "edit": 3
+          },
+          "bytes_resultados": 2337,
+          "permisos_negados": 0,
+          "tiempo_ms": 11669,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10092,
+            "salida": 475,
+            "cache_leida": 45184,
+            "enviados": 55276
+          },
+          "pasos": 6,
+          "llamadas": 5,
+          "herramientas": {
+            "bash": 5
+          },
+          "bytes_resultados": 2297,
+          "permisos_negados": 0,
+          "tiempo_ms": 12989,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 47735,
+        "tokens_salida_med": 806,
+        "cache_pct_med": 81.74252840292351,
+        "pasos_med": 5,
+        "llamadas_med": 6,
+        "minutos_med": 0.20926666666666666,
+        "tokens_por_exito": 48653
+      }
+    },
+    "T16": {
+      "nombre": "Oficina: CSV de gastos → informe con totales exactos",
+      "mide": "Datos",
+      "categoria": "oficina",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10744,
+            "salida": 489,
+            "cache_leida": 28672,
+            "enviados": 39416
+          },
+          "pasos": 4,
+          "llamadas": 4,
+          "herramientas": {
+            "bash": 2,
+            "read": 1,
+            "write": 1
+          },
+          "bytes_resultados": 2996,
+          "permisos_negados": 0,
+          "tiempo_ms": 9095,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8403,
+            "salida": 536,
+            "cache_leida": 40576,
+            "enviados": 48979
+          },
+          "pasos": 5,
+          "llamadas": 4,
+          "herramientas": {
+            "bash": 3,
+            "write": 1
+          },
+          "bytes_resultados": 2761,
+          "permisos_negados": 0,
+          "tiempo_ms": 11231,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8565,
+            "salida": 451,
+            "cache_leida": 40064,
+            "enviados": 48629
+          },
+          "pasos": 5,
+          "llamadas": 4,
+          "herramientas": {
+            "bash": 3,
+            "write": 1
+          },
+          "bytes_resultados": 2677,
+          "permisos_negados": 0,
+          "tiempo_ms": 10823,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 48629,
+        "tokens_salida_med": 489,
+        "cache_pct_med": 82.38705299306997,
+        "pasos_med": 5,
+        "llamadas_med": 4,
+        "minutos_med": 0.18038333333333334,
+        "tokens_por_exito": 49080
+      }
+    },
+    "T17": {
+      "nombre": "Oficina: corregir acentos y formato de una carta",
+      "mide": "Edición de texto en español",
+      "categoria": "oficina",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16852,
+            "salida": 281,
+            "cache_leida": 10752,
+            "enviados": 27604
+          },
+          "pasos": 3,
+          "llamadas": 2,
+          "herramientas": {
+            "bash": 1,
+            "write": 1
+          },
+          "bytes_resultados": 657,
+          "permisos_negados": 0,
+          "tiempo_ms": 18488,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 19104,
+            "salida": 325,
+            "cache_leida": 8832,
+            "enviados": 27936
+          },
+          "pasos": 3,
+          "llamadas": 2,
+          "herramientas": {
+            "read": 1,
+            "write": 1
+          },
+          "bytes_resultados": 600,
+          "permisos_negados": 0,
+          "tiempo_ms": 15718,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9971,
+            "salida": 320,
+            "cache_leida": 17408,
+            "enviados": 27379
+          },
+          "pasos": 3,
+          "llamadas": 2,
+          "herramientas": {
+            "read": 1,
+            "write": 1
+          },
+          "bytes_resultados": 600,
+          "permisos_negados": 0,
+          "tiempo_ms": 11788,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 27604,
+        "tokens_salida_med": 320,
+        "cache_pct_med": 38.95087668453847,
+        "pasos_med": 3,
+        "llamadas_med": 2,
+        "minutos_med": 0.2619666666666667,
+        "tokens_por_exito": 27885
+      }
+    },
+    "T18": {
+      "nombre": "Oficina: ordenar 30 archivos en carpetas por fecha",
+      "mide": "Shell con cuidado",
+      "categoria": "oficina",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9833,
+            "salida": 489,
+            "cache_leida": 30464,
+            "enviados": 40297
+          },
+          "pasos": 4,
+          "llamadas": 3,
+          "herramientas": {
+            "bash": 3
+          },
+          "bytes_resultados": 4577,
+          "permisos_negados": 0,
+          "tiempo_ms": 11830,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10092,
+            "salida": 242,
+            "cache_leida": 18048,
+            "enviados": 28140
+          },
+          "pasos": 3,
+          "llamadas": 2,
+          "herramientas": {
+            "bash": 2
+          },
+          "bytes_resultados": 2319,
+          "permisos_negados": 0,
+          "tiempo_ms": 6951,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9988,
+            "salida": 307,
+            "cache_leida": 17536,
+            "enviados": 27524
+          },
+          "pasos": 3,
+          "llamadas": 2,
+          "herramientas": {
+            "bash": 2
+          },
+          "bytes_resultados": 2017,
+          "permisos_negados": 0,
+          "tiempo_ms": 7444,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 3,
+        "tokens_enviados_med": 28140,
+        "tokens_salida_med": 307,
+        "cache_pct_med": 64.136460554371,
+        "pasos_med": 3,
+        "llamadas_med": 2,
+        "minutos_med": 0.12406666666666667,
+        "tokens_por_exito": 28382
+      }
+    }
+  },
+  "agregados": {
+    "corridas": 54,
+    "exitos": 54,
+    "tasa_exito": 1,
+    "tokens_por_exito_med": 49563,
+    "minutos_p90": 0.6162833333333333
+  },
+  "nota": "Igual que lazunox11 pero con LAZUNOX_AYUDANTES_MINIMOS=1.",
+  "arquitectura_motor": "linux-arm64 (contenedor nativo)"
+}
