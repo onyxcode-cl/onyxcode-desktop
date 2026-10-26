@@ -136,9 +136,16 @@ if ($Install -and $setup -and -not $NoSmoke) {
   Check 'desinstalado: las distros de WSL no cambian (sin crear ni quitar ninguna)' ($wslBefore -ceq $wslAfter) "antes=[$wslBefore] despues=[$wslAfter]"
   if (($wslBefore -split ',') -cnotcontains 'Lazunox-Tareas') { Check 'desinstalado: no queda distro Lazunox-Tareas (no existia antes)' (($wslAfter -split ',') -cnotcontains 'Lazunox-Tareas') }
   Check 'desinstalado: carpeta de instalacion limpia' ($left -eq 0) "restos=$left"
-  $reg2 = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Lazunox*' }
+  # El desinstalador (una copia en %TEMP%) quita la clave de registro y los accesos directos unos segundos DESPUES de la carpeta: se espera hasta 30 s
+  # a que desaparezcan antes de darlos por restos (sin esa espera la prueba fallaba a veces aunque la desinstalacion fuera correcta).
+  $t1 = Get-Date
+  do {
+    $reg2 = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Lazunox*' }
+    $lnk = @("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Lazunox.lnk", "$env:USERPROFILE\Desktop\Lazunox.lnk") | Where-Object { Test-Path $_ }
+    if (-not $reg2 -and -not $lnk) { break }
+    Start-Sleep -Seconds 1
+  } while (((Get-Date) - $t1).TotalSeconds -lt 30)
   Check 'desinstalado: sin clave de registro' (-not $reg2)
-  $lnk = @("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Lazunox.lnk", "$env:USERPROFILE\Desktop\Lazunox.lnk") | Where-Object { Test-Path $_ }
   Check 'desinstalado: sin accesos directos' (-not $lnk) ($lnk -join ',')
   Remove-Item -Recurse -Force $inst -ErrorAction SilentlyContinue
 }
