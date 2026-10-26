@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import '../../../app/mobile/switch.css'
 import {
   BarChart3,
+  Bot,
   Blocks,
   Compass,
   Cpu,
@@ -41,6 +42,7 @@ import { EngineExperimentsSection } from './EngineExperimentsSection'
 import { TasksSection } from './TasksSection'
 import { initExtrasPrefs } from './extras'
 import { GeneralSection } from './GeneralSection'
+import { HelpersSection } from './HelpersSection'
 import { InstructionsSection } from './InstructionsSection'
 import { MemorySection } from './MemorySection'
 import { McpSection } from './McpSection'
@@ -69,6 +71,7 @@ export type SettingsSectionId =
   | 'computer'
   | 'automode'
   | 'engine'
+  | 'helpers'
   | 'browser'
   | 'remote'
   | 'telegram'
@@ -141,6 +144,14 @@ const SECTIONS: {
     icon: FlaskConical,
     View: EngineExperimentsSection,
     keys: SECTION_KEYS.engine
+  },
+  {
+    id: 'helpers',
+    group: 'agents',
+    label: lazy('settings.nav.helpers'),
+    icon: Bot,
+    View: HelpersSection,
+    keys: SECTION_KEYS.helpers
   },
   {
     id: 'computer',
@@ -274,7 +285,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
       (s.id !== 'computer' || caps.computer) &&
       (s.id !== 'remote' || caps.remote) &&
       // PWA del celular: MCP, navegador integrado, atajos de teclado y diagnóstico son del Mac (prohibidos o sin sentido en el celular).
-      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics', 'telegram', 'engine'].includes(s.id))
+      (!isRemoteSurface() || !['mcp', 'import', 'browser', 'shortcuts', 'diagnostics', 'telegram', 'engine', 'helpers'].includes(s.id))
   )
   const section: SettingsSectionId = sections.some((s) => s.id === chosen) ? chosen : 'general'
 

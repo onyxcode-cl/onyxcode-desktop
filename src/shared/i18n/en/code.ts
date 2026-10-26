@@ -766,5 +766,26 @@ export const code = {
   'code.compaction.upTo.blocked.revert': 'There are undone changes waiting: restore them or continue the conversation before compacting.',
   'code.compaction.upTo.err.invalido': 'That message cannot be used as a cut point.',
   'code.compaction.upTo.err.cola-grande': 'What you want to keep no longer fits. Pick a more recent message.',
-  'code.compaction.upTo.err.generic': 'Could not compact: {detail}'
+  'code.compaction.upTo.err.generic': 'Could not compact: {detail}',
+
+  // .claude/agents helpers when a folder is opened (F8-B220)
+  'code.helpers.claudeNotice.title': 'This folder brings helpers from .claude/agents',
+  'code.helpers.claudeNotice.body':
+    'Lazunox loads them as helpers of this conversation: {names}. Their permissions never exceed those of the session that starts them. You can review them in Settings › Helpers.',
+  'code.helpers.claudeNotice.more': 'and {n} more',
+  'code.helpers.claudeNotice.open': 'See helpers',
+  'code.helpers.claudeNotice.dismiss': 'Got it',
+  // Plan card (plan mode, experimental “modoPlan” flag, F8-B221)
+  'code.planReady.title': 'Plan ready',
+  'code.planReady.subtitle': 'The assistant proposes this plan before touching anything. You decide whether to go on.',
+  'code.planReady.path': 'Plan file: {path}',
+  'code.planReady.expand': 'Show the whole plan',
+  'code.planReady.collapse': 'Collapse the plan',
+  'code.planReady.truncated':
+    'The plan is long and you only see part of it here ({shown} of {total} KB). The whole file is at the path above.',
+  'code.planReady.approve': 'Approve and edit with questions',
+  'code.planReady.keep': 'Keep planning',
+  'code.planReady.approveHint': 'When you approve, the assistant starts editing. It will keep asking for your permission as usual.',
+  'code.planReady.waiting': 'Waiting for the assistant’s question…',
+  'code.planReady.aria': 'Plan proposed by the assistant'
 } as const satisfies Messages<typeof es>

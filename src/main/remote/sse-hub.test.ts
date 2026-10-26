@@ -77,6 +77,25 @@ describe('recorte de eventos del motor', () => {
     expect(trimOcEvent(ge('question.asked', proj, { id: 'q', sessionID: 's' }), 'main', trim)).not.toBeNull()
   })
 
+  it('el plan del modo plan (session.plan.*) NUNCA sale hacia el celular aunque `session.` esté permitido', async () => {
+    const { scope, trim } = setup(async () => feed([]))
+    await scope.get()
+    const listo = {
+      sessionID: 's',
+      callID: 'c',
+      ruta: '.opencode/plans/x.md',
+      rutaAbsoluta: `${proj}/.opencode/plans/x.md`,
+      contenido: 'plan',
+      truncado: false,
+      bytes: 4
+    }
+    for (const type of ['session.plan.listo', 'session.plan.decidido']) {
+      expect(trimOcEvent(ge(type, proj, listo), 'main', trim), type).toBeNull()
+      expect(trimOcEvent({ payload: { type, properties: listo } }, 'main', trim), `${type} global`).toBeNull()
+    }
+    expect(trimOcEvent(ge('session.idle', proj, { sessionID: 's' }), 'main', trim)).not.toBeNull()
+  })
+
   it('una sesión de otro proyecto no sale ni se aprende; una del ámbito sí', async () => {
     const { scope, trim, knowledge } = setup(async () => feed([]))
     await scope.get()

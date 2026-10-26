@@ -50,6 +50,7 @@ import { debounce } from '../../../lib/debounce'
 import { lruMax } from '../../../lib/lru'
 import { createFrameQueue } from '../../../lib/frame-queue'
 import { elicitationConn } from '../../../lib/elicitation-conn'
+import { findPlanQuestion, parsePlanDecided, parsePlanReady, planAnswers, type PlanReady } from '@shared/plan-mode'
 import {
   byId,
   createBuffers,
@@ -179,6 +180,8 @@ export interface CodeState {
   elicitations: Record<string, PendingElicitation>
   /** Avisos breves (rechazos que la persona no llegó a ver o formularios caducados), por id, hasta que se cierran. */
   elicitationNotices: Record<string, ElicitationNotice>
+  /** Plan listo del modo plan (`session.plan.listo`, solo con la bandera `modoPlan`), por sesión. Texto plano; ver `PlanReadyCard`. */
+  plans: Record<string, PlanReady>
   /** «Cambios de este turno» (motor propio): turnos con sus archivos, por sesión. Solo escritorio; el celular no los pide. */
   turnsBySession: Record<string, readonly TurnSummary[]>
   /** `true` si el motor tiene las rutas de rebobinar para esa sesión; `false` (404) = se usa «Revertir» de siempre; ausente = aún no se sabe. */
@@ -270,6 +273,8 @@ export interface CodeState {
   replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject') => Promise<void>
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
   rejectQuestion: (q: PendingQuestion) => Promise<void>
+  /** Contesta la pregunta del plan con la respuesta exacta del botón. `false` si la pregunta aún no llegó o no cuadra (no se responde a ciegas). */
+  decidePlan: (plan: PlanReady, decision: 'aprobado' | 'seguir') => Promise<boolean>
   /** Contesta un formulario de conector. 400 deja el formulario abierto (el resultado trae los motivos); 404 lo quita. */
   replyElicitation: (
     e: PendingElicitation,
@@ -553,6 +558,31 @@ export const useCode = create<CodeState>((set, get) => {
     }
   }
 
+  /**
+   * `session.plan.listo|decidido` → estado. Solo con la bandera `modoPlan` encendida (por defecto apagada: el motor tampoco los manda
+   * mientras la app no arranque con `LAZUNOX_PLAN`). Un evento mal formado se ignora.
+   */
+  const applyPlanEvent = (type: string, props: unknown, eventDir: string): void => {
+    if (useSettings.getState().settings.modoPlan !== true) return
+    if (type === 'session.plan.listo') {
+      const plan = parsePlanReady(props)
+      if (!plan || !adopt(plan.sessionID, eventDir)) return
+      markUnread(rootSessionID(get().sessions, plan.sessionID))
+      notifyCode(plan.sessionID, t('code.store.notifyQuestion'), t('code.store.notifyQuestionSub'))
+      set((s) => ({ plans: { ...s.plans, [plan.sessionID]: plan } }))
+    } else if (type === 'session.plan.decidido') {
+      const d = parsePlanDecided(props)
+      const cur = d ? get().plans[d.sessionID] : undefined
+      if (!d || !cur) return
+      if (d.callID && cur.callID && d.callID !== cur.callID) return // decisión de un plan anterior
+      set((s) => {
+        const plans = { ...s.plans }
+        delete plans[d.sessionID]
+        return { plans }
+      })
+    }
+  }
+
   const setError = (sessionID: string, error: ConvError | null): void => set((s) => ({ errors: { ...s.errors, [sessionID]: error } }))
 
   /** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
@@ -646,6 +676,7 @@ export const useCode = create<CodeState>((set, get) => {
       loadingMessages: without(s.loadingMessages),
       permissions: bySession(s.permissions),
       questions: bySession(s.questions),
+      plans: without(s.plans),
       elicitations: bySession(s.elicitations),
       elicitationNotices: bySession(s.elicitationNotices),
       turnsBySession: without(s.turnsBySession),
@@ -714,7 +745,7 @@ export const useCode = create<CodeState>((set, get) => {
     if (questions?.data) {
       const list: PendingQuestion[] = questions.data
         .filter((q) => known(q.sessionID))
-        .map((q) => ({ id: q.id, sessionID: q.sessionID, questions: q.questions }))
+        .map((q) => ({ id: q.id, sessionID: q.sessionID, questions: q.questions, ...questionTool(q) }))
       set((s) => ({
         questions: reconcilePending({
           cur: s.questions,
@@ -934,6 +965,7 @@ export const useCode = create<CodeState>((set, get) => {
     errors: {},
     permissions: {},
     questions: {},
+    plans: {},
     elicitations: {},
     elicitationNotices: {},
     turnsBySession: {},
@@ -1471,6 +1503,20 @@ export const useCode = create<CodeState>((set, get) => {
       }
     },
 
+    decidePlan: async (plan, decision) => {
+      const q = findPlanQuestion(plan, Object.values(get().questions))
+      if (!q) return false
+      await get().replyQuestion(q, planAnswers(decision))
+      // Si la respuesta falló, la pregunta sigue pendiente (y el error ya se mostró): la tarjeta se queda para reintentar.
+      if (q.id in get().questions) return false
+      set((s) => {
+        const plans = { ...s.plans }
+        delete plans[plan.sessionID]
+        return { plans }
+      })
+      return true
+    },
+
     rejectQuestion: async (q) => {
       try {
         const client = requireClient()
@@ -1816,6 +1862,11 @@ export const useCode = create<CodeState>((set, get) => {
         return
       }
       deltaQueue.flush() // orden: lo encolado va antes que este evento
+      // Modo plan (motor propio, bandera experimental `modoPlan`): eventos que no están en la unión de tipos del SDK fijado.
+      if ((event.type as string).startsWith('session.plan.')) {
+        applyPlanEvent(event.type as string, (event as { properties?: unknown }).properties, eventDir)
+        return
+      }
       // Formularios de conectores: eventos del motor propio que no están en la unión de tipos del SDK fijado.
       if ((event.type as string).startsWith('mcp.elicitation.')) {
         applyElicitationEvent(event.type as string, (event as { properties?: unknown }).properties, eventDir)
@@ -1974,16 +2025,26 @@ export const useCode = create<CodeState>((set, get) => {
           if (!adopt(q.sessionID, eventDir)) return
           markUnread(rootSessionID(get().sessions, q.sessionID))
           notifyCode(q.sessionID, t('code.store.notifyQuestion'), t('code.store.notifyQuestionSub'))
-          set((s) => ({ questions: { ...s.questions, [q.id]: { id: q.id, sessionID: q.sessionID, questions: q.questions } } }))
+          set((s) => ({
+            questions: { ...s.questions, [q.id]: { id: q.id, sessionID: q.sessionID, questions: q.questions, ...questionTool(q) } }
+          }))
           break
         }
         case 'question.replied':
         case 'question.rejected': {
           const { requestID } = event.properties
           if (!(requestID in get().questions)) return
+          const gone = get().questions[requestID]
           set((s) => {
             const questions = { ...s.questions }
             delete questions[requestID]
+            // Contestada o rechazada la pregunta del plan: la tarjeta ya no tiene a qué responder.
+            const plan = s.plans[gone.sessionID]
+            if (plan && plan.callID && plan.callID === gone.tool?.callID) {
+              const plans = { ...s.plans }
+              delete plans[gone.sessionID]
+              return { questions, plans }
+            }
             return { questions }
           })
           break
@@ -1994,6 +2055,16 @@ export const useCode = create<CodeState>((set, get) => {
     }
   }
 })
+
+/** `tool` de una pregunta del motor (`{ messageID, callID }`), solo si trae ids de texto; el SDK fijado puede no tenerlo tipado. */
+function questionTool(q: unknown): { tool?: { messageID?: string; callID?: string } } {
+  const tool = (q as { tool?: { messageID?: unknown; callID?: unknown } } | null)?.tool
+  if (!tool || typeof tool !== 'object') return {}
+  const out: { messageID?: string; callID?: string } = {}
+  if (typeof tool.messageID === 'string') out.messageID = tool.messageID
+  if (typeof tool.callID === 'string') out.callID = tool.callID
+  return Object.keys(out).length > 0 ? { tool: out } : {}
+}
 
 /** Sesión raíz (sube por `parentID`) de una sesión; útil para agrupar permisos de subagentes. */
 /**

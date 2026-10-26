@@ -81,6 +81,24 @@ describe('settings: codeTrustedMcp', () => {
   })
 })
 
+describe('settings: modoPlan (bandera experimental, apagada)', () => {
+  it('sin el campo, con basura o con algo que no es true exacto -> apagado', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
+    expect((await openStore(dir)).get().modoPlan).toBe(false)
+    for (const v of ['true', 1, {}, null, 'si']) {
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ modoPlan: v }))
+      expect((await openStore(dir)).get().modoPlan, JSON.stringify(v)).toBe(false)
+    }
+  })
+  it('true exacto la enciende y se guarda', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ modoPlan: true })
+    expect((await openStore(dir)).get().modoPlan).toBe(true)
+  })
+})
+
 describe('settings: engineExperiments', () => {
   const OFF = { chat: false, code: false, tasks: false }
   const ON = { chat: true, code: true, tasks: true }

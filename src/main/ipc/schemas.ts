@@ -8,6 +8,7 @@
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
 import { ENGINE_LIMIT_SPECS, type EngineLimitKey } from '@shared/engine-limits'
+import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
 import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
@@ -110,6 +111,8 @@ export type WindowRole = 'main' | 'quick' | 'overlay' | 'pill' | 'assist' | 'bro
 
 const id = str({ max: 200, min: 1 })
 const shortText = str({ max: 500 })
+const helperName = str({ min: 1, max: HELPER_LIMITS.name, pattern: HELPER_NAME_RE })
+const helperItem = str({ min: 1, max: HELPER_LIMITS.toolName, pattern: /^[A-Za-z0-9_][A-Za-z0-9_.:*-]*$/ })
 /** Id de sesión de OpenCode (`ses_…`). */
 const sessionId = str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
 const modeFlags = obj({ chat: bool, code: bool, tasks: bool })
@@ -616,6 +619,26 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
     directory: optional(str({ min: 1, max: 4096 }))
   }),
+  // Ayudantes (Ajustes): la carpeta debe ser una que la persona eligió (lo comprueba main); aquí solo forma y topes. El nombre y los
+  // campos se revalidan en main con las mismas reglas (`validateHelperDef`).
+  'helpers:pickFolder': none,
+  'helpers:list': obj({ directory: absPath }),
+  'helpers:read': obj({ directory: absPath, name: helperName }),
+  'helpers:save': obj({
+    directory: absPath,
+    mode: literal('create', 'edit'),
+    def: obj({
+      name: helperName,
+      description: str({ max: HELPER_LIMITS.description }),
+      prompt: str({ max: HELPER_LIMITS.prompt }),
+      model: str({ min: 1, max: HELPER_LIMITS.model }),
+      disallowedTools: arr(helperItem, HELPER_LIMITS.tools),
+      maxTurns: nullable(num({ int: true, min: 1, max: HELPER_LIMITS.maxTurns })),
+      background: bool,
+      skills: nullable(arr(helperItem, HELPER_LIMITS.skills))
+    })
+  }),
+  'helpers:inspectForeign': obj({ directory: absPath }),
   'jobs:resume': obj({
     sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
     jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
@@ -660,7 +683,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     rememberAlways: bool,
     userHooksEnabled: bool,
     // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
-    codeTrustedMcp: arr(mcpName, 200)
+    codeTrustedMcp: arr(mcpName, 200),
+    modoPlan: bool
     // `opencodeBin` NO se acepta desde el renderer: solo main la escribe, tras validar el binario (`app:pickOpencodeBin`).
   }),
   'settings:addRecentFolder': pathReq,

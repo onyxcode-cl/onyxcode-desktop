@@ -2609,3 +2609,27 @@ caliente de que el plugin del guardián se haya cargado: el motor no ofrece una 
 `scripts/engine-probe/run.mjs` y las pruebas reales con el motor empaquetado); B8 (el guardián prueba las cadenas que aparecen como patrones;
 con los agentes actuales no es explotable) y B10 (Code Mode en Overdrive no aborta la sesión tras un rechazo; ya documentado).
 
+
+
+## 3 octogies quater. Ayudantes de la persona y tarjeta del plan (F8-B220, F8-B221)
+
+Parte de la APP de las olas 2A y 2C del motor. Lo que acota los permisos de un ayudante y lo que hace el modo plan lo hace el motor; la app
+solo lee la lista, escribe un archivo de texto y, con una bandera apagada, muestra el plan.
+
+| Amenaza | Defensa |
+| --- | --- |
+| Escribir fuera de la carpeta del proyecto (`../`, rutas absolutas, enlaces simbólicos). | Solo `<carpeta>/.opencode/agents/<nombre>.md`. El nombre cumple `^[A-Za-z0-9][A-Za-z0-9._-]*$` (≤ 64, sin `..`, sin `.md`); esquema estricto en el canal y se revalida en main. `.opencode`, `agents` y el archivo se miran con `lstat`: un enlace se rechaza (`link`) y no se escribe nada. Creación exclusiva (`wx`: falla si algo ya ocupa el nombre); edición con archivo temporal + `rename`. Tope de 64 KB. |
+| Que la pantalla escriba en una carpeta que la persona no eligió. | La carpeta debe ser una elegida con el diálogo del sistema en esta ejecución o una reciente de Code (se resuelve con `realpath`). El renderer nunca elige la ruta de escritura. Límite conocido: `recentFolders` puede escribirlo el renderer (`settings:set`), igual que antes. |
+| Crear un ayudante que suplante a los del motor o de la app. | Nombres reservados (sin distinguir mayúsculas): `chat, tasks, computer, lazunox-helper, lazunox-chat-helper, build, plan, general, explore, verificador, revisor`; la pantalla no deja crearlos ni editarlos. |
+| Ampliar permisos desde el archivo. | La pantalla solo escribe `description, mode, model, disallowed_tools, max_turns, background, skills` (todos restringen o eligen modelo) y NO escribe `permission` ni `tools`; los que ya trae el archivo se conservan tal cual. El motor impone que los permisos de un ayudante nunca superan los de la sesión que lo lanza, y la pantalla lo dice siempre. |
+| Inyección en el encabezado YAML (saltos de línea, `---`, claves nuevas). | La descripción va como cadena JSON de una línea; modelo y listas se validan con lista blanca de caracteres; el cuerpo va después del cierre del encabezado. Un archivo con formato que la pantalla no sabe editar no se reescribe. |
+| Texto de archivos ajenos (nombres, descripciones de `.claude/agents` o del repositorio) con Markdown, enlaces o caracteres de dirección. | `plainText` (quita controles y marcas de dirección) en main y en la interfaz se pinta en nodos de texto: sin Markdown, sin enlaces, sin HTML. |
+| Leer `.claude/agents` siguiendo enlaces. | El recorrido (profundidad 3, 200 archivos) no entra en enlaces simbólicos y solo devuelve nombres. |
+| El celular viendo o usando estas pantallas. | Los cinco canales `helpers:*` y el ajuste `modoPlan` son clase **X**; la sección no se ofrece en la PWA. |
+| `session.plan.listo` (texto del plan y ruta absoluta) hacia el celular. | `event-trim.ts` niega el prefijo `session.plan.` aunque `session.` esté permitido (prueba en `sse-hub.test.ts`). |
+| Aprobar un plan a ciegas. | La tarjeta solo responde cuando la pregunta pendiente coincide por `callID`, sesión, una pregunta y las dos opciones fijas; la respuesta es una sola opción con el texto exacto. Aprobar no concede permisos: el motor cambia a `build` con sus reglas de siempre. |
+| Activar el modo plan sin revisión. | La bandera `modoPlan` está apagada por defecto y la app NO lanza el motor con `LAZUNOX_PLAN`: queda fuera hasta una revisión de seguridad independiente. |
+
+**Límites conocidos.** (1) Si algún día el motor se arranca con `LAZUNOX_PLAN=1`, la pregunta del plan llegaría al celular como pregunta común
+(`question.*` está permitido) y un celular emparejado podría contestarla: habría que ocultarla allí antes de encenderlo. (2) El motor decide cuándo
+relee los `.md`; la pantalla no fuerza la recarga. (3) La app no modifica las zonas intocables.

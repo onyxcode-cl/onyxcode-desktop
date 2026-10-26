@@ -91,6 +91,9 @@ export function trimIpcEvent(channel: string, payload: unknown, d: TrimDeps): un
 // textos son de un servidor de terceros. `sse-hub.test.ts` fija que no salen hacia el celular.
 const OC_ALLOWED_PREFIX = ['session.', 'message.', 'permission.', 'question.', 'todo.']
 const OC_ALLOWED_EXACT = new Set(['file.edited', 'vcs.branch.updated', 'server.connected', 'global.disposed'])
+// El plan del modo plan (`session.plan.*`) trae el texto completo del plan y la ruta absoluta del proyecto, y lo decide la persona en el Mac:
+// aunque `session.` esté permitido, estos NUNCA salen hacia el celular (`sse-hub.test.ts` lo fija).
+const OC_DENIED_PREFIX = ['session.plan.']
 const OC_URGENT = /^(permission|question)\.asked$/
 
 export const OC_TOOL_OUTPUT_CAP = 4_000
@@ -126,6 +129,7 @@ export function trimOcEvent(raw: unknown, eng: string, d: TrimDeps): OcEvent | n
   const payload = rec(ge.payload)
   const type = payload.type
   if (typeof type !== 'string' || !/^[A-Za-z][A-Za-z0-9_.:-]{0,95}$/.test(type)) return null
+  if (OC_DENIED_PREFIX.some((p) => type.startsWith(p))) return null
   if (!OC_ALLOWED_EXACT.has(type) && !OC_ALLOWED_PREFIX.some((p) => type.startsWith(p))) return null
   const dirRaw = ge.directory
   let directory = 'global'

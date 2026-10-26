@@ -202,6 +202,7 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   userHooksEnabled: 'X',
   // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
   codeTrustedMcp: 'X',
+  modoPlan: 'X', // bandera experimental del modo plan: solo el Mac
   // El resto no se toca desde el celular: ruta del binario, actualizaciones, carpetas recientes, onboarding, términos.
   opencodeBin: 'X',
   checkUpdates: 'X',
@@ -292,6 +293,11 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'diag:copy': 'X',
   'jobs:list': 'X', // trabajos del motor en el panel: solo la ventana principal (el celular no los usa)
   'jobs:stop': 'X',
+  'helpers:pickFolder': 'X', // Ajustes › Ayudantes: diálogo nativo y archivos de la carpeta; solo el Mac
+  'helpers:list': 'X',
+  'helpers:read': 'X',
+  'helpers:save': 'X',
+  'helpers:inspectForeign': 'X',
   'jobs:resume': 'X', // reanudar un ayudante perdido: decisión de quien está en el Mac
   'clipboard:readFilesForPaste': 'X', // lee el portapapeles del Mac: el celular no lo usa
   'translate:pdfExtract': 'X', // procesa bytes con Python en el Mac y guarda archivos: solo la ventana principal
