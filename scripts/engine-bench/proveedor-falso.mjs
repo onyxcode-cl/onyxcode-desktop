@@ -7,6 +7,14 @@
 // herramienta (las reales del motor: read, edit, write, bash, grep, glob, todowrite…). Cuando el turno se queda sin pasos, el modelo
 // falso responde con el texto final (`guion.final`, por defecto «Listo.»). Sin guion para la tarea → responde que no sabe resolverla,
 // y el verificador de la tarea falla (así se ve que el banco distingue éxito de fracaso).
+//
+// Pasos especiales (ola 7, paquete 7.1; el motor real ve exactamente lo que enviaría un modelo con ese defecto):
+//   { paralelo: [paso, paso, …] }   varias llamadas en UNA misma respuesta (T30: dos escrituras al mismo archivo en el mismo paso).
+//   { …paso, truncar: true }        la respuesta se corta a la mitad de los argumentos con `finish_reason: "length"` (T25). Solo se envía una
+//                                   vez por posición: si el motor descarta la llamada cortada y vuelve a preguntar, se sirve el paso siguiente.
+//   { …paso, crudo: <texto|objeto> } lo que viaja por el cable en `arguments` en lugar de `args` (T27: tipos equivocados). `args` sigue siendo
+//                                   lo que el paso HARÍA con los tipos correctos; la autoprueba aplica `args`.
+//   { …paso, sinEfecto: true }      la autoprueba no lo aplica (p. ej. la llamada cortada: no debe dejar nada escrito).
 import http from 'node:http'
 import net from 'node:net'
 
@@ -27,6 +35,8 @@ const tokens = (t) => Math.max(1, Math.ceil(t.length / 4))
  */
 export async function iniciarProveedorFalso(guion) {
   let peticiones = 0
+  const cortadas = new Map() // turno → paso en el que se sirvió una llamada cortada
+  const desplazamiento = new Map() // turno → posiciones que hay que saltar porque el motor descartó una llamada cortada
   const sse = (res, trozos) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     for (const c of trozos) res.write('data: ' + JSON.stringify(c) + '\n\n')
@@ -54,16 +64,22 @@ export async function iniciarProveedorFalso(guion) {
       const mensajes = j.messages ?? []
       const prompt = tokens(cuerpo)
       const responder = (contenido, llamada) => {
-        const salida = llamada ? JSON.stringify(llamada.args) : contenido
+        const llamadas = llamada ? (llamada.paralelo ?? [llamada]) : []
+        const argumentos = (l) => (l.crudo === undefined ? JSON.stringify(l.args) : typeof l.crudo === 'string' ? l.crudo : JSON.stringify(l.crudo))
+        const salida = llamadas.length ? llamadas.map((l) => argumentos(l)).join('') : contenido
+        const truncar = llamada?.truncar === true
         const usage = { prompt_tokens: prompt, completion_tokens: tokens(salida) + 4, total_tokens: prompt + tokens(salida) + 4 }
-        if (llamada) {
-          const tc = {
-            index: 0,
-            id: `call_${peticiones}`,
-            type: 'function',
-            function: { name: llamada.name, arguments: JSON.stringify(llamada.args) }
-          }
-          return sse(res, [trozo({ role: 'assistant', tool_calls: [tc] }), trozo({}, 'tool_calls', usage)])
+        if (llamadas.length) {
+          const tcs = llamadas.map((l, i) => {
+            const todo = argumentos(l)
+            return {
+              index: i,
+              id: `call_${peticiones}_${i}`,
+              type: 'function',
+              function: { name: l.name, arguments: truncar ? todo.slice(0, Math.floor(todo.length / 2)) : todo }
+            }
+          })
+          return sse(res, [trozo({ role: 'assistant', tool_calls: tcs }), trozo({}, truncar ? 'length' : 'tool_calls', usage)])
         }
         return sse(res, [trozo({ role: 'assistant', content: contenido }), trozo({}, 'stop', usage)])
       }
@@ -75,10 +91,33 @@ export async function iniciarProveedorFalso(guion) {
       const paso = mensajes.slice(ultimoUsuario + 1).filter((m) => m.role === 'tool').length
       const lista = guion?.turnos?.[turno]
       if (!guion) return responder('No sé resolver esta tarea con el proveedor falso.')
-      const siguiente = lista?.[paso]
+      // Cada entrada del guion ocupa tantas posiciones como llamadas trae (1, o N si es `paralelo`).
+      let objetivo = paso + (desplazamiento.get(turno) ?? 0)
+      if (cortadas.has(turno)) {
+        if (cortadas.get(turno) === paso) {
+          // El motor descartó la llamada cortada (no dejó resultado): se salta esa posición.
+          desplazamiento.set(turno, (desplazamiento.get(turno) ?? 0) + 1)
+          objetivo += 1
+        }
+        cortadas.delete(turno)
+      }
+      let siguiente = null
+      let inicio = 0
+      for (const e of lista ?? []) {
+        const ancho = e.paralelo?.length ?? 1
+        if (objetivo === inicio) {
+          siguiente = e
+          break
+        }
+        inicio += ancho
+      }
       // La herramienta solo se pide si el motor la ofrece en esta petición.
       const ofrecidas = new Set((j.tools ?? []).map((t) => t.function?.name))
-      if (siguiente && ofrecidas.has(siguiente.name)) return responder('', siguiente)
+      const nombres = siguiente ? (siguiente.paralelo ?? [siguiente]).map((l) => l.name) : []
+      if (siguiente && nombres.every((n) => ofrecidas.has(n))) {
+        if (siguiente.truncar) cortadas.set(turno, paso)
+        return responder('', siguiente)
+      }
       return responder(guion.final ?? 'Listo.')
     })
   })

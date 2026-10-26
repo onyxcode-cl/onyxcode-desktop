@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Banco de tareas del motor (plan maestro, §5 «Medición» y paquete 1A; ola 6, paquete 6.1: T19-T23 más duras): 23 tareas pequeñas y REPRODUCIBLES (programación y oficina),
+// Banco de tareas del motor (plan maestro, §5 «Medición» y paquete 1A; ola 6, paquete 6.1: T19-T23 más duras; ola 7, paquete 7.1: T24-T30): 30 tareas pequeñas y REPRODUCIBLES (programación y oficina),
 // cada una con su carpeta inicial generada por el propio script, un pedido natural en español y un VERIFICADOR determinista (un comando
 // o una comprobación de archivos; nunca un juez con modelo). Sirve para medir «el motor mejoró» antes/después, con el modelo gratuito.
 //
@@ -27,6 +27,10 @@
 //   node scripts/engine-bench/run.mjs --lista                                (las tareas)
 //   node scripts/engine-bench/run.mjs --autoprueba [--tareas T01] [--typescript <dir>]   (sin motor: cada verificador debe FALLAR en la carpeta
 //        inicial y PASAR tras aplicar el guion de la tarea con herramientas simuladas; también solo en contenedor)
+//
+// Tareas que requieren `--proveedor-falso` (`requiere: ['proveedor-falso']`: T25 respuesta cortada y T27 argumentos mal tipados, que un modelo
+// real no produce a voluntad) quedan «omitidas» en las tandas con modelo real. Un verificador puede recibir como 3.er argumento `extra`
+// ({ salidas: texto de TODAS las salidas de herramientas, erroresHerramientas: n }); la autoprueba no lo pasa.
 //
 // Cada corrida: carpeta temporal con `git init` y un commit; el motor arranca con HOME/XDG_* temporales, permisos acotados
 // (`external_directory: deny`, sin red de herramientas) y `run --format json --permisos ninguno --max-steps N --presupuesto-tokens M`,
@@ -196,7 +200,10 @@ function acumular(m, r) {
       const h = e.part?.tool ?? '?'
       m.herramientas[h] = (m.herramientas[h] ?? 0) + 1
       m.llamadas += 1
-      m.bytes_resultados += String(e.part?.state?.output ?? e.part?.state?.error ?? '').length
+      const salidaH = String(e.part?.state?.output ?? e.part?.state?.error ?? '')
+      m.bytes_resultados += salidaH.length
+      m.salidas += salidaH + '\n'
+      if (e.part?.state?.status === 'error') m.erroresHerramientas += 1
     } else if (e.type === 'informe') {
       m.motor = e // el informe del motor de la última invocación
       m.motivos.push(e.motivo)
@@ -212,7 +219,7 @@ async function unaCorrida(cfg, tarea, ctx) {
   const proj = join(root, 'proyecto')
   const home = join(root, 'home')
   for (const d of [proj, home, join(root, 'tmp')]) mkdirSync(d, { recursive: true })
-  const m = { porPaso: [], ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
+  const m = { porPaso: [], ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, salidas: '', erroresHerramientas: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
   let proveedor = null
   let verificacion
   try {
@@ -258,7 +265,7 @@ async function unaCorrida(cfg, tarea, ctx) {
       }
     }
     try {
-      verificacion = tarea.verificar(proj, ctx)
+      verificacion = tarea.verificar(proj, ctx, { salidas: m.salidas, erroresHerramientas: m.erroresHerramientas })
     } catch (e) {
       verificacion = { ok: false, detalle: `el verificador lanzó: ${String(e?.message ?? e).slice(0, 200)}` }
     }
@@ -277,6 +284,8 @@ async function unaCorrida(cfg, tarea, ctx) {
     pasos: m.pasos,
     tokens_por_paso: { med: mediana(m.porPaso), p90: percentil(m.porPaso, 90) },
     llamadas: m.llamadas,
+    llamadas_por_paso: m.pasos ? m.llamadas / m.pasos : null,
+    errores_herramientas: m.erroresHerramientas,
     herramientas: m.herramientas,
     bytes_resultados: m.bytes_resultados,
     permisos_negados: m.permisos_negados,
@@ -304,6 +313,7 @@ function resumir(corridas) {
     tokens_por_paso_med: mediana(validas.map((c) => c.tokens_por_paso?.med)),
     tokens_por_paso_p90: mediana(validas.map((c) => c.tokens_por_paso?.p90)),
     llamadas_med: mediana(validas.map((c) => c.llamadas)),
+    llamadas_por_paso_med: mediana(validas.map((c) => c.llamadas_por_paso)),
     minutos_med: mediana(validas.map((c) => c.tiempo_ms / 60_000)),
     tokens_por_exito: exitos.length ? mediana(exitosEnviados) : null
   }
@@ -325,15 +335,15 @@ function agregados(porTarea) {
 const num = (v, d = 0) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('es-CL', { maximumFractionDigits: d }))
 
 function imprimirTabla(salida) {
-  const L = ['| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Min (med) | Tokens/éxito |', '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+  const L = ['| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |', '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
   for (const [id, t] of Object.entries(salida.tareas)) {
     if (t.omitida) {
-      L.push(`| ${id} ${t.nombre} | omitida (${t.omitida}) | | | | | | | | |`)
+      L.push(`| ${id} ${t.nombre} | omitida (${t.omitida}) | | | | | | | | | |`)
       continue
     }
     const r = t.resumen
     const exito = `${r.exitos}/${r.n}${r.cuota ? ` (+${r.cuota} cuota)` : ''}`
-    L.push(`| ${id} ${t.nombre} | ${exito} | ${num(r.tokens_enviados_med)} | ${num(r.tokens_salida_med)} | ${num(r.cache_pct_med, 1)} | ${num(r.pasos_med, 1)} | ${num(r.tokens_por_paso_med)} · ${num(r.tokens_por_paso_p90)} | ${num(r.llamadas_med, 1)} | ${num(r.minutos_med, 2)} | ${num(r.tokens_por_exito)} |`)
+    L.push(`| ${id} ${t.nombre} | ${exito} | ${num(r.tokens_enviados_med)} | ${num(r.tokens_salida_med)} | ${num(r.cache_pct_med, 1)} | ${num(r.pasos_med, 1)} | ${num(r.tokens_por_paso_med)} · ${num(r.tokens_por_paso_p90)} | ${num(r.llamadas_med, 1)} | ${num(r.llamadas_por_paso_med, 2)} | ${num(r.minutos_med, 2)} | ${num(r.tokens_por_exito)} |`)
   }
   const a = salida.agregados
   L.push('', `Éxito total: ${a.exitos}/${a.corridas}${a.tasa_exito === null ? '' : ` (${(100 * a.tasa_exito).toFixed(0)} %)`} · mediana de tokens por éxito: ${num(a.tokens_por_exito_med)} · p90 de minutos: ${num(a.minutos_p90, 2)}`)
@@ -441,6 +451,8 @@ function comparar(rutaA, rutaB) {
 
 // ── Autoprueba: los verificadores discriminan (sin motor ni modelo) ────────────────────────────────────────────────────────
 function aplicarPaso(proj, paso) {
+  if (paso.paralelo) return paso.paralelo.forEach((p) => aplicarPaso(proj, p)) // en la autoprueba se aplican en orden
+  if (paso.sinEfecto) return // p. ej. una llamada cortada por `finish: length`: no debe dejar nada
   const abs = (p) => (p.startsWith('/') ? p : join(proj, p))
   switch (paso.name) {
     case 'write':
@@ -465,7 +477,7 @@ function aplicarPaso(proj, paso) {
 async function autoprueba(cfg, tareas, ctx) {
   let malas = 0
   for (const tarea of tareas) {
-    const faltan = (tarea.requiere ?? []).filter((r) => (r === 'typescript' ? !ctx.typescript : false))
+    const faltan = (tarea.requiere ?? []).filter((r) => (r === 'typescript' ? !ctx.typescript : false)) // 'proveedor-falso' no hace falta en la autoprueba (no hay motor)
     if (faltan.length) {
       console.log(`${tarea.id}: omitida (falta ${faltan.join(', ')})`)
       continue
@@ -544,7 +556,7 @@ async function principal() {
   }
   for (const tarea of sel) {
     const base = { nombre: tarea.nombre, mide: tarea.mide, categoria: tarea.categoria }
-    const faltan = (tarea.requiere ?? []).filter((r) => (r === 'typescript' ? !ctx.typescript || !existsSync(join(ctx.typescript, 'bin', 'tsc')) : r === 'python3' ? spawnSync('python3', ['--version']).status !== 0 : false))
+    const faltan = (tarea.requiere ?? []).filter((r) => (r === 'typescript' ? !ctx.typescript || !existsSync(join(ctx.typescript, 'bin', 'tsc')) : r === 'python3' ? spawnSync('python3', ['--version']).status !== 0 : r === 'proveedor-falso' ? !cfg.falso : false))
     if (faltan.length) {
       salida.tareas[tarea.id] = { ...base, omitida: `falta ${faltan.join(', ')}`, corridas: [] }
       console.error(`${tarea.id}: omitida (falta ${faltan.join(', ')})`)
