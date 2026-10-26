@@ -402,7 +402,8 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
 
   checkRun('ganchos3 (f): ganchos plantados en el proyecto (.claude/settings.json y settings.local.json) NO se ejecutan; solo LAZUNOX_HOOKS_FILE', () =>
     conRaiz(async (root, proj) => {
-      const cmd = (n) => `"${process.execPath}" -e "require('fs').writeFileSync('${join(root, n)}', 'ejecutado')"`
+      // Barras normales en la ruta: en Windows las `\` irían dentro de un literal de JS (`'C:\Users…'`) y se leerían como escapes.
+      const cmd = (n) => `"${process.execPath}" -e "require('fs').writeFileSync('${join(root, n).replaceAll('\\', '/')}', 'ejecutado')"`
       const plantado = (n) => JSON.stringify({ hooks: { PostToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: cmd(n) }] }], SessionStart: [{ hooks: [{ type: 'command', command: cmd(n + '-ini') }] }] } })
       const r = await motor({
         root,
