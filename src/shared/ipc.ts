@@ -26,6 +26,7 @@ import type { InstallState } from './update-install'
 import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
 import type { EngineJobResumeResult, EngineJobsResult } from './engine-jobs'
+import type { ForeignAgentsResult, HelperDef, HelperReadResult, HelperSaveResult, HelpersListResult } from './helper-agents'
 
 /** FORBIDDEN = emisor/ventana no autorizados; INVALID = payload rechazado por el esquema; BUSY = hay trabajo en curso. */
 /** `PLATFORM_UNSUPPORTED`: función solo de macOS (Tareas, Control del PC, actualizador) en otra plataforma. */
@@ -96,6 +97,15 @@ export interface IpcInvokeContract {
   'jobs:stop': { req: { sessionID: string; jobId: string; directory?: string }; res: { ok: boolean } }
   /** Reanuda un ayudante de fondo `perdido` (el motor se reinició). `motivo` si el motor no pudo: `no_existe`, `ya_en_curso` o `tope`. */
   'jobs:resume': { req: { sessionID: string; jobId: string; directory?: string }; res: EngineJobResumeResult }
+  /**
+   * Ajustes › Ayudantes: carpeta elegida con el diálogo del sistema (main la recuerda como permitida), lista de `GET /agent`, lectura y
+   * escritura del `.md` de `.opencode/agents/` (solo dentro de esa carpeta) y aviso de `.claude/agents`. Ver `helper-agents.ts`.
+   */
+  'helpers:pickFolder': { req: void; res: string | null }
+  'helpers:list': { req: { directory: string }; res: HelpersListResult }
+  'helpers:read': { req: { directory: string; name: string }; res: HelperReadResult }
+  'helpers:save': { req: { directory: string; def: HelperDef; mode: 'create' | 'edit' }; res: HelperSaveResult }
+  'helpers:inspectForeign': { req: { directory: string }; res: ForeignAgentsResult }
   /** Copia al portapapeles (lo hace main) el texto redactado de la fuente. */
   'diag:copy': { req: { source: DiagSource }; res: { lines: number } }
   /**
@@ -183,6 +193,11 @@ export const IPC_INVOKE_CHANNELS = [
   'jobs:list',
   'jobs:stop',
   'jobs:resume',
+  'helpers:pickFolder',
+  'helpers:list',
+  'helpers:read',
+  'helpers:save',
+  'helpers:inspectForeign',
   'clipboard:readFilesForPaste',
   'attach:extractOffice',
   'translate:pdfExtract',

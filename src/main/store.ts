@@ -104,7 +104,9 @@ function normalize(s: Settings): Settings {
     // Solo `true` exacto lo enciende: ausente o basura = apagado (ejecuta comandos de la persona).
     userHooksEnabled: s.userHooksEnabled === true,
     engineBgMigrated: s.engineBgMigrated === true,
-    codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp)
+    codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp),
+    // Solo `true` exacto lo enciende (bandera experimental del modo plan): ausente o basura = apagado.
+    modoPlan: s.modoPlan === true
   }
 }
 

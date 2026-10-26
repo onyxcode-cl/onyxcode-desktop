@@ -89,6 +89,12 @@ export interface Settings {
    * Ver `mcp-permissions.ts`. El celular no lo escribe.
    */
   codeTrustedMcp: string[]
+  /**
+   * «Modo plan» (bandera EXPERIMENTAL, motor 2C): la tarjeta del plan de Code (`session.plan.listo`) y su pareja de botones. APAGADA por
+   * defecto; solo `true` exacto la enciende. Es solo del cliente: la app NO enciende `LAZUNOX_PLAN` en el motor (queda fuera hasta una
+   * revisión de seguridad independiente), así que sin esa variable el motor nunca manda el evento. El celular no la escribe.
+   */
+  modoPlan: boolean
 }
 
 export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'deepseek-v4.1-flash' }
@@ -109,7 +115,8 @@ export const DEFAULT_SETTINGS: Settings = {
   engineLimits: {},
   rememberAlways: true,
   userHooksEnabled: false,
-  codeTrustedMcp: []
+  codeTrustedMcp: [],
+  modoPlan: false
 }
 
 export type ServerState = 'stopped' | 'starting' | 'ready' | 'error'

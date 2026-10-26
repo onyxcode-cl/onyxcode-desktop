@@ -34,6 +34,8 @@ export interface PendingQuestion {
   id: string
   sessionID: string
   questions: QuestionInfo[]
+  /** Herramienta que originó la pregunta (`callID` enlaza la pregunta del modo plan con su evento `session.plan.listo`). */
+  tool?: { messageID?: string; callID?: string }
 }
 
 /** Formulario de un conector pendiente (`mcp.elicitation.asked`), ya saneado por `parseElicitationRequest`. */

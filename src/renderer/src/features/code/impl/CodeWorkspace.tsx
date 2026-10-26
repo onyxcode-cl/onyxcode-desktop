@@ -75,6 +75,9 @@ import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootSessionID, selectCodeRunOf, useCode } from './store'
 import { TodoList } from './ToolCard'
 import { PlanCard } from './PlanCard'
+import { PlanReadyCard } from './PlanReadyCard'
+import { ForeignAgentsNotice } from './ForeignAgentsNotice'
+import { planQuestionIds } from '@shared/plan-mode'
 import type { RightPanel } from './types'
 import { panelLayout } from './review-logic'
 import { sharedFullDiff } from './full-diff'
@@ -822,6 +825,7 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
   const entries = useCode((s) => s.messages[sessionID])
   const setAgent = useCode((s) => s.setAgent)
   const send = useCode((s) => s.send)
+  const planReady = useCode((s) => !!s.plans[sessionID])
   const [dismissedFor, setDismissedFor] = useState<string | null>(null)
   const busy = run === 'busy' || run === 'retry'
 
@@ -831,7 +835,7 @@ function PlanApprovalCard({ sessionID }: { sessionID: string }): React.JSX.Eleme
     return null
   }, [entries])
 
-  if (agent !== 'plan' || busy || !lastAssistant) return null
+  if (agent !== 'plan' || busy || !lastAssistant || planReady) return null
   const hasText = lastAssistant.parts.some((p) => p.type === 'text' && p.text.trim())
   if (!hasText || dismissedFor === lastAssistant.info.id) return null
 
@@ -886,7 +890,12 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
     () => permissionsAll.filter((p) => !!sid && belongs(sessions, p.sessionID, sid)),
     [permissionsAll, sessions, sid]
   )
-  const questions = useMemo(() => questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid)), [questionsAll, sessions, sid])
+  const plansAll = useCode(useShallow((s) => Object.values(s.plans)))
+  const questions = useMemo(() => {
+    // La pregunta del plan (modo plan) la contestan los botones de la tarjeta «Plan listo»: no se repite como pregunta genérica.
+    const hide = plansAll.length > 0 ? planQuestionIds(plansAll, questionsAll) : null
+    return questionsAll.filter((q) => !!sid && belongs(sessions, q.sessionID, sid) && !hide?.has(q.id))
+  }, [questionsAll, plansAll, sessions, sid])
   // Formularios de conectores y avisos de la conversación visible (y de sus ayudantes).
   const elicitations = useMemo(
     () => elicitationsAll.filter((e) => !!sid && belongs(sessions, e.sessionID, sid)),
@@ -909,6 +918,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       {/* Celular: la barra superior es la del armazón (MobileShell); aquí no hay otra. */}
       {!isRemoteSurface() && <Toolbar directory={directory} />}
       <RecoveryBanner mode="code" directory={directory} />
+      {!isRemoteSurface() && <ForeignAgentsNotice directory={directory} />}
       <CompareConfirmDialog mode="code" directory={directory} />
       {globalError && (
         <div className="flex items-center gap-2 border-b border-danger/30 bg-danger/10 px-4 py-1.5 text-xs text-danger">
@@ -954,6 +964,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       {/* Escritorio: tarjeta «Plan»; la barra de tareas compacta queda para el celular (sin cambios allí). */}
       {sid && !isRemoteSurface() && <PlanCard sessionID={sid} />}
       {sid && isRemoteSurface() && <TodoBar sessionID={sid} />}
+      {sid && !isRemoteSurface() && <PlanReadyCard sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
       <ChangesBar directory={directory} />
       {sid && entries && !busy && (

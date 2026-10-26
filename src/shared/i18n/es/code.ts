@@ -771,5 +771,26 @@ export const code = {
   'code.compaction.upTo.blocked.revert': 'Hay cambios deshechos sin confirmar: restáuralos o sigue la conversación antes de compactar.',
   'code.compaction.upTo.err.invalido': 'Ese mensaje no se puede usar como punto de corte.',
   'code.compaction.upTo.err.cola-grande': 'Lo que quieres conservar ya no cabe. Elige un mensaje más reciente.',
-  'code.compaction.upTo.err.generic': 'No se pudo compactar: {detail}'
+  'code.compaction.upTo.err.generic': 'No se pudo compactar: {detail}',
+
+  // Ayudantes de .claude/agents al abrir una carpeta (F8-B220)
+  'code.helpers.claudeNotice.title': 'Esta carpeta trae ayudantes de .claude/agents',
+  'code.helpers.claudeNotice.body':
+    'Lazunox los carga como ayudantes de esta conversación: {names}. Sus permisos nunca superan los de la sesión que los lanza. Puedes revisarlos en Ajustes › Ayudantes.',
+  'code.helpers.claudeNotice.more': 'y {n} más',
+  'code.helpers.claudeNotice.open': 'Ver ayudantes',
+  'code.helpers.claudeNotice.dismiss': 'Entendido',
+  // Tarjeta del plan (modo plan, bandera experimental «modoPlan», F8-B221)
+  'code.planReady.title': 'Plan listo',
+  'code.planReady.subtitle': 'El asistente propone este plan antes de tocar nada. Tú decides si seguir.',
+  'code.planReady.path': 'Archivo del plan: {path}',
+  'code.planReady.expand': 'Mostrar el plan completo',
+  'code.planReady.collapse': 'Plegar el plan',
+  'code.planReady.truncated':
+    'El plan es largo y aquí ves solo una parte ({shown} de {total} KB). El archivo completo está en la ruta de arriba.',
+  'code.planReady.approve': 'Aprobar y editar con preguntas',
+  'code.planReady.keep': 'Seguir planificando',
+  'code.planReady.approveHint': 'Al aprobar, el asistente pasa a editar. Seguirá pidiéndote permiso como siempre.',
+  'code.planReady.waiting': 'Esperando la pregunta del asistente…',
+  'code.planReady.aria': 'Plan propuesto por el asistente'
 } as const
