@@ -49,10 +49,10 @@ Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta ·
 |---|---|---|---|---|---|
 | **Herramientas** | | | | | |
 | Leer, escribir, editar, buscar, parche | ✅ | ✅ | ✅ | ✅ | — |
-| Edición tolerante a Unicode | no (exacta) | ✅ 4 niveles | ✅ | ✅ (CRLF y no UTF-8 por comprobar) | 7.8 |
-| Rechazo de archivos no UTF-8 | ✅ | ✅ | ❌ | ❌ por comprobar | 7.8 |
-| Lecturas de solo lectura en paralelo | n/v | ✅ | n/v | ❌ | 7.3 |
-| Reparación de la entrada de herramientas | n/v | n/v | ✅ | 🟡 solo el nombre | 7.13 |
+| Edición tolerante a Unicode y a finales de línea | no (exacta) | ✅ 4 niveles | ✅ por región | 🟡 Unicode ✅; CR solitario y archivos mixtos ❌ | 7.8 |
+| Rechazo de archivos no UTF-8 | ✅ | ✅ | ❌ | ❌ **confirmado**: los decodifica con U+FFFD y los reescribe degradados | 7.8 |
+| Herramientas en paralelo, con las de efectos en orden | n/v | ✅ lecturas juntas, el resto exclusivo | n/v | 🟡 todo corre en paralelo, lecturas y escrituras; sin exclusión | 7.3 |
+| Reparación de la entrada de herramientas | n/v | n/v | ✅ | 🟡 nombre y llamada MCP diferida; argumentos mal tipados ❌ | 7.13 |
 | Cuadernos Jupyter | ✅ | n/v | n/v | ❌ | 7.15 |
 | Imágenes y PDF | ✅ | ✅ | ✅ | ✅ | — |
 | Web: fetch y búsqueda | ✅ | ✅ | ✅ | ✅ (la búsqueda depende del proveedor) | 🅱️ parcial |
@@ -60,11 +60,11 @@ Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta ·
 | **Shell** | | | | | |
 | Segundo plano, leer y matar | ✅ | ✅ | ✅ | ✅ | — |
 | Aviso por línea de salida (Monitor) | ✅ | n/v | n/v | ✅ `avisar_si` | — |
-| Salida larga a archivo con vista previa | ✅ | ✅ | ✅ | 🟡 topes; archivo completo por comprobar | 7.6 |
+| Salida larga a archivo con vista previa | ✅ | ✅ | ✅ | ✅ 30 KB y archivo completo 7 días | — |
 | Análisis de comandos compuestos | ✅ endurecido | ✅ conservador | ✅ | 🟡 sin auditar | 7.7 |
 | **Permisos y seguridad** | | | | | |
 | Reglas allow/ask/deny por comodín | ✅ | ✅ | ✅ | ✅ | — |
-| «Siempre» persistente y editable | ✅ | n/v | ✅ | 🟡 `LAZUNOX_PERMISSION_PERSIST` | 7.2 |
+| «Siempre» persistente y editable | ✅ | n/v | ✅ | 🟡 se guarda en disco; **no se puede listar, editar ni borrar** (nadie llama a `olvidar`) | 7.22 |
 | Rutas protegidas | ✅ | ✅ | n/v | ✅ | — |
 | Modo plan | ✅ | n/v | n/v | 🟡 `LAZUNOX_PLAN` | 7.2 |
 | Políticas duras de nivel superior | ✅ ajustes gestionados | n/v | ✅ `policies` | ❌ | 7.20 |
@@ -74,12 +74,13 @@ Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta ·
 | Red con lista de dominios | ✅ | ✅ | n/v | 📱 solo Tareas | D2 |
 | Credenciales: centinela o enmascarado | ✅ `mask` | parcial | n/v | 📱 proxy en Tareas; sanitizador ❌ | 7.5 |
 | **Ganchos y extensión** | | | | | |
-| Ganchos por comando | ✅ 33 eventos | ✅ 14 | plugins | 🟡 7 eventos | 7.6 |
+| Ganchos por comando | ✅ 33 eventos | ✅ 14 | plugins | 🟡 10 eventos | 7.6 |
 | Ganchos `mcp_tool`, `prompt`, `http` | ✅ | ✅ `mcp_tool` | ❌ | ❌ | 7.6 |
-| `updatedInput`, filtro `if`, `onFailure` | ✅ | ✅ `updatedInput` | n/v | ❌ | 7.6 |
+| `updatedInput`, filtro `if`, `onFailure` | ✅ | ✅ `updatedInput` | n/v | 🟡 `updatedInput` ✅ (validado contra el esquema); `if` y `onFailure` ❌ | 7.6 |
 | Confianza de ganchos con hash | n/v | ✅ | — | 🟡 solo el archivo de la app | 7.6 |
 | Plugins, skills, reglas por ruta | ✅ | ✅ | ✅ | ✅ | — |
-| Instrucciones jerárquicas (`@imports`) | ✅ | ✅ | ✅ | ✅ (`@imports` por comprobar) | 7.9 |
+| Instrucciones jerárquicas | ✅ | ✅ | ✅ | ✅ | — |
+| `@imports` dentro de las instrucciones | ✅ hasta 4 niveles | n/v | n/v | ❌ confirmado | 7.9 |
 | Diferencias de instrucciones | n/v | n/v | ✅ | ❌ | 7.9 |
 | Memoria automática | ✅ | ✅ opt-in con cuota | n/v | 📱 | — |
 | **Agentes** | | | | | |
@@ -88,7 +89,7 @@ Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta ·
 | Tope de simultáneos | 20 | 6 | n/v | ✅ 8 | — |
 | Fork con la conversación | ✅ por defecto | ✅ | n/v | 🟡 | 7.2 |
 | Reanudar por ID | ✅ | ✅ | ✅ | ❌ | 7.10 |
-| Resultado parcial al agotar pasos | ✅ | n/v | ✅ último paso | ❌ por comprobar | 7.10 |
+| Resultado parcial al agotar pasos | ✅ | n/v | ✅ último paso | ✅ marca `[PARCIAL]`; en el último paso solo avisa (OC2 además fuerza `toolChoice: none`) | 7.10 |
 | Esfuerzo y modelo por llamada | ✅ | ✅ | ✅ modelo | ❌ esfuerzo | 7.10 |
 | Ayudantes con su propio worktree | ✅ | n/v | n/v | ❌ | D1 |
 | Flujos por script | ✅ workflows | n/v | Code Mode | 🟡 Code Mode y `/lote` | 7.17 |
@@ -102,14 +103,14 @@ Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta ·
 | Resumen validado, sin resumen parcial | n/v | ✅ | ✅ plantilla | 🟡 | 7.9 |
 | Compactación en segundo plano | n/v | ✅ | experimental | ❌ | 7.9 (medir) |
 | Compactación ociosa | ✅ | n/v | n/v | ❌ | 🅱️ depende de la caché de 1 h |
-| Búsqueda diferida de herramientas | ✅ por defecto | ✅ BM25 | n/v | 🟡 `LAZUNOX_TOOL_SEARCH` | 7.2 |
+| Búsqueda diferida de herramientas | ✅ por defecto | ✅ BM25 | n/v | 🟡 apagada por defecto; con `auto` exige 4 000 tokens diferibles | 7.2 |
 | Puntos de control y rebobinar | ✅ (sin shell) | n/v | ✅ | ✅ incluye shell | — |
 | Worktree para la sesión principal | ✅ | ✅ | ✅ | ❌ | 7.11 |
 | Tareas programadas y espera | ✅ en sesión | nube | ❌ | ❌ | 7.12 |
 | **MCP** | | | | | |
 | Cliente, OAuth, tiempos máximos | ✅ | ✅ | ✅ | ✅ | — |
 | Formularios (elicitation) | ✅ | n/v | ✅ | ✅ (app 1.7.5) | — |
-| Resultados binarios o imágenes a archivo | ✅ | n/v | ✅ | n/v | 7.2 (comprobar) |
+| Resultados binarios o imágenes de MCP a archivo | ✅ | n/v | ✅ | 🟡 imágenes en base64 al contexto sin tope; audio descartado | 7.21 |
 | **Observabilidad y entorno** | | | | | |
 | Tokens por paso, aciertos de caché y su causa | ✅ `/cost` | n/v | n/v | 🟡 solo en el banco | 7.18 |
 | Telemetría | opcional | opt-out | ninguna en el motor | ✅ ninguna, vigilada | — |
@@ -118,7 +119,7 @@ Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta ·
 | Modo sin interfaz y servidor | ✅ | ✅ | ✅ | ✅ | — |
 | Windows nativo | ✅ | ✅ | ✅ | ✅ (`cmd` con acentos ❌) | límite conocido |
 
-Las filas 🟡 «por comprobar» se cierran en 7.2 con una lectura del código del fork (no se asume nada de la tabla).
+Las filas que decían «por comprobar» se cerraron el 2026-10-26 leyendo el código del fork (rama `feat/lazunox12`, commit `b3ccb17`); lo que sigue con «n/v» en la columna de los competidores no se ha verificado.
 
 ## 2b. Lo que queda fuera (clase B) y por qué
 
@@ -148,7 +149,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 |---|---|---|---|---|---|
 | 7.1 | Banco: tareas nuevas y línea base de 3 corridas | Ola 6.1 sin cerrar | M | Bajo | A |
 | 7.2 | Cerrar las filas «por comprobar» y decidir con datos qué se enciende | Existen y están apagadas | M | Bajo | A |
-| 7.3 | Herramientas de solo lectura en paralelo | Codex | S | Bajo | A |
+| 7.3 | Paralelismo seguro: lecturas juntas, herramientas con efectos en orden | Codex | S | Medio | A |
 | 7.4 | Respuesta cortada por el límite de salida | OpenCode 2.x | S | Bajo | A |
 | 7.8 | Edición más segura | Los tres | S | Bajo | A |
 | 7.13 | Reparación de la entrada de herramientas | OpenCode 2.x | S | Bajo | A |
@@ -157,6 +158,8 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 | 7.6 | Ganchos completos | Claude Code, Codex | M | Medio | B |
 | 7.7 | Auditoría de permisos del shell y del sandbox | Claude Code, Codex | M | Alto (zona intocable) | B |
 | 7.20 | Políticas duras de nivel superior | OpenCode 2.x, Claude Code | S-M | Medio | B |
+| 7.21 | Resultados binarios de MCP: a archivo y con tope | Claude Code, OpenCode 2.x | S | Bajo | A |
+| 7.22 | Gestionar los «siempre» guardados: listar, editar, borrar | OpenCode 2.x, Claude Code | S | Medio | B |
 | 7.9 | Contexto: diferencias de instrucciones y robustez de la compactación | OpenCode 2.x, Codex | M | Bajo | C |
 | 7.10 | Ayudantes reanudables, parciales y con esfuerzo propio | Los tres | S-M | Medio | C |
 | 7.11 | Worktree para la sesión principal | Los tres | M | Medio | C |
@@ -190,7 +193,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 ### 7.2 Cerrar las filas «por comprobar» y decidir con datos qué se enciende
 
-**Primero, leer el código del fork** para cerrar cada fila 🟡 «por comprobar» de la matriz (§2): CRLF y no UTF-8 en `edit`, archivo completo de salidas largas del shell, `@imports` en instrucciones, resultados binarios de MCP, tope de pasos de los ayudantes, pantalla para editar los «siempre» guardados. Cada una pasa a ✅ o a ❌ con su paquete. Sin esto, la matriz no se puede dar por buena.
+**Hecho el 2026-10-26 (lectura del código del fork):** las filas «por comprobar» quedaron cerradas y la matriz (§2) las refleja. Resultado: formato de salida del shell ✅, tope de pasos y resultado parcial ✅; `@imports`, gestión de los «siempre» y rechazo de no UTF-8 ❌; MCP binario, reparación de argumentos, paralelismo, búsqueda diferida y ganchos 🟡. Lo que queda aquí es medir y decidir qué se enciende.
 
 **Candidatas** (existen en el fork; qué las enciende):
 
@@ -213,17 +216,19 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 **Hecho cuando**: hay una tabla en `LAZUNOX.md` con cada función, su resultado medido y la decisión.
 
-### 7.3 Herramientas de solo lectura en paralelo
+### 7.3 Paralelismo seguro: lecturas juntas, herramientas con efectos en orden
 
-**Cómo lo hace Codex** (`core/src/tools/parallel.rs`, `tools/src/tool_executor.rs`): cada herramienta declara si admite paralelismo (por defecto no). Las que lo admiten toman un candado de **lectura** compartido y las demás un candado **exclusivo**, así una herramienta con efectos espera a que acaben las paralelas. Los resultados se devuelven en el **orden en que se pidieron** (`FuturesOrdered`). Para MCP, se paraleliza si el servidor lo declara o si la herramienta anuncia `readOnlyHint`. La aprobación de permisos ocurre dentro de cada herramienta; no hay regla especial.
+**Lo que se encontró en el motor (cambia el paquete):** el motor **ya** ejecuta las herramientas de un mismo paso en paralelo, pero **todas por igual**: el SDK de IA lanza cada `execute` en cuanto llega su llamada (`LAZUNOX.md` §416-422, con una prueba `paralelo-lectura.test.ts` que no se leyó; el procesador no serializa nada, `session/processor.ts`). No hay marca de «solo lectura» por herramienta. Es decir, el riesgo es el contrario del que asumía el primer borrador: dos `edit` al mismo archivo, o un `shell` con un `write`, pueden correr a la vez.
 
-**Qué hacemos**: lo mismo, con lista cerrada: `read`, `glob`, `grep`, `skill`, `task_list`, y MCP solo con `readOnlyHint` verificado. `shell`, `edit`, `write` y cualquier otra nunca se paralelizan.
+**Cómo lo hace Codex** (`core/src/tools/parallel.rs`, `tools/src/tool_executor.rs`): cada herramienta declara si admite paralelismo (por defecto no). Las que lo admiten toman un candado de **lectura** compartido y las demás uno **exclusivo**; los resultados se devuelven en el orden pedido. En MCP se paraleliza solo si el servidor lo declara o la herramienta anuncia `readOnlyHint`.
 
-**Restricciones**: los permisos se evalúan igual; si dos lecturas necesitan preguntar, las preguntas se encolan una a una (no dos diálogos a la vez). Un fallo no cancela a las demás. Interruptor `LAZUNOX_LECTURAS_PARALELO=0`.
+**Qué hacemos**: una marca `soloLectura` por herramienta (lista cerrada: `read`, `glob`, `grep`, `skill`, `task_list`, `tool_search`, y MCP con `readOnlyHint`) y un candado de lectura/escritura alrededor del `execute`. Las lecturas siguen en paralelo; `shell`, `edit`, `write`, `patch`, `task` y el resto toman el candado exclusivo y esperan a las demás. Los permisos se evalúan igual; si dos solicitudes necesitan preguntar, se encolan una a una.
 
-**Pruebas**: `test/lazunox/lecturas-paralelo.test.ts` (orden conservado, fallo aislado, exclusiva espera a las paralelas, permiso pendiente).
+**Restricciones**: no cambia qué herramientas existen ni sus permisos; un fallo no cancela a las demás; interruptor `LAZUNOX_PARALELISMO_SEGURO=0`. Riesgo medio: toca el camino caliente de todas las herramientas, así que lleva sus pruebas de carrera.
 
-**Hecho cuando**: en T24 bajan los pasos y el éxito no baja.
+**Pruebas**: `test/lazunox/paralelismo-seguro.test.ts` (dos ediciones al mismo archivo no se pisan, tres lecturas corren juntas, el orden de los resultados se conserva, un permiso pendiente no bloquea las lecturas ya lanzadas).
+
+**Hecho cuando**: T24 (lecturas) baja pasos sin bajar el éxito y una tarea nueva con dos escrituras simultáneas al mismo archivo pasa 3/3 con el candado y falla sin él.
 
 ### 7.4 Respuesta cortada por el límite de salida
 
@@ -256,9 +261,9 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 ### 7.6 Ganchos completos
 
-**Hoy**: `PreToolUse`, `PostToolUse`, `PreCompact`, `Stop`, `PostToolUseFailure`, `PermissionDenied` y `updatedToolOutput`, desde el archivo que fija la app (`LAZUNOX_HOOKS_FILE`).
+**Hoy** (`plugin/lazunox-ganchos.ts`, leído el 2026-10-26): 10 eventos (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `PreCompact`, `PostCompact`, `Stop`, `SessionStart`, `UserPromptSubmit`, `SubagentStop`), desde el archivo que fija la app (`LAZUNOX_HOOKS_FILE`). Entienden `decision: "block"` con `reason`, código de salida 2 (bloquear), `additionalContext`, `updatedToolOutput` (texto, hasta 64 KB; el original va a la carpeta de salidas) y **`updatedInput`, que ya se valida contra el esquema de la herramienta** y se ignora si no vale. `PermissionDenied` solo informa.
 
-**Eventos que faltan** (lista real de Codex, `protocol/src/protocol.rs`): `PermissionRequest`, `SubagentStart`, `SubagentStop`, `Interrupt`, y de Claude Code `PostToolBatch`. Codex tiene además `PreModelRequest`/`PostModelRequest`, que no se copian de momento.
+**Eventos que faltan** (lista real de Codex, `protocol/src/protocol.rs`): `PermissionRequest`, `SubagentStart`, `Interrupt`, y de Claude Code `PostToolBatch` (`SubagentStop` ya existe). Codex tiene además `PreModelRequest`/`PostModelRequest`, que no se copian de momento.
 
 **Semántica a copiar** (confirmada en código y docs):
 - `updatedInput` **reemplaza el objeto de entrada completo** (hay que repetir los campos sin cambios), y los permisos se **reevalúan contra la entrada ya modificada**; un gancho nunca amplía permisos. En Codex, para comandos exige un campo de texto `command`.
@@ -267,7 +272,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 - Salida grande: se guarda completa en un archivo de sesión y al modelo llega una vista previa con el principio y el final más la ruta. Codex usa 2 500 tokens (configurable); Claude Code 10 000 caracteres y una vista previa de 2 000.
 - Confianza: Codex marca cada gancho como gestionado, no confiable, confiable o modificado, con **hash del contenido**, y solo ejecuta los gestionados o confiables. Nosotros ya solo aceptamos el archivo de la app; se añade el hash para detectar cambios.
 
-**Orden**: 1) `onFailure: block`, 2) `updatedInput` + `if`, 3) eventos nuevos, 4) volcado a disco.
+**Orden**: 1) `onFailure: block`, 2) filtro `if` (`updatedInput` ya existe), 3) eventos nuevos, 4) volcado a disco.
 
 **Restricción**: un proyecto no puede traer ganchos propios; solo el archivo de la app. **Pruebas**: `test/lazunox/ganchos2.test.ts`; `PROBE_ONLY=ganchos2`. **Hecho cuando**: cada evento se dispara en el probe real y el ejemplo `filtrar-pruebas.cjs` sigue funcionando.
 
@@ -311,7 +316,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 - **OpenCode 2.x**: compara contra una vista LF y reescribe **preservando los finales de línea por región** (incluso en archivos mixtos) y el BOM; los bytes inválidos se degradan a U+FFFD, **sin protección**.
 
 **Qué hacemos**:
-1. **Primero comprobar** cómo trata hoy nuestro `edit` los finales de línea y los no UTF-8 (pruebas que documenten, antes de cambiar).
+1. **Comprobado el 2026-10-26 en el código:** `edit` detecta CRLF si el archivo tiene al menos un `\r\n` y convierte **todo** el texto nuevo a ese final (un CR solitario no se trata, y en archivos mixtos las líneas LF pueden no coincidir); conserva el BOM; y **no rechaza los archivos que no son UTF-8: los decodifica con U+FFFD y los reescribe degradados** (`util/bom.ts`, `TextDecoder` sin `fatal`). `write` y `apply_patch` hacen lo mismo. Eso es **pérdida de datos real**, no solo una brecha: se arregla primero, con pruebas que documenten el comportamiento actual antes de cambiarlo.
 2. Negarse a editar o escribir si el archivo no es UTF-8 válido (mensaje claro), y si el contenido nuevo trae U+FFFD.
 3. Conservar CRLF, CR, LF y BOM por región, como OpenCode.
 4. `read` de un archivo grande solo con una bandera explícita del modelo.
@@ -329,6 +334,8 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 - OpenCode: si la petición de resumen es demasiado grande, la reduce por pasos (85 %, 70 %, 50 %, 35 %) y recorta primero las salidas de herramientas. Ya tenemos `ajustarConversacion` y el resumen robusto (6.4); aquí solo se comparan los casos de borde.
 - Claude Code: tras compactar, el estado de git que se muestra es el actual, no el del inicio.
 
+**`@imports` en las instrucciones** (comprobado ❌ en `session/instruction.ts`): Claude Code deja que `AGENTS.md`/`CLAUDE.md` incluya otros archivos con `@ruta`, hasta 4 niveles. Qué hacemos: lo mismo, con **detección de ciclos**, tope de 4 niveles, solo dentro de la carpeta del proyecto (nunca `~`, `.env`, claves ni rutas fuera) y un tope de bytes por archivo y en total. Interruptor `LAZUNOX_IMPORTS=0`; pruebas `test/lazunox/imports.test.ts` (ciclo, profundidad, ruta fuera, archivo sensible).
+
 **Compactación en segundo plano**: **solo se mide**. En OpenCode es experimental: empieza al 85 % del techo y con al menos 64 000 tokens, guarda un resumen por sesión (máx. 2 fallos) y solo lo usa si la cola nueva es corta (≤ 2 veces `keep`). Gasta tokens si no se usa.
 
 **Compactación ociosa**: descartada (§1).
@@ -344,7 +351,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 **Qué hacemos**:
 - `task` gana `esfuerzo` por llamada (Claude Code 2.1.296) y `session_id`. La sesión debe ser hija de la actual; **conserva los permisos con que nació** (nunca más que la sesión que la lanza) y **cuenta contra el tope** de ayudantes.
-- Un ayudante que agota sus pasos devuelve un resultado `parcial` con su `session_id`. Comprobar primero qué hace hoy el tope de pasos tras el commit `b3ccb17` («el tope de pasos es solo un aviso»).
+- **El resultado `[PARCIAL]` ya existe** (`agent/parcial.ts`, `tool/task.ts`); solo falta añadirle el `session_id` para poder continuarlo. En el **último paso** el motor hoy solo agrega el aviso de pasos agotados y deja todas las herramientas (`session/prompt.ts`); OpenCode 2.x además fuerza `toolChoice: none`, y conviene copiarlo, conservando la lista de herramientas para no romper la caché.
 - Su informe sigue acotado a 4 096 bytes, ya marcado como no confiable; se añade la cabecera y la indentación.
 
 **Pruebas**: `test/lazunox/ayudante-reanudable.test.ts`; `PROBE_ONLY=reanudar`. **Hecho cuando**: una hija reanudada conserva su contexto y no puede ampliar permisos, y el resultado parcial se puede continuar.
@@ -460,12 +467,32 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 **Pruebas**: `test/lazunox/politicas.test.ts` (un repo hostil no puede quitar la política; archivo ausente = sin política; archivo roto = falla cerrado). **Hecho cuando**: el probe confirma que lo denegado no aparece ni se puede invocar.
 
+### 7.21 Resultados binarios de MCP: a archivo y con tope
+
+**Lo que se encontró** (`mcp/invocar.ts`): una imagen devuelta por una herramienta MCP entra al contexto como adjunto `data:` en base64 **sin tope de tamaño**; un recurso binario solo entra si su tipo está en una lista y no pasa un máximo, y si no, queda una nota; el **audio se descarta en silencio**. Solo el texto está acotado (25 000 tokens, el resto a archivo). Una captura grande puede costar decenas de miles de tokens de golpe, que es justo lo que se quiere evitar.
+
+**Qué hacen**: Claude Code (2.1.283) y OpenCode 2.x guardan las imágenes y recursos binarios de los resultados MCP en archivos.
+
+**Qué hacemos**: guardar el binario en la carpeta de salidas del motor (misma retención de 7 días), darle al modelo la ruta, el tipo y el tamaño, y adjuntar la imagen al contexto **solo si el modelo la soporta y pesa menos que un tope** (configurable). El audio se guarda y se avisa, en vez de descartarse.
+
+**Restricciones**: nombres de archivo generados por el motor (nunca el que dice el servidor MCP); tipo comprobado; sin ejecutar nada. Interruptor `LAZUNOX_MCP_BINARIOS=0`. **Pruebas**: `test/lazunox/mcp-binarios.test.ts`. **Hecho cuando**: una captura grande ya no entra entera al contexto y el modelo puede abrirla por ruta.
+
+### 7.22 Gestionar los «siempre» guardados: listar, editar, borrar
+
+**Lo que se encontró** (`permission/siempre-disco.ts`): solo exporta `cargar`, `guardar` y `olvidar`; `olvidar` borra el archivo entero de una carpeta y **nadie la llama**; las rutas HTTP de permisos son solo `list` y `reply`. Una regla guardada por error **no se puede quitar** desde la app, y eso es una trampa de seguridad: un «siempre» mal dado dura para siempre.
+
+**Qué hacen**: OpenCode 2.1.0 permite editar las acciones guardadas (con error de conflicto); Claude Code las guarda en reglas editables.
+
+**Qué hacemos**: rutas del motor para **listar** los «siempre» de una carpeta, **borrar uno** y **borrar todos**, con la prueba de que un `NEVER_ALONE_PERMISSIONS` nunca se puede guardar. La pantalla es de la app (Ajustes). Interruptor `LAZUNOX_PERMISSION_PERSIST` ya existe y sigue apagado por defecto hasta que esta gestión exista.
+
+**Pruebas**: `test/lazunox/siempre-gestion.test.ts` (listar, borrar uno, borrar todos, archivo corrupto, regla prohibida). **Hecho cuando**: la app puede mostrar y quitar un «siempre» y el probe lo confirma. Es un requisito para poder encender 7.2.
+
 ## 4. Tandas
 
 | Tanda | Paquetes | Condición para pasar a la siguiente |
 |---|---|---|
-| A | 7.1, 7.2, 7.3, 7.4, 7.8, 7.13, 7.18, y la **primera corrida** de 7.19 | Línea base hecha; filas «por comprobar» cerradas; decisiones de 7.2 en `LAZUNOX.md`; probe en Mac, Linux y Windows |
-| B | 7.5, 7.6, 7.7, 7.20 | Revisión independiente de 7.7; sin cambios sin registro en `docs/zonas-intocables.json` |
+| A | 7.1, 7.2, 7.3, 7.4, 7.8, 7.13, 7.18, 7.21, y la **primera corrida** de 7.19 | Línea base hecha; filas «por comprobar» cerradas; decisiones de 7.2 en `LAZUNOX.md`; probe en Mac, Linux y Windows |
+| B | 7.5, 7.6, 7.7, 7.20, 7.22 | Revisión independiente de 7.7; sin cambios sin registro en `docs/zonas-intocables.json` |
 | C | 7.9, 7.10, 7.11, 7.14, 7.15, 7.12 | Decisiones D1 y D3 de Ben; compactación en segundo plano medida |
 | D | 7.16, 7.17 y la **segunda corrida** de 7.19 | Decisiones D4 y D5; batería de ataques de 7.16 con falsa aprobación = 0 |
 
