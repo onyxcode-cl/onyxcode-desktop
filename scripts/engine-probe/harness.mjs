@@ -92,11 +92,14 @@ export async function runEngine(bin, sc) {
   for (const [n, t] of Object.entries(sc.plugins ?? {})) writeFileSync(join(cfgdir, 'plugins', n), t)
   if (sc.agentsDir) cpSync(sc.agentsDir, join(cfgdir, 'agents'), { recursive: true })
   const seen = { toolsOffered: null, toolMessages: [], userTexts: [], requests: 0, toolsBytes: [], requestTools: [], bodies: [] }
+  let ctxUso = { n: 0, body: {} }
   const sse = (res, chunks) => {
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     for (const c of chunks) res.write('data: ' + JSON.stringify(c) + '\n\n')
     // `sc.usage`: la respuesta informa de tokens (la compactación mide el contexto real con esto).
-    if (sc.usage) res.write('data: ' + JSON.stringify({ id: 'x', object: 'chat.completion.chunk', created: 1, model: 'm', choices: [], usage: sc.usage }) + '\n\n')
+    // `sc.usage` también puede ser una función ({ n, body }) => usage: el uso informado crece con los pasos (Ola 6, umbral de compactación).
+    const usage = typeof sc.usage === 'function' ? sc.usage(ctxUso) : sc.usage
+    if (usage) res.write('data: ' + JSON.stringify({ id: 'x', object: 'chat.completion.chunk', created: 1, model: 'm', choices: [], usage }) + '\n\n')
     res.end('data: [DONE]\n\n')
   }
   const chunk = (delta, finish = null) => ({
@@ -121,6 +124,7 @@ export async function runEngine(bin, sc) {
       // Peso de la lista de herramientas de ESTA petición (0 si no lleva): base de las mediciones de `medir-herramientas.mjs` y de A-2.
       seen.toolsBytes.push(j.tools ? JSON.stringify(j.tools).length : 0)
       seen.requestTools.push(tools)
+      ctxUso = { n: seen.requests + 1, body: j, url: req.url }
       const toolMsgs = (j.messages ?? []).filter((m) => m.role === 'tool')
       if (tools.length && !seen.toolsOffered) seen.toolsOffered = tools
       seen.requests += 1
@@ -137,7 +141,7 @@ export async function runEngine(bin, sc) {
       // `sc.decide({ tools, toolTexts, userTexts })`: decisión libre por petición (p. ej. un subagente que hace algo distinto del padre).
       const toolTexts = toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
       const step = sc.decide
-        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts, messages: j.messages ?? [], body: j, n: seen.requests })
+        ? sc.decide({ tools, toolTexts, userTexts: seen.userTexts, messages: j.messages ?? [], body: j, n: seen.requests, url: req.url, model: j.model })
         : sc.steps
           ? toolMsgs.length < sc.steps.length
             ? sc.steps[toolMsgs.length](toolMsgs.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))))
@@ -150,6 +154,11 @@ export async function runEngine(bin, sc) {
         if (step?.text !== undefined) return sse(res, [chunk({ role: 'assistant', content: step.text }), chunk({}, step.finish ?? 'stop')])
         return responderLlamada()
       }
+      // `step.status` (+ `step.rawBody`): el proveedor responde con ese estado HTTP y ese cuerpo (429 de cuota, 503 de sobrecarga, 500…).
+      if (step?.status) {
+        res.writeHead(step.status, { 'content-type': 'application/json', ...(step.headers ?? {}) })
+        return void res.end(typeof step.rawBody === 'string' ? step.rawBody : JSON.stringify(step.rawBody ?? {}))
+      }
       if (step?.hang) {
         req.on('close', () => {})
         return
@@ -157,6 +166,16 @@ export async function runEngine(bin, sc) {
       if (step?.delayMs) return void setTimeout(responder, step.delayMs)
       return responder()
       function responderLlamada() {
+      // `step.calls`: VARIAS llamadas a herramienta en la misma respuesta (lecturas en paralelo): [{ name, args }].
+      if (step?.calls) {
+        const tcs = step.calls.map((c, i) => ({
+          index: i,
+          id: `call_${seen.requests}_${toolMsgs.length + 1}_${i}`,
+          type: 'function',
+          function: { name: c.name, arguments: JSON.stringify(c.args) }
+        }))
+        return sse(res, [chunk({ role: 'assistant', tool_calls: tcs }), chunk({}, 'tool_calls')])
+      }
       // `step.force`: pide la herramienta aunque el motor no la ofrezca (para probar que NO se ejecuta).
       if (step && (step.force || tools.includes(step.name))) {
         const tc = {
@@ -175,16 +194,20 @@ export async function runEngine(bin, sc) {
   const port = await freePort()
   const inline = {
     ...(sc.inline ?? {}),
-    provider: {
-      fake: {
-        npm: '@ai-sdk/openai-compatible',
-        name: 'Fake',
-        options: { baseURL: `http://127.0.0.1:${pport}/v1`, apiKey: 'no-usado' },
-        models: { m: { name: 'm', tool_call: true, ...(sc.modelLimit ? { limit: sc.modelLimit } : {}) } }
-      }
-    },
-    model: 'fake/m',
-    small_model: 'fake/m',
+    // `sc.providers(pport)`: sustituye el mapa de proveedores (varios proveedores falsos en el MISMO servidor, distinguidos por ruta `/A/v1`);
+    // `sc.model` / `sc.smallModel`: modelo y modelo pequeño (por defecto `fake/m`).
+    provider: sc.providers
+      ? sc.providers(pport)
+      : {
+          fake: {
+            npm: '@ai-sdk/openai-compatible',
+            name: 'Fake',
+            options: { baseURL: `http://127.0.0.1:${pport}/v1`, apiKey: 'no-usado' },
+            models: { m: { name: 'm', tool_call: true, ...(sc.modelLimit ? { limit: sc.modelLimit } : {}) } }
+          }
+        },
+    model: sc.model ?? 'fake/m',
+    small_model: sc.smallModel ?? 'fake/m',
     mcp: {
       ...(sc.inline?.mcp ?? {}),
       ...Object.fromEntries(
@@ -382,7 +405,8 @@ export async function runEngine(bin, sc) {
       })
       .catch(() => {})
     subscribe(events.signal)
-    const body = { agent: sc.agent ?? 'build', model: { providerID: 'fake', modelID: 'm' }, parts: [{ type: 'text', text: sc.firstPrompt ?? 'hola' }] }
+    const [provID, modID] = (sc.model ?? 'fake/m').split('/')
+    const body = { agent: sc.agent ?? 'build', model: { providerID: provID, modelID: modID }, parts: [{ type: 'text', text: sc.firstPrompt ?? 'hola' }] }
     // `sc.pre({ q, post, sessionID, proj, root, home })`: se ejecuta antes del primer mensaje (fijar metadata, crear un objetivo…).
     if (sc.pre) out.pre = await sc.pre({ q, post, sessionID: s.id, proj, root, home, log: () => log })
     // `sc.skipFirst`: no manda el primer mensaje (todo el guion va en `sc.http` con `prompt`).
