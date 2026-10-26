@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS } from '@shared/types'
-import { assertCodeExtraOn, clearGoal, fetchGoal, readBudget, runReview, setGoal, writeBudget } from './engine-code-extras'
+import { assertCodeExtraOn, clearGoal, fetchGoal, longFetch, readBudget, runReview, setGoal, writeBudget } from './engine-code-extras'
 
 const conn = { baseUrl: 'http://127.0.0.1:4096', authorization: 'Basic abc' }
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status })
@@ -241,5 +243,47 @@ describe('bandera de cada función', () => {
   })
   it('un ajuste corrupto cuenta como apagado', () => {
     expect(() => assertCodeExtraOn({ engineExperiments: { codeExtras: 'si' } as never }, 'goal')).toThrow()
+  })
+})
+
+describe('longFetch (sin el tope de cabeceras de 5 minutos de fetch)', () => {
+  let server: http.Server
+  let base = ''
+  const seen: { method?: string; auth?: string; body: string }[] = []
+  beforeAll(async () => {
+    server = http.createServer((req, res) => {
+      let body = ''
+      req.on('data', (c) => (body += c))
+      req.on('end', () => {
+        seen.push({ method: req.method, auth: req.headers.authorization, body })
+        if (req.url === '/lento') return void setTimeout(() => res.end('tarde'), 5000)
+        if (req.url === '/vacio') return void res.writeHead(204).end()
+        res.writeHead(req.url === '/malo' ? 500 : 200, { 'content-type': 'application/json' }).end(JSON.stringify({ eco: body }))
+      })
+    })
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+  })
+  afterAll(() => {
+    server.closeAllConnections()
+    server.close()
+  })
+
+  it('manda método, cabeceras y cuerpo y devuelve una Response normal (estado, ok, texto)', async () => {
+    const res = await longFetch(`${base}/x`, {
+      method: 'POST',
+      headers: { Authorization: 'Basic abc', 'Content-Type': 'application/json' },
+      body: '{"a":"ñ"}'
+    })
+    expect(res.ok).toBe(true)
+    expect(await res.json()).toEqual({ eco: '{"a":"ñ"}' })
+    expect(seen.at(-1)).toEqual({ method: 'POST', auth: 'Basic abc', body: '{"a":"ñ"}' })
+    expect((await longFetch(`${base}/malo`)).status).toBe(500)
+    expect((await longFetch(`${base}/vacio`)).status).toBe(204)
+  })
+
+  it('el AbortSignal corta una respuesta lenta (y uno ya cancelado ni sale)', async () => {
+    await expect(longFetch(`${base}/lento`, { signal: AbortSignal.timeout(200) })).rejects.toThrow()
+    await expect(longFetch(`${base}/x`, { signal: AbortSignal.abort() })).rejects.toThrow()
   })
 })

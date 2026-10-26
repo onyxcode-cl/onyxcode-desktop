@@ -1,3 +1,4 @@
+import http from 'node:http'
 import type { IpcMain } from 'electron'
 import {
   mergeBudgetMetadata,
@@ -159,6 +160,46 @@ export async function writeBudget(
 
 // ───────────── Revisar cambios ─────────────
 
+/**
+ * `fetch` de Node (undici) corta con `HeadersTimeoutError` a los 5 minutos sin recibir cabeceras, aunque el `AbortSignal` diga 20: `/review`
+ * no responde hasta que el revisor termina y una revisión lenta pasaba de 5 minutos («No se pudo consultar al motor: fetch failed», con el
+ * revisor aún trabajando). Esta versión usa `node:http`, que no tiene ese tope: solo vale el `AbortSignal`. Solo lo que usa `runReview`
+ * (método, cabeceras, cuerpo de texto y señal); devuelve una `Response` normal.
+ */
+export const longFetch: FetchLike = (input, init) =>
+  new Promise<Response>((resolve, reject) => {
+    const signal = init?.signal ?? undefined
+    if (signal?.aborted) return reject(signal.reason instanceof Error ? signal.reason : new Error('Cancelado'))
+    const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+    const hdrs = Object.fromEntries(new Headers(init?.headers as HeadersInit | undefined).entries())
+    const body = typeof init?.body === 'string' ? init.body : undefined
+    const req = http.request(
+      url,
+      {
+        method: init?.method ?? 'GET',
+        headers: { ...hdrs, ...(body !== undefined ? { 'content-length': String(Buffer.byteLength(body)) } : {}) }
+      },
+      (res) => {
+        const chunks: Buffer[] = []
+        res.on('data', (c: Buffer) => chunks.push(c))
+        res.on('error', reject)
+        res.on('end', () => {
+          signal?.removeEventListener('abort', onAbort)
+          const status = res.statusCode ?? 0
+          // Una `Response` no admite cuerpo con estos códigos.
+          resolve(new Response([204, 205, 304].includes(status) ? null : Buffer.concat(chunks), { status }))
+        })
+      }
+    )
+    const onAbort = (): void => void req.destroy(signal?.reason instanceof Error ? signal.reason : new Error('Cancelado'))
+    signal?.addEventListener('abort', onAbort, { once: true })
+    req.on('error', (e) => {
+      signal?.removeEventListener('abort', onAbort)
+      reject(e)
+    })
+    req.end(body)
+  })
+
 /** Textos de un mensaje del motor (`{ info, parts }`): partes de texto y salida de herramientas (la subtarea del revisor llega así). */
 function textsOfMessage(msg: unknown): string[] {
   if (!msg || typeof msg !== 'object') return []
@@ -177,7 +218,7 @@ function textsOfMessage(msg: unknown): string[] {
 export async function runReview(
   conn: Conn,
   req: { sessionID: string; directory?: string; model?: string },
-  fetchImpl: FetchLike = fetch,
+  fetchImpl: FetchLike = longFetch,
   timeoutMs: number = REVIEW_TIMEOUT_MS
 ): Promise<ReviewResult> {
   const res = await fetchImpl(withQuery(`${conn.baseUrl}/session/${encodeURIComponent(req.sessionID)}/command`, req.directory), {
