@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-26T19:17:03.816Z",
+  "tarea": "T09",
+  "repeticion": 3,
+  "nombre": "Sesión larga: 8 pedidos encadenados",
+  "mide": "Compactación, coherencia",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4-pro",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 12532,
+      "salida": 3782,
+      "cache_leida": 302336,
+      "enviados": 314868
+    },
+    "pasos": 28,
+    "tokens_por_paso": {
+      "med": 10838,
+      "p90": 14463
+    },
+    "llamadas": 20,
+    "herramientas": {
+      "bash": 3,
+      "write": 3,
+      "read": 4,
+      "edit": 10
+    },
+    "bytes_resultados": 5772,
+    "permisos_negados": 0,
+    "tiempo_ms": 79698,
+    "peticiones_modelo": null
+  }
+}
