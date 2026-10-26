@@ -54,7 +54,7 @@ const outcome = (r) => {
 const checks = []
 const check = (name, sc, expect) => checks.push({ name, sc, expect })
 /** Comprobación que arma ella misma varias corridas del motor (`run` devuelve true/false o lanza). */
-const checkRun = (name, run, familia) => checks.push({ name, run, familia })
+const checkRun = (name, run, familia, gate) => checks.push({ name, run, familia, gate })
 
 // ── Conectores en Code (F8-B203): el bloque `permission` que arma `buildCodeMcpPermission` ─────────────────────
 for (const [mode, env, call] of [
@@ -1117,6 +1117,12 @@ if (only === 'no-verificable') {
 }
 const selected = only ? checks.filter((x) => (x.familia ? x.familia === only : x.name.includes(only) && !FAMILIAS_OLA3.includes(only) && !FAMILIAS_OLA6.includes(only))) : checks
 for (const c of selected) {
+  // `gate: 'motor-viejo'`: necesita un binario de un motor anterior (PROBE_MOTOR_VIEJO=/ruta/al/opencode, p. ej. el lazunox.10 publicado) para fabricar una base antigua.
+  if (c.gate === 'motor-viejo' && !process.env.PROBE_MOTOR_VIEJO) {
+    skipped++
+    console.log(`SALTA ${c.name}\n      → falta PROBE_MOTOR_VIEJO=/ruta/al/opencode de un motor anterior (p. ej. lazunox.10)`)
+    continue
+  }
   if (c.gate === 'tool-search' && !hasToolSearch()) {
     skipped++
     console.log(
@@ -1145,7 +1151,7 @@ for (const c of selected) {
     `${ok ? 'OK  ' : 'FALLA'} ${c.name}${ok ? '' : `\n      → ${r.error ?? (typeof res === 'string' ? res : JSON.stringify({ outcome: outcome(r), asked: r.asked, parts: r.toolParts }))}`}`
   )
 }
-if (skipped) console.log(`\n${skipped} comprobación(es) saltada(s): este motor no trae LAZUNOX_TOOL_SEARCH.`)
+if (skipped) console.log(`\n${skipped} comprobación(es) saltada(s) (motor sin LAZUNOX_TOOL_SEARCH, o falta PROBE_MOTOR_VIEJO).`)
 console.log(
   failed ? `\n${failed} comprobación(es) fallaron.` : `\nTodo OK (${selected.length - skipped}${skipped ? ` + ${skipped} saltadas` : ''}).`
 )

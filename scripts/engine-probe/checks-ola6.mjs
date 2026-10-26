@@ -55,7 +55,7 @@ export const NO_VERIFICABLE = [
   ['umbral: valor por defecto para gratuitos y p90 de tokens por paso (T09/T19)', 'es una medición con modelo real; aquí solo se comprueba el mecanismo con `usage` simulado'],
   ['minimos: ahorro ≥ 35 % de tokens de las hijas (T03/T08/T15/T14)', 'banco con modelo real; el probe solo comprueba qué contexto fijo se envía'],
   ['resumen: calidad del resumen y efecto en modelos débiles (T09/T19)', 'requiere modelo real; el probe solo comprueba la forma (encabezados), el reintento y la marca'],
-  ['todo-deps (f): abrir una base creada por el motor lazunox.10 y migrarla', 'no hay en este equipo una base ni un binario lazunox.10 para fabricarla; lo cubre `database-migration.test.ts` del motor'],
+  ['todo-deps (f): migrar una base creada por el motor lazunox.10', 'solo con PROBE_MOTOR_VIEJO=/ruta/al/opencode (binario lazunox.10); sin él la comprobación se salta'],
   ['todo-deps: T21/T15 (ningún ayudante arranca antes que su dependencia)', 'el orden lo impone la plantilla de `/lote`, no el motor; es de modelo real'],
   ['ganchos3: efecto del filtro de ejemplo sobre un modelo real que lee el original', 'depende de que el modelo use `read` sobre la ruta; aquí se comprueba que el archivo existe y es legible por `read`'],
   ['cambios: T23 (≥ 2 de 3) y coste de `track()` en repos grandes', 'modelo real y repos grandes'],
@@ -66,7 +66,7 @@ export const NO_VERIFICABLE = [
 ]
 
 export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
-  const checkRun = (name, run) => registrar(name, run, FAMILIAS.find((f) => name === f || name.startsWith(f + ' ') || name.startsWith(f + ':')))
+  const checkRun = (name, run, gate) => registrar(name, run, FAMILIAS.find((f) => name === f || name.startsWith(f + ' ') || name.startsWith(f + ':')), gate)
   const conRaiz = async (fn) => {
     const root = mkdtempSync(join(tmpdir(), 'lz-ola6-'))
     try {
@@ -484,8 +484,7 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
       exige(a.includes('"a.txt"') && /1 archivo protegido cambió/.test(a), 'el aviso no nombra "a.txt" ni dice «1 archivo protegido cambió»', a)
       exige(!a.includes('.env') && !a.includes('SECRETO_NUEVO') && !a.includes('CONTENIDO_NUEVO'), 'el aviso nombra .env o filtra contenido', a)
       exige(h.segundas.some((b) => AVISO.test(textoDe(b))), 'la petición al proveedor del 2.º turno no lleva el aviso')
-      const enPeticion = h.segundas.map(textoDe).join('\n')
-      exige(!enPeticion.includes('SECRETO_NUEVO_999') || h.segundas.every((b) => !textoDe(b).includes('SECRETO_NUEVO_999')), 'la petición lleva el contenido nuevo de .env')
+      exige(h.segundas.every((b) => !textoDe(b).includes('SECRETO_NUEVO_999')), 'la petición lleva el contenido nuevo de .env')
       exige(h.avisos3.length === 1, `el 3.er turno (sin cambios) añadió otro aviso (${h.avisos3.length} en total)`, h.avisos3)
       return true
     })
@@ -800,6 +799,137 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
     return true
   })
 
+  // ═══ heredado (6.9): ayudante «fork» que hereda la conversación ═════════════════════════════════════════════════
+  const HER_ENV = { LAZUNOX_AYUDANTE_HEREDADO: '1' }
+  const ORDEN_HER = 'RESUME_ESTO'
+  const esHijaHer = (b) => ultimo(b.messages ?? []).texto.includes(ORDEN_HER)
+  const argsTask = (extra = {}) => ({ subagent_type: 'general', description: 'resumir', prompt: ORDEN_HER, ...extra })
+  /**
+   * Turnos 'TURNO_UNO_H', 'TURNO_DOS_H' (texto simple) y un último turno 'LANZA_HEREDADO' que lanza `task`. `antes(h)` corre entre turnos (rebobinar, cambios externos…);
+   * `ayudante(ctx)` decide la hija (por defecto contesta «hecho»). Devuelve los cuerpos de la hija y su sesión.
+   */
+  const motorHeredado = (sc, { args = argsTask({ heredar: 'conversacion' }), ayudante = () => ({ text: 'hecho' }), turnos = ['TURNO_UNO_H', 'TURNO_DOS_H'], antes, plan = {} } = {}) =>
+    motor({
+      git: true,
+      skipFirst: true,
+      projectFiles: { 'a.txt': 'x\n' },
+      decide: (ctx) => {
+        if (!ctx.tools.length) return { text: 'titulo' }
+        const u = ultimo(ctx.messages)
+        if (u.texto.includes(ORDEN_HER)) return ayudante(ctx, u)
+        if (u.texto.includes('LANZA_HEREDADO')) return u.n === 0 ? { name: 'task', args } : null
+        return guion(plan)(ctx)
+      },
+      ...sc,
+      http: async (h) => {
+        for (const t of turnos) await h.prompt(t)
+        const info = antes ? await antes(h) : {}
+        const st = await h.prompt('LANZA_HEREDADO', { timeoutMs: 60_000 })
+        const hs = await hijas(h.q, h.sessionID)
+        const hija = hs.at(-1) ? (await J(await h.q(`/session/${hs.at(-1).id}`))).body : undefined
+        return { st, hs, hija, padre: (await J(await h.q(`/session/${h.sessionID}`))).body, cuerpos: h.bodies.filter(esHijaHer), raiz: h.bodies.filter((b) => !esHijaHer(b) && (b.tools ?? []).length), info }
+      }
+    })
+
+  checkRun('heredado (a): con la bandera, heredar:"conversacion" → la 1.ª petición de la hija lleva «TURNO_UNO_H» y «TURNO_DOS_H» y «Eres un ayudante bifurcado»; la sesión hija tiene parentID y metadata.lazunox_fork_de (y nada más)', async () => {
+    const r = await motorHeredado({ env: HER_ENV })
+    const h = r.http
+    exige(h.cuerpos.length >= 1, 'la hija no hizo ninguna petición', { st: h.st, hijas: h.hs.length })
+    const t = textoDe(h.cuerpos[0])
+    exige(t.includes('TURNO_UNO_H') && t.includes('TURNO_DOS_H'), 'la hija no ve los turnos del padre', t.slice(0, 600))
+    exige(ultimo(h.cuerpos[0].messages).texto.includes('Eres un ayudante bifurcado'), 'la orden no lleva la línea «Eres un ayudante bifurcado»', ultimo(h.cuerpos[0].messages).texto.slice(0, 200))
+    exige(h.hija?.parentID === h.padre.id, 'la sesión hija no tiene parentID = el padre', h.hija)
+    exige(h.hija?.metadata?.lazunox_fork_de === h.padre.id, 'metadata.lazunox_fork_de no apunta al padre', h.hija?.metadata)
+    exige(Object.keys(h.hija?.metadata ?? {}).every((k) => k === 'lazunox_fork_de'), 'la hija heredó otros metadatos del padre', h.hija?.metadata)
+    return true
+  })
+
+  checkRun('heredado (b): con edit:deny y bash:allow en la sesión del padre, la hija no edita (denegado) y su sesión NO trae el allow de bash del padre', async () => {
+    const permisos = [{ permission: 'edit', pattern: '*', action: 'deny' }, { permission: 'bash', pattern: '*', action: 'allow' }]
+    const r = await motorHeredado(
+      { env: HER_ENV, sessionBody: { permission: permisos }, reply: 'once' },
+      // La hija pide `edit` a la fuerza (aunque no se le ofrezca): no debe ejecutarse.
+      { ayudante: (ctx, u) => (u.n === 0 ? { name: 'edit', force: true, args: { filePath: join(ctx.body ? '/private/var/tmp' : '', 'lz6-no-debe-existir.txt'), oldString: 'a', newString: 'b' } } : { text: 'hecho' }) }
+    )
+    const h = r.http
+    exige(h.cuerpos.length >= 1, 'la hija no hizo ninguna petición')
+    exige(!nombres(h.cuerpos[0]).includes('edit'), 'se le ofreció edit a la hija a pesar del deny del padre', nombres(h.cuerpos[0]))
+    const reglas = h.hija?.permission ?? []
+    exige(!reglas.some((x) => x.permission === 'bash' && x.action === 'allow' && x.pattern === '*'), 'la hija heredó el `bash: allow` de la sesión del padre', reglas)
+    exige(reglas.some((x) => x.permission === 'edit' && x.action === 'deny') || !nombres(h.cuerpos[0]).includes('edit'), 'el deny de edit no llegó a la hija', reglas)
+    return true
+  })
+
+  checkRun('heredado (c): padre rebobinado al turno 2 → la hija ve el turno 1 pero no los turnos 2 y 3', async () => {
+    const r = await motorHeredado(
+      { env: HER_ENV },
+      {
+        turnos: ['TURNO_UNO_H', 'TURNO_DOS_H', 'TURNO_TRES_H'],
+        antes: async (h) => {
+          const us = usuarios(await mensajes(h.q, h.sessionID))
+          const dos = us.find((u) => u.texto.includes('TURNO_DOS_H'))
+          const rv = await h.q(`/session/${h.sessionID}/revert`, h.post({ messageID: dos.id }))
+          return { revert: rv.status }
+        }
+      }
+    )
+    const h = r.http
+    exige(h.info.revert === 200, 'el rebobinado previo no dio 200', h.info)
+    exige(h.cuerpos.length >= 1, 'la hija no hizo ninguna petición')
+    const t = textoDe(h.cuerpos[0])
+    exige(t.includes('TURNO_UNO_H') && !t.includes('TURNO_DOS_H') && !t.includes('TURNO_TRES_H'), 'la hija ve turnos rebobinados (o no ve el 1)', t.slice(0, 800))
+    return true
+  })
+
+  checkRun('heredado (d): la hija (general) no recibe la herramienta `task` (un fork no crea forks)', async () => {
+    const r = await motorHeredado({ env: HER_ENV })
+    exige(r.http.cuerpos.length >= 1 && !nombres(r.http.cuerpos[0]).includes('task'), 'la hija heredada tiene la herramienta task', nombres(r.http.cuerpos[0]))
+    return true
+  })
+
+  checkRun('heredado (e): SIN la bandera, el esquema de task no trae `heredar` y la hija empieza sin los mensajes del padre (aunque se pida heredar)', async () => {
+    const r = await motorHeredado({})
+    const h = r.http
+    exige(h.cuerpos.length >= 1, 'la hija no hizo ninguna petición (¿la herramienta rechazó el campo desconocido?)', { st: h.st })
+    const sch = taskSchema(h.raiz[0]?.tools ?? [])
+    exige(!('heredar' in sch), 'sin la bandera el esquema de task trae `heredar`', Object.keys(sch))
+    const t = textoDe(h.cuerpos[0])
+    exige(!t.includes('TURNO_UNO_H') && !t.includes('Eres un ayudante bifurcado'), 'sin la bandera la hija vio la conversación del padre', t.slice(0, 600))
+    exige(!h.hija?.metadata?.lazunox_fork_de, 'sin la bandera la hija lleva lazunox_fork_de', h.hija?.metadata)
+    return true
+  })
+
+  checkRun('heredado (e2): CON la bandera pero heredar:"nada" (o sin el campo), la hija no hereda y el esquema SÍ trae `heredar`', async () => {
+    const r = await motorHeredado({ env: HER_ENV }, { args: argsTask() })
+    const h = r.http
+    exige('heredar' in taskSchema(h.raiz[0]?.tools ?? []), 'con la bandera el esquema de task no trae `heredar`')
+    exige(h.cuerpos.length >= 1 && !textoDe(h.cuerpos[0]).includes('TURNO_UNO_H'), 'sin pedir heredar, la hija vio la conversación del padre')
+    return true
+  })
+
+  checkRun('heredado (f): partes del padre con metadata lazunox_* (aquí el aviso de cambios externos) NO se copian a la hija', async () => {
+    const r = await motorHeredado(
+      { env: { ...HER_ENV, LAZUNOX_AVISOS_CAMBIOS: '1' }, inline: { permission: { read: 'allow' } }, reply: 'once' },
+      {
+        turnos: ['LEER_H'],
+        plan: { LEER_H: [{ name: 'read', args: { filePath: 'a.txt' } }] },
+        antes: async (h) => {
+          writeFileSync(join(h.proj, 'a.txt'), 'CAMBIADO FUERA, mucho más largo que antes\n')
+          await h.prompt('TURNO_CON_AVISO_H')
+          const avisos = (await mensajes(h.q, h.sessionID)).flatMap((m) => m.parts.filter((p) => p.type === 'text' && p.metadata?.lazunox_avisos_cambios))
+          return { avisos: avisos.length }
+        }
+      }
+    )
+    const h = r.http
+    exige(h.info.avisos === 1, 'el escenario no generó el aviso de cambios en el padre', h.info)
+    exige(h.cuerpos.length >= 1, 'la hija no hizo ninguna petición')
+    const t = textoDe(h.cuerpos[0])
+    exige(t.includes('TURNO_CON_AVISO_H'), 'la hija no hereda ni el turno del padre', t.slice(0, 500))
+    exige(!/cambiaron fuera de esta sesión/.test(t), 'el aviso sintético (lazunox_*) llegó a la hija')
+    return true
+  })
+
   // ═══ unicode (6.5): edición tolerante a comillas, rayas y NBSP ══════════════════════════════════════════════
   const CARTA = ['línea uno', '“Gracias” — atte.', 'hola mundo', 'cierre ‘simple’…', ''].join('\n')
   const edicion = (proj, oldString, newString) => ({ name: 'edit', args: { filePath: join(proj, 'carta.txt'), oldString, newString } })
@@ -875,39 +1005,26 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
 
   // ═══ paralelo (5B): varias llamadas en el mismo paso corren a la vez ════════════════════════════════════════
   checkRun('paralelo: 3 bash `sleep 1` pedidos en el MISMO paso se solapan (los 3 empiezan antes de que acabe el primero; total < 2,4 s) y las partes salen en el orden pedido', () =>
-    conRaiz(async (root, proj) => {
+    conRaiz(async (root) => {
       const sh = (k) => ({ name: 'bash', args: { command: `sleep 1; echo FIN${k}`, description: `espera ${k}` } })
       const r = await motor({
         root,
         git: true,
         inline: { permission: { bash: 'allow' } },
-        decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { calls: [sh(1), sh(2), sh(3)] } : null)
+        decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { calls: [sh(1), sh(2), sh(3)] } : null),
+        http: async ({ q, sessionID }) => herramientas(await mensajes(q, sessionID))
       })
-      const ps = r.toolParts
+      const ps = r.http
       exige(ps.length === 3 && ps.every((p) => p.status === 'completed'), 'no se completaron las 3 llamadas', ps.map((p) => [p.tool, p.status, p.output.slice(0, 80)]))
       exige(ps.map((p) => /FIN(\d)/.exec(p.output)?.[1]).join('') === '123', 'las partes no salen en el orden de las llamadas', ps.map((p) => p.output))
-      const msgs = r.toolParts // sin tiempos: se leen aparte
-      return msgs.length === 3
-    }).then(async () => {
-      // Segunda mitad: los tiempos de las partes (state.time.start/end) no los guarda `toolParts` del arnés; se leen por HTTP.
-      return conRaiz(async (root) => {
-        const sh = (k) => ({ name: 'bash', args: { command: `sleep 1; echo FIN${k}`, description: `espera ${k}` } })
-        const r = await motor({
-          root,
-          git: true,
-          inline: { permission: { bash: 'allow' } },
-          decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { calls: [sh(1), sh(2), sh(3)] } : null),
-          http: async ({ q, sessionID }) => herramientas(await mensajes(q, sessionID))
-        })
-        const t = r.http.map((p) => p.time)
-        exige(t.length === 3 && t.every((x) => x?.start && x?.end), 'faltan las marcas de tiempo de las partes', t)
-        const primerFin = Math.min(...t.map((x) => x.end))
-        const ultimoInicio = Math.max(...t.map((x) => x.start))
-        exige(ultimoInicio < primerFin, `las llamadas no se solaparon (último inicio ${ultimoInicio} ≥ primer fin ${primerFin})`, t)
-        const total = Math.max(...t.map((x) => x.end)) - Math.min(...t.map((x) => x.start))
-        exige(total < 2400, `las 3 esperas de 1 s tardaron ${total} ms en total (en serie serían ≥ 3000)`)
-        return true
-      })
+      const t = ps.map((p) => p.time)
+      exige(t.every((x) => x?.start && x?.end), 'faltan las marcas de tiempo de las partes', t)
+      const primerFin = Math.min(...t.map((x) => x.end))
+      const ultimoInicio = Math.max(...t.map((x) => x.start))
+      exige(ultimoInicio < primerFin, `las llamadas no se solaparon (último inicio ${ultimoInicio} ≥ primer fin ${primerFin})`, t)
+      const total = Math.max(...t.map((x) => x.end)) - Math.min(...t.map((x) => x.start))
+      exige(total < 2400, `las 3 esperas de 1 s tardaron ${total} ms en total (en serie serían ≥ 3000)`)
+      return true
     })
   )
 
@@ -995,6 +1112,38 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
       exige(/\(id U2; depende de U1\)/.test(r.http.texto), 'la petición posterior a la compactación no trae «(id U2; depende de U1)»', r.http.texto.slice(-1500))
       return true
     })
+  )
+
+  checkRun(
+    'todo-deps (f): una base creada por un motor ANTERIOR (lazunox.10, sin las columnas nuevas) se abre con este motor, migra y la lista de tareas de la sesión vieja sigue leyéndose; luego se pueden guardar tareas con depende_de',
+    () =>
+      conRaiz(async (root, proj) => {
+        const viejas = [T('vieja uno', 'completed'), T('vieja dos', 'in_progress')]
+        // 1) el motor anterior crea la sesión y la lista (misma carpeta raíz: la base vive en root/home/.local/share/opencode).
+        const a = await runEngine(process.env.PROBE_MOTOR_VIEJO, { root, git: true, reply: 'once', decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? tw(viejas) : null) })
+        exige(!a.error && a.toolParts[0]?.status === 'completed', 'el motor anterior no pudo guardar la lista de tareas', a.error ?? a.toolParts)
+        // 2) este motor abre esa misma base.
+        const nuevas = [T('vieja uno', 'completed', { id: 'V1' }), T('nueva dos', 'pending', { id: 'V2', depende_de: ['V1'] })]
+        const b = await motor({
+          root,
+          git: true,
+          skipFirst: true,
+          http: async ({ q, post }) => {
+            const sesiones = (await J(await q('/session'))).body ?? []
+            const vieja = sesiones.find((x) => x.id === a.sessionID)
+            const todo = vieja ? (await J(await q(`/session/${vieja.id}/todo`))).body : null
+            return { hay: !!vieja, todo }
+          }
+        })
+        exige(b.http.hay, 'este motor no ve la sesión creada por el anterior', b.http)
+        exige(Array.isArray(b.http.todo) && b.http.todo.map((t) => t.content).join('|') === 'vieja uno|vieja dos', 'la lista de la sesión vieja no sobrevivió a la migración', b.http.todo)
+        exige(b.http.todo.every((t) => !t.id && !t.depende_de), 'las tareas viejas deberían tener id/depende_de vacíos', b.http.todo)
+        // 3) y se puede seguir usando: guardar una lista nueva con dependencias en una sesión nueva sobre la misma base.
+        const c = await motor({ root, git: true, reply: 'once', decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? tw(nuevas) : null), http: async ({ q, sessionID }) => (await J(await q(`/session/${sessionID}/todo`))).body })
+        exige(c.toolParts[0]?.status === 'completed' && c.http.find((t) => t.id === 'V2')?.depende_de?.[0] === 'V1', 'tras migrar no se guardaron tareas con depende_de', { parte: c.toolParts[0], todo: c.http })
+        return true
+      }),
+    'motor-viejo'
   )
 
   // ═══ sugerencia (5A): la sugerencia es un dato; nunca decide ════════════════════════════════════════════════
