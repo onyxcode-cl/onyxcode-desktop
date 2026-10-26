@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Banco de tareas del motor (plan maestro, §5 «Medición» y paquete 1A): 18 tareas pequeñas y REPRODUCIBLES (programación y oficina),
+// Banco de tareas del motor (plan maestro, §5 «Medición» y paquete 1A; ola 6, paquete 6.1: T19-T23 más duras): 23 tareas pequeñas y REPRODUCIBLES (programación y oficina),
 // cada una con su carpeta inicial generada por el propio script, un pedido natural en español y un VERIFICADOR determinista (un comando
 // o una comprobación de archivos; nunca un juez con modelo). Sirve para medir «el motor mejoró» antes/después, con el modelo gratuito.
 //
@@ -17,9 +17,13 @@
 //   node scripts/engine-bench/run.mjs --motor <binario> [--tareas T01,T05] [--repeticiones 3] [--modelo opencode/deepseek-v4.1-flash-free]
 //        [--proveedor-falso [--sin-guion T05,T09]] [--env K=V ...] [--max-pasos 60] [--presupuesto-tokens 400000] [--timeout-min 15]
 //        [--auth-archivo <auth.json>] [--typescript <carpeta de typescript>] [--salida <archivo|carpeta>] [--conservar] [--espera-cuota-seg 60]
+//        [--guardar-corridas <carpeta>]   (un JSON por tarea y repetición, escrito apenas termina cada corrida: `T19-r03.json`; si ya existe
+//        y no es de cuota, esa repetición se SALTA y se reutiliza, así una tanda de ≥5 repeticiones se reparte en varios días)
 //   node scripts/engine-bench/run.mjs --motor <binario> --tareas T17,T18 --reanudar bench-….json   (repite SOLO esas tareas, p. ej. tras agotar la cuota,
 //        y deja un archivo nuevo con el resto tal cual estaba; mismo modelo y motor)
-//   node scripts/engine-bench/run.mjs --comparar antes.json despues.json     (imprime el antes/después; no corre el motor)
+//   node scripts/engine-bench/run.mjs --comparar antes.json despues.json     (imprime el antes/después con mediana y rango por tarea y, con ≥5
+//        repeticiones en ambos lados, si la diferencia de tokens/pasos queda «dentro del ruido»; acepta también carpetas de --guardar-corridas;
+//        no corre el motor)
 //   node scripts/engine-bench/run.mjs --lista                                (las tareas)
 //   node scripts/engine-bench/run.mjs --autoprueba [--tareas T01] [--typescript <dir>]   (sin motor: cada verificador debe FALLAR en la carpeta
 //        inicial y PASAR tras aplicar el guion de la tarea con herramientas simuladas; también solo en contenedor)
@@ -32,7 +36,7 @@
 // Salida: `bench-<fecha>.json` + tabla Markdown. Métricas por tarea (mediana de las corridas): éxito (k de n), tokens enviados
 // (`input + cache.read`), tokens de salida, caché leída / enviados, pasos, llamadas, minutos y tokens por éxito.
 import { spawn, spawnSync } from 'node:child_process'
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -67,6 +71,7 @@ function leerArgs(argv) {
       case '--comparar': a.comparar = [valor(i, n), argv[i + 2]]; if (!a.comparar[1]) throw new Error('--comparar necesita dos archivos'); i += 2; break
       case '--proveedor-falso': a.falso = true; break
       case '--conservar': a.conservar = true; break
+      case '--guardar-corridas': a.guardarCorridas = valor(i++, n); break
       case '--auth-archivo': a.authArchivo = valor(i++, n); break
       case '--reanudar': a.reanudar = valor(i++, n); break
       case '--sin-guion': a.sinGuion = valor(i++, n).split(',').map((x) => x.trim().toUpperCase()); break
@@ -184,6 +189,7 @@ function acumular(m, r) {
       m.entrada += t.input ?? 0
       m.salida += t.output ?? 0
       m.cache_leida += t.cache?.read ?? 0
+      m.porPaso.push((t.input ?? 0) + (t.cache?.read ?? 0))
       m.pasos += 1
     } else if (e.type === 'tool_use') {
       const h = e.part?.tool ?? '?'
@@ -205,7 +211,7 @@ async function unaCorrida(cfg, tarea, ctx) {
   const proj = join(root, 'proyecto')
   const home = join(root, 'home')
   for (const d of [proj, home, join(root, 'tmp')]) mkdirSync(d, { recursive: true })
-  const m = { ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
+  const m = { porPaso: [], ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
   let proveedor = null
   let verificacion
   try {
@@ -230,7 +236,7 @@ async function unaCorrida(cfg, tarea, ctx) {
       const argv = [
         'run', '--format', 'json', '--permisos', 'ninguno',
         '--max-steps', String(cfg.maxPasos),
-        '--presupuesto-tokens', String(Math.max(1, cfg.presupuesto - m.entrada - m.salida)),
+        '--presupuesto-tokens', String(Math.max(1, Math.max(cfg.presupuesto, tarea.presupuesto ?? 0) - m.entrada - m.salida)),
         '--model', modelo,
         ...(sessionID ? ['--session', sessionID] : [])
       ]
@@ -262,6 +268,7 @@ async function unaCorrida(cfg, tarea, ctx) {
     motivo: m.motivos.at(-1) ?? (m.errores.length ? 'error' : 'sin_informe'),
     tokens: { entrada: m.entrada, salida: m.salida, cache_leida: m.cache_leida, enviados },
     pasos: m.pasos,
+    tokens_por_paso: { med: mediana(m.porPaso), p90: percentil(m.porPaso, 90) },
     llamadas: m.llamadas,
     herramientas: m.herramientas,
     bytes_resultados: m.bytes_resultados,
@@ -287,6 +294,8 @@ function resumir(corridas) {
     tokens_salida_med: mediana(validas.map((c) => c.tokens.salida)),
     cache_pct_med: mediana(validas.map((c) => (c.tokens.enviados ? (100 * c.tokens.cache_leida) / c.tokens.enviados : 0))),
     pasos_med: mediana(validas.map((c) => c.pasos)),
+    tokens_por_paso_med: mediana(validas.map((c) => c.tokens_por_paso?.med)),
+    tokens_por_paso_p90: mediana(validas.map((c) => c.tokens_por_paso?.p90)),
     llamadas_med: mediana(validas.map((c) => c.llamadas)),
     minutos_med: mediana(validas.map((c) => c.tiempo_ms / 60_000)),
     tokens_por_exito: exitos.length ? mediana(exitosEnviados) : null
@@ -309,15 +318,15 @@ function agregados(porTarea) {
 const num = (v, d = 0) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('es-CL', { maximumFractionDigits: d }))
 
 function imprimirTabla(salida) {
-  const L = ['| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Llamadas (med) | Min (med) | Tokens/éxito |', '|---|---|---:|---:|---:|---:|---:|---:|---:|']
+  const L = ['| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Min (med) | Tokens/éxito |', '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|']
   for (const [id, t] of Object.entries(salida.tareas)) {
     if (t.omitida) {
-      L.push(`| ${id} ${t.nombre} | omitida (${t.omitida}) | | | | | | | |`)
+      L.push(`| ${id} ${t.nombre} | omitida (${t.omitida}) | | | | | | | | |`)
       continue
     }
     const r = t.resumen
     const exito = `${r.exitos}/${r.n}${r.cuota ? ` (+${r.cuota} cuota)` : ''}`
-    L.push(`| ${id} ${t.nombre} | ${exito} | ${num(r.tokens_enviados_med)} | ${num(r.tokens_salida_med)} | ${num(r.cache_pct_med, 1)} | ${num(r.pasos_med, 1)} | ${num(r.llamadas_med, 1)} | ${num(r.minutos_med, 2)} | ${num(r.tokens_por_exito)} |`)
+    L.push(`| ${id} ${t.nombre} | ${exito} | ${num(r.tokens_enviados_med)} | ${num(r.tokens_salida_med)} | ${num(r.cache_pct_med, 1)} | ${num(r.pasos_med, 1)} | ${num(r.tokens_por_paso_med)} · ${num(r.tokens_por_paso_p90)} | ${num(r.llamadas_med, 1)} | ${num(r.minutos_med, 2)} | ${num(r.tokens_por_exito)} |`)
   }
   const a = salida.agregados
   L.push('', `Éxito total: ${a.exitos}/${a.corridas}${a.tasa_exito === null ? '' : ` (${(100 * a.tasa_exito).toFixed(0)} %)`} · mediana de tokens por éxito: ${num(a.tokens_por_exito_med)} · p90 de minutos: ${num(a.minutos_p90, 2)}`)
@@ -327,22 +336,69 @@ function imprimirTabla(salida) {
 // ── Comparar dos resultados ───────────────────────────────────────────────────────────────────────────────────────────────
 const delta = (a, b) => (a === null || b === null || a === undefined || b === undefined ? '—' : a === 0 ? (b === 0 ? '0 %' : '+∞') : `${b >= a ? '+' : ''}${(((b - a) / a) * 100).toFixed(0)} %`)
 
+/** Mediana y rango [mín, máx] de una lista de números (ignora los que no lo son). */
+export function dispersion(lista) {
+  const v = lista.filter((x) => Number.isFinite(x))
+  if (!v.length) return { n: 0, med: null, min: null, max: null }
+  return { n: v.length, med: mediana(v), min: Math.min(...v), max: Math.max(...v) }
+}
+
+/** Mínimo de repeticiones válidas (por lado) para opinar sobre el ruido. */
+export const MIN_REPS_RUIDO = 5
+
+/**
+ * ¿La diferencia entre dos series cae dentro del ruido? Con menos de MIN_REPS_RUIDO corridas válidas en algún lado no hay veredicto
+ * (`null`). Con suficientes, es «ruido» si los rangos [mín, máx] se solapan; si no se solapan, la serie «después» queda por debajo o por encima.
+ */
+export function veredictoRuido(antes, despues) {
+  const a = dispersion(antes)
+  const d = dispersion(despues)
+  if (a.n < MIN_REPS_RUIDO || d.n < MIN_REPS_RUIDO) return { veredicto: null, a, d }
+  if (d.min <= a.max && a.min <= d.max) return { veredicto: 'ruido', a, d }
+  return { veredicto: d.max < a.min ? 'menor' : 'mayor', a, d }
+}
+
+const rango = (x) => (x.n ? `${num(x.med)} [${num(x.min)}–${num(x.max)}]` : '—')
+const validas = (t) => (t.corridas ?? []).filter((c) => !c.cuota)
+
+/** Lee un resultado: un archivo `.json` del banco o una carpeta de `--guardar-corridas` (un JSON por tarea/repetición). */
+export function cargarResultado(ruta) {
+  if (!statSync(ruta).isDirectory()) return JSON.parse(readFileSync(ruta, 'utf8'))
+  const archivos = readdirSync(ruta).filter((n) => /^T\d\d-r\d+\.json$/.test(n)).sort()
+  if (!archivos.length) throw new Error(`${ruta}: no hay archivos TNN-rNN.json`)
+  let salida = null
+  for (const n of archivos) {
+    const j = JSON.parse(readFileSync(join(ruta, n), 'utf8'))
+    salida ??= { version: 1, fecha: j.fecha, motor: j.motor, modelo: j.modelo, proveedorFalso: j.proveedorFalso, config: j.config, tareas: {} }
+    salida.fecha = j.fecha > salida.fecha ? j.fecha : salida.fecha
+    const t = (salida.tareas[j.tarea] ??= { nombre: j.nombre, mide: j.mide, categoria: j.categoria, corridas: [] })
+    t.corridas.push(j.corrida)
+  }
+  for (const t of Object.values(salida.tareas)) t.resumen = resumir(t.corridas)
+  salida.repeticiones = Math.max(...Object.values(salida.tareas).map((t) => t.corridas.length))
+  salida.agregados = agregados(salida.tareas)
+  return salida
+}
+
 function comparar(rutaA, rutaB) {
-  const A = JSON.parse(readFileSync(rutaA, 'utf8'))
-  const B = JSON.parse(readFileSync(rutaB, 'utf8'))
+  const A = cargarResultado(rutaA)
+  const B = cargarResultado(rutaB)
   console.log(`Antes: ${rutaA} (motor ${A.motor?.version ?? '?'}, ${A.proveedorFalso ? 'proveedor falso' : A.modelo}, ${A.fecha})`)
   console.log(`Después: ${rutaB} (motor ${B.motor?.version ?? '?'}, ${B.proveedorFalso ? 'proveedor falso' : B.modelo}, ${B.fecha})`)
   if (A.proveedorFalso !== B.proveedorFalso || (!A.proveedorFalso && A.modelo !== B.modelo)) console.log('AVISO: no se compara el mismo modelo/proveedor; las diferencias pueden no ser del motor.')
-  const L = ['', '| Tarea | Éxito antes → después | Tokens enviados (med) antes → después | Δ tokens | Pasos Δ | Minutos Δ |', '|---|---|---:|---:|---:|---:|']
+  if (!A.proveedorFalso && A.fecha?.slice(0, 10) !== B.fecha?.slice(0, 10)) console.log('AVISO: las corridas son de días distintos; un modelo gratuito o de plan puede cambiar de un día a otro (conviene medir ambos motores el mismo día).')
+  const L = ['', '| Tarea | Éxito antes → después | Tokens enviados: mediana [rango] antes → después | Δ tokens | Pasos: mediana [rango] antes → después | Δ pasos | Minutos Δ | Ruido |', '|---|---|---|---:|---|---:|---:|---|']
   let sumaA = 0
   let sumaB = 0
   const caidas = []
+  const pocas = []
+  const ruido = []
   const ids = [...new Set([...Object.keys(A.tareas), ...Object.keys(B.tareas)])].sort()
   for (const id of ids) {
     const a = A.tareas[id]
     const b = B.tareas[id]
     if (!a || !b || a.omitida || b.omitida) {
-      L.push(`| ${id} | ${!a ? 'solo en después' : !b ? 'solo en antes' : 'omitida'} | | | | |`)
+      L.push(`| ${id} | ${!a ? 'solo en después' : !b ? 'solo en antes' : 'omitida'} | | | | | | |`)
       continue
     }
     const ra = a.resumen
@@ -350,12 +406,25 @@ function comparar(rutaA, rutaB) {
     if (ra.n) sumaA += ra.exitos / ra.n
     if (rb.n) sumaB += rb.exitos / rb.n
     if (ra.n && rb.n && ra.exitos === ra.n && rb.exitos === 0) caidas.push(id)
-    L.push(`| ${id} ${b.nombre} | ${ra.exitos}/${ra.n} → ${rb.exitos}/${rb.n} | ${num(ra.tokens_enviados_med)} → ${num(rb.tokens_enviados_med)} | ${delta(ra.tokens_enviados_med, rb.tokens_enviados_med)} | ${delta(ra.pasos_med, rb.pasos_med)} | ${delta(ra.minutos_med, rb.minutos_med)} |`)
+    const tok = veredictoRuido(validas(a).map((c) => c.tokens.enviados), validas(b).map((c) => c.tokens.enviados))
+    const pas = veredictoRuido(validas(a).map((c) => c.pasos), validas(b).map((c) => c.pasos))
+    let nota
+    if (tok.veredicto === null) {
+      nota = `n<${MIN_REPS_RUIDO}: sin veredicto`
+      pocas.push(id)
+    } else if (tok.veredicto === 'ruido') {
+      nota = 'dentro del ruido'
+      ruido.push(id)
+    } else nota = `fuera del ruido (tokens ${tok.veredicto})${pas.veredicto === 'ruido' ? '; pasos dentro del ruido' : ''}`
+    L.push(`| ${id} ${b.nombre} | ${ra.exitos}/${ra.n} → ${rb.exitos}/${rb.n} | ${rango(tok.a)} → ${rango(tok.d)} | ${delta(ra.tokens_enviados_med, rb.tokens_enviados_med)} | ${rango(pas.a)} → ${rango(pas.d)} | ${delta(ra.pasos_med, rb.pasos_med)} | ${delta(ra.minutos_med, rb.minutos_med)} | ${nota} |`)
+    if (ra.tokens_por_paso_med != null && rb.tokens_por_paso_med != null) L.push(`| ↳ tokens por paso (med · p90) | | ${num(ra.tokens_por_paso_med)} · ${num(ra.tokens_por_paso_p90)} → ${num(rb.tokens_por_paso_med)} · ${num(rb.tokens_por_paso_p90)} | ${delta(ra.tokens_por_paso_med, rb.tokens_por_paso_med)} | | | | |`)
   }
   console.log(L.join('\n'))
   const aa = A.agregados
   const ab = B.agregados
   console.log(`\nÉxito total: ${aa.exitos}/${aa.corridas} → ${ab.exitos}/${ab.corridas} · tokens por éxito (med): ${num(aa.tokens_por_exito_med)} → ${num(ab.tokens_por_exito_med)} (${delta(aa.tokens_por_exito_med, ab.tokens_por_exito_med)}) · p90 de minutos: ${num(aa.minutos_p90, 2)} → ${num(ab.minutos_p90, 2)}`)
+  if (pocas.length) console.log(`\nRUIDO: con menos de ${MIN_REPS_RUIDO} repeticiones por lado no se puede separar mejora de ruido (${pocas.join(', ')}); no declares mejoras con estas cifras.`)
+  if (ruido.length) console.log(`RUIDO: diferencia dentro del ruido (los rangos de tokens enviados se solapan) en ${ruido.join(', ')}; no cuenta como mejora ni como empeoramiento.`)
   const veredicto = []
   if (sumaA - sumaB > 1) veredicto.push(`el éxito total baja más de 1 tarea (${sumaA.toFixed(1)} → ${sumaB.toFixed(1)})`)
   if (caidas.length) veredicto.push(`pasaron de éxito estable a 0: ${caidas.join(', ')}`)
@@ -476,11 +545,29 @@ async function principal() {
     }
     const corridas = []
     for (let i = 1; i <= cfg.repeticiones; i++) {
-      let c = await unaCorrida(cfg, tarea, ctx)
-      if (c.cuota && !cfg.falso) {
-        console.error(`${tarea.id} #${i}: cuota agotada; espero ${cfg.esperaCuotaSeg} s y reintento una vez`)
-        await new Promise((r) => setTimeout(r, cfg.esperaCuotaSeg * 1000))
+      const archivoRep = cfg.guardarCorridas ? join(cfg.guardarCorridas, `${tarea.id}-r${String(i).padStart(2, '0')}.json`) : null
+      let c = null
+      if (archivoRep && existsSync(archivoRep)) {
+        // Repetición ya medida (otra tanda u otro día): se reutiliza salvo que haya salido por cuota.
+        const previa = JSON.parse(readFileSync(archivoRep, 'utf8'))
+        if (!previa.corrida?.cuota && previa.modelo === modelo && previa.motor?.version === version) {
+          c = previa.corrida
+          console.error(`${tarea.id} #${i}: ya medida (${archivoRep}); se reutiliza`)
+        }
+      }
+      if (!c) {
         c = await unaCorrida(cfg, tarea, ctx)
+        if (c.cuota && !cfg.falso) {
+          console.error(`${tarea.id} #${i}: cuota agotada; espero ${cfg.esperaCuotaSeg} s y reintento una vez`)
+          await new Promise((r) => setTimeout(r, cfg.esperaCuotaSeg * 1000))
+          c = await unaCorrida(cfg, tarea, ctx)
+        }
+        if (archivoRep) {
+          // Un JSON por tarea y repetición, escrito ya: lo medido sobrevive aunque se corte la tanda.
+          mkdirSync(cfg.guardarCorridas, { recursive: true })
+          writeFileSync(archivoRep, JSON.stringify({ version: 1, fecha: new Date().toISOString(), tarea: tarea.id, repeticion: i, ...base, motor: salida.motor, modelo, proveedorFalso: !!cfg.falso, config: salida.config, corrida: c }, null, 2) + '\n')
+        }
+        console.error(`${tarea.id} #${i}: ${c.cuota ? 'CUOTA' : c.ok ? 'ok' : 'FALLA'} (${c.motivo}) · ${c.pasos} pasos · ${c.tokens.enviados + c.tokens.salida} tokens · ${(c.tiempo_ms / 1000).toFixed(1)} s${c.ok ? '' : ' · ' + (c.detalle ?? '').slice(0, 140)}`)
       }
       corridas.push(c)
       if (cfg.salida && /\.json$/.test(cfg.salida)) {
@@ -490,7 +577,6 @@ async function principal() {
         mkdirSync(dirname(resolve(cfg.salida)), { recursive: true })
         writeFileSync(cfg.salida, JSON.stringify(parcial, null, 2) + '\n')
       }
-      console.error(`${tarea.id} #${i}: ${c.cuota ? 'CUOTA' : c.ok ? 'ok' : 'FALLA'} (${c.motivo}) · ${c.pasos} pasos · ${c.tokens.enviados + c.tokens.salida} tokens · ${(c.tiempo_ms / 1000).toFixed(1)} s${c.ok ? '' : ' · ' + (c.detalle ?? '').slice(0, 140)}`)
     }
     salida.tareas[tarea.id] = { ...base, corridas, resumen: resumir(corridas) }
   }
