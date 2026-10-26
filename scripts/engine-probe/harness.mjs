@@ -207,6 +207,11 @@ export async function runEngine(bin, sc) {
   }
   const fileCfg = join(root, 'file.json')
   writeFileSync(fileCfg, JSON.stringify(sc.file ?? {}))
+  // `sc.globalConfig`: configuración GLOBAL del usuario (XDG_CONFIG_HOME/opencode/opencode.json), la única de la que el motor acepta comandos propios (p. ej. `lsp`).
+  if (sc.globalConfig) {
+    mkdirSync(join(home, '.config', 'opencode'), { recursive: true })
+    writeFileSync(join(home, '.config', 'opencode', 'opencode.json'), JSON.stringify(sc.globalConfig))
+  }
   // En Windows el motor necesita el entorno mínimo del sistema (PATH con System32 y Git, ComSpec, SystemRoot) para encontrar un shell.
   const winEnv =
     process.platform === 'win32'

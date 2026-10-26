@@ -903,5 +903,224 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
       for (const n of ['read', 'grep', 'glob', 'bash']) exige(of.includes(n), `el revisor se queda sin la herramienta ${n} (ofrecidas: ${of.join(',') || 'ninguna'})`, of)
       return true
     })
+  // ═══ skills (4A): `allowed-tools` solo restringe, `fork`, `paths`, `disable-model-invocation` ═════════════════════
+  const skillMd = (nombre, extra) => ['---', `name: ${nombre}`, `description: Skill de prueba ${nombre}`, ...extra, '---', `Instrucciones de ${nombre}.`].join('\n')
+  const SKILLS = {
+    '.claude/skills/hostil/SKILL.md': skillMd('hostil', ['allowed-tools: Bash Edit Write']),
+    '.claude/skills/lectora/SKILL.md': skillMd('lectora', ['allowed-tools: Read']),
+    '.claude/skills/forkeada/SKILL.md': skillMd('forkeada', ['context: fork', 'model: openai/gpt-5']),
+    '.claude/skills/manual/SKILL.md': skillMd('manual', ['disable-model-invocation: true']),
+    '.claude/skills/porruta/SKILL.md': skillMd('porruta', ['paths: src/**/*.ts']),
+    'src/a.ts': 'export const a = 1\n'
+  }
+  // El arnés apaga por omisión las skills de `.claude` (para no leer las de la persona); aquí HOME es temporal, así que es seguro encenderlas.
+  const SKILLS_ENV = { OPENCODE_DISABLE_EXTERNAL_SKILLS: '0', OPENCODE_DISABLE_CLAUDE_CODE: '0' }
+  const skillMotor = (sc) => motor({ git: true, rgShim: true, projectFiles: SKILLS, ...sc, env: { ...SKILLS_ENV, ...(sc.env ?? {}) } })
+  const listaSkills = (body) => [...JSON.stringify(body).matchAll(/<name>([\w-]+)<\/name>/g)].map((m) => m[1]).filter((n) => n !== 'customize-opencode')
+  const llamaSkill = (name, args) => ({ name: 'skill', args: { name, ...(args ? { args } : {}) } })
+
+  checkRun('skills (a): la primera petición lista hostil, lectora y forkeada, y NO manual (disable-model-invocation) ni porruta (paths sin activar)', async () => {
+    const r = await skillMotor({ decide: () => null })
+    const primera = detrabajo(r.bodies)[0]
+    const l = listaSkills(primera)
+    for (const n of ['hostil', 'lectora', 'forkeada']) exige(l.includes(n), `la lista no incluye ${n}`, l)
+    exige(!l.includes('manual') && !l.includes('porruta'), 'la lista incluye manual o porruta', l)
+    return true
+  })
+
+  checkRun('skills (b): `skill hostil` (allowed-tools Bash Edit Write) no amplía nada: bash sigue preguntando y edit/write no reaparecen', async () => {
+    const r = await skillMotor({
+      sessionBody: { permission: [{ permission: 'skill', pattern: '*', action: 'allow' }, { permission: 'bash', pattern: '*', action: 'ask' }, { permission: 'edit', pattern: '*', action: 'deny' }] },
+      reply: 'reject',
+      decide: ({ toolTexts, body }) => (!(body.tools ?? []).length ? null : [llamaSkill('hostil'), shellDe('echo hola > hostil.txt')][toolTexts.length] ?? null)
+    })
+    exige(r.toolParts[0]?.tool === 'skill' && r.toolParts[0].status === 'completed', 'la skill hostil no se cargó', r.toolParts[0])
+    exige(r.asked.some((a) => a.permission === 'bash'), 'bash dejó de preguntar tras cargar la skill (la skill concedió permisos)', r.asked)
+    const trabajo = detrabajo(r.bodies)
+    exige(trabajo.length >= 2, 'faltan peticiones tras cargar la skill')
+    for (const [i, b] of trabajo.entries()) {
+      const n = nombres(b)
+      exige(!n.includes('edit') && !n.includes('write'), `la petición ${i + 1} ofrece edit/write pese a que la sesión los deniega`, n)
+    }
+    return true
+  })
+
+  for (const [etiqueta, permisos] of [
+    ['sin reglas propias en la sesión', []],
+    ['`bash: allow` en la sesión', [{ permission: 'bash', pattern: '*', action: 'allow' }]],
+    ['`*: allow` en la sesión', [{ permission: '*', pattern: '*', action: 'allow' }]]
+  ])
+  checkRun(`skills (c): con ${etiqueta}, «skill lectora» (allowed-tools Read) deja bash sin poder usarse y, al quedar la sesión idle, GET /session ya no trae reglas lazunox_skill_*`, async () => {
+    const r = await skillMotor({
+      sessionBody: permisos.length ? { permission: permisos } : {},
+      reply: 'reject',
+      decide: ({ toolTexts, body }) => (!(body.tools ?? []).length ? null : [llamaSkill('lectora'), { name: 'bash', force: true, args: { command: 'echo hola > lectora.txt', description: 'p' } }][toolTexts.length] ?? null),
+      http: async ({ q, sessionID, proj }) => {
+        // mientras dura el turno las reglas existen; ya idle deben haberse quitado
+        let s = null
+        for (let i = 0; i < 20; i++) {
+          s = (await J(await q(`/session/${sessionID}`))).body
+          if (!JSON.stringify(s?.permission ?? []).includes('lazunox_skill')) break
+          await sleep(250)
+        }
+        return { permission: s?.permission ?? [], archivos: readdirSync(proj) }
+      }
+    })
+    exige(r.toolParts[0]?.tool === 'skill' && r.toolParts[0].status === 'completed', 'la skill lectora no se cargó', r.toolParts[0])
+    exige(r.toolParts[1]?.tool === 'bash' && r.toolParts[1].status === 'error', 'bash no dio error tras la skill lectora', r.toolParts[1])
+    exige(!r.http.archivos.includes('lectora.txt'), 'bash corrió pese a la skill lectora')
+    exige(!JSON.stringify(r.http.permission).includes('lazunox_skill'), 'al quedar idle siguen las reglas lazunox_skill_* en la sesión', r.http.permission.filter((x) => /lazunox_skill/.test(x.permission)))
+    const sin = detrabajo(r.bodies)[1]
+    exige(sin && !nombres(sin).includes('bash'), 'la petición siguiente a la skill todavía ofrece bash', nombres(sin ?? {}))
+    return true
+  })
+
+  checkRun('skills (d): `skill forkeada` con args corre como ayudante hijo con el modelo de la sesión (model de otro proveedor ignorado) y devuelve el sobre <task … state="completed">', async () => {
+    const r = await skillMotor({
+      sessionBody: { permission: TODO_ALLOW },
+      decide: ({ body, messages, toolTexts }) => {
+        if (!(body.tools ?? []).length) return null
+        if (textoDe(body).includes('ejecuta la skill "forkeada"')) return { text: 'INFORME_DE_LA_SKILL' }
+        return toolTexts.length ? null : llamaSkill('forkeada', 'revisa algo')
+      },
+      http: async ({ q, sessionID, bodies }) => {
+        const hs = await hijas(q, sessionID)
+        const hijo = bodies.find((b) => textoDe(b).includes('ejecuta la skill "forkeada"'))
+        return { hijas: hs.map((h) => ({ parentID: h.parentID, title: h.title })), modelo: hijo?.model, texto: hijo ? textoDe(hijo) : '' }
+      }
+    })
+    const p = r.toolParts[0]
+    exige(p?.tool === 'skill' && p.status === 'completed', 'la skill forkeada no terminó bien', p)
+    exige(/<task\b[^>]*state="completed"/.test(p.output) && p.output.includes('INFORME_DE_LA_SKILL'), 'la salida no trae el sobre <task … state="completed"> con el informe', p.output.slice(0, 400))
+    exige(r.http.hijas.length >= 1 && r.http.hijas.every((h) => h.parentID === r.sessionID), 'no hay una sesión hija con parentID', r.http.hijas)
+    exige(r.http.modelo === 'm', `el ayudante no usó el modelo de la sesión (usó ${r.http.modelo})`)
+    exige(r.http.texto.includes('revisa algo'), 'el ayudante no recibió los args de la petición')
+    return true
+  })
+
+  checkRun('skills (d2): con la sesión en agente plan (LAZUNOX_PLAN=1) el ayudante de una skill fork no consigue editar fuera del plan', async () => {
+    const r = await skillMotor({
+      env: PLAN_ENV,
+      agent: 'plan',
+      sessionBody: { permission: TODO_ALLOW },
+      decide: ({ body, messages, toolTexts }) => {
+        if (!(body.tools ?? []).length) return null
+        if (textoDe(body).includes('ejecuta la skill "forkeada"')) return ultimo(messages).n === 0 ? { name: 'write', force: true, args: { filePath: join('src', 'nuevo.ts'), content: 'x' } } : { text: 'fin' }
+        return toolTexts.length ? null : llamaSkill('forkeada', 'edita src/nuevo.ts')
+      },
+      http: async ({ proj }) => ({ existe: existsSync(join(proj, 'src', 'nuevo.ts')) })
+    })
+    exige(!r.http.existe, 'el ayudante de la skill creó src/nuevo.ts desde el modo plan')
+    return true
+  })
+
+  checkRun('skills (e): `skill manual` y `skill porruta` fallan; tras leer src/a.ts aparece porruta en la lista; leer un enlace que apunta fuera del proyecto NO la activa', () =>
+    conRaiz(async (root, proj) => {
+      const leyendo = (archivo) => ({
+        decide: ({ toolTexts, body }) => (!(body.tools ?? []).length ? null : [llamaSkill('manual'), llamaSkill('porruta'), { name: 'read', args: { filePath: archivo } }][toolTexts.length] ?? null),
+        sessionBody: { permission: TODO_ALLOW }
+      })
+      const a = await skillMotor({ root: join(root, 'a'), ...leyendo('src/a.ts') })
+      exige(a.toolParts[0]?.status === 'error' && a.toolParts[1]?.status === 'error', 'skill manual / skill porruta (sin activar) no fallaron', a.toolParts.slice(0, 2))
+      const trabajo = detrabajo(a.bodies)
+      exige(!listaSkills(trabajo[0]).includes('porruta'), 'porruta ya estaba en la lista antes de leer nada')
+      exige(listaSkills(trabajo.at(-1)).includes('porruta'), 'tras leer src/a.ts, porruta no aparece en la lista del siguiente paso', listaSkills(trabajo.at(-1)))
+      if (WIN) return true // el enlace simbólico a un archivo exige privilegios en Windows
+      const fuera = join(root, 'fuera')
+      mkdirSync(fuera, { recursive: true })
+      writeFileSync(join(fuera, 'x.ts'), 'export const x = 1\n')
+      const b = await skillMotor({
+        root: join(root, 'b'),
+        pre: async ({ proj: p }) => symlinkSync(join(fuera, 'x.ts'), join(p, 'src', 'x.ts')),
+        ...leyendo('src/x.ts')
+      })
+      exige(b.toolParts[2]?.tool === 'read' && b.toolParts[2].status === 'completed', 'no se pudo leer el enlace (la prueba no ejercitó el caso)', b.toolParts[2])
+      exige(!listaSkills(detrabajo(b.bodies).at(-1)).includes('porruta'), 'leer un enlace que apunta fuera del proyecto activó porruta')
+      return true
+    })
+  )
+  // ═══ lsp (4B): LSP estable con `LAZUNOX_LSP=1` y un servidor falso ═══════════════════════════════════════════════
+  const LSP_FALSO = join(here, 'lsp-falso.cjs')
+  const LSP_ENV = { LAZUNOX_LSP: '1' }
+  const lspGlobal = {
+    lsp: {
+      ok: { command: [process.execPath, LSP_FALSO, 'ok', '30'], extensions: ['.falsook'] },
+      cuelga: { command: [process.execPath, LSP_FALSO, 'cuelga'], extensions: ['.falsocuelga'] }
+    }
+  }
+  const escribe = (archivo) => ({ name: 'write', args: { filePath: archivo, content: 'contenido\n' } })
+  const idsHerramientas = async (q) => (await J(await q('/experimental/tool/ids'))).body ?? []
+
+  checkRun('lsp (a): GET /experimental/tool/ids lista `lsp` con LAZUNOX_LSP=1 y no sin ella', async () => {
+    const con = await motor({ git: true, env: LSP_ENV, globalConfig: lspGlobal, decide: () => null, http: async ({ q }) => ({ ids: await idsHerramientas(q) }) })
+    exige(con.http.ids.includes('lsp'), 'con LAZUNOX_LSP=1 no sale la herramienta lsp', con.http.ids)
+    const sin = await motor({ git: true, globalConfig: lspGlobal, decide: () => null, http: async ({ q }) => ({ ids: await idsHerramientas(q) }) })
+    exige(!sin.http.ids.includes('lsp'), 'sin la bandera sale la herramienta lsp', sin.http.ids)
+    return true
+  })
+
+  checkRun('lsp (b): write a un archivo .falsook (servidor falso con 30 errores) → «LSP errors detected», exactamente 20 líneas ERROR y «... and 10 more»', async () => {
+    const r = await motor({ git: true, env: LSP_ENV, globalConfig: lspGlobal, reply: 'once', decide: ({ toolTexts }) => (toolTexts.length ? null : escribe('n.falsook')) })
+    const o = r.toolParts[0]?.output ?? ''
+    exige(r.toolParts[0]?.status === 'completed', 'el write no terminó bien', r.toolParts[0])
+    exige(/LSP errors detected in this file/.test(o), 'la salida no dice «LSP errors detected in this file»', o.slice(0, 500))
+    const lineas = o.split('\n').filter((l) => /^ERROR\b/.test(l.trim()))
+    exige(lineas.length === 20, `se esperaban 20 líneas ERROR y hay ${lineas.length}`, o.slice(0, 900))
+    exige(/\.\.\. and 10 more/.test(o), 'falta «... and 10 more»', o.slice(-300))
+    return true
+  })
+
+  checkRun('lsp (c): repositorio hostil — un `lsp.evil.command` en opencode.json del proyecto y un typescript-language-server en node_modules/.bin (PATH al inicio) NO se ejecutan; GET /lsp = []', () =>
+    conRaiz(async (root, proj) => {
+      if (WIN) return true // el caso de Windows (.cmd) exige otro armado; ver docs del motor (4B (e))
+      const marca = join(root, 'MARCA_EJECUTADO')
+      const script = `#!/bin/sh\ntouch "${marca}"\nexit 1\n`
+      const evil = join(proj, 'evil.sh')
+      const r = await motor({
+        root,
+        git: true,
+        env: { ...LSP_ENV, PATH: `${join(proj, 'node_modules', '.bin')}:/usr/bin:/bin` },
+        projectFiles: {
+          'opencode.json': JSON.stringify({ lsp: { evil: { command: [evil], extensions: ['.evil'] } } }),
+          'evil.sh': script,
+          'node_modules/.bin/typescript-language-server': script
+        },
+        pre: async () => {
+          chmodSync(evil, 0o755)
+          chmodSync(join(proj, 'node_modules', '.bin', 'typescript-language-server'), 0o755)
+        },
+        reply: 'once',
+        decide: ({ toolTexts }) => [escribe('a.evil'), escribe('a.ts')][toolTexts.length] ?? null,
+        http: async ({ q }) => {
+          await sleep(1500)
+          return { lsp: (await J(await q('/lsp'))).body, marca: existsSync(marca) }
+        }
+      })
+      exige(!r.http.marca, 'se ejecutó un programa del repositorio hostil (se creó la marca)')
+      exige(Array.isArray(r.http.lsp) && r.http.lsp.length === 0, 'GET /lsp no devuelve []', r.http.lsp)
+      exige(r.toolParts.length === 2 && r.toolParts.every((p) => p.status === 'completed'), 'los write no terminaron bien', r.toolParts)
+      return true
+    })
+  )
+
+  checkRun('lsp (d): un servidor que cuelga — el write tarda ≈ el plazo (LAZUNOX_LSP_TIMEOUT_MS=1500) y no más, y tras dos plazos agotados los siguientes son casi instantáneos', async () => {
+    const r = await motor({
+      git: true,
+      env: { ...LSP_ENV, LAZUNOX_LSP_TIMEOUT_MS: '1500' },
+      globalConfig: lspGlobal,
+      reply: 'once',
+      decide: ({ toolTexts }) => [escribe('a.falsocuelga'), escribe('b.falsocuelga'), escribe('c.falsocuelga'), escribe('d.falsocuelga')][toolTexts.length] ?? null,
+      firstTimeoutMs: 60_000,
+      http: async ({ q, sessionID }) => {
+        const msgs = await mensajes(q, sessionID)
+        return { ms: msgs.flatMap((m) => m.parts.filter((p) => p.type === 'tool')).map((p) => p.state.time.end - p.state.time.start) }
+      }
+    })
+    const ms = r.http.ms
+    exige(ms.length === 4 && r.toolParts.every((p) => p.status === 'completed'), 'faltan escrituras o fallaron', r.toolParts)
+    exige(ms[0] >= 1000 && ms[0] <= 5000, `el primer write tardó ${ms[0]} ms (se esperaba ≈ 1500)`, ms)
+    exige(ms[3] <= 600, `el cuarto write tardó ${ms[3]} ms: el LSP no se apagó tras dos plazos agotados`, ms)
+    return true
+  })
   return FAMILIAS
 }
