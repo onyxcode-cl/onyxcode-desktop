@@ -583,5 +583,23 @@ export const settings = {
   'settings.helpers.field.disallowedTools': 'herramientas bloqueadas',
   'settings.helpers.field.maxTurns': 'máximo de turnos',
   'settings.helpers.field.skills': 'skills',
-  'settings.helpers.field.background': 'segundo plano'
+  'settings.helpers.field.background': 'segundo plano',
+
+  // Ajustes › Funciones experimentales › Herramientas de Code (F8-B223/B224/B225)
+  'settings.engine.extras.title': 'Objetivo, presupuesto y revisión (Code)',
+  'settings.engine.extras.desc':
+    'Tres ayudas para las conversaciones de Code. Están apagadas y solo aparecen en Code, en el menú de la barra de la conversación, cuando las enciendes. Funcionan con el motor de Lazunox; con otro motor te avisan de que no las tiene.',
+  'settings.engine.extras.change': 'Encender o apagar no reinicia el motor ni cambia nada de lo que ya hacen tus conversaciones.',
+  'settings.engine.extras.goal.label': 'Objetivo',
+  'settings.engine.extras.goal.desc':
+    'Le dices a la IA cuándo has terminado y sigue trabajando hasta lograrlo o toparse con un límite. No empieza sola: tú mandas el primer mensaje.',
+  'settings.engine.extras.goal.aria': 'Objetivo en Code',
+  'settings.engine.extras.budget.label': 'Presupuesto',
+  'settings.engine.extras.budget.desc':
+    'Pones un límite de palabras de la IA, pasos o minutos a una conversación, y puedes dejar que continúe si una respuesta se corta.',
+  'settings.engine.extras.budget.aria': 'Presupuesto en Code',
+  'settings.engine.extras.review.label': 'Revisar cambios',
+  'settings.engine.extras.review.desc':
+    'Un botón que pide a un ayudante de solo lectura que revise tus cambios sin confirmar y te muestre los problemas por archivo y línea, del más grave al menos grave.',
+  'settings.engine.extras.review.aria': 'Revisar cambios en Code'
 } as const

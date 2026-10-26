@@ -2634,3 +2634,25 @@ solo lee la lista, escribe un archivo de texto y, con una bandera apagada, muest
 **Límites conocidos.** (1) Si algún día el motor se arranca con `LAZUNOX_PLAN=1`, la pregunta del plan llegaría al celular como pregunta común
 (`question.*` está permitido) y un celular emparejado podría contestarla: habría que ocultarla allí antes de encenderlo. (2) El motor decide cuándo
 relee los `.md`; la pantalla no fuerza la recarga. (3) La app no modifica las zonas intocables.
+
+## 3 octogies quinquies. Objetivo, Presupuesto y «Revisar cambios» en Code (experimentales; F8-B223 a F8-B225)
+
+Tres funciones de la APP sobre rutas del motor propio. Lo que el motor hace cumplir (permisos del comando de comprobación, solo lectura del
+revisor, topes del objetivo) lo hace el motor; la app crea/lee/quita, escribe un campo de la sesión y pinta resultados. **Apagadas por defecto**
+(`engineExperiments.codeExtras.{goal,budget,review}`; no usan variables de entorno ni reinician el motor) y, aun encendidas, solo en la ventana
+principal del Mac.
+
+| Amenaza | Defensa |
+| --- | --- |
+| Invocar los canales con la bandera apagada (otra ventana, un renderer comprometido). | Los seis canales (`goal:get/set/clear`, `budget:get/set`, `review:run`) comprueban su bandera en main y responden `FORBIDDEN`; además son solo de la ventana principal (`CHANNEL_ROLES`). |
+| El celular usando estas pantallas. | Los seis canales y las rutas `…/objetivo` del motor son clase **X** en `policy.ts`; el menú no se pinta en la superficie remota. |
+| Cargas arbitrarias hacia el motor. | Esquemas estrictos (ids sin rutas, textos y números acotados, sin claves extra); main construye la ruta y el cuerpo, el renderer no elige ni comando ni argumentos de `/review` ni `metadata`. |
+| Que el comando de comprobación del objetivo se ejecute sin permiso. | Lo decide el motor: corre con la herramienta `bash` del mismo agente y las mismas reglas (`ask` pide permiso; si se rechaza, el objetivo se PAUSA y el comando no corre). El diálogo lo dice en llano. El objetivo no inicia turnos ni aprueba permisos. |
+| Perder la `metadata` de la sesión al escribir el presupuesto (no se sabe si el motor reemplaza o fusiona). | `writeBudget` lee la sesión y reenvía todas las claves existentes con `presupuesto` actualizado; si no puede leerla, no escribe. Se descarta `__proto__`. Cotas de tokens/pasos/minutos en el esquema y en la vista. |
+| Salida del revisor hostil (instrucciones ocultas, Markdown, enlaces, HTML, rutas `../`, caracteres de dirección, JSON gigante o patológico). | Nada se ejecuta ni se abre: `parseReviewOutput` valida cada hallazgo contra el esquema del revisor y descarta el resto (máx. 50; textos acotados y sin controles); lee solo mensajes del asistente; barrido acotado. La interfaz los pinta en nodos de texto, sin enlaces ni rutas activas, con un aviso fijo de que lo escribió una IA. |
+| Texto del motor (motivo del objetivo, salida del comando) con marcado. | `cleanText` quita controles y marcas de dirección y se pinta como texto (`<pre>`/párrafos), sin HTML ni Markdown. |
+
+**Límites conocidos.** (1) El estado del objetivo y los contadores del presupuesto viven en la memoria del motor y se pierden al reiniciarlo. (2) El
+presupuesto solo lo aplica el motor de Lazunox; con otro motor el campo se guarda y nadie lo cumple. (3) `/review` corre en la conversación actual: su
+salida queda también escrita ahí, y con el motor oficial no devuelve el JSON esperado. (4) No se probó con el motor real. (5) La app no modifica las
+zonas intocables.

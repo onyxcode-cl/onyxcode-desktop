@@ -5,9 +5,9 @@
  */
 import { useId } from 'react'
 import { normalizeEngineExperiments, type EngineExperimentMode } from '@shared/engine-experiments'
-import { t as tr } from '@shared/i18n'
+import { t as tr, type MsgKey } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
-import type { EngineExperiments } from '@shared/types'
+import type { CodeExtrasFlags, EngineExperiments } from '@shared/types'
 import { useT } from '../../../lib/i18n'
 import { useSettings } from '../../../stores/settings'
 import { EngineLimitsBlock } from './EngineLimitsBlock'
@@ -48,7 +48,8 @@ function FeatureBlock({
       codeMode: { ...current.codeMode },
       backgroundSubagents: { ...current.backgroundSubagents },
       toolSearch: { ...current.toolSearch },
-      mcpElicitation: { ...current.mcpElicitation }
+      mcpElicitation: { ...current.mcpElicitation },
+      codeExtras: { ...current.codeExtras }
     }
     next[feature][mode] = on
     void update({ engineExperiments: next })
@@ -100,7 +101,8 @@ function ToolSearchBlock(): React.JSX.Element {
         codeMode: { ...current.codeMode },
         backgroundSubagents: { ...current.backgroundSubagents },
         toolSearch: { ...current.toolSearch, [mode]: on ? 'auto' : 'off' },
-        mcpElicitation: { ...current.mcpElicitation }
+        mcpElicitation: { ...current.mcpElicitation },
+        codeExtras: { ...current.codeExtras }
       }
     })
   }
@@ -151,7 +153,8 @@ function FormsBlock(): React.JSX.Element {
       codeMode: { ...current.codeMode },
       backgroundSubagents: { ...current.backgroundSubagents },
       toolSearch: { ...current.toolSearch },
-      mcpElicitation: { ...current.mcpElicitation, [mode]: on, tasks: false }
+      mcpElicitation: { ...current.mcpElicitation, [mode]: on, tasks: false },
+      codeExtras: { ...current.codeExtras }
     }
     void update({ engineExperiments: next })
   }
@@ -183,6 +186,68 @@ function FormsBlock(): React.JSX.Element {
   )
 }
 
+const EXTRAS: readonly { key: keyof CodeExtrasFlags; label: MsgKey; desc: MsgKey; aria: MsgKey }[] = [
+  {
+    key: 'goal',
+    label: 'settings.engine.extras.goal.label',
+    desc: 'settings.engine.extras.goal.desc',
+    aria: 'settings.engine.extras.goal.aria'
+  },
+  {
+    key: 'budget',
+    label: 'settings.engine.extras.budget.label',
+    desc: 'settings.engine.extras.budget.desc',
+    aria: 'settings.engine.extras.budget.aria'
+  },
+  {
+    key: 'review',
+    label: 'settings.engine.extras.review.label',
+    desc: 'settings.engine.extras.review.desc',
+    aria: 'settings.engine.extras.review.aria'
+  }
+]
+
+/** «Objetivo, presupuesto y revisión»: tres funciones de Code, APAGADAS por defecto. Aplicar no reinicia el motor (no usan variables de entorno). */
+function CodeExtrasBlock(): React.JSX.Element {
+  const t = useT()
+  const id = useId()
+  const stored = useSettings((s) => s.settings.engineExperiments)
+  const update = useSettings((s) => s.update)
+  const current = normalizeEngineExperiments(stored)
+  const set = (key: keyof CodeExtrasFlags, on: boolean): void => {
+    void update({
+      engineExperiments: {
+        codeMode: { ...current.codeMode },
+        backgroundSubagents: { ...current.backgroundSubagents },
+        toolSearch: { ...current.toolSearch },
+        mcpElicitation: { ...current.mcpElicitation },
+        codeExtras: { ...current.codeExtras, [key]: on }
+      }
+    })
+  }
+  return (
+    <section aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`} className="mb-8">
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <h3 id={`${id}-t`} className="text-sm font-semibold">
+          {t('settings.engine.extras.title')}
+        </h3>
+        <Badge tone="muted">{t('settings.engine.experimental')}</Badge>
+      </div>
+      <p id={`${id}-d`} className="mb-1 text-sm leading-relaxed text-muted">
+        {t('settings.engine.extras.desc')}
+      </p>
+      <p className="mb-3 text-xs leading-relaxed text-muted">{t('settings.engine.extras.change')}</p>
+      <Card>
+        {EXTRAS.map((e) => (
+          <Row key={e.key} label={t(e.label)} description={t(e.desc)}>
+            <Toggle checked={current.codeExtras[e.key]} onChange={(v) => set(e.key, v)} label={t(e.aria)} />
+          </Row>
+        ))}
+      </Card>
+    </section>
+  )
+}
+
 export function EngineExperimentsSection(): React.JSX.Element {
   const t = useT()
   return (
@@ -205,6 +270,7 @@ export function EngineExperimentsSection(): React.JSX.Element {
       />
       <ToolSearchBlock />
       <FormsBlock />
+      <CodeExtrasBlock />
       <RememberAlwaysBlock />
       <UserHooksBlock />
       <EngineLimitsBlock />

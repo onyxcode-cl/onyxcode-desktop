@@ -22,6 +22,7 @@ function mount(
   const full = {
     toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch,
     mcpElicitation: DEFAULT_SETTINGS.engineExperiments.mcpElicitation,
+    codeExtras: DEFAULT_SETTINGS.engineExperiments.codeExtras,
     ...engineExperiments
   }
   update = vi.fn(async () => undefined)
@@ -79,7 +80,8 @@ describe('EngineExperimentsSection', () => {
         codeMode: { chat: true, code: true, tasks: false },
         backgroundSubagents: { chat: true, code: false, tasks: false },
         toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' },
-        mcpElicitation: { chat: true, code: true, tasks: false }
+        mcpElicitation: { chat: true, code: true, tasks: false },
+        codeExtras: DEFAULT_SETTINGS.engineExperiments.codeExtras
       }
     })
     act(() => switches()[5].click()) // Subagentes · Overdrive
@@ -88,7 +90,8 @@ describe('EngineExperimentsSection', () => {
         codeMode: { chat: false, code: true, tasks: false },
         backgroundSubagents: { chat: true, code: false, tasks: true },
         toolSearch: { chat: 'auto', code: 'auto', tasks: 'off' },
-        mcpElicitation: { chat: true, code: true, tasks: false }
+        mcpElicitation: { chat: true, code: true, tasks: false },
+        codeExtras: DEFAULT_SETTINGS.engineExperiments.codeExtras
       }
     })
   })
@@ -106,7 +109,8 @@ describe('EngineExperimentsSection', () => {
         codeMode: { chat: false, code: false, tasks: false },
         backgroundSubagents: { chat: true, code: true, tasks: true },
         toolSearch: { chat: 'auto', code: 'off', tasks: 'off' },
-        mcpElicitation: { chat: true, code: true, tasks: false }
+        mcpElicitation: { chat: true, code: true, tasks: false },
+        codeExtras: DEFAULT_SETTINGS.engineExperiments.codeExtras
       }
     })
   })
@@ -148,7 +152,36 @@ describe('EngineExperimentsSection', () => {
           codeMode: DEFAULT_SETTINGS.engineExperiments.codeMode,
           backgroundSubagents: DEFAULT_SETTINGS.engineExperiments.backgroundSubagents,
           toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch,
-          mcpElicitation: { chat: true, code: false, tasks: false }
+          mcpElicitation: { chat: true, code: false, tasks: false },
+          codeExtras: DEFAULT_SETTINGS.engineExperiments.codeExtras
+        }
+      })
+    })
+  })
+
+  describe('Objetivo, presupuesto y revisión (Code)', () => {
+    const extraSwitches = (): HTMLButtonElement[] => {
+      const sec = [...host.querySelectorAll('section')].find((x) => x.textContent?.includes('Objetivo, presupuesto y revisión (Code)'))
+      return [...(sec?.querySelectorAll<HTMLButtonElement>('button[role="switch"]') ?? [])]
+    }
+    it('hay tres interruptores APAGADOS por defecto, con nombre accesible, y avisa de que no reinicia el motor', () => {
+      mount()
+      const sw = extraSwitches()
+      expect(sw.map((b) => b.getAttribute('aria-label'))).toEqual(['Objetivo en Code', 'Presupuesto en Code', 'Revisar cambios en Code'])
+      expect(sw.map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'false', 'false'])
+      expect(host.textContent).toContain('no reinicia el motor')
+      expect(host.textContent).toContain('No empieza sola')
+    })
+    it('encender uno envía el objeto completo y cambia solo esa función', () => {
+      mount()
+      act(() => extraSwitches()[2].click()) // Revisar cambios
+      expect(update).toHaveBeenLastCalledWith({
+        engineExperiments: {
+          codeMode: DEFAULT_SETTINGS.engineExperiments.codeMode,
+          backgroundSubagents: DEFAULT_SETTINGS.engineExperiments.backgroundSubagents,
+          toolSearch: DEFAULT_SETTINGS.engineExperiments.toolSearch,
+          mcpElicitation: DEFAULT_SETTINGS.engineExperiments.mcpElicitation,
+          codeExtras: { goal: false, budget: false, review: true }
         }
       })
     })

@@ -586,5 +586,23 @@ export const settings = {
   'settings.helpers.field.disallowedTools': 'blocked tools',
   'settings.helpers.field.maxTurns': 'maximum turns',
   'settings.helpers.field.skills': 'skills',
-  'settings.helpers.field.background': 'background'
+  'settings.helpers.field.background': 'background',
+
+  // Settings › Experimental features › Code tools (F8-B223/B224/B225)
+  'settings.engine.extras.title': 'Goal, budget and review (Code)',
+  'settings.engine.extras.desc':
+    'Three helpers for Code conversations. They are off, and only show up in Code, in the conversation toolbar menu, once you turn them on. They work with the Lazunox engine; with another engine they tell you it does not have them.',
+  'settings.engine.extras.change': 'Turning them on or off does not restart the engine or change anything your conversations already do.',
+  'settings.engine.extras.goal.label': 'Goal',
+  'settings.engine.extras.goal.desc':
+    'You tell the AI when it is done and it keeps working until it gets there or hits a limit. It does not start by itself: you send the first message.',
+  'settings.engine.extras.goal.aria': 'Goal in Code',
+  'settings.engine.extras.budget.label': 'Budget',
+  'settings.engine.extras.budget.desc':
+    'Set a limit on the AI words, steps or minutes of a conversation, and let it carry on if an answer gets cut off.',
+  'settings.engine.extras.budget.aria': 'Budget in Code',
+  'settings.engine.extras.review.label': 'Review changes',
+  'settings.engine.extras.review.desc':
+    'A button that asks a read-only helper to review your unsaved changes and show the problems by file and line, from most to least serious.',
+  'settings.engine.extras.review.aria': 'Review changes in Code'
 } as const satisfies Messages<typeof es>
