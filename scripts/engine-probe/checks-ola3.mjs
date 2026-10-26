@@ -296,14 +296,17 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
     return true
   })
 
-  checkRun('todo-verificar (e): dos tareas in_progress en la misma llamada → error y la lista guardada no cambia', async () => {
+  checkRun('todo-verificar (e): dos tareas in_progress en la misma llamada → se acepta, queda la primera en curso y la otra pasa a pending (con un aviso)', async () => {
     const r = await todoMotor(
       [tarea('Una', 'in_progress'), tarea('Otra', 'in_progress')],
       { sessionPerm: TODO_ALLOW }
     )
     const parte = r.toolParts.find((p) => p.tool === 'todowrite')
-    exige(parte?.status === 'error' && /in_progress/.test(parte.output), 'todowrite no rechazó dos in_progress', parte)
-    exige(r.http.todos.length === 0, 'se guardó la lista rechazada', r.http.todos)
+    exige(parte?.status === 'completed', 'todowrite debía aceptar la lista normalizando (cambio del arreglo de coste de T10)', parte)
+    exige(/in_progress|en curso/i.test(parte.output), 'la salida no avisa de la normalización', parte)
+    const enCurso = r.http.todos.filter((t) => t.status === 'in_progress')
+    exige(r.http.todos.length === 2 && enCurso.length === 1 && enCurso[0].content === 'Una', 'debía quedar UNA tarea en curso (la primera)', r.http.todos)
+    exige(r.http.todos.find((t) => t.content === 'Otra')?.status === 'pending', 'la segunda debía pasar a pending', r.http.todos)
     return true
   })
 
