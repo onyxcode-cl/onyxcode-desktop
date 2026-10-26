@@ -1141,8 +1141,14 @@ const HTTP_X_ROUTES = [
   'POST /experimental/project/{projectID}/copy/refresh',
   'POST /experimental/session/{sessionID}/background',
   'POST /experimental/session/{sessionID}/trabajos/{id}/terminar',
-  // Reanudar un ayudante de fondo perdido (motor lazunox.10): clase X. Aún no está en `api-routes.json` (ver `policy.test.ts`).
+  // Reanudar un ayudante de fondo perdido (motor lazunox.10): clase X.
   'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar',
+  // Modo objetivo (motor lazunox.10, 3A): crear, ver y quitar el objetivo de una sesión. Clase X: el celular nunca lo maneja.
+  'GET /experimental/session/{sessionID}/objetivo',
+  'POST /experimental/session/{sessionID}/objetivo',
+  'DELETE /experimental/session/{sessionID}/objetivo',
+  // Peso del contexto fijo (motor lazunox.10, 4D): solo lectura, pero es dato de la sesión de escritorio: clase X.
+  'GET /experimental/session/{sessionID}/contexto-fijo',
   'POST /experimental/workspace',
   'POST /experimental/workspace/sync-list',
   'POST /experimental/workspace/warp',

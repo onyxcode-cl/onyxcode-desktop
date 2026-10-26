@@ -62,14 +62,23 @@ describe('instantánea api-routes.json', () => {
       'POST /experimental/session/{sessionID}/rebobinar',
       'POST /experimental/session/{sessionID}/rebobinar/deshacer'
     ]
+    // Modo objetivo (3A) y contexto fijo (4D): rutas propias del motor.
+    const OBJETIVO = [
+      'GET /experimental/session/{sessionID}/objetivo',
+      'POST /experimental/session/{sessionID}/objetivo',
+      'DELETE /experimental/session/{sessionID}/objetivo',
+      'GET /experimental/session/{sessionID}/contexto-fijo'
+    ]
     const propias = snapshot.routes.filter(
-      (r: string) => /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r) || REBOBINAR.includes(r)
+      (r: string) =>
+        /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r) || REBOBINAR.includes(r) || OBJETIVO.includes(r)
     )
     const enSnapshot = propias.filter((r: string) => FORMULARIOS.includes(r))
     expect(enSnapshot.length === 0 || enSnapshot.length === FORMULARIOS.length).toBe(true) // las dos o ninguna
     expect(propias.filter((r: string) => !FORMULARIOS.includes(r)).sort()).toEqual(
       [
         ...REBOBINAR,
+        ...OBJETIVO,
         'GET /experimental/session/{sessionID}/trabajos',
         'POST /experimental/session/{sessionID}/trabajos/{id}/terminar',
         'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar'

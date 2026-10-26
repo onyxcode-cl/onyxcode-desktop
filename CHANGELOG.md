@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.6] - 2026-10-26
+
+### Novedades
+
+- **Volver atrás en una conversación de Code, turno por turno.** Cada respuesta que cambió archivos muestra una tarjeta «Cambios de este turno» (qué archivos, cuántas líneas) y, si quieres volver a antes de ese turno, un diálogo te deja elegir: código y conversación, solo la conversación o solo el código. Antes de tocar nada te muestra qué se va a restaurar, qué archivos editaste a mano (esos se respetan salvo que tú lo pidas) y si hay commits o ayudantes en marcha. Después puedes «Deshacer». En carpetas sin git, solo se vuelve atrás la conversación y la app lo dice.
+- **Compactar mejor.** La tarjeta de compactación te cuenta cuántos mensajes se resumieron y cuánto contexto se liberó, y qué se conservó (plan, habilidades, instrucciones de la carpeta). En Code puedes «Compactar hasta aquí». Ajustes › Ganchos suma el evento «Después de compactar».
+- **Ayudantes que se pueden esperar y reanudar.** La IA puede lanzar varios ayudantes y esperarlos con una sola llamada. Si la app se reinicia con ayudantes en marcha, quedan marcados como «perdidos» en «Trabajos en segundo plano» y puedes pulsar «Reanudar».
+- **Ayudantes definidos por ti.** Puedes escribir tus propios ayudantes en `.opencode/agents` (o usar los de `.claude/agents` de Claude Code): con herramientas permitidas y prohibidas, un tope de turnos y un modelo pequeño. Nunca pueden hacer más de lo que puede quien los lanza.
+- **Gasto de tokens más cuidado.** Salidas muy largas de comandos y lecturas se acotan, los ayudantes devuelven informes cortos, y no se vuelve a leer un archivo que no cambió. (Todavía no medimos cuánto se ahorra con un modelo real; no prometemos un número.)
+- Motor `lazunox.10`.
+
+### Correcciones
+
+- **Seguridad al revertir.** Con el motor anterior, revertir un cambio podía, en ciertos casos raros, borrar o tocar archivos fuera de la carpeta del proyecto. Quedó corregido: ahora solo restaura dentro del proyecto, nunca sigue enlaces hacia afuera, y se detiene sin tocar nada si falta la copia de seguridad en vez de arriesgarse a pisar tus cambios.
+- Los informes de los ayudantes ya no pueden hacerse pasar por otro ayudante, y las listas de trabajos se validan.
+
 ## [1.7.5] - 2026-10-26
 
 ### Novedades
