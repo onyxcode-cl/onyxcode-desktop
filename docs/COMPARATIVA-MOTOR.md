@@ -1,5 +1,8 @@
 # Comparativa del motor de Lazunox con Claude Code, Codex y OpenCode 2.x
 
+> **Desactualizado (2026-10-26).** Este informe es del 24-10 y varias de sus «brechas» ya se cerraron en el motor. El estado vigente y la matriz de paridad completa están en [`PLAN-MOTOR-OLA7.md`](./PLAN-MOTOR-OLA7.md).
+
+
 > **Nota (2026-10-24, tarde):** el informe se escribió leyendo el `main` público del fork, que entonces estaba atrasado respecto a lo publicado. Correcciones: el shell en segundo plano **sí** funciona en Windows nativo desde `lazunox.5` (ítem 6 resuelto), y desde la rama `feat/ganchos-usuario` del fork ya existen los ítems 1 (rutas protegidas), 2 (ganchos `PreToolUse`/`PostToolUse` por comando), 3 (tope de ayudantes) y 4 (permisos «siempre» persistentes). Ver `docs/PLAN-MOTOR-PROPIO.md`.
 
 
