@@ -3,7 +3,7 @@
 // El motor corre aislado: entorno mínimo, HOME/XDG temporales (nunca la config real), carpeta de config propia y proceso en su grupo.
 // Uso: `runEngine(bin, escenario)` desde `run.mjs`. Manual: no lo corre `npm test`.
 import { spawn, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import http from 'node:http'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
@@ -256,6 +256,11 @@ export async function runEngine(bin, sc) {
     OPENCODE_CONFIG_DIR: cfgdir,
     OPENCODE_CONFIG_CONTENT: JSON.stringify(inline),
     ...winEnv,
+    // En Windows, con PowerShell en el PATH (hace falta para descomprimir ripgrep) el motor lo elegiría como terminal y los chequeos escritos para Bash
+    // fallarían: se fija Git Bash salvo que se pida otro con PROBE_SHELL.
+    ...(process.platform === 'win32' && !process.env.PROBE_SHELL && existsSync('C:\\Program Files\\Git\\bin\\bash.exe')
+      ? { SHELL: 'C:\\Program Files\\Git\\bin\\bash.exe' }
+      : {}),
     ...(process.env.PROBE_SHELL ? { SHELL: process.env.PROBE_SHELL } : {}),
     ...(sc.env ?? {})
   }
