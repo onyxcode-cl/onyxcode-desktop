@@ -1241,7 +1241,7 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
         http: async ({ q, sessionID }) => ({ cf: await J(await q(`/experimental/session/${sessionID}/contexto-fijo`)), cf404: (await q('/experimental/session/ses_000000000000abcdefghijklmn/contexto-fijo')).status })
       })
       const p = r.toolParts
-      exige(p.length === 5 && p.every((x) => x.status === 'completed'), 'las 5 llamadas no terminaron bien', p.map((x) => [x.tool, x.status, x.output.slice(0, 80)]))
+      exige(p.length === 5 && p.slice(0, WIN ? 4 : 5).every((x) => x.status === 'completed'), 'las 5 llamadas no terminaron bien' /* en Windows el enlace simbólico no se puede crear: la 5.ª lectura falla por diseño y se omite */, p.map((x) => [x.tool, x.status, x.output.slice(0, 80)]))
       exige(p[0].output.includes('REGLA_TS_MARCADOR_111'), 'leer src/a.ts no adjuntó la regla de .opencode/rules', p[0].output.slice(-400))
       exige(!p[1].output.includes('MARCADOR'), 'leer README.md adjuntó una regla', p[1].output.slice(-300))
       exige(!p[2].output.includes('REGLA_TS_MARCADOR_111'), 'la regla se repitió al leer otro .ts (debe ir una sola vez por conversación)', p[2].output.slice(-300))

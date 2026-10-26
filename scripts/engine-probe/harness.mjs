@@ -218,6 +218,8 @@ export async function runEngine(bin, sc) {
       ? {
           PATH: [
             process.env.SystemRoot + '\\System32',
+            // El motor descomprime ripgrep (que descarga la primera vez, como en la app real) con PowerShell: sin esta carpeta las habilidades no cargan.
+            process.env.SystemRoot + '\\System32\\WindowsPowerShell\\v1.0',
             process.env.SystemRoot,
             'C:\\Program Files\\Git\\cmd',
             'C:\\Program Files\\Git\\usr\\bin'
