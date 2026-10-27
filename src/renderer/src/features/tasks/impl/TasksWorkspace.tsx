@@ -59,13 +59,7 @@ import {
   addPickedElement,
   stopComputerControl
 } from './actions'
-import {
-  AccessModeSwitch,
-  ComputerPermissionsCard,
-  ControlBanner,
-  FullAccessDialog,
-  VisionModelHint
-} from './ComputerAccess'
+import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
 import { PlanAccessCard } from './AppAccessCard'
 import { TasksEnvironment } from './TasksEnvironment'
 import { hasTasksBridge, onTasks } from './bridge'

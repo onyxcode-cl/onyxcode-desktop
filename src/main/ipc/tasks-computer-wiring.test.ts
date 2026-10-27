@@ -21,8 +21,16 @@ vi.mock('../computer/service', () => ({
 }))
 vi.mock('../computer/overlay', () => ({ ComputerOverlay: class {} }))
 vi.mock('../computer/assist-window', () => ({ AssistWindow: class {} }))
-vi.mock('../computer/recorder', () => ({ SkillRecorder: class { purgeOld(): void {} } }))
-vi.mock('../computer/app-visibility', () => ({ AppVisibility: class { recoverAtStartup = async (): Promise<void> => undefined } }))
+vi.mock('../computer/recorder', () => ({
+  SkillRecorder: class {
+    purgeOld(): void {}
+  }
+}))
+vi.mock('../computer/app-visibility', () => ({
+  AppVisibility: class {
+    recoverAtStartup = async (): Promise<void> => undefined
+  }
+}))
 vi.mock('../computer/abort', () => ({ abortFullAccessSessions: vi.fn() }))
 vi.mock('../tasks/auto-approver', () => ({ getAutoApprover: () => null }))
 vi.mock('../extras/prefs', () => ({ extrasPrefs: () => ({}) }))

@@ -645,11 +645,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       for (const d of decisions) {
         const card = inCard.get(d.bundleId)
         if (!card || d.bundleId in map) continue
-        if (
-          this.grants.isBlocked(d.bundleId) ||
-          this.grants.isDenied(d.bundleId) ||
-          this.isSessionDenied(pending.sessionId, d.bundleId)
-        ) {
+        if (this.grants.isBlocked(d.bundleId) || this.grants.isDenied(d.bundleId) || this.isSessionDenied(pending.sessionId, d.bundleId)) {
           // Bloqueada (fija), denegada guardada o denegada en la sesión: nunca se concede, diga lo que diga el renderer.
           map[d.bundleId] = 'deny'
           continue

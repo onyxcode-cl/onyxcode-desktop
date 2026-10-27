@@ -262,10 +262,14 @@ describe('concesiones con claves de Windows', () => {
     await vi.waitFor(() => expect(got).toHaveLength(1))
     // La bloqueada ya no llega a la tarjeta: solo la otra app.
     expect(got[0].apps.map((a) => [a.bundleId === consent, a.denied])).toEqual([[false, false]])
-    s.resolveAccessRequest(got[0].id, [
-      { bundleId: consent, name: 'Consent', decision: 'full' },
-      { bundleId: winKey, name: 'Bloc de notas', decision: 'click' }
-    ], { scope: 'always' })
+    s.resolveAccessRequest(
+      got[0].id,
+      [
+        { bundleId: consent, name: 'Consent', decision: 'full' },
+        { bundleId: winKey, name: 'Bloc de notas', decision: 'click' }
+      ],
+      { scope: 'always' }
+    )
     const r = await p
     expect(r.decisions).toEqual({ [consent]: 'deny', [winKey]: 'click' })
     expect(s.grants.tierFor(consent)).toBeNull()

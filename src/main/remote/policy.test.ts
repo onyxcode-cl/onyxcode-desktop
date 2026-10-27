@@ -643,8 +643,12 @@ describe('git, archivos, navegador y Tareas', () => {
     expect(cls(ipc('tasks:revokeFullAccess', { folder: '/work/tasks/a' }))).toBe('M')
     expect(cls(ipc('computer:stop'))).toBe('M')
     expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }] }))).toBe('M')
-    expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], alsoBlock: true }))).toBe('M')
-    expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], scope: 'always' }))).toBe('M')
+    expect(
+      cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], alsoBlock: true }))
+    ).toBe('M')
+    expect(
+      cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], scope: 'always' }))
+    ).toBe('M')
     expect(
       cls(
         ipc('computer:respondAccess', {

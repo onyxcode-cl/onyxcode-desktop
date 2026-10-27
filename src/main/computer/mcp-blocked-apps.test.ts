@@ -75,16 +75,26 @@ async function boot(
   }
 }
 
-
 const NOT_FOUND = { 'resolve-app': { out: { name: 'x', bundleId: '', found: false } } }
-const bl = (bundleId: string, name: string, kind: 'fixed' | 'user' | 'session'): { bundleId: string; name: string; kind: string } => ({ bundleId, name, kind })
+const bl = (bundleId: string, name: string, kind: 'fixed' | 'user' | 'session'): { bundleId: string; name: string; kind: string } => ({
+  bundleId,
+  name,
+  kind
+})
 const FORBIDDEN = /otra vía|alternativa|puedes/i
 
 describe('texto al agente con apps bloqueadas', () => {
   it('todo bloqueado y sin plan: solo el texto firme, sin vías alternativas', async () => {
     const { mcp, done } = await boot({
       script: script(NOT_FOUND),
-      side: { requestAccess: () => ({ decisions: { [NOTEPAD]: 'deny' }, cancelled: false, planApproved: false, blocked: [bl(NOTEPAD, 'Bloc de notas', 'user')] }) }
+      side: {
+        requestAccess: () => ({
+          decisions: { [NOTEPAD]: 'deny' },
+          cancelled: false,
+          planApproved: false,
+          blocked: [bl(NOTEPAD, 'Bloc de notas', 'user')]
+        })
+      }
     })
     try {
       const t = textOf(await mcp.call('request_access', { apps: ['Bloc de notas'], levels: ['full'] }))
@@ -98,10 +108,20 @@ describe('texto al agente con apps bloqueadas', () => {
   })
 
   it('tipo «session»: dice que es SOLO para esta tarea; «fixed»: por seguridad', async () => {
-    for (const [kind, frag] of [['session', 'por la persona SOLO para esta tarea'], ['fixed', 'por seguridad']] as const) {
+    for (const [kind, frag] of [
+      ['session', 'por la persona SOLO para esta tarea'],
+      ['fixed', 'por seguridad']
+    ] as const) {
       const { mcp, done } = await boot({
         script: script(NOT_FOUND),
-        side: { requestAccess: () => ({ decisions: { [NOTEPAD]: 'deny' }, cancelled: false, planApproved: false, blocked: [bl(NOTEPAD, 'Bloc de notas', kind)] }) }
+        side: {
+          requestAccess: () => ({
+            decisions: { [NOTEPAD]: 'deny' },
+            cancelled: false,
+            planApproved: false,
+            blocked: [bl(NOTEPAD, 'Bloc de notas', kind)]
+          })
+        }
       })
       try {
         const t = textOf(await mcp.call('request_access', { apps: ['Bloc de notas'] }))
@@ -158,7 +178,12 @@ describe('texto al agente con apps bloqueadas', () => {
       script: script(NOT_FOUND),
       side: {
         controlMode: { mode: 'background', foreground: false },
-        requestAccess: () => ({ decisions: { [NOTEPAD]: 'deny' }, cancelled: false, planApproved: false, blocked: [bl(NOTEPAD, 'Bloc de notas', 'session')] })
+        requestAccess: () => ({
+          decisions: { [NOTEPAD]: 'deny' },
+          cancelled: false,
+          planApproved: false,
+          blocked: [bl(NOTEPAD, 'Bloc de notas', 'session')]
+        })
       }
     })
     try {

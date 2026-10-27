@@ -184,10 +184,13 @@ export const tasksComputer = {
   'tasksComputer.grants.blockYes': 'Sí, bloquear',
   'tasksComputer.grants.blockCancel': 'Cancelar',
   'tasksComputer.grants.suggested': 'Sugeridas para bloquear',
-  'tasksComputer.grants.suggestedHint': 'Apps sensibles (carteras de cripto y brokers). No están bloqueadas: bloquea las que quieras con un clic.',
+  'tasksComputer.grants.suggestedHint':
+    'Apps sensibles (carteras de cripto y brokers). No están bloqueadas: bloquea las que quieras con un clic.',
   'tasksComputer.grants.fixed': 'Bloqueadas por seguridad',
-  'tasksComputer.grants.fixedNote': 'Bloqueadas por seguridad: no se pueden desbloquear. Son gestores de contraseñas y otras apps de claves del Mac.',
-  'tasksComputer.grants.fixedNote.win': 'Bloqueadas por seguridad: no se pueden desbloquear. Son gestores de contraseñas y herramientas de seguridad o administración de Windows.',
+  'tasksComputer.grants.fixedNote':
+    'Bloqueadas por seguridad: no se pueden desbloquear. Son gestores de contraseñas y otras apps de claves del Mac.',
+  'tasksComputer.grants.fixedNote.win':
+    'Bloqueadas por seguridad: no se pueden desbloquear. Son gestores de contraseñas y herramientas de seguridad o administración de Windows.',
   'tasksComputer.grants.levels': 'Niveles:',
   'tasksComputer.kind.screenshot': 'Captura',
   'tasksComputer.kind.click': 'Clic',
@@ -496,10 +499,8 @@ export const tasksComputer = {
   'tasksComputer.appAccess.title': '¿Permitir que Lazunox use {app}?',
   'tasksComputer.appAccess.titleMany': '¿Permitir que Lazunox use estas aplicaciones?',
   'tasksComputer.appAccess.reasonNone': 'Sin motivo indicado',
-  'tasksComputer.appAccess.background':
-    'Lazunox trabajará en estas aplicaciones en segundo plano mientras sigues usando tu Mac',
-  'tasksComputer.appAccess.background.win':
-    'Lazunox trabajará en estas aplicaciones en segundo plano mientras sigues usando tu PC',
+  'tasksComputer.appAccess.background': 'Lazunox trabajará en estas aplicaciones en segundo plano mientras sigues usando tu Mac',
+  'tasksComputer.appAccess.background.win': 'Lazunox trabajará en estas aplicaciones en segundo plano mientras sigues usando tu PC',
   'tasksComputer.appAccess.deny': 'Denegar',
   'tasksComputer.appAccess.allowSession': 'Permitir para esta sesión',
   'tasksComputer.appAccess.blockAlways': 'Bloquear siempre',
@@ -510,8 +511,7 @@ export const tasksComputer = {
   'tasksComputer.appAccess.tier.click': 'Ver y clic',
   'tasksComputer.appAccess.tier.click.warn': 'Puede ver y hacer clic en esta app',
   'tasksComputer.appAccess.tier.full': 'Control total',
-  'tasksComputer.appAccess.tier.full.warn':
-    'Puede abrir, modificar o eliminar cualquier archivo y ejecutar aplicaciones y scripts',
+  'tasksComputer.appAccess.tier.full.warn': 'Puede abrir, modificar o eliminar cualquier archivo y ejecutar aplicaciones y scripts',
   'tasksComputer.appAccess.blocked': '{app} está bloqueada. Lazunox no la usará en esta tarea.',
   'tasksComputer.fixedApp.passwords': 'Contraseñas',
   'tasksComputer.fixedApp.agilebits': '1Password (versión anterior)',

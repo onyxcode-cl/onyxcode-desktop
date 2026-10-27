@@ -1196,7 +1196,9 @@ export function syncAccessRequests(): void {
       const fresh = apps.filter((a) => !list.some((b) => b.bundleId === a.bundleId && b.kind === a.kind))
       if (!fresh.length) return s
       // Una sola fila por app: si cambió el tipo de bloqueo, la nueva reemplaza a la anterior.
-      return { blockedApps: { ...s.blockedApps, [taskId]: [...list.filter((b) => !fresh.some((a) => a.bundleId === b.bundleId)), ...fresh] } }
+      return {
+        blockedApps: { ...s.blockedApps, [taskId]: [...list.filter((b) => !fresh.some((a) => a.bundleId === b.bundleId)), ...fresh] }
+      }
     })
   })
   // Al desbloquear una app en Ajustes («Bloqueadas por ti › Quitar») se retiran sus avisos de tipo «user».

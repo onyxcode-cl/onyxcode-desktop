@@ -186,10 +186,13 @@ export const tasksComputer = {
   'tasksComputer.grants.blockYes': 'Yes, block',
   'tasksComputer.grants.blockCancel': 'Cancel',
   'tasksComputer.grants.suggested': 'Suggested to block',
-  'tasksComputer.grants.suggestedHint': 'Sensitive apps (crypto wallets and brokers). They are not blocked: block the ones you want with one click.',
+  'tasksComputer.grants.suggestedHint':
+    'Sensitive apps (crypto wallets and brokers). They are not blocked: block the ones you want with one click.',
   'tasksComputer.grants.fixed': 'Blocked for security',
-  'tasksComputer.grants.fixedNote': 'Blocked for security: they cannot be unblocked. These are password managers and other key apps on the Mac.',
-  'tasksComputer.grants.fixedNote.win': 'Blocked for security: they cannot be unblocked. These are password managers and Windows security or administration tools.',
+  'tasksComputer.grants.fixedNote':
+    'Blocked for security: they cannot be unblocked. These are password managers and other key apps on the Mac.',
+  'tasksComputer.grants.fixedNote.win':
+    'Blocked for security: they cannot be unblocked. These are password managers and Windows security or administration tools.',
   'tasksComputer.grants.levels': 'Levels:',
   'tasksComputer.kind.screenshot': 'Screenshot',
   'tasksComputer.kind.click': 'Click',
@@ -330,8 +333,7 @@ export const tasksComputer = {
   'tasksComputer.escalate.app.switch': 'Switch to The entire computer and continue',
   'tasksComputer.escalate.folder.title': 'Lazunox wants to show you the result in your folder',
   'tasksComputer.escalate.folder.body': 'Opening your folder does not require changing scope: you keep working only in it.',
-  'tasksComputer.blocked.user':
-    '{app} is blocked because you blocked it. To unblock it: Settings › Mac control › Blocked by you › Remove.',
+  'tasksComputer.blocked.user': '{app} is blocked because you blocked it. To unblock it: Settings › Mac control › Blocked by you › Remove.',
   'tasksComputer.blocked.user.win':
     '{app} is blocked because you blocked it. To unblock it: Settings › PC control › Blocked by you › Remove.',
   'tasksComputer.blocked.unlock': 'Unblock…',
@@ -501,7 +503,8 @@ export const tasksComputer = {
   'tasksComputer.appAccess.allowSession': 'Allow for this session',
   'tasksComputer.appAccess.blockAlways': 'Block always',
   'tasksComputer.appAccess.blockAlwaysAria': 'Block {app} always (it will not be asked again)',
-  'tasksComputer.appAccess.fullHint': 'The agent asked for Full control. It is not selected for you: choose it yourself only if you trust this app.',
+  'tasksComputer.appAccess.fullHint':
+    'The agent asked for Full control. It is not selected for you: choose it yourself only if you trust this app.',
   'tasksComputer.appAccess.tier.view': 'View only',
   'tasksComputer.appAccess.tier.view.warn': "It can see this app's screen, without touching it",
   'tasksComputer.appAccess.tier.click': 'View and click',

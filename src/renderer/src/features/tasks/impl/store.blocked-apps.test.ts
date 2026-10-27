@@ -45,7 +45,13 @@ describe('avisos de apps bloqueadas', () => {
 
   it('al desbloquear la app en Ajustes se quita el aviso «user» (y deja los de otro tipo)', () => {
     const B = { bundleId: 'com.b', name: 'B' }
-    emit('computer:blockedApps', { sessionId: 't1', apps: [{ ...A, kind: 'user' }, { ...B, kind: 'session' }] })
+    emit('computer:blockedApps', {
+      sessionId: 't1',
+      apps: [
+        { ...A, kind: 'user' },
+        { ...B, kind: 'session' }
+      ]
+    })
     emit('computer:blockedApps', { sessionId: 't2', apps: [{ ...A, kind: 'user' }] })
     C.useTasks.setState({ grants: { grants: [], denied: [] } })
     expect(blocked().t1.map((b) => b.bundleId)).toEqual(['com.b'])

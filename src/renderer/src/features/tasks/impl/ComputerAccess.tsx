@@ -897,7 +897,8 @@ function DeniedRow({ bundleId, name }: { bundleId: string; name: string }): Reac
         aria-label={t('tasksComputer.grants.allowAgainAria', { app: name })}
         className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-hover disabled:opacity-60"
       >
-        {busy ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} aria-hidden="true" />} {t('tasksComputer.grants.allowAgain')}
+        {busy ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} aria-hidden="true" />}{' '}
+        {t('tasksComputer.grants.allowAgain')}
       </button>
     </li>
   )
