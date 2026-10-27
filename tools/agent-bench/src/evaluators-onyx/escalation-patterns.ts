@@ -9,7 +9,7 @@
  *
  * Si OnyxCode cambia esos patrones, actualizar este archivo (el test de escalación fija los valores actuales).
  */
-export const ESCALATE_MARKER = "[[ONYX:NEEDS_FULL_CONTROL]]";
+export const ESCALATE_MARKER = "[[LAZUNOX:NEEDS_FULL_CONTROL]]";
 
 /** Frases (ya sin tildes y en minúsculas) que la tarjeta de OnyxCode reconoce. */
 export const ESCALATE_PHRASES = [

@@ -64,9 +64,9 @@ import {
   ComputerPermissionsCard,
   ControlBanner,
   FullAccessDialog,
-  PlanAccessCard,
   VisionModelHint
 } from './ComputerAccess'
+import { PlanAccessCard } from './AppAccessCard'
 import { TasksEnvironment } from './TasksEnvironment'
 import { hasTasksBridge, onTasks } from './bridge'
 import { useFolderDrop } from './useFolderDrop'

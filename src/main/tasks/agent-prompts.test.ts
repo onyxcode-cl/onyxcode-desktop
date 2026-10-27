@@ -54,6 +54,21 @@ describe('prompts de agente', () => {
     }
   })
 
+  it('tasks.md: NEEDS_APP y OPEN_FOLDER, con la regla de la última línea', () => {
+    const t = read('tasks')
+    expect(t).toContain('[[LAZUNOX:NEEDS_APP:<nombre de la app>]]')
+    expect(t).toContain('[[LAZUNOX:OPEN_FOLDER]]')
+    expect(t).toContain('lo último que escribes')
+    expect(t.replace(/\s+/g, ' ')).toContain('Cambiar a El computador completo y continuar')
+    expect(t).toContain('Abrir o mostrar SU carpeta no es una razón para escalar')
+  })
+
+  it('tasks.md dice DÓNDE está el permiso de borrar (texto exacto del glosario)', () => {
+    const t = read('tasks')
+    expect(t).toContain('Panel del proyecto ›\n   Carpeta › Permitir borrar, mover y renombrar')
+    expect(t).toContain('tarjeta amarilla')
+  })
+
   it('tasks.md acota la escalada a una petición explícita', () => {
     const t = read('tasks')
     expect(t).toContain('pidió explícitamente manejar OTRA aplicación')

@@ -115,7 +115,7 @@ Cambios en contratos invoke y eventos (y añadir los canales nuevos a `COWORK_IN
 - `GET <url>/plan-status?session=<id>` → `{ approved }`. Tarea nueva = sesión nueva = plan nuevo.
 
 ### Escalada desde el sandbox
-El agente `cowork` termina su turno con la línea literal **"Necesita Control total del Mac"**. El renderer la detecta en el último mensaje
+El agente `tasks` (en este documento histórico, «cowork») termina su turno con la línea literal **"Necesita Control total del Mac"**. El renderer la detecta en el último mensaje
 del asistente de una tarea terminada en sandbox y muestra una tarjeta con "Cambiar a Control total y continuar". Al pulsar:
 `setAccessMode(true)` (abre **siempre** el `FullAccessDialog`) → se "arma" una continuación → cuando llega la conexión de Control total
 para esa carpeta, `sendToTask(promptContinuación)` crea una tarea nueva. Nunca hay escalada silenciosa: dos clics explícitos + aprobación del plan.

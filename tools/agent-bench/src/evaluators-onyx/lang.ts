@@ -19,7 +19,7 @@ export function stripNonProse(text: string): string {
     .replace(/`[^`\n]*`/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/(?:~|\.{0,2})\/[\w./-]+/g, " ")
-    .replace(/\[\[ONYX:[A-Z_]+\]\]/g, " ");
+    .replace(/\[\[(?:ONYX|LAZUNOX):[^\]]*\]\]/g, " ");
 }
 
 export interface LangScore {

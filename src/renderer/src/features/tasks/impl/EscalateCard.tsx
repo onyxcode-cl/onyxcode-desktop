@@ -10,14 +10,14 @@
  * NUEVA cuyo prompt lleva el encargo original y un resumen de lo último que dijo el agente.
  */
 import { useState } from 'react'
-import { ShieldAlert } from 'lucide-react'
+import { FolderOpen, ShieldAlert } from 'lucide-react'
 import { Button } from '../../../components/Button'
 import type { Lang } from '@shared/i18n'
 import { getLang, useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { lastAssistantEntry, lastAssistantText } from '../../../lib/conversation/entries'
-import { sendToTask, setAccessMode } from './actions'
+import { reveal, sendToTask, setAccessMode } from './actions'
 import { currentTasksModel, useTasks } from './store'
 import { firstUserPrompt } from './transcript'
 
@@ -73,6 +73,59 @@ export function needsFullAccess(text: string): boolean {
   return PHRASES.some((p) => bare.startsWith(p))
 }
 
+/** Marcador `[[LAZUNOX:OPEN_FOLDER]]`: el agente pide mostrar el resultado en Finder/Explorador (no cambia de modo). */
+export const OPEN_FOLDER_MARKER = '[[LAZUNOX:OPEN_FOLDER]]'
+/** Prefijo del marcador `[[LAZUNOX:NEEDS_APP:<App>]]` (pide usar otra app; escala al alcance «El computador completo»). */
+export const NEEDS_APP_PREFIX = '[[LAZUNOX:NEEDS_APP:'
+const MAX_APP_NAME = 60
+const DECORATION = /[\s*_`>#-]+/g
+
+export type EscalationKind = 'folder' | 'app' | 'full'
+export interface Escalation {
+  kind: EscalationKind
+  /** Nombre de la app (solo `app`). */
+  app: string
+  /** Motivo en una frase ('' si no hay). */
+  reason: string
+}
+
+/** Última línea no vacía del texto y la línea no vacía anterior (ambas sin recortar decoración). */
+function lastTwoLines(text: string): { last: string; prev: string } {
+  const lines = text.split('\n').filter((l) => l.trim() !== '')
+  return { last: lines[lines.length - 1] ?? '', prev: lines[lines.length - 2] ?? '' }
+}
+
+function cleanReason(line: string): string {
+  return line
+    .replace(/^[\s*_`>#:：-]+/, '')
+    .replace(/[\s*_`]+$/, '')
+    .trim()
+}
+
+/**
+ * Qué pide el agente al terminar el turno. Solo cuenta la ÚLTIMA línea no vacía:
+ *  - `[[LAZUNOX:OPEN_FOLDER]]` sola (decoración markdown aparte) → `folder`;
+ *  - `[[LAZUNOX:NEEDS_APP:<App>]]` sola → `app` (el motivo es la línea anterior);
+ *  - `[[LAZUNOX:NEEDS_FULL_CONTROL]]` o la frase «Necesita Control total del Mac» (compatibilidad) → `full`.
+ * Citar un marcador en medio de un párrafo, o con texto después, NO cuenta.
+ */
+export function parseEscalation(text: string): Escalation | null {
+  const { last, prev } = lastTwoLines(text)
+  if (!last) return null
+  const line = last.trim()
+  const lower = line.toLowerCase()
+  const bareMarker = (marker: string): boolean =>
+    lower.endsWith(marker.toLowerCase()) && line.slice(0, line.length - marker.length).replace(DECORATION, '') === ''
+  if (bareMarker(OPEN_FOLDER_MARKER)) return { kind: 'folder', app: '', reason: cleanReason(prev) }
+  const m = /^[\s*_`>#-]*\[\[LAZUNOX:NEEDS_APP:([^\]\n[]{1,60})\]\][\s*_`]*$/i.exec(line)
+  if (m) {
+    const app = m[1].trim().slice(0, MAX_APP_NAME)
+    if (app) return { kind: 'app', app, reason: cleanReason(prev) }
+  }
+  if (needsFullAccess(text)) return { kind: 'full', app: '', reason: escalationReason(text) }
+  return null
+}
+
 /** Posición (en el texto plegado) y longitud de la última coincidencia de alguna de las frases. */
 function lastMatch(folded: string, needles: string[]): { at: number; len: number } | null {
   let best: { at: number; len: number } | null = null
@@ -102,11 +155,22 @@ export function escalationReason(text: string): string {
 }
 
 /** Prompt de la tarea nueva en Control total: encargo original + resumen de lo hecho en sandbox (≤1500 caracteres). */
-export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = getLang()): string {
+export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = getLang(), app = ''): string {
   const original = firstUserPrompt(entries)
   let summary = lastAssistantText(entries)
   // Se conserva el final: ahí están las conclusiones y el motivo de la escalada.
   if (summary.length > MAX_SUMMARY_CHARS) summary = `…${summary.slice(-(MAX_SUMMARY_CHARS - 1))}`
+  if (app) {
+    return lang === 'en'
+      ? // i18n-ignore: prompt al agente (en el idioma de la interfaz)
+        `Continue this task, which I started in "A folder" scope, in "The entire computer". The app I need you to use: ${app}.\n\n` +
+          // i18n-ignore: prompt al agente
+          `Original request:\n${original}\n\nWhat you did or concluded in the sandbox:\n${summary}`
+      : // i18n-ignore: prompt al agente (en el idioma de la interfaz)
+        `Continúa en «El computador completo» esta tarea que empecé en «Una carpeta». La app que necesito que uses: ${app}.\n\n` +
+          // i18n-ignore: prompt al agente
+          `Encargo original:\n${original}\n\nLo que hiciste o concluiste en sandbox:\n${summary}`
+  }
   if (lang === 'en') {
     return (
       // i18n-ignore: prompt al agente (en el idioma de la interfaz)
@@ -163,10 +227,10 @@ useTasks.subscribe((state, prev) => {
   }
 })
 
-function armContinuation(entries: MessageEntry[]): boolean {
+function armContinuation(entries: MessageEntry[], app = ''): boolean {
   const folder = useTasks.getState().folder
   if (!folder) return false
-  const c: Continuation = { folder, prompt: buildContinuationPrompt(entries), at: Date.now() }
+  const c: Continuation = { folder, prompt: buildContinuationPrompt(entries, getLang(), app), at: Date.now() }
   cont = c
   setTimeout(() => {
     if (cont === c) cont = null
@@ -176,17 +240,52 @@ function armContinuation(entries: MessageEntry[]): boolean {
 
 // ───────────────────────────── Tarjeta ─────────────────────────────
 
-/** Tarjeta "Esta tarea necesita controlar apps de tu Mac", bajo el último mensaje de una tarea sandbox terminada. */
+/**
+ * Tarjeta bajo el último mensaje de una tarea sandbox terminada, según el marcador final del agente:
+ *  - `full`: «Esta tarea necesita controlar apps de tu Mac» (marcador de siempre);
+ *  - `app`: «¿Permitir que Lazunox use {App}?» (misma experiencia que las tarjetas por app);
+ *  - `folder`: botón «Abrir carpeta en Finder» (`tasks:reveal`, sin cambiar de modo).
+ */
 export function EscalateCard({ taskId, entries }: { taskId: string; entries: MessageEntry[] }): React.JSX.Element | null {
   const t = useT()
+  const folder = useTasks((s) => s.folder)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const last = lastAssistantEntry(entries)
-  if (!taskId || !last || dismissed.has(last.info.id) || !needsFullAccess(lastAssistantText(entries))) return null
+  if (!taskId || !last || dismissed.has(last.info.id)) return null
+  const esc = parseEscalation(lastAssistantText(entries))
+  if (!esc) return null
   const messageId = last.info.id
-  const reason = escalationReason(lastAssistantText(entries))
+  const dismiss = (): void => setDismissed((s) => new Set(s).add(messageId))
 
+  if (esc.kind === 'folder') {
+    if (!folder) return null
+    return (
+      <div className="rounded-xl border border-border bg-elevated p-3.5 desk:rounded-card">
+        <div className="flex items-start gap-3 desk:gap-3.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-muted desk:h-9 desk:w-9 desk:rounded-[10px]">
+            <FolderOpen size={16} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.escalate.folder.title')}</p>
+            {esc.reason && <p className="mt-0.5 break-words text-sm text-fg">{esc.reason}</p>}
+            <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.escalate.folder.body')}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button variant="primary" onClick={() => void reveal(folder).catch((e) => useTasks.setState({ error: errorMessage(e) }))}>
+                {t('tasks.ws.openFinder')}
+              </Button>
+              <Button variant="ghost" onClick={dismiss}>
+                {t('tasksComputer.delete.notNow')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const isApp = esc.kind === 'app'
   const escalate = (): void => {
-    if (!armContinuation(entries)) return
+    if (!armContinuation(entries, esc.app)) return
     // Abre SIEMPRE el diálogo de confirmación; no hay atajo que lo salte.
     void setAccessMode(true)
   }
@@ -198,14 +297,17 @@ export function EscalateCard({ taskId, entries }: { taskId: string; entries: Mes
           <ShieldAlert size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.escalate.title')}</p>
-          {reason && <p className="mt-0.5 break-words text-sm text-fg">{reason}</p>}
-          <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.escalate.body')}</p>
+          <p className="text-sm font-semibold desk:text-title-sm">
+            {isApp ? t('tasksComputer.escalate.app.title', { app: esc.app }) : t('tasksComputer.escalate.title')}
+          </p>
+          {isApp && <p className="mt-0.5 text-sm text-fg">{t('tasksComputer.escalate.app.lead')}</p>}
+          {esc.reason && <p className="mt-0.5 break-words text-sm text-fg">{esc.reason}</p>}
+          <p className="mt-0.5 text-xs text-muted">{t(isApp ? 'tasksComputer.escalate.app.warn' : 'tasksComputer.escalate.body')}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="primary" onClick={escalate}>
-              {t('tasksComputer.escalate.switch')}
+              {t(isApp ? 'tasksComputer.escalate.app.switch' : 'tasksComputer.escalate.switch')}
             </Button>
-            <Button variant="ghost" onClick={() => setDismissed((s) => new Set(s).add(messageId))}>
+            <Button variant="ghost" onClick={dismiss}>
               {t('tasksComputer.escalate.stay')}
             </Button>
           </div>

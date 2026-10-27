@@ -307,9 +307,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
     return computer.grants.snapshot()
   })
   handle('computer:denyApp', ({ bundleId, name }) => {
-    computer.grants.deny(bundleId)
-    // El nombre no se usa al denegar (no hay AppGrant para una app denegada), pero se valida igual.
-    void name
+    // El nombre se guarda para que Ajustes muestre «Bloqueadas por ti» con nombres legibles.
+    computer.grants.deny(bundleId, name)
     return computer.grants.snapshot()
   })
   handle('computer:undenyApp', ({ bundleId }) => {

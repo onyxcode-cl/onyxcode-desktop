@@ -391,10 +391,11 @@ interface BlockedReply {
  * otra vez ni rodear el bloqueo con otra app, comando o vía; solo informar a la persona y seguir sin ella.
  */
 function blockedMessage(b: BlockedReply): string {
-  const who = b.kind === 'fixed' ? 'por seguridad' : 'por la persona'
+  const who =
+    b.kind === 'fixed' ? 'por seguridad' : b.kind === 'session' ? 'por la persona SOLO para esta tarea' : 'por la persona'
   return (
-    `${b.name} está bloqueada ${who}. No la pidas de nuevo ni uses otra aplicación, comando o vía para lograr lo mismo; ` +
-    'infórmale que está bloqueada y sigue sin ella.'
+    `${b.name} está bloqueada ${who}. No la pidas de nuevo ni intentes usarla por ninguna vía (otra aplicación, script, navegador, comando o atajo) ` +
+    'para lograr lo mismo; infórmale que está bloqueada y sigue sin ella.'
   )
 }
 
@@ -1772,7 +1773,8 @@ const TOOLS: ToolDef[] = [
         return [...blockedById.values()].map(blockedMessage).join('\n')
       }
       if (cancelled) {
-        return 'El usuario canceló: no se concedió nada ni se aprobó el plan. No actúes; explícaselo y detente.'
+        const cancelledText = 'El usuario canceló: no se concedió nada ni se aprobó el plan. No actúes; explícaselo y detente.'
+        return blockedById.size ? [cancelledText, ...[...blockedById.values()].map((b) => `- ${blockedMessage(b)}`)].join('\n') : cancelledText
       }
       if (feedback) {
         return (

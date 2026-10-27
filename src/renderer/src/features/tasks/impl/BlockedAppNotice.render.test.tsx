@@ -35,17 +35,28 @@ describe('aviso de app bloqueada', () => {
 
   it('bloqueada por seguridad: explica el porqué, no se puede desbloquear y NUNCA ofrece desbloqueo', () => {
     const h = html('fixed', '1Password')
-    expect(h).toContain('1Password está bloqueada por seguridad: guarda claves y Lazunox nunca la controla.')
+    expect(h).toContain('1Password está bloqueada por seguridad: es una app de seguridad o de claves del Mac y Lazunox nunca la controla.')
     expect(h).toContain('no se puede desbloquear desde la app')
     expect(h).not.toContain('<button')
     expect(h).not.toContain('Desbloquear')
     expect(h).not.toContain('Quitar')
   })
 
-  it('denegada solo en esta tarea: texto de «pídeselo de nuevo» y sin botón', () => {
+  it('denegada solo en esta tarea: dice que dura hasta que termine, que una tarea nueva vuelve a preguntar y sin botón', () => {
     const h = html('session')
-    expect(h).toContain('Dijiste que no a Foo en esta tarea.')
-    expect(h).toContain('pídeselo de nuevo al agente')
+    expect(h).toContain('Dijiste que no a Foo en esta tarea')
+    expect(h).toContain('hasta que esta tarea termine')
+    expect(h).toContain('En una tarea nueva se te volverá a preguntar')
+    expect(h).not.toContain('pídeselo de nuevo')
+    expect(h).not.toContain('<button')
+  })
+
+  it('Windows, seguridad: motivo genérico cierto (no «guarda claves»)', () => {
+    ;(globalThis as { window?: unknown }).window = { api: { platform: 'win32', capsFlags: {} } }
+    setI18nPlatform('win32')
+    const h = html('fixed', 'regedit')
+    expect(h).toContain('app de seguridad o de claves del sistema')
+    expect(h).not.toContain('guarda claves')
     expect(h).not.toContain('<button')
   })
 
@@ -63,7 +74,7 @@ describe('aviso de app bloqueada', () => {
   it('inglés: los tres textos existen y el de seguridad no promete desbloqueo', () => {
     expect(en['tasksComputer.blocked.user']).toContain('Blocked by you › Remove')
     expect(en['tasksComputer.blocked.user.win']).toContain('PC control')
-    expect(en['tasksComputer.blocked.session']).toContain('ask the agent again')
+    expect(en['tasksComputer.blocked.session']).toContain('until this task ends')
     expect(en['tasksComputer.blocked.fixed']).toContain('can’t be unblocked')
     expect(es['tasksComputer.blocked.fixed']).not.toMatch(/Quitar|Desbloquear/)
   })

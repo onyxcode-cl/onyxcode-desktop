@@ -132,6 +132,8 @@ export interface AppGrant {
 export interface GrantsSnapshot {
   grants: AppGrant[]
   denied: string[]
+  /** Nombre legible de las apps denegadas (si se conoce); las antiguas no lo tienen. */
+  deniedNames?: Record<string, string>
 }
 
 /** Decisión del usuario sobre una app pedida por `request_access`. */

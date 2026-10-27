@@ -53,6 +53,8 @@ const QUOTED_BUTTONS = [
   ['Guardar como PDF', 'tasks.deliv.savePdf'],
   ['Crear skill de esta tarea', 'tasks.ws.createSkill'],
   ['Cambiar a Control total y continuar', 'tasksComputer.escalate.switch'],
+  ['Cambiar a El computador completo y continuar', 'tasksComputer.escalate.app.switch'],
+  ['Abrir carpeta en Finder', 'tasks.ws.openFinder'],
   ['Aprobar y empezar', 'tasksComputer.plan.approve'],
   ['¿Tomar el control de la pantalla?', 'tasksComputer.takeover.title'],
   ['Seguir en segundo plano', 'tasksComputer.takeover.background'],

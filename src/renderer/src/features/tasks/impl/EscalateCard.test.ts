@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildContinuationPrompt, escalationReason, ESCALATE_MARKER, needsFullAccess } from './EscalateCard'
+import {
+  buildContinuationPrompt,
+  escalationReason,
+  ESCALATE_MARKER,
+  needsFullAccess,
+  NEEDS_APP_PREFIX,
+  OPEN_FOLDER_MARKER,
+  parseEscalation
+} from './EscalateCard'
 import type { MessageEntry } from '../../../stores/sessions'
 
 it('el marcador neutro es el que piden los prompts', () => {
@@ -33,6 +41,43 @@ describe('needsFullAccess', () => {
   })
 })
 
+describe('parseEscalation (los 3 marcadores)', () => {
+  it('constantes del contrato con el agente', () => {
+    expect(OPEN_FOLDER_MARKER).toBe('[[LAZUNOX:OPEN_FOLDER]]')
+    expect(NEEDS_APP_PREFIX).toBe('[[LAZUNOX:NEEDS_APP:')
+  })
+  it('NEEDS_APP: nombre de la app y motivo de la línea anterior', () => {
+    const e = parseEscalation('Dejé el borrador.\n\nAbrir Discord y escribir a Marta.\n[[LAZUNOX:NEEDS_APP:Discord]]\n')
+    expect(e).toEqual({ kind: 'app', app: 'Discord', reason: 'Abrir Discord y escribir a Marta.' })
+    expect(parseEscalation('Para mandarlo\n  **[[LAZUNOX:NEEDS_APP:Google Chrome]]**  ')?.app).toBe('Google Chrome')
+  })
+  it('NEEDS_APP: solo la última línea; citarlo o con texto después no escala', () => {
+    expect(parseEscalation('[[LAZUNOX:NEEDS_APP:Discord]]\nSigo con el informe.')).toBeNull()
+    expect(parseEscalation('Si hiciera falta escribiría [[LAZUNOX:NEEDS_APP:Discord]] y listo.')).toBeNull()
+    expect(parseEscalation('motivo\n[[LAZUNOX:NEEDS_APP:]]')).toBeNull()
+    expect(parseEscalation('motivo\n[[LAZUNOX:NEEDS_APP:Discord]] gracias')).toBeNull()
+  })
+  it('OPEN_FOLDER: solo en la última línea', () => {
+    expect(parseEscalation(`Te dejé el informe en la carpeta.\n${OPEN_FOLDER_MARKER}`)).toEqual({
+      kind: 'folder',
+      app: '',
+      reason: 'Te dejé el informe en la carpeta.'
+    })
+    expect(parseEscalation(`${OPEN_FOLDER_MARKER}\nY además terminé.`)).toBeNull()
+    expect(parseEscalation(`Cito ${OPEN_FOLDER_MARKER} en una frase.`)).toBeNull()
+  })
+  it('NEEDS_FULL_CONTROL y la frase antigua siguen funcionando', () => {
+    expect(parseEscalation(`**Necesita Control total del Mac**: abrir Discord\n${ESCALATE_MARKER}`)).toEqual({
+      kind: 'full',
+      app: '',
+      reason: 'abrir Discord'
+    })
+    expect(parseEscalation('**Needs Full Mac control**: open Discord')?.kind).toBe('full')
+    expect(parseEscalation('Terminé. Nada más.')).toBeNull()
+    expect(parseEscalation('')).toBeNull()
+  })
+})
+
 describe('escalationReason', () => {
   it('extrae el motivo en español, en inglés y junto al marcador neutro', () => {
     expect(escalationReason('**Necesita Control total del Mac**: abrir Discord')).toBe('abrir Discord')
@@ -55,5 +100,12 @@ describe('buildContinuationPrompt', () => {
     expect(en).toContain('Continue this task')
     expect(en).toContain('Original request:\nEscribe a Fulano')
     expect(en).toContain('Borrador listo')
+  })
+  it('con una app, nombra la app y el nuevo alcance', () => {
+    const es = buildContinuationPrompt(entries, 'es', 'Discord')
+    expect(es).toContain('«El computador completo»')
+    expect(es).toContain('Discord')
+    expect(es).toContain('Encargo original:\nEscribe a Fulano')
+    expect(buildContinuationPrompt(entries, 'en', 'Discord')).toContain('"The entire computer"')
   })
 })

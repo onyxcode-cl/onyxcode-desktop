@@ -92,3 +92,99 @@ describe('apps bloqueadas: sin tarjeta y con tipo de bloqueo', () => {
     expect(blocked[0][0].bundleId).toBe(FIXED.bundleId)
   })
 })
+
+describe('apps bloqueadas: plan, reenganche, Modo auto y sesión', () => {
+  it('plan con TODAS las apps bloqueadas: la tarjeta sale con apps [] y la respuesta trae `blocked`', async () => {
+    const { s, cards } = make()
+    const p = s.requestAccess([FIXED], undefined, ['abrir el gestor'], SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    expect(cards[0].apps).toEqual([])
+    s.resolveAccessRequest(cards[0].id, [], { approvePlan: true })
+    const r = await p
+    expect(r.decisions[FIXED.bundleId]).toBe('deny')
+    expect(r.blocked?.map((b) => b.bundleId)).toEqual([FIXED.bundleId])
+  })
+
+  it('petición repetida con una bloqueada y otra pedible: se reengancha a UNA sola tarjeta', async () => {
+    const { s, cards } = make()
+    const p1 = s.requestAccess([FIXED, OTHER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    const p2 = s.requestAccess([FIXED, OTHER], undefined, undefined, SESSION)
+    await new Promise((r) => setTimeout(r, 30))
+    expect(cards).toHaveLength(1)
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: OTHER.bundleId, name: OTHER.name, decision: 'view' }])
+    const [r1, r2] = await Promise.all([p1, p2])
+    expect(r1.decisions[OTHER.bundleId]).toBe('view')
+    expect(r2.decisions[OTHER.bundleId]).toBe('view')
+  })
+
+  it('Modo auto con mezcla: autoAccess nunca recibe la app bloqueada', async () => {
+    const { s } = make()
+    const seen: string[][] = []
+    s.autoAccess = async (q) => {
+      seen.push(q.apps.map((a) => a.bundleId))
+      return { approve: true, recordId: 'rec_1' }
+    }
+    const r = await s.requestAccess([FIXED, OTHER], undefined, undefined, SESSION)
+    expect(seen).toEqual([[OTHER.bundleId]])
+    expect(r.decisions[FIXED.bundleId]).toBe('deny')
+    expect(r.decisions[OTHER.bundleId]).toBe('view')
+  })
+
+  it('sessionId inválido: el «No» de sesión no aplica (se vuelve a preguntar)', async () => {
+    const { s, cards, blocked } = make()
+    const bad = 'sesión inválida/../x'
+    const p = s.requestAccess([USER], undefined, undefined, bad)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }])
+    await p
+    const p2 = s.requestAccess([USER], undefined, undefined, bad)
+    await vi.waitFor(() => expect(cards).toHaveLength(2))
+    expect(blocked).toHaveLength(0)
+    s.resolveAccessRequest(cards[1].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }])
+    await p2
+  })
+
+  it('el texto de «session» coincide con el comportamiento: dura toda la tarea, otra tarea pregunta, y al terminar se retira', async () => {
+    const { s, cards, blocked } = make()
+    const planStates: Array<{ sessionId: string; approved: boolean }> = []
+    s.on('planState', (e) => planStates.push(e))
+    const p = s.requestAccess([USER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }])
+    await p
+    // Misma tarea: sigue bloqueada, sin tarjeta (no «te volveré a preguntar»).
+    for (let i = 0; i < 2; i++) {
+      const r = await s.requestAccess([USER], undefined, undefined, SESSION)
+      expect(r.blocked?.[0].kind).toBe('session')
+    }
+    expect(cards).toHaveLength(1)
+    expect(blocked).toHaveLength(2)
+    // Tarea nueva: se vuelve a preguntar.
+    const other = 'ses_fedcba9876543210'
+    const p2 = s.requestAccess([USER], undefined, undefined, other)
+    await vi.waitFor(() => expect(cards).toHaveLength(2))
+    s.resolveAccessRequest(cards[1].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'view' }])
+    await p2
+    // Fin de la tarea: se retira el «No» y se avisa al renderer.
+    s.revokePlan(SESSION)
+    expect(planStates).toContainEqual({ sessionId: SESSION, approved: false })
+    const p3 = s.requestAccess([USER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(3))
+    s.resolveAccessRequest(cards[2].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'view' }])
+    await p3
+  })
+
+  it('los textos del aviso «session» dicen lo mismo que el comportamiento (es y en)', async () => {
+    const { es } = await import('@shared/i18n/es')
+    const { en } = await import('@shared/i18n/en')
+    const e = es['tasksComputer.blocked.session']
+    const n = en['tasksComputer.blocked.session']
+    expect(e).toContain('hasta que esta tarea termine')
+    expect(e).toContain('tarea nueva')
+    expect(e).not.toContain('pídeselo de nuevo')
+    expect(n).toContain('until this task ends')
+    expect(n).toContain('new task')
+    expect(n).not.toMatch(/ask the agent again/)
+  })
+})

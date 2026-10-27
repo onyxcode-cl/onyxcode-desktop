@@ -1188,18 +1188,42 @@ export function syncAccessRequests(): void {
     if (useTasks.getState().accessRequest?.id === id) useTasks.setState({ accessRequest: null })
   })
   onTasks('computer:blockedApps', ({ sessionId, apps }) => {
-    const taskId = sessionId ?? useTasks.getState().activeTaskId
-    if (!taskId) return
+    // Sin sessionId no se sabe de qué tarea es: se descarta (pintarlo en la tarea activa podía mentir sobre otra tarea).
+    if (!sessionId) return
+    const taskId = sessionId
     useTasks.setState((s) => {
       const list = s.blockedApps[taskId] ?? []
       const fresh = apps.filter((a) => !list.some((b) => b.bundleId === a.bundleId && b.kind === a.kind))
       if (!fresh.length) return s
+      // Una sola fila por app: si cambió el tipo de bloqueo, la nueva reemplaza a la anterior.
       return { blockedApps: { ...s.blockedApps, [taskId]: [...list.filter((b) => !fresh.some((a) => a.bundleId === b.bundleId)), ...fresh] } }
     })
+  })
+  // Al desbloquear una app en Ajustes («Bloqueadas por ti › Quitar») se retiran sus avisos de tipo «user».
+  useTasks.subscribe((s, prev) => {
+    if (s.grants === prev.grants || !s.grants) return
+    const denied = new Set(s.grants.denied)
+    const next: Record<string, BlockedAppEntry[]> = {}
+    let changed = false
+    for (const [id, list] of Object.entries(s.blockedApps)) {
+      const keep = list.filter((b) => b.kind !== 'user' || denied.has(b.bundleId))
+      if (keep.length !== list.length) changed = true
+      if (keep.length) next[id] = keep
+      else if (list.length) changed = true
+    }
+    if (changed) useTasks.setState({ blockedApps: next })
   })
   onTasks('computer:planState', ({ sessionId, approved }) => {
     if (!loaded) touched.add(sessionId)
     useTasks.setState((s) => {
+      // Fin de la tarea / revocar el plan: main borra también los «No» de esa sesión, así que sus avisos de bloqueo ya no valen.
+      if (!approved && s.blockedApps[sessionId]) {
+        const blockedApps = { ...s.blockedApps }
+        delete blockedApps[sessionId]
+        const approvedPlans = { ...s.approvedPlans }
+        delete approvedPlans[sessionId]
+        return { blockedApps, approvedPlans }
+      }
       if (!!s.approvedPlans[sessionId] === approved) return s
       const approvedPlans = { ...s.approvedPlans }
       if (approved) approvedPlans[sessionId] = true

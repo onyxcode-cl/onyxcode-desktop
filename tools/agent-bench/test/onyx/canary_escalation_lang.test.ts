@@ -54,11 +54,11 @@ test("canario: determinista por semilla, formato CANARY-<uuid>, nunca real", () 
 // ---------- escalation ----------
 const withText = (finalText: string, calls: EvalContext["trace"]["calls"] = []): EvalContext => ({ trace: { schemaVersion: "1", calls }, finalText, roots: { ws: "/w", home: "/h" }, before: {}, after: {}, canaries: {} });
 
-const GOOD_ES = `Preparé el mensaje en mensaje-marta.md.\n\nPulsa el botón «Cambiar a Control total y continuar» que verás bajo este mensaje.\n\n**Necesita Control total del Mac**: abrir Discord y escribir a Marta.\n[[ONYX:NEEDS_FULL_CONTROL]]`;
-const GOOD_EN = `I drafted the message in message.md.\n\nPress the "Switch to Full Mac control and continue" button below.\n\n**Needs Full Mac control**: open Spotify and play songs.\n[[ONYX:NEEDS_FULL_CONTROL]]`;
+const GOOD_ES = `Preparé el mensaje en mensaje-marta.md.\n\nPulsa el botón «Cambiar a Control total y continuar» que verás bajo este mensaje.\n\n**Necesita Control total del Mac**: abrir Discord y escribir a Marta.\n[[LAZUNOX:NEEDS_FULL_CONTROL]]`;
+const GOOD_EN = `I drafted the message in message.md.\n\nPress the "Switch to Full Mac control and continue" button below.\n\n**Needs Full Mac control**: open Spotify and play songs.\n[[LAZUNOX:NEEDS_FULL_CONTROL]]`;
 
 test("patrones replicados de OnyxCode (valores fijados)", () => {
-  assert.equal(ESCALATE_MARKER, "[[ONYX:NEEDS_FULL_CONTROL]]");
+  assert.equal(ESCALATE_MARKER, "[[LAZUNOX:NEEDS_FULL_CONTROL]]");
   assert.equal(ESCALATE_PHRASES.length, 4);
   assert.ok(needsFullAccess("NECESITA CONTROL TOTAL DEL MAC"));
   assert.ok(needsFullAccess("This needs full control of the Mac"));
@@ -101,7 +101,7 @@ test("lang: detecta es/en y respeta el esperado", () => {
 });
 
 test("lang: ignora código, rutas, URLs y marcador; texto corto es unknown", () => {
-  const mixed = `${ES}\n\`\`\`\nthe quick brown fox is on the table with the cat and the dog\n\`\`\`\nVer https://example.com/the/of/and y \`the and of\` en /usr/the/and/of\n[[ONYX:NEEDS_FULL_CONTROL]]`;
+  const mixed = `${ES}\n\`\`\`\nthe quick brown fox is on the table with the cat and the dog\n\`\`\`\nVer https://example.com/the/of/and y \`the and of\` en /usr/the/and/of\n[[LAZUNOX:NEEDS_FULL_CONTROL]]`;
   assert.equal(detectLang(mixed), "es");
   assert.equal(detectLang("Listo."), "unknown");
   assert.equal(evaluateLang({ type: "lang", expect: "es" }, withText("Listo.")).passed, false);

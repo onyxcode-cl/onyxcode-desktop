@@ -242,7 +242,7 @@ function setBusy(v: boolean): void {
   for (const b of [reqApprove, reqDeny, reqEdit, reqClose]) b.disabled = v
 }
 
-type ResponseExtra = { feedback?: string; approvePlan?: boolean; cancel?: boolean }
+type ResponseExtra = { feedback?: string; approvePlan?: boolean; cancel?: boolean; scope?: 'session' | 'always'; alsoBlock?: boolean }
 
 async function respond(
   decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>,
@@ -277,7 +277,7 @@ reqApprove.addEventListener('click', () => {
   }
   void respond(
     req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: choices[a.bundleId] ?? defaultAccessDecision(a) })),
-    { approvePlan: !!req.plan }
+    { approvePlan: !!req.plan, scope: 'session' }
   )
 })
 reqDeny.addEventListener('click', () => {

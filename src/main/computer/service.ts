@@ -655,7 +655,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           continue
         }
         if (d.decision === 'deny') {
-          if (alsoBlock) this.grants.deny(d.bundleId)
+          if (alsoBlock) this.grants.deny(d.bundleId, card.name)
           else this.denyForSession(pending.sessionId, d.bundleId)
           map[d.bundleId] = 'deny'
         } else if (d.decision === 'view' || d.decision === 'click' || d.decision === 'full') {
@@ -751,7 +751,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     this.foregroundSessions.delete(sessionId)
     this.revokeAutoView(sessionId)
     this.sessionGrants.delete(sessionId)
-    this.sessionDenied.delete(sessionId)
+    const hadSessionDenied = this.sessionDenied.delete(sessionId)
     this.taskApps.delete(sessionId)
     // Tarjetas aún abiertas de esa sesión: se cancelan, para que aprobarlas después no vuelva a crear permisos de sesión.
     for (const [id, pending] of [...this.pendingAccess]) {
@@ -760,7 +760,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       pending.resolve({ decisions: {}, cancelled: true })
       this.emit('requestAccessResolved', { id })
     }
-    if (hadPlan) this.emit('planState', { sessionId, approved: false })
+    // También sin plan: si había «No» de esta sesión, el renderer debe retirar sus avisos de bloqueo.
+    if (hadPlan || hadSessionDenied) this.emit('planState', { sessionId, approved: false })
   }
 
   /** Ids de las sesiones con el plan aprobado ahora mismo. */

@@ -273,14 +273,14 @@ export async function resumeComputerControl(): Promise<void> {
  */
 export async function respondAccessRequest(
   decisions: Array<{ bundleId: string; name: string; decision: AccessDecision }>,
-  opts: { feedback?: string; approvePlan?: boolean; cancel?: boolean } = {}
+  opts: { feedback?: string; approvePlan?: boolean; cancel?: boolean; scope?: 'session' | 'always'; alsoBlock?: boolean } = {}
 ): Promise<void> {
   const req = useTasks.getState().accessRequest
   if (!req) return
   useTasks.setState({ accessRequest: null })
-  const { feedback, approvePlan, cancel } = opts
+  const { feedback, approvePlan, cancel, scope, alsoBlock } = opts
   try {
-    await cw('computer:respondAccess', { id: req.id, decisions, feedback, approvePlan, cancel })
+    await cw('computer:respondAccess', { id: req.id, decisions, feedback, approvePlan, cancel, scope, alsoBlock })
   } catch (err) {
     useTasks.setState({ error: errorMessage(err) })
   }

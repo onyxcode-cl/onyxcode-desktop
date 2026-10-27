@@ -26,6 +26,8 @@ export type { AppGrant, AppTier, GrantsSnapshot }
 interface StoreShape {
   grants: Record<string, AppGrant>
   denied: string[]
+  /** Nombre legible de las denegadas (opcional; los archivos antiguos no lo traen). */
+  deniedNames?: Record<string, string>
 }
 
 /** Categorías de apps con nivel por defecto más restrictivo (heurística por nombre / bundle id). */
@@ -126,6 +128,11 @@ export class ComputerGrantsStore {
         if (raw && typeof raw === 'object') {
           this.data.grants = raw.grants && typeof raw.grants === 'object' ? raw.grants : {}
           this.data.denied = Array.isArray(raw.denied) ? raw.denied.filter((d) => typeof d === 'string') : []
+          const names = raw.deniedNames
+          this.data.deniedNames =
+            names && typeof names === 'object' && !Array.isArray(names)
+              ? Object.fromEntries(Object.entries(names).filter(([, v]) => typeof v === 'string'))
+              : {}
         }
       }
     } catch (err) {
@@ -144,7 +151,8 @@ export class ComputerGrantsStore {
 
   snapshot(): GrantsSnapshot {
     this.load()
-    return { grants: Object.values(this.data.grants), denied: [...this.data.denied] }
+    const names = Object.fromEntries(Object.entries(this.data.deniedNames ?? {}).filter(([k]) => this.data.denied.includes(k)))
+    return { grants: Object.values(this.data.grants), denied: [...this.data.denied], deniedNames: names }
   }
 
   /** Nivel concedido, o null si es desconocida o está denegada. No autoasigna (a diferencia de `resolve`). */
@@ -207,9 +215,10 @@ export class ComputerGrantsStore {
    * Borra la concesión y la mete en denegadas. Solo lo dispara una decisión EXPLÍCITA "Denegar" por
    * app (o Ajustes): cancelar una tarjeta (Esc, ✕, "Cancelar") NUNCA llama aquí ni toca concesiones.
    */
-  deny(bundleId: string): void {
+  deny(bundleId: string, name?: string): void {
     this.load()
     delete this.data.grants[bundleId]
+    if (name) this.data.deniedNames = { ...this.data.deniedNames, [bundleId]: name }
     if (!this.data.denied.includes(bundleId)) this.data.denied.push(bundleId)
     this.persist()
   }
@@ -218,6 +227,7 @@ export class ComputerGrantsStore {
     this.load()
     if (!this.data.denied.includes(bundleId)) return
     this.data.denied = this.data.denied.filter((d) => d !== bundleId)
+    if (this.data.deniedNames) delete this.data.deniedNames[bundleId]
     this.persist()
   }
 }
