@@ -1,0 +1,48 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 10 tareas × 3
+T11 #1: ok (completado) · 11 pasos · 105334 tokens · 22.9 s
+T11 #2: ok (completado) · 11 pasos · 112458 tokens · 26.9 s
+T11 #3: ok (completado) · 12 pasos · 114156 tokens · 27.3 s
+T12 #1: ok (completado) · 3 pasos · 68593 tokens · 11.3 s
+T12 #2: ok (completado) · 3 pasos · 68561 tokens · 10.2 s
+T12 #3: ok (completado) · 3 pasos · 68540 tokens · 10.6 s
+T13 #1: ok (completado) · 5 pasos · 48029 tokens · 11.9 s
+T13 #2: ok (completado) · 4 pasos · 37156 tokens · 10.8 s
+T13 #3: ok (completado) · 5 pasos · 47225 tokens · 12.1 s
+T14 #1: ok (completado) · 5 pasos · 47985 tokens · 17.8 s
+T14 #2: ok (completado) · 5 pasos · 47990 tokens · 16.5 s
+T14 #3: ok (completado) · 5 pasos · 50136 tokens · 25.2 s
+T15 #1: ok (completado) · 6 pasos · 57397 tokens · 16.6 s
+T15 #2: ok (completado) · 4 pasos · 35521 tokens · 8.6 s
+T15 #3: ok (completado) · 5 pasos · 47169 tokens · 14.7 s
+T16 #1: ok (completado) · 4 pasos · 37245 tokens · 9.7 s
+T16 #2: ok (completado) · 4 pasos · 37411 tokens · 9.9 s
+T16 #3: ok (completado) · 4 pasos · 37160 tokens · 12.8 s
+T17 #1: ok (completado) · 3 pasos · 26607 tokens · 14.2 s
+T17 #2: ok (completado) · 3 pasos · 26659 tokens · 12.4 s
+T17 #3: ok (completado) · 3 pasos · 26357 tokens · 11.1 s
+T18 #1: ok (completado) · 3 pasos · 27768 tokens · 10.1 s
+T18 #2: ok (completado) · 6 pasos · 58463 tokens · 15.7 s
+T18 #3: ok (completado) · 7 pasos · 74335 tokens · 21.0 s
+T19 #1: ok (completado) · 96 pasos · 1956780 tokens · 254.1 s
+T19 #2: ok (completado) · 71 pasos · 1102456 tokens · 183.3 s
+T19 #3: ok (completado) · 77 pasos · 1401488 tokens · 240.7 s
+T20 #1: ok (completado) · 3 pasos · 27606 tokens · 9.9 s
+T20 #2: ok (completado) · 5 pasos · 46233 tokens · 17.8 s
+T20 #3: ok (completado) · 6 pasos · 57781 tokens · 12.1 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T11 Migración con verificación por paso | 3/3 | 111.388 | 854 | 90,6 | 11 | 9.652 · 10.103 | 11 | 0,92 | 0,45 | 112.458 |
+| T12 Usar un conector MCP de prueba con 40 herramientas | 3/3 | 68.322 | 239 | 66,3 | 3 | 22.794 · 22.913 | 4 | 1,33 | 0,18 | 68.561 |
+| T13 «Haz pasar las pruebas» (3 fallos) | 3/3 | 46.605 | 620 | 81,6 | 5 | 9.566 · 10.113 | 7 | 1,5 | 0,2 | 47.225 |
+| T14 Revisar un diff con un bug sembrado | 3/3 | 47.379 | 658 | 76,5 | 5 | 9.442 · 10.922 | 6 | 1,2 | 0,3 | 47.990 |
+| T15 Lote: 3 módulos independientes | 3/3 | 46.189 | 980 | 81,5 | 5 | 9.443 · 10.165 | 11 | 2 | 0,25 | 47.169 |
+| T16 Oficina: CSV de gastos → informe con totales exactos | 3/3 | 36.883 | 368 | 73,1 | 4 | 9.474 · 9.736 | 3 | 0,75 | 0,17 | 37.245 |
+| T17 Oficina: corregir acentos y formato de una carta | 3/3 | 26.309 | 298 | 63,2 | 3 | 8.491 · 9.575 | 2 | 0,67 | 0,21 | 26.607 |
+| T18 Oficina: ordenar 30 archivos en carpetas por fecha | 3/3 | 57.734 | 725 | 83,8 | 6 | 9.468 · 11.029 | 5 | 0,83 | 0,26 | 58.463 |
+| T19 Sesión larga: 20 pedidos con referencias a decisiones | 3/3 | 1.389.849 | 11.639 | 97,2 | 77 | 17.245 · 28.289 | 61 | 0,79 | 4,01 | 1.401.488 |
+| T20 Oficina: editar frases con «», “” y — | 3/3 | 45.474 | 759 | 77,7 | 5 | 8.981 · 10.039 | 10 | 2 | 0,2 | 46.233 |
+
+Éxito total: 30/30 (100 %) · mediana de tokens por éxito: 48.010 · p90 de minutos: 0,46

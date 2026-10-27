@@ -1,0 +1,14 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 5
+T29 #1: ya medida (/res/corridas/T29-r01.json); se reutiliza
+T29 #2: ya medida (/res/corridas/T29-r02.json); se reutiliza
+T29 #3: ya medida (/res/corridas/T29-r03.json); se reutiliza
+T29 #4: ok (completado) · 19 pasos · 185689 tokens · 47.7 s
+T29 #5: ok (completado) · 19 pasos · 194288 tokens · 48.6 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T29 La guía AGENTS.md cambia en mitad de una sesión larga | 5/5 | 192.976 | 1.465 | 88,2 | 19 | 10.403 · 11.332 | 13 | 0,68 | 0,82 | 194.288 |
+
+Éxito total: 5/5 (100 %) · mediana de tokens por éxito: 194.288 · p90 de minutos: 0,98

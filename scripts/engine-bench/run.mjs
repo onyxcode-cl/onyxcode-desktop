@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Banco de tareas del motor (plan maestro, §5 «Medición» y paquete 1A; ola 6, paquete 6.1: T19-T23 más duras; ola 7, paquete 7.1: T24-T30): 30 tareas pequeñas y REPRODUCIBLES (programación y oficina),
+// Banco de tareas del motor (plan maestro, §5 «Medición» y paquete 1A; ola 6, paquete 6.1: T19-T23 más duras; ola 7, paquete 7.1: T24-T30; T31-T32: flujos por script, 7.17): 32 tareas pequeñas y REPRODUCIBLES (programación y oficina),
 // cada una con su carpeta inicial generada por el propio script, un pedido natural en español y un VERIFICADOR determinista (un comando
 // o una comprobación de archivos; nunca un juez con modelo). Sirve para medir «el motor mejoró» antes/después, con el modelo gratuito.
 //
@@ -17,7 +17,7 @@
 //   node scripts/engine-bench/run.mjs --motor <binario> [--tareas T01,T05] [--repeticiones 3] [--modelo opencode/deepseek-v4.1-flash-free]
 //        [--proveedor-falso [--sin-guion T05,T09]] [--env K=V ...] [--config-global '<json>'] [--max-pasos 60] [--presupuesto-tokens 400000] [--timeout-min 15]
 //        [--auth-archivo <auth.json>] [--typescript <carpeta de typescript>] [--salida <archivo|carpeta>] [--conservar] [--espera-cuota-seg 60]
-//        [--guardar-corridas <carpeta>]   (un JSON por tarea y repetición, escrito apenas termina cada corrida: `T19-r03.json`; si ya existe
+//        [--sumar-ayudantes] [--guardar-corridas <carpeta>]   (un JSON por tarea y repetición, escrito apenas termina cada corrida: `T19-r03.json`; si ya existe
 //        y no es de cuota, esa repetición se SALTA y se reutiliza, así una tanda de ≥5 repeticiones se reparte en varios días)
 //   node scripts/engine-bench/run.mjs --motor <binario> --tareas T17,T18 --reanudar bench-….json   (repite SOLO esas tareas, p. ej. tras agotar la cuota,
 //        y deja un archivo nuevo con el resto tal cual estaba; mismo modelo y motor)
@@ -66,6 +66,7 @@ function leerArgs(argv) {
       case '--repeticiones': a.repeticiones = Number(valor(i++, n)); break
       case '--modelo': a.modelo = valor(i++, n); break
       case '--env': a.env.push(valor(i++, n)); break
+      case '--sumar-ayudantes': a.sumarAyudantes = true; break
       case '--config-global': a.configGlobal = valor(i++, n); break
       case '--max-pasos': a.maxPasos = Number(valor(i++, n)); break
       case '--presupuesto-tokens': a.presupuesto = Number(valor(i++, n)); break
@@ -185,8 +186,11 @@ function lanzarRun(cfg, entorno, proj, argv, pedido) {
   })
 }
 
-function acumular(m, r) {
+function acumular(m, r, sumarAyudantes = false) {
   m.ms += r.ms
+  // Tokens de los ayudantes (sesiones hijas): los `step_finish` que el motor emite en JSON son solo los de la sesión principal, pero el
+  // `informe` final del motor suma también los ayudantes. Ayudantes = informe − principal, por invocación.
+  const antes = { e: m.entrada, s: m.salida, c: m.cache_leida }
   for (const e of r.eventos) {
     m.sessionID ??= e.sessionID
     if (e.type === 'step_finish') {
@@ -211,6 +215,23 @@ function acumular(m, r) {
       m.errores.push(JSON.stringify(e.error ?? e).slice(0, 300))
     } else if (e.type === 'permiso_negado') m.permisos_negados += 1
   }
+  const inf = r.eventos.filter((e) => e.type === 'informe').at(-1)
+  if (inf?.tokens) {
+    const ay = {
+      entrada: Math.max(0, (inf.tokens.entrada ?? 0) - (m.entrada - antes.e)),
+      salida: Math.max(0, (inf.tokens.salida ?? 0) - (m.salida - antes.s)),
+      cache_leida: Math.max(0, (inf.tokens.cache_leida ?? 0) - (m.cache_leida - antes.c))
+    }
+    m.ay.entrada += ay.entrada
+    m.ay.salida += ay.salida
+    m.ay.cache_leida += ay.cache_leida
+    m.ay.pasos += inf.pasos_ayudantes ?? 0
+    if (sumarAyudantes) {
+      m.entrada += ay.entrada
+      m.salida += ay.salida
+      m.cache_leida += ay.cache_leida
+    }
+  }
   m.stderr += r.stderr.slice(-1500)
 }
 
@@ -219,7 +240,7 @@ async function unaCorrida(cfg, tarea, ctx) {
   const proj = join(root, 'proyecto')
   const home = join(root, 'home')
   for (const d of [proj, home, join(root, 'tmp')]) mkdirSync(d, { recursive: true })
-  const m = { porPaso: [], ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, salidas: '', erroresHerramientas: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
+  const m = { ay: { entrada: 0, salida: 0, cache_leida: 0, pasos: 0 }, porPaso: [], ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, salidas: '', erroresHerramientas: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
   let proveedor = null
   let verificacion
   try {
@@ -255,7 +276,7 @@ async function unaCorrida(cfg, tarea, ctx) {
         ...(sessionID ? ['--session', sessionID] : [])
       ]
       const r = await lanzarRun(cfg, entorno, proj, argv, tarea.pedidos[i])
-      acumular(m, r)
+      acumular(m, r, cfg.sumarAyudantes)
       sessionID ??= m.sessionID
       if (r.cortePorTiempo) m.errores.push(`tiempo agotado (${cfg.timeoutMin} min)`)
       if (r.cortePorTiempo || m.motivos.at(-1) === 'max_pasos' || m.motivos.at(-1) === 'presupuesto_tokens') break
@@ -281,6 +302,7 @@ async function unaCorrida(cfg, tarea, ctx) {
     detalle: verificacion.detalle,
     motivo: m.motivos.at(-1) ?? (m.errores.length ? 'error' : 'sin_informe'),
     tokens: { entrada: m.entrada, salida: m.salida, cache_leida: m.cache_leida, enviados },
+    tokens_ayudantes: { ...m.ay, enviados: m.ay.entrada + m.ay.cache_leida, incluidos_en_tokens: !!cfg.sumarAyudantes },
     pasos: m.pasos,
     tokens_por_paso: { med: mediana(m.porPaso), p90: percentil(m.porPaso, 90) },
     llamadas: m.llamadas,

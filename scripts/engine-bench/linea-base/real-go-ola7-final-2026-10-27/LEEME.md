@@ -1,0 +1,22 @@
+# Banco real (OpenCode Go): motor final de la Ola 7 (`feat/ola7-final`) contra el control — 2026-10-27
+
+Modelo `opencode-go/deepseek-v4.1-flash`, flags de siempre (60 pasos, 400 000 tokens, 15 min), contenedores `node:22-bookworm` de 2 CPU / 3 GB (hasta 3 a la vez).
+
+## Binario
+- Fork `lazunox-motor`, rama `feat/ola7-final`, commit `b5559704d5aefc3aedd53fb0c3a86fbb8ec93809` ("Ola 7: integra tanda B (7.5, 7.6, 7.20, 7.7) con A, C y D").
+- Receta idéntica a la del par anterior (`receta-build.sh`, copia exacta): `oven/bun:1.3.14`, 4 CPU / 8 GB en el VPS, carpeta temporal `/opt/lzx-ola7-final-build` (ya borrada), `git archive`, `.github/TEAM_MEMBERS` vacío, `models.json` fijado
+  (sha256 `504bea88124353c10040064ca7bc13dd41da7a4419c7710beb84a41a0914bd4c`), `OPENCODE_VERSION=1.19.0`, destino linux/arm64. Compilado UNA vez.
+- sha256 del binario: `3871940fdc72889dcfed42b6994c947e72071d9cb23c8a14a9c6e19cfc30b100` (149 923 984 B); `--version` = 1.19.0. Guardado fuera del repo en `~/Documents/lzx-bench-bin/final/opencode`.
+- Control: el de `../real-go-ola7-par2-2026-10-27/` (b3ccb17, sha256 `482a7605…9294479`), n=5, mismas condiciones.
+
+## Cambios al banco (`scripts/engine-bench`)
+- Tareas nuevas T31 (fan-out con orden escondida) y T32 (T21 en tres juegos), copiadas del fork (`test/lazunox/banco-flujos`), con su autoprueba en verde.
+- `run.mjs`: cada corrida guarda ahora `tokens_ayudantes` (sesiones hijas = tokens del `informe` del motor menos los `step_finish` de la sesión principal; antes el banco NO los veía). Con `--sumar-ayudantes` esos tokens se suman a `tokens`. En el banco completo (a) NO se usó la opción para comparar igual que el control; en el bloque de flujos (d) sí.
+
+## Comandos (todos con `--modelo opencode-go/deepseek-v4.1-flash --auth-archivo … --guardar-corridas`)
+- a (a1, a2, a3): T01–T30 n=3, sin variables, en tres contenedores. T25 y T27 son del proveedor falso y no corren con modelo real. Después a3 se amplió a n=5 solo para T29.
+- b1: T28 n=5 con `--env LAZUNOX_SANITIZAR_MODELO=1`. b2: T01,T05,T13 n=3 con esa variable. b3: T05 n=3 sin variables (con `--conservar`). b4: T28 n=3 con la variable (con `--conservar`).
+- dA / dB: T31,T32 n=3. A: `--env OPENCODE_EXPERIMENTAL_CODE_MODE=1 --env OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1 --sumar-ayudantes`. B: lo mismo + `--env LAZUNOX_FLUJOS=1` y `BENCH_PEDIDO_FLUJOS=1` en el ejecutor.
+- Comparaciones: `node scripts/engine-bench/run.mjs --comparar <control/corridas> <carpeta>` → `comparacion-*.md`. `a-todo/` junta las corridas de a1–a3 (+ T29 r04/r05).
+- Gasto total estimado: unos 14,1 M de tokens enviados (tope 14 M, pasado por ~0,1 M en el último bloque). Por eso NO se midió T21 con flujos ni se pasó de n=3 en T31/T32.
+- La clave de OpenCode Go se usó desde una copia temporal de solo lectura (ya borrada); no está en ningún archivo de esta carpeta.

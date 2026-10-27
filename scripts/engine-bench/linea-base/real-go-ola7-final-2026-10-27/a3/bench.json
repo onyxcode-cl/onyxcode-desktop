@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:27:28.551Z",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "repeticiones": 5,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "tareas": {
+    "T29": {
+      "nombre": "La guía AGENTS.md cambia en mitad de una sesión larga",
+      "mide": "Avisos de diferencias de instrucciones",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 24561,
+            "salida": 1581,
+            "cache_leida": 190592,
+            "enviados": 215153
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 20,
+          "tokens_por_paso": {
+            "med": 11018.5,
+            "p90": 12088
+          },
+          "llamadas": 14,
+          "llamadas_por_paso": 0.7,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 9,
+            "write": 5
+          },
+          "bytes_resultados": 1763,
+          "permisos_negados": 0,
+          "tiempo_ms": 58543,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 21237,
+            "salida": 1571,
+            "cache_leida": 168960,
+            "enviados": 190197
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 19,
+          "tokens_por_paso": {
+            "med": 10241,
+            "p90": 11235
+          },
+          "llamadas": 13,
+          "llamadas_por_paso": 0.6842105263157895,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 5
+          },
+          "bytes_resultados": 1158,
+          "permisos_negados": 0,
+          "tiempo_ms": 49213,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 22745,
+            "salida": 1465,
+            "cache_leida": 170368,
+            "enviados": 193113
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 19,
+          "tokens_por_paso": {
+            "med": 10440,
+            "p90": 11406
+          },
+          "llamadas": 13,
+          "llamadas_por_paso": 0.6842105263157895,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 5
+          },
+          "bytes_resultados": 1195,
+          "permisos_negados": 0,
+          "tiempo_ms": 53254,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 22213,
+            "salida": 1300,
+            "cache_leida": 162176,
+            "enviados": 184389
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 19,
+          "tokens_por_paso": {
+            "med": 9933,
+            "p90": 10873
+          },
+          "llamadas": 13,
+          "llamadas_por_paso": 0.6842105263157895,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 7,
+            "write": 5,
+            "read": 1
+          },
+          "bytes_resultados": 993,
+          "permisos_negados": 0,
+          "tiempo_ms": 47740,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 22864,
+            "salida": 1312,
+            "cache_leida": 170112,
+            "enviados": 192976
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 19,
+          "tokens_por_paso": {
+            "med": 10403,
+            "p90": 11332
+          },
+          "llamadas": 13,
+          "llamadas_por_paso": 0.6842105263157895,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 5
+          },
+          "bytes_resultados": 1285,
+          "permisos_negados": 0,
+          "tiempo_ms": 48629,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 192976,
+        "tokens_salida_med": 1465,
+        "cache_pct_med": 88.22192187993558,
+        "pasos_med": 19,
+        "tokens_por_paso_med": 10403,
+        "tokens_por_paso_p90": 11332,
+        "llamadas_med": 13,
+        "llamadas_por_paso_med": 0.6842105263157895,
+        "minutos_med": 0.8202166666666667,
+        "tokens_por_exito": 194288
+      }
+    }
+  },
+  "agregados": {
+    "corridas": 5,
+    "exitos": 5,
+    "tasa_exito": 1,
+    "tokens_por_exito_med": 194288,
+    "minutos_p90": 0.9757166666666667
+  }
+}

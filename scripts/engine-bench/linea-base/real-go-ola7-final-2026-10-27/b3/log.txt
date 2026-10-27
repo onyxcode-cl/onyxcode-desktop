@@ -1,0 +1,12 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 3
+T05 #1: FALLA (completado) · 11 pasos · 274182 tokens · 44.3 s · no dice que el pool se agotó
+T05 #2: ok (completado) · 15 pasos · 276417 tokens · 74.4 s
+T05 #3: ok (completado) · 10 pasos · 187567 tokens · 24.2 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T05 Leer un log de 3 MB y escribir la causa | 2/3 | 272.914 | 1.268 | 85,8 | 11 | 20.467 · 27.156 | 13 | 1,3 | 0,74 | 231.992 |
+
+Éxito total: 2/3 (67 %) · mediana de tokens por éxito: 231.992 · p90 de minutos: 1,24

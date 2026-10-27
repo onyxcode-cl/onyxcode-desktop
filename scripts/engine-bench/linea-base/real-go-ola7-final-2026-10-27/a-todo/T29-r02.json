@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:12:13.055Z",
+  "tarea": "T29",
+  "repeticion": 2,
+  "nombre": "La guía AGENTS.md cambia en mitad de una sesión larga",
+  "mide": "Avisos de diferencias de instrucciones",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 21237,
+      "salida": 1571,
+      "cache_leida": 168960,
+      "enviados": 190197
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 19,
+    "tokens_por_paso": {
+      "med": 10241,
+      "p90": 11235
+    },
+    "llamadas": 13,
+    "llamadas_por_paso": 0.6842105263157895,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 8,
+      "write": 5
+    },
+    "bytes_resultados": 1158,
+    "permisos_negados": 0,
+    "tiempo_ms": 49213,
+    "peticiones_modelo": null
+  }
+}

@@ -1,0 +1,20 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 3
+T01 #1: ok (completado) · 5 pasos · 44906 tokens · 12.8 s
+T01 #2: ok (completado) · 5 pasos · 44815 tokens · 11.8 s
+T01 #3: ok (completado) · 5 pasos · 44596 tokens · 13.5 s
+T05 #1: ok (completado) · 7 pasos · 97374 tokens · 23.1 s
+T05 #2: ok (completado) · 8 pasos · 130245 tokens · 34.3 s
+T05 #3: FALLA (completado) · 8 pasos · 167581 tokens · 30.6 s · no dice que el pool se agotó
+T13 #1: ok (completado) · 5 pasos · 48677 tokens · 13.8 s
+T13 #2: ok (completado) · 5 pasos · 47280 tokens · 13.3 s
+T13 #3: ok (completado) · 5 pasos · 47840 tokens · 13.6 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T01 Arreglar un bug con prueba que falla (JS) | 3/3 | 44.477 | 338 | 82,4 | 5 | 9.139 · 9.336 | 5 | 1 | 0,21 | 44.815 |
+| T05 Leer un log de 3 MB y escribir la causa | 2/3 | 129.353 | 892 | 81,5 | 8 | 15.608 · 24.767 | 12 | 1,5 | 0,51 | 113.810 |
+| T13 «Haz pasar las pruebas» (3 fallos) | 3/3 | 47.178 | 670 | 81,6 | 5 | 9.830 · 10.269 | 9 | 1,8 | 0,23 | 47.840 |
+
+Éxito total: 8/9 (89 %) · mediana de tokens por éxito: 47.560 · p90 de minutos: 0,57
