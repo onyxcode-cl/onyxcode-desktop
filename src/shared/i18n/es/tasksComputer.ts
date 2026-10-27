@@ -9,9 +9,9 @@ export const tasksComputer = {
     '{name}: escribe solo en la carpeta elegida y en las adicionales con escritura. Puede leer otras carpetas de tu cuenta, menos tus claves, tu configuración del terminal y los datos de las apps. Sin internet salvo sitios permitidos. Recomendado.',
   'tasksComputer.access.sandboxTitle.win':
     '{name}: entorno Linux aislado. Solo ve la carpeta elegida y las adicionales (no el resto del PC) y escribe solo donde hay escritura. Sin internet salvo sitios permitidos. Recomendado.',
-  'tasksComputer.access.sandboxName': 'Solo en tu carpeta',
-  'tasksComputer.access.fullName': 'Usar todo tu Mac',
-  'tasksComputer.access.fullName.win': 'Usar todo tu PC',
+  'tasksComputer.access.sandboxName': 'Una carpeta',
+  'tasksComputer.access.fullName': 'El computador completo',
+  'tasksComputer.access.fullName.win': 'El computador completo',
   'tasksComputer.access.sandboxDesc': 'Trabaja solo en tu carpeta y pide permiso para borrar o mover. Recomendado.',
   'tasksComputer.access.fullDesc': 'Usa ratón, teclado y pantalla; puede tocar cualquier archivo. Exige aprobar un plan.',
   'tasksComputer.access.fullTitle':
@@ -40,8 +40,8 @@ export const tasksComputer = {
   'tasksComputer.chip.using.win': 'Usando tu PC',
   'tasksComputer.chip.canUse': 'Puede usar tu Mac',
   'tasksComputer.chip.canUse.win': 'Puede usar tu PC',
-  'tasksComputer.chip.full': 'Control total',
-  'tasksComputer.chip.folder': 'Solo en tu carpeta',
+  'tasksComputer.chip.full': 'El computador completo',
+  'tasksComputer.chip.folder': 'Una carpeta',
   'tasksComputer.mode.noSandbox': 'Sin límite de carpeta',
   'tasksComputer.mode.sandboxOn': 'Limitado a tu carpeta',
   'tasksComputer.mode.fullTitle': 'Sin límite de carpeta: el agente puede controlar el Mac y modificar archivos en cualquier lugar',
@@ -162,7 +162,7 @@ export const tasksComputer = {
   'tasksComputer.plan.denyAll': 'No, seguir sin controlar el Mac',
   'tasksComputer.plan.denyAll.win': 'No, seguir sin controlar el PC',
   'tasksComputer.plan.filesHint': 'Para trabajar con tus archivos no hace falta.',
-  'tasksComputer.plan.toFolder': 'Cambiar a Solo en tu carpeta',
+  'tasksComputer.plan.toFolder': 'Cambiar a Una carpeta',
   'tasksComputer.plan.toFolderTitle': 'Cancela este plan y vuelve a trabajar en tu carpeta, sin controlar el resto del Mac',
   'tasksComputer.plan.toFolderNoFolder':
     'No hay una carpeta autorizada para trabajar solo en ella. Elige una carpeta primero y vuelve a intentarlo.',
@@ -324,7 +324,7 @@ export const tasksComputer = {
   'tasksComputer.escalate.body':
     'Trabajando solo en tu carpeta no se pueden abrir apps, hacer clic, teclear en otras apps ni capturar la pantalla. Si cambias a Control total, se abrirá una tarea nueva con tu encargo y un resumen de lo hecho hasta ahora; antes te pediremos confirmar el cambio y el agente pedirá tu aprobación para actuar.',
   'tasksComputer.escalate.switch': 'Cambiar a Control total y continuar',
-  'tasksComputer.escalate.stay': 'Seguir solo en tu carpeta',
+  'tasksComputer.escalate.stay': 'Seguir en «Una carpeta»',
   'tasksComputer.escalate.app.title': 'Esta tarea necesita {app}',
   'tasksComputer.escalate.app.lead': 'Para usar apps hay que pasar a «El computador completo».',
   'tasksComputer.escalate.app.warn':

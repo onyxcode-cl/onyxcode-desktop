@@ -377,7 +377,7 @@ export const tasks = {
   'tasks.sandboxProviderPending':
     'Este servicio de IA aún no llegó a esta tarea (se conectó después de abrirla). Espera unos segundos y reintenta, o cierra la tarea y ábrela de nuevo.',
   'tasks.sandboxProviderNotice':
-    'Con «Solo en tu carpeta», Overdrive funciona con los servicios de IA que se conectan con una clave de acceso (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go y muchos más) y con los modelos gratuitos. Los que usan inicio de sesión (como ChatGPT o Copilot) o son servicios en la nube (Bedrock, Azure, Vertex) necesitan «Control total», o usarlos en Chat o Code.',
+    'Con «Una carpeta», Overdrive funciona con los servicios de IA que se conectan con una clave de acceso (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go y muchos más) y con los modelos gratuitos. Los que usan inicio de sesión (como ChatGPT o Copilot) o son servicios en la nube (Bedrock, Azure, Vertex) necesitan «Control total», o usarlos en Chat o Code.',
   'tasks.comp.removeAttachment': 'Quitar (el archivo sigue en la carpeta)',
   'tasks.comp.unlinkTitle': 'Quitar «{name}» de las carpetas adicionales',
   'tasks.comp.unlinkAria': 'Quitar la carpeta adicional {name}',
@@ -665,7 +665,7 @@ export const tasks = {
   'tasks.skill.alreadyExists': 'Ya existe una skill con ese nombre en este proyecto. Cambia el nombre antes de guardar.',
   'tasks.skill.invalidName':
     'El nombre debe ser en minúsculas, con guiones, sin espacios ni símbolos raros (por ejemplo: informe-mensual).',
-  'tasks.sandboxProviderShort': 'Este modelo no funciona con «Solo en tu carpeta».',
+  'tasks.sandboxProviderShort': 'Este modelo no funciona con «Una carpeta».',
   'tasks.sandboxProviderMore': 'Ver detalle',
   'tasks.sandboxProviderLess': 'Ocultar detalle'
 } as const

@@ -176,6 +176,33 @@ describe('recorte de eventos del motor', () => {
     })
     expect(trimIpcEvent('opencode:status', { state: 'ready' }, trim)).toEqual({ state: 'ready' })
   })
+
+  it('computer:accessRequest hacia el celular no lleva el icono de la app (ni infla el evento)', async () => {
+    const { scope, trim } = setup(async () => feed([]))
+    await scope.get()
+    const icon = `data:image/png;base64,${'A'.repeat(20_000)}`
+    const out = trimIpcEvent(
+      'computer:accessRequest',
+      {
+        id: 'r1',
+        reason: 'x',
+        apps: [
+          { bundleId: 'com.a.b', name: 'App', requested: 'click', icon },
+          { bundleId: 'com.c.d', name: 'Otra' }
+        ]
+      },
+      trim
+    )
+    expect(out).toEqual({
+      id: 'r1',
+      reason: 'x',
+      apps: [
+        { bundleId: 'com.a.b', name: 'App', requested: 'click' },
+        { bundleId: 'com.c.d', name: 'Otra' }
+      ]
+    })
+    expect(JSON.stringify(out)).not.toContain('data:image')
+  })
 })
 
 describe('SseHub', () => {

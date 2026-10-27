@@ -269,6 +269,10 @@ export function Home({
         <ComputerPermissionsCard />
         <VisionModelHint />
         {!remote && <WaitingCard focus={focus} />}
+        {/* El alcance se elige ANTES de escribir: va sobre la caja, no pegado al borde inferior debajo de ella. */}
+        <div className="mb-3 flex flex-col items-center justify-center">
+          <ScopePicker variant="cards" disabled={folderBusy} />
+        </div>
         <TasksComposer
           hero
           onSend={onSend}
@@ -278,7 +282,6 @@ export function Home({
           placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />
         <div className="mt-4 flex flex-col items-center justify-center gap-2">
-          <ScopePicker variant="cards" disabled={folderBusy} />
           {phase === 'starting' && (
             <span className="flex items-center gap-1 text-xs text-muted">
               <Loader2 size={12} className="animate-spin" /> {requested ? t('tasks.home.startingFull') : t('tasks.home.startingSandbox')}

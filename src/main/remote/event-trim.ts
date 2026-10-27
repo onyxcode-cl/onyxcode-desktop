@@ -62,7 +62,15 @@ export function trimIpcEvent(channel: string, payload: unknown, d: TrimDeps): un
         out = Array.isArray(p.dirs) && p.dirs.some((x) => typeof x !== 'string' || x.startsWith('/') || x.includes('..')) ? null : payload
         break
       case 'computer:accessRequest':
-        out = payload
+        // El icono de la app (data URL de hasta 24 KB) es solo para la tarjeta del Mac: no sale hacia el celular.
+        out = Array.isArray(p.apps)
+          ? {
+              ...p,
+              apps: p.apps.map((a) =>
+                typeof a === 'object' && a !== null ? Object.fromEntries(Object.entries(a).filter(([k]) => k !== 'icon')) : a
+              )
+            }
+          : payload
         break
       case 'browser:state':
       case 'browser:approval': {

@@ -17,7 +17,7 @@ export const wizard = {
   'wizard.fullControl.win': 'Control total del PC',
   'wizard.fullControlShort': 'Control total',
   'wizard.connectTasksNotice':
-    'Cualquiera de estos servicios sirve en todos los modos. Solo {tasks} con «Solo en tu carpeta» exige OpenCode Go o los modelos gratuitos; para usar otro servicio ahí, elige {fullControl}.',
+    'Cualquiera de estos servicios sirve en todos los modos. Solo {tasks} con «Una carpeta» exige OpenCode Go o los modelos gratuitos; para usar otro servicio ahí, elige {fullControl}.',
   'wizard.connectTasksNotice.win': 'Cualquiera de estos servicios sirve en todos los modos.',
   'wizard.connectTermsNotice': 'Cada persona es responsable de cumplir los términos de su servicio de IA y los de OpenCode.',
 

@@ -150,6 +150,8 @@ export interface AccessRequestApp {
   denied?: boolean
   /** La app YA estaba abierta con ventanas de la persona (puede haber trabajo sin guardar): el agente trabaja en una ventana o documento nuevo. Lo detecta el MCP. */
   alreadyOpen?: boolean
+  /** Icono real de la app: data URL PNG pequeño (`data:image/png;base64,…`, ≤ 24 KB). Lo rellena main; ausente = se muestra el nombre. Nunca viaja al celular. */
+  icon?: string
 }
 
 /**

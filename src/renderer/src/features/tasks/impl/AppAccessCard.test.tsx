@@ -92,6 +92,43 @@ describe('AppPermissionCard', () => {
     expect(host.querySelector('[role="radiogroup"]')?.textContent).not.toContain('Denegar')
   })
 
+  it('con icono real: <img> 28x28 con alt vacío y el nombre al lado; sin icono: nombre completo en texto (es/en)', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo='
+    for (const lang of ['es', 'en'] as const) {
+      render(REQ({ apps: [{ bundleId: 'com.spotify.client', name: 'Spotify', requested: 'click', icon: png }] }), lang)
+      const img = host.querySelector('img') as HTMLImageElement
+      expect(img.getAttribute('src')).toBe(png)
+      expect(img.getAttribute('alt')).toBe('')
+      expect(img.getAttribute('width')).toBe('28')
+      expect(host.querySelector('[data-testid="app-name"]')?.textContent).toBe('Spotify')
+      render(REQ({ apps: [{ bundleId: 'com.spotify.client', name: 'Spotify Premium', requested: 'click' }] }), lang)
+      expect(host.querySelector('img')).toBeNull()
+      expect(host.querySelector('[data-testid="app-name"]')?.textContent).toBe('Spotify Premium')
+    }
+  })
+
+  it('un icono que no es PNG en data URL (javascript:, http:, SVG, enorme) nunca se pinta', () => {
+    for (const bad of [
+      'javascript:alert(1)',
+      'https://evil.example/x.png',
+      'data:image/svg+xml;base64,PHN2Zz4=',
+      'data:image/png;base64,AA" onerror="x',
+      `data:image/png;base64,${'A'.repeat(30_000)}`
+    ]) {
+      render(REQ({ apps: [{ bundleId: 'com.x.a', name: 'Hojas', requested: 'click', icon: bad }] }))
+      expect(host.querySelector('img')).toBeNull()
+      expect(host.querySelector('[data-testid="app-name"]')?.textContent).toBe('Hojas')
+    }
+  })
+
+  it('«Denegar» es un botón secundario con borde y «Bloquear siempre» un botón con icono de bloqueo', () => {
+    render(REQ())
+    expect(btn(/Denegar/).className).toContain('border')
+    const block = btn(/Bloquear siempre/)
+    expect(block.querySelector('svg')).not.toBeNull()
+    expect(block.className).toContain('underline')
+  })
+
   it('en/Windows: textos en inglés, PC y Ctrl+↵', () => {
     setPlatform('win32')
     render(REQ(), 'en')

@@ -1,5 +1,5 @@
 export const tasksSettings = {
-  'tasksSettings.glossary.sandbox': 'Solo en tu carpeta',
+  'tasksSettings.glossary.sandbox': 'Una carpeta',
   'tasksSettings.glossary.fullControl': 'Control total del Mac',
   'tasksSettings.glossary.fullControl.win': 'Control total del PC',
   'tasksSettings.glossary.fullControlShort': 'Control total',

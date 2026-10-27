@@ -7,7 +7,7 @@
  * Aprobar nunca baja un nivel ya concedido (main aplica el máximo) y Esc nunca concede ni deniega (cancela).
  */
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Eye, ListChecks, Loader2, MonitorCog, MousePointerClick, ShieldAlert, X } from 'lucide-react'
+import { Ban, Check, ChevronDown, Eye, ListChecks, Loader2, MonitorCog, MousePointerClick, ShieldAlert, X } from 'lucide-react'
 import {
   APP_TIER_RANK,
   defaultAccessDecision,
@@ -16,6 +16,7 @@ import {
   type AccessRequestApp,
   type AppTier
 } from '@shared/ipc-tasks'
+import { isSafeIconDataUrl } from '@shared/app-icon'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform, isWindowsPlatform } from '../../../lib/platform'
@@ -256,7 +257,7 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
     )
   }
 
-  /** Plan sin apps: cancela el plan y vuelve a «Solo en tu carpeta» (si no hay carpeta autorizada, explica por qué no). */
+  /** Plan sin apps: cancela el plan y vuelve a «Una carpeta» (si no hay carpeta autorizada, explica por qué no). */
   const switchToFolder = (): void => {
     setBusy(true)
     void switchPlanToFolderMode().finally(() => setBusy(false))
@@ -451,6 +452,44 @@ function isStrayKey(e: Pick<KeyboardEvent, 'repeat' | 'isComposing' | 'defaultPr
 }
 
 /**
+ * Logo de la app: su icono real (solo como `<img src>`, validado: PNG en data URL acotado) o, si no hay, la inicial pequeña
+ * junto al NOMBRE COMPLETO en texto. Con icono el nombre se muestra al lado igualmente.
+ */
+export function AppLogo({ app }: { app: AccessRequestApp }): React.JSX.Element {
+  const [broken, setBroken] = useState(false)
+  const icon = !broken && isSafeIconDataUrl(app.icon) ? app.icon : null
+  return (
+    <>
+      {icon ? (
+        <img
+          src={icon}
+          alt=""
+          width={28}
+          height={28}
+          draggable={false}
+          onError={() => setBroken(true)}
+          className="h-7 w-7 shrink-0 rounded-lg"
+        />
+      ) : (
+        <span
+          aria-hidden
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-hover text-[11px] desk:text-meta font-semibold text-muted"
+        >
+          {app.name.trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span
+        className={`min-w-0 text-sm font-medium text-fg ${icon ? 'truncate' : 'break-words'}`}
+        title={app.bundleId}
+        data-testid="app-name"
+      >
+        {app.name}
+      </span>
+    </>
+  )
+}
+
+/**
  * Tarjeta «¿Permitir que Lazunox use {App}?»: sin plan y con apps. «Permitir» manda `scope: 'session'` (explícito);
  * «Denegar» deniega solo en esta tarea; «Bloquear siempre» (por app) deniega esa app y manda `alsoBlock`.
  * Teclado, solo con el foco DENTRO de la tarjeta (nunca se roba el foco al montarse): ⌘↵ / Ctrl+↵ concede; Esc CANCELA
@@ -548,15 +587,7 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
               <li key={a.bundleId} className="rounded-lg border border-border bg-elevated/60 px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
-                    <span
-                      aria-hidden
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-hover text-xs font-semibold text-muted"
-                    >
-                      {a.name.trim().charAt(0).toUpperCase()}
-                    </span>
-                    <span className="min-w-0 truncate text-sm font-medium text-fg" title={a.bundleId}>
-                      {a.name}
-                    </span>
+                    <AppLogo app={a} />
                   </span>
                   <TierSegmented withDeny={false} value={choice} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
                 </div>
@@ -575,8 +606,9 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
                     onClick={() => blockAlways(a)}
                     disabled={busy}
                     aria-label={t('tasksComputer.appAccess.blockAlwaysAria', { app: a.name })}
-                    className="no-drag ml-auto rounded-ctl px-1 py-0.5 text-xs text-muted underline-offset-2 outline-none hover:text-danger hover:underline focus-visible:shadow-focus disabled:opacity-60"
+                    className="no-drag ml-auto inline-flex items-center gap-1 rounded-ctl px-1.5 py-0.5 text-xs font-medium text-fg underline underline-offset-2 outline-none hover:text-danger focus-visible:shadow-focus disabled:opacity-60"
                   >
+                    <Ban size={12} aria-hidden className="text-danger" />
                     {t('tasksComputer.appAccess.blockAlways')}
                   </button>
                 </div>
@@ -588,7 +620,7 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
           <Button variant="ghost" onClick={cancel} disabled={busy} title={t('tasksComputer.plan.cancelTitle')}>
             {t('tasksComputer.cancel')} <kbd className="kbd">Esc</kbd>
           </Button>
-          <Button variant="ghost" onClick={deny} disabled={busy}>
+          <Button variant="secondary" onClick={deny} disabled={busy}>
             {t('tasksComputer.appAccess.deny')}
           </Button>
           <Button variant="primary" onClick={allow} disabled={busy}>

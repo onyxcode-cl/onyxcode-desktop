@@ -120,7 +120,7 @@ export const common = {
   'env.mode.label': 'Modo',
   'env.mode.change': 'Cambiar',
   'env.mode.changeTo': 'Cambiar a «{mode}»',
-  'env.mode.needFolder': 'Para volver a «Solo en tu carpeta» primero autoriza una carpeta.',
+  'env.mode.needFolder': 'Para volver a «Una carpeta» primero autoriza una carpeta.',
   'env.restore.label': 'Punto de restauración',
   'env.restore.on': 'activo',
   'env.restore.off': 'no disponible en Control total sobre la carpeta personal',

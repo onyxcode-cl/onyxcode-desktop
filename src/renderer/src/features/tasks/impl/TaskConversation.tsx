@@ -10,6 +10,7 @@ import { friendlyError } from '@shared/ai-errors'
 import { t as translate } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
+import { stripEscalationMarkers } from './escalation-markers'
 import { Markdown } from '../../../components/Markdown'
 import { AssistantError } from '../../../components/conversation/AssistantError'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
@@ -101,7 +102,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         // Los bloques ```lazunox-memoria```/```lazunox-skill``` (propuestas de memoria/skill que el usuario
         // aprueba desde una tarjeta) son un contrato con el agente, no texto para leer: se quitan aquí, igual
         // para TODO mensaje (no solo el último).
-        const text = stripSkillProposalBlock(stripMemoryProposalBlock(p.text))
+        const text = stripEscalationMarkers(stripSkillProposalBlock(stripMemoryProposalBlock(p.text)))
         if (text) blocks.push({ kind: 'text', id: p.id, text, partIds: [p.id] })
       } else if (p.type === 'retry') {
         blocks.push({

@@ -2,7 +2,7 @@ import type { Messages } from '../index'
 import type { tasksSettings as es } from '../es/tasksSettings'
 
 export const tasksSettings = {
-  'tasksSettings.glossary.sandbox': 'Your folder only',
+  'tasksSettings.glossary.sandbox': 'One folder',
   'tasksSettings.glossary.fullControl': 'Full Mac control',
   'tasksSettings.glossary.fullControl.win': 'Full PC control',
   'tasksSettings.glossary.fullControlShort': 'Full control',

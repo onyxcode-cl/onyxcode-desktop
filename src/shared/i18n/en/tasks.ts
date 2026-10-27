@@ -380,7 +380,7 @@ export const tasks = {
   'tasks.sandboxProviderPending':
     'This AI service hasn’t reached this task yet (it was connected after the task was opened). Wait a few seconds and retry, or close the task and open it again.',
   'tasks.sandboxProviderNotice':
-    'With “Only in your folder”, Overdrive works with AI services that connect with an access key (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go and many more) and with the free models. Those that sign in with an account (like ChatGPT or Copilot) or are cloud services (Bedrock, Azure, Vertex) need “Full control”, or use them in Chat or Code.',
+    'With “One folder”, Overdrive works with AI services that connect with an access key (OpenAI, Google, OpenRouter, DeepSeek, OpenCode Go and many more) and with the free models. Those that sign in with an account (like ChatGPT or Copilot) or are cloud services (Bedrock, Azure, Vertex) need “Full control”, or use them in Chat or Code.',
   'tasks.comp.removeAttachment': 'Remove (the file stays in the folder)',
   'tasks.comp.unlinkTitle': 'Remove “{name}” from the additional folders',
   'tasks.comp.unlinkAria': 'Remove the additional folder {name}',
@@ -665,7 +665,7 @@ export const tasks = {
   'tasks.skill.alreadyExists': 'A skill with that name already exists in this project. Change the name before saving.',
   'tasks.skill.invalidName':
     'The name must be lowercase, hyphen-separated, with no spaces or unusual symbols (for example: monthly-report).',
-  'tasks.sandboxProviderShort': 'This model doesn’t work with “Only in your folder”.',
+  'tasks.sandboxProviderShort': 'This model doesn’t work with “One folder”.',
   'tasks.sandboxProviderMore': 'See details',
   'tasks.sandboxProviderLess': 'Hide details'
 } as const satisfies Messages<typeof es>

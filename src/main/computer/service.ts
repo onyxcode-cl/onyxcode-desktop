@@ -183,6 +183,9 @@ function locationField(): { location?: 'translocated' | 'volume' } {
   return loc ? { location: loc } : {}
 }
 
+/** Cuántas apps de una misma tarjeta se intentan resolver con icono. */
+const MAX_ICON_APPS_PER_CARD = 8
+
 export class ComputerService extends EventEmitter<ServiceEvents> {
   private events: Server | null = null
   private eventsUrl: string | null = null
@@ -248,6 +251,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * con el flujo normal (tarjeta al usuario). `null` = sin Modo auto conectado o no aplica.
    */
   autoAccess: ((q: AutoAccessQuery) => Promise<AutoAccessVerdict | null>) | null = null
+  /** Icono real de la app para la tarjeta (data URL PNG acotado); lo inyecta el cableado de main. `null` = sin iconos (la tarjeta cae al nombre). */
+  appIcon: ((appKey: string) => Promise<string | undefined>) | null = null
   /** Lote C: "Solo ver" efímero por sesión (Modo auto), NUNCA persistido en `computer-grants.json`. */
   private readonly autoView = new Map<string, Set<string>>()
   /** «Permitir para esta sesión»: nivel por app y sesión, SOLO en memoria (nunca a disco, no se hereda). La clave '' = sin sesión. */
@@ -467,11 +472,18 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       return { ...r, decisions: { ...r.decisions, ...denyMap }, blocked: blockedApps }
     }
     // Main rellena el estado actual de cada app: la tarjeta preselecciona sin bajar lo ya concedido.
-    const enriched = apps.map((a) => ({
-      ...a,
-      current: maxTier(this.grants.tierFor(a.bundleId), this.sessionTier(sessionId, a.bundleId)),
-      denied: this.grants.isDenied(a.bundleId) || this.grants.isBlocked(a.bundleId)
-    }))
+    const enriched = await Promise.all(
+      apps.map(async (a, i) => {
+        // Tope de apps con icono por tarjeta (las demás caen al nombre en texto); en paralelo y se esperan todas.
+        const icon = i < MAX_ICON_APPS_PER_CARD ? await this.iconFor(a.bundleId) : undefined
+        return {
+          ...a,
+          current: maxTier(this.grants.tierFor(a.bundleId), this.sessionTier(sessionId, a.bundleId)),
+          denied: this.grants.isDenied(a.bundleId) || this.grants.isBlocked(a.bundleId),
+          ...(icon ? { icon } : {})
+        }
+      })
+    )
     // Modo auto (Lote C, C3): antes de mostrar la tarjeta, se le da la oportunidad de conceder
     // "Solo ver" efímero sin preguntar (allowlist estricta; nunca para takeover ni planes). Se
     // espera como mucho 1,5 s: si tarda o deniega, sigue el flujo normal (tarjeta al usuario).
@@ -504,6 +516,24 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       this.pendingAccess.set(id, { resolve: resolveAll, plan, apps: enriched, sessionId, kind, fingerprint, waiters })
       this.emit('requestAccess', { id, apps: enriched, reason, plan, sessionId, unresolved, kind })
     })
+  }
+
+  /** Icono de la app con tope de 1,5 s; cualquier fallo o demora ⇒ sin icono (nunca retrasa ni rompe la tarjeta). */
+  private async iconFor(bundleId: string): Promise<string | undefined> {
+    if (!this.appIcon) return undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        this.appIcon(bundleId),
+        new Promise<undefined>((r) => {
+          timer = setTimeout(() => r(undefined), 1_500)
+        })
+      ])
+    } catch {
+      return undefined
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   private async tryAutoAccess(q: AutoAccessQuery): Promise<AutoAccessVerdict | null> {

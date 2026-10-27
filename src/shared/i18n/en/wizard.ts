@@ -20,7 +20,7 @@ export const wizard = {
   'wizard.fullControl.win': 'Full PC control',
   'wizard.fullControlShort': 'Full control',
   'wizard.connectTasksNotice':
-    'Any of these services works in every mode. Only {tasks} with “Only in your folder” requires OpenCode Go or the free models; to use another service there, choose {fullControl}.',
+    'Any of these services works in every mode. Only {tasks} with “One folder” requires OpenCode Go or the free models; to use another service there, choose {fullControl}.',
   'wizard.connectTasksNotice.win': 'Any of these services works in every mode.',
   'wizard.connectTermsNotice': 'Each person is responsible for complying with the terms of their AI service and OpenCode’s.',
 

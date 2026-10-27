@@ -6,7 +6,8 @@
  * Código movido de `tasks-handlers.ts` sin cambios de comportamiento.
  */
 import { t } from '@shared/i18n'
-import { BrowserWindow, Notification, app, screen } from 'electron'
+import { BrowserWindow, Notification, app, nativeImage, screen } from 'electron'
+import { execFile } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ComputerService } from '../computer/service'
@@ -14,6 +15,7 @@ import { ComputerOverlay } from '../computer/overlay'
 import { AssistWindow } from '../computer/assist-window'
 import { SkillRecorder } from '../computer/recorder'
 import { AppVisibility } from '../computer/app-visibility'
+import { createAppIconResolver } from '../computer/app-icons'
 import { SYSTEM_EXEMPT_BUNDLE_IDS } from '../computer/grants'
 import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
@@ -66,6 +68,31 @@ export function createComputerParts(): ComputerParts {
     physicalToDip: computer.ownConsent ? (p) => screen.screenToDipPoint(p) : undefined
   })
   computer.captureGuard = () => overlay.beforeCapture()
+  // Icono real de la app para la tarjeta de permiso. macOS: `mdfind` por bundleId (ya validado con regex; execFile, sin shell).
+  computer.appIcon = createAppIconResolver({
+    platform: process.platform,
+    findMacAppPath: (bundleId) =>
+      new Promise((resolve) => {
+        execFile(
+          '/usr/bin/mdfind',
+          [`kMDItemCFBundleIdentifier == "${bundleId}"`],
+          { timeout: 2_000, maxBuffer: 64 * 1024 },
+          (err, out) => {
+            if (err) return resolve(null)
+            resolve(
+              String(out)
+                .split('\n')
+                .find((l) => l.startsWith('/') && l.endsWith('.app')) ?? null
+            )
+          }
+        )
+      }),
+    fileIconDataUrl: async (path) => {
+      const img = await app.getFileIcon(path, { size: 'normal' })
+      if (img.isEmpty()) return null
+      return nativeImage.createFromBuffer(img.resize({ width: 64, height: 64, quality: 'best' }).toPNG()).toDataURL()
+    }
+  })
   // Lote C: ventana "assist" (globo de Teach mode + píldora de grabar una skill), grabadora de
   // skills y ocultar/mostrar las demás apps mientras el agente controla la pantalla.
   const assist = new AssistWindow()
@@ -205,7 +232,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   computer.on('requestAccess', (req) => {
     send('computer:accessRequest', req)
     followMainFocus()
-    overlay.showAccessRequest(req, !mainIsFront())
+    // La píldora no pinta iconos: no se le mandan (no infla el evento).
+    overlay.showAccessRequest({ ...req, apps: req.apps.map(({ icon: _icon, ...rest }) => (void _icon, rest)) }, !mainIsFront())
     if (!approvalNotificationsEnabled()) return
     try {
       const n = new Notification({
