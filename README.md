@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| **Versión** | 1.7.8 · [qué cambió](./CHANGELOG.md) · [qué está verificado y qué no](./docs/VERIFICACION.md) |
+| **Versión** | 1.7.9 · [qué cambió](./CHANGELOG.md) · [qué está verificado y qué no](./docs/VERIFICACION.md) |
 | **Descarga** | [Releases](https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest) · [guía de instalación](./docs/INSTALAR.md) |
 | **Motor** | Lazunox Motor: fork propio y congelado de OpenCode 1.19.0 (MIT) · [plan](./docs/PLAN-MOTOR-PROPIO.md) |
 | **Hoja de ruta del motor** | [Ola 7: acercarse a Claude Code, Codex y OpenCode 2.x (meta aún no demostrada)](./docs/PLAN-MOTOR-OLA7.md) |

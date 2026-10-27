@@ -4,6 +4,33 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.9] - 2026-10-27
+
+### Novedades
+
+- **Pantalla de inicio de Overdrive más simple.** Ahora hay un solo selector con dos opciones, «Una carpeta» y «El computador completo», en vez de varias pantallas distintas.
+- **Tarjeta de permiso por app.** Cuando la IA necesita usar una app, la tarjeta muestra el logo real de la app, el motivo, el plan de lo que va a hacer y el nivel que pide: «Solo ver», «Ver y clic» o «Control total». El nivel nunca viene elegido solo: lo eliges tú. Los botones son «Denegar» y «Aprobar y empezar». «Permitir para esta sesión» vale solo mientras dura la tarea y no se guarda.
+- **Bloquear una app.** Cada app de la tarjeta tiene «Bloquear siempre». En Ajustes hay una lista «Bloqueadas por ti» con el botón «Quitar», una lista de apps sugeridas para bloquear (carteras y brokers) y la lista de apps bloqueadas por seguridad, con candado, que no se pueden cambiar. Cada aviso de bloqueo dice quién la bloqueó, por qué y cómo desbloquearla.
+- **El agente puede pedir una app o mostrarte su carpeta desde el modo carpeta.** Si trabajas en una carpeta y la IA necesita otra app, te lo pide con la tarjeta de permiso; también puede abrirte su carpeta de trabajo. Y cuando algo no se puede borrar, ahora dice dónde está el permiso de borrar.
+- **En Windows, los textos dicen «PC»** en vez de «Mac» o «computador» donde corresponde.
+- Motor `lazunox.13`, sin cambios.
+
+### Correcciones
+
+- **Los marcadores internos `[[LAZUNOX:…]]` ya no se ven en el mensaje.** Antes, en ciertos casos, el texto técnico con que la IA pide una app o una carpeta aparecía a la vista.
+- **La tarjeta ya no dice «segundo plano» cuando la IA usa el ratón y el teclado reales.** Ahora avisa que se moverán el ratón y el teclado de verdad.
+- **«Bloquear siempre» y «Denegar» ahora avisan al instante.** El aviso dice quién bloqueó la app y cómo desbloquearla, y la IA recibe el mensaje de bloqueo. Antes la IA recibía «denegado» y ofrecía volver a pedir la aprobación.
+
+### Qué no cambia / límites
+
+- **La tarjeta de permiso no se probó en Windows con una IA real.** En Windows solo se comprobó la instalación y las pruebas automáticas; en el Mac sí se probó con una IA real y con pruebas de extremo a extremo.
+- **El logo de las apps de la tienda de Windows (UWP) no se muestra** todavía; en esos casos la tarjeta usa el nombre en texto.
+- **La tarjeta de «toma de control» sin plan mantiene el diseño anterior.**
+- **Bloquear una app impide controlarla con el ratón, el teclado y la pantalla, pero no impide un plan de comandos que tú apruebes.** Si apruebas un plan que ejecuta comandos, esos comandos pueden abrir o manejar esa app.
+- **En macOS, el nombre de algunas apps en los avisos sale en inglés.**
+- **Los logos todavía no aparecen en las listas de Ajustes** (bloqueadas por ti, sugeridas y bloqueadas por seguridad).
+- El motor sigue en `lazunox.13`, sin cambios.
+
 ## [1.7.8] - 2026-10-27
 
 ### Novedades

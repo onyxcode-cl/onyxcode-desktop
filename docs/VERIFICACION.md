@@ -22,6 +22,20 @@ ni los servidores OpenCode del usuario.
 | `npm run perf:startup`           | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria».                                                                                                                                                                                                                                                                                                               |
 | `npm run verify`                 | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
+## Estado de verificación de la 1.7.9 (motor `lazunox.13`, sin cambios)
+
+Esta versión cambia solo la app (tarjeta de permiso por app, bloqueo de apps, pantalla de alcance). El motor y su `pin.json` son los de la 1.7.8.
+
+| Qué                                           | Cómo                                                                                                              | Resultado                                                        |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Actualización dentro de la app 1.7.6 -> 1.7.8 | Probada con la release publicada, en Mac (perfil aislado, llavero de mentira) y en Windows                        | Sin rollback (ya verificada; la 1.7.9 usa el mismo actualizador) |
+| Tarjeta de permiso por app (Mac)              | Con una IA real y E2E de control total                                                                            | Verificada en el Mac                                             |
+| Tarjeta de permiso por app (Windows)          | Solo instalación del paquete y pruebas automáticas                                                                | **No** probada con una IA real                                   |
+| Tipos, formato y pruebas de `src/test`        | `typecheck`, `format:check`, `vitest run src/test` en el Mac                                                      | Ver el resultado en el informe de esta versión                   |
+| Paquete de Mac                                | Firma local con el certificado fijado, `codesign --verify --deep --strict` y arranque en frío con perfil temporal | Ver el informe de esta versión                                   |
+
+**No verificado:** la tarjeta con una IA real en Windows, el logo de apps UWP (no se muestra), los logos en las listas de Ajustes (no existen todavía), la tarjeta de «toma de control» sin plan (sigue con el diseño anterior), que bloquear una app no impide un plan de comandos aprobado, nombres de apps en inglés en algunos avisos de macOS, lector de pantalla, y la actualización dentro de la app 1.7.8 -> 1.7.9 (solo posible con la release publicada).
+
 ## Estado de verificación de la 1.7.8 (motor `lazunox.13`)
 
 Qué se comprobó antes de preparar esta versión y qué **no**. Nada de esto autoriza a decir «paridad» ni «mejor que»: el cierre de `docs/PLAN-MOTOR-OLA7.md` §1 sigue pendiente.
