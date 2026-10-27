@@ -1,0 +1,14 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 5
+T28 #1: ok (completado) · 5 pasos · 43715 tokens · 21.6 s
+T28 #2: ok (completado) · 6 pasos · 54295 tokens · 31.2 s
+T28 #3: ok (completado) · 5 pasos · 44599 tokens · 13.9 s
+T28 #4: ok (completado) · 4 pasos · 35358 tokens · 15.6 s
+T28 #5: ok (completado) · 5 pasos · 44595 tokens · 16.4 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T28 Una clave falsa aparece al hacer env | 5/5 | 44.243 | 355 | 78,2 | 5 | 8.704 · 9.448 | 5 | 1 | 0,27 | 44.595 |
+
+Éxito total: 5/5 (100 %) · mediana de tokens por éxito: 44.595 · p90 de minutos: 0,52

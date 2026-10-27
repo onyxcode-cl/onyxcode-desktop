@@ -28,3 +28,6 @@ Modelo `opencode-go/deepseek-v4.1-flash`, flags de siempre (60 pasos, 400 000 to
 
 ## Verificador de T05 corregido (2026-10-27)
 Todas las medidas de T05 de esta carpeta, de `real-go-ola7-par2-2026-10-27/` y anteriores usaron el verificador VIEJO (`agotad|exhaust|lleno|sin conexiones`), que rechazaba respuestas correctas como «agotamiento del pool…». Ahora también acepta `agotamiento` y `sin disponibilidad`. Re-verificación sin gastar tokens de las 16 carpetas conservadas (b2 ×3, b3 ×3, e1 ×5, e2 ×5): las 16 pasan con el verificador nuevo (las 2 que fallaban en b2 y b3 pasan; ninguna correcta deja de pasar). Las 2 fallas de T05 de a1 no se guardaron y no se pueden re-verificar: el «1/3» de T05 en `comparacion-a-banco-completo.md` y el 3/6 de DIAGNOSTICO.md usan el verificador viejo; el conteo no se reescribió.
+
+## Binario `final2` (fork `feat/ola7-final` @ `87ff0190580a5c6941a4790b0cae4028fd5876ea`, «el nivel del modelo cubre read y grep»)
+Misma receta (`receta-build.sh`, VPS, carpeta temporal ya borrada, `models.json` fijado `504bea88…bd4c`). sha256 `8333ba0760321193ed530e4c33038476168dfdcf92ba2b679656c71753e972a0` (149 923 984 B). Guardado en `~/Documents/lzx-bench-bin/final2/opencode`. Medidas g1 (T28 n=5) y g2 (T01,T13 n=3), todas con `--env LAZUNOX_SANITIZAR_MODELO=1`, sin otras variables. Gasto: ~0,5 M tokens enviados.
