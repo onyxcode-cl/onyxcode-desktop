@@ -354,7 +354,7 @@ describe('H5: app de destino no identificada ⇒ falla cerrado solo en origen ai
   })
 })
 
-describe('H6: las capturas completas tapan las apps exentas solo en origen aislado', () => {
+describe('H6: la captura completa se rechaza en origen aislado y sigue igual sin él', () => {
   const RUNNING = [
     { name: 'Lazunox', bundleId: APP_ID },
     { name: 'Spotlight', bundleId: 'com.apple.Spotlight' },
@@ -367,17 +367,14 @@ describe('H6: las capturas completas tapan las apps exentas solo en origen aisla
       .filter((c) => c.cmd === 'screenshot-sck')
       .flatMap((c) => (c.args[1] ?? '').split(','))
 
-  it('origen aislado: Lazunox y Spotlight se excluyen de la captura (el Dock no: es el marco de la pantalla)', async () => {
+  it('origen aislado: la captura de pantalla completa se RECHAZA (no se hace ninguna captura; la máscara queda como defensa en profundidad)', async () => {
     await grant(SES, 'view', 'com.apple.Notes', 'Notes')
     const m = await mcpFor(undefined, undefined, RUNNING)
-    // La sesión debe estar reclamada y Notes ser de «esta tarea»: una petición de acceso normal la marca.
     svc.checkBridgeCall({ origin: SECRET, server: SERVER_A, session: SES })
     const r = await m.call('screenshot', { lazunox_session: SES }, hdr())
-    expect(r.isError).not.toBe(true)
-    const ex = excluded(m)
-    expect(ex).toContain(APP_ID)
-    expect(ex).toContain('com.apple.Spotlight')
-    expect(ex).not.toContain('com.apple.dock')
+    expect(r.isError).toBe(true)
+    expect(r.content.some((c) => c.type === 'image')).toBe(false)
+    expect(m.calls().filter((c) => c.cmd === 'screenshot-sck')).toEqual([])
   })
 
   it('CONTROL: sin origen aislado esas apps siguen visibles (como hoy)', async () => {

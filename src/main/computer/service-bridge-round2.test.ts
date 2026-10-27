@@ -308,25 +308,18 @@ describe('F3: capturas en origen aislado', () => {
       .filter((c) => c.cmd === 'screenshot-sck')
       .flatMap((c) => (c.args[1] ?? '').split(','))
 
-  it('Finder se tapa si la sesión no lo tiene concedido (carpetas y escritorio del usuario)', async () => {
-    await grant(SES, 'view', NOTES.bundleId, 'Notes')
-    giveControl(SES)
-    const m = await mcpFor({ running: RUNNING })
-    const r = await m.call('screenshot', { elements: false, lazunox_session: SES }, hdr())
-    expect(r.isError, textOf(r)).not.toBe(true)
-    expect(excluded(m)).toContain('com.apple.finder')
-    expect(excluded(m)).toContain(APP_ID)
-    expect(excluded(m)).not.toContain(NOTES.bundleId)
-  })
-
-  it('Finder NO se tapa si ESTA sesión lo tiene concedido (Una carpeta ⇒ concesión de sesión)', async () => {
-    await grant(SES, 'view', NOTES.bundleId, 'Notes')
-    await grant(SES, 'view', 'com.apple.finder', 'Finder')
-    giveControl(SES)
-    const m = await mcpFor({ running: RUNNING })
-    const r = await m.call('screenshot', { elements: false, lazunox_session: SES }, hdr())
-    expect(r.isError, textOf(r)).not.toBe(true)
-    expect(excluded(m)).not.toContain('com.apple.finder')
+  it('screenshot de pantalla completa en origen aislado: rechazo, sin ninguna captura (Finder y Lazunox no llegan a verse), tenga o no Finder concedido', async () => {
+    for (const withFinder of [false, true]) {
+      await grant(SES, 'view', NOTES.bundleId, 'Notes')
+      if (withFinder) await grant(SES, 'view', 'com.apple.finder', 'Finder')
+      giveControl(SES)
+      const m = await mcpFor({ running: RUNNING })
+      const r = await m.call('screenshot', { elements: false, lazunox_session: SES }, hdr())
+      expect(r.isError, textOf(r)).toBe(true)
+      expect(textOf(r)).toContain('app_screenshot')
+      expect(r.content.some((c) => c.type === 'image')).toBe(false)
+      expect(excluded(m)).toEqual([])
+    }
   })
 
   it('CONTROL: sin origen aislado Finder y Lazunox siguen visibles (no cambia nada)', async () => {
@@ -338,14 +331,13 @@ describe('F3: capturas en origen aislado', () => {
     expect(excluded(m)).not.toContain(APP_ID)
   })
 
-  it('si running-apps falla ⇒ error, SIN captura (no se devuelve la pantalla completa)', async () => {
+  it('si running-apps falla en origen aislado ⇒ error, SIN captura (nunca la pantalla completa)', async () => {
     await grant(SES, 'view', NOTES.bundleId, 'Notes')
     giveControl(SES)
     const m = await mcpFor({ script: { 'running-apps': { exit: 1, stderr: 'boom' } } })
     const r = await m.call('screenshot', { elements: false, lazunox_session: SES }, hdr())
     expect(r.isError).toBe(true)
     expect(r.content.some((c) => c.type === 'image')).toBe(false)
-    expect(textOf(r)).toContain('no se devuelve la pantalla')
   })
 
   it('CONTROL: sin origen aislado, si running-apps falla la captura sale igual que hoy (mejor esfuerzo)', async () => {
