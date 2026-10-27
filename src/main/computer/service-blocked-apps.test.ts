@@ -73,12 +73,54 @@ describe('apps bloqueadas: sin tarjeta y con tipo de bloqueo', () => {
     const p = s.requestAccess([USER], undefined, undefined, SESSION)
     await vi.waitFor(() => expect(cards).toHaveLength(1))
     s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }])
-    await p
-    expect(blocked).toHaveLength(0)
+    const first = await p
+    // Aviso INMEDIATO al responder «Denegar» (kind session) y la respuesta al agente lleva `blocked`.
+    expect(blocked).toEqual([[{ ...USER, kind: 'session' }]])
+    expect(first.blocked).toEqual([{ ...USER, kind: 'session' }])
     const r = await s.requestAccess([USER], undefined, undefined, SESSION)
     expect(cards).toHaveLength(1)
     expect(r.decisions[USER.bundleId]).toBe('deny')
-    expect(blocked[0][0].kind).toBe('session')
+    expect(blocked[1][0].kind).toBe('session')
+  })
+
+  it('«Bloquear siempre»: aviso inmediato kind «user» y la respuesta lleva `blocked`', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([USER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }], { alsoBlock: true })
+    const r = await p
+    expect(blocked).toEqual([[{ ...USER, kind: 'user' }]])
+    expect(r.blocked).toEqual([{ ...USER, kind: 'user' }])
+    expect(r.decisions[USER.bundleId]).toBe('deny')
+  })
+
+  it('Cancelar / Esc / Editar: no emite aviso ni `blocked`', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([USER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }], { cancel: true, alsoBlock: true })
+    const r = await p
+    expect(blocked).toHaveLength(0)
+    expect(r.blocked).toBeUndefined()
+    expect(s.grants.isDenied(USER.bundleId)).toBe(false)
+  })
+
+  it('mezcla en la respuesta: una bloqueada y otra permitida; solo la bloqueada se anuncia', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([USER, OTHER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(
+      cards[0].id,
+      [
+        { bundleId: USER.bundleId, name: USER.name, decision: 'deny' },
+        { bundleId: OTHER.bundleId, name: OTHER.name, decision: 'view' }
+      ],
+      { alsoBlock: true }
+    )
+    const r = await p
+    expect(blocked).toEqual([[{ ...USER, kind: 'user' }]])
+    expect(r.blocked).toEqual([{ ...USER, kind: 'user' }])
+    expect(r.decisions).toEqual({ [USER.bundleId]: 'deny', [OTHER.bundleId]: 'view' })
   })
 
   it('bloqueada + otra app: la tarjeta sale solo con la otra', async () => {
@@ -159,7 +201,7 @@ describe('apps bloqueadas: plan, reenganche, Modo auto y sesión', () => {
       expect(r.blocked?.[0].kind).toBe('session')
     }
     expect(cards).toHaveLength(1)
-    expect(blocked).toHaveLength(2)
+    expect(blocked).toHaveLength(3)
     // Tarea nueva: se vuelve a preguntar.
     const other = 'ses_fedcba9876543210'
     const p2 = s.requestAccess([USER], undefined, undefined, other)

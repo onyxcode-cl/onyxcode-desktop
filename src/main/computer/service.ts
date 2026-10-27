@@ -462,14 +462,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       if (bk) blockedApps.push({ bundleId: a.bundleId, name: a.name, kind: bk })
     }
     if (blockedApps.length) {
-      this.emit('blockedApps', { sessionId, apps: blockedApps })
+      this.announceBlocked(sessionId, blockedApps)
       const denyMap: Record<string, AccessDecision> = {}
       for (const b of blockedApps) denyMap[b.bundleId] = 'deny'
       const rest = apps.filter((a) => !denyMap[a.bundleId])
       // Sin nada pendiente y sin plan que aprobar (o petición de takeover): ni tarjeta ni espera.
       if (!rest.length && (!plan?.length || kind === 'takeover')) return { decisions: denyMap, blocked: blockedApps }
       const r = await this.requestAccess(rest, reason, plan, sessionId, unresolved, kind)
-      return { ...r, decisions: { ...r.decisions, ...denyMap }, blocked: blockedApps }
+      return { ...r, decisions: { ...r.decisions, ...denyMap }, blocked: [...blockedApps, ...(r.blocked ?? [])] }
     }
     // Main rellena el estado actual de cada app: la tarjeta preselecciona sin bajar lo ya concedido.
     const enriched = await Promise.all(
@@ -617,6 +617,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return null
   }
 
+  /** Avisa al renderer de apps bloqueadas (aviso en el hilo); el store deduplica por app y tipo. */
+  private announceBlocked(sessionId: string | undefined, apps: BlockedApp[]): void {
+    if (apps.length) this.emit('blockedApps', { sessionId, apps })
+  }
+
   private isSessionDenied(sessionId: string | undefined, bundleId: string): boolean {
     if (!sessionId || !SESSION_RE.test(sessionId)) return false
     return this.sessionDenied.get(sessionId)?.has(bundleId) === true
@@ -669,6 +674,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const scope = opts.scope === 'always' ? 'always' : 'session'
     const alsoBlock = opts.alsoBlock === true
     const map: Record<string, AccessDecision> = {}
+    // Apps que la persona acaba de negar en ESTA respuesta («Bloquear siempre» ⇒ user, «Denegar» ⇒ session): aviso inmediato y texto firme al agente.
+    const newlyBlocked: BlockedApp[] = []
     let approvedSomething = false
     let firstApproved: string | null = null
     let planApproved = false
@@ -688,6 +695,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           if (alsoBlock) this.grants.deny(d.bundleId, card.name)
           else this.denyForSession(pending.sessionId, d.bundleId)
           map[d.bundleId] = 'deny'
+          // Sin sesión válida el «Denegar» normal no queda guardado (denyForSession no hace nada): no hay bloqueo que anunciar.
+          const bk = this.blockKind(pending.sessionId, d.bundleId)
+          if (bk) newlyBlocked.push({ bundleId: d.bundleId, name: card.name || d.name, kind: bk })
         } else if (d.decision === 'view' || d.decision === 'click' || d.decision === 'full') {
           // Nunca baja un nivel: cuenta lo persistido y lo ya concedido en la sesión.
           const current = maxTier(this.grants.tierFor(d.bundleId), this.sessionTier(pending.sessionId, d.bundleId))
@@ -725,8 +735,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       }
     }
     if (firstApproved) void this.activateApp(firstApproved)
+    this.announceBlocked(pending.sessionId, newlyBlocked)
     pending.resolve({
       decisions: map,
+      ...(newlyBlocked.length ? { blocked: newlyBlocked } : {}),
       feedback: feedback || undefined,
       cancelled: cancel === true ? true : undefined,
       planApproved: planApproved || undefined

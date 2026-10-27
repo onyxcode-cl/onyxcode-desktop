@@ -133,6 +133,32 @@ describe('texto al agente con apps bloqueadas', () => {
     }
   })
 
+  it('tras «Bloquear siempre» / «Denegar» en la tarjeta (con plan): texto firme, nunca «vuelve a aprobar»', async () => {
+    for (const kind of ['user', 'session'] as const) {
+      const { mcp, done } = await boot({
+        script: script(NOT_FOUND),
+        side: {
+          requestAccess: () => ({
+            decisions: { [NOTEPAD]: 'deny' },
+            cancelled: false,
+            planApproved: false,
+            blocked: [bl(NOTEPAD, 'Bloc de notas', kind)]
+          })
+        }
+      })
+      try {
+        const t = textOf(await mcp.call('request_access', { apps: ['Bloc de notas'], plan: ['escribir'] }))
+        const line = t.split('\n').find((l) => l.includes('Bloc de notas está bloqueada')) ?? ''
+        expect(line).toContain(kind === 'user' ? 'bloqueada por la persona.' : 'SOLO para esta tarea')
+        expect(line).toContain('No la pidas de nuevo')
+        expect(line).not.toMatch(FORBIDDEN)
+        expect(t).not.toMatch(/vuelve a aprobar|denegado/i)
+      } finally {
+        await done()
+      }
+    }
+  })
+
   it('mezcla: la bloqueada lleva su línea firme y la otra su decisión', async () => {
     const { mcp, done } = await boot({
       script: script(NOT_FOUND),
