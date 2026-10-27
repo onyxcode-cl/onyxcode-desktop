@@ -26,6 +26,8 @@
  * - No registra secretos: solo el nombre de la ruta y el estado.
  * - `stop()` cierra el servidor, destruye conexiones y peticiones al destino y borra las rutas.
  */
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
+import { getBridgeSecret } from './bridge-secret'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import {
   createServer as createHttpServer,
@@ -122,7 +124,8 @@ const sha256 = (s: string): Buffer => createHash('sha256').update(s).digest()
 /** Todos los tokens de sesión emitidos en esta vida de la app (acotado): el redactor de Diagnóstico los oculta. */
 const issuedTokens: string[] = []
 export function knownMcpProxyTokens(): string[] {
-  return [...issuedTokens]
+  // El secreto del puente de apps solo existe (y solo se crea) con la bandera encendida: el redactor de Diagnóstico lo oculta.
+  return isUnifiedAppsEnabled() ? [...issuedTokens, getBridgeSecret()] : [...issuedTokens]
 }
 
 function log(...a: unknown[]): void {

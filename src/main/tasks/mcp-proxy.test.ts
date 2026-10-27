@@ -243,6 +243,26 @@ describe('McpProxy: el token de sesión', () => {
   })
 })
 
+describe('knownMcpProxyTokens: secreto del puente de apps', () => {
+  it('con la bandera el secreto sale redactado de un log; sin ella no se crea ni se lista', async () => {
+    const { UNIFIED_APPS_ENV } = await import('@shared/unified-bridge')
+    const { getBridgeSecret } = await import('./bridge-secret')
+    const prev = process.env[UNIFIED_APPS_ENV]
+    try {
+      delete process.env[UNIFIED_APPS_ENV]
+      expect(knownMcpProxyTokens()).not.toContain(getBridgeSecret())
+      process.env[UNIFIED_APPS_ENV] = '1'
+      const s = getBridgeSecret()
+      expect(knownMcpProxyTokens()).toContain(s)
+      const out = makeRedactor({ exact: knownMcpProxyTokens() })(`x-lazunox-bridge: ${s} fin`)
+      expect(out).not.toContain(s)
+    } finally {
+      if (prev === undefined) delete process.env[UNIFIED_APPS_ENV]
+      else process.env[UNIFIED_APPS_ENV] = prev
+    }
+  })
+})
+
 describe('McpProxy: destinos y rutas (lista cerrada)', () => {
   async function setup(): Promise<{ up: FakeMcp; evil: FakeMcp; p: McpProxy; c: { url: string; token: string } }> {
     const up = await fake()

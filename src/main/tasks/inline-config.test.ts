@@ -222,6 +222,15 @@ describe('buildInlineConfig: ruta computer del puente de apps (modo unificado)',
     expect(agentsOf(c)[COMPUTER_AGENT_ID]).toEqual({ disable: true })
   })
 
+  it('instructions: solo en sandbox, con la ruta traducida; vacío o ausente no añade la clave', () => {
+    expect(buildInlineConfig({ ...empty, instructions: ['/cfg/unified-apps.md'] }).instructions).toEqual(['/cfg/unified-apps.md'])
+    expect(buildInlineConfig({ ...empty, instructions: ['C:\\cfg\\a.md'], toSandbox: (p) => `/win/${p}` }).instructions).toEqual([
+      '/win/C:\\cfg\\a.md'
+    ])
+    expect('instructions' in buildInlineConfig({ ...empty, instructions: [] })).toBe(false)
+    expect('instructions' in buildInlineConfig({ ...empty, fullAccess: true, instructions: ['/x.md'] })).toBe(false)
+  })
+
   it('en Control total no se usa (su MCP computer es el real)', () => {
     const c = buildInlineConfig({ ...empty, fullAccess: true, computerMcp: COMPUTER, bridgeMcp: BRIDGE })
     expect((c.mcp as Record<string, unknown>).computer).toEqual(COMPUTER)

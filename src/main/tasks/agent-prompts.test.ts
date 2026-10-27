@@ -1,7 +1,10 @@
 // Contrato de los prompts de agente empaquetados (resources/opencode/agents): siguen siendo válidos y coherentes (F8-B30).
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
+import { UNIFIED_APPS_PROMPT, writeUnifiedAppsPrompt } from './unified-apps-prompt'
 
 // Mismo valor que `ESCALATE_MARKER` de EscalateCard.tsx (el test de la tarjeta lo comprueba por su lado).
 const ESCALATE_MARKER = '[[LAZUNOX:NEEDS_FULL_CONTROL]]'
@@ -166,5 +169,38 @@ describe('prompts de agente', () => {
       expect(mentioned.length).toBeGreaterThan(10)
       for (const m of mentioned) expect(names.has(m[1].replace(/^computer_/, ''))).toBe(true)
     })
+  })
+})
+
+describe('instrucción de apps del modo unificado', () => {
+  it('tasks.md no la contiene (sin bandera el prompt del agente es el de siempre)', () => {
+    expect(read('tasks')).not.toContain('computer_request_access')
+  })
+
+  it('el archivo de instrucciones trae lo esencial y no nombra otros productos', () => {
+    const t = UNIFIED_APPS_PROMPT
+    for (const x of [
+      'computer_*',
+      'computer_request_access',
+      'CADA app',
+      'por app y por nivel',
+      'bloqueadas no se pueden usar de ninguna forma',
+      'solo hay accesibilidad'
+    ]) {
+      expect(t).toContain(x)
+    }
+    expect(t).toContain('ratón y del teclado reales')
+    expect(t).not.toMatch(/paridad|mejor que/i)
+  })
+
+  it('writeUnifiedAppsPrompt escribe el archivo y devuelve su ruta', () => {
+    const d = mkdtempSync(join(tmpdir(), 'unif-prompt-'))
+    try {
+      const p = writeUnifiedAppsPrompt(d)
+      expect(p).toBe(join(d, 'unified-apps.md'))
+      expect(readFileSync(p!, 'utf8')).toBe(UNIFIED_APPS_PROMPT)
+    } finally {
+      rmSync(d, { recursive: true, force: true })
+    }
   })
 })

@@ -23,6 +23,8 @@ export interface InlineConfigInput {
   computerMcp: Record<string, unknown> | null
   /** Ruta `computer` del puente de apps del modo unificado (ya apuntando al proxy; solo sandbox y solo con la bandera). Ausente = igual que siempre. */
   bridgeMcp?: Record<string, unknown> | null
+  /** Archivos de instrucciones extra del agente (ruta del anfitrión; solo sandbox y solo con el puente de apps). Ausente o vacío = igual que siempre. */
+  instructions?: string[]
   /** Aportación de los MCP del usuario (`tasksMcpContribution`). */
   mcpContribution: { mcp: Record<string, unknown>; permission: Record<string, unknown> }
   /** Permisos «siempre permitir» recordados (`rulesPermissionConfig`). */
@@ -95,5 +97,6 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
   const rulesBlock: Record<string, unknown> = Object.keys(i.rulesPermission).length
     ? { agent: { [TASKS_AGENT_ID]: { permission: i.rulesPermission }, [COMPUTER_AGENT_ID]: { permission: i.rulesPermission } } }
     : {}
-  return deepMerge(base, mcpBlock, rulesBlock, i.skills)
+  const instr = !i.fullAccess && i.instructions?.length ? i.instructions.map((p) => (i.toSandbox ? i.toSandbox(p) : p)) : []
+  return deepMerge(base, mcpBlock, rulesBlock, i.skills, instr.length ? { instructions: instr } : {})
 }

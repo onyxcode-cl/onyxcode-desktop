@@ -44,6 +44,7 @@ import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
 import { getBridgeSecret } from './bridge-secret'
+import { writeUnifiedAppsPrompt } from './unified-apps-prompt'
 import { BRIDGE_ORIGIN_HEADER, BRIDGE_ROUTE_NAME, BRIDGE_SERVER_HEADER, isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
@@ -1014,6 +1015,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       browserMcp,
       computerMcp,
       bridgeMcp,
+      // Con el puente de apps, el agente aislado recibe la instrucción de cómo pedirlas (sin puente: nada, prompt idéntico).
+      instructions: bridgeMcp ? [writeUnifiedAppsPrompt(getOpencodeConfigDir())].filter((p): p is string => !!p) : undefined,
       mcpContribution: c,
       rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
       skills: skillsInlineConfig(),

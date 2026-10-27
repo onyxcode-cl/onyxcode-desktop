@@ -2,7 +2,7 @@
  * Puente de apps del modo unificado en el gestor: con LAZUNOX_UNIFIED_APPS=1 el servidor AISLADO ve la ruta `computer` del proxy
  * (un solo puerto, sin ampliar los permitidos); sin la bandera, o en el servidor sin sandbox, no existe.
  */
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { mkdirSync, readFileSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -121,6 +121,20 @@ describe.skipIf(!macOnly)('puente de apps en el servidor aislado', () => {
     expect(blob).not.toContain(BRIDGE_ORIGIN_HEADER)
     expect(blob).not.toContain(BRIDGE_SERVER_HEADER)
     expect(blob).not.toContain('45999')
+  })
+
+  it('instrucciones del agente: solo con bandera (archivo en la config de la app) y nunca sin ella', async () => {
+    delete process.env[UNIFIED_APPS_ENV]
+    expect((await startIsolated()).cfg.instructions).toBeUndefined()
+    started.length = 0
+    process.env[UNIFIED_APPS_ENV] = '1'
+    const ins = (await startIsolated()).cfg.instructions as string[]
+    expect(ins).toHaveLength(1)
+    expect(ins[0]).toMatch(/unified-apps\.md$/)
+    expect(readFileSync(ins[0], 'utf8')).toContain('computer_request_access')
+    started.length = 0
+    pol.value = { disableComputerUse: true }
+    expect((await startIsolated()).cfg.instructions).toBeUndefined()
   })
 
   it('con bandera pero la política `disableComputerUse` activa: no hay ruta del puente', async () => {
