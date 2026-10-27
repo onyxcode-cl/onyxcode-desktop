@@ -55,9 +55,9 @@ interface Conn {
 }
 const conn = (page: Page): Promise<Conn | null> => storeState<Conn | null>(page, 'useTasks', 'conn')
 const phase = (page: Page): Promise<string> => storeState<string>(page, 'useTasks', 'phase')
-// Los modos de acceso se ven como «Solo en tu carpeta» / «Usar todo tu Mac» (el glosario conserva los términos técnicos).
+// Los modos de acceso se ven como «Una carpeta» / «El computador completo» (el glosario conserva los términos técnicos).
 const accessLabel = (name: string): string =>
-  name === TASKS_TERMS.sandbox ? 'Solo en tu carpeta' : name === TASKS_TERMS.fullControl ? 'Usar todo tu Mac' : name
+  name === TASKS_TERMS.sandbox ? 'Una carpeta' : name === TASKS_TERMS.fullControl ? 'El computador completo' : name
 const radio = (page: Page, name: string) => page.getByRole('radio', { name: accessLabel(name), exact: true })
 
 async function openSettings(app: E2EApp, section: string): Promise<void> {
