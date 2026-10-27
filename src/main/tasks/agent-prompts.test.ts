@@ -185,7 +185,9 @@ describe('instrucción de apps del modo unificado', () => {
       'CADA app',
       'por app y por nivel',
       'bloqueadas no se pueden usar de ninguna forma',
-      'solo hay accesibilidad'
+      'solo hay accesibilidad',
+      'computer_app_screenshot',
+      'captura de pantalla completa'
     ]) {
       expect(t).toContain(x)
     }

@@ -23,7 +23,8 @@ const ISOLATED_OK = { isolated: true, ok: true }
 
 let seq = 0
 async function boot(
-  side: Parameters<typeof startSideChannel>[0]
+  side: Parameters<typeof startSideChannel>[0],
+  env: Record<string, string> = {}
 ): Promise<{ mcp: McpProc; side: SideChannel; done: () => Promise<void>; opened: () => number }> {
   const s = await startSideChannel(side)
   const mcp = await startMcp({
@@ -31,7 +32,7 @@ async function boot(
     helper: FAKE_HELPER,
     dir: join(work.dir, `w${++seq}`),
     events: s,
-    env: { COMPUTER_AUTO_SCREENSHOT: '0', COMPUTER_INSTANT: '1' }
+    env: { COMPUTER_AUTO_SCREENSHOT: '0', COMPUTER_INSTANT: '1', ...env }
   })
   return {
     mcp,
@@ -217,6 +218,65 @@ describe('origen aislado válido', () => {
       expect(textOf(r)).toContain('Control detenido')
       expect(paths(side)).not.toContain('/bridge-check')
       expect(opened()).toBe(0)
+    } finally {
+      await done()
+    }
+  })
+})
+
+describe('origen aislado: nunca pantalla completa (el escritorio de Finder y otras apps no salen)', () => {
+  const hasImage = (r: { content: Array<{ type: string }> }): boolean => r.content.some((c) => c.type === 'image')
+  const NOTES = (k: string): 'view' | null => (k.length ? 'view' : null)
+
+  it('screenshot con concesión de Notas ⇒ rechazo claro, sin imagen y sin captura en el helper', async () => {
+    const { mcp, done } = await boot({ planApproved: false, bridgeCheck: () => ISOLATED_OK, tier: NOTES })
+    try {
+      const r = await mcp.call('screenshot', { lazunox_session: SES }, HDRS)
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).toContain('app_screenshot')
+      expect(hasImage(r)).toBe(false)
+      expect(mcp.calls().some((c) => /screenshot|screencapture|capture/.test(c.cmd))).toBe(false)
+    } finally {
+      await done()
+    }
+  })
+
+  it('zoom ⇒ rechazo, aunque otra llamada no aislada haya capturado antes', async () => {
+    const { mcp, done } = await boot({ planApproved: false, bridgeCheck: () => ISOLATED_OK, tier: NOTES })
+    try {
+      const r = await mcp.call('zoom', { x: 0, y: 0, width: 10, height: 10, lazunox_session: SES }, HDRS)
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).toContain('app_screenshot')
+      expect(hasImage(r)).toBe(false)
+    } finally {
+      await done()
+    }
+  })
+
+  it('request_access aprobado y open_application (capturas automáticas encendidas) ⇒ sin imagen', async () => {
+    const { mcp, done } = await boot(
+      { planApproved: false, bridgeCheck: () => ISOLATED_OK, tier: NOTES },
+      { COMPUTER_AUTO_SCREENSHOT: '1' }
+    )
+    try {
+      const a = await mcp.call('request_access', { apps: ['Notes'], levels: ['view'], lazunox_session: SES }, HDRS)
+      expect(a.isError).not.toBe(true)
+      expect(hasImage(a)).toBe(false)
+      const o = await mcp.call('open_application', { name: 'Notes', lazunox_session: SES }, HDRS)
+      expect(o.isError).not.toBe(true)
+      expect(hasImage(o)).toBe(false)
+      expect(mcp.calls().some((c) => /screenshot|screencapture|capture/.test(c.cmd) && !/app/.test(c.cmd))).toBe(false)
+    } finally {
+      await done()
+    }
+  })
+
+  it('control: sin origen aislado (plan aprobado, Control total) la captura completa sigue igual', async () => {
+    const { mcp, done } = await boot({ planApproved: true, bridgeCheck: () => ({ isolated: false, ok: false }) })
+    try {
+      const r = await mcp.call('screenshot', { elements: false, lazunox_session: SES }, HDRS)
+      expect(r.isError).not.toBe(true)
+      expect(hasImage(r)).toBe(true)
     } finally {
       await done()
     }

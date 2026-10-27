@@ -103,6 +103,10 @@ let currentToolName = ''
 /** Sesión que hizo la última captura de pantalla completa (un origen aislado no puede hacer `zoom` sobre la de otra sesión). */
 let lastShotSession: string | undefined
 
+/** Origen aislado: la pantalla completa puede mostrar el escritorio (Finder lo dibuja como capa, no como ventana) y otras apps. */
+const ISOLATED_SCREEN_REJECT_MSG =
+  'En este modo solo se puede capturar una app concedida: usa app_screenshot (no hay capturas de pantalla completa ni zoom de pantalla).'
+
 const BRIDGE_REJECT_MSG: Record<string, string> = {
   'bad-session': 'Esta petición no trae una sesión válida: no se actúa sobre apps. Reinicia la tarea e inténtalo de nuevo.',
   'foreign-session': 'Esta sesión no corresponde a este servidor: no se actúa sobre apps.',
@@ -748,6 +752,8 @@ interface Shot {
 }
 
 async function takeScreenshot(auto = false, session?: string): Promise<Shot> {
+  // Origen aislado: nunca pantalla completa (defensa en profundidad: aquí pasan screenshot, capturas automáticas y request_access).
+  if (isolatedCall) throw new Error(ISOLATED_SCREEN_REJECT_MSG)
   // Espera (≤600 ms) a que la app prepare el overlay para la captura; luego el destello.
   await post({ tool: 'screenshot', phase: 'start', auto }, 600)
   try {
@@ -1599,6 +1605,7 @@ const TOOLS: ToolDef[] = [
     action: true,
     noAutoShot: true,
     run: async (a, session) => {
+      if (isolatedCall) throw new Error(ISOLATED_SCREEN_REJECT_MSG)
       if (!lastShot || (isolatedCall && lastShotSession !== session)) {
         throw new Error('Todavía no hay ninguna captura de pantalla completa — pide una con screenshot primero.')
       }
@@ -2090,7 +2097,7 @@ const TOOLS: ToolDef[] = [
       // aprobada (main ya lo intentó, best-effort) y adjunta una captura para que el agente vea
       // dónde quedó todo antes de seguir. SOLO si se concedió alguna app: un plan sin apps (documentos, archivos, navegador)
       // trabaja en segundo plano y no debe tocar la pantalla ni siquiera para una captura.
-      if (approvedApp) {
+      if (approvedApp && !isolatedCall) {
         try {
           await sleep(400)
           const s = await takeScreenshot(true, session)
@@ -2624,7 +2631,7 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
       // `{text, shot}` de una captura de pantalla de verdad SÍ la siguen llevando.
       if (name !== 'app_screenshot' && name !== 'zoom') content.push({ type: 'text', text: shotText(result.shot) })
     }
-    const wantShot = tool.action && !tool.noAutoShot && AUTO_SHOT && args?.screenshot !== false
+    const wantShot = tool.action && !tool.noAutoShot && AUTO_SHOT && args?.screenshot !== false && !isolatedCall
     if (wantShot) {
       await sleep(remoteFrontKnown() ? REMOTE_SETTLE_MS : SETTLE_MS)
       if (await isStopped().catch(() => true)) {

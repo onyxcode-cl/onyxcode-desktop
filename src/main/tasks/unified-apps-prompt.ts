@@ -18,6 +18,7 @@ Esta instrucción tiene prioridad sobre cualquier frase anterior que diga que en
 - El permiso es por app y por nivel. Pide solo la app que necesitas y el nivel mínimo para la tarea.
 - Las apps bloqueadas no se pueden usar de ninguna forma: no las rodees con otra herramienta, un comando u otra app, y no vuelvas a pedirlas.
 - En segundo plano solo hay accesibilidad: puedes leer y operar la app sin tomar el ratón real.
+- Solo puedes capturar apps concedidas, con \`computer_app_screenshot\`: la captura de pantalla completa y el zoom de pantalla se rechazan, y las acciones no adjuntan capturas de pantalla.
 - No pidas control del ratón y del teclado reales salvo que de verdad haga falta.
 `
 
