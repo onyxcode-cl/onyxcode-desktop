@@ -461,5 +461,31 @@ export const tasksComputer = {
   'tasksComputer.audit.out.stopped': 'Detenida',
   'tasksComputer.audit.out.rate-limited': 'Demasiado rápido',
   'tasksComputer.audit.chars': '{count} caracteres',
-  'tasksComputer.audit.aria': 'Registro de acciones del agente'
+  'tasksComputer.audit.aria': 'Registro de acciones del agente',
+  'tasksComputer.appAccess.title': '¿Permitir que Lazunox use {app}?',
+  'tasksComputer.appAccess.background':
+    'Lazunox trabajará en estas aplicaciones en segundo plano mientras sigues usando tu Mac',
+  'tasksComputer.appAccess.background.win':
+    'Lazunox trabajará en estas aplicaciones en segundo plano mientras sigues usando tu PC',
+  'tasksComputer.appAccess.windows': 'Tus otras ventanas se ocultarán y luego se restaurarán cuando Lazunox termine.',
+  'tasksComputer.appAccess.deny': 'Denegar',
+  'tasksComputer.appAccess.allowSession': 'Permitir para esta sesión',
+  'tasksComputer.appAccess.blockAlways': 'Bloquear siempre',
+  'tasksComputer.appAccess.pending': 'Pidiendo permiso…',
+  'tasksComputer.appAccess.tier.view': 'Solo ver',
+  'tasksComputer.appAccess.tier.view.warn': 'Puede ver la pantalla de esta app, sin tocarla',
+  'tasksComputer.appAccess.tier.click': 'Ver y clic',
+  'tasksComputer.appAccess.tier.click.warn': 'Puede ver y hacer clic en esta app',
+  'tasksComputer.appAccess.tier.full': 'Control total',
+  'tasksComputer.appAccess.tier.full.warn':
+    'Puede abrir, modificar o eliminar cualquier archivo y ejecutar aplicaciones y scripts',
+  'tasksComputer.appAccess.blocked': '{app} está bloqueada. Lazunox no la usará ni buscará otra forma de hacerlo.',
+  'tasksComputer.scope.folder': 'Una carpeta',
+  'tasksComputer.scope.folder.desc': 'Carpeta aislada y obligatoria. El agente trabaja solo dentro de ella.',
+  'tasksComputer.scope.computer': 'El computador completo',
+  'tasksComputer.scope.computer.desc': 'Sin límite de carpeta. Usa ratón, teclado y pantalla; la carpeta es opcional.',
+  'tasksComputer.scope.manual': 'Manual',
+  'tasksComputer.scope.manual.desc': 'Te pide permiso antes de cada acción sensible.',
+  'tasksComputer.scope.auto': 'Automático',
+  'tasksComputer.scope.auto.desc': 'Aprueba las acciones dentro del alcance elegido y solo te pregunta por lo importante.'
 } as const
