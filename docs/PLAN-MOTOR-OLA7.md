@@ -504,6 +504,30 @@ Hecho en el fork (ramas locales sin push; integradas en `feat/ola7-a` y probadas
 Hecho en la app: **7.1** (tareas T24-T30 y proveedor falso, rama `feat/ola7-banco`).
 **Pendiente de la tanda A:** 7.2 (medir y decidir qué se enciende) y la línea base real de 7.1, ambas con modelo, y la primera corrida de 7.19. Nada de esto está publicado ni integrado en la app: faltan las rutas nuevas (`/permission/siempre`, `/session/:id/uso`) en `api-routes.json` y en la política remota.
 
+### Estado de las tandas B, C y D (2026-10-27, madrugada)
+
+Todo vive en ramas locales del fork (`feat/ola7-final` integra A+B+C+D); nada está publicado ni subido. Suites del motor en verde (lazunox 1728, session 420, tool 349, permission 106, mcp 65, agent 49, provider 742, skill 24; en `test/server` solo fallan 2 pruebas que ya fallaban en la base `b3ccb17`).
+
+| Paquete | Estado | Por defecto |
+|---|---|---|
+| 7.5 sanitizador | Hecho; el nivel del modelo cubre shell, Code Mode, `read` y `grep`. T28 pasa 4/5 con la opción | Mostrado/guardado: encendido. Para el modelo: **apagado** (contrapartida con `edit` sin decidir) |
+| 7.6 ganchos | Hecho (onFailure, `if`, 4 eventos nuevos, derrame a disco, hash de confianza) | Encendido |
+| 7.7 auditoría del shell | Hecho, 245 casos, revisión independiente hecha. Sin cubrir: `bash <<< 'rm x'` y `command -v rm` bajo un `deny rm` | Encendido (solo añade preguntas o negaciones) |
+| 7.20 políticas | Hecho en el motor; **la app aún no fija `LAZUNOX_POLICY_FILE`** | Sin archivo = sin política |
+| 7.15 cuadernos | Hecho (`cuaderno_editar`) | Solo si el proyecto tiene `.ipynb` |
+| 7.9 instrucciones por diff + compactación segura | Hecho. T29 5/5 (control 4/5, dentro del ruido) | Encendido |
+| 7.10 ayudantes reanudables | Hecho; esfuerzo por llamada apagado | Parcial |
+| 7.14 objetivo/revisor | Hecho (solo prompts y un tope) | Encendido |
+| 7.12 tareas programadas | Hecho en memoria; sin Rutinas ni ruta HTTP | **Apagado** |
+| 7.11 worktree de la sesión principal | **No se hizo**: casi todo el estado del motor vive por carpeta; debe hacerse en la app (crear worktree, bifurcar la sesión, mandar peticiones con esa carpeta) | — |
+| 7.17 flujos por script | Hecho y funciona de punta a punta, pero **no cumple la condición D5**: gasta de +43 % a +612 % de tokens según la tarea | **Apagado** |
+| 7.16 auto-revisión local | **No se hizo**: exige una batería de ataques con falsa aprobación = 0 y revisión independiente, y no debe correr sin supervisión | — |
+| 7.19 comparativo | **No se hizo**: exige descargar y ejecutar binarios de terceros (OpenCode 2.1.4, Codex); espera la autorización explícita de Ben | — |
+
+Banco con modelo real (`opencode-go/deepseek-v4.1-flash`, 28 tareas): control n=5 134/140; candidato intermedio n=5 132/140 (tokens −4 %, dentro del ruido); motor final n=3 81/86 (T05 es un verificador demasiado estricto, no el motor; T05, T18 y T26 dan 15/15 con n=5 en ambos). No hay ahorro de tokens demostrado: lo que mejora es la **corrección** (edición segura, paralelismo seguro, permisos) y la seguridad, no el gasto. Resultados completos en `scripts/engine-bench/linea-base/real-go-ola7-*`.
+
+**Todavía no se puede decir «paridad» ni «mejor»**: faltan 7.16, 7.19 (la única forma de medir contra OpenCode 2.x y Codex), 7.11 en la app y subir el pin con el motor nuevo.
+
 ## 5. Reglas operativas
 
 - Todo lo pesado (compilar, `bun test` completo, banco) va al VPS; en el Mac, a lo sumo 1 o 2 agentes pesados.
