@@ -46,6 +46,7 @@ import { recordProblem } from '../diagnostics/problem-log'
 import { classifyAppLocation, permsStallDetail } from '@shared/mac-permissions'
 import {
   maxTier,
+  type AppTier,
   type AccessDecision,
   type AccessRequest,
   type AccessRequestApp,
@@ -146,6 +147,13 @@ export interface ResolveAccessOptions {
   approvePlan?: boolean
   /** Esc / ✕ / "Cancelar": no toca ninguna concesión ni aprueba nada. */
   cancel?: boolean
+  /**
+   * Alcance de lo que se APRUEBA en la tarjeta: 'session' (por defecto) = solo esta sesión, en memoria,
+   * sin tocar el disco; 'always' = permanente (`computer-grants.json`, uso desde Ajustes).
+   */
+  scope?: 'session' | 'always'
+  /** Estricta: «Denegar» además bloquea la app PARA SIEMPRE (`grants.deny`). Sin ella, solo esta sesión. */
+  alsoBlock?: boolean
 }
 
 const SESSION_RE = /^[A-Za-z0-9_-]{1,200}$/
@@ -230,6 +238,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   autoAccess: ((q: AutoAccessQuery) => Promise<AutoAccessVerdict | null>) | null = null
   /** Lote C: "Solo ver" efímero por sesión (Modo auto), NUNCA persistido en `computer-grants.json`. */
   private readonly autoView = new Map<string, Set<string>>()
+  /** «Permitir para esta sesión»: nivel por app y sesión, SOLO en memoria (nunca a disco, no se hereda). La clave '' = sin sesión. */
+  private readonly sessionGrants = new Map<string, Map<string, AppTier>>()
+  /** «Denegar» de la tarjeta (sin `alsoBlock`): vale solo para esta sesión, en memoria. */
+  private readonly sessionDenied = new Map<string, Set<string>>()
   /**
    * Apps declaradas/aprobadas en el plan de ESTA tarea (F8-B149): a diferencia de `grants` (concesión
    * PERMANENTE, para siempre), esto es solo "qué apps importan para la tarea de ahora" — se usa para
@@ -425,10 +437,20 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     unresolved?: string[],
     kind: 'access' | 'takeover' = 'access'
   ): Promise<AccessResponse> {
+    // Apps que el usuario ya denegó en ESTA sesión: no vuelven a abrir tarjeta ni se conceden.
+    const preDenied = apps.filter((a) => this.isSessionDenied(sessionId, a.bundleId))
+    if (preDenied.length) {
+      const denyMap: Record<string, AccessDecision> = {}
+      for (const a of preDenied) denyMap[a.bundleId] = 'deny'
+      const rest = apps.filter((a) => !this.isSessionDenied(sessionId, a.bundleId))
+      if (!rest.length) return { decisions: denyMap }
+      const r = await this.requestAccess(rest, reason, plan, sessionId, unresolved, kind)
+      return { ...r, decisions: { ...r.decisions, ...denyMap } }
+    }
     // Main rellena el estado actual de cada app: la tarjeta preselecciona sin bajar lo ya concedido.
     const enriched = apps.map((a) => ({
       ...a,
-      current: this.grants.tierFor(a.bundleId),
+      current: maxTier(this.grants.tierFor(a.bundleId), this.sessionTier(sessionId, a.bundleId)),
       denied: this.grants.isDenied(a.bundleId) || this.grants.isBlocked(a.bundleId)
     }))
     // Modo auto (Lote C, C3): antes de mostrar la tarjeta, se le da la oportunidad de conceder
@@ -515,6 +537,22 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     }
   }
 
+  /** Nivel concedido solo para esta sesión (tarjeta «Permitir para esta sesión»), si lo hay. */
+  private sessionTier(sessionId: string | undefined, bundleId: string): AppTier | null {
+    return this.sessionGrants.get(sessionId ?? '')?.get(bundleId) ?? null
+  }
+
+  private isSessionDenied(sessionId: string | undefined, bundleId: string): boolean {
+    return this.sessionDenied.get(sessionId ?? '')?.has(bundleId) === true
+  }
+
+  /** Nivel efectivo de una app en una sesión: persistido, de sesión y Modo auto; lo bloqueado/denegado nunca concede. */
+  private effectiveTier(sessionId: string | undefined, bundleId: string, name: string): AppTier | null {
+    if (this.grants.isBlocked(bundleId) || this.grants.isDenied(bundleId) || this.isSessionDenied(sessionId, bundleId)) return null
+    const persisted = this.grants.resolve(bundleId, name)
+    return maxTier(maxTier(persisted, this.sessionTier(sessionId, bundleId)), this.autoViewTier(sessionId, bundleId))
+  }
+
   /** Nivel "Solo ver" efímero concedido a esa app por el Modo auto en esa sesión, si lo hay. */
   private autoViewTier(sessionId: string | undefined, bundleId: string): 'view' | null {
     if (!sessionId) return null
@@ -552,6 +590,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     if (!pending) return false
     this.pendingAccess.delete(id)
     const { feedback, approvePlan, cancel } = opts
+    const scope = opts.scope === 'always' ? 'always' : 'session'
+    const alsoBlock = opts.alsoBlock === true
     const map: Record<string, AccessDecision> = {}
     let approvedSomething = false
     let firstApproved: string | null = null
@@ -563,18 +603,29 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       for (const d of decisions) {
         const card = inCard.get(d.bundleId)
         if (!card || d.bundleId in map) continue
-        if (this.grants.isBlocked(d.bundleId)) {
-          // Windows: una app bloqueada nunca se concede, diga lo que diga el renderer.
+        if (
+          this.grants.isBlocked(d.bundleId) ||
+          this.grants.isDenied(d.bundleId) ||
+          this.isSessionDenied(pending.sessionId, d.bundleId)
+        ) {
+          // Bloqueada (fija), denegada guardada o denegada en la sesión: nunca se concede, diga lo que diga el renderer.
           map[d.bundleId] = 'deny'
           continue
         }
         if (d.decision === 'deny') {
-          this.grants.deny(d.bundleId)
+          if (alsoBlock) this.grants.deny(d.bundleId)
+          else this.denyForSession(pending.sessionId, d.bundleId)
           map[d.bundleId] = 'deny'
         } else if (d.decision === 'view' || d.decision === 'click' || d.decision === 'full') {
-          const effective = maxTier(this.grants.tierFor(d.bundleId), d.decision) ?? d.decision
-          // El nombre lo fija la tarjeta (main), no el renderer.
-          this.grants.grant(d.bundleId, card.name || d.name, effective)
+          // Nunca baja un nivel: cuenta lo persistido y lo ya concedido en la sesión.
+          const current = maxTier(this.grants.tierFor(d.bundleId), this.sessionTier(pending.sessionId, d.bundleId))
+          const effective = maxTier(current, d.decision) ?? d.decision
+          if (scope === 'always') {
+            // El nombre lo fija la tarjeta (main), no el renderer.
+            this.grants.grant(d.bundleId, card.name || d.name, effective)
+          } else {
+            this.grantForSession(pending.sessionId, d.bundleId, effective)
+          }
           map[d.bundleId] = effective
           approvedSomething = true
           firstApproved ??= d.bundleId
@@ -612,6 +663,27 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return true
   }
 
+  private grantForSession(sessionId: string | undefined, bundleId: string, tier: AppTier): void {
+    const key = sessionId ?? ''
+    let m = this.sessionGrants.get(key)
+    if (!m) {
+      m = new Map()
+      this.sessionGrants.set(key, m)
+    }
+    m.set(bundleId, maxTier(m.get(bundleId) ?? null, tier) ?? tier)
+  }
+
+  private denyForSession(sessionId: string | undefined, bundleId: string): void {
+    const key = sessionId ?? ''
+    let set = this.sessionDenied.get(key)
+    if (!set) {
+      set = new Set()
+      this.sessionDenied.set(key, set)
+    }
+    set.add(bundleId)
+    this.sessionGrants.get(key)?.delete(bundleId)
+  }
+
   /** Aprueba el plan de una sesión (sin `sessionId`: respaldo legado global, con aviso en el log). */
   approvePlanFor(sessionId?: string): void {
     if (sessionId) {
@@ -633,6 +705,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     const hadPlan = this.approvedPlans.delete(sessionId)
     this.foregroundSessions.delete(sessionId)
     this.revokeAutoView(sessionId)
+    this.sessionGrants.delete(sessionId)
+    this.sessionDenied.delete(sessionId)
     this.taskApps.delete(sessionId)
     if (hadPlan) this.emit('planState', { sessionId, approved: false })
   }
@@ -741,6 +815,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     // sesión (no solo las que tenían un plan aprobado) y cierra Teach mode si estaba activo.
     this.foregroundSessions.clear()
     this.autoView.clear()
+    this.sessionGrants.clear()
+    this.sessionDenied.clear()
     this.teachEnd()
     const killed = this.killHelpers()
     this.cleanScreenshots()
@@ -1016,8 +1092,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           const name = (q.get('name') ?? bundleId).slice(0, 255)
           const sess = q.get('session') ?? ''
           const session = SESSION_RE.test(sess) ? sess : undefined
-          const persisted = bundleId ? this.grants.resolve(bundleId, name) : null
-          const tier = maxTier(persisted, this.autoViewTier(session, bundleId))
+          const tier = bundleId ? this.effectiveTier(session, bundleId, name) : null
           res.statusCode = 200
           res.setHeader('content-type', 'application/json')
           res.setHeader('cache-control', 'no-store')

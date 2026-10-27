@@ -1195,6 +1195,10 @@ export interface TasksInvokeContract {
       feedback?: string
       approvePlan?: boolean
       cancel?: boolean
+      /** 'session' (por defecto): lo aprobado vale solo esta sesión; 'always': permanente (Ajustes). */
+      scope?: 'session' | 'always'
+      /** «Denegar» además bloquea para siempre; sin esto, solo esta sesión. */
+      alsoBlock?: boolean
     }
     res: void
   }

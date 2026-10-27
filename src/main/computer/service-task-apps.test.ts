@@ -171,3 +171,134 @@ describe('taskApps: apps relevantes para la tarea actual de una sesión', () => 
     expect(await taskApps(base, sessionB)).toEqual([APP_B])
   })
 })
+
+// ───────────── Permiso solo para esta sesión (P3) ─────────────
+describe('tarjeta de acceso: permiso y denegación solo de la sesión', () => {
+  async function tierOf(base: string, session: string, bundle: string): Promise<string | null> {
+    const j = (await (await fetch(`${base}/tier?bundleId=${bundle}&name=X&session=${session}`)).json()) as { tier: string | null }
+    return j.tier
+  }
+  async function card(s: ComputerService, app: string, session = SESSION): Promise<{ id: string; p: Promise<unknown> }> {
+    const got: Array<{ id: string }> = []
+    const off = (r: { id: string }): void => void got.push(r)
+    s.on('requestAccess', off)
+    const p = s.requestAccess([{ bundleId: app, name: 'X' }], undefined, undefined, session)
+    await vi.waitFor(() => expect(got).toHaveLength(1))
+    s.off('requestAccess', off)
+    return { id: got[0].id, p }
+  }
+
+  it('por defecto concede solo a la sesión: no toca el disco ni otras sesiones', async () => {
+    const s = make()
+    const base = await url(s)
+    const { id, p } = await card(s, APP_A)
+    s.resolveAccessRequest(id, [{ bundleId: APP_A, name: 'X', decision: 'click' }])
+    await p
+    expect(await tierOf(base, SESSION, APP_A)).toBe('click')
+    expect(await tierOf(base, 'ses_otra_sesion_1', APP_A)).toBeNull()
+    expect(s.grants.snapshot().grants).toEqual([])
+    expect(s.grants.tierFor(APP_A)).toBeNull()
+  })
+
+  it("scope 'always' conserva el permiso permanente", async () => {
+    const s = make()
+    const { id, p } = await card(s, APP_A)
+    s.resolveAccessRequest(id, [{ bundleId: APP_A, name: 'X', decision: 'view' }], { scope: 'always' })
+    await p
+    expect(s.grants.tierFor(APP_A)).toBe('view')
+  })
+
+  it('caduca al revocar el plan y al detener', async () => {
+    const s = make()
+    const base = await url(s)
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'full' }])
+    await a.p
+    s.revokePlan(SESSION)
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+    const b = await card(s, APP_B)
+    s.resolveAccessRequest(b.id, [{ bundleId: APP_B, name: 'X', decision: 'view' }])
+    await b.p
+    expect(await tierOf(base, SESSION, APP_B)).toBe('view')
+    s.stop()
+    expect(await tierOf(base, SESSION, APP_B)).toBeNull()
+  })
+
+  it('no baja un nivel: sesión «view» sobre persistido «full» sigue en full, y al revés', async () => {
+    const s = make()
+    const base = await url(s)
+    s.grants.grant(APP_A, 'X', 'full')
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'view' }])
+    await a.p
+    expect(await tierOf(base, SESSION, APP_A)).toBe('full')
+    expect(s.grants.tierFor(APP_A)).toBe('full')
+    const b = await card(s, APP_B)
+    s.resolveAccessRequest(b.id, [{ bundleId: APP_B, name: 'X', decision: 'full' }])
+    await b.p
+    const b2 = await card(s, APP_B)
+    s.resolveAccessRequest(b2.id, [{ bundleId: APP_B, name: 'X', decision: 'view' }])
+    await b2.p
+    expect(await tierOf(base, SESSION, APP_B)).toBe('full')
+  })
+
+  it('Denegar sin alsoBlock: no escribe `denied` y no vuelve a abrir tarjeta en esa sesión', async () => {
+    const s = make()
+    const base = await url(s)
+    const { id, p } = await card(s, APP_A)
+    s.resolveAccessRequest(id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }])
+    await p
+    expect(s.grants.snapshot().denied).toEqual([])
+    const cards: unknown[] = []
+    s.on('requestAccess', (r) => cards.push(r))
+    const r = (await s.requestAccess([{ bundleId: APP_A, name: 'X' }], undefined, undefined, SESSION)) as {
+      decisions: Record<string, string>
+    }
+    expect(r.decisions[APP_A]).toBe('deny')
+    expect(cards).toHaveLength(0)
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+    // Otra sesión sí vuelve a preguntar.
+    const o = await card(s, APP_A, 'ses_otra_sesion_1')
+    s.resolveAccessRequest(o.id, [], { cancel: true })
+    await o.p
+  })
+
+  it('una denegada en la sesión nunca se concede aunque el renderer diga que sí', async () => {
+    const s = make()
+    const base = await url(s)
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }])
+    await a.p
+    // Tarjeta con otra app pendiente en la misma sesión, intentando colar APP_A.
+    const b = await card(s, APP_B)
+    s.resolveAccessRequest(b.id, [
+      { bundleId: APP_A, name: 'X', decision: 'full' },
+      { bundleId: APP_B, name: 'X', decision: 'view' }
+    ])
+    await b.p
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+  })
+
+  it('Denegar con alsoBlock sí bloquea para siempre; una denegada guardada nunca se concede', async () => {
+    const s = make()
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }], { alsoBlock: true })
+    await a.p
+    expect(s.grants.snapshot().denied).toEqual([APP_A])
+    const a2 = await card(s, APP_A, 'ses_otra_sesion_1')
+    const res = new Promise<Record<string, string>>((ok) => void a2.p.then((r) => ok((r as { decisions: Record<string, string> }).decisions)))
+    s.resolveAccessRequest(a2.id, [{ bundleId: APP_A, name: 'X', decision: 'full' }], { scope: 'always' })
+    expect((await res)[APP_A]).toBe('deny')
+    expect(s.grants.tierFor(APP_A)).toBeNull()
+  })
+
+  it('una app bloqueada fija nunca se concede, ni con scope always', async () => {
+    const s = make()
+    const blocked = 'com.apple.Passwords'
+    expect(s.grants.isBlocked(blocked)).toBe(true)
+    const { id, p } = await card(s, blocked)
+    const res = new Promise<Record<string, string>>((ok) => void p.then((r) => ok((r as { decisions: Record<string, string> }).decisions)))
+    s.resolveAccessRequest(id, [{ bundleId: blocked, name: 'X', decision: 'full' }], { scope: 'always' })
+    expect((await res)[blocked]).toBe('deny')
+  })
+})

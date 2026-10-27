@@ -988,7 +988,9 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     ),
     feedback: optional(str({ max: 1000 })),
     approvePlan: optional(bool),
-    cancel: optional(bool)
+    cancel: optional(bool),
+    scope: optional(literal('session', 'always')),
+    alsoBlock: optional(bool)
   }),
   'computer:revokePlan': obj({ sessionId }),
   'computer:approvedPlans': none,

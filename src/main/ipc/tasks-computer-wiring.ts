@@ -309,8 +309,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
     computer.grants.undeny(bundleId)
     return computer.grants.snapshot()
   })
-  handle('computer:respondAccess', ({ id, decisions, feedback, approvePlan, cancel }) => {
-    computer.resolveAccessRequest(id, decisions, { feedback, approvePlan, cancel })
+  handle('computer:respondAccess', ({ id, decisions, feedback, approvePlan, cancel, scope, alsoBlock }) => {
+    computer.resolveAccessRequest(id, decisions, { feedback, approvePlan, cancel, scope, alsoBlock })
   })
   // Permiso o pregunta de OpenCode esperando al usuario mientras el control tiene la ventana principal minimizada: la tarjeta
   // solo existe ahí, así que sin esto el agente se quedaba esperando sin ninguna señal visible. Se restaura SIN foco (no le

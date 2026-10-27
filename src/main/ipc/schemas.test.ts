@@ -249,6 +249,19 @@ describe('remote:confirmAction', () => {
   })
 })
 
+describe('computer:respondAccess (scope y alsoBlock)', () => {
+  it('acepta scope válido y alsoBlock; rechaza scope inválido y campos desconocidos', () => {
+    const v = IPC_SCHEMAS['computer:respondAccess']
+    const base = { id: 'a', decisions: [] }
+    expect(v({ ...base, scope: 'session', alsoBlock: true })).toMatchObject({ scope: 'session', alsoBlock: true })
+    expect(v({ ...base, scope: 'always' })).toMatchObject({ scope: 'always' })
+    expect(v(base)).toEqual(base)
+    expect(() => v({ ...base, scope: 'forever' })).toThrow()
+    expect(() => v({ ...base, alsoBlock: 'yes' })).toThrow()
+    expect(() => v({ ...base, extra: 1 })).toThrow()
+  })
+})
+
 describe('remote:setDeviceTtl y remote:revokeAll', () => {
   const id = 'a'.repeat(32)
   it('solo 30, 90, 365 o null; nada extra', () => {

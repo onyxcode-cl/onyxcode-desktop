@@ -218,6 +218,8 @@ describe('D: confirmación en el Mac', () => {
     ['computer:undenyApp', { bundleId: 'com.a' }],
     ['computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'com.a', name: 'A', decision: 'click' }] }],
     ['computer:respondAccess', { id: 'a', decisions: [], approvePlan: true }],
+    ['computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'com.a', name: 'A', decision: 'view' }], scope: 'session' }],
+    ['computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'com.a', name: 'A', decision: 'full' }], scope: 'always' }],
     ['tasks:folders:link', { folder: P, path: '/otra', mode: 'rw' }],
     ['tasks:folders:unlink', { folder: P, path: '/otra' }],
     ['tasks:trusted:set', { path: '/otra', mode: 'ro' }],
@@ -641,6 +643,7 @@ describe('git, archivos, navegador y Tareas', () => {
     expect(cls(ipc('tasks:revokeFullAccess', { folder: '/work/tasks/a' }))).toBe('M')
     expect(cls(ipc('computer:stop'))).toBe('M')
     expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }] }))).toBe('M')
+    expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], alsoBlock: true }))).toBe('M')
     expect(cls(ipc('routines:toggle', { id: 'a', enabled: false }), { ...ctx, routineFolder: () => P })).toBe('M')
     expect(cls(ipc('tasks:previewFile', { path: `${P}/a.png`, maxBytes: 9 * 1024 * 1024 }))).toBe('deny:too-large')
   })
