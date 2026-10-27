@@ -36,11 +36,11 @@ const trigger = (): HTMLButtonElement => host.querySelector('button[aria-haspopu
 const items = (): HTMLButtonElement[] => Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'))
 
 describe('AccessChip (Overdrive)', () => {
-  it('siempre muestra el modo de acceso (texto + nombre accesible) y el modo por defecto es solo en la carpeta', () => {
+  it('siempre muestra el modo de acceso (texto + nombre accesible) y el modo por defecto es una carpeta', () => {
     render()
-    expect(trigger().textContent).toContain('Solo en tu carpeta')
-    expect(trigger().getAttribute('aria-label')).toBe('Modo de acceso: Solo en tu carpeta')
-    const label = Array.from(trigger().querySelectorAll('span')).find((s) => s.textContent === 'Solo en tu carpeta')!
+    expect(trigger().textContent).toContain('Una carpeta')
+    expect(trigger().getAttribute('aria-label')).toBe('Modo de acceso: Una carpeta')
+    const label = Array.from(trigger().querySelectorAll('span')).find((s) => s.textContent === 'Una carpeta')!
     expect(label.className).toContain('desk:@max-[34rem]:sr-only')
   })
 
@@ -49,8 +49,8 @@ describe('AccessChip (Overdrive)', () => {
     act(() => trigger().click())
     expect(items().map((i) => i.dataset.option)).toEqual(['sandbox', 'full'])
     expect(items().map((i) => i.getAttribute('aria-checked'))).toEqual(['true', 'false'])
-    expect(items()[0]!.textContent).toContain('Trabaja solo en tu carpeta')
-    expect(items()[1]!.textContent).toContain('puede tocar cualquier archivo')
+    expect(items()[0]!.textContent).toContain('Carpeta aislada y obligatoria')
+    expect(items()[1]!.textContent).toContain('la carpeta es opcional')
   })
 
   it('elegir Control total llama a la acción de siempre (setAccessMode(true)); no cambia nada por su cuenta', () => {
@@ -64,7 +64,7 @@ describe('AccessChip (Overdrive)', () => {
   it('con Control total activo el chip se marca de aviso y deshabilitado no abre', () => {
     useTasks.setState({ fullAccess: true } as never)
     render({ disabled: true })
-    expect(trigger().textContent).toContain('Control total del Mac')
+    expect(trigger().textContent).toContain('El computador completo')
     expect(trigger().className).toContain('text-warning')
     expect(trigger().disabled).toBe(true)
   })

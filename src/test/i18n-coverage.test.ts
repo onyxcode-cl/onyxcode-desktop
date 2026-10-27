@@ -156,7 +156,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/settings/impl/providerCatalog.ts',
   'src/renderer/src/features/settings/impl/ui.tsx',
   'src/renderer/src/features/settings/impl/useKeyTest.ts',
-  'src/renderer/src/features/tasks/impl/AccessSegmented.tsx',
+  'src/renderer/src/features/tasks/impl/ScopePicker.tsx',
   'src/renderer/src/features/tasks/impl/AutoModeChip.tsx',
   'src/renderer/src/features/tasks/impl/ChangesPanel.tsx',
   'src/renderer/src/features/tasks/impl/ComputerAccess.tsx',

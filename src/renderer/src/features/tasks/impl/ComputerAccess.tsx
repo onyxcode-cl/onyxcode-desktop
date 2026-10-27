@@ -35,7 +35,6 @@ import {
   type AppTier,
   type ComputerStatus
 } from '@shared/ipc-tasks'
-import { TASKS_TERMS } from '@shared/tasks-glossary'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
@@ -66,6 +65,7 @@ import {
 import { ComputerConsentWin } from './ComputerConsentWin'
 import { describeAction } from './computer-tools'
 import { sdkDir } from './conn-paths'
+import { useScope } from './ScopePicker'
 import { loadGrants, setTaskModel, useTasks } from './store'
 import { isTasksSource } from './util'
 
@@ -136,10 +136,10 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
       ? 'border-danger/40 text-danger'
       : 'border-border text-fg'
 
+  const scope = useScope()
   const pick = (fullAccess: boolean): void => {
     setOpen(false)
-    if (fullAccess === full && phase === 'ready') return
-    void setAccessMode(fullAccess)
+    scope.pick(fullAccess)
   }
 
   return (
@@ -165,17 +165,19 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
           <ModeOption
             active={!full}
             icon={<Shield size={16} className="text-accent" />}
-            title={TASKS_TERMS.sandbox}
-            desc={t('tasksComputer.mode.sandboxDesc')}
+            title={t('tasksComputer.scope.folder')}
+            desc={t('tasksComputer.scope.folder.desc')}
             onClick={() => pick(false)}
           />
-          <ModeOption
-            active={full}
-            icon={<MonitorCog size={16} className="text-amber-500" />}
-            title={TASKS_TERMS.fullControl}
-            desc={t('tasksComputer.mode.fullDesc')}
-            onClick={() => pick(true)}
-          />
+          {scope.canFull && (
+            <ModeOption
+              active={full}
+              icon={<MonitorCog size={16} className="text-amber-500" />}
+              title={t('tasksComputer.scope.computer')}
+              desc={t('tasksComputer.scope.computer.desc')}
+              onClick={() => pick(true)}
+            />
+          )}
         </div>
       )}
     </div>

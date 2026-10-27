@@ -27,7 +27,6 @@ import { attachFiles, pasteFromClipboard, removeAttachment, removeElement, setEl
 import { ElementChipRow } from '../../browser/ElementChip'
 import { AccessChip } from './AccessChip'
 import { AutoModeChip } from './AutoModeChip'
-import { FolderMenu } from './FolderMenu'
 import { currentTasksModel, currentTasksVariant, setTaskModel, setTaskVariant, useTasks } from './store'
 import { extOf } from './util'
 
@@ -259,9 +258,13 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
               </button>
             )}
             <VoiceDictationButton onText={insertDictated} size={15} className="h-7 w-7 rounded-lg" />
-            {hero && <FolderMenu variant="chip" placement="bottom" />}
-            <AccessChip disabled={sending || busy} />
-            <AutoModeChip />
+            {/* En el inicio (hero) carpeta, alcance y Manual/Automático van juntos en el ScopePicker de Home. */}
+            {hero ? null : (
+              <>
+                <AccessChip disabled={sending || busy} />
+                <AutoModeChip />
+              </>
+            )}
             {extra}
             <ModelPicker value={model} onChange={setTaskModel} effort={{ variant, onChange: setTaskVariant }} />
           </div>

@@ -9,7 +9,7 @@ import { setI18nPlatform } from '@shared/i18n'
 
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
-import { AccessSegmented } from './AccessSegmented'
+import { ScopePicker } from './ScopePicker'
 import { Home } from './Home'
 import { Onboarding } from './Onboarding'
 
@@ -27,7 +27,7 @@ const noop = (): void => undefined
 describe('Tareas en Windows sin Control del PC', () => {
   it('no hay selector de modo de acceso', () => {
     win()
-    expect(renderToStaticMarkup(<AccessSegmented />)).toBe('')
+    expect(renderToStaticMarkup(<ScopePicker variant="cards" />)).not.toContain('radiogroup')
   })
   it('el inicio no ofrece la categoría de controlar el equipo ni nombra el Mac', () => {
     win()
@@ -46,7 +46,7 @@ describe('Tareas en Windows sin Control del PC', () => {
 })
 describe('Tareas en macOS (referencia)', () => {
   it('el selector de modo y la categoría siguen estando', () => {
-    expect(renderToStaticMarkup(<AccessSegmented />)).toContain('radiogroup')
+    expect(renderToStaticMarkup(<ScopePicker variant="cards" />)).toContain('radiogroup')
     expect(renderToStaticMarkup(<Home onSend={async () => undefined} sendError={null} folderBusy={false} />)).toContain('Control del Mac')
   })
 })

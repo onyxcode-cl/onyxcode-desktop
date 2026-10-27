@@ -7,7 +7,7 @@ import type { MsgKey, Params } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
-import { AccessSegmented } from './AccessSegmented'
+import { ScopePicker } from './ScopePicker'
 import { ResumeBlock, WaitingCard } from './HomeFocus'
 import { ComputerPermissionsCard, FullWorkspaceNote, VisionModelHint } from './ComputerAccess'
 import { TasksComposer } from './TasksComposer'
@@ -278,7 +278,7 @@ export function Home({
           placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />
         <div className="mt-4 flex flex-col items-center justify-center gap-2">
-          <AccessSegmented disabled={folderBusy} list />
+          <ScopePicker variant="cards" disabled={folderBusy} />
           {phase === 'starting' && (
             <span className="flex items-center gap-1 text-xs text-muted">
               <Loader2 size={12} className="animate-spin" /> {requested ? t('tasks.home.startingFull') : t('tasks.home.startingSandbox')}
