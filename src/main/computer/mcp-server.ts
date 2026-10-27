@@ -372,8 +372,30 @@ async function requestAccess(
     feedback: typeof j.feedback === 'string' && j.feedback ? j.feedback : undefined,
     cancelled: j.cancelled === true,
     planApproved: j.planApproved === true,
-    auto: j.auto === true
+    auto: j.auto === true,
+    blocked: Array.isArray(j.blocked)
+      ? j.blocked.filter((b): b is BlockedReply => !!b && typeof b.bundleId === 'string' && typeof b.name === 'string')
+      : undefined
   }
+}
+
+/** App de la petición que main NO dejó pedir (bloqueada): ver `BlockedApp` en `computer/service.ts`. */
+interface BlockedReply {
+  bundleId: string
+  name: string
+  kind: 'fixed' | 'user' | 'session'
+}
+
+/**
+ * Texto FIRME para el agente cuando una app está bloqueada (sin tarjeta). Fijo y sin variantes: el agente no debe pedirla
+ * otra vez ni rodear el bloqueo con otra app, comando o vía; solo informar a la persona y seguir sin ella.
+ */
+function blockedMessage(b: BlockedReply): string {
+  const who = b.kind === 'fixed' ? 'por seguridad' : 'por la persona'
+  return (
+    `${b.name} está bloqueada ${who}. No la pidas de nuevo ni uses otra aplicación, comando o vía para lograr lo mismo; ` +
+    'infórmale que está bloqueada y sigue sin ella.'
+  )
 }
 
 /** Respuesta de main a una tarjeta `request_access` (ver `AccessResponse` en `computer/service.ts`). */
@@ -384,6 +406,8 @@ interface AccessReply {
   planApproved: boolean
   /** Lote C: se concedió sin tarjeta, por el Modo auto ("Solo ver" efímero para esta tarea). */
   auto?: boolean
+  /** Apps de la petición bloqueadas (no entraron en la tarjeta): el agente no debe pedirlas ni rodearlas. */
+  blocked?: BlockedReply[]
   /** El usuario aún no respondió y se agotó la espera de esta llamada: la tarjeta SIGUE abierta; el agente debe repetir la petición. */
   retry?: boolean
 }
@@ -1742,6 +1766,11 @@ const TOOLS: ToolDef[] = [
       )
       if (reply.retry) return ACCESS_RETRY_MSG
       const { decisions, feedback, cancelled, planApproved, auto } = reply
+      const blockedById = new Map((reply.blocked ?? []).map((b) => [b.bundleId, b]))
+      // Todo lo pedido está bloqueado y no hay plan que aprobar: main no abrió tarjeta. Respuesta fija, sin ofrecer vías alternativas.
+      if (blockedById.size && valid.every((v) => blockedById.has(v.bundleId)) && !hasPlan) {
+        return [...blockedById.values()].map(blockedMessage).join('\n')
+      }
       if (cancelled) {
         return 'El usuario canceló: no se concedió nada ni se aprobó el plan. No actúes; explícaselo y detente.'
       }
@@ -1762,6 +1791,8 @@ const TOOLS: ToolDef[] = [
                 ? 'Control total'
                 : 'sin respuesta'
       const lines = valid.map((r) => {
+        const blockedApp = blockedById.get(r.bundleId)
+        if (blockedApp) return `- ${blockedMessage(blockedApp)}`
         const d = decisions[r.bundleId] ?? ''
         const t = asTier(d)
         const short =
@@ -2153,6 +2184,8 @@ const TOOLS: ToolDef[] = [
       const reason = typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined
       const takeoverReply = await requestAccess([{ ...app, requested: 'full' }], reason, undefined, session, undefined, 'takeover')
       if (takeoverReply.retry) return ACCESS_RETRY_MSG
+      const blockedApp = takeoverReply.blocked?.[0]
+      if (blockedApp) return blockedMessage(blockedApp)
       const { decisions, cancelled } = takeoverReply
       if (cancelled) {
         return (

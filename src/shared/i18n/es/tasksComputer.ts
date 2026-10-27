@@ -170,11 +170,11 @@ export const tasksComputer = {
   'tasksComputer.plan.approve': 'Aprobar y empezar',
   'tasksComputer.plan.confirm': 'Confirmar',
   'tasksComputer.grants.revoke': 'Quitar concesión',
-  'tasksComputer.grants.allowAgain': 'Permitir de nuevo',
+  'tasksComputer.grants.allowAgain': 'Quitar',
   'tasksComputer.grants.granted': 'Apps con acceso concedido',
   'tasksComputer.grants.empty1': 'Ninguna todavía. Se conceden al pedirlo el agente (herramienta',
   'tasksComputer.grants.empty2': ') o al abrir un navegador/terminal reconocido por primera vez.',
-  'tasksComputer.grants.denied': 'Apps denegadas',
+  'tasksComputer.grants.denied': 'Bloqueadas por ti',
   'tasksComputer.grants.levels': 'Niveles:',
   'tasksComputer.kind.screenshot': 'Captura',
   'tasksComputer.kind.click': 'Clic',
@@ -309,6 +309,14 @@ export const tasksComputer = {
     'Trabajando solo en tu carpeta no se pueden abrir apps, hacer clic, teclear en otras apps ni capturar la pantalla. Si cambias a Control total, se abrirá una tarea nueva con tu encargo y un resumen de lo hecho hasta ahora; antes te pediremos confirmar el cambio y el agente pedirá tu aprobación para actuar.',
   'tasksComputer.escalate.switch': 'Cambiar a Control total y continuar',
   'tasksComputer.escalate.stay': 'Seguir solo en tu carpeta',
+  'tasksComputer.blocked.user':
+    '{app} está bloqueada porque tú la bloqueaste. Para desbloquearla: Ajustes › Control del Mac › Bloqueadas por ti › Quitar.',
+  'tasksComputer.blocked.user.win':
+    '{app} está bloqueada porque tú la bloqueaste. Para desbloquearla: Ajustes › Control del PC › Bloqueadas por ti › Quitar.',
+  'tasksComputer.blocked.unlock': 'Desbloquear…',
+  'tasksComputer.blocked.fixed': '{app} está bloqueada por seguridad: guarda claves y Lazunox nunca la controla. Esto no se puede desbloquear desde la app.',
+  'tasksComputer.blocked.session':
+    'Dijiste que no a {app} en esta tarea. Si cambias de idea, pídeselo de nuevo al agente y te volveré a preguntar.',
   'tasksComputer.net.allowed': 'Permitiste el acceso a',
   'tasksComputer.net.always': ' (siempre)',
   'tasksComputer.net.once': ' (por esta vez)',

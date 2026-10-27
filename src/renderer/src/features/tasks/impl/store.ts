@@ -11,6 +11,7 @@ import {
   FULL_ACCESS_NOT_GRANTED,
   type AccessRequest,
   type AutoApprovalRecord,
+  type BlockedAppKind,
   type AutoModeState,
   type ComputerActionEvent,
   type ComputerKillState,
@@ -55,6 +56,13 @@ export interface NetworkBlockedEntry {
   at: number
   /** Cómo se resolvió (sin decidir aún = `undefined`); "Mantener bloqueado" quita la entrada. */
   resolved?: 'once' | 'always'
+}
+
+/** Aviso «app bloqueada» en el hilo de una tarea (evento `computer:blockedApps`). Uno por app y tipo. */
+export interface BlockedAppEntry {
+  bundleId: string
+  name: string
+  kind: BlockedAppKind
 }
 
 interface TasksState {
@@ -120,6 +128,8 @@ interface TasksState {
   accessRequest: AccessRequest | null
   /** Avisos "acceso bloqueado" del proxy de egress, por tarea (id de sesión raíz). Dedupe por host. */
   networkBlocked: Record<string, NetworkBlockedEntry[]>
+  /** Avisos «app bloqueada» por tarea (id de sesión raíz), deduplicados por app y tipo. */
+  blockedApps: Record<string, BlockedAppEntry[]>
   /** "Permitir borrar" de la carpeta actual (`tasks:deleteGrant:get`; null = aún sin cargar). */
   deleteGrant: boolean | null
   deleteGrantBusy: boolean
@@ -271,6 +281,7 @@ export const useTasks = create<TasksState>((set) => ({
   grants: null,
   accessRequest: null,
   networkBlocked: {},
+  blockedApps: {},
   deleteGrant: null,
   deleteGrantBusy: false,
   approvedPlans: {},
@@ -813,6 +824,7 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     memory: null,
     learnedMemory: null,
     networkBlocked: {},
+    blockedApps: {},
     deleteGrant: null,
     folderSet: null,
     taskModel: null,
@@ -967,6 +979,7 @@ export function clearFolder(): void {
     memory: null,
     learnedMemory: null,
     networkBlocked: {},
+    blockedApps: {},
     deleteGrant: null,
     folderSet: null
   })
@@ -1173,6 +1186,16 @@ export function syncAccessRequests(): void {
   onTasks('computer:accessRequest', (req) => useTasks.setState({ accessRequest: req }))
   onTasks('computer:accessResolved', ({ id }) => {
     if (useTasks.getState().accessRequest?.id === id) useTasks.setState({ accessRequest: null })
+  })
+  onTasks('computer:blockedApps', ({ sessionId, apps }) => {
+    const taskId = sessionId ?? useTasks.getState().activeTaskId
+    if (!taskId) return
+    useTasks.setState((s) => {
+      const list = s.blockedApps[taskId] ?? []
+      const fresh = apps.filter((a) => !list.some((b) => b.bundleId === a.bundleId && b.kind === a.kind))
+      if (!fresh.length) return s
+      return { blockedApps: { ...s.blockedApps, [taskId]: [...list.filter((b) => !fresh.some((a) => a.bundleId === b.bundleId)), ...fresh] } }
+    })
   })
   onTasks('computer:planState', ({ sessionId, approved }) => {
     if (!loaded) touched.add(sessionId)

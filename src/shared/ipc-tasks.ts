@@ -185,6 +185,15 @@ export interface AccessRequest {
   kind?: 'access' | 'takeover'
 }
 
+/** Quién/por qué bloquea una app: 'fixed' = lista de seguridad de Lazunox; 'user' = «Bloqueadas por ti»; 'session' = «No» solo en esta tarea. */
+export type BlockedAppKind = 'fixed' | 'user' | 'session'
+
+/** Apps bloqueadas de una petición `request_access` (evento `computer:blockedApps`). */
+export interface BlockedAppsEvent {
+  sessionId?: string
+  apps: Array<{ bundleId: string; name: string; kind: BlockedAppKind }>
+}
+
 /** Estado de la aprobación del plan de una sesión (tarea) de Control total. */
 export interface PlanApprovalState {
   sessionId: string
@@ -1393,6 +1402,8 @@ export interface TasksEventContract {
   'computer:accessResolved': { id: string }
   /** Cambió la aprobación del plan de una sesión (aprobado o revocado). */
   'computer:planState': PlanApprovalState
+  /** El agente pidió apps bloqueadas (sin tarjeta): el hilo avisa quién las bloqueó, por qué y qué hacer. */
+  'computer:blockedApps': BlockedAppsEvent
   /** El proxy de egress de un servidor sandboxeado bloqueó una conexión (host fuera de lista blanca). */
   'tasks:networkBlocked': NetworkBlockedEvent
   /** Lote B: instantánea de actividad (tareas activas y servidores) del monitor de main. */
@@ -1576,6 +1587,7 @@ export const TASKS_EVENT_CHANNELS = [
   'computer:accessRequest',
   'computer:accessResolved',
   'computer:planState',
+  'computer:blockedApps',
   'tasks:networkBlocked',
   'tasks:activity',
   'tasks:sandbox:progress',

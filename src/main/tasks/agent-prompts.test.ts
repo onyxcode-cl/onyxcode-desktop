@@ -45,6 +45,15 @@ describe('prompts de agente', () => {
     }
   })
 
+  it('computer.md y computer.win.md: una app bloqueada no se rodea (ni se vuelve a pedir)', () => {
+    for (const n of ['computer', 'computer.win']) {
+      const t = read(n)
+      expect(t).toContain('Una app bloqueada no se rodea')
+      expect(t).toContain('no la pidas de nuevo')
+      expect(t).toContain('otra aplicación, un comando')
+    }
+  })
+
   it('tasks.md acota la escalada a una petición explícita', () => {
     const t = read('tasks')
     expect(t).toContain('pidió explícitamente manejar OTRA aplicación')

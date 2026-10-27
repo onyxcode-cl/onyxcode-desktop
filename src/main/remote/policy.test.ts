@@ -644,6 +644,19 @@ describe('git, archivos, navegador y Tareas', () => {
     expect(cls(ipc('computer:stop'))).toBe('M')
     expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }] }))).toBe('M')
     expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], alsoBlock: true }))).toBe('M')
+    expect(cls(ipc('computer:respondAccess', { id: 'a', decisions: [{ bundleId: 'x', name: 'X', decision: 'deny' }], scope: 'always' }))).toBe('M')
+    expect(
+      cls(
+        ipc('computer:respondAccess', {
+          id: 'a',
+          decisions: [
+            { bundleId: 'x', name: 'X', decision: 'deny' },
+            { bundleId: 'y', name: 'Y', decision: 'view' }
+          ],
+          alsoBlock: true
+        })
+      )
+    ).toBe('confirm')
     expect(cls(ipc('routines:toggle', { id: 'a', enabled: false }), { ...ctx, routineFolder: () => P })).toBe('M')
     expect(cls(ipc('tasks:previewFile', { path: `${P}/a.png`, maxBytes: 9 * 1024 * 1024 }))).toBe('deny:too-large')
   })
@@ -696,6 +709,12 @@ describe('hallazgo 5: la confirmación muestra lo que se aprueba', () => {
     if (!('confirm' in d)) throw new Error(`no confirma: ${JSON.stringify(d)}`)
     return d.detail
   }
+
+  it('respondAccess: el detalle dice si es siempre o solo esta sesión', () => {
+    const decisions = [{ bundleId: 'y', name: 'Y', decision: 'view' }]
+    expect(detail(ipc('computer:respondAccess', { id: 'a', decisions, scope: 'always' })).join(' ')).toContain('siempre')
+    expect(detail(ipc('computer:respondAccess', { id: 'a', decisions })).join(' ')).toContain('esta sesión')
+  })
 
   it('tasks:rules:add muestra los patrones (también *)', () => {
     const d = detail(ipc('tasks:rules:add', { folder: P, permission: 'bash', patterns: ['*', 'rm -rf /'] }))

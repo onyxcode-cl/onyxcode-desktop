@@ -101,6 +101,8 @@ interface ServiceEvents {
   planApproved: [{ sessionId?: string }]
   /** Cambio en la aprobación del plan de una sesión (aprobado / revocado). */
   planState: [PlanApprovalState]
+  /** Apps de una petición `request_access` que están bloqueadas (sin tarjeta): el renderer pinta el aviso con el motivo. */
+  blockedApps: [{ sessionId?: string; apps: BlockedApp[] }]
   /** Lote C: Teach mode pide un paso (globo con texto + punto) y espera "Siguiente"/"Salir". */
   teachStep: [TeachStep]
   /** Lote C: fin de Teach mode (teach_end, o se limpia al parar el control). */
@@ -121,6 +123,16 @@ export interface AccessResponse {
   planApproved?: boolean
   /** Lote C: se concedió sin tarjeta, por el Modo auto ("Solo ver" efímero para esta tarea). */
   auto?: boolean
+  /** Apps de la petición que están bloqueadas (no entraron en la tarjeta): el MCP le dice al agente que no las rodee. */
+  blocked?: BlockedApp[]
+}
+
+/** Por qué una app no se puede pedir: 'fixed' = lista de seguridad de Lazunox; 'user' = «Bloqueadas por ti»; 'session' = «No» solo en esta tarea. */
+export type BlockKind = 'fixed' | 'user' | 'session'
+export interface BlockedApp {
+  bundleId: string
+  name: string
+  kind: BlockKind
 }
 
 /**
@@ -437,15 +449,22 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     unresolved?: string[],
     kind: 'access' | 'takeover' = 'access'
   ): Promise<AccessResponse> {
-    // Apps que el usuario ya denegó en ESTA sesión: no vuelven a abrir tarjeta ni se conceden.
-    const preDenied = apps.filter((a) => this.isSessionDenied(sessionId, a.bundleId))
-    if (preDenied.length) {
+    // Apps BLOQUEADAS (fija de seguridad, «Bloqueadas por ti» guardada, o «No» de ESTA sesión): no abren tarjeta ni se conceden.
+    // Se avisa al renderer (aviso en el hilo con el motivo y los pasos) y al agente (texto firme en el MCP).
+    const blockedApps: BlockedApp[] = []
+    for (const a of apps) {
+      const bk = this.blockKind(sessionId, a.bundleId)
+      if (bk) blockedApps.push({ bundleId: a.bundleId, name: a.name, kind: bk })
+    }
+    if (blockedApps.length) {
+      this.emit('blockedApps', { sessionId, apps: blockedApps })
       const denyMap: Record<string, AccessDecision> = {}
-      for (const a of preDenied) denyMap[a.bundleId] = 'deny'
-      const rest = apps.filter((a) => !this.isSessionDenied(sessionId, a.bundleId))
-      if (!rest.length) return { decisions: denyMap }
+      for (const b of blockedApps) denyMap[b.bundleId] = 'deny'
+      const rest = apps.filter((a) => !denyMap[a.bundleId])
+      // Sin nada pendiente y sin plan que aprobar (o petición de takeover): ni tarjeta ni espera.
+      if (!rest.length && (!plan?.length || kind === 'takeover')) return { decisions: denyMap, blocked: blockedApps }
       const r = await this.requestAccess(rest, reason, plan, sessionId, unresolved, kind)
-      return { ...r, decisions: { ...r.decisions, ...denyMap } }
+      return { ...r, decisions: { ...r.decisions, ...denyMap }, blocked: blockedApps }
     }
     // Main rellena el estado actual de cada app: la tarjeta preselecciona sin bajar lo ya concedido.
     const enriched = apps.map((a) => ({
@@ -539,11 +558,34 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /** Nivel concedido solo para esta sesión (tarjeta «Permitir para esta sesión»), si lo hay. */
   private sessionTier(sessionId: string | undefined, bundleId: string): AppTier | null {
-    return this.sessionGrants.get(sessionId ?? '')?.get(bundleId) ?? null
+    if (!sessionId || !SESSION_RE.test(sessionId)) return null
+    return this.sessionGrants.get(sessionId)?.get(bundleId) ?? null
+  }
+
+  /** Apps con permiso «solo esta sesión» (para no ocultarlas mientras el agente las usa). */
+  sessionGrantedApps(sessionId?: string): string[] {
+    if (!sessionId || !SESSION_RE.test(sessionId)) return []
+    return [...(this.sessionGrants.get(sessionId)?.keys() ?? [])]
+  }
+
+  /** Apps con permiso de sesión en CUALQUIER sesión activa (visibilidad global de Mac). */
+  allSessionGrantedApps(): string[] {
+    const out = new Set<string>()
+    for (const m of this.sessionGrants.values()) for (const b of m.keys()) out.add(b)
+    return [...out]
+  }
+
+  /** Tipo de bloqueo de una app (null = se puede pedir). Prioridad: seguridad fija > guardada por la persona > solo esta sesión. */
+  private blockKind(sessionId: string | undefined, bundleId: string): BlockKind | null {
+    if (this.grants.isBlocked(bundleId)) return 'fixed'
+    if (this.grants.isDenied(bundleId)) return 'user'
+    if (this.isSessionDenied(sessionId, bundleId)) return 'session'
+    return null
   }
 
   private isSessionDenied(sessionId: string | undefined, bundleId: string): boolean {
-    return this.sessionDenied.get(sessionId ?? '')?.has(bundleId) === true
+    if (!sessionId || !SESSION_RE.test(sessionId)) return false
+    return this.sessionDenied.get(sessionId)?.has(bundleId) === true
   }
 
   /** Nivel efectivo de una app en una sesión: persistido, de sesión y Modo auto; lo bloqueado/denegado nunca concede. */
@@ -664,7 +706,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   }
 
   private grantForSession(sessionId: string | undefined, bundleId: string, tier: AppTier): void {
-    const key = sessionId ?? ''
+    // Sin sesión válida la decisión vale solo para esa llamada: no se guarda nada (no mezclar sesiones).
+    if (!sessionId || !SESSION_RE.test(sessionId)) return
+    const key = sessionId
     let m = this.sessionGrants.get(key)
     if (!m) {
       m = new Map()
@@ -674,7 +718,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   }
 
   private denyForSession(sessionId: string | undefined, bundleId: string): void {
-    const key = sessionId ?? ''
+    if (!sessionId || !SESSION_RE.test(sessionId)) return
+    const key = sessionId
     let set = this.sessionDenied.get(key)
     if (!set) {
       set = new Set()
@@ -708,6 +753,13 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     this.sessionGrants.delete(sessionId)
     this.sessionDenied.delete(sessionId)
     this.taskApps.delete(sessionId)
+    // Tarjetas aún abiertas de esa sesión: se cancelan, para que aprobarlas después no vuelva a crear permisos de sesión.
+    for (const [id, pending] of [...this.pendingAccess]) {
+      if (pending.sessionId !== sessionId) continue
+      this.pendingAccess.delete(id)
+      pending.resolve({ decisions: {}, cancelled: true })
+      this.emit('requestAccessResolved', { id })
+    }
     if (hadPlan) this.emit('planState', { sessionId, approved: false })
   }
 
@@ -719,6 +771,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   /** Fin de la sesión de control: apaga solo el respaldo legado; las aprobaciones por sesión siguen. */
   endLegacyPlan(): void {
     this.legacyPlanApproved = false
+    this.sessionGrants.delete('')
+    this.sessionDenied.delete('')
   }
 
   /**

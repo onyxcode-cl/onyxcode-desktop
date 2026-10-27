@@ -172,11 +172,11 @@ export const tasksComputer = {
   'tasksComputer.plan.approve': 'Approve and start',
   'tasksComputer.plan.confirm': 'Confirm',
   'tasksComputer.grants.revoke': 'Remove grant',
-  'tasksComputer.grants.allowAgain': 'Allow again',
+  'tasksComputer.grants.allowAgain': 'Remove',
   'tasksComputer.grants.granted': 'Apps with access granted',
   'tasksComputer.grants.empty1': 'None yet. Access is granted when the agent asks for it (the',
   'tasksComputer.grants.empty2': ' tool) or when a recognized browser or terminal is opened for the first time.',
-  'tasksComputer.grants.denied': 'Denied apps',
+  'tasksComputer.grants.denied': 'Blocked by you',
   'tasksComputer.grants.levels': 'Levels:',
   'tasksComputer.kind.screenshot': 'Screenshot',
   'tasksComputer.kind.click': 'Click',
@@ -310,6 +310,14 @@ export const tasksComputer = {
     'Working only in your folder, it can’t open apps, click, type in other apps or capture the screen. If you switch to Full control, a new task opens with your request and a summary of what’s been done so far; first we’ll ask you to confirm the change and the agent will ask for your approval before acting.',
   'tasksComputer.escalate.switch': 'Switch to Full Mac control and continue',
   'tasksComputer.escalate.stay': 'Stay in your folder only',
+  'tasksComputer.blocked.user':
+    '{app} is blocked because you blocked it. To unblock it: Settings › Mac control › Blocked by you › Remove.',
+  'tasksComputer.blocked.user.win':
+    '{app} is blocked because you blocked it. To unblock it: Settings › PC control › Blocked by you › Remove.',
+  'tasksComputer.blocked.unlock': 'Unblock…',
+  'tasksComputer.blocked.fixed': '{app} is blocked for security: it stores passwords and Lazunox never controls it. This can’t be unblocked from the app.',
+  'tasksComputer.blocked.session':
+    'You said no to {app} in this task. If you change your mind, ask the agent again and I’ll ask you once more.',
   'tasksComputer.net.allowed': 'You allowed access to',
   'tasksComputer.net.always': ' (always)',
   'tasksComputer.net.once': ' (this time only)',

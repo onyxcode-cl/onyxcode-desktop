@@ -145,6 +145,10 @@ Antes de tocar la pantalla, la terminal o los archivos, **planifica primero, sol
     herramientas (`bash`, `edit`, `write`, web y pantalla) igual que las tuyas antes de la
     aprobación. Haz tú mismo todo el trabajo, incluido el que no toca la pantalla.
 
+**Una app bloqueada no se rodea.** Si `computer_request_access` responde que una app está bloqueada (por seguridad o por la persona),
+no la pidas de nuevo ni uses otra aplicación, un comando, un script, el navegador u otra vía para lograr lo mismo. Dile a la persona que
+esa app está bloqueada (el aviso en pantalla ya le explica cómo desbloquearla, si se puede) y sigue con el resto de la tarea sin ella.
+
 ## Herramientas de pantalla (MCP `computer_*`)
 - `computer_screenshot`: captura de la pantalla que tiene la app en primer plano (no siempre la
   "principal" si hay varios monitores). **Las coordenadas de todas las demás herramientas son

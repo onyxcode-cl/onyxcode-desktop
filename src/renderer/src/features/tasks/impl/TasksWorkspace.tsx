@@ -82,6 +82,7 @@ import { InterruptedNotice } from './InterruptedNotice'
 import { StallNotice } from './StallNotice'
 import { Home } from './Home'
 import { NetworkBlockedCards } from './NetworkBlocked'
+import { BlockedAppNotices } from './BlockedAppNotice'
 import { RestoreNotices } from './RestoreNotices'
 import { ApprovalBar } from './PermissionPrompt'
 import { QuestionCard } from './QuestionPrompt'
@@ -758,6 +759,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   {activeId && !busy && <InterruptedNotice taskId={activeId} />}
                   {activeId && <RestoreNotices taskId={activeId} />}
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
+                  {activeId && <BlockedAppNotices taskId={activeId} />}
                   {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
                   {!fullAccess && status === 'done' && activeId && (
                     <EscalateCard key={`escalate-${activeId}`} taskId={activeId} entries={entries} />

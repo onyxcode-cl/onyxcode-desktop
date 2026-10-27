@@ -250,7 +250,7 @@ describe('registro auditable', () => {
 })
 
 describe('concesiones con claves de Windows', () => {
-  it('una app bloqueada llega a la tarjeta como denegada y no se concede aunque el renderer lo pida', async () => {
+  it('una app bloqueada no abre tarjeta (sale denegada) y no se concede aunque el renderer lo pida', async () => {
     const s = make('win32')
     const consent = 'exe:c:\\windows\\system32\\consent.exe|pub:microsoft windows'
     const got: Array<{ id: string; apps: Array<{ bundleId: string; denied?: boolean }> }> = []
@@ -260,14 +260,12 @@ describe('concesiones con claves de Windows', () => {
       { bundleId: winKey, name: 'Bloc de notas' }
     ])
     await vi.waitFor(() => expect(got).toHaveLength(1))
-    expect(got[0].apps.map((a) => [a.bundleId === consent, a.denied])).toEqual([
-      [true, true],
-      [false, false]
-    ])
+    // La bloqueada ya no llega a la tarjeta: solo la otra app.
+    expect(got[0].apps.map((a) => [a.bundleId === consent, a.denied])).toEqual([[false, false]])
     s.resolveAccessRequest(got[0].id, [
       { bundleId: consent, name: 'Consent', decision: 'full' },
       { bundleId: winKey, name: 'Bloc de notas', decision: 'click' }
-    ])
+    ], { scope: 'always' })
     const r = await p
     expect(r.decisions).toEqual({ [consent]: 'deny', [winKey]: 'click' })
     expect(s.grants.tierFor(consent)).toBeNull()

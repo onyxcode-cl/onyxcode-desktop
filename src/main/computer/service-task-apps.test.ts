@@ -4,7 +4,7 @@
  * `nonGrantedBundleIds` (`mcp-platform-darwin.ts`) para decidir qué queda visible en las capturas en
  * segundo plano, en vez de "cualquier app concedida alguna vez" (el bug real de Discord, F8-B140).
  */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -198,6 +198,9 @@ describe('tarjeta de acceso: permiso y denegación solo de la sesión', () => {
     expect(await tierOf(base, 'ses_otra_sesion_1', APP_A)).toBeNull()
     expect(s.grants.snapshot().grants).toEqual([])
     expect(s.grants.tierFor(APP_A)).toBeNull()
+    // El ARCHIVO de concesiones tampoco se escribe (no basta con mirar el estado en memoria).
+    const file = join(h.dir, 'computer-grants.json')
+    if (existsSync(file)) expect(JSON.parse(readFileSync(file, 'utf8')).grants ?? []).toEqual([])
   })
 
   it("scope 'always' conserva el permiso permanente", async () => {
@@ -279,26 +282,149 @@ describe('tarjeta de acceso: permiso y denegación solo de la sesión', () => {
     expect(await tierOf(base, SESSION, APP_A)).toBeNull()
   })
 
-  it('Denegar con alsoBlock sí bloquea para siempre; una denegada guardada nunca se concede', async () => {
+  it('Denegar con alsoBlock bloquea para siempre: no abre tarjeta y /tier da null en cualquier sesión', async () => {
     const s = make()
+    const base = await url(s)
     const a = await card(s, APP_A)
     s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }], { alsoBlock: true })
     await a.p
     expect(s.grants.snapshot().denied).toEqual([APP_A])
-    const a2 = await card(s, APP_A, 'ses_otra_sesion_1')
-    const res = new Promise<Record<string, string>>((ok) => void a2.p.then((r) => ok((r as { decisions: Record<string, string> }).decisions)))
-    s.resolveAccessRequest(a2.id, [{ bundleId: APP_A, name: 'X', decision: 'full' }], { scope: 'always' })
-    expect((await res)[APP_A]).toBe('deny')
+    const cards: unknown[] = []
+    s.on('requestAccess', (r) => cards.push(r))
+    const r = (await s.requestAccess([{ bundleId: APP_A, name: 'X' }], undefined, undefined, 'ses_otra_sesion_1')) as {
+      decisions: Record<string, string>
+    }
+    expect(r.decisions[APP_A]).toBe('deny')
+    expect(cards).toHaveLength(0)
+    expect(await tierOf(base, 'ses_otra_sesion_1', APP_A)).toBeNull()
     expect(s.grants.tierFor(APP_A)).toBeNull()
   })
 
-  it('una app bloqueada fija nunca se concede, ni con scope always', async () => {
+  it('una app bloqueada fija nunca se concede: sin tarjeta y /tier da null', async () => {
     const s = make()
+    const base = await url(s)
     const blocked = 'com.apple.Passwords'
     expect(s.grants.isBlocked(blocked)).toBe(true)
-    const { id, p } = await card(s, blocked)
-    const res = new Promise<Record<string, string>>((ok) => void p.then((r) => ok((r as { decisions: Record<string, string> }).decisions)))
-    s.resolveAccessRequest(id, [{ bundleId: blocked, name: 'X', decision: 'full' }], { scope: 'always' })
-    expect((await res)[blocked]).toBe('deny')
+    const cards: unknown[] = []
+    s.on('requestAccess', (r) => cards.push(r))
+    const r = (await s.requestAccess([{ bundleId: blocked, name: 'X' }], undefined, undefined, SESSION)) as {
+      decisions: Record<string, string>
+    }
+    expect(r.decisions[blocked]).toBe('deny')
+    expect(cards).toHaveLength(0)
+    expect(await tierOf(base, SESSION, blocked)).toBeNull()
+  })
+
+  it('una petición sin sesión (o con sesión mal formada) no guarda ni hereda nada', async () => {
+    const s = make()
+    const base = await url(s)
+    const got: Array<{ id: string }> = []
+    s.on('requestAccess', (r: { id: string }) => void got.push(r))
+    const p = s.requestAccess([{ bundleId: APP_A, name: 'X' }])
+    await vi.waitFor(() => expect(got).toHaveLength(1))
+    s.resolveAccessRequest(got[0].id, [{ bundleId: APP_A, name: 'X', decision: 'full' }])
+    await p
+    const q = s.requestAccess([{ bundleId: APP_B, name: 'X' }])
+    await vi.waitFor(() => expect(got).toHaveLength(2))
+    s.resolveAccessRequest(got[1].id, [{ bundleId: APP_B, name: 'X', decision: 'deny' }])
+    await q
+    const noSess = (await (await fetch(`${base}/tier?bundleId=${APP_A}&name=X`)).json()) as { tier: string | null }
+    expect(noSess.tier).toBeNull()
+    const bad = (await (await fetch(`${base}/tier?bundleId=${APP_A}&name=X&session=${encodeURIComponent('a b/../')}`)).json()) as {
+      tier: string | null
+    }
+    expect(bad.tier).toBeNull()
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+    // La denegación sin sesión tampoco se recuerda: vuelve a abrir tarjeta.
+    const again = s.requestAccess([{ bundleId: APP_B, name: 'X' }])
+    await vi.waitFor(() => expect(got).toHaveLength(3))
+    s.resolveAccessRequest(got[2].id, [], { cancel: true })
+    await again
+  })
+
+  it('endLegacyPlan limpia la clave vacía', () => {
+    const s = make()
+    const priv = s as unknown as { sessionGrants: Map<string, Map<string, string>>; sessionDenied: Map<string, Set<string>> }
+    priv.sessionGrants.set('', new Map([[APP_A, 'full']]))
+    priv.sessionDenied.set('', new Set([APP_B]))
+    s.endLegacyPlan()
+    expect(priv.sessionGrants.has('')).toBe(false)
+    expect(priv.sessionDenied.has('')).toBe(false)
+  })
+
+  it('revokePlan(B) no toca la sesión A', async () => {
+    const s = make()
+    const base = await url(s)
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'view' }])
+    await a.p
+    const b = await card(s, APP_B, 'ses_otra_sesion_1')
+    s.resolveAccessRequest(b.id, [{ bundleId: APP_B, name: 'X', decision: 'view' }])
+    await b.p
+    s.revokePlan('ses_otra_sesion_1')
+    expect(await tierOf(base, SESSION, APP_A)).toBe('view')
+    expect(await tierOf(base, 'ses_otra_sesion_1', APP_B)).toBeNull()
+    expect(s.sessionGrantedApps(SESSION)).toEqual([APP_A])
+  })
+
+  it('denegar en la sesión una app con permiso guardado: /tier null ahí e intacto en otras', async () => {
+    const s = make()
+    const base = await url(s)
+    s.grants.grant(APP_A, 'X', 'view')
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }])
+    await a.p
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+    expect(await tierOf(base, 'ses_otra_sesion_1', APP_A)).toBe('view')
+  })
+
+  it('alsoBlock sobre una app con permiso de sesión y guardado deja ambos en null', async () => {
+    const s = make()
+    const base = await url(s)
+    s.grants.grant(APP_A, 'X', 'view')
+    const a = await card(s, APP_A)
+    // La app ya tiene permiso guardado: se abre la tarjeta antes de bloquear.
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'full' }])
+    await a.p
+    expect(await tierOf(base, SESSION, APP_A)).toBe('full')
+    const b = await card(s, APP_A)
+    s.resolveAccessRequest(b.id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }], { alsoBlock: true })
+    await b.p
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+    expect(s.grants.tierFor(APP_A)).toBeNull()
+  })
+
+  it('modo auto con la app denegada en la sesión no llama a autoAccess', async () => {
+    const s = make()
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'deny' }])
+    await a.p
+    const auto = vi.fn(async () => ({ approve: true as const, recordId: 'r' }))
+    s.autoAccess = auto
+    const r = (await s.requestAccess([{ bundleId: APP_A, name: 'X' }], undefined, undefined, SESSION)) as {
+      decisions: Record<string, string>
+    }
+    expect(r.decisions[APP_A]).toBe('deny')
+    expect(auto).not.toHaveBeenCalled()
+  })
+
+  it('aprobar una tarjeta pendiente después de revokePlan no concede nada', async () => {
+    const s = make()
+    const base = await url(s)
+    const a = await card(s, APP_A)
+    s.revokePlan(SESSION)
+    const res = (await a.p) as { cancelled?: boolean }
+    expect(res.cancelled).toBe(true)
+    expect(s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'full' }])).toBe(false)
+    expect(await tierOf(base, SESSION, APP_A)).toBeNull()
+    expect(s.sessionGrantedApps(SESSION)).toEqual([])
+  })
+
+  it('allSessionGrantedApps lista las apps con permiso de sesión (para no ocultarlas)', async () => {
+    const s = make()
+    const a = await card(s, APP_A)
+    s.resolveAccessRequest(a.id, [{ bundleId: APP_A, name: 'X', decision: 'view' }])
+    await a.p
+    expect(s.allSessionGrantedApps()).toEqual([APP_A])
   })
 })

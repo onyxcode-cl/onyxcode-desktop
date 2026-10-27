@@ -84,8 +84,13 @@ export function createComputerParts(): ComputerParts {
    */
   const keepVisibleBundleIds = (): string[] =>
     computer.ownConsent
-      ? [...computer.grants.snapshot().grants.map((g) => g.bundleId)]
-      : [...computer.grants.snapshot().grants.map((g) => g.bundleId), ...SYSTEM_EXEMPT_BUNDLE_IDS, 'com.apple.finder']
+      ? [...computer.grants.snapshot().grants.map((g) => g.bundleId), ...computer.allSessionGrantedApps()]
+      : [
+          ...computer.grants.snapshot().grants.map((g) => g.bundleId),
+          ...computer.allSessionGrantedApps(),
+          ...SYSTEM_EXEMPT_BUNDLE_IDS,
+          'com.apple.finder'
+        ]
   const maybeUnhideApps = (): void => {
     if (computer.prefs.get().unhideOnFinish) void appVisibility.unhide()
   }
@@ -224,6 +229,8 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   })
   // Aprobación del plan por sesión (aprobado / revocado): el renderer pinta "Plan aprobado · Revocar".
   computer.on('planState', (st) => send('computer:planState', st))
+  // App bloqueada pedida por el agente (sin tarjeta): el hilo muestra por qué y qué hacer.
+  computer.on('blockedApps', (ev) => send('computer:blockedApps', ev))
   // Tras los listeners: si el atajo global no se registra, `killState` llega a la UI (que además
   // lo consulta con `computer:state` al montar Tareas, por si la ventana aún no existía).
   computer.init()

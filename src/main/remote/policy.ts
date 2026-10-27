@@ -747,6 +747,7 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'computer:accessRequest': 'sanitize',
   'computer:accessResolved': 'allow',
   'computer:planState': 'allow',
+  'computer:blockedApps': 'allow',
   'tasks:networkBlocked': 'allow',
   'tasks:activity': 'allow',
   'tasks:sandbox:progress': 'deny',
@@ -1431,7 +1432,7 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     text: t('Conceder acceso a apps o aprobar un plan en el Mac', 'Grant app access or approve a plan on the Mac'),
     detail: (Array.isArray(p.decisions) ? p.decisions : [])
       .filter((d) => rec(d).decision !== 'deny')
-      .map((d) => `${String(rec(d).name)} (${String(rec(d).decision)})`)
+      .map((d) => `${String(rec(d).name)} (${String(rec(d).decision)}, ${p.scope === 'always' ? 'siempre' : 'esta sesión'})`)
   }),
   'tasks:folders:link': (p, h) => ({
     text: t('Vincular otra carpeta a un proyecto', 'Link another folder to a project'),
