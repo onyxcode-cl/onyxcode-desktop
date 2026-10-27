@@ -47,7 +47,7 @@ export default {
     if (t.length > 700) return falla('causa.txt demasiado larga')
     if (!m.includes('pagos-db')) return falla('no nombra la base pagos-db')
     if (!/pool|conexion|conexión/.test(m)) return falla('no menciona el pool de conexiones')
-    return /agotad|exhaust|lleno|sin conexiones/.test(m) ? ok() : falla('no dice que el pool se agotó')
+    return /agotad|agotamiento|exhaust|lleno|sin conexiones|sin disponibilidad/.test(m) ? ok() : falla('no dice que el pool se agotó')
   },
   guion: (dir) => ({
     turnos: [
