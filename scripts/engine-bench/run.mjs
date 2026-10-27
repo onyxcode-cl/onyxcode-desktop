@@ -275,7 +275,9 @@ async function unaCorrida(cfg, tarea, ctx) {
         '--model', modelo,
         ...(sessionID ? ['--session', sessionID] : [])
       ]
-      const r = await lanzarRun(cfg, entorno, proj, argv, tarea.pedidos[i])
+      // BENCH_PEDIDO_EXTRA (entorno del ejecutor): texto que se añade al PRIMER pedido de cada tarea (p. ej. para forzar el uso de un flujo).
+      const pedido = i === 0 && process.env.BENCH_PEDIDO_EXTRA ? `${tarea.pedidos[i]} ${process.env.BENCH_PEDIDO_EXTRA}` : tarea.pedidos[i]
+      const r = await lanzarRun(cfg, entorno, proj, argv, pedido)
       acumular(m, r, cfg.sumarAyudantes)
       sessionID ??= m.sessionID
       if (r.cortePorTiempo) m.errores.push(`tiempo agotado (${cfg.timeoutMin} min)`)

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:48:02.190Z",
+  "tarea": "T31",
+  "repeticion": 1,
+  "nombre": "Fan-out: errores en 10 paquetes",
+  "mide": "Flujos por script (7.17)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": [
+      "OPENCODE_EXPERIMENTAL_CODE_MODE=1",
+      "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1",
+      "LAZUNOX_FLUJOS=1"
+    ]
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 100804,
+      "salida": 2265,
+      "cache_leida": 214400,
+      "enviados": 315204
+    },
+    "tokens_ayudantes": {
+      "entrada": 89268,
+      "salida": 1507,
+      "cache_leida": 191488,
+      "pasos": 27,
+      "enviados": 280756,
+      "incluidos_en_tokens": true
+    },
+    "pasos": 3,
+    "tokens_por_paso": {
+      "med": 11039,
+      "p90": 13307
+    },
+    "llamadas": 2,
+    "llamadas_por_paso": 0.6666666666666666,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 1,
+      "execute": 1
+    },
+    "bytes_resultados": 2170,
+    "permisos_negados": 0,
+    "tiempo_ms": 43986,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-ItWNvG"
+  }
+}

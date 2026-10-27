@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:51:06.302Z",
+  "tarea": "T32",
+  "repeticion": 1,
+  "nombre": "Migración de 5 pasos en 3 juegos independientes",
+  "mide": "Flujos por script con dependencias (7.17, adaptación de T21)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": [
+      "OPENCODE_EXPERIMENTAL_CODE_MODE=1",
+      "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1",
+      "LAZUNOX_FLUJOS=1"
+    ]
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 45070,
+      "salida": 4727,
+      "cache_leida": 360576,
+      "enviados": 405646
+    },
+    "tokens_ayudantes": {
+      "entrada": 28623,
+      "salida": 3476,
+      "cache_leida": 296192,
+      "pasos": 26,
+      "enviados": 324815,
+      "incluidos_en_tokens": true
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 14143.5,
+      "p90": 16062
+    },
+    "llamadas": 5,
+    "llamadas_por_paso": 0.8333333333333334,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 3,
+      "execute": 1,
+      "execute_wait": 1
+    },
+    "bytes_resultados": 11249,
+    "permisos_negados": 0,
+    "tiempo_ms": 54176,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-UktHwa"
+  }
+}

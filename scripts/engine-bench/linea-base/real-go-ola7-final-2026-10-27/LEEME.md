@@ -20,3 +20,8 @@ Modelo `opencode-go/deepseek-v4.1-flash`, flags de siempre (60 pasos, 400 000 to
 - Comparaciones: `node scripts/engine-bench/run.mjs --comparar <control/corridas> <carpeta>` → `comparacion-*.md`. `a-todo/` junta las corridas de a1–a3 (+ T29 r04/r05).
 - Gasto total estimado: unos 14,1 M de tokens enviados (tope 14 M, pasado por ~0,1 M en el último bloque). Por eso NO se midió T21 con flujos ni se pasó de n=3 en T31/T32.
 - La clave de OpenCode Go se usó desde una copia temporal de solo lectura (ya borrada); no está en ningún archivo de esta carpeta.
+
+## Fase 2 (carpetas e1, e2, e3, f0, f1 y T19 más en a2)
+- e1/e2: T05,T18,T26 n=5 con `--conservar`, final y control (`MOTOR=ctl`). e3: T28 n=5 con `LAZUNOX_SANITIZAR_MODELO=1` y `--conservar`. f0/f1: T21,T32,T31 n=3 con `--sumar-ayudantes`, ambas con `--env OPENCODE_EXPERIMENTAL_CODE_MODE=1 --env OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1`; f1 añade `--env LAZUNOX_FLUJOS=1`. En el entorno del ejecutor, `BENCH_PEDIDO_EXTRA` (nuevo en `run.mjs`: texto que se añade al primer pedido de cada tarea) = «Importante: resuélvelo con una sola llamada a la herramienta execute usando tools.flujos.en_paralelo (un ayudante por unidad de trabajo independiente) y devuelve solo el resultado.»
+- T19: `--repeticiones 6` sobre la carpeta a2 (reutiliza r01–r03); se cortó tras r04 por el tope de gasto.
+- Las carpetas conservadas (con la base de sesiones) quedaron fuera del repo, en `~/Documents/lzx-bench-bin/tr/`; los hallazgos de T05, T28 y flujos se leyeron de ahí y están resumidos en DIAGNOSTICO.md.
