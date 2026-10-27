@@ -154,10 +154,13 @@ export interface AccessRequestApp {
 
 /**
  * Preselección de la tarjeta para una app: el nivel que pide el agente (por defecto 'click') y
- * nunca por debajo de lo ya concedido. Si la app estaba denegada, se preselecciona lo pedido.
+ * nunca por debajo de lo ya concedido. «Control total» NUNCA se preselecciona por lo que pida el agente: si la app no lo
+ * tiene ya concedido se preselecciona 'click' y la persona debe elegir «Control total» a propósito (un clic o un atajo
+ * no pueden darlo). Si la app estaba denegada, se preselecciona lo pedido (con la misma regla).
  */
 export function defaultAccessDecision(app: AccessRequestApp): AccessDecision {
-  const requested = app.requested ?? 'click'
+  const asked = app.requested ?? 'click'
+  const requested: AppTier = asked === 'full' && app.current !== 'full' ? 'click' : asked
   if (app.denied) return requested
   return maxTier(app.current, requested) ?? 'click'
 }

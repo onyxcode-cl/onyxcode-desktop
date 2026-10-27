@@ -251,9 +251,9 @@ sobre un archivo existente o guardar sobre un archivo existente con herramientas
 «no tienes permiso». Crear archivos nuevos y editar sus contenidos sí funciona. Si te pasa:
 1. **No insistas ni busques rodeos** (otro comando, `python` para renombrar, etc.).
 2. Explícale al usuario que hace falta la opción **«Permitir borrar, mover y renombrar»** de la tarea
-   y ofrécele elegir: concederla, o que hagas otra cosa. Dile **dónde** está: **Panel del proyecto ›
-   Carpeta › Permitir borrar, mover y renombrar** (o el botón de la tarjeta amarilla que aparece
-   bajo tu mensaje); no digas «suele estar en el panel de permisos».
+   y ofrécele elegir: concederla, o que hagas otra cosa. Dile **dónde** está: botón **Proyecto e instrucciones**
+   (barra lateral) › pestaña **Proyecto** › sección **Carpeta** › interruptor **Permitir borrar,
+   mover y renombrar** (o el botón de la tarjeta amarilla que aparece bajo tu mensaje); no digas «suele estar en el panel de permisos».
 3. Sin ese permiso, ofrece una **copia ordenada**: crea la estructura nueva (por ejemplo
    `Ordenado/<tipo>/`) y copia con `cp -c` (clona sin duplicar espacio en disco), **dejando los
    originales intactos**, y termina con una lista de lo copiado. Con `cp -c`, si el destino ya existe

@@ -65,8 +65,30 @@ describe('prompts de agente', () => {
 
   it('tasks.md dice DÓNDE está el permiso de borrar (texto exacto del glosario)', () => {
     const t = read('tasks')
-    expect(t).toContain('Panel del proyecto ›\n   Carpeta › Permitir borrar, mover y renombrar')
+    expect(t).toContain('botón **Proyecto e instrucciones**')
+    expect(t).toContain('pestaña **Proyecto** › sección **Carpeta**')
+    expect(t.replace(/\s+/g, ' ')).toContain('interruptor **Permitir borrar, mover y renombrar**')
     expect(t).toContain('tarjeta amarilla')
+  })
+
+  it('tasks.md: la ruta que cita al permiso de borrar existe en la interfaz (etiquetas exactas, es)', async () => {
+    const { DICTIONARIES } = await import('../../shared/i18n')
+    const es = DICTIONARIES.es
+    const t = read('tasks').replace(/\s+/g, ' ')
+    const tasksPanel = readFileSync(join(__dirname, '../../renderer/src/features/tasks/impl/ProjectPanel.tsx'), 'utf8')
+    const deleteGrant = readFileSync(join(__dirname, '../../renderer/src/features/tasks/impl/DeleteGrant.tsx'), 'utf8')
+    const sidebar = readFileSync(join(__dirname, '../../renderer/src/features/tasks/impl/TasksSidebar.tsx'), 'utf8')
+    const label = (k: string): string => es[k] as string
+    // Cada tramo citado es exactamente la etiqueta que ve la persona...
+    expect(t).toContain(`**${label('tasks.sidebar.project')}**`)
+    expect(t).toContain(`pestaña **${label('tasks.proj.tabProject')}**`)
+    expect(t).toContain(`sección **${label('tasks.proj.folder')}**`)
+    expect(t).toContain(`**${label('tasksSettings.glossary.deleteGrant')}**`)
+    // ...y el código los pinta donde dice: botón del libro en la barra, pestaña, sección «Carpeta» con el interruptor.
+    expect(sidebar).toContain("t('tasks.sidebar.project')")
+    expect(tasksPanel).toContain("t('tasks.proj.tabProject')")
+    expect(tasksPanel).toMatch(/t\('tasks\.proj\.folder'\)\}<\/span>\s*<DeleteGrantToggle \/>/)
+    expect(deleteGrant).toContain('TASKS_TERMS.deleteGrant')
   })
 
   it('tasks.md acota la escalada a una petición explícita', () => {

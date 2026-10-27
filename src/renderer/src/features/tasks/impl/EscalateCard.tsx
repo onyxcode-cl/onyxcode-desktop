@@ -11,14 +11,18 @@
  */
 import { useState } from 'react'
 import { FolderOpen, ShieldAlert } from 'lucide-react'
+import { friendlyAppName, labeledAppName, MAC_FIXED_BLOCKED, WIN_FIXED_BLOCKED, type LabeledApp } from '@shared/blocked-apps'
+import type { GrantsSnapshot } from '@shared/ipc-tasks'
 import { Button } from '../../../components/Button'
 import type { Lang } from '@shared/i18n'
 import { getLang, useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
+import { isWindowsPlatform } from '../../../lib/platform'
 import type { MessageEntry } from '../../../stores/sessions'
 import { lastAssistantEntry, lastAssistantText } from '../../../lib/conversation/entries'
 import { reveal, sendToTask, setAccessMode } from './actions'
-import { currentTasksModel, useTasks } from './store'
+import { BlockedRow } from './BlockedAppNotice'
+import { currentTasksModel, useTasks, type BlockedAppEntry } from './store'
 import { firstUserPrompt } from './transcript'
 
 // Se re-exportan para no romper a quien las importaba de acá (la implementación vive en
@@ -78,6 +82,8 @@ export const OPEN_FOLDER_MARKER = '[[LAZUNOX:OPEN_FOLDER]]'
 /** Prefijo del marcador `[[LAZUNOX:NEEDS_APP:<App>]]` (pide usar otra app; escala al alcance «El computador completo»). */
 export const NEEDS_APP_PREFIX = '[[LAZUNOX:NEEDS_APP:'
 const MAX_APP_NAME = 60
+/** El motivo viene del agente: se recorta para que no llene la tarjeta. */
+export const MAX_REASON_CHARS = 300
 const DECORATION = /[\s*_`>#-]+/g
 
 export type EscalationKind = 'folder' | 'app' | 'full'
@@ -95,11 +101,17 @@ function lastTwoLines(text: string): { last: string; prev: string } {
   return { last: lines[lines.length - 1] ?? '', prev: lines[lines.length - 2] ?? '' }
 }
 
+function clipReason(text: string): string {
+  return text.length > MAX_REASON_CHARS ? `${text.slice(0, MAX_REASON_CHARS - 1).trimEnd()}…` : text
+}
+
 function cleanReason(line: string): string {
-  return line
-    .replace(/^[\s*_`>#:：-]+/, '')
-    .replace(/[\s*_`]+$/, '')
-    .trim()
+  return clipReason(
+    line
+      .replace(/^[\s*_`>#:：-]+/, '')
+      .replace(/[\s*_`]+$/, '')
+      .trim()
+  )
 }
 
 /**
@@ -148,10 +160,12 @@ export function escalationReason(text: string): string {
   const end = at + m.len
   const from = end < map.length ? map[end] : text.length
   const rest = text.slice(from).split('\n')[0].split(ESCALATE_MARKER).join('')
-  return rest
-    .replace(/^[\s*_:：-]+/, '')
-    .replace(/[\s*_]+$/, '')
-    .trim()
+  return clipReason(
+    rest
+      .replace(/^[\s*_:：-]+/, '')
+      .replace(/[\s*_]+$/, '')
+      .trim()
+  )
 }
 
 /** Prompt de la tarea nueva en Control total: encargo original + resumen de lo hecho en sandbox (≤1500 caracteres). */
@@ -163,11 +177,11 @@ export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = ge
   if (app) {
     return lang === 'en'
       ? // i18n-ignore: prompt al agente (en el idioma de la interfaz)
-        `Continue this task, which I started in "A folder" scope, in "The entire computer". The app I need you to use: ${app}.\n\n` +
+        `Continue this task, which I started in "A folder" scope, in "The entire computer". The agent asked to use this app: ${app}.\n\n` +
           // i18n-ignore: prompt al agente
           `Original request:\n${original}\n\nWhat you did or concluded in the sandbox:\n${summary}`
       : // i18n-ignore: prompt al agente (en el idioma de la interfaz)
-        `Continúa en «El computador completo» esta tarea que empecé en «Una carpeta». La app que necesito que uses: ${app}.\n\n` +
+        `Continúa en «El computador completo» esta tarea que empecé en «Una carpeta». El agente pidió usar: ${app}.\n\n` +
           // i18n-ignore: prompt al agente
           `Encargo original:\n${original}\n\nLo que hiciste o concluiste en sandbox:\n${summary}`
   }
@@ -189,6 +203,51 @@ export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = ge
     // i18n-ignore: prompt al agente
     `Lo que hiciste o concluiste en sandbox:\n${summary}`
   )
+}
+
+// ───────────────────────────── ¿Está bloqueada la app que pide el agente? ─────────────────────────────
+
+/** Minúsculas, sin tildes, sin «.exe» ni separadores: «Bitwarden.exe» y «bitwarden» comparan igual. */
+function normApp(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\.exe$/, '')
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function sameApp(a: string, b: string): boolean {
+  const x = normApp(a)
+  const y = normApp(b)
+  if (!x || !y) return false
+  if (x === y) return true
+  // «1Password 8» pide la app «1Password»: coincide por prefijo, pero solo con nombres largos (no «Mail» con «Mailchimp»).
+  return Math.min(x.length, y.length) >= 6 && (x.startsWith(y) || y.startsWith(x))
+}
+
+/**
+ * ¿La app que pide el agente está bloqueada? 'fixed' = lista de seguridad de Lazunox; 'user' = la bloqueó la persona (guardada
+ * en el snapshot de permisos); 'session' = dijo que no en esta tarea (aviso ya recibido en el hilo). Se compara por NOMBRE
+ * (el agente no conoce el id de la app). Pura.
+ */
+export function blockedKindFor(
+  app: string,
+  opts: { grants: GrantsSnapshot | null; entries?: BlockedAppEntry[]; win: boolean; fixedName: (a: LabeledApp) => string }
+): BlockedAppEntry['kind'] | null {
+  if (!app.trim()) return null
+  for (const a of opts.win ? WIN_FIXED_BLOCKED : MAC_FIXED_BLOCKED) {
+    const idName = /\.exe$/i.test(a.id) ? a.id.replace(/\.exe$/i, '') : friendlyAppName(a.id.replace(/\.$/, ''))
+    if (sameApp(app, a.name) || sameApp(app, opts.fixedName(a)) || sameApp(app, idName)) return 'fixed'
+  }
+  for (const e of opts.entries ?? []) if (sameApp(app, e.name)) return e.kind
+  const g = opts.grants
+  if (g) {
+    for (const key of g.denied) {
+      if (sameApp(app, g.deniedNames?.[key] || friendlyAppName(key))) return 'user'
+    }
+  }
+  return null
 }
 
 // ───────────────────────────── Continuación armada (nivel de módulo) ─────────────────────────────
@@ -243,12 +302,14 @@ function armContinuation(entries: MessageEntry[], app = ''): boolean {
 /**
  * Tarjeta bajo el último mensaje de una tarea sandbox terminada, según el marcador final del agente:
  *  - `full`: «Esta tarea necesita controlar apps de tu Mac» (marcador de siempre);
- *  - `app`: «¿Permitir que Lazunox use {App}?» (misma experiencia que las tarjetas por app);
+ *  - `app`: «Esta tarea necesita {App}» (el botón cambia el alcance; NO concede la app: el permiso por app llega después);
  *  - `folder`: botón «Abrir carpeta en Finder» (`tasks:reveal`, sin cambiar de modo).
  */
 export function EscalateCard({ taskId, entries }: { taskId: string; entries: MessageEntry[] }): React.JSX.Element | null {
   const t = useT()
   const folder = useTasks((s) => s.folder)
+  const grants = useTasks((s) => s.grants)
+  const blockedEntries = useTasks((s) => s.blockedApps[taskId])
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const last = lastAssistantEntry(entries)
   if (!taskId || !last || dismissed.has(last.info.id)) return null
@@ -284,6 +345,16 @@ export function EscalateCard({ taskId, entries }: { taskId: string; entries: Mes
   }
 
   const isApp = esc.kind === 'app'
+  // App bloqueada (lista fija, bloqueada por la persona o negada en esta tarea): no se ofrece escalar, solo el aviso de bloqueo.
+  if (isApp) {
+    const kind = blockedKindFor(esc.app, {
+      grants,
+      entries: blockedEntries,
+      win: isWindowsPlatform(),
+      fixedName: (a) => labeledAppName(a, t)
+    })
+    if (kind) return <BlockedRow entry={{ bundleId: `escalate:${esc.app}`, name: esc.app, kind }} />
+  }
   const escalate = (): void => {
     if (!armContinuation(entries, esc.app)) return
     // Abre SIEMPRE el diálogo de confirmación; no hay atajo que lo salte.

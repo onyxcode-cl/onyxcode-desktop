@@ -11,7 +11,7 @@ import { useT } from '../../../lib/i18n'
 import { useUi } from '../../../stores/ui'
 import { useTasks, type BlockedAppEntry } from './store'
 
-function BlockedRow({ entry }: { entry: BlockedAppEntry }): React.JSX.Element {
+export function BlockedRow({ entry }: { entry: BlockedAppEntry }): React.JSX.Element {
   const t = useT()
   const Icon = entry.kind === 'fixed' ? ShieldAlert : Ban
   return (

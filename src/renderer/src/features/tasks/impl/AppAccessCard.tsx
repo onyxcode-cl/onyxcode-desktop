@@ -1,10 +1,10 @@
 /**
  * Tarjetas de concesión por app (herramientas MCP `request_access` y `request_full_control`):
  *  - `AppPermissionCard`: «¿Permitir que Lazunox use {App}?» — motivo del agente, avisos, una fila por app con su
- *    nivel (se puede bajar), «Denegar» (Esc), «Permitir para esta sesión» (⌘↵ / Ctrl+↵) y «Bloquear siempre».
+ *    nivel (se puede bajar), «Cancelar» (Esc), «Denegar», «Permitir para esta sesión» (⌘↵ / Ctrl+↵) y «Bloquear siempre» por app.
  *  - `PlanDetailCard`: tarjeta con plan de la tarea (y/o sin apps).
  *  - `TakeoverAccessCard`: «¿Tomar el control de la pantalla?».
- * Aprobar nunca baja un nivel ya concedido (main aplica el máximo) y Esc nunca concede nada.
+ * Aprobar nunca baja un nivel ya concedido (main aplica el máximo) y Esc nunca concede ni deniega (cancela).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, Eye, ListChecks, Loader2, MonitorCog, MousePointerClick, ShieldAlert, X } from 'lucide-react'
@@ -81,20 +81,24 @@ export function TierSegmented({
       {tierSegmentOptions(t)
         .filter((o) => withDeny || o.v !== 'deny')
         .map((o) => (
-        <button
-          key={o.v}
-          type="button"
-          role="radio"
-          aria-checked={value === o.v}
-          title={o.title}
-          onClick={() => onChange(o.v)}
-          className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] desk:text-meta font-medium transition ${
-            value === o.v ? (o.v === 'deny' ? 'bg-danger/15 text-danger' : 'bg-elevated text-accent shadow-sm') : 'text-muted hover:text-fg'
-          }`}
-        >
-          {o.icon} {o.label}
-        </button>
-      ))}
+          <button
+            key={o.v}
+            type="button"
+            role="radio"
+            aria-checked={value === o.v}
+            title={o.title}
+            onClick={() => onChange(o.v)}
+            className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] desk:text-meta font-medium transition ${
+              value === o.v
+                ? o.v === 'deny'
+                  ? 'bg-danger/15 text-danger'
+                  : 'bg-elevated text-accent shadow-sm'
+                : 'text-muted hover:text-fg'
+            }`}
+          >
+            {o.icon} {o.label}
+          </button>
+        ))}
     </div>
   )
 }
@@ -432,30 +436,46 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
   )
 }
 
+/** Tiempo de armado de la tarjeta (el mismo que `CONSENT_UI_ARM_MS` de ComputerConsentWin): antes, ninguna tecla responde. */
+export const APP_CARD_ARM_MS = 600
+
 /** ¿Es el atajo de «Permitir»? ⌘↵ en Mac, Ctrl+↵ en el resto (sin Mayús/Alt). Pura. */
 export function isAllowShortcut(e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>, mac: boolean): boolean {
   if (e.key !== 'Enter' || e.shiftKey || e.altKey) return false
   return mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
 }
 
+/** Una tecla que ya fue atendida por otro (IME, select, diálogo) o que es autorrepetición no responde la tarjeta. */
+function isStrayKey(e: Pick<KeyboardEvent, 'repeat' | 'isComposing' | 'defaultPrevented'>): boolean {
+  return e.repeat || e.isComposing || e.defaultPrevented
+}
+
 /**
  * Tarjeta «¿Permitir que Lazunox use {App}?»: sin plan y con apps. «Permitir» manda `scope: 'session'` (explícito);
- * «Denegar» (y Esc) deniega solo en esta tarea; «Bloquear siempre» deniega y manda `alsoBlock`.
- * ⌘↵ / Ctrl+↵ concede solo si el foco está dentro de la tarjeta; Esc nunca concede.
+ * «Denegar» deniega solo en esta tarea; «Bloquear siempre» (por app) deniega esa app y manda `alsoBlock`.
+ * Teclado, solo con el foco DENTRO de la tarjeta (nunca se roba el foco al montarse): ⌘↵ / Ctrl+↵ concede; Esc CANCELA
+ * (no concede ni deniega). Ambos ignoran la autorrepetición, la composición de un IME y las teclas ya atendidas, y no
+ * responden hasta 600 ms después de mostrarse la tarjeta (una tecla mantenida no aprueba la siguiente). El atajo nunca
+ * concede «Control total» si esa app no lo tenía ya.
  */
 export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.Element {
   const t = useT()
   const mac = isMacPlatform()
   const win = isWindowsPlatform()
-  const cardRef = useRef<HTMLDivElement>(null)
   const [choices, setChoices] = useState<Record<string, AccessDecision>>(() =>
     Object.fromEntries(req.apps.map((a) => [a.bundleId, defaultAccessDecision(a)]))
   )
   const [busy, setBusy] = useState(false)
+  const armed = useRef(false)
+  useEffect(() => {
+    armed.current = false
+    const id = setTimeout(() => {
+      armed.current = true
+    }, APP_CARD_ARM_MS)
+    return () => clearTimeout(id)
+  }, [req.id])
   const decisionFor = (a: AccessRequestApp): AccessDecision => choices[a.bundleId] ?? defaultAccessDecision(a)
 
-  const denyDecisions = (): Array<{ bundleId: string; name: string; decision: AccessDecision }> =>
-    req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const }))
   const allow = (): void => {
     if (busy) return
     setBusy(true)
@@ -464,50 +484,46 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
       { scope: 'session' }
     ).finally(() => setBusy(false))
   }
+  /** El atajo no concede «Control total» a una app que no lo tenía: eso exige elegirlo y pulsar el botón. */
+  const shortcutAllowed = (): boolean => !req.apps.some((a) => decisionFor(a) === 'full' && a.current !== 'full')
   const deny = (): void => {
     if (busy) return
     setBusy(true)
-    void respondAccessRequest(denyDecisions()).finally(() => setBusy(false))
+    void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const }))).finally(() =>
+      setBusy(false)
+    )
   }
-  const blockAlways = (): void => {
+  /** Bloquea SOLO esa app para siempre; las demás de la tarjeta quedan sin responder (el agente las volverá a pedir). */
+  const blockAlways = (a: AccessRequestApp): void => {
     if (busy) return
     setBusy(true)
-    void respondAccessRequest(denyDecisions(), { alsoBlock: true }).finally(() => setBusy(false))
+    void respondAccessRequest([{ bundleId: a.bundleId, name: a.name, decision: 'deny' }], { alsoBlock: true }).finally(() => setBusy(false))
   }
-
-  // Esc = Denegar (nunca concede). Se escucha en el documento para que funcione sin foco en la tarjeta.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') deny()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [req, busy])
-
-  // Si nadie tiene el foco (nadie está escribiendo), la tarjeta lo toma para que el atajo de «Permitir» funcione.
-  useEffect(() => {
-    const el = document.activeElement
-    if (!el || el === document.body) cardRef.current?.focus({ preventScroll: true })
-  }, [req])
+  const cancel = (): void => {
+    if (busy) return
+    setBusy(true)
+    dismissAccessRequest()
+  }
 
   const many = req.apps.length > 1
   const title = many ? t('tasksComputer.appAccess.titleMany') : t('tasksComputer.appAccess.title', { app: req.apps[0]?.name ?? '' })
-  const anyAction = req.apps.some((a) => decisionFor(a) !== 'view')
   const shortcut = mac ? '⌘↵' : 'Ctrl+↵'
 
   return (
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
       <div
-        ref={cardRef}
         tabIndex={-1}
         role="alertdialog"
         aria-labelledby="tasks-app-access-title"
         onKeyDown={(e) => {
-          // Solo con el foco dentro de la tarjeta (el evento sube desde ella).
+          // Solo con el foco dentro de la tarjeta (el evento sube desde ella), armada y sin teclas ajenas.
+          if (!armed.current || isStrayKey(e.nativeEvent) || e.defaultPrevented) return
           if (isAllowShortcut(e.nativeEvent, mac)) {
             e.preventDefault()
-            allow()
+            if (shortcutAllowed()) allow()
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            cancel()
           }
         }}
         className="animate-rise-in rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 shadow-sm outline-none"
@@ -515,14 +531,12 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
         <h3 id="tasks-app-access-title" className="text-base font-semibold text-fg">
           {title}
         </h3>
-        <p
-          data-testid="app-access-reason"
-          className="mt-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-sm text-muted"
-        >
+        <p data-testid="app-access-reason" className="mt-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-sm text-muted">
           {req.reason?.trim() ? req.reason : t('tasksComputer.appAccess.reasonNone')}
         </p>
-        <p className="mt-2 text-xs text-muted">{win ? t('tasksComputer.appAccess.background.win') : t('tasksComputer.appAccess.background')}</p>
-        {anyAction && <p className="mt-1 text-xs text-muted">{t('tasksComputer.appAccess.windows')}</p>}
+        <p className="mt-2 text-xs text-muted">
+          {win ? t('tasksComputer.appAccess.background.win') : t('tasksComputer.appAccess.background')}
+        </p>
         {req.unresolved && req.unresolved.length > 0 && (
           <p className="mt-1.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
         )}
@@ -544,42 +558,42 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
                       {a.name}
                     </span>
                   </span>
-                  <TierSegmented
-                    withDeny={false}
-                    value={choice}
-                    onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))}
-                  />
+                  <TierSegmented withDeny={false} value={choice} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
                 </div>
                 <p className={`mt-1.5 text-xs ${tier === 'full' ? 'font-medium text-danger' : 'text-muted'}`} data-tier={tier}>
                   {t(`tasksComputer.appAccess.tier.${tier}.warn`)}
                 </p>
-                <AppAccessMeta app={a} choice={choice} />
+                {a.requested === 'full' && choice !== 'full' && (
+                  <p className="mt-1 text-xs text-muted" data-testid="app-access-full-hint">
+                    {t('tasksComputer.appAccess.fullHint')}
+                  </p>
+                )}
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <AppAccessMeta app={a} choice={choice} />
+                  <button
+                    type="button"
+                    onClick={() => blockAlways(a)}
+                    disabled={busy}
+                    aria-label={t('tasksComputer.appAccess.blockAlwaysAria', { app: a.name })}
+                    className="no-drag ml-auto rounded-ctl px-1 py-0.5 text-xs text-muted underline-offset-2 outline-none hover:text-danger hover:underline focus-visible:shadow-focus disabled:opacity-60"
+                  >
+                    {t('tasksComputer.appAccess.blockAlways')}
+                  </button>
+                </div>
               </li>
             )
           })}
         </ul>
-        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={blockAlways}
-            disabled={busy}
-            className="no-drag rounded-ctl px-1 py-1 text-xs text-muted underline-offset-2 outline-none hover:text-danger hover:underline focus-visible:shadow-focus disabled:opacity-60"
-          >
-            {t('tasksComputer.appAccess.blockAlways')}
-          </button>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {busy && (
-              <span role="status" className="inline-flex items-center gap-1.5 text-xs text-muted">
-                <Loader2 size={12} className="animate-spin" /> {t('tasksComputer.appAccess.pending')}
-              </span>
-            )}
-            <Button variant="ghost" onClick={deny} disabled={busy}>
-              {t('tasksComputer.appAccess.deny')} <kbd className="kbd">Esc</kbd>
-            </Button>
-            <Button variant="primary" onClick={allow} disabled={busy}>
-              {t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
-            </Button>
-          </div>
+        <div className="mt-3.5 flex flex-wrap items-center justify-end gap-2">
+          <Button variant="ghost" onClick={cancel} disabled={busy} title={t('tasksComputer.plan.cancelTitle')}>
+            {t('tasksComputer.cancel')} <kbd className="kbd">Esc</kbd>
+          </Button>
+          <Button variant="ghost" onClick={deny} disabled={busy}>
+            {t('tasksComputer.appAccess.deny')}
+          </Button>
+          <Button variant="primary" onClick={allow} disabled={busy}>
+            {t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
+          </Button>
         </div>
       </div>
     </div>

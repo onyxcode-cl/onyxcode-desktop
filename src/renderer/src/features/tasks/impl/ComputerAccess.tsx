@@ -24,10 +24,12 @@ import {
   ShieldOff,
   Square,
   Trash2,
+  Undo2,
   X
 } from 'lucide-react'
 import {
   friendlyAppName,
+  labeledAppName,
   MAC_FIXED_BLOCKED,
   MAC_SUGGESTED_BLOCK,
   WIN_FIXED_BLOCKED,
@@ -895,7 +897,7 @@ function DeniedRow({ bundleId, name }: { bundleId: string; name: string }): Reac
         aria-label={t('tasksComputer.grants.allowAgainAria', { app: name })}
         className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-hover disabled:opacity-60"
       >
-        {busy ? <Loader2 size={12} className="animate-spin" /> : <Ban size={12} />} {t('tasksComputer.grants.allowAgain')}
+        {busy ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} aria-hidden="true" />} {t('tasksComputer.grants.allowAgain')}
       </button>
     </li>
   )
@@ -984,7 +986,7 @@ export function ComputerGrantsList(): React.JSX.Element {
         <ul className="flex flex-wrap gap-1.5">
           {fixed.map((a) => (
             <li key={a.id} className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted">
-              <Lock size={11} aria-hidden="true" /> {a.name}
+              <Lock size={11} aria-hidden="true" /> {labeledAppName(a, t)}
             </li>
           ))}
         </ul>

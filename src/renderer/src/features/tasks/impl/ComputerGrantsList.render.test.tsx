@@ -75,6 +75,9 @@ describe('ComputerGrantsList', () => {
     expect(host.textContent).toContain('Thing') // bloqueo antiguo sin nombre guardado
     const b = byLabel('Quitar el bloqueo de Cartera Acme')
     expect(b.textContent).toContain('Quitar')
+    // «Quitar» es lo contrario de bloquear: no lleva el icono de prohibido (Ban) del botón «Bloquear».
+    expect(b.querySelector('svg.lucide-ban')).toBeNull()
+    expect(b.querySelector('svg.lucide-undo-2')).toBeTruthy()
     await click(b)
     expect(undenyApp).toHaveBeenCalledWith('com.acme.cartera')
   })
@@ -139,5 +142,22 @@ describe('ComputerGrantsList', () => {
     expect(byLabel('Block Hojas').textContent).toContain('Block')
     expect(host.textContent).toContain('Suggested to block')
     expect(host.textContent).toContain('Blocked for security: they cannot be unblocked')
+  })
+
+  it('inglés: los nombres de las bloqueadas fijas salen en inglés (Mac y Windows)', () => {
+    render('darwin', 'en')
+    let fixed = host.querySelector('[data-testid="fixed-blocked"]')!
+    expect(fixed.textContent).toContain('Passwords')
+    expect(fixed.textContent).toContain('1Password (older version)')
+    expect(fixed.textContent).not.toContain('Contraseñas')
+    expect(fixed.textContent).not.toContain('versión anterior')
+    render('win32', 'en')
+    fixed = host.querySelector('[data-testid="fixed-blocked"]')!
+    for (const en of ['Registry Editor (regedit)', 'Task Manager', 'Lock screen', 'Windows Security', 'Sign-in screen']) {
+      expect(fixed.textContent).toContain(en)
+    }
+    for (const es of ['Administrador de tareas', 'Pantalla de bloqueo', 'Editor del Registro', 'Credenciales', 'Seguridad de Windows']) {
+      expect(fixed.textContent).not.toContain(es)
+    }
   })
 })

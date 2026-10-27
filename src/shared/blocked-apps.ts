@@ -5,34 +5,44 @@
  *  - Sugeridas: apps sensibles (carteras cripto y brokers) NO bloqueadas por defecto; un clic las bloquea.
  */
 
+import type { MsgKey } from './i18n'
+
 export interface LabeledApp {
   /** Clave con la que se bloquea o se reconoce (bundle id en macOS, nombre del ejecutable en Windows). */
   id: string
+  /** Nombre en español (respaldo y fuente de las pruebas). Si hay `nameKey`, la interfaz usa la traducción. */
   name: string
+  /** Clave i18n del nombre (solo los nombres que no son marcas: «Contraseñas», «Pantalla de bloqueo»…). */
+  nameKey?: MsgKey
+}
+
+/** Nombre de una app fija en el idioma de la interfaz (marcas como «Bitwarden» no se traducen). */
+export function labeledAppName(app: LabeledApp, t: (key: MsgKey) => string): string {
+  return app.nameKey ? t(app.nameKey) : app.name
 }
 
 /** macOS: bloqueos fijos. `id` termina en `.` cuando es un prefijo de proveedor (ver `MAC_BLOCKED_BUNDLE_PREFIXES`). */
 export const MAC_FIXED_BLOCKED: readonly LabeledApp[] = [
-  { id: 'com.apple.Passwords', name: 'Contraseñas' },
+  { id: 'com.apple.Passwords', name: 'Contraseñas', nameKey: 'tasksComputer.fixedApp.passwords' },
   { id: 'com.lastpass.LastPass', name: 'LastPass' },
   { id: 'com.1password.', name: '1Password' },
-  { id: 'com.agilebits.', name: '1Password (versión anterior)' },
+  { id: 'com.agilebits.', name: '1Password (versión anterior)', nameKey: 'tasksComputer.fixedApp.agilebits' },
   { id: 'com.bitwarden.', name: 'Bitwarden' },
   { id: 'org.keepassxc.', name: 'KeePassXC' }
 ]
 
 /** Windows: bloqueos fijos (espejo de `WIN_BLOCKED_EXES`), con el nombre que entiende una persona. */
 export const WIN_FIXED_BLOCKED: readonly LabeledApp[] = [
-  { id: 'consent.exe', name: 'Avisos de permisos de administrador' },
-  { id: 'credentialuibroker.exe', name: 'Credenciales de Windows' },
-  { id: 'logonui.exe', name: 'Pantalla de inicio de sesión' },
-  { id: 'lockapp.exe', name: 'Pantalla de bloqueo' },
-  { id: 'winlogon.exe', name: 'Inicio de sesión de Windows' },
-  { id: 'securityhealthui.exe', name: 'Seguridad de Windows' },
-  { id: 'sechealthui.exe', name: 'Seguridad de Windows (antiguo)' },
-  { id: 'mmc.exe', name: 'Consola de administración (mmc)' },
-  { id: 'regedit.exe', name: 'Editor del Registro (regedit)' },
-  { id: 'taskmgr.exe', name: 'Administrador de tareas' },
+  { id: 'consent.exe', name: 'Avisos de permisos de administrador', nameKey: 'tasksComputer.fixedApp.uac' },
+  { id: 'credentialuibroker.exe', name: 'Credenciales de Windows', nameKey: 'tasksComputer.fixedApp.credentials' },
+  { id: 'logonui.exe', name: 'Pantalla de inicio de sesión', nameKey: 'tasksComputer.fixedApp.logon' },
+  { id: 'lockapp.exe', name: 'Pantalla de bloqueo', nameKey: 'tasksComputer.fixedApp.lock' },
+  { id: 'winlogon.exe', name: 'Inicio de sesión de Windows', nameKey: 'tasksComputer.fixedApp.winlogon' },
+  { id: 'securityhealthui.exe', name: 'Seguridad de Windows', nameKey: 'tasksComputer.fixedApp.secHealth' },
+  { id: 'sechealthui.exe', name: 'Seguridad de Windows (antiguo)', nameKey: 'tasksComputer.fixedApp.secHealthOld' },
+  { id: 'mmc.exe', name: 'Consola de administración (mmc)', nameKey: 'tasksComputer.fixedApp.mmc' },
+  { id: 'regedit.exe', name: 'Editor del Registro (regedit)', nameKey: 'tasksComputer.fixedApp.regedit' },
+  { id: 'taskmgr.exe', name: 'Administrador de tareas', nameKey: 'tasksComputer.fixedApp.taskmgr' },
   { id: '1password.exe', name: '1Password' },
   { id: 'bitwarden.exe', name: 'Bitwarden' },
   { id: 'keepass.exe', name: 'KeePass' },
