@@ -32,11 +32,12 @@ Qué se comprobó antes de preparar esta versión y qué **no**. Nada de esto au
 | Pruebas unitarias completas | Contenedor Linux del VPS (`node:22`, 3 CPU) | 10 404 pasan, 358 saltadas, 3 con fallo: `installer.test.ts` «cancelar a mitad» (intermitente; pasó al repetir) y `service-cloud.test.ts` «resume por la sala de vinculación» (falla igual en `main` dentro del contenedor y pasa en el Mac; el control remoto está en pausa) |
 | Arranque de la app | `test:transform`, `test:smoke`, E2E `boot` y `chat` en el Mac | Verdes |
 | Paquete de Mac | `verify:bundled` (30 controles) sobre una copia del `.app` | Verde |
-| Paquete de Windows | `npm run package:win` en el PC de pruebas | Construido |
+| Paquete de Windows | `npm run package:win` e instalación silenciosa con `pack-check.ps1 -Install` en el PC de pruebas, con el motor `lazunox.13` | 33 comprobaciones, 0 fallos |
+| Paquete de Mac (DMG y ZIP reales) | Firma local, `verify-update`, `verify:bundled` (30 controles), arranque en frío del `.app` y del ZIP, y el DMG abierto desde una copia con datos y llavero de mentira; la vista de «siempre» responde con el motor `lazunox.13` | Verde |
 | Vista de «siempre» (Ajustes › Funciones experimentales) | Pruebas unitarias del canal, del esquema, de la política remota y del componente | Verde; **no** probada con el motor real publicado (el motor `lazunox.12` no tiene esas rutas) |
-| Motor `lazunox.13` | Lo verifica el probe del propio motor (ver la release del motor) | Se anota en la fase de empaquetado con el motor nuevo |
+| Motor `lazunox.13` | Probe del motor con proveedor falso (244 comprobaciones) | Mac 243/243 (+1 que exige un motor viejo, aparte 3/3); Linux y Windows por tramos, con fallas solo del entorno de prueba (sin ripgrep en el contenedor; un archivo con salto de línea en el nombre, imposible en Windows). Sin modelo real, `bash` en segundo plano en Windows ni conectores binarios reales |
 
-**No verificado:** la actualización dentro de la app (solo es posible con la release publicada), la vista de «siempre» contra la release publicada del motor, lector de pantalla, y cualquier ahorro de tokens (el banco con modelo real no lo demostró: −4 % dentro del ruido). Los flujos por script, las tareas programadas, la limpieza de claves hacia el modelo, las políticas de la organización y la auto-revisión de permisos siguen apagados o sin hacer.
+**No verificado:** la actualización dentro de la app desde la 1.7.7 (solo es posible con la release publicada; el pin del motor apunta a una release que se publica junto con esta versión, y los paquetes se probaron con el binario local, verificado por huella), la vista de «siempre» contra la release publicada del motor, lector de pantalla, y cualquier ahorro de tokens (el banco con modelo real no lo demostró: −4 % dentro del ruido). Los flujos por script, las tareas programadas, la limpieza de claves hacia el modelo, las políticas de la organización y la auto-revisión de permisos siguen apagados o sin hacer.
 
 ## Estado de verificación antes del lanzamiento (0.5.9)
 
