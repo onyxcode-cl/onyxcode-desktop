@@ -48,6 +48,7 @@
  * de versión de opencode; si la inyección fallara, main cae al modo global (con aviso en el log).
  */
 import { HIDDEN_SHELL_ENV } from './hidden-env'
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { app } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -240,7 +241,8 @@ export default {
  * `lazunox-plan-gate` hace con `computer_*`. Sin variable de entorno que lo condicione: a diferencia
  * del plan-gate (solo acceso total), el navegador integrado existe en todos los servidores.
  */
-export function sessionPluginSource(): string {
+export function sessionPluginSource(unified: boolean = isUnifiedAppsEnabled()): string {
+  if (unified) return sessionPluginSourceUnified()
   return `// Generado por la app: no editar (se regenera al arrancar).
 // Inyecta lazunox_session en las herramientas browser_* del navegador integrado (Lote D) y bgshell_* del shell en segundo plano.
 // Ver src/main/tasks/opencode-config.ts para el contexto completo.
@@ -249,6 +251,30 @@ export default {
   server: async () => ({
     'tool.execute.before': async (input, output) => {
       if (typeof input.tool === 'string' && (input.tool.startsWith('browser_') || input.tool.startsWith('bgshell_')) && output && output.args && typeof output.args === 'object') {
+        output.args.lazunox_session = input.sessionID
+      }
+    }
+  })
+}
+`
+}
+
+/**
+ * Variante con el puente de apps del modo unificado (SOLO con LAZUNOX_UNIFIED_APPS=1): además de lo de siempre, en los servidores que
+ * la app arrancó con la ruta `computer` del proxy (`LAZUNOX_UNIFIED_BRIDGE=1`, solo aislados) inyecta `lazunox_session` en `computer_*`,
+ * sin puerta del plan ni plan: el servidor de control sigue exigiendo la aprobación de esa sesión. Sin la bandera no se usa.
+ */
+function sessionPluginSourceUnified(): string {
+  return `// Generado por la app: no editar (se regenera al arrancar).
+// Inyecta lazunox_session en las herramientas browser_* del navegador integrado (Lote D) y bgshell_* del shell en segundo plano,
+// y (modo unificado, servidor aislado con el puente de apps) en las computer_*.
+// Ver src/main/tasks/opencode-config.ts para el contexto completo.
+const BRIDGE = process.env.LAZUNOX_UNIFIED_BRIDGE === '1'
+export default {
+  id: 'lazunox-session',
+  server: async () => ({
+    'tool.execute.before': async (input, output) => {
+      if (typeof input.tool === 'string' && (input.tool.startsWith('browser_') || input.tool.startsWith('bgshell_') || (BRIDGE && input.tool.startsWith('computer_'))) && output && output.args && typeof output.args === 'object') {
         output.args.lazunox_session = input.sessionID
       }
     }

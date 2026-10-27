@@ -81,6 +81,64 @@ const STATE_CACHE_MS = 200
 /** Por debajo de esto sin pulsar el teclado real, se considera "el usuario está escribiendo ahora". */
 const TYPING_PAUSE_SECONDS = 1.2
 
+// ───────────────────────────── modo unificado: origen aislado (puente de apps) ─────────────────────────────
+//
+// Con `LAZUNOX_UNIFIED_APPS=1` el proxy de main reenvía a este MCP las peticiones del servidor AISLADO («Una carpeta») con dos cabeceras:
+// el secreto del puente y la `serverKey` del servidor. Este proceso NO conoce el secreto: se las manda tal cual a main (`POST /bridge-check`),
+// que las compara en tiempo constante. Sin cabecera, o con una que main no reconoce, TODO sigue como siempre (plan obligatorio).
+// Con origen aislado no hay puerta del plan (la contención de comandos/archivos la hace el sandbox), pero TODA acción exige sesión válida
+// de ese servidor y la concesión por app del nivel necesario (incluido `open_application`). Los literales DUPLICAN los de
+// `src/shared/unified-bridge.ts` (este bundle no importa módulos de la app); `bridge-consistency.test.ts` comprueba que coinciden.
+const BRIDGE_ORIGIN_HEADER = 'x-lazunox-bridge'
+const BRIDGE_SERVER_HEADER = 'x-lazunox-server'
+
+interface BridgeHeaders {
+  origin: string
+  server: string
+}
+
+/** Las llamadas se serializan (`toolQueue`): estas variables describen la llamada en curso. */
+let isolatedCall = false
+let currentToolName = ''
+/** Sesión que hizo la última captura de pantalla completa (un origen aislado no puede hacer `zoom` sobre la de otra sesión). */
+let lastShotSession: string | undefined
+
+const BRIDGE_REJECT_MSG: Record<string, string> = {
+  'bad-session': 'Esta petición no trae una sesión válida: no se actúa sobre apps. Reinicia la tarea e inténtalo de nuevo.',
+  'foreign-session': 'Esta sesión no corresponde a este servidor: no se actúa sobre apps.',
+  'bad-server': 'No se pudo identificar el servidor de origen de la petición: no se actúa sobre apps.'
+}
+
+/** Pregunta a main si la petición es de origen aislado y, si lo es, si su sesión vale. Falla cerrado si main no responde. */
+async function bridgeCheck(b: BridgeHeaders, session: string | undefined): Promise<{ isolated: boolean; ok: boolean; reason?: string }> {
+  if (!EVENTS_URL) throw new Error(UNVERIFIED_MSG)
+  try {
+    const r = await fetch(`${EVENTS_URL}/bridge-check`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ origin: b.origin, server: b.server, session: session ?? '' }),
+      signal: AbortSignal.timeout(1500)
+    })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const j = (await r.json()) as { isolated?: unknown; ok?: unknown; reason?: unknown }
+    return { isolated: j.isolated === true, ok: j.ok === true, reason: typeof j.reason === 'string' ? j.reason : undefined }
+  } catch (err) {
+    log('bridge-check:', err instanceof Error ? err.message : err)
+    throw new Error(UNVERIFIED_MSG)
+  }
+}
+
+/** Avisa a main de un rechazo de origen aislado (auditoría); sin esperar y sin lanzar. */
+function reportBridgeDenied(reason: string, session: string | undefined): void {
+  if (!EVENTS_URL) return
+  void fetch(`${EVENTS_URL}/bridge-denied`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ tool: currentToolName, session: session ?? '', reason }),
+    signal: AbortSignal.timeout(1500)
+  }).catch(() => undefined)
+}
+
 // ───────────────────────────── kill-switch ─────────────────────────────
 
 let stateCache: { at: number; stopped: boolean } | null = null
@@ -187,12 +245,14 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
 async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Promise<void> {
   const tier = await tierOf(app, session)
   if (tier === null) {
+    if (isolatedCall) reportBridgeDenied('no-grant', session)
     throw new Error(
       `«${app.name}» no tiene acceso concedido. Llama a request_access con apps: ["${app.name}"] y ` +
         `levels: ["${minTier}"] (y un motivo), y espera la respuesta del usuario antes de reintentar esta acción.`
     )
   }
   if (TIER_RANK[tier] < TIER_RANK[minTier]) {
+    if (isolatedCall) reportBridgeDenied('low-tier', session)
     throw new Error(
       `«${app.name}» solo tiene el nivel "${TIER_LABEL[tier]}"; esta acción necesita "${TIER_LABEL[minTier]}". ` +
         `Pide más acceso: llama a request_access con apps: ["${app.name}"] y levels: ["${minTier}"], y espera la respuesta del usuario.`
@@ -765,6 +825,7 @@ async function captureScreen(session?: string): Promise<Shot> {
     cleanupShots()
     const shot: Shot = { path: out, base64, width, height, ratio, front: front?.name ?? null, onMainScreen: screen.main === true }
     lastShot = shot
+    lastShotSession = session
     return shot
   } finally {
     rmSync(raw, { force: true })
@@ -1355,8 +1416,10 @@ const TOOLS: ToolDef[] = [
     ),
     action: true,
     noAutoShot: true,
-    run: async (a) => {
-      if (!lastShot) throw new Error('Todavía no hay ninguna captura de pantalla completa — pide una con screenshot primero.')
+    run: async (a, session) => {
+      if (!lastShot || (isolatedCall && lastShotSession !== session)) {
+        throw new Error('Todavía no hay ninguna captura de pantalla completa — pide una con screenshot primero.')
+      }
       const shot = lastShot
       const x = Math.round(Number(a.x))
       const y = Math.round(Number(a.y))
@@ -1615,6 +1678,12 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       const name = String(a.name ?? '').trim()
       if (!name) throw new Error('name vacío')
+      if (isolatedCall) {
+        // Origen aislado: abrir una app también exige su concesión (una app bloqueada o sin conceder no se abre).
+        const ref = await resolveApp(name)
+        if (!ref.found) throw new Error(backend.text.appNotFound(name))
+        await ensureTier({ bundleId: ref.bundleId, name: ref.name }, 'view', session)
+      }
       // Best-effort: que la captura siguiente muestre el monitor de esta app, no el de lo que esté al frente.
       await resolveApp(name)
         .then((r) => {
@@ -1727,14 +1796,19 @@ const TOOLS: ToolDef[] = [
           }
         })
       }
-      const plan = Array.isArray(a.plan)
-        ? a.plan
-            .map((x) => String(x).trim())
-            .filter(Boolean)
-            .slice(0, 30)
-        : undefined
+      // Origen aislado: sin puerta del plan, la tarjeta es la de permiso por app (no se abre tarjeta de plan).
+      const plan =
+        Array.isArray(a.plan) && !isolatedCall
+          ? a.plan
+              .map((x) => String(x).trim())
+              .filter(Boolean)
+              .slice(0, 30)
+          : undefined
       const hasPlan = !!plan?.length
       if (!entries.length && !hasPlan) {
+        if (isolatedCall) {
+          throw new Error('Indica en "apps" las apps que vas a controlar (con su nivel en "levels"). En este modo no hace falta plan.')
+        }
         throw new Error(
           'Indica al menos una app en "apps" o, si la tarea no controla ninguna app (solo terminal, archivos o web), ' +
             'un "plan" con "apps": [].'
@@ -2286,8 +2360,8 @@ const TOOLS: ToolDef[] = [
 // una acción doble por ahorrarse una cola.
 let toolQueue: Promise<unknown> = Promise.resolve()
 
-async function callTool(name: string, rawArgs: Record<string, unknown>): Promise<ToolResult> {
-  const run = (): Promise<ToolResult> => callToolNow(name, rawArgs)
+async function callTool(name: string, rawArgs: Record<string, unknown>, bridge?: BridgeHeaders): Promise<ToolResult> {
+  const run = (): Promise<ToolResult> => callToolNow(name, rawArgs, bridge)
   const result = toolQueue.then(run, run)
   toolQueue = result.then(
     () => undefined,
@@ -2296,7 +2370,18 @@ async function callTool(name: string, rawArgs: Record<string, unknown>): Promise
   return result
 }
 
-async function callToolNow(name: string, rawArgs: Record<string, unknown>): Promise<ToolResult> {
+async function callToolNow(name: string, rawArgs: Record<string, unknown>, bridge?: BridgeHeaders): Promise<ToolResult> {
+  isolatedCall = false
+  currentToolName = name
+  try {
+    return await callToolInner(name, rawArgs, bridge)
+  } finally {
+    isolatedCall = false
+    currentToolName = ''
+  }
+}
+
+async function callToolInner(name: string, rawArgs: Record<string, unknown>, bridge?: BridgeHeaders): Promise<ToolResult> {
   // `lazunox_session` lo inyecta el plugin `lazunox-plan-gate` (sesión de OpenCode que llama): se separa
   // de los args para que ninguna herramienta lo vea como parámetro propio.
   const { lazunox_session, ...args } = rawArgs
@@ -2309,11 +2394,21 @@ async function callToolNow(name: string, rawArgs: Record<string, unknown>): Prom
     return { content: [{ type: 'text', text: err instanceof Error ? err.message : String(err) }], isError: true }
   }
   try {
+    // Modo unificado: ¿la petición viene del servidor aislado? (main lo decide; sin cabecera ni bandera no se pregunta).
+    if (bridge?.origin) {
+      const v = await bridgeCheck(bridge, typeof lazunox_session === 'string' ? lazunox_session : undefined)
+      if (v.isolated) {
+        if (!v.ok) {
+          return { content: [{ type: 'text', text: BRIDGE_REJECT_MSG[v.reason ?? ''] ?? BRIDGE_REJECT_MSG['bad-session'] }], isError: true }
+        }
+        isolatedCall = true
+      }
+    }
     // Puertas propias de la plataforma (Windows: consentimiento de la app, sesión interactiva, ventana elevada); macOS: ninguna.
     await backend.preflight({ tool: name, realInput: REAL_INPUT_TOOLS.has(name) })
     // Flujo Plan → Aprobar → Ejecutar: ninguna herramienta de ACCIÓN (tampoco `screenshot`) corre sin
-    // un plan aprobado para esta sesión.
-    if (tool.action) await requirePlanApproved(session)
+    // un plan aprobado para esta sesión. Origen aislado: sin plan, pero cada acción exige la concesión de su app.
+    if (tool.action && !isolatedCall) await requirePlanApproved(session)
     if (name === 'screenshot') {
       const s = await takeScreenshot(false, session)
       const content: Content[] = [
@@ -2378,7 +2473,7 @@ type RpcResponse =
 const SUPPORTED = ['2025-06-18', '2025-03-26', '2024-11-05']
 
 /** Atiende un mensaje JSON-RPC. Devuelve la respuesta o null (notificaciones). */
-async function dispatch(req: RpcRequest): Promise<RpcResponse | null> {
+async function dispatch(req: RpcRequest, bridge?: BridgeHeaders): Promise<RpcResponse | null> {
   const id = req.id ?? null
   const isNotification = req.id === undefined || req.id === null
   const ok = (result: unknown): RpcResponse => ({ jsonrpc: '2.0', id, result })
@@ -2409,7 +2504,7 @@ async function dispatch(req: RpcRequest): Promise<RpcResponse | null> {
         const name = String(req.params?.name ?? '')
         const args = req.params?.arguments
         const safeArgs = args && typeof args === 'object' && !Array.isArray(args) ? (args as Record<string, unknown>) : {}
-        return ok(await callTool(name, safeArgs))
+        return ok(await callTool(name, safeArgs, bridge))
       }
       case 'resources/list':
         return ok({ resources: [] })
@@ -2488,7 +2583,12 @@ function handleHttp(req: IncomingMessage, res: ServerResponse, port: number): vo
     const list: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
     const msgs = list.filter((m): m is RpcRequest => !!m && typeof m === 'object' && typeof (m as RpcRequest).method === 'string')
     // Solo respuestas/notificaciones → 202 sin cuerpo.
-    void Promise.all(msgs.map(dispatch)).then((out) => {
+    const oh = req.headers[BRIDGE_ORIGIN_HEADER]
+    const sh = req.headers[BRIDGE_SERVER_HEADER]
+    // Una cabecera repetida llega como lista (o unida con comas): no vale como secreto, se trata como «no es origen aislado».
+    const bridge: BridgeHeaders | undefined =
+      typeof oh === 'string' && oh ? { origin: oh, server: typeof sh === 'string' ? sh : '' } : undefined
+    void Promise.all(msgs.map((m) => dispatch(m, bridge))).then((out) => {
       const responses = out.filter((r): r is RpcResponse => r !== null)
       if (!responses.length) return reply(res, 202)
       reply(res, 200, batch ? responses : responses[0])

@@ -21,6 +21,8 @@ export interface InlineConfigInput {
   browserMcp: Record<string, unknown> | null
   /** Config del MCP `computer` (solo Control total; o null). */
   computerMcp: Record<string, unknown> | null
+  /** Ruta `computer` del puente de apps del modo unificado (ya apuntando al proxy; solo sandbox y solo con la bandera). Ausente = igual que siempre. */
+  bridgeMcp?: Record<string, unknown> | null
   /** Aportación de los MCP del usuario (`tasksMcpContribution`). */
   mcpContribution: { mcp: Record<string, unknown>; permission: Record<string, unknown> }
   /** Permisos «siempre permitir» recordados (`rulesPermissionConfig`). */
@@ -52,7 +54,9 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     base = {
       autoupdate: false,
       share: 'disabled',
-      ...(i.browserMcp ? { mcp: { browser: i.browserMcp } } : {}),
+      ...(i.browserMcp || i.bridgeMcp
+        ? { mcp: { ...(i.browserMcp ? { browser: i.browserMcp } : {}), ...(i.bridgeMcp ? { computer: i.bridgeMcp } : {}) } }
+        : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
         ...(i.extras.length || allowDirs.length ? { [TASKS_AGENT_ID]: { permission: { external_directory: externalDirectory } } } : {})

@@ -43,13 +43,15 @@ import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from '.
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
+import { getBridgeSecret } from './bridge-secret'
+import { BRIDGE_ORIGIN_HEADER, BRIDGE_ROUTE_NAME, BRIDGE_SERVER_HEADER, isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
 import { applyComputerAgent } from './computer-agent'
 import type { EgressBlockedEvent } from './proxy'
 import { forbiddenFolderReason as folderPolicyReason, parseMountOutput, type MountInfo } from './folder-policy'
-import { loadManagedPolicy } from './policy'
+import { isComputerUseDisabled, loadManagedPolicy } from './policy'
 import { defaultDeniedReadPaths } from './sandbox-profile'
 import type { WinBackendProvider } from './backends'
 import { isApprovedPath, resolveUiPath } from './ui-path'
@@ -902,6 +904,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   /** true si el servidor de acceso completo de esa clave arrancó con el MCP `computer`. */
   private fullAccessMcp = new Map<string, boolean>()
+  /** Claves de servidores aislados que arrancaron con la ruta `computer` del puente de apps (modo unificado; solo con la bandera). */
+  private bridgeServers = new Set<string>()
 
   /**
    * Config inline de OpenCode para cada modo (base + MCP del usuario + reglas recordadas + skills).
@@ -968,6 +972,31 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         browserMcp = null
       }
     }
+    // Puente de apps del modo unificado (solo con LAZUNOX_UNIFIED_APPS=1 y solo en el servidor aislado): una ruta más del MISMO proxy
+    // (mismo puerto, nada nuevo que abrir) hacia el MCP de control, que atiende main. El agente solo recibe la URL del proxy y su token de
+    // sesión; el token real del MCP de control y el secreto del puente se quedan en main. Si algo falla, el servidor arranca sin apps.
+    let bridgeMcp: Record<string, unknown> | null = null
+    this.bridgeServers.delete(key)
+    // Política gestionada: `disableComputerUse` apaga el puente (falla cerrado: política ilegible = apagado).
+    if (mcpProxy && !fullAccess && isUnifiedAppsEnabled() && this.opts.computer && !isComputerUseDisabled(loadManagedPolicy())) {
+      try {
+        const real = await this.opts.computer.mcpConfig().catch(() => null)
+        const realToken = bearerOfMcpConfig(real)
+        if (real && typeof real.url === 'string' && realToken) {
+          const route = mcpProxy.addRoute({
+            name: BRIDGE_ROUTE_NAME,
+            url: real.url,
+            exactPath: true,
+            headers: { Authorization: `Bearer ${realToken}`, [BRIDGE_ORIGIN_HEADER]: getBridgeSecret(), [BRIDGE_SERVER_HEADER]: key }
+          })
+          bridgeMcp = { ...real, url: route.url, headers: route.headers }
+          this.bridgeServers.add(key)
+        }
+      } catch (err) {
+        console.error('[tasks] el puente de apps no entra en el sandbox:', err instanceof Error ? err.message : 'error')
+        bridgeMcp = null
+      }
+    }
     // MCP del usuario disponibles en Tareas (`mcp-tasks.ts`); sus hosts remotos (sin secretos) entran a la red.
     const c = tasksMcpContribution({ sandboxed: !fullAccess, registerRoute: mcpProxy ? (spec) => mcpProxy.addRoute(spec) : undefined })
     if (c.blocked.length) {
@@ -984,6 +1013,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       allowDirs: [join(getOpencodeConfigDir(), 'skills')],
       browserMcp,
       computerMcp,
+      bridgeMcp,
       mcpContribution: c,
       rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
       skills: skillsInlineConfig(),
@@ -1091,6 +1121,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):
           // SOLO en servidores de acceso total; `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
           ...(gateUrl ? { LAZUNOX_PLAN_GATE_URL: gateUrl } : {}),
+          // Puente de apps (modo unificado): el plugin de sesión inyecta `lazunox_session` en `computer_*` solo en estos servidores.
+          ...(this.bridgeServers.has(key) ? { LAZUNOX_UNIFIED_BRIDGE: '1' } : {}),
           // Canal del guardián (solo sandbox); `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
           ...(guard ? { LAZUNOX_GUARD_URL: guard.url, LAZUNOX_GUARD_TOKEN: guard.token } : {}),
           // Solo sandbox: sin esto la búsqueda web de OpenCode alterna entre mcp.exa.ai y

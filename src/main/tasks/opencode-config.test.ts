@@ -63,3 +63,31 @@ describe('getOpencodeEnv', () => {
     expect(getOpencodeEnv().XDG_DATA_HOME).toBe(join(userData, 'opencode-data'))
   })
 })
+
+describe('plugin lazunox-session escrito en la carpeta de config', () => {
+  const FLAG = 'LAZUNOX_UNIFIED_APPS'
+  afterEach(() => {
+    delete process.env[FLAG]
+  })
+
+  it('sin bandera: byte a byte el de siempre', async () => {
+    delete process.env[FLAG]
+    const { prepareOpencodeConfigDir, sessionPluginSource } = await import('./opencode-config')
+    const dir = prepareOpencodeConfigDir()
+    const text = readFileSync(join(dir, 'plugins', 'lazunox-session.js'), 'utf8')
+    expect(text).toBe(sessionPluginSource(false))
+    expect(text).not.toContain('computer_')
+  })
+
+  it('con bandera: inyecta la sesión en computer_* solo en servidores con puente, sin activar la puerta del plan', async () => {
+    process.env[FLAG] = '1'
+    const { prepareOpencodeConfigDir, planGatePluginSource } = await import('./opencode-config')
+    const dir = prepareOpencodeConfigDir()
+    const text = readFileSync(join(dir, 'plugins', 'lazunox-session.js'), 'utf8')
+    expect(text).toContain("process.env.LAZUNOX_UNIFIED_BRIDGE === '1'")
+    expect(text).toContain("input.tool.startsWith('computer_')")
+    expect(text).not.toContain('PLAN_GATE')
+    // la puerta del plan no cambia con la bandera
+    expect(readFileSync(join(dir, 'plugins', 'lazunox-plan-gate.js'), 'utf8')).toBe(planGatePluginSource())
+  })
+})

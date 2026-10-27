@@ -29,7 +29,9 @@ const BOOLEAN_KEYS = [
   'disableAutoMode',
   'disableBrowser',
   // Tareas en Windows (WSL2): apaga la bandera `tasksWin` para toda la organización (plan paridad Windows, W1).
-  'disableWslTasks'
+  'disableWslTasks',
+  // Modo unificado (puente de apps): apaga el control de apps desde el chat aislado. No es `disableFullAccess`.
+  'disableComputerUse'
 ] as const
 
 /** Política con todas las restricciones booleanas activas (archivo presente pero inválido). */
@@ -84,6 +86,15 @@ export function parseManagedPolicy(raw: unknown, source: string, platform: NodeJ
   const days = r.maxAutoArchiveDays
   if (typeof days === 'number' && Number.isInteger(days) && days >= 1 && days <= 365) out.maxAutoArchiveDays = days
   return out
+}
+
+/**
+ * ¿La organización apagó el control de apps (`disableComputerUse`) desde el chat aislado? Sin política (`null`) no
+ * hay restricción. Con política, solo cuenta el valor `true` ya normalizado (ausente, `false` o no leído = permitido;
+ * tipo inválido o archivo roto = `true`). No afecta a `disableFullAccess`.
+ */
+export function isComputerUseDisabled(policy: ManagedPolicy | null | undefined): boolean {
+  return policy?.disableComputerUse === true
 }
 
 /** Ruta del `managed.json` del sistema (sin override de desarrollo). */

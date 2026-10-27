@@ -20,6 +20,8 @@ import { createAppIconResolver, createMacAppFinder } from '../computer/app-icons
 import { SYSTEM_EXEMPT_BUNDLE_IDS } from '../computer/grants'
 import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
+import { getBridgeSecret } from '../tasks/bridge-secret'
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { normalizeTasksPrefs } from '../tasks/prefs'
 import { extrasPrefs } from '../extras/prefs'
 import type { TasksManager } from '../tasks/manager'
@@ -68,6 +70,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 /** Construye los objetos de Control del PC (nada de esto existe sin `caps.computer`). */
 export function createComputerParts(): ComputerParts {
   const computer = new ComputerService()
+  // Modo unificado (ola 1, apagado por defecto): el servidor de control reconoce las peticiones que pasaron por el proxy del servidor aislado
+  // con este secreto de la ejecución. Sin la bandera no se fija ningún secreto y todo queda como en la 1.7.x.
+  if (isUnifiedAppsEnabled()) computer.setBridgeSecret(getBridgeSecret())
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
   const overlay = new ComputerOverlay({
     instant: computer.instant,

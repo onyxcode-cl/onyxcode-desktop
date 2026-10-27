@@ -33,13 +33,14 @@ import { t } from '@shared/i18n'
 import { app, globalShortcut, powerMonitor, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
 import type { Readable, Writable } from 'node:stream'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
-import { createServer, type Server } from 'node:http'
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { dirname, join } from 'node:path'
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { unpacked } from '../util/asar'
 import { runHelper } from '../util/exec'
 import { recordProblem } from '../diagnostics/problem-log'
@@ -169,6 +170,10 @@ export interface ResolveAccessOptions {
 }
 
 const SESSION_RE = /^[A-Za-z0-9_-]{1,200}$/
+/** Tope de sesiones reclamadas por servidores aislados a la vez (memoria acotada). */
+const MAX_BRIDGE_SESSIONS = 2000
+export type BridgeRejection = 'bad-server' | 'bad-session' | 'foreign-session'
+export type BridgeVerdict = { isolated: false } | { isolated: true; ok: true } | { isolated: true; ok: false; reason: BridgeRejection }
 const TIERS: ReadonlySet<string> = new Set(['view', 'click', 'full'])
 
 /** Resultado de abortar las sesiones de los servidores de acceso total. */
@@ -289,6 +294,13 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * global como antes. Se apaga al terminar la sesión de control (`endLegacyPlan`) o con `stop()`.
    */
   private legacyPlanApproved = false
+  /**
+   * Modo unificado (bandera `LAZUNOX_UNIFIED_APPS=1`): hash SHA-256 del secreto del puente (lo fija main con `setBridgeSecret`; nunca sale
+   * de aquí). Sin secreto o sin bandera NINGUNA petición se reconoce como de origen aislado.
+   */
+  private bridgeSecretHash: Buffer | null = null
+  /** Sesión → `serverKey` del servidor aislado que la reclamó primero (una sesión ajena se rechaza). Solo en memoria. */
+  private readonly sessionOwner = new Map<string, string>()
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
   private escWatcher: ChildProcessByStdio<Writable | null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
@@ -796,6 +808,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     this.foregroundSessions.delete(sessionId)
     this.revokeAutoView(sessionId)
     this.sessionGrants.delete(sessionId)
+    this.sessionOwner.delete(sessionId)
     const hadSessionDenied = this.sessionDenied.delete(sessionId)
     this.taskApps.delete(sessionId)
     // Tarjetas aún abiertas de esa sesión: se cancelan, para que aprobarlas después no vuelva a crear permisos de sesión.
@@ -819,6 +832,56 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     this.legacyPlanApproved = false
     this.sessionGrants.delete('')
     this.sessionDenied.delete('')
+  }
+
+  // ───────────────────────────── Modo unificado: origen aislado (puente de apps) ─────────────────────────────
+
+  /** Main fija (o quita con `null`) el secreto aleatorio de esta ejecución que su proxy añade en `BRIDGE_ORIGIN_HEADER`. */
+  setBridgeSecret(secret: string | null): void {
+    this.bridgeSecretHash = secret ? createHash('sha256').update(secret).digest() : null
+    this.sessionOwner.clear()
+  }
+
+  /** ¿`origin` es el secreto del puente? Con bandera apagada, sin secreto o con una cabecera ajena: nunca. Tiempo constante (compara hashes). */
+  private isBridgeOrigin(origin: unknown): boolean {
+    if (!isUnifiedAppsEnabled() || !this.bridgeSecretHash || typeof origin !== 'string' || !origin || origin.length > 512) return false
+    return timingSafeEqual(createHash('sha256').update(origin).digest(), this.bridgeSecretHash)
+  }
+
+  /**
+   * Veredicto de una llamada al MCP según su origen. `isolated: false` = no trae un secreto válido ⇒ se trata EXACTAMENTE como hoy (plan
+   * obligatorio, etc.). Origen aislado: sin plan, pero con sesión válida y que sea de ese servidor (primera reclamación gana).
+   */
+  checkBridgeCall(input: { origin?: unknown; server?: unknown; session?: unknown }): BridgeVerdict {
+    if (!this.isBridgeOrigin(input.origin)) return { isolated: false }
+    const server = typeof input.server === 'string' ? input.server : ''
+    const session = typeof input.session === 'string' ? input.session : ''
+    let reason: BridgeRejection | null = null
+    if (!server || server.length > 1024) reason = 'bad-server'
+    else if (!SESSION_RE.test(session)) reason = 'bad-session'
+    else {
+      const owner = this.sessionOwner.get(session)
+      if (owner !== undefined) {
+        if (owner !== server) reason = 'foreign-session'
+      } else if (this.approvedPlans.has(session) || this.sessionOwner.size >= MAX_BRIDGE_SESSIONS) {
+        // Una sesión que ya actuó con plan (servidor sin aislar) no se puede reclamar desde un servidor aislado.
+        reason = 'foreign-session'
+      } else {
+        this.sessionOwner.set(session, server)
+      }
+    }
+    if (reason) {
+      this.bridgeDenied(session, 'bridge', reason)
+      return { isolated: true, ok: false, reason }
+    }
+    return { isolated: true, ok: true }
+  }
+
+  /** Línea de auditoría y de registro de un rechazo del puente (sin secretos ni la clave del servidor). */
+  bridgeDenied(session: unknown, tool: string, reason: string): void {
+    const sess = typeof session === 'string' && SESSION_RE.test(session) ? session : undefined
+    this.auditWrite({ session: sess, tool: tool.slice(0, 64), outcome: 'denied', reason: `bridge:${reason}`.slice(0, 80) })
+    console.warn(`[computer] puente de apps: rechazo (${reason}) en ${tool.slice(0, 64)}`)
   }
 
   /**
@@ -917,6 +980,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     this.autoView.clear()
     this.sessionGrants.clear()
     this.sessionDenied.clear()
+    this.sessionOwner.clear()
     this.teachEnd()
     const killed = this.killHelpers()
     this.cleanScreenshots()
@@ -1158,6 +1222,31 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     this.audit.write(input)
   }
 
+  /** Lee un cuerpo JSON pequeño (≤16 KB) del canal lateral; 400 si no es un objeto. */
+  private readSmallJson(req: IncomingMessage, res: ServerResponse, then: (o: Record<string, unknown>) => void): void {
+    let body = ''
+    req.setEncoding('utf8')
+    req.on('data', (c: string) => {
+      body += c
+      if (body.length > 16_384) req.destroy()
+    })
+    req.on('end', () => {
+      let o: unknown
+      try {
+        o = JSON.parse(body)
+      } catch {
+        o = null
+      }
+      if (!o || typeof o !== 'object' || Array.isArray(o)) {
+        res.statusCode = 400
+        // i18n-ignore: canal interno con el MCP, no se muestra al usuario
+        res.end(JSON.stringify({ error: 'JSON inválido' }))
+        return
+      }
+      then(o as Record<string, unknown>)
+    })
+  }
+
   /** Servidor HTTP local para el canal lateral de acciones. Devuelve la URL (con token). */
   private ensureEventsServer(): Promise<string | null> {
     if (this.eventsUrl) return Promise.resolve(this.eventsUrl)
@@ -1208,6 +1297,27 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           res.setHeader('content-type', 'application/json')
           res.setHeader('cache-control', 'no-store')
           res.end(JSON.stringify({ mode: this.prefs.get().mode, foreground: this.isForeground(session) }))
+          return
+        }
+        if (req.method === 'POST' && req.url === `${path}/bridge-check`) {
+          // Modo unificado: el MCP reenvía las cabeceras del puente tal cual llegaron; aquí (y solo aquí) se comparan con el secreto.
+          this.readSmallJson(req, res, (o) => {
+            const v = this.checkBridgeCall({ origin: o.origin, server: o.server, session: o.session })
+            res.statusCode = 200
+            res.setHeader('content-type', 'application/json')
+            res.setHeader('cache-control', 'no-store')
+            res.end(JSON.stringify(v))
+          })
+          return
+        }
+        if (req.method === 'POST' && req.url === `${path}/bridge-denied`) {
+          // Rechazo por concesión/nivel de una llamada de origen aislado (lo detecta el MCP): solo auditoría y registro.
+          this.readSmallJson(req, res, (o) => {
+            const reason = typeof o.reason === 'string' && /^[a-z-]{1,40}$/.test(o.reason) ? o.reason : 'denied'
+            this.bridgeDenied(o.session, typeof o.tool === 'string' ? o.tool : '', reason)
+            res.statusCode = 204
+            res.end()
+          })
           return
         }
         if (req.method === 'GET' && (req.url ?? '').startsWith(`${path}/plan-status`)) {

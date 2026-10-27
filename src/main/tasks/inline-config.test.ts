@@ -203,3 +203,27 @@ describe('buildInlineConfig: pureza', () => {
     expect(JSON.stringify(buildInlineConfig(input))).toBe(JSON.stringify(a))
   })
 })
+
+describe('buildInlineConfig: ruta computer del puente de apps (modo unificado)', () => {
+  const BRIDGE = { type: 'remote', url: 'http://127.0.0.1:9999/mcp', headers: { Authorization: 'Bearer sesion' } }
+
+  it('sin bridgeMcp (o null) el resultado es idéntico al de siempre', () => {
+    for (const [, input] of scenarios) {
+      const base = JSON.stringify(buildInlineConfig(input))
+      expect(JSON.stringify(buildInlineConfig({ ...input, bridgeMcp: null }))).toBe(base)
+      expect(JSON.stringify(buildInlineConfig({ ...input, bridgeMcp: undefined }))).toBe(base)
+    }
+  })
+
+  it('en sandbox añade mcp.computer junto al navegador y no toca el resto', () => {
+    const c = buildInlineConfig({ ...empty, browserMcp: BROWSER, bridgeMcp: BRIDGE })
+    expect((c.mcp as Record<string, unknown>).computer).toEqual(BRIDGE)
+    expect((c.mcp as Record<string, unknown>).browser).toEqual(BROWSER)
+    expect(agentsOf(c)[COMPUTER_AGENT_ID]).toEqual({ disable: true })
+  })
+
+  it('en Control total no se usa (su MCP computer es el real)', () => {
+    const c = buildInlineConfig({ ...empty, fullAccess: true, computerMcp: COMPUTER, bridgeMcp: BRIDGE })
+    expect((c.mcp as Record<string, unknown>).computer).toEqual(COMPUTER)
+  })
+})

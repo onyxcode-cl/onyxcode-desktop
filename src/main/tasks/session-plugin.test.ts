@@ -64,3 +64,45 @@ describe('plugin lazunox-session: inyecta la sesión que llama', () => {
     expect(await call(42, { a: 1 })).toEqual({ a: 1 })
   })
 })
+
+describe('plugin lazunox-session con el puente de apps (modo unificado)', () => {
+  const load = async (unified: boolean, bridgeEnv: string | undefined): Promise<Before> => {
+    const file = join(dir, `lazunox-session-${unified}-${bridgeEnv}.mjs`)
+    writeFileSync(file, sessionPluginSource(unified), 'utf8')
+    const prev = process.env.LAZUNOX_UNIFIED_BRIDGE
+    if (bridgeEnv === undefined) delete process.env.LAZUNOX_UNIFIED_BRIDGE
+    else process.env.LAZUNOX_UNIFIED_BRIDGE = bridgeEnv
+    try {
+      const mod = (await import(/* @vite-ignore */ pathToFileURL(file).href)) as {
+        default: { server: () => Promise<Record<string, unknown>> }
+      }
+      return (await mod.default.server())['tool.execute.before'] as Before
+    } finally {
+      if (prev === undefined) delete process.env.LAZUNOX_UNIFIED_BRIDGE
+      else process.env.LAZUNOX_UNIFIED_BRIDGE = prev
+    }
+  }
+  const run = async (b: Before, tool: string): Promise<unknown> => {
+    const output = { args: { lazunox_session: 'FALSA' } }
+    await b({ tool, sessionID: 'ses_real' }, output)
+    return output.args
+  }
+
+  it('sin bandera el texto es idéntico al de siempre (computer_* no se toca)', () => {
+    expect(sessionPluginSource(false)).toBe(sessionPluginSource())
+    expect(sessionPluginSource(false)).not.toContain('computer_')
+  })
+
+  it('con bandera y servidor con puente: computer_* recibe la sesión (sin puerta del plan) y se pisa lo del modelo', async () => {
+    const b = await load(true, '1')
+    expect(await run(b, 'computer_request_access')).toEqual({ lazunox_session: 'ses_real' })
+    expect(await run(b, 'browser_click')).toEqual({ lazunox_session: 'ses_real' })
+    expect(await run(b, 'bash')).toEqual({ lazunox_session: 'FALSA' })
+  })
+
+  it('con bandera pero en un servidor sin puente (p. ej. Control total): computer_* no se toca aquí', async () => {
+    const b = await load(true, undefined)
+    expect(await run(b, 'computer_request_access')).toEqual({ lazunox_session: 'FALSA' })
+    expect(await run(b, 'browser_click')).toEqual({ lazunox_session: 'ses_real' })
+  })
+})

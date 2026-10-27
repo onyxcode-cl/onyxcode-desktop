@@ -71,6 +71,11 @@ export interface McpRouteSpec {
   url: string
   /** Cabeceras REALES a inyectar (secretas). */
   headers?: Record<string, string>
+  /**
+   * Solo se reenvía la ruta exacta de `url` (sin subrutas): el cliente no puede pedir otra ruta del mismo servidor (puente de apps del
+   * modo unificado). Cualquier otra ruta → 404.
+   */
+  exactPath?: boolean
 }
 
 /** Lo que recibe el servidor del sandbox: nunca contiene el secreto real. */
@@ -88,6 +93,7 @@ interface Route {
   basePath: string
   query: URLSearchParams
   injected: Array<[string, string]>
+  exactPath: boolean
   hash: Buffer
   expiresAt: number
   revoked: boolean
@@ -220,6 +226,7 @@ export class McpProxy {
       basePath,
       query: new URLSearchParams(url.search),
       injected,
+      exactPath: spec.exactPath === true,
       hash: sha256(token),
       expiresAt: this.now() + this.limits.ttlMs,
       revoked: false,
@@ -331,6 +338,7 @@ export class McpProxy {
     const q = rest.indexOf('?')
     const path = q === -1 ? rest : rest.slice(0, q)
     const clientQuery = new URLSearchParams(q === -1 ? '' : rest.slice(q + 1))
+    if (route.exactPath && path !== route.basePath) return this.reply(res, 404, 'not found')
     let target: URL
     try {
       target = new URL(`${route.origin}${path}`)

@@ -896,6 +896,8 @@ export interface ManagedPolicy {
   disableBrowser?: boolean
   /** Apaga Tareas en Windows (WSL2) para toda la organización; fail-closed como el resto. Sin efecto en macOS. */
   disableWslTasks?: boolean
+  /** Modo unificado: apaga el control de apps desde el chat aislado (puente de apps) para toda la organización. No afecta a `disableFullAccess`. Fail-closed. */
+  disableComputerUse?: boolean
 }
 
 // ───────────────────────────── Lote C: preferencias de computer use ─────────────────────────────

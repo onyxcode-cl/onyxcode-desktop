@@ -88,6 +88,8 @@ export interface SideChannelOptions {
   consent?: (() => { consent: boolean; version?: number } | null) | null
   /** Respuesta de `/request-access`. */
   requestAccess?: (body: unknown) => unknown
+  /** Respuesta de `POST /bridge-check` (modo unificado). Por defecto `{ isolated: false }` (no es origen aislado). */
+  bridgeCheck?: (body: unknown) => unknown
   /** Responde 500 a todo (main caído: el MCP debe fallar cerrado). */
   down?: boolean
 }
@@ -148,6 +150,12 @@ export async function startSideChannel(opts: SideChannelOptions = {}): Promise<S
               planApproved: true
             }
           )
+        case '/bridge-check':
+          return json(200, opts.bridgeCheck?.(body) ?? { isolated: false, ok: false })
+        case '/bridge-denied':
+          res.statusCode = 204
+          res.end()
+          return
         case '/teach-step':
           return json(200, { action: 'next' })
         default:
@@ -202,10 +210,16 @@ export interface McpProc {
   shotDir: string
   logFile: string
   stderr: () => string
-  rpc: (method: string, params?: Record<string, unknown>) => Promise<{ result?: unknown; error?: { code: number; message: string } }>
+  rpc: (
+    method: string,
+    params?: Record<string, unknown>,
+    headers?: Record<string, string>
+  ) => Promise<{ result?: unknown; error?: { code: number; message: string } }>
+  /** `headers` extra (p. ej. las del puente de apps del modo unificado); sin ellas, la petición es la de siempre. */
   call: (
     name: string,
-    args?: Record<string, unknown>
+    args?: Record<string, unknown>,
+    headers?: Record<string, string>
   ) => Promise<{ content: Array<{ type: string; text?: string; data?: string }>; isError?: boolean }>
   /** Llamadas al helper falso (sin los eventos de parada). */
   calls: () => Array<{ cmd: string; args: string[]; flags: string[] }>
@@ -258,10 +272,10 @@ export async function startMcp(o: McpOptions): Promise<McpProc> {
     })
   })
   let id = 0
-  const rpc: McpProc['rpc'] = async (method, params) => {
+  const rpc: McpProc['rpc'] = async (method, params, headers) => {
     const r = await fetch(`http://127.0.0.1:${port}/mcp`, {
       method: 'POST',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...headers },
       body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params })
     })
     return (await r.json()) as never
@@ -280,7 +294,7 @@ export async function startMcp(o: McpOptions): Promise<McpProc> {
     logFile,
     stderr: () => err,
     rpc,
-    call: async (name, args = {}) => (await rpc('tools/call', { name, arguments: args })).result as ToolReply,
+    call: async (name, args = {}, headers) => (await rpc('tools/call', { name, arguments: args }, headers)).result as ToolReply,
     calls: () => readLog().filter((e) => typeof e.cmd === 'string' && !e.event) as never,
     log: readLog,
     stop: async () => {
