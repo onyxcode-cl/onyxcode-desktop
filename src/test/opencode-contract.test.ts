@@ -78,7 +78,11 @@ describe('instantánea api-routes.json', () => {
     ]
     const propias = snapshot.routes.filter(
       (r: string) =>
-        /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r) || REBOBINAR.includes(r) || OBJETIVO.includes(r) || OLA7.includes(r)
+        /\/experimental\/session\/[^\s]*\/trabajos/.test(r) ||
+        FORMULARIOS.includes(r) ||
+        REBOBINAR.includes(r) ||
+        OBJETIVO.includes(r) ||
+        OLA7.includes(r)
     )
     const enSnapshot = propias.filter((r: string) => FORMULARIOS.includes(r))
     expect(enSnapshot.length === 0 || enSnapshot.length === FORMULARIOS.length).toBe(true) // las dos o ninguna
