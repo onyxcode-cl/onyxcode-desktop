@@ -187,6 +187,38 @@ describe('macOS: capturas (comandos exactos)', () => {
     expect(normal.calls.some((c) => c.args.includes('screenshot-sck'))).toBe(false)
   })
 
+  it('F3: origen aislado FALLA CERRADO: si running-apps falla no hay captura (sin él, mejor esfuerzo como siempre)', async () => {
+    const reply = (cmd: string, args: string[]): Reply =>
+      cmd === '/usr/bin/sips' ? { stdout: DIMS } : args.includes('running-apps') ? { code: 1, stderr: 'boom' } : {}
+    const iso = rig(reply, {}, {}, new Set(['/h/cu-helper', '/s/r.png']))
+    await expect(iso.backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg', session: 'ses_x', isolated: true })).rejects.toThrow(
+      /no se devuelve la pantalla/
+    )
+    expect(iso.calls.some((c) => c.args.includes('-x') || c.cmd === '/usr/bin/sips')).toBe(false)
+    const normal = rig(reply, {}, {}, new Set(['/h/cu-helper', '/s/r.png']))
+    await expect(normal.backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg' })).resolves.toBeDefined()
+  })
+
+  it('F3: origen aislado, ScreenCaptureKit y el enmascarado de respaldo fallan ⇒ error, no se convierte la imagen', async () => {
+    const reply = (cmd: string, args: string[]): Reply => {
+      if (cmd === '/usr/bin/sips') return { stdout: DIMS }
+      if (args[0] === 'running-apps') return { stdout: JSON.stringify([{ bundleId: 'com.b.Sin', name: 'B' }]) }
+      if (args[0] === 'screenshot-sck') return { code: 4 }
+      if (args[0] === 'windows-of') return { stdout: JSON.stringify([{ x: 1, y: 1, width: 2, height: 2 }]) }
+      if (args[0] === 'mask-regions') return { code: 1, stderr: 'no pudo' }
+      return {}
+    }
+    const files = new Set(['/h/cu-helper', '/s/r.png'])
+    const iso = rig(reply, {}, {}, files)
+    await expect(iso.backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg', isolated: true })).rejects.toThrow(
+      /no se devuelve la pantalla/
+    )
+    expect(iso.calls.some((c) => c.cmd === '/usr/bin/sips')).toBe(false)
+    // Sin origen aislado: se registra y la captura sigue (como hoy).
+    const normal = rig(reply, {}, {}, new Set(['/h/cu-helper', '/s/r.png']))
+    await expect(normal.backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg' })).resolves.toBeDefined()
+  })
+
   it('pasa SIEMPRE el id de la pantalla elegida a screenshot-sck, también si es la principal', async () => {
     // Sin id el helper captura `displays.first` de SCK, que con un monitor vertical a la izquierda no es la
     // principal: la imagen salía sin ninguna ventana (solo el fondo) y con la escala de otra pantalla.
@@ -450,6 +482,30 @@ describe.skipIf(isWin)('teclado por teclas físicas (cu-keys, clientes de escrit
     // La restauración se programa para más tarde (el cliente remoto tarda en sincronizar): al volver, solo pbpaste, pbcopy y cu-keys.
     expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys'])
     expect(calls[2].args).toEqual(['key', 'cmd+v'])
+  })
+
+  it('pasteText con beforePress que lanza (origen aislado: el foco cambió): NO pulsa, restaura el portapapeles y relanza', async () => {
+    const { backend, calls } = rig(
+      (cmd) => (cmd === '/usr/bin/pbpaste' ? { stdout: 'previo' } : {}),
+      {},
+      {},
+      new Set(['/h/cu-helper', '/h/cu-keys'])
+    )
+    await expect(
+      backend.pasteText!('secreto', 'cmd+v', async () => {
+        throw new Error('foco cambió')
+      })
+    ).rejects.toThrow('foco cambió')
+    expect(calls.some((c) => c.cmd === '/h/cu-keys')).toBe(false)
+    expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/usr/bin/pbcopy'])
+  })
+
+  it('pasteText con beforePress que no lanza: pega igual que siempre', async () => {
+    const { backend, calls } = rig(() => ({ stdout: '' }), {}, {}, new Set(['/h/cu-helper', '/h/cu-keys']))
+    const before = vi.fn(async () => undefined)
+    await backend.pasteText!('x', 'cmd+v', before)
+    expect(before).toHaveBeenCalledTimes(1)
+    expect(calls.map((c) => c.cmd)).toEqual(['/usr/bin/pbpaste', '/usr/bin/pbcopy', '/h/cu-keys'])
   })
 
   it('pasteText: sin texto previo no vacía el portapapeles al final (podría ser una imagen)', async () => {

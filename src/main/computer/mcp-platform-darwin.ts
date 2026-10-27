@@ -52,6 +52,10 @@ function axExitMessage(code: number): string | null {
   }
 }
 
+/** Origen aislado: si no se puede tapar lo no concedido, NO hay captura (fallar cerrado; jamás la pantalla completa). */
+const ISOLATED_MASK_FAIL_MSG =
+  'No se pudo ocultar las apps sin acceso en la captura, así que por seguridad no se devuelve la pantalla. Reintenta en un momento o avisa al usuario.'
+
 const BUNDLE_ID_RE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)+$/
 
 /** Minúsculas y sin acentos, para comparar nombres ("Música" ≈ "musica"). */
@@ -149,10 +153,20 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
    */
   const PASTE_SYNC_MS = 1000
   const PASTE_RESTORE_MS = 4000
-  async function pasteText(text: string, combo: string): Promise<{ restored: boolean }> {
+  async function pasteText(text: string, combo: string, beforePress?: () => Promise<void>): Promise<{ restored: boolean }> {
     const before = await run('/usr/bin/pbpaste', [], 5_000).catch(() => '')
     await runWithStdin('/usr/bin/pbcopy', [], text)
     await new Promise((r) => setTimeout(r, PASTE_SYNC_MS))
+    // Origen aislado: tras la espera de sincronía (el foco pudo cambiar) se vuelve a comprobar la app; si lanza, no se pega.
+    if (beforePress) {
+      try {
+        await beforePress()
+      } catch (err) {
+        // El portapapeles quedó con el texto del agente: se restaura antes de rechazar.
+        if (before && before !== text) await runWithStdin('/usr/bin/pbcopy', [], before).catch(() => undefined)
+        throw err
+      }
+    }
     await keysTool(['key', combo])
     if (before && before !== text) {
       const t = setTimeout(() => {
@@ -337,7 +351,11 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
    * legado), se mantiene el criterio viejo porque no hay "tarea actual" que consultar.
    */
   async function nonGrantedBundleIds(session?: string, isolated = false): Promise<string[]> {
-    if (!cfg.eventsUrl) return []
+    // Origen aislado: FALLA CERRADO (sin canal lateral o con un error aquí no hay captura, no la pantalla completa con Lazunox dentro).
+    if (!cfg.eventsUrl) {
+      if (isolated) throw new Error(ISOLATED_MASK_FAIL_MSG)
+      return []
+    }
     try {
       const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string; name?: string }>
       const taskApps = await currentTaskApps(session)
@@ -353,6 +371,7 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
       return results.filter((b): b is string => !!b)
     } catch (err) {
       log('nonGrantedBundleIds:', err instanceof Error ? err.message : err)
+      if (isolated) throw new Error(ISOLATED_MASK_FAIL_MSG)
       return []
     }
   }
@@ -418,6 +437,8 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
             }
           } catch (err) {
             log('enmascarado de apps no concedidas:', err instanceof Error ? err.message : err)
+            // Origen aislado: sin máscara no se devuelve la captura (llevaría Lazunox y otras apps sin conceder).
+            if (isolated === true) throw new Error(ISOLATED_MASK_FAIL_MSG)
           }
         }
       }

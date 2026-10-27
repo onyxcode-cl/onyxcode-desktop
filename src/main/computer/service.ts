@@ -29,6 +29,7 @@
  * hay que conceder Accesibilidad y Grabación de pantalla. Los `opencode serve` (y su bash) NO
  * forman parte de esa cadena: se lanzan con `lazunox-disclaim`.
  */
+import { APP_ID } from '@shared/brand'
 import { t } from '@shared/i18n'
 import { app, globalShortcut, powerMonitor, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
@@ -656,7 +657,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * «Permitir» en las tarjetas de la propia app, escribir en un chat de Control total, abrir apps por el Dock/Spotlight sin tarjeta).
    */
   private isBridgeExempt(sessionId: string | undefined, bundleId: string): boolean {
-    return !!sessionId && this.sessionOwner.has(sessionId) && this.grants.isExempt(bundleId)
+    return !!sessionId && this.sessionOwner.has(sessionId) && this.isBridgeExemptApp(bundleId)
+  }
+
+  /** Exenta para el servidor aislado: la lista del sistema Y cualquier ayudante de Lazunox (`<APP_ID>.motor`, `.disclaim`, `.helper*`…). */
+  private isBridgeExemptApp(bundleId: string): boolean {
+    return this.grants.isExempt(bundleId) || bundleId.startsWith(`${APP_ID}.`)
   }
 
   /**
@@ -668,7 +674,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   private effectiveTier(sessionId: string | undefined, bundleId: string, name: string, isolated = false): AppTier | null {
     if (this.grants.isBlocked(bundleId) || this.grants.isDenied(bundleId) || this.isSessionDenied(sessionId, bundleId)) return null
     if (isolated || (sessionId && this.sessionOwner.has(sessionId))) {
-      if (!sessionId || !this.sessionOwner.has(sessionId) || this.grants.isExempt(bundleId)) return null
+      if (!sessionId || !this.sessionOwner.has(sessionId) || this.isBridgeExemptApp(bundleId)) return null
       return this.sessionTier(sessionId, bundleId)
     }
     const persisted = this.grants.resolve(bundleId, name)
@@ -756,12 +762,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
             ? this.sessionTier(pending.sessionId, d.bundleId)
             : maxTier(this.grants.tierFor(d.bundleId), this.sessionTier(pending.sessionId, d.bundleId))
           const effective = maxTier(current, d.decision) ?? d.decision
-          if (scope === 'always') {
+          if (scope === 'always' && !bridge) {
             // El nombre lo fija la tarjeta (main), no el renderer.
             this.grants.grant(d.bundleId, card.name || d.name, effective)
-            // El servidor aislado solo cuenta concesiones de sesión: «siempre» además la deja para esta sesión.
-            if (bridge) this.grantForSession(pending.sessionId, d.bundleId, effective)
           } else {
+            // Servidor aislado: «siempre» se trata como «esta sesión» (jamás deja una concesión guardada que valdría en Control total).
             this.grantForSession(pending.sessionId, d.bundleId, effective)
           }
           map[d.bundleId] = effective

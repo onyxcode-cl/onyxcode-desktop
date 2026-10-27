@@ -246,7 +246,7 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
  */
 async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Promise<void> {
   // Origen aislado: la propia Lazunox, Electron, Spotlight, Dock… (exentas del sistema) NUNCA se actúan (ni siquiera con tarjeta).
-  if (isolatedCall && app.bundleId && ISOLATED_NEVER_ACT.has(app.bundleId)) {
+  if (isolatedCall && app.bundleId && isIsolatedExempt(app.bundleId)) {
     reportBridgeDenied('exempt-app', session)
     throw new Error(
       `«${app.name}» es una app del sistema o la propia Lazunox: en este modo no se puede controlar. No insistas ni pidas acceso a ella; ` +
@@ -296,8 +296,9 @@ async function checkExpectApp(expectApp: unknown): Promise<void> {
  * Comprueba que la app en primer plano (y, si se da un punto, la app bajo ese punto) tenga AL
  * MENOS `minTier`. Usan esto las herramientas de ratón/teclado (sobre la app en primer plano).
  */
-async function requireTier(minTier: AppTier, point?: { x: number; y: number }, session?: string): Promise<void> {
-  const apps = [await appFrontmost()]
+async function requireTier(minTier: AppTier, point?: { x: number; y: number }, session?: string): Promise<AppRef | undefined> {
+  const front = await appFrontmost()
+  const apps = [front]
   if (point) {
     const at = await appAtPoint(point.x, point.y)
     if (at.bundleId && at.bundleId !== apps[0]?.bundleId) apps.push(at)
@@ -316,9 +317,10 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
       reportBridgeDenied('unknown-app', session)
       throw new Error('No se pudo identificar la app de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.')
     }
-    return // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
+    return undefined // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
   }
   for (const a of known) await ensureTier(a, minTier, session)
+  return front
 }
 
 /**
@@ -784,10 +786,155 @@ const ISOLATED_NEVER_ACT: ReadonlySet<string> = new Set([...NEVER_EXCLUDE].filte
  * Dock, barra de menús, ventana de login y WindowServer no se tapan (son el marco de la pantalla; tampoco se pueden accionar).
  */
 const ISOLATED_MASK: ReadonlySet<string> = new Set(
-  [...ISOLATED_NEVER_ACT].filter(
+  // Parte de NEVER_EXCLUDE (no de ISOLATED_NEVER_ACT): incluye Finder (carpetas y escritorio del usuario), que solo se ve con concesión de sesión.
+  [...NEVER_EXCLUDE].filter(
     (b) => !['com.apple.dock', 'com.apple.systemuiserver', 'com.apple.WindowServer', 'com.apple.loginwindow'].includes(b)
   )
 )
+
+/** Origen aislado: ¿app exenta? La lista del sistema/Lazunox Y cualquier ayudante de Lazunox (`cl.bentec.lazunox.motor`, `.disclaim`, `.helper*`…). */
+function isIsolatedExempt(bundleId: string): boolean {
+  return ISOLATED_NEVER_ACT.has(bundleId) || bundleId.startsWith('cl.bentec.lazunox.')
+}
+
+/**
+ * Origen aislado: combinaciones que cambian el foco o abren cosas globalmente (conmutador de apps, Spotlight, Mission Control y espacios,
+ * ocultar/minimizar/cerrar la app, forzar salida, bloqueo, capturas del sistema, teclas F del sistema). Lista CERRADA: una combinación
+ * queda bloqueada si lleva TODOS los modificadores de una entrada y su misma tecla (`cmd+tab` bloquea también `cmd+shift+tab`).
+ * `fn` (cualquier uso) se rechaza aparte. Con ellas un `key` podría salir de la app concedida hacia Lazunox (Control total) o abrir apps sin tarjeta.
+ */
+const ISOLATED_BLOCKED_KEYS: readonly string[] = [
+  'cmd+tab',
+  'cmd+`',
+  'cmd+space',
+  'cmd+h',
+  'cmd+m',
+  'cmd+q',
+  'cmd+alt+escape',
+  'cmd+alt+d',
+  'cmd+shift+3',
+  'cmd+shift+4',
+  'cmd+shift+5',
+  'ctrl+left',
+  'ctrl+right',
+  'ctrl+up',
+  'ctrl+down',
+  'ctrl+space',
+  'ctrl+cmd+space',
+  'ctrl+cmd+q',
+  'f3',
+  'f4',
+  'f9',
+  'f10',
+  'f11',
+  'f12'
+]
+
+/** Vocabulario de `key` del helper (`keyCodes`, `modifierFlags` y `aliases` de helper.swift): lo que no esté aquí no se pulsa en origen aislado. */
+const KEY_MODIFIER_ALIASES: Record<string, string> = {
+  cmd: 'cmd',
+  command: 'cmd',
+  meta: 'cmd',
+  super: 'cmd',
+  shift: 'shift',
+  alt: 'alt',
+  option: 'alt',
+  opt: 'alt',
+  ctrl: 'ctrl',
+  control: 'ctrl',
+  fn: 'fn'
+}
+const KEY_NAME_ALIASES: Record<string, string> = {
+  esc: 'escape',
+  enter: 'return',
+  backspace: 'delete',
+  arrowleft: 'left',
+  arrowright: 'right',
+  arrowup: 'up',
+  arrowdown: 'down',
+  page_up: 'pageup',
+  page_down: 'pagedown',
+  del: 'forwarddelete',
+  plus: '=',
+  minus: '-'
+}
+const KNOWN_KEY_NAMES: ReadonlySet<string> = new Set([
+  ...'abcdefghijklmnopqrstuvwxyz0123456789'.split(''),
+  ...['=', '-', ']', '[', "'", ';', '\\', ',', '/', '.', '`'],
+  ...['return', 'tab', 'space', 'delete', 'escape', 'forwarddelete', 'home', 'end', 'pageup', 'pagedown', 'left', 'right', 'down', 'up'],
+  ...Array.from({ length: 12 }, (_, i) => `f${i + 1}`)
+])
+
+interface ParsedCombo {
+  mods: Set<string>
+  key: string
+}
+
+/** Interpreta UNA combinación como lo hace el helper (`pressKey`); null si no se reconoce (⇒ en origen aislado no se pulsa). */
+function parseCombo(combo: string): ParsedCombo | null {
+  const parts = combo
+    .toLowerCase()
+    .split('+')
+    .map((p) => p.trim())
+  const mods = new Set<string>()
+  let key: string | null = null
+  for (let i = 0; i < parts.length; i++) {
+    let p = parts[i]!
+    if (p === '' && i === parts.length - 1) p = '='
+    p = KEY_NAME_ALIASES[p] ?? p
+    const m = KEY_MODIFIER_ALIASES[p]
+    if (m) mods.add(m)
+    else if (p) {
+      if (key) return null // dos «teclas principales» (p. ej. un modificador que no se reconoce): ambiguo, no se pulsa
+      key = p
+    }
+  }
+  if (!key || !KNOWN_KEY_NAMES.has(key)) return null
+  return { mods, key }
+}
+
+const BLOCKED_KEY_RULES: ParsedCombo[] = ISOLATED_BLOCKED_KEYS.map((k) => parseCombo(k)).filter((c): c is ParsedCombo => c !== null)
+
+/**
+ * Origen aislado: valida el argumento `keys` de `key`. UNA sola combinación por llamada (el foco puede cambiar entre combinaciones),
+ * solo teclas conocidas y ninguna de `ISOLATED_BLOCKED_KEYS`. Devuelve la combinación o lanza.
+ */
+function checkIsolatedKeys(keys: string, session: string | undefined): string {
+  const combos = keys.trim().split(/ +/).filter(Boolean)
+  if (combos.length !== 1 || /\s/.test(combos[0]!)) {
+    reportBridgeDenied('key-sequence', session)
+    throw new Error(
+      'En este modo solo se pulsa UNA combinación por llamada (el foco puede cambiar entre combinaciones). Llama a key una vez por combinación.'
+    )
+  }
+  const parsed = parseCombo(combos[0]!)
+  if (!parsed) {
+    reportBridgeDenied('key-unknown', session)
+    throw new Error(`Combinación no reconocida: «${combos[0]}». Usa nombres como "return", "tab", "cmd+a", "shift+left", "f5".`)
+  }
+  if (parsed.mods.has('fn') || BLOCKED_KEY_RULES.some((r) => r.key === parsed.key && [...r.mods].every((m) => parsed.mods.has(m)))) {
+    reportBridgeDenied('key-blocked', session)
+    throw new Error(
+      `La combinación «${combos[0]}» cambia de app o abre cosas del sistema: en este modo no se pulsa. Usa open_application para cambiar de app o app_press con los menús.`
+    )
+  }
+  return combos[0]!
+}
+
+/**
+ * Origen aislado: justo antes de pulsar/escribir se vuelve a mirar la app en primer plano; si no es la que se comprobó (o ya no se identifica),
+ * no se actúa (el foco puede haber cambiado desde la comprobación de concesión). Sin origen aislado no hace nada.
+ */
+async function recheckFront(checked: AppRef | undefined, session: string | undefined): Promise<void> {
+  if (!isolatedCall) return
+  const now = await appFrontmost()
+  if (!checked?.bundleId || !now.bundleId || now.bundleId !== checked.bundleId || isIsolatedExempt(now.bundleId)) {
+    reportBridgeDenied('front-changed', session)
+    throw new Error(
+      'La app en primer plano cambió antes de pulsar: no se hizo nada. Toma una captura y revisa dónde estás antes de reintentar.'
+    )
+  }
+}
 
 // ───────────────────────────── backend de plataforma ─────────────────────────────
 
@@ -1648,18 +1795,21 @@ const TOOLS: ToolDef[] = [
       if (!text) throw new Error('text vacío')
       if (text.length > 5000) throw new Error('Texto demasiado largo (máx. 5000 caracteres)')
       await checkExpectApp(a.expect_app)
-      await requireTier('full', undefined, session)
+      const checkedFront = await requireTier('full', undefined, session)
       await requireCanType()
       const layout = a.layout === 'us' ? 'us' : 'mac'
       const mode = await typeModeFor(a.input)
-      const pasteKey = typeof a.paste_key === 'string' && a.paste_key.trim() ? a.paste_key.trim() : 'cmd+v'
-      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, () =>
-        mode === 'paste'
-          ? backend.pasteText!(text, pasteKey).then(() => '')
+      // Origen aislado: el atajo de pegar es SIEMPRE cmd+v (cualquier otro `paste_key` se ignora: sería una combinación libre).
+      const pasteKey = isolatedCall ? 'cmd+v' : typeof a.paste_key === 'string' && a.paste_key.trim() ? a.paste_key.trim() : 'cmd+v'
+      await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, async () => {
+        // Origen aislado: la app en primer plano se vuelve a comprobar JUSTO antes de escribir/pegar.
+        await recheckFront(checkedFront, session)
+        return mode === 'paste'
+          ? backend.pasteText!(text, pasteKey, isolatedCall ? () => recheckFront(checkedFront, session) : undefined).then(() => '')
           : mode === 'keys'
             ? backend.typeKeys!(text, layout)
             : helper('type', text)
-      )
+      })
       const how = mode === 'paste' ? ` por portapapeles (${pasteKey})` : mode === 'keys' ? ' por teclas físicas' : ''
       const hint =
         mode === 'keys'
@@ -1680,15 +1830,19 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       await requireForeground(session)
       await checkExpectApp(a.expect_app)
-      const keys = String(a.keys ?? '').trim()
+      let keys = String(a.keys ?? '').trim()
       if (!keys) throw new Error('keys vacío')
+      // Origen aislado: UNA combinación, de vocabulario conocido y fuera de la lista cerrada de las que cambian de app o abren cosas del sistema.
+      if (isolatedCall) keys = checkIsolatedKeys(keys, session)
       const sendKeys = await backend.checkKeys(keys) // política de combinaciones (Windows); en macOS devuelve `keys` tal cual
-      await requireTier('full', undefined, session)
+      const checkedFront = await requireTier('full', undefined, session)
       await requireCanType()
       const viaKeys = await shouldPressByKeys()
-      await act({ tool: 'key', text: keys }, () =>
-        viaKeys ? backend.pressKeys!(sendKeys, a.layout === 'us' ? 'us' : 'mac') : helper('key', sendKeys)
-      )
+      await act({ tool: 'key', text: keys }, async () => {
+        // Origen aislado: la app en primer plano se vuelve a comprobar JUSTO antes de pulsar (si cambió o es exenta, no se pulsa).
+        await recheckFront(checkedFront, session)
+        return viaKeys ? backend.pressKeys!(sendKeys, a.layout === 'us' ? 'us' : 'mac') : helper('key', sendKeys)
+      })
       return `Teclas pulsadas: ${keys}`
     }
   },
@@ -2291,7 +2445,9 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       const app = await namedApp(a.app)
       const { mode, foreground } = await controlMode(session)
-      if (mode === 'full') return 'Ya tienes control de la pantalla (el modo no es "En segundo plano"): no hace falta pedirlo.'
+      // Origen aislado: la preferencia «Control de la pantalla» no le da el ratón (solo una tarjeta aprobada de esta sesión): sigue el flujo normal.
+      if (mode === 'full' && !isolatedCall)
+        return 'Ya tienes control de la pantalla (el modo no es "En segundo plano"): no hace falta pedirlo.'
       if (foreground) return `Ya tienes el control del ratón y el teclado en esta tarea para ${app.name}.`
       const reason = typeof a.reason === 'string' ? a.reason.slice(0, 500) : undefined
       const takeoverReply = await requestAccess([{ ...app, requested: 'full' }], reason, undefined, session, undefined, 'takeover')
