@@ -23,6 +23,7 @@ import { build } from 'esbuild'
 import { registrarOla2 } from './checks-ola2.mjs'
 import { registrarOla3 } from './checks-ola3.mjs'
 import { NO_VERIFICABLE, registrarOla6 } from './checks-ola6.mjs'
+import { FAMILIAS as FAMILIAS_OLA7, registrarOla7 } from './checks-ola7.mjs'
 import { runEngine } from './harness.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -1102,6 +1103,7 @@ const FAMILIAS_OLA3 = registrarOla3({ bin, checkRun, runEngine })
 // Ola 6 del motor lazunox.12: PROBE_ONLY=umbral | minimos | resumen | todo-deps | ganchos3 | cambios | respaldo | heredado | sugerencia | unicode | paralelo | bifurcar (checks-ola6.mjs).
 // `PROBE_ONLY=no-verificable` imprime lo que este probe no puede comprobar sin modelo real.
 const FAMILIAS_OLA6 = registrarOla6({ bin, checkRun, runEngine })
+registrarOla7({ bin, checkRun, runEngine })
 
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
 const only = process.env.PROBE_ONLY
@@ -1115,7 +1117,10 @@ if (only === 'no-verificable') {
   for (const [que, porque] of NO_VERIFICABLE) console.log(`NO VERIFICABLE ${que}\n      → ${porque}`)
   process.exit(0)
 }
-const selected = only ? checks.filter((x) => (x.familia ? x.familia === only : x.name.includes(only) && !FAMILIAS_OLA3.includes(only) && !FAMILIAS_OLA6.includes(only))) : checks
+const selectedAll = only ? checks.filter((x) => (x.familia ? x.familia === only : x.name.includes(only) && !FAMILIAS_OLA3.includes(only) && !FAMILIAS_OLA6.includes(only) && !FAMILIAS_OLA7.includes(only))) : checks
+// PROBE_SLICE=a-b: corre solo las comprobaciones a..b-1 (para repartir la corrida larga de Windows en tramos con tiempo máximo cada uno).
+const selected = process.env.PROBE_SLICE ? selectedAll.slice(...process.env.PROBE_SLICE.split('-').map(Number)) : selectedAll
+if (process.env.PROBE_COUNT) { console.log(selectedAll.length); process.exit(0) }
 for (const c of selected) {
   // `gate: 'motor-viejo'`: necesita un binario de un motor anterior (PROBE_MOTOR_VIEJO=/ruta/al/opencode, p. ej. el lazunox.10 publicado) para fabricar una base antigua.
   if (c.gate === 'motor-viejo' && !process.env.PROBE_MOTOR_VIEJO) {

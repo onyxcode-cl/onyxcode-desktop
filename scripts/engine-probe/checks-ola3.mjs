@@ -413,6 +413,8 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
   checkRun('presupuesto (d): sin `continuar`, una respuesta cortada por longitud no se repite (1 petición)', async () => {
     const r = await motor({
       git: true,
+      // Ola 7 (7.4): ahora una respuesta cortada recibe un aviso y otro turno; el comportamiento de antes es LAZUNOX_SALIDA_CORTADA=0 (lo nuevo lo cubre o7-cortada).
+      env: { LAZUNOX_SALIDA_CORTADA: '0' },
       pre: fijaMeta({ presupuesto: { pasos: 50 } }),
       decide: ({ body }) => ((body.tools ?? []).length ? TROZO(1) : { text: 'titulo' }),
       http: async ({ bodies }) => ({ n: detrabajo(bodies).length })
@@ -1029,7 +1031,10 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
       exige(a.toolParts[0]?.status === 'error' && a.toolParts[1]?.status === 'error', 'skill manual / skill porruta (sin activar) no fallaron', a.toolParts.slice(0, 2))
       const trabajo = detrabajo(a.bodies)
       exige(!listaSkills(trabajo[0]).includes('porruta'), 'porruta ya estaba en la lista antes de leer nada')
-      exige(listaSkills(trabajo.at(-1)).includes('porruta'), 'tras leer src/a.ts, porruta no aparece en la lista del siguiente paso', listaSkills(trabajo.at(-1)))
+      // Ola 7 (7.9): la lista de habilidades del sistema es una línea base fija (cuida la caché); lo activado llega como UN aviso de diferencias en el mensaje de la persona.
+      const ultimaPeticion = trabajo.at(-1)
+      const avisoDiff = JSON.stringify(ultimaPeticion.messages ?? []).includes('aviso-instrucciones') && /porruta/.test(JSON.stringify((ultimaPeticion.messages ?? []).filter((m) => m.role === 'user')))
+      exige(listaSkills(ultimaPeticion).includes('porruta') || avisoDiff, 'tras leer src/a.ts, porruta no aparece ni en la lista ni en el aviso de diferencias del siguiente paso', listaSkills(ultimaPeticion))
       if (WIN) return true // el enlace simbólico a un archivo exige privilegios en Windows
       const fuera = join(root, 'fuera')
       mkdirSync(fuera, { recursive: true })
@@ -1040,7 +1045,7 @@ export function registrarOla3({ bin, checkRun: registrar, runEngine }) {
         ...leyendo('src/x.ts')
       })
       exige(b.toolParts[2]?.tool === 'read' && b.toolParts[2].status === 'completed', 'no se pudo leer el enlace (la prueba no ejercitó el caso)', b.toolParts[2])
-      exige(!listaSkills(detrabajo(b.bodies).at(-1)).includes('porruta'), 'leer un enlace que apunta fuera del proyecto activó porruta')
+      exige(!listaSkills(detrabajo(b.bodies).at(-1)).includes('porruta') && !/porruta/.test(JSON.stringify((detrabajo(b.bodies).at(-1).messages ?? []).filter((m) => m.role === 'user'))), 'leer un enlace que apunta fuera del proyecto activó porruta')
       return true
     })
   )

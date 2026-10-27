@@ -41,3 +41,5 @@ OpenCode 2.2.0 en el comparativo: T01 5.473, T12 7.467, T13 5.888 por paso. Qued
 ## Archivos
 
 `DIAGNOSTICO.md` (tabla antes/después), `capturas/` (cuerpos de petición de final2, OpenCode 2.2.0 y v2; sin cabeceras ni claves), `humo/` (bench.json, log y `proxy.jsonl` del humo con modelo real), `herramientas/` (servidor de captura, lanzadores y analizador).
+
+> Nota de la 1.7.8: se quitó la carpeta `capturas/` (peticiones crudas al modelo, con el prompt del sistema completo y el nombre anterior del producto); las conclusiones están en DIAGNOSTICO.md.

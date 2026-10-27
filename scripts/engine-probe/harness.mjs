@@ -285,6 +285,7 @@ export async function runEngine(bin, sc) {
       ? { SHELL: 'C:\\Program Files\\Git\\bin\\bash.exe' }
       : {}),
     ...(process.env.PROBE_SHELL ? { SHELL: process.env.PROBE_SHELL } : {}),
+    ...(process.env.PROBE_EXTRA_ENV ? JSON.parse(process.env.PROBE_EXTRA_ENV) : {}),
     ...(sc.env ?? {})
   }
   let log = ''

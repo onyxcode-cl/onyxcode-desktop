@@ -1011,6 +1011,8 @@ export function registrarOla6({ bin, checkRun: registrar, runEngine }) {
       const r = await motor({
         root,
         git: true,
+        // Ola 7 (7.3): `bash` ahora es exclusivo (escrituras en orden); el solapamiento de antes es LAZUNOX_PARALELISMO_SEGURO=0 (lo nuevo lo cubre o7-paralelo).
+        env: { LAZUNOX_PARALELISMO_SEGURO: '0' },
         inline: { permission: { bash: 'allow' } },
         decide: ({ tools, toolTexts }) => (tools.length && !toolTexts.length ? { calls: [sh(1), sh(2), sh(3)] } : null),
         http: async ({ q, sessionID }) => herramientas(await mensajes(q, sessionID))
