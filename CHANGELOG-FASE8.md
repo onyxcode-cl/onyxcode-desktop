@@ -3949,3 +3949,10 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Pruebas.** `CodeExtras.render.test.tsx` (rechazo durante la revisión y caso sin rechazo).
 - **No verificado.** Con el motor real y la app empaquetada.
 
+
+## F8-B228 — Ola 7 (app): rutas nuevas del motor y vista para ver y quitar los «siempre» guardados
+
+- **Qué.** (1) `resources/opencode-bin/api-routes.json` suma `GET /permission/siempre`, `DELETE /permission/siempre/{id}`, `DELETE /permission/siempre` (7.22) y `GET /session/{sessionID}/uso` (7.18); `routeCount` 206. (2) Política remota: las tres rutas de «siempre» son clase X (el celular ni las ve ni las quita; el listado muestra órdenes y patrones); `GET .../uso` es R ligada al ámbito de carpetas. (3) Ajustes › Funciones experimentales › «Ver y quitar los "siempre" de una carpeta»: canales `settings:alwaysList` y `settings:alwaysRevoke` (contrato en `src/shared/ipc.ts`, esquema estricto, handler en `src/main/ipc/engine-always.ts`, clase X en `policy.ts`) y `AlwaysRulesBlock.tsx`. Solo lista y quita de a una regla del motor principal, por carpeta reciente; «Olvidar los permisos guardados» (todos) sigue siendo `settings:forgetAlways`.
+- **Seguridad.** La respuesta del motor es dato no confiable: ids con patrón de hash, textos sin saltos de línea y acotados a 500 caracteres, máximo 500 reglas, pintado como texto plano. El id se vuelve a validar antes de ir en la ruta. Quitar un «siempre» solo hace la app más estricta.
+- **Pruebas.** `policy.test.ts`, `opencode-contract.test.ts`, `schemas.test.ts`, `engine-always.test.ts`, `AlwaysRulesBlock.test.tsx`.
+- **No verificado.** Con el motor real y la app empaquetada (el motor fijado hoy, lazunox.12, no trae estas rutas: la vista dice que no puede gestionarlas); los servidores aislados de Tareas no entran en la lista; `GET .../uso` no se conecta a ninguna pantalla todavía; lector de pantalla.

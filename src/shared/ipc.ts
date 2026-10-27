@@ -25,6 +25,7 @@ import type { UpdateState } from './update-check'
 import type { InstallState } from './update-install'
 import type { KeyTestResult } from './key-test'
 import type { DiagLogs, DiagSource } from './diagnostics'
+import type { AlwaysListResult, AlwaysRevokeResult } from './engine-always'
 import type { EngineJobResumeResult, EngineJobsResult } from './engine-jobs'
 import type { BudgetConfig, BudgetResult, GoalResult, GoalSetRequest, GoalSetResult, ReviewResult } from './engine-code-extras'
 import type { ForeignAgentsResult, HelperDef, HelperReadResult, HelperSaveResult, HelpersListResult } from './helper-agents'
@@ -152,6 +153,10 @@ export interface IpcInvokeContract {
   'settings:addRecentFolder': { req: { path: string }; res: Settings }
   /** «Olvidar los permisos guardados»: borra lo que el motor recordó con «Permitir siempre». Devuelve cuántos elementos quitó. */
   'settings:forgetAlways': { req: void; res: { removed: number } }
+  /** Lista los «siempre» que el motor guardó para una carpeta (Ola 7, 7.22). `available: false` = el motor no tiene la ruta. */
+  'settings:alwaysList': { req: { directory: string }; res: AlwaysListResult }
+  /** Quita UN «siempre» guardado (por el id estable del motor). `ok: false` = ya no existía. */
+  'settings:alwaysRevoke': { req: { directory: string; id: string }; res: AlwaysRevokeResult }
   /** Lee el archivo de ganchos de usuario (`''` si aún no existe). El contenido nunca va a logs ni a telemetría. */
   'settings:hooksRead': { req: void; res: { text: string; exists: boolean } }
   /** Valida y guarda el archivo de ganchos (escritura atómica). Si no pasa la validación, devuelve los problemas (códigos, no el texto). */
@@ -230,6 +235,8 @@ export const IPC_INVOKE_CHANNELS = [
   'settings:set',
   'settings:addRecentFolder',
   'settings:forgetAlways',
+  'settings:alwaysList',
+  'settings:alwaysRevoke',
   'settings:hooksRead',
   'settings:hooksWrite'
 ] as const satisfies readonly IpcInvokeChannel[]

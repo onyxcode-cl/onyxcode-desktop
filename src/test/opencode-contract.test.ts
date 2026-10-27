@@ -69,9 +69,20 @@ describe('instantánea api-routes.json', () => {
       'DELETE /experimental/session/{sessionID}/objetivo',
       'GET /experimental/session/{sessionID}/contexto-fijo'
     ]
+    // Ola 7: gestionar los «siempre» guardados (7.22) y uso por sesión (7.18): rutas propias del motor.
+    const OLA7 = [
+      'GET /permission/siempre',
+      'DELETE /permission/siempre/{id}',
+      'DELETE /permission/siempre',
+      'GET /session/{sessionID}/uso'
+    ]
     const propias = snapshot.routes.filter(
       (r: string) =>
-        /\/experimental\/session\/[^\s]*\/trabajos/.test(r) || FORMULARIOS.includes(r) || REBOBINAR.includes(r) || OBJETIVO.includes(r)
+        /\/experimental\/session\/[^\s]*\/trabajos/.test(r) ||
+        FORMULARIOS.includes(r) ||
+        REBOBINAR.includes(r) ||
+        OBJETIVO.includes(r) ||
+        OLA7.includes(r)
     )
     const enSnapshot = propias.filter((r: string) => FORMULARIOS.includes(r))
     expect(enSnapshot.length === 0 || enSnapshot.length === FORMULARIOS.length).toBe(true) // las dos o ninguna
@@ -79,6 +90,7 @@ describe('instantánea api-routes.json', () => {
       [
         ...REBOBINAR,
         ...OBJETIVO,
+        ...OLA7,
         'GET /experimental/session/{sessionID}/trabajos',
         'POST /experimental/session/{sessionID}/trabajos/{id}/terminar',
         'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar'

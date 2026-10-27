@@ -11,6 +11,7 @@ import type { CodeExtrasFlags, EngineExperiments } from '@shared/types'
 import { useT } from '../../../lib/i18n'
 import { useSettings } from '../../../stores/settings'
 import { EngineLimitsBlock } from './EngineLimitsBlock'
+import { AlwaysRulesBlock } from './AlwaysRulesBlock'
 import { RememberAlwaysBlock } from './RememberAlwaysBlock'
 import { UserHooksBlock } from './UserHooksBlock'
 import { Badge, Card, Row, SectionHeader, Toggle } from './ui'
@@ -272,6 +273,7 @@ export function EngineExperimentsSection(): React.JSX.Element {
       <FormsBlock />
       <CodeExtrasBlock />
       <RememberAlwaysBlock />
+      <AlwaysRulesBlock />
       <UserHooksBlock />
       <EngineLimitsBlock />
       <p className="text-xs leading-relaxed text-muted">{t('settings.engine.sharedNote')}</p>

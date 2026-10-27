@@ -429,6 +429,8 @@ describe('settings:set y setters por campos', () => {
     expect(cls(ipc('settings:set', { rememberAlways: false }))).toBe('deny:field-forbidden:rememberAlways')
     expect(cls(ipc('settings:set', { theme: 'dark', rememberAlways: true }))).toBe('deny:field-forbidden:rememberAlways')
     expect(cls(ipc('settings:forgetAlways', undefined))).toMatch(/^deny/)
+    expect(cls(ipc('settings:alwaysList', { directory: '/work/proj' }))).toBe('deny:forbidden')
+    expect(cls(ipc('settings:alwaysRevoke', { directory: '/work/proj', id: 'abc123' }))).toBe('deny:forbidden')
   })
   it('settings:set{userHooksEnabled} y los canales de ganchos son X: el celular no activa ni lee comandos del Mac', () => {
     expect(cls(ipc('settings:set', { userHooksEnabled: true }))).toBe('deny:field-forbidden:userHooksEnabled')
@@ -856,5 +858,29 @@ describe('reanudar un ayudante perdido: solo desde el Mac (clase X)', () => {
     expect(cls(ipc('jobs:resume', { sessionID: 'ses_1', jobId: 'ses_h' }))).toBe('deny:forbidden')
     expect(cls(http('GET', '/experimental/session/ses_1/trabajos/ses_h/reanudar', dq))).toBe('deny:unknown-route')
     expect(cls(http('DELETE', '/experimental/session/ses_1/trabajos/ses_h/reanudar', dq))).toBe('deny:unknown-route')
+  })
+})
+
+describe('Ola 7: «siempre» guardados y uso por sesión', () => {
+  const SIEMPRE = ['GET /permission/siempre', 'DELETE /permission/siempre/{id}', 'DELETE /permission/siempre']
+  it('las rutas nuevas están en el contrato del motor y clasificadas', () => {
+    for (const r of [...SIEMPRE, 'GET /session/{sessionID}/uso']) expect(ROUTES, r).toContain(r)
+    for (const r of SIEMPRE) expect(CELULAR_HTTP_POLICY[r], r).toBe('X')
+  })
+  it('el celular no ve ni quita los «siempre» (son decisiones de quien está en el Mac)', () => {
+    expect(cls(http('GET', '/permission/siempre', dq))).toBe('deny:forbidden')
+    expect(cls(http('DELETE', '/permission/siempre/abc123', dq))).toBe('deny:forbidden')
+    expect(cls(http('DELETE', '/permission/siempre', dq))).toBe('deny:forbidden')
+  })
+  it('no se cuela con otro método ni con rutas parecidas', () => {
+    expect(cls(http('POST', '/permission/siempre', dq, {}))).toBe('deny:unknown-route')
+    expect(cls(http('PUT', '/permission/siempre/abc123', dq))).toBe('deny:unknown-route')
+    expect(cls(http('GET', '/permission/siempre/abc123', dq))).toBe('deny:unknown-route')
+  })
+  it('el uso de una sesión es solo lectura y respeta el ámbito de carpetas', () => {
+    expect(cls(http('GET', '/session/ses_1/uso', dq))).toBe('R')
+    expect(cls(http('GET', '/session/ses_1/uso', { directory: '/otra/carpeta' }))).toMatch(/^deny:/)
+    expect(cls(http('POST', '/session/ses_1/uso', dq, {}))).toBe('deny:unknown-route')
+    expect(cls(http('DELETE', '/session/ses_1/uso', dq))).toBe('deny:unknown-route')
   })
 })

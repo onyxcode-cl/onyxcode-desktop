@@ -157,6 +157,8 @@ const ENGINE_ONLY_DIRECT = [
   /\/experimental\/session\/[^\s]*\/trabajos/,
   // Modo objetivo (motor propio, 3A): `src/main/ipc/engine-code-extras.ts`, `fetch` directo con 404/405 = «motor sin la ruta».
   /\/experimental\/session\/[^\s]*\/objetivo/,
+  // «Siempre» guardados (motor propio, Ola 7 / 7.22): `src/main/ipc/engine-always.ts`, `fetch` directo con 404/405 = «motor sin la ruta».
+  /\/permission\/siempre/,
   // Formularios de conectores (MCP `elicitation`, motor propio): `src/shared/mcp-elicitation.ts`, también `fetch` directo con 404/405 = «motor sin la ruta».
   /\/mcp\/elicitation/
 ]
