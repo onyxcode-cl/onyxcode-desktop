@@ -320,6 +320,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'settings:get': 'R',
   'settings:set': fieldwise(SETTINGS_FIELDS),
   'settings:addRecentFolder': 'D',
+  'settings:alwaysList': 'X', // lista los «siempre» guardados (órdenes y patrones): solo la ventana principal
+  'settings:alwaysRevoke': 'X', // quitar un «siempre» es decisión de quien está en el Mac
   'settings:forgetAlways': 'X', // borra los permisos «siempre» guardados: solo la ventana principal
   'settings:hooksRead': 'X', // el archivo de ganchos contiene comandos de la persona: solo la ventana principal
   'settings:hooksWrite': 'X', // escribir ganchos = ejecución de comandos: el celular NO

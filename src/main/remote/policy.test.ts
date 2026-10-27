@@ -429,6 +429,8 @@ describe('settings:set y setters por campos', () => {
     expect(cls(ipc('settings:set', { rememberAlways: false }))).toBe('deny:field-forbidden:rememberAlways')
     expect(cls(ipc('settings:set', { theme: 'dark', rememberAlways: true }))).toBe('deny:field-forbidden:rememberAlways')
     expect(cls(ipc('settings:forgetAlways', undefined))).toMatch(/^deny/)
+    expect(cls(ipc('settings:alwaysList', { directory: '/work/proj' }))).toBe('deny:forbidden')
+    expect(cls(ipc('settings:alwaysRevoke', { directory: '/work/proj', id: 'abc123' }))).toBe('deny:forbidden')
   })
   it('settings:set{userHooksEnabled} y los canales de ganchos son X: el celular no activa ni lee comandos del Mac', () => {
     expect(cls(ipc('settings:set', { userHooksEnabled: true }))).toBe('deny:field-forbidden:userHooksEnabled')

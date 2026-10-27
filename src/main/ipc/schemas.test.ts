@@ -573,6 +573,23 @@ describe('settings:set rememberAlways y settings:forgetAlways', () => {
   })
 })
 
+describe('settings:alwaysList y settings:alwaysRevoke', () => {
+  const list = IPC_SCHEMAS['settings:alwaysList']
+  const revoke = IPC_SCHEMAS['settings:alwaysRevoke']
+  it('list pide una carpeta absoluta y nada más', () => {
+    expect(list({ directory: '/Users/x/proj' })).toEqual({ directory: '/Users/x/proj' })
+    for (const bad of [undefined, {}, { directory: 'rel' }, { directory: '/a', extra: 1 }, { directory: 5 }])
+      expect(() => list(bad)).toThrow()
+  })
+  it('revoke exige un id de hash (sin barras ni saltos) y sin claves extra', () => {
+    expect(revoke({ directory: '/a', id: 'a1b2-C_3' })).toEqual({ directory: '/a', id: 'a1b2-C_3' })
+    for (const id of ['', '../x', 'a/b', 'a b', 'a\nb', 'x'.repeat(129), 5])
+      expect(() => revoke({ directory: '/a', id }), String(id)).toThrow()
+    expect(() => revoke({ directory: '/a', id: 'ok', all: true })).toThrow()
+    expect(() => revoke({ id: 'ok' })).toThrow()
+  })
+})
+
 describe('settings:set userHooksEnabled y canales de ganchos', () => {
   it('userHooksEnabled solo acepta booleanos', () => {
     const v = IPC_SCHEMAS['settings:set']

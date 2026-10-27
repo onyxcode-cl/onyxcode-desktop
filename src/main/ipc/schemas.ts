@@ -7,6 +7,7 @@
  *   del overlay tienen su lista mínima (el overlay a pantalla completa no invoca nada).
  */
 import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@shared/ipc'
+import { ALWAYS_ID_RE, ALWAYS_LIMITS } from '@shared/engine-always'
 import { BUDGET_LIMITS, GOAL_LIMITS } from '@shared/engine-code-extras'
 import { ENGINE_LIMIT_SPECS, type EngineLimitKey } from '@shared/engine-limits'
 import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
@@ -721,6 +722,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   }),
   'settings:addRecentFolder': pathReq,
   'settings:forgetAlways': none,
+  'settings:alwaysList': obj({ directory: absPath }),
+  'settings:alwaysRevoke': obj({ directory: absPath, id: str({ min: 1, max: ALWAYS_LIMITS.id, pattern: ALWAYS_ID_RE }) }),
   'settings:hooksRead': none,
   // El texto se valida por completo en main (`validateHooksText`); aquí solo el tope de longitud (64 KB en bytes ≤ 64 K caracteres de 1 byte; el resto lo corta la validación).
   'settings:hooksWrite': obj({ text: str({ max: HOOKS_MAX_FILE_BYTES }) })
