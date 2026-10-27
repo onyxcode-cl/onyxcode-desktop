@@ -68,6 +68,28 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 | `allowTravelDownload` | booleano | `false`: la app no descarga `cloudflared`. Una organización puede preinstalarlo en `~/Library/Application Support/Lazunox/bin/cloudflared-<versión>/cloudflared` (permisos 0700) con el mismo binario del pin: se verifica su SHA-256 y su firma (Developer ID de Cloudflare Inc., equipo `68WVV388M8`) antes de cada arranque. Con archivo y la clave ausente `false`. |
 | `allowTravelRelay` | booleano | Reservada para el respaldo cifrado por el WebSocket del túnel (entrega posterior; hoy no hace nada). Misma regla que `allowRelay`. |
 
+## Política del motor (`LAZUNOX_POLICY_FILE`): estado actual, SIN conectar
+
+El motor propio (Ola 7, 7.20) sabe leer un archivo de política con listas `deny` (proveedores, modelos, MCP, herramientas, habilidades y
+agentes) que la app le fija con la variable `LAZUNOX_POLICY_FILE` (ruta absoluta, en la carpeta de datos de la app y nunca dentro de un
+proyecto). Formato y comportamiento exactos: `LAZUNOX.md` del motor, sección «7.20 Políticas duras de nivel superior».
+
+**La app todavía NO la usa.** Ninguna parte del código de la app escribe ese archivo ni fija esa variable (se comprobó con una búsqueda en
+`src` y `scripts`), así que hoy no cambia nada de lo que ve o hace una persona, y `managed.json` no se traduce a esa política. Lo que sí
+existe hoy es lo de este documento: el bloque `remote` y las claves de Tareas, que se aplican dentro de la app.
+
+Si más adelante se conecta, el diseño que se propone (sin probar) es:
+
+- Que `managed.json` pueda traer un bloque `engine` con las mismas listas `deny`, y que la app lo escriba en `userData` (modo 0600, escritura
+  atómica) antes de lanzar el motor y pase su ruta absoluta en `LAZUNOX_POLICY_FILE`. Debe ir por el mismo punto que ya fija otras variables del
+  motor (`src/main/opencode/engine-flags-restart.ts`), y cambiarla debe reiniciar el motor cuando no haya nada en curso.
+- Falla cerrado también aquí: si el archivo de la organización es ilegible, se escribe una política que niega todo o no se arranca el motor;
+  nunca se arranca «sin política» por un error. Ojo: el motor trata un archivo AUSENTE como «sin política» y uno ROTO como «deniega todo».
+- La política del motor solo añade negaciones. No sustituye `disableWslTasks` ni las claves de Tareas, que siguen aplicándose en la app.
+- Un proveedor denegado se evalúa al cargar la instancia del motor: un cambio de política no lo quita en caliente hasta reiniciar.
+- Hay que probar con el motor real (archivo ausente, roto, y un `deny` de proveedor, de MCP y de herramienta) antes de prometerlo a una
+  organización. Hasta entonces no se debe ofrecer como función.
+
 ## Semántica fail closed
 
 - **Sin archivo**: no hay restricciones de la organización.
