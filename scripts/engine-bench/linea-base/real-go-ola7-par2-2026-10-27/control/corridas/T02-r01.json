@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:06:30.837Z",
+  "tarea": "T02",
+  "repeticion": 1,
+  "nombre": "Añadir función + prueba (Python)",
+  "mide": "Plan corto",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 10290,
+      "salida": 945,
+      "cache_leida": 44928,
+      "enviados": 55218
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 9355.5,
+      "p90": 10028
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 1.5,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 3,
+      "glob": 2,
+      "read": 2,
+      "edit": 2
+    },
+    "bytes_resultados": 2387,
+    "permisos_negados": 0,
+    "tiempo_ms": 25457,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-6hMtCJ"
+  }
+}

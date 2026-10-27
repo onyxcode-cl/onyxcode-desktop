@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:14:50.784Z",
+  "tarea": "T18",
+  "repeticion": 2,
+  "nombre": "Oficina: ordenar 30 archivos en carpetas por fecha",
+  "mide": "Shell con cuidado",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9756,
+      "salida": 512,
+      "cache_leida": 40704,
+      "enviados": 50460
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 10129,
+      "p90": 11486
+    },
+    "llamadas": 4,
+    "llamadas_por_paso": 0.8,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 4
+    },
+    "bytes_resultados": 5844,
+    "permisos_negados": 0,
+    "tiempo_ms": 25005,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-jRMDuz"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:10:32.011Z",
+  "tarea": "T04",
+  "repeticion": 5,
+  "nombre": "Renombrar un símbolo en 5 archivos",
+  "mide": "Ediciones múltiples",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 8955,
+      "salida": 188,
+      "cache_leida": 16896,
+      "enviados": 25851
+    },
+    "pasos": 3,
+    "tokens_por_paso": {
+      "med": 8770,
+      "p90": 8885
+    },
+    "llamadas": 2,
+    "llamadas_por_paso": 0.6666666666666666,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 2
+    },
+    "bytes_resultados": 1379,
+    "permisos_negados": 0,
+    "tiempo_ms": 11885,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-XlJYLY"
+  }
+}

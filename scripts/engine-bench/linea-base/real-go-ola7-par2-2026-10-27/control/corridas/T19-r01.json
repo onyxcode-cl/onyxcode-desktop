@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T02:29:03.290Z",
+  "tarea": "T19",
+  "repeticion": 1,
+  "nombre": "Sesión larga: 20 pedidos con referencias a decisiones",
+  "mide": "Coherencia tras compactar",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 36977,
+      "salida": 10583,
+      "cache_leida": 1237760,
+      "enviados": 1274737
+    },
+    "pasos": 75,
+    "tokens_por_paso": {
+      "med": 15577,
+      "p90": 26755
+    },
+    "llamadas": 61,
+    "llamadas_por_paso": 0.8133333333333334,
+    "errores_herramientas": 1,
+    "herramientas": {
+      "bash": 22,
+      "write": 5,
+      "read": 8,
+      "edit": 23,
+      "grep": 3
+    },
+    "bytes_resultados": 19172,
+    "permisos_negados": 0,
+    "tiempo_ms": 437626,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-wv1tgO"
+  }
+}

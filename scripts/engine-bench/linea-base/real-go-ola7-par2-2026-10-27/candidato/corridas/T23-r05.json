@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:21:41.957Z",
+  "tarea": "T23",
+  "repeticion": 5,
+  "nombre": "Un archivo cambia mientras trabajas",
+  "mide": "Avisos de cambio de archivo (releer antes de escribir)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": false,
+    "cuota": false,
+    "detalle": "no se lanzó la sincronización",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 10686,
+      "salida": 513,
+      "cache_leida": 54400,
+      "enviados": 65086
+    },
+    "pasos": 7,
+    "tokens_por_paso": {
+      "med": 9376,
+      "p90": 10297
+    },
+    "llamadas": 6,
+    "llamadas_por_paso": 0.8571428571428571,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 6
+    },
+    "bytes_resultados": 2146,
+    "permisos_negados": 0,
+    "tiempo_ms": 46477,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-vdNYNZ"
+  }
+}

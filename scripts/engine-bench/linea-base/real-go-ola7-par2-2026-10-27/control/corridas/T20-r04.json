@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T02:59:39.946Z",
+  "tarea": "T20",
+  "repeticion": 4,
+  "nombre": "Oficina: editar frases con «», “” y —",
+  "mide": "Edición tolerante (comillas y rayas)",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9106,
+      "salida": 700,
+      "cache_leida": 17792,
+      "enviados": 26898
+    },
+    "pasos": 3,
+    "tokens_por_paso": {
+      "med": 8926,
+      "p90": 9585
+    },
+    "llamadas": 8,
+    "llamadas_por_paso": 2.6666666666666665,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "read": 2,
+      "edit": 6
+    },
+    "bytes_resultados": 1328,
+    "permisos_negados": 0,
+    "tiempo_ms": 10697,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-7JLNxm"
+  }
+}

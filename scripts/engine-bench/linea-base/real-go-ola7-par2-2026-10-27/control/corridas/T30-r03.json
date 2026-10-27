@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:43:03.172Z",
+  "tarea": "T30",
+  "repeticion": 3,
+  "nombre": "Dos escrituras simultáneas al mismo archivo",
+  "mide": "Paralelismo seguro (escrituras al mismo archivo en el mismo paso)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 7720,
+      "salida": 580,
+      "cache_leida": 45312,
+      "enviados": 53032
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 8845,
+      "p90": 9352
+    },
+    "llamadas": 8,
+    "llamadas_por_paso": 1.3333333333333333,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 1,
+      "glob": 1,
+      "read": 2,
+      "edit": 4
+    },
+    "bytes_resultados": 887,
+    "permisos_negados": 0,
+    "tiempo_ms": 21856,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-qLcr5J"
+  }
+}

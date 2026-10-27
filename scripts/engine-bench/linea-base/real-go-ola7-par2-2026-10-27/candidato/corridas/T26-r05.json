@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:25:22.193Z",
+  "tarea": "T26",
+  "repeticion": 5,
+  "nombre": "Editar un Latin-1 y un archivo con finales mixtos sin corromperlos",
+  "mide": "Edición segura (codificación y finales de línea)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 10343,
+      "salida": 432,
+      "cache_leida": 27136,
+      "enviados": 37479
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 9547,
+      "p90": 10138
+    },
+    "llamadas": 4,
+    "llamadas_por_paso": 1,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 4
+    },
+    "bytes_resultados": 3194,
+    "permisos_negados": 0,
+    "tiempo_ms": 33455,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-F196Zk"
+  }
+}

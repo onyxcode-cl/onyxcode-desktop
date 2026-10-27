@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:12:46.308Z",
+  "tarea": "T05",
+  "repeticion": 1,
+  "nombre": "Leer un log de 3 MB y escribir la causa",
+  "mide": "Truncado y poda",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 37845,
+      "salida": 1969,
+      "cache_leida": 279168,
+      "enviados": 317013
+    },
+    "pasos": 12,
+    "tokens_por_paso": {
+      "med": 30770,
+      "p90": 36527
+    },
+    "llamadas": 19,
+    "llamadas_por_paso": 1.5833333333333333,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 18,
+      "write": 1
+    },
+    "bytes_resultados": 54786,
+    "permisos_negados": 0,
+    "tiempo_ms": 56381,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-ePgiY7"
+  }
+}
