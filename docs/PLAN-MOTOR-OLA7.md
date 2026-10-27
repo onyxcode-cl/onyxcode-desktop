@@ -510,7 +510,7 @@ Todo vive en ramas locales del fork (`feat/ola7-final` integra A+B+C+D); nada es
 
 | Paquete | Estado | Por defecto |
 |---|---|---|
-| 7.5 sanitizador | Hecho; el nivel del modelo cubre shell, Code Mode, `read` y `grep`. T28 pasa 4/5 con la opción | Mostrado/guardado: encendido. Para el modelo: **apagado** (contrapartida con `edit` sin decidir) |
+| 7.5 sanitizador | Hecho; el nivel del modelo cubre shell, Code Mode, `read` y `grep`. T28 pasa 5/5 con la opción (binario final2) | Mostrado/guardado: encendido. Para el modelo: **apagado** (contrapartida con `edit` sin decidir) |
 | 7.6 ganchos | Hecho (onFailure, `if`, 4 eventos nuevos, derrame a disco, hash de confianza) | Encendido |
 | 7.7 auditoría del shell | Hecho, 245 casos, revisión independiente hecha. Sin cubrir: `bash <<< 'rm x'` y `command -v rm` bajo un `deny rm` | Encendido (solo añade preguntas o negaciones) |
 | 7.20 políticas | Hecho en el motor; **la app aún no fija `LAZUNOX_POLICY_FILE`** | Sin archivo = sin política |
