@@ -232,6 +232,8 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
   if (!EVENTS_URL || !app.bundleId) return null
   const params = new URLSearchParams({ bundleId: app.bundleId, name: app.name })
   if (session) params.set('session', session)
+  // Origen aislado: main solo cuenta la concesión de SESIÓN (sin autoasignación ni concesiones guardadas ni apps exentas del sistema).
+  if (isolatedCall) params.set('isolated', '1')
   const r = await fetch(`${EVENTS_URL}/tier?${params.toString()}`, { signal: AbortSignal.timeout(1500) })
   if (!r.ok) throw new Error(`No se pudo consultar la concesión (HTTP ${r.status})`)
   const j = (await r.json()) as { tier?: AppTier | null }
@@ -243,6 +245,14 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
  * concesión, o que el nivel actual no alcanza `minTier` si ya está concedida pero es insuficiente.
  */
 async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Promise<void> {
+  // Origen aislado: la propia Lazunox, Electron, Spotlight, Dock… (exentas del sistema) NUNCA se actúan (ni siquiera con tarjeta).
+  if (isolatedCall && app.bundleId && ISOLATED_NEVER_ACT.has(app.bundleId)) {
+    reportBridgeDenied('exempt-app', session)
+    throw new Error(
+      `«${app.name}» es una app del sistema o la propia Lazunox: en este modo no se puede controlar. No insistas ni pidas acceso a ella; ` +
+        'usa otras apps (con request_access) o dile al usuario que lo haga él.'
+    )
+  }
   const tier = await tierOf(app, session)
   if (tier === null) {
     if (isolatedCall) reportBridgeDenied('no-grant', session)
@@ -291,16 +301,23 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
   if (point) {
     const at = await appAtPoint(point.x, point.y)
     if (at.bundleId && at.bundleId !== apps[0]?.bundleId) apps.push(at)
-    else if (!at.bundleId && backend.failClosedOnUnknownApp) apps.push(at) // Windows: lo no identificado no se deja pasar
+    else if (!at.bundleId && (backend.failClosedOnUnknownApp || isolatedCall)) apps.push(at) // Windows: lo no identificado no se deja pasar
   }
   const known = apps.filter((a) => a.bundleId)
-  // Windows falla cerrado: una ventana que no se identifica puede ser una bloqueada o de administrador.
-  if (backend.failClosedOnUnknownApp && known.length < apps.length) {
+  // Windows falla cerrado: una ventana que no se identifica puede ser una bloqueada o de administrador. Origen aislado: igual en macOS.
+  if ((backend.failClosedOnUnknownApp || isolatedCall) && known.length < apps.length) {
     throw new Error(
       'No se pudo identificar la ventana de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.'
     )
   }
-  if (!known.length) return // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
+  if (!known.length) {
+    // Origen aislado: lo no identificado no se deja pasar (puede ser una app exenta o sin concesión).
+    if (isolatedCall) {
+      reportBridgeDenied('unknown-app', session)
+      throw new Error('No se pudo identificar la app de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.')
+    }
+    return // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
+  }
   for (const a of known) await ensureTier(a, minTier, session)
 }
 
@@ -326,7 +343,8 @@ const BACKGROUND_REJECT_MSG = 'Modo segundo plano: usa app_find/app_press/app_se
 async function controlMode(session?: string): Promise<{ mode: 'background' | 'full'; foreground: boolean }> {
   if (!EVENTS_URL) return { mode: 'full', foreground: true } // sin main que consultar (pruebas sueltas): no bloquear
   try {
-    const q = session ? `?session=${encodeURIComponent(session)}` : ''
+    // Origen aislado: main ignora la preferencia global «Control de la pantalla»; solo vale un `request_full_control` aprobado de esa sesión.
+    const q = session ? `?session=${encodeURIComponent(session)}${isolatedCall ? '&isolated=1' : ''}` : isolatedCall ? '?isolated=1' : ''
     const r = await fetch(`${EVENTS_URL}/control-mode${q}`, { signal: AbortSignal.timeout(1500) })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
     const j = (await r.json()) as { mode?: unknown; foreground?: unknown }
@@ -340,7 +358,7 @@ async function controlMode(session?: string): Promise<{ mode: 'background' | 'fu
 /** Rechaza las herramientas de ratón/teclado real si el modo es "segundo plano" sin foreground. */
 async function requireForeground(session?: string): Promise<void> {
   const { mode, foreground } = await controlMode(session)
-  if (mode === 'background' && !foreground) throw new Error(BACKGROUND_REJECT_MSG)
+  if ((mode === 'background' || isolatedCall) && !foreground) throw new Error(BACKGROUND_REJECT_MSG)
 }
 
 // ───────────────────────────── flujo Plan → Aprobar → Ejecutar ─────────────────────────────
@@ -755,6 +773,22 @@ const NEVER_EXCLUDE = new Set([
   'com.apple.finder' // Finder es la app que casi siempre está detrás de todo; no es "contenido" ajeno
 ])
 
+/**
+ * Origen aislado: apps sobre las que NUNCA se actúa (las exentas del sistema; mismas que `SYSTEM_EXEMPT_BUNDLE_IDS` de `grants.ts`, sin Finder).
+ * Se repite en `ComputerService` (`/tier?isolated=1` ⇒ null): aquí da un mensaje claro y evita pedir tarjetas inútiles.
+ */
+const ISOLATED_NEVER_ACT: ReadonlySet<string> = new Set([...NEVER_EXCLUDE].filter((b) => b !== 'com.apple.finder'))
+
+/**
+ * Origen aislado: ventanas de apps exentas que además se TAPAN en las capturas (Lazunox con sus chats de Control total, Spotlight, avisos).
+ * Dock, barra de menús, ventana de login y WindowServer no se tapan (son el marco de la pantalla; tampoco se pueden accionar).
+ */
+const ISOLATED_MASK: ReadonlySet<string> = new Set(
+  [...ISOLATED_NEVER_ACT].filter(
+    (b) => !['com.apple.dock', 'com.apple.systemuiserver', 'com.apple.WindowServer', 'com.apple.loginwindow'].includes(b)
+  )
+)
+
 // ───────────────────────────── backend de plataforma ─────────────────────────────
 
 /** GET JSON al canal lateral con tope de 1,5 s; lanza si no hay canal o no responde (los backends fallan cerrado). */
@@ -774,7 +808,8 @@ const platformHost: PlatformHost = {
     maxLong: MAX_LONG,
     shotDir: SHOT_DIR,
     fakeShot: FAKE_SHOT,
-    neverExclude: NEVER_EXCLUDE
+    neverExclude: NEVER_EXCLUDE,
+    isolatedMask: ISOLATED_MASK
   },
   log,
   tierOf,
@@ -808,7 +843,7 @@ async function captureScreen(session?: string): Promise<Shot> {
       // la app en primer plano, así no hay que pedirla aparte (antes se pedía en paralelo a la
       // captura: dos llamadas, y encima una carrera real entre ambas).
       ;({ screen, front } = await screenForCapture())
-      ;({ width, height } = await backend.captureScreen({ raw, out, session, screen }))
+      ;({ width, height } = await backend.captureScreen({ raw, out, session, screen, ...(isolatedCall ? { isolated: true } : {}) }))
     } else {
       // Windows: mismo orden de siempre (varias pruebas lo fijan exacto) — antes `frontmost` corría
       // en paralelo a la captura (ganaba la carrera casi siempre por ser una sola llamada corta
@@ -816,7 +851,7 @@ async function captureScreen(session?: string): Promise<Shot> {
       // depender de una carrera real. Sin el cálculo de pantalla real de arriba (su "escritorio
       // virtual" ya es un espacio único).
       front = await appFrontmost().catch(() => null)
-      ;({ width, height } = await backend.captureScreen({ raw, out, session }))
+      ;({ width, height } = await backend.captureScreen({ raw, out, session, ...(isolatedCall ? { isolated: true } : {}) }))
       screen = await getMainScreen()
     }
     capturedScreen = screen
@@ -1699,7 +1734,7 @@ const TOOLS: ToolDef[] = [
       // clicar donde hacía falta — confirmado con una tarea real (Discord, control concedido, igual
       // nunca se activó).
       const { mode, foreground } = await controlMode(session)
-      if (mode === 'background' && !foreground) {
+      if ((mode === 'background' || isolatedCall) && !foreground) {
         const opened = await act({ tool: 'open_application', text: name }, () => helper('open-app-bg', name))
         // Windows no garantiza quedar detrás: si el helper avisa (`behind: false`), se le dice al modelo.
         let behindNote = ''

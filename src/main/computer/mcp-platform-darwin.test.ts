@@ -163,6 +163,30 @@ describe('macOS: capturas (comandos exactos)', () => {
     expect(calls[1]).toEqual({ cmd: '/h/cu-helper', args: ['screenshot-sck', '/s/r.png', 'com.b.Sin'] })
   })
 
+  it('H6: origen aislado ⇒ además se tapan las apps exentas de `isolatedMask` (Lazunox, Spotlight…); sin `isolated` no cambia nada', async () => {
+    const running = JSON.stringify([
+      { bundleId: 'cl.bentec.lazunox', name: 'Lazunox' },
+      { bundleId: 'com.apple.Spotlight', name: 'Spotlight' },
+      { bundleId: 'com.apple.dock', name: 'Dock' },
+      { bundleId: 'com.apple.finder', name: 'Finder' },
+      { bundleId: 'com.a.DeEstaTarea', name: 'A' }
+    ])
+    const cfg = {
+      neverExclude: new Set(['cl.bentec.lazunox', 'com.apple.Spotlight', 'com.apple.dock', 'com.apple.finder']),
+      isolatedMask: new Set(['cl.bentec.lazunox', 'com.apple.Spotlight'])
+    }
+    const reply = (cmd: string, args: string[]): Reply =>
+      cmd === '/usr/bin/sips' ? { stdout: DIMS } : args.includes('running-apps') ? { stdout: running } : {}
+    const side: PlatformHost['sideGet'] = async (path) => (path.startsWith('/task-apps') ? { apps: ['com.a.DeEstaTarea'] } : {})
+    const iso = rig(reply, cfg, {}, undefined, side)
+    await iso.backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg', session: 'ses_x', isolated: true })
+    expect(iso.calls[1]).toEqual({ cmd: '/h/cu-helper', args: ['screenshot-sck', '/s/r.png', 'cl.bentec.lazunox,com.apple.Spotlight'] })
+    const normal = rig(reply, cfg, {}, new Set(['/h/cu-helper', '/s/r.png']), side)
+    await normal.backend.captureScreen({ raw: '/s/r.png', out: '/s/o.jpg', session: 'ses_x' })
+    // Sin origen aislado: ninguna exenta se excluye (no hay nada que excluir ⇒ captura normal, sin screenshot-sck).
+    expect(normal.calls.some((c) => c.args.includes('screenshot-sck'))).toBe(false)
+  })
+
   it('pasa SIEMPRE el id de la pantalla elegida a screenshot-sck, también si es la principal', async () => {
     // Sin id el helper captura `displays.first` de SCK, que con un monitor vertical a la izquierda no es la
     // principal: la imagen salía sin ninguna ventana (solo el fondo) y con la escala de otra pantalla.

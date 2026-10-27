@@ -299,7 +299,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * de aquí). Sin secreto o sin bandera NINGUNA petición se reconoce como de origen aislado.
    */
   private bridgeSecretHash: Buffer | null = null
-  /** Sesión → `serverKey` del servidor aislado que la reclamó primero (una sesión ajena se rechaza). Solo en memoria. */
+  /**
+   * Sesión → `serverKey` del servidor aislado que la reclamó primero (una sesión ajena se rechaza). Solo en memoria.
+   * RIESGO RESIDUAL (docs/SEGURIDAD.md §3 tricies sexies): la sesión no está atada a la serverKey cuando main la CREA (el gestor no publica
+   * los ids de sesión por servidor), así que un agente de OTRA sesión del MISMO servidor puede mandar el id ajeno y usar sus permisos «para
+   * esta sesión». Exige conocer un id aleatorio de OpenCode y no sale de la carpeta del servidor; «primera reclamación gana».
+   */
   private readonly sessionOwner = new Map<string, string>()
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
   private escWatcher: ChildProcessByStdio<Writable | null, Readable, Readable> | null = null
@@ -490,7 +495,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         const icon = i < MAX_ICON_APPS_PER_CARD ? await this.iconFor(a.bundleId) : undefined
         return {
           ...a,
-          current: maxTier(this.grants.tierFor(a.bundleId), this.sessionTier(sessionId, a.bundleId)),
+          // Sesión de un servidor aislado: lo guardado desde Control total no cuenta (no se preselecciona ni se hereda).
+          current: this.isBridgeSession(sessionId)
+            ? this.sessionTier(sessionId, a.bundleId)
+            : maxTier(this.grants.tierFor(a.bundleId), this.sessionTier(sessionId, a.bundleId)),
           denied: this.grants.isDenied(a.bundleId) || this.grants.isBlocked(a.bundleId),
           ...(icon ? { icon } : {})
         }
@@ -510,6 +518,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       if (sessionId) {
         const bundleIds = enriched.map((a) => a.bundleId)
         this.grantAutoView(sessionId, bundleIds)
+        // Servidor aislado: el «Solo ver» del Modo auto (solo lista permitida, pasó por request_access) vale como concesión de SESIÓN.
+        if (this.isBridgeSession(sessionId)) for (const b of bundleIds) this.grantForSession(sessionId, b, 'view')
         this.markTaskApps(sessionId, bundleIds)
       }
       return { decisions, auto: true }
@@ -624,6 +634,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   /** Tipo de bloqueo de una app (null = se puede pedir). Prioridad: seguridad fija > guardada por la persona > solo esta sesión. */
   private blockKind(sessionId: string | undefined, bundleId: string): BlockKind | null {
     if (this.grants.isBlocked(bundleId)) return 'fixed'
+    if (this.isBridgeExempt(sessionId, bundleId)) return 'fixed'
     if (this.grants.isDenied(bundleId)) return 'user'
     if (this.isSessionDenied(sessionId, bundleId)) return 'session'
     return null
@@ -639,9 +650,27 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return this.sessionDenied.get(sessionId)?.has(bundleId) === true
   }
 
-  /** Nivel efectivo de una app en una sesión: persistido, de sesión y Modo auto; lo bloqueado/denegado nunca concede. */
-  private effectiveTier(sessionId: string | undefined, bundleId: string, name: string): AppTier | null {
+  /**
+   * Modo unificado: ¿esta sesión es de un servidor AISLADO (la reclamó `checkBridgeCall`) y la app es una exenta del sistema (Lazunox, Electron,
+   * Spotlight, Dock…)? Control total las autoconcede (`grants.resolve`); al agente aislado NUNCA: con ellas saldría del aislamiento (pulsar
+   * «Permitir» en las tarjetas de la propia app, escribir en un chat de Control total, abrir apps por el Dock/Spotlight sin tarjeta).
+   */
+  private isBridgeExempt(sessionId: string | undefined, bundleId: string): boolean {
+    return !!sessionId && this.sessionOwner.has(sessionId) && this.grants.isExempt(bundleId)
+  }
+
+  /**
+   * Nivel efectivo de una app en una sesión: persistido, de sesión y Modo auto; lo bloqueado/denegado nunca concede.
+   * `isolated` (o sesión reclamada por un servidor aislado): SOLO cuenta la concesión de SESIÓN de esa sesión (la que dejó una tarjeta de
+   * `request_access`, incluido el «Solo ver» del Modo auto, que además la deja como concesión de sesión): sin autoasignación por categoría
+   * (`defaultTierFor`), sin concesiones guardadas desde Control total y sin apps exentas del sistema. Bloqueos fijos/denegadas siguen mandando.
+   */
+  private effectiveTier(sessionId: string | undefined, bundleId: string, name: string, isolated = false): AppTier | null {
     if (this.grants.isBlocked(bundleId) || this.grants.isDenied(bundleId) || this.isSessionDenied(sessionId, bundleId)) return null
+    if (isolated || (sessionId && this.sessionOwner.has(sessionId))) {
+      if (!sessionId || !this.sessionOwner.has(sessionId) || this.grants.isExempt(bundleId)) return null
+      return this.sessionTier(sessionId, bundleId)
+    }
     const persisted = this.grants.resolve(bundleId, name)
     return maxTier(maxTier(persisted, this.sessionTier(sessionId, bundleId)), this.autoViewTier(sessionId, bundleId))
   }
@@ -657,7 +686,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * segundo plano) siempre es así; en segundo plano, solo tras un `request_full_control` aprobado
    * para esa sesión (`foregroundSessions`). Sin sesión: si hay ALGUNA sesión con el control.
    */
-  isForeground(sessionId?: string): boolean {
+  isForeground(sessionId?: string, isolated = false): boolean {
+    // Servidor aislado: la preferencia global «Control de la pantalla» no le da el ratón; solo un `request_full_control` aprobado de SU sesión.
+    if (isolated || this.isBridgeSession(sessionId)) return !!sessionId && this.foregroundSessions.has(sessionId)
     if (this.prefs.get().mode === 'full') return true
     return sessionId ? this.foregroundSessions.has(sessionId) : this.foregroundSessions.size > 0
   }
@@ -698,7 +729,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       for (const d of decisions) {
         const card = inCard.get(d.bundleId)
         if (!card || d.bundleId in map) continue
-        if (this.grants.isBlocked(d.bundleId) || this.grants.isDenied(d.bundleId) || this.isSessionDenied(pending.sessionId, d.bundleId)) {
+        if (
+          this.grants.isBlocked(d.bundleId) ||
+          this.grants.isDenied(d.bundleId) ||
+          this.isSessionDenied(pending.sessionId, d.bundleId) ||
+          this.isBridgeExempt(pending.sessionId, d.bundleId)
+        ) {
           // Bloqueada (fija), denegada guardada o denegada en la sesión: nunca se concede, diga lo que diga el renderer.
           map[d.bundleId] = 'deny'
           // Si quedó bloqueada mientras la tarjeta estaba abierta (otra tarea o Ajustes), el agente recibe igual el texto firme.
@@ -715,11 +751,16 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           if (bk) newlyBlocked.push({ bundleId: d.bundleId, name: card.name || d.bundleId, kind: bk })
         } else if (d.decision === 'view' || d.decision === 'click' || d.decision === 'full') {
           // Nunca baja un nivel: cuenta lo persistido y lo ya concedido en la sesión.
-          const current = maxTier(this.grants.tierFor(d.bundleId), this.sessionTier(pending.sessionId, d.bundleId))
+          const bridge = this.isBridgeSession(pending.sessionId)
+          const current = bridge
+            ? this.sessionTier(pending.sessionId, d.bundleId)
+            : maxTier(this.grants.tierFor(d.bundleId), this.sessionTier(pending.sessionId, d.bundleId))
           const effective = maxTier(current, d.decision) ?? d.decision
           if (scope === 'always') {
             // El nombre lo fija la tarjeta (main), no el renderer.
             this.grants.grant(d.bundleId, card.name || d.name, effective)
+            // El servidor aislado solo cuenta concesiones de sesión: «siempre» además la deja para esta sesión.
+            if (bridge) this.grantForSession(pending.sessionId, d.bundleId, effective)
           } else {
             this.grantForSession(pending.sessionId, d.bundleId, effective)
           }
@@ -840,6 +881,11 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   setBridgeSecret(secret: string | null): void {
     this.bridgeSecretHash = secret ? createHash('sha256').update(secret).digest() : null
     this.sessionOwner.clear()
+  }
+
+  /** ¿La sesión la reclamó un servidor aislado (`checkBridgeCall`)? Solo en memoria; sin bandera nunca hay ninguna. */
+  private isBridgeSession(sessionId: string | undefined): boolean {
+    return !!sessionId && this.sessionOwner.has(sessionId)
   }
 
   /** ¿`origin` es el secreto del puente? Con bandera apagada, sin secreto o con una cabecera ajena: nunca. Tiempo constante (compara hashes). */
@@ -1281,7 +1327,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           const name = (q.get('name') ?? bundleId).slice(0, 255)
           const sess = q.get('session') ?? ''
           const session = SESSION_RE.test(sess) ? sess : undefined
-          const tier = bundleId ? this.effectiveTier(session, bundleId, name) : null
+          const tier = bundleId ? this.effectiveTier(session, bundleId, name, q.get('isolated') === '1') : null
           res.statusCode = 200
           res.setHeader('content-type', 'application/json')
           res.setHeader('cache-control', 'no-store')
@@ -1291,12 +1337,13 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         if (req.method === 'GET' && (req.url ?? '').startsWith(`${path}/control-mode`)) {
           // Modo de control actual y si esa sesión controla el ratón y el teclado ahora mismo
           // (Lote C: `left_click`/`type_text`/… lo consultan para rechazar en segundo plano).
-          const sess = new URL(req.url ?? '', 'http://localhost').searchParams.get('session') ?? ''
+          const cq = new URL(req.url ?? '', 'http://localhost').searchParams
+          const sess = cq.get('session') ?? ''
           const session = SESSION_RE.test(sess) ? sess : undefined
           res.statusCode = 200
           res.setHeader('content-type', 'application/json')
           res.setHeader('cache-control', 'no-store')
-          res.end(JSON.stringify({ mode: this.prefs.get().mode, foreground: this.isForeground(session) }))
+          res.end(JSON.stringify({ mode: this.prefs.get().mode, foreground: this.isForeground(session, cq.get('isolated') === '1') }))
           return
         }
         if (req.method === 'POST' && req.url === `${path}/bridge-check`) {

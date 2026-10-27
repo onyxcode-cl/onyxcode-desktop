@@ -336,14 +336,14 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
    * visible SIEMPRE, aunque la tarea de ahora no tuviera nada que ver con ella. Sin sesión (respaldo
    * legado), se mantiene el criterio viejo porque no hay "tarea actual" que consultar.
    */
-  async function nonGrantedBundleIds(session?: string): Promise<string[]> {
+  async function nonGrantedBundleIds(session?: string, isolated = false): Promise<string[]> {
     if (!cfg.eventsUrl) return []
     try {
       const apps = JSON.parse(await helper('running-apps')) as Array<{ bundleId?: string; name?: string }>
       const taskApps = await currentTaskApps(session)
       const results = await Promise.all(
         apps
-          .filter((a) => a.bundleId && !cfg.neverExclude.has(a.bundleId))
+          .filter((a) => a.bundleId && (!cfg.neverExclude.has(a.bundleId) || (isolated && cfg.isolatedMask?.has(a.bundleId!) === true)))
           .map(async (a) => {
             if (taskApps) return taskApps.has(a.bundleId!) ? null : a.bundleId!
             const tier = await host.tierOf({ bundleId: a.bundleId!, name: a.name || a.bundleId! }, session).catch(() => null)
@@ -358,7 +358,7 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
   }
 
   async function captureScreen(req: CaptureRequest): Promise<{ width: number; height: number }> {
-    const { raw, out, session, screen } = req
+    const { raw, out, session, screen, isolated } = req
     // F8-B150: si la app en primer plano está en OTRA pantalla, `screen` la trae — sin esto, "-m"
     // capturaba siempre la principal y el modelo se quedaba mirando el escritorio o lo que haya
     // detrás, aunque el sistema diga bien que esa app está en primer plano (confirmado con una tarea
@@ -367,7 +367,7 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     if (cfg.fakeShot) {
       await run('/bin/cp', [cfg.fakeShot, raw])
     } else {
-      const exclude = await nonGrantedBundleIds(session)
+      const exclude = await nonGrantedBundleIds(session, isolated === true)
       let sckOk = false
       if (exclude.length) {
         try {

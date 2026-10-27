@@ -54,6 +54,8 @@ export interface PlatformConfig {
   fakeShot: string
   /** Apps que NUNCA se excluyen de la captura (macOS; ver `NEVER_EXCLUDE` en `mcp-server.ts`). */
   neverExclude: ReadonlySet<string>
+  /** Origen aislado (puente de apps): subconjunto de `neverExclude` que SÍ se tapa en sus capturas (la propia Lazunox, Spotlight…). */
+  isolatedMask?: ReadonlySet<string>
 }
 
 /** Lo que el MCP pone a disposición del backend (consultas al canal lateral, pantalla principal, registro). */
@@ -74,6 +76,8 @@ export interface CaptureRequest {
   /** JPEG final que debe quedar escrito. */
   out: string
   session?: string
+  /** Petición de origen aislado (puente de apps): se tapan también las apps exentas de `PlatformConfig.isolatedMask`. */
+  isolated?: boolean
   /**
    * Pantalla a capturar (F8-B150) — la que tiene la ventana de la app en primer plano, calculada en
    * `mcp-server.ts` (`screenForCapture`), NO siempre la principal. Si se omite (o es la principal),

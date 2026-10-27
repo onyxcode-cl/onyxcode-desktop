@@ -979,7 +979,15 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     let bridgeMcp: Record<string, unknown> | null = null
     this.bridgeServers.delete(key)
     // Política gestionada: `disableComputerUse` apaga el puente (falla cerrado: política ilegible = apagado).
-    if (mcpProxy && !fullAccess && isUnifiedAppsEnabled() && this.opts.computer && !isComputerUseDisabled(loadManagedPolicy())) {
+    // Solo macOS: Windows y WSL quedan fuera en esta ola (el contrato del puente no cubre su servidor de control ni su sandbox).
+    if (
+      mcpProxy &&
+      !fullAccess &&
+      this.platform !== 'win32' &&
+      isUnifiedAppsEnabled() &&
+      this.opts.computer &&
+      !isComputerUseDisabled(loadManagedPolicy())
+    ) {
       try {
         const real = await this.opts.computer.mcpConfig().catch(() => null)
         const realToken = bearerOfMcpConfig(real)

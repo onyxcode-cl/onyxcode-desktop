@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const state = vi.hoisted(() => ({ userData: '', cfgDir: '', policy: null as null | Record<string, unknown> }))
 const started = vi.hoisted(() => [] as Array<Record<string, unknown>>)
+const routes = vi.hoisted(() => [] as string[])
 const nextPaths = vi.hoisted(() => ({ value: null as null | { map: unknown; directory: string } }))
 
 vi.mock('electron', () => ({
@@ -29,7 +30,8 @@ vi.mock('./mcp-proxy', () => ({
     port = 1
     async start(): Promise<void> {}
     async stop(): Promise<void> {}
-    addRoute(): never {
+    addRoute(spec?: { name?: string }): never {
+      routes.push(String(spec?.name))
       throw new Error('sin rutas')
     }
     // Canal del guardián de subagentes (F8-B208).
@@ -317,6 +319,31 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     expect(started[0]).toMatchObject({ folder: 'C:\\lzx\\tareas\\a', platform: 'win32', tasksWin: true, noSandbox: false })
     expect(started[0]!.winBackend).toBe(winBackend)
     await m.stopAll()
+  })
+  it('puente de apps del modo unificado: con la bandera encendida, win32 NO registra la ruta `computer` ni da instrucciones ni variable', async () => {
+    const prev = process.env.LAZUNOX_UNIFIED_APPS
+    process.env.LAZUNOX_UNIFIED_APPS = '1'
+    try {
+      const winBackend = { build: true, gate: async () => ({ ok: true }), create: () => null }
+      const computer = {
+        mcpConfig: async () => ({ type: 'remote', url: 'http://127.0.0.1:45999/mcp', headers: { Authorization: 'Bearer REAL' } }),
+        info: async () => ({ available: true }) as never,
+        planGateUrl: async () => null
+      }
+      const m = mk({ tasksWin: true, winBackend, computer } as never)
+      await m.refreshPolicy()
+      m.approveFolder('C:\\lzx\\tareas\\a')
+      routes.length = 0
+      await m.start('C:\\lzx\\tareas\\a')
+      expect(routes).not.toContain('computer')
+      const env = (started[0]!.extraEnv ?? {}) as Record<string, string>
+      expect(env.LAZUNOX_UNIFIED_BRIDGE).toBeUndefined()
+      expect(JSON.parse(env.OPENCODE_CONFIG_CONTENT!).instructions).toBeUndefined()
+      await m.stopAll()
+    } finally {
+      if (prev === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
+      else process.env.LAZUNOX_UNIFIED_APPS = prev
+    }
   })
   it('start() autoriza SOLO la carpeta de skills de la app (lectura), con la ruta de la distro, sin tarjeta ni AppData entera', async () => {
     const winBackend = { build: true, gate: async () => ({ ok: true }), create: () => null }

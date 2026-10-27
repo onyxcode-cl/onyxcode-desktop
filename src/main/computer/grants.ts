@@ -184,6 +184,14 @@ export class ComputerGrantsStore {
     return null
   }
 
+  /**
+   * ¿Es una app exenta del sistema en esta plataforma (la propia Lazunox, Spotlight, Dock…)? El servidor aislado del puente de apps
+   * NUNCA las autoconcede (`ComputerService.effectiveTier` y `blockKind`): `resolve` las da por «full» solo para Control total.
+   */
+  isExempt(bundleId: string): boolean {
+    return this.os === 'win32' ? isWinExempt(bundleId) : isSystemExempt(bundleId)
+  }
+
   isDenied(bundleId: string): boolean {
     this.load()
     return this.data.denied.includes(bundleId)
