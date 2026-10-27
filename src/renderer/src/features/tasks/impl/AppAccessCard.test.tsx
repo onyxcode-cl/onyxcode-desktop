@@ -46,7 +46,7 @@ const render = (req: AccessRequest, lang: 'es' | 'en' = 'es'): void => {
 const btn = (re: RegExp): HTMLButtonElement =>
   Array.from(host.querySelectorAll('button')).find((b) => re.test(b.textContent ?? '')) as HTMLButtonElement
 const card = (): HTMLElement => host.querySelector('[role="alertdialog"]') as HTMLElement
-const key = (el: Element, init: KeyboardEventInit): void => {
+const key = (el: Element | Document, init: KeyboardEventInit): void => {
   act(() => {
     el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
   })
@@ -328,7 +328,7 @@ describe('AppPermissionCard', () => {
       setPlatform('win32')
       render(REQ())
       arm()
-      key(btn(/Denegar/), { key: 'Enter', ctrlKey: true })
+      key(btn(/Permitir para esta sesión/), { key: 'Enter', ctrlKey: true })
       expect(respondAccessRequest).toHaveBeenCalledWith(expect.any(Array), { scope: 'session' })
     })
 
@@ -444,10 +444,11 @@ describe('AppPermissionCard', () => {
       render(REQ({ plan: steps(2) }))
       const txt = host.textContent ?? ''
       expect(txt).toContain('¿Permitir que Lazunox use Hojas?')
-      expect(host.querySelector('#tasks-app-access-plan')?.textContent).toBe('Plan')
+      expect(host.querySelector('#tasks-app-access-plan')?.textContent).toBe('Plan escrito por el agente')
       expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(2)
       expect(txt).toContain('Aprobar nunca baja un nivel ya concedido.')
-      expect(txt).not.toContain('La espera no tiene límite')
+      expect(txt).toContain('La espera no tiene límite')
+      expect(txt).toContain('Para trabajar con tus archivos no hace falta.')
       expect(txt).not.toContain('Plan y permisos')
       expect(btn(/Aprobar y empezar/).textContent).toContain('⌘↵')
       expect(btn(/Denegar/)).toBeTruthy()
@@ -462,8 +463,8 @@ describe('AppPermissionCard', () => {
       render(REQ({ plan: steps(2) }), 'en')
       const txt = host.textContent ?? ''
       expect(txt).toContain('Allow Lazunox to use Hojas?')
-      expect(host.querySelector('#tasks-app-access-plan')?.textContent).toBe('Plan')
-      expect(txt).toContain('keep using your PC')
+      expect(host.querySelector('#tasks-app-access-plan')?.textContent).toBe('Plan written by the agent')
+      expect(txt).toContain('Will use your PC’s mouse and keyboard')
       expect(btn(/Approve and start/).textContent).toContain('Ctrl+↵')
       expect(btn(/Edit/)).toBeTruthy()
     })
@@ -575,6 +576,117 @@ describe('AppPermissionCard', () => {
       })
       act(() => btn(/Enviar cambios/).click())
       expect(respondAccessRequest).toHaveBeenCalledWith([], { feedback: 'Sin navegador' })
+    })
+
+    describe('revisión Opus: avisos, plan y atajo', () => {
+      const notice = (): string => host.querySelector('[data-testid="app-access-notices"]')?.textContent ?? ''
+      const RUN = (level: 'view' | 'click' | 'full'): Partial<AccessRequest> => ({
+        plan: steps(2),
+        apps: [{ bundleId: 'a', name: 'A', requested: level, ...(level === 'full' ? { current: 'full' as const } : {}) }]
+      })
+
+      it('con plan y «Ver y clic» o «Control total»: aviso de ratón y teclado reales (Mac y PC), no el de segundo plano', () => {
+        for (const level of ['click', 'full'] as const) {
+          setPlatform('darwin')
+          render(REQ({ id: `m-${level}`, ...RUN(level) }))
+          expect(notice()).toContain('Usará el ratón y el teclado de tu Mac')
+          expect(notice()).toContain('ratón y teclado reales')
+          expect(notice()).not.toContain('segundo plano')
+          setPlatform('win32')
+          render(REQ({ id: `w-${level}`, ...RUN(level) }))
+          expect(notice()).toContain('Usará el ratón y el teclado de tu PC')
+          expect(notice()).not.toContain('segundo plano')
+        }
+      })
+
+      it('con plan y «Solo ver»: segundo plano; cambiar el nivel en vivo cambia el aviso', () => {
+        render(REQ(RUN('view')))
+        expect(notice()).toContain('en segundo plano')
+        expect(notice()).not.toContain('ratón y teclado reales')
+        act(() => radio(/Ver y clic/).click())
+        expect(notice()).toContain('ratón y teclado reales')
+        expect(notice()).not.toContain('segundo plano')
+        act(() => radio(/Solo ver/).click())
+        expect(notice()).toContain('en segundo plano')
+      })
+
+      it('cada aviso va en su propia línea (<p>), sin frases pegadas; la espera sin límite se ve con plan', () => {
+        render(REQ(RUN('click')))
+        const ps = Array.from(host.querySelectorAll('[data-testid="app-access-notices"] p')).map((p) => p.textContent)
+        expect(ps.length).toBe(4)
+        expect(ps).toContain('Aprobar nunca baja un nivel ya concedido.')
+        expect(notice()).toContain('La espera no tiene límite')
+      })
+
+      it('sin plan: segundo plano y sin «espera sin límite»', () => {
+        render(REQ())
+        expect(notice()).toContain('segundo plano')
+        expect(notice()).not.toContain('La espera no tiene límite')
+      })
+
+      it('el plan va en una caja propia con el rótulo «Plan escrito por el agente» y el HTML/markdown se ve literal', () => {
+        render(REQ({ plan: ['<b>x</b>', '**x**'] }))
+        const box = host.querySelector('[data-testid="app-access-plan-box"]') as HTMLElement
+        expect(box.textContent).toContain('Plan escrito por el agente')
+        expect(box.querySelector('b')).toBeNull()
+        const items = Array.from(box.querySelectorAll('li')).map((l) => l.textContent)
+        expect(items).toEqual(['<b>x</b>', '**x**'])
+      })
+
+      it('30 pasos: plegado muestra 3 y al desplegar 30', () => {
+        render(REQ({ plan: steps(30) }))
+        expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(3)
+        act(() => btn(/Ver los 30 pasos/).click())
+        expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(30)
+      })
+
+      it('⌘↵ enviado a document o a body con la tarjeta armada no responde', () => {
+        render(REQ({ plan: steps(2) }))
+        arm()
+        key(document, { key: 'Enter', metaKey: true })
+        key(document.body, { key: 'Enter', metaKey: true })
+        expect(respondAccessRequest).not.toHaveBeenCalled()
+      })
+
+      it('⌘↵ a los 599 ms no aprueba y a los 600 ms sí', () => {
+        render(REQ({ plan: steps(2) }))
+        act(() => {
+          vi.advanceTimersByTime(APP_CARD_ARM_MS - 1)
+        })
+        key(card(), { key: 'Enter', metaKey: true })
+        expect(respondAccessRequest).not.toHaveBeenCalled()
+        act(() => {
+          vi.advanceTimersByTime(1)
+        })
+        key(card(), { key: 'Enter', metaKey: true })
+        expect(respondAccessRequest).toHaveBeenCalledWith(expect.any(Array), { scope: 'session', approvePlan: true })
+      })
+
+      it('⌘↵ con el foco en «Denegar», «Editar» o «Bloquear siempre» no aprueba; en «Aprobar y empezar» sí', () => {
+        render(REQ({ plan: steps(2) }))
+        arm()
+        for (const re of [/Denegar/, /Editar/, /Bloquear siempre/, /Cancelar/]) {
+          key(btn(re), { key: 'Enter', metaKey: true })
+        }
+        expect(respondAccessRequest).not.toHaveBeenCalled()
+        key(btn(/Aprobar y empezar/), { key: 'Enter', metaKey: true })
+        expect(respondAccessRequest).toHaveBeenCalledTimes(1)
+      })
+
+      it('en «Editar» con el foco en el campo de texto, ⌘↵ no concede', () => {
+        render(REQ({ plan: steps(2) }))
+        arm()
+        act(() => btn(/Editar/).click())
+        key(host.querySelector('textarea') as Element, { key: 'Enter', metaKey: true })
+        expect(respondAccessRequest).not.toHaveBeenCalled()
+      })
+
+      it('«Bloquear siempre» con plan no manda approvePlan', () => {
+        render(REQ({ plan: steps(2) }))
+        act(() => btn(/Bloquear siempre/).click())
+        expect(respondAccessRequest).toHaveBeenCalledTimes(1)
+        expect((respondAccessRequest.mock.calls[0] as unknown[] | undefined)?.[1]).toEqual({ alsoBlock: true })
+      })
     })
   })
 })

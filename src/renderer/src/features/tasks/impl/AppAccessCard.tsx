@@ -7,7 +7,7 @@
  * Aprobar nunca baja un nivel ya concedido (main aplica el máximo) y Esc nunca concede ni deniega (cancela).
  */
 import { useEffect, useRef, useState } from 'react'
-import { Ban, Check, ChevronDown, Eye, ListChecks, Loader2, MonitorCog, MousePointerClick, ShieldAlert, X } from 'lucide-react'
+import { Ban, Check, ChevronDown, Eye, ListChecks, Loader2, MonitorCog, MousePointerClick, X } from 'lucide-react'
 import {
   APP_TIER_RANK,
   defaultAccessDecision,
@@ -218,7 +218,6 @@ export function PlanAccessCard(): React.JSX.Element | null {
 
 function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
   const t = useT()
-  const [choices, setChoices] = useState<Record<string, AccessDecision>>({})
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [feedback, setFeedback] = useState('')
@@ -226,7 +225,6 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
 
   useEffect(() => {
     setDetailsOpen(null)
-    setChoices(Object.fromEntries(req.apps.map((a) => [a.bundleId, defaultAccessDecision(a)])))
     setEditing(false)
     setFeedback('')
   }, [req])
@@ -239,23 +237,15 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
     return () => document.removeEventListener('keydown', onKey)
   }, [req])
 
-  const hasApps = req.apps.length > 0
-  const decisionFor = (a: AccessRequestApp): AccessDecision => choices[a.bundleId] ?? defaultAccessDecision(a)
-
   const confirm = (): void => {
     setBusy(true)
-    void respondAccessRequest(
-      req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: decisionFor(a) })),
-      { approvePlan: !!req.plan }
-    ).finally(() => setBusy(false))
+    void respondAccessRequest([], { approvePlan: !!req.plan }).finally(() => setBusy(false))
   }
 
-  /** "Denegar todo" (solo tarjetas sin plan): denegación explícita de cada app. */
+  /** "Denegar todo" (solo tarjetas sin plan): sin apps no hay nada que denegar app por app. */
   const denyAll = (): void => {
     setBusy(true)
-    void respondAccessRequest(req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: 'deny' as const }))).finally(() =>
-      setBusy(false)
-    )
+    void respondAccessRequest([]).finally(() => setBusy(false))
   }
 
   /** Plan sin apps: cancela el plan y vuelve a «Una carpeta» (si no hay carpeta autorizada, explica por qué no). */
@@ -273,35 +263,25 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
   }
 
   // Plan sin apps (tarea de archivos, documentos o navegador): sin ratón ni teclado, así que no se ve como una alerta.
-  const calm = !!req.plan && !hasApps
-  // Resumen de una línea; los pasos y las notas van plegados. Con ratón y teclado (plan no «tranquilo») nacen abiertos.
   const steps = req.plan?.length ?? 0
   const summary = req.reason
     ? `«${req.reason}»`
     : steps > 0
       ? t(steps === 1 ? 'tasksComputer.plan.summaryOne' : 'tasksComputer.plan.summaryMany', { n: steps })
       : ''
-  const showDetails = detailsOpen ?? !calm
-  const title = req.plan
-    ? hasApps
-      ? t('tasksComputer.plan.titlePlan')
-      : t('tasksComputer.plan.titleTask')
-    : req.apps.length === 1
-      ? t('tasksComputer.plan.titleOne', { name: req.apps[0]?.name ?? '' })
-      : t('tasksComputer.plan.titleMany')
+  const showDetails = detailsOpen ?? false
+  const title = req.plan ? t('tasksComputer.plan.titleTask') : t('tasksComputer.plan.titleMany')
 
   return (
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
       <div
         role="alertdialog"
         aria-labelledby="tasks-plan-access-title"
-        className={`animate-rise-in rounded-2xl border p-4 shadow-sm ${calm ? 'border-accent/30 bg-accent-soft/20' : 'border-amber-500/40 bg-amber-500/5'}`}
+        className="animate-rise-in rounded-2xl border border-accent/30 bg-accent-soft/20 p-4 shadow-sm"
       >
         <div className="flex items-start gap-3">
-          <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-amber-700 desk:text-warning [[data-theme=dark]_&]:text-amber-400'}`}
-          >
-            {calm ? <ListChecks size={18} /> : <ShieldAlert size={18} />}
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+            <ListChecks size={18} />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -310,26 +290,22 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
                   {title}
                 </h3>
                 {req.plan && (
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${calm ? 'bg-success/10 text-success' : 'bg-amber-500/10 text-warning'}`}
-                  >
-                    {calm ? <Check size={12} aria-hidden /> : <MousePointerClick size={12} aria-hidden />}
-                    {calm ? t('tasksComputer.plan.stampBackground') : t('tasksComputer.plan.stampControl')}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
+                    <Check size={12} aria-hidden />
+                    {t('tasksComputer.plan.stampBackground')}
                   </span>
                 )}
               </div>
-              {
-                <button
-                  type="button"
-                  aria-expanded={showDetails}
-                  aria-controls="tasks-plan-access-details"
-                  onClick={() => setDetailsOpen(!showDetails)}
-                  className="no-drag inline-flex shrink-0 items-center gap-1 rounded-ctl px-2 py-1 text-xs text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
-                >
-                  {showDetails ? t('perm.details.hide') : t('perm.details.show')}
-                  <ChevronDown size={14} aria-hidden className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-                </button>
-              }
+              <button
+                type="button"
+                aria-expanded={showDetails}
+                aria-controls="tasks-plan-access-details"
+                onClick={() => setDetailsOpen(!showDetails)}
+                className="no-drag inline-flex shrink-0 items-center gap-1 rounded-ctl px-2 py-1 text-xs text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
+              >
+                {showDetails ? t('perm.details.hide') : t('perm.details.show')}
+                <ChevronDown size={14} aria-hidden className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+              </button>
             </div>
             {summary && !(showDetails && req.reason) && (
               <p className="mt-1 truncate text-sm text-muted" title={summary}>
@@ -339,48 +315,26 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
             {req.unresolved && req.unresolved.length > 0 && (
               <p className="mt-1.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
             )}
-            {
-              <div id="tasks-plan-access-details" hidden={!showDetails}>
-                {req.reason && <p className="mt-1.5 text-sm text-muted">«{req.reason}»</p>}
-                {req.plan && req.plan.length > 0 && (
-                  <ol className="mt-2.5 space-y-1.5 rounded-lg border border-border bg-hover/60 px-3 py-2.5 text-sm text-fg">
-                    {req.plan.map((step, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        <span
-                          aria-hidden
-                          className={`mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] desk:text-meta font-semibold ${calm ? 'bg-accent-soft text-accent' : 'bg-amber-500/15 text-warning'}`}
-                        >
-                          {i + 1}
-                        </span>
-                        <span className="min-w-0 flex-1">{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                {!hasApps && <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.plan.noApps')}</p>}
-                <p className="mt-2.5 text-xs text-muted">
-                  {t('tasksComputer.noTimeout')}
-                  {hasApps && ` ${t('tasksComputer.plan.neverLowers')}`}
-                  {hasApps && ` ${t('tasksComputer.plan.mouseKeyboard')} ${t('tasksComputer.plan.filesHint')}`}
-                </p>
-              </div>
-            }
-            {hasApps && (
-              <ul className="mt-3 space-y-2">
-                {req.apps.map((a) => (
-                  <li
-                    key={a.bundleId}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-elevated/60 px-3 py-2"
-                  >
-                    <span className="min-w-0 truncate text-sm font-medium text-fg" title={a.bundleId}>
-                      {a.name}
-                    </span>
-                    <TierSegmented value={decisionFor(a)} onChange={(v) => setChoices((c) => ({ ...c, [a.bundleId]: v }))} />
-                    <AppAccessMeta app={a} choice={decisionFor(a)} />
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div id="tasks-plan-access-details" hidden={!showDetails}>
+              {req.reason && <p className="mt-1.5 text-sm text-muted">«{req.reason}»</p>}
+              {req.plan && req.plan.length > 0 && (
+                <ol className="mt-2.5 space-y-1.5 rounded-lg border border-border bg-hover/60 px-3 py-2.5 text-sm text-fg">
+                  {req.plan.map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span
+                        aria-hidden
+                        className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] desk:text-meta font-semibold text-accent"
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.plan.noApps')}</p>
+              <p className="mt-2.5 text-xs text-muted">{t('tasksComputer.noTimeout')}</p>
+            </div>
             {editing ? (
               <div className="mt-3">
                 <label htmlFor="tasks-access-feedback" className="mb-1 block text-xs font-medium text-muted">
@@ -415,7 +369,7 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
                     {t('tasksComputer.plan.denyAll')}
                   </Button>
                 )}
-                {req.plan && !hasApps && (
+                {req.plan && (
                   <Button variant="secondary" onClick={switchToFolder} disabled={busy} title={t('tasksComputer.plan.toFolderTitle')}>
                     {t('tasksComputer.plan.toFolder')}
                   </Button>
@@ -558,6 +512,8 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
     dismissAccessRequest()
   }
 
+  // Con plan, «Ver y clic» y «Control total» usan el ratón y el teclado REALES (sesión en primer plano); solo «Solo ver» es segundo plano.
+  const realInput = !!req.plan && req.apps.some((a) => decisionFor(a) === 'click' || decisionFor(a) === 'full')
   const many = req.apps.length > 1
   const title = many ? t('tasksComputer.appAccess.titleMany') : t('tasksComputer.appAccess.title', { app: req.apps[0]?.name ?? '' })
   const shortcut = mac ? '⌘↵' : 'Ctrl+↵'
@@ -582,6 +538,11 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
             return
           }
           if (isAllowShortcut(e.nativeEvent, mac)) {
+            // Con el foco en otro botón o enlace («Bloquear siempre», «Denegar», «Editar»…) el atajo no aprueba por sorpresa.
+            const target = e.target as Element | null
+            const onOtherControl =
+              !!target?.closest?.('button, a, input, textarea, select') && !target.closest('[data-approve], [role="radio"]')
+            if (onOtherControl) return
             e.preventDefault()
             if (shortcutAllowed()) allow()
           } else if (e.key === 'Escape') {
@@ -599,33 +560,51 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
         </p>
         {planSteps.length > 0 && (
           <section className="mt-2.5" aria-labelledby="tasks-app-access-plan">
-            <h4 id="tasks-app-access-plan" className="text-xs font-semibold tracking-wide text-muted uppercase">
-              {t('tasksComputer.appAccess.planHeading')}
-            </h4>
-            <ol data-testid="app-access-plan" className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-fg marker:text-muted">
-              {shownSteps.map((step, i) => (
-                <li key={i} className="break-words">
-                  {step}
-                </li>
-              ))}
-            </ol>
-            {planSteps.length > PLAN_STEPS_COLLAPSED_OVER && (
-              <button
-                type="button"
-                aria-expanded={stepsOpen}
-                onClick={() => setStepsOpen(!stepsOpen)}
-                className="no-drag mt-1 inline-flex items-center gap-1 rounded-ctl px-1.5 py-0.5 text-xs text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
-              >
-                {stepsOpen ? t('tasksComputer.appAccess.planHide') : t('tasksComputer.appAccess.planShowAll', { n: planSteps.length })}
-                <ChevronDown size={12} aria-hidden className={`transition-transform ${stepsOpen ? 'rotate-180' : ''}`} />
-              </button>
-            )}
+            <div className="rounded-lg border border-dashed border-border bg-hover/40 px-3 py-2" data-testid="app-access-plan-box">
+              <h4 id="tasks-app-access-plan" className="text-xs font-semibold tracking-wide text-muted uppercase">
+                {t('tasksComputer.appAccess.planHeading')}
+              </h4>
+              <ol data-testid="app-access-plan" className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-fg marker:text-muted">
+                {shownSteps.map((step, i) => (
+                  <li key={i} className="break-words">
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              {planSteps.length > PLAN_STEPS_COLLAPSED_OVER && (
+                <button
+                  type="button"
+                  aria-expanded={stepsOpen}
+                  onClick={() => setStepsOpen(!stepsOpen)}
+                  className="no-drag mt-1 inline-flex items-center gap-1 rounded-ctl px-1.5 py-0.5 text-xs text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
+                >
+                  {stepsOpen ? t('tasksComputer.appAccess.planHide') : t('tasksComputer.appAccess.planShowAll', { n: planSteps.length })}
+                  <ChevronDown size={12} aria-hidden className={`transition-transform ${stepsOpen ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+            </div>
           </section>
         )}
-        <p className="mt-2 text-xs text-muted">
-          {win ? t('tasksComputer.appAccess.background.win') : t('tasksComputer.appAccess.background')}
-          {req.plan && ` ${t('tasksComputer.appAccess.neverLowers')}`}
-        </p>
+        <div className="mt-2 space-y-1 text-xs text-muted" data-testid="app-access-notices">
+          {realInput ? (
+            <>
+              <p data-testid="app-access-real-input" className="font-medium text-warning">
+                {win ? t('tasksComputer.plan.stampControl.win') : t('tasksComputer.plan.stampControl')}
+              </p>
+              <p>{t('tasksComputer.plan.mouseKeyboard')}</p>
+            </>
+          ) : (
+            <p data-testid="app-access-background">
+              {win ? t('tasksComputer.appAccess.background.win') : t('tasksComputer.appAccess.background')}
+            </p>
+          )}
+          {req.plan && <p>{t('tasksComputer.appAccess.neverLowers')}</p>}
+          {req.plan && (
+            <p>
+              {t('tasksComputer.noTimeout')} {t('tasksComputer.plan.filesHint')}
+            </p>
+          )}
+        </div>
         {req.unresolved && req.unresolved.length > 0 && (
           <p className="mt-1.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
         )}
@@ -702,7 +681,7 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
             <Button variant="secondary" onClick={deny} disabled={busy}>
               {t('tasksComputer.appAccess.deny')}
             </Button>
-            <Button variant="primary" onClick={allow} disabled={busy}>
+            <Button variant="primary" onClick={allow} disabled={busy} data-approve="">
               {req.plan ? t('tasksComputer.plan.approve') : t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
             </Button>
           </div>
