@@ -435,4 +435,146 @@ describe('AppPermissionCard', () => {
     expect(isAllowShortcut({ ...e, key: 'a' }, true)).toBe(false)
     expect(isAllowShortcut(e, false)).toBe(false)
   })
+
+  describe('con plan (computer_request_access con plan)', () => {
+    const steps = (n: number): string[] => Array.from({ length: n }, (_, i) => `Paso número ${i + 1}`)
+    const ICON = 'data:image/png;base64,iVBORw0KGgo='
+
+    it('es/Mac: misma tarjeta nueva con encabezado «Plan», pasos, aviso corto y botón «Aprobar y empezar» con ⌘↵', () => {
+      render(REQ({ plan: steps(2) }))
+      const txt = host.textContent ?? ''
+      expect(txt).toContain('¿Permitir que Lazunox use Hojas?')
+      expect(host.querySelector('#tasks-app-access-plan')?.textContent).toBe('Plan')
+      expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(2)
+      expect(txt).toContain('Aprobar nunca baja un nivel ya concedido.')
+      expect(txt).not.toContain('La espera no tiene límite')
+      expect(txt).not.toContain('Plan y permisos')
+      expect(btn(/Aprobar y empezar/).textContent).toContain('⌘↵')
+      expect(btn(/Denegar/)).toBeTruthy()
+      expect(btn(/Editar/)).toBeTruthy()
+      expect(btn(/Cancelar/).textContent).toContain('Esc')
+      expect(txt).toContain('Bloquear siempre')
+      expect(host.querySelector('[role="radiogroup"]')?.textContent).not.toContain('Denegar')
+    })
+
+    it('en/Windows: textos en inglés, PC y Ctrl+↵', () => {
+      setPlatform('win32')
+      render(REQ({ plan: steps(2) }), 'en')
+      const txt = host.textContent ?? ''
+      expect(txt).toContain('Allow Lazunox to use Hojas?')
+      expect(host.querySelector('#tasks-app-access-plan')?.textContent).toBe('Plan')
+      expect(txt).toContain('keep using your PC')
+      expect(btn(/Approve and start/).textContent).toContain('Ctrl+↵')
+      expect(btn(/Edit/)).toBeTruthy()
+    })
+
+    it('varias apps con plan: título genérico y una fila con logo por app (con y sin icono)', () => {
+      render(
+        REQ({
+          plan: steps(3),
+          apps: [
+            { bundleId: 'a', name: 'Alfa', requested: 'click', icon: ICON },
+            { bundleId: 'b', name: 'Beta', requested: 'view' }
+          ]
+        })
+      )
+      expect(host.textContent).toContain('¿Permitir que Lazunox use estas aplicaciones?')
+      expect(host.querySelectorAll('img').length).toBe(1)
+      expect(host.querySelectorAll('[data-testid="app-name"]').length).toBe(2)
+      expect(host.textContent).toContain('Puede ver la pantalla de esta app')
+    })
+
+    it('plan de 8 pasos: nace plegado a 3 y se despliega; de 4 o menos no hay botón', () => {
+      render(REQ({ plan: steps(8) }))
+      expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(3)
+      const more = btn(/Ver los 8 pasos/)
+      act(() => more.click())
+      expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(8)
+      expect(btn(/Ocultar pasos/)).toBeTruthy()
+      render(REQ({ id: 'r2', plan: steps(4) }))
+      expect(host.querySelectorAll('[data-testid="app-access-plan"] li').length).toBe(4)
+      expect(btn(/Ver los/)).toBeUndefined()
+    })
+
+    it('Aprobar: scope session + approvePlan, con el nivel elegido (se puede bajar) y sin Control total', () => {
+      render(REQ({ plan: steps(2), apps: [{ bundleId: 'a', name: 'A', requested: 'full' }] }))
+      act(() => btn(/Aprobar y empezar/).click())
+      expect(respondAccessRequest).toHaveBeenCalledWith([{ bundleId: 'a', name: 'A', decision: 'click' }], {
+        scope: 'session',
+        approvePlan: true
+      })
+      respondAccessRequest.mockClear()
+      render(REQ({ id: 'r3', plan: steps(2) }))
+      act(() => radio(/Solo ver/).click())
+      act(() => btn(/Aprobar y empezar/).click())
+      expect((respondAccessRequest.mock.calls[0] as unknown[] | undefined)?.[0]).toEqual([
+        { bundleId: 'com.x.sheet', name: 'Hojas', decision: 'view' }
+      ])
+    })
+
+    it('«Bloquear siempre» por fila manda alsoBlock solo de esa app', () => {
+      render(
+        REQ({
+          plan: steps(2),
+          apps: [
+            { bundleId: 'a', name: 'Alfa', requested: 'click' },
+            { bundleId: 'b', name: 'Beta', requested: 'click' }
+          ]
+        })
+      )
+      act(() => (host.querySelector('[aria-label*="Beta"]') as HTMLElement).click())
+      expect(respondAccessRequest).toHaveBeenCalledWith([{ bundleId: 'b', name: 'Beta', decision: 'deny' }], { alsoBlock: true })
+    })
+
+    it('Denegar deniega todas sin aprobar el plan', () => {
+      render(REQ({ plan: steps(2) }))
+      act(() => btn(/Denegar/).click())
+      expect(respondAccessRequest).toHaveBeenCalledWith([{ bundleId: 'com.x.sheet', name: 'Hojas', decision: 'deny' }])
+    })
+
+    it('atajos: Esc cancela sin conceder; ⌘↵ respeta armado, repeat e IME y aprueba el plan; no concede Control total', () => {
+      render(REQ({ plan: steps(2) }))
+      key(card(), { key: 'Enter', metaKey: true })
+      expect(respondAccessRequest).not.toHaveBeenCalled()
+      arm()
+      key(card(), { key: 'Enter', metaKey: true, repeat: true })
+      key(card(), { key: 'Enter', metaKey: true, isComposing: true })
+      expect(respondAccessRequest).not.toHaveBeenCalled()
+      key(card(), { key: 'Enter', metaKey: true })
+      expect(respondAccessRequest).toHaveBeenCalledWith(expect.any(Array), { scope: 'session', approvePlan: true })
+
+      respondAccessRequest.mockClear()
+      render(REQ({ id: 'r4', plan: steps(2), apps: [{ bundleId: 'a', name: 'A', requested: 'full' }] }))
+      arm()
+      act(() => radio(/Control total/).click())
+      key(card(), { key: 'Enter', metaKey: true })
+      expect(respondAccessRequest).not.toHaveBeenCalled()
+
+      render(REQ({ id: 'r5', plan: steps(2) }))
+      arm()
+      key(card(), { key: 'Escape' })
+      expect(dismissAccessRequest).toHaveBeenCalledTimes(1)
+      expect(respondAccessRequest).not.toHaveBeenCalled()
+    })
+
+    it('Editar: envía solo feedback (no concede ni deniega); Esc vuelve a la tarjeta y ⌘↵ no concede mientras se edita', () => {
+      render(REQ({ plan: steps(2) }))
+      arm()
+      act(() => btn(/Editar/).click())
+      key(card(), { key: 'Enter', metaKey: true })
+      expect(respondAccessRequest).not.toHaveBeenCalled()
+      key(card(), { key: 'Escape' })
+      expect(dismissAccessRequest).not.toHaveBeenCalled()
+      expect(host.querySelector('textarea')).toBeNull()
+      act(() => btn(/Editar/).click())
+      const ta = host.querySelector('textarea') as HTMLTextAreaElement
+      act(() => {
+        const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+        set?.call(ta, 'Sin navegador')
+        ta.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      act(() => btn(/Enviar cambios/).click())
+      expect(respondAccessRequest).toHaveBeenCalledWith([], { feedback: 'Sin navegador' })
+    })
+  })
 })

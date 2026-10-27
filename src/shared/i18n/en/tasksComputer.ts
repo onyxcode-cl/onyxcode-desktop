@@ -501,6 +501,10 @@ export const tasksComputer = {
   'tasksComputer.appAccess.background.win': 'Lazunox will work in these apps in the background while you keep using your PC',
   'tasksComputer.appAccess.deny': 'Deny',
   'tasksComputer.appAccess.allowSession': 'Allow for this session',
+  'tasksComputer.appAccess.planHeading': 'Plan',
+  'tasksComputer.appAccess.planShowAll': 'Show all {n} steps',
+  'tasksComputer.appAccess.planHide': 'Hide steps',
+  'tasksComputer.appAccess.neverLowers': 'Approving never lowers a level that was already granted.',
   'tasksComputer.appAccess.blockAlways': 'Block always',
   'tasksComputer.appAccess.blockAlwaysAria': 'Block {app} always (it will not be asked again)',
   'tasksComputer.appAccess.fullHint':

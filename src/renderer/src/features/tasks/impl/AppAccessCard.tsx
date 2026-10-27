@@ -211,7 +211,8 @@ export function PlanAccessCard(): React.JSX.Element | null {
   const req = useTasks((s) => s.accessRequest)
   if (!req) return null
   if (req.kind === 'takeover') return <TakeoverAccessCard req={req} />
-  if (!req.plan && req.apps.length > 0) return <AppPermissionCard key={req.id} req={req} />
+  // Con apps (con o sin plan) siempre la tarjeta nueva; el plan sin apps (terminal, archivos, web) conserva su tarjeta propia.
+  if (req.apps.length > 0) return <AppPermissionCard key={req.id} req={req} />
   return <PlanDetailCard key={req.id} req={req} />
 }
 
@@ -439,6 +440,9 @@ function PlanDetailCard({ req }: { req: AccessRequest }): React.JSX.Element {
 
 /** Tiempo de armado de la tarjeta (el mismo que `CONSENT_UI_ARM_MS` de ComputerConsentWin): antes, ninguna tecla responde. */
 export const APP_CARD_ARM_MS = 600
+/** Un plan de más de 4 pasos nace plegado a sus 3 primeros pasos. */
+const PLAN_STEPS_COLLAPSED_OVER = 4
+const PLAN_STEPS_SHOWN = 3
 
 /** ¿Es el atajo de «Permitir»? ⌘↵ en Mac, Ctrl+↵ en el resto (sin Mayús/Alt). Pura. */
 export function isAllowShortcut(e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>, mac: boolean): boolean {
@@ -505,6 +509,9 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
     Object.fromEntries(req.apps.map((a) => [a.bundleId, defaultAccessDecision(a)]))
   )
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [feedback, setFeedback] = useState('')
+  const [stepsOpen, setStepsOpen] = useState(false)
   const armed = useRef(false)
   useEffect(() => {
     armed.current = false
@@ -520,8 +527,15 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
     setBusy(true)
     void respondAccessRequest(
       req.apps.map((a) => ({ bundleId: a.bundleId, name: a.name, decision: decisionFor(a) })),
-      { scope: 'session' }
+      { scope: 'session', ...(req.plan ? { approvePlan: true } : {}) }
     ).finally(() => setBusy(false))
+  }
+  /** «Editar»: el feedback no concede ni deniega nada; el agente replantea el plan. */
+  const sendFeedback = (): void => {
+    const text = feedback.trim()
+    if (busy || !text) return
+    setBusy(true)
+    void respondAccessRequest([], { feedback: text }).finally(() => setBusy(false))
   }
   /** El atajo no concede «Control total» a una app que no lo tenía: eso exige elegirlo y pulsar el botón. */
   const shortcutAllowed = (): boolean => !req.apps.some((a) => decisionFor(a) === 'full' && a.current !== 'full')
@@ -547,6 +561,8 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
   const many = req.apps.length > 1
   const title = many ? t('tasksComputer.appAccess.titleMany') : t('tasksComputer.appAccess.title', { app: req.apps[0]?.name ?? '' })
   const shortcut = mac ? '⌘↵' : 'Ctrl+↵'
+  const planSteps = req.plan ?? []
+  const shownSteps = stepsOpen || planSteps.length <= PLAN_STEPS_COLLAPSED_OVER ? planSteps : planSteps.slice(0, PLAN_STEPS_SHOWN)
 
   return (
     <div className="mx-auto mb-2 w-full max-w-3xl px-6">
@@ -557,6 +573,14 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
         onKeyDown={(e) => {
           // Solo con el foco dentro de la tarjeta (el evento sube desde ella), armada y sin teclas ajenas.
           if (!armed.current || isStrayKey(e.nativeEvent) || e.defaultPrevented) return
+          if (editing) {
+            // Editando el plan: Esc vuelve a la tarjeta y el atajo no concede nada.
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              setEditing(false)
+            }
+            return
+          }
           if (isAllowShortcut(e.nativeEvent, mac)) {
             e.preventDefault()
             if (shortcutAllowed()) allow()
@@ -573,8 +597,34 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
         <p data-testid="app-access-reason" className="mt-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-sm text-muted">
           {req.reason?.trim() ? req.reason : t('tasksComputer.appAccess.reasonNone')}
         </p>
+        {planSteps.length > 0 && (
+          <section className="mt-2.5" aria-labelledby="tasks-app-access-plan">
+            <h4 id="tasks-app-access-plan" className="text-xs font-semibold tracking-wide text-muted uppercase">
+              {t('tasksComputer.appAccess.planHeading')}
+            </h4>
+            <ol data-testid="app-access-plan" className="mt-1 list-decimal space-y-0.5 pl-5 text-sm text-fg marker:text-muted">
+              {shownSteps.map((step, i) => (
+                <li key={i} className="break-words">
+                  {step}
+                </li>
+              ))}
+            </ol>
+            {planSteps.length > PLAN_STEPS_COLLAPSED_OVER && (
+              <button
+                type="button"
+                aria-expanded={stepsOpen}
+                onClick={() => setStepsOpen(!stepsOpen)}
+                className="no-drag mt-1 inline-flex items-center gap-1 rounded-ctl px-1.5 py-0.5 text-xs text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
+              >
+                {stepsOpen ? t('tasksComputer.appAccess.planHide') : t('tasksComputer.appAccess.planShowAll', { n: planSteps.length })}
+                <ChevronDown size={12} aria-hidden className={`transition-transform ${stepsOpen ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+          </section>
+        )}
         <p className="mt-2 text-xs text-muted">
           {win ? t('tasksComputer.appAccess.background.win') : t('tasksComputer.appAccess.background')}
+          {req.plan && ` ${t('tasksComputer.appAccess.neverLowers')}`}
         </p>
         {req.unresolved && req.unresolved.length > 0 && (
           <p className="mt-1.5 text-xs text-warning">{t('tasksComputer.plan.notFound', { list: req.unresolved.join(', ') })}</p>
@@ -616,17 +666,47 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
             )
           })}
         </ul>
-        <div className="mt-3.5 flex flex-wrap items-center justify-end gap-2">
-          <Button variant="ghost" onClick={cancel} disabled={busy} title={t('tasksComputer.plan.cancelTitle')}>
-            {t('tasksComputer.cancel')} <kbd className="kbd">Esc</kbd>
-          </Button>
-          <Button variant="secondary" onClick={deny} disabled={busy}>
-            {t('tasksComputer.appAccess.deny')}
-          </Button>
-          <Button variant="primary" onClick={allow} disabled={busy}>
-            {t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
-          </Button>
-        </div>
+        {editing ? (
+          <div className="mt-3">
+            <label htmlFor="tasks-access-feedback" className="mb-1 block text-xs font-medium text-muted">
+              {t('tasksComputer.plan.feedbackLabel')}
+            </label>
+            <textarea
+              id="tasks-access-feedback"
+              autoFocus
+              rows={2}
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder={t('tasksComputer.plan.feedbackPlaceholder')}
+              className="w-full resize-none rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-fg outline-none focus:border-accent"
+            />
+            <div className="mt-2.5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
+                {t('tasksComputer.plan.back')} <kbd className="kbd">Esc</kbd>
+              </Button>
+              <Button variant="primary" onClick={sendFeedback} disabled={busy || !feedback.trim()}>
+                {t('tasksComputer.plan.sendChanges')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3.5 flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" onClick={cancel} disabled={busy} title={t('tasksComputer.plan.cancelTitle')}>
+              {t('tasksComputer.cancel')} <kbd className="kbd">Esc</kbd>
+            </Button>
+            {req.plan && (
+              <Button variant="ghost" onClick={() => setEditing(true)} disabled={busy}>
+                {t('tasksComputer.plan.edit')}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={deny} disabled={busy}>
+              {t('tasksComputer.appAccess.deny')}
+            </Button>
+            <Button variant="primary" onClick={allow} disabled={busy}>
+              {req.plan ? t('tasksComputer.plan.approve') : t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
