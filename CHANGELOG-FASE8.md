@@ -3956,3 +3956,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Seguridad.** La respuesta del motor es dato no confiable: ids con patrón de hash, textos sin saltos de línea y acotados a 500 caracteres, máximo 500 reglas, pintado como texto plano. El id se vuelve a validar antes de ir en la ruta. Quitar un «siempre» solo hace la app más estricta.
 - **Pruebas.** `policy.test.ts`, `opencode-contract.test.ts`, `schemas.test.ts`, `engine-always.test.ts`, `AlwaysRulesBlock.test.tsx`.
 - **No verificado.** Con el motor real y la app empaquetada (el motor fijado hoy, lazunox.12, no trae estas rutas: la vista dice que no puede gestionarlas); los servidores aislados de Tareas no entran en la lista; `GET .../uso` no se conecta a ninguna pantalla todavía; lector de pantalla.
+
+## F8-B229 — Versión 1.7.8: motor lazunox.13 y limpieza del banco
+
+- **Qué.** (1) `resources/opencode-bin/pin.json` apunta a `v1.19.0-lazunox.13` (darwin-arm64 `94324ee8…`, win32-x64 `64cf2f22…`, linux-x64 `708a8c63…`), con `THIRD_PARTY_NOTICES.md` y `wsl-real-pin.test.ts` al día; `api-routes.json` ya traía las 206 rutas (F8-B228). (2) Se suman los chequeos de la Ola 7 al probe del motor (`scripts/engine-probe/checks-ola7.mjs`, 25 comprobaciones) y se adaptan tres pruebas viejas del probe que dependían de comportamientos que la Ola 7 cambió a propósito (presupuesto d, skills e, paralelo 5B). (3) De los resultados del banco se quita la carpeta `capturas/` (peticiones crudas al modelo con el nombre anterior del producto, que rompían `no-legacy-name`).
+- **Pruebas.** `wsl-real-pin.test.ts`, `opencode-contract.test.ts`, `no-legacy-name.test.ts`, `no-secrets.test.ts`; probe del motor: Mac 243/243, Linux y Windows con las salvedades del informe del motor.
+- **No verificado.** La actualización dentro de la app desde 1.7.7 (solo posible con la release publicada); nada con modelo real más allá del banco ya medido (sin ahorro demostrado).
