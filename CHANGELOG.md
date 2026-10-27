@@ -4,6 +4,30 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.7.8] - 2026-10-27
+
+### Novedades
+
+- **Editar archivos sin perder datos.** Antes, si la IA editaba un archivo que no estaba en UTF-8 (por ejemplo, con acentos guardados en Latin-1) o que mezclaba finales de línea de Windows y de Mac/Linux, el archivo podía quedar con caracteres dañados o con los saltos de línea cambiados. Ahora el motor se niega a reescribir lo que no puede leer entero, conserva los finales de línea originales y no deforma los acentos. Lo comprobamos con tareas de prueba (sin sorpresas en las que antes fallaban).
+- **Permisos más seguros en la terminal.** El motor revisa con más cuidado las órdenes compuestas (varias órdenes unidas, sustituciones, redirecciones). Solo puede resultar en más preguntas o más negativas que antes, nunca en menos. Hay dos casos conocidos que todavía no cubre (una orden metida con `<<<` y consultar si existe una orden prohibida).
+- **Ver y quitar los «siempre» guardados.** En Ajustes › Funciones experimentales hay un bloque nuevo para ver, por carpeta reciente, qué órdenes marcaste con «Siempre permitir» y quitarlas una por una. Antes solo se podía «Olvidar todos». Necesita el motor nuevo; con uno anterior la pantalla lo dice. Desde el celular no se ven ni se quitan.
+- **Varias lecturas a la vez, escrituras en orden.** Cuando la IA pide leer o buscar varias cosas, se hacen juntas; lo que cambia archivos o ejecuta órdenes sigue yendo de una en una, en orden.
+- **Menos tropiezos con las herramientas.** Si el modelo manda un dato con el tipo equivocado (por ejemplo, un número escrito como texto), el motor lo corrige en vez de fallar. Si la respuesta se corta por el límite de salida del modelo, se retoma en vez de dejar la herramienta a medias.
+- **Instrucciones y compactación más firmes.** Los archivos de instrucciones (`AGENTS.md`, `LAZUNOX.md`) pueden incluir otros con `@archivo`; cuando una instrucción cambia a mitad de una conversación, la IA recibe solo la diferencia; y al compactar no se pierden las instrucciones vigentes.
+- **Resultados de conectores con imágenes o archivos.** Lo que un conector devuelve como imagen o binario grande se guarda en un archivo y la IA recibe la ruta, en vez de meter todo en la conversación.
+- **Credenciales enmascaradas.** Las claves que aparecen en la salida de comandos se ocultan al mostrarlas y al guardar la conversación.
+- **Ganchos más completos.** Los ganchos del motor pueden depender de una condición y reaccionar si fallan, y hay cuatro eventos nuevos. La app todavía no tiene pantalla propia para estos ajustes nuevos.
+- **Cuadernos Jupyter.** En carpetas con archivos `.ipynb`, la IA puede editar celdas sin romper el cuaderno.
+- **Ayudantes que se pueden reanudar** con más información cuando se agotan los pasos.
+- Motor `lazunox.13`.
+
+### Qué no cambia
+
+- **No prometemos ahorro de tokens.** Medimos con un modelo real (28 tareas, cinco repeticiones): el gasto cambió un −4 % y quedó dentro del ruido, y el éxito fue prácticamente igual (134 de 140 antes, 132 de 140 con un motor intermedio). La mejora de esta versión es de corrección y de seguridad, no de gasto.
+- **No decimos que Lazunox iguale ni supere a otras herramientas.** No pudimos comparar con ellas en igualdad de condiciones; falta esa prueba.
+- Siguen **apagados**: los flujos por script (gastaban entre 43 % y 612 % más tokens), las tareas programadas, la limpieza de claves en lo que ve el modelo (puede romper ediciones que citan un secreto), las políticas de la organización y la auto-revisión de permisos. Tampoco hay todavía un espacio de trabajo aparte (worktree) para la conversación principal.
+- La actualización dentro de la app desde 1.7.7 se probó solo después de publicar.
+
 ## [1.7.7] - 2026-10-26
 
 ### Novedades

@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Versión** | 1.7.7 · [qué cambió](./CHANGELOG.md) · [qué está verificado y qué no](./docs/VERIFICACION.md) |
+| **Versión** | 1.7.8 · [qué cambió](./CHANGELOG.md) · [qué está verificado y qué no](./docs/VERIFICACION.md) |
 | **Descarga** | [Releases](https://github.com/onyxcode-cl/onyxcode-desktop/releases/latest) · [guía de instalación](./docs/INSTALAR.md) |
 | **Motor** | Lazunox Motor: fork propio y congelado de OpenCode 1.19.0 (MIT) · [plan](./docs/PLAN-MOTOR-PROPIO.md) |
-| **Hoja de ruta del motor** | [Ola 7: paridad con Claude Code, Codex y OpenCode 2.x](./docs/PLAN-MOTOR-OLA7.md) |
+| **Hoja de ruta del motor** | [Ola 7: acercarse a Claude Code, Codex y OpenCode 2.x (meta aún no demostrada)](./docs/PLAN-MOTOR-OLA7.md) |
 
 ## Qué hace
 
@@ -58,7 +58,7 @@ Lazunox Motor parte de OpenCode 1.19.0 (licencia MIT, con el aviso de copyright 
 - rebobinar por turno (incluye lo que cambió un comando), compactación que conserva el plan y las habilidades, objetivo y presupuesto;
 - **cero conexiones a servicios de OpenCode**, con una prueba que lo vigila.
 
-Varias funciones están apagadas por defecto hasta que se demuestren con el banco de pruebas: **no prometemos ahorro de tokens sin una medición** (ver el CHANGELOG de la 1.7.7). La comparación con Claude Code, Codex y OpenCode 2.x, y lo que falta para igualarlos, está en [`docs/PLAN-MOTOR-OLA7.md`](./docs/PLAN-MOTOR-OLA7.md). Cómo se empaqueta y se actualiza: [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md) y [`docs/MANTENIMIENTO-MOTOR.md`](./docs/MANTENIMIENTO-MOTOR.md). Los avisos de licencia de lo que incluimos: [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+Varias funciones están apagadas por defecto hasta que se demuestren con el banco de pruebas: **no prometemos ahorro de tokens sin una medición** (ver el CHANGELOG de la 1.7.7 y de la 1.7.8). La comparación con Claude Code, Codex y OpenCode 2.x, y lo que falta para igualarlos, está en [`docs/PLAN-MOTOR-OLA7.md`](./docs/PLAN-MOTOR-OLA7.md). Cómo se empaqueta y se actualiza: [`docs/DISTRIBUCION.md`](./docs/DISTRIBUCION.md) y [`docs/MANTENIMIENTO-MOTOR.md`](./docs/MANTENIMIENTO-MOTOR.md). Los avisos de licencia de lo que incluimos: [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
 
 Si prefieres tu propio CLI de OpenCode, puedes elegirlo («Usar mi CLI…» en el asistente o en Ajustes); la app te avisa si no es la versión probada. Aun así usa su propio almacén de claves y de sesiones. Con `OPENCODE_BIN=/ruta/al/binario` se fuerza uno concreto.
 
