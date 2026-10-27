@@ -330,6 +330,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:pickFolder': 'X', // diálogo nativo
   'tasks:listFolders': 'R',
   'tasks:approveFolder': 'D',
+  'tasks:chatFolder:create': 'X',
   'tasks:removeFolder': scoped('M', 'folder'),
   'tasks:start': (p, ctx) => (!inDirs(p.folder, scopeIpc(ctx)) ? deny('out-of-scope') : p.fullAccess === true ? 'D' : 'M'),
   'tasks:grantFullAccess': scoped('D', 'folder'),

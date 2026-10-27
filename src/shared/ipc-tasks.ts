@@ -1024,6 +1024,8 @@ export interface TasksInvokeContract {
   'tasks:listFolders': { req: void; res: TasksFolder[] }
   /** Autoriza una carpeta (tras confirmar en la UI). Rechaza carpetas peligrosas (/, ~, /System…). */
   'tasks:approveFolder': { req: { folder: string }; res: TasksFolder }
+  /** Modo unificado (ola 2): crea y aprueba una carpeta de trabajo propia del chat (`~/Lazunox/Chats/<id>`) cuando la persona no elige carpeta. */
+  'tasks:chatFolder:create': { req: void; res: TasksFolder }
   'tasks:removeFolder': { req: { folder: string }; res: void }
   /**
    * Arranca (o reutiliza) el servidor de una carpeta autorizada. Por defecto sandboxeado;
@@ -1441,6 +1443,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:pickFolder',
   'tasks:listFolders',
   'tasks:approveFolder',
+  'tasks:chatFolder:create',
   'tasks:removeFolder',
   'tasks:start',
   'tasks:grantFullAccess',

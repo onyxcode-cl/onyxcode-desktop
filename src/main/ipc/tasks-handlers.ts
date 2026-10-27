@@ -175,6 +175,10 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     await tasks.refreshPolicy() // Windows: unidades al día antes de decidir (macOS: sin efecto)
     return tasks.approveFolder(folder)
   })
+  // Modo unificado (ola 2): el agente A lo implementa; hasta entonces no hay carpeta automática.
+  handle('tasks:chatFolder:create', () => {
+    throw new Error('chatFolder:create todavía no está implementado')
+  })
   handle('tasks:removeFolder', ({ folder }) => tasks.removeFolder(folder))
   handle('tasks:start', ({ folder, fullAccess }) => tasks.start(folder, fullAccess === true))
   handle('tasks:grantFullAccess', ({ folder }) => tasks.grantFullAccess(folder))

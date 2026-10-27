@@ -861,6 +861,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:pickFolder': none,
   'tasks:listFolders': none,
   'tasks:approveFolder': folderReq,
+  'tasks:chatFolder:create': none,
   'tasks:removeFolder': folderReq,
   'tasks:start': obj({ folder: absPath, fullAccess: optional(bool) }),
   'tasks:grantFullAccess': folderReq,

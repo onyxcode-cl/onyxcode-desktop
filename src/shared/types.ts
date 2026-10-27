@@ -156,6 +156,8 @@ export interface AppInfo {
   userDataPath: string
   chatDirectory: string
   isDev: boolean
+  /** Modo unificado (ola 2): ¿está encendido el puente de apps (`LAZUNOX_UNIFIED_APPS=1`)? Apagado/ausente = la interfaz de siempre. */
+  unifiedApps?: boolean
 }
 
 /** Origen del binario de OpenCode en uso: variable OPENCODE_BIN, ajuste del usuario, CLI instalado o el incluido en la app. */
