@@ -56,10 +56,11 @@ type Block =
   | { kind: 'file'; id: string; name: string; partIds: string[] }
 
 /** Aplana los mensajes en bloques; `partIds` permite localizar el bloque de cualquier parte (búsqueda, contexto). */
-function buildBlocks(entries: MessageEntry[]): Block[] {
+function buildBlocks(entries: MessageEntry[], busy = false): Block[] {
   const blocks: Block[] = []
   let steps: Extract<Block, { kind: 'steps' }> | null = null
   for (const entry of entries) {
+    const streaming = busy && entry === entries[entries.length - 1]
     if (entry.info.role === 'user') {
       steps = null
       const raw = entry.parts
@@ -102,7 +103,7 @@ function buildBlocks(entries: MessageEntry[]): Block[] {
         // Los bloques ```lazunox-memoria```/```lazunox-skill``` (propuestas de memoria/skill que el usuario
         // aprueba desde una tarjeta) son un contrato con el agente, no texto para leer: se quitan aquí, igual
         // para TODO mensaje (no solo el último).
-        const text = stripEscalationMarkers(stripSkillProposalBlock(stripMemoryProposalBlock(p.text)))
+        const text = stripEscalationMarkers(stripSkillProposalBlock(stripMemoryProposalBlock(p.text)), streaming)
         if (text) blocks.push({ kind: 'text', id: p.id, text, partIds: [p.id] })
       } else if (p.type === 'retry') {
         blocks.push({
@@ -430,7 +431,7 @@ const UserMessage = memo(
 export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
-  const allBlocks = useMemo(() => buildBlocks(entries), [entries])
+  const allBlocks = useMemo(() => buildBlocks(entries, busy), [entries, busy])
   // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
   const readingStored = useWorkView('code')
   const reading = isRemoteSurface() ? 'normal' : readingStored

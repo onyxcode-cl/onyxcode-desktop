@@ -203,6 +203,32 @@ describe('recorte de eventos del motor', () => {
     })
     expect(JSON.stringify(out)).not.toContain('data:image')
   })
+
+  it('computer:accessRequest: un icono con forma rara (objeto, lista, número, null) o apps raras tampoco sale al celular', async () => {
+    const { scope, trim } = setup(async () => feed([]))
+    await scope.get()
+    const out = trimIpcEvent(
+      'computer:accessRequest',
+      {
+        id: 'r2',
+        apps: [
+          { bundleId: 'a', icon: { url: 'data:image/png;base64,AAAA' } },
+          { bundleId: 'b', icon: ['data:image/png;base64,AAAA'] },
+          { bundleId: 'c', icon: 42 },
+          { bundleId: 'd', icon: null },
+          null,
+          'texto',
+          ['x']
+        ]
+      },
+      trim
+    )
+    expect(out).toEqual({
+      id: 'r2',
+      apps: [{ bundleId: 'a' }, { bundleId: 'b' }, { bundleId: 'c' }, { bundleId: 'd' }, null, 'texto', ['x']]
+    })
+    expect(trimIpcEvent('computer:accessRequest', { id: 'r3', apps: 'no-lista' }, trim)).toEqual({ id: 'r3', apps: 'no-lista' })
+  })
 })
 
 describe('SseHub', () => {

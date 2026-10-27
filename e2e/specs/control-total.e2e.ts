@@ -144,7 +144,8 @@ describe.skipIf(!DEV)('Control total sin carpeta', () => {
     // Mientras corre sin usar el ratón ni la pantalla NO hay banner de «Controlando tu Mac» (solo cuando el agente actúa de verdad);
     // el aviso de que no está confinado vive en el indicador de acceso de la cabecera de la tarea.
     await expectCount(page.getByTestId('control-banner-busy'), 0)
-    await expectVisible(page.getByText('Control total', { exact: false }).first(), 15_000)
+    // El chip del alcance se llama «El computador completo» desde P8 (el nivel «Control total» de una app sigue existiendo en la tarjeta de permisos).
+    await expectVisible(page.getByText('El computador completo', { exact: false }).first(), 15_000)
     await shot(a, 'tarea-corriendo')
     // El servidor recibió el directorio personal (cwd), no una carpeta autorizada.
     const reqs = await fake.requests({ limit: 200 })

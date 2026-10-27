@@ -9,13 +9,14 @@ import { t } from '@shared/i18n'
 import { BrowserWindow, Notification, app, nativeImage, screen } from 'electron'
 import { execFile } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { ComputerService } from '../computer/service'
 import { ComputerOverlay } from '../computer/overlay'
 import { AssistWindow } from '../computer/assist-window'
 import { SkillRecorder } from '../computer/recorder'
 import { AppVisibility } from '../computer/app-visibility'
-import { createAppIconResolver } from '../computer/app-icons'
+import { createAppIconResolver, createMacAppFinder } from '../computer/app-icons'
 import { SYSTEM_EXEMPT_BUNDLE_IDS } from '../computer/grants'
 import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
@@ -57,6 +58,13 @@ export interface ComputerParts {
   maybeUnhideApps: () => void
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([p, new Promise<never>((_, rej) => (timer = setTimeout(() => rej(new Error('timeout')), ms)))]).finally(() =>
+    clearTimeout(timer)
+  )
+}
+
 /** Construye los objetos de Control del PC (nada de esto existe sin `caps.computer`). */
 export function createComputerParts(): ComputerParts {
   const computer = new ComputerService()
@@ -68,27 +76,23 @@ export function createComputerParts(): ComputerParts {
     physicalToDip: computer.ownConsent ? (p) => screen.screenToDipPoint(p) : undefined
   })
   computer.captureGuard = () => overlay.beforeCapture()
-  // Icono real de la app para la tarjeta de permiso. macOS: `mdfind` por bundleId (ya validado con regex; execFile, sin shell).
+  // Icono real de la app para la tarjeta de permiso. macOS: `mdfind` por bundleId acotado a las carpetas de apps (regex estricta; execFile, sin shell).
   computer.appIcon = createAppIconResolver({
     platform: process.platform,
-    findMacAppPath: (bundleId) =>
-      new Promise((resolve) => {
-        execFile(
-          '/usr/bin/mdfind',
-          [`kMDItemCFBundleIdentifier == "${bundleId}"`],
-          { timeout: 2_000, maxBuffer: 64 * 1024 },
-          (err, out) => {
-            if (err) return resolve(null)
-            resolve(
-              String(out)
-                .split('\n')
-                .find((l) => l.startsWith('/') && l.endsWith('.app')) ?? null
-            )
-          }
-        )
-      }),
+    // Búsqueda acotada a las carpetas de apps del sistema (`-onlyin`), nunca en todo Spotlight (suplantación de icono).
+    findMacAppPath: createMacAppFinder({ execFile, home: homedir() }),
     fileIconDataUrl: async (path) => {
-      const img = await app.getFileIcon(path, { size: 'normal' })
+      // macOS: `getFileIcon` devuelve un icono genérico igual para todas las apps en versiones recientes; la miniatura es el logo real.
+      // (No usar `getFileIcon` con tamaño 'large': cierra Electron.) Windows: `getFileIcon`.
+      let img: Electron.NativeImage | null = null
+      if (process.platform === 'darwin') {
+        try {
+          img = await withTimeout(nativeImage.createThumbnailFromPath(path, { width: 64, height: 64 }), 1_400)
+        } catch {
+          img = null
+        }
+      }
+      if (!img || img.isEmpty()) img = await app.getFileIcon(path, { size: 'normal' })
       if (img.isEmpty()) return null
       return nativeImage.createFromBuffer(img.resize({ width: 64, height: 64, quality: 'best' }).toPNG()).toDataURL()
     }

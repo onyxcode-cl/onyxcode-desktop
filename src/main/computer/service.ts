@@ -484,6 +484,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         }
       })
     )
+    // Dos apps distintas con EXACTAMENTE el mismo icono ⇒ es el genérico del sistema, no un logo: sin icono (la tarjeta cae al nombre).
+    const iconCount = new Map<string, number>()
+    for (const a of enriched) if (a.icon) iconCount.set(a.icon, (iconCount.get(a.icon) ?? 0) + 1)
+    for (const a of enriched) if (a.icon && (iconCount.get(a.icon) ?? 0) > 1) delete a.icon
     // Modo auto (Lote C, C3): antes de mostrar la tarjeta, se le da la oportunidad de conceder
     // "Solo ver" efímero sin preguntar (allowlist estricta; nunca para takeover ni planes). Se
     // espera como mucho 1,5 s: si tarda o deniega, sigue el flujo normal (tarjeta al usuario).

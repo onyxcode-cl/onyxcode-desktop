@@ -67,7 +67,9 @@ export function trimIpcEvent(channel: string, payload: unknown, d: TrimDeps): un
           ? {
               ...p,
               apps: p.apps.map((a) =>
-                typeof a === 'object' && a !== null ? Object.fromEntries(Object.entries(a).filter(([k]) => k !== 'icon')) : a
+                typeof a === 'object' && a !== null && !Array.isArray(a)
+                  ? Object.fromEntries(Object.entries(a).filter(([k]) => k !== 'icon'))
+                  : a
               )
             }
           : payload

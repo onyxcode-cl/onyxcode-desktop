@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { isSafeIconDataUrl } from '@shared/app-icon'
-import { createAppIconResolver } from './app-icons'
+import { createAppIconResolver, createMacAppFinder, FAILURE_TTL_MS, macAppFindArgs, pickMacAppPath } from './app-icons'
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=='
 
@@ -68,5 +68,142 @@ describe('createAppIconResolver', () => {
     expect(await resolve('aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app')).toBeUndefined()
     expect(await resolve('exe:\\\\server\\share\\x.exe|pub:(sin firma)')).toBeUndefined()
     expect(findMacAppPath).not.toHaveBeenCalled()
+  })
+
+  it('Windows: sin firma o fuera de la unidad local (unidad de red mapeada) ⇒ sin icono', async () => {
+    const { resolve, fileIconDataUrl } = mac({ platform: 'win32' })
+    expect(await resolve('exe:c:\\users\\x\\evil.exe|pub:(sin firma)')).toBeUndefined()
+    expect(await resolve('exe:z:\\apps\\x.exe|pub:Spotify AB')).toBeUndefined()
+    expect(fileIconDataUrl).not.toHaveBeenCalled()
+    expect(await resolve('exe:c:\\apps\\x.exe|pub:Spotify AB')).toBe(PNG)
+  })
+
+  it('los fallos caducan (~10 min) y los aciertos no', async () => {
+    let t = 1_000
+    let found: string | null = null
+    const findMacAppPath = vi.fn(async () => found)
+    const resolve = createAppIconResolver({ platform: 'darwin', findMacAppPath, fileIconDataUrl: async () => PNG, now: () => t })
+    expect(await resolve('com.a.b')).toBeUndefined()
+    t += FAILURE_TTL_MS - 1
+    expect(await resolve('com.a.b')).toBeUndefined()
+    expect(findMacAppPath).toHaveBeenCalledTimes(1)
+    found = '/Applications/A.app'
+    t += 2
+    expect(await resolve('com.a.b')).toBe(PNG)
+    expect(findMacAppPath).toHaveBeenCalledTimes(2)
+    t += 10 * FAILURE_TTL_MS
+    expect(await resolve('com.a.b')).toBe(PNG)
+    expect(findMacAppPath).toHaveBeenCalledTimes(2)
+  })
+
+  it('búsquedas concurrentes del mismo bundleId se unen en una sola', async () => {
+    const { resolve, findMacAppPath, fileIconDataUrl } = mac()
+    const r = await Promise.all([resolve('com.a.b'), resolve('com.a.b'), resolve('com.a.b')])
+    expect(r).toEqual([PNG, PNG, PNG])
+    expect(findMacAppPath).toHaveBeenCalledTimes(1)
+    expect(fileIconDataUrl).toHaveBeenCalledTimes(1)
+  })
+
+  it('dos apps distintas con EXACTAMENTE el mismo icono ⇒ es el genérico: sin icono (también el ya guardado)', async () => {
+    const paths: Record<string, string> = {
+      'com.a.a': '/Applications/A.app',
+      'com.b.b': '/Applications/B.app',
+      'com.c.c': '/Applications/C.app'
+    }
+    const resolve = createAppIconResolver({
+      platform: 'darwin',
+      findMacAppPath: async (b) => paths[b] ?? null,
+      fileIconDataUrl: async () => PNG
+    })
+    expect(await resolve('com.a.a')).toBe(PNG)
+    expect(await resolve('com.b.b')).toBeUndefined()
+    expect(await resolve('com.a.a')).toBeUndefined()
+    expect(await resolve('com.c.c')).toBeUndefined()
+    const OTHER = 'data:image/png;base64,AAAAAAAAAAA='
+    const r2 = createAppIconResolver({
+      platform: 'darwin',
+      findMacAppPath: async (b) => paths[b] ?? null,
+      fileIconDataUrl: async (p) => (p.endsWith('A.app') ? PNG : OTHER)
+    })
+    expect(await r2('com.a.a')).toBe(PNG)
+    expect(await r2('com.c.c')).toBe(OTHER)
+  })
+})
+
+describe('búsqueda de la .app en macOS', () => {
+  const home = '/Users/ben'
+
+  it('mdfind recibe un -onlyin por carpeta de apps y el predicado exacto al final', async () => {
+    const calls: Array<{ file: string; args: string[] }> = []
+    const find = createMacAppFinder({
+      home,
+      execFile: (file, args, _opts, cb) => {
+        calls.push({ file, args })
+        cb(null, '/Applications/Spotify.app\n')
+      }
+    })
+    expect(await find('com.spotify.client')).toBe('/Applications/Spotify.app')
+    expect(calls).toHaveLength(1)
+    expect(calls[0].file).toBe('/usr/bin/mdfind')
+    expect(calls[0].args).toEqual([
+      '-onlyin',
+      '/System/Applications',
+      '-onlyin',
+      '/System/Library/CoreServices',
+      '-onlyin',
+      '/Applications',
+      '-onlyin',
+      '/Users/ben/Applications',
+      'kMDItemCFBundleIdentifier == "com.spotify.client"'
+    ])
+  })
+
+  it('rutas fuera de las carpetas de apps (/tmp, /private, /Volumes, ~/carpeta, ..) se rechazan', () => {
+    const out = [
+      '/Users/ben/carpeta/Falsa.app',
+      '/tmp/Falsa.app',
+      '/private/tmp/Falsa.app',
+      '/private/var/x/Falsa.app',
+      '/Volumes/USB/Falsa.app',
+      '/Applications/../tmp/Falsa.app',
+      '/Applicationsx/Falsa.app',
+      'Applications/Falsa.app',
+      '/Applications/Falsa.txt'
+    ].join('\n')
+    expect(pickMacAppPath(out, home)).toBeNull()
+    expect(pickMacAppPath(`${out}\n/Users/ben/Applications/Real.app`, home)).toBe('/Users/ben/Applications/Real.app')
+  })
+
+  it('prefiere la de sistema y excluye la carpeta de trabajo', () => {
+    expect(pickMacAppPath('/Users/ben/Applications/X.app\n/Applications/X.app\n/System/Applications/X.app', home)).toBe(
+      '/System/Applications/X.app'
+    )
+    expect(pickMacAppPath('/Users/ben/Applications/X.app\n/Applications/X.app', home)).toBe('/Applications/X.app')
+    expect(
+      pickMacAppPath('/Users/ben/Applications/work/X.app\n/Users/ben/Applications/Y.app', home, ['/Users/ben/Applications/work'])
+    ).toBe('/Users/ben/Applications/Y.app')
+  })
+
+  it('bundleIds hostiles ⇒ no se ejecuta nada', async () => {
+    let n = 0
+    const find = createMacAppFinder({ home, execFile: (_f, _a, _o, cb) => (n++, cb(null, '/Applications/A.app')) })
+    for (const bad of ['-onlyin', '-onlyin /tmp', 'a\nb', 'com.a\u202eb', 'com.ünï.app', 'a'.repeat(129), '', 'a"b', 'a b']) {
+      expect(macAppFindArgs(bad, home), JSON.stringify(bad)).toBeNull()
+      expect(await find(bad)).toBeNull()
+    }
+    expect(macAppFindArgs('a'.repeat(128), home)).not.toBeNull()
+    expect(n).toBe(0)
+  })
+
+  it('un fallo o una excepción de mdfind ⇒ null', async () => {
+    expect(await createMacAppFinder({ home, execFile: (_f, _a, _o, cb) => cb(new Error('x'), '') })('com.a.b')).toBeNull()
+    expect(
+      await createMacAppFinder({
+        home,
+        execFile: () => {
+          throw new Error('x')
+        }
+      })('com.a.b')
+    ).toBeNull()
   })
 })
