@@ -94,6 +94,58 @@ describe('apps bloqueadas: sin tarjeta y con tipo de bloqueo', () => {
     expect(r.decisions[USER.bundleId]).toBe('deny')
   })
 
+  it('carrera: la app quedó bloqueada mientras la tarjeta estaba abierta ⇒ el agente recibe igual el texto firme y la persona el aviso', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([USER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.grants.deny(USER.bundleId, USER.name) // otra tarea o Ajustes la bloquea con la tarjeta abierta
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'view' }])
+    const r = await p
+    expect(r.decisions[USER.bundleId]).toBe('deny')
+    expect(r.blocked).toEqual([{ ...USER, kind: 'user' }])
+    expect(blocked).toEqual([[{ ...USER, kind: 'user' }]])
+  })
+
+  it('«Denegar» sin sessionId válido: no queda guardado, sin aviso y sin `blocked`', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([USER], undefined, undefined, undefined)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: USER.name, decision: 'deny' }])
+    const r = await p
+    expect(r.decisions[USER.bundleId]).toBe('deny')
+    expect(blocked).toHaveLength(0)
+    expect(r.blocked).toBeUndefined()
+  })
+
+  it('un deny para un bundleId que NO estaba en la tarjeta: se ignora, nada se emite ni se bloquea', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([USER], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(
+      cards[0].id,
+      [
+        { bundleId: USER.bundleId, name: USER.name, decision: 'view' },
+        { bundleId: 'com.otra.cualquiera', name: 'Inventada', decision: 'deny' }
+      ],
+      { alsoBlock: true }
+    )
+    const r = await p
+    expect(blocked).toHaveLength(0)
+    expect(r.blocked).toBeUndefined()
+    expect(s.grants.isDenied('com.otra.cualquiera')).toBe(false)
+  })
+
+  it('el nombre del aviso sale de la tarjeta (main); si falta, el bundleId, nunca el que manda el renderer', async () => {
+    const { s, cards, blocked } = make()
+    const p = s.requestAccess([{ bundleId: USER.bundleId, name: '' }], undefined, undefined, SESSION)
+    await vi.waitFor(() => expect(cards).toHaveLength(1))
+    s.resolveAccessRequest(cards[0].id, [{ bundleId: USER.bundleId, name: 'NOMBRE-FALSO-DEL-RENDERER', decision: 'deny' }], {
+      alsoBlock: true
+    })
+    await p
+    expect(blocked[0][0].name).toBe(USER.bundleId)
+  })
+
   it('Cancelar / Esc / Editar: no emite aviso ni `blocked`', async () => {
     const { s, cards, blocked } = make()
     const p = s.requestAccess([USER], undefined, undefined, SESSION)

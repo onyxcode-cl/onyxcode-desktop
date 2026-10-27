@@ -689,6 +689,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         if (this.grants.isBlocked(d.bundleId) || this.grants.isDenied(d.bundleId) || this.isSessionDenied(pending.sessionId, d.bundleId)) {
           // Bloqueada (fija), denegada guardada o denegada en la sesión: nunca se concede, diga lo que diga el renderer.
           map[d.bundleId] = 'deny'
+          // Si quedó bloqueada mientras la tarjeta estaba abierta (otra tarea o Ajustes), el agente recibe igual el texto firme.
+          const alreadyBlocked = this.blockKind(pending.sessionId, d.bundleId)
+          if (alreadyBlocked) newlyBlocked.push({ bundleId: d.bundleId, name: card.name || d.bundleId, kind: alreadyBlocked })
           continue
         }
         if (d.decision === 'deny') {
@@ -697,7 +700,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           map[d.bundleId] = 'deny'
           // Sin sesión válida el «Denegar» normal no queda guardado (denyForSession no hace nada): no hay bloqueo que anunciar.
           const bk = this.blockKind(pending.sessionId, d.bundleId)
-          if (bk) newlyBlocked.push({ bundleId: d.bundleId, name: card.name || d.name, kind: bk })
+          if (bk) newlyBlocked.push({ bundleId: d.bundleId, name: card.name || d.bundleId, kind: bk })
         } else if (d.decision === 'view' || d.decision === 'click' || d.decision === 'full') {
           // Nunca baja un nivel: cuenta lo persistido y lo ya concedido en la sesión.
           const current = maxTier(this.grants.tierFor(d.bundleId), this.sessionTier(pending.sessionId, d.bundleId))
