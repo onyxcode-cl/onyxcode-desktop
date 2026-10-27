@@ -22,6 +22,22 @@ ni los servidores OpenCode del usuario.
 | `npm run perf:startup`           | **Manual, fuera de `verify`.** Arranque en frío y memoria con la app construida (`npm run build` antes; usa `out/` en modo prod). Ver «Medición de arranque y memoria».                                                                                                                                                                                                                                                                                                               |
 | `npm run verify`                 | typecheck, tests, lint, build, transform, smoke y e2e, en ese orden.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
+## Estado de verificación de la 1.7.8 (motor `lazunox.13`)
+
+Qué se comprobó antes de preparar esta versión y qué **no**. Nada de esto autoriza a decir «paridad» ni «mejor que»: el cierre de `docs/PLAN-MOTOR-OLA7.md` §1 sigue pendiente.
+
+| Qué | Cómo | Resultado |
+|---|---|---|
+| Tipos, lint y formato | `typecheck`, `lint`, `format:check` en el Mac | Sin errores (8 avisos antiguos de `any`) |
+| Pruebas unitarias completas | Contenedor Linux del VPS (`node:22`, 3 CPU) | 10 404 pasan, 358 saltadas, 3 con fallo: `installer.test.ts` «cancelar a mitad» (intermitente; pasó al repetir) y `service-cloud.test.ts` «resume por la sala de vinculación» (falla igual en `main` dentro del contenedor y pasa en el Mac; el control remoto está en pausa) |
+| Arranque de la app | `test:transform`, `test:smoke`, E2E `boot` y `chat` en el Mac | Verdes |
+| Paquete de Mac | `verify:bundled` (30 controles) sobre una copia del `.app` | Verde |
+| Paquete de Windows | `npm run package:win` en el PC de pruebas | Construido |
+| Vista de «siempre» (Ajustes › Funciones experimentales) | Pruebas unitarias del canal, del esquema, de la política remota y del componente | Verde; **no** probada con el motor real publicado (el motor `lazunox.12` no tiene esas rutas) |
+| Motor | Informe propio del motor `lazunox.13` | Ver `/tmp/motor-13/INFORME.md` de la preparación; no se mezcla aquí |
+
+**No verificado:** la actualización dentro de la app (solo es posible con la release publicada), la vista de «siempre» contra la release publicada del motor, lector de pantalla, y cualquier ahorro de tokens (el banco con modelo real no lo demostró: −4 % dentro del ruido). Los flujos por script, las tareas programadas, la limpieza de claves hacia el modelo, las políticas de la organización y la auto-revisión de permisos siguen apagados o sin hacer.
+
 ## Estado de verificación antes del lanzamiento (0.5.9)
 
 Tabla honesta, hecha **solo** con lo que consta en `git log`, en estos documentos y en las pruebas del repositorio. Si algo no consta,
