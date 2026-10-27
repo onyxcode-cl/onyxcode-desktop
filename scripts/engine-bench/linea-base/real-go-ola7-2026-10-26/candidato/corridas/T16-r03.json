@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T00:33:00.113Z",
+  "tarea": "T16",
+  "repeticion": 3,
+  "nombre": "Oficina: CSV de gastos → informe con totales exactos",
+  "mide": "Datos",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 10981,
+      "salida": 682,
+      "cache_leida": 58240,
+      "enviados": 69221
+    },
+    "pasos": 7,
+    "tokens_por_paso": {
+      "med": 10148,
+      "p90": 10731
+    },
+    "llamadas": 6,
+    "llamadas_por_paso": 0.8571428571428571,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 5,
+      "write": 1
+    },
+    "bytes_resultados": 3763,
+    "permisos_negados": 0,
+    "tiempo_ms": 13457,
+    "peticiones_modelo": null
+  }
+}

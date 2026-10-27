@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T00:25:04.435Z",
+  "tarea": "T06",
+  "repeticion": 2,
+  "nombre": "Refactor que obliga a releer el mismo archivo",
+  "mide": "No releer",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 8876,
+      "salida": 592,
+      "cache_leida": 38784,
+      "enviados": 47660
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 9587,
+      "p90": 10478
+    },
+    "llamadas": 6,
+    "llamadas_por_paso": 1.2,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 4,
+      "glob": 1,
+      "write": 1
+    },
+    "bytes_resultados": 4420,
+    "permisos_negados": 0,
+    "tiempo_ms": 10174,
+    "peticiones_modelo": null
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T00:14:26.730Z",
+  "tarea": "T13",
+  "repeticion": 1,
+  "nombre": "«Haz pasar las pruebas» (3 fallos)",
+  "mide": "Modo objetivo (ola 3)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 8222,
+      "salida": 519,
+      "cache_leida": 37504,
+      "enviados": 45726
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 9309,
+      "p90": 9813
+    },
+    "llamadas": 6,
+    "llamadas_por_paso": 1.2,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 3,
+      "edit": 3
+    },
+    "bytes_resultados": 3168,
+    "permisos_negados": 0,
+    "tiempo_ms": 10783,
+    "peticiones_modelo": null
+  }
+}
