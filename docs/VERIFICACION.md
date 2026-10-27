@@ -34,7 +34,7 @@ Qué se comprobó antes de preparar esta versión y qué **no**. Nada de esto au
 | Paquete de Mac | `verify:bundled` (30 controles) sobre una copia del `.app` | Verde |
 | Paquete de Windows | `npm run package:win` en el PC de pruebas | Construido |
 | Vista de «siempre» (Ajustes › Funciones experimentales) | Pruebas unitarias del canal, del esquema, de la política remota y del componente | Verde; **no** probada con el motor real publicado (el motor `lazunox.12` no tiene esas rutas) |
-| Motor | Informe propio del motor `lazunox.13` | Ver `/tmp/motor-13/INFORME.md` de la preparación; no se mezcla aquí |
+| Motor `lazunox.13` | Lo verifica el probe del propio motor (ver la release del motor) | Se anota en la fase de empaquetado con el motor nuevo |
 
 **No verificado:** la actualización dentro de la app (solo es posible con la release publicada), la vista de «siempre» contra la release publicada del motor, lector de pantalla, y cualquier ahorro de tokens (el banco con modelo real no lo demostró: −4 % dentro del ruido). Los flujos por script, las tareas programadas, la limpieza de claves hacia el modelo, las políticas de la organización y la auto-revisión de permisos siguen apagados o sin hacer.
 
