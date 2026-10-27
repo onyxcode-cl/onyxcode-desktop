@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:53:37.635Z",
+  "tarea": "T21",
+  "repeticion": 3,
+  "nombre": "Migración de 5 pasos con dependencias",
+  "mide": "Tareas con dependencias",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T21-mvqkh5sgm8eg",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 9825,
+      "salida": 4695,
+      "cache_leida": 102912,
+      "enviados": 112737
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 112737,
+      "p90": 112737
+    },
+    "llamadas": 14,
+    "llamadas_por_paso": 14,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 14
+    },
+    "bytes_resultados": 5182,
+    "permisos_negados": 0,
+    "tiempo_ms": 41539,
+    "peticiones_modelo": null
+  }
+}

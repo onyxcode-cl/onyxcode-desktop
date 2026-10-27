@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:46:11.987Z",
+  "tarea": "T16",
+  "repeticion": 2,
+  "nombre": "Oficina: CSV de gastos → informe con totales exactos",
+  "mide": "Datos",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T16-mvqk7vmsczco",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 6665,
+      "salida": 2540,
+      "cache_leida": 47744,
+      "enviados": 54409
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 54409,
+      "p90": 54409
+    },
+    "llamadas": 7,
+    "llamadas_por_paso": 7,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 6,
+      "edit": 1
+    },
+    "bytes_resultados": 3020,
+    "permisos_negados": 0,
+    "tiempo_ms": 28955,
+    "peticiones_modelo": null
+  }
+}

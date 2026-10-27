@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:57:44.034Z",
+  "tarea": "T23",
+  "repeticion": 3,
+  "nombre": "Un archivo cambia mientras trabajas",
+  "mide": "Avisos de cambio de archivo (releer antes de escribir)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T23-mvqkltum4fvo",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 12630,
+      "salida": 5894,
+      "cache_leida": 131456,
+      "enviados": 144086
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 144086,
+      "p90": 144086
+    },
+    "llamadas": 15,
+    "llamadas_por_paso": 15,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 14,
+      "edit": 1
+    },
+    "bytes_resultados": 8157,
+    "permisos_negados": 0,
+    "tiempo_ms": 70129,
+    "peticiones_modelo": null
+  }
+}

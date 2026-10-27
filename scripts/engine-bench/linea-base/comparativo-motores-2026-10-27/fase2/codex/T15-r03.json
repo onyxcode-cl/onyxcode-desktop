@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:45:16.323Z",
+  "tarea": "T15",
+  "repeticion": 3,
+  "nombre": "Lote: 3 módulos independientes",
+  "mide": "/lote (ola 4)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T15-mvqk6p6zj7cm",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 8184,
+      "salida": 3837,
+      "cache_leida": 70016,
+      "enviados": 78200
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 78200,
+      "p90": 78200
+    },
+    "llamadas": 11,
+    "llamadas_por_paso": 11,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 10,
+      "edit": 1
+    },
+    "bytes_resultados": 3050,
+    "permisos_negados": 0,
+    "tiempo_ms": 28199,
+    "peticiones_modelo": null
+  }
+}

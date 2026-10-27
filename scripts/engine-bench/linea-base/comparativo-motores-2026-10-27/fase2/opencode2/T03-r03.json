@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:31:25.837Z",
+  "tarea": "T03",
+  "repeticion": 3,
+  "nombre": "«¿Dónde se valida X?» en un repo de 60 archivos",
+  "mide": "Ayudante de lectura, modelo pequeño",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "opencode v2.2.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "opencode2",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "oc2-T03-mvqjp8w588iz",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 5542,
+      "salida": 513,
+      "cache_leida": 30336,
+      "enviados": 35878
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 6151.5,
+      "p90": 7106
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 1.5,
+    "errores_herramientas": 2,
+    "herramientas": {
+      "grep": 2,
+      "shell": 5,
+      "read": 1,
+      "write": 1
+    },
+    "bytes_resultados": 5098,
+    "permisos_negados": 0,
+    "tiempo_ms": 12084,
+    "peticiones_modelo": null
+  }
+}

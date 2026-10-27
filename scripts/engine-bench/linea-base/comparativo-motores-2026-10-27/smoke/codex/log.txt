@@ -1,0 +1,15 @@
+Motor /motor/codex (codex-cli 0.164.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 1
+T01 #1: ok (sin_informe) · 1 pasos · 42123 tokens · 20.3 s
+T02 #1: ok (sin_informe) · 1 pasos · 53166 tokens · 22.8 s
+T13 #1: ok (sin_informe) · 1 pasos · 45104 tokens · 23.6 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T01 Arreglar un bug con prueba que falla (JS) | 1/1 | 40.365 | 1.758 | 86,6 | 1 | 40.365 · 40.365 | 6 | 6 | 0,34 | 42.123 |
+| T02 Añadir función + prueba (Python) | 1/1 | 50.928 | 2.238 | 92,5 | 1 | 50.928 · 50.928 | 6 | 6 | 0,38 | 53.166 |
+| T13 «Haz pasar las pruebas» (3 fallos) | 1/1 | 42.309 | 2.795 | 84,4 | 1 | 42.309 · 42.309 | 9 | 9 | 0,39 | 45.104 |
+
+Éxito total: 3/3 (100 %) · mediana de tokens por éxito: 45.104 · p90 de minutos: 0,39
+fin codex rc=0

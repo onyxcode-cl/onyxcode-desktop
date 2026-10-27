@@ -1,0 +1,85 @@
+Motor /motor/opencode (opencode v2.2.0) · opencode-go/deepseek-v4.1-flash · 19 tareas × 3
+T01 #1: ok (sin_informe) · 4 pasos · 20948 tokens · 10.5 s
+T01 #2: ok (sin_informe) · 4 pasos · 21719 tokens · 10.0 s
+T01 #3: ok (sin_informe) · 4 pasos · 20651 tokens · 12.5 s
+T02 #1: ok (sin_informe) · 5 pasos · 28158 tokens · 17.3 s
+T02 #2: ok (sin_informe) · 5 pasos · 28535 tokens · 14.6 s
+T02 #3: ok (sin_informe) · 4 pasos · 22297 tokens · 13.6 s
+T03 #1: ok (sin_informe) · 7 pasos · 38742 tokens · 14.0 s
+T03 #2: ok (sin_informe) · 5 pasos · 28010 tokens · 10.9 s
+T03 #3: ok (sin_informe) · 6 pasos · 36391 tokens · 12.1 s
+T04 #1: ok (sin_informe) · 4 pasos · 23101 tokens · 13.6 s
+T04 #2: ok (sin_informe) · 4 pasos · 24907 tokens · 13.8 s
+T04 #3: ok (sin_informe) · 4 pasos · 23217 tokens · 11.0 s
+T06 #1: ok (sin_informe) · 4 pasos · 24510 tokens · 18.2 s
+T06 #2: ok (sin_informe) · 5 pasos · 31026 tokens · 13.9 s
+T06 #3: ok (sin_informe) · 5 pasos · 31101 tokens · 13.1 s
+T07 #1: ok (sin_informe) · 5 pasos · 27639 tokens · 14.0 s
+T07 #2: ok (sin_informe) · 4 pasos · 22067 tokens · 14.1 s
+T07 #3: ok (sin_informe) · 6 pasos · 35722 tokens · 19.2 s
+T08 #1: ok (sin_informe) · 5 pasos · 31147 tokens · 24.7 s
+T08 #2: ok (sin_informe) · 5 pasos · 32237 tokens · 23.9 s
+T08 #3: ok (sin_informe) · 4 pasos · 23818 tokens · 17.2 s
+T12 #1: ok (sin_informe) · 4 pasos · 27374 tokens · 10.0 s
+T12 #2: ok (sin_informe) · 3 pasos · 19320 tokens · 9.2 s
+T12 #3: ok (sin_informe) · 3 pasos · 20371 tokens · 9.3 s
+T13 #1: ok (sin_informe) · 4 pasos · 21937 tokens · 11.1 s
+T13 #2: ok (sin_informe) · 4 pasos · 22765 tokens · 11.9 s
+T13 #3: ok (sin_informe) · 4 pasos · 22536 tokens · 10.0 s
+T14 #1: ok (sin_informe) · 4 pasos · 22643 tokens · 16.2 s
+T14 #2: ok (sin_informe) · 4 pasos · 23103 tokens · 18.4 s
+T14 #3: ok (sin_informe) · 6 pasos · 39619 tokens · 28.6 s
+T15 #1: ok (sin_informe) · 4 pasos · 23859 tokens · 13.3 s
+T15 #2: ok (sin_informe) · 4 pasos · 23048 tokens · 9.6 s
+T15 #3: ok (sin_informe) · 8 pasos · 46367 tokens · 20.4 s
+T16 #1: ok (sin_informe) · 6 pasos · 38980 tokens · 23.1 s
+T16 #2: ok (sin_informe) · 5 pasos · 30685 tokens · 12.6 s
+T16 #3: ok (sin_informe) · 5 pasos · 30040 tokens · 11.1 s
+T17 #1: ok (sin_informe) · 3 pasos · 17265 tokens · 17.4 s
+T17 #2: ok (sin_informe) · 5 pasos · 32123 tokens · 29.7 s
+T17 #3: FALLA (sin_informe) · 3 pasos · 15831 tokens · 12.6 s · queda «Gonzalez» sin corregir
+T18 #1: ok (sin_informe) · 3 pasos · 20116 tokens · 12.8 s
+T18 #2: ok (sin_informe) · 4 pasos · 24921 tokens · 13.8 s
+T18 #3: ok (sin_informe) · 3 pasos · 16863 tokens · 9.7 s
+T20 #1: ok (sin_informe) · 3 pasos · 16963 tokens · 13.2 s
+T20 #2: ok (sin_informe) · 3 pasos · 16927 tokens · 10.5 s
+T20 #3: ok (sin_informe) · 4 pasos · 22544 tokens · 12.3 s
+T21 #1: ok (sin_informe) · 7 pasos · 49167 tokens · 18.7 s
+T21 #2: ok (sin_informe) · 8 pasos · 55901 tokens · 18.5 s
+T21 #3: ok (sin_informe) · 8 pasos · 53099 tokens · 18.6 s
+T22 #1: ok (sin_informe) · 4 pasos · 92483 tokens · 10.4 s
+T22 #2: ok (sin_informe) · 3 pasos · 15571 tokens · 7.8 s
+T22 #3: ok (sin_informe) · 4 pasos · 93051 tokens · 12.7 s
+T23 #1: ok (sin_informe) · 3 pasos · 15714 tokens · 23.3 s
+T23 #2: ok (sin_informe) · 6 pasos · 35547 tokens · 19.3 s
+T23 #3: ok (sin_informe) · 6 pasos · 35347 tokens · 20.1 s
+T24 #1: ok (sin_informe) · 3 pasos · 15990 tokens · 11.5 s
+T24 #2: ok (sin_informe) · 3 pasos · 15768 tokens · 9.3 s
+T24 #3: ok (sin_informe) · 3 pasos · 16204 tokens · 12.8 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T01 Arreglar un bug con prueba que falla (JS) | 3/3 | 20.600 | 348 | 80,8 | 4 | 5.169 · 5.623 | 6 | 1,5 | 0,17 | 20.948 |
+| T02 Añadir función + prueba (Python) | 3/3 | 27.376 | 782 | 79 | 5 | 5.480 · 6.116 | 6 | 1,25 | 0,24 | 28.158 |
+| T03 «¿Dónde se valida X?» en un repo de 60 archivos | 3/3 | 35.878 | 387 | 82,8 | 6 | 5.487 · 6.582 | 7 | 1,4 | 0,2 | 36.391 |
+| T04 Renombrar un símbolo en 5 archivos | 3/3 | 22.761 | 822 | 74,4 | 4 | 5.615 · 6.663 | 8 | 2 | 0,23 | 23.217 |
+| T06 Refactor que obliga a releer el mismo archivo | 3/3 | 29.978 | 1.113 | 76,4 | 5 | 6.304 · 7.285 | 11 | 2,2 | 0,23 | 31.026 |
+| T07 Arreglar error de tipos (TS) | 3/3 | 27.094 | 632 | 78,2 | 5 | 5.414 · 6.235 | 8 | 2 | 0,24 | 27.639 |
+| T08 Resumir 3 módulos con 3 ayudantes en paralelo | 3/3 | 29.648 | 1.783 | 74,9 | 5 | 5.082 · 7.874 | 8 | 1,6 | 0,4 | 31.147 |
+| T12 Usar un conector MCP de prueba con 40 herramientas | 3/3 | 20.059 | 312 | 70,5 | 3 | 7.248 · 7.621 | 3 | 1 | 0,16 | 20.371 |
+| T13 «Haz pasar las pruebas» (3 fallos) | 3/3 | 21.895 | 565 | 78,3 | 4 | 5.433 · 6.394 | 9 | 2,25 | 0,18 | 22.536 |
+| T14 Revisar un diff con un bug sembrado | 3/3 | 22.223 | 880 | 71 | 4 | 5.482 · 6.604 | 8 | 2 | 0,31 | 23.103 |
+| T15 Lote: 3 módulos independientes | 3/3 | 22.731 | 1.128 | 77,9 | 4 | 5.486 · 6.784 | 13 | 3 | 0,22 | 23.859 |
+| T16 Oficina: CSV de gastos → informe con totales exactos | 3/3 | 30.134 | 561 | 82,9 | 5 | 6.289 · 6.717 | 5 | 1 | 0,21 | 30.685 |
+| T17 Oficina: corregir acentos y formato de una carta | 2/3 | 16.966 | 440 | 78 | 3 | 4.934 · 7.327 | 3 | 1 | 0,29 | 24.694 |
+| T18 Oficina: ordenar 30 archivos en carpetas por fecha | 3/3 | 19.084 | 1.032 | 70,4 | 3 | 5.790 · 7.081 | 3 | 1 | 0,21 | 20.116 |
+| T20 Oficina: editar frases con «», “” y — | 3/3 | 16.210 | 753 | 72,8 | 3 | 5.337 · 6.024 | 9 | 3 | 0,21 | 16.963 |
+| T21 Migración de 5 pasos con dependencias | 3/3 | 52.059 | 1.101 | 88,2 | 8 | 6.975 · 7.806 | 10 | 1,29 | 0,31 | 53.099 |
+| T22 Pruebas con 20 000 líneas de salida y un fallo escondido | 3/3 | 92.010 | 473 | 69,6 | 4 | 28.957 · 29.444 | 6 | 1,5 | 0,17 | 92.483 |
+| T23 Un archivo cambia mientras trabajas | 3/3 | 34.715 | 632 | 84 | 6 | 5.899 · 6.679 | 8 | 1,33 | 0,33 | 35.347 |
+| T24 Leer 8 archivos pequeños y resumirlos | 3/3 | 15.381 | 656 | 71,9 | 3 | 4.832 · 5.829 | 10 | 3,33 | 0,19 | 15.990 |
+
+Éxito total: 56/57 (98 %) · mediana de tokens por éxito: 24.185 · p90 de minutos: 0,38
+fin opencode2 rc=0

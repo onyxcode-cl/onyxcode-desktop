@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:29:43.085Z",
+  "tarea": "T01",
+  "repeticion": 1,
+  "nombre": "Arreglar un bug con prueba que falla (JS)",
+  "mide": "Lectura justa, edición",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "lazunox",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "lz-T01-mvqjn1g8pd29",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9817,
+      "salida": 359,
+      "cache_leida": 35200,
+      "enviados": 45017
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 9283,
+      "p90": 9480
+    },
+    "llamadas": 5,
+    "llamadas_por_paso": 1,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 2,
+      "read": 2,
+      "edit": 1
+    },
+    "bytes_resultados": 2569,
+    "permisos_negados": 0,
+    "tiempo_ms": 12270,
+    "peticiones_modelo": null
+  }
+}

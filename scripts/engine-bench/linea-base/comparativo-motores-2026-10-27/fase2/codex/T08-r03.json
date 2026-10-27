@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:39:32.535Z",
+  "tarea": "T08",
+  "repeticion": 3,
+  "nombre": "Resumir 3 módulos con 3 ayudantes en paralelo",
+  "mide": "Ayudantes, resultado acotado",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T08-mvqjz0nchz0d",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 12662,
+      "salida": 4448,
+      "cache_leida": 91264,
+      "enviados": 103926
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 103926,
+      "p90": 103926
+    },
+    "llamadas": 5,
+    "llamadas_por_paso": 5,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 4,
+      "edit": 1
+    },
+    "bytes_resultados": 5226,
+    "permisos_negados": 0,
+    "tiempo_ms": 42910,
+    "peticiones_modelo": null
+  }
+}

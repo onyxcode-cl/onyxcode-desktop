@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:42:52.316Z",
+  "tarea": "T24",
+  "repeticion": 1,
+  "nombre": "Leer 8 archivos pequeños y resumirlos",
+  "mide": "Lecturas en paralelo (pasos y llamadas por paso)",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "lazunox",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "lz-T24-mvqk3zfizaif",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 10579,
+      "salida": 740,
+      "cache_leida": 26496,
+      "enviados": 37075
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 9217.5,
+      "p90": 10428
+    },
+    "llamadas": 10,
+    "llamadas_por_paso": 2.5,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 1,
+      "read": 8,
+      "write": 1
+    },
+    "bytes_resultados": 2801,
+    "permisos_negados": 0,
+    "tiempo_ms": 10992,
+    "peticiones_modelo": null
+  }
+}

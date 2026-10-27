@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:32:51.447Z",
+  "tarea": "T03",
+  "repeticion": 2,
+  "nombre": "«¿Dónde se valida X?» en un repo de 60 archivos",
+  "mide": "Ayudante de lectura, modelo pequeño",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T03-mvqjqvm4n81l",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 8254,
+      "salida": 2050,
+      "cache_leida": 56832,
+      "enviados": 65086
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 65086,
+      "p90": 65086
+    },
+    "llamadas": 8,
+    "llamadas_por_paso": 8,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 7,
+      "edit": 1
+    },
+    "bytes_resultados": 3980,
+    "permisos_negados": 0,
+    "tiempo_ms": 21575,
+    "peticiones_modelo": null
+  }
+}

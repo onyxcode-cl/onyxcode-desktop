@@ -1,0 +1,11 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 1
+T07 #1: ok (completado) · 6 pasos · 55154 tokens · 16.7 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T07 Arreglar error de tipos (TS) | 1/1 | 54.468 | 686 | 81,5 | 6 | 9.061 · 9.852 | 7 | 1,17 | 0,28 | 55.154 |
+
+Éxito total: 1/1 (100 %) · mediana de tokens por éxito: 55.154 · p90 de minutos: 0,28
+fin lazunox rc=0

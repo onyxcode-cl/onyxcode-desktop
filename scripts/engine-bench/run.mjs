@@ -81,6 +81,9 @@ function leerArgs(argv) {
       case '--auth-archivo': a.authArchivo = valor(i++, n); break
       case '--reanudar': a.reanudar = valor(i++, n); break
       case '--sin-guion': a.sinGuion = valor(i++, n).split(',').map((x) => x.trim().toUpperCase()); break
+      case '--adaptador': a.adaptador = valor(i++, n); break // lazunox (por defecto) | opencode2 | codex (comparativo 7.19)
+      case '--proxy-url': a.proxyUrl = valor(i++, n); break // p. ej. http://proxy:8080/v1: todos los motores hablan con el proxy con una clave FALSA (la etiqueta de la corrida)
+      case '--prefijo': a.prefijo = valor(i++, n); break // prefijo de la etiqueta de corrida en el proxy (lz, oc2, cx)
       case '--lista': a.lista = true; break
       case '--autoprueba': a.autoprueba = true; break
       case '--ayuda': case '-h': case '--help': a.ayuda = true; break
@@ -95,7 +98,10 @@ function leerArgs(argv) {
 // ── Una corrida de una tarea ──────────────────────────────────────────────────────────────────────────────────────────────
 const CUOTA = /free usage|usage limit|rate.?limit|quota|too many requests|\b429\b/i
 
-function configMotor(cfg, tarea, proveedor) {
+function configMotor(cfg, tarea, proveedor, etiqueta) {
+  const modeloCfg = cfg.modelo ?? MODELO_GRATIS
+  const [provId] = modeloCfg.split('/')
+  const baseProxy = cfg.proxyUrl && !proveedor ? { provider: { [provId]: { options: { baseURL: cfg.proxyUrl, ...(cfg.adaptador === 'opencode2' ? { apiKey: etiqueta } : {}) } } } } : {}
   const config = {
     autoupdate: false,
     share: 'disabled',
@@ -104,6 +110,8 @@ function configMotor(cfg, tarea, proveedor) {
       read: 'allow', edit: 'allow', bash: 'allow', glob: 'allow', grep: 'allow', list: 'allow', todowrite: 'allow', task: 'allow',
       external_directory: 'deny', webfetch: 'deny', websearch: 'deny', question: 'deny'
     },
+    ...baseProxy,
+    ...(cfg.adaptador === 'opencode2' ? { model: modeloCfg, small_model: modeloCfg } : {}),
     ...(proveedor
       ? {
           provider: { fake: { npm: '@ai-sdk/openai-compatible', name: 'Fake', options: { baseURL: proveedor.url, apiKey: 'no-usado' }, models: { m: { name: 'm', tool_call: true } } } },
@@ -118,7 +126,7 @@ function configMotor(cfg, tarea, proveedor) {
   return JSON.stringify(config)
 }
 
-function entornoMotor(cfg, root, home, proj, tarea, proveedor) {
+function entornoMotor(cfg, root, home, proj, tarea, proveedor, etiqueta) {
   const extra = Object.fromEntries(cfg.env.map((kv) => [kv.slice(0, kv.indexOf('=')), kv.slice(kv.indexOf('=') + 1)]))
   return {
     PATH: [dirname(process.execPath), '/usr/local/bin', '/usr/bin', '/bin'].join(':'),
@@ -138,9 +146,32 @@ function entornoMotor(cfg, root, home, proj, tarea, proveedor) {
     OPENCODE_DISABLE_EXTERNAL_SKILLS: '1',
     OPENCODE_DISABLE_SHARE: '1',
     OPENCODE_DISABLE_DEFAULT_PLUGINS: '1',
-    OPENCODE_CONFIG_CONTENT: configMotor(cfg, tarea, proveedor),
+    OPENCODE_CONFIG_CONTENT: configMotor(cfg, tarea, proveedor, etiqueta),
+    ...(cfg.adaptador === 'codex' ? { CODEX_HOME: join(home, '.codex'), GO_FALSA: etiqueta } : {}),
     ...extra
   }
+}
+
+/** Codex (`exec --json`) no emite pasos ni `step_finish`: se traduce a la forma que entiende `acumular` (herramienta usada, fin de turno con tokens).
+ *  Los PASOS y los tokens por paso reales de Codex salen del proxy (una petición = un paso), no de aquí. */
+function normalizarCodex(eventos) {
+  const sal = []
+  let sessionID
+  for (const e of eventos) {
+    if (e.type === 'thread.started') sessionID = e.thread_id
+    const base = { sessionID }
+    if (e.type === 'item.completed') {
+      const it = e.item ?? {}
+      if (it.type === 'command_execution') sal.push({ ...base, type: 'tool_use', part: { tool: 'bash', state: { status: 'completed', output: it.aggregated_output ?? '' } } })
+      else if (it.type === 'file_change') sal.push({ ...base, type: 'tool_use', part: { tool: 'edit', state: { status: it.status === 'failed' ? 'error' : 'completed', output: JSON.stringify(it.changes ?? '') } } })
+      else if (it.type === 'mcp_tool_call') sal.push({ ...base, type: 'tool_use', part: { tool: `${it.server}_${it.tool}`, state: { status: it.status === 'failed' ? 'error' : 'completed', output: JSON.stringify(it.result ?? it.error ?? '') } } })
+      else if (it.type === 'error' && !/Model metadata/i.test(it.message ?? '')) sal.push({ ...base, type: 'error', error: it.message })
+    } else if (e.type === 'turn.completed') {
+      const u = e.usage ?? {}
+      sal.push({ ...base, type: 'step_finish', part: { tokens: { input: Math.max(0, (u.input_tokens ?? 0) - (u.cached_input_tokens ?? 0)), output: u.output_tokens ?? 0, cache: { read: u.cached_input_tokens ?? 0 } } } })
+    } else if (e.type === 'turn.failed' || e.type === 'error') sal.push({ ...base, type: 'error', error: e.error ?? e.message ?? e })
+  }
+  return sal
 }
 
 /** Lanza `motor run …` con el pedido por stdin; devuelve { eventos, stderr, codigo, ms, cortePorTiempo }. */
@@ -180,7 +211,7 @@ function lanzarRun(cfg, entorno, proj, argv, pedido) {
           }
         })
         .filter(Boolean)
-      res({ eventos, stderr: err, codigo: codigo ?? -1, ms: Date.now() - t0, cortePorTiempo })
+      res({ eventos: cfg.adaptador === 'codex' ? normalizarCodex(eventos) : eventos, stderr: err, codigo: codigo ?? -1, ms: Date.now() - t0, cortePorTiempo })
     })
     hijo.on('error', (e) => res({ eventos: [], stderr: String(e), codigo: 127, ms: Date.now() - t0, cortePorTiempo: false }))
   })
@@ -243,12 +274,20 @@ async function unaCorrida(cfg, tarea, ctx) {
   const m = { ay: { entrada: 0, salida: 0, cache_leida: 0, pasos: 0 }, porPaso: [], ms: 0, entrada: 0, salida: 0, cache_leida: 0, pasos: 0, llamadas: 0, herramientas: {}, bytes_resultados: 0, salidas: '', erroresHerramientas: 0, errores: [], motivos: [], permisos_negados: 0, stderr: '', motor: null }
   let proveedor = null
   let verificacion
+  const adaptador = cfg.adaptador ?? 'lazunox'
+  // Etiqueta de la corrida en el proxy: hace de «clave» FALSA (el proxy pone la real) y permite medir cada petición al modelo por corrida.
+  const etiqueta = cfg.proxyUrl ? `${cfg.prefijo ?? 'lz'}-${tarea.id}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` : null
   try {
     tarea.preparar(proj, ctx)
     // Proveedor con clave (p. ej. un plan de pago): se copia el auth.json indicado al HOME temporal de la corrida (0600). La clave nunca
     // se lee ni se guarda en el resultado; el HOME temporal se borra al terminar.
     const auth = cfg.authArchivo ?? process.env.BENCH_AUTH_FILE
-    if (auth && !cfg.falso) {
+    if (etiqueta && adaptador === 'lazunox') {
+      // Por el proxy: auth.json con la clave FALSA (la etiqueta); la real solo la tiene el proxy.
+      const dst = join(home, '.local/share/opencode')
+      mkdirSync(dst, { recursive: true })
+      writeFileSync(join(dst, 'auth.json'), JSON.stringify({ [(cfg.modelo ?? MODELO_GRATIS).split('/')[0]]: { type: 'api', key: etiqueta } }), { mode: 0o600 })
+    } else if (auth && !cfg.falso) {
       const dst = join(home, '.local/share/opencode')
       mkdirSync(dst, { recursive: true })
       copyFileSync(auth, join(dst, 'auth.json'))
@@ -260,21 +299,35 @@ async function unaCorrida(cfg, tarea, ctx) {
       mkdirSync(dc, { recursive: true })
       writeFileSync(join(dc, 'opencode.json'), cfg.configGlobal)
     }
+    if (adaptador === 'codex') {
+      const dc = join(home, '.codex')
+      mkdirSync(dc, { recursive: true })
+      const m = (cfg.modelo ?? MODELO_GRATIS).split('/').slice(1).join('/')
+      writeFileSync(join(dc, 'config.toml'), [
+        `model = ${JSON.stringify(m)}`, 'model_provider = "go"', 'approval_policy = "never"', 'sandbox_mode = "danger-full-access"',
+        '[model_providers.go]', 'name = "OpenCode Go"', `base_url = ${JSON.stringify(cfg.proxyUrl)}`, 'env_key = "GO_FALSA"', 'wire_api = "responses"',
+        ...(tarea.mcp ? ['[mcp_servers.almacen]', `command = ${JSON.stringify(process.execPath)}`, `args = [${JSON.stringify(join(aqui, 'mcp-bench.mjs'))}]`] : [])
+      ].join('\n') + '\n')
+    }
     spawnSync('git', ['init', '-q'], { cwd: proj })
     spawnSync('git', ['add', '-A'], { cwd: proj })
     spawnSync('git', ['-c', 'user.name=banco', '-c', 'user.email=banco@lazunox.local', 'commit', '-qm', 'inicio', '--allow-empty'], { cwd: proj })
     if (cfg.falso) proveedor = await iniciarProveedorFalso(cfg.sinGuion?.includes(tarea.id) ? null : (tarea.guion?.(proj) ?? null))
-    const entorno = entornoMotor(cfg, root, home, proj, tarea, proveedor)
+    const entorno = entornoMotor(cfg, root, home, proj, tarea, proveedor, etiqueta)
     const modelo = cfg.falso ? 'fake/m' : (cfg.modelo ?? MODELO_GRATIS)
     let sessionID
     for (let i = 0; i < tarea.pedidos.length; i++) {
-      const argv = [
-        'run', '--format', 'json', '--permisos', 'ninguno',
-        '--max-steps', String(cfg.maxPasos),
-        '--presupuesto-tokens', String(Math.max(1, Math.max(cfg.presupuesto, tarea.presupuesto ?? 0) - m.entrada - m.salida)),
-        '--model', modelo,
-        ...(sessionID ? ['--session', sessionID] : [])
-      ]
+      const argv = adaptador === 'opencode2'
+        ? ['run', '--standalone', '--format', 'json', '--model', modelo, '--auto', ...(sessionID ? ['--session', sessionID] : [])]
+        : adaptador === 'codex'
+          ? sessionID ? ['exec', 'resume', '--json', '--skip-git-repo-check', sessionID, '-'] : ['exec', '--json', '--skip-git-repo-check', '-']
+          : [
+              'run', '--format', 'json', '--permisos', 'ninguno',
+              '--max-steps', String(cfg.maxPasos),
+              '--presupuesto-tokens', String(Math.max(1, Math.max(cfg.presupuesto, tarea.presupuesto ?? 0) - m.entrada - m.salida)),
+              '--model', modelo,
+              ...(sessionID ? ['--session', sessionID] : [])
+            ]
       // BENCH_PEDIDO_EXTRA (entorno del ejecutor): texto que se añade al PRIMER pedido de cada tarea (p. ej. para forzar el uso de un flujo).
       const pedido = i === 0 && process.env.BENCH_PEDIDO_EXTRA ? `${tarea.pedidos[i]} ${process.env.BENCH_PEDIDO_EXTRA}` : tarea.pedidos[i]
       const r = await lanzarRun(cfg, entorno, proj, argv, pedido)
@@ -302,6 +355,7 @@ async function unaCorrida(cfg, tarea, ctx) {
     ok: verificacion.ok,
     cuota,
     detalle: verificacion.detalle,
+    etiqueta,
     motivo: m.motivos.at(-1) ?? (m.errores.length ? 'error' : 'sin_informe'),
     tokens: { entrada: m.entrada, salida: m.salida, cache_leida: m.cache_leida, enviados },
     tokens_ayudantes: { ...m.ay, enviados: m.ay.entrada + m.ay.cache_leida, incluidos_en_tokens: !!cfg.sumarAyudantes },
@@ -556,8 +610,8 @@ async function principal() {
   const ctx = { typescript: ts ? resolve(ts) : null }
   if (cfg.autoprueba) return autoprueba(cfg, sel, ctx)
   const version = spawnSync(cfg.motor, ['--version'], { encoding: 'utf8', timeout: 20_000 }).stdout?.trim() || 'desconocida'
-  const ayudaRun = spawnSync(cfg.motor, ['run', '--help'], { encoding: 'utf8', timeout: 30_000, env: { ...process.env, HOME: tmpdir() } })
-  if (!/--permisos/.test(`${ayudaRun.stdout}${ayudaRun.stderr}`) || !/--max-steps/.test(`${ayudaRun.stdout}${ayudaRun.stderr}`))
+  const ayudaRun = (cfg.adaptador ?? 'lazunox') === 'lazunox' ? spawnSync(cfg.motor, ['run', '--help'], { encoding: 'utf8', timeout: 30_000, env: { ...process.env, HOME: tmpdir() } }) : null
+  if (ayudaRun && (!/--permisos/.test(`${ayudaRun.stdout}${ayudaRun.stderr}`) || !/--max-steps/.test(`${ayudaRun.stdout}${ayudaRun.stderr}`)))
     throw new Error('este motor no trae las banderas de `run` del banco (--permisos, --max-steps, --presupuesto-tokens, --informe); compila el fork con la rama feat/run-banderas')
   const modelo = cfg.falso ? 'fake/m' : (cfg.modelo ?? MODELO_GRATIS)
   console.error(`Motor ${cfg.motor} (${version}) · ${cfg.falso ? 'proveedor falso' : modelo} · ${sel.length} tareas × ${cfg.repeticiones}`)
@@ -575,7 +629,7 @@ async function principal() {
     modelo,
     proveedorFalso: !!cfg.falso,
     repeticiones: cfg.repeticiones,
-    config: { config_global: cfg.configGlobal ?? null, max_pasos: cfg.maxPasos, presupuesto_tokens: cfg.presupuesto, timeout_min: cfg.timeoutMin, env: cfg.env },
+    config: { adaptador: cfg.adaptador ?? 'lazunox', proxy: !!cfg.proxyUrl, config_global: cfg.configGlobal ?? null, max_pasos: cfg.maxPasos, presupuesto_tokens: cfg.presupuesto, timeout_min: cfg.timeoutMin, env: cfg.env },
     tareas: {}
   }
   for (const tarea of sel) {

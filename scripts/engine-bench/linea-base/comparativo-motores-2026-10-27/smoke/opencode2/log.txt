@@ -1,0 +1,15 @@
+Motor /motor/opencode (opencode v2.2.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 1
+T01 #1: ok (sin_informe) · 4 pasos · 21045 tokens · 15.0 s
+T02 #1: ok (sin_informe) · 4 pasos · 22523 tokens · 14.3 s
+T13 #1: ok (sin_informe) · 5 pasos · 27480 tokens · 13.0 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T01 Arreglar un bug con prueba que falla (JS) | 1/1 | 20.682 | 363 | 80,5 | 4 | 5.180 · 5.678 | 6 | 1,5 | 0,25 | 21.045 |
+| T02 Añadir función + prueba (Python) | 1/1 | 21.746 | 777 | 79,5 | 4 | 5.545 · 5.979 | 6 | 1,5 | 0,24 | 22.523 |
+| T13 «Haz pasar las pruebas» (3 fallos) | 1/1 | 26.768 | 712 | 76,5 | 5 | 4.936 · 6.446 | 10 | 2 | 0,22 | 27.480 |
+
+Éxito total: 3/3 (100 %) · mediana de tokens por éxito: 22.523 · p90 de minutos: 0,25
+fin opencode2 rc=0
