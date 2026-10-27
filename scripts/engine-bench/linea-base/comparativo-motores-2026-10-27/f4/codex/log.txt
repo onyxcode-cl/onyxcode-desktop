@@ -1,0 +1,13 @@
+Motor /motor/codex (codex-cli 0.164.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 3
+T12 #1: ok (sin_informe) · 1 pasos · 118439 tokens · 19.2 s
+T12 #2: ok (sin_informe) · 1 pasos · 93859 tokens · 14.7 s
+T12 #3: ok (sin_informe) · 1 pasos · 118457 tokens · 16.6 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T12 Usar un conector MCP de prueba con 40 herramientas | 3/3 | 117.391 | 744 | 84,5 | 1 | 117.391 · 117.391 | 6 | 6 | 0,28 | 118.439 |
+
+Éxito total: 3/3 (100 %) · mediana de tokens por éxito: 118.439 · p90 de minutos: 0,32
+fin codex rc=0

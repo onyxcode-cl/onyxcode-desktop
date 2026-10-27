@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:40:09.701Z",
+  "tarea": "T20",
+  "repeticion": 1,
+  "nombre": "Oficina: editar frases con «», “” y —",
+  "mide": "Edición tolerante (comillas y rayas)",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "opencode v2.2.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "opencode2",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "oc2-T20-mvqk0g8s4m7c",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 4434,
+      "salida": 753,
+      "cache_leida": 11776,
+      "enviados": 16210
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 3,
+    "tokens_por_paso": {
+      "med": 5336,
+      "p90": 6040
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 3,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "read": 2,
+      "edit": 6,
+      "shell": 1
+    },
+    "bytes_resultados": 3009,
+    "permisos_negados": 0,
+    "tiempo_ms": 13214,
+    "peticiones_modelo": null
+  }
+}

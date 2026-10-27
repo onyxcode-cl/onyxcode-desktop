@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:38:47.512Z",
+  "tarea": "T17",
+  "repeticion": 2,
+  "nombre": "Oficina: corregir acentos y formato de una carta",
+  "mide": "Edición de texto en español",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "lazunox",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "lz-T17-mvqjye41mt0c",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 7245,
+      "salida": 355,
+      "cache_leida": 32000,
+      "enviados": 39245
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 9149.5,
+      "p90": 12695
+    },
+    "llamadas": 4,
+    "llamadas_por_paso": 1,
+    "errores_herramientas": 1,
+    "herramientas": {
+      "read": 1,
+      "bash": 1,
+      "glob": 1,
+      "write": 1
+    },
+    "bytes_resultados": 886,
+    "permisos_negados": 0,
+    "tiempo_ms": 27098,
+    "peticiones_modelo": null
+  }
+}

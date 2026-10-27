@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:48:07.705Z",
+  "tarea": "T17",
+  "repeticion": 2,
+  "nombre": "Oficina: corregir acentos y formato de una carta",
+  "mide": "Edición de texto en español",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T17-mvqk9rj4qm6a",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 7280,
+      "salida": 6047,
+      "cache_leida": 64768,
+      "enviados": 72048
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 72048,
+      "p90": 72048
+    },
+    "llamadas": 7,
+    "llamadas_por_paso": 7,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 6,
+      "edit": 1
+    },
+    "bytes_resultados": 1969,
+    "permisos_negados": 0,
+    "tiempo_ms": 56673,
+    "peticiones_modelo": null
+  }
+}

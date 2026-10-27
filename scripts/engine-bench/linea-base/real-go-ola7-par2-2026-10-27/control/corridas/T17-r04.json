@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:13:04.591Z",
+  "tarea": "T17",
+  "repeticion": 4,
+  "nombre": "Oficina: corregir acentos y formato de una carta",
+  "mide": "Edición de texto en español",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 8610,
+      "salida": 354,
+      "cache_leida": 28416,
+      "enviados": 37026
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 9230,
+      "p90": 10312
+    },
+    "llamadas": 3,
+    "llamadas_por_paso": 0.75,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "read": 1,
+      "bash": 1,
+      "write": 1
+    },
+    "bytes_resultados": 791,
+    "permisos_negados": 0,
+    "tiempo_ms": 27597,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-5PMQgU"
+  }
+}

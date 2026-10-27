@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:29:50.974Z",
+  "tarea": "T31",
+  "repeticion": 1,
+  "nombre": "Fan-out: errores en 10 paquetes",
+  "mide": "Flujos por script (7.17)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": [
+      "OPENCODE_EXPERIMENTAL_CODE_MODE=1",
+      "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1"
+    ]
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 9966,
+      "salida": 603,
+      "cache_leida": 52864,
+      "enviados": 62830
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": true
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 10543.5,
+      "p90": 11644
+    },
+    "llamadas": 5,
+    "llamadas_por_paso": 0.8333333333333334,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 5
+    },
+    "bytes_resultados": 4119,
+    "permisos_negados": 0,
+    "tiempo_ms": 23735,
+    "peticiones_modelo": null
+  }
+}

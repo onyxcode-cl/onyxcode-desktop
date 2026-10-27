@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:51:35.146Z",
+  "tarea": "T10",
+  "repeticion": 1,
+  "nombre": "Tarea de 6 pasos con lista de tareas",
+  "mide": "Plan ejecutable",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "lazunox",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "lz-T10-mvqkf2awlhio",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 8367,
+      "salida": 1117,
+      "cache_leida": 47488,
+      "enviados": 55855
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 9500.5,
+      "p90": 9997
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 1.5,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "todowrite": 2,
+      "write": 6,
+      "bash": 1
+    },
+    "bytes_resultados": 277,
+    "permisos_negados": 0,
+    "tiempo_ms": 16888,
+    "peticiones_modelo": null
+  }
+}

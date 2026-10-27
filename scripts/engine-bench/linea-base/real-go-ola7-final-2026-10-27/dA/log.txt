@@ -1,0 +1,16 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 2 tareas × 3
+T31 #1: ya medida (/res/corridas/T31-r01.json); se reutiliza
+T31 #2: ok (completado) · 7 pasos · 68602 tokens · 22.3 s
+T31 #3: ok (completado) · 7 pasos · 73291 tokens · 19.6 s
+T32 #1: ya medida (/res/corridas/T32-r01.json); se reutiliza
+T32 #2: ok (completado) · 15 pasos · 217540 tokens · 60.0 s
+T32 #3: ok (completado) · 9 pasos · 122567 tokens · 27.9 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T31 Fan-out: errores en 10 paquetes | 3/3 | 67.985 | 617 | 84 | 7 | 10.294 · 11.644 | 6 | 0,86 | 0,37 | 68.602 |
+| T32 Migración de 5 pasos en 3 juegos independientes | 3/3 | 121.229 | 1.669 | 88,2 | 9 | 15.020 · 15.972 | 14 | 1,56 | 0,5 | 122.567 |
+
+Éxito total: 6/6 (100 %) · mediana de tokens por éxito: 95.044 · p90 de minutos: 1

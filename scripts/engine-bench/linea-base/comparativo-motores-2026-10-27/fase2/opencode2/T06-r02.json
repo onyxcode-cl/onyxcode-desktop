@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:32:36.565Z",
+  "tarea": "T06",
+  "repeticion": 2,
+  "nombre": "Refactor que obliga a releer el mismo archivo",
+  "mide": "No releer",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "opencode v2.2.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "opencode2",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "oc2-T06-mvqjqq2sb7qs",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 7066,
+      "salida": 1048,
+      "cache_leida": 22912,
+      "enviados": 29978
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 6304,
+      "p90": 7156
+    },
+    "llamadas": 10,
+    "llamadas_por_paso": 2,
+    "errores_herramientas": 1,
+    "herramientas": {
+      "glob": 1,
+      "shell": 2,
+      "read": 3,
+      "write": 1,
+      "edit": 3
+    },
+    "bytes_resultados": 3551,
+    "permisos_negados": 0,
+    "tiempo_ms": 13882,
+    "peticiones_modelo": null
+  }
+}

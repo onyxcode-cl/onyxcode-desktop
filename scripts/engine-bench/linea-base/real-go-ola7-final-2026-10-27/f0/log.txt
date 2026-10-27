@@ -1,0 +1,20 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 3
+T21 #1: ok (completado) · 9 pasos · 111771 tokens · 45.2 s
+T21 #2: ok (completado) · 8 pasos · 88908 tokens · 20.0 s
+T21 #3: ok (completado) · 9 pasos · 104408 tokens · 29.3 s
+T31 #1: ok (completado) · 7 pasos · 75668 tokens · 29.8 s
+T31 #2: ok (completado) · 4 pasos · 44602 tokens · 15.8 s
+T31 #3: ok (completado) · 4 pasos · 41429 tokens · 23.0 s
+T32 #1: ok (completado) · 5 pasos · 65240 tokens · 37.9 s
+T32 #2: ok (completado) · 5 pasos · 65002 tokens · 38.2 s
+T32 #3: ok (completado) · 12 pasos · 227374 tokens · 79.9 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T21 Migración de 5 pasos con dependencias | 3/3 | 103.491 | 917 | 88,3 | 9 | 11.857 · 12.681 | 9 | 1 | 0,49 | 104.408 |
+| T31 Fan-out: errores en 10 paquetes | 3/3 | 44.257 | 582 | 72,3 | 4 | 10.546 · 11.999 | 4 | 1 | 0,38 | 44.602 |
+| T32 Migración de 5 pasos en 3 juegos independientes | 3/3 | 63.938 | 1.388 | 74,4 | 5 | 11.558 · 18.221 | 10 | 1,58 | 0,64 | 65.240 |
+
+Éxito total: 9/9 (100 %) · mediana de tokens por éxito: 75.668 · p90 de minutos: 1,33

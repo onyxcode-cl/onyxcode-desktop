@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:24:11.736Z",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "repeticiones": 3,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "tareas": {
+    "T05": {
+      "nombre": "Leer un log de 3 MB y escribir la causa",
+      "mide": "Truncado y poda",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": false,
+          "cuota": false,
+          "detalle": "no dice que el pool se agotó",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 38674,
+            "salida": 1268,
+            "cache_leida": 234240,
+            "enviados": 272914
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 11,
+          "tokens_por_paso": {
+            "med": 21336,
+            "p90": 39437
+          },
+          "llamadas": 10,
+          "llamadas_por_paso": 0.9090909090909091,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 9,
+            "write": 1
+          },
+          "bytes_resultados": 61300,
+          "permisos_negados": 0,
+          "tiempo_ms": 44276,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-vzvl9b"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 24774,
+            "salida": 2555,
+            "cache_leida": 249088,
+            "enviados": 273862
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 15,
+          "tokens_por_paso": {
+            "med": 18486,
+            "p90": 25116
+          },
+          "llamadas": 26,
+          "llamadas_por_paso": 1.7333333333333334,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 25,
+            "write": 1
+          },
+          "bytes_resultados": 22741,
+          "permisos_negados": 0,
+          "tiempo_ms": 74422,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-i6IAlE"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 27885,
+            "salida": 962,
+            "cache_leida": 158720,
+            "enviados": 186605
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 10,
+          "tokens_por_paso": {
+            "med": 20467,
+            "p90": 27156
+          },
+          "llamadas": 13,
+          "llamadas_por_paso": 1.3,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 12,
+            "write": 1
+          },
+          "bytes_resultados": 36421,
+          "permisos_negados": 0,
+          "tiempo_ms": 24212,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-HjED9V"
+        }
+      ],
+      "resumen": {
+        "n": 3,
+        "cuota": 0,
+        "exitos": 2,
+        "tokens_enviados_med": 272914,
+        "tokens_salida_med": 1268,
+        "cache_pct_med": 85.82923558337059,
+        "pasos_med": 11,
+        "tokens_por_paso_med": 20467,
+        "tokens_por_paso_p90": 27156,
+        "llamadas_med": 13,
+        "llamadas_por_paso_med": 1.3,
+        "minutos_med": 0.7379333333333333,
+        "tokens_por_exito": 231992
+      }
+    }
+  },
+  "agregados": {
+    "corridas": 3,
+    "exitos": 2,
+    "tasa_exito": 0.6666666666666666,
+    "tokens_por_exito_med": 231992,
+    "minutos_p90": 1.2403666666666666
+  }
+}

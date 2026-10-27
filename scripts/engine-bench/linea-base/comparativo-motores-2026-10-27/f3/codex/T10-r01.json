@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T11:00:15.255Z",
+  "tarea": "T10",
+  "repeticion": 1,
+  "nombre": "Tarea de 6 pasos con lista de tareas",
+  "mide": "Plan ejecutable",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T10-mvqkpepn2f7j",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 10583,
+      "salida": 6261,
+      "cache_leida": 172544,
+      "enviados": 183127
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 183127,
+      "p90": 183127
+    },
+    "llamadas": 15,
+    "llamadas_por_paso": 15,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 9,
+      "edit": 6
+    },
+    "bytes_resultados": 880,
+    "permisos_negados": 0,
+    "tiempo_ms": 54339,
+    "peticiones_modelo": null
+  }
+}

@@ -1,0 +1,13 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 2 tareas × 1
+T07: omitida (falta typescript)
+T12 #1: ok (completado) · 3 pasos · 68173 tokens · 8.8 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T07 Arreglar error de tipos (TS) | omitida (falta typescript) | | | | | | | | | |
+| T12 Usar un conector MCP de prueba con 40 herramientas | 1/1 | 67.937 | 236 | 66,3 | 3 | 22.667 · 22.782 | 4 | 1,33 | 0,15 | 68.173 |
+
+Éxito total: 1/1 (100 %) · mediana de tokens por éxito: 68.173 · p90 de minutos: 0,15
+fin lazunox rc=0

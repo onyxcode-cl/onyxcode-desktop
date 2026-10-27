@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T11:00:47.301Z",
+  "tarea": "T11",
+  "repeticion": 1,
+  "nombre": "Migración con verificación por paso",
+  "mide": "Plan ejecutable",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T11-mvqkqkntnoyz",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 8087,
+      "salida": 3649,
+      "cache_leida": 82688,
+      "enviados": 90775
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 90775,
+      "p90": 90775
+    },
+    "llamadas": 11,
+    "llamadas_por_paso": 11,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 11
+    },
+    "bytes_resultados": 3188,
+    "permisos_negados": 0,
+    "tiempo_ms": 32017,
+    "peticiones_modelo": null
+  }
+}

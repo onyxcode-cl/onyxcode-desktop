@@ -1,0 +1,366 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:51:19.880Z",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "fake/m",
+  "proveedorFalso": true,
+  "repeticiones": 5,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "tareas": {
+    "T25": {
+      "nombre": "Respuesta cortada en mitad de un archivo grande",
+      "mide": "Respuesta cortada (finish: length)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 55476,
+            "salida": 4802,
+            "cache_leida": 0,
+            "enviados": 55476
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 15598,
+            "p90": 15758
+          },
+          "llamadas": 3,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "invalid": 1,
+            "write": 1,
+            "bash": 1
+          },
+          "bytes_resultados": 9433,
+          "permisos_negados": 0,
+          "tiempo_ms": 2843,
+          "peticiones_modelo": 5
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 55476,
+            "salida": 4802,
+            "cache_leida": 0,
+            "enviados": 55476
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 15598,
+            "p90": 15758
+          },
+          "llamadas": 3,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "invalid": 1,
+            "write": 1,
+            "bash": 1
+          },
+          "bytes_resultados": 9433,
+          "permisos_negados": 0,
+          "tiempo_ms": 2339,
+          "peticiones_modelo": 5
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 55476,
+            "salida": 4802,
+            "cache_leida": 0,
+            "enviados": 55476
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 15598,
+            "p90": 15758
+          },
+          "llamadas": 3,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "invalid": 1,
+            "write": 1,
+            "bash": 1
+          },
+          "bytes_resultados": 9433,
+          "permisos_negados": 0,
+          "tiempo_ms": 2681,
+          "peticiones_modelo": 5
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 55476,
+            "salida": 4802,
+            "cache_leida": 0,
+            "enviados": 55476
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 15598,
+            "p90": 15758
+          },
+          "llamadas": 3,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "invalid": 1,
+            "write": 1,
+            "bash": 1
+          },
+          "bytes_resultados": 9433,
+          "permisos_negados": 0,
+          "tiempo_ms": 3855,
+          "peticiones_modelo": 5
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 55476,
+            "salida": 4802,
+            "cache_leida": 0,
+            "enviados": 55476
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 15598,
+            "p90": 15758
+          },
+          "llamadas": 3,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "invalid": 1,
+            "write": 1,
+            "bash": 1
+          },
+          "bytes_resultados": 9433,
+          "permisos_negados": 0,
+          "tiempo_ms": 2858,
+          "peticiones_modelo": 5
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 55476,
+        "tokens_salida_med": 4802,
+        "cache_pct_med": 0,
+        "pasos_med": 4,
+        "tokens_por_paso_med": 15598,
+        "tokens_por_paso_p90": 15758,
+        "llamadas_med": 3,
+        "llamadas_por_paso_med": 0.75,
+        "minutos_med": 0.04738333333333333,
+        "tokens_por_exito": 60278
+      }
+    },
+    "T27": {
+      "nombre": "Argumentos de herramientas mal tipados",
+      "mide": "Reparación de la entrada (objeto como texto, número como cadena, null)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": false,
+          "cuota": false,
+          "detalle": "config.txt quedó distinto de lo esperado: \"modo=prueba\\nnivel=bajo\\nmodo-extra=prueba\\nregion=sur\\n\"",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 53350,
+            "salida": 193,
+            "cache_leida": 0,
+            "enviados": 53350
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 8909.5,
+            "p90": 9204
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 0.8333333333333334,
+          "errores_herramientas": 5,
+          "herramientas": {
+            "todowrite": 1,
+            "edit": 2,
+            "bash": 1,
+            "read": 1
+          },
+          "bytes_resultados": 1060,
+          "permisos_negados": 0,
+          "tiempo_ms": 3279,
+          "peticiones_modelo": 7
+        },
+        {
+          "ok": false,
+          "cuota": false,
+          "detalle": "config.txt quedó distinto de lo esperado: \"modo=prueba\\nnivel=bajo\\nmodo-extra=prueba\\nregion=sur\\n\"",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 53350,
+            "salida": 193,
+            "cache_leida": 0,
+            "enviados": 53350
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 8909.5,
+            "p90": 9204
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 0.8333333333333334,
+          "errores_herramientas": 5,
+          "herramientas": {
+            "todowrite": 1,
+            "edit": 2,
+            "bash": 1,
+            "read": 1
+          },
+          "bytes_resultados": 1060,
+          "permisos_negados": 0,
+          "tiempo_ms": 3373,
+          "peticiones_modelo": 7
+        },
+        {
+          "ok": false,
+          "cuota": false,
+          "detalle": "config.txt quedó distinto de lo esperado: \"modo=prueba\\nnivel=bajo\\nmodo-extra=prueba\\nregion=sur\\n\"",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 53350,
+            "salida": 193,
+            "cache_leida": 0,
+            "enviados": 53350
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 8909.5,
+            "p90": 9204
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 0.8333333333333334,
+          "errores_herramientas": 5,
+          "herramientas": {
+            "todowrite": 1,
+            "edit": 2,
+            "bash": 1,
+            "read": 1
+          },
+          "bytes_resultados": 1060,
+          "permisos_negados": 0,
+          "tiempo_ms": 2520,
+          "peticiones_modelo": 7
+        },
+        {
+          "ok": false,
+          "cuota": false,
+          "detalle": "config.txt quedó distinto de lo esperado: \"modo=prueba\\nnivel=bajo\\nmodo-extra=prueba\\nregion=sur\\n\"",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 53350,
+            "salida": 193,
+            "cache_leida": 0,
+            "enviados": 53350
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 8909.5,
+            "p90": 9204
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 0.8333333333333334,
+          "errores_herramientas": 5,
+          "herramientas": {
+            "todowrite": 1,
+            "edit": 2,
+            "bash": 1,
+            "read": 1
+          },
+          "bytes_resultados": 1060,
+          "permisos_negados": 0,
+          "tiempo_ms": 3454,
+          "peticiones_modelo": 7
+        },
+        {
+          "ok": false,
+          "cuota": false,
+          "detalle": "config.txt quedó distinto de lo esperado: \"modo=prueba\\nnivel=bajo\\nmodo-extra=prueba\\nregion=sur\\n\"",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 53350,
+            "salida": 193,
+            "cache_leida": 0,
+            "enviados": 53350
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 8909.5,
+            "p90": 9204
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 0.8333333333333334,
+          "errores_herramientas": 5,
+          "herramientas": {
+            "todowrite": 1,
+            "edit": 2,
+            "bash": 1,
+            "read": 1
+          },
+          "bytes_resultados": 1060,
+          "permisos_negados": 0,
+          "tiempo_ms": 3634,
+          "peticiones_modelo": 7
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 0,
+        "tokens_enviados_med": 53350,
+        "tokens_salida_med": 193,
+        "cache_pct_med": 0,
+        "pasos_med": 6,
+        "tokens_por_paso_med": 8909.5,
+        "tokens_por_paso_p90": 9204,
+        "llamadas_med": 5,
+        "llamadas_por_paso_med": 0.8333333333333334,
+        "minutos_med": 0.056216666666666665,
+        "tokens_por_exito": null
+      }
+    }
+  },
+  "agregados": {
+    "corridas": 10,
+    "exitos": 5,
+    "tasa_exito": 0.5,
+    "tokens_por_exito_med": 60278,
+    "minutos_p90": 0.060566666666666664
+  }
+}

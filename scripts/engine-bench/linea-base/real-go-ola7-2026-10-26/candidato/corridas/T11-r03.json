@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T00:31:02.461Z",
+  "tarea": "T11",
+  "repeticion": 3,
+  "nombre": "Migración con verificación por paso",
+  "mide": "Plan ejecutable",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 10992,
+      "salida": 852,
+      "cache_leida": 94592,
+      "enviados": 105584
+    },
+    "pasos": 11,
+    "tokens_por_paso": {
+      "med": 9754,
+      "p90": 10213
+    },
+    "llamadas": 10,
+    "llamadas_por_paso": 0.9090909090909091,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 6,
+      "write": 4
+    },
+    "bytes_resultados": 2930,
+    "permisos_negados": 0,
+    "tiempo_ms": 23817,
+    "peticiones_modelo": null
+  }
+}

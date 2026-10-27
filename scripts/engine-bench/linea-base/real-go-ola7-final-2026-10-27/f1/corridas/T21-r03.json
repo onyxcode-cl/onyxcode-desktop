@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:47:18.127Z",
+  "tarea": "T21",
+  "repeticion": 3,
+  "nombre": "Migración de 5 pasos con dependencias",
+  "mide": "Tareas con dependencias",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": [
+      "OPENCODE_EXPERIMENTAL_CODE_MODE=1",
+      "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=1",
+      "LAZUNOX_FLUJOS=1"
+    ]
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 29926,
+      "salida": 2610,
+      "cache_leida": 120064,
+      "enviados": 149990
+    },
+    "tokens_ayudantes": {
+      "entrada": 13991,
+      "salida": 1328,
+      "cache_leida": 72832,
+      "pasos": 7,
+      "enviados": 86823,
+      "incluidos_en_tokens": true
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 11803,
+      "p90": 15707
+    },
+    "llamadas": 4,
+    "llamadas_por_paso": 0.8,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 3,
+      "execute": 1
+    },
+    "bytes_resultados": 6612,
+    "permisos_negados": 0,
+    "tiempo_ms": 42484,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-tpvlKI"
+  }
+}

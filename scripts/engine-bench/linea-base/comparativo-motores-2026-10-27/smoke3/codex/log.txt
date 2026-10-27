@@ -1,0 +1,11 @@
+Motor /motor/codex (codex-cli 0.164.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 1
+T07 #1: ok (sin_informe) · 1 pasos · 56865 tokens · 35.6 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T07 Arreglar error de tipos (TS) | 1/1 | 53.300 | 3.565 | 74,9 | 1 | 53.300 · 53.300 | 7 | 7 | 0,59 | 56.865 |
+
+Éxito total: 1/1 (100 %) · mediana de tokens por éxito: 56.865 · p90 de minutos: 0,59
+fin codex rc=0

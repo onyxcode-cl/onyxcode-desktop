@@ -1,4 +1,4 @@
-// Registro de las 23 tareas del banco: cada archivo `Tnn-*.mjs` exporta por defecto { id, nombre, mide, categoria, pedidos, preparar,
+// Registro de las 32 tareas del banco: cada archivo `Tnn-*.mjs` exporta por defecto { id, nombre, mide, categoria, pedidos, preparar,
 // verificar, guion?, requiere?, mcp? } (ver README en la cabecera de `../run.mjs`).
 import { readdirSync } from 'node:fs'
 import { dirname } from 'node:path'

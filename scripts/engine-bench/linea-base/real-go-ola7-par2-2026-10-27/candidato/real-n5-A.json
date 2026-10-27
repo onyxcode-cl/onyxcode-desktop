@@ -1,0 +1,2266 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:04:12.555Z",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "repeticiones": 5,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "tareas": {
+    "T01": {
+      "nombre": "Arreglar un bug con prueba que falla (JS)",
+      "mide": "Lectura justa, edición",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9401,
+            "salida": 301,
+            "cache_leida": 34304,
+            "enviados": 43705
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 8885,
+            "p90": 9089
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 0.8,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "read": 1,
+            "edit": 1
+          },
+          "bytes_resultados": 1584,
+          "permisos_negados": 0,
+          "tiempo_ms": 17952,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-J5A8OY"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9941,
+            "salida": 434,
+            "cache_leida": 35200,
+            "enviados": 45141
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9397,
+            "p90": 9599
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "read": 2,
+            "edit": 1
+          },
+          "bytes_resultados": 2648,
+          "permisos_negados": 0,
+          "tiempo_ms": 37894,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-m2CK5q"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9557,
+            "salida": 297,
+            "cache_leida": 34688,
+            "enviados": 44245
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9087,
+            "p90": 9272
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 0.8,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "edit": 1
+          },
+          "bytes_resultados": 2356,
+          "permisos_negados": 0,
+          "tiempo_ms": 40508,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-YIfKnE"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 14147,
+            "salida": 387,
+            "cache_leida": 30848,
+            "enviados": 44995
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9356,
+            "p90": 9550
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "read": 2,
+            "edit": 1
+          },
+          "bytes_resultados": 2648,
+          "permisos_negados": 0,
+          "tiempo_ms": 29175,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-JKbtDO"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9524,
+            "salida": 346,
+            "cache_leida": 34432,
+            "enviados": 43956
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 8998,
+            "p90": 9234
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 1,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "read": 2,
+            "edit": 1
+          },
+          "bytes_resultados": 1750,
+          "permisos_negados": 0,
+          "tiempo_ms": 18642,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-OqvWXY"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 44245,
+        "tokens_salida_med": 346,
+        "cache_pct_med": 78.33287833287834,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 9087,
+        "tokens_por_paso_p90": 9272,
+        "llamadas_med": 5,
+        "llamadas_por_paso_med": 1,
+        "minutos_med": 0.48625,
+        "tokens_por_exito": 44542
+      }
+    },
+    "T02": {
+      "nombre": "Añadir función + prueba (Python)",
+      "mide": "Plan corto",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10245,
+            "salida": 890,
+            "cache_leida": 44800,
+            "enviados": 55045
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9323.5,
+            "p90": 9988
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "read": 2,
+            "edit": 2
+          },
+          "bytes_resultados": 2388,
+          "permisos_negados": 0,
+          "tiempo_ms": 22780,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-fwgSPW"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7751,
+            "salida": 798,
+            "cache_leida": 38400,
+            "enviados": 46151
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9521,
+            "p90": 9856
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 2,
+            "edit": 2
+          },
+          "bytes_resultados": 2296,
+          "permisos_negados": 0,
+          "tiempo_ms": 18506,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-6OLeqo"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 16665,
+            "salida": 846,
+            "cache_leida": 38400,
+            "enviados": 55065
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9339.5,
+            "p90": 9975
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "read": 2,
+            "edit": 2
+          },
+          "bytes_resultados": 2388,
+          "permisos_negados": 0,
+          "tiempo_ms": 52152,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-rh7hX0"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8312,
+            "salida": 833,
+            "cache_leida": 46592,
+            "enviados": 54904
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9311,
+            "p90": 9923
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "read": 2,
+            "edit": 2
+          },
+          "bytes_resultados": 2388,
+          "permisos_negados": 0,
+          "tiempo_ms": 23916,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-wsLJ1b"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8440,
+            "salida": 927,
+            "cache_leida": 46720,
+            "enviados": 55160
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9347,
+            "p90": 10009
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.5,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 2,
+            "read": 2,
+            "edit": 2
+          },
+          "bytes_resultados": 2387,
+          "permisos_negados": 0,
+          "tiempo_ms": 22774,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-AifBOU"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 55045,
+        "tokens_salida_med": 846,
+        "cache_pct_med": 83.2051309830773,
+        "pasos_med": 6,
+        "tokens_por_paso_med": 9339.5,
+        "tokens_por_paso_p90": 9975,
+        "llamadas_med": 8,
+        "llamadas_por_paso_med": 1.3333333333333333,
+        "minutos_med": 0.37966666666666665,
+        "tokens_por_exito": 55911
+      }
+    },
+    "T04": {
+      "nombre": "Renombrar un símbolo en 5 archivos",
+      "mide": "Ediciones múltiples",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 17177,
+            "salida": 912,
+            "cache_leida": 30592,
+            "enviados": 47769
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9850,
+            "p90": 10512
+          },
+          "llamadas": 12,
+          "llamadas_por_paso": 2.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "read": 5,
+            "edit": 5
+          },
+          "bytes_resultados": 3713,
+          "permisos_negados": 0,
+          "tiempo_ms": 36143,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-CMd5sF"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11911,
+            "salida": 1059,
+            "cache_leida": 60288,
+            "enviados": 72199
+          },
+          "pasos": 7,
+          "tokens_por_paso": {
+            "med": 10891,
+            "p90": 11650
+          },
+          "llamadas": 15,
+          "llamadas_por_paso": 2.142857142857143,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "grep": 2,
+            "read": 5,
+            "edit": 5
+          },
+          "bytes_resultados": 5652,
+          "permisos_negados": 0,
+          "tiempo_ms": 57696,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-ukqL8Q"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10654,
+            "salida": 902,
+            "cache_leida": 36992,
+            "enviados": 47646
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9781,
+            "p90": 10488
+          },
+          "llamadas": 12,
+          "llamadas_por_paso": 2.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "read": 5,
+            "edit": 5
+          },
+          "bytes_resultados": 3713,
+          "permisos_negados": 0,
+          "tiempo_ms": 22355,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-PkinSk"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7889,
+            "salida": 233,
+            "cache_leida": 28032,
+            "enviados": 35921
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 9016,
+            "p90": 9685
+          },
+          "llamadas": 3,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3
+          },
+          "bytes_resultados": 3722,
+          "permisos_negados": 0,
+          "tiempo_ms": 17003,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-QMnJFP"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10680,
+            "salida": 920,
+            "cache_leida": 36992,
+            "enviados": 47672
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9793,
+            "p90": 10500
+          },
+          "llamadas": 12,
+          "llamadas_por_paso": 2.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "read": 5,
+            "edit": 5
+          },
+          "bytes_resultados": 3713,
+          "permisos_negados": 0,
+          "tiempo_ms": 36338,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-suk5nh"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 47672,
+        "tokens_salida_med": 912,
+        "cache_pct_med": 77.63925618100156,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 9793,
+        "tokens_por_paso_p90": 10500,
+        "llamadas_med": 12,
+        "llamadas_por_paso_med": 2.4,
+        "minutos_med": 0.6023833333333334,
+        "tokens_por_exito": 48592
+      }
+    },
+    "T05": {
+      "nombre": "Leer un log de 3 MB y escribir la causa",
+      "mide": "Truncado y poda",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 37845,
+            "salida": 1969,
+            "cache_leida": 279168,
+            "enviados": 317013
+          },
+          "pasos": 12,
+          "tokens_por_paso": {
+            "med": 30770,
+            "p90": 36527
+          },
+          "llamadas": 19,
+          "llamadas_por_paso": 1.5833333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 18,
+            "write": 1
+          },
+          "bytes_resultados": 54786,
+          "permisos_negados": 0,
+          "tiempo_ms": 56381,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-ePgiY7"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 25154,
+            "salida": 1383,
+            "cache_leida": 168576,
+            "enviados": 193730
+          },
+          "pasos": 11,
+          "tokens_por_paso": {
+            "med": 17306,
+            "p90": 24279
+          },
+          "llamadas": 15,
+          "llamadas_por_paso": 1.3636363636363635,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 13,
+            "write": 1,
+            "edit": 1
+          },
+          "bytes_resultados": 30301,
+          "permisos_negados": 0,
+          "tiempo_ms": 96557,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-Unux3Y"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 47979,
+            "salida": 1101,
+            "cache_leida": 211072,
+            "enviados": 259051
+          },
+          "pasos": 9,
+          "tokens_por_paso": {
+            "med": 26088,
+            "p90": 49345
+          },
+          "llamadas": 12,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 11,
+            "write": 1
+          },
+          "bytes_resultados": 87645,
+          "permisos_negados": 0,
+          "tiempo_ms": 52572,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-8ze6OH"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 20272,
+            "salida": 833,
+            "cache_leida": 89856,
+            "enviados": 110128
+          },
+          "pasos": 7,
+          "tokens_por_paso": {
+            "med": 15621,
+            "p90": 21911
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.2857142857142858,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 1
+          },
+          "bytes_resultados": 27150,
+          "permisos_negados": 0,
+          "tiempo_ms": 34821,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-0eUld9"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 19195,
+            "salida": 1959,
+            "cache_leida": 183808,
+            "enviados": 203003
+          },
+          "pasos": 12,
+          "tokens_por_paso": {
+            "med": 17335.5,
+            "p90": 23660
+          },
+          "llamadas": 17,
+          "llamadas_por_paso": 1.4166666666666667,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 16,
+            "write": 1
+          },
+          "bytes_resultados": 26924,
+          "permisos_negados": 0,
+          "tiempo_ms": 55560,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-VUizuD"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 203003,
+        "tokens_salida_med": 1383,
+        "cache_pct_med": 87.01595003355185,
+        "pasos_med": 11,
+        "tokens_por_paso_med": 17335.5,
+        "tokens_por_paso_p90": 24279,
+        "llamadas_med": 15,
+        "llamadas_por_paso_med": 1.3636363636363635,
+        "minutos_med": 0.926,
+        "tokens_por_exito": 204962
+      }
+    },
+    "T06": {
+      "nombre": "Refactor que obliga a releer el mismo archivo",
+      "mide": "No releer",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9032,
+            "salida": 1059,
+            "cache_leida": 30720,
+            "enviados": 39752
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 10355.5,
+            "p90": 10825
+          },
+          "llamadas": 10,
+          "llamadas_por_paso": 2.5,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "read": 4,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 3855,
+          "permisos_negados": 0,
+          "tiempo_ms": 60370,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-lak9cu"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11225,
+            "salida": 1112,
+            "cache_leida": 47744,
+            "enviados": 58969
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 10172.5,
+            "p90": 10969
+          },
+          "llamadas": 11,
+          "llamadas_por_paso": 1.8333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "glob": 1,
+            "read": 4,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 4015,
+          "permisos_negados": 0,
+          "tiempo_ms": 52329,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-KCfzEw"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11161,
+            "salida": 1084,
+            "cache_leida": 48000,
+            "enviados": 59161
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 10220.5,
+            "p90": 10984
+          },
+          "llamadas": 11,
+          "llamadas_por_paso": 1.8333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "glob": 1,
+            "read": 4,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 4060,
+          "permisos_negados": 0,
+          "tiempo_ms": 45058,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-yhJ2j6"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9662,
+            "salida": 1183,
+            "cache_leida": 70784,
+            "enviados": 80446
+          },
+          "pasos": 8,
+          "tokens_por_paso": {
+            "med": 10484,
+            "p90": 11048
+          },
+          "llamadas": 12,
+          "llamadas_por_paso": 1.5,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 4,
+            "write": 1,
+            "edit": 3,
+            "grep": 1
+          },
+          "bytes_resultados": 4035,
+          "permisos_negados": 0,
+          "tiempo_ms": 38378,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-YJEk9H"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8245,
+            "salida": 940,
+            "cache_leida": 49152,
+            "enviados": 57397
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9689,
+            "p90": 10443
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "glob": 1,
+            "write": 1,
+            "edit": 3
+          },
+          "bytes_resultados": 3266,
+          "permisos_negados": 0,
+          "tiempo_ms": 28501,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-rZ6F7L"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 58969,
+        "tokens_salida_med": 1084,
+        "cache_pct_med": 81.13453119453695,
+        "pasos_med": 6,
+        "tokens_por_paso_med": 10220.5,
+        "tokens_por_paso_p90": 10969,
+        "llamadas_med": 11,
+        "llamadas_por_paso_med": 1.8333333333333333,
+        "minutos_med": 0.7509666666666667,
+        "tokens_por_exito": 60081
+      }
+    },
+    "T07": {
+      "nombre": "Arreglar error de tipos (TS)",
+      "mide": "LSP (ola 4)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7898,
+            "salida": 759,
+            "cache_leida": 38912,
+            "enviados": 46810
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9382,
+            "p90": 10272
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.6,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 2632,
+          "permisos_negados": 0,
+          "tiempo_ms": 39619,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-8ga2cX"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7958,
+            "salida": 742,
+            "cache_leida": 39040,
+            "enviados": 46998
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9382,
+            "p90": 10367
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.6,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 2632,
+          "permisos_negados": 0,
+          "tiempo_ms": 38842,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-KDUCDn"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10319,
+            "salida": 768,
+            "cache_leida": 36224,
+            "enviados": 46543
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9389,
+            "p90": 10136
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.6,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 2632,
+          "permisos_negados": 0,
+          "tiempo_ms": 36277,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-GXfGuW"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10560,
+            "salida": 699,
+            "cache_leida": 45440,
+            "enviados": 56000
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9287.5,
+            "p90": 10280
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.1666666666666667,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 5,
+            "edit": 2
+          },
+          "bytes_resultados": 2203,
+          "permisos_negados": 0,
+          "tiempo_ms": 35132,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-Ev6eb7"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11071,
+            "salida": 799,
+            "cache_leida": 46464,
+            "enviados": 57535
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9546.5,
+            "p90": 10779
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.5,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 4,
+            "read": 3,
+            "edit": 2
+          },
+          "bytes_resultados": 2702,
+          "permisos_negados": 0,
+          "tiempo_ms": 49177,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-wHEgHq"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 46998,
+        "tokens_salida_med": 759,
+        "cache_pct_med": 81.14285714285714,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 9382,
+        "tokens_por_paso_p90": 10280,
+        "llamadas_med": 8,
+        "llamadas_por_paso_med": 1.6,
+        "minutos_med": 0.6473666666666666,
+        "tokens_por_exito": 47740
+      }
+    },
+    "T08": {
+      "nombre": "Resumir 3 módulos con 3 ayudantes en paralelo",
+      "mide": "Ayudantes, resultado acotado",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11519,
+            "salida": 1169,
+            "cache_leida": 38656,
+            "enviados": 50175
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 10620,
+            "p90": 11254
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.6,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "read": 3,
+            "task": 3,
+            "bash": 1,
+            "write": 1
+          },
+          "bytes_resultados": 4783,
+          "permisos_negados": 0,
+          "tiempo_ms": 47414,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-2pw0FF"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10817,
+            "salida": 956,
+            "cache_leida": 36096,
+            "enviados": 46913
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9443,
+            "p90": 10589
+          },
+          "llamadas": 6,
+          "llamadas_por_paso": 1.2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "task": 3,
+            "write": 1
+          },
+          "bytes_resultados": 3861,
+          "permisos_negados": 0,
+          "tiempo_ms": 54887,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-7IFUGQ"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11564,
+            "salida": 1298,
+            "cache_leida": 37248,
+            "enviados": 48812
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9770,
+            "p90": 11456
+          },
+          "llamadas": 8,
+          "llamadas_por_paso": 1.6,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 1,
+            "task": 3,
+            "read": 3,
+            "write": 1
+          },
+          "bytes_resultados": 5512,
+          "permisos_negados": 0,
+          "tiempo_ms": 53633,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-EflK4i"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11302,
+            "salida": 1248,
+            "cache_leida": 36480,
+            "enviados": 47782
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9689,
+            "p90": 10989
+          },
+          "llamadas": 6,
+          "llamadas_por_paso": 1.2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "task": 3,
+            "write": 1
+          },
+          "bytes_resultados": 4477,
+          "permisos_negados": 0,
+          "tiempo_ms": 35379,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-YtKmmm"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8744,
+            "salida": 1140,
+            "cache_leida": 38016,
+            "enviados": 46760
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9711,
+            "p90": 10435
+          },
+          "llamadas": 6,
+          "llamadas_por_paso": 1.2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 2,
+            "task": 3,
+            "write": 1
+          },
+          "bytes_resultados": 2361,
+          "permisos_negados": 0,
+          "tiempo_ms": 31590,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-xy7gme"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 47782,
+        "tokens_salida_med": 1169,
+        "cache_pct_med": 76.94242534052395,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 9711,
+        "tokens_por_paso_p90": 10989,
+        "llamadas_med": 6,
+        "llamadas_por_paso_med": 1.2,
+        "minutos_med": 0.7902333333333333,
+        "tokens_por_exito": 49030
+      }
+    },
+    "T09": {
+      "nombre": "Sesión larga: 8 pedidos encadenados",
+      "mide": "Compactación, coherencia",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 17388,
+            "salida": 4834,
+            "cache_leida": 318720,
+            "enviados": 336108
+          },
+          "pasos": 30,
+          "tokens_por_paso": {
+            "med": 10517.5,
+            "p90": 14787
+          },
+          "llamadas": 22,
+          "llamadas_por_paso": 0.7333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 3,
+            "read": 3,
+            "edit": 8
+          },
+          "bytes_resultados": 5557,
+          "permisos_negados": 0,
+          "tiempo_ms": 90472,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-oJmDtR"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 14359,
+            "salida": 4624,
+            "cache_leida": 385536,
+            "enviados": 399895
+          },
+          "pasos": 34,
+          "tokens_por_paso": {
+            "med": 11052.5,
+            "p90": 16122
+          },
+          "llamadas": 26,
+          "llamadas_por_paso": 0.7647058823529411,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 3,
+            "read": 7,
+            "edit": 8
+          },
+          "bytes_resultados": 8240,
+          "permisos_negados": 0,
+          "tiempo_ms": 148913,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-35Ku7q"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 18240,
+            "salida": 4397,
+            "cache_leida": 329984,
+            "enviados": 348224
+          },
+          "pasos": 31,
+          "tokens_por_paso": {
+            "med": 10444,
+            "p90": 15570
+          },
+          "llamadas": 24,
+          "llamadas_por_paso": 0.7741935483870968,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 3,
+            "read": 5,
+            "edit": 8
+          },
+          "bytes_resultados": 7202,
+          "permisos_negados": 0,
+          "tiempo_ms": 158180,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-A13uD9"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 19988,
+            "salida": 4488,
+            "cache_leida": 340608,
+            "enviados": 360596
+          },
+          "pasos": 30,
+          "tokens_por_paso": {
+            "med": 10820,
+            "p90": 17497
+          },
+          "llamadas": 23,
+          "llamadas_por_paso": 0.7666666666666667,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 3,
+            "read": 4,
+            "edit": 8
+          },
+          "bytes_resultados": 8458,
+          "permisos_negados": 0,
+          "tiempo_ms": 150408,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-9AA8Wx"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 19094,
+            "salida": 4237,
+            "cache_leida": 368000,
+            "enviados": 387094
+          },
+          "pasos": 33,
+          "tokens_por_paso": {
+            "med": 10958,
+            "p90": 16449
+          },
+          "llamadas": 25,
+          "llamadas_por_paso": 0.7575757575757576,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 3,
+            "read": 6,
+            "edit": 8
+          },
+          "bytes_resultados": 8849,
+          "permisos_negados": 0,
+          "tiempo_ms": 146538,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-xNEySW"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 360596,
+        "tokens_salida_med": 4488,
+        "cache_pct_med": 94.82666285836696,
+        "pasos_med": 31,
+        "tokens_por_paso_med": 10820,
+        "tokens_por_paso_p90": 16122,
+        "llamadas_med": 24,
+        "llamadas_por_paso_med": 0.7647058823529411,
+        "minutos_med": 2.481883333333333,
+        "tokens_por_exito": 365084
+      }
+    },
+    "T10": {
+      "nombre": "Tarea de 6 pasos con lista de tareas",
+      "mide": "Plan ejecutable",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7542,
+            "salida": 1320,
+            "cache_leida": 46976,
+            "enviados": 54518
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9082,
+            "p90": 9879
+          },
+          "llamadas": 10,
+          "llamadas_por_paso": 1.6666666666666667,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "todowrite": 3,
+            "write": 6,
+            "bash": 1
+          },
+          "bytes_resultados": 342,
+          "permisos_negados": 0,
+          "tiempo_ms": 16833,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-YSsJ2T"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9626,
+            "salida": 792,
+            "cache_leida": 35200,
+            "enviados": 44826
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9134,
+            "p90": 9504
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 0.8,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "todowrite": 2,
+            "bash": 2
+          },
+          "bytes_resultados": 695,
+          "permisos_negados": 0,
+          "tiempo_ms": 22329,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-UyAQn6"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10383,
+            "salida": 2510,
+            "cache_leida": 129536,
+            "enviados": 139919
+          },
+          "pasos": 14,
+          "tokens_por_paso": {
+            "med": 10039,
+            "p90": 11094
+          },
+          "llamadas": 13,
+          "llamadas_por_paso": 0.9285714285714286,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "todowrite": 6,
+            "write": 6,
+            "bash": 1
+          },
+          "bytes_resultados": 537,
+          "permisos_negados": 0,
+          "tiempo_ms": 47447,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-QDYYVw"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8574,
+            "salida": 1198,
+            "cache_leida": 65792,
+            "enviados": 74366
+          },
+          "pasos": 8,
+          "tokens_por_paso": {
+            "med": 9341,
+            "p90": 10078
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.125,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "todowrite": 3,
+            "bash": 3,
+            "write": 3
+          },
+          "bytes_resultados": 528,
+          "permisos_negados": 0,
+          "tiempo_ms": 34864,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-yODE55"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7309,
+            "salida": 1175,
+            "cache_leida": 47360,
+            "enviados": 54669
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9260,
+            "p90": 9734
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.5,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "todowrite": 2,
+            "write": 6,
+            "bash": 1
+          },
+          "bytes_resultados": 286,
+          "permisos_negados": 0,
+          "tiempo_ms": 28769,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-K0dtae"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 54669,
+        "tokens_salida_med": 1198,
+        "cache_pct_med": 86.63044870036035,
+        "pasos_med": 6,
+        "tokens_por_paso_med": 9260,
+        "tokens_por_paso_p90": 9879,
+        "llamadas_med": 9,
+        "llamadas_por_paso_med": 1.125,
+        "minutos_med": 0.4794833333333333,
+        "tokens_por_exito": 55844
+      }
+    },
+    "T11": {
+      "nombre": "Migración con verificación por paso",
+      "mide": "Plan ejecutable",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9317,
+            "salida": 990,
+            "cache_leida": 97536,
+            "enviados": 106853
+          },
+          "pasos": 11,
+          "tokens_por_paso": {
+            "med": 9868,
+            "p90": 10341
+          },
+          "llamadas": 11,
+          "llamadas_por_paso": 1,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 7,
+            "write": 4
+          },
+          "bytes_resultados": 2950,
+          "permisos_negados": 0,
+          "tiempo_ms": 34659,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-D0TpXt"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8862,
+            "salida": 875,
+            "cache_leida": 97280,
+            "enviados": 106142
+          },
+          "pasos": 11,
+          "tokens_por_paso": {
+            "med": 9785,
+            "p90": 10238
+          },
+          "llamadas": 11,
+          "llamadas_por_paso": 1,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 7,
+            "write": 4
+          },
+          "bytes_resultados": 2902,
+          "permisos_negados": 0,
+          "tiempo_ms": 29345,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-wSOT0A"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9814,
+            "salida": 1280,
+            "cache_leida": 102912,
+            "enviados": 112726
+          },
+          "pasos": 11,
+          "tokens_por_paso": {
+            "med": 10505,
+            "p90": 11018
+          },
+          "llamadas": 15,
+          "llamadas_por_paso": 1.3636363636363635,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 5,
+            "read": 6,
+            "write": 4
+          },
+          "bytes_resultados": 3980,
+          "permisos_negados": 0,
+          "tiempo_ms": 33544,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-yjJru3"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 11374,
+            "salida": 1089,
+            "cache_leida": 97408,
+            "enviados": 108782
+          },
+          "pasos": 11,
+          "tokens_por_paso": {
+            "med": 10061,
+            "p90": 10605
+          },
+          "llamadas": 12,
+          "llamadas_por_paso": 1.0909090909090908,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "read": 2,
+            "bash": 6,
+            "write": 4
+          },
+          "bytes_resultados": 3422,
+          "permisos_negados": 0,
+          "tiempo_ms": 27529,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-NK379e"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10845,
+            "salida": 1836,
+            "cache_leida": 158336,
+            "enviados": 169181
+          },
+          "pasos": 16,
+          "tokens_por_paso": {
+            "med": 10756.5,
+            "p90": 11623
+          },
+          "llamadas": 20,
+          "llamadas_por_paso": 1.25,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 5,
+            "read": 6,
+            "todowrite": 5,
+            "write": 4
+          },
+          "bytes_resultados": 3969,
+          "permisos_negados": 0,
+          "tiempo_ms": 33574,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-U4b8Gw"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 108782,
+        "tokens_salida_med": 1089,
+        "cache_pct_med": 91.29393396377056,
+        "pasos_med": 11,
+        "tokens_por_paso_med": 10061,
+        "tokens_por_paso_p90": 10605,
+        "llamadas_med": 12,
+        "llamadas_por_paso_med": 1.0909090909090908,
+        "minutos_med": 0.5590666666666667,
+        "tokens_por_exito": 109871
+      }
+    },
+    "T12": {
+      "nombre": "Usar un conector MCP de prueba con 40 herramientas",
+      "mide": "Búsqueda diferida, topes MCP",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 21153,
+            "salida": 235,
+            "cache_leida": 46976,
+            "enviados": 68129
+          },
+          "pasos": 3,
+          "tokens_por_paso": {
+            "med": 22732,
+            "p90": 22912
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "write": 1
+          },
+          "bytes_resultados": 87,
+          "permisos_negados": 0,
+          "tiempo_ms": 11416,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-qEF93w"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 22918,
+            "salida": 241,
+            "cache_leida": 45056,
+            "enviados": 67974
+          },
+          "pasos": 3,
+          "tokens_por_paso": {
+            "med": 22668,
+            "p90": 22818
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "write": 1
+          },
+          "bytes_resultados": 87,
+          "permisos_negados": 0,
+          "tiempo_ms": 13643,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-SPBIo8"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 23007,
+            "salida": 313,
+            "cache_leida": 67840,
+            "enviados": 90847
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 22728.5,
+            "p90": 22902
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 1.25,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "bash": 1,
+            "write": 1
+          },
+          "bytes_resultados": 97,
+          "permisos_negados": 0,
+          "tiempo_ms": 16532,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-sOFAYg"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 21152,
+            "salida": 301,
+            "cache_leida": 70144,
+            "enviados": 91296
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 22843.5,
+            "p90": 22997
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 1.25,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "bash": 1,
+            "write": 1
+          },
+          "bytes_resultados": 97,
+          "permisos_negados": 0,
+          "tiempo_ms": 18221,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-WhubbG"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 22907,
+            "salida": 236,
+            "cache_leida": 45056,
+            "enviados": 67963
+          },
+          "pasos": 3,
+          "tokens_por_paso": {
+            "med": 22664,
+            "p90": 22814
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 1.3333333333333333,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "almacen_consultar_stock": 3,
+            "write": 1
+          },
+          "bytes_resultados": 87,
+          "permisos_negados": 0,
+          "tiempo_ms": 12947,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-AvayFD"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 68129,
+        "tokens_salida_med": 241,
+        "cache_pct_med": 68.95154779902832,
+        "pasos_med": 3,
+        "tokens_por_paso_med": 22728.5,
+        "tokens_por_paso_p90": 22902,
+        "llamadas_med": 4,
+        "llamadas_por_paso_med": 1.3333333333333333,
+        "minutos_med": 0.22738333333333333,
+        "tokens_por_exito": 68364
+      }
+    },
+    "T13": {
+      "nombre": "«Haz pasar las pruebas» (3 fallos)",
+      "mide": "Modo objetivo (ola 3)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 9987,
+            "salida": 569,
+            "cache_leida": 34944,
+            "enviados": 44931
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9122,
+            "p90": 9631
+          },
+          "llamadas": 6,
+          "llamadas_por_paso": 1.2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "edit": 3
+          },
+          "bytes_resultados": 2443,
+          "permisos_negados": 0,
+          "tiempo_ms": 16308,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-xoF1lj"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8398,
+            "salida": 570,
+            "cache_leida": 38016,
+            "enviados": 46414
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9541,
+            "p90": 10040
+          },
+          "llamadas": 6,
+          "llamadas_por_paso": 1.2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "edit": 3
+          },
+          "bytes_resultados": 3793,
+          "permisos_negados": 0,
+          "tiempo_ms": 14046,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-2PzHis"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10679,
+            "salida": 679,
+            "cache_leida": 36608,
+            "enviados": 47287
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9843,
+            "p90": 10316
+          },
+          "llamadas": 10,
+          "llamadas_por_paso": 2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 4,
+            "edit": 3
+          },
+          "bytes_resultados": 3936,
+          "permisos_negados": 0,
+          "tiempo_ms": 17119,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-9fEdJV"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8100,
+            "salida": 564,
+            "cache_leida": 47104,
+            "enviados": 55204
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9382.5,
+            "p90": 9818
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.1666666666666667,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 4,
+            "edit": 3
+          },
+          "bytes_resultados": 3191,
+          "permisos_negados": 0,
+          "tiempo_ms": 18809,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-dULuk0"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7815,
+            "salida": 410,
+            "cache_leida": 28672,
+            "enviados": 36487
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 9282,
+            "p90": 9738
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 1,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "read": 1
+          },
+          "bytes_resultados": 3313,
+          "permisos_negados": 0,
+          "tiempo_ms": 14146,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-Xhpj1A"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 46414,
+        "tokens_salida_med": 569,
+        "cache_pct_med": 78.58141255789734,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 9382.5,
+        "tokens_por_paso_p90": 9818,
+        "llamadas_med": 6,
+        "llamadas_por_paso_med": 1.2,
+        "minutos_med": 0.2718,
+        "tokens_por_exito": 46984
+      }
+    },
+    "T14": {
+      "nombre": "Revisar un diff con un bug sembrado",
+      "mide": "Revisor (ola 3)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10351,
+            "salida": 604,
+            "cache_leida": 45440,
+            "enviados": 55791
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9428.5,
+            "p90": 10064
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 0.8333333333333334,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 4,
+            "write": 1
+          },
+          "bytes_resultados": 2202,
+          "permisos_negados": 0,
+          "tiempo_ms": 17613,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-3Ocx8a"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 12377,
+            "salida": 801,
+            "cache_leida": 48256,
+            "enviados": 60633
+          },
+          "pasos": 6,
+          "tokens_por_paso": {
+            "med": 9925.5,
+            "p90": 12199
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.5,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 5,
+            "read": 3,
+            "write": 1
+          },
+          "bytes_resultados": 4117,
+          "permisos_negados": 0,
+          "tiempo_ms": 36452,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-V0s7hE"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 14438,
+            "salida": 940,
+            "cache_leida": 64384,
+            "enviados": 78822
+          },
+          "pasos": 7,
+          "tokens_por_paso": {
+            "med": 11553,
+            "p90": 14138
+          },
+          "llamadas": 9,
+          "llamadas_por_paso": 1.2857142857142858,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 8,
+            "write": 1
+          },
+          "bytes_resultados": 6255,
+          "permisos_negados": 0,
+          "tiempo_ms": 44515,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-4PLNOJ"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 10026,
+            "salida": 693,
+            "cache_leida": 39040,
+            "enviados": 49066
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 9313,
+            "p90": 11803
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 4,
+            "read": 2,
+            "write": 1
+          },
+          "bytes_resultados": 2673,
+          "permisos_negados": 0,
+          "tiempo_ms": 28238,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-Mehvtt"
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 7902,
+            "salida": 512,
+            "cache_leida": 29056,
+            "enviados": 36958
+          },
+          "pasos": 4,
+          "tokens_por_paso": {
+            "med": 9260,
+            "p90": 10232
+          },
+          "llamadas": 5,
+          "llamadas_por_paso": 1.25,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 1,
+            "read": 3,
+            "write": 1
+          },
+          "bytes_resultados": 2692,
+          "permisos_negados": 0,
+          "tiempo_ms": 15436,
+          "peticiones_modelo": null,
+          "carpeta": "/tmp/lz-bench-jiUfbV"
+        }
+      ],
+      "resumen": {
+        "n": 5,
+        "cuota": 0,
+        "exitos": 5,
+        "tokens_enviados_med": 55791,
+        "tokens_salida_med": 693,
+        "cache_pct_med": 79.58702356802401,
+        "pasos_med": 6,
+        "tokens_por_paso_med": 9428.5,
+        "tokens_por_paso_p90": 11803,
+        "llamadas_med": 7,
+        "llamadas_por_paso_med": 1.2857142857142858,
+        "minutos_med": 0.47063333333333335,
+        "tokens_por_exito": 56395
+      }
+    }
+  },
+  "agregados": {
+    "corridas": 65,
+    "exitos": 65,
+    "tasa_exito": 1,
+    "tokens_por_exito_med": 56087,
+    "minutos_p90": 1.0061666666666667
+  }
+}

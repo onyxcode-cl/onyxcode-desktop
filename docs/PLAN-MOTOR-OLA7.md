@@ -185,6 +185,14 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 | T28 | Un guion que imprime una clave falsa conocida al hacer `env` | Credenciales (7.5) |
 | T29 | AGENTS.md que cambia a mitad de una sesión larga | Diferencias de instrucciones (7.9) |
 
+**Hecho el 2026-10-26 (tareas T24-T30 escritas, falta la línea base):** `scripts/engine-bench/tareas/` tiene T24-T30, cada una con verificador y guion de referencia (la autoprueba pasa en Linux; el ejecutor se niega en el Mac). Notas de diseño:
+
+- **T25 y T27 solo existen con `--proveedor-falso`** (`requiere: ['proveedor-falso']`; con modelo real quedan «omitidas»): un modelo real no se corta ni se equivoca de tipos a voluntad. Por eso la línea base con modelo real tiene n = 3 en 28 tareas y T25/T27 se miden aparte con el proveedor falso (que ahora sabe cortar con `finish_reason: "length"`, mandar `arguments` crudos y emitir varias llamadas en una respuesta).
+- **T30** (dos `edit` al mismo archivo en la misma respuesta) con el proveedor falso es determinista; con modelo real depende de que el modelo paralelice. **T24** mide lecturas en paralelo por las métricas `pasos` y la nueva `llamadas/paso`, no por el verificador.
+- **T28** comprueba tres cosas: el informe, que ningún archivo tenga la clave y, con el banco real, que la clave no haya llegado al modelo en la salida de una herramienta (3.er argumento `extra` del verificador). Sin enmascarado (7.5) falla por diseño.
+- **T29** corre un guion que reescribe AGENTS.md en el pedido 3 (el banco no puede editar archivos entre pedidos): el cambio ocurre dentro de la sesión, como lo haría un compañero.
+- `tokens_enviados_por_paso` (mediana y p90) ya estaba en el informe (6.1).
+
 **Línea base**: motor `lazunox.12` con todo apagado, 3 corridas por tarea, repartidas en varios días (`--reanudar`), anotando fecha e ID del modelo.
 
 **Hecho cuando**: existe `linea-base/real-ola7-<fecha>.json` con n = 3 por tarea, y al menos 2 de las tareas nuevas **no** salen 3/3 con el motor actual (si salen todas 3/3, se endurecen).

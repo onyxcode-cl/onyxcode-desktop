@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:11:47.868Z",
+  "tarea": "T07",
+  "repeticion": 1,
+  "nombre": "Arreglar error de tipos (TS)",
+  "mide": "LSP (ola 4)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 11447,
+      "salida": 976,
+      "cache_leida": 57088,
+      "enviados": 68535
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 7,
+    "tokens_por_paso": {
+      "med": 9698,
+      "p90": 11075
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 1.2857142857142858,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 5,
+      "read": 2,
+      "edit": 2
+    },
+    "bytes_resultados": 3179,
+    "permisos_negados": 0,
+    "tiempo_ms": 27226,
+    "peticiones_modelo": null
+  }
+}

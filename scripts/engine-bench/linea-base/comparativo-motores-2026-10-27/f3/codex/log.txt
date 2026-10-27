@@ -1,0 +1,15 @@
+Motor /motor/codex (codex-cli 0.164.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 1
+T05 #1: ok (sin_informe) · 1 pasos · 145720 tokens · 26.0 s
+T10 #1: ok (sin_informe) · 1 pasos · 189388 tokens · 54.3 s
+T11 #1: ok (sin_informe) · 1 pasos · 94424 tokens · 32.0 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T05 Leer un log de 3 MB y escribir la causa | 1/1 | 142.110 | 3.610 | 78,7 | 1 | 142.110 · 142.110 | 11 | 11 | 0,43 | 145.720 |
+| T10 Tarea de 6 pasos con lista de tareas | 1/1 | 183.127 | 6.261 | 94,2 | 1 | 183.127 · 183.127 | 15 | 15 | 0,91 | 189.388 |
+| T11 Migración con verificación por paso | 1/1 | 90.775 | 3.649 | 91,1 | 1 | 90.775 · 90.775 | 11 | 11 | 0,53 | 94.424 |
+
+Éxito total: 3/3 (100 %) · mediana de tokens por éxito: 145.720 · p90 de minutos: 0,91
+fin codex rc=0

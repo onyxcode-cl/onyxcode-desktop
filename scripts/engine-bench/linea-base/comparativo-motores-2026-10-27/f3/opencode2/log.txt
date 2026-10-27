@@ -1,0 +1,15 @@
+Motor /motor/opencode (opencode v2.2.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 1
+T05 #1: ok (sin_informe) · 14 pasos · 230072 tokens · 50.2 s
+T10 #1: ok (sin_informe) · 6 pasos · 35536 tokens · 20.9 s
+T11 #1: ok (sin_informe) · 10 pasos · 63646 tokens · 19.7 s
+
+Resultado: /out/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T05 Leer un log de 3 MB y escribir la causa | 1/1 | 228.453 | 1.619 | 87,8 | 14 | 15.351 · 26.415 | 14 | 1 | 0,84 | 230.072 |
+| T10 Tarea de 6 pasos con lista de tareas | 1/1 | 34.505 | 1.031 | 80,5 | 6 | 5.841 · 6.561 | 9 | 1,5 | 0,35 | 35.536 |
+| T11 Migración con verificación por paso | 1/1 | 62.510 | 1.136 | 90,7 | 10 | 6.469 · 6.931 | 15 | 1,5 | 0,33 | 63.646 |
+
+Éxito total: 3/3 (100 %) · mediana de tokens por éxito: 63.646 · p90 de minutos: 0,84
+fin opencode2 rc=0

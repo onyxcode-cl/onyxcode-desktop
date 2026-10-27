@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:31:09.969Z",
+  "tarea": "T02",
+  "repeticion": 1,
+  "nombre": "Añadir función + prueba (Python)",
+  "mide": "Plan corto",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T02-mvqjolvznenx",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 7721,
+      "salida": 3184,
+      "cache_leida": 67968,
+      "enviados": 75689
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 75689,
+      "p90": 75689
+    },
+    "llamadas": 10,
+    "llamadas_por_paso": 10,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 9,
+      "edit": 1
+    },
+    "bytes_resultados": 3677,
+    "permisos_negados": 0,
+    "tiempo_ms": 26011,
+    "peticiones_modelo": null
+  }
+}

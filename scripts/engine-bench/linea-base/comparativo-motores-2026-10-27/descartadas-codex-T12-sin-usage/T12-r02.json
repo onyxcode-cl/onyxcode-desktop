@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:40:07.017Z",
+  "tarea": "T12",
+  "repeticion": 2,
+  "nombre": "Usar un conector MCP de prueba con 40 herramientas",
+  "mide": "Búsqueda diferida, topes MCP",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T12-mvqk08jktuqk",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 18283,
+      "salida": 1040,
+      "cache_leida": 99072,
+      "enviados": 117355
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 117355,
+      "p90": 117355
+    },
+    "llamadas": 6,
+    "llamadas_por_paso": 6,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "almacen_consultar_stock": 3,
+      "bash": 2,
+      "edit": 1
+    },
+    "bytes_resultados": 370,
+    "permisos_negados": 0,
+    "tiempo_ms": 20508,
+    "peticiones_modelo": null
+  }
+}

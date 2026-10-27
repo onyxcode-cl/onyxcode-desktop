@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:24:54.555Z",
+  "tarea": "T08",
+  "repeticion": 1,
+  "nombre": "Resumir 3 módulos con 3 ayudantes en paralelo",
+  "mide": "Ayudantes, resultado acotado",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 11519,
+      "salida": 1169,
+      "cache_leida": 38656,
+      "enviados": 50175
+    },
+    "pasos": 5,
+    "tokens_por_paso": {
+      "med": 10620,
+      "p90": 11254
+    },
+    "llamadas": 8,
+    "llamadas_por_paso": 1.6,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "read": 3,
+      "task": 3,
+      "bash": 1,
+      "write": 1
+    },
+    "bytes_resultados": 4783,
+    "permisos_negados": 0,
+    "tiempo_ms": 47414,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-2pw0FF"
+  }
+}

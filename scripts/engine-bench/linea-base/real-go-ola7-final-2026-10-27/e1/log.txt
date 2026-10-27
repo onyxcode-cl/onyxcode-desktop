@@ -1,0 +1,26 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 3 tareas × 5
+T05 #1: ok (completado) · 13 pasos · 329520 tokens · 65.9 s
+T05 #2: ok (completado) · 8 pasos · 163210 tokens · 28.4 s
+T05 #3: ok (completado) · 15 pasos · 310408 tokens · 70.1 s
+T05 #4: ok (completado) · 17 pasos · 408169 tokens · 58.6 s
+T05 #5: ok (completado) · 9 pasos · 176403 tokens · 32.0 s
+T18 #1: ok (completado) · 5 pasos · 48136 tokens · 14.2 s
+T18 #2: ok (completado) · 6 pasos · 57515 tokens · 18.4 s
+T18 #3: ok (completado) · 4 pasos · 38024 tokens · 12.1 s
+T18 #4: ok (completado) · 4 pasos · 37572 tokens · 13.1 s
+T18 #5: ok (completado) · 4 pasos · 37027 tokens · 12.9 s
+T26 #1: ok (completado) · 4 pasos · 37105 tokens · 11.8 s
+T26 #2: ok (completado) · 5 pasos · 46556 tokens · 15.4 s
+T26 #3: ok (completado) · 6 pasos · 57399 tokens · 20.8 s
+T26 #4: ok (completado) · 6 pasos · 60082 tokens · 19.8 s
+T26 #5: ok (completado) · 4 pasos · 37940 tokens · 11.3 s
+
+Resultado: /res/bench.json
+
+| Tarea | Éxito | Tokens enviados (med) | Tokens salida (med) | Caché % | Pasos (med) | Tokens/paso (med · p90) | Llamadas (med) | Llam./paso | Min (med) | Tokens/éxito |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| T05 Leer un log de 3 MB y escribir la causa | 5/5 | 307.689 | 1.299 | 87,8 | 13 | 22.790 · 29.195 | 14 | 1,38 | 0,98 | 310.408 |
+| T18 Oficina: ordenar 30 archivos en carpetas por fecha | 5/5 | 37.492 | 379 | 73,3 | 4 | 9.368 · 10.542 | 3 | 0,75 | 0,22 | 38.024 |
+| T26 Editar un Latin-1 y un archivo con finales mixtos sin corromperlos | 5/5 | 46.126 | 463 | 76,7 | 5 | 9.371 · 10.609 | 4 | 0,8 | 0,26 | 46.556 |
+
+Éxito total: 15/15 (100 %) · mediana de tokens por éxito: 57.399 · p90 de minutos: 1,1

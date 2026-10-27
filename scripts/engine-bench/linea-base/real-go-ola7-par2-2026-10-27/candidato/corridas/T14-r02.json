@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T03:48:05.796Z",
+  "tarea": "T14",
+  "repeticion": 2,
+  "nombre": "Revisar un diff con un bug sembrado",
+  "mide": "Revisor (ola 3)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 12377,
+      "salida": 801,
+      "cache_leida": 48256,
+      "enviados": 60633
+    },
+    "pasos": 6,
+    "tokens_por_paso": {
+      "med": 9925.5,
+      "p90": 12199
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 1.5,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 5,
+      "read": 3,
+      "write": 1
+    },
+    "bytes_resultados": 4117,
+    "permisos_negados": 0,
+    "tiempo_ms": 36452,
+    "peticiones_modelo": null,
+    "carpeta": "/tmp/lz-bench-V0s7hE"
+  }
+}

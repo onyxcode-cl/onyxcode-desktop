@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:35:46.575Z",
+  "tarea": "T13",
+  "repeticion": 3,
+  "nombre": "«Haz pasar las pruebas» (3 fallos)",
+  "mide": "Modo objetivo (ola 3)",
+  "categoria": "programacion",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "opencode v2.2.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "opencode2",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "oc2-T13-mvqjuvpnx9pv",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 4999,
+      "salida": 641,
+      "cache_leida": 16896,
+      "enviados": 21895
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 5433,
+      "p90": 6394
+    },
+    "llamadas": 9,
+    "llamadas_por_paso": 2.25,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "shell": 2,
+      "read": 4,
+      "edit": 3
+    },
+    "bytes_resultados": 2892,
+    "permisos_negados": 0,
+    "tiempo_ms": 9956,
+    "peticiones_modelo": null
+  }
+}

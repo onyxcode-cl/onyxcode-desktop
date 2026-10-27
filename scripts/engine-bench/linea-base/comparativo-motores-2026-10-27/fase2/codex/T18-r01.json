@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T10:49:02.731Z",
+  "tarea": "T18",
+  "repeticion": 1,
+  "nombre": "Oficina: ordenar 30 archivos en carpetas por fecha",
+  "mide": "Shell con cuidado",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor/codex",
+    "version": "codex-cli 0.164.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "adaptador": "codex",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "etiqueta": "cx-T18-mvqkbo9ea8nx",
+    "motivo": "sin_informe",
+    "tokens": {
+      "entrada": 7547,
+      "salida": 3048,
+      "cache_leida": 36224,
+      "enviados": 43771
+    },
+    "tokens_ayudantes": {
+      "entrada": 0,
+      "salida": 0,
+      "cache_leida": 0,
+      "pasos": 0,
+      "enviados": 0,
+      "incluidos_en_tokens": false
+    },
+    "pasos": 1,
+    "tokens_por_paso": {
+      "med": 43771,
+      "p90": 43771
+    },
+    "llamadas": 6,
+    "llamadas_por_paso": 6,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 6
+    },
+    "bytes_resultados": 4426,
+    "permisos_negados": 0,
+    "tiempo_ms": 22614,
+    "peticiones_modelo": null
+  }
+}

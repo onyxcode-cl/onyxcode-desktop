@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T00:43:13.842Z",
+  "tarea": "T24",
+  "repeticion": 2,
+  "nombre": "Leer 8 archivos pequeños y resumirlos",
+  "mide": "Lecturas en paralelo (pasos y llamadas por paso)",
+  "categoria": "oficina",
+  "motor": {
+    "ruta": "/motor",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "corrida": {
+    "ok": true,
+    "cuota": false,
+    "detalle": "ok",
+    "motivo": "completado",
+    "tokens": {
+      "entrada": 7710,
+      "salida": 403,
+      "cache_leida": 27776,
+      "enviados": 35486
+    },
+    "pasos": 4,
+    "tokens_por_paso": {
+      "med": 8901.5,
+      "p90": 9460
+    },
+    "llamadas": 3,
+    "llamadas_por_paso": 0.75,
+    "errores_herramientas": 0,
+    "herramientas": {
+      "bash": 2,
+      "write": 1
+    },
+    "bytes_resultados": 2012,
+    "permisos_negados": 0,
+    "tiempo_ms": 8062,
+    "peticiones_modelo": null
+  }
+}

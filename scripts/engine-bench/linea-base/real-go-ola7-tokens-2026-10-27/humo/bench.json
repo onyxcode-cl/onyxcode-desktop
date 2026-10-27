@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T13:00:58.014Z",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "repeticiones": 1,
+  "config": {
+    "adaptador": "lazunox",
+    "proxy": true,
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "tareas": {
+    "T01": {
+      "nombre": "Arreglar un bug con prueba que falla (JS)",
+      "mide": "Lectura justa, edición",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "etiqueta": "lz-T01-mvqp1t7jo5c1",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 6821,
+            "salida": 295,
+            "cache_leida": 24192,
+            "enviados": 31013
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 6436,
+            "p90": 6635
+          },
+          "llamadas": 4,
+          "llamadas_por_paso": 0.8,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 3,
+            "edit": 1
+          },
+          "bytes_resultados": 2357,
+          "permisos_negados": 0,
+          "tiempo_ms": 12677,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 1,
+        "cuota": 0,
+        "exitos": 1,
+        "tokens_enviados_med": 31013,
+        "tokens_salida_med": 295,
+        "cache_pct_med": 78.00599748492567,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 6436,
+        "tokens_por_paso_p90": 6635,
+        "llamadas_med": 4,
+        "llamadas_por_paso_med": 0.8,
+        "minutos_med": 0.21128333333333332,
+        "tokens_por_exito": 31308
+      }
+    },
+    "T12": {
+      "nombre": "Usar un conector MCP de prueba con 40 herramientas",
+      "mide": "Búsqueda diferida, topes MCP",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "etiqueta": "lz-T12-mvqp2310gort",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 8479,
+            "salida": 453,
+            "cache_leida": 30336,
+            "enviados": 38815
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 8088,
+            "p90": 8349
+          },
+          "llamadas": 6,
+          "llamadas_por_paso": 1.2,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "tool_search": 1,
+            "mcp_call": 3,
+            "bash": 1,
+            "write": 1
+          },
+          "bytes_resultados": 5317,
+          "permisos_negados": 0,
+          "tiempo_ms": 17970,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 1,
+        "cuota": 0,
+        "exitos": 1,
+        "tokens_enviados_med": 38815,
+        "tokens_salida_med": 453,
+        "cache_pct_med": 78.15535231225041,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 8088,
+        "tokens_por_paso_p90": 8349,
+        "llamadas_med": 6,
+        "llamadas_por_paso_med": 1.2,
+        "minutos_med": 0.2995,
+        "tokens_por_exito": 39268
+      }
+    },
+    "T13": {
+      "nombre": "«Haz pasar las pruebas» (3 fallos)",
+      "mide": "Modo objetivo (ola 3)",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "etiqueta": "lz-T13-mvqp2gwj83sk",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 6953,
+            "salida": 615,
+            "cache_leida": 25728,
+            "enviados": 32681
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 5,
+          "tokens_por_paso": {
+            "med": 6715,
+            "p90": 7215
+          },
+          "llamadas": 7,
+          "llamadas_por_paso": 1.4,
+          "errores_herramientas": 0,
+          "herramientas": {
+            "bash": 4,
+            "edit": 3
+          },
+          "bytes_resultados": 3238,
+          "permisos_negados": 0,
+          "tiempo_ms": 9800,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 1,
+        "cuota": 0,
+        "exitos": 1,
+        "tokens_enviados_med": 32681,
+        "tokens_salida_med": 615,
+        "cache_pct_med": 78.72464122884857,
+        "pasos_med": 5,
+        "tokens_por_paso_med": 6715,
+        "tokens_por_paso_p90": 7215,
+        "llamadas_med": 7,
+        "llamadas_por_paso_med": 1.4,
+        "minutos_med": 0.16333333333333333,
+        "tokens_por_exito": 33296
+      }
+    }
+  },
+  "agregados": {
+    "corridas": 3,
+    "exitos": 3,
+    "tasa_exito": 1,
+    "tokens_por_exito_med": 33296,
+    "minutos_p90": 0.2995
+  }
+}

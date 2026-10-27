@@ -1,0 +1,5 @@
+Motor /motor/opencode (1.19.0) · opencode-go/deepseek-v4.1-flash · 1 tareas × 6
+T19 #1: ya medida (/res/corridas/T19-r01.json); se reutiliza
+T19 #2: ya medida (/res/corridas/T19-r02.json); se reutiliza
+T19 #3: ya medida (/res/corridas/T19-r03.json); se reutiliza
+T19 #4: ok (completado) · 64 pasos · 1044199 tokens · 226.6 s

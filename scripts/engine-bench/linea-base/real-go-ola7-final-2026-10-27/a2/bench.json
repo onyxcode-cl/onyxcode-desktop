@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "fecha": "2026-10-27T05:44:50.507Z",
+  "motor": {
+    "ruta": "/motor/opencode",
+    "version": "1.19.0"
+  },
+  "modelo": "opencode-go/deepseek-v4.1-flash",
+  "proveedorFalso": false,
+  "repeticiones": 6,
+  "config": {
+    "config_global": null,
+    "max_pasos": 60,
+    "presupuesto_tokens": 400000,
+    "timeout_min": 15,
+    "env": []
+  },
+  "tareas": {
+    "T19": {
+      "nombre": "Sesión larga: 20 pedidos con referencias a decisiones",
+      "mide": "Coherencia tras compactar",
+      "categoria": "programacion",
+      "corridas": [
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 43616,
+            "salida": 12236,
+            "cache_leida": 1900928,
+            "enviados": 1944544
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 96,
+          "tokens_por_paso": {
+            "med": 19485.5,
+            "p90": 31983
+          },
+          "llamadas": 84,
+          "llamadas_por_paso": 0.875,
+          "errores_herramientas": 3,
+          "herramientas": {
+            "bash": 25,
+            "glob": 1,
+            "write": 9,
+            "read": 21,
+            "edit": 25,
+            "grep": 3
+          },
+          "bytes_resultados": 37070,
+          "permisos_negados": 0,
+          "tiempo_ms": 254141,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 30771,
+            "salida": 9413,
+            "cache_leida": 1062272,
+            "enviados": 1093043
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 71,
+          "tokens_por_paso": {
+            "med": 14730,
+            "p90": 22488
+          },
+          "llamadas": 51,
+          "llamadas_por_paso": 0.7183098591549296,
+          "errores_herramientas": 1,
+          "herramientas": {
+            "write": 6,
+            "read": 7,
+            "edit": 18,
+            "bash": 20
+          },
+          "bytes_resultados": 14542,
+          "permisos_negados": 0,
+          "tiempo_ms": 183326,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 39833,
+            "salida": 11639,
+            "cache_leida": 1350016,
+            "enviados": 1389849
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 77,
+          "tokens_por_paso": {
+            "med": 17245,
+            "p90": 28289
+          },
+          "llamadas": 61,
+          "llamadas_por_paso": 0.7922077922077922,
+          "errores_herramientas": 2,
+          "herramientas": {
+            "bash": 26,
+            "write": 5,
+            "read": 8,
+            "edit": 20,
+            "grep": 2
+          },
+          "bytes_resultados": 24506,
+          "permisos_negados": 0,
+          "tiempo_ms": 240736,
+          "peticiones_modelo": null
+        },
+        {
+          "ok": true,
+          "cuota": false,
+          "detalle": "ok",
+          "motivo": "completado",
+          "tokens": {
+            "entrada": 35822,
+            "salida": 9081,
+            "cache_leida": 999296,
+            "enviados": 1035118
+          },
+          "tokens_ayudantes": {
+            "entrada": 0,
+            "salida": 0,
+            "cache_leida": 0,
+            "pasos": 0,
+            "enviados": 0,
+            "incluidos_en_tokens": false
+          },
+          "pasos": 64,
+          "tokens_por_paso": {
+            "med": 15390,
+            "p90": 23206
+          },
+          "llamadas": 48,
+          "llamadas_por_paso": 0.75,
+          "errores_herramientas": 1,
+          "herramientas": {
+            "bash": 14,
+            "write": 9,
+            "read": 10,
+            "edit": 15
+          },
+          "bytes_resultados": 28061,
+          "permisos_negados": 0,
+          "tiempo_ms": 226609,
+          "peticiones_modelo": null
+        }
+      ],
+      "resumen": {
+        "n": 4,
+        "cuota": 0,
+        "exitos": 4,
+        "tokens_enviados_med": 1241446,
+        "tokens_salida_med": 10526,
+        "cache_pct_med": 97.15941845433336,
+        "pasos_med": 74,
+        "tokens_por_paso_med": 16317.5,
+        "tokens_por_paso_p90": 25747.5,
+        "llamadas_med": 56,
+        "llamadas_por_paso_med": 0.7711038961038961,
+        "minutos_med": 3.894541666666667,
+        "tokens_por_exito": 1251972
+      }
+    }
+  },
+  "parcial": true,
+  "agregados": {
+    "corridas": 4,
+    "exitos": 4,
+    "tasa_exito": 1,
+    "tokens_por_exito_med": 1251972,
+    "minutos_p90": 4.235683333333333
+  }
+}
