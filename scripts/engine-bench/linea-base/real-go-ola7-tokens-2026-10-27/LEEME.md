@@ -1,6 +1,6 @@
 # Ola 7, 7.2: Lazunox gasta menos tokens por paso
 
-Rama del motor: `feat/ola7-tokens` en `/Users/ben/Documents/lzx-wt/ola7-tokens` (9 commits sobre `feat/ola7-final` 87ff019; el último, 9940046). Binario nuevo (compilado en el VPS con la receta de siempre, carpeta ya borrada): `~/Documents/lzx-bench-bin/tokens/v2/opencode`, sha256 `16973e02a4ec6ad7158a55cd182d144668b8c3fca8d3f53a83e7e6dae62807e3`. El `v1` de esa carpeta es una versión intermedia sin ejecutar con modelo real.
+Rama del motor: `feat/ola7-tokens` en `~/Documents/lzx-wt/ola7-tokens` (9 commits sobre `feat/ola7-final` 87ff019; el último, 9940046). Binario nuevo (compilado en el VPS con la receta de siempre, carpeta ya borrada): `~/Documents/lzx-bench-bin/tokens/v2/opencode`, sha256 `16973e02a4ec6ad7158a55cd182d144668b8c3fca8d3f53a83e7e6dae62807e3`. El `v1` de esa carpeta es una versión intermedia sin ejecutar con modelo real.
 
 ## Qué se hizo (todo ENCENDIDO por defecto, por orden de Ben; apagar con `LAZUNOX_AHORRO_TOKENS=0`)
 

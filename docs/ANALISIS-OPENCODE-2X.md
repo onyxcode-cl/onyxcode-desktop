@@ -3,9 +3,9 @@
 Fecha: 2026-10-27. Solo lectura: no se ejecutó ningún binario de terceros ni se llamó a ningún modelo.
 
 - **Fuente 2.x**: clon de OpenCode 2.x (MIT). Rutas `core/...` = `packages/core/src/...`.
-- **Nuestro motor**: `/Users/ben/Documents/lzx-wt/ola7-final/packages/opencode/src` (rama `feat/ola7-final`, commit 87ff019). Rutas `lzx/...` = ese directorio.
+- **Nuestro motor**: `~/Documents/lzx-wt/ola7-final/packages/opencode/src` (rama `feat/ola7-final`, commit 87ff019). Rutas `lzx/...` = ese directorio.
 - **Medidas del banco**: `scripts/engine-bench/linea-base/comparativo-motores-2026-10-27/proxy.jsonl` (peticiones reales del comparativo, modelo `deepseek-v4.1-flash`).
-- **Trabajo de a26b1e6b50fc34569** (`feat/ola7-tokens`): mirado en `/Users/ben/Documents/lzx-wt/ola7-tokens` (6 commits más cambios sin confirmar). Esta tabla marca qué cubre él y qué no.
+- **Trabajo de a26b1e6b50fc34569** (`feat/ola7-tokens`): mirado en `~/Documents/lzx-wt/ola7-tokens` (6 commits más cambios sin confirmar). Esta tabla marca qué cubre él y qué no.
 
 ## 1. Resumen en español simple (10 líneas)
 
