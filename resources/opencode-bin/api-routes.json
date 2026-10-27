@@ -1,6 +1,6 @@
 {
   "opencodeVersion": "1.19.0",
-  "routeCount": 202,
+  "routeCount": 206,
   "routes": [
     "DELETE /api/credential/{credentialID}",
     "DELETE /api/integration/attempt/{attemptID}",
@@ -12,6 +12,8 @@
     "DELETE /experimental/workspace/{id}",
     "DELETE /experimental/worktree",
     "DELETE /mcp/{name}/auth",
+    "DELETE /permission/siempre",
+    "DELETE /permission/siempre/{id}",
     "DELETE /pty/{ptyID}",
     "DELETE /session/{sessionID}",
     "DELETE /session/{sessionID}/message/{messageID}",
@@ -87,6 +89,7 @@
     "GET /mcp/elicitation",
     "GET /path",
     "GET /permission",
+    "GET /permission/siempre",
     "GET /project",
     "GET /project/current",
     "GET /project/{projectID}/directories",
@@ -105,6 +108,7 @@
     "GET /session/{sessionID}/message",
     "GET /session/{sessionID}/message/{messageID}",
     "GET /session/{sessionID}/todo",
+    "GET /session/{sessionID}/uso",
     "GET /skill",
     "GET /tui/control/next",
     "GET /vcs",

@@ -1163,6 +1163,11 @@ const HTTP_X_ROUTES = [
   'DELETE /experimental/session/{sessionID}/objetivo',
   // Peso del contexto fijo (motor lazunox.10, 4D): solo lectura, pero es dato de la sesión de escritorio: clase X.
   'GET /experimental/session/{sessionID}/contexto-fijo',
+  // «Siempre» guardados (motor, Ola 7 / 7.22): ver y quitar lo que la persona aprobó para siempre es decisión de quien está en el Mac.
+  // Clase X incluso el listado (muestra órdenes y patrones). Nunca desde el celular.
+  'GET /permission/siempre',
+  'DELETE /permission/siempre/{id}',
+  'DELETE /permission/siempre',
   'POST /experimental/workspace',
   'POST /experimental/workspace/sync-list',
   'POST /experimental/workspace/warp',
@@ -1208,6 +1213,7 @@ export const CELULAR_HTTP_POLICY: Record<string, HttpSpec> = {
   'GET /session/{sessionID}/message': httpScoped('R'), // session.messages
   'GET /session/{sessionID}/message/{messageID}': httpScoped('R'), // session.message
   'GET /session/{sessionID}/todo': httpScoped('R'), // session.todo
+  'GET /session/{sessionID}/uso': httpScoped('R'), // uso local por sesión (motor Ola 7 / 7.18): solo contadores, ligado al ámbito
   'GET /experimental/session': httpGlobal('R'), // experimental.session.list (el motor lista de todos los proyectos: T4 filtra la respuesta por ámbito)
   'GET /provider': httpGlobal('R'), // provider.list
   'GET /config/providers': httpGlobal('R'), // config.providers
