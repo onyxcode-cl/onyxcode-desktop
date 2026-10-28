@@ -19,7 +19,7 @@ vi.mock('../embedded-browser/mcp-server', () => ({
 vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isComputerUseDisabled: () => false }))
 
 import { t } from '@shared/i18n'
-import { UNIFIED_APPS_ENV } from '@shared/unified-bridge'
+import { UNIFIED_APPS_ENV, UNIFIED_APPS_WIN_ENV } from '@shared/unified-bridge'
 import { TasksManager } from './manager'
 import { createWinHost } from './win-context'
 import type { WinChatFs } from './chat-folders-win'
@@ -97,12 +97,14 @@ beforeEach(() => {
   state.userData = join(root, 'userData')
   prevFlag = process.env[UNIFIED_APPS_ENV]
   process.env[UNIFIED_APPS_ENV] = '1'
+  process.env[UNIFIED_APPS_WIN_ENV] = '1'
   disk = fakeDisk()
   for (const d of ['C:\\', 'C:\\Users', HOME, 'C:\\Windows', 'C:\\lzx']) disk.add(d)
 })
 afterEach(() => {
   if (prevFlag === undefined) delete process.env[UNIFIED_APPS_ENV]
   else process.env[UNIFIED_APPS_ENV] = prevFlag
+  delete process.env[UNIFIED_APPS_WIN_ENV]
   rmSync(root, { recursive: true, force: true })
 })
 
@@ -156,6 +158,13 @@ describe('createChatFolder en win32', () => {
     expect(m.listChatIndex()).toEqual([])
     await m.refreshPolicy()
     expect(m.checkFolder('C:\\lzx').ok).toBe(true)
+  })
+})
+
+describe('Windows sin la segunda variable', () => {
+  it('solo LAZUNOX_UNIFIED_APPS=1 en win32: modo unificado apagado', async () => {
+    delete process.env[UNIFIED_APPS_WIN_ENV]
+    await expect(mk().createChatFolder()).rejects.toThrow(t('merr.chat.unifiedOff'))
   })
 })
 

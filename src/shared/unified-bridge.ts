@@ -19,7 +19,33 @@ export const BRIDGE_SERVER_HEADER = 'x-lazunox-server'
 /** Argumento que el plugin del motor inyecta en cada llamada `computer_*` con el id de la sesión del agente. */
 export const BRIDGE_SESSION_ARG = 'lazunox_session'
 
-/** ¿Está encendido el puente? Solo con el valor exacto `1` (cualquier otra cosa = apagado). */
-export function isUnifiedAppsEnabled(env: Record<string, string | undefined> = process.env): boolean {
-  return env[UNIFIED_APPS_ENV] === '1'
+/** Segunda variable, solo para Windows (experimental): junto con `LAZUNOX_UNIFIED_APPS=1` enciende el modo unificado en el PC con Windows. */
+export const UNIFIED_APPS_WIN_ENV = 'LAZUNOX_UNIFIED_APPS_WIN'
+
+/**
+ * ¿Está encendido el modo unificado en esa plataforma? macOS: `LAZUNOX_UNIFIED_APPS==='1'`. Windows: AMBAS variables con el valor exacto `1`
+ * (experimental; apagado por defecto hasta pasar la batería en el PC real). Cualquier otra plataforma: apagado.
+ */
+export function isUnifiedAppsEnabledFor(platform: NodeJS.Platform, env: Record<string, string | undefined> = process.env): boolean {
+  if (platform === 'darwin') return env[UNIFIED_APPS_ENV] === '1'
+  if (platform === 'win32') return env[UNIFIED_APPS_ENV] === '1' && env[UNIFIED_APPS_WIN_ENV] === '1'
+  return false
+}
+
+/** ¿Está encendido el puente en ESTA plataforma? Solo con el valor exacto `1` de la(s) variable(s) (cualquier otra cosa = apagado). */
+export function isUnifiedAppsEnabled(
+  env: Record<string, string | undefined> = process.env,
+  platform: NodeJS.Platform = process.platform
+): boolean {
+  // Fuera de Windows se conserva la regla de siempre (una sola variable); solo Windows exige además la segunda.
+  return platform === 'win32' ? isUnifiedAppsEnabledFor('win32', env) : env[UNIFIED_APPS_ENV] === '1'
+}
+
+let unifiedWinCapsReady = false
+/** Windows: lo fija el gestor de Tareas (Control del PC + Tareas aisladas por WSL disponibles). Lazunox no elevado se comprueba además al registrar el puente. */
+export function setUnifiedWinCapsReady(ready: boolean): void {
+  unifiedWinCapsReady = ready
+}
+export function isUnifiedWinCapsReady(): boolean {
+  return unifiedWinCapsReady
 }

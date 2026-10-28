@@ -42,7 +42,7 @@ vi.mock('./sandbox', () => ({
   }
 }))
 
-import { BRIDGE_ORIGIN_HEADER, BRIDGE_SERVER_HEADER, UNIFIED_APPS_ENV } from '@shared/unified-bridge'
+import { BRIDGE_ORIGIN_HEADER, BRIDGE_SERVER_HEADER, UNIFIED_APPS_ENV, UNIFIED_APPS_WIN_ENV } from '@shared/unified-bridge'
 import { getBridgeSecret } from './bridge-secret'
 import { TasksManager } from './manager'
 
@@ -82,6 +82,7 @@ afterEach(() => {
   else process.env.HOME = prevHome
   if (prevFlag === undefined) delete process.env[UNIFIED_APPS_ENV]
   else process.env[UNIFIED_APPS_ENV] = prevFlag
+  delete process.env[UNIFIED_APPS_WIN_ENV]
   rmSync(root, { recursive: true, force: true })
 })
 
@@ -154,5 +155,52 @@ describe.skipIf(!macOnly)('puente de apps en el servidor aislado', () => {
     const env = started[0].extraEnv ?? {}
     expect(env.LAZUNOX_UNIFIED_BRIDGE).toBeUndefined()
     expect(started[0].extraOutboundPorts).toBeUndefined()
+  })
+})
+
+/** Windows (plataforma inyectada, sin Windows real): el puente exige ambas variables + Control del PC + Tareas WSL + no elevado. */
+describe('puente de apps con platform win32 inyectada', () => {
+  const winHost = {
+    home: () => 'C:\\Users\\Ben',
+    isWindows: true
+  }
+  async function startWin(o: { computerWin?: boolean; tasksWin?: boolean; elevated?: boolean | null }): Promise<Record<string, string>> {
+    const m = new TasksManager({
+      platform: 'win32',
+      win: winHost as never,
+      winChatFs: {} as never,
+      computer,
+      computerWin: o.computerWin,
+      tasksWin: o.tasksWin,
+      isElevated: async () => (o.elevated === undefined ? false : o.elevated)
+    })
+    const folder = join(home, 'Documents')
+    // `inlineConfig` es privada: se ejercita por start(); el servidor falso del mock registra las variables.
+    await (m as unknown as { inlineConfig: (...a: unknown[]) => Promise<unknown> }).inlineConfig('k', folder, false, [])
+    return (m as unknown as { bridgeServers: Set<string> }).bridgeServers.has('k') ? { bridge: '1' } : {}
+  }
+
+  it('sin la segunda variable: apagado', async () => {
+    process.env[UNIFIED_APPS_ENV] = '1'
+    expect(await startWin({ computerWin: true, tasksWin: true })).toEqual({})
+  })
+  it('con ambas variables y capacidades: encendido', async () => {
+    process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '1'
+    expect(await startWin({ computerWin: true, tasksWin: true })).toEqual({ bridge: '1' })
+  })
+  it('falta Control del PC, Tareas WSL, o Lazunox va elevado / no se sabe: apagado', async () => {
+    process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '1'
+    expect(await startWin({ computerWin: false, tasksWin: true })).toEqual({})
+    expect(await startWin({ computerWin: true, tasksWin: false })).toEqual({})
+    expect(await startWin({ computerWin: true, tasksWin: true, elevated: true })).toEqual({})
+    expect(await startWin({ computerWin: true, tasksWin: true, elevated: null })).toEqual({})
+  })
+  it('con la política disableComputerUse: apagado', async () => {
+    process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '1'
+    pol.value = { disableComputerUse: true }
+    expect(await startWin({ computerWin: true, tasksWin: true })).toEqual({})
   })
 })

@@ -16,7 +16,7 @@ vi.mock('../tasks/policy', () => ({
   isComputerUseDisabled: (p: { disableComputerUse?: boolean } | null) => p?.disableComputerUse === true
 }))
 
-import { UNIFIED_APPS_ENV } from '@shared/unified-bridge'
+import { setUnifiedWinCapsReady, UNIFIED_APPS_ENV, UNIFIED_APPS_WIN_ENV } from '@shared/unified-bridge'
 import { registerAppHandlers } from './app'
 
 async function info(): Promise<{ unifiedApps?: boolean }> {
@@ -33,6 +33,8 @@ afterEach(() => {
   Object.defineProperty(process, 'platform', { value: realPlatform })
   if (prevFlag === undefined) delete process.env[UNIFIED_APPS_ENV]
   else process.env[UNIFIED_APPS_ENV] = prevFlag
+  delete process.env[UNIFIED_APPS_WIN_ENV]
+  setUnifiedWinCapsReady(false)
   pol.value = null
 })
 
@@ -52,9 +54,25 @@ describe('app:info.unifiedApps', () => {
     pol.value = { disableComputerUse: true }
     expect((await info()).unifiedApps).toBe(false)
   })
-  it('en Windows: false', async () => {
+  it('en Windows sin la segunda variable: false', async () => {
     process.env[UNIFIED_APPS_ENV] = '1'
+    setUnifiedWinCapsReady(true)
     Object.defineProperty(process, 'platform', { value: 'win32' })
+    expect((await info()).unifiedApps).toBe(false)
+  })
+  it('en Windows con ambas variables pero sin capacidades: false', async () => {
+    process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '1'
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    expect((await info()).unifiedApps).toBe(false)
+  })
+  it('en Windows con ambas variables y capacidades: true; con la política: false', async () => {
+    process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '1'
+    setUnifiedWinCapsReady(true)
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    expect((await info()).unifiedApps).toBe(true)
+    pol.value = { disableComputerUse: true }
     expect((await info()).unifiedApps).toBe(false)
   })
 })

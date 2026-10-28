@@ -69,7 +69,14 @@ import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
 import { getBridgeSecret } from './bridge-secret'
 import { writeUnifiedAppsPrompt } from './unified-apps-prompt'
-import { BRIDGE_ORIGIN_HEADER, BRIDGE_ROUTE_NAME, BRIDGE_SERVER_HEADER, isUnifiedAppsEnabled } from '@shared/unified-bridge'
+import { detectElevated } from './win-elevation'
+import {
+  BRIDGE_ORIGIN_HEADER,
+  BRIDGE_ROUTE_NAME,
+  BRIDGE_SERVER_HEADER,
+  isUnifiedAppsEnabled,
+  setUnifiedWinCapsReady
+} from '@shared/unified-bridge'
 import { ChatIndexStore } from './chat-index'
 import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
@@ -275,6 +282,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       winBackend?: WinBackendProvider
       /** Bandera efectiva `computerWin` (la trae `main`). Ausente: en Windows el agente `computer` sigue siendo el de macOS y no se usa. */
       computerWin?: boolean
+      /** ¿Lazunox corre elevado en Windows? (pruebas); por defecto `detectElevated`. `true`/`null` = elevado/desconocido. */
+      isElevated?: () => Promise<boolean | null>
       /** Ids de proveedores con credencial que vería un servidor sandbox al arrancar (pruebas); por defecto se leen de `auth.json` (solo ids). */
       credentialIds?: () => string[]
       /** Variables de entorno de las funciones experimentales del motor (Modo código, subagentes de fondo), ya validadas por `engineFlagEnvFor`. */
@@ -286,7 +295,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     this.win = this.platform === 'win32' ? (opts.win ?? createRealWinHost({ userData: app.getPath('userData') })) : null
     this.winChatFs = this.win ? (opts.winChatFs ?? createRealWinChatFs(this.win)) : null
     // Barrido diferido de carpetas de chat vacías y antiguas (no bloquea el arranque; sin bandera no hace nada).
-    if (isUnifiedAppsEnabled()) {
+    // Windows: el modo unificado (experimental) exige además Control del PC + Tareas aisladas; el renderer lo lee de `app:info`.
+    if (this.platform === 'win32') setUnifiedWinCapsReady(this.unifiedWinCaps())
+    if (this.unifiedOn()) {
       const timer = setTimeout(() => {
         try {
           this.pruneEmptyChatFolders()
@@ -395,7 +406,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   private readonly chatIndex = new ChatIndexStore(() => join(app.getPath('userData'), 'chat-index.json'))
 
   private chatIndexOn(): boolean {
-    return isUnifiedAppsEnabled()
+    return this.unifiedOn()
+  }
+
+  /** ¿Modo unificado encendido en la plataforma efectiva? (Windows: ambas variables.) */
+  private unifiedOn(): boolean {
+    return isUnifiedAppsEnabled(process.env, this.platform)
+  }
+
+  /** Windows: Control del PC (helper) y Tareas aisladas por WSL disponibles. */
+  private unifiedWinCaps(): boolean {
+    return this.opts.computerWin === true && this.opts.tasksWin === true
   }
 
   /** ¿Main acepta esta carpeta en el índice? Carpeta de chat registrada o carpeta aprobada por la persona. */
@@ -531,7 +552,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * (3) su realpath queda estrictamente DENTRO de `realpath(~/Lazunox/Chats)`. Lo consume la interfaz para decidir (campo `chat`).
    */
   private isRegisteredChatFolder(folder: string): boolean {
-    if (!isUnifiedAppsEnabled()) return false
+    if (!this.unifiedOn()) return false
     const data = this.load()
     if (this.winChatFs && this.win) {
       // Windows: el registro se compara sin distinguir mayúsculas; sin uid/0700 (se confía en la ACL heredada del perfil).
@@ -565,7 +586,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * re-abrirían las carpetas de todos los chats. Solo con la bandera y fuera de Windows; compara por ruta real.
    */
   private chatsContainerReason(folder: string): string | null {
-    if (!isUnifiedAppsEnabled()) return null
+    if (!this.unifiedOn()) return null
     if (this.win && this.winChatFs) return winContainsChats(this.winChatFs, this.win.home(), folder) ? t('merr.chat.containsChats') : null
     let chats: string
     let real: string
@@ -608,7 +629,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * PENDIENTE (a propósito): borrar la carpeta al archivar la tarea si no se creó ningún archivo en ella; por ahora se conservan.
    */
   async createChatFolder(): Promise<TasksFolder> {
-    if (!isUnifiedAppsEnabled()) throw new Error(t('merr.chat.unifiedOff'))
+    if (!this.unifiedOn()) throw new Error(t('merr.chat.unifiedOff'))
     // Misma condición que `app:info` (falla cerrado): si la política apaga Control del PC, no se crea nada.
     if (isComputerUseDisabled(loadManagedPolicy())) throw new Error(t('merr.chat.computerUseOff'))
     await this.refreshPolicy()
@@ -712,7 +733,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * `now` es inyectable para las pruebas. Devuelve los ids borrados.
    */
   pruneEmptyChatFolders(now: number = Date.now()): string[] {
-    if (!isUnifiedAppsEnabled()) return []
+    if (!this.unifiedOn()) return []
     const removed: string[] = []
     const uid = typeof process.getuid === 'function' ? process.getuid() : undefined
     let indexed: Set<string>
@@ -1309,15 +1330,26 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     let bridgeMcp: Record<string, unknown> | null = null
     this.bridgeServers.delete(key)
     // Política gestionada: `disableComputerUse` apaga el puente (falla cerrado: política ilegible = apagado).
-    // Solo macOS: Windows y WSL quedan fuera en esta ola (el contrato del puente no cubre su servidor de control ni su sandbox).
-    if (
-      mcpProxy &&
-      !fullAccess &&
-      this.platform !== 'win32' &&
-      isUnifiedAppsEnabled() &&
-      this.opts.computer &&
-      !isComputerUseDisabled(loadManagedPolicy())
-    ) {
+    // macOS: con la bandera. Windows (experimental): ambas variables + Control del PC y Tareas aisladas por WSL + Lazunox NO elevado
+    // (`detectElevated`; «no se sabe» cuenta como elevado). Si falta algo, el puente queda apagado con un aviso sin rutas.
+    const bridgeWanted =
+      !!mcpProxy && !fullAccess && this.unifiedOn() && !!this.opts.computer && !isComputerUseDisabled(loadManagedPolicy())
+    let bridgeOk = bridgeWanted
+    if (bridgeWanted && this.platform === 'win32') {
+      let elevated: boolean | null = null
+      try {
+        elevated = await (this.opts.isElevated ?? detectElevated)()
+      } catch {
+        elevated = null
+      }
+      if (!this.unifiedWinCaps() || elevated !== false) {
+        console.warn(
+          `[tasks] el puente de apps queda apagado en Windows: ${!this.unifiedWinCaps() ? 'falta Control del PC o Tareas aisladas' : 'Lazunox corre elevado o no se pudo comprobar'}`
+        )
+        bridgeOk = false
+      }
+    }
+    if (mcpProxy && bridgeOk && this.opts.computer) {
       try {
         const real = await this.opts.computer.mcpConfig().catch(() => null)
         const realToken = bearerOfMcpConfig(real)
