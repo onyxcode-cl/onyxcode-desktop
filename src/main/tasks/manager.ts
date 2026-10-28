@@ -704,7 +704,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     if (!home) throw new Error(t('merr.chat.folderUnsafe'))
     let dir: string
     try {
-      dir = createWinChatDir(fs, home, (chats) => this.forbidden(chats))
+      dir = createWinChatDir(fs, home, (chats) => this.forbidden(chats, true))
     } catch (e) {
       if (e instanceof WinChatUnsafe) throw new Error(t('merr.chat.folderUnsafe'))
       throw e

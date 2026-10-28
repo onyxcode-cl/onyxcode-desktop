@@ -56,7 +56,8 @@ function fakeDisk() {
         if (!dirs.has(key(p)) && !links.has(key(p))) err('ENOENT')
         return { isSymbolicLink: () => links.has(key(p)) }
       },
-      readdir: () => [],
+      // Como NTFS: listar una carpeta que no existe falla (esto destapó el fallo real: la política listaba `Chats` antes de crearla).
+      readdir: (p) => (dirs.has(key(p)) ? [] : err('ENOENT')),
       realpath: (p) => real.get(key(p)) ?? dirs.get(key(p))?.name ?? p,
       isDirectory: (p) => dirs.has(key(p))
     }
