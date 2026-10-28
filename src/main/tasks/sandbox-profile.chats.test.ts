@@ -39,12 +39,13 @@ describe.skipIf(!macOnly)('perfil Seatbelt: lectura de ~/Lazunox/Chats (texto)',
     }
   })
 
-  it('con la bandera de entorno se activa; con isolateChats:false explícito, no', () => {
+  it('el constructor es puro: sin isolateChats no aísla (aunque la variable esté en 1); con isolateChats:true sí', () => {
     const before = process.env.LAZUNOX_UNIFIED_APPS
     process.env.LAZUNOX_UNIFIED_APPS = '1'
     try {
-      expect(buildSandboxProfile(base)).toContain(`(subpath "${HOME}/Lazunox/Chats")`)
+      expect(buildSandboxProfile(base)).not.toContain('Lazunox/Chats')
       expect(buildSandboxProfile({ ...base, isolateChats: false })).not.toContain('Lazunox/Chats')
+      expect(buildSandboxProfile({ ...base, isolateChats: true })).toContain(`(subpath "${HOME}/Lazunox/Chats")`)
     } finally {
       if (before === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
       else process.env.LAZUNOX_UNIFIED_APPS = before

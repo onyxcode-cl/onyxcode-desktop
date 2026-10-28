@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { seedModelsCache } from '../models-cache'
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv } from '../sandbox-profile'
 import { spawnOnHost } from './spawn'
 import type { SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './types'
@@ -37,7 +38,8 @@ export function writeSandboxProfile(
     allowedOutboundPorts: network?.allowedOutboundPorts,
     serverPort: network?.serverPort,
     allowDelete: network?.allowDelete,
-    extraFolders: network?.extraFolders
+    extraFolders: network?.extraFolders,
+    isolateChats: isUnifiedAppsEnabled()
   })
   writeFileSync(file, profile, 'utf8')
   return file

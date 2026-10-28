@@ -23,7 +23,6 @@ import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 
 function real(p: string): string {
   try {
@@ -334,8 +333,8 @@ export interface SandboxProfileOptions {
   allowDelete?: boolean
   /**
    * Modo unificado: `~/Lazunox/Chats` (carpetas de TODOS los chats) sin lectura ni escritura, y re-permitida solo la propia
-   * carpeta (y las adicionales) cuando cuelga de ahí. Por defecto solo con `LAZUNOX_UNIFIED_APPS=1`; sin ella el perfil
-   * queda byte a byte como siempre.
+   * carpeta (y las adicionales) cuando cuelga de ahí. Este módulo es puro (scripts/verify-bundled.mjs lo carga con Node
+   * sin alias): quien lo llama (backends/seatbelt.ts) pasa `isUnifiedAppsEnabled()`. Ausente/false ⇒ el perfil queda byte a byte como siempre.
    */
   isolateChats?: boolean
 }
@@ -369,7 +368,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     ...denied.map((p) => `  (subpath ${sbString(p)})`),
     ')'
   ]
-  if (opts.isolateChats ?? isUnifiedAppsEnabled()) {
+  if (opts.isolateChats === true) {
     // Las carpetas de chat viven en ~/Lazunox/Chats: un chat (o cualquier carpeta) no debe leer las de OTROS chats.
     // La re-permisión va DESPUÉS de la denegación (gana la última regla) y solo para rutas bajo Chats.
     const chats = real(join(home, 'Lazunox', 'Chats'))
@@ -466,7 +465,7 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
       ''
     )
   }
-  if (opts.isolateChats ?? isUnifiedAppsEnabled()) {
+  if (opts.isolateChats === true) {
     // Con «Permitir borrar», renombrar/mover/borrar un ANCESTRO de las carpetas de chat (`~/Lazunox`, `Chats`, el home) trabaja
     // con rutas y se saltaría la denegación de lectura (`mv ~/Lazunox ~/L2; cat ~/L2/Chats/b/f.txt`). Se deniega SOLO el literal
     // (no el contenido): escribir dentro de la carpeta de trabajo sigue como siempre.
