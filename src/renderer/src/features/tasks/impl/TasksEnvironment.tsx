@@ -4,6 +4,7 @@ import { useT } from '../../../lib/i18n'
 import { useHostName } from '../../../lib/use-host-name'
 import { useScope } from './ScopePicker'
 import { useTasks } from './store'
+import { isChatFolderPath, useUnifiedApps } from './unified'
 
 const norm = (p: string): string => p.replace(/[\\/]+$/, '').replace(/\\/g, '/')
 
@@ -18,24 +19,29 @@ export function TasksEnvironment({ disabled }: { disabled?: boolean }): React.JS
   const info = useTasks((s) => s.fullAccessInfo)
   // Sin Control del PC solo existe el modo aislado: no hay nada que cambiar (igual que el selector del inicio).
   const scope = useScope(disabled)
-  if (!scope.canFull) return null
+  const unified = useUnifiedApps()
+  if (!scope.canFull && !unified) return null
   const full = conn ? conn.fullAccess : requested
-  const directory = folder ?? (full ? (info?.workspace ?? null) : null)
+  const directory = unified && folder && isChatFolderPath(folder) ? null : (folder ?? (full ? (info?.workspace ?? null) : null))
   const authorized = !!folder && folders.some((f) => f.path === folder)
   const isHome = !!directory && !!info?.home && norm(directory) === norm(info.home)
   return (
     <EnvironmentPanel
       hostName={hostName}
       directory={directory}
-      mode={{
-        full,
-        label: full ? t('tasksComputer.chip.full') : t('tasksComputer.chip.folder'),
-        otherLabel: full ? t('tasksComputer.chip.folder') : t('tasksComputer.chip.full'),
-        busy: disabled || phase === 'starting',
-        blockedReason: full && !authorized ? t('env.mode.needFolder') : null,
-        onChange: () => scope.pick(!full),
-        ...(directory ? { restore: full && isHome ? ('off' as const) : ('on' as const) } : {})
-      }}
+      mode={
+        unified
+          ? undefined
+          : {
+              full,
+              label: full ? t('tasksComputer.chip.full') : t('tasksComputer.chip.folder'),
+              otherLabel: full ? t('tasksComputer.chip.folder') : t('tasksComputer.chip.full'),
+              busy: disabled || phase === 'starting',
+              blockedReason: full && !authorized ? t('env.mode.needFolder') : null,
+              onChange: () => scope.pick(!full),
+              ...(directory ? { restore: full && isHome ? ('off' as const) : ('on' as const) } : {})
+            }
+      }
     />
   )
 }

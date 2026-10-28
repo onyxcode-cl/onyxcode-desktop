@@ -45,7 +45,7 @@ import {
   abortTask,
   approvePending,
   cancelPending,
-  chooseFolder,
+  ensureFolderForSend,
   closeSideChat,
   continueInNewTask,
   createSkillFromTask,
@@ -624,8 +624,12 @@ export function TasksWorkspace(): React.JSX.Element {
 
   const send = async (text: string): Promise<void> => {
     setSendError(null)
-    if (!useTasks.getState().folder) {
-      await chooseFolder()
+    try {
+      if (!(await ensureFolderForSend())) return
+    } catch (err) {
+      // Modo unificado: no se pudo preparar la carpeta del chat; el texto no se pierde.
+      setSendError(err)
+      if (!useTasks.getState().draft) useTasks.setState({ draft: text })
       return
     }
     try {

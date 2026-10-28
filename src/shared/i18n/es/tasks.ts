@@ -667,5 +667,7 @@ export const tasks = {
     'El nombre debe ser en minúsculas, con guiones, sin espacios ni símbolos raros (por ejemplo: informe-mensual).',
   'tasks.sandboxProviderShort': 'Este modelo no funciona con «Una carpeta».',
   'tasks.sandboxProviderMore': 'Ver detalle',
-  'tasks.sandboxProviderLess': 'Ocultar detalle'
+  'tasks.sandboxProviderLess': 'Ocultar detalle',
+  'tasks.home.lead.unified':
+    'Escribe lo que necesitas. Si quieres, elige una carpeta; si no, el agente trabajará en un espacio propio de este chat.'
 } as const

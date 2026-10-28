@@ -8,11 +8,53 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, Eye, FolderClosed, Loader2, Zap } from 'lucide-react'
 import { UI_LABELS } from '@shared/labels'
 import { useT } from '../../../lib/i18n'
+import { ChipMenu } from '../../../components/ChipMenu'
 import { setAutoModeSettings, useTasks } from './store'
+import { useUnified, useUnifiedApps } from './unified'
 
 const NOTICE_MS = 5000
 
+/** Chip del compositor: en el modo unificado es el selector «Manual / Automático» (siempre visible); si no, el chip de siempre. */
 export function AutoModeChip(): React.JSX.Element | null {
+  return useUnifiedApps() ? <UnifiedModeChip /> : <ClassicAutoModeChip />
+}
+
+/**
+ * Modo unificado: «Manual» (pide permiso en cada acción sensible) o «Automático». No depende del interruptor maestro de Ajustes:
+ * elegir «Automático» lo enciende para la carpeta (o, si aún no hay carpeta, para la que se cree al enviar). Lo que el modo
+ * automático concede (p. ej. solo «Solo ver» a las apps de la lista permitida) lo decide main; aquí no se toca esa lógica.
+ */
+function UnifiedModeChip(): React.JSX.Element {
+  const t = useT()
+  const autoMode = useTasks((s) => s.autoMode)
+  const folder = useTasks((s) => s.folder)
+  const wantAuto = useUnified((s) => s.wantAuto)
+  const settings = autoMode?.settings
+  const auto = folder ? !!settings?.enabled && settings.folders.includes(folder) : wantAuto
+  const blocked = !!autoMode?.policyDisabled
+  const pick = (id: string): void => {
+    const on = id === 'auto'
+    if (on && blocked) return
+    useUnified.setState({ wantAuto: folder ? false : on })
+    if (folder) void setAutoModeSettings({ ...(on ? { enabled: true } : {}), folder: { path: folder, on } }).catch(() => undefined)
+  }
+  return (
+    <ChipMenu
+      name={t('tasksComputer.unified.modeAria')}
+      valueLabel={auto ? t('tasksComputer.scope.auto') : t('tasksComputer.scope.manual')}
+      icon={<Zap size={14} aria-hidden />}
+      value={auto ? 'auto' : 'manual'}
+      testId="auto-mode-chip"
+      options={[
+        { id: 'manual', label: t('tasksComputer.scope.manual'), hint: t('tasksComputer.scope.manual.desc') },
+        { id: 'auto', label: t('tasksComputer.scope.auto'), hint: t('tasksComputer.scope.auto.desc'), disabled: blocked }
+      ]}
+      onSelect={pick}
+    />
+  )
+}
+
+function ClassicAutoModeChip(): React.JSX.Element | null {
   const t = useT()
   const settings = useTasks((s) => s.autoMode?.settings)
   const folder = useTasks((s) => s.folder)

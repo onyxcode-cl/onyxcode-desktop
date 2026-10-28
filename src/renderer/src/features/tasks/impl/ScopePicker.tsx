@@ -12,6 +12,8 @@ import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
 import { setAccessMode } from './actions'
 import { useTasks } from './store'
+import { isChatFolderPath, useUnifiedApps } from './unified'
+import { baseName } from './util'
 
 /** Estado y acción comunes del alcance; todas las variantes y los otros tres sitios lo usan. */
 export function useScope(disabled?: boolean): {
@@ -37,10 +39,50 @@ export function useScope(disabled?: boolean): {
   return { full, canFull, starting, requested, off, pick }
 }
 
+/**
+ * Modo unificado: el alcance ya no se «cambia»; el chip solo dice dónde trabaja: «Carpeta: <nombre>», «Sin carpeta elegida»
+ * (chat con carpeta propia automática) o «Sin aislamiento (avanzado)» con un clic para volver a una carpeta.
+ */
+export function UnifiedScopeChip({ className = '' }: { className?: string }): React.JSX.Element {
+  const t = useT()
+  const conn = useTasks((s) => s.conn)
+  const requested = useTasks((s) => s.fullAccess)
+  const folder = useTasks((s) => s.folder)
+  const full = conn ? conn.fullAccess : requested
+  if (full) {
+    return (
+      <button
+        type="button"
+        data-testid="unified-scope-chip"
+        onClick={() => void setAccessMode(false)}
+        title={t('tasksComputer.unified.noIsolationBack')}
+        className={`flex shrink-0 items-center gap-1 rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-xs whitespace-nowrap text-warning transition hover:opacity-80 ${className}`}
+      >
+        <MonitorCog size={12} aria-hidden /> {t('tasksComputer.unified.noIsolation')}
+      </button>
+    )
+  }
+  const label =
+    folder && !isChatFolderPath(folder)
+      ? t('tasksComputer.unified.folder', { name: baseName(folder) })
+      : t('tasksComputer.unified.noFolderChat')
+  return (
+    <span
+      data-testid="unified-scope-chip"
+      title={folder ?? t('tasksComputer.unified.scopeTitle')}
+      className={`flex max-w-[220px] shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs whitespace-nowrap text-fg ${className}`}
+    >
+      <Shield size={12} aria-hidden className="shrink-0" /> <span className="truncate">{label}</span>
+    </span>
+  )
+}
+
 /** Variante «chip» (caja de escribir): menú con las dos opciones y su frase. */
 function ScopeChip({ disabled }: { disabled?: boolean }): React.JSX.Element {
   const t = useT()
   const { full, canFull, off, pick } = useScope(disabled)
+  const unified = useUnifiedApps()
+  if (unified) return <UnifiedScopeChip />
   return (
     <ChipMenu
       name={t('tasksComputer.access.aria')}
@@ -83,6 +125,7 @@ function ScopeCards({ disabled }: { disabled?: boolean }): React.JSX.Element {
   const t = useT()
   const folder = useTasks((s) => s.folder)
   const { full, canFull, starting, requested, off, pick } = useScope(disabled)
+  const unified = useUnifiedApps()
 
   const onKey = (e: React.KeyboardEvent): void => {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
@@ -100,7 +143,7 @@ function ScopeCards({ disabled }: { disabled?: boolean }): React.JSX.Element {
 
   return (
     <div data-testid="scope-picker" className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-6">
-      {canFull && (
+      {canFull && !unified && (
         <div
           role="radiogroup"
           aria-label={t('tasksComputer.access.aria')}

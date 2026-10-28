@@ -2,6 +2,8 @@ import { hostname } from 'node:os'
 import { app, shell, type IpcMain } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { DISPLAY_NAME } from '@shared/brand'
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
+import { isComputerUseDisabled, loadManagedPolicy } from '../tasks/policy'
 import { handle, IpcError } from './handle'
 
 export function registerAppHandlers(ipcMain: IpcMain, ctx: { chatDirectory: string }): void {
@@ -11,7 +13,9 @@ export function registerAppHandlers(ipcMain: IpcMain, ctx: { chatDirectory: stri
     platform: process.platform,
     userDataPath: app.getPath('userData'),
     chatDirectory: ctx.chatDirectory,
-    isDev: is.dev
+    isDev: is.dev,
+    // Interfaz unificada: bandera + no Windows + la política no apaga Control del PC (falla cerrado).
+    unifiedApps: isUnifiedAppsEnabled() && process.platform !== 'win32' && !isComputerUseDisabled(loadManagedPolicy())
   }))
 
   handle(ipcMain, 'app:hostName', () => hostname().slice(0, 100))

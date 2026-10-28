@@ -535,5 +535,16 @@ export const tasksComputer = {
   'tasksComputer.scope.manual': 'Manual',
   'tasksComputer.scope.manual.desc': 'Te pide permiso antes de cada acción sensible.',
   'tasksComputer.scope.auto': 'Automático',
-  'tasksComputer.scope.auto.desc': 'Aprueba las acciones dentro del alcance elegido y solo te pregunta por lo importante.'
+  'tasksComputer.scope.auto.desc': 'Aprueba las acciones dentro del alcance elegido y solo te pregunta por lo importante.',
+  'tasksComputer.unified.folder': 'Carpeta: {name}',
+  'tasksComputer.unified.folderNone': 'Carpeta: ninguna',
+  'tasksComputer.unified.noFolderChat': 'Sin carpeta elegida',
+  'tasksComputer.unified.scopeTitle': 'Carpeta en la que trabaja el agente',
+  'tasksComputer.unified.modeAria': 'Manual o automático',
+  'tasksComputer.unified.advanced': 'Avanzado: sin aislamiento',
+  'tasksComputer.unified.advancedWarn': 'Los comandos y los archivos no quedan aislados en una carpeta.',
+  'tasksComputer.unified.noIsolation': 'Sin aislamiento (avanzado)',
+  'tasksComputer.unified.noIsolationBack': 'Sin aislamiento: pulsa para volver a trabajar en una carpeta.',
+  'tasksComputer.unified.chatFolderError':
+    'No se pudo preparar el espacio de este chat: {detail} Tu texto sigue aquí; vuelve a intentarlo o elige una carpeta.'
 } as const

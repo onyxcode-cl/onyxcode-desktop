@@ -534,5 +534,16 @@ export const tasksComputer = {
   'tasksComputer.scope.manual': 'Manual',
   'tasksComputer.scope.manual.desc': 'Asks your permission before each sensitive action.',
   'tasksComputer.scope.auto': 'Automatic',
-  'tasksComputer.scope.auto.desc': 'Approves actions within the chosen scope and only asks you about important ones.'
+  'tasksComputer.scope.auto.desc': 'Approves actions within the chosen scope and only asks you about important ones.',
+  'tasksComputer.unified.folder': 'Folder: {name}',
+  'tasksComputer.unified.folderNone': 'Folder: none',
+  'tasksComputer.unified.noFolderChat': 'No folder chosen',
+  'tasksComputer.unified.scopeTitle': 'Folder the agent works in',
+  'tasksComputer.unified.modeAria': 'Manual or automatic',
+  'tasksComputer.unified.advanced': 'Advanced: no isolation',
+  'tasksComputer.unified.advancedWarn': 'Commands and files are not isolated inside a folder.',
+  'tasksComputer.unified.noIsolation': 'No isolation (advanced)',
+  'tasksComputer.unified.noIsolationBack': 'No isolation: press to go back to working in a folder.',
+  'tasksComputer.unified.chatFolderError':
+    'Could not prepare this chat’s space: {detail} Your text is still here; try again or choose a folder.'
 } as const satisfies Messages<typeof es>

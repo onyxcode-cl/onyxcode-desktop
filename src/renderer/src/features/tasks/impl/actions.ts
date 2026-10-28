@@ -19,6 +19,7 @@ import { isChildRequest, liveBackgroundChildIds } from '../../code/impl/child-se
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
+import { useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
 import { stopPicking } from '../../browser/pick-state'
@@ -41,6 +42,7 @@ import {
   rememberFolder,
   rememberFullAccess,
   rootTaskId,
+  setAutoModeSettings,
   setTaskMeta,
   useTasks
 } from './store'
@@ -161,6 +163,52 @@ export async function selectFolder(folder: string): Promise<void> {
   const st = useTasks.getState()
   if (st.folder === folder && st.phase === 'ready' && st.fullAccess === fullAccessFor(folder)) return
   await connectFolder(folder)
+}
+
+/**
+ * Modo unificado: al enviar el primer mensaje sin carpeta, main crea una carpeta propia del chat (ya aprobada) y se conecta en
+ * modo aislado. Si el usuario había elegido «Automático» antes de tener carpeta, se aplica ahora a esa carpeta.
+ */
+export async function openChatFolder(): Promise<string> {
+  const created = await cw('tasks:chatFolder:create')
+  await loadFolders()
+  await connectFolder(created.path, false)
+  await applyWantedAuto(created.path)
+  return created.path
+}
+
+/**
+ * Antes de enviar desde el inicio: ¿hay carpeta lista? Sin modo unificado, sin carpeta se abre el selector (devuelve false).
+ * Con modo unificado se crea la carpeta propia del chat; si falla, lanza un error en español llano (el texto escrito se conserva).
+ */
+export async function ensureFolderForSend(): Promise<boolean> {
+  const folder = useTasks.getState().folder
+  if (!useUnified.getState().on) {
+    if (folder) return true
+    await chooseFolder()
+    return false
+  }
+  if (folder) {
+    await applyWantedAuto(folder)
+    return true
+  }
+  try {
+    await openChatFolder()
+    return true
+  } catch (err) {
+    throw new Error(t('tasksComputer.unified.chatFolderError', { detail: errorMessage(err) }))
+  }
+}
+
+/** Aplica «Automático» a la carpeta si se eligió antes de tenerla (el lado de main sigue limitando lo que concede). */
+export async function applyWantedAuto(folder: string): Promise<void> {
+  if (!useUnified.getState().wantAuto) return
+  useUnified.setState({ wantAuto: false })
+  try {
+    await setAutoModeSettings({ enabled: true, folder: { path: folder, on: true } })
+  } catch {
+    // sin Modo auto (política o sin puente): el chat sigue en Manual
+  }
 }
 
 /**

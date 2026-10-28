@@ -42,6 +42,10 @@ export const mainErrors = {
   'merr.folder.orgRoots': 'Tu organización solo permite carpetas dentro de: {roots}. «{folder}» queda fuera.',
   'merr.folder.orgNone': 'Tu organización no permite usar carpetas en Overdrive.',
   'merr.task.notValidFolder': 'No es una carpeta válida: {folder}',
+  'merr.chat.unifiedOff': 'El modo unificado está apagado.',
+  'merr.chat.unifiedWin': 'El modo unificado no está disponible en Windows todavía.',
+  'merr.chat.folderUnsafe':
+    'No se pudo crear la carpeta del chat: ~/Lazunox o ~/Lazunox/Chats no es una carpeta normal (es un enlace u otro tipo de archivo). Bórrala o renómbrala y vuelve a intentarlo.',
   'merr.task.notAuthorized': 'La carpeta no está autorizada para las tareas.',
   'merr.task.insideMain': 'Esa carpeta ya está dentro de la carpeta principal.',
   'merr.task.orgNoHosts': 'Tu organización no permite añadir sitios a los que las tareas pueden conectarse.',

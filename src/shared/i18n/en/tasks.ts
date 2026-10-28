@@ -667,5 +667,7 @@ export const tasks = {
     'The name must be lowercase, hyphen-separated, with no spaces or unusual symbols (for example: monthly-report).',
   'tasks.sandboxProviderShort': 'This model doesn’t work with “One folder”.',
   'tasks.sandboxProviderMore': 'See details',
-  'tasks.sandboxProviderLess': 'Hide details'
+  'tasks.sandboxProviderLess': 'Hide details',
+  'tasks.home.lead.unified':
+    'Write what you need. Choose a folder if you like; otherwise the agent works in a space of its own for this chat.'
 } as const satisfies Messages<typeof es>

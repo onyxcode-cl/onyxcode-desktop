@@ -17,6 +17,7 @@ import { SandboxSetupCard } from './SandboxSetupCard'
 import { sandboxBlocksStart, useSandbox } from './sandbox-store'
 import { useTasks } from './store'
 import { useHomeFocus } from './useHomeFocus'
+import { useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 /** Plantilla de inicio. `note` es un aviso que se muestra en Sandbox (p. ej. permisos que se pedirán). */
@@ -207,6 +208,7 @@ export function Home({
   folderBusy: boolean
 }): React.JSX.Element {
   const t = useT()
+  const unified = useUnifiedApps()
   const folder = useTasks((s) => s.folder)
   const phase = useTasks((s) => s.phase)
   const conn = useTasks((s) => s.conn)
@@ -255,11 +257,13 @@ export function Home({
             {t('tasks.home.title')}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            {!folder
-              ? t('tasks.home.lead.noFolder')
-              : full
-                ? t('tasks.home.lead.full')
-                : t('tasks.home.lead.sandbox', { folder: baseName(folder) })}
+            {!folder && unified
+              ? t('tasks.home.lead.unified')
+              : !folder
+                ? t('tasks.home.lead.noFolder')
+                : full
+                  ? t('tasks.home.lead.full')
+                  : t('tasks.home.lead.sandbox', { folder: baseName(folder) })}
           </p>
         </div>
 
@@ -279,7 +283,7 @@ export function Home({
           busy={false}
           disabled={phase === 'starting' || blocked}
           autoFocusKey={folder}
-          placeholder={folder ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
+          placeholder={folder || unified ? (full ? t('tasks.home.ph.full') : t('tasks.home.ph.folder')) : t('tasks.home.ph.noFolder')}
         />
         <div className="mt-4 flex flex-col items-center justify-center gap-2">
           {phase === 'starting' && (
@@ -288,6 +292,20 @@ export function Home({
             </span>
           )}
         </div>
+        {unified && !full && (
+          <div className="mt-2 flex flex-col items-center gap-0.5 px-6 text-center">
+            <button
+              type="button"
+              data-testid="unified-advanced"
+              disabled={folderBusy || phase === 'starting'}
+              onClick={() => void setAccessMode(true)}
+              className="text-xs text-muted underline-offset-2 transition hover:text-fg hover:underline disabled:opacity-50"
+            >
+              {t('tasksComputer.unified.advanced')}
+            </button>
+            <span className="text-[11px] desk:text-meta text-subtle">{t('tasksComputer.unified.advancedWarn')}</span>
+          </div>
+        )}
         {sendError != null && (
           <div className="mx-auto mt-2 max-w-3xl px-6">
             <ErrorNotice error={sendError} />

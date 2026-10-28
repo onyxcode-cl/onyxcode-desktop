@@ -65,8 +65,9 @@ import { TierBadge, tierInfo } from './AppAccessCard'
 import { ComputerConsentWin } from './ComputerConsentWin'
 import { describeAction } from './computer-tools'
 import { sdkDir } from './conn-paths'
-import { useScope } from './ScopePicker'
+import { UnifiedScopeChip, useScope } from './ScopePicker'
 import { loadGrants, setTaskModel, useTasks } from './store'
+import { useUnifiedApps } from './unified'
 import { isTasksSource } from './util'
 
 export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kimi-k3' }
@@ -79,6 +80,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
   const conn = useTasks((s) => s.conn)
   const phase = useTasks((s) => s.phase)
   const requested = useTasks((s) => s.fullAccess)
+  const unified = useUnifiedApps()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -141,6 +143,8 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
     setOpen(false)
     scope.pick(fullAccess)
   }
+  // Modo unificado: el chip solo dice dónde trabaja («Carpeta: <nombre>» / «Sin carpeta elegida»); ya no se cambia de «modo» aquí.
+  if (unified) return <UnifiedScopeChip className="px-2" />
 
   return (
     <div ref={rootRef} className="relative">

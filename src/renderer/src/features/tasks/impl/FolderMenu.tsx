@@ -9,6 +9,7 @@ import { platformCaps } from '../../../lib/platform'
 import { chooseFolder, forgetFolder, linkFolder, selectFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
+import { isChatFolderPath, useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 /** Carpeta elegida para añadir, pendiente de decidir su modo. */
@@ -43,6 +44,13 @@ export function FolderMenu({
       ? t('tasksComputer.workspace.home')
       : baseName(folder)
     : t('tasksComputer.menu.choose')
+  // Modo unificado: «Carpeta: ninguna» (también en el chat con carpeta propia) o «Carpeta: <nombre>».
+  const unified = useUnifiedApps() && variant === 'chip'
+  const shownLabel = unified
+    ? folder && !isChatFolderPath(folder)
+      ? t('tasksComputer.unified.folder', { name: label })
+      : t('tasksComputer.unified.folderNone')
+    : label
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState<PendingLink | null>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
@@ -138,7 +146,7 @@ export function FolderMenu({
         }`}
       >
         {folder ? <FolderOpen size={13} className="shrink-0 text-accent" /> : <FolderPlus size={13} className="shrink-0" />}
-        <span className="truncate">{label}</span>
+        <span className="truncate">{shownLabel}</span>
         <ChevronDown size={12} className="shrink-0 text-muted" />
       </button>
     ) : variant === 'row' ? (

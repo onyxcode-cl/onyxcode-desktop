@@ -15,8 +15,20 @@ import { t } from '@shared/i18n'
 import { app } from 'electron'
 import { EventEmitter } from 'node:events'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { homedir } from 'node:os'
+import { randomBytes } from 'node:crypto'
 import { basename, dirname, join, relative, resolve, win32 } from 'node:path'
 import { isInside, normalizeDrive, samePath } from '../util/paths'
 import { LEGACY_FOLDER_SCRATCH, LEGACY_PROJECT_DIR } from '../migrations/legacy-names'
@@ -452,6 +464,53 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       this.save()
     }
     return entry
+  }
+
+  /**
+   * Modo unificado: carpeta de trabajo PROPIA de un chat sin carpeta elegida (`~/Lazunox/Chats/<fecha>-<6 aleatorios>`), para que el
+   * servidor aislado (que exige una carpeta con escritura) pueda arrancar. Se aprueba con `approveFolder` (misma política que
+   * cualquier carpeta, incluidas las raíces de la política gestionada: si no la permite, no se crea nada).
+   * Nunca sigue enlaces simbólicos: `~/Lazunox` y `~/Lazunox/Chats` deben ser carpetas normales y el resultado, con realpath, queda dentro.
+   * PENDIENTE (a propósito): borrar la carpeta al archivar la tarea si no se creó ningún archivo en ella; por ahora se conservan.
+   */
+  async createChatFolder(): Promise<TasksFolder> {
+    if (!isUnifiedAppsEnabled()) throw new Error(t('merr.chat.unifiedOff'))
+    if (this.platform === 'win32') throw new Error(t('merr.chat.unifiedWin'))
+    await this.refreshPolicy()
+    const base = join(homedir(), 'Lazunox')
+    const chats = join(base, 'Chats')
+    // Si ya existen, deben ser carpetas reales (lstat no sigue el enlace); si no existen, se crean más abajo.
+    for (const dir of [base, chats]) {
+      let st
+      try {
+        st = lstatSync(dir)
+      } catch {
+        break // no existe: se creará
+      }
+      if (st.isSymbolicLink() || !st.isDirectory()) throw new Error(t('merr.chat.folderUnsafe'))
+    }
+    // Política ANTES de tocar el disco: si no admite ~/Lazunox/Chats no se crea nada.
+    const denied = this.forbidden(chats)
+    if (denied) throw new Error(denied)
+    mkdirSync(base, { recursive: true, mode: 0o700 })
+    mkdirSync(chats, { recursive: true, mode: 0o700 })
+    for (const dir of [base, chats]) if (lstatSync(dir).isSymbolicLink()) throw new Error(t('merr.chat.folderUnsafe'))
+    const realChats = realpathSync(chats)
+    const d = new Date()
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    for (let i = 0; i < 8; i++) {
+      const dir = join(realChats, `${stamp}-${randomBytes(4).toString('hex').slice(0, 6)}`)
+      try {
+        mkdirSync(dir, { mode: 0o700 }) // sin `recursive`: si ya existe, falla y se elige otro id
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'EEXIST') continue
+        throw e
+      }
+      chmodSync(dir, 0o700)
+      if (!this.inside(realpathSync(dir), realChats)) throw new Error(t('merr.chat.folderUnsafe'))
+      return this.approveFolder(dir)
+    }
+    throw new Error(t('merr.chat.folderUnsafe'))
   }
 
   async removeFolder(folder: string): Promise<void> {
