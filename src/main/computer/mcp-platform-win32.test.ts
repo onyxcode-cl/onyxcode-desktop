@@ -857,6 +857,22 @@ describe('Windows: captura con dobles (sin proceso)', () => {
     expect(rm).toHaveBeenCalledWith('o.jpg')
   })
 
+  it('origen aislado: la captura de pantalla completa FALLA CERRADO aunque haya canal y captura falsa (no se tapa Lazunox)', async () => {
+    const spawned: string[] = []
+    const rm = vi.fn()
+    const b = createWin32Backend(mkHost({ fakeShot: 'fake.png', eventsUrl: 'http://127.0.0.1:1' }), {
+      execFile: ((cmd: string) => {
+        spawned.push(cmd)
+        return new EventEmitter()
+      }) as never,
+      rm,
+      env: {}
+    })
+    await expect(b.captureScreen({ raw: 'r', out: 'o.jpg', isolated: true })).rejects.toThrow(/No se hace la captura.*app_screenshot/)
+    expect(spawned).toEqual([])
+    expect(rm).toHaveBeenCalledWith('o.jpg')
+  })
+
   it('la captura falsa de pruebas copia el archivo y mide su cabecera (sin helper)', async () => {
     const png = Buffer.alloc(33)
     Buffer.from([0x89, 0x50, 0x4e, 0x47]).copy(png)

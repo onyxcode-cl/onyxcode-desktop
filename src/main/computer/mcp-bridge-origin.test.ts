@@ -6,6 +6,8 @@
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { FAKE_HELPER, bundleMcp, startMcp, startSideChannel, textOf, tmpWork, type McpProc, type SideChannel } from '../../test/cu-mcp-kit'
+import { isolatedPasteKey } from './mcp-platform'
+import { WIN_ISOLATED_BLOCKED_KEYS, checkWinIsolatedCombo, isWinIsolatedExempt } from './mcp-platform-win32'
 import { BRIDGE_ORIGIN_HEADER, BRIDGE_SERVER_HEADER } from '../../shared/unified-bridge'
 
 vi.setConfig({ testTimeout: 30_000 })
@@ -277,6 +279,170 @@ describe('origen aislado: nunca pantalla completa (el escritorio de Finder y otr
       const r = await mcp.call('screenshot', { elements: false, lazunox_session: SES }, HDRS)
       expect(r.isError).not.toBe(true)
       expect(hasImage(r)).toBe(true)
+    } finally {
+      await done()
+    }
+  })
+})
+
+describe('origen aislado en Windows: teclas, exentas y captura (helper falso)', () => {
+  const k = (path: string, pub = 'Microsoft Windows'): string => `exe:${path.toLowerCase()}|pub:${pub.toLowerCase()}`
+  const NOTEPAD = k('C:\\Windows\\System32\\notepad.exe')
+  const LAZUNOX = k('C:\\Users\\Ana\\AppData\\Local\\Programs\\Lazunox\\Lazunox.exe', 'Bentec')
+  const win32Script = {
+    responses: {
+      version: { out: { protocol: 1, helper: 'fake-1.0.0', platform: 'win32' } },
+      session: { out: { interactive: true, secureDesktop: false, elevatedTarget: false } },
+      screens: { out: [{ width: 2560, height: 1440, scale: 1.5, dpiScale: 1.5, x: 0, y: 0, main: true }] },
+      frontmost: { out: { name: 'Bloc de notas', bundleId: NOTEPAD, pid: 2 } },
+      'app-at': { out: { name: 'Bloc de notas', bundleId: NOTEPAD, pid: 2 } },
+      'list-apps': { out: [{ name: 'Bloc de notas', appKey: NOTEPAD, pid: 2 }] }
+    }
+  }
+  async function bootWin(): Promise<{ mcp: McpProc; done: () => Promise<void> }> {
+    const s = await startSideChannel({
+      planApproved: false,
+      bridgeCheck: () => ISOLATED_OK,
+      tier: (b) => (b === NOTEPAD ? 'full' : null)
+    })
+    const mcp = await startMcp({
+      bundle,
+      helper: FAKE_HELPER,
+      dir: join(work.dir, `w${++seq}`),
+      platform: 'win32',
+      events: s,
+      script: win32Script,
+      env: { COMPUTER_BACKEND: 'win32', CU_HELPER_ARGV0: 'node', COMPUTER_AUTO_SCREENSHOT: '0', COMPUTER_INSTANT: '1' }
+    })
+    return {
+      mcp,
+      done: async () => {
+        await mcp.stop()
+        await s.close()
+      }
+    }
+  }
+  const sent = (m: McpProc): string[] =>
+    m
+      .calls()
+      .filter((c) => c.cmd === 'key')
+      .map((c) => c.args.join(' '))
+
+  it.each(['alt+tab', 'win+d', 'ctrl+shift+esc', 'alt+f4', 'ctrl+esc', 'alt+space', 'ctrl+alt+del', 'alt+shift+tab', 'win+e'])(
+    'key %s ⇒ rechazada y no llega al helper',
+    async (combo) => {
+      const { mcp, done } = await bootWin()
+      try {
+        const r = await mcp.call('key', { keys: combo, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(textOf(r)).toMatch(/en este modo no se pulsa/)
+        expect(sent(mcp)).toEqual([])
+      } finally {
+        await done()
+      }
+    }
+  )
+
+  it('key: una sola combinación por llamada', async () => {
+    const { mcp, done } = await bootWin()
+    try {
+      const r = await mcp.call('key', { keys: 'ctrl+a ctrl+c', lazunox_session: SES }, HDRS)
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).toMatch(/UNA combinación/)
+      expect(sent(mcp)).toEqual([])
+    } finally {
+      await done()
+    }
+  })
+
+  it('key permitida (ctrl+a) llega al helper', async () => {
+    const { mcp, done } = await bootWin()
+    try {
+      const r = await mcp.call('key', { keys: 'ctrl+a', lazunox_session: SES }, HDRS)
+      expect(r.isError).not.toBe(true)
+      expect(sent(mcp).join('|')).toContain('ctrl+a')
+    } finally {
+      await done()
+    }
+  })
+
+  it('lista y veredictos (unidad): quitar alt+tab de la lista haría fallar esto', () => {
+    expect(WIN_ISOLATED_BLOCKED_KEYS).toContain('alt+tab')
+    expect(checkWinIsolatedCombo('alt+tab')).toBe('blocked')
+    expect(checkWinIsolatedCombo('ctrl+alt+tab')).toBe('blocked')
+    expect(checkWinIsolatedCombo('win+d')).toBe('blocked')
+    expect(checkWinIsolatedCombo('ctrl+shift+esc')).toBe('blocked')
+    expect(checkWinIsolatedCombo('alt+f7')).toBe('blocked')
+    expect(checkWinIsolatedCombo('cmd+a')).toBe('unknown')
+    expect(checkWinIsolatedCombo('ctrl+tab')).toBe('ok')
+    expect(checkWinIsolatedCombo('ctrl+v')).toBe('ok')
+    expect(checkWinIsolatedCombo('f5')).toBe('ok')
+  })
+
+  it('atajo de pegar fijo por plataforma: ctrl+v en win32, cmd+v en darwin', () => {
+    expect(isolatedPasteKey('win32')).toBe('ctrl+v')
+    expect(isolatedPasteKey('darwin')).toBe('cmd+v')
+  })
+
+  it('apps exentas de Windows (Lazunox y el shell sí; explorer solo con concesión; Bloc de notas no)', () => {
+    for (const e of [
+      'lazunox.exe',
+      'shellexperiencehost.exe',
+      'searchhost.exe',
+      'searchapp.exe',
+      'startmenuexperiencehost.exe',
+      'lockapp.exe'
+    ]) {
+      expect(isWinIsolatedExempt(k(`C:\\Windows\\SystemApps\\${e}`))).toBe(true)
+    }
+    expect(isWinIsolatedExempt(LAZUNOX)).toBe(true)
+    expect(isWinIsolatedExempt(k('C:\\Windows\\explorer.exe'))).toBe(false)
+    expect(isWinIsolatedExempt(NOTEPAD)).toBe(false)
+    expect(isWinIsolatedExempt('basura')).toBe(true)
+    expect(isWinIsolatedExempt('aumid:microsoft.windows.startmenuexperiencehost_cw5n1h2txyewy!app')).toBe(true)
+  })
+
+  it('actuar sobre Lazunox (exenta) en origen aislado ⇒ rechazo aunque main diga que hay concesión', async () => {
+    const s = await startSideChannel({ planApproved: false, bridgeCheck: () => ISOLATED_OK, tier: () => 'full' })
+    const mcp = await startMcp({
+      bundle,
+      helper: FAKE_HELPER,
+      dir: join(work.dir, `w${++seq}`),
+      platform: 'win32',
+      events: s,
+      script: { responses: { ...win32Script.responses, frontmost: { out: { name: 'Lazunox', bundleId: LAZUNOX, pid: 1 } } } },
+      env: { COMPUTER_BACKEND: 'win32', CU_HELPER_ARGV0: 'node', COMPUTER_AUTO_SCREENSHOT: '0', COMPUTER_INSTANT: '1' }
+    })
+    try {
+      const r = await mcp.call('key', { keys: 'ctrl+a', lazunox_session: SES }, HDRS)
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).toMatch(/propia Lazunox/)
+      expect(sent(mcp)).toEqual([])
+    } finally {
+      await mcp.stop()
+      await s.close()
+    }
+  })
+
+  it('captura de pantalla completa en origen aislado ⇒ rechazada, sin imagen ni captura en el helper', async () => {
+    const { mcp, done } = await bootWin()
+    try {
+      const r = await mcp.call('screenshot', { lazunox_session: SES }, HDRS)
+      expect(r.isError).toBe(true)
+      expect(r.content.some((c) => c.type === 'image')).toBe(false)
+      expect(mcp.calls().some((c) => c.cmd === 'screenshot')).toBe(false)
+    } finally {
+      await done()
+    }
+  })
+
+  it('app_screenshot de la app concedida (una sola ventana) sigue valiendo', async () => {
+    const { mcp, done } = await bootWin()
+    try {
+      const r = await mcp.call('app_screenshot', { app: 'notepad', lazunox_session: SES }, HDRS)
+      if (r.isError) throw new Error(textOf(r))
+      expect(r.content.some((c) => c.type === 'image')).toBe(true)
+      expect(mcp.calls().some((c) => c.cmd === 'window-shot')).toBe(true)
     } finally {
       await done()
     }

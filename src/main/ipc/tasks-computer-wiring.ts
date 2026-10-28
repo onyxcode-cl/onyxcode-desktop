@@ -20,6 +20,7 @@ import { createAppIconResolver, createMacAppFinder } from '../computer/app-icons
 import { SYSTEM_EXEMPT_BUNDLE_IDS } from '../computer/grants'
 import { abortFullAccessSessions } from '../computer/abort'
 import { getAutoApprover } from '../tasks/auto-approver'
+import { createBridgeSessionProbe } from '../computer/bridge-session-probe'
 import { getBridgeSecret } from '../tasks/bridge-secret'
 import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { normalizeTasksPrefs } from '../tasks/prefs'
@@ -144,6 +145,8 @@ export interface ComputerWiringDeps {
 export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { dispose: () => void } {
   const { computer, overlay, assist, recorder, appVisibility, keepVisibleBundleIds, maybeUnhideApps } = parts
   const { tasks, send, handle, getWindow } = deps
+  // Modo unificado (H4): el puente solo acepta sesiones que el servidor aislado de origen conoce (sin bandera no se usa nunca).
+  if (isUnifiedAppsEnabled()) computer.bridgeSessionProbe = createBridgeSessionProbe({ server: (k) => tasks.bridgeServerRef(k) })
   // Kill-switch desde main: aborta las sesiones de TODOS los servidores de Control total (y detiene
   // el servidor si no responde), sin depender de la vista que muestre el renderer.
   computer.abortSessions = () => abortFullAccessSessions(tasks.fullAccessConnections(), (srv) => tasks.stop(srv.folder, true))

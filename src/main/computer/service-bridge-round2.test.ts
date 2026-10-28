@@ -85,6 +85,7 @@ beforeEach(async () => {
   svc = new ComputerService({ platform: 'darwin' })
   svc.init()
   svc.setBridgeSecret(SECRET)
+  svc.bridgeSessionProbe = async () => 'live'
   url = (await svc.planGateUrl()) as string
 })
 afterEach(async () => {
@@ -254,9 +255,9 @@ describe('F1: key en origen aislado', () => {
     expect(keyCalls(m)).toEqual([['return']])
   })
 
-  it('paste_key de origen aislado: el MCP lo fija a cmd+v (guardia de código; el pegado real toca el portapapeles y no se prueba aquí)', () => {
+  it('paste_key de origen aislado: el MCP lo fija por plataforma (guardia de código; el pegado real toca el portapapeles y no se prueba aquí)', () => {
     const src = readFileSync(join(__dirname, 'mcp-server.ts'), 'utf8')
-    expect(src).toMatch(/const pasteKey = isolatedCall \? 'cmd\+v'/)
+    expect(src).toMatch(/const pasteKey = isolatedCall\s*\?\s*isolatedPasteKey\(backend\.id\)/)
     expect(src).toMatch(/backend\.pasteText!\(text, pasteKey, isolatedCall \? \(\) => recheckFront\(checkedFront, session\) : undefined\)/)
   })
 })

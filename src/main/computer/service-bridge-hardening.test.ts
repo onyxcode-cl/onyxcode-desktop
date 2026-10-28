@@ -82,6 +82,7 @@ beforeEach(async () => {
   svc = new ComputerService({ platform: 'darwin' })
   svc.init()
   svc.setBridgeSecret(SECRET)
+  svc.bridgeSessionProbe = async () => 'live'
   url = (await svc.planGateUrl()) as string
 })
 afterEach(async () => {

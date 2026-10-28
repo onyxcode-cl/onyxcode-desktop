@@ -57,6 +57,7 @@ beforeEach(async () => {
   svc = new ComputerService({ platform: 'darwin' })
   svc.init()
   svc.setBridgeSecret(SECRET)
+  svc.bridgeSessionProbe = async () => 'live'
   const url = await svc.planGateUrl()
   if (!url) throw new Error('sin canal lateral')
   mcp = await startMcp({

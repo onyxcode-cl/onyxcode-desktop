@@ -23,7 +23,62 @@ import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
 import { aumidKey, exeBaseName, exeKey, parseAppKey } from './policy/app-key'
-import { checkKeys } from './policy/win-keys'
+import { checkKeys, parseCombo as parseWinCombo } from './policy/win-keys'
+import { WIN_EXEMPT_EXES } from './policy/win-apps'
+
+// ───────────────────────────── origen aislado (puente de apps) ─────────────────────────────
+
+/**
+ * Origen aislado en Windows: apps sobre las que NUNCA se actúa. Parte de `WIN_EXEMPT_EXES` (Lazunox, Electron, dwm, shell, buscador, teclado
+ * táctil) más el buscador clásico y la pantalla de bloqueo. `explorer.exe` NO está (como Finder en Mac): solo se acciona si la sesión lo concedió.
+ */
+const WIN_ISOLATED_EXTRA_EXEMPT: readonly string[] = ['searchapp.exe', 'lockapp.exe']
+/** Paquetes de la Store que son el shell (el AUMID empieza por estos prefijos, en minúsculas). */
+const WIN_ISOLATED_EXEMPT_AUMID_PREFIXES: readonly string[] = [
+  'microsoft.windows.shellexperiencehost',
+  'microsoft.windows.startmenuexperiencehost',
+  'microsoft.windows.search',
+  'microsoft.lockapp',
+  'microsoft.windows.cortana'
+]
+
+/** ¿Clave de app (`exe:…|pub:…` o `aumid:…`) exenta en origen aislado? Una clave ilegible cuenta como exenta (falla cerrado). */
+export function isWinIsolatedExempt(key: string): boolean {
+  const p = parseAppKey(key)
+  if (!p) return true
+  if (p.kind === 'aumid') return WIN_ISOLATED_EXEMPT_AUMID_PREFIXES.some((x) => p.id.startsWith(x)) || p.id.startsWith('lazunox')
+  const exe = exeBaseName(key) ?? ''
+  return WIN_EXEMPT_EXES.includes(exe) || WIN_ISOLATED_EXTRA_EXEMPT.includes(exe) || exe.startsWith('lazunox')
+}
+
+/**
+ * Origen aislado: combinaciones que cambian de ventana o abren cosas del sistema. Lista CERRADA: queda bloqueada si lleva TODOS los
+ * modificadores de una entrada y su misma tecla (`alt+tab` bloquea también `alt+shift+tab` y `ctrl+alt+tab`). Cualquier combinación con
+ * la tecla Windows se bloquea aparte, y las teclas de función con `alt` (alt+f4 cierra, alt+f7/f8 mueven la ventana…).
+ */
+export const WIN_ISOLATED_BLOCKED_KEYS: readonly string[] = [
+  'alt+tab',
+  'alt+escape',
+  'ctrl+escape',
+  'ctrl+shift+escape',
+  'alt+f4',
+  'alt+space',
+  'ctrl+alt+del',
+  'printscreen'
+]
+
+/** Veredicto de UNA combinación de teclas en origen aislado de Windows. */
+export function checkWinIsolatedCombo(raw: string): 'ok' | 'unknown' | 'blocked' {
+  const p = parseWinCombo(raw)
+  if (!p || p.key === '' || p.macMod) return 'unknown'
+  if (p.mods.includes('win')) return 'blocked'
+  if (p.mods.includes('alt') && /^f\d+$/.test(p.key)) return 'blocked'
+  for (const rule of WIN_ISOLATED_BLOCKED_KEYS) {
+    const r = parseWinCombo(rule)
+    if (r && r.key === p.key && r.mods.every((m) => p.mods.includes(m))) return 'blocked'
+  }
+  return 'ok'
+}
 
 /** Límites del contrato del helper (`protocol.json` → `io`); una prueba los compara con el JSON. */
 export const WIN_HELPER_LIMITS = {
@@ -579,8 +634,20 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     return [...new Set(r.filter((k): k is string => !!k))]
   }
 
-  async function captureScreen(req: { raw: string; out: string; session?: string }): Promise<{ width: number; height: number }> {
+  async function captureScreen(req: {
+    raw: string
+    out: string
+    session?: string
+    isolated?: boolean
+  }): Promise<{ width: number; height: number }> {
     const { out, session } = req
+    // Origen aislado: FALLA CERRADO. El helper de Windows solo enmascara apps sin concesión y nunca tapa Lazunox ni el shell (exentas),
+    // así que una captura de pantalla completa no puede garantizar que no salgan. Hasta probar el enmascarado de exentas en el PC
+    // real, solo vale `app_screenshot` (window-shot: `PrintWindow` del HWND de la app concedida, sin otras ventanas).
+    if (req.isolated) {
+      deps.rm(out)
+      throw noCapture('en este modo no se puede tapar Lazunox ni el escritorio; usa app_screenshot de una app concedida')
+    }
     if (cfg.fakeShot) {
       // Solo pruebas (`COMPUTER_FAKE_SCREENSHOT` lo pasa `main` únicamente sin empaquetar).
       deps.copyFileSync(cfg.fakeShot, out)

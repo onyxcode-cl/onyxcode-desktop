@@ -1071,6 +1071,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return out
   }
 
+  /** Modo unificado (H4): conexión del servidor AISLADO `key` solo si arrancó con el puente de apps y sigue vivo; si no, null. */
+  bridgeServerRef(key: string): { baseUrl: string; authorization: string; directory: string } | null {
+    const h = this.bridgeServers.has(key) ? this.servers.get(key)?.handle : undefined
+    return h ? { baseUrl: h.baseUrl, authorization: h.authorization, directory: h.paths?.directory ?? key } : null
+  }
+
   /** Servidores con proceso vivo (sandbox y Control total), con credenciales y marcas de tiempo. */
   liveServers(): LiveServer[] {
     const out: LiveServer[] = []

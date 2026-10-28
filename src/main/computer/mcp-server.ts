@@ -61,9 +61,9 @@ import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pickMenuNode, type MenuNodeLike } from './menu-path'
-import type { AppRef, AppTier, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
+import { isolatedPasteKey, type AppRef, type AppTier, type PlatformBackend, type PlatformHost, type Screen } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
-import { createWin32Backend } from './mcp-platform-win32'
+import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from './mcp-platform-win32'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -800,6 +800,7 @@ const ISOLATED_MASK: ReadonlySet<string> = new Set(
 
 /** Origen aislado: ¿app exenta? La lista del sistema/Lazunox Y cualquier ayudante de Lazunox (`cl.bentec.lazunox.motor`, `.disclaim`, `.helper*`…). */
 function isIsolatedExempt(bundleId: string): boolean {
+  if (backend.id === 'win32') return isWinIsolatedExempt(bundleId) // Windows: claves `exe:…`/`aumid:…`; lista en mcp-platform-win32.ts
   return ISOLATED_NEVER_ACT.has(bundleId) || bundleId.startsWith('cl.bentec.lazunox.')
 }
 
@@ -911,6 +912,17 @@ function checkIsolatedKeys(keys: string, session: string | undefined): string {
     reportBridgeDenied('key-sequence', session)
     throw new Error(
       'En este modo solo se pulsa UNA combinación por llamada (el foco puede cambiar entre combinaciones). Llama a key una vez por combinación.'
+    )
+  }
+  if (backend.id === 'win32') {
+    // Windows: vocabulario y lista propios (`checkWinIsolatedCombo`); la política general (`backend.checkKeys`) se aplica después.
+    const v = checkWinIsolatedCombo(combos[0]!)
+    if (v === 'ok') return combos[0]!
+    reportBridgeDenied(v === 'blocked' ? 'key-blocked' : 'key-unknown', session)
+    throw new Error(
+      v === 'blocked'
+        ? `La combinación «${combos[0]}» cambia de ventana o abre cosas del sistema: en este modo no se pulsa. Usa open_application para cambiar de app.`
+        : `Combinación no reconocida: «${combos[0]}». Usa nombres como "enter", "tab", "ctrl+a", "shift+left", "f5".`
     )
   }
   const parsed = parseCombo(combos[0]!)
@@ -1806,8 +1818,12 @@ const TOOLS: ToolDef[] = [
       await requireCanType()
       const layout = a.layout === 'us' ? 'us' : 'mac'
       const mode = await typeModeFor(a.input)
-      // Origen aislado: el atajo de pegar es SIEMPRE cmd+v (cualquier otro `paste_key` se ignora: sería una combinación libre).
-      const pasteKey = isolatedCall ? 'cmd+v' : typeof a.paste_key === 'string' && a.paste_key.trim() ? a.paste_key.trim() : 'cmd+v'
+      // Origen aislado: el atajo de pegar es fijo por plataforma (cmd+v en macOS, ctrl+v en Windows); cualquier `paste_key` se ignora: sería una combinación libre.
+      const pasteKey = isolatedCall
+        ? isolatedPasteKey(backend.id)
+        : typeof a.paste_key === 'string' && a.paste_key.trim()
+          ? a.paste_key.trim()
+          : 'cmd+v'
       await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, async () => {
         // Origen aislado: la app en primer plano se vuelve a comprobar JUSTO antes de escribir/pegar.
         await recheckFront(checkedFront, session)

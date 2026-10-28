@@ -69,6 +69,7 @@ import { ComputerPrefsStore } from './prefs'
 import { servicePlatformFor } from './service-platform'
 import { stopShortcutFor } from './stop-shortcut'
 import { createAuditLog, type AuditInput, type AuditLog } from './policy/audit'
+import type { BridgeSessionProbe, BridgeSessionState } from './bridge-session-probe'
 import { auditInputFromEvent } from './policy/audit-event'
 import { createConsentController, WIN_CONSENT_VERSION, type ConsentController } from './policy/consent-win'
 import { createFileConsentStore, nodeAuditFs, readAuditEntries } from './win-storage'
@@ -173,6 +174,9 @@ export interface ResolveAccessOptions {
 const SESSION_RE = /^[A-Za-z0-9_-]{1,200}$/
 /** Tope de sesiones reclamadas por servidores aislados a la vez (memoria acotada). */
 const MAX_BRIDGE_SESSIONS = 2000
+/** Caché de la comprobación de sesión viva (H4): corta para que una sesión cerrada deje de valer pronto. */
+const BRIDGE_LIVE_TTL_MS = 8_000
+const BRIDGE_DEAD_TTL_MS = 3_000
 export type BridgeRejection = 'bad-server' | 'bad-session' | 'foreign-session'
 export type BridgeVerdict = { isolated: false } | { isolated: true; ok: true } | { isolated: true; ok: false; reason: BridgeRejection }
 const TIERS: ReadonlySet<string> = new Set(['view', 'click', 'full'])
@@ -307,6 +311,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * esta sesión». Exige conocer un id aleatorio de OpenCode y no sale de la carpeta del servidor; «primera reclamación gana».
    */
   private readonly sessionOwner = new Map<string, string>()
+  /**
+   * H4: comprobador de que una sesión existe en el servidor aislado de origen (lo fija `wireComputer`/`createComputerParts` con la bandera).
+   * Sin comprobador, un origen aislado NO pasa (falla cerrado). Límite documentado: una sesión HERMANA del mismo servidor (otro hilo del
+   * mismo chat/carpeta) sí existe ahí y sigue valiendo; entre servidores distintos ya no hay confusión posible.
+   */
+  bridgeSessionProbe: BridgeSessionProbe | null = null
+  private readonly bridgeLive = new Map<string, { at: number; ok: boolean }>()
+  private readonly bridgeLiveInflight = new Map<string, Promise<boolean>>()
   /** Vigía nativo de Esc físico (`cu-helper watch-esc`), solo mientras hay control activo. */
   private escWatcher: ChildProcessByStdio<Writable | null, Readable, Readable> | null = null
   private escIdleTimer: NodeJS.Timeout | null = null
@@ -886,6 +898,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   setBridgeSecret(secret: string | null): void {
     this.bridgeSecretHash = secret ? createHash('sha256').update(secret).digest() : null
     this.sessionOwner.clear()
+    this.bridgeLive.clear()
+  }
+
+  /** Para pruebas: ¿esta sesión ya fue reclamada por algún servidor aislado? */
+  isBridgeSessionClaimed(sessionId: string): boolean {
+    return this.isBridgeSession(sessionId)
   }
 
   /** ¿La sesión la reclamó un servidor aislado (`checkBridgeCall`)? Solo en memoria; sin bandera nunca hay ninguna. */
@@ -926,6 +944,58 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       return { isolated: true, ok: false, reason }
     }
     return { isolated: true, ok: true }
+  }
+
+  /**
+   * Como `checkBridgeCall`, pero ANTES de reclamar la sesión (y de que nada pueda abrir una tarjeta) comprueba que existe y está viva en el
+   * servidor de origen. Inventada, de otro servidor o no comprobable (servidor caído) ⇒ rechazo `bad-session` sin tarjeta. Es la ruta que usa
+   * `/bridge-check`. Caché corta y una sola consulta en vuelo por sesión.
+   */
+  async verifyBridgeCall(input: { origin?: unknown; server?: unknown; session?: unknown }): Promise<BridgeVerdict> {
+    if (!this.isBridgeOrigin(input.origin)) return { isolated: false }
+    const server = typeof input.server === 'string' ? input.server : ''
+    const session = typeof input.session === 'string' ? input.session : ''
+    // Forma inválida: que la rechace `checkBridgeCall` (mismo veredicto y auditoría de siempre).
+    if (!server || server.length > 1024 || !SESSION_RE.test(session)) return this.checkBridgeCall(input)
+    const state = await this.bridgeSessionLive(server, session)
+    if (state !== 'live') {
+      this.bridgeDenied(session, 'bridge', state === 'dead' ? 'dead-session' : 'unverifiable-session')
+      return { isolated: true, ok: false, reason: 'bad-session' }
+    }
+    return this.checkBridgeCall(input)
+  }
+
+  private async bridgeSessionLive(server: string, session: string): Promise<BridgeSessionState> {
+    const probe = this.bridgeSessionProbe
+    if (!probe) return 'unknown'
+    const key = `${server}\u0000${session}`
+    const now = Date.now()
+    const hit = this.bridgeLive.get(key)
+    if (hit && now - hit.at < (hit.ok ? BRIDGE_LIVE_TTL_MS : BRIDGE_DEAD_TTL_MS)) return hit.ok ? 'live' : 'dead'
+    let p = this.bridgeLiveInflight.get(key)
+    if (!p) {
+      p = (async () => {
+        let st: BridgeSessionState = 'unknown'
+        try {
+          st = await probe(server, session)
+        } catch {
+          st = 'unknown'
+        }
+        if (st !== 'unknown') {
+          if (this.bridgeLive.size >= MAX_BRIDGE_SESSIONS) {
+            for (const [k, v] of this.bridgeLive) if (Date.now() - v.at >= BRIDGE_LIVE_TTL_MS) this.bridgeLive.delete(k)
+            if (this.bridgeLive.size >= MAX_BRIDGE_SESSIONS) this.bridgeLive.clear()
+          }
+          this.bridgeLive.set(key, { at: Date.now(), ok: st === 'live' })
+        }
+        return st === 'live'
+      })().finally(() => this.bridgeLiveInflight.delete(key))
+      this.bridgeLiveInflight.set(key, p)
+    }
+    // Un resultado 'unknown' (servidor caído) no se cachea y se trata como no válido (falla cerrado).
+    const ok = await p
+    if (ok) return 'live'
+    return this.bridgeLive.get(key)?.ok === false ? 'dead' : 'unknown'
   }
 
   /** Línea de auditoría y de registro de un rechazo del puente (sin secretos ni la clave del servidor). */
@@ -1354,11 +1424,18 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         if (req.method === 'POST' && req.url === `${path}/bridge-check`) {
           // Modo unificado: el MCP reenvía las cabeceras del puente tal cual llegaron; aquí (y solo aquí) se comparan con el secreto.
           this.readSmallJson(req, res, (o) => {
-            const v = this.checkBridgeCall({ origin: o.origin, server: o.server, session: o.session })
-            res.statusCode = 200
-            res.setHeader('content-type', 'application/json')
-            res.setHeader('cache-control', 'no-store')
-            res.end(JSON.stringify(v))
+            void this.verifyBridgeCall({ origin: o.origin, server: o.server, session: o.session }).then(
+              (v) => {
+                res.statusCode = 200
+                res.setHeader('content-type', 'application/json')
+                res.setHeader('cache-control', 'no-store')
+                res.end(JSON.stringify(v))
+              },
+              () => {
+                res.statusCode = 500
+                res.end()
+              }
+            )
           })
           return
         }

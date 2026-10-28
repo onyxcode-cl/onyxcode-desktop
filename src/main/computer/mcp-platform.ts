@@ -185,3 +185,8 @@ export interface PlatformBackend {
     noAppsFound: (missing: string[]) => string
   }
 }
+
+/** Origen aislado: atajo de pegar fijo por plataforma (macOS `cmd+v`; Windows `ctrl+v`, la política de teclas rechaza `cmd`). */
+export function isolatedPasteKey(id: 'darwin' | 'win32'): string {
+  return id === 'win32' ? 'ctrl+v' : 'cmd+v'
+}
