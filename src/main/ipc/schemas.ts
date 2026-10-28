@@ -862,6 +862,14 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:listFolders': none,
   'tasks:approveFolder': folderReq,
   'tasks:chatFolder:create': none,
+  'tasks:chatIndex:list': none,
+  'tasks:chatIndex:upsert': obj({
+    folder: absPath,
+    sessionId,
+    title: str({ max: 300 }),
+    updatedAt: num({ int: true, min: 0, max: 8_640_000_000_000_000 })
+  }),
+  'tasks:chatIndex:remove': obj({ folder: absPath, sessionId: optional(sessionId) }),
   'tasks:removeFolder': folderReq,
   'tasks:start': obj({ folder: absPath, fullAccess: optional(bool) }),
   'tasks:grantFullAccess': folderReq,

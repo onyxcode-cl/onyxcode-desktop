@@ -35,6 +35,19 @@ export interface TasksFullAccessState {
   disabled: boolean
 }
 
+/** Entrada del índice de chats del modo unificado (solo metadatos; el contenido vive en el servidor de cada carpeta). */
+export interface ChatIndexEntry {
+  /** Carpeta (ruta real) donde vive el chat. */
+  folder: string
+  sessionId: string
+  title: string
+  /** Última actividad (epoch ms). */
+  updatedAt: number
+}
+
+/** Alta o actualización de una entrada del índice (la envía la interfaz cuando ve la sesión). */
+export type ChatIndexUpsert = ChatIndexEntry
+
 export interface TasksFolder {
   path: string
   name: string
@@ -1032,6 +1045,10 @@ export interface TasksInvokeContract {
   'tasks:approveFolder': { req: { folder: string }; res: TasksFolder }
   /** Modo unificado (ola 2): crea y aprueba una carpeta de trabajo propia del chat (`~/Lazunox/Chats/<id>`) cuando la persona no elige carpeta. */
   'tasks:chatFolder:create': { req: void; res: TasksFolder }
+  /** Modo unificado (ola 2b): índice de chats que guarda main (título y fecha por chat y carpeta) para listar el historial sin arrancar servidores. */
+  'tasks:chatIndex:list': { req: void; res: ChatIndexEntry[] }
+  'tasks:chatIndex:upsert': { req: ChatIndexUpsert; res: void }
+  'tasks:chatIndex:remove': { req: { folder: string; sessionId?: string }; res: void }
   'tasks:removeFolder': { req: { folder: string }; res: void }
   /**
    * Arranca (o reutiliza) el servidor de una carpeta autorizada. Por defecto sandboxeado;
@@ -1450,6 +1467,9 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:listFolders',
   'tasks:approveFolder',
   'tasks:chatFolder:create',
+  'tasks:chatIndex:list',
+  'tasks:chatIndex:upsert',
+  'tasks:chatIndex:remove',
   'tasks:removeFolder',
   'tasks:start',
   'tasks:grantFullAccess',
