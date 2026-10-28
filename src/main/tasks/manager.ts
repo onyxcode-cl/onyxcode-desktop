@@ -448,13 +448,34 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.forbidden(this.nf(folder), true)
   }
 
+  /**
+   * Modo unificado: `~/Lazunox/Chats` y sus ANCESTROS (`~/Lazunox`, el home) no son carpetas de trabajo ni adicionales válidas:
+   * re-abrirían las carpetas de todos los chats. Solo con la bandera y fuera de Windows; compara por ruta real.
+   */
+  private chatsContainerReason(folder: string): string | null {
+    if (this.win || !isUnifiedAppsEnabled()) return null
+    let chats: string
+    let real: string
+    try {
+      chats = join(realpathSync(homedir()), 'Lazunox', 'Chats')
+    } catch {
+      return null
+    }
+    try {
+      real = realpathSync(folder)
+    } catch {
+      real = folder
+    }
+    return real === chats || chats.startsWith(real + '/') ? t('merr.chat.containsChats') : null
+  }
+
   approveFolder(folder: string): TasksFolder {
     const f = this.nf(folder)
     // Windows: la política decide ANTES de tocar el disco (una ruta de red o de dispositivo no debe abrirse para comprobarla).
     const early = this.win ? this.forbidden(f) : null
     if (early) throw new Error(early)
     if (!this.isDir(f)) throw new Error(t('merr.task.notValidFolder', { folder: f }))
-    const reason = this.win ? null : this.forbidden(f)
+    const reason = this.win ? null : (this.forbidden(f) ?? this.chatsContainerReason(f))
     if (reason) throw new Error(reason)
     const data = this.load()
     let entry = data.folders.find((x) => x.path === f)
@@ -648,7 +669,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (early) return { ok: false, normalized, reason: early }
     }
     if (!this.isDir(normalized)) return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
-    const reason = this.win ? null : this.forbidden(normalized)
+    const reason = this.win ? null : (this.forbidden(normalized) ?? this.chatsContainerReason(normalized))
     return reason ? { ok: false, normalized, reason } : { ok: true, normalized }
   }
 

@@ -21,7 +21,7 @@
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
 import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 
@@ -373,7 +373,8 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     // Las carpetas de chat viven en ~/Lazunox/Chats: un chat (o cualquier carpeta) no debe leer las de OTROS chats.
     // La re-permisión va DESPUÉS de la denegación (gana la última regla) y solo para rutas bajo Chats.
     const chats = real(join(home, 'Lazunox', 'Chats'))
-    const under = (p: string): boolean => p === chats || p.startsWith(chats + '/')
+    // Estrictamente DENTRO de Chats: `Chats` entera (o un ancestro) no re-abre las carpetas de todos los chats.
+    const under = (p: string): boolean => p.startsWith(chats + '/')
     const reRw = [...new Set([folder, ...extraRw].filter(under))]
     const reRo = [...new Set(extraRo.filter(under))].filter((p) => !reRw.includes(p))
     lines.push(
@@ -462,6 +463,18 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
       ';; Borrado concedido en la principal aunque una carpeta rw adicional la contenga.',
       `(allow file-write-unlink (subpath ${sbString(folder)}))`,
       ...rwOthers.filter((p) => inside(p, folder)).map((p) => `(deny file-write-unlink (subpath ${sbString(p)}))`),
+      ''
+    )
+  }
+  if (opts.isolateChats ?? isUnifiedAppsEnabled()) {
+    // Con «Permitir borrar», renombrar/mover/borrar un ANCESTRO de las carpetas de chat (`~/Lazunox`, `Chats`, el home) trabaja
+    // con rutas y se saltaría la denegación de lectura (`mv ~/Lazunox ~/L2; cat ~/L2/Chats/b/f.txt`). Se deniega SOLO el literal
+    // (no el contenido): escribir dentro de la carpeta de trabajo sigue como siempre.
+    const chatsAnc = real(join(home, 'Lazunox', 'Chats'))
+    const ancestors = [dirname(dirname(chatsAnc)), dirname(chatsAnc), chatsAnc]
+    lines.push(
+      ';; Modo unificado: el home, ~/Lazunox y ~/Lazunox/Chats no se pueden renombrar, mover ni borrar (aunque se permita borrar).',
+      `(deny file-write-unlink ${ancestors.map((p) => `(literal ${sbString(p)})`).join(' ')})`,
       ''
     )
   }

@@ -8,6 +8,7 @@ import { FolderMenu } from './FolderMenu'
 import { SidebarSections } from './SidebarSections'
 import { setProjectPanelOpen, useTasks } from './store'
 import { TaskList } from './TaskList'
+import { chatFolderDate, isChatFolderForDisplay, useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 export function TasksSidebar(): React.JSX.Element {
@@ -16,7 +17,14 @@ export function TasksSidebar(): React.JSX.Element {
   const desktop = !isRemoteSurface()
   const tree = useSidebarTree()
   const [open, setOpen] = useState(true)
-  const name = folder ? baseName(folder) : ''
+  const unified = useUnifiedApps()
+  // Modo unificado: la carpeta de un chat se nombra «Chat sin carpeta · fecha», nunca con su id interno.
+  const chatDate = unified && folder && isChatFolderForDisplay(folder) ? chatFolderDate(folder) : null
+  const name = !folder
+    ? ''
+    : unified && isChatFolderForDisplay(folder)
+      ? t(chatDate ? 'tasksComputer.unified.chatFolderNameDate' : 'tasksComputer.unified.chatFolderName', { date: chatDate ?? '' })
+      : baseName(folder)
   return (
     <div className="flex flex-col px-1 desk:px-0">
       {desktop ? (

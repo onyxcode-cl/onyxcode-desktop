@@ -109,8 +109,8 @@ describe.skipIf(!macOnly)('Seatbelt REAL: un chat no lee las carpetas de otros c
   })
   afterAll(() => rmSync(tmp, { recursive: true, force: true }))
 
-  const run = (folder: string, isolateChats: boolean, cmd: string) => {
-    const profile = buildSandboxProfile({ folder, privateDir: priv, home, isolateChats })
+  const run = (folder: string, isolateChats: boolean, cmd: string, extra: Partial<SandboxProfileOptions> = {}) => {
+    const profile = buildSandboxProfile({ folder, privateDir: priv, home, isolateChats, ...extra })
     const r = spawnSync('/usr/bin/sandbox-exec', ['-p', profile, '/bin/sh', '-c', cmd], { cwd: folder, encoding: 'utf8', timeout: 20000 })
     return { out: `${r.stdout}${r.stderr}`.trim(), status: r.status }
   }
@@ -148,5 +148,50 @@ describe.skipIf(!macOnly)('Seatbelt REAL: un chat no lee las carpetas de otros c
     expect(run(docs, true, `echo y > '${docs}/y.txt' && cat '${docs}/y.txt'`).out).toBe('y')
     // Sin la regla (control) sí se leía.
     expect(run(docs, false, `cat '${a}/f.txt'`).out).toBe('AAA')
+  })
+
+  const chatsDir = () => join(home, 'Lazunox', 'Chats')
+
+  it('H1: carpeta = Chats entera (o Chats/a/..) o extra = Chats NO re-abre los chats ajenos', () => {
+    for (const folder of [chatsDir(), join(a, '..')]) {
+      const r = run(folder, true, `cat '${b}/f.txt'`)
+      expect(r.status).not.toBe(0)
+      expect(r.out).toMatch(/Operation not permitted/)
+      expect(run(folder, true, `ls '${chatsDir()}'`).status).not.toBe(0)
+    }
+    for (const mode of ['ro', 'rw'] as const) {
+      const extra = { extraFolders: [{ path: chatsDir(), mode }] }
+      expect(run(docs, true, `cat '${b}/f.txt'`, extra).status).not.toBe(0)
+      expect(run(docs, true, `ls '${chatsDir()}'`, extra).status).not.toBe(0)
+    }
+    // Una extra DENTRO de Chats sigue funcionando.
+    expect(run(docs, true, `cat '${a}/f.txt'`, { extraFolders: [{ path: a, mode: 'ro' }] }).out).toBe('AAA')
+  })
+
+  it('H2: con «Permitir borrar» no se renombra ~/Lazunox ni Chats, y el chat ajeno sigue sin leerse', () => {
+    const lz = join(home, 'Lazunox')
+    const l2 = join(home, 'L2')
+    for (const folder of [docs, a, home, lz]) {
+      const r = run(folder, true, `mv '${lz}' '${l2}'`, { allowDelete: true })
+      expect(r.status).not.toBe(0)
+      expect(existsSync(lz)).toBe(true)
+      expect(existsSync(l2)).toBe(false)
+      expect(run(folder, true, `mv '${chatsDir()}' '${lz}/C2'`, { allowDelete: true }).status).not.toBe(0)
+      expect(run(folder, true, `cat '${b}/f.txt'`, { allowDelete: true }).status).not.toBe(0)
+    }
+    expect(existsSync(chatsDir())).toBe(true)
+    // El home tampoco se renombra.
+    expect(run(docs, true, `mv '${home}' '${home}2'`, { allowDelete: true }).status).not.toBe(0)
+    expect(run(home, true, `mv '${chatsDir()}' '${home}/C3'`, { allowDelete: true }).status).not.toBe(0)
+    expect(existsSync(home)).toBe(true)
+  })
+
+  it('H2: la propia carpeta de chat sigue la regla de borrado de siempre (allowDelete la permite, dentro)', () => {
+    expect(run(a, true, `echo t > '${a}/t.txt' && rm '${a}/t.txt'`, { allowDelete: true }).status).toBe(0)
+    expect(existsSync(join(a, 't.txt'))).toBe(false)
+    // Escribir contenido en ~/Lazunox como carpeta de trabajo no se ve afectado.
+    const lz = join(home, 'Lazunox')
+    expect(run(lz, true, `echo w > '${lz}/w.txt' && cat '${lz}/w.txt'`, { allowDelete: true }).out).toBe('w')
+    rmSync(join(lz, 'w.txt'), { force: true })
   })
 })

@@ -671,7 +671,7 @@ export const tasks = {
   'tasks.list.empty.noFolder.unified': 'Your chats will appear here.',
   'tasks.home.sandboxActive.unified': 'Works isolated: it cannot write outside its folder or read your keys.',
   'tasks.home.thisFolder.re': '\\bthis folder\\b',
-  'tasks.home.thisFolder.to': 'the folder you choose',
+  'tasks.home.thisFolder.to': 'the location I tell you',
   'tasks.home.lead.unified':
     'Write what you need. Choose a folder if you like; otherwise the agent works in a space of its own for this chat.'
 } as const satisfies Messages<typeof es>

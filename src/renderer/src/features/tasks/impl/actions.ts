@@ -19,7 +19,7 @@ import { isChildRequest, liveBackgroundChildIds } from '../../code/impl/child-se
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
-import { enableAutoOnlyFor, useUnified } from './unified'
+import { enableAutoOnlyFor, isChatFolderPath, useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
 import { stopPicking } from '../../browser/pick-state'
@@ -433,6 +433,11 @@ export async function forgetFolder(folder: string): Promise<void> {
 }
 
 export function newTask(): void {
+  // Modo unificado: «Nueva tarea» sin haber elegido carpeta parte SIN carpeta; si la actual es la carpeta automática de un chat
+  // (ruta real guardada), se suelta para que el siguiente envío cree OTRA carpeta de chat y no comparta la del chat anterior.
+  // Una carpeta que la persona eligió se respeta.
+  const folder = useTasks.getState().folder
+  if (useUnified.getState().on && folder && isChatFolderPath(folder)) clearFolder()
   // Sin tarea activa se vuelve al modelo del modo Tareas (que `setTaskModel` ya recuerda).
   useTasks.setState({ activeTaskId: null, taskModel: null, taskVariant: null, sideChat: null })
 }
@@ -449,6 +454,13 @@ function taskModelOf(sessionID: string): { model: ModelRef; variant: string | nu
   }
   const m = st.sessions[sessionID]?.model
   return m ? { model: { providerID: m.providerID, modelID: m.id }, variant: m.variant ?? null } : null
+}
+
+/** Modo unificado: «Sin carpeta (chat nuevo)» del menú. Suelta la carpeta actual (el historial queda en ella) y el próximo envío crea una carpeta de chat nueva. */
+export function startChatWithoutFolder(): void {
+  useUnified.setState({ wantAuto: false })
+  clearFolder()
+  newTask()
 }
 
 export async function openTask(sessionID: string): Promise<void> {

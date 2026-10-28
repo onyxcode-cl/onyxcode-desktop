@@ -6,7 +6,7 @@ import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
-import { chooseFolder, forgetFolder, linkFolder, selectFolder, unlinkFolder } from './actions'
+import { chooseFolder, forgetFolder, linkFolder, selectFolder, startChatWithoutFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
 import { chatFolderDate, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
@@ -43,6 +43,8 @@ export function FolderMenu({
   // Modo unificado: la carpeta propia del chat no se muestra con su id interno sino como «Chat sin carpeta».
   const chatName = (path: string, fallback: string): string => {
     if (!unifiedOn || !isChatFolderForDisplay(path)) return fallback
+    // Barra lateral: el ancho no da para «Chat sin carpeta · fecha».
+    if (variant === 'row') return t('tasksComputer.unified.noFolderShort')
     const date = chatFolderDate(path)
     return date ? t('tasksComputer.unified.chatFolderNameDate', { date }) : t('tasksComputer.unified.chatFolderName')
   }
@@ -51,7 +53,9 @@ export function FolderMenu({
       ? t('tasksComputer.workspace.home')
       : chatName(folder, baseName(folder))
     : unifiedOn
-      ? t('tasksComputer.unified.chooseOptional')
+      ? variant === 'row'
+        ? t('tasksComputer.unified.noFolderShort')
+        : t('tasksComputer.unified.chooseOptional')
       : t('tasksComputer.menu.choose')
   // Modo unificado: «Carpeta: ninguna (chat nuevo)» (también en el chat con carpeta propia) o «Carpeta: <nombre>».
   const unified = unifiedOn && variant === 'chip'
@@ -134,7 +138,9 @@ export function FolderMenu({
   }
 
   const toggle = (): void => {
-    if (folders.length === 0) {
+    // Modo unificado: sin carpetas conocidas, el selector lateral no abre el diálogo nativo por su cuenta; se abre el menú
+    // (ahí está «Elegir otra carpeta…»). El chip del inicio, que dice «elegir», sí conserva el atajo.
+    if (folders.length === 0 && !(unifiedOn && variant !== 'chip')) {
       void chooseFolder()
       return
     }
@@ -201,6 +207,19 @@ export function FolderMenu({
           }`}
         >
           <div className="px-2 pt-1 pb-1.5 text-[11.5px] desk:text-meta font-medium text-subtle">{TASKS_TERMS.workFolders}</div>
+          {unifiedOn && folder && !isChatFolderForDisplay(folder) && (
+            <button
+              type="button"
+              data-testid="unified-no-folder"
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-hover"
+              onClick={() => {
+                setOpen(false)
+                startChatWithoutFolder()
+              }}
+            >
+              <FolderOpen size={14} className="shrink-0 text-muted" /> {t('tasksComputer.unified.noFolderOption')}
+            </button>
+          )}
           <div className="max-h-64 overflow-y-auto">
             {folders.map((f) => (
               <div key={f.path} className="group flex items-center rounded-lg hover:bg-hover">

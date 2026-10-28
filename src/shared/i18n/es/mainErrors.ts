@@ -42,6 +42,8 @@ export const mainErrors = {
   'merr.folder.orgRoots': 'Tu organización solo permite carpetas dentro de: {roots}. «{folder}» queda fuera.',
   'merr.folder.orgNone': 'Tu organización no permite usar carpetas en Overdrive.',
   'merr.task.notValidFolder': 'No es una carpeta válida: {folder}',
+  'merr.chat.containsChats':
+    'No se puede usar esa carpeta: contiene o es la carpeta donde Lazunox guarda los chats (~/Lazunox/Chats). Elige una carpeta que no la incluya.',
   'merr.chat.unifiedOff': 'El modo unificado está apagado.',
   'merr.chat.unifiedWin': 'El modo unificado no está disponible en Windows todavía.',
   'merr.chat.computerUseOff': 'No se pudo crear la carpeta del chat: tu organización desactivó el control del PC.',

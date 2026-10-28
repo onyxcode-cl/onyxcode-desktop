@@ -35,20 +35,20 @@ describe('inicio con la bandera', () => {
     expect(html).not.toContain('radiogroup')
     expect(html).not.toContain('data-testid="scope-folder"')
     expect(html).not.toContain('El computador completo')
-    expect(html).toContain('Carpeta: ninguna')
+    expect(html).toContain('Chat sin carpeta')
     expect(html).toContain('Manual')
     expect(html).toContain('data-testid="unified-advanced"')
     expect(html).toContain('Avanzado: sin aislamiento')
-    expect(html).toContain('no quedan aislados en una carpeta')
+    expect(html).toContain('ya no quedarían en una carpeta')
   })
   it('sin la bandera: el selector de siempre y nada del modo unificado', () => {
     const html = home()
     expect(html).toContain('radiogroup')
     expect(html).toContain('El computador completo')
     expect(html).not.toContain('unified-advanced')
-    expect(html).not.toContain('Carpeta: ninguna')
+    expect(html).not.toContain('Chat sin carpeta')
   })
-  it('con la carpeta del chat el inicio no dice «Trabajará dentro de …», el chip dice «ninguna (chat nuevo)» y «Avanzado» se ve como enlace', () => {
+  it('con la carpeta del chat el inicio no dice «Trabajará dentro de …», el chip dice «Chat sin carpeta» y «Avanzado» se ve como enlace', () => {
     o.unified = true
     useUnified.setState({ chatFolder: '/Users/x/Lazunox/Chats/20261027-d82fb4' })
     o.patch = { folder: '/Users/x/Lazunox/Chats/20261027-d82fb4', phase: 'ready' }
@@ -56,7 +56,8 @@ describe('inicio con la bandera', () => {
     expect(html).not.toContain('Trabajará dentro de')
     expect(html).not.toContain('20261027-d82fb4</')
     expect(html).not.toContain('Limitado a tu carpeta')
-    expect(html).toContain('Carpeta: ninguna (chat nuevo)')
+    expect(html).toContain('Chat sin carpeta')
+    expect(html).not.toContain('chat nuevo')
     expect(html).toContain('Escribe lo que necesitas')
     expect(html).toMatch(/data-testid="unified-advanced"[^>]*class="[^"]*text-accent[^"]*underline/)
     useUnified.setState({ chatFolder: null })
@@ -65,7 +66,8 @@ describe('inicio con la bandera', () => {
     o.unified = true
     const html = home()
     expect(html).not.toContain('esta carpeta')
-    expect(html).toContain('la carpeta que elijas')
+    expect(html).not.toContain('la carpeta que elijas')
+    expect(html).toContain('la ubicación que te indique')
   })
   it('sin la bandera las sugerencias dicen «esta carpeta» como siempre', () => {
     expect(home()).toContain('esta carpeta')
@@ -89,7 +91,7 @@ describe('chips', () => {
     o.patch = { autoMode: { settings: { enabled: false, folders: [], tasks: [], viewApps: [] }, log: [], policyDisabled: false } }
     expect(renderToStaticMarkup(<AutoModeChip />)).toBe('')
   })
-  it('el chip de la barra superior dice «Carpeta: <nombre>» o «Sin carpeta elegida», sin ofrecer cambiar de modo', () => {
+  it('el chip de la barra superior dice «Carpeta: <nombre>» o «Chat sin carpeta», sin ofrecer cambiar de modo', () => {
     o.patch = { folder: '/Users/x/Proyecto' }
     let html = renderToStaticMarkup(<UnifiedScopeChip />)
     expect(html).toContain('Carpeta: Proyecto')
@@ -97,7 +99,8 @@ describe('chips', () => {
     useUnified.setState({ chatFolder: '/Users/x/Lazunox/Chats/abc' })
     o.patch = { folder: '/Users/x/Lazunox/Chats/abc' }
     html = renderToStaticMarkup(<UnifiedScopeChip />)
-    expect(html).toContain('Sin carpeta elegida')
+    expect(html).toContain('Chat sin carpeta')
+    expect(html).not.toContain('Sin carpeta elegida')
     // Una carpeta con forma parecida pero que no es la de este chat (chat antiguo) se nombra «Chat sin carpeta», nunca con el id.
     o.patch = { folder: '/Users/x/Lazunox/Chats/20261027-d82fb4' }
     html = renderToStaticMarkup(<UnifiedScopeChip />)

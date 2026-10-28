@@ -671,7 +671,7 @@ export const tasks = {
   'tasks.list.empty.noFolder.unified': 'Tus chats aparecerán aquí.',
   'tasks.home.sandboxActive.unified': 'Trabaja aislado: no puede escribir fuera de su carpeta ni leer tus claves.',
   'tasks.home.thisFolder.re': '\\besta carpeta\\b',
-  'tasks.home.thisFolder.to': 'la carpeta que elijas',
+  'tasks.home.thisFolder.to': 'la ubicación que te indique',
   'tasks.home.lead.unified':
     'Escribe lo que necesitas. Si quieres, elige una carpeta; si no, el agente trabajará en un espacio propio de este chat.'
 } as const

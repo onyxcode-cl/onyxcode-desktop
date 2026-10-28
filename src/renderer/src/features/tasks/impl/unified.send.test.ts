@@ -5,7 +5,7 @@ vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionC
 
 const h = vi.hoisted(() => ({
   cw: vi.fn(),
-  connectFolder: vi.fn(async () => undefined),
+  connectFolder: vi.fn(async (_folder: string, _full?: boolean): Promise<void> => undefined),
   setAutoModeSettings: vi.fn(async () => undefined)
 }))
 vi.mock('./bridge', async (orig) => ({ ...(await orig<typeof import('./bridge')>()), cw: h.cw }))
@@ -15,7 +15,7 @@ vi.mock('./store', async (orig) => ({
   setAutoModeSettings: h.setAutoModeSettings
 }))
 
-import { ensureFolderForSend, openChatFolder } from './actions'
+import { ensureFolderForSend, newTask, openChatFolder, startChatWithoutFolder } from './actions'
 import { useTasks } from './store'
 import { selectFolder, setAccessMode } from './actions'
 import { isChatFolderForDisplay, isChatFolderPath, useUnified } from './unified'
@@ -133,5 +133,63 @@ describe('modo unificado: «Automático» elegido sin carpeta', () => {
       [{ enabled: true, folder: { path: '/Users/x/Lazunox/Chats/abc', on: true } }]
     ])
     useTasks.setState({ autoMode: null } as never)
+  })
+})
+
+describe('modo unificado: cada chat nuevo sin carpeta tiene su propia carpeta', () => {
+  let n = 0
+  beforeEach(() => {
+    n = 0
+    h.cw.mockImplementation(async (channel: string) => {
+      if (channel === 'tasks:chatFolder:create') {
+        n += 1
+        return { path: `/Users/x/Lazunox/Chats/id${n}`, name: `id${n}`, approvedAt: 1 }
+      }
+      if (channel === 'tasks:folders:list') return []
+      return undefined
+    })
+    // connectFolder está simulado: refleja la carpeta conectada en el store, como el real.
+    h.connectFolder.mockImplementation(async (f: string) => {
+      useTasks.setState({ folder: f } as never)
+    })
+  })
+
+  it('dos «Nueva tarea» sin carpeta crean dos carpetas de chat distintas y dos conexiones distintas', async () => {
+    await ensureFolderForSend()
+    newTask()
+    expect(useTasks.getState().folder).toBeNull()
+    await ensureFolderForSend()
+    const created = h.cw.mock.calls.filter((c) => c[0] === 'tasks:chatFolder:create')
+    expect(created).toHaveLength(2)
+    expect(h.connectFolder.mock.calls.map((c) => c[0])).toEqual(['/Users/x/Lazunox/Chats/id1', '/Users/x/Lazunox/Chats/id2'])
+  })
+
+  it('con una carpeta elegida, «Nueva tarea» la conserva y no crea carpeta de chat', async () => {
+    useTasks.setState({ folder: '/Users/x/Proyecto' } as never)
+    newTask()
+    expect(useTasks.getState().folder).toBe('/Users/x/Proyecto')
+    await ensureFolderForSend()
+    expect(h.cw).not.toHaveBeenCalledWith('tasks:chatFolder:create')
+  })
+
+  it('reabrir un chat existente (sin «Nueva tarea») reutiliza su carpeta', async () => {
+    await ensureFolderForSend()
+    await ensureFolderForSend()
+    expect(h.cw.mock.calls.filter((c) => c[0] === 'tasks:chatFolder:create')).toHaveLength(1)
+  })
+
+  it('sin la bandera, «Nueva tarea» no suelta la carpeta', () => {
+    useUnified.setState({ on: false, chatFolder: '/Users/x/Lazunox/Chats/abc' })
+    useTasks.setState({ folder: '/Users/x/Lazunox/Chats/abc' } as never)
+    newTask()
+    expect(useTasks.getState().folder).toBe('/Users/x/Lazunox/Chats/abc')
+  })
+
+  it('«Sin carpeta (chat nuevo)» suelta una carpeta elegida y el siguiente envío crea la del chat', async () => {
+    useTasks.setState({ folder: '/Users/x/Proyecto' } as never)
+    startChatWithoutFolder()
+    expect(useTasks.getState().folder).toBeNull()
+    await ensureFolderForSend()
+    expect(h.cw).toHaveBeenCalledWith('tasks:chatFolder:create')
   })
 })

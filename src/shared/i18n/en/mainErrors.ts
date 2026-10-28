@@ -40,6 +40,8 @@ export const mainErrors = {
   'merr.folder.orgRoots': 'Your organization only allows folders inside: {roots}. “{folder}” is outside.',
   'merr.folder.orgNone': 'Your organization doesn’t allow using folders in Overdrive.',
   'merr.task.notValidFolder': 'Not a valid folder: {folder}',
+  'merr.chat.containsChats':
+    'That folder can’t be used: it is, or contains, the folder where Lazunox keeps chats (~/Lazunox/Chats). Pick a folder that doesn’t include it.',
   'merr.chat.unifiedOff': 'Unified mode is turned off.',
   'merr.chat.unifiedWin': 'Unified mode isn’t available on Windows yet.',
   'merr.chat.computerUseOff': 'Couldn’t create the chat folder: your organization turned off computer control.',

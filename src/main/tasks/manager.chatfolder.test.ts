@@ -216,6 +216,21 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
     expect(hook.chmodCalls).toBe(0)
   })
 
+  it('rechaza como carpeta de trabajo o extra Chats y sus ancestros (~/Lazunox); una carpeta de chat o ajena sí', async () => {
+    const m = new TasksManager()
+    const chat = (await m.createChatFolder()).path
+    const chats = join(home, 'Lazunox', 'Chats')
+    for (const bad of [chats, join(chat, '..'), join(home, 'Lazunox')]) {
+      expect(m.checkFolder(bad).ok).toBe(false)
+      expect(m.checkFolder(bad).reason).toContain('Chats')
+      expect(() => m.approveFolder(bad)).toThrow(/Chats/)
+    }
+    expect(m.checkFolder(chat).ok).toBe(true)
+    // Sin bandera la regla no existe (comportamiento de siempre).
+    delete process.env[UNIFIED_APPS_ENV]
+    expect(m.checkFolder(chats).reason ?? '').not.toContain('Lazunox/Chats')
+  })
+
   it('sin bandera: rechaza y no crea nada', async () => {
     delete process.env[UNIFIED_APPS_ENV]
     await expect(new TasksManager().createChatFolder()).rejects.toThrow('apagado')
