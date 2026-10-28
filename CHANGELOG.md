@@ -4,6 +4,27 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.0] - 2026-10-28
+
+### Novedades
+
+- **Un solo chat para todo.** Escribes lo que quieres y la IA pide las apps que necesita, una por una, con la tarjeta de permiso (logo real de la app, motivo y nivel: «Solo ver», «Ver y clic» o «Control total», que eliges tú). Ya no hace falta elegir un modo antes de empezar ni armar un plan obligatorio.
+- **Aislado por defecto.** Cada chat trabaja dentro del aislamiento de «Una carpeta»: sin carpeta elegida, Lazunox crea una propia para ese chat en `Lazunox/Chats`, y un chat no puede ver las carpetas de los otros. «Avanzado: sin aislamiento» sigue existiendo y pide tu consentimiento.
+- **Historial unificado.** La barra lateral muestra todos tus chats, estén en la carpeta que estén, y vuelven a aparecer tras reiniciar la app. «Seguir en otra carpeta» abre un chat nuevo en la carpeta que elijas y deja el anterior intacto.
+- **Funciona en Mac y en Windows.** En Windows el chat aislado corre dentro del entorno aislado de Tareas (WSL) y necesita Control del PC activado y Lazunox sin permisos de administrador; si falta algo, todo queda como en la 1.7.
+- **Limpieza automática.** Las carpetas de chat vacías de más de un día se borran solas (solo si están vacías).
+- **Bloc de notas, Paint y Calculadora** muestran su icono real en la tarjeta de Windows, y el aviso de la pantalla dice «Control del PC».
+- Motor `lazunox.13`, sin cambios.
+
+### Qué no cambia / límites
+
+- **Se apaga con una variable** si algo no te sirve: `LAZUNOX_UNIFIED_APPS=0` (en Windows también `LAZUNOX_UNIFIED_APPS_WIN=0`). Apagado, todo funciona como en la 1.7.9.
+- **En este modo la IA nunca ve la pantalla completa**, solo la ventana de la app que concediste.
+- **En Windows, el permiso de Control del PC se activa en Ajustes**, no desde el propio chat.
+- **El botón Detener de un chat aislado corta la tarea, pero no deja el control en «detenido»** como en el modo avanzado.
+- **Entre dos sesiones del mismo servidor aislado** la validación de la sesión es más débil que entre chats distintos.
+- Probado con una IA real en Mac y en el PC con Windows (tarjeta, denegar, tres chats a la vez);.
+
 ## [1.7.9] - 2026-10-27
 
 ### Novedades
