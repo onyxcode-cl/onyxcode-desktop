@@ -496,6 +496,8 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
     /** Respuesta(s) de `windows-of` (una lista de respuestas se consume una por llamada). */
     windowsOf?: unknown
     shot?: Record<string, unknown>
+    /** Respuestas de `window-shot` una por llamada (sustituye a `shot`): permite que una captura falle. */
+    shotList?: unknown[]
     image?: Buffer
     sips?: { width: number; height: number }
     at?: unknown
@@ -519,7 +521,7 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
         responses: {
           screens: { out: o.screens ?? [MAIN, LEFT] },
           'windows-of': o.windowsOf ?? { out: [{ title: 'Ventana', ...frame }] },
-          'window-shot': { writeImage: true, out: o.shot ?? { ok: true, width: 800, height: 600, title: 'Ventana' } },
+          'window-shot': o.shotList ?? { writeImage: true, out: o.shot ?? { ok: true, width: 800, height: 600, title: 'Ventana' } },
           frontmost: { out: NOTES_APP },
           'app-at': { out: o.at ?? NOTES_APP },
           'resolve-app': { out: { ...NOTES_APP, found: true } },
@@ -897,6 +899,42 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
         const { text } = await shot(mcp)
         expect(text).toContain('No se pudo ubicar la ventana')
         expect(text).toContain('para mirar')
+        const r = await mcp.call('left_click', { x: 100, y: 100, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(textOf(r)).toContain('app_screenshot')
+        expect(anyInput(mcp)).toBe(false)
+      } finally {
+        await done()
+      }
+    })
+
+    it('dos ventanas de la misma app con el mismo tamaño: no se sabe cuál se capturó, así que no sirve para clics (macOS)', async () => {
+      const { mcp, done } = await bootMac({
+        windowsOf: {
+          out: [
+            { title: 'A', ...rect(-1500, 100, 400, 300) },
+            { title: 'B', ...rect(100, 100, 400, 300) }
+          ]
+        }
+      })
+      try {
+        const { text } = await shot(mcp)
+        expect(text).toContain('No se pudo ubicar la ventana')
+        const r = await mcp.call('left_click', { x: 100, y: 100, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(anyInput(mcp)).toBe(false)
+      } finally {
+        await done()
+      }
+    })
+
+    it('si una app_screenshot FALLA, la captura anterior deja de valer (no se clica con una vieja)', async () => {
+      const ok = { writeImage: true, out: { ok: true, width: 800, height: 600, title: 'Ventana' } }
+      const { mcp, done } = await bootMac({ shotList: [ok, { exit: 1, stderr: 'boom' }] })
+      try {
+        await shot(mcp)
+        const fallo = await mcp.call('app_screenshot', { app: 'Notes', lazunox_session: SES }, HDRS)
+        expect(fallo.isError).toBe(true)
         const r = await mcp.call('left_click', { x: 100, y: 100, lazunox_session: SES }, HDRS)
         expect(r.isError).toBe(true)
         expect(textOf(r)).toContain('app_screenshot')

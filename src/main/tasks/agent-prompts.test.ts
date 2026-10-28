@@ -205,6 +205,12 @@ describe('instrucción de apps del modo unificado', () => {
     expect(t).not.toMatch(/paridad|mejor que/i)
   })
 
+  it('el clic con ratón real va en píxeles de app_screenshot y «varias pantallas» ya no obliga a pedir el computador completo', () => {
+    expect(UNIFIED_APPS_PROMPT).not.toContain('varias pantallas')
+    expect(UNIFIED_APPS_PROMPT).toMatch(/primero toma `computer_app_screenshot` de esa app: las x\/y van en píxeles de esa imagen/)
+    expect(UNIFIED_APPS_PROMPT).toContain('No uses como x/y los números de `computer_app_find`')
+  })
+
   it('writeUnifiedAppsPrompt escribe el archivo y devuelve su ruta', () => {
     const d = mkdtempSync(join(tmpdir(), 'unif-prompt-'))
     try {

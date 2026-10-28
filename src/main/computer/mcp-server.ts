@@ -2610,6 +2610,8 @@ const TOOLS: ToolDef[] = [
       const app = await namedApp(a.app)
       await requireTierFor(app, 'view', session)
       const windowIndex = Math.max(0, Math.round(Number(a.window) || 0))
+      // Origen aislado: una captura nueva reemplaza a la anterior desde que empieza; si falla, no queda vigente la vieja (de otra app o ventana).
+      if (isolatedCall) windowCtx.delete(ctxKey(session))
       mkdirSync(SHOT_DIR, { recursive: true })
       const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       const raw = join(SHOT_DIR, `raw-app-${stamp}.png`)

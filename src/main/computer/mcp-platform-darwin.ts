@@ -512,6 +512,10 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
         .sort((a, b) => b.width * b.height - a.width * a.height)
       const frame = Number.isInteger(windowIndex) && windowIndex >= 0 ? frames[windowIndex] : undefined
       if (!frame) return null
+      // Ambigüedad: el helper elige su ventana con otro listado (otro orden en los empates, sin filtrar por transparencia). Si otra ventana
+      // de la misma app mide lo mismo (±2), no se puede saber cuál se capturó: la captura sirve para mirar, no para clics.
+      const sameSize = frames.filter((f) => Math.abs(f.width - frame.width) <= 2 && Math.abs(f.height - frame.height) <= 2)
+      if (sameSize.length > 1) return null
       // Comprobación cruzada: el helper captura a frame × 2 (config.width = frame.width * 2).
       if (!num(shot.width) || !num(shot.height)) return null
       if (Math.abs(shot.width - 2 * frame.width) > 2 || Math.abs(shot.height - 2 * frame.height) > 2) return null

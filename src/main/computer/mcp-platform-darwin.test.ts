@@ -560,6 +560,16 @@ describe('macOS: ubicar la ventana capturada (locateWindowShot / windowFrames)',
     expect(loc).toMatchObject({ imageWidth: 1000, imageHeight: 700 })
   })
 
+  it('FALLA CERRADO: otra ventana de la misma app mide lo mismo (±2): no se sabe cuál capturó el helper (no se llama a sips)', async () => {
+    const { backend, calls } = mk([win(0, 0, 800, 600), win(-1920, 50, 801, 599)])
+    expect(await backend.locateWindowShot('com.a.A', 0, { width: 1600, height: 1200 }, '/s/o.jpg')).toBeNull()
+    expect(calls.every((c) => c.cmd !== '/usr/bin/sips')).toBe(true)
+    // Con tamaños distintos sí se ubica.
+    expect(
+      await mk([win(0, 0, 800, 600), win(5, 5, 300, 200)]).backend.locateWindowShot('com.a.A', 0, { width: 1600, height: 1200 }, '/s/o.jpg')
+    ).not.toBeNull()
+  })
+
   it('tolera ±2 px en la comprobación cruzada (frame × 2)', async () => {
     const { backend } = mk([win(0, 0, 800, 600)])
     expect(await backend.locateWindowShot('com.a.A', 0, { width: 1602, height: 1198 }, '/s/o.jpg')).not.toBeNull()
