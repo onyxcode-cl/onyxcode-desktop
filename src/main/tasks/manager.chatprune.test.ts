@@ -126,7 +126,7 @@ describe.skipIf(!macOnly)('pruneEmptyChatFolders', () => {
   it('sin bandera no hace nada', async () => {
     const m = new TasksManager()
     const f = await m.createChatFolder()
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     expect(m.pruneEmptyChatFolders(Date.now() + LATER)).toEqual([])
     expect(existsSync(f.path)).toBe(true)
   })

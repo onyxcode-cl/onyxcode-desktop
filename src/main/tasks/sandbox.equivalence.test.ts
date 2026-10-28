@@ -300,14 +300,21 @@ function profiles() {
   return Object.fromEntries([...direct, ...written].map(([k, v]) => [k, v.replaceAll(osTmp, '<OSTMP>')]))
 }
 
+const prevUnified = process.env.LAZUNOX_UNIFIED_APPS
 beforeEach(() => {
+  // El fixture es el perfil previo al modo unificado: se compara con el apagador puesto (LAZUNOX_UNIFIED_APPS=0).
+  process.env.LAZUNOX_UNIFIED_APPS = '0'
   root = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-eq-')))
   osTmp = realpathSync(tmpdir())
   rec.userData = join(root, 'userData')
   mkdirSync(join(root, 'work', 'proyecto'), { recursive: true })
   mkdirSync(join(rec.userData, 'opencode-config'), { recursive: true })
 })
-afterEach(() => rmSync(root, { recursive: true, force: true }))
+afterEach(() => {
+  if (prevUnified === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
+  else process.env.LAZUNOX_UNIFIED_APPS = prevUnified
+  rmSync(root, { recursive: true, force: true })
+})
 
 // Seatbelt solo existe en macOS (`sandbox-exec`); el resto de plataformas no lo ejecutan.
 describe.skipIf(!macOnly)('lanzamiento Seatbelt: equivalencia byte a byte con el código previo a la extracción', () => {

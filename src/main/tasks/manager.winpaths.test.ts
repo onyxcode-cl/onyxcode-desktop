@@ -320,9 +320,11 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     expect(started[0]!.winBackend).toBe(winBackend)
     await m.stopAll()
   })
-  it('puente de apps del modo unificado: con la bandera encendida, win32 NO registra la ruta `computer` ni da instrucciones ni variable', async () => {
+  it('puente de apps del modo unificado: con LAZUNOX_UNIFIED_APPS_WIN=0, win32 NO registra la ruta `computer` ni da instrucciones ni variable', async () => {
     const prev = process.env.LAZUNOX_UNIFIED_APPS
+    const prevWin = process.env.LAZUNOX_UNIFIED_APPS_WIN
     process.env.LAZUNOX_UNIFIED_APPS = '1'
+    process.env.LAZUNOX_UNIFIED_APPS_WIN = '0'
     try {
       const winBackend = { build: true, gate: async () => ({ ok: true }), create: () => null }
       const computer = {
@@ -343,6 +345,8 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
     } finally {
       if (prev === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
       else process.env.LAZUNOX_UNIFIED_APPS = prev
+      if (prevWin === undefined) delete process.env.LAZUNOX_UNIFIED_APPS_WIN
+      else process.env.LAZUNOX_UNIFIED_APPS_WIN = prevWin
     }
   })
   it('start() autoriza SOLO la carpeta de skills de la app (lectura), con la ruta de la distro, sin tarjeta ni AppData entera', async () => {

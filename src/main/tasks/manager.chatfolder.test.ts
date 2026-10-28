@@ -227,7 +227,7 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
     }
     expect(m.checkFolder(chat).ok).toBe(true)
     // Sin bandera la regla no existe (comportamiento de siempre).
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     expect(m.checkFolder(chats).reason ?? '').not.toContain('Lazunox/Chats')
   })
 
@@ -257,7 +257,7 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
   it('listFolders: el registro no basta si la carpeta pasó a ser un enlace fuera de Chats; sin bandera nunca hay chat', async () => {
     const m = new TasksManager()
     const chat = (await m.createChatFolder()).path
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     expect(m.listFolders().find((f) => f.path === chat)?.chat).toBeUndefined()
     process.env[UNIFIED_APPS_ENV] = '1'
     expect(m.listFolders().find((f) => f.path === chat)?.chat).toBe(true)
@@ -269,7 +269,7 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
   })
 
   it('sin bandera: rechaza y no crea nada', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     await expect(new TasksManager().createChatFolder()).rejects.toThrow('apagado')
     expect(existsSync(join(home, 'Lazunox'))).toBe(false)
   })
@@ -277,7 +277,7 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
 
 describe('createChatFolder en Windows', () => {
   it('sin bandera rechaza y no toca el disco; con bandera la versión Windows está en manager.chatfolder.win.test.ts', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     const win = { refresh: async () => undefined } as never
     const m = new TasksManager({ platform: 'win32', win })
     await expect(m.createChatFolder()).rejects.toThrow('apagado')

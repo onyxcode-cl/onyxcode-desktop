@@ -4,7 +4,7 @@
  * solo pueden cambiar las líneas de esa ruta y sus comentarios. No cambies el snapshot para
  * que pase: revisa el diff.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 // `defaultWritablePaths()` incluye `realpath(tmpdir())`, que depende de la máquina: se fija.
 vi.mock('node:os', async (importOriginal) => {
@@ -15,6 +15,16 @@ vi.mock('node:os', async (importOriginal) => {
 import { NEW_FOLDER_SCRATCH } from '../migrations/legacy-names'
 import { buildSandboxProfile, type SandboxProfileOptions } from './sandbox-profile'
 import { macOnly } from '../../test/platform'
+
+// Caracteriza el perfil de SIEMPRE: con el modo unificado apagado (LAZUNOX_UNIFIED_APPS=0); encendido, el perfil lo cubre sandbox-profile.chats.test.ts.
+const prevUnified = process.env.LAZUNOX_UNIFIED_APPS
+beforeAll(() => {
+  process.env.LAZUNOX_UNIFIED_APPS = '0'
+})
+afterAll(() => {
+  if (prevUnified === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
+  else process.env.LAZUNOX_UNIFIED_APPS = prevUnified
+})
 
 const HOME = '/Users/fixture'
 const base: SandboxProfileOptions = {

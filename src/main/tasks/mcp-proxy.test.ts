@@ -249,7 +249,7 @@ describe('knownMcpProxyTokens: secreto del puente de apps', () => {
     const { getBridgeSecret } = await import('./bridge-secret')
     const prev = process.env[UNIFIED_APPS_ENV]
     try {
-      delete process.env[UNIFIED_APPS_ENV]
+      process.env[UNIFIED_APPS_ENV] = '0'
       expect(knownMcpProxyTokens()).not.toContain(getBridgeSecret())
       process.env[UNIFIED_APPS_ENV] = '1'
       const s = getBridgeSecret()

@@ -17,6 +17,7 @@ vi.mock('../computer/service', () => ({
     grants = { snapshot: () => ({ grants: [{ bundleId: 'com.saved' }] }) }
     allSessionGrantedApps = (): string[] => ['com.session']
     helperPath = (): string => ''
+    setBridgeSecret = (): void => undefined
   }
 }))
 vi.mock('../computer/overlay', () => ({ ComputerOverlay: class {} }))

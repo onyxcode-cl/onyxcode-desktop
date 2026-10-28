@@ -62,7 +62,7 @@ describe.skipIf(!macOnly)('handlers tasks:chatIndex:*', () => {
       await call('tasks:chatIndex:upsert', entry)
       expect(await call('tasks:chatIndex:list')).toEqual([entry])
       expect((await raw('tasks:chatIndex:upsert', { ...entry, folder: join(root, 'ajena') })).ok).toBe(false)
-      delete process.env[UNIFIED_APPS_ENV]
+      process.env[UNIFIED_APPS_ENV] = '0'
       expect(await call('tasks:chatIndex:list')).toEqual([])
       await call('tasks:chatIndex:remove', { folder: path })
       process.env[UNIFIED_APPS_ENV] = '1'

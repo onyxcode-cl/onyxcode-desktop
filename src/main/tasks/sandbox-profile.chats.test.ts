@@ -25,7 +25,7 @@ const base: SandboxProfileOptions = {
 describe.skipIf(!macOnly)('perfil Seatbelt: lectura de ~/Lazunox/Chats (texto)', () => {
   it('sin la bandera el perfil es EXACTAMENTE el de siempre (con y sin carpeta de chat)', () => {
     const before = process.env.LAZUNOX_UNIFIED_APPS
-    delete process.env.LAZUNOX_UNIFIED_APPS
+    process.env.LAZUNOX_UNIFIED_APPS = '0'
     try {
       for (const folder of [base.folder, `${HOME}/Lazunox/Chats/20261027-abc`]) {
         const o = { ...base, folder }

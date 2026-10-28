@@ -70,8 +70,8 @@ describe('plugin lazunox-session escrito en la carpeta de config', () => {
     delete process.env[FLAG]
   })
 
-  it('sin bandera: byte a byte el de siempre', async () => {
-    delete process.env[FLAG]
+  it('con LAZUNOX_UNIFIED_APPS=0: byte a byte el de siempre', async () => {
+    process.env[FLAG] = '0'
     const { prepareOpencodeConfigDir, sessionPluginSource } = await import('./opencode-config')
     const dir = prepareOpencodeConfigDir()
     const text = readFileSync(join(dir, 'plugins', 'lazunox-session.js'), 'utf8')

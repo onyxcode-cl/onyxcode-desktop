@@ -96,8 +96,8 @@ async function startIsolated(): Promise<{ cfg: Record<string, unknown>; ports: n
 }
 
 describe.skipIf(!macOnly)('puente de apps en el servidor aislado', () => {
-  it('sin bandera: no hay ruta computer ni variable del puente', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+  it('con LAZUNOX_UNIFIED_APPS=0: no hay ruta computer ni variable del puente', async () => {
+    process.env[UNIFIED_APPS_ENV] = '0'
     const { cfg, ports, env } = await startIsolated()
     expect((cfg.mcp as Record<string, unknown> | undefined)?.computer).toBeUndefined()
     expect(ports).toHaveLength(1)
@@ -105,7 +105,7 @@ describe.skipIf(!macOnly)('puente de apps en el servidor aislado', () => {
   })
 
   it('con bandera: ruta computer en el proxy, mismos puertos permitidos y sin secretos en la configuración', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     const base = await startIsolated()
     started.length = 0
     process.env[UNIFIED_APPS_ENV] = '1'
@@ -124,8 +124,8 @@ describe.skipIf(!macOnly)('puente de apps en el servidor aislado', () => {
     expect(blob).not.toContain('45999')
   })
 
-  it('instrucciones del agente: solo con bandera (archivo en la config de la app) y nunca sin ella', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+  it('instrucciones del agente: solo con el modo encendido (archivo en la config de la app) y nunca con LAZUNOX_UNIFIED_APPS=0', async () => {
+    process.env[UNIFIED_APPS_ENV] = '0'
     expect((await startIsolated()).cfg.instructions).toBeUndefined()
     started.length = 0
     process.env[UNIFIED_APPS_ENV] = '1'
@@ -180,8 +180,9 @@ describe('puente de apps con platform win32 inyectada', () => {
     return (m as unknown as { bridgeServers: Set<string> }).bridgeServers.has('k') ? { bridge: '1' } : {}
   }
 
-  it('sin la segunda variable: apagado', async () => {
+  it('con LAZUNOX_UNIFIED_APPS_WIN=0: apagado', async () => {
     process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '0'
     expect(await startWin({ computerWin: true, tasksWin: true })).toEqual({})
   })
   it('con ambas variables y capacidades: encendido', async () => {

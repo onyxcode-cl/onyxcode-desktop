@@ -112,7 +112,7 @@ describe('reconocimiento del origen', () => {
 
   it('bandera apagada (aunque el secreto sea el bueno): como hoy', async () => {
     await grant(SES, 'full')
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     const r = await open({ lazunox_session: SES }, hdr())
     expect(textOf(r)).toMatch(NO_PLAN)
     process.env[UNIFIED_APPS_ENV] = '0'
@@ -133,7 +133,7 @@ describe('reconocimiento del origen', () => {
     expect(svc.checkBridgeCall({ origin: 'x', server: SERVER_A, session: SES })).toEqual({ isolated: false })
     expect(svc.checkBridgeCall({ origin: undefined, server: SERVER_A, session: SES })).toEqual({ isolated: false })
     expect(svc.checkBridgeCall({ origin: 42, server: SERVER_A, session: SES })).toEqual({ isolated: false })
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     expect(svc.checkBridgeCall({ origin: SECRET, server: SERVER_A, session: SES })).toEqual({ isolated: false })
   })
 })

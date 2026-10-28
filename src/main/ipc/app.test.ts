@@ -39,8 +39,9 @@ afterEach(() => {
 })
 
 describe('app:info.unifiedApps', () => {
-  it('bandera apagada: false', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+  it('apagador LAZUNOX_UNIFIED_APPS=0: false', async () => {
+    process.env[UNIFIED_APPS_ENV] = '0'
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
     expect((await info()).unifiedApps).toBe(false)
   })
   it('con bandera: true (en macOS)', async () => {
@@ -54,8 +55,9 @@ describe('app:info.unifiedApps', () => {
     pol.value = { disableComputerUse: true }
     expect((await info()).unifiedApps).toBe(false)
   })
-  it('en Windows sin la segunda variable: false', async () => {
+  it('en Windows con LAZUNOX_UNIFIED_APPS_WIN=0: false', async () => {
     process.env[UNIFIED_APPS_ENV] = '1'
+    process.env[UNIFIED_APPS_WIN_ENV] = '0'
     setUnifiedWinCapsReady(true)
     Object.defineProperty(process, 'platform', { value: 'win32' })
     expect((await info()).unifiedApps).toBe(false)

@@ -1,7 +1,7 @@
 /**
  * Contrato del «puente de apps» del modo unificado (1.8, ola 1): el agente sigue DENTRO del aislamiento («Una carpeta») y pide el control
  * de apps por el proxy MCP de main (igual que el navegador integrado). Las constantes viven aquí para que el proxy (tasks/), el servidor
- * de control (computer/) y el motor las compartan sin duplicar cadenas. Todo está apagado salvo `LAZUNOX_UNIFIED_APPS=1`.
+ * de control (computer/) y el motor las compartan sin duplicar cadenas. Encendido por defecto desde la ola 4; se apaga con `LAZUNOX_UNIFIED_APPS=0`.
  */
 
 /** Variable de entorno que enciende el puente. Sin ella el comportamiento es el de la 1.7.x. */
@@ -19,26 +19,27 @@ export const BRIDGE_SERVER_HEADER = 'x-lazunox-server'
 /** Argumento que el plugin del motor inyecta en cada llamada `computer_*` con el id de la sesión del agente. */
 export const BRIDGE_SESSION_ARG = 'lazunox_session'
 
-/** Segunda variable, solo para Windows (experimental): junto con `LAZUNOX_UNIFIED_APPS=1` enciende el modo unificado en el PC con Windows. */
+/** Segunda variable, solo para Windows: con el valor `0` apaga el modo unificado en el PC con Windows (`1` o ausente = encendido). */
 export const UNIFIED_APPS_WIN_ENV = 'LAZUNOX_UNIFIED_APPS_WIN'
 
 /**
- * ¿Está encendido el modo unificado en esa plataforma? macOS: `LAZUNOX_UNIFIED_APPS==='1'`. Windows: AMBAS variables con el valor exacto `1`
- * (experimental; apagado por defecto hasta pasar la batería en el PC real). Cualquier otra plataforma: apagado.
+ * ¿Está encendido el modo unificado en esa plataforma? Desde la 1.8 viene ENCENDIDO por defecto en macOS y Windows; el apagador es
+ * `LAZUNOX_UNIFIED_APPS=0` (en Windows también `LAZUNOX_UNIFIED_APPS_WIN=0`). Cualquier otro valor lo deja encendido. Otra plataforma: apagado.
+ * En Windows además hace falta (fuera de aquí) Control del PC + Tareas aisladas por WSL y Lazunox sin elevar.
  */
 export function isUnifiedAppsEnabledFor(platform: NodeJS.Platform, env: Record<string, string | undefined> = process.env): boolean {
-  if (platform === 'darwin') return env[UNIFIED_APPS_ENV] === '1'
-  if (platform === 'win32') return env[UNIFIED_APPS_ENV] === '1' && env[UNIFIED_APPS_WIN_ENV] === '1'
+  if (env[UNIFIED_APPS_ENV] === '0') return false
+  if (platform === 'darwin') return true
+  if (platform === 'win32') return env[UNIFIED_APPS_WIN_ENV] !== '0'
   return false
 }
 
-/** ¿Está encendido el puente en ESTA plataforma? Solo con el valor exacto `1` de la(s) variable(s) (cualquier otra cosa = apagado). */
+/** ¿Está encendido el puente en ESTA plataforma? (ver `isUnifiedAppsEnabledFor`). */
 export function isUnifiedAppsEnabled(
   env: Record<string, string | undefined> = process.env,
   platform: NodeJS.Platform = process.platform
 ): boolean {
-  // Fuera de Windows se conserva la regla de siempre (una sola variable); solo Windows exige además la segunda.
-  return platform === 'win32' ? isUnifiedAppsEnabledFor('win32', env) : env[UNIFIED_APPS_ENV] === '1'
+  return isUnifiedAppsEnabledFor(platform, env)
 }
 
 let unifiedWinCapsReady = false

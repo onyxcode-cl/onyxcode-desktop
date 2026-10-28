@@ -166,7 +166,7 @@ describe.skipIf(!macOnly)('índice de chats', () => {
     const m = new TasksManager()
     const a = await approved(m)
     m.upsertChatIndex(e(a, 's1'))
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     expect(m.listChatIndex()).toEqual([])
     m.upsertChatIndex(e(a, 's2'))
     m.removeChatIndex(a)

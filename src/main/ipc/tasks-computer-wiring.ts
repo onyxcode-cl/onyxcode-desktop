@@ -71,8 +71,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 /** Construye los objetos de Control del PC (nada de esto existe sin `caps.computer`). */
 export function createComputerParts(): ComputerParts {
   const computer = new ComputerService()
-  // Modo unificado (ola 1, apagado por defecto): el servidor de control reconoce las peticiones que pasaron por el proxy del servidor aislado
-  // con este secreto de la ejecución. Sin la bandera no se fija ningún secreto y todo queda como en la 1.7.x.
+  // Modo unificado (ola 1; encendido por defecto, se apaga con LAZUNOX_UNIFIED_APPS=0): el servidor de control reconoce las peticiones que pasaron por el proxy del servidor aislado
+  // con este secreto de la ejecución. Con el modo apagado no se fija ningún secreto y todo queda como en la 1.7.x.
   if (isUnifiedAppsEnabled()) computer.setBridgeSecret(getBridgeSecret())
   // Overlay "la IA está controlando tu Mac" (borde, onda de clics, píldora con Detener).
   const overlay = new ComputerOverlay({

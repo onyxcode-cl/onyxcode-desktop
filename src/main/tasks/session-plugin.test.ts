@@ -88,9 +88,16 @@ describe('plugin lazunox-session con el puente de apps (modo unificado)', () => 
     return output.args
   }
 
-  it('sin bandera el texto es idéntico al de siempre (computer_* no se toca)', () => {
-    expect(sessionPluginSource(false)).toBe(sessionPluginSource())
-    expect(sessionPluginSource(false)).not.toContain('computer_')
+  it('con el modo unificado apagado el texto es idéntico al de siempre (computer_* no se toca)', () => {
+    const prev = process.env.LAZUNOX_UNIFIED_APPS
+    process.env.LAZUNOX_UNIFIED_APPS = '0'
+    try {
+      expect(sessionPluginSource(false)).toBe(sessionPluginSource())
+      expect(sessionPluginSource(false)).not.toContain('computer_')
+    } finally {
+      if (prev === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
+      else process.env.LAZUNOX_UNIFIED_APPS = prev
+    }
   })
 
   it('con bandera y servidor con puente: computer_* recibe la sesión (sin puerta del plan) y se pisa lo del modelo', async () => {

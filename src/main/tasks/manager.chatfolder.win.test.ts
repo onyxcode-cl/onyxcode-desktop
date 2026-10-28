@@ -151,7 +151,7 @@ describe('createChatFolder en win32', () => {
   })
 
   it('con la bandera apagada nada cambia: lanza «apagado» y no toca el disco', async () => {
-    delete process.env[UNIFIED_APPS_ENV]
+    process.env[UNIFIED_APPS_ENV] = '0'
     const m = mk()
     await expect(m.createChatFolder()).rejects.toThrow(t('merr.chat.unifiedOff'))
     expect(disk.dirs.has(disk.key(`${HOME}\\Lazunox`))).toBe(false)
@@ -164,7 +164,7 @@ describe('createChatFolder en win32', () => {
 
 describe('Windows sin la segunda variable', () => {
   it('solo LAZUNOX_UNIFIED_APPS=1 en win32: modo unificado apagado', async () => {
-    delete process.env[UNIFIED_APPS_WIN_ENV]
+    process.env[UNIFIED_APPS_WIN_ENV] = '0'
     await expect(mk().createChatFolder()).rejects.toThrow(t('merr.chat.unifiedOff'))
   })
 })
