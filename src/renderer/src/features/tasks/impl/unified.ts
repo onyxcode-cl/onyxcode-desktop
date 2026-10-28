@@ -86,3 +86,12 @@ export function chatFolderDate(path: string): string | null {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
   return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
+
+/** Nombre de una carpeta de chat en listas: «Chat sin carpeta · fecha» (fecha del id), o «Chat sin carpeta» si no se reconoce. Nunca el id. */
+export function chatFolderLabel(
+  path: string,
+  tr: (key: 'tasksComputer.unified.chatFolderName' | 'tasksComputer.unified.chatFolderNameDate', vars?: Record<string, string>) => string
+): string {
+  const date = chatFolderDate(path)
+  return date ? tr('tasksComputer.unified.chatFolderNameDate', { date }) : tr('tasksComputer.unified.chatFolderName')
+}

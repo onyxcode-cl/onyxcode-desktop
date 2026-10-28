@@ -668,6 +668,10 @@ export const tasks = {
   'tasks.sandboxProviderShort': 'Este modelo no funciona con «Una carpeta».',
   'tasks.sandboxProviderMore': 'Ver detalle',
   'tasks.sandboxProviderLess': 'Ocultar detalle',
+  'tasks.unified.untitled': 'Chat sin título · {date}',
+  'tasks.unified.opening': 'Abriendo el chat…',
+  'tasks.unified.openFailed':
+    'No se pudo abrir ese chat. Revisa que su carpeta siga en su lugar e inténtalo de nuevo. Tu lista de chats sigue aquí.',
   'tasks.list.empty.noFolder.unified': 'Tus chats aparecerán aquí.',
   'tasks.home.sandboxActive.unified': 'Trabaja aislado: no puede escribir fuera de su carpeta ni leer tus claves.',
   'tasks.home.thisFolder.re': '\\besta carpeta\\b',

@@ -668,6 +668,10 @@ export const tasks = {
   'tasks.sandboxProviderShort': 'This model doesn’t work with “One folder”.',
   'tasks.sandboxProviderMore': 'See details',
   'tasks.sandboxProviderLess': 'Hide details',
+  'tasks.unified.untitled': 'Untitled chat · {date}',
+  'tasks.unified.opening': 'Opening the chat…',
+  'tasks.unified.openFailed':
+    'That chat could not be opened. Check that its folder is still in place and try again. Your chat list is still here.',
   'tasks.list.empty.noFolder.unified': 'Your chats will appear here.',
   'tasks.home.sandboxActive.unified': 'Works isolated: it cannot write outside its folder or read your keys.',
   'tasks.home.thisFolder.re': '\\bthis folder\\b',

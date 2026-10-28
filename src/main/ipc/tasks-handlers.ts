@@ -177,10 +177,10 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   })
   // Modo unificado: carpeta propia del chat cuando la persona no elige una (rechaza sin bandera y en Windows).
   handle('tasks:chatFolder:create', () => tasks.createChatFolder())
-  // Modo unificado (ola 2b): el agente A de la ola lo implementa; hasta entonces el índice está vacío.
-  handle('tasks:chatIndex:list', () => [])
-  handle('tasks:chatIndex:upsert', () => undefined)
-  handle('tasks:chatIndex:remove', () => undefined)
+  // Modo unificado (ola 2b): índice de chats en main (sin bandera: vacío y sin efecto). Clase X: el celular no lo ve.
+  handle('tasks:chatIndex:list', () => tasks.listChatIndex())
+  handle('tasks:chatIndex:upsert', (req) => tasks.upsertChatIndex(req))
+  handle('tasks:chatIndex:remove', ({ folder, sessionId }) => tasks.removeChatIndex(folder, sessionId))
   handle('tasks:removeFolder', ({ folder }) => tasks.removeFolder(folder))
   handle('tasks:start', ({ folder, fullAccess }) => tasks.start(folder, fullAccess === true))
   handle('tasks:grantFullAccess', ({ folder }) => tasks.grantFullAccess(folder))

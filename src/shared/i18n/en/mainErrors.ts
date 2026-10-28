@@ -47,6 +47,7 @@ export const mainErrors = {
   'merr.chat.computerUseOff': 'Couldn’t create the chat folder: your organization turned off computer control.',
   'merr.chat.folderUnsafe':
     'Couldn’t create the chat folder: ~/Lazunox or ~/Lazunox/Chats isn’t a regular private folder (it’s a link, another kind of file, owned by someone else or open to others). Delete or rename it and try again.',
+  'merr.chat.indexFolder': 'Couldn’t save the chat to history: the folder isn’t authorized.',
   'merr.task.notAuthorized': 'The folder isn’t authorized for tasks.',
   'merr.task.insideMain': 'That folder is already inside the main folder.',
   'merr.task.orgNoHosts': 'Your organization doesn’t allow adding sites that tasks can connect to.',

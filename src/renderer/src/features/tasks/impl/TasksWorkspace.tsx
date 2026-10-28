@@ -6,6 +6,7 @@
  * Diseño: tareas a la izquierda (barra lateral del shell) · inicio / conversación al centro ·
  * Plan, Entregables y Actividad (o la Consulta lateral) a la derecha (colapsable).
  */
+import { useUnifiedApps } from './unified'
 import '../../../app/mobile/switch.css'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { openExportOptions } from '../../../components/ExportConversation'
@@ -329,6 +330,8 @@ function FollowUps({ items, onPick }: { items: FollowUpId[]; onPick: (text: stri
 
 export function TasksWorkspace(): React.JSX.Element {
   const t = useT()
+  // Modo unificado: el título de la cabecera no se queda en «Hola, respo…» (ancho mínimo, tope y el título entero al pasar el cursor).
+  const unifiedHeader = useUnifiedApps()
   const bridge = hasTasksBridge()
   const folderDrop = useFolderDrop(bridge)
   const folder = useTasks((s) => s.folder)
@@ -699,7 +702,10 @@ export function TasksWorkspace(): React.JSX.Element {
           <header
             className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
-            <span className="min-w-0 truncate text-sm font-medium" title={session?.title}>
+            <span
+              className={`${unifiedHeader ? 'max-w-[55%] min-w-[9rem]' : 'min-w-0'} truncate text-sm font-medium`}
+              title={unifiedHeader ? session?.title || t('tasks.ws.untitled') : session?.title}
+            >
               {session?.title || t('tasks.ws.untitled')}
             </span>
             <StatusPill status={status} title={busy ? undefined : tookTitle(entries)} />

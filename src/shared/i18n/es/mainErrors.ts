@@ -49,6 +49,7 @@ export const mainErrors = {
   'merr.chat.computerUseOff': 'No se pudo crear la carpeta del chat: tu organización desactivó el control del PC.',
   'merr.chat.folderUnsafe':
     'No se pudo crear la carpeta del chat: ~/Lazunox o ~/Lazunox/Chats no es una carpeta normal y privada (es un enlace, otro tipo de archivo, de otra persona o con permisos abiertos). Bórrala o renómbrala y vuelve a intentarlo.',
+  'merr.chat.indexFolder': 'No se pudo guardar el chat en el historial: la carpeta no está autorizada.',
   'merr.task.notAuthorized': 'La carpeta no está autorizada para las tareas.',
   'merr.task.insideMain': 'Esa carpeta ya está dentro de la carpeta principal.',
   'merr.task.orgNoHosts': 'Tu organización no permite añadir sitios a los que las tareas pueden conectarse.',

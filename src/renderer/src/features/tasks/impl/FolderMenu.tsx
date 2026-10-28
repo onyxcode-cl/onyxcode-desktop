@@ -9,7 +9,7 @@ import { platformCaps } from '../../../lib/platform'
 import { chooseFolder, forgetFolder, linkFolder, selectFolder, startChatWithoutFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
-import { chatFolderDate, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
+import { chatFolderDate, chatFolderLabel, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 /** Carpeta elegida para añadir, pendiente de decidir su modo. */
@@ -47,6 +47,11 @@ export function FolderMenu({
     if (variant === 'row') return t('tasksComputer.unified.noFolderShort')
     const date = chatFolderDate(path)
     return date ? t('tasksComputer.unified.chatFolderNameDate', { date }) : t('tasksComputer.unified.chatFolderName')
+  }
+  // En la lista del menú cada carpeta de chat lleva su fecha (la barra lateral no tiene ancho para ella).
+  const listName = (path: string, fallback: string): string => {
+    if (!unifiedOn || !isChatFolderForDisplay(path)) return fallback
+    return chatFolderLabel(path, t)
   }
   const label = folder
     ? fullAccess && home === folder
@@ -234,21 +239,23 @@ export function FolderMenu({
                 >
                   <FolderOpen size={14} className="shrink-0 text-muted" />
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-sm ${f.path === folder ? 'font-semibold' : ''}`}>{chatName(f.path, f.name)}</span>
-                    <span className="block truncate font-mono text-[10px] desk:text-meta text-subtle">{f.path}</span>
+                    <span className={`block truncate text-sm ${f.path === folder ? 'font-semibold' : ''}`}>{listName(f.path, f.name)}</span>
+                    {!(unifiedOn && isChatFolderForDisplay(f.path)) && (
+                      <span className="block truncate font-mono text-[10px] desk:text-meta text-subtle">{f.path}</span>
+                    )}
                   </span>
                   {f.path === folder && <Check size={14} className="shrink-0 text-accent" />}
                 </button>
                 <button
                   type="button"
                   title={t('tasksComputer.menu.removeTitle')}
-                  aria-label={t('tasksComputer.menu.removeAria', { name: f.name })}
+                  aria-label={t('tasksComputer.menu.removeAria', { name: listName(f.path, f.name) })}
                   className="mr-1 rounded p-1 text-subtle opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
                   onClick={() => {
                     setOpen(false)
                     void confirmDialog({
                       title: t('tasksComputer.menu.removeConfirmTitle'),
-                      message: t('tasksComputer.menu.removeConfirmMessage', { name: f.name }),
+                      message: t('tasksComputer.menu.removeConfirmMessage', { name: listName(f.path, f.name) }),
                       confirmLabel: t('tasksSettings.remove'),
                       danger: true
                     }).then((ok) => {

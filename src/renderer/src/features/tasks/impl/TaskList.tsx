@@ -4,6 +4,9 @@
  * vista de archivadas con "Restaurar".
  */
 import { useUnifiedApps } from './unified'
+import { chatDisplayTitle, loadChatIndex, syncChatSession, useChatIndex, visibleEntries } from './chatIndex'
+import { openIndexedChat } from './chatIndexOpen'
+import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { dateLocale, useT } from '../../../lib/i18n'
 import type { Session } from '@opencode-ai/sdk/v2/client'
@@ -244,6 +247,9 @@ export function TaskRow({
 }): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
+  const unified = useUnifiedApps()
+  // Modo unificado: sin título propio se dice «Chat sin título · fecha», nunca el id interno.
+  const shownTitle = unified ? chatDisplayTitle(task.title, task.time.updated) : task.title || t('tasks.list.untitled')
   const busy = status === 'running' || status === 'using_computer' || status === 'waiting' || status === 'question'
   const pinned = isPinned(task.id)
   // Escritorio: la fila es de una sola línea; el estado se lee a la derecha (no en una segunda línea).
@@ -268,9 +274,7 @@ export function TaskRow({
       role={tree ? 'treeitem' : undefined}
       aria-level={tree ? 2 : undefined}
       aria-current={tree && active ? 'page' : undefined}
-      aria-label={
-        tree ? (tree.stateAria(task.title || t('tasks.list.untitled'), state) ?? (task.title || t('tasks.list.untitled'))) : undefined
-      }
+      aria-label={tree ? (tree.stateAria(shownTitle, state) ?? shownTitle) : undefined}
       {...mob('task-row')}
     >
       {tree && state && <StateDot state={state} />}
@@ -286,7 +290,7 @@ export function TaskRow({
       >
         <div className={`truncate ${unseen ? 'font-semibold' : ''}`}>
           {pinned && <Pin size={10} className="mr-1 inline-block -translate-y-px text-subtle" />}
-          {task.title || t('tasks.list.untitled')}
+          {shownTitle}
         </div>
         <div
           data-quiet={quiet || undefined}
@@ -402,6 +406,47 @@ function TranscriptResults({
   )
 }
 
+/** Chat de otra carpeta (viene del índice): se abre con un clic, conectando su carpeta si hace falta. */
+function IndexRow({ entry, active, opening }: { entry: ChatIndexEntry; active: boolean; opening: boolean }): React.JSX.Element {
+  const t = useT()
+  const tree = useSidebarTree()
+  const title = chatDisplayTitle(entry.title, entry.updatedAt)
+  return (
+    <div
+      data-testid="index-row"
+      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm desk:relative desk:min-h-0 desk:rounded-ctl desk:py-0${tree ? ' desk:h-auto desk:min-h-[42px] desk:gap-2 desk:px-2 desk:py-1.5 desk:text-ui' : ' desk:h-8 desk:gap-2 desk:px-2 desk:pl-[30px] desk:text-sm'} ${active ? 'bg-active' : 'hover:bg-hover'}`}
+      role={tree ? 'treeitem' : undefined}
+      aria-level={tree ? 2 : undefined}
+      aria-current={tree && active ? 'page' : undefined}
+      aria-busy={opening || undefined}
+      aria-label={tree ? title : undefined}
+    >
+      <button
+        type="button"
+        className="min-w-0 flex-1 text-left"
+        data-tree-primary={tree ? '' : undefined}
+        aria-current={active && !tree ? 'true' : undefined}
+        disabled={opening}
+        title={title}
+        onClick={() => void openIndexedChat(entry)}
+      >
+        <div className="truncate">{title}</div>
+        <div className={`truncate text-[11px] desk:text-meta text-subtle${tree ? ' desk:mt-0.5' : ' desk:hidden'}`}>
+          {opening ? t('tasks.unified.opening') : relTime(entry.updatedAt)}
+        </div>
+      </button>
+      {opening ? (
+        <Loader2 size={12} className="shrink-0 animate-spin text-accent" aria-hidden />
+      ) : (
+        !tree && <span className="hidden shrink-0 text-meta text-subtle tabular-nums desk:inline">{relTime(entry.updatedAt)}</span>
+      )}
+    </div>
+  )
+}
+
+type ListItem = { kind: 'task'; task: Session } | { kind: 'entry'; entry: ChatIndexEntry }
+const itemTs = (i: ListItem): number => (i.kind === 'task' ? i.task.time.updated : i.entry.updatedAt)
+
 export function TaskList(): React.JSX.Element {
   const tr = useT()
   const unifiedOn = useUnifiedApps()
@@ -422,6 +467,10 @@ export function TaskList(): React.JSX.Element {
   const dirKey = useTasks((s) => (folder ? sdkDirOf(s.conn, folder) : ''))
   const more = useSessions((s) => (folder ? !!s.moreSessions[sessionsKey(dirKey, baseUrl)] : false))
   const query = useTasks((s) => s.listQuery)
+  const fullAccess = useTasks((s) => !!s.conn?.fullAccess)
+  const indexEntries = useChatIndex((s) => s.entries)
+  const opening = useChatIndex((s) => s.opening)
+  const openError = useChatIndex((s) => s.error)
   const setQuery = (v: string): void => useTasks.setState({ listQuery: v })
   // Escritorio: la caja de búsqueda vive arriba en la barra lateral (`TasksSearchBox`, una sola en vez de dos); el celular la conserva aquí.
   const ownSearch = isRemoteSurface()
@@ -453,6 +502,17 @@ export function TaskList(): React.JSX.Element {
     const viewSource = directorySource[dirKey] ?? MAIN_SOURCE
     return archivedSessionsForDirectory(sessions, dirKey, viewSource, (id) => sessionSource[id] ?? MAIN_SOURCE)
   }, [sessions, sessionSource, directorySource, folder, dirKey])
+
+  // Modo unificado: lo que ve la carpeta conectada se avisa a main (índice de chats) y el índice se carga al arrancar.
+  useEffect(() => {
+    if (unifiedOn) void loadChatIndex()
+  }, [unifiedOn])
+  useEffect(() => {
+    if (!unifiedOn || !folder || fullAccess) return
+    for (const s of liveTasks) {
+      if (!s.parentID) syncChatSession({ folder, sessionId: s.id, title: s.title ?? '', updatedAt: s.time.updated })
+    }
+  }, [unifiedOn, folder, fullAccess, liveTasks])
 
   const source = showArchived ? archivedTasks : liveTasks
   const q = query.trim()
@@ -494,12 +554,56 @@ export function TaskList(): React.JSX.Element {
             ...groupByDate(split.rest, (t) => t.time.updated)
           ]
 
+  // Lista unificada: tareas de la carpeta conectada + chats del índice de otras carpetas, por última actividad.
+  const extraEntries: ChatIndexEntry[] = useMemo(() => {
+    if (!unifiedOn || showArchived) return []
+    const known = new Set<string>([...liveTasks, ...archivedTasks].map((s) => s.id))
+    const vis = visibleEntries(indexEntries, { connectedFolder: folder, knownIds: known, connectedSettled: !loading && !more })
+    return q ? vis.filter((e) => filterByTitle([{ title: chatDisplayTitle(e.title, e.updatedAt) }], q).length > 0) : vis
+  }, [unifiedOn, showArchived, liveTasks, archivedTasks, indexEntries, folder, loading, more, q])
+  const unifiedGroups: Array<TaskGroup<ListItem>> | null =
+    unifiedOn && !showArchived
+      ? ((): Array<TaskGroup<ListItem>> => {
+          const toItems = (list: Session[]): ListItem[] => list.map((task) => ({ kind: 'task' as const, task }))
+          const entryItems: ListItem[] = extraEntries.map((entry) => ({ kind: 'entry' as const, entry }))
+          if (searching) {
+            const all = [...toItems(tasks), ...entryItems].sort((a, b) => itemTs(b) - itemTs(a))
+            return all.length > 0 ? [{ key: 'search', label: tr('tasks.list.titleMatches'), items: all }] : []
+          }
+          if (groupMode === 'group') {
+            return groupByGroup<ListItem>([...toItems(tasks), ...entryItems], (i) =>
+              i.kind === 'task' ? taskMeta[i.task.id]?.group : null
+            )
+          }
+          const rest = [...toItems(split.rest), ...entryItems].sort((a, b) => itemTs(b) - itemTs(a))
+          return [
+            ...(split.live.length > 0 ? [{ key: 'in-progress', label: tr('tasks.side.inProgress'), items: toItems(split.live) }] : []),
+            ...groupByDate<ListItem>(rest, itemTs)
+          ]
+        })()
+      : null
+  const nothingToShow = unifiedGroups ? unifiedGroups.length === 0 : tasks.length === 0
+
   const emptyText = ((): string => {
     if (!folder) return tr(unifiedOn ? 'tasks.list.empty.noFolder.unified' : 'tasks.list.empty.noFolder')
     if (showArchived) return searching ? tr('tasks.list.empty.archivedSearch') : tr('tasks.list.empty.archived')
     if (searching) return tr('tasks.list.empty.search')
     return tr('tasks.list.empty.none')
   })()
+
+  const renderTask = (t: Session): React.JSX.Element => (
+    <TaskRow
+      key={t.id}
+      task={t}
+      status={statusOf(t)}
+      active={t.id === activeId}
+      unseen={!!unseen[t.id] && t.id !== activeId}
+      blockedHost={(networkBlocked[t.id] ?? []).some((b) => !b.resolved)}
+      archivedView={showArchived}
+      group={taskMeta[t.id]?.group}
+      knownGroups={knownGroups}
+    />
+  )
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -588,23 +692,28 @@ export function TaskList(): React.JSX.Element {
       </div>
       {/* Escritorio: sin scroll propio (lo da la lista de la barra lateral): no aparece una barra con dos tareas ni se reserva su canal. */}
       <div className="min-h-0 flex-1 overflow-y-auto desk:overflow-visible">
-        {loading && source.length === 0 && (
+        {loading && source.length === 0 && extraEntries.length === 0 && (
           <div className="flex items-center gap-2 px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">
             <Loader2 size={12} className="animate-spin" /> {tr('tasks.list.loading')}
           </div>
         )}
-        {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && !isRemoteSurface() && (
+        {unifiedOn && openError && (
+          <p role="alert" data-testid="index-open-error" className="px-2 py-1.5 text-[11.5px] desk:text-meta text-danger">
+            {openError}
+          </p>
+        )}
+        {nothingToShow && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && !isRemoteSurface() && (
           <SidebarEmpty
             icon={<ListChecks size={18} strokeWidth={1.75} />}
             text={emptyText}
             hint={!!folder && !showArchived && !searching ? 'tasks' : false}
           />
         )}
-        {tasks.length === 0 && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (
+        {nothingToShow && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (
           <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}
         <SidebarTreeRegion>
-          {groups.map((g) => (
+          {(unifiedGroups ?? groups).map((g) => (
             <div key={g.key} className="mb-1" role={tree ? 'group' : undefined} aria-label={tree ? g.label : undefined}>
               <div
                 aria-hidden={tree ? true : undefined}
@@ -613,19 +722,23 @@ export function TaskList(): React.JSX.Element {
                 {g.label}
               </div>
               <div className="space-y-0.5">
-                {g.items.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    status={statusOf(t)}
-                    active={t.id === activeId}
-                    unseen={!!unseen[t.id] && t.id !== activeId}
-                    blockedHost={(networkBlocked[t.id] ?? []).some((b) => !b.resolved)}
-                    archivedView={showArchived}
-                    group={taskMeta[t.id]?.group}
-                    knownGroups={knownGroups}
-                  />
-                ))}
+                {(g.items as Array<Session | ListItem>).map((it) => {
+                  if ('kind' in it) {
+                    if (it.kind === 'entry') {
+                      const e = it.entry
+                      return (
+                        <IndexRow
+                          key={`ix:${e.folder}:${e.sessionId}`}
+                          entry={e}
+                          active={e.sessionId === activeId}
+                          opening={opening?.sessionId === e.sessionId && opening.folder === e.folder}
+                        />
+                      )
+                    }
+                    return renderTask(it.task)
+                  }
+                  return renderTask(it)
+                })}
               </div>
             </div>
           ))}

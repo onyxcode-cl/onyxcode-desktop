@@ -2666,3 +2666,9 @@ principal del Mac.
 presupuesto solo lo aplica el motor de Lazunox; con otro motor el campo se guarda y nadie lo cumple. (3) `/review` corre en la conversación actual: su
 salida queda también escrita ahí, y con el motor oficial no devuelve el JSON esperado. (4) No se probó con el motor real. (5) La app no modifica las
 zonas intocables.
+
+## Modo unificado: índice de chats (`tasks:chatIndex:*`)
+
+El índice guarda títulos de chats en `userData/chat-index.json`, en claro, como ya guarda el motor sus sesiones; no sale al celular (clase **X**). Solo
+acepta carpetas de chat registradas o aprobadas por la persona (`upsert` rechaza el resto), recorta títulos a 300 caracteres de una línea, limita la
+fecha a «ahora + 1 día» y 2000 entradas; `list` oculta carpetas olvidadas o que ya no existen y `removeFolder` borra sus entradas. Sin la bandera no hace nada.

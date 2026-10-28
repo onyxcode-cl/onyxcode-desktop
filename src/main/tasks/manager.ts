@@ -58,6 +58,8 @@ import { McpProxy } from './mcp-proxy'
 import { getBridgeSecret } from './bridge-secret'
 import { writeUnifiedAppsPrompt } from './unified-apps-prompt'
 import { BRIDGE_ORIGIN_HEADER, BRIDGE_ROUTE_NAME, BRIDGE_SERVER_HEADER, isUnifiedAppsEnabled } from '@shared/unified-bridge'
+import { ChatIndexStore } from './chat-index'
+import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
@@ -358,6 +360,46 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return join(app.getPath('userData'), 'tasks-folders.json')
   }
 
+  /** Modo unificado: índice de chats (`chat-index.json`). Ver `chat-index.ts`. */
+  private readonly chatIndex = new ChatIndexStore(() => join(app.getPath('userData'), 'chat-index.json'))
+
+  private chatIndexOn(): boolean {
+    return !this.win && isUnifiedAppsEnabled()
+  }
+
+  /** ¿Main acepta esta carpeta en el índice? Carpeta de chat registrada o carpeta aprobada por la persona. */
+  private isIndexableFolder(folder: string): boolean {
+    return this.isRegisteredChatFolder(folder) || this.load().folders.some((f) => f.path === folder)
+  }
+
+  /** Entradas del índice cuya carpeta sigue aprobada y existente, de la más reciente a la más antigua. Sin bandera: []. */
+  listChatIndex(): ChatIndexEntry[] {
+    if (!this.chatIndexOn()) return []
+    const ok = new Map<string, boolean>()
+    const good = (f: string): boolean => {
+      let v = ok.get(f)
+      if (v === undefined) {
+        v = this.isIndexableFolder(f) && existsSync(f)
+        ok.set(f, v)
+      }
+      return v
+    }
+    return this.chatIndex.all().filter((e) => good(e.folder))
+  }
+
+  /** Alta/actualización. Rechaza (lanza) carpetas que main no reconoce. Sin bandera: no hace nada. */
+  upsertChatIndex(entry: ChatIndexEntry): void {
+    if (!this.chatIndexOn()) return
+    const folder = this.nf(entry.folder)
+    if (!this.isIndexableFolder(folder)) throw new Error(t('merr.chat.indexFolder'))
+    this.chatIndex.upsert({ ...entry, folder })
+  }
+
+  removeChatIndex(folder: string, sessionId?: string): void {
+    if (!this.chatIndexOn()) return
+    this.chatIndex.remove(this.nf(folder), sessionId)
+  }
+
   private load(): Persisted {
     if (this.data) return this.data
     let data: Persisted = { folders: [], fullAccess: [], deleteGrants: [], chatFolders: [], linked: {}, trusted: [] }
@@ -607,6 +649,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     data.chatFolders = data.chatFolders.filter((p) => p !== f)
     delete data.linked[f]
     this.save()
+    this.chatIndex.remove(f)
     this.network.clearFolder(f)
     tasksRules.removeFolder(f)
   }

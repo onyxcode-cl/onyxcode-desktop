@@ -19,6 +19,7 @@ import { isChildRequest, liveBackgroundChildIds } from '../../code/impl/child-se
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
+import { forgetChatSession } from './chatIndex'
 import { enableAutoOnlyFor, isChatFolderPath, useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
@@ -904,6 +905,7 @@ export async function archiveTask(sessionID: string): Promise<void> {
   if (res.error) throw new Error(errorMessage(res.error))
   if (res.data) useSessions.getState().upsertSession(res.data)
   if (useTasks.getState().activeTaskId === sessionID) useTasks.setState({ activeTaskId: null })
+  if (useUnified.getState().on) forgetChatSession(folder, sessionID)
   // Una tarea archivada no debe conservar su plan aprobado.
   void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
 }
@@ -936,6 +938,7 @@ export async function deleteTask(sessionID: string): Promise<void> {
     return { status, errors }
   })
   if (useTasks.getState().activeTaskId === sessionID) useTasks.setState({ activeTaskId: null })
+  if (useUnified.getState().on) forgetChatSession(folder, sessionID)
   void cw('computer:revokePlan', { sessionId: sessionID }).catch(() => {})
   forgetTaskMeta(sessionID)
   void cw('tasks:restore:forget', { sessionId: sessionID }).catch(() => {})
