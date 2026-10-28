@@ -56,6 +56,15 @@ function axExitMessage(code: number): string | null {
 const ISOLATED_MASK_FAIL_MSG =
   'No se pudo ocultar las apps sin acceso en la captura, así que por seguridad no se devuelve la pantalla. Reintenta en un momento o avisa al usuario.'
 
+/**
+ * Herramientas del sistema de macOS. En macOS son SIEMPRE las rutas absolutas del sistema. Fuera de macOS este módulo no se usa en
+ * producción; ahí (solo pruebas en Linux) `COMPUTER_TEST_BIN_DIR` apunta a una carpeta con `screencapture` y `sips` falsos.
+ */
+const sysTool = (abs: string): string =>
+  process.platform !== 'darwin' && process.env.COMPUTER_TEST_BIN_DIR ? join(process.env.COMPUTER_TEST_BIN_DIR, basename(abs)) : abs
+const SCREENCAPTURE = sysTool('/usr/sbin/screencapture')
+const SIPS = sysTool('/usr/bin/sips')
+
 const BUNDLE_ID_RE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)+$/
 
 /** Minúsculas y sin acentos, para comparar nombres ("Música" ≈ "musica"). */
@@ -405,7 +414,7 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
         // -x sin sonido, -C incluye el cursor; -m solo la principal, o -R<x,y,w,h> para otra pantalla.
         const regionFlags = notMain ? ['-R', `${screen!.x},${screen!.y},${screen!.width},${screen!.height}`] : ['-m']
         try {
-          await run('/usr/sbin/screencapture', ['-x', '-C', ...regionFlags, '-t', 'png', raw])
+          await run(SCREENCAPTURE, ['-x', '-C', ...regionFlags, '-t', 'png', raw])
         } catch (err) {
           throw new Error(
             `No se pudo capturar la pantalla (${err instanceof Error ? err.message : err}). ` +
@@ -443,8 +452,8 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
         }
       }
     }
-    await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
-    const dims = await run('/usr/bin/sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', out])
+    await run(SIPS, ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
+    const dims = await run(SIPS, ['-g', 'pixelWidth', '-g', 'pixelHeight', out])
     const width = Number(/pixelWidth:\s*(\d+)/.exec(dims)?.[1] ?? 0)
     const height = Number(/pixelHeight:\s*(\d+)/.exec(dims)?.[1] ?? 0)
     return { width, height }
@@ -459,7 +468,7 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     const { stdout, code } = await helperExit('window-shot', appKey, raw, String(windowIndex))
     if (code !== 0) throw new Error(axExitMessage(code) ?? `window-shot falló (código ${code})`)
     const info = JSON.parse(stdout) as { width: number; height: number; title?: string }
-    await run('/usr/bin/sips', ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
+    await run(SIPS, ['-Z', String(MAX_LONG), '-s', 'format', 'jpeg', '-s', 'formatOptions', '70', raw, '--out', out])
     return info
   }
 
