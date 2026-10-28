@@ -59,7 +59,11 @@ type AppLike = { name: string; bundleId: string }
 async function mcpFor(
   opts: { app?: AppLike; front?: AppLike | AppLike[]; at?: AppLike; running?: AppLike[]; script?: Record<string, unknown> } = {}
 ): Promise<McpProc> {
-  const responses: Record<string, unknown> = { ...(opts.script ?? {}) }
+  // Ventana de 400x300 pt en la pantalla principal (la captura por defecto del helper falso mide 800x600 = 2 x marco: así se puede ubicar).
+  const responses: Record<string, unknown> = {
+    'windows-of': { out: [{ title: 'Ventana', x: 100, y: 100, width: 400, height: 300 }] },
+    ...(opts.script ?? {})
+  }
   if (opts.running) responses['running-apps'] = { out: opts.running }
   if (opts.app) responses['resolve-app'] = { out: { ...opts.app, found: true } }
   if (opts.front) {
@@ -120,6 +124,18 @@ function giveControl(session: string): void {
   svc.checkBridgeCall({ origin: SECRET, server: SERVER_A, session })
   ;(svc as unknown as { foregroundSessions: Set<string> }).foregroundSessions.add(session)
 }
+
+/** Origen aislado: captura la ventana de la app (sin ella el clic con x/y no tiene dónde caer: falla cerrado). */
+async function snap(m: McpProc, session: string, app = 'Notes'): Promise<void> {
+  const r = await m.call('app_screenshot', { app, lazunox_session: session }, hdr())
+  expect(r.isError, textOf(r)).not.toBe(true)
+}
+
+const clickCalls = (m: McpProc): string[][] =>
+  m
+    .calls()
+    .filter((c) => c.cmd === 'click')
+    .map((c) => c.args)
 
 const keyCalls = (m: McpProc): string[][] =>
   m
@@ -270,7 +286,7 @@ describe.skipIf(!posixOnly)('F2: request_full_control con la preferencia en «fu
     await grant(SES, 'click', NOTES.bundleId, 'Notes')
     const m = await mcpFor({ app: NOTES, front: NOTES })
     // Antes de la tarjeta: el clic se rechaza pidiendo request_full_control.
-    const before = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+    const before = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(before.isError).toBe(true)
     expect(textOf(before)).toContain('request_full_control')
 
@@ -284,11 +300,12 @@ describe.skipIf(!posixOnly)('F2: request_full_control con la preferencia en «fu
     expect(textOf(reply)).not.toContain('Ya tienes control de la pantalla')
     expect(textOf(reply)).toContain('permitió')
 
-    const after = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+    await snap(m, SES)
+    const after = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(after.isError, textOf(after)).not.toBe(true)
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(true)
     // Y no se lo da a otra sesión del mismo servidor.
-    expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES2 }, hdr())).isError).toBe(true)
+    expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES2 }, hdr())).isError).toBe(true)
   })
 
   it('CONTROL: sin origen aislado y con «full», request_full_control sigue respondiendo «Ya tienes control» sin tarjeta', async () => {
@@ -410,7 +427,8 @@ describe.skipIf(!posixOnly)('mutación: las puertas `|| isolatedCall` se notan (
     await grant(SES, 'click', NOTES.bundleId, 'Notes')
     giveControl(SES)
     const m = await mcpFor({ front: NOTES, at: { name: '', bundleId: '' } })
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+    await snap(m, SES)
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(r.isError).toBe(true)
     expect(textOf(r)).toContain('No se pudo identificar')
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
@@ -421,7 +439,7 @@ describe.skipIf(!posixOnly)('mutación: las puertas `|| isolatedCall` se notan (
     svc.approvePlanFor(SES2)
     svc.prefs.set({ mode: 'full' })
     const m = await mcpFor({ front: NOTES, at: { name: '', bundleId: '' } })
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES2 })
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES2 })
     expect(r.isError, textOf(r)).not.toBe(true)
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(true)
   })
@@ -480,19 +498,26 @@ describe.skipIf(!posixOnly)(
     it('«Control total» de Notes: clic y teclas sobre Notes pasan sin request_full_control, y ninguna otra sesión lo hereda', async () => {
       const m = await mcpFor({ app: NOTES, front: NOTES })
       await askByCard(m, SES, 'full')
-      const click = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+      // Sin captura de la ventana el clic con x/y falla cerrado (aunque la sesión tenga el control): hay que mirar antes.
+      const blind = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
+      expect(blind.isError).toBe(true)
+      expect(textOf(blind)).toContain('app_screenshot')
+      expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
+      await snap(m, SES)
+      const click = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
       expect(click.isError, textOf(click)).not.toBe(true)
-      expect(m.calls().some((c) => c.cmd === 'click')).toBe(true)
+      expect(clickCalls(m).length).toBe(1)
       const key = await m.call('key', { keys: 'space', lazunox_session: SES }, hdr())
       expect(key.isError, textOf(key)).not.toBe(true)
-      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES2 }, hdr())).isError).toBe(true)
+      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES2 }, hdr())).isError).toBe(true)
     })
 
     it('el alcance sigue siendo la app: con otra app al frente (sin concesión) el clic y las teclas se rechazan', async () => {
       const m = await mcpFor({ app: NOTES, front: OTHER })
       await askByCard(m, SES, 'full')
+      await snap(m, SES)
       const clicksBefore = m.calls().filter((c) => c.cmd === 'click').length
-      const click = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+      const click = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
       expect(click.isError).toBe(true)
       const key = await m.call('key', { keys: 'space', lazunox_session: SES }, hdr())
       expect(key.isError).toBe(true)
@@ -503,7 +528,7 @@ describe.skipIf(!posixOnly)(
     it('«Solo ver» NO da el ratón ni el teclado (sigue pidiendo request_full_control)', async () => {
       const m = await mcpFor({ app: NOTES, front: NOTES })
       await askByCard(m, SES, 'view')
-      const click = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+      const click = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
       expect(click.isError).toBe(true)
       expect(textOf(click)).toContain('request_full_control')
       expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
@@ -512,7 +537,8 @@ describe.skipIf(!posixOnly)(
     it('«Ver y clic» deja hacer clic en esa app pero NO teclear (teclear exige «Control total»)', async () => {
       const m = await mcpFor({ app: NOTES, front: NOTES })
       await askByCard(m, SES, 'click')
-      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).not.toBe(true)
+      await snap(m, SES)
+      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).not.toBe(true)
       const typed = await m.call('type_text', { text: 'hola', lazunox_session: SES }, hdr())
       expect(typed.isError).toBe(true)
       expect(m.calls().some((c) => c.cmd === 'type' || c.cmd === 'paste')).toBe(false)
@@ -521,10 +547,11 @@ describe.skipIf(!posixOnly)(
     it('Detener revoca ese control: después del Detener el clic vuelve a rechazarse', async () => {
       const m = await mcpFor({ app: NOTES, front: NOTES })
       await askByCard(m, SES, 'full')
-      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).not.toBe(true)
+      await snap(m, SES)
+      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).not.toBe(true)
       await svc.stop()
       svc.resume()
-      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).toBe(true)
+      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).toBe(true)
     })
   }
 )
@@ -560,7 +587,8 @@ describe.skipIf(!posixOnly)(
     it('Finder con «Ver y clic»/«Control total» por tarjeta: el doble clic y las teclas reales se rechazan (hay que pedir request_full_control)', async () => {
       const m = await mcpFor({ app: FINDER, front: FINDER })
       await askMany(m, SES, [{ app: FINDER, tier: 'full' }])
-      const dbl = await m.call('double_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+      await snap(m, SES, 'Finder')
+      const dbl = await m.call('double_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
       expect(dbl.isError).toBe(true)
       expect(textOf(dbl)).toContain('request_full_control')
       const key = await m.call('key', { keys: 'return', lazunox_session: SES }, hdr())
@@ -574,7 +602,8 @@ describe.skipIf(!posixOnly)(
         { app: SPOT, tier: 'full' },
         { app: FINDER, tier: 'click' }
       ])
-      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).toBe(true)
+      await snap(m, SES, 'Finder')
+      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).toBe(true)
       expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
     })
 
@@ -582,7 +611,8 @@ describe.skipIf(!posixOnly)(
       const m = await mcpFor({ app: FINDER, front: FINDER })
       await askMany(m, SES, [{ app: FINDER, tier: 'click' }])
       giveControl(SES)
-      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).not.toBe(true)
+      await snap(m, SES, 'Finder')
+      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).not.toBe(true)
     })
 
     it('open_application de una app con solo «Solo ver» NO la activa aunque la sesión tenga el control por otra app', async () => {

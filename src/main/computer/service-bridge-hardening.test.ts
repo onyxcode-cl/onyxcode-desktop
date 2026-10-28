@@ -59,7 +59,8 @@ async function mcpFor(
   front?: { name: string; bundleId: string },
   running?: Array<{ name: string; bundleId: string }>
 ): Promise<McpProc> {
-  const responses: Record<string, unknown> = {}
+  // Ventana de 400x300 pt en la pantalla principal (la captura por defecto del helper falso mide 800x600 = 2 x marco: así se puede ubicar).
+  const responses: Record<string, unknown> = { 'windows-of': { out: [{ title: 'Ventana', x: 100, y: 100, width: 400, height: 300 }] } }
   if (running) responses['running-apps'] = { out: running }
   if (app) responses['resolve-app'] = { out: { ...app, found: true } }
   if (front) {
@@ -76,6 +77,12 @@ async function mcpFor(
   })
   mcps.push(m)
   return m
+}
+
+/** Origen aislado: captura la ventana de la app (sin ella el clic con x/y falla cerrado). */
+async function snap(m: McpProc, session: string, app = 'Notes'): Promise<void> {
+  const r = await m.call('app_screenshot', { app, lazunox_session: session }, hdr())
+  expect(r.isError, textOf(r)).not.toBe(true)
 }
 
 beforeEach(async () => {
@@ -306,7 +313,7 @@ describe.skipIf(!posixOnly)('«Control de la pantalla» (modo full) no le da el 
     svc.prefs.set({ mode: 'full' })
     await grant(SES, 'click', 'com.apple.Notes', 'Notes')
     const m = await mcpFor()
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(r.isError).toBe(true)
     expect(textOf(r)).toContain('request_full_control')
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
@@ -317,11 +324,12 @@ describe.skipIf(!posixOnly)('«Control de la pantalla» (modo full) no le da el 
     await grant(SES, 'click', 'com.apple.Notes', 'Notes')
     const m = await mcpFor()
     ;(svc as unknown as { foregroundSessions: Set<string> }).foregroundSessions.add(SES)
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+    await snap(m, SES)
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(r.isError).not.toBe(true)
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(true)
     // Otra sesión del mismo servidor no hereda ese control.
-    expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES2 }, hdr())).isError).toBe(true)
+    expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES2 }, hdr())).isError).toBe(true)
   })
 
   it('CONTROL: sin origen aislado, con la preferencia en «full» y plan aprobado, el clic pasa como siempre', async () => {
@@ -329,7 +337,7 @@ describe.skipIf(!posixOnly)('«Control de la pantalla» (modo full) no le da el 
     svc.grants.grant('com.apple.Notes', 'Notes', 'click')
     svc.approvePlanFor(SES2)
     const m = await mcpFor()
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES2 })
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES2 })
     expect(r.isError).not.toBe(true)
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(true)
   })
@@ -341,7 +349,8 @@ describe.skipIf(!posixOnly)('H5: app de destino no identificada ⇒ falla cerrad
     await grant(SES, 'click', 'com.apple.Notes', 'Notes')
     ;(svc as unknown as { foregroundSessions: Set<string> }).foregroundSessions.add(SES)
     const m = await mcpFor(undefined, unknown)
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+    await snap(m, SES) // la app capturada es Notes (resolve-app por defecto); lo que no se identifica es la de al frente y bajo el punto
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(r.isError).toBe(true)
     expect(textOf(r)).toContain('No se pudo identificar')
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
@@ -351,7 +360,7 @@ describe.skipIf(!posixOnly)('H5: app de destino no identificada ⇒ falla cerrad
     svc.prefs.set({ mode: 'full' })
     svc.approvePlanFor(SES2)
     const m = await mcpFor(undefined, unknown)
-    const r = await m.call('left_click', { x: 10, y: 10, lazunox_session: SES2 })
+    const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES2 })
     expect(r.isError).not.toBe(true)
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(true)
   })

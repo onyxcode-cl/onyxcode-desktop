@@ -195,6 +195,8 @@ export interface McpOptions {
   platform?: 'darwin' | 'win32'
   /** Imagen que copian los comandos de captura del helper falso. */
   image?: Buffer
+  /** Tamaño que devuelve el `sips -g` falso (solo fuera de macOS; en el Mac el `sips` real mide la imagen de `image`). */
+  sipsSize?: { width: number; height: number }
   /** Carpeta de trabajo (capturas, registro, guion). */
   dir: string
 }
@@ -230,15 +232,15 @@ export interface McpProc {
 
 /**
  * `screencapture` y `sips` falsos (scripts sh) para Linux: el módulo de macOS del MCP los llama por ruta absoluta del sistema, que no existe
- * allí. Solo se usan fuera de macOS (ver `sysTool` en mcp-platform-darwin.ts). Escriben un archivo mínimo y devuelven 10x10.
+ * allí. Solo se usan fuera de macOS (ver `sysTool` en mcp-platform-darwin.ts). Escriben un archivo mínimo y devuelven 10x10 (o `sipsSize`).
  */
-function fakeSystemTools(dir: string): string {
+function fakeSystemTools(dir: string, size: { width: number; height: number } = { width: 10, height: 10 }): string {
   mkdirSync(dir, { recursive: true })
   const put = (name: string, body: string): void => writeFileSync(join(dir, name), `#!/bin/sh\n${body}\n`, { mode: 0o755 })
   put('screencapture', 'for a; do last="$a"; done\nprintf FAKEPNG > "$last"')
   put(
     'sips',
-    'if [ "$1" = "-g" ]; then printf "pixelWidth: 10\\npixelHeight: 10\\n"; exit 0; fi\nraw=""; out=""\nwhile [ $# -gt 0 ]; do case "$1" in --out) out="$2"; shift;; -Z|-s) shift;; esac; shift; done\nprintf FAKEJPG > "$out"'
+    `if [ "$1" = "-g" ]; then printf "pixelWidth: ${size.width}\\npixelHeight: ${size.height}\\n"; exit 0; fi\nraw=""; out=""\nwhile [ $# -gt 0 ]; do case "$1" in --out) out="$2"; shift;; -Z|-s) shift;; esac; shift; done\nprintf FAKEJPG > "$out"`
   )
   return dir
 }
@@ -252,7 +254,7 @@ export async function startMcp(o: McpOptions): Promise<McpProc> {
   const imageFile = join(o.dir, 'fake-image')
   if (o.image) writeFileSync(imageFile, o.image)
   const token = 'tok-' + 'x'.repeat(40)
-  const binDir = fakeSystemTools(join(o.dir, 'bin'))
+  const binDir = fakeSystemTools(join(o.dir, 'bin'), o.sipsSize)
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '',
     HOME: o.dir,

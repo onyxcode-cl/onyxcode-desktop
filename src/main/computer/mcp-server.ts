@@ -61,7 +61,15 @@ import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pickMenuNode, type MenuNodeLike } from './menu-path'
-import { isolatedPasteKey, type AppRef, type AppTier, type PlatformBackend, type PlatformHost, type Screen } from './mcp-platform'
+import {
+  isolatedPasteKey,
+  type AppRef,
+  type AppTier,
+  type PlatformBackend,
+  type PlatformHost,
+  type Rect,
+  type Screen
+} from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
 import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from './mcp-platform-win32'
 
@@ -1090,6 +1098,160 @@ async function toPoints(x: unknown, y: unknown): Promise<{ x: number; y: number 
   return { x: px + (s.x ?? 0), y: py + (s.y ?? 0) }
 }
 
+// ───────────────────────────── origen aislado: clic en píxeles de la última app_screenshot ─────────────────────────────
+//
+// En origen aislado no hay captura de pantalla completa, así que las x/y de los clics NO pueden ser píxeles de la pantalla principal.
+// Son píxeles de la última `app_screenshot` DE ESA SESIÓN (la ventana capturada, esté en el monitor que esté). Solo se puede apuntar
+// dentro del marco visible de esa ventana y de algún monitor real; justo antes de actuar se vuelve a leer la ventana y la app bajo el
+// punto tiene que ser la capturada. Fuera del origen aislado nada de esto corre.
+
+/** Cuánto vale una `app_screenshot` para apuntar (mismo criterio que la lista de elementos). La variable solo permite ACORTARLO (pruebas); nunca pasa de 90 s. */
+const WINDOW_CTX_TTL_MS = Math.min(90_000, Math.max(1, Number(process.env.COMPUTER_WINDOW_CTX_TTL_MS) || 90_000))
+/** Tolerancia al comparar el marco de la ventana con el de la captura (puntos o píxeles). */
+const WINDOW_FRAME_TOLERANCE = 1
+
+/** La ventana de la última `app_screenshot` de una sesión: dónde está y cuánto mide la imagen JPEG que vio el modelo. */
+interface WindowCtx {
+  app: AppRef
+  windowIndex: number
+  /** Rectángulo global que cubre la IMAGEN (Windows: con los bordes invisibles). */
+  rect: Rect
+  /** Marco visible de la ventana: límite de cualquier punto. */
+  frame: Rect
+  imageWidth: number
+  imageHeight: number
+  at: number
+}
+const windowCtx = new Map<string, WindowCtx>()
+const WINDOW_CTX_MAX = 64
+
+const ctxKey = (session: string | undefined): string => session ?? ''
+
+const NO_CAPTURE_MSG =
+  'Para hacer clic, mover el puntero, arrastrar o desplazar en este modo primero toma app_screenshot de la app: ' +
+  'las x/y van en píxeles de esa imagen. No hay captura de pantalla completa ni clics a ciegas.'
+
+const validRect = (r: Rect): boolean => [r.x, r.y, r.width, r.height].every((n) => Number.isFinite(n)) && r.width > 0 && r.height > 0
+
+/** Guarda (o borra, si `loc` es null o inválida) la ventana capturada de esa sesión. */
+function setWindowCtx(
+  session: string | undefined,
+  app: AppRef,
+  windowIndex: number,
+  loc: { rect: Rect; frame: Rect; imageWidth: number; imageHeight: number } | null
+): boolean {
+  const key = ctxKey(session)
+  windowCtx.delete(key)
+  if (!loc || !validRect(loc.rect) || !validRect(loc.frame) || !(loc.imageWidth > 0) || !(loc.imageHeight > 0)) return false
+  if (windowCtx.size >= WINDOW_CTX_MAX) {
+    const oldest = windowCtx.keys().next().value
+    if (oldest !== undefined) windowCtx.delete(oldest)
+  }
+  windowCtx.set(key, {
+    app,
+    windowIndex,
+    rect: { ...loc.rect },
+    frame: { ...loc.frame },
+    imageWidth: loc.imageWidth,
+    imageHeight: loc.imageHeight,
+    at: Date.now()
+  })
+  return true
+}
+
+/** La captura vigente de esa sesión, o lanza (falla cerrado: sin captura no hay clic con x/y). */
+function currentWindowCtx(session: string | undefined): WindowCtx {
+  const ctx = windowCtx.get(ctxKey(session))
+  if (!ctx) {
+    reportBridgeDenied('no-capture', session)
+    throw new Error(NO_CAPTURE_MSG)
+  }
+  if (Date.now() - ctx.at > WINDOW_CTX_TTL_MS) {
+    windowCtx.delete(ctxKey(session))
+    reportBridgeDenied('capture-expired', session)
+    throw new Error(`La captura de ${ctx.app.name} caducó (valen 90 s): toma app_screenshot otra vez antes de actuar.`)
+  }
+  return ctx
+}
+
+/** Punto dentro de un rectángulo (abierto por la derecha y abajo: el borde de abajo/derecha es del vecino). */
+const inRect = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height
+
+/**
+ * Origen aislado: px de la última `app_screenshot` de la sesión → punto global (el que esperan los clics). Rechaza si no hay captura vigente,
+ * si los px caen fuera de la imagen, y si el punto resultante cae fuera del marco visible de la ventana o fuera de todos los monitores.
+ */
+async function toWindowPoints(
+  session: string | undefined,
+  x: unknown,
+  y: unknown
+): Promise<{ p: { x: number; y: number }; ctx: WindowCtx }> {
+  const bad = (v: unknown): boolean => v === null || v === undefined || (typeof v === 'string' && !v.trim()) || typeof v === 'boolean'
+  const nx = bad(x) ? NaN : Number(x)
+  const ny = bad(y) ? NaN : Number(y)
+  if (!Number.isFinite(nx) || !Number.isFinite(ny)) throw new Error('Coordenadas inválidas: x e y deben ser números')
+  const ctx = currentWindowCtx(session)
+  if (nx < 0 || ny < 0 || nx > ctx.imageWidth || ny > ctx.imageHeight) {
+    reportBridgeDenied('outside-window', session)
+    throw new Error(
+      `Coordenadas fuera de la imagen de app_screenshot: (${nx}, ${ny}) px; la imagen mide ${ctx.imageWidth}x${ctx.imageHeight} px. ` +
+        'Apunta dentro de la ventana capturada.'
+    )
+  }
+  const p = {
+    x: Math.round((ctx.rect.x + (nx * ctx.rect.width) / ctx.imageWidth) * 100) / 100,
+    y: Math.round((ctx.rect.y + (ny * ctx.rect.height) / ctx.imageHeight) * 100) / 100
+  }
+  if (!inRect(ctx.frame, p.x, p.y)) {
+    reportBridgeDenied('outside-window', session)
+    throw new Error(`Ese punto (${nx}, ${ny}) px cae fuera de la ventana de ${ctx.app.name}: no se actúa. Apunta dentro de la ventana.`)
+  }
+  let screens: Screen[] = []
+  try {
+    screens = await getAllScreens()
+  } catch {
+    screens = []
+  }
+  if (!screens.length || !screens.some((s) => inRect({ x: s.x ?? 0, y: s.y ?? 0, width: s.width, height: s.height }, p.x, p.y))) {
+    reportBridgeDenied('off-screen', session)
+    throw new Error('Ese punto no cae en ninguna pantalla conectada: no se actúa. Toma app_screenshot otra vez.')
+  }
+  return { p, ctx }
+}
+
+/** Origen aislado: la app bajo el punto tiene que ser EXACTAMENTE la capturada (otra ventana, una notificación o el escritorio no valen). */
+async function assertCapturedAppAt(ctx: WindowCtx, p: { x: number; y: number }, session: string | undefined): Promise<void> {
+  const at = await appAtPoint(p.x, p.y)
+  if (!at.bundleId || at.bundleId !== ctx.app.bundleId) {
+    reportBridgeDenied('outside-window', session)
+    throw new Error(
+      `Bajo ese punto no está ${ctx.app.name} (otra ventana lo tapa o cambió): no se actúa. Toma app_screenshot otra vez y revisa dónde está.`
+    )
+  }
+}
+
+/** Origen aislado, justo antes de actuar: la ventana tiene que seguir donde y como se capturó (si se movió, cambió de tamaño o se cerró, no se actúa). */
+async function recheckWindow(ctx: WindowCtx, session: string | undefined): Promise<void> {
+  let frames: Rect[] = []
+  try {
+    frames = await backend.windowFrames(ctx.app.bundleId)
+  } catch {
+    frames = []
+  }
+  const same = (f: Rect): boolean =>
+    Math.abs(f.x - ctx.frame.x) <= WINDOW_FRAME_TOLERANCE &&
+    Math.abs(f.y - ctx.frame.y) <= WINDOW_FRAME_TOLERANCE &&
+    Math.abs(f.width - ctx.frame.width) <= WINDOW_FRAME_TOLERANCE &&
+    Math.abs(f.height - ctx.frame.height) <= WINDOW_FRAME_TOLERANCE
+  if (!frames.some(same)) {
+    reportBridgeDenied('window-moved', session)
+    windowCtx.delete(ctxKey(session))
+    throw new Error(
+      `La ventana de ${ctx.app.name} se movió, cambió de tamaño o se cerró desde la captura: no se actúa. Toma app_screenshot otra vez.`
+    )
+  }
+}
+
 // ───────────────────────────── herramientas ─────────────────────────────
 
 type Content = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
@@ -1115,8 +1277,8 @@ interface ToolDef {
 }
 
 const XY = {
-  x: { type: 'number', description: 'X en píxeles de la última captura' },
-  y: { type: 'number', description: 'Y en píxeles de la última captura' }
+  x: { type: 'number', description: 'X en píxeles de la última captura (en el modo de apps: de la última app_screenshot)' },
+  y: { type: 'number', description: 'Y en píxeles de la última captura (en el modo de apps: de la última app_screenshot)' }
 }
 /** Acciones que un lote puede encadenar (las que no piden permisos nuevos ni abren tarjetas) y sus topes. */
 const BATCH_TOOLS = [
@@ -1179,8 +1341,12 @@ async function clickTool(
   session?: string
 ): Promise<string> {
   await requireForeground(session)
-  const { p, label } = await pointFromArgs(args)
+  const { p, label, ctx } = await pointFromArgs(args, session)
   await requireTier('click', p, session)
+  if (ctx) {
+    await assertCapturedAppAt(ctx, p, session)
+    await recheckWindow(ctx, session)
+  }
   await act({ tool, x: p.x, y: p.y }, () => helper('click', String(p.x), String(p.y), button, String(count)))
   return `${tool} en ${label} → (${p.x}, ${p.y}) pt`
 }
@@ -1405,13 +1571,34 @@ function shotPx(point: { x: number; y: number }, ratio: number): { x: number; y:
   return ratio > 0 ? { x: (point.x - ox) / ratio, y: (point.y - oy) / ratio } : point
 }
 
-function describeElement(el: FoundElement, idx: number, ratio: number): string {
+function describeElement(el: FoundElement, idx: number, ratio: number, isolatedCtx?: WindowCtx | null): string {
   const label = el.title || el.description || el.identifier || el.value || '(sin texto)'
   const state = el.enabled ? '' : ' [deshabilitado]'
+  if (isolatedCall) {
+    // Origen aislado: los puntos se dan en px de la última app_screenshot de esa app (un solo espacio de coordenadas); sin ella, sin coordenadas.
+    if (!isolatedCtx) return `${idx + 1}. [${el.role}] "${label}" (sin coordenadas: falta app_screenshot de la app)${state}`
+    const c = isolatedCtx
+    const px = {
+      x: ((el.screenPoint.x - c.rect.x) * c.imageWidth) / c.rect.width,
+      y: ((el.screenPoint.y - c.rect.y) * c.imageHeight) / c.rect.height
+    }
+    const outside = inRect(c.frame, el.screenPoint.x, el.screenPoint.y) ? '' : ' [fuera de la ventana capturada: no se puede pulsar]'
+    return `${idx + 1}. [${el.role}] "${label}" en (${Math.round(px.x)}, ${Math.round(px.y)}) px, tamaño ${Math.round(el.width)}x${Math.round(el.height)}${state}${outside}`
+  }
   const px = shotPx(el.screenPoint, ratio)
   const pt = `(${Math.round(px.x)}, ${Math.round(px.y)})`
   return `${idx + 1}. [${el.role}] "${label}" en ${pt} px, tamaño ${Math.round(el.width)}x${Math.round(el.height)}${state}`
 }
+
+/** Origen aislado: la captura vigente de ESA app en esta sesión (para expresar los puntos de AX en sus píxeles), o null. */
+function isolatedCtxFor(app: AppRef, session: string | undefined): WindowCtx | null {
+  const ctx = windowCtx.get(ctxKey(session))
+  if (!ctx || ctx.app.bundleId !== app.bundleId || Date.now() - ctx.at > WINDOW_CTX_TTL_MS) return null
+  return ctx
+}
+
+const ISOLATED_NEEDS_SHOT_LINE = (app: AppRef): string =>
+  `Para hacer clic en algo de ${app.name} toma antes app_screenshot de esa app: las coordenadas se dan en píxeles de esa imagen.`
 
 // ───────────────────────────── lista numerada de elementos en cada captura ─────────────────────────────
 //
@@ -1550,8 +1737,20 @@ async function shouldPressByKeys(): Promise<boolean> {
 }
 
 /** Punto (puntos globales) al que apunta una acción: `element: N` de la última lista, o x/y en px de la captura. */
-async function pointFromArgs(args: Record<string, unknown>): Promise<{ p: { x: number; y: number }; label: string }> {
+async function pointFromArgs(
+  args: Record<string, unknown>,
+  session?: string
+): Promise<{ p: { x: number; y: number }; label: string; ctx?: WindowCtx }> {
   const raw = args.element
+  if (isolatedCall) {
+    // Origen aislado: no hay lista de elementos (nace de una captura de pantalla completa); el punto sale de los px de app_screenshot.
+    if (raw !== undefined && raw !== null && raw !== '') {
+      throw new Error('En este modo no hay lista de elementos (element): toma app_screenshot de la app y usa x/y en píxeles de esa imagen.')
+    }
+    if (args.x === undefined || args.y === undefined) throw new Error('Indica x e y (px de la última app_screenshot).')
+    const { p, ctx } = await toWindowPoints(session, args.x, args.y)
+    return { p, label: `(${args.x}, ${args.y}) px`, ctx }
+  }
   if (raw !== undefined && raw !== null && raw !== '') {
     const n = Number(raw)
     if (!Number.isInteger(n) || n < 1) throw new Error('element debe ser el número de la lista de elementos (1, 2, 3…)')
@@ -1699,8 +1898,12 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
-      const { p, label } = await pointFromArgs(a)
+      const { p, label, ctx } = await pointFromArgs(a, session)
       await requireTier('click', p, session)
+      if (ctx) {
+        await assertCapturedAppAt(ctx, p, session)
+        await recheckWindow(ctx, session)
+      }
       await act({ tool: 'mouse_move', x: p.x, y: p.y }, () => helper('move', String(p.x), String(p.y)))
       return `Puntero movido a ${label} → (${p.x}, ${p.y}) pt`
     }
@@ -1778,11 +1981,19 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
-      const s = await toPoints(a.start_x, a.start_y)
-      const e = await toPoints(a.end_x, a.end_y)
+      // Origen aislado: los dos extremos en px de la MISMA ventana capturada (no se arrastra a otra app ni al escritorio).
+      const ws = isolatedCall ? await toWindowPoints(session, a.start_x, a.start_y) : undefined
+      const we = isolatedCall ? await toWindowPoints(session, a.end_x, a.end_y) : undefined
+      const s = ws ? ws.p : await toPoints(a.start_x, a.start_y)
+      const e = we ? we.p : await toPoints(a.end_x, a.end_y)
       // Arrastrar necesita "Control total": mueve/reordena contenido, no es un simple clic.
       await requireTier('full', s, session)
       await requireTier('full', e, session)
+      if (ws && we) {
+        await assertCapturedAppAt(ws.ctx, s, session)
+        await assertCapturedAppAt(we.ctx, e, session)
+        await recheckWindow(ws.ctx, session)
+      }
       await act({ tool: 'drag', x: e.x, y: e.y, fromX: s.x, fromY: s.y }, () =>
         helper('drag', String(s.x), String(s.y), String(e.x), String(e.y))
       )
@@ -1804,13 +2015,18 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
-      const p = await toPoints(a.x, a.y)
+      const w = isolatedCall ? await toWindowPoints(session, a.x, a.y) : undefined
+      const p = w ? w.p : await toPoints(a.x, a.y)
       const n = Math.max(1, Math.min(30, Math.round(Number(a.amount) || 5)))
       const dir = String(a.direction)
       const dx = dir === 'right' ? n : dir === 'left' ? -n : 0
       const dy = dir === 'down' ? n : dir === 'up' ? -n : 0
       if (!dx && !dy) throw new Error('direction debe ser up, down, left o right')
       await requireTier('click', p, session)
+      if (w) {
+        await assertCapturedAppAt(w.ctx, p, session)
+        await recheckWindow(w.ctx, session)
+      }
       await act({ tool: 'scroll', x: p.x, y: p.y, text: `${dir} ${n}` }, () =>
         helper('scroll', String(p.x), String(p.y), String(dx), String(dy))
       )
@@ -2381,10 +2597,12 @@ const TOOLS: ToolDef[] = [
   {
     name: 'app_screenshot',
     description:
-      'Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón — SOLO para ' +
-      'mirar (confirmar que algo cargó, leer texto, ver si está tapada), NUNCA para sacar coordenadas de clic: no ' +
-      'sabe dónde está esa ventana en la pantalla, así que un píxel de esta imagen no se puede convertir a un ' +
-      'punto de clic. Para clicar algo, usa screenshot (captura de la pantalla principal) o find_element.',
+      'Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón. Fuera del modo de ' +
+      'apps es SOLO para mirar (confirmar que algo cargó, leer texto, ver si está tapada), NUNCA para sacar coordenadas ' +
+      'de clic: no sabe dónde está esa ventana en la pantalla; para clicar usa screenshot (captura de la pantalla ' +
+      'principal) o find_element. En el modo de apps (sin screenshot de pantalla) sus píxeles SÍ valen para los clics: ' +
+      'las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y teach_step van en píxeles de esta ' +
+      'imagen y valen 90 s o hasta la siguiente app_screenshot.',
     inputSchema: obj({ app: { type: 'string' }, window: { type: 'number' } }, ['app']),
     action: true,
     noAutoShot: true,
@@ -2401,6 +2619,37 @@ const TOOLS: ToolDef[] = [
         const info = await backend.windowShot(app.bundleId, raw, out, windowIndex)
         const base64 = readFileSync(out).toString('base64')
         cleanupShots()
+        if (isolatedCall) {
+          // Origen aislado: esta captura fija el espacio de los clics (px de ESTA imagen → puntos de la ventana). Las pantallas se releen
+          // en cada captura. Si no se puede asegurar dónde está la ventana, se borra la anterior y esta sirve solo para mirar.
+          allScreens = null
+          let loc: Awaited<ReturnType<typeof backend.locateWindowShot>> = null
+          try {
+            await getAllScreens()
+            loc = await backend.locateWindowShot(app.bundleId, windowIndex, info, out)
+          } catch (err) {
+            log('app_screenshot: no se pudo ubicar la ventana:', err instanceof Error ? err.message : err)
+            loc = null
+          }
+          const located = setWindowCtx(session, app, windowIndex, loc)
+          const size = located && loc ? `${loc.imageWidth}x${loc.imageHeight}` : `${info.width}x${info.height}`
+          const title = info.title ? ` («${info.title}»)` : ''
+          return {
+            text: located
+              ? `Ventana de ${app.name}: ${size} px${title}. Las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y ` +
+                'teach_step van en píxeles de ESTA imagen; valen 90 s o hasta la siguiente app_screenshot. Archivo: ' +
+                out
+              : `Ventana de ${app.name}: ${size} px${title}. No se pudo ubicar la ventana: esta captura sirve para mirar, no para clics. Archivo: ` +
+                out,
+            shot: {
+              path: out,
+              base64,
+              width: located && loc ? loc.imageWidth : info.width,
+              height: located && loc ? loc.imageHeight : info.height,
+              ratio: 1
+            }
+          }
+        }
         return {
           text:
             `Ventana de ${app.name}: ${info.width}x${info.height} px${info.title ? ` («${info.title}»)` : ''}. ` +
@@ -2446,8 +2695,18 @@ const TOOLS: ToolDef[] = [
           '(computer_screenshot) y adivina las coordenadas por visión como de costumbre.'
         )
       }
-      const elRatio = await ensureRatio()
-      const lines = candidates.map(({ el }, i) => describeElement(el, i, elRatio))
+      const elRatio = isolatedCall ? 1 : await ensureRatio()
+      const elCtx = isolatedCall ? isolatedCtxFor(app, session) : null
+      const lines = candidates.map(({ el }, i) => describeElement(el, i, elRatio, elCtx))
+      if (isolatedCall) {
+        return (
+          `${candidates.length} candidato(s) en ${app.name} (AX) para "${description}", de más a menos fiable:\n` +
+          `${lines.join('\n')}\n` +
+          (elCtx
+            ? 'Usa el punto indicado (píxeles de tu última app_screenshot) con left_click/mouse_move y verifica con otra app_screenshot después de actuar.'
+            : ISOLATED_NEEDS_SHOT_LINE(app))
+        )
+      }
       return (
         `${candidates.length} candidato(s) en ${app.name} (AX) para "${description}", de más a menos fiable:\n` +
         `${lines.join('\n')}\n` +
@@ -2484,10 +2743,12 @@ const TOOLS: ToolDef[] = [
       const elements = await findElementsHelper(app.bundleId, { roles })
       if (!elements.length) return `Sin elementos visibles${roles ? ` de rol ${roles.join(',')}` : ''} en ${app.name} (AX).`
       const capped = elements.slice(0, 60)
-      const listRatio = await ensureRatio()
-      const lines = capped.map((el, i) => describeElement(el, i, listRatio))
+      const listRatio = isolatedCall ? 1 : await ensureRatio()
+      const listCtx = isolatedCall ? isolatedCtxFor(app, session) : null
+      const lines = capped.map((el, i) => describeElement(el, i, listRatio, listCtx))
       const suffix = elements.length > capped.length ? `\n… y ${elements.length - capped.length} más (afina con "role").` : ''
-      return `${elements.length} elemento(s) en ${app.name}${roles ? ` (rol: ${roles.join(',')})` : ''}:\n${lines.join('\n')}${suffix}`
+      const needShot = isolatedCall && !listCtx ? `\n${ISOLATED_NEEDS_SHOT_LINE(app)}` : ''
+      return `${elements.length} elemento(s) en ${app.name}${roles ? ` (rol: ${roles.join(',')})` : ''}:\n${lines.join('\n')}${suffix}${needShot}`
     }
   },
   {
@@ -2568,7 +2829,7 @@ const TOOLS: ToolDef[] = [
         x = frame.x + frame.width / 2
         y = frame.y + frame.height / 2
       } else if (typeof a.x === 'number' && typeof a.y === 'number') {
-        const p = await toPoints(a.x, a.y)
+        const p = isolatedCall ? (await toWindowPoints(session, a.x, a.y)).p : await toPoints(a.x, a.y)
         x = p.x
         y = p.y
       }
