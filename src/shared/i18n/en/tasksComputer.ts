@@ -509,6 +509,8 @@ export const tasksComputer = {
   'tasksComputer.appAccess.neverLowers': 'Approving never lowers a level that was already granted.',
   'tasksComputer.appAccess.blockAlways': 'Block always',
   'tasksComputer.appAccess.blockAlwaysAria': 'Block {app} always (it will not be asked again)',
+  'tasksComputer.appAccess.remoteWarn':
+    "This app is a window to ANOTHER computer. With this permission the AI can see and operate everything there, and Lazunox's per-app limits cannot see what is inside.",
   'tasksComputer.appAccess.acceptFull': 'Accept Full control',
   'tasksComputer.appAccess.fullHint':
     'The agent asked for Full control. It is not selected for you: press “Accept Full control” only if you trust this app.',

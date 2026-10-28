@@ -215,6 +215,13 @@ describe('AppPermissionCard', () => {
       expect(accept()).toBeNull()
     })
 
+    it('una app de escritorio remoto muestra el aviso de que es una ventana a otro equipo; una app normal no', () => {
+      render(REQ({ apps: [{ bundleId: 'com.microsoft.rdc.macos', name: 'Windows App', requested: 'click' }] }))
+      expect(host.querySelector('[data-testid="app-access-remote-warn"]')?.textContent).toContain('ventana a OTRO equipo')
+      render(REQ({ id: 'r9', apps: [{ bundleId: 'com.apple.Notes', name: 'Notes', requested: 'click' }] }))
+      expect(host.querySelector('[data-testid="app-access-remote-warn"]')).toBeNull()
+    })
+
     it('en inglés dice «Accept Full control»', () => {
       render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }), 'en')
       expect(accept()?.textContent).toBe('Accept Full control')

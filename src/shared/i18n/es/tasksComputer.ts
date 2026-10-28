@@ -511,6 +511,8 @@ export const tasksComputer = {
   'tasksComputer.appAccess.neverLowers': 'Aprobar nunca baja un nivel ya concedido.',
   'tasksComputer.appAccess.blockAlways': 'Bloquear siempre',
   'tasksComputer.appAccess.blockAlwaysAria': 'Bloquear {app} siempre (no se le volverá a pedir)',
+  'tasksComputer.appAccess.remoteWarn':
+    'Esta app es una ventana a OTRO equipo. Con este permiso la IA podrá ver y manejar todo lo que haya allí, y los límites por app de Lazunox no ven lo que hay dentro.',
   'tasksComputer.appAccess.acceptFull': 'Aceptar Control total',
   'tasksComputer.appAccess.fullHint':
     'El agente pidió Control total. No viene elegido por ti: pulsa «Aceptar Control total» solo si confías en esta app.',

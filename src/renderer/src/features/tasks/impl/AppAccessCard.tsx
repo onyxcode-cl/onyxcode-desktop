@@ -7,6 +7,7 @@
  * Aprobar nunca baja un nivel ya concedido (main aplica el máximo) y Esc nunca concede ni deniega (cancela).
  */
 import { useEffect, useRef, useState } from 'react'
+import { isRemoteClientApp } from '@shared/remote-clients'
 import { Ban, Check, ChevronDown, Eye, ListChecks, Loader2, MonitorCog, MousePointerClick, X } from 'lucide-react'
 import {
   APP_TIER_RANK,
@@ -640,6 +641,11 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
                 <p className={`mt-1.5 text-xs ${tier === 'full' ? 'font-medium text-danger' : 'text-muted'}`} data-tier={tier}>
                   {t(`tasksComputer.appAccess.tier.${tier}.warn`)}
                 </p>
+                {isRemoteClientApp(a) && (
+                  <p className="mt-1 text-xs font-medium text-danger" data-testid="app-access-remote-warn">
+                    {t('tasksComputer.appAccess.remoteWarn')}
+                  </p>
+                )}
                 {a.requested === 'full' && choice !== 'full' && (
                   <p className="mt-1 text-xs text-muted" data-testid="app-access-full-hint">
                     {t('tasksComputer.appAccess.fullHint')}

@@ -60,6 +60,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { isRemoteClientApp } from '../../shared/remote-clients'
 import { pickMenuNode, type MenuNodeLike } from './menu-path'
 import {
   isolatedPasteKey,
@@ -1684,21 +1685,9 @@ async function elementsBlock(shot: Shot, session: string | undefined, max: numbe
   }
 }
 
-/** Apps de escritorio remoto: su cliente lee TECLAS FÍSICAS, no el texto Unicode que superpone `cu-helper type`. */
-const REMOTE_CLIENT_BUNDLES = new Set([
-  'com.microsoft.rdc.macos',
-  'com.microsoft.rdc.mac',
-  'com.philandro.anydesk',
-  'com.teamviewer.teamviewer',
-  'com.carriez.rustdesk',
-  'com.apple.screensharing',
-  'com.parallels.desktop.console'
-])
-const REMOTE_CLIENT_NAME = /anydesk|teamviewer|rustdesk|windows app|remote desktop|escritorio remoto|screen sharing|vnc/i
-
 /** ¿La app al frente es un cliente de escritorio remoto? (su imagen llega con retraso y lee teclas físicas) */
 function isRemoteApp(app: AppRef): boolean {
-  return REMOTE_CLIENT_BUNDLES.has(app.bundleId.toLowerCase()) || REMOTE_CLIENT_NAME.test(app.name)
+  return isRemoteClientApp(app)
 }
 
 async function isRemoteClientFront(): Promise<boolean> {
