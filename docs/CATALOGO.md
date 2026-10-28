@@ -23,7 +23,6 @@ Lo que ofrece la pantalla **Personalización** (habilidades incluidas y conector
 
 Para agregar un ícono nuevo hay que añadirlo a `CATALOG_ICONS` (`src/shared/catalogo.ts`) y al mapa de `src/renderer/src/features/personalizacion/icons.ts`.
 
-
 ## Conectores locales (F8-B186)
 
 - **Esquema 2 / catálogo 3**: `transport: "local"` admite programas de terceros fijados por versión EXACTA y hash. Son la excepción explícita a «añadir no ejecuta nada». Cada ficha local lleva `runtime` (gestor `uv` o `npm`, paquete, versión, archivos de bloqueo con su SHA-256 en `resources/catalogo/conectores-locales/<dir>/`, `entry`, `args` con `--read-only` OBLIGATORIO, `env` fijo con `{dir}`, `clientFile` opcional, autor, licencia, `sourceUrl`, `downloadFrom`, `approxMB`, `tokenDir`, `platforms` y `tools.{allowed,blocked,auth}`), `auth: "account"`, `writes: false` y sin `inputs`. Lo hace cumplir `validateCatalog` y `src/test/catalogo-locales.test.ts`.

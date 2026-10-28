@@ -14,15 +14,15 @@ Motor OpenCode 1.19.0, modelos gratuitos (MiMo-V2.6-Flash Free en la app; GLM-5.
 
 Sesión nueva en el modo vs sesión creada en «Preguntar siempre» y cambiada con el chip:
 
-| Tarea | Auto, nueva | Auto, cambiada | Editar, nueva | Editar, cambiada | Preguntar, nueva |
-|---|---|---|---|---|---|
-| `ls` | sin tarjeta (aprobada por la app) | sin tarjeta | tarjeta | tarjeta | tarjeta |
-| `echo hola > prueba.txt` | tarjeta | tarjeta | tarjeta | — | tarjeta |
-| `ls \| wc -l > conteo.txt` | tarjeta | tarjeta | — | — | — |
-| `git status` | sin tarjeta | sin tarjeta | — | — | — |
-| leer `/etc/hosts` | tarjeta (fuera del proyecto) | tarjeta | — | — | — |
-| crear archivo | sin tarjeta | sin tarjeta | sin tarjeta | — | tarjeta (el modelo eligió una ruta fuera del proyecto) |
-| búsqueda web | tarjeta | tarjeta | — | — | — |
+| Tarea                      | Auto, nueva                       | Auto, cambiada | Editar, nueva | Editar, cambiada | Preguntar, nueva                                       |
+| -------------------------- | --------------------------------- | -------------- | ------------- | ---------------- | ------------------------------------------------------ |
+| `ls`                       | sin tarjeta (aprobada por la app) | sin tarjeta    | tarjeta       | tarjeta          | tarjeta                                                |
+| `echo hola > prueba.txt`   | tarjeta                           | tarjeta        | tarjeta       | —                | tarjeta                                                |
+| `ls \| wc -l > conteo.txt` | tarjeta                           | tarjeta        | —             | —                | —                                                      |
+| `git status`               | sin tarjeta                       | sin tarjeta    | —             | —                | —                                                      |
+| leer `/etc/hosts`          | tarjeta (fuera del proyecto)      | tarjeta        | —             | —                | —                                                      |
+| crear archivo              | sin tarjeta                       | sin tarjeta    | sin tarjeta   | —                | tarjeta (el modelo eligió una ruta fuera del proyecto) |
+| búsqueda web               | tarjeta                           | tarjeta        | —             | —                | —                                                      |
 
 Antes del arreglo la columna «Auto, cambiada» preguntaba `ls`, `echo` y la tubería (estudio previo, 0.5.37). **Sin medir en la app**: «Solo explorar» y «Todo sin preguntar» (el modelo gratuito es lento, ~5 min por tarea al final; se cortó la corrida), el aviso «El cambio vale desde el próximo mensaje» con tarea corriendo, y la nota del menú. Esas partes solo tienen prueba unitaria (plan y bypass sí se midieron en el motor).
 La confirmación de que la app aprobó `ls`/`git status` es indirecta: no hubo tarjeta y la herramienta se ejecutó; el gancho de `fetch` que intenté no vio la respuesta (el SDK usa su propio `fetch`).

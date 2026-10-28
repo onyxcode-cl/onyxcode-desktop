@@ -27,7 +27,7 @@
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "21f36a387c0a460419338425ddf248ea238a5ec608cd05e97c22f3b478e8af3f",
     "src/main/tasks/proxy.ts": "50c6898856c97a23a4b577f509bff653ad10f406cf51102f00bda246458955a5",
-    "src/main/tasks/sandbox-profile.ts": "7fb3cada67ad0277a432499eec1c4c70ba87c4437e26562ebd9273700407d70c",
+    "src/main/tasks/sandbox-profile.ts": "d7b638cd1a4e89aced3ac1ba354973e4b2dd039bf56c3267349d233678218031",
     "src/main/tasks/sandbox.ts": "186916abe8934c472f191ba042b5fb61e8eed80236e7e433427d9fadadfa6c32",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
     "src/main/tasks/win-context.ts": "baadaa16b2127ec3157591474ff35ee173cd38e4fef91265774f556fa567c0f3",
@@ -88,18 +88,21 @@
     {
       "fecha": "2026-10-25",
       "motivo": "tool_search se permite antes de aprobar el plan: solo busca en un catálogo en memoria del motor (revisado el código de tool/tool-search.ts: sin red ni disco ni ejecución); mcp_call sigue bloqueada",
-      "cambiados": [
-        "src/main/tasks/opencode-config.ts"
-      ],
+      "cambiados": ["src/main/tasks/opencode-config.ts"],
       "nuevos": [],
       "desaparecidos": []
     },
     {
       "fecha": "2026-10-27",
       "motivo": "Modo unificado ola 1: inyección de sesión para el puente de apps",
-      "cambiados": [
-        "src/main/tasks/opencode-config.ts"
-      ],
+      "cambiados": ["src/main/tasks/opencode-config.ts"],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-10-28",
+      "motivo": "Modo unificado ola 2: lectura de otros chats denegada en el Seatbelt",
+      "cambiados": ["src/main/tasks/sandbox-profile.ts"],
       "nuevos": [],
       "desaparecidos": []
     }

@@ -13,6 +13,7 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
 ## A. Hallazgos verificados y correcciones al encargo
 
 ### A.0 Permisos TCC: el encargo se equivoca en un punto importante
+
 - **Recompilar `cu-helper` probablemente NO obliga a volver a conceder Accesibilidad ni Grabación de pantalla.**
   - El helper no tiene identidad TCC propia: macOS atribuye el permiso al "proceso responsable".
   - Ese proceso es OnyxCode.app empaquetada, o la terminal desde la que se lanzó `npm run dev` (`service.ts:21-25`, `SEGURIDAD.md` §3, `AUDIT.md` S6).
@@ -31,6 +32,7 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
   - Nadie debe disparar el aviso de micrófono ni de voz desde el harness.
 
 ### A.1 Helper nativo
+
 - **Background por Accessibility API: viable.**
   - El helper ya usa AX (`AXUIElementCopyElementAtPosition`, `kAXMinimizedAttribute`: `helper.swift:354,494-506`).
   - `AXUIElementPerformAction(kAXPressAction)` y `AXUIElementSetAttributeValue(kAXValueAttribute)` no mueven el cursor. Algunas apps sí se activan al pulsar.
@@ -48,6 +50,7 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
 - **Helper firmado aparte: se omite.** No hay ninguna identidad de firma de Apple Developer (`security find-identity` devuelve 0 identidades).
 
 ### A.2 Modo auto: su alcance real es menor de lo que parece
+
 - **Aprobar solo el bash de solo lectura no cambia nada hoy.**
   - `cowork.md` y `computer.md` tienen `bash: "*": allow`. Solo preguntan por `rm`/`rmdir`/`unlink`/`trash`/`find -delete`, y en Control total además por `osascript` y `diskutil` (`computer.md` frontmatter).
   - Todo eso queda en la lista de "nunca".
@@ -68,6 +71,7 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
 - **Recomendación: solo motor de reglas, sin clasificador LLM.** Con una allowlist estricta, un modelo solo podría añadir riesgo de inyección y coste.
 
 ### A.3 Navegador
+
 - **`chrome-devtools-mcp` existe y es la opción ligera.**
   - Versión 1.10.1, sin dependencias (viene empaquetado), 14,25 MB sin comprimir, necesita Node `^20.19 || ^22.12 || >=23`.
   - Usa el Chrome instalado; aquí hay Google Chrome y Brave en `/Applications`.
@@ -87,12 +91,14 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
 - **Solo en Control total en v1.** En Sandbox, el navegador correría fuera de Seatbelt y fuera del proxy de egress.
 
 ### A.4 Overlay y Teach mode
+
 - La ventana overlay atraviesa los clics (`overlay.ts:433`), así que no sirve para botones.
 - La píldora solo puede usar 3 canales (`preload/pill.ts:9`).
 - Solución: una ventana nueva «assist» con rol, preload y página propios. Ahí van los globos de Teach y la píldora de grabación.
 - **`src/preload/pill.ts` NO se toca.** `CHANNEL_ROLES` recibe **una clave nueva** (`assist`); la entrada `pill` no cambia (ver riesgos).
 
 ### A.5 Reverificaciones
+
 - `external_directory` con `<ruta>/*` y la persistencia de `reply 'always'` no bloquean este lote.
 - Quedan marcadas para la prueba manual (ítem 12 de D). No las reverifiqué.
 
@@ -101,26 +107,28 @@ Sumas SHA-1 actuales, que coinciden con el Lote A: `helper.swift` `d42da8a3a54a�
 ## B. Decisiones de diseño y contratos
 
 ### B.1 Helper (`helper.swift`): comandos nuevos
+
 Salida JSON en stdout. Códigos de salida nuevos: 6 = voz no autorizada, 7 = app no está en ejecución, 8 = el elemento cambió, 9 = campo seguro, 10 = valor no editable, 11 = acción no permitida, 12 = recurso no disponible. `ref` = ruta de índices: `w<ventana>.<hijo>.<hijo>…` o `m.<i>…` para la barra de menús.
 
-| Comando | Qué hace | Salida |
-|---|---|---|
-| `ax-tree <bundleId> [maxDepth=12] [maxNodes=500]` | Árbol AX de la app | `{"app":{name,bundleId,pid},"nodes":[{ref,role,subrole,title,description,value?,secure?,enabled,focused,frame:{x,y,width,height},actions:[…]}],"truncated":bool}` |
-| `ax-find <bundleId> <jsonQuery>` | Busca elementos. Query: `{role?,title?,text?,limit?≤50}` | `{"matches":[nodo…]}` |
-| `ax-frame <bundleId> <ref>` | Marco de un elemento | `{"frame":{…}}` |
-| `ax-press <bundleId> <ref> [expectRole] [expectTitle]` | `kAXPressAction` | `{"ok":true}` |
-| `ax-set-value <bundleId> <ref> <valor…>` | Escribe `kAXValueAttribute` | `{"ok":true}` |
-| `ax-action <bundleId> <ref> <acción>` | Acción AX de la lista cerrada | `{"ok":true}` |
-| `window-shot <bundleId> <outPath> [windowIndex=0]` | Captura una ventana con SCK | `{"ok":true,width,height,title}` |
-| `hide-apps <keepCsv>` | Oculta las apps normales fuera de la lista | `{"hidden":[…]}` |
-| `unhide-apps <csv>` | Vuelve a mostrarlas | `{"unhidden":[…]}` |
-| `open-app-bg <nombre\|bundleId>` | Abre sin activar (`open -g -a/-b`) | `{"ok":true}` |
-| `record <outDir> [--mic] [--max-seconds N≤900] [--exclude csv]` | Graba la demostración | Stream de líneas (ver abajo) |
-| `transcribe <audio> [locale=es-ES]` | Transcribe en el dispositivo | `{"text":…,"onDevice":bool}` |
-| `mic-permission` | Estado del micrófono, sin pedirlo | `{"status":"authorized\|denied\|notDetermined\|restricted"}` |
-| `mic-request` | Pide el permiso (proceso aislado) | Imprime el estado |
+| Comando                                                         | Qué hace                                                 | Salida                                                                                                                                                            |
+| --------------------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ax-tree <bundleId> [maxDepth=12] [maxNodes=500]`               | Árbol AX de la app                                       | `{"app":{name,bundleId,pid},"nodes":[{ref,role,subrole,title,description,value?,secure?,enabled,focused,frame:{x,y,width,height},actions:[…]}],"truncated":bool}` |
+| `ax-find <bundleId> <jsonQuery>`                                | Busca elementos. Query: `{role?,title?,text?,limit?≤50}` | `{"matches":[nodo…]}`                                                                                                                                             |
+| `ax-frame <bundleId> <ref>`                                     | Marco de un elemento                                     | `{"frame":{…}}`                                                                                                                                                   |
+| `ax-press <bundleId> <ref> [expectRole] [expectTitle]`          | `kAXPressAction`                                         | `{"ok":true}`                                                                                                                                                     |
+| `ax-set-value <bundleId> <ref> <valor…>`                        | Escribe `kAXValueAttribute`                              | `{"ok":true}`                                                                                                                                                     |
+| `ax-action <bundleId> <ref> <acción>`                           | Acción AX de la lista cerrada                            | `{"ok":true}`                                                                                                                                                     |
+| `window-shot <bundleId> <outPath> [windowIndex=0]`              | Captura una ventana con SCK                              | `{"ok":true,width,height,title}`                                                                                                                                  |
+| `hide-apps <keepCsv>`                                           | Oculta las apps normales fuera de la lista               | `{"hidden":[…]}`                                                                                                                                                  |
+| `unhide-apps <csv>`                                             | Vuelve a mostrarlas                                      | `{"unhidden":[…]}`                                                                                                                                                |
+| `open-app-bg <nombre\|bundleId>`                                | Abre sin activar (`open -g -a/-b`)                       | `{"ok":true}`                                                                                                                                                     |
+| `record <outDir> [--mic] [--max-seconds N≤900] [--exclude csv]` | Graba la demostración                                    | Stream de líneas (ver abajo)                                                                                                                                      |
+| `transcribe <audio> [locale=es-ES]`                             | Transcribe en el dispositivo                             | `{"text":…,"onDevice":bool}`                                                                                                                                      |
+| `mic-permission`                                                | Estado del micrófono, sin pedirlo                        | `{"status":"authorized\|denied\|notDetermined\|restricted"}`                                                                                                      |
+| `mic-request`                                                   | Pide el permiso (proceso aislado)                        | Imprime el estado                                                                                                                                                 |
 
 Detalles por comando:
+
 - **Todos los `ax-*`:** exigen `AXIsProcessTrusted` (si no, exit 2). App no en ejecución → exit 7. `value` recortado a 200 caracteres.
   - `ax-tree`: con `AXSecureTextField` nunca devuelve `value` (pone `secure:true`). Antes de recorrer, pone `AXManualAccessibility=true` (best-effort).
   - `ax-press`: si no coinciden rol o título esperados → exit 8.
@@ -146,29 +154,105 @@ Forma de cada línea de `events.jsonl` (`RecordedStep`):
 La cabecera de uso (`helper.swift:1-30`) y el mensaje de `guard let cmd` se actualizan con todos los comandos.
 
 ### B.2 Contratos en `src/shared/ipc-cowork.ts` (C2)
+
 ```ts
 export type ComputerControlMode = 'background' | 'full'
-export interface ComputerPrefs { mode: ComputerControlMode; hideOtherApps: boolean; unhideOnFinish: boolean }
+export interface ComputerPrefs {
+  mode: ComputerControlMode
+  hideOtherApps: boolean
+  unhideOnFinish: boolean
+}
 // Decisión del usuario (2026-09-28, ver §E): por defecto "En segundo plano" y ocultar otras apps.
 export const DEFAULT_COMPUTER_PREFS: ComputerPrefs = { mode: 'background', hideOtherApps: true, unhideOnFinish: true }
 // AccessRequest: añadir  kind?: 'access' | 'takeover'   (takeover = "¿Tomar el control de la pantalla?", apps = [la app])
-export interface TeachStep { id: string; sessionId?: string; text: string; title?: string; step?: number; total?: number; x?: number; y?: number /* puntos */ }
-export interface SkillRecordingState { active: boolean; id: string | null; startedAt: number | null; steps: number; mic: 'off' | 'recording' | 'denied'; maxSeconds: number }
-export interface RecordedStep { t: number; type: 'click'|'key'|'text'|'app'|'scroll'|'warning'; app?: { name: string; bundleId: string }; element?: { role?: string; subrole?: string; title?: string; description?: string }; x?: number; y?: number; button?: 'left'|'right'; keys?: string; text?: string; shot?: string }
-export interface SkillRecording { id: string; dir: string; startedAt: number; durationMs: number; steps: RecordedStep[]; shots: string[]; mic: 'off'|'recorded'|'denied'; transcript: string | null; transcriptError?: string }
+export interface TeachStep {
+  id: string
+  sessionId?: string
+  text: string
+  title?: string
+  step?: number
+  total?: number
+  x?: number
+  y?: number /* puntos */
+}
+export interface SkillRecordingState {
+  active: boolean
+  id: string | null
+  startedAt: number | null
+  steps: number
+  mic: 'off' | 'recording' | 'denied'
+  maxSeconds: number
+}
+export interface RecordedStep {
+  t: number
+  type: 'click' | 'key' | 'text' | 'app' | 'scroll' | 'warning'
+  app?: { name: string; bundleId: string }
+  element?: { role?: string; subrole?: string; title?: string; description?: string }
+  x?: number
+  y?: number
+  button?: 'left' | 'right'
+  keys?: string
+  text?: string
+  shot?: string
+}
+export interface SkillRecording {
+  id: string
+  dir: string
+  startedAt: number
+  durationMs: number
+  steps: RecordedStep[]
+  shots: string[]
+  mic: 'off' | 'recorded' | 'denied'
+  transcript: string | null
+  transcriptError?: string
+}
 export type AssistMessage =
-  | { type: 'teach'; step: TeachStep } | { type: 'teachClear' }
-  | { type: 'recording'; state: SkillRecordingState } | { type: 'hide' }
+  { type: 'teach'; step: TeachStep } | { type: 'teachClear' } | { type: 'recording'; state: SkillRecordingState } | { type: 'hide' }
 export type AutoRuleId = 'mcp-readonly' | 'bash-readonly' | 'computer-view'
-export interface AutoModeSettings { enabled: boolean; folders: string[]; tasks: string[]; viewApps: string[] }
-export interface AutoApprovalRecord { id: string; at: number; folder: string | null; sessionId: string | null; kind: 'permission' | 'access'; permission: string; patterns: string[]; rule: AutoRuleId; summary: string; revocable: boolean; revokedAt?: number }
-export interface AutoModeState { settings: AutoModeSettings; log: AutoApprovalRecord[]; policyDisabled: boolean }
-export interface BrowserSite { site: string; addedAt: number }
-export interface BrowserState { enabled: boolean; available: boolean; reason?: string; chromePath: string | null; runtime: 'node' | 'bun' | null; sites: BrowserSite[]; denied: string[]; profileDir: string; policyDisabled: boolean }
+export interface AutoModeSettings {
+  enabled: boolean
+  folders: string[]
+  tasks: string[]
+  viewApps: string[]
+}
+export interface AutoApprovalRecord {
+  id: string
+  at: number
+  folder: string | null
+  sessionId: string | null
+  kind: 'permission' | 'access'
+  permission: string
+  patterns: string[]
+  rule: AutoRuleId
+  summary: string
+  revocable: boolean
+  revokedAt?: number
+}
+export interface AutoModeState {
+  settings: AutoModeSettings
+  log: AutoApprovalRecord[]
+  policyDisabled: boolean
+}
+export interface BrowserSite {
+  site: string
+  addedAt: number
+}
+export interface BrowserState {
+  enabled: boolean
+  available: boolean
+  reason?: string
+  chromePath: string | null
+  runtime: 'node' | 'bun' | null
+  sites: BrowserSite[]
+  denied: string[]
+  profileDir: string
+  policyDisabled: boolean
+}
 // ManagedPolicy: añadir  disableAutoMode?: boolean; disableBrowser?: boolean
 ```
 
 **Canales invoke nuevos** (añadirlos también a `COWORK_INVOKE_CHANNELS`):
+
 ```ts
 'computer:prefs:get': { req: void; res: ComputerPrefs }
 'computer:prefs:set': { req: Partial<ComputerPrefs>; res: ComputerPrefs }
@@ -190,6 +274,7 @@ export interface BrowserState { enabled: boolean; available: boolean; reason?: s
 ```
 
 **Eventos nuevos:**
+
 - `'computer:assist': AssistMessage` (solo para la ventana assist)
 - `'computer:recordState': SkillRecordingState`
 - `'computer:recordDone': SkillRecording`
@@ -197,6 +282,7 @@ export interface BrowserState { enabled: boolean; available: boolean; reason?: s
 - `'cowork:browser:changed': BrowserState`
 
 ### B.3 Esquemas en `src/main/ipc/schemas.ts` (C2)
+
 - `WindowRole` añade `'assist'`.
 - `CHANNEL_ROLES.assist = new Set(['computer:teachRespond','computer:record:stop'])`. La entrada `pill` no se toca.
 - Validadores:
@@ -211,6 +297,7 @@ export interface BrowserState { enabled: boolean; available: boolean; reason?: s
   - `none` para los `void`.
 
 ### B.4 Canal lateral del MCP de computer use (`service.ts`, C2)
+
 - `GET /tier?bundleId&name&session=`: nivel = `maxTier(grants.resolve(), autoView[session])`.
 - `GET /control-mode?session=` → `{ mode: ComputerControlMode, foreground: boolean }`.
 - `POST /request-access` acepta `kind`.
@@ -218,6 +305,7 @@ export interface BrowserState { enabled: boolean; available: boolean; reason?: s
 - `POST /teach-end` → 204.
 
 API nueva de `ComputerService`:
+
 ```ts
 export interface AutoAccessQuery { sessionId?: string; apps: AccessRequestApp[]; plan?: string[]; kind: 'access'|'takeover'; reason?: string }
 export interface AutoAccessVerdict { approve: true; recordId: string }
@@ -230,26 +318,29 @@ teachStep(step: Omit<TeachStep,'id'>): Promise<'next'|'exit'>
 resolveTeach(id: string, action: 'next'|'exit'): void
 // eventos: 'teachStep' [TeachStep], 'teachClear' [], 'foreground' [{sessionId}]
 ```
+
 - `AccessResponse` añade `auto?: boolean`.
 - Una tarjeta `takeover` aprobada (`approvePlan:true`, sin `cancel`) hace `foregroundSessions.add(sessionId)`.
 - `revokePlan` y `stop()` limpian `foregroundSessions` y `autoView`.
 
 ### B.5 Herramientas MCP nuevas (`mcp-server.ts`, C2)
+
 Todas con `action:true`, así que exigen el plan aprobado. `ToolDef` añade `noAutoShot?: boolean`.
 
-| Herramienta | Argumentos | Nivel sobre esa app | Notas |
-|---|---|---|---|
-| `app_tree` | `{app, max_depth?, max_nodes?}` | `view` | `noAutoShot` |
-| `app_find` | `{app, role?, title?, text?, limit?}` | `view` | `noAutoShot` |
-| `app_press` | `{app, ref, expect_role?, expect_title?}` | `click` | |
-| `app_set_value` | `{app, ref, value ≤5000, expect_role?}` | `full` | |
-| `app_action` | `{app, ref, action:enum}` | `click` | |
-| `app_screenshot` | `{app, window?}` | `view` | Devuelve imagen; `noAutoShot` |
-| `request_full_control` | `{app, reason}` | — | POST `kind:'takeover'`; en modo `full` devuelve «ya tienes control de la pantalla» |
-| `teach_step` | `{text 1-400, title?, x?, y?, app?, ref?, step?, total?}` | `view` sobre la app en el punto | Con `app+ref` usa `ax-frame` → centro |
-| `teach_end` | `{}` | — | |
+| Herramienta            | Argumentos                                                | Nivel sobre esa app             | Notas                                                                              |
+| ---------------------- | --------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------- |
+| `app_tree`             | `{app, max_depth?, max_nodes?}`                           | `view`                          | `noAutoShot`                                                                       |
+| `app_find`             | `{app, role?, title?, text?, limit?}`                     | `view`                          | `noAutoShot`                                                                       |
+| `app_press`            | `{app, ref, expect_role?, expect_title?}`                 | `click`                         |                                                                                    |
+| `app_set_value`        | `{app, ref, value ≤5000, expect_role?}`                   | `full`                          |                                                                                    |
+| `app_action`           | `{app, ref, action:enum}`                                 | `click`                         |                                                                                    |
+| `app_screenshot`       | `{app, window?}`                                          | `view`                          | Devuelve imagen; `noAutoShot`                                                      |
+| `request_full_control` | `{app, reason}`                                           | —                               | POST `kind:'takeover'`; en modo `full` devuelve «ya tienes control de la pantalla» |
+| `teach_step`           | `{text 1-400, title?, x?, y?, app?, ref?, step?, total?}` | `view` sobre la app en el punto | Con `app+ref` usa `ax-frame` → centro                                              |
+| `teach_end`            | `{}`                                                      | —                               |                                                                                    |
 
 Reglas comunes:
+
 - El nivel se comprueba sobre la app nombrada con `requireTierFor(appRef, minTier, session)` (nueva), no sobre la app en primer plano.
 - La sesión llega a `/tier` en todas las comprobaciones (`requireTier`, `nonGrantedBundleIds`).
 - **Modo `background` sin foreground para la sesión:**
@@ -257,6 +348,7 @@ Reglas comunes:
   - `open_application` usa `open-app-bg`.
 
 ### B.6 Ventana assist (C2)
+
 - Archivos: `src/main/computer/assist-window.ts`, `src/preload/assist.ts` y `src/renderer/overlay/assist.{html,ts,css}`.
 - Preload: `ALLOWED_INVOKE = {'computer:teachRespond','computer:record:stop'}`; `on` solo acepta `computer:assist`.
 - `PreloadName` añade `'assist'` en `extras/windows.ts`.
@@ -265,6 +357,7 @@ Reglas comunes:
 - **Píldora de grabación:** 360×56 px arriba al centro, bajo la píldora de control. Muestra «Grabando · N pasos · mm:ss · 🎙» con «Terminar» y «Descartar».
 
 ### B.7 Ocultar otras apps (C2: `src/main/computer/app-visibility.ts`)
+
 - En `enterControlMode`, si `mode==='full' && hideOtherApps`, o al aprobarse un takeover: `hide-apps`.
 - Lista a conservar: todas las apps con concesión, `SYSTEM_EXEMPT_BUNDLE_IDS` y `com.apple.finder`.
 - Persiste `userData/computer-hidden.json` = `{hidden:string[], at:number}`.
@@ -272,6 +365,7 @@ Reglas comunes:
 - En modo background no se minimiza OnyxCode ni se oculta nada. `overlay.handleAction` no anima las herramientas `app_*` (solo etiqueta en la píldora).
 
 ### B.8 Grabar una skill (C2: `src/main/computer/recorder.ts` y `src/shared/skill-recording.ts`)
+
 - **`SkillRecorder`:**
   - Una grabación a la vez, en `userData/skill-recordings/<id>/`.
   - `--exclude` = `cl.bentec.onyxcode,com.github.Electron`.
@@ -292,19 +386,33 @@ Reglas comunes:
   - Nunca ejecuta los pasos grabados.
 
 ### B.9 Modo auto (C3)
+
 **Clasificador puro, `src/main/cowork/auto-mode.ts`:**
+
 ```ts
 export type AutoVerdict = { decision: 'allow'; rule: AutoRuleId; summary: string } | { decision: 'ask'; reason: string }
-export function classifyPermission(p: { permission: string; patterns: string[]; metadata?: Record<string, unknown> }, ctx: { mcpServers: string[] }): AutoVerdict
-export function classifyAccess(q: { apps: Array<{bundleId:string;name:string;requested?:AppTier;denied?:boolean}>; plan?: string[]; kind?: 'access'|'takeover'; reason?: string }, ctx: { viewApps: string[] }): AutoVerdict
+export function classifyPermission(
+  p: { permission: string; patterns: string[]; metadata?: Record<string, unknown> },
+  ctx: { mcpServers: string[] }
+): AutoVerdict
+export function classifyAccess(
+  q: {
+    apps: Array<{ bundleId: string; name: string; requested?: AppTier; denied?: boolean }>
+    plan?: string[]
+    kind?: 'access' | 'takeover'
+    reason?: string
+  },
+  ctx: { viewApps: string[] }
+): AutoVerdict
 export function isReadOnlyBash(command: string): boolean
 export function isReadOnlyMcpTool(server: string, tool: string): boolean
 export function looksLikeInjection(text: string): boolean
-export const DEFAULT_AUTO_VIEW_APPS: string[]   // finder, Preview, TextEdit, calculator, Maps, weather, clock, iWork Pages/Numbers/Keynote
-export const NEVER_AUTO_VIEW: RegExp[]          // keychainaccess, systempreferences/Settings, Passwords, 1password/agilebits, bitwarden, MobileSMS, mail, terminales/IDE (CLICK_ONLY), banca (VIEW_ONLY de grants)
+export const DEFAULT_AUTO_VIEW_APPS: string[] // finder, Preview, TextEdit, calculator, Maps, weather, clock, iWork Pages/Numbers/Keynote
+export const NEVER_AUTO_VIEW: RegExp[] // keychainaccess, systempreferences/Settings, Passwords, 1password/agilebits, bitwarden, MobileSMS, mail, terminales/IDE (CLICK_ONLY), banca (VIEW_ONLY de grants)
 ```
 
 **Reglas. La allowlist es la frontera; el clasificador solo comprueba si encaja un patrón concreto:**
+
 1. **Nunca se aprueban solos:**
    - `external_directory`, `doom_loop`, `computer_*`, `browser_*`, `edit`, `write`, `task`, `webfetch`, `websearch` y todo permiso que no sea `bash` ni `<mcp>_<tool>`.
    - Cualquier coincidencia de `DELETE_RE` (el de `rules.ts`).
@@ -337,6 +445,7 @@ export const NEVER_AUTO_VIEW: RegExp[]          // keychainaccess, systemprefere
    - `system prompt`, `you are now`, `eres ahora`, `developer mode`, `<\|im_start\|>`
 
 **Motor, `src/main/cowork/auto-approver.ts`** (dependencias inyectadas para probarlo sin Electron):
+
 ```ts
 export interface AutoServer { folder: string; fullAccess: boolean; baseUrl: string; authorization: string }
 export class AutoApprover {
@@ -349,6 +458,7 @@ export class AutoApprover {
 export let autoApprover: AutoApprover | null   // lo crea registerCoworkAutoHandlers; cowork-handlers lo usa vía getter
 export function getAutoApprover(): AutoApprover | null
 ```
+
 - Opt-in: `enabled` (interruptor global = **kill switch**, apagado por defecto) **y** (`folder ∈ folders` o la sesión raíz ∈ `tasks`).
 - La raíz se resuelve con `GET /session/:id` subiendo por `parentID` (≤6 niveles, caché).
 - Carpeta de un `considerAccess`: `GET /session/:id` en los servidores de Control total vivos.
@@ -358,6 +468,7 @@ export function getAutoApprover(): AutoApprover | null
 - **Persistencia:** `userData/cowork-auto.json` = `{ version:1, enabled:false, folders:[], tasks:[], viewApps:DEFAULT_AUTO_VIEW_APPS, log: AutoApprovalRecord[] }`, con el log recortado a 500 entradas.
 
 ### B.10 Navegador (C4)
+
 - **Persistencia:** `userData/cowork-browser.json` = `{ enabled:false, sites: BrowserSite[], denied: string[] }`.
 - **Perfil dedicado:** `userData/cowork-browser/profile`. Antes del primer arranque se escribe `Default/Preferences`, solo si no existe, con descargas a `userData/cowork-browser/downloads` sin preguntar.
 - **Módulo puro `src/main/browser/sites.ts`:**
@@ -371,11 +482,39 @@ export function getAutoApprover(): AutoApprover | null
   - Decisión: `denied` → no. `sites` → sí. «Una vez» en memoria por carpeta → sí. En cualquier otro caso, `dialog.showMessageBox` **nativo en main**, en cola, con la URL literal, botones «Permitir una vez», «Permitir siempre» y «Denegar» (cancel = Denegar) y el aviso «Las páginas pueden contener instrucciones maliciosas».
   - Uso un diálogo nativo porque en Control total la ventana principal está minimizada.
 - **Config inyectada:**
+
 ```json
-{ "type":"local", "enabled":true, "timeout":30000,
-  "command":["/usr/bin/env","-u","OPENCODE_SERVER_PASSWORD","-u","OPENCODE_SERVER_USERNAME","-u","OPENCODE_AUTH_CONTENT","-u","OPENCODE_CONFIG_CONTENT","-u","ONYXCODE_PLAN_GATE_URL","<runtime>","<unpacked>/out/main/browser-mcp.js"],
-  "environment":{"ONYXCODE_BROWSER_URL":"<canal con token>","ONYXCODE_BROWSER_FOLDER":"<folder>","CDM_BIN":"<unpacked>/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js","CDM_RUNTIME":"<runtime>","CHROME_PATH":"…","ONYXCODE_BROWSER_PROFILE":"…", "BUN_BE_BUN":"1 (solo si runtime=bun)"} }
+{
+  "type": "local",
+  "enabled": true,
+  "timeout": 30000,
+  "command": [
+    "/usr/bin/env",
+    "-u",
+    "OPENCODE_SERVER_PASSWORD",
+    "-u",
+    "OPENCODE_SERVER_USERNAME",
+    "-u",
+    "OPENCODE_AUTH_CONTENT",
+    "-u",
+    "OPENCODE_CONFIG_CONTENT",
+    "-u",
+    "ONYXCODE_PLAN_GATE_URL",
+    "<runtime>",
+    "<unpacked>/out/main/browser-mcp.js"
+  ],
+  "environment": {
+    "ONYXCODE_BROWSER_URL": "<canal con token>",
+    "ONYXCODE_BROWSER_FOLDER": "<folder>",
+    "CDM_BIN": "<unpacked>/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+    "CDM_RUNTIME": "<runtime>",
+    "CHROME_PATH": "…",
+    "ONYXCODE_BROWSER_PROFILE": "…",
+    "BUN_BE_BUN": "1 (solo si runtime=bun)"
+  }
+}
 ```
+
 - **`manager.ts`:** en `inlineConfig` de Control total, si `browserService.mcpConfig()` no es null, `mcp.browser = …` y `agent.cowork.permission['browser_*']='deny'`.
 - **Pasarela `src/main/browser/gateway.ts`** (entrada `browser-mcp`, solo builtins de Node):
   - Proxy JSON-RPC por stdio hacia `[CDM_RUNTIME, CDM_BIN, '--userDataDir', profile, '--executablePath', chrome, '--no-usage-statistics', <categorías performance/memory/emulation a false>, '--viewport', '1280x800']`. C4 comprueba la sintaxis exacta con `--help`.
@@ -392,11 +531,13 @@ export function getAutoApprover(): AutoApprover | null
 ## C. Paquetes
 
 **Orden de todo el lote:**
+
 1. **C1 solo y el primero**, secuencial y aislado. Así existe el binario real antes de que nadie lo necesite, y `npm run dev --if-missing` ya no vuelve a compilar porque `bin` queda más nuevo que el `.swift`.
 2. **C2, C3 y C4 en paralelo**, con archivos disjuntos. Codifican contra los contratos de B, que añade C2.
 3. **C5 solo y el último.** Interfaz, agentes y documentación, y es **el único que ejecuta `npx electron-vite build`**.
 
 Reglas comunes:
+
 - No renombrar «OnyxCode».
 - Texto de interfaz en español; nombre del producto solo desde `brand.ts`.
 - No hacer commits.
@@ -405,9 +546,11 @@ Reglas comunes:
 - Nadie salvo C1 toca `resources/computer-use/**`. Nadie toca `src/preload/pill.ts`.
 
 ### C1: Helper nativo (secuencial, aislado, primero)
+
 **Posee:** `resources/computer-use/helper.swift`, `resources/computer-use/build.sh` (sin cambios previstos) y `resources/computer-use/bin/cu-helper` (artefacto).
 
 **Pasos, en un único pase de edición:**
+
 1. `import AVFoundation` e `import Speech`.
 2. Gancho `var terminationHook: (() -> Void)?`, que el handler de SIGTERM ejecuta antes de `exit`.
 3. Implementar los comandos de B.1 exactamente con esos nombres, argumentos, JSON y códigos:
@@ -418,11 +561,13 @@ Reglas comunes:
 5. **UNA sola compilación al final:** `sh resources/computer-use/build.sh`. Si falla, corregir y recompilar (no cuenta como otro ciclo de permisos). Nunca ejecutar `npm run dev`.
 
 **Aceptación:**
+
 - Compila universal (arm64 y x86_64), o solo arm64 si falla x86 igual que ahora.
 - Los comandos antiguos responden igual.
 - Informe final con los SHA-1 nuevos de los dos archivos.
 
 **Verificación:**
+
 ```sh
 cd "/Users/ben/Documents/App OpenCode"; H=resources/computer-use/bin/cu-helper
 shasum resources/computer-use/helper.swift $H        # antes d42da8a3… / 8985f8f6…
@@ -440,11 +585,14 @@ $H window-shot com.apple.TextEdit "$SP/w.png"; echo $?   # 0 con PNG si Claude.a
 $H record "$SP/rec1" --max-seconds 3; echo $?; ls "$SP/rec1"; cat "$SP/rec1/summary.json"   # sin --mic; o exit 2 limpio si no hay AX
 $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 ```
+
 - Si Claude.app tiene Accesibilidad: `ax-tree com.apple.TextEdit` y `ax-find com.apple.TextEdit '{"role":"AXTextArea"}'`.
 - **No** ejecutar `mic-request` ni `transcribe` sobre audio real.
 
 ### C2: Contratos y núcleo de computer use en main (paralelo)
+
 **Posee:**
+
 - `src/shared/ipc-cowork.ts`, `src/main/ipc/schemas.ts`
 - `src/main/computer/{service.ts,mcp-server.ts,overlay.ts}`
 - Nuevos `src/main/computer/{assist-window.ts,recorder.ts,app-visibility.ts,prefs.ts}`
@@ -456,6 +604,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - Nuevo `src/shared/skill-recording.ts`
 
 **Pasos:**
+
 1. Contratos B.2 y esquemas B.3, incluidos **todos** los canales de auto y navegador (sus handlers los escriben C3 y C4).
 2. `prefs.ts` (`ComputerPrefsStore`, `get/set` con saneado) y la API de B.4 en `service.ts`:
    - endpoints nuevos;
@@ -479,11 +628,13 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 7. `overlay.ts`: no animar las herramientas `app_*` (solo etiqueta).
 
 **Aceptación:**
+
 - `grep -c "assist" src/main/ipc/schemas.ts` ≥ 2.
 - `CHANNEL_ROLES.pill` sin cambios.
 - `git diff --stat src/preload/pill.ts` vacío.
 
 **Verificación:**
+
 - `npx esbuild src/main/computer/mcp-server.ts --bundle --platform=node --format=cjs --outfile=$SP/cmcp.js`.
 - Servidor HTTP falso (como en el Lote A) con `/state`, `/tier` (registra la query), `/plan-status` (true), `/control-mode` (`{mode:'background',foreground:false}`), `/request-access` (registra `kind`) y `/teach-step` (responde `{action:'next'}`).
 - `CU_HELPER=$SP/fake-helper.sh`: un sh que registra los argumentos y devuelve JSON fijo.
@@ -498,7 +649,9 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - Typecheck.
 
 ### C3: Modo auto (paralelo)
+
 **Posee:**
+
 - Nuevos `src/main/cowork/auto-mode.ts` y `auto-approver.ts`
 - Nuevo `src/main/ipc/cowork-auto-handlers.ts`
 - `src/main/cowork/monitor.ts` (solo la dependencia opcional `onPermissions`)
@@ -506,6 +659,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - `src/main/cowork/policy.ts` (claves `disableAutoMode` y `disableBrowser`, fail-closed igual que las demás)
 
 **Pasos:**
+
 1. Implementar B.9 al pie de la letra.
 2. `MonitorDeps.onPermissions?: (server: AutoServer, perms: RawPerm[]) => void`, llamada en `pollServer` con la lista completa.
 3. `registerCoworkAutoHandlers(ctx): CoworkSubmodule`:
@@ -518,11 +672,13 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 4. En lifecycle, `onPermissions: (s, p) => void getAutoApprover()?.considerPermissions(s, p)`.
 
 **Aceptación:**
+
 - Sin opt-in no se aprueba nada.
 - Con `disableAutoMode` no se aprueba nada.
 - Nada de B.9.1 se aprueba nunca.
 
 **Verificación:**
+
 - esbuild de `auto-mode.ts` y tabla de ≥40 asserts, entre ellos:
   - `ls -la`, `git status`, `find . -name x`: se aprueban;
   - `find . -delete`, `ls; rm x`, `cat x > y`, `git -c core.pager=sh log`, `sort -o a b`, `rg --pre sh x`, `cat ~/.ssh/id_rsa`: preguntan;
@@ -538,7 +694,9 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - Typecheck.
 
 ### C4: Navegador propio (paralelo)
+
 **Posee:**
+
 - Nuevos `src/main/browser/{gateway.ts,service.ts,sites.ts}` y `src/main/ipc/cowork-browser-handlers.ts`
 - `src/main/cowork/manager.ts` (solo la inyección de B.10)
 - `package.json` y `package-lock.json`
@@ -546,6 +704,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - `build/entitlements.mac.plist`
 
 **Pasos:**
+
 1. `npm install --save-exact chrome-devtools-mcp@1.10.1` (dependencia de ejecución).
 2. `sites.ts`, `service.ts` (singleton `browserService`) y `gateway.ts` según B.10.
    - Para registrar los nombres reales de las herramientas: `node node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js --help` y un `tools/list` real.
@@ -557,11 +716,13 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 6. Entitlements: `com.apple.security.device.audio-input`.
 
 **Aceptación:**
+
 - `upload_file` no aparece en `tools/list`.
 - `file://` se rechaza.
 - Nada se escribe en `~/.cache/chrome-devtools-mcp`.
 
 **Verificación:**
+
 - esbuild de `gateway.ts` a `$SP/gw.js` y un servidor `/site-check` falso (allow `example.com`, deny `evil.test`).
 - Con `ONYXCODE_BROWSER_HEADLESS=1` y el perfil en `$SP/prof`, enviar por stdin a `node $SP/gw.js` y **también** a `BUN_BE_BUN=1 ~/.opencode/bin/opencode $SP/gw.js`:
   - `initialize`, `tools/list`;
@@ -574,7 +735,9 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - Typecheck.
 
 ### C5: Interfaz, agentes, documentación y build (secuencial, al final)
+
 **Posee:**
+
 - `src/renderer/overlay/pill.ts` y `pill.css` (renderer; el preload no)
 - `features/cowork/impl/{ComputerAccess.tsx,PermissionPrompt.tsx,store.ts,actions.ts,CoworkComposer.tsx,ProjectPanel.tsx}` y los nuevos `RecordSkill.tsx` y `AutoModeChip.tsx`
 - `features/settings/impl/{SettingsView.tsx,ComputerSection.tsx}` y los nuevos `AutoModeSection.tsx` y `BrowserSection.tsx`
@@ -582,6 +745,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 - `AUDIT.md`, `docs/SEGURIDAD.md`, notas privadas (fuera del repositorio), `docs/DISTRIBUCION.md` y el nuevo `docs/archive/COWORK-LOTE-C.md`
 
 **Pasos:**
+
 1. **Tarjeta takeover** (`kind==='takeover'`) en `ComputerAccess.tsx` y en la píldora:
    - título «¿Tomar el control de la pantalla?»;
    - texto «El agente trabajaba en {app} en segundo plano y necesita el ratón y el teclado.»;
@@ -617,6 +781,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 9. **Build único:** `npm run typecheck && npx electron-vite build`, y los harnesses end-to-end de C2 y C4 contra `out/main/computer-mcp.js` y `out/main/browser-mcp.js`.
 
 **Aceptación:**
+
 - Build verde.
 - `ls out/main` muestra `browser-mcp.js`; `ls out/preload` muestra `assist.js`; `out/renderer/overlay` contiene `assist.html`.
 
@@ -625,6 +790,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 ## D. Comprobaciones finales (orquestador) y prueba manual
 
 ### Comprobaciones del orquestador
+
 1. `npm run typecheck`; el build solo lo hace C5.
 2. Greps:
    - `git diff --stat src/preload/pill.ts` → vacío.
@@ -639,6 +805,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 5. Revisar los harnesses de cada paquete en su scratchpad.
 
 ### Prueba manual para el usuario (`npm run dev -- --watch` desde tu terminal habitual)
+
 0. **Momento de volver a conceder permisos (tras la única recompilación de C1).**
    - Abre Ajustes → Control del Mac y mira el estado de los permisos.
    - Lo esperado es que siga «concedido», porque macOS los atribuye a tu terminal y no al helper.
@@ -675,6 +842,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 ## E. Riesgos y preguntas abiertas
 
 **Riesgos**
+
 1. **Permisos TCC.** Probablemente no hay que volver a conceder nada en desarrollo; si hace falta, es una sola vez (paso 0).
    - Los permisos nuevos (micro y voz) pueden fallar desde Terminal.app, que no declara su uso.
    - Toda build empaquetada ad-hoc sigue perdiendo los permisos.
@@ -700,6 +868,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
    - la transcripción en el dispositivo en español.
 
 **Decisiones del usuario (2026-09-28)**
+
 1. **Modo por defecto de computer use: «En segundo plano»** (no «Control de la pantalla»). `DEFAULT_COMPUTER_PREFS.mode = 'background'`. `computer.md` debe insistir en preferir `app_*` y pedir `request_full_control` solo cuando de verdad haga falta.
 2. **«Ocultar las demás apps»: activado por defecto**, como Claude. `DEFAULT_COMPUTER_PREFS.hideOtherApps = true` (`unhideOnFinish` sigue en `true`).
 3. **Navegador propio: desactivado por defecto y solo en Control total** (como proponía el plan). `BrowserState.enabled` arranca en `false`; el usuario lo activa en Ajustes tras ver que se detectó Chrome.
@@ -707,6 +876,7 @@ $H transcribe /no/existe.m4a; echo $?                 # error limpio, sin crash
 5. **Lista inicial de «Apps que el modo auto puede ver»: la propuesta** (Finder, Vista Previa, TextEdit, Calculadora, Mapas, Tiempo, Reloj, Pages, Numbers, Keynote), editable luego en Ajustes.
 
 ### Archivos críticos para la implementación
+
 - /Users/ben/Documents/App OpenCode/resources/computer-use/helper.swift
 - /Users/ben/Documents/App OpenCode/src/main/computer/mcp-server.ts
 - /Users/ben/Documents/App OpenCode/src/main/computer/service.ts

@@ -19,6 +19,7 @@ vi.mock('./store', async (orig) => {
 import { AutoModeChip } from './AutoModeChip'
 import { Home } from './Home'
 import { UnifiedScopeChip } from './ScopePicker'
+import { useUnified } from './unified'
 
 afterEach(() => {
   o.unified = false
@@ -47,6 +48,28 @@ describe('inicio con la bandera', () => {
     expect(html).not.toContain('unified-advanced')
     expect(html).not.toContain('Carpeta: ninguna')
   })
+  it('con la carpeta del chat el inicio no dice «Trabajará dentro de …», el chip dice «ninguna (chat nuevo)» y «Avanzado» se ve como enlace', () => {
+    o.unified = true
+    useUnified.setState({ chatFolder: '/Users/x/Lazunox/Chats/20261027-d82fb4' })
+    o.patch = { folder: '/Users/x/Lazunox/Chats/20261027-d82fb4', phase: 'ready' }
+    const html = home()
+    expect(html).not.toContain('Trabajará dentro de')
+    expect(html).not.toContain('20261027-d82fb4</')
+    expect(html).not.toContain('Limitado a tu carpeta')
+    expect(html).toContain('Carpeta: ninguna (chat nuevo)')
+    expect(html).toContain('Escribe lo que necesitas')
+    expect(html).toMatch(/data-testid="unified-advanced"[^>]*class="[^"]*text-accent[^"]*underline/)
+    useUnified.setState({ chatFolder: null })
+  })
+  it('sin carpeta las sugerencias no dicen «esta carpeta»', () => {
+    o.unified = true
+    const html = home()
+    expect(html).not.toContain('esta carpeta')
+    expect(html).toContain('la carpeta que elijas')
+  })
+  it('sin la bandera las sugerencias dicen «esta carpeta» como siempre', () => {
+    expect(home()).toContain('esta carpeta')
+  })
   it('en Control total no se ofrece de nuevo el enlace «Avanzado»', () => {
     o.unified = true
     o.patch = { fullAccess: true }
@@ -71,9 +94,16 @@ describe('chips', () => {
     let html = renderToStaticMarkup(<UnifiedScopeChip />)
     expect(html).toContain('Carpeta: Proyecto')
     expect(html).not.toContain('<button')
+    useUnified.setState({ chatFolder: '/Users/x/Lazunox/Chats/abc' })
     o.patch = { folder: '/Users/x/Lazunox/Chats/abc' }
     html = renderToStaticMarkup(<UnifiedScopeChip />)
     expect(html).toContain('Sin carpeta elegida')
+    // Una carpeta con forma parecida pero que no es la de este chat (chat antiguo) se nombra «Chat sin carpeta», nunca con el id.
+    o.patch = { folder: '/Users/x/Lazunox/Chats/20261027-d82fb4' }
+    html = renderToStaticMarkup(<UnifiedScopeChip />)
+    expect(html).toContain('Chat sin carpeta')
+    expect(html).not.toContain('>Carpeta: 20261027-d82fb4')
+    useUnified.setState({ chatFolder: null })
   })
   it('en Control total muestra «Sin aislamiento (avanzado)» con un clic para volver', () => {
     o.patch = { fullAccess: true, folder: '/Users/x' }

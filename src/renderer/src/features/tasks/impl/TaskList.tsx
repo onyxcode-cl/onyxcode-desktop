@@ -3,6 +3,7 @@
  * (títulos y contenido de las conversaciones), fijar / renombrar / mover a grupo / archivar / eliminar y la
  * vista de archivadas con "Restaurar".
  */
+import { useUnifiedApps } from './unified'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { dateLocale, useT } from '../../../lib/i18n'
 import type { Session } from '@opencode-ai/sdk/v2/client'
@@ -403,6 +404,7 @@ function TranscriptResults({
 
 export function TaskList(): React.JSX.Element {
   const tr = useT()
+  const unifiedOn = useUnifiedApps()
   const tree = useSidebarTree()
   const folder = useTasks((s) => s.folder)
   const activeId = useTasks((s) => s.activeTaskId)
@@ -493,7 +495,7 @@ export function TaskList(): React.JSX.Element {
           ]
 
   const emptyText = ((): string => {
-    if (!folder) return tr('tasks.list.empty.noFolder')
+    if (!folder) return tr(unifiedOn ? 'tasks.list.empty.noFolder.unified' : 'tasks.list.empty.noFolder')
     if (showArchived) return searching ? tr('tasks.list.empty.archivedSearch') : tr('tasks.list.empty.archived')
     if (searching) return tr('tasks.list.empty.search')
     return tr('tasks.list.empty.none')

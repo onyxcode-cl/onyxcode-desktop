@@ -10,6 +10,7 @@ cifras y nombres conviene reverificarlos en el archivo antes de copiarlos a un c
 ## 1. Cómo se lanza algo en segundo plano
 
 ### 1.1 Shell: "unified exec" (herramientas `exec_command` + `write_stdin`)
+
 Estable y activado por defecto en todas las plataformas (`features.unified_exec`) [DOC: learn.chatgpt.com/docs/config-file/config-reference].
 Código en `codex-rs/core/src/unified_exec/` (`mod.rs`, `process_manager.rs`, `process.rs`, `async_watcher.rs`,
 `head_tail_buffer.rs`, `stdin_approval.rs`) y handler `codex-rs/core/src/tools/handlers/unified_exec.rs`; specs de las
@@ -20,6 +21,7 @@ No existe una herramienta "lanzar en background" aparte: **toda** llamada abre u
 consultando. Es decir, "segundo plano" = "sesión que sobrevivió al plazo de espera".
 
 Herramienta `exec_command` [CÓDIGO shell_spec.rs]:
+
 - `cmd` (obligatorio), `workdir`, `tty` (false = pipes; true = PTY), `shell`, `login`.
 - `yield_time_ms`: por defecto 10 000; rango efectivo 250–30 000 (en Windows 10 000–30 000).
 - `max_output_tokens`: por defecto 10 000 tokens (la política puede recortar pedidos mayores).
@@ -29,6 +31,7 @@ Herramienta `exec_command` [CÓDIGO shell_spec.rs]:
 - Existe también `timeout_ms` opcional en el handler (`handlers/unified_exec.rs`); su uso real no se confirmó [?].
 
 Herramienta `write_stdin` [CÓDIGO shell_spec.rs]:
+
 - `session_id` (obligatorio), `chars` (vacío = solo consultar sin escribir), `yield_time_ms`, `max_output_tokens`.
 - Escritura no vacía: espera por defecto 250 ms, tope 30 000 ms. Sondeo vacío: espera entre 5 000 y 300 000 ms.
 - Sin TTY solo se acepta el carácter de interrupción (Ctrl-C, `\u{3}`); otro texto da `StdinClosed`. Con TTY se escribe y se
@@ -42,8 +45,10 @@ herramienta de modelo para listar ni matar** una sesión: el modelo solo puede m
 detiene el turno con Esc/interrupción de la UI (ver 2.4 sobre qué ocurre con el proceso).
 
 ### 1.2 Subagentes / multi-agente (herramientas del modelo)
+
 Activado por defecto (`features.multi_agent = true`, `agents.enabled = true`) [DOC config-reference]. Código en
 `.../tools/handlers/multi_agents*.rs`, `multi_agents_v2.rs` y `multi_agents_v2/` [CÓDIGO]. Hay dos generaciones de API:
+
 - v1: `spawn_agent` (`message`|`items`, `agent_type`, `fork_context`, `model`, `reasoning_effort`) → devuelve id y apodo;
   `send_input` (`target`, `message`, `interrupt`); `wait_agent` (`targets[]`, `timeout_ms`; espera estado final);
   `resume_agent` (`id`); `close_agent` (`target`; cierra también descendientes); `list_agents`.
@@ -58,6 +63,7 @@ Activado por defecto (`features.multi_agent = true`, `agents.enabled = true`) [D
   ni tiempos límite; no se encontró `max_depth` en la parte leída de la referencia (quedó sin leer el último 36 %) [DOC/?].
 
 ### 1.3 Nube (Codex cloud)
+
 Tareas que corren en entornos publicados desde repos de GitHub; "cada tarea tiene su propio espacio de trabajo y puede seguir
 trabajando mientras tu computadora duerme". Se lanzan desde web, móvil, app de escritorio, CLI o ChatGPT en Slack; se pueden
 listar chats/tareas recientes y su estado desde la CLI; se revisan archivos cambiados y pruebas, se piden cambios y se hace
@@ -67,18 +73,20 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
 ## 2. Supervisión
 
 ### 2.1 Tiempos límite (valores de `unified_exec/mod.rs` salvo nota) [CÓDIGO]
-| Constante | Valor |
-|---|---|
-| `MIN_YIELD_TIME_MS` / `MAX_YIELD_TIME_MS` | 250 / 30 000 ms |
-| `MIN_EMPTY_YIELD_TIME_MS` | 5 000 ms (sondeo vacío) |
-| `DEFAULT_MAX_BACKGROUND_TERMINAL_TIMEOUT_MS` | 300 000 ms (config `background_terminal_max_timeout`, [DOC]) |
-| `DEFAULT_MAX_OUTPUT_TOKENS` | 10 000 |
-| `UNIFIED_EXEC_OUTPUT_MAX_BYTES` | 1 MiB (≈262 144 tokens) |
-| `MAX_UNIFIED_EXEC_PROCESSES` | 64 |
-| `EARLY_EXIT_GRACE_PERIOD` (process.rs) | 150 ms |
-| `TRAILING_OUTPUT_GRACE` (async_watcher.rs) | 100 ms |
-| `POST_EXIT_CLOSE_WAIT_CAP` (process_manager.rs) | 50 ms |
-| `REMOTE_OUTPUT_DRAIN_GRACE` (process.rs) | 5 s |
+
+| Constante                                       | Valor                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------ |
+| `MIN_YIELD_TIME_MS` / `MAX_YIELD_TIME_MS`       | 250 / 30 000 ms                                              |
+| `MIN_EMPTY_YIELD_TIME_MS`                       | 5 000 ms (sondeo vacío)                                      |
+| `DEFAULT_MAX_BACKGROUND_TERMINAL_TIMEOUT_MS`    | 300 000 ms (config `background_terminal_max_timeout`, [DOC]) |
+| `DEFAULT_MAX_OUTPUT_TOKENS`                     | 10 000                                                       |
+| `UNIFIED_EXEC_OUTPUT_MAX_BYTES`                 | 1 MiB (≈262 144 tokens)                                      |
+| `MAX_UNIFIED_EXEC_PROCESSES`                    | 64                                                           |
+| `EARLY_EXIT_GRACE_PERIOD` (process.rs)          | 150 ms                                                       |
+| `TRAILING_OUTPUT_GRACE` (async_watcher.rs)      | 100 ms                                                       |
+| `POST_EXIT_CLOSE_WAIT_CAP` (process_manager.rs) | 50 ms                                                        |
+| `REMOTE_OUTPUT_DRAIN_GRACE` (process.rs)        | 5 s                                                          |
+
 - Para el proceso en sí **no hay un tiempo máximo de vida documentado**: solo el plazo de cada espera. Si un proceso "ligado
   a completarse" sigue vivo al vencer el plazo inicial, se marca `timed_out` y se termina (`terminate_confirmed`); su
   código de salida pasa a 124 (`exit_code()` en process.rs) [CÓDIGO]. Para MCP el tiempo por herramienta es 60 s
@@ -87,6 +95,7 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
   consultando o abandona. No hay vigilante de inactividad en lo leído [CÓDIGO; inferencia].
 
 ### 2.2 Cómo se entera el modelo de que terminó
+
 - **Sondeo**: el modelo llama `write_stdin` (vacío) y, al terminar, recibe salida final + código de salida; `refresh_process_state`
   elimina las sesiones terminadas [CÓDIGO process_manager.rs].
 - Un watcher interno (`spawn_exit_watcher`, `start_streaming_output` en async_watcher.rs) emite eventos `ExecCommandOutputDelta`
@@ -99,6 +108,7 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
   sin devolver contenido [CÓDIGO]. Hay eventos `SubAgentActivity` (iniciado/completado) hacia la sesión [CÓDIGO multi_agents_v2.rs].
 
 ### 2.3 Límites de salida y memoria
+
 - `HeadTailBuffer` (head_tail_buffer.rs): tope 1 MiB; 50 % cabeza fija + 50 % cola rodante; lo del medio se descarta y se
   cuenta en `omitted_bytes`; se inserta un marcador "... N bytes omitted ..." [CÓDIGO]. Hay dos búfers: `pending` (lo que
   drena cada sondeo) y `transcript` (registro final). Canal de difusión de 64 elementos; los lagos se saltan (`Lagged`).
@@ -108,6 +118,7 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
   interacción [CÓDIGO process_manager.rs]. Es decir, un proceso vivo puede ser **matado silenciosamente** por poda.
 
 ### 2.4 Cierre, cancelación y huérfanos
+
 - `impl Drop for UnifiedExecProcess` llama a `terminate()`; `terminate_all_processes` vacía el almacén al cerrar sesión. En el
   archivo leído no hay manejo explícito de grupo de procesos; la señal local se delega a `ExecCommandSession::terminate()` (no
   leído) y en exec-server la terminación se lanza sin esperar [CÓDIGO process.rs].
@@ -121,6 +132,7 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
   - #10767 caso opuesto: usuarios querían que lo lanzado en background persistiera entre turnos (https://github.com/openai/codex/issues/10767).
 
 ## 3. Seguridad [DOC https://learn.chatgpt.com/docs/agent-approvals-security]
+
 - Modos de sandbox (`sandbox_mode`): `read-only`, `workspace-write`, `danger-full-access`. En `workspace-write` la **red está
   apagada por defecto** (`[sandbox_workspace_write] network_access = true` la abre). `.git`, `.agents`, `.codex`, `.aws` siguen
   de solo lectura aunque estén dentro de la raíz escribible.
@@ -142,6 +154,7 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
   ocultó del TUI tras aprobación Guardian; #12278 comandos unified exec ocultos si hay una celda "exploring" activa [ISSUE].
 
 ## 4. Paralelismo y aislamiento
+
 - Subagentes: heredan sandbox y aprobaciones del turno padre (incluidos cambios por `/permissions` o `--yolo`); los agentes
   personalizados **no** pueden cambiar `sandbox_mode`, `approval_policy`, `model_provider` ni `mcp_servers`. Si una acción
   necesita aprobación y no hay forma de mostrarla, falla y el error vuelve al padre [DOC subagents].
@@ -155,6 +168,7 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
   (mintlify.com/openai/codex/advanced/exec-mode) no se usó como fuente fiable [?].
 
 ## 5. Limitaciones y quejas conocidas (resumen)
+
 1. Sin notificación push: el modelo debe sondear con `write_stdin` (#29865, "not planned") [ISSUE + CÓDIGO].
 2. Sin herramienta para listar/matar procesos; solo Ctrl-C por stdin (y únicamente con `tty:true` se acepta más texto) [CÓDIGO].
 3. Procesos huérfanos o inmortales tras timeout, interrupción o cierre (#15379, #42717, #26382, #47798, #4337) [ISSUE].
@@ -166,12 +180,14 @@ OIDC; internet configurable por presets y dominios permitidos. La página no des
 9. Docker/contenedores: el sandbox puede no arrancar [DOC].
 
 ## 6. Qué conviene copiar o evitar en Lazunox (opinión, no hecho)
+
 - Copiar: sesión con id estable, `yield` acotado + salida parcial, búfer cabeza/cola con contador de omitidos, tope de procesos,
   código de salida 124 en timeout, eventos de salida/fin para la UI separados de lo que ve el modelo.
 - Mejorar: lista y cancelación explícitas para modelo y usuario; matar el **grupo** de procesos al cancelar/cerrar y esperar
   confirmación; no podar procesos vivos sin avisar; notificación al modelo al terminar (hoy Codex solo sondea).
 
 ## Fuentes
+
 - https://learn.chatgpt.com/docs/agent-approvals-security (antes developers.openai.com/codex/agent-approvals-security)
 - https://learn.chatgpt.com/docs/agent-configuration/subagents
 - https://learn.chatgpt.com/docs/cloud

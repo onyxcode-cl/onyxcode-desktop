@@ -5,15 +5,18 @@
  */
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import { setAutoModeSettings, useTasks } from './store'
 
 interface UnifiedState {
   on: boolean
   loaded: boolean
   /** El usuario eligió «Automático» antes de tener carpeta: se aplica a la carpeta del chat al crearla. */
   wantAuto: boolean
+  /** Ruta REAL que devolvió `tasks:chatFolder:create` en esta sesión (la carpeta automática del chat actual). */
+  chatFolder: string | null
 }
 
-export const useUnified = create<UnifiedState>(() => ({ on: false, loaded: false, wantAuto: false }))
+export const useUnified = create<UnifiedState>(() => ({ on: false, loaded: false, wantAuto: false, chatFolder: null }))
 
 /** Lee `app:info` una sola vez; un fallo deja el modo apagado (comportamiento de siempre). */
 export async function loadUnified(): Promise<void> {
@@ -39,7 +42,45 @@ export function useUnifiedApps(): boolean {
   return on
 }
 
-/** ¿Es una carpeta propia de chat (`~/Lazunox/Chats/<id>`, creada por la app)? Se muestra como «Sin carpeta elegida». */
+const normPath = (p: string): string => p.replace(/\\/g, '/').replace(/\/+$/, '')
+
+/**
+ * ¿Es la carpeta automática de ESTE chat? Se compara con la ruta real que devolvió `tasks:chatFolder:create` (no por forma),
+ * así una carpeta del usuario con nombre parecido no se trata como carpeta de chat. Sirve para decidir.
+ */
 export function isChatFolderPath(path: string): boolean {
+  const known = useUnified.getState().chatFolder
+  return !!known && normPath(known) === normPath(path)
+}
+
+/** Solo para MOSTRAR un nombre (chats que ya existían tras reiniciar): la forma `…/Lazunox/Chats/<id>`. Nunca para decidir. */
+export function looksLikeChatFolder(path: string): boolean {
   return /[\\/]Lazunox[\\/]Chats[\\/][^\\/]+[\\/]?$/.test(path)
+}
+
+/** ¿Mostrar esta carpeta como «chat sin carpeta»? (ruta real guardada o, para chats antiguos, la forma bajo ~/Lazunox/Chats). */
+export function isChatFolderForDisplay(path: string): boolean {
+  return isChatFolderPath(path) || looksLikeChatFolder(path)
+}
+
+/**
+ * Enciende «Automático» SOLO para `folder`. Si el interruptor general estaba apagado, antes se quitan las demás carpetas y tareas que
+ * quedaron en la lista (se veían como «Manual»), para que encenderlo no las reactive en silencio.
+ */
+export async function enableAutoOnlyFor(folder: string): Promise<void> {
+  const settings = useTasks.getState().autoMode?.settings
+  if (settings && !settings.enabled) {
+    for (const f of settings.folders) if (f !== folder) await setAutoModeSettings({ folder: { path: f, on: false } })
+    for (const sessionId of settings.tasks) await setAutoModeSettings({ task: { sessionId, on: false } })
+  }
+  await setAutoModeSettings({ enabled: true, folder: { path: folder, on: true } })
+}
+
+/** Fecha legible sacada del id de la carpeta de chat (`AAAAMMDD-xxxxxx`), o null si no se reconoce. */
+export function chatFolderDate(path: string): string | null {
+  const id = path.split(/[\\/]/).filter(Boolean).pop() ?? ''
+  const m = /^(\d{4})(\d{2})(\d{2})-/.exec(id)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }

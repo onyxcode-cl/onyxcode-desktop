@@ -71,22 +71,22 @@ Prensa: alternativeto.net, thenewstack.io, aiidelist.com, capitalandcompute.net,
 
 ## 3. Matriz de riesgo y qué se rompería
 
-| Área | Riesgo | Qué se rompe |
-| --- | --- | --- |
-| Cliente SDK en renderer/main (77 archivos, 45 rutas) | **Alto** | Todas las rutas heredadas salvo quizá una; el paquete `@opencode-ai/sdk` no se publica para 2.x; modelo de datos de mensajes/partes cambia (`native`, sesiones, eventos). Reescritura de capa de datos, stores y tipos. |
-| SSE `/global/event` y forma de los eventos | **Alto** | Hay `/api/event` y `/api/session/{id}/event` con otro esquema; `session.compacted` desaparece. Afecta UI, progreso, remoto (`sse-hub`) y Telegram. |
-| Plugins `lazunox-plan-gate`, `lazunox-env`, `lazunox-session` | **Alto (seguridad)** | Plugins 1.x incompatibles. La puerta del plan es control de seguridad: se reescribe con `tool.execute.before`/`permission.evaluate` de la API nueva y se vuelve a auditar (zona intocable, decisión del dueño). |
-| Sidecar por carpeta con Seatbelt | **Alto** | El modelo 2.x es **un servicio compartido** (`serve --service`, registro XDG). Hay que comprobar que se pueda seguir lanzando un servidor aislado por carpeta con HOME/XDG propios y sin reutilizar el servicio global; si no, se rompe el aislamiento. Sin probar. |
-| Permisos y aprobaciones (UI, `auto-approver`, remoto, rutinas, Telegram) | **Alto** | Rutas `/permission/{id}/reply` y `/question` cambian a `/api/permission/request`, `/api/form`; permisos guardados nuevos. |
-| Autenticación/credenciales (`PUT /auth`, `auth.json`, OAuth) | **Alto** | Pasan a `/api/credential` + `/api/integration`; `configuration` → `metadata`; `auth.json` puede no ser el almacén. Afecta `ProviderKeyForm`, proxy de credenciales, sandbox-credentials. |
-| Control remoto y política de rutas | **Medio-alto** | Cada ruta nueva exige clase en `policy.ts`; el celular/PWA usa rutas del motor. (Está pausado, pero hay pruebas que bloquean.) |
-| Fake de E2E | **Alto (esfuerzo)** | Reescribir ~1.5k líneas para la API nueva; mientras tanto, doble mantenimiento. |
-| Contrato/pin/actualizador (`check-opencode`, `api-routes.json`, `fetch-opencode`, `pin.json`) | **Medio** | La herramienta de contrato asume `/doc` de OpenAPI de `serve`; origen y formato del binario v2 sin confirmar. No toca el actualizador de la app (Lazunox se actualiza a sí mismo). |
-| Restore points | **Bajo-medio** | Son propios; dependen de `revert/unrevert` y de diffs del motor. |
-| Agentes `.md` y skills `SKILL.md` | **Bajo-medio** | Probable compatibilidad (el changelog dice que la config acepta V1 y V2); verificar frontmatter, permisos por agente y `GET /skill` (`/api/skill`). |
-| Catálogo de modelos (`models.json`, cache sembrado al sandbox) | **Medio** | `/api/model`, `/api/provider`, otro lugar de caché; el truco de sembrar `bin/rg` y el catálogo hay que rehacerlo. |
-| MCP | **Medio** | `/api/mcp`; «Code Mode por defecto» (prensa) cambia cómo se ven las herramientas MCP en `tool.execute.before` y en la tarjeta de permiso. |
-| Windows/WSL (rootfs con OpenCode dentro) | **Medio-alto** | Otro binario, otro rootfs, otra prueba por RDP/SSH. |
+| Área                                                                                          | Riesgo               | Qué se rompe                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cliente SDK en renderer/main (77 archivos, 45 rutas)                                          | **Alto**             | Todas las rutas heredadas salvo quizá una; el paquete `@opencode-ai/sdk` no se publica para 2.x; modelo de datos de mensajes/partes cambia (`native`, sesiones, eventos). Reescritura de capa de datos, stores y tipos.                                             |
+| SSE `/global/event` y forma de los eventos                                                    | **Alto**             | Hay `/api/event` y `/api/session/{id}/event` con otro esquema; `session.compacted` desaparece. Afecta UI, progreso, remoto (`sse-hub`) y Telegram.                                                                                                                  |
+| Plugins `lazunox-plan-gate`, `lazunox-env`, `lazunox-session`                                 | **Alto (seguridad)** | Plugins 1.x incompatibles. La puerta del plan es control de seguridad: se reescribe con `tool.execute.before`/`permission.evaluate` de la API nueva y se vuelve a auditar (zona intocable, decisión del dueño).                                                     |
+| Sidecar por carpeta con Seatbelt                                                              | **Alto**             | El modelo 2.x es **un servicio compartido** (`serve --service`, registro XDG). Hay que comprobar que se pueda seguir lanzando un servidor aislado por carpeta con HOME/XDG propios y sin reutilizar el servicio global; si no, se rompe el aislamiento. Sin probar. |
+| Permisos y aprobaciones (UI, `auto-approver`, remoto, rutinas, Telegram)                      | **Alto**             | Rutas `/permission/{id}/reply` y `/question` cambian a `/api/permission/request`, `/api/form`; permisos guardados nuevos.                                                                                                                                           |
+| Autenticación/credenciales (`PUT /auth`, `auth.json`, OAuth)                                  | **Alto**             | Pasan a `/api/credential` + `/api/integration`; `configuration` → `metadata`; `auth.json` puede no ser el almacén. Afecta `ProviderKeyForm`, proxy de credenciales, sandbox-credentials.                                                                            |
+| Control remoto y política de rutas                                                            | **Medio-alto**       | Cada ruta nueva exige clase en `policy.ts`; el celular/PWA usa rutas del motor. (Está pausado, pero hay pruebas que bloquean.)                                                                                                                                      |
+| Fake de E2E                                                                                   | **Alto (esfuerzo)**  | Reescribir ~1.5k líneas para la API nueva; mientras tanto, doble mantenimiento.                                                                                                                                                                                     |
+| Contrato/pin/actualizador (`check-opencode`, `api-routes.json`, `fetch-opencode`, `pin.json`) | **Medio**            | La herramienta de contrato asume `/doc` de OpenAPI de `serve`; origen y formato del binario v2 sin confirmar. No toca el actualizador de la app (Lazunox se actualiza a sí mismo).                                                                                  |
+| Restore points                                                                                | **Bajo-medio**       | Son propios; dependen de `revert/unrevert` y de diffs del motor.                                                                                                                                                                                                    |
+| Agentes `.md` y skills `SKILL.md`                                                             | **Bajo-medio**       | Probable compatibilidad (el changelog dice que la config acepta V1 y V2); verificar frontmatter, permisos por agente y `GET /skill` (`/api/skill`).                                                                                                                 |
+| Catálogo de modelos (`models.json`, cache sembrado al sandbox)                                | **Medio**            | `/api/model`, `/api/provider`, otro lugar de caché; el truco de sembrar `bin/rg` y el catálogo hay que rehacerlo.                                                                                                                                                   |
+| MCP                                                                                           | **Medio**            | `/api/mcp`; «Code Mode por defecto» (prensa) cambia cómo se ven las herramientas MCP en `tool.execute.before` y en la tarjeta de permiso.                                                                                                                           |
+| Windows/WSL (rootfs con OpenCode dentro)                                                      | **Medio-alto**       | Otro binario, otro rootfs, otra prueba por RDP/SSH.                                                                                                                                                                                                                 |
 
 ## 4. Estrategia recomendada
 
@@ -109,16 +109,16 @@ Qué hacer en su lugar:
 
 ### 4.2 Plan por etapas y esfuerzo (estimación gruesa, 1 desarrollador + agentes)
 
-| Etapa | Contenido | Esfuerzo |
-| --- | --- | --- |
-| 0 | Inventario de llamadas al SDK en una sola capa (`engine/` con tipos propios); sin cambiar el comportamiento; suites en verde | 1-2 semanas |
-| 1 | Spike con el binario v2 real en un directorio temporal (Mac, HOME/XDG temporales): ¿`serve` por carpeta aislado funciona?, ¿se puede desactivar el servicio compartido?, esquema de eventos, `/api/permission`, credenciales. Documento de hallazgos | 3-5 días |
-| 2 | Adaptador v2: sesiones, mensajes, SSE normalizado, permisos y preguntas | 3-4 semanas |
-| 3 | Credenciales/proveedores/modelos/OAuth, catálogo, sembrado de caché en sandbox | 1-2 semanas |
-| 4 | Reescritura y re-auditoría de los plugins (plan-gate, env, session) con la API nueva; pruebas de seguridad (`docs/SEGURIDAD.md`) | 2-3 semanas |
-| 5 | Sidecar Seatbelt/WSL con motor v2, restore points, MCP y Code Mode | 2-3 semanas |
-| 6 | Fake v2, E2E, `check-opencode` para v2, `policy.ts` remoto, Telegram | 2-3 semanas |
-| 7 | Windows/WSL (rootfs), release y cohorte de prueba bajo bandera | 2 semanas |
+| Etapa | Contenido                                                                                                                                                                                                                                            | Esfuerzo    |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0     | Inventario de llamadas al SDK en una sola capa (`engine/` con tipos propios); sin cambiar el comportamiento; suites en verde                                                                                                                         | 1-2 semanas |
+| 1     | Spike con el binario v2 real en un directorio temporal (Mac, HOME/XDG temporales): ¿`serve` por carpeta aislado funciona?, ¿se puede desactivar el servicio compartido?, esquema de eventos, `/api/permission`, credenciales. Documento de hallazgos | 3-5 días    |
+| 2     | Adaptador v2: sesiones, mensajes, SSE normalizado, permisos y preguntas                                                                                                                                                                              | 3-4 semanas |
+| 3     | Credenciales/proveedores/modelos/OAuth, catálogo, sembrado de caché en sandbox                                                                                                                                                                       | 1-2 semanas |
+| 4     | Reescritura y re-auditoría de los plugins (plan-gate, env, session) con la API nueva; pruebas de seguridad (`docs/SEGURIDAD.md`)                                                                                                                     | 2-3 semanas |
+| 5     | Sidecar Seatbelt/WSL con motor v2, restore points, MCP y Code Mode                                                                                                                                                                                   | 2-3 semanas |
+| 6     | Fake v2, E2E, `check-opencode` para v2, `policy.ts` remoto, Telegram                                                                                                                                                                                 | 2-3 semanas |
+| 7     | Windows/WSL (rootfs), release y cohorte de prueba bajo bandera                                                                                                                                                                                       | 2 semanas   |
 
 Total: **~3-4 meses** calendario con otras cosas en paralelo (~12-18 semanas-persona). Alto riesgo de retrabajo si 2.x sigue cambiando contratos cada pocas semanas.
 
@@ -128,15 +128,15 @@ Empezar la etapa 1 cuando se cumpla **todo**: (a) hay documentación oficial de 
 
 ## 5. Ventajas reales para Lazunox vs costo
 
-| Función de 2.x | ¿Nos sirve? | Comentario |
-| --- | --- | --- |
-| Servicio compartido en segundo plano | Poco, hasta contraproducente | Nuestra seguridad se apoya en un servidor por carpeta, con su propio entorno y sandbox. Un servicio por usuario que además atiende al TUI es lo contrario; riesgo de mezclar credenciales y sesiones. |
-| Subagentes y shell en segundo plano | **Sí, valioso** | Tareas largas sin bloquear el chat y rutinas. Requiere diseñar UI de estado y permisos. |
-| Code Mode (scripts que encadenan MCP/OpenAPI) | Quizá | Menos pasos y menos tokens para MCP; pero cambia cómo aprobamos herramientas (la puerta del plan debe ver cada llamada anidada). |
-| `@opencode/sdk` en proceso | No para el sandbox | Sin puerto es elegante, pero rompe el modelo «proceso aparte dentro de Seatbelt». |
-| Rendimiento (instantáneas más rápidas, etc.) | Incierto | Sin medición propia. |
-| Modelos/proveedores nuevos (Vertex, cuentas, voz) | Algo | Ya cubrimos casi todos con 1.19; la voz y el emparejado (`pair`) duplican cosas nuestras (control remoto). |
-| Permisos guardados por proyecto, diff por turno | Sí, pero | Se pueden hacer por nuestra cuenta o esperar. |
+| Función de 2.x                                    | ¿Nos sirve?                  | Comentario                                                                                                                                                                                            |
+| ------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Servicio compartido en segundo plano              | Poco, hasta contraproducente | Nuestra seguridad se apoya en un servidor por carpeta, con su propio entorno y sandbox. Un servicio por usuario que además atiende al TUI es lo contrario; riesgo de mezclar credenciales y sesiones. |
+| Subagentes y shell en segundo plano               | **Sí, valioso**              | Tareas largas sin bloquear el chat y rutinas. Requiere diseñar UI de estado y permisos.                                                                                                               |
+| Code Mode (scripts que encadenan MCP/OpenAPI)     | Quizá                        | Menos pasos y menos tokens para MCP; pero cambia cómo aprobamos herramientas (la puerta del plan debe ver cada llamada anidada).                                                                      |
+| `@opencode/sdk` en proceso                        | No para el sandbox           | Sin puerto es elegante, pero rompe el modelo «proceso aparte dentro de Seatbelt».                                                                                                                     |
+| Rendimiento (instantáneas más rápidas, etc.)      | Incierto                     | Sin medición propia.                                                                                                                                                                                  |
+| Modelos/proveedores nuevos (Vertex, cuentas, voz) | Algo                         | Ya cubrimos casi todos con 1.19; la voz y el emparejado (`pair`) duplican cosas nuestras (control remoto).                                                                                            |
+| Permisos guardados por proyecto, diff por turno   | Sí, pero                     | Se pueden hacer por nuestra cuenta o esperar.                                                                                                                                                         |
 
 Conclusión: 2.x trae ideas buenas (segundo plano, Code Mode), pero nada que hoy bloquee a Lazunox, y el costo recae sobre las áreas más sensibles. El proyecto es sin fines de lucro y de recursos limitados: no conviene gastar ~4 meses en reescribir lo que ya funciona.
 

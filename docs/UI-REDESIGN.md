@@ -12,17 +12,17 @@ autocrítica con capturas). Las capturas se toman con CDP contra una instancia a
 
 ## Diagnóstico (capturas del estado inicial)
 
-| # | Hallazgo | Dónde |
-|---|---|---|
-| 1 | Cowork tiene **doble barra lateral** (264 px vacía + 256 px de tareas); Chat/Code usan una sola | Cowork |
-| 2 | Cabeceras de página distintas en cada modo (sin barra / título suelto / barra con borde) | todos |
-| 3 | Selector de modo: etiquetas apiladas de 11 px, sin atajos de teclado | Sidebar |
-| 4 | Botón "nuevo" en acento a todo ancho (Cowork) o círculo (resto): ruidoso, inconsistente | Sidebar/Cowork |
-| 5 | Sin paleta de comandos ni atajos por modo (⌘K, ⌘1–4, ⌘N) | global |
-| 6 | Halo de foco del compositor grueso (doble anillo) | Composer |
-| 7 | ~~Primer mensaje pegado a la cabecera~~ — descartado: era el scroll pegado al final, no un defecto | MessageList |
-| 8 | Code: "Nueva sesión" duplicado (botón de barra + fila de lista); barra superior densa | Code |
-| 9 | Estados vacíos con marco discontinuo y tarjetas genéricas | Code/Rutinas |
+| #   | Hallazgo                                                                                           | Dónde          |
+| --- | -------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | Cowork tiene **doble barra lateral** (264 px vacía + 256 px de tareas); Chat/Code usan una sola    | Cowork         |
+| 2   | Cabeceras de página distintas en cada modo (sin barra / título suelto / barra con borde)           | todos          |
+| 3   | Selector de modo: etiquetas apiladas de 11 px, sin atajos de teclado                               | Sidebar        |
+| 4   | Botón "nuevo" en acento a todo ancho (Cowork) o círculo (resto): ruidoso, inconsistente            | Sidebar/Cowork |
+| 5   | Sin paleta de comandos ni atajos por modo (⌘K, ⌘1–4, ⌘N)                                           | global         |
+| 6   | Halo de foco del compositor grueso (doble anillo)                                                  | Composer       |
+| 7   | ~~Primer mensaje pegado a la cabecera~~ — descartado: era el scroll pegado al final, no un defecto | MessageList    |
+| 8   | Code: "Nueva sesión" duplicado (botón de barra + fila de lista); barra superior densa              | Code           |
+| 9   | Estados vacíos con marco discontinuo y tarjetas genéricas                                          | Code/Rutinas   |
 
 ## Fases (estado)
 
@@ -58,12 +58,12 @@ deben ir abajo, en el compositor, como en Claude Code y Codex, y hay que poder v
 
 ## Atajos añadidos (`app/App.tsx`)
 
-| Atajo | Acción |
-|---|---|
-| ⌘K | Paleta de comandos (en Code con proyecto abierto sigue siendo su selector de sesiones) |
-| ⌘⇧P | Paleta de comandos, siempre |
-| ⌘N | Nuevo (conversación / sesión / tarea) según el modo |
-| ⌃Tab · ⌃⇧Tab | Modo siguiente / anterior |
+| Atajo        | Acción                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------- |
+| ⌘K           | Paleta de comandos (en Code con proyecto abierto sigue siendo su selector de sesiones) |
+| ⌘⇧P          | Paleta de comandos, siempre                                                            |
+| ⌘N           | Nuevo (conversación / sesión / tarea) según el modo                                    |
+| ⌃Tab · ⌃⇧Tab | Modo siguiente / anterior                                                              |
 
 ## Cómo capturar pantallas sin permiso de grabación
 

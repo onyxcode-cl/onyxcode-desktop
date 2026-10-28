@@ -10,7 +10,7 @@ import { UI_LABELS } from '@shared/labels'
 import { useT } from '../../../lib/i18n'
 import { ChipMenu } from '../../../components/ChipMenu'
 import { setAutoModeSettings, useTasks } from './store'
-import { useUnified, useUnifiedApps } from './unified'
+import { enableAutoOnlyFor, useUnified, useUnifiedApps } from './unified'
 
 const NOTICE_MS = 5000
 
@@ -36,7 +36,10 @@ function UnifiedModeChip(): React.JSX.Element {
     const on = id === 'auto'
     if (on && blocked) return
     useUnified.setState({ wantAuto: folder ? false : on })
-    if (folder) void setAutoModeSettings({ ...(on ? { enabled: true } : {}), folder: { path: folder, on } }).catch(() => undefined)
+    if (folder) {
+      const done = on ? enableAutoOnlyFor(folder) : setAutoModeSettings({ folder: { path: folder, on } })
+      void done.catch(() => undefined)
+    }
   }
   return (
     <ChipMenu

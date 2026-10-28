@@ -1,12 +1,44 @@
 /** Modo unificado: carpeta propia de un chat sin carpeta elegida (`~/Lazunox/Chats/<id>`). */
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, symlinkSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { macOnly } from '../../test/platform'
 
 const state = vi.hoisted(() => ({ userData: '' }))
-const pol = vi.hoisted(() => ({ value: null as { allowedFolderRoots?: string[] } | null }))
+const pol = vi.hoisted(() => ({ value: null as { allowedFolderRoots?: string[] } | null, computerOff: false }))
+// Ganchos para simular carreras y dueños ajenos en el punto exacto.
+const hook = vi.hoisted(() => ({
+  onRealpath: null as ((p: string) => void) | null,
+  fakeUid: new Map<string, number>(),
+  chmodCalls: 0
+}))
+
+vi.mock('node:fs', async (orig) => {
+  const real = await orig<typeof import('node:fs')>()
+  return {
+    ...real,
+    default: real,
+    realpathSync: Object.assign(
+      (p: string, o?: never) => {
+        hook.onRealpath?.(String(p))
+        return real.realpathSync(p, o)
+      },
+      { native: real.realpathSync.native }
+    ),
+    lstatSync: (p: string, o?: never) => {
+      const st = real.lstatSync(p, o) as import('node:fs').Stats
+      const uid = hook.fakeUid.get(String(p))
+      return uid === undefined
+        ? st
+        : Object.assign(Object.create(st), { uid, isDirectory: () => st.isDirectory(), isSymbolicLink: () => st.isSymbolicLink() })
+    },
+    chmodSync: (...a: Parameters<typeof real.chmodSync>) => {
+      hook.chmodCalls++
+      return real.chmodSync(...a)
+    }
+  }
+})
 
 vi.mock('electron', () => ({
   app: { getPath: () => state.userData, getAppPath: () => '/nonexistent', isPackaged: false, getVersion: () => '0' }
@@ -17,7 +49,7 @@ vi.mock('../embedded-browser/mcp-server', () => ({
 }))
 vi.mock('./policy', () => ({
   loadManagedPolicy: () => pol.value,
-  isComputerUseDisabled: () => false
+  isComputerUseDisabled: () => pol.computerOff
 }))
 
 import { UNIFIED_APPS_ENV } from '@shared/unified-bridge'
@@ -35,6 +67,10 @@ beforeEach(() => {
   state.userData = join(root, 'userData')
   mkdirSync(state.userData, { recursive: true })
   pol.value = null
+  pol.computerOff = false
+  hook.onRealpath = null
+  hook.fakeUid.clear()
+  hook.chmodCalls = 0
   prevHome = process.env.HOME
   prevFlag = process.env[UNIFIED_APPS_ENV]
   process.env.HOME = home
@@ -96,6 +132,88 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
     pol.value = { allowedFolderRoots: [join(home, 'Lazunox', 'Chats')] }
     const f = await new TasksManager().createChatFolder()
     expect(existsSync(f.path)).toBe(true)
+  })
+
+  it('carrera: Chats pasa a ser un enlace después de la comprobación: se rechaza y no queda nada', async () => {
+    const target = join(root, 'elsewhere')
+    mkdirSync(target)
+    const chats = join(home, 'Lazunox', 'Chats')
+    let swapped = false
+    hook.onRealpath = (p) => {
+      // Solo cuando Chats ya existe (después del lstat): la consulta previa de la política ocurre con la carpeta aún sin crear.
+      if (swapped || p !== chats || !existsSync(chats)) return
+      swapped = true
+      rmSync(chats, { recursive: true })
+      symlinkSync(target, chats)
+    }
+    await expect(new TasksManager().createChatFolder()).rejects.toThrow(/enlace/)
+    expect(swapped).toBe(true)
+    expect(readdirSync(target)).toEqual([])
+  })
+
+  it('carrera: la carpeta nueva acaba fuera de la ruta esperada: se rechaza y se borra la recién creada', async () => {
+    const m = new TasksManager()
+    const chats = join(realpathSync(home), 'Lazunox', 'Chats')
+    let created = ''
+    hook.onRealpath = (p) => {
+      if (p.startsWith(chats + '/')) {
+        created = p
+        throw new Error('simulado')
+      }
+    }
+    await expect(m.createChatFolder()).rejects.toThrow('simulado')
+    expect(created).not.toBe('')
+    expect(existsSync(created)).toBe(false)
+    expect(readdirSync(chats)).toEqual([])
+    expect(m.listFolders()).toEqual([])
+  })
+
+  it('~/Lazunox existente con permisos abiertos (0777): rechaza y no crea Chats', async () => {
+    mkdirSync(join(home, 'Lazunox'))
+    chmodSync(join(home, 'Lazunox'), 0o777)
+    await expect(new TasksManager().createChatFolder()).rejects.toThrow(/enlace/)
+    expect(existsSync(join(home, 'Lazunox', 'Chats'))).toBe(false)
+  })
+
+  it('~/Lazunox/Chats existente con escritura para el grupo (0770): rechaza', async () => {
+    mkdirSync(join(home, 'Lazunox', 'Chats'), { recursive: true })
+    chmodSync(join(home, 'Lazunox', 'Chats'), 0o770)
+    await expect(new TasksManager().createChatFolder()).rejects.toThrow(/enlace/)
+    expect(readdirSync(join(home, 'Lazunox', 'Chats'))).toEqual([])
+  })
+
+  it('~/Lazunox de otro dueño: rechaza', async () => {
+    mkdirSync(join(home, 'Lazunox'), { mode: 0o700 })
+    hook.fakeUid.set(join(home, 'Lazunox'), (process.getuid?.() ?? 0) + 1)
+    await expect(new TasksManager().createChatFolder()).rejects.toThrow(/enlace/)
+    expect(existsSync(join(home, 'Lazunox', 'Chats'))).toBe(false)
+  })
+
+  it('~/Lazunox/Chats de otro dueño: rechaza', async () => {
+    mkdirSync(join(home, 'Lazunox', 'Chats'), { recursive: true, mode: 0o700 })
+    hook.fakeUid.set(join(home, 'Lazunox', 'Chats'), (process.getuid?.() ?? 0) + 1)
+    await expect(new TasksManager().createChatFolder()).rejects.toThrow(/enlace/)
+    expect(readdirSync(join(home, 'Lazunox', 'Chats'))).toEqual([])
+  })
+
+  it('la política que apaga el control del PC: rechaza y no crea nada', async () => {
+    pol.computerOff = true
+    const m = new TasksManager()
+    await expect(m.createChatFolder()).rejects.toThrow(/organizaci/)
+    expect(existsSync(join(home, 'Lazunox'))).toBe(false)
+    expect(m.listFolders()).toEqual([])
+  })
+
+  it('no usa chmod (sigue enlaces) y el modo 0700 sale solo de mkdir, con cualquier umask', async () => {
+    const prev = process.umask(0o000)
+    try {
+      const f = await new TasksManager().createChatFolder()
+      expect(statSync(f.path).mode & 0o777).toBe(0o700)
+      expect(statSync(join(home, 'Lazunox')).mode & 0o777).toBe(0o700)
+    } finally {
+      process.umask(prev)
+    }
+    expect(hook.chmodCalls).toBe(0)
   })
 
   it('sin bandera: rechaza y no crea nada', async () => {

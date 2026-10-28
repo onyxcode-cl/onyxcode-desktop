@@ -17,6 +17,7 @@ El dueño decidió (2026-10-07, expresamente) ofrecer **Tareas y Control del PC 
 **La guardia de informes se sustituye por la puerta de beta consentida**: consentimiento propio (`tasks-win-beta-consent.json`, escrito solo por `main`, versionado, revocable y relido en cada arranque de servidor) + huella del paquete incluido + distro `ready` + política `disableWslTasks`. La huella es integridad contra corrupción, no contra un atacante local con permiso de escritura. `tasks-win-report.ts` queda archivado y sin uso en producción; no se crea `docs/evidence/`.
 
 **Respuestas del dueño a las preguntas del plan:**
+
 1. Tareas **se niega a arrancar si Lazunox corre elevado** (administrador), como Control del PC.
 2. **Solo se avanza** de versión de imagen; no se reinstala una anterior (imagen mala: subir `version`).
 3. La URL de `wsl-rootfs` mantiene la forma de URL del repo de la imagen WSL que fija `wsl-pin.ts` (organización D9 pendiente) aunque no esté publicado; **no se relaja `parseWslPin`**. El camino de descarga se conserva (falla cerrado con 404); el predeterminado es la imagen incluida.
@@ -27,18 +28,18 @@ Hasta el commit de la bandera (`TASKS_WIN_BUILD = true`, aparte y solo) lo que s
 
 ## Estado (hecho y probado en la Mac, con dobles)
 
-| Pieza | Dónde |
-|---|---|
-| `tasksSandbox` (`seatbelt`/`wsl`/`none`) y bandera `tasksWin` (apagada) | `src/shared/platform-caps.ts` |
-| Interfaz `SandboxBackend`, Seatbelt extraído sin cambios, backend `none`, `selectBackend` | `src/main/tasks/backends/{types,seatbelt,none,spawn,index}.ts` |
-| Equivalencia byte a byte del lanzamiento Seatbelt (fixture capturado ANTES de extraer, commit `baeb0bd`/`c70fbdb`) | `sandbox.equivalence.test.ts`, `__fixtures__/seatbelt-before.json` |
-| Rutas Windows ↔ `/win/c/…` (UNC, ADS, `..`, reservados, 8.3, enlaces con `lstat` inyectado) | `wsl-paths.ts` |
-| Comandos de `wsl.exe` en lista cerrada (sin `--shutdown`), entorno mínimo, `wsl.conf`, política Landlock, trama INIT | `wsl-spec.ts`, `resources/wsl/wsl.conf` |
-| Trama de la stdio (límites, errores tipados, créditos, UTF-16LE) | `bridge-protocol.ts`, `resources/wsl/protocol.py`, `resources/wsl/vectors.json` |
-| Lado Windows del puente (solo puertos permitidos) | `wsl-bridge-host.ts` |
-| Estado de WSL a partir de la salida de `wsl.exe` | `wsl-status.ts` |
-| `WslBackend` con `wsl.exe` simulado (no se activa) | `wsl.ts`, `wsl.test.ts` |
-| Lanzador Python + Landlock (recurso; análisis estático y pruebas de la parte pura, NO ejecutado en el Mac) | `resources/wsl/{launcher,landlock,mux,protocol}.py`, `test_protocol.py`, `launcher.static.test.ts` |
+| Pieza                                                                                                                | Dónde                                                                                              |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `tasksSandbox` (`seatbelt`/`wsl`/`none`) y bandera `tasksWin` (apagada)                                              | `src/shared/platform-caps.ts`                                                                      |
+| Interfaz `SandboxBackend`, Seatbelt extraído sin cambios, backend `none`, `selectBackend`                            | `src/main/tasks/backends/{types,seatbelt,none,spawn,index}.ts`                                     |
+| Equivalencia byte a byte del lanzamiento Seatbelt (fixture capturado ANTES de extraer, commit `baeb0bd`/`c70fbdb`)   | `sandbox.equivalence.test.ts`, `__fixtures__/seatbelt-before.json`                                 |
+| Rutas Windows ↔ `/win/c/…` (UNC, ADS, `..`, reservados, 8.3, enlaces con `lstat` inyectado)                          | `wsl-paths.ts`                                                                                     |
+| Comandos de `wsl.exe` en lista cerrada (sin `--shutdown`), entorno mínimo, `wsl.conf`, política Landlock, trama INIT | `wsl-spec.ts`, `resources/wsl/wsl.conf`                                                            |
+| Trama de la stdio (límites, errores tipados, créditos, UTF-16LE)                                                     | `bridge-protocol.ts`, `resources/wsl/protocol.py`, `resources/wsl/vectors.json`                    |
+| Lado Windows del puente (solo puertos permitidos)                                                                    | `wsl-bridge-host.ts`                                                                               |
+| Estado de WSL a partir de la salida de `wsl.exe`                                                                     | `wsl-status.ts`                                                                                    |
+| `WslBackend` con `wsl.exe` simulado (no se activa)                                                                   | `wsl.ts`, `wsl.test.ts`                                                                            |
+| Lanzador Python + Landlock (recurso; análisis estático y pruebas de la parte pura, NO ejecutado en el Mac)           | `resources/wsl/{launcher,landlock,mux,protocol}.py`, `test_protocol.py`, `launcher.static.test.ts` |
 
 Cómo comprobar en la Mac (sin Electron ni e2e): `npm run typecheck`, `npx vitest run src/main/tasks src/main/ipc src/shared/platform-caps.test.ts` y, a mano, `cd resources/wsl && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest test_protocol`.
 
@@ -77,23 +78,23 @@ Reglas: `ssh <usuario>@<ip-del-pc-de-pruebas>`, solo bajo `C:\onyx\` (carpetas d
 11. Quitar Tareas: `--unregister` deja `C:\onyx\wsl` vacío y no toca otras distros.
 12. **Ataques** (como `lazunox` dentro, carpeta `C:\onyx\tareas\a`, «víctima» `C:\onyx\tareas\victima` con un archivo testigo):
 
-| # | Ataque | Esperado |
-|---|---|---|
-| A1 | Salir de la carpeta (`../victima/x`, `/win/c/…` fuera del montaje) | ENOENT |
-| A2 | Junction `mklink /J a\j C:\onyx\tareas\victima` y `cat j/x` | Falla. **Si drvfs la atraviesa es BLOQUEANTE** (rechazar carpetas con reparse points o montar de otro modo) |
-| A3 | Symlink NTFS (`mklink /D`) y de archivo hacia la víctima | Igual que A2 |
-| A4 | El agente crea enlaces hacia fuera y `main` (restauración, visor, adjuntos) los sigue | `main` no sigue enlaces fuera (`checkNoLinks`, `lstat`/`realpath` + `isInside`) |
-| A5 | Rutas UNC/dispositivo (`\\192.168.1.101\x`, `\\?\C:\`, `\\wsl.localhost\…`) que vuelven a `main` | `fromSandboxPath` las rechaza |
-| A6 | ADS (`echo x > 'a.txt:oculto'`) | drvfs no crea ADS; `main` rechaza `:` |
-| A7 | Leer `%USERPROFILE%` (`ls /win/c/Users`, `find / -name '*.ssh*'`, `/mnt/c`); `mount -t drvfs C: /x` como `lazunox` | No existe; EPERM |
-| A8 | Ejecutar Windows (`./evil.exe`, `/init`, `cmd.exe`, `$WSL_INTEROP`) | Falla; ningún proceso nuevo en Windows (`Get-Process` antes/después) |
-| A9 | Exfiltrar la clave (`env`, `/proc/*/environ`, `ps -ef`, stdio de `wsl.exe`, `CredentialProxy` con otro `Host` o `../`) | Solo el centinela; el proxy solo va a `opencode.ai/zen/go/v1` |
-| A10 | Salir sin proxy (`curl --noproxy '*'`, UDP 53, ICMP, gateway de WSL, `::1`, puertos de Windows) | Todo falla |
-| A11 | Abusar del proxy (CONNECT fuera de lista, `Host` en mayúsculas, IP literal, `opencode.ai.evil.com`) | Bloqueado |
-| A12 | Root dentro (`su`, `sudo`, setuid, `unshare -U`, deshacer Landlock) | Sin root ni capacidades; `no_new_privs` |
-| A13 | Borrar sin permiso (`rm`, `mv`, `os.replace`, hardlink hacia fuera) | EACCES; `truncate` permitido |
-| A14 | Agotar el puente (muchos flujos, tramas enormes; prueba acotada) | Se corta el flujo o la sesión; `main` no cae |
-| A15 | Persistencia (`/etc`, `/opt/lazunox`, `wsl.conf`, `~/.bashrc`) | EACCES |
+| #   | Ataque                                                                                                                 | Esperado                                                                                                    |
+| --- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| A1  | Salir de la carpeta (`../victima/x`, `/win/c/…` fuera del montaje)                                                     | ENOENT                                                                                                      |
+| A2  | Junction `mklink /J a\j C:\onyx\tareas\victima` y `cat j/x`                                                            | Falla. **Si drvfs la atraviesa es BLOQUEANTE** (rechazar carpetas con reparse points o montar de otro modo) |
+| A3  | Symlink NTFS (`mklink /D`) y de archivo hacia la víctima                                                               | Igual que A2                                                                                                |
+| A4  | El agente crea enlaces hacia fuera y `main` (restauración, visor, adjuntos) los sigue                                  | `main` no sigue enlaces fuera (`checkNoLinks`, `lstat`/`realpath` + `isInside`)                             |
+| A5  | Rutas UNC/dispositivo (`\\192.168.1.101\x`, `\\?\C:\`, `\\wsl.localhost\…`) que vuelven a `main`                       | `fromSandboxPath` las rechaza                                                                               |
+| A6  | ADS (`echo x > 'a.txt:oculto'`)                                                                                        | drvfs no crea ADS; `main` rechaza `:`                                                                       |
+| A7  | Leer `%USERPROFILE%` (`ls /win/c/Users`, `find / -name '*.ssh*'`, `/mnt/c`); `mount -t drvfs C: /x` como `lazunox`     | No existe; EPERM                                                                                            |
+| A8  | Ejecutar Windows (`./evil.exe`, `/init`, `cmd.exe`, `$WSL_INTEROP`)                                                    | Falla; ningún proceso nuevo en Windows (`Get-Process` antes/después)                                        |
+| A9  | Exfiltrar la clave (`env`, `/proc/*/environ`, `ps -ef`, stdio de `wsl.exe`, `CredentialProxy` con otro `Host` o `../`) | Solo el centinela; el proxy solo va a `opencode.ai/zen/go/v1`                                               |
+| A10 | Salir sin proxy (`curl --noproxy '*'`, UDP 53, ICMP, gateway de WSL, `::1`, puertos de Windows)                        | Todo falla                                                                                                  |
+| A11 | Abusar del proxy (CONNECT fuera de lista, `Host` en mayúsculas, IP literal, `opencode.ai.evil.com`)                    | Bloqueado                                                                                                   |
+| A12 | Root dentro (`su`, `sudo`, setuid, `unshare -U`, deshacer Landlock)                                                    | Sin root ni capacidades; `no_new_privs`                                                                     |
+| A13 | Borrar sin permiso (`rm`, `mv`, `os.replace`, hardlink hacia fuera)                                                    | EACCES; `truncate` permitido                                                                                |
+| A14 | Agotar el puente (muchos flujos, tramas enormes; prueba acotada)                                                       | Se corta el flujo o la sesión; `main` no cae                                                                |
+| A15 | Persistencia (`/etc`, `/opt/lazunox`, `wsl.conf`, `~/.bashrc`)                                                         | EACCES                                                                                                      |
 
 ## Decisiones del dueño que siguen abiertas
 

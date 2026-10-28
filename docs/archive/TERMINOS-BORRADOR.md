@@ -7,7 +7,7 @@
 > Se publicará en la URL de `TERMS_URL` (`src/shared/brand.ts`); mientras esté vacía, la app muestra una versión corta
 > (`src/shared/account-legal.ts`; mantenerlas al día).
 
-**Titular:** [por definir]  ·  **Contacto:** [por definir]
+**Titular:** [por definir] · **Contacto:** [por definir]
 
 ## 1. Qué es esto
 

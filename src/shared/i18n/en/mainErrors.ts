@@ -42,8 +42,9 @@ export const mainErrors = {
   'merr.task.notValidFolder': 'Not a valid folder: {folder}',
   'merr.chat.unifiedOff': 'Unified mode is turned off.',
   'merr.chat.unifiedWin': 'Unified mode isn’t available on Windows yet.',
+  'merr.chat.computerUseOff': 'Couldn’t create the chat folder: your organization turned off computer control.',
   'merr.chat.folderUnsafe':
-    'Couldn’t create the chat folder: ~/Lazunox or ~/Lazunox/Chats isn’t a regular folder (it’s a link or another kind of file). Delete or rename it and try again.',
+    'Couldn’t create the chat folder: ~/Lazunox or ~/Lazunox/Chats isn’t a regular private folder (it’s a link, another kind of file, owned by someone else or open to others). Delete or rename it and try again.',
   'merr.task.notAuthorized': 'The folder isn’t authorized for tasks.',
   'merr.task.insideMain': 'That folder is already inside the main folder.',
   'merr.task.orgNoHosts': 'Your organization doesn’t allow adding sites that tasks can connect to.',

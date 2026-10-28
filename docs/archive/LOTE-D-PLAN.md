@@ -13,6 +13,7 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 **Límite honesto de esta fase.** Por ser una tarea de solo lectura no pude ejecutar Electron: su CLI necesita un script y no podía crear ninguno. Todo lo de abajo sale del código fuente y de `electron.d.ts`. Las comprobaciones en vivo son el paquete **D0**, que va primero y decide los fallbacks (puertas G1–G9).
 
 **A.1 Versión de Electron y API.**
+
 - Electron es `44.4.5` (`package.json:38`, `node_modules/electron/package.json`).
 - `BrowserView` está obsoleto: todos sus métodos llevan `@deprecated` (`electron.d.ts:4134-4197`).
 - Hay que usar **`WebContentsView`** (`electron.d.ts:18963`) y `View.addChildView` (`:16066`); existen `setVisible`, `setBorderRadius` y `setBackgroundColor`.
@@ -27,6 +28,7 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 - **Trampa encontrada:** `select-client-certificate` usa por defecto el PRIMER certificado del usuario salvo `preventDefault` (`:807`). Hay que interceptarlo.
 
 **A.2 (a) ¿`chrome-devtools-mcp`/puppeteer puede conectarse a un webContents embebido? No de forma limpia.**
+
 - `chrome-devtools-mcp` solo conecta por `wsEndpoint`, `browserUrl`, `DevToolsActivePort` o `channel` (`build/src/BrowserManager.js:268-330`). No existe una opción de transporte propio desde la CLI.
 - Trae puppeteer-core 25.11.0 empaquetado (`third_party/bundled-packages.json`). `connect({transport})` sí existe programáticamente (`third_party/index.js:86181-86200`), pero `_connectToCdpBrowser` envía enseguida métodos **de navegador**:
   - `Target.getBrowserContexts` (`:84148`);
@@ -37,16 +39,19 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 - Tampoco sirve `--remote-debugging-port` de Electron: expondría TODOS los webContents, incluida la ventana principal con `window.api` (`pty:create`, `mcp:save`), a cualquier proceso local. **Descartado de forma categórica**; se añade un grep de aceptación.
 
 **A.3 (b) Se elige `webContents.debugger` + CDP propio.**
+
 - Métodos de página suficientes: `Accessibility.getFullAXTree` (snapshot con uids), `DOM.getContentQuads`/`scrollIntoViewIfNeeded`/`getNodeForLocation`/`resolveNode`, `Input.dispatchMouseEvent`/`dispatchKeyEvent`/`insertText`, `Page.captureScreenshot`/`handleJavaScriptDialog`/`createIsolatedWorld`, `Runtime.callFunctionOn`, `Overlay.setInspectMode`/`highlightNode`, y `Log`/`Network` para Code.
 - Es **más honesto**: unas 17–21 herramientas en vez de 23, sin runtime externo, sin puerto CDP y en el mismo proceso que controla los píxeles.
 - Los nombres y esquemas son **compatibles con el subconjunto de `chrome-devtools-mcp`** (`navigate_page`, `take_snapshot`, `click{uid}`, `fill`…, ver `build/src/tools/{input,pages,snapshot}.js`). Así los prompts sirven para los dos motores.
 
 **A.4 (d) `<webview>`.**
+
 - Está bloqueado dos veces: `webviewTag:false` en todas las ventanas (`index.ts:68`, `artifact-window.ts:112`, `quick-entry.ts:42`, `overlay.ts:406`, `assist-window.ts:143`) y `will-attach-webview` → `preventDefault` (`web-security.ts:54-57`).
 - Reactivarlo exigiría `webviewTag:true` en la ventana **privilegiada**: su renderer podría crear invitados con atributos, y la propia Electron lo desaconseja.
 - `WebContentsView` logra lo mismo en línea con el invitado creado **solo por main**. **`webviewTag:false` no se toca en ningún sitio.**
 
 **A.5 Corrección al encargo: «dentro de la ventana» sí es literalmente posible.**
+
 - Un `WebContentsView` es una vista nativa hija de la ventana principal, colocada por `setBounds` sobre un hueco del layout de React.
 - Restricciones reales:
   1. Siempre se pinta **encima** del DOM: un menú, popover o diálogo de React que la solape queda tapado. Hay que ocultar la vista y mostrar una captura congelada mientras exista un overlay.
@@ -55,6 +60,7 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 - La pregunta 1 de §E lo confirma con el usuario.
 
 **A.6 Otros hallazgos que condicionan el diseño.**
+
 - **Choque con el endurecimiento global:** `harden()` se aplica a TODO webContents (`web-security.ts:109`). Bloquearía la navegación de la vista y abriría cada URL en el navegador del sistema (`:42-53`). Hace falta una exención explícita **por identidad de sesión** (B.3).
 - `will-navigate` no se dispara con `loadURL` programático. El agente navegará con `loadURL` precedido de la puerta propia; los clics en enlaces se cubren con `will-frame-navigate`/`will-redirect`, y `did-start-navigation` actúa de respaldo.
 - **Sandbox:** Seatbelt solo deja conectar a puertos localhost listados (`sandbox-profile.ts:281-297`; `sandbox.ts:97-99`), así que el puerto del MCP debe añadirse al lanzar. Debe ser **fijo durante toda la vida de la app**.
@@ -67,6 +73,7 @@ No escribí nada en disco. He incorporado el addendum (referencia visual tipo Cu
 ## B. Decisiones de diseño y contratos
 
 ### B.1 Arquitectura
+
 ```
 Renderer (onyxcode://app, rol main)                     Main (privilegiado)
  BrowserPanel (barra, pestañas, tarjetas) ──IPC browser:*──► embedded-browser/service
@@ -77,25 +84,27 @@ Renderer (onyxcode://app, rol main)                     Main (privilegiado)
  OpenCode (sidecar Code / servidores Cowork) ──MCP remote HTTP 127.0.0.1 + Bearer por servidor──► embedded-browser/mcp-server
    plugin onyxcode-session.js inyecta onyxcode_session en browser_*       └─ tools.ts → service (puertas, aprobaciones)
 ```
+
 - El MCP corre **en el proceso principal**, porque `webContents.debugger` solo existe allí. No hay utilityProcess ni dependencias npm nuevas (ni `package.json` ni `electron-builder.js` cambian).
 - Transporte y esqueleto JSON-RPC copiados de `computer/mcp-server.ts:1600-1779`: Bearer con `timingSafeEqual` y rechazo de cualquier cabecera `Origin`.
 
 ### B.2 Frontera de aislamiento (primer contenido web arbitrario de la app)
 
-| Capa | Decisión |
-|---|---|
-| Proceso | Cada pestaña es un `WebContentsView` con `sandbox:true, contextIsolation:true, nodeIntegration:false, nodeIntegrationInSubFrames:false, webviewTag:false, devTools:false, spellcheck:false, safeDialogs:true, navigateOnDragDrop:false, backgroundThrottling:false, focusOnNavigation:false, autoplayPolicy:'document-user-activation-required'`. Renderer propio, aislado del de la app (otra partición, otro origen). |
-| Preload | **Ninguno.** Todo control viene de main (API de webContents, sesión, debugger). Un preload correría dentro del proceso de la página y solo añadiría superficie; además `guardInvoke` rechaza cualquier IPC de un emisor sin rol ni origen propio (`guard.ts:49-54`). |
-| Sesión | `session.fromPartition('persist:onyxcode-web-code')` y `'persist:onyxcode-web-cowork'`: perfiles separados entre sí y NUNCA la `defaultSession` de `onyxcode://app`. Cookies cifradas (fuse `EnableCookieEncryption`). El esquema `onyxcode:` y `*-artifact:` no existen en esa sesión (`protocol.handle` es de la sesión por defecto y de la del artifact). |
-| Identidad | `setUserAgent` sin `Electron/…` ni `${APP_NAME}/…`; `wc.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')`. |
-| Permisos | Request/check handlers: **todo denegado** salvo `clipboard-sanitized-write` y solo en el frame principal. Denegados de forma explícita: `openExternal` (mailto:, zoommtg:… escaparían al SO), `display-capture` (y `setDisplayMediaRequestHandler → callback({})`), `media`, `geolocation`, `notifications`, `fullscreen`, `pointerLock`, `keyboardLock`, `local-network-access`, `loopback-network`, `fileSystem`, `window-management`, `payment-handler`, `storage-access`. `setDevicePermissionHandler→false`; `select-{hid,serial,usb,bluetooth}-*` cancelados; `select-client-certificate` → `preventDefault` + `callback()` sin certificado; `login` (auth HTTP) cancelado en v1; `certificate-error` sin handler que conceda. |
-| Red | `webRequest.onBeforeRequest`: solo `http(s):`, `ws(s):`, `data:`, `blob:`, `about:`. Cancela `file:`, `chrome:`, `devtools:`, `onyxcode:`, `*-artifact:` y el resto. Destino loopback o privado (127/8, ::1, 10/8, 172.16/12, 192.168/16, 169.254/16, `.local`) cancelado salvo que la página de primer nivel sea un origen local **aprobado por el usuario** (`localhost:PUERTO`). La CSP es la del sitio: la app no puede imponer una sin romperlos; lo «estricto» se garantiza por proceso, partición, permisos y red. |
-| Navegación | `setWindowOpenHandler → deny` (el enlace se abre en una pestaña nueva de la misma superficie si hubo gesto del usuario). Puerta por sitio para lo atribuido al agente (B.8). `will-prevent-unload → preventDefault`. |
-| Descargas | `will-download` en la partición (B.9). |
-| Crash | `render-process-gone` → estado `crashed` y «Recargar». |
-| CDP | `cdp.ts` solo envía métodos de `ALLOWED_CDP` (B.6). Nunca `Network.getCookies/getAllCookies/setCookie`, `Storage.*`, `Target.*`, `Browser.*`, `Fetch.*`, `DOM.setFileInputFiles`, `Page.addScriptToEvaluateOnNewDocument`, `Emulation.*`, `Security.*` ni `Page.setDownloadBehavior`. |
+| Capa       | Decisión                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Proceso    | Cada pestaña es un `WebContentsView` con `sandbox:true, contextIsolation:true, nodeIntegration:false, nodeIntegrationInSubFrames:false, webviewTag:false, devTools:false, spellcheck:false, safeDialogs:true, navigateOnDragDrop:false, backgroundThrottling:false, focusOnNavigation:false, autoplayPolicy:'document-user-activation-required'`. Renderer propio, aislado del de la app (otra partición, otro origen).                                                                                                                                                                                                                                                                                                              |
+| Preload    | **Ninguno.** Todo control viene de main (API de webContents, sesión, debugger). Un preload correría dentro del proceso de la página y solo añadiría superficie; además `guardInvoke` rechaza cualquier IPC de un emisor sin rol ni origen propio (`guard.ts:49-54`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Sesión     | `session.fromPartition('persist:onyxcode-web-code')` y `'persist:onyxcode-web-cowork'`: perfiles separados entre sí y NUNCA la `defaultSession` de `onyxcode://app`. Cookies cifradas (fuse `EnableCookieEncryption`). El esquema `onyxcode:` y `*-artifact:` no existen en esa sesión (`protocol.handle` es de la sesión por defecto y de la del artifact).                                                                                                                                                                                                                                                                                                                                                                         |
+| Identidad  | `setUserAgent` sin `Electron/…` ni `${APP_NAME}/…`; `wc.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Permisos   | Request/check handlers: **todo denegado** salvo `clipboard-sanitized-write` y solo en el frame principal. Denegados de forma explícita: `openExternal` (mailto:, zoommtg:… escaparían al SO), `display-capture` (y `setDisplayMediaRequestHandler → callback({})`), `media`, `geolocation`, `notifications`, `fullscreen`, `pointerLock`, `keyboardLock`, `local-network-access`, `loopback-network`, `fileSystem`, `window-management`, `payment-handler`, `storage-access`. `setDevicePermissionHandler→false`; `select-{hid,serial,usb,bluetooth}-*` cancelados; `select-client-certificate` → `preventDefault` + `callback()` sin certificado; `login` (auth HTTP) cancelado en v1; `certificate-error` sin handler que conceda. |
+| Red        | `webRequest.onBeforeRequest`: solo `http(s):`, `ws(s):`, `data:`, `blob:`, `about:`. Cancela `file:`, `chrome:`, `devtools:`, `onyxcode:`, `*-artifact:` y el resto. Destino loopback o privado (127/8, ::1, 10/8, 172.16/12, 192.168/16, 169.254/16, `.local`) cancelado salvo que la página de primer nivel sea un origen local **aprobado por el usuario** (`localhost:PUERTO`). La CSP es la del sitio: la app no puede imponer una sin romperlos; lo «estricto» se garantiza por proceso, partición, permisos y red.                                                                                                                                                                                                            |
+| Navegación | `setWindowOpenHandler → deny` (el enlace se abre en una pestaña nueva de la misma superficie si hubo gesto del usuario). Puerta por sitio para lo atribuido al agente (B.8). `will-prevent-unload → preventDefault`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Descargas  | `will-download` en la partición (B.9).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Crash      | `render-process-gone` → estado `crashed` y «Recargar».                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| CDP        | `cdp.ts` solo envía métodos de `ALLOWED_CDP` (B.6). Nunca `Network.getCookies/getAllCookies/setCookie`, `Storage.*`, `Target.*`, `Browser.*`, `Fetch.*`, `DOM.setFileInputFiles`, `Page.addScriptToEvaluateOnNewDocument`, `Emulation.*`, `Security.*` ni `Page.setDownloadBehavior`.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ### B.3 Cambio exacto en `web-security.ts` (el único que toca la seguridad de las ventanas de la app)
+
 ```ts
 import { isEmbeddedBrowserSession } from '../embedded-browser/session'
 function harden(wc: WebContents): void {
@@ -104,64 +113,133 @@ function harden(wc: WebContents): void {
   …resto sin cambios…
 }
 ```
+
 - `isEmbeddedBrowserSession(s)` = pertenencia a un `Set<Session>` que llena **solo** `session.ts` al crear las dos particiones. Compara la identidad del objeto, nunca cadenas.
 - Surface instala sus guardas justo después de `new WebContentsView()`, antes de cualquier `loadURL`, así que no queda ventana sin protección.
 - `installPermissionHandlers()` sigue actuando solo sobre `defaultSession`; las ventanas de la app no pierden nada. Lo verifica D1 (harness).
 
 ### B.4 Contrato IPC: nuevo `src/shared/ipc-browser.ts` (familia propia, como `ipc-extras`) → `window.api.browser`
+
 ```ts
 import type { BrowserSite } from './ipc-cowork'
 export type BrowserProduct = 'code' | 'cowork'
 export type BrowserOwner = { kind: 'code'; directory: string } | { kind: 'cowork'; folder: string }
-export interface BrowserRect { x: number; y: number; width: number; height: number }
-export interface BrowserTab { id: string; url: string; title: string; loading: boolean; canGoBack: boolean; canGoForward: boolean;
-  secure: boolean | null; openedBy: 'user' | 'agent'; agentSelected: boolean; crashed?: boolean }
-export interface BrowserOwnerState { owner: BrowserOwner; tabs: BrowserTab[]; activeTabId: string | null;
-  control: 'idle' | 'agent' | 'paused'; agentSessionId: string | null; agentLabel: string | null;
-  userActive: boolean; picking: boolean; hostedIn: 'panel' | 'popout' | 'none'; disabledReason?: string }
-export interface BrowserApprovalRequest { id: string; owner: BrowserOwner; sessionId: string;
-  kind: 'site' | 'local-origin' | 'sensitive' | 'download'; url: string; host: string; site: string;
-  summary?: string; fileName?: string; savePath?: string; createdAt: number }
+export interface BrowserRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+export interface BrowserTab {
+  id: string
+  url: string
+  title: string
+  loading: boolean
+  canGoBack: boolean
+  canGoForward: boolean
+  secure: boolean | null
+  openedBy: 'user' | 'agent'
+  agentSelected: boolean
+  crashed?: boolean
+}
+export interface BrowserOwnerState {
+  owner: BrowserOwner
+  tabs: BrowserTab[]
+  activeTabId: string | null
+  control: 'idle' | 'agent' | 'paused'
+  agentSessionId: string | null
+  agentLabel: string | null
+  userActive: boolean
+  picking: boolean
+  hostedIn: 'panel' | 'popout' | 'none'
+  disabledReason?: string
+}
+export interface BrowserApprovalRequest {
+  id: string
+  owner: BrowserOwner
+  sessionId: string
+  kind: 'site' | 'local-origin' | 'sensitive' | 'download'
+  url: string
+  host: string
+  site: string
+  summary?: string
+  fileName?: string
+  savePath?: string
+  createdAt: number
+}
 export type BrowserDecision = 'task' | 'always' | 'deny' | 'allow'
-export interface PickedElement { tag: string; role?: string; name?: string; text?: string; selector: string; html: string; rect: BrowserRect; url: string }
-export interface DevServerCandidate { url: string; label: string; source: 'port' | 'script'; running: boolean; script?: string }
-export interface BrowserPrefs { agentEnabled: { code: boolean; cowork: boolean } }
-export interface BrowserSitesState { prefs: BrowserPrefs; sites: Record<BrowserProduct, BrowserSite[]>;
-  denied: Record<BrowserProduct, string[]>; localOrigins: string[]; policyDisabled: boolean }
-export interface BrowserCapture { url: string; title: string; dataUrl: string /* image/jpeg */; width: number; height: number }
-export interface BrowserToChat { owner: BrowserOwner; text: string; image?: { name: string; mime: 'image/jpeg'; dataUrl: string } }
+export interface PickedElement {
+  tag: string
+  role?: string
+  name?: string
+  text?: string
+  selector: string
+  html: string
+  rect: BrowserRect
+  url: string
+}
+export interface DevServerCandidate {
+  url: string
+  label: string
+  source: 'port' | 'script'
+  running: boolean
+  script?: string
+}
+export interface BrowserPrefs {
+  agentEnabled: { code: boolean; cowork: boolean }
+}
+export interface BrowserSitesState {
+  prefs: BrowserPrefs
+  sites: Record<BrowserProduct, BrowserSite[]>
+  denied: Record<BrowserProduct, string[]>
+  localOrigins: string[]
+  policyDisabled: boolean
+}
+export interface BrowserCapture {
+  url: string
+  title: string
+  dataUrl: string /* image/jpeg */
+  width: number
+  height: number
+}
+export interface BrowserToChat {
+  owner: BrowserOwner
+  text: string
+  image?: { name: string; mime: 'image/jpeg'; dataUrl: string }
+}
 ```
 
 **Canales invoke** (`BROWSER_INVOKE_CHANNELS`):
 
-| Canal | req → res |
-|---|---|
-| `browser:state` | `{owner}` → `BrowserOwnerState` |
-| `browser:attach` | `{owner, rect, visible}` → `void` |
-| `browser:detach` | `{owner}` → `void` |
-| `browser:newTab` | `{owner, input?}` → `BrowserOwnerState` |
-| `browser:closeTab` | `{owner, tabId}` → `BrowserOwnerState` |
-| `browser:selectTab` | `{owner, tabId}` → `BrowserOwnerState` |
-| `browser:navigate` | `{owner, tabId, input}` → `BrowserOwnerState` |
-| `browser:history` | `{owner, tabId, action:'back'\|'forward'\|'reload'\|'stop'}` → `void` |
-| `browser:agent` | `{owner, action:'pause'\|'resume'\|'stop'}` → `BrowserOwnerState` |
-| `browser:pick` | `{owner, tabId, on}` → `void` |
-| `browser:capture` | `{owner, tabId}` → `BrowserCapture` |
-| `browser:toChat` | `BrowserToChat` → `void` |
-| `browser:respond` | `{id, decision}` → `void` |
-| `browser:popOut` | `{owner, on}` → `BrowserOwnerState` |
-| `browser:openExternal` | `{owner, tabId}` → `void` |
-| `browser:devServers` | `{directory}` → `DevServerCandidate[]` |
-| `browser:sites:get` | `void` → `BrowserSitesState` |
-| `browser:sites:setPrefs` | `{agentEnabled?:{code?, cowork?}}` → `BrowserSitesState` |
-| `browser:sites:remove` | `{product, site}` → `BrowserSitesState` |
-| `browser:sites:undeny` | `{product, site}` → `BrowserSitesState` |
-| `browser:sites:removeLocal` | `{origin}` → `BrowserSitesState` |
-| `browser:clearData` | `{product}` → `BrowserSitesState` |
+| Canal                       | req → res                                                             |
+| --------------------------- | --------------------------------------------------------------------- |
+| `browser:state`             | `{owner}` → `BrowserOwnerState`                                       |
+| `browser:attach`            | `{owner, rect, visible}` → `void`                                     |
+| `browser:detach`            | `{owner}` → `void`                                                    |
+| `browser:newTab`            | `{owner, input?}` → `BrowserOwnerState`                               |
+| `browser:closeTab`          | `{owner, tabId}` → `BrowserOwnerState`                                |
+| `browser:selectTab`         | `{owner, tabId}` → `BrowserOwnerState`                                |
+| `browser:navigate`          | `{owner, tabId, input}` → `BrowserOwnerState`                         |
+| `browser:history`           | `{owner, tabId, action:'back'\|'forward'\|'reload'\|'stop'}` → `void` |
+| `browser:agent`             | `{owner, action:'pause'\|'resume'\|'stop'}` → `BrowserOwnerState`     |
+| `browser:pick`              | `{owner, tabId, on}` → `void`                                         |
+| `browser:capture`           | `{owner, tabId}` → `BrowserCapture`                                   |
+| `browser:toChat`            | `BrowserToChat` → `void`                                              |
+| `browser:respond`           | `{id, decision}` → `void`                                             |
+| `browser:popOut`            | `{owner, on}` → `BrowserOwnerState`                                   |
+| `browser:openExternal`      | `{owner, tabId}` → `void`                                             |
+| `browser:devServers`        | `{directory}` → `DevServerCandidate[]`                                |
+| `browser:sites:get`         | `void` → `BrowserSitesState`                                          |
+| `browser:sites:setPrefs`    | `{agentEnabled?:{code?, cowork?}}` → `BrowserSitesState`              |
+| `browser:sites:remove`      | `{product, site}` → `BrowserSitesState`                               |
+| `browser:sites:undeny`      | `{product, site}` → `BrowserSitesState`                               |
+| `browser:sites:removeLocal` | `{origin}` → `BrowserSitesState`                                      |
+| `browser:clearData`         | `{product}` → `BrowserSitesState`                                     |
 
 **Eventos** (`BROWSER_EVENT_CHANNELS`): `browser:state` (`BrowserOwnerState`), `browser:approval` (`BrowserApprovalRequest`), `browser:approvalDone` (`{id}`), `browser:picked` (`{owner, tabId, element}`), `browser:reveal` (`{owner, tabId, reason:'agent'|'approval'}`), `browser:shortcut` (`{owner, key:'focusUrl'|'newTab'|'closeTab'|'reload'|'back'|'forward'|'panel1'|'panel2'|'panel3'|'panel4'}`), `browser:toChat` (`BrowserToChat`), `browser:sites` (`BrowserSitesState`).
 
 **Esquemas en `schemas.ts`:**
+
 - `owner = tagged('kind', {code: obj({kind: literal('code'), directory: absPath}), cowork: obj({kind: literal('cowork'), folder: absPath})})`.
 - `rect`: cuatro `num({min:-20000, max:20000})`.
 - `tabId = str({pattern:/^t[a-f0-9]{8,32}$/})`; `input = str({max:2048})`; `id = hexId`; `decision = literal('task','always','deny','allow')`; `product = literal('code','cowork')`; `site` (el existente).
@@ -169,64 +247,86 @@ export interface BrowserToChat { owner: BrowserOwner; text: string; image?: { na
 - `toChat.text` ≤ 20 000; `image.dataUrl` ≤ 8 MB con `pattern:/^data:image\/jpeg;base64,/`.
 
 **Roles:**
+
 - `WindowRole` añade `'browserHost'` (ventana «Navegador» aparte).
 - `CHANNEL_ROLES.browserHost` = todos los `browser:*` **salvo** `browser:sites:*`, `browser:clearData` y `browser:devServers`.
 - **`pill` y `assist` no se tocan.**
 
 ### B.5 API interna de main: `src/main/embedded-browser/api.ts` (D1 la publica primero y D2 programa contra ella)
+
 ```ts
-export interface AgentActor { sessionId: string; product: BrowserProduct; owner: BrowserOwner; sandboxed: boolean; label?: string }
-export interface AgentLease { tabId: string; release(): void }
-export class BrowserBusyError extends Error { reason: 'paused' | 'userActive' | 'otherTask' | 'disabled' | 'stopped' }
-export interface CdpSession { send<T = unknown>(method: AllowedCdpMethod, params?: object, timeoutMs?: number): Promise<T>;
-  on(event: string, fn: (params: any) => void): () => void; isolatedContext(): Promise<number> }
+export interface AgentActor {
+  sessionId: string
+  product: BrowserProduct
+  owner: BrowserOwner
+  sandboxed: boolean
+  label?: string
+}
+export interface AgentLease {
+  tabId: string
+  release(): void
+}
+export class BrowserBusyError extends Error {
+  reason: 'paused' | 'userActive' | 'otherTask' | 'disabled' | 'stopped'
+}
+export interface CdpSession {
+  send<T = unknown>(method: AllowedCdpMethod, params?: object, timeoutMs?: number): Promise<T>
+  on(event: string, fn: (params: any) => void): () => void
+  isolatedContext(): Promise<number>
+}
 export interface EmbeddedBrowserApi {
   init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection(): Promise<OpencodeConnection> }): void
   mainConnection(): Promise<OpencodeConnection>
   listTabs(owner: BrowserOwner): BrowserTab[]
   agentTabId(owner: BrowserOwner): string | null
   selectAgentTab(actor: AgentActor, tabId: string): void
-  closeTabAsAgent(actor: AgentActor, tabId: string): void              // solo pestañas openedBy:'agent'
+  closeTabAsAgent(actor: AgentActor, tabId: string): void // solo pestañas openedBy:'agent'
   openTabAsAgent(actor: AgentActor, url: string, timeoutMs: number): Promise<string /* tabId */>
   navigateAsAgent(actor: AgentActor, tabId: string, url: string, timeoutMs: number): Promise<{ url: string; title: string }>
-  historyAsAgent(actor: AgentActor, tabId: string, a: 'back' | 'forward' | 'reload', timeoutMs: number): Promise<{ url: string; title: string }>
-  beginAgentAction(actor: AgentActor, tabId: string, kind: 'read' | 'input'): AgentLease   // lanza BrowserBusyError
-  verifyAfterAction(actor: AgentActor, tabId: string): Promise<string | null>                 // respaldo: host no permitido → about:blank/atrás + texto de error
+  historyAsAgent(
+    actor: AgentActor,
+    tabId: string,
+    a: 'back' | 'forward' | 'reload',
+    timeoutMs: number
+  ): Promise<{ url: string; title: string }>
+  beginAgentAction(actor: AgentActor, tabId: string, kind: 'read' | 'input'): AgentLease // lanza BrowserBusyError
+  verifyAfterAction(actor: AgentActor, tabId: string): Promise<string | null> // respaldo: host no permitido → about:blank/atrás + texto de error
   confirmSensitive(actor: AgentActor, tabId: string, summary: string): Promise<boolean>
   cdp(tabId: string): Promise<CdpSession>
   webContentsOf(tabId: string): WebContents | null
   capture(tabId: string, maxLongSide: number): Promise<{ jpeg: Buffer; width: number; height: number }>
-  agentEnabled(product: BrowserProduct): boolean                                              // prefs && !policy.disableBrowser
+  agentEnabled(product: BrowserProduct): boolean // prefs && !policy.disableBrowser
 }
-export declare const embeddedBrowser: EmbeddedBrowserApi   // implementado en service.ts
-export const ALLOWED_CDP: readonly string[]                 // ver B.6
+export declare const embeddedBrowser: EmbeddedBrowserApi // implementado en service.ts
+export const ALLOWED_CDP: readonly string[] // ver B.6
 ```
 
 ### B.6 El agente: MCP `browser` (herramientas `browser_*`)
 
 **Comunes a Code y Cowork (17):**
 
-| Herramienta | Argumentos | Notas |
-|---|---|---|
-| `list_pages` | `{}` | Lista `pageId: título (url)` y marca la seleccionada |
-| `select_page` | `{pageId:int}` | |
-| `new_page` | `{url ≤2048}` | Pasa por la puerta de sitio |
-| `close_page` | `{pageId}` | Solo pestañas que abrió el agente |
-| `navigate_page` | `{type?:'url'\|'back'\|'forward'\|'reload', url?, timeout? ≤30000}` | Sin `initScript` |
-| `take_snapshot` | `{verbose?:bool}` | Sin `filePath`; `AXTree` con uids `s<seq>_<n>` y tope de 1500 nodos/60 KB |
-| `take_screenshot` | `{fullPage?:bool, uid?}` | JPEG, lado largo ≤1366 y alto ≤4000 |
-| `click` | `{uid, dblClick?}` | |
-| `hover` | `{uid}` | |
-| `fill` | `{uid, value ≤5000}` | |
-| `fill_form` | `{elements:[{uid,value}] ≤20}` | |
-| `type_text` | `{text ≤5000, submitKey?}` | |
-| `press_key` | `{key ≤60}` | |
-| `scroll` | `{direction:'up'\|'down'\|'left'\|'right', amount? ≤5000, uid?}` | |
-| `wait_for` | `{text:string[1..10], timeout? ≤30000}` | |
-| `handle_dialog` | `{action:'accept'\|'dismiss', promptText?}` | |
-| `get_page_text` | `{maxChars? ≤50000}` | `innerText` en un mundo aislado |
+| Herramienta       | Argumentos                                                          | Notas                                                                     |
+| ----------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `list_pages`      | `{}`                                                                | Lista `pageId: título (url)` y marca la seleccionada                      |
+| `select_page`     | `{pageId:int}`                                                      |                                                                           |
+| `new_page`        | `{url ≤2048}`                                                       | Pasa por la puerta de sitio                                               |
+| `close_page`      | `{pageId}`                                                          | Solo pestañas que abrió el agente                                         |
+| `navigate_page`   | `{type?:'url'\|'back'\|'forward'\|'reload', url?, timeout? ≤30000}` | Sin `initScript`                                                          |
+| `take_snapshot`   | `{verbose?:bool}`                                                   | Sin `filePath`; `AXTree` con uids `s<seq>_<n>` y tope de 1500 nodos/60 KB |
+| `take_screenshot` | `{fullPage?:bool, uid?}`                                            | JPEG, lado largo ≤1366 y alto ≤4000                                       |
+| `click`           | `{uid, dblClick?}`                                                  |                                                                           |
+| `hover`           | `{uid}`                                                             |                                                                           |
+| `fill`            | `{uid, value ≤5000}`                                                |                                                                           |
+| `fill_form`       | `{elements:[{uid,value}] ≤20}`                                      |                                                                           |
+| `type_text`       | `{text ≤5000, submitKey?}`                                          |                                                                           |
+| `press_key`       | `{key ≤60}`                                                         |                                                                           |
+| `scroll`          | `{direction:'up'\|'down'\|'left'\|'right', amount? ≤5000, uid?}`    |                                                                           |
+| `wait_for`        | `{text:string[1..10], timeout? ≤30000}`                             |                                                                           |
+| `handle_dialog`   | `{action:'accept'\|'dismiss', promptText?}`                         |                                                                           |
+| `get_page_text`   | `{maxChars? ≤50000}`                                                | `innerText` en un mundo aislado                                           |
 
 **Solo Code (+4):**
+
 - `list_console_messages {types?, pageSize?, pageIdx?}`.
 - `list_network_requests {resourceTypes?, pageSize?, pageIdx?}`.
 - `get_network_request {reqid:int}`: cabeceras y cuerpo de texto ≤100 KB.
@@ -235,6 +335,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 **Nunca:** subir archivos, emular, performance/lighthouse, extensiones, `filePath`, `initScript` ni scripts en Cowork.
 
 **Guardas del servidor, en este orden:**
+
 1. **Actor.** `onyxcode_session` es obligatorio: sin él, fallo cerrado («No se pudo identificar la tarea»).
    - El token del cliente determina producto, carpeta y sandbox.
    - En Code, la carpeta se obtiene con `GET /session/:id` al sidecar vía `mainConnection()`, con caché.
@@ -255,6 +356,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 9. **Ritmo.** Como mucho una acción de entrada cada 150 ms y 30 s por llamada.
 
 **`ALLOWED_CDP`:**
+
 - `Page.enable|captureScreenshot|getLayoutMetrics|handleJavaScriptDialog|createIsolatedWorld|getFrameTree`
 - `DOM.enable|getDocument|describeNode|resolveNode|getContentQuads|getBoxModel|scrollIntoViewIfNeeded|getNodeForLocation|focus`
 - `Accessibility.enable|getFullAXTree`
@@ -264,12 +366,14 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - `Log.enable`, `Network.enable|getResponseBody` (solo Code).
 
 **Transporte:**
+
 - `http://127.0.0.1:<puerto fijo>/mcp`, un Bearer de 32 bytes **por servidor de OpenCode**: `clientFor({product, folder?, sandboxed})`, con registro token → cliente.
 - Cualquier `Origin` → 403. También bloquea a las propias páginas embebidas, que además tienen `loopback-network` denegado.
 - Config de OpenCode: `{type:'remote', url, headers:{Authorization}, oauth:false, enabled:true, timeout:<igual que computer>}`. Las esperas de aprobación bloquean la llamada, como ya hace `request_access` (probado en los Lotes A y B), con un tope de 10 min → denegado.
 - El servidor `initialize` devuelve `instructions` (resumen de uso en español). Las descripciones de cada herramienta son autosuficientes: son la vía garantizada para Code, que no tiene `.md` propio.
 
 ### B.7 Cableado con OpenCode
+
 - **Plugin nuevo `onyxcode-session.js`** (en `opencode-config.ts`, activo en TODOS los servidores): en `tool.execute.before`, si `input.tool` empieza por `browser_`, hace `output.args.onyxcode_session = input.sessionID` mutando el objeto en sitio, igual que plan-gate (`opencode-config.ts:142-148`). Añadir `onyxcode_session` a lo que ya vigila `looksLikeInjection` no hace falta: ya está.
 - **Code (sidecar):**
   - `server.ts` pasa a hacer `await browserMcp.configFor({product:'code'})` antes del `spawn`, que se pasa a `buildInlineConfig({ browserMcp })` y produce `mcp.browser`.
@@ -288,6 +392,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
   - Code: nada más que las descripciones y `instructions` del MCP.
 
 ### B.8 Aprobaciones por sitio (se suavizan, no se eliminan)
+
 - **Qué se pregunta:** solo las navegaciones de primer nivel **atribuidas al agente** hacia un sitio (eTLD+1, con `sites.ts` del Lote C reutilizado) que no esté en:
   - «Permitir siempre» del producto;
   - «Permitido en esta tarea» (en memoria, por `sessionId + sitio`);
@@ -312,6 +417,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - **Sin anfitrión visible** (ventana minimizada, panel cerrado, sin ventana aparte): `dialog.showMessageBox` nativo como en el Lote C (URL literal, cancelar = No) más una notificación. Gana la primera respuesta, la de la tarjeta o la del diálogo.
 
 ### B.9 Interacción humana y control compartido
+
 - El usuario hace clic, scroll, teclea, usa el IME y copia/pega directamente, porque es una vista nativa.
 - Menú contextual propio de main: Atrás/Adelante/Recargar/Copiar/Pegar/Copiar enlace/«Abrir en el navegador del sistema» (solo http(s)). Sin «Inspeccionar».
 - Atajos reservados con `before-input-event` sobre el webContents de la pestaña → evento `browser:shortcut`: ⌘L, ⌘T, ⌘W, ⌘R, ⌘[, ⌘] y ⌘1–4 (paneles de Code). Esc no se intercepta. ⌘⇧Esc sigue siendo global.
@@ -329,7 +435,9 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - **Diálogos JS:** `handle_dialog` según G4. Si Electron los muestra nativos aunque `Page.enable` esté activo, el humano los responde y la herramienta lo informa.
 
 ### B.10 Interfaz
+
 **Componentes compartidos en `features/browser/`** (solo usan `window.api.browser`):
+
 - `BrowserPanel({owner, product, visible, onAddToChat})`:
   - pestañas con título de la página, ✕ y «+»;
   - ← → ⟳/✕ y barra de URL editable (placeholder «Escribe una URL»), con el host resaltado e indicador «Conexión segura»/«No es seguro»; si no es una URL, busca en Google (pregunta 5);
@@ -339,6 +447,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - Registro de exploración (no hace falta en la ventana aparte). En la primera ejecución, un aviso: «Estás navegando dentro de {APP_NAME}. Nunca te pediremos contraseñas en esta zona».
 
 **Code:**
+
 - `RightPanel` añade `'browser'`: `PANEL_META {id:'browser', label:'Navegador', key:'4', icon:<Globe/>}` y ⌘4.
 - La etiqueta de la pestaña del panel muestra el título de la página activa, truncado.
 - Se monta la primera vez que se abre y luego queda oculto, como la Terminal. Al activarlo, el ancho pasa a ser al menos 640.
@@ -349,18 +458,21 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - «Añadir al chat» y «elemento elegido» → `composer-inbox.ts` → el Composer inserta el texto «Página: {título} — {url}» o «Elemento: …» y adjunta la imagen (`Attachment` con `url` data:, formato que ya usa `Composer.tsx:36-47`).
 
 **Cowork:**
+
 - La cabecera del `aside` pasa a tener pestañas **«Progreso | Navegador»**.
 - Con Navegador, el `aside` se puede redimensionar (560 por defecto, `cowork.browserWidth`).
 - Owner = `{kind:'cowork', folder}` de la carpeta visible. `browser:reveal` → `setPanelOpen(true)` y pestaña Navegador.
 - «Añadir al chat» → inserta el texto en el compositor (v1 sin imagen).
 
 **Ventana aparte:**
+
 - `BrowserWindow` «{APP_NAME} · Navegador», con preload `browser-host`, rol `browserHost` y página `onyxcode://app/browser/index.html`, que solo renderiza `BrowserPanel`.
 - Se abre al pedirlo o **automáticamente** con `showInactive()` cuando el agente actúa y la ventana principal está minimizada u oculta (Control total).
 - La vista se mueve a esta ventana; el panel principal muestra «Abierto en ventana aparte · Traer aquí».
 - «Añadir al chat» desde aquí → `browser:toChat` → main lo reenvía a la ventana principal.
 
 **Ajustes → Navegador** (`BrowserSection` reescrita):
+
 - «Navegador integrado»:
   - «Permitir que el agente use el navegador» en Code y en Cowork;
   - sitios «Permitir siempre» y denegados por producto;
@@ -369,6 +481,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 - «Chrome aparte (avanzado, solo {COWORK_TERMS.fullControlShort})»: los controles del Lote C sin cambios de lógica.
 
 ### B.11 Destino del Lote C: se conserva como motor alternativo, sin borrar código
+
 - **Motivos:**
   1. Muchos inicios de sesión (Google, Microsoft) rechazan navegadores embebidos («este navegador puede no ser seguro»).
   2. Algunos usuarios quieren un Chrome real aparte.
@@ -383,6 +496,7 @@ export const ALLOWED_CDP: readonly string[]                 // ver B.6
 ## C. Paquetes
 
 Reglas comunes:
+
 - No renombrar «OnyxCode». Texto en español; el nombre solo desde `brand.ts` y el glosario desde `cowork-glossary.ts`.
 - Sin commits. Harnesses solo en el scratchpad propio (`$SP`).
 - `npm run typecheck` limpio en lo propio.
@@ -390,6 +504,7 @@ Reglas comunes:
 - **Solo D5 ejecuta `npx electron-vite build`.** Nadie ejecuta `npm run dev`.
 
 **Orden:** D0 primero, solo y como puerta. Después D1, D2, D3 y D4 en paralelo:
+
 - D1 publica en sus primeros minutos `src/shared/ipc-browser.ts` y `src/main/embedded-browser/api.ts`.
 - D3 publica el esqueleto exportado de `features/browser/index.ts` (`BrowserPanel` y sus props).
 - Los demás esperan a que existan esos archivos antes de ejecutar typecheck.
@@ -397,13 +512,16 @@ Reglas comunes:
 Al final D5, solo.
 
 ### D0: Prueba de viabilidad en Electron real (ola 0, secuencial)
+
 **Posee:** nada del repo; todo en `$SP`.
 
 **Pasos:**
+
 - `main.ts` propio compilado con `npx esbuild … --platform=node --format=cjs --external:electron` y lanzado con `npx electron $SP/d0/main.js`.
 - Servidor HTTP de prueba en 127.0.0.1 con: botón que cambia texto, input, input de contraseña, `<select>`, enlace a `/p2`, enlace a otro puerto, `window.open`, descarga, `alert`, y un `fetch` a otro puerto loopback.
 
 **Puertas (el informe pone PASA/FALLA y el fallback aplicado):**
+
 - **G1.** Un `WebContentsView` dentro de un `BrowserWindow` visible con debugger `attach('1.3')`: `Accessibility.getFullAXTree`, `DOM.getContentQuads` más `Input.dispatchMouseEvent` (el texto cambia), `Input.insertText` y `Page.captureScreenshot`. **Si falla, se aborta el lote.**
 - **G2.** Lo mismo con la vista NO añadida a ninguna ventana y `backgroundThrottling:false`, más `capturePage({stayHidden:true})`. Si falla: el agente siempre aloja la pestaña en el panel o en la ventana aparte antes de actuar.
 - **G3.** ¿La entrada de CDP dispara `input-event`? ¿Y `sendInputEvent`? Decide si la atribución usa una ventana de tiempo o el evento.
@@ -425,11 +543,14 @@ Al final D5, solo.
 5. **Riesgo no confirmado, sin bloquear:** en una corrida con varios procesos Electron de prueba lanzados sin pausa, una puerta dio timeout una vez sin causa clara (posible contención de recursos, no de la API); en 2 reintentos aislados pasó limpio. D1/D2 deben limpiar siempre vista+debugger en cada ruta de error antes de crear la siguiente, y sus propios harnesses deben usar timeouts generosos si encadenan varias pruebas de Electron en la misma corrida.
 
 ### D1: Contratos, superficie aislada, IPC y endurecimiento (ola 1)
+
 **Posee:**
+
 - Nuevos: `src/shared/ipc-browser.ts`; `src/main/ipc/browser-handlers.ts`; `src/preload/{browser-api.ts,browser-host.ts}`; `src/main/embedded-browser/{api.ts,session.ts,cdp.ts,surface.ts,service.ts,approvals.ts,downloads.ts,store.ts,popout.ts,dev-servers.ts}`.
 - Existentes: `src/shared/ipc.ts` (solo `WindowApi.browser`); `src/main/ipc/schemas.ts`; `src/preload/index.ts`; `src/main/extras/windows.ts` (solo `PreloadName` más `'browser-host'`); `electron.vite.config.ts` (preload `browser-host`, renderer `browser: src/renderer/browser/index.html`); `src/main/security/web-security.ts`; `src/main/index.ts`.
 
 **Pasos:**
+
 1. Publicar primero `ipc-browser.ts` (B.4) y `api.ts` (B.5, más `ALLOWED_CDP`).
 2. Esquemas y roles (B.4), `browser-api.ts` (según el patrón de `extras-api.ts`), `index.ts` del preload y `browser-host.ts` (solo `window.api.browser`).
 3. `session.ts` (B.2 completa) y la exención de `web-security.ts` (B.3).
@@ -442,6 +563,7 @@ Al final D5, solo.
 10. `browser-handlers.ts` y cableado en `index.ts`: `embeddedBrowser.init({getMainWindow, getMainConnection: () => server.start()})`, registrar los handlers y liberar todo en `before-quit`.
 
 **Aceptación:**
+
 - `grep -rn "remote-debugging" src` vacío.
 - `grep -c "webviewTag: false"` sin cambios en los archivos existentes.
 - `git diff --stat src/preload/pill.ts` vacío.
@@ -449,6 +571,7 @@ Al final D5, solo.
 - `missingSchemas()` vacío.
 
 **Verificación:** harness Electron (`esbuild --alias:@shared=./src/shared --external:electron`) que:
+
 1. llama a `installWebSecurity()` con `shell.openExternal` sustituido por un registro;
 2. crea una pestaña y navega como usuario a la página de prueba → carga y `openExternal` NO se llama;
 3. una `BrowserWindow` en la sesión por defecto que navega a `https://example.com` → sigue bloqueada y `openExternal` SÍ se llama;
@@ -460,11 +583,14 @@ Al final D5, solo.
 Typecheck.
 
 ### D2: Herramientas del agente, MCP en main y cableado con OpenCode (ola 1)
+
 **Posee:**
+
 - Nuevos: `src/main/embedded-browser/{snapshot.ts,input.ts,keys.ts,tools.ts,mcp-server.ts,owner.ts}`.
 - Existentes: `src/main/opencode/{config.ts,server.ts}`; `src/main/cowork/{manager.ts,sandbox.ts,opencode-config.ts}`; `resources/opencode/agents/{computer.md,cowork.md}`.
 
 **Pasos:**
+
 1. `mcp-server.ts`: HTTP en main con un puerto fijo reservado una vez, `clientFor`/`configFor`, JSON-RPC copiado de `computer/mcp-server.ts:1600-1779`, 401/403 e `instructions`.
 2. `owner.ts` (B.6.1); `snapshot.ts` (AXTree → texto con uids que caducan al navegar); `input.ts` (B.6.4–6); `keys.ts` (tabla de teclas; bloquea `Meta+Q`/`Meta+W`).
 3. `tools.ts`: las 17 + 4 herramientas con las guardas de B.6, siempre a través de la API de D1.
@@ -473,10 +599,12 @@ Typecheck.
 6. Los prompts de B.7.
 
 **Aceptación:**
+
 - `grep -n "setFileInputFiles\|getAllCookies\|remote-debugging" src/main/embedded-browser` vacío.
 - `tools/list`: 17 herramientas en Cowork y 21 en Code.
 
 **Verificación:** harness Electron con la API real de D1 y la página de prueba. Llamadas HTTP JSON-RPC con `onyxcode_session` puesto a mano; las aprobaciones se resuelven desde el harness escuchando `browser:approval`.
+
 - `initialize` y `tools/list`.
 - Sin token → 401; con `Origin` → 403.
 - `navigate_page` al origen de prueba → tarjeta `local-origin` → `task` → ok.
@@ -492,23 +620,29 @@ Typecheck.
 Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado contiene `startsWith('browser_')`, y un typecheck.
 
 ### D3: UI compartida del navegador y Code (ola 1)
+
 **Posee:**
+
 - Nuevos: `src/renderer/src/features/browser/**` (`BrowserPanel.tsx`, `TabStrip.tsx`, `UrlBar.tsx`, `AgentBar.tsx`, `Cards.tsx`, `DevServerHint.tsx`, `useNativeViewport.ts`, `store.ts`, `bridge.ts`, `index.ts`) y `features/code/impl/composer-inbox.ts`.
 - Existentes: `features/code/impl/{CodeWorkspace.tsx,types.ts,store.ts,Composer.tsx}`.
 
 **Pasos:**
+
 1. Publicar primero `index.ts` con las props de B.10.
 2. Componentes (B.8 tarjetas con armado a 700 ms; B.9 barra del agente; B.10).
 3. `RightPanel`, `PANEL_META`, ⌘4, `initialPanel` y el ancho mínimo; `reveal`; bandeja del compositor.
 4. «Seleccionar elemento», «Añadir al chat» y detección del dev server (con regex sobre `pty:data`).
 
 **Aceptación:**
+
 - Typecheck web.
 - `grep -n "window.api.browser" features/browser` presente; `grep -n "window.api.\(code\|cowork\)" features/browser` vacío.
 - Sin nombre de producto literal.
 
 ### D4: Cowork, Ajustes, ventana aparte y glosario (ola 1)
+
 **Posee:**
+
 - `features/cowork/impl/{CoworkWorkspace.tsx,CoworkComposer.tsx}`.
 - `features/settings/impl/BrowserSection.tsx`.
 - Nuevos `src/renderer/browser/{index.html,main.tsx}`.
@@ -517,11 +651,14 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
 **Pasos:** pestañas «Progreso | Navegador» y ancho del `aside`, `reveal` y el texto hacia el compositor; `BrowserSection` (B.10 y B.11); entrada de la ventana aparte (CSP `<meta>` igual que `quick/index.html` e importando `globals.css`).
 
 **Aceptación:**
+
 - Typecheck.
 - `grep -rn "Acceso total\|acceso completo\|Carpetas autorizadas" src/renderer` vacío.
 
 ### D5: Integración, documentación y build (ola 2, secuencial, al final)
+
 **Posee:**
+
 - Documentación: `AUDIT.md` (§11), `docs/SEGURIDAD.md` (fila del §1 y nuevo «3 quater»), nuevo `docs/LOTE-D.md`.
 - Correcciones de integración en cualquier archivo, solo porque trabaja después de todos los demás.
 
@@ -532,12 +669,14 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
 ## D. Comprobaciones finales y prueba manual
 
 **Orquestador:**
+
 - Typecheck y el build de D5.
 - Greps: sin `remote-debugging`; `webviewTag: false` intacto; `pill.ts` sin diff; exención de `web-security.ts` solo por `isEmbeddedBrowserSession`; `ALLOWED_CDP` sin cookies, Target ni setFileInputFiles.
 - `shasum resources/computer-use/helper.swift resources/computer-use/bin/cu-helper` sin cambios.
 - Revisar los informes de D0 a D2.
 
 **Prueba manual del usuario** (`npm run dev -- --watch`):
+
 1. **Code, uso humano.** ⌘4 → «Escribe una URL» → example.com.
    - Clic, scroll, teclear, copiar/pegar y menú contextual funcionan.
    - Redimensiona el panel: la página se ajusta.
@@ -567,6 +706,7 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
 ## E. Riesgos y preguntas abiertas
 
 **Riesgos**
+
 1. **Exploit del renderer de Chromium** en una página arbitraria. Es la nueva clase principal de riesgo, y Electron publica los parches de Chrome con retraso.
    - Mitigación: renderer con sandbox, aislamiento de sitios, sin preload ni Node, partición propia y ningún IPC privilegiado alcanzable.
    - Queda como obligación mantener Electron al día (documentarlo en DISTRIBUCION/SEGURIDAD).
@@ -592,6 +732,7 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
 13. **Deriva de versiones de OpenCode:** la inyección de `onyxcode_session` y la semántica de los MCP `remote` deben reverificarse al actualizar.
 
 **Decisiones del usuario (2026-09-28)**
+
 1. Anfitrión: en línea (pestaña en el panel) + ventana «Navegador» propia cuando la principal está minimizada o se pide — tal como proponía el plan.
 2. **Navegador APAGADO por defecto**, en Code y en Cowork (igual criterio que el Lote C: se activa a mano en Ajustes).
 3. Lote C («Chrome aparte») se conserva como opción avanzada, sin borrar código — tal como proponía el plan.
@@ -599,6 +740,7 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
 5. Perfiles separados Code/Cowork y Google como buscador por defecto en la barra — tal como proponía el plan.
 
 **Preguntas para el usuario** (como mucho 5) — ya resueltas arriba; quedan solo como registro del razonamiento original:
+
 1. **«Dentro de la ventana»:** el diseño lo hace en línea (pestaña del panel en Code y en el `aside` de Cowork) y, además, abre una **ventana «Navegador» propia de la app** cuando la principal está minimizada (Control total) o si la pides. ¿Te vale, o quieres solo en línea, aunque en Control total no se vería mientras está minimizada?
 2. **Valor por defecto:** ¿el agente puede usar el navegador **activado por defecto** en Code y Cowork, con permiso por sitio? El Lote C lo tenía apagado.
 3. **Lote C:** ¿conservar «Chrome aparte» como opción avanzada solo para Control total (recomendado: Google y Microsoft suelen rechazar navegadores embebidos) o eliminarlo?
@@ -606,6 +748,7 @@ Además, un esbuild de `opencode-config.ts` que compruebe que el plugin generado
 5. **Perfiles y buscador:** ¿perfiles separados Code/Cowork (recomendado) o uno compartido? ¿Google o DuckDuckGo en la barra de URL?
 
 ### Archivos críticos para la implementación
+
 - /Users/ben/Documents/App OpenCode/src/main/security/web-security.ts
 - /Users/ben/Documents/App OpenCode/src/main/embedded-browser/service.ts (nuevo; con `api.ts`, `session.ts`, `surface.ts`, `cdp.ts`)
 - /Users/ben/Documents/App OpenCode/src/main/embedded-browser/tools.ts (nuevo; con `mcp-server.ts`)

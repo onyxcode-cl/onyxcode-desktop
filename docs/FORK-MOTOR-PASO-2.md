@@ -21,14 +21,14 @@ docker run -d --name lzx-fork2 --cpus=4 --memory=12g -v /opt/lzx-fork:/w -v <bui
 
 ## Resultados (medidos)
 
-| Medida | linux-x64 | darwin-arm64 |
-| --- | --- | --- |
-| Instalación de dependencias (1.ª vez) | 3 min 30 s, 1,3 GB | (reutiliza la instalación) |
-| Compilación #1 / #2 | 1 min 22 s / 16 s | 19 s / 11 s |
-| Memoria máxima | 1,5 a 1,8 GB | 1,5 GB |
-| Tamaño | 149.981.312 B | 109.151.330 B (sin firmar) |
-| Dos compilaciones iguales | **idénticas byte a byte** (`8bbba834…`) | **idénticas byte a byte** (`2b466ecd…`) |
-| `--version` | 1.19.0 | 1.19.0 (tras firmarlo ad-hoc con `codesign --force --sign -`) |
+| Medida                                | linux-x64                               | darwin-arm64                                                  |
+| ------------------------------------- | --------------------------------------- | ------------------------------------------------------------- |
+| Instalación de dependencias (1.ª vez) | 3 min 30 s, 1,3 GB                      | (reutiliza la instalación)                                    |
+| Compilación #1 / #2                   | 1 min 22 s / 16 s                       | 19 s / 11 s                                                   |
+| Memoria máxima                        | 1,5 a 1,8 GB                            | 1,5 GB                                                        |
+| Tamaño                                | 149.981.312 B                           | 109.151.330 B (sin firmar)                                    |
+| Dos compilaciones iguales             | **idénticas byte a byte** (`8bbba834…`) | **idénticas byte a byte** (`2b466ecd…`)                       |
+| `--version`                           | 1.19.0                                  | 1.19.0 (tras firmarlo ad-hoc con `codesign --force --sign -`) |
 
 - **Frente al oficial:** NO es idéntico (esperado: firmas, Bun y minificado dependen del entorno). El oficial linux-x64 pesa 185.747.584 B y el nuestro 149.981.312 B; parte
   de la diferencia es la interfaz web que el oficial incrusta y nosotros omitimos (`--skip-embed-web-ui`). El darwin oficial firmado pesa 144.372.192 B.
@@ -52,7 +52,6 @@ docker run -d --name lzx-fork2 --cpus=4 --memory=12g -v /opt/lzx-fork:/w -v <bui
 - **Trampas encontradas:** (1) la cuenta dueña del repositorio es una cuenta de USUARIO, no una organización: `djbenja10-dev` es colaboradora (`push`, no `admin`), así que el repositorio lo crea la cuenta la cuenta dueña y
   añade a `djbenja10-dev` como colaboradora (Write); no se puede crear, borrar ni cambiar su visibilidad desde la cuenta personal. (2) Un clon superficial (`--depth 1`) NO se puede subir tal cual: el
   commit apunta a un padre que no tenemos y GitHub rechaza el envío («did not receive expected object»); se importa el árbol como un commit nuevo (`git commit-tree <commit>^{tree}`).
-
 
 ## Paso 3.1 — copia limpia (2026-10-23)
 

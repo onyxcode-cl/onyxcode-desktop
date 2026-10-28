@@ -12,13 +12,13 @@ Medido sobre la rama: 77 archivos no-test importan el SDK (63 solo `import type`
 
 ### 1.1 Creación de clientes y conexión (el valor, no solo tipos)
 
-| Capa | Dónde | Qué hace |
-| --- | --- | --- |
-| renderer | `src/renderer/src/lib/opencode.ts:17` (`createClient`), `:25` (`startEventStream`, bucle SSE con reconexión), `:63` (`errorMessage`) | Cliente único + stream `global.event`; exporta `OcEvent`, `OpencodeClient` (se filtran a todo el renderer) |
-| renderer | `src/renderer/src/stores/server.ts:22,41` (`onOpencodeEvent`, `onStreamReconnect`) | Fan-out del stream a `App.tsx:54`, `code/impl/client.ts:35`, `compare/store.ts:354` |
-| renderer | `features/tasks/impl/store.ts:597` (segundo `createOpencodeClient`), `:836` (segundo `startEventStream`) | Tareas abre su propio cliente y stream |
-| main | `scheduler/service.ts:881` (rutinas, con `createOpencodeClient`), `compare/engine.ts:68` (con `fetch` temporizado), `telegram/engine-link.ts:370`, `remote/index.ts:70,96`, `ipc/diagnostics.ts:32`, `computer/abort.ts:25` | 7 clientes con la misma receta `{baseUrl, Authorization}` |
-| main (HTTP crudo, sin SDK) | `embedded-browser/owner.ts:55` (`GET /session/{id}`), `tasks/manager.ts:514` (`/session/status`), `tasks/auto-approver.ts:262` (`fetchJson` de `/session/{id}`), `tasks/monitor.ts:316,362,635,795` (`req`: `GET /session/{id}/message?limit=`, `GET`/`PATCH /session/{id}` para archivar), `util/net.ts:39` (`/global/health`), `ipc/extras-handlers.ts:101` (`POST /global/dispose`), `ipc/providers.ts:10` (`GET /provider`) | Es la parte más cara de migrar: no pasa por tipos |
+| Capa                       | Dónde                                                                                                                                                                                                                                                                                                                                                                                                                           | Qué hace                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| renderer                   | `src/renderer/src/lib/opencode.ts:17` (`createClient`), `:25` (`startEventStream`, bucle SSE con reconexión), `:63` (`errorMessage`)                                                                                                                                                                                                                                                                                            | Cliente único + stream `global.event`; exporta `OcEvent`, `OpencodeClient` (se filtran a todo el renderer) |
+| renderer                   | `src/renderer/src/stores/server.ts:22,41` (`onOpencodeEvent`, `onStreamReconnect`)                                                                                                                                                                                                                                                                                                                                              | Fan-out del stream a `App.tsx:54`, `code/impl/client.ts:35`, `compare/store.ts:354`                        |
+| renderer                   | `features/tasks/impl/store.ts:597` (segundo `createOpencodeClient`), `:836` (segundo `startEventStream`)                                                                                                                                                                                                                                                                                                                        | Tareas abre su propio cliente y stream                                                                     |
+| main                       | `scheduler/service.ts:881` (rutinas, con `createOpencodeClient`), `compare/engine.ts:68` (con `fetch` temporizado), `telegram/engine-link.ts:370`, `remote/index.ts:70,96`, `ipc/diagnostics.ts:32`, `computer/abort.ts:25`                                                                                                                                                                                                     | 7 clientes con la misma receta `{baseUrl, Authorization}`                                                  |
+| main (HTTP crudo, sin SDK) | `embedded-browser/owner.ts:55` (`GET /session/{id}`), `tasks/manager.ts:514` (`/session/status`), `tasks/auto-approver.ts:262` (`fetchJson` de `/session/{id}`), `tasks/monitor.ts:316,362,635,795` (`req`: `GET /session/{id}/message?limit=`, `GET`/`PATCH /session/{id}` para archivar), `util/net.ts:39` (`/global/health`), `ipc/extras-handlers.ts:101` (`POST /global/dispose`), `ipc/providers.ts:10` (`GET /provider`) | Es la parte más cara de migrar: no pasa por tipos                                                          |
 
 ### 1.2 Llamadas por operación (nº de sitios)
 
@@ -55,15 +55,15 @@ Por frecuencia de import: `Session` (~25 archivos: sidebars, listas, export, bú
 
 ### 2.2 Dónde vive cada cosa
 
-| Pieza | Ruta | Notas |
-| --- | --- | --- |
-| Tipos propios + contrato | `src/shared/engine/types.ts`, `src/shared/engine/client.ts` (interfaz `EngineClient`), `src/shared/engine/events.ts` (`EngineEvent`) | Sin importar el SDK. Importables por main, renderer y PWA. Si no cruzan IPC no necesitan schema |
-| Adaptador motor 1 | `src/shared/engine/adapters/engine1.ts` (`Engine1Adapter`, única importación de `@opencode-ai/sdk/v2/client`) | `shared/` porque el renderer también habla HTTP directo con el sidecar (loopback con Authorization); el adaptador no usa nada de Node. Test de dependencia lo impide |
-| Hueco motor 2 | `src/shared/engine/adapters/engine2.ts` (`Engine2Adapter`, lanza `EngineError('unsupported')`) | Solo esqueleto; ninguna importación de `@opencode/client` hasta decidir |
-| Fábrica + selección | `src/shared/engine/index.ts` (`createEngineClient(conn, { kind })`), `kind` por defecto `'engine1'` | La bandera real (`engine: 'v1'|'v2'`) va en `feature-flags.ts` **más adelante**, no en la etapa 0 (zona intocable) |
-| HTTP crudo de main | `src/main/opencode/engine/http.ts` (cliente fino con timeout, Basic Auth, JSON) | Sustituye los `fetch` de §1.1 (sin SDK) por métodos del mismo `EngineClient` |
-| Streams | `src/main/opencode/engine/event-hub.ts` (un solo SSE en main) | Fase tardía: hoy hay 3 streams; objetivo, 1 en main que reparte a renderer (IPC), remoto y Telegram. NO en etapa 0 |
-| Pruebas de contrato | `src/shared/engine/contract.ts` (+ `*.test.ts`) | Ver §4 |
+| Pieza                    | Ruta                                                                                                                                 | Notas                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tipos propios + contrato | `src/shared/engine/types.ts`, `src/shared/engine/client.ts` (interfaz `EngineClient`), `src/shared/engine/events.ts` (`EngineEvent`) | Sin importar el SDK. Importables por main, renderer y PWA. Si no cruzan IPC no necesitan schema                                                                      |
+| Adaptador motor 1        | `src/shared/engine/adapters/engine1.ts` (`Engine1Adapter`, única importación de `@opencode-ai/sdk/v2/client`)                        | `shared/` porque el renderer también habla HTTP directo con el sidecar (loopback con Authorization); el adaptador no usa nada de Node. Test de dependencia lo impide |
+| Hueco motor 2            | `src/shared/engine/adapters/engine2.ts` (`Engine2Adapter`, lanza `EngineError('unsupported')`)                                       | Solo esqueleto; ninguna importación de `@opencode/client` hasta decidir                                                                                              |
+| Fábrica + selección      | `src/shared/engine/index.ts` (`createEngineClient(conn, { kind })`), `kind` por defecto `'engine1'`                                  | La bandera real (`engine: 'v1'                                                                                                                                       | 'v2'`) va en `feature-flags.ts` **más adelante**, no en la etapa 0 (zona intocable) |
+| HTTP crudo de main       | `src/main/opencode/engine/http.ts` (cliente fino con timeout, Basic Auth, JSON)                                                      | Sustituye los `fetch` de §1.1 (sin SDK) por métodos del mismo `EngineClient`                                                                                         |
+| Streams                  | `src/main/opencode/engine/event-hub.ts` (un solo SSE en main)                                                                        | Fase tardía: hoy hay 3 streams; objetivo, 1 en main que reparte a renderer (IPC), remoto y Telegram. NO en etapa 0                                                   |
+| Pruebas de contrato      | `src/shared/engine/contract.ts` (+ `*.test.ts`)                                                                                      | Ver §4                                                                                                                                                               |
 
 ### 2.3 Interfaz mínima (borrador)
 
@@ -82,7 +82,7 @@ export interface EngineClient {
     todos(id: string, o?: Scope): Promise<Todo[]>
     messages(id: string, o?: Scope & { limit?: number; before?: string }): Promise<MessageWithParts[]>
     message(id: string, messageID: string, o?: Scope): Promise<MessageWithParts>
-    send(id: string, i: PromptInput, o?: Scope): Promise<void>      // prompt_async
+    send(id: string, i: PromptInput, o?: Scope): Promise<void> // prompt_async
     runCommand(id: string, i: CommandInput, o?: Scope): Promise<void>
     abort(id: string, o?: Scope): Promise<void>
     fork(id: string, o?: Scope & { messageID?: string }): Promise<Session>
@@ -90,13 +90,37 @@ export interface EngineClient {
     unrevert(id: string, o?: Scope): Promise<Session>
     summarize(id: string, m: ModelRef, o?: Scope): Promise<void>
   }
-  permissions: { list(o?: Scope): Promise<PermissionRequest[]>; reply(id: string, r: 'once'|'always'|'reject', o?: Scope & { sessionID?: string; message?: string }): Promise<void> }
-  questions:   { list(o?: Scope): Promise<QuestionRequest[]>; reply(id: string, answers: string[][], o?: Scope): Promise<void>; reject(id: string, o?: Scope): Promise<void> }
-  providers:   { list(): Promise<ProviderInfo[]>; authMethods(): Promise<Record<string, AuthMethod[]>>; setKey(id: string, key: string): Promise<void>; removeKey(id: string): Promise<void>
-                 oauthStart(id: string, method: number): Promise<OAuthStart>; oauthFinish(id: string, method: number, code?: string): Promise<void>; refresh(): Promise<void> /* global.dispose */ }
-  mcp:         { status(o?: Scope): Promise<Record<string, McpStatus>>; connect(name: string, o?: Scope): Promise<void>; disconnect(name: string, o?: Scope): Promise<void> }
-  files:       { list(path: string, o?: Scope): Promise<FileNode[]>; read(path: string, o?: Scope): Promise<FileContent>; status(o?: Scope): Promise<FileChange[]> }
-  events: { subscribe(h: (e: EngineEvent) => void, o?: { onOpen?(): void; onError?(e: EngineError): void; signal?: AbortSignal }): () => void }
+  permissions: {
+    list(o?: Scope): Promise<PermissionRequest[]>
+    reply(id: string, r: 'once' | 'always' | 'reject', o?: Scope & { sessionID?: string; message?: string }): Promise<void>
+  }
+  questions: {
+    list(o?: Scope): Promise<QuestionRequest[]>
+    reply(id: string, answers: string[][], o?: Scope): Promise<void>
+    reject(id: string, o?: Scope): Promise<void>
+  }
+  providers: {
+    list(): Promise<ProviderInfo[]>
+    authMethods(): Promise<Record<string, AuthMethod[]>>
+    setKey(id: string, key: string): Promise<void>
+    removeKey(id: string): Promise<void>
+    oauthStart(id: string, method: number): Promise<OAuthStart>
+    oauthFinish(id: string, method: number, code?: string): Promise<void>
+    refresh(): Promise<void> /* global.dispose */
+  }
+  mcp: {
+    status(o?: Scope): Promise<Record<string, McpStatus>>
+    connect(name: string, o?: Scope): Promise<void>
+    disconnect(name: string, o?: Scope): Promise<void>
+  }
+  files: {
+    list(path: string, o?: Scope): Promise<FileNode[]>
+    read(path: string, o?: Scope): Promise<FileContent>
+    status(o?: Scope): Promise<FileChange[]>
+  }
+  events: {
+    subscribe(h: (e: EngineEvent) => void, o?: { onOpen?(): void; onError?(e: EngineError): void; signal?: AbortSignal }): () => void
+  }
   health(): Promise<{ ok: boolean; version?: string }>
 }
 ```
@@ -116,18 +140,18 @@ export interface EngineClient {
 
 Regla: en cada paso el comportamiento no cambia, las pruebas existentes siguen verdes, y `git revert` del commit lo deshace.
 
-| Paso | Qué | Por qué en este orden |
-| --- | --- | --- |
-| 0.1 | Crear `src/shared/engine/{types,client,events}.ts` con **alias** a los tipos del SDK (`export type Session = SdkSession`) y `EngineError`. Nada usa aún el módulo | Cero riesgo; fija el vocabulario |
-| 0.2 | `Engine1Adapter` mínimo (sessions + permissions) y su contrato compartido (§4). Sin consumidores | Se prueba aislado contra el fake |
-| 0.3 | **Primer módulo: `main/computer/abort.ts`** (1 cliente, 2 llamadas: `status`, `abort`) y `ipc/diagnostics.ts` | Los más pequeños y aislados; validan la fábrica |
-| 0.4 | `main/compare/engine.ts` (`create/promptAsync/abort/messages/children/delete`, `PermissionRuleset`) | Cubre el ciclo completo en un archivo propio, con prueba existente |
-| 0.5 | HTTP crudo de main: `embedded-browser/owner.ts`, `util/net.ts`, `ipc/providers.ts`, `ipc/extras-handlers.ts`, `tasks/manager.ts:514` → `main/opencode/engine/http.ts` | Quita el HTTP sin tipos; fáciles de probar con `http` falso |
-| 0.6 | `scheduler/service.ts` (rutinas) y `telegram/engine-link.ts` + `turn.ts` (ya normalizan: `EngineEvent` local pasa a ser el propio) | Main puro, sin renderer |
-| 0.7 | Renderer, solo **tipos**: sustituir `import type … from '@opencode-ai/sdk/v2/client'` por `@shared/engine` (63 archivos, mecánico, por carpetas: `lib/` → `components/` → `stores/` → `settings` → `chat` → `code` → `tasks`) | Es cambio de ruta de import, sin lógica; se puede lotear |
-| 0.8 | Renderer, valor: `lib/opencode.ts` y `stores/server.ts` usan `createEngineClient`; `startEventStream` pasa a `events.subscribe` | Aquí se centraliza; el store de Tareas (`store.ts:597,836`) deja de abrir su propio cliente |
-| 0.9 | Renderer, llamadas: `chat/actions.ts`, `tasks/impl/actions.ts`, `code/impl/store.ts`, `compare/store.ts`, `stores/sessions.ts` de `client.session.x` a `engine.sessions.x` | Los más grandes y con más estado: al final |
-| 0.10 | Regla ESLint/guardia en `src/test` que prohíbe `@opencode-ai/sdk` fuera de `src/shared/engine/adapters/` (excepción: `scripts/` y contrato) | Cierra la etapa 0 y evita regresiones |
+| Paso | Qué                                                                                                                                                                                                                           | Por qué en este orden                                                                       |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 0.1  | Crear `src/shared/engine/{types,client,events}.ts` con **alias** a los tipos del SDK (`export type Session = SdkSession`) y `EngineError`. Nada usa aún el módulo                                                             | Cero riesgo; fija el vocabulario                                                            |
+| 0.2  | `Engine1Adapter` mínimo (sessions + permissions) y su contrato compartido (§4). Sin consumidores                                                                                                                              | Se prueba aislado contra el fake                                                            |
+| 0.3  | **Primer módulo: `main/computer/abort.ts`** (1 cliente, 2 llamadas: `status`, `abort`) y `ipc/diagnostics.ts`                                                                                                                 | Los más pequeños y aislados; validan la fábrica                                             |
+| 0.4  | `main/compare/engine.ts` (`create/promptAsync/abort/messages/children/delete`, `PermissionRuleset`)                                                                                                                           | Cubre el ciclo completo en un archivo propio, con prueba existente                          |
+| 0.5  | HTTP crudo de main: `embedded-browser/owner.ts`, `util/net.ts`, `ipc/providers.ts`, `ipc/extras-handlers.ts`, `tasks/manager.ts:514` → `main/opencode/engine/http.ts`                                                         | Quita el HTTP sin tipos; fáciles de probar con `http` falso                                 |
+| 0.6  | `scheduler/service.ts` (rutinas) y `telegram/engine-link.ts` + `turn.ts` (ya normalizan: `EngineEvent` local pasa a ser el propio)                                                                                            | Main puro, sin renderer                                                                     |
+| 0.7  | Renderer, solo **tipos**: sustituir `import type … from '@opencode-ai/sdk/v2/client'` por `@shared/engine` (63 archivos, mecánico, por carpetas: `lib/` → `components/` → `stores/` → `settings` → `chat` → `code` → `tasks`) | Es cambio de ruta de import, sin lógica; se puede lotear                                    |
+| 0.8  | Renderer, valor: `lib/opencode.ts` y `stores/server.ts` usan `createEngineClient`; `startEventStream` pasa a `events.subscribe`                                                                                               | Aquí se centraliza; el store de Tareas (`store.ts:597,836`) deja de abrir su propio cliente |
+| 0.9  | Renderer, llamadas: `chat/actions.ts`, `tasks/impl/actions.ts`, `code/impl/store.ts`, `compare/store.ts`, `stores/sessions.ts` de `client.session.x` a `engine.sessions.x`                                                    | Los más grandes y con más estado: al final                                                  |
+| 0.10 | Regla ESLint/guardia en `src/test` que prohíbe `@opencode-ai/sdk` fuera de `src/shared/engine/adapters/` (excepción: `scripts/` y contrato)                                                                                   | Cierra la etapa 0 y evita regresiones                                                       |
 
 **Lo último / no se toca en etapa 0**: `remote/engine-proxy.ts` + `policy.ts` (rutas), `remote/events.ts` + `sse-hub.ts` (SSE hacia el celular; se tocan tras el event-hub), `tasks/auto-approver.ts` y `tasks/monitor.ts` (decisión de seguridad; cambiar solo el transporte, con prueba de que los mismos casos producen las mismas respuestas), plugins, sandbox, proxies, `opencode-config.ts`, `server.ts`/`binary.ts`/`pin.json`.
 
@@ -143,37 +167,37 @@ Regla: en cada paso el comportamiento no cambia, las pruebas existentes siguen v
 
 ## 5. Riesgos
 
-| Riesgo | Efecto | Mitigación |
-| --- | --- | --- |
-| Tipos propios «mejorados» antes de tiempo | Cambia el comportamiento sin querer (`part.state`, `time`, `metadata`) | En etapa 0 solo alias + copia exacta; rediseñar después, por módulo |
-| Interfaz que es espejo del motor 1 y no sirve para el 2 | Se rehace dos veces | Contrato escrito por casos de uso y revisado contra la lista de rutas `/api/*` de la investigación (§1.1) antes del paso 0.8 |
-| SSE: orden, duplicados y reconexión | Mensajes perdidos o dobles (hoy hay reducer sensible: `session-reducer.ts`) | El adaptador solo traduce nombres; reconexión y `connected` se copian tal cual; la prueba de contrato incluye corte y reconexión |
-| `directory` implícito del motor 1 | Se pide la sesión en otra carpeta y devuelve 404 | `Scope` explícito y probado con dos carpetas |
-| Errores del SDK (`{data:{message}}`) | La UI muestra otro texto o ninguno | Test de `errorMessage` con los 6 casos actuales |
-| Auto-aprobador y monitor | Aprobar de más o perder un permiso | No se tocan hasta el final; si se tocan, mismo conjunto de casos con salidas idénticas |
-| Control remoto (rutas) | Una ruta nueva sin clase = rechazo | El remoto sigue hablando rutas del motor 1; no se cambia en etapa 0 |
-| Cliente único en renderer vs dos hoy (`tasks/store.ts:597`) | Dos streams pasan a uno: otro orden de eventos | Paso 0.8 aparte, con E2E de tareas en VPS |
-| Bundle del renderer | Si el adaptador mete el SDK en más chunks | Medir tamaño del bundle antes y después (`npm run build`) |
-| Mantener a la vez fake, contrato y `api-routes.json` | Divergencia | Una sola fuente: el contrato; `check:opencode` sigue como alarma de versión |
-| Cambios en la rama `feat/traducir-word` | Mezclar trabajos | Rama propia `feat/engine-client`, un worktree por agente |
+| Riesgo                                                      | Efecto                                                                      | Mitigación                                                                                                                       |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Tipos propios «mejorados» antes de tiempo                   | Cambia el comportamiento sin querer (`part.state`, `time`, `metadata`)      | En etapa 0 solo alias + copia exacta; rediseñar después, por módulo                                                              |
+| Interfaz que es espejo del motor 1 y no sirve para el 2     | Se rehace dos veces                                                         | Contrato escrito por casos de uso y revisado contra la lista de rutas `/api/*` de la investigación (§1.1) antes del paso 0.8     |
+| SSE: orden, duplicados y reconexión                         | Mensajes perdidos o dobles (hoy hay reducer sensible: `session-reducer.ts`) | El adaptador solo traduce nombres; reconexión y `connected` se copian tal cual; la prueba de contrato incluye corte y reconexión |
+| `directory` implícito del motor 1                           | Se pide la sesión en otra carpeta y devuelve 404                            | `Scope` explícito y probado con dos carpetas                                                                                     |
+| Errores del SDK (`{data:{message}}`)                        | La UI muestra otro texto o ninguno                                          | Test de `errorMessage` con los 6 casos actuales                                                                                  |
+| Auto-aprobador y monitor                                    | Aprobar de más o perder un permiso                                          | No se tocan hasta el final; si se tocan, mismo conjunto de casos con salidas idénticas                                           |
+| Control remoto (rutas)                                      | Una ruta nueva sin clase = rechazo                                          | El remoto sigue hablando rutas del motor 1; no se cambia en etapa 0                                                              |
+| Cliente único en renderer vs dos hoy (`tasks/store.ts:597`) | Dos streams pasan a uno: otro orden de eventos                              | Paso 0.8 aparte, con E2E de tareas en VPS                                                                                        |
+| Bundle del renderer                                         | Si el adaptador mete el SDK en más chunks                                   | Medir tamaño del bundle antes y después (`npm run build`)                                                                        |
+| Mantener a la vez fake, contrato y `api-routes.json`        | Divergencia                                                                 | Una sola fuente: el contrato; `check:opencode` sigue como alarma de versión                                                      |
+| Cambios en la rama `feat/traducir-word`                     | Mezclar trabajos                                                            | Rama propia `feat/engine-client`, un worktree por agente                                                                         |
 
 ## 6. Esfuerzo y paquetes de trabajo paralelizables
 
 Estimación en días-persona con agente (sin contar revisión del dueño ni pruebas del VPS en espera): total **≈ 10-14 días** repartibles; con 2 agentes en paralelo, ~1 semana de calendario.
 
-| Paquete | Archivos propios (sin solaparse) | Dependencias | Esfuerzo |
-| --- | --- | --- | --- |
-| P0 Núcleo: tipos, interfaz, `EngineError`, `Engine1Adapter` (sessions, permissions, questions), fábrica, hueco `Engine2Adapter` | `src/shared/engine/**` | — | 2-3 d |
-| P1 Contrato + fake: `contract.ts`, ampliar `server.test.mjs`, guardias de aislamiento | `src/shared/engine/contract*`, `e2e/fake-opencode/server.test.mjs`, `src/test/engine-isolation.test.ts` | P0 (interfaz) | 1-2 d |
-| P2 Main pequeño: `computer/abort.ts`, `ipc/diagnostics.ts`, `compare/engine.ts` | esos 3 archivos | P0 | 1 d |
-| P3 HTTP crudo de main: `embedded-browser/owner.ts`, `util/net.ts`, `ipc/providers.ts`, `ipc/extras-handlers.ts`, `main/opencode/engine/http.ts` | esos + sus tests | P0 | 1 d |
-| P4 Rutinas y Telegram: `scheduler/service.ts`, `telegram/engine-link.ts`, `telegram/turn.ts` | esos | P0 | 1,5 d |
-| P5 Renderer tipos (mecánico): lotes por carpeta `lib/`+`components/`+`stores/`; `settings/`+`personalizacion/`+`search/`+`compare/`; `chat/`; `code/`; `tasks/`; `shared/doc-files.ts`, `shared/opencode-links.ts`, fixtures | cada lote es una carpeta distinta | P0 (alias) | 1-2 d en 5 lotes independientes |
-| P6 Renderer cliente y stream: `lib/opencode.ts`, `stores/server.ts`, `tasks/impl/store.ts:597,836` | esos 3 | P0, P5 de `lib/` | 1,5 d |
-| P7 Renderer llamadas: `chat/actions.ts` / `code/impl/{store,client}.ts, pr-ai.ts` / `tasks/impl/actions.ts, store.ts` / `compare/store.ts`, `stores/sessions.ts` (3-4 sub-lotes por carpeta) | uno por carpeta | P6 | 3-4 d |
-| P8 Proveedores y MCP: `settings/impl/providerCatalog.ts`, `ModelsSection.tsx`, `ProviderKeyForm.tsx`, `McpSection.tsx`, `useMcpConnections.ts`, `onboarding/Wizard.tsx`, `stores/providers.ts` | esos | P0 (providers/mcp) | 1,5 d |
-| P9 PTY, archivos/VCS: `code/impl/panels/{terminalRegistry,FilesPanel,ChangesPanel}` | esos | P0 (files/terminal) | 1 d |
-| P10 Cierre: regla de aislamiento activada, actualizar `opencode-contract.test.ts`, `docs/VERIFICACION.md`, `CHANGELOG-FASE8.md` (ID `F8-B<n>`) | tests y docs | todos | 0,5 d |
-| **Aparte, no etapa 0**: event-hub único en main; remoto (`engine-proxy`, `policy`, `events`, `sse-hub`); `auto-approver`/`monitor`; plugins del motor 2 | — | decisión del dueño | ver investigación §4.2 |
+| Paquete                                                                                                                                                                                                                      | Archivos propios (sin solaparse)                                                                        | Dependencias        | Esfuerzo                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------- |
+| P0 Núcleo: tipos, interfaz, `EngineError`, `Engine1Adapter` (sessions, permissions, questions), fábrica, hueco `Engine2Adapter`                                                                                              | `src/shared/engine/**`                                                                                  | —                   | 2-3 d                           |
+| P1 Contrato + fake: `contract.ts`, ampliar `server.test.mjs`, guardias de aislamiento                                                                                                                                        | `src/shared/engine/contract*`, `e2e/fake-opencode/server.test.mjs`, `src/test/engine-isolation.test.ts` | P0 (interfaz)       | 1-2 d                           |
+| P2 Main pequeño: `computer/abort.ts`, `ipc/diagnostics.ts`, `compare/engine.ts`                                                                                                                                              | esos 3 archivos                                                                                         | P0                  | 1 d                             |
+| P3 HTTP crudo de main: `embedded-browser/owner.ts`, `util/net.ts`, `ipc/providers.ts`, `ipc/extras-handlers.ts`, `main/opencode/engine/http.ts`                                                                              | esos + sus tests                                                                                        | P0                  | 1 d                             |
+| P4 Rutinas y Telegram: `scheduler/service.ts`, `telegram/engine-link.ts`, `telegram/turn.ts`                                                                                                                                 | esos                                                                                                    | P0                  | 1,5 d                           |
+| P5 Renderer tipos (mecánico): lotes por carpeta `lib/`+`components/`+`stores/`; `settings/`+`personalizacion/`+`search/`+`compare/`; `chat/`; `code/`; `tasks/`; `shared/doc-files.ts`, `shared/opencode-links.ts`, fixtures | cada lote es una carpeta distinta                                                                       | P0 (alias)          | 1-2 d en 5 lotes independientes |
+| P6 Renderer cliente y stream: `lib/opencode.ts`, `stores/server.ts`, `tasks/impl/store.ts:597,836`                                                                                                                           | esos 3                                                                                                  | P0, P5 de `lib/`    | 1,5 d                           |
+| P7 Renderer llamadas: `chat/actions.ts` / `code/impl/{store,client}.ts, pr-ai.ts` / `tasks/impl/actions.ts, store.ts` / `compare/store.ts`, `stores/sessions.ts` (3-4 sub-lotes por carpeta)                                 | uno por carpeta                                                                                         | P6                  | 3-4 d                           |
+| P8 Proveedores y MCP: `settings/impl/providerCatalog.ts`, `ModelsSection.tsx`, `ProviderKeyForm.tsx`, `McpSection.tsx`, `useMcpConnections.ts`, `onboarding/Wizard.tsx`, `stores/providers.ts`                               | esos                                                                                                    | P0 (providers/mcp)  | 1,5 d                           |
+| P9 PTY, archivos/VCS: `code/impl/panels/{terminalRegistry,FilesPanel,ChangesPanel}`                                                                                                                                          | esos                                                                                                    | P0 (files/terminal) | 1 d                             |
+| P10 Cierre: regla de aislamiento activada, actualizar `opencode-contract.test.ts`, `docs/VERIFICACION.md`, `CHANGELOG-FASE8.md` (ID `F8-B<n>`)                                                                               | tests y docs                                                                                            | todos               | 0,5 d                           |
+| **Aparte, no etapa 0**: event-hub único en main; remoto (`engine-proxy`, `policy`, `events`, `sse-hub`); `auto-approver`/`monitor`; plugins del motor 2                                                                      | —                                                                                                       | decisión del dueño  | ver investigación §4.2          |
 
 Paralelización segura: P0 primero (un agente). Luego **P1, P2, P3, P4, P8, P9 y los lotes de P5** pueden ir a la vez en archivos disjuntos (máx. 2 agentes pesados a la vez por la carga del Mac; vitest dirigido, resto al VPS). P6 antes que P7; dentro de P7, los 4 sub-lotes no comparten archivos. Un solo agente toca `src/shared/engine/**` a la vez; si otro paquete necesita un método nuevo, lo pide a P0 en vez de editar la interfaz.

@@ -17,7 +17,7 @@ import { SandboxSetupCard } from './SandboxSetupCard'
 import { sandboxBlocksStart, useSandbox } from './sandbox-store'
 import { useTasks } from './store'
 import { useHomeFocus } from './useHomeFocus'
-import { useUnifiedApps } from './unified'
+import { isChatFolderForDisplay, useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 /** Plantilla de inicio. `note` es un aviso que se muestra en Sandbox (p. ej. permisos que se pedirán). */
@@ -214,6 +214,8 @@ export function Home({
   const conn = useTasks((s) => s.conn)
   const requested = useTasks((s) => s.fullAccess)
   const full = conn ? conn.fullAccess : requested
+  // Modo unificado: sin carpeta elegida (o con la carpeta automática del chat) el inicio habla de «un chat nuevo», no de una carpeta.
+  const noRealFolder = unified && (!folder || isChatFolderForDisplay(folder))
   const [cat, setCat] = useState<string>(full ? 'computer' : 'docs')
   // Sin Control del PC (Windows) no hay categoría de «controlar el equipo»: sus plantillas exigirían un modo que no existe.
   const caps = platformCaps()
@@ -242,6 +244,9 @@ export function Home({
     writeFlag(ONBOARDED_KEY, value)
   }
 
+  // Sin carpeta real, «esta carpeta» de las sugerencias pasa a «la carpeta que elijas».
+  const shownPrompt = (prompt: string): string =>
+    noRealFolder ? prompt.replace(new RegExp(t('tasks.home.thisFolder.re'), 'gi'), t('tasks.home.thisFolder.to')) : prompt
   const pick = (prompt: string, computer?: boolean): void => {
     useTasks.setState({ draft: prompt })
     if (computer && !full) void setAccessMode(true)
@@ -257,7 +262,7 @@ export function Home({
             {t('tasks.home.title')}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            {!folder && unified
+            {noRealFolder
               ? t('tasks.home.lead.unified')
               : !folder
                 ? t('tasks.home.lead.noFolder')
@@ -299,7 +304,7 @@ export function Home({
               data-testid="unified-advanced"
               disabled={folderBusy || phase === 'starting'}
               onClick={() => void setAccessMode(true)}
-              className="text-xs text-muted underline-offset-2 transition hover:text-fg hover:underline disabled:opacity-50"
+              className="text-xs font-medium text-accent underline underline-offset-2 transition hover:opacity-80 disabled:opacity-50"
             >
               {t('tasksComputer.unified.advanced')}
             </button>
@@ -313,7 +318,7 @@ export function Home({
         )}
         {!full && folder && phase === 'ready' && (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] desk:text-meta text-subtle">
-            <ShieldCheck size={12} /> {t('tasks.home.sandboxActive')}
+            <ShieldCheck size={12} /> {t(unified ? 'tasks.home.sandboxActive.unified' : 'tasks.home.sandboxActive')}
           </p>
         )}
 
@@ -371,7 +376,7 @@ export function Home({
                     <button
                       key={s.title}
                       type="button"
-                      onClick={() => pick(s.prompt, category.computer)}
+                      onClick={() => pick(shownPrompt(s.prompt), category.computer)}
                       className="group flex items-start gap-3 rounded-xl border border-border bg-elevated/50 px-3.5 py-3 text-left transition hover:border-border-strong hover:bg-hover desk:rounded-card desk:border-transparent desk:bg-elevated desk:p-4 desk:shadow-sm desk:hover:border-transparent desk:hover:bg-hover"
                     >
                       <span
@@ -383,7 +388,7 @@ export function Home({
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-medium">{s.title}</span>
-                        <span className="line-clamp-2 block text-xs text-muted">{s.prompt}</span>
+                        <span className="line-clamp-2 block text-xs text-muted">{shownPrompt(s.prompt)}</span>
                         {s.note && !full && (
                           <span className="mt-1 block text-[11.5px] desk:text-meta leading-snug text-warning">{s.note}</span>
                         )}

@@ -18,6 +18,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
 ## 1. Qué se entregó, por área
 
 ### 1.1 Helper nativo (C1)
+
 - `resources/computer-use/helper.swift`: comandos nuevos `ax-tree`, `ax-find`, `ax-frame`, `ax-press`,
   `ax-set-value`, `ax-action`, `window-shot` (ScreenCaptureKit, no `CGWindowListCreateImage`: no
   disponible en el SDK usado aquí), `hide-apps`/`unhide-apps` (`NSRunningApplication`, sin TCC),
@@ -31,6 +32,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   Apple Developer disponible; `security find-identity` da 0).
 
 ### 1.2 Contratos y núcleo de main (C2)
+
 - `src/shared/ipc-cowork.ts`: `ComputerPrefs`/`DEFAULT_COMPUTER_PREFS`, `AccessRequest.kind`
   (`'access' | 'takeover'`), `TeachStep`, `SkillRecordingState`/`RecordedStep`/`SkillRecording`,
   `AssistMessage`, `AutoModeSettings`/`AutoApprovalRecord`/`AutoModeState`/`AutoRuleId`,
@@ -39,7 +41,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   `cowork:browser:*` y sus eventos (`computer:assist`, `computer:recordState`, `computer:recordDone`,
   `cowork:auto:approved`, `cowork:browser:changed`).
 - `src/main/ipc/schemas.ts`: `WindowRole` añade `'assist'`; `CHANNEL_ROLES.assist =
-  {'computer:teachRespond','computer:record:stop'}`; **`pill` no se tocó**. Validadores para todos
+{'computer:teachRespond','computer:record:stop'}`; **`pill` no se tocó**. Validadores para todos
   los canales nuevos.
 - `src/main/computer/service.ts`: endpoints laterales nuevos (`/tier`, `/control-mode`,
   `/request-access` con `kind`, `/teach-step`, `/teach-end`), `autoAccess` (≤1,5 s antes de emitir la
@@ -55,6 +57,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   `question`).
 
 ### 1.3 Modo auto (C3)
+
 - `src/main/cowork/auto-mode.ts` (clasificador PURO: solo texto, sin Electron/red/fs) y
   `auto-approver.ts` (motor: persistencia, opt-in doble, registro, HTTP contra OpenCode).
 - **Solo motor de reglas, sin clasificador por modelo** (decisión del usuario). Nunca se aprueban en
@@ -72,6 +75,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   (`disableAutoMode`).
 
 ### 1.4 Navegador propio (C4)
+
 - `chrome-devtools-mcp@1.10.1` (dependencia exacta) detrás de una pasarela propia
   (`src/main/browser/gateway.ts`, solo builtins de Node, sin Electron): filtra `upload_file`,
   permiso previo por sitio (`navigate_page`/`new_page` y revisión de TODAS las páginas tras
@@ -89,6 +93,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
 - **Solo en Control total, desactivado por defecto.** En Sandbox no aparece.
 
 ### 1.5 Interfaz, agentes y documentación (C5, este paquete)
+
 - **Tarjeta «¿Tomar el control de la pantalla?»** (`kind === 'takeover'`) en `ComputerAccess.tsx`
   (ventana principal) y en la píldora (`overlay/pill.ts`, con `#demo-takeover`): «Seguir en segundo
   plano» → `{cancel:true}`; «Permitir» → `{approvePlan:true, decisions:[]}`. **Corrige una
@@ -126,17 +131,18 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
 
 ## 2. Las 5 decisiones del usuario (2026-09-28)
 
-| Decisión | Valor | Dónde |
-|---|---|---|
-| Modo por defecto de computer use | **«En segundo plano»** (`DEFAULT_COMPUTER_PREFS.mode = 'background'`) | `ipc-cowork.ts` |
-| «Ocultar las demás apps» | **Activado por defecto**, como Claude (`hideOtherApps: true`, `unhideOnFinish: true`) | `ipc-cowork.ts` |
-| Navegador propio | **Desactivado por defecto y solo en Control total** (`BrowserState.enabled` arranca en `false`) | `browser/service.ts` |
-| Modo auto | **Solo motor de reglas, sin clasificador por modelo** (menos riesgo de inyección y coste) | `auto-mode.ts` |
-| Apps iniciales del Modo auto | Finder, Vista previa, TextEdit, Calculadora, Mapas, Tiempo, Reloj, Pages, Numbers, Keynote (editable en Ajustes) | `DEFAULT_AUTO_VIEW_APPS` |
+| Decisión                         | Valor                                                                                                            | Dónde                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Modo por defecto de computer use | **«En segundo plano»** (`DEFAULT_COMPUTER_PREFS.mode = 'background'`)                                            | `ipc-cowork.ts`          |
+| «Ocultar las demás apps»         | **Activado por defecto**, como Claude (`hideOtherApps: true`, `unhideOnFinish: true`)                            | `ipc-cowork.ts`          |
+| Navegador propio                 | **Desactivado por defecto y solo en Control total** (`BrowserState.enabled` arranca en `false`)                  | `browser/service.ts`     |
+| Modo auto                        | **Solo motor de reglas, sin clasificador por modelo** (menos riesgo de inyección y coste)                        | `auto-mode.ts`           |
+| Apps iniciales del Modo auto     | Finder, Vista previa, TextEdit, Calculadora, Mapas, Tiempo, Reloj, Pages, Numbers, Keynote (editable en Ajustes) | `DEFAULT_AUTO_VIEW_APPS` |
 
 ## 3. Qué se verificó y qué NO
 
 ### Verificado (lectura de código + harnesses de cada paquete en su scratchpad, no en el repo)
+
 - `npm run typecheck` (node + web) limpio tras todos los paquetes.
 - `npx electron-vite build` verde; `out/main/browser-mcp.js`, `out/preload/assist.js` y
   `out/renderer/overlay/assist.html` presentes.
@@ -152,6 +158,7 @@ paralelo** (contratos, modo auto, navegador propio, sobre archivos disjuntos); *
   peligroso, MCP de solo consulta vs. de escritura, inyección, acceso a apps).
 
 ### NO verificado en vivo (solo se puede probar dentro de la app real; ver §4)
+
 - Permisos TCC reales: si recompilar el helper de verdad no obligó a volver a conceder Accesibilidad
   ni Grabación de pantalla (muy probable por cómo macOS atribuye el permiso, pero no comprobado con
   la app empaquetada).

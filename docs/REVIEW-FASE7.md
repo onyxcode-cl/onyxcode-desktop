@@ -10,9 +10,11 @@ describe desactivado de `e2e/specs/*` que documentan bugs se convierten en `it` 
 Reglas: no tocar preloads con sandbox, `helper.swift`, plan-gate, Seatbelt, la regla `webRequest` de loopback ni
 `security/web-security.ts`. UI en español. Commits con `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`,
 `git add <rutas propias>` (nunca `-A`). Controles por commit: `npm run typecheck && npm test && npm run lint && npm run build && npm run test:transform`
-+ el spec E2E afectado (con el cerrojo de build, ver abajo).
+
+- el spec E2E afectado (con el cerrojo de build, ver abajo).
 
 ## G1 · browser (dueño: `src/main/embedded-browser/**`, `src/renderer/src/features/browser/**`, `src/shared/ipc-browser.ts`)
+
 1. **[Alta] `mailto:`/`tel:` mata el proceso principal (SIGTRAP).** Causa más probable (sin confirmar): el respaldo
    `did-start-navigation` de `installBaselineNavigationGuard` (`surface.ts` ~l.170-175) llama síncrono a `wc.stop()` +
    `goBack()`/`loadURL('about:blank')` dentro del observador; Chromium emite `DidStartNavigation` antes de los throttles.
@@ -39,7 +41,9 @@ Reglas: no tocar preloads con sandbox, `helper.swift`, plan-gate, Seatbelt, la r
 4. Documentar en `docs/SEGURIDAD.md` §3 quater que «Permitir siempre» de un origen local permite `fetch` a cualquier otro puerto de loopback (por origen de página; «en esta tarea» no cuenta).
 
 ## G2 · cowork y UI (dueño: `src/renderer/src/features/cowork/impl/{CoworkWorkspace,actions,util,TaskList,search,ComputerAccess}.ts(x)`, `features/routines/**`, `components/{Toggle,conversation/Reasoning,ErrorBoundary}.tsx`, `app/App.tsx`, `app/CommandPalette.tsx`, `features/settings/**`, lista de inputs con Enter)
+
 Nota: NO tocar `features/cowork/impl/store.ts` (lo toca G3). En `App.tsx` y `RoutinesView.tsx` G4 hará una edición mínima de una línea (openProject con confianza): editá con Edit exactos, no reescribas el archivo.
+
 1. **[Media] Motivo de carpeta prohibida no visible:** `phaseBanners` (`CoworkWorkspace.tsx`) solo pinta `error` con `phase==='error' && folder`.
    Añadir banner `role="alert"` con el texto exacto de main y botón «Cerrar» (`useCowork.setState({error:null})`) cuando `error && !(phase==='error' && folder)`;
    limpiar `error` al empezar `chooseFolder` y `approvePending`; `lotes.e2e.ts` ~l.75 `it.fails`→`it` (ampliar con `~/Library` y comprobar «Cerrar»).
@@ -54,6 +58,7 @@ Nota: NO tocar `features/cowork/impl/store.ts` (lo toca G3). En `App.tsx` y `Rou
 10. Limpieza: dos líneas en blanco en `CoworkSection.tsx:139-140`; comentarios huérfanos.
 
 ## G3 · stores (dueño: `src/renderer/src/stores/**`, `lib/session-reducer.ts`, `lib/flags.ts`, `features/chat/{actions,store}.ts`, `features/code/impl/store.ts`, `features/cowork/impl/store.ts`)
+
 1. **[Baja→Media] `busy` huérfano tras reiniciar el sidecar** (bug 5 del E2E): helper puro `runStatusScope({sessions, sessionSource, status}, directory, isSource)` en
    `session-reducer.ts` (ids de `sessions` del directorio y origen + claves de `status` sin `sessions[id]` con origen que cumpla `isSource`); `syncChatRunStatus` lo usa
    (`(src ?? MAIN_SOURCE) === MAIN_SOURCE`); encadenar `await loadChatSessions()` antes de `syncChatRunStatus()` en `ChatSidebar`/`onStreamReconnect`; no degradar a idle sesiones que pasaron a `busy` después del fetch (leer `status` justo antes del `set`);
@@ -69,7 +74,9 @@ Nota: NO tocar `features/cowork/impl/store.ts` (lo toca G3). En `App.tsx` y `Rou
 10. `sameDir` (`eventRouter.ts`): dejar como está pero anotar el límite (symlinks/mayúsculas) en un comentario.
 
 ## G4 · code UI y main de Code (dueño: `src/renderer/src/features/code/impl/{panels/*,CodeWorkspace,ProjectPicker,Composer}.tsx`, `src/main/ipc/code-handlers.ts`, `src/main/git/**`, `src/main/pty/**`)
+
 NO tocar `features/code/impl/store.ts` (G3). Para el workspace trust usá `ensureTrusted` de `ProjectPicker.tsx`.
+
 1. **[Corregir] Workspace trust se salta:** `WorktreeDialog` (`ChangesPanel.tsx:242,361,388`) llama a `openProject` sin `ensureTrusted`; también `app/App.tsx:93` (clic en notificación), `routines/impl/RoutinesView.tsx:186`, `CodeWorkspace.tsx:635`. Crear una función única `openProjectTrusted(dir)` (en `ProjectPicker.tsx`, exportada) que haga `ensureTrusted` y luego `openProject`, y usarla en todas las entradas (en `App.tsx` y `RoutinesView.tsx` con UNA edición mínima de la línea, hay otro agente en esos archivos). `ensureTrusted` concurrente pisa `pendingTrustResolve` (la primera promesa nunca resuelve): encolar o resolver la anterior con `false`. Carpeta ya en `trustedFolders` no molesta. Test.
 2. **[Corregir] Estado obsoleto al cambiar de proyecto** (`ChangesPanel.tsx:439-477`, `CodeWorkspace.tsx:199`): `key={directory}` en `<ChangesPanel/>`; contador de generación (o flag `cancelled`) en `refresh` para descartar respuestas viejas; `setInfo(null)` al cambiar `directory` en `useBranch` (`CodeWorkspace.tsx:225-247`).
 3. **[Corregir] Enter en el input de worktree** (`ChangesPanel.tsx:325`): `if (busy || isImeComposing(e)) return`.
@@ -80,6 +87,7 @@ NO tocar `features/code/impl/store.ts` (G3). Para el workspace trust usá `ensur
 8. Hardening opcional: `-c core.fsmonitor=false` en `git status/diff` (`main/git/service.ts`) para repos no confiables.
 
 ## G5 · docs y higiene (dueño: `docs/**` salvo `FASE6-PLAN.md`/`LRU-PLAN.md`/`REVIEW-FASE7.md`, `AUDIT.md`, `README.md`, `electron-builder.js`, `src/main/index.ts`, `src/shared/ipc-{cowork,code,browser,extras}.ts` (solo comentarios/alias), `src/main/cowork/folder-policy.ts`, `src/main/util/paths.ts`)
+
 1. **Datos huérfanos de «Chrome aparte»:** al arrancar (dentro de `start()` de `main/index.ts`, tras el lock), borrar una sola vez y con try/catch `userData/cowork-browser` (perfil, cookies, descargas) y `userData/cowork-browser.json`; log `[main] limpieza de datos de Chrome aparte`. Test unitario del helper puro si se extrae (`main/cowork/legacy-cleanup.ts`) con directorio temporal.
 2. **Docs falsos:** `docs/SEGURIDAD.md:218-236` sección «Navegador propio» → marcar TODA la sección como histórica o reemplazar por nota que apunte al navegador integrado; `docs/DISTRIBUCION.md:148-154` borrar la verificación de `browser-mcp.js`/`chrome-devtools-mcp`; `AUDIT.md:97` → ✅ (resuelto en el refactor), `AUDIT.md:38,:258` chrome-devtools-mcp como histórico; `docs/LOTE-D.md:68-108,209` y `docs/COWORK-LOTE-B.md:213` («Chrome aparte se conserva») → notas históricas; `docs/VERIFICACION.md:189` («11 Chrome aparte | manual») quitar.
 3. **Comentarios huérfanos:** `shared/ipc-cowork.ts:938` y banner de la l.699 («Lote C: navegador propio»), `shared/ipc-browser.ts` («Lote C: apaga el navegador propio…»), bloque vacío tras el comentario de cabecera de `shared/ipc-code.ts`, comentario de `features/code/impl/client.ts` («git/diálogos» → incluye pty).
@@ -89,6 +97,7 @@ NO tocar `features/code/impl/store.ts` (G3). Para el workspace trust usá `ensur
 7. `CHANGELOG-FASE7.md`: crearlo con los IDs F7-B1.. de todos los grupos (los otros agentes hacen append atómico); `docs/HALLAZGOS-E2E.md` y `docs/VERIFICACION.md`: pasar la tabla de bugs reales a «arreglado» con el hash del commit cuando los demás grupos terminen (esto lo hago yo al final).
 
 ## Cerrojo de build/E2E (todos los grupos)
+
 Varios agentes comparten `out/` y el puerto del servidor de renderer. Para construir o correr E2E, adquirí el cerrojo:
 `LOCK=/private/tmp/claude-501/-Users-ben/0f2b5c02-144e-41f9-8c7c-156d39453861/scratchpad/e2e.lock; until mkdir $LOCK 2>/dev/null; do sleep 3; done; trap 'rmdir $LOCK' EXIT; <build y/o E2E>; rmdir $LOCK`
 (mantenelo mientras dure el build + el spec, y liberalo SIEMPRE, incluso si falla). Los unit tests (`npm test`) y typecheck no lo necesitan.

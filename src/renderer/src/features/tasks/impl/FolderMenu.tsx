@@ -9,7 +9,7 @@ import { platformCaps } from '../../../lib/platform'
 import { chooseFolder, forgetFolder, linkFolder, selectFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
-import { isChatFolderPath, useUnifiedApps } from './unified'
+import { chatFolderDate, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 /** Carpeta elegida para añadir, pendiente de decidir su modo. */
@@ -39,13 +39,22 @@ export function FolderMenu({
   const fullAccess = useTasks((s) => !!s.conn?.fullAccess)
   const home = useTasks((s) => s.fullAccessInfo?.home)
   // La carpeta personal (Control total sin carpeta) se llama «Carpeta personal», no con el nombre de usuario.
+  const unifiedOn = useUnifiedApps()
+  // Modo unificado: la carpeta propia del chat no se muestra con su id interno sino como «Chat sin carpeta».
+  const chatName = (path: string, fallback: string): string => {
+    if (!unifiedOn || !isChatFolderForDisplay(path)) return fallback
+    const date = chatFolderDate(path)
+    return date ? t('tasksComputer.unified.chatFolderNameDate', { date }) : t('tasksComputer.unified.chatFolderName')
+  }
   const label = folder
     ? fullAccess && home === folder
       ? t('tasksComputer.workspace.home')
-      : baseName(folder)
-    : t('tasksComputer.menu.choose')
-  // Modo unificado: «Carpeta: ninguna» (también en el chat con carpeta propia) o «Carpeta: <nombre>».
-  const unified = useUnifiedApps() && variant === 'chip'
+      : chatName(folder, baseName(folder))
+    : unifiedOn
+      ? t('tasksComputer.unified.chooseOptional')
+      : t('tasksComputer.menu.choose')
+  // Modo unificado: «Carpeta: ninguna (chat nuevo)» (también en el chat con carpeta propia) o «Carpeta: <nombre>».
+  const unified = unifiedOn && variant === 'chip'
   const shownLabel = unified
     ? folder && !isChatFolderPath(folder)
       ? t('tasksComputer.unified.folder', { name: label })
@@ -206,7 +215,7 @@ export function FolderMenu({
                 >
                   <FolderOpen size={14} className="shrink-0 text-muted" />
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-sm ${f.path === folder ? 'font-semibold' : ''}`}>{f.name}</span>
+                    <span className={`block truncate text-sm ${f.path === folder ? 'font-semibold' : ''}`}>{chatName(f.path, f.name)}</span>
                     <span className="block truncate font-mono text-[10px] desk:text-meta text-subtle">{f.path}</span>
                   </span>
                   {f.path === folder && <Check size={14} className="shrink-0 text-accent" />}

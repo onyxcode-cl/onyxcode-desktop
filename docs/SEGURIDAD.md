@@ -97,6 +97,8 @@ La ventana de artifacts (documentos y presentaciones que escribe la IA) sigue **
 
 ## 3 bis. Tareas: puerta del plan, carpetas, red, MCP, política y rutinas (Lote B)
 
+> **Carpetas de chat del modo unificado (1.8, ola 2; solo con `LAZUNOX_UNIFIED_APPS=1`).** Cuando la persona no elige carpeta, main crea `~/Lazunox/Chats/<id>` (0700, comprobaciones de enlaces, dueño y permisos, política `allowedFolderRoots` y `disableComputerUse`). Como el perfil de lectura del sandbox es `(allow default)`, el perfil deniega además la lectura y la escritura de `~/Lazunox/Chats` y re-permite SOLO la carpeta propia del servidor (y sus carpetas adicionales rw/ro): un chat no puede leer las carpetas de otros chats. Probado con `sandbox-exec` real (`sandbox-profile.chats.test.ts`). Sin la bandera el perfil es idéntico al anterior (y no existen carpetas de chat).
+
 Detalle de los hallazgos en `AUDIT.md` §9; resumen del lote B en la documentación interna de proceso.
 
 **Puerta del plan por sesión.** El plugin `lazunox-plan-gate` (`src/main/tasks/opencode-config.ts`)

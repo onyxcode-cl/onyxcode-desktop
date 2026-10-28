@@ -15,6 +15,7 @@ Cuatro lecturas hechas el 2026-10-26:
 **`docs/COMPARATIVA-MOTOR.md` está desactualizada** y no debe usarse como estado actual: formularios MCP, búsqueda diferida, rutas protegidas, ganchos por comando, «siempre» persistente, rebobinar, reinyección tras compactar, LSP estable, modo plan, topes de ayudantes, verificador y revisor ya existen.
 
 **Lo que sigue sin verificar** (cerrarlo antes de implementar lo que dependa de ello):
+
 - Cómo trata CRLF el `Edit` de Claude Code: sus docs no lo dicen.
 - Qué cambió exactamente en la «0.164» de Codex (lo del endurecimiento por mayúsculas y minúsculas en macOS **no se encontró en el código**; la normalización de nombres que vimos solo existe para Windows).
 - Qué envía el módulo de comentarios de Codex y el comportamiento de los builds oficiales de OpenCode.
@@ -45,94 +46,94 @@ Meta fijada por Ben el 2026-10-26: **el mismo nivel que Claude Code, Codex y Ope
 
 Leyenda: ✅ igual o mejor · 🟡 existe pero apagado o parcial · ❌ falta · 📱 lo cubre la app · 🅱️ clase B · n/v = no verificado. «CC» = Claude Code, «OC2» = OpenCode 2.x. Una celda «n/v» en los competidores no cambia la fila: lo que cuenta es el estado de Lazunox y su paquete.
 
-| Capacidad | CC | Codex | OC2 | Lazunox | Paquete |
-|---|---|---|---|---|---|
-| **Herramientas** | | | | | |
-| Leer, escribir, editar, buscar, parche | ✅ | ✅ | ✅ | ✅ | — |
-| Edición tolerante a Unicode y a finales de línea | no (exacta) | ✅ 4 niveles | ✅ por región | 🟡 Unicode ✅; CR solitario y archivos mixtos ❌ | 7.8 |
-| Rechazo de archivos no UTF-8 | ✅ | ✅ | ❌ | ❌ **confirmado**: los decodifica con U+FFFD y los reescribe degradados | 7.8 |
-| Herramientas en paralelo, con las de efectos en orden | n/v | ✅ lecturas juntas, el resto exclusivo | n/v | 🟡 todo corre en paralelo, lecturas y escrituras; sin exclusión | 7.3 |
-| Reparación de la entrada de herramientas | n/v | n/v | ✅ | 🟡 nombre y llamada MCP diferida; argumentos mal tipados ❌ | 7.13 |
-| Cuadernos Jupyter | ✅ | n/v | n/v | ❌ | 7.15 |
-| Imágenes y PDF | ✅ | ✅ | ✅ | ✅ | — |
-| Web: fetch y búsqueda | ✅ | ✅ | ✅ | ✅ (la búsqueda depende del proveedor) | 🅱️ parcial |
-| LSP | ✅ | n/v | ❌ (solo esquema) | 🟡 `LAZUNOX_LSP` | 7.2 |
-| **Shell** | | | | | |
-| Segundo plano, leer y matar | ✅ | ✅ | ✅ | ✅ | — |
-| Aviso por línea de salida (Monitor) | ✅ | n/v | n/v | ✅ `avisar_si` | — |
-| Salida larga a archivo con vista previa | ✅ | ✅ | ✅ | ✅ 30 KB y archivo completo 7 días | — |
-| Análisis de comandos compuestos | ✅ endurecido | ✅ conservador | ✅ | 🟡 sin auditar | 7.7 |
-| **Permisos y seguridad** | | | | | |
-| Reglas allow/ask/deny por comodín | ✅ | ✅ | ✅ | ✅ | — |
-| «Siempre» persistente y editable | ✅ | n/v | ✅ | 🟡 se guarda en disco; **no se puede listar, editar ni borrar** (nadie llama a `olvidar`) | 7.22 |
-| Rutas protegidas | ✅ | ✅ | n/v | ✅ | — |
-| Modo plan | ✅ | n/v | n/v | 🟡 `LAZUNOX_PLAN` | 7.2 |
-| Políticas duras de nivel superior | ✅ ajustes gestionados | n/v | ✅ `policies` | ❌ | 7.20 |
-| Auto-revisión de permisos | ✅ modo auto | ✅ guardian | n/v | 🟡 solo sugiere | 7.16 |
-| Disyuntor de denegaciones | ✅ | ✅ | — | ❌ | 7.16 |
-| Sandbox del sistema | ✅ (apagado; sin Windows nativo) | ✅ | n/v | 📱 Seatbelt y WSL2 | — |
-| Red con lista de dominios | ✅ | ✅ | n/v | 📱 solo Tareas | D2 |
-| Credenciales: centinela o enmascarado | ✅ `mask` | parcial | n/v | 📱 proxy en Tareas; sanitizador ❌ | 7.5 |
-| **Ganchos y extensión** | | | | | |
-| Ganchos por comando | ✅ 33 eventos | ✅ 14 | plugins | 🟡 10 eventos | 7.6 |
-| Ganchos `mcp_tool`, `prompt`, `http` | ✅ | ✅ `mcp_tool` | ❌ | ❌ | 7.6 |
-| `updatedInput`, filtro `if`, `onFailure` | ✅ | ✅ `updatedInput` | n/v | 🟡 `updatedInput` ✅ (validado contra el esquema); `if` y `onFailure` ❌ | 7.6 |
-| Confianza de ganchos con hash | n/v | ✅ | — | 🟡 solo el archivo de la app | 7.6 |
-| Plugins, skills, reglas por ruta | ✅ | ✅ | ✅ | ✅ | — |
-| Instrucciones jerárquicas | ✅ | ✅ | ✅ | ✅ | — |
-| `@imports` dentro de las instrucciones | ✅ hasta 4 niveles | n/v | n/v | ❌ confirmado | 7.9 |
-| Diferencias de instrucciones | n/v | n/v | ✅ | ❌ | 7.9 |
-| Memoria automática | ✅ | ✅ opt-in con cuota | n/v | 📱 | — |
-| **Agentes** | | | | | |
-| Subagentes definidos por el usuario | ✅ | ✅ TOML | ✅ | ✅ | — |
-| Segundo plano, esperar y cancelar | ✅ | ✅ | ✅ | ✅ | — |
-| Tope de simultáneos | 20 | 6 | n/v | ✅ 8 | — |
-| Fork con la conversación | ✅ por defecto | ✅ | n/v | 🟡 | 7.2 |
-| Reanudar por ID | ✅ | ✅ | ✅ | ❌ | 7.10 |
-| Resultado parcial al agotar pasos | ✅ | n/v | ✅ último paso | ✅ marca `[PARCIAL]`; en el último paso solo avisa (OC2 además fuerza `toolChoice: none`) | 7.10 |
-| Esfuerzo y modelo por llamada | ✅ | ✅ | ✅ modelo | ❌ esfuerzo | 7.10 |
-| Ayudantes con su propio worktree | ✅ | n/v | n/v | ❌ | D1 |
-| Flujos por script | ✅ workflows | n/v | Code Mode | 🟡 Code Mode y `/lote` | 7.17 |
-| Equipos de agentes | experimental | n/v | — | — | 🅱️ experimental allá también |
-| Objetivo y presupuesto | ✅ | ✅ `/goal` | n/v | ✅ (prompt a afinar) | 7.14 |
-| Verificador y revisor | ✅ | ✅ `/review` | n/v | ✅ | 7.14 |
-| **Contexto y sesión** | | | | | |
-| Compactación automática y manual | ✅ | ✅ | ✅ | ✅ | — |
-| Umbral anticipado y por modelo | ✅ | ✅ | ✅ | 🟡 solo por configuración | 7.2 |
-| Reinyección tras compactar | ✅ | ✅ | ✅ | ✅ | — |
-| Resumen validado, sin resumen parcial | n/v | ✅ | ✅ plantilla | 🟡 | 7.9 |
-| Compactación en segundo plano | n/v | ✅ | experimental | ❌ | 7.9 (medir) |
-| Compactación ociosa | ✅ | n/v | n/v | ❌ | 🅱️ depende de la caché de 1 h |
-| Búsqueda diferida de herramientas | ✅ por defecto | ✅ BM25 | n/v | 🟡 apagada por defecto; con `auto` exige 4 000 tokens diferibles | 7.2 |
-| Puntos de control y rebobinar | ✅ (sin shell) | n/v | ✅ | ✅ incluye shell | — |
-| Worktree para la sesión principal | ✅ | ✅ | ✅ | ❌ | 7.11 |
-| Tareas programadas y espera | ✅ en sesión | nube | ❌ | ❌ | 7.12 |
-| **MCP** | | | | | |
-| Cliente, OAuth, tiempos máximos | ✅ | ✅ | ✅ | ✅ | — |
-| Formularios (elicitation) | ✅ | n/v | ✅ | ✅ (app 1.7.5) | — |
-| Resultados binarios o imágenes de MCP a archivo | ✅ | n/v | ✅ | 🟡 imágenes en base64 al contexto sin tope; audio descartado | 7.21 |
-| **Observabilidad y entorno** | | | | | |
-| Tokens por paso, aciertos de caché y su causa | ✅ `/cost` | n/v | n/v | 🟡 solo en el banco | 7.18 |
-| Telemetría | opcional | opt-out | ninguna en el motor | ✅ ninguna, vigilada | — |
-| Respaldo de modelo | ✅ | ✅ | n/v | 🟡 sin configurar | 7.2 |
-| Modelos locales (Ollama, LM Studio) | por puerta | ✅ | ✅ | ✅ | — |
-| Modo sin interfaz y servidor | ✅ | ✅ | ✅ | ✅ | — |
-| Windows nativo | ✅ | ✅ | ✅ | ✅ (`cmd` con acentos ❌) | límite conocido |
+| Capacidad                                             | CC                               | Codex                                  | OC2                 | Lazunox                                                                                   | Paquete                       |
+| ----------------------------------------------------- | -------------------------------- | -------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------- | ----------------------------- |
+| **Herramientas**                                      |                                  |                                        |                     |                                                                                           |                               |
+| Leer, escribir, editar, buscar, parche                | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Edición tolerante a Unicode y a finales de línea      | no (exacta)                      | ✅ 4 niveles                           | ✅ por región       | 🟡 Unicode ✅; CR solitario y archivos mixtos ❌                                          | 7.8                           |
+| Rechazo de archivos no UTF-8                          | ✅                               | ✅                                     | ❌                  | ❌ **confirmado**: los decodifica con U+FFFD y los reescribe degradados                   | 7.8                           |
+| Herramientas en paralelo, con las de efectos en orden | n/v                              | ✅ lecturas juntas, el resto exclusivo | n/v                 | 🟡 todo corre en paralelo, lecturas y escrituras; sin exclusión                           | 7.3                           |
+| Reparación de la entrada de herramientas              | n/v                              | n/v                                    | ✅                  | 🟡 nombre y llamada MCP diferida; argumentos mal tipados ❌                               | 7.13                          |
+| Cuadernos Jupyter                                     | ✅                               | n/v                                    | n/v                 | ❌                                                                                        | 7.15                          |
+| Imágenes y PDF                                        | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Web: fetch y búsqueda                                 | ✅                               | ✅                                     | ✅                  | ✅ (la búsqueda depende del proveedor)                                                    | 🅱️ parcial                    |
+| LSP                                                   | ✅                               | n/v                                    | ❌ (solo esquema)   | 🟡 `LAZUNOX_LSP`                                                                          | 7.2                           |
+| **Shell**                                             |                                  |                                        |                     |                                                                                           |                               |
+| Segundo plano, leer y matar                           | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Aviso por línea de salida (Monitor)                   | ✅                               | n/v                                    | n/v                 | ✅ `avisar_si`                                                                            | —                             |
+| Salida larga a archivo con vista previa               | ✅                               | ✅                                     | ✅                  | ✅ 30 KB y archivo completo 7 días                                                        | —                             |
+| Análisis de comandos compuestos                       | ✅ endurecido                    | ✅ conservador                         | ✅                  | 🟡 sin auditar                                                                            | 7.7                           |
+| **Permisos y seguridad**                              |                                  |                                        |                     |                                                                                           |                               |
+| Reglas allow/ask/deny por comodín                     | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| «Siempre» persistente y editable                      | ✅                               | n/v                                    | ✅                  | 🟡 se guarda en disco; **no se puede listar, editar ni borrar** (nadie llama a `olvidar`) | 7.22                          |
+| Rutas protegidas                                      | ✅                               | ✅                                     | n/v                 | ✅                                                                                        | —                             |
+| Modo plan                                             | ✅                               | n/v                                    | n/v                 | 🟡 `LAZUNOX_PLAN`                                                                         | 7.2                           |
+| Políticas duras de nivel superior                     | ✅ ajustes gestionados           | n/v                                    | ✅ `policies`       | ❌                                                                                        | 7.20                          |
+| Auto-revisión de permisos                             | ✅ modo auto                     | ✅ guardian                            | n/v                 | 🟡 solo sugiere                                                                           | 7.16                          |
+| Disyuntor de denegaciones                             | ✅                               | ✅                                     | —                   | ❌                                                                                        | 7.16                          |
+| Sandbox del sistema                                   | ✅ (apagado; sin Windows nativo) | ✅                                     | n/v                 | 📱 Seatbelt y WSL2                                                                        | —                             |
+| Red con lista de dominios                             | ✅                               | ✅                                     | n/v                 | 📱 solo Tareas                                                                            | D2                            |
+| Credenciales: centinela o enmascarado                 | ✅ `mask`                        | parcial                                | n/v                 | 📱 proxy en Tareas; sanitizador ❌                                                        | 7.5                           |
+| **Ganchos y extensión**                               |                                  |                                        |                     |                                                                                           |                               |
+| Ganchos por comando                                   | ✅ 33 eventos                    | ✅ 14                                  | plugins             | 🟡 10 eventos                                                                             | 7.6                           |
+| Ganchos `mcp_tool`, `prompt`, `http`                  | ✅                               | ✅ `mcp_tool`                          | ❌                  | ❌                                                                                        | 7.6                           |
+| `updatedInput`, filtro `if`, `onFailure`              | ✅                               | ✅ `updatedInput`                      | n/v                 | 🟡 `updatedInput` ✅ (validado contra el esquema); `if` y `onFailure` ❌                  | 7.6                           |
+| Confianza de ganchos con hash                         | n/v                              | ✅                                     | —                   | 🟡 solo el archivo de la app                                                              | 7.6                           |
+| Plugins, skills, reglas por ruta                      | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Instrucciones jerárquicas                             | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| `@imports` dentro de las instrucciones                | ✅ hasta 4 niveles               | n/v                                    | n/v                 | ❌ confirmado                                                                             | 7.9                           |
+| Diferencias de instrucciones                          | n/v                              | n/v                                    | ✅                  | ❌                                                                                        | 7.9                           |
+| Memoria automática                                    | ✅                               | ✅ opt-in con cuota                    | n/v                 | 📱                                                                                        | —                             |
+| **Agentes**                                           |                                  |                                        |                     |                                                                                           |                               |
+| Subagentes definidos por el usuario                   | ✅                               | ✅ TOML                                | ✅                  | ✅                                                                                        | —                             |
+| Segundo plano, esperar y cancelar                     | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Tope de simultáneos                                   | 20                               | 6                                      | n/v                 | ✅ 8                                                                                      | —                             |
+| Fork con la conversación                              | ✅ por defecto                   | ✅                                     | n/v                 | 🟡                                                                                        | 7.2                           |
+| Reanudar por ID                                       | ✅                               | ✅                                     | ✅                  | ❌                                                                                        | 7.10                          |
+| Resultado parcial al agotar pasos                     | ✅                               | n/v                                    | ✅ último paso      | ✅ marca `[PARCIAL]`; en el último paso solo avisa (OC2 además fuerza `toolChoice: none`) | 7.10                          |
+| Esfuerzo y modelo por llamada                         | ✅                               | ✅                                     | ✅ modelo           | ❌ esfuerzo                                                                               | 7.10                          |
+| Ayudantes con su propio worktree                      | ✅                               | n/v                                    | n/v                 | ❌                                                                                        | D1                            |
+| Flujos por script                                     | ✅ workflows                     | n/v                                    | Code Mode           | 🟡 Code Mode y `/lote`                                                                    | 7.17                          |
+| Equipos de agentes                                    | experimental                     | n/v                                    | —                   | —                                                                                         | 🅱️ experimental allá también  |
+| Objetivo y presupuesto                                | ✅                               | ✅ `/goal`                             | n/v                 | ✅ (prompt a afinar)                                                                      | 7.14                          |
+| Verificador y revisor                                 | ✅                               | ✅ `/review`                           | n/v                 | ✅                                                                                        | 7.14                          |
+| **Contexto y sesión**                                 |                                  |                                        |                     |                                                                                           |                               |
+| Compactación automática y manual                      | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Umbral anticipado y por modelo                        | ✅                               | ✅                                     | ✅                  | 🟡 solo por configuración                                                                 | 7.2                           |
+| Reinyección tras compactar                            | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Resumen validado, sin resumen parcial                 | n/v                              | ✅                                     | ✅ plantilla        | 🟡                                                                                        | 7.9                           |
+| Compactación en segundo plano                         | n/v                              | ✅                                     | experimental        | ❌                                                                                        | 7.9 (medir)                   |
+| Compactación ociosa                                   | ✅                               | n/v                                    | n/v                 | ❌                                                                                        | 🅱️ depende de la caché de 1 h |
+| Búsqueda diferida de herramientas                     | ✅ por defecto                   | ✅ BM25                                | n/v                 | 🟡 apagada por defecto; con `auto` exige 4 000 tokens diferibles                          | 7.2                           |
+| Puntos de control y rebobinar                         | ✅ (sin shell)                   | n/v                                    | ✅                  | ✅ incluye shell                                                                          | —                             |
+| Worktree para la sesión principal                     | ✅                               | ✅                                     | ✅                  | ❌                                                                                        | 7.11                          |
+| Tareas programadas y espera                           | ✅ en sesión                     | nube                                   | ❌                  | ❌                                                                                        | 7.12                          |
+| **MCP**                                               |                                  |                                        |                     |                                                                                           |                               |
+| Cliente, OAuth, tiempos máximos                       | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Formularios (elicitation)                             | ✅                               | n/v                                    | ✅                  | ✅ (app 1.7.5)                                                                            | —                             |
+| Resultados binarios o imágenes de MCP a archivo       | ✅                               | n/v                                    | ✅                  | 🟡 imágenes en base64 al contexto sin tope; audio descartado                              | 7.21                          |
+| **Observabilidad y entorno**                          |                                  |                                        |                     |                                                                                           |                               |
+| Tokens por paso, aciertos de caché y su causa         | ✅ `/cost`                       | n/v                                    | n/v                 | 🟡 solo en el banco                                                                       | 7.18                          |
+| Telemetría                                            | opcional                         | opt-out                                | ninguna en el motor | ✅ ninguna, vigilada                                                                      | —                             |
+| Respaldo de modelo                                    | ✅                               | ✅                                     | n/v                 | 🟡 sin configurar                                                                         | 7.2                           |
+| Modelos locales (Ollama, LM Studio)                   | por puerta                       | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Modo sin interfaz y servidor                          | ✅                               | ✅                                     | ✅                  | ✅                                                                                        | —                             |
+| Windows nativo                                        | ✅                               | ✅                                     | ✅                  | ✅ (`cmd` con acentos ❌)                                                                 | límite conocido               |
 
 Las filas que decían «por comprobar» se cerraron el 2026-10-26 leyendo el código del fork (rama `feat/lazunox12`, commit `b3ccb17`); lo que sigue con «n/v» en la columna de los competidores no se ha verificado.
 
 ## 2b. Lo que queda fuera (clase B) y por qué
 
-| Qué | Por qué |
-|---|---|
-| Clasificador o guardian **de su nube** (modelos de Anthropic o de OpenAI) | Exige su cuenta o su cuota. Se construye uno local (7.16), que es otra cosa |
-| Equipos de agentes (CC), tablón de mensajes entre agentes (Codex) | Experimentales también allá; unas 7 veces más tokens. Se reabren con datos del comparativo |
-| Memorias de Codex, voz, acceso remoto, rutinas en la nube, tienda de plugins, modelos «free» de OpenCode | Nube, cuenta o cuota de terceros |
-| Telemetría y analítica | No se copia; nuestra prueba `sin-red-de-opencode` ya la veta |
-| Compactación ociosa | Depende de la caché de 1 hora del proveedor; se reabre si el proveedor muestra aciertos de caché |
-| `get_context_remaining` y modo «token budget» de Codex | Ya descartados en la Ola 6: un dato que cambia en cada paso rompe el prefijo de caché |
-| Salida estructurada con `--json-schema` | Sin valor para el usuario de la app |
-| Renombrar el motor (etapas b, c, d) | Decisión del 2026-10-24: versión aparte |
+| Qué                                                                                                      | Por qué                                                                                          |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Clasificador o guardian **de su nube** (modelos de Anthropic o de OpenAI)                                | Exige su cuenta o su cuota. Se construye uno local (7.16), que es otra cosa                      |
+| Equipos de agentes (CC), tablón de mensajes entre agentes (Codex)                                        | Experimentales también allá; unas 7 veces más tokens. Se reabren con datos del comparativo       |
+| Memorias de Codex, voz, acceso remoto, rutinas en la nube, tienda de plugins, modelos «free» de OpenCode | Nube, cuenta o cuota de terceros                                                                 |
+| Telemetría y analítica                                                                                   | No se copia; nuestra prueba `sin-red-de-opencode` ya la veta                                     |
+| Compactación ociosa                                                                                      | Depende de la caché de 1 hora del proveedor; se reabre si el proveedor muestra aciertos de caché |
+| `get_context_remaining` y modo «token budget» de Codex                                                   | Ya descartados en la Ola 6: un dato que cambia en cada paso rompe el prefijo de caché            |
+| Salida estructurada con `--json-schema`                                                                  | Sin valor para el usuario de la app                                                              |
+| Renombrar el motor (etapas b, c, d)                                                                      | Decisión del 2026-10-24: versión aparte                                                          |
 
 ## 2c. Corrección de suposiciones del primer borrador (tras leer el código)
 
@@ -145,30 +146,30 @@ Las filas que decían «por comprobar» se cerraron el 2026-10-26 leyendo el có
 
 Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad **de implementarlo**.
 
-| # | Paquete | Origen | Esf | Riesgo | Tanda |
-|---|---|---|---|---|---|
-| 7.1 | Banco: tareas nuevas y línea base de 3 corridas | Ola 6.1 sin cerrar | M | Bajo | A |
-| 7.2 | Cerrar las filas «por comprobar» y decidir con datos qué se enciende | Existen y están apagadas | M | Bajo | A |
-| 7.3 | Paralelismo seguro: lecturas juntas, herramientas con efectos en orden | Codex | S | Medio | A |
-| 7.4 | Respuesta cortada por el límite de salida | OpenCode 2.x | S | Bajo | A |
-| 7.8 | Edición más segura | Los tres | S | Bajo | A |
-| 7.13 | Reparación de la entrada de herramientas | OpenCode 2.x | S | Bajo | A |
-| 7.18 | Observabilidad local: tokens por paso y aciertos de caché | Claude Code | S-M | Bajo | A |
-| 7.5 | Credenciales: sanitizador de lo que se muestra y se guarda | Codex, Claude Code | S-M | Medio | B |
-| 7.6 | Ganchos completos | Claude Code, Codex | M | Medio | B |
-| 7.7 | Auditoría de permisos del shell y del sandbox | Claude Code, Codex | M | Alto (zona intocable) | B |
-| 7.20 | Políticas duras de nivel superior | OpenCode 2.x, Claude Code | S-M | Medio | B |
-| 7.21 | Resultados binarios de MCP: a archivo y con tope | Claude Code, OpenCode 2.x | S | Bajo | A |
-| 7.22 | Gestionar los «siempre» guardados: listar, editar, borrar | OpenCode 2.x, Claude Code | S | Medio | B |
-| 7.9 | Contexto: diferencias de instrucciones y robustez de la compactación | OpenCode 2.x, Codex | M | Bajo | C |
-| 7.10 | Ayudantes reanudables, parciales y con esfuerzo propio | Los tres | S-M | Medio | C |
-| 7.11 | Worktree para la sesión principal | Los tres | M | Medio | C |
-| 7.14 | Objetivo y revisor: afinar con lo de Codex | Codex | S | Bajo | C |
-| 7.15 | Cuadernos Jupyter | Claude Code | S | Bajo | C |
-| 7.12 | Tareas programadas y espera (reabierto, D3) | Claude Code | M | Medio | C |
-| 7.16 | Auto-revisión de permisos, local y acotada (reabierto, D4) | Claude Code, Codex | L | **Alto** | D |
-| 7.17 | Flujos por script sobre Code Mode (reabierto, D5) | Claude Code | L | Medio | D |
-| 7.19 | Comparativo justo contra OpenCode 2.1.4 y Codex | Meta «mejor» | M | Medio (corre código de terceros) | A y D |
+| #    | Paquete                                                                | Origen                    | Esf | Riesgo                           | Tanda |
+| ---- | ---------------------------------------------------------------------- | ------------------------- | --- | -------------------------------- | ----- |
+| 7.1  | Banco: tareas nuevas y línea base de 3 corridas                        | Ola 6.1 sin cerrar        | M   | Bajo                             | A     |
+| 7.2  | Cerrar las filas «por comprobar» y decidir con datos qué se enciende   | Existen y están apagadas  | M   | Bajo                             | A     |
+| 7.3  | Paralelismo seguro: lecturas juntas, herramientas con efectos en orden | Codex                     | S   | Medio                            | A     |
+| 7.4  | Respuesta cortada por el límite de salida                              | OpenCode 2.x              | S   | Bajo                             | A     |
+| 7.8  | Edición más segura                                                     | Los tres                  | S   | Bajo                             | A     |
+| 7.13 | Reparación de la entrada de herramientas                               | OpenCode 2.x              | S   | Bajo                             | A     |
+| 7.18 | Observabilidad local: tokens por paso y aciertos de caché              | Claude Code               | S-M | Bajo                             | A     |
+| 7.5  | Credenciales: sanitizador de lo que se muestra y se guarda             | Codex, Claude Code        | S-M | Medio                            | B     |
+| 7.6  | Ganchos completos                                                      | Claude Code, Codex        | M   | Medio                            | B     |
+| 7.7  | Auditoría de permisos del shell y del sandbox                          | Claude Code, Codex        | M   | Alto (zona intocable)            | B     |
+| 7.20 | Políticas duras de nivel superior                                      | OpenCode 2.x, Claude Code | S-M | Medio                            | B     |
+| 7.21 | Resultados binarios de MCP: a archivo y con tope                       | Claude Code, OpenCode 2.x | S   | Bajo                             | A     |
+| 7.22 | Gestionar los «siempre» guardados: listar, editar, borrar              | OpenCode 2.x, Claude Code | S   | Medio                            | B     |
+| 7.9  | Contexto: diferencias de instrucciones y robustez de la compactación   | OpenCode 2.x, Codex       | M   | Bajo                             | C     |
+| 7.10 | Ayudantes reanudables, parciales y con esfuerzo propio                 | Los tres                  | S-M | Medio                            | C     |
+| 7.11 | Worktree para la sesión principal                                      | Los tres                  | M   | Medio                            | C     |
+| 7.14 | Objetivo y revisor: afinar con lo de Codex                             | Codex                     | S   | Bajo                             | C     |
+| 7.15 | Cuadernos Jupyter                                                      | Claude Code               | S   | Bajo                             | C     |
+| 7.12 | Tareas programadas y espera (reabierto, D3)                            | Claude Code               | M   | Medio                            | C     |
+| 7.16 | Auto-revisión de permisos, local y acotada (reabierto, D4)             | Claude Code, Codex        | L   | **Alto**                         | D     |
+| 7.17 | Flujos por script sobre Code Mode (reabierto, D5)                      | Claude Code               | L   | Medio                            | D     |
+| 7.19 | Comparativo justo contra OpenCode 2.1.4 y Codex                        | Meta «mejor»              | M   | Medio (corre código de terceros) | A y D |
 
 ### 7.1 Banco: tareas nuevas y línea base (requisito previo)
 
@@ -176,14 +177,14 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 **Tareas nuevas** (`scripts/engine-bench/tareas/`, formato `TNN-*.mjs` con verificador determinista):
 
-| Tarea | Qué pide | Qué mide |
-|---|---|---|
-| T24 | Leer 8 archivos pequeños y resumirlos | Lecturas en paralelo (7.3) |
-| T25 | Un proveedor falso que corta la salida (`finish: length`) a mitad de una llamada con un archivo grande | Respuesta cortada (7.4) |
-| T26 | Un archivo Latin-1 y otro con CRLF que hay que editar | Edición segura (7.8) |
-| T27 | Un modelo falso que manda el objeto como texto, un número como cadena y `null` por opcional | Reparación de entrada (7.13) |
-| T28 | Un guion que imprime una clave falsa conocida al hacer `env` | Credenciales (7.5) |
-| T29 | AGENTS.md que cambia a mitad de una sesión larga | Diferencias de instrucciones (7.9) |
+| Tarea | Qué pide                                                                                               | Qué mide                           |
+| ----- | ------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| T24   | Leer 8 archivos pequeños y resumirlos                                                                  | Lecturas en paralelo (7.3)         |
+| T25   | Un proveedor falso que corta la salida (`finish: length`) a mitad de una llamada con un archivo grande | Respuesta cortada (7.4)            |
+| T26   | Un archivo Latin-1 y otro con CRLF que hay que editar                                                  | Edición segura (7.8)               |
+| T27   | Un modelo falso que manda el objeto como texto, un número como cadena y `null` por opcional            | Reparación de entrada (7.13)       |
+| T28   | Un guion que imprime una clave falsa conocida al hacer `env`                                           | Credenciales (7.5)                 |
+| T29   | AGENTS.md que cambia a mitad de una sesión larga                                                       | Diferencias de instrucciones (7.9) |
 
 **Hecho el 2026-10-26 (tareas T24-T30 escritas, falta la línea base):** `scripts/engine-bench/tareas/` tiene T24-T30, cada una con verificador y guion de referencia (la autoprueba pasa en Linux; el ejecutor se niega en el Mac). Notas de diseño:
 
@@ -205,16 +206,16 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 **Candidatas** (existen en el fork; qué las enciende):
 
-| Función | Variable o ajuste | Qué se espera |
-|---|---|---|
-| Búsqueda diferida de herramientas | `LAZUNOX_TOOL_SEARCH=auto` | Menos contexto con muchos MCP. Referencia: Claude Code difiere **todas** las MCP por defecto (con `auto` el umbral es el 10 % de la ventana, y las instrucciones cargadas por adelantado se limitan a 4 096 caracteres); Codex las busca con BM25. Comprobar que el umbral nuestro (`_MIN_TOKENS`) es razonable |
-| Ayudantes con contexto mínimo | `LAZUNOX_AYUDANTES_MINIMOS=1` | −35 % en tokens de las hijas (criterio de 6.3) |
-| Resumen robusto | `LAZUNOX_RESUMEN_ROBUSTO=1` | Menos resúmenes vacíos |
-| Avisos de cambios y diff del shell | `LAZUNOX_AVISOS_CAMBIOS=1` | Menos trabajo sobre copias viejas |
-| Ayudante que hereda la conversación | `LAZUNOX_AYUDANTE_HEREDADO=1` | Claude Code lo dejó activo por defecto en la 2.1.232 |
-| Umbral de compactación anticipado | `compaction.umbral` | −30 % en p90 de tokens por paso |
-| Lista de tareas (`todowrite`) opcional según el modelo | nueva | Claude Code **quitó** las herramientas de tareas en los modelos nuevos (2.1.268), y en nuestra medición `todowrite` causó la regresión de T10. Medir con y sin |
-| LSP y modo plan | `LAZUNOX_LSP=1`, `LAZUNOX_PLAN=1` | Valor para el usuario, no necesariamente para tokens |
+| Función                                                | Variable o ajuste                 | Qué se espera                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Búsqueda diferida de herramientas                      | `LAZUNOX_TOOL_SEARCH=auto`        | Menos contexto con muchos MCP. Referencia: Claude Code difiere **todas** las MCP por defecto (con `auto` el umbral es el 10 % de la ventana, y las instrucciones cargadas por adelantado se limitan a 4 096 caracteres); Codex las busca con BM25. Comprobar que el umbral nuestro (`_MIN_TOKENS`) es razonable |
+| Ayudantes con contexto mínimo                          | `LAZUNOX_AYUDANTES_MINIMOS=1`     | −35 % en tokens de las hijas (criterio de 6.3)                                                                                                                                                                                                                                                                  |
+| Resumen robusto                                        | `LAZUNOX_RESUMEN_ROBUSTO=1`       | Menos resúmenes vacíos                                                                                                                                                                                                                                                                                          |
+| Avisos de cambios y diff del shell                     | `LAZUNOX_AVISOS_CAMBIOS=1`        | Menos trabajo sobre copias viejas                                                                                                                                                                                                                                                                               |
+| Ayudante que hereda la conversación                    | `LAZUNOX_AYUDANTE_HEREDADO=1`     | Claude Code lo dejó activo por defecto en la 2.1.232                                                                                                                                                                                                                                                            |
+| Umbral de compactación anticipado                      | `compaction.umbral`               | −30 % en p90 de tokens por paso                                                                                                                                                                                                                                                                                 |
+| Lista de tareas (`todowrite`) opcional según el modelo | nueva                             | Claude Code **quitó** las herramientas de tareas en los modelos nuevos (2.1.268), y en nuestra medición `todowrite` causó la regresión de T10. Medir con y sin                                                                                                                                                  |
+| LSP y modo plan                                        | `LAZUNOX_LSP=1`, `LAZUNOX_PLAN=1` | Valor para el usuario, no necesariamente para tokens                                                                                                                                                                                                                                                            |
 
 **Método**: para cada función, banco con la función encendida contra la línea base de 7.1, 3 corridas, con el mismo modelo. Se enciende **solo** si cumple su criterio de éxito de la Ola 6 y no baja una tarea estable de 3/3.
 
@@ -241,6 +242,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 ### 7.4 Respuesta cortada por el límite de salida
 
 **Cómo lo hacen** (corrige el primer borrador, que decía «reintentar una vez»):
+
 - **OpenCode 2.x** (`core/src/session/runner/llm.ts`, ~l.303-345): si la respuesta termina por límite de salida, cada llamada a herramienta con argumentos incompletos **falla** con un mensaje que pide partir el trabajo en llamadas más chicas y muestra un extracto de 2 048 caracteres de lo que mandó. Si no había llamada, se inyecta un aviso sintético «tu última respuesta llegó al límite de salida, divide el trabajo». Tras **3 respuestas seguidas** con corte, falla con un error propio. Una transmisión cortada a mitad se continúa con un mensaje sintético.
 - **Codex** (`core/src/responses_retry.rs`): un corte por límite de salida es **terminal y no se reintenta**. Solo se reintenta la transmisión cerrada sin terminar. Si una llamada queda sin resultado, inserta uno sintético «aborted» (nosotros ya lo hacemos en `message-v2.ts`).
 
@@ -255,10 +257,12 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 ### 7.5 Credenciales: sanitizador de lo que se muestra y se guarda
 
 **Qué hacen**:
+
 - **Codex** (`secrets/src/sanitizer.rs`): cuatro expresiones regulares (`sk-` + 20 o más alfanuméricos, `AKIA` + 16, `Bearer` + 16 o más, y `api_key|token|secret|password` seguido de `:` o `=` y un valor de 8 o más), todas reemplazadas por `[REDACTED_SECRET]`, con límites de palabra y pruebas de falsos positivos. Se aplica al **comando que se muestra en la interfaz**, a las memorias y a los errores de login. **No** lo encontraron aplicado a lo que se envía al modelo.
 - **Claude Code**: otro diseño. Con `mode: "mask"` el comando solo ve un valor centinela y el **proxy del sandbox** pone el valor real en las peticiones salientes a hosts permitidos. Requiere terminar TLS en el proxy (experimental) y solo se honra en los ajustes del usuario, nunca en los del repo.
 
 **Qué hacemos**:
+
 1. **Ya lo tenemos en Tareas**: `CredentialProxy` da al motor un valor falso y guarda la clave real fuera del sandbox. No se rehace.
 2. **Nuevo**: el sanitizador de Codex (mismas cuatro formas, ampliables con las claves que la app conozca en la sesión) aplicado a lo que **se muestra y se guarda**: comando en la interfaz, historial en disco, registros y diagnóstico.
 3. **Opcional y medido**: aplicarlo también a la salida de `shell` que ve el modelo, detrás de un ajuste. Es heurística, no un límite, y se documenta así.
@@ -274,6 +278,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Eventos que faltan** (lista real de Codex, `protocol/src/protocol.rs`): `PermissionRequest`, `SubagentStart`, `Interrupt`, y de Claude Code `PostToolBatch` (`SubagentStop` ya existe). Codex tiene además `PreModelRequest`/`PostModelRequest`, que no se copian de momento.
 
 **Semántica a copiar** (confirmada en código y docs):
+
 - `updatedInput` **reemplaza el objeto de entrada completo** (hay que repetir los campos sin cambios), y los permisos se **reevalúan contra la entrada ya modificada**; un gancho nunca amplía permisos. En Codex, para comandos exige un campo de texto `command`.
 - Filtro `if`: **una sola regla** con la sintaxis de permisos (`Bash(git *)`, `Edit(*.ts)`), solo en eventos de herramienta; si no puede analizar el comando, el gancho corre igual. Es de mejor esfuerzo, no una frontera de seguridad.
 - `onFailure: "block"`: si el gancho falla, expira o devuelve error, la acción **se bloquea** (falla cerrado). Por defecto, la acción sigue.
@@ -289,6 +294,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Por qué**: Claude Code lleva más de 20 versiones endureciendo esto; Codex tiene un diseño conservador que conviene comparar con el nuestro.
 
 **Batería de casos** (de los arreglos de Claude Code, 2.1.216-2.1.280):
+
 - compuestos con redirecciones dentro de listas `&&` o negaciones;
 - comandos ocultos en condicionales `[[ ]]` de zsh;
 - reglas `ask` o `deny` saltadas dentro de subshells o sustituciones;
@@ -301,6 +307,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Reglas de su documentación a imitar**: cada subcomando debe coincidir por separado; `deny` y `ask` coinciden si **cualquier** subcomando coincide; un comando colgante (`cmd &&`) no es analizable; envoltorios que se quitan antes de comparar (`timeout`, `time`, `nice`, `nohup`, `stdbuf`, `command`, `builtin`, `noglob`), mientras que `watch`, `setsid`, `ionice`, `flock` y `find` con `-exec`/`-delete` no se autoaprueban.
 
 **De Codex** (`shell-command/src/bash.rs`, `execpolicy`, `seatbelt.rs`):
+
 - solo se auto-reconoce una secuencia de **palabras simples** unidas por `&&`, `||`, `;` o `|`; paréntesis, redirecciones, sustituciones y control de flujo se rechazan (se pide permiso);
 - para `bash -lc` se desenvuelve el script, y los literales extraídos de scripts complejos **solo sirven para detectar peligro, nunca para probar que algo es seguro**;
 - más de 8 niveles de envoltorios se marca peligroso;
@@ -310,6 +317,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **De OpenCode** (`shell/scan.ts`): marca como «opacos» los comandos con sustitución, heredoc o `eval`, y guarda el «siempre» por prefijo con una tabla de aridad (`git commit` = 3 palabras).
 
 **Procedimiento (zona intocable, `AGENTS.md` §7)**:
+
 1. Escribir la batería como pruebas que **documenten** el comportamiento actual, sin tocar `sandbox-profile.ts` ni `sandbox.ts`.
 2. Si aparece un fallo real, cambio mínimo con prueba, revisión independiente de un agente que no lo escribió, y `npm run zonas:actualizar -- "motivo"`.
 3. Lo del motor (análisis del shell) va en el fork; lo del sandbox va en la app.
@@ -319,11 +327,13 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 ### 7.8 Edición más segura
 
 **Qué hace cada uno**:
+
 - **Claude Code**: `Edit` se niega (archivo intacto) si el archivo no es UTF-8 válido, salvo que empiece con BOM UTF-16 LE; `Write` guarda en UTF-8 y se niega si el contenido nuevo trae U+FFFD. CRLF: no documentado.
 - **Codex**: `apply_patch` detecta CRLF, CR y LF por línea y los conserva; la lectura falla si no es UTF-8.
 - **OpenCode 2.x**: compara contra una vista LF y reescribe **preservando los finales de línea por región** (incluso en archivos mixtos) y el BOM; los bytes inválidos se degradan a U+FFFD, **sin protección**.
 
 **Qué hacemos**:
+
 1. **Comprobado el 2026-10-26 en el código:** `edit` detecta CRLF si el archivo tiene al menos un `\r\n` y convierte **todo** el texto nuevo a ese final (un CR solitario no se trata, y en archivos mixtos las líneas LF pueden no coincidir); conserva el BOM; y **no rechaza los archivos que no son UTF-8: los decodifica con U+FFFD y los reescribe degradados** (`util/bom.ts`, `TextDecoder` sin `fatal`). `write` y `apply_patch` hacen lo mismo. Eso es **pérdida de datos real**, no solo una brecha: se arregla primero, con pruebas que documenten el comportamiento actual antes de cambiarlo.
 2. Negarse a editar o escribir si el archivo no es UTF-8 válido (mensaje claro), y si el contenido nuevo trae U+FFFD.
 3. Conservar CRLF, CR, LF y BOM por región, como OpenCode.
@@ -338,6 +348,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Qué hacemos**: lo mismo sobre `session/instruction.ts` y la lista de habilidades, comprobando primero cuánto cuesta hoy un cambio de AGENTS.md a mitad de sesión (T29). Interruptor `LAZUNOX_INSTRUCCIONES_DIFF=0`.
 
 **Robustez de la compactación** (comparar con `session/compaction.ts` nuestro antes de cambiar):
+
 - Codex: el historial se reemplaza **solo si la compactación termina bien**; un resumen vacío es error (no queda un resumen parcial). Si el contexto se excede al compactar, quita el elemento más antiguo y reintenta.
 - OpenCode: si la petición de resumen es demasiado grande, la reduce por pasos (85 %, 70 %, 50 %, 35 %) y recorta primero las salidas de herramientas. Ya tenemos `ajustarConversacion` y el resumen robusto (6.4); aquí solo se comparan los casos de borde.
 - Claude Code: tras compactar, el estado de git que se muestra es el actual, no el del inicio.
@@ -353,11 +364,13 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 ### 7.10 Ayudantes reanudables y resultados parciales
 
 **Qué hacen**:
+
 - **Claude Code**: reanudar por el ID del ayudante (`SendMessage`) retoma **todo su historial**; Explore y Plan son de un solo uso; reanudar toma un cupo nuevo sin comprobar el límite. Si un ayudante llega a `maxTurns`, devuelve un resultado marcado «parcial» con la pista para continuarlo (2.1.246). Los resultados llegan bajo una cabecera «salida de subagente» e indentados, para que no se confundan con instrucciones (2.1.277).
 - **OpenCode**: la herramienta `subagent` acepta el `sessionID` de una hija propia (debe ser hija de la sesión actual) y continúa esa conversación. En el **último paso** no quita las herramientas (para no romper la caché): manda `toolChoice: none` y un aviso para que resuma.
 - **Codex**: `resume_agent` solo reabre si no hay un proceso vivo.
 
 **Qué hacemos**:
+
 - `task` gana `esfuerzo` por llamada (Claude Code 2.1.296) y `session_id`. La sesión debe ser hija de la actual; **conserva los permisos con que nació** (nunca más que la sesión que la lanza) y **cuenta contra el tope** de ayudantes.
 - **El resultado `[PARCIAL]` ya existe** (`agent/parcial.ts`, `tool/task.ts`); solo falta añadirle el `session_id` para poder continuarlo. En el **último paso** el motor hoy solo agrega el aviso de pasos agotados y deja todas las herramientas (`session/prompt.ts`); OpenCode 2.x además fuerza `toolChoice: none`, y conviene copiarlo, conservando la lista de herramientas para no romper la caché.
 - Su informe sigue acotado a 4 096 bytes, ya marcado como no confiable; se añade la cabecera y la indentación.
@@ -367,6 +380,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 ### 7.11 Worktree para la sesión principal
 
 **Qué hacen**:
+
 - **Codex** (`worktree/src/lib.rs`): crea con `git worktree add --detach --no-checkout` bajo una raíz configurada; deshace si falla; al borrar exige que sea uno gestionado, que no sea el actual y que no tenga archivos ignorados locales; se limpia solo guardando los 15 últimos.
 - **OpenCode** (`tool/plugin/opencode.ts`): `worktree_create`, `worktree_list` y `worktree_remove`; borrar exige permiso de **edición** sobre el directorio y falla si hay cambios, salvo `force`.
 - **Claude Code**: entrar a una ruta fuera de `.claude/worktrees/` pide una aprobación que ninguna regla salta. Dentro del worktree bloquea ediciones y comandos hacia el checkout principal y las redirecciones de git (`-C`, `--git-dir`, `GIT_DIR`), pero **no rastrea `cp` ni redirecciones del shell**.
@@ -382,6 +396,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Qué hace Claude Code**: `CronCreate`/`CronList`/`CronDelete` (cron de 5 campos, recurrente o una vez, hasta 50 por sesión), atadas a la sesión: solo disparan con la sesión abierta e inactiva, se encolan entre turnos, caducan a los 7 días, llevan un retraso aleatorio y no recuperan disparos perdidos. `/loop` y `ScheduleWakeup` (de 1 minuto a 1 hora; sin reprogramar, un respaldo de unos 20 minutos y termina). Para algo persistente recomienda rutinas en la nube, que no usamos. Codex y OpenCode no tienen un equivalente local.
 
 **Qué hacemos (mejor que ellos)**:
+
 1. `programar`, `listar_programadas` y `borrar_programada` con la misma semántica acotada, y `esperar_y_continuar` (de 60 s a 1 h, con respaldo).
 2. Lo programado se guarda como metadato de la sesión; **lo persistente lo ejecuta Rutinas de la app**, que ya existe y ya pide el aviso de términos de OpenCode antes de correr algo sin sesión. Así lo programado sobrevive a un reinicio sin nube.
 
@@ -424,6 +439,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Qué hacen**: Claude Code (modo auto, hoy el predeterminado en interactivo) usa un clasificador con un modelo de Anthropic que revisa cada acción; descarta las reglas de permiso demasiado amplias al entrar, y se pausa tras 3 bloqueos seguidos o 20 en total. Codex (`approvals_reviewer = auto_review`) lanza un subagente aislado que ve una transcripción acotada (por ejemplo 900 tokens por mensaje raíz), con disyuntor de 3 denegaciones seguidas o 10 en una ventana de 50; su modelo es de OpenAI y, si no está, cae al del padre con esfuerzo bajo.
 
 **Qué hacemos (mejor que ellos)**: un revisor **local**, con el modelo gratuito que la persona ya eligió, y con un techo de seguridad que ninguno de los dos tiene:
+
 - solo actúa sobre solicitudes que hoy terminarían en «preguntar» y son de **clase baja**; nunca sobre las de `NEVER_ALONE_PERMISSIONS`, rutas protegidas, fuera de la carpeta autorizada, red nueva, borrado ni control del equipo;
 - puede **aprobar o negar**, pero nunca ampliar una regla ni guardar un «siempre»;
 - ve una transcripción acotada sin razonamiento oculto; el texto de herramientas y archivos va marcado como no confiable;
@@ -457,6 +473,7 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 **Por qué**: «mejor» solo vale si se mide en igualdad. Sin APIs de pago.
 
 **Método**:
+
 - Contenedor del VPS, **sin red salvo el proveedor del modelo gratuito**, con una clave de prueba y un HOME vacío. Nada de esto corre en el Mac.
 - Mismo modelo gratuito fijado por ID, mismas tareas (T01-T29 más las del banco duro), n = 3, repartido en varios días por la cuota.
 - Motores: `lazunox` (la versión a medir), OpenCode 2.1.4 (binario oficial) y Codex con proveedor propio. Se descargan en el contenedor y se verifican por hash antes de usarlos; son código de terceros y se tratan como no confiables.
@@ -497,12 +514,12 @@ Esfuerzo: S ≤ 3 días, M ≤ 2 semanas, L más. Riesgo = riesgo de seguridad *
 
 ## 4. Tandas
 
-| Tanda | Paquetes | Condición para pasar a la siguiente |
-|---|---|---|
-| A | 7.1, 7.2, 7.3, 7.4, 7.8, 7.13, 7.18, 7.21, y la **primera corrida** de 7.19 | Línea base hecha; filas «por comprobar» cerradas; decisiones de 7.2 en `LAZUNOX.md`; probe en Mac, Linux y Windows |
-| B | 7.5, 7.6, 7.7, 7.20, 7.22 | Revisión independiente de 7.7; sin cambios sin registro en `docs/zonas-intocables.json` |
-| C | 7.9, 7.10, 7.11, 7.14, 7.15, 7.12 | Decisiones D1 y D3 de Ben; compactación en segundo plano medida |
-| D | 7.16, 7.17 y la **segunda corrida** de 7.19 | Decisiones D4 y D5; batería de ataques de 7.16 con falsa aprobación = 0 |
+| Tanda | Paquetes                                                                    | Condición para pasar a la siguiente                                                                                |
+| ----- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| A     | 7.1, 7.2, 7.3, 7.4, 7.8, 7.13, 7.18, 7.21, y la **primera corrida** de 7.19 | Línea base hecha; filas «por comprobar» cerradas; decisiones de 7.2 en `LAZUNOX.md`; probe en Mac, Linux y Windows |
+| B     | 7.5, 7.6, 7.7, 7.20, 7.22                                                   | Revisión independiente de 7.7; sin cambios sin registro en `docs/zonas-intocables.json`                            |
+| C     | 7.9, 7.10, 7.11, 7.14, 7.15, 7.12                                           | Decisiones D1 y D3 de Ben; compactación en segundo plano medida                                                    |
+| D     | 7.16, 7.17 y la **segunda corrida** de 7.19                                 | Decisiones D4 y D5; batería de ataques de 7.16 con falsa aprobación = 0                                            |
 
 Después de cada tanda: motor nuevo (`lazunox.13` en adelante) con compilación reproducible, probe 100 % en las 3 plataformas, y **publicar solo con la confirmación de Ben**. La app no dice «paridad» ni «mejor» hasta que se cumpla el cierre de la §1.
 
@@ -516,21 +533,21 @@ Hecho en la app: **7.1** (tareas T24-T30 y proveedor falso, rama `feat/ola7-banc
 
 Todo vive en ramas locales del fork (`feat/ola7-final` integra A+B+C+D); nada está publicado ni subido. Suites del motor en verde (lazunox 1728, session 420, tool 349, permission 106, mcp 65, agent 49, provider 742, skill 24; en `test/server` solo fallan 2 pruebas que ya fallaban en la base `b3ccb17`).
 
-| Paquete | Estado | Por defecto |
-|---|---|---|
-| 7.5 sanitizador | Hecho; el nivel del modelo cubre shell, Code Mode, `read` y `grep`. T28 pasa 5/5 con la opción (binario final2) | Mostrado/guardado: encendido. Para el modelo: **apagado** (contrapartida con `edit` sin decidir) |
-| 7.6 ganchos | Hecho (onFailure, `if`, 4 eventos nuevos, derrame a disco, hash de confianza) | Encendido |
-| 7.7 auditoría del shell | Hecho, 245 casos, revisión independiente hecha. Sin cubrir: `bash <<< 'rm x'` y `command -v rm` bajo un `deny rm` | Encendido (solo añade preguntas o negaciones) |
-| 7.20 políticas | Hecho en el motor; **la app aún no fija `LAZUNOX_POLICY_FILE`** | Sin archivo = sin política |
-| 7.15 cuadernos | Hecho (`cuaderno_editar`) | Solo si el proyecto tiene `.ipynb` |
-| 7.9 instrucciones por diff + compactación segura | Hecho. T29 5/5 (control 4/5, dentro del ruido) | Encendido |
-| 7.10 ayudantes reanudables | Hecho; esfuerzo por llamada apagado | Parcial |
-| 7.14 objetivo/revisor | Hecho (solo prompts y un tope) | Encendido |
-| 7.12 tareas programadas | Hecho en memoria; sin Rutinas ni ruta HTTP | **Apagado** |
-| 7.11 worktree de la sesión principal | **No se hizo**: casi todo el estado del motor vive por carpeta; debe hacerse en la app (crear worktree, bifurcar la sesión, mandar peticiones con esa carpeta) | — |
-| 7.17 flujos por script | Hecho y funciona de punta a punta, pero **no cumple la condición D5**: gasta de +43 % a +612 % de tokens según la tarea | **Apagado** |
-| 7.16 auto-revisión local | **No se hizo**: exige una batería de ataques con falsa aprobación = 0 y revisión independiente, y no debe correr sin supervisión | — |
-| 7.19 comparativo | **No se hizo**: exige descargar y ejecutar binarios de terceros (OpenCode 2.1.4, Codex); espera la autorización explícita de Ben | — |
+| Paquete                                          | Estado                                                                                                                                                         | Por defecto                                                                                      |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 7.5 sanitizador                                  | Hecho; el nivel del modelo cubre shell, Code Mode, `read` y `grep`. T28 pasa 5/5 con la opción (binario final2)                                                | Mostrado/guardado: encendido. Para el modelo: **apagado** (contrapartida con `edit` sin decidir) |
+| 7.6 ganchos                                      | Hecho (onFailure, `if`, 4 eventos nuevos, derrame a disco, hash de confianza)                                                                                  | Encendido                                                                                        |
+| 7.7 auditoría del shell                          | Hecho, 245 casos, revisión independiente hecha. Sin cubrir: `bash <<< 'rm x'` y `command -v rm` bajo un `deny rm`                                              | Encendido (solo añade preguntas o negaciones)                                                    |
+| 7.20 políticas                                   | Hecho en el motor; **la app aún no fija `LAZUNOX_POLICY_FILE`**                                                                                                | Sin archivo = sin política                                                                       |
+| 7.15 cuadernos                                   | Hecho (`cuaderno_editar`)                                                                                                                                      | Solo si el proyecto tiene `.ipynb`                                                               |
+| 7.9 instrucciones por diff + compactación segura | Hecho. T29 5/5 (control 4/5, dentro del ruido)                                                                                                                 | Encendido                                                                                        |
+| 7.10 ayudantes reanudables                       | Hecho; esfuerzo por llamada apagado                                                                                                                            | Parcial                                                                                          |
+| 7.14 objetivo/revisor                            | Hecho (solo prompts y un tope)                                                                                                                                 | Encendido                                                                                        |
+| 7.12 tareas programadas                          | Hecho en memoria; sin Rutinas ni ruta HTTP                                                                                                                     | **Apagado**                                                                                      |
+| 7.11 worktree de la sesión principal             | **No se hizo**: casi todo el estado del motor vive por carpeta; debe hacerse en la app (crear worktree, bifurcar la sesión, mandar peticiones con esa carpeta) | —                                                                                                |
+| 7.17 flujos por script                           | Hecho y funciona de punta a punta, pero **no cumple la condición D5**: gasta de +43 % a +612 % de tokens según la tarea                                        | **Apagado**                                                                                      |
+| 7.16 auto-revisión local                         | **No se hizo**: exige una batería de ataques con falsa aprobación = 0 y revisión independiente, y no debe correr sin supervisión                               | —                                                                                                |
+| 7.19 comparativo                                 | **No se hizo**: exige descargar y ejecutar binarios de terceros (OpenCode 2.1.4, Codex); espera la autorización explícita de Ben                               | —                                                                                                |
 
 Banco con modelo real (`opencode-go/deepseek-v4.1-flash`, 28 tareas): control n=5 134/140; candidato intermedio n=5 132/140 (tokens −4 %, dentro del ruido); motor final n=3 81/86 (T05 es un verificador demasiado estricto, no el motor; T05, T18 y T26 dan 15/15 con n=5 en ambos). No hay ahorro de tokens demostrado: lo que mejora es la **corrección** (edición segura, paralelismo seguro, permisos) y la seguridad, no el gasto. Resultados completos en `scripts/engine-bench/linea-base/real-go-ola7-*`.
 
@@ -549,15 +566,15 @@ Banco con modelo real (`opencode-go/deepseek-v4.1-flash`, 28 tareas): control n=
 
 Ben delegó estas ocho decisiones. Se registran aquí con su motivo. **Delegar la decisión no autoriza las acciones irreversibles o públicas**: publicar un motor o una versión, hacer `git push`, y tocar servidores siguen pidiendo la confirmación de Ben en su momento.
 
-| # | Decisión | Por qué |
-|---|---|---|
-| D1 | **Sí, comprobar** si se pueden escuchar los eventos de un worktree; si se cumple, ayudantes con worktree propio después de 7.11 | Lectura hecha: en Code la app usa **un solo flujo global** (`/global/event`, `src/renderer/src/lib/opencode.ts`) de **un** servidor, así que los eventos de otra carpeta de ese mismo servidor llegarían. El motivo del descarte pudo caducar. **No vale para Tareas** (un servidor por carpeta). Falta una prueba real de que los permisos de la hija salen por ese flujo |
-| D2 | **Se queda en la app.** El motor no pone red por dominios | Un proxy en el motor solo frena a los programas que lo respetan y da falsa seguridad (decisión del 2026-10-24). Tareas ya tiene proxy de salida con denegar por defecto |
-| D3 | **Sí** a 7.12, con persistencia vía Rutinas | Es pequeño y no tiene riesgo si cada disparo pasa por el plan y los permisos. Rutinas ya pide el aviso de términos |
-| D4 | **Sí** a 7.16, apagado por defecto y con la condición de falsa aprobación = 0 | Es lo que más separa a Claude Code y Codex. Es la pieza de más riesgo, así que solo se entrega si la batería de ataques lo respalda; si no, queda en «solo sugerir» |
-| D5 | **Sí** a 7.17, con la condición de mejorar T21 sin subir tokens | Reusa lo que ya existe (`task`, `task_wait`); si no mejora, no se enciende |
-| D6 | **Sí** a «sin número medido no se enciende» | Es la lección de la 1.7.7: la meta de −15 % no se pudo demostrar |
-| D7 | **Sí** a sanitizar lo que se muestra y se guarda; lo que ve el modelo, como opción medida | Es lo que hace Codex; enmascarar de más rompe salidas útiles |
-| D8 | **Sí** a descargar OpenCode 2.1.4 y Codex en el contenedor del VPS, **cuando llegue 7.19**, con hash verificado, sin red salvo el proveedor del modelo gratuito y sin claves reales | Sin esto «mejor» sería solo una opinión. Es código de terceros: nunca en el Mac. Se avisa a Ben antes de la descarga |
+| #   | Decisión                                                                                                                                                                            | Por qué                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | **Sí, comprobar** si se pueden escuchar los eventos de un worktree; si se cumple, ayudantes con worktree propio después de 7.11                                                     | Lectura hecha: en Code la app usa **un solo flujo global** (`/global/event`, `src/renderer/src/lib/opencode.ts`) de **un** servidor, así que los eventos de otra carpeta de ese mismo servidor llegarían. El motivo del descarte pudo caducar. **No vale para Tareas** (un servidor por carpeta). Falta una prueba real de que los permisos de la hija salen por ese flujo |
+| D2  | **Se queda en la app.** El motor no pone red por dominios                                                                                                                           | Un proxy en el motor solo frena a los programas que lo respetan y da falsa seguridad (decisión del 2026-10-24). Tareas ya tiene proxy de salida con denegar por defecto                                                                                                                                                                                                    |
+| D3  | **Sí** a 7.12, con persistencia vía Rutinas                                                                                                                                         | Es pequeño y no tiene riesgo si cada disparo pasa por el plan y los permisos. Rutinas ya pide el aviso de términos                                                                                                                                                                                                                                                         |
+| D4  | **Sí** a 7.16, apagado por defecto y con la condición de falsa aprobación = 0                                                                                                       | Es lo que más separa a Claude Code y Codex. Es la pieza de más riesgo, así que solo se entrega si la batería de ataques lo respalda; si no, queda en «solo sugerir»                                                                                                                                                                                                        |
+| D5  | **Sí** a 7.17, con la condición de mejorar T21 sin subir tokens                                                                                                                     | Reusa lo que ya existe (`task`, `task_wait`); si no mejora, no se enciende                                                                                                                                                                                                                                                                                                 |
+| D6  | **Sí** a «sin número medido no se enciende»                                                                                                                                         | Es la lección de la 1.7.7: la meta de −15 % no se pudo demostrar                                                                                                                                                                                                                                                                                                           |
+| D7  | **Sí** a sanitizar lo que se muestra y se guarda; lo que ve el modelo, como opción medida                                                                                           | Es lo que hace Codex; enmascarar de más rompe salidas útiles                                                                                                                                                                                                                                                                                                               |
+| D8  | **Sí** a descargar OpenCode 2.1.4 y Codex en el contenedor del VPS, **cuando llegue 7.19**, con hash verificado, sin red salvo el proveedor del modelo gratuito y sin claves reales | Sin esto «mejor» sería solo una opinión. Es código de terceros: nunca en el Mac. Se avisa a Ben antes de la descarga                                                                                                                                                                                                                                                       |
 
 **Pendiente de verdad de Ben**: nada bloquea empezar la tanda A. Lo único que se le preguntará más adelante es publicar cada motor nuevo y cada versión de la app.

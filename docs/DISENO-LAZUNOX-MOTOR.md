@@ -33,6 +33,7 @@ Lazunox.app/Contents/Resources/opencode/Lazunox Motor.app/
   Contents/MacOS/opencode        ← el binario fijado en pin.json, SIN cambios (mismo sha256 antes de firmar)
   Contents/_CodeSignature/CodeResources
 ```
+
 - Se queda bajo `Resources/opencode/` para no mover `agents-win`, `skills` ni el prefijo que ya conoce el actualizador.
 - `lazunox-disclaim` **no** entra en la mini-app: sigue en `Resources/launcher/`. Hace `POSIX_SPAWN_SETEXEC`, así que la
   imagen final del PID es `…/Lazunox Motor.app/Contents/MacOS/opencode` y la identidad que ve TCC es la del bundle.
@@ -89,6 +90,7 @@ Lazunox.app/Contents/Resources/opencode/Lazunox Motor.app/
 
 Mini-app `Lazunox Motor.app` con Info.plist de §1 (id `…motor.proto`), firmada ad-hoc, lanzada con el
 `resources/launcher/bin/lazunox-disclaim` del repo (id `cl.bentec.lazunox.disclaim`):
+
 1. Ejecutable C trivial que hace `opendir`: `~/Library/Safari` → `EPERM` (protegido, sin aviso), `/tmp` → ok.
    `codesign --verify --deep --strict` OK; `codesign -dv` del `.app` y del `Contents/MacOS/opencode` → `Identifier=…motor.proto`,
    `Format=app bundle`.
@@ -115,12 +117,13 @@ queda sin sellar y `--strict` falla; (d) notarización futura con Developer ID: 
 Apple prefiere `Contents/Helpers`; moverlo luego cambia rutas otra vez; (e) tamaño del ZIP sin cambio (mismo binario).
 
 Orden de trabajo (tiempos honestos, una persona):
+
 1. `brand.ts` `motorId` + `stage-motor-app.mjs` + electron-builder — 1,5 h.
 2. `bundledOpencodePath` con respaldo + pruebas unitarias — 1 h.
 3. `resignBundle` + prueba + check del pin en `sign-release-mac.sh` — 1 h.
 4. `verify-bundled`, `smoke-boot-mac.sh`, requeridos del actualizador, pids — 1,5 h.
 5. Empaquetar, firmar con el certificado local, prueba manual de §3 y una actualización real N→N+1 — 2–3 h (necesita a Ben).
-Total: **7–8 h efectivas, ~1,5 días** con revisión y la prueba en frío del release.
+   Total: **7–8 h efectivas, ~1,5 días** con revisión y la prueba en frío del release.
 
 **Qué se puede entregar ya (1.5.1):** nada de la mini-app sin la prueba manual del punto 5; sí se puede publicar en 1.5.1 la
 mitigación textual (en el aviso de error de permisos, explicar que «opencode» es el motor de Lazunox y cómo concederlo en

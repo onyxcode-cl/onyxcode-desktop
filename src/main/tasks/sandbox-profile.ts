@@ -23,6 +23,7 @@ import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
+import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 
 function real(p: string): string {
   try {
@@ -331,6 +332,12 @@ export interface SandboxProfileOptions {
    * aunque el modelo lo intente. true ⇒ el usuario concedió "Permitir borrar" para esta tarea.
    */
   allowDelete?: boolean
+  /**
+   * Modo unificado: `~/Lazunox/Chats` (carpetas de TODOS los chats) sin lectura ni escritura, y re-permitida solo la propia
+   * carpeta (y las adicionales) cuando cuelga de ahí. Por defecto solo con `LAZUNOX_UNIFIED_APPS=1`; sin ella el perfil
+   * queda byte a byte como siempre.
+   */
+  isolateChats?: boolean
 }
 
 /** Genera el texto del perfil Seatbelt (SBPL). En SBPL gana la ÚLTIMA regla que coincide. */
@@ -362,6 +369,23 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     ...denied.map((p) => `  (subpath ${sbString(p)})`),
     ')'
   ]
+  if (opts.isolateChats ?? isUnifiedAppsEnabled()) {
+    // Las carpetas de chat viven en ~/Lazunox/Chats: un chat (o cualquier carpeta) no debe leer las de OTROS chats.
+    // La re-permisión va DESPUÉS de la denegación (gana la última regla) y solo para rutas bajo Chats.
+    const chats = real(join(home, 'Lazunox', 'Chats'))
+    const under = (p: string): boolean => p === chats || p.startsWith(chats + '/')
+    const reRw = [...new Set([folder, ...extraRw].filter(under))]
+    const reRo = [...new Set(extraRo.filter(under))].filter((p) => !reRw.includes(p))
+    lines.push(
+      '',
+      ';; Carpetas de OTROS chats (~/Lazunox/Chats): sin lectura ni escritura; solo la propia (y las adicionales) se re-permite.',
+      `(deny file-read* file-write* (subpath ${sbString(chats)}))`,
+      // stat de la propia carpeta de Chats (getcwd/realpath); sin listado: no revela los nombres de otros chats.
+      `(allow file-read-metadata (literal ${sbString(chats)}))`,
+      ...reRw.map((p) => `(allow file-read* file-write* (subpath ${sbString(p)}))`),
+      ...reRo.map((p) => `(allow file-read* (subpath ${sbString(p)}))`)
+    )
+  }
   if (userData) {
     lines.push(
       '',

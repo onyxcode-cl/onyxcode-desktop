@@ -44,8 +44,9 @@ export const mainErrors = {
   'merr.task.notValidFolder': 'No es una carpeta válida: {folder}',
   'merr.chat.unifiedOff': 'El modo unificado está apagado.',
   'merr.chat.unifiedWin': 'El modo unificado no está disponible en Windows todavía.',
+  'merr.chat.computerUseOff': 'No se pudo crear la carpeta del chat: tu organización desactivó el control del PC.',
   'merr.chat.folderUnsafe':
-    'No se pudo crear la carpeta del chat: ~/Lazunox o ~/Lazunox/Chats no es una carpeta normal (es un enlace u otro tipo de archivo). Bórrala o renómbrala y vuelve a intentarlo.',
+    'No se pudo crear la carpeta del chat: ~/Lazunox o ~/Lazunox/Chats no es una carpeta normal y privada (es un enlace, otro tipo de archivo, de otra persona o con permisos abiertos). Bórrala o renómbrala y vuelve a intentarlo.',
   'merr.task.notAuthorized': 'La carpeta no está autorizada para las tareas.',
   'merr.task.insideMain': 'Esa carpeta ya está dentro de la carpeta principal.',
   'merr.task.orgNoHosts': 'Tu organización no permite añadir sitios a los que las tareas pueden conectarse.',

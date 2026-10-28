@@ -15,7 +15,7 @@ en el código es `tasks` (`ModeId = 'chat' | 'code' | 'tasks' | 'routines' | 'ga
   (`CHAT_READ_SENTINEL = '/__lazunox_sin_acceso__'`, `config.ts:18`). El prompt ya dice «para trabajar dentro de una carpeta sugiere
   Overdrive» (`chat.md:18-20`).
 - **Sesión efímera = sesión de OpenCode en `chatDirectory`.** Se crea con `client.session.create({ directory, agent: 'chat',
-  metadata: { mode: 'chat' } })` al enviar el primer mensaje (`src/renderer/src/features/chat/actions.ts:76`). Estado de UI en
+metadata: { mode: 'chat' } })` al enviar el primer mensaje (`src/renderer/src/features/chat/actions.ts:76`). Estado de UI en
   `features/chat/store.ts:1-89` (conversación activa, fijadas en localStorage, preguntas pendientes). Origen de sesión `MAIN_SOURCE`
   (`src/renderer/src/stores/sessions.ts:54`), que es lo que distingue Chat de Overdrive en la lista unificada.
 - **Adjuntos solo `data:`.** `sendChatMessage` rechaza cualquier URL que no sea `data:` (`actions.ts:58-62`, `lib/attachments.ts:145`)
@@ -56,15 +56,15 @@ sin Seatbelt (sidecar principal, carpeta real). Es la ruta «con carpeta pero si
 
 ### Resumen de diferencias
 
-| Aspecto | Chat | Overdrive |
-| --- | --- | --- |
-| Servidor | sidecar principal, sin sandbox | un `serve` por carpeta, Seatbelt/WSL |
-| Carpeta | `chatDirectory` interna | carpeta aprobada de la persona |
-| Agente | `chat` (deny `*`) | `tasks` / `computer` |
-| Adjuntos | `data:` solamente | se copian a la carpeta (`withAttachments`) |
-| Modelos | cualquier proveedor | solo proveedores con clave de API del sandbox |
-| Deshacer | no hay (nada se escribe) | punto de restauración por mensaje |
-| Remoto | M, agente fijo `chat` | M/D según canal, ámbito de carpetas |
+| Aspecto  | Chat                           | Overdrive                                     |
+| -------- | ------------------------------ | --------------------------------------------- |
+| Servidor | sidecar principal, sin sandbox | un `serve` por carpeta, Seatbelt/WSL          |
+| Carpeta  | `chatDirectory` interna        | carpeta aprobada de la persona                |
+| Agente   | `chat` (deny `*`)              | `tasks` / `computer`                          |
+| Adjuntos | `data:` solamente              | se copian a la carpeta (`withAttachments`)    |
+| Modelos  | cualquier proveedor            | solo proveedores con clave de API del sandbox |
+| Deshacer | no hay (nada se escribe)       | punto de restauración por mensaje             |
+| Remoto   | M, agente fijo `chat`          | M/D según canal, ámbito de carpetas           |
 
 ## 2. Qué significaría unirlos
 

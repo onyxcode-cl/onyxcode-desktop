@@ -44,7 +44,7 @@ entorno protegido `release`), con la mitigación de la sección 9.
 git tag vX.Y.Z && git push origin vX.Y.Z      # lo haces tú; protegido en el repositorio
 ```
 
-0. (Solo para este flujo público) Define la variable del repositorio `PUBLIC_RELEASE=true` (Settings › Secrets and variables › Actions › Variables) o lánzalo a mano con *Run workflow* sobre la etiqueta. Sin eso el workflow se omite al subir la etiqueta (las releases locales con `scripts/release.sh` no lo usan).
+0. (Solo para este flujo público) Define la variable del repositorio `PUBLIC_RELEASE=true` (Settings › Secrets and variables › Actions › Variables) o lánzalo a mano con _Run workflow_ sobre la etiqueta. Sin eso el workflow se omite al subir la etiqueta (las releases locales con `scripts/release.sh` no lo usan).
 1. El workflow **Release (borrador)** queda a la espera: abre la ejecución en la pestaña Actions y pulsa **Review deployments › release › Approve**.
 2. Hace: `npm ci` → comprueba tag = versión → `verify:release` → typecheck, lint, formato, pruebas → importa el `.p12` en un llavero temporal → escribe el `.p8` en `$RUNNER_TEMP` → `npm run package` (firma, vuelve a firmar helpers con su identificador, notariza `.app` y `.dmg`) → `verify:bundled` y `verify:signed --expect devid` → `publish-update.mjs --manifest-only` → **borrador** con `.dmg`, `.zip` y `update.json` → borra llavero y `.p8`.
 3. Si falla, no hay borrador. Lee el log; los fallos de notarización dicen qué variable falta (`APPLE_API_KEY_ID`…).

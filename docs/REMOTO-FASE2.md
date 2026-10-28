@@ -23,6 +23,7 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 **Papeles.** El Mac es la parte que confía («relying party» propia, sin servidor): genera los retos y verifica las respuestas. La PWA solo llama a `navigator.credentials`. El `rpId` es el dominio de la PWA (`remoto.onyxcode.cl`); el origen de verificación es `https://remoto.onyxcode.cl`.
 
 **Registro (al vincular).**
+
 1. Se vincula igual que hoy (QR con secreto de un solo uso y código de 6 dígitos comparado en el Mac).
 2. Ya dentro del canal, el Mac envía un reto aleatorio (32 bytes, un uso, caduca en 60 s) y los parámetros (`rpId`, `userVerification: "required"`, `residentKey: "preferred"`, `attestation: "none"`, algoritmos ES256/EdDSA).
 3. El celular crea la credencial y devuelve `clientDataJSON` + `attestationObject`. El Mac comprueba tipo, reto, origen, hash del `rpId`, bandera UV y guarda la clave pública (COSE) y el contador **dentro de `remote.bin`** (cifrado con `safeStorage`), nunca el material privado (no existe fuera del autenticador).
@@ -30,6 +31,7 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 **Autenticación (cada conexión).** El Mac envía un reto nuevo; el celular firma con la passkey (con huella/rostro/PIN del teléfono); el Mac verifica firma, origen, `rpId`, UV y que el contador no retroceda (si el autenticador lo usa; las passkeys sincronizadas suelen dar 0).
 
 **Relación con lo existente.**
+
 - **PIN**: con passkey con verificación de usuario, la passkey sustituye al PIN como segundo factor de cada conexión y de la reconexión tras inactividad. El PIN queda como respaldo (dispositivo sin passkey, p. ej. navegadores que no la ofrecen) y mantiene sus límites (5 fallos revocan).
 - **Confirmación en el Mac**: las acciones de clase D siguen pidiendo confirmación local ligada al hash de la llamada. La confirmación de **cada conexión** es **opcional desde el protocolo v3** (ajuste «Pedir confirmación en el Mac en cada conexión», apagado por defecto, o política `requireConnectionConfirm`): el handshake ligado a las huellas DTLS (`docs/SEGURIDAD.md` §3 tricies) ya impide que un intermediario se haga pasar por el celular. Una passkey prueba «es mi teléfono y soy yo», no «quiero esto ahora».
 - **Secreto de dispositivo y caducidad**: siguen mandando (el vínculo caduca igual); la passkey se invalida al revocar.
@@ -71,17 +73,17 @@ servidor vea contenido ni credenciales. Cada punto marca qué se sabe y qué hay
 
 ## 7. Riesgos principales
 
-| Riesgo | Mitigación prevista |
-|---|---|
+| Riesgo                                                                                                                 | Mitigación prevista                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Cadena de suministro de la PWA**: quien controle el despliegue estático controla el JavaScript que ve el PIN/secreto | Passkeys (no exportables), confirmación en el Mac, origen en lista blanca del Mac, despliegues solo desde CI con revisión, hash de la versión visible en el Mac, SRI |
-| Worker/TURN comprometido o caído | No ven contenido ni credenciales; código de 6 dígitos de las huellas DTLS; fallo = la LAN sigue funcionando (modo local se conserva) |
-| Aumenta la superficie: un servicio público que antes no existía | Sin estado persistente, límites de tasa, nada que registrar; el control remoto sigue apagado por defecto y se corta con «Cortar todo» |
-| Passkeys sincronizadas en la nube del usuario | Informar; la confirmación y la caducidad no dependen de la passkey |
-| Dependencia del dominio (`rpId`) | Dominio propio y estable; cambiarlo exige revincular todo |
-| Privacidad: IP y metadatos visibles para el Worker/TURN/push | Documentarlo en la política de privacidad antes de lanzar; sin identificadores de cuenta |
-| iOS limita push y almacenamiento | Instalación guiada; recuperación por QR |
-| Política de la organización | Un bloque `remote` hoy no cubre «solo LAN»: añadir una clave (`allowRemoteAccess`) con la misma semántica fail closed antes de ofrecerlo |
-| Coste operativo (Workers, TURN) | Medir antes; tope de uso; apagar la señalización pública sin romper el modo local |
+| Worker/TURN comprometido o caído                                                                                       | No ven contenido ni credenciales; código de 6 dígitos de las huellas DTLS; fallo = la LAN sigue funcionando (modo local se conserva)                                 |
+| Aumenta la superficie: un servicio público que antes no existía                                                        | Sin estado persistente, límites de tasa, nada que registrar; el control remoto sigue apagado por defecto y se corta con «Cortar todo»                                |
+| Passkeys sincronizadas en la nube del usuario                                                                          | Informar; la confirmación y la caducidad no dependen de la passkey                                                                                                   |
+| Dependencia del dominio (`rpId`)                                                                                       | Dominio propio y estable; cambiarlo exige revincular todo                                                                                                            |
+| Privacidad: IP y metadatos visibles para el Worker/TURN/push                                                           | Documentarlo en la política de privacidad antes de lanzar; sin identificadores de cuenta                                                                             |
+| iOS limita push y almacenamiento                                                                                       | Instalación guiada; recuperación por QR                                                                                                                              |
+| Política de la organización                                                                                            | Un bloque `remote` hoy no cubre «solo LAN»: añadir una clave (`allowRemoteAccess`) con la misma semántica fail closed antes de ofrecerlo                             |
+| Coste operativo (Workers, TURN)                                                                                        | Medir antes; tope de uso; apagar la señalización pública sin romper el modo local                                                                                    |
 
 ## 8. Orden sugerido
 

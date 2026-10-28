@@ -65,13 +65,13 @@ Mide «el motor mejoró» antes/después con el modelo gratuito: 23 tareas peque
 Estado verificado buscando en `src` y `scripts` de la app (2026-10-27): **ninguna de estas variables se fija todavía**; el motor trae el
 comportamiento y su interruptor, pero la app no lo conecta. Antes de conectar una, probarla con el motor real.
 
-| Variable | Qué hace en el motor | Estado en la app |
-| --- | --- | --- |
-| `LAZUNOX_POLICY_FILE` | Ruta absoluta de un JSON con listas `deny` (proveedores, modelos, MCP, herramientas, habilidades, agentes). Ausente = sin política; roto = deniega todo. | Sin conectar. Diseño propuesto en `docs/POLITICA-ORGANIZACION.md`. |
-| `LAZUNOX_POLITICAS=0` | Interruptor de emergencia de la política (solo lo pone quien lanza el motor). | Sin conectar. |
-| `LAZUNOX_SANITIZAR_MODELO`, `LAZUNOX_HOOKS_SHA256` | Ver `LAZUNOX.md` del motor (Ola 7). | Sin conectar. |
-| `LAZUNOX_PERMISSION_PERSIST` / `_DIR` / `_NO_PERSIST` | Guardar los «siempre» por carpeta. | Conectada (`src/shared/permission-persist.ts`). La vista «Ver y quitar los "siempre"» usa las rutas `GET/DELETE /permission/siempre` (F8-B228). |
-| `LAZUNOX_USO=0` | Apaga `GET /session/{id}/uso`. | La ruta está en el contrato y la política remota (lectura, ámbito de carpetas); ninguna pantalla la usa todavía. |
+| Variable                                              | Qué hace en el motor                                                                                                                                     | Estado en la app                                                                                                                                |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LAZUNOX_POLICY_FILE`                                 | Ruta absoluta de un JSON con listas `deny` (proveedores, modelos, MCP, herramientas, habilidades, agentes). Ausente = sin política; roto = deniega todo. | Sin conectar. Diseño propuesto en `docs/POLITICA-ORGANIZACION.md`.                                                                              |
+| `LAZUNOX_POLITICAS=0`                                 | Interruptor de emergencia de la política (solo lo pone quien lanza el motor).                                                                            | Sin conectar.                                                                                                                                   |
+| `LAZUNOX_SANITIZAR_MODELO`, `LAZUNOX_HOOKS_SHA256`    | Ver `LAZUNOX.md` del motor (Ola 7).                                                                                                                      | Sin conectar.                                                                                                                                   |
+| `LAZUNOX_PERMISSION_PERSIST` / `_DIR` / `_NO_PERSIST` | Guardar los «siempre» por carpeta.                                                                                                                       | Conectada (`src/shared/permission-persist.ts`). La vista «Ver y quitar los "siempre"» usa las rutas `GET/DELETE /permission/siempre` (F8-B228). |
+| `LAZUNOX_USO=0`                                       | Apaga `GET /session/{id}/uso`.                                                                                                                           | La ruta está en el contrato y la política remota (lectura, ámbito de carpetas); ninguna pantalla la usa todavía.                                |
 
 Al subir el pin del motor: regenerar `resources/opencode-bin/api-routes.json` y clasificar cada ruta nueva en `src/main/remote/policy.ts`
 (`src/main/remote/policy.test.ts` y `src/test/opencode-contract.test.ts` fallan si falta alguna). Si la app las llama con `fetch` directo,

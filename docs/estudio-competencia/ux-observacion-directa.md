@@ -28,6 +28,7 @@ Fecha: 2026-10-17. Hecha con permiso del dueño, mirando solo la interfaz (esté
 - **«Importar»** ajustes desde otras apps.
 
 ## Lo que no se pudo ver
+
 - La **configuración (Ajustes) de Claude**, por la dificultad de manejar la sesión remota.
 - Recorridos más profundos de ChatGPT/Codex (la app no respondió a mis clics).
 - Aprobaciones en acción y cómo muestran el trabajo del agente paso a paso en una sesión real.
@@ -37,6 +38,7 @@ Fecha: 2026-10-17. Hecha con permiso del dueño, mirando solo la interfaz (esté
 Solo interfaz; se omiten datos personales que aparecieron en pantalla (fotos de la Biblioteca de ChatGPT, temas de la memoria de Claude, nombres de proyectos).
 
 ### ChatGPT con Codex (Mac)
+
 - **Imágenes:** galería de plantillas de ejemplo («Tendencias» / «Templates») con caja «Describe una imagen nueva».
 - **Se programó:** «Programar una tarea» con 8 recetas listas (resumen de noticias, seguir a la competencia, planificar la semana…) y lista «Próximas».
 - **Biblioteca:** todo lo creado o subido, pestañas Sugeridos / Favoritos / Carpetas / Imágenes / Todo, buscador, vista cuadrícula/lista y botón «Nuevo».
@@ -47,6 +49,7 @@ Solo interfaz; se omiten datos personales que aparecieron en pantalla (fotos de 
 - **Conversación:** el trabajo se pliega en «Procesado durante 6s ›»; al abrirlo, una línea por paso («Editó un archivo y ejecutó un comando»); copiar y pulgares por respuesta.
 
 ### Claude (Windows)
+
 - **Ajustes:** buscador; grupos Configuración (General, Cuenta, Privacidad, Facturación, Uso, Capacidades, Memoria, Sistemas de diseño, Reflexión, Tiempo y concentración, Claude Code, Claude in Chrome), Este ordenador (Sistema, Extensiones, Desarrollador), Personalización (Skills, Conectores, Plugins), Plataforma.
 - **Uso:** frase llana arriba («Todo en orden. Deberías llegar al reinicio…») y barras de sesión, semana y por modelo con su hora de reinicio.
 - **General:** tema, fuente y tamaño del chat, ancho de la transcripción, movimiento reducido, carpetas de confianza («Gestionar»), navegador preferido, voz.

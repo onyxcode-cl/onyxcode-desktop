@@ -19,7 +19,7 @@ import { isChildRequest, liveBackgroundChildIds } from '../../code/impl/child-se
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
-import { useUnified } from './unified'
+import { enableAutoOnlyFor, useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
 import { stopPicking } from '../../browser/pick-state'
@@ -42,7 +42,6 @@ import {
   rememberFolder,
   rememberFullAccess,
   rootTaskId,
-  setAutoModeSettings,
   setTaskMeta,
   useTasks
 } from './store'
@@ -160,6 +159,8 @@ export function cancelPending(): void {
 }
 
 export async function selectFolder(folder: string): Promise<void> {
+  // Elegir una carpeta propia cancela el «Automático» pedido antes de tener carpeta (solo vale para la carpeta automática del chat).
+  useUnified.setState({ wantAuto: false })
   const st = useTasks.getState()
   if (st.folder === folder && st.phase === 'ready' && st.fullAccess === fullAccessFor(folder)) return
   await connectFolder(folder)
@@ -172,6 +173,7 @@ export async function selectFolder(folder: string): Promise<void> {
 export async function openChatFolder(): Promise<string> {
   const created = await cw('tasks:chatFolder:create')
   await loadFolders()
+  useUnified.setState({ chatFolder: created.path })
   await connectFolder(created.path, false)
   await applyWantedAuto(created.path)
   return created.path
@@ -189,7 +191,8 @@ export async function ensureFolderForSend(): Promise<boolean> {
     return false
   }
   if (folder) {
-    await applyWantedAuto(folder)
+    // Ya hay carpeta (elegida por la persona): lo que se haya pedido antes de tenerla no se aplica aquí.
+    useUnified.setState({ wantAuto: false })
     return true
   }
   try {
@@ -200,12 +203,16 @@ export async function ensureFolderForSend(): Promise<boolean> {
   }
 }
 
-/** Aplica «Automático» a la carpeta si se eligió antes de tenerla (el lado de main sigue limitando lo que concede). */
+/**
+ * Aplica «Automático» SOLO a la carpeta automática del chat recién creada (nunca a una carpeta elegida ni en Control total).
+ * Solo toca esa carpeta: no reactiva en silencio carpetas ni tareas que ya estaban en la lista.
+ */
 export async function applyWantedAuto(folder: string): Promise<void> {
   if (!useUnified.getState().wantAuto) return
   useUnified.setState({ wantAuto: false })
+  if (useTasks.getState().fullAccess) return
   try {
-    await setAutoModeSettings({ enabled: true, folder: { path: folder, on: true } })
+    await enableAutoOnlyFor(folder)
   } catch {
     // sin Modo auto (política o sin puente): el chat sigue en Manual
   }
@@ -217,6 +224,7 @@ export async function applyWantedAuto(folder: string): Promise<void> {
  * (diálogo) se pide UNA vez por equipo, salvo que `confirmed` sea true; volver a Sandbox es inmediato.
  */
 export async function setAccessMode(fullAccess: boolean, confirmed = false): Promise<void> {
+  useUnified.setState({ wantAuto: false })
   if (!fullAccess) return leaveFullAccess()
   const info = (await loadFullAccessInfo()) ?? useTasks.getState().fullAccessInfo
   if (!info) return

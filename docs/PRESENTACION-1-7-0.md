@@ -10,7 +10,7 @@ Lazunox ya no depende de los servidores de OpenCode: el motor que hace funcionar
 
 1. **Ajustes › Acerca de**: «Cliente de escritorio con motor propio, basado en OpenCode (licencia MIT)» y «Motor: Lazunox Motor 1.19.0 (incluido)».
 2. **Chat normal**: pedir algo simple; responde con el motor propio.
-3. **Ayudantes en segundo plano**: pedir «lanza un ayudante en segundo plano que calcule 41*43 y avísame cuando termine». Se ve el panel **«Trabajos en segundo plano»** con el ayudante y el botón *Cancelar*; la IA sigue conversando y, al terminar, avisa el resultado.
+3. **Ayudantes en segundo plano**: pedir «lanza un ayudante en segundo plano que calcule 41*43 y avísame cuando termine». Se ve el panel **«Trabajos en segundo plano»** con el ayudante y el botón _Cancelar_; la IA sigue conversando y, al terminar, avisa el resultado.
 4. **Sin conexiones a OpenCode**: en el motor se quitaron la actualización automática, subir conversaciones para compartirlas, el reenvío de la web y la descarga de servidores de lenguaje. Hay una prueba automática que falla si vuelve a aparecer un servidor de OpenCode.
 5. **Compilación repetible**: compilar dos veces da el mismo archivo, byte a byte, en macOS, Windows y Linux.
 

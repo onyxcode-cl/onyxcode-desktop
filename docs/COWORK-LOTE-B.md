@@ -17,6 +17,7 @@ Oleada 3 (interfaz) se cerraba a la vez que se escribió este documento: cada pu
 un componente de esa oleada.
 
 ### 1.1 Contratos y cableado
+
 - `src/shared/ipc-cowork.ts`, `src/main/ipc/schemas.ts`: canales nuevos `cowork:folders:*`, `cowork:trusted:*`,
   `cowork:policy`, `cowork:activity` (invoke y evento), `cowork:viewing`, `cowork:tasks:*`, `cowork:prefs:*`,
   `cowork:storage:*`, `cowork:agentsMd:*`, `cowork:mcp:*`, `cowork:rules:*`, `cowork:zip`, `cowork:quickLook`,
@@ -29,6 +30,7 @@ un componente de esa oleada.
 - `src/main/cowork/config-merge.ts` (`deepMerge` de la config inline: base + MCP + reglas recordadas + skills).
 
 ### 1.2 Seguridad y corrección
+
 - **Puerta del plan en toda sesión** del servidor de Control total (sesiones hijas y otros agentes incluidos),
   con `computer.md` en `task: deny` (`opencode-config.ts`).
 - **Mover y renombrar en el sandbox** (`sandbox-profile.ts`): prueba real con `sandbox-exec`; ver §3.
@@ -38,6 +40,7 @@ un componente de esa oleada.
 - **Servidor de Control total con el XDG real del usuario**: documentado, no cambiado.
 
 ### 1.3 Carpetas y política
+
 - Carpetas adicionales por espacio (`rw` / `ro`) y **carpetas de confianza** globales: `manager.ts`
   (`folderSet`, `linkFolder`, `unlinkFolder`, `trusted*`, `restartSandbox`), perfil Seatbelt con `extraFolders`
   y `scratchDirs`, reglas `external_directory` en la config inline (solo sandbox).
@@ -49,6 +52,7 @@ un componente de esa oleada.
   `FolderMenu.tsx`, `answerFolderRequest` en `actions.ts`).
 
 ### 1.4 Ciclo de vida, lista de tareas y almacenamiento
+
 - **Monitor en main** (`cowork/monitor.ts`, independiente de Electron): sondea cada ~3 s todos los servidores
   vivos y aporta `cowork:activity`, notificaciones por tipo (`prefs.notify`) para las carpetas que el renderer no
   mira, «mantener despierto» por OR con el renderer (`keep-awake.ts`), parada por inactividad, tope de servidores
@@ -66,6 +70,7 @@ un componente de esa oleada.
   servidores y el estado de fondo lo da el monitor.
 
 ### 1.5 Proyecto, MCP, skills y permisos recordados
+
 - Proyecto: enlaces, interruptor «Usar memoria», editor del `AGENTS.md` de la carpeta, lista de skills, contador
   `n / 20.000` (`projects.ts`, `cowork-project-handlers.ts`, `ProjectPanel.tsx`).
 - **MCP del usuario en Cowork** (`mcp-cowork.ts`, `McpSection.tsx`): «Disponible en Cowork» y «Preguntar en cada
@@ -77,6 +82,7 @@ un componente de esa oleada.
 - Agentes `cowork.md` y `computer.md`: skills, carpetas adicionales, mover/renombrar, memoria desactivada.
 
 ### 1.6 Rutinas
+
 Lista «Permitir sin preguntar» (permiso + patrón), «Rechazar y seguir / Esperar mi aprobación», sitios permitidos
 solo durante la ejecución, «Empezar de cero / Continuar la misma tarea», historial con lo aprobado, lo rechazado,
 los hosts bloqueados y «esperando aprobación», y **Control total** con consentimiento explícito. El prompt de la
@@ -84,12 +90,14 @@ rutina usa el mismo constructor que las tareas (instrucciones globales, del proy
 Plantillas con el patrón «primero revisa y resume, luego propón, luego actúa». `disableRoutines` (política) las bloquea.
 
 ### 1.7 Entregables y panel (UI y handlers de archivos)
+
 Descargar todo (zip), Vista rápida (QuickLook), vista previa de docx/doc/rtf/odt (`textutil`), Abrir como artifact
 y Guardar como PDF para HTML, sección «En vivo» y «Paso X de Y», retención de capturas en el diálogo de Control total
 (`Deliverables.tsx`, `ProgressPanel.tsx`, `ComputerAccess.tsx`, `cowork/files.ts`, `cowork-files-handlers.ts`,
 `extras/artifact-window.ts`).
 
 ### 1.8 Integración menor y glosario (W3-F)
+
 - La notificación nativa de `request_access` (`cowork-handlers.ts`) respeta el interruptor global de notificaciones
   y `prefs.notify.approval` (lee `userData/cowork-prefs.json` en cada petición y lo normaliza con `normalizeCoworkPrefs`,
   porque el `CoworkPrefsStore` vive dentro de `cowork-lifecycle-handlers.ts`).
@@ -102,13 +110,13 @@ y Guardar como PDF para HTML, sección «En vivo» y «Paso X de Y», retención
 
 ## 2. Decisiones sobre las preguntas abiertas
 
-| Pregunta | Decisión | Dónde |
-|---|---|---|
-| Auto-archivo | **Desactivado por defecto** (`autoArchiveDays: 0`); opciones Nunca / 7 / 14 / 30 / 90 días; tope con `maxAutoArchiveDays` de la política | `DEFAULT_COWORK_PREFS`, `monitor.ts` |
-| Mover y renombrar | Requiere el mismo permiso que borrar (comprobado): la concesión se llama **«Permitir borrar, mover y renombrar»** (`COWORK_TERMS.deleteGrant`). El «punto de restauración» APFS se aplaza | `cowork-glossary.ts`, `sandbox-profile.ts` |
-| Rutinas en Control total | **Permitidas** con consentimiento explícito al guardarlas y **aprobación humana del plan en cada ejecución** (siempre en una tarea nueva); no son 100 % desatendidas | `scheduler/service.ts` |
-| Hosts de MCP remotos | Se **añaden automáticamente** a la lista blanca de red al marcar el MCP «Disponible en Cowork» (visibles en Ajustes → Red; con `disableCustomHosts` no se suman) | `mcp-cowork.ts`, `manager.ts` |
-| Valores de servidores | **15 min** de inactividad y **máximo 4** servidores (configurables: 0–1440 min, 1–12) | `DEFAULT_COWORK_PREFS`, `prefs.ts` |
+| Pregunta                 | Decisión                                                                                                                                                                                  | Dónde                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Auto-archivo             | **Desactivado por defecto** (`autoArchiveDays: 0`); opciones Nunca / 7 / 14 / 30 / 90 días; tope con `maxAutoArchiveDays` de la política                                                  | `DEFAULT_COWORK_PREFS`, `monitor.ts`       |
+| Mover y renombrar        | Requiere el mismo permiso que borrar (comprobado): la concesión se llama **«Permitir borrar, mover y renombrar»** (`COWORK_TERMS.deleteGrant`). El «punto de restauración» APFS se aplaza | `cowork-glossary.ts`, `sandbox-profile.ts` |
+| Rutinas en Control total | **Permitidas** con consentimiento explícito al guardarlas y **aprobación humana del plan en cada ejecución** (siempre en una tarea nueva); no son 100 % desatendidas                      | `scheduler/service.ts`                     |
+| Hosts de MCP remotos     | Se **añaden automáticamente** a la lista blanca de red al marcar el MCP «Disponible en Cowork» (visibles en Ajustes → Red; con `disableCustomHosts` no se suman)                          | `mcp-cowork.ts`, `manager.ts`              |
+| Valores de servidores    | **15 min** de inactividad y **máximo 4** servidores (configurables: 0–1440 min, 1–12)                                                                                                     | `DEFAULT_COWORK_PREFS`, `prefs.ts`         |
 
 Otras decisiones: la búsqueda web del sandbox sigue **activada por defecto** (Lote A); el envoltorio `env -u` se aplica
 siempre a los MCP locales; las reglas de la lista blanca de una rutina las responde main (no se pasan a
@@ -118,6 +126,7 @@ está siempre denegado (la concesión solo vale para la principal).
 ## 3. Qué se verificó y qué NO
 
 ### Verificado
+
 - **Seatbelt real (`sandbox-exec`, prueba B del plan):** sin la concesión de borrado, `mv` (renombrar), mover a una
   subcarpeta, sobrescribir con `mv` y `rm` dan EPERM; **truncar (`: > archivo`) no está protegido**; el scratch `.cowork/`
   permite borrar. Por eso la concesión se renombró y la mitigación es `session.revert`.
@@ -132,6 +141,7 @@ está siempre denegado (la concesión solo vale para la principal).
 - Este documento y los de seguridad se contrastaron contra el código (§5).
 
 ### NO verificado en vivo (hacerlo con la app real; ver §4)
+
 - Que `agent.cowork.permission.external_directory` con `<ruta>` y `<ruta>/*` cubra las subcarpetas en OpenCode
   (revisar `/config` del servidor) y los patrones y metadata de `external_directory` (solo leídos del binario 1.18.32).
 - Que la inyección de `lazunox_session` y la puerta del plan sobre sesiones hijas funcionen en ejecución (la inyección
@@ -208,11 +218,12 @@ Requisitos: modelo con visión para las pruebas de Control total; una carpeta A 
 ## 5. Aplazado y fuera de alcance
 
 **Aplazado** (posible, pero costoso o arriesgado):
+
 - **Background por AX, helper firmado aparte, Teach mode, Record-a-skill y «ocultar otras apps»**: todos exigen cambiar
   `resources/computer-use/helper.swift`; recompilar cambia la firma y macOS olvida los permisos TCC (Accesibilidad,
   Grabación de pantalla). No hay una vía solo-TS segura; conviene hacerlos juntos con un plan de migración de permisos.
 - **Navegador propio**: Playwright descarga ~150 MB de Chromium y Chrome dentro de Seatbelt choca con su propio sandbox,
-  perfiles y proxy. Alternativa ya disponible: activar `chrome-devtools-mcp` como MCP «Disponible en Cowork» en Control total. *(Histórico, nota del 2026-09-29: además hoy existe el navegador integrado del Lote D; «Chrome aparte» se eliminó en el refactor fase 3.)*
+  perfiles y proxy. Alternativa ya disponible: activar `chrome-devtools-mcp` como MCP «Disponible en Cowork» en Control total. _(Histórico, nota del 2026-09-29: además hoy existe el navegador integrado del Lote D; «Chrome aparte» se eliminó en el refactor fase 3.)_
 - **Modo auto** (clasificador de permisos): necesita otro modelo por cada permiso, con riesgo de inyección.
 - **Marketplace de plugins**: fase posterior (solo se listan las skills instaladas).
 - **Snapshots APFS («punto de restauración») antes de conceder borrado**: la red de seguridad actual es `session.revert`.

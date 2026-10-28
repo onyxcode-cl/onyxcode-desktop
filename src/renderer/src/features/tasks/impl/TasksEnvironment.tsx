@@ -4,7 +4,7 @@ import { useT } from '../../../lib/i18n'
 import { useHostName } from '../../../lib/use-host-name'
 import { useScope } from './ScopePicker'
 import { useTasks } from './store'
-import { isChatFolderPath, useUnifiedApps } from './unified'
+import { isChatFolderForDisplay, useUnifiedApps } from './unified'
 
 const norm = (p: string): string => p.replace(/[\\/]+$/, '').replace(/\\/g, '/')
 
@@ -22,7 +22,7 @@ export function TasksEnvironment({ disabled }: { disabled?: boolean }): React.JS
   const unified = useUnifiedApps()
   if (!scope.canFull && !unified) return null
   const full = conn ? conn.fullAccess : requested
-  const directory = unified && folder && isChatFolderPath(folder) ? null : (folder ?? (full ? (info?.workspace ?? null) : null))
+  const directory = unified && folder && isChatFolderForDisplay(folder) ? null : (folder ?? (full ? (info?.workspace ?? null) : null))
   const authorized = !!folder && folders.some((f) => f.path === folder)
   const isHome = !!directory && !!info?.home && norm(directory) === norm(info.home)
   return (

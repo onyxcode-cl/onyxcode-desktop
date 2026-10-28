@@ -9,6 +9,7 @@ y **OpenCode Go** como proveedor de modelos. Uso personal (macOS arm64 primero).
 > `package.json`/`electron-builder.js`. Nunca hardcodear el nombre en otro lugar.
 
 ## Stack
+
 - Electron 44 + electron-vite 5 + TypeScript (strict) + React 19 + Tailwind CSS 4
 - Estado UI: Zustand. Iconos: lucide-react.
 - Motor: `opencode serve` (binario en PATH o `~/.opencode/bin/opencode`) lanzado como sidecar
@@ -19,6 +20,7 @@ y **OpenCode Go** como proveedor de modelos. Uso personal (macOS arm64 primero).
 - Modelos por defecto: proveedor `opencode-go` (ej. `opencode-go/deepseek-v4.1-flash`).
 
 ## Estructura
+
 ```
 src/
   shared/          brand.ts, ipc.ts (contrato IPC tipado: canales + tipos), types.ts
@@ -45,14 +47,16 @@ src/
 ```
 
 ## Modos (como Claude Desktop)
-| Modo | Descripción | Implementación |
-|---|---|---|
-| **Chat** | Conversación general, markdown, adjuntos, historial | sesión OpenCode con agente `chat` (sin tools), directorio = userData/chat-workspace |
-| **Code** | Agente de programación sobre una carpeta | sesiones OpenCode con `directory` = proyecto; agentes `build`/`plan`; panel diff, terminal, permisos |
-| **Cowork** | Tareas autónomas sobre una carpeta de documentos | agente `cowork` con tools de archivos + bash dentro de sandbox (`sandbox-exec` en macOS, fase 2: contenedor) |
-| **Rutinas** | Tareas programadas (cron) que lanzan prompts | scheduler en main + notificaciones nativas |
+
+| Modo        | Descripción                                         | Implementación                                                                                               |
+| ----------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Chat**    | Conversación general, markdown, adjuntos, historial | sesión OpenCode con agente `chat` (sin tools), directorio = userData/chat-workspace                          |
+| **Code**    | Agente de programación sobre una carpeta            | sesiones OpenCode con `directory` = proyecto; agentes `build`/`plan`; panel diff, terminal, permisos         |
+| **Cowork**  | Tareas autónomas sobre una carpeta de documentos    | agente `cowork` con tools de archivos + bash dentro de sandbox (`sandbox-exec` en macOS, fase 2: contenedor) |
+| **Rutinas** | Tareas programadas (cron) que lanzan prompts        | scheduler en main + notificaciones nativas                                                                   |
 
 ## Fases
+
 1. **Base** — scaffold, sidecar OpenCode, IPC tipado, layout con sidebar y selector de modo, selector de modelo, chat con streaming. ✅ criterio: enviar un mensaje y ver respuesta en streaming con un modelo de Go.
 2. **Code** — abrir carpeta, sesiones por proyecto, permisos (aprobar/rechazar), diffs, terminal integrada, plan/build, git status/worktrees.
 3. **Cowork + Rutinas + MCP** — agente cowork en sandbox, scheduler, gestión de servidores MCP y ajustes.
@@ -60,6 +64,7 @@ src/
 5. **Extras** — artifacts (ventana HTML), voz (whisper.cpp), quick entry (atajo global), empaquetado firmado.
 
 ## Convenciones
+
 - TypeScript strict, sin `any` salvo tipos del SDK imposibles.
 - Todo texto de UI en español.
 - Cada módulo de main expone `register<Modulo>Handlers(ipcMain)`; canales definidos en `shared/ipc.ts`.

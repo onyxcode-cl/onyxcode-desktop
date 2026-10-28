@@ -12,7 +12,7 @@ import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
 import { setAccessMode } from './actions'
 import { useTasks } from './store'
-import { isChatFolderPath, useUnifiedApps } from './unified'
+import { chatFolderDate, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
 import { baseName } from './util'
 
 /** Estado y acción comunes del alcance; todas las variantes y los otros tres sitios lo usan. */
@@ -62,10 +62,15 @@ export function UnifiedScopeChip({ className = '' }: { className?: string }): Re
       </button>
     )
   }
-  const label =
-    folder && !isChatFolderPath(folder)
-      ? t('tasksComputer.unified.folder', { name: baseName(folder) })
-      : t('tasksComputer.unified.noFolderChat')
+  // Carpeta automática de este chat (ruta real) = «Sin carpeta elegida»; un chat antiguo (solo por su forma) se nombra «Chat sin carpeta».
+  const date = folder && !isChatFolderPath(folder) && isChatFolderForDisplay(folder) ? chatFolderDate(folder) : null
+  const label = !folder
+    ? t('tasksComputer.unified.noFolderChat')
+    : isChatFolderPath(folder)
+      ? t('tasksComputer.unified.noFolderChat')
+      : isChatFolderForDisplay(folder)
+        ? t(date ? 'tasksComputer.unified.chatFolderNameDate' : 'tasksComputer.unified.chatFolderName', { date: date ?? '' })
+        : t('tasksComputer.unified.folder', { name: baseName(folder) })
   return (
     <span
       data-testid="unified-scope-chip"

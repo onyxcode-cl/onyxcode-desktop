@@ -23,6 +23,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 ## 1. Qué se entregó, por área
 
 ### 1.1 Prueba de viabilidad (D0)
+
 - Arnés propio en Electron real (no simulado) contra una página de prueba con botón, input, input de
   contraseña, `<select>`, enlaces a otro puerto/ruta, `window.open`, descarga, `alert` y `fetch` a
   otro puerto loopback.
@@ -44,11 +45,12 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
   vista+debugger en cada ruta de error (riesgo de contención de recursos entre pruebas encadenadas).
 
 ### 1.2 Contratos, superficie aislada, IPC y endurecimiento (D1)
+
 - `src/shared/ipc-browser.ts`: tipos (`BrowserOwner`, `BrowserTab`, `BrowserOwnerState`,
   `BrowserApprovalRequest`, `BrowserSitesState`…), canales `browser:*` (invoke y eventos) y esquemas
   en `schemas.ts`; rol de ventana nuevo `browserHost`.
 - `src/main/embedded-browser/{api.ts,session.ts,cdp.ts,surface.ts,service.ts,approvals.ts,
-  downloads.ts,store.ts,popout.ts,dev-servers.ts}`: la superficie aislada completa (B.2), dos
+downloads.ts,store.ts,popout.ts,dev-servers.ts}`: la superficie aislada completa (B.2), dos
   particiones propias (`persist:lazunox-web-code`/`cowork`), `webRequest` obligatorio, lista blanca de
   CDP (`ALLOWED_CDP`), cola de aprobaciones con respaldo nativo, descargas con cuarentena manual,
   límite de 6 pestañas por owner y 12 en total.
@@ -57,6 +59,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 - `src/preload/{browser-api.ts,browser-host.ts}`: sin tocar `pill.ts` ni sus roles.
 
 ### 1.3 Herramientas del agente, MCP en main y cableado con OpenCode (D2)
+
 - `src/main/embedded-browser/{snapshot.ts,input.ts,keys.ts,tools.ts,mcp-server.ts,owner.ts}`: MCP
   HTTP JSON-RPC **en el proceso principal** (nunca un `utilityProcess`: `webContents.debugger` solo
   existe en main), transporte calcado de `computer/mcp-server.ts` (Bearer de 32 bytes por servidor de
@@ -76,6 +79,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
   del Lote C); `computer.md`/`cowork.md` actualizados.
 
 ### 1.4 UI compartida, Code, Cowork, Ajustes y ventana aparte (D3 + D4)
+
 - `features/browser/` (`BrowserPanel`, `TabStrip`, `UrlBar`, `AgentBar`, `Cards`, `DevServerHint`,
   `useNativeViewport`): pestañas, barra de URL con indicador de conexión segura, «Seleccionar
   elemento», «Añadir al chat», «Abrir en ventana aparte», tarjetas de aprobación armadas a 700 ms,
@@ -92,6 +96,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 - `src/shared/cowork-glossary.ts`: añade `browser: 'Navegador'` y `externalChrome: 'Chrome aparte'`.
 
 ### 1.5 Integración, documentación y build (D5, este paquete)
+
 - **Corrección de integración encontrada por el orquestador, verificada aquí:** la ventana
   «Navegador» se quedaba en «Abriendo el navegador…» para siempre porque `popout.ts` (D1) nunca
   codificaba el `owner` en la URL y `renderer/browser/main.tsx` (D4) esperaba leerlo del hash/query.
@@ -108,19 +113,19 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
 
 ## 2. Las decisiones del usuario (2026-09-28)
 
-| Decisión | Valor | Dónde |
-|---|---|---|
-| Anfitrión de la vista | En línea (panel de Code / `aside` de Cowork) **+** ventana «Navegador» propia cuando la principal está minimizada o se pide | `embedded-browser/{service,popout}.ts` |
-| Navegador del agente por defecto | **Apagado** en Code y en Cowork (igual criterio que el Lote C: se activa a mano en Ajustes) | `embedded-browser/store.ts` (`agentEnabled: {code:false, cowork:false}`) |
-| Chrome aparte (Lote C) | **[Histórico: eliminado en el refactor fase 3; nota del 2026-09-29]** Se conservaba como opción avanzada, sin borrar código, excluyente con el navegador integrado | `cowork/manager.ts`, B.11 |
-| Navegador en Cowork Sandbox | **Se activa también ahí** (antes solo existía en Control total), con permiso por sitio, aceptando que ese tráfico no pasa por el proxy de egress | `cowork/{manager,sandbox}.ts` |
-| Particiones de sesión | Code y Cowork **separados** (`persist:lazunox-web-code` / `-cowork`); dentro de Cowork, **una sola partición compartida** para Sandbox y Control total (reconfirmado por el usuario junto con el resto, no es un descuido) | `embedded-browser/session.ts` |
-| Buscador de la barra de URL | Google (si el texto no parece una URL) | `embedded-browser/service.ts::normalizeInput` |
+| Decisión                         | Valor                                                                                                                                                                                                                      | Dónde                                                                    |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Anfitrión de la vista            | En línea (panel de Code / `aside` de Cowork) **+** ventana «Navegador» propia cuando la principal está minimizada o se pide                                                                                                | `embedded-browser/{service,popout}.ts`                                   |
+| Navegador del agente por defecto | **Apagado** en Code y en Cowork (igual criterio que el Lote C: se activa a mano en Ajustes)                                                                                                                                | `embedded-browser/store.ts` (`agentEnabled: {code:false, cowork:false}`) |
+| Chrome aparte (Lote C)           | **[Histórico: eliminado en el refactor fase 3; nota del 2026-09-29]** Se conservaba como opción avanzada, sin borrar código, excluyente con el navegador integrado                                                         | `cowork/manager.ts`, B.11                                                |
+| Navegador en Cowork Sandbox      | **Se activa también ahí** (antes solo existía en Control total), con permiso por sitio, aceptando que ese tráfico no pasa por el proxy de egress                                                                           | `cowork/{manager,sandbox}.ts`                                            |
+| Particiones de sesión            | Code y Cowork **separados** (`persist:lazunox-web-code` / `-cowork`); dentro de Cowork, **una sola partición compartida** para Sandbox y Control total (reconfirmado por el usuario junto con el resto, no es un descuido) | `embedded-browser/session.ts`                                            |
+| Buscador de la barra de URL      | Google (si el texto no parece una URL)                                                                                                                                                                                     | `embedded-browser/service.ts::normalizeInput`                            |
 
 > **Bug encontrado y corregido en D5:** el esqueleto original de `store.ts` (B.4/D1 paso 6 del plan)
 > traía `agentEnabled: {code:true, cowork:true}` como valor por defecto, contradiciendo la decisión
 > final del usuario (fila de arriba) y el mismo criterio que el Lote C. Corregido a `{code:false,
-> cowork:false}` en este paquete; reverificado con el harness real de MCP de la §3 activando el
+cowork:false}` en este paquete; reverificado con el harness real de MCP de la §3 activando el
 > navegador explícitamente por `store.setPrefs`, tal como haría la UI de Ajustes.
 
 ## 3. Qué se verificó y qué NO
@@ -161,7 +166,7 @@ agente y MCP, interfaz compartida + Code, Cowork + Ajustes + ventana aparte); **
     `browser:state` real con el owner exacto y sus pestañas — nunca se quedó en el placeholder
     «Abriendo el navegador…».
   - `npm run typecheck` y `npx electron-vite build` limpios; `ls out/preload/browser-host.js
-    out/renderer/browser/index.html` confirmado; sumas SHA-1 de `helper.swift`/`cu-helper` sin
+out/renderer/browser/index.html` confirmado; sumas SHA-1 de `helper.swift`/`cu-helper` sin
     cambios desde D0; `git diff --stat src/preload/pill.ts` vacío; `grep -rn "remote-debugging" src`
     vacío; `ALLOWED_CDP` sin ninguno de los métodos prohibidos.
 

@@ -97,29 +97,29 @@ Leí los documentos obligatorios y todo el código de Cowork (main, renderer, ag
 
 ## B. Alcance
 
-| # | Decisión |
-|---|---|
-| 1, 2, 3, 4, 5 carpetas | **Entra** (W2-A main, W2-E estado, W3-B/C/E interfaz) |
-| B rename, A puerta del plan, C rutinas | **Entra**, prioridad alta (W2-A, W2-F, W2-C) |
-| 6, 7, 8, 9, 10 lista y ciclo de vida | **Entra** (W2-B monitor, W2-E, W3-A) |
-| 52, 53, 26 servidores, almacenamiento, notificaciones | **Entra** (W2-B, W3-E) |
-| 11, 12 proyecto, AGENTS.md | **Entra** (W2-D, W2-C para las rutinas) |
-| 55, 24, 25 exportar, consulta lateral, editar y reintentar | **Entra** (W2-E, W3-B) |
-| 23 modelo y esfuerzo por tarea + UsageMeter | **Entra** (W2-E, W3-C) |
-| 20 MCP del usuario en Cowork | **Entra** (W2-D). Los remotos con OAuth no funcionan en sandbox (su XDG privado no tiene los tokens): se avisa en la interfaz |
-| 21 skills docx/xlsx/pdf/pptx + "Crear skill de esta tarea" | **Entra** (W2-F, W3-B) |
-| 22 lista mínima de skills | **Entra** (W2-D, en el panel de proyecto). **Marketplace fuera** |
-| 18 permisos recordados | **Entra** (W2-D, W3-E) |
-| 28 rutinas | **Entra** (W2-C) |
-| 15, 39, 40, 46 entregables, vista en vivo, retención, artifacts | **Entra** (W3-D, W2-B, W3-F) |
-| 49, 50 onboarding y plantillas | **Entra** (W3-C) |
-| 54 `managed.json` mínimo | **Entra** (W2-A) |
-| 56 glosario | **Entra**: constantes en W1-A; cada paquete corrige sus archivos; barrido final en W3-F |
-| 45 navegador | **Aplazado.** Playwright descarga unos 150 MB de Chromium, y Chrome dentro de Seatbelt choca con su propio sandbox, perfiles y proxy. Opción mínima ya cubierta por #20: el usuario activa `chrome-devtools-mcp` como MCP "disponible en Cowork" en Control total |
-| 19 modo auto | **Aplazado.** No es trivial: requiere otro modelo que clasifique cada permiso, con riesgo de inyección |
-| 35, 42, 43, 44, ocultar apps | **Aplazado** (helper.swift, TCC) |
-| 29 Dispatch, 30 nube, 48 Buddy, 47 simuladores | **Fuera** de alcance |
-| Snapshots APFS "punto de restauración" | **Aplazado** (ver pregunta 2) |
+| #                                                               | Decisión                                                                                                                                                                                                                                                          |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1, 2, 3, 4, 5 carpetas                                          | **Entra** (W2-A main, W2-E estado, W3-B/C/E interfaz)                                                                                                                                                                                                             |
+| B rename, A puerta del plan, C rutinas                          | **Entra**, prioridad alta (W2-A, W2-F, W2-C)                                                                                                                                                                                                                      |
+| 6, 7, 8, 9, 10 lista y ciclo de vida                            | **Entra** (W2-B monitor, W2-E, W3-A)                                                                                                                                                                                                                              |
+| 52, 53, 26 servidores, almacenamiento, notificaciones           | **Entra** (W2-B, W3-E)                                                                                                                                                                                                                                            |
+| 11, 12 proyecto, AGENTS.md                                      | **Entra** (W2-D, W2-C para las rutinas)                                                                                                                                                                                                                           |
+| 55, 24, 25 exportar, consulta lateral, editar y reintentar      | **Entra** (W2-E, W3-B)                                                                                                                                                                                                                                            |
+| 23 modelo y esfuerzo por tarea + UsageMeter                     | **Entra** (W2-E, W3-C)                                                                                                                                                                                                                                            |
+| 20 MCP del usuario en Cowork                                    | **Entra** (W2-D). Los remotos con OAuth no funcionan en sandbox (su XDG privado no tiene los tokens): se avisa en la interfaz                                                                                                                                     |
+| 21 skills docx/xlsx/pdf/pptx + "Crear skill de esta tarea"      | **Entra** (W2-F, W3-B)                                                                                                                                                                                                                                            |
+| 22 lista mínima de skills                                       | **Entra** (W2-D, en el panel de proyecto). **Marketplace fuera**                                                                                                                                                                                                  |
+| 18 permisos recordados                                          | **Entra** (W2-D, W3-E)                                                                                                                                                                                                                                            |
+| 28 rutinas                                                      | **Entra** (W2-C)                                                                                                                                                                                                                                                  |
+| 15, 39, 40, 46 entregables, vista en vivo, retención, artifacts | **Entra** (W3-D, W2-B, W3-F)                                                                                                                                                                                                                                      |
+| 49, 50 onboarding y plantillas                                  | **Entra** (W3-C)                                                                                                                                                                                                                                                  |
+| 54 `managed.json` mínimo                                        | **Entra** (W2-A)                                                                                                                                                                                                                                                  |
+| 56 glosario                                                     | **Entra**: constantes en W1-A; cada paquete corrige sus archivos; barrido final en W3-F                                                                                                                                                                           |
+| 45 navegador                                                    | **Aplazado.** Playwright descarga unos 150 MB de Chromium, y Chrome dentro de Seatbelt choca con su propio sandbox, perfiles y proxy. Opción mínima ya cubierta por #20: el usuario activa `chrome-devtools-mcp` como MCP "disponible en Cowork" en Control total |
+| 19 modo auto                                                    | **Aplazado.** No es trivial: requiere otro modelo que clasifique cada permiso, con riesgo de inyección                                                                                                                                                            |
+| 35, 42, 43, 44, ocultar apps                                    | **Aplazado** (helper.swift, TCC)                                                                                                                                                                                                                                  |
+| 29 Dispatch, 30 nube, 48 Buddy, 47 simuladores                  | **Fuera** de alcance                                                                                                                                                                                                                                              |
+| Snapshots APFS "punto de restauración"                          | **Aplazado** (ver pregunta 2)                                                                                                                                                                                                                                     |
 
 ---
 
@@ -131,8 +131,18 @@ Leí los documentos obligatorios y todo el código de Cowork (main, renderer, ag
 // ── Carpetas ──
 export type FolderAccessMode = 'rw' | 'ro'
 export const FOLDER_MODE_LABEL_ES: Record<FolderAccessMode, string> = { rw: 'Lectura y escritura', ro: 'Solo lectura' }
-export interface LinkedFolder { path: string; name: string; mode: FolderAccessMode; addedAt: number }
-export interface TrustedFolder { path: string; name: string; mode: FolderAccessMode; addedAt: number }
+export interface LinkedFolder {
+  path: string
+  name: string
+  mode: FolderAccessMode
+  addedAt: number
+}
+export interface TrustedFolder {
+  path: string
+  name: string
+  mode: FolderAccessMode
+  addedAt: number
+}
 export interface CoworkFolderSet {
   primary: string
   /** Vinculadas a este espacio (servidor de `primary`). */
@@ -142,56 +152,115 @@ export interface CoworkFolderSet {
   /** false = el servidor sandbox en marcha arrancó con otro conjunto (falta reiniciar). */
   applied: boolean
 }
-export interface FolderCheck { ok: boolean; normalized: string; reason?: string }
+export interface FolderCheck {
+  ok: boolean
+  normalized: string
+  reason?: string
+}
 // CoworkFolder: añadir  fullAccess?: boolean   (main lo rellena en listFolders)
 // CoworkDeliverable: añadir  root?: string      (carpeta vinculada si no es la principal)
 // CoworkProject: añadir  links?: string[]; memoryEnabled?: boolean
-export interface CoworkAgentsMd { path: string; content: string; exists: boolean }
+export interface CoworkAgentsMd {
+  path: string
+  content: string
+  exists: boolean
+}
 
 // ── Tareas / actividad ──
 export interface CoworkTaskMeta {
-  sessionId: string; folder: string; fullAccess: boolean; title: string
-  pinned?: boolean; group?: string | null; updatedAt: number
+  sessionId: string
+  folder: string
+  fullAccess: boolean
+  title: string
+  pinned?: boolean
+  group?: string | null
+  updatedAt: number
 }
 export type CoworkTaskActivityState = 'running' | 'waiting' | 'question'
 export interface CoworkTaskActivity {
-  sessionId: string; folder: string; fullAccess: boolean; title: string
-  state: CoworkTaskActivityState; since: number
+  sessionId: string
+  folder: string
+  fullAccess: boolean
+  title: string
+  state: CoworkTaskActivityState
+  since: number
 }
 export interface CoworkActivitySnapshot {
   at: number
-  tasks: CoworkTaskActivity[]          // solo tareas raíz (las hijas se agregan a su raíz)
+  tasks: CoworkTaskActivity[] // solo tareas raíz (las hijas se agregan a su raíz)
   servers: Array<{ folder: string; fullAccess: boolean; idleSince: number | null }>
 }
 
 // ── Preferencias ──
-export interface CoworkNotifyPrefs { done: boolean; approval: boolean; question: boolean; error: boolean }
-export interface CoworkPrefs { autoArchiveDays: number; idleStopMinutes: number; maxServers: number; notify: CoworkNotifyPrefs }
+export interface CoworkNotifyPrefs {
+  done: boolean
+  approval: boolean
+  question: boolean
+  error: boolean
+}
+export interface CoworkPrefs {
+  autoArchiveDays: number
+  idleStopMinutes: number
+  maxServers: number
+  notify: CoworkNotifyPrefs
+}
 export const DEFAULT_COWORK_PREFS: CoworkPrefs = {
-  autoArchiveDays: 0, idleStopMinutes: 15, maxServers: 4,
+  autoArchiveDays: 0,
+  idleStopMinutes: 15,
+  maxServers: 4,
   notify: { done: true, approval: true, question: true, error: true }
 }
 
 // ── Almacenamiento ──
-export interface CoworkStorageEntry { key: string; folder: string | null; bytes: number; cacheBytes: number; running: boolean }
-export interface CoworkStorageReport { entries: CoworkStorageEntry[]; screenshotsBytes: number; totalBytes: number; at: number }
+export interface CoworkStorageEntry {
+  key: string
+  folder: string | null
+  bytes: number
+  cacheBytes: number
+  running: boolean
+}
+export interface CoworkStorageReport {
+  entries: CoworkStorageEntry[]
+  screenshotsBytes: number
+  totalBytes: number
+  at: number
+}
 
 // ── Permisos recordados / MCP / política ──
-export interface CoworkPermissionRule { id: string; folder: string; permission: string; pattern: string; createdAt: number }
+export interface CoworkPermissionRule {
+  id: string
+  folder: string
+  permission: string
+  pattern: string
+  createdAt: number
+}
 export interface CoworkMcpInfo {
-  name: string; type: 'local' | 'remote'; enabled: boolean
-  cowork: boolean; askEachTool: boolean; hosts: string[]; oauth: boolean
+  name: string
+  type: 'local' | 'remote'
+  enabled: boolean
+  cowork: boolean
+  askEachTool: boolean
+  hosts: string[]
+  oauth: boolean
 }
 export interface ManagedPolicy {
   source: string
-  disableFullAccess?: boolean; allowedFolderRoots?: string[]; disableCustomHosts?: boolean
-  extraAllowedHosts?: string[]; disableAlwaysAllow?: boolean; disableRoutines?: boolean; maxAutoArchiveDays?: number
+  disableFullAccess?: boolean
+  allowedFolderRoots?: string[]
+  disableCustomHosts?: boolean
+  extraAllowedHosts?: string[]
+  disableAlwaysAllow?: boolean
+  disableRoutines?: boolean
+  maxAutoArchiveDays?: number
 }
 
 // ── Rutinas ──
 export type RoutineSessionMode = 'fresh' | 'continue'
 export type RoutineOnAsk = 'reject' | 'wait'
-export interface RoutineAllowRule { permission: string; pattern: string }
+export interface RoutineAllowRule {
+  permission: string
+  pattern: string
+}
 // RoutineInput y ScheduledRoutine: añadir
 //   sessionMode?: RoutineSessionMode; onAsk?: RoutineOnAsk; allow?: RoutineAllowRule[]; allowHosts?: string[]
 //   fullAccess?: boolean; fullAccessConsentAt?: number | null
@@ -239,6 +308,7 @@ export interface RoutineAllowRule { permission: string; pattern: string }
 - `src/shared/types.ts` (W1-A): `NotifyTarget` añade `fullAccess?: boolean`.
 
 **Esquemas** (`schemas.ts`, W1-A):
+
 - `host = str({max:255,min:1,pattern:/^[a-z0-9.-]+$/i})`
 - `permName = str({max:200,min:1,pattern:/^[A-Za-z0-9_*.:-]+$/})`
 - `pattern = str({max:2000,min:1})`
@@ -272,6 +342,7 @@ export function buildCoworkSystemPrompt(i: CoworkPromptInput): string | undefine
 ```
 
 Secciones unidas con `\n\n---\n\n`:
+
 1. Instrucciones generales.
 2. Instrucciones del proyecto "X".
 3. `Enlaces de referencia del proyecto (consúltalos con webfetch si hace falta):` más la lista.
@@ -284,10 +355,19 @@ Devuelve `undefined` si todo está vacío.
 `src/shared/cowork-glossary.ts`:
 
 ```ts
-export const COWORK_TERMS = { sandbox: 'Sandbox', fullControl: 'Control total del Mac', fullControlShort: 'Control total',
-  workFolders: 'Carpetas de Cowork', trustedFolders: 'Carpetas de confianza', linkedFolders: 'Carpetas adicionales',
-  readOnly: 'Solo lectura', readWrite: 'Lectura y escritura', deleteGrant: 'Permitir borrar, mover y renombrar',
-  sideChat: 'Consulta lateral', routine: 'Rutina' } as const
+export const COWORK_TERMS = {
+  sandbox: 'Sandbox',
+  fullControl: 'Control total del Mac',
+  fullControlShort: 'Control total',
+  workFolders: 'Carpetas de Cowork',
+  trustedFolders: 'Carpetas de confianza',
+  linkedFolders: 'Carpetas adicionales',
+  readOnly: 'Solo lectura',
+  readWrite: 'Lectura y escritura',
+  deleteGrant: 'Permitir borrar, mover y renombrar',
+  sideChat: 'Consulta lateral',
+  routine: 'Rutina'
+} as const
 ```
 
 A partir de aquí están prohibidos en la interfaz "Acceso total", "acceso completo" y "Carpetas autorizadas".
@@ -297,19 +377,28 @@ A partir de aquí están prohibidos en la interfaz "Acceso total", "acceso compl
 **`src/main/ipc/cowork-handle.ts`** (nuevo): mueve `Handler` y `handle` desde `cowork-handlers.ts` y exporta:
 
 ```ts
-export type CoworkHandler<C extends CoworkInvokeChannel> = (req: CoworkRequest<C>, event: IpcMainInvokeEvent) => CoworkResponse<C> | Promise<CoworkResponse<C>>
+export type CoworkHandler<C extends CoworkInvokeChannel> = (
+  req: CoworkRequest<C>,
+  event: IpcMainInvokeEvent
+) => CoworkResponse<C> | Promise<CoworkResponse<C>>
 export function makeCoworkHandle(ipcMain: IpcMain): <C extends CoworkInvokeChannel>(ch: C, fn: CoworkHandler<C>) => void
 export interface CoworkIpcContext {
   handle: <C extends CoworkInvokeChannel>(ch: C, fn: CoworkHandler<C>) => void
   send: <C extends CoworkEventChannel>(ch: C, payload: CoworkEventContract[C]) => void
   getWindow: () => BrowserWindow | null
-  cowork: CoworkManager; computer: ComputerService; scheduler: SchedulerService
-  projects: CoworkProjectsStore; keepAwake: KeepAwakeService
+  cowork: CoworkManager
+  computer: ComputerService
+  scheduler: SchedulerService
+  projects: CoworkProjectsStore
+  keepAwake: KeepAwakeService
 }
-export interface CoworkSubmodule { dispose?: () => void | Promise<void> }
+export interface CoworkSubmodule {
+  dispose?: () => void | Promise<void>
+}
 ```
 
 **Ficheros de handlers nuevos** (en W1 son stubs). Cada uno exporta `registerX(ctx): CoworkSubmodule`:
+
 - `cowork-folders-handlers.ts`: folders, trusted, policy.
 - `cowork-lifecycle-handlers.ts`: activity, viewing, tasks, prefs, storage.
 - `cowork-project-handlers.ts`: agentsMd, mcp, rules.
@@ -325,6 +414,7 @@ setBeforeSpawn(fn: ((folder: string, fullAccess: boolean) => Promise<void>) | nu
 ```
 
 `inlineConfig` pasa a construirse con `deepMerge(base, mcpBlock, rulesBlock, skillsInlineConfig())`:
+
 - `mcpBlock = { mcp: c.mcp, agent: { cowork: { permission: c.permission }, computer: { permission: c.permission } } }`, con `c = coworkMcpContribution({ sandboxed: !fullAccess })`.
 - `rulesBlock = { agent: { cowork: { permission: p }, computer: { permission: p } } }`, con `p = rulesPermissionConfig(coworkRules.list(folder))`.
 - `c.hosts` se guarda por clave de servidor y se suma a `networkAllowlist`.
@@ -335,16 +425,28 @@ setBeforeSpawn(fn: ((folder: string, fullAccess: boolean) => Promise<void>) | nu
 
 ```ts
 // src/main/cowork/mcp-cowork.ts (W2-D)
-export interface CoworkMcpContribution { mcp: Record<string, unknown>; permission: Record<string, 'ask' | 'allow'>; hosts: string[] }
+export interface CoworkMcpContribution {
+  mcp: Record<string, unknown>
+  permission: Record<string, 'ask' | 'allow'>
+  hosts: string[]
+}
 export function coworkMcpContribution(opts: { sandboxed: boolean }): CoworkMcpContribution
-export class CoworkMcpPrefs { list(): CoworkMcpInfo[]; set(name: string, patch: { cowork?: boolean; askEachTool?: boolean }): CoworkMcpInfo[] }
+export class CoworkMcpPrefs {
+  list(): CoworkMcpInfo[]
+  set(name: string, patch: { cowork?: boolean; askEachTool?: boolean }): CoworkMcpInfo[]
+}
 export const coworkMcpPrefs: CoworkMcpPrefs
 // src/main/cowork/rules.ts (W2-D)
-export class CoworkRulesStore { list(folder?: string): CoworkPermissionRule[]; add(folder: string, permission: string, patterns: string[]): CoworkPermissionRule[]; remove(id: string): CoworkPermissionRule[]; removeFolder(folder: string): void }
+export class CoworkRulesStore {
+  list(folder?: string): CoworkPermissionRule[]
+  add(folder: string, permission: string, patterns: string[]): CoworkPermissionRule[]
+  remove(id: string): CoworkPermissionRule[]
+  removeFolder(folder: string): void
+}
 export const coworkRules: CoworkRulesStore
 export function rulesPermissionConfig(rules: CoworkPermissionRule[]): Record<string, Record<string, 'allow'>>
 // src/main/cowork/opencode-config.ts (W2-F)
-export function skillsInlineConfig(): Record<string, unknown>   // stub: {}
+export function skillsInlineConfig(): Record<string, unknown> // stub: {}
 ```
 
 `scheduler/service.ts` (W1-B, solo el tipo): `SchedulerDeps` añade `projects?: CoworkProjectsStore; getSettings?: () => Settings; openTarget?: (t: NotifyTarget) => void`, y `cowork-handlers` se los pasa.
@@ -359,6 +461,7 @@ scratchDirs?: string[]
 ```
 
 Reglas (en SBPL gana la última que coincide):
+
 1. Las `rw` extra se añaden al `allow file-write*`.
 2. Después, `(deny file-write-unlink (subpath X))` para la principal (salvo `allowDelete`) y para **todas** las `rw` extra. El permiso de borrado solo vale para la principal.
 3. Después, `(allow file-write-unlink (subpath <folder>/.cowork))`.
@@ -411,6 +514,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 ## D. Oleadas
 
 **Reglas para todos los paquetes:**
+
 - Editar solo los archivos que se poseen.
 - No recompilar ni tocar el helper.
 - No tocar `pill.ts` ni `CHANNEL_ROLES`.
@@ -423,6 +527,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 ### Oleada 1 (dos agentes en paralelo, archivos disjuntos; typecheck conjunto al final)
 
 **W1-A · Contratos compartidos**
+
 - **Posee:** `src/shared/ipc-cowork.ts`, `src/shared/types.ts`, `src/main/ipc/schemas.ts` y los nuevos `src/shared/cowork-prompt.ts` y `src/shared/cowork-glossary.ts`.
 - **Pasos:**
   1. Añadir exactamente lo de C.1, con JSDoc en español y los canales en las listas.
@@ -432,6 +537,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 - **Verificación:** esbuild de `cowork-prompt.ts` al scratchpad y asserts en node: vacío → `undefined`; `memoryEnabled:false` produce la frase de desactivada e ignora `memory`; `ro` produce "solo lectura"; `unattended` añade el texto. `grep -c "cowork:htmlToPdf" src/main/ipc/schemas.ts` da 1.
 
 **W1-B · Cableado de main**
+
 - **Posee:** `src/main/ipc/cowork-handlers.ts`, los nuevos `src/main/ipc/cowork-handle.ts` y los cuatro `cowork-*-handlers.ts` (stubs), los nuevos `src/main/cowork/config-merge.ts`, `mcp-cowork.ts` (stub) y `rules.ts` (stub), `src/main/cowork/manager.ts` (**solo** los ganchos de C.3), `src/main/cowork/opencode-config.ts` (**solo** el stub `skillsInlineConfig`) y `src/main/scheduler/service.ts` (**solo** `SchedulerDeps`).
 - **Pasos:** exactamente C.3. `rules.ts` y `mcp-cowork.ts` guardan en memoria y devuelven vacíos.
 - **Verificación:** con la app sin cambios funcionales, typecheck; esbuild de `config-merge.ts` con asserts de merge profundo (objetos se fusionan; strings u objetos los sustituye el segundo).
@@ -439,6 +545,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 ### Oleada 2 (6 paquetes en paralelo)
 
 **W2-A · Carpetas, sandbox y política**
+
 - **Posee:** `manager.ts`, `sandbox-profile.ts`, `sandbox.ts`, los nuevos `src/main/cowork/folder-policy.ts` y `src/main/cowork/policy.ts`, y `ipc/cowork-folders-handlers.ts`.
 - **Pasos:**
   1. `folder-policy.ts`, puro:
@@ -482,6 +589,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
   - **Si rename está permitido:** documentar que mover dentro de la carpeta funciona y que "overwrite por rename" es un borrado residual (mitigado por `session.revert`).
 
 **W2-B · Monitor, ciclo de vida y almacenamiento**
+
 - **Posee:** los nuevos `src/main/cowork/monitor.ts`, `tasks-meta.ts`, `prefs.ts` y `storage.ts`; `keep-awake.ts`; `src/main/computer/service.ts` (solo `cleanScreenshots()` y su llamada en `stop()` y `dispose()`); y `ipc/cowork-lifecycle-handlers.ts`.
 - **Pasos:**
   1. `CoworkPrefsStore { get(): CoworkPrefs; set(patch): CoworkPrefs }`, recortando valores y respetando `policy.maxAutoArchiveDays` (vía `loadManagedPolicy`, solo lectura).
@@ -500,6 +608,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
   - Una sesión antigua no fijada recibe PATCH con archived; una fijada no.
 
 **W2-C · Rutinas seguras**
+
 - **Posee:** `src/main/scheduler/service.ts`, el nuevo `src/main/scheduler/approvals.ts`, `src/main/cowork/proxy-policy.ts`, y `features/routines/impl/RoutineEditor.tsx`, `RoutinesView.tsx` y `templates.ts`.
 - **Pasos:**
   1. `approvals.ts`, puro: `wildcardMatch(pattern, value)` (`*` = cualquier cosa, `?` = un carácter) y `decideUnattended(p: {permission; patterns}, rules: RoutineAllowRule[]): 'allow' | 'no-match'`. Todos los patrones deben casar con una regla del mismo permiso; `permission` puede acabar en `*` para MCP.
@@ -529,6 +638,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
 - **Verificación:** asserts de `approvals.ts` con esbuild; harness del scheduler contra un servidor falso con un permiso bash `rm x` (se rechaza y se registra) y `git status` en la lista blanca (se responde `once`).
 
 **W2-D · Proyecto, MCP en Cowork y permisos recordados**
+
 - **Posee:** `src/main/cowork/projects.ts`, `mcp-cowork.ts`, `rules.ts`, `ipc/cowork-project-handlers.ts`, `features/settings/impl/McpSection.tsx` y `features/cowork/impl/ProjectPanel.tsx`.
 - **Pasos:**
   1. `projects.ts`: `links` (máx. 50 URL http(s)) y `memoryEnabled` en `save`. Funciones `getAgentsMd(folder)` y `saveAgentsMd(folder, content)` sobre `<folder>/AGENTS.md`; el handler valida con `assertInsideApproved`.
@@ -549,6 +659,7 @@ Sustituye al stream por carpeta como fuente de estado de fondo.
   - `curl -u cowork:<pw> <baseUrl>/config` (o log de `inlineConfig`) muestra el `mcp` inyectado.
 
 **W2-E · Estado del renderer**
+
 - **Posee:** `features/cowork/impl/store.ts`, `actions.ts`, `util.ts`, `EscalateCard.tsx`, `src/renderer/src/app/App.tsx` (solo `openTarget` con `fullAccess`), y los nuevos `features/cowork/impl/search.ts` y `transcript.ts`.
 
 **API exacta que debe exponer:**
@@ -627,6 +738,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** esbuild de `transcript.ts` y `search.ts` (con react externo) y asserts: acentos (`"informe"` encuentra `"Informé"`), fragmento de ≤ 160 caracteres, la marca de adjuntos se elimina, Markdown con encabezados por turno. typecheck web.
 
 **W2-F · Skills, agentes y puerta del plan**
+
 - **Posee:** `src/main/cowork/opencode-config.ts`, `resources/opencode/agents/cowork.md`, `resources/opencode/agents/computer.md`, los nuevos `resources/opencode/skills/{docx,xlsx,pdf,pptx}/SKILL.md` (más plantillas opcionales en la misma carpeta), `resources/opencode/README.md` y `electron-builder.js`.
 - **Pasos:**
   1. **Arreglo A:** en el plugin, eliminar `if (agentBySession.get(...) !== COMPUTER_AGENT) return`. La puerta se aplica a **toda** sesión del servidor con `GATE_URL`, con clave en su propio `sessionID`: las hijas y cualquier otro agente quedan bloqueados sin aprobación (fail-closed). `computer.md` pasa a `task: deny` y se actualiza el punto 10 de su guía.
@@ -653,6 +765,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 ### Oleada 3 (6 paquetes; interfaz sobre las API de la oleada 2)
 
 **W3-A · Barra lateral**
+
 - **Posee:** `TaskList.tsx`, `CoworkSidebar.tsx`, `FolderMenu.tsx` y el nuevo `SidebarSections.tsx`.
 - **Pasos:**
   1. Secciones transversales arriba:
@@ -670,6 +783,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** typecheck web y banco de pruebas Chromium/Electron (el método de capturas de `UI-REDESIGN.md`) con el store sembrado.
 
 **W3-B · Conversación y aprobaciones**
+
 - **Posee:** `CoworkWorkspace.tsx`, `TaskConversation.tsx`, `PermissionPrompt.tsx`, `DeleteGrant.tsx` y los nuevos `FolderRequestCard.tsx` y `SideChat.tsx`.
 - **Pasos:**
   1. `PermissionPrompt`:
@@ -687,6 +801,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** banco de pruebas con un `PermissionRequest` sembrado de `external_directory` y un `permission` de MCP; typecheck.
 
 **W3-C · Compositor e inicio**
+
 - **Posee:** `CoworkComposer.tsx`, `Home.tsx`, `AccessSegmented.tsx`, y los nuevos `components/EffortPicker.tsx` y `features/cowork/impl/Onboarding.tsx`.
 - **Pasos:**
   1. `EffortPicker({ model, variant, onChange })`: menú genérico que replica `EffortChip` y no se muestra si el modelo no tiene variantes.
@@ -700,6 +815,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** banco de pruebas en claro/oscuro y a 900 px; `grep -n "defaultModel" CoworkComposer.tsx` da vacío.
 
 **W3-D · Panel, entregables y Control del Mac**
+
 - **Posee:** `ProgressPanel.tsx`, `Deliverables.tsx`, `ComputerAccess.tsx`, `src/main/cowork/files.ts`, `ipc/cowork-files-handlers.ts` y `src/main/extras/artifact-window.ts`.
 - **Pasos:**
   1. Handlers:
@@ -720,6 +836,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** con Electron real, zip de 2 archivos (verificar con `unzip -l`); QuickLook de un `.docx`; PDF desde un HTML de prueba sin red (un `<img src=http…>` no se carga); typecheck.
 
 **W3-E · Ajustes de Cowork**
+
 - **Posee:** `SettingsView.tsx`, `NetworkSection.tsx`, `ComputerSection.tsx` y el nuevo `CoworkSection.tsx`.
 - **Pasos:** sección «Cowork» con:
   1. Carpetas de confianza (lista, modo, quitar, añadir).
@@ -735,6 +852,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Verificación:** banco de pruebas; typecheck.
 
 **W3-F · Integración menor y documentación**
+
 - **Posee:** `src/main/ipc/cowork-handlers.ts`, `AUDIT.md`, notas privadas (fuera del repositorio), `docs/SEGURIDAD.md` y el nuevo `docs/COWORK-LOTE-B.md`.
 - **Pasos:**
   1. La notificación de `request_access` respeta `prefs.notify.approval`.
@@ -807,6 +925,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 ## F. Riesgos, dependencias de OpenCode y preguntas
 
 **Riesgos**
+
 - **Reiniciar para ampliar carpetas:** reinicia el servidor sandbox e interrumpe las tareas en curso de esa carpeta; se pide confirmación. Las sesiones persisten en el XDG privado.
 - **Borrado:** la protección es a nivel de nombres (unlink). Truncar no está protegido; la mitigación es `session.revert`.
 - **Rutinas en Control total:** siguen exigiendo aprobar el plan en persona, así que no son 100 % desatendidas.
@@ -815,6 +934,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - **Parada por inactividad:** si el monitor falla, un servidor podría detenerse con trabajo en curso. Se mitiga porque solo se para si no hay sesiones busy, permisos ni preguntas pendientes, tras dos sondeos consecutivos.
 
 **Verificado solo leyendo el binario o el SDK de 1.18.32** (reverificar al subir de versión):
+
 - Rutas de skills y `skills.paths`.
 - Patrones `<dir>/*` y metadata de `external_directory`.
 - Permiso `skill`.
@@ -823,6 +943,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 - Por verificar en ejecución: desarchivar con `archived:0` y el escaneo de `OPENCODE_CONFIG_DIR/skills`.
 
 **Preguntas para el usuario (máx. 5)**
+
 1. **Auto-archivo:** ¿desactivado por defecto (lo propuesto) o 30 días como Claude?
 2. **Mover y renombrar en el sandbox:** si la prueba confirma que requiere el mismo permiso que borrar, ¿basta con renombrar la concesión a «Permitir borrar, mover y renombrar», o quieres un «punto de restauración» con copia APFS antes de concederla (más trabajo, ahora aplazado)?
 3. **Rutinas en Control total:** ¿permitirlas exigiendo aprobar el plan en cada ejecución, o mantenerlas prohibidas?
@@ -832,6 +953,7 @@ export function useTranscriptSearch(folder: string | null, query: string): { hit
 ---
 
 ### Archivos críticos para la implementación
+
 - /Users/ben/Documents/App OpenCode/src/shared/ipc-cowork.ts
 - /Users/ben/Documents/App OpenCode/src/main/cowork/manager.ts
 - /Users/ben/Documents/App OpenCode/src/main/cowork/sandbox-profile.ts
