@@ -91,6 +91,10 @@ interface FullAccessGrant {
 
 /** Tope del registro de carpetas de chat (modo unificado). */
 const MAX_CHAT_FOLDERS = 5000
+/** Barrido de carpetas de chat vacías: espera tras crear el gestor, antigüedad mínima y tope de borrados por barrido. */
+const PRUNE_DELAY_MS = 20_000
+const PRUNE_MIN_AGE_MS = 24 * 3600 * 1000
+const PRUNE_MAX_PER_SWEEP = 200
 
 interface Persisted {
   folders: TasksFolder[]
@@ -265,6 +269,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     super()
     this.platform = opts.platform ?? process.platform
     this.win = this.platform === 'win32' ? (opts.win ?? createRealWinHost({ userData: app.getPath('userData') })) : null
+    // Barrido diferido de carpetas de chat vacías y antiguas (no bloquea el arranque; sin bandera o en Windows no hace nada).
+    if (!this.win && isUnifiedAppsEnabled()) {
+      const timer = setTimeout(() => {
+        try {
+          this.pruneEmptyChatFolders()
+        } catch {
+          /* fallar seguro: se deja todo */
+        }
+      }, PRUNE_DELAY_MS)
+      timer.unref?.()
+    }
   }
 
   /** `normalizeFolder` con la plataforma del gestor. */
@@ -637,6 +652,60 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       }
     }
     throw new Error(t('merr.chat.folderUnsafe'))
+  }
+
+  /**
+   * Modo unificado: borra las carpetas de chat creadas por `createChatFolder` que quedaron VACÍAS (la persona nunca escribió nada).
+   * Solo con la bandera y fuera de Windows. Una carpeta se borra únicamente si TODO se cumple: está en el registro y
+   * `isRegisteredChatFolder` la valida (realpath bajo ~/Lazunox/Chats, no enlace), es del usuario actual, no tiene entradas en el
+   * índice de chats, no tiene servidor (conectada/activa), tiene más de 24 h (mtime, birthtime y fecha del id) y `readdir` está
+   * vacío. El borrado es `rmdir` (jamás recursivo: si algo apareció dentro, falla y se deja). Cualquier duda: se deja.
+   * `now` es inyectable para las pruebas. Devuelve los ids borrados.
+   */
+  pruneEmptyChatFolders(now: number = Date.now()): string[] {
+    if (this.win || !isUnifiedAppsEnabled()) return []
+    const removed: string[] = []
+    const uid = typeof process.getuid === 'function' ? process.getuid() : undefined
+    let indexed: Set<string>
+    try {
+      indexed = new Set(this.chatIndex.all().map((e) => e.folder))
+    } catch {
+      return [] // sin poder leer el índice no se borra nada
+    }
+    const busy = new Set<string>()
+    for (const e of this.servers.values()) busy.add(e.info.folder)
+    const data = this.load()
+    let checked = 0
+    for (const f of [...data.chatFolders]) {
+      if (removed.length >= PRUNE_MAX_PER_SWEEP || checked >= PRUNE_MAX_PER_SWEEP * 5) break
+      checked++
+      const id = basename(f)
+      try {
+        if (!this.isRegisteredChatFolder(f) || indexed.has(f) || busy.has(f)) continue
+        const m = /^(\d{4})(\d{2})(\d{2})-[0-9a-f]{6}$/.exec(id)
+        if (!m) continue
+        const idTime = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime()
+        const st = lstatSync(f)
+        if (st.isSymbolicLink() || !st.isDirectory()) continue
+        if (uid !== undefined && st.uid !== uid) continue
+        if (!(now - idTime > PRUNE_MIN_AGE_MS && now - st.mtimeMs > PRUNE_MIN_AGE_MS && now - st.birthtimeMs > PRUNE_MIN_AGE_MS)) continue
+        if (readdirSync(f).length !== 0) continue
+        rmdirSync(f) // nunca recursivo: si no está vacía, lanza y se deja
+        data.folders = data.folders.filter((x) => x.path !== f)
+        data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
+        data.deleteGrants = data.deleteGrants.filter((p) => p !== f)
+        data.chatFolders = data.chatFolders.filter((p) => p !== f)
+        delete data.linked[f]
+        this.save()
+        this.network.clearFolder(f)
+        tasksRules.removeFolder(f)
+        removed.push(id)
+        console.warn(`[tasks] carpeta de chat vacía eliminada: ${id}`)
+      } catch {
+        /* esta carpeta se deja; se sigue con las demás */
+      }
+    }
+    return removed
   }
 
   async removeFolder(folder: string): Promise<void> {
