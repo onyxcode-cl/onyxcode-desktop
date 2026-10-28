@@ -37,6 +37,7 @@ describe('prompts de agente', () => {
     expect(UNIFIED_APPS_PROMPT).toContain('No cambies tú el modo')
     expect(UNIFIED_APPS_PROMPT).toContain('pide `full` desde la primera tarjeta')
     expect(UNIFIED_APPS_PROMPT).toContain('no le pidas a la persona que lo haga por su cuenta')
+    expect(UNIFIED_APPS_PROMPT).toContain('NO pidas acceso a esa otra app para sortearlo')
     expect(UNIFIED_APPS_PROMPT).toContain('cliente de escritorio remoto')
     expect(UNIFIED_APPS_PROMPT).toContain('antes de CADA clic')
   })

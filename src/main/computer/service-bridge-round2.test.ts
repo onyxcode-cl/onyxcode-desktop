@@ -430,7 +430,8 @@ describe.skipIf(!posixOnly)('mutación: las puertas `|| isolatedCall` se notan (
     await snap(m, SES)
     const r = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
     expect(r.isError).toBe(true)
-    expect(textOf(r)).toContain('No se pudo identificar')
+    // Lo no identificado bajo el punto se rechaza (primero por la comprobación de la app capturada, luego lo vigila requireTier).
+    expect(textOf(r)).toContain('Bajo ese punto no está')
     expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
   })
 

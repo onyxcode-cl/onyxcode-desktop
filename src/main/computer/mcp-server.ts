@@ -1225,8 +1225,10 @@ async function assertCapturedAppAt(ctx: WindowCtx, p: { x: number; y: number }, 
   const at = await appAtPoint(p.x, p.y)
   if (!at.bundleId || at.bundleId !== ctx.app.bundleId) {
     reportBridgeDenied('outside-window', session)
+    const under = at.name ? `«${at.name}»` : 'otra cosa'
     throw new Error(
-      `Bajo ese punto no está ${ctx.app.name} (otra ventana lo tapa o cambió): no se actúa. Toma app_screenshot otra vez y revisa dónde está.`
+      `Bajo ese punto no está ${ctx.app.name}: hay ${under}. La ventana de ${ctx.app.name} está tapada, minimizada o en otro escritorio o pantalla. ` +
+        `NO pidas acceso a ${under} ni a ninguna otra app para sortear esto: pide a la persona que deje la ventana de ${ctx.app.name} a la vista y toma app_screenshot otra vez.`
     )
   }
 }
@@ -1343,11 +1345,11 @@ async function clickTool(
 ): Promise<string> {
   await requireForeground(session)
   const { p, label, ctx } = await pointFromArgs(args, session)
+  // Primero se comprueba que bajo el punto esté la app capturada: si no, el mensaje explica que la ventana está tapada o en otro sitio
+  // (y no se confunde al modelo con un «sin acceso» a la app equivocada).
+  if (ctx) await assertCapturedAppAt(ctx, p, session)
   await requireTier('click', p, session)
-  if (ctx) {
-    await assertCapturedAppAt(ctx, p, session)
-    await recheckWindow(ctx, session)
-  }
+  if (ctx) await recheckWindow(ctx, session)
   await act({ tool, x: p.x, y: p.y }, () => helper('click', String(p.x), String(p.y), button, String(count)))
   return `${tool} en ${label} → (${p.x}, ${p.y}) pt`
 }
@@ -1888,11 +1890,9 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       await requireForeground(session)
       const { p, label, ctx } = await pointFromArgs(a, session)
+      if (ctx) await assertCapturedAppAt(ctx, p, session)
       await requireTier('click', p, session)
-      if (ctx) {
-        await assertCapturedAppAt(ctx, p, session)
-        await recheckWindow(ctx, session)
-      }
+      if (ctx) await recheckWindow(ctx, session)
       await act({ tool: 'mouse_move', x: p.x, y: p.y }, () => helper('move', String(p.x), String(p.y)))
       return `Puntero movido a ${label} → (${p.x}, ${p.y}) pt`
     }
@@ -1976,13 +1976,13 @@ const TOOLS: ToolDef[] = [
       const s = ws ? ws.p : await toPoints(a.start_x, a.start_y)
       const e = we ? we.p : await toPoints(a.end_x, a.end_y)
       // Arrastrar necesita "Control total": mueve/reordena contenido, no es un simple clic.
-      await requireTier('full', s, session)
-      await requireTier('full', e, session)
       if (ws && we) {
         await assertCapturedAppAt(ws.ctx, s, session)
         await assertCapturedAppAt(we.ctx, e, session)
-        await recheckWindow(ws.ctx, session)
       }
+      await requireTier('full', s, session)
+      await requireTier('full', e, session)
+      if (ws && we) await recheckWindow(ws.ctx, session)
       await act({ tool: 'drag', x: e.x, y: e.y, fromX: s.x, fromY: s.y }, () =>
         helper('drag', String(s.x), String(s.y), String(e.x), String(e.y))
       )
@@ -2011,11 +2011,9 @@ const TOOLS: ToolDef[] = [
       const dx = dir === 'right' ? n : dir === 'left' ? -n : 0
       const dy = dir === 'down' ? n : dir === 'up' ? -n : 0
       if (!dx && !dy) throw new Error('direction debe ser up, down, left o right')
+      if (w) await assertCapturedAppAt(w.ctx, p, session)
       await requireTier('click', p, session)
-      if (w) {
-        await assertCapturedAppAt(w.ctx, p, session)
-        await recheckWindow(w.ctx, session)
-      }
+      if (w) await recheckWindow(w.ctx, session)
       await act({ tool: 'scroll', x: p.x, y: p.y, text: `${dir} ${n}` }, () =>
         helper('scroll', String(p.x), String(p.y), String(dx), String(dy))
       )

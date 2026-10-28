@@ -789,8 +789,8 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
       }
     })
 
-    it('otra app CONCEDIDA queda bajo el punto (una ventana la tapa): se rechaza aunque requireTier lo viera bien', async () => {
-      // 1.ª lectura de app-at (requireTier): Notes; 2.ª (comprobación de la app capturada): Slack.
+    it('otra app CONCEDIDA queda bajo el punto (una ventana la tapa): se rechaza antes de mirar el nivel, sin pedir acceso a la otra', async () => {
+      // La 1.ª lectura de app-at es la comprobación de la app capturada: ya es Slack.
       const s = await startSideChannel({ planApproved: false, bridgeCheck: () => ISOLATED_OK, tier: () => 'full' })
       const m = await startMcp({
         bundle,
@@ -805,7 +805,7 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
             'windows-of': { out: [{ title: 'V', ...rect(-1500, 100, 400, 300) }] },
             'window-shot': { writeImage: true, out: { ok: true, width: 800, height: 600 } },
             frontmost: { out: NOTES_APP },
-            'app-at': [{ out: NOTES_APP }, { out: SLACK_APP }],
+            'app-at': { out: SLACK_APP },
             'resolve-app': { out: { ...NOTES_APP, found: true } }
           }
         },
@@ -816,6 +816,7 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
         const r = await m.call('left_click', { x: 400, y: 300, lazunox_session: SES }, HDRS)
         expect(r.isError).toBe(true)
         expect(textOf(r)).toContain('no está Notes')
+        expect(textOf(r)).toContain('NO pidas acceso')
         expect(anyInput(m)).toBe(false)
         await vi.waitFor(() => expect(reasons(s)).toContain('outside-window'))
       } finally {
@@ -824,7 +825,7 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
       }
     })
 
-    it('otra app SIN concesión bajo el punto ⇒ rechazo por nivel (requireTier sigue vigente)', async () => {
+    it('otra app SIN concesión bajo el punto ⇒ rechazo que NO manda a pedirle acceso (la ventana está tapada o en otro sitio)', async () => {
       const { mcp, done } = await bootMac({
         at: SLACK_APP,
         tier: (b) => (b === NOTES_APP.bundleId ? 'full' : null)
@@ -833,7 +834,23 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
         await shot(mcp)
         const r = await mcp.call('left_click', { x: 400, y: 300, lazunox_session: SES }, HDRS)
         expect(r.isError).toBe(true)
-        expect(textOf(r)).toContain('no tiene acceso concedido')
+        expect(textOf(r)).toContain('Bajo ese punto no está Notes')
+        expect(textOf(r)).toContain('«Slack»')
+        expect(textOf(r)).toContain('NO pidas acceso')
+        expect(textOf(r)).not.toContain('Llama a request_access')
+        expect(anyInput(mcp)).toBe(false)
+      } finally {
+        await done()
+      }
+    })
+
+    it('la app capturada con solo «Solo ver»: el clic se rechaza por nivel (requireTier sigue vigente tras la comprobación de la app)', async () => {
+      const { mcp, done } = await bootMac({ tier: () => 'view' })
+      try {
+        await shot(mcp)
+        const r = await mcp.call('left_click', { x: 400, y: 300, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(textOf(r)).toContain('esta acción necesita')
         expect(anyInput(mcp)).toBe(false)
       } finally {
         await done()
@@ -873,8 +890,8 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
             'windows-of': { out: [{ title: 'V', ...rect(-1500, 100, 400, 300) }] },
             'window-shot': { writeImage: true, out: { ok: true, width: 800, height: 600 } },
             frontmost: { out: NOTES_APP },
-            // requireTier('full', s) y requireTier('full', e) ven Notes; la comprobación del extremo de inicio también; la del final, otra app.
-            'app-at': [{ out: NOTES_APP }, { out: NOTES_APP }, { out: NOTES_APP }, { out: SLACK_APP }],
+            // Primero se comprueba la app capturada bajo cada extremo: el de inicio ve Notes; el del final, otra app.
+            'app-at': [{ out: NOTES_APP }, { out: SLACK_APP }],
             'resolve-app': { out: { ...NOTES_APP, found: true } }
           }
         },
