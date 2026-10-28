@@ -222,6 +222,14 @@ describe('AppPermissionCard', () => {
       expect(host.querySelector('[data-testid="app-access-remote-warn"]')).toBeNull()
     })
 
+    it('es el botón PRINCIPAL cuando el agente pidió Control total; «Permitir» pasa a secundario. Sin esa petición, «Permitir» es el principal', () => {
+      render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }))
+      expect(accept().className).toContain('bg-accent')
+      expect(btn(/Permitir para esta sesión/).className).not.toContain('bg-accent ')
+      render(REQ({ id: 'r8', apps: [{ bundleId: 'a', name: 'Term', requested: 'click' }] }))
+      expect(btn(/Permitir para esta sesión/).className).toContain('bg-accent')
+    })
+
     it('en inglés dice «Accept Full control»', () => {
       render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }), 'en')
       expect(accept()?.textContent).toBe('Accept Full control')

@@ -512,8 +512,7 @@ export const tasksComputer = {
   'tasksComputer.appAccess.remoteWarn':
     "This app is a window to ANOTHER computer. With this permission the AI can see and operate everything there, and Lazunox's per-app limits cannot see what is inside.",
   'tasksComputer.appAccess.acceptFull': 'Accept Full control',
-  'tasksComputer.appAccess.fullHint':
-    'The agent asked for Full control. It is not selected for you: press “Accept Full control” only if you trust this app.',
+  'tasksComputer.appAccess.fullHint': 'The agent asked for Full control of this app. “Allow for this session” only gives “View and click”.',
   'tasksComputer.appAccess.tier.view': 'View only',
   'tasksComputer.appAccess.tier.view.warn': "It can see this app's screen, without touching it",
   'tasksComputer.appAccess.tier.click': 'View and click',

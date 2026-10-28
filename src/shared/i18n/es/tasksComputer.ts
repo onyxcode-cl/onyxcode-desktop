@@ -514,8 +514,7 @@ export const tasksComputer = {
   'tasksComputer.appAccess.remoteWarn':
     'Esta app es una ventana a OTRO equipo. Con este permiso la IA podrá ver y manejar todo lo que haya allí, y los límites por app de Lazunox no ven lo que hay dentro.',
   'tasksComputer.appAccess.acceptFull': 'Aceptar Control total',
-  'tasksComputer.appAccess.fullHint':
-    'El agente pidió Control total. No viene elegido por ti: pulsa «Aceptar Control total» solo si confías en esta app.',
+  'tasksComputer.appAccess.fullHint': 'El agente pidió Control total de esta app. «Permitir para esta sesión» solo da «Ver y clic».',
   'tasksComputer.appAccess.tier.view': 'Solo ver',
   'tasksComputer.appAccess.tier.view.warn': 'Puede ver la pantalla de esta app, sin tocarla',
   'tasksComputer.appAccess.tier.click': 'Ver y clic',

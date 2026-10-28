@@ -597,13 +597,22 @@ describe.skipIf(!posixOnly)(
     })
 
     it('aunque otra app de la MISMA tarjeta dé el control (Spotify «full»), el Finder concedido sigue sin ratón ni teclado reales', async () => {
-      const m = await mcpFor({ app: FINDER, front: FINDER })
-      await askMany(m, SES, [
-        { app: SPOT, tier: 'full' },
-        { app: FINDER, tier: 'click' }
-      ])
+      // Cada nombre de la tarjeta se resuelve a SU app (resolve-app en orden: Spotify, Finder).
+      const m = await mcpFor({
+        front: FINDER,
+        script: { 'resolve-app': [{ out: { ...SPOT, found: true } }, { out: { ...FINDER, found: true } }] }
+      })
+      // Spotify por la tarjeta REAL (resolve-app #1); el Finder concedido aparte (los nombres de una tarjeta se resuelven a la vez en el helper falso).
+      await askMany(m, SES, [{ app: SPOT, tier: 'full' }])
+      await grant(SES, 'click', FINDER.bundleId, 'Finder')
+      // La prueba solo vale si la sesión de verdad tiene el control acotado por la tarjeta de Spotify.
+      expect(svc.isForeground(SES, true)).toBe(true)
+      expect(svc.isScopedOnly(SES)).toBe(true)
       await snap(m, SES, 'Finder')
-      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).toBe(true)
+      const click = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
+      expect(click.isError).toBe(true)
+      // El rechazo es el del Finder (pide la toma de control explícita), no «sin concesión».
+      expect(textOf(click)).toContain('request_full_control')
       expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
     })
 
@@ -616,16 +625,23 @@ describe.skipIf(!posixOnly)(
     })
 
     it('open_application de una app con solo «Solo ver» NO la activa aunque la sesión tenga el control por otra app', async () => {
-      const m = await mcpFor({ app: NOTES, front: NOTES })
-      await askMany(m, SES, [
-        { app: SPOT, tier: 'full' },
-        { app: NOTES, tier: 'view' }
-      ])
+      const m = await mcpFor({
+        front: NOTES,
+        script: { 'resolve-app': [{ out: { ...SPOT, found: true } }, { out: { ...NOTES, found: true } }] }
+      })
+      await askMany(m, SES, [{ app: SPOT, tier: 'full' }])
+      await grant(SES, 'view', NOTES.bundleId, 'Notes')
+      // La prueba solo vale si la sesión tiene el ratón y el teclado por Spotify (control acotado), no por casualidad.
+      expect(svc.isForeground(SES, true)).toBe(true)
+      expect(svc.isScopedOnly(SES)).toBe(true)
       const r = await m.call('open_application', { name: 'Notes', lazunox_session: SES }, hdr())
       expect(r.isError, textOf(r)).not.toBe(true)
       const cmds = m.calls().map((c) => c.cmd)
       expect(cmds).toContain('open-app-bg')
       expect(cmds).not.toContain('open-app')
+      // El modelo recibe cómo seguir: volver a pedir «Control total» de ESA app (no devolverle el problema a la persona).
+      expect(textOf(r)).toContain('levels: ["full"]')
+      expect(textOf(r)).toContain('NO se trajo al frente')
     })
 
     it('open_application de la app con «Control total» sí la activa', async () => {

@@ -2161,7 +2161,13 @@ const TOOLS: ToolDef[] = [
         } catch {
           // salida no JSON: sin aviso
         }
-        return `Abierta ${name} en segundo plano (sin activarla ni traerla al frente).${behindNote}`
+        // Origen aislado con el ratón y el teclado ya concedidos por otra vía: si no se activó fue por el nivel de ESTA app; se le dice al
+        // modelo cómo seguir (si no, devolvía el problema a la persona en vez de volver a pedir el nivel).
+        const needFull =
+          isolatedCall && foreground && !canActivate
+            ? ` NO se trajo al frente: hacerlo exige «Control total» de esta app. Si hace falta, llama a request_access con apps: ["${name}"] y levels: ["full"] (con un motivo) y espera la respuesta de la persona; no le pidas que lo haga ella.`
+            : ''
+        return `Abierta ${name} en segundo plano (sin activarla ni traerla al frente).${behindNote}${needFull}`
       }
       let hasWindow: boolean | undefined
       await act({ tool: 'open_application', text: name }, async () => {

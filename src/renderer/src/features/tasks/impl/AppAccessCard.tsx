@@ -704,12 +704,13 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
             <Button variant="secondary" onClick={deny} disabled={busy}>
               {t('tasksComputer.appAccess.deny')}
             </Button>
+            {/* Si el agente pidió «Control total», el botón principal es aceptarlo (un solo clic); «Permitir» queda como la opción menor. */}
             {fullAskedApps.length > 0 && (
-              <Button variant="secondary" onClick={acceptFull} disabled={busy} data-testid="app-access-accept-full">
+              <Button variant="primary" onClick={acceptFull} disabled={busy} data-testid="app-access-accept-full">
                 {t('tasksComputer.appAccess.acceptFull')}
               </Button>
             )}
-            <Button variant="primary" onClick={allow} disabled={busy} data-approve="">
+            <Button variant={fullAskedApps.length > 0 ? 'secondary' : 'primary'} onClick={allow} disabled={busy} data-approve="">
               {req.plan ? t('tasksComputer.plan.approve') : t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
             </Button>
           </div>
