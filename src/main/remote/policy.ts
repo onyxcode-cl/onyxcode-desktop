@@ -417,6 +417,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'computer:winConsent': 'X', // el consentimiento de Windows solo se da en el propio PC (nunca desde el celular)
   'computer:auditLog': 'X', // el registro auditable se ve en el PC
   'computer:stop': 'M',
+  'computer:stopSession': 'M',
   'computer:resume': 'D',
   'computer:state': 'R',
   'computer:session': 'M',

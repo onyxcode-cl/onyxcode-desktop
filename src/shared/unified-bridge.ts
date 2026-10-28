@@ -7,6 +7,9 @@
 /** Variable de entorno que enciende el puente. Sin ella el comportamiento es el de la 1.7.x. */
 export const UNIFIED_APPS_ENV = 'LAZUNOX_UNIFIED_APPS'
 
+/** Frase con la que el servidor de control (Windows) rechaza una acción sin el consentimiento de Control del PC; la interfaz la reconoce para ofrecer el consentimiento en el chat. */
+export const WIN_CONSENT_MISSING_MARK = 'Control del PC no está activado'
+
 /** Nombre de la ruta del proxy MCP del servidor aislado que lleva a las herramientas `computer_*`. */
 export const BRIDGE_ROUTE_NAME = 'computer'
 

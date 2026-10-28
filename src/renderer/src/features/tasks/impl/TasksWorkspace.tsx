@@ -44,6 +44,7 @@ import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import {
   abortBusyTasks,
   abortTask,
+  stopIsolatedTask,
   approvePending,
   cancelPending,
   ensureFolderForSend,
@@ -70,6 +71,7 @@ import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { TasksBackgroundJobs } from './TasksBackgroundJobs'
 import { DeleteGrantHintCard } from './DeleteGrant'
+import { WinConsentHintCard } from './ConsentHint'
 import { EscalateCard } from './EscalateCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
 import { SkillProposalCard } from './SkillProposalCard'
@@ -765,6 +767,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {activeId && <BlockedAppNotices taskId={activeId} />}
                   {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
+                  {!fullAccess && <WinConsentHintCard key={`consent-${activeId}`} entries={entries} />}
                   {!fullAccess && status === 'done' && activeId && (
                     <EscalateCard key={`escalate-${activeId}`} taskId={activeId} entries={entries} />
                   )}
@@ -800,7 +803,7 @@ export function TasksWorkspace(): React.JSX.Element {
             <TasksComposer
               ref={composerRef}
               onSend={send}
-              onAbort={() => void (fullAccess ? stopComputerControl() : abortTask())}
+              onAbort={() => void (fullAccess ? stopComputerControl() : unifiedHeader ? stopIsolatedTask() : abortTask())}
               busy={busy}
               disabled={phase !== 'ready'}
               hideModelNotice={status === 'done'}

@@ -302,3 +302,24 @@ describe.skipIf(!posixOnly)('telemetría', () => {
     }
   })
 })
+
+describe.skipIf(!posixOnly)('hasSessionActivity (Detener de un chat aislado)', () => {
+  it('false sin actividad; true con concesión de la sesión; false para otra sesión y tras Detener', async () => {
+    expect(svc.hasSessionActivity(SES)).toBe(false)
+    await grant(SES, 'view')
+    expect(svc.hasSessionActivity(SES)).toBe(true)
+    expect(svc.hasSessionActivity('ses_otra_distinta')).toBe(false)
+    await svc.stop()
+    expect(svc.hasSessionActivity(SES)).toBe(false)
+  })
+  it('una tarjeta pendiente de esa sesión cuenta como actividad', async () => {
+    const cards: Array<{ id: string }> = []
+    svc.on('requestAccess', (r) => cards.push(r))
+    const p = svc.requestAccess([{ bundleId: NOTES, name: 'Notes' }], undefined, undefined, SES)
+    await vi.waitFor(() => expect(cards.length).toBeGreaterThan(0))
+    expect(svc.hasSessionActivity(SES)).toBe(true)
+    svc.resolveAccessRequest(cards[0].id, [{ bundleId: NOTES, name: 'Notes', decision: 'deny' }])
+    await p
+    svc.removeAllListeners('requestAccess')
+  })
+})

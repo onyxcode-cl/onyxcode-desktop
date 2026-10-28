@@ -24,6 +24,9 @@ export const tasksComputer = {
   'tasksComputer.delete.hintBody':
     'Por seguridad, esta carpeta no permite borrar, mover ni renombrar archivos todavía. Si lo activas, el servidor de la tarea se reiniciará y tendrás que reabrir esta tarea y pedirle al agente que continúe. Si prefieres no hacerlo, pídele una copia ordenada sin tocar los originales.',
   'tasksComputer.delete.notNow': 'Ahora no',
+  'tasksComputer.consentHint.intro':
+    'Para usar apps de tu PC hay que activar Control del PC una vez. Léelo y actívalo aquí; después vuelve a pedirle lo que querías.',
+  'tasksComputer.consentHint.done': 'Control del PC activado. Vuelve a pedirle a la IA lo que querías.',
   'tasksComputer.confirm.title': '¿Permitir trabajar en «{name}»?',
   'tasksComputer.confirm.b1': 'El agente podrá leer, crear y modificar archivos y ejecutar comandos dentro de esta carpeta.',
   'tasksComputer.confirm.b2':

@@ -1,4 +1,5 @@
 /** Utilidades de presentación del modo Tareas (tiempos, tamaños, estado y etiquetas de pasos). */
+import { WIN_CONSENT_MISSING_MARK } from '@shared/unified-bridge'
 import type { Message, Part, PermissionRequest, Session, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { MAIN_SOURCE, type MessageEntry, type SessionRunState } from '../../../stores/sessions'
 import type { ConvError } from '../../../lib/session-reducer'
@@ -283,6 +284,13 @@ export function looksLikeBlockedDelete(part: ToolPart): boolean {
   // La orden o la propia línea del error nombra un borrado/movimiento (`rm: x: Operation not permitted`).
   const errorLines = text.split('\n').filter((l) => OPERATION_NOT_PERMITTED_RE.test(l))
   return DELETE_VERB_RE.test(command) || errorLines.some((l) => DELETE_VERB_RE.test(l))
+}
+
+/** ¿Esta parte es una herramienta `computer_*` rechazada por falta del consentimiento de Control del PC (Windows)? */
+export function looksLikeMissingWinConsent(part: ToolPart): boolean {
+  if (!part.tool.startsWith('computer_')) return false
+  const text = part.state.status === 'completed' ? part.state.output : part.state.status === 'error' ? part.state.error : ''
+  return !!text && text.includes(WIN_CONSENT_MISSING_MARK)
 }
 
 // ───────────────────────────── Pasos por etapa del plan ─────────────────────────────

@@ -973,6 +973,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'computer:winConsent': obj({ action: literal('show', 'check', 'uncheck', 'confirm', 'revoke') }),
   'computer:auditLog': none,
   'computer:stop': none,
+  'computer:stopSession': obj({ sessionId }),
   'computer:resume': none,
   'computer:state': none,
   'computer:session': obj({ active: bool, label: optional(str({ max: 500 })), sessionId: optional(sessionId) }),

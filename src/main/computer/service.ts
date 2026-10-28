@@ -395,6 +395,14 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     return this.stopped
   }
 
+  /** ¿Esa sesión usa o espera el control de apps (concesión de sesión, «Solo ver» automático, tarjeta pendiente, plan o mando)? */
+  hasSessionActivity(sessionId: string): boolean {
+    if (this.sessionGrants.has(sessionId) || this.autoView.has(sessionId) || this.approvedPlans.has(sessionId)) return true
+    if (this.foregroundSessions.has(sessionId)) return true
+    for (const p of this.pendingAccess.values()) if (p.sessionId === sessionId) return true
+    return false
+  }
+
   state(): ComputerKillState {
     return {
       stopped: this.stopped,

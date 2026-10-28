@@ -27,6 +27,9 @@ export const tasksComputer = {
   'tasksComputer.delete.hintBody':
     'For safety, this folder doesn’t allow deleting, moving or renaming files yet. If you turn it on, the task’s server will restart and you will need to reopen this task and ask the agent to continue. If you’d rather not, ask it for a tidy copy without touching the originals.',
   'tasksComputer.delete.notNow': 'Not now',
+  'tasksComputer.consentHint.intro':
+    'To use apps on your PC, turn on PC Control once. Read it and turn it on here, then ask again for what you wanted.',
+  'tasksComputer.consentHint.done': 'PC Control is on. Ask the AI again for what you wanted.',
   'tasksComputer.confirm.title': 'Allow working in “{name}”?',
   'tasksComputer.confirm.b1': 'The agent will be able to read, create and modify files and run commands inside this folder.',
   'tasksComputer.confirm.b2':

@@ -350,6 +350,22 @@ export async function stopComputerControl(): Promise<void> {
   await Promise.allSettled([cw('computer:stop'), abortBusyTasks()])
 }
 
+/**
+ * «Detener» en un chat aislado (modo unificado): aborta la tarea y, solo si la sesión usaba el control de apps, hace el Detener global
+ * (kill-switch, concesiones revocadas, ayudantes parados) y deja el aviso «control detenido» con su «Reanudar control».
+ */
+export async function stopIsolatedTask(): Promise<void> {
+  const { activeTaskId } = useTasks.getState()
+  await abortTask()
+  if (!activeTaskId) return
+  try {
+    const r = await cw('computer:stopSession', { sessionId: activeTaskId })
+    if (r.stopped) useTasks.setState({ controlStoppedAt: Date.now() })
+  } catch {
+    // sin servidor de control (p. ej. Windows sin Control del PC): el abort ya cortó la tarea
+  }
+}
+
 /** "Reanudar control": acción explícita del usuario tras una parada. */
 export async function resumeComputerControl(): Promise<void> {
   await cw('computer:resume')

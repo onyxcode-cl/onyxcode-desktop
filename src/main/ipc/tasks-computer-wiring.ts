@@ -295,6 +295,12 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   handle('computer:stop', async () => {
     await computer.stop()
   })
+  // «Detener» de un chat aislado: solo para el control si esa sesión lo estaba usando (ver el contrato en ipc-tasks.ts).
+  handle('computer:stopSession', async ({ sessionId }) => {
+    if (!computer.hasSessionActivity(sessionId)) return { stopped: false }
+    await computer.stop()
+    return { stopped: true }
+  })
   handle('computer:resume', () => computer.resume())
   handle('computer:state', () => computer.state())
   // Plan → Aprobar → Ejecutar: una tarea de Control total que empieza a trabajar solo "pide" el

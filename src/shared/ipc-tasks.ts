@@ -1202,6 +1202,12 @@ export interface TasksInvokeContract {
    * avisa al renderer y al overlay.
    */
   'computer:stop': { req: void; res: void }
+  /**
+   * «Detener» de un chat aislado (modo unificado): si ESA sesión usó o espera el control de apps (concesiones, tarjeta pendiente o plan
+   * aprobado) hace el mismo Detener global que `computer:stop` y devuelve `stopped: true`; si no, no toca nada (`stopped: false`) para no
+   * mostrar «control detenido» en un chat que nunca usó apps.
+   */
+  'computer:stopSession': { req: { sessionId: string }; res: { stopped: boolean } }
   /** "Reanudar control": acción explícita del usuario; quita la parada. */
   'computer:resume': { req: void; res: void }
   /** Estado actual del kill-switch (y del atajo global). */
@@ -1534,6 +1540,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'computer:winConsent',
   'computer:auditLog',
   'computer:stop',
+  'computer:stopSession',
   'computer:resume',
   'computer:state',
   'computer:session',

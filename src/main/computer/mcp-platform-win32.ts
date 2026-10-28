@@ -21,6 +21,7 @@
  */
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { WIN_CONSENT_MISSING_MARK } from '../../shared/unified-bridge'
 import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
 import { aumidKey, exeBaseName, exeKey, parseAppKey } from './policy/app-key'
 import { checkKeys, parseCombo as parseWinCombo } from './policy/win-keys'
@@ -102,7 +103,7 @@ const DEFAULT_EXEMPT_EXES = [
 
 const MSG = {
   consent:
-    'Control del PC no está activado: el usuario debe activarlo en Ajustes › Control del PC (consentimiento de la app). ' +
+    `${WIN_CONSENT_MISSING_MARK}: el usuario debe activarlo en Ajustes › Control del PC (consentimiento de la app). ` +
     'No se puede actuar hasta entonces; explícaselo y detente.',
   consentUnverified: 'No se pudo verificar el consentimiento de Control del PC con Lazunox; acción rechazada',
   stopped: 'Control detenido por el usuario',
