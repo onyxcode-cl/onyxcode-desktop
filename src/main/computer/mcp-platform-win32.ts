@@ -22,7 +22,19 @@
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { WIN_CONSENT_MISSING_MARK } from '../../shared/unified-bridge'
-import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Rect, Screen, WindowLocation, WindowShotResult } from './mcp-platform'
+import type {
+  AppRef,
+  HelperResult,
+  PlatformBackend,
+  PlatformHost,
+  Rect,
+  Screen,
+  WindowLocation,
+  WindowShotResult,
+  ZoomWindowRequest,
+  ZoomWindowResult
+} from './mcp-platform'
+import type { CoverageResult } from './window-probe'
 import { aumidKey, exeBaseName, exeKey, parseAppKey } from './policy/app-key'
 import { checkKeys, parseCombo as parseWinCombo } from './policy/win-keys'
 import { WIN_EXEMPT_EXES } from './policy/win-apps'
@@ -720,11 +732,32 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     return { width: w, height: h }
   }
 
+  /** Último `covered` que trajo `windowShot` por app (para `occlusion`, que no hace llamadas): vale unos segundos. */
+  const COVERED_TTL_MS = 10_000
+  const lastCovered = new Map<string, { at: number; covered: NonNullable<WindowShotResult['covered']> }>()
+
+  /** `covered` del helper validado: solo nombres cortos y porcentajes 0–100; cualquier cosa rara = «no se sabe» (`null`). */
+  function coveredFrom(list: unknown, total: unknown): WindowShotResult['covered'] | null {
+    if (!Array.isArray(list) || typeof total !== 'number' || !Number.isFinite(total)) return null
+    const by: Array<{ name: string; pct: number }> = []
+    for (const e of list.slice(0, 5)) {
+      if (!isRecord(e) || typeof e.name !== 'string' || typeof e.pct !== 'number' || !Number.isFinite(e.pct)) return null
+      const name = e.name
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 60)
+      by.push({ name: name || 'otra ventana', pct: Math.min(100, Math.max(0, e.pct)) })
+    }
+    return { totalPct: Math.min(100, Math.max(0, total)), by }
+  }
+
   async function windowShot(
     appKey: string,
     _raw: string,
     out: string,
-    windowIndex: number
+    windowIndex: number,
+    probePath?: string
   ): Promise<{ width: number; height: number; title?: string }> {
     const { stdout, code } = await helperExit(
       'window-shot',
@@ -734,7 +767,9 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
       '--max-long',
       String(cfg.maxLong),
       '--quality',
-      '70'
+      '70',
+      // Solo si el MCP pide la sonda: las llamadas de siempre no cambian.
+      ...(probePath ? ['--probe', probePath] : [])
     )
     if (code !== 0) throw new Error(exitMessage(code) ?? `window-shot falló (código ${code})`)
     if (!deps.existsSync(out) || deps.statSize(out) <= 0) {
@@ -745,7 +780,96 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     // Campos nuevos del helper (ubicación de la ventana): opcionales; con un helper viejo no vienen y la captura no sirve para clics.
     const rect = rectFrom(info.x, info.y, info.srcWidth, info.srcHeight)
     const frame = isRecord(info.frame) ? rectFrom(info.frame.x, info.frame.y, info.frame.width, info.frame.height) : null
-    return { width: info.width, height: info.height, title: info.title, ...(rect ? { rect } : {}), ...(frame ? { frame } : {}) }
+    const covered = coveredFrom(info.covered, info.coveredPct)
+    if (covered) lastCovered.set(appKey, { at: Date.now(), covered })
+    else lastCovered.delete(appKey)
+    return {
+      width: info.width,
+      height: info.height,
+      title: info.title,
+      ...(rect ? { rect } : {}),
+      ...(frame ? { frame } : {}),
+      ...(covered ? { covered } : {})
+    }
+  }
+
+  /** Sonda: `window-shot --max-long 256` a PNG (solo lo decodifica el MCP y la borra). */
+  async function probeWindow(appKey: string, windowIndex: number, outPath: string): Promise<{ width: number; height: number }> {
+    const { stdout, code } = await helperExit('window-shot', appKey, outPath, String(windowIndex), '--max-long', '256')
+    const fail = (msg: string): never => {
+      deps.rm(outPath)
+      throw new Error(msg)
+    }
+    if (code !== 0) return fail(exitMessage(code) ?? `window-shot falló (código ${code})`)
+    if (!deps.existsSync(outPath) || deps.statSize(outPath) <= 0) return fail('window-shot no escribió la imagen')
+    let info: Record<string, unknown>
+    try {
+      info = JSON.parse(stdout) as Record<string, unknown>
+    } catch {
+      return fail('respuesta ilegible del helper')
+    }
+    if (!isPosInt(info.width) || !isPosInt(info.height)) return fail('window-shot no informó del tamaño')
+    return { width: info.width, height: info.height }
+  }
+
+  /**
+   * Zoom: `window-shot --crop x,y,w,h` (píxeles del rectángulo de origen): captura de nuevo la ventana a resolución completa y
+   * codifica solo ese trozo. Devuelve el `rect` de ese instante para que el MCP lo compare con el guardado. Un helper que no soporta
+   * `--crop` (rechaza la bandera) o no repite el recorte pedido = «zoom no disponible», nunca una imagen que no es la pedida.
+   */
+  async function zoomWindow(req: ZoomWindowRequest): Promise<ZoomWindowResult> {
+    const r = req.region
+    if (![r.x, r.y, r.width, r.height].every(isInt) || r.x < 0 || r.y < 0 || r.width < 1 || r.height < 1)
+      throw new Error('zoom: región no válida')
+    const maxLong = Math.min(4096, Math.max(100, Math.round(Number.isFinite(req.maxLong) ? req.maxLong : cfg.maxLong)))
+    const unavailable = (): never => {
+      deps.rm(req.outPath)
+      throw new Error('zoom no está disponible con este helper — pide una nueva app_screenshot.')
+    }
+    const { stdout, code } = await helperExit(
+      'window-shot',
+      req.appKey,
+      req.outPath,
+      String(req.windowIndex),
+      '--max-long',
+      String(maxLong),
+      '--quality',
+      '85',
+      '--crop',
+      `${r.x},${r.y},${r.width},${r.height}`
+    )
+    if (code !== 0) {
+      deps.rm(req.outPath)
+      // Una salida genérica (1) con esta bandera = helper que no la conoce o recorte fuera de la ventana: en ambos casos no hay zoom.
+      throw new Error(
+        code === 1
+          ? 'zoom no disponible: la región queda fuera de la ventana o el helper no admite recortes.'
+          : (exitMessage(code) ?? `window-shot falló (código ${code})`)
+      )
+    }
+    if (!deps.existsSync(req.outPath) || deps.statSize(req.outPath) <= 0) return unavailable()
+    let info: Record<string, unknown>
+    try {
+      info = JSON.parse(stdout) as Record<string, unknown>
+    } catch {
+      return unavailable()
+    }
+    const rect = rectFrom(info.x, info.y, info.srcWidth, info.srcHeight)
+    const crop = isRecord(info.crop) ? rectFrom(info.crop.x, info.crop.y, info.crop.width, info.crop.height) : null
+    if (!rect || !crop || crop.x !== r.x || crop.y !== r.y || crop.width !== r.width || crop.height !== r.height) return unavailable()
+    if (!isPosInt(info.width) || !isPosInt(info.height)) return unavailable()
+    return { width: info.width, height: info.height, rect }
+  }
+
+  /** Windows: el helper ya calculó el tapado en la captura; se usa lo del último `windowShot` de esa app (sin llamadas). */
+  async function occlusion(appKey: string): Promise<CoverageResult> {
+    const e = lastCovered.get(appKey)
+    if (!e || Date.now() - e.at > COVERED_TTL_MS) return { known: false }
+    const coveredBy = [...e.covered.by]
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 3)
+      .map((c) => ({ app: c.name, pct: c.pct, zone: '' }))
+    return { known: true, coveredPct: e.covered.totalPct, offscreenPct: 0, coveredBy }
   }
 
   /** Windows: `window-shot` ya trae el rectángulo de la imagen y el marco visible; `width`/`height` son los del JPEG final. */
@@ -811,6 +935,9 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     windowShot,
     locateWindowShot,
     windowFrames,
+    probeWindow,
+    zoomWindow,
+    occlusion,
     zoomImage,
     insertAxText,
     resolveApp,

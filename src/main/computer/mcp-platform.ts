@@ -12,6 +12,8 @@
  * importe el MCP debe usarse SOLO desde el MCP.
  */
 
+import type { CoverageResult } from './window-probe'
+
 export type AppTier = 'view' | 'click' | 'full'
 
 /**
@@ -110,6 +112,34 @@ export interface WindowShotResult {
   rect?: Rect
   /** Marco visible de la ventana (el que devuelve `windows-of`). */
   frame?: Rect
+  /**
+   * Windows únicamente: lo que tapa la ventana según el helper (solo nombres de app y porcentajes, nunca rectángulos ni títulos).
+   * Ausente = no se sabe (helper viejo o cálculo imposible); `by: []` con `totalPct: 0` = nada la tapa.
+   */
+  covered?: { totalPct: number; by: Array<{ name: string; pct: number }> }
+}
+
+/** Petición de zoom sobre la ventana concedida (solo origen aislado; el MCP convierte los píxeles del JPEG que vio el modelo). */
+export interface ZoomWindowRequest {
+  appKey: string
+  windowIndex: number
+  /** macOS: PNG grande conservado de la captura (el que escribió `window-shot`). Windows: no se usa (se captura de nuevo). */
+  srcPath?: string
+  /** JPEG de salida. */
+  outPath: string
+  /** Región en píxeles de la imagen de origen: el PNG conservado (macOS) o el rectángulo de origen de la ventana, `srcWidth × srcHeight` (Windows). */
+  region: { x: number; y: number; width: number; height: number }
+  /** Ampliación 1–4 (macOS; en Windows el recorte sale a resolución nativa). */
+  scale: number
+  /** Tope del lado largo del resultado. */
+  maxLong: number
+}
+
+export interface ZoomWindowResult {
+  width: number
+  height: number
+  /** Windows: rectángulo global de origen de la ventana en el momento del zoom; el MCP lo compara con el guardado (`window-moved`). */
+  rect?: Rect
 }
 
 /** Dónde está en pantalla la ventana que acaba de capturar `windowShot`, y cuánto mide la imagen final (JPEG) que ve el modelo. */
@@ -170,13 +200,30 @@ export interface PlatformBackend {
   /** Captura la pantalla principal y deja el JPEG en `req.out`; devuelve su tamaño en píxeles. Falla cerrado en Windows. */
   captureScreen: (req: CaptureRequest) => Promise<{ width: number; height: number }>
   /** Captura de la ventana de una app a JPEG en `out` (`raw` es el intermedio de macOS). */
-  windowShot: (appKey: string, raw: string, out: string, windowIndex: number) => Promise<WindowShotResult>
+  windowShot: (appKey: string, raw: string, out: string, windowIndex: number, probePath?: string) => Promise<WindowShotResult>
   /**
    * Ubica en la pantalla la ventana que acaba de capturar `windowShot` (solo origen aislado: para convertir píxeles de la imagen en
    * puntos). `shot` es lo que devolvió `windowShot` y `outPath` el JPEG final. Devuelve `null` si no se puede asegurar que el
    * rectángulo corresponde a la imagen (falla cerrado: la captura sirve para mirar, no para clics).
    */
   locateWindowShot: (appKey: string, windowIndex: number, shot: WindowShotResult, outPath: string) => Promise<WindowLocation | null>
+  /**
+   * Sonda de la ventana: captura SIN imagen para el modelo, un PNG en `outPath` que solo decodifica el MCP y borra.
+   * macOS: el PNG a `frame × 2` de `window-shot`. Windows: `window-shot --max-long 256`. Lanza si falla.
+   */
+  probeWindow: (appKey: string, windowIndex: number, outPath: string) => Promise<{ width: number; height: number }>
+  /**
+   * Zoom de la ventana concedida (macOS: `zoom-image` sobre el PNG conservado + `sips -Z` si pasa del tope; Windows: `window-shot --crop`).
+   * Lanza «no disponible» si el helper no lo soporta (helper viejo).
+   */
+  zoomWindow: (req: ZoomWindowRequest) => Promise<ZoomWindowResult>
+  /**
+   * Cuánto tapan otras ventanas la ventana capturada (`frame`, en las mismas coordenadas que `windowFrames`) y cuánto cae fuera de las
+   * `screens`. `ownFrames` son los marcos de las ventanas de la propia app (no cuentan como tapa). Solo informativo; nunca lanza:
+   * si no se puede asegurar, `{ known: false }`. macOS: `running-apps` + `windows-of` + `app-at` (≤ 5 llamadas); Windows: lo que trajo
+   * el último `windowShot` de esa app (`covered`), sin llamadas.
+   */
+  occlusion: (appKey: string, frame: Rect, ownFrames: readonly Rect[], screens: readonly Screen[]) => Promise<CoverageResult>
   /** Marcos visibles actuales de las ventanas de la app (`windows-of`), para volver a comprobar justo antes de actuar. Lanza si no se puede leer. */
   windowFrames: (appKey: string) => Promise<Rect[]>
   /**

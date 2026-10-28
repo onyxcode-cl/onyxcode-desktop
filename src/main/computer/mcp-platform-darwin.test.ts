@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { PlatformHost } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
 
-type Reply = { stdout?: string; stderr?: string; code?: number }
+type Reply = { stdout?: string; stderr?: string; code?: number; delayMs?: number }
 interface Call {
   cmd: string
   args: string[]
@@ -36,7 +36,8 @@ function rig(
       signalCode: null as string | null,
       kill: (sig: string) => void kills.push({ pid: child.pid, sig })
     })
-    queueMicrotask(() => {
+    const later = r.delayMs ? (f: () => void) => void setTimeout(f, r.delayMs) : queueMicrotask
+    later(() => {
       if (r.code) cb(Object.assign(new Error('fallo'), { code: r.code }), r.stdout ?? '', r.stderr ?? '')
       else cb(null, r.stdout ?? '', r.stderr ?? '')
     })
@@ -610,5 +611,197 @@ describe('macOS: ubicar la ventana capturada (locateWindowShot / windowFrames)',
     )
     expect(await r.backend.windowShot('com.a.A', '/s/raw.png', '/s/o.jpg', 0)).toEqual({ ok: true, width: 800, height: 600 })
     expect(backend.windowShot).toBeTypeOf('function')
+  })
+})
+
+describe('macOS: sonda, zoom y ventana tapada (probeWindow / zoomWindow / occlusion)', () => {
+  const SCREENS = [{ width: 1440, height: 900, scale: 2, main: true, x: 0, y: 0 }]
+  const FRAME = { x: 100, y: 100, width: 800, height: 600 }
+  const rect = (x: number, y: number, width: number, height: number): Record<string, number> => ({ x, y, width, height })
+  const APPS = JSON.stringify([
+    { bundleId: 'com.a.A', name: 'A' },
+    { bundleId: 'com.b.B', name: 'B' }
+  ])
+  const names = (calls: Call[]): string[] => calls.map((c) => c.args[0] ?? c.cmd)
+
+  it('probeWindow: window-shot a PNG (sin sips) y devuelve el tamaño', async () => {
+    const { backend, calls } = rig(
+      (_c, args) => (args[0] === 'window-shot' ? { stdout: '{"ok":true,"width":1600,"height":1200}' } : {}),
+      {},
+      {},
+      new Set(['/h/cu-helper', '/s/p.png'])
+    )
+    expect(await backend.probeWindow('com.a.A', 1, '/s/p.png')).toEqual({ width: 1600, height: 1200 })
+    expect(calls).toEqual([{ cmd: '/h/cu-helper', args: ['window-shot', 'com.a.A', '/s/p.png', '1'] }])
+  })
+
+  it('probeWindow: falla si el helper sale con error o no escribió el archivo', async () => {
+    await expect(rig(() => ({ code: 7 })).backend.probeWindow('com.a.A', 0, '/s/p.png')).rejects.toThrow('no está en ejecución')
+    await expect(rig(() => ({ stdout: '{"width":1,"height":1}' })).backend.probeWindow('com.a.A', 0, '/s/p.png')).rejects.toThrow(
+      'no escribió'
+    )
+  })
+
+  const zoomReq = {
+    appKey: 'com.a.A',
+    windowIndex: 0,
+    srcPath: '/s/raw.png',
+    outPath: '/s/z.jpg',
+    region: { x: 10.4, y: 20, width: 300, height: 200 },
+    scale: 2,
+    maxLong: 1366
+  }
+  const zfiles = new Set(['/h/cu-helper', '/s/raw.png'])
+
+  it('zoomWindow: zoom-image sobre el PNG conservado; si cabe en el tope no llama a sips', async () => {
+    const { backend, calls } = rig((_c, args) => (args[0] === 'zoom-image' ? { stdout: '{"width":600,"height":400}' } : {}), {}, {}, zfiles)
+    expect(await backend.zoomWindow(zoomReq)).toEqual({ width: 600, height: 400 })
+    expect(calls).toEqual([{ cmd: '/h/cu-helper', args: ['zoom-image', '/s/raw.png', '/s/z.jpg', '10', '20', '300', '200', '2'] }])
+  })
+
+  it('zoomWindow: si pasa del tope, sips -Z sobre el resultado y se vuelve a medir', async () => {
+    const { backend, calls } = rig(
+      (cmd, args) =>
+        args[0] === 'zoom-image'
+          ? { stdout: '{"width":2000,"height":1200}' }
+          : cmd === '/usr/bin/sips' && args[0] === '-g'
+            ? { stdout: 'pixelWidth: 1000\n  pixelHeight: 600\n' }
+            : {},
+      {},
+      {},
+      zfiles
+    )
+    expect(await backend.zoomWindow({ ...zoomReq, maxLong: 1000 })).toEqual({ width: 1000, height: 600 })
+    expect(calls.slice(1)).toEqual([
+      { cmd: '/usr/bin/sips', args: ['-Z', '1000', '/s/z.jpg'] },
+      { cmd: '/usr/bin/sips', args: ['-g', 'pixelWidth', '-g', 'pixelHeight', '/s/z.jpg'] }
+    ])
+  })
+
+  it('zoomWindow: sin PNG conservado o con región inválida no llama al helper', async () => {
+    const r = rig(() => ({}), {}, {}, new Set(['/h/cu-helper']))
+    await expect(r.backend.zoomWindow(zoomReq)).rejects.toThrow('ya no existe')
+    const r2 = rig(() => ({}), {}, {}, zfiles)
+    await expect(r2.backend.zoomWindow({ ...zoomReq, region: { x: 0, y: 0, width: 0, height: 5 } })).rejects.toThrow('región')
+    await expect(r2.backend.zoomWindow({ ...zoomReq, scale: Number.NaN })).rejects.toThrow('región')
+    expect(r.calls.length + r2.calls.length).toBe(0)
+  })
+
+  /** Escenario: la app A (frame) con `windows-of` en orden Z; `at` es la respuesta de `app-at` por llamada. */
+  const scene = (
+    wins: unknown,
+    at: (n: number) => Reply = () => ({ stdout: '{"name":"Brave Browser","bundleId":"com.brave.Browser"}' })
+  ) => {
+    let n = 0
+    return rig((_c, args) => {
+      if (args[0] === 'running-apps') return { stdout: APPS }
+      if (args[0] === 'windows-of') return { stdout: JSON.stringify(wins) }
+      if (args[0] === 'app-at') return at(++n)
+      return {}
+    })
+  }
+
+  it('sin tapar: SOLO 2 llamadas (running-apps y windows-of con todas las apps)', async () => {
+    const { backend, calls } = scene([rect(100, 100, 800, 600), rect(0, 0, 1440, 900)])
+    const res = await backend.occlusion('com.a.A', FRAME, [FRAME], SCREENS)
+    expect(res).toMatchObject({ known: true, coveredPct: 0, offscreenPct: 0, coveredBy: [] })
+    expect(calls).toEqual([
+      { cmd: '/h/cu-helper', args: ['running-apps'] },
+      { cmd: '/h/cu-helper', args: ['windows-of', 'com.a.A,com.b.B'] }
+    ])
+  })
+
+  it('tapada por una ventana encima: running-apps, windows-of y un app-at en el centro de la zona tapada (3 llamadas)', async () => {
+    // La ventana de Brave (primera de la lista, delante) cubre la mitad derecha de la capturada.
+    const { backend, calls } = scene([rect(500, 100, 600, 600), rect(100, 100, 800, 600), rect(0, 0, 1440, 900)])
+    const res = await backend.occlusion('com.a.A', FRAME, [FRAME], SCREENS)
+    expect(names(calls)).toEqual(['running-apps', 'windows-of', 'app-at'])
+    expect(calls[2].args).toEqual(['app-at', '700', '400'])
+    expect(res.known && res.coveredPct).toBeCloseTo(50, 0)
+    expect(res.known && res.coveredBy).toEqual([expect.objectContaining({ app: 'Brave Browser' })])
+  })
+
+  it('varias ventanas encima: como mucho 5 llamadas en total y se suman las de la misma app', async () => {
+    const { backend, calls } = scene([
+      rect(100, 100, 200, 600),
+      rect(300, 100, 200, 600),
+      rect(500, 100, 200, 600),
+      rect(700, 100, 100, 600),
+      rect(100, 100, 800, 600)
+    ])
+    const res = await backend.occlusion('com.a.A', FRAME, [FRAME], SCREENS)
+    expect(calls.length).toBeLessThanOrEqual(5)
+    // Las 3 primeras caen en 3 app-at, todas «Brave Browser»: una sola fila con la suma.
+    expect(res.known && res.coveredBy.map((c) => c.app)).toEqual(['Brave Browser'])
+    expect(res.known && res.coveredBy[0].pct).toBeCloseTo(75, 0)
+  })
+
+  it('las ventanas de la propia app (ownFrames) no tapan', async () => {
+    const aux = rect(300, 200, 200, 200)
+    const { backend, calls } = scene([aux, rect(100, 100, 800, 600)])
+    const res = await backend.occlusion('com.a.A', FRAME, [FRAME, { x: 300, y: 200, width: 200, height: 200 }], SCREENS)
+    expect(res).toMatchObject({ known: true, coveredPct: 0 })
+    expect(calls.length).toBe(2)
+  })
+
+  it('app-at que tarda más de 1,5 s: la tapa se avisa SIN nombre («otra ventana»)', async () => {
+    vi.useFakeTimers()
+    try {
+      const { backend } = scene([rect(500, 100, 600, 600), rect(100, 100, 800, 600)], () => ({ stdout: '{"name":"Lenta"}', delayMs: 5000 }))
+      const p = backend.occlusion('com.a.A', FRAME, [FRAME], SCREENS)
+      await vi.advanceTimersByTimeAsync(1600)
+      const res = await p
+      expect(res.known && res.coveredBy.map((c) => c.app)).toEqual(['otra ventana'])
+      await vi.advanceTimersByTimeAsync(5000)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('app-at que falla, sin nombre o que responde la propia app: «otra ventana»; el nombre se limpia de controles', async () => {
+    for (const reply of [{ code: 1 }, { stdout: '{"name":"","bundleId":""}' }, { stdout: '{"name":"A","bundleId":"com.a.A"}' }]) {
+      const res = await scene([rect(500, 100, 600, 600), rect(100, 100, 800, 600)], () => reply).backend.occlusion(
+        'com.a.A',
+        FRAME,
+        [FRAME],
+        SCREENS
+      )
+      expect(res.known && res.coveredBy.map((c) => c.app)).toEqual(['otra ventana'])
+    }
+    const sucio = await scene([rect(500, 100, 600, 600), rect(100, 100, 800, 600)], () => ({
+      stdout: '{"name":"Mal\\nApp\\u0007"}'
+    })).backend.occlusion('com.a.A', FRAME, [FRAME], SCREENS)
+    expect(sucio.known && sucio.coveredBy[0].app).toBe('Mal App')
+  })
+
+  it('ventana ambigua (el marco aparece dos veces) o ausente → known:false, sin app-at', async () => {
+    const dup = scene([rect(100, 100, 800, 600), rect(100, 100, 800, 600)])
+    expect(await dup.backend.occlusion('com.a.A', FRAME, [], SCREENS)).toEqual({ known: false })
+    const none = scene([rect(0, 0, 1440, 900)])
+    expect(await none.backend.occlusion('com.a.A', FRAME, [], SCREENS)).toEqual({ known: false })
+    expect(names(dup.calls).includes('app-at') || names(none.calls).includes('app-at')).toBe(false)
+  })
+
+  it('fuera de pantalla se cuenta; sin pantallas, helper roto o salida rara → known:false (nunca lanza)', async () => {
+    const off = await scene([rect(1200, 100, 800, 600)]).backend.occlusion(
+      'com.a.A',
+      { x: 1200, y: 100, width: 800, height: 600 },
+      [],
+      SCREENS
+    )
+    // ~70 % de la ventana cae a la derecha del único monitor (la rejilla 32×32 lo cuantiza a 68,75).
+    expect(off.known && off.offscreenPct).toBeGreaterThan(65)
+    expect(off.known && off.offscreenPct).toBeLessThan(75)
+    expect(await scene([rect(100, 100, 800, 600)]).backend.occlusion('com.a.A', FRAME, [], [])).toEqual({ known: false })
+    expect(await rig(() => ({ code: 5 })).backend.occlusion('com.a.A', FRAME, [], SCREENS)).toEqual({ known: false })
+    expect(await scene({ no: 'lista' }).backend.occlusion('com.a.A', FRAME, [], SCREENS)).toEqual({ known: false })
+  })
+
+  it('windowShot de macOS no cambia: ignora un 5.º argumento y no pide nada nuevo al helper', async () => {
+    const r = rig((cmd, args) =>
+      cmd === '/usr/bin/sips' ? {} : args[0] === 'window-shot' ? { stdout: '{"ok":true,"width":8,"height":6}' } : {}
+    )
+    await r.backend.windowShot('com.a.A', '/s/raw.png', '/s/o.jpg', 0, '/s/p.png')
+    expect(r.calls[0]).toEqual({ cmd: '/h/cu-helper', args: ['window-shot', 'com.a.A', '/s/raw.png', '0'] })
   })
 })

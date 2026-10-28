@@ -16,9 +16,13 @@ import type {
   PlatformBackend,
   PlatformHost,
   Rect,
+  Screen,
   WindowLocation,
-  WindowShotResult
+  WindowShotResult,
+  ZoomWindowRequest,
+  ZoomWindowResult
 } from './mcp-platform'
+import { computeCoverage, locateTarget, type CoverageResult, type StackWindow } from './window-probe'
 
 /** Dependencias sustituibles en pruebas (por defecto, las reales de Node). */
 export interface DarwinDeps {
@@ -552,6 +556,144 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     return JSON.parse(stdout) as { width: number; height: number }
   }
 
+  /** Sonda: el PNG que escribe `window-shot` tal cual (a `frame × 2`), sin `sips`; solo lo decodifica el MCP. */
+  async function probeWindow(appKey: string, windowIndex: number, outPath: string): Promise<{ width: number; height: number }> {
+    const { stdout, code } = await helperExit('window-shot', appKey, outPath, String(windowIndex))
+    if (code !== 0) throw new Error(axExitMessage(code) ?? `window-shot falló (código ${code})`)
+    if (!deps.existsSync(outPath)) throw new Error('window-shot no escribió la imagen')
+    const info = JSON.parse(stdout) as { width?: unknown; height?: unknown }
+    if (!num(info.width) || !num(info.height)) throw new Error('window-shot no informó del tamaño')
+    return { width: info.width, height: info.height }
+  }
+
+  /** Zoom: `zoom-image` sobre el PNG conservado (el doble de detalle que el JPEG del modelo) y `sips -Z` si pasa del tope. */
+  async function zoomWindow(req: ZoomWindowRequest): Promise<ZoomWindowResult> {
+    if (!req.srcPath || !deps.existsSync(req.srcPath)) throw new Error('zoom no disponible: la captura original ya no existe')
+    const r = req.region
+    if (![r.x, r.y, r.width, r.height, req.scale, req.maxLong].every(num) || r.width < 1 || r.height < 1) {
+      throw new Error('zoom: región no válida')
+    }
+    const z = await zoomImage({
+      inPath: req.srcPath,
+      outPath: req.outPath,
+      x: Math.round(r.x),
+      y: Math.round(r.y),
+      width: Math.round(r.width),
+      height: Math.round(r.height),
+      scale: req.scale
+    })
+    if (!num(z.width) || !num(z.height)) throw new Error('zoom-image no informó del tamaño')
+    if (Math.max(z.width, z.height) <= req.maxLong) return { width: z.width, height: z.height }
+    await run(SIPS, ['-Z', String(Math.round(req.maxLong)), req.outPath])
+    const dims = await run(SIPS, ['-g', 'pixelWidth', '-g', 'pixelHeight', req.outPath])
+    const width = Number(/pixelWidth:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+    const height = Number(/pixelHeight:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+    if (!(width > 0) || !(height > 0)) throw new Error('zoom: no se pudo medir el resultado')
+    return { width, height }
+  }
+
+  /** Nombre que se le da a quien tapa cuando `app-at` no responde a tiempo o no lo identifica (nunca contenido de la ventana). */
+  const GENERIC_COVERER = 'otra ventana'
+  const APP_AT_TIMEOUT_MS = 1500
+
+  /** Texto seguro para el modelo: sin controles ni saltos de línea y corto. */
+  const safeName = (s: string): string =>
+    s
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 60)
+
+  /** Nombre de la app que de verdad está arriba en un punto (`app-at`), con tope de tiempo; `null` si tarda, falla o no dice nada. */
+  async function appNameAt(x: number, y: number, ownKey: string): Promise<string | null> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const raw = await Promise.race([
+        helper('app-at', String(Math.round(x)), String(Math.round(y))),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), APP_AT_TIMEOUT_MS)
+          timer.unref?.()
+        })
+      ])
+      if (raw === null) return null
+      const j = JSON.parse(raw) as { name?: unknown; bundleId?: unknown }
+      // Si el punto resulta ser de la propia app capturada no es una tapa (accesibilidad y lista de ventanas discrepan): sin nombre.
+      if (typeof j.bundleId === 'string' && j.bundleId === ownKey) return null
+      const name = typeof j.name === 'string' && j.name ? j.name : typeof j.bundleId === 'string' ? j.bundleId : ''
+      return safeName(name) || null
+    } catch {
+      return null
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
+  }
+
+  /**
+   * §2.2 sin tocar el helper: `running-apps` (1) + `windows-of` de todas (1) dan las ventanas en orden Z; con eso y la geometría de
+   * `window-probe` se calcula cuánto tapan. Solo si tapan ≥ 5 % se pone nombre con `app-at` (≤ 3). En total 2 llamadas sin tapar, ≤ 5 tapada.
+   * Ambigüedad (la ventana no aparece una sola vez) o cualquier fallo → `{ known: false }`.
+   */
+  async function occlusion(appKey: string, frame: Rect, ownFrames: readonly Rect[], screens: readonly Screen[]): Promise<CoverageResult> {
+    try {
+      const displays = screens
+        .filter((s) => num(s.width) && num(s.height) && s.width > 0 && s.height > 0)
+        .map((s) => ({ x: s.x ?? 0, y: s.y ?? 0, w: s.width, h: s.height }))
+      if (displays.length === 0) return { known: false }
+      const apps = JSON.parse(await helper('running-apps')) as unknown
+      const ids = new Set<string>([appKey])
+      if (Array.isArray(apps))
+        for (const a of apps as Array<{ bundleId?: unknown }>) if (typeof a?.bundleId === 'string' && a.bundleId) ids.add(a.bundleId)
+      const raw = JSON.parse(await helper('windows-of', [...ids].join(','))) as unknown
+      if (!Array.isArray(raw)) return { known: false }
+      const near = (a: Rect, b: Rect): boolean =>
+        Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1 && Math.abs(a.width - b.width) <= 1 && Math.abs(a.height - b.height) <= 1
+      const rects: Rect[] = []
+      for (const w of raw as Array<Record<string, unknown>>) {
+        if (w && num(w.x) && num(w.y) && num(w.width) && num(w.height)) rects.push({ x: w.x, y: w.y, width: w.width, height: w.height })
+      }
+      // `windows-of` no dice de quién es cada ventana: la clave provisional es su posición (nunca llega al modelo).
+      const stack: StackWindow[] = rects.map((r, i) => ({
+        rect: { x: r.x, y: r.y, w: r.width, h: r.height },
+        app: `#${i}`,
+        own: ownFrames.some((f) => near(f, r))
+      }))
+      const target = { x: frame.x, y: frame.y, w: frame.width, h: frame.height }
+      const cov = computeCoverage({ stack, targetIndex: locateTarget(stack, target), frame: target, displays })
+      if (!cov.known) return cov
+      if (cov.coveredPct < 5) return { ...cov, coveredBy: [] }
+      // Nombre de quien de verdad está arriba, en el centro de lo que cada ventana corta de la capturada.
+      const named = await Promise.all(
+        cov.coveredBy.map(async (c) => {
+          const w = stack[Number(c.app.slice(1))]
+          const x0 = Math.max(target.x, w.rect.x)
+          const y0 = Math.max(target.y, w.rect.y)
+          const x1 = Math.min(target.x + target.w, w.rect.x + w.rect.w)
+          const y1 = Math.min(target.y + target.h, w.rect.y + w.rect.h)
+          const name = await appNameAt((x0 + x1) / 2, (y0 + y1) / 2, appKey)
+          return { ...c, app: name ?? GENERIC_COVERER }
+        })
+      )
+      // Varias ventanas de la misma app se suman bajo un solo nombre.
+      const merged = new Map<string, { app: string; pct: number; zone: string; top: number }>()
+      for (const c of named) {
+        const m = merged.get(c.app)
+        if (!m) merged.set(c.app, { ...c, top: c.pct })
+        else {
+          m.pct += c.pct
+          if (c.pct > m.top) {
+            m.top = c.pct
+            m.zone = c.zone
+          }
+        }
+      }
+      const coveredBy = [...merged.values()].sort((a, b) => b.pct - a.pct).map(({ app, pct, zone }) => ({ app, pct, zone }))
+      return { ...cov, coveredBy }
+    } catch (err) {
+      log('occlusion:', err instanceof Error ? err.message : err)
+      return { known: false }
+    }
+  }
+
   async function insertAxText(bundleId: string, ref: string, text: string): Promise<void> {
     const { code } = await helperExit('ax-insert-text', bundleId, ref, text)
     if (code !== 0) throw new Error(axExitMessage(code) ?? `ax-insert-text falló (código ${code})`)
@@ -584,6 +726,9 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     windowShot,
     locateWindowShot,
     windowFrames,
+    probeWindow,
+    zoomWindow,
+    occlusion,
     zoomImage,
     insertAxText,
     resolveApp,

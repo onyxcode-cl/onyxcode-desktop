@@ -216,6 +216,25 @@ describe('instrucción de apps del modo unificado', () => {
     expect(UNIFIED_APPS_PROMPT).toContain('No uses como x/y los números de `computer_app_find`')
   })
 
+  it('la guía de trabajo general: escalera, no repetir lo confirmado, lotes, pegar, equipo y capturas', () => {
+    const t = UNIFIED_APPS_PROMPT
+    expect(t).toContain('Escalera de trabajo')
+    expect(t).toContain('computer_app_find`, `computer_app_press`, `computer_app_set_value')
+    expect(t).toContain('Solo luego coordenadas sobre esa captura')
+    expect(t).toContain('Sube un peldaño solo como reacción a un rechazo')
+    expect(t).toContain('Nunca subas por adivinar según el tipo de app')
+    expect(t).toContain('Lo que una herramienta confirmó no se repite')
+    expect(t).toContain('no insistas en ella')
+    expect(t).toContain('la línea de comandos')
+    expect(t).toContain('usa `computer_batch`')
+    expect(t).toContain('pégalo en vez de teclearlo letra por letra')
+    expect(t).toContain('en qué equipo actuar')
+    expect(t).toContain('Captura solo la app concreta')
+    expect(t).toContain('Un rechazo no se sortea pidiendo acceso a otra app')
+    expect(t).not.toMatch(/paridad|mejor que|ahorr\w* de tokens/i)
+    expect(t).not.toMatch(/computer_app_zoom|computer_zoom|suspected_noop|screenshot: true/)
+  })
+
   it('writeUnifiedAppsPrompt escribe el archivo y devuelve su ruta', () => {
     const d = mkdtempSync(join(tmpdir(), 'unif-prompt-'))
     try {

@@ -1138,3 +1138,203 @@ describe('Windows: ubicar la ventana capturada (sin proceso)', () => {
     expect(b.normalizeScreen({ width: 10, height: 10, scale: 1, x: 'a' as never })).not.toHaveProperty('x')
   })
 })
+
+describe('Windows: sonda, zoom con --crop y tapado (sin proceso)', () => {
+  const host: PlatformHost = {
+    config: {
+      helper: 'C:\\x\\cu-helper.exe',
+      eventsUrl: '',
+      instant: false,
+      typeDelay: '',
+      maxLong: 1366,
+      shotDir: '',
+      fakeShot: '',
+      neverExclude: new Set()
+    },
+    log: () => undefined,
+    tierOf: async () => null,
+    mainScreen: async () => ({ width: 1, height: 1, scale: 1 }),
+    sideGet: async () => ({})
+  }
+  const mk = (stdout: string, code = 0, exists = true) => {
+    const argvs: string[][] = []
+    const removed: string[] = []
+    const b = createWin32Backend(host, {
+      execFile: ((_cmd: string, argv: string[], _o: unknown, cb: (e: unknown, so: string, se: string) => void) => {
+        argvs.push(argv)
+        queueMicrotask(() => (code ? cb(Object.assign(new Error('x'), { code }), '', '') : cb(null, stdout, '')))
+        return Object.assign(new EventEmitter(), { pid: 1, exitCode: null, signalCode: null })
+      }) as never,
+      existsSync: (p) => p.endsWith('.exe') || exists,
+      statSize: () => 10,
+      rm: (p) => void removed.push(p),
+      env: {}
+    })
+    return { b, argvs, removed }
+  }
+  const SRC = { x: -1930, y: 90, srcWidth: 1400, srcHeight: 790 }
+  const KEY = 'exe:c:\\a.exe|pub:x'
+  const REQ = { appKey: KEY, windowIndex: 0, outPath: 'z.jpg', region: { x: 100, y: 50, width: 400, height: 200 }, scale: 2, maxLong: 1366 }
+
+  it('windowShot sin sonda: los argumentos de siempre (sin --probe); con sonda: --probe <ruta> al final', async () => {
+    const a = mk('{"ok":true,"width":10,"height":10}')
+    await a.b.windowShot(KEY, 'raw', 'o.jpg', 0)
+    expect(a.argvs[0]).not.toContain('--probe')
+    const b = mk('{"ok":true,"width":10,"height":10}')
+    await b.b.windowShot(KEY, 'raw', 'o.jpg', 0, 'p.png')
+    expect(b.argvs[0].slice(-2)).toEqual(['--probe', 'p.png'])
+    expect(b.argvs[0].slice(0, -2)).toEqual(a.argvs[0])
+  })
+
+  it('windowShot lee covered/coveredPct: nombres y porcentajes limpios; sin ellos (helper viejo) o raros, no hay covered', async () => {
+    const full = {
+      ok: true,
+      width: 10,
+      height: 10,
+      ...SRC,
+      coveredPct: 140,
+      covered: [
+        { name: 'Brave\nBrowser', pct: 40 },
+        { name: '', pct: 5 }
+      ]
+    }
+    const { b } = mk(JSON.stringify(full))
+    expect((await b.windowShot(KEY, 'r', 'o.jpg', 0)).covered).toEqual({
+      totalPct: 100,
+      by: [
+        { name: 'Brave Browser', pct: 40 },
+        { name: 'otra ventana', pct: 5 }
+      ]
+    })
+    expect((await mk('{"ok":true,"width":10,"height":10}').b.windowShot(KEY, 'r', 'o.jpg', 0)).covered).toBeUndefined()
+    for (const bad of [
+      { covered: 'x', coveredPct: 1 },
+      { covered: [] },
+      { covered: [{ name: 5, pct: 1 }], coveredPct: 1 },
+      { covered: [], coveredPct: '3' }
+    ]) {
+      expect(
+        (await mk(JSON.stringify({ ok: true, width: 10, height: 10, ...bad })).b.windowShot(KEY, 'r', 'o.jpg', 0)).covered
+      ).toBeUndefined()
+    }
+    // Sin tapar: covered vacío = «sabemos que no la tapa».
+    expect((await mk('{"ok":true,"width":10,"height":10,"covered":[],"coveredPct":0}').b.windowShot(KEY, 'r', 'o.jpg', 0)).covered).toEqual(
+      {
+        totalPct: 0,
+        by: []
+      }
+    )
+  })
+
+  it('occlusion usa lo del último windowShot de esa app (sin llamadas); otra app o sin captura → known:false', async () => {
+    const { b, argvs } = mk(
+      JSON.stringify({
+        ok: true,
+        width: 10,
+        height: 10,
+        covered: [
+          { name: 'Chrome', pct: 10 },
+          { name: 'Brave', pct: 40 }
+        ],
+        coveredPct: 50
+      })
+    )
+    const r = { x: 0, y: 0, width: 10, height: 10 }
+    expect(await b.occlusion(KEY, r, [], [])).toEqual({ known: false })
+    await b.windowShot(KEY, 'r', 'o.jpg', 0)
+    const n = argvs.length
+    expect(await b.occlusion(KEY, r, [], [])).toEqual({
+      known: true,
+      coveredPct: 50,
+      offscreenPct: 0,
+      coveredBy: [
+        { app: 'Brave', pct: 40, zone: '' },
+        { app: 'Chrome', pct: 10, zone: '' }
+      ]
+    })
+    expect(argvs.length).toBe(n)
+    expect(await b.occlusion('otra', r, [], [])).toEqual({ known: false })
+  })
+
+  it('occlusion caduca a los 10 s', async () => {
+    vi.useFakeTimers()
+    try {
+      const { b } = mk('{"ok":true,"width":10,"height":10,"covered":[],"coveredPct":0}')
+      await b.windowShot(KEY, 'r', 'o.jpg', 0)
+      const r = { x: 0, y: 0, width: 1, height: 1 }
+      expect((await b.occlusion(KEY, r, [], [])).known).toBe(true)
+      vi.setSystemTime(Date.now() + 11_000)
+      expect(await b.occlusion(KEY, r, [], [])).toEqual({ known: false })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('probeWindow: window-shot --max-long 256 a PNG y devuelve el tamaño; error o archivo ausente → lanza y borra', async () => {
+    const ok = mk('{"ok":true,"width":256,"height":144}')
+    expect(await ok.b.probeWindow(KEY, 2, 'p.png')).toEqual({ width: 256, height: 144 })
+    expect(ok.argvs[0]).toEqual(['window-shot', KEY, 'p.png', '2', '--max-long', '256'])
+    const bad = mk('', 11)
+    await expect(bad.b.probeWindow(KEY, 0, 'p.png')).rejects.toThrow()
+    expect(bad.removed).toEqual(['p.png'])
+    const none = mk('{"width":1,"height":1}', 0, false)
+    await expect(none.b.probeWindow(KEY, 0, 'p.png')).rejects.toThrow('no escribió')
+    await expect(mk('basura').b.probeWindow(KEY, 0, 'p.png')).rejects.toThrow('ilegible')
+    await expect(mk('{"ok":true}').b.probeWindow(KEY, 0, 'p.png')).rejects.toThrow('tamaño')
+  })
+
+  it('zoomWindow: window-shot --crop x,y,w,h y devuelve el rect de origen del helper (recorte confirmado)', async () => {
+    const { b, argvs } = mk(JSON.stringify({ ok: true, width: 800, height: 400, ...SRC, crop: { x: 100, y: 50, width: 400, height: 200 } }))
+    expect(await b.zoomWindow(REQ)).toEqual({ width: 800, height: 400, rect: { x: -1930, y: 90, width: 1400, height: 790 } })
+    expect(argvs[0]).toEqual(['window-shot', KEY, 'z.jpg', '0', '--max-long', '1366', '--quality', '85', '--crop', '100,50,400,200'])
+  })
+
+  it('zoomWindow: el rect que vuelve puede ser distinto del guardado (la ventana se movió): se entrega tal cual para que el MCP decida', async () => {
+    const { b } = mk(
+      JSON.stringify({
+        ok: true,
+        width: 5,
+        height: 5,
+        x: 0,
+        y: 0,
+        srcWidth: 900,
+        srcHeight: 700,
+        crop: { x: 100, y: 50, width: 400, height: 200 }
+      })
+    )
+    expect((await b.zoomWindow(REQ)).rect).toEqual({ x: 0, y: 0, width: 900, height: 700 })
+  })
+
+  it('zoomWindow con helper viejo o raro → «no disponible» y se borra la imagen: sin rect, sin crop, crop distinto, exit 1', async () => {
+    const olds = [
+      { ok: true, width: 5, height: 5 },
+      { ok: true, width: 5, height: 5, ...SRC },
+      { ok: true, width: 5, height: 5, ...SRC, crop: { x: 0, y: 0, width: 400, height: 200 } }
+    ]
+    for (const o of olds) {
+      const { b, removed } = mk(JSON.stringify(o))
+      await expect(b.zoomWindow(REQ)).rejects.toThrow('zoom no está disponible')
+      expect(removed).toEqual(['z.jpg'])
+    }
+    const exit1 = mk('', 1)
+    await expect(exit1.b.zoomWindow(REQ)).rejects.toThrow('zoom no disponible')
+    expect(exit1.removed).toEqual(['z.jpg'])
+  })
+
+  it('zoomWindow valida la región y acota --max-long a 100–4096 sin llamar al helper si la región no vale', async () => {
+    const a = mk('{}')
+    for (const region of [
+      { x: -1, y: 0, width: 5, height: 5 },
+      { x: 0, y: 0, width: 0, height: 5 },
+      { x: 0.5, y: 0, width: 5, height: 5 }
+    ]) {
+      await expect(a.b.zoomWindow({ ...REQ, region })).rejects.toThrow('región')
+    }
+    expect(a.argvs.length).toBe(0)
+    const big = mk(JSON.stringify({ ok: true, width: 5, height: 5, ...SRC, crop: { x: 100, y: 50, width: 400, height: 200 } }))
+    await big.b.zoomWindow({ ...REQ, maxLong: 99999 })
+    expect(big.argvs[0][5]).toBe('4096')
+    await big.b.zoomWindow({ ...REQ, maxLong: 10 })
+    expect(big.argvs[1][5]).toBe('100')
+  })
+})
