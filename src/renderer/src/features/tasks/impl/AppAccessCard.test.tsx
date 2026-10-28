@@ -166,6 +166,61 @@ describe('AppPermissionCard', () => {
     expect((respondAccessRequest.mock.calls[0] as unknown[] | undefined)?.[0]).toEqual([{ bundleId: 'a', name: 'Term', decision: 'click' }])
   })
 
+  describe('botón «Aceptar Control total» cuando el agente lo pide', () => {
+    const accept = (): HTMLButtonElement => host.querySelector('[data-testid="app-access-accept-full"]') as HTMLButtonElement
+
+    it('aparece, concede «Control total» de lo pedido con un solo clic y no necesita tocar el selector', () => {
+      render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }))
+      expect(accept()?.textContent).toBe('Aceptar Control total')
+      act(() => accept().click())
+      expect(respondAccessRequest).toHaveBeenCalledWith([{ bundleId: 'a', name: 'Term', decision: 'full' }], { scope: 'session' })
+    })
+
+    it('con plan aprueba también el plan; en una tarjeta con varias apps solo sube las que pidieron «Control total»', () => {
+      render(
+        REQ({
+          plan: ['Paso 1'],
+          apps: [
+            { bundleId: 'a', name: 'Term', requested: 'full' },
+            { bundleId: 'b', name: 'Notas', requested: 'view' }
+          ]
+        })
+      )
+      act(() => accept().click())
+      expect(respondAccessRequest).toHaveBeenCalledWith(
+        [
+          { bundleId: 'a', name: 'Term', decision: 'full' },
+          { bundleId: 'b', name: 'Notas', decision: 'view' }
+        ],
+        { scope: 'session', approvePlan: true }
+      )
+    })
+
+    it('«Permitir» sigue dando lo preseleccionado («Ver y clic») y el atajo nunca da Control total', () => {
+      render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }))
+      act(() => btn(/Permitir para esta sesión/).click())
+      expect((respondAccessRequest.mock.calls[0] as unknown[] | undefined)?.[0]).toEqual([
+        { bundleId: 'a', name: 'Term', decision: 'click' }
+      ])
+    })
+
+    it('no aparece si no se pidió «Control total», si ya estaba concedido o si la persona ya lo eligió en el selector', () => {
+      render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'view' }] }))
+      expect(accept()).toBeNull()
+      render(REQ({ id: 'r2', apps: [{ bundleId: 'a', name: 'Term', requested: 'full', current: 'full' }] }))
+      expect(accept()).toBeNull()
+      render(REQ({ id: 'r3', apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }))
+      expect(accept()).not.toBeNull()
+      act(() => radio(/Control total/).click())
+      expect(accept()).toBeNull()
+    })
+
+    it('en inglés dice «Accept Full control»', () => {
+      render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'full' }] }), 'en')
+      expect(accept()?.textContent).toBe('Accept Full control')
+    })
+  })
+
   it('«Solo ver» no muestra aviso de ventanas ni de Control total', () => {
     render(REQ({ apps: [{ bundleId: 'a', name: 'Term', requested: 'view' }] }))
     expect(host.textContent).not.toContain('Tus otras ventanas')

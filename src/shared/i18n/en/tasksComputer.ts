@@ -509,8 +509,9 @@ export const tasksComputer = {
   'tasksComputer.appAccess.neverLowers': 'Approving never lowers a level that was already granted.',
   'tasksComputer.appAccess.blockAlways': 'Block always',
   'tasksComputer.appAccess.blockAlwaysAria': 'Block {app} always (it will not be asked again)',
+  'tasksComputer.appAccess.acceptFull': 'Accept Full control',
   'tasksComputer.appAccess.fullHint':
-    'The agent asked for Full control. It is not selected for you: choose it yourself only if you trust this app.',
+    'The agent asked for Full control. It is not selected for you: press “Accept Full control” only if you trust this app.',
   'tasksComputer.appAccess.tier.view': 'View only',
   'tasksComputer.appAccess.tier.view.warn': "It can see this app's screen, without touching it",
   'tasksComputer.appAccess.tier.click': 'View and click',

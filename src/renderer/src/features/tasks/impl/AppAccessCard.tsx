@@ -484,6 +484,23 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
       { scope: 'session', ...(req.plan ? { approvePlan: true } : {}) }
     ).finally(() => setBusy(false))
   }
+  /**
+   * Apps para las que el agente pidió «Control total» y que no lo tienen ni lo han elegido en el selector: la tarjeta ofrece un botón
+   * explícito «Aceptar Control total» (un clic aparte de «Permitir», sin atajo de teclado) para no obligar a buscar el selector.
+   */
+  const fullAskedApps = req.apps.filter((a) => a.requested === 'full' && a.current !== 'full' && decisionFor(a) !== 'full')
+  const acceptFull = (): void => {
+    if (busy) return
+    setBusy(true)
+    void respondAccessRequest(
+      req.apps.map((a) => ({
+        bundleId: a.bundleId,
+        name: a.name,
+        decision: fullAskedApps.some((f) => f.bundleId === a.bundleId) ? ('full' as const) : decisionFor(a)
+      })),
+      { scope: 'session', ...(req.plan ? { approvePlan: true } : {}) }
+    ).finally(() => setBusy(false))
+  }
   /** «Editar»: el feedback no concede ni deniega nada; el agente replantea el plan. */
   const sendFeedback = (): void => {
     const text = feedback.trim()
@@ -681,6 +698,11 @@ export function AppPermissionCard({ req }: { req: AccessRequest }): React.JSX.El
             <Button variant="secondary" onClick={deny} disabled={busy}>
               {t('tasksComputer.appAccess.deny')}
             </Button>
+            {fullAskedApps.length > 0 && (
+              <Button variant="secondary" onClick={acceptFull} disabled={busy} data-testid="app-access-accept-full">
+                {t('tasksComputer.appAccess.acceptFull')}
+              </Button>
+            )}
             <Button variant="primary" onClick={allow} disabled={busy} data-approve="">
               {req.plan ? t('tasksComputer.plan.approve') : t('tasksComputer.appAccess.allowSession')} <kbd className="kbd">{shortcut}</kbd>
             </Button>
