@@ -51,7 +51,20 @@ const DEFAULTS = {
   session: { out: { interactive: true, secureDesktop: false, elevatedTarget: false } },
   'release-input': { out: { ok: true } },
   screenshot: { writeImage: true, out: { width: 1366, height: 854, ratio: 1.0541, masked: 0 } },
-  'window-shot': { writeImage: true, out: { ok: true, width: 800, height: 600, title: 'Ventana' } },
+  'window-shot': {
+    writeImage: true,
+    out: {
+      ok: true,
+      width: 800,
+      height: 600,
+      title: 'Ventana',
+      x: 100,
+      y: 80,
+      srcWidth: 800,
+      srcHeight: 600,
+      frame: { x: 100, y: 80, width: 800, height: 600 }
+    }
+  },
   'screenshot-sck': { writeImage: true, out: { ok: true, width: 2880, height: 1800 } },
   'ax-tree': { out: { app: {}, nodes: [], truncated: false } },
   'ax-find': { out: { matches: [] } },

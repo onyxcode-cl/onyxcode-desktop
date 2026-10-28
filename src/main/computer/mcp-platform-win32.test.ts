@@ -1030,3 +1030,111 @@ describe('Windows: abrir apps por nombre con el menú Inicio (sin proceso)', () 
     expect(await createWin32Backend(host, f.deps).resolveApp('Google Chrome')).toMatchObject({ bundleId: '', found: false })
   })
 })
+
+describe('Windows: ubicar la ventana capturada (sin proceso)', () => {
+  const host: PlatformHost = {
+    config: {
+      helper: 'C:\\x\\cu-helper.exe',
+      eventsUrl: '',
+      instant: false,
+      typeDelay: '',
+      maxLong: 1366,
+      shotDir: '',
+      fakeShot: '',
+      neverExclude: new Set()
+    },
+    log: () => undefined,
+    tierOf: async () => null,
+    mainScreen: async () => ({ width: 1, height: 1, scale: 1 }),
+    sideGet: async () => ({})
+  }
+  /** Backend con un helper falso que responde `stdout` a cualquier comando (y guarda los argumentos). */
+  const mk = (stdout: string): { b: ReturnType<typeof createWin32Backend>; argvs: string[][] } => {
+    const argvs: string[][] = []
+    const b = createWin32Backend(host, {
+      execFile: ((_cmd: string, argv: string[], _o: unknown, cb: (e: unknown, so: string, se: string) => void) => {
+        argvs.push(argv)
+        queueMicrotask(() => cb(null, stdout, ''))
+        return Object.assign(new EventEmitter(), { pid: 1, exitCode: null, signalCode: null })
+      }) as never,
+      existsSync: () => true,
+      statSize: () => 10,
+      env: {}
+    })
+    return { b, argvs }
+  }
+  const SHOT = { ok: true, width: 1366, height: 768, title: 'T', x: -1930, y: 90, srcWidth: 1400, srcHeight: 790 }
+  const FRAME = { x: -1920, y: 100, width: 1380, height: 780 }
+
+  it('windowShot pasa rect y frame del helper (rect ≠ frame por los bordes invisibles) y locateWindowShot los usa', async () => {
+    const { b } = mk(JSON.stringify({ ...SHOT, frame: FRAME }))
+    const shot = await b.windowShot('exe:c:\\a.exe|pub:x', 'raw', 'o.jpg', 0)
+    expect(shot).toEqual({
+      width: 1366,
+      height: 768,
+      title: 'T',
+      rect: { x: -1930, y: 90, width: 1400, height: 790 },
+      frame: FRAME
+    })
+    expect(await b.locateWindowShot('exe:c:\\a.exe|pub:x', 0, shot, 'o.jpg')).toEqual({
+      rect: { x: -1930, y: 90, width: 1400, height: 790 },
+      frame: FRAME,
+      imageWidth: 1366,
+      imageHeight: 768
+    })
+  })
+
+  it('helper viejo (sin x/y/srcWidth/srcHeight/frame): windowShot sigue funcionando y locateWindowShot da null', async () => {
+    const { b } = mk('{"ok":true,"width":800,"height":600}')
+    const shot = await b.windowShot('k', 'raw', 'o.jpg', 0)
+    expect(shot).toEqual({ width: 800, height: 600, title: undefined })
+    expect(shot.rect).toBeUndefined()
+    expect(await b.locateWindowShot('k', 0, shot, 'o.jpg')).toBeNull()
+  })
+
+  it('campos no numéricos, no enteros o con tamaño 0 se descartan; con solo rect o solo frame → null', async () => {
+    const bad = [
+      { ...SHOT, x: '5', frame: FRAME },
+      { ...SHOT, srcWidth: 0, frame: FRAME },
+      { ...SHOT, y: 1.5, frame: FRAME },
+      { ...SHOT, frame: { ...FRAME, width: -3 } },
+      { ...SHOT, frame: 'x' },
+      { ...SHOT },
+      { ok: true, width: 800, height: 600, frame: FRAME }
+    ]
+    for (const o of bad) {
+      const { b } = mk(JSON.stringify(o))
+      const shot = await b.windowShot('k', 'raw', 'o.jpg', 0)
+      expect(await b.locateWindowShot('k', 0, shot, 'o.jpg')).toBeNull()
+    }
+  })
+
+  it('locateWindowShot rechaza un tamaño de imagen inválido aunque rect y frame estén', async () => {
+    const { b } = mk('{}')
+    const r = { x: 0, y: 0, width: 10, height: 10 }
+    expect(await b.locateWindowShot('k', 0, { width: 0, height: 5, rect: r, frame: r }, 'o')).toBeNull()
+    expect(await b.locateWindowShot('k', 0, { width: 5.5, height: 5, rect: r, frame: r }, 'o')).toBeNull()
+  })
+
+  it('windowFrames: windows-of → marcos válidos (origen negativo incluido); lo demás se descarta', async () => {
+    const { b, argvs } = mk(
+      JSON.stringify([FRAME, { x: 1, y: 1, width: 0, height: 5 }, { x: 'a' }, null, { x: 0, y: 0, width: 5, height: 6 }])
+    )
+    expect(await b.windowFrames('exe:c:\\a.exe|pub:x')).toEqual([FRAME, { x: 0, y: 0, width: 5, height: 6 }])
+    expect(argvs[0]).toContain('windows-of')
+    expect(await mk('{"no":"lista"}').b.windowFrames('k')).toEqual([])
+  })
+
+  it('normalizeScreen conserva x/y (también negativos) cuando el helper los da', () => {
+    const { b } = mk('{}')
+    expect(b.normalizeScreen({ width: 1920, height: 1080, scale: 1.25, main: false, x: -1920, y: 0 })).toEqual({
+      width: 1920,
+      height: 1080,
+      scale: 1,
+      main: false,
+      x: -1920,
+      y: 0
+    })
+    expect(b.normalizeScreen({ width: 10, height: 10, scale: 1, x: 'a' as never })).not.toHaveProperty('x')
+  })
+})

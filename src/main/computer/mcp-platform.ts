@@ -94,10 +94,32 @@ export interface PreflightInfo {
   realInput: boolean
 }
 
+/** Rectángulo en el espacio de entrada del backend (puntos globales en macOS; píxeles físicos del escritorio virtual en Windows). */
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface WindowShotResult {
   width: number
   height: number
   title?: string
+  /** Rectángulo global que corresponde a la IMAGEN capturada (Windows: `w.rect` del helper). Ausente en macOS: ver `locateWindowShot`. */
+  rect?: Rect
+  /** Marco visible de la ventana (el que devuelve `windows-of`). */
+  frame?: Rect
+}
+
+/** Dónde está en pantalla la ventana que acaba de capturar `windowShot`, y cuánto mide la imagen final (JPEG) que ve el modelo. */
+export interface WindowLocation {
+  /** Rectángulo global que cubre la imagen. */
+  rect: Rect
+  /** Marco visible de la ventana (límite de cualquier punto). */
+  frame: Rect
+  imageWidth: number
+  imageHeight: number
 }
 
 /** Resultado de un comando del helper con su código de salida (0 = correcto). */
@@ -149,6 +171,14 @@ export interface PlatformBackend {
   captureScreen: (req: CaptureRequest) => Promise<{ width: number; height: number }>
   /** Captura de la ventana de una app a JPEG en `out` (`raw` es el intermedio de macOS). */
   windowShot: (appKey: string, raw: string, out: string, windowIndex: number) => Promise<WindowShotResult>
+  /**
+   * Ubica en la pantalla la ventana que acaba de capturar `windowShot` (solo origen aislado: para convertir píxeles de la imagen en
+   * puntos). `shot` es lo que devolvió `windowShot` y `outPath` el JPEG final. Devuelve `null` si no se puede asegurar que el
+   * rectángulo corresponde a la imagen (falla cerrado: la captura sirve para mirar, no para clics).
+   */
+  locateWindowShot: (appKey: string, windowIndex: number, shot: WindowShotResult, outPath: string) => Promise<WindowLocation | null>
+  /** Marcos visibles actuales de las ventanas de la app (`windows-of`), para volver a comprobar justo antes de actuar. Lanza si no se puede leer. */
+  windowFrames: (appKey: string) => Promise<Rect[]>
   /**
    * Recorta `inPath` (una captura de pantalla completa ya tomada) a la región dada y la agranda
    * `scale` veces, dejando el resultado (JPEG) en `outPath`. Windows: todavía no implementado — lanza

@@ -53,13 +53,53 @@ pub fn primary() -> Option<Monitor> {
     monitors().into_iter().find(|m| m.main)
 }
 
-/// v1: un punto fuera del monitor principal se rechaza (código 11) con un mensaje claro.
-pub fn require_on_primary(x: f64, y: f64) -> crate::exitcode::CuResult<(i32, i32)> {
-    let m = primary().ok_or_else(|| crate::exitcode::CuError::unavailable("No se pudo determinar el monitor principal"))?;
+/// Punto (redondeado) dentro de ALGÚN rectángulo de la lista; las coordenadas pueden ser negativas (monitor a la izquierda/arriba del
+/// principal). Función pura para poder probarla sin monitores reales.
+pub fn point_in_any(rects: &[crate::mask::Rect], x: f64, y: f64) -> Option<(i32, i32)> {
     let (xi, yi) = (x.round() as i32, y.round() as i32);
-    let r = m.rect;
-    if xi < r.x || yi < r.y || (xi as i64) >= r.right() || (yi as i64) >= r.bottom() {
-        return Err(crate::exitcode::CuError::not_allowed("Ese punto está fuera del monitor principal: Control del PC solo actúa en el principal"));
+    rects
+        .iter()
+        .any(|r| xi >= r.x && yi >= r.y && (xi as i64) < r.right() && (yi as i64) < r.bottom())
+        .then_some((xi, yi))
+}
+
+/// El punto tiene que caer dentro de ALGÚN monitor real (código 11 si cae en un hueco entre monitores o fuera de todos).
+/// Sustituye a la antigua restricción «solo monitor principal»; `require_point_controllable` sigue comprobando la app bajo el punto.
+pub fn require_on_monitor(x: f64, y: f64) -> crate::exitcode::CuResult<(i32, i32)> {
+    let rects: Vec<crate::mask::Rect> = monitors().iter().map(|m| m.rect).collect();
+    if rects.is_empty() {
+        return Err(crate::exitcode::CuError::unavailable("No se pudo determinar los monitores"));
     }
-    Ok((xi, yi))
+    point_in_any(&rects, x, y).ok_or_else(|| crate::exitcode::CuError::not_allowed("Ese punto está fuera de todos los monitores"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::point_in_any;
+    use crate::mask::Rect;
+
+    // Principal 1920x1080 en (0,0) y secundario a la izquierda con origen negativo, más bajo (hueco vertical sobre él).
+    fn mons() -> Vec<Rect> {
+        vec![Rect::new(0, 0, 1920, 1080), Rect::new(-1280, 100, 1280, 1024)]
+    }
+
+    #[test]
+    fn acepta_punto_en_monitor_secundario_con_origen_negativo() {
+        assert_eq!(point_in_any(&mons(), -1000.0, 500.0), Some((-1000, 500)));
+        assert_eq!(point_in_any(&mons(), -1280.0, 100.0), Some((-1280, 100)));
+    }
+
+    #[test]
+    fn acepta_punto_en_el_principal() {
+        assert_eq!(point_in_any(&mons(), 10.4, 20.6), Some((10, 21)));
+    }
+
+    #[test]
+    fn rechaza_hueco_entre_monitores_y_fuera_de_todos() {
+        assert_eq!(point_in_any(&mons(), -1000.0, 50.0), None); // encima del secundario, que empieza en y=100
+        assert_eq!(point_in_any(&mons(), 1920.0, 10.0), None); // borde derecho exclusivo
+        assert_eq!(point_in_any(&mons(), -1281.0, 500.0), None);
+        assert_eq!(point_in_any(&mons(), 0.0, 1080.0), None);
+        assert_eq!(point_in_any(&[], 0.0, 0.0), None);
+    }
 }

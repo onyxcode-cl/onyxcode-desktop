@@ -522,3 +522,83 @@ describe.skipIf(isWin)('teclado por teclas físicas (cu-keys, clientes de escrit
     expect(backend.pasteText).toBeUndefined()
   })
 })
+
+describe('macOS: ubicar la ventana capturada (locateWindowShot / windowFrames)', () => {
+  const win = (x: number, y: number, width: number, height: number): Record<string, number> => ({ x, y, width, height })
+  /** Helper falso: `windows-of` con las ventanas dadas y sips que mide el JPEG final. */
+  const mk = (wins: unknown, jpeg = 'pixelWidth: 1366\n  pixelHeight: 768\n') =>
+    rig((cmd, args) => (cmd === '/usr/bin/sips' ? { stdout: jpeg } : args[0] === 'windows-of' ? { stdout: JSON.stringify(wins) } : {}))
+
+  it('elige la ventana por área (de mayor a menor) e índice, y mide el JPEG real con sips', async () => {
+    const { backend, calls } = mk([win(0, 0, 100, 100), win(10, 20, 1400, 800), win(5, 5, 300, 200)])
+    // Índice 0 = la más grande (1400×800); el PNG intermedio mide frame × 2.
+    const loc = await backend.locateWindowShot('com.a.A', 0, { width: 2800, height: 1600 }, '/s/o.jpg')
+    expect(loc).toEqual({
+      rect: { x: 10, y: 20, width: 1400, height: 800 },
+      frame: { x: 10, y: 20, width: 1400, height: 800 },
+      imageWidth: 1366,
+      imageHeight: 768
+    })
+    expect(calls).toEqual([
+      { cmd: '/h/cu-helper', args: ['windows-of', 'com.a.A'] },
+      { cmd: '/usr/bin/sips', args: ['-g', 'pixelWidth', '-g', 'pixelHeight', '/s/o.jpg'] }
+    ])
+    // Índice 1 = la mediana (300×200).
+    const second = await mk([win(0, 0, 100, 100), win(10, 20, 1400, 800), win(5, 5, 300, 200)]).backend.locateWindowShot(
+      'com.a.A',
+      1,
+      { width: 600, height: 400 },
+      '/s/o.jpg'
+    )
+    expect(second?.frame).toEqual({ x: 5, y: 5, width: 300, height: 200 })
+  })
+
+  it('ventana con origen negativo (monitor a la izquierda) se conserva tal cual', async () => {
+    const { backend } = mk([win(-1920, -200, 1000, 700)], 'pixelWidth: 1000\n  pixelHeight: 700\n')
+    const loc = await backend.locateWindowShot('com.a.A', 0, { width: 2000, height: 1400 }, '/s/o.jpg')
+    expect(loc?.rect).toEqual({ x: -1920, y: -200, width: 1000, height: 700 })
+    expect(loc).toMatchObject({ imageWidth: 1000, imageHeight: 700 })
+  })
+
+  it('tolera ±2 px en la comprobación cruzada (frame × 2)', async () => {
+    const { backend } = mk([win(0, 0, 800, 600)])
+    expect(await backend.locateWindowShot('com.a.A', 0, { width: 1602, height: 1198 }, '/s/o.jpg')).not.toBeNull()
+  })
+
+  it('FALLA CERRADO: el tamaño del PNG no cuadra con frame × 2 (no se llama a sips)', async () => {
+    const { backend, calls } = mk([win(0, 0, 800, 600)])
+    expect(await backend.locateWindowShot('com.a.A', 0, { width: 1603, height: 1200 }, '/s/o.jpg')).toBeNull()
+    expect(await backend.locateWindowShot('com.a.A', 0, { width: 1600, height: 1000 }, '/s/o.jpg')).toBeNull()
+    expect(calls.every((c) => c.cmd !== '/usr/bin/sips')).toBe(true)
+  })
+
+  it('FALLA CERRADO: windows-of vacío, índice fuera, ventanas ≤ 40 px, salida rara, helper roto o sips sin medidas', async () => {
+    expect(await mk([]).backend.locateWindowShot('com.a.A', 0, { width: 2, height: 2 }, '/s/o.jpg')).toBeNull()
+    expect(await mk([win(0, 0, 800, 600)]).backend.locateWindowShot('com.a.A', 1, { width: 1600, height: 1200 }, '/s/o.jpg')).toBeNull()
+    expect(await mk([win(0, 0, 40, 600)]).backend.locateWindowShot('com.a.A', 0, { width: 80, height: 1200 }, '/s/o.jpg')).toBeNull()
+    expect(await mk({ no: 'lista' }).backend.locateWindowShot('com.a.A', 0, { width: 1600, height: 1200 }, '/s/o.jpg')).toBeNull()
+    expect(
+      await mk([win(0, 0, 800, 600)], 'nada').backend.locateWindowShot('com.a.A', 0, { width: 1600, height: 1200 }, '/s/o.jpg')
+    ).toBeNull()
+    const roto = rig(() => ({ code: 5 }))
+    expect(await roto.backend.locateWindowShot('com.a.A', 0, { width: 1600, height: 1200 }, '/s/o.jpg')).toBeNull()
+  })
+
+  it('windowFrames devuelve los marcos de windows-of y descarta entradas sin números', async () => {
+    const { backend } = mk([win(1, 2, 3, 4), { x: 'a', y: 0, width: 1, height: 1 }, null, win(-5, 6, 7, 8)])
+    expect(await backend.windowFrames('com.a.A')).toEqual([
+      { x: 1, y: 2, width: 3, height: 4 },
+      { x: -5, y: 6, width: 7, height: 8 }
+    ])
+    await expect(rig(() => ({ code: 5 })).backend.windowFrames('com.a.A')).rejects.toThrow()
+  })
+
+  it('windowShot NO cambia: sigue devolviendo solo lo que dice el helper', async () => {
+    const { backend } = mk([])
+    const r = rig((cmd, args) =>
+      cmd === '/usr/bin/sips' ? {} : args[0] === 'window-shot' ? { stdout: '{"ok":true,"width":800,"height":600}' } : {}
+    )
+    expect(await r.backend.windowShot('com.a.A', '/s/raw.png', '/s/o.jpg', 0)).toEqual({ ok: true, width: 800, height: 600 })
+    expect(backend.windowShot).toBeTypeOf('function')
+  })
+})

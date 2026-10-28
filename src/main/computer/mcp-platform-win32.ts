@@ -22,7 +22,7 @@
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { WIN_CONSENT_MISSING_MARK } from '../../shared/unified-bridge'
-import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Screen } from './mcp-platform'
+import type { AppRef, HelperResult, PlatformBackend, PlatformHost, Rect, Screen, WindowLocation, WindowShotResult } from './mcp-platform'
 import { aumidKey, exeBaseName, exeKey, parseAppKey } from './policy/app-key'
 import { checkKeys, parseCombo as parseWinCombo } from './policy/win-keys'
 import { WIN_EXEMPT_EXES } from './policy/win-apps'
@@ -205,6 +205,15 @@ function realDeps(): Win32Deps {
 interface AppListEntry {
   key: string
   name: string
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v)
+const isPosInt = (v: unknown): v is number => isInt(v) && v > 0
+
+/** Rectángulo del helper validado: enteros (píxeles físicos) y tamaño > 0; `null` si falta algo o no es numérico. */
+function rectFrom(x: unknown, y: unknown, width: unknown, height: unknown): Rect | null {
+  return isInt(x) && isInt(y) && isPosInt(width) && isPosInt(height) ? { x, y, width, height } : null
 }
 
 export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32Deps> = {}): PlatformBackend {
@@ -732,7 +741,36 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
       deps.rm(out)
       throw new Error('window-shot no escribió la imagen')
     }
-    return JSON.parse(stdout) as { width: number; height: number; title?: string }
+    const info = JSON.parse(stdout) as { width: number; height: number; title?: string } & Record<string, unknown>
+    // Campos nuevos del helper (ubicación de la ventana): opcionales; con un helper viejo no vienen y la captura no sirve para clics.
+    const rect = rectFrom(info.x, info.y, info.srcWidth, info.srcHeight)
+    const frame = isRecord(info.frame) ? rectFrom(info.frame.x, info.frame.y, info.frame.width, info.frame.height) : null
+    return { width: info.width, height: info.height, title: info.title, ...(rect ? { rect } : {}), ...(frame ? { frame } : {}) }
+  }
+
+  /** Windows: `window-shot` ya trae el rectángulo de la imagen y el marco visible; `width`/`height` son los del JPEG final. */
+  async function locateWindowShot(
+    _appKey: string,
+    _windowIndex: number,
+    shot: WindowShotResult,
+    _outPath: string
+  ): Promise<WindowLocation | null> {
+    const { rect, frame } = shot
+    if (!rect || !frame) return null
+    if (!isPosInt(shot.width) || !isPosInt(shot.height)) return null
+    return { rect: { ...rect }, frame: { ...frame }, imageWidth: shot.width, imageHeight: shot.height }
+  }
+
+  /** `windows-of` en Windows devuelve el marco visible (`w.frame`) de cada ventana. */
+  async function windowFrames(appKey: string): Promise<Rect[]> {
+    const raw = JSON.parse(await helper('windows-of', appKey)) as unknown
+    if (!Array.isArray(raw)) return []
+    const out: Rect[] = []
+    for (const w of raw as unknown[]) {
+      const r = isRecord(w) ? rectFrom(w.x, w.y, w.width, w.height) : null
+      if (r) out.push(r)
+    }
+    return out
   }
 
   /** F8-B149: todavía no implementado en Windows (necesitaría WIC — IWICBitmapClipper + scaler — probado
@@ -760,9 +798,19 @@ export function createWin32Backend(host: PlatformHost, overrides: Partial<Win32D
     failClosedOnUnknownApp: true,
     parseApp,
     // El helper de Windows trabaja en píxeles físicos del escritorio virtual: la relación punto/píxel es 1 (`dpiScale` es informativo).
-    normalizeScreen: (s: Screen & Record<string, unknown>): Screen => ({ width: s.width, height: s.height, scale: 1, main: s.main }),
+    // Conserva el origen (x, y) si el helper lo da: en el escritorio virtual puede ser negativo (monitor a la izquierda/arriba).
+    normalizeScreen: (s: Screen & Record<string, unknown>): Screen => ({
+      width: s.width,
+      height: s.height,
+      scale: 1,
+      main: s.main,
+      ...(Number.isFinite(s.x) ? { x: s.x } : {}),
+      ...(Number.isFinite(s.y) ? { y: s.y } : {})
+    }),
     captureScreen,
     windowShot,
+    locateWindowShot,
+    windowFrames,
     zoomImage,
     insertAxText,
     resolveApp,

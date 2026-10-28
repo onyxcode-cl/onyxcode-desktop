@@ -168,22 +168,22 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
     let mut rng = Rng::from_clock();
     match cmd {
         Command::Move { x, y } => {
-            let (xi, yi) = screen::require_on_primary(*x, *y)?;
+            let (xi, yi) = screen::require_on_monitor(*x, *y)?;
             apps::require_point_controllable(cache, xi, yi)?;
             apps::require_foreground_controllable(cache)?;
             input::glide(xi, yi, g.instant, &mut rng)?;
             ok()
         }
         Command::Click { x, y, right, count } => {
-            let (xi, yi) = screen::require_on_primary(*x, *y)?;
+            let (xi, yi) = screen::require_on_monitor(*x, *y)?;
             apps::require_point_controllable(cache, xi, yi)?;
             apps::require_foreground_controllable(cache)?;
             input::click(xi, yi, *right, *count, g.instant, &mut rng)?;
             ok()
         }
         Command::Drag { x1, y1, x2, y2 } => {
-            let a = screen::require_on_primary(*x1, *y1)?;
-            let b = screen::require_on_primary(*x2, *y2)?;
+            let a = screen::require_on_monitor(*x1, *y1)?;
+            let b = screen::require_on_monitor(*x2, *y2)?;
             apps::require_point_controllable(cache, a.0, a.1)?;
             apps::require_point_controllable(cache, b.0, b.1)?;
             apps::require_foreground_controllable(cache)?;
@@ -191,7 +191,7 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
             ok()
         }
         Command::Scroll { x, y, dx, dy } => {
-            let (xi, yi) = screen::require_on_primary(*x, *y)?;
+            let (xi, yi) = screen::require_on_monitor(*x, *y)?;
             apps::require_point_controllable(cache, xi, yi)?;
             apps::require_foreground_controllable(cache)?;
             input::scroll(xi, yi, *dx, *dy, g.instant, &mut rng)?;
@@ -393,7 +393,18 @@ fn window_shot(env: &Env, cache: &mut AppCache, app: &AppKey, out: &str, index: 
         let _ = std::fs::remove_file(&out);
     }
     res?;
-    Ok(Output::ok(Json::obj([("ok", Json::Bool(true)), ("width", Json::num(tw)), ("height", Json::num(th)), ("title", Json::str(&w.title))])))
+    Ok(Output::ok(Json::obj([("ok", Json::Bool(true)), ("width", Json::num(tw)), ("height", Json::num(th)), ("title", Json::str(&w.title)),
+        // Dónde está la ventana (coordenadas globales de pantalla) y qué rectángulo se pintó en la imagen: el MCP los usa para
+        // convertir píxeles de la imagen en un punto de pantalla sin capturar la pantalla completa.
+        ("x", Json::num(w.rect.x)),
+        ("y", Json::num(w.rect.y)),
+        ("srcWidth", Json::num(w.rect.w)),
+        ("srcHeight", Json::num(w.rect.h)),
+        (
+            "frame",
+            Json::obj([("x", Json::num(w.frame.x)), ("y", Json::num(w.frame.y)), ("width", Json::num(w.frame.w)), ("height", Json::num(w.frame.h))]),
+        ),
+    ])))
 }
 
 /// Foto de las ventanas visibles con su concesión, de delante hacia atrás. None si la enumeración falla.

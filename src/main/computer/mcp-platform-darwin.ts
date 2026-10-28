@@ -9,7 +9,16 @@ import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
-import type { AppRef, CaptureRequest, HelperResult, PlatformBackend, PlatformHost } from './mcp-platform'
+import type {
+  AppRef,
+  CaptureRequest,
+  HelperResult,
+  PlatformBackend,
+  PlatformHost,
+  Rect,
+  WindowLocation,
+  WindowShotResult
+} from './mcp-platform'
 
 /** Dependencias sustituibles en pruebas (por defecto, las reales de Node). */
 export interface DarwinDeps {
@@ -472,6 +481,50 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     return info
   }
 
+  /** Número finito (los JSON del helper llegan sin validar). */
+  const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+
+  /** Marcos de `windows-of`, descartando lo que no sea un rectángulo con números reales. */
+  async function windowFrames(appKey: string): Promise<Rect[]> {
+    const raw = JSON.parse(await helper('windows-of', appKey)) as unknown
+    if (!Array.isArray(raw)) return []
+    const out: Rect[] = []
+    for (const w of raw as Array<Record<string, unknown>>) {
+      if (w && num(w.x) && num(w.y) && num(w.width) && num(w.height)) out.push({ x: w.x, y: w.y, width: w.width, height: w.height })
+    }
+    return out
+  }
+
+  /**
+   * El helper (`window-shot`) no dice dónde está la ventana, pero `windows-of` sí (mismos puntos globales que los clics). Se elige la
+   * ventana igual que `windowShot` del helper (más de 40×40, de mayor a menor área, por índice) y se COMPRUEBA que el PNG intermedio
+   * mide `frame × 2` (así captura el helper): si no cuadra, la captura no se usa para clics. No cambia `windowShot` ni el helper.
+   */
+  async function locateWindowShot(
+    appKey: string,
+    windowIndex: number,
+    shot: WindowShotResult,
+    outPath: string
+  ): Promise<WindowLocation | null> {
+    try {
+      const frames = (await windowFrames(appKey))
+        .filter((f) => f.width > 40 && f.height > 40)
+        .sort((a, b) => b.width * b.height - a.width * a.height)
+      const frame = Number.isInteger(windowIndex) && windowIndex >= 0 ? frames[windowIndex] : undefined
+      if (!frame) return null
+      // Comprobación cruzada: el helper captura a frame × 2 (config.width = frame.width * 2).
+      if (!num(shot.width) || !num(shot.height)) return null
+      if (Math.abs(shot.width - 2 * frame.width) > 2 || Math.abs(shot.height - 2 * frame.height) > 2) return null
+      const dims = await run(SIPS, ['-g', 'pixelWidth', '-g', 'pixelHeight', outPath])
+      const imageWidth = Number(/pixelWidth:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+      const imageHeight = Number(/pixelHeight:\s*(\d+)/.exec(dims)?.[1] ?? 0)
+      if (!(imageWidth > 0) || !(imageHeight > 0)) return null
+      return { rect: { ...frame }, frame: { ...frame }, imageWidth, imageHeight }
+    } catch {
+      return null
+    }
+  }
+
   async function zoomImage(req: {
     inPath: string
     outPath: string
@@ -525,6 +578,8 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
     normalizeScreen: (s) => s,
     captureScreen,
     windowShot,
+    locateWindowShot,
+    windowFrames,
     zoomImage,
     insertAxText,
     resolveApp,

@@ -838,6 +838,19 @@
         "height": "number",
         "title": "string"
       },
+      "win32Output": {
+        "_note": "Campos opcionales y aditivos que solo da el helper de Windows (el de macOS no los emite): posición global de la ventana y rectángulo de origen de la imagen. El MCP los trata como ausentes si faltan o no son numéricos.",
+        "x": "number",
+        "y": "number",
+        "srcWidth": "number",
+        "srcHeight": "number",
+        "frame": {
+          "x": "number",
+          "y": "number",
+          "width": "number",
+          "height": "number"
+        }
+      },
       "exits": [
         5,
         12
