@@ -87,12 +87,17 @@ interface FullAccessGrant {
   grantedAt: number
 }
 
+/** Tope del registro de carpetas de chat (modo unificado). */
+const MAX_CHAT_FOLDERS = 5000
+
 interface Persisted {
   folders: TasksFolder[]
   /** Carpetas con Control total concedido explícitamente (`tasks:grantFullAccess`). */
   fullAccess: FullAccessGrant[]
   /** Carpetas con "Permitir borrar, mover y renombrar" concedido (Seatbelt: `file-write-unlink`). */
   deleteGrants: string[]
+  /** Modo unificado: rutas REALES creadas por `createChatFolder` en esta instalación (tope `MAX_CHAT_FOLDERS`, las más viejas se olvidan). */
+  chatFolders: string[]
   /** Carpetas adicionales vinculadas a cada espacio (clave: carpeta principal normalizada). */
   linked: Record<string, LinkedFolder[]>
   /** Carpetas de confianza (todos los espacios). */
@@ -355,7 +360,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
 
   private load(): Persisted {
     if (this.data) return this.data
-    let data: Persisted = { folders: [], fullAccess: [], deleteGrants: [], linked: {}, trusted: [] }
+    let data: Persisted = { folders: [], fullAccess: [], deleteGrants: [], chatFolders: [], linked: {}, trusted: [] }
     try {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
@@ -369,6 +374,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         }
         if (Array.isArray(raw.deleteGrants)) {
           data.deleteGrants = raw.deleteGrants.filter((p): p is string => typeof p === 'string')
+        }
+        if (Array.isArray(raw.chatFolders)) {
+          data.chatFolders = raw.chatFolders.filter((p): p is string => typeof p === 'string').slice(-MAX_CHAT_FOLDERS)
         }
         const validFolder = (f: unknown): f is LinkedFolder =>
           !!f &&
@@ -389,7 +397,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       }
     } catch (err) {
       console.error('[tasks] tasks-folders.json inválido:', err)
-      data = { folders: [], fullAccess: [], deleteGrants: [], linked: {}, trusted: [] }
+      data = { folders: [], fullAccess: [], deleteGrants: [], chatFolders: [], linked: {}, trusted: [] }
     }
     this.data = data
     return data
@@ -435,7 +443,32 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   listFolders(): TasksFolder[] {
     return [...this.load().folders]
       .sort((a, b) => (b.lastUsedAt ?? b.approvedAt) - (a.lastUsedAt ?? a.approvedAt))
-      .map((f) => ({ ...f, fullAccess: this.hasFullAccessGrant(f.path) }))
+      .map((f) => {
+        const entry: TasksFolder = { ...f, fullAccess: this.hasFullAccessGrant(f.path) }
+        if (this.isRegisteredChatFolder(f.path)) entry.chat = true
+        else delete entry.chat
+        return entry
+      })
+  }
+
+  /**
+   * Modo unificado: ¿es `folder` una carpeta de chat creada por `createChatFolder` en esta instalación? Exige, con la bandera
+   * encendida y fuera de Windows: (1) la ruta está en el registro persistente `chatFolders` (la FORMA del nombre no basta: una
+   * carpeta del usuario llamada igual no figura ahí), (2) sigue siendo una carpeta real (no un enlace) y su realpath es ella misma,
+   * (3) su realpath queda estrictamente DENTRO de `realpath(~/Lazunox/Chats)`. Lo consume la interfaz para decidir (campo `chat`).
+   */
+  private isRegisteredChatFolder(folder: string): boolean {
+    if (this.win || !isUnifiedAppsEnabled()) return false
+    const data = this.load()
+    if (!data.chatFolders.includes(folder)) return false
+    try {
+      const chats = join(realpathSync(homedir()), 'Lazunox', 'Chats')
+      if (lstatSync(folder).isSymbolicLink() || !lstatSync(folder).isDirectory()) return false
+      const real = realpathSync(folder)
+      return real === folder && real.startsWith(chats + '/') && dirname(real) === chats && realpathSync(chats) === chats
+    } catch {
+      return false
+    }
   }
 
   isApproved(folder: string): boolean {
@@ -543,7 +576,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       }
       try {
         if (realpathSync(dir) !== join(expectedChats, name)) throw new Error(t('merr.chat.folderUnsafe'))
-        return this.approveFolder(dir)
+        const approved = this.approveFolder(dir)
+        const data = this.load()
+        if (!data.chatFolders.includes(approved.path)) {
+          data.chatFolders.push(approved.path)
+          if (data.chatFolders.length > MAX_CHAT_FOLDERS) data.chatFolders = data.chatFolders.slice(-MAX_CHAT_FOLDERS)
+          this.save()
+        }
+        return approved
       } catch (e) {
         // Solo se borra lo recién creado si sigue siendo una carpeta real vacía bajo la ruta esperada (rmdir, nunca recursivo).
         try {
@@ -564,6 +604,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     data.folders = data.folders.filter((x) => x.path !== f)
     data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
     data.deleteGrants = data.deleteGrants.filter((p) => p !== f)
+    data.chatFolders = data.chatFolders.filter((p) => p !== f)
     delete data.linked[f]
     this.save()
     this.network.clearFolder(f)

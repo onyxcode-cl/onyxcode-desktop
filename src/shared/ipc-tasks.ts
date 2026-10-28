@@ -42,6 +42,12 @@ export interface TasksFolder {
   lastUsedAt?: number
   /** Main lo rellena en `listFolders`: la carpeta tiene concedido el Control total del Mac. */
   fullAccess?: boolean
+  /**
+   * Main lo rellena en `listFolders` SOLO con el modo unificado encendido: true si es la carpeta de un chat creada por
+   * `tasks:chatFolder:create` en esta instalación (registro en disco + realpath dentro de `~/Lazunox/Chats`). Ausente = no.
+   * La interfaz decide con esto, nunca por la forma del nombre.
+   */
+  chat?: boolean
 }
 
 export type TasksServerState = 'starting' | 'ready' | 'stopped' | 'error'

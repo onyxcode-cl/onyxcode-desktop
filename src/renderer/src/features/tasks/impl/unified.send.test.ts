@@ -185,6 +185,30 @@ describe('modo unificado: cada chat nuevo sin carpeta tiene su propia carpeta', 
     expect(useTasks.getState().folder).toBe('/Users/x/Lazunox/Chats/abc')
   })
 
+  it('tras REINICIAR (sin ruta en memoria), la carpeta con chat:true se suelta y el siguiente envío crea una NUEVA', async () => {
+    const old = '/Users/x/Lazunox/Chats/anterior'
+    useUnified.setState({ chatFolder: null })
+    useTasks.setState({ folder: old, folders: [{ path: old, name: 'anterior', approvedAt: 1, chat: true }] } as never)
+    newTask()
+    expect(useTasks.getState().folder).toBeNull()
+    await ensureFolderForSend()
+    const connected = h.connectFolder.mock.calls.map((c) => c[0])
+    expect(connected).toHaveLength(1)
+    expect(connected[0]).not.toBe(old)
+    expect(h.cw).toHaveBeenCalledWith('tasks:chatFolder:create')
+  })
+
+  it('una carpeta del usuario con forma …/Lazunox/Chats/x pero chat:false NO se suelta', () => {
+    const mine = '/Users/x/Lazunox/Chats/x'
+    useUnified.setState({ chatFolder: null })
+    useTasks.setState({ folder: mine, folders: [{ path: mine, name: 'x', approvedAt: 1, chat: false }] } as never)
+    newTask()
+    expect(useTasks.getState().folder).toBe(mine)
+    useTasks.setState({ folders: [{ path: mine, name: 'x', approvedAt: 1 }] } as never)
+    newTask()
+    expect(useTasks.getState().folder).toBe(mine)
+  })
+
   it('«Sin carpeta (chat nuevo)» suelta una carpeta elegida y el siguiente envío crea la del chat', async () => {
     useTasks.setState({ folder: '/Users/x/Proyecto' } as never)
     startChatWithoutFolder()

@@ -45,12 +45,14 @@ export function useUnifiedApps(): boolean {
 const normPath = (p: string): string => p.replace(/\\/g, '/').replace(/\/+$/, '')
 
 /**
- * ¿Es la carpeta automática de ESTE chat? Se compara con la ruta real que devolvió `tasks:chatFolder:create` (no por forma),
- * así una carpeta del usuario con nombre parecido no se trata como carpeta de chat. Sirve para decidir.
+ * ¿Es una carpeta automática de chat? Lo decide MAIN (`TasksFolder.chat`, registro persistente + realpath, también tras reiniciar);
+ * la ruta real que devolvió `tasks:chatFolder:create` en esta sesión queda como respaldo. Nunca por forma: una carpeta del usuario
+ * con nombre parecido no se trata como carpeta de chat. Sirve para decidir.
  */
 export function isChatFolderPath(path: string): boolean {
   const known = useUnified.getState().chatFolder
-  return !!known && normPath(known) === normPath(path)
+  if (known && normPath(known) === normPath(path)) return true
+  return (useTasks.getState().folders ?? []).some((f) => f.chat === true && normPath(f.path) === normPath(path))
 }
 
 /** Solo para MOSTRAR un nombre (chats que ya existían tras reiniciar): la forma `…/Lazunox/Chats/<id>`. Nunca para decidir. */

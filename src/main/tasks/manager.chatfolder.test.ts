@@ -231,6 +231,43 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
     expect(m.checkFolder(chats).reason ?? '').not.toContain('Lazunox/Chats')
   })
 
+  it('listFolders marca chat:true solo en carpetas creadas por createChatFolder dentro de Chats', async () => {
+    const m = new TasksManager()
+    const chat = (await m.createChatFolder()).path
+    const chats = join(realpathSync(home), 'Lazunox', 'Chats')
+    // Parecidas por nombre o por forma, pero NO creadas por createChatFolder: aprobadas a mano.
+    const lookalike = join(chats, '20240101-aaaaaa')
+    mkdirSync(lookalike, { mode: 0o700 })
+    const similar = join(realpathSync(home), 'Lazunox', 'Chats-x')
+    mkdirSync(similar, { recursive: true })
+    const outside = join(realpathSync(home), 'Proyecto')
+    mkdirSync(outside)
+    const link = join(chats, 'enlace')
+    symlinkSync(outside, link)
+    for (const p of [lookalike, similar, outside]) m.approveFolder(p)
+    const byPath = new Map(m.listFolders().map((f) => [f.path, f]))
+    expect(byPath.get(chat)?.chat).toBe(true)
+    for (const p of [lookalike, similar, outside]) expect(byPath.get(p)?.chat).not.toBe(true)
+    // Sobrevive al reinicio (registro en disco) y un enlace que apunte a Chats no cuenta.
+    const again = new TasksManager()
+    expect(again.listFolders().find((f) => f.path === chat)?.chat).toBe(true)
+    expect(again.listFolders().find((f) => f.path === link)).toBeUndefined()
+  })
+
+  it('listFolders: el registro no basta si la carpeta pasó a ser un enlace fuera de Chats; sin bandera nunca hay chat', async () => {
+    const m = new TasksManager()
+    const chat = (await m.createChatFolder()).path
+    delete process.env[UNIFIED_APPS_ENV]
+    expect(m.listFolders().find((f) => f.path === chat)?.chat).toBeUndefined()
+    process.env[UNIFIED_APPS_ENV] = '1'
+    expect(m.listFolders().find((f) => f.path === chat)?.chat).toBe(true)
+    const outside = join(root, 'fuera')
+    mkdirSync(outside)
+    rmSync(chat, { recursive: true })
+    symlinkSync(outside, chat)
+    expect(m.listFolders().find((f) => f.path === chat)?.chat).not.toBe(true)
+  })
+
   it('sin bandera: rechaza y no crea nada', async () => {
     delete process.env[UNIFIED_APPS_ENV]
     await expect(new TasksManager().createChatFolder()).rejects.toThrow('apagado')
