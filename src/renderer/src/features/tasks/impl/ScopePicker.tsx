@@ -4,13 +4,13 @@
  * caja de escribir): todos usan `useScope`, que delega en la misma acción `setAccessMode` (no cambia consentimientos ni
  * el diálogo de Control total). El modo Manual/Automático es el `AutoModeChip` de siempre (`tasks:auto:set`).
  */
-import { Check, Loader2, MonitorCog, Shield } from 'lucide-react'
+import { Check, FolderOpen, Loader2, MonitorCog, Shield } from 'lucide-react'
 import { ChipMenu } from '../../../components/ChipMenu'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { AutoModeChip } from './AutoModeChip'
 import { FolderMenu } from './FolderMenu'
-import { setAccessMode } from './actions'
+import { continueInOtherFolder, setAccessMode } from './actions'
 import { useTasks } from './store'
 import { chatFolderDate, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
 import { baseName } from './util'
@@ -48,6 +48,7 @@ export function UnifiedScopeChip({ className = '' }: { className?: string }): Re
   const conn = useTasks((s) => s.conn)
   const requested = useTasks((s) => s.fullAccess)
   const folder = useTasks((s) => s.folder)
+  const chatOpen = useTasks((s) => !!s.activeTaskId)
   const full = conn ? conn.fullAccess : requested
   if (full) {
     return (
@@ -71,6 +72,31 @@ export function UnifiedScopeChip({ className = '' }: { className?: string }): Re
       : isChatFolderForDisplay(folder)
         ? t(date ? 'tasksComputer.unified.chatFolderNameDate' : 'tasksComputer.unified.chatFolderName', { date: date ?? '' })
         : t('tasksComputer.unified.folder', { name: baseName(folder) })
+  // Con un chat abierto el chip es un menú: el chat no cambia de carpeta, se puede seguir en otra con una tarea nueva.
+  if (chatOpen) {
+    return (
+      <ChipMenu
+        name={t('tasksComputer.unified.continueMenu')}
+        valueLabel={label}
+        icon={<Shield size={14} aria-hidden />}
+        value="here"
+        note={t('tasksComputer.unified.continueNote')}
+        testId="unified-scope-chip"
+        labelClass="max-w-[160px] truncate"
+        className={className}
+        options={[
+          {
+            id: 'elsewhere',
+            action: true,
+            label: t('tasksComputer.unified.continueElsewhere'),
+            hint: t('tasksComputer.unified.continueElsewhereHint'),
+            icon: <FolderOpen size={14} aria-hidden />
+          }
+        ]}
+        onSelect={() => void continueInOtherFolder()}
+      />
+    )
+  }
   return (
     <span
       data-testid="unified-scope-chip"

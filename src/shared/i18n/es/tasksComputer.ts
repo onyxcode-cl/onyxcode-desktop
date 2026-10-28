@@ -549,6 +549,11 @@ export const tasksComputer = {
   'tasksComputer.unified.advanced': 'Avanzado: sin aislamiento',
   'tasksComputer.unified.advancedWarn': 'Si lo pulsas, los comandos y archivos de la IA ya no quedarían en una carpeta.',
   'tasksComputer.unified.noIsolation': 'Sin aislamiento (avanzado)',
+  'tasksComputer.unified.continueElsewhere': 'Seguir en otra carpeta…',
+  'tasksComputer.unified.continueElsewhereHint':
+    'Abre una tarea nueva en la carpeta que elijas y deja aquí tu último mensaje para que lo edites.',
+  'tasksComputer.unified.continueNote': 'Este chat se queda donde está; el nuevo empieza en la carpeta que elijas.',
+  'tasksComputer.unified.continueMenu': 'Dónde sigue el trabajo',
   'tasksComputer.unified.noIsolationBack': 'Sin aislamiento: pulsa para volver a trabajar en una carpeta.',
   'tasksComputer.unified.chatFolderError':
     'No se pudo preparar el espacio de este chat: {detail} Tu texto sigue aquí; vuelve a intentarlo o elige una carpeta.'

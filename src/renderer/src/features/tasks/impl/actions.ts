@@ -51,6 +51,7 @@ import {
   CREATE_SKILL_PROMPT,
   buildContinuationPrompt,
   firstUserPrompt,
+  lastUserPrompt,
   buildSideChatSystem,
   suggestedExportName,
   splitAttachments,
@@ -141,6 +142,38 @@ export async function dropFolder(path: string): Promise<void> {
   }
 }
 
+/** Modo unificado: «Seguir en otra carpeta…» espera la aprobación de una carpeta nueva con el borrador a dejar. */
+let continuation: { draft: string } | null = null
+
+/** Conecta la carpeta aislada, abre una tarea nueva vacía y deja el borrador (si lo hay) sin enviarlo. El chat anterior no se toca. */
+async function finishContinue(path: string, draft: string): Promise<void> {
+  useUnified.setState({ wantAuto: false })
+  await connectFolder(path, false)
+  newTask()
+  useTasks.setState({ draft })
+}
+
+/**
+ * Modo unificado, chat ya abierto: un chat nunca cambia de carpeta. Abre el selector del sistema (mismos consentimientos que el inicio)
+ * y en la carpeta elegida empieza una tarea NUEVA con el último mensaje del usuario como borrador. Cancelar no hace nada.
+ */
+export async function continueInOtherFolder(): Promise<void> {
+  const st = useTasks.getState()
+  const draft = st.activeTaskId ? lastUserPrompt(useSessions.getState().messages[st.activeTaskId] ?? []) : ''
+  try {
+    const picked = await cw('tasks:pickFolder')
+    if (!picked) return
+    useTasks.setState({ error: null })
+    if (useTasks.getState().folders.some((f) => f.path === picked)) await finishContinue(picked, draft)
+    else {
+      continuation = { draft }
+      useTasks.setState({ pendingApproval: picked })
+    }
+  } catch (err) {
+    useTasks.setState({ error: errorMessage(err) })
+  }
+}
+
 export async function approvePending(): Promise<void> {
   const folder = useTasks.getState().pendingApproval
   if (!folder) return
@@ -149,13 +182,18 @@ export async function approvePending(): Promise<void> {
     const approved = await cw('tasks:approveFolder', { folder })
     useTasks.setState({ pendingApproval: null })
     await loadFolders()
-    await selectFolder(approved.path)
+    if (continuation) {
+      const c = continuation
+      continuation = null
+      await finishContinue(approved.path, c.draft)
+    } else await selectFolder(approved.path)
   } catch (err) {
     useTasks.setState({ pendingApproval: null, error: errorMessage(err) })
   }
 }
 
 export function cancelPending(): void {
+  continuation = null
   useTasks.setState({ pendingApproval: null })
 }
 

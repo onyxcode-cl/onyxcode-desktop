@@ -548,6 +548,10 @@ export const tasksComputer = {
   'tasksComputer.unified.advanced': 'Advanced: no isolation',
   'tasksComputer.unified.advancedWarn': "If you press it, the AI's commands and files would no longer stay in a folder.",
   'tasksComputer.unified.noIsolation': 'No isolation (advanced)',
+  'tasksComputer.unified.continueElsewhere': 'Continue in another folder…',
+  'tasksComputer.unified.continueElsewhereHint': 'Opens a new task in the folder you choose and leaves your last message for you to edit.',
+  'tasksComputer.unified.continueNote': 'This chat stays where it is; the new one starts in the folder you choose.',
+  'tasksComputer.unified.continueMenu': 'Where the work continues',
   'tasksComputer.unified.noIsolationBack': 'No isolation: press to go back to working in a folder.',
   'tasksComputer.unified.chatFolderError':
     'Could not prepare this chat’s space: {detail} Your text is still here; try again or choose a folder.'

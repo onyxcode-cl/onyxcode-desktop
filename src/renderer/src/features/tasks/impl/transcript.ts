@@ -41,6 +41,12 @@ export function firstUserPrompt(entries: MessageEntry[]): string {
   return first ? userText(first) : ''
 }
 
+/** Texto (sin adjuntos) del ÚLTIMO mensaje del usuario. '' si no hay. */
+export function lastUserPrompt(entries: MessageEntry[]): string {
+  for (let i = entries.length - 1; i >= 0; i--) if (entries[i].info.role === 'user') return userText(entries[i])
+  return ''
+}
+
 // ───────────────────────────── Markdown ─────────────────────────────
 
 function pad(n: number): string {
