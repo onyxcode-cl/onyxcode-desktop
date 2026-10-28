@@ -119,6 +119,14 @@ describe('createChatFolder en win32', () => {
     expect(m.isApproved(f.path.toUpperCase())).toBe(true) // sin distinguir mayúsculas
   })
 
+  it('una carpeta de chat que ya no existe en disco no se lista (no se restaura como «última carpeta»)', async () => {
+    const m = mk()
+    const f = await m.createChatFolder()
+    expect(m.listFolders().map((x) => x.path)).toContain(f.path)
+    disk.dirs.delete(disk.key(f.path))
+    expect(m.listFolders().map((x) => x.path)).not.toContain(f.path)
+  })
+
   it('rechaza si un ancestro (Lazunox) es junction o symlink, y no crea nada', async () => {
     disk.add(`${HOME}\\Lazunox`)
     disk.links.add(disk.key(`${HOME}\\Lazunox`))

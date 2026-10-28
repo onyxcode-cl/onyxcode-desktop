@@ -535,14 +535,34 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   listFolders(): TasksFolder[] {
-    return [...this.load().folders]
-      .sort((a, b) => (b.lastUsedAt ?? b.approvedAt) - (a.lastUsedAt ?? a.approvedAt))
-      .map((f) => {
-        const entry: TasksFolder = { ...f, fullAccess: this.hasFullAccessGrant(f.path) }
-        if (this.isRegisteredChatFolder(f.path)) entry.chat = true
-        else delete entry.chat
-        return entry
-      })
+    return (
+      [...this.load().folders]
+        // Una carpeta de chat registrada que ya no existe en disco (el barrido la borró vacía, o la quitó la persona) no se ofrece ni se
+        // restaura como «última carpeta»: reconectarla fallaba con «no se pudo comprobar que esté libre de enlaces».
+        .filter((f) => !this.isMissingChatFolder(f.path))
+        .sort((a, b) => (b.lastUsedAt ?? b.approvedAt) - (a.lastUsedAt ?? a.approvedAt))
+        .map((f) => {
+          const entry: TasksFolder = { ...f, fullAccess: this.hasFullAccessGrant(f.path) }
+          if (this.isRegisteredChatFolder(f.path)) entry.chat = true
+          else delete entry.chat
+          return entry
+        })
+    )
+  }
+
+  /** Modo unificado: ¿`folder` figura en el registro de carpetas de chat pero ya no existe en disco? */
+  private isMissingChatFolder(folder: string): boolean {
+    if (!this.unifiedOn()) return false
+    const data = this.load()
+    try {
+      if (this.winChatFs && this.win) {
+        const k = winKey(folder)
+        return data.chatFolders.some((p) => winKey(p) === k) && this.winChatFs.lstat(folder) === null
+      }
+      return data.chatFolders.includes(folder) && !existsSync(folder)
+    } catch {
+      return false
+    }
   }
 
   /**

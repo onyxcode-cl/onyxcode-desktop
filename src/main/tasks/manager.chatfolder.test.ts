@@ -96,6 +96,20 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
     expect(m.listFolders().map((x) => x.path)).toContain(f.path)
   })
 
+  it('una carpeta de chat que ya no existe en disco no se lista (no se restaura como «última carpeta»)', async () => {
+    const m = new TasksManager()
+    const f = await m.createChatFolder()
+    expect(m.listFolders().map((x) => x.path)).toContain(f.path)
+    rmSync(f.path, { recursive: true })
+    expect(m.listFolders().map((x) => x.path)).not.toContain(f.path)
+    // una carpeta del usuario aprobada y luego borrada NO se oculta (solo las de chat registradas)
+    const mine = join(root, 'mia')
+    mkdirSync(mine)
+    m.approveFolder(mine)
+    rmSync(mine, { recursive: true })
+    expect(m.listFolders().some((x) => x.path.endsWith('mia'))).toBe(true)
+  })
+
   it('cada llamada crea una carpeta distinta', async () => {
     const m = new TasksManager()
     const ids = new Set<string>()
