@@ -4,6 +4,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.1] - 2026-10-28
+
+### Correcciones
+
+- **«Detener» en un chat aislado ahora deja el control detenido.** Si la IA estaba usando apps de tu equipo, Detener corta la tarea, revoca los permisos de esa sesión y muestra «Control detenido» con el botón «Reanudar control». Si el chat nunca usó apps, Detener sigue siendo solo cortar la tarea.
+- **Al abrir la app ya no falla con una carpeta de chat que se borró.** Antes, si la última carpeta de chat usada ya no existía en el disco (por ejemplo, una vacía que la limpieza automática borró), el chat nuevo terminaba en «No se pudo comprobar que la carpeta esté libre de enlaces» y «El servidor de las tareas no está listo». Ahora esa carpeta simplemente no se ofrece y se crea otra.
+
+### Novedades
+
+- **En Windows, el permiso de Control del PC se puede activar desde el chat.** Si la IA pide una app y Control del PC no está activado, aparece en el propio chat la misma tarjeta de Ajustes (con su casilla «Entiendo» y su botón que se arma unos instantes después), y al activarlo te avisa que vuelvas a pedirle lo que querías.
+- Motor `lazunox.13`, sin cambios.
+
+### Qué no cambia / límites
+
+- **La tarjeta de consentimiento en el chat se probó con pruebas automáticas, no se vio funcionando en la app real de Windows** (el perfil de prueba ya tenía el permiso dado).
+- **El apagador sigue igual:** `LAZUNOX_UNIFIED_APPS=0` (en Windows también `LAZUNOX_UNIFIED_APPS_WIN=0`) devuelve todo a como era en la 1.7.9.
+
 ## [1.8.0] - 2026-10-28
 
 ### Novedades
