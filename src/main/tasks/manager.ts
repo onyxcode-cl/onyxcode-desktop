@@ -32,6 +32,18 @@ import { randomBytes } from 'node:crypto'
 import { basename, dirname, join, relative, resolve, win32 } from 'node:path'
 import { isInside, normalizeDrive, samePath } from '../util/paths'
 import { LEGACY_FOLDER_SCRATCH, LEGACY_PROJECT_DIR } from '../migrations/legacy-names'
+import {
+  CHAT_ID_RE,
+  WinChatUnsafe,
+  createRealWinChatFs,
+  createWinChatDir,
+  isValidWinChatFolder,
+  removeIfEmptyReal,
+  winChatsDir,
+  winContainsChats,
+  winKey,
+  type WinChatFs
+} from './chat-folders-win'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import {
   FULL_ACCESS_NOT_GRANTED,
@@ -247,6 +259,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   private readonly platform: NodeJS.Platform
   /** Solo en win32: contexto de la política (unidades, perfil, enlaces) y `realpath` nativo. */
   private readonly win: WinHost | null
+  private readonly winChatFs: WinChatFs | null
 
   constructor(
     private readonly opts: {
@@ -255,6 +268,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       platform?: NodeJS.Platform
       /** Contexto de Windows (pruebas); por defecto el real. */
       win?: WinHost
+      /** Disco de las carpetas de chat de Windows (pruebas); por defecto el real. Solo cuenta con el modo unificado encendido. */
+      winChatFs?: WinChatFs
       /** Bandera efectiva `tasksWin` y proveedor del backend de Windows (los trae `main`). Ausentes: en Windows no se lanza nada. */
       tasksWin?: boolean
       winBackend?: WinBackendProvider
@@ -269,8 +284,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     super()
     this.platform = opts.platform ?? process.platform
     this.win = this.platform === 'win32' ? (opts.win ?? createRealWinHost({ userData: app.getPath('userData') })) : null
-    // Barrido diferido de carpetas de chat vacías y antiguas (no bloquea el arranque; sin bandera o en Windows no hace nada).
-    if (!this.win && isUnifiedAppsEnabled()) {
+    this.winChatFs = this.win ? (opts.winChatFs ?? createRealWinChatFs(this.win)) : null
+    // Barrido diferido de carpetas de chat vacías y antiguas (no bloquea el arranque; sin bandera no hace nada).
+    if (isUnifiedAppsEnabled()) {
       const timer = setTimeout(() => {
         try {
           this.pruneEmptyChatFolders()
@@ -379,7 +395,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   private readonly chatIndex = new ChatIndexStore(() => join(app.getPath('userData'), 'chat-index.json'))
 
   private chatIndexOn(): boolean {
-    return !this.win && isUnifiedAppsEnabled()
+    return isUnifiedAppsEnabled()
   }
 
   /** ¿Main acepta esta carpeta en el índice? Carpeta de chat registrada o carpeta aprobada por la persona. */
@@ -394,7 +410,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const good = (f: string): boolean => {
       let v = ok.get(f)
       if (v === undefined) {
-        v = this.isIndexableFolder(f) && existsSync(f)
+        v = this.isIndexableFolder(f) && this.isDir(f)
         ok.set(f, v)
       }
       return v
@@ -515,8 +531,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * (3) su realpath queda estrictamente DENTRO de `realpath(~/Lazunox/Chats)`. Lo consume la interfaz para decidir (campo `chat`).
    */
   private isRegisteredChatFolder(folder: string): boolean {
-    if (this.win || !isUnifiedAppsEnabled()) return false
+    if (!isUnifiedAppsEnabled()) return false
     const data = this.load()
+    if (this.winChatFs && this.win) {
+      // Windows: el registro se compara sin distinguir mayúsculas; sin uid/0700 (se confía en la ACL heredada del perfil).
+      const k = winKey(folder)
+      if (!data.chatFolders.some((p) => winKey(p) === k)) return false
+      return isValidWinChatFolder(this.winChatFs, this.win.home(), folder)
+    }
     if (!data.chatFolders.includes(folder)) return false
     try {
       const chats = join(realpathSync(homedir()), 'Lazunox', 'Chats')
@@ -543,7 +565,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * re-abrirían las carpetas de todos los chats. Solo con la bandera y fuera de Windows; compara por ruta real.
    */
   private chatsContainerReason(folder: string): string | null {
-    if (this.win || !isUnifiedAppsEnabled()) return null
+    if (!isUnifiedAppsEnabled()) return null
+    if (this.win && this.winChatFs) return winContainsChats(this.winChatFs, this.win.home(), folder) ? t('merr.chat.containsChats') : null
     let chats: string
     let real: string
     try {
@@ -565,7 +588,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const early = this.win ? this.forbidden(f) : null
     if (early) throw new Error(early)
     if (!this.isDir(f)) throw new Error(t('merr.task.notValidFolder', { folder: f }))
-    const reason = this.win ? null : (this.forbidden(f) ?? this.chatsContainerReason(f))
+    const reason = this.win ? this.chatsContainerReason(f) : (this.forbidden(f) ?? this.chatsContainerReason(f))
     if (reason) throw new Error(reason)
     const data = this.load()
     let entry = data.folders.find((x) => x.path === f)
@@ -586,10 +609,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    */
   async createChatFolder(): Promise<TasksFolder> {
     if (!isUnifiedAppsEnabled()) throw new Error(t('merr.chat.unifiedOff'))
-    if (this.platform === 'win32') throw new Error(t('merr.chat.unifiedWin'))
     // Misma condición que `app:info` (falla cerrado): si la política apaga Control del PC, no se crea nada.
     if (isComputerUseDisabled(loadManagedPolicy())) throw new Error(t('merr.chat.computerUseOff'))
     await this.refreshPolicy()
+    if (this.win && this.winChatFs) return this.createWinChatFolder(this.win, this.winChatFs)
     const home = homedir()
     const base = join(home, 'Lazunox')
     const chats = join(base, 'Chats')
@@ -654,6 +677,32 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     throw new Error(t('merr.chat.folderUnsafe'))
   }
 
+  /** Windows: ver `chat-folders-win.ts` (cadena de ancestros sin enlaces ni junctions, realpath exacto, sin uid/0700). */
+  private createWinChatFolder(win: WinHost, fs: WinChatFs): TasksFolder {
+    const home = win.home()
+    if (!home) throw new Error(t('merr.chat.folderUnsafe'))
+    let dir: string
+    try {
+      dir = createWinChatDir(fs, home, (chats) => this.forbidden(chats))
+    } catch (e) {
+      if (e instanceof WinChatUnsafe) throw new Error(t('merr.chat.folderUnsafe'))
+      throw e
+    }
+    try {
+      const approved = this.approveFolder(dir)
+      const data = this.load()
+      if (!data.chatFolders.includes(approved.path)) {
+        data.chatFolders.push(approved.path)
+        if (data.chatFolders.length > MAX_CHAT_FOLDERS) data.chatFolders = data.chatFolders.slice(-MAX_CHAT_FOLDERS)
+        this.save()
+      }
+      return approved
+    } catch (err) {
+      removeIfEmptyReal(fs, dir, winChatsDir(win.realpath(home)))
+      throw err
+    }
+  }
+
   /**
    * Modo unificado: borra las carpetas de chat creadas por `createChatFolder` que quedaron VACÍAS (la persona nunca escribió nada).
    * Solo con la bandera y fuera de Windows. Una carpeta se borra únicamente si TODO se cumple: está en el registro y
@@ -663,7 +712,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * `now` es inyectable para las pruebas. Devuelve los ids borrados.
    */
   pruneEmptyChatFolders(now: number = Date.now()): string[] {
-    if (this.win || !isUnifiedAppsEnabled()) return []
+    if (!isUnifiedAppsEnabled()) return []
     const removed: string[] = []
     const uid = typeof process.getuid === 'function' ? process.getuid() : undefined
     let indexed: Set<string>
@@ -679,26 +728,30 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     for (const f of [...data.chatFolders]) {
       if (removed.length >= PRUNE_MAX_PER_SWEEP || checked >= PRUNE_MAX_PER_SWEEP * 5) break
       checked++
-      const id = basename(f)
+      const id = this.win ? win32.basename(f) : basename(f)
       try {
         if (!this.isRegisteredChatFolder(f) || indexed.has(f) || busy.has(f)) continue
-        const m = /^(\d{4})(\d{2})(\d{2})-[0-9a-f]{6}$/.exec(id)
+        const m = CHAT_ID_RE.exec(id)
         if (!m) continue
         const idTime = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime()
+        if (this.win && this.winChatFs) {
+          // Windows: birthtime de NTFS y `rmdir` no recursivo; sin uid (ACL heredada del perfil).
+          const ws = this.winChatFs.lstat(f)
+          if (!ws || ws.isSymbolicLink() || !ws.isDirectory()) continue
+          if (!(now - idTime > PRUNE_MIN_AGE_MS && now - ws.mtimeMs > PRUNE_MIN_AGE_MS && now - ws.birthtimeMs > PRUNE_MIN_AGE_MS)) continue
+          if (this.winChatFs.readdir(f).length !== 0) continue
+          this.winChatFs.rmdir(f)
+          this.forgetChatFolder(data, f)
+          removed.push(id)
+          continue
+        }
         const st = lstatSync(f)
         if (st.isSymbolicLink() || !st.isDirectory()) continue
         if (uid !== undefined && st.uid !== uid) continue
         if (!(now - idTime > PRUNE_MIN_AGE_MS && now - st.mtimeMs > PRUNE_MIN_AGE_MS && now - st.birthtimeMs > PRUNE_MIN_AGE_MS)) continue
         if (readdirSync(f).length !== 0) continue
         rmdirSync(f) // nunca recursivo: si no está vacía, lanza y se deja
-        data.folders = data.folders.filter((x) => x.path !== f)
-        data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
-        data.deleteGrants = data.deleteGrants.filter((p) => p !== f)
-        data.chatFolders = data.chatFolders.filter((p) => p !== f)
-        delete data.linked[f]
-        this.save()
-        this.network.clearFolder(f)
-        tasksRules.removeFolder(f)
+        this.forgetChatFolder(data, f)
         removed.push(id)
         console.warn(`[tasks] carpeta de chat vacía eliminada: ${id}`)
       } catch {
@@ -706,6 +759,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       }
     }
     return removed
+  }
+
+  private forgetChatFolder(data: Persisted, f: string): void {
+    data.folders = data.folders.filter((x) => x.path !== f)
+    data.fullAccess = data.fullAccess.filter((g) => g.path !== f)
+    data.deleteGrants = data.deleteGrants.filter((p) => p !== f)
+    data.chatFolders = data.chatFolders.filter((p) => p !== f)
+    delete data.linked[f]
+    this.save()
+    this.network.clearFolder(f)
+    tasksRules.removeFolder(f)
   }
 
   async removeFolder(folder: string): Promise<void> {
@@ -826,7 +890,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (early) return { ok: false, normalized, reason: early }
     }
     if (!this.isDir(normalized)) return { ok: false, normalized, reason: t('merr.task.notValidFolder', { folder: normalized }) }
-    const reason = this.win ? null : (this.forbidden(normalized) ?? this.chatsContainerReason(normalized))
+    const reason = this.win ? this.chatsContainerReason(normalized) : (this.forbidden(normalized) ?? this.chatsContainerReason(normalized))
     return reason ? { ok: false, normalized, reason } : { ok: true, normalized }
   }
 

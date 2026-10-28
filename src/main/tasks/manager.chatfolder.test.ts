@@ -276,9 +276,10 @@ describe.skipIf(!macOnly)('createChatFolder', () => {
 })
 
 describe('createChatFolder en Windows', () => {
-  it('rechaza con el aviso de que no está disponible', async () => {
+  it('sin bandera rechaza y no toca el disco; con bandera la versión Windows está en manager.chatfolder.win.test.ts', async () => {
+    delete process.env[UNIFIED_APPS_ENV]
     const win = { refresh: async () => undefined } as never
     const m = new TasksManager({ platform: 'win32', win })
-    await expect(m.createChatFolder()).rejects.toThrow('Windows')
+    await expect(m.createChatFolder()).rejects.toThrow('apagado')
   })
 })
