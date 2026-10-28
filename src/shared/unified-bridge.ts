@@ -24,14 +24,15 @@ export const UNIFIED_APPS_WIN_ENV = 'LAZUNOX_UNIFIED_APPS_WIN'
 
 /**
  * ¿Está encendido el modo unificado en esa plataforma? Desde la 1.8 viene ENCENDIDO por defecto en macOS y Windows; el apagador es
- * `LAZUNOX_UNIFIED_APPS=0` (en Windows también `LAZUNOX_UNIFIED_APPS_WIN=0`). Cualquier otro valor lo deja encendido. Otra plataforma: apagado.
+ * `LAZUNOX_UNIFIED_APPS=0` (en Windows también `LAZUNOX_UNIFIED_APPS_WIN=0`). Cualquier otro valor lo deja encendido. Otra plataforma: solo con `LAZUNOX_UNIFIED_APPS=1`.
  * En Windows además hace falta (fuera de aquí) Control del PC + Tareas aisladas por WSL y Lazunox sin elevar.
  */
 export function isUnifiedAppsEnabledFor(platform: NodeJS.Platform, env: Record<string, string | undefined> = process.env): boolean {
   if (env[UNIFIED_APPS_ENV] === '0') return false
   if (platform === 'darwin') return true
   if (platform === 'win32') return env[UNIFIED_APPS_WIN_ENV] !== '0'
-  return false
+  // Otras plataformas (no se distribuye ahí; sirve a las pruebas en Linux): solo con el valor exacto `1`.
+  return env[UNIFIED_APPS_ENV] === '1'
 }
 
 /** ¿Está encendido el puente en ESTA plataforma? (ver `isUnifiedAppsEnabledFor`). */

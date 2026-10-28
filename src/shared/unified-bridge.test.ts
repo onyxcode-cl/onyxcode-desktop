@@ -17,7 +17,8 @@ describe('isUnifiedAppsEnabledFor (encendido por defecto, se apaga con =0)', () 
     ['win32', { [W]: '0' }, false],
     ['win32', { [A]: '0', [W]: '1' }, false],
     ['linux', {}, false],
-    ['linux', { [A]: '1', [W]: '1' }, false]
+    ['linux', { [A]: '1' }, true],
+    ['linux', { [A]: '0' }, false]
   ]
   it.each(table)('%s %j => %s', (platform, env, expected) => {
     expect(isUnifiedAppsEnabledFor(platform, env)).toBe(expected)
