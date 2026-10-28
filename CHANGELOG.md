@@ -4,6 +4,29 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.2] - 2026-10-28
+
+### Novedades
+
+- **Un permiso por app basta para manejarla.** En Overdrive, si en la tarjeta le das «Ver y clic» o «Control total» a una app, la IA puede usar el ratón y el teclado reales sobre ESA app, sin pedirte una segunda tarjeta. Sigue acotado: solo sobre apps concedidas, teclear y pulsar teclas exigen «Control total», «Solo ver» nunca da ratón, y Detener lo quita.
+- **La IA pide el nivel justo.** Para mirar pide «Solo ver»; para manejar una app (cambiar una canción, teclear, abrir) pide «Control total» solo de esa app. Si le pides control de todo el equipo, o la tarea lo necesita de verdad, te muestra el botón para pasar a «El computador completo» y confirmas tú. Antes, por un error nuestro, la IA no sabía ofrecer ese botón y se enredaba.
+- **Clic en cualquier monitor.** La app que quieres manejar puede estar en otra pantalla: la IA mira la ventana con una captura y hace clic sobre esa imagen. Antes fallaba con «Coordenadas fuera de la pantalla».
+- **Windows: el helper nuevo** ya permite clics en monitores que no son el principal, y informa dónde está la ventana capturada.
+
+### Correcciones
+
+- **El Finder y el Explorador no se manejan con el ratón y el teclado reales con el permiso de una app.** Desde ahí se podría abrir un archivo y ejecutarlo fuera del aislamiento; para eso sigue haciendo falta la tarjeta explícita de «tomar el control».
+- **Traer una app al frente exige «Control total» de esa app.** Con menos, se abre en segundo plano.
+- **Atajos del sistema bloqueados** (los que llevan el foco a los menús de la barra de menús o activan VoiceOver).
+- **Si dos ventanas de la misma app miden lo mismo, la IA no hace clic a ciegas en una**, y una captura que falla ya no deja vigente la anterior.
+
+### Qué no cambia / límites
+
+- **El caso de varios monitores solo se probó con pruebas automáticas (helper falso).** En un Windows real se probó el clic con un solo monitor. No se ha visto con un segundo monitor de verdad.
+- **Las pruebas en Rust de los monitores del helper de Windows no se han ejecutado** (solo compilan). Una prueba de contrato del helper que ya fallaba antes sigue fallando.
+- **No se probó con una IA real en el Mac** (el modelo gratuito no respondía); sí con OpenCode Go en Windows.
+- Motor `lazunox.13`, sin cambios. El apagador sigue igual: `LAZUNOX_UNIFIED_APPS=0` (en Windows también `LAZUNOX_UNIFIED_APPS_WIN=0`).
+
 ## [1.8.1] - 2026-10-28
 
 ### Correcciones
