@@ -42,12 +42,17 @@ export class ChatIndexStore {
           const k = `${x.folder}\0${x.sessionId}`
           if (seen.has(k)) continue
           seen.add(k)
-          out.push({ folder: x.folder, sessionId: x.sessionId, title: cleanChatTitle(x.title), updatedAt: x.updatedAt })
+          out.push({
+            folder: x.folder,
+            sessionId: x.sessionId,
+            title: cleanChatTitle(x.title),
+            updatedAt: Math.min(x.updatedAt, Date.now() + 86_400_000)
+          })
         }
         out = this.trim(out)
       }
     } catch (err) {
-      console.error('[tasks] chat-index.json inválido:', err)
+      console.error('[tasks] chat-index.json inválido:', err instanceof Error ? err.name : 'error')
       out = []
     }
     this.entries = out

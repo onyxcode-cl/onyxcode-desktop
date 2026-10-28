@@ -468,6 +468,8 @@ export function TaskList(): React.JSX.Element {
   const more = useSessions((s) => (folder ? !!s.moreSessions[sessionsKey(dirKey, baseUrl)] : false))
   const query = useTasks((s) => s.listQuery)
   const fullAccess = useTasks((s) => !!s.conn?.fullAccess)
+  // Solo se indexa con la conexión lista y aislada: durante `starting` (conn null) aún pueden verse sesiones de Control total.
+  const isolatedReady = useTasks((s) => !!s.conn && !s.conn.fullAccess)
   const indexEntries = useChatIndex((s) => s.entries)
   const opening = useChatIndex((s) => s.opening)
   const openError = useChatIndex((s) => s.error)
@@ -508,11 +510,11 @@ export function TaskList(): React.JSX.Element {
     if (unifiedOn) void loadChatIndex()
   }, [unifiedOn])
   useEffect(() => {
-    if (!unifiedOn || !folder || fullAccess) return
+    if (!unifiedOn || !folder || fullAccess || !isolatedReady) return
     for (const s of liveTasks) {
       if (!s.parentID) syncChatSession({ folder, sessionId: s.id, title: s.title ?? '', updatedAt: s.time.updated })
     }
-  }, [unifiedOn, folder, fullAccess, liveTasks])
+  }, [unifiedOn, folder, fullAccess, isolatedReady, liveTasks])
 
   const source = showArchived ? archivedTasks : liveTasks
   const q = query.trim()

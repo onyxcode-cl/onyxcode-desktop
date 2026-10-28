@@ -649,7 +649,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     data.chatFolders = data.chatFolders.filter((p) => p !== f)
     delete data.linked[f]
     this.save()
-    this.chatIndex.remove(f)
+    try {
+      this.chatIndex.remove(f)
+    } catch (err) {
+      console.error('[tasks] no se pudo limpiar el índice de chats:', err instanceof Error ? err.message : err)
+    }
     this.network.clearFolder(f)
     tasksRules.removeFolder(f)
   }
