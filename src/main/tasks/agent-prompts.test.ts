@@ -27,11 +27,13 @@ describe('prompts de agente', () => {
     expect(read('tasks')).toContain('**Necesita Control total del Mac**')
   })
 
-  it('la instrucción del modo unificado conserva la salida a «El computador completo» y pide el nivel full desde la primera tarjeta', () => {
+  it('la instrucción del modo unificado conserva la salida a «El computador completo» y pide el nivel justo por app', () => {
     expect(UNIFIED_APPS_PROMPT).toContain(ESCALATE_MARKER)
     expect(UNIFIED_APPS_PROMPT).toContain('control completo del ordenador')
     expect(UNIFIED_APPS_PROMPT).toContain('como última línea')
-    expect(UNIFIED_APPS_PROMPT).toMatch(/nivel `full` en la PRIMERA tarjeta/)
+    expect(UNIFIED_APPS_PROMPT).toContain('Pide el nivel justo POR APP')
+    expect(UNIFIED_APPS_PROMPT).toContain('basta para manejar ESA app')
+    expect(UNIFIED_APPS_PROMPT).toContain('No pidas control de todo el equipo para algo que es de una sola app')
     expect(UNIFIED_APPS_PROMPT).toContain('No cambies tú el modo')
   })
 
@@ -199,7 +201,7 @@ describe('instrucción de apps del modo unificado', () => {
     ]) {
       expect(t).toContain(x)
     }
-    expect(t).toContain('ratón y del teclado reales')
+    expect(t).toContain('ratón y el teclado reales')
     expect(t).not.toMatch(/paridad|mejor que/i)
   })
 

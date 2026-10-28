@@ -807,6 +807,20 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           this.emit('foreground', { sessionId: pending.sessionId })
         }
       }
+      // Servidor aislado (modo unificado): no hay plan, pero la tarjeta ya ES la aprobación por app. Si la persona concedió «Ver y clic» o
+      // «Control total» a alguna app, esa sesión puede usar el ratón y el teclado reales SOBRE ESA APP, sin una segunda tarjeta. El alcance lo
+      // siguen fijando las comprobaciones de nivel por app (`requireTier`: la app al frente / bajo el puntero debe tener el nivel que pide la
+      // acción), así que no se puede actuar sobre una app sin concesión. Detener, revocar o terminar la sesión lo quitan igual que al takeover.
+      if (
+        !pending.plan &&
+        pending.kind !== 'takeover' &&
+        pending.sessionId &&
+        this.isBridgeSession(pending.sessionId) &&
+        Object.values(map).some((d) => d === 'click' || d === 'full')
+      ) {
+        this.foregroundSessions.add(pending.sessionId)
+        this.emit('foreground', { sessionId: pending.sessionId })
+      }
       // Lote C: tarjeta "¿Tomar el control de la pantalla?" (`request_full_control`) aprobada:
       // la sesión pasa a controlar el ratón y el teclado en modo segundo plano hasta que termine
       // (revokePlan/stop la quitan de `foregroundSessions`).

@@ -19,8 +19,8 @@ Esta instrucción tiene prioridad sobre cualquier frase anterior que diga que en
 - Las apps bloqueadas no se pueden usar de ninguna forma: no las rodees con otra herramienta, un comando u otra app, y no vuelvas a pedirlas.
 - En segundo plano solo hay accesibilidad: puedes leer y operar la app sin tomar el ratón real.
 - Solo puedes capturar apps concedidas, con \`computer_app_screenshot\`: la captura de pantalla completa y el zoom de pantalla se rechazan, y las acciones no adjuntan capturas de pantalla.
-- Si vas a teclear, pulsar teclas, abrir una app o reproducir algo, pide el nivel \`full\` en la PRIMERA tarjeta: pedir \`click\` y luego subirlo obliga a la persona a aprobar dos veces.
-- No pidas control del ratón y del teclado reales salvo que de verdad haga falta.
+- Pide el nivel justo POR APP: \`view\` para mirar o leer (qué suena, qué dice una ventana); \`full\` solo para la app que vas a manejar (cambiar la canción, teclear, pulsar teclas, abrir o traer al frente). Un \`full\` de UNA app basta para manejar ESA app con el ratón y el teclado reales: tras la aprobación no hace falta \`computer_request_full_control\` ni otra tarjeta. Si ya tienes \`view\` y ahora hay que actuar, vuelve a llamar a \`computer_request_access\` pidiendo \`full\` solo para esa app, con el motivo.
+- El control de una app no vale para otras: cada una se pide aparte. No pidas control de todo el equipo para algo que es de una sola app.
 - Si la persona te pide expresamente el control completo del ordenador (por ejemplo «toma el control completo»), o la tarea necesita algo que este modo no permite (la pantalla entera, varias pantallas, una app que ya agotó sus niveles), NO sigas buscando rodeos con las herramientas de aquí. Termina el turno con una frase del motivo y, como última línea, \`[[LAZUNOX:NEEDS_FULL_CONTROL]]\`: la interfaz le mostrará un botón para que ELLA confirme el cambio a «El computador completo». No cambies tú el modo ni pidas permisos por otra vía, y no escribas ese marcador en ningún otro caso.
 `
 
