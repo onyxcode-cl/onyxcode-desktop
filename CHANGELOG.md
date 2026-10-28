@@ -23,7 +23,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **En Windows, el permiso de Control del PC se activa en Ajustes**, no desde el propio chat.
 - **El botón Detener de un chat aislado corta la tarea, pero no deja el control en «detenido»** como en el modo avanzado.
 - **Entre dos sesiones del mismo servidor aislado** la validación de la sesión es más débil que entre chats distintos.
-- Probado con una IA real en Mac y en el PC con Windows (tarjeta, denegar, tres chats a la vez);.
+- Probado con una IA real en Mac y en el PC con Windows (tarjeta, denegar, tres chats a la vez).
 
 ## [1.7.9] - 2026-10-27
 
