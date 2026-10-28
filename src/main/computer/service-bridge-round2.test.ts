@@ -528,3 +528,93 @@ describe.skipIf(!posixOnly)(
     })
   }
 )
+
+describe.skipIf(!posixOnly)(
+  'G2: el control por tarjeta de una app no alcanza al Finder, no activa apps de menos nivel y no abre atajos del sistema',
+  () => {
+    const FINDER = { name: 'Finder', bundleId: 'com.apple.finder' }
+    const SPOT = { name: 'Spotify', bundleId: 'com.spotify.client' }
+
+    /** Concede por la herramienta REAL (la sesión queda reclamada) varias apps con su nivel, en una sola tarjeta. */
+    async function askMany(
+      m: McpProc,
+      session: string,
+      items: Array<{ app: { name: string; bundleId: string }; tier: 'view' | 'click' | 'full' }>
+    ) {
+      const cards: Array<{ id: string }> = []
+      svc.on('requestAccess', (r) => cards.push(r))
+      const pending = m.call(
+        'request_access',
+        { apps: items.map((i) => i.app.name), levels: items.map((i) => i.tier), reason: 'probar', lazunox_session: session },
+        hdr()
+      )
+      await vi.waitFor(() => expect(cards.length).toBeGreaterThan(0))
+      svc.resolveAccessRequest(
+        cards[0].id,
+        items.map((i) => ({ bundleId: i.app.bundleId, name: i.app.name, decision: i.tier }))
+      )
+      await pending
+      svc.removeAllListeners('requestAccess')
+    }
+
+    it('Finder con «Ver y clic»/«Control total» por tarjeta: el doble clic y las teclas reales se rechazan (hay que pedir request_full_control)', async () => {
+      const m = await mcpFor({ app: FINDER, front: FINDER })
+      await askMany(m, SES, [{ app: FINDER, tier: 'full' }])
+      const dbl = await m.call('double_click', { x: 10, y: 10, lazunox_session: SES }, hdr())
+      expect(dbl.isError).toBe(true)
+      expect(textOf(dbl)).toContain('request_full_control')
+      const key = await m.call('key', { keys: 'return', lazunox_session: SES }, hdr())
+      expect(key.isError).toBe(true)
+      expect(m.calls().some((c) => c.cmd === 'click' || c.cmd === 'key')).toBe(false)
+    })
+
+    it('aunque otra app de la MISMA tarjeta dé el control (Spotify «full»), el Finder concedido sigue sin ratón ni teclado reales', async () => {
+      const m = await mcpFor({ app: FINDER, front: FINDER })
+      await askMany(m, SES, [
+        { app: SPOT, tier: 'full' },
+        { app: FINDER, tier: 'click' }
+      ])
+      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).toBe(true)
+      expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
+    })
+
+    it('con una toma de control EXPLÍCITA (request_full_control aprobado) el Finder concedido sí se maneja, como antes', async () => {
+      const m = await mcpFor({ app: FINDER, front: FINDER })
+      await askMany(m, SES, [{ app: FINDER, tier: 'click' }])
+      giveControl(SES)
+      expect((await m.call('left_click', { x: 10, y: 10, lazunox_session: SES }, hdr())).isError).not.toBe(true)
+    })
+
+    it('open_application de una app con solo «Solo ver» NO la activa aunque la sesión tenga el control por otra app', async () => {
+      const m = await mcpFor({ app: NOTES, front: NOTES })
+      await askMany(m, SES, [
+        { app: SPOT, tier: 'full' },
+        { app: NOTES, tier: 'view' }
+      ])
+      const r = await m.call('open_application', { name: 'Notes', lazunox_session: SES }, hdr())
+      expect(r.isError, textOf(r)).not.toBe(true)
+      const cmds = m.calls().map((c) => c.cmd)
+      expect(cmds).toContain('open-app-bg')
+      expect(cmds).not.toContain('open-app')
+    })
+
+    it('open_application de la app con «Control total» sí la activa', async () => {
+      const m = await mcpFor({ app: NOTES, front: NOTES })
+      await askMany(m, SES, [{ app: NOTES, tier: 'full' }])
+      const r = await m.call('open_application', { name: 'Notes', lazunox_session: SES }, hdr())
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(m.calls().map((c) => c.cmd)).toContain('open-app')
+    })
+
+    it.each(['ctrl+f2', 'ctrl+f8', 'cmd+f5', 'cmd+alt+f5'])(
+      'la combinación %s (menús de estado, VoiceOver) se bloquea en origen aislado',
+      async (keys) => {
+        const m = await mcpFor({ app: NOTES, front: NOTES })
+        await askMany(m, SES, [{ app: NOTES, tier: 'full' }])
+        const r = await m.call('key', { keys, lazunox_session: SES }, hdr())
+        expect(r.isError).toBe(true)
+        expect(keyCalls(m)).toEqual([])
+      }
+    )
+  }
+)

@@ -283,6 +283,12 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * (`request_full_control` aprobado). Se limpia en `revokePlan`, `stop()` y `dispose()`.
    */
   private readonly foregroundSessions = new Set<string>()
+  /**
+   * Servidor aislado: sesiones con el ratón y el teclado reales obtenidos SOLO por la tarjeta de una app («Ver y clic»/«Control total»),
+   * sin `request_full_control`. Es un control acotado a las apps concedidas: el MCP lo rechaza sobre el Finder/Explorador (desde ahí se
+   * puede ejecutar un script o arrastrar archivos fuera del aislamiento), que sí exigen la tarjeta explícita de toma de control.
+   */
+  private readonly scopedControl = new Set<string>()
   /** Lote C: pasos de Teach mode pendientes de "Siguiente"/"Salir de la guía". */
   private readonly pendingTeach = new Map<string, { resolve: (a: 'next' | 'exit') => void }>()
   /**
@@ -712,9 +718,16 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
    * segundo plano) siempre es así; en segundo plano, solo tras un `request_full_control` aprobado
    * para esa sesión (`foregroundSessions`). Sin sesión: si hay ALGUNA sesión con el control.
    */
+  /** ¿Esa sesión solo tiene el control acotado por tarjeta de app (sin toma de control explícita)? */
+  isScopedOnly(sessionId?: string): boolean {
+    return !!sessionId && this.scopedControl.has(sessionId) && !this.foregroundSessions.has(sessionId)
+  }
+
   isForeground(sessionId?: string, isolated = false): boolean {
     // Servidor aislado: la preferencia global «Control de la pantalla» no le da el ratón; solo un `request_full_control` aprobado de SU sesión.
-    if (isolated || this.isBridgeSession(sessionId)) return !!sessionId && this.foregroundSessions.has(sessionId)
+    if (isolated || this.isBridgeSession(sessionId)) {
+      return !!sessionId && (this.foregroundSessions.has(sessionId) || this.scopedControl.has(sessionId))
+    }
     if (this.prefs.get().mode === 'full') return true
     return sessionId ? this.foregroundSessions.has(sessionId) : this.foregroundSessions.size > 0
   }
@@ -818,7 +831,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         this.isBridgeSession(pending.sessionId) &&
         Object.values(map).some((d) => d === 'click' || d === 'full')
       ) {
-        this.foregroundSessions.add(pending.sessionId)
+        this.scopedControl.add(pending.sessionId)
         this.emit('foreground', { sessionId: pending.sessionId })
       }
       // Lote C: tarjeta "¿Tomar el control de la pantalla?" (`request_full_control`) aprobada:
@@ -886,6 +899,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
   revokePlan(sessionId: string): void {
     const hadPlan = this.approvedPlans.delete(sessionId)
     this.foregroundSessions.delete(sessionId)
+    this.scopedControl.delete(sessionId)
     this.revokeAutoView(sessionId)
     this.sessionGrants.delete(sessionId)
     this.sessionOwner.delete(sessionId)
@@ -1120,6 +1134,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
     // Lote C: limpia también el control en segundo plano y el "Solo ver" efímero de CUALQUIER
     // sesión (no solo las que tenían un plan aprobado) y cierra Teach mode si estaba activo.
     this.foregroundSessions.clear()
+    this.scopedControl.clear()
     this.autoView.clear()
     this.sessionGrants.clear()
     this.sessionDenied.clear()
@@ -1440,7 +1455,13 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
           res.statusCode = 200
           res.setHeader('content-type', 'application/json')
           res.setHeader('cache-control', 'no-store')
-          res.end(JSON.stringify({ mode: this.prefs.get().mode, foreground: this.isForeground(session, cq.get('isolated') === '1') }))
+          res.end(
+            JSON.stringify({
+              mode: this.prefs.get().mode,
+              foreground: this.isForeground(session, cq.get('isolated') === '1'),
+              scoped: cq.get('isolated') === '1' && this.isScopedOnly(session)
+            })
+          )
           return
         }
         if (req.method === 'POST' && req.url === `${path}/bridge-check`) {

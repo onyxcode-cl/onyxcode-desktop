@@ -323,8 +323,26 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
     }
     return undefined // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
   }
+  // Origen aislado con el control acotado por la tarjeta de una app (sin toma de control): el Finder/Explorador no se manejan con el ratón
+  // ni el teclado reales (doble clic en un script, arrastrar a LaunchAgents…): eso exige la tarjeta explícita de `request_full_control`.
+  if (isolatedCall && known.some((a) => isFileManagerApp(a.bundleId))) {
+    const { scoped } = await controlMode(session)
+    if (scoped) {
+      reportBridgeDenied('file-manager', session)
+      throw new Error(
+        'El Finder/Explorador de archivos no se maneja con el ratón y el teclado reales con el permiso de una app: ' +
+          'si de verdad hace falta, llama a request_full_control y espera la respuesta del usuario; si no, usa app_find/app_press.'
+      )
+    }
+  }
   for (const a of known) await ensureTier(a, minTier, session)
   return front
+}
+
+/** Gestores de archivos (Finder, Explorador de Windows): desde ellos se abren y ejecutan archivos. */
+function isFileManagerApp(bundleId: string | undefined): boolean {
+  const id = (bundleId ?? '').toLowerCase()
+  return id === 'com.apple.finder' || id.includes('explorer.exe')
 }
 
 /**
@@ -346,15 +364,15 @@ async function requireTierFor(app: AppRef, minTier: AppTier, session?: string): 
 
 const BACKGROUND_REJECT_MSG = 'Modo segundo plano: usa app_find/app_press/app_set_value con la app, o pide control con request_full_control'
 
-async function controlMode(session?: string): Promise<{ mode: 'background' | 'full'; foreground: boolean }> {
-  if (!EVENTS_URL) return { mode: 'full', foreground: true } // sin main que consultar (pruebas sueltas): no bloquear
+async function controlMode(session?: string): Promise<{ mode: 'background' | 'full'; foreground: boolean; scoped: boolean }> {
+  if (!EVENTS_URL) return { mode: 'full', foreground: true, scoped: false } // sin main que consultar (pruebas sueltas): no bloquear
   try {
     // Origen aislado: main ignora la preferencia global «Control de la pantalla»; solo vale un `request_full_control` aprobado de esa sesión.
     const q = session ? `?session=${encodeURIComponent(session)}${isolatedCall ? '&isolated=1' : ''}` : isolatedCall ? '?isolated=1' : ''
     const r = await fetch(`${EVENTS_URL}/control-mode${q}`, { signal: AbortSignal.timeout(1500) })
     if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    const j = (await r.json()) as { mode?: unknown; foreground?: unknown }
-    return { mode: j.mode === 'background' ? 'background' : 'full', foreground: j.foreground === true }
+    const j = (await r.json()) as { mode?: unknown; foreground?: unknown; scoped?: unknown }
+    return { mode: j.mode === 'background' ? 'background' : 'full', foreground: j.foreground === true, scoped: j.scoped === true }
   } catch (err) {
     log('control-mode:', err instanceof Error ? err.message : err)
     throw new Error(UNVERIFIED_MSG)
@@ -829,6 +847,16 @@ const ISOLATED_BLOCKED_KEYS: readonly string[] = [
   'ctrl+space',
   'ctrl+cmd+space',
   'ctrl+cmd+q',
+  'ctrl+f1',
+  'ctrl+f2',
+  'ctrl+f3',
+  'ctrl+f4',
+  'ctrl+f5',
+  'ctrl+f6',
+  'ctrl+f7',
+  'ctrl+f8',
+  'cmd+f5',
+  'cmd+alt+f5',
   'f3',
   'f4',
   'f9',
@@ -1890,11 +1918,17 @@ const TOOLS: ToolDef[] = [
     run: async (a, session) => {
       const name = String(a.name ?? '').trim()
       if (!name) throw new Error('name vacío')
+      let canActivate = true
       if (isolatedCall) {
         // Origen aislado: abrir una app también exige su concesión (una app bloqueada o sin conceder no se abre).
         const ref = await resolveApp(name)
         if (!ref.found) throw new Error(backend.text.appNotFound(name))
         await ensureTier({ bundleId: ref.bundleId, name: ref.name }, 'view', session)
+        // Con el control acotado por la tarjeta de una app (sin toma de control explícita), traerla al frente (y desminimizarla) exige
+        // «Control total» de ESA app: con menos se abre en segundo plano, aunque la sesión tenga el ratón y el teclado por otra app.
+        // Con una toma de control aprobada (`request_full_control`) sigue como siempre.
+        const { scoped } = await controlMode(session)
+        if (scoped) canActivate = (await tierOf({ bundleId: ref.bundleId, name: ref.name }, session)) === 'full'
       }
       // Best-effort: que la captura siguiente muestre el monitor de esta app, no el de lo que esté al frente.
       await resolveApp(name)
@@ -1911,7 +1945,7 @@ const TOOLS: ToolDef[] = [
       // clicar donde hacía falta — confirmado con una tarea real (Discord, control concedido, igual
       // nunca se activó).
       const { mode, foreground } = await controlMode(session)
-      if ((mode === 'background' || isolatedCall) && !foreground) {
+      if ((mode === 'background' || isolatedCall) && (!foreground || !canActivate)) {
         const opened = await act({ tool: 'open_application', text: name }, () => helper('open-app-bg', name))
         // Windows no garantiza quedar detrás: si el helper avisa (`behind: false`), se le dice al modelo.
         let behindNote = ''
