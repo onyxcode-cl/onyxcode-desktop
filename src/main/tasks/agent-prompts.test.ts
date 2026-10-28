@@ -27,6 +27,14 @@ describe('prompts de agente', () => {
     expect(read('tasks')).toContain('**Necesita Control total del Mac**')
   })
 
+  it('la instrucción del modo unificado conserva la salida a «El computador completo» y pide el nivel full desde la primera tarjeta', () => {
+    expect(UNIFIED_APPS_PROMPT).toContain(ESCALATE_MARKER)
+    expect(UNIFIED_APPS_PROMPT).toContain('control completo del ordenador')
+    expect(UNIFIED_APPS_PROMPT).toContain('como última línea')
+    expect(UNIFIED_APPS_PROMPT).toMatch(/nivel `full` en la PRIMERA tarjeta/)
+    expect(UNIFIED_APPS_PROMPT).toContain('No cambies tú el modo')
+  })
+
   it('tasks.md: una sola regla de temporales y una sola de «Pregunta antes de borrar»', () => {
     const s = read('tasks')
     expect((s.match(/^- \*\*Pregunta antes de borrar\*\*/gm) ?? []).length).toBe(1)

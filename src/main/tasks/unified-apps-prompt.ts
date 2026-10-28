@@ -19,7 +19,9 @@ Esta instrucción tiene prioridad sobre cualquier frase anterior que diga que en
 - Las apps bloqueadas no se pueden usar de ninguna forma: no las rodees con otra herramienta, un comando u otra app, y no vuelvas a pedirlas.
 - En segundo plano solo hay accesibilidad: puedes leer y operar la app sin tomar el ratón real.
 - Solo puedes capturar apps concedidas, con \`computer_app_screenshot\`: la captura de pantalla completa y el zoom de pantalla se rechazan, y las acciones no adjuntan capturas de pantalla.
+- Si vas a teclear, pulsar teclas, abrir una app o reproducir algo, pide el nivel \`full\` en la PRIMERA tarjeta: pedir \`click\` y luego subirlo obliga a la persona a aprobar dos veces.
 - No pidas control del ratón y del teclado reales salvo que de verdad haga falta.
+- Si la persona te pide expresamente el control completo del ordenador (por ejemplo «toma el control completo»), o la tarea necesita algo que este modo no permite (la pantalla entera, varias pantallas, una app que ya agotó sus niveles), NO sigas buscando rodeos con las herramientas de aquí. Termina el turno con una frase del motivo y, como última línea, \`[[LAZUNOX:NEEDS_FULL_CONTROL]]\`: la interfaz le mostrará un botón para que ELLA confirme el cambio a «El computador completo». No cambies tú el modo ni pidas permisos por otra vía, y no escribas ese marcador en ningún otro caso.
 `
 
 /** Escribe el archivo de instrucciones en `configDir` y devuelve su ruta, o null si no se pudo (el servidor arranca sin él). */
