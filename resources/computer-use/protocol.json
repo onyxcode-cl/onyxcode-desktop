@@ -849,7 +849,22 @@
           "y": "number",
           "width": "number",
           "height": "number"
-        }
+        },
+        "crop": {
+          "_note": "Solo si se pidió --crop: el trozo (px del rectángulo de origen de la ventana) que contiene la imagen.",
+          "x": "number",
+          "y": "number",
+          "width": "number",
+          "height": "number"
+        },
+        "covered": [
+          {
+            "_note": "Aviso informativo de ventana tapada (rejilla 32x32 sobre el marco, orden Z). SOLO nombre de app y porcentaje: nunca títulos ni rectángulos de otras ventanas. Máx. 5, de mayor a menor; el MCP lo trata como ausente si falta (= no se sabe). Las ventanas del mismo proceso y las que dejan pasar el ratón no cuentan.",
+            "name": "string",
+            "pct": "number"
+          }
+        ],
+        "coveredPct": "number"
       },
       "exits": [
         5,
@@ -868,6 +883,18 @@
           "takesValue": true,
           "required": false,
           "default": 70
+        },
+        {
+          "name": "--crop",
+          "takesValue": true,
+          "required": false,
+          "note": "x,y,w,h en px del rectángulo de origen de la ventana (srcWidth x srcHeight); la imagen se captura de nuevo a resolución completa y se codifica solo ese trozo. Fuera de la ventana: exit 1"
+        },
+        {
+          "name": "--probe",
+          "takesValue": true,
+          "required": false,
+          "note": "Ruta .png (dentro del temporal, validada como outPath) donde escribir además una miniatura de lado largo <= 256 px de la MISMA captura (ventana entera, sin recorte)"
         }
       ],
       "win32Exits": [

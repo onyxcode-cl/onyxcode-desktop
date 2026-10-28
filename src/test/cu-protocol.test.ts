@@ -147,6 +147,35 @@ describe('códigos de salida', () => {
   })
 })
 
+describe('window-shot en Windows: recorte, sonda y ventana tapada (aditivo)', () => {
+  const ws = proto.commands['window-shot'] as unknown as {
+    flags?: Array<{ name: string }>
+    win32Flags?: Array<{ name: string; takesValue: boolean; required?: boolean }>
+    win32Output?: Record<string, unknown>
+    output: Record<string, unknown>
+  }
+  it('--crop y --probe solo existen como banderas de Windows, opcionales y con valor', () => {
+    expect((ws.flags ?? []).map((f) => f.name)).not.toContain('--crop')
+    expect((ws.flags ?? []).map((f) => f.name)).not.toContain('--probe')
+    for (const n of ['--crop', '--probe']) {
+      const f = ws.win32Flags?.find((x) => x.name === n)
+      expect(f, n).toBeDefined()
+      expect(f?.takesValue).toBe(true)
+      expect(f?.required).toBe(false)
+    }
+  })
+  it('covered/coveredPct/crop son campos opcionales de Windows y no tocan la salida común', () => {
+    for (const k of ['covered', 'coveredPct', 'crop']) {
+      expect(ws.win32Output).toHaveProperty(k)
+      expect(ws.output).not.toHaveProperty(k)
+    }
+  })
+  it('covered declara SOLO nombre y porcentaje (nada de títulos ni rectángulos ajenos)', () => {
+    const item = (ws.win32Output?.covered as Array<Record<string, unknown>>)[0]
+    expect(Object.keys(item).filter((k) => !k.startsWith('_')).sort()).toEqual(['name', 'pct'])
+  })
+})
+
 describe('extensiones de Windows (sin equivalente en el helper de macOS)', () => {
   it('no chocan con comandos de macOS y declaran códigos conocidos', () => {
     for (const [name, cmd] of Object.entries(proto.windowsExtensions)) {

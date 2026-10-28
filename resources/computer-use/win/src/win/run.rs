@@ -24,6 +24,7 @@ use crate::keys::{check_keys, is_lazunox_exe, KeyPolicyContext, KeyRejection};
 use crate::limits::*;
 use crate::mask::{capture_size, fill_black, plan_masks, windows_changed, MaskPlan, Rect, WinInfo};
 use crate::motion::{plan_type, Rng};
+use crate::occlusion;
 use crate::paths::{self, image_format};
 use crate::roles::format_ref;
 use std::time::Duration;
@@ -360,7 +361,7 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
                 note: truncated.then(|| "find-elements: límite de nodos/tiempo alcanzado (resultados parciales)".to_string()),
             })
         }
-        Command::WindowShot { app, out, index, max_long, quality } => window_shot(env, cache, app, out, *index, *max_long, *quality),
+        Command::WindowShot { app, out, index, max_long, quality, crop, probe } => window_shot(env, cache, app, out, *index, *max_long, *quality, *crop, probe.as_deref()),
         Command::Screenshot { out, max_long, quality, mask_keys } => screenshot(env, cache, out, *max_long, *quality, mask_keys),
         Command::ReleaseInput => {
             input::release_by_state();
@@ -381,30 +382,104 @@ fn run_inner(g: &Global, cmd: &Command, env: &Env, cache: &mut AppCache) -> CuRe
     }
 }
 
-fn window_shot(env: &Env, cache: &mut AppCache, app: &AppKey, out: &str, index: usize, max_long: i64, quality: i64) -> CuResult<Output> {
+/// Lado largo máximo de la miniatura de `--probe`.
+const PROBE_LONG: i64 = 256;
+
+#[allow(clippy::too_many_arguments)]
+fn window_shot(env: &Env, cache: &mut AppCache, app: &AppKey, out: &str, index: usize, max_long: i64, quality: i64, crop: Option<[i64; 4]>, probe: Option<&str>) -> CuResult<Output> {
+    // Las DOS rutas de salida pasan por la misma validación (dentro del temporal, sin enlaces, extensión de imagen).
     let out = env.image_out(out)?;
+    let probe_path = match probe {
+        Some(p) => {
+            let p = env.image_out(p)?;
+            if image_format(&p) != paths::ImageFormat::Png {
+                return Err(CuError::generic("--probe debe ser un archivo .png"));
+            }
+            if p.eq_ignore_ascii_case(&out) {
+                return Err(CuError::generic("--probe y la salida no pueden ser el mismo archivo"));
+            }
+            Some(p)
+        }
+        None => None,
+    };
     let target = apps::resolve(cache, app)?;
     let wins: Vec<_> = target.windows.iter().filter(|w| !w.iconic && w.rect.w > 0 && w.rect.h > 0).collect();
     let w = wins.get(index).ok_or_else(|| CuError::unavailable("La app no tiene esa ventana visible"))?;
     let img = capture::grab_window(w.hwnd, w.rect)?;
-    let (tw, th, _) = capture_size(img.w as i64, img.h as i64, max_long).ok_or_else(|| CuError::unavailable("Ventana sin tamaño"))?;
-    let res = capture::encode(&img, &out, image_format(&out), (tw, th), quality);
+    // Recorte validado contra la imagen REAL (no contra lo que el llamador cree): fuera → código 1, sin escribir nada.
+    let part = match crop {
+        Some(c) => {
+            let r = crate::commands::check_crop(img.w, img.h, c)?;
+            Some((r, capture::Bgra { w: r.2, h: r.3, px: crate::commands::crop_bgra(&img.px, img.w, r) }))
+        }
+        None => None,
+    };
+    let main_img = part.as_ref().map(|(_, b)| b).unwrap_or(&img);
+    let (tw, th, _) = capture_size(main_img.w as i64, main_img.h as i64, max_long).ok_or_else(|| CuError::unavailable("Ventana sin tamaño"))?;
+    let mut res = capture::encode(main_img, &out, image_format(&out), (tw, th), quality);
+    // Miniatura de la MISMA captura (ventana entera, sin recorte).
+    if res.is_ok() {
+        if let Some(pp) = &probe_path {
+            res = match capture_size(img.w as i64, img.h as i64, PROBE_LONG) {
+                Some((pw, ph, _)) => capture::encode(&img, pp, paths::ImageFormat::Png, (pw, ph), quality),
+                None => Err(CuError::unavailable("Ventana sin tamaño")),
+            };
+        }
+    }
     if res.is_err() {
         let _ = std::fs::remove_file(&out);
+        if let Some(pp) = &probe_path {
+            let _ = std::fs::remove_file(pp);
+        }
     }
     res?;
-    Ok(Output::ok(Json::obj([("ok", Json::Bool(true)), ("width", Json::num(tw)), ("height", Json::num(th)), ("title", Json::str(&w.title)),
+    // Aviso de ventana tapada: informativo y de mejor esfuerzo. Si no se puede calcular, los campos se omiten (= «no se sabe»).
+    let covered = covered_by(cache, w);
+    let mut fields = vec![
+        ("ok", Json::Bool(true)),
+        ("width", Json::num(tw)),
+        ("height", Json::num(th)),
+        ("title", Json::str(&w.title)),
         // Dónde está la ventana (coordenadas globales de pantalla) y qué rectángulo se pintó en la imagen: el MCP los usa para
         // convertir píxeles de la imagen en un punto de pantalla sin capturar la pantalla completa.
         ("x", Json::num(w.rect.x)),
         ("y", Json::num(w.rect.y)),
         ("srcWidth", Json::num(w.rect.w)),
         ("srcHeight", Json::num(w.rect.h)),
-        (
-            "frame",
-            Json::obj([("x", Json::num(w.frame.x)), ("y", Json::num(w.frame.y)), ("width", Json::num(w.frame.w)), ("height", Json::num(w.frame.h))]),
-        ),
-    ])))
+        ("frame", Json::obj([("x", Json::num(w.frame.x)), ("y", Json::num(w.frame.y)), ("width", Json::num(w.frame.w)), ("height", Json::num(w.frame.h))])),
+    ];
+    if let Some((r, _)) = &part {
+        fields.push(("crop", Json::obj([("x", Json::num(r.0 as f64)), ("y", Json::num(r.1 as f64)), ("width", Json::num(r.2 as f64)), ("height", Json::num(r.3 as f64))])));
+    }
+    if let Some((list, total)) = covered {
+        // SOLO nombres de app y porcentajes: ni títulos de ventana ni rectángulos de otras ventanas.
+        fields.push(("covered", Json::Arr(list.into_iter().map(|(name, pct)| Json::obj([("name", Json::str(name)), ("pct", Json::num(pct))])).collect())));
+        fields.push(("coveredPct", Json::num(total)));
+    }
+    Ok(Output::ok(Json::Obj(fields.into_iter().map(|(k, v)| (k.to_string(), v)).collect())))
+}
+
+/// Qué apps tapan la ventana `w` y cuánto (lista de (nombre, %) y % total). None si no se puede calcular.
+fn covered_by(cache: &mut AppCache, w: &wnd::TopWindow) -> Option<(Vec<(String, u32)>, u32)> {
+    // Solo se necesita el NOMBRE de la app: no se verifica el editor (Authenticode) de cada ventana que tapa.
+    cache.set_interest(&[]);
+    let list = wnd::enum_top(false).ok()?;
+    let occ: Vec<occlusion::OccWin> = list
+        .iter()
+        .map(|t| occlusion::OccWin { id: t.hwnd.0 as usize as u64, pid: t.pid, rect: t.rect, pass_through: t.click_through() || t.iconic })
+        .collect();
+    let cov = occlusion::sample_coverage(w.frame, w.hwnd.0 as usize as u64, w.pid, &occ)?;
+    let total = occlusion::pct(cov.covered, cov.sampled);
+    // Los nombres se resuelven solo para las ventanas que de verdad tapan algo.
+    let named = occlusion::group_by_app(&cov, |i| match cache.info_for_window(&list[i]) {
+        // Una app empaquetada guarda el TÍTULO de la ventana como nombre: aquí se usa la familia del paquete.
+        Some(info) => match info.aumid.as_deref() {
+            Some(a) => occlusion::aumid_label(a),
+            None => info.name,
+        },
+        None => String::new(),
+    });
+    Some((named, total))
 }
 
 /// Foto de las ventanas visibles con su concesión, de delante hacia atrás. None si la enumeración falla.

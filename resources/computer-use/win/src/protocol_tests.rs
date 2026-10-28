@@ -98,6 +98,21 @@ fn limites_y_valores_del_contrato() {
     let default_of = |n: &str| shot.iter().find(|f| f.get("name").unwrap().as_str() == Some(n)).and_then(|f| f.get("default")).and_then(|d| d.as_f64());
     assert_eq!(default_of("--max-long"), Some(CAPTURE_DEFAULT_LONG as f64));
     assert_eq!(default_of("--quality"), Some(JPEG_DEFAULT_QUALITY as f64));
+    // window-shot: banderas aditivas de Windows (recorte y sonda) y campos opcionales de la salida.
+    let ws = cmds.get("window-shot").unwrap();
+    let flags: Vec<&str> = ws.get("win32Flags").unwrap().as_array().unwrap().iter().map(|f| f.get("name").unwrap().as_str().unwrap()).collect();
+    for f in ["--max-long", "--quality", "--crop", "--probe"] {
+        assert!(flags.contains(&f), "window-shot sin {f} en win32Flags");
+    }
+    let out = ws.get("win32Output").unwrap();
+    for k in ["x", "y", "srcWidth", "srcHeight", "frame", "crop", "covered", "coveredPct"] {
+        assert!(out.get(k).is_some(), "window-shot.win32Output sin {k}");
+    }
+    // `covered` solo declara nombre y porcentaje.
+    let item = &out.get("covered").unwrap().as_array().unwrap()[0];
+    let mut keys: Vec<&str> = item.as_object().unwrap().keys().map(|k| k.as_str()).filter(|k| !k.starts_with('_')).collect();
+    keys.sort_unstable();
+    assert_eq!(keys, vec!["name", "pct"]);
 }
 
 #[test]

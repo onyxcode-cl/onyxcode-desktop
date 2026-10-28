@@ -20,6 +20,7 @@ pub mod keys;
 pub mod limits;
 pub mod mask;
 pub mod motion;
+pub mod occlusion;
 pub mod paths;
 pub mod pubcache;
 pub mod roles;

@@ -85,7 +85,8 @@ pub enum Command {
     AxSetValue { app: AppKey, path: Vec<usize>, value: String },
     AxAction { app: AppKey, path: Vec<usize>, action: UiaAction },
     FindElements { app: AppKey, roles: Option<Vec<String>>, query: Option<String> },
-    WindowShot { app: AppKey, out: String, index: usize, max_long: i64, quality: i64 },
+    /// `crop`: x,y,w,h en px del rectángulo de origen de la ventana. `probe`: ruta de una miniatura PNG (≤ 256 px).
+    WindowShot { app: AppKey, out: String, index: usize, max_long: i64, quality: i64, crop: Option<[i64; 4]>, probe: Option<String> },
     Screenshot { out: String, max_long: i64, quality: i64, mask_keys: Vec<AppKey> },
     ReleaseInput,
     Session,
@@ -208,8 +209,56 @@ fn mask_key_list(raw: &str) -> CuResult<Vec<AppKey>> {
 /// Separa los posicionales de las banderas de captura (`--max-long`, `--quality` y, si se permite, `--mask-keys`),
 /// con valor aparte o `--bandera=valor`. Devuelve (posicionales desde `from`, lado largo, calidad, claves a tapar).
 #[allow(clippy::type_complexity)]
+/// Banderas exclusivas de `window-shot`.
+#[derive(Default)]
+struct ShotExtra {
+    crop: Option<[i64; 4]>,
+    probe: Option<String>,
+}
+
+/// `x,y,w,h` en píxeles enteros: origen ≥ 0, tamaño ≥ 1, todo acotado (la comprobación contra la imagen real es de `run`).
+fn parse_crop(v: &str) -> CuResult<[i64; 4]> {
+    let parts: Vec<&str> = v.split(',').collect();
+    if parts.len() != 4 {
+        return Err(err("--crop debe ser x,y,w,h (cuatro enteros)"));
+    }
+    let mut out = [0i64; 4];
+    for (i, p) in parts.iter().enumerate() {
+        out[i] = int(p, "--crop")?;
+    }
+    if out.iter().any(|n| *n > 100_000) || out[0] < 0 || out[1] < 0 || out[2] < 1 || out[3] < 1 {
+        return Err(err("--crop fuera de rango: x,y ≥ 0 y w,h ≥ 1 (en píxeles del rectángulo de la ventana)"));
+    }
+    Ok(out)
+}
+
+/// Comprueba `--crop` contra el tamaño REAL de la imagen capturada: debe caer entera dentro. Fuera → código 1.
+pub fn check_crop(img_w: usize, img_h: usize, crop: [i64; 4]) -> CuResult<(usize, usize, usize, usize)> {
+    let [x, y, w, h] = crop;
+    if x < 0 || y < 0 || w < 1 || h < 1 || x.saturating_add(w) > img_w as i64 || y.saturating_add(h) > img_h as i64 {
+        return Err(err(format!("--crop {x},{y},{w},{h} cae fuera de la ventana capturada ({img_w}x{img_h})")));
+    }
+    Ok((x as usize, y as usize, w as usize, h as usize))
+}
+
+/// Copia el trozo (x,y,w,h) de un búfer BGRA de `img_w` píxeles de ancho. El trozo ya está validado por `check_crop`.
+pub fn crop_bgra(px: &[u8], img_w: usize, (x, y, w, h): (usize, usize, usize, usize)) -> Vec<u8> {
+    let mut out = Vec::with_capacity(w * h * 4);
+    for row in y..y + h {
+        let start = (row * img_w + x) * 4;
+        out.extend_from_slice(&px[start..start + w * 4]);
+    }
+    out
+}
+
 fn shot_flags(args: &[String], from: usize, allow_mask: bool, usage: &str) -> CuResult<(Vec<String>, i64, i64, Vec<AppKey>)> {
+    let (pos, max_long, quality, mask, _) = shot_flags_ext(args, from, allow_mask, false, usage)?;
+    Ok((pos, max_long, quality, mask))
+}
+
+fn shot_flags_ext(args: &[String], from: usize, allow_mask: bool, allow_window: bool, usage: &str) -> CuResult<(Vec<String>, i64, i64, Vec<AppKey>, ShotExtra)> {
     let (mut pos, mut max_long, mut quality, mut mask) = (Vec::new(), CAPTURE_DEFAULT_LONG, JPEG_DEFAULT_QUALITY, Vec::new());
+    let mut extra = ShotExtra::default();
     let mut i = from;
     while i < args.len() {
         let a = &args[i];
@@ -222,7 +271,7 @@ fn shot_flags(args: &[String], from: usize, allow_mask: bool, usage: &str) -> Cu
             i += 1;
             continue;
         }
-        if !matches!(flag, "--max-long" | "--quality") && !(allow_mask && flag == "--mask-keys") {
+        if !matches!(flag, "--max-long" | "--quality") && !(allow_mask && flag == "--mask-keys") && !(allow_window && matches!(flag, "--crop" | "--probe")) {
             return Err(err(format!("Bandera desconocida: {} ({usage})", json::clip(flag, 40))));
         }
         let (val, step) = match inline {
@@ -232,11 +281,18 @@ fn shot_flags(args: &[String], from: usize, allow_mask: bool, usage: &str) -> Cu
         match flag {
             "--max-long" => max_long = clamp_i64(int(&val, "--max-long")?, CAPTURE_MIN_LONG, CAPTURE_MAX_LONG),
             "--quality" => quality = clamp_i64(int(&val, "--quality")?, 1, 100),
+            "--crop" => extra.crop = Some(parse_crop(&val)?),
+            "--probe" => {
+                if val.is_empty() || val.len() > 1024 {
+                    return Err(err("--probe necesita una ruta .png"));
+                }
+                extra.probe = Some(val);
+            }
             _ => mask = mask_key_list(&val)?,
         }
         i += step;
     }
-    Ok((pos, max_long, quality, mask))
+    Ok((pos, max_long, quality, mask, extra))
 }
 
 /// Aplica banderas globales y devuelve (opciones, resto). Las banderas van ANTES del comando.
@@ -390,8 +446,8 @@ pub fn parse_command(rest: &[String]) -> CuResult<Command> {
             }
         }
         "window-shot" => {
-            let usage = "Uso: cu-helper window-shot <appKey> <outPath> [windowIndex=0] [--max-long N] [--quality N]";
-            let (pos, max_long, quality, _) = shot_flags(args, 1, false, usage)?;
+            let usage = "Uso: cu-helper window-shot <appKey> <outPath> [windowIndex=0] [--max-long N] [--quality N] [--crop x,y,w,h] [--probe <ruta.png>]";
+            let (pos, max_long, quality, _, extra) = shot_flags_ext(args, 1, false, true, usage)?;
             let app = key_arg(&pos, 0, "la clave de app")?;
             let out = pos.get(1).cloned().ok_or_else(|| err(usage))?;
             if pos.len() > 3 {
@@ -401,7 +457,7 @@ pub fn parse_command(rest: &[String]) -> CuResult<Command> {
                 Some(v) => usize::try_from(int(v, "windowIndex")?).map_err(|_| err("windowIndex no puede ser negativo"))?.min(1000),
                 None => 0,
             };
-            Command::WindowShot { app, out, index, max_long, quality }
+            Command::WindowShot { app, out, index, max_long, quality, crop: extra.crop, probe: extra.probe }
         }
         "screenshot" => {
             let usage = "Uso: cu-helper screenshot <outPath> [--max-long N] [--quality N] [--mask-keys csv]";
@@ -585,6 +641,25 @@ mod tests {
     }
 
     #[test]
+    fn recorte_dentro_y_fuera_de_la_imagen() {
+        assert_eq!(check_crop(100, 50, [0, 0, 100, 50]).unwrap(), (0, 0, 100, 50));
+        assert_eq!(check_crop(100, 50, [99, 49, 1, 1]).unwrap(), (99, 49, 1, 1));
+        for bad in [[0, 0, 101, 50], [1, 0, 100, 50], [0, 49, 1, 2], [100, 0, 1, 1], [-1, 0, 5, 5], [0, 0, 0, 5], [i64::MAX - 1, 0, 5, 5]] {
+            assert_eq!(check_crop(100, 50, bad).unwrap_err().code, 1, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn recorte_copia_los_pixeles_correctos() {
+        // Imagen 4x3 con el valor del píxel = su índice.
+        let px: Vec<u8> = (0..12u8).flat_map(|i| [i, i, i, 255]).collect();
+        let out = crop_bgra(&px, 4, (1, 1, 2, 2));
+        let vals: Vec<u8> = out.chunks(4).map(|p| p[0]).collect();
+        assert_eq!(vals, vec![5, 6, 9, 10]);
+        assert_eq!(crop_bgra(&px, 4, (3, 2, 1, 1)).len(), 4);
+    }
+
+    #[test]
     fn capturas() {
         let c = parse_command(&v(&["screenshot", "C:\\t\\a.jpg"])).unwrap();
         assert_eq!(c, Command::Screenshot { out: "C:\\t\\a.jpg".into(), max_long: 1366, quality: 70, mask_keys: vec![] });
@@ -602,6 +677,19 @@ mod tests {
         assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.jpg", "0", "9"])).is_err());
         assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.jpg", "--mask-keys", KEY])).is_err());
         assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "-1"])).is_err());
+        // --crop y --probe: solo en window-shot.
+        let c = parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "--crop", "10,20,300,200", "--probe=C:\\t\\p.png"])).unwrap();
+        let Command::WindowShot { crop, probe, .. } = c else { panic!() };
+        assert_eq!((crop, probe.as_deref()), (Some([10, 20, 300, 200]), Some("C:\\t\\p.png")));
+        let Command::WindowShot { crop, probe, .. } = parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png"])).unwrap() else { panic!() };
+        assert_eq!((crop, probe), (None, None));
+        for bad in ["1,2,3", "1,2,3,4,5", "-1,0,5,5", "0,0,0,5", "0,0,5,0", "a,b,c,d", "0,0,5,999999", "1.5,0,5,5", ""] {
+            assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "--crop", bad])).is_err(), "--crop {bad}");
+        }
+        assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "--crop"])).is_err());
+        assert!(parse_command(&v(&["window-shot", KEY, "C:\\t\\w.png", "--probe"])).is_err());
+        assert!(parse_command(&v(&["screenshot", "C:\\t\\a.jpg", "--crop", "0,0,5,5"])).is_err());
+        assert!(parse_command(&v(&["screenshot", "C:\\t\\a.jpg", "--probe", "C:\\t\\p.png"])).is_err());
     }
 
     #[test]

@@ -62,7 +62,10 @@ const DEFAULTS = {
       y: 80,
       srcWidth: 800,
       srcHeight: 600,
-      frame: { x: 100, y: 80, width: 800, height: 600 }
+      frame: { x: 100, y: 80, width: 800, height: 600 },
+      // Aviso de ventana tapada del helper de Windows: por defecto nada la tapa (las pruebas guionan `covered`).
+      covered: [],
+      coveredPct: 0
     }
   },
   'screenshot-sck': { writeImage: true, out: { ok: true, width: 2880, height: 1800 } },
@@ -169,8 +172,16 @@ function respond(r) {
         ? positional[def.args.findIndex((a) => a.name === 'outPath' || a.name === 'out')]
         : undefined) ?? positional.find((p) => /\.(png|jpe?g)$/i.test(p))
     if (out) {
-      if (process.env.FAKE_CU_IMAGE) copyFileSync(process.env.FAKE_CU_IMAGE, out)
+      // `imageB64`: imagen propia de ESTA llamada (con una lista de respuestas, sondas «antes» y «después» distintas).
+      if (r.imageB64) writeFileSync(out, Buffer.from(r.imageB64, 'base64'))
+      else if (process.env.FAKE_CU_IMAGE) copyFileSync(process.env.FAKE_CU_IMAGE, out)
       else writeFileSync(out, Buffer.from(TINY_JPEG_B64, 'base64'))
+    }
+    // `--probe <ruta>` (window-shot de Windows): escribe también la miniatura; `probeB64` la fija, y si no, la misma imagen.
+    const pi = args.findIndex((a) => a === '--probe' || a.startsWith('--probe='))
+    if (pi >= 0 && platform === 'win32') {
+      const pOut = args[pi].startsWith('--probe=') ? args[pi].slice('--probe='.length) : args[pi + 1]
+      if (pOut) writeFileSync(pOut, Buffer.from(r.probeB64 ?? r.imageB64 ?? TINY_JPEG_B64, 'base64'))
     }
   }
   if (r.exit) fail(r.exit, r.stderr ?? `error simulado (${r.exit})`)
