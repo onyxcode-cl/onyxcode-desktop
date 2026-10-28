@@ -268,6 +268,8 @@ export const mainErrors = {
   // Ventanas propias (Quick Entry, overlay, píldora y guía): la página lee el idioma de `?lang=`
   'ovl.pill.title': 'La IA está controlando tu Mac',
   'ovl.pill.title.win': 'La IA está controlando tu PC',
+  'ovl.overlay.title': 'Control del Mac',
+  'ovl.overlay.title.win': 'Control del PC',
   'ovl.pill.hint': 'Atajo global para detener',
   'ovl.pill.stop': 'Detener',
   'ovl.pill.stopping': 'Deteniendo…',

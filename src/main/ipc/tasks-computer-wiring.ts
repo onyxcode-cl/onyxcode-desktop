@@ -8,7 +8,7 @@
 import { t } from '@shared/i18n'
 import { BrowserWindow, Notification, app, nativeImage, screen } from 'electron'
 import { execFile } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { ComputerService } from '../computer/service'
@@ -87,6 +87,8 @@ export function createComputerParts(): ComputerParts {
     platform: process.platform,
     // Búsqueda acotada a las carpetas de apps del sistema (`-onlyin`), nunca en todo Spotlight (suplantación de icono).
     findMacAppPath: createMacAppFinder({ execFile, home: homedir() }),
+    winSystemDir: process.env.SystemRoot,
+    pathExists: existsSync,
     fileIconDataUrl: async (path) => {
       // macOS: `getFileIcon` devuelve un icono genérico igual para todas las apps en versiones recientes; la miniatura es el logo real.
       // (No usar `getFileIcon` con tamaño 'large': cierra Electron.) Windows: `getFileIcon`.

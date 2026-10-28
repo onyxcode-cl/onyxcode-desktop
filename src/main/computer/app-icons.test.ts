@@ -70,6 +70,30 @@ describe('createAppIconResolver', () => {
     expect(findMacAppPath).not.toHaveBeenCalled()
   })
 
+  it('Windows: una ruta cruda (del renderer o del agente) NO es una clave: sin icono y sin llamar a getFileIcon', async () => {
+    const { resolve, fileIconDataUrl } = mac({ platform: 'win32', pathExists: () => true })
+    expect(await resolve('c:\\windows\\system32\\notepad.exe')).toBeUndefined()
+    expect(await resolve('C:\\Users\\x\\evil.exe')).toBeUndefined()
+    expect(await resolve('exe:c:\\windows\\system32\\notepad.exe')).toBeUndefined()
+    expect(fileIconDataUrl).not.toHaveBeenCalled()
+  })
+
+  it('Windows: Bloc de notas UWP usa el notepad.exe FIJO de System32 (si existe); otras UWP y ruta inexistente ⇒ sin icono', async () => {
+    const exists = vi.fn(() => true)
+    const { resolve, fileIconDataUrl } = mac({ platform: 'win32', pathExists: exists, winSystemDir: 'C:\\Windows\\' })
+    expect(await resolve('aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app')).toBe(PNG)
+    expect(fileIconDataUrl).toHaveBeenCalledWith('C:\\Windows\\system32\\notepad.exe')
+    expect(await resolve('aumid:evil.app_x!app')).toBeUndefined()
+    const none = mac({ platform: 'win32', pathExists: () => false })
+    expect(await none.resolve('aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app')).toBeUndefined()
+    expect(none.fileIconDataUrl).not.toHaveBeenCalled()
+    const noDep = mac({ platform: 'win32' })
+    expect(await noDep.resolve('aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app')).toBeUndefined()
+    // SystemRoot en otra unidad (posible unidad de red mapeada) ⇒ no se acepta
+    const other = mac({ platform: 'win32', pathExists: () => true, winSystemDir: 'Z:\\Windows' })
+    expect(await other.resolve('aumid:microsoft.windowsnotepad_8wekyb3d8bbwe!app')).toBeUndefined()
+  })
+
   it('Windows: sin firma o fuera de la unidad local (unidad de red mapeada) ⇒ sin icono', async () => {
     const { resolve, fileIconDataUrl } = mac({ platform: 'win32' })
     expect(await resolve('exe:c:\\users\\x\\evil.exe|pub:(sin firma)')).toBeUndefined()

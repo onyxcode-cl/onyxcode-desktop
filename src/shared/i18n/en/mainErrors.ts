@@ -260,6 +260,8 @@ export const mainErrors = {
   // Own windows (Quick Entry, overlay, pill and guide): the page reads the language from `?lang=`
   'ovl.pill.title': 'The AI is controlling your Mac',
   'ovl.pill.title.win': 'The AI is controlling your PC',
+  'ovl.overlay.title': 'Mac control',
+  'ovl.overlay.title.win': 'PC control',
   'ovl.pill.hint': 'Global shortcut to stop',
   'ovl.pill.stop': 'Stop',
   'ovl.pill.stopping': 'Stopping…',

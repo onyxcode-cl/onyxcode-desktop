@@ -13,6 +13,9 @@ import './overlay.css'
 const CLICK_TOOLS = new Set(['left_click', 'right_click', 'double_click'])
 const TAG_LINGER_MS = 1800
 
+// Título de la ventana según la plataforma («Control del Mac» / «Control del PC», clave `.win`).
+document.title = t('ovl.overlay.title')
+
 const root = document.getElementById('root') as HTMLDivElement
 root.innerHTML = `
   <div class="frame" aria-hidden="true"></div>

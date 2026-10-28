@@ -552,6 +552,8 @@ export function ControlBanner(): React.JSX.Element | null {
   const [resuming, setResuming] = useState(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [, tick] = useState(0)
+  // Modo unificado: el chat aislado no tiene Control total, pero el kill-switch es global; tras una parada también ofrece «Reanudar control».
+  const unified = useUnifiedApps()
 
   // Refresca el "hace Xs" de la última acción.
   useEffect(() => {
@@ -560,7 +562,8 @@ export function ControlBanner(): React.JSX.Element | null {
     return () => clearInterval(timer)
   }, [anyBusy])
 
-  if (!conn?.fullAccess) return null
+  const isolatedStopped = unified && !conn?.fullAccess && !!stoppedAt
+  if (!conn?.fullAccess && !isolatedStopped) return null
 
   const shortcutWarning = shortcutUnavailable ? (
     <div className="flex shrink-0 items-center gap-2 border-b border-warning/40 bg-warning/10 px-4 py-1.5 text-xs text-warning">
@@ -603,7 +606,12 @@ export function ControlBanner(): React.JSX.Element | null {
           <OctagonX size={16} className="shrink-0" /> {t('tasksComputer.banner.stopped')}
           {anyBusy && <Loader2 size={14} className="animate-spin" />}
           <span className="min-w-0 flex-1 truncate text-xs font-normal text-muted">
-            {resumeError ?? (anyBusy ? t('tasksComputer.banner.cancelling') : t('tasksComputer.banner.stoppedDesc'))}
+            {resumeError ??
+              (anyBusy
+                ? t('tasksComputer.banner.cancelling')
+                : isolatedStopped
+                  ? t('tasks.act.stopped')
+                  : t('tasksComputer.banner.stoppedDesc'))}
           </span>
           <button
             type="button"

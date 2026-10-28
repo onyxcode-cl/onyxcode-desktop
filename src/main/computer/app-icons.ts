@@ -2,12 +2,20 @@
  * Icono real de una app para la tarjeta de permiso («¿Permitir que Lazunox use Spotify?»). Se resuelve en main y viaja como
  * data URL PNG pequeño en `AccessRequestApp.icon`. Falla SIEMPRE a «sin icono» (nunca rompe la tarjeta).
  *  - macOS: bundleId (validado con regex estricta) → ruta de la .app con `mdfind` (execFile, sin shell) → icono del archivo.
- *  - Windows: la clave de la app (`exe:<ruta>|pub:…`) ya trae la ruta del .exe (`parseAppKey`); las apps UWP (`aumid:`) no
- *    tienen ruta y quedan sin icono (la tarjeta cae al nombre).
+ *  - Windows: la clave de la app (`exe:<ruta>|pub:…`) ya trae la ruta del .exe (`parseAppKey`). Las apps UWP (`aumid:`) no
+ *    tienen ruta: solo unas pocas de Windows con equivalente clásico en System32 (Bloc de notas, Paint, Calculadora) usan ese
+ *    ejecutable FIJO (tabla `WIN_UWP_CLASSIC_EXE`, no sale de la clave ni del renderer); el resto queda sin icono (la tarjeta cae a la letra).
  * Este módulo no importa electron: la parte nativa (`getFileIcon`) se inyecta desde `tasks-computer-wiring.ts`.
  */
 import { isSafeIconDataUrl } from '@shared/app-icon'
 import { parseAppKey, UNSIGNED_PUBLISHER } from './policy/app-key'
+
+/** Apps UWP de Windows con ejecutable clásico fijo en System32 (prefijo del paquete del AUMID, en minúsculas → nombre del exe). */
+const WIN_UWP_CLASSIC_EXE: ReadonlyArray<readonly [string, string]> = [
+  ['microsoft.windowsnotepad_', 'notepad.exe'],
+  ['microsoft.paint_', 'mspaint.exe'],
+  ['microsoft.windowscalculator_', 'calc.exe']
+]
 
 const CACHE_MAX = 64
 const BUNDLE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
@@ -96,6 +104,10 @@ export interface AppIconDeps {
   now?: () => number
   /** Windows: unidad del sistema donde se aceptan iconos (las demás pueden ser unidades de red mapeadas). Por defecto `c:`. */
   winLocalDrive?: string
+  /** Windows: carpeta del sistema (`%SystemRoot%`) para los exe clásicos de las apps UWP de la tabla. Por defecto `c:\\windows`. */
+  winSystemDir?: string
+  /** Windows: ¿existe el archivo? (sin esto no se usan los exe clásicos de la tabla). */
+  pathExists?: (path: string) => boolean
 }
 
 interface Entry {
@@ -153,6 +165,12 @@ export function createAppIconResolver(deps: AppIconDeps): (appKey: string) => Pr
         // Sin firma ⇒ cualquiera pudo ponerle el icono que quisiera; fuera de la unidad local puede ser una unidad de red mapeada.
         const drive = (deps.winLocalDrive ?? 'c:').toLowerCase()
         if (parsed.publisher !== UNSIGNED_PUBLISHER && parsed.path.toLowerCase().startsWith(`${drive}\\`)) path = parsed.path
+      } else if (parsed?.kind === 'aumid' && deps.pathExists) {
+        const hit = WIN_UWP_CLASSIC_EXE.find(([prefix]) => parsed.id.toLowerCase().startsWith(prefix))
+        const sys = (deps.winSystemDir ?? 'c:\\windows').replace(/[\\/]+$/, '')
+        const drive = (deps.winLocalDrive ?? 'c:').toLowerCase()
+        const candidate = hit ? `${sys}\\system32\\${hit[1]}` : null
+        if (candidate && candidate.toLowerCase().startsWith(`${drive}\\`) && deps.pathExists(candidate)) path = candidate
       }
     } else if (deps.platform === 'darwin' && BUNDLE_ID_RE.test(appKey)) {
       path = await deps.findMacAppPath(appKey)
