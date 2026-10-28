@@ -40,8 +40,8 @@ function crc32(buf: Buffer): number {
   return (r ^ 0xffffffff) >>> 0
 }
 
-/** PNG RGB de color liso (válido para `sips`); pesa unos pocos KB aunque sea grande. */
-export function makePng(width: number, height: number): Buffer {
+/** PNG RGB de color liso (válido para `sips`); pesa unos pocos KB aunque sea grande. `fill` = gris 0–255 (distinto ⇒ la «sonda» ve un cambio). */
+export function makePng(width: number, height: number, fill = 0x80): Buffer {
   const chunk = (type: string, data: Buffer): Buffer => {
     const len = Buffer.alloc(4)
     len.writeUInt32BE(data.length)
@@ -56,7 +56,7 @@ export function makePng(width: number, height: number): Buffer {
   ihdr[8] = 8
   ihdr[9] = 2
   const stride = width * 3 + 1
-  const raw = Buffer.alloc(stride * height, 0x80)
+  const raw = Buffer.alloc(stride * height, fill)
   for (let y = 0; y < height; y++) raw[y * stride] = 0
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),

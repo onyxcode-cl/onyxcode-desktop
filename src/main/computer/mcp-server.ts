@@ -54,7 +54,7 @@
  * `screencapture`). `type_text`/`key` además rechazan un campo de contraseña con foco
  * (`cu-helper focused-secure`) o tecleo real reciente del usuario (`cu-helper recent-input`).
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { timingSafeEqual } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
@@ -73,6 +73,7 @@ import {
 } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
 import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from './mcp-platform-win32'
+import { captureIsStale, coverageNotice, probeSignature, type ProbeSignature } from './window-probe'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -150,6 +151,17 @@ function reportBridgeDenied(reason: string, session: string | undefined): void {
     body: JSON.stringify({ tool: currentToolName, session: session ?? '', reason }),
     signal: AbortSignal.timeout(1500)
   }).catch(() => undefined)
+}
+
+/**
+ * Error de rechazo con código estable. En origen aislado avisa a main (auditoría) y antepone `[rechazo: <código>]` al mensaje, para que el
+ * modelo reconozca el motivo sin depender de la frase. Fuera del origen aislado devuelve el mismo error de siempre, sin prefijo ni aviso
+ * (los mensajes de `ensureTier`/`requireTier` los comparte Control total y no pueden cambiar).
+ */
+function reject(code: string, msg: string, session: string | undefined): Error {
+  if (!isolatedCall) return new Error(msg)
+  reportBridgeDenied(code, session)
+  return new Error(`[rechazo: ${code}] ${msg}`)
 }
 
 // ───────────────────────────── kill-switch ─────────────────────────────
@@ -260,25 +272,28 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
 async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Promise<void> {
   // Origen aislado: la propia Lazunox, Electron, Spotlight, Dock… (exentas del sistema) NUNCA se actúan (ni siquiera con tarjeta).
   if (isolatedCall && app.bundleId && isIsolatedExempt(app.bundleId)) {
-    reportBridgeDenied('exempt-app', session)
-    throw new Error(
+    throw reject(
+      'exempt-app',
       `«${app.name}» es una app del sistema o la propia Lazunox: en este modo no se puede controlar. No insistas ni pidas acceso a ella; ` +
-        'usa otras apps (con request_access) o dile al usuario que lo haga él.'
+        'usa otras apps (con request_access) o dile al usuario que lo haga él.',
+      session
     )
   }
   const tier = await tierOf(app, session)
   if (tier === null) {
-    if (isolatedCall) reportBridgeDenied('no-grant', session)
-    throw new Error(
+    throw reject(
+      'no-grant',
       `«${app.name}» no tiene acceso concedido. Llama a request_access con apps: ["${app.name}"] y ` +
-        `levels: ["${minTier}"] (y un motivo), y espera la respuesta del usuario antes de reintentar esta acción.`
+        `levels: ["${minTier}"] (y un motivo), y espera la respuesta del usuario antes de reintentar esta acción.`,
+      session
     )
   }
   if (TIER_RANK[tier] < TIER_RANK[minTier]) {
-    if (isolatedCall) reportBridgeDenied('low-tier', session)
-    throw new Error(
+    throw reject(
+      'low-tier',
       `«${app.name}» solo tiene el nivel "${TIER_LABEL[tier]}"; esta acción necesita "${TIER_LABEL[minTier]}". ` +
-        `Pide más acceso: llama a request_access con apps: ["${app.name}"] y levels: ["${minTier}"], y espera la respuesta del usuario.`
+        `Pide más acceso: llama a request_access con apps: ["${app.name}"] y levels: ["${minTier}"], y espera la respuesta del usuario.`,
+      session
     )
   }
 }
@@ -320,15 +335,20 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
   const known = apps.filter((a) => a.bundleId)
   // Windows falla cerrado: una ventana que no se identifica puede ser una bloqueada o de administrador. Origen aislado: igual en macOS.
   if ((backend.failClosedOnUnknownApp || isolatedCall) && known.length < apps.length) {
-    throw new Error(
-      'No se pudo identificar la ventana de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.'
+    throw reject(
+      'unknown-app',
+      'No se pudo identificar la ventana de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.',
+      session
     )
   }
   if (!known.length) {
     // Origen aislado: lo no identificado no se deja pasar (puede ser una app exenta o sin concesión).
     if (isolatedCall) {
-      reportBridgeDenied('unknown-app', session)
-      throw new Error('No se pudo identificar la app de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.')
+      throw reject(
+        'unknown-app',
+        'No se pudo identificar la app de destino: por seguridad no se actúa. Pide al usuario que enfoque una app concreta.',
+        session
+      )
     }
     return undefined // no se pudo identificar ninguna app (p. ej. el Escritorio): no bloquear
   }
@@ -337,10 +357,11 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
   if (isolatedCall && known.some((a) => isFileManagerApp(a.bundleId))) {
     const { scoped } = await controlMode(session)
     if (scoped) {
-      reportBridgeDenied('file-manager', session)
-      throw new Error(
+      throw reject(
+        'file-manager',
         'El Finder/Explorador de archivos no se maneja con el ratón y el teclado reales con el permiso de una app: ' +
-          'si de verdad hace falta, llama a request_full_control y espera la respuesta del usuario; si no, usa app_find/app_press.'
+          'si de verdad hace falta, llama a request_full_control y espera la respuesta del usuario; si no, usa app_find/app_press.',
+        session
       )
     }
   }
@@ -946,31 +967,37 @@ const BLOCKED_KEY_RULES: ParsedCombo[] = ISOLATED_BLOCKED_KEYS.map((k) => parseC
 function checkIsolatedKeys(keys: string, session: string | undefined): string {
   const combos = keys.trim().split(/ +/).filter(Boolean)
   if (combos.length !== 1 || /\s/.test(combos[0]!)) {
-    reportBridgeDenied('key-sequence', session)
-    throw new Error(
-      'En este modo solo se pulsa UNA combinación por llamada (el foco puede cambiar entre combinaciones). Llama a key una vez por combinación.'
+    throw reject(
+      'key-sequence',
+      'En este modo solo se pulsa UNA combinación por llamada (el foco puede cambiar entre combinaciones). Llama a key una vez por combinación.',
+      session
     )
   }
   if (backend.id === 'win32') {
     // Windows: vocabulario y lista propios (`checkWinIsolatedCombo`); la política general (`backend.checkKeys`) se aplica después.
     const v = checkWinIsolatedCombo(combos[0]!)
     if (v === 'ok') return combos[0]!
-    reportBridgeDenied(v === 'blocked' ? 'key-blocked' : 'key-unknown', session)
-    throw new Error(
+    throw reject(
+      v === 'blocked' ? 'key-blocked' : 'key-unknown',
       v === 'blocked'
         ? `La combinación «${combos[0]}» cambia de ventana o abre cosas del sistema: en este modo no se pulsa. Usa open_application para cambiar de app.`
-        : `Combinación no reconocida: «${combos[0]}». Usa nombres como "enter", "tab", "ctrl+a", "shift+left", "f5".`
+        : `Combinación no reconocida: «${combos[0]}». Usa nombres como "enter", "tab", "ctrl+a", "shift+left", "f5".`,
+      session
     )
   }
   const parsed = parseCombo(combos[0]!)
   if (!parsed) {
-    reportBridgeDenied('key-unknown', session)
-    throw new Error(`Combinación no reconocida: «${combos[0]}». Usa nombres como "return", "tab", "cmd+a", "shift+left", "f5".`)
+    throw reject(
+      'key-unknown',
+      `Combinación no reconocida: «${combos[0]}». Usa nombres como "return", "tab", "cmd+a", "shift+left", "f5".`,
+      session
+    )
   }
   if (parsed.mods.has('fn') || BLOCKED_KEY_RULES.some((r) => r.key === parsed.key && [...r.mods].every((m) => parsed.mods.has(m)))) {
-    reportBridgeDenied('key-blocked', session)
-    throw new Error(
-      `La combinación «${combos[0]}» cambia de app o abre cosas del sistema: en este modo no se pulsa. Usa open_application para cambiar de app o app_press con los menús.`
+    throw reject(
+      'key-blocked',
+      `La combinación «${combos[0]}» cambia de app o abre cosas del sistema: en este modo no se pulsa. Usa open_application para cambiar de app o app_press con los menús.`,
+      session
     )
   }
   return combos[0]!
@@ -984,9 +1011,10 @@ async function recheckFront(checked: AppRef | undefined, session: string | undef
   if (!isolatedCall) return
   const now = await appFrontmost()
   if (!checked?.bundleId || !now.bundleId || now.bundleId !== checked.bundleId || isIsolatedExempt(now.bundleId)) {
-    reportBridgeDenied('front-changed', session)
-    throw new Error(
-      'La app en primer plano cambió antes de pulsar: no se hizo nada. Toma una captura y revisa dónde estás antes de reintentar.'
+    throw reject(
+      'front-changed',
+      'La app en primer plano cambió antes de pulsar: no se hizo nada. Toma una captura y revisa dónde estás antes de reintentar.',
+      session
     )
   }
 }
@@ -1111,6 +1139,15 @@ const WINDOW_CTX_TTL_MS = Math.min(90_000, Math.max(1, Number(process.env.COMPUT
 /** Tolerancia al comparar el marco de la ventana con el de la captura (puntos o píxeles). */
 const WINDOW_FRAME_TOLERANCE = 1
 
+/** Un elemento pulsable de la lista numerada de una captura (§2.4): punto GLOBAL, como el de los clics por x/y. */
+interface CaptureElement {
+  role: string
+  label: string
+  point: { x: number; y: number }
+  width: number
+  height: number
+}
+
 /** La ventana de la última `app_screenshot` de una sesión: dónde está y cuánto mide la imagen JPEG que vio el modelo. */
 interface WindowCtx {
   app: AppRef
@@ -1122,9 +1159,16 @@ interface WindowCtx {
   imageWidth: number
   imageHeight: number
   at: number
+  /** Número de esta captura (global al proceso, nunca se repite): lo que el modelo escribe en `capture` junto con `element`. */
+  captureId: number
+  /** Rejilla de luminancia de la propia captura (sonda); `null` = no se pudo leer, y entonces no hay lista de elementos. */
+  signature: ProbeSignature | null
+  /** Lista numerada de ESTA captura (solo de esta sesión); `null` = no hay lista o se invalidó. */
+  elements: CaptureElement[] | null
 }
 const windowCtx = new Map<string, WindowCtx>()
 const WINDOW_CTX_MAX = 64
+let captureSeq = 0
 
 const ctxKey = (session: string | undefined): string => session ?? ''
 
@@ -1155,7 +1199,10 @@ function setWindowCtx(
     frame: { ...loc.frame },
     imageWidth: loc.imageWidth,
     imageHeight: loc.imageHeight,
-    at: Date.now()
+    at: Date.now(),
+    captureId: ++captureSeq,
+    signature: null,
+    elements: null
   })
   return true
 }
@@ -1164,19 +1211,138 @@ function setWindowCtx(
 function currentWindowCtx(session: string | undefined): WindowCtx {
   const ctx = windowCtx.get(ctxKey(session))
   if (!ctx) {
-    reportBridgeDenied('no-capture', session)
-    throw new Error(NO_CAPTURE_MSG)
+    throw reject('no-capture', NO_CAPTURE_MSG, session)
   }
   if (Date.now() - ctx.at > WINDOW_CTX_TTL_MS) {
     windowCtx.delete(ctxKey(session))
-    reportBridgeDenied('capture-expired', session)
-    throw new Error(`La captura de ${ctx.app.name} caducó (valen 90 s): toma app_screenshot otra vez antes de actuar.`)
+    throw reject(
+      'capture-expired',
+      `La captura de ${ctx.app.name} caducó (valen 90 s): toma app_screenshot otra vez antes de actuar.`,
+      session
+    )
   }
   return ctx
 }
 
 /** Punto dentro de un rectángulo (abierto por la derecha y abajo: el borde de abajo/derecha es del vecino). */
 const inRect = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height
+
+// ── zoom de la ventana capturada (§2.1): lo que hace falta recordar de la última app_screenshot de cada sesión ──
+
+/** Tope del lado largo del resultado de `zoom` en el modo de apps (400–2000; por defecto igual que la captura). */
+const ZOOM_MAX_LONG = Math.min(2000, Math.max(400, Number(process.env.COMPUTER_ZOOM_MAX_LONG) || 1366))
+
+/**
+ * Lo que `zoom` necesita de la última `app_screenshot` de una sesión. Vive APARTE de `windowCtx` (el zoom sirve para mirar aunque la ventana
+ * no se haya podido ubicar para clics). Solo mira cosas de la app concedida; caduca con la misma regla que las coordenadas (90 s) y cada
+ * sesión solo ve la suya.
+ */
+interface WindowShotEntry {
+  app: AppRef
+  windowIndex: number
+  /** Tamaño del JPEG que vio el modelo (el espacio de x/y/width/height del zoom). */
+  imageWidth: number
+  imageHeight: number
+  /** macOS: PNG grande conservado (el doble de detalle que el JPEG) y su tamaño. */
+  pngPath?: string
+  pngWidth?: number
+  pngHeight?: number
+  /** Windows: rectángulo de origen de la ventana al capturar; el zoom captura de nuevo y exige que siga igual. */
+  rect?: Rect
+  at: number
+  timer?: ReturnType<typeof setTimeout>
+}
+const windowShots = new Map<string, WindowShotEntry>()
+
+function dropWindowShot(key: string): void {
+  const e = windowShots.get(key)
+  if (!e) return
+  if (e.timer) clearTimeout(e.timer)
+  if (e.pngPath) rmSync(e.pngPath, { force: true })
+  windowShots.delete(key)
+}
+
+function setWindowShot(session: string | undefined, e: Omit<WindowShotEntry, 'at' | 'timer'>): void {
+  const key = ctxKey(session)
+  dropWindowShot(key)
+  if (windowShots.size >= WINDOW_CTX_MAX) {
+    const oldest = windowShots.keys().next().value
+    if (oldest !== undefined) dropWindowShot(oldest)
+  }
+  const entry: WindowShotEntry = { ...e, at: Date.now() }
+  // El PNG conservado no sobrevive a la caducidad: se borra solo pasado el plazo (más un margen) aunque nadie vuelva a pedir zoom.
+  entry.timer = setTimeout(() => {
+    if (windowShots.get(key) === entry) dropWindowShot(key)
+  }, WINDOW_CTX_TTL_MS + 1000)
+  entry.timer.unref?.()
+  windowShots.set(key, entry)
+}
+
+/** Tamaño de un JPEG (marcador SOF); `null` si no se entiende. */
+function jpegSize(buf: Buffer): { width: number; height: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null
+  let i = 2
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) {
+      i++
+      continue
+    }
+    const m = buf[i + 1]
+    if (m === 0xff) {
+      i++
+      continue
+    }
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+      const height = buf.readUInt16BE(i + 5)
+      const width = buf.readUInt16BE(i + 7)
+      return width > 0 && height > 0 ? { width, height } : null
+    }
+    if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) {
+      i += 2
+      continue
+    }
+    i += 2 + buf.readUInt16BE(i + 2)
+  }
+  return null
+}
+
+/** Captura sin imagen para el modelo (la «sonda»): firma de la ventana concedida AHORA; `null` si no se pudo leer. Borra el archivo. */
+async function probeNow(ctx: WindowCtx): Promise<ProbeSignature | null> {
+  const path = join(SHOT_DIR, `probe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.png`)
+  try {
+    mkdirSync(SHOT_DIR, { recursive: true })
+    await backend.probeWindow(ctx.app.bundleId, ctx.windowIndex, path)
+    return probeSignature(readFileSync(path))
+  } catch (err) {
+    log('sonda de ventana:', err instanceof Error ? err.message : err)
+    return null
+  } finally {
+    rmSync(path, { force: true })
+  }
+}
+
+/**
+ * Origen aislado: puntos globales (de un clic) → comprobaciones geométricas comunes a x/y y a `element`: dentro del marco visible de la
+ * ventana capturada y dentro de algún monitor real.
+ */
+async function checkWindowPoint(ctx: WindowCtx, p: { x: number; y: number }, label: string, session: string | undefined): Promise<void> {
+  if (!inRect(ctx.frame, p.x, p.y)) {
+    throw reject(
+      'outside-window',
+      `Ese punto ${label} cae fuera de la ventana de ${ctx.app.name}: no se actúa. Apunta dentro de la ventana.`,
+      session
+    )
+  }
+  let screens: Screen[] = []
+  try {
+    screens = await getAllScreens()
+  } catch {
+    screens = []
+  }
+  if (!screens.length || !screens.some((s) => inRect({ x: s.x ?? 0, y: s.y ?? 0, width: s.width, height: s.height }, p.x, p.y))) {
+    throw reject('off-screen', 'Ese punto no cae en ninguna pantalla conectada: no se actúa. Toma app_screenshot otra vez.', session)
+  }
+}
 
 /**
  * Origen aislado: px de la última `app_screenshot` de la sesión → punto global (el que esperan los clics). Rechaza si no hay captura vigente,
@@ -1193,42 +1359,87 @@ async function toWindowPoints(
   if (!Number.isFinite(nx) || !Number.isFinite(ny)) throw new Error('Coordenadas inválidas: x e y deben ser números')
   const ctx = currentWindowCtx(session)
   if (nx < 0 || ny < 0 || nx > ctx.imageWidth || ny > ctx.imageHeight) {
-    reportBridgeDenied('outside-window', session)
-    throw new Error(
+    throw reject(
+      'outside-window',
       `Coordenadas fuera de la imagen de app_screenshot: (${nx}, ${ny}) px; la imagen mide ${ctx.imageWidth}x${ctx.imageHeight} px. ` +
-        'Apunta dentro de la ventana capturada.'
+        'Apunta dentro de la ventana capturada.',
+      session
     )
   }
   const p = {
     x: Math.round((ctx.rect.x + (nx * ctx.rect.width) / ctx.imageWidth) * 100) / 100,
     y: Math.round((ctx.rect.y + (ny * ctx.rect.height) / ctx.imageHeight) * 100) / 100
   }
-  if (!inRect(ctx.frame, p.x, p.y)) {
-    reportBridgeDenied('outside-window', session)
-    throw new Error(`Ese punto (${nx}, ${ny}) px cae fuera de la ventana de ${ctx.app.name}: no se actúa. Apunta dentro de la ventana.`)
-  }
-  let screens: Screen[] = []
-  try {
-    screens = await getAllScreens()
-  } catch {
-    screens = []
-  }
-  if (!screens.length || !screens.some((s) => inRect({ x: s.x ?? 0, y: s.y ?? 0, width: s.width, height: s.height }, p.x, p.y))) {
-    reportBridgeDenied('off-screen', session)
-    throw new Error('Ese punto no cae en ninguna pantalla conectada: no se actúa. Toma app_screenshot otra vez.')
-  }
+  await checkWindowPoint(ctx, p, `(${nx}, ${ny}) px`, session)
   return { p, ctx }
+}
+
+/**
+ * Origen aislado: `element: N` + `capture: <id>` → punto global del elemento de la lista de ESA captura. Nunca cae en otro control: si el id
+ * no es el de la captura vigente de ESTA sesión, si no hay lista, o si la ventana ya no se ve como en la captura (sonda distinta) o no se
+ * puede comprobar, se rechaza con `[rechazo: stale]` y NO se hace nada. El punto resultante pasa después por las mismas comprobaciones que
+ * x/y (marco visible, monitor, `assertCapturedAppAt`, nivel, `recheckWindow`).
+ */
+async function toElementPoint(
+  session: string | undefined,
+  rawElement: unknown,
+  rawCapture: unknown
+): Promise<{ p: { x: number; y: number }; label: string; ctx: WindowCtx }> {
+  const n = Number(rawElement)
+  if (!Number.isInteger(n) || n < 1) throw new Error('element debe ser el número de la lista de elementos (1, 2, 3…)')
+  const missing =
+    rawCapture === undefined ||
+    rawCapture === null ||
+    typeof rawCapture === 'boolean' ||
+    (typeof rawCapture === 'string' && !rawCapture.trim())
+  const cap = missing ? NaN : Number(rawCapture)
+  if (!Number.isInteger(cap) || cap < 1) {
+    throw reject(
+      'capture-required',
+      'Con element hay que indicar también capture: el número de la captura de la lista ("Captura #N" en el texto de app_screenshot). ' +
+        'Sin él no se sabe a qué imagen se refiere el número.',
+      session
+    )
+  }
+  const ctx = currentWindowCtx(session)
+  const retry = 'Toma app_screenshot otra vez, elige de la lista nueva (con su capture) o usa x/y de la imagen nueva.'
+  if (ctx.captureId !== cap) {
+    throw reject('stale', `La captura #${cap} ya no es la vigente: la lista de elementos de una captura vieja no vale. ${retry}`, session)
+  }
+  const list = ctx.elements
+  if (!list || !ctx.signature) {
+    throw reject('stale', `La captura #${cap} no tiene lista de elementos vigente. ${retry}`, session)
+  }
+  const el = list[n - 1]
+  if (!el) throw new Error(`No hay elemento ${n}: la lista de la captura #${cap} tiene ${list.length}.`)
+  // La sonda captura la ventana de esa app: hace falta al menos el nivel del clic que se va a hacer.
+  await requireTierFor(ctx.app, 'click', session)
+  const now = await probeNow(ctx)
+  if (!now || captureIsStale(ctx.signature, now)) {
+    ctx.elements = null
+    throw reject(
+      'stale',
+      now
+        ? `La ventana de ${ctx.app.name} ya no se ve como en la captura #${cap}: la lista de elementos no vale. ${retry}`
+        : `No se pudo comprobar que la ventana de ${ctx.app.name} siga como en la captura #${cap}: por seguridad no se actúa. ${retry}`,
+      session
+    )
+  }
+  const p = { x: el.point.x, y: el.point.y }
+  await checkWindowPoint(ctx, p, `del elemento ${n}`, session)
+  return { p, label: `elemento ${n} «${el.label.slice(0, 40)}» (captura #${cap})`, ctx }
 }
 
 /** Origen aislado: la app bajo el punto tiene que ser EXACTAMENTE la capturada (otra ventana, una notificación o el escritorio no valen). */
 async function assertCapturedAppAt(ctx: WindowCtx, p: { x: number; y: number }, session: string | undefined): Promise<void> {
   const at = await appAtPoint(p.x, p.y)
   if (!at.bundleId || at.bundleId !== ctx.app.bundleId) {
-    reportBridgeDenied('outside-window', session)
     const under = at.name ? `«${at.name}»` : 'otra cosa'
-    throw new Error(
+    throw reject(
+      'covered',
       `Bajo ese punto no está ${ctx.app.name}: hay ${under}. La ventana de ${ctx.app.name} está tapada, minimizada o en otro escritorio o pantalla. ` +
-        `NO pidas acceso a ${under} ni a ninguna otra app para sortear esto: pide a la persona que deje la ventana de ${ctx.app.name} a la vista y toma app_screenshot otra vez.`
+        `NO pidas acceso a ${under} ni a ninguna otra app para sortear esto: pide a la persona que deje la ventana de ${ctx.app.name} a la vista y toma app_screenshot otra vez.`,
+      session
     )
   }
 }
@@ -1247,10 +1458,11 @@ async function recheckWindow(ctx: WindowCtx, session: string | undefined): Promi
     Math.abs(f.width - ctx.frame.width) <= WINDOW_FRAME_TOLERANCE &&
     Math.abs(f.height - ctx.frame.height) <= WINDOW_FRAME_TOLERANCE
   if (!frames.some(same)) {
-    reportBridgeDenied('window-moved', session)
     windowCtx.delete(ctxKey(session))
-    throw new Error(
-      `La ventana de ${ctx.app.name} se movió, cambió de tamaño o se cerró desde la captura: no se actúa. Toma app_screenshot otra vez.`
+    throw reject(
+      'window-moved',
+      `La ventana de ${ctx.app.name} se movió, cambió de tamaño o se cerró desde la captura: no se actúa. Toma app_screenshot otra vez.`,
+      session
     )
   }
 }
@@ -1302,7 +1514,15 @@ const BATCH_PAUSE_MS = 250
 const ELEMENT_ARG = {
   element: {
     type: 'number',
-    description: 'Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad)'
+    description:
+      'Alternativa a x/y: número [N] de la lista de elementos de la última captura (punto exacto por accesibilidad). ' +
+      'En el modo de apps hay que indicar también capture.'
+  },
+  capture: {
+    type: 'number',
+    description:
+      'Solo en el modo de apps y OBLIGATORIO junto con element: el número de la captura de la lista ("Captura #N" en el texto de ' +
+      'app_screenshot). Si la captura ya no es la vigente o la ventana cambió, se rechaza con [rechazo: stale] sin hacer nada.'
   }
 }
 const SHOT_FLAG = {
@@ -1734,9 +1954,10 @@ async function pointFromArgs(
 ): Promise<{ p: { x: number; y: number }; label: string; ctx?: WindowCtx }> {
   const raw = args.element
   if (isolatedCall) {
-    // Origen aislado: no hay lista de elementos (nace de una captura de pantalla completa); el punto sale de los px de app_screenshot.
+    // Origen aislado: `element: N` exige `capture: <id>` y sale de la lista de ESA app_screenshot (nunca de la lista global de pantalla completa).
     if (raw !== undefined && raw !== null && raw !== '') {
-      throw new Error('En este modo no hay lista de elementos (element): toma app_screenshot de la app y usa x/y en píxeles de esa imagen.')
+      const { p, label, ctx } = await toElementPoint(session, raw, args.capture)
+      return { p, label, ctx }
     }
     if (args.x === undefined || args.y === undefined) throw new Error('Indica x e y (px de la última app_screenshot).')
     const { p, ctx } = await toWindowPoints(session, args.x, args.y)
@@ -1803,6 +2024,183 @@ function postTeachEnd(): Promise<void> {
   )
 }
 
+/** Origen aislado, herramienta `zoom`: recorta y agranda la última `app_screenshot` de ESTA sesión (nunca pantalla completa ni otra sesión). */
+async function isolatedZoom(a: Record<string, unknown>, session: string | undefined): Promise<{ text: string; shot: Shot }> {
+  const key = ctxKey(session)
+  const entry = windowShots.get(key)
+  if (!entry) {
+    throw reject(
+      'no-capture',
+      'No hay ninguna app_screenshot vigente de esta sesión: toma app_screenshot de la app y haz zoom sobre esa imagen.',
+      session
+    )
+  }
+  if (Date.now() - entry.at > WINDOW_CTX_TTL_MS) {
+    dropWindowShot(key)
+    throw reject(
+      'capture-expired',
+      `La captura de ${entry.app.name} caducó (valen 90 s): toma app_screenshot otra vez antes de hacer zoom.`,
+      session
+    )
+  }
+  // El zoom muestra la ventana de esa app: si la concesión ya no está, no se enseña nada.
+  await requireTierFor(entry.app, 'view', session)
+  const bad = (v: unknown): boolean => v === null || v === undefined || (typeof v === 'string' && !v.trim()) || typeof v === 'boolean'
+  const nums = [a.x, a.y, a.width, a.height].map((v) => (bad(v) ? NaN : Math.round(Number(v))))
+  if (!nums.every(Number.isFinite)) throw new Error('x, y, width y height deben ser números')
+  const [x, y, width, height] = nums as [number, number, number, number]
+  if (width <= 0 || height <= 0) throw new Error('width y height deben ser mayores que 0')
+  if (x < 0 || y < 0 || x + width > entry.imageWidth || y + height > entry.imageHeight) {
+    throw reject(
+      'outside-window',
+      `Región fuera de la imagen de app_screenshot (${entry.imageWidth}x${entry.imageHeight} px): (${x}, ${y}) ${width}x${height}`,
+      session
+    )
+  }
+  const scale = Math.max(1, Math.min(4, Number(a.scale) || 2))
+  // px del JPEG que vio el modelo → px de la imagen de origen (macOS: el PNG conservado; Windows: el rectángulo de origen de la ventana).
+  const srcW = entry.pngPath ? entry.pngWidth : entry.rect ? Math.round(entry.rect.width) : undefined
+  const srcH = entry.pngPath ? entry.pngHeight : entry.rect ? Math.round(entry.rect.height) : undefined
+  if (!srcW || !srcH || !(srcW > 0) || !(srcH > 0)) {
+    throw reject(
+      'zoom-unavailable',
+      'No se puede hacer zoom sobre esta captura (el helper no informó de la ventana): toma app_screenshot otra vez.',
+      session
+    )
+  }
+  const fx = srcW / entry.imageWidth
+  const fy = srcH / entry.imageHeight
+  const rx = Math.max(0, Math.floor(x * fx))
+  const ry = Math.max(0, Math.floor(y * fy))
+  const region = {
+    x: rx,
+    y: ry,
+    width: Math.max(1, Math.min(srcW, Math.ceil((x + width) * fx)) - rx),
+    height: Math.max(1, Math.min(srcH, Math.ceil((y + height) * fy)) - ry)
+  }
+  mkdirSync(SHOT_DIR, { recursive: true })
+  const outPath = join(SHOT_DIR, `zoom-app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`)
+  try {
+    const r = await backend.zoomWindow({
+      appKey: entry.app.bundleId,
+      windowIndex: entry.windowIndex,
+      srcPath: entry.pngPath,
+      outPath,
+      region,
+      scale,
+      maxLong: ZOOM_MAX_LONG
+    })
+    if (entry.rect) {
+      // Windows: el zoom es una captura NUEVA de la ventana; solo vale si sigue donde y como estaba al capturar.
+      const t = WINDOW_FRAME_TOLERANCE
+      const same =
+        !!r.rect &&
+        Math.abs(r.rect.x - entry.rect.x) <= t &&
+        Math.abs(r.rect.y - entry.rect.y) <= t &&
+        Math.abs(r.rect.width - entry.rect.width) <= t &&
+        Math.abs(r.rect.height - entry.rect.height) <= t
+      if (!same) {
+        dropWindowShot(key)
+        windowCtx.delete(key)
+        throw reject(
+          'window-moved',
+          `La ventana de ${entry.app.name} se movió o cambió de tamaño desde la captura: no se hace zoom. Toma app_screenshot otra vez.`,
+          session
+        )
+      }
+    }
+    const base64 = readFileSync(outPath).toString('base64')
+    return {
+      text:
+        `Zoom de (${x}, ${y}) ${width}x${height} px de tu última app_screenshot de ${entry.app.name} (resultado: ${r.width}x${r.height} px). ` +
+        'Esta imagen es SOLO para mirar — sus coordenadas no sirven para clics: usa las de app_screenshot.',
+      shot: { path: outPath, base64, width: r.width, height: r.height, ratio: 1 }
+    }
+  } finally {
+    rmSync(outPath, { force: true })
+  }
+}
+
+/** Firma de luminancia de un PNG en disco; `null` si no se puede leer o decodificar. */
+function signatureFromFile(path: string): ProbeSignature | null {
+  try {
+    return probeSignature(readFileSync(path))
+  } catch {
+    return null
+  }
+}
+
+const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
+  new Promise((resolve) => {
+    const t = setTimeout(() => resolve(fallback), ms)
+    t.unref?.()
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      () => {
+        clearTimeout(t)
+        resolve(fallback)
+      }
+    )
+  })
+
+/**
+ * Origen aislado (§2.4): lista numerada de lo pulsable de la app concedida que cae DENTRO del marco visible de la ventana capturada
+ * (máx. 30, tope de 3 s). Solo se ofrece con el nivel «Ver y clic» de esa app. Best-effort: ante cualquier fallo, lista vacía.
+ */
+async function buildCaptureElements(ctx: WindowCtx, session: string | undefined): Promise<CaptureElement[]> {
+  try {
+    const tier = await tierOf(ctx.app, session)
+    if (!tier || TIER_RANK[tier] < TIER_RANK.click) return []
+    const found = await withTimeout(
+      findElementsHelper(ctx.app.bundleId, { roles: SHOT_ELEMENT_ROLES }),
+      ELEMENTS_QUERY_MS,
+      [] as FoundElement[]
+    )
+    const toPx = (pt: { x: number; y: number }): { x: number; y: number } => ({
+      x: ((pt.x - ctx.rect.x) * ctx.imageWidth) / ctx.rect.width,
+      y: ((pt.y - ctx.rect.y) * ctx.imageHeight) / ctx.rect.height
+    })
+    return found
+      .filter((el) => el && el.enabled !== false && el.width > 1 && el.height > 1)
+      .filter((el) => el.screenPoint && Number.isFinite(el.screenPoint.x) && Number.isFinite(el.screenPoint.y))
+      .filter((el) => inRect(ctx.frame, el.screenPoint.x, el.screenPoint.y))
+      .filter((el) => elementLabel(el) || el.role === 'AXTextField' || el.role === 'AXTextArea')
+      .map((el) => ({ el, px: toPx(el.screenPoint) }))
+      .sort((p, q) => p.px.y - q.px.y || p.px.x - q.px.x)
+      .slice(0, 30)
+      .map(({ el }) => ({
+        role: el.role,
+        label: elementLabel(el).slice(0, 50),
+        point: { x: el.screenPoint.x, y: el.screenPoint.y },
+        width: el.width,
+        height: el.height
+      }))
+  } catch (err) {
+    log('lista de elementos de la captura:', err instanceof Error ? err.message : err)
+    return []
+  }
+}
+
+/** Texto de la lista numerada de una captura (puntos y tamaños en px de la imagen que vio el modelo). */
+function captureElementsText(ctx: WindowCtx, els: readonly CaptureElement[]): string {
+  const lines = els.map((e, i) => {
+    const px = {
+      x: ((e.point.x - ctx.rect.x) * ctx.imageWidth) / ctx.rect.width,
+      y: ((e.point.y - ctx.rect.y) * ctx.imageHeight) / ctx.rect.height
+    }
+    const w = Math.max(1, Math.round((e.width * ctx.imageWidth) / ctx.rect.width))
+    const h = Math.max(1, Math.round((e.height * ctx.imageHeight) / ctx.rect.height))
+    return `[${i + 1}] ${ELEMENT_ROLE_ES[e.role] ?? e.role}${e.label ? ` «${e.label}»` : ''} (${Math.round(px.x)}, ${Math.round(px.y)}) ${w}×${h}`
+  })
+  return (
+    `Captura #${ctx.captureId} — elementos de ${ctx.app.name} (para pulsar uno: element: N y capture: ${ctx.captureId}; ` +
+    `valen hasta la próxima app_screenshot o 90 s, y si la ventana cambia se rechazan con [rechazo: stale]):\n${lines.join('\n')}`
+  )
+}
+
 const TOOLS: ToolDef[] = [
   {
     name: 'screenshot',
@@ -1821,7 +2219,9 @@ const TOOLS: ToolDef[] = [
       'Recorta y agranda una región de la ÚLTIMA captura de pantalla completa (screenshot, no app_screenshot) para ver mejor ' +
       'texto chico o una zona densa, sin gastar una acción real sobre la pantalla. x,y,width,height en píxeles de ESA captura ' +
       '(mismo espacio que left_click). El resultado es SOLO para mirar: sus coordenadas no sirven para left_click/mouse_move — ' +
-      'usa las de la captura original.',
+      'usa las de la captura original. En el modo de apps (sin screenshot de pantalla) el zoom es de tu última app_screenshot: ' +
+      'x,y,width,height en píxeles de ESA imagen (los mismos de los clics), con más detalle que la imagen que viste; ' +
+      'sirve para leer cifras y letra chica, y solo muestra la ventana de esa app.',
     inputSchema: obj(
       {
         x: { type: 'number', description: 'X del recorte, px de la última captura' },
@@ -1835,7 +2235,7 @@ const TOOLS: ToolDef[] = [
     action: true,
     noAutoShot: true,
     run: async (a, session) => {
-      if (isolatedCall) throw new Error(ISOLATED_SCREEN_REJECT_MSG)
+      if (isolatedCall) return isolatedZoom(a, session)
       if (!lastShot || (isolatedCall && lastShotSession !== session)) {
         throw new Error('Todavía no hay ninguna captura de pantalla completa — pide una con screenshot primero.')
       }
@@ -1863,28 +2263,31 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'left_click',
-    description: 'Clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista de la última captura (element: N, más exacto).',
+    description:
+      'Clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista de la última captura (element: N, más exacto; en el modo de apps, con capture: el número de esa captura).',
     inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: (a, session) => clickTool(a, 'left', 1, 'left_click', session)
   },
   {
     name: 'right_click',
-    description: 'Clic derecho en (x, y) px de la captura, o en el elemento N de la lista (element: N).',
+    description: 'Clic derecho en (x, y) px de la captura, o en el elemento N de la lista (element: N; en el modo de apps, con capture).',
     inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: (a, session) => clickTool(a, 'right', 1, 'right_click', session)
   },
   {
     name: 'double_click',
-    description: 'Doble clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista (element: N).',
+    description:
+      'Doble clic izquierdo en (x, y) px de la captura, o en el elemento N de la lista (element: N; en el modo de apps, con capture).',
     inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: (a, session) => clickTool(a, 'left', 2, 'double_click', session)
   },
   {
     name: 'mouse_move',
-    description: 'Mueve el puntero a (x, y) px de la captura, o al elemento N de la lista (element: N), sin hacer clic.',
+    description:
+      'Mueve el puntero a (x, y) px de la captura, o al elemento N de la lista (element: N; en el modo de apps, con capture), sin hacer clic.',
     inputSchema: obj({ ...XY, ...ELEMENT_ARG, ...SHOT_FLAG }, []),
     action: true,
     run: async (a, session) => {
@@ -2595,7 +2998,8 @@ const TOOLS: ToolDef[] = [
       'de clic: no sabe dónde está esa ventana en la pantalla; para clicar usa screenshot (captura de la pantalla ' +
       'principal) o find_element. En el modo de apps (sin screenshot de pantalla) sus píxeles SÍ valen para los clics: ' +
       'las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y teach_step van en píxeles de esta ' +
-      'imagen y valen 90 s o hasta la siguiente app_screenshot.',
+      'imagen y valen 90 s o hasta la siguiente app_screenshot. En ese modo el texto trae además una lista numerada de ' +
+      'elementos (element: N con su capture) y avisa si otra app tapa la ventana; con zoom amplías una región de esta imagen.',
     inputSchema: obj({ app: { type: 'string' }, window: { type: 'number' } }, ['app']),
     action: true,
     noAutoShot: true,
@@ -2604,15 +3008,21 @@ const TOOLS: ToolDef[] = [
       await requireTierFor(app, 'view', session)
       const windowIndex = Math.max(0, Math.round(Number(a.window) || 0))
       // Origen aislado: una captura nueva reemplaza a la anterior desde que empieza; si falla, no queda vigente la vieja (de otra app o ventana).
-      if (isolatedCall) windowCtx.delete(ctxKey(session))
+      if (isolatedCall) {
+        windowCtx.delete(ctxKey(session))
+        dropWindowShot(ctxKey(session))
+      }
       mkdirSync(SHOT_DIR, { recursive: true })
       const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       const raw = join(SHOT_DIR, `raw-app-${stamp}.png`)
       // Prefijo "shot-": `cleanupShots()` la recoge igual que las capturas de pantalla completa.
       const out = join(SHOT_DIR, `shot-app-${stamp}.jpg`)
+      // Origen aislado: miniatura PNG de la MISMA captura (Windows) para la firma de la lista de elementos; nunca llega al modelo.
+      const probe = isolatedCall ? join(SHOT_DIR, `probe-app-${stamp}.png`) : undefined
       try {
-        const info = await backend.windowShot(app.bundleId, raw, out, windowIndex)
-        const base64 = readFileSync(out).toString('base64')
+        const info = await backend.windowShot(app.bundleId, raw, out, windowIndex, probe)
+        const jpg = readFileSync(out)
+        const base64 = jpg.toString('base64')
         cleanupShots()
         if (isolatedCall) {
           // Origen aislado: esta captura fija el espacio de los clics (px de ESTA imagen → puntos de la ventana). Las pantallas se releen
@@ -2629,11 +3039,67 @@ const TOOLS: ToolDef[] = [
           const located = setWindowCtx(session, app, windowIndex, loc)
           const size = located && loc ? `${loc.imageWidth}x${loc.imageHeight}` : `${info.width}x${info.height}`
           const title = info.title ? ` («${info.title}»)` : ''
+          const imageWidth = located && loc ? loc.imageWidth : info.width
+          const imageHeight = located && loc ? loc.imageHeight : info.height
+
+          // Zoom (§2.1): lo necesario para ampliar ESTA captura. macOS conserva el PNG grande (el doble de detalle que el JPEG);
+          // Windows guarda el rectángulo de origen para volver a capturar el trozo. Independiente de que la ventana se haya podido ubicar.
+          let pngForSignature: string = backend.id === 'darwin' ? raw : (probe ?? '')
+          try {
+            if (backend.id === 'darwin') {
+              const px = jpegSize(jpg)
+              const w = located && loc ? loc.imageWidth : (px?.width ?? 0)
+              const h = located && loc ? loc.imageHeight : (px?.height ?? 0)
+              if (w > 0 && h > 0 && Number.isFinite(info.width) && Number.isFinite(info.height) && existsSync(raw)) {
+                const kept = join(SHOT_DIR, `shot-app-raw-${stamp}.png`)
+                renameSync(raw, kept)
+                pngForSignature = kept
+                setWindowShot(session, {
+                  app,
+                  windowIndex,
+                  imageWidth: w,
+                  imageHeight: h,
+                  pngPath: kept,
+                  pngWidth: info.width,
+                  pngHeight: info.height
+                })
+              }
+            } else if (info.rect && validRect(info.rect) && imageWidth > 0 && imageHeight > 0) {
+              setWindowShot(session, { app, windowIndex, imageWidth, imageHeight, rect: { ...info.rect } })
+            }
+          } catch (err) {
+            log('app_screenshot: sin zoom para esta captura:', err instanceof Error ? err.message : err)
+          }
+
+          // Lista numerada atada a esta captura (§2.4) y aviso de ventana tapada (§2.2): solo si la ventana quedó ubicada.
+          let extra = ''
+          const stored = located ? windowCtx.get(ctxKey(session)) : undefined
+          if (stored && loc) {
+            stored.signature = pngForSignature ? signatureFromFile(pngForSignature) : null
+            if (stored.signature) {
+              const els = await buildCaptureElements(stored, session)
+              if (els.length) {
+                stored.elements = els
+                extra += `\n${captureElementsText(stored, els)}`
+              }
+            }
+            try {
+              const own = backend.id === 'darwin' ? await backend.windowFrames(app.bundleId).catch(() => [] as Rect[]) : []
+              const res = await withTimeout(backend.occlusion(app.bundleId, loc.frame, own, await getAllScreens()), 6_000, {
+                known: false as const
+              })
+              const notice = coverageNotice(res)
+              if (notice) extra += `\n${notice}`
+            } catch (err) {
+              log('app_screenshot: aviso de ventana tapada:', err instanceof Error ? err.message : err)
+            }
+          }
           return {
             text: located
               ? `Ventana de ${app.name}: ${size} px${title}. Las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y ` +
                 'teach_step van en píxeles de ESTA imagen; valen 90 s o hasta la siguiente app_screenshot. Archivo: ' +
-                out
+                out +
+                extra
               : `Ventana de ${app.name}: ${size} px${title}. No se pudo ubicar la ventana: esta captura sirve para mirar, no para clics. Archivo: ` +
                 out,
             shot: {
@@ -2655,6 +3121,7 @@ const TOOLS: ToolDef[] = [
         }
       } finally {
         rmSync(raw, { force: true })
+        if (probe) rmSync(probe, { force: true })
       }
     }
   },

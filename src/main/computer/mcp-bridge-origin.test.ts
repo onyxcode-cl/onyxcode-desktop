@@ -273,13 +273,16 @@ describe.skipIf(!posixOnly)('origen aislado: nunca pantalla completa (el escrito
     }
   })
 
-  it('zoom ⇒ rechazo, aunque otra llamada no aislada haya capturado antes', async () => {
+  it('zoom sin app_screenshot vigente de ESTA sesión ⇒ [rechazo: no-capture], aunque otra llamada no aislada haya capturado antes', async () => {
+    // El zoom del modo de apps solo amplía la última app_screenshot de la sesión (ver mcp-bridge-window.test.ts): nunca pantalla completa.
     const { mcp, done } = await boot({ planApproved: false, bridgeCheck: () => ISOLATED_OK, tier: NOTES })
     try {
       const r = await mcp.call('zoom', { x: 0, y: 0, width: 10, height: 10, lazunox_session: SES }, HDRS)
       expect(r.isError).toBe(true)
+      expect(textOf(r)).toMatch(/^\[rechazo: no-capture\]/)
       expect(textOf(r)).toContain('app_screenshot')
       expect(hasImage(r)).toBe(false)
+      expect(mcp.calls().some((c) => /screenshot|screencapture|capture|zoom-image/.test(c.cmd))).toBe(false)
     } finally {
       await done()
     }
@@ -818,7 +821,9 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
         expect(textOf(r)).toContain('no está Notes')
         expect(textOf(r)).toContain('NO pidas acceso')
         expect(anyInput(m)).toBe(false)
-        await vi.waitFor(() => expect(reasons(s)).toContain('outside-window'))
+        // Código estable: bajo el punto hay otra app (tapada), con el nombre de quien tapa.
+        expect(textOf(r)).toMatch(/^\[rechazo: covered\]/)
+        await vi.waitFor(() => expect(reasons(s)).toContain('covered'))
       } finally {
         await m.stop()
         await s.close()
@@ -979,13 +984,17 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
       }
     })
 
-    it('element: N no existe en origen aislado (no hay lista) y lleva a x/y sobre app_screenshot', async () => {
+    it('element: N en origen aislado exige capture (y una lista de ESA captura); sin ellos, sin clic (el detalle está en mcp-bridge-window.test.ts)', async () => {
       const { mcp, done } = await bootMac()
       try {
         await shot(mcp)
-        const r = await mcp.call('left_click', { element: 1, lazunox_session: SES }, HDRS)
-        expect(r.isError).toBe(true)
-        expect(textOf(r)).toContain('app_screenshot')
+        const sin = await mcp.call('left_click', { element: 1, lazunox_session: SES }, HDRS)
+        expect(sin.isError).toBe(true)
+        expect(textOf(sin)).toMatch(/^\[rechazo: capture-required\]/)
+        // Con un id cualquiera pero sin lista (la app no expuso elementos): también se rechaza, sin clic.
+        const conId = await mcp.call('left_click', { element: 1, capture: 1, lazunox_session: SES }, HDRS)
+        expect(conId.isError).toBe(true)
+        expect(textOf(conId)).toMatch(/^\[rechazo: stale\]/)
         expect(anyInput(mcp)).toBe(false)
       } finally {
         await done()
