@@ -73,7 +73,26 @@ import {
 } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
 import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from './mcp-platform-win32'
-import { captureIsStale, coverageNotice, probeSignature, readRegularFile, type ProbeSignature } from './window-probe'
+import {
+  ActionLog,
+  captureIsStale,
+  computeVerdict,
+  coverageNotice,
+  diffSignatures,
+  formatVerdict,
+  hasChanged,
+  pollProbe,
+  probeSignature,
+  readRegularFile,
+  textKey,
+  verdictEnabled,
+  type ActionKind,
+  type ActionTarget,
+  type PollResult,
+  type ProbeDiff,
+  type ProbeSignature,
+  type Verdict
+} from './window-probe'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -1029,13 +1048,18 @@ function checkIsolatedKeys(keys: string, session: string | undefined): string {
 async function recheckFront(checked: AppRef | undefined, session: string | undefined): Promise<void> {
   if (!isolatedCall) return
   const now = await appFrontmost()
-  if (!checked?.bundleId || !now.bundleId || now.bundleId !== checked.bundleId || isIsolatedExempt(now.bundleId)) {
+  if (!sameFront(checked, now)) {
     throw reject(
       'front-changed',
       'La app en primer plano cambió antes de pulsar: no se hizo nada. Toma una captura y revisa dónde estás antes de reintentar.',
       session
     )
   }
+}
+
+/** ¿Sigue al frente la app que se comprobó? (identificable, la misma y no exenta). Es la regla única de `recheckFront` y del troceo de `type_text`. */
+function sameFront(checked: AppRef | undefined, now: AppRef): boolean {
+  return !!checked?.bundleId && !!now.bundleId && now.bundleId === checked.bundleId && !isIsolatedExempt(now.bundleId)
 }
 
 // ───────────────────────────── backend de plataforma ─────────────────────────────
@@ -1338,12 +1362,15 @@ function jpegSize(buf: Buffer): { width: number; height: number } | null {
   return null
 }
 
-/** Captura sin imagen para el modelo (la «sonda»): firma de la ventana concedida AHORA; `null` si no se pudo leer. Borra el archivo. */
-async function probeNow(ctx: WindowCtx): Promise<ProbeSignature | null> {
-  const path = join(SHOT_DIR, `probe-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.png`)
+/**
+ * Captura sin imagen para el modelo (la «sonda»): firma de una ventana de una app YA concedida, AHORA; `null` si no se pudo leer. El archivo
+ * tiene nombre aleatorio y se borra siempre; el modelo nunca recibe la imagen, solo porcentajes. Quien llama comprueba antes el nivel de la app.
+ */
+async function probeOf(bundleId: string, windowIndex: number): Promise<ProbeSignature | null> {
+  const path = join(SHOT_DIR, `probe-${Date.now()}-${secretName()}.png`)
   try {
     mkdirSync(SHOT_DIR, { recursive: true })
-    await backend.probeWindow(ctx.app.bundleId, ctx.windowIndex, path)
+    await backend.probeWindow(bundleId, windowIndex, path)
     return probeSignature(readShotFile(path))
   } catch (err) {
     log('sonda de ventana:', err instanceof Error ? err.message : err)
@@ -1352,6 +1379,8 @@ async function probeNow(ctx: WindowCtx): Promise<ProbeSignature | null> {
     safeRm(path)
   }
 }
+
+const probeNow = (ctx: WindowCtx): Promise<ProbeSignature | null> => probeOf(ctx.app.bundleId, ctx.windowIndex)
 
 /**
  * Origen aislado: puntos globales (de un clic) → comprobaciones geométricas comunes a x/y y a `element`: dentro del marco visible de la
@@ -1560,7 +1589,10 @@ const ELEMENT_ARG = {
 const SHOT_FLAG = {
   screenshot: {
     type: 'boolean',
-    description: 'Adjuntar una captura tras la acción (por defecto true)'
+    description:
+      'Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la ' +
+      'VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea "efecto: …"); ' +
+      'sin indicarlo, solo la línea "efecto: confirmed | unverifiable | suspected_noop", sin imagen.'
   }
 }
 const EXPECT_APP = {
@@ -2240,6 +2272,496 @@ function captureElementsText(ctx: WindowCtx, els: readonly CaptureElement[]): st
   )
 }
 
+/**
+ * Captura de la ventana `windowIndex` de una app concedida (cuerpo de `app_screenshot`). También la usa `screenshot: true` de las acciones
+ * del modo de apps: siempre con una app y un índice concretos (nunca pantalla completa), y exige el nivel «ver» de esa app.
+ */
+async function appWindowShot(app: AppRef, windowIndex: number, session: string | undefined): Promise<{ text: string; shot: Shot }> {
+  await requireTierFor(app, 'view', session)
+  // Origen aislado: una captura nueva reemplaza a la anterior desde que empieza; si falla, no queda vigente la vieja (de otra app o ventana).
+  if (isolatedCall) {
+    windowCtx.delete(ctxKey(session))
+    dropWindowShot(ctxKey(session))
+  }
+  mkdirSync(SHOT_DIR, { recursive: true })
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  // El PNG crudo lleva nombre aleatorio propio (no derivado del `stamp` que sale en el texto): el helper lo escribe y luego se lee.
+  const raw = join(SHOT_DIR, `raw-app-${Date.now()}-${secretName()}.png`)
+  // Prefijo "shot-": `cleanupShots()` la recoge igual que las capturas de pantalla completa.
+  const out = join(SHOT_DIR, `shot-app-${stamp}.jpg`)
+  // Origen aislado: miniatura PNG de la MISMA captura (Windows) para la firma de la lista de elementos; nunca llega al modelo.
+  const probe = isolatedCall ? join(SHOT_DIR, `probe-app-${secretName()}.png`) : undefined
+  try {
+    const info = await backend.windowShot(app.bundleId, raw, out, windowIndex, probe)
+    const jpg = readShotFile(out)
+    const base64 = jpg.toString('base64')
+    cleanupShots()
+    if (isolatedCall) {
+      // Origen aislado: esta captura fija el espacio de los clics (px de ESTA imagen → puntos de la ventana). Las pantallas se releen
+      // en cada captura. Si no se puede asegurar dónde está la ventana, se borra la anterior y esta sirve solo para mirar.
+      allScreens = null
+      let loc: Awaited<ReturnType<typeof backend.locateWindowShot>> = null
+      try {
+        await getAllScreens()
+        loc = await backend.locateWindowShot(app.bundleId, windowIndex, info, out)
+      } catch (err) {
+        log('app_screenshot: no se pudo ubicar la ventana:', err instanceof Error ? err.message : err)
+        loc = null
+      }
+      const located = setWindowCtx(session, app, windowIndex, loc)
+      const size = located && loc ? `${loc.imageWidth}x${loc.imageHeight}` : `${info.width}x${info.height}`
+      const title = info.title ? ` («${info.title}»)` : ''
+      const imageWidth = located && loc ? loc.imageWidth : info.width
+      const imageHeight = located && loc ? loc.imageHeight : info.height
+
+      // Zoom (§2.1): lo necesario para ampliar ESTA captura. macOS conserva el PNG grande (el doble de detalle que el JPEG);
+      // Windows guarda el rectángulo de origen para volver a capturar el trozo. Independiente de que la ventana se haya podido ubicar.
+      const pngForSignature: string = backend.id === 'darwin' ? '' : (probe ?? '')
+      let darwinPng: Buffer | undefined
+      try {
+        if (backend.id === 'darwin') {
+          const px = jpegSize(jpg)
+          const w = located && loc ? loc.imageWidth : (px?.width ?? 0)
+          const h = located && loc ? loc.imageHeight : (px?.height ?? 0)
+          if (w > 0 && h > 0 && Number.isFinite(info.width) && Number.isFinite(info.height)) {
+            // Se leen los bytes (archivo regular, sin enlaces) y el archivo se borra en el `finally`: nada previsible queda en disco.
+            darwinPng = readShotFile(raw)
+            setWindowShot(session, {
+              app,
+              windowIndex,
+              imageWidth: w,
+              imageHeight: h,
+              png: darwinPng,
+              pngWidth: info.width,
+              pngHeight: info.height
+            })
+          }
+        } else if (info.rect && validRect(info.rect) && imageWidth > 0 && imageHeight > 0) {
+          setWindowShot(session, { app, windowIndex, imageWidth, imageHeight, rect: { ...info.rect } })
+        }
+      } catch (err) {
+        log('app_screenshot: sin zoom para esta captura:', err instanceof Error ? err.message : err)
+      }
+
+      // Lista numerada atada a esta captura (§2.4) y aviso de ventana tapada (§2.2): solo si la ventana quedó ubicada.
+      let extra = ''
+      const stored = located ? windowCtx.get(ctxKey(session)) : undefined
+      if (stored && loc) {
+        stored.signature = darwinPng ? probeSignature(darwinPng) : pngForSignature ? signatureFromFile(pngForSignature) : null
+        if (stored.signature) {
+          const els = await buildCaptureElements(stored, session)
+          if (els.length) {
+            stored.elements = els
+            extra += `\n${captureElementsText(stored, els)}`
+          }
+        }
+        try {
+          const own = backend.id === 'darwin' ? await backend.windowFrames(app.bundleId).catch(() => [] as Rect[]) : []
+          const res = await withTimeout(backend.occlusion(app.bundleId, loc.frame, own, await getAllScreens()), 6_000, {
+            known: false as const
+          })
+          const notice = coverageNotice(res)
+          if (notice) extra += `\n${notice}`
+        } catch (err) {
+          log('app_screenshot: aviso de ventana tapada:', err instanceof Error ? err.message : err)
+        }
+      }
+      return {
+        text: located
+          ? `Ventana de ${app.name}: ${size} px${title}. Las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y ` +
+            'teach_step van en píxeles de ESTA imagen; valen 90 s o hasta la siguiente app_screenshot. Archivo: ' +
+            out +
+            extra
+          : `Ventana de ${app.name}: ${size} px${title}. No se pudo ubicar la ventana: esta captura sirve para mirar, no para clics. Archivo: ` +
+            out,
+        shot: {
+          path: out,
+          base64,
+          width: located && loc ? loc.imageWidth : info.width,
+          height: located && loc ? loc.imageHeight : info.height,
+          ratio: 1
+        }
+      }
+    }
+    return {
+      text:
+        `Ventana de ${app.name}: ${info.width}x${info.height} px${info.title ? ` («${info.title}»)` : ''}. ` +
+        'Solo para mirar: esta imagen NO sirve para sacar coordenadas de clic (no sabe dónde está la ventana ' +
+        'en la pantalla). Para clicar algo, usa screenshot o find_element. Archivo: ' +
+        out,
+      shot: { path: out, base64, width: info.width, height: info.height, ratio: await ensureRatio() }
+    }
+  } finally {
+    safeRm(raw)
+    safeRm(probe)
+  }
+}
+
+// ───────────────────────────── veredicto de acción y espera con condición (modo de apps) ─────────────────────────────
+//
+// docs/PLAN-CONTROL-MEJOR.md §2.3 y §2.5. SOLO con `isolatedCall`: fuera del modo de apps nada de esto corre y las respuestas son las de siempre.
+// Las sondas son capturas de la ventana de una app YA concedida que se reducen a porcentajes aquí mismo: ni la imagen ni su ruta llegan al
+// modelo, y el archivo se borra siempre (`probeOf`). Si algo de la sonda falla, el veredicto es `unverifiable`: nunca un error.
+
+/** Apagador: `COMPUTER_VERDICT=0` quita sondas y veredicto (ENCENDIDO por defecto: decisión de Ben). */
+const VERDICT_ON = verdictEnabled(process.env)
+
+/** Acciones con veredicto. `mouse_move` no lo lleva; `batch` da UNO para todo el lote; `wait` lo arma él mismo. */
+const VERDICT_TOOLS: ReadonlySet<string> = new Set([
+  'left_click',
+  'double_click',
+  'right_click',
+  'scroll',
+  'drag',
+  'type_text',
+  'key',
+  'batch'
+])
+
+/** Registro de repeticiones, UNO por sesión (una sesión nunca ve lo de otra), en memoria y con tope de sesiones. */
+const ACTION_LOGS_MAX = 64
+const actionLogs = new Map<string, ActionLog>()
+
+function actionLogFor(session: string | undefined): ActionLog {
+  const key = ctxKey(session)
+  let l = actionLogs.get(key)
+  if (!l) {
+    if (actionLogs.size >= ACTION_LOGS_MAX) {
+      const oldest = actionLogs.keys().next().value
+      if (oldest !== undefined) actionLogs.delete(oldest)
+    }
+    l = new ActionLog()
+    actionLogs.set(key, l)
+  }
+  return l
+}
+
+/** La captura vigente de la sesión, o `undefined` (sin borrarla ni lanzar: aquí solo se mira). */
+function liveWindowCtx(session: string | undefined): WindowCtx | undefined {
+  const ctx = windowCtx.get(ctxKey(session))
+  return ctx && Date.now() - ctx.at <= WINDOW_CTX_TTL_MS ? ctx : undefined
+}
+
+/** Todo lo que se mira ANTES de actuar para poder comparar después. */
+interface VerdictPre {
+  /** App que se sonda (la del frente, ya concedida); `null` = no se puede sondear y el veredicto será `unverifiable`. */
+  app: AppRef | null
+  /** Nivel concedido a esa app (la lectura de vuelta de `type_text` exige «full»). */
+  tier: AppTier | null
+  windowIndex: number
+  before: ProbeSignature | null
+  windowsBefore: number | null
+  frontBefore: string
+  remote: boolean
+  target?: ActionTarget
+  targetKind: 'xy' | 'element'
+  /** `type_text`: cuántas veces aparecía el final del texto en los campos antes de escribir (`null` = no se pudo leer). */
+  readBefore: number | null
+}
+
+const hasArg = (v: unknown): boolean => v !== undefined && v !== null && v !== '' && typeof v !== 'boolean'
+const px1 = (v: unknown): number | undefined => (hasArg(v) && Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined)
+
+/** Objetivo de la acción para el registro de repeticiones: punto en px de la captura, o hash del texto/teclas. Nunca guarda el texto. */
+function actionTarget(name: string, args: Record<string, unknown>, app: AppRef, ctx: WindowCtx | undefined): ActionTarget | undefined {
+  const base = { app: app.bundleId }
+  if (name === 'type_text') return { ...base, text: textKey(String(args.text ?? '')) }
+  if (name === 'key')
+    return {
+      ...base,
+      text: textKey(
+        String(args.keys ?? '')
+          .trim()
+          .toLowerCase()
+      )
+    }
+  if (name === 'batch') return undefined
+  if (name === 'drag') {
+    const x = px1(args.start_x)
+    const y = px1(args.start_y)
+    return x !== undefined && y !== undefined ? { ...base, x, y } : undefined
+  }
+  if (hasArg(args.element)) {
+    // `element: N` se reduce al punto del elemento en px de SU captura: así el mismo botón cuenta como «el mismo objetivo» aunque cambie de número.
+    const n = Number(args.element)
+    const el = ctx && ctx.elements && Number.isInteger(n) ? ctx.elements[n - 1] : undefined
+    if (!ctx || !el) return undefined
+    return {
+      ...base,
+      x: Math.round(((el.point.x - ctx.rect.x) * ctx.imageWidth) / ctx.rect.width),
+      y: Math.round(((el.point.y - ctx.rect.y) * ctx.imageHeight) / ctx.rect.height)
+    }
+  }
+  const x = px1(args.x)
+  const y = px1(args.y)
+  return x !== undefined && y !== undefined ? { ...base, x, y } : undefined
+}
+
+/** Final del texto escrito para la lectura de vuelta: últimos ≤40 caracteres de la última línea no vacía. */
+function readbackTail(text: string): string {
+  const line =
+    text
+      .split(/[\r\n]+/)
+      .filter((l) => l.trim())
+      .pop() ?? ''
+  return line.slice(-40).trim()
+}
+
+/** Cuántas veces aparece `tail` en los valores de los campos de la app (por accesibilidad); `null` si no se pudo leer a tiempo. */
+async function countTail(bundleId: string, tail: string): Promise<number | null> {
+  const found = await withTimeout(
+    findElementsHelper(bundleId, { query: tail }).catch(() => null),
+    2_500,
+    null
+  )
+  if (!found) return null
+  const needle = fold(tail)
+  let n = 0
+  for (const el of found) {
+    if (el.role === 'AXSecureTextField' || typeof el.value !== 'string') continue
+    n += fold(el.value).split(needle).length - 1
+  }
+  return n
+}
+
+/** Antes de actuar: app al frente, ventanas, sonda y (en `type_text`) lectura previa. Nunca lanza: lo que falle deja el veredicto en `unverifiable`. */
+async function beginVerdict(name: string, args: Record<string, unknown>, session: string | undefined): Promise<VerdictPre> {
+  const pre: VerdictPre = {
+    app: null,
+    tier: null,
+    windowIndex: 0,
+    before: null,
+    windowsBefore: null,
+    frontBefore: '',
+    remote: false,
+    targetKind: hasArg(args.element) ? 'element' : 'xy',
+    readBefore: null
+  }
+  try {
+    const front = await appFrontmost()
+    pre.frontBefore = front.name || front.bundleId || ''
+    pre.remote = isRemoteApp(front)
+    // Solo se sonda una app concedida, identificable, que no sea exenta ni un gestor de archivos (el veredicto no abre puertas nuevas).
+    if (!front.bundleId || isIsolatedExempt(front.bundleId) || isFileManagerApp(front.bundleId)) return pre
+    const tier = await tierOf(front, session)
+    if (!tier) return pre
+    pre.app = front
+    pre.tier = tier
+    const ctx = liveWindowCtx(session)
+    pre.windowIndex = ctx && ctx.app.bundleId === front.bundleId ? ctx.windowIndex : 0
+    pre.target = actionTarget(name, args, front, ctx)
+    pre.windowsBefore = await backend
+      .windowFrames(front.bundleId)
+      .then((f) => f.length)
+      .catch(() => null)
+    pre.before = await probeOf(front.bundleId, pre.windowIndex)
+    if (name === 'type_text' && tier === 'full' && !pre.remote) {
+      const tail = readbackTail(String(args.text ?? ''))
+      if (tail.length >= 3) pre.readBefore = await countTail(front.bundleId, tail)
+    }
+  } catch (err) {
+    log('veredicto (antes):', err instanceof Error ? err.message : err)
+  }
+  return pre
+}
+
+/** `cmd`/`ctrl`/`win`… en la combinación: copiar, pegar y similares pueden no verse en la ventana. */
+const hasModifier = (keys: string): boolean => /(^|\+|\s)(cmd|command|ctrl|control|win|windows|super|meta)(\+|$)/i.test(keys.trim())
+
+/**
+ * Después de actuar: sondeo con tope (1,5 s local, 4 s con escritorio remoto), ventanas y app al frente, lectura de vuelta de `type_text`,
+ * veredicto y registro. `null` solo si el control se detuvo (no se sigue capturando). Nunca lanza.
+ */
+async function finishVerdict(
+  name: string,
+  args: Record<string, unknown>,
+  pre: VerdictPre,
+  session: string | undefined
+): Promise<Verdict | null> {
+  try {
+    if (await isStopped().catch(() => true)) return null
+    const app = pre.app
+    // La concesión pudo cambiar durante la acción: sin ella no se sigue capturando esa app.
+    const stillGranted = app ? !!(await tierOf(app, session).catch(() => null)) : false
+    const probe: PollResult =
+      app && stillGranted && pre.before
+        ? await pollProbe({
+            before: pre.before,
+            takeProbe: () => probeOf(app.bundleId, pre.windowIndex),
+            remote: pre.remote,
+            sleep,
+            now: Date.now
+          })
+        : { kind: 'failed' }
+    const windowsAfter =
+      app && stillGranted
+        ? await backend
+            .windowFrames(app.bundleId)
+            .then((f) => f.length)
+            .catch(() => null)
+        : null
+    const frontAfter = await appFrontmost()
+      .then((f) => f.name || f.bundleId || '')
+      .catch(() => pre.frontBefore)
+    let readback: 'match' | 'nomatch' | 'unavailable' = 'unavailable'
+    if (name === 'type_text' && app && stillGranted && pre.tier === 'full' && !pre.remote && pre.readBefore !== null) {
+      const tail = readbackTail(String(args.text ?? ''))
+      const after = tail.length >= 3 ? await countTail(app.bundleId, tail) : null
+      if (after !== null) readback = after > pre.readBefore ? 'match' : 'nomatch'
+    }
+    const log_ = actionLogFor(session)
+    const repeat = pre.target ? log_.history(pre.target, Date.now()) : undefined
+    const keys = String(args.keys ?? '')
+    const verdict = computeVerdict({
+      action: name as ActionKind,
+      target: pre.targetKind,
+      modifiers: name === 'key' && hasModifier(keys),
+      remote: pre.remote,
+      probe,
+      // Si no se pudo contar antes o después, no se inventa un cambio de ventanas.
+      windowsBefore: pre.windowsBefore ?? 0,
+      windowsAfter: pre.windowsBefore !== null && windowsAfter !== null ? windowsAfter : (pre.windowsBefore ?? 0),
+      frontBefore: pre.frontBefore,
+      frontAfter,
+      readback,
+      repeat
+    })
+    if (verdict && pre.target) {
+      log_.record({
+        tool: name,
+        app: pre.target.app,
+        x: pre.target.x,
+        y: pre.target.y,
+        text: pre.target.text,
+        effect: verdict.effect,
+        at: Date.now()
+      })
+    }
+    return verdict
+  } catch (err) {
+    log('veredicto (después):', err instanceof Error ? err.message : err)
+    return {
+      effect: 'unverifiable',
+      reason: 'se entregó; no se pudo comparar la ventana; confírmalo con app_screenshot si importa'
+    }
+  }
+}
+
+/** Trozos de `type_text` en el modo de apps (§2.5): el foco se vuelve a mirar entre trozo y trozo. */
+const TYPE_CHUNK = 200
+
+/**
+ * Parte el texto en trozos de ≤`size` caracteres SIN cortar un grafema (un emoji, una letra con acento combinado o «\r\n»): unidos dan
+ * exactamente el mismo texto, así que se pulsan las mismas teclas en total.
+ */
+function splitTypeChunks(text: string, size = TYPE_CHUNK): string[] {
+  const out: string[] = []
+  let cur = ''
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)) {
+    if (cur && cur.length + segment.length > size) {
+      out.push(cur)
+      cur = ''
+    }
+    cur += segment
+  }
+  if (cur) out.push(cur)
+  return out
+}
+
+/** Nombre de la app que está al frente si ya NO es la comprobada (o `null` si sigue siendo ella o no se pudo mirar). */
+async function frontChangedTo(checked: AppRef | undefined): Promise<string | null> {
+  try {
+    const now = await appFrontmost()
+    return sameFront(checked, now) ? null : now.name || 'otra app'
+  } catch {
+    return null
+  }
+}
+
+/** Tras pegar o pulsar una tecla (no se puede deshacer): si la app al frente ya no es la comprobada, un aviso para el modelo. Solo en el modo de apps. */
+async function frontAfterNote(checked: AppRef | undefined): Promise<string> {
+  if (!isolatedCall) return ''
+  try {
+    const now = await appFrontmost()
+    if (sameFront(checked, now)) return ''
+    return (
+      ` Aviso: tras actuar, la app al frente es «${now.name || 'otra'}» y antes era «${checked?.name ?? '?'}»; ` +
+      'no se puede deshacer: revisa ambas apps antes de seguir.'
+    )
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * `wait` con condición en el modo de apps (§2.5): `until_text` (accesibilidad de la app concedida, nivel «ver») y/o `until_change` (sondas de
+ * su ventana). Sondea cada 500 ms con tope de `seconds` (≤20); sin pausas fijas largas. Devuelve el veredicto en la primera línea.
+ */
+async function isolatedWait(a: Record<string, unknown>, session: string | undefined): Promise<string> {
+  const secs = Math.max(0, Math.min(20, Number(a.seconds) || 1))
+  const wanted = typeof a.until_text === 'string' ? a.until_text.trim() : ''
+  if (wanted.length > 200) throw new Error('until_text demasiado largo (máx. 200 caracteres)')
+  const change = a.until_change === true
+  const ctx = liveWindowCtx(session)
+  const named = typeof a.app === 'string' && a.app.trim() ? await namedApp(a.app) : null
+  const app = named ?? ctx?.app
+  if (!app) {
+    throw reject('no-capture', 'Indica la app (app: "…") o toma antes app_screenshot de la app en la que esperas algo.', session)
+  }
+  // Mirar el árbol de accesibilidad o la ventana de una app exige que esté concedida, aquí como mínimo para ver.
+  await requireTierFor(app, 'view', session)
+  const windowIndex = ctx && ctx.app.bundleId === app.bundleId ? ctx.windowIndex : 0
+  const remote = isRemoteApp(app)
+  const beforeSig = change ? await probeOf(app.bundleId, windowIndex) : null
+  const deadline = Date.now() + secs * 1000
+  const res: { hit: FoundElement | null; diff: ProbeDiff | null } = { hit: null, diff: null }
+  await act({ tool: 'wait', text: `${secs}s` }, async () => {
+    for (;;) {
+      if (wanted) {
+        const found = await withTimeout(
+          findElementsHelper(app.bundleId, { query: wanted }).catch(() => null),
+          3_000,
+          null
+        )
+        const w = fold(wanted)
+        res.hit = found?.find((el) => el.role !== 'AXSecureTextField' && elementTextFields(el).some((f) => fold(f).includes(w))) ?? null
+        if (res.hit) return
+      }
+      if (beforeSig) {
+        const sig = await probeOf(app.bundleId, windowIndex)
+        const d = sig ? diffSignatures(beforeSig, sig) : null
+        if (d && hasChanged(d)) {
+          res.diff = d
+          return
+        }
+      }
+      if (Date.now() >= deadline) return
+      await sleep(Math.min(500, Math.max(0, deadline - Date.now())))
+    }
+  })
+  const secsText = `${Math.round(secs * 10) / 10}`
+  if (res.hit) {
+    const label = wanted.slice(0, 60)
+    // La ficha usa el texto que el propio modelo pidió (no el contenido del campo) y sus px de la captura vigente.
+    const ficha = describeElement(
+      { ...res.hit, title: label, description: undefined, identifier: undefined, value: undefined },
+      0,
+      1,
+      isolatedCtxFor(app, session)
+    )
+    return `${formatVerdict({ effect: 'confirmed', reason: `apareció «${label}» en ${app.name}` })}\n${ficha}`
+  }
+  if (res.diff) {
+    const d = res.diff
+    const ctxNow = windowCtx.get(ctxKey(session))
+    if (ctxNow) ctxNow.elements = null
+    return `${formatVerdict({ effect: 'confirmed', reason: `la ventana de ${app.name} cambió ~${d.changedPct < 1 ? '<1' : Math.round(d.changedPct)} %${d.zone ? ` (zona ${d.zone})` : ''}; la lista de elementos anterior ya no vale: toma app_screenshot` })}`
+  }
+  const what = [wanted ? `«${wanted.slice(0, 60)}»` : '', change ? 'un cambio en la ventana' : ''].filter(Boolean).join(' ni ')
+  const note = remote && wanted ? '; los escritorios remotos no exponen texto por accesibilidad: usa until_change y mira con zoom' : ''
+  return formatVerdict({ effect: 'unverifiable', reason: `no apareció ${what} en ${secsText} s${note}` })
+}
+
 const TOOLS: ToolDef[] = [
   {
     name: 'screenshot',
@@ -2497,15 +3019,49 @@ const TOOLS: ToolDef[] = [
         : typeof a.paste_key === 'string' && a.paste_key.trim()
           ? a.paste_key.trim()
           : 'cmd+v'
+      // Modo de apps: cuántos caracteres se escribieron y, si el foco cambió a mitad, a qué app pasó (el texto restante NO se escribe).
+      const fx: { typed: number; stolenBy: string | null; endedOn: string | null } = { typed: 0, stolenBy: null, endedOn: null }
       await act({ tool: 'type_text', text: text.length > 120 ? `${text.slice(0, 117)}…` : text }, async () => {
         // Origen aislado: la app en primer plano se vuelve a comprobar JUSTO antes de escribir/pegar.
         await recheckFront(checkedFront, session)
-        return mode === 'paste'
-          ? backend.pasteText!(text, pasteKey, isolatedCall ? () => recheckFront(checkedFront, session) : undefined).then(() => '')
-          : mode === 'keys'
-            ? backend.typeKeys!(text, layout)
-            : helper('type', text)
+        if (!isolatedCall) {
+          return mode === 'paste'
+            ? backend.pasteText!(text, pasteKey, isolatedCall ? () => recheckFront(checkedFront, session) : undefined).then(() => '')
+            : mode === 'keys'
+              ? backend.typeKeys!(text, layout)
+              : helper('type', text)
+        }
+        if (mode === 'paste') {
+          await backend.pasteText!(text, pasteKey, isolatedCall ? () => recheckFront(checkedFront, session) : undefined)
+          fx.typed = text.length
+          fx.endedOn = await frontChangedTo(checkedFront)
+          return ''
+        }
+        // Por trozos de 200 caracteres: entre un trozo y el siguiente se vuelve a mirar quién tiene el foco. Unidos, los trozos son el mismo texto.
+        const chunks = splitTypeChunks(text)
+        for (let k = 0; k < chunks.length; k++) {
+          if (k > 0) {
+            const now = await appFrontmost()
+            if (!sameFront(checkedFront, now)) {
+              fx.stolenBy = now.name || 'otra app'
+              return ''
+            }
+          }
+          await (mode === 'keys' ? backend.typeKeys!(chunks[k], layout) : helper('type', chunks[k]))
+          fx.typed += chunks[k].length
+        }
+        fx.endedOn = await frontChangedTo(checkedFront)
+        return ''
       })
+      if (fx.stolenBy !== null) {
+        windowCtx.delete(ctxKey(session))
+        throw reject(
+          'focus-stolen',
+          `Se escribieron ${fx.typed} de ${text.length} caracteres; luego pasó al frente «${fx.stolenBy}» y se dejó de escribir (el resto NO se escribió). ` +
+            'Revisa ambas apps antes de seguir.',
+          session
+        )
+      }
       const how = mode === 'paste' ? ` por portapapeles (${pasteKey})` : mode === 'keys' ? ' por teclas físicas' : ''
       const hint =
         mode === 'keys'
@@ -2513,7 +3069,11 @@ const TOOLS: ToolDef[] = [
           : mode === 'paste'
             ? '. Comprueba con zoom que apareció bien (si salió el texto anterior, el portapapeles remoto no se sincronizó: usa input "keys").'
             : ''
-      return `Escrito${how}: ${text.length} caracteres${hint}`
+      const after =
+        fx.endedOn !== null
+          ? ` Aviso: al terminar, la app al frente es «${fx.endedOn}» y antes era «${checkedFront?.name ?? '?'}»; no se puede deshacer: revisa ambas apps antes de seguir.`
+          : ''
+      return `Escrito${how}: ${text.length} caracteres${hint}${after}`
     }
   },
   {
@@ -2539,7 +3099,8 @@ const TOOLS: ToolDef[] = [
         await recheckFront(checkedFront, session)
         return viaKeys ? backend.pressKeys!(sendKeys, a.layout === 'us' ? 'us' : 'mac') : helper('key', sendKeys)
       })
-      return `Teclas pulsadas: ${keys}`
+      // Modo de apps: tras pulsar se vuelve a mirar el frente (no se puede deshacer); si cambió, un aviso.
+      return `Teclas pulsadas: ${keys}${await frontAfterNote(checkedFront)}`
     }
   },
   {
@@ -2628,10 +3189,27 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: 'wait',
-    description: 'Espera N segundos (máx. 10) para que la interfaz termine de cargar.',
-    inputSchema: obj({ seconds: { type: 'number' }, ...SHOT_FLAG }, ['seconds']),
+    description:
+      'Espera N segundos (máx. 10) para que la interfaz termine de cargar. Solo en el modo de apps: until_text espera a que aparezca ese ' +
+      'texto en la app (por accesibilidad; app opcional, por defecto la de la última app_screenshot) y until_change a que cambie su ventana ' +
+      '(útil en escritorios remotos, que no exponen texto); con ellas seconds llega a 20 y se vuelve en cuanto se cumple. Fuera de ese ' +
+      'modo until_text, until_change y app se ignoran.',
+    inputSchema: obj(
+      {
+        seconds: { type: 'number' },
+        until_text: { type: 'string', description: 'Solo modo de apps: texto que debe aparecer en la app concedida (máx. 200 caracteres)' },
+        until_change: { type: 'boolean', description: 'Solo modo de apps: volver en cuanto la ventana de la app cambie' },
+        app: { type: 'string', description: 'Solo modo de apps: app donde esperar (por defecto la de la última app_screenshot)' },
+        ...SHOT_FLAG
+      },
+      ['seconds']
+    ),
     action: true,
-    run: async (a) => {
+    run: async (a, session) => {
+      // Modo de apps con condición: sondeo con tope (exige el nivel de la app); sin condición, la pausa fija de siempre.
+      if (isolatedCall && ((typeof a.until_text === 'string' && a.until_text.trim()) || a.until_change === true)) {
+        return isolatedWait(a, session)
+      }
       const s = Math.max(0, Math.min(10, Number(a.seconds) || 1))
       await act({ tool: 'wait', text: `${s}s` }, () => sleep(s * 1000))
       return `Esperado ${s}s`
@@ -3044,125 +3622,7 @@ const TOOLS: ToolDef[] = [
     noAutoShot: true,
     run: async (a, session) => {
       const app = await namedApp(a.app)
-      await requireTierFor(app, 'view', session)
-      const windowIndex = Math.max(0, Math.round(Number(a.window) || 0))
-      // Origen aislado: una captura nueva reemplaza a la anterior desde que empieza; si falla, no queda vigente la vieja (de otra app o ventana).
-      if (isolatedCall) {
-        windowCtx.delete(ctxKey(session))
-        dropWindowShot(ctxKey(session))
-      }
-      mkdirSync(SHOT_DIR, { recursive: true })
-      const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-      // El PNG crudo lleva nombre aleatorio propio (no derivado del `stamp` que sale en el texto): el helper lo escribe y luego se lee.
-      const raw = join(SHOT_DIR, `raw-app-${Date.now()}-${secretName()}.png`)
-      // Prefijo "shot-": `cleanupShots()` la recoge igual que las capturas de pantalla completa.
-      const out = join(SHOT_DIR, `shot-app-${stamp}.jpg`)
-      // Origen aislado: miniatura PNG de la MISMA captura (Windows) para la firma de la lista de elementos; nunca llega al modelo.
-      const probe = isolatedCall ? join(SHOT_DIR, `probe-app-${secretName()}.png`) : undefined
-      try {
-        const info = await backend.windowShot(app.bundleId, raw, out, windowIndex, probe)
-        const jpg = readShotFile(out)
-        const base64 = jpg.toString('base64')
-        cleanupShots()
-        if (isolatedCall) {
-          // Origen aislado: esta captura fija el espacio de los clics (px de ESTA imagen → puntos de la ventana). Las pantallas se releen
-          // en cada captura. Si no se puede asegurar dónde está la ventana, se borra la anterior y esta sirve solo para mirar.
-          allScreens = null
-          let loc: Awaited<ReturnType<typeof backend.locateWindowShot>> = null
-          try {
-            await getAllScreens()
-            loc = await backend.locateWindowShot(app.bundleId, windowIndex, info, out)
-          } catch (err) {
-            log('app_screenshot: no se pudo ubicar la ventana:', err instanceof Error ? err.message : err)
-            loc = null
-          }
-          const located = setWindowCtx(session, app, windowIndex, loc)
-          const size = located && loc ? `${loc.imageWidth}x${loc.imageHeight}` : `${info.width}x${info.height}`
-          const title = info.title ? ` («${info.title}»)` : ''
-          const imageWidth = located && loc ? loc.imageWidth : info.width
-          const imageHeight = located && loc ? loc.imageHeight : info.height
-
-          // Zoom (§2.1): lo necesario para ampliar ESTA captura. macOS conserva el PNG grande (el doble de detalle que el JPEG);
-          // Windows guarda el rectángulo de origen para volver a capturar el trozo. Independiente de que la ventana se haya podido ubicar.
-          const pngForSignature: string = backend.id === 'darwin' ? '' : (probe ?? '')
-          let darwinPng: Buffer | undefined
-          try {
-            if (backend.id === 'darwin') {
-              const px = jpegSize(jpg)
-              const w = located && loc ? loc.imageWidth : (px?.width ?? 0)
-              const h = located && loc ? loc.imageHeight : (px?.height ?? 0)
-              if (w > 0 && h > 0 && Number.isFinite(info.width) && Number.isFinite(info.height)) {
-                // Se leen los bytes (archivo regular, sin enlaces) y el archivo se borra en el `finally`: nada previsible queda en disco.
-                darwinPng = readShotFile(raw)
-                setWindowShot(session, {
-                  app,
-                  windowIndex,
-                  imageWidth: w,
-                  imageHeight: h,
-                  png: darwinPng,
-                  pngWidth: info.width,
-                  pngHeight: info.height
-                })
-              }
-            } else if (info.rect && validRect(info.rect) && imageWidth > 0 && imageHeight > 0) {
-              setWindowShot(session, { app, windowIndex, imageWidth, imageHeight, rect: { ...info.rect } })
-            }
-          } catch (err) {
-            log('app_screenshot: sin zoom para esta captura:', err instanceof Error ? err.message : err)
-          }
-
-          // Lista numerada atada a esta captura (§2.4) y aviso de ventana tapada (§2.2): solo si la ventana quedó ubicada.
-          let extra = ''
-          const stored = located ? windowCtx.get(ctxKey(session)) : undefined
-          if (stored && loc) {
-            stored.signature = darwinPng ? probeSignature(darwinPng) : pngForSignature ? signatureFromFile(pngForSignature) : null
-            if (stored.signature) {
-              const els = await buildCaptureElements(stored, session)
-              if (els.length) {
-                stored.elements = els
-                extra += `\n${captureElementsText(stored, els)}`
-              }
-            }
-            try {
-              const own = backend.id === 'darwin' ? await backend.windowFrames(app.bundleId).catch(() => [] as Rect[]) : []
-              const res = await withTimeout(backend.occlusion(app.bundleId, loc.frame, own, await getAllScreens()), 6_000, {
-                known: false as const
-              })
-              const notice = coverageNotice(res)
-              if (notice) extra += `\n${notice}`
-            } catch (err) {
-              log('app_screenshot: aviso de ventana tapada:', err instanceof Error ? err.message : err)
-            }
-          }
-          return {
-            text: located
-              ? `Ventana de ${app.name}: ${size} px${title}. Las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y ` +
-                'teach_step van en píxeles de ESTA imagen; valen 90 s o hasta la siguiente app_screenshot. Archivo: ' +
-                out +
-                extra
-              : `Ventana de ${app.name}: ${size} px${title}. No se pudo ubicar la ventana: esta captura sirve para mirar, no para clics. Archivo: ` +
-                out,
-            shot: {
-              path: out,
-              base64,
-              width: located && loc ? loc.imageWidth : info.width,
-              height: located && loc ? loc.imageHeight : info.height,
-              ratio: 1
-            }
-          }
-        }
-        return {
-          text:
-            `Ventana de ${app.name}: ${info.width}x${info.height} px${info.title ? ` («${info.title}»)` : ''}. ` +
-            'Solo para mirar: esta imagen NO sirve para sacar coordenadas de clic (no sabe dónde está la ventana ' +
-            'en la pantalla). Para clicar algo, usa screenshot o find_element. Archivo: ' +
-            out,
-          shot: { path: out, base64, width: info.width, height: info.height, ratio: await ensureRatio() }
-        }
-      } finally {
-        safeRm(raw)
-        safeRm(probe)
-      }
+      return appWindowShot(app, Math.max(0, Math.round(Number(a.window) || 0)), session)
     }
   },
   {
@@ -3432,8 +3892,29 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
       }
       return { content }
     }
+    // Modo de apps (§2.3): sondas ANTES y DESPUÉS de las acciones con veredicto. `screenshot: false` explícito las apaga (y `COMPUTER_VERDICT=0`).
+    const verdictPre =
+      isolatedCall && VERDICT_ON && VERDICT_TOOLS.has(name) && args?.screenshot !== false ? await beginVerdict(name, args, session) : null
+    // `screenshot: true` explícito: captura de la VENTANA de la app concedida (la de la última app_screenshot; si no hay, la del frente que se sondea).
+    const liveCtx = isolatedCall && tool.action && !tool.noAutoShot && args?.screenshot === true ? liveWindowCtx(session) : undefined
+    const shotApp: { app: AppRef; windowIndex: number } | null = liveCtx
+      ? { app: liveCtx.app, windowIndex: liveCtx.windowIndex }
+      : verdictPre?.app
+        ? { app: verdictPre.app, windowIndex: verdictPre.windowIndex }
+        : null
     const result = await tool.run(args, session)
-    const text = typeof result === 'string' ? result : result.text
+    let text = typeof result === 'string' ? result : result.text
+    if (verdictPre) {
+      const verdict = await finishVerdict(name, args, verdictPre, session)
+      if (verdict) {
+        text = `${formatVerdict(verdict)}\n${text}`
+        // Algo cambió (o no se sabe): la lista de elementos de la captura vigente ya no se da por buena; sin cambio, sigue valiendo.
+        if (verdict.effect !== 'suspected_noop') {
+          const cur = windowCtx.get(ctxKey(session))
+          if (cur) cur.elements = null
+        }
+      }
+    }
     const content: Content[] = [{ type: 'text', text }]
     if (typeof result !== 'string') {
       content.unshift({ type: 'image', data: result.shot.base64, mimeType: 'image/jpeg' })
@@ -3443,6 +3924,20 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
       // trae su propio `text`, arriba). El resto de las herramientas que alguna vez devuelvan
       // `{text, shot}` de una captura de pantalla de verdad SÍ la siguen llevando.
       if (name !== 'app_screenshot' && name !== 'zoom') content.push({ type: 'text', text: shotText(result.shot) })
+    }
+    if (isolatedCall && tool.action && !tool.noAutoShot && args?.screenshot === true) {
+      if (!shotApp) {
+        content.push({ type: 'text', text: '(sin captura: no hay una ventana concedida vigente; toma app_screenshot de la app)' })
+      } else if (await isStopped().catch(() => true)) {
+        content.push({ type: 'text', text: STOPPED_MSG })
+      } else {
+        try {
+          const w = await appWindowShot(shotApp.app, shotApp.windowIndex, session)
+          content.push({ type: 'image', data: w.shot.base64, mimeType: 'image/jpeg' }, { type: 'text', text: w.text })
+        } catch (err) {
+          content.push({ type: 'text', text: `(sin captura: ${err instanceof Error ? err.message : err})` })
+        }
+      }
     }
     const wantShot = tool.action && !tool.noAutoShot && AUTO_SHOT && args?.screenshot !== false && !isolatedCall
     if (wantShot) {

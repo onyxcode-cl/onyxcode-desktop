@@ -107,7 +107,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": [],
@@ -138,7 +138,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": [],
@@ -169,7 +169,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": [],
@@ -200,7 +200,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": [],
@@ -246,7 +246,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["actions"],
@@ -273,7 +273,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["start_x", "start_y", "end_x", "end_y"],
@@ -304,7 +304,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["x", "y", "direction"],
@@ -337,7 +337,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["text"],
@@ -363,7 +363,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["keys"],
@@ -391,7 +391,7 @@
                   },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["name"],
@@ -400,16 +400,28 @@
             },
             {
               "name": "wait",
-              "description": "Espera N segundos (máx. 10) para que la interfaz termine de cargar.",
+              "description": "Espera N segundos (máx. 10) para que la interfaz termine de cargar. Solo en el modo de apps: until_text espera a que aparezca ese texto en la app (por accesibilidad; app opcional, por defecto la de la última app_screenshot) y until_change a que cambie su ventana (útil en escritorios remotos, que no exponen texto); con ellas seconds llega a 20 y se vuelve en cuanto se cumple. Fuera de ese modo until_text, until_change y app se ignoran.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
                   "seconds": {
                     "type": "number"
                   },
+                  "until_text": {
+                    "type": "string",
+                    "description": "Solo modo de apps: texto que debe aparecer en la app concedida (máx. 200 caracteres)"
+                  },
+                  "until_change": {
+                    "type": "boolean",
+                    "description": "Solo modo de apps: volver en cuanto la ventana de la app cambie"
+                  },
+                  "app": {
+                    "type": "string",
+                    "description": "Solo modo de apps: app donde esperar (por defecto la de la última app_screenshot)"
+                  },
                   "screenshot": {
                     "type": "boolean",
-                    "description": "Adjuntar una captura tras la acción (por defecto true)"
+                    "description": "Adjuntar una captura tras la acción (por defecto true). En el modo de apps (sin captura de pantalla): true adjunta una captura de la VENTANA de la app concedida (nunca de la pantalla ni de otra app); false desactiva las comprobaciones (sin la línea \"efecto: …\"); sin indicarlo, solo la línea \"efecto: confirmed | unverifiable | suspected_noop\", sin imagen."
                   }
                 },
                 "required": ["seconds"],

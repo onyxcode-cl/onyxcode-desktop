@@ -267,6 +267,10 @@ export async function startMcp(o: McpOptions): Promise<McpProc> {
     FAKE_CU_SCRIPT: scriptFile,
     FAKE_CU_PLATFORM: o.platform ?? 'darwin',
     COMPUTER_TEST_BIN_DIR: binDir,
+    // El veredicto de acción (sondas antes/después en el modo de apps) va encendido en producción, pero añade llamadas al helper (frontmost,
+    // windows-of, window-shot) que descuadran los guiones por llamada de las demás suites: aquí va APAGADO por defecto y
+    // `mcp-bridge-effect.test.ts` lo enciende (`env: { COMPUTER_VERDICT: '1' }`).
+    COMPUTER_VERDICT: '0',
     ...(o.image ? { FAKE_CU_IMAGE: imageFile } : {}),
     ...(o.events ? { COMPUTER_EVENTS_URL: o.events.url } : {}),
     ...o.env
