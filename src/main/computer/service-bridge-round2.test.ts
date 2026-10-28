@@ -28,6 +28,8 @@ vi.mock('electron', async () => {
 })
 
 import { ComputerService } from './service'
+// El ayudante falso de estas pruebas es un script sh (POSIX); en Windows no se puede ejecutar (spawn EFTYPE). Windows se cubrió en el PC real.
+import { posixOnly } from '../../test/platform'
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -125,7 +127,7 @@ const keyCalls = (m: McpProc): string[][] =>
     .filter((c) => c.cmd === 'key')
     .map((c) => c.args)
 
-describe('F1: key en origen aislado', () => {
+describe.skipIf(!posixOnly)('F1: key en origen aislado', () => {
   async function ready(front: AppLike | AppLike[] = NOTES): Promise<McpProc> {
     await grant(SES, 'full', NOTES.bundleId, 'Notes')
     giveControl(SES)
@@ -262,7 +264,7 @@ describe('F1: key en origen aislado', () => {
   })
 })
 
-describe('F2: request_full_control con la preferencia en «full» abre la tarjeta REAL en origen aislado', () => {
+describe.skipIf(!posixOnly)('F2: request_full_control con la preferencia en «full» abre la tarjeta REAL en origen aislado', () => {
   it('abre la tarjeta de takeover, al aprobarla la sesión controla y el clic pasa (sin meter foregroundSessions a mano)', async () => {
     svc.prefs.set({ mode: 'full' })
     await grant(SES, 'click', NOTES.bundleId, 'Notes')
@@ -301,7 +303,7 @@ describe('F2: request_full_control con la preferencia en «full» abre la tarjet
   })
 })
 
-describe('F3: capturas en origen aislado', () => {
+describe.skipIf(!posixOnly)('F3: capturas en origen aislado', () => {
   const RUNNING: AppLike[] = [{ name: 'Lazunox', bundleId: APP_ID }, { name: 'Finder', bundleId: 'com.apple.finder' }, NOTES]
   const excluded = (m: McpProc): string[] =>
     m
@@ -350,7 +352,7 @@ describe('F3: capturas en origen aislado', () => {
   })
 })
 
-describe('F4: «siempre» desde una tarjeta de origen aislado no deja concesión guardada', () => {
+describe.skipIf(!posixOnly)('F4: «siempre» desde una tarjeta de origen aislado no deja concesión guardada', () => {
   it('scope «always» en una sesión aislada vale solo para la sesión; Control total no la hereda', async () => {
     svc.checkBridgeCall({ origin: SECRET, server: SERVER_A, session: SES })
     await grant(SES, 'click', NOTES.bundleId, 'Notes', 'always')
@@ -372,7 +374,7 @@ describe('F4: «siempre» desde una tarjeta de origen aislado no deja concesión
   })
 })
 
-describe('F5: los ayudantes de Lazunox son exentos en origen aislado', () => {
+describe.skipIf(!posixOnly)('F5: los ayudantes de Lazunox son exentos en origen aislado', () => {
   const HELPERS = [`${APP_ID}.motor`, `${APP_ID}.disclaim`, `${APP_ID}.helper`, `${APP_ID}.helper.GPU`]
 
   it.each(HELPERS)('%s: main no concede ni abre tarjeta y el MCP se niega a actuarla', async (bundleId) => {
@@ -403,7 +405,7 @@ describe('F5: los ayudantes de Lazunox son exentos en origen aislado', () => {
   })
 })
 
-describe('mutación: las puertas `|| isolatedCall` se notan (con la preferencia en «full»)', () => {
+describe.skipIf(!posixOnly)('mutación: las puertas `|| isolatedCall` se notan (con la preferencia en «full»)', () => {
   it('frontmost conocida y punto SIN identificar bajo el clic ⇒ rechazo (quitar `|| isolatedCall` de requireTier lo deja pasar)', async () => {
     await grant(SES, 'click', NOTES.bundleId, 'Notes')
     giveControl(SES)

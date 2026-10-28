@@ -24,6 +24,8 @@ vi.mock('electron', async () => {
 })
 
 import { ComputerService } from './service'
+// El ayudante falso de estas pruebas es un script sh (POSIX); en Windows no se puede ejecutar (spawn EFTYPE). Windows se cubrió en el PC real.
+import { posixOnly } from '../../test/platform'
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -91,7 +93,7 @@ const open = (args: Record<string, unknown>, headers?: Record<string, string>) =
   mcp.call('open_application', { name: 'Notes', ...args }, headers)
 const opened = (): number => mcp.calls().filter((c) => c.cmd === 'open-app' || c.cmd === 'open-app-bg').length
 
-describe('reconocimiento del origen', () => {
+describe.skipIf(!posixOnly)('reconocimiento del origen', () => {
   it('sin cabeceras: exige plan, igual que hoy', async () => {
     await grant(SES, 'full')
     const r = await open({ lazunox_session: SES })
@@ -138,7 +140,7 @@ describe('reconocimiento del origen', () => {
   })
 })
 
-describe('origen aislado: sesión', () => {
+describe.skipIf(!posixOnly)('origen aislado: sesión', () => {
   it('con sesión y concesión suficiente pasa SIN plan', async () => {
     await grant(SES, 'view')
     const r = await open({ lazunox_session: SES }, hdr())
@@ -198,7 +200,7 @@ describe('origen aislado: sesión', () => {
   })
 })
 
-describe('origen aislado: concesión por app', () => {
+describe.skipIf(!posixOnly)('origen aislado: concesión por app', () => {
   it('sin concesión ⇒ rechazo y NO abre la app', async () => {
     const r = await open({ lazunox_session: SES }, hdr())
     expect(r.isError).toBe(true)
@@ -262,7 +264,7 @@ describe('origen aislado: concesión por app', () => {
   })
 })
 
-describe('Detener revoca todo', () => {
+describe.skipIf(!posixOnly)('Detener revoca todo', () => {
   it('parado: nada pasa; al reanudar la concesión y la sesión reclamada ya no existen', async () => {
     await grant(SES, 'full')
     expect((await open({ lazunox_session: SES }, hdr(SECRET, SERVER_A))).isError).not.toBe(true)
@@ -281,7 +283,7 @@ describe('Detener revoca todo', () => {
   })
 })
 
-describe('telemetría', () => {
+describe.skipIf(!posixOnly)('telemetría', () => {
   it('cada rechazo deja una línea de registro sin secretos ni la clave del servidor', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     try {

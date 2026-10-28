@@ -27,6 +27,8 @@ vi.mock('electron', async () => {
 })
 
 import { ComputerService } from './service'
+// El ayudante falso de estas pruebas es un script sh (POSIX); en Windows no se puede ejecutar (spawn EFTYPE). Windows se cubrió en el PC real.
+import { posixOnly } from '../../test/platform'
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -114,7 +116,7 @@ const axCalls = (m: McpProc): string[] =>
     .map((c) => c.cmd)
     .filter((c) => c !== 'resolve-app' && c !== 'frontmost')
 
-describe('H1: las apps exentas del sistema nunca se actúan desde el origen aislado', () => {
+describe.skipIf(!posixOnly)('H1: las apps exentas del sistema nunca se actúan desde el origen aislado', () => {
   const EXEMPT: Array<[string, string]> = [
     [APP_ID, 'Lazunox'],
     ['com.github.Electron', 'Electron'],
@@ -175,7 +177,7 @@ describe('H1: las apps exentas del sistema nunca se actúan desde el origen aisl
   })
 })
 
-describe('H2: el origen aislado solo cuenta concesiones de SESIÓN', () => {
+describe.skipIf(!posixOnly)('H2: el origen aislado solo cuenta concesiones de SESIÓN', () => {
   const tree = (m: McpProc, session = SES): ReturnType<McpProc['call']> =>
     m.call('app_tree', { app: 'Safari', lazunox_session: session }, hdr())
 
@@ -270,7 +272,7 @@ describe('H2: el origen aislado solo cuenta concesiones de SESIÓN', () => {
   })
 })
 
-describe('H4: una sesión pertenece al primer servidor que la reclama (riesgo residual documentado)', () => {
+describe.skipIf(!posixOnly)('H4: una sesión pertenece al primer servidor que la reclama (riesgo residual documentado)', () => {
   it('fija el comportamiento actual: quien reclama primero se la queda, aunque no sea quien la creó', () => {
     expect(svc.checkBridgeCall({ origin: SECRET, server: SERVER_B, session: SES })).toEqual({ isolated: true, ok: true })
     expect(svc.checkBridgeCall({ origin: SECRET, server: SERVER_A, session: SES })).toMatchObject({ ok: false, reason: 'foreign-session' })
@@ -278,7 +280,7 @@ describe('H4: una sesión pertenece al primer servidor que la reclama (riesgo re
   })
 })
 
-describe('validación de origen y sesión en checkBridgeCall', () => {
+describe.skipIf(!posixOnly)('validación de origen y sesión en checkBridgeCall', () => {
   it.each([['../x'], ['a/b'], ['x'.repeat(201)], [''], ['ses con espacio'], ['ses\n']])('sesión %j ⇒ rechazo bad-session', (session) => {
     expect(svc.checkBridgeCall({ origin: SECRET, server: SERVER_A, session })).toMatchObject({
       isolated: true,
@@ -299,7 +301,7 @@ describe('validación de origen y sesión en checkBridgeCall', () => {
   })
 })
 
-describe('«Control de la pantalla» (modo full) no le da el ratón al agente aislado', () => {
+describe.skipIf(!posixOnly)('«Control de la pantalla» (modo full) no le da el ratón al agente aislado', () => {
   it('con la preferencia en «full», left_click sin request_full_control ⇒ rechazo y el helper no pulsa', async () => {
     svc.prefs.set({ mode: 'full' })
     await grant(SES, 'click', 'com.apple.Notes', 'Notes')
@@ -333,7 +335,7 @@ describe('«Control de la pantalla» (modo full) no le da el ratón al agente ai
   })
 })
 
-describe('H5: app de destino no identificada ⇒ falla cerrado solo en origen aislado', () => {
+describe.skipIf(!posixOnly)('H5: app de destino no identificada ⇒ falla cerrado solo en origen aislado', () => {
   const unknown = { name: '', bundleId: '' }
   it('origen aislado: sin ninguna app identificada no se pulsa', async () => {
     await grant(SES, 'click', 'com.apple.Notes', 'Notes')
@@ -355,7 +357,7 @@ describe('H5: app de destino no identificada ⇒ falla cerrado solo en origen ai
   })
 })
 
-describe('H6: la captura completa se rechaza en origen aislado y sigue igual sin él', () => {
+describe.skipIf(!posixOnly)('H6: la captura completa se rechaza en origen aislado y sigue igual sin él', () => {
   const RUNNING = [
     { name: 'Lazunox', bundleId: APP_ID },
     { name: 'Spotlight', bundleId: 'com.apple.Spotlight' },

@@ -9,6 +9,8 @@ import { FAKE_HELPER, bundleMcp, startMcp, startSideChannel, textOf, tmpWork, ty
 import { isolatedPasteKey } from './mcp-platform'
 import { WIN_ISOLATED_BLOCKED_KEYS, checkWinIsolatedCombo, isWinIsolatedExempt } from './mcp-platform-win32'
 import { BRIDGE_ORIGIN_HEADER, BRIDGE_SERVER_HEADER } from '../../shared/unified-bridge'
+// El ayudante falso de estas pruebas es un script sh (POSIX); en Windows no se puede ejecutar (spawn EFTYPE). Windows se cubrió en el PC real.
+import { posixOnly } from '../../test/platform'
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -59,7 +61,7 @@ describe('contrato: los literales del bundle del MCP coinciden con src/shared/un
   })
 })
 
-describe('sin origen aislado: comportamiento de siempre', () => {
+describe.skipIf(!posixOnly)('sin origen aislado: comportamiento de siempre', () => {
   it('sin cabeceras: exige plan y no pregunta por el puente', async () => {
     const { mcp, side, done, opened } = await boot({ planApproved: false })
     try {
@@ -109,7 +111,7 @@ describe('sin origen aislado: comportamiento de siempre', () => {
   })
 })
 
-describe('origen aislado válido', () => {
+describe.skipIf(!posixOnly)('origen aislado válido', () => {
   it('reenvía las cabeceras a main (que decide) y la sesión tal cual', async () => {
     const { mcp, side, done } = await boot({ planApproved: false, bridgeCheck: () => ISOLATED_OK })
     try {
@@ -226,7 +228,7 @@ describe('origen aislado válido', () => {
   })
 })
 
-describe('origen aislado: nunca pantalla completa (el escritorio de Finder y otras apps no salen)', () => {
+describe.skipIf(!posixOnly)('origen aislado: nunca pantalla completa (el escritorio de Finder y otras apps no salen)', () => {
   const hasImage = (r: { content: Array<{ type: string }> }): boolean => r.content.some((c) => c.type === 'image')
   const NOTES = (k: string): 'view' | null => (k.length ? 'view' : null)
 
@@ -285,7 +287,7 @@ describe('origen aislado: nunca pantalla completa (el escritorio de Finder y otr
   })
 })
 
-describe('origen aislado en Windows: teclas, exentas y captura (helper falso)', () => {
+describe.skipIf(!posixOnly)('origen aislado en Windows: teclas, exentas y captura (helper falso)', () => {
   const k = (path: string, pub = 'Microsoft Windows'): string => `exe:${path.toLowerCase()}|pub:${pub.toLowerCase()}`
   const NOTEPAD = k('C:\\Windows\\System32\\notepad.exe')
   const LAZUNOX = k('C:\\Users\\Ana\\AppData\\Local\\Programs\\Lazunox\\Lazunox.exe', 'Bentec')
