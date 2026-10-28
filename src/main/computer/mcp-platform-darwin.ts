@@ -6,7 +6,7 @@
  * Solo builtins de Node (es parte del bundle `computer-mcp`).
  */
 import { execFile as nodeExecFile, type ChildProcess } from 'node:child_process'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import type {
@@ -30,6 +30,8 @@ export interface DarwinDeps {
   existsSync: (p: string) => boolean
   readdirSync: (p: string) => string[]
   statSync: (p: string) => { isDirectory(): boolean }
+  /** Sin seguir enlaces simbólicos (lo usa el zoom para comprobar que la entrada es un archivo regular). */
+  lstatSync: (p: string) => { isFile(): boolean; isSymbolicLink(): boolean; size: number }
   homedir: () => string
 }
 
@@ -38,6 +40,7 @@ const REAL_DEPS: DarwinDeps = {
   existsSync,
   readdirSync: (p) => readdirSync(p),
   statSync,
+  lstatSync,
   homedir
 }
 
@@ -569,6 +572,16 @@ export function createDarwinBackend(host: PlatformHost, overrides: Partial<Darwi
   /** Zoom: `zoom-image` sobre el PNG conservado (el doble de detalle que el JPEG del modelo) y `sips -Z` si pasa del tope. */
   async function zoomWindow(req: ZoomWindowRequest): Promise<ZoomWindowResult> {
     if (!req.srcPath || !deps.existsSync(req.srcPath)) throw new Error('zoom no disponible: la captura original ya no existe')
+    // Defensa en profundidad: el helper corre fuera del sandbox y abriría lo que haya en esa ruta. Solo se acepta un archivo regular
+    // (nunca un enlace simbólico) y no vacío.
+    let st: ReturnType<DarwinDeps['lstatSync']>
+    try {
+      st = deps.lstatSync(req.srcPath)
+    } catch {
+      throw new Error('zoom no disponible: la captura original ya no existe')
+    }
+    if (st.isSymbolicLink() || !st.isFile() || !(st.size > 0))
+      throw new Error('zoom no disponible: la captura original no es un archivo válido')
     const r = req.region
     if (![r.x, r.y, r.width, r.height, req.scale, req.maxLong].every(num) || r.width < 1 || r.height < 1) {
       throw new Error('zoom: región no válida')

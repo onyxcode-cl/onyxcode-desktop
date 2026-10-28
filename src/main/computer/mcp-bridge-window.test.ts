@@ -3,7 +3,7 @@
  * simulado: zoom de la ventana concedida, aviso de ventana tapada y elementos numerados atados a una captura (`capture`).
  * Lo que más importa aquí: un `element` que ya no vale (captura vieja, ventana distinta, sesión ajena) NUNCA llega a hacer clic.
  */
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
@@ -119,8 +119,9 @@ async function shot(m: McpProc, session = SES): Promise<{ text: string; id: numb
   return { text, id: Number(/Captura #(\d+)/.exec(text)?.[1] ?? 0) }
 }
 
+/** PNG crudo en disco: desde la corrección de seguridad (H1) NO debe quedar ninguno (ni «raw-app-…» ni «shot-app-raw-…» ni la entrada del zoom). */
 const rawFiles = (m: McpProc): string[] =>
-  existsSync(m.shotDir) ? readdirSync(m.shotDir).filter((f) => f.startsWith('shot-app-raw-')) : []
+  existsSync(m.shotDir) ? readdirSync(m.shotDir).filter((f) => /^(shot-app-raw-|raw-app-|zin-)/.test(f)) : []
 
 describe.skipIf(!posixOnly)('zoom de la ventana concedida (macOS)', () => {
   it('región dentro de la imagen: zoom-image sobre el PNG conservado, con los px convertidos; imagen solo de esa ventana', async () => {
@@ -129,14 +130,14 @@ describe.skipIf(!posixOnly)('zoom de la ventana concedida (macOS)', () => {
     try {
       const { text } = await shot(mcp)
       expect(text).toContain('400x300')
-      expect(rawFiles(mcp)).toHaveLength(1)
+      expect(rawFiles(mcp)).toHaveLength(0)
       const r = await mcp.call('zoom', { x: 100, y: 50, width: 100, height: 80, lazunox_session: SES }, HDRS)
       expect(r.isError, textOf(r)).not.toBe(true)
       expect(hasImage(r)).toBe(true)
       expect(textOf(r)).toContain('SOLO para mirar')
       const z = mcp.calls().filter((c) => c.cmd === 'zoom-image')
       expect(z).toHaveLength(1)
-      expect(z[0].args[0]).toMatch(/shot-app-raw-.*\.png$/)
+      expect(z[0].args[0]).toMatch(/zin-[0-9a-f]{32}\.png$/)
       expect(z[0].args.slice(2)).toEqual(['200', '100', '200', '160', '2'])
       // Ninguna captura de pantalla completa en todo el recorrido.
       expect(mcp.calls().some((c) => /^screenshot|screencapture/.test(c.cmd))).toBe(false)
@@ -187,11 +188,10 @@ describe.skipIf(!posixOnly)('zoom de la ventana concedida (macOS)', () => {
     }
   })
 
-  it('caduca con la captura (90 s; aquí acortado): [rechazo: capture-expired] y el PNG conservado se borra', async () => {
+  it('caduca con la captura (90 s; aquí acortado): [rechazo: capture-expired] y la captura conservada se suelta', async () => {
     const { mcp, done } = await bootMac({ env: { COMPUTER_WINDOW_CTX_TTL_MS: '400' } })
     try {
       await shot(mcp)
-      expect(rawFiles(mcp)).toHaveLength(1)
       await new Promise((r) => setTimeout(r, 700))
       const r = await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 100, lazunox_session: SES }, HDRS)
       expect(r.isError).toBe(true)
@@ -203,12 +203,12 @@ describe.skipIf(!posixOnly)('zoom de la ventana concedida (macOS)', () => {
     }
   })
 
-  it('una captura nueva reemplaza a la anterior: solo queda un PNG conservado por sesión', async () => {
+  it('una captura nueva reemplaza a la anterior: ningún PNG queda en disco', async () => {
     const { mcp, done } = await bootMac()
     try {
       await shot(mcp)
       await shot(mcp)
-      expect(rawFiles(mcp)).toHaveLength(1)
+      expect(rawFiles(mcp)).toHaveLength(0)
     } finally {
       await done()
     }
@@ -262,6 +262,121 @@ describe.skipIf(!posixOnly)('zoom de la ventana concedida (macOS)', () => {
       expect(textOf(r)).toMatch(/^\[rechazo: no-grant\]/)
       expect(hasImage(r)).toBe(false)
       expect(mcp.calls().some((c) => c.cmd === 'zoom-image')).toBe(false)
+    } finally {
+      await done()
+    }
+  })
+
+  // ── Seguridad (revisión independiente): el PNG conservado vive en memoria, nunca en disco con un nombre previsible ──
+
+  it('H1: un enlace simbólico puesto con el nombre «adivinado» NO afecta al zoom; la ruta de entrada es nueva en cada llamada y no sale en ningún texto', async () => {
+    const { mcp, done } = await bootMac({ env: { COMPUTER_MAX_LONG_SIDE: '400' } })
+    try {
+      const { text } = await shot(mcp)
+      const stamp = /shot-app-(\d+-[a-z0-9]+)\.jpg/.exec(text)?.[1] ?? ''
+      expect(stamp).not.toBe('')
+      // El agente aislado escribe en la carpeta de capturas: deja enlaces a un archivo prohibido con todos los nombres que podría adivinar.
+      const secret = join(work.dir, 'prohibido.png')
+      writeFileSync(secret, 'SECRETO')
+      for (const n of [`shot-app-raw-${stamp}.png`, `raw-app-${stamp}.png`, `probe-app-${stamp}.png`])
+        symlinkSync(secret, join(mcp.shotDir, n))
+      const r1 = await mcp.call('zoom', { x: 10, y: 10, width: 50, height: 50, lazunox_session: SES }, HDRS)
+      const r2 = await mcp.call('zoom', { x: 10, y: 10, width: 50, height: 50, lazunox_session: SES }, HDRS)
+      for (const r of [r1, r2]) {
+        expect(r.isError, textOf(r)).not.toBe(true)
+        expect(hasImage(r)).toBe(true)
+      }
+      const z = mcp.calls().filter((c) => c.cmd === 'zoom-image')
+      expect(z).toHaveLength(2)
+      const [in1, in2] = [z[0].args[0], z[1].args[0]]
+      expect(in1).not.toBe(in2)
+      for (const p of [in1, in2]) {
+        expect(p).toMatch(/zin-[0-9a-f]{32}\.png$/)
+        expect(p).not.toContain(stamp)
+        // La ruta de entrada nunca aparece en un texto al modelo.
+        expect(textOf(r1)).not.toContain(p)
+        expect(textOf(r2)).not.toContain(p)
+        expect(text).not.toContain(p)
+      }
+      // Los enlaces del agente siguen ahí sin haber sido tocados ni seguidos (el archivo prohibido conserva su contenido).
+      expect(readdirSync(mcp.shotDir).filter((f) => lstatSync(join(mcp.shotDir, f)).isSymbolicLink())).toHaveLength(3)
+      expect(readFileSync(secret, 'utf8')).toBe('SECRETO')
+    } finally {
+      await done()
+    }
+  })
+
+  it('H1: la entrada temporal del zoom se borra en `finally` aunque el helper falle', async () => {
+    const { mcp, done } = await bootMac({ responses: { 'zoom-image': { exit: 1, stderr: 'boom' } } })
+    try {
+      await shot(mcp)
+      const r = await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 100, lazunox_session: SES }, HDRS)
+      expect(r.isError).toBe(true)
+      expect(mcp.calls().filter((c) => c.cmd === 'zoom-image')).toHaveLength(1)
+      expect(rawFiles(mcp)).toHaveLength(0)
+      expect(readdirSync(mcp.shotDir).filter((f) => f.startsWith('zoom-'))).toEqual([])
+    } finally {
+      await done()
+    }
+  })
+
+  it('H1: el límite de sesiones conservadas descarta la más vieja (máx. 8)', async () => {
+    const { mcp, done } = await bootMac()
+    try {
+      const ses = (i: number): string => `ses_${String(i).padStart(16, '0')}`
+      for (let i = 0; i < 9; i++) await shot(mcp, ses(i))
+      const old = await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 100, lazunox_session: ses(0) }, HDRS)
+      expect(old.isError).toBe(true)
+      expect(textOf(old)).toMatch(/^\[rechazo: no-capture\]/)
+      for (const i of [1, 8]) {
+        const ok = await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 100, lazunox_session: ses(i) }, HDRS)
+        expect(ok.isError, textOf(ok)).not.toBe(true)
+      }
+    } finally {
+      await done()
+    }
+  })
+
+  it('H2: un directorio donde estaba un archivo temporal no tumba nada (y no impide borrar los demás)', async () => {
+    const { mcp, done } = await bootMac()
+    try {
+      mkdirSync(mcp.shotDir, { recursive: true })
+      const now = Date.now() / 1000
+      // 24 capturas viejas y, en medio de ellas, un DIRECTORIO con nombre de captura: el borrado de la poda no debe abortar en él.
+      for (let i = 0; i < 24; i++) {
+        const f = join(mcp.shotDir, `shot-old-${String(i).padStart(2, '0')}.jpg`)
+        if (i === 21) mkdirSync(f)
+        else writeFileSync(f, 'x')
+        utimesSync(f, now - 1000 + i, now - 1000 + i)
+      }
+      await shot(mcp)
+      const left = readdirSync(mcp.shotDir)
+      expect(left).toContain('shot-old-21.jpg')
+      expect(left).not.toContain('shot-old-00.jpg')
+      expect(left).not.toContain('shot-old-01.jpg')
+      const r = await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 100, lazunox_session: SES }, HDRS)
+      expect(r.isError, textOf(r)).not.toBe(true)
+    } finally {
+      await done()
+    }
+  })
+
+  it('H4: scale se recorta para que región×escala no pase del tope (COMPUTER_ZOOM_MAX_LONG) y nunca baja de 1', async () => {
+    // Región de 200x160 px de JPEG ⇒ 400x320 px del PNG; con tope 400 y escala 4 solo cabe ×1.
+    const { mcp, done } = await bootMac({ env: { COMPUTER_MAX_LONG_SIDE: '400', COMPUTER_ZOOM_MAX_LONG: '400' } })
+    try {
+      await shot(mcp)
+      const r = await mcp.call('zoom', { x: 0, y: 0, width: 200, height: 160, scale: 4, lazunox_session: SES }, HDRS)
+      expect(r.isError, textOf(r)).not.toBe(true)
+      const z = mcp.calls().filter((c) => c.cmd === 'zoom-image')
+      expect(Number(z[0].args[6])).toBe(1)
+      await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 80, scale: 4, lazunox_session: SES }, HDRS)
+      const z2 = mcp.calls().filter((c) => c.cmd === 'zoom-image')
+      // 200x160 px del PNG ⇒ caben ×2 (400/200).
+      expect(Number(z2[1].args[6])).toBe(2)
+      const tiny = await mcp.call('zoom', { x: 0, y: 0, width: 100, height: 80, scale: 0.2, lazunox_session: SES }, HDRS)
+      expect(tiny.isError, textOf(tiny)).not.toBe(true)
+      expect(Number(mcp.calls().filter((c) => c.cmd === 'zoom-image')[2].args[6])).toBeGreaterThanOrEqual(1)
     } finally {
       await done()
     }

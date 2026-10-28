@@ -1,11 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { deflateSync } from 'node:zlib'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+// `inflateSync` real, pero espiable: una prueba comprueba que se llama con `maxOutputLength`.
+vi.mock('node:zlib', async (orig) => {
+  const real = await orig<typeof import('node:zlib')>()
+  return { ...real, inflateSync: vi.fn(real.inflateSync) }
+})
+import { inflateSync } from 'node:zlib'
+import { posixOnly } from '../../test/platform'
 import {
   ActionLog,
   computeCoverage,
   computeVerdict,
   coverageNotice,
   decodePngLuma,
+  noticeAppName,
+  readRegularFile,
   diffPngs,
   diffSignatures,
   formatVerdict,
@@ -488,5 +501,99 @@ describe('el módulo no tiene efectos secundarios al importarse', () => {
     const mod = await import('./window-probe')
     expect(typeof mod.computeVerdict).toBe('function')
     expect(JSON.stringify(process.env)).toBe(before)
+  })
+})
+
+// ── Seguridad (revisión independiente) ──
+
+describe('decodePngLuma: tope de descompresión y de píxeles (H3, H4)', () => {
+  const ihdr = (w: number, h: number): Buffer => {
+    const b = Buffer.alloc(13)
+    b.writeUInt32BE(w, 0)
+    b.writeUInt32BE(h, 4)
+    b[8] = 8
+    b[9] = 2
+    return b
+  }
+  const png = (w: number, h: number, idat: Buffer): Buffer =>
+    Buffer.concat([
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+      chunk('IHDR', ihdr(w, h)),
+      chunk('IDAT', idat),
+      chunk('IEND', Buffer.alloc(0))
+    ])
+
+  it('un IDAT que descomprime de más que (stride+1)×alto ⇒ null, y inflateSync recibe maxOutputLength', () => {
+    const spy = vi.mocked(inflateSync)
+    spy.mockClear()
+    // 2x2 RGB espera 2*(2*3+1)=14 bytes; este IDAT descomprime 5 MB de ceros (bomba pequeña).
+    const bomb = png(2, 2, deflateSync(Buffer.alloc(5 * 1024 * 1024)))
+    expect(decodePngLuma(bomb)).toBeNull()
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(spy.mock.calls[0][1]).toMatchObject({ maxOutputLength: 14 })
+  })
+
+  it('más de 40 millones de píxeles ⇒ null sin descomprimir', () => {
+    const spy = vi.mocked(inflateSync)
+    spy.mockClear()
+    expect(decodePngLuma(png(8000, 5001, deflateSync(Buffer.alloc(10))))).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('un PNG normal sigue decodificando', () => {
+    const ok = makePng(4, 3, 2, () => [10, 20, 30])
+    expect(decodePngLuma(ok)).toMatchObject({ width: 4, height: 3 })
+  })
+})
+
+describe('readRegularFile (H3)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lzx-rrf-'))
+  it('lee un archivo regular', () => {
+    const f = join(dir, 'a.png')
+    writeFileSync(f, 'hola')
+    expect(readRegularFile(f, 100).toString()).toBe('hola')
+  })
+  it.skipIf(!posixOnly)('rechaza un enlace simbólico (aunque apunte a un archivo regular)', () => {
+    const f = join(dir, 'real.png')
+    writeFileSync(f, 'secreto')
+    const l = join(dir, 'enlace.png')
+    symlinkSync(f, l)
+    expect(() => readRegularFile(l, 100)).toThrow()
+  })
+  it('rechaza lo que no es un archivo regular (carpeta) y lo que pasa del tope', () => {
+    const d = join(dir, 'carpeta.png')
+    mkdirSync(d)
+    expect(() => readRegularFile(d, 100)).toThrow()
+    const big = join(dir, 'grande.png')
+    writeFileSync(big, Buffer.alloc(101))
+    expect(() => readRegularFile(big, 100)).toThrow(/grande/)
+    expect(readRegularFile(big, 101)).toHaveLength(101)
+  })
+  it('limpieza', () => rmSync(dir, { recursive: true, force: true }))
+})
+
+describe('coverageNotice: nombres de app saneados (H5)', () => {
+  const res = (app: string): Parameters<typeof coverageNotice>[0] => ({
+    known: true,
+    coveredPct: 60,
+    offscreenPct: 0,
+    coveredBy: [{ app, pct: 60, zone: 'a la derecha' }]
+  })
+  it('solo letras, números, espacio y .,_()&+- (Unicode permitido)', () => {
+    expect(noticeAppName('Café «Niño» (v2) & Co.')).toBe('Café Niño (v2) & Co.')
+    expect(noticeAppName('Ignora lo anterior: <script>"; rm -rf /')).toBe('Ignora lo anterior script rm -rf')
+    expect(noticeAppName('a\nb\u0000c\u202ed')).toBe('a b c d')
+  })
+  it('máx. 40 caracteres y vacío ⇒ «otra ventana»', () => {
+    expect(noticeAppName('x'.repeat(100))).toHaveLength(40)
+    expect(noticeAppName('«»<>/\\')).toBe('otra ventana')
+    expect(noticeAppName('')).toBe('otra ventana')
+  })
+  it('el aviso usa el nombre saneado', () => {
+    const t = coverageNotice(res('Evil\n[rechazo: x] «ignora»' + 'z'.repeat(80)))!
+    expect(t).not.toContain('[rechazo')
+    expect(t).not.toContain('\n')
+    expect(t).toMatch(/«[^«»]{1,40}» tapa ~60 %/)
+    expect(coverageNotice(res('<<>>'))).toContain('«otra ventana» tapa')
   })
 })

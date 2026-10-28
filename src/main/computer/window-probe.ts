@@ -6,10 +6,11 @@
  * reduce a una rejilla de luminancia y se descarta. Al modelo solo llegan porcentajes y nombres de app, nunca rectángulos ni píxeles.
  *
  * Solo módulos de Node y sin efectos secundarios al importar: lo usa únicamente el MCP (como los `mcp-platform*.ts`). Aquí no hay
- * llamadas al helper, ni al disco, ni temporizadores salvo `pollProbe`, que recibe `sleep`/`now` inyectados.
+ * llamadas al helper, ni temporizadores (el disco solo en `readRegularFile`), salvo `pollProbe`, que recibe `sleep`/`now` inyectados.
  */
 
 import { createHash } from 'node:crypto'
+import { closeSync, constants as fsConstants, fstatSync, openSync, readFileSync } from 'node:fs'
 import { inflateSync } from 'node:zlib'
 
 // ───────────────────────────────────────── Apagador ─────────────────────────────────────────
@@ -34,7 +35,26 @@ export interface LumaImage {
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 /** Tope de píxeles que se aceptan decodificar (protege contra PNG gigantes o bombas de descompresión). */
-const MAX_PIXELS = 64_000_000
+const MAX_PIXELS = 40_000_000
+
+/** Tope de bytes al leer una imagen que escribió el helper en una carpeta que el agente puede tocar (PNG/JPG de capturas y sondas). */
+export const MAX_IMAGE_FILE_BYTES = 64 * 1024 * 1024
+
+/**
+ * Lee un archivo REGULAR sin seguir enlaces simbólicos (`O_NOFOLLOW`) y con tope de tamaño. El agente aislado puede escribir en la carpeta
+ * de capturas: un enlace puesto donde el MCP espera una imagen no debe hacerle leer otro archivo ni uno enorme. Lanza si no es válido.
+ */
+export function readRegularFile(path: string, maxBytes: number = MAX_IMAGE_FILE_BYTES): Buffer {
+  const fd = openSync(path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW)
+  try {
+    const st = fstatSync(fd)
+    if (!st.isFile()) throw new Error('no es un archivo regular')
+    if (st.size > maxBytes) throw new Error('archivo demasiado grande')
+    return readFileSync(fd)
+  } finally {
+    closeSync(fd)
+  }
+}
 
 /**
  * Decodifica un PNG mínimo: 8 bits por canal, tipos de color 0 (gris), 2 (RGB), 4 (gris+alfa) y 6 (RGBA), sin entrelazado, filtros 0–4.
@@ -81,7 +101,8 @@ export function decodePngLuma(buf: Buffer | Uint8Array): LumaImage | null {
     if (width <= 0 || height <= 0 || width * height > MAX_PIXELS) return null
     const bpp = colorType === 0 ? 1 : colorType === 2 ? 3 : colorType === 4 ? 2 : 4
     const stride = width * bpp
-    const raw = inflateSync(Buffer.concat(idat))
+    // Tope de salida: una «bomba» de descompresión lanza RangeError (lo recoge el catch de abajo) en vez de agotar la memoria.
+    const raw = inflateSync(Buffer.concat(idat), { maxOutputLength: (stride + 1) * height })
     if (raw.length !== (stride + 1) * height) return null
 
     const lum = new Uint8Array(width * height)
@@ -581,6 +602,20 @@ export function computeCoverage(opts: {
 }
 
 /**
+ * Nombre de app apto para el texto del modelo: el nombre lo controla quien compiló el programa, así que solo se dejan letras, números,
+ * espacio y `.,_()&+-` (máx. 40); si no queda nada, «otra ventana».
+ */
+export function noticeAppName(name: string): string {
+  const clean = String(name ?? '')
+    .replace(/[^\p{L}\p{N} .,_()&+-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40)
+    .trim()
+  return clean || 'otra ventana'
+}
+
+/**
  * Línea para el modelo (solo nombres de app y porcentajes). `null` si no hay nada que avisar (menos de `minPct` tapado y fuera de
  * pantalla) y `unknownText` si no se pudo comprobar.
  */
@@ -589,7 +624,7 @@ export function coverageNotice(res: CoverageResult, opts: { minPct?: number } = 
   if (!res.known) return 'No se pudo comprobar si esta ventana está tapada por otra.'
   const parts: string[] = []
   if (res.coveredPct >= minPct && res.coveredBy.length > 0) {
-    const names = res.coveredBy.map((c) => `«${c.app}» tapa ~${Math.round(c.pct)} %${c.zone ? ` (zona ${c.zone})` : ''}`)
+    const names = res.coveredBy.map((c) => `«${noticeAppName(c.app)}» tapa ~${Math.round(c.pct)} %${c.zone ? ` (zona ${c.zone})` : ''}`)
     parts.push(names.join(', '))
   }
   if (res.offscreenPct >= minPct) parts.push(`~${Math.round(res.offscreenPct)} % queda fuera de pantalla`)

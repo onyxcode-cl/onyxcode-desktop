@@ -54,9 +54,9 @@
  * `screencapture`). `type_text`/`key` además rechazan un campo de contraseña con foco
  * (`cu-helper focused-secure`) o tecleo real reciente del usuario (`cu-helper recent-input`).
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { timingSafeEqual } from 'node:crypto'
+import { randomBytes, timingSafeEqual } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -73,7 +73,7 @@ import {
 } from './mcp-platform'
 import { createDarwinBackend } from './mcp-platform-darwin'
 import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from './mcp-platform-win32'
-import { captureIsStale, coverageNotice, probeSignature, type ProbeSignature } from './window-probe'
+import { captureIsStale, coverageNotice, probeSignature, readRegularFile, type ProbeSignature } from './window-probe'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -81,6 +81,25 @@ const EVENTS_URL = process.env.COMPUTER_EVENTS_URL ?? ''
 const AUTO_SHOT = process.env.COMPUTER_AUTO_SCREENSHOT !== '0'
 const MAX_LONG = Math.max(400, Number(process.env.COMPUTER_MAX_LONG_SIDE) || 1366)
 const SHOT_DIR = process.env.COMPUTER_SHOT_DIR || join(tmpdir(), 'lazunox-computer')
+
+/**
+ * Borra un archivo temporal sin que un fallo tumbe nada. La carpeta de capturas es escribible por el agente aislado: si cambia un archivo
+ * por una carpeta o un enlace, `rmSync` lanza (EISDIR…) y, dentro de un temporizador o de un `finally`, tumbaría el MCP.
+ */
+function safeRm(path: string | undefined): void {
+  if (!path) return
+  try {
+    rmSync(path, { force: true })
+  } catch {
+    // ignorar: es un temporal; peor caso, queda un archivo suelto que `cleanupShots` o el sistema limpian
+  }
+}
+
+/** Lee una imagen que escribió el helper en la carpeta de capturas: archivo regular, sin seguir enlaces y con tope de tamaño. */
+const readShotFile = (path: string): Buffer => readRegularFile(path)
+
+/** Nombre impredecible (16 bytes aleatorios) para temporales que el helper abre FUERA del sandbox; nunca se muestra al modelo. */
+const secretName = (): string => randomBytes(16).toString('hex')
 const FAKE_SHOT = process.env.COMPUTER_FAKE_SCREENSHOT ?? ''
 const INSTANT = process.env.COMPUTER_INSTANT === '1'
 const TYPE_DELAY = process.env.COMPUTER_TYPE_DELAY_MS ?? ''
@@ -779,7 +798,7 @@ function cleanupShots(): void {
       .filter((f) => f.startsWith('shot-'))
       .map((f) => ({ f, t: statSync(join(SHOT_DIR, f)).mtimeMs }))
       .sort((a, b) => b.t - a.t)
-    for (const { f } of files.slice(20)) rmSync(join(SHOT_DIR, f), { force: true })
+    for (const { f } of files.slice(20)) safeRm(join(SHOT_DIR, f))
   } catch {
     // ignorar
   }
@@ -1086,14 +1105,14 @@ async function captureScreen(session?: string): Promise<Shot> {
     }
     capturedScreen = screen
     ratio = width > 0 ? screen.width / width : await ensureRatio()
-    const base64 = readFileSync(out).toString('base64')
+    const base64 = readShotFile(out).toString('base64')
     cleanupShots()
     const shot: Shot = { path: out, base64, width, height, ratio, front: front?.name ?? null, onMainScreen: screen.main === true }
     lastShot = shot
     lastShotSession = session
     return shot
   } finally {
-    rmSync(raw, { force: true })
+    safeRm(raw)
   }
 }
 
@@ -1243,8 +1262,11 @@ interface WindowShotEntry {
   /** Tamaño del JPEG que vio el modelo (el espacio de x/y/width/height del zoom). */
   imageWidth: number
   imageHeight: number
-  /** macOS: PNG grande conservado (el doble de detalle que el JPEG) y su tamaño. */
-  pngPath?: string
+  /**
+   * macOS: PNG grande (el doble de detalle que el JPEG) conservado SOLO EN MEMORIA y su tamaño. Nunca se deja en disco con un nombre que el
+   * agente pueda adivinar: el zoom lo escribe justo antes de usarlo con un nombre aleatorio y lo borra después.
+   */
+  png?: Buffer
   pngWidth?: number
   pngHeight?: number
   /** Windows: rectángulo de origen de la ventana al capturar; el zoom captura de nuevo y exige que siga igual. */
@@ -1258,24 +1280,34 @@ function dropWindowShot(key: string): void {
   const e = windowShots.get(key)
   if (!e) return
   if (e.timer) clearTimeout(e.timer)
-  if (e.pngPath) rmSync(e.pngPath, { force: true })
   windowShots.delete(key)
 }
+
+/** Tope de capturas conservadas a la vez (las más viejas se descartan) y de bytes de PNG en memoria. */
+const WINDOW_SHOTS_MAX = 8
+const WINDOW_SHOTS_MAX_BYTES = 256 * 1024 * 1024
+const windowShotsBytes = (): number => [...windowShots.values()].reduce((n, e) => n + (e.png?.length ?? 0), 0)
 
 function setWindowShot(session: string | undefined, e: Omit<WindowShotEntry, 'at' | 'timer'>): void {
   const key = ctxKey(session)
   dropWindowShot(key)
-  if (windowShots.size >= WINDOW_CTX_MAX) {
-    const oldest = windowShots.keys().next().value
-    if (oldest !== undefined) dropWindowShot(oldest)
-  }
   const entry: WindowShotEntry = { ...e, at: Date.now() }
-  // El PNG conservado no sobrevive a la caducidad: se borra solo pasado el plazo (más un margen) aunque nadie vuelva a pedir zoom.
+  // El PNG conservado no sobrevive a la caducidad: se suelta solo pasado el plazo (más un margen) aunque nadie vuelva a pedir zoom.
   entry.timer = setTimeout(() => {
-    if (windowShots.get(key) === entry) dropWindowShot(key)
+    try {
+      if (windowShots.get(key) === entry) dropWindowShot(key)
+    } catch {
+      // nunca dejar una excepción sin capturar en un temporizador
+    }
   }, WINDOW_CTX_TTL_MS + 1000)
   entry.timer.unref?.()
   windowShots.set(key, entry)
+  // Tope de sesiones y de memoria: se descartan las más viejas (el Map conserva el orden de inserción; esta, recién puesta, es la última).
+  while (windowShots.size > WINDOW_SHOTS_MAX || (windowShots.size > 1 && windowShotsBytes() > WINDOW_SHOTS_MAX_BYTES)) {
+    const oldest = windowShots.keys().next().value
+    if (oldest === undefined || oldest === key) break
+    dropWindowShot(oldest)
+  }
 }
 
 /** Tamaño de un JPEG (marcador SOF); `null` si no se entiende. */
@@ -1312,12 +1344,12 @@ async function probeNow(ctx: WindowCtx): Promise<ProbeSignature | null> {
   try {
     mkdirSync(SHOT_DIR, { recursive: true })
     await backend.probeWindow(ctx.app.bundleId, ctx.windowIndex, path)
-    return probeSignature(readFileSync(path))
+    return probeSignature(readShotFile(path))
   } catch (err) {
     log('sonda de ventana:', err instanceof Error ? err.message : err)
     return null
   } finally {
-    rmSync(path, { force: true })
+    safeRm(path)
   }
 }
 
@@ -2057,10 +2089,10 @@ async function isolatedZoom(a: Record<string, unknown>, session: string | undefi
       session
     )
   }
-  const scale = Math.max(1, Math.min(4, Number(a.scale) || 2))
+  const wantedScale = Math.max(1, Math.min(4, Number(a.scale) || 2))
   // px del JPEG que vio el modelo → px de la imagen de origen (macOS: el PNG conservado; Windows: el rectángulo de origen de la ventana).
-  const srcW = entry.pngPath ? entry.pngWidth : entry.rect ? Math.round(entry.rect.width) : undefined
-  const srcH = entry.pngPath ? entry.pngHeight : entry.rect ? Math.round(entry.rect.height) : undefined
+  const srcW = entry.png ? entry.pngWidth : entry.rect ? Math.round(entry.rect.width) : undefined
+  const srcH = entry.png ? entry.pngHeight : entry.rect ? Math.round(entry.rect.height) : undefined
   if (!srcW || !srcH || !(srcW > 0) || !(srcH > 0)) {
     throw reject(
       'zoom-unavailable',
@@ -2078,13 +2110,19 @@ async function isolatedZoom(a: Record<string, unknown>, session: string | undefi
     width: Math.max(1, Math.min(srcW, Math.ceil((x + width) * fx)) - rx),
     height: Math.max(1, Math.min(srcH, Math.ceil((y + height) * fy)) - ry)
   }
+  // El helper dibuja región×escala antes de reducir: se acota la escala para que ninguna de las dos medidas pase del tope (mínimo 1).
+  const scale = Math.max(1, Math.min(wantedScale, ZOOM_MAX_LONG / Math.max(region.width, region.height)))
   mkdirSync(SHOT_DIR, { recursive: true })
-  const outPath = join(SHOT_DIR, `zoom-app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`)
+  // Nombres impredecibles y que nunca salen en un texto al modelo: el agente aislado puede escribir en esta carpeta y el helper corre fuera.
+  const outPath = join(SHOT_DIR, `zoom-app-${Date.now()}-${secretName()}.jpg`)
+  const inPath = entry.png ? join(SHOT_DIR, `zin-${secretName()}.png`) : undefined
   try {
+    // macOS: los bytes conservados en memoria se escriben justo ahora (flag 'wx': falla si ya existe, p. ej. un enlace puesto de antemano).
+    if (inPath && entry.png) writeFileSync(inPath, entry.png, { flag: 'wx', mode: 0o600 })
     const r = await backend.zoomWindow({
       appKey: entry.app.bundleId,
       windowIndex: entry.windowIndex,
-      srcPath: entry.pngPath,
+      srcPath: inPath,
       outPath,
       region,
       scale,
@@ -2109,7 +2147,7 @@ async function isolatedZoom(a: Record<string, unknown>, session: string | undefi
         )
       }
     }
-    const base64 = readFileSync(outPath).toString('base64')
+    const base64 = readShotFile(outPath).toString('base64')
     return {
       text:
         `Zoom de (${x}, ${y}) ${width}x${height} px de tu última app_screenshot de ${entry.app.name} (resultado: ${r.width}x${r.height} px). ` +
@@ -2117,14 +2155,15 @@ async function isolatedZoom(a: Record<string, unknown>, session: string | undefi
       shot: { path: outPath, base64, width: r.width, height: r.height, ratio: 1 }
     }
   } finally {
-    rmSync(outPath, { force: true })
+    safeRm(outPath)
+    safeRm(inPath)
   }
 }
 
 /** Firma de luminancia de un PNG en disco; `null` si no se puede leer o decodificar. */
 function signatureFromFile(path: string): ProbeSignature | null {
   try {
-    return probeSignature(readFileSync(path))
+    return probeSignature(readShotFile(path))
   } catch {
     return null
   }
@@ -2250,9 +2289,9 @@ const TOOLS: ToolDef[] = [
         throw new Error(`Región fuera de la captura (${shot.width}x${shot.height} px): (${x}, ${y}) ${width}x${height}`)
       }
       const scale = Math.max(1, Math.min(4, Number(a.scale) || 2))
-      const outPath = join(SHOT_DIR, `zoom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`)
+      const outPath = join(SHOT_DIR, `zoom-${Date.now()}-${secretName()}.jpg`)
       const r = await backend.zoomImage({ inPath: shot.path, outPath, x, y, width, height, scale })
-      const base64 = readFileSync(outPath).toString('base64')
+      const base64 = readShotFile(outPath).toString('base64')
       return {
         text:
           `Zoom x${scale} de (${x}, ${y}) ${width}x${height} px de la última captura (resultado: ${r.width}x${r.height} px). ` +
@@ -3014,14 +3053,15 @@ const TOOLS: ToolDef[] = [
       }
       mkdirSync(SHOT_DIR, { recursive: true })
       const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-      const raw = join(SHOT_DIR, `raw-app-${stamp}.png`)
+      // El PNG crudo lleva nombre aleatorio propio (no derivado del `stamp` que sale en el texto): el helper lo escribe y luego se lee.
+      const raw = join(SHOT_DIR, `raw-app-${Date.now()}-${secretName()}.png`)
       // Prefijo "shot-": `cleanupShots()` la recoge igual que las capturas de pantalla completa.
       const out = join(SHOT_DIR, `shot-app-${stamp}.jpg`)
       // Origen aislado: miniatura PNG de la MISMA captura (Windows) para la firma de la lista de elementos; nunca llega al modelo.
-      const probe = isolatedCall ? join(SHOT_DIR, `probe-app-${stamp}.png`) : undefined
+      const probe = isolatedCall ? join(SHOT_DIR, `probe-app-${secretName()}.png`) : undefined
       try {
         const info = await backend.windowShot(app.bundleId, raw, out, windowIndex, probe)
-        const jpg = readFileSync(out)
+        const jpg = readShotFile(out)
         const base64 = jpg.toString('base64')
         cleanupShots()
         if (isolatedCall) {
@@ -3044,22 +3084,22 @@ const TOOLS: ToolDef[] = [
 
           // Zoom (§2.1): lo necesario para ampliar ESTA captura. macOS conserva el PNG grande (el doble de detalle que el JPEG);
           // Windows guarda el rectángulo de origen para volver a capturar el trozo. Independiente de que la ventana se haya podido ubicar.
-          let pngForSignature: string = backend.id === 'darwin' ? raw : (probe ?? '')
+          const pngForSignature: string = backend.id === 'darwin' ? '' : (probe ?? '')
+          let darwinPng: Buffer | undefined
           try {
             if (backend.id === 'darwin') {
               const px = jpegSize(jpg)
               const w = located && loc ? loc.imageWidth : (px?.width ?? 0)
               const h = located && loc ? loc.imageHeight : (px?.height ?? 0)
-              if (w > 0 && h > 0 && Number.isFinite(info.width) && Number.isFinite(info.height) && existsSync(raw)) {
-                const kept = join(SHOT_DIR, `shot-app-raw-${stamp}.png`)
-                renameSync(raw, kept)
-                pngForSignature = kept
+              if (w > 0 && h > 0 && Number.isFinite(info.width) && Number.isFinite(info.height)) {
+                // Se leen los bytes (archivo regular, sin enlaces) y el archivo se borra en el `finally`: nada previsible queda en disco.
+                darwinPng = readShotFile(raw)
                 setWindowShot(session, {
                   app,
                   windowIndex,
                   imageWidth: w,
                   imageHeight: h,
-                  pngPath: kept,
+                  png: darwinPng,
                   pngWidth: info.width,
                   pngHeight: info.height
                 })
@@ -3075,7 +3115,7 @@ const TOOLS: ToolDef[] = [
           let extra = ''
           const stored = located ? windowCtx.get(ctxKey(session)) : undefined
           if (stored && loc) {
-            stored.signature = pngForSignature ? signatureFromFile(pngForSignature) : null
+            stored.signature = darwinPng ? probeSignature(darwinPng) : pngForSignature ? signatureFromFile(pngForSignature) : null
             if (stored.signature) {
               const els = await buildCaptureElements(stored, session)
               if (els.length) {
@@ -3120,8 +3160,8 @@ const TOOLS: ToolDef[] = [
           shot: { path: out, base64, width: info.width, height: info.height, ratio: await ensureRatio() }
         }
       } finally {
-        rmSync(raw, { force: true })
-        if (probe) rmSync(probe, { force: true })
+        safeRm(raw)
+        safeRm(probe)
       }
     }
   },

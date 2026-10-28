@@ -8,7 +8,7 @@ import { EventEmitter } from 'node:events'
 import { isWin } from '../../test/platform'
 import { describe, expect, it, vi } from 'vitest'
 import type { PlatformHost } from './mcp-platform'
-import { createDarwinBackend } from './mcp-platform-darwin'
+import { createDarwinBackend, type DarwinDeps } from './mcp-platform-darwin'
 
 type Reply = { stdout?: string; stderr?: string; code?: number; delayMs?: number }
 interface Call {
@@ -21,7 +21,8 @@ function rig(
   cfg: Partial<PlatformHost['config']> = {},
   tiers: Record<string, 'view' | 'click' | 'full' | null> = {},
   files: Set<string> = new Set(['/h/cu-helper']),
-  sideGet: PlatformHost['sideGet'] = async () => ({})
+  sideGet: PlatformHost['sideGet'] = async () => ({}),
+  lstat: DarwinDeps['lstatSync'] = () => ({ isFile: () => true, isSymbolicLink: () => false, size: 100 })
 ): { backend: ReturnType<typeof createDarwinBackend>; calls: Call[]; kills: Array<{ pid: number; sig: string }>; logs: string[] } {
   const calls: Call[] = []
   const kills: Array<{ pid: number; sig: string }> = []
@@ -66,6 +67,7 @@ function rig(
     readdirSync: () => {
       throw new Error('sin carpeta')
     },
+    lstatSync: lstat,
     homedir: () => '/Users/x'
   })
   return { backend, calls, kills, logs }
@@ -685,6 +687,41 @@ describe('macOS: sonda, zoom y ventana tapada (probeWindow / zoomWindow / occlus
     await expect(r2.backend.zoomWindow({ ...zoomReq, region: { x: 0, y: 0, width: 0, height: 5 } })).rejects.toThrow('región')
     await expect(r2.backend.zoomWindow({ ...zoomReq, scale: Number.NaN })).rejects.toThrow('región')
     expect(r.calls.length + r2.calls.length).toBe(0)
+  })
+
+  it('zoomWindow (H1): la entrada debe ser un archivo regular, no un enlace ni vacío; si no, no llama al helper', async () => {
+    const mk = (st: ReturnType<DarwinDeps['lstatSync']>): ReturnType<typeof rig> =>
+      rig(
+        () => ({}),
+        {},
+        {},
+        zfiles,
+        async () => ({}),
+        () => st
+      )
+    const casos = [
+      { isFile: () => false, isSymbolicLink: () => true, size: 100 },
+      { isFile: () => true, isSymbolicLink: () => true, size: 100 },
+      { isFile: () => false, isSymbolicLink: () => false, size: 100 },
+      { isFile: () => true, isSymbolicLink: () => false, size: 0 }
+    ]
+    for (const st of casos) {
+      const r = mk(st)
+      await expect(r.backend.zoomWindow(zoomReq)).rejects.toThrow('no es un archivo válido')
+      expect(r.calls).toEqual([])
+    }
+    const gone = rig(
+      () => ({}),
+      {},
+      {},
+      zfiles,
+      async () => ({}),
+      () => {
+        throw new Error('ENOENT')
+      }
+    )
+    await expect(gone.backend.zoomWindow(zoomReq)).rejects.toThrow('ya no existe')
+    expect(gone.calls).toEqual([])
   })
 
   /** Escenario: la app A (frame) con `windows-of` en orden Z; `at` es la respuesta de `app-at` por llamada. */
