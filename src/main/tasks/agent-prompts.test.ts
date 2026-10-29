@@ -38,6 +38,13 @@ describe('prompts de agente', () => {
     expect(UNIFIED_APPS_PROMPT).toContain('pide `full` desde la primera tarjeta')
     expect(UNIFIED_APPS_PROMPT).toContain('no le pidas a la persona que lo haga por su cuenta')
     expect(UNIFIED_APPS_PROMPT).toContain('NO pidas acceso a esa otra app para sortearlo')
+    // Regla principal (al principio): usar el puente y no el camino antiguo; «Control total» es un nivel, no un cambio de modo.
+    expect(UNIFIED_APPS_PROMPT.indexOf('## Regla principal')).toBeGreaterThan(-1)
+    expect(UNIFIED_APPS_PROMPT.indexOf('## Regla principal')).toBeLessThan(UNIFIED_APPS_PROMPT.indexOf('computer_zoom'))
+    expect(UNIFIED_APPS_PROMPT).toContain('usa SIEMPRE `computer_request_access`')
+    expect(UNIFIED_APPS_PROMPT).toContain('NUNCA escribas `[[LAZUNOX:NEEDS_APP:…]]`')
+    expect(UNIFIED_APPS_PROMPT).toContain('«Control total» es un NIVEL de permiso de UNA app')
+    expect(UNIFIED_APPS_PROMPT).toContain('Manejar UNA app, aunque haga falta su nivel «Control total», nunca es motivo')
     expect(UNIFIED_APPS_PROMPT).toContain('cliente de escritorio remoto')
     expect(UNIFIED_APPS_PROMPT).toContain('antes de CADA clic')
   })
