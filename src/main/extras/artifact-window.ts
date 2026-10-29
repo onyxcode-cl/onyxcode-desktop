@@ -48,7 +48,7 @@ export const ARTIFACT_CSP = [
   "base-uri 'none'"
 ].join('; ')
 
-const artifacts = new Map<string, ArtifactPayload>()
+const artifacts = new Map<string, ArtifactPayload & { noRemoteImages?: boolean }>()
 /** HTML con las imágenes de internet ya incrustadas, por documento. */
 const inlined = new Map<string, Promise<string>>()
 let configuredSession: Session | null = null
@@ -64,6 +64,11 @@ function artifactSession(): Session {
     // La ventana no tiene red: las imágenes de internet (bancos de imágenes permitidos) las descarga la APP y se incrustan como data:
     // (ventana, modo presentación, PDF y PowerPoint pasan todos por aquí). Una sola vez por documento.
     let ready = inlined.get(id)
+    if (!ready && artifact.noRemoteImages) {
+      // Documentos pedidos por un agente aislado (herramienta `documentos`): la APP no descarga nada en su nombre.
+      ready = Promise.resolve(artifact.html)
+      inlined.set(id, ready)
+    }
     if (!ready) {
       ready = inlineRemoteImages(artifact.html, { fetchImpl: (u, i) => net.fetch(u, i) })
         .then((r) => {
@@ -198,11 +203,15 @@ const PDF_TIMEOUT_MS = 30_000
  * cancela http(s)/ws/file/ftp), permisos denegados y navegación bloqueada. Nada remoto se carga:
  * un `<img src="http://…">` queda roto en el PDF. Devuelve los bytes del PDF (A4, con fondos).
  */
-export async function renderHtmlToPdf(html: string, title = 'Documento'): Promise<Buffer> {
+export async function renderHtmlToPdf(
+  html: string,
+  title = 'Documento',
+  opts: { remoteImages?: boolean } = {}
+): Promise<Buffer> {
   const source = String(html ?? '')
   if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
   const id = randomUUID()
-  artifacts.set(id, { title, html: source })
+  artifacts.set(id, { title, html: source, ...(opts.remoteImages === false ? { noRemoteImages: true } : {}) })
 
   const win = new BrowserWindow({
     width: 1024,

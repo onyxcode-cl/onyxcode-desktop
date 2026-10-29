@@ -14,17 +14,16 @@ import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join, sep } from 'node:path'
 import type { DocKind } from '@shared/doc-kind'
-import { renderHtmlToPdf, safeDocumentName } from './artifact-window'
-import { craftService } from '../office/craft/service'
-import { recordCraftProblem } from '../office/craft/craft-problems'
-import { deckToPdf, renderChatDeck } from '../office/craft/chat-deck'
-import { gridToPdf, renderChatGrid } from '../office/craft/chat-grid'
-import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
-import { isXlsxSpec, renderXlsx, type XlsxSpec } from './render-xlsx'
-import { isDocxSpec, type DocxSpec } from '@shared/chat-doc-spec'
-import { docxToPdf, renderChatDocx } from '../office/craft/chat-word'
+import { safeDocumentName } from './artifact-window'
+import { deckToPdf } from '../office/craft/chat-deck'
+import { gridToPdf } from '../office/craft/chat-grid'
+import { docxToPdf } from '../office/craft/chat-word'
+import { DOC_EXT, craftBinary, renderBytes } from '../documents/engine'
 import { issueToken } from '../viewer/tokens'
 import { registerViewerPathValidator } from '../viewer/scheme'
+
+export { ChatDocError, type ChatDocInput } from '../documents/engine'
+import type { ChatDocInput } from '../documents/engine'
 
 const ROOT_NAME = 'lazunox-chat-docs'
 const SESSION_ID_RE = /^[A-Za-z0-9_-]+$/
@@ -60,21 +59,7 @@ export interface ChatDocument {
   file: string
 }
 
-/** Fallo de generación con un motivo que la ventana puede explicar (el mensaje es un texto propio de la app, apto para mostrar). */
-export class ChatDocError extends Error {
-  constructor(
-    readonly code: 'invalid' | 'no-craft',
-    message: string
-  ) {
-    super(message)
-    this.name = 'ChatDocError'
-  }
-}
-
-export type ChatDocInput =
-  { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
-
-const EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx', docx: 'docx' }
+const EXT = DOC_EXT
 
 /** Genera el archivo real (PDF/Excel/PowerPoint) y lo guarda en la carpeta temporal de esta sesión, con un token del visor ya emitido. */
 export async function generateChatDoc(input: ChatDocInput, title: string, sessionId: string): Promise<ChatDocument> {
@@ -116,53 +101,6 @@ export async function generateChatDoc(input: ChatDocInput, title: string, sessio
 
   const token = issueToken({ path: target, kind: input.kind })
   return { token, kind: input.kind, file: target }
-}
-
-/** Ruta de un programa de ArtCraft si está instalado (`null` si no, o si no es macOS). */
-function craftBinary(tool: 'deckcraft' | 'wordcraft' | 'gridcraft'): string | null {
-  const st = craftService().status()
-  return st.state === 'installed' ? (st.bins[tool] ?? null) : null
-}
-
-async function renderBytes(input: ChatDocInput, title: string): Promise<Buffer> {
-  if (input.kind === 'pdf') {
-    const pdf = await renderHtmlToPdf(input.html, title || 'Documento')
-    if (!pdf.subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('No se pudo generar el PDF.')
-    return pdf
-  }
-  if (input.kind === 'xlsx') {
-    if (!isXlsxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de Excel inválidos.')
-    // Con GridCraft instalado el libro se arma con él (calcula las fórmulas); si falla, cae al generador de siempre.
-    const grid = craftBinary('gridcraft')
-    if (grid) {
-      try {
-        return await renderChatGrid(grid, input.data)
-      } catch (e) {
-        console.warn('[chat-docs] GridCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
-        recordCraftProblem('documento', e, { programa: 'gridcraft' }, { level: 'warn' })
-      }
-    }
-    return renderXlsx(input.data)
-  }
-  if (input.kind === 'docx') {
-    if (!isDocxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de Word inválidos.')
-    // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
-    const word = craftBinary('wordcraft')
-    if (!word) throw new ChatDocError('no-craft', 'El diseñador de documentos (WordCraft) no está instalado.')
-    return renderChatDocx(word, input.data)
-  }
-  if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de PowerPoint inválidos.')
-  // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.
-  const craft = craftBinary('deckcraft')
-  if (craft) {
-    try {
-      return await renderChatDeck(craft, input.data)
-    } catch (e) {
-      console.warn('[chat-docs] DeckCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
-      recordCraftProblem('documento', e, { programa: 'deckcraft' }, { level: 'warn' })
-    }
-  }
-  return renderPptx(input.data)
 }
 
 /**
