@@ -360,6 +360,7 @@ export const code = {
   'code.composer.hintCommands': 'comandos',
   'code.composer.hintFiles': 'archivos',
   'code.composer.hintNewline': 'nueva línea',
+  'code.panel.summary': 'Resumen',
   'code.panel.changes': 'Cambios',
   'code.panel.terminal': 'Terminal',
   'code.panel.files': 'Archivos',

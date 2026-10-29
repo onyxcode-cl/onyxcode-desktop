@@ -362,6 +362,7 @@ export const code = {
   'code.composer.hintCommands': 'commands',
   'code.composer.hintFiles': 'files',
   'code.composer.hintNewline': 'new line',
+  'code.panel.summary': 'Summary',
   'code.panel.changes': 'Changes',
   'code.panel.terminal': 'Terminal',
   'code.panel.files': 'Files',

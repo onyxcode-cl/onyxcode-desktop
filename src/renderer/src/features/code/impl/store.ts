@@ -386,7 +386,7 @@ function panelAllowed(p: RightPanel): boolean {
 }
 function initialPanel(): RightPanel | null {
   const p = lsGet(LS_PANEL)
-  return (p === 'changes' || p === 'terminal' || p === 'files' || p === 'browser') && panelAllowed(p) ? p : null
+  return (p === 'summary' || p === 'changes' || p === 'terminal' || p === 'files' || p === 'browser') && panelAllowed(p) ? p : null
 }
 function initialPermissionMode(): PermissionMode {
   const v = lsGet(LS_PERM_MODE)

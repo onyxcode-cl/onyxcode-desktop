@@ -14,8 +14,7 @@ import { NoAiBanner } from '../../../components/NoAiBanner'
 import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
 import { ExportMenuButton } from '../../../components/ExportConversation'
 import { exportCodeConversation } from './export'
-import { EnvironmentPanel } from '../../../components/EnvironmentPanel'
-import { useHostName } from '../../../lib/use-host-name'
+import { ProjectDialog } from '../../project-profile/ProjectDialog'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MsgKey } from '@shared/i18n'
@@ -83,15 +82,17 @@ import type { RightPanel } from './types'
 import { panelLayout } from './review-logic'
 import { sharedFullDiff } from './full-diff'
 import { Tip } from './ui'
+import { CodeSummary } from './CodeSummary'
 import { hintText, useEffectiveBindings } from '../../../keybindings/bindings'
 
 const PANEL_LABEL: Record<RightPanel, MsgKey> = {
+  summary: 'code.panel.summary',
   changes: 'code.panel.changes',
   terminal: 'code.panel.terminal',
   files: 'code.panel.files',
   browser: 'code.panel.browser'
 }
-const PANEL_MIN_WIDTH: Record<RightPanel, number> = { changes: 280, terminal: 280, files: 280, browser: 640 }
+const PANEL_MIN_WIDTH: Record<RightPanel, number> = { summary: 280, changes: 280, terminal: 280, files: 280, browser: 640 }
 const PANEL_WIDTH_KEY = 'code.panelWidth'
 
 function readWidth(): number {
@@ -299,6 +300,9 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
         </IconButton>
       </div>
       <div className="min-h-0 flex-1">
+        {panel === 'summary' && (
+          <CodeSummary key={directory} directory={directory} branch={branch?.branch ?? null} changes={branch?.changes ?? 0} />
+        )}
         {panel === 'changes' && <ChangesPanel key={directory} directory={directory} />}
         {panel === 'files' && <FilesPanel directory={directory} />}
         {terminalMounted && (
@@ -465,16 +469,23 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   )
 }
 
-/** Panel «Entorno» de la barra de Code (solo escritorio): equipo, carpeta del proyecto y rama. */
+/** «Entorno» de la barra de Code (solo escritorio): abre la Ficha del proyecto (nombre, carpeta, nivel de acceso de la IA y Bóveda de variables). */
 function CodeEnvironment({ directory }: { directory: string }): React.JSX.Element {
-  const hostName = useHostName()
-  const info = useBranch(directory)
+  const t = useT()
+  const [open, setOpen] = useState(false)
   return (
-    <EnvironmentPanel
-      hostName={hostName}
-      directory={directory}
-      branch={info && info.branch ? { name: info.branch, changes: info.changes } : null}
-    />
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
+        className="no-drag flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm text-muted hover:bg-hover hover:text-fg"
+      >
+        {t('env.title')}
+        <ChevronDown size={14} aria-hidden />
+      </button>
+      {open && <ProjectDialog folder={directory} full={false} onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
@@ -579,6 +590,7 @@ function ChangesBar({ directory }: { directory: string }): React.JSX.Element | n
 }
 
 const ALL_PANELS: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] = [
+  { id: 'summary', label: 'code.panel.summary', icon: <ListChecks size={16} /> },
   { id: 'changes', label: 'code.panel.changes', icon: <GitCompare size={16} /> },
   { id: 'terminal', label: 'code.panel.terminal', icon: <SquareTerminal size={16} /> },
   { id: 'files', label: 'code.panel.files', icon: <FileCode2 size={16} /> },
@@ -586,7 +598,7 @@ const ALL_PANELS: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] =
 ]
 /** Grupos lógicos de la barra: revisión (Cambios) y herramientas (Terminal, Archivos, Navegador). Separados por una línea fina. */
 const PANEL_GROUPS: { key: string; label: MsgKey; ids: RightPanel[] }[] = [
-  { key: 'review', label: 'code.toolbar.group.review', ids: ['changes'] },
+  { key: 'review', label: 'code.toolbar.group.review', ids: ['summary', 'changes'] },
   { key: 'tools', label: 'code.toolbar.group.tools', ids: ['terminal', 'files', 'browser'] }
 ]
 /** Sin terminal (pty) ni vista nativa del navegador en la PWA del celular; en Mac y Windows no cambia nada. */

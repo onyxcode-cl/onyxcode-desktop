@@ -7,7 +7,7 @@ import type { Part, Message, PermissionRequest, QuestionInfo, Todo } from '@open
 
 export type CodeAgent = 'build' | 'plan'
 
-export type RightPanel = 'changes' | 'terminal' | 'files' | 'browser'
+export type RightPanel = 'summary' | 'changes' | 'terminal' | 'files' | 'browser'
 
 export interface CodeMessage {
   info: Message
