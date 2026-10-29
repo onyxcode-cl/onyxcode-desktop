@@ -16,7 +16,7 @@ import { errorMessage } from '../../../lib/opencode'
 import { useSessions } from '../../../stores/sessions'
 import { answerFolderRequest } from './actions'
 import { cw } from './bridge'
-import { folderRequestView } from './conversation-logic'
+import { commandWrites, folderRequestView } from './conversation-logic'
 import { rootTaskId, useTasks } from './store'
 import { useShowPath } from './conn-paths'
 import { lastAssistantText } from './transcript'
@@ -50,7 +50,8 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
   const view = useMemo(() => folderRequestView(request, paths, entries ? lastAssistantText(entries) : ''), [request, paths, entries])
 
   const [selected, setSelected] = useState(view.candidates[0] ?? '')
-  const [mode, setMode] = useState<FolderAccessMode>('ro')
+  // Un comando claramente de escritura (mkdir, cp, redirecciones…) parte en «Lectura y escritura»; lo demás, en «Solo lectura».
+  const [mode, setMode] = useState<FolderAccessMode>(() => (commandWrites(view.command) ? 'rw' : 'ro'))
   const [trust, setTrust] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)

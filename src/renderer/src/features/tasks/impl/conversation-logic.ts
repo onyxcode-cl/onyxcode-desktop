@@ -152,3 +152,16 @@ export function folderRequestView(
     motive: trimMotive(lastAssistantText)
   }
 }
+
+/**
+ * ¿El comando que dispara la tarjeta de «carpeta fuera de la tarea» ESCRIBE (crea, copia, mueve…)? Si es así la tarjeta parte en «Lectura y
+ * escritura»: con «Solo lectura» por defecto el comando fallaba aunque la persona diera permiso, y el agente se iba por rodeos (Finder, clics).
+ * Conservador: solo comandos y redirecciones claramente de escritura; ante la duda, solo lectura. La persona siempre ve y elige el modo.
+ */
+export function commandWrites(command: string): boolean {
+  const c = command.trim()
+  if (!c) return false
+  // Redirección a archivo (`>`/`>>`), salvo a /dev/null y a descriptores (`2>&1`).
+  if (/(^|[^\d&>])>{1,2}\s*(?!&|\/dev\/null)[^\s>&|]/.test(c)) return true
+  return /(^|[;&|]\s*|\s)(mkdir|touch|cp|mv|ln|tee|rsync|install|truncate|mktemp|chmod|chown)\b/.test(c)
+}
