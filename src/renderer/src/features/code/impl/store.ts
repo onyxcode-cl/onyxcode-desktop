@@ -222,7 +222,8 @@ export interface CodeState {
   trustedFolders: string[]
 
   /** Agrega `directory` a los proyectos abiertos (si no lo estaba ya) y le da el foco. En el celular reemplaza, como antes. */
-  openProject: (directory: string) => Promise<void>
+  /** `fresh`: abre el proyecto con un chat NUEVO listo para escribir (no retoma la última sesión). Lo usan «Nuevo proyecto» y «Agregar carpeta». */
+  openProject: (directory: string, opts?: { fresh?: boolean }) => Promise<void>
   /** Solo para el celular (un proyecto a la vez): vuelve a la pantalla de elegir proyecto. En escritorio no la usa nadie. */
   closeProject: () => void
   /** Cierra UN proyecto de los abiertos (escritorio). Si tenía el foco, lo pasa a otro abierto o, si no queda ninguno,
@@ -1008,7 +1009,7 @@ export const useCode = create<CodeState>((set, get) => {
     reviewedSince: initReviewedSince(),
     reviewed: parseReviewed(lsGetJSON<unknown>(LS_REVIEWED, {})),
 
-    openProject: async (directory) => {
+    openProject: async (directory, opts) => {
       // Celular: un solo proyecto a la vez, reemplaza (como siempre). Escritorio: agrega y da el foco.
       if (isRemoteSurface()) {
         touchFocus(directory)
@@ -1028,6 +1029,8 @@ export const useCode = create<CodeState>((set, get) => {
       }
       void window.api.invoke('settings:addRecentFolder', { path: directory }).catch(() => undefined)
       await get().loadSessions(directory)
+      // Chat nuevo pedido por la persona: se queda sin sesión activa (el compositor listo; la sesión se crea al enviar el primer mensaje).
+      if (opts?.fresh) return
       const last = lsGet(LS_SESSION + directory)
       const sessions = selectProjectSessions(get(), directory)
       const pick = sessions.find((x) => x.id === last) ?? sessions[0]

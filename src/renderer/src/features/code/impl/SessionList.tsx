@@ -763,19 +763,14 @@ function ProjectGroup({
           </div>
         )}
         {!loading && list.length === 0 && !isRemoteSurface() && (
-          <div className="px-2 py-2">
-            <button
-              type="button"
-              data-testid="code-sidebar-new-here"
-              // Dentro del árbol ARIA solo caben `treeitem` (como «Cargar más»): sin esto axe marca «aria-required-children» en un proyecto sin sesiones.
-              role={tree ? 'treeitem' : undefined}
-              aria-level={tree ? 2 : undefined}
-              onClick={() => focusThen(() => void useCode.getState().newSessionAt(directory))}
-              className="no-drag flex h-8 w-full items-center justify-center gap-2 rounded-ctl border border-border bg-elevated text-ui font-medium text-fg transition hover:border-border-strong hover:bg-hover"
-            >
-              <Plus size={14} strokeWidth={1.75} aria-hidden="true" />
-              {t('code.sessions.newHere')}
-            </button>
+          // Proyecto sin sesiones: una línea corta (como Overdrive); la sesión nueva sale del «+» de la cabecera o al escribir en el chat.
+          <div
+            data-testid="code-sidebar-new-here"
+            role={tree ? 'treeitem' : undefined}
+            aria-level={tree ? 2 : undefined}
+            className="px-2.5 py-1 text-meta text-subtle"
+          >
+            {t('code.sessions.empty')}
           </div>
         )}
         {!loading && list.length === 0 && isRemoteSurface() && (
@@ -866,7 +861,7 @@ function NoProjectsList(): React.JSX.Element {
           key={dir}
           type="button"
           title={dir}
-          onClick={() => void openProjectTrusted(dir)}
+          onClick={() => void openProjectTrusted(dir, { fresh: true })}
           className="no-drag flex h-8 w-full items-center gap-2 rounded-ctl px-2 text-left text-ui text-muted hover:bg-hover hover:text-fg"
         >
           <FolderOpen size={14} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />

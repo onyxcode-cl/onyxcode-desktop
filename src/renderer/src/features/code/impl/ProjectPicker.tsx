@@ -220,7 +220,8 @@ export async function pickAndOpenFolder(): Promise<void> {
   const { directory, setGlobalError } = useCode.getState()
   try {
     const dir = await requireCode().dialog.openFolder({ title: t('code.picker.dialogTitle'), defaultPath: directory ?? undefined })
-    if (dir) await openProjectTrusted(dir)
+    // Carpeta recién elegida: queda abierta con un chat nuevo listo para empezar a trabajar.
+    if (dir) await openProjectTrusted(dir, { fresh: true })
   } catch (err) {
     setGlobalError(errorMessage(err))
   }

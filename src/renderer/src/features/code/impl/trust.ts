@@ -56,11 +56,12 @@ export function resolveTrust(trust: boolean): void {
  * Confirma la confianza (si hace falta), comprueba que macOS deja leer la carpeta (F8-B210) y abre el proyecto. Devuelve `false`
  * si el usuario no confió o si la carpeta no se puede leer (en ese caso queda la tarjeta de permisos y no se arranca el motor).
  */
-export async function openProjectTrusted(dir: string, opts: { passive?: boolean } = {}): Promise<boolean> {
+export async function openProjectTrusted(dir: string, opts: { passive?: boolean; fresh?: boolean } = {}): Promise<boolean> {
   if (!(await ensureTrusted(dir))) return false
   // Acción de la persona: si macOS guardó un «No permitir», se vuelve a preguntar (ver `ensureFolderReadable`). `passive` (restaurar al
   // arrancar) nunca insiste.
   if (!(await ensureFolderReadable(dir, { reask: !opts.passive }))) return false
-  await useCode.getState().openProject(dir)
+  if (opts.fresh) await useCode.getState().openProject(dir, { fresh: true })
+  else await useCode.getState().openProject(dir)
   return true
 }

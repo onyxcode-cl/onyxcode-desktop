@@ -53,6 +53,24 @@ const projectsLS = (): { v: number; open: string[]; focus: string | null } | nul
   return raw ? JSON.parse(raw) : null
 }
 
+describe('openProject con `fresh` (Nuevo proyecto / Agregar carpeta)', () => {
+  it('sin `fresh` retoma la sesión más reciente del proyecto (como siempre)', async () => {
+    installClient({ [A]: [makeSession('sa', A)] })
+    await st().openProject(A)
+    expect(st().activeSessionID).toBe('sa')
+  })
+
+  it('con `fresh` el proyecto queda abierto y con foco, SIN sesión activa: chat nuevo listo para escribir', async () => {
+    installClient({ [A]: [makeSession('sa', A)] })
+    await st().openProject(A, { fresh: true })
+    expect(st().directory).toBe(A)
+    expect(st().openDirectories).toEqual([A])
+    expect(st().activeSessionID).toBeNull()
+    // Las sesiones anteriores siguen en la lista del proyecto.
+    expect(Object.keys(st().sessions)).toContain('sa')
+  })
+})
+
 describe('openProject agrega en vez de reemplazar (escritorio)', () => {
   it('abrir A y luego B: los dos quedan abiertos, el foco pasa a B, las sesiones de A siguen', async () => {
     installClient({ [A]: [makeSession('sa', A)], [B]: [makeSession('sb', B)] })
