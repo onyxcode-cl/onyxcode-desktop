@@ -29,7 +29,8 @@ import {
   useCanAlways,
   useMcpServers,
   useReply,
-  useRequestTitle
+  useRequestTitle,
+  useToolInput
 } from './PermissionPrompt'
 import { useShowPath } from './conn-paths'
 import { useTasks } from './store'
@@ -46,7 +47,8 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
   const t = useT()
   const servers = useMcpServers()
   const showPath = useShowPath()
-  const d = describePermission(request, servers, showPath)
+  const toolInput = useToolInput(request)
+  const d = describePermission(request, servers, showPath, toolInput)
   const title = useRequestTitle(request, d.title)
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
@@ -210,7 +212,8 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
   const t = useT()
   const servers = useMcpServers()
   const showPath = useShowPath()
-  const d = describePermission(request, servers, showPath)
+  const toolInput = useToolInput(request)
+  const d = describePermission(request, servers, showPath, toolInput)
   const title = useRequestTitle(request, d.title)
   const { busy, answer } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)

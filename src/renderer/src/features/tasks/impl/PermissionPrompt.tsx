@@ -6,7 +6,7 @@
  * y marcada como no verificada.
  */
 import { hasHiddenChars } from '../../../components/permission/PermissionShell'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
 import { t } from '@shared/i18n'
@@ -16,6 +16,8 @@ import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { isRemoteSurface } from '../../../lib/platform'
+import type { MessageEntry } from '../../../lib/session-reducer'
+import { useSessions } from '../../../stores/sessions'
 import { ApprovalBarDesk, PermissionCardDesk } from './PermissionCardDesk'
 import { replyPermission, replyPermissionAlways } from './actions'
 import { cw } from './bridge'
@@ -60,13 +62,37 @@ function meta(p: PermissionRequest, ...keys: string[]): string {
   return ''
 }
 
+/** Los argumentos de la herramienta que dispara la petición. El motor pide permiso de una herramienta MCP con `metadata: {}`, así que se leen de la propia llamada en la conversación (`tool.callID`). */
+export function toolInputOf(request: PermissionRequest, entries: MessageEntry[] | undefined): Record<string, unknown> | null {
+  const callID = request.tool?.callID
+  if (!callID || !entries) return null
+  for (let i = entries.length - 1; i >= 0; i--) {
+    for (const part of entries[i].parts) {
+      const p = part as { type?: string; callID?: string; state?: { input?: unknown } }
+      if (p.type === 'tool' && p.callID === callID) {
+        const input = p.state?.input
+        return input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : null
+      }
+    }
+  }
+  return null
+}
+
+export function useToolInput(request: PermissionRequest): Record<string, unknown> | null {
+  const entries = useSessions((s) => s.messages[request.sessionID])
+  return useMemo(() => toolInputOf(request, entries), [request, entries])
+}
+
+const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+
 const DELETE_RE = /(^|[;&|]\s*)(rm|rmdir|unlink|trash|srm)\b|\s-delete\b/
 
 /** Traduce la solicitud de permiso a lenguaje claro. */
 export function describePermission(
   p: PermissionRequest,
   mcpServers: string[] = [],
-  showPath: (path: string) => string = (x) => x
+  showPath: (path: string) => string = (x) => x,
+  input: Record<string, unknown> | null = null
 ): Described {
   const patterns = p.patterns.join(', ')
   switch (p.permission) {
@@ -126,13 +152,13 @@ export function describePermission(
       }
     case 'equipo_ejecutar': {
       // Nivel 2: un comando que corre en el equipo, FUERA del aislamiento. Se muestra completo y nunca ofrece «siempre» (`danger`).
-      const cmd = meta(p, 'comando') || patterns
+      const cmd = str(input?.comando) || meta(p, 'comando') || patterns
       return {
         icon: Terminal,
         title: t('tasksComputer.perm.hostTitle'),
         effect: t('tasksComputer.perm.hostEffect'),
         detail: cmd,
-        aiDescription: meta(p, 'motivo') || undefined,
+        aiDescription: str(input?.motivo) || meta(p, 'motivo') || undefined,
         danger: true
       }
     }
@@ -141,7 +167,7 @@ export function describePermission(
         icon: Terminal,
         title: t('tasksComputer.perm.hostStopTitle'),
         effect: t('tasksComputer.perm.hostStopEffect'),
-        detail: meta(p, 'pid') || patterns,
+        detail: (typeof input?.pid === 'number' ? String(input.pid) : '') || meta(p, 'pid') || patterns,
         danger: false
       }
     case 'doom_loop':
@@ -165,7 +191,7 @@ export function describePermission(
       }
       const mcp = parseMcpPermission(p.permission, mcpServers)
       if (mcp) {
-        const json = metadataJson(p.metadata)
+        const json = input && Object.keys(input).length > 0 ? JSON.stringify(input, null, 2) : metadataJson(p.metadata)
         return {
           icon: PlugZap,
           title: t('tasksComputer.perm.mcpTitle', { tool: mcp.tool, server: mcp.server }),
@@ -332,7 +358,8 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
   const t = useT()
   const servers = useMcpServers()
   const showPath = useShowPath()
-  const d = describePermission(request, servers, showPath)
+  const toolInput = useToolInput(request)
+  const d = describePermission(request, servers, showPath, toolInput)
   const title = useRequestTitle(request, d.title)
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
@@ -525,7 +552,8 @@ function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more
   const t = useT()
   const servers = useMcpServers()
   const showPath = useShowPath()
-  const d = describePermission(request, servers, showPath)
+  const toolInput = useToolInput(request)
+  const d = describePermission(request, servers, showPath, toolInput)
   const title = useRequestTitle(request, d.title)
   const { busy, error, answer } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)
