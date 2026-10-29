@@ -15,7 +15,7 @@ export const ENGINE_ENV_BACKGROUND_SUBAGENTS = 'OPENCODE_EXPERIMENTAL_BACKGROUND
 export const ENGINE_ENV_TOOL_SEARCH = 'LAZUNOX_TOOL_SEARCH'
 /** Servidores que el motor NUNCA difiere (los agentes y la puerta del plan cuentan con ellos). */
 export const ENGINE_ENV_TOOL_SEARCH_KEEP = 'LAZUNOX_TOOL_SEARCH_KEEP'
-export const TOOL_SEARCH_KEEP_SERVERS = 'browser,computer,bgshell'
+export const TOOL_SEARCH_KEEP_SERVERS = 'browser,computer,bgshell,documentos'
 /**
  * Formularios de conectores (motor propio, `LAZUNOX.md`): sin la variable el conector ni ve la capacidad y no puede pedir formularios.
  * Valor `'1'` (el del contrato del motor). NUNCA se pasa a Overdrive (Tareas) ni se deja entrar por `onlyExperimentalEngineEnv`.
@@ -124,13 +124,23 @@ export function engineFlagEnvForMainSidecar(settings: SettingsLike): Record<stri
 /**
  * Búsqueda diferida de herramientas: SOLO el sidecar principal (Chat y Code comparten proceso: `auto` si cualquiera de los dos la
  * tiene en `auto`). El motor propio usa `auto` si no hay variable, así que apagada se manda `off` de forma explícita. Overdrive (Tareas)
- * no recibe nada de esto (`engineFlagEnvFor` no la incluye): su ajuste es siempre `off` y no se pasa por `onlyExperimentalEngineEnv`.
+ * recibe lo suyo por `toolSearchEnvForTasks` (no pasa por `onlyExperimentalEngineEnv`).
  */
 export function toolSearchEnvForMainSidecar(settings: SettingsLike): Record<string, string> {
   const t = normalizeEngineExperiments(settings.engineExperiments).toolSearch
   if (t.chat === 'auto' || t.code === 'auto')
     return { [ENGINE_ENV_TOOL_SEARCH]: 'auto', [ENGINE_ENV_TOOL_SEARCH_KEEP]: TOOL_SEARCH_KEEP_SERVERS }
   return { [ENGINE_ENV_TOOL_SEARCH]: 'off' }
+}
+
+/**
+ * Overdrive (Tareas): el servidor sandboxeado NO recibía configuración de búsqueda diferida y el motor usa `auto` cuando falta, así que las
+ * herramientas de la app (`computer_*`, `browser_*`, `documentos_*`) quedaban DIFERIDAS: el modelo las llamaba sin haber cargado su esquema
+ * («Faltan argumentos obligatorios…»), perdía vueltas y a veces la tarea. Ahora se manda `auto` con la lista de servidores propios que nunca se
+ * difieren (como en el sidecar principal): sus esquemas van siempre a la vista; solo los conectores del usuario, que pueden ser muchos, se buscan.
+ */
+export function toolSearchEnvForTasks(): Record<string, string> {
+  return { [ENGINE_ENV_TOOL_SEARCH]: 'auto', [ENGINE_ENV_TOOL_SEARCH_KEEP]: TOOL_SEARCH_KEEP_SERVERS }
 }
 
 /**

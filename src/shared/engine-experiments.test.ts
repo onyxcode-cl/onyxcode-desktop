@@ -33,7 +33,7 @@ const mk = (
 const EL = 'LAZUNOX_MCP_ELICITATION'
 const TSE = 'LAZUNOX_TOOL_SEARCH'
 const TSK = 'LAZUNOX_TOOL_SEARCH_KEEP'
-const KEEP = 'browser,computer,bgshell'
+const KEEP = 'browser,computer,bgshell,documentos'
 const CM = 'OPENCODE_EXPERIMENTAL_CODE_MODE'
 const BG = 'OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS'
 
@@ -269,5 +269,15 @@ describe('Formularios de conectores (LAZUNOX_MCP_ELICITATION)', () => {
       code: true,
       tasks: false
     })
+  })
+})
+
+describe('toolSearchEnvForTasks (Overdrive)', () => {
+  it('manda «auto» con los servidores propios de la app siempre a la vista (sus esquemas no se difieren)', async () => {
+    const { toolSearchEnvForTasks } = await import('./engine-experiments')
+    const env = toolSearchEnvForTasks()
+    expect(env.LAZUNOX_TOOL_SEARCH).toBe('auto')
+    const keep = (env.LAZUNOX_TOOL_SEARCH_KEEP ?? '').split(',')
+    for (const server of ['computer', 'browser', 'bgshell', 'documentos']) expect(keep).toContain(server)
   })
 })

@@ -92,7 +92,7 @@ import { defaultDeniedReadPaths } from './sandbox-profile'
 import type { WinBackendProvider } from './backends'
 import { isApprovedPath, resolveUiPath } from './ui-path'
 import { IDENTITY_MAP, toSandboxOrNull, type PathMapWire } from '@shared/tasks-path-map'
-import { onlyExperimentalEngineEnv } from '@shared/engine-experiments'
+import { onlyExperimentalEngineEnv, toolSearchEnvForTasks } from '@shared/engine-experiments'
 import { onlyEngineLimitEnv } from '@shared/engine-limits'
 import { onlyPermissionPersistEnv } from '@shared/permission-persist'
 import { userHooksEnvForTasksServer } from '@shared/user-hooks'
@@ -1539,6 +1539,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           ...onlyExperimentalEngineEnv(this.opts.extraEngineEnv?.() ?? {}),
           // Límites de Modo código/shell de fondo (enteros positivos, solo las variables conocidas); mismo filtro de defensa en profundidad.
           ...onlyEngineLimitEnv(this.opts.extraEngineEnv?.() ?? {}),
+          // Herramientas propias de la app (control de apps, navegador, shell, documentos) siempre con su esquema a la vista: ver `toolSearchEnvForTasks`.
+          ...toolSearchEnvForTasks(),
           // «Recordar mis siempre»: con sandbox el servidor solo escribe en su directorio privado (userData está denegado), así que ahí
           // guarda; en Windows con WSL esa ruta no existe para él y no se pasa nada. Control total usa la carpeta general.
           ...onlyPermissionPersistEnv(this.opts.extraEngineEnv?.() ?? {}, permDirOverride),
