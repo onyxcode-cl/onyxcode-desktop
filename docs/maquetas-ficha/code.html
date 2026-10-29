@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lazunox · maqueta v9 Code</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<style>
+:root{--bd:#232634;--mono:ui-monospace,Menlo,monospace;--mut:#8b90a3}
+*{box-sizing:border-box}
+body{margin:0;background:#07080b;color:#dfe2ec;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:16px;font-size:13.5px}
+.note{max-width:1280px;margin:0 auto 10px;color:var(--mut);line-height:1.5}
+.note b{color:#cfd3e0;font-weight:500}
+.app{max-width:1280px;margin:0 auto;height:800px;background:#0e1016;border:0.5px solid var(--bd);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:54px 238px minmax(0,1fr) 320px;position:relative}
+.rail{background:#0b0c11;padding:44px 0 12px;display:flex;flex-direction:column;align-items:center;gap:10px;border-right:0.5px solid var(--bd)}
+.rail i{font-size:20px;color:#9aa0b4;padding:8px;border-radius:9px}
+.rail i.on{background:#1f2434;color:#fff}
+.sb{background:#0f1117;border-right:0.5px solid var(--bd);padding:44px 12px 12px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.newb{background:#1b2547;color:#8fa6ff;border:0.5px solid #2c3a70;border-radius:9px;padding:9px 12px;display:flex;gap:8px;align-items:center}
+.srch{border:0.5px solid #262a39;border-radius:9px;padding:8px 11px;color:#6d7288;display:flex;justify-content:space-between}
+.g{display:flex;align-items:center;gap:6px;padding:7px 6px;color:#cfd3e0;cursor:pointer}
+.g .n{margin-left:auto;color:#6d7288;font-size:12px}
+.g i{font-size:13px;color:#8f94a8}
+.t{margin-left:4px;padding:7px 10px;border-radius:9px}
+.t.s{background:#1a1e2b}.t small{display:block;color:#6d7288;font-size:12px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3ecf8e;margin-right:6px}
+.dot.w{background:#f2b84b}
+.mid{display:flex;flex-direction:column;min-width:0;border-right:0.5px solid var(--bd);position:relative}
+.top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:0.5px solid var(--bd);height:44px}
+.top b{font-weight:500;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{border:0.5px solid #2a2e3d;border-radius:999px;padding:4px 11px;color:#cfd3e0;display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;cursor:pointer;position:relative}
+.chip.ok{border-color:#1f5a41;background:#12261f;color:#7ee0b0}
+.chip i{font-size:14px}
+.msgs{flex:1;overflow:auto;padding:18px 28px;display:flex;flex-direction:column;gap:12px}
+.u{align-self:flex-end;background:#232836;border-radius:13px;padding:9px 14px}
+.step{display:flex;gap:10px;align-items:center;color:#aeb3c6;padding:2px 0}
+.step .ic{width:20px;height:20px;border-radius:6px;background:#1c2140;display:flex;align-items:center;justify-content:center;color:#8fa6ff;font-size:12px}
+.a{line-height:1.65;color:#d8dbe6;font-size:15px}
+.comp{margin:0 22px 14px;border:0.5px solid #2b3042;border-radius:16px;padding:12px 14px;background:#141720}
+.comp .ph{color:#7d8296;font-size:15px;margin-bottom:10px}
+.comp .row{display:flex;gap:10px;align-items:center;color:#9aa0b4;font-size:13px;flex-wrap:wrap}
+.comp .row span{display:flex;align-items:center;gap:5px}
+.rp{background:#0f1117;display:flex;flex-direction:column;min-width:0}
+.tabs{display:flex;gap:2px;padding:9px 12px;align-items:center;border-bottom:0.5px solid var(--bd);height:44px}
+.tabs .tb{padding:6px 12px;border-radius:8px;color:#9aa0b4;cursor:pointer;display:flex;gap:6px;align-items:center}
+.tabs .tb.on{background:#1d212e;color:#fff}
+.body{flex:1;overflow:auto}
+.sec{border-bottom:0.5px solid var(--bd);padding:13px 16px}
+.sec h4{margin:0;font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:9px;color:#e3e6ee}
+.sec h4 i{color:#9aa0b4;font-size:16px}.sec h4 .c{margin-left:auto;font-size:11.5px;background:#222636;border-radius:999px;padding:1px 7px;color:#aab}
+.sec p{margin:6px 0 0 25px;color:var(--mut);font-size:13px;line-height:1.45}
+/* ===== lo nuevo: único lugar con identidad propia ===== */
+.new{position:relative}
+.tag{font-size:10.5px;letter-spacing:.04em;background:#243068;color:#a9bbff;border-radius:6px;padding:1px 6px;margin-left:6px;font-weight:500}
+.seal{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:500;border:0.5px solid;cursor:pointer}
+.seal.blue{color:#9fb6ff;background:#1b2447;border-color:#33407a}
+.seal.amber{color:#f4c46a;background:#3a2f14;border-color:#6a5420}
+.seal.red{color:#ff9a9f;background:#3a1a1d;border-color:#7a3238}
+.lvl{display:flex;gap:4px;margin:10px 0 4px 25px}
+.lvl span{flex:1;height:5px;border-radius:3px;background:#262a39}
+.lvl .a1{background:#6f8bff}.lvl .a2{background:#f2b84b}.lvl .a3{background:#e0565e}
+.kv{margin:8px 0 0 25px;font-family:var(--mono);font-size:12.5px;color:#cfd3e0}
+.kv div{padding:2px 0}.kv i{font-style:normal;color:#6d7288}
+.bit{display:flex;gap:9px;padding:6px 0 6px 25px;font-size:13px}
+.bit code{font-family:var(--mono);font-size:12px;display:block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bit small{color:#6d7288;font-size:11.5px}
+.bit i{color:#7ee0b0;margin-top:2px}
+.menu{white-space:normal;font-size:13px;display:none;position:absolute;top:34px;left:0;width:300px;background:#181b25;border:0.5px solid #2e3346;border-radius:12px;padding:8px;z-index:6;box-shadow:0 12px 30px #000a}
+.menu.open{display:block}
+.mi{padding:9px 10px;border-radius:8px;display:flex;gap:10px;color:#cfd3e0;cursor:pointer}
+.mi:hover{background:#202434}.mi.on{background:#1f2540}
+.mi b{font-weight:500;display:block;white-space:normal;color:#eef0f6}.mi span{display:block;font-size:12px;color:#9aa0b4;margin-top:1px;line-height:1.4}
+.mi i{font-size:17px;margin-top:2px}
+.msep{height:0.5px;background:#2a2e3d;margin:6px 4px}
+.drawer{position:absolute;left:0;right:0;bottom:0;height:0;overflow:hidden;background:#0a0b0f;border-top:0.5px solid #262a39;transition:height .2s;z-index:3}
+.drawer.open{height:220px}
+.drawer .h{display:flex;gap:10px;align-items:center;padding:9px 14px;border-bottom:0.5px solid #1d2130}
+.drawer .h b{flex:1;font-weight:500}
+.drawer pre{margin:0;padding:10px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#cfd3e0;white-space:pre-wrap}
+.drawer pre span{color:#7ee0b0}
+.cmdcard{border:0.5px solid #6a5420;background:#231d10;border-radius:13px;padding:13px 15px}
+.cmdcard .tt{display:flex;gap:8px;align-items:center;font-weight:500;color:#f4e6c4}
+.cmdcard .cmd{font-family:var(--mono);font-size:12.5px;background:#17130a;border:0.5px solid #4a3d1a;border-radius:9px;padding:9px 11px;margin-top:9px;color:#f0e3c0}
+.cmdcard .why{font-size:12.5px;color:#c9bb94;margin-top:7px}
+.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:11px}
+.b{border-radius:9px;padding:6px 14px;font-size:13px;border:0.5px solid #4a3d1a;background:#2c2412;color:#f0e3c0;cursor:pointer}
+.b.d{background:#d9a13a;border-color:#d9a13a;color:#1a1306}
+.ov{display:none;position:absolute;inset:0;background:#05060acc;align-items:center;justify-content:center;z-index:9}
+.dlg{background:#181b25;border:0.5px solid #2e3346;border-radius:14px;padding:20px;width:440px}
+.dlg h3{margin:0 0 12px;font-weight:500;font-size:16px;display:flex}
+.opt{display:flex;gap:11px;background:#1d2028;border:0.5px solid #2a2e3b;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.opt.on{border-color:#5b79ff;background:#1f2540}
+.rd{width:14px;height:14px;border-radius:50%;border:1.5px solid #6d7288;margin-top:3px;flex:none}
+.on .rd{border-color:#7f97ff;background:radial-gradient(circle,#7f97ff 45%,transparent 50%)}
+.opt b{display:block;font-weight:500}.opt span.d{display:block;font-size:12.5px;color:#9aa0b4;margin-top:2px}
+.ta{width:100%;height:96px;background:#10121a;border:0.5px solid #2a2e3b;border-radius:10px;color:#cfd3e0;font-family:var(--mono);font-size:12.5px;padding:9px;resize:none}
+.ft{display:flex;gap:9px;justify-content:flex-end;margin-top:14px}
+.btn{border-radius:9px;padding:8px 16px;border:0.5px solid #2e3240;background:#2a2e3b;cursor:pointer}.btn.p{background:#eef0f6;color:#171a22}
+.cards{padding:12px;display:flex;flex-direction:column;gap:10px}
+.card{border:0.5px solid #262a3a;border-radius:13px;background:#12141b;padding:13px 15px}
+.card h4{margin:0 0 6px;font-size:13.5px;font-weight:500;display:flex;gap:7px;align-items:center;color:#e3e6ee}
+.card h4:last-child{margin:0}.er{display:flex;gap:11px;align-items:center;padding:6px 0;color:#d5d8e4}.er i{color:#9aa0b4;font-size:17px}
+.mt{color:#8b90a3;font-size:12.5px}.gear{margin-left:auto;border:0.5px solid #3a4160;border-radius:8px;padding:3px 6px;color:#9fb0ff;cursor:pointer}
+.dlg label{display:block;margin:12px 0 6px;color:#e3e6ee;font-size:13.5px}.inp{display:flex;align-items:center;gap:9px;background:#1d2028;border:0.5px solid #2a2e3b;border-radius:10px;padding:9px 12px;color:#d5d8e4}
+.btn.sm{padding:4px 10px;font-size:12.5px}.dlg{max-height:94%;overflow:auto}
+.lvl{display:flex;gap:4px}.lvl span{flex:1;height:5px;border-radius:3px;background:#262a39}.lvl .a1,.lvl span:first-child{background:#6f8bff}.lvl .a2{background:#f2b84b}.lvl .a3{background:#e0565e}
+.lv3{display:flex;gap:8px}.lv3 .opt{flex:1;flex-direction:column;gap:3px;margin:0;align-items:flex-start;padding:11px}.lv3 .opt i{font-size:18px}.lv3 .opt .d{font-size:11.5px}
+.lv3 .c1 i{color:#8fa6ff}.lv3 .c2 i{color:#f4c46a}.lv3 .c3 i{color:#ff9a9f}
+.lv3 .c1.on{border-color:#5b79ff;background:#1b2447}.lv3 .c2.on{border-color:#a8821f;background:#33290f}.lv3 .c3.on{border-color:#c4474f;background:#35171a}
+.vl div{display:flex;gap:10px;align-items:center;background:#1d2028;border:0.5px solid #2a2e3b;border-radius:10px;padding:10px 12px;margin-bottom:6px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.vl i{color:#9aa0b4}.vl span{margin-left:auto;color:#6d7288}
+</style></head><body>
+<p class="note"><b>Code.</b> Tu pantalla de Code como está hoy. Lo único nuevo: «Entorno» (arriba) abre la misma Ficha del proyecto, y el sello de acceso aparece junto al botón de permisos. Toca «Entorno».</p>
+<div class="app" id="app">
+  <div class="rail"><i class="ti ti-message"></i><i class="ti ti-code on"></i><i class="ti ti-bolt"></i><i class="ti ti-clock"></i><i class="ti ti-layout-grid"></i><i class="ti ti-help" style="margin-top:auto"></i><i class="ti ti-sun"></i><i class="ti ti-settings"></i></div>
+  <div class="sb">
+    <div class="newb"><i class="ti ti-plus"></i>Nuevo proyecto</div>
+    <div class="srch"><span><i class="ti ti-search"></i> Buscar…</span><span>⌘K</span></div>
+    <div class="g">App OpenCode <i class="ti ti-chevron-down" style="font-size:11px"></i><span style="margin-left:auto;color:#6d7288">0</span></div>
+    <div class="t" style="color:#6d7288;font-size:12.5px">Sin sesiones todavía.</div><div style="height:8px"></div>
+    <div class="g" style="background:#1a1e2b;color:#dfe2ec">Yogui Tv <i class="ti ti-chevron-down" style="font-size:11px"></i><span style="margin-left:auto;display:flex;gap:9px;color:#aab"><i class="ti ti-filter"></i><i class="ti ti-plus"></i></span></div>
+    <div class="t s">Estructura y organización…</div>
+    <div class="g" style="margin-top:8px"><i class="ti ti-folder-plus"></i>Agregar carpeta</div>
+  </div>
+  <div class="mid">
+    <div class="top"><b style="max-width:none"><i class="ti ti-folder-open" style="color:#8fa6ff"></i> Yogui Tv <i class="ti ti-chevron-down" style="font-size:12px"></i></b><span style="margin-left:auto;display:flex;gap:8px;align-items:center"><span class="chip" id="envb">Entorno <i class="ti ti-chevron-down"></i></span><span class="chip"><i class="ti ti-eye"></i>Detallada</span><i class="ti ti-dots"></i></span></div>
+    <div class="msgs" style="align-items:center;justify-content:center;text-align:center"><div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#3f66f0,#1f3aa8);margin-bottom:14px"></div><div style="font-size:20px;font-weight:500">¿Qué construimos en Yogui Tv?</div><div style="width:100%;text-align:left;margin-top:40px;color:#8b90a3">Retomar<div style="color:#dfe2ec;margin:10px 0 2px">Estructura y organización del proyecto</div><small>Terminado · hace 51 min</small></div></div>
+    <div class="comp"><div class="ph">Pide un cambio en el código… (@ para archivos, / para comandos)</div>
+      <div class="row"><span><i class="ti ti-hammer"></i>Build <i class="ti ti-chevron-down"></i></span><span>@</span><span><i class="ti ti-microphone"></i></span><span><i class="ti ti-paperclip"></i></span><span class="chip" style="color:#ff9a9f;border-color:#6b2f33;background:#2a1517"><i class="ti ti-circle-check"></i>Todo sin preguntar <i class="ti ti-chevron-down"></i></span><span class="seal amber" id="seal2"><i class="ti ti-shield-half"></i>Comandos</span><span style="margin-left:auto">DeepSeek V4… <i class="ti ti-chevron-down"></i></span></div></div>
+  </div>
+  <div class="rp"><div class="tabs"><div class="tb on"><i class="ti ti-list-check"></i></div><div class="tb"><i class="ti ti-git-branch"></i></div><div class="tb"><i class="ti ti-terminal-2"></i></div><div class="tb"><i class="ti ti-files"></i></div><div class="tb"><i class="ti ti-world"></i></div></div>
+  <div class="body cards">
+    <div class="card"><h4>Ficha del proyecto <i class="ti ti-chevron-down" style="font-size:12px"></i></h4>
+      <div class="er"><i class="ti ti-folder-open"></i>Yogui Tv<span class="gear" id="gear"><i class="ti ti-settings"></i></span></div>
+      <div class="er"><i class="ti ti-folder"></i>Yogui Tv <span class="mt">· ~/Documents</span></div>
+      <div class="er"><i class="ti ti-git-branch"></i>main</div>
+      <div style="padding:8px 0 4px"><div class="lvl" id="lvl" style="margin:0 0 7px"><span class="a1"></span><span class="a2"></span><span></span></div><span class="seal amber" id="seal"><i class="ti ti-shield-half"></i><span>Con comandos aprobados</span></span></div>
+      <div class="er"><i class="ti ti-lock"></i>Bóveda <span class="mt">· 3 variables</span></div></div>
+    <div class="card"><h4>Plan <i class="ti ti-chevron-down" style="font-size:12px"></i></h4><div class="mt">Esta sesión no tiene un plan publicado.</div></div>
+    <div class="card"><h4>Contexto <i class="ti ti-chevron-right" style="font-size:12px"></i><span style="margin-left:auto;color:#9aa0b4;font-weight:400">4 %</span></h4></div>
+    <div class="card"><h4>Cambios <i class="ti ti-chevron-right" style="font-size:12px"></i></h4></div>
+    <div class="card"><h4>Historial de la sesión <i class="ti ti-chevron-right" style="font-size:12px"></i><span class="c">12</span></h4></div>
+  </div></div>
+  <div class="ov" id="ov"><div class="dlg" id="d1"><h3>Ficha del proyecto<i class="ti ti-x cl" style="margin-left:auto;cursor:pointer;color:#9aa0b4"></i></h3>
+    <label>Nombre</label><div class="inp">prueba</div>
+    <label style="display:flex">Carpetas<span class="btn sm" style="margin-left:auto">+ Añadir</span></label>
+    <div class="inp"><i class="ti ti-folder"></i> prueba <span class="mt" style="margin-left:auto">~/Documents</span></div>
+    <label>Acceso de la IA</label><div class="lv3" id="lv3">
+    <div class="opt c1" data-l="0"><i class="ti ti-lock"></i><b>Aislado</b><span class="d">Solo dentro de la carpeta.</span></div>
+    <div class="opt c2 on" data-l="1"><i class="ti ti-shield-half"></i><b>Comandos</b><span class="d">Tú apruebas cada comando.</span></div>
+    <div class="opt c3" data-l="2"><i class="ti ti-bolt"></i><b>Total</b><span class="d">Equipo y pantalla, con plan aprobado.</span></div></div>
+    <div class="inp" id="vars" style="cursor:pointer;padding:12px"><div style="display:flex;gap:10px;align-items:center"><i class="ti ti-lock"></i><div><b style="font-weight:500">Bóveda de variables</b><div class="mt">3 guardadas, cifradas en este equipo</div></div></div><i class="ti ti-chevron-right" style="margin-left:auto"></i></div>
+    <div class="ft"><span class="btn cl">Cancelar</span><span class="btn p" id="save">Guardar</span></div></div>
+  <div class="dlg" id="d2" style="display:none"><h3><i class="ti ti-chevron-left" id="back" style="cursor:pointer;margin-right:10px"></i>Bóveda de variables<i class="ti ti-x cl" style="margin-left:auto;cursor:pointer;color:#9aa0b4"></i></h3>
+    <div class="mt" style="margin-bottom:10px">Configurado para las tareas de la carpeta «prueba».</div>
+    <div class="vl"><div><i class="ti ti-key"></i>API_KEY<span>••••••••••</span></div><div><i class="ti ti-key"></i>NUBEX_USER<span>•••</span></div><div><i class="ti ti-key"></i>CONFIG<span>••••••••••••</span></div></div>
+    <div class="inp" style="margin-top:8px;color:#8fa6ff;cursor:pointer"><i class="ti ti-plus"></i>Agregar o pegar formato .env</div>
+    <div class="mt" style="margin-top:9px">La IA las usa en los comandos de este proyecto, pero nunca las ve ni salen en las respuestas.</div>
+    <div class="ft"><span class="btn p" id="done">Listo</span></div></div></div>
+</div>
+<script>
+var $=function(i){return document.getElementById(i)};
+var L=[['blue','lock','Aislado'],['amber','shield-half','Con comandos aprobados'],['red','bolt','Control total']],pick=1;
+document.querySelectorAll('.opt[data-l]').forEach(function(o){o.onclick=function(){pick=+o.getAttribute('data-l');document.querySelectorAll('.opt[data-l]').forEach(function(x){x.classList.remove('on')});o.classList.add('on')}});
+
+$('vars').onclick=function(){$('d1').style.display='none';$('d2').style.display='block'};
+$('back').onclick=$('done').onclick=function(){$('d2').style.display='none';$('d1').style.display='block'};
+document.querySelectorAll('.cl').forEach(function(c){c.onclick=function(){$('ov').style.display='none'}});
+$('save').onclick=function(){$('ov').style.display='none';var l=L[pick];var e=$('seal2');e.className='seal '+l[0];e.innerHTML='<i class="ti ti-'+l[1]+'"></i>'+['Aislado','Comandos','Total'][pick];var f=$('seal');f.className='seal '+l[0];f.innerHTML='<i class="ti ti-'+l[1]+'"></i><span>'+l[2]+'</span>';var sp=$('lvl').children;sp[1].className=pick>=1?'a2':'';sp[2].className=pick>=2?'a3':''};
+
+$('envb').onclick=$('gear').onclick=function(){$('ov').style.display='flex';$('d1').style.display='block';$('d2').style.display='none'};var q=location.hash;if(q=='#d1'){$('envb').click()}
+</script></body></html>
