@@ -6,13 +6,14 @@
  * última actividad): un clic conecta esa carpeta y abre el chat. Una carpeta nueva en esta versión aparece con sus chats la primera vez que se abre.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, BookText, ChevronDown, FolderPlus, Plus } from 'lucide-react'
+import { Archive, BookText, ChevronDown, FolderMinus, FolderPlus, Plus } from 'lucide-react'
 import type { ChatIndexEntry, TasksFolder } from '@shared/ipc-tasks'
 import { useT } from '../../../lib/i18n'
 import { SidebarTreeRegion, useSidebarTree } from '../../../components/SidebarTree'
 import { useSessions } from '../../../stores/sessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
-import { chooseFolder, newTask, selectFolder } from './actions'
+import { confirmDialog } from '../../../components/ConfirmDialog'
+import { chooseFolder, forgetFolder, newTask, selectFolder } from './actions'
 import { loadChatIndex, useChatIndex } from './chatIndex'
 import { sdkDirOf } from './path-map'
 import { setProjectPanelOpen, useTasks } from './store'
@@ -160,6 +161,26 @@ function Header({
               <BookText size={13} strokeWidth={1.75} />
             </button>
           </>
+        )}
+        {folderPath && !isChatFolderForDisplay(folderPath) && (
+          <button
+            type="button"
+            onClick={() =>
+              void confirmDialog({
+                title: t('tasksComputer.menu.removeConfirmTitle'),
+                message: t('tasksComputer.menu.removeConfirmMessage', { name: group.name }),
+                confirmLabel: t('tasksSettings.remove'),
+                danger: true
+              }).then((ok) => {
+                if (ok) void forgetFolder(folderPath)
+              })
+            }
+            title={t('tasks.groups.remove')}
+            aria-label={t('tasks.groups.removeAria', { name: group.name })}
+            className="no-drag flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-danger"
+          >
+            <FolderMinus size={13} strokeWidth={1.75} />
+          </button>
         )}
         <button
           type="button"

@@ -5,7 +5,7 @@
  */
 import { useUnifiedApps } from './unified'
 import { chatDisplayTitle, loadChatIndex, syncChatSession, useChatIndex, visibleEntries } from './chatIndex'
-import { openIndexedChat } from './chatIndexOpen'
+import { deleteIndexedChat, openIndexedChat } from './chatIndexOpen'
 import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { dateLocale, useT } from '../../../lib/i18n'
@@ -438,7 +438,27 @@ export function IndexRow({ entry, active, opening }: { entry: ChatIndexEntry; ac
       {opening ? (
         <Loader2 size={12} className="shrink-0 animate-spin text-accent" aria-hidden />
       ) : (
-        !tree && <span className="hidden shrink-0 text-meta text-subtle tabular-nums desk:inline">{relTime(entry.updatedAt)}</span>
+        <>
+          {!tree && <span className="hidden shrink-0 text-meta text-subtle tabular-nums desk:inline">{relTime(entry.updatedAt)}</span>}
+          <button
+            type="button"
+            title={t('tasks.list.deleteItem')}
+            aria-label={`${t('tasks.list.deleteItem')}: ${title}`}
+            className="no-drag shrink-0 rounded p-0.5 text-subtle opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
+            onClick={() =>
+              void confirmDialog({
+                title: t('tasks.list.deleteTitle'),
+                message: t('tasks.list.deleteMsg', { title }),
+                confirmLabel: t('tasks.list.delete'),
+                danger: true
+              }).then((ok) => {
+                if (ok) void deleteIndexedChat(entry)
+              })
+            }
+          >
+            <Trash2 size={13} />
+          </button>
+        </>
       )}
     </div>
   )

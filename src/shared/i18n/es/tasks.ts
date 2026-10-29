@@ -757,5 +757,7 @@ export const tasks = {
   'project.linked.reason.has-wildcards': 'El nombre de la carpeta tiene caracteres que no se admiten (* ? [ ] { }).',
   'project.linked.reason.too-many': 'Máximo 10 carpetas añadidas por proyecto.',
   'project.linked.reason.duplicate': 'Esa carpeta ya está añadida.',
-  'project.dialog.linkedHint': 'La IA entra sin preguntar a las carpetas añadidas; en «Solo lectura» no puede cambiarlas.'
+  'project.dialog.linkedHint': 'La IA entra sin preguntar a las carpetas añadidas; en «Solo lectura» no puede cambiarlas.',
+  'tasks.groups.remove': 'Quitar carpeta',
+  'tasks.groups.removeAria': 'Quitar la carpeta {name}'
 } as const

@@ -757,5 +757,7 @@ export const tasks = {
   'project.linked.reason.has-wildcards': 'The folder name has unsupported characters (* ? [ ] { }).',
   'project.linked.reason.too-many': 'At most 10 added folders per project.',
   'project.linked.reason.duplicate': 'That folder is already added.',
-  'project.dialog.linkedHint': 'The AI enters added folders without asking; in “Read only” it cannot change them.'
+  'project.dialog.linkedHint': 'The AI enters added folders without asking; in “Read only” it cannot change them.',
+  'tasks.groups.remove': 'Remove folder',
+  'tasks.groups.removeAria': 'Remove the folder {name}'
 } as const satisfies Messages<typeof es>
