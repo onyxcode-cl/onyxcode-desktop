@@ -50,6 +50,18 @@ export function UnifiedScopeChip({ className = '', plain = false }: { className?
   const folder = useTasks((s) => s.folder)
   const chatOpen = useTasks((s) => !!s.activeTaskId)
   const full = conn ? conn.fullAccess : requested
+  if (full && plain) {
+    return (
+      <span
+        data-testid="unified-scope-chip"
+        title={folder ?? ''}
+        className={`flex max-w-[220px] shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap text-fg ${className}`}
+      >
+        <FolderOpen size={14} aria-hidden className="shrink-0" />
+        <span className="truncate">{folder && !isChatFolderPath(folder) ? baseName(folder) : t('tasksComputer.unified.noFolderChat')}</span>
+      </span>
+    )
+  }
   if (full) {
     return (
       <button
