@@ -9,6 +9,8 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { FAKE_HELPER, bundleMcp, startMcp, startSideChannel, textOf, tmpWork, type McpProc, type SideChannel } from '../../test/cu-mcp-kit'
 import { exeKey } from './policy/app-key'
+// Los casos de macOS usan el helper falso en modo darwin (bundle ids, Spotlight): en Windows no corren; Windows se cubre con los casos de arriba.
+import { posixOnly } from '../../test/platform'
 
 vi.setConfig({ testTimeout: 30_000 })
 
@@ -150,7 +152,7 @@ describe('expect_app: identidad de la app, no solo el texto', () => {
     }
   })
 
-  it('macOS: «Notes» (inglés) con la app localizada «Notas» al frente y mismo bundle id ⇒ escribe', async () => {
+  it.skipIf(!posixOnly)('macOS: «Notes» (inglés) con la app localizada «Notas» al frente y mismo bundle id ⇒ escribe', async () => {
     const { mcp, done } = await boot('darwin', MAC_NOTES, { name: 'Notas', bundleId: 'com.apple.Notes', found: true })
     try {
       const r = await tryType(mcp, 'Notes')
@@ -162,7 +164,7 @@ describe('expect_app: identidad de la app, no solo el texto', () => {
     }
   })
 
-  it('macOS: otra app de nombre parecido (Notability) al frente ⇒ rechazo y no se escribe', async () => {
+  it.skipIf(!posixOnly)('macOS: otra app de nombre parecido (Notability) al frente ⇒ rechazo y no se escribe', async () => {
     const { mcp, done } = await boot('darwin', MAC_NOTABILITY, { name: 'Notas', bundleId: 'com.apple.Notes', found: true })
     try {
       const r = await tryType(mcp, 'Notes')
@@ -174,7 +176,7 @@ describe('expect_app: identidad de la app, no solo el texto', () => {
     }
   })
 
-  it('macOS: lo que ya coincidía por texto sigue igual (sin consultar al resolutor)', async () => {
+  it.skipIf(!posixOnly)('macOS: lo que ya coincidía por texto sigue igual (sin consultar al resolutor)', async () => {
     const { mcp, done } = await boot('darwin', MAC_NOTES, { name: 'Otra', bundleId: 'com.otra.App', found: true })
     try {
       const r = await tryType(mcp, 'com.apple.notes')
