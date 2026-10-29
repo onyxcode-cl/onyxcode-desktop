@@ -48,3 +48,6 @@ __pycache__/
 resources/shell-bg/
 # Motor de presentaciones del Chat para las skills de Tareas, generado por scripts/build-chat-deck.mjs (npm run build:chat-deck); se regenera en cada build
 resources/opencode/skills/pptx/scripts/build_chat_deck.cjs
+# Motores de Word y Excel del Chat para las skills de Tareas, generados por scripts/build-chat-office.mjs (npm run build:chat-office)
+resources/opencode/skills/docx/scripts/build_chat_docx.cjs
+resources/opencode/skills/xlsx/scripts/build_chat_xlsx.cjs

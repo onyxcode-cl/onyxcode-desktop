@@ -208,6 +208,12 @@ async function main() {
   const deckCli = join(res, 'app.asar.unpacked/resources/opencode/skills/pptx/scripts/build_chat_deck.cjs')
   const deckCliOk = existsSync(deckCli) && statSync(deckCli).size > 1000 && /isPptxSpec|Presentación creada/.test(readFileSync(deckCli, 'utf8'))
   record('motor de presentaciones del Chat (build_chat_deck.cjs) en la skill pptx', deckCliOk, deckCliOk ? `${statSync(deckCli).size} bytes` : 'falta build_chat_deck.cjs en app.asar.unpacked (¿corrió `npm run build:chat-deck`?)')
+  // Motores de Word y Excel del Chat para las Tareas (generados por `npm run build:chat-office`): viajan con las skills docx y xlsx, fuera del asar.
+  for (const [sk, file, probe] of [['docx', 'build_chat_docx.cjs', /isDocxSpec|WordCraft/], ['xlsx', 'build_chat_xlsx.cjs', /isXlsxSpec|GridCraft/]]) {
+    const cli = join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'scripts', file)
+    const cliOk = existsSync(cli) && statSync(cli).size > 1000 && probe.test(readFileSync(cli, 'utf8'))
+    record(`motor del Chat (${file}) en la skill ${sk}`, cliOk, cliOk ? `${statSync(cli).size} bytes` : `falta ${file} en app.asar.unpacked (¿corrió \`npm run build:chat-office\`?)`)
+  }
   const skillsDir = join(root, 'resources/opencode/skills')
   for (const sk of ['docx', 'xlsx', 'pptx', 'pdf', 'ruta-rapida', 'soporte-remoto']) {
     const candidates = [join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'SKILL.md')]

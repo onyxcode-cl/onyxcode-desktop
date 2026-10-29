@@ -65,3 +65,28 @@ describe('skill pptx: motor de presentaciones del Chat empaquetado', () => {
     expect(read('scripts/verify-bundled.mjs')).toContain('skills/pptx/scripts/build_chat_deck.cjs')
   })
 })
+
+/** Los motores de Word y Excel del Chat para las Tareas: dos `.cjs` GENERADOS dentro de las skills `docx` y `xlsx`. */
+describe('skills docx y xlsx: motores de Word y Excel del Chat empaquetados', () => {
+  const root = resolve(__dirname, '../..')
+  const read = (f: string): string => readFileSync(resolve(root, f), 'utf8')
+  const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+
+  it('los generan build y dev, y no se versionan', () => {
+    expect(pkg.scripts['build:chat-office']).toBe('node scripts/build-chat-office.mjs')
+    expect(pkg.scripts.build).toContain('npm run build:chat-office')
+    expect(pkg.scripts.dev).toContain('npm run build:chat-office')
+    expect(read('.gitignore')).toMatch(/^resources\/opencode\/skills\/docx\/scripts\/build_chat_docx\.cjs$/m)
+    expect(read('.gitignore')).toMatch(/^resources\/opencode\/skills\/xlsx\/scripts\/build_chat_xlsx\.cjs$/m)
+  })
+  it('escriben dentro de las skills (asarUnpack) y verify:bundled los comprueba', () => {
+    const script = read('scripts/build-chat-office.mjs')
+    expect(script).toContain("'resources/opencode/skills/docx/scripts/build_chat_docx.cjs'")
+    expect(script).toContain("'resources/opencode/skills/xlsx/scripts/build_chat_xlsx.cjs'")
+    const unpack = /asarUnpack:\s*\[([\s\S]*?)\n  \]/.exec(read('electron-builder.js'))?.[1] ?? ''
+    expect(unpack).toContain("'resources/opencode/skills/**'")
+    const vb = read('scripts/verify-bundled.mjs')
+    expect(vb).toContain('build_chat_docx.cjs')
+    expect(vb).toContain('build_chat_xlsx.cjs')
+  })
+})
