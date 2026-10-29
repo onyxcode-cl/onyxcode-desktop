@@ -131,5 +131,7 @@ export const common = {
   'conv.shellBgWake.exit': { one: '{count} background job finished', other: '{count} background jobs finished' },
   'conv.shellBgWake.stuck': { one: '{count} background job with no activity', other: '{count} background jobs with no activity' },
   'conv.shellBgWake.batch': { one: 'Notice about {count} background job', other: 'Notice about {count} background jobs' },
-  'conv.shellBgWake.auto': 'Automatic notice: the person did not write it.'
+  'conv.shellBgWake.auto': 'Automatic notice: the person did not write it.',
+  'env.ficha.open': 'Project profile…',
+  'env.ficha.hint': 'Name, folders, access and variables'
 } as const satisfies Messages<typeof es>

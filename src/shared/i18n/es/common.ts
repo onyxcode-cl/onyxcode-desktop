@@ -132,5 +132,7 @@ export const common = {
     other: '{count} trabajos en segundo plano sin actividad'
   },
   'conv.shellBgWake.batch': { one: 'Aviso de {count} trabajo en segundo plano', other: 'Aviso de {count} trabajos en segundo plano' },
-  'conv.shellBgWake.auto': 'Aviso automático: no lo escribió la persona.'
+  'conv.shellBgWake.auto': 'Aviso automático: no lo escribió la persona.',
+  'env.ficha.open': 'Ficha del proyecto…',
+  'env.ficha.hint': 'Nombre, carpetas, acceso y variables'
 } as const

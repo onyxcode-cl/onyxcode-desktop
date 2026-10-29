@@ -174,4 +174,16 @@ describe('EnvironmentPanel', () => {
     open()
     expect(dialog()!.querySelector('button')!.disabled).toBe(true)
   })
+
+  it('compacto (Overdrive): sin equipo ni carpeta y con «Ficha del proyecto…» que la abre y cierra el panel', () => {
+    const onOpenFicha = vi.fn()
+    render({ compact: true, onOpenFicha })
+    open()
+    expect(dialog()!.textContent).not.toContain('MacBook de Ben')
+    expect(host.querySelector('[data-testid="env-path"]')).toBeNull()
+    const btn = [...dialog()!.querySelectorAll('button')].find((b) => b.textContent?.includes('Ficha del proyecto')) as HTMLButtonElement
+    act(() => btn.click())
+    expect(onOpenFicha).toHaveBeenCalledTimes(1)
+    expect(dialog()).toBeNull()
+  })
 })

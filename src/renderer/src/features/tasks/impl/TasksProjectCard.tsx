@@ -10,7 +10,7 @@ import { useScope } from './ScopePicker'
 import { useTasks } from './store'
 
 /** Las carpetas vinculadas del espacio, con las mismas acciones (validar, confirmar si hay tareas en curso, reiniciar) que el menú de carpetas. */
-function useProjectFolders(folder: string): ProjectFolders {
+export function useProjectFolders(folder: string): ProjectFolders {
   const folderSet = useTasks((s) => s.folderSet)
   return {
     linked: (folderSet?.linked ?? []).map((l) => ({ path: l.path, name: l.name, mode: l.mode })),

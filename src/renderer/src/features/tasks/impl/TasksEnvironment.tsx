@@ -1,5 +1,9 @@
 /** Panel «Entorno» de la cabecera de una tarea: equipo, carpeta, modo de acceso (con «Cambiar») y punto de restauración. */
+import { useState } from 'react'
 import { EnvironmentPanel } from '../../../components/EnvironmentPanel'
+import { ProjectDialog } from '../../project-profile/ProjectDialog'
+import { applyAccessChange } from './actions'
+import { useProjectFolders } from './TasksProjectCard'
 import { useT } from '../../../lib/i18n'
 import { useHostName } from '../../../lib/use-host-name'
 import { useScope } from './ScopePicker'
@@ -20,28 +24,46 @@ export function TasksEnvironment({ disabled }: { disabled?: boolean }): React.JS
   // Sin Control del PC solo existe el modo aislado: no hay nada que cambiar (igual que el selector del inicio).
   const scope = useScope(disabled)
   const unified = useUnifiedApps()
+  const [ficha, setFicha] = useState(false)
+  const projectFolders = useProjectFolders(folder ?? '')
   if (!scope.canFull && !unified) return null
   const full = conn ? conn.fullAccess : requested
   const directory = unified && folder && isChatFolderForDisplay(folder) ? null : (folder ?? (full ? (info?.workspace ?? null) : null))
   const authorized = !!folder && folders.some((f) => f.path === folder)
   const isHome = !!directory && !!info?.home && norm(directory) === norm(info.home)
+  const hasProject = !!folder && !(unified && isChatFolderForDisplay(folder))
   return (
-    <EnvironmentPanel
-      hostName={hostName}
-      directory={directory}
-      mode={
-        unified
-          ? undefined
-          : {
-              full,
-              label: full ? t('tasksComputer.chip.full') : t('tasksComputer.chip.folder'),
-              otherLabel: full ? t('tasksComputer.chip.folder') : t('tasksComputer.chip.full'),
-              busy: disabled || phase === 'starting',
-              blockedReason: full && !authorized ? t('env.mode.needFolder') : null,
-              onChange: () => scope.pick(!full),
-              ...(directory ? { restore: full && isHome ? ('off' as const) : ('on' as const) } : {})
-            }
-      }
-    />
+    <>
+      <EnvironmentPanel
+        hostName={hostName}
+        directory={directory}
+        compact={hasProject}
+        onOpenFicha={hasProject ? () => setFicha(true) : undefined}
+        mode={
+          unified
+            ? undefined
+            : {
+                full,
+                label: full ? t('tasksComputer.chip.full') : t('tasksComputer.chip.folder'),
+                otherLabel: full ? t('tasksComputer.chip.folder') : t('tasksComputer.chip.full'),
+                busy: disabled || phase === 'starting',
+                blockedReason: full && !authorized ? t('env.mode.needFolder') : null,
+                onChange: () => scope.pick(!full),
+                ...(directory ? { restore: full && isHome ? ('off' as const) : ('on' as const) } : {})
+              }
+        }
+      />
+      {ficha && folder && (
+        <ProjectDialog
+          folder={folder}
+          full={scope.full}
+          onPickFull={scope.canFull ? scope.pick : undefined}
+          busy={disabled}
+          folders={projectFolders}
+          onAccessSaved={() => void applyAccessChange(folder)}
+          onClose={() => setFicha(false)}
+        />
+      )}
+    </>
   )
 }

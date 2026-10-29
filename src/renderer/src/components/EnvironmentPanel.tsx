@@ -3,7 +3,7 @@
  * acceso con un botón «Cambiar» y el punto de restauración. Es presentacional: quien lo usa le pasa los datos y la acción de cambiar.
  */
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { ChevronDown, Folder, GitBranch, History, Laptop, MonitorCog, Shield } from 'lucide-react'
+import { ChevronDown, Folder, GitBranch, History, IdCard, Laptop, MonitorCog, Shield } from 'lucide-react'
 import { useT } from '../lib/i18n'
 import { baseName, tildify } from '../lib/paths'
 import { useDismiss } from '../lib/use-dismiss'
@@ -32,6 +32,9 @@ export interface EnvironmentPanelProps {
   /** Rama git (solo Code). `changes` = archivos con cambios. */
   branch?: { name: string; changes: number } | null
   mode?: EnvironmentMode
+  /** Las filas de equipo y carpeta ya están en la Ficha del proyecto: se omiten y, al final, se ofrece abrirla. */
+  compact?: boolean
+  onOpenFicha?: () => void
 }
 
 function Row({
@@ -59,7 +62,7 @@ function Row({
   )
 }
 
-export function EnvironmentPanel({ hostName, directory, branch, mode }: EnvironmentPanelProps): React.JSX.Element {
+export function EnvironmentPanel({ hostName, directory, branch, mode, compact, onOpenFicha }: EnvironmentPanelProps): React.JSX.Element {
   const t = useT()
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -111,26 +114,30 @@ export function EnvironmentPanel({ hostName, directory, branch, mode }: Environm
             <ChevronDown size={14} aria-hidden className="text-muted" />
           </div>
           <ul className="divide-y divide-border">
-            <Row icon={<Laptop size={16} />} label={t('env.host.name')}>
-              <div className="truncate font-medium" title={hostName ?? undefined}>
-                {hostName || '—'}
-              </div>
-              <div className="text-xs text-muted">{t('env.host.this')}</div>
-            </Row>
-            <Row icon={<Folder size={16} />} label={t('env.folder.label')}>
-              {directory ? (
-                <>
-                  <div className="truncate font-medium" title={name ?? undefined}>
-                    {name}
+            {!compact && (
+              <>
+                <Row icon={<Laptop size={16} />} label={t('env.host.name')}>
+                  <div className="truncate font-medium" title={hostName ?? undefined}>
+                    {hostName || '—'}
                   </div>
-                  <div className="text-xs [overflow-wrap:anywhere] text-muted" title={directory} data-testid="env-path">
-                    {shown}
-                  </div>
-                </>
-              ) : (
-                <div className="text-muted">{t('env.folder.none')}</div>
-              )}
-            </Row>
+                  <div className="text-xs text-muted">{t('env.host.this')}</div>
+                </Row>
+                <Row icon={<Folder size={16} />} label={t('env.folder.label')}>
+                  {directory ? (
+                    <>
+                      <div className="truncate font-medium" title={name ?? undefined}>
+                        {name}
+                      </div>
+                      <div className="text-xs [overflow-wrap:anywhere] text-muted" title={directory} data-testid="env-path">
+                        {shown}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-muted">{t('env.folder.none')}</div>
+                  )}
+                </Row>
+              </>
+            )}
             {branch && (
               <Row icon={<GitBranch size={16} />} label={t('env.branch.label')}>
                 <div className="truncate font-mono font-medium" title={branch.name}>
@@ -171,6 +178,24 @@ export function EnvironmentPanel({ hostName, directory, branch, mode }: Environm
                   </Row>
                 )}
               </>
+            )}
+            {compact && onOpenFicha && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    onOpenFicha()
+                  }}
+                  className="no-drag flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-hover"
+                >
+                  <IdCard size={16} className="shrink-0 text-muted" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium">{t('env.ficha.open')}</span>
+                    <span className="block text-xs text-muted">{t('env.ficha.hint')}</span>
+                  </span>
+                </button>
+              </li>
             )}
           </ul>
         </div>
