@@ -51,6 +51,7 @@ Usa SIEMPRE `translate_xlsx.py` (no abras y guardes el libro con openpyxl: perde
 5. Declara en «Para revisar» lo que NO se traduce: nombres de hoja (las fórmulas los usan), listas de validación escritas dentro de la regla, nombres definidos y textos que son resultado de una fórmula (se recalculan solos). Un texto traducido puede ser más largo que el original.
 
 ### Verificar (obligatorio antes de entregar)
+Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows) y corrige todo de una vez.
 - `PY $S/recalc_check.py archivo.xlsx` → calcula las fórmulas con GridCraft (ArtCraft) y lista valores, errores (#DIV/0!, #REF!, #NAME?, #VALUE!)
   y fórmulas que apuntan a celdas vacías. Salida 0 = bien. Revisa que los totales den lo esperado (calcúlalo tú aparte con los datos).
 - `PY $S/check_xlsx.py archivo.xlsx --render ./.lazunox/trabajo/render` → estructura, columnas estrechas (#####), números guardados

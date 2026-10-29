@@ -95,6 +95,7 @@ Idiomas: fuentes Arial/Times/Courier (o Liberation) (Latin: español, inglés, f
 todavía: dilo en vez de entregar un PDF con cuadritos.
 
 ### Verificar (obligatorio antes de entregar)
+Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows) y corrige todo de una vez.
 `PY scripts/check_pdf.py salida.pdf --render --outdir ./.lazunox/trabajo/render`
 Imprime páginas, tamaño, texto extraíble, páginas en blanco y rutas de los PNG (usa `_shared/render.py`).
 **Mira al menos las primeras páginas PNG**: títulos cortados, tablas desbordadas, imágenes deformadas. Corrige y regenera.
