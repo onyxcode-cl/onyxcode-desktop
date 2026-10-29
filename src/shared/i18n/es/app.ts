@@ -75,6 +75,7 @@ export const app = {
   'app.palette.close': 'cerrar',
   'app.mode.newChat': 'Nueva conversación',
   'app.mode.newSession': 'Nueva sesión',
+  'app.mode.newProject': 'Nuevo proyecto',
   'app.mode.newTask': 'Nueva tarea',
   'app.sidebar.show': 'Mostrar barra lateral{hint}',
   'app.boundary.onboarding': 'el asistente de inicio',

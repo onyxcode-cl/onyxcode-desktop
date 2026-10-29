@@ -155,10 +155,12 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
     void useSettings.getState().update({ theme: isDark ? 'light' : 'dark' })
   }
 
+  // Botón principal de la barra: el propio del modo (`sidebarNew`, p. ej. «Nuevo proyecto» en Code) o, si no tiene, la acción «nuevo» de siempre.
+  const primaryNew = def.sidebarNew ?? def.newAction
   const newAction = (): void => {
     openSettings(false)
     openPersonalization(false)
-    def.newAction?.run()
+    primaryNew?.run()
   }
   const goMode = (id: ModeId): void => setMode(id)
 
@@ -212,8 +214,8 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
               <PanelLeftOpen size={18} strokeWidth={1.8} aria-hidden="true" />
             </RailButton>
           )}
-          {def.newAction && (
-            <RailButton label={def.newAction.label} shortcut={newHint} onClick={newAction}>
+          {primaryNew && (
+            <RailButton label={primaryNew.label} shortcut={def.sidebarNew ? undefined : newHint} onClick={newAction}>
               <Plus size={18} strokeWidth={1.8} aria-hidden="true" />
             </RailButton>
           )}
@@ -312,16 +314,16 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
 
       <div className="flex shrink-0 flex-col px-2.5">
         {/* «Nueva conversación / sesión / tarea»: botón primario de acento suave con su atajo. */}
-        {def.newAction && (
+        {primaryNew && (
           <button
             type="button"
-            title={newHint ? `${def.newAction.label} (${newHint})` : undefined}
-            aria-keyshortcuts={newHint || undefined}
+            title={newHint && !def.sidebarNew ? `${primaryNew.label} (${newHint})` : undefined}
+            aria-keyshortcuts={(!def.sidebarNew && newHint) || undefined}
             onClick={newAction}
             className="no-drag mt-0.5 mb-1.5 flex h-8 w-full min-w-0 items-center gap-[7px] rounded-[9px] bg-accent-soft px-2.5 text-left text-ui font-medium whitespace-nowrap text-accent transition-[filter,transform] duration-[var(--dur-fast)] hover:brightness-110 active:scale-[0.985] motion-reduce:active:scale-100"
           >
             <Plus size={15} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate">{def.newAction.label}</span>
+            <span className="min-w-0 flex-1 truncate">{primaryNew.label}</span>
           </button>
         )}
 

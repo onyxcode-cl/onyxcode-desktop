@@ -78,6 +78,7 @@ export const app = {
   'app.palette.close': 'close',
   'app.mode.newChat': 'New conversation',
   'app.mode.newSession': 'New session',
+  'app.mode.newProject': 'New project',
   'app.mode.newTask': 'New task',
   'app.sidebar.show': 'Show sidebar{hint}',
   'app.boundary.onboarding': 'the setup assistant',

@@ -31,5 +31,12 @@ export const codeMode: ModeDefinition = {
       return t('app.mode.newSession')
     },
     run: newCodeSession
+  },
+  // El botón de arriba de la barra es «Nuevo proyecto»: pide la carpeta de una vez (la sesión nueva sigue en ⌘N y en el «+» de cada proyecto).
+  sidebarNew: {
+    get label() {
+      return t('app.mode.newProject')
+    },
+    run: () => void pickAndOpenFolder()
   }
 }

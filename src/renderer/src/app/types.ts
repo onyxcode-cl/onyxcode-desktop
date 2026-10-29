@@ -21,6 +21,11 @@ export interface ModeDefinition {
   SidebarSearch?: ComponentType<{ openPalette: () => void; paletteHint: string }>
   /** Botón principal de la barra lateral. */
   newAction?: { label: string; run: () => void }
+  /**
+   * Botón principal de la barra lateral cuando NO es la misma acción que el atajo «nuevo» (⌘N): Code pone «Nuevo proyecto», que abre de una vez el
+   * selector de carpeta; las sesiones nuevas se crean con el «+» de cada proyecto o con el atajo. Sin esto el botón usa `newAction`.
+   */
+  sidebarNew?: { label: string; run: () => void }
   /** Acción «Abrir carpeta como proyecto» del encabezado «Proyectos» de la barra lateral de escritorio (solo Code y Tareas). */
   projectAction?: () => void
   /** Muestra la pantalla de "Proyectos recientes" para agregar un proyecto más (no cierra los que ya están abiertos). Solo Code. */

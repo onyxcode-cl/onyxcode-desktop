@@ -78,6 +78,17 @@ describe('barra lateral de escritorio (riel + lista, maqueta B)', () => {
     expect(list).not.toContain('aria-label="Ajustes"')
   })
 
+  it('en Code el botón principal es «Nuevo proyecto» (pide la carpeta de una vez); en los demás modos sigue el de siempre', () => {
+    seed({ mode: 'code', settingsOpen: false })
+    const code = render()
+    expect(code).toContain('>Nuevo proyecto<')
+    expect(code).not.toContain('>Nueva sesión<')
+    seed({ mode: 'tasks', settingsOpen: false })
+    const tasks = render()
+    expect(tasks).toContain('>Nueva tarea<')
+    expect(tasks).not.toContain('>Nuevo proyecto<')
+  })
+
   it('en Code ya no hay pestañas «Todas / Activas / Cambios» (la lista es corrida, como la de Overdrive)', () => {
     seed({ mode: 'code', settingsOpen: false })
     const html = render()
