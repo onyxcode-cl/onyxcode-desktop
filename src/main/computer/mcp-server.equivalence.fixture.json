@@ -624,7 +624,7 @@
             },
             {
               "name": "app_screenshot",
-              "description": "Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón. Fuera del modo de apps es SOLO para mirar (confirmar que algo cargó, leer texto, ver si está tapada), NUNCA para sacar coordenadas de clic: no sabe dónde está esa ventana en la pantalla; para clicar usa screenshot (captura de la pantalla principal) o find_element. En el modo de apps (sin screenshot de pantalla) sus píxeles SÍ valen para los clics: las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y teach_step van en píxeles de esta imagen y valen 90 s o hasta la siguiente app_screenshot. En ese modo el texto trae además una lista numerada de elementos (element: N con su capture) y avisa si otra app tapa la ventana; con zoom amplías una región de esta imagen.",
+              "description": "Captura solo la ventana de una app (por defecto la principal), SIN activarla ni mover el ratón. Fuera del modo de apps es SOLO para mirar (confirmar que algo cargó, leer texto, ver si está tapada), NUNCA para sacar coordenadas de clic: no sabe dónde está esa ventana en la pantalla; para clicar usa screenshot (captura de la pantalla principal) o find_element. En el modo de apps (sin screenshot de pantalla) sus píxeles SÍ valen para los clics: las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y teach_step van en píxeles de esta imagen y valen 90 s o hasta la siguiente app_screenshot. En ese modo el texto trae además una lista numerada de elementos (element: N con su capture) y avisa si otra app tapa la ventana; con zoom amplías una región de esta imagen. Si la imagen es idéntica a la anterior y no hubo acciones entre medias, responde sin imagen; fresh: true la fuerza.",
               "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -633,6 +633,9 @@
                   },
                   "window": {
                     "type": "number"
+                  },
+                  "fresh": {
+                    "type": "boolean"
                   }
                 },
                 "required": ["app"],

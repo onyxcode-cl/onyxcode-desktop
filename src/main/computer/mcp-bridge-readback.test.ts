@@ -119,11 +119,11 @@ describe.skipIf(!posixOnly)('type_text: lectura de vuelta del campo enfocado', (
     }
   })
 
-  it('el campo no cambió ⇒ el veredicto de siempre (suspected_noop) con la nota; no se afirma de más', async () => {
+  it('el campo no cambió ⇒ el veredicto honesto (unverifiable) con la nota; no se afirma de más', async () => {
     const { mcp, done } = await boot({ 'ax-tree': field('abc') })
     try {
       const r = await call(mcp, 'type_text', { text: 'hola mundo', input: 'unicode' })
-      expect(firstLine(r)).toMatch(/^efecto: suspected_noop — .*el valor del campo enfocado no cambió/)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — .*el valor del campo enfocado no cambió/)
     } finally {
       await done()
     }
@@ -177,11 +177,11 @@ describe.skipIf(!posixOnly)('key: lectura de vuelta del campo enfocado', () => {
     }
   })
 
-  it('el campo igual ⇒ no se confirma (la ventana tampoco cambió: suspected_noop como siempre)', async () => {
+  it('el campo igual ⇒ no se confirma (la ventana tampoco cambió: unverifiable como siempre)', async () => {
     const { mcp, done } = await boot({ 'ax-tree': field('abc') })
     try {
       const r = await call(mcp, 'key', { keys: 'a' })
-      expect(firstLine(r)).toMatch(/^efecto: suspected_noop/)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable/)
     } finally {
       await done()
     }
@@ -248,7 +248,7 @@ describe.skipIf(!posixOnly)('app_press: pre-chequeo de habilitado y pulsación h
     const { mcp, done } = await boot({ 'ax-tree': btn() })
     try {
       const r = await call(mcp, 'app_press', { app: 'Notes', ref: REF })
-      expect(firstLine(r)).toMatch(/^efecto: suspected_noop/)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable/)
       expect(firstLine(r)).not.toContain('hueca')
     } finally {
       await done()

@@ -8,8 +8,12 @@ description: Crear, editar, inspeccionar y verificar presentaciones PowerPoint (
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/` (usa python-pptx y Pillow).
 Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original del usuario).
 
-## 0. Diseño «dots» (premium, oscuro) — pruébalo PRIMERO cuando no haya imágenes ni gráficos
-Si la persona no pide imágenes, gráficos ni una plantilla suya, crea la presentación con un diseño cuidado, en un solo paso:
+## 0. Diseño libre: inventa uno distinto cada vez
+No hay una plantilla por defecto. Cada presentación debe tener su propia identidad, pensada para su tema y su público: no repitas la paleta, la tipografía ni la composición de la anterior, ni por inercia ni porque «funcionó». Antes de armar nada decide en una frase el concepto visual (tono, paleta de 3–5 colores con contraste legible, par de tipografías, forma de las tarjetas, ritmo entre diapositivas) y que sea distinto del último que hiciste en esta conversación. Si la persona rechaza un estilo, cambia de concepto de verdad (otra paleta, otra estructura), no solo de tema.
+Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el más corto):
+- **A medida (preferido para algo bonito)**: un script propio con python-pptx (carpeta de la tarea, p. ej. `make_deck.py`), con tus formas, tarjetas, citas grandes y composición; verifica igual con §2.
+- **Constructor `build_pptx.py` (§1)**: rápido y limpio; elige tema o define tu propia paleta, no dejes el mismo por inercia.
+- **Diseño «dots» (oscuro, con círculos)**: es solo UNA opción más, para cuando encaje con el tono; no la uses como primera opción ni dos veces seguidas. Si lo usas:
 1. Escribe `contenido.json` con SOLO texto (nada de comandos ni rutas): `{"slides":[...]}`. Tipos de diapositiva y sus campos:
    - `cover` {title (una palabra o dos cortas), subtitle, note, badge}
    - `stat` {kicker, title, stat («4.000+»), statLabel, items:[2 × {title, body}]}
