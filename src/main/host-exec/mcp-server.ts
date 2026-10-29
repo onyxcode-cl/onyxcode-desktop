@@ -22,7 +22,7 @@ import {
   type RunResult
 } from './runner'
 
-export const HOST_ROUTE_NAME = 'equipo'
+export { HOST_ROUTE_NAME } from './names'
 export const MAX_PER_BINDING_PER_HOUR = 60
 export const MAX_CONCURRENT_GLOBAL = 2
 export const MIN_REASON_CHARS = 8

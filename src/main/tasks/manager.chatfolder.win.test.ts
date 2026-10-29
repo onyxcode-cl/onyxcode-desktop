@@ -16,7 +16,7 @@ vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({
   embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null, revokeToken: () => undefined }
 }))
-vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isComputerUseDisabled: () => false }))
+vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isComputerUseDisabled: () => false, isHostCommandsDisabled: () => false }))
 
 import { t } from '@shared/i18n'
 import { UNIFIED_APPS_ENV, UNIFIED_APPS_WIN_ENV } from '@shared/unified-bridge'

@@ -24,7 +24,7 @@ vi.mock('./opencode-config', async (orig) => {
   const real = await orig<typeof import('./opencode-config')>()
   return { ...real, getOpencodeConfigDir: () => state.cfgDir || real.getOpencodeConfigDir() }
 })
-vi.mock('./policy', () => ({ loadManagedPolicy: () => state.policy }))
+vi.mock('./policy', () => ({ loadManagedPolicy: () => state.policy, isHostCommandsDisabled: () => false }))
 vi.mock('./mcp-proxy', () => ({
   McpProxy: class {
     port = 1
@@ -38,7 +38,8 @@ vi.mock('./mcp-proxy', () => ({
     setLocalHandler(prefix: string): { url: string; token: string } {
       return { url: `http://127.0.0.1:1${prefix}`, token: 'tok' }
     }
-  }
+  },
+  isHostCommandsDisabled: (p: { disableHostCommands?: boolean } | null | undefined) => p?.disableHostCommands === true
 }))
 vi.mock('./mcp-tasks', () => ({ tasksMcpContribution: () => ({ mcp: {}, permission: {}, hosts: [], blocked: [] }) }))
 vi.mock('../migrations/migrate-folder-scratch', () => ({ migrateFolderScratch: () => undefined }))

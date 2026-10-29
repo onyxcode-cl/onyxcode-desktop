@@ -48,7 +48,7 @@ export const RECOVERY_HINTS: Readonly<Record<string, RecoveryHint>> = {
   'low-tier': { hint: 'El permiso de esa app no alcanza para esta acción: lo amplía la persona, no se sortea.', next: null },
   'exempt-app': { hint: 'Esa app no se controla desde aquí; usa otra vía o pide ayuda a la persona.', next: null },
   'file-manager': {
-    hint: 'No uses el gestor de archivos para crear, copiar, mover o renombrar: usa un comando (mkdir, cp, mv) con la carpeta pedida en lectura y escritura. Para manejarlo de verdad, app_find y app_press.',
+    hint: 'No uses el gestor de archivos para crear, copiar, mover, renombrar ni abrir archivos: usa equipo_ejecutar con un comando (mkdir, cp, mv, open). Para manejarlo de verdad, app_find y app_press.',
     next: 'app_find'
   },
   'key-sequence': { hint: 'Llama a key una vez por combinación.', next: null },

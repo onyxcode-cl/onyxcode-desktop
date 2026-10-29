@@ -21,7 +21,8 @@ vi.mock('../embedded-browser/mcp-server', () => ({
 const pol = vi.hoisted(() => ({ value: null as { disableComputerUse?: boolean } | null }))
 vi.mock('./policy', () => ({
   loadManagedPolicy: () => pol.value,
-  isComputerUseDisabled: (p: { disableComputerUse?: boolean } | null | undefined) => p?.disableComputerUse === true
+  isComputerUseDisabled: (p: { disableComputerUse?: boolean } | null | undefined) => p?.disableComputerUse === true,
+  isHostCommandsDisabled: (p: { disableHostCommands?: boolean } | null | undefined) => p?.disableHostCommands === true
 }))
 vi.mock('./sandbox', () => ({
   sandboxKey: (f: string) => f,

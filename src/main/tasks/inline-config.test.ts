@@ -266,3 +266,37 @@ describe('herramienta `documentos` (motor del Chat para el agente aislado)', () 
     expect(JSON.stringify(c)).not.toContain('documentos')
   })
 })
+
+describe('herramienta `equipo` (comandos aprobados fuera del aislamiento)', () => {
+  const HOST = { type: 'remote', url: 'http://127.0.0.1:9998/mcp/equipo', headers: { Authorization: 'Bearer sesion' } }
+
+  it('sin ella no hay rastro', () => {
+    expect(JSON.stringify(buildInlineConfig({ ...empty, hostMcp: null }))).not.toContain('equipo')
+    expect(buildInlineConfig({ ...empty, hostMcp: null })).toEqual(buildInlineConfig(empty))
+  })
+
+  it('en el sandbox añade mcp.equipo y SIEMPRE con permiso `ask` (nunca allow)', () => {
+    const c = buildInlineConfig({ ...empty, hostMcp: HOST })
+    expect((c.mcp as Record<string, unknown>).equipo).toEqual(HOST)
+    const perm = agentsOf(c)[TASKS_AGENT_ID]?.permission as Record<string, unknown>
+    expect(perm['equipo_*']).toBe('ask')
+    expect(agentsOf(c)[COMPUTER_AGENT_ID]?.permission?.['equipo_*']).toBeUndefined()
+  })
+
+  it('convive con documentos y el navegador', () => {
+    const c = buildInlineConfig({
+      ...empty,
+      browserMcp: BROWSER,
+      documentsMcp: { type: 'remote', url: 'http://127.0.0.1:1/mcp' },
+      hostMcp: HOST
+    })
+    expect(Object.keys(c.mcp as object).sort()).toEqual(['browser', 'documentos', 'equipo'])
+    const perm = agentsOf(c)[TASKS_AGENT_ID]?.permission as Record<string, unknown>
+    expect(perm['documentos_*']).toBe('allow')
+    expect(perm['equipo_*']).toBe('ask')
+  })
+
+  it('con Control total no se añade (solo sandbox)', () => {
+    expect(JSON.stringify(buildInlineConfig({ ...empty, fullAccess: true, hostMcp: HOST }))).not.toContain('equipo')
+  })
+})

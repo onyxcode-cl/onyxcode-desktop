@@ -33,7 +33,7 @@ const mk = (
 const EL = 'LAZUNOX_MCP_ELICITATION'
 const TSE = 'LAZUNOX_TOOL_SEARCH'
 const TSK = 'LAZUNOX_TOOL_SEARCH_KEEP'
-const KEEP = 'browser,computer,bgshell,documentos'
+const KEEP = 'browser,computer,bgshell,documentos,equipo'
 const CM = 'OPENCODE_EXPERIMENTAL_CODE_MODE'
 const BG = 'OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS'
 
@@ -278,6 +278,6 @@ describe('toolSearchEnvForTasks (Overdrive)', () => {
     const env = toolSearchEnvForTasks()
     expect(env.LAZUNOX_TOOL_SEARCH).toBe('auto')
     const keep = (env.LAZUNOX_TOOL_SEARCH_KEEP ?? '').split(',')
-    for (const server of ['computer', 'browser', 'bgshell', 'documentos']) expect(keep).toContain(server)
+    for (const server of ['computer', 'browser', 'bgshell', 'documentos', 'equipo']) expect(keep).toContain(server)
   })
 })

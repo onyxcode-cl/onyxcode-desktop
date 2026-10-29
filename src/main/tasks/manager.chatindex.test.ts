@@ -14,7 +14,7 @@ vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({
   embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null, revokeToken: () => undefined }
 }))
-vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isComputerUseDisabled: () => false }))
+vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isComputerUseDisabled: () => false, isHostCommandsDisabled: () => false }))
 
 import { UNIFIED_APPS_ENV } from '@shared/unified-bridge'
 import { TasksManager } from './manager'

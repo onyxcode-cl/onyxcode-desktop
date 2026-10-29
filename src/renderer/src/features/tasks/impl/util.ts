@@ -459,7 +459,7 @@ const DELETE_RE = /(^|[;&|]\s*)(rm|rmdir|unlink|trash|srm)\b|\s-delete\b/
  */
 export function isRememberablePermission(permission: string, pattern: string): boolean {
   if (!/^[A-Za-z0-9_*.:-]{1,200}$/.test(permission)) return false
-  if (permission === 'external_directory' || permission === 'doom_loop' || permission.startsWith('computer_')) return false
+  if (permission === 'external_directory' || permission === 'doom_loop' || permission.startsWith('computer_') || permission.startsWith('equipo_')) return false
   if (!pattern || pattern.length > 2000) return false
   if (DELETE_RE.test(pattern)) return false
   if (permission === 'bash' && (/^[\s*?]*$/.test(pattern) || /^[*?]/.test(pattern.trim()))) return false

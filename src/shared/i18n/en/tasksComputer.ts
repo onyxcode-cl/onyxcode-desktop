@@ -233,6 +233,11 @@ export const tasksComputer = {
   'tasksComputer.shot.name': 'Screenshot',
   'tasksComputer.perm.deleteTitle': 'The agent wants to delete files',
   'tasksComputer.perm.deleteEffect': 'The files or folders named in the command will be permanently deleted.',
+  'tasksComputer.perm.hostTitle': 'The agent wants to run a command on your computer',
+  'tasksComputer.perm.hostEffect':
+    "It runs outside the task's isolation and with your permissions. Read the whole command before allowing it.",
+  'tasksComputer.perm.hostStopTitle': 'The agent wants to stop a process it left running',
+  'tasksComputer.perm.hostStopEffect': 'It only stops a process this task started.',
   'tasksComputer.perm.bashTitle': 'The agent wants to run a command',
   'tasksComputer.perm.bashEffect': 'This command will run in the folder’s terminal.',
   'tasksComputer.perm.editTitle': 'The agent wants to modify “{file}”',

@@ -2,5 +2,5 @@
 import { isHostCommandsDisabled, loadManagedPolicy } from '../tasks/policy'
 import { HostExecMcpServer } from './mcp-server'
 
-export { HOST_ROUTE_NAME } from './mcp-server'
+export { HOST_ROUTE_NAME } from './names'
 export const hostExecMcp = new HostExecMcpServer({ enabled: () => !isHostCommandsDisabled(loadManagedPolicy()) })

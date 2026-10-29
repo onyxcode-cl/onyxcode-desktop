@@ -231,6 +231,11 @@ export const tasksComputer = {
   'tasksComputer.shot.name': 'Captura',
   'tasksComputer.perm.deleteTitle': 'El agente quiere borrar archivos',
   'tasksComputer.perm.deleteEffect': 'Se eliminarán de forma permanente los archivos o carpetas indicados en el comando.',
+  'tasksComputer.perm.hostTitle': 'El agente quiere ejecutar un comando en tu equipo',
+  'tasksComputer.perm.hostEffect':
+    'Corre fuera del aislamiento de la tarea y con tus permisos. Revisa el comando entero antes de permitirlo.',
+  'tasksComputer.perm.hostStopTitle': 'El agente quiere detener un proceso que dejó corriendo',
+  'tasksComputer.perm.hostStopEffect': 'Solo detiene un proceso que esta tarea lanzó.',
   'tasksComputer.perm.bashTitle': 'El agente quiere ejecutar un comando',
   'tasksComputer.perm.bashEffect': 'Se ejecutará este comando en la terminal de la carpeta.',
   'tasksComputer.perm.editTitle': 'El agente quiere modificar «{file}»',

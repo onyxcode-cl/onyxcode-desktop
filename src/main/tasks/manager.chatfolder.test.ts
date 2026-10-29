@@ -49,7 +49,8 @@ vi.mock('../embedded-browser/mcp-server', () => ({
 }))
 vi.mock('./policy', () => ({
   loadManagedPolicy: () => pol.value,
-  isComputerUseDisabled: () => pol.computerOff
+  isComputerUseDisabled: () => pol.computerOff,
+  isHostCommandsDisabled: (p: { disableHostCommands?: boolean } | null | undefined) => p?.disableHostCommands === true
 }))
 
 import { UNIFIED_APPS_ENV } from '@shared/unified-bridge'

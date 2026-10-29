@@ -295,7 +295,12 @@ export function classifyPermission(
   if (!permission) return ask('petición sin permiso')
   // Ruta protegida del motor (.git, .claude…): la decide siempre la persona, sea cual sea el permiso.
   if (isProtectedPermission(p.metadata)) return ask('ruta protegida: la decide la persona')
-  if (NEVER_ALONE_PERMISSIONS.has(permission) || permission.startsWith('computer_') || permission.startsWith('browser_')) {
+  if (
+    NEVER_ALONE_PERMISSIONS.has(permission) ||
+    permission.startsWith('computer_') ||
+    permission.startsWith('browser_') ||
+    permission.startsWith('equipo_')
+  ) {
     return ask(`"${permission}" nunca se aprueba en automático`)
   }
 

@@ -21,3 +21,10 @@ describe('modo Auto y rutas protegidas del motor', () => {
     ).toBe('allow')
   })
 })
+
+describe('equipo_* nunca se aprueba en automático', () => {
+  it.each(['equipo_ejecutar', 'equipo_detener'])('%s pregunta siempre, aunque el comando parezca inocuo', (permission) => {
+    const v = classifyPermission({ permission, patterns: ['ls'], metadata: { comando: 'ls' } }, { mcpServers: ['equipo'] })
+    expect(v.decision).toBe('ask')
+  })
+})

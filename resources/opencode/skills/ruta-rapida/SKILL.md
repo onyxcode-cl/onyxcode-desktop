@@ -31,7 +31,7 @@ comprueba solo. **Para cada paso del plan, usa el primer peldaño de esta escale
 5. Si un peldaño falla UNA vez (error de permiso, app sin diccionario), sube al siguiente; no insistas con el mismo.
 
 ## Permisos y límites
-- `osascript` y `open` están pensados para el modo Control total; en Tareas con Sandbox están bloqueados (usa solo comandos de archivos).
+- `osascript` y `open` están bloqueados DENTRO del aislamiento de Tareas. Si de verdad hacen falta (abrir un archivo con su programa, crear algo en el Escritorio), pásalos por `equipo_ejecutar`: la persona ve el comando y lo aprueba. No los pruebes con `bash`.
 - `osascript` puede pedir un permiso de Automatización de macOS la primera vez por app (aparece un aviso del sistema que
   solo el usuario puede aceptar). Si no responde o lo deniega, pasa al peldaño 4 o 5.
 - Borrar, mover fuera de la carpeta o sobrescribir: pregunta antes, como siempre. Nunca `sudo`.

@@ -15,7 +15,7 @@ export const ENGINE_ENV_BACKGROUND_SUBAGENTS = 'OPENCODE_EXPERIMENTAL_BACKGROUND
 export const ENGINE_ENV_TOOL_SEARCH = 'LAZUNOX_TOOL_SEARCH'
 /** Servidores que el motor NUNCA difiere (los agentes y la puerta del plan cuentan con ellos). */
 export const ENGINE_ENV_TOOL_SEARCH_KEEP = 'LAZUNOX_TOOL_SEARCH_KEEP'
-export const TOOL_SEARCH_KEEP_SERVERS = 'browser,computer,bgshell,documentos'
+export const TOOL_SEARCH_KEEP_SERVERS = 'browser,computer,bgshell,documentos,equipo'
 /**
  * Formularios de conectores (motor propio, `LAZUNOX.md`): sin la variable el conector ni ve la capacidad y no puede pedir formularios.
  * Valor `'1'` (el del contrato del motor). NUNCA se pasa a Overdrive (Tareas) ni se deja entrar por `onlyExperimentalEngineEnv`.

@@ -32,7 +32,7 @@ export const NEVER_ALONE_PERMISSIONS: readonly string[] = [
 ]
 
 /** Lista para `LAZUNOX_PERMISSION_NO_PERSIST` (nombres exactos y prefijos con «*» al final). */
-export const PERMISSION_NO_PERSIST: readonly string[] = [...NEVER_ALONE_PERMISSIONS, 'computer_*', 'browser_*']
+export const PERMISSION_NO_PERSIST: readonly string[] = [...NEVER_ALONE_PERMISSIONS, 'computer_*', 'browser_*', 'equipo_*']
 
 /** Ruta absoluta de POSIX o de Windows (sin comprobar que exista). */
 const isAbsoluteLike = (p: string): boolean => /^(\/|[A-Za-z]:[\\/]|\\\\)/.test(p) && !p.includes('\0') && p.length <= 4096

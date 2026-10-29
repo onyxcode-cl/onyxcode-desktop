@@ -124,6 +124,26 @@ export function describePermission(
         detail: meta(p, 'url', 'query') || patterns,
         danger: false
       }
+    case 'equipo_ejecutar': {
+      // Nivel 2: un comando que corre en el equipo, FUERA del aislamiento. Se muestra completo y nunca ofrece «siempre» (`danger`).
+      const cmd = meta(p, 'comando') || patterns
+      return {
+        icon: Terminal,
+        title: t('tasksComputer.perm.hostTitle'),
+        effect: t('tasksComputer.perm.hostEffect'),
+        detail: cmd,
+        aiDescription: meta(p, 'motivo') || undefined,
+        danger: true
+      }
+    }
+    case 'equipo_detener':
+      return {
+        icon: Terminal,
+        title: t('tasksComputer.perm.hostStopTitle'),
+        effect: t('tasksComputer.perm.hostStopEffect'),
+        detail: meta(p, 'pid') || patterns,
+        danger: false
+      }
     case 'doom_loop':
       return {
         icon: Repeat,

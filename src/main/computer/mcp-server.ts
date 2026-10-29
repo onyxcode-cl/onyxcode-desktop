@@ -451,8 +451,8 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
       throw reject(
         'file-manager',
         'El Finder/Explorador de archivos no se maneja con el ratón y el teclado reales con el permiso de una app. ' +
-          'Para crear, copiar, mover o renombrar archivos y carpetas NO lo uses: ejecuta un comando (mkdir, cp, mv) y, si la ruta está fuera de la ' +
-          'carpeta de la tarea, pide esa carpeta con acceso de lectura y escritura. request_full_control solo si la persona te pidió manejar el ' +
+          'Para crear, copiar, mover, renombrar o abrir archivos y carpetas NO lo uses: ejecuta un comando con equipo_ejecutar (mkdir, cp, mv, open); la ' +
+          'persona lo aprueba viéndolo. request_full_control solo si la persona te pidió manejar el ' +
           'Finder para otra cosa; si no, usa app_find/app_press.',
         session
       )

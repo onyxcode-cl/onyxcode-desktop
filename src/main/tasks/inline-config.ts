@@ -6,6 +6,7 @@
  */
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
+import { HOST_ROUTE_NAME } from '../host-exec/names'
 import { deepMerge } from './config-merge'
 
 export interface InlineConfigInput {
@@ -29,6 +30,11 @@ export interface InlineConfigInput {
    * = igual que siempre. Al ser una herramienta de la propia app que solo crea archivos NUEVOS en la carpeta de la tarea, va en `allow`.
    */
   documentsMcp?: Record<string, unknown> | null
+  /**
+   * MCP `equipo` (un comando exacto que corre en el equipo fuera del aislamiento, con la aprobación de la persona; solo sandbox, ya apuntando a la
+   * ruta del proxy). Siempre con permiso `ask`: la persona ve el comando completo antes de que corra. Ausente o null = igual que siempre.
+   */
+  hostMcp?: Record<string, unknown> | null
   /** Archivos de instrucciones extra del agente (ruta del anfitrión; solo sandbox y solo con el puente de apps). Ausente o vacío = igual que siempre. */
   instructions?: string[]
   /** Aportación de los MCP del usuario (`tasksMcpContribution`). */
@@ -62,23 +68,26 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     base = {
       autoupdate: false,
       share: 'disabled',
-      ...(i.browserMcp || i.bridgeMcp || i.documentsMcp
+      ...(i.browserMcp || i.bridgeMcp || i.documentsMcp || i.hostMcp
         ? {
             mcp: {
               ...(i.browserMcp ? { browser: i.browserMcp } : {}),
               ...(i.bridgeMcp ? { computer: i.bridgeMcp } : {}),
-              ...(i.documentsMcp ? { [DOCUMENTS_ROUTE_NAME]: i.documentsMcp } : {})
+              ...(i.documentsMcp ? { [DOCUMENTS_ROUTE_NAME]: i.documentsMcp } : {}),
+              ...(i.hostMcp ? { [HOST_ROUTE_NAME]: i.hostMcp } : {})
             }
           }
         : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
-        ...(i.extras.length || allowDirs.length || i.documentsMcp
+        ...(i.extras.length || allowDirs.length || i.documentsMcp || i.hostMcp
           ? {
               [TASKS_AGENT_ID]: {
                 permission: {
                   ...(i.extras.length || allowDirs.length ? { external_directory: externalDirectory } : {}),
-                  ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {})
+                  ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {}),
+                  // Comandos fuera del aislamiento: SIEMPRE preguntan (la persona ve el comando entero). Explícito, porque el agente trae `'*': allow`.
+                  ...(i.hostMcp ? { [`${HOST_ROUTE_NAME}_*`]: 'ask' } : {})
                 }
               }
             }

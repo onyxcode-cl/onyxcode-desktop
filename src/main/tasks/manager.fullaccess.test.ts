@@ -19,7 +19,7 @@ vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({
   embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null }
 }))
-vi.mock('./policy', () => ({ loadManagedPolicy: () => state.policy }))
+vi.mock('./policy', () => ({ loadManagedPolicy: () => state.policy, isHostCommandsDisabled: () => false }))
 vi.mock('./sandbox', () => ({
   sandboxKey: (f: string) => f,
   startTasksServer: async (folder: string, opts: { noSandbox?: boolean }) => {
@@ -33,7 +33,8 @@ vi.mock('./sandbox', () => ({
       pid: undefined,
       stop: async () => undefined
     }
-  }
+  },
+  isHostCommandsDisabled: (p: { disableHostCommands?: boolean } | null | undefined) => p?.disableHostCommands === true
 }))
 
 import { FULL_ACCESS_NOT_GRANTED } from '@shared/ipc-tasks'

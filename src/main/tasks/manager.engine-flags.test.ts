@@ -18,7 +18,7 @@ vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({
   embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null }
 }))
-vi.mock('./policy', () => ({ loadManagedPolicy: () => null }))
+vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isHostCommandsDisabled: () => false }))
 vi.mock('./sandbox', () => ({
   sandboxKey: (f: string) => f,
   startTasksServer: async (folder: string, opts: { extraEnv?: Record<string, string> }) => {
@@ -32,7 +32,8 @@ vi.mock('./sandbox', () => ({
       pid: undefined,
       stop: async () => {}
     }
-  }
+  },
+  isHostCommandsDisabled: (p: { disableHostCommands?: boolean } | null | undefined) => p?.disableHostCommands === true
 }))
 
 import { TasksManager } from './manager'

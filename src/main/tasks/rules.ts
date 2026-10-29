@@ -30,7 +30,12 @@ const MAX_RULES = 1000
 
 /** Permisos que nunca se recuerdan. */
 function isNeverRemembered(permission: string): boolean {
-  return permission === 'external_directory' || permission === 'doom_loop' || permission.startsWith('computer_')
+  return (
+    permission === 'external_directory' ||
+    permission === 'doom_loop' ||
+    permission.startsWith('computer_') ||
+    permission.startsWith('equipo_')
+  )
 }
 
 /** Motivo por el que un par permiso/patrón no puede recordarse, o null si es admisible. */
