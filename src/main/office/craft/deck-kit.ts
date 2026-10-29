@@ -126,6 +126,24 @@ const luminance = (h: string): number => {
   const [r, g, b] = rgb(h)
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
 }
+/** Contraste WCAG (1 a 21) entre dos colores hex de 6 dígitos sin `#`. */
+export function contrastRatio(a: string, b: string): number {
+  const lin = (h: string): number => {
+    const [r, g, bl] = rgb(h).map((v) => {
+      const x = v / 255
+      return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl
+  }
+  const [x, y] = [lin(a), lin(b)]
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}
+/** Color de letra chica (pie, nota, numeración) legible sobre `bg`: el `want` si contrasta lo bastante (≥ 3,5), si no `fallback` y, si tampoco, negro o blanco. */
+export function legibleInk(want: string, fallback: string, bg: string): string {
+  if (contrastRatio(want, bg) >= 3.5) return want
+  if (contrastRatio(fallback, bg) >= 4.5) return fallback
+  return contrastRatio('FFFFFF', bg) >= contrastRatio('111111', bg) ? 'FFFFFF' : '111111'
+}
 export const stripHash = (h: string): string => h.replace(/^#/, '').toUpperCase()
 
 /** Paleta propia que inventa la IA (`PptxPalette`, hex con `#`): lo que falte se deriva del fondo, el texto y el acento. */
@@ -200,6 +218,8 @@ export function createKit(
   const setBg = (c: string | undefined): void => {
     bgOverride = c
   }
+  /** Letra chica (pie, nota, numeración): con un `background` propio en la diapositiva se elige un color que contraste con ESE fondo. */
+  const footInk = (): string => (bgOverride ? legibleInk(pal.muted, pal.text, bgOverride) : pal.muted)
   const bgslide = (glows: [number, number, number, string][] = []): void => {
     a('slide.new', { layout: 'blank' })
     const bgc = bgOverride ?? pal.bg
@@ -292,7 +312,7 @@ export function createKit(
     if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 13, accent, true, 'left', 3)
     txt(60, 62, 840, 64, title, fitSize(title, 40, 36), pal.text, true, 'left', -1, titleFont)
     dotrow(60, 506, 8, 6)
-    txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, pal.muted, false, 'right')
+    txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right')
   }
-  return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg }
+  return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg, footInk }
 }

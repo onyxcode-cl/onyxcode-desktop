@@ -35,7 +35,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
   // `theme` elige la paleta (colores) y `style` la decoración, como pide el agente de Chat: no es siempre el mismo diseño.
   const pal = spec.palette ? customPalette(spec.palette) : paletteFor(spec.theme)
   const look = spec.style ?? 'classic'
-  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg } = createKit(
+  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg, footInk } = createKit(
     pal,
     look,
     pal.accent,
@@ -54,7 +54,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
 
   const foot = (s: PptxSlideSpec): void => {
     const t = s.note ?? footer
-    if (t) txt(120, 500, 640, 24, t, 11, pal.muted)
+    if (t) txt(120, 500, 640, 24, t, 11, footInk())
   }
   const head = (n: number, s: PptxSlideSpec): void => {
     header(n, s.title ?? '', s.eyebrow)
@@ -114,7 +114,7 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
         dotrow(364, 116, 32, 22)
         txt(60, 184, 840, 100, title, fitSize(title, 62, 26), pal.text, true, 'center', -2, titleFont)
         if (bullets[0]) txt(120, 298, 720, 60, bullets[0], 22, pal.muted, false, 'center')
-        if (s.note ?? footer) txt(60, 468, 840, 30, s.note ?? footer, 14, pal.muted, false, 'center')
+        if (s.note ?? footer) txt(60, 468, 840, 30, s.note ?? footer, 14, footInk(), false, 'center')
         break
       case 'stat': {
         head(n, { ...s, title: '' })

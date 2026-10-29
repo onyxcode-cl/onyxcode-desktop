@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isPptxSpec, type PptxSpec } from '@shared/chat-doc-spec'
+import { contrastRatio, customPalette, legibleInk } from './deck-kit'
 import { chatCoverSize, chatDeckCommands, deckToPdf, renderChatDeck } from './chat-deck'
 
 const FULL: PptxSpec = {
@@ -185,3 +186,26 @@ describe('layouts nuevos (línea de tiempo, agenda, cita, tabla) y transición',
     expect(cmds).toContain('transition.applyAll')
   })
 })
+
+describe('pie, nota y numeración legibles sobre un background propio', () => {
+  const colorsOf = (cmds: string[]): string[] =>
+    cmds.filter((c) => c.startsWith('format.color=')).map((c) => JSON.parse(c.slice('format.color='.length)).color)
+  it('con un fondo coral el pie deja de usar el gris apagado del tema oscuro', () => {
+    const spec: PptxSpec = {
+      palette: { bg: '#0E2A2F', text: '#F4F1EA', accent: '#F2B544' },
+      footer: 'Pie',
+      slides: [{ title: 'Portada' }, { title: '80%', layout: 'stat', background: '#E07A5F', bullets: ['x'] }]
+    }
+    const base = colorsOf(chatDeckCommands({ ...spec, slides: [spec.slides[0], { ...spec.slides[1], background: undefined }] }))
+    const loud = colorsOf(chatDeckCommands(spec))
+    expect(base).toContain(customMuted(spec))
+    expect(loud.filter((x) => x === customMuted(spec))).toHaveLength(base.filter((x) => x === customMuted(spec)).length - 2)
+  })
+  it('legibleInk/contrastRatio', () => {
+    expect(contrastRatio('000000', 'FFFFFF')).toBeCloseTo(21, 0)
+    expect(legibleInk('8A8A8A', 'F4F1EA', 'FFFFFF')).toBe('111111')
+    expect(legibleInk('222222', 'F4F1EA', 'FFFFFF')).toBe('222222')
+  })
+})
+
+const customMuted = (spec: PptxSpec): string => '#' + customPalette(spec.palette!).muted

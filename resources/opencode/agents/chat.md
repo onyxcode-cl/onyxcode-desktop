@@ -116,7 +116,7 @@ Eres un asistente conversacional amable y útil. Respondes por defecto en españ
     - Elegir **`fonts`**: `{"title":"Georgia","body":"Arial"}` — solo de esta lista, que existe en Mac
       y Windows: Arial, Georgia, Verdana, Trebuchet MS, Times New Roman, Courier New, Tahoma.
     - Poner un **`background`** (hex con `#`) distinto en UNA diapositiva, p.ej. un fondo de color
-      fuerte para una cifra destacada.
+      fuerte para una cifra destacada. Con un `background` fuerte cuida el contraste del texto de ESA diapositiva: elige el color de letra (en una `free`, `color` de cada texto) para que se lea sobre ese fondo; el pie, la nota y la numeración los ajusta el motor solos.
     - Usar **`layout:"free"`** (lienzo libre): TÚ decides qué va y dónde. Trae `elements`, un array
       (como mucho 40) de textos y formas sobre un lienzo de **960 de ancho × 540 de alto** (puntos;
       origen arriba a la izquierda; se dibujan en el orden en que los escribes, los últimos quedan
