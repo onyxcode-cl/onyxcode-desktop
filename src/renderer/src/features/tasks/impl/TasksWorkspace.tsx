@@ -604,6 +604,7 @@ export function TasksWorkspace(): React.JSX.Element {
   const menuItems: MenuItem[] = activeId
     ? [
         ...(folder ? [{ icon: IdCard, label: t('project.card.title'), run: () => setFichaOpen(true) }] : []),
+        ...(folder ? [{ icon: FolderOpen, label: t('tasks.ws.openFinder'), run: () => void reveal(folder) }] : []),
         ...READING_MODES.map((m: ReadingMode) => ({
           icon: readingMode === m ? Check : Eye,
           label: modeLabel[m],
@@ -720,6 +721,14 @@ export function TasksWorkspace(): React.JSX.Element {
           <header
             className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
+            {(phase === 'ready' || phase === 'error') && (
+              <>
+                <AccessModeSwitch disabled={folderBusy} />
+                <span className="text-subtle" aria-hidden>
+                  /
+                </span>
+              </>
+            )}
             <span
               className={`${unifiedHeader ? 'max-w-[55%] min-w-[9rem]' : 'min-w-0'} truncate text-sm font-medium`}
               title={unifiedHeader ? session?.title || t('tasks.ws.untitled') : session?.title}
@@ -730,13 +739,12 @@ export function TasksWorkspace(): React.JSX.Element {
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
-              {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
               {(phase === 'ready' || phase === 'error') && <TasksProjectSeal busy={folderBusy} />}
               {/* Los paneles, en una sola cápsula; lo demás va en «⋯» (igual que en Code). */}
               <div
                 role="group"
                 aria-label={t('a11y.sidePanel')}
-                className="flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5"
+                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' desk:@max-[52rem]:hidden' : ''}`}
               >
                 {[
                   { id: 'progress' as const, icon: ListChecks, label: t('tasks.ws.progress') },
