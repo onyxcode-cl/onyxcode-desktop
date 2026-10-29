@@ -78,22 +78,14 @@ describe('barra lateral de escritorio (riel + lista, maqueta B)', () => {
     expect(list).not.toContain('aria-label="Ajustes"')
   })
 
-  it('los filtros «Todas / Activas / Cambios» solo salen en Code, con aria-pressed y sin partirse en dos líneas', () => {
-    seed({ mode: 'chat', settingsOpen: false })
-    expect(render()).not.toContain('aria-label="Filtrar sesiones"')
+  it('en Code ya no hay pestañas «Todas / Activas / Cambios» (la lista es corrida, como la de Overdrive)', () => {
     seed({ mode: 'code', settingsOpen: false })
     const html = render()
-    expect(html).toContain('role="group" aria-label="Filtrar sesiones"')
-    expect(html).toMatch(/aria-pressed="true"[^>]*>Todas<\/button>/)
-    expect(html).toMatch(/aria-pressed="false"[^>]*>Activas<\/button>/)
-    expect(html).toMatch(/aria-pressed="false"[^>]*>Cambios<\/button>/)
-    expect(html).toContain('flex-nowrap')
-    expect(html).toContain('whitespace-nowrap')
-    // Nombre accesible propio: «Cambios» a secas lo tiene el botón del panel Cambios de Code.
-    expect(html).toContain('aria-label="Filtrar: con cambios"')
-    expect(html).not.toMatch(/aria-label="Cambios"/)
+    expect(html).not.toContain('aria-label="Filtrar sesiones"')
+    expect(html).not.toContain('aria-label="Filtrar: con cambios"')
+    // Un filtro que quedó guardado de antes tampoco debe esconder sesiones.
     seed({ mode: 'code', sessionFilter: 'review' })
-    expect(render()).toMatch(/aria-pressed="true"[^>]*>Cambios<\/button>/)
+    expect(render()).not.toContain('aria-label="Filtrar sesiones"')
   })
 
   it('en Code las acciones de proyecto (abrir carpeta, recientes) van discretas en la franja superior de la lista', () => {

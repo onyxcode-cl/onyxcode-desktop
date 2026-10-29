@@ -39,7 +39,7 @@ import { rootSessionID, selectCodeBackgroundBusyRoots, selectProjectIsLive, sele
 import { withBackgroundBusy } from './child-sessions'
 import { timeAgo } from './ui'
 import { waitingRoots } from './code-home'
-import { deriveSessionState, legacyBaseline, matchesSessionFilter, sessionNeedsReview, summarySignature } from './review-logic'
+import { deriveSessionState, legacyBaseline, sessionNeedsReview, summarySignature } from './review-logic'
 import { registerAction } from '../../../keybindings/registry'
 import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
@@ -613,24 +613,9 @@ function ProjectGroup({
     const base = legacyBaseline(list, useCode.getState().reviewed, reviewedSince)
     if (Object.keys(base).length) useCode.getState().baselineReviewed(base)
   }, [list, reviewedSince])
-  // Con pocas sesiones las etiquetas de día sobran; tampoco en el celular (lista a pantalla completa).
-  // Filtro de las píldoras de la barra (solo escritorio): se aplica a la lista ya ordenada; el contador del proyecto cuenta lo visible.
-  const filter = useUi((s) => s.sessionFilter)
-  const visibleList = useMemo(
-    () =>
-      desktop && filter !== 'all'
-        ? sortedList.filter((x) => {
-            const st = runState[x.id]
-            return matchesSessionFilter(filter, {
-              waiting: waiting.has(x.id),
-              busy: st === 'busy' || st === 'retry',
-              needsReview: sessionNeedsReview(x.summary, reviewed[x.id])
-            })
-          })
-        : sortedList,
-    [desktop, filter, sortedList, runState, waiting, reviewed]
-  )
-  const groupByDay = !isRemoteSurface() && visibleList.length > 3 && filter === 'all'
+  // Lista corrida (sin pestañas de filtro ni etiquetas de día): como la de Overdrive. El contador del proyecto cuenta las sesiones visibles.
+  const visibleList = sortedList
+  const groupByDay = false
   const archivedList = useMemo(
     () => Object.values(sessions).filter((x) => sessionProject[x.id] === directory && !x.parentID && x.time.archived),
     [sessions, sessionProject, directory]
@@ -680,7 +665,7 @@ function ProjectGroup({
             <ChevronDown
               size={12}
               strokeWidth={1.8}
-              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? 'opacity-0 group-focus-within/proj:opacity-100 group-hover/proj:opacity-100' : '-rotate-90'}`}
+              className={`shrink-0 text-subtle transition-transform duration-[var(--dur-fast)] ${projectOpen ? '' : '-rotate-90'}`}
               aria-hidden="true"
             />
             <span className="truncate">{baseName(directory)}</span>
@@ -691,7 +676,7 @@ function ProjectGroup({
             data-testid="project-count"
             className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11px] desk:text-meta tabular-nums text-subtle group-focus-within/proj:hidden group-hover/proj:hidden"
           >
-            {!projectOpen || !trusted ? visibleList.length : ''}
+            {trusted ? visibleList.length : ''}
           </span>
           <span className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5">
             <button
@@ -719,7 +704,7 @@ function ProjectGroup({
             >
               <Search size={14} strokeWidth={1.75} />
             </button>
-            {/* «+»: nueva sesión dentro del proyecto. Siempre visible, al borde derecho y separado 8 px del resto; solo responde a
+            {/* «+»: nueva sesión dentro del proyecto (aparece al pasar o enfocar, como en Overdrive); solo responde a
                 Return/Espacio con foco de teclado real (no con uno heredado tras cerrar un diálogo) y no repite en 400 ms. */}
             <button
               type="button"
@@ -730,7 +715,7 @@ function ProjectGroup({
                 if (e.detail === 0 && !hasKeyboardFocus(e.currentTarget)) return
                 focusThen(() => void newSessionHere(directory))
               }}
-              className="no-drag ml-2 flex size-6 items-center justify-center rounded-ctl-sm text-muted hover:bg-active hover:text-fg"
+              className="no-drag ml-1 hidden size-6 items-center justify-center rounded-ctl-sm text-muted group-focus-within/proj:flex group-hover/proj:flex hover:bg-active hover:text-fg"
             >
               <Plus size={14} strokeWidth={1.75} />
             </button>

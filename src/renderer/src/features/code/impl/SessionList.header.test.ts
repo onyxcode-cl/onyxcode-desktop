@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 const src = readFileSync(new URL('./SessionList.tsx', import.meta.url), 'utf8')
 const header = src.slice(src.indexOf('<span className="absolute top-1/2 right-1'), src.indexOf('{!compact && !desktop'))
 
-describe('encabezado de proyecto: «+» separado de la «X»', () => {
+describe('encabezado de proyecto: «+» al final, tras la «X»', () => {
   it('orden: X, worktree, buscar y «+» al final; la «X» solo sale al pasar el mouse', () => {
     const iX = header.indexOf('closeProject')
     const iWt = header.indexOf('newWorktree')
@@ -23,11 +23,17 @@ describe('encabezado de proyecto: «+» separado de la «X»', () => {
     expect(xBtn).toContain('group-hover/proj:flex')
   })
 
-  it('el «+» siempre visible, con margen de 8 px (ml-2) y exige foco de teclado real al activarse sin ratón', () => {
+  it('el «+» aparece al pasar o enfocar (como en Overdrive) y exige foco de teclado real al activarse sin ratón', () => {
     const plusBtn = header.slice(header.indexOf('data-testid="project-new-session"'))
-    expect(plusBtn).toContain('ml-2')
-    expect(plusBtn).not.toMatch(/\bhidden\b/)
+    expect(plusBtn).toContain('hidden')
+    expect(plusBtn).toContain('group-hover/proj:flex')
+    expect(plusBtn).toContain('group-focus-within/proj:flex')
     expect(plusBtn).toContain('e.detail === 0 && !hasKeyboardFocus(e.currentTarget)')
+  })
+
+  it('la lista es corrida: sin pestañas de filtro ni etiquetas de día', () => {
+    expect(src).not.toContain('matchesSessionFilter')
+    expect(src).toContain('const groupByDay = false')
   })
 
   it('tras cerrar proyecto o el diálogo de worktree el foco va a un sitio neutro', () => {

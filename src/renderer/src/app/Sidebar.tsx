@@ -101,34 +101,6 @@ function RailButton({
   )
 }
 
-/** Filtros de la lista de Code (píldoras de la maqueta B): «Todas / Activas / Cambios». Los aplica `SessionList` leyendo `sessionFilter`. */
-const FILTERS = ['all', 'active', 'review'] as const
-
-function FilterPills(): React.JSX.Element {
-  const t = useT()
-  const filter = useUi((s) => s.sessionFilter)
-  const setFilter = useUi((s) => s.setSessionFilter)
-  return (
-    <div role="group" aria-label={t('app.sidebar.filters')} className="mx-0.5 mt-1 flex shrink-0 flex-nowrap items-center gap-1.5">
-      {FILTERS.map((f) => (
-        <button
-          key={f}
-          type="button"
-          aria-pressed={filter === f}
-          // Nombre accesible propio («Filtrar: con cambios»): «Cambios» a secas chocaba con el botón del panel Cambios de Code.
-          aria-label={t(`app.sidebar.filterAria.${f}`)}
-          onClick={() => setFilter(f)}
-          className={`no-drag inline-flex h-[22px] shrink-0 items-center rounded-full border px-[9px] desk:h-6 text-[11.5px] desk:text-meta whitespace-nowrap transition-colors duration-[var(--dur-fast)] ${
-            filter === f ? 'border-transparent bg-accent-soft text-accent' : 'border-border text-muted hover:bg-hover hover:text-fg'
-          }`}
-        >
-          {t(`app.sidebar.filter.${f}`)}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 /**
  * Barra lateral de escritorio, diseño «riel + lista» (maqueta B aprobada): un RIEL de 56 px con los modos arriba y Ayuda, Tema y Ajustes
  * abajo (siempre visible) y, a su lado, la LISTA de 236 px del modo («Nueva …» de acento suave, Buscar con ⌘K, filtros de Code, árbol y
@@ -376,7 +348,6 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
         )}
 
         {/* Filtros: solo donde aplican (sesiones de Code: «Cambios» = por revisar). */}
-        {mode === 'code' && <FilterPills />}
       </div>
 
       {/* Árbol del modo con su propio scroll. */}
