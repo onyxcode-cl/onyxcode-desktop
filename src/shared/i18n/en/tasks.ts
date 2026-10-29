@@ -545,6 +545,13 @@ export const tasks = {
   'tasks.proj.notesPh': 'The agent saves useful notes here between tasks (preferences, decisions, recurring data)…',
   'tasks.proj.notesHint':
     'The task agent reads and updates this file. You can also edit it by hand; it’s included as context in every new task in this folder.',
+  'tasks.retry.title.free': 'Free usage has run out',
+  'tasks.retry.title.auth': 'Your AI key isn’t valid',
+  'tasks.retry.title.network': 'Can’t reach the model',
+  'tasks.retry.title.quota': 'AI service usage limit',
+  'tasks.retry.title.unavailable': 'The model service isn’t responding',
+  'tasks.retry.title.other': 'The model isn’t responding',
+  'tasks.retry.wait': 'The task didn’t freeze: it is waiting for the model and keeps retrying. You can wait or stop it yourself.',
   'tasks.stall.title': {
     one: 'No activity for {count} min',
     other: 'No activity for {count} min'

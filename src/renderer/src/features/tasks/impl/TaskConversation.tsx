@@ -25,6 +25,7 @@ import { compactTask, editAndRetry, undoFromMessage } from './actions'
 import { PermissionCard } from './PermissionPrompt'
 import { ResultCard } from './ResultCard'
 import { WorkingCard } from './WorkingCard'
+import { RetryNotice, useIsRetrying } from './RetryNotice'
 import { Spark } from '../../../components/Logo'
 import { toolImages } from './computer-tools'
 import { useT } from '../../../lib/i18n'
@@ -431,6 +432,8 @@ const UserMessage = memo(
 export function TaskConversation({ entries, busy, error, permissions, footer, taskId }: Props): React.JSX.Element {
   const t = useT()
   const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
+  const retrySid = taskId ?? entries[0]?.info.sessionID
+  const retrying = useIsRetrying(retrySid)
   const allBlocks = useMemo(() => buildBlocks(entries, busy), [entries, busy])
   // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
   const readingStored = useWorkView('code')
@@ -549,7 +552,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
           {permissions.map((p) => (
             <PermissionCard key={p.id} request={p} />
           ))}
-          {busy && permissions.length === 0 && <WorkingCard entries={entries} />}
+          {busy && permissions.length === 0 && (retrying ? <RetryNotice sessionId={retrySid!} /> : <WorkingCard entries={entries} />)}
           {error && !lastAssistantFailed(entries) && <ErrorNotice error={error} onCompact={onCompact} />}
           {!busy && taskId && <ResultCard taskId={taskId} />}
           {footer}

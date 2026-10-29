@@ -354,6 +354,7 @@ export const useSessions = create<SessionsState>((set, get) => {
         return
       }
       deltaQueue.flush() // orden: lo encolado va antes que este evento
+      noteRetryStatus(event as never) // motivo del reintento (límite gratuito, red, clave…): lo muestran Chat, Code y Tareas
       switch (event.type) {
         case 'session.created':
         case 'session.updated':

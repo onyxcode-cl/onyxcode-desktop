@@ -544,6 +544,13 @@ export const tasks = {
   'tasks.proj.notesPh': 'El agente guarda aquí notas útiles entre tareas (preferencias, decisiones, datos recurrentes)…',
   'tasks.proj.notesHint':
     'El agente de tareas lee y actualiza este archivo. También puedes editarlo tú a mano; se incluye como contexto en cada nueva tarea de esta carpeta.',
+  'tasks.retry.title.free': 'Se acabó el uso gratuito',
+  'tasks.retry.title.auth': 'Tu clave de IA no es válida',
+  'tasks.retry.title.network': 'Sin conexión con el modelo',
+  'tasks.retry.title.quota': 'Límite de uso del servicio de IA',
+  'tasks.retry.title.unavailable': 'El servicio del modelo no responde',
+  'tasks.retry.title.other': 'El modelo no responde',
+  'tasks.retry.wait': 'La tarea no se colgó: está esperando al modelo y sigue reintentando. Puedes esperar o detenerla tú.',
   'tasks.stall.title': {
     one: 'Sin actividad desde hace {count} min',
     other: 'Sin actividad desde hace {count} min'

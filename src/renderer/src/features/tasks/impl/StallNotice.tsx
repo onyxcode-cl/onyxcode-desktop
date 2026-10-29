@@ -7,10 +7,13 @@ import { useEffect, useState } from 'react'
 import { Hourglass } from 'lucide-react'
 import { useT } from '../../../lib/i18n'
 import { useTasks } from './store'
+import { useIsRetrying } from './RetryNotice'
 
 export function StallNotice({ taskId }: { taskId: string }): React.JSX.Element | null {
   const t = useT()
   const quietSince = useTasks((s) => s.activity?.tasks.find((x) => x.sessionId === taskId)?.quietSince)
+  // Si el modelo está reintentando, `RetryNotice` ya explica la espera: «Sin actividad» sería una segunda voz que contradice.
+  const retrying = useIsRetrying(taskId)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (quietSince === undefined) return
@@ -18,7 +21,7 @@ export function StallNotice({ taskId }: { taskId: string }): React.JSX.Element |
     const id = setInterval(() => setNow(Date.now()), 15_000)
     return () => clearInterval(id)
   }, [quietSince])
-  if (quietSince === undefined) return null
+  if (quietSince === undefined || retrying) return null
   const minutes = Math.max(1, Math.floor((now - quietSince) / 60_000))
   return (
     <div

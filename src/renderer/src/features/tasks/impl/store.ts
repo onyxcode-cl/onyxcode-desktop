@@ -36,6 +36,7 @@ import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
+import { noteRetryStatus } from '../../../lib/retry-info'
 import { interruptSettledSessions, reconcileRunStatus, runStatusScope, unchangedSince } from '../../../lib/session-reducer'
 import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
@@ -1114,6 +1115,10 @@ async function syncRunStatus(client: OpencodeClient, folder: string): Promise<vo
   const res = await client.session.status({ directory: sdkDir(folder) }).catch(() => null)
   const data = res?.data
   if (!data) return
+  // El motivo del reintento también viaja en la foto del estado (una sesión que ya reintentaba al conectar).
+  for (const [sessionID, status] of Object.entries(data)) {
+    if (status?.type === 'retry') noteRetryStatus({ type: 'session.status', properties: { sessionID, status } })
+  }
   // F7-B10: el ámbito incluye las entradas de `status` huérfanas de este servidor y excluye lo que cambió durante la petición.
   const { sessions, sessionSource, status } = useSessions.getState()
   const scope = unchangedSince(
