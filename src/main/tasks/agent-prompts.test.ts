@@ -232,7 +232,31 @@ describe('instrucción de apps del modo unificado', () => {
     expect(t).toContain('Captura solo la app concreta')
     expect(t).toContain('Un rechazo no se sortea pidiendo acceso a otra app')
     expect(t).not.toMatch(/paridad|mejor que|ahorr\w* de tokens/i)
-    expect(t).not.toMatch(/computer_app_zoom|computer_zoom|suspected_noop|screenshot: true/)
+    expect(t).not.toMatch(/computer_app_zoom|computer_app_wait/)
+  })
+
+  it('la guía de tanda 2: zoom sobre la captura, veredicto «efecto:», element con capture, wait con condición y códigos de rechazo', () => {
+    const t = UNIFIED_APPS_PROMPT
+    // Nombres reales de las herramientas (prefijo computer_ y el nombre del MCP).
+    expect(t).toContain('`computer_zoom` sobre la última `computer_app_screenshot`')
+    expect(t).toContain('Sirve solo para mirar: sus coordenadas no valen para clicar')
+    expect(t).toContain('Lee la primera línea `efecto:` de cada acción')
+    expect(t).toContain('`confirmed`, sigue')
+    expect(t).toContain('`unverifiable`, comprueba con una captura fresca')
+    expect(t).toContain('`suspected_noop`, no repitas la misma acción igual')
+    expect(t).toContain('`siguiente:`')
+    expect(t).toContain('No repitas una acción que ya devolvió `confirmed`')
+    expect(t).toContain('El veredicto es una pista, no una prueba')
+    expect(t).toContain('`element: N` junto con `capture: <número de la captura>`')
+    expect(t).toContain('`[rechazo: stale]`')
+    expect(t).toContain('no adivines un número')
+    expect(t).toContain('`computer_wait` con `until_text` o `until_change`')
+    expect(t).toContain('en vez de una pausa fija')
+    expect(t).toContain('Usa `screenshot: true` solo si necesitas ver el resultado')
+    expect(t).toContain('deje la ventana a la vista')
+    expect(t).toContain('`[rechazo: …]` como señales estables')
+    expect(t).toContain('`focus-stolen`, revisa ambas apps')
+    expect(t).not.toMatch(/paridad|mejor que|ahorr\w* de tokens|OCR|Vision|Tesseract/i)
   })
 
   it('writeUnifiedAppsPrompt escribe el archivo y devuelve su ruta', () => {

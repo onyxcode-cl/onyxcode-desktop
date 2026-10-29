@@ -373,7 +373,7 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
   if (i.readback === 'match') return done({ effect: 'confirmed', reason: 'un campo de la app contiene el texto escrito' })
 
   const notes: string[] = []
-  if (i.frontAfter !== i.frontBefore) notes.push(`la app al frente pasó a «${i.frontAfter}»`)
+  if (i.frontAfter !== i.frontBefore) notes.push(`la app al frente pasó a «${noticeAppName(i.frontAfter)}»`)
   if (i.windowsAfter > i.windowsBefore)
     notes.push(i.windowsAfter - i.windowsBefore === 1 ? 'apareció una ventana de la app' : 'aparecieron ventanas de la app')
   else if (i.windowsAfter < i.windowsBefore)

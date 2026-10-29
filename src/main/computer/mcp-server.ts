@@ -81,8 +81,10 @@ import {
   diffSignatures,
   formatVerdict,
   hasChanged,
+  noticeAppName,
   pollProbe,
   probeSignature,
+  probeTimeoutMs,
   readRegularFile,
   textKey,
   verdictEnabled,
@@ -811,6 +813,9 @@ async function ensureRatio(): Promise<number> {
   return ratio
 }
 
+/** Edad desde la que un temporal suelto (`probe-*`, `zin-*`, `raw-app-*`) se considera huérfano. */
+const STALE_TEMP_MS = 5 * 60_000
+
 function cleanupShots(): void {
   try {
     const files = readdirSync(SHOT_DIR)
@@ -818,6 +823,16 @@ function cleanupShots(): void {
       .map((f) => ({ f, t: statSync(join(SHOT_DIR, f)).mtimeMs }))
       .sort((a, b) => b.t - a.t)
     for (const { f } of files.slice(20)) safeRm(join(SHOT_DIR, f))
+    // Temporales de sondas, zoom y recortes que quedaron huérfanos (el MCP cayó a mitad): fuera los de más de 5 minutos.
+    const viejos = Date.now() - STALE_TEMP_MS
+    for (const f of readdirSync(SHOT_DIR)) {
+      if (!/^(probe-|zin-|raw-app-)/.test(f)) continue
+      try {
+        if (statSync(join(SHOT_DIR, f)).mtimeMs < viejos) safeRm(join(SHOT_DIR, f))
+      } catch {
+        // ignorar: pudo desaparecer entre medias
+      }
+    }
   } catch {
     // ignorar
   }
@@ -1366,12 +1381,18 @@ function jpegSize(buf: Buffer): { width: number; height: number } | null {
  * Captura sin imagen para el modelo (la «sonda»): firma de una ventana de una app YA concedida, AHORA; `null` si no se pudo leer. El archivo
  * tiene nombre aleatorio y se borra siempre; el modelo nunca recibe la imagen, solo porcentajes. Quien llama comprueba antes el nivel de la app.
  */
-async function probeOf(bundleId: string, windowIndex: number): Promise<ProbeSignature | null> {
+async function probeOf(bundleId: string, windowIndex: number, remote = false, maxMs?: number): Promise<ProbeSignature | null> {
   const path = join(SHOT_DIR, `probe-${Date.now()}-${secretName()}.png`)
+  // Tope propio (1,5 s local / 4 s remoto, o menos si queda poco plazo): una app colgada no retiene el veredicto ni el `wait`. Al vencer
+  // la sonda cuenta como fallida (`null` ⇒ unverifiable); el archivo se borra igual y lo que llegue tarde lo recoge `cleanupShots`.
+  const limit = Math.max(200, Math.min(probeTimeoutMs(remote), maxMs ?? Infinity))
   try {
     mkdirSync(SHOT_DIR, { recursive: true })
-    await backend.probeWindow(bundleId, windowIndex, path)
-    return probeSignature(readShotFile(path))
+    return await withTimeout(
+      backend.probeWindow(bundleId, windowIndex, path).then(() => probeSignature(readShotFile(path))),
+      limit,
+      null
+    )
   } catch (err) {
     log('sonda de ventana:', err instanceof Error ? err.message : err)
     return null
@@ -1571,6 +1592,8 @@ const BATCH_TOOLS = [
 ]
 const BATCH_MAX_STEPS = 8
 const BATCH_PAUSE_MS = 250
+/** Tope de segundos de `wait` sumados en un mismo lote (cada `wait` suelto llega a 20 s; en un lote de 8 pasos serían 160 s). */
+const BATCH_WAIT_MAX_S = 20
 
 const ELEMENT_ARG = {
   element: {
@@ -2554,7 +2577,7 @@ async function beginVerdict(name: string, args: Record<string, unknown>, session
       .windowFrames(front.bundleId)
       .then((f) => f.length)
       .catch(() => null)
-    pre.before = await probeOf(front.bundleId, pre.windowIndex)
+    pre.before = await probeOf(front.bundleId, pre.windowIndex, pre.remote)
     if (name === 'type_text' && tier === 'full' && !pre.remote) {
       const tail = readbackTail(String(args.text ?? ''))
       if (tail.length >= 3) pre.readBefore = await countTail(front.bundleId, tail)
@@ -2587,7 +2610,7 @@ async function finishVerdict(
       app && stillGranted && pre.before
         ? await pollProbe({
             before: pre.before,
-            takeProbe: () => probeOf(app.bundleId, pre.windowIndex),
+            takeProbe: () => probeOf(app.bundleId, pre.windowIndex, pre.remote),
             remote: pre.remote,
             sleep,
             now: Date.now
@@ -2672,7 +2695,7 @@ function splitTypeChunks(text: string, size = TYPE_CHUNK): string[] {
 async function frontChangedTo(checked: AppRef | undefined): Promise<string | null> {
   try {
     const now = await appFrontmost()
-    return sameFront(checked, now) ? null : now.name || 'otra app'
+    return sameFront(checked, now) ? null : noticeAppName(now.name || 'otra app')
   } catch {
     return null
   }
@@ -2685,7 +2708,7 @@ async function frontAfterNote(checked: AppRef | undefined): Promise<string> {
     const now = await appFrontmost()
     if (sameFront(checked, now)) return ''
     return (
-      ` Aviso: tras actuar, la app al frente es «${now.name || 'otra'}» y antes era «${checked?.name ?? '?'}»; ` +
+      ` Aviso: tras actuar, la app al frente es «${noticeAppName(now.name || 'otra')}» y antes era «${noticeAppName(checked?.name ?? '?')}»; ` +
       'no se puede deshacer: revisa ambas apps antes de seguir.'
     )
   } catch {
@@ -2712,23 +2735,33 @@ async function isolatedWait(a: Record<string, unknown>, session: string | undefi
   await requireTierFor(app, 'view', session)
   const windowIndex = ctx && ctx.app.bundleId === app.bundleId ? ctx.windowIndex : 0
   const remote = isRemoteApp(app)
-  const beforeSig = change ? await probeOf(app.bundleId, windowIndex) : null
+  // Plazo TOTAL: cuenta también lo que gastan las sondas y las lecturas (no solo las pausas entre vueltas).
   const deadline = Date.now() + secs * 1000
+  const beforeSig = change ? await probeOf(app.bundleId, windowIndex, remote, deadline - Date.now()) : null
   const res: { hit: FoundElement | null; diff: ProbeDiff | null } = { hit: null, diff: null }
   await act({ tool: 'wait', text: `${secs}s` }, async () => {
+    // En CADA vuelta (y otra vez tras cada lectura, antes de quedarse con ella): ¿se detuvo el control o se revocó la app a mitad de la
+    // espera? Entonces se sale ya, sin devolver ficha ni texto leído. `requireTierFor` lanza `[rechazo: no-grant]` si ya no hay concesión.
+    const sigueVigente = async (): Promise<void> => {
+      if (await isStopped().catch(() => true)) throw new Error(STOPPED_MSG)
+      await requireTierFor(app, 'view', session)
+    }
     for (;;) {
+      await sigueVigente()
       if (wanted) {
         const found = await withTimeout(
           findElementsHelper(app.bundleId, { query: wanted }).catch(() => null),
           3_000,
           null
         )
+        await sigueVigente()
         const w = fold(wanted)
         res.hit = found?.find((el) => el.role !== 'AXSecureTextField' && elementTextFields(el).some((f) => fold(f).includes(w))) ?? null
         if (res.hit) return
       }
       if (beforeSig) {
-        const sig = await probeOf(app.bundleId, windowIndex)
+        const sig = await probeOf(app.bundleId, windowIndex, remote, deadline - Date.now())
+        await sigueVigente()
         const d = sig ? diffSignatures(beforeSig, sig) : null
         if (d && hasChanged(d)) {
           res.diff = d
@@ -2896,6 +2929,7 @@ const TOOLS: ToolDef[] = [
       if (!steps.length) throw new Error('actions vacío: indica al menos un paso.')
       if (steps.length > BATCH_MAX_STEPS) throw new Error(`Demasiados pasos (${steps.length}): máximo ${BATCH_MAX_STEPS} por lote.`)
       const lines: string[] = []
+      let waitedS = 0
       for (let i = 0; i < steps.length; i++) {
         const name = String(steps[i]?.tool ?? '')
         const inner = TOOLS.find((t) => t.name === name)
@@ -2906,6 +2940,16 @@ const TOOLS: ToolDef[] = [
         const innerArgs = steps[i]?.args && typeof steps[i].args === 'object' ? (steps[i].args as Record<string, unknown>) : {}
         try {
           if (await isStopped()) throw new Error(STOPPED_MSG)
+          if (name === 'wait') {
+            waitedS += Math.max(0, Math.min(20, Number(innerArgs.seconds) || 1))
+            if (waitedS > BATCH_WAIT_MAX_S) {
+              throw reject(
+                'batch-wait-limit',
+                `Las esperas del lote suman más de ${BATCH_WAIT_MAX_S} s: usa pasos separados para esperar más.`,
+                session
+              )
+            }
+          }
           const out = await inner.run({ ...innerArgs, screenshot: false }, session)
           const text = (typeof out === 'string' ? out : out.text).split('\n')[0].slice(0, 200)
           lines.push(`Paso ${i + 1} (${name}): ${text}`)
@@ -3043,7 +3087,7 @@ const TOOLS: ToolDef[] = [
           if (k > 0) {
             const now = await appFrontmost()
             if (!sameFront(checkedFront, now)) {
-              fx.stolenBy = now.name || 'otra app'
+              fx.stolenBy = noticeAppName(now.name || 'otra app')
               return ''
             }
           }
@@ -3071,7 +3115,7 @@ const TOOLS: ToolDef[] = [
             : ''
       const after =
         fx.endedOn !== null
-          ? ` Aviso: al terminar, la app al frente es «${fx.endedOn}» y antes era «${checkedFront?.name ?? '?'}»; no se puede deshacer: revisa ambas apps antes de seguir.`
+          ? ` Aviso: al terminar, la app al frente es «${fx.endedOn}» y antes era «${noticeAppName(checkedFront?.name ?? '?')}»; no se puede deshacer: revisa ambas apps antes de seguir.`
           : ''
       return `Escrito${how}: ${text.length} caracteres${hint}${after}`
     }
@@ -3904,7 +3948,8 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
         : null
     const result = await tool.run(args, session)
     let text = typeof result === 'string' ? result : result.text
-    if (verdictPre) {
+    // Un lote detenido en el paso N no lleva línea de efecto: el veredicto solo se antepone cuando terminó entero.
+    if (verdictPre && !(name === 'batch' && text.startsWith('Lote detenido'))) {
       const verdict = await finishVerdict(name, args, verdictPre, session)
       if (verdict) {
         text = `${formatVerdict(verdict)}\n${text}`
