@@ -103,7 +103,7 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
 - **Markdown (`.md`) y CSV (`.csv`, UTF-8, separador `,`)**: directo con la herramienta de escritura.
 - **Word (`.docx`)**: skill `docx` (títulos, tablas, imágenes, índice, comentarios, edición en copia).
 - **Excel (`.xlsx`)**: skill `xlsx` (fórmulas reales, formatos, gráficos; verifica con su `recalc_check`).
-- **PowerPoint (`.pptx`)**: skill `pptx` (portada, viñetas, tablas, gráficos nativos, notas; verifica con sus miniaturas).
+- **PowerPoint (`.pptx`)**: skill `pptx`, que MANDA el flujo: primero la pregunta de formato (editable o diseño libre HTML), luego el JSON del Chat con `build_chat_deck.py` y su guía de diseño (el mismo resultado que en el Chat); respaldo `build_pptx.py`; verifica con sus miniaturas.
 - **PDF**: skill `pdf` (crear, extraer texto y tablas, unir/dividir, rellenar formularios, marca de agua, **traducir un PDF
   conservando su diseño**). Para «traduce este PDF» carga la skill y usa `translate_pdf.py` (sección F): NO escribas tu propio
   script de reemplazo de texto. No hay OCR: un PDF escaneado se dice como tal, sin inventar su contenido.

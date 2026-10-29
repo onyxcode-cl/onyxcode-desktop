@@ -144,3 +144,29 @@ describe('skill pptx: build_chat_deck.py + .cjs empaquetado, de extremo a extrem
     }
   )
 })
+
+describe('Chat, Code, Tareas y Overdrive: una sola fuente de diseño de presentaciones (la skill pptx)', () => {
+  const agent = (n: string): string => norm(readFileSync(resolve(ROOT, `resources/opencode/agents/${n}.md`), 'utf8'))
+
+  it('tasks.md y computer.md remiten a la skill pptx y a su flujo (formato, build_chat_deck, respaldo) sin contradecirla', () => {
+    for (const n of ['tasks', 'computer']) {
+      const t = agent(n)
+      expect(t, n).toContain('`pptx`')
+      expect(t, n).toContain('MANDA el flujo')
+      expect(t, n).toContain('pregunta de formato')
+      expect(t, n).toContain('build_chat_deck.py')
+      expect(t, n).toContain('el mismo resultado que en el Chat')
+      expect(t, n).toContain('build_pptx.py')
+    }
+  })
+
+  it('la skill conserva la pregunta de formato y la guía de diseño del Chat; el Chat sigue armando con chatDeckCommands', () => {
+    expect(skill).toContain('Antes de empezar: pregunta el formato (obligatorio)')
+    expect(skill).toContain(chatDesignGuide())
+    // Una sola fuente del motor: la skill y el Chat usan la misma función, no una copia.
+    expect(readFileSync(resolve(ROOT, 'src/main/office/craft/chat-deck-cli.ts'), 'utf8')).toContain('renderChatDeck')
+    expect(readFileSync(resolve(ROOT, 'src/main/office/craft/chat-deck.ts'), 'utf8')).toMatch(
+      /export function chatDeckCommands[\s\S]*export async function renderChatDeck[\s\S]*chatDeckCommands\(spec\)/
+    )
+  })
+})

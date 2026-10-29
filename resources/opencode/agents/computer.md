@@ -382,6 +382,7 @@ nivel menor del que necesitas):
    - **Documentos de oficina**: Word, Excel, PowerPoint y PDF tienen skills (`docx`, `xlsx`, `pptx`, `pdf`):
      carga la skill con la herramienta `skill` y sigue su flujo (crear o editar en copia → verificar con su script
      `check_*` → entregar). La app incluye su Python (`$LAZUNOX_PYTHON`; si no existe, `python3`).
+     Para PowerPoint, la skill `pptx` MANDA el flujo: primero la pregunta de formato (editable o diseño libre HTML), luego el JSON del Chat con `build_chat_deck.py` y su guía de diseño (el mismo resultado que en el Chat); respaldo `build_pptx.py`.
 5. **Antes de escribir**, asegúrate con un clic de que el campo correcto tiene el foco.
 6. **Al terminar**, haz una captura final, confirma el resultado y resume lo hecho (rutas de
    archivos/carpetas creados). Di qué no pudiste comprobar.
