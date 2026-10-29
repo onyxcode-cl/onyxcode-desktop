@@ -19,12 +19,11 @@ describe('barra superior de Code (escritorio, QA)', () => {
     expect(ws).not.toContain('desk:@max-[16rem]:hidden')
     expect(ws).toContain('data-testid="toolbar-session-title"')
   })
-  it('H13: con la barra estrecha la rama cede su sitio y las acciones secundarias pasan a un menú «…» con etiquetas', () => {
+  it('H13: la rama cede su sitio con la barra estrecha y todo lo secundario vive en un solo menú «⋯» con etiquetas', () => {
     expect(ws).toContain('<span className="contents desk:@max-[40rem]:hidden">')
-    expect(ws).toContain('<span className="contents desk:@max-[44rem]:hidden">')
     const more = readFileSync(join(__dirname, 'ToolbarMore.tsx'), 'utf8')
-    expect(more).toContain('desk:@max-[44rem]:flex')
     for (const k of [
+      'project.card.title',
       'instr.open',
       'conv.export.copy',
       'conv.export.saveMd',
@@ -33,12 +32,14 @@ describe('barra superior de Code (escritorio, QA)', () => {
       'code.toolbar.compact'
     ])
       expect(more).toContain(`t('${k}')`)
+    expect(more).toContain('READING_MODES.map')
     expect(more).toContain("aria-label={t('code.toolbar.more')}")
+    // Ya no hay iconos sueltos de conversación en la barra.
+    expect(ws).not.toContain("aria-label={t('code.toolbar.fork')}")
+    expect(ws).not.toContain('<ReadingModeSwitch')
   })
-  it('H12: los iconos de la barra van en grupos con nombre (conversación / revisión / herramientas) y cada botón con aria-label', () => {
-    for (const g of ['conversation', 'review', 'tools']) expect(ws).toContain(`code.toolbar.group.${g}`)
-    expect(ws).toContain("aria-label={t('code.toolbar.fork')}")
-    expect(ws).toContain("aria-label={t('code.toolbar.compact')}")
+  it('H12: los paneles van en una sola cápsula con nombre y cada botón con aria-label', () => {
+    expect(ws).toContain("aria-label={t('code.toolbar.group.tools')}")
     expect(ws).toContain('aria-label={t(p.label)}')
     expect(ws).toContain("aria-label={t('code.toolbar.stop')}")
   })

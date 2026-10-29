@@ -11,17 +11,14 @@ import { useRetryLabel } from '../../../lib/retry-info'
 import { displayTitle } from '@shared/session-title'
 import { adoptFreeModel } from '../../settings/impl/extras'
 import { NoAiBanner } from '../../../components/NoAiBanner'
-import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
-import { ExportMenuButton } from '../../../components/ExportConversation'
 import { exportCodeConversation } from './export'
-import { ProjectDialog } from '../../project-profile/ProjectDialog'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import type { ConvError } from '../../../lib/session-reducer'
 import type { MsgKey } from '@shared/i18n'
 import { tildify } from '../../../lib/paths'
 import { useT } from '../../../lib/i18n'
 import { LogoMark } from '../../../components/Logo'
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -32,7 +29,6 @@ import {
   FolderSearch,
   GitBranch,
   GitCompare,
-  GitFork,
   Globe,
   Hammer,
   LayoutGrid,
@@ -40,7 +36,6 @@ import {
   ListTodo,
   Loader2,
   Search,
-  Sparkles,
   Square,
   SquareTerminal,
   X
@@ -52,7 +47,6 @@ import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { nativeCode, useClient } from './client'
 import { diffStats } from '../../../components/DiffView'
 import { CodeMemoryProposalCard } from './CodeMemoryProposalCard'
-import { PersonalizeButton } from '../../memory/PersonalizeButton'
 import { SessionToolsMenu } from './SessionToolsMenu'
 import { ToolbarMore } from './ToolbarMore'
 import { Composer } from './Composer'
@@ -469,26 +463,6 @@ function ProjectMenu({ directory }: { directory: string }): React.JSX.Element {
   )
 }
 
-/** «Entorno» de la barra de Code (solo escritorio): abre la Ficha del proyecto (nombre, carpeta, nivel de acceso de la IA y Bóveda de variables). */
-function CodeEnvironment({ directory }: { directory: string }): React.JSX.Element {
-  const t = useT()
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-        className="no-drag flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm text-muted hover:bg-hover hover:text-fg"
-      >
-        {t('env.title')}
-        <ChevronDown size={14} aria-hidden />
-      </button>
-      {open && <ProjectDialog folder={directory} full={false} onClose={() => setOpen(false)} />}
-    </>
-  )
-}
-
 export function BranchPill({ directory }: { directory: string }): React.JSX.Element | null {
   const t = useT()
   const info = useBranch(directory)
@@ -596,11 +570,6 @@ const ALL_PANELS: { id: RightPanel; label: MsgKey; icon: React.JSX.Element }[] =
   { id: 'files', label: 'code.panel.files', icon: <FileCode2 size={16} /> },
   { id: 'browser', label: 'code.panel.browser', icon: <Globe size={16} /> }
 ]
-/** Grupos lógicos de la barra: revisión (Cambios) y herramientas (Terminal, Archivos, Navegador). Separados por una línea fina. */
-const PANEL_GROUPS: { key: string; label: MsgKey; ids: RightPanel[] }[] = [
-  { key: 'review', label: 'code.toolbar.group.review', ids: ['summary', 'changes'] },
-  { key: 'tools', label: 'code.toolbar.group.tools', ids: ['terminal', 'files', 'browser'] }
-]
 /** Sin terminal (pty) ni vista nativa del navegador en la PWA del celular; en Mac y Windows no cambia nada. */
 const PANEL_META = ALL_PANELS.filter(
   (p) => (p.id !== 'terminal' || platformCaps().terminal) && (p.id !== 'browser' || platformCaps().nativeBrowser)
@@ -620,6 +589,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const forkSession = useCode((s) => s.forkSession)
   const compactSession = useCode((s) => s.compactSession)
   const busy = run === 'busy' || run === 'retry'
+  const branch = useBranch(directory)
 
   return (
     <div
@@ -659,86 +629,47 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
             </button>
           </Tip>
         )}
-        {!isRemoteSurface() && <CodeEnvironment directory={directory} />}
-        <ReadingModeSwitch surface="code" />
-        {/* Conversación: memoria, exportar, bifurcar y compactar. Barra ancha: iconos con la etiqueta en el tooltip; estrecha: menú «…» con texto. */}
-        <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
-        <div role="group" aria-label={t('code.toolbar.group.conversation')} className="flex items-center gap-1.5">
-          <span className="contents desk:@max-[44rem]:hidden">
-            <PersonalizeButton />
-            {session && !isRemoteSurface() && <ExportMenuButton onAction={(a) => void exportCodeConversation(session, a)} />}
-            {activeSessionID && (
-              <>
-                <Tip label={t('code.toolbar.fork')}>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    aria-label={t('code.toolbar.fork')}
-                    onClick={() => void forkSession(activeSessionID)}
-                    className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
-                  >
-                    <GitFork size={14} />
-                  </button>
-                </Tip>
-                <Tip label={t('code.toolbar.compact')}>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    aria-label={t('code.toolbar.compact')}
-                    onClick={() => void compactSession(activeSessionID)}
-                    className="no-drag flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-40"
-                  >
-                    <Sparkles size={14} />
-                  </button>
-                </Tip>
-              </>
-            )}
-          </span>
-          <SessionToolsMenu sessionId={activeSessionID} directory={directory} busy={busy} />
-          {!isRemoteSurface() && (
-            <ToolbarMore
-              hasSession={!!session}
-              busy={busy}
-              onExport={(a) => session && void exportCodeConversation(session, a)}
-              onFork={() => activeSessionID && void forkSession(activeSessionID)}
-              onCompact={() => activeSessionID && void compactSession(activeSessionID)}
-            />
-          )}
-        </div>
-        {/* Con un panel abierto y la barra estrecha, sus pestañas ya están en el panel: se ocultan aquí y el título de la sesión cabe. */}
+        <SessionToolsMenu sessionId={activeSessionID} directory={directory} busy={busy} />
+        {/* Los paneles, en una sola cápsula; lo demás (ficha, vista del trabajo, memoria, exportar, bifurcar y compactar) va en «…». */}
         <span className={panel ? 'contents desk:@max-[48rem]:hidden' : 'contents'}>
-          {PANEL_GROUPS.map((group) => {
-            const items = PANEL_META.filter((p) => group.ids.includes(p.id))
-            if (items.length === 0) return null
-            return (
-              <Fragment key={group.key}>
-                <span className="mx-0.5 h-5 w-px bg-border" aria-hidden />
-                <div role="group" aria-label={t(group.label)} className="flex items-center gap-0.5">
-                  {items.map((p) => (
-                    <Tip
-                      key={p.id}
-                      label={t(p.label)}
-                      shortcut={hintText(bindings[`code.panel.${p.id}`])}
-                      align={p.id === 'browser' ? 'end' : 'center'}
-                    >
-                      <button
-                        type="button"
-                        aria-label={t(p.label)}
-                        aria-pressed={panel === p.id}
-                        onClick={() => togglePanel(p.id)}
-                        className={`no-drag inline-flex h-8 min-w-8 items-center justify-center gap-1.5 rounded-lg px-1.5 transition-colors desk:@[64rem]:px-2.5 ${panel === p.id ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
-                      >
-                        {p.icon}
-                        {/* La etiqueta solo aparece cuando la ventana es ancha: en estrecha quedan los iconos de siempre. */}
-                        <span className="hidden text-[13px] font-medium desk:@[64rem]:inline">{t(p.label)}</span>
-                      </button>
-                    </Tip>
-                  ))}
-                </div>
-              </Fragment>
-            )
-          })}
+          <div
+            role="group"
+            aria-label={t('code.toolbar.group.tools')}
+            className="flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5"
+          >
+            {PANEL_META.map((p) => (
+              <Tip
+                key={p.id}
+                label={t(p.label)}
+                shortcut={hintText(bindings[`code.panel.${p.id}`])}
+                align={p.id === 'browser' ? 'end' : 'center'}
+              >
+                <button
+                  type="button"
+                  aria-label={t(p.label)}
+                  aria-pressed={panel === p.id}
+                  onClick={() => togglePanel(p.id)}
+                  className={`no-drag relative inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1.5 transition-colors ${panel === p.id ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                >
+                  {p.icon}
+                  {p.id === 'changes' && (branch?.changes ?? 0) > 0 && (
+                    <span aria-hidden className="absolute top-1 right-1 size-1.5 rounded-full bg-warning" />
+                  )}
+                </button>
+              </Tip>
+            ))}
+          </div>
         </span>
+        {!isRemoteSurface() && (
+          <ToolbarMore
+            directory={directory}
+            hasSession={!!session}
+            busy={busy}
+            onExport={(a) => session && void exportCodeConversation(session, a)}
+            onFork={() => activeSessionID && void forkSession(activeSessionID)}
+            onCompact={() => activeSessionID && void compactSession(activeSessionID)}
+          />
+        )}
       </div>
     </div>
   )

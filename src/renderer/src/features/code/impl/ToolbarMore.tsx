@@ -1,25 +1,37 @@
 /**
- * Menú «…» de la barra de Code: reúne las acciones secundarias (memoria, exportar, bifurcar, compactar) con su ETIQUETA cuando
- * la barra es estrecha y no caben como iconos sueltos (H13). Con la barra ancha no se ve: los mismos iconos salen sueltos, cada uno
- * con `aria-label` y tooltip. Se decide por consulta de contenedor (`@max-[44rem]`), no por el ancho de la ventana.
+ * Menú «⋯» de la barra de Code: reúne todo lo que no son los paneles. Ficha del proyecto (nombre, carpeta, acceso de la IA y Bóveda),
+ * vista del trabajo (Resumida / Con pasos / Detallada), memoria, exportar, bifurcar y compactar. Los paneles van aparte, en la cápsula
+ * de iconos de la barra.
  */
 import { useCallback, useRef, useState } from 'react'
-import { BrainCircuit, ClipboardCopy, FileDown, FileText, GitFork, MoreHorizontal, SlidersHorizontal, Sparkles } from 'lucide-react'
+import {
+  BrainCircuit,
+  Check,
+  ClipboardCopy,
+  FileDown,
+  FileText,
+  GitFork,
+  IdCard,
+  MoreHorizontal,
+  SlidersHorizontal,
+  Sparkles
+} from 'lucide-react'
 import { useT } from '../../../lib/i18n'
 import { openExportOptions, type ExportAction } from '../../../components/ExportConversation'
 import { PortalMenu, PortalMenuItem, PortalMenuSeparator } from '../../../components/PortalMenu'
+import { READING_MODES, useReadingMode, useWorkView, type ReadingMode } from '../../../lib/reading-mode'
 import { useUi } from '../../../stores/ui'
-
-/** Punto de quiebre (ancho de la barra) por debajo del cual las acciones secundarias pasan al menú «…». */
-export const TOOLBAR_COLLAPSE = '44rem'
+import { ProjectDialog } from '../../project-profile/ProjectDialog'
 
 export function ToolbarMore({
+  directory,
   hasSession,
   busy,
   onExport,
   onFork,
   onCompact
 }: {
+  directory: string
   hasSession: boolean
   busy: boolean
   onExport: (action: ExportAction) => void
@@ -28,15 +40,17 @@ export function ToolbarMore({
 }): React.JSX.Element {
   const t = useT()
   const [open, setOpen] = useState(false)
+  const [ficha, setFicha] = useState(false)
   const anchor = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
+  const mode = useWorkView('code')
   const run = (fn: () => void) => (): void => {
     setOpen(false)
     fn()
   }
   const ic = { size: 14, strokeWidth: 1.75 } as const
   return (
-    <div ref={anchor} className="no-drag relative hidden shrink-0 desk:@max-[44rem]:flex" data-testid="toolbar-more">
+    <div ref={anchor} className="no-drag relative flex shrink-0" data-testid="toolbar-more">
       <button
         type="button"
         title={t('code.toolbar.more')}
@@ -44,11 +58,22 @@ export function ToolbarMore({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`flex size-7 items-center justify-center rounded-ctl-sm hover:bg-hover hover:text-fg ${open ? 'bg-active text-fg' : 'text-muted'}`}
+        className={`flex size-8 items-center justify-center rounded-lg hover:bg-hover hover:text-fg ${open ? 'bg-active text-fg' : 'text-muted'}`}
       >
-        <MoreHorizontal size={16} strokeWidth={1.75} />
+        <MoreHorizontal size={17} strokeWidth={1.75} />
       </button>
       <PortalMenu open={open} anchor={anchor} onClose={close} label={t('code.toolbar.more')}>
+        <PortalMenuItem icon={<IdCard {...ic} />} label={t('project.card.title')} onClick={run(() => setFicha(true))} />
+        <PortalMenuSeparator />
+        {READING_MODES.map((id: ReadingMode) => (
+          <PortalMenuItem
+            key={id}
+            icon={mode === id ? <Check {...ic} /> : <span className="inline-block w-3.5" />}
+            label={t(`code.reading.${id}` as const)}
+            onClick={run(() => useReadingMode.getState().setView('code', id))}
+          />
+        ))}
+        <PortalMenuSeparator />
         <PortalMenuItem
           icon={<BrainCircuit {...ic} />}
           label={t('instr.open')}
@@ -67,6 +92,7 @@ export function ToolbarMore({
           </>
         )}
       </PortalMenu>
+      {ficha && <ProjectDialog folder={directory} full={false} onClose={() => setFicha(false)} />}
     </div>
   )
 }
