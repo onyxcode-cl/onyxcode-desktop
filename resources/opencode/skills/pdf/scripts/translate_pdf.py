@@ -512,6 +512,16 @@ def cmd_aplicar(a):
         print("AVISO: letra reducida en %d textos (la traducción es más larga)." % len(informe["letra_reducida"]))
     if informe["no_cabe"]:
         print("AVISO: no cabe aunque se redujo la letra: %s. Revisa esas páginas." % ", ".join(informe["no_cabe"]))
+    # verificación: mismas páginas, tamaños, imágenes y dibujos que el original (solo cambia el texto); los avisos no detienen
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+        import comparar_estructura
+        dif, avisos, resumen = comparar_estructura.comparar(a.pdf, a.salida)
+        for x in dif + ["(aviso) " + v for v in avisos]:
+            print("DIFERENCIA: " + x)
+        print("ESTRUCTURA: " + ("CAMBIÓ: revisa las páginas PNG junto al original" if dif else "idéntica al original (%s)" % resumen))
+    except SystemExit:
+        pass
     sys.exit(0 if not informe["no_cabe"] else 3)
 
 

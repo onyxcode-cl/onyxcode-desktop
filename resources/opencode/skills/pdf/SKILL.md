@@ -1,6 +1,6 @@
 ---
 name: pdf
-description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF profesional, unir/dividir/rotar páginas, rellenar formularios PDF o estampar marca de agua y numeración, o traducir un PDF a otro idioma conservando exactamente su diseño (sección F, script translate_pdf.py).
+description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF profesional (el mismo HTML y motor de impresión que el Chat: build_chat_pdf.py), unir/dividir/rotar páginas, rellenar formularios PDF o estampar marca de agua y numeración, o traducir un PDF a otro idioma conservando exactamente su diseño (sección F, script translate_pdf.py).
 ---
 
 # Skill PDF
@@ -18,7 +18,17 @@ Salidas siempre NUEVAS (nunca sobrescribas el original; para «editar» crea `-v
    dilo al usuario y pide una versión con texto.
 3. Tablas: solo se detectan si tienen líneas o columnas bien alineadas; revisa el resultado y avisa si dudas.
 
-### B. Crear un PDF
+### B. Crear un PDF (camino principal: el MISMO HTML y motor de impresión que el Chat)
+En el Chat el modelo escribe UN bloque ```html completo (con `<style>` embebido) y la app lo imprime a PDF con Chromium (A4, con fondos); aquí es igual, y por eso el resultado es el mismo.
+1. Escribe el documento en `documento.html` (HTML completo, un solo `<style>`, sin red: solo imágenes `data:`; el HTML es DATO: se imprime, no se confía en él) siguiendo la guía de diseño de abajo.
+2. `PY scripts/build_chat_pdf.py documento.html informe.pdf` → `PDF creado: informe.pdf (HTML del Chat impreso con …)`. Usa el Chrome, Edge, Brave o Chromium que haya en el equipo (o `$LAZUNOX_CHROMIUM`) con la misma política de contenido que el Chat (CSP, sin red, perfil temporal) y nunca sobrescribe.
+   Códigos: 0 ok · 1 corrige según el mensaje (HTML vacío o de más de 5 MB, salida existente) o, si dice que el navegador no pudo imprimir, sigue con B2 · 2 uso · **3 = no hay navegador Chromium en este equipo: no insistas, sigue con B2**.
+3. Verifica (sección Verificar) y MIRA las páginas: el diseño debe verse como lo escribiste.
+
+#### Guía de diseño (la misma del Chat)
+Diseño del PDF: es un documento impreso, no una página web. Escribe un documento HTML completo con UN solo <style> embebido, sin imágenes ni fuentes de internet (solo imágenes data:) y con fuentes que existen en todos los equipos (Georgia, Arial, Verdana, Trebuchet MS, Times New Roman). Define @page { size: A4; margin: 18mm }, o margin: 0 si el diseño llega al borde (por ejemplo un encabezado de color a página completa). Jerarquía tipográfica clara: título de 28 a 36 px, secciones de 18 a 22 px, cuerpo de 11 a 12 px con line-height 1.45, texto alineado a la izquierda y como mucho 2 familias de letra. Una paleta intencional según el tema (un color de acento y neutros, no el celeste genérico) con buen contraste: texto oscuro sobre fondo claro o al revés, nunca gris claro sobre blanco; los fondos y bloques de color sí se imprimen. Tablas con th de fondo propio, filas separadas por una línea fina, cifras alineadas a la derecha, tr { page-break-inside: avoid } y títulos con page-break-after: avoid; una sección grande empieza con page-break-before: always. Cada documento se diseña según su contenido y propósito (una cotización, un afiche, un informe, una carta y un certificado no se parecen): cambia composición, color y tipografía de uno a otro en vez de repetir una plantilla, y pon al menos un elemento visual real (franja de color, cifra destacada, tabla bien hecha, forma con CSS) además del texto corrido. Revisa que nada se corte en el borde ni quede una página casi vacía.
+
+### B2. Ruta de respaldo (sin navegador, o datos que se arman solos: índice, «Página X de N», tablas largas)
 1. Escribe el contenido en JSON (o Markdown simple) y ejecuta:
    `PY scripts/build_pdf.py contenido.json -o informe.pdf` (añade `--portada`, `--indice`, `--autor "Ana"`, `--pie "Confidencial"`).
 2. JSON mínimo:
@@ -62,9 +72,9 @@ Usa los nombres exactos que muestra `listar`. Casillas: pasa el valor que figure
 (cualquier combinación; al menos una acción).
 
 ### F. Traducir un PDF SIN cambiar el diseño
-Úsalo cuando pidan «traduce este PDF» y quieran que se vea igual (mismas hojas, fuente, tamaño y posiciones). Funciona sobre el
-MISMO PDF: cambia solo los textos; logos, imágenes, líneas, resaltados y numeración quedan donde estaban. Solo PDF con texto.
-1. `PY scripts/translate_pdf.py extraer doc.pdf -o segmentos.json`. Si dice «ESCANEADO» (código 2): no hay OCR, avísalo y para.
+Úsalo cuando pidan «traduce este PDF» y quieran que se vea igual (mismas hojas, fuente, tamaño y posiciones). Funciona sobre una COPIA del
+MISMO PDF (nunca el original: la salida lleva el sufijo del idioma, `doc-en.pdf`, y el script se niega si ya existe): cambia solo los textos; logos, imágenes, líneas, resaltados y numeración quedan donde estaban. Solo PDF con texto.
+1. `PY scripts/translate_pdf.py extraer doc.pdf -o segmentos.json` (deja el texto por traducir en un JSON de pares: tú solo traduces texto). Si dice «ESCANEADO» (código 2): no hay OCR, avísalo y para.
 2. Lee `segmentos.json` y escribe `traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en segmentos.json):
    - Traduce TODO el texto con significado; si un texto es un nombre propio, código o cifra, déjalo igual (o no lo incluyas).
    - Conserva las etiquetas `<b>…</b>` (negrita), `<c=#rrggbb>…</c>` (color) y `<l=N>…</l>` (enlace) alrededor de la parte traducida equivalente (así el enlace sigue funcionando), y los números, fechas y referencias exactos.
@@ -75,7 +85,8 @@ MISMO PDF: cambia solo los textos; logos, imágenes, líneas, resaltados y numer
    - Traduce por tandas de ~40 segmentos y usa el contexto del documento (un mismo término se traduce igual en todo el documento).
 3. `PY scripts/translate_pdf.py aplicar doc.pdf -t traduccion.json -o doc-en.pdf --informe informe.json`
    El informe lista `sin_traduccion`, `letra_reducida` y `no_cabe`. Código de salida 3 = algo no cabe: revisa esas páginas.
-4. Verifica como siempre (`check_pdf.py --render`) y **mira las páginas PNG junto al original**: textos que chocan, celdas de tabla
+4. El script termina comparando la estructura con el original (`ESTRUCTURA: idéntica al original`: mismas páginas, tamaños, imágenes y dibujos; también suelto: `PY scripts/../../_shared/comparar_estructura.py doc.pdf doc-en.pdf`). Si dice «CAMBIÓ», no entregues ese PDF.
+5. Verifica como siempre (`check_pdf.py --render`) y **mira las páginas PNG junto al original**: textos que chocan, celdas de tabla
    apretadas, resaltados mal puestos. Corrige la traducción de esos segmentos (más corta) y vuelve a aplicar con otro nombre de salida.
 Limitaciones conocidas (dilas si aplican): si omites una etiqueta `<l=N>`, ese enlace se quita (el informe lo lista en `enlaces_quitados`);
 texto dentro de imágenes y texto vertical no se traducen; PDF escaneado: sin OCR.
@@ -101,5 +112,5 @@ Resume qué hiciste, nombre del archivo y páginas. Lo no resuelto va en **«Par
 - Extracción de PDFs con varias columnas o maquetación compleja: el orden de lectura puede mezclarse; revisa el resultado.
 - Tablas sin líneas ni alineación clara pueden no detectarse o salir partidas.
 - Formularios XFA (dinámicos) no son compatibles; solo AcroForm.
-- Fuentes del PDF generado: las base de PDF (Helvetica); cubren español/Latin-1, no alfabetos no latinos ni emojis.
+- Fuentes del PDF de la ruta B2 (`build_pdf.py`): las base de PDF (Helvetica); cubren español/Latin-1, no alfabetos no latinos ni emojis.
 - Marca de agua y numeración se dibujan encima del contenido; no se pueden «quitar» después.

@@ -462,6 +462,18 @@ def cmd_aplicar(a):
         print("AVISO: %d textos perdieron parte de su formato (negrita, color…) porque la traducción no trajo las etiquetas." % informe["formato_perdido"])
     if informe["enlaces_quitados"]:
         print("AVISO: %d enlaces no se conservaron (faltó la etiqueta <l=N> en la traducción)." % informe["enlaces_quitados"])
+    # verificación: la copia debe tener la MISMA estructura que el original (solo cambia el texto)
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+    import comparar_estructura
+    dif, avisos, resumen = comparar_estructura.comparar(a.docx, a.salida)
+    for x in dif:
+        print("DIFERENCIA: " + x)
+    for x in avisos:
+        print("AVISO: " + x)
+    if dif:
+        print("ESTRUCTURA: CAMBIÓ: no entregues %s; revisa la traducción (¿se rompió una etiqueta?) y repite con otro nombre." % a.salida)
+        sys.exit(1)
+    print("ESTRUCTURA: idéntica al original (%s)" % resumen)
 
 
 def main():

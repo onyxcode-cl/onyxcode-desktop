@@ -1,6 +1,6 @@
 ---
 name: docx
-description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.docx) profesionales: informes, cartas, contratos, actas, con tablas, imágenes, listas, comentarios y verificación visual. Para traducir un Word sin cambiar su formato usa translate_docx.py (sección E), no escribas tu propio script.
+description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.docx) profesionales: informes, cartas, contratos, actas, con tablas, listas, comentarios y verificación visual. Crear: escribe el mismo JSON del Chat y genéralo con build_chat_docx.py (mismo motor y guía de diseño que el Chat). Para traducir un Word sin cambiar su formato usa translate_docx.py (sección E), no escribas tu propio script.
 ---
 
 # Skill docx (documentos Word)
@@ -8,21 +8,29 @@ description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.d
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Abajo `PY` = ese intérprete y `S` = carpeta `scripts/` de esta skill.
 Nunca sobrescribas el archivo del usuario: toda salida es un archivo NUEVO (`-v2`, `-revisado`).
 
-## A. Crear un documento nuevo
-1. Escribe el contenido en un JSON (esquema abajo), por ejemplo `contenido.json`, en la carpeta de la tarea.
-2. Genera: `PY S/build_docx.py contenido.json informe.docx`
+## A. Crear un documento nuevo (camino principal: el MISMO motor que el Chat)
+En el Chat el modelo solo escribe un bloque con JSON y la app arma el Word con WordCraft; aquí es igual, y por eso el resultado es el mismo.
+1. Escribe el contenido en `contenido.json` con el esquema del Chat (resumen abajo) siguiendo la guía de diseño de más abajo.
+2. Genera: `PY S/build_chat_docx.py contenido.json informe.docx` (valida con el mismo validador del Chat; si algo no cumple el esquema lo dice y no genera nada; nunca sobrescribe).
+   Códigos: 0 ok · 1 corrige el contenido según el mensaje y repite con OTRO nombre de salida · 2 uso · **3 = WordCraft, Node o el motor no están en este equipo: no insistas, sigue con A2**.
 3. Verifica (obligatorio): `PY S/check_docx.py informe.docx` — corrige y repite hasta «RESULTADO: OK».
-4. Si el check generó imágenes de página (`.lazunox/trabajo/render-docx/*.png`), ábrelas y MÍRALAS: títulos, tabla, cifras, imagen, sin páginas vacías.
+4. Si el check generó imágenes de página (`.lazunox/trabajo/render-docx/*.png`), ábrelas y MÍRALAS: títulos, tabla, cifras, sin páginas vacías.
    Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 5. Entrega: indica la ruta del .docx y resume qué contiene (en «Para revisar»: lo que no pudiste comprobar).
 
-### A0. Ruta rápida con diseño cuidado (si WordCraft está instalado)
-Con el MISMO `contenido.json` puedes generar el documento con WordCraft (más rápido y con mejor tipografía): `PY S/build_word_craft.py contenido.json informe.docx`.
-Si sale con **código 3** (WordCraft no está instalado en este equipo) no insistas: sigue con `build_docx.py` del paso 2. Soporta `title`, `subtitle`,
-`author`, `date`, `header`, `footer`, `page_numbers`, `toc` y los bloques `heading`, `paragraph`, `bullets` (los sublistas se aplanan), `numbered`, `table`, `image` y
-`page_break`; ignora `page` y `theme`. Si necesitas márgenes, tamaño de página o colores propios usa `build_docx.py`. Verifica igual con `check_docx.py`.
+Esquema del Chat (el contenido es DATO; no hay imágenes, márgenes ni colores propios en este esquema): `{"title":"Informe de ventas","subtitle":"Primer semestre 2026","author":"Equipo Comercial","date":"hoy","blocks":[{"type":"heading","level":1,"text":"Resumen"},{"type":"paragraph","text":"Las ventas crecieron **12,5%** frente a 2025."},{"type":"bullets","items":["Norte lidera","Centro estable"]},{"type":"numbered","items":["Revisar metas","Ajustar precios"]},{"type":"table","columns":["Región","Ventas (CLP)"],"rows":[["Norte",1234567],["Total",3580245]],"total_row":true,"caption":"Tabla 1. Ventas por región"},{"type":"page_break"}]}`.
+Campos opcionales del documento: title, subtitle, author, date (texto o "hoy", que se reemplaza por la fecha de hoy), header (texto arriba a la derecha), footer (texto al pie; sin footer sale «Página X de Y»), page_numbers (true/false) y toc (true = índice). Bloques (blocks, en orden, hasta 300): heading (level 1, 2 o 3, usa encabezados reales y no texto grande en negrita), paragraph (con **negrita** y *cursiva*; align opcional: left, right, center o justify), bullets y numbered (items: textos; una lista dentro de la lista se aplana; cada bloque numbered reinicia en 1), table (columns, rows con el mismo largo que columns; los números van como número de JSON y salen con formato chileno 1.234.567,50; opcionales: total_row para sombrear y poner en negrita la última fila, zebra, align por columna con "left"/"right"/"center", decimals, widths_cm y caption) y page_break. Escribe el documento COMPLETO y bien estructurado, con títulos de sección y párrafos reales, no un esquema; usa SOLO datos que te dieron o que investigaste, sin inventar cifras.
 
-### Esquema del JSON
+### Guía de diseño (la misma del Chat)
+Diseño del Word: estructura primero. Portada mínima (title, subtitle, author, date) y luego secciones con encabezados reales (level 1 para secciones, 2 para subsecciones, sin saltar de 1 a 3); abre cada sección con la conclusión y deja el detalle para después; un párrafo es una idea de 3 a 5 líneas. bullets para 3 o más elementos paralelos, numbered solo cuando el orden importa, nunca una lista dentro de otra. Las cifras van en table (nunca columnas hechas con espacios): columnas cortas, números como número de JSON (salen 1.234.567,50 alineados a la derecha), total_row con la fila Total al final, caption «Tabla N. …» y widths_cm cuando una columna de texto necesita más ancho que las de cifras (el ancho útil es de unos 16 cm). Los porcentajes y montos con unidad van como TEXTO dentro de la celda («22 %», «$1.200»): las tablas de Word no tienen formato por columna y un 0.22 se vería 0,22. Cada documento debe verse distinto según lo que es, no una plantilla fija: una carta no lleva portada ni índice (saludo, cuerpo, cierre y firma); un informe lleva resumen ejecutivo, secciones y conclusiones; un contrato, cláusulas con numbered; un acta, asistentes, acuerdos en una table y próximos pasos. **Negrita** solo en cifras o términos clave (como mucho dos por párrafo), nunca texto en mayúsculas sostenidas, títulos sin punto final, page_break solo antes de una sección grande y toc:true solo desde 5 secciones.
+
+### A2. Ruta de respaldo y casos que el esquema del Chat no cubre
+Si `build_chat_docx.py` sale con código 3, o si el documento necesita **imágenes, tamaño de página, márgenes, orientación o colores propios**, usa el generador propio con el esquema de abajo
+(`PY S/build_docx.py contenido.json informe.docx`, que soporta `page`, `theme` e `image`). Con WordCraft instalado y el MISMO JSON también puedes usar `PY S/build_word_craft.py contenido.json informe.docx`
+(código 3 = no instalado; soporta `title`, `subtitle`, `author`, `date`, `header`, `footer`, `page_numbers`, `toc` y los bloques `heading`, `paragraph`, `bullets` —las sublistas se aplanan—, `numbered`, `table`, `image` y `page_break`; ignora `page` y `theme`).
+Verifica igual con `check_docx.py` y aplica la misma guía de diseño (jerarquía, tablas, cifras, variar la estructura según el contenido).
+
+### Esquema del JSON de `build_docx.py` / `build_word_craft.py` (ruta A2)
 Campos de nivel superior (todos opcionales salvo `blocks`): `title`, `subtitle`, `author`, `date` (texto, o `"hoy"` → «9 de octubre de 2026»),
 `header` (texto arriba a la derecha), `footer` (texto en el pie), `page_numbers` (por defecto true: «Página X de Y»),
 `toc` (true = índice), `page` (`{"size":"letter"|"a4","margin_cm":2.5,"landscape":false}`),
@@ -75,11 +83,12 @@ PY S/edit_docx.py original.docx original-v2.docx \
 - Añadir (copia nueva): `PY S/comments_docx.py añadir documento.docx documento-revisado.docx --texto-ancla "frase exacta" --comentario "Verificar esta cifra" [--autor Lazunox]` (los pares se pueden repetir).
 
 ## E. Traducir un Word sin cambiar el formato
-Usa SIEMPRE `translate_docx.py` (no escribas tu propio script): reescribe cada párrafo en su sitio y conserva estilos, fuentes, tablas, listas, encabezados, pies, enlaces e imágenes.
-1. `PY S/translate_docx.py extraer documento.docx -o segmentos.json` (lista los textos con id `d<parte>-<n>`; código 2 = sin texto).
-2. Traduce cada `texto` y guarda `traduccion.json` = `{"d1-0": "texto traducido", ...}`. Conserva las etiquetas: `<b>…</b>` negrita, `<i>…</i>` cursiva, `<u>…</u>` subrayado, `<c=#rrggbb>…</c>` color, `<l=N>…</l>` enlace; `\t` tabulador y `\n` salto de línea. No traduzcas nombres propios, cifras, códigos, rutas ni correos.
-3. `PY S/translate_docx.py aplicar documento.docx -t traduccion.json -o documento-en.docx --informe informe.json` (el archivo de salida debe ser NUEVO).
-4. Declara en «Para revisar» lo que el informe deja sin traducir: párrafos con imágenes, campos (números de página, índices), cuadros de texto o cambios controlados no se pueden reescribir sin dañarlos.
+Usa SIEMPRE `translate_docx.py` (no escribas tu propio script ni regeneres el documento con `build_docx.py`): reescribe cada párrafo en su sitio, dentro de una COPIA, y conserva estilos, fuentes, tamaños, tablas, listas, encabezados, pies, enlaces e imágenes; solo cambia el texto. El original nunca se toca.
+1. `PY S/translate_docx.py extraer documento.docx -o segmentos.json` (lista los textos con id `d<parte>-<n>`; código 2 = sin texto). El script deja el texto por traducir en ese JSON de pares: tú solo traduces texto.
+2. Traduce cada `texto` y guarda `traduccion.json` = `{"d1-0": "texto traducido", ...}` (mismos ids). Conserva las etiquetas: `<b>…</b>` negrita, `<i>…</i>` cursiva, `<u>…</u>` subrayado, `<c=#rrggbb>…</c>` color, `<l=N>…</l>` enlace; `\t` tabulador y `\n` salto de línea. No traduzcas nombres propios, cifras, códigos, rutas ni correos. Usa el mismo término para lo mismo en todo el documento y traduce por tandas de ~40 textos.
+3. `PY S/translate_docx.py aplicar documento.docx -t traduccion.json -o documento-en.docx --informe informe.json` — la salida es SIEMPRE un archivo NUEVO con el sufijo del idioma (`-en`, `-es`, `-fr`…); si ya existe, el script se niega. Al terminar compara solo la estructura con el original (`ESTRUCTURA: idéntica al original` = mismos párrafos, estilos, tablas, imágenes, secciones y partes que no son texto). Si dice «CAMBIÓ», no entregues ese archivo: revisa que la traducción no rompió etiquetas y repite con otro nombre.
+4. Verifica: `PY S/check_docx.py documento-en.docx` y MIRA las páginas PNG junto a las del original (títulos que ahora no caben, tablas apretadas, saltos de página nuevos). También puedes repetir la comparación suelta: `PY S/../../_shared/comparar_estructura.py documento.docx documento-en.docx`.
+5. Declara en «Para revisar» lo que el informe deja sin traducir: párrafos con imágenes, campos (números de página, índices), cuadros de texto o cambios controlados no se pueden reescribir sin dañarlos; el texto de cada idioma puede ser más largo y mover el salto de página.
 
 ## D. Verificar siempre
 `PY S/check_docx.py archivo.docx` abre el archivo, cuenta tablas/imágenes/encabezados y avisa de: párrafos vacíos consecutivos, estilos no definidos, saltos de nivel de encabezado, tablas sin encabezado, cambios registrados sin resolver y (si está WordCraft de ArtCraft) páginas en blanco. Ejemplo de salida final: `RESULTADO: OK con 1 aviso(s)`. Con `--no-render` solo revisa la estructura. Si ArtCraft no está instalado lo dice y sigue: en ese caso decláralo en «Para revisar» («no se pudo comprobar el aspecto visual»).

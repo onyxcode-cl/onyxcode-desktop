@@ -1,6 +1,6 @@
 ---
 name: xlsx
-description: Crea, edita, revisa y verifica planillas Excel (.xlsx) profesionales con fórmulas reales, formatos es-CL, gráficos, filtros y validaciones.
+description: Crea, edita, revisa, verifica y TRADUCE planillas Excel (.xlsx) profesionales con fórmulas reales, formatos es-CL y gráficos. Crear: escribe el mismo JSON del Chat y genéralo con build_chat_xlsx.py (mismo motor y guía de diseño que el Chat). Para traducir un Excel conservando todo su diseño usa translate_xlsx.py (sección C), no escribas tu propio script.
 ---
 
 # Skill xlsx (Excel)
@@ -10,10 +10,22 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 
 ## Flujo: 1) Crear/editar  2) Verificar  3) Entregar
 
-### A. Crear un libro nuevo
-1. Escribe `spec.json` (esquema abajo; `PY $S/build_xlsx.py --example` imprime un ejemplo completo).
-2. `PY $S/build_xlsx.py spec.json -o informe.xlsx`  → `Creado informe.xlsx (2 hojas: Resumen, Ventas)`.
+### A. Crear un libro nuevo (camino principal: el MISMO motor que el Chat)
+En el Chat el modelo solo escribe un bloque con JSON y la app arma el Excel con GridCraft (que además calcula las fórmulas); aquí es igual, y por eso el resultado es el mismo.
+1. Escribe `spec.json` con el esquema del Chat (abajo), siguiendo la guía de diseño.
+2. `PY $S/build_chat_xlsx.py spec.json informe.xlsx` → `Creado: informe.xlsx (2 hojas, motor del Chat)`. Valida con el mismo validador del Chat (si algo no cumple lo dice y no genera nada) y nunca sobrescribe.
+   Códigos: 0 ok · 1 corrige el contenido según el mensaje y repite con OTRO nombre de salida · 2 uso · **3 = GridCraft, Node o el motor no están en este equipo: no insistas, sigue con A2**.
 3. Verifica (sección Verificar) y entrega.
+
+Esquema del Chat: `{"sheets":[{"name":"Nombre de hoja","rows":[["Encabezado 1","Encabezado 2"],["dato",123]],"columnFormats":[null,"currency"]}]}` — la primera fila de cada hoja es el encabezado y sale en negrita sola, con fondo propio. Los números van como número de JSON de verdad (nunca como texto, nunca con puntos o comas de miles). `columnFormats` es un array alineado con las columnas (null = sin formato) con alguno de estos valores por columna: "currency" (peso/moneda, con $ y separador de miles), "integer" (separador de miles sin decimales), "decimal" (dos decimales), "percent" — úsalo SIEMPRE que una columna sea plata, cantidad o porcentaje. Para un total u otro cálculo usa una fórmula de Excel de verdad: en vez de un número, la celda va como `{"formula":"SUM(B2:B5)","value":1100000}` — formula es la fórmula (sin el = adelante, en inglés: SUM, AVERAGE, etc.) y value el resultado YA calculado por ti (Excel la recalcula sola al abrir el archivo; value es solo para que la vista previa muestre algo mientras tanto). Hasta 10 hojas, 5.000 filas y 60 columnas por hoja, 2.000 caracteres por celda; un texto que empieza con = se guarda como texto, solo `{"formula":…}` es fórmula.
+Gráficos nativos (se editan en Excel): cada hoja puede traer `"charts":[{"type":"column","range":"A1:C7","title":"Ventas y costos (millones CLP)"}]`. type es column, bar, line, pie o area. range es un rango CONTINUO con encabezados: la primera columna son las categorías (p.ej. los meses) y cada columna siguiente es una serie, con su encabezado como nombre — NO incluyas la fila de total, y si solo quieres graficar algunas columnas, ordénalas una al lado de la otra en la hoja. Opcionales: at (celda de la esquina del gráfico, p.ej. "F2"; sin esto va a la derecha de los datos) y width/height (en puntos, entre 120 y 1200; por defecto 520×300). Hasta 4 por hoja.
+
+#### Guía de diseño (la misma del Chat)
+Diseño del Excel: una tabla por hoja, con el encabezado en la primera fila (corto y sin celdas vacías) y sin filas ni columnas en blanco dentro de los datos; con varias hojas, el resumen va primero y cada hoja se llama por lo que contiene. Ordena las columnas para leer de izquierda a derecha: nombre o identificador, luego cantidades, luego importes y al final los calculados. Los datos son número de JSON de verdad y columnFormats se pone SIEMPRE: currency para plata, integer para cantidades, decimal para medidas y percent para porcentajes (la celda guarda la fracción: 0.22 se ve como 22 %). Los cálculos son fórmulas reales en inglés y con coma (SUM, AVERAGE, IF, VLOOKUP) sobre el rango exacto de los datos (SUM(C2:C9), nunca el total pegado como número), con su value ya calculado; la fila de totales va al final con «Total», «Subtotal», «Suma» o «Promedio» en la primera celda (así sale con fondo y línea propios) y queda fuera del range de un gráfico. Un gráfico solo si muestra algo que la tabla no deja ver (tendencia, partes de un total): column para comparar categorías, line para el tiempo, pie con 5 porciones o menos, area para acumulados; todas las series de un gráfico deben tener la misma unidad y escala (si mezclas unidades con pesos el gráfico queda plano: grafica solo una de las dos), con title claro y at para ponerlo junto a los datos sin taparlos. Textos de celda cortos: un párrafo dentro de una celda se corta. Cada planilla se arma según su propósito, no con una plantilla fija: un presupuesto, un inventario y un registro de gastos no tienen las mismas columnas, totales ni gráficos; piensa qué necesita la persona para decidir y arma eso.
+
+### A2. Ruta de respaldo y casos que el esquema del Chat no cubre
+Si `build_chat_xlsx.py` sale con código 3, o si necesitas **filtros, validaciones de datos, formato condicional, hoja de resumen con KPI, fechas con formato, columnas calculadas con `{r}` o gráficos apilados**, usa el generador propio
+(`PY $S/build_xlsx.py --example` imprime un ejemplo completo): `PY $S/build_xlsx.py spec.json -o informe.xlsx` → `Creado informe.xlsx (2 hojas: Resumen, Ventas)`. El esquema está más abajo; aplica la misma guía de diseño.
 
 ### B. Editar un libro existente (siempre crea copia `-v2`)
 1. Mira qué hay: `PY $S/inspect_xlsx.py original.xlsx` (hojas, rangos, fórmulas, formatos, gráficos) o
@@ -29,6 +41,14 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 ```
    `add_column` no incluye la fila «Total». `{r}` = número de fila. Los estilos, anchos, otras hojas y gráficos existentes se conservan.
 
+### C. Traducir un Excel conservando todo su diseño
+Usa SIEMPRE `translate_xlsx.py` (no abras y guardes el libro con openpyxl: perdería gráficos e imágenes, y no regeneres el libro con `build_xlsx.py`). Trabaja sobre una COPIA y cambia SOLO los textos: las celdas, números, fechas, fórmulas, estilos, anchos, combinaciones, filtros, validaciones, formato condicional, gráficos e imágenes quedan como estaban (las demás partes del archivo se copian byte a byte). El original nunca se toca.
+1. `PY $S/translate_xlsx.py extraer libro.xlsx -o segmentos.json` (código 2 = sin texto). Lista cada texto con su id (`s12` cadena de celda, `i1-3` texto en línea, `c1-0` comentario, `g1-0` texto de gráfico, `d1-0` cuadro de texto) y, para las celdas, dónde está (`celdas`: `Hoja!A1`) para dar contexto. El script deja el texto por traducir en ese JSON de pares: tú solo traduces texto.
+2. Traduce cada `texto` y guarda `traduccion.json` = `{"s12": "texto traducido", ...}` (mismos ids). Un texto con formato mixto viene con etiquetas `<r1>…</r1><r2>…</r2>`: consérvalas alrededor de la parte equivalente. No traduzcas nombres propios, códigos, SKU, cifras, rutas ni correos; usa el mismo término para lo mismo en todo el libro y traduce por tandas de ~40 textos. Encabezados de columna y etiquetas de celda: cortos (el ancho de las columnas NO cambia).
+3. `PY $S/translate_xlsx.py aplicar libro.xlsx -t traduccion.json -o libro-en.xlsx --informe informe.json` — la salida es SIEMPRE un archivo NUEVO con el sufijo del idioma (`-en`, `-es`, `-fr`…); si ya existe, el script se niega. Al terminar compara la estructura de la copia con el original celda por celda (referencia, estilo, tipo y fórmula) y debe decir `ESTRUCTURA: idéntica al original`; si dice «CAMBIÓ» descarta la copia y repite. El informe lista `sin_traduccion`, `formato_simplificado` y `posible_recorte` (celdas donde la traducción ya no cabe en el ancho de su columna: acórtala).
+4. Verifica: `PY $S/recalc_check.py libro-en.xlsx` (las fórmulas siguen dando lo mismo) y `PY $S/check_xlsx.py libro-en.xlsx --render <carpeta nueva>`; MIRA las páginas junto a las del original (títulos de gráfico, encabezados cortados, `#####`).
+5. Declara en «Para revisar» lo que NO se traduce: nombres de hoja (las fórmulas los usan), listas de validación escritas dentro de la regla, nombres definidos y textos que son resultado de una fórmula (se recalculan solos). Un texto traducido puede ser más largo que el original.
+
 ### Verificar (obligatorio antes de entregar)
 - `PY $S/recalc_check.py archivo.xlsx` → calcula las fórmulas con GridCraft (ArtCraft) y lista valores, errores (#DIV/0!, #REF!, #NAME?, #VALUE!)
   y fórmulas que apuntan a celdas vacías. Salida 0 = bien. Revisa que los totales den lo esperado (calcúlalo tú aparte con los datos).
@@ -37,7 +57,7 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 - Si GridCraft (ArtCraft) no está instalado el script lo dice: entonces los valores NO están verificados y debes decirlo en «Para revisar».
 - Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
-## Esquema JSON de build_xlsx.py
+## Esquema JSON de build_xlsx.py (ruta A2)
 ```json
 { "output": "ventas.xlsx",
   "properties": {"title": "Ventas 2026", "author": "Lazunox"},
