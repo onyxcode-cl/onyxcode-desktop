@@ -31,7 +31,9 @@ const BOOLEAN_KEYS = [
   // Tareas en Windows (WSL2): apaga la bandera `tasksWin` para toda la organización (plan paridad Windows, W1).
   'disableWslTasks',
   // Modo unificado (puente de apps): apaga el control de apps desde el chat aislado. No es `disableFullAccess`.
-  'disableComputerUse'
+  'disableComputerUse',
+  // Comandos aprobados fuera del aislamiento (`equipo_ejecutar`): como `allowUnsandboxedCommands: false` de Claude Code.
+  'disableHostCommands'
 ] as const
 
 /** Política con todas las restricciones booleanas activas (archivo presente pero inválido). */
@@ -95,6 +97,11 @@ export function parseManagedPolicy(raw: unknown, source: string, platform: NodeJ
  */
 export function isComputerUseDisabled(policy: ManagedPolicy | null | undefined): boolean {
   return policy?.disableComputerUse === true
+}
+
+/** Política gestionada: `disableHostCommands` apaga `equipo_ejecutar` (falla cerrado: política ilegible = apagado). */
+export function isHostCommandsDisabled(policy: ManagedPolicy | null | undefined): boolean {
+  return policy?.disableHostCommands === true
 }
 
 /** Ruta del `managed.json` del sistema (sin override de desarrollo). */

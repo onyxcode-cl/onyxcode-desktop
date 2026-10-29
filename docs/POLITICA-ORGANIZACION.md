@@ -12,7 +12,7 @@ empaquetada esa variable se ignora. El archivo se relee cuando cambia (mtime/tam
 
 Este documento describe el bloque **`remote`** (control remoto desde el celular). Las claves de Tareas
 (`disableFullAccess`, `allowedFolderRoots`, `disableCustomHosts`, `extraAllowedHosts`, `disableAlwaysAllow`,
-`disableRoutines`, `disableAutoMode`, `disableBrowser`, `disableWslTasks`, `disableComputerUse`, `maxAutoArchiveDays`) viven en el mismo archivo y se leen en
+`disableRoutines`, `disableAutoMode`, `disableBrowser`, `disableWslTasks`, `disableComputerUse`, `disableHostCommands`, `maxAutoArchiveDays`) viven en el mismo archivo y se leen en
 `src/main/tasks/policy.ts`.
 
 `disableComputerUse` (booleano) apaga **el control de apps desde el chat aislado** (el puente de apps del modo unificado) para
@@ -162,3 +162,5 @@ icacls (Join-Path $dir 'managed.json') /inheritance:r /grant:r 'SYSTEM:(F)' 'Adm
 3. Borra el archivo: la función vuelve a depender solo de los ajustes del usuario.
 
 Aún no se ha probado con Jamf ni Intune reales; las pruebas automáticas usan archivos temporales (`src/main/remote/org-policy*.test.ts`).
+
+`disableHostCommands` (booleano) apaga **`equipo_ejecutar`**, la herramienta con la que la IA de Overdrive propone un comando exacto que corre en el equipo (fuera del aislamiento) tras la aprobación de la persona. Con `true`, o con la política ilegible, la herramienta ni se ofrece. Equivale a `allowUnsandboxedCommands: false` de Claude Code. No afecta a `disableFullAccess`.

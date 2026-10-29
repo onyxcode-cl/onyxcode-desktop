@@ -917,6 +917,8 @@ export interface ManagedPolicy {
   disableWslTasks?: boolean
   /** Modo unificado: apaga el control de apps desde el chat aislado (puente de apps) para toda la organización. No afecta a `disableFullAccess`. Fail-closed. */
   disableComputerUse?: boolean
+  /** Apaga la herramienta `equipo_ejecutar` (comandos aprobados que corren fuera del aislamiento de las Tareas) para toda la organización. Fail-closed. */
+  disableHostCommands?: boolean
 }
 
 // ───────────────────────────── Lote C: preferencias de computer use ─────────────────────────────
