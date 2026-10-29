@@ -267,11 +267,11 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
               aria-label={p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
               className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:whitespace-nowrap desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
             >
-              {/* Panel estrecho (< 28 rem): solo el icono (el nombre sigue en el tooltip y en aria-label); ancho: solo el texto, como siempre. */}
-              <span aria-hidden className="hidden desk:@max-[28rem]:inline-flex desk:@max-[28rem]:align-middle">
+              {/* Escritorio: siempre el icono, con el ancho que tenga el panel (el nombre sigue en el tooltip y en aria-label), para que se vea igual en Mac y en Windows; el celular conserva el texto. */}
+              <span aria-hidden className="hidden desk:inline-flex desk:align-middle">
                 {ALL_PANELS.find((x) => x.id === p)?.icon}
               </span>
-              <span className="inline-block max-w-32 truncate align-bottom desk:@max-[28rem]:hidden">
+              <span className="inline-block max-w-32 truncate align-bottom desk:hidden">
                 {p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
               </span>
               {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
