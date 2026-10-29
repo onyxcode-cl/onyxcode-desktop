@@ -129,6 +129,7 @@ export const tasks = {
   'tasks.sidebar.project': 'Proyecto e instrucciones',
   'tasks.groups.newIn': 'Nueva tarea en {name}',
   'tasks.groups.thisComputer': 'Este equipo',
+  'tasks.groups.empty': 'Aún no hay tareas',
   'tasks.groups.addFolder': 'Agregar carpeta',
   'tasks.bridge.missing': 'El puente de las tareas no está disponible (falta window.api.tasks en el preload).',
   'tasks.notify.failed': 'La tarea terminó con un error',

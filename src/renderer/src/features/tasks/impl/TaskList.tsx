@@ -718,13 +718,20 @@ export function TaskList({ flat = false }: { flat?: boolean } = {}): React.JSX.E
             {openError}
           </p>
         )}
-        {nothingToShow && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && !isRemoteSurface() && (
-          <SidebarEmpty
-            icon={<ListChecks size={18} strokeWidth={1.75} />}
-            text={emptyText}
-            hint={!!folder && !showArchived && !searching ? 'tasks' : false}
-          />
+        {flat && nothingToShow && !loading && !searching && !showArchived && (
+          <p className="px-2 py-1 text-meta text-subtle">{tr('tasks.groups.empty')}</p>
         )}
+        {nothingToShow &&
+          !loading &&
+          !(flat && !searching && !showArchived) &&
+          (!searching || q.length < MIN_QUERY_LENGTH) &&
+          !isRemoteSurface() && (
+            <SidebarEmpty
+              icon={<ListChecks size={18} strokeWidth={1.75} />}
+              text={emptyText}
+              hint={!!folder && !showArchived && !searching ? 'tasks' : false}
+            />
+          )}
         {nothingToShow && !loading && (!searching || q.length < MIN_QUERY_LENGTH) && isRemoteSurface() && (
           <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}

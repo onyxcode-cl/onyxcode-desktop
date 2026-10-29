@@ -132,6 +132,7 @@ export const tasks = {
   'tasks.sidebar.project': 'Project and instructions',
   'tasks.groups.newIn': 'New task in {name}',
   'tasks.groups.thisComputer': 'This computer',
+  'tasks.groups.empty': 'No tasks yet',
   'tasks.groups.addFolder': 'Add folder',
   'tasks.bridge.missing': 'The Overdrive bridge isn’t available (window.api.tasks is missing in the preload).',
   'tasks.notify.failed': 'The task finished with an error',
