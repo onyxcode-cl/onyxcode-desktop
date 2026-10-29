@@ -35,10 +35,13 @@ describe('ComputerService.helperPath en pruebas', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'lzx-hp-'))
     dirs.push(tmp)
     h.app = tmp
-    const bin = join(tmp, 'resources', 'computer-use', 'bin')
+    // Misma ruta que `helperCandidates` de cada plataforma (macOS: bin/cu-helper; Windows: win/bin/cu-helper.exe).
+    const win = process.platform === 'win32'
+    const bin = join(tmp, 'resources', 'computer-use', ...(win ? ['win', 'bin'] : ['bin']))
+    const name = win ? 'cu-helper.exe' : 'cu-helper'
     mkdirSync(bin, { recursive: true })
-    writeFileSync(join(bin, 'cu-helper'), '#!/bin/sh\n', { mode: 0o755 })
+    writeFileSync(join(bin, name), '#!/bin/sh\n', { mode: 0o755 })
     const svc = new ComputerService()
-    expect(svc.helperPath()).toBe(join(bin, 'cu-helper'))
+    expect(svc.helperPath()).toBe(join(bin, name))
   })
 })
