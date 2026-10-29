@@ -50,7 +50,7 @@ export function TasksProjectCard({ busy }: { busy: boolean }): React.JSX.Element
 }
 
 /** El mismo nivel como sello junto a los demás chips de la caja de escribir. */
-export function TasksProjectSeal({ busy }: { busy: boolean }): React.JSX.Element | null {
+export function TasksProjectSeal({ busy, iconOnly = false }: { busy: boolean; iconOnly?: boolean }): React.JSX.Element | null {
   const folder = useTasks((s) => s.folder)
   const unified = useUnifiedApps()
   const scope = useScope(busy)
@@ -63,6 +63,7 @@ export function TasksProjectSeal({ busy }: { busy: boolean }): React.JSX.Element
       onPickFull={scope.canFull ? scope.pick : undefined}
       busy={busy}
       folders={folders}
+      iconOnly={iconOnly}
       onAccessSaved={() => void applyAccessChange(folder)}
     />
   )

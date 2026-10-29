@@ -723,7 +723,7 @@ export function TasksWorkspace(): React.JSX.Element {
           >
             {(phase === 'ready' || phase === 'error') && (
               <>
-                <AccessModeSwitch disabled={folderBusy} />
+                <AccessModeSwitch disabled={folderBusy} plain />
                 <span className="text-subtle" aria-hidden>
                   /
                 </span>
@@ -739,7 +739,7 @@ export function TasksWorkspace(): React.JSX.Element {
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
-              {(phase === 'ready' || phase === 'error') && <TasksProjectSeal busy={folderBusy} />}
+              {(phase === 'ready' || phase === 'error') && <TasksProjectSeal busy={folderBusy} iconOnly />}
               {/* Los paneles, en una sola cápsula; lo demás va en «⋯» (igual que en Code). */}
               <div
                 role="group"

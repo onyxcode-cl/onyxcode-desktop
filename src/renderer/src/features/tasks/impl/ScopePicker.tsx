@@ -43,7 +43,7 @@ export function useScope(disabled?: boolean): {
  * Modo unificado: el alcance ya no se «cambia»; el chip solo dice dónde trabaja: «Carpeta: <nombre>», «Sin carpeta elegida»
  * (chat con carpeta propia automática) o «Sin aislamiento (avanzado)» con un clic para volver a una carpeta.
  */
-export function UnifiedScopeChip({ className = '' }: { className?: string }): React.JSX.Element {
+export function UnifiedScopeChip({ className = '', plain = false }: { className?: string; plain?: boolean }): React.JSX.Element {
   const t = useT()
   const conn = useTasks((s) => s.conn)
   const requested = useTasks((s) => s.fullAccess)
@@ -71,7 +71,9 @@ export function UnifiedScopeChip({ className = '' }: { className?: string }): Re
       ? t('tasksComputer.unified.noFolderChat')
       : isChatFolderForDisplay(folder)
         ? t(date ? 'tasksComputer.unified.chatFolderNameDate' : 'tasksComputer.unified.chatFolderName', { date: date ?? '' })
-        : t('tasksComputer.unified.folder', { name: baseName(folder) })
+        : plain
+          ? baseName(folder)
+          : t('tasksComputer.unified.folder', { name: baseName(folder) })
   // Con un chat abierto el chip es un menú: el chat no cambia de carpeta, se puede seguir en otra con una tarea nueva.
   if (chatOpen) {
     return (

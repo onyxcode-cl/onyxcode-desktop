@@ -75,7 +75,7 @@ export const VISION_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'kim
 // ───────────────────────────── Selector de modo ─────────────────────────────
 
 /** Chip del header con el modo de acceso de la carpeta (Sandbox / Control total). */
-export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JSX.Element | null {
+export function AccessModeSwitch({ disabled, plain = false }: { disabled?: boolean; plain?: boolean }): React.JSX.Element | null {
   const t = useT()
   const conn = useTasks((s) => s.conn)
   const phase = useTasks((s) => s.phase)
@@ -144,7 +144,7 @@ export function AccessModeSwitch({ disabled }: { disabled?: boolean }): React.JS
     scope.pick(fullAccess)
   }
   // Modo unificado: el chip solo dice dónde trabaja («Carpeta: <nombre>» / «Sin carpeta elegida»); ya no se cambia de «modo» aquí.
-  if (unified) return <UnifiedScopeChip className="px-2" />
+  if (unified) return <UnifiedScopeChip className="px-2" plain={plain} />
 
   return (
     <div ref={rootRef} className="relative">

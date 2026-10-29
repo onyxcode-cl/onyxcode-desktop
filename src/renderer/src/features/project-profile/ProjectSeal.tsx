@@ -10,8 +10,9 @@ export function ProjectSeal({
   onPickFull,
   busy,
   folders,
-  onAccessSaved
-}: Omit<ProjectDialogProps, 'onClose'>): React.JSX.Element {
+  onAccessSaved,
+  iconOnly = false
+}: Omit<ProjectDialogProps, 'onClose'> & { iconOnly?: boolean }): React.JSX.Element {
   const profile = useProjectProfile((s) => s.byFolder[folder])
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -22,7 +23,7 @@ export function ProjectSeal({
   }, [folder])
   return (
     <>
-      <AccessSeal level={effectiveLevel(profile, full)} short onClick={() => setOpen(true)} />
+      <AccessSeal level={effectiveLevel(profile, full)} short iconOnly={iconOnly} onClick={() => setOpen(true)} />
       {open && (
         <ProjectDialog
           folder={folder}

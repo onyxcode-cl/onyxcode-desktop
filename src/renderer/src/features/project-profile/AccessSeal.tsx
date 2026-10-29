@@ -14,20 +14,29 @@ export const LEVEL_ICON = { aislado: Lock, comandos: ShieldHalf, total: Bolt } a
 export function AccessSeal({
   level,
   short = false,
+  iconOnly = false,
   onClick
 }: {
   level: AccessLevel
   short?: boolean
+  /** Solo el icono de color (el nombre va en el tooltip): para cabeceras donde todo lo demás son iconos. */
+  iconOnly?: boolean
   onClick?: () => void
 }): React.JSX.Element {
   const t = useT()
   const Icon = LEVEL_ICON[level]
   const label = t(short ? `project.level.short.${level}` : `project.level.${level}`)
-  const cls = `inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-meta font-medium whitespace-nowrap ${LEVEL_TONE[level].chip}`
+  const cls = `inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border ${iconOnly ? 'w-7 justify-center' : 'px-2.5'} text-meta font-medium whitespace-nowrap ${LEVEL_TONE[level].chip}`
   return onClick ? (
-    <button type="button" className={`no-drag ${cls} hover:brightness-110`} onClick={onClick} title={t('project.card.edit')}>
-      <Icon size={12} aria-hidden />
-      {label}
+    <button
+      type="button"
+      className={`no-drag ${cls} hover:brightness-110`}
+      onClick={onClick}
+      title={iconOnly ? `${label} · ${t('project.card.edit')}` : t('project.card.edit')}
+      aria-label={iconOnly ? label : undefined}
+    >
+      <Icon size={iconOnly ? 13 : 12} aria-hidden />
+      {!iconOnly && label}
     </button>
   ) : (
     <span className={cls}>
