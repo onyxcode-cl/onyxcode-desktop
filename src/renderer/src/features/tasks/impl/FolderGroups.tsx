@@ -13,12 +13,12 @@ import { SidebarTreeRegion, useSidebarTree } from '../../../components/SidebarTr
 import { useSessions } from '../../../stores/sessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { confirmDialog } from '../../../components/ConfirmDialog'
-import { chooseFolder, forgetFolder, newTask, selectFolder } from './actions'
+import { chooseFolder, forgetFolder, newTask } from './actions'
 import { loadChatIndex, useChatIndex } from './chatIndex'
 import { sdkDirOf } from './path-map'
-import { setProjectPanelOpen, useTasks } from './store'
+import { connectFolder, rememberFullAccess, setProjectPanelOpen, useTasks } from './store'
 import { IndexRow, TaskList } from './TaskList'
-import { isChatFolderForDisplay } from './unified'
+import { isChatFolderForDisplay, useUnified } from './unified'
 import { baseName } from './util'
 
 const CLOSED_KEY = 'tasks.folderGroups.closed'
@@ -109,7 +109,11 @@ function Header({
   const folderPath = group.path
   const startNew = (): void => {
     if (!folderPath) return newTask()
-    void selectFolder(folderPath).then(() => newTask())
+    // Desde la barra lateral una carpeta se abre SIEMPRE aislada (como al abrir uno de sus chats): nunca salta sola a Control total por algo
+    // recordado de antes; ese cambio se hace a propósito, en la Ficha del proyecto.
+    useUnified.setState({ wantAuto: false })
+    rememberFullAccess(folderPath, false)
+    void connectFolder(folderPath, false).then(() => newTask())
   }
   return (
     <div
