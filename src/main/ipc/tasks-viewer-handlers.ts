@@ -29,6 +29,8 @@ function readHeader(path: string): Uint8Array {
 }
 
 let tasksValidatorRegistered = false
+/** Número de la última apertura: un cierre (o otra apertura) mientras la vista web de ArtCraft aún cargaba invalida la anterior. */
+let openGeneration = 0
 
 export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, tasks, send } = ctx
@@ -43,6 +45,7 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
       registerViewerPathValidator((p) => tasks.assertInsideApproved(p))
     }
     installViewerScheme()
+    const generation = ++openGeneration
     const real = tasks.assertInsideApproved(path)
     const kind = sniffDocKind(real, readHeader(real))
     if (!kind) return { ok: false, reason: 'unsupported' }
@@ -50,17 +53,21 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
     const token = issueToken({ path: real, kind })
     // Con el programa de ArtCraft instalado, el archivo se muestra en su versión WEB (misma pantalla y motor que el programa de escritorio).
     // La ruta ya se validó arriba (carpeta aprobada, tipo por bytes mágicos, tope de tamaño); si no está instalado o falla, el visor de siempre.
-    if (
-      await openInCraftWeb(
-        kind,
-        real,
-        real
-          .split(/[\\/]/)
-          .pop()
-          ?.replace(/\.[^.]+$/, '') ?? 'documento'
-      )
+    const openedInCraft = await openInCraftWeb(
+      kind,
+      real,
+      real
+        .split(/[\\/]/)
+        .pop()
+        ?.replace(/\.[^.]+$/, '') ?? 'documento'
     )
-      return { ok: true, token, kind }
+    // La persona salió de la vista (o abrió otro archivo) mientras cargaba: no se deja nada abierto ni se abre el visor de respaldo
+    // con un token ya revocado (quedaba pegado a la derecha mostrando «No se pudo mostrar el documento»).
+    if (generation !== openGeneration) {
+      if (openedInCraft) panelClose()
+      return { ok: false, reason: 'unsupported' }
+    }
+    if (openedInCraft) return { ok: true, token, kind }
     openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${token}&kind=${kind}&lang=${lang}&theme=${theme}`)
     useClassicViewer()
     return { ok: true, token, kind }
@@ -72,6 +79,7 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
   })
 
   handle('tasks:viewer:close', () => {
+    openGeneration++
     revokeActive()
     panelClose()
   })

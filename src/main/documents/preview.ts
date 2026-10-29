@@ -2,7 +2,8 @@
  * Vista previa en imágenes de un documento ya creado (la herramienta `documentos_renderizar`): PowerPoint con DeckCraft y Word con
  * WordCraft, los mismos programas de ArtCraft que arman el archivo. Se ejecutan en main (fuera del sandbox) con el entorno mínimo de
  * `runCraft`, sobre una COPIA en una carpeta temporal nueva que se borra al terminar. Devuelve PNG ya acotados (páginas y bytes).
- * Excel y PDF no tienen render a imagen en ArtCraft: devuelven `null` y la herramienta lo dice.
+ * Excel (GridCraft → PDF) y PDF no tienen render a imagen en ArtCraft: pasan por el PDF y `rasterize` (pdf.js en una ventana oculta de la
+ * app, igual en macOS y Windows). Sin programa o sin rasterizador devuelven `null` y la herramienta lo dice.
  */
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -16,7 +17,11 @@ export const PREVIEW_SCALE = '0.6'
 export interface PreviewTools {
   deckcraft: string | null
   wordcraft: string | null
+  gridcraft?: string | null
 }
+
+/** PDF → PNG (en la app: `pdf-raster.ts`; se inyecta para poder probar sin Electron). */
+export type Rasterize = (pdf: Buffer) => Promise<{ images: Buffer[]; pages: number } | null>
 
 export interface PreviewResult {
   images: Buffer[]
@@ -41,7 +46,7 @@ export async function renderPreview(
   tipo: 'pptx' | 'docx' | 'xlsx' | 'pdf',
   bytes: Buffer,
   tools: PreviewTools,
-  opts: { timeoutMs?: number; run?: typeof runCraft } = {}
+  opts: { timeoutMs?: number; run?: typeof runCraft; rasterize?: Rasterize } = {}
 ): Promise<PreviewResult | null> {
   const run = opts.run ?? runCraft
   const timeoutMs = opts.timeoutMs ?? 90_000
@@ -79,6 +84,36 @@ export async function renderPreview(
       }
       const capped = capImages(all)
       return { images: capped.images, pages: all.length, truncated: capped.truncated || all.length > MAX_PREVIEW_PAGES }
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  }
+  if (tipo === 'pdf' && opts.rasterize) {
+    const r = await opts.rasterize(bytes)
+    if (!r || r.images.length === 0) return null
+    const capped = capImages(r.images)
+    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
+  }
+  if (tipo === 'xlsx' && tools.gridcraft && opts.rasterize) {
+    const dir = await mkdtemp(join(tmpdir(), 'lazunox-preview-'))
+    try {
+      const src = join(dir, 'libro.xlsx')
+      await writeFile(src, bytes)
+      const pdfPath = join(dir, 'libro.pdf')
+      try {
+        // Mismas órdenes que `gridToPdf` (chat-grid.ts), con el ejecutor inyectable.
+        await run(
+          tools.gridcraft,
+          ['run', '--in', src, '--cmd', `file.exportPdf=${JSON.stringify({ path: pdfPath, sheets: 'all', fitToPage: true })}`, '--quiet'],
+          timeoutMs
+        )
+      } catch {
+        return null
+      }
+      const r = await opts.rasterize(await readFile(pdfPath))
+      if (!r || r.images.length === 0) return null
+      const capped = capImages(r.images)
+      return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

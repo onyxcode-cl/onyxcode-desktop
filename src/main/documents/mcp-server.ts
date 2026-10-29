@@ -110,8 +110,8 @@ export const PREVIEW_TOOL = {
   name: 'renderizar',
   description:
     'Devuelve imágenes (una por diapositiva o página, hasta 12) de un documento que CREASTE con `crear` en esta tarea, para que lo mires y corrijas ' +
-    'lo que se vea mal (textos cortados, contraste, cosas superpuestas) antes de entregarlo. Solo funciona con pptx y docx, y solo con archivos ' +
-    'creados por `crear`; `ruta` es la que devolvió `crear`. Para xlsx y pdf no hay imágenes: revisa el contenido con las skills.',
+    'lo que se vea mal (textos cortados, contraste, cosas superpuestas) antes de entregarlo. Funciona con pptx, docx, xlsx y pdf, y solo con archivos ' +
+    'creados por `crear`; `ruta` es la que devolvió `crear`.',
   inputSchema: {
     type: 'object',
     properties: { ruta: { type: 'string', description: 'Ruta devuelta por `crear`.' } },
@@ -400,12 +400,6 @@ export class DocumentsMcpServer {
       this.audit({ at: t0, tool: 'renderizar', result: 'rechazado', detail: 'no-creado', ms: 0 })
       return this.text('Solo se puede renderizar un documento creado con `crear` en esta tarea: usa la ruta que devolvió `crear`.', true)
     }
-    if (entry.tipo !== 'pptx' && entry.tipo !== 'docx') {
-      return this.text(
-        'Solo hay vista previa en imágenes para pptx y docx. Para xlsx y pdf revisa el contenido con las comprobaciones de la skill.',
-        true
-      )
-    }
     quota.previews = quota.previews.filter((x) => t0 - x < 3_600_000)
     if (quota.previews.length >= MAX_PREVIEWS_PER_HOUR) {
       this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cuota', ms: 0 })
@@ -448,7 +442,7 @@ export class DocumentsMcpServer {
         bytes: res.images.reduce((n, b) => n + b.length, 0),
         ms: now() - t0
       })
-      const unit = entry.tipo === 'pptx' ? 'diapositiva(s)' : 'página(s)'
+      const unit = entry.tipo === 'pptx' ? 'diapositiva(s)' : entry.tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
       const note = res.truncated ? ` Se muestran las primeras ${res.images.length}.` : ''
       return {
         content: [

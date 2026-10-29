@@ -385,13 +385,19 @@ describe('renderizar', () => {
     expect(previews).toEqual([])
   })
 
-  it('xlsx y pdf no tienen imágenes: lo dice claro', async () => {
+  it('xlsx y pdf también se renderizan (pasan por el PDF)', async () => {
     const { token, port } = await s2.clientFor({ folder })
-    const created = await call(port, token, { tipo: 'xlsx', nombre: 'a', spec: XLSX })
-    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
-    const r = await call(port, token, { ruta }, 'renderizar')
-    expect(r.body.result.isError).toBe(true)
-    expect(textOf(r)).toContain('pptx y docx')
+    for (const args of [
+      { tipo: 'xlsx', nombre: 'libro', spec: XLSX },
+      { tipo: 'pdf', nombre: 'guia', html: '<p>hola</p>' }
+    ]) {
+      const created = await call(port, token, args)
+      const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+      const r = await call(port, token, { ruta }, 'renderizar')
+      expect(r.body.result.isError).toBeUndefined()
+      expect(r.body.result.content[1].type).toBe('image')
+    }
+    expect(previews.map((p) => p.tipo)).toEqual(['xlsx', 'pdf'])
   })
 
   it('sin render disponible (falta ArtCraft) explica qué hacer', async () => {

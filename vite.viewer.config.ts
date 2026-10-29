@@ -21,6 +21,8 @@ export default defineConfig({
     outDir: resolve(__dirname, 'out/viewer'),
     emptyOutDir: true,
     modulePreload: false,
-    sourcemap: false
+    sourcemap: false,
+    // Dos páginas: el visor y el rasterizador oculto de la herramienta `documentos` (PDF → PNG).
+    rollupOptions: { input: { index: resolve(__dirname, 'src/viewer/index.html'), raster: resolve(__dirname, 'src/viewer/raster.html') } }
   }
 })

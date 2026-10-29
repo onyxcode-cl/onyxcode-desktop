@@ -57,10 +57,54 @@ describe('renderPreview', () => {
     ).rejects.toThrow()
   })
 
-  it('xlsx, pdf o sin programa instalado → null', async () => {
+  it('sin rasterizador o sin programa instalado → null', async () => {
     expect(await renderPreview('xlsx', Buffer.from('x'), tools)).toBeNull()
     expect(await renderPreview('pdf', Buffer.from('x'), tools)).toBeNull()
     expect(await renderPreview('pptx', Buffer.from('x'), { deckcraft: null, wordcraft: null })).toBeNull()
+    expect(
+      await renderPreview('xlsx', Buffer.from('x'), { deckcraft: null, wordcraft: null, gridcraft: null }, { rasterize: async () => null })
+    ).toBeNull()
+  })
+
+  it('pdf: lo rasteriza directamente', async () => {
+    const res = await renderPreview('pdf', Buffer.from('%PDF'), tools, { rasterize: async () => ({ images: [png(1), png(2)], pages: 5 }) })
+    expect(res!.images.length).toBe(2)
+    expect(res!.pages).toBe(5)
+    expect(res!.truncated).toBe(true)
+  })
+
+  it('xlsx: GridCraft lo exporta a PDF y ese PDF se rasteriza', async () => {
+    const gridTools = { ...tools, gridcraft: '/fake/gridcraft-cli' }
+    let rasterized: Buffer | null = null
+    const res = await renderPreview('xlsx', Buffer.from('x'), gridTools, {
+      run: async (_bin, args) => {
+        const cmd = args[args.indexOf('--cmd') + 1]!
+        const out = JSON.parse(cmd.slice('file.exportPdf='.length)).path as string
+        writeFileSync(out, Buffer.from('%PDF-FALSO'))
+      },
+      rasterize: async (pdf) => {
+        rasterized = pdf
+        return { images: [png(1)], pages: 1 }
+      }
+    })
+    expect(rasterized!.toString()).toBe('%PDF-FALSO')
+    expect(res!.images.length).toBe(1)
+    expect(res!.truncated).toBe(false)
+  })
+
+  it('xlsx: si GridCraft no exporta, null', async () => {
+    const res = await renderPreview(
+      'xlsx',
+      Buffer.from('x'),
+      { ...tools, gridcraft: '/fake/g' },
+      {
+        run: async () => {
+          throw new Error('roto')
+        },
+        rasterize: async () => ({ images: [png(1)], pages: 1 })
+      }
+    )
+    expect(res).toBeNull()
   })
 
   it('respeta el tope de bytes', async () => {
