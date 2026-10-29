@@ -387,7 +387,7 @@ async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Prom
  * así que si el foco cambió sin que el modelo se diera cuenta (el "casi" de WhatsApp: otra ventana
  * pasó al frente justo antes de escribir), el texto se va a la app equivocada sin ningún aviso.
  * `expect_app` (F8-B149, opcional): si se da, compara contra la app en primer plano (nombre o bundle
- * id, sin distinguir mayúsculas, substring) ANTES de escribir nada — mismo criterio defensivo que ya
+ * id, sin distinguir mayúsculas, substring; o el mismo id estable si el nombre dado se resuelve a la app al frente) ANTES de escribir nada — mismo criterio defensivo que ya
  * usa `app_press` con `expectRole`/`expectTitle`.
  */
 async function checkExpectApp(expectApp: unknown): Promise<void> {
@@ -396,6 +396,13 @@ async function checkExpectApp(expectApp: unknown): Promise<void> {
   const front = await appFrontmost()
   const haystack = `${front.name ?? ''} ${front.bundleId ?? ''}`.toLowerCase()
   if (!haystack.includes(expected.toLowerCase())) {
+    // F8-B238: una app tiene varios nombres (visible/localizado «Bloc de notas», ejecutable «Notepad.exe», bundle id…). Si el nombre
+    // dado se RESUELVE (con el mismo resolutor que usa la concesión) a la MISMA clave estable de la app al frente, es la misma app.
+    // Solo igualdad exacta de identidad: nunca prefijos ni subcadenas, y sin clave (no identificada) no cuenta.
+    if (front.bundleId) {
+      const ref = await resolveApp(expected).catch(() => null)
+      if (ref?.found && ref.bundleId && ref.bundleId.toLowerCase() === front.bundleId.toLowerCase()) return
+    }
     throw new Error(
       `Esperabas escribir en «${expected}», pero la app en primer plano es «${front.name ?? front.bundleId ?? 'desconocida'}». ` +
         'No se escribió nada — revisa con una captura antes de reintentar.'

@@ -370,7 +370,9 @@ const SCENARIOS: Scenario[] = [
       { tool: 'key', args: { keys: 'return', expect_app: 'notes' } }, // sin distinguir mayúsculas → pulsa
       { tool: 'key', args: { keys: 'escape', expect_app: 'Slack' } }, // no coincide → NO pulsa
       { tool: 'type_text', args: { text: 'sin-expect' } } // sin expect_app → de siempre, sin chequeo
-    ]
+    ],
+    // F8-B238: al no coincidir el texto se consulta al resolutor; WhatsApp y Slack no existen (el falso por defecto resolvería todo a Notes).
+    script: { responses: { 'resolve-app': { out: { name: 'x', bundleId: '', found: false } } } }
   }
 ]
 

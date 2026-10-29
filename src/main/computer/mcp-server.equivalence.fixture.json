@@ -2495,7 +2495,10 @@
         "text": "Esperabas escribir en «WhatsApp», pero la app en primer plano es «Notes». No se escribió nada — revisa con una captura antes de reintentar.",
         "parts": ["text"]
       },
-      "helper": ["{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"resolve-app\",\"args\":[\"WhatsApp\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
       "actions": [],
       "side": ["GET /control-mode?", "GET /plan-status?"]
     },
@@ -2538,7 +2541,10 @@
         "text": "Esperabas escribir en «Slack», pero la app en primer plano es «Notes». No se escribió nada — revisa con una captura antes de reintentar.",
         "parts": ["text"]
       },
-      "helper": ["{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"],
+      "helper": [
+        "{\"cmd\":\"frontmost\",\"args\":[],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}",
+        "{\"cmd\":\"resolve-app\",\"args\":[\"Slack\"],\"flags\":[\"--instant\",\"--char-delay\",\"7\"]}"
+      ],
       "actions": [],
       "side": ["GET /control-mode?", "GET /plan-status?"]
     },
