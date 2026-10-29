@@ -10,6 +10,7 @@
  * (`{ servers: { <nombre>: { tasks, askEachTool } } }`). NUNCA se escribe en
  * `userData/opencode/opencode.json`: OpenCode valida ese archivo de forma estricta.
  */
+import { RESERVED_MCP_NAMES } from '../documents/names'
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -156,6 +157,11 @@ export function tasksMcpContribution(opts: { sandboxed: boolean; registerRoute?:
   for (const [name, entry] of Object.entries(servers)) {
     const f = flags[name]
     if (!f?.tasks || entry.enabled === false) continue
+    if (RESERVED_MCP_NAMES.has(name)) {
+      // `documentos` es la herramienta propia de la app: un MCP del usuario con ese nombre la taparía.
+      out.blocked.push(name)
+      continue
+    }
     if (catalogLocal.has(name)) {
       // Programas de terceros instalados desde el catálogo (F8-B186): nunca dentro de Overdrive, ni con sandbox ni sin él.
       out.blocked.push(name)

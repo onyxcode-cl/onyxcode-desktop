@@ -61,6 +61,8 @@ import {
 } from '@shared/ipc-tasks'
 import { embeddedBrowser } from '../embedded-browser/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
+import { documentsMcp } from '../documents'
+import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
@@ -1289,7 +1291,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     folder: string,
     fullAccess: boolean,
     extras: ExtraFolder[]
-  ): Promise<{ config: Record<string, unknown>; mcpProxy: McpProxy | null; browserToken: string | null }> {
+  ): Promise<{ config: Record<string, unknown>; mcpProxy: McpProxy | null; browserToken: string | null; documentsToken: string | null }> {
     // Proxy MCP FUERA del sandbox (F8-B79): el servidor sandboxeado solo recibe URL loopback + token de sesión; los
     // secretos reales (token del navegador, cabeceras de los MCP del usuario) se quedan en main. Solo en sandbox.
     let mcpProxy: McpProxy | null = null
@@ -1311,7 +1313,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     fullAccess: boolean,
     extras: ExtraFolder[],
     mcpProxy: McpProxy | null
-  ): Promise<{ config: Record<string, unknown>; mcpProxy: McpProxy | null; browserToken: string | null }> {
+  ): Promise<{ config: Record<string, unknown>; mcpProxy: McpProxy | null; browserToken: string | null; documentsToken: string | null }> {
     let browserMcp: Record<string, unknown> | null = null
     let computerMcp: Record<string, unknown> | null = null
     // Idempotente: nos asegura la implementación real del navegador integrado la primera vez que
@@ -1342,6 +1344,33 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       } catch (err) {
         console.error('[tasks] el navegador integrado no entra en el sandbox:', err instanceof Error ? err.message : 'error')
         browserMcp = null
+      }
+    }
+    // Herramienta `documentos` (Word, Excel, PowerPoint y PDF con el MISMO motor que el Chat; también en Windows, donde la distro no lo tiene):
+    // una ruta más del MISMO proxy (mismo puerto, nada nuevo que abrir). El agente solo recibe la URL del proxy y su token de sesión; el
+    // token real y la carpeta autorizada se quedan en main. Si algo falla, el servidor arranca sin ella (los scripts de las skills siguen).
+    let documentsCfg: Record<string, unknown> | null = null
+    let realDocumentsToken: string | null = null
+    if (mcpProxy && !fullAccess) {
+      try {
+        const real = await documentsMcp
+          .configFor({ folder, toAgentPath: this.win ? (p: string) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined })
+          .catch(() => null)
+        realDocumentsToken = bearerOfMcpConfig(real)
+        if (real && typeof real.url === 'string' && realDocumentsToken) {
+          const route = mcpProxy.addRoute({
+            name: DOCUMENTS_ROUTE_NAME,
+            url: real.url,
+            exactPath: true,
+            headers: { Authorization: `Bearer ${realDocumentsToken}` }
+          })
+          documentsCfg = { ...real, url: route.url, headers: route.headers }
+        }
+      } catch (err) {
+        console.error('[tasks] la herramienta de documentos no entra en el sandbox:', err instanceof Error ? err.message : 'error')
+        documentsCfg = null
+        if (realDocumentsToken) documentsMcp.revokeToken(realDocumentsToken)
+        realDocumentsToken = null
       }
     }
     // Puente de apps del modo unificado (solo con LAZUNOX_UNIFIED_APPS=1 y solo en el servidor aislado): una ruta más del MISMO proxy
@@ -1405,6 +1434,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       browserMcp,
       computerMcp,
       bridgeMcp,
+      documentsMcp: documentsCfg,
       // Con el puente de apps, el agente aislado recibe la instrucción de cómo pedirlas (sin puente: nada, prompt idéntico).
       instructions: bridgeMcp ? [writeUnifiedAppsPrompt(getOpencodeConfigDir())].filter((p): p is string => !!p) : undefined,
       mcpContribution: c,
@@ -1413,7 +1443,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // Windows: las carpetas vinculadas se conceden con su ruta DENTRO de la distro (`/win/d/…`), no con la de Windows.
       toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })
-    return { config, mcpProxy, browserToken: realBrowserToken }
+    return { config, mcpProxy, browserToken: realBrowserToken, documentsToken: realDocumentsToken }
   }
 
   /** Agente `computer` de la plataforma (solo cambia algo en Windows con `computerWin`+`tasksWin`; `computer-agent.ts`). */
@@ -1452,11 +1482,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (folder !== this.nf(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
-    const starting = prepared.then(([{ config, mcpProxy, browserToken }, gateUrl]) => {
+    const starting = prepared.then(([{ config, mcpProxy, browserToken, documentsToken }, gateUrl]) => {
       // El token del MCP del navegador vive en el entorno de `opencode serve` (OPENCODE_CONFIG_CONTENT): se
       // revoca en cuanto ese proceso termina o no llega a arrancar (F8-B69, hallazgos 6 y 10).
       const revokeBrowserToken = (): void => {
         if (browserToken) embeddedBrowserMcp.revokeToken(browserToken)
+        if (documentsToken) documentsMcp.revokeToken(documentsToken)
         // El proxy MCP muere con el servidor: los tokens de sesión dejan de valer y no queda puerto abierto.
         void mcpProxy?.stop().catch(() => undefined)
       }

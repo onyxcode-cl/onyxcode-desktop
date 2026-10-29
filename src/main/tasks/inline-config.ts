@@ -5,6 +5,7 @@
  * aplican `external_directory` y las reglas recordadas.
  */
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
+import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
 import { deepMerge } from './config-merge'
 
 export interface InlineConfigInput {
@@ -23,6 +24,11 @@ export interface InlineConfigInput {
   computerMcp: Record<string, unknown> | null
   /** Ruta `computer` del puente de apps del modo unificado (ya apuntando al proxy; solo sandbox y solo con la bandera). Ausente = igual que siempre. */
   bridgeMcp?: Record<string, unknown> | null
+  /**
+   * MCP `documentos` (crear Word, Excel, PowerPoint y PDF con el motor del Chat; solo sandbox, ya apuntando a la ruta del proxy). Ausente o null
+   * = igual que siempre. Al ser una herramienta de la propia app que solo crea archivos NUEVOS en la carpeta de la tarea, va en `allow`.
+   */
+  documentsMcp?: Record<string, unknown> | null
   /** Archivos de instrucciones extra del agente (ruta del anfitrión; solo sandbox y solo con el puente de apps). Ausente o vacío = igual que siempre. */
   instructions?: string[]
   /** Aportación de los MCP del usuario (`tasksMcpContribution`). */
@@ -56,12 +62,27 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     base = {
       autoupdate: false,
       share: 'disabled',
-      ...(i.browserMcp || i.bridgeMcp
-        ? { mcp: { ...(i.browserMcp ? { browser: i.browserMcp } : {}), ...(i.bridgeMcp ? { computer: i.bridgeMcp } : {}) } }
+      ...(i.browserMcp || i.bridgeMcp || i.documentsMcp
+        ? {
+            mcp: {
+              ...(i.browserMcp ? { browser: i.browserMcp } : {}),
+              ...(i.bridgeMcp ? { computer: i.bridgeMcp } : {}),
+              ...(i.documentsMcp ? { [DOCUMENTS_ROUTE_NAME]: i.documentsMcp } : {})
+            }
+          }
         : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
-        ...(i.extras.length || allowDirs.length ? { [TASKS_AGENT_ID]: { permission: { external_directory: externalDirectory } } } : {})
+        ...(i.extras.length || allowDirs.length || i.documentsMcp
+          ? {
+              [TASKS_AGENT_ID]: {
+                permission: {
+                  ...(i.extras.length || allowDirs.length ? { external_directory: externalDirectory } : {}),
+                  ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {})
+                }
+              }
+            }
+          : {})
       }
     }
   } else {

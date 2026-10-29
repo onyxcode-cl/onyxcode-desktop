@@ -236,3 +236,33 @@ describe('buildInlineConfig: ruta computer del puente de apps (modo unificado)',
     expect((c.mcp as Record<string, unknown>).computer).toEqual(COMPUTER)
   })
 })
+
+describe('herramienta `documentos` (motor del Chat para el agente aislado)', () => {
+  const DOCS = { type: 'remote', url: 'http://127.0.0.1:9999/mcp/documentos', headers: { Authorization: 'Bearer sesion' } }
+
+  it('sin ella, la config es la de siempre', () => {
+    const base = buildInlineConfig(empty)
+    expect(JSON.stringify(base)).not.toContain('documentos')
+    expect(buildInlineConfig({ ...empty, documentsMcp: null })).toEqual(base)
+  })
+
+  it('en el sandbox añade mcp.documentos y su permiso allow solo para el agente de tareas', () => {
+    const c = buildInlineConfig({ ...empty, documentsMcp: DOCS })
+    expect((c.mcp as Record<string, unknown>).documentos).toEqual(DOCS)
+    expect(agentsOf(c)[TASKS_AGENT_ID]?.permission?.['documentos_*']).toBe('allow')
+    expect(agentsOf(c)[COMPUTER_AGENT_ID]?.permission?.['documentos_*']).toBeUndefined()
+  })
+
+  it('convive con extras, navegador y carpeta de skills sin perder sus permisos', () => {
+    const c = buildInlineConfig({ ...empty, extras: [{ path: '/fixture/a' }], browserMcp: BROWSER, documentsMcp: DOCS })
+    const perm = agentsOf(c)[TASKS_AGENT_ID]?.permission as Record<string, unknown>
+    expect(perm['documentos_*']).toBe('allow')
+    expect((perm.external_directory as Record<string, string>)['/fixture/a']).toBe('allow')
+    expect(Object.keys(c.mcp as object).sort()).toEqual(['browser', 'documentos'])
+  })
+
+  it('con Control total no se añade (solo sandbox)', () => {
+    const c = buildInlineConfig({ ...empty, fullAccess: true, documentsMcp: DOCS })
+    expect(JSON.stringify(c)).not.toContain('documentos')
+  })
+})
