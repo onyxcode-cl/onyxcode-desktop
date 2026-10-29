@@ -108,6 +108,9 @@ import {
   type ProbeSignature,
   type Verdict
 } from './window-probe'
+import { recoveryHint, recoverySuffix } from './recovery-hints'
+import { DEDUP_NOTICE, ScreenshotDedup } from './screenshot-dedup'
+import { sanitizeNote, sanitizeTypeText } from './type-text-sanitize'
 
 const HELPER = process.env.CU_HELPER ?? ''
 const STOP_FILE = process.env.COMPUTER_STOP_FILE ?? ''
@@ -214,7 +217,7 @@ function reportBridgeDenied(reason: string, session: string | undefined): void {
 function reject(code: string, msg: string, session: string | undefined): Error {
   if (!isolatedCall) return new Error(msg)
   reportBridgeDenied(code, session)
-  return new Error(`[rechazo: ${code}] ${msg}`)
+  return new Error(`[rechazo: ${code}] ${msg}${recoverySuffix(code)}`)
 }
 
 // ───────────────────────────── kill-switch ─────────────────────────────
@@ -1265,6 +1268,8 @@ interface WindowCtx {
   elements: CaptureElement[] | null
 }
 const windowCtx = new Map<string, WindowCtx>()
+/** Hash de la última captura por ventana y sesión: una captura idéntica sin acciones entre medias se responde sin imagen. */
+const shotDedup = new ScreenshotDedup()
 const WINDOW_CTX_MAX = 64
 let captureSeq = 0
 
@@ -1313,11 +1318,7 @@ function currentWindowCtx(session: string | undefined): WindowCtx {
   }
   if (Date.now() - ctx.at > WINDOW_CTX_TTL_MS) {
     windowCtx.delete(ctxKey(session))
-    throw reject(
-      'capture-expired',
-      `La captura de ${ctx.app.name} caducó (valen 90 s): toma app_screenshot otra vez antes de actuar.`,
-      session
-    )
+    throw reject('capture-expired', `La captura de ${ctx.app.name} caducó (valen 90 s): ${recoveryHint('capture-expired')}`, session)
   }
   return ctx
 }
@@ -1524,7 +1525,7 @@ async function toElementPoint(
     )
   }
   const ctx = currentWindowCtx(session)
-  const retry = 'Toma app_screenshot otra vez, elige de la lista nueva (con su capture) o usa x/y de la imagen nueva.'
+  const retry = recoveryHint('stale') ?? ''
   if (ctx.captureId !== cap) {
     throw reject('stale', `La captura #${cap} ya no es la vigente: la lista de elementos de una captura vieja no vale. ${retry}`, session)
   }
@@ -2820,7 +2821,6 @@ async function finishVerdictInner(
     if (ax && elementState === 'changed') {
       return computeVerdict({
         action: name as ActionKind,
-        remote: pre.remote,
         probe: { kind: 'failed' },
         windowsBefore: 0,
         windowsAfter: 0,
@@ -2877,7 +2877,6 @@ async function finishVerdictInner(
       action: name as ActionKind,
       target: pre.targetKind,
       modifiers: name === 'key' && hasModifier(keys),
-      remote: pre.remote,
       probe,
       // Si no se pudo contar antes o después, no se inventa un cambio de ventanas.
       windowsBefore: pre.windowsBefore ?? 0,
@@ -3358,7 +3357,7 @@ const TOOLS: ToolDef[] = [
     action: true,
     run: async (a, session) => {
       await requireForeground(session)
-      const text = String(a.text ?? '')
+      const { text, removed: strippedTags } = sanitizeTypeText(String(a.text ?? ''))
       if (!text) throw new Error('text vacío')
       if (text.length > 5000) throw new Error('Texto demasiado largo (máx. 5000 caracteres)')
       await checkExpectApp(a.expect_app)
@@ -3426,7 +3425,7 @@ const TOOLS: ToolDef[] = [
         fx.endedOn !== null
           ? ` Aviso: al terminar, la app al frente es «${fx.endedOn}» y antes era «${noticeAppName(checkedFront?.name ?? '?')}»; no se puede deshacer: revisa ambas apps antes de seguir.`
           : ''
-      return `Escrito${how}: ${text.length} caracteres${hint}${after}`
+      return `Escrito${how}: ${text.length} caracteres${hint}${after}${sanitizeNote(strippedTags)}`
     }
   },
   {
@@ -3969,13 +3968,22 @@ const TOOLS: ToolDef[] = [
       'principal) o find_element. En el modo de apps (sin screenshot de pantalla) sus píxeles SÍ valen para los clics: ' +
       'las x/y de left_click, double_click, right_click, mouse_move, drag, scroll y teach_step van en píxeles de esta ' +
       'imagen y valen 90 s o hasta la siguiente app_screenshot. En ese modo el texto trae además una lista numerada de ' +
-      'elementos (element: N con su capture) y avisa si otra app tapa la ventana; con zoom amplías una región de esta imagen.',
-    inputSchema: obj({ app: { type: 'string' }, window: { type: 'number' } }, ['app']),
+      'elementos (element: N con su capture) y avisa si otra app tapa la ventana; con zoom amplías una región de esta imagen. ' +
+      'Si la imagen es idéntica a la anterior y no hubo acciones entre medias, responde sin imagen; fresh: true la fuerza.',
+    inputSchema: obj({ app: { type: 'string' }, window: { type: 'number' }, fresh: { type: 'boolean' } }, ['app']),
     action: true,
     noAutoShot: true,
     run: async (a, session) => {
       const app = await namedApp(a.app)
-      return appWindowShot(app, Math.max(0, Math.round(Number(a.window) || 0)), session)
+      const windowIndex = Math.max(0, Math.round(Number(a.window) || 0))
+      const shot = await appWindowShot(app, windowIndex, session)
+      // Idéntica a la anterior y sin acciones entre medias: se responde sin imagen (`fresh: true` la fuerza).
+      if (
+        isolatedCall &&
+        shotDedup.check(session ?? '', `${app.bundleId}#${windowIndex}`, shot.shot.base64, { force: a.fresh === true }).duplicate
+      )
+        return `${DEDUP_NOTICE}\n${shot.text}`
+      return shot
     }
   },
   {
@@ -4269,6 +4277,7 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
         ? { app: verdictPre.app, windowIndex: verdictPre.windowIndex }
         : null
     const result = await tool.run(args, session)
+    if (isolatedCall && tool.action && name !== 'app_screenshot') shotDedup.noteAction(session ?? '')
     let text = typeof result === 'string' ? result : result.text
     // Un lote detenido en el paso N no lleva línea de efecto: el veredicto solo se antepone cuando terminó entero.
     if (verdictPre && !(name === 'batch' && text.startsWith('Lote detenido'))) {
@@ -4276,7 +4285,7 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
       if (verdict) {
         text = `${formatVerdict(verdict)}\n${text}`
         // Algo cambió (o no se sabe): la lista de elementos de la captura vigente ya no se da por buena; sin cambio, sigue valiendo.
-        if (verdict.effect !== 'suspected_noop') {
+        if (verdict.effect !== 'suspected_noop' && !verdict.unchanged) {
           const cur = windowCtx.get(ctxKey(session))
           if (cur) cur.elements = null
         }

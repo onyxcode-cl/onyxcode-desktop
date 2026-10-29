@@ -341,8 +341,11 @@ export interface VerdictInput {
   target?: 'xy' | 'element'
   /** `key` con cmd/ctrl (copiar, pegar…) o similar: puede no verse en la ventana. */
   modifiers?: boolean
-  /** Al frente hay un cliente de escritorio remoto. */
-  remote?: boolean
+  /**
+   * Evidencia POSITIVA e independiente de que la acción no ocurrió (rechazo explícito de la plataforma o de la app, resultado de
+   * la plataforma que lo dice). Sin ella, «no ver cambio en el tiempo de espera» NO prueba que la acción fallara: es `unverifiable`.
+   */
+  noEffectEvidence?: string
   /** Diferencia entre la sonda de antes y la de después, o fallo de la sonda. */
   probe: PollResult
   windowsBefore: number
@@ -374,6 +377,8 @@ export interface Verdict {
   escalation?: string
   /** Aviso aparte (p. ej. «ya se confirmó; no la repitas»). */
   warning?: string
+  /** La ventana sondeada no mostró cambio (no implica que la acción fallara): la lista de elementos de la captura sigue valiendo. */
+  unchanged?: boolean
 }
 
 const NO_REPEAT =
@@ -383,12 +388,15 @@ const NO_REPEAT =
 const IRREVERSIBLE_NOTE =
   'antes de repetir una acción que no se puede deshacer (enviar, borrar, comprar), confirma con la persona o comprueba el estado con computer_app_find/app_screenshot'
 
+/** Texto fijo del veredicto cuando no se vio cambio y no hay evidencia de que no pasara nada. */
+export const NOT_VERIFIABLE_TEXT = 'no verificable; mira de nuevo (app_screenshot) antes de repetir'
+
 const pctText = (p: number): string => (p < 1 ? '<1' : String(Math.round(p)))
 
 /**
  * Veredicto de una acción (§2.3). `null` si la acción no lleva veredicto (`mouse_move`).
- * Reglas: lectura de vuelta o condición cumplida ⇒ `confirmed`; ventana sin cambios, mismo número de ventanas y misma app al frente
- * tras el tiempo completo y acción visible ⇒ `suspected_noop`; el resto ⇒ `unverifiable`.
+ * Reglas: lectura de vuelta o condición cumplida ⇒ `confirmed`; ventana sin cambios tras el tiempo completo ⇒ `unverifiable`
+ * (no ver cambio NO prueba que fallara); `suspected_noop` solo con evidencia positiva (`noEffectEvidence`); el resto ⇒ `unverifiable`.
  */
 export function computeVerdict(i: VerdictInput): Verdict | null {
   if (i.action === 'mouse_move') return null
@@ -443,17 +451,20 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
   }
   if (i.action === 'wait') return done({ effect: 'unverifiable', reason: 'no apareció lo esperado en el tiempo dado' })
 
-  const reason = `la ventana no cambió${i.remote ? ' (escritorio remoto)' : ''} y la acción debería verse`
-  let escalation: string | undefined
-  if ((i.repeat?.noopCount ?? 0) >= 1)
-    escalation = i.action === 'app_press' || i.action === 'app_action' ? `${NO_REPEAT}; ${IRREVERSIBLE_NOTE}` : NO_REPEAT
-  else if (i.action === 'type_text' && i.remote) escalation = 'prueba input: "paste" y comprueba con zoom'
-  else if (i.action === 'app_press' || i.action === 'app_action')
-    escalation = `vuelve a pedir app_find (la ref pudo cambiar) o toma app_screenshot; si sigue igual, usa app_menu, un atajo o x/y en el centro; ${IRREVERSIBLE_NOTE}`
-  else if (i.target === 'element') escalation = 'prueba app_press o x/y en el centro del elemento'
-  else if (i.target === 'xy' && (i.action === 'left_click' || i.action === 'double_click'))
-    escalation = 'prueba element: N (de la lista de la captura) o app_press por accesibilidad'
-  return done({ effect: 'suspected_noop', reason, ...(escalation ? { escalation } : {}) })
+  // Sin cambio visible y sin evidencia positiva: no se afirma que falló (la app puede ir lenta o el cambio no verse en la ventana).
+  const evidence = i.noEffectEvidence?.trim()
+  if (!evidence) {
+    const irreversible = i.action === 'app_press' || i.action === 'app_action'
+    return done({
+      effect: 'unverifiable',
+      reason: NOT_VERIFIABLE_TEXT,
+      unchanged: true,
+      ...(irreversible ? { escalation: `vuelve a pedir app_find (la ref pudo cambiar); ${IRREVERSIBLE_NOTE}` } : {})
+    })
+  }
+  const irreversible = i.action === 'app_press' || i.action === 'app_action'
+  const escalation = (i.repeat?.noopCount ?? 0) >= 1 ? (irreversible ? `${NO_REPEAT}; ${IRREVERSIBLE_NOTE}` : NO_REPEAT) : undefined
+  return done({ effect: 'suspected_noop', reason: evidence, unchanged: true, ...(escalation ? { escalation } : {}) })
 }
 
 // ───────────────────────────────────────── Escritura por accesibilidad (set_value / insert_text) ─────────────────────────────────────────

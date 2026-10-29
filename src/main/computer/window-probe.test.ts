@@ -17,6 +17,7 @@ import {
   computeValueVerdict,
   computeCoverage,
   computeVerdict,
+  NOT_VERIFIABLE_TEXT,
   coverageNotice,
   decodePngLuma,
   noticeAppName,
@@ -302,10 +303,29 @@ describe('computeVerdict (tabla de reglas de §2.3)', () => {
     expect(computeVerdict(input({ action: 'wait', waitMatched: false }))!.effect).toBe('unverifiable')
   })
 
-  it('ventana sin cambios, mismas ventanas y misma app, acción visible ⇒ suspected_noop (todas las acciones visibles)', () => {
+  it('ventana sin cambios y sin evidencia ⇒ unverifiable «no verificable; mira de nuevo» (NO suspected_noop), en todas las acciones', () => {
     for (const action of ['left_click', 'double_click', 'scroll', 'drag', 'type_text', 'key', 'batch'] as const) {
-      expect(computeVerdict(input({ action }))!.effect).toBe('suspected_noop')
+      const v = computeVerdict(input({ action }))!
+      expect(v.effect).toBe('unverifiable')
+      expect(v.reason).toBe(NOT_VERIFIABLE_TEXT)
+      expect(v.reason).toContain('mira de nuevo (app_screenshot) antes de repetir')
     }
+  })
+
+  it('con evidencia positiva independiente de que no pasó nada ⇒ suspected_noop con esa evidencia como motivo', () => {
+    for (const action of ['left_click', 'type_text', 'key', 'app_press'] as const) {
+      const v = computeVerdict(input({ action, noEffectEvidence: 'la plataforma rechazó la entrada' }))!
+      expect(v.effect).toBe('suspected_noop')
+      expect(v.reason).toBe('la plataforma rechazó la entrada')
+    }
+    // Evidencia vacía o solo espacios no cuenta.
+    expect(computeVerdict(input({ noEffectEvidence: '   ' }))!.effect).toBe('unverifiable')
+  })
+
+  it('el tiempo de espera sin cambio no escala a «no repitas» sin evidencia, aunque el historial tenga noops previos', () => {
+    const v = computeVerdict(input({ repeat: { noopCount: 3, recentConfirmed: false } }))!
+    expect(v.effect).toBe('unverifiable')
+    expect(v.escalation).toBeUndefined()
   })
 
   it('cambió la ventana pero no hay lectura ⇒ unverifiable con porcentaje y zona', () => {
@@ -322,8 +342,8 @@ describe('computeVerdict (tabla de reglas de §2.3)', () => {
     expect(v.reason).toContain('no se encontró el texto')
   })
 
-  it('escribir sin cambio y lectura que no coincide ⇒ suspected_noop', () => {
-    expect(computeVerdict(input({ action: 'type_text', readback: 'nomatch' }))!.effect).toBe('suspected_noop')
+  it('escribir sin cambio y lectura que no coincide ⇒ unverifiable (la lectura por accesibilidad no es evidencia de que no pasó)', () => {
+    expect(computeVerdict(input({ action: 'type_text', readback: 'nomatch' }))!.effect).toBe('unverifiable')
   })
 
   it('la sonda falló ⇒ unverifiable', () => {
@@ -335,7 +355,7 @@ describe('computeVerdict (tabla de reglas de §2.3)', () => {
   it('clic derecho y combinaciones cmd/ctrl sin cambio ⇒ unverifiable', () => {
     expect(computeVerdict(input({ action: 'right_click' }))!.effect).toBe('unverifiable')
     expect(computeVerdict(input({ action: 'key', modifiers: true }))!.effect).toBe('unverifiable')
-    expect(computeVerdict(input({ action: 'key', modifiers: false }))!.effect).toBe('suspected_noop')
+    expect(computeVerdict(input({ action: 'key', modifiers: false }))!.effect).toBe('unverifiable')
   })
 
   it('cambió la app al frente o el número de ventanas ⇒ no es noop y se dice', () => {
@@ -350,21 +370,15 @@ describe('computeVerdict (tabla de reglas de §2.3)', () => {
   })
 
   describe('escalada', () => {
-    it('clic por x/y ⇒ element: N o app_press', () => {
-      expect(computeVerdict(input())!.escalation).toContain('element: N')
+    it('sin evidencia no hay escalada específica por tipo de acción ni por entorno', () => {
+      expect(computeVerdict(input())!.escalation).toBeUndefined()
+      expect(computeVerdict(input({ target: 'element' }))!.escalation).toBeUndefined()
+      const v = computeVerdict(input({ action: 'type_text', target: undefined }))!
+      expect(v.escalation).toBeUndefined()
+      expect(JSON.stringify(v)).not.toMatch(/remoto|paste/)
     })
-    it('clic por element ⇒ app_press o x/y en el centro', () => {
-      const e = computeVerdict(input({ target: 'element' }))!.escalation!
-      expect(e).toContain('app_press')
-      expect(e).toContain('centro del elemento')
-    })
-    it('escribir en escritorio remoto ⇒ input: "paste"', () => {
-      const v = computeVerdict(input({ action: 'type_text', remote: true, target: undefined }))!
-      expect(v.escalation).toContain('paste')
-      expect(v.reason).toContain('escritorio remoto')
-    })
-    it('segunda suspected_noop sobre el mismo objetivo ⇒ no repitas', () => {
-      const v = computeVerdict(input({ repeat: { noopCount: 1, recentConfirmed: false } }))!
+    it('segunda suspected_noop (con evidencia) sobre el mismo objetivo ⇒ no repitas', () => {
+      const v = computeVerdict(input({ noEffectEvidence: 'rechazado', repeat: { noopCount: 1, recentConfirmed: false } }))!
       expect(v.escalation).toContain('no repitas')
       expect(v.escalation).toContain('app_menu')
     })
@@ -380,9 +394,11 @@ describe('computeVerdict (tabla de reglas de §2.3)', () => {
   })
 
   it('formatVerdict produce la línea «efecto: …»', () => {
-    const line = formatVerdict(computeVerdict(input())!)
-    expect(line.startsWith('efecto: suspected_noop — ')).toBe(true)
-    expect(line).toContain('; siguiente: ')
+    const line = formatVerdict(computeVerdict(input({ noEffectEvidence: 'rechazado' }))!)
+    expect(line).toBe('efecto: suspected_noop — rechazado')
+    const unv = formatVerdict(computeVerdict(input({ action: 'app_press' }))!)
+    expect(unv.startsWith('efecto: unverifiable — no verificable; mira de nuevo')).toBe(true)
+    expect(unv).toContain('; siguiente: ')
     expect(formatVerdict({ effect: 'confirmed', reason: 'ok' })).toBe('efecto: confirmed — ok')
   })
 })
@@ -680,7 +696,7 @@ describe('computeValueVerdict / compareElement (escritura por accesibilidad)', (
     expect(computeVerdict({ ...base, action: 'app_press', elementGone: true })?.reason).toContain('el elemento ya no existe')
     const same = { ...base, probe: { kind: 'diff' as const, diff: { changedPct: 0, changedCells: 0, zone: '', identical: true } } }
     const v = computeVerdict({ ...same, action: 'app_press' })
-    expect(v?.effect).toBe('suspected_noop')
+    expect(v?.effect).toBe('unverifiable')
     expect(v?.escalation).toContain('app_find')
     expect(v?.escalation).toContain('no se puede deshacer')
     expect(computeVerdict({ ...same, action: 'app_action', mayBeInvisible: true })?.effect).toBe('unverifiable')
@@ -689,7 +705,7 @@ describe('computeValueVerdict / compareElement (escritura por accesibilidad)', (
     expect(vo?.effect).toBe('unverifiable')
     expect(vo?.reason).toContain('solo cambió el valor')
     // La segunda suspected_noop sobre la misma ref: «no repitas» con el aviso de acciones irreversibles.
-    const rep = computeVerdict({ ...same, action: 'app_press', repeat: { noopCount: 1, recentConfirmed: false } })
+    const rep = computeVerdict({ ...same, action: 'app_press', noEffectEvidence: 'x', repeat: { noopCount: 1, recentConfirmed: false } })
     expect(rep?.escalation).toContain('no repitas')
     expect(rep?.escalation).toContain('no se puede deshacer')
   })

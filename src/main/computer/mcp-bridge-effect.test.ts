@@ -36,7 +36,6 @@ afterAll(() => work.cleanup())
 
 const HDRS = { [BRIDGE_ORIGIN_HEADER]: 'secreto-de-prueba', [BRIDGE_SERVER_HEADER]: '/Users/ana/proyecto' }
 const SES = 'ses_0123456789abcdef'
-const SES2 = 'ses_fedcba9876543210'
 const ISOLATED_OK = { isolated: true, ok: true }
 
 type R = { x: number; y: number; width: number; height: number }
@@ -167,13 +166,13 @@ async function timed<T>(f: () => Promise<T>): Promise<{ r: T; ms: number }> {
 }
 
 describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
-  it('sondas iguales ⇒ suspected_noop en la PRIMERA línea, con la escalada de x/y; el clic sí se entregó y la sonda no queda ni se nombra', async () => {
+  it('sondas iguales ⇒ unverifiable «no verificable; mira de nuevo» en la PRIMERA línea (sin suposición de fallo); el clic sí se entregó y la sonda no queda ni se nombra', async () => {
     const { mcp, done } = await bootMac()
     try {
       await shot(mcp)
       const { r, ms } = await timed(() => call(mcp, 'left_click', { x: 100, y: 100 }))
       expect(r.isError, textOf(r)).not.toBe(true)
-      expect(firstLine(r)).toMatch(/^efecto: suspected_noop — la ventana no cambió y la acción debería verse; siguiente: prueba element: N/)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — no verificable; mira de nuevo \(app_screenshot\) antes de repetir$/)
       expect(clicks(mcp)).toHaveLength(1)
       // Local: ~1,6 s de sondeo (no 4 s de escritorio remoto).
       expect(ms).toBeGreaterThan(1300)
@@ -190,24 +189,20 @@ describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
     }
   })
 
-  it('la SEGUNDA suspected_noop sobre el mismo punto (±8 px) dice «no repitas»; otro punto lejano no; otra sesión tampoco', async () => {
+  it('repetir el mismo punto sin cambio visible NO escala a «no repitas»: sigue «no verificable» (sin evidencia positiva no se sospecha)', async () => {
     const { mcp, done } = await bootMac()
     try {
       await shot(mcp, SES)
-      const r1 = await call(mcp, 'left_click', { x: 100, y: 100 })
-      expect(firstLine(r1)).toContain('suspected_noop')
-      expect(firstLine(r1)).not.toContain('no repitas')
-      const r2 = await call(mcp, 'left_click', { x: 104, y: 97 })
-      expect(firstLine(r2)).toContain('suspected_noop')
-      expect(firstLine(r2)).toContain('siguiente: no repitas')
-      const far = await call(mcp, 'left_click', { x: 600, y: 500 })
-      expect(firstLine(far)).toContain('suspected_noop')
-      expect(firstLine(far)).not.toContain('no repitas')
-      // Sesión hermana: su registro es SUYO (aunque sea el mismo punto y la misma app).
-      await shot(mcp, SES2)
-      const other = await call(mcp, 'left_click', { x: 100, y: 100 }, SES2)
-      expect(firstLine(other)).toContain('suspected_noop')
-      expect(firstLine(other)).not.toContain('no repitas')
+      for (const [x, y] of [
+        [100, 100],
+        [104, 97],
+        [600, 500]
+      ]) {
+        const r = await call(mcp, 'left_click', { x, y })
+        expect(firstLine(r)).toContain('unverifiable — no verificable; mira de nuevo')
+        expect(firstLine(r)).not.toContain('suspected_noop')
+        expect(firstLine(r)).not.toContain('no repitas')
+      }
     } finally {
       await done()
     }
@@ -253,13 +248,13 @@ describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
     }
   })
 
-  it('cliente de escritorio remoto al frente ⇒ espera más larga (~4 s) y lo dice', async () => {
+  it('cliente de escritorio remoto al frente ⇒ espera más larga (~4 s); el veredicto es el general', async () => {
     const { mcp, done } = await bootMac({ front: REMOTA })
     try {
       await shot(mcp, SES, 'Windows App')
       const { r, ms } = await timed(() => call(mcp, 'left_click', { x: 100, y: 100 }))
-      expect(firstLine(r)).toContain('suspected_noop')
-      expect(firstLine(r)).toContain('(escritorio remoto)')
+      expect(firstLine(r)).toContain('unverifiable — no verificable')
+      expect(firstLine(r)).not.toContain('escritorio remoto')
       expect(ms).toBeGreaterThan(3800)
     } finally {
       await done()
@@ -289,21 +284,21 @@ describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
     try {
       await shot(b.mcp)
       const r = await call(b.mcp, 'type_text', { text: 'hola mundo', input: 'unicode' })
-      expect(firstLine(r)).toContain('suspected_noop')
+      expect(firstLine(r)).toContain('unverifiable')
       expect(firstLine(r)).not.toContain('confirmed')
     } finally {
       await b.done()
     }
   })
 
-  it('type_text en un cliente remoto: sin lectura de vuelta y la escalada es input: "paste"', async () => {
+  it('type_text en un cliente remoto: sin lectura de vuelta y veredicto general (sin pista específica del remoto)', async () => {
     const { mcp, done } = await bootMac({ front: REMOTA })
     try {
       await shot(mcp, SES, 'Windows App')
       // `input: "unicode"` evita el binario de teclas físicas, que no existe en la prueba.
       const r = await call(mcp, 'type_text', { text: 'hola', input: 'unicode' })
-      expect(firstLine(r)).toContain('suspected_noop')
-      expect(firstLine(r)).toContain('prueba input: "paste" y comprueba con zoom')
+      expect(firstLine(r)).toContain('unverifiable — no verificable; mira de nuevo')
+      expect(firstLine(r)).not.toContain('paste')
       // Ninguna consulta de accesibilidad con el texto (solo la lista de la captura, sin query).
       expect(mcp.calls().filter((c) => c.cmd === 'find-elements' && c.args.includes('--query'))).toEqual([])
     } finally {
@@ -311,7 +306,7 @@ describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
     }
   })
 
-  it('right_click sin cambios ⇒ unverifiable (los menús son otra ventana); key con ctrl igual; key return sin cambios ⇒ suspected_noop; mouse_move sin veredicto', async () => {
+  it('right_click sin cambios ⇒ unverifiable (los menús son otra ventana); key con ctrl igual; key return sin cambios ⇒ unverifiable; mouse_move sin veredicto', async () => {
     const { mcp, done } = await bootMac()
     try {
       await shot(mcp)
@@ -320,7 +315,7 @@ describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
       const kc = await call(mcp, 'key', { keys: 'ctrl+c' })
       expect(firstLine(kc)).toMatch(/^efecto: unverifiable — una combinación con cmd\/ctrl/)
       const kr = await call(mcp, 'key', { keys: 'return' })
-      expect(firstLine(kr)).toContain('suspected_noop')
+      expect(firstLine(kr)).toContain('unverifiable — no verificable')
       const mm = await call(mcp, 'mouse_move', { x: 100, y: 100 })
       expect(textOf(mm)).not.toContain('efecto:')
       expect(textOf(mm)).toContain('Puntero movido')
@@ -425,7 +420,7 @@ describe.skipIf(!posixOnly)('veredicto de acción (macOS)', () => {
     try {
       const id = await shot(a.mcp)
       const r1 = await call(a.mcp, 'left_click', { x: 100, y: 100 })
-      expect(firstLine(r1)).toContain('suspected_noop')
+      expect(firstLine(r1)).toContain('unverifiable — no verificable')
       const r2 = await call(a.mcp, 'left_click', { element: 1, capture: id })
       expect(r2.isError, textOf(r2)).not.toBe(true)
       expect(clicks(a.mcp)).toHaveLength(2)
@@ -905,13 +900,13 @@ describe.skipIf(!posixOnly)('veredicto y foco en Windows (helper falso)', () => 
     }
   }
 
-  it('sondas iguales ⇒ suspected_noop; distintas ⇒ unverifiable con el %; la sonda (--max-long 256) se borra', async () => {
+  it('sondas iguales ⇒ unverifiable «no verificable»; la sonda (--max-long 256) se borra', async () => {
     const a = await bootWin([wshot(PNG_A)])
     try {
       expect((await call(a.mcp, 'app_screenshot', { app: 'notepad' })).isError).not.toBe(true)
       const r = await call(a.mcp, 'left_click', { x: 100, y: 100 })
       expect(r.isError, textOf(r)).not.toBe(true)
-      expect(firstLine(r)).toContain('efecto: suspected_noop')
+      expect(firstLine(r)).toContain('efecto: unverifiable — no verificable')
       expect(a.mcp.calls().filter((c) => c.cmd === 'click')).toHaveLength(1)
       expect(a.mcp.calls().filter((c) => c.cmd === 'window-shot' && c.args.includes('256')).length).toBeGreaterThanOrEqual(2)
       expect(probeFiles(a.mcp)).toEqual([])
@@ -1174,13 +1169,13 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     }
   })
 
-  it('app_press: nada cambia en el elemento ni en la ventana ⇒ suspected_noop con escalada; la ventana cambia ⇒ unverifiable; el elemento desaparece ⇒ lo dice', async () => {
+  it('app_press: nada cambia en el elemento ni en la ventana ⇒ unverifiable con pista de relectura; la ventana cambia ⇒ unverifiable; el elemento desaparece ⇒ lo dice', async () => {
     const btn = node({ role: 'AXButton', title: 'Listo', actions: ['AXPress'] })
     const a = await bootMac({ responses: { 'ax-tree': tree(btn) } })
     try {
       const r = await call(a.mcp, 'app_press', { app: 'Notes', ref: REF })
       expect(firstLine(r)).toMatch(
-        /^efecto: suspected_noop — la ventana no cambió y la acción debería verse; siguiente: vuelve a pedir app_find/
+        /^efecto: unverifiable — no verificable; mira de nuevo \(app_screenshot\) antes de repetir; siguiente: vuelve a pedir app_find/
       )
       expect(textOf(r)).not.toMatch(/probe-|\.png|data:image/)
       expect(probeFiles(a.mcp)).toEqual([])
@@ -1203,7 +1198,7 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     }
   })
 
-  it('app_action: AXShowMenu sin cambios ⇒ unverifiable (el menú es otra ventana); AXConfirm sin cambios ⇒ suspected_noop; AXIncrement que solo cambia el valor ⇒ unverifiable (puede cambiar solo)', async () => {
+  it('app_action: AXShowMenu sin cambios ⇒ unverifiable (el menú es otra ventana); AXConfirm sin cambios ⇒ unverifiable; AXIncrement que solo cambia el valor ⇒ unverifiable (puede cambiar solo)', async () => {
     const field = (value: string) => node({ role: 'AXIncrementor', value })
     const a = await bootMac({ responses: { 'ax-tree': tree(field('1')) } })
     try {
@@ -1216,7 +1211,7 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     const b = await bootMac({ responses: { 'ax-tree': tree(field('1')) } })
     try {
       const r = await call(b.mcp, 'app_action', { app: 'Notes', ref: REF, action: 'AXConfirm' })
-      expect(firstLine(r)).toContain('efecto: suspected_noop')
+      expect(firstLine(r)).toContain('efecto: unverifiable — no verificable')
     } finally {
       await b.done()
     }
@@ -1310,20 +1305,16 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     }
   })
 
-  it('hallazgo 5: la segunda suspected_noop sobre la misma ref dice «no repitas»; otra ref no hereda la cuenta', async () => {
+  it('hallazgo 5 (revisado): repetir app_press sin cambio sigue «no verificable» y recuerda la cautela de lo irreversible; nunca «no repitas:» sin evidencia', async () => {
     const btn = node({ role: 'AXButton', title: 'Enviar', actions: ['AXPress'] })
     const { mcp, done } = await bootMac({ responses: { 'ax-tree': tree(btn, { ...btn, ref: 'w0.2.9' }) } })
     try {
-      const r1 = await call(mcp, 'app_press', { app: 'Notes', ref: REF })
-      expect(firstLine(r1)).toContain('efecto: suspected_noop')
-      expect(firstLine(r1)).toContain('no se puede deshacer')
-      expect(firstLine(r1)).not.toContain('no repitas:')
-      const r2 = await call(mcp, 'app_press', { app: 'Notes', ref: REF })
-      expect(firstLine(r2)).toContain('efecto: suspected_noop')
-      expect(firstLine(r2)).toContain('no repitas')
-      expect(firstLine(r2)).toContain('no se puede deshacer')
-      const r3 = await call(mcp, 'app_press', { app: 'Notes', ref: 'w0.2.9' })
-      expect(firstLine(r3)).not.toContain('no repitas:')
+      for (const ref of [REF, REF, 'w0.2.9']) {
+        const r = await call(mcp, 'app_press', { app: 'Notes', ref })
+        expect(firstLine(r)).toContain('efecto: unverifiable — no verificable; mira de nuevo')
+        expect(firstLine(r)).toContain('no se puede deshacer')
+        expect(firstLine(r)).not.toContain('no repitas:')
+      }
     } finally {
       await done()
     }
@@ -1443,6 +1434,67 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (Windows, helper falso)'
     try {
       const r = await call(mcp, 'app_press', { app: 'notepad', ref: REF })
       expect(firstLine(r)).toMatch(/^efecto: confirmed — el estado del elemento cambió/)
+    } finally {
+      await done()
+    }
+  })
+})
+
+describe.skipIf(!posixOnly)('mejoras generales del puente (macOS)', () => {
+  it('captura idéntica sin acciones entre medias ⇒ respuesta corta sin imagen (con la lista vigente); fresh: true la fuerza; tras una acción se envía', async () => {
+    const { mcp, done } = await bootMac()
+    try {
+      const first = await call(mcp, 'app_screenshot', { app: 'Notes' }, SES)
+      expect(hasImage(first)).toBe(true)
+      const again = await call(mcp, 'app_screenshot', { app: 'Notes' }, SES)
+      expect(hasImage(again)).toBe(false)
+      expect(textOf(again)).toContain('sin cambios desde la captura anterior')
+      // El texto sigue trayendo la captura vigente para poder actuar.
+      expect(textOf(again)).toMatch(/Captura #\d+|Ventana de Notes/)
+      // Forzada: imagen.
+      const forced = await call(mcp, 'app_screenshot', { app: 'Notes', fresh: true }, SES)
+      expect(hasImage(forced)).toBe(true)
+      // Tras una acción, aunque la pantalla siga idéntica, la imagen SE ENVÍA.
+      await call(mcp, 'left_click', { x: 100, y: 100 }, SES)
+      const afterAction = await call(mcp, 'app_screenshot', { app: 'Notes' }, SES)
+      expect(hasImage(afterAction)).toBe(true)
+      // Otra sesión no hereda la referencia.
+      const other = await call(mcp, 'app_screenshot', { app: 'Notes' }, 'ses_otra000000000000')
+      expect(hasImage(other)).toBe(true)
+    } finally {
+      await done()
+    }
+  })
+
+  it('type_text quita las etiquetas de protocolo del final y lo dice; el texto legítimo llega intacto', async () => {
+    const { mcp, done } = await bootMac()
+    try {
+      await shot(mcp)
+      const tag = '</' + 'parameter>'
+      const r = await call(mcp, 'type_text', { text: `hola mundo${tag}`, input: 'unicode' })
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(typed(mcp)).toEqual(['hola mundo'])
+      expect(textOf(r)).toContain('se quitó del final del texto una etiqueta de protocolo')
+    } finally {
+      await done()
+    }
+    const b = await bootMac()
+    try {
+      await shot(b.mcp)
+      const r = await call(b.mcp, 'type_text', { text: 'a < b <b>x</b>', input: 'unicode' })
+      expect(typed(b.mcp)).toEqual(['a < b <b>x</b>'])
+      expect(textOf(r)).not.toContain('se quitó')
+    } finally {
+      await b.done()
+    }
+  })
+
+  it('los rechazos con salida inocua llevan «(siguiente: app_screenshot)» sin cambiar el código', async () => {
+    const { mcp, done } = await bootMac()
+    try {
+      const r = await call(mcp, 'left_click', { x: 100, y: 100 }, 'ses_sincaptura00000')
+      expect(textOf(r)).toMatch(/^\[rechazo: no-capture\]/)
+      expect(textOf(r)).toContain('(siguiente: app_screenshot)')
     } finally {
       await done()
     }
