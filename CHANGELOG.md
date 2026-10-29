@@ -8,7 +8,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Novedades
 
-- **Las Tareas (Overdrive) y Code hacen presentaciones, Word, Excel y PDF con el mismo motor y la misma guía de diseño que el Chat.** Antes el Chat daba mejores resultados. Ahora el diseño se inventa distinto cada vez (sin plantilla fija) y, al pedir una presentación, la IA pregunta si la quieres editable (.pptx) o en HTML.
+- **Las Tareas (Overdrive) hacen presentaciones, Word, Excel y PDF con el mismo motor y la misma guía de diseño que el Chat, también en Windows.** Antes el Chat daba mejores resultados y en Windows las Tareas caían a un diseño sobrio de respaldo (el Linux aislado donde corren no tiene Node ni el diseñador de documentos). Ahora la propia app arma el archivo con el mismo motor del Chat (herramienta nueva `documentos`, que solo crea archivos NUEVOS dentro de la carpeta de la tarea y nunca pisa uno existente) y la IA puede mirar cómo quedaron las diapositivas y las páginas antes de entregarlas. Code usa el mismo motor mediante los scripts de las skills (necesita Node, que se instala desde Ajustes). Ahora el diseño se inventa distinto cada vez (sin plantilla fija) y, al pedir una presentación, la IA pregunta si la quieres editable (.pptx) o en HTML.
 - **Traducir Word, Excel y PDF conservando el diseño**, también desde las Tareas.
 - **Si el proveedor de la IA rechaza o reintenta** (por ejemplo «Se acabó el uso gratuito»), ahora se ve el motivo y qué hacer, en lugar de un «Pensando…» que no termina (Tareas, Chat y Code).
 - **Control de apps más honesto:** la IA lee de vuelta lo que escribió en el campo, y cuando no se ve ningún cambio en pantalla lo informa como «sin comprobar» en vez de dar por hecho que funcionó. Si pulsa algo desactivado, recibe el motivo y qué probar.
@@ -22,9 +22,9 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Qué no cambia / límites
 
-- **En Windows las Tareas no pueden usar el motor del Chat.** Corren en un Linux aislado sin Node (decisión de seguridad), así que usan un respaldo propio de menor calidad y sin vista previa. La solución propuesta (una herramienta dentro de la app) está en `docs/PLAN-DOCUMENTOS-EN-LA-APP.md`, sin implementar.
-- **El modo Code no se probó en vivo con la IA** con estas habilidades (comparte las de las Tareas, cubiertas por pruebas automáticas). En el Mac tampoco se repitió la ruta HTML ni la traducción de Excel y PDF con una IA real (se acabó el uso gratuito); sí se probaron los scripts directamente.
-- **No se vio el resultado de Windows abierto en PowerPoint real.** El ritmo nuevo al teclear solo se verificó en el Bloc de notas.
+- **La vista previa en imágenes solo existe para PowerPoint y Word.** Para Excel y PDF la IA revisa el contenido, pero no ve una imagen.
+- **El modo Code no se probó en vivo con la IA** con estas habilidades (comparte las de las Tareas, cubiertas por pruebas automáticas). La ruta HTML y la traducción de Excel y PDF se probaron con el modelo de pago solo en el Mac.
+- **No se vio ningún resultado abierto en PowerPoint real**: se revisaron renderizados con el propio motor. El ritmo nuevo al teclear solo se verificó en el Bloc de notas.
 - **Al abrir por primera vez, macOS puede pedir la contraseña del llavero** («Lazunox Safe Storage»); elige «Permitir siempre».
 - Motor `lazunox.13`, sin cambios.
 

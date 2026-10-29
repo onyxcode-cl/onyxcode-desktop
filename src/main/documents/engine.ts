@@ -27,7 +27,6 @@ export class ChatDocError extends Error {
 export type ChatDocInput =
   { kind: 'pdf'; html: string } | { kind: 'xlsx'; data: XlsxSpec } | { kind: 'pptx'; data: PptxSpec } | { kind: 'docx'; data: DocxSpec }
 
-
 export const DOC_EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx', docx: 'docx' }
 
 export interface RenderOptions {
@@ -81,4 +80,3 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
   }
   return renderPptx(input.data)
 }
-

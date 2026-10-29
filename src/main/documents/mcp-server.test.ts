@@ -190,8 +190,24 @@ describe('crear', () => {
 
   it('un spec de más de 1 MB se rechaza', async () => {
     const { token, port } = await server.clientFor({ folder })
-    const big = { blocks: [{ type: 'paragraph', text: 'a'.repeat(600_000) }, { type: 'paragraph', text: 'b'.repeat(600_000) }] }
-    const r = await post(port, token, null, {}, JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'crear', arguments: { tipo: 'docx', nombre: 'x', spec: big } } }))
+    const big = {
+      blocks: [
+        { type: 'paragraph', text: 'a'.repeat(600_000) },
+        { type: 'paragraph', text: 'b'.repeat(600_000) }
+      ]
+    }
+    const r = await post(
+      port,
+      token,
+      null,
+      {},
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'crear', arguments: { tipo: 'docx', nombre: 'x', spec: big } }
+      })
+    )
     expect(r.status).toBe(413)
     expect(readdirSync(folder)).toEqual([])
   })

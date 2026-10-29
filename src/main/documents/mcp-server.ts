@@ -327,7 +327,10 @@ export class DocumentsMcpServer {
     }
   }
 
-  private text(message: string, isError = false): { content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>; isError?: boolean } {
+  private text(
+    message: string,
+    isError = false
+  ): { content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>; isError?: boolean } {
     return { content: [{ type: 'text', text: message }], ...(isError ? { isError: true } : {}) }
   }
 
@@ -342,7 +345,8 @@ export class DocumentsMcpServer {
   /** Valida y arma el `ChatDocInput` (el contenido es dato: solo los validadores del Chat, con sus topes). */
   private buildInput(args: Record<string, unknown>): { input: ChatDocInput; tipo: Tipo } | { error: string } {
     const rawTipo = args.tipo
-    if (typeof rawTipo !== 'string' || !(TIPOS as readonly string[]).includes(rawTipo)) return { error: 'tipo debe ser pptx, docx, xlsx o pdf.' }
+    if (typeof rawTipo !== 'string' || !(TIPOS as readonly string[]).includes(rawTipo))
+      return { error: 'tipo debe ser pptx, docx, xlsx o pdf.' }
     const tipo = rawTipo as Tipo
     if (tipo === 'pdf') {
       const html = args.html
@@ -351,7 +355,8 @@ export class DocumentsMcpServer {
       return { tipo, input: { kind: 'pdf', html } }
     }
     const spec = args.spec
-    if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return { error: `Para ${tipo} pasa \`spec\` (un objeto JSON, el de la skill ${tipo}).` }
+    if (!spec || typeof spec !== 'object' || Array.isArray(spec))
+      return { error: `Para ${tipo} pasa \`spec\` (un objeto JSON, el de la skill ${tipo}).` }
     let json: string
     try {
       json = JSON.stringify(spec)
@@ -361,14 +366,17 @@ export class DocumentsMcpServer {
     if (Buffer.byteLength(json, 'utf8') > MAX_SPEC_BYTES) return { error: '`spec` supera 1 MB.' }
     if (Object.prototype.hasOwnProperty.call(spec, '__proto__')) return { error: '`spec` tiene claves no permitidas.' }
     if (tipo === 'pptx') {
-      if (!isPptxSpec(spec)) return { error: 'El `spec` no cumple el esquema de presentaciones del Chat (ver la skill pptx). No se generó nada.' }
+      if (!isPptxSpec(spec))
+        return { error: 'El `spec` no cumple el esquema de presentaciones del Chat (ver la skill pptx). No se generó nada.' }
       return { tipo, input: { kind: 'pptx', data: spec } }
     }
     if (tipo === 'docx') {
-      if (!isDocxSpec(spec)) return { error: `El \`spec\` no cumple el esquema de Word del Chat (ver la skill docx). ${explainDocx(spec)} No se generó nada.` }
+      if (!isDocxSpec(spec))
+        return { error: `El \`spec\` no cumple el esquema de Word del Chat (ver la skill docx). ${explainDocx(spec)} No se generó nada.` }
       return { tipo, input: { kind: 'docx', data: spec } }
     }
-    if (!isXlsxSpec(spec)) return { error: `El \`spec\` no cumple el esquema de Excel del Chat (ver la skill xlsx). ${explainXlsx(spec)} No se generó nada.` }
+    if (!isXlsxSpec(spec))
+      return { error: `El \`spec\` no cumple el esquema de Excel del Chat (ver la skill xlsx). ${explainXlsx(spec)} No se generó nada.` }
     return { tipo, input: { kind: 'xlsx', data: spec } }
   }
 
@@ -393,7 +401,10 @@ export class DocumentsMcpServer {
       return this.text('Solo se puede renderizar un documento creado con `crear` en esta tarea: usa la ruta que devolvió `crear`.', true)
     }
     if (entry.tipo !== 'pptx' && entry.tipo !== 'docx') {
-      return this.text('Solo hay vista previa en imágenes para pptx y docx. Para xlsx y pdf revisa el contenido con las comprobaciones de la skill.', true)
+      return this.text(
+        'Solo hay vista previa en imágenes para pptx y docx. Para xlsx y pdf revisa el contenido con las comprobaciones de la skill.',
+        true
+      )
     }
     quota.previews = quota.previews.filter((x) => t0 - x < 3_600_000)
     if (quota.previews.length >= MAX_PREVIEWS_PER_HOUR) {
@@ -416,26 +427,45 @@ export class DocumentsMcpServer {
       }
       if (createHash('sha256').update(bytes).digest('hex') !== entry.sha) {
         this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cambió', ms: now() - t0 })
-        return this.text('El archivo cambió desde que se creó con `crear`: solo se renderiza lo que creó la herramienta. Vuelve a crearlo con otro nombre.', true)
+        return this.text(
+          'El archivo cambió desde que se creó con `crear`: solo se renderiza lo que creó la herramienta. Vuelve a crearlo con otro nombre.',
+          true
+        )
       }
       const res = await withTimeout(this.deps.preview!(entry.tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
       if (!res || res.images.length === 0) {
         this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: 'sin-render', ms: now() - t0 })
-        return this.text('No hay vista previa disponible (falta el diseñador de documentos o no pudo renderizar). Revisa el contenido con la skill y dilo en «Para revisar».', true)
+        return this.text(
+          'No hay vista previa disponible (falta el diseñador de documentos o no pudo renderizar). Revisa el contenido con la skill y dilo en «Para revisar».',
+          true
+        )
       }
-      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'ok', bytes: res.images.reduce((n, b) => n + b.length, 0), ms: now() - t0 })
+      this.audit({
+        at: t0,
+        tool: 'renderizar',
+        tipo: entry.tipo,
+        result: 'ok',
+        bytes: res.images.reduce((n, b) => n + b.length, 0),
+        ms: now() - t0
+      })
       const unit = entry.tipo === 'pptx' ? 'diapositiva(s)' : 'página(s)'
       const note = res.truncated ? ` Se muestran las primeras ${res.images.length}.` : ''
       return {
         content: [
-          { type: 'text' as const, text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento: mira que nada se corte ni se superponga y corrige todo de una vez.` },
+          {
+            type: 'text' as const,
+            text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento: mira que nada se corte ni se superponga y corrige todo de una vez.`
+          },
           ...res.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))
         ]
       }
     } catch (err) {
       const timedOut = err instanceof TimeoutError
       this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: timedOut ? 'tiempo' : 'motor', ms: now() - t0 })
-      return this.text(timedOut ? 'La vista previa tardó demasiado y se canceló.' : 'No se pudo generar la vista previa con el motor de la app.', true)
+      return this.text(
+        timedOut ? 'La vista previa tardó demasiado y se canceló.' : 'No se pudo generar la vista previa con el motor de la app.',
+        true
+      )
     } finally {
       quota.busy = false
       this.active--
@@ -467,7 +497,10 @@ export class DocumentsMcpServer {
     quota.stamps.push(t0)
     try {
       const title = typeof args.nombre === 'string' ? args.nombre : 'Documento'
-      const bytes = await withTimeout(this.deps.render(built.input, title, { remoteImages: false }), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
+      const bytes = await withTimeout(
+        this.deps.render(built.input, title, { remoteImages: false }),
+        this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS
+      )
       const written = await writeNewFile(binding.folder, {
         name: args.nombre,
         ext: built.tipo,
@@ -489,7 +522,8 @@ export class DocumentsMcpServer {
       }
       const code = (err as { code?: string }).code
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'error', detail: code ?? 'motor', ms: now() - t0 })
-      if (code === 'no-craft') return this.text(`${(err as Error).message} Instálalo en Ajustes → Tareas → Componentes opcionales y vuelve a pedirlo.`, true)
+      if (code === 'no-craft')
+        return this.text(`${(err as Error).message} Instálalo en Ajustes → Tareas → Componentes opcionales y vuelve a pedirlo.`, true)
       if (code === 'invalid') return this.text((err as Error).message, true)
       if (err instanceof TimeoutError) return this.text('El documento tardó demasiado y se canceló. Prueba con menos contenido.', true)
       // La salida cruda del motor puede traer rutas del equipo: no se le entrega al agente.

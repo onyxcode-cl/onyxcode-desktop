@@ -2678,3 +2678,14 @@ zonas intocables.
 El índice guarda títulos de chats en `userData/chat-index.json`, en claro, como ya guarda el motor sus sesiones; no sale al celular (clase **X**). Solo
 acepta carpetas de chat registradas o aprobadas por la persona (`upsert` rechaza el resto), recorta títulos a 300 caracteres de una línea, limita la
 fecha a «ahora + 1 día» y 2000 entradas; `list` oculta carpetas olvidadas o que ya no existen y `removeFolder` borra sus entradas. Sin la bandera no hace nada.
+
+## 3 octogies sexies. Herramienta `documentos` para las Tareas aisladas (F8-B240)
+
+El agente aislado puede pedir un Word, Excel, PowerPoint o PDF; la APP lo arma FUERA del sandbox con el motor del Chat y lo guarda en la carpeta de la tarea.
+- **Canal.** Ruta `documentos` del proxy MCP del servidor de Tareas (mismo puerto ya permitido; el sandbox solo ve la URL del proxy y un token de sesión, el token real vive en main y se revoca al terminar el servidor). Servidor en 127.0.0.1 con Bearer de 32 bytes por atadura (carpeta), `Origin` → 403, `Host` exacto, cuerpo ≤ 1 MiB.
+- **Dónde escribe.** Solo la carpeta de su atadura, nunca otra: nombre limpio, extensión fijada por el tipo, subcarpeta relativa de hasta 4 niveles sin enlaces, `O_EXCL|O_NOFOLLOW`, nunca sobrescribe, y segunda comprobación del destino real. En WSL, la ruta que ve el agente es la traducida (`/win/c/…`); la autorización es la atadura, no la traducción.
+- **Contenido = dato.** Validadores del Chat con sus topes; sin campos de URL ni de imagen; PDF sin imágenes de internet (la app no sale a la red por el agente).
+- **Recursos.** 1 operación por atadura, 2 en la app, 60 creaciones y 30 vistas previas por hora, 120 s, 50 MB de salida.
+- **`renderizar`.** Solo archivos creados por `crear` en esa atadura y sin cambios (sha256); ArtCraft corre sobre una copia en una carpeta temporal nueva; el agente recibe PNG (contenido no confiable), nunca rutas del equipo.
+- **Residual.** ArtCraft corre fuera del sandbox con un JSON influido por el agente (igual que en el Chat, con entorno mínimo y sin shell); no hay `sandbox-exec` alrededor en macOS ni equivalente en Windows. Un cambio de directorio por enlace entre la comprobación y la apertura deja, como mucho, un archivo NUEVO con extensión fijada en otra carpeta del usuario (en WSL el agente no puede crear enlaces).
+- **Fallo encontrado probando en Windows:** importar los CLI de las Tareas desde la app los ejecuta al abrir; hay una guardia (`no-cli-in-app-bundle.test.ts`).

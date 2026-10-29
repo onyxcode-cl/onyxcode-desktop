@@ -203,11 +203,7 @@ const PDF_TIMEOUT_MS = 30_000
  * cancela http(s)/ws/file/ftp), permisos denegados y navegación bloqueada. Nada remoto se carga:
  * un `<img src="http://…">` queda roto en el PDF. Devuelve los bytes del PDF (A4, con fondos).
  */
-export async function renderHtmlToPdf(
-  html: string,
-  title = 'Documento',
-  opts: { remoteImages?: boolean } = {}
-): Promise<Buffer> {
+export async function renderHtmlToPdf(html: string, title = 'Documento', opts: { remoteImages?: boolean } = {}): Promise<Buffer> {
   const source = String(html ?? '')
   if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
   const id = randomUUID()

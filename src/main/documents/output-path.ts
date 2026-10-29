@@ -37,7 +37,8 @@ export function cleanName(raw: unknown, fallback = 'documento'): string {
     .slice(0, MAX_NAME_LENGTH)
     .trim()
   if (!name) name = fallback
-  if (segmentProblem(name) || segmentProblem(`${name}.x`)) throw new OutputPathError('name', 'Ese nombre de archivo no es válido en Windows (p. ej. «CON» o «NUL»). Usa otro.')
+  if (segmentProblem(name) || segmentProblem(`${name}.x`))
+    throw new OutputPathError('name', 'Ese nombre de archivo no es válido en Windows (p. ej. «CON» o «NUL»). Usa otro.')
   return name
 }
 
