@@ -526,6 +526,19 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     await this.restartSandbox(f)
   }
 
+  /**
+   * El nivel de acceso de la Ficha del proyecto cambió: las herramientas se reparten al arrancar el servidor, así que un servidor ocioso se
+   * relanza para que el cambio valga ya. Uno ocupado no se toca (`later`: vale al próximo arranque); sin servidor no hay nada que hacer.
+   */
+  async applyProjectAccess(folder: string): Promise<'restarted' | 'later' | 'none'> {
+    const f = this.nf(folder)
+    const cur = this.servers.get(serverKey(f, false))
+    if (!cur?.handle) return 'none'
+    if (!(await this.serverIdle(cur.handle, f))) return 'later'
+    await this.restartSandbox(f)
+    return 'restarted'
+  }
+
   /** Reinicia el servidor sandbox de la carpeta si hay uno en marcha. Devuelve true si lo reinició. */
   async restartSandbox(folder: string): Promise<boolean> {
     const f = this.nf(folder)

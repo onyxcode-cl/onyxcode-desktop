@@ -442,6 +442,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
 
   // ── Tareas: carpetas vinculadas y de confianza ──
   'tasks:folders:get': scoped('R', 'folder'),
+  'tasks:access:apply': 'X', // el nivel de acceso solo se decide en el Mac
   'tasks:folders:check': scoped('R', 'path'),
   'tasks:folders:link': scoped('D', 'folder'),
   'tasks:folders:unlink': scoped('D', 'folder'),

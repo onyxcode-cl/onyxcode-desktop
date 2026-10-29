@@ -1017,6 +1017,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
 
   // Lote B: carpetas
   'tasks:folders:get': folderReq,
+  'tasks:access:apply': folderReq,
   'tasks:folders:check': pathReq,
   'tasks:folders:link': obj({ folder: absPath, path: absPath, mode: folderMode, trust: optional(bool), restart: optional(bool) }),
   'tasks:folders:unlink': obj({ folder: absPath, path: absPath, restart: optional(bool) }),

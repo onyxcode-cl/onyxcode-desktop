@@ -1286,6 +1286,8 @@ export interface TasksInvokeContract {
   // ── Lote B: carpetas ──
   /** Conjunto de carpetas (principal, vinculadas y de confianza) de un espacio. */
   'tasks:folders:get': { req: { folder: string }; res: TasksFolderSet }
+  /** El nivel de acceso de la Ficha cambió: relanza el servidor aislado de la carpeta si está ocioso. */
+  'tasks:access:apply': { req: { folder: string }; res: 'restarted' | 'later' | 'none' }
   /** Comprueba si una carpeta se puede autorizar/vincular (con motivo accionable si no). */
   'tasks:folders:check': { req: { path: string }; res: FolderCheck }
   /** Vincula una carpeta adicional; `restart` (por defecto true) reinicia el sandbox solo si está en marcha. */
@@ -1560,6 +1562,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:keepAwakeSetting',
   'tasks:keepAwakeActive',
   'tasks:folders:get',
+  'tasks:access:apply',
   'tasks:folders:check',
   'tasks:folders:link',
   'tasks:folders:unlink',

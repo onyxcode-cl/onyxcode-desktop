@@ -1112,6 +1112,17 @@ export async function linkFolder(path: string, mode: FolderAccessMode, opts?: { 
   }
 }
 
+/** El nivel de acceso de la Ficha cambió: main relanza el servidor aislado si está ocioso y aquí se reconecta a él. */
+export async function applyAccessChange(folder: string): Promise<void> {
+  try {
+    const r = await cw('tasks:access:apply', { folder })
+    const { conn } = useTasks.getState()
+    if (r === 'restarted' && useTasks.getState().folder === folder && conn && !conn.fullAccess) await connectFolder(folder, false)
+  } catch (err) {
+    useTasks.setState({ error: errorMessage(err) })
+  }
+}
+
 /** Quita una carpeta adicional de la carpeta actual (reinicia el sandbox si está en marcha). */
 export async function unlinkFolder(path: string): Promise<void> {
   const { folder, conn } = useTasks.getState()

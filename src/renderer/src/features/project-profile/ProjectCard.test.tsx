@@ -74,7 +74,7 @@ describe('Ficha del proyecto', () => {
     click(host.querySelector('button[aria-label="Editar la ficha del proyecto"]'))
     const dlg = document.querySelector('[role="dialog"]') as HTMLElement
     expect(dlg).not.toBeNull()
-    const aislado = [...dlg.querySelectorAll('[role="radio"]')].find((b) => b.textContent?.includes('Aislado'))
+    const aislado = [...dlg.querySelectorAll('[role="radio"]')].find((b) => b.getAttribute('aria-label') === 'Aislado')
     click(aislado ?? null)
     await flush()
     expect(calls).toContainEqual(['project:setAccess', { folder: FOLDER, access: 'aislado' }])
@@ -84,7 +84,7 @@ describe('Ficha del proyecto', () => {
     const onPickFull = vi.fn()
     await render({ onPickFull })
     click(host.querySelector('button[aria-label="Editar la ficha del proyecto"]'))
-    const total = [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent?.includes('Total'))
+    const total = [...document.querySelectorAll('[role="radio"]')].find((b) => b.getAttribute('aria-label') === 'Control total')
     click(total ?? null)
     expect(onPickFull).toHaveBeenCalledWith(true)
   })
@@ -92,8 +92,40 @@ describe('Ficha del proyecto', () => {
   it('sin onPickFull (Code) el nivel Total no se ofrece', async () => {
     await render({ onPickFull: undefined })
     click(host.querySelector('button[aria-label="Editar la ficha del proyecto"]'))
-    const total = [...document.querySelectorAll('[role="radio"]')].find((b) => b.textContent?.includes('Total')) as HTMLButtonElement
+    const total = [...document.querySelectorAll('[role="radio"]')].find(
+      (b) => b.getAttribute('aria-label') === 'Control total'
+    ) as HTMLButtonElement
     expect(total.disabled).toBe(true)
+  })
+
+  it('con carpetas (Overdrive) se puede añadir otra con su modo y quitarla', async () => {
+    const link = vi.fn(async () => true)
+    const unlink = vi.fn(async () => undefined)
+    const pick = vi.fn(async () => ({ path: '/Users/ben/Documents/otra' }))
+    await render({
+      folders: { linked: [{ path: '/Users/ben/Documents/vieja', name: 'vieja', mode: 'ro' }], applied: true, pick, link, unlink }
+    })
+    click(host.querySelector('button[aria-label="Editar la ficha del proyecto"]'))
+    const dlg = document.querySelector('[role="dialog"]') as HTMLElement
+    expect(dlg.textContent).toContain('Principal')
+    expect(dlg.textContent).toContain('vieja')
+    expect(dlg.textContent).toContain('Solo lectura')
+    click([...dlg.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Añadir') ?? null)
+    await flush()
+    expect(pick).toHaveBeenCalled()
+    click([...document.querySelectorAll('[role="dialog"] [role="radio"]')].find((b) => b.textContent === 'Solo lectura') ?? null)
+    click([...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.includes('Añadir carpeta')) ?? null)
+    await flush()
+    expect(link).toHaveBeenCalledWith('/Users/ben/Documents/otra', 'ro')
+    click(document.querySelector('button[aria-label="Quitar vieja"]'))
+    expect(unlink).toHaveBeenCalledWith('/Users/ben/Documents/vieja')
+  })
+
+  it('sin carpetas (Code) no hay botón Añadir', async () => {
+    await render()
+    click(host.querySelector('button[aria-label="Editar la ficha del proyecto"]'))
+    const dlg = document.querySelector('[role="dialog"]') as HTMLElement
+    expect([...dlg.querySelectorAll('button')].some((b) => b.textContent?.trim() === 'Añadir')).toBe(false)
   })
 
   it('la Bóveda lista solo nombres con puntos; agregar y quitar pasan por main', async () => {

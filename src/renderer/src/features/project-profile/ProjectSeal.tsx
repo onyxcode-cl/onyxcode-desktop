@@ -4,7 +4,14 @@ import { AccessSeal } from './AccessSeal'
 import { ProjectDialog, type ProjectDialogProps } from './ProjectDialog'
 import { effectiveLevel, useProjectProfile } from './store'
 
-export function ProjectSeal({ folder, full, onPickFull, busy }: Omit<ProjectDialogProps, 'onClose'>): React.JSX.Element {
+export function ProjectSeal({
+  folder,
+  full,
+  onPickFull,
+  busy,
+  folders,
+  onAccessSaved
+}: Omit<ProjectDialogProps, 'onClose'>): React.JSX.Element {
   const profile = useProjectProfile((s) => s.byFolder[folder])
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -16,7 +23,17 @@ export function ProjectSeal({ folder, full, onPickFull, busy }: Omit<ProjectDial
   return (
     <>
       <AccessSeal level={effectiveLevel(profile, full)} short onClick={() => setOpen(true)} />
-      {open && <ProjectDialog folder={folder} full={full} onPickFull={onPickFull} busy={busy} onClose={() => setOpen(false)} />}
+      {open && (
+        <ProjectDialog
+          folder={folder}
+          full={full}
+          onPickFull={onPickFull}
+          busy={busy}
+          folders={folders}
+          onAccessSaved={onAccessSaved}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   )
 }

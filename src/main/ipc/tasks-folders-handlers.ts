@@ -9,6 +9,7 @@ import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 export function registerTasksFoldersHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, tasks } = ctx
   handle('tasks:folders:get', ({ folder }) => tasks.folderSet(folder))
+  handle('tasks:access:apply', ({ folder }) => tasks.applyProjectAccess(folder))
   handle('tasks:folders:check', async ({ path }) => {
     await tasks.refreshPolicy() // Windows: unidades al día antes de decidir (macOS: sin efecto)
     return tasks.checkFolder(path)
