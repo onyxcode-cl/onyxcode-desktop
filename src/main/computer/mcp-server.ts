@@ -309,6 +309,30 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
   return j.tier ?? null
 }
 
+/** Origen aislado: ¿es la propia Lazunox (o su Electron en desarrollo o un ayudante suyo)? Dock, Spotlight y demás exentas NO cuentan. */
+function isOwnLazunoxApp(bundleId: string): boolean {
+  const id = bundleId.toLowerCase()
+  if (backend.id === 'win32') return isWinIsolatedExempt(bundleId) && id.includes('lazunox')
+  return id === 'cl.bentec.lazunox' || id === 'com.github.electron' || id.startsWith('cl.bentec.lazunox.')
+}
+
+/**
+ * Origen aislado: si la app al frente (o bajo el punto) es la propia Lazunox y la sesión tiene una captura de otra app, devuelve un rechazo
+ * accionable (`own-app-front`). NO activa nada: el foco lo decide el modelo con `open_application`. Lazunox sigue sin poder controlarse jamás.
+ */
+function ownAppFrontReject(app: AppRef, session: string | undefined): Error | undefined {
+  if (!isolatedCall || !app.bundleId || !isOwnLazunoxApp(app.bundleId)) return undefined
+  const ctx = windowCtx.get(ctxKey(session))
+  if (!ctx) return undefined
+  const target = ctx.app.name ? `«${ctx.app.name}»` : 'la app con la que trabajabas'
+  return reject(
+    'own-app-front',
+    `Lazunox está al frente (suele pasar justo después de preguntarle algo a la persona). Trae ${target} al frente con computer_open_application ` +
+      '(hace falta su Control total) y toma computer_app_screenshot otra vez antes de seguir. No pidas acceso a Lazunox.',
+    session
+  )
+}
+
 /**
  * Lanza con un mensaje que le dice al modelo que llame a `request_access` si a `app` le falta la
  * concesión, o que el nivel actual no alcanza `minTier` si ya está concedida pero es insuficiente.
@@ -316,6 +340,9 @@ async function tierOf(app: AppRef, session?: string): Promise<AppTier | null> {
 async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Promise<void> {
   // Origen aislado: la propia Lazunox, Electron, Spotlight, Dock… (exentas del sistema) NUNCA se actúan (ni siquiera con tarjeta).
   if (isolatedCall && app.bundleId && isIsolatedExempt(app.bundleId)) {
+    // La propia Lazunox al frente con una captura vigente de la app objetivo: pasa justo después de preguntarle algo a la persona. Se dice qué hacer.
+    const own = ownAppFrontReject(app, session)
+    if (own) throw own
     throw reject(
       'exempt-app',
       `«${app.name}» es una app del sistema o la propia Lazunox: en este modo no se puede controlar. No insistas ni pidas acceso a ella; ` +
@@ -1520,6 +1547,8 @@ async function toElementPoint(
 async function assertCapturedAppAt(ctx: WindowCtx, p: { x: number; y: number }, session: string | undefined): Promise<void> {
   const at = await appAtPoint(p.x, p.y)
   if (!at.bundleId || at.bundleId !== ctx.app.bundleId) {
+    const own = ownAppFrontReject(at, session)
+    if (own) throw own
     const under = at.name ? `«${at.name}»` : 'otra cosa'
     throw reject(
       'covered',

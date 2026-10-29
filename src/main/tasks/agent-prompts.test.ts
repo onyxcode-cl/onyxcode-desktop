@@ -273,6 +273,8 @@ describe('instrucción de apps del modo unificado', () => {
     expect(t).toContain('deje la ventana a la vista')
     expect(t).toContain('`[rechazo: …]` como señales estables')
     expect(t).toContain('`focus-stolen`, revisa ambas apps')
+    expect(t).toContain('Lazunox queda al frente: antes de usar ratón o teclado, trae la app de vuelta con `computer_open_application`')
+    expect(t).toContain('toma `computer_app_screenshot` otra vez')
     expect(t).not.toMatch(/paridad|mejor que|ahorr\w* de tokens|OCR|Vision|Tesseract/i)
   })
 

@@ -507,6 +507,8 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
     tier?: (b: string) => 'view' | 'click' | 'full' | null
     env?: Record<string, string>
     elements?: unknown[]
+    /** Respuesta(s) de `frontmost` (por defecto, Notes). */
+    front?: unknown
   }
 
   /** macOS: ventana de 400x300 pt (captura retina de 800x600 px) en `frame`; por defecto, en un monitor a la izquierda. */
@@ -525,7 +527,7 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
           screens: { out: o.screens ?? [MAIN, LEFT] },
           'windows-of': o.windowsOf ?? { out: [{ title: 'Ventana', ...frame }] },
           'window-shot': o.shotList ?? { writeImage: true, out: o.shot ?? { ok: true, width: 800, height: 600, title: 'Ventana' } },
-          frontmost: { out: NOTES_APP },
+          frontmost: Array.isArray(o.front) ? o.front.map((out) => ({ out })) : { out: o.front ?? NOTES_APP },
           'app-at': { out: o.at ?? NOTES_APP },
           'resolve-app': { out: { ...NOTES_APP, found: true } },
           ...(o.elements ? { 'find-elements': { out: o.elements } } : {})
@@ -1044,6 +1046,92 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
       } finally {
         await m.stop()
         await s.close()
+      }
+    })
+  })
+
+  describe('Lazunox al frente tras preguntarle algo a la persona: rechazo accionable (own-app-front)', () => {
+    const LAZ = { name: 'Lazunox', bundleId: 'cl.bentec.lazunox', pid: 1 }
+    const DOCK = { name: 'Dock', bundleId: 'com.apple.dock', pid: 2 }
+    const hasInput = (m: McpProc): boolean => m.calls().some((c) => ['click', 'type', 'key', 'paste'].includes(c.cmd))
+
+    it('front = Lazunox con captura vigente ⇒ own-app-front con el nombre de la app capturada, sin clic ni tecla', async () => {
+      // La persona respondió en el chat: Lazunox es la app al frente, y la ventana de Notes sigue bajo el punto.
+      const { mcp, side, done } = await bootMac({ at: NOTES_APP, front: LAZ })
+      try {
+        const cap = await shot(mcp)
+        const r = await mcp.call('left_click', { x: cap.w / 2, y: cap.h / 2, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        const t = textOf(r)
+        expect(t).toContain('own-app-front')
+        expect(t).toContain('«Notes»')
+        expect(t).toContain('computer_open_application')
+        expect(t).toContain('computer_app_screenshot')
+        expect(t).toContain('No pidas acceso a Lazunox')
+        expect(t).not.toContain('exempt-app')
+        const k = await mcp.call('key', { keys: 'a', lazunox_session: SES }, HDRS)
+        expect(textOf(k)).toContain('own-app-front')
+        expect(hasInput(mcp)).toBe(false)
+        await vi.waitFor(() => expect(reasons(side)).toContain('own-app-front'))
+      } finally {
+        await done()
+      }
+    })
+
+    it('Lazunox es la app bajo el punto (ventana tapada por Lazunox) y hay captura ⇒ también own-app-front', async () => {
+      const { mcp, done } = await bootMac({ at: LAZ })
+      try {
+        const { w, h } = await shot(mcp)
+        const r = await mcp.call('left_click', { x: w / 2, y: h / 2, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(textOf(r)).toContain('own-app-front')
+        expect(clicks(mcp)).toEqual([])
+      } finally {
+        await done()
+      }
+    })
+
+    it('front = Lazunox SIN captura ni concesión ⇒ el rechazo exempt-app de siempre', async () => {
+      const { mcp, done } = await bootMac({ at: LAZ, front: LAZ })
+      try {
+        const r = await mcp.call('key', { keys: 'a', lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(textOf(r)).toContain('exempt-app')
+        expect(textOf(r)).not.toContain('own-app-front')
+        expect(hasInput(mcp)).toBe(false)
+      } finally {
+        await done()
+      }
+    })
+
+    it('otra app exenta (Dock) con captura vigente ⇒ sigue exempt-app (no es Lazunox)', async () => {
+      const { mcp, done } = await bootMac({ at: NOTES_APP, front: DOCK })
+      try {
+        const { w, h } = await shot(mcp)
+        const r = await mcp.call('left_click', { x: w / 2, y: h / 2, lazunox_session: SES }, HDRS)
+        expect(r.isError).toBe(true)
+        expect(textOf(r)).toContain('exempt-app')
+        expect(textOf(r)).not.toContain('own-app-front')
+        expect(hasInput(mcp)).toBe(false)
+      } finally {
+        await done()
+      }
+    })
+
+    it('tras traer la app al frente con open_application (full) y capturar, el clic vuelve a pasar', async () => {
+      // El clic rechazado consume el primer frontmost (Lazunox); desde ahí, ya es Notes (la lista repite el último).
+      const { mcp, done } = await bootMac({ at: NOTES_APP, front: [LAZ, NOTES_APP] })
+      try {
+        const cap = await shot(mcp)
+        const r1 = await mcp.call('left_click', { x: cap.w / 2, y: cap.h / 2, lazunox_session: SES }, HDRS)
+        expect(textOf(r1)).toContain('own-app-front')
+        await mcp.call('open_application', { name: 'Notes', lazunox_session: SES }, HDRS)
+        const cap2 = await shot(mcp)
+        const r2 = await mcp.call('left_click', { x: cap2.w / 2, y: cap2.h / 2, lazunox_session: SES }, HDRS)
+        expect(r2.isError, textOf(r2)).not.toBe(true)
+        expect(clicks(mcp).length).toBe(1)
+      } finally {
+        await done()
       }
     })
   })
