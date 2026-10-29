@@ -1,3 +1,4 @@
+import { documentsMcp } from '../documents'
 import { app, BrowserWindow, clipboard, dialog, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
 import { chmod, writeFile } from 'node:fs/promises'
@@ -42,7 +43,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     mcpConfigPath: appOpencodeConfigPath(),
     server,
     problems: { readLines: (max) => getProblemLog()?.readLines(max) ?? [] },
-    extraSecrets: () => [...embeddedBrowserMcp.knownTokens(), ...knownMcpProxyTokens()],
+    extraSecrets: () => [...embeddedBrowserMcp.knownTokens(), ...documentsMcp.knownTokens(), ...knownMcpProxyTokens()],
     versions: () => ({
       [app.getName()]: app.getVersion(),
       electron: process.versions.electron,

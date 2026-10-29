@@ -11,6 +11,7 @@ Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/`
 ## Flujo: 1) Crear/editar  2) Verificar  3) Entregar
 
 ### A. Crear un libro nuevo (camino principal: el MISMO motor que el Chat)
+**Si tienes la herramienta `documentos_crear` (la ofrece la app), úsala en lugar del script:** `documentos_crear` con `tipo: "xlsx"`, `nombre` (sin extensión) y `spec` (el JSON del esquema de abajo: sheets…). Es el MISMO motor y la MISMA guía de diseño que el Chat, sin escribir archivos intermedios ni necesitar Node, y da el mismo resultado en macOS y en Windows. El archivo queda en la carpeta de esta tarea (nunca pisa uno existente: si el nombre existe añade « (2)») y la respuesta trae su ruta. Si responde con un error de contenido, corrige y repite con OTRO nombre; si dice que falta el diseñador de documentos (ArtCraft), díselo al usuario («Ajustes → Tareas → Componentes opcionales») y sigue con el script de abajo si lo hay. Sin la herramienta, usa el script.
 En el Chat el modelo solo escribe un bloque con JSON y la app arma el Excel con GridCraft (que además calcula las fórmulas); aquí es igual, y por eso el resultado es el mismo.
 1. Escribe `spec.json` con el esquema del Chat (abajo), siguiendo la guía de diseño.
 2. `PY $S/build_chat_xlsx.py spec.json informe.xlsx` → `Creado: informe.xlsx (2 hojas, motor del Chat)`. Valida con el mismo validador del Chat (si algo no cumple lo dice y no genera nada) y nunca sobrescribe.
