@@ -172,7 +172,11 @@ describe('window-shot en Windows: recorte, sonda y ventana tapada (aditivo)', ()
   })
   it('covered declara SOLO nombre y porcentaje (nada de títulos ni rectángulos ajenos)', () => {
     const item = (ws.win32Output?.covered as Array<Record<string, unknown>>)[0]
-    expect(Object.keys(item).filter((k) => !k.startsWith('_')).sort()).toEqual(['name', 'pct'])
+    expect(
+      Object.keys(item)
+        .filter((k) => !k.startsWith('_'))
+        .sort()
+    ).toEqual(['name', 'pct'])
   })
 })
 
