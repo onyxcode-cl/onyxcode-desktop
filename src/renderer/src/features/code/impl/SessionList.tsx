@@ -45,7 +45,7 @@ import { useUi } from '../../../stores/ui'
 import { LoadMoreSessions } from '../../../components/LoadMoreSessions'
 import { isSubmitKey } from '../../../lib/textarea'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
-import { SidebarEmpty } from '../../../components/SidebarEmpty'
+import { useSettings } from '../../../stores/settings'
 import { StateDot, useSidebarTree, SidebarTreeRegion, type SessionState } from '../../../components/SidebarTree'
 import { Sheet } from '../../../components/mobile/Sheet'
 import { SheetAction } from './SheetAction'
@@ -852,6 +852,41 @@ function ProjectGroup({
 }
 
 /**
+ * Escritorio, sin ningún proyecto abierto: la barra no queda vacía. Muestra las carpetas recientes (un clic las abre) y SIEMPRE «Agregar
+ * carpeta», que abre el selector de carpetas del sistema, igual que en Overdrive.
+ */
+function NoProjectsList(): React.JSX.Element {
+  const t = useT()
+  const recent = useSettings((s) => s.settings.recentFolders)
+  return (
+    <div className="flex min-h-0 flex-col gap-0.5" data-testid="code-no-projects">
+      <p className="px-2.5 py-1.5 text-meta text-subtle">{t('app.sidebar.noProjects')}</p>
+      {recent.slice(0, 8).map((dir) => (
+        <button
+          key={dir}
+          type="button"
+          title={dir}
+          onClick={() => void openProjectTrusted(dir)}
+          className="no-drag flex h-8 w-full items-center gap-2 rounded-ctl px-2 text-left text-ui text-muted hover:bg-hover hover:text-fg"
+        >
+          <FolderOpen size={14} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+          <span className="truncate">{baseName(dir)}</span>
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => void pickAndOpenFolder()}
+        disabled={!platformCaps().nativeDialogs}
+        className="no-drag mt-1 flex h-8 w-full items-center gap-2 rounded-ctl px-2 text-left text-ui text-muted hover:bg-hover hover:text-fg disabled:pointer-events-none"
+      >
+        <FolderPlus size={14} strokeWidth={1.75} aria-hidden="true" />
+        {t('code.sessions.addProject')}
+      </button>
+    </div>
+  )
+}
+
+/**
  * Lista de sesiones de los proyectos abiertos (uno en el celular; varios en escritorio, cada uno con su propio
  * grupo plegable). Pensada tanto para la columna interna de `CodeWorkspace` como para `SidebarContent` del modo
  * en la barra lateral global.
@@ -885,7 +920,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
 
   if (!directory) {
     // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
-    return desktop ? <SidebarEmpty text={t('app.sidebar.noProjects')} hint="code" /> : null
+    return desktop ? <NoProjectsList /> : null
   }
 
   // Celular: un solo proyecto, como siempre (openDirectories tiene como mucho uno). Escritorio: un grupo por abierto.
