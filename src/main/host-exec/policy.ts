@@ -29,7 +29,6 @@ export const MAX_COMMAND_LINES = 20
 const reject = (code: HostCommandRejection, message: string): HostCommandVerdict => ({ ok: false, code, message })
 
 // Caracteres de control (salvo tabulador, salto de línea y retorno) y los invisibles que esconden texto en la tarjeta.
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/
 const HIDDEN = /[​-‏‪-‮⁠-⁤﻿]/
 

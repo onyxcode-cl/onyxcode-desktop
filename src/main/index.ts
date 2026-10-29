@@ -1,3 +1,4 @@
+import { stopEveryBackground } from './host-exec/runner'
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, Notification, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -439,6 +440,8 @@ function start(): void {
     })
     settingsStore.onChange(() => executeWatchdog.refresh())
     app.once('before-quit', () => executeWatchdog.dispose())
+    // Lo que las tareas dejaron corriendo en segundo plano con `equipo_ejecutar` (servidores de prueba) no sobrevive a la app.
+    app.once('before-quit', () => void stopEveryBackground())
     server.on('connection', () => executeWatchdog.refresh())
     registerUnsupportedHandlers(ipcMain, caps)
     registerExtrasHandlers(ipcMain, { server, chatDirectory, createMainWindow: createWindow, getMainWindow: () => mainWindow })
