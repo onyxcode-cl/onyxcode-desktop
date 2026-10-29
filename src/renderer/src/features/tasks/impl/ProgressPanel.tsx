@@ -52,12 +52,16 @@ const EMPTY_TODOS: Todo[] = []
 const EMPTY_FILES: TasksDeliverable[] = []
 const EMPTY_ENTRIES: MessageEntry[] = []
 
-function TodoIcon({ status }: { status: string }): React.JSX.Element {
+/**
+ * `live`: la tarea está trabajando ahora. Un paso «en curso» de una tarea que YA PARÓ (el agente terminó o se detuvo sin cerrarlo) no gira:
+ * se muestra como un paso pendiente, para que la pantalla no parezca seguir trabajando.
+ */
+export function TodoIcon({ status, live = true }: { status: string; live?: boolean }): React.JSX.Element {
   switch (status) {
     case 'completed':
       return <CheckCircle2 size={16} className="text-accent desk:text-success" />
     case 'in_progress':
-      return <Loader2 size={16} className="animate-spin text-accent" />
+      return live ? <Loader2 size={16} className="animate-spin text-accent" /> : <Circle size={16} className="text-subtle" />
     case 'cancelled':
       return <CircleX size={16} className="text-subtle" />
     default:
@@ -414,14 +418,14 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
             {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
             <ol className="space-y-1">
               {todos.map((t, i) => {
-                const current = t.status === 'in_progress'
+                const current = t.status === 'in_progress' && busy
                 return (
                   <li
                     key={`${i}-${t.content}`}
                     className={`flex items-start gap-2 rounded-lg px-2 py-1.5 desk:min-h-7 desk:items-center desk:gap-2.5 desk:rounded-none desk:px-0 desk:py-0 ${current ? 'bg-accent-soft desk:bg-transparent' : ''}`}
                   >
                     <span className="mt-px shrink-0">
-                      <TodoIcon status={t.status} />
+                      <TodoIcon status={t.status} live={busy} />
                     </span>
                     <span
                       className={`text-[13px] leading-snug ${
