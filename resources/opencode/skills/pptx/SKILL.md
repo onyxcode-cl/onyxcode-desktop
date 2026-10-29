@@ -5,7 +5,7 @@ description: Crear, editar, inspeccionar y verificar presentaciones PowerPoint (
 
 # Skill pptx (PowerPoint)
 
-Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/` (usa python-pptx y Pillow).
+Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/` (usa python-pptx y Pillow; `build_chat_deck.py` usa además Node y DeckCraft).
 Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original del usuario).
 
 ## Antes de empezar: pregunta el formato (obligatorio)
@@ -15,9 +15,118 @@ Si te piden una presentación (diapositivas, slides, PowerPoint, PPT, deck, char
 ## 0. Diseño libre: inventa uno distinto cada vez
 No hay una plantilla por defecto. Cada presentación debe tener su propia identidad, pensada para su tema y su público: no repitas la paleta, la tipografía ni la composición de la anterior, ni por inercia ni porque «funcionó». Antes de armar nada decide en una frase el concepto visual (tono, paleta de 3–5 colores con contraste legible, par de tipografías, forma de las tarjetas, ritmo entre diapositivas) y que sea distinto del último que hiciste en esta conversación. Si la persona rechaza un estilo, cambia de concepto de verdad (otra paleta, otra estructura), no solo de tema.
 Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el más corto):
-- **A medida (preferido para algo bonito)**: un script propio con python-pptx (carpeta de la tarea, p. ej. `make_deck.py`), con tus formas, tarjetas, citas grandes y composición; verifica igual con §2.
-- **Constructor `build_pptx.py` (§1)**: rápido y limpio; elige tema o define tu propia paleta, no dejes el mismo por inercia.
-- **Diseño «dots» (oscuro, con círculos)**: es solo UNA opción más, para cuando encaje con el tono; no la uses como primera opción ni dos veces seguidas. Si lo usas:
+- **Motor del Chat (`build_chat_deck.py`, §0.1) — camino principal.** El MISMO motor y el MISMO vocabulario de diseño que el Chat: escribes un JSON (theme, style, palette propia, fonts, background, lienzo libre `layout:"free"`, stat, steps, cards, chart, kpis…) y la app arma el archivo. Es el que da el mejor resultado en la mayoría de las presentaciones.
+- **A medida con python-pptx** (script propio, p. ej. `make_deck.py`): solo cuando necesites algo que el motor del Chat no hace (imágenes propias, notas del orador, tablas muy específicas); verifica igual con §2.
+- **Constructor `build_pptx.py` (§1)**: respaldo cuando no hay DeckCraft (código de salida 3) y para presentaciones con imágenes, tablas o notas; elige tema o define tu propia paleta, no dejes el mismo por inercia.
+- **Diseño «dots» (oscuro, con círculos)**: es solo UNA opción más, para cuando encaje con el tono; no la uses como primera opción ni dos veces seguidas (detalle en §0.2).
+
+## 0.1 Camino principal: el JSON del Chat + `build_chat_deck.py`
+1. Escribe `spec.json` en la carpeta de la tarea con el esquema de la guía de abajo (es EXACTAMENTE el JSON del bloque ```pptx del Chat: `{"theme":…,"style":…,"palette":…,"fonts":…,"footer":…,"slides":[…]}`; nada de comandos ni rutas, todo es texto).
+2. Genera: `python3 scripts/build_chat_deck.py spec.json salida.pptx` (la salida debe ser un archivo NUEVO: no sobrescribe). Imprime `Presentación creada: …`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
+3. **Código de salida 3** = falta DeckCraft, Node o el motor en este equipo: no insistas, sigue con el §1 (`build_pptx.py`) y dilo en «Para revisar». Aquí NO hay versión simplificada de las diapositivas libres: sin motor no se arma esta ruta.
+4. Verifica como siempre (§2): mira las imágenes. Corrige editando `spec.json` y regenerando con otro nombre de salida.
+Límites de este motor: no inserta imágenes propias ni notas del orador (si las piden, usa el §1 o un script a medida).
+
+### Guía de diseño (la misma que usa el Chat)
+Lo que sigue es la guía del Chat, palabra por palabra (una prueba comprueba que no se desvíe de `resources/opencode/agents/chat.md`). Elige `theme` y `style` o inventa tu propia `palette` según el tono del contenido, y varía todo entre presentaciones.
+
+- `theme` (opcional, por defecto `"blue"`) elige la paleta de color de TODA la presentación: `"blue"`,
+  `"green"`, `"dark"` (fondo oscuro), `"warm"` (tonos cálidos) o `"mono"` (gris neutro).
+- `style` (opcional, por defecto `"classic"`) elige la FORMA de TODA la presentación — tarjetas,
+  decoración, tipografía de forma — un eje DISTINTO del color: `"classic"` (el look de siempre: un
+  círculo sutil de textura, tarjetas redondeadas con borde), `"editorial"` (una línea fina de acento
+  en vez del círculo, tarjetas de esquina recta sin relleno — tono revista/sobrio), `"geometric"`
+  (una barra diagonal de acento, tarjetas bien redondeadas tipo "pill" — tono gráfico/audaz) o
+  `"minimal"` (sin ninguna decoración, tarjetas de esquina recta solo con borde fino — tono informe
+  ejecutivo ultra limpio). Elige AMBOS (`theme` y `style`) según el TONO del contenido, y varía los
+  dos entre presentaciones: no dejes ni `"blue"` ni `"classic"` por inercia — un informe financiero
+  serio puede pedir `"mono"`+`"minimal"`, un pitch de producto `"warm"`+`"geometric"`, una nota de
+  prensa `"blue"`+`"editorial"`.
+- `footer` (opcional, del deck entero) es una línea chica al pie, p.ej. el nombre de la empresa o el
+  período — solo si hay algo real que poner ahí, NUNCA inventes algo tipo "Datos ilustrativos".
+- Cada diapositiva puede traer `eyebrow` (una etiqueta corta en mayúsculas arriba del título, p.ej.
+  `"Ventas"`, `"Cifra destacada"` — PURAMENTE la categoría/tema de ESA diapositiva, nunca la
+  inventes si no hay una categoría real que nombrar) y `note` (una nota chica al pie específica de
+  esa diapositiva, p.ej. `"Encuesta a 240 clientes"` — pisa el `footer` del deck en esa diapositiva
+  nada más; mismo criterio: solo si hay algo real que decir).
+- `layout` opcional por diapositiva: `"bullets"` (título + viñetas, el normal), `"section"`
+  (separador a toda página, para dividir temas — sin `eyebrow` se numera sola, "01"/"02"/...),
+  `"closing"` (cierre), `"stat"` (una cifra grande como foco — `title` es la cifra, p.ej. `"+27%"`
+  o `"3.2x"`, la unidad pegada al número sale más chica automáticamente; el primer `bullet` la
+  explica), `"steps"` (las `bullets` se ven como pasos numerados, para un proceso o secuencia),
+  `"two-col"` (comparar dos cosas lado a lado — ver `columns` abajo), `"cards"` (cada `bullet` como
+  una tarjeta numerada, para una lista de ítems/ventajas SIN orden de proceso — a diferencia de
+  `"steps"`, que sí implica secuencia) o `"kpis"` (de 2 a 4 métricas EN FILA, cada una con su
+  etiqueta/número grande/variación — ver `kpis` abajo; DISTINTO de `"stat"`: `"stat"` es UNA cifra
+  como foco de toda la diapositiva, `"kpis"` son VARIAS métricas juntas, más chicas — típico para un
+  resumen tipo tablero al principio de un informe, p.ej. "ventas, clientes nuevos, retención" juntos
+  en una fila). Sin `layout`, solo se infieren `"cover"`/`"section"`/`"bullets"` (el resto hay que
+  pedirlo a propósito, para no adivinar mal): la primera diapositiva es portada; una con título y SIN
+  viñetas es separador de sección; el resto es contenido normal.
+- En CUALQUIER viñeta (bullets/steps/cards/columns), si la escribes como `"Etiqueta: resto"` (con
+  `": "` en el medio), la etiqueta sale automáticamente en negrita y el resto en texto normal, en la
+  MISMA línea — úsalo para encabezar una viñeta con una palabra clave, p.ej. `"Soporte: disponible
+  24/7"`.
+- `"two-col"` puede traer `columns` — un array de EXACTAMENTE 2, cada una
+  `{"heading":"...","bullets":["...","..."]}` — para un "antes/después" de verdad, con su propio
+  encabezado por columna (la columna derecha sale resaltada con el color del tema, para dar
+  énfasis). Sin `columns`, las `bullets` de la diapositiva se reparten mitad y mitad (sin
+  encabezados propios).
+- `"kpis"` trae `kpis` — un array de 2 a 4, cada una `{"label":"...","value":"...","delta":"..."}`
+  (`delta` opcional, p.ej. `"+12% vs. trimestre anterior"`) — cada métrica sale como una tarjeta con
+  su etiqueta, el número grande y la variación abajo, todas en fila. `value` ya viene formateado
+  como texto (con `%`, `x`, separador de miles, lo que corresponda), no como número de JSON.
+- Más `layout`: `"timeline"` (línea de tiempo; `bullets` como `"2024: hito"`, hasta 6), `"agenda"` (temario
+  numerado, hasta 7 `bullets`), `"quote"` (cita destacada: `title` es la frase y el primer bullet el autor) y
+  `"table"` (`"table":{"columns":["Plan","Precio"],"rows":[["Básico","$9.990"]]}`, de 2 a 6 columnas y hasta 8
+  filas, todo texto ya formateado). `transition` (opcional, del deck entero): `"fade"`, `"push"` o `"wipe"` —
+  úsala en presentaciones formales.
+- **Libertad de diseño (opcional, y animada: no hace falta que todas las presentaciones se vean
+  iguales).** Además de `theme` y `style` puedes:
+  - Inventar tu propia **`palette`** de TODA la presentación (en vez de `theme`):
+    `{"bg":"#0E2A2F","text":"#F4F1EA","accent":"#F2B544"}` — colores SIEMPRE en hex con `#` de 6
+    dígitos; `muted`, `accent2`, `panel` y `edge` son opcionales (si faltan se derivan solos). Elige
+    los colores según el tema (un café → verdes profundos y ámbar; una fintech → azules y blanco; un
+    informe serio → grises) y cuida el contraste: texto claro sobre fondo oscuro o al revés.
+  - Elegir **`fonts`**: `{"title":"Georgia","body":"Arial"}` — solo de esta lista, que existe en Mac
+    y Windows: Arial, Georgia, Verdana, Trebuchet MS, Times New Roman, Courier New, Tahoma.
+  - Poner un **`background`** (hex con `#`) distinto en UNA diapositiva, p.ej. un fondo de color
+    fuerte para una cifra destacada.
+  - Usar **`layout:"free"`** (lienzo libre): TÚ decides qué va y dónde. Trae `elements`, un array
+    (como mucho 40) de textos y formas sobre un lienzo de **960 de ancho × 540 de alto** (puntos;
+    origen arriba a la izquierda; se dibujan en el orden en que los escribes, los últimos quedan
+    encima): `{"type":"text","x":60,"y":120,"w":600,"h":150,"text":"...","size":54,"bold":true,
+    "color":"#F4F1EA","font":"Georgia","align":"left","spacing":-2}` y `{"type":"shape","shape":
+    "ellipse","x":560,"y":-120,"w":560,"h":560,"fill":"#F2B544","fillTo":"#E07A5F","angle":45,
+    "opacity":0.9,"line":"#FFFFFF","lineWidth":2,"rotate":15,"text":"...","size":16}` — `shape` es uno
+    de `rect`, `roundRect`, `ellipse`, `triangle`, `diamond`, `hexagon`, `rightArrow`, `chevron`,
+    `star5` o `line`; `fill`/`line`/`color` en hex; `fillTo` hace un degradado; `opacity` va de 0 a 1.
+    Úsalo para portadas con formas grandes y color, una cifra gigante, líneas de tiempo, composiciones
+    con círculos o franjas: lo que se te ocurra. Reglas para que quede bien: todo dentro del lienzo
+    (salvo formas decorativas que se salen a propósito); los textos con `w`/`h` de sobra (un renglón
+    mide más o menos `size` × 0,55 de ancho por letra, y cada línea `size` × 1,2 de alto); cuerpo
+    de al menos 14 de tamaño; buen contraste; no más de 25 elementos por diapositiva y nada de texto
+    pegado a un borde. Mezcla diapositivas `free` con las de siempre (no hace falta que TODAS sean
+    libres). Sin DeckCraft instalado una diapositiva libre se simplifica a título + viñetas, así que no
+    dependas de ella para el sentido del contenido: el texto importante tiene que estar en los
+    `text`.
+- Para que NO se vea "hecho por IA": varía el tipo de diapositiva a lo largo de la presentación
+  (intercalá separadores de sección y usa
+  `"stat"`/`"steps"`/`"two-col"`/`"cards"`/`"chart"`/`"kpis"` donde el contenido lo pida, en vez de
+  una sola lista plana de título+viñetas repetida); los títulos
+  nunca terminan en punto. Cada diapositiva de contenido trae como mucho 4-5 viñetas cortas (una
+  línea cada una): el cuadro de texto tiene un alto fijo, así que un párrafo largo o muchas viñetas
+  se cortan — si hay más que decir, se parte en más diapositivas.
+- Si los datos piden un **gráfico** (una serie de números con sus categorías: ventas por mes, % por
+categoría, etc.), usa `layout:"chart"` con `"chart":{"type":"bar"|"line"|"pie","categories":["Ene",
+"Feb","Mar"],"values":[10,20,15]}` — es un gráfico NATIVO de PowerPoint (se puede editar ahí
+después, no es una imagen), así que sí se puede. `categories` y `values` tienen que tener el mismo
+largo. `"bar"` para comparar categorías, `"line"` para una tendencia en el tiempo, `"pie"` para
+partes de un total (como mucho 5-6 porciones, si no se ilegible). Por ahora sigue sin imágenes
+propias (fotos, íconos) — si piden eso, avisa que todavía no se puede.
+
+## 0.2 Diseño «dots» (opcional)
+Si lo usas:
 1. Escribe `contenido.json` con SOLO texto (nada de comandos ni rutas): `{"slides":[...]}`. Tipos de diapositiva y sus campos:
    - `cover` {title (una palabra o dos cortas), subtitle, note, badge}
    - `stat` {kicker, title, stat («4.000+»), statLabel, items:[2 × {title, body}]}
@@ -34,7 +143,7 @@ Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el
 3. Si sale con **código 3** (el programa del diseño no está instalado en este equipo), no insistas: sigue con el §1 normal.
 4. Verifica como siempre (§2).
 
-## 1. Crear una presentación
+## 1. Crear una presentación con `build_pptx.py` (respaldo y casos con imágenes)
 1. Escribe un JSON (esquema abajo) en la carpeta de la tarea, p. ej. `deck.json`.
 2. Genera: `python3 scripts/build_pptx.py deck.json informe.pptx --theme sobrio`
    (temas: `sobrio` azul/dorado, `oscuro`, `claro` crema/verde). Salida: `Presentación creada: informe.pptx (12 diapositivas, tema sobrio)`.
@@ -54,12 +163,12 @@ Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el
 Indica la ruta del .pptx y, en «Para revisar», lo que no pudiste comprobar (render, fuentes, animaciones).
 
 ## Presupuesto de revisión
-1. Antes de renderizar aplica las medidas de §1 y las reglas de estilo del esquema: títulos ≤ 2 líneas (máx. ~50 caracteres o menor tamaño), margen bajo el texto antes de cajas o gráficos, sin formas superpuestas.
+1. Antes de renderizar aplica las medidas de la guía de diseño (§0.1) o de §1 y las reglas de estilo del esquema: títulos ≤ 2 líneas (máx. ~50 caracteres o menor tamaño), margen bajo el texto antes de cajas o gráficos, sin formas superpuestas.
 2. Máximo 2 renders: uno tras crear y, solo si `check_pptx.py` o la miniatura muestran un fallo real, otro tras corregir TODOS los fallos a la vez. Las comprobaciones estructurales repetidas usan `--no-render`.
 3. Tras el 2.º render entrega y lista lo que quede en «Para revisar» en vez de seguir iterando.
-4. Corrige editando el JSON (o el script) y regenerando con `build_pptx.py`; nunca parches el .pptx a mano.
+4. Corrige editando el JSON (o el script) y regenerando con el mismo constructor (`build_chat_deck.py` o `build_pptx.py`); nunca parches el .pptx a mano.
 
-## Esquema JSON
+## Esquema JSON de `build_pptx.py` (respaldo)
 Rutas de imágenes relativas al JSON. `notes` (notas del orador) es opcional en toda diapositiva.
 ```json
 {

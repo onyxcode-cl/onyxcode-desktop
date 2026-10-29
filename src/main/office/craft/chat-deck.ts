@@ -352,13 +352,13 @@ export function chatDeckCommands(spec: PptxSpec): string[] {
 }
 
 /** Arma el .pptx con DeckCraft y devuelve sus bytes. Lanza si el programa falla (quien llama cae al generador de siempre). */
-export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs = 30_000): Promise<Buffer> {
+export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs = 30_000, run: typeof runCraft = runCraft): Promise<Buffer> {
   const dir = await mkdtemp(join(tmpdir(), 'lazunox-chatdeck-'))
   try {
     const out = join(dir, 'deck.pptx')
     const args = ['run', '--save', out]
     for (const cmd of chatDeckCommands(spec)) args.push('--cmd', cmd)
-    await runCraft(binary, args, timeoutMs)
+    await run(binary, args, timeoutMs)
     return await readFile(out)
   } finally {
     await rm(dir, { recursive: true, force: true })

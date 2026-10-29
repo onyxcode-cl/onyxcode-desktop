@@ -204,6 +204,10 @@ async function main() {
   const bgMcp = join(res, 'app.asar.unpacked/resources/shell-bg/shell-bg-mcp.cjs')
   const bgOk = existsSync(bgMcp) && statSync(bgMcp).size > 1000 && /bgshell/.test(readFileSync(bgMcp, 'utf8'))
   record('servidor MCP del shell en segundo plano fuera del asar', bgOk, bgOk ? `${statSync(bgMcp).size} bytes` : 'falta resources/shell-bg/shell-bg-mcp.cjs en app.asar.unpacked (¿corrió `npm run build:shell-bg`?)')
+  // El motor de presentaciones del Chat para las Tareas (generado por `npm run build:chat-deck`) viaja con la skill pptx, fuera del asar.
+  const deckCli = join(res, 'app.asar.unpacked/resources/opencode/skills/pptx/scripts/build_chat_deck.cjs')
+  const deckCliOk = existsSync(deckCli) && statSync(deckCli).size > 1000 && /isPptxSpec|Presentación creada/.test(readFileSync(deckCli, 'utf8'))
+  record('motor de presentaciones del Chat (build_chat_deck.cjs) en la skill pptx', deckCliOk, deckCliOk ? `${statSync(deckCli).size} bytes` : 'falta build_chat_deck.cjs en app.asar.unpacked (¿corrió `npm run build:chat-deck`?)')
   const skillsDir = join(root, 'resources/opencode/skills')
   for (const sk of ['docx', 'xlsx', 'pptx', 'pdf', 'ruta-rapida', 'soporte-remoto']) {
     const candidates = [join(res, 'app.asar.unpacked/resources/opencode/skills', sk, 'SKILL.md')]

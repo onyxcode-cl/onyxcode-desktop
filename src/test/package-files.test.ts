@@ -45,3 +45,23 @@ describe('bgshell: servidor MCP empaquetado', () => {
     expect(read('scripts/verify-bundled.mjs')).toContain('app.asar.unpacked/resources/shell-bg/shell-bg-mcp.cjs')
   })
 })
+
+/** El motor de presentaciones del Chat para las Tareas: otro `.cjs` GENERADO, dentro de la skill `pptx` (ya sale del asar con las skills). */
+describe('skill pptx: motor de presentaciones del Chat empaquetado', () => {
+  const root = resolve(__dirname, '../..')
+  const read = (f: string): string => readFileSync(resolve(root, f), 'utf8')
+  const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+
+  it('lo generan build y dev, y no se versiona', () => {
+    expect(pkg.scripts['build:chat-deck']).toBe('node scripts/build-chat-deck.mjs')
+    expect(pkg.scripts.build).toContain('npm run build:chat-deck')
+    expect(pkg.scripts.dev).toContain('npm run build:chat-deck')
+    expect(read('.gitignore')).toMatch(/^resources\/opencode\/skills\/pptx\/scripts\/build_chat_deck\.cjs$/m)
+  })
+  it('escribe dentro de las skills (asarUnpack) y verify:bundled lo comprueba', () => {
+    expect(read('scripts/build-chat-deck.mjs')).toContain("'resources/opencode/skills/pptx/scripts/build_chat_deck.cjs'")
+    const unpack = /asarUnpack:\s*\[([\s\S]*?)\n  \]/.exec(read('electron-builder.js'))?.[1] ?? ''
+    expect(unpack).toContain("'resources/opencode/skills/**'")
+    expect(read('scripts/verify-bundled.mjs')).toContain('skills/pptx/scripts/build_chat_deck.cjs')
+  })
+})

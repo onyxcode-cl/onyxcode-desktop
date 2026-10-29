@@ -46,3 +46,5 @@ __pycache__/
 
 # Servidor MCP del shell en segundo plano generado por scripts/build-shell-bg.mjs (npm run build:shell-bg); se regenera en cada build
 resources/shell-bg/
+# Motor de presentaciones del Chat para las skills de Tareas, generado por scripts/build-chat-deck.mjs (npm run build:chat-deck); se regenera en cada build
+resources/opencode/skills/pptx/scripts/build_chat_deck.cjs

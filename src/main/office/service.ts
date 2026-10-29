@@ -7,12 +7,21 @@
  */
 import { app } from 'electron'
 import { join } from 'node:path'
+import { runtimesService } from '../runtimes/service'
 import { craftService } from './craft/service'
 
 class OfficeService {
   /** Para el entorno de `opencode serve`: carpeta de binarios (estable) y las variables de ArtCraft si ya está instalado. */
   env(): Record<string, string> {
-    return { LAZUNOX_BIN_DIR: join(app.getPath('userData'), 'bin'), ...craftService().env() }
+    // `LAZUNOX_NODE`: el Node incluido de la app (si ya se instaló), para el motor de presentaciones del Chat que usa la skill `pptx`
+    // (`build_chat_deck.py`). Sin él la skill busca `node` en el PATH y, si tampoco hay, sigue con `build_pptx.py`.
+    let node: string | null = null
+    try {
+      node = runtimesService().bins().node
+    } catch {
+      node = null
+    }
+    return { LAZUNOX_BIN_DIR: join(app.getPath('userData'), 'bin'), ...(node ? { LAZUNOX_NODE: node } : {}), ...craftService().env() }
   }
 }
 
