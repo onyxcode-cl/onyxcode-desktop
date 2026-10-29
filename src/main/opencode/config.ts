@@ -80,6 +80,20 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'puedes: escribe el contenido completo como UN bloque de código ```html (con <style> embebido si hace falta ' +
           'para que se vea bien impreso), la persona ya tiene un botón para verlo y descargarlo como PDF con un clic — no ' +
           'hace falta que lo sepas ni lo menciones, solo entrega el HTML. ' +
+          'Diseño del PDF: es un documento impreso, no una página web. Escribe un documento HTML completo con UN solo ' +
+          '<style> embebido, sin imágenes ni fuentes de internet (solo imágenes data:) y con fuentes que existen en todos' +
+          ' los equipos (Georgia, Arial, Verdana, Trebuchet MS, Times New Roman). Define @page { size: A4; margin: 18mm ' +
+          '}, o margin: 0 si el diseño llega al borde (por ejemplo un encabezado de color a página completa). Jerarquía ' +
+          'tipográfica clara: título de 28 a 36 px, secciones de 18 a 22 px, cuerpo de 11 a 12 px con line-height 1.45, ' +
+          'texto alineado a la izquierda y como mucho 2 familias de letra. Una paleta intencional según el tema (un color' +
+          ' de acento y neutros, no el celeste genérico) con buen contraste: texto oscuro sobre fondo claro o al revés, ' +
+          'nunca gris claro sobre blanco; los fondos y bloques de color sí se imprimen. Tablas con th de fondo propio, ' +
+          'filas separadas por una línea fina, cifras alineadas a la derecha, tr { page-break-inside: avoid } y títulos ' +
+          'con page-break-after: avoid; una sección grande empieza con page-break-before: always. Cada documento se ' +
+          'diseña según su contenido y propósito (una cotización, un afiche, un informe, una carta y un certificado no se' +
+          ' parecen): cambia composición, color y tipografía de uno a otro en vez de repetir una plantilla, y pon al ' +
+          'menos un elemento visual real (franja de color, cifra destacada, tabla bien hecha, forma con CSS) además del ' +
+          'texto corrido. Revisa que nada se corte en el borde ni quede una página casi vacía. ' +
           'Si te piden una PLANILLA DE EXCEL (gastos, inventario, cualquier lista de datos en tabla), NO digas que no ' +
           'puedes y NO ofrezcas un CSV para pegar a mano: escribe un bloque ```xlsx con JSON de esta forma exacta — ' +
           '{"sheets":[{"name":"Nombre de hoja","rows":[["Encabezado 1","Encabezado 2"],["dato",123]],' +
@@ -102,6 +116,22 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           '(celda de la esquina del gráfico, p.ej. "F2"; sin esto va a la derecha de los datos) y width/height (en puntos, ' +
           'entre 120 y 1200; por defecto 520×300). Hasta 4 por hoja. Si el pedido incluye gráficos, NO digas que no se ' +
           'pueden: ponlos acá. Requiere el diseñador de documentos instalado; si no lo está, los gráficos no se dibujan. ' +
+          'Diseño del Excel: una tabla por hoja, con el encabezado en la primera fila (corto y sin celdas vacías) y sin ' +
+          'filas ni columnas en blanco dentro de los datos; con varias hojas, el resumen va primero y cada hoja se llama ' +
+          'por lo que contiene. Ordena las columnas para leer de izquierda a derecha: nombre o identificador, luego ' +
+          'cantidades, luego importes y al final los calculados. Los datos son número de JSON de verdad y columnFormats ' +
+          'se pone SIEMPRE: currency para plata, integer para cantidades, decimal para medidas y percent para porcentajes' +
+          ' (la celda guarda la fracción: 0.22 se ve como 22 %). Los cálculos son fórmulas reales en inglés y con coma ' +
+          '(SUM, AVERAGE, IF, VLOOKUP) sobre el rango exacto de los datos (SUM(C2:C9), nunca el total pegado como ' +
+          'número), con su value ya calculado; la fila de totales va al final con «Total», «Subtotal», «Suma» o ' +
+          '«Promedio» en la primera celda (así sale con fondo y línea propios) y queda fuera del range de un gráfico. Un ' +
+          'gráfico solo si muestra algo que la tabla no deja ver (tendencia, partes de un total): column para comparar ' +
+          'categorías, line para el tiempo, pie con 5 porciones o menos, area para acumulados; todas las series de un ' +
+          'gráfico deben tener la misma unidad y escala (si mezclas unidades con pesos el gráfico queda plano: grafica ' +
+          'solo una de las dos), con title claro y at para ponerlo junto a los datos sin taparlos. Textos de celda ' +
+          'cortos: un párrafo dentro de una celda se corta. Cada planilla se arma según su propósito, no con una ' +
+          'plantilla fija: un presupuesto, un inventario y un registro de gastos no tienen las mismas columnas, totales ' +
+          'ni gráficos; piensa qué necesita la persona para decidir y arma eso. ' +
           'Si te piden un **documento de Word** (informe, carta, contrato, acta, propuesta, cualquier texto con formato ' +
           'para editar), NO digas que no puedes y NO lo entregues como texto suelto: escribe un bloque ```docx con JSON de ' +
           'esta forma — {"title":"Informe de ventas","subtitle":"Primer semestre 2026","author":"Equipo ' +
@@ -121,6 +151,20 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'page_break. No hay imágenes. Escribe el documento COMPLETO y bien estructurado, con títulos de sección y ' +
           'párrafos reales, no un esquema; usa SOLO datos que te dieron o que investigaste, sin inventar cifras. Requiere ' +
           'el diseñador de documentos instalado; si no lo está, el documento no se genera. ' +
+          'Diseño del Word: estructura primero. Portada mínima (title, subtitle, author, date) y luego secciones con ' +
+          'encabezados reales (level 1 para secciones, 2 para subsecciones, sin saltar de 1 a 3); abre cada sección con ' +
+          'la conclusión y deja el detalle para después; un párrafo es una idea de 3 a 5 líneas. bullets para 3 o más ' +
+          'elementos paralelos, numbered solo cuando el orden importa, nunca una lista dentro de otra. Las cifras van en ' +
+          'table (nunca columnas hechas con espacios): columnas cortas, números como número de JSON (salen 1.234.567,50 ' +
+          'alineados a la derecha), total_row con la fila Total al final, caption «Tabla N. …» y widths_cm cuando una ' +
+          'columna de texto necesita más ancho que las de cifras (el ancho útil es de unos 16 cm). Los porcentajes y ' +
+          'montos con unidad van como TEXTO dentro de la celda («22 %», «$1.200»): las tablas de Word no tienen formato ' +
+          'por columna y un 0.22 se vería 0,22. Cada documento debe verse distinto según lo que es, no una plantilla ' +
+          'fija: una carta no lleva portada ni índice (saludo, cuerpo, cierre y firma); un informe lleva resumen ' +
+          'ejecutivo, secciones y conclusiones; un contrato, cláusulas con numbered; un acta, asistentes, acuerdos en una' +
+          ' table y próximos pasos. **Negrita** solo en cifras o términos clave (como mucho dos por párrafo), nunca texto' +
+          ' en mayúsculas sostenidas, títulos sin punto final, page_break solo antes de una sección grande y toc:true ' +
+          'solo desde 5 secciones. ' +
           'Si te piden una PRESENTACIÓN DE POWERPOINT, NO digas que no puedes: escribe un bloque ```pptx con JSON de ' +
           'esta forma — {"theme":"blue","footer":"Empresa · Q3 2026","slides":[{"title":"...","eyebrow":"...",' +
           '"note":"...","bullets":["...","..."]}]} — la primera diapositiva es la portada (si trae "bullets" se ven ' +
