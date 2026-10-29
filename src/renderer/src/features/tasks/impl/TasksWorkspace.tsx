@@ -6,6 +6,7 @@
  * Diseño: tareas a la izquierda (barra lateral del shell) · inicio / conversación al centro ·
  * Plan, Entregables y Actividad (o la Consulta lateral) a la derecha (colapsable).
  */
+import { IconButton } from '../../../components/IconButton'
 import { useUnifiedApps } from './unified'
 import '../../../app/mobile/switch.css'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
@@ -26,7 +27,7 @@ import {
   Loader2,
   MessagesSquare,
   MoreHorizontal,
-  PanelRightClose,
+  X,
   RefreshCw,
   SlidersHorizontal,
   Sparkles,
@@ -888,7 +889,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   asideTab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                 }`}
               >
-                <ListChecks size={14} className="hidden desk:block" />
+                <ListChecks size={16} className="hidden desk:block" />
                 <span className="desk:hidden">{t('tasks.ws.progress')}</span>
               </button>
               {hasBrowserBridge() && (
@@ -902,7 +903,7 @@ export function TasksWorkspace(): React.JSX.Element {
                     asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
-                  <Globe size={14} /> <span className="desk:hidden">{TASKS_TERMS.browser}</span>
+                  <Globe size={16} /> <span className="desk:hidden">{TASKS_TERMS.browser}</span>
                 </button>
               )}
               {viewerRequest && (
@@ -915,29 +916,14 @@ export function TasksWorkspace(): React.JSX.Element {
                     asideTab === 'viewer' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
-                  <FileText size={14} /> <span className="desk:hidden">{t('viewer.tab')}</span>
+                  <FileText size={16} /> <span className="desk:hidden">{t('viewer.tab')}</span>
                 </button>
               )}
             </div>
             <span className="ml-auto flex items-center gap-0.5">
-              {asideTab === 'progress' && (
-                <button
-                  type="button"
-                  title={t('tasks.ws.sync')}
-                  className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
-                  onClick={() => void resync()}
-                >
-                  <RefreshCw size={13} />
-                </button>
-              )}
-              <button
-                type="button"
-                title={t('tasks.ws.hidePanel')}
-                className="rounded p-1 text-muted hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
-                onClick={() => setPanelOpen(false)}
-              >
-                <PanelRightClose size={14} />
-              </button>
+              <IconButton size="sm" label={t('tasks.ws.hidePanel')} onClick={() => setPanelOpen(false)}>
+                <X size={14} />
+              </IconButton>
             </span>
           </div>
           <div className={`min-h-0 flex-1 ${asideTab === 'progress' ? 'flex flex-col' : 'hidden'}`}>
