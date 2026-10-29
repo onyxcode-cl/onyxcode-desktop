@@ -13,6 +13,7 @@ const started = vi.hoisted(() => [] as Array<Record<string, unknown>>)
 const routes = vi.hoisted(() => [] as string[])
 const nextPaths = vi.hoisted(() => ({ value: null as null | { map: unknown; directory: string } }))
 
+vi.mock('../project-profile', () => ({ projectProfiles: () => ({ accessOf: () => 'comandos' }) }))
 vi.mock('electron', () => ({
   app: { getPath: () => state.userData, getAppPath: () => '/nonexistent', isPackaged: false, getVersion: () => '0' }
 }))

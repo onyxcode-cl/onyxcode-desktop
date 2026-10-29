@@ -28,6 +28,8 @@ export interface RunOptions {
   maxOutputBytes?: number
   /** Segundos de espera antes de devolver el arranque de un proceso en segundo plano. */
   graceMs?: number
+  /** Variables de la Bóveda del proyecto: se suman al entorno mínimo (nunca pisan `PATH`, `HOME` ni las demás de la lista blanca). */
+  extraEnv?: Record<string, string>
 }
 
 export interface RunResult {
@@ -66,8 +68,12 @@ function clip(buf: Buffer[], size: number, max: number): { text: string; truncat
   return { text, truncated: size > max }
 }
 
-function envFor(platform: NodeJS.Platform): Record<string, string> {
-  return minimalEnv({}, { platform })
+function envFor(platform: NodeJS.Platform, extra?: Record<string, string>): Record<string, string> {
+  const base = minimalEnv({}, { platform })
+  if (!extra) return base
+  const out: Record<string, string> = { ...base }
+  for (const [k, v] of Object.entries(extra)) if (!(k in base) && typeof v === 'string') out[k] = v
+  return out
 }
 
 /** Corre el comando hasta que termina (o vence el tiempo). Nunca lanza: los fallos de arranque vuelven como `exitCode: null` y un texto en `stderr`. */
@@ -104,7 +110,7 @@ export function runHostCommand(command: string, opts: RunOptions = {}): Promise<
     try {
       child = spawn(file, args, {
         cwd: opts.cwd,
-        env: envFor(platform),
+        env: envFor(platform, opts.extraEnv),
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
         detached: platform !== 'win32'
@@ -199,7 +205,7 @@ export function startBackground(command: string, owner: string, opts: RunOptions
     try {
       child = spawn(file, args, {
         cwd: opts.cwd,
-        env: envFor(platform),
+        env: envFor(platform, opts.extraEnv),
         stdio: ['ignore', fd, fd],
         windowsHide: true,
         detached: platform !== 'win32'

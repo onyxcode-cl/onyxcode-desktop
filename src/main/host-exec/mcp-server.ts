@@ -48,6 +48,10 @@ export interface AuditEntry {
 export interface HostExecDeps {
   /** Política gestionada: `false` = la herramienta está apagada por la organización. */
   enabled?: () => boolean
+  /** Variables de la Bóveda de esa carpeta (solo para el proceso que se lanza; nunca vuelven a la IA). */
+  envFor?: (folder: string) => Record<string, string>
+  /** Tapa los valores de la Bóveda en un texto que vuelve a la IA o al registro. */
+  redact?: (folder: string, text: string) => string
   platform?: NodeJS.Platform
   run?: typeof runHostCommand
   start?: typeof startBackground
@@ -146,7 +150,7 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
     return q
   }
 
-  private formatResult(r: RunResult): string {
+  private formatResult(r: RunResult, folder: string): string {
     const lines: string[] = []
     if (r.timedOut) lines.push('Se agotó el tiempo y el comando se detuvo.')
     else if (r.exitCode !== null) lines.push(`Código de salida: ${r.exitCode}.`)
@@ -155,7 +159,8 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
     if (r.stderr.trim()) lines.push(`Errores:\n${r.stderr.trimEnd()}`)
     if (!r.stdout.trim() && !r.stderr.trim() && !r.timedOut) lines.push('Sin salida.')
     if (r.truncated) lines.push('(La salida se recortó.)')
-    return lines.join('\n')
+    const text = lines.join('\n')
+    return this.deps.redact ? this.deps.redact(folder, text) : text
   }
 
   protected async callTool(binding: HostBinding, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
@@ -169,7 +174,10 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
     if (name !== 'ejecutar') return this.text(`Herramienta desconocida: ${name}`, true)
 
     const verdict = checkHostCommand(args.comando)
-    const cmd = typeof args.comando === 'string' ? args.comando.slice(0, 200) : undefined
+    const cmd =
+      typeof args.comando === 'string'
+        ? (this.deps.redact ? this.deps.redact(binding.folder, args.comando) : args.comando).slice(0, 200)
+        : undefined
     if (!verdict.ok) {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: verdict.code, cmd, ms: 0 })
       return this.text(verdict.message, true)
@@ -211,7 +219,8 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
       if (background) {
         const r: BackgroundResult = await (this.deps.start ?? startBackground)(String(args.comando), binding.folder, {
           cwd: binding.folder,
-          platform
+          platform,
+          extraEnv: this.deps.envFor?.(binding.folder)
         })
         this.audit({
           at: t0,
@@ -222,15 +231,24 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
           exitCode: r.exitCode,
           ms: now() - t0
         })
-        if (!r.pid) return this.text(`No se pudo lanzar el comando. ${r.stderr}`.trim(), true)
+        if (!r.pid)
+          return this.text(
+            `No se pudo lanzar el comando. ${this.deps.redact ? this.deps.redact(binding.folder, r.stderr) : r.stderr}`.trim(),
+            true
+          )
         const head = r.running
           ? `El comando sigue corriendo en segundo plano (pid ${r.pid}). Detenlo con \`detener\` cuando termines.`
           : `El comando ya terminó (código ${r.exitCode ?? '?'}).`
-        return this.text(`${head}\n${this.formatResult(r)}`)
+        return this.text(`${head}\n${this.formatResult(r, binding.folder)}`)
       }
-      const r = await (this.deps.run ?? runHostCommand)(String(args.comando), { cwd: binding.folder, platform, timeoutMs })
+      const r = await (this.deps.run ?? runHostCommand)(String(args.comando), {
+        cwd: binding.folder,
+        platform,
+        timeoutMs,
+        extraEnv: this.deps.envFor?.(binding.folder)
+      })
       this.audit({ at: t0, tool: name, result: r.exitCode === 0 ? 'ok' : 'error', cmd, exitCode: r.exitCode, ms: now() - t0 })
-      return this.text(this.formatResult(r), r.exitCode !== 0)
+      return this.text(this.formatResult(r, binding.folder), r.exitCode !== 0)
     } catch {
       this.audit({ at: t0, tool: name, result: 'error', detail: 'motor', cmd, ms: now() - t0 })
       return this.text('No se pudo ejecutar el comando.', true)

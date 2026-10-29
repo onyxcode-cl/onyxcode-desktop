@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({ userData: '', policy: null as null | { disable
 const started = vi.hoisted(() => [] as Array<{ folder: string; noSandbox: boolean | undefined }>)
 const stopped = vi.hoisted(() => ({ n: 0 }))
 
+vi.mock('../project-profile', () => ({ projectProfiles: () => ({ accessOf: () => 'comandos' }) }))
 vi.mock('electron', () => ({
   app: { getPath: () => state.userData, getAppPath: () => '/nonexistent', isPackaged: false, getVersion: () => '0' }
 }))

@@ -449,6 +449,12 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:trusted:set': 'D',
   'tasks:trusted:remove': 'D',
   'tasks:policy': 'R',
+  // Ficha del proyecto (nivel de acceso y Bóveda de variables): solo se decide en el Mac, nunca desde el celular.
+  'project:profile': 'X',
+  'project:setAccess': 'X',
+  'project:setName': 'X',
+  'project:vaultSet': 'X',
+  'project:vaultDelete': 'X',
   // ArtCraft opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
   'craft:status': 'X',
   'craft:install': 'X',

@@ -5,6 +5,7 @@ import { registerAppHandlers } from './app'
 import { registerAttachHandlers } from './attach-handlers'
 import { registerTranslatePdfHandlers } from './translate-pdf-handlers'
 import { registerClipboardHandlers } from './clipboard-handlers'
+import { registerProjectProfileHandlers } from './project-profile-handlers'
 import { registerDiagnosticsHandlers } from './diagnostics'
 import { registerEngineAlwaysHandlers } from './engine-always'
 import { registerEngineCodeExtrasHandlers } from './engine-code-extras'
@@ -36,6 +37,7 @@ export function registerAllHandlers(ipcMain: IpcMain, ctx: IpcContext): void {
   registerEngineAlwaysHandlers(ipcMain, ctx.server)
   registerHelperAgentsHandlers(ipcMain, ctx.server)
   registerClipboardHandlers(ipcMain)
+  registerProjectProfileHandlers(ipcMain)
   registerAttachHandlers(ipcMain)
   registerTranslatePdfHandlers(ipcMain)
   registerProviderHandlers(ipcMain, ctx.server)

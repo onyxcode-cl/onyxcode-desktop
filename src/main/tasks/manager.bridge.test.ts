@@ -11,6 +11,7 @@ import { macOnly } from '../../test/platform'
 const state = vi.hoisted(() => ({ userData: '' }))
 const started = vi.hoisted(() => [] as Array<{ noSandbox?: boolean; extraOutboundPorts?: number[]; extraEnv?: Record<string, string> }>)
 
+vi.mock('../project-profile', () => ({ projectProfiles: () => ({ accessOf: () => 'comandos' }) }))
 vi.mock('electron', () => ({
   app: { getPath: () => state.userData, getAppPath: () => '/nonexistent', isPackaged: false, getVersion: () => '0' }
 }))

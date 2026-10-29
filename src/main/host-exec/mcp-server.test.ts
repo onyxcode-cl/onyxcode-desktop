@@ -257,3 +257,42 @@ describe('segundo plano y detener', () => {
     expect(ran.map((x) => x.cwd)).toEqual([folder, folder2])
   })
 })
+
+describe('Bóveda del proyecto', () => {
+  const SECRET = 'nbx_live_4f9a21c7'
+  let seenEnv: Array<Record<string, string> | undefined>
+  let withVault: HostExecMcpServer
+  beforeEach(() => {
+    seenEnv = []
+    withVault = new HostExecMcpServer({
+      audit: (e) => audits.push(e),
+      envFor: (f): Record<string, string> => (f === folder ? { API_KEY: SECRET } : {}),
+      redact: (f, text) => (f === folder ? text.split(SECRET).join('«API_KEY»') : text),
+      run: async (_c, o) => {
+        seenEnv.push(o?.extraEnv)
+        return { ...OK, stdout: `la clave es ${SECRET}\n`, stderr: `error con ${SECRET}` }
+      }
+    })
+  })
+  afterEach(async () => withVault.stop())
+
+  it('pasa las variables de ESA carpeta al comando y tapa su valor en lo que vuelve a la IA', async () => {
+    const { token, port } = await withVault.clientFor({ folder })
+    const r = await call(port, token, good)
+    expect(seenEnv[0]).toEqual({ API_KEY: SECRET })
+    expect(textOf(r)).not.toContain(SECRET)
+    expect(textOf(r)).toContain('«API_KEY»')
+  })
+
+  it('otra carpeta no recibe esas variables', async () => {
+    const { token, port } = await withVault.clientFor({ folder: folder2 })
+    await call(port, token, good)
+    expect(seenEnv[0]).toEqual({})
+  })
+
+  it('el valor tampoco queda en la auditoría aunque estuviera en el comando', async () => {
+    const { token, port } = await withVault.clientFor({ folder })
+    await call(port, token, { comando: `echo ${SECRET}`, motivo: 'probar que se tapa el valor' })
+    expect(JSON.stringify(audits)).not.toContain(SECRET)
+  })
+})

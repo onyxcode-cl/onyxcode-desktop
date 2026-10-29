@@ -12,6 +12,7 @@ import { macOnly } from '../../test/platform'
 const state = vi.hoisted(() => ({ userData: '', policy: null as null | { disableFullAccess?: boolean; allowedFolderRoots?: string[] } }))
 const started = vi.hoisted(() => [] as Array<{ folder: string; noSandbox: boolean | undefined }>)
 
+vi.mock('../project-profile', () => ({ projectProfiles: () => ({ accessOf: () => 'comandos' }) }))
 vi.mock('electron', () => ({
   app: { getPath: () => state.userData, getAppPath: () => '/nonexistent', isPackaged: false, getVersion: () => '0' }
 }))

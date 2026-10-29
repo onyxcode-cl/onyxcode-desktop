@@ -65,6 +65,7 @@ import { documentsMcp } from '../documents'
 import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
 import { hostExecMcp } from '../host-exec'
 import { HOST_ROUTE_NAME } from '../host-exec/names'
+import { projectProfiles } from '../project-profile'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
@@ -1396,7 +1397,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     // más del MISMO proxy. Solo en el servidor aislado y solo si la organización no la apagó (`disableHostCommands`, falla cerrado).
     let hostCfg: Record<string, unknown> | null = null
     let realHostToken: string | null = null
-    if (mcpProxy && !fullAccess && !isHostCommandsDisabled(loadManagedPolicy())) {
+    if (mcpProxy && !fullAccess && !isHostCommandsDisabled(loadManagedPolicy()) && projectProfiles().accessOf(folder) !== 'aislado') {
       try {
         const real = await hostExecMcp.configFor({ folder }).catch(() => null)
         realHostToken = bearerOfMcpConfig(real)

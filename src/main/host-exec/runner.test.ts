@@ -45,6 +45,12 @@ describe.skipIf(!posixOnly)('runHostCommand (comandos reales)', () => {
     }
   })
 
+  it('suma las variables de la Bóveda pero no puede pisar PATH ni HOME', async () => {
+    const r = await runHostCommand('echo "k=$MI_CLAVE"; echo "p=$PATH"', { extraEnv: { MI_CLAVE: 'abc123', PATH: '/tmp/falso' } })
+    expect(r.stdout).toContain('k=abc123')
+    expect(r.stdout).not.toContain('/tmp/falso')
+  })
+
   it('un comando que falla devuelve su código y su stderr', async () => {
     const r = await runHostCommand('echo malo 1>&2; exit 3')
     expect(r.exitCode).toBe(3)

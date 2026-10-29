@@ -7,6 +7,7 @@
  * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
+import type { AccessLevel, ProjectProfileView, VaultSetView } from './project-profile'
 import type { PasteResult, PasteScope } from './paste-files'
 import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
 import type { PdfApplyRequest, PdfApplyResult, PdfExtractRequest, PdfExtractResult } from './translate-pdf'
@@ -127,6 +128,12 @@ export interface IpcInvokeContract {
    * del sistema, valida (regulares, sin ejecutables, topes 10 / 25 MB / 50 MB) y devuelve los bytes en base64. Solo escritorio.
    */
   'clipboard:readFilesForPaste': { req: { scope: PasteScope }; res: PasteResult }
+  /** Ficha del proyecto: nivel de acceso de la IA y Bóveda de variables, por carpeta. La pantalla solo recibe nombres, nunca valores. */
+  'project:profile': { req: { folder: string }; res: ProjectProfileView }
+  'project:setAccess': { req: { folder: string; access: AccessLevel }; res: ProjectProfileView }
+  'project:setName': { req: { folder: string; name: string }; res: ProjectProfileView }
+  'project:vaultSet': { req: { folder: string; text: string }; res: VaultSetView }
+  'project:vaultDelete': { req: { folder: string; name: string }; res: ProjectProfileView }
   /**
    * Adjuntar un documento de oficina al Chat: main lo convierte a texto Markdown (solo lectura, sin macros ni vínculos, con topes
    * y avisos de recorte) y lo devuelve ya enmarcado como datos. El renderer manda los bytes que ya leyó; nunca una ruta.
@@ -223,6 +230,11 @@ export const IPC_INVOKE_CHANNELS = [
   'helpers:save',
   'helpers:inspectForeign',
   'clipboard:readFilesForPaste',
+  'project:profile',
+  'project:setAccess',
+  'project:setName',
+  'project:vaultSet',
+  'project:vaultDelete',
   'attach:extractOffice',
   'translate:pdfExtract',
   'translate:pdfApply',
