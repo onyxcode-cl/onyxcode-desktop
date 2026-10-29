@@ -878,7 +878,7 @@ export function TasksWorkspace(): React.JSX.Element {
             />
           )}
           <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium desk:border-b-transparent desk:pr-[calc(var(--controls-inset,0px)+12px)]">
-            <div className="contents desk:inline-flex desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5">
+            <div className={`contents desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5 ${viewerRequest ? 'desk:inline-flex' : 'desk:hidden'}`}>
               <button
                 type="button"
                 onClick={() => setAsideTab('progress')}
