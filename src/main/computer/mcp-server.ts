@@ -2977,7 +2977,10 @@ function refineWithField(v: Verdict, prog: TypedProgress | null, keyChanged: boo
     case 'partial': {
       // El campo recibió solo el comienzo: es evidencia en contra, aunque otra señal (ventana, texto en otro campo) hubiera confirmado.
       const { escalation: _drop, ...rest } = v
-      return addNote({ ...rest, effect: 'unverifiable' }, `el campo enfocado recibió solo ${prog.typed} de ${prog.total} caracteres; ${TYPE_RETRY_HINT}`)
+      return addNote(
+        { ...rest, effect: 'unverifiable' },
+        `el campo enfocado recibió solo ${prog.typed} de ${prog.total} caracteres; ${TYPE_RETRY_HINT}`
+      )
     }
     case 'mismatch': {
       // Lo leído NO coincide con lo escrito: nunca `confirmed`, venga de donde venga la confirmación.
