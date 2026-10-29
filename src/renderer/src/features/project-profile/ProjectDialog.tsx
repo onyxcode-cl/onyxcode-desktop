@@ -25,7 +25,7 @@ export interface ProjectFolders {
   linked: LinkedFolderRow[]
   applied: boolean
   pick: () => Promise<{ path: string } | { error: string } | null>
-  link: (path: string, mode: 'rw' | 'ro') => Promise<boolean>
+  link: (path: string, mode: 'rw' | 'ro') => Promise<true | { error: string }>
   unlink: (path: string) => Promise<void>
 }
 
@@ -103,7 +103,9 @@ export function ProjectDialog({ folder, full, onPickFull, busy, folders, onAcces
     if (!folders || !pending || working) return
     setWorking(true)
     try {
-      if (await folders.link(pending.path, pending.mode)) setPending(null)
+      const r = await folders.link(pending.path, pending.mode)
+      if (r === true) setPending(null)
+      else setFolderNote(r.error)
     } finally {
       setWorking(false)
     }
@@ -234,7 +236,7 @@ export function ProjectDialog({ folder, full, onPickFull, busy, folders, onAcces
               </p>
             )}
             {folders && !folders.applied && <p className="mb-1 text-xs text-subtle">{t('project.dialog.appliedOnRestart')}</p>}
-            {!folders && <p className="mb-1 text-xs text-subtle">{t('project.dialog.codeOneFolder')}</p>}
+            {folders && folders.linked.length > 0 && <p className="mb-1 text-xs text-subtle">{t('project.dialog.linkedHint')}</p>}
 
             <div className="mt-5 mb-2 font-medium">{t('project.dialog.access')}</div>
             <div role="radiogroup" aria-label={t('project.dialog.access')} className="flex gap-1 rounded-xl border border-border bg-bg p-1">

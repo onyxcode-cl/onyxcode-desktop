@@ -12,7 +12,13 @@
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import { CHAT_AGENT } from '@shared/types'
-import { effectiveModeFor, endsWithRuleset, rulesetForMode, type PermissionModeId, type PermissionRuleLike } from '@shared/permission-rules'
+import {
+  effectiveModeFor,
+  endsWithModeBlock,
+  rulesetForMode,
+  type PermissionModeId,
+  type PermissionRuleLike
+} from '@shared/permission-rules'
 
 export interface EnginePermission {
   id: string
@@ -254,7 +260,7 @@ export function permissionModeOf(
 ): PermissionModeId | 'unknown' {
   if (!rules || rules.length === 0) return 'unknown'
   for (const m of ['bypass', 'auto', 'acceptEdits', 'plan', 'manual'] as const) {
-    if (endsWithRuleset(rules, rulesetForMode(m))) return effectiveModeFor(m, agent)
+    if (endsWithModeBlock(rules, rulesetForMode(m))) return effectiveModeFor(m, agent)
   }
   return 'unknown'
 }

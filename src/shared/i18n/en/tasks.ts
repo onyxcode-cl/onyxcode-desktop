@@ -743,5 +743,19 @@ export const tasks = {
   'project.dialog.appliedOnRestart': 'Applies when this project’s server restarts.',
   'project.dialog.accessHint': 'What the AI can do outside the folder.',
   'project.dialog.codeOneFolder': 'Code works with the project folder; open another one as a separate project.',
-  'project.dialog.totalOnlyNote': 'Full control is only in Overdrive.'
+  'project.dialog.totalOnlyNote': 'Full control is only in Overdrive.',
+  'project.linked.reason.not-absolute': 'That path is not valid.',
+  'project.linked.reason.missing': 'That folder does not exist.',
+  'project.linked.reason.not-folder': 'That is not a folder.',
+  'project.linked.reason.root-or-home': 'The root or your whole home folder cannot be added: pick a specific folder.',
+  'project.linked.reason.system': 'That is a system folder and cannot be added.',
+  'project.linked.reason.app-state': 'That folder holds the app’s internal data and cannot be added.',
+  'project.linked.reason.secrets': 'That folder holds keys or credentials and cannot be added.',
+  'project.linked.reason.same-as-project': 'That is the project folder.',
+  'project.linked.reason.inside-project': 'That folder is already inside the project.',
+  'project.linked.reason.contains-project': 'That folder contains the project: pick a smaller one.',
+  'project.linked.reason.has-wildcards': 'The folder name has unsupported characters (* ? [ ] { }).',
+  'project.linked.reason.too-many': 'At most 10 added folders per project.',
+  'project.linked.reason.duplicate': 'That folder is already added.',
+  'project.dialog.linkedHint': 'The AI enters added folders without asking; in “Read only” it cannot change them.'
 } as const satisfies Messages<typeof es>

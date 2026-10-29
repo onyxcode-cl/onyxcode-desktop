@@ -24,7 +24,8 @@ export function useProjectFolders(folder: string): ProjectFolders {
       if (folderSet?.linked.some((l) => l.path === chk.normalized)) return { error: t('tasksComputer.menu.alreadyAdded') }
       return { path: chk.normalized }
     },
-    link: (path, mode) => linkFolder(path, mode),
+    link: async (path, mode) =>
+      (await linkFolder(path, mode)) ? true : { error: useTasks.getState().error ?? t('tasksComputer.folder.cannotAdd') },
     unlink: (path) => unlinkFolder(path)
   }
 }

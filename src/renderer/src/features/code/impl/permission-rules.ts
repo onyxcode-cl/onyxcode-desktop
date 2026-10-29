@@ -1,5 +1,5 @@
 import type { PermissionRuleset } from '@opencode-ai/sdk/v2/client'
-import { effectiveModeFor, endsWithRuleset, rulesetForMode } from '@shared/permission-rules'
+import { effectiveModeFor, endsWithRuleset, rulesetForMode, type LinkedFolderRule } from '@shared/permission-rules'
 import { bgshellSessionRules } from '@shared/shell-bg-permissions'
 import type { PermissionMode } from './types'
 
@@ -15,13 +15,13 @@ export function sameRuleset(a: PermissionRuleset | undefined, b: PermissionRules
  * Delante van las reglas de `bgshell` (F8-B204: `bgshell_start` igual que `bash`, el resto pasa): ANTES del bloque del modo, para que la
  * sesión siga TERMINANDO con él (`endsWithRuleset`/`approvalKindOf` reconocen el modo así).
  */
-export function rulesetFor(mode: PermissionMode): PermissionRuleset {
-  return [...bgshellSessionRules(mode), ...rulesetForMode(mode)] as PermissionRuleset
+export function rulesetFor(mode: PermissionMode, linked?: readonly LinkedFolderRule[]): PermissionRuleset {
+  return [...bgshellSessionRules(mode), ...rulesetForMode(mode, { linked })] as PermissionRuleset
 }
 
 /** Reglas que debe tener la sesión según el modo elegido y el agente activo. */
-export function rulesetForState(mode: PermissionMode, agent: string | undefined): PermissionRuleset {
-  return rulesetFor(effectiveModeFor(mode, agent))
+export function rulesetForState(mode: PermissionMode, agent: string | undefined, linked?: readonly LinkedFolderRule[]): PermissionRuleset {
+  return rulesetFor(effectiveModeFor(mode, agent), linked)
 }
 
 /** ¿La sesión ya termina con el bloque pedido? (idempotencia: no se reenvía ni crece la lista). */

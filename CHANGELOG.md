@@ -11,6 +11,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Bóveda de variables**: pega formato `.env` por proyecto. Los valores se guardan cifrados con el almacén seguro del sistema (sin cifrado no se guarda nada), no vuelven nunca a la pantalla, llegan solo a los comandos que apruebas con `equipo_ejecutar` en ese proyecto y se tapan (`«NOMBRE»`) en lo que vuelve a la IA, a la auditoría y a las respuestas. Nombres que alteran cómo arrancan los programas (`PATH`, `LD_*`, `NODE_OPTIONS`…) no se aceptan.
 - **Acceso «Aislado»**: la carpeta deja de recibir la herramienta de comandos del equipo; se aplica ya relanzando el servidor si está ocioso.
 - **Panel derecho de Overdrive en tarjetas** (Ficha, Plan, Contexto, y el resto igual). El «Entorno» de la cabecera abre la Ficha.
+- **Añadir otra carpeta en Code**: la Ficha de un proyecto de Code ya permite «Añadir» carpetas (lectura y escritura, o solo lectura). La IA entra a ellas sin tarjeta de permiso; el resto de lo externo sigue preguntando. Se validan en la app (no se aceptan raíces, la carpeta personal entera, carpetas del sistema, claves, el estado interno de la app ni carpetas dentro o por encima del proyecto; máximo 10).
 - **Barra de Code**: los paneles en una cápsula y todo lo demás (Ficha, vista del trabajo, memoria, exportar, bifurcar, compactar) en el menú «⋯».
 - Canales `project:*` y `tasks:access:apply`: prohibidos desde el celular (clase X). Sin cambios en zonas intocables.
 

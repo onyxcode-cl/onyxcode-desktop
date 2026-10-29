@@ -22,6 +22,7 @@ import { PortalMenu, PortalMenuItem, PortalMenuSeparator } from '../../../compon
 import { READING_MODES, useReadingMode, useWorkView, type ReadingMode } from '../../../lib/reading-mode'
 import { useUi } from '../../../stores/ui'
 import { ProjectDialog } from '../../project-profile/ProjectDialog'
+import { useLinkedFolders } from '../../project-profile/useLinkedFolders'
 
 export function ToolbarMore({
   directory,
@@ -44,6 +45,7 @@ export function ToolbarMore({
   const anchor = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   const mode = useWorkView('code')
+  const folders = useLinkedFolders(directory)
   const run = (fn: () => void) => (): void => {
     setOpen(false)
     fn()
@@ -92,7 +94,7 @@ export function ToolbarMore({
           </>
         )}
       </PortalMenu>
-      {ficha && <ProjectDialog folder={directory} full={false} onClose={() => setFicha(false)} />}
+      {ficha && <ProjectDialog folder={directory} full={false} folders={folders} onClose={() => setFicha(false)} />}
     </div>
   )
 }

@@ -8,7 +8,9 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { SafeStorageLike } from '../remote/devices-store'
+import type { LinkedFolderRule } from '@shared/permission-rules'
 import { MAX_VARS_PER_PROJECT, NAME_RE, isForbiddenName, parseEnv } from './env-parse'
+import { MAX_LINKED_FOLDERS } from './linked'
 import { redactSecrets } from './redact'
 
 export const PROFILES_FILE = 'project-profiles.json'
@@ -34,6 +36,18 @@ export interface VaultSetResult {
 
 type VaultData = Record<string, Record<string, string>>
 
+function cleanLinked(v: unknown[]): LinkedFolderRule[] {
+  const out: LinkedFolderRule[] = []
+  for (const x of v) {
+    if (!x || typeof x !== 'object') continue
+    const o = x as Record<string, unknown>
+    if (typeof o.path === 'string' && o.path && (o.mode === 'rw' || o.mode === 'ro') && !out.some((l) => l.path === o.path)) {
+      out.push({ path: o.path, mode: o.mode })
+    }
+  }
+  return out.slice(0, MAX_LINKED_FOLDERS)
+}
+
 function writeAtomic(file: string, data: string | Buffer): void {
   mkdirSync(dirname(file), { recursive: true })
   const tmp = `${file}.tmp`
@@ -48,7 +62,7 @@ export function folderKey(folder: string): string {
 }
 
 export class ProjectProfileStore {
-  private profiles: Record<string, { name?: string; access?: AccessLevel }> | null = null
+  private profiles: Record<string, { name?: string; access?: AccessLevel; linked?: LinkedFolderRule[] }> | null = null
   private vault: VaultData | null = null
 
   constructor(
@@ -73,9 +87,9 @@ export class ProjectProfileStore {
 
   // ───────────── Perfil (nombre y acceso) ─────────────
 
-  private loadProfiles(): Record<string, { name?: string; access?: AccessLevel }> {
+  private loadProfiles(): Record<string, { name?: string; access?: AccessLevel; linked?: LinkedFolderRule[] }> {
     if (this.profiles) return this.profiles
-    const out: Record<string, { name?: string; access?: AccessLevel }> = {}
+    const out: Record<string, { name?: string; access?: AccessLevel; linked?: LinkedFolderRule[] }> = {}
     try {
       if (existsSync(this.profilesFile)) {
         const raw = JSON.parse(readFileSync(this.profilesFile, 'utf8')) as { profiles?: Record<string, unknown> }
@@ -84,7 +98,8 @@ export class ProjectProfileStore {
           const o = v as Record<string, unknown>
           out[k] = {
             ...(typeof o.name === 'string' ? { name: o.name.slice(0, 80) } : {}),
-            ...(isAccessLevel(o.access) ? { access: o.access } : {})
+            ...(isAccessLevel(o.access) ? { access: o.access } : {}),
+            ...(Array.isArray(o.linked) ? { linked: cleanLinked(o.linked) } : {})
           }
         }
       }
@@ -127,6 +142,32 @@ export class ProjectProfileStore {
     all[k] = { ...all[k], ...(clean ? { name: clean } : {}) }
     if (!clean) delete all[k].name
     this.saveProfiles()
+  }
+
+  /** Carpetas añadidas al proyecto (la validación de la ruta la hace quien llama, `checkLinkedFolder`). */
+  linkedOf(folder: string): LinkedFolderRule[] {
+    return [...(this.loadProfiles()[folderKey(folder)]?.linked ?? [])]
+  }
+
+  addLinked(folder: string, path: string, mode: 'rw' | 'ro'): 'ok' | 'too-many' | 'duplicate' {
+    const all = this.loadProfiles()
+    const k = folderKey(folder)
+    const cur = all[k]?.linked ?? []
+    if (cur.some((l) => l.path === path)) return 'duplicate'
+    if (cur.length >= MAX_LINKED_FOLDERS) return 'too-many'
+    all[k] = { ...all[k], linked: [...cur, { path, mode }] }
+    this.saveProfiles()
+    return 'ok'
+  }
+
+  removeLinked(folder: string, path: string): boolean {
+    const all = this.loadProfiles()
+    const k = folderKey(folder)
+    const cur = all[k]?.linked ?? []
+    if (!cur.some((l) => l.path === path)) return false
+    all[k] = { ...all[k], linked: cur.filter((l) => l.path !== path) }
+    this.saveProfiles()
+    return true
   }
 
   // ───────────── Bóveda ─────────────

@@ -7,7 +7,7 @@
  * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
-import type { AccessLevel, ProjectProfileView, VaultSetView } from './project-profile'
+import type { AccessLevel, LinkResult, PickLinkedResult, ProjectProfileView, VaultSetView } from './project-profile'
 import type { PasteResult, PasteScope } from './paste-files'
 import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
 import type { PdfApplyRequest, PdfApplyResult, PdfExtractRequest, PdfExtractResult } from './translate-pdf'
@@ -134,6 +134,10 @@ export interface IpcInvokeContract {
   'project:setName': { req: { folder: string; name: string }; res: ProjectProfileView }
   'project:vaultSet': { req: { folder: string; text: string }; res: VaultSetView }
   'project:vaultDelete': { req: { folder: string; name: string }; res: ProjectProfileView }
+  /** Carpetas añadidas a un proyecto de Code: elegir (selector del sistema, validada en main), vincular y quitar. */
+  'project:pickLinked': { req: { folder: string }; res: PickLinkedResult }
+  'project:link': { req: { folder: string; path: string; mode: 'rw' | 'ro' }; res: LinkResult }
+  'project:unlink': { req: { folder: string; path: string }; res: ProjectProfileView }
   /**
    * Adjuntar un documento de oficina al Chat: main lo convierte a texto Markdown (solo lectura, sin macros ni vínculos, con topes
    * y avisos de recorte) y lo devuelve ya enmarcado como datos. El renderer manda los bytes que ya leyó; nunca una ruta.
@@ -235,6 +239,9 @@ export const IPC_INVOKE_CHANNELS = [
   'project:setName',
   'project:vaultSet',
   'project:vaultDelete',
+  'project:pickLinked',
+  'project:link',
+  'project:unlink',
   'attach:extractOffice',
   'translate:pdfExtract',
   'translate:pdfApply',

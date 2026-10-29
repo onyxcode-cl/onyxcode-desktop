@@ -9,6 +9,31 @@ export interface ProjectProfileView {
   vaultNames: string[]
   /** ¿Hay almacén seguro para cifrar? Si no, la Bóveda no guarda nada. */
   secure: boolean
+  /** Carpetas añadidas al proyecto (Code): la IA entra sin preguntar; `ro` = solo lectura. */
+  linked: Array<{ path: string; name: string; mode: 'rw' | 'ro' }>
+}
+
+/** Motivos por los que una carpeta no se puede añadir (la pantalla los traduce). */
+export type LinkedRejection =
+  | 'not-absolute'
+  | 'missing'
+  | 'not-folder'
+  | 'root-or-home'
+  | 'system'
+  | 'app-state'
+  | 'secrets'
+  | 'same-as-project'
+  | 'inside-project'
+  | 'contains-project'
+  | 'has-wildcards'
+  | 'too-many'
+  | 'duplicate'
+
+export type PickLinkedResult = { path: string } | { reason: LinkedRejection } | null
+export interface LinkResult {
+  ok: boolean
+  reason?: LinkedRejection
+  profile: ProjectProfileView
 }
 
 export interface VaultSetView {

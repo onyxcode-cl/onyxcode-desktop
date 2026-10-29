@@ -743,5 +743,19 @@ export const tasks = {
   'project.dialog.appliedOnRestart': 'Se aplica al reiniciar el servidor de este proyecto.',
   'project.dialog.accessHint': 'Qué puede hacer la IA fuera de la carpeta.',
   'project.dialog.codeOneFolder': 'Code trabaja con la carpeta del proyecto; para otra, ábrela como otro proyecto.',
-  'project.dialog.totalOnlyNote': 'Control total solo está en Overdrive.'
+  'project.dialog.totalOnlyNote': 'Control total solo está en Overdrive.',
+  'project.linked.reason.not-absolute': 'La ruta no es válida.',
+  'project.linked.reason.missing': 'Esa carpeta no existe.',
+  'project.linked.reason.not-folder': 'Eso no es una carpeta.',
+  'project.linked.reason.root-or-home': 'No se puede añadir la raíz ni toda tu carpeta personal: elige una carpeta concreta.',
+  'project.linked.reason.system': 'Esa es una carpeta del sistema: no se puede añadir.',
+  'project.linked.reason.app-state': 'Esa carpeta guarda datos internos de la app: no se puede añadir.',
+  'project.linked.reason.secrets': 'Esa carpeta guarda claves o credenciales: no se puede añadir.',
+  'project.linked.reason.same-as-project': 'Esa es la carpeta del proyecto.',
+  'project.linked.reason.inside-project': 'Esa carpeta ya está dentro del proyecto.',
+  'project.linked.reason.contains-project': 'Esa carpeta contiene al proyecto: elige una más pequeña.',
+  'project.linked.reason.has-wildcards': 'El nombre de la carpeta tiene caracteres que no se admiten (* ? [ ] { }).',
+  'project.linked.reason.too-many': 'Máximo 10 carpetas añadidas por proyecto.',
+  'project.linked.reason.duplicate': 'Esa carpeta ya está añadida.',
+  'project.dialog.linkedHint': 'La IA entra sin preguntar a las carpetas añadidas; en «Solo lectura» no puede cambiarlas.'
 } as const

@@ -6,7 +6,18 @@
  */
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
+import { useProjectProfile } from '../../project-profile/store'
 import { rulesetForState, sessionHasRuleset } from './permission-rules'
+
+/**
+ * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
+ * nada: el envío de mensajes no puede demorarse); si aún no está, se pide en segundo plano y, mientras tanto, esas carpetas preguntan como siempre.
+ */
+function linkedOf(dir: string): Array<{ path: string; mode: 'rw' | 'ro' }> {
+  const have = useProjectProfile.getState().byFolder[dir]
+  if (!have) void useProjectProfile.getState().ensure(dir)
+  return have?.linked ?? []
+}
 import { approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { NO_AI_ERROR } from '@shared/ai-errors'
@@ -847,7 +858,7 @@ export const useCode = create<CodeState>((set, get) => {
     // no tenerlo y «Manual» no preguntaría nada. Se iguala ANTES de enviar; en Manual, si no se puede, no se envía (falla cerrado).
     // El bloque de reglas es autosuficiente (anula lo de bloques anteriores) y el motor lo AÑADE: solo se reenvía si la sesión no
     // termina ya con él, así no crece la lista en cada mensaje. El agente `plan` manda sobre el modo (ver `effectiveModeFor`).
-    const wantRules = rulesetForState(get().permissionMode, agent)
+    const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir))
     if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
       try {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
@@ -1163,7 +1174,11 @@ export const useCode = create<CodeState>((set, get) => {
       try {
         const client = requireClient()
         const sess = sdkData(
-          await client.session.create({ directory: dir, title, permission: rulesetForState(get().permissionMode, get().agent) })
+          await client.session.create({
+            directory: dir,
+            title,
+            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir))
+          })
         )
         set((s) => ({
           sessions: { ...s.sessions, [sess.id]: sess },
@@ -1662,10 +1677,10 @@ export const useCode = create<CodeState>((set, get) => {
       // El bloque del modo se manda ya (también «Solo explorar»: tiene que anular lo que dejó el modo anterior en esta sesión).
       // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
       // el cambio vale desde el próximo mensaje (la interfaz lo avisa).
-      const permission = rulesetForState(mode, get().agent)
+      const { client, dir } = activeDir()
+      const permission = rulesetForState(mode, get().agent, linkedOf(dir))
       if (sessionHasRuleset(get().sessions[sid]?.permission, permission)) return
       try {
-        const { client, dir } = activeDir()
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission }))
         set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated } }))
       } catch (err) {

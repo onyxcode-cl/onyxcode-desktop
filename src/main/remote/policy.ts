@@ -456,6 +456,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'project:setName': 'X',
   'project:vaultSet': 'X',
   'project:vaultDelete': 'X',
+  'project:pickLinked': 'X',
+  'project:link': 'X',
+  'project:unlink': 'X',
   // ArtCraft opcional: instalar/quitar software solo se decide en el Mac, nunca desde el celular.
   'craft:status': 'X',
   'craft:install': 'X',

@@ -4,6 +4,7 @@ import { UsageMeter } from '../../../components/UsageMeter'
 import { useT } from '../../../lib/i18n'
 import { useModeModel } from '../../settings/impl/extras'
 import { ProjectCard } from '../../project-profile/ProjectCard'
+import { useLinkedFolders } from '../../project-profile/useLinkedFolders'
 import { PlanCard } from './PlanCard'
 import { useCodeAiGate } from './ComposerControls'
 import { useCode } from './store'
@@ -20,6 +21,7 @@ export function CodeSummary({
   changes: number
 }): React.JSX.Element {
   const t = useT()
+  const folders = useLinkedFolders(directory)
   const sessionID = useCode((s) => s.activeSessionID)
   const messages = useCode((s) => (sessionID ? s.messages[sessionID] : undefined))
   const model = useCode((s) => s.model)
@@ -31,7 +33,7 @@ export function CodeSummary({
   return (
     <div className="h-full overflow-y-auto py-1" data-testid="code-summary">
       {/* En Code el nivel «Total» no se ofrece: el control del equipo es cosa de Tareas. */}
-      <ProjectCard folder={directory} full={false} branch={branch} />
+      <ProjectCard folder={directory} full={false} branch={branch} folders={folders} />
       <section className={card}>
         <h3 className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
           <ListChecks size={15} className="text-muted" aria-hidden />

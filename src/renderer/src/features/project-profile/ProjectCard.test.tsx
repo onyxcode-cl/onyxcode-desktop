@@ -31,7 +31,7 @@ const FOLDER = '/Users/ben/Documents/prueba'
 beforeEach(() => {
   vi.unstubAllGlobals()
   calls.length = 0
-  profile = { name: '', access: 'comandos', vaultNames: ['API_KEY', 'CONFIG'], secure: true }
+  profile = { name: '', access: 'comandos', vaultNames: ['API_KEY', 'CONFIG'], secure: true, linked: [] }
   useProjectProfile.setState({ byFolder: {} })
   host = document.createElement('div')
   document.body.appendChild(host)

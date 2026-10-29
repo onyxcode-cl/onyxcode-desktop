@@ -683,6 +683,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'project:setName': obj({ folder: absPath, name: str({ max: 80 }) }),
   'project:vaultSet': obj({ folder: absPath, text: str({ max: 120000 }) }),
   'project:vaultDelete': obj({ folder: absPath, name: str({ max: 64, min: 1 }) }),
+  'project:pickLinked': obj({ folder: absPath }),
+  'project:link': obj({ folder: absPath, path: absPath, mode: literal('rw', 'ro') }),
+  'project:unlink': obj({ folder: absPath, path: absPath }),
   // base64 de ≤ 10 MB (4/3 de OFFICE_MAX_BYTES + margen); el nombre solo decide el formato, nunca es una ruta.
   'attach:extractOffice': obj({
     name: str({ max: 300, min: 1 }),

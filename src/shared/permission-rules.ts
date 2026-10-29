@@ -102,8 +102,61 @@ const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => 
 /** Carpetas fuera del proyecto: preguntan en todos los modos menos «Todo sin preguntar». */
 const EXTERNAL_ASK = rule('external_directory', '*', 'ask')
 
+/** Carpeta añadida a un proyecto (Ficha del proyecto): la IA entra sin preguntar; `ro` además no puede editar ni escribir en ella. */
+export interface LinkedFolderRule {
+  path: string
+  mode: 'rw' | 'ro'
+}
+
+const trimSep = (p: string): string => (p.length > 1 ? p.replace(/[\\/]+$/, '') : p)
+
+/** Variantes de una ruta para el motor: tal cual y, si lleva `\`, con `/` (Windows). Siempre ruta ABSOLUTA, nunca un comodín suelto. */
+function pathVariants(p: string): string[] {
+  const t = trimSep(p)
+  const slash = t.replace(/\\/g, '/')
+  return slash === t ? [t] : [t, slash]
+}
+
+/** Una ruta añadida solo vale si es absoluta (`/…` o `C:\…`) y no es una raíz: así una regla de carpeta nunca abre más de lo pedido. */
+export function isSafeLinkedPath(p: string): boolean {
+  const t = trimSep(p.trim())
+  if (/[*?\[\]{}\u0000-\u001f]/.test(t)) return false
+  if (t === '/' || /^[A-Za-z]:$/.test(t)) return false
+  return t.startsWith('/') || /^[A-Za-z]:[\\/]/.test(t)
+}
+
+/**
+ * Reglas de las carpetas añadidas: `external_directory` permitido en la carpeta y debajo de ella; en «solo lectura», además `edit`/`write`
+ * denegados (van DESPUÉS de los `allow` del modo, que son `*`: la última regla que casa manda).
+ */
+export function linkedFolderRules(linked: readonly LinkedFolderRule[] | undefined): PermissionRuleLike[] {
+  const out: PermissionRuleLike[] = []
+  for (const l of linked ?? []) {
+    if (!isSafeLinkedPath(l.path)) continue
+    for (const v of pathVariants(l.path)) {
+      out.push(rule('external_directory', v, 'allow'), rule('external_directory', `${v}/*`, 'allow'))
+      if (l.mode === 'ro') {
+        for (const perm of ['edit', 'write']) out.push(rule(perm, v, 'deny'), rule(perm, `${v}/*`, 'deny'))
+      }
+    }
+  }
+  return out
+}
+
+/** ¿Es una regla de carpeta añadida? (ruta absoluta; las del modo usan `*` o rutas relativas). */
+function isLinkedRule(r: PermissionRuleLike): boolean {
+  const abs = /^(\/|[A-Za-z]:[\\/])/.test(r.pattern)
+  if (r.permission === 'external_directory') return r.pattern !== '*'
+  return abs && r.action === 'deny' && (r.permission === 'edit' || r.permission === 'write')
+}
+const withoutLinked = (rules: readonly PermissionRuleLike[]): PermissionRuleLike[] => rules.filter((r) => !isLinkedRule(r))
+
 /** Bloque completo de un modo. Siempre una lista (nunca `undefined`): «Solo explorar» también tiene que anular lo que dejó el modo anterior. */
-export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOnly?: boolean } = {}): PermissionRuleLike[] {
+export function rulesetForMode(
+  mode: PermissionModeId,
+  opts: { engineAllowReadOnly?: boolean; linked?: readonly LinkedFolderRule[] } = {}
+): PermissionRuleLike[] {
+  const linked = linkedFolderRules(opts.linked)
   switch (mode) {
     case 'manual':
       return [
@@ -114,6 +167,7 @@ export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOn
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,
+        ...linked,
         // Los subagentes NO heredan los `ask` del padre; preguntar al lanzarlos es lo único que los cubre.
         rule('task', '*', 'ask')
       ]
@@ -127,6 +181,7 @@ export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOn
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,
+        ...linked,
         rule('task', '*', 'allow')
       ]
     case 'plan':
@@ -142,6 +197,7 @@ export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOn
         rule('webfetch', '*', 'allow'),
         rule('websearch', '*', 'allow'),
         EXTERNAL_ASK,
+        ...linked,
         rule('task', '*', 'ask'),
         rule('task', 'general', 'deny')
       ]
@@ -157,6 +213,7 @@ export function rulesetForMode(mode: PermissionModeId, opts: { engineAllowReadOn
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,
+        ...linked,
         rule('task', '*', 'allow')
       ]
     case 'bypass':
@@ -189,10 +246,18 @@ export function endsWithRuleset(sessionRules: readonly PermissionRuleLike[] | un
   return block.every((r, i) => sameRule(have[off + i]!, r))
 }
 
+/**
+ * ¿La sesión termina con el bloque del modo, SIN contar las carpetas añadidas? Sirve para RECONOCER el modo (qué puede aprobar sola la app);
+ * la idempotencia al reenviar usa `endsWithRuleset`, que sí las compara.
+ */
+export function endsWithModeBlock(sessionRules: readonly PermissionRuleLike[] | undefined, block: readonly PermissionRuleLike[]): boolean {
+  return endsWithRuleset(withoutLinked(sessionRules ?? []), withoutLinked(block))
+}
+
 /** ¿Con qué bloque de aprobación termina la sesión? (para decidir si la app puede aprobar sola un comando de lectura). */
 export function approvalKindOf(sessionRules: readonly PermissionRuleLike[] | undefined): ApprovalKind | null {
-  if (endsWithRuleset(sessionRules, rulesetForMode('auto'))) return 'auto'
-  if (endsWithRuleset(sessionRules, rulesetForMode('plan'))) return 'plan'
+  if (endsWithModeBlock(sessionRules, rulesetForMode('auto'))) return 'auto'
+  if (endsWithModeBlock(sessionRules, rulesetForMode('plan'))) return 'plan'
   return null
 }
 
