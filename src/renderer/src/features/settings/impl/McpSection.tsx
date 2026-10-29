@@ -246,7 +246,7 @@ export function McpSection(): React.JSX.Element {
               </div>
               {err && <div className="mt-2 text-xs whitespace-pre-wrap text-danger">{err}</div>}
               <CodeTrustSwitch name={row.name} disabled={busy !== null} />
-              {row.owned && tasksInfo[row.name] && !catalog?.installed[row.name] && (
+              {(row.owned || tasksInfo[row.name]?.external) && tasksInfo[row.name] && !catalog?.installed[row.name] && (
                 <TasksFlags info={tasksInfo[row.name]} disabled={busy !== null} onChange={(patch) => void setTasks(row.name, patch)} />
               )}
             </div>

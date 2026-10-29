@@ -12,6 +12,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Acceso «Aislado»**: la carpeta deja de recibir la herramienta de comandos del equipo; se aplica ya relanzando el servidor si está ocioso.
 - **Panel derecho de Overdrive en tarjetas** (Ficha, Plan, Contexto, y el resto igual). El «Entorno» de la cabecera abre la Ficha.
 - **Añadir otra carpeta en Code**: la Ficha de un proyecto de Code ya permite «Añadir» carpetas (lectura y escritura, o solo lectura). La IA entra a ellas sin tarjeta de permiso; el resto de lo externo sigue preguntando. Se validan en la app (no se aceptan raíces, la carpeta personal entera, carpetas del sistema, claves, el estado interno de la app ni carpetas dentro o por encima del proyecto; máximo 10).
+- **Conectores externos en Overdrive**: los conectores definidos en la config global de OpenCode («Config externa») ahora tienen su interruptor «Disponible en Overdrive» y «Preguntar en cada uso». Los remotos con clave pasan por el mismo proxy de la app: la IA y el sandbox nunca ven la cabecera. La app solo lee esa config, nunca la modifica.
 - **Barra de Code**: los paneles en una cápsula y todo lo demás (Ficha, vista del trabajo, memoria, exportar, bifurcar, compactar) en el menú «⋯».
 - Canales `project:*` y `tasks:access:apply`: prohibidos desde el celular (clase X). Sin cambios en zonas intocables.
 

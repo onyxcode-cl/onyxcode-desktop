@@ -896,6 +896,8 @@ export interface TasksMcpInfo {
   oauth: boolean
   /** Servidor local con variables de entorno secretas: no entra en el sandbox (F8-B79, quedarían legibles con `ps eww`). */
   localSecrets?: boolean
+  /** Definido fuera de la app (config global de OpenCode): Overdrive también puede usarlo, con su interruptor. */
+  external?: boolean
 }
 
 /** Política gestionada por la organización (`managed.json`), solo lectura. */

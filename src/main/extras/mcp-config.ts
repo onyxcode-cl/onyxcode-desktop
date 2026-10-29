@@ -13,6 +13,7 @@
 import { t } from '@shared/i18n'
 import { app } from 'electron'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpLocalEntry, McpRemoteEntry } from '@shared/ipc-extras'
 import { MCP_NAME_RE as NAME_RE, MCP_VALUE_MASK, mcpPermissionKey } from '@shared/mcp-catalog'
@@ -268,4 +269,64 @@ export function setMcpServerEnabled(name: string, enabled: boolean): AppMcpConfi
     if (!cur || typeof cur !== 'object') throw new Error(t('merr.mcp.missing', { name }))
     mcp[name] = { ...(cur as Record<string, unknown>), enabled }
   })
+}
+
+/** Quita comentarios `//` y `/* *\/` y comas finales de un JSONC, respetando las cadenas. */
+export function stripJsonc(text: string): string {
+  let out = ''
+  let i = 0
+  let inStr = false
+  while (i < text.length) {
+    const c = text[i]
+    const n = text[i + 1]
+    if (inStr) {
+      out += c
+      if (c === '\\') {
+        out += n ?? ''
+        i += 2
+        continue
+      }
+      if (c === '"') inStr = false
+      i++
+      continue
+    }
+    if (c === '"') {
+      inStr = true
+      out += c
+      i++
+    } else if (c === '/' && n === '/') {
+      while (i < text.length && text[i] !== '\n') i++
+    } else if (c === '/' && n === '*') {
+      i += 2
+      while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++
+      i += 2
+    } else {
+      out += c
+      i++
+    }
+  }
+  return out.replace(/,(\s*[}\]])/g, '$1')
+}
+
+/**
+ * Conectores definidos FUERA de la app, en la config global de OpenCode (`~/.config/opencode/opencode.json[c]`). Solo lectura: la app nunca
+ * la modifica. Sirven para que Overdrive también pueda usarlos (con su interruptor); los que además están en la config de la app mandan los de la app.
+ */
+export function readExternalMcpServers(): Record<string, McpEntry> {
+  const base = process.env.XDG_CONFIG_HOME?.trim() || join(homedir(), '.config')
+  const out: Record<string, McpEntry> = {}
+  for (const file of ['opencode.json', 'opencode.jsonc']) {
+    const path = join(base, 'opencode', file)
+    try {
+      if (!existsSync(path)) continue
+      const parsed = JSON.parse(stripJsonc(readFileSync(path, 'utf8'))) as { mcp?: Record<string, unknown> }
+      for (const [name, value] of Object.entries(parsed.mcp ?? {})) {
+        const e = toEntry(value)
+        if (e && NAME_RE.test(name)) out[name] = e
+      }
+    } catch {
+      // ilegible: no aporta conectores, nada más
+    }
+  }
+  return out
 }

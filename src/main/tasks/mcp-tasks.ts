@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path'
 import type { TasksMcpInfo } from '@shared/ipc-tasks'
 import type { McpEntry } from '@shared/ipc-extras'
 import { CatalogProvenanceStore } from '../extras/mcp-catalog-install'
-import { readAppMcpConfig } from '../extras/mcp-config'
+import { readAppMcpConfig, readExternalMcpServers } from '../extras/mcp-config'
 import { hostOf } from '../util/url'
 import { HIDDEN_SHELL_ENV } from './hidden-env'
 import type { McpRouteClientConfig, McpRouteSpec } from './mcp-proxy'
@@ -123,7 +123,20 @@ function usesOAuth(entry: McpEntry): boolean {
   return !entry.headers || Object.keys(entry.headers).length === 0
 }
 
-function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): TasksMcpInfo {
+/** Conectores que Overdrive puede ofrecer: los de la config global de OpenCode («externos») y los de la app; si un nombre está en ambos, manda el de la app. */
+function candidateServers(): { servers: Record<string, McpEntry>; external: Set<string> } {
+  const app = readAppMcpConfig().servers
+  let ext: Record<string, McpEntry> = {}
+  try {
+    ext = readExternalMcpServers()
+  } catch {
+    // sin config externa
+  }
+  const external = new Set(Object.keys(ext).filter((n) => !(n in app)))
+  return { servers: { ...ext, ...app }, external }
+}
+
+function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined, external = false): TasksMcpInfo {
   const host = entry.type === 'remote' ? hostOf(entry.url) : null
   return {
     name,
@@ -134,7 +147,8 @@ function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined): Tas
     // Con cabeceras secretas el sandbox habla con el proxy de main, no con el host: no se suma a su red (F8-B79).
     hosts: host && !mcpEntryHasSecrets(entry) ? [host] : [],
     oauth: usesOAuth(entry),
-    ...(entry.type === 'local' && mcpEntryHasSecrets(entry) ? { localSecrets: true } : {})
+    ...(entry.type === 'local' && mcpEntryHasSecrets(entry) ? { localSecrets: true } : {}),
+    ...(external ? { external: true } : {})
   }
 }
 
@@ -146,7 +160,7 @@ export function tasksMcpContribution(opts: { sandboxed: boolean; registerRoute?:
   const out: TasksMcpContribution = { mcp: {}, permission: {}, hosts: [], blocked: [] }
   let servers: Record<string, McpEntry>
   try {
-    servers = readAppMcpConfig().servers
+    servers = candidateServers().servers
   } catch (err) {
     console.error('[tasks] no se pudo leer la config MCP de la app:', err)
     return out
@@ -226,19 +240,20 @@ export class TasksMcpPrefs {
   /** Todos los MCP de la app (para la lista de Ajustes), con sus marcas de Tareas. */
   list(): TasksMcpInfo[] {
     let servers: Record<string, McpEntry> = {}
+    let external = new Set<string>()
     try {
-      servers = readAppMcpConfig().servers
+      ;({ servers, external } = candidateServers())
     } catch (err) {
       console.error('[tasks] no se pudo leer la config MCP de la app:', err)
     }
     const flags = readFlags().servers
     return Object.entries(servers)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, entry]) => infoOf(name, entry, flags[name]))
+      .map(([name, entry]) => infoOf(name, entry, flags[name], external.has(name)))
   }
 
   set(name: string, patch: { tasks?: boolean; askEachTool?: boolean }): TasksMcpInfo[] {
-    const servers = readAppMcpConfig().servers
+    const { servers } = candidateServers()
     if (!(name in servers)) throw new Error(`No existe el conector "${name}".`)
     const data = readFlags()
     // Limpia marcas de servidores que ya no existen.
