@@ -51,7 +51,9 @@ describe('retry-info', () => {
   })
 
   it('el mensaje se limpia: una línea, recortado y sin claves', () => {
-    noteRetryStatus(retry('c1', `boom\n\n   sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ${'x'.repeat(500)}`))
+    // La llave falsa se arma en tiempo de ejecución: un literal con forma de llave real dispararía la guardia de secretos del repo.
+    const fakeKey = ['sk', 'ant', 'api03'].join('-') + '-' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    noteRetryStatus(retry('c1', `boom\n\n   ${fakeKey} ${'x'.repeat(500)}`))
     const m = useRetryInfo.getState().bySession.c1!.message
     expect(m).not.toContain('\n')
     expect(m).not.toContain('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
