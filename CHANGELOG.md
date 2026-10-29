@@ -6,6 +6,14 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ## [1.8.3] - 2026-10-29
 
+### Ficha del proyecto (Overdrive y Code)
+- **Ficha del proyecto**: tarjeta en el panel derecho de Overdrive y en el panel «Resumen» de Code, con nombre, carpeta, nivel de acceso de la IA (Aislado, Con comandos aprobados, Control total; en Code, sin Control total) y Bóveda de variables. El engranaje abre el modal: nombre, carpetas (en Overdrive, «Añadir» y quitar carpetas vinculadas con su modo), acceso en un selector de tres tramos y Bóveda.
+- **Bóveda de variables**: pega formato `.env` por proyecto. Los valores se guardan cifrados con el almacén seguro del sistema (sin cifrado no se guarda nada), no vuelven nunca a la pantalla, llegan solo a los comandos que apruebas con `equipo_ejecutar` en ese proyecto y se tapan (`«NOMBRE»`) en lo que vuelve a la IA, a la auditoría y a las respuestas. Nombres que alteran cómo arrancan los programas (`PATH`, `LD_*`, `NODE_OPTIONS`…) no se aceptan.
+- **Acceso «Aislado»**: la carpeta deja de recibir la herramienta de comandos del equipo; se aplica ya relanzando el servidor si está ocioso.
+- **Panel derecho de Overdrive en tarjetas** (Ficha, Plan, Contexto, y el resto igual). El «Entorno» de la cabecera abre la Ficha.
+- **Barra de Code**: los paneles en una cápsula y todo lo demás (Ficha, vista del trabajo, memoria, exportar, bifurcar, compactar) en el menú «⋯».
+- Canales `project:*` y `tasks:access:apply`: prohibidos desde el celular (clase X). Sin cambios en zonas intocables.
+
 ### Novedades
 
 - **Las Tareas (Overdrive) hacen presentaciones, Word, Excel y PDF con el mismo motor y la misma guía de diseño que el Chat, también en Windows.** Antes el Chat daba mejores resultados y en Windows las Tareas caían a un diseño sobrio de respaldo (el Linux aislado donde corren no tiene Node ni el diseñador de documentos). Ahora la propia app arma el archivo con el mismo motor del Chat (herramienta nueva `documentos`, que solo crea archivos NUEVOS dentro de la carpeta de la tarea y nunca pisa uno existente) y la IA puede mirar cómo quedaron las diapositivas y las páginas antes de entregarlas. Code usa el mismo motor mediante los scripts de las skills (necesita Node, que se instala desde Ajustes). Ahora el diseño se inventa distinto cada vez (sin plantilla fija) y, al pedir una presentación, la IA pregunta si la quieres editable (.pptx) o en HTML.
