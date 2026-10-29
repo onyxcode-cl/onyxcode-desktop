@@ -986,7 +986,7 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     }
   })
 
-  it('app_set_value: el campo no cambió ⇒ suspected_noop; cambió pero no coincide ⇒ unverifiable con ≤40 caracteres limpios', async () => {
+  it('app_set_value: el campo no cambió ⇒ suspected_noop; cambió pero no coincide ⇒ unverifiable SIN ningún fragmento del contenido', async () => {
     const a = await bootMac({ responses: { 'ax-tree': tree(node({ value: 'viejo' })) } })
     try {
       const r = await set(a.mcp, 'nuevo texto')
@@ -999,12 +999,9 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     try {
       const r = await set(b.mcp, 'nuevo texto')
       expect(firstLine(r)).toMatch(
-        /^efecto: unverifiable — se entregó; el valor del campo cambió pero no coincide con lo escrito \(empieza por «/
+        /^efecto: unverifiable — se entregó; el valor del campo cambió pero no coincide con lo escrito; lee el campo con computer_app_find/
       )
-      const seen = /«([^»]*)»/.exec(firstLine(r))?.[1] ?? ''
-      expect(seen.length).toBeGreaterThan(0)
-      expect(seen.length).toBeLessThanOrEqual(40)
-      expect(seen).not.toMatch(/[<>]/)
+      expect(firstLine(r)).not.toMatch(/«|empieza por|Otra cosa/)
       expect(textOf(r)).not.toContain(long)
     } finally {
       await b.done()
@@ -1206,7 +1203,7 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     }
   })
 
-  it('app_action: AXShowMenu sin cambios ⇒ unverifiable (el menú es otra ventana); AXConfirm sin cambios ⇒ suspected_noop; AXIncrement que cambia el valor ⇒ confirmed', async () => {
+  it('app_action: AXShowMenu sin cambios ⇒ unverifiable (el menú es otra ventana); AXConfirm sin cambios ⇒ suspected_noop; AXIncrement que solo cambia el valor ⇒ unverifiable (puede cambiar solo)', async () => {
     const field = (value: string) => node({ role: 'AXIncrementor', value })
     const a = await bootMac({ responses: { 'ax-tree': tree(field('1')) } })
     try {
@@ -1226,11 +1223,111 @@ describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', 
     const c = await bootMac({ responses: { 'ax-tree': [tree(field('1')), tree(field('2'))] } })
     try {
       const r = await call(c.mcp, 'app_action', { app: 'Notes', ref: REF, action: 'AXIncrement' })
-      expect(firstLine(r)).toMatch(/^efecto: confirmed — el estado del elemento cambió/)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; solo cambió el valor del elemento/)
+      expect(firstLine(r)).not.toContain('confirmed')
     } finally {
       await c.done()
     }
   })
+
+  it('hallazgo 1: sin lectura previa (snap null) no hay NINGUNA relectura; si la primera relectura se agota no hay la tardía y el tiempo total está acotado', async () => {
+    const a = await bootMac({ responses: { 'ax-tree': FAIL } })
+    try {
+      const r = await call(a.mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(firstLine(r)).toMatch(/^efecto: /)
+      // Solo la lectura previa: ni la inicial ni la tardía después de actuar.
+      expect(calls(a.mcp, 'ax-tree')).toHaveLength(1)
+    } finally {
+      await a.done()
+    }
+    const btn = node({ role: 'AXButton', title: 'Listo', actions: ['AXPress'] })
+    const b = await bootMac({ responses: { 'ax-tree': [tree(btn), { sleepMs: 20_000, then: tree(btn) }] } })
+    try {
+      const { r, ms } = await timed(() => call(b.mcp, 'app_press', { app: 'Notes', ref: REF }))
+      expect(firstLine(r)).toMatch(/^efecto: /)
+      // Previa + primera relectura (agotada); la tardía no se intenta.
+      expect(calls(b.mcp, 'ax-tree')).toHaveLength(2)
+      expect(ms).toBeLessThan(9_000)
+    } finally {
+      await b.done()
+    }
+  }, 30_000)
+
+  it('hallazgo 2: la persona detiene o revoca durante las lecturas ⇒ sin línea efecto: (el resultado de la herramienta tal cual)', async () => {
+    let revoked = false
+    const a = await bootMac({
+      tier: () => (revoked ? null : 'full'),
+      responses: { 'ax-tree': [tree(node({ value: '' })), { sleepMs: 900, then: tree(node({ value: 'hola' })) }] }
+    })
+    try {
+      setTimeout(() => (revoked = true), 450)
+      const r = await set(a.mcp, 'hola')
+      expect(textOf(r)).not.toContain('efecto:')
+      expect(textOf(r)).toContain('Valor escrito')
+      expect(textOf(r)).not.toContain('hola mundo')
+    } finally {
+      await a.done()
+    }
+    let stopped = false
+    const btn = node({ role: 'AXButton', title: 'Listo', actions: ['AXPress'] })
+    const b = await bootMac({
+      stopped: () => stopped,
+      responses: { 'ax-tree': [tree(btn), { sleepMs: 900, then: tree(node({ role: 'AXButton', title: 'Otro', actions: ['AXPress'] })) }] }
+    })
+    try {
+      setTimeout(() => (stopped = true), 450)
+      const r = await call(b.mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(textOf(r)).not.toContain('efecto:')
+      expect(textOf(r)).not.toContain('Otro')
+    } finally {
+      await b.done()
+    }
+  }, 20_000)
+
+  it('hallazgo 4: mayúsculas distintas no confirman; set que ya tenía el valor y insert sin cambio no confirman', async () => {
+    const a = await bootMac({ responses: { 'ax-tree': [tree(node({ value: '' })), tree(node({ value: 'ABC123' }))] } })
+    try {
+      const r = await set(a.mcp, 'abc123')
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable/)
+      expect(firstLine(r)).not.toContain('confirmed')
+    } finally {
+      await a.done()
+    }
+    const b = await bootMac({ responses: { 'ax-tree': tree(node({ value: 'hola' })) } })
+    try {
+      const r = await set(b.mcp, 'hola')
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; el campo ya tenía ese valor/)
+    } finally {
+      await b.done()
+    }
+    const c = await bootMac({ responses: { 'ax-tree': tree(node({ value: 'el fin' })) } })
+    try {
+      const r = await ins(c.mcp, 'fin')
+      expect(firstLine(r)).toMatch(/^efecto: suspected_noop/)
+    } finally {
+      await c.done()
+    }
+  })
+
+  it('hallazgo 5: la segunda suspected_noop sobre la misma ref dice «no repitas»; otra ref no hereda la cuenta', async () => {
+    const btn = node({ role: 'AXButton', title: 'Enviar', actions: ['AXPress'] })
+    const { mcp, done } = await bootMac({ responses: { 'ax-tree': tree(btn, { ...btn, ref: 'w0.2.9' }) } })
+    try {
+      const r1 = await call(mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(firstLine(r1)).toContain('efecto: suspected_noop')
+      expect(firstLine(r1)).toContain('no se puede deshacer')
+      expect(firstLine(r1)).not.toContain('no repitas:')
+      const r2 = await call(mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(firstLine(r2)).toContain('efecto: suspected_noop')
+      expect(firstLine(r2)).toContain('no repitas')
+      expect(firstLine(r2)).toContain('no se puede deshacer')
+      const r3 = await call(mcp, 'app_press', { app: 'Notes', ref: 'w0.2.9' })
+      expect(firstLine(r3)).not.toContain('no repitas:')
+    } finally {
+      await done()
+    }
+  }, 30_000)
 
   it('app_press/app_action: la app no leída (árbol falla) no da un error: unverifiable', async () => {
     const { mcp, done } = await bootMac({ shots: [A, FAIL], responses: { 'ax-tree': FAIL } })

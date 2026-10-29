@@ -353,8 +353,13 @@ export interface VerdictInput {
   readback?: 'match' | 'nomatch' | 'unavailable'
   /** `wait` con condición: apareció lo esperado. */
   waitMatched?: boolean
-  /** `app_press`/`app_action`: el estado del elemento (valor, título, descripción, activo) cambió entre antes y después. */
+  /** `app_press`/`app_action`: cambió el título, la descripción o el estado de activación del elemento entre antes y después. */
   elementChanged?: boolean
+  /**
+   * `app_press`/`app_action`: lo ÚNICO que cambió del elemento es su `value`. Con una sola lectura antes y otra después no se puede saber si
+   * lo cambió la acción o ya cambiaba solo (un reloj, una barra de progreso), así que NO confirma: baja a `unverifiable`.
+   */
+  elementValueOnly?: boolean
   /** `app_press`/`app_action`: el elemento ya no existe en esa ref (la interfaz cambió). */
   elementGone?: boolean
   /** La acción puede no verse en la ventana (menú emergente, subir una ventana al frente…): sin cambios no se sospecha. */
@@ -374,6 +379,10 @@ export interface Verdict {
 const NO_REPEAT =
   'no repitas: esa superficie no acepta la entrada simulada; usa la vía propia de la app (atajo, menú con app_menu, archivo o línea de comandos)'
 
+/** Pulsar sin efecto visible y repetir puede enviar, borrar o comprar dos veces: antes de insistir se comprueba el estado. */
+const IRREVERSIBLE_NOTE =
+  'antes de repetir una acción que no se puede deshacer (enviar, borrar, comprar), confirma con la persona o comprueba el estado con computer_app_find/app_screenshot'
+
 const pctText = (p: number): string => (p < 1 ? '<1' : String(Math.round(p)))
 
 /**
@@ -392,6 +401,7 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
 
   const notes: string[] = []
   if (i.elementGone === true) notes.push('el elemento ya no existe en esa ref (la interfaz cambió)')
+  if (i.elementValueOnly === true) notes.push('solo cambió el valor del elemento, que puede cambiar por sí solo (reloj, progreso)')
   if (i.frontAfter !== i.frontBefore) notes.push(`la app al frente pasó a «${noticeAppName(i.frontAfter)}»`)
   if (i.windowsAfter > i.windowsBefore)
     notes.push(i.windowsAfter - i.windowsBefore === 1 ? 'apareció una ventana de la app' : 'aparecieron ventanas de la app')
@@ -435,11 +445,11 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
 
   const reason = `la ventana no cambió${i.remote ? ' (escritorio remoto)' : ''} y la acción debería verse`
   let escalation: string | undefined
-  if ((i.repeat?.noopCount ?? 0) >= 1) escalation = NO_REPEAT
+  if ((i.repeat?.noopCount ?? 0) >= 1)
+    escalation = i.action === 'app_press' || i.action === 'app_action' ? `${NO_REPEAT}; ${IRREVERSIBLE_NOTE}` : NO_REPEAT
   else if (i.action === 'type_text' && i.remote) escalation = 'prueba input: "paste" y comprueba con zoom'
   else if (i.action === 'app_press' || i.action === 'app_action')
-    escalation =
-      'vuelve a pedir app_find (la ref pudo cambiar) o toma app_screenshot; si sigue igual, usa app_menu, un atajo o x/y en el centro'
+    escalation = `vuelve a pedir app_find (la ref pudo cambiar) o toma app_screenshot; si sigue igual, usa app_menu, un atajo o x/y en el centro; ${IRREVERSIBLE_NOTE}`
   else if (i.target === 'element') escalation = 'prueba app_press o x/y en el centro del elemento'
   else if (i.target === 'xy' && (i.action === 'left_click' || i.action === 'double_click'))
     escalation = 'prueba element: N (de la lista de la captura) o app_press por accesibilidad'
@@ -454,23 +464,15 @@ export const AX_VALUE_CLIP = 200
 /** Lo que se pudo leer de un campo en un momento: valor, campo seguro (NO se lee), no está o no se pudo leer. */
 export type FieldState = { status: 'ok'; value: string } | { status: 'secure' } | { status: 'missing' } | { status: 'failed' }
 
-/** Comparación tolerante: sin marcas de objeto adjunto (U+FFFC), espacios colapsados, minúsculas. */
+/**
+ * Comparación tolerante SOLO en espacios: sin marcas de objeto adjunto (U+FFFC) y con espacios colapsados. NO pasa a minúsculas:
+ * «ABC123» no confirma «abc123» (una contraseña, un código o un nombre de archivo distinguen mayúsculas).
+ */
 export function normField(s: string): string {
   return s
     .normalize('NFC')
     .replace(/\uFFFC/g, '')
     .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase()
-}
-
-/** Fragmento limpio y corto de lo leído para el modelo (≤`max`): solo letras, números, espacio y puntuación básica. */
-export function cleanSnippet(s: string, max = 40): string {
-  return s
-    .replace(/[^\p{L}\p{N} .,;:!?()_@/+-]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, max)
     .trim()
 }
 
@@ -482,12 +484,15 @@ export interface ValueVerdictInput {
   written: string
   before: FieldState
   after: FieldState
+  /** Historial del mismo objetivo (misma app y ref) en la sesión: la segunda `suspected_noop` seguida escala a «no repitas». */
+  repeat?: { noopCount: number; recentConfirmed: boolean }
 }
 
 /**
- * Veredicto de `app_set_value`/`app_insert_text` por lectura de vuelta del campo (§2.3). `confirmed` solo si lo leído contiene lo escrito;
- * `suspected_noop` si el campo se leyó entero y no cambió; el resto (campo seguro, no se pudo leer, valor cambiado pero distinto, campo
- * largo cuyo final no se ve) ⇒ `unverifiable`. Nunca devuelve el valor completo: como mucho 40 caracteres limpios si no coincide.
+ * Veredicto de `app_set_value`/`app_insert_text` por lectura de vuelta del campo (§2.3). `confirmed` exige que el campo CAMBIARA respecto
+ * a antes Y que lo leído coincida con lo escrito (sin pasar a minúsculas); si ya tenía ese valor, o la lectura de antes falló, no prueba
+ * nada ⇒ `unverifiable`. `suspected_noop` si el campo se leyó entero y no cambió. Nunca devuelve contenido del campo (ni un fragmento:
+ * la línea `efecto:` es la posición más «confiable» para el modelo y el campo puede traer texto ajeno).
  */
 export function computeValueVerdict(i: ValueVerdictInput): Verdict {
   const unv = (reason: string): Verdict => ({ effect: 'unverifiable', reason: `${reason}; confírmalo con app_screenshot si importa` })
@@ -499,47 +504,51 @@ export function computeValueVerdict(i: ValueVerdictInput): Verdict {
         : 'se entregó; no se pudo releer el campo'
     )
   }
+  // Sin lectura previa no se sabe si el campo ya tenía eso: no se confirma.
+  if (i.before.status !== 'ok') return unv('se entregó; no se pudo leer el campo antes de escribir, así que la lectura no prueba el cambio')
   const w = normField(i.written)
   const a1 = normField(i.after.value)
   const clipped1 = i.after.value.length >= AX_VALUE_CLIP
-  const b = i.before.status === 'ok' ? i.before : null
-  const a0 = b ? normField(b.value) : null
-  const clipped0 = b ? b.value.length >= AX_VALUE_CLIP : false
-  const unchanged = a0 !== null && a0 === a1 && clipped0 === clipped1
+  const a0 = normField(i.before.value)
+  const clipped0 = i.before.value.length >= AX_VALUE_CLIP
+  const unchanged = a0 === a1 && clipped0 === clipped1
+  const noop = (reason: string, other: string): Verdict => ({
+    effect: 'suspected_noop',
+    reason,
+    escalation:
+      (i.repeat?.noopCount ?? 0) >= 1
+        ? `${NO_REPEAT}; ${IRREVERSIBLE_NOTE}`
+        : `vuelve a pedir app_find (la ref pudo cambiar), prueba ${other} o toma app_screenshot`
+  })
 
   if (i.kind === 'set') {
-    if (!clipped1) {
-      if (a1 === w) return { effect: 'confirmed', reason: 'el valor leído del campo coincide con lo escrito' }
-    } else {
-      // Campo largo: solo se ve el inicio; coincide si lo escrito empieza igual (sin los últimos caracteres, por si el corte cae en un grafema).
-      const p = a1.slice(0, Math.max(0, a1.length - 5))
-      if (p.length >= 20 && w.startsWith(p))
-        return { effect: 'confirmed', reason: 'el inicio del valor leído coincide con lo escrito (campo largo)' }
-    }
-    if (unchanged)
-      return {
-        effect: 'suspected_noop',
-        reason: 'el valor del campo no cambió tras escribir',
-        escalation: 'vuelve a pedir app_find (la ref pudo cambiar), prueba app_insert_text o toma app_screenshot'
+    // Ya tenía ese valor: la lectura coincidiría aunque no se hubiera escrito nada.
+    if (!clipped0 && a0 === w) return unv('se entregó; el campo ya tenía ese valor, así que la lectura no prueba que se escribiera')
+    if (!unchanged) {
+      if (!clipped1) {
+        if (a1 === w) return { effect: 'confirmed', reason: 'el valor leído del campo coincide con lo escrito' }
+      } else {
+        // Campo largo: solo se ve el inicio; coincide si lo escrito empieza igual (sin los últimos caracteres, por si el corte cae en un grafema).
+        const p = a1.slice(0, Math.max(0, a1.length - 5))
+        if (p.length >= 20 && w.startsWith(p))
+          return { effect: 'confirmed', reason: 'el inicio del valor leído coincide con lo escrito (campo largo)' }
       }
-    const seen = cleanSnippet(i.after.value)
-    return unv(`se entregó; el valor del campo cambió pero no coincide con lo escrito${seen ? ` (empieza por «${seen}»)` : ''}`)
+    }
+    if (unchanged) return noop('el valor del campo no cambió tras escribir', 'app_insert_text')
+    return unv(
+      'se entregó; el valor del campo cambió pero no coincide con lo escrito; lee el campo con computer_app_find antes de dar nada por hecho'
+    )
   }
 
-  // insert: el texto agregado debe aparecer al final del campo.
+  // insert: el campo debe haber CAMBIADO y el texto agregado aparecer al final.
   if (!w) return unv('se entregó; el texto agregado es solo espacios y no se puede comprobar')
   if (!clipped1) {
-    if (a1.endsWith(w) || (a0 !== null && countOf(a1, w) > countOf(a0, w)))
+    if (unchanged) return noop('el valor del campo no cambió tras agregar el texto', 'app_set_value')
+    if (a1.endsWith(w) || countOf(a1, w) > countOf(a0, w))
       return { effect: 'confirmed', reason: 'el valor leído del campo contiene el texto agregado' }
-    if (unchanged)
-      return {
-        effect: 'suspected_noop',
-        reason: 'el valor del campo no cambió tras agregar el texto',
-        escalation: 'vuelve a pedir app_find (la ref pudo cambiar), prueba app_set_value o toma app_screenshot'
-      }
     return unv('se entregó; el campo cambió pero no se ve el texto agregado al final')
   }
-  if (a0 !== null && !clipped0 && a1.startsWith(a0)) {
+  if (!clipped0 && a1.startsWith(a0)) {
     // El campo creció más allá de lo visible: lo agregado que se ve debe ser el comienzo de lo escrito.
     const extra = a1.slice(a0.length).trim()
     if (extra.length >= 3 && (w.startsWith(extra) || extra.startsWith(w)))
@@ -550,6 +559,8 @@ export function computeValueVerdict(i: ValueVerdictInput): Verdict {
 
 /**
  * ¿Cambió el elemento? Compara lo que el árbol de accesibilidad dice de él (valor, título, descripción, activo) antes y después.
+ * `changed` = cambió el título, la descripción o el estado de activación; `value-only` = lo único distinto es `value` (con una sola lectura
+ * antes y otra después no se puede saber si lo cambió la acción o ya cambiaba solo: reloj, progreso ⇒ no es evidencia para `confirmed`);
  * `gone` = ya no está en esa ref; `unknown` = no se pudo leer alguno de los dos momentos.
  */
 export interface ElementSnap {
@@ -561,11 +572,12 @@ export interface ElementSnap {
 export function compareElement(
   before: ElementSnap | 'missing' | null,
   after: ElementSnap | 'missing' | null
-): 'changed' | 'same' | 'gone' | 'unknown' {
+): 'changed' | 'value-only' | 'same' | 'gone' | 'unknown' {
   if (before === null || after === null || before === 'missing') return 'unknown'
   if (after === 'missing') return 'gone'
-  const k = (e: ElementSnap): string => JSON.stringify([e.value ?? null, e.title ?? null, e.description ?? null, e.enabled ?? null])
-  return k(before) === k(after) ? 'same' : 'changed'
+  const k = (e: ElementSnap): string => JSON.stringify([e.title ?? null, e.description ?? null, e.enabled ?? null])
+  if (k(before) !== k(after)) return 'changed'
+  return (before.value ?? null) === (after.value ?? null) ? 'same' : 'value-only'
 }
 
 /** Primera línea del texto de la herramienta: `efecto: <efecto> — <motivo>[; siguiente: <escalada>][; aviso: …]`. */

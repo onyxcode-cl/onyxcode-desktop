@@ -2591,10 +2591,14 @@ async function countTail(bundleId: string, tail: string): Promise<number | null>
  * Lee UN elemento por su ref (árbol de accesibilidad, con tope de tiempo). Un campo seguro NUNCA se lee: se devuelve `secure` sin valor.
  * `snap` es la foto del estado del elemento (para comparar antes/después sin devolverla al modelo).
  */
-async function readAxNode(bundleId: string, ref: string): Promise<{ field: FieldState; snap: ElementSnap | 'missing' | null }> {
+async function readAxNode(
+  bundleId: string,
+  ref: string,
+  maxMs = 4_000
+): Promise<{ field: FieldState; snap: ElementSnap | 'missing' | null }> {
   const tree = await withTimeout(
     axTree(bundleId, 30, 4000).catch(() => null),
-    4_000,
+    maxMs,
     null
   )
   if (!tree) return { field: { status: 'failed' }, snap: null }
@@ -2638,6 +2642,9 @@ async function beginAxVerdict(name: string, args: Record<string, unknown>, sessi
     if (writes && tier !== 'full') return pre
     pre.app = app
     pre.tier = tier
+    // Objetivo para el registro de repeticiones: app + ref (hash; nunca el texto escrito). Así la segunda `suspected_noop` seguida
+    // sobre la misma ref escala a «no repitas».
+    pre.target = { app: app.bundleId, text: textKey(`ax:${ref}`) }
     const ctx = liveWindowCtx(session)
     pre.windowIndex = ctx && ctx.app.bundleId === app.bundleId ? ctx.windowIndex : 0
     const written = name === 'app_set_value' ? String(args.value ?? '') : name === 'app_insert_text' ? String(args.text ?? '') : ''
@@ -2710,6 +2717,31 @@ async function finishVerdict(
   pre: VerdictPre,
   session: string | undefined
 ): Promise<Verdict | null> {
+  const v = await finishVerdictInner(name, args, pre, session)
+  if (v && pre.ax && AX_VERDICT_TOOLS.has(name)) {
+    // Las lecturas de vuelta (y la espera) tardan: si la persona detuvo o revocó mientras tanto, la línea `efecto:` no sale (la
+    // herramienta devuelve su resultado tal cual). Escribir exigió «full»; pulsar, cualquier nivel. Fallar al consultar = revocado.
+    if (await isStopped().catch(() => true)) return null
+    const app = pre.app
+    if (!app) return v
+    const tier = await tierOf(app, session).catch(() => null)
+    const need = name === 'app_set_value' || name === 'app_insert_text' ? tier === 'full' : tier !== null
+    if (!need) return null
+  }
+  return v
+}
+
+/** Tope TOTAL de tiempo de las lecturas de vuelta de un veredicto de accesibilidad (la cola de herramientas es global y serializa sesiones). */
+const VERDICT_READ_BUDGET_MS = 6_000
+/** Por debajo de esto no se intenta otra lectura: no cabría. */
+const VERDICT_READ_MIN_MS = 500
+
+async function finishVerdictInner(
+  name: string,
+  args: Record<string, unknown>,
+  pre: VerdictPre,
+  session: string | undefined
+): Promise<Verdict | null> {
   try {
     if (await isStopped().catch(() => true)) return null
     const app = pre.app
@@ -2723,20 +2755,36 @@ async function finishVerdict(
       if (!app || !ax || !stillGranted || ax.field.status === 'failed') {
         return { effect: 'unverifiable', reason: 'se entregó; no se pudo leer el campo; confírmalo con app_screenshot si importa' }
       }
-      let after = await readAxNode(app.bundleId, ax.ref)
-      let v = computeValueVerdict({ kind, written: ax.written, before: ax.field, after: after.field })
-      if (v.effect !== 'confirmed' && after.field.status !== 'secure') {
+      const log_ = actionLogFor(session)
+      const repeat = pre.target ? log_.history(pre.target, Date.now()) : undefined
+      const t0 = Date.now()
+      const left = (): number => VERDICT_READ_BUDGET_MS - (Date.now() - t0)
+      let after = await readAxNode(app.bundleId, ax.ref, Math.min(4_000, left()))
+      let v = computeValueVerdict({ kind, written: ax.written, before: ax.field, after: after.field, repeat })
+      // Una segunda lectura solo si la primera SÍ leyó el campo (si se agotó o falló, otra tampoco llegará) y cabe en el presupuesto.
+      if (v.effect !== 'confirmed' && after.field.status === 'ok' && left() > 350 + VERDICT_READ_MIN_MS) {
         // Algunas apps tardan unas décimas en reflejar el valor: una segunda lectura antes de decir que no se ve.
         await sleep(350)
-        after = await readAxNode(app.bundleId, ax.ref)
-        v = computeValueVerdict({ kind, written: ax.written, before: ax.field, after: after.field })
+        after = await readAxNode(app.bundleId, ax.ref, Math.min(4_000, left()))
+        v = computeValueVerdict({ kind, written: ax.written, before: ax.field, after: after.field, repeat })
+      }
+      if (pre.target) {
+        log_.record({ tool: name, app: pre.target.app, text: pre.target.text, effect: v.effect, at: Date.now() })
       }
       return v
     }
     // press/action: si el estado del elemento ya cambió no hace falta esperar a la ventana.
     let elementState: ReturnType<typeof compareElement> = 'unknown'
-    if (ax && app && stillGranted) {
-      elementState = compareElement(ax.snap, (await readAxNode(app.bundleId, ax.ref)).snap)
+    const t0 = Date.now()
+    const left = (): number => VERDICT_READ_BUDGET_MS - (Date.now() - t0)
+    // Sin lectura previa (`snap` null: app colgada o árbol cortado) comparar es inútil: ninguna relectura (ni la inicial ni la tardía).
+    const canRead = !!(ax && app && stillGranted && ax.snap !== null)
+    // Si la primera lectura posterior se agota o falla, tampoco se hace la tardía.
+    let firstReadOk = false
+    if (canRead && ax && app) {
+      const first = await readAxNode(app.bundleId, ax.ref, Math.min(4_000, left()))
+      firstReadOk = first.snap !== null
+      elementState = compareElement(ax.snap, first.snap)
     }
     if (ax && elementState === 'changed') {
       return computeVerdict({
@@ -2776,11 +2824,11 @@ async function finishVerdict(
       const after = tail.length >= 3 ? await countTail(app.bundleId, tail) : null
       if (after !== null) readback = after > pre.readBefore ? 'match' : 'nomatch'
     }
-    if (ax && app && stillGranted && elementState !== 'gone') {
+    if (ax && app && stillGranted && firstReadOk && elementState !== 'gone' && left() > VERDICT_READ_MIN_MS) {
       // Tras la espera de la ventana, el elemento pudo cambiar más tarde.
-      const late = compareElement(ax.snap, (await readAxNode(app.bundleId, ax.ref)).snap)
-      if (late === 'changed') elementState = 'changed'
-      else if (late === 'gone') elementState = 'gone'
+      const late = compareElement(ax.snap, (await readAxNode(app.bundleId, ax.ref, Math.min(4_000, left()))).snap)
+      if (late === 'changed' || late === 'gone') elementState = late
+      else if (late === 'value-only' && elementState === 'same') elementState = 'value-only'
     }
     const log_ = actionLogFor(session)
     const repeat = pre.target ? log_.history(pre.target, Date.now()) : undefined
@@ -2801,6 +2849,7 @@ async function finishVerdict(
       ...(ax
         ? {
             elementChanged: elementState === 'changed',
+            elementValueOnly: elementState === 'value-only',
             elementGone: elementState === 'gone',
             mayBeInvisible: name === 'app_action' && AX_INVISIBLE_ACTIONS.has(String(args.action ?? ''))
           }

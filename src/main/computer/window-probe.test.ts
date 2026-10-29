@@ -13,7 +13,6 @@ import { inflateSync } from 'node:zlib'
 import { posixOnly } from '../../test/platform'
 import {
   ActionLog,
-  cleanSnippet,
   compareElement,
   computeValueVerdict,
   computeCoverage,
@@ -617,17 +616,28 @@ describe('coverageNotice: nombres de app saneados (H5)', () => {
 
 describe('computeValueVerdict / compareElement (escritura por accesibilidad)', () => {
   const ok = (value: string) => ({ status: 'ok' as const, value })
-  it('set: coincide ⇒ confirmed (ignora espacios, mayúsculas y marcas de objeto); igual que antes ⇒ suspected_noop; distinto ⇒ unverifiable', () => {
-    expect(computeValueVerdict({ kind: 'set', written: 'Hola  Mundo', before: ok(''), after: ok('hola mundo\uFFFC\n') }).effect).toBe(
+  it('set: coincide ⇒ confirmed (ignora espacios y marcas de objeto, NO mayúsculas); igual que antes ⇒ suspected_noop; distinto ⇒ unverifiable sin contenido', () => {
+    expect(computeValueVerdict({ kind: 'set', written: 'Hola  Mundo', before: ok(''), after: ok('Hola Mundo\uFFFC\n') }).effect).toBe(
       'confirmed'
     )
     expect(computeValueVerdict({ kind: 'set', written: 'nuevo', before: ok('viejo'), after: ok('viejo') }).effect).toBe('suspected_noop')
     const v = computeValueVerdict({ kind: 'set', written: 'nuevo', before: ok('viejo'), after: ok('otro') })
     expect(v.effect).toBe('unverifiable')
-    expect(v.reason).toContain('«otro»')
+    // Hallazgo 3: ni un fragmento del contenido leído.
+    expect(v.reason).not.toContain('otro')
+    expect(v.reason).not.toMatch(/«|empieza por/)
+    expect(v.reason).toContain('computer_app_find')
   })
-  it('set: escribir lo mismo que ya había es confirmed (coincide) y un campo largo compara solo el inicio', () => {
-    expect(computeValueVerdict({ kind: 'set', written: 'igual', before: ok('igual'), after: ok('igual') }).effect).toBe('confirmed')
+  it('mayúsculas distintas ya NO confirman (set e insert)', () => {
+    expect(computeValueVerdict({ kind: 'set', written: 'abc123', before: ok(''), after: ok('ABC123') }).effect).toBe('unverifiable')
+    expect(computeValueVerdict({ kind: 'insert', written: 'abc', before: ok('x'), after: ok('xABC') }).effect).toBe('unverifiable')
+  })
+  it('set: si el campo YA tenía ese valor ⇒ unverifiable «ya tenía ese valor»; un campo largo compara solo el inicio', () => {
+    const same = computeValueVerdict({ kind: 'set', written: 'igual', before: ok('igual'), after: ok('igual') })
+    expect(same.effect).toBe('unverifiable')
+    expect(same.reason).toContain('ya tenía ese valor')
+    // Sin lectura previa tampoco se confirma.
+    expect(computeValueVerdict({ kind: 'set', written: 'x', before: { status: 'failed' }, after: ok('x') }).effect).toBe('unverifiable')
     const long = 'abcdefghij'.repeat(30)
     expect(computeValueVerdict({ kind: 'set', written: long, before: ok(''), after: ok(long.slice(0, 200)) }).effect).toBe('confirmed')
     expect(computeValueVerdict({ kind: 'set', written: long, before: ok(''), after: ok('z'.repeat(200)) }).effect).toBe('unverifiable')
@@ -639,15 +649,26 @@ describe('computeValueVerdict / compareElement (escritura por accesibilidad)', (
     expect(computeValueVerdict({ kind: 'set', written: 'x', before: ok(''), after: { status: 'failed' } }).effect).toBe('unverifiable')
     expect(computeValueVerdict({ kind: 'insert', written: 'x', before: ok(''), after: { status: 'missing' } }).effect).toBe('unverifiable')
   })
-  it('insert: aparece al final ⇒ confirmed; el campo no cambió ⇒ suspected_noop; solo espacios ⇒ unverifiable', () => {
+  it('insert: aparece al final Y el campo cambió ⇒ confirmed; el campo no cambió ⇒ suspected_noop (aunque ya terminara igual); solo espacios ⇒ unverifiable', () => {
     expect(computeValueVerdict({ kind: 'insert', written: ' mundo', before: ok('Hola'), after: ok('Hola mundo') }).effect).toBe('confirmed')
     expect(computeValueVerdict({ kind: 'insert', written: ' mundo', before: ok('Hola'), after: ok('Hola') }).effect).toBe('suspected_noop')
+    // El campo ya terminaba en lo agregado y no cambió: antes confirmaba por `endsWith`, ahora es suspected_noop.
+    expect(computeValueVerdict({ kind: 'insert', written: 'fin', before: ok('el fin'), after: ok('el fin') }).effect).toBe('suspected_noop')
     expect(computeValueVerdict({ kind: 'insert', written: '  ', before: ok('Hola'), after: ok('Hola') }).effect).toBe('unverifiable')
   })
-  it('cleanSnippet limpia y recorta; compareElement distingue cambio, igual, desaparecido y desconocido', () => {
-    expect(cleanSnippet('<b>hola</b>\n\tmundo'.padEnd(80, 'x'))).toMatch(/^b hola \/b mundo/)
-    expect(cleanSnippet('a'.repeat(100)).length).toBe(40)
+  it('la segunda suspected_noop sobre el mismo objetivo escala a «no repitas» (set e insert)', () => {
+    const rep = { noopCount: 1, recentConfirmed: false }
+    const s = computeValueVerdict({ kind: 'set', written: 'n', before: ok('v'), after: ok('v'), repeat: rep })
+    expect(s.escalation).toContain('no repitas')
+    expect(s.escalation).toContain('no se puede deshacer')
+    const i = computeValueVerdict({ kind: 'insert', written: 'n', before: ok('v'), after: ok('v'), repeat: rep })
+    expect(i.escalation).toContain('no repitas')
+    expect(computeValueVerdict({ kind: 'set', written: 'n', before: ok('v'), after: ok('v') }).escalation).not.toContain('no repitas')
+  })
+  it('compareElement distingue cambio, solo-valor, igual, desaparecido y desconocido', () => {
     expect(compareElement({ title: 'a' }, { title: 'b' })).toBe('changed')
+    expect(compareElement({ enabled: true }, { enabled: false })).toBe('changed')
+    expect(compareElement({ value: '1', title: 'a' }, { value: '2', title: 'a' })).toBe('value-only')
     expect(compareElement({ title: 'a' }, { title: 'a' })).toBe('same')
     expect(compareElement({ title: 'a' }, 'missing')).toBe('gone')
     expect(compareElement(null, { title: 'a' })).toBe('unknown')
@@ -661,6 +682,15 @@ describe('computeValueVerdict / compareElement (escritura por accesibilidad)', (
     const v = computeVerdict({ ...same, action: 'app_press' })
     expect(v?.effect).toBe('suspected_noop')
     expect(v?.escalation).toContain('app_find')
+    expect(v?.escalation).toContain('no se puede deshacer')
     expect(computeVerdict({ ...same, action: 'app_action', mayBeInvisible: true })?.effect).toBe('unverifiable')
+    // Solo cambió el valor (un reloj, una barra de progreso): nunca confirmed.
+    const vo = computeVerdict({ ...same, action: 'app_press', elementValueOnly: true })
+    expect(vo?.effect).toBe('unverifiable')
+    expect(vo?.reason).toContain('solo cambió el valor')
+    // La segunda suspected_noop sobre la misma ref: «no repitas» con el aviso de acciones irreversibles.
+    const rep = computeVerdict({ ...same, action: 'app_press', repeat: { noopCount: 1, recentConfirmed: false } })
+    expect(rep?.escalation).toContain('no repitas')
+    expect(rep?.escalation).toContain('no se puede deshacer')
   })
 })
