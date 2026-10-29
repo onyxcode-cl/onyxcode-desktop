@@ -407,8 +407,13 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** Modo unificado: índice de chats (`chat-index.json`). Ver `chat-index.ts`. */
   private readonly chatIndex = new ChatIndexStore(() => join(app.getPath('userData'), 'chat-index.json'))
 
+  /**
+   * El índice de chats (carpeta, id, título y última actividad; nada del contenido) está SIEMPRE activo: lo usa la barra lateral por carpetas
+   * (cada carpeta con sus chats a la vista, también las que no están conectadas) y, con la bandera, el modo unificado. La limpieza de carpetas
+   * de chat vacías (`pruneEmptyChatFolders`) sigue siendo solo del modo unificado.
+   */
   private chatIndexOn(): boolean {
-    return this.unifiedOn()
+    return true
   }
 
   /** ¿Modo unificado encendido en la plataforma efectiva? (Windows: ambas variables.) */
@@ -426,7 +431,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.isRegisteredChatFolder(folder) || this.load().folders.some((f) => f.path === folder)
   }
 
-  /** Entradas del índice cuya carpeta sigue aprobada y existente, de la más reciente a la más antigua. Sin bandera: []. */
+  /** Entradas del índice cuya carpeta sigue aprobada y existente, de la más reciente a la más antigua. */
   listChatIndex(): ChatIndexEntry[] {
     if (!this.chatIndexOn()) return []
     const ok = new Map<string, boolean>()
@@ -441,7 +446,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.chatIndex.all().filter((e) => good(e.folder))
   }
 
-  /** Alta/actualización. Rechaza (lanza) carpetas que main no reconoce. Sin bandera: no hace nada. */
+  /** Alta/actualización. Rechaza (lanza) carpetas que main no reconoce. */
   upsertChatIndex(entry: ChatIndexEntry): void {
     if (!this.chatIndexOn()) return
     const folder = this.nf(entry.folder)

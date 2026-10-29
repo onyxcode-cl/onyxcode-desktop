@@ -1,4 +1,4 @@
-/** Modo unificado: los handlers `tasks:chatIndex:*` hablan con el índice de main (sin bandera: vacío y sin efecto). */
+/** Modo unificado: los handlers `tasks:chatIndex:*` hablan con el índice de main (siempre activo: lo usa la barra lateral por carpetas). */
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -37,7 +37,7 @@ afterAll(() => {
 })
 
 describe.skipIf(!macOnly)('handlers tasks:chatIndex:*', () => {
-  it('con bandera: upsert/list/remove; carpeta no aprobada rechazada. Sin bandera: [] y no-op', async () => {
+  it('con bandera: upsert/list/remove; carpeta no aprobada rechazada. también sin bandera', async () => {
     const handlers = new Map<string, (e: unknown, ...a: unknown[]) => unknown>()
     const ipc = { removeHandler: () => undefined, handle: (ch: string, fn: never) => void handlers.set(ch, fn) }
     const mod = registerTasksHandlers(ipc as never, () => null, {
@@ -62,11 +62,10 @@ describe.skipIf(!macOnly)('handlers tasks:chatIndex:*', () => {
       await call('tasks:chatIndex:upsert', entry)
       expect(await call('tasks:chatIndex:list')).toEqual([entry])
       expect((await raw('tasks:chatIndex:upsert', { ...entry, folder: join(root, 'ajena') })).ok).toBe(false)
+      // Sin la bandera el índice sigue activo: lo usa la barra lateral por carpetas.
       process.env[UNIFIED_APPS_ENV] = '0'
-      expect(await call('tasks:chatIndex:list')).toEqual([])
-      await call('tasks:chatIndex:remove', { folder: path })
-      process.env[UNIFIED_APPS_ENV] = '1'
       expect(await call('tasks:chatIndex:list')).toEqual([entry])
+      process.env[UNIFIED_APPS_ENV] = '1'
       await call('tasks:chatIndex:remove', { folder: path, sessionId: 'ses_1' })
       expect(await call('tasks:chatIndex:list')).toEqual([])
     } finally {

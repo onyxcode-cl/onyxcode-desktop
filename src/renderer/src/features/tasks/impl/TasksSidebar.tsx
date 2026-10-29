@@ -4,6 +4,7 @@ import { BookText, ChevronDown } from 'lucide-react'
 import { useT } from '../../../lib/i18n'
 import { SidebarTreeRegion, useSidebarTree } from '../../../components/SidebarTree'
 import { isRemoteSurface } from '../../../lib/platform'
+import { FolderGroups } from './FolderGroups'
 import { FolderMenu } from './FolderMenu'
 import { SidebarSections } from './SidebarSections'
 import { setProjectPanelOpen, useTasks } from './store'
@@ -12,6 +13,21 @@ import { chatFolderDate, isChatFolderForDisplay, useUnifiedApps } from './unifie
 import { baseName } from './util'
 
 export function TasksSidebar(): React.JSX.Element {
+  // Escritorio: todas las carpetas a la vista, cada una con sus chats (como Claude). Celular y control remoto conservan el selector de carpeta.
+  if (!isRemoteSurface()) {
+    return (
+      <div className="flex flex-col px-1 desk:px-0">
+        <SidebarTreeRegion>
+          <SidebarSections />
+        </SidebarTreeRegion>
+        <FolderGroups />
+      </div>
+    )
+  }
+  return <TasksSidebarClassic />
+}
+
+function TasksSidebarClassic(): React.JSX.Element {
   const t = useT()
   const folder = useTasks((s) => s.folder)
   const desktop = !isRemoteSurface()

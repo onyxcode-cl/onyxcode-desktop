@@ -407,7 +407,7 @@ function TranscriptResults({
 }
 
 /** Chat de otra carpeta (viene del índice): se abre con un clic, conectando su carpeta si hace falta. */
-function IndexRow({ entry, active, opening }: { entry: ChatIndexEntry; active: boolean; opening: boolean }): React.JSX.Element {
+export function IndexRow({ entry, active, opening }: { entry: ChatIndexEntry; active: boolean; opening: boolean }): React.JSX.Element {
   const t = useT()
   const tree = useSidebarTree()
   const title = chatDisplayTitle(entry.title, entry.updatedAt)
@@ -447,7 +447,12 @@ function IndexRow({ entry, active, opening }: { entry: ChatIndexEntry; active: b
 type ListItem = { kind: 'task'; task: Session } | { kind: 'entry'; entry: ChatIndexEntry }
 const itemTs = (i: ListItem): number => (i.kind === 'task' ? i.task.time.updated : i.entry.updatedAt)
 
-export function TaskList(): React.JSX.Element {
+/**
+ * `flat`: la lista cuelga de su carpeta en la barra lateral por carpetas (`FolderGroups`): una sola lista corrida (las tareas en curso
+ * primero, luego por última actividad), sin los títulos «Hoy/Ayer» ni la fila de ordenar/archivadas (el botón de archivadas vive en la
+ * cabecera de la carpeta).
+ */
+export function TaskList({ flat = false }: { flat?: boolean } = {}): React.JSX.Element {
   const tr = useT()
   const unifiedOn = useUnifiedApps()
   const tree = useSidebarTree()
@@ -506,15 +511,16 @@ export function TaskList(): React.JSX.Element {
   }, [sessions, sessionSource, directorySource, folder, dirKey])
 
   // Modo unificado: lo que ve la carpeta conectada se avisa a main (índice de chats) y el índice se carga al arrancar.
+  // El índice (carpeta, id, título, actividad) es la fuente de la barra lateral por carpetas: se carga y se alimenta SIEMPRE, no solo con la bandera.
   useEffect(() => {
-    if (unifiedOn) void loadChatIndex()
-  }, [unifiedOn])
+    void loadChatIndex()
+  }, [])
   useEffect(() => {
-    if (!unifiedOn || !folder || fullAccess || !isolatedReady) return
+    if (!folder || fullAccess || !isolatedReady) return
     for (const s of liveTasks) {
       if (!s.parentID) syncChatSession({ folder, sessionId: s.id, title: s.title ?? '', updatedAt: s.time.updated })
     }
-  }, [unifiedOn, folder, fullAccess, isolatedReady, liveTasks])
+  }, [folder, fullAccess, isolatedReady, liveTasks])
 
   const source = showArchived ? archivedTasks : liveTasks
   const q = query.trim()
@@ -584,7 +590,15 @@ export function TaskList(): React.JSX.Element {
           ]
         })()
       : null
-  const nothingToShow = unifiedGroups ? unifiedGroups.length === 0 : tasks.length === 0
+  // Lista corrida (`flat`): todo en un solo grupo sin título, en curso primero y luego por última actividad.
+  const flatGroups: Array<TaskGroup<Session>> | null =
+    flat && !searching && !showArchived
+      ? tasks.length > 0
+        ? [{ key: 'flat', label: '', items: [...split.live, ...[...split.rest].sort((a, b) => b.time.updated - a.time.updated)] }]
+        : []
+      : null
+  const shownGroups = flat && flatGroups ? flatGroups : (unifiedGroups ?? groups)
+  const nothingToShow = flatGroups ? flatGroups.length === 0 : unifiedGroups ? unifiedGroups.length === 0 : tasks.length === 0
 
   const emptyText = ((): string => {
     if (!folder) return tr(unifiedOn ? 'tasks.list.empty.noFolder.unified' : 'tasks.list.empty.noFolder')
@@ -633,7 +647,7 @@ export function TaskList(): React.JSX.Element {
           )}
         </div>
       )}
-      {!ownSearch && (
+      {!ownSearch && !flat && (
         // Escritorio: ordenar y archivadas son dos botones de ícono en una sola fila, con el título de lo que se está viendo.
         <div className="mt-2 mb-1 flex items-center gap-1 px-1">
           <span className="min-w-0 flex-1 truncate text-meta text-subtle">
@@ -666,7 +680,7 @@ export function TaskList(): React.JSX.Element {
           </button>
         </div>
       )}
-      <div className={`mb-1 items-center gap-1.5 desk:mt-1 ${ownSearch ? 'flex' : 'hidden'}`}>
+      <div className={`mb-1 items-center gap-1.5 desk:mt-1 ${ownSearch && !flat ? 'flex' : 'hidden'}`}>
         <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px] desk:text-meta text-subtle">
           <span className="shrink-0 desk:sr-only">{tr('tasks.list.groupBy')}</span>
           <select
@@ -715,14 +729,16 @@ export function TaskList(): React.JSX.Element {
           <p className="px-1 py-2 text-xs text-subtle desk:px-2 desk:text-meta desk:text-muted">{emptyText}</p>
         )}
         <SidebarTreeRegion>
-          {(unifiedGroups ?? groups).map((g) => (
+          {shownGroups.map((g) => (
             <div key={g.key} className="mb-1" role={tree ? 'group' : undefined} aria-label={tree ? g.label : undefined}>
-              <div
-                aria-hidden={tree ? true : undefined}
-                className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
-              >
-                {g.label}
-              </div>
+              {g.label && (
+                <div
+                  aria-hidden={tree ? true : undefined}
+                  className="px-1 pt-2.5 pb-1 text-[11.5px] font-medium text-subtle desk:flex desk:h-7 desk:items-end desk:px-2.5 desk:pb-0.5 desk:text-meta desk:font-normal desk:tracking-normal desk:normal-case"
+                >
+                  {g.label}
+                </div>
+              )}
               <div className="space-y-0.5">
                 {(g.items as Array<Session | ListItem>).map((it) => {
                   if ('kind' in it) {

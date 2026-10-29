@@ -162,15 +162,14 @@ describe.skipIf(!macOnly)('índice de chats', () => {
     expect(JSON.parse(readFileSync(idxFile(), 'utf8')).map((x: { sessionId: string }) => x.sessionId)).toEqual(['s2'])
   })
 
-  it('sin bandera: list devuelve [] y upsert/remove no hacen nada', async () => {
+  it('el índice funciona también sin la bandera (barra lateral por carpetas)', async () => {
     const m = new TasksManager()
     const a = await approved(m)
-    m.upsertChatIndex(e(a, 's1'))
     process.env[UNIFIED_APPS_ENV] = '0'
-    expect(m.listChatIndex()).toEqual([])
-    m.upsertChatIndex(e(a, 's2'))
-    m.removeChatIndex(a)
-    process.env[UNIFIED_APPS_ENV] = '1'
+    m.upsertChatIndex(e(a, 's1'))
     expect(m.listChatIndex().map((x) => x.sessionId)).toEqual(['s1'])
+    m.removeChatIndex(a)
+    expect(m.listChatIndex()).toEqual([])
+    process.env[UNIFIED_APPS_ENV] = '1'
   })
 })
