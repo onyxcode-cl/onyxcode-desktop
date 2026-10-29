@@ -730,7 +730,7 @@ export function TasksWorkspace(): React.JSX.Element {
               </>
             )}
             <span
-              className={`${unifiedHeader ? 'max-w-[55%] min-w-[9rem]' : 'min-w-0'} truncate text-sm font-medium`}
+              className="min-w-[4rem] shrink truncate text-sm font-medium"
               title={unifiedHeader ? session?.title || t('tasks.ws.untitled') : session?.title}
             >
               {session?.title || t('tasks.ws.untitled')}
@@ -744,7 +744,7 @@ export function TasksWorkspace(): React.JSX.Element {
               <div
                 role="group"
                 aria-label={t('a11y.sidePanel')}
-                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' desk:@max-[52rem]:hidden' : ''}`}
+                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' desk:@max-[34rem]:hidden' : ''}`}
               >
                 {[
                   { id: 'progress' as const, icon: ListChecks, label: t('tasks.ws.progress') },

@@ -80,7 +80,7 @@ export function UnifiedScopeChip({ className = '', plain = false }: { className?
       <ChipMenu
         name={t('tasksComputer.unified.continueMenu')}
         valueLabel={label}
-        icon={<Shield size={14} aria-hidden />}
+        icon={plain ? <FolderOpen size={14} aria-hidden /> : <Shield size={14} aria-hidden />}
         value="here"
         note={t('tasksComputer.unified.continueNote')}
         testId="unified-scope-chip"
