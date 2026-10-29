@@ -2,7 +2,7 @@
 import { t } from '@shared/i18n'
 import { ProjectCard } from '../../project-profile/ProjectCard'
 import { ProjectSeal } from '../../project-profile/ProjectSeal'
-import type { ProjectFolders } from '../../project-profile/ProjectDialog'
+import { ProjectDialog, type ProjectFolders } from '../../project-profile/ProjectDialog'
 import { applyAccessChange, linkFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { isChatFolderForDisplay, useUnifiedApps } from './unified'
@@ -64,6 +64,25 @@ export function TasksProjectSeal({ busy }: { busy: boolean }): React.JSX.Element
       busy={busy}
       folders={folders}
       onAccessSaved={() => void applyAccessChange(folder)}
+    />
+  )
+}
+
+/** El modal de la Ficha del proyecto, abierto desde el menú «⋯» de la cabecera. */
+export function TasksFichaDialog({ busy, onClose }: { busy: boolean; onClose: () => void }): React.JSX.Element | null {
+  const folder = useTasks((s) => s.folder)
+  const scope = useScope(busy)
+  const projectFolders = useProjectFolders(folder ?? '')
+  if (!folder) return null
+  return (
+    <ProjectDialog
+      folder={folder}
+      full={scope.full}
+      onPickFull={scope.canFull ? scope.pick : undefined}
+      busy={busy}
+      folders={projectFolders}
+      onAccessSaved={() => void applyAccessChange(folder)}
+      onClose={onClose}
     />
   )
 }

@@ -17,13 +17,16 @@ import {
   ClipboardCopy,
   FileDown,
   FileText,
+  Check,
+  Eye,
   FolderOpen,
   Globe,
+  IdCard,
+  ListChecks,
   Loader2,
   MessagesSquare,
   MoreHorizontal,
   PanelRightClose,
-  PanelRightOpen,
   RefreshCw,
   SlidersHorizontal,
   Sparkles,
@@ -63,7 +66,7 @@ import {
 } from './actions'
 import { AccessModeSwitch, ComputerPermissionsCard, ControlBanner, FullAccessDialog, VisionModelHint } from './ComputerAccess'
 import { PlanAccessCard } from './AppAccessCard'
-import { TasksEnvironment } from './TasksEnvironment'
+import { TasksFichaDialog, TasksProjectSeal } from './TasksProjectCard'
 import { hasTasksBridge, onTasks } from './bridge'
 import { useFolderDrop } from './useFolderDrop'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
@@ -87,7 +90,7 @@ import { backgroundBusyRoots } from '../../code/impl/child-sessions'
 import { ProgressPanel } from './ProgressPanel'
 import { ProjectPanel } from './ProjectPanel'
 import { SideChat } from './SideChat'
-import { ReadingModeSwitch } from '../../../components/ReadingModeSwitch'
+import { READING_MODES, useReadingMode, useWorkView, type ReadingMode } from '../../../lib/reading-mode'
 import { TaskConversation } from './TaskConversation'
 import { StatusIcon } from './TaskList'
 import { useSandbox } from './sandbox-store'
@@ -370,6 +373,8 @@ export function TasksWorkspace(): React.JSX.Element {
   // Navegador integrado del `aside`: pestaña "Progreso | Navegador" y ancho redimensionable.
   const composerRef = useRef<TasksComposerHandle>(null)
   const [asideTab, setAsideTab] = useState<'progress' | 'browser' | 'viewer'>('progress')
+  const [fichaOpen, setFichaOpen] = useState(false)
+  const readingMode = useWorkView('code')
   const [browserMounted, setBrowserMounted] = useState(false)
   const [browserWidth, setBrowserWidth] = useState(readAsideBrowserWidth)
   const asideDrag = useRef<{ x: number; w: number } | null>(null)
@@ -591,8 +596,19 @@ export function TasksWorkspace(): React.JSX.Element {
       .catch((err: unknown) => setSendError(err))
   }
 
+  const modeLabel: Record<ReadingMode, string> = {
+    summary: t('code.reading.summary'),
+    normal: t('code.reading.normal'),
+    detailed: t('code.reading.detailed')
+  }
   const menuItems: MenuItem[] = activeId
     ? [
+        ...(folder ? [{ icon: IdCard, label: t('project.card.title'), run: () => setFichaOpen(true) }] : []),
+        ...READING_MODES.map((m: ReadingMode) => ({
+          icon: readingMode === m ? Check : Eye,
+          label: modeLabel[m],
+          run: () => useReadingMode.getState().setView('code', m)
+        })),
         { icon: ClipboardCopy, label: t('conv.export.copy'), run: () => void exportTaskConversation(activeId, 'copy') },
         { icon: FileText, label: t('conv.export.saveMd'), run: () => void exportTaskConversation(activeId, 'md') },
         { icon: FileDown, label: t('conv.export.savePdf'), run: () => void exportTaskConversation(activeId, 'pdf') },
@@ -714,40 +730,60 @@ export function TasksWorkspace(): React.JSX.Element {
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
-              <ReadingModeSwitch surface="code" />
               {(phase === 'ready' || phase === 'error') && <AccessModeSwitch disabled={folderBusy} />}
-              {(phase === 'ready' || phase === 'error') && <TasksEnvironment disabled={folderBusy} />}
-              <TaskMenu items={menuItems} />
-              {folder && (
-                <button
-                  type="button"
-                  title={t('tasks.ws.openFinder')}
-                  className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
-                  onClick={() => void reveal(folder)}
-                >
-                  <FolderOpen size={15} />
-                </button>
-              )}
-              <button
-                type="button"
-                title={panelOpen && !sideOpen ? t('tasks.ws.hidePanel') : t('tasks.ws.showPanel')}
-                aria-label={panelOpen && !sideOpen ? t('tasks.ws.hidePanelAria') : t('tasks.ws.showPanel')}
-                className="rounded p-1 hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
-                onClick={() => {
-                  if (sideOpen) {
-                    closeSideChat()
-                    setPanelOpen(true)
-                  } else setPanelOpen(!panelOpen)
-                }}
+              {(phase === 'ready' || phase === 'error') && <TasksProjectSeal busy={folderBusy} />}
+              {/* Los paneles, en una sola cápsula; lo demás va en «⋯» (igual que en Code). */}
+              <div
+                role="group"
+                aria-label={t('a11y.sidePanel')}
+                className="flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5"
               >
-                {panelOpen && !sideOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
-              </button>
+                {[
+                  { id: 'progress' as const, icon: ListChecks, label: t('tasks.ws.progress') },
+                  ...(hasBrowserBridge() ? [{ id: 'browser' as const, icon: Globe, label: t('code.panel.browser') }] : [])
+                ].map((p) => {
+                  const on = panelOpen && !sideOpen && asideTab === p.id
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      title={p.label}
+                      aria-label={p.label}
+                      aria-pressed={on}
+                      className={`no-drag inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1.5 transition-colors ${on ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      onClick={() => {
+                        if (sideOpen) closeSideChat()
+                        if (on) setPanelOpen(false)
+                        else {
+                          setAsideTab(p.id)
+                          setPanelOpen(true)
+                        }
+                      }}
+                    >
+                      <p.icon size={16} />
+                    </button>
+                  )
+                })}
+                {folder && (
+                  <button
+                    type="button"
+                    title={t('tasks.ws.openFinder')}
+                    aria-label={t('tasks.ws.openFinder')}
+                    className="no-drag inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1.5 text-muted transition-colors hover:bg-hover hover:text-fg"
+                    onClick={() => void reveal(folder)}
+                  >
+                    <FolderOpen size={16} />
+                  </button>
+                )}
+              </div>
+              <TaskMenu items={menuItems} />
             </span>
           </header>
         )}
 
         <ControlBanner />
         {phaseBanners}
+        {fichaOpen && <TasksFichaDialog busy={folderBusy} onClose={() => setFichaOpen(false)} />}
 
         {activeId ? (
           <>
