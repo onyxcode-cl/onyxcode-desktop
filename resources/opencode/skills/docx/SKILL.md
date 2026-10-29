@@ -14,7 +14,7 @@ En el Chat el modelo solo escribe un bloque con JSON y la app arma el Word con W
 1. Escribe el contenido en `contenido.json` con el esquema del Chat (resumen abajo) siguiendo la guía de diseño de más abajo.
 2. Genera: `PY S/build_chat_docx.py contenido.json informe.docx` (valida con el mismo validador del Chat; si algo no cumple el esquema lo dice y no genera nada; nunca sobrescribe).
    Códigos: 0 ok · 1 corrige el contenido según el mensaje y repite con OTRO nombre de salida · 2 uso · **3 = WordCraft, Node o el motor no están en este equipo: no insistas, sigue con A2**.
-3. Verifica (obligatorio): `PY S/check_docx.py informe.docx` — corrige y repite hasta «RESULTADO: OK».
+3. Verifica (obligatorio): `PY S/check_docx.py informe.docx` — corrige y repite hasta «RESULTADO: OK». Si lo creaste con `documentos_crear`, mira además cada página con `documentos_renderizar` (una imagen por página; también funciona en Windows).
 4. Si el check generó imágenes de página (`.lazunox/trabajo/render-docx/*.png`), ábrelas y MÍRALAS: títulos, tabla, cifras, sin páginas vacías.
    Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 5. Entrega: indica la ruta del .docx y resume qué contiene (en «Para revisar»: lo que no pudiste comprobar).

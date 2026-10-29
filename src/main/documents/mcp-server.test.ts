@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -288,5 +288,115 @@ describe('crear', () => {
     const { token, port } = await server.clientFor({ folder })
     await call(port, token, { tipo: 'docx', nombre: 'x', spec: { blocks: [{ type: 'paragraph', text: 'DATO-CONFIDENCIAL' }] } })
     expect(JSON.stringify(audits)).not.toContain('DATO-CONFIDENCIAL')
+  })
+})
+
+describe('renderizar', () => {
+  const PPTX = { slides: [{ layout: 'cover', title: 'Hola' }] }
+  const PNG = Buffer.from('PNG-FALSO')
+  let previews: Array<{ tipo: string; bytes: Buffer }>
+  let previewImpl: () => Promise<{ images: Buffer[]; pages: number; truncated: boolean } | null>
+  let s2: DocumentsMcpServer
+
+  beforeEach(() => {
+    previews = []
+    previewImpl = async () => ({ images: [PNG, PNG], pages: 2, truncated: false })
+    s2 = new DocumentsMcpServer({
+      render: async () => Buffer.from('ARCHIVO'),
+      preview: async (tipo, bytes) => {
+        previews.push({ tipo, bytes })
+        return previewImpl()
+      },
+      audit: (e) => audits.push(e)
+    })
+  })
+  afterEach(async () => {
+    await s2.stop()
+  })
+
+  it('sin motor de vista previa, la herramienta ni se anuncia', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const list = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
+    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(['crear'])
+    const r = await call(port, token, { ruta: 'x' }, 'renderizar')
+    expect(r.body.result.isError).toBe(true)
+  })
+
+  it('con motor, se anuncia y devuelve texto + imágenes base64 de lo creado', async () => {
+    const { token, port } = await s2.clientFor({ folder })
+    const list = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
+    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(['crear', 'renderizar'])
+    const created = await call(port, token, { tipo: 'pptx', nombre: 'deck', spec: PPTX })
+    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    const r = await call(port, token, { ruta }, 'renderizar')
+    expect(r.body.result.isError).toBeUndefined()
+    const content = r.body.result.content
+    expect(content[0].type).toBe('text')
+    expect(content[0].text).toContain('2 diapositiva')
+    expect(content.slice(1).map((c: { type: string }) => c.type)).toEqual(['image', 'image'])
+    expect(Buffer.from(content[1].data, 'base64').equals(PNG)).toBe(true)
+    expect(content[1].mimeType).toBe('image/png')
+    expect(previews[0]!.tipo).toBe('pptx')
+  })
+
+  it('rechaza una ruta que no creó `crear` (archivo ajeno de la carpeta, o fuera de ella)', async () => {
+    writeFileSync(join(folder, 'ajeno.docx'), 'x')
+    const { token, port } = await s2.clientFor({ folder })
+    for (const ruta of [join(folder, 'ajeno.docx'), '/etc/passwd', '../x', '']) {
+      const r = await call(port, token, { ruta }, 'renderizar')
+      expect(r.body.result.isError).toBe(true)
+    }
+    expect(previews).toEqual([])
+  })
+
+  it('una ruta creada por OTRA atadura no vale', async () => {
+    const a = await s2.clientFor({ folder })
+    const b = await s2.clientFor({ folder: folder2 })
+    const created = await call(a.port, a.token, { tipo: 'docx', nombre: 'a', spec: DOCX })
+    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    const r = await call(b.port, b.token, { ruta }, 'renderizar')
+    expect(r.body.result.isError).toBe(true)
+  })
+
+  it('si el archivo cambió después de crearlo, no se renderiza', async () => {
+    const { token, port } = await s2.clientFor({ folder })
+    const created = await call(port, token, { tipo: 'docx', nombre: 'a', spec: DOCX })
+    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    writeFileSync(ruta, 'MANIPULADO')
+    const r = await call(port, token, { ruta }, 'renderizar')
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toContain('cambió')
+    expect(previews).toEqual([])
+  })
+
+  it('xlsx y pdf no tienen imágenes: lo dice claro', async () => {
+    const { token, port } = await s2.clientFor({ folder })
+    const created = await call(port, token, { tipo: 'xlsx', nombre: 'a', spec: XLSX })
+    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    const r = await call(port, token, { ruta }, 'renderizar')
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toContain('pptx y docx')
+  })
+
+  it('sin render disponible (falta ArtCraft) explica qué hacer', async () => {
+    previewImpl = async () => null
+    const { token, port } = await s2.clientFor({ folder })
+    const created = await call(port, token, { tipo: 'pptx', nombre: 'a', spec: PPTX })
+    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    const r = await call(port, token, { ruta }, 'renderizar')
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toContain('Para revisar')
+  })
+
+  it('un fallo del motor no filtra la salida cruda', async () => {
+    previewImpl = async () => {
+      throw new Error('deckcraft: /Users/ben/secreto falló')
+    }
+    const { token, port } = await s2.clientFor({ folder })
+    const created = await call(port, token, { tipo: 'pptx', nombre: 'a', spec: PPTX })
+    const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    const r = await call(port, token, { ruta }, 'renderizar')
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).not.toContain('/Users/ben')
   })
 })

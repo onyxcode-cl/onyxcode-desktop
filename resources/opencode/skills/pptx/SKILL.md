@@ -157,6 +157,7 @@ Si lo usas:
   imágenes diminutas/de baja resolución. Código de salida 1 = hay PROBLEMAS: corrige todo de una vez (ver «Presupuesto de revisión») y repite.
 - Renderiza con DeckCraft (ArtCraft) y crea `.lazunox/trabajo/chk/miniaturas.png` (todas las diapositivas en una imagen):
   MÍRALA con la herramienta de imágenes y comprueba que nada se corta ni se superpone.
+- Si creaste la presentación con `documentos_crear`, mírala con `documentos_renderizar` (devuelve una imagen por diapositiva; solo sirve para archivos creados con `crear` en esta tarea) y corrige todo de una vez. Es la forma de verla también en Windows.
 - Si no está DeckCraft (ArtCraft) avisa «solo hay verificación estructural»: dilo en «Para revisar».
 - Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 

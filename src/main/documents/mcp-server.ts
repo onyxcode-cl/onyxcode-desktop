@@ -20,7 +20,10 @@ import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
 import { explainDocx } from '../office/craft/chat-docx-cli'
 import { explainXlsx } from '../office/craft/chat-xlsx-cli'
 import type { ChatDocInput } from './engine'
+import { createHash } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { OutputPathError, writeNewFile } from './output-path'
+import type { PreviewResult } from './preview'
 
 const HOST = '127.0.0.1'
 const MAX_BODY = 1024 * 1024
@@ -30,6 +33,7 @@ export const MAX_HTML_BYTES = 5 * 1024 * 1024
 export const MAX_OUTPUT_BYTES = 50 * 1024 * 1024
 export const MAX_PER_BINDING_PER_HOUR = 60
 export const MAX_CONCURRENT_GLOBAL = 2
+export const MAX_PREVIEWS_PER_HOUR = 30
 export const RENDER_TIMEOUT_MS = 120_000
 export const SERVER_NAME = 'documentos'
 
@@ -58,6 +62,8 @@ export interface DocumentsBinding {
 export interface DocumentsDeps {
   /** El motor del Chat (`engine.renderBytes`); se inyecta para poder probar sin Electron. */
   render: (input: ChatDocInput, title: string, opts: { remoteImages: false }) => Promise<Buffer>
+  /** Vista previa en imágenes (PowerPoint y Word). `null` = ese tipo no se puede renderizar. Ausente = la herramienta `renderizar` no existe. */
+  preview?: (tipo: Tipo, bytes: Buffer) => Promise<PreviewResult | null>
   now?: () => number
   /** Registro de auditoría (por defecto, consola). Nunca recibe contenido del documento. */
   audit?: (entry: AuditEntry) => void
@@ -76,7 +82,7 @@ export interface AuditEntry {
 }
 
 const TIPOS = ['pptx', 'docx', 'xlsx', 'pdf'] as const
-type Tipo = (typeof TIPOS)[number]
+export type Tipo = (typeof TIPOS)[number]
 
 export const DOCUMENT_TOOLS = [
   {
@@ -101,10 +107,27 @@ export const DOCUMENT_TOOLS = [
   }
 ] as const
 
+export const PREVIEW_TOOL = {
+  name: 'renderizar',
+  description:
+    'Devuelve imágenes (una por diapositiva o página, hasta 12) de un documento que CREASTE con `crear` en esta tarea, para que lo mires y corrijas ' +
+    'lo que se vea mal (textos cortados, contraste, cosas superpuestas) antes de entregarlo. Solo funciona con pptx y docx, y solo con archivos ' +
+    'creados por `crear`; `ruta` es la que devolvió `crear`. Para xlsx y pdf no hay imágenes: revisa el contenido con las skills.',
+  inputSchema: {
+    type: 'object',
+    properties: { ruta: { type: 'string', description: 'Ruta devuelta por `crear`.' } },
+    required: ['ruta'],
+    additionalProperties: false
+  }
+} as const
+
 /** Concurrencia y cuota por atadura. */
 interface Quota {
   busy: boolean
   stamps: number[]
+  previews: number[]
+  /** Archivos creados por `crear` en esta atadura: ruta que vio el agente (y la del equipo) → ruta del equipo y huella. */
+  created: Map<string, { abs: string; tipo: Tipo; sha: string }>
 }
 
 export class DocumentsMcpServer {
@@ -285,7 +308,7 @@ export class DocumentsMcpServer {
         case 'ping':
           return ok({})
         case 'tools/list':
-          return ok({ tools: DOCUMENT_TOOLS })
+          return ok({ tools: this.deps.preview ? [...DOCUMENT_TOOLS, PREVIEW_TOOL] : DOCUMENT_TOOLS })
         case 'tools/call': {
           const name = String(req.params?.name ?? '')
           const rawArgs = req.params?.arguments
@@ -305,7 +328,7 @@ export class DocumentsMcpServer {
     }
   }
 
-  private text(message: string, isError = false): { content: Array<{ type: 'text'; text: string }>; isError?: boolean } {
+  private text(message: string, isError = false): { content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>; isError?: boolean } {
     return { content: [{ type: 'text', text: message }], ...(isError ? { isError: true } : {}) }
   }
 
@@ -350,20 +373,87 @@ export class DocumentsMcpServer {
     return { tipo, input: { kind: 'xlsx', data: spec } }
   }
 
+  private quotaOf(binding: DocumentsBinding): Quota {
+    let quota = this.quotas.get(binding)
+    if (!quota) {
+      quota = { busy: false, stamps: [], previews: [], created: new Map() }
+      this.quotas.set(binding, quota)
+    }
+    return quota
+  }
+
+  /** `renderizar`: solo archivos creados por `crear` en ESTA atadura y sin cambios desde entonces (huella sha256). */
+  private async callPreview(binding: DocumentsBinding, args: Record<string, unknown>) {
+    const now = this.deps.now ?? Date.now
+    const t0 = now()
+    const quota = this.quotaOf(binding)
+    const ruta = typeof args.ruta === 'string' ? args.ruta : ''
+    const entry = quota.created.get(ruta)
+    if (!entry) {
+      this.audit({ at: t0, tool: 'renderizar', result: 'rechazado', detail: 'no-creado', ms: 0 })
+      return this.text('Solo se puede renderizar un documento creado con `crear` en esta tarea: usa la ruta que devolvió `crear`.', true)
+    }
+    if (entry.tipo !== 'pptx' && entry.tipo !== 'docx') {
+      return this.text('Solo hay vista previa en imágenes para pptx y docx. Para xlsx y pdf revisa el contenido con las comprobaciones de la skill.', true)
+    }
+    quota.previews = quota.previews.filter((x) => t0 - x < 3_600_000)
+    if (quota.previews.length >= MAX_PREVIEWS_PER_HOUR) {
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cuota', ms: 0 })
+      return this.text('Ya se pidieron muchas vistas previas en esta hora; espera un rato.', true)
+    }
+    if (quota.busy || this.active >= MAX_CONCURRENT_GLOBAL) {
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'ocupado', ms: 0 })
+      return this.text('Hay otro documento en curso; vuelve a intentarlo en un momento.', true)
+    }
+    quota.busy = true
+    this.active++
+    quota.previews.push(t0)
+    try {
+      let bytes: Buffer
+      try {
+        bytes = await readFile(entry.abs)
+      } catch {
+        return this.text('No se encuentra el archivo; ¿lo moviste o lo borraste?', true)
+      }
+      if (createHash('sha256').update(bytes).digest('hex') !== entry.sha) {
+        this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cambió', ms: now() - t0 })
+        return this.text('El archivo cambió desde que se creó con `crear`: solo se renderiza lo que creó la herramienta. Vuelve a crearlo con otro nombre.', true)
+      }
+      const res = await withTimeout(this.deps.preview!(entry.tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
+      if (!res || res.images.length === 0) {
+        this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: 'sin-render', ms: now() - t0 })
+        return this.text('No hay vista previa disponible (falta el diseñador de documentos o no pudo renderizar). Revisa el contenido con la skill y dilo en «Para revisar».', true)
+      }
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'ok', bytes: res.images.reduce((n, b) => n + b.length, 0), ms: now() - t0 })
+      const unit = entry.tipo === 'pptx' ? 'diapositiva(s)' : 'página(s)'
+      const note = res.truncated ? ` Se muestran las primeras ${res.images.length}.` : ''
+      return {
+        content: [
+          { type: 'text' as const, text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento: mira que nada se corte ni se superponga y corrige todo de una vez.` },
+          ...res.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))
+        ]
+      }
+    } catch (err) {
+      const timedOut = err instanceof TimeoutError
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: timedOut ? 'tiempo' : 'motor', ms: now() - t0 })
+      return this.text(timedOut ? 'La vista previa tardó demasiado y se canceló.' : 'No se pudo generar la vista previa con el motor de la app.', true)
+    } finally {
+      quota.busy = false
+      this.active--
+    }
+  }
+
   private async callTool(binding: DocumentsBinding, name: string, args: Record<string, unknown>) {
     const now = this.deps.now ?? Date.now
     const t0 = now()
+    if (name === 'renderizar' && this.deps.preview) return this.callPreview(binding, args)
     if (name !== 'crear') return this.text(`Herramienta desconocida: ${name}`, true)
     const built = this.buildInput(args)
     if ('error' in built) {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'contenido', ms: now() - t0 })
       return this.text(built.error, true)
     }
-    let quota = this.quotas.get(binding)
-    if (!quota) {
-      quota = { busy: false, stamps: [] }
-      this.quotas.set(binding, quota)
-    }
+    const quota = this.quotaOf(binding)
     quota.stamps = quota.stamps.filter((s) => t0 - s < 3_600_000)
     if (quota.stamps.length >= MAX_PER_BINDING_PER_HOUR) {
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: 'cuota', ms: 0 })
@@ -387,6 +477,10 @@ export class DocumentsMcpServer {
         maxBytes: MAX_OUTPUT_BYTES
       })
       const agentPath = binding.toAgentPath ? binding.toAgentPath(written.abs) : written.abs
+      const sha = createHash('sha256').update(bytes).digest('hex')
+      quota.created.set(agentPath, { abs: written.abs, tipo: built.tipo, sha })
+      quota.created.set(written.abs, { abs: written.abs, tipo: built.tipo, sha })
+      if (quota.created.size > 400) quota.created.delete(quota.created.keys().next().value as string)
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'ok', bytes: written.bytes, rel: written.rel, ms: now() - t0 })
       return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).`)
     } catch (err) {
