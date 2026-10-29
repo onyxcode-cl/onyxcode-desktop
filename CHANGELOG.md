@@ -4,6 +4,30 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.3] - 2026-10-29
+
+### Novedades
+
+- **Las Tareas (Overdrive) y Code hacen presentaciones, Word, Excel y PDF con el mismo motor y la misma guía de diseño que el Chat.** Antes el Chat daba mejores resultados. Ahora el diseño se inventa distinto cada vez (sin plantilla fija) y, al pedir una presentación, la IA pregunta si la quieres editable (.pptx) o en HTML.
+- **Traducir Word, Excel y PDF conservando el diseño**, también desde las Tareas.
+- **Si el proveedor de la IA rechaza o reintenta** (por ejemplo «Se acabó el uso gratuito»), ahora se ve el motivo y qué hacer, en lugar de un «Pensando…» que no termina (Tareas, Chat y Code).
+- **Control de apps más honesto:** la IA lee de vuelta lo que escribió en el campo, y cuando no se ve ningún cambio en pantalla lo informa como «sin comprobar» en vez de dar por hecho que funcionó. Si pulsa algo desactivado, recibe el motivo y qué probar.
+- **Capturas sin repetir** y texto saneado antes de teclear.
+
+### Correcciones
+
+- **Windows: letras cambiadas o perdidas al teclear en apps lentas** («29 de» salía «eee»). Ahora hay un ritmo mínimo entre caracteres y la lectura de vuelta no confirma un texto distinto del pedido.
+- **Windows: rechazo falso al pedir «Bloc de notas» cuando la app es `Notepad.exe`.** Ahora se compara la identidad real de la app, no el nombre escrito.
+- **Pruebas automáticas que movían tus apps** (Finder, Safari…) al ejecutarse en el Mac: ya no usan el ayudante real.
+
+### Qué no cambia / límites
+
+- **En Windows las Tareas no pueden usar el motor del Chat.** Corren en un Linux aislado sin Node (decisión de seguridad), así que usan un respaldo propio de menor calidad y sin vista previa. La solución propuesta (una herramienta dentro de la app) está en `docs/PLAN-DOCUMENTOS-EN-LA-APP.md`, sin implementar.
+- **El modo Code no se probó en vivo con la IA** con estas habilidades (comparte las de las Tareas, cubiertas por pruebas automáticas). En el Mac tampoco se repitió la ruta HTML ni la traducción de Excel y PDF con una IA real (se acabó el uso gratuito); sí se probaron los scripts directamente.
+- **No se vio el resultado de Windows abierto en PowerPoint real.** El ritmo nuevo al teclear solo se verificó en el Bloc de notas.
+- **Al abrir por primera vez, macOS puede pedir la contraseña del llavero** («Lazunox Safe Storage»); elige «Permitir siempre».
+- Motor `lazunox.13`, sin cambios.
+
 ## [1.8.2] - 2026-10-28
 
 ### Novedades
