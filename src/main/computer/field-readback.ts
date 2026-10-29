@@ -49,7 +49,16 @@ export function pickFocusedField(nodes: readonly AxNodeLike[]): FocusedField | n
 }
 
 export type TypedProgress =
-  { kind: 'complete' } | { kind: 'partial'; typed: number; total: number } | { kind: 'unchanged' } | { kind: 'unverifiable'; why: string }
+  | { kind: 'complete' }
+  | { kind: 'partial'; typed: number; total: number }
+  /** El valor cambió pero lo agregado NO es el texto escrito (letras cambiadas o perdidas): evidencia EN CONTRA. `firstDiff` = posición (0) del primer carácter distinto. */
+  | { kind: 'mismatch'; firstDiff: number; total: number }
+  | { kind: 'unchanged' }
+  | { kind: 'unverifiable'; why: string }
+
+/** Pista para el modelo cuando lo escrito salió distinto de lo pedido (no lleva contenido del campo). */
+export const TYPE_RETRY_HINT =
+  'no lo des por escrito: míralo con app_screenshot y, si salió distinto, bórralo y repítelo en trozos más cortos, con input "paste" (si la plataforma lo ofrece) o con app_set_value (escritura por accesibilidad)'
 
 const countOf = (hay: string, needle: string): number => (needle ? hay.split(needle).length - 1 : 0)
 
@@ -58,8 +67,9 @@ const countOf = (hay: string, needle: string): number => (needle ? hay.split(nee
  * - `complete`: el texto aparece más veces que antes (o es justo lo que se agregó).
  * - `partial`: se agregó solo el comienzo del texto (se cortó o va con retraso). Solo fuera de una vista web.
  * - `unchanged`: el valor es idéntico. Solo fuera de una vista web (allí el valor puede ir con retraso).
- * - `unverifiable`: campo seguro, valor recortado (200), foco en otro campo, texto terminado en Return (puede haberse enviado y vaciado),
- *   valor que cambió pero no coincide, o falta una de las dos lecturas.
+ * - `mismatch`: el valor cambió y lo agregado no es lo escrito (ni su comienzo): letras cambiadas o perdidas. Solo fuera de una vista web.
+ * - `unverifiable`: campo seguro, valor recortado (200), foco en otro campo, texto terminado en Return (puede haberse enviado y vaciado)
+ *   o falta una de las dos lecturas.
  */
 export function typedProgress(written: string, before: FocusedField | null, after: FocusedField | null): TypedProgress {
   const unv = (why: string): TypedProgress => ({ kind: 'unverifiable', why })
@@ -84,7 +94,10 @@ export function typedProgress(written: string, before: FocusedField | null, afte
   while (s < a0.length - p && s < a1.length - p && a0[a0.length - 1 - s] === a1[a1.length - 1 - s]) s++
   const inserted = a1.slice(p, a1.length - s).trim()
   if (inserted && inserted.length < w.length && w.startsWith(inserted)) return { kind: 'partial', typed: inserted.length, total: w.length }
-  return unv('el valor cambió pero no coincide con lo escrito')
+  if (!inserted) return unv('el valor cambió pero no se pudo aislar lo agregado')
+  let firstDiff = 0
+  while (firstDiff < inserted.length && firstDiff < w.length && inserted[firstDiff] === w[firstDiff]) firstDiff++
+  return { kind: 'mismatch', firstDiff, total: w.length }
 }
 
 /** `key`: ¿cambió el valor del campo enfocado? Solo `changed` es una evidencia; lo demás no prueba nada (Return, Tab, atajos pueden no tocar el campo). */

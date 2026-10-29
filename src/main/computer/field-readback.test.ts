@@ -69,12 +69,20 @@ describe('typedProgress', () => {
     expect(typedProgress('hola', f('abc'), f('abc'))).toEqual({ kind: 'unchanged' })
   })
 
-  it('cambió pero no coincide (la app transforma el texto) ⇒ unverifiable, no partial', () => {
-    expect(typedProgress('hola', f('abc'), f('XYZ'))).toMatchObject({ kind: 'unverifiable' })
+  it('cambió pero no coincide (letras cambiadas o perdidas) ⇒ mismatch con la posición, nunca complete', () => {
+    expect(typedProgress('hola', f('abc'), f('XYZ'))).toEqual({ kind: 'mismatch', firstDiff: 0, total: 4 })
+  })
+
+  it('caso real del Bloc de notas: «29 de» salió «eee» ⇒ mismatch en el carácter 8 (índice 7)', () => {
+    const want = 'Prueba 29 de octubre: mañana reunión a las 10:30'
+    const got = 'Prueba eee octubre: mañana reunión a las 10:30'
+    expect(typedProgress(want, f(''), f(got))).toEqual({ kind: 'mismatch', firstDiff: 7, total: want.length })
+    // también cuando el campo ya tenía texto antes
+    expect(typedProgress(want, f('Notas\n'), f(`Notas\n${got}`))).toMatchObject({ kind: 'mismatch', firstDiff: 7 })
   })
 
   it('mayúsculas distintas NO confirman', () => {
-    expect(typedProgress('ABC123', f(''), f('abc123'))).toMatchObject({ kind: 'unverifiable' })
+    expect(typedProgress('ABC123', f(''), f('abc123'))).toMatchObject({ kind: 'mismatch' })
   })
 
   it('campo seguro, foco en otro campo o falta una lectura ⇒ unverifiable', () => {

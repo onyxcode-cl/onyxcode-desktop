@@ -78,6 +78,7 @@ import {
   pickFocusedField,
   pressNotAnnounced,
   pressPrecheck,
+  TYPE_RETRY_HINT,
   typedProgress,
   type FocusedField,
   type TypedProgress
@@ -2974,9 +2975,17 @@ function refineWithField(v: Verdict, prog: TypedProgress | null, keyChanged: boo
         ...(v.warning ? { warning: v.warning } : {})
       }
     case 'partial': {
-      if (v.effect === 'confirmed') return v
+      // El campo recibió solo el comienzo: es evidencia en contra, aunque otra señal (ventana, texto en otro campo) hubiera confirmado.
       const { escalation: _drop, ...rest } = v
-      return addNote({ ...rest, effect: 'unverifiable' }, `el campo enfocado recibió solo ${prog.typed} de ${prog.total} caracteres`)
+      return addNote({ ...rest, effect: 'unverifiable' }, `el campo enfocado recibió solo ${prog.typed} de ${prog.total} caracteres; ${TYPE_RETRY_HINT}`)
+    }
+    case 'mismatch': {
+      // Lo leído NO coincide con lo escrito: nunca `confirmed`, venga de donde venga la confirmación.
+      const { escalation: _drop, ...rest } = v
+      return addNote(
+        { ...rest, effect: 'unverifiable' },
+        `el texto del campo enfocado NO coincide con lo escrito (primera diferencia en el carácter ${prog.firstDiff + 1} de ${prog.total}); ${TYPE_RETRY_HINT}`
+      )
     }
     case 'unchanged':
       return v.effect === 'confirmed' ? v : addNote(v, 'el valor del campo enfocado no cambió')

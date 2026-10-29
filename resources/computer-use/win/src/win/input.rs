@@ -6,7 +6,7 @@ use super::util::sleep_ms;
 use crate::exitcode::{CuError, CuResult};
 use crate::keys::{key_vk, mod_vk};
 use crate::keys::{VK_RETURN, VK_TAB};
-use crate::motion::{glide_path, wheel_deltas, PlannedStep, Rng, TypeStep};
+use crate::motion::{glide_path, paced_delay, wheel_deltas, PlannedStep, Rng, TypeStep};
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 use windows::Win32::Foundation::POINT;
@@ -170,7 +170,7 @@ pub fn type_text(plan: &[PlannedStep]) -> CuResult<()> {
             TypeStep::Enter => key_tap(VK_RETURN, false)?,
             TypeStep::Tab => key_tap(VK_TAB, false)?,
         }
-        sleep_ms(p.delay_ms);
+        sleep_ms(paced_delay(p.delay_ms));
     }
     Ok(())
 }

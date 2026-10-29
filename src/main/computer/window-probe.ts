@@ -433,7 +433,10 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
     if (windowChanged) parts.push(`la ventana cambió ~${pctText(d.changedPct)} %${d.zone ? ` (zona ${d.zone})` : ''}`)
     parts.push(...notes)
     // Escribir y no encontrar el texto aunque algo cambió: no es una confirmación.
-    const tail = i.readback === 'nomatch' ? 'no se encontró el texto en ningún campo; ' : ''
+    const tail =
+      i.readback === 'nomatch'
+        ? 'no se encontró el texto en ningún campo (si salió distinto, no lo des por escrito: míralo con app_screenshot y repítelo en trozos más cortos, con input "paste" si la plataforma lo ofrece o con app_set_value (escritura por accesibilidad)); '
+        : ''
     return done({ effect: 'unverifiable', reason: `${parts.join('; ')}; ${tail}confírmalo con app_screenshot si importa` })
   }
 

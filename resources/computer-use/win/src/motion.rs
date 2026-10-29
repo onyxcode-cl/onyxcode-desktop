@@ -153,6 +153,16 @@ pub fn plan_type(text: &str, char_delay_ms: f64, instant: bool, rng: &mut Rng) -
     Ok(planned)
 }
 
+/// Pausa mínima tras cada carácter tecleado (ms), también con `--instant`. Las apps lentas (el Bloc de notas de Windows 11, con WinUI) leen el
+/// carácter de un paquete Unicode (`KEYEVENTF_UNICODE`) cuando LO PROCESAN, no cuando llega: si el siguiente ya está en cola, leen ese y la letra
+/// se cambia o se pierde («29 de» salía «e»). Medido en el Bloc de notas real: 14 ms = ~1 de cada 3 textos con fallo; 0 ms = todos; 25 y 40 ms = ninguno.
+pub const TYPE_MIN_GAP_MS: f64 = 30.0;
+
+/// Pausa real tras un paso de tecleo: la planeada con el mínimo anterior.
+pub fn paced_delay(planned_ms: f64) -> f64 {
+    planned_ms.max(TYPE_MIN_GAP_MS)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,5 +236,14 @@ mod tests {
         }
         assert!(plan_type(&"x".repeat(TYPE_MAX_CHARS + 1), 14.0, false, &mut rng).is_err());
         assert!(plan_type("", 14.0, false, &mut rng).unwrap().is_empty());
+    }
+
+    #[test]
+    fn ritmo_minimo_de_tecleo() {
+        assert_eq!(paced_delay(0.0), TYPE_MIN_GAP_MS);
+        assert_eq!(paced_delay(14.0), TYPE_MIN_GAP_MS);
+        assert_eq!(paced_delay(80.0), 80.0);
+        // el tope de 4 s del plan es de la planeación; el mínimo lo aplica la entrega
+        assert!(TYPE_MIN_GAP_MS >= 25.0);
     }
 }

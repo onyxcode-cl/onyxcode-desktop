@@ -119,6 +119,19 @@ describe.skipIf(!posixOnly)('type_text: lectura de vuelta del campo enfocado', (
     }
   })
 
+  it('letras cambiadas («29 de» salió «eee») ⇒ unverifiable, NUNCA confirmed, con la pista de reintento y sin contenido del campo', async () => {
+    const want = 'Prueba 29 de octubre: mañana reunión a las 10:30'
+    const { mcp, done } = await boot({ 'ax-tree': [field(''), field('Prueba eee octubre: mañana reunión a las 10:30')] })
+    try {
+      const r = await call(mcp, 'type_text', { text: want, input: 'unicode' })
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — .*NO coincide con lo escrito \(primera diferencia en el carácter 8 de 48\)/)
+      expect(firstLine(r)).toMatch(/input "paste"/)
+      expect(firstLine(r)).not.toMatch(/confirmed|eee/)
+    } finally {
+      await done()
+    }
+  })
+
   it('el campo no cambió ⇒ el veredicto honesto (unverifiable) con la nota; no se afirma de más', async () => {
     const { mcp, done } = await boot({ 'ax-tree': field('abc') })
     try {
