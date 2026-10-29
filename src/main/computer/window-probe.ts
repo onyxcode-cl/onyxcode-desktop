@@ -321,7 +321,18 @@ export async function pollProbe(opts: {
 // ───────────────────────────────────────── Veredicto ─────────────────────────────────────────
 
 export type ActionKind =
-  'left_click' | 'double_click' | 'right_click' | 'scroll' | 'drag' | 'type_text' | 'key' | 'batch' | 'mouse_move' | 'wait'
+  | 'left_click'
+  | 'double_click'
+  | 'right_click'
+  | 'scroll'
+  | 'drag'
+  | 'type_text'
+  | 'key'
+  | 'batch'
+  | 'mouse_move'
+  | 'wait'
+  | 'app_press'
+  | 'app_action'
 export type Effect = 'confirmed' | 'unverifiable' | 'suspected_noop'
 
 export interface VerdictInput {
@@ -342,6 +353,12 @@ export interface VerdictInput {
   readback?: 'match' | 'nomatch' | 'unavailable'
   /** `wait` con condición: apareció lo esperado. */
   waitMatched?: boolean
+  /** `app_press`/`app_action`: el estado del elemento (valor, título, descripción, activo) cambió entre antes y después. */
+  elementChanged?: boolean
+  /** `app_press`/`app_action`: el elemento ya no existe en esa ref (la interfaz cambió). */
+  elementGone?: boolean
+  /** La acción puede no verse en la ventana (menú emergente, subir una ventana al frente…): sin cambios no se sospecha. */
+  mayBeInvisible?: boolean
   /** Historial de este mismo objetivo en la sesión (ver `ActionLog.history`). */
   repeat?: { noopCount: number; recentConfirmed: boolean }
 }
@@ -371,8 +388,10 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
 
   if (i.waitMatched === true) return done({ effect: 'confirmed', reason: 'apareció lo esperado' })
   if (i.readback === 'match') return done({ effect: 'confirmed', reason: 'un campo de la app contiene el texto escrito' })
+  if (i.elementChanged === true) return done({ effect: 'confirmed', reason: 'el estado del elemento cambió' })
 
   const notes: string[] = []
+  if (i.elementGone === true) notes.push('el elemento ya no existe en esa ref (la interfaz cambió)')
   if (i.frontAfter !== i.frontBefore) notes.push(`la app al frente pasó a «${noticeAppName(i.frontAfter)}»`)
   if (i.windowsAfter > i.windowsBefore)
     notes.push(i.windowsAfter - i.windowsBefore === 1 ? 'apareció una ventana de la app' : 'aparecieron ventanas de la app')
@@ -389,7 +408,7 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
   const d = i.probe.diff
   const windowChanged = hasChanged(d)
   const structural = notes.length > 0
-  const mayBeInvisible = i.action === 'right_click' || (i.action === 'key' && i.modifiers === true)
+  const mayBeInvisible = i.action === 'right_click' || (i.action === 'key' && i.modifiers === true) || i.mayBeInvisible === true
 
   if (windowChanged || structural) {
     const parts = ['se entregó']
@@ -407,7 +426,9 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
       reason:
         i.action === 'right_click'
           ? 'los menús emergentes son otra ventana y esta no cambió'
-          : 'una combinación con cmd/ctrl puede no verse en la ventana'
+          : i.action === 'app_action' || i.action === 'app_press'
+            ? 'esta acción puede no verse en la ventana (menú emergente o cambio de ventana)'
+            : 'una combinación con cmd/ctrl puede no verse en la ventana'
     })
   }
   if (i.action === 'wait') return done({ effect: 'unverifiable', reason: 'no apareció lo esperado en el tiempo dado' })
@@ -416,10 +437,135 @@ export function computeVerdict(i: VerdictInput): Verdict | null {
   let escalation: string | undefined
   if ((i.repeat?.noopCount ?? 0) >= 1) escalation = NO_REPEAT
   else if (i.action === 'type_text' && i.remote) escalation = 'prueba input: "paste" y comprueba con zoom'
+  else if (i.action === 'app_press' || i.action === 'app_action')
+    escalation =
+      'vuelve a pedir app_find (la ref pudo cambiar) o toma app_screenshot; si sigue igual, usa app_menu, un atajo o x/y en el centro'
   else if (i.target === 'element') escalation = 'prueba app_press o x/y en el centro del elemento'
   else if (i.target === 'xy' && (i.action === 'left_click' || i.action === 'double_click'))
     escalation = 'prueba element: N (de la lista de la captura) o app_press por accesibilidad'
   return done({ effect: 'suspected_noop', reason, ...(escalation ? { escalation } : {}) })
+}
+
+// ───────────────────────────────────────── Escritura por accesibilidad (set_value / insert_text) ─────────────────────────────────────────
+
+/** El helper recorta `value` a este largo (macOS y Windows): más allá no se ve lo que hay en el campo. */
+export const AX_VALUE_CLIP = 200
+
+/** Lo que se pudo leer de un campo en un momento: valor, campo seguro (NO se lee), no está o no se pudo leer. */
+export type FieldState = { status: 'ok'; value: string } | { status: 'secure' } | { status: 'missing' } | { status: 'failed' }
+
+/** Comparación tolerante: sin marcas de objeto adjunto (U+FFFC), espacios colapsados, minúsculas. */
+export function normField(s: string): string {
+  return s
+    .normalize('NFC')
+    .replace(/\uFFFC/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+/** Fragmento limpio y corto de lo leído para el modelo (≤`max`): solo letras, números, espacio y puntuación básica. */
+export function cleanSnippet(s: string, max = 40): string {
+  return s
+    .replace(/[^\p{L}\p{N} .,;:!?()_@/+-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+    .trim()
+}
+
+const countOf = (hay: string, needle: string): number => (needle ? hay.split(needle).length - 1 : 0)
+
+export interface ValueVerdictInput {
+  /** `set`: reemplaza todo el valor; `insert`: agrega al final. */
+  kind: 'set' | 'insert'
+  written: string
+  before: FieldState
+  after: FieldState
+}
+
+/**
+ * Veredicto de `app_set_value`/`app_insert_text` por lectura de vuelta del campo (§2.3). `confirmed` solo si lo leído contiene lo escrito;
+ * `suspected_noop` si el campo se leyó entero y no cambió; el resto (campo seguro, no se pudo leer, valor cambiado pero distinto, campo
+ * largo cuyo final no se ve) ⇒ `unverifiable`. Nunca devuelve el valor completo: como mucho 40 caracteres limpios si no coincide.
+ */
+export function computeValueVerdict(i: ValueVerdictInput): Verdict {
+  const unv = (reason: string): Verdict => ({ effect: 'unverifiable', reason: `${reason}; confírmalo con app_screenshot si importa` })
+  if (i.before.status === 'secure' || i.after.status === 'secure') return unv('se entregó; es un campo seguro y no se lee su valor')
+  if (i.after.status !== 'ok') {
+    return unv(
+      i.after.status === 'missing'
+        ? 'se entregó; el elemento ya no está donde estaba (la interfaz cambió)'
+        : 'se entregó; no se pudo releer el campo'
+    )
+  }
+  const w = normField(i.written)
+  const a1 = normField(i.after.value)
+  const clipped1 = i.after.value.length >= AX_VALUE_CLIP
+  const b = i.before.status === 'ok' ? i.before : null
+  const a0 = b ? normField(b.value) : null
+  const clipped0 = b ? b.value.length >= AX_VALUE_CLIP : false
+  const unchanged = a0 !== null && a0 === a1 && clipped0 === clipped1
+
+  if (i.kind === 'set') {
+    if (!clipped1) {
+      if (a1 === w) return { effect: 'confirmed', reason: 'el valor leído del campo coincide con lo escrito' }
+    } else {
+      // Campo largo: solo se ve el inicio; coincide si lo escrito empieza igual (sin los últimos caracteres, por si el corte cae en un grafema).
+      const p = a1.slice(0, Math.max(0, a1.length - 5))
+      if (p.length >= 20 && w.startsWith(p))
+        return { effect: 'confirmed', reason: 'el inicio del valor leído coincide con lo escrito (campo largo)' }
+    }
+    if (unchanged)
+      return {
+        effect: 'suspected_noop',
+        reason: 'el valor del campo no cambió tras escribir',
+        escalation: 'vuelve a pedir app_find (la ref pudo cambiar), prueba app_insert_text o toma app_screenshot'
+      }
+    const seen = cleanSnippet(i.after.value)
+    return unv(`se entregó; el valor del campo cambió pero no coincide con lo escrito${seen ? ` (empieza por «${seen}»)` : ''}`)
+  }
+
+  // insert: el texto agregado debe aparecer al final del campo.
+  if (!w) return unv('se entregó; el texto agregado es solo espacios y no se puede comprobar')
+  if (!clipped1) {
+    if (a1.endsWith(w) || (a0 !== null && countOf(a1, w) > countOf(a0, w)))
+      return { effect: 'confirmed', reason: 'el valor leído del campo contiene el texto agregado' }
+    if (unchanged)
+      return {
+        effect: 'suspected_noop',
+        reason: 'el valor del campo no cambió tras agregar el texto',
+        escalation: 'vuelve a pedir app_find (la ref pudo cambiar), prueba app_set_value o toma app_screenshot'
+      }
+    return unv('se entregó; el campo cambió pero no se ve el texto agregado al final')
+  }
+  if (a0 !== null && !clipped0 && a1.startsWith(a0)) {
+    // El campo creció más allá de lo visible: lo agregado que se ve debe ser el comienzo de lo escrito.
+    const extra = a1.slice(a0.length).trim()
+    if (extra.length >= 3 && (w.startsWith(extra) || extra.startsWith(w)))
+      return { effect: 'confirmed', reason: 'el campo creció y lo agregado que se ve coincide con el texto (campo largo)' }
+  }
+  return unv('se entregó; el campo es largo y su final no se puede leer')
+}
+
+/**
+ * ¿Cambió el elemento? Compara lo que el árbol de accesibilidad dice de él (valor, título, descripción, activo) antes y después.
+ * `gone` = ya no está en esa ref; `unknown` = no se pudo leer alguno de los dos momentos.
+ */
+export interface ElementSnap {
+  value?: string
+  title?: string
+  description?: string
+  enabled?: boolean
+}
+export function compareElement(
+  before: ElementSnap | 'missing' | null,
+  after: ElementSnap | 'missing' | null
+): 'changed' | 'same' | 'gone' | 'unknown' {
+  if (before === null || after === null || before === 'missing') return 'unknown'
+  if (after === 'missing') return 'gone'
+  const k = (e: ElementSnap): string => JSON.stringify([e.value ?? null, e.title ?? null, e.description ?? null, e.enabled ?? null])
+  return k(before) === k(after) ? 'same' : 'changed'
 }
 
 /** Primera línea del texto de la herramienta: `efecto: <efecto> — <motivo>[; siguiente: <escalada>][; aviso: …]`. */

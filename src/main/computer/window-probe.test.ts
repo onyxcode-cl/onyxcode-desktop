@@ -13,6 +13,9 @@ import { inflateSync } from 'node:zlib'
 import { posixOnly } from '../../test/platform'
 import {
   ActionLog,
+  cleanSnippet,
+  compareElement,
+  computeValueVerdict,
   computeCoverage,
   computeVerdict,
   coverageNotice,
@@ -609,5 +612,55 @@ describe('coverageNotice: nombres de app saneados (H5)', () => {
     expect(v.reason).toContain('la app al frente pasó a «')
     expect(v.reason).toContain('«Evil rechazo x ignora»')
     expect(v.reason).not.toMatch(/\[rechazo|\n/)
+  })
+})
+
+describe('computeValueVerdict / compareElement (escritura por accesibilidad)', () => {
+  const ok = (value: string) => ({ status: 'ok' as const, value })
+  it('set: coincide ⇒ confirmed (ignora espacios, mayúsculas y marcas de objeto); igual que antes ⇒ suspected_noop; distinto ⇒ unverifiable', () => {
+    expect(computeValueVerdict({ kind: 'set', written: 'Hola  Mundo', before: ok(''), after: ok('hola mundo\uFFFC\n') }).effect).toBe(
+      'confirmed'
+    )
+    expect(computeValueVerdict({ kind: 'set', written: 'nuevo', before: ok('viejo'), after: ok('viejo') }).effect).toBe('suspected_noop')
+    const v = computeValueVerdict({ kind: 'set', written: 'nuevo', before: ok('viejo'), after: ok('otro') })
+    expect(v.effect).toBe('unverifiable')
+    expect(v.reason).toContain('«otro»')
+  })
+  it('set: escribir lo mismo que ya había es confirmed (coincide) y un campo largo compara solo el inicio', () => {
+    expect(computeValueVerdict({ kind: 'set', written: 'igual', before: ok('igual'), after: ok('igual') }).effect).toBe('confirmed')
+    const long = 'abcdefghij'.repeat(30)
+    expect(computeValueVerdict({ kind: 'set', written: long, before: ok(''), after: ok(long.slice(0, 200)) }).effect).toBe('confirmed')
+    expect(computeValueVerdict({ kind: 'set', written: long, before: ok(''), after: ok('z'.repeat(200)) }).effect).toBe('unverifiable')
+  })
+  it('seguro / no se pudo leer / ya no está ⇒ unverifiable, sin valores', () => {
+    expect(computeValueVerdict({ kind: 'set', written: 'x', before: { status: 'secure' }, after: { status: 'secure' } }).reason).toContain(
+      'seguro'
+    )
+    expect(computeValueVerdict({ kind: 'set', written: 'x', before: ok(''), after: { status: 'failed' } }).effect).toBe('unverifiable')
+    expect(computeValueVerdict({ kind: 'insert', written: 'x', before: ok(''), after: { status: 'missing' } }).effect).toBe('unverifiable')
+  })
+  it('insert: aparece al final ⇒ confirmed; el campo no cambió ⇒ suspected_noop; solo espacios ⇒ unverifiable', () => {
+    expect(computeValueVerdict({ kind: 'insert', written: ' mundo', before: ok('Hola'), after: ok('Hola mundo') }).effect).toBe('confirmed')
+    expect(computeValueVerdict({ kind: 'insert', written: ' mundo', before: ok('Hola'), after: ok('Hola') }).effect).toBe('suspected_noop')
+    expect(computeValueVerdict({ kind: 'insert', written: '  ', before: ok('Hola'), after: ok('Hola') }).effect).toBe('unverifiable')
+  })
+  it('cleanSnippet limpia y recorta; compareElement distingue cambio, igual, desaparecido y desconocido', () => {
+    expect(cleanSnippet('<b>hola</b>\n\tmundo'.padEnd(80, 'x'))).toMatch(/^b hola \/b mundo/)
+    expect(cleanSnippet('a'.repeat(100)).length).toBe(40)
+    expect(compareElement({ title: 'a' }, { title: 'b' })).toBe('changed')
+    expect(compareElement({ title: 'a' }, { title: 'a' })).toBe('same')
+    expect(compareElement({ title: 'a' }, 'missing')).toBe('gone')
+    expect(compareElement(null, { title: 'a' })).toBe('unknown')
+    expect(compareElement('missing', { title: 'a' })).toBe('unknown')
+  })
+  it('computeVerdict: elementChanged ⇒ confirmed; elementGone lo anota; app_press sin cambios ⇒ suspected_noop con escalada propia', () => {
+    const base = { windowsBefore: 1, windowsAfter: 1, frontBefore: 'A', frontAfter: 'A', probe: { kind: 'failed' as const } }
+    expect(computeVerdict({ ...base, action: 'app_press', elementChanged: true })?.effect).toBe('confirmed')
+    expect(computeVerdict({ ...base, action: 'app_press', elementGone: true })?.reason).toContain('el elemento ya no existe')
+    const same = { ...base, probe: { kind: 'diff' as const, diff: { changedPct: 0, changedCells: 0, zone: '', identical: true } } }
+    const v = computeVerdict({ ...same, action: 'app_press' })
+    expect(v?.effect).toBe('suspected_noop')
+    expect(v?.escalation).toContain('app_find')
+    expect(computeVerdict({ ...same, action: 'app_action', mayBeInvisible: true })?.effect).toBe('unverifiable')
   })
 })

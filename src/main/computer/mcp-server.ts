@@ -76,6 +76,8 @@ import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from '
 import {
   ActionLog,
   captureIsStale,
+  compareElement,
+  computeValueVerdict,
   computeVerdict,
   coverageNotice,
   diffSignatures,
@@ -90,6 +92,8 @@ import {
   verdictEnabled,
   type ActionKind,
   type ActionTarget,
+  type ElementSnap,
+  type FieldState,
   type PollResult,
   type ProbeDiff,
   type ProbeSignature,
@@ -2441,6 +2445,11 @@ const VERDICT_TOOLS: ReadonlySet<string> = new Set([
   'batch'
 ])
 
+/** Herramientas de accesibilidad con veredicto por lectura de vuelta (la app se nombra en `app`, no es la del frente). */
+const AX_VERDICT_TOOLS: ReadonlySet<string> = new Set(['app_set_value', 'app_insert_text', 'app_press', 'app_action'])
+/** Acciones de accesibilidad cuyo efecto puede no verse en la ventana (menú emergente, subir ventana). */
+const AX_INVISIBLE_ACTIONS: ReadonlySet<string> = new Set(['AXShowMenu', 'AXRaise'])
+
 /** Registro de repeticiones, UNO por sesión (una sesión nunca ve lo de otra), en memoria y con tope de sesiones. */
 const ACTION_LOGS_MAX = 64
 const actionLogs = new Map<string, ActionLog>()
@@ -2480,6 +2489,8 @@ interface VerdictPre {
   targetKind: 'xy' | 'element'
   /** `type_text`: cuántas veces aparecía el final del texto en los campos antes de escribir (`null` = no se pudo leer). */
   readBefore: number | null
+  /** Herramientas `app_*` de accesibilidad: la ref actuada y cómo estaba el elemento antes. SOLO en memoria, nunca llega al modelo. */
+  ax?: { ref: string; written: string; field: FieldState; snap: ElementSnap | 'missing' | null }
 }
 
 const hasArg = (v: unknown): boolean => v !== undefined && v !== null && v !== '' && typeof v !== 'boolean'
@@ -2547,6 +2558,75 @@ async function countTail(bundleId: string, tail: string): Promise<number | null>
   return n
 }
 
+/**
+ * Lee UN elemento por su ref (árbol de accesibilidad, con tope de tiempo). Un campo seguro NUNCA se lee: se devuelve `secure` sin valor.
+ * `snap` es la foto del estado del elemento (para comparar antes/después sin devolverla al modelo).
+ */
+async function readAxNode(bundleId: string, ref: string): Promise<{ field: FieldState; snap: ElementSnap | 'missing' | null }> {
+  const tree = await withTimeout(
+    axTree(bundleId, 30, 4000).catch(() => null),
+    4_000,
+    null
+  )
+  if (!tree) return { field: { status: 'failed' }, snap: null }
+  const n = tree.nodes.find((x) => x.ref === ref)
+  // Árbol cortado y la ref no sale: no se sabe si desapareció.
+  if (!n) return tree.truncated ? { field: { status: 'failed' }, snap: null } : { field: { status: 'missing' }, snap: 'missing' }
+  const secure = n.secure === true || n.role === 'AXSecureTextField' || n.subrole === 'AXSecureTextField'
+  if (secure) return { field: { status: 'secure' }, snap: { title: n.title, description: n.description, enabled: n.enabled } }
+  // Sin atributo de valor (campo vacío en Windows) ⇒ vacío.
+  return {
+    field: { status: 'ok', value: typeof n.value === 'string' ? n.value : '' },
+    snap: { value: n.value, title: n.title, description: n.description, enabled: n.enabled }
+  }
+}
+
+/** Antes de una herramienta `app_*` de accesibilidad: app nombrada, nivel, estado previo del elemento y (press/action) sonda. Nunca lanza. */
+async function beginAxVerdict(name: string, args: Record<string, unknown>, session: string | undefined): Promise<VerdictPre> {
+  const pre: VerdictPre = {
+    app: null,
+    tier: null,
+    windowIndex: 0,
+    before: null,
+    windowsBefore: null,
+    frontBefore: '',
+    remote: false,
+    targetKind: 'element',
+    readBefore: null
+  }
+  try {
+    const front = await appFrontmost()
+    pre.frontBefore = front.name || front.bundleId || ''
+    const app = await namedApp(args.app)
+    pre.remote = isRemoteApp(app)
+    if (!app.bundleId || isIsolatedExempt(app.bundleId) || isFileManagerApp(app.bundleId)) return pre
+    const tier = await tierOf(app, session)
+    if (!tier) return pre
+    const ref = String(args.ref ?? '')
+    if (!ref) return pre
+    const writes = name === 'app_set_value' || name === 'app_insert_text'
+    // Escribir exige «full»: con menos la herramienta falla sola y aquí no se lee nada.
+    if (writes && tier !== 'full') return pre
+    pre.app = app
+    pre.tier = tier
+    const ctx = liveWindowCtx(session)
+    pre.windowIndex = ctx && ctx.app.bundleId === app.bundleId ? ctx.windowIndex : 0
+    const written = name === 'app_set_value' ? String(args.value ?? '') : name === 'app_insert_text' ? String(args.text ?? '') : ''
+    const node = await readAxNode(app.bundleId, ref)
+    pre.ax = { ref, written, field: node.field, snap: node.snap }
+    if (!writes) {
+      pre.windowsBefore = await backend
+        .windowFrames(app.bundleId)
+        .then((f) => f.length)
+        .catch(() => null)
+      pre.before = await probeOf(app.bundleId, pre.windowIndex, pre.remote)
+    }
+  } catch (err) {
+    log('veredicto ax (antes):', err instanceof Error ? err.message : err)
+  }
+  return pre
+}
+
 /** Antes de actuar: app al frente, ventanas, sonda y (en `type_text`) lectura previa. Nunca lanza: lo que falle deja el veredicto en `unverifiable`. */
 async function beginVerdict(name: string, args: Record<string, unknown>, session: string | undefined): Promise<VerdictPre> {
   const pre: VerdictPre = {
@@ -2606,6 +2686,41 @@ async function finishVerdict(
     const app = pre.app
     // La concesión pudo cambiar durante la acción: sin ella no se sigue capturando esa app.
     const stillGranted = app ? !!(await tierOf(app, session).catch(() => null)) : false
+    const ax = pre.ax
+    const isWrite = name === 'app_set_value' || name === 'app_insert_text'
+    const kind = name === 'app_insert_text' ? 'insert' : 'set'
+    if (isWrite) {
+      // Escritura por accesibilidad: lectura de vuelta del campo por su ref (sin sondas de ventana). Sin app o sin lectura previa ⇒ unverifiable.
+      if (!app || !ax || !stillGranted || ax.field.status === 'failed') {
+        return { effect: 'unverifiable', reason: 'se entregó; no se pudo leer el campo; confírmalo con app_screenshot si importa' }
+      }
+      let after = await readAxNode(app.bundleId, ax.ref)
+      let v = computeValueVerdict({ kind, written: ax.written, before: ax.field, after: after.field })
+      if (v.effect !== 'confirmed' && after.field.status !== 'secure') {
+        // Algunas apps tardan unas décimas en reflejar el valor: una segunda lectura antes de decir que no se ve.
+        await sleep(350)
+        after = await readAxNode(app.bundleId, ax.ref)
+        v = computeValueVerdict({ kind, written: ax.written, before: ax.field, after: after.field })
+      }
+      return v
+    }
+    // press/action: si el estado del elemento ya cambió no hace falta esperar a la ventana.
+    let elementState: ReturnType<typeof compareElement> = 'unknown'
+    if (ax && app && stillGranted) {
+      elementState = compareElement(ax.snap, (await readAxNode(app.bundleId, ax.ref)).snap)
+    }
+    if (ax && elementState === 'changed') {
+      return computeVerdict({
+        action: name as ActionKind,
+        remote: pre.remote,
+        probe: { kind: 'failed' },
+        windowsBefore: 0,
+        windowsAfter: 0,
+        frontBefore: pre.frontBefore,
+        frontAfter: pre.frontBefore,
+        elementChanged: true
+      })
+    }
     const probe: PollResult =
       app && stillGranted && pre.before
         ? await pollProbe({
@@ -2632,6 +2747,12 @@ async function finishVerdict(
       const after = tail.length >= 3 ? await countTail(app.bundleId, tail) : null
       if (after !== null) readback = after > pre.readBefore ? 'match' : 'nomatch'
     }
+    if (ax && app && stillGranted && elementState !== 'gone') {
+      // Tras la espera de la ventana, el elemento pudo cambiar más tarde.
+      const late = compareElement(ax.snap, (await readAxNode(app.bundleId, ax.ref)).snap)
+      if (late === 'changed') elementState = 'changed'
+      else if (late === 'gone') elementState = 'gone'
+    }
     const log_ = actionLogFor(session)
     const repeat = pre.target ? log_.history(pre.target, Date.now()) : undefined
     const keys = String(args.keys ?? '')
@@ -2647,7 +2768,14 @@ async function finishVerdict(
       frontBefore: pre.frontBefore,
       frontAfter,
       readback,
-      repeat
+      repeat,
+      ...(ax
+        ? {
+            elementChanged: elementState === 'changed',
+            elementGone: elementState === 'gone',
+            mayBeInvisible: name === 'app_action' && AX_INVISIBLE_ACTIONS.has(String(args.action ?? ''))
+          }
+        : {})
     })
     if (verdict && pre.target) {
       log_.record({
@@ -3938,7 +4066,13 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
     }
     // Modo de apps (§2.3): sondas ANTES y DESPUÉS de las acciones con veredicto. `screenshot: false` explícito las apaga (y `COMPUTER_VERDICT=0`).
     const verdictPre =
-      isolatedCall && VERDICT_ON && VERDICT_TOOLS.has(name) && args?.screenshot !== false ? await beginVerdict(name, args, session) : null
+      isolatedCall && VERDICT_ON && args?.screenshot !== false
+        ? VERDICT_TOOLS.has(name)
+          ? await beginVerdict(name, args, session)
+          : AX_VERDICT_TOOLS.has(name)
+            ? await beginAxVerdict(name, args, session)
+            : null
+        : null
     // `screenshot: true` explícito: captura de la VENTANA de la app concedida (la de la última app_screenshot; si no hay, la del frente que se sondea).
     const liveCtx = isolatedCall && tool.action && !tool.noAutoShot && args?.screenshot === true ? liveWindowCtx(session) : undefined
     const shotApp: { app: AppRef; windowIndex: number } | null = liveCtx

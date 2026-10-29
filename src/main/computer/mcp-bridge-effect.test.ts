@@ -943,3 +943,411 @@ describe.skipIf(!posixOnly)('veredicto y foco en Windows (helper falso)', () => 
     }
   })
 })
+
+// ───────────────────── veredicto de las herramientas de accesibilidad (app_set_value, app_insert_text, app_press, app_action) ─────────────────────
+
+describe.skipIf(!posixOnly)('veredicto de accesibilidad (macOS, helper falso)', () => {
+  const REF = 'w0.2.1'
+  const node = (o: Record<string, unknown> = {}): Record<string, unknown> => ({
+    ref: REF,
+    role: 'AXTextArea',
+    enabled: true,
+    focused: false,
+    frame: { x: 0, y: 0, width: 300, height: 100 },
+    actions: [],
+    ...o
+  })
+  /** Respuesta de `ax-tree` con esos nodos. */
+  const tree = (...nodes: Array<Record<string, unknown>>): unknown => ({ out: { app: {}, nodes, truncated: false } })
+  const calls = (m: McpProc, cmd: string): string[][] =>
+    m
+      .calls()
+      .filter((c) => c.cmd === cmd)
+      .map((c) => c.args)
+  const set = (m: McpProc, value: string, extra: Record<string, unknown> = {}) =>
+    call(m, 'app_set_value', { app: 'Notes', ref: REF, value, ...extra })
+  const ins = (m: McpProc, text: string, extra: Record<string, unknown> = {}) =>
+    call(m, 'app_insert_text', { app: 'Notes', ref: REF, text, ...extra })
+
+  it('app_set_value: el valor leído coincide ⇒ confirmed en la primera línea; el campo se escribió una vez y no se devuelve lo leído', async () => {
+    const { mcp, done } = await bootMac({ responses: { 'ax-tree': [tree(node({ value: '' })), tree(node({ value: 'Hola mundo' }))] } })
+    try {
+      const r = await set(mcp, 'Hola mundo')
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el valor leído del campo coincide con lo escrito/)
+      expect(textOf(r)).toContain('Valor escrito en w0.2.1 de Notes (10 caracteres).')
+      expect(calls(mcp, 'ax-set-value')).toHaveLength(1)
+      expect(textOf(r)).not.toMatch(/screenPoint|"nodes"|probe-|\.png/)
+      expect(hasImage(r)).toBe(false)
+      // Sin sondas de ventana: la comprobación es la lectura por accesibilidad.
+      expect(shotCalls(mcp)).toEqual([])
+    } finally {
+      await done()
+    }
+  })
+
+  it('app_set_value: el campo no cambió ⇒ suspected_noop; cambió pero no coincide ⇒ unverifiable con ≤40 caracteres limpios', async () => {
+    const a = await bootMac({ responses: { 'ax-tree': tree(node({ value: 'viejo' })) } })
+    try {
+      const r = await set(a.mcp, 'nuevo texto')
+      expect(firstLine(r)).toMatch(/^efecto: suspected_noop — el valor del campo no cambió tras escribir; siguiente:/)
+    } finally {
+      await a.done()
+    }
+    const long = 'Otra cosa muy distinta <b>con marcas</b> y mucho mucho mucho más texto del permitido'
+    const b = await bootMac({ responses: { 'ax-tree': [tree(node({ value: 'viejo' })), tree(node({ value: long }))] } })
+    try {
+      const r = await set(b.mcp, 'nuevo texto')
+      expect(firstLine(r)).toMatch(
+        /^efecto: unverifiable — se entregó; el valor del campo cambió pero no coincide con lo escrito \(empieza por «/
+      )
+      const seen = /«([^»]*)»/.exec(firstLine(r))?.[1] ?? ''
+      expect(seen.length).toBeGreaterThan(0)
+      expect(seen.length).toBeLessThanOrEqual(40)
+      expect(seen).not.toMatch(/[<>]/)
+      expect(textOf(r)).not.toContain(long)
+    } finally {
+      await b.done()
+    }
+  })
+
+  it('app_set_value: no se puede leer el campo (antes o después) ⇒ unverifiable, nunca un error; la escritura sí se entregó', async () => {
+    const a = await bootMac({ responses: { 'ax-tree': [tree(node({ value: '' })), FAIL] } })
+    try {
+      const r = await set(a.mcp, 'hola')
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; no se pudo releer el campo/)
+      expect(calls(a.mcp, 'ax-set-value')).toHaveLength(1)
+    } finally {
+      await a.done()
+    }
+    const b = await bootMac({ responses: { 'ax-tree': FAIL } })
+    try {
+      const r = await set(b.mcp, 'hola')
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; no se pudo leer el campo/)
+      expect(calls(b.mcp, 'ax-set-value')).toHaveLength(1)
+    } finally {
+      await b.done()
+    }
+  })
+
+  it('campo seguro: unverifiable SIN leer su valor (aunque el helper lo devolviera por error, no llega al modelo)', async () => {
+    const secret = 'clave-super-secreta-123'
+    const sec = node({ role: 'AXSecureTextField', secure: true, value: secret })
+    const { mcp, done } = await bootMac({ responses: { 'ax-tree': tree(sec) } })
+    try {
+      const r = await set(mcp, secret)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; es un campo seguro y no se lee su valor/)
+      // Solo el eco de la herramienta (cuántos caracteres), nunca el valor leído.
+      expect(textOf(r)).not.toContain(secret)
+    } finally {
+      await done()
+    }
+    const b = await bootMac({ responses: { 'ax-tree': tree(node({ subrole: 'AXSecureTextField', value: secret })) } })
+    try {
+      const r = await ins(b.mcp, 'abc def')
+      expect(firstLine(r)).toContain('campo seguro')
+      expect(textOf(r)).not.toContain(secret)
+    } finally {
+      await b.done()
+    }
+  })
+
+  it('app_insert_text: lo agregado aparece al final ⇒ confirmed; campo igual ⇒ suspected_noop; campo largo cuyo final no se ve ⇒ unverifiable', async () => {
+    const a = await bootMac({ responses: { 'ax-tree': [tree(node({ value: 'Hola' })), tree(node({ value: 'Hola mundo' }))] } })
+    try {
+      const r = await ins(a.mcp, ' mundo')
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el valor leído del campo contiene el texto agregado/)
+      expect(textOf(r)).toContain('Agregado al final de w0.2.1 en Notes (6 caracteres).')
+      expect(calls(a.mcp, 'ax-insert-text')).toHaveLength(1)
+    } finally {
+      await a.done()
+    }
+    const b = await bootMac({ responses: { 'ax-tree': tree(node({ value: 'Hola' })) } })
+    try {
+      const r = await ins(b.mcp, ' mundo')
+      expect(firstLine(r)).toMatch(/^efecto: suspected_noop — el valor del campo no cambió tras agregar el texto/)
+    } finally {
+      await b.done()
+    }
+    const big = 'x'.repeat(200)
+    const c = await bootMac({ responses: { 'ax-tree': tree(node({ value: big })) } })
+    try {
+      const r = await ins(c.mcp, ' mundo')
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; el campo es largo y su final no se puede leer/)
+      expect(textOf(r)).not.toContain(big)
+    } finally {
+      await c.done()
+    }
+  })
+
+  it('app_insert_text en un campo que crece más allá de lo visible: lo agregado que se ve coincide con el inicio del texto ⇒ confirmed', async () => {
+    const before = 'a'.repeat(190)
+    const after = (before + ' fin de la nota agregada hoy').slice(0, 200)
+    const { mcp, done } = await bootMac({ responses: { 'ax-tree': [tree(node({ value: before })), tree(node({ value: after }))] } })
+    try {
+      const r = await ins(mcp, ' fin de la nota agregada hoy mismo')
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el campo creció/)
+    } finally {
+      await done()
+    }
+  })
+
+  it('las comprobaciones de siempre siguen: expect_role que no coincide falla ANTES de escribir y sin veredicto', async () => {
+    const { mcp, done } = await bootMac({
+      responses: { 'ax-tree': tree(node({ value: '' })), 'ax-find': { out: { matches: [] } } }
+    })
+    try {
+      const r = await set(mcp, 'hola', { expect_role: 'AXTextField' })
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).toContain('El elemento cambió')
+      expect(textOf(r)).not.toContain('efecto:')
+      expect(calls(mcp, 'ax-set-value')).toEqual([])
+    } finally {
+      await done()
+    }
+  })
+
+  it('apagador COMPUTER_VERDICT=0 y screenshot:false: ni veredicto ni lecturas del árbol; y con nivel menor a «full» tampoco se lee', async () => {
+    const off = await bootMac({ verdict: false, responses: { 'ax-tree': tree(node({ value: 'hola' })) } })
+    try {
+      const r = await set(off.mcp, 'hola')
+      expect(textOf(r)).not.toContain('efecto:')
+      expect(textOf(r)).toContain('Valor escrito')
+      expect(calls(off.mcp, 'ax-tree')).toEqual([])
+    } finally {
+      await off.done()
+    }
+    const quiet = await bootMac({ responses: { 'ax-tree': tree(node({ value: 'hola' })) } })
+    try {
+      const r = await set(quiet.mcp, 'hola', { screenshot: false })
+      expect(textOf(r)).not.toContain('efecto:')
+      expect(calls(quiet.mcp, 'ax-tree')).toEqual([])
+    } finally {
+      await quiet.done()
+    }
+    const low = await bootMac({ tier: () => 'click', responses: { 'ax-tree': tree(node({ value: 'hola' })) } })
+    try {
+      const r = await set(low.mcp, 'hola')
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).not.toContain('efecto:')
+      expect(calls(low.mcp, 'ax-tree')).toEqual([])
+      expect(calls(low.mcp, 'ax-set-value')).toEqual([])
+    } finally {
+      await low.done()
+    }
+  })
+
+  it('fuera del origen aislado las cuatro herramientas responden como siempre (sin efecto: y sin leer el árbol)', async () => {
+    const { mcp, done } = await bootMac({ isolated: false, responses: { 'ax-tree': tree(node({ value: 'hola' })) } })
+    try {
+      const out: string[] = []
+      for (const [name, a] of [
+        ['app_set_value', { value: 'hola' }],
+        ['app_insert_text', { text: 'hola' }],
+        ['app_press', {}],
+        ['app_action', { action: 'AXConfirm' }]
+      ] as Array<[string, Record<string, unknown>]>) {
+        const r = await mcp.call(name, { app: 'Notes', ref: REF, ...a, lazunox_session: SES })
+        expect(r.isError, textOf(r)).not.toBe(true)
+        out.push(textOf(r))
+      }
+      expect(out.join('\n')).not.toContain('efecto:')
+      expect(out[0]).toBe('Valor escrito en w0.2.1 de Notes (4 caracteres).')
+      expect(out[2]).toBe('Pulsado w0.2.1 en Notes.')
+      expect(calls(mcp, 'ax-tree')).toEqual([])
+      expect(shotCalls(mcp)).toEqual([])
+    } finally {
+      await done()
+    }
+  })
+
+  it('app_press: el estado del elemento cambió ⇒ confirmed al momento (sin esperar a la ventana)', async () => {
+    const btn = (title: string) => node({ role: 'AXButton', title, actions: ['AXPress'] })
+    const { mcp, done } = await bootMac({ responses: { 'ax-tree': [tree(btn('Mostrar')), tree(btn('Ocultar'))] } })
+    try {
+      const { r, ms } = await timed(() => call(mcp, 'app_press', { app: 'Notes', ref: REF }))
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el estado del elemento cambió/)
+      expect(textOf(r)).toContain('Pulsado w0.2.1 en Notes.')
+      expect(ms).toBeLessThan(1500)
+      expect(calls(mcp, 'ax-press')).toHaveLength(1)
+      expect(probeFiles(mcp)).toEqual([])
+    } finally {
+      await done()
+    }
+  })
+
+  it('app_press: nada cambia en el elemento ni en la ventana ⇒ suspected_noop con escalada; la ventana cambia ⇒ unverifiable; el elemento desaparece ⇒ lo dice', async () => {
+    const btn = node({ role: 'AXButton', title: 'Listo', actions: ['AXPress'] })
+    const a = await bootMac({ responses: { 'ax-tree': tree(btn) } })
+    try {
+      const r = await call(a.mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(firstLine(r)).toMatch(
+        /^efecto: suspected_noop — la ventana no cambió y la acción debería verse; siguiente: vuelve a pedir app_find/
+      )
+      expect(textOf(r)).not.toMatch(/probe-|\.png|data:image/)
+      expect(probeFiles(a.mcp)).toEqual([])
+    } finally {
+      await a.done()
+    }
+    const b = await bootMac({ shots: [A, A, B], responses: { 'ax-tree': tree(btn) } })
+    try {
+      const r = await call(b.mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; la ventana cambió ~\d+ %/)
+    } finally {
+      await b.done()
+    }
+    const c = await bootMac({ responses: { 'ax-tree': [tree(btn), tree()] } })
+    try {
+      const r = await call(c.mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; el elemento ya no existe en esa ref/)
+    } finally {
+      await c.done()
+    }
+  })
+
+  it('app_action: AXShowMenu sin cambios ⇒ unverifiable (el menú es otra ventana); AXConfirm sin cambios ⇒ suspected_noop; AXIncrement que cambia el valor ⇒ confirmed', async () => {
+    const field = (value: string) => node({ role: 'AXIncrementor', value })
+    const a = await bootMac({ responses: { 'ax-tree': tree(field('1')) } })
+    try {
+      const r = await call(a.mcp, 'app_action', { app: 'Notes', ref: REF, action: 'AXShowMenu' })
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — esta acción puede no verse en la ventana/)
+      expect(textOf(r)).toContain('Acción AXShowMenu ejecutada')
+    } finally {
+      await a.done()
+    }
+    const b = await bootMac({ responses: { 'ax-tree': tree(field('1')) } })
+    try {
+      const r = await call(b.mcp, 'app_action', { app: 'Notes', ref: REF, action: 'AXConfirm' })
+      expect(firstLine(r)).toContain('efecto: suspected_noop')
+    } finally {
+      await b.done()
+    }
+    const c = await bootMac({ responses: { 'ax-tree': [tree(field('1')), tree(field('2'))] } })
+    try {
+      const r = await call(c.mcp, 'app_action', { app: 'Notes', ref: REF, action: 'AXIncrement' })
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el estado del elemento cambió/)
+    } finally {
+      await c.done()
+    }
+  })
+
+  it('app_press/app_action: la app no leída (árbol falla) no da un error: unverifiable', async () => {
+    const { mcp, done } = await bootMac({ shots: [A, FAIL], responses: { 'ax-tree': FAIL } })
+    try {
+      const r = await call(mcp, 'app_press', { app: 'Notes', ref: REF })
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(firstLine(r)).toMatch(/^efecto: unverifiable — se entregó; no se pudo comparar la ventana/)
+    } finally {
+      await done()
+    }
+  })
+})
+
+describe.skipIf(!posixOnly)('veredicto de accesibilidad (Windows, helper falso)', () => {
+  const NOTEPAD = 'exe:c:\\windows\\system32\\notepad.exe|pub:microsoft windows'
+  const REF = 'w0.1'
+  const edit = (value?: string): Record<string, unknown> => ({
+    ref: REF,
+    role: 'Edit',
+    enabled: true,
+    focused: true,
+    frame: { x: 0, y: 0, width: 300, height: 100 },
+    actions: [],
+    ...(value !== undefined ? { value } : {})
+  })
+  const tree = (...nodes: Array<Record<string, unknown>>): unknown => ({ out: { app: {}, nodes, truncated: false } })
+
+  async function bootWin(treeScript: unknown): Promise<{ mcp: McpProc; done: () => Promise<void> }> {
+    const side = await startSideChannel({
+      planApproved: false,
+      bridgeCheck: () => ISOLATED_OK,
+      tier: (b) => (b === NOTEPAD ? 'full' : null)
+    })
+    const front = { name: 'Bloc de notas', bundleId: NOTEPAD, pid: 2 }
+    const mcp = await startMcp({
+      bundle,
+      helper: FAKE_HELPER,
+      dir: join(work.dir, `w${++seq}`),
+      platform: 'win32',
+      events: side,
+      image: PNG_A,
+      script: {
+        responses: {
+          version: { out: { protocol: 1, helper: 'fake-1.0.0', platform: 'win32' } },
+          session: { out: { interactive: true, secureDesktop: false, elevatedTarget: false } },
+          screens: { out: [{ width: 1920, height: 1080, scale: 1, x: 0, y: 0, main: true }] },
+          frontmost: { out: front },
+          'app-at': { out: front },
+          'list-apps': { out: [{ name: 'Bloc de notas', appKey: NOTEPAD, pid: 2 }] },
+          'windows-of': { out: [{ title: 'Sin título', x: 100, y: 100, width: 800, height: 600 }] },
+          'find-elements': { out: [] },
+          'ax-tree': treeScript
+        }
+      },
+      env: {
+        COMPUTER_BACKEND: 'win32',
+        CU_HELPER_ARGV0: 'node',
+        COMPUTER_AUTO_SCREENSHOT: '0',
+        COMPUTER_INSTANT: '1',
+        COMPUTER_VERDICT: '1'
+      }
+    })
+    return {
+      mcp,
+      done: async () => {
+        await mcp.stop()
+        await side.close()
+      }
+    }
+  }
+
+  it('app_set_value: campo vacío antes (sin atributo value) y con el texto después ⇒ confirmed; si no cambió ⇒ suspected_noop', async () => {
+    const a = await bootWin([tree(edit()), tree(edit('hola mundo'))])
+    try {
+      const r = await call(a.mcp, 'app_set_value', { app: 'notepad', ref: REF, value: 'hola mundo' })
+      expect(r.isError, textOf(r)).not.toBe(true)
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el valor leído del campo coincide/)
+      expect(a.mcp.calls().filter((c) => c.cmd === 'ax-set-value')).toHaveLength(1)
+    } finally {
+      await a.done()
+    }
+    const b = await bootWin(tree(edit('igual')))
+    try {
+      const r = await call(b.mcp, 'app_set_value', { app: 'notepad', ref: REF, value: 'otro' })
+      expect(firstLine(r)).toContain('efecto: suspected_noop')
+    } finally {
+      await b.done()
+    }
+  })
+
+  it('app_insert_text no existe en Windows: el error de siempre, sin veredicto', async () => {
+    const { mcp, done } = await bootWin(tree(edit('x')))
+    try {
+      const r = await call(mcp, 'app_insert_text', { app: 'notepad', ref: REF, text: 'hola' })
+      expect(r.isError).toBe(true)
+      expect(textOf(r)).toContain('no está disponible en Windows')
+      expect(textOf(r)).not.toContain('efecto:')
+    } finally {
+      await done()
+    }
+  })
+
+  it('app_press en Windows: el elemento cambia ⇒ confirmed', async () => {
+    const btn = (t: string): Record<string, unknown> => ({
+      ref: REF,
+      role: 'Button',
+      title: t,
+      enabled: true,
+      focused: false,
+      actions: ['AXPress']
+    })
+    const { mcp, done } = await bootWin([tree(btn('A')), tree(btn('B'))])
+    try {
+      const r = await call(mcp, 'app_press', { app: 'notepad', ref: REF })
+      expect(firstLine(r)).toMatch(/^efecto: confirmed — el estado del elemento cambió/)
+    } finally {
+      await done()
+    }
+  })
+})

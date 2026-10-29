@@ -242,6 +242,16 @@ describe('instrucción de apps del modo unificado', () => {
     expect(t).not.toMatch(/computer_app_zoom|computer_app_wait/)
   })
 
+  it('verificación honesta: escribir por accesibilidad se confirma con la línea «efecto:» y no se afirma una captura que no se tomó', () => {
+    const t = UNIFIED_APPS_PROMPT
+    expect(t).toContain('`computer_app_set_value` / `computer_app_insert_text`), confirma con la línea `efecto:` que devuelve')
+    expect(t).toContain('`computer_app_press` y `computer_app_action`')
+    expect(t).toContain('No digas que verificaste algo con una captura si no tomaste ninguna')
+    expect(t).toContain(
+      'di lo que devolvió la herramienta (la línea `efecto:`) o toma `computer_app_screenshot` de verdad antes de afirmarlo'
+    )
+  })
+
   it('la guía de tanda 2: zoom sobre la captura, veredicto «efecto:», element con capture, wait con condición y códigos de rechazo', () => {
     const t = UNIFIED_APPS_PROMPT
     // Nombres reales de las herramientas (prefijo computer_ y el nombre del MCP).
