@@ -5,6 +5,7 @@
  */
 import { BrowserWindow } from 'electron'
 import { VIEWER_SCHEME } from '../security/app-protocol'
+import { installViewerScheme } from '../viewer/scheme'
 import { viewerSession } from '../viewer/session'
 import { MAX_PREVIEW_PAGES } from './preview'
 
@@ -14,6 +15,8 @@ const TIMEOUT_MS = 60_000
 
 export async function rasterizePdf(pdf: Buffer, maxPages = MAX_PREVIEW_PAGES): Promise<{ images: Buffer[]; pages: number } | null> {
   if (pdf.length === 0 || pdf.length > MAX_RASTER_PDF_BYTES) return null
+  // El esquema del visor se instala la primera vez que alguien lo usa (perezoso): aquí también hace falta antes de cargar `raster.html`.
+  installViewerScheme()
   const win = new BrowserWindow({
     show: false,
     width: 900,

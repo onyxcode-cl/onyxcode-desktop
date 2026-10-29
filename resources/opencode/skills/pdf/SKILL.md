@@ -5,6 +5,9 @@ description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF pro
 
 # Skill PDF
 
+**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
+
+
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. En los ejemplos: `PY`.
 Scripts en `scripts/` (usa la ruta de esta skill). Escribe solo en la carpeta de la tarea o en `./.lazunox/trabajo/`.
 Salidas siempre NUEVAS (nunca sobrescribas el original; para «editar» crea `-v2`).

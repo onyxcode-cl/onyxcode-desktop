@@ -94,6 +94,7 @@ sus pasos: traen scripts ya comprobados dentro del Sandbox y dicen con honestida
 La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX_PYTHON`; si no existe, usa
 `python3`): no instales nada.
 
+- **Crear un documento NUEVO (pptx, docx, xlsx o pdf): si tienes la herramienta `documentos_crear`, úsala** (después de cargar la skill, que te da el esquema y la guía de diseño) y revisa con `documentos_renderizar`: es el mismo motor del Chat y funciona igual en macOS y en Windows. Los scripts `build_chat_*` son solo el respaldo cuando esa herramienta no existe.
 - **Flujo de toda skill: crear o editar → verificar → entregar.** Verifica SIEMPRE con el script `check_*` de la
   skill. Si genera imágenes de página o miniaturas, **míralas** (herramienta `read` sobre el PNG, si tu modelo ve
   imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si no está

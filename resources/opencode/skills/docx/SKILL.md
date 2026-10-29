@@ -5,6 +5,9 @@ description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.d
 
 # Skill docx (documentos Word)
 
+**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
+
+
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Abajo `PY` = ese intérprete y `S` = carpeta `scripts/` de esta skill.
 Nunca sobrescribas el archivo del usuario: toda salida es un archivo NUEVO (`-v2`, `-revisado`).
 

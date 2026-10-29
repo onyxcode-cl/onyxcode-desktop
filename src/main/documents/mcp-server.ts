@@ -455,6 +455,8 @@ export class DocumentsMcpServer {
       }
     } catch (err) {
       const timedOut = err instanceof TimeoutError
+      // El motivo real queda SOLO en el registro de la app (puede traer rutas del equipo); al agente se le da un texto fijo.
+      console.warn('[documentos-mcp] vista previa:', err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300))
       this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: timedOut ? 'tiempo' : 'motor', ms: now() - t0 })
       return this.text(
         timedOut ? 'La vista previa tardó demasiado y se canceló.' : 'No se pudo generar la vista previa con el motor de la app.',

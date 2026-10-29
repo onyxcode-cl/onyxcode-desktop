@@ -5,6 +5,9 @@ description: Crea, edita, revisa, verifica y TRADUCE planillas Excel (.xlsx) pro
 
 # Skill xlsx (Excel)
 
+**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
+
+
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/` (abajo `PY` = ese intérprete,
 `S` = carpeta `scripts` de esta skill). Escribe SIEMPRE a archivos NUEVOS en la carpeta de la tarea; nunca sobrescribas el original.
 
