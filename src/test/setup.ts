@@ -1,5 +1,8 @@
 import { vi } from 'vitest'
 
+// Las pruebas no deben ejecutar jamás el cu-helper real compilado en el repo (ver `ComputerService.helperPath`): movería apps reales del equipo.
+process.env.COMPUTER_TEST_NO_REPO_HELPER = '1'
+
 /** Almacenamiento en memoria (los stores leen localStorage al crearse). */
 class MemoryStorage implements Storage {
   private data = new Map<string, string>()

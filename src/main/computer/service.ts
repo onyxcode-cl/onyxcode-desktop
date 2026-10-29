@@ -33,6 +33,9 @@ import { APP_ID } from '@shared/brand'
 import { t } from '@shared/i18n'
 import { app, globalShortcut, powerMonitor, shell, systemPreferences } from 'electron'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
+
+/** Directorio de trabajo al cargar el módulo (las pruebas simulan `process.cwd()` después; el helper real del repo vive bajo el de verdad). */
+const REPO_CWD = process.cwd()
 import type { Readable, Writable } from 'node:stream'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { EventEmitter } from 'node:events'
@@ -364,7 +367,10 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       { resourcesPath: process.resourcesPath ?? '', appPath: app.getAppPath(), cwd: process.cwd() },
       unpacked
     )
-    return candidates.find((p) => existsSync(p)) ?? null
+    // En las pruebas (src/test/setup.ts fija la variable) NUNCA se resuelve el helper real compilado dentro del repo: las pruebas que aprueban
+    // una tarjeta lo ejecutarían de verdad (`activate <app>`) y traerían apps reales al frente en el equipo de quien las corre.
+    const noRepoHelper = process.env.COMPUTER_TEST_NO_REPO_HELPER === '1'
+    return candidates.find((p) => existsSync(p) && !(noRepoHelper && p.startsWith(REPO_CWD))) ?? null
   }
 
   /** Ruta de `computer-mcp.js` (junto a out/main/index.js). */
