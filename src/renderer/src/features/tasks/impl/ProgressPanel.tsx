@@ -17,6 +17,7 @@ import {
   FileInput,
   FileOutput,
   FilePlus2,
+  Gauge,
   FileSearch,
   Globe,
   ListChecks,
@@ -39,12 +40,15 @@ import { Section } from './PanelSection'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { openTaskAnywhere } from './actions'
 import { ScreenshotThumbs } from './ComputerAccess'
+import { TasksProjectCard } from './TasksProjectCard'
+import { UsageMeter } from '../../../components/UsageMeter'
+import { useModeModel } from '../../settings/impl/extras'
 import { describeAction, toolImages } from './computer-tools'
 import { STEP_TONE, stepKind, stepStartedAt, type StepKind } from './tool-look'
 import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
 import { showPath } from './conn-paths'
-import { isUsingComputer, refreshDeliverables, useTasks } from './store'
+import { currentTasksModel, isUsingComputer, refreshDeliverables, useTasks } from './store'
 import { turnEntries, turnTodos, workProgress } from './work-progress'
 import { buildContext, friendlyTool, groupActivityBySteps, relTime, type ContextItem } from './util'
 
@@ -357,6 +361,10 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
   const toolCount = groups.reduce((n, g) => n + g.tools.length, 0)
   const context = useMemo(() => buildContext(entries), [entries])
   const usingComputer = useUsingComputer(sessionID ?? '')
+  // Mismo modelo que mira la caja de escribir (para el medidor de contexto).
+  useTasks((s) => s.taskModel)
+  useModeModel('tasks')
+  const model = currentTasksModel()
   const contextCount =
     context.filesRead.length + context.filesWritten.length + context.commands.length + context.web.length + context.connectors.length
 
@@ -394,6 +402,8 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
   return (
     <div className="h-full overflow-y-auto text-sm">
       {usingComputer && <LiveSection entries={entries} />}
+
+      <TasksProjectCard busy={busy} />
 
       <Section
         icon={ListChecks}
@@ -446,6 +456,10 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
             </ol>
           </>
         )}
+      </Section>
+
+      <Section icon={Gauge} title={tr('tasks.prog.ctxWindow')} right={<UsageMeter messages={entries} model={model} />} defaultOpen={false}>
+        <p className="text-xs text-subtle">{tr('tasks.prog.ctxWindow.help')}</p>
       </Section>
 
       <Section

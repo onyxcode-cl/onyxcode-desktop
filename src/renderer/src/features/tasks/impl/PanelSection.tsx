@@ -21,7 +21,7 @@ export function Section({
 }): React.JSX.Element {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <section className="border-b border-border last:border-b-0 desk:border-border/60 desk:px-2 desk:py-1">
+    <section className="border-b border-border last:border-b-0 desk:mx-3 desk:my-2 desk:rounded-xl desk:border desk:border-border desk:bg-elevated/60 desk:px-2 desk:py-1 desk:last:border-b">
       <header className="flex items-center gap-2 px-4 py-2.5 desk:h-10 desk:px-2 desk:py-0">
         <button
           type="button"

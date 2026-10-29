@@ -18,6 +18,7 @@ import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { ModelPicker } from '../../../components/ModelPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
+import { TasksProjectSeal } from './TasksProjectCard'
 import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey, useAutosizeTextarea } from '../../../lib/textarea'
 import { useSessions, type MessageEntry } from '../../../stores/sessions'
@@ -263,6 +264,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
               <>
                 <AccessChip disabled={sending || busy} />
                 <AutoModeChip />
+                <TasksProjectSeal busy={sending || busy} />
               </>
             )}
             {extra}
