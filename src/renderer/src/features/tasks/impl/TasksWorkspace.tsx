@@ -744,7 +744,7 @@ export function TasksWorkspace(): React.JSX.Element {
               <div
                 role="group"
                 aria-label={t('a11y.sidePanel')}
-                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' desk:@max-[34rem]:hidden' : ''}`}
+                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' hidden' : ''}`}
               >
                 {[
                   { id: 'progress' as const, icon: ListChecks, label: t('tasks.ws.progress') },
@@ -878,7 +878,7 @@ export function TasksWorkspace(): React.JSX.Element {
             />
           )}
           <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium desk:border-b-transparent desk:pr-[calc(var(--controls-inset,0px)+12px)]">
-            <div className={`contents desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5 ${viewerRequest ? 'desk:inline-flex' : 'desk:hidden'}`}>
+            <div className="contents desk:inline-flex desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5">
               <button
                 type="button"
                 onClick={() => setAsideTab('progress')}
