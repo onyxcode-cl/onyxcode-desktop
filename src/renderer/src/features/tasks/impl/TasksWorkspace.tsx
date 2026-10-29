@@ -878,14 +878,14 @@ export function TasksWorkspace(): React.JSX.Element {
             />
           )}
           <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium desk:border-b-transparent desk:pr-[calc(var(--controls-inset,0px)+12px)]">
-            <div className="contents desk:inline-flex desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5">
+            <div className="contents desk:inline-flex desk:gap-0.5">
               <button
                 type="button"
                 onClick={() => setAsideTab('progress')}
                 title={t('tasks.ws.progress')}
                 aria-label={t('tasks.ws.progress')}
-                className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
-                  asideTab === 'progress' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
+                className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
+                  asideTab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                 }`}
               >
                 <ListChecks size={14} className="hidden desk:block" />
@@ -898,8 +898,8 @@ export function TasksWorkspace(): React.JSX.Element {
                   disabled={!browserOwner}
                   title={TASKS_TERMS.browser}
                   aria-label={TASKS_TERMS.browser}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
-                    asideTab === 'browser' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
+                    asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
                   <Globe size={14} /> <span className="desk:hidden">{TASKS_TERMS.browser}</span>
@@ -911,8 +911,8 @@ export function TasksWorkspace(): React.JSX.Element {
                   onClick={() => setAsideTab('viewer')}
                   title={t('viewer.tab')}
                   aria-label={t('viewer.tab')}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
-                    asideTab === 'viewer' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
+                    asideTab === 'viewer' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
                   <FileText size={14} /> <span className="desk:hidden">{t('viewer.tab')}</span>
