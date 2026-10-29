@@ -47,7 +47,10 @@ export const RECOVERY_HINTS: Readonly<Record<string, RecoveryHint>> = {
   'no-grant': { hint: 'No hay permiso vigente para esa app: lo concede la persona, no se sortea.', next: null },
   'low-tier': { hint: 'El permiso de esa app no alcanza para esta acción: lo amplía la persona, no se sortea.', next: null },
   'exempt-app': { hint: 'Esa app no se controla desde aquí; usa otra vía o pide ayuda a la persona.', next: null },
-  'file-manager': { hint: 'Usa app_find y app_press sobre la app, o pide a la persona el control completo.', next: 'app_find' },
+  'file-manager': {
+    hint: 'No uses el gestor de archivos para crear, copiar, mover o renombrar: usa un comando (mkdir, cp, mv) con la carpeta pedida en lectura y escritura. Para manejarlo de verdad, app_find y app_press.',
+    next: 'app_find'
+  },
   'key-sequence': { hint: 'Llama a key una vez por combinación.', next: null },
   'key-unknown': { hint: 'Usa nombres de tecla como "return", "tab", "cmd+a", "shift+left", "f5".', next: null },
   'key-blocked': { hint: 'Esa combinación no se pulsa en este modo; usa los menús con app_press o app_find.', next: 'app_find' },
