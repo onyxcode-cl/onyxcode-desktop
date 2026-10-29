@@ -74,6 +74,15 @@ import {
 import { createDarwinBackend } from './mcp-platform-darwin'
 import { checkWinIsolatedCombo, createWin32Backend, isWinIsolatedExempt } from './mcp-platform-win32'
 import {
+  keyFieldChange,
+  pickFocusedField,
+  pressNotAnnounced,
+  pressPrecheck,
+  typedProgress,
+  type FocusedField,
+  type TypedProgress
+} from './field-readback'
+import {
   ActionLog,
   captureIsStale,
   compareElement,
@@ -2518,8 +2527,17 @@ interface VerdictPre {
   targetKind: 'xy' | 'element'
   /** `type_text`: cuántas veces aparecía el final del texto en los campos antes de escribir (`null` = no se pudo leer). */
   readBefore: number | null
+  /** `type_text`/`key` con «full» y sin escritorio remoto: el campo enfocado ANTES de actuar (`null` = no se pudo leer o no hay campo editable con foco). */
+  fieldBefore?: FocusedField | null
   /** Herramientas `app_*` de accesibilidad: la ref actuada y cómo estaba el elemento antes. SOLO en memoria, nunca llega al modelo. */
-  ax?: { ref: string; written: string; field: FieldState; snap: ElementSnap | 'missing' | null }
+  ax?: {
+    ref: string
+    written: string
+    field: FieldState
+    snap: ElementSnap | 'missing' | null
+    /** `app_press`: acciones que el elemento anunciaba antes de pulsar (`undefined` = no se sabe). */
+    actions?: string[]
+  }
 }
 
 const hasArg = (v: unknown): boolean => v !== undefined && v !== null && v !== '' && typeof v !== 'boolean'
@@ -2595,7 +2613,7 @@ async function readAxNode(
   bundleId: string,
   ref: string,
   maxMs = 4_000
-): Promise<{ field: FieldState; snap: ElementSnap | 'missing' | null }> {
+): Promise<{ field: FieldState; snap: ElementSnap | 'missing' | null; actions?: string[] }> {
   const tree = await withTimeout(
     axTree(bundleId, 30, 4000).catch(() => null),
     maxMs,
@@ -2610,8 +2628,19 @@ async function readAxNode(
   // Sin atributo de valor (campo vacío en Windows) ⇒ vacío.
   return {
     field: { status: 'ok', value: typeof n.value === 'string' ? n.value : '' },
-    snap: { value: n.value, title: n.title, description: n.description, enabled: n.enabled }
+    snap: { value: n.value, title: n.title, description: n.description, enabled: n.enabled },
+    actions: Array.isArray(n.actions) ? n.actions : undefined
   }
+}
+
+/** Lee el campo editable con foco de la app (árbol de accesibilidad, con tope de tiempo). `null` = no se pudo leer o no hay ninguno. Nunca lanza. */
+async function readFocusedField(bundleId: string, maxMs = 2_500): Promise<FocusedField | null> {
+  const tree = await withTimeout(
+    axTree(bundleId, 30, 4000).catch(() => null),
+    maxMs,
+    null
+  )
+  return tree ? pickFocusedField(tree.nodes) : null
 }
 
 /** Antes de una herramienta `app_*` de accesibilidad: app nombrada, nivel, estado previo del elemento y (press/action) sonda. Nunca lanza. */
@@ -2649,7 +2678,7 @@ async function beginAxVerdict(name: string, args: Record<string, unknown>, sessi
     pre.windowIndex = ctx && ctx.app.bundleId === app.bundleId ? ctx.windowIndex : 0
     const written = name === 'app_set_value' ? String(args.value ?? '') : name === 'app_insert_text' ? String(args.text ?? '') : ''
     const node = await readAxNode(app.bundleId, ref)
-    pre.ax = { ref, written, field: node.field, snap: node.snap }
+    pre.ax = { ref, written, field: node.field, snap: node.snap, ...(node.actions ? { actions: node.actions } : {}) }
     if (!writes) {
       pre.windowsBefore = await backend
         .windowFrames(app.bundleId)
@@ -2698,6 +2727,8 @@ async function beginVerdict(name: string, args: Record<string, unknown>, session
       const tail = readbackTail(String(args.text ?? ''))
       if (tail.length >= 3) pre.readBefore = await countTail(front.bundleId, tail)
     }
+    // Lectura de vuelta del campo enfocado (type_text y key): solo con «full» y sin escritorio remoto (allí el árbol es el del cliente, no el del destino).
+    if ((name === 'type_text' || name === 'key') && tier === 'full' && !pre.remote) pre.fieldBefore = await readFocusedField(front.bundleId)
   } catch (err) {
     log('veredicto (antes):', err instanceof Error ? err.message : err)
   }
@@ -2824,6 +2855,15 @@ async function finishVerdictInner(
       const after = tail.length >= 3 ? await countTail(app.bundleId, tail) : null
       if (after !== null) readback = after > pre.readBefore ? 'match' : 'nomatch'
     }
+    // Lectura de vuelta del campo enfocado: lo que se pueda comprobar; sin lectura fiable no se afirma nada.
+    let fieldProg: TypedProgress | null = null
+    let keyChanged = false
+    if ((name === 'type_text' || name === 'key') && app && stillGranted && pre.tier === 'full' && !pre.remote && pre.fieldBefore) {
+      const rb = await readFieldBack(name, String(args.text ?? ''), app.bundleId, pre.fieldBefore)
+      fieldProg = rb.progress
+      keyChanged = rb.keyChanged
+      if (fieldProg?.kind === 'complete') readback = 'match'
+    }
     if (ax && app && stillGranted && firstReadOk && elementState !== 'gone' && left() > VERDICT_READ_MIN_MS) {
       // Tras la espera de la ventana, el elemento pudo cambiar más tarde.
       const late = compareElement(ax.snap, (await readAxNode(app.bundleId, ax.ref, Math.min(4_000, left()))).snap)
@@ -2833,7 +2873,7 @@ async function finishVerdictInner(
     const log_ = actionLogFor(session)
     const repeat = pre.target ? log_.history(pre.target, Date.now()) : undefined
     const keys = String(args.keys ?? '')
-    const verdict = computeVerdict({
+    let verdict = computeVerdict({
       action: name as ActionKind,
       target: pre.targetKind,
       modifiers: name === 'key' && hasModifier(keys),
@@ -2855,6 +2895,11 @@ async function finishVerdictInner(
           }
         : {})
     })
+    if (verdict) verdict = refineWithField(verdict, fieldProg, keyChanged)
+    // `app_press` sobre un elemento que no anunciaba AXPress y sin efecto comprobado: pulsación hueca probable (no se rechaza: pudo funcionar).
+    if (verdict && name === 'app_press' && verdict.effect !== 'confirmed' && pressNotAnnounced(ax?.actions)) {
+      verdict = addNote(verdict, 'el elemento no anunciaba la acción AXPress (pulsación hueca probable)')
+    }
     if (verdict && pre.target) {
       log_.record({
         tool: name,
@@ -2873,6 +2918,64 @@ async function finishVerdictInner(
       effect: 'unverifiable',
       reason: 'se entregó; no se pudo comparar la ventana; confírmalo con app_screenshot si importa'
     }
+  }
+}
+
+const VERDICT_TAIL = '; confírmalo con app_screenshot si importa'
+
+/** Agrega una nota al motivo del veredicto, antes de la cola «confírmalo con…» si la lleva. */
+function addNote(v: Verdict, note: string): Verdict {
+  const hasTail = v.reason.endsWith(VERDICT_TAIL)
+  const base = hasTail ? v.reason.slice(0, -VERDICT_TAIL.length) : v.reason
+  return { ...v, reason: `${base}; ${note}${hasTail ? VERDICT_TAIL : ''}` }
+}
+
+/**
+ * Lee de vuelta el campo enfocado tras `type_text` (hasta 3 lecturas en ~1 s mientras siga «sin cambio» o «parcial»: algunas apps tardan en
+ * reflejar el valor) o `key` (una lectura). Nunca lanza; sin lectura ⇒ `unverifiable`/`unknown`.
+ */
+async function readFieldBack(
+  name: string,
+  written: string,
+  bundleId: string,
+  before: FocusedField
+): Promise<{ progress: TypedProgress | null; keyChanged: boolean }> {
+  try {
+    if (name === 'key') return { progress: null, keyChanged: keyFieldChange(before, await readFocusedField(bundleId)) === 'changed' }
+    let prog: TypedProgress = { kind: 'unverifiable', why: 'no se pudo leer el campo enfocado' }
+    for (let k = 0; k < 3; k++) {
+      if (k > 0) await sleep(350)
+      prog = typedProgress(written, before, await readFocusedField(bundleId))
+      if (prog.kind === 'complete' || prog.kind === 'unverifiable') break
+    }
+    return { progress: prog, keyChanged: false }
+  } catch {
+    return { progress: null, keyChanged: false }
+  }
+}
+
+/** Afina el veredicto con lo leído del campo enfocado. Solo agrega evidencia leída; nunca devuelve contenido del campo. */
+function refineWithField(v: Verdict, prog: TypedProgress | null, keyChanged: boolean): Verdict {
+  if (keyChanged && v.effect !== 'confirmed') {
+    return { effect: 'confirmed', reason: 'el valor del campo enfocado cambió tras la tecla', ...(v.warning ? { warning: v.warning } : {}) }
+  }
+  if (!prog) return v
+  switch (prog.kind) {
+    case 'complete':
+      return {
+        effect: 'confirmed',
+        reason: 'el campo enfocado contiene el texto escrito (leído de vuelta)',
+        ...(v.warning ? { warning: v.warning } : {})
+      }
+    case 'partial': {
+      if (v.effect === 'confirmed') return v
+      const { escalation: _drop, ...rest } = v
+      return addNote({ ...rest, effect: 'unverifiable' }, `el campo enfocado recibió solo ${prog.typed} de ${prog.total} caracteres`)
+    }
+    case 'unchanged':
+      return v.effect === 'confirmed' ? v : addNote(v, 'el valor del campo enfocado no cambió')
+    case 'unverifiable':
+      return v.effect === 'confirmed' ? v : addNote(v, `lectura de vuelta del campo: ${prog.why}`)
   }
 }
 
@@ -4151,6 +4254,13 @@ async function callToolInner(name: string, rawArgs: Record<string, unknown>, bri
             ? await beginAxVerdict(name, args, session)
             : null
         : null
+    // Pre-chequeo de `app_press` (solo si ya se leyó el elemento para el veredicto y la app tiene al menos «click»): un elemento deshabilitado
+    // se rechaza ANTES de enviar nada. Con `screenshot: false` / `COMPUTER_VERDICT=0` no se lee y no hay pre-chequeo.
+    if (name === 'app_press' && verdictPre?.ax && verdictPre.tier && verdictPre.tier !== 'view') {
+      const snap = verdictPre.ax.snap
+      const chk = pressPrecheck(snap && snap !== 'missing' ? snap : null, verdictPre.ax.ref)
+      if (!chk.ok) throw reject(chk.code, chk.message, session)
+    }
     // `screenshot: true` explícito: captura de la VENTANA de la app concedida (la de la última app_screenshot; si no hay, la del frente que se sondea).
     const liveCtx = isolatedCall && tool.action && !tool.noAutoShot && args?.screenshot === true ? liveWindowCtx(session) : undefined
     const shotApp: { app: AppRef; windowIndex: number } | null = liveCtx
