@@ -882,11 +882,14 @@ export function TasksWorkspace(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => setAsideTab('progress')}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
+                title={t('tasks.ws.progress')}
+                aria-label={t('tasks.ws.progress')}
+                className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
                   asideTab === 'progress' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
                 }`}
               >
-                {t('tasks.ws.progress')}
+                <ListChecks size={14} className="hidden desk:block" />
+                <span className="desk:hidden">{t('tasks.ws.progress')}</span>
               </button>
               {hasBrowserBridge() && (
                 <button
@@ -894,22 +897,25 @@ export function TasksWorkspace(): React.JSX.Element {
                   onClick={() => setAsideTab('browser')}
                   disabled={!browserOwner}
                   title={TASKS_TERMS.browser}
+                  aria-label={TASKS_TERMS.browser}
                   className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
                     asideTab === 'browser' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
-                  <Globe size={12} /> {TASKS_TERMS.browser}
+                  <Globe size={14} /> <span className="desk:hidden">{TASKS_TERMS.browser}</span>
                 </button>
               )}
               {viewerRequest && (
                 <button
                   type="button"
                   onClick={() => setAsideTab('viewer')}
+                  title={t('viewer.tab')}
+                  aria-label={t('viewer.tab')}
                   className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-[26px] desk:rounded-ctl-sm desk:py-0 desk:text-ui ${
                     asideTab === 'viewer' ? 'bg-active text-fg desk:bg-elevated desk:shadow-sm' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
-                  <FileText size={12} /> {t('viewer.tab')}
+                  <FileText size={14} /> <span className="desk:hidden">{t('viewer.tab')}</span>
                 </button>
               )}
             </div>
