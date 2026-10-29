@@ -219,7 +219,9 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
 
   const dragging = useRef<{ x: number; w: number } | null>(null)
   const onPointerDown = (e: React.PointerEvent): void => {
-    dragging.current = { x: e.clientX, w: layout ? layout.width : width }
+    // Se parte del ancho que se ve (el panel puede estar limitado por el espacio del chat y ser menor que el guardado).
+    const shown = (e.currentTarget.parentElement as HTMLElement | null)?.getBoundingClientRect().width
+    dragging.current = { x: e.clientX, w: layout ? layout.width : (shown ?? width) }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
   const onPointerMove = (e: React.PointerEvent): void => {
@@ -254,10 +256,9 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
+        className="absolute top-0 bottom-0 left-0 z-10 w-2 cursor-col-resize hover:bg-accent/20"
       />
-      <div aria-hidden="true" className="hidden shrink-0 desk:block" style={{ height: 'var(--controls-band, 0px)' }} />
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:overflow-x-auto desk:px-3 desk:gap-0.5 desk:[scrollbar-width:none]">
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:overflow-x-auto desk:pl-3 desk:pr-[calc(var(--controls-inset,0px)+12px)] desk:gap-0.5 desk:[scrollbar-width:none]">
         {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p) => (
           <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={hintText(bindings[`code.panel.${p}`])}>
             <button

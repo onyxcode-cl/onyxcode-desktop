@@ -43,8 +43,7 @@ export function DiffDrawer({
       }}
       className="absolute inset-y-0 right-0 z-30 flex w-[560px] max-w-[90vw] animate-rise-in flex-col border-l border-border bg-elevated shadow-xl desk:shadow-modal"
     >
-      <div aria-hidden="true" className="hidden shrink-0 desk:block" style={{ height: 'var(--controls-band, 0px)' }} />
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <h2 className="min-w-0 flex-1 truncate text-[13px] font-medium">{title}</h2>
         <button
           ref={closeRef}

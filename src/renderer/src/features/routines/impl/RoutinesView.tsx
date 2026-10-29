@@ -356,7 +356,7 @@ export function RoutineDetail({ r, now }: { r: ScheduledRoutine; now: number }):
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-border px-5 pt-4 pb-3 desk:border-border/60">
+      <header className="border-b border-border px-5 pt-4 pb-3 desk:border-border/60 desk:pr-[calc(var(--controls-inset,0px)+20px)]">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
             <Icon size={17} />
@@ -714,7 +714,6 @@ export function RoutinesView(): React.JSX.Element {
 
       {selected && (
         <aside className="w-[420px] shrink-0 border-l border-border bg-bg desk:w-[400px] desk:border-l-transparent desk:bg-sidebar desk:xl:w-[440px]">
-          <div aria-hidden="true" className="hidden shrink-0 desk:block" style={{ height: 'var(--controls-band, 0px)' }} />
           <RoutineDetail key={selected.id} r={selected} now={fastNow} />
         </aside>
       )}

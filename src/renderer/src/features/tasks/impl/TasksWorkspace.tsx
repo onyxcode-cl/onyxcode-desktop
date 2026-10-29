@@ -830,11 +830,10 @@ export function TasksWorkspace(): React.JSX.Element {
               onPointerDown={onAsideResizeDown}
               onPointerMove={onAsideResizeMove}
               onPointerUp={onAsideResizeUp}
-              className="absolute top-0 bottom-0 -left-1 z-10 w-2 cursor-col-resize hover:bg-accent/20"
+              className="absolute top-0 bottom-0 left-0 z-10 w-2 cursor-col-resize hover:bg-accent/20"
             />
           )}
-          <div aria-hidden="true" className="hidden shrink-0 desk:block" style={{ height: 'var(--controls-band, 0px)' }} />
-          <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium desk:border-b-transparent">
+          <div className="flex h-12 shrink-0 items-center gap-1 border-b border-border px-3 text-sm font-medium desk:border-b-transparent desk:pr-[calc(var(--controls-inset,0px)+12px)]">
             <div className="contents desk:inline-flex desk:gap-0.5 desk:rounded-ctl desk:bg-hover desk:p-0.5">
               <button
                 type="button"
