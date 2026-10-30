@@ -93,7 +93,8 @@ export function checkLinkedFolder(
   if (!inside(p, home) && sys.some((s) => inside(p, s))) return { ok: false, reason: 'system' }
   if (inside(p, norm(userDataReal, win))) return { ok: false, reason: 'app-state' }
   if (SECRET_DIRS.some((s) => inside(p, `${home}/${s}`))) return { ok: false, reason: 'secrets' }
-  if (win && /\/appdata\//.test(p)) return { ok: false, reason: 'app-state' }
+  // En Windows, AppData cuenta como estado de apps; se mira desde la carpeta personal (una temporal bajo AppData no es «estado»).
+  if (win && (inside(p, home) ? /^\/appdata(\/|$)/.test(p.slice(home.length)) : /\/appdata\//.test(p))) return { ok: false, reason: 'app-state' }
   let project = ctx.project
   try {
     project = realpathSync(resolve(ctx.project))

@@ -179,7 +179,7 @@ export function ContextBreakdown({ used, limit, fijo }: { used: number; limit: n
             ))}
         </div>
       )}
-      <p className="mt-2 text-[11.5px] text-subtle">{t('ctx.approx')}</p>
+      <p className="mt-2 text-[12px] text-subtle">{t('ctx.approx')}</p>
     </div>
   )
 }

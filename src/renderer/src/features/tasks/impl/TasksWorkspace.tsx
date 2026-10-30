@@ -889,7 +889,7 @@ export function TasksWorkspace(): React.JSX.Element {
                 }`}
               >
                 <ListChecks size={16} className="hidden desk:block" />
-                <span className="desk:hidden">{t('tasks.ws.progress')}</span>
+                <span className="inline desk:hidden">{t('tasks.ws.progress')}</span>
               </button>
               {hasBrowserBridge() && (
                 <button
@@ -902,7 +902,7 @@ export function TasksWorkspace(): React.JSX.Element {
                     asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
-                  <Globe size={16} /> <span className="desk:hidden">{TASKS_TERMS.browser}</span>
+                  <Globe size={16} /> <span className="inline desk:hidden">{TASKS_TERMS.browser}</span>
                 </button>
               )}
               {viewerRequest && (
@@ -915,7 +915,7 @@ export function TasksWorkspace(): React.JSX.Element {
                     asideTab === 'viewer' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
-                  <FileText size={16} /> <span className="desk:hidden">{t('viewer.tab')}</span>
+                  <FileText size={16} /> <span className="inline desk:hidden">{t('viewer.tab')}</span>
                 </button>
               )}
             </div>
