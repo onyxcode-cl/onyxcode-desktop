@@ -46,7 +46,7 @@ export function CodeSummary({
           <Gauge size={15} className="text-muted" aria-hidden />
           {t('tasks.prog.ctxWindow')}
           <span className="ml-auto">
-            <UsageMeter messages={messages ?? []} model={effective} />
+            <UsageMeter messages={messages ?? []} model={effective} directory={directory} />
           </span>
         </h3>
         <p className="mt-1 text-xs text-subtle">{t('tasks.prog.ctxWindow.help')}</p>

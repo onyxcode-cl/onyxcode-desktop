@@ -170,6 +170,18 @@ export const settings = {
     one: '30 días · {count} sesiones',
     other: '30 días · {count} sesiones'
   },
+  'ctx.cat.messages': 'Mensajes',
+  'ctx.cat.system': 'Instrucciones del sistema',
+  'ctx.cat.tools': 'Herramientas del sistema',
+  'ctx.cat.mcp': 'Herramientas MCP',
+  'ctx.cat.mcpInstr': 'Instrucciones de servidores MCP',
+  'ctx.cat.skills': 'Skills',
+  'ctx.cat.memory': 'Archivos de memoria',
+  'ctx.cat.buffer': 'Reserva de autocompactado',
+  'ctx.cat.free': 'Espacio libre',
+  'ctx.list.mcp': 'Herramientas MCP',
+  'ctx.list.memory': 'Archivos de memoria',
+  'ctx.approx': '≈ Estimado por el motor; el total usado es exacto.',
   'settings.usage.meter.detail': 'Ver detalle de uso',
 
   // Atajos

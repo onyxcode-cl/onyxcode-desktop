@@ -350,6 +350,8 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
 
 export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; busy: boolean }): React.JSX.Element {
   const tr = useT()
+  const tasksClient = useTasks((s) => s.client)
+  const tasksDir = useTasks((s) => s.conn?.directory ?? s.conn?.folder)
   const storeTodos = useTasks((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
   const files = useTasks((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
   const entries = useSessions((s) => (sessionID ? (s.messages[sessionID] ?? EMPTY_ENTRIES) : EMPTY_ENTRIES))
@@ -458,7 +460,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         )}
       </Section>
 
-      <Section icon={Gauge} title={tr('tasks.prog.ctxWindow')} right={<UsageMeter messages={entries} model={model} />} defaultOpen={false}>
+      <Section icon={Gauge} title={tr('tasks.prog.ctxWindow')} right={<UsageMeter messages={entries} model={model} breakdownClient={tasksClient} directory={tasksDir} />} defaultOpen={false}>
         <p className="text-xs text-subtle">{tr('tasks.prog.ctxWindow.help')}</p>
       </Section>
 

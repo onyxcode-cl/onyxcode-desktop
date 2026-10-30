@@ -174,6 +174,18 @@ export const settings = {
     one: '30 days · {count} session',
     other: '30 days · {count} sessions'
   },
+  'ctx.cat.messages': 'Messages',
+  'ctx.cat.system': 'System prompt',
+  'ctx.cat.tools': 'System tools',
+  'ctx.cat.mcp': 'MCP tools',
+  'ctx.cat.mcpInstr': 'MCP server instructions',
+  'ctx.cat.skills': 'Skills',
+  'ctx.cat.memory': 'Memory files',
+  'ctx.cat.buffer': 'Autocompact buffer',
+  'ctx.cat.free': 'Free space',
+  'ctx.list.mcp': 'MCP tools',
+  'ctx.list.memory': 'Memory files',
+  'ctx.approx': '≈ Estimated by the engine; the total used is exact.',
   'settings.usage.meter.detail': 'View usage details',
 
   // Shortcuts

@@ -77,6 +77,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const model = aiGate.effective ?? wantedModel
   const variant = currentTasksVariant()
   const conn = useTasks((s) => s.conn)
+  const tasksClient = useTasks((s) => s.client)
+  const tasksDir = useTasks((s) => s.conn?.directory ?? s.conn?.folder)
   const requestedFull = useTasks((s) => s.fullAccess)
   const sandboxed = conn ? conn.sandboxed && !conn.fullAccess : !requestedFull
   const providerNotice = sandboxModelNotice(sandboxed, model.providerID)
@@ -268,7 +270,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             {extra}
             <ModelPicker value={model} onChange={setTaskModel} effort={{ variant, onChange: setTaskVariant }} />
           </div>
-          <UsageMeter messages={entries} model={model} />
+          <UsageMeter messages={entries} model={model} breakdownClient={tasksClient} directory={tasksDir} />
           {sending ? (
             <button
               type="button"
