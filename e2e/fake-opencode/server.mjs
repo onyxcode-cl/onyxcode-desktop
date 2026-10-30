@@ -1360,6 +1360,10 @@ export function createFakeServer(options = {}) {
         [...state.sessions.values()].filter((x) => x.info.parentID === s.info.id).map((x) => x.info)
       )
   })
+  // Turnos de la sesión (rebobinar por turno): el motor real la tiene; el falso la responde vacía para que la app no vea un 404.
+  route('GET', '/experimental/session/{sessionID}/turnos', (c) => {
+    if (getSession(c)) json(c.res, [])
+  })
   // Manda al fondo los subagentes en primer plano que bloquean a la sesión (responde si alguno pasó).
   route('POST', '/experimental/session/{sessionID}/background', (c) => {
     const s = getSession(c)

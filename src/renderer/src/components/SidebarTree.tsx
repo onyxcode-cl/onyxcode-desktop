@@ -23,8 +23,12 @@ export const useSidebarTree = (): SidebarTreeValue | null => useContext(SidebarT
  * selectores y botones de la cabecera de la lista van FUERA de la región. Sin ninguna fila (solo el texto «aún no hay…») la región es un div
  * normal. Fuera de la barra lateral de escritorio (celular, pruebas de marcado fijado) no añade ni un elemento.
  */
+const InsideRegion = createContext(false)
+
 export function SidebarTreeRegion({ children }: { children: React.ReactNode }): React.JSX.Element {
   const tree = useSidebarTree()
+  // Una región dentro de otra (la lista de tareas de cada carpeta, ya dentro del árbol de carpetas) no abre un segundo `tree`.
+  const nested = useContext(InsideRegion)
   const ref = useRef<HTMLDivElement>(null)
   const [hasItems, setHasItems] = useState(true)
   useEffect(() => {
@@ -36,11 +40,13 @@ export function SidebarTreeRegion({ children }: { children: React.ReactNode }): 
     mo.observe(el, { childList: true, subtree: true })
     return () => mo.disconnect()
   }, [tree])
-  if (!tree) return <>{children}</>
+  if (!tree || nested) return <>{children}</>
   return (
-    <div ref={ref} role={hasItems ? 'tree' : undefined} aria-label={hasItems ? tree.treeLabel : undefined}>
-      {children}
-    </div>
+    <InsideRegion.Provider value={true}>
+      <div ref={ref} role={hasItems ? 'tree' : undefined} aria-label={hasItems ? tree.treeLabel : undefined}>
+        {children}
+      </div>
+    </InsideRegion.Provider>
   )
 }
 

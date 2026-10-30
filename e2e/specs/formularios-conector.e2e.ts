@@ -64,11 +64,11 @@ describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
     expect(await c.textContent()).toContain('Lo pide el conector, no Lazunox')
     expect(await c.textContent()).toContain('<a href="https://evil.example">no es un enlace</a> **ni negrita**')
     expect(await c.locator('a, img, strong, em').count()).toBe(0)
-    expect(await a.page.getByLabel('Título').inputValue()).toBe('')
+    expect(await a.page.getByLabel('Título', { exact: true }).inputValue()).toBe('')
     expect(await a.page.getByLabel('Es urgente').isChecked()).toBe(false)
     await expect
       .poll(() => a.page.evaluate(() => document.activeElement?.id ?? ''), { timeout: 5_000 })
-      .toBe(await a.page.getByLabel('Título').evaluate((el) => el.id))
+      .toBe(await a.page.getByLabel('Título', { exact: true }).evaluate((el) => el.id))
     // Cierra el formulario para el siguiente test.
     await a.page.getByRole('button', { name: 'No enviar' }).click()
     await expectCount(card(a), 0)
@@ -81,7 +81,7 @@ describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
     await a.page.getByRole('button', { name: /Enviar a forms/ }).click()
     await expectVisible(a.page.getByText('Este dato es obligatorio.'))
     expect((await status(a)).elicitationReplies.length).toBe(before) // no salió ninguna petición
-    await a.page.getByLabel('Título').fill('Falla el login')
+    await a.page.getByLabel('Título', { exact: true }).fill('Falla el login')
     await a.page.getByLabel('Es urgente').check()
     await a.page.getByRole('button', { name: /Enviar a forms/ }).click()
     await expectCount(card(a), 0)
@@ -95,12 +95,12 @@ describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
     await ask(a, 'formulario tres', {
       fields: [{ name: 'titulo', type: 'string', title: 'Título', required: true, maxLength: 30, forbid: 'XXX' }]
     })
-    await a.page.getByLabel('Título').fill('Hola XXX')
+    await a.page.getByLabel('Título', { exact: true }).fill('Hola XXX')
     await a.page.getByRole('button', { name: /Enviar a forms/ }).click()
     await expectVisible(a.page.getByText('El motor no aceptó este dato: valor no permitido'))
     expect(await card(a).count()).toBe(1)
-    expect(await a.page.getByLabel('Título').inputValue()).toBe('Hola XXX')
-    await a.page.getByLabel('Título').fill('Hola')
+    expect(await a.page.getByLabel('Título', { exact: true }).inputValue()).toBe('Hola XXX')
+    await a.page.getByLabel('Título', { exact: true }).fill('Hola')
     await a.page.getByRole('button', { name: /Enviar a forms/ }).click()
     await expectCount(card(a), 0)
   })
@@ -108,7 +108,7 @@ describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
   it('Esc cancela el formulario (el servidor recibe cancel)', async () => {
     const a = app()
     await ask(a, 'formulario cuatro')
-    await a.page.getByLabel('Título').press('Escape')
+    await a.page.getByLabel('Título', { exact: true }).press('Escape')
     await expectCount(card(a), 0)
     expect((await status(a)).elicitationReplies.at(-1)).toMatchObject({ action: 'cancel', fields: [] })
   })
