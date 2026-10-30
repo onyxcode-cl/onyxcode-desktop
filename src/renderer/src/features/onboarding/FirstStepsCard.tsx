@@ -73,6 +73,7 @@ export function FirstStepsCard(): React.JSX.Element | null {
       <div
         role="status"
         data-testid="first-steps-farewell"
+        data-glass-card=""
         className="no-drag mx-2.5 mb-2 shrink-0 rounded-[10px] border border-border bg-elevated px-3 py-2.5 text-ui text-fg"
       >
         <span className="flex items-center gap-2">
@@ -98,6 +99,7 @@ export function FirstStepsCard(): React.JSX.Element | null {
     <section
       aria-label={t('firstSteps.aria', { done, total })}
       data-testid="first-steps"
+      data-glass-card=""
       className="no-drag mx-2.5 mb-2 shrink-0 rounded-[10px] border border-border bg-elevated"
     >
       <div className="flex items-center gap-1 pr-1">

@@ -1125,20 +1125,54 @@ html[data-keyboard='open'] [data-surface='mobile'] {
 
 /* ---------- Barra lateral de vidrio ----------
    Solo con `data-glass` (lo pone useSidebarGlass cuando el sistema permite ventana translúcida). La ventana se vuelve
-   transparente y SOLO la barra deja ver el fondo; el contenido (main) vuelve a pintarse opaco. */
-html[data-glass],
-html[data-glass] body {
-  background: transparent;
+   transparente y SOLO la barra (riel + lista, un único vidrio) deja ver el fondo; el contenido (main) es una tarjeta sólida
+   con esquinas redondeadas que flota sobre el vidrio. */
+html[data-glass] {
+  --glass-pill: rgba(255, 255, 255, 0.14);
+  --glass-card: rgba(255, 255, 255, 0.07);
+  --glass-edge: rgba(255, 255, 255, 0.18);
 }
+html[data-glass][data-theme='light'] {
+  --glass-pill: rgba(255, 255, 255, 0.6);
+  --glass-card: rgba(255, 255, 255, 0.5);
+  --glass-edge: rgba(0, 0, 0, 0.08);
+}
+html[data-glass],
+html[data-glass] body,
 html[data-glass] [data-app-root] {
   background: transparent;
 }
 html[data-glass] [data-app-main] {
   background: var(--bg);
+  margin: 10px 10px 10px 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+}
+/* Windows pinta los botones de la ventana arriba a la derecha sobre la banda de título: la tarjeta sube hasta el borde. */
+html[data-glass][data-platform='win32'] [data-app-main] {
+  margin-top: 0;
+  border-top-right-radius: 0;
+  border-top-width: 0;
+}
+html[data-glass] aside.bg-sidebar {
+  border-right-color: transparent;
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 9%, transparent), color-mix(in srgb, var(--accent) 9%, transparent));
 }
 html[data-glass='soft'] aside.bg-sidebar {
   background-color: color-mix(in srgb, var(--bg-sidebar) 74%, transparent);
 }
 html[data-glass='glass'] aside.bg-sidebar {
   background-color: color-mix(in srgb, var(--bg-sidebar) 46%, transparent);
+}
+/* Lo seleccionado de la barra (modo activo, conversación abierta) es una píldora de vidrio con borde fino. */
+html[data-glass] aside.bg-sidebar .bg-active {
+  background-color: var(--glass-pill);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+html[data-glass] aside.bg-sidebar [data-glass-card] {
+  background-color: var(--glass-card);
+  border-color: var(--glass-edge);
+  backdrop-filter: blur(14px);
 }
