@@ -26,7 +26,7 @@ describe('propagación de tasksWin', () => {
     expect(s).toMatch(/resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*policy:/)
     expect(s).toMatch(/capsFor\(process\.platform, \{ tasksWin, remoteWin, computerWin \}\)/)
     expect(s).toMatch(
-      /additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn \}\)/
+      /additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, glass: glassSupported\(\) \}\)/
     )
     expect(s).toMatch(
       /computer: caps\.computer,\s*tasksWin: tasksWinOn,\s*computerWin: computerWinOn,\s*winBackend: tasksWinOn \? await createWinBackend\(\) : undefined/
