@@ -228,7 +228,7 @@ export function ModelControls(): React.JSX.Element {
         <ModelPicker value={effective} onChange={setModel} placement="top" effort={{ variant, onChange: setVariant }} />
       </div>
       <div className="block desk:@max-[30rem]:hidden">
-        <UsageMeter messages={messages ?? []} model={effective} directory={directory} />
+        <UsageMeter messages={messages ?? []} model={effective} directory={directory ?? undefined} />
       </div>
     </div>
   )
