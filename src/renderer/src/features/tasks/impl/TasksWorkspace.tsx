@@ -103,7 +103,6 @@ import {
   disconnect,
   lastFolder,
   loadFullAccessInfo,
-  resync,
   setPanelOpen,
   syncAccessRequests,
   syncAutoMode,
