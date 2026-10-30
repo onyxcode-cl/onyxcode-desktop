@@ -1,5 +1,5 @@
 /**
- * Barra lateral translúcida: macOS usa «vibrancy» del sistema; Windows 11 (compilación 22000 o más) usa Mica («suave») o
+ * Barra lateral translúcida: macOS usa «vibrancy» del sistema (material `fullscreen-ui`: deja pasar más color que `sidebar`, que lo apaga, y sigue el tema claro u oscuro); Windows 11 (compilación 22000 o más) usa Mica («suave») o
  * Acrylic («vidrio»). En el resto (Windows 10, Linux) no hay efecto y la barra queda sólida. Solo es adorno: el renderer pinta
  * opaco todo menos la barra, y si el sistema no puede, nada cambia.
  */
@@ -19,16 +19,16 @@ export function glassSupported(platform: string = process.platform, osRelease: s
   return false
 }
 
-export type GlassPlan = { vibrancy: 'sidebar' | null; material: 'none' | 'mica' | 'acrylic'; transparent: boolean }
+export type GlassPlan = { vibrancy: 'fullscreen-ui' | null; material: 'none' | 'mica' | 'acrylic'; transparent: boolean }
 
 export function glassPlan(level: SidebarGlass, platform: string = process.platform, osRelease: string = release()): GlassPlan {
   if (level === 'solid' || !glassSupported(platform, osRelease)) return { vibrancy: null, material: 'none', transparent: false }
-  if (platform === 'darwin') return { vibrancy: 'sidebar', material: 'none', transparent: true }
+  if (platform === 'darwin') return { vibrancy: 'fullscreen-ui', material: 'none', transparent: true }
   return { vibrancy: null, material: level === 'soft' ? 'mica' : 'acrylic', transparent: true }
 }
 
 /** Opciones de construcción de la ventana (evita un parpadeo al abrir); sin efecto = objeto vacío. */
-export function glassWindowOptions(level: SidebarGlass): { vibrancy?: 'sidebar'; backgroundMaterial?: 'mica' | 'acrylic'; transparentBg: boolean } {
+export function glassWindowOptions(level: SidebarGlass): { vibrancy?: 'fullscreen-ui'; backgroundMaterial?: 'mica' | 'acrylic'; transparentBg: boolean } {
   const p = glassPlan(level)
   return {
     ...(p.vibrancy ? { vibrancy: p.vibrancy } : {}),

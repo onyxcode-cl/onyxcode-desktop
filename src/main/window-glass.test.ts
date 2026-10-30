@@ -15,8 +15,8 @@ describe('barra lateral de vidrio', () => {
   })
 
   it('macOS usa vibrancy en suave y en vidrio; sólida lo apaga', () => {
-    expect(glassPlan('glass', 'darwin', '24.0.0')).toEqual({ vibrancy: 'sidebar', material: 'none', transparent: true })
-    expect(glassPlan('soft', 'darwin', '24.0.0').vibrancy).toBe('sidebar')
+    expect(glassPlan('glass', 'darwin', '24.0.0')).toEqual({ vibrancy: 'fullscreen-ui', material: 'none', transparent: true })
+    expect(glassPlan('soft', 'darwin', '24.0.0').vibrancy).toBe('fullscreen-ui')
     expect(glassPlan('solid', 'darwin', '24.0.0')).toEqual({ vibrancy: null, material: 'none', transparent: false })
   })
 

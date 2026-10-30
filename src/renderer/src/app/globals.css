@@ -1158,13 +1158,13 @@ html[data-glass][data-platform='win32'] [data-app-main] {
 }
 html[data-glass] aside.bg-sidebar {
   border-right-color: transparent;
-  background-image: linear-gradient(color-mix(in srgb, var(--accent) 9%, transparent), color-mix(in srgb, var(--accent) 9%, transparent));
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 7%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
 }
 html[data-glass='soft'] aside.bg-sidebar {
-  background-color: color-mix(in srgb, var(--bg-sidebar) 74%, transparent);
+  background-color: color-mix(in srgb, var(--bg-sidebar) 52%, transparent);
 }
 html[data-glass='glass'] aside.bg-sidebar {
-  background-color: color-mix(in srgb, var(--bg-sidebar) 46%, transparent);
+  background-color: color-mix(in srgb, var(--bg-sidebar) 18%, transparent);
 }
 /* Lo seleccionado de la barra (modo activo, conversación abierta) es una píldora de vidrio con borde fino. */
 html[data-glass] aside.bg-sidebar .bg-active {
