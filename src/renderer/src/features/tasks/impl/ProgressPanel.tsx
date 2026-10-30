@@ -41,6 +41,7 @@ import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { openTaskAnywhere } from './actions'
 import { ScreenshotThumbs } from './ComputerAccess'
 import { TasksProjectCard } from './TasksProjectCard'
+import { ContextDetail } from '../../../components/ContextDetail'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useModeModel } from '../../settings/impl/extras'
 import { describeAction, toolImages } from './computer-tools'
@@ -460,8 +461,9 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
         )}
       </Section>
 
-      <Section icon={Gauge} title={tr('tasks.prog.ctxWindow')} right={<UsageMeter messages={entries} model={model} breakdownClient={tasksClient} directory={tasksDir} />} defaultOpen={false}>
+      <Section icon={Gauge} title={tr('tasks.prog.ctxWindow')} right={<UsageMeter messages={entries} model={model} />} defaultOpen={false}>
         <p className="text-xs text-subtle">{tr('tasks.prog.ctxWindow.help')}</p>
+        <ContextDetail messages={entries} model={model} breakdownClient={tasksClient} directory={tasksDir} />
       </Section>
 
       <Section

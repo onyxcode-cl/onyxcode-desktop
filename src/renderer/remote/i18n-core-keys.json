@@ -1198,6 +1198,8 @@
  "ctx.cat.skills",
  "ctx.cat.system",
  "ctx.cat.tools",
+ "ctx.detail.hide",
+ "ctx.detail.show",
  "ctx.list.mcp",
  "ctx.list.memory",
  "errors.auth.message",

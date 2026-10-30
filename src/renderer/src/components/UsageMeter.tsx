@@ -14,7 +14,6 @@ import { useProviders } from '../stores/providers'
 import { useServer } from '../stores/server'
 import { useUi } from '../stores/ui'
 import { isRemoteSurface } from '../lib/platform'
-import { ContextBreakdown, useContextoFijo } from './ContextBreakdown'
 
 interface Agg {
   cost: number
@@ -102,14 +101,9 @@ function Stat({ label, value }: { label: string; value: string }): React.JSX.Ele
 export function UsageMeter({
   messages,
   model,
-  breakdownClient,
-  directory
 }: {
   messages: { info: Message }[]
   model: ModelRef
-  /** Cliente del servidor que tiene la sesión (Overdrive: el de la carpeta); por defecto el global. */
-  breakdownClient?: OpencodeClient | null
-  directory?: string
 }): React.JSX.Element | null {
   const t = useT()
   const providers = useProviders((s) => s.providers)
@@ -117,7 +111,6 @@ export function UsageMeter({
   const [open, setOpen] = useState(false)
   const [global, setGlobal] = useState<GlobalUsage | 'loading' | 'error'>('loading')
   const rootRef = useRef<HTMLDivElement>(null)
-  const fijo = useContextoFijo(breakdownClient ?? client, messages[0]?.info.sessionID, directory, open)
 
   const info = providers.find((p) => p.id === model.providerID)?.models[model.modelID]
 
@@ -192,21 +185,17 @@ export function UsageMeter({
       </button>
 
       {open && (
-        <div className="absolute right-0 bottom-full z-50 mb-2 w-80 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-3.5 shadow-xl">
+        <div className="absolute right-0 bottom-full z-50 mb-2 w-72 animate-pop-in origin-bottom-right rounded-xl border border-border bg-elevated p-3.5 shadow-xl">
           <div className="mb-1.5 flex items-baseline justify-between">
             <span className="text-[13px] font-medium">{t('settings.usage.meter.context')}</span>
             <span className="text-[13px] tabular-nums text-muted">{pct}%</span>
           </div>
-          {fijo?.desglose ? (
-            <ContextBreakdown used={session.context} limit={limit} fijo={fijo} />
-          ) : (
-            <div className="h-1.5 overflow-hidden rounded-full bg-inset">
-              <div
-                className={`h-full rounded-full transition-[width] duration-500 ${pct > 85 ? 'bg-danger' : pct > 60 ? 'bg-warning' : 'bg-accent'}`}
-                style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
-              />
-            </div>
-          )}
+          <div className="h-1.5 overflow-hidden rounded-full bg-inset">
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 ${pct > 85 ? 'bg-danger' : pct > 60 ? 'bg-warning' : 'bg-accent'}`}
+              style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
+            />
+          </div>
           <p className="mt-1.5 text-[12px] text-subtle">
             {t('settings.usage.meter.contextOf', { used: formatTokens(session.context), limit: formatTokens(limit), model: info.name })}
           </p>

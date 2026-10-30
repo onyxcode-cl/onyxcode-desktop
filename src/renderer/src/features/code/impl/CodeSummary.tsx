@@ -1,5 +1,6 @@
 /** Panel «Resumen» de Code: las mismas tarjetas que el de Overdrive (Ficha del proyecto, Plan, Contexto y Cambios) para el proyecto abierto. */
 import { ChevronRight, Gauge, GitCompare, ListChecks } from 'lucide-react'
+import { ContextDetail } from '../../../components/ContextDetail'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useT } from '../../../lib/i18n'
 import { useModeModel } from '../../settings/impl/extras'
@@ -46,10 +47,11 @@ export function CodeSummary({
           <Gauge size={15} className="text-muted" aria-hidden />
           {t('tasks.prog.ctxWindow')}
           <span className="ml-auto">
-            <UsageMeter messages={messages ?? []} model={effective} directory={directory} />
+            <UsageMeter messages={messages ?? []} model={effective} />
           </span>
         </h3>
         <p className="mt-1 text-xs text-subtle">{t('tasks.prog.ctxWindow.help')}</p>
+        <ContextDetail messages={messages ?? []} model={effective} directory={directory} />
       </section>
       <button
         type="button"

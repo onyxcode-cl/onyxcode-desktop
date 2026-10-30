@@ -181,6 +181,8 @@ export const settings = {
   'ctx.cat.free': 'Espacio libre',
   'ctx.list.mcp': 'Herramientas MCP',
   'ctx.list.memory': 'Archivos de memoria',
+  'ctx.detail.show': 'Ver desglose',
+  'ctx.detail.hide': 'Ocultar desglose',
   'ctx.approx': '≈ Estimado por el motor; el total usado es exacto.',
   'settings.usage.meter.detail': 'Ver detalle de uso',
 
