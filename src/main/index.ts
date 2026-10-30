@@ -12,6 +12,7 @@ import { OpencodeServer } from './opencode/server'
 import { killStaleServers } from './opencode/pids'
 import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir'
 import { settingsStore } from './store'
+import { applyGlass, glassSupported, glassWindowOptions } from './window-glass'
 import { installMotorApp, motorHomeDir, motorPaths } from './opencode/motor-app'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
 import { permissionDir } from './opencode/permission-store'
@@ -153,6 +154,7 @@ async function createWinBackend(): Promise<import('./tasks/backends').WinBackend
 }
 
 function createWindow(): BrowserWindow {
+  const glass = glassWindowOptions(settingsStore.get().sidebarGlass)
   const win = new BrowserWindow({
     ...initialBounds(),
     // En Windows el menú queda oculto (Alt lo muestra); los aceleradores siguen activos.
@@ -161,7 +163,9 @@ function createWindow(): BrowserWindow {
     title: DISPLAY_NAME,
     // macOS: semáforos integrados; Windows: `hidden` + overlay de controles nativos; Linux: marco estándar (shared/window-chrome).
     ...titleBarOptions(process.platform, themeOf(nativeTheme)),
-    backgroundColor: nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,
+    backgroundColor: glass.transparentBg ? '#00000000' : nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,
+    ...(glass.vibrancy ? { vibrancy: glass.vibrancy } : {}),
+    ...(glass.backgroundMaterial ? { backgroundMaterial: glass.backgroundMaterial } : {}),
     webPreferences: {
       preload: preloadPath('index'),
       sandbox: true,
@@ -170,10 +174,14 @@ function createWindow(): BrowserWindow {
       webviewTag: false,
       devTools: !app.isPackaged,
       // Banderas de capacidades para el preload (solo la ventana principal; los preloads secundarios no las reciben).
-      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn })
+      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, glass: glassSupported() })
     }
   })
   registerWindowRole(win.webContents, 'main')
+  // La barra lateral translúcida se puede cambiar en Ajustes con la ventana abierta.
+  const solidBg = (): string => (nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight)
+  const offGlass = settingsStore.onChange((st) => applyGlass(win, st.sidebarGlass, solidBg()))
+  win.once('closed', offGlass)
   if (process.platform === 'win32') {
     // El tema (claro/oscuro/sistema, alto contraste) puede cambiar con la ventana abierta: se repintan los controles nativos.
     const onTheme = (): void => void syncTitleBarOverlay(win, nativeTheme)

@@ -79,6 +79,8 @@ export interface CapsFlags {
    * resuelve `src/main/remote/remote-win-flag.ts`; no depende de `tasksWin` (el remoto expone Chat y Code; Tareas solo si existe).
    */
   remoteWin?: boolean
+  /** La ventana puede ser translúcida (vibrancy en macOS, Mica/Acrylic en Windows 11). Solo adorno: la resuelve `main`. */
+  glass?: boolean
 }
 
 /** Valor de `window.api.platform` en la PWA del celular. */

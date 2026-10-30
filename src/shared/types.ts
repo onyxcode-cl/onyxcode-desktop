@@ -50,9 +50,13 @@ export interface CodeExtrasFlags {
   review: boolean
 }
 
+/** Barra lateral: sólida, o translúcida («vidrio suave» / «vidrio»); solo se nota donde el sistema lo permite (`CapsFlags.glass`). */
+export type SidebarGlass = 'solid' | 'soft' | 'glass'
+
 export interface Settings {
   defaultModel: ModelRef
   theme: ThemePreference
+  sidebarGlass: SidebarGlass
   recentFolders: string[]
   /** Instrucciones globales aplicadas a todas las tareas de Tareas (además de las del proyecto). */
   tasksGlobalInstructions: string
@@ -111,6 +115,7 @@ export const DEFAULT_MODEL: ModelRef = { providerID: 'opencode-go', modelID: 'de
 export const DEFAULT_SETTINGS: Settings = {
   defaultModel: DEFAULT_MODEL,
   theme: 'system',
+  sidebarGlass: 'glass',
   recentFolders: [],
   tasksGlobalInstructions: '',
   userInstructions: '',

@@ -33,7 +33,7 @@ import { useQuickNotice } from '../lib/quick-notice'
 import { UpdateNotice } from './UpdateNotice'
 import { ServerBanner } from './ServerBanner'
 import { Sidebar } from './Sidebar'
-import { useTheme } from './useTheme'
+import { useSidebarGlass, useTheme } from './useTheme'
 import { MobileShell } from './mobile/MobileShell'
 import { useT } from '../lib/i18n'
 import { isMacPlatform, platformCaps, useIsRemote } from '../lib/platform'
@@ -46,6 +46,7 @@ import { useKeybindings } from '../keybindings/dispatch'
  */
 function useAppRuntime(): void {
   useTheme()
+  useSidebarGlass()
 
   useEffect(() => {
     const offSettings = useSettings.getState().init()
@@ -192,7 +193,7 @@ function DesktopApp(): React.JSX.Element {
   const listInFlow = !!MODES_BY_ID[mode].SidebarContent && !listCollapsed && !narrow
 
   return (
-    <div className="flex h-full bg-bg">
+    <div data-app-root="" className="flex h-full bg-bg">
       <ConfirmDialogHost />
       <LiveAnnouncer />
       <ExportConversationHost />
@@ -213,6 +214,7 @@ function DesktopApp(): React.JSX.Element {
       {/* `--header-inset`: hueco que las cabeceras reservan a la izquierda cuando solo se ve el riel (56 px: modos y «Mostrar» dentro): en macOS lo que falta para pasar los semáforos (80 px menos los 56 de la barra); en Windows y Linux, nada.
           Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
       <main
+        data-app-main=""
         className="relative flex min-w-0 flex-1 flex-col"
         // Lista superpuesta (ventana angosta): pulsar el contenido la cierra.
         onMouseDownCapture={narrow && !listCollapsed ? () => useUi.getState().toggleSidebar() : undefined}

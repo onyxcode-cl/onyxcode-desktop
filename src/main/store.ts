@@ -71,6 +71,7 @@ class SettingsStore {
 
 function normalize(s: Settings): Settings {
   const theme = s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system'
+  const sidebarGlass = s.sidebarGlass === 'solid' || s.sidebarGlass === 'soft' ? s.sidebarGlass : 'glass'
   const dm = s.defaultModel
   const defaultModel = dm && typeof dm.providerID === 'string' && typeof dm.modelID === 'string' ? dm : DEFAULT_SETTINGS.defaultModel
   const recentFolders = Array.isArray(s.recentFolders)
@@ -88,6 +89,7 @@ function normalize(s: Settings): Settings {
   return {
     defaultModel,
     theme,
+    sidebarGlass,
     recentFolders,
     tasksGlobalInstructions,
     userInstructions,

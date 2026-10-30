@@ -1122,3 +1122,23 @@ html[data-keyboard='open'] [data-surface='mobile'] {
     animation: none;
   }
 }
+
+/* ---------- Barra lateral de vidrio ----------
+   Solo con `data-glass` (lo pone useSidebarGlass cuando el sistema permite ventana translúcida). La ventana se vuelve
+   transparente y SOLO la barra deja ver el fondo; el contenido (main) vuelve a pintarse opaco. */
+html[data-glass],
+html[data-glass] body {
+  background: transparent;
+}
+html[data-glass] [data-app-root] {
+  background: transparent;
+}
+html[data-glass] [data-app-main] {
+  background: var(--bg);
+}
+html[data-glass='soft'] aside.bg-sidebar {
+  background-color: color-mix(in srgb, var(--bg-sidebar) 74%, transparent);
+}
+html[data-glass='glass'] aside.bg-sidebar {
+  background-color: color-mix(in srgb, var(--bg-sidebar) 46%, transparent);
+}

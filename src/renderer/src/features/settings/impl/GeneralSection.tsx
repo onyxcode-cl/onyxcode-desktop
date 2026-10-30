@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, Monitor, Moon, RotateCw, Sun } from 'lucide-react'
-import type { ThemePreference } from '@shared/types'
+import type { SidebarGlass, ThemePreference } from '@shared/types'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { MODE_LABELS } from '@shared/labels'
@@ -10,7 +10,7 @@ import { useT } from '../../../lib/i18n'
 import { READING_MODES, useReadingMode, useWorkView, type ReadingMode, type WorkSurface } from '../../../lib/reading-mode'
 import { applyTextSize, getTextSize, TEXT_SIZES, type TextSizeId } from '../../../lib/text-size'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
-import { isRemoteSurface, platformCaps } from '../../../lib/platform'
+import { currentFlags, isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { PlatformNote } from '../../../components/PlatformNote'
 import { UI_LABELS } from '@shared/labels'
 import { loadPendingLearned, subscribePendingLearned, usePendingLearned } from '../../routines/impl/pending-store'
@@ -249,6 +249,7 @@ export function GeneralSection(): React.JSX.Element {
       {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
       {!phone && <AccentPicker />}
       {!phone && <TextSizePicker />}
+      {!phone && currentFlags().glass === true && <SidebarGlassPicker />}
       {!phone && <WorkViewPicker />}
 
       <SubTitle>{t('settings.general.preferences')}</SubTitle>
@@ -466,5 +467,39 @@ function WorkViewRow({ surface, label }: { surface: WorkSurface; label: string }
         ))}
       </div>
     </div>
+  )
+}
+
+/** Barra lateral: sólida o de vidrio (translúcida). Solo se ofrece donde el sistema lo permite. */
+function SidebarGlassPicker(): React.JSX.Element {
+  const t = useT()
+  const level = useSettings((s) => s.settings.sidebarGlass)
+  const update = useSettings((s) => s.update)
+  const options: Array<{ id: SidebarGlass; label: MsgKey }> = [
+    { id: 'solid', label: 'settings.general.glass.solid' },
+    { id: 'soft', label: 'settings.general.glass.soft' },
+    { id: 'glass', label: 'settings.general.glass.glass' }
+  ]
+  return (
+    <>
+      <h3 className="mt-6 mb-1 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-1 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
+        {t('settings.general.glass')}
+      </h3>
+      <p className="mb-2.5 max-w-xl text-xs text-muted">{t('settings.general.glass.hint')}</p>
+      <div role="radiogroup" aria-label={t('settings.general.glass')} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">
+        {options.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={level === id}
+            onClick={() => void update({ sidebarGlass: id })}
+            className={`rounded-lg px-4 py-1.5 text-sm transition ${level === id ? 'bg-elevated font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
+          >
+            {t(label)}
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
