@@ -16,6 +16,10 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Barra de Code**: los paneles en una cápsula y todo lo demás (Ficha, vista del trabajo, memoria, exportar, bifurcar, compactar) en el menú «⋯».
 - Canales `project:*` y `tasks:access:apply`: prohibidos desde el celular (clase X). Sin cambios en zonas intocables.
 
+### Contexto detallado y motor nuevo
+- **Desglose del contexto, como el `/context` de Claude Code**: en la tarjeta «Contexto» del panel derecho (Code y Overdrive) el botón «Ver desglose» abre una barra apilada y una tabla con los tokens y el % de cada parte: mensajes, instrucciones y herramientas del sistema, herramientas e instrucciones de MCP, skills, archivos de memoria, reserva de autocompactado y espacio libre. Las listas de herramientas MCP y de archivos de memoria se despliegan. Lo estimado lleva «≈»; el total usado es exacto. El medidor del compositor sigue corto para no tapar la conversación.
+- **Motor lazunox.14**: calcula ese desglose (nuevo punto `contexto-fijo`) y entrega la ventana real del modelo. Con un motor anterior la app sigue mostrando la barra simple.
+
 ### Novedades
 
 - **Las Tareas (Overdrive) hacen presentaciones, Word, Excel y PDF con el mismo motor y la misma guía de diseño que el Chat, también en Windows.** Antes el Chat daba mejores resultados y en Windows las Tareas caían a un diseño sobrio de respaldo (el Linux aislado donde corren no tiene Node ni el diseñador de documentos). Ahora la propia app arma el archivo con el mismo motor del Chat (herramienta nueva `documentos`, que solo crea archivos NUEVOS dentro de la carpeta de la tarea y nunca pisa uno existente) y la IA puede mirar cómo quedaron las diapositivas y las páginas antes de entregarlas. Code usa el mismo motor mediante los scripts de las skills (necesita Node, que se instala desde Ajustes). Ahora el diseño se inventa distinto cada vez (sin plantilla fija) y, al pedir una presentación, la IA pregunta si la quieres editable (.pptx) o en HTML.
