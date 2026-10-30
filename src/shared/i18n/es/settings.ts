@@ -174,7 +174,7 @@ export const settings = {
   'ctx.cat.system': 'Instrucciones del sistema',
   'ctx.cat.tools': 'Herramientas del sistema',
   'ctx.cat.mcp': 'Herramientas MCP',
-  'ctx.cat.mcpInstr': 'Instrucciones de servidores MCP',
+  'ctx.cat.mcpInstr': 'Instrucciones de MCP',
   'ctx.cat.skills': 'Skills',
   'ctx.cat.memory': 'Archivos de memoria',
   'ctx.cat.buffer': 'Reserva de autocompactado',
