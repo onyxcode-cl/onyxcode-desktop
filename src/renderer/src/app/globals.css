@@ -1185,8 +1185,10 @@ html[data-glass] [data-app-main]:has([data-settings-root]) {
 html[data-glass] [data-settings-tabs] [class*='text-muted'] {
   color: color-mix(in srgb, var(--fg) 82%, transparent);
 }
-/* Textos de ayuda de Ajustes sobre el vidrio: más contraste para que se lean sobre cualquier fondo. */
-html[data-glass] [data-settings-pane] [class*='text-muted'] {
+/* Textos de ayuda de Ajustes sobre el vidrio: más contraste para que se lean sobre cualquier fondo. Los botones primario y de
+   peligro llevan `desk:disabled:text-muted` (solo al estar desactivados): sin la exclusión, su texto pasaba a gris claro sobre el
+   acento (contraste ~2:1). */
+html[data-glass] [data-settings-pane] [class*='text-muted']:not([class~='text-accent-fg'], [class~='text-danger-fg']) {
   color: color-mix(in srgb, var(--fg) 82%, transparent);
 }
 html[data-glass] [data-settings-pane] [class*='text-subtle'] {
@@ -1198,7 +1200,29 @@ html[data-glass][data-theme='light'] [data-app-main]:has([data-settings-root]) {
   background: color-mix(in srgb, var(--bg) 45%, transparent);
   border-color: var(--glass-edge);
 }
-html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-muted'] {
+/* En oscuro, lo mismo con un velo oscuro leve: sobre un vidrio gris medio (escritorio claro) los títulos y ayudas quedaban en
+   ~4,2:1 y las píldoras elegidas en ~4,1:1 (medido con axe en ajustes-vidrio.e2e.ts). */
+html[data-glass][data-theme='dark'] [data-app-main]:has([data-settings-root]) {
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
+}
+/* Estados (Conectado, Permitido, «con limitaciones») sobre el vidrio claro de color: el verde y el ámbar normales quedaban en
+   ~3,6–4:1. Un tono más oscuro solo dentro de Ajustes. */
+html[data-glass][data-theme='light'] [data-settings-pane] {
+  --success: #0e5a2b;
+  --warning: #7a3606;
+}
+/* Texto en acento o en rojo (insignia «Ver y clic», «Quitar», «Borrar datos») sobre vidrio gris medio o de color: quedaba en
+   ~3,5–4,3:1. Se acerca al color del texto (más claro en oscuro, más oscuro en claro) sin tocar los fondos de los botones. */
+html[data-glass] [data-settings-pane] [class~='text-accent']:not(svg) {
+  color: color-mix(in srgb, var(--accent) 65%, var(--fg));
+}
+html[data-glass][data-theme='light'] [data-settings-pane] [class~='text-accent']:not(svg) {
+  color: color-mix(in srgb, var(--accent) 75%, var(--fg));
+}
+html[data-glass] [data-settings-pane] [class~='text-danger']:not(svg) {
+  color: color-mix(in srgb, var(--danger) 75%, var(--fg));
+}
+html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-muted']:not([class~='text-accent-fg'], [class~='text-danger-fg']) {
   color: color-mix(in srgb, var(--fg) 86%, transparent);
 }
 html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-subtle'] {
