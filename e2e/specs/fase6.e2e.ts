@@ -30,7 +30,7 @@ describe.skipIf(MODE === 'prod')(`fase 6 (${MODE})`, () => {
   let orphanBusy: string[] = []
   let projectDir = ''
   afterAll(() => {
-    if (projectDir) rmSync(projectDir, { recursive: true, force: true })
+    if (projectDir) rmSync(projectDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('1. evento con directorio ajeno no aparece en la lista de Chat', async () => {

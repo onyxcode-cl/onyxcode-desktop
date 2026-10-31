@@ -47,7 +47,7 @@ function repliesCounter(app: () => E2EApp): () => Promise<number> {
 
 describe.skipIf(!DEV)('permisos de escritorio (ND): Code', () => {
   const dir = makeGitRepo()
-  afterAll(() => rmSync(dir, { recursive: true, force: true }))
+  afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }))
   const app = useApp()
   const permissionReplies = repliesCounter(app)
 

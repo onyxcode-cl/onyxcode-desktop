@@ -371,7 +371,15 @@ export function ElicitationCard({ request, trusted, helperLabel, onSubmit }: Eli
               {busy ? t('code.elicitation.sending') : t('code.elicitation.send', { server: request.server })}
             </span>
           </Button>
-          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => run('decline')}>
+          {/* Sin `onMouseDown` el clic quita el foco del campo vacío, aparece su error «obligatorio», el pie baja y el clic cae en el aire. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => run('decline')}
+          >
             {t('code.elicitation.decline')}
           </Button>
           <span className="ml-auto text-xs text-muted">{t('code.elicitation.escHint')}</span>

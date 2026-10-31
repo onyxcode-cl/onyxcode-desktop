@@ -1,7 +1,7 @@
 // Code: denegar la confianza de una carpeta no deja nada a medias; abrir otra después deja Code usable.
-import { rmSync } from 'node:fs'
 import { afterAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
+import { rmTemp } from '../lib/limpieza'
 import { makeGitRepo } from '../lib/fase6'
 import { stubDialog } from '../lib/dialogs'
 import { storeState } from '../lib/stores'
@@ -12,7 +12,7 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
   const repoA = makeGitRepo('lazunox-e2e-trust-a-')
   const repoB = makeGitRepo('lazunox-e2e-trust-b-')
   afterAll(() => {
-    for (const d of [repoA, repoB]) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
+    for (const d of [repoA, repoB]) rmTemp(d)
   })
 
   it('cancelar → otra carpeta → Code se puede usar', async () => {
@@ -72,7 +72,7 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       await a.page.getByRole('button', { name: 'Enviar' }).click()
       await expectVisible(a.page.getByText('Respuesta simulada: segundo mensaje'), 30_000)
     } finally {
-      for (const d of [repoC, repoD]) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
+      for (const d of [repoC, repoD]) rmTemp(d)
     }
   })
 
@@ -111,7 +111,7 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       await a.page.getByRole('button', { name: 'Enviar' }).click()
       await expectVisible(a.page.getByText('Respuesta simulada: tras denegar al arrancar'), 30_000)
     } finally {
-      for (const d of [repoE, repoF]) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
+      for (const d of [repoE, repoF]) rmTemp(d)
     }
   })
 })

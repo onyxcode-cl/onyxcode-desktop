@@ -94,7 +94,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: Ajustes, Rutinas y diálogos (${
     join(userData, 'routines.json'),
     JSON.stringify({ routines: [routine('r-on', 'Rutina activa e2e', true), routine('r-off', 'Rutina pausada e2e', false)], history: [] })
   )
-  afterAll(() => rmSync(userData, { recursive: true, force: true }))
+  afterAll(() => rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }))
   const app = useApp({ userData, settings: { routinesTermsAcknowledged: false } })
 
   it('Ajustes: todas las secciones sin violaciones', async () => {
@@ -240,7 +240,7 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
   afterAll(async () => {
     await app?.stop()
     fakeBin.dispose()
-    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true })
+    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('los cinco pasos del asistente, sin violaciones y con el foco contenido', async () => {

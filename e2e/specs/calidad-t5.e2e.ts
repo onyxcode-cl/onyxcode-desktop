@@ -32,7 +32,7 @@ describe.skipIf(MODE === 'prod')(`calidad T5 (${MODE})`, () => {
   afterAll(() => {
     res.folder?.cleanup()
     res.bin?.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   async function expectClean(view: string): Promise<void> {

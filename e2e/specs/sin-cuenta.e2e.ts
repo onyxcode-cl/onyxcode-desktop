@@ -15,7 +15,7 @@ const dirs: string[] = []
 afterEach(async (ctx) => {
   for (const a of apps) await a.assertClean(ctx.task.name)
   for (const a of apps.splice(0)) await a.stop()
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
 })
 
 function newDir(): string {

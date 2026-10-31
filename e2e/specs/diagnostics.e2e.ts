@@ -18,7 +18,7 @@ import { IS_WIN } from '../lib/proc'
 const DEV = MODE === 'dev'
 const SHOTS = process.env.DIAG_SHOTS_DIR
 const out = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-diag-')))
-afterAll(() => rmSync(out, { recursive: true, force: true }))
+afterAll(() => rmSync(out, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }))
 
 const STORED_KEY = 'clave-guardada-sin-forma-0123'
 const MCP_SECRET = 'cabecera-mcp-secreta-4567'

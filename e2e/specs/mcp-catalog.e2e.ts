@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Locator, Page } from 'playwright-core'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { openedUrls, stubOpenExternal } from '../lib/dialogs'
 import { MODE, type E2EApp } from '../lib/launch'
@@ -23,6 +23,12 @@ const shot = (app: E2EApp, name: string, widths?: number[]): Promise<void> => ta
 
 describe.skipIf(!DEV)('Catálogo MCP', () => {
   const app = useApp()
+  const oldPorts = new Set<string>()
+  // Los motores viejos ya apagados dejan lecturas rezagadas con ERR_CONNECTION_REFUSED; no son un fallo de la prueba que corre.
+  // (Se registra después de `useApp`: con el orden de pila de vitest corre ANTES de la comprobación de errores del arnés.)
+  afterEach(() => {
+    if (oldPorts.size) consumeErrors(app(), new RegExp(`ERR_CONNECTION_REFUSED \\(http://127\\.0\\.0\\.1:(${[...oldPorts].join('|')})/`))
+  })
   const cfgPath = (): string => join(app().userData, 'opencode', 'opencode.json')
   const provPath = (): string => join(app().userData, 'mcp-catalog-installs.json')
   const cfgRaw = (): string => readFileSync(cfgPath(), 'utf8')
@@ -43,10 +49,18 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
     const { page } = app()
     await expect.poll(async () => ((await engineUrl(page)) ?? oldUrl) !== oldUrl, { timeout: 60_000 }).toBe(true)
     await app().connectFake()
-    const oldPort = new URL(oldUrl).port
-    const stale = new RegExp(`(ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_CONNECTION_REFUSED) \\(http://127\\.0\\.0\\.1:${oldPort}/`)
-    await page.waitForTimeout(500)
-    consumeErrors(app(), stale)
+    // Puertos de TODOS los motores anteriores: las lecturas que aún apuntaban a un motor viejo pueden fallar más tarde (en Windows
+    // llegan después de la espera corta), y ese ruido caería en la prueba siguiente.
+    oldPorts.add(new URL(oldUrl).port)
+    const stale = new RegExp(
+      `(ERR_INCOMPLETE_CHUNKED_ENCODING|ERR_CONNECTION_REFUSED) \\(http://127\\.0\\.0\\.1:(${[...oldPorts].join('|')})/`
+    )
+    // Se consume hasta que no llegue ningún error viejo más durante ~1 s seguido.
+    let quiet = 0
+    for (let i = 0; i < 20 && quiet < 2; i++) {
+      await page.waitForTimeout(500)
+      quiet = consumeErrors(app(), stale) > 0 ? 0 : quiet + 1
+    }
   }
 
   const dialog = (page: Page): Locator => page.getByRole('dialog', { name: /^Añadir / })
@@ -160,13 +174,17 @@ describe.skipIf(!DEV)('Catálogo MCP', () => {
   it('(4) nombre repetido: propone «-2» y bloquea escribir el mismo', async () => {
     const { page } = app()
     const before = cfgRaw()
-    const d = await open(page, 'Context7')
+    // Context7 ya está añadido (su botón queda en «Añadido» y no se duplica): el nombre repetido se prueba con OTRA ficha,
+    // escribiendo el nombre de un servidor que ya existe.
+    expect(await card(page, 'Context7').getByRole('button', { name: 'Añadir Context7' }).isDisabled()).toBe(true)
+    const d = await open(page, 'Cloudflare Docs')
     const name = d.getByLabel('Nombre del servidor')
-    expect(await name.inputValue()).toBe('context7-2')
+    expect(await name.inputValue()).toBe('cloudflare-docs')
     await name.fill('context7')
     await expectVisible(d.getByText(/Ya existe un servidor llamado "context7"\. Prueba con "context7-2"/))
     expect(await d.getByRole('button', { name: 'Añadir y conectar' }).isDisabled()).toBe(true)
     await d.getByRole('button', { name: 'Cancelar' }).click()
+    await expectCount(dialog(page), 0)
     expect(cfgRaw()).toBe(before)
   })
 

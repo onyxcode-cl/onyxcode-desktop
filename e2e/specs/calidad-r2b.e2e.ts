@@ -91,7 +91,7 @@ async function ghostSessions(post: (title: string) => Promise<unknown>, prefix: 
 describe.skipIf(!DEV)('R2-B: más de 200 sesiones en Code', () => {
   const app = useApp()
   let dir = ''
-  afterAll(() => dir && rmSync(dir, { recursive: true, force: true }))
+  afterAll(() => dir && rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }))
 
   it('«Cargar más» muestra todas y ⌘K encuentra las de más allá de 200', async () => {
     const a = app()

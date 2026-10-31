@@ -30,7 +30,7 @@ describe.skipIf(MODE === 'prod')(`calidad R3-B: descartar bloque y conservar lo 
     await app()
       .stop()
       .catch(() => undefined)
-    rmSync(trashDir, { recursive: true, force: true })
+    rmSync(trashDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
     if (repo) rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
   })
   const git = (...a: string[]): string => execFileSync('git', ['-C', repo, ...a], { encoding: 'utf8' })

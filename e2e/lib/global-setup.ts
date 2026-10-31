@@ -12,7 +12,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 let vite: ViteDevServer | null = null
 
 export async function setup(): Promise<void> {
-  rmSync(join(root, 'e2e', '.artifacts'), { recursive: true, force: true })
+  rmSync(join(root, 'e2e', '.artifacts'), { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   if (process.env.E2E_SKIP_BUILD !== '1') {
     // Con node y el .js del paquete: `.bin/electron-vite` es un script de shell (en Windows, un .cmd que spawnSync no ejecuta).
     const bin = join(root, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js')

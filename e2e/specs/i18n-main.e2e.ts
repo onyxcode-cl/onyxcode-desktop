@@ -33,7 +33,7 @@ async function shotPage(page: Page, name: string): Promise<void> {
 describe.skipIf(!DEV)('T4c: error del asistente en inglés', () => {
   const dirs: string[] = []
   afterAll(() => {
-    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+    for (const d of dirs) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('«No se encontró el motor de la IA» sale en inglés (y en español con es)', async () => {

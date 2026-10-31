@@ -112,7 +112,7 @@ describe.skipIf(!IS_WIN || !OPT_IN)('Control del PC en Windows (helper real, ven
 
   afterAll(async () => {
     await app?.stop()
-    if (tmp) rmSync(tmp, { recursive: true, force: true })
+    if (tmp) rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('consultas basicas: version, screens, cursor y permissions (sin consentimiento)', async () => {

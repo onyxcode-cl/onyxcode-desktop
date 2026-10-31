@@ -30,7 +30,7 @@ mkdirSync(join(fakeHome, 'Documents'))
 afterAll(() => {
   fakeBin.dispose()
   work.dispose()
-  rmSync(fakeHome, { recursive: true, force: true })
+  rmSync(fakeHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
 })
 
 const shot = (app: E2EApp, name: string, widths?: number[]): Promise<void> => takeShot(app, SHOTS, name, widths)

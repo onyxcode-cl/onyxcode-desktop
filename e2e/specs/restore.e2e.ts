@@ -24,7 +24,7 @@ const trashDir = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-e2e-trash-')))
 afterAll(() => {
   fakeBin.dispose()
   work.dispose()
-  rmSync(trashDir, { recursive: true, force: true })
+  rmSync(trashDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
 })
 
 const A_ORIG = 'uno\ndos\ntres\n'

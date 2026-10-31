@@ -24,7 +24,7 @@ export function fakeOutsideUserData(): { bin: string; dispose: () => void } {
     // queda huérfano. Se mata por la ruta única de esta copia.
     dispose: () => {
       killByPath(dir)
-      rmSync(dir, { recursive: true, force: true })
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
     }
   }
 }
@@ -40,7 +40,7 @@ export function killByPath(path: string): void {
  */
 export function makeTasksDir(): { dir: string; dispose: () => void } {
   const dir = realpathSync(mkdtempSync(join(homedir(), 'lazunox-e2e-cw-')))
-  return { dir, dispose: () => rmSync(dir, { recursive: true, force: true }) }
+  return { dir, dispose: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }) }
 }
 
 export interface PageServer {

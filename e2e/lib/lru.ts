@@ -102,13 +102,13 @@ export async function setLocalAndReload(app: E2EApp, entries: Record<string, str
 export function prepareFakeBin(): { env: Record<string, string>; cleanup: () => void } {
   const dir = mkdtempSync(join(process.platform === 'darwin' ? '/private/tmp' : tmpdir(), 'lazunox-e2e-fakebin-'))
   for (const f of ['opencode', 'server.mjs']) cpSync(join(ROOT, 'e2e', 'fake-opencode', f), join(dir, f))
-  return { env: { OPENCODE_BIN: join(dir, FAKE_BIN_NAME) }, cleanup: () => rmSync(dir, { recursive: true, force: true }) }
+  return { env: { OPENCODE_BIN: join(dir, FAKE_BIN_NAME) }, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }) }
 }
 
 /** Carpeta temporal DENTRO del home (Tareas rechaza `/private`, `/tmp`… como «carpeta del sistema»). */
 export function makeHomeFolder(): { path: string; cleanup: () => void } {
   const path = realpathSync(mkdtempSync(join(homedir(), '.lazunox-e2e-lru-')))
-  return { path, cleanup: () => rmSync(path, { recursive: true, force: true }) }
+  return { path, cleanup: () => rmSync(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }) }
 }
 
 export interface TasksConn {

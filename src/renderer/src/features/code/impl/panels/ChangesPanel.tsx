@@ -145,6 +145,13 @@ async function loadDiff(cwd: string, file: Pick<ChangedFile, 'path' | 'kind'>, s
   if (text.trim()) return text
   const client = getClient()
   if (!client) return text
+  // El archivo pudo borrarse (fuera de la app) mientras el estado en pantalla aún lo listaba: se confirma con un estado fresco
+  // para no pedir al motor el contenido de un archivo que ya no existe (404 en consola) ni mostrar un error por ello.
+  const native = nativeCode()
+  if (native) {
+    const fresh = await native.git.status(cwd).catch(() => null)
+    if (fresh && !fresh.files.some((f) => f.path === file.path)) return text
+  }
   const res = await client.file.read({ directory: cwd, path: file.path })
   if (res.data?.diff) return res.data.diff
   // Archivo nuevo sin seguimiento: se muestra todo como añadido.
@@ -834,7 +841,9 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
 
   const selectedFile = status?.files.find((f) => f.path === selected?.path) ?? null
   const selStaged = selected?.staged ?? false
-  // El objeto `selectedFile` cambia en cada refresh: el diff solo depende de path/kind/staged (+ fsVersion).
+  // El objeto `selectedFile` cambia en cada refresh: el diff solo depende de path/kind/staged y de que haya llegado un estado nuevo.
+  // Se recarga con `status` y NO con `fsVersion` directo: si un archivo se borra fuera de la app, `fsVersion` sube antes de que el
+  // estado se refresque y se pediría el contenido de un archivo que ya no existe (404 en consola); con el estado nuevo ya no está.
   const selPath = selectedFile?.path ?? null
   const selKind = selectedFile?.kind ?? null
   useEffect(() => {
@@ -857,7 +866,7 @@ export function ChangesPanel({ directory }: { directory: string }): React.JSX.El
     return () => {
       cancelled = true
     }
-  }, [directory, selPath, selKind, selStaged, fsVersion])
+  }, [directory, selPath, selKind, selStaged, status])
 
   const discard = async (file: ChangedFile, scope: 'all' | 'unstaged' = 'all'): Promise<void> => {
     if (!native || !canDiscard(file)) return

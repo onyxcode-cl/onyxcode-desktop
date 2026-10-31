@@ -3,11 +3,12 @@
 // de Chat, Code y Tareas que vuelve, aviso visible de Quick Entry y terminal sin caracteres sueltos al reenganchar.
 // Capturas con R3A_SHOTS_DIR (claro/oscuro, 820/1280 px).
 import { afterAll, describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { CDPSession, Page } from 'playwright-core'
 import { useApp } from '../lib/harness'
+import { rmTemp } from '../lib/limpieza'
 import { MODE } from '../lib/launch'
 import { consumeErrors, makeGitRepo, openCodeProject } from '../lib/fase6'
 import { connectTasks, gotoMode, makeHomeFolder, newChatVia, newTaskVia, prepareFakeBin } from '../lib/lru'
@@ -82,7 +83,7 @@ describe.skipIf(!DEV)('R3A: diff de 50 000 líneas en el chip de edición y el p
   const app = useApp()
   let dir = ''
   afterAll(() => {
-    if (dir) rmSync(dir, { recursive: true, force: true })
+    if (dir) rmTemp(dir)
   })
 
   it('el chip de edición con un diff enorme no crea tareas largas y muestra +N −M exactos', async () => {
@@ -157,7 +158,7 @@ describe.skipIf(!DEV)('R3A: las imágenes del compositor de Code sobreviven al c
   const app = useApp()
   let dir = ''
   afterAll(() => {
-    if (dir) rmSync(dir, { recursive: true, force: true })
+    if (dir) rmTemp(dir)
   })
 
   it('se conservan por sesión, no se mezclan y se liberan al enviar', async () => {
@@ -198,7 +199,7 @@ describe.skipIf(!DEV)('R3A: el scroll de cada conversación vuelve al cambiar de
   afterAll(() => {
     bin.cleanup()
     folder.cleanup()
-    if (repo) rmSync(repo, { recursive: true, force: true })
+    if (repo) rmTemp(repo)
   })
   const app = useApp({ env: bin.env })
   const largo = (p: string): string => Array.from({ length: 120 }, (_, i) => `${p} ${i} de relleno para forzar scroll.`).join('\n\n')
@@ -311,8 +312,8 @@ describe.skipIf(!DEV)('R3A: terminal sin caracteres sueltos', () => {
   const app = useApp({ env: { ZDOTDIR: zdot, SHELL: '/bin/zsh' } })
   let repo = ''
   afterAll(() => {
-    if (repo) rmSync(repo, { recursive: true, force: true })
-    rmSync(zdot, { recursive: true, force: true })
+    if (repo) rmTemp(repo)
+    rmTemp(zdot)
   })
 
   // Windows: el caso es de zsh (`ZDOTDIR`/`.zshrc` lento); la terminal de Windows (PowerShell/ConPTY) se cubre en `pty/service.win.test.ts`.

@@ -1,1 +1,6 @@
-[]
+[
+  {
+    "pattern": "net::ERR_CONNECTION_RESET .*/global/event",
+    "reason": "Windows: el motor se reinicia o se cierra a propósito y el canal de eventos (SSE) se corta; en macOS el cierre es limpio"
+  }
+]

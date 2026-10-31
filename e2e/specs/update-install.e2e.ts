@@ -148,7 +148,7 @@ afterAll(async () => {
     } catch {
       /* ya no existe */
     }
-    rmSync(d, { recursive: true, force: true })
+    rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   }
   for (const f of fixtures.splice(0)) f.dispose()
 })

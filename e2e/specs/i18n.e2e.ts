@@ -111,7 +111,7 @@ describe.skipIf(!DEV)('Idioma: asistente de primer uso', () => {
   const fakeBin = fakeOutsideUserData()
   afterAll(() => {
     fakeBin.dispose()
-    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+    for (const d of dirs) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it.each([
@@ -172,7 +172,7 @@ describe.skipIf(!DEV)('Idioma: Code, Tareas, Rutinas y navegador en inglés (T4b
   afterAll(() => {
     fakeBin.dispose()
     project.dispose()
-    rmSync(userData, { recursive: true, force: true })
+    rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
   const app = useApp({
     userData,

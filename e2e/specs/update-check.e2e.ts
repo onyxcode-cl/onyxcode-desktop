@@ -97,7 +97,7 @@ afterEach(async (ctx) => {
 afterAll(async () => {
   for (const a of apps.splice(0)) await a.stop()
   for (const s of servers.splice(0)) await s.close()
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
 })
 
 describe('aviso de versión nueva', () => {

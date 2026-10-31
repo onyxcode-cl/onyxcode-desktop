@@ -18,7 +18,7 @@ const file = join(work, 'nota.txt')
 writeFileSync(file, 'hola')
 afterAll(() => {
   fakeBin.dispose()
-  rmSync(work, { recursive: true, force: true })
+  rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
 })
 
 describe.skipIf(MODE !== 'dev' || IS_WIN)('Tareas: arrastrar a la ventana', () => {

@@ -26,7 +26,7 @@ describe('datos viejos de userData', () => {
   afterAll(async () => {
     await app?.stop()
     app = null
-    if (userData) rmSync(userData, { recursive: true, force: true })
+    if (userData) rmSync(userData, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('migra los nombres viejos a los nuevos en el primer arranque', async () => {

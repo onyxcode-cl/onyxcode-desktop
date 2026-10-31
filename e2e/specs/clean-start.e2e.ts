@@ -32,7 +32,7 @@ describe('primer arranque limpio con el nombre Lazunox', () => {
   })
 
   afterAll(() => {
-    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true })
+    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('muestra el asistente, sin claves ni rutas con el nombre viejo', async () => {

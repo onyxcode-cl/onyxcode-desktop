@@ -182,6 +182,6 @@ export async function buildWinFixture(keys: Keys, o: WinFixtureOptions = {}): Pr
     sig: signBytes(manifest, signer),
     dir,
     base: `/${FIXTURE_REPO}/releases/download/v${version}`,
-    dispose: () => rmSync(dir, { recursive: true, force: true })
+    dispose: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   }
 }

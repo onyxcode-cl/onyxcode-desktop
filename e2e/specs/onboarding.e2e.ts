@@ -40,7 +40,7 @@ describe('asistente de primer uso', () => {
     await app?.stop()
     app = null
     fakeBin.dispose()
-    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true })
+    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   const dialog = (): ReturnType<E2EApp['page']['getByRole']> => app!.page.getByRole('dialog')
@@ -98,7 +98,7 @@ describe('asistente de primer uso', () => {
     const put = await a.fake.waitForRequest((r) => r.method === 'PUT' && r.path === '/auth/openai')
     expect(put.body).toEqual({ type: 'api', key: 'sk-e2e-otro' })
     await expectVisible(dialog().getByText('OpenAI conectado'))
-    await expectVisible(dialog().getByText(IS_WIN ? 'OpenCode funciona con cualquiera de estos proveedores.' : connectTasksNotice()))
+    await expectVisible(dialog().getByText(IS_WIN ? 'Cualquiera de estos servicios sirve en todos los modos.' : connectTasksNotice()))
     await expectVisible(dialog().getByText(connectTermsNotice()))
   })
 
@@ -150,7 +150,7 @@ describe('asistente con el motor incluido (source bundled simulado)', () => {
     await app?.stop()
     app = null
     fakeBin.dispose()
-    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true })
+    for (const d of [userData, home]) if (d) rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   })
 
   it('(e) sin CLI ni proveedor: abre directo en «Conecta tu IA» (paso 1 de 4), sin paso del motor ni nada que instalar', async () => {

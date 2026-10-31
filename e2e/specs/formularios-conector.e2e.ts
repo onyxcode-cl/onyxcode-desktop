@@ -3,7 +3,7 @@
 // Detener la cancela y un rechazo sin tarjeta previa deja un aviso. Solo modo dev (usa el motor falso y los ganchos del renderer).
 import { afterAll, describe, expect, it } from 'vitest'
 import { rmSync } from 'node:fs'
-import { makeGitRepo, openCodeProject } from '../lib/fase6'
+import { consumeErrors, makeGitRepo, openCodeProject } from '../lib/fase6'
 import { useApp } from '../lib/harness'
 import { MODE, type E2EApp } from '../lib/launch'
 import { storeState } from '../lib/stores'
@@ -13,7 +13,7 @@ const DEV = MODE === 'dev'
 
 describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
   const dir = makeGitRepo()
-  afterAll(() => rmSync(dir, { recursive: true, force: true }))
+  afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 }))
   const app = useApp()
 
   const card = (a: E2EApp) => a.page.getByRole('dialog', { name: /Formulario del conector forms/ })
@@ -98,6 +98,8 @@ describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
     await a.page.getByLabel('Título', { exact: true }).fill('Hola XXX')
     await a.page.getByRole('button', { name: /Enviar a forms/ }).click()
     await expectVisible(a.page.getByText('El motor no aceptó este dato: valor no permitido'))
+    // El 400 lo provoca la propia prueba (dato prohibido) y el navegador lo anota en consola: es el caso esperado, no un ruido.
+    expect(consumeErrors(a, /status of 400 .*\/mcp\/elicitation\/[^/]+\/reply/)).toBeGreaterThanOrEqual(1)
     expect(await card(a).count()).toBe(1)
     expect(await a.page.getByLabel('Título', { exact: true }).inputValue()).toBe('Hola XXX')
     await a.page.getByLabel('Título', { exact: true }).fill('Hola')
@@ -116,7 +118,7 @@ describe.skipIf(!DEV)('formularios de conectores: tarjeta en Code', () => {
   it('Detener con el formulario abierto: la tarjeta desaparece y no queda nada pendiente en el motor', async () => {
     const a = app()
     await ask(a, 'formulario cinco')
-    await a.page.getByRole('button', { name: 'Detener' }).click()
+    await a.page.getByRole('button', { name: 'Detener (Esc)' }).click()
     await expectCount(card(a), 0)
     await expect.poll(async () => (await status(a)).pendingElicitations.length, { timeout: 10_000 }).toBe(0)
     expect(await storeState(a.page, 'useCode', 'elicitations')).toEqual({})

@@ -162,6 +162,6 @@ export function buildFixture(keys: Keys, o: FixtureOptions = {}): Fixture {
     sig: sign(null, manifest, signer).toString('base64'),
     dir,
     base: `/${FIXTURE_REPO}/releases/download/v${version}`,
-    dispose: () => rmSync(dir, { recursive: true, force: true })
+    dispose: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
   }
 }
