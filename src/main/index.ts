@@ -162,7 +162,7 @@ function createWindow(): BrowserWindow {
     show: false,
     title: DISPLAY_NAME,
     // macOS: semáforos integrados; Windows: `hidden` + overlay de controles nativos; Linux: marco estándar (shared/window-chrome).
-    ...titleBarOptions(process.platform, themeOf(nativeTheme)),
+    ...titleBarOptions(process.platform, themeOf(nativeTheme, glass.transparentBg)),
     backgroundColor: glass.transparentBg ? '#00000000' : nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight,
     ...(glass.vibrancy ? { vibrancy: glass.vibrancy } : {}),
     ...(glass.backgroundMaterial ? { backgroundMaterial: glass.backgroundMaterial } : {}),
@@ -180,11 +180,16 @@ function createWindow(): BrowserWindow {
   registerWindowRole(win.webContents, 'main')
   // La barra lateral translúcida se puede cambiar en Ajustes con la ventana abierta.
   const solidBg = (): string => (nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight)
-  const offGlass = settingsStore.onChange((st) => applyGlass(win, st.sidebarGlass, solidBg()))
+  // Windows: con vidrio, los controles nativos (minimizar/maximizar/cerrar) van sin fondo propio para no dejar un rectángulo sólido.
+  const glassOn = (level = settingsStore.get().sidebarGlass): boolean => glassWindowOptions(level).transparentBg
+  const offGlass = settingsStore.onChange((st) => {
+    applyGlass(win, st.sidebarGlass, solidBg())
+    if (process.platform === 'win32') syncTitleBarOverlay(win, nativeTheme, process.platform, glassOn(st.sidebarGlass))
+  })
   win.once('closed', offGlass)
   if (process.platform === 'win32') {
     // El tema (claro/oscuro/sistema, alto contraste) puede cambiar con la ventana abierta: se repintan los controles nativos.
-    const onTheme = (): void => void syncTitleBarOverlay(win, nativeTheme)
+    const onTheme = (): void => void syncTitleBarOverlay(win, nativeTheme, process.platform, glassOn())
     nativeTheme.on('updated', onTheme)
     win.once('closed', () => nativeTheme.off('updated', onTheme))
   }

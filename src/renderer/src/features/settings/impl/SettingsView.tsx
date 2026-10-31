@@ -106,6 +106,8 @@ const SECTIONS: {
   View: (props: SectionProps) => React.JSX.Element
   /** Prefijos de claves i18n que pintan la sección: de aquí sale el índice del buscador (sin copiar textos). */
   keys: readonly string[]
+  /** Disposición visual de la sección (solo presentación; sin campo = 'cards'). */
+  layout?: 'grid' | 'list'
 }[] = [
   {
     id: 'general',
@@ -113,7 +115,8 @@ const SECTIONS: {
     label: lazy('settings.nav.general'),
     icon: SlidersHorizontal,
     View: GeneralSection,
-    keys: SECTION_KEYS.general
+    keys: SECTION_KEYS.general,
+    layout: 'grid'
   },
   {
     id: 'instructions',
@@ -121,10 +124,27 @@ const SECTIONS: {
     label: lazy('settings.nav.instructions'),
     icon: NotebookPen,
     View: InstructionsSection,
-    keys: SECTION_KEYS.instructions
+    keys: SECTION_KEYS.instructions,
+    layout: 'list'
   },
-  { id: 'memory', group: 'app', label: lazy('settings.nav.memory'), icon: BrainCircuit, View: MemorySection, keys: SECTION_KEYS.memory },
-  { id: 'models', group: 'app', label: lazy('settings.nav.models'), icon: Cpu, View: ModelsSection, keys: SECTION_KEYS.models },
+  {
+    id: 'memory',
+    group: 'app',
+    label: lazy('settings.nav.memory'),
+    icon: BrainCircuit,
+    View: MemorySection,
+    keys: SECTION_KEYS.memory,
+    layout: 'list'
+  },
+  {
+    id: 'models',
+    group: 'app',
+    label: lazy('settings.nav.models'),
+    icon: Cpu,
+    View: ModelsSection,
+    keys: SECTION_KEYS.models,
+    layout: 'list'
+  },
   { id: 'usage', group: 'app', label: lazy('settings.nav.usage'), icon: BarChart3, View: UsageSection, keys: SECTION_KEYS.usage },
   {
     id: 'shortcuts',
@@ -132,18 +152,44 @@ const SECTIONS: {
     label: lazy('settings.nav.shortcuts'),
     icon: Keyboard,
     View: ShortcutsSection,
-    keys: SECTION_KEYS.shortcuts
+    keys: SECTION_KEYS.shortcuts,
+    layout: 'list'
   },
-  { id: 'tasks', group: 'agents', label: () => MODE_LABELS.tasks, icon: Users, View: TasksSection, keys: SECTION_KEYS.tasks },
-  { id: 'network', group: 'agents', label: () => UI_LABELS.network, icon: Globe, View: NetworkSection, keys: SECTION_KEYS.network },
-  { id: 'automode', group: 'agents', label: () => UI_LABELS.autoMode, icon: Zap, View: AutoModeSection, keys: SECTION_KEYS.automode },
+  {
+    id: 'tasks',
+    group: 'agents',
+    label: () => MODE_LABELS.tasks,
+    icon: Users,
+    View: TasksSection,
+    keys: SECTION_KEYS.tasks,
+    layout: 'list'
+  },
+  {
+    id: 'network',
+    group: 'agents',
+    label: () => UI_LABELS.network,
+    icon: Globe,
+    View: NetworkSection,
+    keys: SECTION_KEYS.network,
+    layout: 'list'
+  },
+  {
+    id: 'automode',
+    group: 'agents',
+    label: () => UI_LABELS.autoMode,
+    icon: Zap,
+    View: AutoModeSection,
+    keys: SECTION_KEYS.automode,
+    layout: 'list'
+  },
   {
     id: 'engine',
     group: 'agents',
     label: lazy('settings.engine.nav'),
     icon: FlaskConical,
     View: EngineExperimentsSection,
-    keys: SECTION_KEYS.engine
+    keys: SECTION_KEYS.engine,
+    layout: 'list'
   },
   {
     id: 'helpers',
@@ -151,7 +197,8 @@ const SECTIONS: {
     label: lazy('settings.nav.helpers'),
     icon: Bot,
     View: HelpersSection,
-    keys: SECTION_KEYS.helpers
+    keys: SECTION_KEYS.helpers,
+    layout: 'list'
   },
   {
     id: 'computer',
@@ -159,9 +206,18 @@ const SECTIONS: {
     label: () => UI_LABELS.computer,
     icon: MonitorCog,
     View: ComputerSection,
-    keys: SECTION_KEYS.computer
+    keys: SECTION_KEYS.computer,
+    layout: 'list'
   },
-  { id: 'browser', group: 'agents', label: lazy('settings.nav.browser'), icon: Compass, View: BrowserSection, keys: SECTION_KEYS.browser },
+  {
+    id: 'browser',
+    group: 'agents',
+    label: lazy('settings.nav.browser'),
+    icon: Compass,
+    View: BrowserSection,
+    keys: SECTION_KEYS.browser,
+    layout: 'list'
+  },
   {
     id: 'mcp',
     group: 'agents',
@@ -192,7 +248,8 @@ const SECTIONS: {
     label: lazy('telegram.nav'),
     icon: Send,
     View: TelegramSection,
-    keys: SECTION_KEYS.telegram
+    keys: SECTION_KEYS.telegram,
+    layout: 'list'
   },
   {
     id: 'diagnostics',
@@ -200,9 +257,18 @@ const SECTIONS: {
     label: lazy('settings.nav.diagnostics'),
     icon: LifeBuoy,
     View: DiagnosticsSection,
-    keys: SECTION_KEYS.diagnostics
+    keys: SECTION_KEYS.diagnostics,
+    layout: 'list'
   },
-  { id: 'about', group: 'help', label: lazy('settings.nav.about'), icon: Info, View: AboutSection, keys: SECTION_KEYS.about }
+  {
+    id: 'about',
+    group: 'help',
+    label: lazy('settings.nav.about'),
+    icon: Info,
+    View: AboutSection,
+    keys: SECTION_KEYS.about,
+    layout: 'list'
+  }
 ]
 
 const KEY = 'settings.section'
@@ -265,8 +331,21 @@ function MobileSettings({ initial, onOpen }: { initial?: SettingsSectionId; onOp
   )
 }
 
+/** ¿La ventana está en modo vidrio? (`useSidebarGlass` pone `data-glass` en <html>). Con vidrio, Ajustes usa pestañas arriba en vez de menú lateral. */
+function useGlassOn(): boolean {
+  const [on, setOn] = useState(() => document?.documentElement?.hasAttribute('data-glass') === true)
+  useEffect(() => {
+    const el = document.documentElement
+    const obs = new MutationObserver(() => setOn(el.hasAttribute('data-glass')))
+    obs.observe(el, { attributes: true, attributeFilter: ['data-glass'] })
+    return () => obs.disconnect()
+  }, [])
+  return on
+}
+
 function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
   const t = useT()
+  const glassOn = useGlassOn()
   const close = useUi((s) => s.openSettings)
   const [chosen, setSection] = useState<SettingsSectionId>(initial ?? initialSection)
   const [query, setQuery] = useState('')
@@ -415,9 +494,49 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
 
   const goTo = (id: SettingsSectionId): void => select(id)
   const Current = sections.find((s) => s.id === section)?.View ?? GeneralSection
+  const activeGroup = sections.find((x) => x.id === section)?.group
+
+  const searchBox = (
+    <div className={glassOn ? 'relative' : 'relative mb-2'} role="search">
+      <Search size={14} aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle" />
+      <input
+        ref={searchRef}
+        type="text"
+        role="combobox"
+        aria-expanded={searching}
+        aria-controls="settings-search-results"
+        aria-activedescendant={searching && flat[active] ? `settings-hit-${active}` : undefined}
+        aria-autocomplete="list"
+        aria-label={t('settings.search.label')}
+        placeholder={t('settings.search.placeholder')}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={onSearchKey}
+        autoComplete="off"
+        spellCheck={false}
+        data-testid="settings-search"
+        className="h-8 w-full rounded-ctl border border-border-strong bg-elevated pr-14 pl-8 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-focus"
+      />
+      {searching ? (
+        <button
+          type="button"
+          aria-label={t('settings.search.clear')}
+          onClick={() => {
+            setQuery('')
+            searchRef.current?.focus()
+          }}
+          className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center rounded text-muted hover:bg-hover hover:text-fg"
+        >
+          <X size={13} />
+        </button>
+      ) : (
+        <kbd className="kbd pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">{isMacPlatform() ? '⌘F' : 'Ctrl+F'}</kbd>
+      )}
+    </div>
+  )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-settings-root="">
       <header className="drag flex h-12 shrink-0 items-center justify-between border-b border-border/70 pr-3 pl-4 desk:border-b-0 desk:pl-[calc(var(--header-inset,0px)+16px)] desk:pr-[calc(var(--controls-inset,0px)+12px)]">
         <span className="flex items-center gap-2 text-[13.5px] font-medium">
           <Settings2 size={15} className="text-accent" /> {t('settings.title')}
@@ -429,59 +548,37 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
           </IconButton>
         </span>
       </header>
-      <div className="flex min-h-0 flex-1">
-        <nav
-          className="w-52 shrink-0 space-y-0.5 overflow-y-auto desk:w-[232px] desk:xl:w-[232px] border-r border-border/70 bg-sidebar/50 p-3 desk:border-r-0 desk:bg-transparent desk:px-3 desk:py-2"
-          aria-label={t('settings.navAria')}
-        >
-          <div className="relative mb-2" role="search">
-            <Search size={14} aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-subtle" />
-            <input
-              ref={searchRef}
-              type="text"
-              role="combobox"
-              aria-expanded={searching}
-              aria-controls="settings-search-results"
-              aria-activedescendant={searching && flat[active] ? `settings-hit-${active}` : undefined}
-              aria-autocomplete="list"
-              aria-label={t('settings.search.label')}
-              placeholder={t('settings.search.placeholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={onSearchKey}
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="settings-search"
-              className="h-8 w-full rounded-ctl border border-border-strong bg-elevated pr-14 pl-8 text-sm text-fg outline-none transition-[border-color,box-shadow] placeholder:text-subtle hover:border-border-strong focus:border-accent focus:shadow-focus"
-            />
-            {searching ? (
-              <button
-                type="button"
-                aria-label={t('settings.search.clear')}
-                onClick={() => {
-                  setQuery('')
-                  searchRef.current?.focus()
-                }}
-                className="absolute top-1/2 right-1.5 grid size-6 -translate-y-1/2 place-items-center rounded text-muted hover:bg-hover hover:text-fg"
-              >
-                <X size={13} />
-              </button>
-            ) : (
-              <kbd className="kbd pointer-events-none absolute top-1/2 right-2 -translate-y-1/2">{isMacPlatform() ? '⌘F' : 'Ctrl+F'}</kbd>
-            )}
-          </div>
-          {GROUPS.map((g) => {
-            const inGroup = sections.filter((x) => x.group === g.id)
-            if (inGroup.length === 0) return null // un grupo vacío no pinta encabezado
-            return (
-              <div key={g.id} role="group" aria-label={g.label()} className="space-y-0.5">
-                <div
-                  aria-hidden
-                  className="hidden px-3 pt-4 pb-1 text-[11.5px] desk:text-meta font-medium text-subtle first:pt-0 desk:flex desk:h-7 desk:items-end desk:px-2 desk:pt-2 desk:pb-0 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em]"
-                >
-                  {g.label()}
-                </div>
-                {inGroup.map(({ id, label, icon: Icon }) => {
+      <div className={glassOn ? 'flex min-h-0 flex-1 flex-col' : 'flex min-h-0 flex-1'}>
+        {glassOn ? (
+          <nav className="shrink-0 px-5 pb-2" aria-label={t('settings.navAria')} data-settings-tabs="">
+            <div className="flex items-center gap-4 border-b border-border/60">
+              <div role="group" className="flex min-w-0 flex-1 gap-5">
+                {GROUPS.map((g) => {
+                  const inGroup = sections.filter((x) => x.group === g.id)
+                  if (inGroup.length === 0) return null
+                  const on = g.id === activeGroup
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      aria-current={on ? 'true' : undefined}
+                      onClick={() => {
+                        setQuery('')
+                        select(inGroup[0].id)
+                      }}
+                      className={`-mb-px border-b-2 pb-2.5 text-sm transition-colors ${on ? 'border-accent font-medium text-fg' : 'border-transparent text-muted hover:text-fg'}`}
+                    >
+                      {g.label()}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mb-2 w-56 shrink-0">{searchBox}</div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 pt-3">
+              {sections
+                .filter((x) => x.group === activeGroup)
+                .map(({ id, label, icon: Icon }) => {
                   const current = section === id && !searching
                   return (
                     <button
@@ -492,18 +589,56 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                         select(id)
                       }}
                       aria-current={current ? 'page' : undefined}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 desk:gap-2 desk:px-2 desk:text-sm ${current ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70 desk:bg-active desk:shadow-none desk:ring-0' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      className={`flex h-8 items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 ${current ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
                     >
-                      <Icon size={15} className={current ? 'shrink-0 text-accent desk:size-4' : 'shrink-0 desk:size-4'} />
+                      <Icon size={14} className={current ? 'shrink-0 text-accent' : 'shrink-0'} />
                       {label()}
                     </button>
                   )
                 })}
-              </div>
-            )
-          })}
-        </nav>
-        <div className="min-w-0 flex-1 overflow-y-auto">
+            </div>
+          </nav>
+        ) : (
+          <nav
+            className="w-52 shrink-0 space-y-0.5 overflow-y-auto desk:w-[232px] desk:xl:w-[232px] border-r border-border/70 bg-sidebar/50 p-3 desk:border-r-0 desk:bg-transparent desk:px-3 desk:py-2"
+            aria-label={t('settings.navAria')}
+          >
+            {searchBox}
+            {GROUPS.map((g) => {
+              const inGroup = sections.filter((x) => x.group === g.id)
+              if (inGroup.length === 0) return null // un grupo vacío no pinta encabezado
+              return (
+                <div key={g.id} role="group" aria-label={g.label()} className="space-y-0.5">
+                  <div
+                    aria-hidden
+                    className="hidden px-3 pt-4 pb-1 text-[11.5px] desk:text-meta font-medium text-subtle first:pt-0 desk:flex desk:h-7 desk:items-end desk:px-2 desk:pt-2 desk:pb-0 desk:text-[11px] desk:leading-4 desk:font-semibold desk:tracking-[0.02em]"
+                  >
+                    {g.label()}
+                  </div>
+                  {inGroup.map(({ id, label, icon: Icon }) => {
+                    const current = section === id && !searching
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setQuery('')
+                          select(id)
+                        }}
+                        aria-current={current ? 'page' : undefined}
+                        className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 desk:gap-2 desk:px-2 desk:text-sm ${current ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70 desk:bg-active desk:shadow-none desk:ring-0' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      >
+                        <Icon size={15} className={current ? 'shrink-0 text-accent desk:size-4' : 'shrink-0 desk:size-4'} />
+                        {label()}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </nav>
+        )}
+        <div className="min-w-0 flex-1 overflow-y-auto" data-settings-pane="">
           {searching ? (
             <div
               className="mx-auto w-full max-w-2xl px-8 py-8 desk:max-w-[640px] desk:px-8 desk:pt-7 desk:pb-12"
@@ -601,6 +736,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
             <div
               ref={contentRef}
               key={section}
+              data-settings-layout={sections.find((x) => x.id === section)?.layout ?? 'cards'}
               className="mx-auto w-full max-w-2xl animate-rise-in px-8 py-8 desk:max-w-[640px] desk:px-8 desk:pt-7 desk:pb-12"
             >
               <Current goTo={goTo} />

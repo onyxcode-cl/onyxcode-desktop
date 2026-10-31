@@ -72,6 +72,7 @@ export const tasksSettings = {
     'One decision for the whole computer, no folder: the agent can use the mouse, keyboard and screen, and access all the files and programs in your user account. The plan and each app are still approved on every task.',
   'tasksSettings.full.on': 'Consent given on {date}',
   'tasksSettings.full.off': 'No consent yet: you’ll be asked when you turn on Full control.',
+  'tasksSettings.full.status': 'Status',
   'tasksSettings.full.revoke': 'Withdraw consent',
   'tasksSettings.full.revokeTitle': 'Withdraw consent for Full control?',
   'tasksSettings.full.revokeMessage':

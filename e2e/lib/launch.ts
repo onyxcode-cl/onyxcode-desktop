@@ -143,6 +143,9 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
         routinesTermsAcknowledged: true,
         // Los specs esperan la interfaz en español; `i18n.e2e.ts` arranca en `en`.
         language: 'es',
+        // Los specs de Ajustes esperan el menú lateral con todas las secciones; con vidrio Ajustes usa pestañas por grupo
+        // (solo se ven las secciones del grupo abierto). El diseño de vidrio lo cubre `ajustes-vidrio.e2e.ts`.
+        sidebarGlass: 'solid',
         ...opts.settings
       })
     )
@@ -281,7 +284,9 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
       }, ls)
       errors.length = 0
       await page.reload({ waitUntil: 'domcontentloaded' })
-      await page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, { timeout: 60_000 })
+      await page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, {
+        timeout: 60_000
+      })
     } else if (opts.localStorage) {
       await page.evaluate((entries) => {
         for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v)
@@ -366,6 +371,8 @@ export async function connectFakeClient(page: Page): Promise<FakeClient> {
 export async function withLru(app: E2EApp, n: number): Promise<void> {
   await app.page.evaluate((v) => localStorage.setItem('lazunox.lru.max', String(v)), n)
   await app.page.reload({ waitUntil: 'domcontentloaded' })
-  await app.page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, { timeout: 60_000 })
+  await app.page.waitForFunction(() => Boolean((window as unknown as { __lazunoxE2E?: object }).__lazunoxE2E), undefined, {
+    timeout: 60_000
+  })
   await app.page.locator('nav[aria-label="Modo"]').waitFor()
 }

@@ -569,7 +569,7 @@ export function TasksSection(): React.JSX.Element {
         <Group title={t('tasksSettings.full.title')} description={t('tasksSettings.full.desc')}>
           <Card>
             <Row
-              label={TASKS_TERMS.fullControl}
+              label={t('tasksSettings.full.status')}
               description={
                 fullInfo?.consentAt ? (
                   <span data-testid="full-consent-status">

@@ -202,7 +202,7 @@ export function MemorySection(): React.JSX.Element {
         </div>
       </Card>
 
-      <SubTitle>{t('memory.title')}</SubTitle>
+      <SubTitle>{t('memory.notesTitle')}</SubTitle>
       <Card>
         <div className="flex flex-col gap-3 px-4 py-3 desk:px-5 desk:py-4" data-testid="memory-list">
           <div className="flex flex-wrap items-center gap-2">

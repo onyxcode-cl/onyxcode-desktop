@@ -348,7 +348,7 @@ export function RemoteSection(): React.JSX.Element {
             <Row
               label={
                 <span className="flex items-center gap-2">
-                  <Smartphone size={14} className="text-accent" /> {t('remote.title')}
+                  <Smartphone size={14} className="text-accent" /> {t('remote.state.label')}
                 </span>
               }
               description={on ? t('remote.stopAll.hint') : undefined}

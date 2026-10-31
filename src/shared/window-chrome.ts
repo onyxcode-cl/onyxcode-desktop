@@ -18,7 +18,12 @@ export interface OverlayTheme {
   dark: boolean
   /** Alto contraste del sistema (forced-colors): se usan blanco/negro puros. */
   highContrast?: boolean
+  /** Ventana de vidrio (Mica/Acrylic de Windows 11, fondo transparente): el fondo de los controles también es transparente. */
+  glass?: boolean
 }
+
+/** Fondo transparente de los controles de ventana (#RRGGBBAA): con vidrio se ve el material del sistema, no un rectángulo sólido. */
+export const OVERLAY_TRANSPARENT = '#00000000'
 
 export interface TitleBarOverlay {
   color: string
@@ -26,13 +31,18 @@ export interface TitleBarOverlay {
   height: number
 }
 
-/** Colores del overlay: fondo = `--bg` del tema (la barra es del área principal), símbolos = `--fg`. */
+/**
+ * Colores del overlay: fondo = `--bg` del tema (la barra es del área principal), símbolos = `--fg`. Con vidrio el fondo es
+ * transparente: debajo queda el material del sistema (Ajustes) o la tarjeta del contenido (Chat), y los controles no forman un
+ * rectángulo negro o blanco encima. Alto contraste siempre opaco.
+ */
 export function overlayFor(theme: OverlayTheme): TitleBarOverlay {
   if (theme.highContrast) {
     return theme.dark
       ? { color: '#000000', symbolColor: '#ffffff', height: TITLEBAR_HEIGHT }
       : { color: '#ffffff', symbolColor: '#000000', height: TITLEBAR_HEIGHT }
   }
+  if (theme.glass) return { color: OVERLAY_TRANSPARENT, symbolColor: theme.dark ? FG_DARK : FG_LIGHT, height: TITLEBAR_HEIGHT }
   return theme.dark
     ? { color: BRAND_COLORS.bgDark, symbolColor: FG_DARK, height: TITLEBAR_HEIGHT }
     : { color: BRAND_COLORS.bgLight, symbolColor: FG_LIGHT, height: TITLEBAR_HEIGHT }

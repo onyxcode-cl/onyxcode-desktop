@@ -70,6 +70,7 @@ export const tasksSettings = {
     'Una sola decisión para todo el equipo, sin carpeta: el agente puede usar ratón, teclado y pantalla, y acceder a todos los archivos y programas de tu usuario. El plan y cada app se siguen aprobando en cada tarea.',
   'tasksSettings.full.on': 'Consentimiento dado el {date}',
   'tasksSettings.full.off': 'Sin consentimiento: se te pedirá al activar Control total.',
+  'tasksSettings.full.status': 'Estado',
   'tasksSettings.full.revoke': 'Retirar consentimiento',
   'tasksSettings.full.revokeTitle': '¿Retirar el consentimiento de Control total?',
   'tasksSettings.full.revokeMessage':

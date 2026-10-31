@@ -34,6 +34,7 @@ export const memory = {
   'instr.open': 'Instructions and memory',
 
   'memory.title': 'Memory',
+  'memory.notesTitle': 'Saved notes',
   'memory.intro':
     'What the AI remembers about you and your projects between conversations. The AI can only propose a note; nothing is saved until you approve it, and you can edit or delete it whenever you want.',
   'memory.toggle': 'Use memory',

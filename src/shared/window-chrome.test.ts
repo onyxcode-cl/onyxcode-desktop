@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { BRAND_COLORS } from './brand'
-import { TITLEBAR_HEIGHT, WIN_CONTROLS_FALLBACK_WIDTH, controlsInsetRight, overlayFor, titleBarOptions } from './window-chrome'
+import {
+  OVERLAY_TRANSPARENT,
+  TITLEBAR_HEIGHT,
+  WIN_CONTROLS_FALLBACK_WIDTH,
+  controlsInsetRight,
+  overlayFor,
+  titleBarOptions
+} from './window-chrome'
 
 describe('titleBarOptions', () => {
   it('macOS: hiddenInset con semáforos y sin overlay (igual que antes)', () => {
@@ -28,6 +35,14 @@ describe('overlayFor', () => {
   it('alto contraste: blanco/negro puros según el tema', () => {
     expect(overlayFor({ dark: true, highContrast: true })).toEqual({ color: '#000000', symbolColor: '#ffffff', height: 48 })
     expect(overlayFor({ dark: false, highContrast: true })).toEqual({ color: '#ffffff', symbolColor: '#000000', height: 48 })
+  })
+  it('vidrio: fondo transparente y símbolos del tema (sin rectángulo sólido sobre el vidrio)', () => {
+    expect(overlayFor({ dark: true, glass: true })).toEqual({ color: OVERLAY_TRANSPARENT, symbolColor: '#e7e9f0', height: 48 })
+    expect(overlayFor({ dark: false, glass: true })).toEqual({ color: OVERLAY_TRANSPARENT, symbolColor: '#131722', height: 48 })
+    expect(titleBarOptions('win32', { dark: true, glass: true }).titleBarOverlay?.color).toBe('#00000000')
+  })
+  it('vidrio con alto contraste: sigue opaco', () => {
+    expect(overlayFor({ dark: true, highContrast: true, glass: true }).color).toBe('#000000')
   })
 })
 

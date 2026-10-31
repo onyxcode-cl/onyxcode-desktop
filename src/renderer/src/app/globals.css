@@ -1144,11 +1144,389 @@ html[data-glass] [data-app-root] {
 }
 html[data-glass] [data-app-main] {
   background: var(--bg);
-  margin: 10px 10px 10px 0;
+  /* Más aire entre la barra y la tarjeta, borde más marcado y sombra con cuerpo: que se lea como dos piezas separadas. */
+  margin: 10px 10px 10px 14px;
+  /* La tarjeta ya queda a la derecha de los semáforos: las cabeceras no reservan hueco extra. */
+  --header-inset: 0px !important;
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  border: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    0 2px 6px rgba(0, 0, 0, 0.18);
+}
+/* Línea fina entre el riel de iconos y la lista: son dos zonas, no una sola masa. */
+html[data-glass] aside.bg-sidebar[data-rail] {
+  border-right-color: var(--glass-edge);
+}
+/* macOS: los semáforos llegan hasta ~78 px; con el riel de 56 px el corte de la barra pasaba justo por el botón verde.
+   El riel se ensancha a 84 px para que los tres botones queden enteros sobre el vidrio. */
+html[data-glass][data-platform='darwin'] aside[data-rail] {
+  width: 84px;
+}
+html[data-glass][data-platform='darwin'] aside[class*='left-14'] {
+  left: 84px;
+}
+/* Sobre el vidrio el texto apagado de la barra (títulos de sección, ayudas) se perdía: se sube el contraste. */
+html[data-glass] aside.bg-sidebar [class*='text-muted'] {
+  color: color-mix(in srgb, var(--fg) 82%, transparent);
+}
+html[data-glass] aside.bg-sidebar [class*='text-subtle'] {
+  color: color-mix(in srgb, var(--fg) 68%, transparent);
+}
+/* Ajustes: el menú (y la cabecera) quedan sobre el vidrio igual que la lista de conversaciones; solo el contenido es tarjeta sólida. */
+html[data-glass] [data-app-main]:has([data-settings-root]) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+/* Pestañas de Ajustes sobre el vidrio: texto claro para que se lea sobre el fondo. */
+html[data-glass] [data-settings-tabs] [class*='text-muted'] {
+  color: color-mix(in srgb, var(--fg) 82%, transparent);
+}
+/* Textos de ayuda de Ajustes sobre el vidrio: más contraste para que se lean sobre cualquier fondo. */
+html[data-glass] [data-settings-pane] [class*='text-muted'] {
+  color: color-mix(in srgb, var(--fg) 82%, transparent);
+}
+html[data-glass] [data-settings-pane] [class*='text-subtle'] {
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
+}
+/* En claro el vidrio deja pasar mucho del escritorio: sobre un fondo oscuro o de color quedaba un gris medio con texto gris
+   oscuro encima (contraste ~4:1). Un velo claro, solo detrás de Ajustes, devuelve la lectura sin tapar el color del fondo. */
+html[data-glass][data-theme='light'] [data-app-main]:has([data-settings-root]) {
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  border-color: var(--glass-edge);
+}
+html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-muted'] {
+  color: color-mix(in srgb, var(--fg) 86%, transparent);
+}
+html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-subtle'] {
+  color: color-mix(in srgb, var(--fg) 78%, transparent);
+}
+/* Botones de sección compactos para que un grupo largo (Agentes) quepa en una sola línea en una ventana normal. Si aun así no
+   cabe, la fila pasa a una segunda línea (flex-wrap de la clase base): nunca se corta un botón ni queda uno escondido. */
+html[data-glass] [data-settings-tabs] > div:nth-child(2) {
+  gap: 2px;
+  row-gap: 4px;
+}
+html[data-glass] [data-settings-tabs] > div:nth-child(2) > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-inline: 9px;
+  gap: 6px;
+}
+/* Sección abierta: píldora de vidrio con borde fino (como lo seleccionado de la barra). El gris sólido de `bg-active` casi no
+   se veía sobre un fondo oscuro. Al pasar el ratón, un velo translúcido en vez de un bloque sólido. */
+html[data-glass] [data-settings-tabs] > div:nth-child(2) > button[aria-current='page'] {
+  background-color: var(--glass-pill);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+html[data-glass] [data-settings-tabs] > div:nth-child(2) > button:not([aria-current='page']):hover {
+  background-color: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+/* El contenido que se desliza se funde un poco bajo los botones de sección (arriba) y apenas en el borde de abajo, solo cuando
+   de verdad hay más contenido en esa dirección (la animación ligada al scroll no corre si no hay desplazamiento). */
+@property --settings-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --settings-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+/* Arriba 24 px (el contenido pasa bajo las pestañas); abajo solo 12 px: lo justo para que el borde no corte en seco, sin que
+   una fila entera parezca borrosa o rota. */
+@keyframes settings-fade-edges {
+  0% {
+    --settings-fade-start: 0px;
+    --settings-fade-end: 12px;
+  }
+  6%,
+  94% {
+    --settings-fade-start: 24px;
+    --settings-fade-end: 12px;
+  }
+  100% {
+    --settings-fade-start: 24px;
+    --settings-fade-end: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  html[data-glass] [data-settings-pane] {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--settings-fade-start),
+      #000 calc(100% - var(--settings-fade-end)),
+      transparent 100%
+    );
+    animation: settings-fade-edges linear both;
+    animation-timeline: scroll(self block);
+  }
+}
+/* Campos de texto translúcidos: ya no son bloques negros sólidos sobre el vidrio. */
+html[data-glass]
+  [data-settings-pane]
+  :is(
+    textarea,
+    select,
+    input[type='text'],
+    input[type='search'],
+    input[type='password'],
+    input[type='url'],
+    input[type='email'],
+    input:not([type])
+  ) {
+  background-color: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+  border-color: var(--glass-edge);
+}
+/* Ajustes sobre el vidrio: sin tarjeta grande; cada grupo de filas es su propia tarjeta de vidrio oscuro, a lo ancho. */
+html[data-glass] [data-settings-pane] {
+  margin: 0 10px 10px;
+  /* Hueco de la barra de desplazamiento siempre reservado: el borde derecho del contenido no salta 10 px entre una sección
+     que se desliza y otra que no. */
+  scrollbar-gutter: stable;
+}
+html[data-glass] [data-settings-pane] > [data-settings-layout] {
+  max-width: none;
+  padding-inline: 28px;
+}
+html[data-glass] [data-settings-pane] > [data-testid='settings-search-panel'] {
+  max-width: 920px;
+  /* Resultados alineados a la izquierda con el contenido de las secciones (antes quedaban centrados y desplazados). */
+  margin-inline: 0;
+  padding-inline: 28px;
+}
+/* Resultados de la búsqueda: tarjeta de vidrio como las demás, no un bloque negro. */
+html[data-glass] [data-settings-pane] #settings-search-results ul {
+  background-color: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+  border-color: var(--glass-edge);
+  backdrop-filter: blur(14px);
+}
+html[data-glass] [data-settings-pane] #settings-search-results li {
+  border-color: var(--glass-edge);
+}
+html[data-glass] [data-settings-pane] [data-testid='settings-search-empty'] {
+  border-color: color-mix(in srgb, var(--fg) 28%, transparent);
+}
+/* Buscador de la cabecera de Ajustes: translúcido como los demás campos. */
+html[data-glass] [data-settings-tabs] input[data-testid='settings-search'] {
+  background-color: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+  border-color: var(--glass-edge);
+}
+html[data-glass] [data-settings-tabs] input[data-testid='settings-search']:focus {
+  border-color: var(--accent);
+}
+html[data-glass] [data-settings-pane] [data-card] {
+  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+  border: 1px solid var(--glass-edge);
+  box-shadow: none;
+  backdrop-filter: blur(14px);
+}
+/* Ajustes en lista: sin tarjetas, filas a lo ancho separadas por línea fina. */
+html[data-glass] :is([data-settings-layout='list'], [data-settings-layout='grid']) [data-card]:not([data-settings-tiles] > [data-card]) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  margin-inline: -20px;
+}
+html[data-glass]
+  :is([data-settings-layout='list'], [data-settings-layout='grid'])
+  [data-card]:not([data-settings-tiles] > [data-card])
+  > [data-row],
+html[data-glass]
+  :is([data-settings-layout='list'], [data-settings-layout='grid'])
+  [data-card]:not([data-settings-tiles] > [data-card])
+  > div {
+  border-bottom-color: var(--glass-edge);
+}
+/* Pulido de la lista: los bloques que no son `Row` (vacíos, barras de acciones, filas propias) usaban 16 px de margen y quedaban
+   4 px a la izquierda del título; aquí se alinean con las filas (20 px). */
+html[data-glass]
+  :is([data-settings-layout='list'], [data-settings-layout='grid'])
+  [data-card]:not([data-settings-tiles] > [data-card])
+  > [class~='px-4'] {
+  padding-inline: 20px;
+}
+/* Todas las líneas separadoras de la lista con el mismo trazo fino (algunas filas anidadas pintaban la línea opaca). */
+html[data-glass]
+  :is([data-settings-layout='list'], [data-settings-layout='grid'])
+  [data-card]:not([data-settings-tiles] > [data-card])
+  :is([class~='border-b'], [class~='border-t']) {
+  border-color: var(--glass-edge);
+}
+/* Bloques que eran sólidos sobre el vidrio: botones secundarios, selectores de modelo, insignias, teclas y registros. */
+html[data-glass]
+  [data-settings-pane]
+  button:is([class~='bg-elevated'], [class~='desk:bg-elevated'][class~='bg-bg']):not([role='radio'], [role='tab']) {
+  background-color: color-mix(in srgb, var(--bg-elevated) 55%, transparent);
+  border-color: var(--glass-edge);
+}
+html[data-glass]
+  [data-settings-pane]
+  button:is([class~='bg-elevated'], [class~='desk:bg-elevated'][class~='bg-bg']):not([role='radio'], [role='tab'], :disabled):hover {
+  background-color: color-mix(in srgb, var(--fg) 10%, transparent);
+}
+html[data-glass] [data-settings-pane] span[class~='bg-hover'] {
+  background-color: color-mix(in srgb, var(--fg) 9%, transparent);
+  border-color: var(--glass-edge);
+}
+html[data-glass] [data-settings-pane] :is(kbd, pre, code)[class~='bg-bg'] {
+  background-color: color-mix(in srgb, var(--bg) 45%, transparent);
+  border-color: var(--glass-edge);
+}
+/* Recuadros internos con el fondo de la ventana (opciones de cada conector, vista previa de instrucciones, campos de memoria):
+   sobre el vidrio eran bloques negros (o blancos) sólidos dentro de una tarjeta translúcida. Ahora, un velo leve del mismo vidrio. */
+html[data-glass] [data-settings-pane] :is(div, section, textarea, input)[class~='bg-bg'] {
+  background-color: color-mix(in srgb, var(--fg) 5%, transparent);
+  border-color: var(--glass-edge);
+}
+/* Tema (Sistema / Claro / Oscuro): las opciones no elegidas eran bloques sólidos; ahora vidrio con borde fino. */
+html[data-glass] [data-settings-pane] [data-theme-grid] button[aria-pressed='false'] {
+  background-color: color-mix(in srgb, var(--fg) 6%, transparent);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+html[data-glass] [data-settings-pane] [data-theme-grid] button[aria-pressed='false']:hover {
+  background-color: color-mix(in srgb, var(--fg) 11%, transparent);
+}
+/* Selectores segmentados (Tamaño del texto, Barra lateral, Vista del trabajo, Memoria, Uso): la opción elegida es una píldora
+   de vidrio, no un bloque sólido. */
+html[data-glass] [data-settings-pane] :is([role='radiogroup'], [role='tablist'])[class~='bg-hover/60'],
+html[data-glass] [data-settings-pane] div[role='group']:has(> button[aria-pressed]) {
+  background-color: color-mix(in srgb, var(--fg) 7%, transparent);
+  border-color: transparent;
+}
+html[data-glass] [data-settings-pane] [role='radiogroup'] > button[aria-checked='true']:not([style]),
+html[data-glass] [data-settings-pane] [role='tablist'] > button[aria-selected='true'],
+html[data-glass] [data-settings-pane] div[role='group'] > button[aria-pressed='true'][class~='bg-active'] {
+  background-color: var(--glass-pill);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+/* Interruptores apagados: sobre el vidrio el contorno fino casi no se veía; llevan un relleno suave y un contorno más firme. */
+html[data-glass] [data-settings-pane] button[role='switch'][aria-checked='false'] {
+  background-color: color-mix(in srgb, var(--fg) 10%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--fg) 42%, transparent);
+}
+html[data-glass] [data-settings-pane] button[role='switch'][aria-checked='false'] > span {
+  background-color: color-mix(in srgb, var(--fg) 72%, transparent);
+}
+/* En claro, la perilla casi negra hacía que el interruptor apagado pareciera encendido: perilla gris media. */
+html[data-glass][data-theme='light'] [data-settings-pane] button[role='switch'][aria-checked='false'] > span {
+  background-color: color-mix(in srgb, var(--fg) 50%, transparent);
+}
+/* Encabezados en mayúsculas de algunas secciones (Atajos › «En la aplicación»): igual que los demás subtítulos sobre el vidrio. */
+html[data-glass] [data-settings-pane] [data-testid='keybindings-list'] h3 {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+/* Los botones de una fila no parten su texto en dos líneas («Guardar clave»). */
+html[data-glass] [data-settings-pane] [data-row] button {
+  white-space: nowrap;
+}
+/* Secciones con columna propia estrecha (Telegram): sobre el vidrio usan el mismo ancho que las demás. */
+html[data-glass] [data-settings-pane] [data-settings-layout] > [class~='max-w-2xl'] {
+  max-width: none;
+}
+/* Apariencia en rejilla: cada fila es un mosaico. */
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] > [data-card] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] > [data-card] > [data-row] {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  min-height: 0;
+  border: 1px solid var(--glass-edge);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+  backdrop-filter: blur(14px);
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] [data-row] > .shrink-0 {
+  width: 100%;
+}
+/* Reparto de los mosaicos según su contenido: Tema (el más alto) ocupa la columna izquierda en dos filas; a su derecha, Color de
+   acento y Tamaño del texto en línea (texto a la izquierda, control a la derecha, centrados en vertical), así ninguno queda con un
+   hueco vacío bajo el control. Barra lateral va a lo ancho debajo. Si el mosaico es estrecho, el control baja a otra línea. */
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] > [data-card] > [data-row]:first-child {
+  grid-row: span 2;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] > [data-card] > [data-row]:nth-child(n + 2) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: space-between;
+  column-gap: 16px;
+  row-gap: 10px;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] > [data-card] > [data-row]:nth-child(n + 2) > .shrink-0 {
+  width: auto;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] > [data-card] > [data-row]:nth-child(4) {
+  grid-column: 1 / -1;
+}
+/* A lo ancho, la ayuda de «Barra lateral» usa más línea (antes se partía en tres). */
+html[data-glass]
+  [data-settings-layout='grid']
+  [data-settings-tiles='appearance']
+  > [data-card]
+  > [data-row]:nth-child(4)
+  [class*='max-w-[440px]'] {
+  max-width: 640px;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='appearance'] [data-theme-grid] {
+  width: 100%;
+  max-width: none;
+}
+/* Vista del trabajo en rejilla. */
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='workview'] {
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+  backdrop-filter: blur(14px);
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='workview'] > h3 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='workview'] > p {
+  margin-bottom: 12px;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='workview'] > [data-card] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+html[data-glass] [data-settings-layout='grid'] [data-settings-tiles='workview'] > [data-card] > [data-row] {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  min-height: 0;
 }
 /* Windows pinta los botones de la ventana arriba a la derecha sobre la banda de título: la tarjeta sube hasta el borde. */
 html[data-glass][data-platform='win32'] [data-app-main] {
@@ -1175,4 +1553,8 @@ html[data-glass] aside.bg-sidebar [data-glass-card] {
   background-color: var(--glass-card);
   border-color: var(--glass-edge);
   backdrop-filter: blur(14px);
+}
+/* Barras de «cargando» de la lista de conversaciones: velo de vidrio en vez de píldoras oscuras sólidas. */
+html[data-glass] aside.bg-sidebar .animate-pulse[class~='bg-hover/70'] {
+  background-color: var(--glass-pill);
 }

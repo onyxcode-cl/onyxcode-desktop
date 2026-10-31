@@ -11,6 +11,15 @@ describe('syncTitleBarOverlay', () => {
     syncTitleBarOverlay(w, { shouldUseDarkColors: false }, 'win32')
     expect(w.setTitleBarOverlay).toHaveBeenLastCalledWith({ color: '#f7f8fb', symbolColor: '#131722', height: 48 })
   })
+  it('con vidrio: controles sin fondo propio; al volver a sólida, el color del tema', () => {
+    const w = win()
+    syncTitleBarOverlay(w, { shouldUseDarkColors: true }, 'win32', true)
+    expect(w.setTitleBarOverlay).toHaveBeenLastCalledWith({ color: '#00000000', symbolColor: '#e7e9f0', height: 48 })
+    syncTitleBarOverlay(w, { shouldUseDarkColors: false }, 'win32', true)
+    expect(w.setTitleBarOverlay).toHaveBeenLastCalledWith({ color: '#00000000', symbolColor: '#131722', height: 48 })
+    syncTitleBarOverlay(w, { shouldUseDarkColors: false }, 'win32', false)
+    expect(w.setTitleBarOverlay).toHaveBeenLastCalledWith({ color: '#f7f8fb', symbolColor: '#131722', height: 48 })
+  })
   it('alto contraste', () => {
     const w = win()
     syncTitleBarOverlay(w, { shouldUseDarkColors: true, shouldUseHighContrastColors: true }, 'win32')

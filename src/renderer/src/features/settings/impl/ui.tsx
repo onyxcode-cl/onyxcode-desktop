@@ -14,6 +14,7 @@ export function SectionHeader({ title, description }: { title: string; descripti
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }): React.JSX.Element {
   return (
     <div
+      data-card=""
       className={`rounded-xl border border-border bg-elevated shadow-xs desk:@container desk:border-transparent desk:shadow-raised ${className}`}
     >
       {children}

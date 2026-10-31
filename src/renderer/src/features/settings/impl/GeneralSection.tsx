@@ -221,36 +221,56 @@ export function GeneralSection(): React.JSX.Element {
   // Celular (PWA): solo tema e idioma. Bandeja, avisos y sonido son del Mac; reiniciar el servidor y las instrucciones globales
   // son acciones que se confirman en el Mac, y no se ofrecen aquí.
   const phone = isRemoteSurface()
+  const themeGrid = (
+    <div className="grid grid-cols-3 gap-2 desk:gap-3">
+      {THEMES.map(({ id, labelKey, icon: Icon }) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => void update({ theme: id })}
+          aria-pressed={settings.theme === id}
+          className={`group flex flex-col gap-2 rounded-xl border p-2 text-sm transition-[border-color,box-shadow,background-color] desk:border-transparent desk:pb-2.5 desk:shadow-raised ${settings.theme === id ? 'border-accent bg-accent-soft/50 shadow-[0_0_0_3px_var(--accent-ring)] desk:bg-accent-soft desk:shadow-[inset_0_0_0_1.5px_var(--accent)]' : 'border-border hover:border-border-strong hover:bg-hover/50 desk:bg-elevated desk:hover:bg-hover'}`}
+        >
+          <ThemePreview kind={id} />
+          <span className="flex items-center justify-center gap-1.5 pb-0.5 desk:text-[13px] desk:font-medium">
+            <Icon size={14} className={settings.theme === id ? 'text-accent' : 'text-muted'} />
+            {t(labelKey)}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <div>
       {!phone && <SectionHeader title={t('settings.general.title')} description={t('settings.general.subtitle')} />}
 
-      <h3 className="mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mt-8 desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
-        {t('settings.general.theme')}
-      </h3>
-      <div className="grid grid-cols-3 gap-2 desk:gap-3">
-        {THEMES.map(({ id, labelKey, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => void update({ theme: id })}
-            aria-pressed={settings.theme === id}
-            className={`group flex flex-col gap-2 rounded-xl border p-2 text-sm transition-[border-color,box-shadow,background-color] desk:border-transparent desk:pb-2.5 desk:shadow-raised ${settings.theme === id ? 'border-accent bg-accent-soft/50 shadow-[0_0_0_3px_var(--accent-ring)] desk:bg-accent-soft desk:shadow-[inset_0_0_0_1.5px_var(--accent)]' : 'border-border hover:border-border-strong hover:bg-hover/50 desk:bg-elevated desk:hover:bg-hover'}`}
-          >
-            <ThemePreview kind={id} />
-            <span className="flex items-center justify-center gap-1.5 pb-0.5 desk:text-[13px] desk:font-medium">
-              <Icon size={14} className={settings.theme === id ? 'text-accent' : 'text-muted'} />
-              {t(labelKey)}
-            </span>
-          </button>
-        ))}
-      </div>
-      {phone && <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>}
-      {!phone && <AccentPicker />}
-      {!phone && <TextSizePicker />}
-      {!phone && currentFlags().glass === true && <SidebarGlassPicker />}
-      {!phone && <WorkViewPicker />}
+      {phone ? (
+        <>
+          <h3 className="mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase">
+            {t('settings.general.theme')}
+          </h3>
+          {themeGrid}
+          <p className="mt-2 px-1 text-[13px] leading-snug text-muted">{t('mobile.settings.sharedHint')}</p>
+        </>
+      ) : (
+        <>
+          <SubTitle>{t('settings.general.appearance')}</SubTitle>
+          <div data-settings-tiles="appearance">
+            <Card>
+              <Row label={t('settings.general.theme')} description={t('settings.general.theme.description')} layout="stack-narrow">
+                <div data-theme-grid="" className="w-full desk:w-[400px] desk:max-w-full">
+                  {themeGrid}
+                </div>
+              </Row>
+              <AccentPicker />
+              <TextSizePicker />
+              {currentFlags().glass === true && <SidebarGlassPicker />}
+            </Card>
+          </div>
+          <WorkViewPicker />
+        </>
+      )}
 
       <SubTitle>{t('settings.general.preferences')}</SubTitle>
       <Card>
@@ -362,10 +382,7 @@ function AccentPicker(): React.JSX.Element {
     rose: 'settings.general.accent.rose'
   }
   return (
-    <>
-      <h3 className="mt-6 mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
-        {t('settings.general.accent')}
-      </h3>
+    <Row label={t('settings.general.accent')} description={t('settings.general.accent.description')}>
       <div role="radiogroup" aria-label={t('settings.general.accent')} className="flex flex-wrap gap-2.5">
         {ACCENTS.map(({ id, swatch }) => (
           <button
@@ -385,7 +402,7 @@ function AccentPicker(): React.JSX.Element {
           </button>
         ))}
       </div>
-    </>
+    </Row>
   )
 }
 
@@ -399,10 +416,7 @@ function TextSizePicker(): React.JSX.Element {
     large: 'settings.general.textSize.large'
   }
   return (
-    <>
-      <h3 className="mt-6 mb-3 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-2.5 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
-        {t('settings.general.textSize')}
-      </h3>
+    <Row label={t('settings.general.textSize')} description={t('settings.general.textSize.description')}>
       <div role="radiogroup" aria-label={t('settings.general.textSize')} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">
         {TEXT_SIZES.map(({ id }) => (
           <button
@@ -420,7 +434,7 @@ function TextSizePicker(): React.JSX.Element {
           </button>
         ))}
       </div>
-    </>
+    </Row>
   )
 }
 
@@ -432,17 +446,15 @@ function WorkViewPicker(): React.JSX.Element {
     { surface: 'code', label: 'settings.general.workView.code' }
   ]
   return (
-    <>
-      <h3 className="mt-6 mb-1 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-1 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
-        {t('settings.general.workView')}
-      </h3>
+    <div data-settings-tiles="workview">
+      <SubTitle>{t('settings.general.workView')}</SubTitle>
       <p className="mb-2.5 max-w-xl text-xs text-muted">{t('settings.general.workView.hint')}</p>
-      <div className="flex flex-col gap-2.5">
+      <Card>
         {rows.map(({ surface, label }) => (
           <WorkViewRow key={surface} surface={surface} label={t(label)} />
         ))}
-      </div>
-    </>
+      </Card>
+    </div>
   )
 }
 
@@ -450,8 +462,7 @@ function WorkViewRow({ surface, label }: { surface: WorkSurface; label: string }
   const t = useT()
   const mode = useWorkView(surface)
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="w-40 shrink-0 text-sm">{label}</span>
+    <Row label={label}>
       <div role="radiogroup" aria-label={label} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">
         {READING_MODES.map((id: ReadingMode) => (
           <button
@@ -466,7 +477,7 @@ function WorkViewRow({ surface, label }: { surface: WorkSurface; label: string }
           </button>
         ))}
       </div>
-    </div>
+    </Row>
   )
 }
 
@@ -481,11 +492,7 @@ function SidebarGlassPicker(): React.JSX.Element {
     { id: 'glass', label: 'settings.general.glass.glass' }
   ]
   return (
-    <>
-      <h3 className="mt-6 mb-1 text-[11.5px] desk:text-meta font-semibold tracking-[0.06em] text-subtle uppercase desk:normal-case desk:mb-1 desk:text-[11px] desk:leading-4 desk:tracking-[0.02em]">
-        {t('settings.general.glass')}
-      </h3>
-      <p className="mb-2.5 max-w-xl text-xs text-muted">{t('settings.general.glass.hint')}</p>
+    <Row label={t('settings.general.glass')} description={t('settings.general.glass.hint')}>
       <div role="radiogroup" aria-label={t('settings.general.glass')} className="inline-flex gap-1 rounded-xl bg-hover/60 p-1">
         {options.map(({ id, label }) => (
           <button
@@ -500,6 +507,6 @@ function SidebarGlassPicker(): React.JSX.Element {
           </button>
         ))}
       </div>
-    </>
+    </Row>
   )
 }

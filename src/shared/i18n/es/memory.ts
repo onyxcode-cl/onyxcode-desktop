@@ -33,6 +33,7 @@ export const memory = {
 
   // Memoria
   'memory.title': 'Memoria',
+  'memory.notesTitle': 'Notas guardadas',
   'memory.intro':
     'Lo que la IA recuerda de ti y de tus proyectos entre conversaciones. La IA solo puede proponer una nota; no se guarda nada hasta que tú la apruebas, y puedes editarla o borrarla cuando quieras.',
   'memory.toggle': 'Usar la memoria',

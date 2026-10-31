@@ -14,6 +14,7 @@ export const remote = {
   'remote.stopAll.hint': 'Cierra las conexiones y el servidor local y anula el código QR.',
   'remote.newQr': 'Generar otro QR',
   'remote.state.off': 'Apagado',
+  'remote.state.label': 'Estado',
   'remote.state.pairing': 'Esperando al celular',
   'remote.state.active': 'Activo',
   'remote.state.connected': 'Celular conectado',

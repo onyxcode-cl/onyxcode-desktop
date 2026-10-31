@@ -215,6 +215,7 @@ function DesktopApp(): React.JSX.Element {
           Cada cabecera suma `pl-[calc(var(--header-inset,0px)+16px)]`. */}
       <main
         data-app-main=""
+        data-rail-only={!listInFlow ? '' : undefined}
         className="relative flex min-w-0 flex-1 flex-col"
         // Lista superpuesta (ventana angosta): pulsar el contenido la cierra.
         onMouseDownCapture={narrow && !listCollapsed ? () => useUi.getState().toggleSidebar() : undefined}

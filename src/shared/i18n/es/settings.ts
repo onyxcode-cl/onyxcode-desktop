@@ -19,6 +19,10 @@ export const settings = {
   // General
   'settings.general.title': 'General',
   'settings.general.subtitle': 'Apariencia, idioma y motor de IA.',
+  'settings.general.appearance': 'Apariencia',
+  'settings.general.theme.description': 'Claro, oscuro o el del sistema',
+  'settings.general.accent.description': 'Resalta botones y selección',
+  'settings.general.textSize.description': 'Para todo Lazunox',
   'settings.general.accent': 'Color de acento',
   'settings.general.accent.blue': 'Azul',
   'settings.general.accent.violet': 'Violeta',
@@ -29,7 +33,8 @@ export const settings = {
   'settings.general.glass.solid': 'Sólida',
   'settings.general.glass.soft': 'Vidrio suave',
   'settings.general.glass.glass': 'Vidrio',
-  'settings.general.glass.hint': 'Deja ver un poco de tu escritorio a través de la barra. El resto de la ventana sigue sólido. Si tu sistema pide menos transparencia, se mantiene sólida.',
+  'settings.general.glass.hint':
+    'Deja ver un poco de tu escritorio detrás de la barra lateral y de Ajustes. Las conversaciones siguen sobre fondo sólido. Si tu sistema pide menos transparencia, queda sólida.',
   'settings.general.textSize': 'Tamaño del texto',
   'settings.general.textSize.small': 'Pequeño',
   'settings.general.textSize.normal': 'Normal',

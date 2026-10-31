@@ -22,6 +22,10 @@ export const settings = {
   // General
   'settings.general.title': 'General',
   'settings.general.subtitle': 'Appearance, language and the AI engine.',
+  'settings.general.appearance': 'Appearance',
+  'settings.general.theme.description': 'Light, dark or follow the system',
+  'settings.general.accent.description': 'Highlights buttons and selection',
+  'settings.general.textSize.description': 'Applies across Lazunox',
   'settings.general.accent': 'Accent color',
   'settings.general.accent.blue': 'Blue',
   'settings.general.accent.violet': 'Violet',
@@ -32,7 +36,8 @@ export const settings = {
   'settings.general.glass.solid': 'Solid',
   'settings.general.glass.soft': 'Soft glass',
   'settings.general.glass.glass': 'Glass',
-  'settings.general.glass.hint': 'Lets a bit of your desktop show through the sidebar. The rest of the window stays solid. If your system asks for less transparency, it stays solid.',
+  'settings.general.glass.hint':
+    'Lets a bit of your desktop show behind the sidebar and Settings. Conversations stay on a solid background. If your system asks for less transparency, it stays solid.',
   'settings.general.textSize': 'Text size',
   'settings.general.textSize.small': 'Small',
   'settings.general.textSize.normal': 'Normal',
