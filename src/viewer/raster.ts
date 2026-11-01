@@ -23,7 +23,7 @@ function b64ToBytes(b64: string): Uint8Array {
 }
 
 async function rasterize(b64: string, maxPages: number, maxSide: number): Promise<RasterResult> {
-  const task = pdfjs.getDocument({ data: b64ToBytes(b64), enableXfa: false, isEvalSupported: false, verbosity: 0 })
+  const task = pdfjs.getDocument({ data: b64ToBytes(b64), enableXfa: false, verbosity: 0 })
   const doc = await task.promise
   try {
     const total = doc.numPages
