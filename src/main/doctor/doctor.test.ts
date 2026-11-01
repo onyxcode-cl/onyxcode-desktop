@@ -115,6 +115,11 @@ describe('doctor', () => {
     expect(r.items.some((i) => i.level === 'fail')).toBe(false)
   })
 
+  it('en Windows no avisa de cu-keys ni del Python incluido (solo se empaquetan en macOS)', async () => {
+    const r = await runDoctor(base({ platform: 'win32', keysBin: 'C:/app/cu-keys', pythonBin: null, exists: () => false }))
+    expect(r.items.some((i) => i.id === 'keyboardTool' || i.id === 'python')).toBe(false)
+  })
+
   it('no ejecuta git (en un Mac sin herramientas de Apple abriría un instalador): solo xcode-select', async () => {
     const calls: string[] = []
     await runDoctor(base({ run: async (f) => (calls.push(f), { code: 0, out: 'ok-libs "layout"' }) }))

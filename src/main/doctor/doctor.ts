@@ -70,7 +70,8 @@ export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Pr
     })
   }
 
-  if (d.keysBin) {
+  // `cu-keys` (teclado para escritorios remotos) y el Python incluido solo se empaquetan en macOS: en Windows no hay nada que avisar.
+  if (d.platform === 'darwin' && d.keysBin) {
     if (!d.exists(d.keysBin)) {
       push({ id: 'keyboardTool', level: 'warn', detail: 'cu-keys no está' })
     } else {
@@ -83,7 +84,9 @@ export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Pr
     }
   }
 
-  if (d.pythonBin && d.exists(d.pythonBin)) {
+  if (d.platform !== 'darwin') {
+    // Sin Python incluido por diseño: las skills de oficina usan el del sistema si lo hay.
+  } else if (d.pythonBin && d.exists(d.pythonBin)) {
     const r = await d.run(d.pythonBin, ['-I', '-c', `${PY_LIBS}; print("ok-libs")`])
     push({
       id: 'python',
