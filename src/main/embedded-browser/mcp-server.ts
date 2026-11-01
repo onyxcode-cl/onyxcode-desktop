@@ -176,11 +176,18 @@ export class EmbeddedBrowserMcpServer {
 
     const chunks: Buffer[] = []
     let size = 0
+    let tooBig = false
     req.on('data', (c: Buffer) => {
+      if (tooBig) return
       size += c.length
       if (size > MAX_BODY) {
-        this.reply(res, 413)
-        req.destroy()
+        // Se responde 413 y se cierra la conexión, pero sin destruir el socket al instante: en Windows el cliente que aún
+        // está enviando recibiría ECONNRESET antes de leer el 413. El resto del cuerpo se descarta y, por si el cliente
+        // no para, el socket se corta a los 2 s.
+        tooBig = true
+        chunks.length = 0
+        this.reply(res, 413, undefined, { connection: 'close' })
+        setTimeout(() => req.destroy(), 2000).unref()
         return
       }
       chunks.push(c)
