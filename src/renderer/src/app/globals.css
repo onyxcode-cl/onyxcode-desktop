@@ -1225,7 +1225,13 @@ html[data-glass] [data-settings-pane] [class~='text-danger']:not(svg) {
 }
 /* Insignia roja de Diagnóstico en oscuro sobre vidrio gris (medida en el Mac con una ventana blanca detrás): 3,9:1. Más cerca del texto. */
 html[data-glass][data-theme='dark'] [data-settings-pane] [class~='text-danger']:not(svg) {
-  color: color-mix(in srgb, var(--danger) 55%, var(--fg));
+  color: color-mix(in srgb, var(--danger) 45%, var(--fg));
+}
+/* Verde y ámbar de los estados, un poco más claros en oscuro sobre vidrio: con una ventana blanca detrás quedaban en 4,5–4,7:1
+   (medido en el Mac y en Windows). Más claro sobre un fondo oscuro solo puede subir el contraste. */
+html[data-glass][data-theme='dark'] [data-settings-pane] {
+  --success: #6ee79b;
+  --warning: #fcd34d;
 }
 html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-muted']:not([class~='text-accent-fg'], [class~='text-danger-fg']) {
   color: color-mix(in srgb, var(--fg) 86%, transparent);
