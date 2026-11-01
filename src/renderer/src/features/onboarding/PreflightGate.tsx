@@ -36,6 +36,11 @@ function readDismissed(): ReturnType<typeof parseDismissal> {
   }
 }
 
+/** ¿La persona ya vio «Preparando» y lo dejó pasar? Entonces la bienvenida no vuelve a ofrecerle las mismas piezas opcionales. */
+export function preflightWasDismissed(): boolean {
+  return readDismissed() !== null
+}
+
 function saveDismissed(report: PreflightReport): void {
   try {
     localStorage.setItem(DISMISS_KEY, JSON.stringify(dismissalFor(report)))

@@ -74,7 +74,7 @@ function RailButton({
           aria-pressed={pressed}
           data-testid={testId}
           onClick={onClick}
-          className={`no-drag grid size-9 place-items-center rounded-[10px] transition-[background-color,color,transform] duration-[var(--dur-fast)] hover:text-fg active:scale-[0.985] motion-reduce:active:scale-100 ${current || pressed ? 'bg-active text-fg' : 'text-muted hover:bg-hover'}`}
+          className={`no-drag grid size-9 place-items-center [@media(max-height:580px)]:size-8 rounded-[10px] transition-[background-color,color,transform] duration-[var(--dur-fast)] hover:text-fg active:scale-[0.985] motion-reduce:active:scale-100 ${current || pressed ? 'bg-active text-fg' : 'text-muted hover:bg-hover'}`}
         >
           {children}
         </button>

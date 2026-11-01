@@ -166,6 +166,27 @@ describe('Welcome: algo requiere atención → tarjeta con la lista', () => {
   })
 })
 
+describe('Welcome: después de «Preparando» (sin pedir dos veces lo mismo)', () => {
+  const DISMISS_KEY = 'lazunox.preflight.dismissed'
+  afterEach(() => localStorage.removeItem(DISMISS_KEY))
+
+  it('si «Preparando» ya se dejó pasar, ArtCraft sin instalar no se vuelve a ofrecer: saludo directo', async () => {
+    localStorage.setItem(DISMISS_KEY, JSON.stringify({ version: '1.8.5', ids: ['craft'] }))
+    craft = 'missing'
+    await mount('win32', info())
+    expect(section().dataset.view).toBe('greeting')
+    expect(buttons()).not.toContain('Preparar todo')
+    expect(buttons()).toContain('Empezar')
+  })
+
+  it('sin haber visto «Preparando», lo que falta sí se ofrece (no cambia el primer uso normal)', async () => {
+    craft = 'missing'
+    await mount('win32', info())
+    expect(section().dataset.view).toBe('attention')
+    expect(buttons()).toContain('Preparar todo')
+  })
+})
+
 describe('Welcome: casillas por componente (F8-B197)', () => {
   const box = (id: string): HTMLInputElement => host.querySelector(`[data-testid="pick-${id}"]`) as HTMLInputElement
   const press = async (label: string): Promise<void> => {

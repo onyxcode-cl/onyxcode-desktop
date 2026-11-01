@@ -14,6 +14,7 @@ import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 import { platformCaps } from '../../lib/platform'
 import { ComponentPick } from './ComponentPick'
+import { preflightWasDismissed } from './PreflightGate'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
 import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
@@ -76,20 +77,22 @@ export function Welcome({ info, onDone }: { info: OpencodeInfo | null; onDone: (
         if (alive.current) setScanned(true)
         return
       }
+      // Si «Preparando» ya ofreció estas piezas y la persona las dejó para más tarde, aquí no se vuelven a pedir.
+      const later = preflightWasDismissed()
       const o = await cw('craft:status').catch(() => null)
       if (o?.status.state === 'missing') {
         if (alive.current) setCraftMb(Math.round(o.status.sizeBytes / 1e6))
-        set('craft', 'pending')
+        set('craft', later ? 'skipped' : 'pending')
       } else if (o?.status.state === 'installed') set('craft', 'ready')
       // Node.js y uv (conectores locales): solo donde hay conectores locales.
       const rs = await runtimesApi.status().catch(() => null)
       if (rs?.offered) {
         if (alive.current) setRuntimesMb(Math.round(rs.missingBytes / 1e6))
-        set('runtimes', rs.ready ? 'ready' : 'pending')
+        set('runtimes', rs.ready ? 'ready' : later ? 'skipped' : 'pending')
       }
       if (caps.tasks && caps.tasksSandbox === 'wsl') {
         const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
-        if (s) set('sandbox', s.state === 'ready' ? 'ready' : 'pending')
+        if (s) set('sandbox', s.state === 'ready' ? 'ready' : later ? 'skipped' : 'pending')
       }
       if (alive.current) setScanned(true)
     })()
