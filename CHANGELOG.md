@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.6] - 2026-11-01
+
+### Lectura sobre el vidrio
+
+- **Barra lateral y Ajustes con vidrio, más legibles en Windows y en macOS**: con el tema oscuro y una ventana blanca detrás (o el claro sobre una oscura), los textos secundarios («Buscar…», las ayudas, las etiquetas) y las insignias de estado quedaban entre 2,4 y 4,4 de contraste. Se midieron con capturas reales en las dos plataformas y ahora llegan a 4,5 o más. El vidrio sigue dejando ver el color del fondo.
+- **Windows, Diagnóstico**: ya no avisa de la herramienta de teclado remoto ni del Python incluido (solo existen en macOS), así que el estado no queda en ámbar por eso.
+- **Tarjeta de documento**: «1 hoja» y «1 diapositiva» en singular.
+
+### Correcciones
+
+- **Instalaciones y pruebas**: ajustes internos para que las comprobaciones automáticas de GitHub pasen (formato y pruebas que asumían un sistema Unix). Sin cambios para quien usa la app.
+
 ## [1.8.5] - 2026-11-01
 
 ### Correcciones
