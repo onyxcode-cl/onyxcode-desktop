@@ -127,7 +127,18 @@ export function DocumentCard({ kind, rawText, isSlides = false, title, codeShown
   const size = bytes ? formatFileSize(bytes, getLang()) : null
   const meta = [
     t(KIND_KEY[type]),
-    count ? t(count.key === 'sheets' ? 'chat.doc.card.sheets' : 'chat.doc.card.slides', { n: count.n }) : null,
+    count
+      ? t(
+          count.key === 'sheets'
+            ? count.n === 1
+              ? 'chat.doc.card.sheets.one'
+              : 'chat.doc.card.sheets'
+            : count.n === 1
+              ? 'chat.doc.card.slides.one'
+              : 'chat.doc.card.slides',
+          { n: count.n }
+        )
+      : null,
     size
   ]
     .filter(Boolean)
