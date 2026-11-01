@@ -340,7 +340,7 @@ export function ChatView(): React.JSX.Element {
       <div className="flex h-full">
         <div className={`flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
           <div className="drag h-12 shrink-0" data-mobile="hide" />
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto pb-20">
+          <div className="flex min-h-0 flex-1 flex-col items-center [justify-content:safe_center] overflow-y-auto pb-20">
             <div className="mb-8 flex animate-rise-in flex-col items-center gap-4 px-6 text-center">
               <div className="relative isolate desk:hidden">
                 <div

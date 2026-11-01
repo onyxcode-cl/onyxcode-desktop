@@ -169,7 +169,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
       aria-label={t('app.sidebar.aria')}
       data-rail=""
       data-collapsed={listShown ? undefined : ''}
-      className="flex h-full w-14 shrink-0 flex-col items-center border-r border-border bg-sidebar pb-3"
+      className="flex h-full w-14 shrink-0 flex-col items-center overflow-y-auto overflow-x-hidden border-r border-border bg-sidebar pb-3 [scrollbar-width:none]"
     >
       {/* Espacio superior: en macOS libre para los semáforos; en Windows, la franja de arrastre bajo el overlay de controles. Es un
           hermano de los botones, no su contenedor (en Windows una franja `drag` se come los clics de sus hijos). */}
