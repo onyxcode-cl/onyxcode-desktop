@@ -4,6 +4,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.5] - 2026-11-01
+
+### Correcciones
+
+- **Windows, Diagnóstico**: ya no muestra como fallo la Accesibilidad ni la Grabación de pantalla (son permisos de macOS que en Windows no existen) ni la insignia roja «Falta algo importante» por eso.
+- **Pantallas con escala alta o ventanas bajas**: el saludo del inicio ya no queda cortado por arriba y la barra de iconos se puede recorrer hasta Ajustes; en ventanas muy bajas sus botones son un poco más chicos para que quepa.
+- **Primer arranque**: si dejas «Preparando» para más tarde, la bienvenida ya no vuelve a pedirte lo mismo; lo puedes instalar después desde Ajustes.
+- **Servidores locales de conectores**: un mensaje demasiado grande ahora recibe su aviso de error en lugar de cortar la conexión (en Windows se veía como un fallo de red).
+
 ## [1.8.4] - 2026-10-31
 
 ### Barra lateral de vidrio y Ajustes nuevos
