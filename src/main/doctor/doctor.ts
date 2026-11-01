@@ -58,8 +58,11 @@ export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Pr
   const c = await d.computer().catch(() => null)
   if (c) {
     push({ id: 'controlHelper', level: c.helperOk ? 'ok' : 'fail' })
-    push({ id: 'accessibility', level: c.accessibility ? 'ok' : 'fail', fix: c.accessibility ? undefined : 'requestPermissions' })
-    push({ id: 'screenRecording', level: c.screenRecording ? 'ok' : 'fail', fix: c.screenRecording ? undefined : 'requestPermissions' })
+    // Accesibilidad y Grabación de pantalla son permisos de macOS: en Windows no existen y no deben contar como fallo.
+    if (d.platform === 'darwin') {
+      push({ id: 'accessibility', level: c.accessibility ? 'ok' : 'fail', fix: c.accessibility ? undefined : 'requestPermissions' })
+      push({ id: 'screenRecording', level: c.screenRecording ? 'ok' : 'fail', fix: c.screenRecording ? undefined : 'requestPermissions' })
+    }
     push({
       id: 'screens',
       level: 'info',

@@ -103,6 +103,18 @@ describe('doctor', () => {
     expect(r2.items.some((i) => i.id === 'macos' || i.id === 'git')).toBe(false)
   })
 
+  it('en Windows no pide Accesibilidad ni Grabación de pantalla (permisos de macOS) aunque el ayudante los dé por no concedidos', async () => {
+    const r = await runDoctor(
+      base({
+        platform: 'win32',
+        computer: async () => ({ helperOk: true, accessibility: false, screenRecording: false, screens: [{ width: 1920, height: 1080 }] })
+      })
+    )
+    expect(r.items.some((i) => i.id === 'accessibility' || i.id === 'screenRecording')).toBe(false)
+    expect(level(r, 'controlHelper')).toBe('ok')
+    expect(r.items.some((i) => i.level === 'fail')).toBe(false)
+  })
+
   it('no ejecuta git (en un Mac sin herramientas de Apple abriría un instalador): solo xcode-select', async () => {
     const calls: string[] = []
     await runDoctor(base({ run: async (f) => (calls.push(f), { code: 0, out: 'ok-libs "layout"' }) }))
