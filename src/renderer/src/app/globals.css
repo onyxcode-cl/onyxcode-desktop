@@ -1194,26 +1194,16 @@ html[data-glass] [data-settings-pane] [class*='text-muted']:not([class~='text-ac
 html[data-glass] [data-settings-pane] [class*='text-subtle'] {
   color: color-mix(in srgb, var(--fg) 70%, transparent);
 }
-/* En claro el vidrio deja pasar mucho del escritorio: sobre un fondo oscuro o de color quedaba un gris medio con texto gris
-   oscuro encima (contraste ~4:1). Un velo claro, solo detrás de Ajustes, devuelve la lectura sin tapar el color del fondo. */
+/* Velo detrás de Ajustes, solo en el vidrio. El material del sistema (Acrylic en Windows, vibrancy en macOS) deja ~gris 145 con una
+   ventana blanca detrás en oscuro y ~gris 140 con una oscura detrás en claro; sin velo los grises y las insignias bajaban de 4,5:1
+   (medido con capturas reales en las dos plataformas: oscuro 3,5:1 con velo del 30 %; claro 3,9–4,1:1 con el del 45 %).
+   Oscuro 60 % (≈5,2:1 en el peor caso medido) y claro 65 % (≈4,9:1). El borde queda translúcido en claro. */
 html[data-glass][data-theme='light'] [data-app-main]:has([data-settings-root]) {
-  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
   border-color: var(--glass-edge);
 }
-/* En oscuro, lo mismo con un velo oscuro leve: sobre un vidrio gris medio (escritorio claro) los títulos y ayudas quedaban en
-   ~4,2:1 y las píldoras elegidas en ~4,1:1 (medido con axe en ajustes-vidrio.e2e.ts). */
 html[data-glass][data-theme='dark'] [data-app-main]:has([data-settings-root]) {
-  background: color-mix(in srgb, var(--bg) 30%, transparent);
-}
-/* Windows (Acrylic) con una ventana blanca detrás: el vidrio oscuro queda ~gris 107 y con el velo del 30 % el título llegaba a
-   4,3:1 y el gris secundario a 3,5:1 (medido sobre capturas reales). Con el 50 % midió 6,3:1 y 4,9:1 (peor píxel 4,39); con el 55 % queda margen. */
-html[data-glass][data-platform='win32'][data-theme='dark'] [data-app-main]:has([data-settings-root]) {
   background: color-mix(in srgb, var(--bg) 60%, transparent);
-}
-/* Windows claro con una ventana oscura detrás: el Acrylic queda ~gris 140 y las insignias verde y ámbar de Diagnóstico llegaban
-   a 3,9:1 y 4,1:1. Con el 65 % el fondo sube a ~210 (≈4,9:1 y ≈5,1:1). */
-html[data-glass][data-platform='win32'][data-theme='light'] [data-app-main]:has([data-settings-root]) {
-  background: color-mix(in srgb, var(--bg) 65%, transparent);
 }
 /* Estados (Conectado, Permitido, «con limitaciones») sobre el vidrio claro de color: el verde y el ámbar normales quedaban en
    ~3,6–4:1. Un tono más oscuro solo dentro de Ajustes. */
@@ -1578,14 +1568,14 @@ html[data-glass='soft'] aside.bg-sidebar {
 html[data-glass='glass'] aside.bg-sidebar {
   background-color: color-mix(in srgb, var(--bg-sidebar) 18%, transparent);
 }
-/* Windows (Acrylic): con una ventana BLANCA detrás el vidrio oscuro queda ~gris 120 y los textos secundarios de la barra bajaban a
+/* Windows (Acrylic) y macOS (vibrancy), medido con capturas reales en las dos: con una ventana BLANCA detrás el vidrio oscuro queda ~gris 120 y los textos secundarios de la barra bajaban a
    2,4–3,4:1 («Buscar…», «Ctrl+K», las ayudas); en claro con una ventana oscura detrás, a ~3,6:1. Con estos velos el fondo baja a
-   ~65 (oscuro) o sube a ~180 (claro) y el texto pasa de 4,5:1. En macOS el vibrancy ya oscurece por sí mismo. */
-html[data-glass='glass'][data-platform='win32'][data-theme='dark'] aside.bg-sidebar {
+   ~65 (oscuro) o sube a ~180 (claro) y el texto pasa de 4,5:1. */
+html[data-glass='glass'][data-theme='dark'] aside.bg-sidebar {
   background-color: color-mix(in srgb, var(--bg-sidebar) 60%, transparent);
 }
-html[data-glass='glass'][data-platform='win32'][data-theme='light'] aside.bg-sidebar {
-  background-color: color-mix(in srgb, var(--bg-sidebar) 45%, transparent);
+html[data-glass='glass'][data-theme='light'] aside.bg-sidebar {
+  background-color: color-mix(in srgb, var(--bg-sidebar) 55%, transparent);
 }
 /* Lo seleccionado de la barra (modo activo, conversación abierta) es una píldora de vidrio con borde fino. */
 html[data-glass] aside.bg-sidebar .bg-active {
