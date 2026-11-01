@@ -8,3 +8,4 @@ dist-site
 
 # Guardia del celular: literales de snapshot fijados byte a byte (b6a502a); no reformatear
 src/renderer/src/features/code/impl/PermissionCard.mobile-pin.test.tsx
+src/renderer/remote/i18n-core-keys.json

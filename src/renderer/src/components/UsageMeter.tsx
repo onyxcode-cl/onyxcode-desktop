@@ -98,13 +98,7 @@ function Stat({ label, value }: { label: string; value: string }): React.JSX.Ele
   )
 }
 
-export function UsageMeter({
-  messages,
-  model,
-}: {
-  messages: { info: Message }[]
-  model: ModelRef
-}): React.JSX.Element | null {
+export function UsageMeter({ messages, model }: { messages: { info: Message }[]; model: ModelRef }): React.JSX.Element | null {
   const t = useT()
   const providers = useProviders((s) => s.providers)
   const client = useServer((s) => s.client)

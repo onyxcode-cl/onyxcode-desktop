@@ -174,6 +174,7 @@ function createWindow(): BrowserWindow {
       webviewTag: false,
       devTools: !app.isPackaged,
       // Banderas de capacidades para el preload (solo la ventana principal; los preloads secundarios no las reciben).
+      // prettier-ignore
       additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, glass: glassSupported() })
     }
   })

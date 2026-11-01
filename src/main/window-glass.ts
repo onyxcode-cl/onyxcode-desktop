@@ -28,7 +28,11 @@ export function glassPlan(level: SidebarGlass, platform: string = process.platfo
 }
 
 /** Opciones de construcción de la ventana (evita un parpadeo al abrir); sin efecto = objeto vacío. */
-export function glassWindowOptions(level: SidebarGlass): { vibrancy?: 'fullscreen-ui'; backgroundMaterial?: 'mica' | 'acrylic'; transparentBg: boolean } {
+export function glassWindowOptions(level: SidebarGlass): {
+  vibrancy?: 'fullscreen-ui'
+  backgroundMaterial?: 'mica' | 'acrylic'
+  transparentBg: boolean
+} {
   const p = glassPlan(level)
   return {
     ...(p.vibrancy ? { vibrancy: p.vibrancy } : {}),
