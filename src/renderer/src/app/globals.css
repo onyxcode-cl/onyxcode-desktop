@@ -1209,7 +1209,7 @@ html[data-glass][data-theme='dark'] [data-app-main]:has([data-settings-root]) {
 /* Estados (Conectado, Permitido, «con limitaciones») sobre el vidrio claro de color: el verde y el ámbar normales quedaban en
    ~3,6–4:1. Un tono más oscuro solo dentro de Ajustes. */
 html[data-glass][data-theme='light'] [data-settings-pane] {
-  --success: #0e5a2b;
+  --success: #0a4a22;
   --warning: #7a3606;
 }
 /* Texto en acento o en rojo (insignia «Ver y clic», «Quitar», «Borrar datos») sobre vidrio gris medio o de color: quedaba en
@@ -1222,6 +1222,10 @@ html[data-glass][data-theme='light'] [data-settings-pane] [class~='text-accent']
 }
 html[data-glass] [data-settings-pane] [class~='text-danger']:not(svg) {
   color: color-mix(in srgb, var(--danger) 75%, var(--fg));
+}
+/* Insignia roja de Diagnóstico en oscuro sobre vidrio gris (medida en el Mac con una ventana blanca detrás): 3,9:1. Más cerca del texto. */
+html[data-glass][data-theme='dark'] [data-settings-pane] [class~='text-danger']:not(svg) {
+  color: color-mix(in srgb, var(--danger) 55%, var(--fg));
 }
 html[data-glass][data-theme='light'] [data-settings-pane] [class*='text-muted']:not([class~='text-accent-fg'], [class~='text-danger-fg']) {
   color: color-mix(in srgb, var(--fg) 86%, transparent);
