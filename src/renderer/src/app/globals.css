@@ -1205,6 +1205,11 @@ html[data-glass][data-theme='light'] [data-app-main]:has([data-settings-root]) {
 html[data-glass][data-theme='dark'] [data-app-main]:has([data-settings-root]) {
   background: color-mix(in srgb, var(--bg) 30%, transparent);
 }
+/* Windows (Acrylic) con una ventana blanca detrás: el vidrio oscuro queda ~gris 107 y con el velo del 30 % el título llegaba a
+   4,3:1 y el gris secundario a 3,5:1 (medido sobre capturas reales). Con el 50 % quedan ~6,4:1 y ~4,9:1. */
+html[data-glass][data-platform='win32'][data-theme='dark'] [data-app-main]:has([data-settings-root]) {
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+}
 /* Estados (Conectado, Permitido, «con limitaciones») sobre el vidrio claro de color: el verde y el ámbar normales quedaban en
    ~3,6–4:1. Un tono más oscuro solo dentro de Ajustes. */
 html[data-glass][data-theme='light'] [data-settings-pane] {
