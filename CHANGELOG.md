@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.4] - 2026-10-31
+
+### Barra lateral de vidrio y Ajustes nuevos
+
+- **Barra lateral de vidrio**: nuevo ajuste «Barra lateral» (Sólida, Vidrio suave, Vidrio) en Ajustes > General. Deja ver un poco de tu escritorio detrás de la barra lateral y de Ajustes (en macOS con el material del sistema; en Windows 11 con Mica o Acrylic). Las conversaciones siguen sobre fondo sólido. Si tu sistema pide menos transparencia, o no lo permite, queda sólida.
+- **Ajustes rediseñados con vidrio**: pestañas por grupo arriba y secciones debajo; General en rejilla, las secciones largas en lista limpia y Uso, Conectores, Importar y Celular en tarjetas. Con la barra sólida y en el celular se conserva el menú lateral de siempre.
+- **Contenido como tarjeta flotante**, con más separación entre la barra lateral y la zona de trabajo; en macOS el riel es más ancho para que no se corten los botones de cerrar, minimizar y maximizar.
+- **Windows**: los botones de ventana son transparentes con el vidrio y se repintan al cambiar el tema o la barra lateral.
+- **Contraste**: textos y botones de Ajustes se midieron sobre fondos claros, oscuros y de colores (mínimo 4,5:1 en ambos temas). Se corrigió el texto gris sobre los botones de acción («Agregar conector», «Activar», «Instalar») y los estados «Conectado» y «Permitido» en tema claro.
+
+### Correcciones
+
+- **Cambios (Code)**: al borrarse un archivo fuera de la app, el panel ya no pide el contenido de un archivo que no existe.
+- **Formularios de conectores**: el botón «No enviar» ya no se pierde cuando el aviso de «obligatorio» mueve el diseño al hacer clic.
+- **Vista previa de PDF**: ajuste interno para pdf.js 6 (sin cambios visibles).
+
 ## [1.8.3] - 2026-10-29
 
 ### Ficha del proyecto (Overdrive y Code)
