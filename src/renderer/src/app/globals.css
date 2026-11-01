@@ -1171,8 +1171,9 @@ html[data-glass][data-platform='darwin'] aside[class*='left-14'] {
 html[data-glass] aside.bg-sidebar [class*='text-muted'] {
   color: color-mix(in srgb, var(--fg) 82%, transparent);
 }
+/* 78 %: «Buscar…», «Ctrl+K» y «Aún no hay proyectos» quedaban en 4,2–4,4:1 con el 68 % (medido con capturas reales en Windows). */
 html[data-glass] aside.bg-sidebar [class*='text-subtle'] {
-  color: color-mix(in srgb, var(--fg) 68%, transparent);
+  color: color-mix(in srgb, var(--fg) 78%, transparent);
 }
 /* Ajustes: el menú (y la cabecera) quedan sobre el vidrio igual que la lista de conversaciones; solo el contenido es tarjeta sólida. */
 html[data-glass] [data-app-main]:has([data-settings-root]) {
