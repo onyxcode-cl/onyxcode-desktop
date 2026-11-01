@@ -66,7 +66,8 @@ describe('skill pptx ⇄ Chat: misma guía de diseño', () => {
 
 describe('skill pptx: build_chat_deck.py + .cjs empaquetado, de extremo a extremo con un DeckCraft falso', () => {
   const py = resolve(ROOT, 'resources/opencode/skills/pptx/scripts/build_chat_deck.py')
-  const hasPython = spawnSync('python3', ['--version']).status === 0
+  // Estas pruebas usan `python3`, un CLI falso en `#!/bin/sh` y PATH de Unix: en Windows las skills corren dentro de WSL, no en el anfitrión.
+  const hasPython = process.platform !== 'win32' && spawnSync('python3', ['--version']).status === 0
   const hasNode = spawnSync('node', ['--version']).status === 0
 
   it.skipIf(!hasPython)('sin DeckCraft: código 3 y mensaje claro (no toca nada)', () => {

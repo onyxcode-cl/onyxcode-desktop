@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -135,7 +135,8 @@ describe('crear', () => {
     const { token, port } = await server.clientFor({ folder })
     const r = await call(port, token, { tipo: 'docx', nombre: 'Informe', spec: DOCX })
     expect(r.body.result.isError).toBeUndefined()
-    expect(textOf(r)).toContain(join(folder, 'Informe.docx'))
+    // En Windows el servidor puede devolver la ruta en su forma larga (RUNNER~1 → runneradmin).
+    expect([join(folder, 'Informe.docx'), join(realpathSync.native(folder), 'Informe.docx')].some((p) => textOf(r).includes(p))).toBe(true)
     expect(readFileSync(join(folder, 'Informe.docx'), 'utf8')).toBe('ARCHIVO')
     expect(renders[0]!.opts).toEqual({ remoteImages: false })
     expect(audits.at(-1)).toMatchObject({ tool: 'crear', tipo: 'docx', result: 'ok', rel: 'Informe.docx' })

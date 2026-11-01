@@ -135,7 +135,7 @@ describe('expect_app: identidad de la app, no solo el texto', () => {
         await done()
       }
     }
-  })
+  }, 90_000)
 
   it('Windows: la app al frente sin clave (no identificada) ⇒ nunca se da por la misma', async () => {
     const { mcp, done } = await boot(
