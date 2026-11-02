@@ -1,0 +1,50 @@
+name: Algo falla
+description: Cuéntanos qué pasó para poder repetirlo
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Este aviso es **público**. No pegues claves, tokens, contraseñas ni datos personales, ni en el texto ni en las capturas.
+        Si es un problema de seguridad, no lo publiques aquí: usa la pestaña **Security** › **Report a vulnerability**.
+  - type: textarea
+    id: que-paso
+    attributes:
+      label: Qué pasó
+      description: Lo que viste y lo que esperabas ver.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para repetirlo
+      placeholder: |
+        1. Abrí…
+        2. Pulsé…
+        3. Salió…
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Lazunox
+      description: Ajustes › Acerca de.
+      placeholder: '1.8.6'
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema
+      options:
+        - Mac con chip Apple
+        - Windows 11
+        - Windows 10
+        - Otro
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Capturas o detalles
+      description: Si puedes, una captura de pantalla (tápala si muestra algo privado).

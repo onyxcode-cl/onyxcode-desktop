@@ -65,9 +65,19 @@ Si prefieres tu propio CLI de OpenCode, puedes elegirlo («Usar mi CLI…» en e
 ## Seguridad y privacidad
 
 - **Tus claves y tus conversaciones se quedan en tu equipo.** No hay cuentas ni servidor propio. Solo hay conexión con tu proveedor de IA, con una consulta diaria a la API pública de GitHub para el aviso de versión (se apaga en Ajustes › Acerca de) y, solo si activas «También fuera de casa», con el servicio que conecta el celular (ve metadatos de la conexión, no el contenido).
+- **Qué sale del equipo, completo.** Revisado contra el código de esta versión:
+  - **Siempre:** lo que escribes y los archivos que adjuntas van a **tu proveedor de IA** (el que elijas), con tus claves. Lo rige la política de ese proveedor. No pasa por ningún servidor de Lazunox, porque no existe.
+  - **Una vez al día como máximo:** consulta a la API pública de GitHub para el aviso de versión nueva. Ven tu dirección IP y nada más. Se apaga en Ajustes › Acerca de.
+  - **Solo cuando usas la función:** descarga de herramientas opcionales (Node y uv desde sus sitios oficiales, herramientas de Office desde GitHub, siempre con tamaño y huella SHA-256 fijados); fotos de bancos de imágenes conocidos (Unsplash, Pexels, Pixabay, Wikimedia, Flickr) cuando la IA arma una presentación con fotos; búsquedas del navegador integrado (van a Google); paquetes que bajen los conectores locales que tú apruebes; la prueba de una clave (va solo al host de su proveedor).
+  - **Apagado por defecto:** Telegram (tu propio bot, tu propio token) y «También fuera de casa» (servicio de Cloudflare: ve direcciones IP y momentos de conexión, no el contenido).
+  - **Nunca:** telemetría, analítica, publicidad ni envío automático de errores. No hay código de ese tipo en la app.
 - **Credenciales.** En Tareas con aislamiento solo se usa OpenCode Go: la clave real queda en un proxy fuera del aislamiento y el motor recibe un valor falso. En Chat, Code y Control total **no hay aislamiento de credenciales**: el motor lee el almacén propio de la app (`auth.json`, en la carpeta de datos de Lazunox). La app no lee `~/.local/share/opencode`.
 - **Zonas intocables.** El aislamiento, el proxy de credenciales, la política de carpetas, la puerta del plan y la CSP las vigila una prueba por huella. Detalle y límites: [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md). Borrador de política de privacidad: [`docs/PRIVACIDAD-BORRADOR.md`](./docs/PRIVACIDAD-BORRADOR.md).
 - **Control remoto.** Denegar por defecto, confirmación en el Mac, PIN por dispositivo y auditoría sin secretos. En Windows está encendido, pero emparejar un celular real y el modo fuera de casa **no se han probado**.
+
+## Reportar un fallo o proponer algo
+
+Abre un aviso en [GitHub Issues](https://github.com/onyxcode-cl/onyxcode-desktop/issues/new/choose) (hay una plantilla para fallos y otra para sugerencias). Es público: **no pegues claves, tokens ni datos personales** en el texto ni en las capturas. Indica la versión (Ajustes › Acerca de), tu sistema (Mac o Windows) y los pasos para repetirlo. Si el fallo es de seguridad, no lo publiques: escríbelo en la pestaña **Security** del repositorio con «Report a vulnerability».
 
 ## Lo que todavía no está
 
@@ -75,8 +85,8 @@ Dicho sin adornos (el detalle y las pruebas hechas están en [`docs/VERIFICACION
 
 - Sin firma de Developer ID ni notarización en Mac, y sin firma de código en Windows: aparecen avisos del sistema.
 - Tareas en Windows (WSL2) y Control del PC en Windows: **verificación parcial** en un equipo real; falta la batería completa, un Windows limpio sin WSL y una auditoría externa.
-- La actualización de punta a punta desde GitHub Releases no se ha probado en Mac y Windows de forma completa.
-- La licencia de Lazunox está pendiente de definir, y la política de privacidad no está publicada. La marca «Lazunox» no está verificada (INAPI, OMPI/USPTO, dominios): no se publica hasta que el dueño la verifique.
+- La actualización desde GitHub Releases está probada de punta a punta en Mac y Windows hasta la 1.8.6, siempre en los equipos de desarrollo; falta probarla en equipos ajenos.
+- Lazunox se publica con licencia MIT (ver [`LICENSE`](./LICENSE)). La política de privacidad sigue siendo un borrador sin revisión legal. La marca «Lazunox» no está verificada (INAPI, OMPI/USPTO, dominios): no se publica hasta que el dueño la verifique.
 - El inglés está en beta.
 
 ## Términos de OpenCode y buenas prácticas

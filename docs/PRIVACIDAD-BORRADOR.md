@@ -16,7 +16,7 @@ celular si decides activarlo (§3).
 
 ## 2. Con quién se conecta la app
 
-Lazunox se conecta solo a:
+Lazunox se conecta a lo siguiente (lista revisada contra el código de la 1.8.6):
 
 1. **Tu proveedor de IA** (el que elijas), directamente desde tu equipo y con tus propias claves. Lo que envías a ese
    proveedor se rige por su política, no por esta.
@@ -25,8 +25,19 @@ Lazunox se conecta solo a:
    desactivar en Ajustes → Acerca de.
 3. **El servicio de conexión del celular**, solo si activas «También fuera de casa» (ver §3). Es opcional y está apagado
    por defecto.
+4. **Descargas bajo demanda**, solo cuando usas la función que las necesita: Node.js (nodejs.org) y uv (GitHub) para los
+   conectores locales, y las herramientas de Office (GitHub). Todas con tamaño y huella SHA-256 fijados en la app; esos
+   sitios ven la dirección IP como cualquier descarga.
+5. **Bancos de imágenes** (Unsplash, Pexels, Pixabay, Wikimedia, Flickr), solo cuando la IA arma una presentación o un
+   documento con fotos de internet. La descarga la hace la app, sin cookies ni credenciales.
+6. **Google**, solo si buscas desde la barra del navegador integrado.
+7. **Conectores locales** que tú apruebes: pueden bajar paquetes (por ejemplo de npm) o hablar con el servicio al que
+   conectan (por ejemplo Google, con tus propias credenciales). Su tratamiento lo rige cada servicio.
+8. **Telegram**, solo si activas el aviso por tu propio bot (apagado por defecto): los mensajes pasan por la API de
+   Telegram con el token de tu bot. [por definir: revisar el aviso que se muestra al activarlo.]
+9. **Prueba de clave** («Probar clave»): envía la clave solo al servidor de su propio proveedor.
 
-Eso es todo: no hay telemetría, ni analítica, ni publicidad.
+No hay telemetría, ni analítica, ni publicidad, ni envío automático de errores: la app no incluye código de ese tipo.
 
 ## 3. Control remoto fuera de casa (opcional; apagado por defecto)
 

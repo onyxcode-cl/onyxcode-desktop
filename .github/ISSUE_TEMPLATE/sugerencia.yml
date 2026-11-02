@@ -1,0 +1,14 @@
+name: Sugerencia
+description: Una idea o algo que te gustaría que hiciera
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Este aviso es **público**. No pegues claves, tokens ni datos personales.
+  - type: textarea
+    id: idea
+    attributes:
+      label: Qué te gustaría
+      description: Cuéntalo con tus palabras y para qué lo usarías.
+    validations:
+      required: true
