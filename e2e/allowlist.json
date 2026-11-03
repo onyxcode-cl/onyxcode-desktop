@@ -2,5 +2,9 @@
   {
     "pattern": "net::ERR_CONNECTION_RESET .*/global/event",
     "reason": "Windows: el motor se reinicia o se cierra a propósito y el canal de eventos (SSE) se corta; en macOS el cierre es limpio"
+  },
+  {
+    "pattern": "The Content Security Policy directive 'frame-ancestors' is ignored when delivered via a <meta> element\\. \\(lazunox-viewer://",
+    "reason": "Aviso del navegador por la CSP en <meta> de la página del visor de documentos (src/viewer/index.html); la directiva de verdad viaja en la cabecera del esquema lazunox-viewer (zona intocable), así que el aviso es inocuo"
   }
 ]
