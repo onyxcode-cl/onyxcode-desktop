@@ -4144,3 +4144,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Problema** (revisión de estética, Windows). El plan B de Word sin WordCraft era `cd .lazunox/trabajo && build_docx.py … ../../guia-agua.docx`: la detección de carpeta externa del motor resuelve `../..` desde la carpeta de la tarea y no desde el `cd` de la misma orden, así que pedía permiso para `C:\Users\…\Lazunox` (la carpeta de los Chats), se denegaba y la tarea acababa sin archivo.
 - **Solución (parte a).** `resources/opencode/agents/tasks.md`: regla «Rutas en `bash`: sin `cd` y sin `..`» (scripts desde la carpeta de la tarea y salida con ruta relativa a ella o absoluta de la tarea).
 - **Parte b (no hecha aquí).** Hacer que la detección tenga en cuenta un `cd` previo de la misma orden es del MOTOR (el `external_directory` del fork), no de `rules.ts` (que solo guarda reglas recordadas) ni de `folder-policy*` de la app; queda para el fork.
+
+## F8-B255 — W6: «Terminado con avisos» (ámbar) cuando el plan quedó incompleto o falta el archivo pedido
+
+- **Problema.** Una tarea que no creó el documento pedido terminaba «Terminado» en verde.
+- **Solución.** `done-warning.ts` (puro): aviso si el plan del turno (o el guardado) tiene pasos `pending`/`in_progress`, o si la petición pide CREAR (verbo de creación) un Word/Excel/PowerPoint/PDF y no hay ningún archivo de ese tipo entre los entregables (los auxiliares de `.lazunox/trabajo` no cuentan; leer o resumir no es pedir un archivo; sin entregables cargados no se juzga). `StatusPill` muestra «Terminado con avisos» en ámbar con el motivo en el tooltip; el estado interno sigue siendo `done`. i18n es/en.
+- **Pruebas.** `done-warning.test.ts` (8).

@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Globe,
   IdCard,
+  AlertTriangle,
   ListChecks,
   Loader2,
   MessagesSquare,
@@ -40,6 +41,7 @@ import type { BrowserOwner, BrowserToChat } from '@shared/ipc-browser'
 import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { t as tNow } from '@shared/i18n'
+import { doneWarning } from './done-warning'
 import { useT } from '../../../lib/i18n'
 import { Button } from '../../../components/Button'
 import { TranscriptLoader } from '../../../components/TranscriptLoader'
@@ -154,7 +156,19 @@ const PILL_TONE: Record<TaskStatus, string> = {
   interrupted: 'border-warning/50 bg-warning/10 text-warning'
 }
 
-function StatusPill({ status, title }: { status: TaskStatus; title?: string }): React.JSX.Element {
+function StatusPill({ status, title, warn }: { status: TaskStatus; title?: string; warn?: string }): React.JSX.Element {
+  // «Terminado con avisos» (W6): sigue siendo `done`, pero en ámbar y con el motivo en el tooltip.
+  if (status === 'done' && warn) {
+    return (
+      <span
+        title={title ? `${warn} ${title}` : warn}
+        className="flex shrink-0 items-center gap-1.5 rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning desk:h-6 desk:py-0 desk:pr-2.5 desk:pl-2 desk:text-meta"
+      >
+        <AlertTriangle size={11} aria-hidden />
+        {tNow('tasks.status.doneWarn')}
+      </span>
+    )
+  }
   return (
     <span
       title={title}
@@ -575,6 +589,18 @@ export function TasksWorkspace(): React.JSX.Element {
       })
     : 'idle'
 
+  // «Terminado con avisos» (W6): plan sin terminar o entregable pedido que no existe.
+  const storeTodosForWarn = useTasks((s) => (activeId ? s.todos[activeId] : undefined))
+  const filesForWarn = useTasks((s) => (activeId ? s.deliverables[activeId] : undefined))
+  const doneWarn = useMemo(() => {
+    if (status !== 'done') return undefined
+    const w = doneWarning({ entries, storeTodos: storeTodosForWarn ?? [], files: filesForWarn })
+    if (!w) return undefined
+    return w.kind === 'plan'
+      ? tNow('tasks.ws.warnPlan', { n: w.left })
+      : tNow('tasks.ws.warnDeliverable', { types: w.types.map((x) => `.${x}`).join(', ') })
+  }, [status, entries, storeTodosForWarn, filesForWarn])
+
   // La Consulta lateral pertenece a una tarea: al cambiar de tarea se cierra.
   useEffect(() => {
     const side = useTasks.getState().sideChat
@@ -736,7 +762,7 @@ export function TasksWorkspace(): React.JSX.Element {
             >
               {session?.title || t('tasks.ws.untitled')}
             </span>
-            <StatusPill status={status} title={busy ? undefined : tookTitle(entries)} />
+            <StatusPill status={status} warn={doneWarn} title={busy ? undefined : tookTitle(entries)} />
             <Elapsed entries={entries} live={busy} />
             <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
