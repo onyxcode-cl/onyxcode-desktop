@@ -278,7 +278,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         content: [
           {
             type: 'text' as const,
-            text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento: mira que nada se corte ni se superponga y corrige todo de una vez.`
+            text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento (una por página): mira TODAS, no solo las últimas, y revisa que nada se corte ni se superponga; corrige todo de una vez. Si no pudiste ver alguna, dilo en «Para revisar».`
           },
           ...res.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))
         ]
