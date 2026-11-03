@@ -8,7 +8,10 @@ export type PlainBashId =
 
 /** Orden = prioridad: primero verificar/renderizar (también nombran el .xlsx), luego crear, luego operaciones de archivos. */
 const RULES: Array<[PlainBashId, RegExp]> = [
-  ['check', /(recalc_check|check_(xlsx|docx|pptx|pdf)|\bdoctor\.py)/],
+  [
+    'check',
+    /(recalc_check|check_(xlsx|docx|pptx|pdf)|inspect_(xlsx|docx|pptx|pdf)|verificar_office|comparar_estructura|extract_pdf|\bdoctor\.py)/
+  ],
   ['render', /(render\.py|\bpdftoppm\b|\bqlmanage\b)/],
   ['excel', /(build_xlsx|openpyxl|\.xlsx\b)/],
   ['word', /(build_docx|python-docx|\.docx\b)/],
@@ -26,8 +29,14 @@ const RULES: Array<[PlainBashId, RegExp]> = [
   ['prep', /(python3?\b|\$lazunox_python|\bpip\b|\bnode\b|\bsed\b|\bawk\b)/]
 ]
 
+/** Un script suelto con python-docx/openpyxl/python-pptx que solo LEE (no guarda ni escribe nada) es una revisión, no una creación. */
+function readsOfficeOnly(c: string): boolean {
+  return /(import docx|from docx|openpyxl|import pptx|from pptx)/.test(c) && !/(\.save\(|\.write\(|write_text|open\([^)]*['"]w)/.test(c)
+}
+
 export function plainBash(command: string): PlainBashId {
   const c = command.toLowerCase().replace(/\s+/g, ' ').trim()
+  if (readsOfficeOnly(c)) return 'check'
   for (const [id, re] of RULES) if (re.test(c)) return id
   return 'other'
 }
