@@ -13,6 +13,8 @@ import { foldSubtitles } from '../office/craft/chat-deck'
 export interface ReviewItem {
   ok: boolean
   text: string
+  /** Aviso que no es ✔ ni ✘ (no obliga a recrear el archivo): se muestra como «ℹ». */
+  note?: boolean
 }
 export interface ReviewResult {
   items: ReviewItem[]
@@ -20,7 +22,8 @@ export interface ReviewResult {
   ok: boolean
 }
 
-const TOTAL_LABEL = /^\s*(total|subtotal|suma|promedio|media|total general)\b/i
+// La etiqueta es TODA la celda: «Media» o «Suma» sueltas en una fila de una tabla de prioridades no son un total.
+const TOTAL_LABEL = /^\s*(total|subtotal|suma|promedio|total general)\s*:?\s*$/i
 const HAND_BULLET = /^\s*([•·▪●◦\-–*]|\d+[.)])\s+\S/
 const ERRORS = ['#DIV/0!', '#REF!', '#NAME?', '#VALUE!', '#N/A', '#NUM!', '#NULL!']
 
@@ -182,15 +185,41 @@ function colNumber(ref: string): number {
   return [...letters].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0)
 }
 
+/** Hojas del libro en su orden y con su nombre real (`xl/workbook.xml` + sus relaciones), no por el nombre del archivo. */
+async function sheetFiles(zip: JSZip): Promise<Array<{ path: string; title: string }>> {
+  const all = Object.keys(zip.files).filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+  try {
+    const wb = (await zip.file('xl/workbook.xml')?.async('string')) ?? ''
+    const rels = (await zip.file('xl/_rels/workbook.xml.rels')?.async('string')) ?? ''
+    const target = new Map<string, string>()
+    for (const m of rels.matchAll(/<Relationship\b[^>]*>/g)) {
+      const id = /\sId="([^"]+)"/.exec(m[0])?.[1]
+      const t = /\sTarget="([^"]+)"/.exec(m[0])?.[1]
+      if (id && t) target.set(id, 'xl/' + t.replace(/^\/?(xl\/)?/, ''))
+    }
+    const ordered: Array<{ path: string; title: string }> = []
+    for (const m of wb.matchAll(/<sheet\b[^>]*>/g)) {
+      const name = /\sname="([^"]*)"/.exec(m[0])?.[1]
+      const rid = /\sr:id="([^"]+)"/.exec(m[0])?.[1]
+      const path = rid ? target.get(rid) : undefined
+      if (name && path && zip.file(path)) ordered.push({ path, title: unescapeXml(name) })
+    }
+    if (ordered.length === all.length) return ordered
+  } catch {
+    // sin nombres: cae al orden numérico
+  }
+  return all
+    .sort((a, b) => Number(/(\d+)\.xml$/.exec(a)![1]) - Number(/(\d+)\.xml$/.exec(b)![1]))
+    .map((path, i) => ({ path, title: `Hoja${i + 1}` }))
+}
+
 async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
   const r = new Builder()
   const sst = (await zip.file('xl/sharedStrings.xml')?.async('string')) ?? ''
   const shared = (sst.match(/<si>[\s\S]*?<\/si>/g) ?? []).map((s) =>
     unescapeXml([...s.matchAll(/<t(?:\s[^>]*)?>([^<]*)<\/t>/g)].map((m) => m[1]).join(''))
   )
-  const sheets = Object.keys(zip.files)
-    .filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
-    .sort()
+  const sheets = await sheetFiles(zip)
   if (!sheets.length) {
     r.check(false, '', 'El libro no tiene hojas')
     return r.done()
@@ -199,9 +228,9 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
   const pasted: string[] = []
   const noValue: string[] = []
   let formulas = 0
-  for (const [si, name] of sheets.entries()) {
+  for (const { path: name, title } of sheets) {
     const xml = (await zip.file(name)!.async('string')) ?? ''
-    const sheet = `Hoja${si + 1}`
+    const sheet = title
     for (const row of xml.match(/<row\b[\s\S]*?<\/row>/g) ?? []) {
       const cells = [...row.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].map((m) => {
         const attrs = m[1]
@@ -235,13 +264,25 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
     formulas ? 'Los totales son fórmulas vivas' : 'Sin filas de total',
     `Fila de total con número pegado, no fórmula: ${short(pasted)}`
   )
-  if (formulas)
-    r.check(
-      noValue.length === 0,
-      `Las ${formulas} fórmula(s) tienen valor calculado guardado`,
-      `${noValue.length} fórmula(s) sin valor recalculado (se verán vacías en visores que no calculan): ${short(noValue)}`
-    )
-  else r.items.push({ ok: true, text: 'No hay fórmulas que recalcular' })
+  if (formulas) {
+    const app = (await zip.file('docProps/app.xml')?.async('string')) ?? ''
+    const calculated = /<Application>GridCraft<\/Application>/.test(app)
+    if (noValue.length)
+      r.check(
+        false,
+        '',
+        `${noValue.length} fórmula(s) sin valor recalculado (se verán vacías en visores que no calculan): ${short(noValue)}`
+      )
+    else if (calculated) r.check(true, `Las ${formulas} fórmula(s) tienen su valor calculado por GridCraft`, '')
+    else
+      r.items.push({
+        ok: true,
+        note: true,
+        text:
+          `Las ${formulas} fórmula(s) llevan el valor que escribió el modelo: NO se recalculó (no hay GridCraft). No lo cites como verificado: ` +
+          'comprueba el total con una suma aparte (p. ej. con `bash`) y, si no puedes, dilo en «Para revisar»'
+      })
+  } else r.items.push({ ok: true, text: 'No hay fórmulas que recalcular' })
   return r.done()
 }
 
@@ -263,7 +304,7 @@ export async function reviewSummary(
     return '\nRevisión de calidad: NO corrida (no aplica a PDF). No la cites como hecha.'
   try {
     const res = await review(tipo, bytes, spec)
-    const lines = res.items.map((i) => `  ${i.ok ? '✔' : '✘'} ${i.text}`).join('\n')
+    const lines = res.items.map((i) => `  ${i.note ? 'ℹ' : i.ok ? '✔' : '✘'} ${i.text}`).join('\n')
     return (
       `\nRevisión de calidad de la herramienta (salida de esta herramienta: puedes citarla en «Cómo se verificó»):\n${lines}\n` +
       (res.ok

@@ -42,6 +42,8 @@ function cellDisplayText(cell: XlsxCell): string {
  */
 export async function renderXlsx(data: XlsxSpec): Promise<Buffer> {
   const wb = new ExcelJS.Workbook()
+  // exceljs no calcula: guarda el valor que escribió quien armó el spec. Excel y LibreOffice lo recalculan al abrir.
+  wb.calcProperties.fullCalcOnLoad = true
   const usedNames = new Set<string>()
   for (const sheet of data.sheets) {
     let name = (sheet.name || 'Hoja').slice(0, MAX_SHEET_NAME) || 'Hoja'
