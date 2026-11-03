@@ -521,6 +521,11 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0.45em 0.85em;
   text-align: left;
+  /* `.markdown` rompe en cualquier carácter para las URL largas; en una celda eso deja las palabras en una letra por línea.
+     Aquí se parte solo en los espacios y la celda no baja de ~7 caracteres: si no cabe, la tabla se desplaza en horizontal. */
+  overflow-wrap: normal;
+  word-break: normal;
+  min-width: 7ch;
 }
 .markdown th + th,
 .markdown td + td {
