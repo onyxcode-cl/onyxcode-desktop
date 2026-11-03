@@ -184,7 +184,7 @@ describe('renderPreview: Word sin ArtCraft usa el visor de la app', () => {
       'docx',
       Buffer.from('zip'),
       { deckcraft: null, wordcraft: null },
-      { captureDocx: async () => ({ images: [PNG, PNG], pages: 2 }) }
+      { captureDocx: async (_b: Buffer, _t: number) => ({ images: [PNG, PNG], pages: 2 }) }
     )
     expect(res?.images.length).toBe(2)
     expect(res?.pages).toBe(2)
@@ -205,7 +205,7 @@ describe('renderPreview: Word sin ArtCraft usa el visor de la app', () => {
       'docx',
       Buffer.from('zip'),
       { deckcraft: null, wordcraft: '/w' },
-      { run, captureDocx: async () => ({ images: [PNG], pages: 1 }) }
+      { run, captureDocx: async (_b: Buffer, _t: number) => ({ images: [PNG], pages: 1 }) }
     )
     expect(res?.images.length).toBe(1)
   })
@@ -225,5 +225,44 @@ describe('renderPreview: Word sin ArtCraft usa el visor de la app', () => {
     )
     expect(res?.images.length).toBe(1)
     expect(used).toBe(false)
+  })
+})
+
+describe('renderPreview: el respaldo del visor respeta el tiempo total', () => {
+  it('sin tiempo suficiente no abre otra ventana', async () => {
+    const { renderPreview } = await import('./preview')
+    let used = false
+    const res = await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      {
+        totalMs: 1_000,
+        captureDocx: async () => {
+          used = true
+          return null
+        }
+      }
+    )
+    expect(res).toBeNull()
+    expect(used).toBe(false)
+  })
+  it('le pasa al visor lo que queda del tiempo', async () => {
+    const { renderPreview } = await import('./preview')
+    let given = 0
+    await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      {
+        totalMs: 50_000,
+        captureDocx: async (_b, t) => {
+          given = t
+          return null
+        }
+      }
+    )
+    expect(given).toBeGreaterThan(0)
+    expect(given).toBeLessThanOrEqual(50_000)
   })
 })

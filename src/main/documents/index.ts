@@ -23,6 +23,6 @@ export const documentsMcp = new DocumentsMcpServer({
       tipo,
       bytes,
       { deckcraft: craftBinary('deckcraft'), wordcraft: craftBinary('wordcraft'), gridcraft: craftBinary('gridcraft') },
-      { rasterize: (pdf) => rasterizePdf(pdf), captureDocx: (bytes) => captureDocxPages(bytes) }
+      { rasterize: (pdf) => rasterizePdf(pdf), captureDocx: (bytes, timeoutMs) => captureDocxPages(bytes, undefined, timeoutMs) }
     )
 })

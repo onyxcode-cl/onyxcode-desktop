@@ -7,7 +7,7 @@
  * protocolo, la sesión ni la CSP del visor: solo usa `registerViewerPathValidator` y el esquema tal como están.
  */
 import { BrowserWindow, nativeImage } from 'electron'
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { realpathSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { VIEWER_SCHEME } from '../security/app-protocol'
@@ -38,13 +38,42 @@ function registerValidatorOnce(): void {
   })
 }
 
+export interface SectionInfo {
+  width: number
+  height: number
+  /** Alto de la hoja según el Word (px); 0 = no se sabe (se usa la proporción A4). */
+  pageHeight: number
+}
+export interface Slot {
+  section: number
+  /** Desde dónde (px, dentro de la sección) y cuánto alto se captura. */
+  offset: number
+  height: number
+}
+
+/** Reparte las secciones en «páginas» de alto de hoja y cuenta cuántas hay EN TOTAL (las que pasan del tope no se capturan, pero se cuentan). */
+export function planSlices(sections: SectionInfo[], maxPages: number): { slots: Slot[]; total: number } {
+  const slots: Slot[] = []
+  let total = 0
+  sections.forEach((sec, i) => {
+    if (!(sec.width > 50 && sec.height > 50)) return
+    const page = sec.pageHeight > 200 ? sec.pageHeight : sec.width * 1.4142
+    const count = Math.max(1, Math.ceil((sec.height - 2) / page))
+    for (let k = 0; k < count; k++) {
+      total++
+      if (slots.length < maxPages) slots.push({ section: i, offset: k * page, height: Math.min(page, sec.height - k * page) })
+    }
+  })
+  return { slots, total }
+}
+
 export interface CaptureResult {
   images: Buffer[]
   pages: number
 }
 
 /** PNG de cada página (hasta `maxPages`) de un .docx ya validado. `null` si el visor no lo pudo pintar. */
-export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAGES): Promise<CaptureResult | null> {
+export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAGES, timeoutMs = TIMEOUT_MS): Promise<CaptureResult | null> {
   installViewerScheme()
   const base = await privateTmp()
   privateRoot = base
@@ -56,7 +85,7 @@ export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAG
   try {
     const file = join(dir, 'doc.docx')
     await writeFile(file, bytes, { mode: 0o600 })
-    token = issueCaptureToken({ path: await realpath(file), kind: 'docx' })
+    token = issueCaptureToken({ path: realpathSync(file), kind: 'docx' })
     win = new BrowserWindow({
       show: false,
       width: 1000,
@@ -89,28 +118,34 @@ export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAG
         `new Promise((ok) => { const t = Date.now(); const f = () => { const v = document.documentElement.dataset.captureReady; v !== undefined ? ok(v) : Date.now() - t > ${READY_MS} ? ok('error') : setTimeout(f, 50) }; f() })`,
         true
       )) as string
-      const total = Number(ready)
-      if (!Number.isFinite(total) || total < 1) return null
-      const n = Math.min(total, Math.max(1, Math.floor(maxPages)))
+      const nSections = Number(ready)
+      if (!Number.isFinite(nSections) || nSections < 1) return null
+      // `docx-preview` solo corta hojas en los saltos de página EXPLÍCITOS: un Word de varias páginas llega como una sola sección alta.
+      // Se trocea cada sección en «páginas» del alto de la hoja (el `min-height` que fija el propio Word) para que la IA vea todo.
+      const sections = (await wc.executeJavaScript(
+        `(() => Array.from(document.querySelectorAll('section.docx')).map((s) => { const r = s.getBoundingClientRect(); const mh = s.style.minHeight || ''; const v = parseFloat(mh) || 0; return { width: r.width, height: r.height, pageHeight: v ? (/pt$/.test(mh) ? (v * 96) / 72 : v) : 0 } }))()`,
+        true
+      )) as SectionInfo[]
+      const { slots, total } = planSlices(sections, Math.max(1, Math.floor(maxPages)))
+      if (slots.length === 0) return null
+      const maxH = Math.max(...slots.map((x) => x.height))
+      const maxW = Math.max(...sections.map((x) => x.width))
+      w.setContentSize(Math.min(3000, Math.ceil(maxW) + 80), Math.min(4000, Math.ceil(maxH) + 160))
+      await new Promise((r) => setTimeout(r, 150))
       const images: Buffer[] = []
-      for (let i = 0; i < n; i++) {
-        const rect = (await wc.executeJavaScript(
-          `(() => { const s = document.querySelectorAll('section.docx')[${i}]; s.scrollIntoView({ block: 'start' }); const r = s.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height } })()`,
+      for (const slot of slots) {
+        const pos = (await wc.executeJavaScript(
+          `(() => { const s = document.querySelectorAll('section.docx')[${slot.section}]; const sc = document.querySelector('.docx-scroll'); const cr = sc.getBoundingClientRect(); const r = s.getBoundingClientRect(); sc.scrollTop += r.top + ${slot.offset} - cr.top; const r2 = s.getBoundingClientRect(); return { x: r2.left, y: r2.top + ${slot.offset}, width: r2.width } })()`,
           true
-        )) as { x: number; y: number; width: number; height: number }
-        if (!(rect.width > 50 && rect.height > 50)) continue
-        const need = { w: Math.ceil(rect.x + rect.width) + 24, h: Math.ceil(rect.y + rect.height) + 24 }
-        const [cw, ch] = w.getContentSize()
-        if (need.w > cw || need.h > ch) {
-          w.setContentSize(Math.max(cw, Math.min(need.w, 3000)), Math.max(ch, Math.min(need.h, 4000)))
-          await new Promise((r) => setTimeout(r, 120))
-        }
+        )) as { x: number; y: number; width: number }
         await new Promise((r) => setTimeout(r, 60))
+        const [cw, ch] = w.getContentSize()
+        if (pos.y < 0 || pos.y + slot.height > ch || pos.x < 0 || pos.x + pos.width > cw) continue
         const shot = await wc.capturePage({
-          x: Math.round(rect.x),
-          y: Math.round(rect.y),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height)
+          x: Math.round(pos.x),
+          y: Math.round(pos.y),
+          width: Math.round(pos.width),
+          height: Math.round(slot.height)
         })
         if (shot.isEmpty()) continue
         const size = shot.getSize()
@@ -121,8 +156,10 @@ export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAG
       return images.length ? { images, pages: total } : null
     })()
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+      timer = setTimeout(() => reject(new Error('timeout')), Math.min(TIMEOUT_MS, Math.max(1, timeoutMs)))
     })
+    // Si vence el tiempo, la ventana se destruye en el `finally` y el trabajo en curso falla en silencio (no es una promesa suelta sin captura).
+    work.catch(() => undefined)
     return await Promise.race([work, timeout])
   } finally {
     if (timer) clearTimeout(timer)

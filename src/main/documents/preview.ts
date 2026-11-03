@@ -39,7 +39,7 @@ export interface PreviewTools {
 export type Rasterize = (pdf: Buffer) => Promise<{ images: Buffer[]; pages: number } | null>
 
 /** Render del Word con el visor de la app (sin ArtCraft): se inyecta desde `documents/index.ts` para poder probar sin Electron. */
-export type CaptureDocx = (bytes: Buffer) => Promise<{ images: Buffer[]; pages: number } | null>
+export type CaptureDocx = (bytes: Buffer, timeoutMs: number) => Promise<{ images: Buffer[]; pages: number } | null>
 
 export interface PreviewResult {
   images: Buffer[]
@@ -91,7 +91,9 @@ export async function renderPreview(
   }
   // Sin WordCraft (no hay ArtCraft, o en WSL): el mismo visor que ve la persona, en una ventana oculta.
   const viaViewer = async (): Promise<PreviewResult | null> => {
-    const r = opts.captureDocx ? await opts.captureDocx(bytes) : null
+    // Respeta el tiempo total: sin al menos 5 s no se abre otra ventana (el cerrojo se libera al vencer y no debe quedar nada trabajando).
+    if (left() < 5_000) return null
+    const r = opts.captureDocx ? await opts.captureDocx(bytes, left()) : null
     if (!r || r.images.length === 0) return null
     const capped = capImages(r.images)
     return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
