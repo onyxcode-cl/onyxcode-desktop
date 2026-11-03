@@ -346,6 +346,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:openPath': 'X',
   'tasks:importFiles': 'X',
   'tasks:pasteFromClipboard': 'X',
+  'tasks:reviewFile': (p, ctx) => (!inDirs(p.path, scopeIpc(ctx)) ? deny('out-of-scope') : 'R'),
   'tasks:previewFile': (p, ctx) =>
     !inDirs(p.path, scopeIpc(ctx))
       ? deny('out-of-scope')

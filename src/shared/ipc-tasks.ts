@@ -367,6 +367,13 @@ export interface TasksDeliverable {
   root?: string
 }
 
+/** Revisión de calidad de un Word/Excel/PowerPoint entregado (la lista ✔/✘ de `documentos_crear`), hecha sobre el archivo tal como está AHORA. */
+export interface TasksFileReview {
+  /** `ok` = todo ✔; `issues` = hay ✘; `unavailable` = no es Office, es muy grande o no se pudo abrir (la tarjeta dice «Sin revisar»). */
+  status: 'ok' | 'issues' | 'unavailable'
+  items: Array<{ ok: boolean; text: string; note?: boolean }>
+}
+
 /** Vista previa de un archivo de la carpeta (entregables). */
 export interface TasksFilePreview {
   path: string
@@ -1090,6 +1097,8 @@ export interface TasksInvokeContract {
   'tasks:pasteFromClipboard': { req: { folder: string }; res: { files: TasksDeliverable[]; rejected: PasteRejected[] } }
   /** Lee un archivo de una carpeta autorizada para previsualizarlo (texto recortado / imagen). */
   'tasks:previewFile': { req: { path: string; maxBytes?: number }; res: TasksFilePreview }
+  /** Revisa la calidad de un Word/Excel/PowerPoint de una carpeta autorizada (sin tocarlo): alimenta el indicador de la tarjeta del archivo. */
+  'tasks:reviewFile': { req: { path: string }; res: TasksFileReview }
 
   /** Proyecto (nombre + instrucciones) de una carpeta autorizada. */
   'tasks:project:get': { req: { folder: string }; res: TasksProject }
@@ -1495,6 +1504,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:importFiles',
   'tasks:pasteFromClipboard',
   'tasks:previewFile',
+  'tasks:reviewFile',
   'tasks:project:get',
   'tasks:project:save',
   'tasks:memory:get',

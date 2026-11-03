@@ -343,7 +343,7 @@ export class EngineProxy implements MuxDispatch {
     const rec = (v: unknown): Record<string, unknown> => (typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {})
     const o = rec(original)
     const c = rec(canon)
-    if (ch === 'tasks:previewFile') {
+    if (ch === 'tasks:previewFile' || ch === 'tasks:reviewFile') {
       const paths = [o.path, c.path].filter((x): x is string => typeof x === 'string')
       if (paths.length === 0 || paths.some((p) => !isAbsolute(p) || isSensitiveEither(p, realpathLoose(p))))
         throw forbidden('sensitive-file')

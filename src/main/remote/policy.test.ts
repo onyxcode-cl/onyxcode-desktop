@@ -387,6 +387,7 @@ describe('ámbito de directory y de sesión', () => {
       ['files:watch', { folder: '/etc', subId: 'abcdefgh' }],
       ['tasks:deliverables', { folder: '/etc', since: 0 }],
       ['tasks:previewFile', { path: '/etc/passwd' }],
+      ['tasks:reviewFile', { path: '/etc/passwd' }],
       ['tasks:start', { folder: '/etc' }],
       ['tasks:removeFolder', { folder: '/etc' }],
       ['tasks:folders:check', { path: '/etc' }],

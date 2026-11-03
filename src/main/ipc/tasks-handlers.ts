@@ -16,6 +16,7 @@ import { extrasPrefs } from '../extras/prefs'
 import { settingsStore } from '../store'
 import { TasksManager } from '../tasks/manager'
 import { importFilesInto, previewFile } from '../tasks/files'
+import { reviewFile } from '../tasks/review-file'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
 import { acceptLearnedMemory, clearLearnedMemory, getLearnedMemory, removeLearnedMemoryEntry } from '../tasks/learned-memory'
@@ -226,6 +227,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     if (res.canceled) return []
     return importFilesInto(root, res.filePaths)
   })
+  handle('tasks:reviewFile', ({ path }) => reviewFile(tasks.assertInsideApproved(path)))
   handle('tasks:previewFile', ({ path, maxBytes }) => previewFile(tasks.assertInsideApproved(path), maxBytes))
 
   // ── Proyecto (por carpeta) y memoria ──

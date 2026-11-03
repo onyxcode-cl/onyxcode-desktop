@@ -891,6 +891,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:openPath': pathReq,
   'tasks:importFiles': folderReq,
   'tasks:pasteFromClipboard': folderReq,
+  'tasks:reviewFile': pathReq,
   'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: 20 * 1024 * 1024 })) }),
   'tasks:project:get': folderReq,
   'tasks:project:save': obj({
