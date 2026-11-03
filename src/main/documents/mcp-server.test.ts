@@ -142,6 +142,32 @@ describe('crear', () => {
     expect(audits.at(-1)).toMatchObject({ tool: 'crear', tipo: 'docx', result: 'ok', rel: 'Informe.docx' })
   })
 
+  it('la respuesta trae la revisión de calidad de la herramienta; si no se pudo abrir el archivo lo dice («NO corrida»)', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'docx', nombre: 'Revisado', spec: DOCX })
+    expect(textOf(r)).toContain('Revisión de calidad: NO corrida')
+    const withReview = new DocumentsMcpServer({
+      render: async () => Buffer.from('x'),
+      audit: () => undefined,
+      review: async () => ({
+        ok: false,
+        items: [
+          { ok: true, text: 'Bien A' },
+          { ok: false, text: 'Mal B' }
+        ]
+      })
+    })
+    try {
+      const c = await withReview.clientFor({ folder: folder2 })
+      const t = textOf(await call(c.port, c.token, { tipo: 'docx', nombre: 'Doble', spec: DOCX }))
+      expect(t).toContain('✔ Bien A')
+      expect(t).toContain('✘ Mal B')
+      expect(t).toContain('OTRO nombre')
+    } finally {
+      await withReview.stop()
+    }
+  })
+
   it('la ruta que ve el agente pasa por toAgentPath (Windows: /win/c/…)', async () => {
     const { token, port } = await server.clientFor({ folder, toAgentPath: (p) => `/win/c/${p.length}` })
     const r = await call(port, token, { tipo: 'xlsx', nombre: 'Ventas', spec: XLSX })

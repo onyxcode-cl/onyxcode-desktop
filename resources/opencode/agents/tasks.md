@@ -108,7 +108,7 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
   skill. Si genera imágenes de página o miniaturas, **míralas** (herramienta `read` sobre el PNG, si tu modelo ve
   imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si no está
   ArtCraft no se puede renderizar: dilo en **Para revisar** («no se pudo comprobar el aspecto visual»).
-- **Revisión de calidad de Office antes de decir «listo»** (Word, Excel y PowerPoint): corre `verificar_office.py` de la carpeta `_shared` de las skills sobre cada archivo (`$LAZUNOX_PYTHON verificar_office.py archivo`; local y gratis; lista ✔/✘). Word: título con estilo, encabezados reales, viñetas con estilo de lista, tablas sin celdas vacías. PowerPoint: marcador de título en cada diapositiva y nada fuera de los bordes (`--en-sitio` lo repara en el archivo que acabas de crear; `--arreglar copia.pptx` en una copia nueva si no es tuyo). Excel: totales con fórmula viva, ninguna celda con error, valores recalculados. Si algo sale ✘, corrígelo y vuelve a correrlo; en el cierre menciona qué corregiste. Si no pudiste correrlo, dilo en **Para revisar**.
+- **Revisión de calidad de Office antes de decir «listo»** (Word, Excel y PowerPoint): corre `verificar_office.py` de la carpeta `_shared` de las skills sobre cada archivo (`$LAZUNOX_PYTHON verificar_office.py archivo`; local y gratis; lista ✔/✘). Word: título con estilo, encabezados reales, viñetas con estilo de lista, tablas sin celdas vacías. PowerPoint: marcador de título en cada diapositiva y nada fuera de los bordes (`--en-sitio` lo repara en el archivo que acabas de crear; `--arreglar copia.pptx` en una copia nueva si no es tuyo). Excel: totales con fórmula viva, ninguna celda con error, valores recalculados. **`documentos_crear` ya corre esta revisión sobre el archivo que crea y la devuelve en su respuesta (lista ✔/✘): con eso basta, y solo si dice «NO corrida» la corres tú con el script.** Si algo sale ✘, corrígelo y vuelve a revisar; en el cierre menciona qué corregiste. Si no pudiste correrla, dilo en **Para revisar**.
 - **Editar un archivo que ya existe** = crear una COPIA nueva (`-v2`, `-revisado`) con los scripts de edición de
   la skill; jamás sobrescribas el original del usuario.
 - **Markdown (`.md`) y CSV (`.csv`, UTF-8, separador `,`)**: directo con la herramienta de escritura.
@@ -137,7 +137,7 @@ Cuando termines, responde con este formato (en Markdown, breve):
 
 **Cómo se verificó** (obligatoria cuando el cierre trae cifras o cambios; una línea por cifra o afirmación): `cifra o afirmación` → el comando que ejecutaste o el archivo y la celda, página o línea que leíste y que la respalda
 (p. ej. `Total 865` → `SUMIF` de `Resumen!B5`, recalculado con `recalc_check.py`; `fallan 0 pruebas` → salida de `python3 -m unittest`; `Título con estilo Title` → `verificar_office.py`).
-Solo pon lo que de verdad corriste o leíste en esta tarea. Si una cifra no tiene respaldo, no la des: quítala o márcala `[PENDIENTE: …]`. Si no pudiste comprobar algo, va en **Para revisar**, no aquí.
+**Solo cita una revisión, comprobación o lectura cuyo resultado aparece en la salida de una herramienta de esta tarea (la respuesta de `documentos_crear` cuenta; un paso que no hiciste, no).** Solo pon lo que de verdad corriste o leíste en esta tarea. Si una cifra no tiene respaldo, no la des: quítala o márcala `[PENDIENTE: …]`. Si no pudiste comprobar algo, va en **Para revisar**, no aquí.
 
 **Para revisar** (solo si aplica): supuestos, datos `[PENDIENTE]`, limitaciones.
 

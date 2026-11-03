@@ -13,6 +13,7 @@
  * mismos validadores del Chat, con sus topes); no hay red (en el PDF, sin imágenes de internet); una operación a la vez por atadura,
  * dos en toda la app y un tope por hora; el registro de auditoría no lleva contenido.
  */
+import { reviewDocument, reviewSummary } from './review'
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
 import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
 import { explainDocx, explainXlsx } from '../office/craft/doc-explain'
@@ -52,6 +53,8 @@ export interface DocumentsDeps {
   /** Registro de auditoría (por defecto, consola). Nunca recibe contenido del documento. */
   audit?: (entry: AuditEntry) => void
   renderTimeoutMs?: number
+  /** Revisión de calidad del archivo creado (por defecto `review.ts`); se inyecta para probar. */
+  review?: typeof reviewDocument
 }
 
 export interface AuditEntry {
@@ -75,7 +78,7 @@ export const DOCUMENT_TOOLS = [
       'Crea un documento NUEVO (PowerPoint .pptx, Word .docx, Excel .xlsx o PDF) con el mismo motor y la misma guía de diseño que el Chat, ' +
       'y lo guarda en la carpeta de esta tarea. Para pptx, docx y xlsx pasa `spec` (el mismo JSON que documentan las skills pptx, docx y xlsx); ' +
       'para pdf pasa `html` (documento autocontenido, sin recursos externos). `nombre` va sin extensión. Nunca sobrescribe: si el nombre existe, ' +
-      'añade « (2)». Devuelve la ruta del archivo creado.',
+      'añade « (2)». Devuelve la ruta del archivo creado y la revisión de calidad automática (lista ✔/✘): si hay puntos ✘, corrígelos creando de nuevo con otro nombre.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -318,7 +321,8 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       quota.created.set(written.abs, { abs: written.abs, tipo: built.tipo, sha })
       if (quota.created.size > 400) quota.created.delete(quota.created.keys().next().value as string)
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'ok', bytes: written.bytes, rel: written.rel, ms: now() - t0 })
-      return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).`)
+      const revision = await reviewSummary(built.tipo, bytes, this.deps.review)
+      return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}`)
     } catch (err) {
       if (err instanceof OutputPathError) {
         this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: err.code, ms: now() - t0 })
