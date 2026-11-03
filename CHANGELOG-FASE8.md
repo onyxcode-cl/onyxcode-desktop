@@ -4091,3 +4091,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **I2.** (a) El subtítulo pedido solo se exige si el diseño de la primera diapositiva dibuja viñetas; (b) `foldSubtitles` solo actúa en la portada (un separador de sección con `subtitle` sigue siendo separador); (c) la etiqueta de total debe ser toda la celda y «media» ya no cuenta (`review.ts` y `verificar_office.py`).
 - **I3.** `visor-auto-abre.e2e.ts` usa un .docx del repo (`fixtures-review/bueno.docx`) y ya no depende de una variable de entorno: corre siempre.
 - Pruebas: `review.test.ts`, `review.fallback-*.test.ts`, `pptx-titles.test.ts`, `chat-deck.test.ts`, `test_verificar_office.py`.
+
+## F8-B247 — F8-B245 también con comandos encadenados («cp a.docx b.docx && ls -l b.docx» ya no es «Creó»)
+
+- **Problema** (prueba real en Windows). `soleFileOp` devolvía nada si el comando llevaba `&&`, `||`, `;` o `|`, y entonces ganaba la regla `word` (`\.docx\b`): `cp a.docx b.docx && ls -l …`, `rm notas-a.docx && ls -l …` y `mv … && …` salían «Creó el documento de Word». Solo el comando suelto daba «Copió archivos».
+- **Solución.** `plain-bash.ts` (`leadingFileOp`): si el PRIMER comando de la cadena es rm/trash/Remove-Item/del, mv/Move-Item, cp/ditto/Copy-Item u open/Start-Process y en ninguna parte hay creación (python, node, `build_*`, `translate_*`, `edit_*`, `.save(`, python-docx/openpyxl/python-pptx, `documentos_crear`…), el paso se rotula por esa operación; las comprobaciones que siguen (ls, test, echo, stat, dir, Get-ChildItem…) no cuentan. `rm -f viejo.docx; python3 build_docx.py …` y `python3 build_docx.py … && open informe.docx` siguen siendo «Creó».
+- **Pruebas.** `plain-bash.test.ts`: 9 casos nuevos que fallan con el código anterior y 2 que siguen como «Creó».

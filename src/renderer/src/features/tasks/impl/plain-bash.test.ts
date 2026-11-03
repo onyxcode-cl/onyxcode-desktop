@@ -34,7 +34,20 @@ describe('plainBash', () => {
     ['open informe.pdf', 'open'],
     ['Remove-Item C:\\x\\informe.docx', 'remove'],
     ['python3 build_docx.py spec.json && open informe.docx', 'word'],
-    ['rm -f viejo.docx; python3 build_docx.py spec.json', 'word']
+    ['rm -f viejo.docx; python3 build_docx.py spec.json', 'word'],
+    // comandos encadenados con comprobaciones: cuenta la operación de archivo, no el nombre del .docx
+    ['rm x.docx && ls', 'remove'],
+    ['rm -f a.docx; ls -la', 'remove'],
+    ['rm notas-a.docx && ls -l notas-a.docx notas-b.docx', 'remove'],
+    ['cp a.docx b.docx && ls -l b.docx', 'copy'],
+    ['cp a.docx b.docx && ls -l b.docx | head -3', 'copy'],
+    ['mv a.xlsx dir/ && ls dir', 'move'],
+    ['mv a.docx b.docx || echo fallo', 'move'],
+    ['Remove-Item a.pptx; Get-ChildItem', 'remove'],
+    ['open informe.docx && echo listo', 'open'],
+    // pero si en la cadena se crea algo, sigue siendo creación
+    ['python3 build_docx.py spec.json informe.docx && open informe.docx', 'word'],
+    ['rm -f a.xlsx && python3 build_xlsx.py spec.json', 'excel']
   ] as const)('%s → %s', (cmd, id) => {
     expect(plainBash(cmd)).toBe(id)
   })
