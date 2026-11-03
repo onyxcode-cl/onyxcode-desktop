@@ -9,7 +9,7 @@ import { renderAsync } from 'docx-preview'
 import { docUrl } from '../params'
 import type { ViewerLang } from '../i18n'
 import { tv } from '../i18n'
-import { ZOOM_STEPS, zoomIn, zoomOut } from '../zoom'
+import { ZOOM_STEPS, fitWidthPercent, zoomIn, zoomOut } from '../zoom'
 import { sanitizeDocxDom } from './sanitize'
 
 type Phase = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready' }
@@ -47,6 +47,13 @@ export function DocxViewer({ token, lang, capture }: { token: string; lang: View
         if (cancelled) return
         sanitizeDocxDom(container)
         setPhase({ kind: 'ready' })
+        // Hoja más ancha que el panel: se abre ajustada al ancho (la persona puede acercar con «+»). El render oculto de la IA no la toca.
+        if (!capture) {
+          const widest = Math.max(0, ...Array.from(container.querySelectorAll('section.docx')).map((s) => s.getBoundingClientRect().width))
+          const avail = (container.parentElement?.clientWidth ?? 0) - 24
+          const fit = fitWidthPercent(widest, avail)
+          if (fit < 100) setZoomPercent(fit)
+        }
         // Solo en el render oculto de la IA: avisa a main cuántas páginas pintó (el visor de la persona no marca nada).
         if (capture) document.documentElement.dataset.captureReady = String(container.querySelectorAll('section.docx').length)
       })
@@ -84,11 +91,7 @@ export function DocxViewer({ token, lang, capture }: { token: string; lang: View
         </button>
       </div>
       <div className="docx-scroll" style={{ visibility: phase.kind === 'ready' ? 'visible' : 'hidden' }}>
-        <div
-          ref={containerRef}
-          className="docx-pages"
-          style={{ transform: `scale(${zoomPercent / 100})`, transformOrigin: 'top center' }}
-        />
+        <div ref={containerRef} className="docx-pages" style={{ zoom: zoomPercent / 100 }} />
       </div>
     </div>
   )

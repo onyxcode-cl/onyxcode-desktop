@@ -29,3 +29,9 @@ export function clampPage(page: number, total: number): number {
 export function scaleOf(percent: number): number {
   return percent / 100
 }
+
+/** «Ajustar al ancho»: el porcentaje que hace caber una hoja de `pageWidth` px en `available` px (nunca amplía de 100 %, mínimo 25 %). */
+export function fitWidthPercent(pageWidth: number, available: number): number {
+  if (!(pageWidth > 0) || !(available > 0)) return 100
+  return Math.max(25, Math.min(100, Math.floor((available / pageWidth) * 100)))
+}

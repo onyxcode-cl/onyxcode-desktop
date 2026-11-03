@@ -254,12 +254,14 @@ body {
 .docx-pages {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* `safe`: si la hoja es más ancha que el panel NO se centra (se saldría por la izquierda, donde no hay desplazamiento): arranca en el borde. */
+  align-items: safe center;
   gap: 16px;
   padding: 16px 0 32px;
 }
 /* docx-preview envuelve cada hoja en `.docx-wrapper > .docx`; siempre hoja blanca, sea cual sea el tema de la app. */
 .docx-pages .docx-wrapper {
+  align-items: safe center;
   background: transparent;
 }
 .docx-pages .docx {

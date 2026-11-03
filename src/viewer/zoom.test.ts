@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ZOOM_MAX, ZOOM_MIN, clampPage, scaleOf, zoomIn, zoomOut } from './zoom'
+import { ZOOM_MAX, ZOOM_MIN, clampPage, fitWidthPercent, scaleOf, zoomIn, zoomOut } from './zoom'
 
 describe('zoomIn', () => {
   it('sube al paso siguiente', () => {
@@ -44,5 +44,20 @@ describe('scaleOf', () => {
   it('convierte porcentaje a fracción', () => {
     expect(scaleOf(150)).toBe(1.5)
     expect(scaleOf(100)).toBe(1)
+  })
+})
+
+describe('fitWidthPercent', () => {
+  it('una hoja que cabe se queda en 100 %', () => {
+    expect(fitWidthPercent(794, 1000)).toBe(100)
+  })
+  it('una hoja más ancha que el panel se reduce para caber', () => {
+    expect(fitWidthPercent(794, 400)).toBe(50)
+    expect(fitWidthPercent(1000, 640)).toBe(64)
+  })
+  it('nunca baja de 25 % y los valores raros dan 100 %', () => {
+    expect(fitWidthPercent(2000, 100)).toBe(25)
+    expect(fitWidthPercent(0, 400)).toBe(100)
+    expect(fitWidthPercent(794, 0)).toBe(100)
   })
 })
