@@ -34,8 +34,24 @@ function readsOfficeOnly(c: string): boolean {
   return /(import docx|from docx|openpyxl|import pptx|from pptx)/.test(c) && !/(\.save\(|\.write\(|write_text|open\([^)]*['"]w)/.test(c)
 }
 
+/** Un comando suelto (sin encadenar) que borra, mueve, copia o abre un archivo es esa operación aunque nombre un .docx/.xlsx…: `rm informe.docx` no «creó» nada. */
+const SOLE_FILE_OPS: Array<[PlainBashId, RegExp]> = [
+  ['remove', /^((rm|trash)\b|remove-item\b|(del|erase|rmdir)\s)/],
+  ['move', /^(mv\b|move-item\b|move\s)/],
+  ['copy', /^((cp|ditto)\b|copy-item\b|(copy|xcopy|robocopy)\s)/],
+  ['open', /^(open\b|start-process\b|start\s)/]
+]
+
+function soleFileOp(c: string): PlainBashId | null {
+  if (/(&&|\|\||[;|])/.test(c)) return null
+  for (const [id, re] of SOLE_FILE_OPS) if (re.test(c)) return id
+  return null
+}
+
 export function plainBash(command: string): PlainBashId {
   const c = command.toLowerCase().replace(/\s+/g, ' ').trim()
+  const op = soleFileOp(c)
+  if (op) return op
   if (readsOfficeOnly(c)) return 'check'
   for (const [id, re] of RULES) if (re.test(c)) return id
   return 'other'

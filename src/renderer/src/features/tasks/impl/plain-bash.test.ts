@@ -26,7 +26,15 @@ describe('plainBash', () => {
     ['Copy-Item a.txt b.txt', 'copy'],
     ['Remove-Item temporal.txt', 'remove'],
     ['Get-ChildItem C:\\Users\\x\\Desktop', 'look'],
-    ['curl https://example.com', 'other']
+    ['curl https://example.com', 'other'],
+    ['rm ventas-largo.docx', 'remove'],
+    ['rm -f ~/Desktop/a.xlsx', 'remove'],
+    ['mv informe.docx informe-v1.docx', 'move'],
+    ['cp presentacion.pptx copia.pptx', 'copy'],
+    ['open informe.pdf', 'open'],
+    ['Remove-Item C:\\x\\informe.docx', 'remove'],
+    ['python3 build_docx.py spec.json && open informe.docx', 'word'],
+    ['rm -f viejo.docx; python3 build_docx.py spec.json', 'word']
   ] as const)('%s → %s', (cmd, id) => {
     expect(plainBash(cmd)).toBe(id)
   })
