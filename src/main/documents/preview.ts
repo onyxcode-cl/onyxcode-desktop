@@ -5,14 +5,29 @@
  * Excel (GridCraft → PDF) y PDF no tienen render a imagen en ArtCraft: pasan por el PDF y `rasterize` (pdf.js en una ventana oculta de la
  * app, igual en macOS y Windows). Sin programa o sin rasterizador devuelven `null` y la herramienta lo dice.
  */
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { constants } from 'node:fs'
+import { mkdtemp, open, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { runCraft } from '../office/craft/craft-run'
+import { privateTmp } from '../office/craft/private-tmp'
 
 export const MAX_PREVIEW_PAGES = 12
 export const MAX_PREVIEW_BYTES = 6 * 1024 * 1024
 export const PREVIEW_SCALE = '0.6'
+
+/** Tope de tiempo de TODA la vista previa (los programas de ArtCraft no se quedan trabajando después de que el cerrojo se libera). */
+export const PREVIEW_TOTAL_MS = 100_000
+
+/** Lee un PNG/PDF que escribió un programa hijo: sin seguir enlaces (por si algo cambió el archivo por un enlace) y solo si es un archivo normal. */
+async function readOutput(path: string): Promise<Buffer> {
+  const fh = await open(path, constants.O_RDONLY | (typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0))
+  try {
+    if (!(await fh.stat()).isFile()) throw new Error('no es un archivo normal')
+    return await fh.readFile()
+  } finally {
+    await fh.close()
+  }
+}
 
 export interface PreviewTools {
   deckcraft: string | null
@@ -46,27 +61,33 @@ export async function renderPreview(
   tipo: 'pptx' | 'docx' | 'xlsx' | 'pdf',
   bytes: Buffer,
   tools: PreviewTools,
-  opts: { timeoutMs?: number; run?: typeof runCraft; rasterize?: Rasterize } = {}
+  opts: { timeoutMs?: number; totalMs?: number; run?: typeof runCraft; rasterize?: Rasterize } = {}
 ): Promise<PreviewResult | null> {
   const run = opts.run ?? runCraft
-  const timeoutMs = opts.timeoutMs ?? 90_000
+  const perRun = opts.timeoutMs ?? 90_000
+  const deadline = Date.now() + (opts.totalMs ?? PREVIEW_TOTAL_MS)
+  const left = (): number => deadline - Date.now()
+  /** Cada programa recibe como máximo lo que queda del tiempo total: ninguno sigue después de vencido. */
+  const timeoutMs = (): number => Math.max(1, Math.min(perRun, left()))
   if (tipo === 'pptx' && tools.deckcraft) {
-    const dir = await mkdtemp(join(tmpdir(), 'lazunox-preview-'))
+    const dir = await mkdtemp(join(await privateTmp(), 'lazunox-preview-'))
     try {
       const src = join(dir, 'doc.pptx')
       const outDir = join(dir, 'paginas')
       await writeFile(src, bytes)
-      await run(tools.deckcraft, ['render', src, '--all', '--scale', PREVIEW_SCALE, outDir], timeoutMs)
+      await run(tools.deckcraft, ['render', src, '--all', '--scale', PREVIEW_SCALE, outDir], timeoutMs())
       const files = (await readdir(outDir)).filter((f) => f.toLowerCase().endsWith('.png')).sort()
-      const all = await Promise.all(files.map((f) => readFile(join(outDir, f))))
+      // DeckCraft renderiza todas las diapositivas: en memoria solo entran las primeras (el resto se cuenta, no se lee).
+      const all: Buffer[] = []
+      for (const f of files.slice(0, MAX_PREVIEW_PAGES)) all.push(await readOutput(join(outDir, f)))
       const capped = capImages(all)
-      return { images: capped.images, pages: all.length, truncated: capped.truncated }
+      return { images: capped.images, pages: files.length, truncated: capped.truncated || files.length > capped.images.length }
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
   }
   if (tipo === 'docx' && tools.wordcraft) {
-    const dir = await mkdtemp(join(tmpdir(), 'lazunox-preview-'))
+    const dir = await mkdtemp(join(await privateTmp(), 'lazunox-preview-'))
     try {
       const src = join(dir, 'doc.docx')
       await writeFile(src, bytes)
@@ -74,9 +95,10 @@ export async function renderPreview(
       // WordCraft renderiza una página por llamada y falla al pasarse del final: se pide hasta que falle o se llegue al tope.
       for (let page = 1; page <= MAX_PREVIEW_PAGES + 1; page++) {
         const out = join(dir, `p${page}.png`)
+        if (left() <= 0) break
         try {
-          await run(tools.wordcraft, ['render', src, out, '--page', String(page), '--scale', PREVIEW_SCALE], timeoutMs)
-          all.push(await readFile(out))
+          await run(tools.wordcraft, ['render', src, out, '--page', String(page), '--scale', PREVIEW_SCALE], timeoutMs())
+          all.push(await readOutput(out))
         } catch {
           if (page === 1) throw new Error('No se pudo renderizar la primera página.')
           break
@@ -95,7 +117,7 @@ export async function renderPreview(
     return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
   }
   if (tipo === 'xlsx' && tools.gridcraft && opts.rasterize) {
-    const dir = await mkdtemp(join(tmpdir(), 'lazunox-preview-'))
+    const dir = await mkdtemp(join(await privateTmp(), 'lazunox-preview-'))
     try {
       const src = join(dir, 'libro.xlsx')
       await writeFile(src, bytes)
@@ -105,12 +127,12 @@ export async function renderPreview(
         await run(
           tools.gridcraft,
           ['run', '--in', src, '--cmd', `file.exportPdf=${JSON.stringify({ path: pdfPath, sheets: 'all', fitToPage: true })}`, '--quiet'],
-          timeoutMs
+          timeoutMs()
         )
       } catch {
         return null
       }
-      const r = await opts.rasterize(await readFile(pdfPath))
+      const r = await opts.rasterize(await readOutput(pdfPath))
       if (!r || r.images.length === 0) return null
       const capped = capImages(r.images)
       return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }

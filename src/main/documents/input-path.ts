@@ -15,6 +15,8 @@ import { OutputPathError } from './output-path'
 export const MAX_INPUT_BYTES = 25 * 1024 * 1024
 const MAX_DEPTH = 8
 const O_NOFOLLOW = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0
+/** macOS 11+: `O_NOFOLLOW_ANY` (0x20000000) rechaza un enlace en CUALQUIER componente de la ruta, no solo en el último; Node no lo expone. Sustituye a `O_NOFOLLOW` (juntos dan EINVAL). */
+const O_NOFOLLOW_ANY = process.platform === 'darwin' ? 0x20000000 : 0
 const EXT_TIPO = { pptx: 'pptx', docx: 'docx', xlsx: 'xlsx', pdf: 'pdf' } as const
 
 export type InputTipo = (typeof EXT_TIPO)[keyof typeof EXT_TIPO]
@@ -63,12 +65,12 @@ function hasSignature(tipo: InputTipo, bytes: Buffer): boolean {
   return bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04
 }
 
-/** `afterOpen` solo existe para probar el reemplazo del archivo entre la validación y la lectura. */
+/** `afterWalk`/`afterOpen` solo existen para probar un cambio del camino entre la validación, la apertura y la lectura. */
 export async function readTaskFile(
   root: string,
   raw: unknown,
   agentRoots: string[] = [],
-  hooks: { afterOpen?: () => Promise<void> } = {}
+  hooks: { afterWalk?: () => Promise<void>; afterOpen?: () => Promise<void> } = {}
 ): Promise<TaskFile> {
   const segs = relativeInputPath(raw, agentRoots)
   const ext = segs[segs.length - 1].split('.').pop()?.toLowerCase() ?? ''
@@ -80,33 +82,46 @@ export async function readTaskFile(
   } catch {
     throw new OutputPathError('io', 'No se encuentra la carpeta de la tarea.')
   }
-  let cur = rootReal
-  for (let i = 0; i < segs.length; i++) {
-    cur = join(cur, segs[i])
-    let st
-    try {
-      st = await lstat(cur)
-    } catch {
-      throw new OutputPathError('io', 'No se encuentra ese archivo en la carpeta de la tarea.')
+  // Recorrido 1: cada componente con lstat (sin enlaces) y se guarda su identidad (dev/ino). La del ARCHIVO es la referencia: lo que se abre
+  // después tiene que ser exactamente ese inodo, aunque alguien cambie un directorio intermedio por un enlace entre medias.
+  const walk = async (): Promise<{ abs: string; ids: string[]; nlink: number }> => {
+    let cur = rootReal
+    const ids: string[] = []
+    let nlink = 1
+    for (let i = 0; i < segs.length; i++) {
+      cur = join(cur, segs[i])
+      let st
+      try {
+        st = await lstat(cur)
+      } catch {
+        throw new OutputPathError('io', 'No se encuentra ese archivo en la carpeta de la tarea.')
+      }
+      if (st.isSymbolicLink()) throw bad('La ruta pasa por un enlace; no se admite.')
+      if (i < segs.length - 1 ? !st.isDirectory() : !st.isFile()) throw bad('La ruta no es un archivo normal de la carpeta de la tarea.')
+      ids.push(`${st.dev}:${st.ino}`)
+      nlink = st.nlink
     }
-    if (st.isSymbolicLink()) throw bad('La ruta pasa por un enlace; no se admite.')
-    if (i < segs.length - 1 ? !st.isDirectory() : !st.isFile()) throw bad('La ruta no es un archivo normal de la carpeta de la tarea.')
+    try {
+      if (!isInside(rootReal, await realpath(cur))) throw new Error('outside')
+    } catch {
+      throw new OutputPathError('outside', 'El archivo queda fuera de la carpeta de la tarea.')
+    }
+    return { abs: cur, ids, nlink }
   }
-  try {
-    if (!isInside(rootReal, await realpath(cur))) throw new Error('outside')
-  } catch {
-    throw new OutputPathError('outside', 'El archivo queda fuera de la carpeta de la tarea.')
-  }
-  const before = await lstat(cur)
+  const first = await walk()
+  const cur = first.abs
+  // Un archivo con otro nombre duro en otra carpeta no se puede distinguir por su ruta: no se admite.
+  if (first.nlink > 1) throw bad('El archivo tiene varios nombres (enlace duro); no se admite.')
+  await hooks.afterWalk?.()
   let fh
   try {
-    fh = await open(cur, constants.O_RDONLY | O_NOFOLLOW)
+    fh = await open(cur, constants.O_RDONLY | (O_NOFOLLOW_ANY || O_NOFOLLOW))
   } catch {
     throw new OutputPathError('io', 'No se pudo abrir el archivo.')
   }
   try {
     const st = await fh.stat()
-    if (!st.isFile() || st.dev !== before.dev || st.ino !== before.ino)
+    if (!st.isFile() || `${st.dev}:${st.ino}` !== first.ids[first.ids.length - 1])
       throw new OutputPathError('outside', 'El archivo cambió mientras se abría.')
     if (st.size > MAX_INPUT_BYTES) throw new OutputPathError('size', 'El archivo es demasiado grande para la vista previa (máx. 25 MB).')
     await hooks.afterOpen?.()
@@ -120,9 +135,9 @@ export async function readTaskFile(
     const after = await fh.stat()
     if (off !== st.size || after.size !== st.size || after.mtimeMs !== st.mtimeMs)
       throw new OutputPathError('io', 'El archivo cambió mientras se leía; vuelve a intentarlo.')
-    const now = await lstat(cur).catch(() => null)
-    if (!now || now.isSymbolicLink() || now.dev !== st.dev || now.ino !== st.ino)
-      throw new OutputPathError('outside', 'El archivo cambió mientras se leía.')
+    // Recorrido 2: la ruta tiene que seguir siendo la misma cadena de inodos (ni un directorio cambiado por un enlace, ni otro archivo).
+    const second = await walk().catch(() => null)
+    if (!second || second.ids.join('|') !== first.ids.join('|')) throw new OutputPathError('outside', 'El archivo cambió mientras se leía.')
     if (!hasSignature(tipo, bytes)) throw new OutputPathError('name', `El archivo no es un .${tipo} válido.`)
     return { abs: cur, rel: segs.join('/'), tipo, bytes }
   } finally {

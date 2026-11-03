@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { linkSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
@@ -79,7 +79,28 @@ describe('readTaskFile', () => {
     mkdirSync(join(root, 'carpeta.docx'))
     await fails(readTaskFile(root, 'carpeta.docx'), /archivo normal/)
   })
-  it('si el archivo se reemplaza entre la validación y la lectura (otro archivo o un enlace), se rechaza', async () => {
+  it('un directorio intermedio cambiado por un enlace DESPUÉS de validar (la carrera real) no deja leer el archivo de fuera', async () => {
+    mkdirSync(join(root, 'sub'))
+    writeFileSync(join(root, 'sub', 'x.docx'), ZIP)
+    mkdirSync(join(outside, 'sub'))
+    writeFileSync(join(outside, 'sub', 'x.docx'), Buffer.concat([ZIP, Buffer.from('SECRETO')]))
+    const err = await readTaskFile(root, 'sub/x.docx', [], {
+      afterWalk: async () => {
+        renameSync(join(root, 'sub'), join(root, 'sub-real'))
+        symlinkSync(join(outside, 'sub'), join(root, 'sub'))
+      }
+    }).then(
+      () => null,
+      (e: unknown) => e
+    )
+    expect(err).toBeInstanceOf(OutputPathError)
+  })
+  it('un archivo con otro nombre duro se rechaza', async () => {
+    writeFileSync(join(root, 'a.docx'), ZIP)
+    linkSync(join(root, 'a.docx'), join(root, 'copia.docx'))
+    await fails(readTaskFile(root, 'a.docx'), /varios nombres/)
+  })
+  it('si el archivo se reemplaza entre la apertura y la lectura (otro archivo o un enlace), se rechaza', async () => {
     writeFileSync(join(root, 'a.docx'), ZIP)
     writeFileSync(join(root, 'otro.docx'), Buffer.concat([ZIP, Buffer.from('distinto')]))
     await fails(

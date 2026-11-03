@@ -5,8 +5,8 @@
  */
 import { execFile } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { privateTmp } from './private-tmp'
 
 /** Entorno mínimo para ejecutar un programa de ArtCraft con todo apuntando a `home`. */
 export function craftEnv(home: string, platform: string = process.platform): NodeJS.ProcessEnv {
@@ -28,7 +28,7 @@ export function craftEnv(home: string, platform: string = process.platform): Nod
 
 /** Ejecuta `binary args…` con carpeta de datos temporal propia (se borra al terminar). Lanza con un mensaje corto si falla. */
 export async function runCraft(binary: string, args: string[], timeoutMs: number): Promise<void> {
-  const home = await mkdtemp(join(tmpdir(), 'lazunox-craft-home-'))
+  const home = await mkdtemp(join(await privateTmp(), 'lazunox-craft-home-'))
   try {
     await new Promise<void>((ok, fail) => {
       execFile(

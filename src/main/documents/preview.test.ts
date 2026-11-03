@@ -120,3 +120,58 @@ describe('renderPreview', () => {
     expect(res!.truncated).toBe(true)
   })
 })
+
+describe('renderPreview: tiempo total, memoria y carpeta privada', () => {
+  it('no sigue lanzando programas de Word una vez vencido el tiempo total', async () => {
+    const { renderPreview } = await import('./preview')
+    let calls = 0
+    const run = async (_b: string, args: string[]): Promise<void> => {
+      calls++
+      await new Promise((r) => setTimeout(r, 30))
+      if (args[0] === 'render') await (await import('node:fs/promises')).writeFile(args[2], 'PNG')
+    }
+    const res = await renderPreview('docx', Buffer.from('x'), { deckcraft: null, wordcraft: '/w' }, { run, totalMs: 80 })
+    expect(calls).toBeLessThan(5)
+    expect(res?.images.length ?? 0).toBeLessThan(5)
+  })
+  it('con muchas diapositivas solo lee las primeras 12 y cuenta el resto', async () => {
+    const { renderPreview, MAX_PREVIEW_PAGES } = await import('./preview')
+    const fs = await import('node:fs/promises')
+    const run = async (_b: string, args: string[]): Promise<void> => {
+      const out = args[args.length - 1]
+      await fs.mkdir(out, { recursive: true })
+      for (let i = 1; i <= 40; i++) await fs.writeFile(`${out}/s${String(i).padStart(2, '0')}.png`, 'PNG')
+    }
+    const res = await renderPreview('pptx', Buffer.from('x'), { deckcraft: '/d', wordcraft: null }, { run })
+    expect(res?.images.length).toBe(MAX_PREVIEW_PAGES)
+    expect(res?.pages).toBe(40)
+    expect(res?.truncated).toBe(true)
+  })
+  it('crea sus temporales bajo la carpeta privada configurada, no en os.tmpdir()', async () => {
+    const { renderPreview } = await import('./preview')
+    const { setPrivateTmpBase } = await import('../office/craft/private-tmp')
+    const fs = await import('node:fs/promises')
+    const { tmpdir } = await import('node:os')
+    const priv = await fs.mkdtemp(`${tmpdir()}/priv-base-`)
+    setPrivateTmpBase(`${priv}/dentro`)
+    let seen = ''
+    try {
+      await renderPreview(
+        'pptx',
+        Buffer.from('x'),
+        { deckcraft: '/d', wordcraft: null },
+        {
+          run: async (_b, args) => {
+            seen = args[args.length - 1]
+            await fs.mkdir(seen, { recursive: true })
+            await fs.writeFile(`${seen}/a.png`, 'PNG')
+          }
+        }
+      )
+      expect(seen.startsWith(`${priv}/dentro/lazunox-preview-`)).toBe(true)
+    } finally {
+      setPrivateTmpBase(null)
+      await fs.rm(priv, { recursive: true, force: true })
+    }
+  })
+})
