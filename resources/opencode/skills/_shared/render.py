@@ -14,8 +14,26 @@ import subprocess
 import sys
 import tempfile
 
-AVISO_SIN_ARTCRAFT = ("El diseñador de documentos (ArtCraft) no está instalado: se hace solo la verificación estructural. "
-                      "Díselo a la persona: se instala desde Ajustes › Tareas › Componentes opcionales.")
+def en_wsl():
+    """¿Corre dentro de WSL (el entorno aislado de las Tareas en Windows)? Allí ArtCraft es un programa de Windows (.exe) y no se puede
+    ejecutar desde la distro: puede estar instalado en la app y aun así no ser usable aquí."""
+    if os.environ.get("WSL_DISTRO_NAME") or os.environ.get("WSL_INTEROP"):
+        return True
+    try:
+        with open("/proc/version", encoding="utf-8", errors="ignore") as f:
+            return "microsoft" in f.read().lower()
+    except OSError:
+        return False
+
+
+AVISO_SIN_ARTCRAFT = (
+    "ArtCraft no está disponible dentro del entorno aislado de Windows (es un programa de Windows y la app lo puede tener instalado y listo, "
+    "pero no se puede ejecutar desde aquí): solo hay verificación estructural y los valores guardados se comprueban con verificar_office.py. "
+    "No le pidas a la persona que lo instale; di en «Para revisar» que no se pudo comprobar el aspecto visual."
+    if en_wsl()
+    else "El diseñador de documentos (ArtCraft) no está instalado: se hace solo la verificación estructural. "
+    "Díselo a la persona: se instala desde Ajustes › Tareas › Componentes opcionales."
+)
 
 
 def _ejecutable(ruta):

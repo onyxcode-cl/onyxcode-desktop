@@ -36,7 +36,11 @@ def lanzar(tipo, motor, argv):
     programa, buscar = PROGRAMAS[tipo]
     ruta = buscar()
     if not ruta:
-        print("Aviso: %s no está instalado; usa %s (diseño estándar)." % (programa, RESPALDO[tipo]), file=sys.stderr)
+        if render.en_wsl():
+            print("Aviso: %s no está disponible dentro del entorno aislado de Windows (aunque la app lo tenga instalado); usa %s (diseño estándar)."
+                  % (programa, RESPALDO[tipo]), file=sys.stderr)
+        else:
+            print("Aviso: %s no está instalado; usa %s (diseño estándar)." % (programa, RESPALDO[tipo]), file=sys.stderr)
         return 3
     node = buscar_node()
     if not node or not os.path.isfile(motor):

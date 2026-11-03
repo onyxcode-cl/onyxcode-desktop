@@ -120,3 +120,28 @@ class PruebasVerificar(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PruebasAvisoWsl(unittest.TestCase):
+    """En WSL (Tareas de Windows) ArtCraft puede estar instalado pero no ser usable: el aviso no manda a instalarlo."""
+
+    def _aviso(self, wsl):
+        env = dict(os.environ)
+        env.pop("WSL_DISTRO_NAME", None)
+        env.pop("WSL_INTEROP", None)
+        if wsl:
+            env["WSL_DISTRO_NAME"] = "Lazunox-Tareas"
+        r = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, %r); import render; print(render.AVISO_SIN_ARTCRAFT)" % os.path.dirname(AQUI)],
+                           capture_output=True, text=True, env=env, timeout=60)
+        return r.stdout
+
+    def test_wsl_no_manda_a_instalar(self):
+        a = self._aviso(True)
+        self.assertIn("entorno aislado de Windows", a)
+        self.assertIn("verificar_office.py", a)
+        self.assertNotIn("Componentes opcionales", a)
+
+    def test_fuera_de_wsl_sigue_pidiendo_instalarlo(self):
+        if os.path.exists("/proc/version") and "microsoft" in open("/proc/version").read().lower():
+            self.skipTest("esta prueba corre dentro de WSL")
+        self.assertIn("Componentes opcionales", self._aviso(False))
