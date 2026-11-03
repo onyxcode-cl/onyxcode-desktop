@@ -746,7 +746,7 @@ export function TasksWorkspace(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
           <header
-            className={`flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${showPanel || sideOpen ? '' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
+            className={`flex h-12 min-w-0 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${sideOpen ? '' : showPanel ? ' desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:lg:pr-4' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
             {(phase === 'ready' || phase === 'error') && (
               <>
@@ -757,21 +757,21 @@ export function TasksWorkspace(): React.JSX.Element {
               </>
             )}
             <span
-              className="min-w-[4rem] shrink truncate text-sm font-medium"
+              className="min-w-0 shrink truncate text-sm font-medium"
               title={unifiedHeader ? session?.title || t('tasks.ws.untitled') : session?.title}
             >
               {session?.title || t('tasks.ws.untitled')}
             </span>
             <StatusPill status={status} warn={doneWarn} title={busy ? undefined : tookTitle(entries)} />
             <Elapsed entries={entries} live={busy} />
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+            <span className="ml-auto flex shrink-0 items-center gap-1.5 text-xs text-muted">
               {phase === 'starting' && <Loader2 size={12} className="animate-spin" />}
               {(phase === 'ready' || phase === 'error') && <TasksProjectSeal busy={folderBusy} iconOnly />}
               {/* Los paneles, en una sola cápsula; lo demás va en «⋯» (igual que en Code). */}
               <div
                 role="group"
                 aria-label={t('a11y.sidePanel')}
-                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' hidden' : ''}`}
+                className={`flex items-center gap-0.5 rounded-xl border border-border bg-elevated/60 p-0.5${panelOpen && !sideOpen ? ' lg:hidden' : ''}`}
               >
                 {[
                   { id: 'progress' as const, icon: ListChecks, label: t('tasks.ws.progress') },
