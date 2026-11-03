@@ -92,6 +92,9 @@ describe('chatDeckCommands (prueba Craft)', () => {
     const f = foldSubtitles({ subtitle: 'X', slides: [{ title: 'A', bullets: ['b'] }, { title: 'B' }] } as unknown as PptxSpec)
     expect(f.slides[0].bullets).toEqual(['b'])
     expect(f.slides[1].bullets).toBeUndefined()
+    // un separador de sección con subtitle (no es la primera) sigue siendo un separador, no una diapositiva de viñetas
+    const g = foldSubtitles({ slides: [{ title: 'Portada' }, { title: 'Parte 2', subtitle: '2026' }] } as unknown as PptxSpec)
+    expect(g.slides[1].bullets).toBeUndefined()
   })
 
   it('el tema cambia el color de acento', () => {

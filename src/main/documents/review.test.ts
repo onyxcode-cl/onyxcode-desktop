@@ -35,6 +35,11 @@ describe('revisión de calidad de documentos_crear', () => {
     const s = await reviewDocument('xlsx', fx('sinvalor.xlsx'))
     expect(bad(s)).toContain('sin valor recalculado')
   })
+  it('Excel: «Media» o «Suma de…» en una tabla de prioridades no son un total pegado', async () => {
+    const r = await reviewDocument('xlsx', fx('prioridades.xlsx'))
+    expect(bad(r)).toBe('')
+    expect(r.items.map((i) => i.text).join(' | ')).toContain('Sin filas de total')
+  })
   it('PowerPoint: sin marcador de título y fuera del borde; con título pasa', async () => {
     const r = await reviewDocument('pptx', fx('malo.pptx'))
     expect(bad(r)).toContain('sin marcador de título')
@@ -47,6 +52,11 @@ describe('revisión de calidad de documentos_crear', () => {
     expect(bad(r)).toContain('subtítulo pedido de la portada')
     const ok = await reviewDocument('pptx', fx('bueno.pptx'), { slides: [{ title: 'Con título', subtitle: 'Con título' }] })
     expect(ok.items.map((i) => i.text).join(' | ')).toContain('subtítulo pedido de la portada está en el archivo')
+    // diseños que no dibujan viñetas (section, kpis…): no se exige un subtítulo que el motor nunca pintaría
+    for (const layout of ['kpis', 'section', 'chart', 'table']) {
+      const r2 = await reviewDocument('pptx', fx('bueno.pptx'), { slides: [{ title: 'Con título', layout, bullets: ['Fuente: ERP'] }] })
+      expect(bad(r2)).toBe('')
+    }
     // sin spec (o con lienzo libre) no se inventa una exigencia
     expect((await reviewDocument('pptx', fx('bueno.pptx'))).items).toHaveLength(2)
   })

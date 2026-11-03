@@ -24,7 +24,7 @@ export function chatCoverSize(title: string): number {
   return 56
 }
 
-function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['layout']> {
+export function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['layout']> {
   if (s.layout) return s.layout
   if (index === 0) return 'cover'
   if (s.title && !s.bullets?.length) return 'section'
@@ -40,7 +40,9 @@ export function foldSubtitles(spec: PptxSpec): PptxSpec {
   const raw = spec as unknown as { subtitle?: unknown; slides: Array<PptxSlideSpec & { subtitle?: unknown }> }
   const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 500) : null)
   const slides = raw.slides.map((sl, i) => {
-    const sub = text(sl.subtitle) ?? (i === 0 ? text(raw.subtitle) : null)
+    // Solo la portada: en otra diapositiva `{title, subtitle}` es un separador de sección y no debe volverse una de viñetas.
+    if (i !== 0) return sl
+    const sub = text(sl.subtitle) ?? text(raw.subtitle)
     if (!sub || (sl.bullets && sl.bullets.length > 0)) return sl
     return { ...sl, bullets: [sub] }
   })

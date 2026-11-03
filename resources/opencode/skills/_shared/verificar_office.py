@@ -26,7 +26,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 ERRORES = ("#DIV/0!", "#REF!", "#NAME?", "#VALUE!", "#N/A", "#NUM!", "#NULL!")
-ETIQUETA_TOTAL = re.compile(r"^\s*(total|subtotal|suma|promedio|media|total general)\b", re.I)
+# La etiqueta es TODA la celda: «Media» o «Suma» sueltas en una tabla de prioridades no son un total.
+ETIQUETA_TOTAL = re.compile(r"^\s*(total|subtotal|suma|promedio|total general)\s*:?\s*$", re.I)
 VINETA_A_MANO = re.compile(r"^\s*([•·▪●◦\-–*]|\d+[.)])\s+\S")
 
 

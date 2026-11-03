@@ -8,7 +8,7 @@
  */
 import JSZip from 'jszip'
 import type { PptxSpec } from '@shared/chat-doc-spec'
-import { foldSubtitles } from '../office/craft/chat-deck'
+import { foldSubtitles, layoutOf } from '../office/craft/chat-deck'
 
 export interface ReviewItem {
   ok: boolean
@@ -25,6 +25,7 @@ export interface ReviewResult {
 // La etiqueta es TODA la celda: «Media» o «Suma» sueltas en una fila de una tabla de prioridades no son un total.
 const TOTAL_LABEL = /^\s*(total|subtotal|suma|promedio|total general)\s*:?\s*$/i
 const HAND_BULLET = /^\s*([•·▪●◦\-–*]|\d+[.)])\s+\S/
+const DRAWS_FIRST_BULLET: string[] = ['cover', 'closing', 'bullets', 'steps', 'cards', 'stat']
 const ERRORS = ['#DIV/0!', '#REF!', '#NAME?', '#VALUE!', '#N/A', '#NUM!', '#NULL!']
 
 function short(list: string[], n = 5): string {
@@ -165,7 +166,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   // Lo que se pidió en la portada (subtítulo o primera viñeta) tiene que estar en el archivo.
   const first =
     spec && typeof spec === 'object' && Array.isArray((spec as PptxSpec).slides) ? foldSubtitles(spec as PptxSpec).slides[0] : undefined
-  const wanted = first && first.layout !== 'free' ? first.bullets?.[0] : undefined
+  // Solo se exige si el diseño de la primera diapositiva dibuja su primera viñeta (section, kpis, chart, table, quote… no la dibujan).
+  const wanted = first && DRAWS_FIRST_BULLET.includes(layoutOf(first, 0)) ? first.bullets?.[0] : undefined
   if (wanted) {
     const cover = textOf((await zip.file(names[0])!.async('string')) ?? '')
     const norm = (t: string): string => t.replace(/\s+/g, ' ').trim().toLowerCase()

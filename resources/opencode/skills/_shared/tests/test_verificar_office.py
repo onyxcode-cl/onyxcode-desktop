@@ -78,6 +78,18 @@ class PruebasVerificar(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("sin valor recalculado", out)
 
+    def test_xlsx_media_suelta_no_es_total(self):
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Prioridad", "Casos"])
+        ws.append(["Alta", 5])
+        ws.append(["Media", 12])
+        ws.append(["Baja", 3])
+        wb.save(self.p("prioridades.xlsx"))
+        rc, out = correr(self.p("prioridades.xlsx"))
+        self.assertEqual(rc, 0, out)
+
     def test_pptx_sin_titulo_arreglar_y_fuera_de_borde(self):
         from pptx import Presentation
         from pptx.util import Inches, Pt
