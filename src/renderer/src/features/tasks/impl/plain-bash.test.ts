@@ -47,7 +47,27 @@ describe('plainBash', () => {
     ['open informe.docx && echo listo', 'open'],
     // pero si en la cadena se crea algo, sigue siendo creación
     ['python3 build_docx.py spec.json informe.docx && open informe.docx', 'word'],
-    ['rm -f a.xlsx && python3 build_xlsx.py spec.json', 'excel']
+    ['rm -f a.xlsx && python3 build_xlsx.py spec.json', 'excel'],
+    // mirar un archivo de Office (suelto o al principio de la cadena) es «Revisó»
+    ['ls -l informe.docx', 'check'],
+    ['stat ventas.xlsx', 'check'],
+    ['cat notas.docx | head -5', 'check'],
+    ['wc -c deck.pptx', 'check'],
+    ['du -h informe.docx', 'check'],
+    ['find . -name "*.docx"', 'check'],
+    ['find . -name "*.txt"', 'look'],
+    ['find . -name informe.docx', 'check'],
+    ['test -f informe.docx && echo existe', 'check'],
+    ['ls -la ~/Lazunox/Chats/x/ventas.xlsx && echo ok', 'check'],
+    ['Get-ChildItem C:\\x\\informe.docx', 'check'],
+    ['Test-Path C:\\x\\deck.pptx', 'check'],
+    ['ls -la', 'look'],
+    // la cadena que corre un script propio puede crear: el python -c que solo lee no gana
+    ['python3 mi_script.py && python3 -c "import docx; d=docx.Document(\'informe.docx\'); print(len(d.paragraphs))"', 'word'],
+    ['node genera.js && python3 -c "from pptx import Presentation; Presentation(\'a.pptx\')"', 'ppt'],
+    ['python3 -c "import docx; print(docx.Document(\'a.docx\').paragraphs)"', 'check'],
+    ['python3 inspect_docx.py informe.docx', 'check'],
+    ['python3 build_docx.py spec.json && python3 -c "import docx; docx.Document(\'a.docx\')"', 'word']
   ] as const)('%s → %s', (cmd, id) => {
     expect(plainBash(cmd)).toBe(id)
   })

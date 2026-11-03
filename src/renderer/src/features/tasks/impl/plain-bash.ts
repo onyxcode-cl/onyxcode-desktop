@@ -31,7 +31,18 @@ const RULES: Array<[PlainBashId, RegExp]> = [
 
 /** Un script suelto con python-docx/openpyxl/python-pptx que solo LEE (no guarda ni escribe nada) es una revisión, no una creación. */
 function readsOfficeOnly(c: string): boolean {
-  return /(import docx|from docx|openpyxl|import pptx|from pptx)/.test(c) && !/(\.save\(|\.write\(|write_text|open\([^)]*['"]w)/.test(c)
+  return (
+    /(import docx|from docx|openpyxl|import pptx|from pptx)/.test(c) &&
+    !/(\.save\(|\.write\(|write_text|open\([^)]*['"]w)/.test(c) &&
+    !runsOwnScript(c)
+  )
+}
+
+/** Scripts que solo leen (de las skills): correrlos no crea nada. Cualquier OTRO .py/.js/.mjs de la cadena puede crear el archivo. */
+const READ_ONLY_SCRIPT =
+  /(recalc_check|check_(xlsx|docx|pptx|pdf)|inspect_(xlsx|docx|pptx|pdf)|verificar_office|comparar_estructura|extract_pdf|doctor|render)\.?\w*$/
+function runsOwnScript(c: string): boolean {
+  return (c.match(/[^\s"'=;&|()]+\.(?:py|js|mjs|cjs)\b/g) ?? []).some((f) => !READ_ONLY_SCRIPT.test(f.replace(/\.(py|js|mjs|cjs)$/, '')))
 }
 
 /**
@@ -50,9 +61,14 @@ const SOLE_FILE_OPS: Array<[PlainBashId, RegExp]> = [
 const CREATES =
   /(\bpython3?\b|\$lazunox_python|\bnode\b|\bpip\b|build_\w+|translate_\w+|edit_(xlsx|docx|pptx)|comments_docx|stamp_pdf|merge_split|fill_form|documentos_crear|\.save\(|\.write\(|write_text|python-docx|python-pptx|openpyxl|reportlab|\bqpdf\b|\btee\b)/
 
+/** Mirar un archivo (no crearlo): si el primer comando de la cadena es esto y nombra un Word/Excel/PowerPoint, el paso es una revisión. */
+const LOOKS = /^((ls|stat|cat|head|tail|wc|du|find|test|dir|type)\b|(get-childitem|test-path|get-content|get-item)\b|\[\s)/
+const OFFICE_NAME = /\.(docx|xlsx|pptx)\b/
+
 function leadingFileOp(c: string): PlainBashId | null {
   if (CREATES.test(c)) return null
   const first = c.split(/&&|\|\||[;|]/)[0].trim()
+  if (LOOKS.test(first) && OFFICE_NAME.test(c)) return 'check'
   for (const [id, re] of SOLE_FILE_OPS) if (re.test(first)) return id
   return null
 }
