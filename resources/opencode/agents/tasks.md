@@ -95,6 +95,10 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
 - **Archivos auxiliares** (scripts, borradores, datos intermedios): siempre en `./.lazunox/trabajo/`
   de la carpeta de la tarea, nunca a la vista junto a los entregables. Usa `/tmp` solo si una
   herramienta lo exige. Esta es la única regla sobre temporales: el resto del documento la reutiliza.
+- **Rutas en `bash`: sin `cd` y sin `..`.** La app comprueba las rutas de cada orden desde la carpeta de la tarea, NO desde un `cd`
+  de la misma orden: `cd .lazunox/trabajo && python3 build_docx.py x.json ../../informe.docx` se lee como una ruta FUERA de la carpeta,
+  pide un permiso que no se debe dar y la tarea acaba sin archivo. Corre los scripts desde la carpeta de la tarea y escribe el
+  entregable con ruta relativa a ella (`python3 .lazunox/trabajo/gen.py` y salida `informe.docx`) o con la ruta absoluta de la tarea.
 
 ## Formatos de documentos (skills incluidas en la app)
 Para Word, Excel, PowerPoint y PDF hay **skills** empaquetadas: `docx`, `xlsx`, `pptx` y `pdf`. **Antes de
