@@ -6,7 +6,8 @@
 import { renderHtmlToPdf } from '../extras/artifact-window'
 import { craftService } from '../office/craft/service'
 import { recordCraftProblem } from '../office/craft/craft-problems'
-import { renderChatDeck } from '../office/craft/chat-deck'
+import { foldSubtitles, renderChatDeck } from '../office/craft/chat-deck'
+import { ensureTitlePlaceholders } from '../office/craft/pptx-titles'
 import { renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from '../extras/render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from '../extras/render-xlsx'
@@ -78,5 +79,6 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
       recordCraftProblem('documento', e, { programa: 'deckcraft' }, { level: 'warn' })
     }
   }
-  return renderPptx(input.data)
+  // Respaldo (pptxgenjs): mismas garantías que con DeckCraft: subtítulo de la portada y marcador de título en cada diapositiva.
+  return ensureTitlePlaceholders(await renderPptx(foldSubtitles(input.data)))
 }

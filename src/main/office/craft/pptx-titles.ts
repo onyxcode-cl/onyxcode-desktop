@@ -10,6 +10,7 @@ import JSZip from 'jszip'
 
 const SP = /<p:sp>[\s\S]*?<\/p:sp>/g
 const DEFAULT_HEIGHT = 6858000
+const EMPTY_NVPR = /<p:nvPr(?:\/>|><\/p:nvPr>)/
 const PLAIN_LST =
   '<a:lvl1pPr><a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:spcBef><a:spcPts val="0"/></a:spcBef><a:defRPr><a:latin typeface="+mn-lt"/></a:defRPr></a:lvl1pPr>'
 
@@ -55,8 +56,9 @@ export function withTitlePlaceholder(xml: string, slideHeight: number): string |
   } else pool = pool.filter((c) => !etiqueta(c))
   const best = pool.reduce((a, b) => (b.size > a.size || (b.size === a.size && b.top < a.top) ? b : a))
   let sp = best.xml
-  if (!/<p:nvPr\/>/.test(sp)) return null
-  sp = sp.replace(/<p:nvPr\/>/, '<p:nvPr><p:ph type="title"/></p:nvPr>')
+  // DeckCraft escribe `<p:nvPr/>`; pptxgenjs (respaldo sin ArtCraft) `<p:nvPr></p:nvPr>`.
+  if (!EMPTY_NVPR.test(sp)) return null
+  sp = sp.replace(EMPTY_NVPR, '<p:nvPr><p:ph type="title"/></p:nvPr>')
   sp = sp.replace(/<p:cNvSpPr[^>]*\/>/, '<p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>')
   // Un marcador hereda el estilo de título del patrón (fuente «mayor», interlineado, anclaje): se fija lo que tenía como caja de texto para
   // que el aspecto sea el mismo.

@@ -59,6 +59,11 @@ describe('marcador de título del pptx', () => {
     expect(out.indexOf('<p:ph type="title"/>')).toBeLessThan(out.indexOf('>865<'))
   })
 
+  it('también reconoce el `<p:nvPr></p:nvPr>` del respaldo (pptxgenjs, sin ArtCraft)', () => {
+    const xml = slide(box(2, 'Text 0', 502920, 2800, 'Puntos').replace('<p:nvPr/>', '<p:nvPr></p:nvPr>'))
+    expect(withTitlePlaceholder(xml, H)).toContain('<p:ph type="title"/>')
+  })
+
   it('no toca una diapositiva que ya tiene título ni una sin texto', () => {
     const conTitulo = slide(
       '<p:sp><p:nvSpPr><p:cNvPr id="2" name="T"/><p:cNvSpPr/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr></p:sp>',
