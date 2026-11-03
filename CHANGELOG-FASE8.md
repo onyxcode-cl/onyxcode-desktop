@@ -4110,3 +4110,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Problema** (prueba en Windows, §3). (1) `ls -l informe.docx`, `stat`, `cat`, `wc`, `test -f x.xlsx && …`, `Get-ChildItem`/`Test-Path` sobre un Word/Excel/PowerPoint se rotulaban «Creó…» por la regla del tipo de archivo. (2) `python3 mi_script.py && python3 -c "import docx …"`: el `python -c` que solo lee ganaba y el paso salía «Revisó» aunque `mi_script.py` pudo crear el archivo.
 - **Solución.** `plain-bash.ts`: si el primer comando de la cadena es de lectura (ls, stat, cat, head, tail, wc, du, find, test, dir, type, Get-ChildItem, Test-Path, Get-Content, Get-Item) y nombra un .docx/.xlsx/.pptx sin que haya creación en la cadena, es «Revisó». `readsOfficeOnly` ya no gana si la cadena corre otro .py/.js/.mjs que no sea uno de solo lectura de las skills (`inspect_*`, `check_*`, `verificar_office`, `recalc_check`, `render`…). `build_docx.py` y similares siguen «Creó».
 - **Pruebas.** `plain-bash.test.ts`: 14 casos nuevos fallan con el código anterior.
+
+## F8-B250 — Tarjeta del archivo: el nombre no se corta y el ✔ no sale dos veces
+
+- **Problema.** Con el indicador de revisión en la misma fila, el nombre del archivo quedaba cortado («ventas-…»), y «Revisado ✔» repetía el símbolo junto al icono de círculo.
+- **Solución.** `FileReview` va en su propia línea (debajo del nombre y las acciones, en `ResultCard` y `Deliverables`); el texto es «Revisado» / «N aviso(s)» (el ✔/✘ lo da solo el icono); `aria-label` y tooltip llevan el estado y el nombre completos.
+- **Pruebas.** `FileReview.test.tsx` (sin símbolo en el texto, `aria-label` completo).
