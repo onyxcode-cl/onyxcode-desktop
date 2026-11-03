@@ -32,6 +32,12 @@ export function isViewerExt(p: string): boolean {
 }
 const VIEWER_EXTS = new Set(['pdf', 'docx', 'xlsx', 'pptx'])
 
+/** Archivos de trabajo del agente (spec.json de las skills, la carpeta interna `.lazunox`, temporales de Office): no son «lo que dejé». */
+export function isHelperFile(f: { relPath: string; path: string }): boolean {
+  const name = baseName(f.path)
+  return /(^|\/)\.lazunox\//.test(f.relPath) || /^spec[-_.a-z0-9]*\.json$/i.test(name) || name.startsWith('~$') || name.endsWith('.pyc')
+}
+
 export function relTime(ts: number, now = Date.now()): string {
   const diff = now - ts
   const min = Math.floor(diff / 60_000)

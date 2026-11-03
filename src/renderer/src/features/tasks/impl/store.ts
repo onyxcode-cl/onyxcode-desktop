@@ -42,7 +42,7 @@ import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
 import { useSandbox } from './sandbox-store'
-import { endedMidTurn, isViewerExt } from './util'
+import { endedMidTurn, isHelperFile, isViewerExt } from './util'
 import { platformCaps } from '../../../lib/platform'
 import { sdkDirOf } from './path-map'
 import { hostFolder, sdkDir } from './conn-paths'
@@ -187,7 +187,7 @@ interface TasksState {
    * `Deliverables.tsx`, lo consume `TasksWorkspace.tsx` (cambia a la pestaña «Documento» y monta
    * `DocumentViewerPanel`). `nonce` fuerza una nueva apertura aunque sea la misma ruta.
    */
-  viewerRequest: { path: string; nonce: number } | null
+  viewerRequest: { path: string; nonce: number; auto?: boolean } | null
 
   set: (patch: Partial<TasksState>) => void
 }
@@ -310,8 +310,29 @@ export const useTasks = create<TasksState>((set) => ({
 }))
 
 /** Pide abrir `path` en el visor de documentos (`Deliverables.tsx`); `TasksWorkspace.tsx` lo consume. */
-export function requestViewerOpen(path: string): void {
-  useTasks.setState((s) => ({ viewerRequest: { path, nonce: s.viewerRequest ? s.viewerRequest.nonce + 1 : 1 } }))
+export function requestViewerOpen(path: string, auto = false): void {
+  useTasks.setState((s) => ({ viewerRequest: { path, nonce: s.viewerRequest ? s.viewerRequest.nonce + 1 : 1, ...(auto ? { auto } : {}) } }))
+}
+
+/** Tareas a las que la app ya les abrió el visor sola (una sola vez por tarea: si la persona lo cierra, no se vuelve a abrir). */
+const autoOpened = new Set<string>()
+
+/**
+ * Al terminar el turno (`session.idle`), abre en el visor el entregable principal (el documento .pdf/.docx/.xlsx/.pptx más reciente de la
+ * tarea) aunque no haya salido de `write`/`edit` (`documentos_crear`, scripts de las skills por `bash`: ahí no hay ruta en el input).
+ * Una vez por tarea y sin robar el foco: si el visor ya muestra algo (la persona abrió otra cosa, o se abrió solo al escribir) no hace nada,
+ * y `TasksWorkspace` no cambia de pestaña si la persona está en el navegador integrado.
+ */
+export async function autoOpenMainDeliverable(taskId: string): Promise<void> {
+  if (autoOpened.has(taskId) || !platformCaps().docViewer) return
+  await refreshDeliverables(taskId)
+  const st = useTasks.getState()
+  if (st.activeTaskId !== taskId || st.viewerRequest || autoOpened.has(taskId)) return
+  const docs = (st.deliverables[taskId] ?? []).filter((f) => !isHelperFile(f) && isViewerExt(f.path))
+  if (!docs.length) return
+  const main = docs.reduce((a, b) => (b.mtime > a.mtime ? b : a))
+  autoOpened.add(taskId)
+  requestViewerOpen(main.path, true)
 }
 
 /** El visor se cerró (botón «Cerrar» o se cambió de carpeta): nadie más tiene que hacer nada. */
@@ -740,7 +761,10 @@ export function handleEvent(event: OcEvent, directory: string): void {
       })
       break
     case 'session.idle':
-      if (event.properties.sessionID === st.activeTaskId) scheduleDeliverablesRefresh(300)
+      if (event.properties.sessionID === st.activeTaskId) {
+        scheduleDeliverablesRefresh(300)
+        void autoOpenMainDeliverable(event.properties.sessionID)
+      }
       break
     case 'message.part.updated': {
       const part = event.properties.part
@@ -759,7 +783,10 @@ export function handleEvent(event: OcEvent, directory: string): void {
           const input = (part.state.input ?? {}) as Record<string, unknown>
           const rawPath = input.filePath ?? input.path
           const path = typeof rawPath === 'string' ? rawPath : ''
-          if (path && isViewerExt(path) && platformCaps().docViewer) requestViewerOpen(path)
+          if (path && isViewerExt(path) && platformCaps().docViewer) {
+            requestViewerOpen(path)
+            autoOpened.add(part.sessionID)
+          }
         }
       }
       break

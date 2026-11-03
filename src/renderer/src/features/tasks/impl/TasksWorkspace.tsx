@@ -384,7 +384,8 @@ export function TasksWorkspace(): React.JSX.Element {
   const viewerRequest = useTasks((s) => s.viewerRequest)
   useEffect(() => {
     if (viewerRequest) {
-      setAsideTab('viewer')
+      // La apertura automática (`auto`) no le quita el navegador integrado a quien lo está usando.
+      setAsideTab((tab) => (viewerRequest.auto && tab === 'browser' ? tab : 'viewer'))
       setPanelOpen(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

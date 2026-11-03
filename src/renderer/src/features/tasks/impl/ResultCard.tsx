@@ -6,15 +6,11 @@ import { isRemoteSurface } from '../../../lib/platform'
 import { fileIcon } from './Deliverables'
 import { openPath, reveal } from './actions'
 import { useTasks } from './store'
-import { baseName, formatSize } from './util'
+import { baseName, formatSize, isHelperFile } from './util'
 
 const MAX_ROWS = 3
 
-/** Archivos de trabajo del agente (spec.json de las skills, la carpeta interna `.lazunox`, temporales de Office): no son «lo que dejé». */
-export function isHelperFile(f: { relPath: string; path: string }): boolean {
-  const name = baseName(f.path)
-  return /(^|\/)\.lazunox\//.test(f.relPath) || /^spec[-_.a-z0-9]*\.json$/i.test(name) || name.startsWith('~$') || name.endsWith('.pyc')
-}
+export { isHelperFile }
 
 export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | null {
   const t = useT()
