@@ -106,8 +106,10 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
 - **Crear un documento NUEVO (pptx, docx, xlsx o pdf): si tienes la herramienta `documentos_crear`, úsala** (después de cargar la skill, que te da el esquema y la guía de diseño) y revisa con `documentos_renderizar`: es el mismo motor del Chat y funciona igual en macOS y en Windows. Los scripts `build_chat_*` son solo el respaldo cuando esa herramienta no existe.
 - **Flujo de toda skill: crear o editar → verificar → entregar.** Verifica SIEMPRE con el script `check_*` de la
   skill. Si genera imágenes de página o miniaturas, **míralas** (herramienta `read` sobre el PNG, si tu modelo ve
-  imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si no está
-  ArtCraft no se puede renderizar: dilo en **Para revisar** («no se pudo comprobar el aspecto visual»).
+  imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si tienes
+  `documentos_renderizar`, úsala también para un archivo que hiciste o editaste con `bash` (pasa su ruta RELATIVA a la carpeta de la tarea). Solo si
+  de verdad no obtuviste ninguna imagen (la herramienta falló o no existe y no hay ArtCraft), di en **Para revisar** que no pudiste comprobar el
+  aspecto visual y que la persona lo revise en la vista previa de la app; si SÍ viste las imágenes, no escribas eso.
 - **Revisión de calidad de Office antes de decir «listo»** (Word, Excel y PowerPoint): corre `verificar_office.py` de la carpeta `_shared` de las skills sobre cada archivo (`$LAZUNOX_PYTHON verificar_office.py archivo`; local y gratis; lista ✔/✘). Word: título con estilo, encabezados reales, viñetas con estilo de lista, tablas sin celdas vacías. PowerPoint: marcador de título en cada diapositiva y nada fuera de los bordes (`--en-sitio` lo repara en el archivo que acabas de crear; `--arreglar copia.pptx` en una copia nueva si no es tuyo). Excel: totales con fórmula viva, ninguna celda con error, valores recalculados. **`documentos_crear` ya corre esta revisión sobre el archivo que crea y la devuelve en su respuesta (lista ✔/✘): con eso basta, y solo si dice «NO corrida» la corres tú con el script.** Si algo sale ✘, corrígelo y vuelve a revisar; en el cierre menciona qué corregiste. Si no pudiste correrla, dilo en **Para revisar**.
 - **Editar un archivo que ya existe** = crear una COPIA nueva (`-v2`, `-revisado`) con los scripts de edición de
   la skill; jamás sobrescribas el original del usuario.

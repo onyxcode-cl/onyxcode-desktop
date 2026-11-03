@@ -55,7 +55,7 @@ Usa SIEMPRE `translate_xlsx.py` (no abras y guardes el libro con openpyxl: perde
 
 ### Verificar (obligatorio antes de entregar)
 **Revisión de calidad (obligatoria, antes de decir «listo»):** `"$PY" "$S/../../_shared/verificar_office.py" archivo.xlsx` (local y gratis; imprime una lista ✔/✘). **Si creaste el archivo con `documentos_crear`, su respuesta YA trae esta revisión (lista ✔/✘, hecha por la herramienta): no hace falta correr el script, salvo que la respuesta diga «NO corrida».** Comprueba: totales con fórmula viva (no número pegado), ninguna celda con error (#REF!, #DIV/0!…) y valor guardado en cada fórmula (con GridCraft, calculado por él; sin GridCraft es el que escribió el modelo y NO se recalculó: compruébalo aparte). Si algo sale ✘, corrígelo (en un archivo NUEVO) y vuelve a correrlo; en el cierre di qué corregiste.
-Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows) y corrige todo de una vez.
+Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows y sirve para un archivo que hiciste con `bash`: ruta relativa a la carpeta de la tarea) y corrige todo de una vez.
 - `PY $S/recalc_check.py archivo.xlsx` → calcula las fórmulas con GridCraft (ArtCraft) y lista valores, errores (#DIV/0!, #REF!, #NAME?, #VALUE!)
   y fórmulas que apuntan a celdas vacías. Salida 0 = bien. Revisa que los totales den lo esperado (calcúlalo tú aparte con los datos).
 - `PY $S/check_xlsx.py archivo.xlsx --render ./.lazunox/trabajo/render` → estructura, columnas estrechas (#####), números guardados
