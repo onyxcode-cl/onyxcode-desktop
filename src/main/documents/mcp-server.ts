@@ -21,6 +21,7 @@ import type { ChatDocInput } from './engine'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { OutputPathError, writeNewFile } from './output-path'
+import { readTaskFile, type TaskFile } from './input-path'
 import type { PreviewResult } from './preview'
 
 export const MAX_SPEC_BYTES = 1_000_000
@@ -97,12 +98,12 @@ export const DOCUMENT_TOOLS = [
 export const PREVIEW_TOOL = {
   name: 'renderizar',
   description:
-    'Devuelve imágenes (una por diapositiva o página, hasta 12) de un documento que CREASTE con `crear` en esta tarea, para que lo mires y corrijas ' +
-    'lo que se vea mal (textos cortados, contraste, cosas superpuestas) antes de entregarlo. Funciona con pptx, docx, xlsx y pdf, y solo con archivos ' +
-    'creados por `crear`; `ruta` es la que devolvió `crear`.',
+    'Devuelve imágenes (una por diapositiva o página, hasta 12) de un documento de esta tarea, para que lo mires y corrijas ' +
+    'lo que se vea mal (textos cortados, contraste, cosas superpuestas) antes de entregarlo. Funciona con pptx, docx, xlsx y pdf. `ruta` es la que ' +
+    'devolvió `crear` o, para un archivo que hiciste o editaste con `bash`, su ruta RELATIVA a la carpeta de la tarea (máx. 25 MB; sin `..` ni enlaces).',
   inputSchema: {
     type: 'object',
-    properties: { ruta: { type: 'string', description: 'Ruta devuelta por `crear`.' } },
+    properties: { ruta: { type: 'string', description: 'Ruta devuelta por `crear`, o ruta relativa a la carpeta de la tarea.' } },
     required: ['ruta'],
     additionalProperties: false
   }
@@ -200,24 +201,24 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     return quota
   }
 
-  /** `renderizar`: solo archivos creados por `crear` en ESTA atadura y sin cambios desde entonces (huella sha256). */
+  /**
+   * `renderizar`: (a) un archivo creado por `crear` en ESTA atadura y sin cambios desde entonces (huella sha256), o (b) cualquier otro
+   * .pptx/.docx/.xlsx/.pdf de la carpeta de la tarea, que `input-path.ts` lee con las mismas defensas que la escritura (ruta relativa,
+   * sin enlaces ni `..`, `O_NOFOLLOW`, firma, ≤25 MB). En los dos casos se renderiza una COPIA temporal y el agente solo recibe PNG.
+   */
   private async callPreview(binding: DocumentsBinding, args: Record<string, unknown>) {
     const now = this.deps.now ?? Date.now
     const t0 = now()
     const quota = this.quotaOf(binding)
     const ruta = typeof args.ruta === 'string' ? args.ruta : ''
     const entry = quota.created.get(ruta)
-    if (!entry) {
-      this.audit({ at: t0, tool: 'renderizar', result: 'rechazado', detail: 'no-creado', ms: 0 })
-      return this.text('Solo se puede renderizar un documento creado con `crear` en esta tarea: usa la ruta que devolvió `crear`.', true)
-    }
     quota.previews = quota.previews.filter((x) => t0 - x < 3_600_000)
     if (quota.previews.length >= MAX_PREVIEWS_PER_HOUR) {
-      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cuota', ms: 0 })
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry?.tipo, result: 'rechazado', detail: 'cuota', ms: 0 })
       return this.text('Ya se pidieron muchas vistas previas en esta hora; espera un rato.', true)
     }
     if (quota.busy || this.active >= MAX_CONCURRENT_GLOBAL) {
-      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'ocupado', ms: 0 })
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry?.tipo, result: 'rechazado', detail: 'ocupado', ms: 0 })
       return this.text('Hay otro documento en curso; vuelve a intentarlo en un momento.', true)
     }
     quota.busy = true
@@ -225,21 +226,39 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     quota.previews.push(t0)
     try {
       let bytes: Buffer
-      try {
-        bytes = await readFile(entry.abs)
-      } catch {
-        return this.text('No se encuentra el archivo; ¿lo moviste o lo borraste?', true)
+      let tipo: Tipo
+      if (entry) {
+        try {
+          bytes = await readFile(entry.abs)
+        } catch {
+          return this.text('No se encuentra el archivo; ¿lo moviste o lo borraste?', true)
+        }
+        if (createHash('sha256').update(bytes).digest('hex') !== entry.sha) {
+          this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cambió', ms: now() - t0 })
+          return this.text(
+            'El archivo cambió desde que se creó con `crear`: vuelve a crearlo con otro nombre o pasa su ruta relativa a la carpeta de la tarea.',
+            true
+          )
+        }
+        tipo = entry.tipo
+      } else {
+        let file: TaskFile
+        try {
+          file = await readTaskFile(binding.folder, ruta, [
+            binding.folder,
+            binding.toAgentPath ? binding.toAgentPath(binding.folder) : binding.folder
+          ])
+        } catch (err) {
+          if (!(err instanceof OutputPathError)) throw err
+          this.audit({ at: t0, tool: 'renderizar', result: 'rechazado', detail: `ajeno-${err.code}`, ms: now() - t0 })
+          return this.text(err.message, true)
+        }
+        bytes = file.bytes
+        tipo = file.tipo
       }
-      if (createHash('sha256').update(bytes).digest('hex') !== entry.sha) {
-        this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'rechazado', detail: 'cambió', ms: now() - t0 })
-        return this.text(
-          'El archivo cambió desde que se creó con `crear`: solo se renderiza lo que creó la herramienta. Vuelve a crearlo con otro nombre.',
-          true
-        )
-      }
-      const res = await withTimeout(this.deps.preview!(entry.tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
+      const res = await withTimeout(this.deps.preview!(tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
       if (!res || res.images.length === 0) {
-        this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: 'sin-render', ms: now() - t0 })
+        this.audit({ at: t0, tool: 'renderizar', tipo: tipo, result: 'error', detail: 'sin-render', ms: now() - t0 })
         return this.text(
           'No hay vista previa disponible (falta el diseñador de documentos o no pudo renderizar). Revisa el contenido con la skill y dilo en «Para revisar».',
           true
@@ -248,12 +267,12 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       this.audit({
         at: t0,
         tool: 'renderizar',
-        tipo: entry.tipo,
+        tipo: tipo,
         result: 'ok',
         bytes: res.images.reduce((n, b) => n + b.length, 0),
         ms: now() - t0
       })
-      const unit = entry.tipo === 'pptx' ? 'diapositiva(s)' : entry.tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
+      const unit = tipo === 'pptx' ? 'diapositiva(s)' : tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
       const note = res.truncated ? ` Se muestran las primeras ${res.images.length}.` : ''
       return {
         content: [
@@ -268,7 +287,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       const timedOut = err instanceof TimeoutError
       // El motivo real queda SOLO en el registro de la app (puede traer rutas del equipo); al agente se le da un texto fijo.
       console.warn('[documentos-mcp] vista previa:', err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300))
-      this.audit({ at: t0, tool: 'renderizar', tipo: entry.tipo, result: 'error', detail: timedOut ? 'tiempo' : 'motor', ms: now() - t0 })
+      this.audit({ at: t0, tool: 'renderizar', tipo: entry?.tipo, result: 'error', detail: timedOut ? 'tiempo' : 'motor', ms: now() - t0 })
       return this.text(
         timedOut ? 'La vista previa tardó demasiado y se canceló.' : 'No se pudo generar la vista previa con el motor de la app.',
         true

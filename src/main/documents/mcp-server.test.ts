@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DocumentsMcpServer, MAX_PER_BINDING_PER_HOUR, type AuditEntry } from './mcp-server'
+import { DocumentsMcpServer, MAX_PER_BINDING_PER_HOUR, MAX_PREVIEWS_PER_HOUR, type AuditEntry } from './mcp-server'
 import type { ChatDocInput } from './engine'
 
 let folder: string
@@ -390,6 +390,53 @@ describe('renderizar', () => {
       expect(r.body.result.isError).toBe(true)
     }
     expect(previews).toEqual([])
+  })
+
+  it('un archivo ajeno de la carpeta (bash/edición) se renderiza por ruta relativa y por la absoluta de la tarea', async () => {
+    const zip = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('doc')])
+    writeFileSync(join(folder, 'editado.docx'), zip)
+    const { token, port } = await s2.clientFor({ folder })
+    for (const ruta of ['editado.docx', join(folder, 'editado.docx')]) {
+      const r = await call(port, token, { ruta }, 'renderizar')
+      expect(r.body.result.isError).toBeUndefined()
+      expect(r.body.result.content[1].type).toBe('image')
+    }
+    expect(previews.map((p) => p.tipo)).toEqual(['docx', 'docx'])
+    expect(previews[0]!.bytes.equals(zip)).toBe(true)
+  })
+
+  it('un archivo ajeno que no es un zip, enlaza hacia fuera o sube con «..» no llega al motor', async () => {
+    writeFileSync(join(folder, 'falso.docx'), 'no soy un zip')
+    writeFileSync(join(folder2, 'secreto.docx'), Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+    symlinkSync(join(folder2, 'secreto.docx'), join(folder, 'enlace.docx'))
+    const { token, port } = await s2.clientFor({ folder })
+    for (const ruta of ['falso.docx', 'enlace.docx', '../x.docx', join(folder2, 'secreto.docx')]) {
+      const r = await call(port, token, { ruta }, 'renderizar')
+      expect(r.body.result.isError).toBe(true)
+    }
+    expect(previews).toEqual([])
+  })
+
+  it('la cuota por hora también cuenta los archivos ajenos', async () => {
+    let t = 5_000_000
+    const s3 = new DocumentsMcpServer({
+      render: async () => Buffer.from('x'),
+      preview: async () => ({ images: [PNG], pages: 1, truncated: false }),
+      audit: () => undefined,
+      now: () => t
+    })
+    try {
+      writeFileSync(join(folder, 'a.pdf'), '%PDF-1.4 x')
+      const { token, port } = await s3.clientFor({ folder })
+      for (let i = 0; i < MAX_PREVIEWS_PER_HOUR; i++) {
+        expect((await call(port, token, { ruta: 'a.pdf' }, 'renderizar')).body.result.isError).toBeUndefined()
+      }
+      expect((await call(port, token, { ruta: 'a.pdf' }, 'renderizar')).body.result.isError).toBe(true)
+      t += 3_600_001
+      expect((await call(port, token, { ruta: 'a.pdf' }, 'renderizar')).body.result.isError).toBeUndefined()
+    } finally {
+      await s3.stop()
+    }
   })
 
   it('una ruta creada por OTRA atadura no vale', async () => {
