@@ -135,6 +135,13 @@ def candidato_titulo(slide, alto):
         return None
     altas = [c for c in cands if c[2] < alto * 0.35 and c[1] >= 24]
     pool = altas or cands
+    # una etiqueta numérica («01» de una sección) no es el título si hay otro texto de tamaño de título (28 pt o más)
+    etiqueta = lambda c: re.match(r"^\d{1,3}$", c[0].text_frame.text.strip())
+    if all(etiqueta(c) for c in pool):
+        titulos = [c for c in cands if not etiqueta(c) and c[1] >= 28]
+        pool = titulos or pool
+    else:
+        pool = [c for c in pool if not etiqueta(c)]
     return min(pool, key=lambda c: (-c[1], c[2]))[0]
 
 

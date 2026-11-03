@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import { runCraft } from './craft-run'
+import { ensureTitlePlaceholders } from './pptx-titles'
 import { createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
 
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
@@ -359,7 +360,7 @@ export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs =
     const args = ['run', '--save', out]
     for (const cmd of chatDeckCommands(spec)) args.push('--cmd', cmd)
     await run(binary, args, timeoutMs)
-    return await readFile(out)
+    return await ensureTitlePlaceholders(await readFile(out))
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
