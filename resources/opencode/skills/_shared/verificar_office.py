@@ -129,6 +129,13 @@ def _tam_max(sh):
     return max(tam) if tam else 0
 
 
+def _es_imagen(sh):
+    try:
+        return "PICTURE" in str(sh.shape_type)
+    except Exception:  # python-pptx lanza NotImplementedError con formas que no reconoce
+        return False
+
+
 def candidato_titulo(slide, alto):
     """Forma de texto que hace de título: la de letra más grande entre las de la parte alta (35 % superior, letra ≥ 24 pt); si no hay,
     la de letra más grande de toda la diapositiva. Ignora formas sin texto."""
@@ -169,7 +176,7 @@ def revisa_pptx(path):
                 continue
             # las formas decorativas sin texto pueden salirse a propósito
             relevante = (sh.has_text_frame and sh.text_frame.text.strip()) or getattr(sh, "has_table", False) or \
-                getattr(sh, "has_chart", False) or "PICTURE" in str(sh.shape_type)
+                getattr(sh, "has_chart", False) or _es_imagen(sh)
             if not relevante:
                 continue
             if sh.left < -tol or sh.top < -tol or sh.left + sh.width > sw + tol or sh.top + sh.height > sh_ + tol:
