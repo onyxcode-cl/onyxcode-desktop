@@ -155,6 +155,7 @@ Si lo usas:
    Las listas largas se dividen solas en «Título (1/3)», «(2/3)»… y las tablas de más de 9 filas también.
 
 ## 2. Verificar (siempre)
+**Revisión de calidad (obligatoria, antes de decir «listo»):** `python3 ../_shared/verificar_office.py presentacion.pptx` (desde `scripts/`; local y gratis, lista ✔/✘). Exige un marcador de título con texto en CADA diapositiva y nada fuera de los bordes. El motor de diseño (DeckCraft) arma las diapositivas con cajas de texto sueltas, sin marcador de título: si sale ✘, corrígelo con `python3 ../_shared/verificar_office.py presentacion.pptx --arreglar presentacion-v2.pptx` (copia nueva donde el título de cada diapositiva pasa a ser su marcador de título; el aspecto no cambia), entrega ESA copia y dilo en el cierre. Con `documentos_crear`, el archivo creado es el que se revisa; la copia arreglada es el definitivo.
 `python3 scripts/check_pptx.py informe.pptx --outdir .lazunox/trabajo/chk`
 - Revisa: abre, nº de diapositivas, texto que desborda (estimado), formas fuera del lienzo, diapositivas sin título,
   imágenes diminutas/de baja resolución. Código de salida 1 = hay PROBLEMAS: corrige todo de una vez (ver «Presupuesto de revisión») y repite.

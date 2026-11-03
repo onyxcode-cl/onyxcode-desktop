@@ -108,6 +108,7 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
   skill. Si genera imágenes de página o miniaturas, **míralas** (herramienta `read` sobre el PNG, si tu modelo ve
   imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si no está
   ArtCraft no se puede renderizar: dilo en **Para revisar** («no se pudo comprobar el aspecto visual»).
+- **Revisión de calidad de Office antes de decir «listo»** (Word, Excel y PowerPoint): corre `verificar_office.py` de la carpeta `_shared` de las skills sobre cada archivo (`$LAZUNOX_PYTHON verificar_office.py archivo`; local y gratis; lista ✔/✘). Word: título con estilo, encabezados reales, viñetas con estilo de lista, tablas sin celdas vacías. PowerPoint: marcador de título en cada diapositiva y nada fuera de los bordes (`--arreglar copia.pptx` lo repara en una copia nueva). Excel: totales con fórmula viva, ninguna celda con error, valores recalculados. Si algo sale ✘, corrígelo y vuelve a correrlo; en el cierre menciona qué corregiste. Si no pudiste correrlo, dilo en **Para revisar**.
 - **Editar un archivo que ya existe** = crear una COPIA nueva (`-v2`, `-revisado`) con los scripts de edición de
   la skill; jamás sobrescribas el original del usuario.
 - **Markdown (`.md`) y CSV (`.csv`, UTF-8, separador `,`)**: directo con la herramienta de escritura.
