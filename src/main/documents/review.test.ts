@@ -23,6 +23,12 @@ describe('revisión de calidad de documentos_crear', () => {
     expect(bad(r)).toBe('')
     expect(r.ok).toBe(true)
   })
+  it('Word largo (>12 párrafos) con estilos que Word guarda en minúsculas («heading 1», «title»): no da ✘ falso', async () => {
+    const r = await reviewDocument('docx', fx('largo.docx'))
+    expect(bad(r)).toBe('')
+    expect(r.items.map((i) => i.text).join(' | ')).toContain('Tiene encabezados reales (5)')
+    expect(r.items[0].text).toContain('«Title»')
+  })
   it('Excel: total pegado y celda con error; fórmula sin valor guardado', async () => {
     const r = await reviewDocument('xlsx', fx('malo.xlsx'))
     expect(bad(r)).toContain('número pegado')

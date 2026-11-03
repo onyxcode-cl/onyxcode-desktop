@@ -64,7 +64,9 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
     .map((m) => {
       const xml = m[0]
       const id = /<w:pStyle w:val="([^"]+)"/.exec(xml)?.[1] ?? ''
-      return { style: names.get(id) ?? id, text: textOf(xml), numbered: /<w:numPr>/.test(xml), xml }
+      const style = names.get(id) ?? id
+      // Word guarda el nombre del estilo en minúsculas («heading 1», «title», «list paragraph»): se compara sin mayúsculas ni espacios.
+      return { style, key: style.toLowerCase().replace(/\s+/g, ''), text: textOf(xml), numbered: /<w:numPr>/.test(xml), xml }
     })
     .filter((p) => p.text.trim())
   if (!paras.length) {
@@ -72,12 +74,13 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
     return r.done()
   }
   const first = paras[0].style
+  const firstKey = paras[0].key
   r.check(
-    first === 'Title' || first.startsWith('Heading'),
+    firstKey === 'title' || firstKey.startsWith('heading'),
     `El título usa un estilo de título («${first}»)`,
     `El primer párrafo («${paras[0].text.slice(0, 40)}») está en estilo «${first || 'Normal'}», no Title/Heading: no entra al índice ni a la navegación`
   )
-  const heads = paras.filter((p) => p.style.startsWith('Heading')).length
+  const heads = paras.filter((p) => p.key.startsWith('heading')).length
   if (paras.length > 12)
     r.check(
       heads > 0,
@@ -86,7 +89,7 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
     )
   else r.items.push({ ok: true, text: `Encabezados reales: ${heads}` })
   const manual = paras
-    .filter((p) => !/^(List|Heading|Title)/.test(p.style) && !p.numbered && HAND_BULLET.test(p.text))
+    .filter((p) => !/^(list|heading|title)/.test(p.key) && !p.numbered && HAND_BULLET.test(p.text))
     .map((p) => p.text.slice(0, 30))
   r.check(
     manual.length === 0,

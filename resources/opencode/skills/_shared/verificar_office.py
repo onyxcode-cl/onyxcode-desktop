@@ -53,6 +53,11 @@ def _recorta(lista, n=5):
 
 
 # ---------------------------------------------------------------- Word
+def _k(estilo):
+    """Nombre de estilo sin mayúsculas ni espacios: Word guarda «heading 1», python-docx lo muestra «Heading 1»."""
+    return (estilo or "").lower().replace(" ", "")
+
+
 def revisa_docx(path):
     from docx import Document
     from docx.oxml.ns import qn
@@ -65,12 +70,12 @@ def revisa_docx(path):
         r.falla("El documento no tiene texto")
         return r
     estilos = [(p.style.name if p.style is not None else "") for p in con_texto]
-    titulo = [p for p, s in zip(con_texto, estilos) if s == "Title" or s.startswith("Heading")]
+    titulo = [p for p, s in zip(con_texto, estilos) if _k(s) == "title" or _k(s).startswith("heading")]
     primero = estilos[0]
-    r.check(primero == "Title" or primero.startswith("Heading"),
+    r.check(_k(primero) == "title" or _k(primero).startswith("heading"),
             "El título usa un estilo de título («%s»)" % primero,
             "El primer párrafo («%s») está en estilo «%s», no Title/Heading: no entra al índice ni a la navegación" % (con_texto[0].text[:40], primero))
-    n_head = sum(1 for s in estilos if s.startswith("Heading"))
+    n_head = sum(1 for s in estilos if _k(s).startswith("heading"))
     if len(con_texto) > 12:
         r.check(n_head > 0, "Tiene encabezados reales (%d)" % n_head,
                 "Documento de %d párrafos sin encabezados Heading: usa estilos de encabezado, no texto grande en negrita" % len(con_texto))
@@ -87,7 +92,7 @@ def revisa_docx(path):
             "Encabezados hechos a mano en estilo Normal: %s" % _recorta(falsos))
     # viñetas
     manual = [p.text[:30] for p, s in zip(con_texto, estilos)
-              if not s.startswith(("List", "Heading", "Title")) and not p._p.xpath("./w:pPr/w:numPr") and VINETA_A_MANO.match(p.text)
+              if not _k(s).startswith(("list", "heading", "title")) and not p._p.xpath("./w:pPr/w:numPr") and VINETA_A_MANO.match(p.text)
               and not re.match(r"^\d+[.)]\s+\S{0,3}$", p.text)]
     r.check(not manual, "Las viñetas y listas usan estilo de lista",
             "%d párrafo(s) con viñeta o número escritos a mano sin estilo de lista: %s" % (len(manual), _recorta(manual)))
