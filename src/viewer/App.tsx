@@ -43,7 +43,7 @@ export function App(): React.JSX.Element {
   if (kind === 'pdf') return <PdfViewer token={token} lang={lang} />
   if (kind === 'docx') return <DocxViewer token={token} lang={lang} capture={capture} />
   if (kind === 'xlsx') return <XlsxViewer token={token} lang={lang} />
-  return <PptxViewer token={token} lang={lang} />
+  return <PptxViewer token={token} lang={lang} capture={capture} />
 }
 
 function ErrorView({ lang }: { lang: 'es' | 'en' }): React.JSX.Element {

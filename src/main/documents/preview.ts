@@ -40,6 +40,8 @@ export type Rasterize = (pdf: Buffer) => Promise<{ images: Buffer[]; pages: numb
 
 /** Render del Word con el visor de la app (sin ArtCraft): se inyecta desde `documents/index.ts` para poder probar sin Electron. */
 export type CaptureDocx = (bytes: Buffer, timeoutMs: number) => Promise<{ images: Buffer[]; pages: number } | null>
+/** Igual para las diapositivas: la vista simplificada del visor de la app. */
+export type CaptureDeck = CaptureDocx
 
 export interface PreviewResult {
   images: Buffer[]
@@ -64,7 +66,14 @@ export async function renderPreview(
   tipo: 'pptx' | 'docx' | 'xlsx' | 'pdf',
   bytes: Buffer,
   tools: PreviewTools,
-  opts: { timeoutMs?: number; totalMs?: number; run?: typeof runCraft; rasterize?: Rasterize; captureDocx?: CaptureDocx } = {}
+  opts: {
+    timeoutMs?: number
+    totalMs?: number
+    run?: typeof runCraft
+    rasterize?: Rasterize
+    captureDocx?: CaptureDocx
+    captureDeck?: CaptureDeck
+  } = {}
 ): Promise<PreviewResult | null> {
   const run = opts.run ?? runCraft
   const perRun = opts.timeoutMs ?? 90_000
@@ -72,13 +81,31 @@ export async function renderPreview(
   const left = (): number => deadline - Date.now()
   /** Cada programa recibe como máximo lo que queda del tiempo total: ninguno sigue después de vencido. */
   const timeoutMs = (): number => Math.max(1, Math.min(perRun, left()))
+  // Sin WordCraft/DeckCraft (no hay ArtCraft, o en WSL): el mismo visor que ve la persona, en una ventana oculta.
+  const viaViewer = async (): Promise<PreviewResult | null> => {
+    // Respeta el tiempo total: sin al menos 5 s no se abre otra ventana (el cerrojo se libera al vencer y no debe quedar nada trabajando).
+    if (left() < 5_000) return null
+    const capture = tipo === 'pptx' ? opts.captureDeck : opts.captureDocx
+    const r = capture ? await capture(bytes, left()) : null
+    if (!r || r.images.length === 0) return null
+    const capped = capImages(r.images)
+    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
+  }
+  if (tipo === 'pptx' && !tools.deckcraft) return viaViewer()
   if (tipo === 'pptx' && tools.deckcraft) {
     const dir = await mkdtemp(join(await privateTmp(), 'lazunox-preview-'))
     try {
       const src = join(dir, 'doc.pptx')
       const outDir = join(dir, 'paginas')
       await writeFile(src, bytes)
-      await run(tools.deckcraft, ['render', src, '--all', '--scale', PREVIEW_SCALE, outDir], timeoutMs())
+      try {
+        await run(tools.deckcraft, ['render', src, '--all', '--scale', PREVIEW_SCALE, outDir], timeoutMs())
+      } catch (err) {
+        // DeckCraft falló: la vista simplificada del visor de la app antes de rendirse.
+        const alt = await viaViewer().catch(() => null)
+        if (alt) return alt
+        throw err
+      }
       const files = (await readdir(outDir)).filter((f) => f.toLowerCase().endsWith('.png')).sort()
       // DeckCraft renderiza todas las diapositivas: en memoria solo entran las primeras (el resto se cuenta, no se lee).
       const all: Buffer[] = []
@@ -88,15 +115,6 @@ export async function renderPreview(
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
-  }
-  // Sin WordCraft (no hay ArtCraft, o en WSL): el mismo visor que ve la persona, en una ventana oculta.
-  const viaViewer = async (): Promise<PreviewResult | null> => {
-    // Respeta el tiempo total: sin al menos 5 s no se abre otra ventana (el cerrojo se libera al vencer y no debe quedar nada trabajando).
-    if (left() < 5_000) return null
-    const r = opts.captureDocx ? await opts.captureDocx(bytes, left()) : null
-    if (!r || r.images.length === 0) return null
-    const capped = capImages(r.images)
-    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
   }
   if (tipo === 'docx' && !tools.wordcraft) return viaViewer()
   if (tipo === 'docx' && tools.wordcraft) {

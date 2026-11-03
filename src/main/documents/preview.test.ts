@@ -266,3 +266,56 @@ describe('renderPreview: el respaldo del visor respeta el tiempo total', () => {
     expect(given).toBeLessThanOrEqual(50_000)
   })
 })
+
+describe('renderPreview: PowerPoint sin DeckCraft usa el visor de la app', () => {
+  const PNG = Buffer.from('PNG')
+  it('sin DeckCraft, devuelve lo que captura el visor', async () => {
+    const { renderPreview } = await import('./preview')
+    const res = await renderPreview(
+      'pptx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      { captureDeck: async () => ({ images: [PNG, PNG, PNG], pages: 3 }) }
+    )
+    expect(res?.images.length).toBe(3)
+    expect(res?.pages).toBe(3)
+  })
+  it('sin DeckCraft ni visor sigue siendo null', async () => {
+    const { renderPreview } = await import('./preview')
+    expect(await renderPreview('pptx', Buffer.from('zip'), { deckcraft: null, wordcraft: null })).toBeNull()
+  })
+  it('si DeckCraft falla, prueba el visor; si no hay nada que mostrar, relanza el error de DeckCraft', async () => {
+    const { renderPreview } = await import('./preview')
+    const run = async (): Promise<void> => {
+      throw new Error('deckcraft falló')
+    }
+    const ok = await renderPreview(
+      'pptx',
+      Buffer.from('zip'),
+      { deckcraft: '/d', wordcraft: null },
+      { run, captureDeck: async () => ({ images: [PNG], pages: 1 }) }
+    )
+    expect(ok?.images.length).toBe(1)
+    await expect(
+      renderPreview('pptx', Buffer.from('zip'), { deckcraft: '/d', wordcraft: null }, { run, captureDeck: async () => null })
+    ).rejects.toThrow('deckcraft falló')
+  })
+  it('con DeckCraft sano NO usa el visor', async () => {
+    const { renderPreview } = await import('./preview')
+    const fs = await import('node:fs/promises')
+    let used = false
+    const run = async (_b: string, args: string[]): Promise<void> => {
+      const out = args[args.length - 1]
+      await fs.mkdir(out, { recursive: true })
+      await fs.writeFile(`${out}/s1.png`, 'PNG')
+    }
+    const res = await renderPreview(
+      'pptx',
+      Buffer.from('zip'),
+      { deckcraft: '/d', wordcraft: null },
+      { run, captureDeck: async () => ((used = true), null) }
+    )
+    expect(res?.images.length).toBe(1)
+    expect(used).toBe(false)
+  })
+})

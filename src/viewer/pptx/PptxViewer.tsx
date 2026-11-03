@@ -17,7 +17,7 @@ type Phase = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; deck: De
 
 const EMU_PER_PT = 12700
 
-export function PptxViewer({ token, lang }: { token: string; lang: ViewerLang }): React.JSX.Element {
+export function PptxViewer({ token, lang, capture }: { token: string; lang: ViewerLang; capture?: boolean }): React.JSX.Element {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
   const [index, setIndex] = useState(0)
 
@@ -33,13 +33,22 @@ export function PptxViewer({ token, lang }: { token: string; lang: ViewerLang })
       })
       .then((buffer) => JSZip.loadAsync(buffer))
       .then((zip) => parseDeck(zip))
-      .then((deck) => !cancelled && setPhase({ kind: 'ready', deck }))
-      .catch(() => !cancelled && setPhase({ kind: 'error' }))
+      .then((deck) => {
+        if (cancelled) return
+        setPhase({ kind: 'ready', deck })
+        // Solo en el render oculto de la IA: cuántas diapositivas hay (el visor de la persona no marca nada).
+        if (capture) document.documentElement.dataset.captureReady = String(deck.slides.length)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setPhase({ kind: 'error' })
+        if (capture) document.documentElement.dataset.captureReady = 'error'
+      })
 
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, capture])
 
   useEffect(() => {
     if (phase.kind !== 'ready') return

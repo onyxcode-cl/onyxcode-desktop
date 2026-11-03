@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
   },
   validators: [] as Array<(p: string) => string>,
   captured: [] as Array<{ x: number; y: number; width: number; height: number }>,
+  advances: 0,
   blankFirst: 0,
   alwaysBlank: false
 }))
@@ -32,6 +33,11 @@ vi.mock('electron', () => {
       executeJavaScript: async (code: string) => {
         if (code.includes('captureReady')) return h.script.ready
         if (code.includes('.map((s)')) return h.script.sections
+        if (code.includes('pptx-canvas-wrap')) return { x: 20, y: 30, width: 1000, height: 560 }
+        if (code.includes('ArrowRight')) {
+          h.advances++
+          return true
+        }
         if (code.includes('scrollTop')) return { x: 10, y: 20, width: 794 }
         return null
       },
@@ -74,7 +80,7 @@ vi.mock('./scheme', () => ({
 vi.mock('./session', () => ({ viewerSession: () => ({}) }))
 
 import { setPrivateTmpBase } from '../office/craft/private-tmp'
-import { captureDocxPages, planSlices } from './capture'
+import { captureDeckSlides, captureDocxPages, planSlices } from './capture'
 import { resolveCaptureToken } from './tokens'
 
 const base = mkdtempSync(join(tmpdir(), 'capture-test-'))
@@ -91,6 +97,7 @@ beforeEach(() => {
   h.script.loadFails = false
   h.blankFirst = 0
   h.alwaysBlank = false
+  h.advances = 0
 })
 
 describe('planSlices', () => {
@@ -189,5 +196,24 @@ describe('captureDocxPages', () => {
     expect(() => validate(join(base, 'priv', 'otro.docx'))).toThrow()
     expect(() => validate(join(base, 'fuera.docx'))).toThrow()
     expect(() => validate('/etc/passwd')).toThrow()
+  })
+})
+
+describe('captureDeckSlides', () => {
+  it('una imagen por diapositiva (hasta el tope), avanzando con la flecha del visor, y cuenta todas', async () => {
+    h.script.ready = '20'
+    const r = await captureDeckSlides(Buffer.from('zip'), 5, 20_000)
+    expect(r?.images).toHaveLength(5)
+    expect(r?.pages).toBe(20)
+    expect(h.advances).toBe(4)
+    expect(h.windows[0]!.url).toMatch(/kind=pptx&lang=es&theme=light&capture=1$/)
+  })
+  it('si el visor no pinta nada devuelve null y limpia (ventana destruida, token revocado)', async () => {
+    h.script.ready = 'error'
+    expect(await captureDeckSlides(Buffer.from('zip'), 5, 20_000)).toBeNull()
+    const w = h.windows[0]!
+    expect(w.destroyed).toBe(true)
+    const token = /#t=([0-9a-f]{64})/.exec(w.url)?.[1]
+    expect(resolveCaptureToken(token!)).toBeNull()
   })
 })

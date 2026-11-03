@@ -4175,3 +4175,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Pruebas.** `util.test.ts` (`toolLabel`).
 
 - **Prueba real del troceado (F8-B253).** Un Word A4 de 7 páginas (6 secciones, 72 párrafos), sin ArtCraft, Haiku 5.5: la herramienta informó «7 página(s)» y generó las 7 imágenes (640×905, las vi). El primer intento fallaba (una sola imagen de 8 px, las demás vacías por capturarse antes del pintado); se corrigió esperando dos cuadros y reintentando si sale en blanco. Observación: el motor entrega las imágenes de una herramienta como archivos PNG que el modelo debe abrir con `read`, y Haiku abrió solo 2 de 7; el texto de `documentos_renderizar` ahora pide mirar TODAS y declarar en «Para revisar» las que no pudo ver.
+
+## F8-B260 — La IA ve una presentación con el visor de la app cuando no hay ArtCraft
+
+- **Problema.** Sin DeckCraft `documentos_renderizar` no podía mostrar una presentación y, si DeckCraft fallaba, la herramienta se rendía.
+- **Solución.** `captureDeckSlides` (`viewer/capture.ts`, mismo envoltorio que el Word: ventana oculta en caja, token de la ranura de captura, copia privada, limpieza siempre, tope de tiempo): carga el visor en modo `capture`, captura el lienzo de cada diapositiva (≤12, 640 px) y avanza con la flecha del propio visor. Es la VISTA SIMPLIFICADA del visor (no un render fiel de PowerPoint): sirve para ver textos, orden y cosas fuera de sitio. `PptxViewer` solo marca `data-capture-ready` cuando se pide `capture=1`; para la persona no cambia nada. `renderPreview` lo usa si no hay DeckCraft o si DeckCraft falla (si tampoco el visor puede, relanza el error de DeckCraft como antes). El refactor deja un solo `withCaptureWindow` para Word y PowerPoint.
+- **Pruebas.** `capture.test.ts` (diapositivas: una imagen por diapositiva con tope, flecha del visor, cuenta total, limpieza al fallar), `preview.test.ts` (4: sin DeckCraft, sin visor, DeckCraft que falla, DeckCraft sano no usa el visor).
