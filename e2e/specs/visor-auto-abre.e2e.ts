@@ -12,9 +12,10 @@ import { storeState } from '../lib/stores'
 
 const DEV = MODE === 'dev'
 const SHOTS = process.env.C6_SHOTS_DIR
-const SAMPLE = process.env.LAZUNOX_E2E_SAMPLE_DOCX
+// Un .docx real del repo (el de las pruebas de la revisión de documentos): el spec corre siempre, sin variables de entorno.
+const SAMPLE = join(process.cwd(), 'src', 'main', 'documents', 'fixtures-review', 'bueno.docx')
 
-describe.skipIf(!DEV || !SAMPLE)('Tareas: el visor abre solo el entregable al terminar', () => {
+describe.skipIf(!DEV)('Tareas: el visor abre solo el entregable al terminar', () => {
   const bin = prepareFakeBin()
   const folder = makeHomeFolder()
   afterAll(() => {
@@ -45,7 +46,7 @@ describe.skipIf(!DEV || !SAMPLE)('Tareas: el visor abre solo el entregable al te
     await page.getByText('Creo el informe.', { exact: false }).first().waitFor({ timeout: 30_000 })
     const id = (await storeState<string | null>(page, 'useTasks', 'activeTaskId')) as string
     // Como `documentos_crear`: el archivo aparece en la carpeta durante el turno, sin un evento write/edit con ruta.
-    copyFileSync(SAMPLE!, join(folder.path, 'informe.docx'))
+    copyFileSync(SAMPLE, join(folder.path, 'informe.docx'))
     expect(await storeState(page, 'useTasks', 'viewerRequest')).toBeNull()
 
     await waitIdle(page, id, 60_000)

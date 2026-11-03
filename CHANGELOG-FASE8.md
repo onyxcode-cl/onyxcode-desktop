@@ -4083,3 +4083,11 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Problema** (prueba en Windows, ronda 3). En `plain-bash.ts` las reglas por tipo de archivo (`\.docx\b`…) iban antes que `remove`/`move`/`copy`/`open`: `rm ventas-largo.docx` se rotulaba «Creó el documento de Word».
 - **Solución.** Un comando suelto (sin `&&`, `||`, `;` ni `|`) que empieza por `rm`/`trash`/`Remove-Item`/`del`, `mv`/`Move-Item`, `cp`/`ditto`/`Copy-Item` u `open`/`Start-Process` es esa operación aunque nombre un archivo de Office. Las cadenas (p. ej. `build_docx.py … && open informe.docx`) siguen rotulándose por lo que crean.
 - **Pruebas.** `plain-bash.test.ts` (`rm`/`mv`/`cp`/`open`/`Remove-Item` sobre Office y dos cadenas que siguen siendo «Creó»).
+
+## F8-B246 — Arreglos de la revisión independiente de 1.8.7 (B1, I1-I3)
+
+- **B1 (bloqueante).** Sin ArtCraft (o si DeckCraft falla), `renderBytes` caía a `renderPptx` sin `foldSubtitles` ni marcadores de título: la revisión de `documentos_crear` marcaba ✘ en todas las diapositivas y el modelo, que no podía corregirlo desde el spec, recreaba el archivo sin fin. Ahora el respaldo pasa por `foldSubtitles` y `ensureTitlePlaceholders`, que acepta también el `<p:nvPr></p:nvPr>` de pptxgenjs. Prueba con la salida REAL de `renderPptx` (`review.fallback-pptx.test.ts`; falla con el código anterior).
+- **I1.** Sin GridCraft el valor de una fórmula es el que escribió el modelo (exceljs): la revisión ya no lo da por calculado, devuelve un aviso «ℹ… NO se recalculó… no lo cites como verificado» (no obliga a recrear); exceljs marca `fullCalcOnLoad`. También lee el nombre y el orden reales de las hojas (`xl/workbook.xml`).
+- **I2.** (a) El subtítulo pedido solo se exige si el diseño de la primera diapositiva dibuja viñetas; (b) `foldSubtitles` solo actúa en la portada (un separador de sección con `subtitle` sigue siendo separador); (c) la etiqueta de total debe ser toda la celda y «media» ya no cuenta (`review.ts` y `verificar_office.py`).
+- **I3.** `visor-auto-abre.e2e.ts` usa un .docx del repo (`fixtures-review/bueno.docx`) y ya no depende de una variable de entorno: corre siempre.
+- Pruebas: `review.test.ts`, `review.fallback-*.test.ts`, `pptx-titles.test.ts`, `chat-deck.test.ts`, `test_verificar_office.py`.
