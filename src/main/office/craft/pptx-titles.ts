@@ -66,6 +66,8 @@ export function withTitlePlaceholder(xml: string, slideHeight: number): string |
 }
 
 export async function ensureTitlePlaceholders(pptx: Buffer): Promise<Buffer> {
+  // Lo que no es un zip (un programa que falló o uno de pruebas) no se toca ni se comenta: no hay nada que marcar.
+  if (pptx.length < 4 || pptx[0] !== 0x50 || pptx[1] !== 0x4b) return pptx
   try {
     const zip = await JSZip.loadAsync(pptx)
     const pres = await zip.file('ppt/presentation.xml')?.async('string')

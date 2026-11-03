@@ -78,5 +78,7 @@ describe('marcador de título del pptx', () => {
     for (const n of [1, 2]) expect(await out.file(`ppt/slides/slide${n}.xml`)!.async('string')).toContain('<p:ph type="title"/>')
     const roto = Buffer.from('no es un zip')
     expect(await ensureTitlePlaceholders(roto)).toBe(roto)
+    const corrupto = Buffer.concat([Buffer.from('PK'), Buffer.from('basura')])
+    expect(await ensureTitlePlaceholders(corrupto)).toBe(corrupto)
   })
 })
