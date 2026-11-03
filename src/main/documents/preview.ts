@@ -38,6 +38,9 @@ export interface PreviewTools {
 /** PDF → PNG (en la app: `pdf-raster.ts`; se inyecta para poder probar sin Electron). */
 export type Rasterize = (pdf: Buffer) => Promise<{ images: Buffer[]; pages: number } | null>
 
+/** Render del Word con el visor de la app (sin ArtCraft): se inyecta desde `documents/index.ts` para poder probar sin Electron. */
+export type CaptureDocx = (bytes: Buffer) => Promise<{ images: Buffer[]; pages: number } | null>
+
 export interface PreviewResult {
   images: Buffer[]
   /** Páginas o diapositivas que se pudieron renderizar (puede haber más que `images` si se aplicó un tope). */
@@ -61,7 +64,7 @@ export async function renderPreview(
   tipo: 'pptx' | 'docx' | 'xlsx' | 'pdf',
   bytes: Buffer,
   tools: PreviewTools,
-  opts: { timeoutMs?: number; totalMs?: number; run?: typeof runCraft; rasterize?: Rasterize } = {}
+  opts: { timeoutMs?: number; totalMs?: number; run?: typeof runCraft; rasterize?: Rasterize; captureDocx?: CaptureDocx } = {}
 ): Promise<PreviewResult | null> {
   const run = opts.run ?? runCraft
   const perRun = opts.timeoutMs ?? 90_000
@@ -86,6 +89,14 @@ export async function renderPreview(
       await rm(dir, { recursive: true, force: true })
     }
   }
+  // Sin WordCraft (no hay ArtCraft, o en WSL): el mismo visor que ve la persona, en una ventana oculta.
+  const viaViewer = async (): Promise<PreviewResult | null> => {
+    const r = opts.captureDocx ? await opts.captureDocx(bytes) : null
+    if (!r || r.images.length === 0) return null
+    const capped = capImages(r.images)
+    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
+  }
+  if (tipo === 'docx' && !tools.wordcraft) return viaViewer()
   if (tipo === 'docx' && tools.wordcraft) {
     const dir = await mkdtemp(join(await privateTmp(), 'lazunox-preview-'))
     try {
@@ -100,7 +111,11 @@ export async function renderPreview(
           await run(tools.wordcraft, ['render', src, out, '--page', String(page), '--scale', PREVIEW_SCALE], timeoutMs())
           all.push(await readOutput(out))
         } catch {
-          if (page === 1) throw new Error('No se pudo renderizar la primera página.')
+          if (page === 1) {
+            const alt = await viaViewer().catch(() => null)
+            if (alt) return alt
+            throw new Error('No se pudo renderizar la primera página.')
+          }
           break
         }
       }

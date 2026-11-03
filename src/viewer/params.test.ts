@@ -50,3 +50,16 @@ describe('docUrl', () => {
     expect(docUrl(TOKEN)).toBe(`/doc/${TOKEN}`)
   })
 })
+
+describe('parseViewerParams: modo captura', () => {
+  it('sin «capture» el visor de la persona queda igual (no añade el campo)', () => {
+    const r = parseViewerParams(`#t=${TOKEN}&kind=docx&lang=es&theme=light`)
+    expect(r).toEqual({ token: TOKEN, kind: 'docx', lang: 'es', theme: 'light' })
+    expect(r && 'capture' in r).toBe(false)
+  })
+  it('«capture=1» lo activa y cualquier otro valor no', () => {
+    expect(parseViewerParams(`#t=${TOKEN}&kind=docx&lang=es&theme=light&capture=1`)?.capture).toBe(true)
+    expect(parseViewerParams(`#t=${TOKEN}&kind=docx&lang=es&theme=light&capture=true`)?.capture).toBeUndefined()
+    expect(parseViewerParams(`#t=${TOKEN}&kind=docx&lang=es&theme=light&capture=0`)?.capture).toBeUndefined()
+  })
+})

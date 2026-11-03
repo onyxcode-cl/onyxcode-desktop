@@ -14,7 +14,7 @@ import { sanitizeDocxDom } from './sanitize'
 
 type Phase = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready' }
 
-export function DocxViewer({ token, lang }: { token: string; lang: ViewerLang }): React.JSX.Element {
+export function DocxViewer({ token, lang, capture }: { token: string; lang: ViewerLang; capture?: boolean }): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
   const [zoomPercent, setZoomPercent] = useState(100)
@@ -47,14 +47,20 @@ export function DocxViewer({ token, lang }: { token: string; lang: ViewerLang })
         if (cancelled) return
         sanitizeDocxDom(container)
         setPhase({ kind: 'ready' })
+        // Solo en el render oculto de la IA: avisa a main cuántas páginas pintó (el visor de la persona no marca nada).
+        if (capture) document.documentElement.dataset.captureReady = String(container.querySelectorAll('section.docx').length)
       })
-      .catch(() => !cancelled && setPhase({ kind: 'error' }))
+      .catch(() => {
+        if (cancelled) return
+        setPhase({ kind: 'error' })
+        if (capture) document.documentElement.dataset.captureReady = 'error'
+      })
 
     return () => {
       cancelled = true
       container.replaceChildren()
     }
-  }, [token])
+  }, [token, capture])
 
   return (
     <div className="docx-root">

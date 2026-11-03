@@ -2,6 +2,7 @@
 import { app } from 'electron'
 import { join } from 'node:path'
 import { setPrivateTmpBase } from '../office/craft/private-tmp'
+import { captureDocxPages } from '../viewer/capture'
 import { craftBinary, renderBytes } from './engine'
 import { rasterizePdf } from './pdf-raster'
 import { renderPreview } from './preview'
@@ -22,6 +23,6 @@ export const documentsMcp = new DocumentsMcpServer({
       tipo,
       bytes,
       { deckcraft: craftBinary('deckcraft'), wordcraft: craftBinary('wordcraft'), gridcraft: craftBinary('gridcraft') },
-      { rasterize: (pdf) => rasterizePdf(pdf) }
+      { rasterize: (pdf) => rasterizePdf(pdf), captureDocx: (bytes) => captureDocxPages(bytes) }
     )
 })

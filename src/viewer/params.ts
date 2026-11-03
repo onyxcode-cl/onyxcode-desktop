@@ -11,6 +11,8 @@ export interface ViewerParams {
   kind: DocKind
   lang: ViewerLang
   theme: 'light' | 'dark'
+  /** Solo lo pone el render oculto de la IA (`viewer/capture.ts`): el visor de la persona nunca lo trae. */
+  capture?: true
 }
 
 const KINDS: DocKind[] = ['pdf', 'docx', 'xlsx', 'pptx']
@@ -31,7 +33,7 @@ export function parseViewerParams(hash: string): ViewerParams | null {
   if (!isDocKind(kind)) return null
   if (!isViewerLang(lang)) return null
   if (theme !== 'light' && theme !== 'dark') return null
-  return { token, kind, lang, theme }
+  return params.get('capture') === '1' ? { token, kind, lang, theme, capture: true } : { token, kind, lang, theme }
 }
 
 /** URL del documento del token, dentro del mismo origen del visor. */

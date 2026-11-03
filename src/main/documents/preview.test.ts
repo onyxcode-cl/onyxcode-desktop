@@ -175,3 +175,55 @@ describe('renderPreview: tiempo total, memoria y carpeta privada', () => {
     }
   })
 })
+
+describe('renderPreview: Word sin ArtCraft usa el visor de la app', () => {
+  const PNG = Buffer.from('PNG')
+  it('sin WordCraft, devuelve lo que captura el visor (con el tope de páginas)', async () => {
+    const { renderPreview } = await import('./preview')
+    const res = await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      { captureDocx: async () => ({ images: [PNG, PNG], pages: 2 }) }
+    )
+    expect(res?.images.length).toBe(2)
+    expect(res?.pages).toBe(2)
+  })
+  it('sin WordCraft ni visor (o si el visor no pudo pintarlo) sigue siendo null: la herramienta lo dice', async () => {
+    const { renderPreview } = await import('./preview')
+    expect(await renderPreview('docx', Buffer.from('zip'), { deckcraft: null, wordcraft: null })).toBeNull()
+    expect(
+      await renderPreview('docx', Buffer.from('zip'), { deckcraft: null, wordcraft: null }, { captureDocx: async () => null })
+    ).toBeNull()
+  })
+  it('con WordCraft que falla en la primera página, prueba el visor antes de rendirse', async () => {
+    const { renderPreview } = await import('./preview')
+    const run = async (): Promise<void> => {
+      throw new Error('falla')
+    }
+    const res = await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: '/w' },
+      { run, captureDocx: async () => ({ images: [PNG], pages: 1 }) }
+    )
+    expect(res?.images.length).toBe(1)
+  })
+  it('con WordCraft sano NO usa el visor', async () => {
+    const { renderPreview } = await import('./preview')
+    const fs = await import('node:fs/promises')
+    let used = false
+    const run = async (_b: string, args: string[]): Promise<void> => {
+      if (args[0] === 'render' && args.includes('--page') && args[args.indexOf('--page') + 1] !== '1') throw new Error('fin')
+      await fs.writeFile(args[2], 'PNG')
+    }
+    const res = await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: '/w' },
+      { run, captureDocx: async () => ((used = true), null) }
+    )
+    expect(res?.images.length).toBe(1)
+    expect(used).toBe(false)
+  })
+})
