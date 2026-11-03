@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Revisión de calidad de un Word, Excel o PowerPoint ANTES de entregarlo (local, gratis, sin ArtCraft).
 
-Uso:  verificar_office.py archivo.{docx,xlsx,pptx} [--json] [--arreglar SALIDA]
+Uso:  verificar_office.py archivo.{docx,xlsx,pptx} [--json] [--arreglar SALIDA | --en-sitio]
 Imprime una lista corta «✔ / ✘» (lo que se comprobó y lo que falló). Salida: 0 todo bien, 1 hay fallos, 2 uso/no abre.
 
 Word:       título con estilo Title/Heading · encabezados reales · viñetas con estilo de lista (no «•» escrito a mano) · tablas sin celdas vacías.
@@ -11,6 +11,8 @@ Excel:      totales con fórmula (no números pegados) · ninguna celda con erro
 
 `--arreglar SALIDA` (solo .pptx): escribe una COPIA donde el texto más grande de cada diapositiva sin título pasa a ser su marcador de título
 (el aspecto no cambia; sirve al esquema, a la navegación y a los lectores de pantalla). Nunca sobrescribe el original.
+`--en-sitio` (solo .pptx): hace lo mismo pero reemplaza el archivo, para uno que TÚ acabas de crear en esta tarea (nunca un archivo de la persona):
+así no queda una versión rota al lado de la buena.
 """
 from __future__ import annotations
 
@@ -250,6 +252,7 @@ def main(argv=None):
     ap.add_argument("archivo")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--arreglar", metavar="SALIDA", help="solo .pptx: copia con marcadores de título")
+    ap.add_argument("--en-sitio", action="store_true", help="solo .pptx: arregla el propio archivo (uno que acabas de crear)")
     a = ap.parse_args(argv)
     if not os.path.isfile(a.archivo):
         print("ERROR: el archivo no existe: " + a.archivo, file=sys.stderr)
@@ -260,13 +263,19 @@ def main(argv=None):
         print("ERROR: solo .docx, .xlsx y .pptx", file=sys.stderr)
         return 2
     try:
-        if a.arreglar:
+        if a.arreglar or a.en_sitio:
             if ext != ".pptx":
-                print("ERROR: --arreglar solo existe para .pptx", file=sys.stderr)
+                print("ERROR: --arreglar y --en-sitio solo existen para .pptx", file=sys.stderr)
                 return 2
-            n = arregla_pptx(a.archivo, a.arreglar)
-            print("Copia con %d marcador(es) de título nuevo(s): %s" % (n, a.arreglar))
-            a.archivo = a.arreglar
+            if a.en_sitio:
+                tmp = a.archivo + ".arreglando.pptx"
+                n = arregla_pptx(a.archivo, tmp)
+                os.replace(tmp, a.archivo)
+                print("Archivo arreglado en su sitio, %d marcador(es) de título nuevo(s): %s" % (n, a.archivo))
+            else:
+                n = arregla_pptx(a.archivo, a.arreglar)
+                print("Copia con %d marcador(es) de título nuevo(s): %s" % (n, a.arreglar))
+                a.archivo = a.arreglar
         r = fn(a.archivo)
     except ImportError as e:
         print("ERROR: falta una librería (%s). Ejecuta _shared/doctor.py." % e, file=sys.stderr)

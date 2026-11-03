@@ -103,6 +103,20 @@ class PruebasVerificar(unittest.TestCase):
         rc, out = correr(self.p("malo.pptx"), "--arreglar", self.p("fix.pptx"))
         self.assertEqual(rc, 1)  # no sobrescribe
 
+    def test_pptx_en_sitio(self):
+        from pptx import Presentation
+        from pptx.util import Inches, Pt
+        prs = Presentation()
+        s = prs.slides.add_slide(prs.slide_layouts[6])
+        a = s.shapes.add_textbox(Inches(1), Inches(0.5), Inches(6), Inches(1))
+        a.text_frame.text = "Solo yo"
+        a.text_frame.paragraphs[0].runs[0].font.size = Pt(40)
+        prs.save(self.p("sitio.pptx"))
+        rc, out = correr(self.p("sitio.pptx"), "--en-sitio")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(Presentation(self.p("sitio.pptx")).slides[0].shapes.title.text_frame.text, "Solo yo")
+        self.assertFalse([f for f in os.listdir(self.d) if f.endswith(".arreglando.pptx")])
+
 
 if __name__ == "__main__":
     unittest.main()

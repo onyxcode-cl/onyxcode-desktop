@@ -12,6 +12,6 @@ No es una skill. Lo usan docx, xlsx, pptx y pdf. Intérprete: `$LAZUNOX_PYTHON` 
 - `verify_images.py <png...>` : heurística visual (Pillow): página en blanco, contenido pegado al borde (margen < 2 %) y recortes.
   Imprime JSON con `avisos` por página.
 - Pruebas: `python -m unittest tests/test_shared.py` (desde esta carpeta).
-- `verificar_office.py <archivo.docx|xlsx|pptx> [--json] [--arreglar SALIDA.pptx]` : revisión de calidad antes de entregar (local, gratis, sin ArtCraft). Lista corta ✔/✘:
+- `verificar_office.py <archivo.docx|xlsx|pptx> [--json] [--arreglar SALIDA.pptx | --en-sitio]` : revisión de calidad antes de entregar (local, gratis, sin ArtCraft). Lista corta ✔/✘:
   Word (título con estilo, encabezados, viñetas con estilo de lista, tablas sin celdas vacías), PowerPoint (marcador de título en cada diapositiva, nada fuera de los bordes; `--arreglar` escribe una copia con marcadores de título) y Excel (totales con fórmula viva, sin errores, valores recalculados). Salida 0 bien, 1 fallos, 2 uso.
   Pruebas: `python -m unittest tests/test_verificar_office.py`.
