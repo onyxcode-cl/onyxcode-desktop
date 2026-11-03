@@ -48,6 +48,8 @@ export interface PreviewResult {
   /** Páginas o diapositivas que se pudieron renderizar (puede haber más que `images` si se aplicó un tope). */
   pages: number
   truncated: boolean
+  /** Las imágenes salen de la VISTA SIMPLIFICADA del visor de la app (no de ArtCraft): la herramienta se lo avisa a la IA. */
+  viaViewer?: boolean
 }
 
 function capImages(images: Buffer[]): { images: Buffer[]; truncated: boolean } {
@@ -89,7 +91,7 @@ export async function renderPreview(
     const r = capture ? await capture(bytes, left()) : null
     if (!r || r.images.length === 0) return null
     const capped = capImages(r.images)
-    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length }
+    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length, viaViewer: true }
   }
   if (tipo === 'pptx' && !tools.deckcraft) return viaViewer()
   if (tipo === 'pptx' && tools.deckcraft) {
@@ -106,7 +108,12 @@ export async function renderPreview(
         if (alt) return alt
         throw err
       }
-      const files = (await readdir(outDir)).filter((f) => f.toLowerCase().endsWith('.png')).sort()
+      const files = (await readdir(outDir).catch(() => [] as string[])).filter((f) => f.toLowerCase().endsWith('.png')).sort()
+      if (files.length === 0) {
+        // DeckCraft terminó sin dejar imágenes: la vista simplificada del visor antes de rendirse.
+        const alt = await viaViewer().catch(() => null)
+        if (alt) return alt
+      }
       // DeckCraft renderiza todas las diapositivas: en memoria solo entran las primeras (el resto se cuenta, no se lee).
       const all: Buffer[] = []
       for (const f of files.slice(0, MAX_PREVIEW_PAGES)) all.push(await readOutput(join(outDir, f)))

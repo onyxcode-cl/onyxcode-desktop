@@ -439,6 +439,23 @@ describe('renderizar', () => {
     }
   })
 
+  it('si las imágenes salen de la vista simplificada del visor, el texto se lo avisa a la IA', async () => {
+    const s3 = new DocumentsMcpServer({
+      render: async () => Buffer.from('ARCHIVO'),
+      preview: async () => ({ images: [PNG], pages: 1, truncated: false, viaViewer: true }),
+      audit: () => undefined
+    })
+    try {
+      const { token, port } = await s3.clientFor({ folder })
+      const created = await call(port, token, { tipo: 'pptx', nombre: 'deck', spec: PPTX })
+      const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+      const r = await call(port, token, { ruta }, 'renderizar')
+      expect(r.body.result.content[0].text).toContain('VISTA SIMPLIFICADA')
+    } finally {
+      await s3.stop()
+    }
+  })
+
   it('una ruta creada por OTRA atadura no vale', async () => {
     const a = await s2.clientFor({ folder })
     const b = await s2.clientFor({ folder: folder2 })

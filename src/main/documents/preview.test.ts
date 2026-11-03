@@ -319,3 +319,36 @@ describe('renderPreview: PowerPoint sin DeckCraft usa el visor de la app', () =>
     expect(used).toBe(false)
   })
 })
+
+describe('renderPreview: marca de vista simplificada y DeckCraft sin imágenes', () => {
+  const PNG = Buffer.from('PNG')
+  it('lo que sale del visor lleva viaViewer; lo de DeckCraft no', async () => {
+    const { renderPreview } = await import('./preview')
+    const a = await renderPreview(
+      'pptx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      { captureDeck: async () => ({ images: [PNG], pages: 1 }) }
+    )
+    expect(a?.viaViewer).toBe(true)
+    const fs = await import('node:fs/promises')
+    const run = async (_b: string, args: string[]): Promise<void> => {
+      const out = args[args.length - 1]
+      await fs.mkdir(out, { recursive: true })
+      await fs.writeFile(`${out}/s1.png`, 'PNG')
+    }
+    const b = await renderPreview('pptx', Buffer.from('zip'), { deckcraft: '/d', wordcraft: null }, { run })
+    expect(b?.viaViewer).toBeUndefined()
+  })
+  it('si DeckCraft termina sin dejar imágenes (ni carpeta), prueba el visor', async () => {
+    const { renderPreview } = await import('./preview')
+    const run = async (): Promise<void> => undefined
+    const r = await renderPreview(
+      'pptx',
+      Buffer.from('zip'),
+      { deckcraft: '/d', wordcraft: null },
+      { run, captureDeck: async () => ({ images: [PNG], pages: 1 }) }
+    )
+    expect(r?.viaViewer).toBe(true)
+  })
+})

@@ -96,15 +96,18 @@ export function PptxViewer({ token, lang, capture }: { token: string; lang: View
       <div className="pptx-counter viewer-muted">
         {index + 1} / {deck.slides.length}
       </div>
-      <div className="pptx-thumbs">
-        {deck.slides.map((s, i) => (
-          <button key={i} type="button" className={i === index ? 'pptx-thumb-active' : undefined} onClick={() => setIndex(i)}>
-            <div className="pptx-thumb-canvas" style={{ aspectRatio: aspect }}>
-              <SlideCanvas slide={s} widthEmu={deck.widthEmu} />
-            </div>
-          </button>
-        ))}
-      </div>
+      {/* En el render oculto de la IA no se pintan las miniaturas (solo se captura el lienzo de la diapositiva activa). */}
+      {!capture && (
+        <div className="pptx-thumbs">
+          {deck.slides.map((s, i) => (
+            <button key={i} type="button" className={i === index ? 'pptx-thumb-active' : undefined} onClick={() => setIndex(i)}>
+              <div className="pptx-thumb-canvas" style={{ aspectRatio: aspect }}>
+                <SlideCanvas slide={s} widthEmu={deck.widthEmu} />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

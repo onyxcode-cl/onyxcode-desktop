@@ -32,6 +32,9 @@ export const MAX_CONCURRENT_GLOBAL = 2
 export const MAX_PREVIEWS_PER_HOUR = 30
 export const RENDER_TIMEOUT_MS = 120_000
 export const SERVER_NAME = 'documentos'
+/** Aviso cuando las imágenes salen del visor de la app y no de ArtCraft. */
+const SIMPLIFIED_NOTE =
+  ' OJO: estas imágenes son la VISTA SIMPLIFICADA del visor de la app, no un render fiel de PowerPoint/Word: una caja gris rayada, un gráfico dibujado como barras sencillas o una tipografía de respaldo NO son errores del archivo; fíjate en textos cortados, orden, contenido que falta y cosas fuera de su sitio.'
 
 function log(...a: unknown[]): void {
   console.log('[documentos-mcp]', ...a.map(String))
@@ -273,7 +276,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         ms: now() - t0
       })
       const unit = tipo === 'pptx' ? 'diapositiva(s)' : tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
-      const note = res.truncated ? ` Se muestran las primeras ${res.images.length}.` : ''
+      const note = (res.truncated ? ` Se muestran las primeras ${res.images.length}.` : '') + (res.viaViewer ? SIMPLIFIED_NOTE : '')
       return {
         content: [
           {

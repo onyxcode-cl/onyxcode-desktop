@@ -87,7 +87,7 @@ async function captureSettled(wc: Electron.WebContents, region: Electron.Rectang
     const shot = await wc.capturePage(region)
     if (shot.isEmpty()) continue
     // Una región grande que comprime a casi nada es una hoja en blanco: todavía sin pintar.
-    if (region.height > 300 && shot.toPNG().length < 2500) continue
+    if (region.height > 300 && shot.toPNG().length < 1200) continue
     return shot
   }
   return null
@@ -140,6 +140,7 @@ async function withCaptureWindow(
     win = new BrowserWindow({
       show: false,
       ...size,
+      // `frame: false` es NECESARIO: con marco, macOS recorta la ventana al alto de la pantalla y una hoja A4 sale cortada.
       frame: false,
       skipTaskbar: true,
       focusable: false,
