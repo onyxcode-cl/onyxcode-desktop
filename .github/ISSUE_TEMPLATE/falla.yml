@@ -29,7 +29,7 @@ body:
     attributes:
       label: Versión de Lazunox
       description: Ajustes › Acerca de.
-      placeholder: '1.8.6'
+      placeholder: '1.8.7'
     validations:
       required: true
   - type: dropdown

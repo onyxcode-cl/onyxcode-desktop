@@ -4,6 +4,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.7] - 2026-11-03
+
+### Documentos de Office mejor revisados
+
+- **Revisión de calidad antes de entregar**: cuando una Tarea crea un Word, un Excel o un PowerPoint, la app lo revisa sola (títulos con estilo, viñetas reales, totales con fórmula, portada con subtítulo…) y muestra una lista ✔/✘. Si algo no se pudo revisar (por ejemplo un PDF), lo dice en vez de darlo por bueno. La revisión es local y gratuita, en macOS y en Windows.
+- **«Cómo se verificó»**: el resumen final de una Tarea dice qué comando o lectura respalda cada cifra o afirmación, y solo cita revisiones que de verdad se corrieron.
+- **Presentaciones con títulos de verdad**: cada diapositiva lleva su título como título real de PowerPoint (sirve para el esquema, la navegación y los lectores de pantalla) sin cambiar el aspecto, y el subtítulo de la portada ya no se pierde, también cuando ArtCraft no está instalado.
+- **El documento se abre solo al terminar**: al acabar una Tarea, el visor abre el entregable principal (Word, Excel, PowerPoint o PDF) aunque lo haya creado un script. Si lo cierras, no vuelve a abrirse.
+
+### Correcciones
+
+- **Pasos de las Tareas**: borrar, mover, copiar o abrir un archivo de Office ya no aparece como «Creó el documento…», aunque después se compruebe el resultado en la misma orden; revisarlo con las herramientas de las skills aparece como «Revisó».
+- **Windows**: el aviso de ArtCraft dentro del entorno aislado ya no te pide instalarlo cuando ya está instalado.
+- **Reporte de fallos**: plantillas para avisar de un fallo o proponer una mejora en GitHub, y la lista de lo que sale de tu equipo quedó completa en el README y en la página.
+
 ## [1.8.6] - 2026-11-01
 
 ### Lectura sobre el vidrio
