@@ -350,7 +350,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       const code = (err as { code?: string }).code
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'error', detail: code ?? 'motor', ms: now() - t0 })
       if (code === 'no-craft')
-        return this.text(`${(err as Error).message} Instálalo en Ajustes → Tareas → Componentes opcionales y vuelve a pedirlo.`, true)
+        return this.text(`${(err as Error).message} Instálalo en Ajustes › Agentes › Overdrive › Componentes opcionales y vuelve a pedirlo.`, true)
       if (code === 'invalid') return this.text((err as Error).message, true)
       if (err instanceof TimeoutError) return this.text('El documento tardó demasiado y se canceló. Prueba con menos contenido.', true)
       // La salida cruda del motor puede traer rutas del equipo: no se le entrega al agente.

@@ -32,7 +32,7 @@ AVISO_SIN_ARTCRAFT = (
     "No le pidas a la persona que lo instale; di en «Para revisar» que no se pudo comprobar el aspecto visual."
     if en_wsl()
     else "El diseñador de documentos (ArtCraft) no está instalado: se hace solo la verificación estructural. "
-    "Díselo a la persona: se instala desde Ajustes › Tareas › Componentes opcionales."
+    "Díselo a la persona: se instala desde Ajustes › Agentes › Overdrive › Componentes opcionales."
 )
 
 

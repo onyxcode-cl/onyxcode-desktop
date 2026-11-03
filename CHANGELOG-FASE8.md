@@ -4167,3 +4167,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Problema.** Una hoja más ancha que el panel se centraba (`align-items: center`) y se salía por los dos lados; por la izquierda no hay desplazamiento (136 px perdidos al 100 %).
 - **Solución.** `viewer/styles.css`: `align-items: safe center` en `.docx-pages` y `.docx-wrapper`; `DocxViewer.tsx`: si la hoja es más ancha que el panel se abre «ajustada al ancho» (`fitWidthPercent`, mínimo 25 %) y el zoom usa `zoom` en lugar de `transform: scale` para que el desplazamiento siga el tamaño real. El render oculto de la IA (modo `capture`) no aplica el ajuste. 
 - **Pruebas.** `zoom.test.ts` (`fitWidthPercent`).
+
+## F8-B259 — U3: nombres legibles de los pasos de documentos y la ruta correcta de Ajustes
+
+- **Problema.** El paso que fallaba salía como «documentos crear» (nombre crudo de la herramienta) y el mensaje de «instala ArtCraft» mandaba a «Ajustes → Tareas → Componentes opcionales», un lugar que no existe.
+- **Solución.** `util.ts` (`toolLabel`): `documentos_crear`/`documentos_renderizar` se muestran como «Creando / Creó / No se pudo crear el documento» y «Mirando / Miró / No se pudo mirar el documento» según el estado (es/en); las demás, sin guiones bajos. `mcp-server.ts` y `_shared/render.py`: «Ajustes › Agentes › Overdrive › Componentes opcionales» (verificado en `SettingsView.tsx`: grupo `agents`, sección Overdrive con `CraftComponentCard`).
+- **Pruebas.** `util.test.ts` (`toolLabel`).

@@ -216,6 +216,15 @@ function fileLabel(p: string): string {
 const SKILL_NAMES = new Set(['xlsx', 'docx', 'pptx', 'pdf'])
 
 /** Descripción amigable de una llamada a herramienta: "Leyendo informe.md". */
+/** Nombre legible de las herramientas propias de la app, según el estado del paso (el que falló no debe decir «documentos crear»); el resto, sin guiones bajos. */
+const APP_TOOL: Record<string, 'docCreate' | 'docRender'> = { documentos_crear: 'docCreate', documentos_renderizar: 'docRender' }
+export function toolLabel(tool: string, status: string = 'completed'): string {
+  const id = APP_TOOL[tool]
+  if (!id) return tool.replace(/_/g, ' ')
+  const state = status === 'running' || status === 'pending' ? 'doing' : status === 'error' ? 'failed' : 'done'
+  return t(`tasks.tool.${id}.${state}` as MsgKey)
+}
+
 export function friendlyTool(part: ToolPart, showPath: (path: string) => string = (x) => x): { verb: string; detail: string } {
   const input = part.state.input ?? {}
   if (part.tool === 'computer_request_access') return { verb: t('tasks.tool.plan.verb'), detail: t('tasks.tool.plan.detail') }
@@ -264,7 +273,10 @@ export function friendlyTool(part: ToolPart, showPath: (path: string) => string 
       return { verb: t('tasks.tool.question'), detail: '' }
     default: {
       const title = 'title' in part.state && part.state.title ? part.state.title : ''
-      return { verb: part.tool.replace(/_/g, ' '), detail: clip(shortenPath(showPath(title || str(input, 'description', 'path', 'url')))) }
+      return {
+        verb: toolLabel(part.tool, part.state.status),
+        detail: clip(shortenPath(showPath(title || str(input, 'description', 'path', 'url'))))
+      }
     }
   }
 }
