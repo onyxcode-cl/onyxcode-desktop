@@ -11,11 +11,19 @@ const h = vi.hoisted(() => ({
     loadFails: false
   },
   validators: [] as Array<(p: string) => string>,
-  captured: [] as Array<{ x: number; y: number; width: number; height: number }>
+  captured: [] as Array<{ x: number; y: number; width: number; height: number }>,
+  blankFirst: 0,
+  alwaysBlank: false
 }))
 
 vi.mock('electron', () => {
-  const img = { isEmpty: () => false, getSize: () => ({ width: 794, height: 1123 }), resize: () => img, toPNG: () => Buffer.from('PNG') }
+  const img = { isEmpty: () => false, getSize: () => ({ width: 794, height: 1123 }), resize: () => img, toPNG: () => Buffer.alloc(5000, 1) }
+  const blank = {
+    isEmpty: () => false,
+    getSize: () => ({ width: 794, height: 1123 }),
+    resize: () => blank,
+    toPNG: () => Buffer.alloc(437, 1)
+  }
   class BrowserWindow {
     state = { destroyed: false, url: '', opts: {} as Record<string, unknown> }
     webContents = {
@@ -29,6 +37,11 @@ vi.mock('electron', () => {
       },
       capturePage: async (r: { x: number; y: number; width: number; height: number }) => {
         h.captured.push(r)
+        if (h.alwaysBlank) return blank
+        if (h.blankFirst > 0) {
+          h.blankFirst--
+          return blank
+        }
         return img
       }
     }
@@ -76,6 +89,8 @@ beforeEach(() => {
   h.script.sections = [{ width: 794, height: 1123, pageHeight: 1123 }]
   h.script.ready = '1'
   h.script.loadFails = false
+  h.blankFirst = 0
+  h.alwaysBlank = false
 })
 
 describe('planSlices', () => {
@@ -90,6 +105,9 @@ describe('planSlices', () => {
     expect(r.total).toBe(30)
     expect(r.slots).toHaveLength(12)
   })
+  it('una cola de menos de 24 px no cuenta como página', () => {
+    expect(planSlices([{ width: 794, height: 2 * 1122.5 + 8, pageHeight: 1122.5 }], 12).total).toBe(2)
+  })
   it('varias secciones suman, sin alto de hoja usa la proporción A4, y lo diminuto se ignora', () => {
     const r = planSlices(
       [
@@ -100,6 +118,19 @@ describe('planSlices', () => {
       12
     )
     expect(r.total).toBe(4) // 1 + 3 (2300 px son tres hojas A4); la sección diminuta no cuenta
+  })
+})
+
+describe('captureDocxPages: pintado', () => {
+  it('si la primera captura sale en blanco (aún sin pintar), reintenta y entrega la página', async () => {
+    h.blankFirst = 2
+    const r = await captureDocxPages(Buffer.from('zip'), 12, 20_000)
+    expect(r?.images).toHaveLength(1)
+    expect(h.captured.length).toBeGreaterThanOrEqual(3)
+  })
+  it('si la hoja nunca se pinta no inventa imágenes: devuelve null', async () => {
+    h.alwaysBlank = true
+    expect(await captureDocxPages(Buffer.from('zip'), 12, 20_000)).toBeNull()
   })
 })
 

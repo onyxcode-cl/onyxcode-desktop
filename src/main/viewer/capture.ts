@@ -58,7 +58,8 @@ export function planSlices(sections: SectionInfo[], maxPages: number): { slots: 
   sections.forEach((sec, i) => {
     if (!(sec.width > 50 && sec.height > 50)) return
     const page = sec.pageHeight > 200 ? sec.pageHeight : sec.width * 1.4142
-    const count = Math.max(1, Math.ceil((sec.height - 2) / page))
+    // Una cola de menos de ~24 px (el redondeo de la última hoja) no es una página.
+    const count = Math.max(1, Math.ceil((sec.height - 24) / page))
     for (let k = 0; k < count; k++) {
       total++
       if (slots.length < maxPages) slots.push({ section: i, offset: k * page, height: Math.min(page, sec.height - k * page) })
@@ -70,6 +71,26 @@ export function planSlices(sections: SectionInfo[], maxPages: number): { slots: 
 export interface CaptureResult {
   images: Buffer[]
   pages: number
+}
+
+/**
+ * Captura una región esperando a que Chromium termine de PINTARLA: tras desplazar una hoja pesada, `capturePage` devuelve enseguida una imagen
+ * vacía o en blanco (la ventana está oculta y el trama va por detrás). Se espera dos cuadros y se reintenta mientras salga vacía o lisa.
+ */
+async function captureSettled(wc: Electron.WebContents, region: Electron.Rectangle, tries = 6): Promise<Electron.NativeImage | null> {
+  for (let i = 0; i < tries; i++) {
+    await wc.executeJavaScript(
+      'new Promise((ok) => { const t = setTimeout(ok, 250); requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(t); ok(true) })) })',
+      true
+    )
+    await new Promise((r) => setTimeout(r, 120 + i * 120))
+    const shot = await wc.capturePage(region)
+    if (shot.isEmpty()) continue
+    // Una región grande que comprime a casi nada es una hoja en blanco: todavía sin pintar.
+    if (region.height > 300 && shot.toPNG().length < 2500) continue
+    return shot
+  }
+  return null
 }
 
 /** PNG de cada página (hasta `maxPages`) de un .docx ya validado. `null` si el visor no lo pudo pintar. */
@@ -138,16 +159,11 @@ export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAG
           `(() => { const s = document.querySelectorAll('section.docx')[${slot.section}]; const sc = document.querySelector('.docx-scroll'); const cr = sc.getBoundingClientRect(); const r = s.getBoundingClientRect(); sc.scrollTop += r.top + ${slot.offset} - cr.top; const r2 = s.getBoundingClientRect(); return { x: r2.left, y: r2.top + ${slot.offset}, width: r2.width } })()`,
           true
         )) as { x: number; y: number; width: number }
-        await new Promise((r) => setTimeout(r, 60))
         const [cw, ch] = w.getContentSize()
         if (pos.y < 0 || pos.y + slot.height > ch || pos.x < 0 || pos.x + pos.width > cw) continue
-        const shot = await wc.capturePage({
-          x: Math.round(pos.x),
-          y: Math.round(pos.y),
-          width: Math.round(pos.width),
-          height: Math.round(slot.height)
-        })
-        if (shot.isEmpty()) continue
+        const region = { x: Math.round(pos.x), y: Math.round(pos.y), width: Math.round(pos.width), height: Math.round(slot.height) }
+        const shot = await captureSettled(wc, region)
+        if (!shot) continue
         const size = shot.getSize()
         images.push(
           (size.width > OUT_WIDTH ? shot.resize({ width: OUT_WIDTH, quality: 'good' }) : nativeImage.createFromBuffer(shot.toPNG())).toPNG()
