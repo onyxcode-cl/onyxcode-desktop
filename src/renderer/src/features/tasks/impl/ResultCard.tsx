@@ -43,14 +43,6 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
               <span className="min-w-0 flex-1 truncate text-sm" title={f.path}>
                 {baseName(f.path)}
               </span>
-              <span className="shrink-0 text-meta text-subtle tabular-nums">{formatSize(f.size)}</span>
-              <button
-                type="button"
-                onClick={() => void openPath(f.path)}
-                className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-accent-soft"
-              >
-                <ExternalLink size={12} /> {t('tasks.deliv.open')}
-              </button>
               <button
                 type="button"
                 onClick={() => void reveal(f.path)}
@@ -59,6 +51,16 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
                 className="flex shrink-0 items-center rounded-md p-1.5 text-muted hover:bg-hover hover:text-fg"
               >
                 <FolderOpen size={14} />
+              </button>
+              {/* Segunda línea: el nombre del archivo tiene la primera para él solo. */}
+              <span className="basis-full h-0" aria-hidden />
+              <span className="ml-7 shrink-0 text-meta text-subtle tabular-nums">{formatSize(f.size)}</span>
+              <button
+                type="button"
+                onClick={() => void openPath(f.path)}
+                className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-accent-soft"
+              >
+                <ExternalLink size={12} /> {t('tasks.deliv.open')}
               </button>
               <FileReview file={f} />
             </li>

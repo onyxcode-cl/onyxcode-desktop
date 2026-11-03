@@ -65,7 +65,7 @@ export function FileReview({ file }: { file: { path: string; mtime: number; size
   const detail = status === 'none' ? [] : (review?.items ?? [])
   const full = `${label} · ${baseName(file.path)}`
   return (
-    <div className="basis-full">
+    <div className="contents">
       <button
         type="button"
         data-testid="file-review"
@@ -83,7 +83,7 @@ export function FileReview({ file }: { file: { path: string; mtime: number; size
         <ul
           role="list"
           aria-label={t('tasks.review.title', { name: baseName(file.path) })}
-          className="mt-0.5 grid max-w-md gap-0.5 rounded-ctl bg-elevated p-2 text-meta ring-1 ring-inset ring-border"
+          className="ml-7 mt-0.5 grid basis-full max-w-md gap-0.5 rounded-ctl bg-elevated p-2 text-meta ring-1 ring-inset ring-border"
         >
           {detail.length === 0 && <li className="text-muted">{t('tasks.review.unavailable')}</li>}
           {detail.map((i, n) => (
