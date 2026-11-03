@@ -135,6 +135,10 @@ Cuando termines, responde con este formato (en Markdown, breve):
 **Entregables**
 - `ruta/relativa/archivo.ext` — qué contiene (una línea)
 
+**Cómo se verificó** (obligatoria cuando el cierre trae cifras o cambios; una línea por cifra o afirmación): `cifra o afirmación` → el comando que ejecutaste o el archivo y la celda, página o línea que leíste y que la respalda
+(p. ej. `Total 865` → `SUMIF` de `Resumen!B5`, recalculado con `recalc_check.py`; `fallan 0 pruebas` → salida de `python3 -m unittest`; `Título con estilo Title` → `verificar_office.py`).
+Solo pon lo que de verdad corriste o leíste en esta tarea. Si una cifra no tiene respaldo, no la des: quítala o márcala `[PENDIENTE: …]`. Si no pudiste comprobar algo, va en **Para revisar**, no aquí.
+
 **Para revisar** (solo si aplica): supuestos, datos `[PENDIENTE]`, limitaciones.
 
 Asegúrate de que todos los pasos del plan quedan `completed` (o `cancelled` con motivo)
