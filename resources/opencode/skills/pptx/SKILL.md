@@ -29,7 +29,7 @@ Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el
 2. Genera: `python3 scripts/build_chat_deck.py spec.json salida.pptx` (la salida debe ser un archivo NUEVO: no sobrescribe). Imprime `Presentación creada: …`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
 3. **Código de salida 3** = falta DeckCraft, Node o el motor en este equipo: no insistas, sigue con el §1 (`build_pptx.py`) y dilo en «Para revisar». Aquí NO hay versión simplificada de las diapositivas libres: sin motor no se arma esta ruta.
 4. Verifica como siempre (§2): mira las imágenes. Corrige editando `spec.json` y regenerando con otro nombre de salida.
-Límites de este motor: no inserta imágenes propias ni notas del orador (si las piden, usa el §1 o un script a medida).
+Límites de este motor: no inserta imágenes propias ni notas del orador (si las piden, usa el §1 o un script a medida). El subtítulo de la portada va como `subtitle` de la primera diapositiva o como su primera viñeta (`bullets[0]`): el motor acepta las dos y la revisión de `documentos_crear` avisa si no aparece en el archivo.
 
 ### Guía de diseño (la misma que usa el Chat)
 Lo que sigue es la guía del Chat, palabra por palabra (una prueba comprueba que no se desvíe de `resources/opencode/agents/chat.md`). Elige `theme` y `style` o inventa tu propia `palette` según el tono del contenido, y varía todo entre presentaciones.

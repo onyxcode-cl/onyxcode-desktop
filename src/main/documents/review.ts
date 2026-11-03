@@ -7,6 +7,8 @@
  * calculado guardado (Excel). Si no se puede abrir el archivo, lo dice («NO corrida»): nunca finge una revisión.
  */
 import JSZip from 'jszip'
+import type { PptxSpec } from '@shared/chat-doc-spec'
+import { foldSubtitles } from '../office/craft/chat-deck'
 
 export interface ReviewItem {
   ok: boolean
@@ -117,7 +119,7 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
 }
 
 // ---------------------------------------------------------------- PowerPoint
-async function reviewPptx(zip: JSZip): Promise<ReviewResult> {
+async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const r = new Builder()
   const pres = (await zip.file('ppt/presentation.xml')?.async('string')) ?? ''
   const sw = Number(/<p:sldSz[^>]*\scx="(\d+)"/.exec(pres)?.[1]) || 12192000
@@ -157,6 +159,19 @@ async function reviewPptx(zip: JSZip): Promise<ReviewResult> {
     `Las ${names.length} diapositivas tienen marcador de título`,
     `${noTitle.length} diapositiva(s) sin marcador de título con texto (nº ${short(noTitle, 12)}): sin él no hay esquema ni lectores de pantalla`
   )
+  // Lo que se pidió en la portada (subtítulo o primera viñeta) tiene que estar en el archivo.
+  const first =
+    spec && typeof spec === 'object' && Array.isArray((spec as PptxSpec).slides) ? foldSubtitles(spec as PptxSpec).slides[0] : undefined
+  const wanted = first && first.layout !== 'free' ? first.bullets?.[0] : undefined
+  if (wanted) {
+    const cover = textOf((await zip.file(names[0])!.async('string')) ?? '')
+    const norm = (t: string): string => t.replace(/\s+/g, ' ').trim().toLowerCase()
+    r.check(
+      norm(cover).includes(norm(wanted).slice(0, 30)),
+      'El subtítulo pedido de la portada está en el archivo',
+      `El subtítulo pedido de la portada («${wanted.slice(0, 40)}») no aparece en la diapositiva 1`
+    )
+  }
   r.check(outside.length === 0, 'Nada fuera de los bordes', `Contenido fuera de los bordes en diapositiva ${short(outside)}`)
   return r.done()
 }
@@ -230,19 +245,24 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
   return r.done()
 }
 
-export async function reviewDocument(kind: 'docx' | 'xlsx' | 'pptx', bytes: Buffer): Promise<ReviewResult> {
+export async function reviewDocument(kind: 'docx' | 'xlsx' | 'pptx', bytes: Buffer, spec?: unknown): Promise<ReviewResult> {
   const zip = await JSZip.loadAsync(bytes)
   if (kind === 'docx') return reviewDocx(zip)
-  if (kind === 'pptx') return reviewPptx(zip)
+  if (kind === 'pptx') return reviewPptx(zip, spec)
   return reviewXlsx(zip)
 }
 
 /** Texto que se agrega a la respuesta de `crear`: la lista ✔/✘ o, si no se pudo, una frase explícita de que NO se corrió. */
-export async function reviewSummary(tipo: string, bytes: Buffer, review: typeof reviewDocument = reviewDocument): Promise<string> {
+export async function reviewSummary(
+  tipo: string,
+  bytes: Buffer,
+  review: typeof reviewDocument = reviewDocument,
+  spec?: unknown
+): Promise<string> {
   if (tipo !== 'docx' && tipo !== 'xlsx' && tipo !== 'pptx')
     return '\nRevisión de calidad: NO corrida (no aplica a PDF). No la cites como hecha.'
   try {
-    const res = await review(tipo, bytes)
+    const res = await review(tipo, bytes, spec)
     const lines = res.items.map((i) => `  ${i.ok ? '✔' : '✘'} ${i.text}`).join('\n')
     return (
       `\nRevisión de calidad de la herramienta (salida de esta herramienta: puedes citarla en «Cómo se verificó»):\n${lines}\n` +

@@ -321,7 +321,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       quota.created.set(written.abs, { abs: written.abs, tipo: built.tipo, sha })
       if (quota.created.size > 400) quota.created.delete(quota.created.keys().next().value as string)
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'ok', bytes: written.bytes, rel: written.rel, ms: now() - t0 })
-      const revision = await reviewSummary(built.tipo, bytes, this.deps.review)
+      const revision = await reviewSummary(built.tipo, bytes, this.deps.review, built.input.kind === 'pptx' ? built.input.data : undefined)
       return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}`)
     } catch (err) {
       if (err instanceof OutputPathError) {

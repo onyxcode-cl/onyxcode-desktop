@@ -41,6 +41,15 @@ describe('revisión de calidad de documentos_crear', () => {
     expect(bad(r)).toContain('fuera de los bordes')
     expect((await reviewDocument('pptx', fx('bueno.pptx'))).ok).toBe(true)
   })
+  it('PowerPoint: si se pidió un subtítulo en la portada y no está en el archivo, ✘', async () => {
+    const spec = { slides: [{ title: 'Con título', subtitle: 'Resumen para el directorio' }] }
+    const r = await reviewDocument('pptx', fx('bueno.pptx'), spec)
+    expect(bad(r)).toContain('subtítulo pedido de la portada')
+    const ok = await reviewDocument('pptx', fx('bueno.pptx'), { slides: [{ title: 'Con título', subtitle: 'Con título' }] })
+    expect(ok.items.map((i) => i.text).join(' | ')).toContain('subtítulo pedido de la portada está en el archivo')
+    // sin spec (o con lienzo libre) no se inventa una exigencia
+    expect((await reviewDocument('pptx', fx('bueno.pptx'))).items).toHaveLength(2)
+  })
   it('el resumen para el agente trae la lista ✔/✘ y dice cuándo no se corrió', async () => {
     const ok = await reviewSummary('pptx', fx('bueno.pptx'))
     expect(ok).toContain('✔ Las 1 diapositivas tienen marcador de título')

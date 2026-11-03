@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isPptxSpec, type PptxSpec } from '@shared/chat-doc-spec'
 import { contrastRatio, customPalette, legibleInk } from './deck-kit'
-import { chatCoverSize, chatDeckCommands, deckToPdf, renderChatDeck } from './chat-deck'
+import { chatCoverSize, chatDeckCommands, deckToPdf, foldSubtitles, renderChatDeck } from './chat-deck'
 
 const FULL: PptxSpec = {
   theme: 'warm',
@@ -69,6 +69,29 @@ describe('chatDeckCommands (prueba Craft)', () => {
     expect(cmds.some((c) => c.startsWith('--cmd'))).toBe(false)
     const withText = cmds.filter((c) => c.startsWith('insert.textBox=')).map((c) => JSON.parse(c.slice('insert.textBox='.length)).text)
     expect(withText).toContain(evil)
+  })
+
+  it('el subtítulo de la portada llega al archivo venga como viene: `subtitle` de la diapositiva, de la presentación o primera viñeta', () => {
+    const texts = (spec: object): string[] =>
+      chatDeckCommands(spec as PptxSpec)
+        .filter((c) => c.startsWith('insert.textBox='))
+        .map((c) => JSON.parse(c.slice('insert.textBox='.length)).text)
+    expect(
+      texts({
+        slides: [
+          { title: 'Ventas', subtitle: 'Resumen del año' },
+          { title: 'Otra', bullets: ['a'] }
+        ]
+      })
+    ).toContain('Resumen del año')
+    expect(texts({ subtitle: 'Resumen global', slides: [{ title: 'Ventas' }, { title: 'Otra', bullets: ['a'] }] })).toContain(
+      'Resumen global'
+    )
+    expect(texts({ slides: [{ title: 'Ventas', bullets: ['Primera viñeta'] }] })).toContain('Primera viñeta')
+    // no pisa viñetas que ya hay, y el subtítulo de la presentación solo va a la portada
+    const f = foldSubtitles({ subtitle: 'X', slides: [{ title: 'A', bullets: ['b'] }, { title: 'B' }] } as unknown as PptxSpec)
+    expect(f.slides[0].bullets).toEqual(['b'])
+    expect(f.slides[1].bullets).toBeUndefined()
   })
 
   it('el tema cambia el color de acento', () => {

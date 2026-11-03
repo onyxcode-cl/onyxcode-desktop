@@ -31,8 +31,25 @@ function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['l
   return 'bullets'
 }
 
+/**
+ * El subtítulo de la portada es la primera viñeta de la primera diapositiva (así lo documenta el esquema del Chat). Un modelo que escribe
+ * `subtitle` (en la diapositiva o en la presentación entera) lo esperaría ver: se pasa a viñeta aquí, en el motor, para que valga en TODAS las
+ * rutas (bloque del Chat, `documentos_crear` y los scripts de las skills), no solo en la que pasa por `chat-doc-sanitize`.
+ */
+export function foldSubtitles(spec: PptxSpec): PptxSpec {
+  const raw = spec as unknown as { subtitle?: unknown; slides: Array<PptxSlideSpec & { subtitle?: unknown }> }
+  const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 500) : null)
+  const slides = raw.slides.map((sl, i) => {
+    const sub = text(sl.subtitle) ?? (i === 0 ? text(raw.subtitle) : null)
+    if (!sub || (sl.bullets && sl.bullets.length > 0)) return sl
+    return { ...sl, bullets: [sub] }
+  })
+  return { ...spec, slides }
+}
+
 /** Genera los comandos `id={json}` de DeckCraft para toda la presentación. Asume `PptxSpec` ya validado (`isPptxSpec`). */
-export function chatDeckCommands(spec: PptxSpec): string[] {
+export function chatDeckCommands(input: PptxSpec): string[] {
+  const spec = foldSubtitles(input)
   // `theme` elige la paleta (colores) y `style` la decoración, como pide el agente de Chat: no es siempre el mismo diseño.
   const pal = spec.palette ? customPalette(spec.palette) : paletteFor(spec.theme)
   const look = spec.style ?? 'classic'
