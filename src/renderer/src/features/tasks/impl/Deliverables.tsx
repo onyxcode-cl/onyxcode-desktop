@@ -30,6 +30,7 @@ import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
+import { FileReview } from './FileReview'
 import { cw } from './bridge'
 import { requestViewerOpen } from './store'
 import { baseName, extOf, formatSize, isViewerExt, relTime } from './util'
@@ -391,6 +392,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                   </div>
                   {IMAGE.has(extOf(f.path)) && <ImageThumb file={f} />}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 pl-6">
+                    <FileReview file={f} />
                     {(viewable || previewable) && (
                       <button type="button" className={ACTION_BTN} onClick={openView}>
                         <Eye size={12} /> {t('tasks.deliv.view')}

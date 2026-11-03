@@ -4,6 +4,7 @@ import type { TasksDeliverable } from '@shared/ipc-tasks'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { fileIcon } from './Deliverables'
+import { FileReview } from './FileReview'
 import { openPath, reveal } from './actions'
 import { useTasks } from './store'
 import { baseName, formatSize, isHelperFile } from './util'
@@ -34,12 +35,16 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
         {shown.map((f) => {
           const { icon: Icon, tone } = fileIcon(f.path)
           return (
-            <li key={f.path} className="flex items-center gap-2.5 rounded-ctl bg-elevated px-2.5 py-2 ring-1 ring-inset ring-border">
+            <li
+              key={f.path}
+              className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-ctl bg-elevated px-2.5 py-2 ring-1 ring-inset ring-border"
+            >
               <Icon size={18} className={`shrink-0 ${tone}`} aria-hidden />
               <span className="min-w-0 flex-1 truncate text-sm" title={f.path}>
                 {baseName(f.path)}
               </span>
               <span className="shrink-0 text-meta text-subtle tabular-nums">{formatSize(f.size)}</span>
+              <FileReview file={f} />
               <button
                 type="button"
                 onClick={() => void openPath(f.path)}
