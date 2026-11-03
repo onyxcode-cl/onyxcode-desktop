@@ -392,7 +392,6 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                   </div>
                   {IMAGE.has(extOf(f.path)) && <ImageThumb file={f} />}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 pl-6">
-                    <FileReview file={f} />
                     {(viewable || previewable) && (
                       <button type="button" className={ACTION_BTN} onClick={openView}>
                         <Eye size={12} /> {t('tasks.deliv.view')}
@@ -427,6 +426,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                         {t('tasks.deliv.savePdf')}
                       </button>
                     )}
+                    <FileReview file={f} />
                   </div>
                 </li>
               )

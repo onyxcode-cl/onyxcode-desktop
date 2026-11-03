@@ -52,7 +52,7 @@ describe('FileReview', () => {
     expect(cw).not.toHaveBeenCalled()
   })
 
-  it('mientras llega la revisión dice «Sin revisar»; luego «Revisado ✔»', async () => {
+  it('mientras llega la revisión dice «Sin revisar»; luego «Revisado»', async () => {
     let release!: (v: unknown) => void
     cw.mockReturnValue(new Promise((r) => (release = r)))
     await show(f('/x/ok.docx'))
@@ -61,7 +61,9 @@ describe('FileReview', () => {
     release(OK)
     await tick()
     expect(badge().dataset.status).toBe('ok')
-    expect(badge().textContent).toContain('Revisado ✔')
+    expect(badge().textContent).toContain('Revisado')
+    expect(badge().textContent).not.toContain('✔')
+    expect(badge().getAttribute('aria-label')).toBe('Revisado · ok.docx')
   })
 
   it('con ✘ cuenta los avisos (sin las notas) y la lista aparece al desplegar', async () => {

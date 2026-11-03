@@ -44,7 +44,6 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
                 {baseName(f.path)}
               </span>
               <span className="shrink-0 text-meta text-subtle tabular-nums">{formatSize(f.size)}</span>
-              <FileReview file={f} />
               <button
                 type="button"
                 onClick={() => void openPath(f.path)}
@@ -61,6 +60,7 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
               >
                 <FolderOpen size={14} />
               </button>
+              <FileReview file={f} />
             </li>
           )
         })}

@@ -63,14 +63,16 @@ export function FileReview({ file }: { file: { path: string; mtime: number; size
   const Icon = status === 'ok' ? CheckCircle2 : status === 'issues' ? AlertTriangle : CircleDashed
   const tone = status === 'ok' ? 'text-success' : status === 'issues' ? 'text-warning' : 'text-muted'
   const detail = status === 'none' ? [] : (review?.items ?? [])
+  const full = `${label} · ${baseName(file.path)}`
   return (
-    <>
+    <div className="basis-full">
       <button
         type="button"
         data-testid="file-review"
         data-status={status}
         aria-expanded={open}
-        title={t('tasks.review.hint')}
+        title={`${full}. ${t('tasks.review.hint')}`}
+        aria-label={full}
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-1 rounded-md px-1.5 py-1 text-meta font-medium hover:bg-hover ${tone}`}
       >
@@ -81,7 +83,7 @@ export function FileReview({ file }: { file: { path: string; mtime: number; size
         <ul
           role="list"
           aria-label={t('tasks.review.title', { name: baseName(file.path) })}
-          className="mt-0.5 grid basis-full max-w-md gap-0.5 rounded-ctl bg-elevated p-2 text-meta ring-1 ring-inset ring-border"
+          className="mt-0.5 grid max-w-md gap-0.5 rounded-ctl bg-elevated p-2 text-meta ring-1 ring-inset ring-border"
         >
           {detail.length === 0 && <li className="text-muted">{t('tasks.review.unavailable')}</li>}
           {detail.map((i, n) => (
@@ -94,6 +96,6 @@ export function FileReview({ file }: { file: { path: string; mtime: number; size
           ))}
         </ul>
       )}
-    </>
+    </div>
   )
 }
