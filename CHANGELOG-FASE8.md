@@ -4150,3 +4150,20 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Problema.** Una tarea que no creó el documento pedido terminaba «Terminado» en verde.
 - **Solución.** `done-warning.ts` (puro): aviso si el plan del turno (o el guardado) tiene pasos `pending`/`in_progress`, o si la petición pide CREAR (verbo de creación) un Word/Excel/PowerPoint/PDF y no hay ningún archivo de ese tipo entre los entregables (los auxiliares de `.lazunox/trabajo` no cuentan; leer o resumir no es pedir un archivo; sin entregables cargados no se juzga). `StatusPill` muestra «Terminado con avisos» en ámbar con el motivo en el tooltip; el estado interno sigue siendo `done`. i18n es/en.
 - **Pruebas.** `done-warning.test.ts` (8).
+
+## F8-B256 — U1 + W1: el «⋯» de la tarea siempre alcanzable
+
+- **Problema.** (U1) Con el panel de la tarea abierto el título, la píldora y los botones empujaban el «⋯» bajo el panel. (W1, Windows) A 820-900 px el panel está oculto por el ancho (`lg:flex`) pero la cabecera ya había quitado la reserva `pr-[--controls-inset]`: el «⋯» quedaba bajo minimizar/maximizar/cerrar; además, con el panel «abierto» pero oculto, la cápsula de paneles también se escondía.
+- **Solución.** `TasksWorkspace.tsx`: la cabecera es `min-w-0`, el título se recorta (`min-w-0 shrink`) y el grupo de botones es `shrink-0`; la reserva de los controles de la ventana se quita solo cuando el panel SE VE (`desk:lg:pr-4`), y la cápsula de paneles solo se esconde cuando el panel se ve (`lg:hidden`). Verificación visual en la app empaquetada (ver capturas-1-8-8).
+
+## F8-B257 — E1: las tablas del Chat ya no se parten letra por letra
+
+- **Problema.** `.markdown { overflow-wrap: anywhere }` dejaba que cada celda se encogiera a un carácter; la tabla (que ya tenía `overflow-x: auto`) nunca llegaba a desplazarse.
+- **Solución.** `globals.css`: en `th`/`td`, `overflow-wrap: normal`, `word-break: normal` y `min-width: 7ch`: se parte solo en los espacios y, si no cabe, la tabla se desplaza en horizontal.
+- **Pruebas.** `markdown-table-css.test.ts` (falla sin el cambio).
+
+## F8-B258 — E2: el visor de Word ya no se corta por la izquierda
+
+- **Problema.** Una hoja más ancha que el panel se centraba (`align-items: center`) y se salía por los dos lados; por la izquierda no hay desplazamiento (136 px perdidos al 100 %).
+- **Solución.** `viewer/styles.css`: `align-items: safe center` en `.docx-pages` y `.docx-wrapper`; `DocxViewer.tsx`: si la hoja es más ancha que el panel se abre «ajustada al ancho» (`fitWidthPercent`, mínimo 25 %) y el zoom usa `zoom` en lugar de `transform: scale` para que el desplazamiento siga el tamaño real. El render oculto de la IA (modo `capture`) no aplica el ajuste. 
+- **Pruebas.** `zoom.test.ts` (`fitWidthPercent`).
