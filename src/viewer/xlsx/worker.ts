@@ -12,7 +12,7 @@ export type XlsxWorkerResponse = { type: 'result'; workbook: GridWorkbook } | { 
 
 self.onmessage = (ev: MessageEvent<XlsxWorkerRequest>): void => {
   try {
-    const wb = read(new Uint8Array(ev.data.buffer), { type: 'array', dense: true, cellStyles: true, sheetRows: 10000 })
+    const wb = read(new Uint8Array(ev.data.buffer), { type: 'array', dense: true, cellStyles: true, bookFiles: true, sheetRows: 10000 })
     const response: XlsxWorkerResponse = { type: 'result', workbook: workbookToGrid(wb) }
     self.postMessage(response)
   } catch {

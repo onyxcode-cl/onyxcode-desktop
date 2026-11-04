@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { read, type WorkSheet } from 'xlsx'
-import { DEFAULT_COL_WIDTH_PX, DEFAULT_ROW_HEIGHT_PX, colLetter, sheetToGrid, workbookToGrid } from './model'
+import { MAX_AUTO_COL_WIDTH_PX, contrastColor, DEFAULT_COL_WIDTH_PX, DEFAULT_ROW_HEIGHT_PX, colLetter, sheetToGrid, workbookToGrid } from './model'
 
 const fixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url)))
 
@@ -33,6 +33,44 @@ describe('workbookToGrid / sheetToGrid con un xlsx real (de la skill xlsx, sin d
   it('el relleno sólido del encabezado se resuelve a un color css', () => {
     const header = grid.sheets[0].cells[0][0]
     expect(header.fill).toBe('#1F3864')
+    expect(header.color).toBe('#ffffff')
+  })
+})
+
+describe('contrastColor', () => {
+  it('texto blanco sobre fondos oscuros y oscuro sobre claros', () => {
+    expect(contrastColor('#1F3864')).toBe('#ffffff')
+    expect(contrastColor('#FFFF00')).toBe('#1a1a1a')
+    expect(contrastColor('#FFFFFF')).toBe('#1a1a1a')
+  })
+})
+
+describe('negritas y anchos al contenido', () => {
+  const wb = read(fixture('sample.xlsx'), { type: 'buffer', dense: true, cellStyles: true, bookFiles: true, sheetRows: 10000 })
+  const sheet = workbookToGrid(wb).sheets[0]
+
+  it('el encabezado sale en negrita y el resto no', () => {
+    expect(sheet.cells[0].every((c) => c.bold === true)).toBe(true)
+    expect(sheet.cells[1].some((c) => c.bold)).toBe(false)
+  })
+
+  it('sin los archivos del libro no hay negritas pero tampoco falla', () => {
+    const plain = read(fixture('sample.xlsx'), { type: 'buffer', dense: true, cellStyles: true })
+    expect(workbookToGrid(plain).sheets[0].cells[0][0].bold).toBeUndefined()
+  })
+
+  it('una columna angosta se ensancha para que su texto entre completo, sin pasar el tope', () => {
+    const data = [[{ t: 's', v: 'Ken Tanaka Rodriguez de la Vega', w: 'Ken Tanaka Rodriguez de la Vega' }], [{ t: 's', v: 'x'.repeat(200), w: 'x'.repeat(200) }]]
+    const g = sheetToGrid('H', { '!ref': 'A1:A2', '!data': data, '!cols': [{ wpx: 40 }] } as unknown as WorkSheet)
+    expect(g.colWidthsPx[0]).toBe(MAX_AUTO_COL_WIDTH_PX)
+    const g2 = sheetToGrid('H', { '!ref': 'A1:A1', '!data': [data[0]], '!cols': [{ wpx: 40 }] } as unknown as WorkSheet)
+    expect(g2.colWidthsPx[0]).toBeGreaterThan(200)
+    expect(g2.colWidthsPx[0]).toBeLessThan(MAX_AUTO_COL_WIDTH_PX)
+  })
+
+  it('un ancho del archivo mayor que el texto se respeta', () => {
+    const g = sheetToGrid('H', { '!ref': 'A1:A1', '!data': [[{ t: 's', v: 'a', w: 'a' }]], '!cols': [{ wpx: 200 }] } as unknown as WorkSheet)
+    expect(g.colWidthsPx[0]).toBe(200)
   })
 })
 

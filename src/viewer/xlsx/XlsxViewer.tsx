@@ -143,8 +143,8 @@ export function XlsxViewer({ token, lang }: { token: string; lang: ViewerLang })
                     cell.covered ? null : (
                       <div
                         key={c}
-                        className="xlsx-cell"
-                        style={{ width: sheet.colWidthsPx[c], background: cell.fill }}
+                        className={cell.bold ? 'xlsx-cell xlsx-cell-bold' : 'xlsx-cell'}
+                        style={{ width: sheet.colWidthsPx[c], background: cell.fill, color: cell.color }}
                         title={cell.formula ? `=${cell.formula}` : undefined}
                       >
                         {cell.text}

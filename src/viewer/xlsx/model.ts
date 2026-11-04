@@ -6,6 +6,7 @@
  * del rango declarado en `!ref` — un xlsx hostil puede declarar `!ref: "A1:ZZZ1048576"` sin tener casi
  * ninguna celda real, y reservar memoria para el rango declarado sería una bomba de memoria barata.
  */
+import { boldCellsOf } from './bold'
 import type { CellObject, ColInfo, Range, RowInfo, WorkBook, WorkSheet } from 'xlsx'
 
 export const DEFAULT_COL_WIDTH_PX = 80
@@ -18,6 +19,10 @@ export interface GridCell {
   formula?: string
   /** Color de relleno sólido, en css (`#rrggbb`), si la celda tiene uno y es resoluble sin el tema. */
   fill?: string
+  /** Color del texto cuando la celda tiene relleno: claro sobre fondos oscuros y oscuro sobre fondos claros (el color de la fuente del libro no llega). */
+  color?: string
+  /** true si la fuente de la celda es negrita. */
+  bold?: boolean
   /** true en toda celda cubierta por una combinada que no es la esquina superior izquierda. */
   covered?: boolean
 }
@@ -52,11 +57,18 @@ function fillOf(style: unknown): string | undefined {
   return `#${s.fgColor.rgb.slice(-6)}`
 }
 
-function cellOf(raw: CellObject | undefined): GridCell {
+/** Texto blanco o casi negro según la luminosidad del relleno (`#rrggbb`), para que nunca quede oscuro sobre oscuro. */
+export function contrastColor(fill: string): string {
+  const n = parseInt(fill.slice(1), 16)
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255
+  return lum < 0.55 ? '#ffffff' : '#1a1a1a'
+}
+
+function cellOf(raw: CellObject | undefined, bold = false): GridCell {
   if (!raw) return { text: '' }
   const text = raw.w ?? (raw.v === undefined || raw.v === null ? '' : String(raw.v))
   const fill = fillOf(raw.s)
-  return { text, ...(raw.f ? { formula: raw.f } : {}), ...(fill ? { fill } : {}) }
+  return { text, ...(raw.f ? { formula: raw.f } : {}), ...(fill ? { fill, color: contrastColor(fill) } : {}), ...(bold ? { bold: true } : {}) }
 }
 
 /** Filas/columnas declaradas por `!ref` (solo para saber si el parseo se recortó, nunca para reservar memoria). */
@@ -70,8 +82,29 @@ function declaredSize(ref: string | undefined): { rows: number; cols: number } {
   return { rows: Number(rowStr), cols: col }
 }
 
-function widthsOf(cols: ColInfo[] | undefined, count: number): number[] {
-  return Array.from({ length: count }, (_, i) => cols?.[i]?.wpx ?? DEFAULT_COL_WIDTH_PX)
+/** Tope del ancho que se agranda una columna para que su contenido se lea completo. */
+export const MAX_AUTO_COL_WIDTH_PX = 320
+const CHAR_WIDTH_PX = 7.5
+const CELL_PADDING_PX = 16
+const AUTOFIT_ROWS = 300
+
+/**
+ * Ancho de cada columna: el del archivo si lo trae, pero nunca menos de lo que necesita el texto de sus primeras filas (así no se corta
+ * «Ken T» ni un encabezado en negrita). Las combinadas no cuentan: su texto se reparte en varias columnas.
+ */
+function widthsOf(cols: ColInfo[] | undefined, count: number, cells: GridCell[][], merges: MergeRect[]): number[] {
+  const inMerge = (r: number, c: number): boolean => merges.some((m) => r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2 && (m.c2 > m.c1))
+  return Array.from({ length: count }, (_, c) => {
+    const base = cols?.[c]?.wpx ?? DEFAULT_COL_WIDTH_PX
+    let longest = 0
+    for (let r = 0; r < Math.min(cells.length, AUTOFIT_ROWS); r++) {
+      const cell = cells[r][c]
+      if (!cell || cell.covered || !cell.text || inMerge(r, c)) continue
+      const w = cell.text.length * CHAR_WIDTH_PX * (cell.bold ? 1.08 : 1) + CELL_PADDING_PX
+      if (w > longest) longest = w
+    }
+    return Math.max(base, Math.min(Math.ceil(longest), MAX_AUTO_COL_WIDTH_PX))
+  })
 }
 
 function heightsOf(rows: RowInfo[] | undefined, count: number): number[] {
@@ -99,11 +132,11 @@ function denseRows(sheet: WorkSheet): CellObject[][] {
   return data ?? []
 }
 
-export function sheetToGrid(name: string, sheet: WorkSheet): GridSheet {
+export function sheetToGrid(name: string, sheet: WorkSheet, bold?: Set<string>): GridSheet {
   const rowsRaw = denseRows(sheet)
   const rows = rowsRaw.length
   const cols = rows === 0 ? 0 : Math.max(...rowsRaw.map((r) => r.length), declaredSize(sheet['!ref']).cols)
-  const cells: GridCell[][] = rowsRaw.map((row) => Array.from({ length: cols }, (_, c) => cellOf(row[c])))
+  const cells: GridCell[][] = rowsRaw.map((row, r) => Array.from({ length: cols }, (_, c) => cellOf(row[c], bold?.has(`${r},${c}`))))
   const merges = mergesOf(sheet['!merges'])
   markCovered(cells, merges)
   const declared = declaredSize(sheet['!ref'])
@@ -113,14 +146,15 @@ export function sheetToGrid(name: string, sheet: WorkSheet): GridSheet {
     cols,
     cells,
     merges,
-    colWidthsPx: widthsOf(sheet['!cols'], cols),
+    colWidthsPx: widthsOf(sheet['!cols'], cols, cells, merges),
     rowHeightsPx: heightsOf(sheet['!rows'], rows),
     truncated: declared.rows > rows
   }
 }
 
 export function workbookToGrid(wb: WorkBook): GridWorkbook {
-  return { sheets: wb.SheetNames.map((name) => sheetToGrid(name, wb.Sheets[name])) }
+  const bold = boldCellsOf(wb)
+  return { sheets: wb.SheetNames.map((name) => sheetToGrid(name, wb.Sheets[name], bold.get(name))) }
 }
 
 /** Letra(s) de columna de Excel para un índice 0-based (0 → "A", 25 → "Z", 26 → "AA"...). */
