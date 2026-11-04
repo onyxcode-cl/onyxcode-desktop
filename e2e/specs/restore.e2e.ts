@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { stubDialog } from '../lib/dialogs'
 import { useApp } from '../lib/harness'
 import { shot as takeShot } from '../lib/shots'
-import { fakeOutsideUserData, makeTasksDir, tasksFake } from '../lib/lotes'
+import { fakeOutsideUserData, makeTasksDir, revealFolderActions, tasksFake } from '../lib/lotes'
 import { MODE, type E2EApp } from '../lib/launch'
 import { MODE_LABELS } from '../../src/shared/labels'
 import { TASKS_TERMS } from '../../src/shared/tasks-glossary'
@@ -48,7 +48,7 @@ async function waitIdle(page: Page): Promise<void> {
 }
 
 describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
-  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_E2E_TRASH_DIR: trashDir } })
+  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_E2E_TRASH_DIR: trashDir, LAZUNOX_UNIFIED_APPS: '0' } })
   let sessionId = ''
 
   beforeAll(() => {
@@ -73,6 +73,7 @@ describe.skipIf(!DEV)('Puntos de restauración (Tareas)', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Permitir', exact: true }).click()
     await expect.poll(() => storeState(page, 'useTasks', 'phase'), { timeout: 60_000 }).toBe('ready')
     // El sandbox solo deja borrar con «Permitir borrar»: se activa desde el panel del proyecto (reinicia el servidor).
+    await revealFolderActions(page)
     await page.getByRole('button', { name: 'Proyecto e instrucciones' }).click()
     const grant = page.getByRole('switch', { name: TASKS_TERMS.deleteGrant })
     await expectVisible(grant)

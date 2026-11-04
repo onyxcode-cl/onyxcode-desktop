@@ -14,6 +14,7 @@ import {
   makeTasksDir,
   neutralizeNativeApprovalDialog,
   prepareCodeBrowser,
+  revealFolderActions,
   servePages,
   waitUserIdle,
   type PageServer
@@ -53,7 +54,7 @@ async function pickFolder(app: E2EApp, path: string): Promise<void> {
 
 // Windows v1: modo Tareas fuera de alcance (desactivado con aviso; sin Seatbelt ni credential proxy).
 describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3, 11, 13)', () => {
-  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin } })
+  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, LAZUNOX_UNIFIED_APPS: '0' } })
 
   it('paso 1: el onboarding se descarta y no vuelve tras recargar', async () => {
     const a = app()
@@ -155,9 +156,11 @@ describe.skipIf(!DEV || IS_WIN)('Lote B: Tareas (guion manual §4, pasos 1, 2, 3
     await act('Archivar')
     await expect.poll(() => a.page.locator('[aria-label^="Más acciones de la tarea «"]').count()).toBe(0)
     // En escritorio «Archivadas» es un botón de ícono (aria-label «Ver las tareas archivadas»); el de texto «Archivadas (n)» es solo del celular y está oculto.
+    await revealFolderActions(a.page)
     await a.page.getByRole('button', { name: 'Ver las tareas archivadas' }).click()
     await expectVisible(a.page.getByRole('button', { name: 'Restaurar' }))
     await a.page.getByRole('button', { name: 'Restaurar' }).click()
+    await revealFolderActions(a.page)
     await a.page.getByRole('button', { name: 'Volver a las tareas' }).click() // el botón de texto del celular está oculto: solo cuenta el visible
     await expectVisible(a.page.locator('[aria-label^="Más acciones de la tarea «"]').first().locator('..'))
   })

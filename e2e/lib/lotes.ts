@@ -111,7 +111,14 @@ export class BrowserMcp {
     const r = await this.rpc('tools/call', { name, arguments: { ...args, lazunox_session: sessionId } })
     if (r.error) throw new Error(`mcp ${name}: ${JSON.stringify(r.error)}`)
     const content = (r.result?.content ?? []) as { type: string; text?: string }[]
-    return { text: content.filter((c) => c.type === 'text').map((c) => c.text).join('\n'), isError: r.result?.isError === true, raw: r.result }
+    return {
+      text: content
+        .filter((c) => c.type === 'text')
+        .map((c) => c.text)
+        .join('\n'),
+      isError: r.result?.isError === true,
+      raw: r.result
+    }
   }
 }
 
@@ -192,4 +199,16 @@ export async function waitUserIdle(page: Page, directory: string, timeout = 15_0
     directory,
     { timeout, polling: 250 }
   )
+}
+
+/**
+ * Barra lateral por carpetas (escritorio): los botones de la carpeta conectada («Proyecto e instrucciones», «Ver las tareas
+ * archivadas», …) solo se muestran con el puntero encima (o el foco dentro) de la cabecera del grupo. Se pasa el puntero antes de pulsarlos.
+ */
+export async function revealFolderActions(page: Page): Promise<void> {
+  const header = page.getByTestId('folder-group-header').first()
+  await header.waitFor({ state: 'visible', timeout: 15_000 })
+  // Puntero Y foco: con el foco dentro de la cabecera los botones siguen visibles aunque el puntero se mueva o la lista se repinte.
+  await header.hover()
+  await header.locator('button').first().focus()
 }

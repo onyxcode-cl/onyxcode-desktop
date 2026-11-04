@@ -68,7 +68,7 @@ async function openSettings(app: E2EApp, section: string): Promise<void> {
 }
 
 describe.skipIf(!DEV)('Control total sin carpeta', () => {
-  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, HOME: fakeHome } })
+  const app = useApp({ env: { OPENCODE_BIN: fakeBin.bin, HOME: fakeHome, LAZUNOX_UNIFIED_APPS: '0' } })
 
   it('Control total no pide carpeta: un solo diálogo de consentimiento y el cwd es la carpeta personal', async () => {
     const a = app()

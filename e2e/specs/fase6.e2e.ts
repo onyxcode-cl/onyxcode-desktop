@@ -450,7 +450,7 @@ describe.skipIf(MODE === 'prod' || IS_WIN)(`fase 6: Tareas y Code en la misma ca
   beforeAll(() => {
     res.bin = prepareFakeBin()
     res.folder = makeHomeFolder()
-    Object.assign(env, res.bin.env)
+    Object.assign(env, res.bin.env, { LAZUNOX_UNIFIED_APPS: '0' })
   })
   const app = useApp({ env }) // `env` se lee en su beforeAll, registrado después del anterior
   afterAll(() => {
