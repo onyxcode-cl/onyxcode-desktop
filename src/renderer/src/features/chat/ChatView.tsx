@@ -75,6 +75,21 @@ const SUGGESTIONS: { icon: LucideIcon; label: MsgKey; prompt: MsgKey }[] = [
   { icon: Languages, label: 'chat.suggest.translate', prompt: 'chat.suggest.translate.prompt' }
 ]
 
+/** Ancho (chat + panel) por debajo del cual el panel de documento se superpone al chat en vez de apretarlo (52rem = 832 px). */
+const DOC_OVERLAY_BELOW = 832
+function useNarrowRoot(): [(el: HTMLDivElement | null) => void, boolean] {
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    if (!el) return
+    const ro = new ResizeObserver(() => setNarrow(el.clientWidth < DOC_OVERLAY_BELOW))
+    ro.observe(el)
+    setNarrow(el.clientWidth < DOC_OVERLAY_BELOW)
+    return () => ro.disconnect()
+  }, [el])
+  return [setEl, narrow]
+}
+
 export function ChatView(): React.JSX.Element {
   const t = useT()
   const ready = useServer((s) => s.status.state === 'ready' && !!s.client)
@@ -110,6 +125,7 @@ export function ChatView(): React.JSX.Element {
   const retryLabel = useRetryLabel(activeId)
   const error = useSessions((s) => (activeId ? s.errors[activeId] : null))
   const docPanel = useChatDocPanel(activeId, entries)
+  const [rootRef, narrowRoot] = useNarrowRoot()
   // Cada modo recuerda su propio modelo (`modelsByMode.chat`); sin elección propia vale el predeterminado global.
   const model = useModeModel('chat')
   const { effective, gate, free, unavailable } = useAiGate(model, { strict: true })
@@ -311,7 +327,10 @@ export function ChatView(): React.JSX.Element {
 
   const docFullscreen = docPanel.open && docPanel.fullscreen
   const docPanelEl = docPanel.open && (
-    <div className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}>
+    <div
+      className={`hidden shrink-0 desk:block ${docFullscreen ? 'w-full' : narrowRoot ? 'absolute inset-y-0 right-0 z-20 w-[min(100%,28rem)] bg-bg shadow-2xl' : 'w-[42%] min-w-[360px] max-w-[640px]'}`}
+    >
+      {' '}
       {docPanel.file && docPanel.file.mode === 'inline' ? (
         <ChatFilePanel
           file={docPanel.file}
@@ -337,7 +356,7 @@ export function ChatView(): React.JSX.Element {
 
   if (!activeId) {
     return (
-      <div className="flex h-full">
+      <div ref={rootRef} className="relative flex h-full">
         <div className={`flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
           <div className="drag h-12 shrink-0" data-mobile="hide" />
           <div className="flex min-h-0 flex-1 flex-col items-center [justify-content:safe_center] overflow-y-auto pb-20">
@@ -410,14 +429,18 @@ export function ChatView(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full">
-      <div className={`relative flex h-full min-w-0 flex-1 flex-col ${docFullscreen ? 'hidden' : ''}`}>
+    <div ref={rootRef} className="relative flex h-full">
+      <div className={`relative flex h-full min-w-0 flex-1 flex-col @container ${docFullscreen ? 'hidden' : ''}`}>
         <header
           data-mobile="hide"
-          className="drag relative flex h-12 shrink-0 items-center justify-center border-b border-border/70 bg-bg/80 px-24 backdrop-blur desk:@container desk:px-[max(15rem,calc(var(--controls-inset,0px)+8px))] desk:@max-[44rem]:px-[max(6rem,calc(var(--controls-inset,0px)+8px))]"
+          className={`drag relative grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b border-border/70 bg-bg/80 pl-4 backdrop-blur @min-[44rem]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] desk:pl-[calc(var(--header-inset,0px)+16px)] ${docPanel.open ? 'pr-3' : 'pr-3 desk:pr-[calc(var(--controls-inset,0px)+12px)]'}`}
         >
-          <span className="truncate text-[13.5px] font-medium">{displayTitle(session?.title, t('chat.newConversation'))}</span>
-          <div className="absolute right-3 top-0 hidden h-12 items-center gap-1.5 desk:flex desk:right-[max(0.75rem,calc(var(--controls-inset,0px)+8px))]">
+          <span className="min-w-0 truncate text-left text-[13.5px] font-medium @min-[44rem]:col-start-2 @min-[44rem]:text-center">
+            {displayTitle(session?.title, t('chat.newConversation'))}
+          </span>
+          <div
+            className={`hidden h-12 shrink-0 items-center justify-end gap-1.5 desk:flex @min-[44rem]:col-start-3 ${docPanel.open && narrowRoot ? 'desk:hidden!' : ''}`}
+          >
             <ConversationInstructionsButton sessionId={activeId} />
             <PersonalizeButton />
             {session && <ExportMenuButton onAction={(a) => void exportChatConversation(session, a)} />}

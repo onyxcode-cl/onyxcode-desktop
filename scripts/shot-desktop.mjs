@@ -226,6 +226,12 @@ const SCENARIOS = [
   'p2-chat-panel',
   'p2-tareas',
   'p2-tareas-panel',
+  // 1.8.9 · P1: cabeceras (Chat y Tarea) con y sin panel; mide con elementFromPoint cada botón de la cabecera (P1-MEDIDA).
+  'p1-chat',
+  'p1-chat-panel',
+  'p1-chat-doc',
+  'p1-tareas',
+  'p1-tareas-panel',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
 const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700], '900x700': [900, 700], '820x700': [820, 700] }
@@ -969,6 +975,73 @@ async function p2Measure(ctx, name, theme, sizeKey) {
   console.log('P2-MEDIDA', name, process.env.LAZUNOX_P2_STATE || 'normal', theme, sizeKey, JSON.stringify(r))
 }
 
+// 1.8.9 · P1: cada botón de la franja superior (cabecera + cabecera del panel) tiene que recibir el clic (elementFromPoint), el título
+// se mide (¿recortado?) y, con la tarea abierta, se abre el «⋯» y se comprueba que el menú entero cabe en la ventana y es alcanzable.
+async function p1Measure(ctx, name, theme, sizeKey) {
+  const openMenu = name.startsWith('p1-tareas')
+  if (openMenu) {
+    const more = ctx.page.locator('main header button[aria-haspopup], main header button[aria-label*="Más"]').last()
+    await more.click({ timeout: 3000 }).catch(() => {})
+    await sleep(400)
+  }
+  const r = await ctx.page.evaluate(() => {
+    const vis = (e) => {
+      const b = e.getBoundingClientRect()
+      const cs = getComputedStyle(e)
+      return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'
+    }
+    const W = window.innerWidth
+    const btns = [...document.querySelectorAll('main button, main [role=button], main [role=radio], main [role=menuitem]')].filter((e) => {
+      const b = e.getBoundingClientRect()
+      return vis(e) && b.y < 56 && b.y >= 0
+    })
+    const menu = [...document.querySelectorAll('[role=menu]')].filter(vis)
+    const items = btns.concat(menu.flatMap((m) => [...m.querySelectorAll('[role=menuitem],button')].filter(vis)))
+    const label = (e) => (e.getAttribute('aria-label') || e.getAttribute('title') || e.textContent || '').trim().slice(0, 24)
+    const rects = items.map((e) => {
+      const b = e.getBoundingClientRect()
+      const el = document.elementFromPoint(Math.min(W - 1, b.x + b.width / 2), b.y + b.height / 2)
+      const ok = !!el && (e.contains(el) || el.contains(e))
+      return { n: label(e), x: Math.round(b.x), r: Math.round(b.right), y: Math.round(b.y), b: Math.round(b.bottom), ok }
+    })
+    const overlaps = []
+    const top = rects.filter((q) => q.y < 56)
+    for (let i = 0; i < top.length; i++)
+      for (let j = i + 1; j < top.length; j++) {
+        const a = top[i],
+          c = top[j]
+        if (Math.min(a.r, c.r) - Math.max(a.x, c.x) > 1 && Math.min(a.b, c.b) - Math.max(a.y, c.y) > 1) overlaps.push(`${a.n}|${c.n}`)
+      }
+    const header = document.querySelector('main header')
+    const title = header && [...header.querySelectorAll('span')].find((s) => s.className.includes('truncate'))
+    const ta = [...document.querySelectorAll('main textarea')].filter(vis).pop()
+    const m0 = menu[0]?.getBoundingClientRect()
+    return {
+      W,
+      notReachable: rects.filter((q) => !q.ok).map((q) => `${q.n}@${q.x}-${q.r}`),
+      overlaps,
+      outsideWindow: rects.filter((q) => q.r > W + 0.5 || q.x < -0.5).map((q) => q.n),
+      title: title
+        ? { text: title.textContent.slice(0, 30), cut: title.scrollWidth > title.clientWidth + 1, w: Math.round(title.clientWidth) }
+        : null,
+      headerOverflow: header ? header.scrollWidth > header.clientWidth + 1 : null,
+      menu: m0
+        ? {
+            x: Math.round(m0.x),
+            r: Math.round(m0.right),
+            b: Math.round(m0.bottom),
+            inside: m0.x >= 0 && m0.right <= W && m0.bottom <= window.innerHeight
+          }
+        : null,
+      composerW: ta ? Math.round(ta.getBoundingClientRect().width) : null,
+      n: rects.length,
+      buttons: top.map((q) => `${q.n}@${q.x}-${q.r}`)
+    }
+  })
+  console.log('P1-MEDIDA', name, theme, sizeKey, JSON.stringify(r))
+  if (openMenu) await ctx.page.keyboard.press('Escape').catch(() => {})
+}
+
 async function snap(ctx, name, theme, sizeKey) {
   if (auditTargets) await auditSmallTargets(ctx, name, theme, sizeKey)
   if (ctx.hover) {
@@ -987,6 +1060,7 @@ async function snap(ctx, name, theme, sizeKey) {
     clip = { ...r, scale: 1 }
   }
   if (name.startsWith('p2-')) await p2Measure(ctx, name, theme, sizeKey)
+  if (name.startsWith('p1-')) await p1Measure(ctx, name, theme, sizeKey)
   const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, ...(clip ? { clip } : {}) })
   const file = join(
     out,
@@ -2052,6 +2126,29 @@ const S = {
     // El escenario espera un texto del plan que el motor falso no siempre entrega a tiempo; con el panel ya abierto basta.
     await S['tareas-en-curso'](ctx).catch(() => {})
     await p2State(ctx)
+  },
+  // 1.8.9 · P1: cabeceras.
+  async 'p1-chat'(ctx) {
+    await S['chat-conversacion'](ctx)
+  },
+  async 'p1-chat-panel'(ctx) {
+    await S['chat-archivo-ver'](ctx)
+  },
+  async 'p1-chat-doc'(ctx) {
+    await S['chat-documento'](ctx)
+    await ctx.page
+      .locator('[data-doc-card]')
+      .first()
+      .getByRole('button', { name: /Abrir|Ver/ })
+      .first()
+      .click()
+    await sleep(1500)
+  },
+  async 'p1-tareas'(ctx) {
+    await S['tareas-lista'](ctx)
+  },
+  async 'p1-tareas-panel'(ctx) {
+    await S['tareas-en-curso'](ctx).catch(() => {})
   },
   async 'code-diff'(ctx) {
     await seedCode(ctx)
