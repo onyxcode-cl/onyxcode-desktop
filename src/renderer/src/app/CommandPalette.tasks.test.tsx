@@ -5,6 +5,8 @@ import { mount as mountEl, typeInto, type Mounted } from '../../../test/dom-rend
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const openIndexedChat = vi.hoisted(() => vi.fn())
+const cwMock = vi.hoisted(() => vi.fn())
+vi.mock('../features/tasks/impl/bridge', () => ({ cw: cwMock }))
 vi.mock('../features/tasks/impl/chatIndexOpen', () => ({ openIndexedChat, deleteIndexedChat: vi.fn() }))
 vi.mock('../features/search/search-service', async (orig) => ({
   ...(await orig<typeof import('../features/search/search-service')>()),
@@ -22,6 +24,7 @@ const labels = (): string[] => Array.from(document.querySelectorAll('[role="opti
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
   openIndexedChat.mockReset()
+  cwMock.mockReset()
   useChatIndex.setState({
     entries: [
       { folder: '/Users/x/Lazunox/Chats/20261104-abc123', sessionId: 's1', title: 'Ordena mis apuntes de la semana', updatedAt: 2000 },
@@ -54,5 +57,14 @@ describe('paleta: tareas de Overdrive', () => {
     m = mountEl(createElement(CommandPalette))
     typeInto(input(), 'formulario')
     expect(labels().join('|')).toContain('Arregla el formulario')
+  })
+  it('si el índice aún no se cargó (no se abrió Tareas), la paleta lo carga al abrirse', async () => {
+    useChatIndex.setState({ entries: [], loaded: false })
+    cwMock.mockResolvedValue([{ folder: '/Users/x/Lazunox/Chats/a', sessionId: 's9', title: 'Resumen del contrato', updatedAt: 3000 }])
+    m = mountEl(createElement(CommandPalette))
+    await vi.waitFor(() => expect(useChatIndex.getState().loaded).toBe(true))
+    expect(cwMock).toHaveBeenCalledWith('tasks:chatIndex:list')
+    typeInto(input(), 'contrato')
+    expect(labels().join('|')).toContain('Resumen del contrato')
   })
 })
