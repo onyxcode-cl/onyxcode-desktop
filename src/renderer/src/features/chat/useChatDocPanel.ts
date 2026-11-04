@@ -14,6 +14,7 @@ import {
   type BrokenDocBlock,
   type ChatDocBlock
 } from '../../lib/chatDocBlocks'
+import { currentAppTheme, useAppTheme } from '../../lib/useAppTheme'
 import { getExtras } from '../../lib/extrasApi'
 import { recordChatDocSize } from '../../lib/chatDocSize'
 import { setChatDocAskHandler, setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
@@ -24,9 +25,7 @@ import type { DocProblemReason } from '../../components/artifacts/DocNotice'
 import { platformCaps } from '../../lib/platform'
 import type { MessageEntry } from '../../stores/sessions'
 
-function currentTheme(): 'light' | 'dark' {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-}
+const currentTheme = currentAppTheme
 
 /**
  * El bloque de documento del último mensaje de la conversación (si lo hay). A propósito NO busca
@@ -304,6 +303,22 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     if (block.rawText === lastRawTextRef.current) return
     openDoc(block.kind, block.rawText, block.title, block.kind === 'html' && block.isSlides)
   }, [entries, sessionId, openDoc])
+
+  // El visor nativo lee el tema solo al abrirse: si la persona cambia el tema con el panel abierto, se abre otra vez el mismo documento con el nuevo.
+  const theme = useAppTheme()
+  const reopenRef = useRef<() => void>(() => undefined)
+  reopenRef.current = (): void => {
+    if (!open) return
+    if (file) {
+      if (file.mode === 'native' && file.status === 'ready') openFile(file.info)
+    } else if (doc && !creating && !problem) openDoc(doc.kind, doc.rawText, title, doc.isSlides)
+  }
+  const shownThemeRef = useRef(theme)
+  useEffect(() => {
+    if (shownThemeRef.current === theme) return
+    shownThemeRef.current = theme
+    reopenRef.current()
+  }, [theme])
 
   // Los avisos de documento («Pedir de nuevo», «Pedir que continúe») mandan su mensaje a la conversación abierta.
   useEffect(() => {

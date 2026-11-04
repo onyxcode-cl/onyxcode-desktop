@@ -362,6 +362,9 @@ body {
 .xlsx-row {
   display: flex;
 }
+.xlsx-cell-bold {
+  font-weight: 700;
+}
 .xlsx-cell {
   flex: 0 0 auto;
   border: 1px solid var(--border);

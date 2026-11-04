@@ -11,13 +11,11 @@ import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import { cw } from './bridge'
 import { baseName } from './util'
+import { useAppTheme } from '../../../lib/useAppTheme'
 import { useViewerViewport } from './useViewerViewport'
 
 type OpenState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready' }
 
-function currentTheme(): 'light' | 'dark' {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-}
 
 export function DocumentViewerPanel({
   path,
@@ -31,11 +29,13 @@ export function DocumentViewerPanel({
   const t = useT()
   const [state, setState] = useState<OpenState>({ kind: 'loading' })
   const { hostRef, shouldShowNative } = useViewerViewport(visible)
+  // El visor lee el tema al abrirse: si la persona cambia el tema con el panel abierto, se vuelve a abrir con el nuevo.
+  const theme = useAppTheme()
 
   useEffect(() => {
     let cancelled = false
     setState({ kind: 'loading' })
-    cw('tasks:viewer:open', { path, lang: getLang(), theme: currentTheme() })
+    cw('tasks:viewer:open', { path, lang: getLang(), theme })
       .then((res) => {
         if (cancelled) return
         if (res.ok) setState({ kind: 'ready' })
@@ -49,7 +49,7 @@ export function DocumentViewerPanel({
       void cw('tasks:viewer:close').catch(() => undefined)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path])
+  }, [path, theme])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
