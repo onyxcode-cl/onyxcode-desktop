@@ -219,9 +219,16 @@ const SCENARIOS = [
   'ajustes-modelos-vacio', // H24: ningún servicio de IA conectado
   // Rama → commit → subir → pull request → revisión (F8-B190): grupo propio, con remoto local y `gh` falso (scripts/shot-desktop-pr.mjs).
   ...PR_SCENARIOS, // NO van en la tanda por defecto; se piden con --scenario code-pr,code-pr-commit,…
+  // 1.8.9 · P2: los tres cuadros de escribir (Code, Chat, Tareas), con y sin panel. LAZUNOX_P2_STATE=normal|largo|adjuntos; imprime P2-MEDIDA.
+  'p2-code',
+  'p2-code-panel',
+  'p2-chat',
+  'p2-chat-panel',
+  'p2-tareas',
+  'p2-tareas-panel',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
-const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700] }
+const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700], '900x700': [900, 700], '820x700': [820, 700] }
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
 const SMALL_ALSO =
   /^(uso|preparando-casillas|preparando-permiso|preparando-sin-conexion|onboarding-casillas|rutinas-bandeja-larga|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
@@ -871,6 +878,97 @@ async function auditSmallTargets(ctx, name, theme, sizeKey) {
   }
 }
 
+// 1.8.9 · P2: mide que nada del cuadro de escribir se enciman ni se salgan de la caja (rectángulos + elementFromPoint).
+async function p2State(ctx) {
+  const st = process.env.LAZUNOX_P2_STATE || 'normal'
+  const box = ctx.page.locator('main textarea[data-kb-composer]:visible').last()
+  if (!(await box.isEditable().catch(() => false))) return
+  if (st === 'largo') {
+    await box.fill(
+      'Necesito que revises con calma todo el módulo del carrito de compras, el cálculo del IVA y los redondeos, y que me expliques paso a paso qué cambiarías y por qué, sin tocar nada todavía. '.repeat(
+        3
+      )
+    )
+  } else if (st === 'adjuntos') {
+    const dir = '/private/tmp/lzx-p2-adj'
+    mkdirSync(dir, { recursive: true })
+    const files = ['informe-trimestral-con-nombre-muy-largo.txt', 'notas.md', 'datos.csv'].map((n) => {
+      writeFileSync(join(dir, n), 'hola\n')
+      return join(dir, n)
+    })
+    const inp = ctx.page.locator('main input[type=file]').last()
+    await inp.setInputFiles(files).catch(() => {})
+  }
+  await sleep(500)
+}
+async function p2Measure(ctx, name, theme, sizeKey) {
+  const r = await ctx.page.evaluate(() => {
+    const vis = (e) => {
+      const b = e.getBoundingClientRect()
+      const cs = getComputedStyle(e)
+      return b.width > 0 && b.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'
+    }
+    const kb = [...document.querySelectorAll('main textarea[data-kb-composer]')].filter(vis)
+    const tas = kb.length ? kb : [...document.querySelectorAll('main textarea')].filter(vis)
+    const ta = tas[tas.length - 1]
+    if (!ta) return { error: 'sin cuadro de texto' }
+    let box = ta.parentElement
+    const isSend = (b) => /^(Enviar|Detener|Poner en cola|Iniciar|Mandar)/i.test(b.getAttribute('aria-label') || '')
+    while (box && ![...box.querySelectorAll('button')].some(isSend)) box = box.parentElement
+    if (!box) return { error: 'sin botón de enviar' }
+    const bb = box.getBoundingClientRect()
+    const items = [...box.querySelectorAll('button, [role=combobox]:not(textarea), [data-p2]')].filter(
+      (e) => e !== ta && vis(e) && !e.closest('[role=menu],[role=listbox],[role=dialog]')
+    )
+    const rects = items.map((e) => {
+      const b = e.getBoundingClientRect()
+      return {
+        e,
+        n: (e.getAttribute('aria-label') || e.getAttribute('title') || e.textContent || '').trim().slice(0, 28),
+        x: b.x,
+        y: b.y,
+        r: b.right,
+        b: b.bottom,
+        w: b.width,
+        h: b.height
+      }
+    })
+    const overlaps = []
+    for (let i = 0; i < rects.length; i++)
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i],
+          c = rects[j]
+        if (a.e.contains(c.e) || c.e.contains(a.e)) continue
+        const ox = Math.min(a.r, c.r) - Math.max(a.x, c.x),
+          oy = Math.min(a.b, c.b) - Math.max(a.y, c.y)
+        if (ox > 1 && oy > 1) overlaps.push(`${a.n}|${c.n} (${ox.toFixed(0)}x${oy.toFixed(0)})`)
+      }
+    const outside = rects
+      .filter((q) => q.r > bb.right + 1 || q.x < bb.x - 1 || q.b > bb.bottom + 1)
+      .map((q) => `${q.n} r=${q.r.toFixed(0)}>${bb.right.toFixed(0)}`)
+    const covered = rects
+      .filter((q) => {
+        const el = document.elementFromPoint(q.x + q.w / 2, q.y + q.h / 2)
+        return !(el && (q.e.contains(el) || el.contains(q.e)))
+      })
+      .map((q) => q.n)
+    const send = rects.find((q) => isSend(q.e))
+    const rows = new Set(rects.map((q) => Math.round(q.y / 6))).size
+    const model = rects.find((q) => /modelo/i.test(q.n))
+    return {
+      box: [Math.round(bb.x), Math.round(bb.right), Math.round(bb.height)],
+      overlaps,
+      outside,
+      covered,
+      send: send ? send.n : null,
+      rows,
+      items: rects.map((q) => `${q.n}@${q.x.toFixed(0)}-${q.r.toFixed(0)}`),
+      model: model ? model.n : null
+    }
+  })
+  console.log('P2-MEDIDA', name, process.env.LAZUNOX_P2_STATE || 'normal', theme, sizeKey, JSON.stringify(r))
+}
+
 async function snap(ctx, name, theme, sizeKey) {
   if (auditTargets) await auditSmallTargets(ctx, name, theme, sizeKey)
   if (ctx.hover) {
@@ -888,8 +986,12 @@ async function snap(ctx, name, theme, sizeKey) {
     })
     clip = { ...r, scale: 1 }
   }
+  if (name.startsWith('p2-')) await p2Measure(ctx, name, theme, sizeKey)
   const { data } = await ctx.cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, ...(clip ? { clip } : {}) })
-  const file = join(out, `${name}${clip ? '-lateral' : ''}-${theme}-${sizeKey}${SFX}.png`)
+  const file = join(
+    out,
+    `${name}${process.env.LAZUNOX_P2_STATE ? `-${process.env.LAZUNOX_P2_STATE}` : ''}${clip ? '-lateral' : ''}-${theme}-${sizeKey}${SFX}.png`
+  )
   writeFileSync(file, Buffer.from(data, 'base64'))
   return file
 }
@@ -1922,6 +2024,34 @@ const S = {
   },
   async 'code-proyecto'(ctx) {
     await seedCode(ctx)
+  },
+  // 1.8.9 · P2: cuadros de escribir (ver p2State/p2Measure).
+  async 'p2-code'(ctx) {
+    await S['code-proyecto'](ctx)
+    await p2State(ctx)
+  },
+  async 'p2-code-panel'(ctx) {
+    await S['code-proyecto'](ctx)
+    await ctx.page.getByRole('button', { name: 'Revisar', exact: true }).first().click()
+    await sleep(1200)
+    await p2State(ctx)
+  },
+  async 'p2-chat'(ctx) {
+    await S['chat-conversacion'](ctx)
+    await p2State(ctx)
+  },
+  async 'p2-chat-panel'(ctx) {
+    await S['chat-archivo-ver'](ctx)
+    await p2State(ctx)
+  },
+  async 'p2-tareas'(ctx) {
+    await S['tareas-lista'](ctx)
+    await p2State(ctx)
+  },
+  async 'p2-tareas-panel'(ctx) {
+    // El escenario espera un texto del plan que el motor falso no siempre entrega a tiempo; con el panel ya abierto basta.
+    await S['tareas-en-curso'](ctx).catch(() => {})
+    await p2State(ctx)
   },
   async 'code-diff'(ctx) {
     await seedCode(ctx)

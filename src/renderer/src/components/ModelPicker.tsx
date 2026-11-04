@@ -367,7 +367,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   )
 
   return (
-    <div ref={rootRef} className="relative desk:min-w-0 desk:max-w-full">
+    <div ref={rootRef} className="relative desk:max-w-full desk:min-w-[5.5rem]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

@@ -165,7 +165,7 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
   }
 
   return (
-    <div ref={rootRef} className="no-drag relative">
+    <div ref={rootRef} data-usage-meter className="no-drag relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

@@ -55,6 +55,9 @@ export function ProjectChip(): React.JSX.Element | null {
       name={t('projects.chip.name')}
       valueLabel={current ? current.name : t('projects.chip.none')}
       labelClass="max-w-40 truncate"
+      collapseClass="inline desk:@max-[30rem]:sr-only"
+      chevronClass="block desk:@max-[30rem]:hidden"
+      className="min-w-0 shrink desk:@max-[16rem]:hidden"
       icon={<Folder size={13} aria-hidden="true" />}
       options={options}
       value={current ? current.id : NONE_ID}
