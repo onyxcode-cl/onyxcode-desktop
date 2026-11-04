@@ -305,6 +305,7 @@ export const tasksComputer = {
   'tasksComputer.folder.motive': 'Reason (according to the agent, unverified)',
   'tasksComputer.folder.noMotive': 'The agent didn’t give a reason.',
   'tasksComputer.folder.pick': 'Folder you’ll grant access to',
+  'tasksComputer.folder.stay': 'Keep working in the task folder',
   'tasksComputer.folder.theRequested': 'the one requested',
   'tasksComputer.folder.widened':
     'You’ll also grant access to everything inside this folder, which is broader than what the agent asked for.',

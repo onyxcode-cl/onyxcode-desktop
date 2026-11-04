@@ -28,7 +28,7 @@ import { permActions } from './perm-actions'
 import { useShowPath } from './conn-paths'
 import { useTaskSubagentOfRequest } from './subagent-of-request'
 import { useTasks } from './store'
-import { baseName, rememberablePatterns } from './util'
+import { baseName, rememberablePatterns, stripGlob } from './util'
 
 type Reply = 'once' | 'always' | 'reject'
 
@@ -131,12 +131,15 @@ export function describePermission(
       }
     }
     case 'external_directory': {
-      const dir = meta(p, 'parentDir', 'filepath', 'filePath', 'path') || patterns
+      const dir = meta(p, 'parentDir', 'filepath', 'filePath', 'path')
+      // W3: sin metadatos, los patrones son globs del sandbox (`/win/c/…/*`): el `/*` impide traducirlos, así que se quita ANTES de mostrar
+      // (en Windows sale `C:\…`, no la ruta interna de WSL). Solo para mostrar; no autoriza nada.
+      const detail = dir ? showPath(dir) : p.patterns.map((x) => showPath(stripGlob(x))).join(', ')
       return {
         icon: FolderInput,
         title: t('tasksComputer.perm.folderTitle'),
         effect: t('tasksComputer.perm.folderEffect'),
-        detail: showPath(dir),
+        detail,
         kind: 'folder',
         danger: true
       }

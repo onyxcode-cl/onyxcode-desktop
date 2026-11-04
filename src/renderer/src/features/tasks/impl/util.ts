@@ -421,7 +421,7 @@ export function buildContext(entries: MessageEntry[]): ContextGroups {
 // ───────────────────────────── Carpetas pedidas por el agente ─────────────────────────────
 
 /** Quita el `/*` (o `/`) final de un patrón de `external_directory` para quedarse con la carpeta. */
-function stripGlob(p: string): string {
+export function stripGlob(p: string): string {
   let out = p.trim().replace(/\/\*+$/, '')
   while (out.length > 1 && out.endsWith('/')) out = out.slice(0, -1)
   return out

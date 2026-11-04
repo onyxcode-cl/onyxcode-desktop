@@ -60,6 +60,7 @@ export const app = {
   'app.palette.kw.usage': 'costo tokens consumo gastado cuanto',
   'app.palette.kw.theme': 'tema apariencia color',
   'app.palette.kw.recent': 'chat conversacion reciente',
+  'app.palette.kw.tasks': 'tarea tareas overdrive chat conversacion carpeta',
   'app.palette.current': 'Actual',
   'app.palette.settings': 'Ajustes',
   'app.palette.usage': 'Uso y gasto',
