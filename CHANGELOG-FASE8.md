@@ -4183,3 +4183,7 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 - **Pruebas.** `capture.test.ts` (diapositivas: una imagen por diapositiva con tope, flecha del visor, cuenta total, limpieza al fallar), `preview.test.ts` (4: sin DeckCraft, sin visor, DeckCraft que falla, DeckCraft sano no usa el visor).
 
 - **Correcciones tras la tercera revisión independiente (F8-B260).** I1: la IA no sabía que las imágenes eran la vista simplificada y podía «corregir» una caja gris o un gráfico de barras sencillo que en PowerPoint se ven bien; `PreviewResult.viaViewer` y un aviso en el texto de `documentos_renderizar` («VISTA SIMPLIFICADA… no son errores del archivo; fíjate en textos cortados, orden y contenido»). M1: el umbral de «hoja en blanco» (2500 B) nunca saltaba con los tamaños reales (una hoja A4 en blanco pesa ~4,7 KB) y se baja a 1200 B (lo que ayuda de verdad es `isEmpty` más la espera de dos cuadros). M3: si DeckCraft termina sin dejar imágenes o sin carpeta de salida se prueba el visor. M6: en modo captura el visor de PowerPoint no pinta las miniaturas. `frame: false` queda comentado como necesario (con marco macOS recorta la ventana al alto de la pantalla). Sin corregir: M2 (el tiempo vencido pierde lo ya capturado), M4 (desalineo del índice si se salta una hoja), M5 (pruebas laxas), M7 (teórica).
+
+## Versión 1.8.8
+
+Incluye F8-B248 a F8-B260 (revisión en la tarjeta del archivo, vista del documento para la IA sin ArtCraft, cabecera de la tarea, tablas del Chat y visor de Word). Notas para quien usa la app en `CHANGELOG.md`.

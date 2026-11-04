@@ -4,6 +4,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.8] - 2026-11-04
+
+### Tareas: revisión a la vista y arreglos de uso
+
+- **Revisión en la tarjeta del archivo**: cada Word, Excel o PowerPoint entregado muestra «Revisado ✔», «N avisos ✘» o «Sin revisar», con la lista al desplegar.
+- **Terminado con avisos**: si el plan quedó incompleto o falta el archivo pedido, la tarea ya no queda en verde sino en ámbar.
+- **La IA ve el documento sin ArtCraft**: un Word o una presentación se muestra a la IA con el visor de la propia app cuando ArtCraft no está instalado o falla, y la IA sabe que es una vista simplificada.
+- **Pasos con nombres claros**: «Creando / Creó el documento» y «Mirando / Miró el documento», y el aviso de ArtCraft señala la ruta correcta de Ajustes.
+
+### Correcciones
+
+- **Menú «⋯» de la tarea**: siempre se puede pulsar, también con el panel abierto y con la ventana angosta.
+- **Tablas del Chat**: ya no se parten letra por letra; aparece el desplazamiento horizontal.
+- **Visor de Word**: la hoja ya no se corta por la izquierda y se abre ajustada al ancho.
+
 ## [1.8.7] - 2026-11-03
 
 ### Documentos de Office mejor revisados
