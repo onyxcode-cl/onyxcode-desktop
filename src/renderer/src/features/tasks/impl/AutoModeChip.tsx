@@ -123,7 +123,7 @@ function ClassicAutoModeChip(): React.JSX.Element | null {
           active ? 'border-accent/40 bg-accent-soft text-accent' : 'border-border bg-hover text-muted'
         }`}
       >
-        <Zap size={12} /> {UI_LABELS.autoMode}
+        <Zap size={12} className="shrink-0" /> <span className="inline desk:@max-[40rem]:sr-only">{UI_LABELS.autoMode}</span>
       </button>
       {open && (
         <div className="absolute bottom-full left-0 z-30 mb-1 w-72 rounded-xl border border-border bg-elevated p-1 text-sm text-fg shadow-lg">

@@ -320,7 +320,7 @@ export function ChatComposer({
               <li
                 key={a.id}
                 data-testid={a.office ? 'chat-office-card' : undefined}
-                className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${a.office ? (mobile ? 'h-16 max-w-[17rem]' : 'h-14 max-w-[17rem] overflow-hidden') : mobile ? 'h-16 max-w-[9rem] min-w-16' : 'h-14 max-w-[9rem] min-w-14 overflow-hidden'}`}
+                className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${a.office ? (mobile ? 'h-16 max-w-[17rem]' : 'h-14 max-w-[17rem] overflow-hidden') : mobile ? 'h-16 max-w-[9rem] min-w-16' : 'h-14 max-w-[9rem] min-w-14 overflow-hidden desk:max-w-full'}`}
               >
                 {a.office ? (
                   <span className="flex min-w-0 items-center gap-2 pr-6 pl-2.5 text-left">
@@ -417,7 +417,9 @@ export function ChatComposer({
           className={`block w-full resize-none bg-transparent px-4 text-[15px] leading-relaxed outline-none placeholder:text-subtle disabled:opacity-60 desk:leading-6 desk:placeholder:text-muted ${mobile ? 'pt-3 pb-1' : `max-h-[280px] pt-3.5 pb-1.5 desk:max-h-72 ${hero ? 'min-h-0 desk:min-h-[66px] desk:px-5 desk:pt-[18px]' : ''}`}`}
         />
         <div
-          className={mobile ? 'flex items-center gap-1 px-1.5 pb-1.5' : 'flex items-center gap-1.5 px-2 pb-2'}
+          className={
+            mobile ? 'flex items-center gap-1 px-1.5 pb-1.5' : 'flex items-center gap-1.5 px-2 pb-2 desk:@container desk:flex-wrap'
+          }
           {...(mobile ? m('composer-row') : {})}
         >
           {showAttach && (
@@ -442,7 +444,7 @@ export function ChatComposer({
               title={t('translate.pdf.open')}
               aria-label={t('translate.pdf.open')}
               data-testid="translate-pdf-button"
-              className="no-drag inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40"
+              className="no-drag inline-flex size-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover hover:text-fg active:bg-hover disabled:cursor-not-allowed disabled:opacity-40 desk:@max-[24rem]:hidden"
             >
               <Languages size={16} />
             </button>
@@ -457,7 +459,7 @@ export function ChatComposer({
               <span className="flex-1" />
             )
           ) : (
-            <div className="flex min-w-0 flex-1 items-center gap-1">{footer}</div>
+            <div className="flex min-w-0 flex-[1_1_6rem] items-center gap-1 desk:@max-[26rem]:[&_[data-usage-meter]]:hidden">{footer}</div>
           )}
           {busy ? (
             <button

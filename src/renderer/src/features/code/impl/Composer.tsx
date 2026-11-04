@@ -871,7 +871,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   title={t('code.composer.mention')}
                   aria-label={t('code.composer.mention')}
                   onClick={insertMention}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[24rem]:hidden"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[34rem]:hidden"
                 >
                   <AtSign size={14} />
                 </button>
@@ -885,7 +885,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   title={t('code.composer.attach')}
                   aria-label={t('code.composer.attach')}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[24rem]:hidden"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-fg desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[34rem]:hidden"
                 >
                   <Paperclip size={14} />
                 </button>

@@ -244,8 +244,8 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             hero ? 'min-h-[84px] text-base desk:min-h-[66px]' : 'text-[15px]'
           }`}
         />
-        <div className="flex items-center gap-1.5 px-2.5 pb-2.5 desk:@container">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1.5 px-2.5 pb-2.5 desk:@container desk:@max-[26rem]:[&_[data-usage-meter]]:hidden">
+          <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5">
             {platformCaps().nativeDialogs && (
               <button
                 type="button"

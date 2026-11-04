@@ -97,7 +97,9 @@ export function UnifiedScopeChip({ className = '', plain = false }: { className?
         note={t('tasksComputer.unified.continueNote')}
         testId="unified-scope-chip"
         labelClass="max-w-[160px] truncate"
-        className={className}
+        collapseClass="inline desk:@max-[40rem]:sr-only"
+        chevronClass="block desk:@max-[40rem]:hidden"
+        className={`min-w-0 shrink ${className}`}
         options={[
           {
             id: 'elsewhere',
