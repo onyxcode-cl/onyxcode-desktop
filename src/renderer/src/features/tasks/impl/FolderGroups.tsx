@@ -14,7 +14,7 @@ import { useSessions } from '../../../stores/sessions'
 import { selectSessionsForDirectory } from '../../../lib/session-reducer'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { chooseFolder, forgetFolder, newTask } from './actions'
-import { loadChatIndex, useChatIndex } from './chatIndex'
+import { loadChatIndex, syncChatSession, useChatIndex } from './chatIndex'
 import { sdkDirOf } from './path-map'
 import { connectFolder, rememberFullAccess, setProjectPanelOpen, useTasks } from './store'
 import { IndexRow, TaskList } from './TaskList'
@@ -218,6 +218,17 @@ export function FolderGroups(): React.JSX.Element {
   useEffect(() => {
     void loadChatIndex()
   }, [])
+
+  // W4: una carpeta de chat («Chat sin carpeta») no es un grupo propio, así que `TaskList` no se monta para ella y nadie alimentaba el índice:
+  // su tarea no salía en «Este equipo» ni en Ctrl+K. Mientras está conectada y aislada, sus tareas se avisan al índice desde aquí.
+  const isolatedReady = useTasks((s) => !!s.conn && !s.conn.fullAccess)
+  useEffect(() => {
+    if (!connected || !isolatedReady || !isChatFolderForDisplay(connected)) return
+    const dir = sdkDirOf(conn, connected)
+    for (const s of selectSessionsForDirectory({ sessions, sessionSource, directorySource }, dir)) {
+      if (!s.parentID) syncChatSession({ folder: connected, sessionId: s.id, title: s.title ?? '', updatedAt: s.time.updated })
+    }
+  }, [connected, conn, isolatedReady, sessions, sessionSource, directorySource])
 
   const groups = useMemo(
     () =>

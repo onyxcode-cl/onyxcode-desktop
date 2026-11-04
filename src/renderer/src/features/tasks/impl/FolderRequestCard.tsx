@@ -76,9 +76,11 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
   const canTrust = !policy?.disableAlwaysAllow
   const showMode = !fullAccess || (trust && canTrust)
   const noPath = !selected
+  // Sandbox y la carpeta elegida no es válida (main la rechaza): no hay forma de concederla, solo de seguir sin ella.
+  const impossible = !fullAccess && !!reason
   const widened = !!selected && selected !== view.requested
 
-  const respond = async (kind: 'deny' | 'later' | 'allow'): Promise<void> => {
+  const respond = async (kind: 'deny' | 'later' | 'stay' | 'allow'): Promise<void> => {
     setBusy(true)
     setError(null)
     const before = useTasks.getState().error
@@ -234,12 +236,19 @@ export function FolderRequestCard({ request }: { request: PermissionRequest }): 
             <Button variant="ghost" disabled={busy} onClick={() => void respond('deny')}>
               {t('tasksComputer.tier.deny')}
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => void respond('later')}>
+            <Button variant={impossible ? 'ghost' : 'secondary'} disabled={busy} onClick={() => void respond('later')}>
               {t('tasksComputer.delete.notNow')}
             </Button>
-            <Button variant="primary" disabled={busy || noPath || (!fullAccess && !!reason)} onClick={() => void respond('allow')}>
-              {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.confirm.allow')}
-            </Button>
+            {impossible ? (
+              // La carpeta pedida no se puede usar: la salida es seguir en la carpeta de la tarea. Solo NIEGA la petición y se lo explica a la IA.
+              <Button variant="primary" disabled={busy} onClick={() => void respond('stay')} data-testid="folder-stay">
+                {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.folder.stay')}
+              </Button>
+            ) : (
+              <Button variant="primary" disabled={busy || noPath} onClick={() => void respond('allow')}>
+                {busy && <Loader2 size={14} className="animate-spin" />} {t('tasksComputer.confirm.allow')}
+              </Button>
+            )}
           </div>
         </div>
       </div>

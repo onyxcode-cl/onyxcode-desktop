@@ -1139,10 +1139,13 @@ export async function unlinkFolder(path: string): Promise<void> {
 }
 
 export type FolderRequestDecision =
-  { kind: 'deny' } | { kind: 'later' } | { kind: 'allow'; path: string; mode: FolderAccessMode; trust: boolean }
+  { kind: 'deny' } | { kind: 'later' } | { kind: 'stay' } | { kind: 'allow'; path: string; mode: FolderAccessMode; trust: boolean }
 
 /** Texto de rechazo que recibe el agente cuando el usuario no concede la carpeta. */
-function folderRefusal(kind: 'deny' | 'later', path: string): string {
+export function folderRefusal(kind: 'deny' | 'later' | 'stay', path: string): string {
+  // `stay`: la carpeta pedida no se puede usar nunca (p. ej. contiene los chats). Solo NIEGA y orienta; no concede nada.
+  if (kind === 'stay')
+    return `La carpeta ${path} no se puede usar en esta tarea; no la vuelvas a pedir. Sigue trabajando dentro de la carpeta de la tarea y deja ahí el resultado; no uses \`cd\` ni rutas con \`..\` para salir de ella.` // i18n-ignore: prompt al agente (se queda en español)
   return kind === 'deny'
     ? `El usuario denegó el acceso a ${path}; no lo vuelvas a pedir; adapta el plan para trabajar sin esa carpeta.` // i18n-ignore: prompt al agente (se queda en español)
     : `El usuario prefiere no dar acceso a ${path} por ahora; sigue sin esa carpeta y menciónalo en el resumen.` // i18n-ignore: prompt al agente (se queda en español)

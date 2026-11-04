@@ -305,6 +305,7 @@ export const tasksComputer = {
   'tasksComputer.folder.motive': 'Motivo (según el agente, no verificado)',
   'tasksComputer.folder.noMotive': 'El agente no indicó un motivo.',
   'tasksComputer.folder.pick': 'Carpeta a la que darás acceso',
+  'tasksComputer.folder.stay': 'Seguir en la carpeta de la tarea',
   'tasksComputer.folder.theRequested': 'la que pide',
   'tasksComputer.folder.widened': 'Darás acceso también a todo lo que hay dentro de esta carpeta, más amplia que la que pide el agente.',
   'tasksComputer.folder.trust': 'No volver a preguntar (carpeta de confianza)',

@@ -27,3 +27,22 @@ export function stepStartedAt(state: unknown): number | null {
   const t = (state as { time?: { start?: unknown } } | null)?.time?.start
   return typeof t === 'number' && t > 0 ? t : null
 }
+
+/** Cuánto tardó el paso (ms), si ya terminó y los tiempos tienen sentido; null mientras corre o si faltan datos. */
+export function stepDurationMs(state: unknown): number | null {
+  const t = (state as { time?: { start?: unknown; end?: unknown } } | null)?.time
+  if (!t || typeof t.start !== 'number' || typeof t.end !== 'number' || t.start <= 0) return null
+  const ms = t.end - t.start
+  return ms >= 0 ? ms : null
+}
+
+/** «<1 s», «2 s», «1 min 5 s», «1 h 2 min» (abreviaturas iguales en español e inglés). */
+export function formatStepDuration(ms: number): string {
+  const total = Math.round(Math.max(0, ms) / 1000)
+  if (total < 1) return '<1 s'
+  if (total < 60) return `${total} s`
+  const m = Math.floor(total / 60)
+  if (m < 60) return total % 60 ? `${m} min ${total % 60} s` : `${m} min`
+  const h = Math.floor(m / 60)
+  return m % 60 ? `${h} h ${m % 60} min` : `${h} h`
+}

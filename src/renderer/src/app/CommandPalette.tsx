@@ -31,6 +31,9 @@ import { selectSessionsForDirectory } from '../lib/session-reducer'
 import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
+import { MODE_LABELS } from '@shared/labels'
+import { chatDisplayTitle, useChatIndex } from '../features/tasks/impl/chatIndex'
+import { openIndexedChat } from '../features/tasks/impl/chatIndexOpen'
 import { hintText, useEffectiveBindings } from '../keybindings/bindings'
 import { Spinner } from '../components/Spinner'
 import { ContentResults, contentItemId, flattenGroups, type ContentItem } from '../features/search/ContentResults'
@@ -67,6 +70,7 @@ function useCommands(): Command[] {
   const updateSettings = useSettings((s) => s.update)
   const lang = useLang((s) => s.lang)
   const bindings = useEffectiveBindings()
+  const taskEntries = useChatIndex((s) => s.entries)
 
   return useMemo(() => {
     void lang // las etiquetas se calculan con el idioma activo: recalcular al cambiarlo
@@ -174,8 +178,29 @@ function useCommands(): Command[] {
         })
       }
     }
+
+    // W4: las tareas de Overdrive (también las de «Chat sin carpeta») se encuentran por su nombre; es el índice de la barra lateral
+    // (carpeta, id, título y actividad), así que no hace falta que su carpeta esté conectada. Un clic conecta la carpeta y abre la tarea.
+    const recentTasks = taskEntries
+      .slice()
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 30)
+    for (const e of recentTasks) {
+      list.push({
+        id: `task:${e.sessionId}`,
+        group: MODE_LABELS.tasks,
+        label: chatDisplayTitle(e.title, e.updatedAt),
+        icon: MessageSquare,
+        keywords: t('app.palette.kw.tasks'),
+        run: () => {
+          ui.openSettings(false)
+          ui.setMode('tasks')
+          void openIndexedChat(e)
+        }
+      })
+    }
     return list
-  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings, lang, bindings])
+  }, [mode, connection, allSessions, sessionSource, directorySource, updateSettings, lang, bindings, taskEntries])
 }
 
 export function CommandPalette(): React.JSX.Element | null {

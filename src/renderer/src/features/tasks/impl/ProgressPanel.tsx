@@ -45,7 +45,7 @@ import { ContextDetail } from '../../../components/ContextDetail'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useModeModel } from '../../settings/impl/extras'
 import { describeAction, toolImages } from './computer-tools'
-import { STEP_TONE, stepKind, stepStartedAt, type StepKind } from './tool-look'
+import { STEP_TONE, formatStepDuration, stepDurationMs, stepKind, stepStartedAt, type StepKind } from './tool-look'
 import { DeliverableList } from './Deliverables'
 import { requestScrollToPart } from './scroll'
 import { showPath } from './conn-paths'
@@ -93,6 +93,7 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
   const running = part.state.status === 'running'
   const failed = part.state.status === 'error' && !isPlanGateText(part.state.error)
   const at = stepStartedAt(part.state)
+  const took = stepDurationMs(part.state)
   return (
     <li className="text-xs">
       <div className="flex items-start gap-2">
@@ -112,10 +113,22 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
           <span className="text-fg">{verb}</span>
           {detail && <span className="text-muted"> {detail}</span>}
         </span>
-        {at !== null && (
-          <time className="shrink-0 pt-0.5 text-[10.5px] desk:text-meta text-subtle tabular-nums" dateTime={new Date(at).toISOString()}>
-            {new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {/* U4: lo útil es cuánto tardó cada paso; la hora (idéntica en casi todos) queda como ayuda al pasar el ratón. */}
+        {took !== null ? (
+          <time
+            className="shrink-0 pt-0.5 text-[10.5px] desk:text-meta text-subtle tabular-nums"
+            dateTime={at !== null ? new Date(at).toISOString() : undefined}
+            title={at !== null ? new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined}
+          >
+            {formatStepDuration(took)}
           </time>
+        ) : (
+          at !== null &&
+          !running && (
+            <time className="shrink-0 pt-0.5 text-[10.5px] desk:text-meta text-subtle tabular-nums" dateTime={new Date(at).toISOString()}>
+              {new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </time>
+          )
         )}
       </div>
       {part.state.status === 'error' && (
