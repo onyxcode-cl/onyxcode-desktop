@@ -8,8 +8,9 @@ import { describe, expect, it } from 'vitest'
 const src = readFileSync(join(__dirname, 'TasksWorkspace.tsx'), 'utf8')
 
 describe('cabecera de la tarea (F8-B261)', () => {
-  it('la cabecera recorta lo que sobra en vez de empujar el «⋯» bajo el panel', () => {
-    expect(src).toMatch(/className=\{`flex h-12 min-w-0 shrink-0 items-center gap-2\.5 overflow-hidden border-b/)
+  it('la cabecera NO recorta (el menú desplegable del «⋯» cuelga fuera de sus 48 px)', () => {
+    expect(src).toMatch(/className=\{`flex h-12 min-w-0 shrink-0 items-center gap-2\.5 border-b/)
+    expect(src).not.toMatch(/className=\{`flex h-12 [^`]*overflow-hidden/)
   })
   it('la píldora de estado (normal y con avisos) se encoge y su texto se esconde en ancho chico', () => {
     const pills = src.match(/flex min-w-0 shrink items-center gap-1\.5 overflow-hidden whitespace-nowrap rounded-full/g) ?? []

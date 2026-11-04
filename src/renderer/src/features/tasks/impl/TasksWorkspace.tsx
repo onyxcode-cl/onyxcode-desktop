@@ -746,7 +746,7 @@ export function TasksWorkspace(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
           <header
-            className={`flex h-12 min-w-0 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${sideOpen ? '' : showPanel ? ' desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:lg:pr-4' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
+            className={`flex h-12 min-w-0 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${sideOpen ? '' : showPanel ? ' desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:lg:pr-4' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
             {(phase === 'ready' || phase === 'error') && (
               <>
