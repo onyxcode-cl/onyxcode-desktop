@@ -162,20 +162,20 @@ function StatusPill({ status, title, warn }: { status: TaskStatus; title?: strin
     return (
       <span
         title={title ? `${warn} ${title}` : warn}
-        className="flex shrink-0 items-center gap-1.5 rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning desk:h-6 desk:py-0 desk:pr-2.5 desk:pl-2 desk:text-meta"
+        className="flex min-w-0 shrink items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border border-warning/50 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning desk:h-6 desk:py-0 desk:pr-2.5 desk:pl-2 desk:text-meta"
       >
-        <AlertTriangle size={11} aria-hidden />
-        {tNow('tasks.status.doneWarn')}
+        <AlertTriangle size={11} aria-hidden className="shrink-0" />
+        <span className="min-w-0 truncate @max-[26rem]:hidden">{tNow('tasks.status.doneWarn')}</span>
       </span>
     )
   }
   return (
     <span
       title={title}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium desk:h-6 desk:py-0 desk:pr-2.5 desk:pl-2 desk:text-meta ${PILL_TONE[status]}`}
+      className={`flex min-w-0 shrink items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium desk:h-6 desk:py-0 desk:pr-2.5 desk:pl-2 desk:text-meta ${PILL_TONE[status]}`}
     >
       <StatusIcon status={status} size={11} />
-      {TASK_STATUS_LABEL[status]}
+      <span className="min-w-0 truncate @max-[26rem]:hidden">{TASK_STATUS_LABEL[status]}</span>
     </span>
   )
 }
@@ -201,7 +201,7 @@ function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }):
   if (!start) return null
   const stop = now
   return (
-    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums desk:text-meta" title={t('tasks.ws.elapsedTitle')}>
+    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums @max-[30rem]:hidden desk:text-meta" title={t('tasks.ws.elapsedTitle')}>
       {formatDuration(stop - start)}
     </span>
   )
@@ -746,7 +746,7 @@ export function TasksWorkspace(): React.JSX.Element {
       <div className="flex min-w-0 flex-1 flex-col">
         {activeId && (
           <header
-            className={`flex h-12 min-w-0 shrink-0 items-center gap-2.5 border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${sideOpen ? '' : showPanel ? ' desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:lg:pr-4' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
+            className={`flex h-12 min-w-0 shrink-0 items-center gap-2.5 overflow-hidden border-b border-border px-4 desk:@container desk:pl-[calc(var(--header-inset,0px)+16px)] ${sideOpen ? '' : showPanel ? ' desk:pr-[calc(var(--controls-inset,0px)+16px)] desk:lg:pr-4' : ' desk:pr-[calc(var(--controls-inset,0px)+16px)]'}`}
           >
             {(phase === 'ready' || phase === 'error') && (
               <>

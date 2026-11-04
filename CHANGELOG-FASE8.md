@@ -4187,3 +4187,9 @@ src/main/computer`: 314 pruebas en verde (nada de TS cambió, el bug y el arregl
 ## Versión 1.8.8
 
 Incluye F8-B248 a F8-B260 (revisión en la tarjeta del archivo, vista del documento para la IA sin ArtCraft, cabecera de la tarea, tablas del Chat y visor de Word). Notas para quien usa la app en `CHANGELOG.md`.
+
+## F8-B261 — El «⋯» de la tarea también con «Terminado con avisos» y el panel de documento abierto
+
+- **Problema.** Probando la 1.8.8 empaquetada en el Mac: con el panel del documento abierto a 1280 px y la píldora «Terminado con avisos», el «⋯» quedaba debajo del panel (`elementFromPoint` devolvía «Progreso»). F8-B256 solo cubría la píldora corta «Terminado».
+- **Solución.** `TasksWorkspace.tsx`: la cabecera recorta lo que sobra (`overflow-hidden`); las dos píldoras de estado se encogen (`min-w-0 shrink`) y su texto se esconde en columna angosta (`@max-[26rem]:hidden`, queda el icono con el tooltip); el cronómetro se esconde en `@max-[30rem]`. El grupo del «⋯» sigue con `shrink-0`; los rellenos de `--controls-inset` de Windows no se tocaron.
+- **Prueba.** `header-menu.test.ts` (protege las clases; jsdom no mide diseño). Medido en la app empaquetada (`elementFromPoint` sobre el «⋯», panel de documento abierto, «Terminado» y «Terminado con avisos») a 1280, 900 y 820 px: siempre pulsable. El caso «con avisos» con el panel de documento se midió cambiando el texto de la píldora en el DOM, no con una tarea real con avisos.
