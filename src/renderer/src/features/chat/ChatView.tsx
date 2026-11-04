@@ -439,7 +439,7 @@ export function ChatView(): React.JSX.Element {
             {displayTitle(session?.title, t('chat.newConversation'))}
           </span>
           <div
-            className={`hidden h-12 shrink-0 items-center justify-end gap-1.5 desk:flex @min-[44rem]:col-start-3 ${docPanel.open && narrowRoot ? 'desk:hidden!' : ''}`}
+            className={`hidden h-12 shrink-0 items-center justify-end gap-1.5 desk:flex @min-[44rem]:col-start-3 ${docPanel.open && narrowRoot ? ' desk:hidden!' : ''}`}
           >
             <ConversationInstructionsButton sessionId={activeId} />
             <PersonalizeButton />

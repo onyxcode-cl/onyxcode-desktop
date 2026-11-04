@@ -22,7 +22,7 @@ describe('cabecera del Chat (E3/E4)', () => {
     expect(header).toMatch(/docPanel\.open \? 'pr-3' : 'pr-3 desk:pr-\[calc\(var\(--controls-inset,0px\)\+12px\)\]'/)
   })
   it('con el panel superpuesto, los iconos que quedarían debajo se esconden (no se ven ni se pueden pulsar a medias)', () => {
-    expect(header).toContain("docPanel.open && narrowRoot ? 'desk:hidden!' : ''")
+    expect(header).toContain("docPanel.open && narrowRoot ? ' desk:hidden!' : ''")
   })
   it('con poco ancho el panel de documento se superpone al chat en vez de apretarlo', () => {
     expect(src).toContain('DOC_OVERLAY_BELOW = 832')
