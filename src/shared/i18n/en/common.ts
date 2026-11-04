@@ -132,6 +132,22 @@ export const common = {
   'conv.shellBgWake.stuck': { one: '{count} background job with no activity', other: '{count} background jobs with no activity' },
   'conv.shellBgWake.batch': { one: 'Notice about {count} background job', other: 'Notice about {count} background jobs' },
   'conv.shellBgWake.auto': 'Automatic notice: the person did not write it.',
+  'engine.bg.running': 'Still running in the background',
+  'engine.bg.title': 'The command is still running. You can do something else; the AI will keep checking it.',
+  'engine.stop.bg': {
+    one: 'Stop (also cuts {count} command still running in the background)',
+    other: 'Stop (also cuts the {count} commands still running in the background)'
+  },
+  'engine.retry.wait': 'Retry {attempt} of {max}: {cause}. Waiting {seconds} s.',
+  'engine.retry.nowait': 'Retry {attempt} of {max}: {cause}.',
+  'engine.retry.cause.cuota': 'the model usage ran out',
+  'engine.retry.cause.limite': 'too many requests in a row',
+  'engine.retry.cause.sobrecarga': 'the service is overloaded',
+  'engine.retry.cause.red': 'the connection failed',
+  'engine.retry.cause.otro': 'the model did not respond',
+  'engine.model.notApplied': 'The switch to “{to}” was not applied: {why}. Continuing with “{from}”.',
+  'engine.model.why.compact': 'the conversation could not be summarized to fit',
+  'engine.model.why.other': 'it could not be applied in time',
   'env.ficha.open': 'Project profile…',
   'env.ficha.hint': 'Name, folders, access and variables'
 } as const satisfies Messages<typeof es>

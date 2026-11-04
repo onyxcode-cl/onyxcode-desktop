@@ -25,6 +25,7 @@ import {
   X
 } from 'lucide-react'
 import { t as tg } from '@shared/i18n'
+import { liveShellCount } from '@shared/engine-notes'
 import { toChatAttachment } from '../../../lib/attachments'
 import { splitPath } from '../../../lib/paths'
 import { isRemoteSurface, isWindowsPlatform } from '../../../lib/platform'
@@ -248,6 +249,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const [attachError, setAttachError] = useState<string | null>(null)
   const directory = useCode((s) => s.directory)
   const activeSessionID = useCode((s) => s.activeSessionID)
+  const shells = useCode((s) => (s.activeSessionID ? liveShellCount(s.messages[s.activeSessionID]) : 0))
   // F8-B32: texto y menciones se guardan por proyecto y sesión (sobreviven a cambiar de modo y de sesión).
   const draftKey = `code:${directory ?? ''}:${activeSessionID ?? 'new'}`
   const [text, setText] = useDraft(draftKey, '')
@@ -897,7 +899,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   <button
                     type="button"
                     onClick={() => void abort()}
-                    title={t('code.composer.stop')}
+                    title={shells > 0 ? tg('engine.stop.bg', { count: shells }) : t('code.composer.stop')}
                     aria-label={t('code.composer.stop')}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-bg transition hover:opacity-85 desk:shrink-0"
                   >

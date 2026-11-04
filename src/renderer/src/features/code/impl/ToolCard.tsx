@@ -118,6 +118,7 @@ function Output({ text, max = 'max-h-72' }: { text: string; max?: string }): Rea
 // ---------------------------------------------------------------------------
 
 import { toolKind, summarizeSteps, type ToolKind } from '@shared/conversation-work'
+import { isBackgroundShell } from '@shared/engine-notes'
 export { toolKind, summarizeSteps, type ToolKind }
 
 function plural(n: number, key: MsgKey): string {
@@ -387,7 +388,15 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           status={state.status}
           autoOpen={running && !!live}
           extra={
-            exit !== undefined && exit !== 0 ? (
+            isBackgroundShell(part) ? (
+              <span
+                data-testid="shell-background"
+                title={t('engine.bg.title')}
+                className="rounded bg-accent/10 px-1.5 text-[11px] desk:text-meta font-medium text-accent"
+              >
+                {t('engine.bg.running')}
+              </span>
+            ) : exit !== undefined && exit !== 0 ? (
               <span className="rounded bg-danger/10 px-1.5 text-[11px] desk:text-meta font-medium text-danger">
                 {'exit '}
                 {exit}

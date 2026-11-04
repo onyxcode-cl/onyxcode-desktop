@@ -39,6 +39,7 @@ import { shellBgWakeOf, type ShellBgWakeInfo } from '@shared/shell-bg-wake-marke
 import { elementTextsOf, isElementContextText, parseElementContext } from '../../browser/element-context'
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
+import { engineNote } from '@shared/engine-notes'
 import { friendlyTool, isVisibleText } from './util'
 import { isPlanGateText } from '../../../lib/plan-gate'
 import { expandStepGroups, useWorkView, visibleStepParts } from '../../../lib/reading-mode'
@@ -92,6 +93,12 @@ function buildBlocks(entries: MessageEntry[], busy = false): Block[] {
       continue
     }
     for (const p of entry.parts) {
+      const note = engineNote(p)
+      if (note) {
+        steps = null
+        blocks.push({ kind: 'retry', id: p.id, text: note, partIds: [p.id] })
+        continue
+      }
       if (p.type === 'tool' || (p.type === 'reasoning' && p.text.trim())) {
         if (!steps) {
           steps = { kind: 'steps', id: p.id, parts: [], partIds: [] }

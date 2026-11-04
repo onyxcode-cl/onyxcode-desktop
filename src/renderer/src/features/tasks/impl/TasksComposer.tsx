@@ -7,6 +7,7 @@
  * chat» del navegador integrado, Lote D) pueda devolver el foco al compositor sin robárselo
  * al resto de la interfaz.
  */
+import { liveShellCount } from '@shared/engine-notes'
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { useAiGate } from '../../../lib/ai-gate'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
@@ -68,6 +69,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const sending = useTasks((s) => s.sending)
   const linked = useTasks((s) => s.folderSet?.linked)
   const entries = useSessions((s) => (activeTaskId ? s.messages[activeTaskId] : undefined)) ?? NO_MESSAGES
+  const shells = liveShellCount(entries)
   // Suscripción reactiva al modelo/esfuerzo de la tarea; el valor sale de las funciones del store.
   useTasks((s) => s.taskModel)
   useTasks((s) => s.taskVariant)
@@ -284,7 +286,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             <button
               type="button"
               onClick={onAbort}
-              title={t('tasks.comp.stop')}
+              title={shells > 0 ? t('engine.stop.bg', { count: shells }) : t('tasks.comp.stop')}
               aria-label={t('tasks.comp.stop')}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-fg text-bg transition hover:opacity-85"
             >

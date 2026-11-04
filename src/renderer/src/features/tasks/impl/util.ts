@@ -7,6 +7,7 @@ import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { t, type MsgKey } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
+import { isBackgroundShell } from '@shared/engine-notes'
 import { dateLocale } from '../../../lib/i18n'
 import { plainBash } from './plain-bash'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
@@ -256,10 +257,12 @@ export function friendlyTool(part: ToolPart, showPath: (path: string) => string 
       return { verb: v('grep'), detail: clip(str(input, 'pattern'), 40) }
     case 'bash': {
       const desc = str(input, 'description')
-      if (desc) return { verb: v('bash'), detail: clip(desc) }
+      // Comando que el motor dejó corriendo en segundo plano: se dice, para que no parezca que ya terminó.
+      const bg = isBackgroundShell(part) ? ` · ${t('engine.bg.running').toLowerCase()}` : ''
+      if (desc) return { verb: v('bash'), detail: clip(desc) + bg }
       // Sin descripción del agente: en lenguaje llano («Creó la hoja de Excel»), no el comando crudo (queda al desplegar).
       const id = plainBash(str(input, 'command'))
-      return { verb: running ? t(`tasks.plain.${id}.doing`) : t(`tasks.plain.${id}.done`), detail: t(`tasks.plain.${id}.what`) }
+      return { verb: running ? t(`tasks.plain.${id}.doing`) : t(`tasks.plain.${id}.done`), detail: t(`tasks.plain.${id}.what`) + bg }
     }
     case 'webfetch':
       return { verb: v('webfetch'), detail: clip(str(input, 'url'), 50) }

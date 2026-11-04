@@ -133,6 +133,22 @@ export const common = {
   },
   'conv.shellBgWake.batch': { one: 'Aviso de {count} trabajo en segundo plano', other: 'Aviso de {count} trabajos en segundo plano' },
   'conv.shellBgWake.auto': 'Aviso automático: no lo escribió la persona.',
+  'engine.bg.running': 'Sigue en segundo plano',
+  'engine.bg.title': 'El comando sigue funcionando. Puedes seguir con otra cosa; la IA lo irá revisando.',
+  'engine.stop.bg': {
+    one: 'Detener (también corta {count} comando que sigue en segundo plano)',
+    other: 'Detener (también corta los {count} comandos que siguen en segundo plano)'
+  },
+  'engine.retry.wait': 'Reintento {attempt} de {max}: {cause}. Esperando {seconds} s.',
+  'engine.retry.nowait': 'Reintento {attempt} de {max}: {cause}.',
+  'engine.retry.cause.cuota': 'se agotó el uso del modelo',
+  'engine.retry.cause.limite': 'hay demasiadas peticiones seguidas',
+  'engine.retry.cause.sobrecarga': 'el servicio está saturado',
+  'engine.retry.cause.red': 'falló la conexión',
+  'engine.retry.cause.otro': 'el modelo no respondió',
+  'engine.model.notApplied': 'No se cambió a «{to}»: {why}. Se sigue con «{from}».',
+  'engine.model.why.compact': 'no se pudo resumir la conversación para que le cupiera',
+  'engine.model.why.other': 'no se pudo aplicar a tiempo',
   'env.ficha.open': 'Ficha del proyecto…',
   'env.ficha.hint': 'Nombre, carpetas, acceso y variables'
 } as const

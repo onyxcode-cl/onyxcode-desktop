@@ -24,6 +24,7 @@ import { useStickToBottom } from '../../../lib/conversation/use-stick-to-bottom'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { Reasoning } from '../../../components/conversation/Reasoning'
 import { friendlyError } from '@shared/ai-errors'
+import { engineNote } from '@shared/engine-notes'
 import type { ConvError } from '../../../lib/session-reducer'
 import { PermissionCard, QuestionCard } from './PermissionCard'
 import { CodeElicitationCard } from './CodeElicitationCard'
@@ -59,6 +60,7 @@ type Block =
   | { kind: 'reasoning'; key: string; part: ReasoningPart }
   | { kind: 'steps'; key: string; parts: ToolPart[] }
   | { kind: 'retry'; key: string; text: string; attempt: number }
+  | { kind: 'note'; key: string; text: string }
   | { kind: 'subtask'; key: string; text: string }
   | { kind: 'error'; key: string; info: AssistantMessage; parts: Part[] }
 
@@ -80,6 +82,15 @@ function buildBlocks(messages: CodeMessage[]): Block[] {
       }
       if (TRANSPARENT.has(p.type)) continue
       if (p.type === 'reasoning' && !p.text.trim()) continue
+      if (p.type === 'text') {
+        // Aviso del motor (reintento o cambio de modelo): va antes del filtro de partes sintéticas porque viaja en una.
+        const note = engineNote(p)
+        if (note) {
+          flush()
+          blocks.push({ kind: 'note', key: p.id, text: note })
+          continue
+        }
+      }
       if (p.type === 'text' && (p.synthetic || p.ignored || !p.text)) continue
       flush()
       if (p.type === 'text') {
@@ -541,6 +552,12 @@ const TurnView = memo(
           return (
             <div key={b.key} {...m('meta')} className="flex items-center gap-1.5 text-xs text-muted">
               <RotateCw size={12} /> {t('code.msg.retry', { attempt: b.attempt })} {b.text}
+            </div>
+          )
+        case 'note':
+          return (
+            <div key={b.key} {...m('meta')} data-testid="engine-note" className="flex items-center gap-1.5 text-xs text-muted">
+              <RotateCw size={12} /> {b.text}
             </div>
           )
         case 'subtask':

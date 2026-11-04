@@ -9,6 +9,7 @@
  */
 import { useRetryLabel } from '../../../lib/retry-info'
 import { displayTitle } from '@shared/session-title'
+import { liveShellCount } from '@shared/engine-notes'
 import { adoptFreeModel } from '../../settings/impl/extras'
 import { NoAiBanner } from '../../../components/NoAiBanner'
 import { exportCodeConversation } from './export'
@@ -584,6 +585,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   // Cuenta también a los ayudantes en segundo plano: la raíz puede figurar `idle` mientras ellos trabajan.
   const run = useCode((s) => selectCodeRunOf(s, s.activeSessionID))
   const helpers = useCode((s) => (s.activeSessionID ? liveHelperCount(s, s.activeSessionID) : 0))
+  const shells = useCode((s) => (s.activeSessionID ? liveShellCount(s.messages[s.activeSessionID]) : 0))
   const panel = useCode((s) => s.panel)
   const togglePanel = useCode((s) => s.togglePanel)
   const abort = useCode((s) => s.abort)
@@ -616,7 +618,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {busy && (
           <Tip
-            label={helpers > 0 ? t('code.toolbar.stopAll', { count: helpers }) : t('code.toolbar.stop')}
+            label={shells > 0 ? t('engine.stop.bg', { count: shells }) : helpers > 0 ? t('code.toolbar.stopAll', { count: helpers }) : t('code.toolbar.stop')}
             shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}
           >
             <button
