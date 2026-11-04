@@ -134,7 +134,11 @@ export function describePermission(
       const dir = meta(p, 'parentDir', 'filepath', 'filePath', 'path')
       // W3: sin metadatos, los patrones son globs del sandbox (`/win/c/…/*`): el `/*` impide traducirlos, así que se quita ANTES de mostrar
       // (en Windows sale `C:\…`, no la ruta interna de WSL). Solo para mostrar; no autoriza nada.
-      const detail = dir ? showPath(dir) : p.patterns.map((x) => showPath(stripGlob(x))).join(', ')
+      const fromPatterns = p.patterns
+        .map((x) => showPath(stripGlob(x)))
+        .filter(Boolean)
+        .join(', ')
+      const detail = dir ? showPath(dir) : fromPatterns || p.patterns.join(', ') || '/'
       return {
         icon: FolderInput,
         title: t('tasksComputer.perm.folderTitle'),

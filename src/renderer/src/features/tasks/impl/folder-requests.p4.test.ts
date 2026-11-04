@@ -6,6 +6,7 @@ vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionC
 
 import { describePermission } from './PermissionPrompt'
 import { folderRefusal } from './actions'
+import { stripGlob } from './util'
 import { showPathOf } from './path-map'
 import type { TasksConnection } from '@shared/ipc-tasks'
 
@@ -32,6 +33,11 @@ describe('W3: el aviso de carpeta muestra C:\\… y no la ruta interna de WSL', 
   it('con parentDir sigue igual', () => {
     const d = describePermission(req(['/win/c/Users/Bentec/Lazunox/*'], { parentDir: '/win/c/Users/Bentec/Lazunox' }), [], show)
     expect(d.detail).toBe('C:\\Users\\Bentec\\Lazunox')
+  })
+  it('un patrón «/*» (la raíz) no deja el detalle vacío', () => {
+    expect(describePermission(req(['/*'])).detail).toBe('/')
+    expect(stripGlob('/*')).toBe('/')
+    expect(stripGlob('/Users/ana/*')).toBe('/Users/ana')
   })
   it('en macOS (identidad) no cambia la ruta, solo se quita el /*', () => {
     const d = describePermission(req(['/Users/ana/proyectos/*']))

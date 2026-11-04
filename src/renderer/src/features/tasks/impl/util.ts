@@ -425,8 +425,11 @@ export function buildContext(entries: MessageEntry[]): ContextGroups {
 
 /** Quita el `/*` (o `/`) final de un patrón de `external_directory` para quedarse con la carpeta. */
 export function stripGlob(p: string): string {
-  let out = p.trim().replace(/\/\*+$/, '')
+  const trimmed = p.trim()
+  let out = trimmed.replace(/\/\*+$/, '')
   while (out.length > 1 && out.endsWith('/')) out = out.slice(0, -1)
+  // `/*` es la raíz: no se deja vacío (la tarjeta de peligro saldría sin detalle).
+  if (!out && trimmed.startsWith('/')) return '/'
   return out
 }
 

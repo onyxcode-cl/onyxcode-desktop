@@ -32,7 +32,7 @@ import { useSettings } from '../stores/settings'
 import { useUi } from '../stores/ui'
 import { MODES, MODES_BY_ID } from './modes'
 import { MODE_LABELS } from '@shared/labels'
-import { chatDisplayTitle, useChatIndex } from '../features/tasks/impl/chatIndex'
+import { chatDisplayTitle, loadChatIndex, useChatIndex } from '../features/tasks/impl/chatIndex'
 import { openIndexedChat } from '../features/tasks/impl/chatIndexOpen'
 import { hintText, useEffectiveBindings } from '../keybindings/bindings'
 import { Spinner } from '../components/Spinner'
@@ -230,6 +230,11 @@ function PaletteDialog(): React.JSX.Element {
   // La primera vez que se abre la paleta se empieza a preparar la búsqueda en los mensajes (en segundo plano).
   useEffect(() => {
     ensureSearchIndex()
+  }, [])
+
+  // Las tareas salen del índice de chats: si aún no se cargó (no se abrió Tareas), se carga al abrir la paleta.
+  useEffect(() => {
+    if (!useChatIndex.getState().loaded) void loadChatIndex()
   }, [])
 
   const results = useMemo(() => {

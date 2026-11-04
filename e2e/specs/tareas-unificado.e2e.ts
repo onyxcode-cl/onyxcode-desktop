@@ -4,7 +4,7 @@
 //  - la tarea sale en la lista lateral y en Ctrl+K (W4 del plan 1.8.9, arreglado en P4).
 // Las otras specs de Tareas (lotes, restore, control-total, fase6) fijan LAZUNOX_UNIFIED_APPS=0 y prueban el modo antiguo.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
@@ -27,7 +27,8 @@ afterAll(() => {
   rmSync(fakeHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })
 })
 
-const SHOTS = '/Users/dryogui/Documents/respaldo/capturas-1-8-9/p4'
+// Carpeta de capturas: LZX_SHOTS_DIR, o una carpeta temporal del sistema.
+const SHOTS = process.env.LZX_SHOTS_DIR || join(tmpdir(), 'lzx-p4-capturas')
 async function shot(page: { screenshot: (o: { path: string }) => Promise<unknown> }, name: string): Promise<void> {
   try {
     mkdirSync(SHOTS, { recursive: true })
