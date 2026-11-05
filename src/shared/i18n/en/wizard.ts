@@ -152,6 +152,7 @@ export const wizard = {
   'preflight.allReady': 'All set.',
   'preflight.engine.pick': 'Choose engine…',
   'preflight.perms.grant': 'Grant permissions',
+  'preflight.perms.openScreen': 'Open Screen Recording',
   'preflight.state.ready': 'Ready',
   'preflight.state.missing': 'Missing',
   'preflight.state.downloading': 'Installing…',

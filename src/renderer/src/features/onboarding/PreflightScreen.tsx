@@ -210,10 +210,11 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                       </Button>
                     </div>
                   )}
-                  {c.id === 'perms' && st === 'pending' && c.reason !== 'restart' && (
+                  {c.id === 'perms' && st === 'pending' && (
                     <div className="mt-2">
                       <Button variant="secondary" size="sm" onClick={p.onGrantPerms} disabled={p.permsWaiting}>
-                        {p.permsWaiting ? <Loader2 size={13} className="animate-spin" /> : null} {t('preflight.perms.grant')}
+                        {p.permsWaiting ? <Loader2 size={13} className="animate-spin" /> : null}{' '}
+                        {t(c.reason === 'restart' ? 'preflight.perms.openScreen' : 'preflight.perms.grant')}
                       </Button>
                     </div>
                   )}

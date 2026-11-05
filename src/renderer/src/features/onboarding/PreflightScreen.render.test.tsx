@@ -148,6 +148,9 @@ describe('avisos no esenciales', () => {
     const html = render(r)
     expect(html).toContain('Falta un reinicio para Grabación de pantalla')
     expect(html).not.toContain('Dar permisos')
+    // Con Accesibilidad dada y Pantalla pendiente, la fila sigue ofreciendo abrir el panel de Grabación de pantalla (y el reinicio).
+    expect(html).toContain('Abrir Grabación de pantalla')
+    expect(html).toContain('Reiniciar')
   })
   it('permisos que no se activan tras esperar: ayuda de reparación', () => {
     expect(render(optional(), { permsStalled: true })).toContain('Los permisos no se activan')

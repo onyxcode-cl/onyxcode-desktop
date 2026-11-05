@@ -31,7 +31,8 @@
  */
 import { APP_ID } from '@shared/brand'
 import { t } from '@shared/i18n'
-import { app, globalShortcut, powerMonitor, shell, systemPreferences } from 'electron'
+import { app, desktopCapturer, globalShortcut, powerMonitor, shell, systemPreferences } from 'electron'
+import { requestMacPermissions } from './request-perms'
 import { execFile, spawn, type ChildProcessByStdio } from 'node:child_process'
 
 /** Directorio de trabajo al cargar el módulo (las pruebas simulan `process.cwd()` después; el helper real del repo vive bajo el de verdad). */
@@ -1323,20 +1324,17 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       return
     }
     if (process.platform !== 'darwin') return
-    const bin = this.helperPath()
-    let perms = { accessibility: false, screenRecording: false }
-    if (bin) {
-      try {
-        perms = JSON.parse(await runHelper(bin, ['request-permissions'])) as typeof perms
-      } catch (err) {
-        console.error('[computer] request-permissions:', err)
+    // La petición la hace la app principal (no el ayudante hijo): así «Lazunox» aparece sola en las listas de Ajustes.
+    await requestMacPermissions({
+      askAccessibility: () => systemPreferences.isTrustedAccessibilityClient(true),
+      screenGranted: () => systemPreferences.getMediaAccessStatus('screen') === 'granted',
+      triggerScreen: async () => {
+        await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } })
+      },
+      openPane: async (pane) => {
+        await shell.openExternal(pane === 'accessibility' ? PANE_ACCESSIBILITY : PANE_SCREEN)
       }
-    } else {
-      perms.accessibility = systemPreferences.isTrustedAccessibilityClient(true)
-      perms.screenRecording = systemPreferences.getMediaAccessStatus('screen') === 'granted'
-    }
-    if (!perms.accessibility) await shell.openExternal(PANE_ACCESSIBILITY)
-    else if (!perms.screenRecording) await shell.openExternal(PANE_SCREEN)
+    })
   }
 
   /**

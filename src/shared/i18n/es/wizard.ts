@@ -148,6 +148,7 @@ export const wizard = {
   'preflight.allReady': 'Todo listo.',
   'preflight.engine.pick': 'Elegir motor…',
   'preflight.perms.grant': 'Dar permisos',
+  'preflight.perms.openScreen': 'Abrir Grabación de pantalla',
   'preflight.state.ready': 'Listo',
   'preflight.state.missing': 'Falta',
   'preflight.state.downloading': 'Instalando…',
