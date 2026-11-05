@@ -3,7 +3,7 @@
  * las líneas de comandos de las Tareas (`chat-docx-cli.ts`, `chat-xlsx-cli.ts`) y la herramienta `documentos` de la app. NO importar
  * desde esas líneas de comandos dentro de la app: al estar empaquetadas en el mismo archivo ejecutarían el CLI al arrancar.
  */
-import { isDocxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
+import { isDocxSpec, isPptxSpec, isXlsxSpec, PPTX_LAYOUTS, MAX_SLIDES, MAX_BULLETS_PER_SLIDE, MAX_TITLE_CHARS } from '@shared/chat-doc-spec'
 
 /** Primer bloque inválido (el esquema es estricto: claves desconocidas, textos largos, filas de otro largo…). */
 export function explainDocx(v: unknown): string {
@@ -28,4 +28,22 @@ export function explainXlsx(v: unknown): string {
   if (bad >= 0)
     return `La hoja sheets[${bad}] no es válida: necesita name (texto) y rows (hasta 5000 filas de hasta 60 celdas: texto, número, null o {"formula":"SUM(B2:B5)","value":123}); columnFormats solo con currency, integer, decimal, percent o null; charts hasta 4, con type column/bar/line/pie/area, range tipo "A1:C7" y, opcionales, title, at, width y height (120 a 1200).`
   return 'Revisa que haya entre 1 y 10 hojas.'
+}
+
+/** Primera lámina inválida y el campo que falla (el que, al quitarlo, deja la lámina válida). */
+export function explainPptx(v: unknown): string {
+  if (!v || typeof v !== 'object') return 'Debe ser un objeto con `slides`.'
+  const spec = v as Record<string, unknown>
+  const slides = spec.slides
+  if (!Array.isArray(slides) || slides.length === 0) return `\`slides\` debe ser una lista con al menos una lámina (hasta ${MAX_SLIDES}).`
+  for (const key of ['theme', 'style', 'footer', 'transition', 'palette', 'fonts'])
+    if (spec[key] !== undefined && !isPptxSpec({ slides: [{ title: 'x' }], [key]: spec[key] })) return `El campo \`${key}\` del documento no es válido.`
+  const bad = slides.findIndex((sl) => !isPptxSpec({ slides: [sl] }))
+  if (bad < 0) return `Revisa que haya como mucho ${MAX_SLIDES} láminas y pocas imágenes.`
+  const sl = slides[bad] as Record<string, unknown> | null
+  if (!sl || typeof sl !== 'object') return `slides[${bad}] debe ser un objeto.`
+  const fields = Object.keys(sl).filter((k) => isPptxSpec({ slides: [Object.fromEntries(Object.entries(sl).filter(([n]) => n !== k))] }))
+  if (fields.length)
+    return `La lámina slides[${bad}] tiene un campo inválido: ${fields.map((f) => `\`${f}\``).join(', ')}. Layouts permitidos: ${PPTX_LAYOUTS.join(', ')}; título hasta ${MAX_TITLE_CHARS} caracteres; hasta ${MAX_BULLETS_PER_SLIDE} viñetas; sin claves que no estén en la skill pptx (la tabla va en \`table: {columns, rows}\` con el mismo número de celdas por fila).`
+  return `La lámina slides[${bad}] no es válida (layout ${JSON.stringify(sl.layout)}): revisa los campos que exige ese layout (image necesita image; free necesita elements).`
 }

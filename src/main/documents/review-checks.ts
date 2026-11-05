@@ -13,6 +13,8 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/\[\s*(insert|insertar|aquí|aqui|nombre|empresa|fecha|título|titulo|texto|cliente)\b[^\]]{0,40}\]/i, '[insertar…]'],
   [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b[^\]]{0,80}\]/i, '[PENDIENTE…]'],
   [/\[\s*(\.{3}|…)\s*\]/, '[…]'],
+  [/\b(a|por) (definir|determinar|confirmar)\b/i, '«a definir»'],
+  [/^\s*(pendiente|n\/d|s\/d|n\.d\.|tbd)\s*$/im, 'celda «pendiente»'],
   [/texto de (ejemplo|relleno)|placeholder text|your text here|escribe aquí|escriba aquí/i, 'texto de relleno'],
   [/haga clic para|haz clic para|click to (add|edit)/i, 'texto de plantilla'],
   [/\bx{3,}\b/i, 'xxx']

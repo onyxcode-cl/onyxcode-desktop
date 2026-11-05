@@ -180,6 +180,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
             cmd('para.align', { value: al })
             cmd('text.insert', { text: v })
             cmd('para.keepLines') // la fila no se parte entre dos páginas
+            if (k === 0) cmd('table.properties', { allowBreak: false }) // «no dividir fila entre páginas» (cantSplit) de ESTA fila
             // La fila de encabezado se repite en cada página y el penúltimo renglón se queda con el total (no queda solo en la página siguiente).
             if (r === 0 && k === 0) cmd('table.repeatHeader')
             if (b.total_row && r === cells.length - 2) cmd('para.keepNext')
@@ -222,6 +223,11 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         cmd('text.pageBreak')
         break
     }
+  }
+  // El índice trae sus entradas y los números de página calculados por WordCraft (sin esto sale solo el título y Word pide actualizar campos).
+  if (spec.toc) {
+    groups.push([])
+    cmd('references.updateToc')
   }
   // Word obliga a un párrafo vacío tras una tabla final: si la tabla llena la página, ese párrafo caía en una hoja en blanco. Se deja de 1 pt.
   const last = spec.blocks[spec.blocks.length - 1]

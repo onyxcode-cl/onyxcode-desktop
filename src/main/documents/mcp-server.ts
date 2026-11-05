@@ -18,7 +18,7 @@ import { templateLeftovers } from './review-checks'
 
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
 import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
-import { explainDocx, explainXlsx } from '../office/craft/doc-explain'
+import { explainDocx, explainPptx, explainXlsx } from '../office/craft/doc-explain'
 import type { ChatDocInput } from './engine'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
@@ -92,7 +92,7 @@ export const DOCUMENT_TOOLS = [
       properties: {
         tipo: { type: 'string', enum: [...TIPOS], description: 'Formato del documento.' },
         nombre: { type: 'string', description: 'Nombre del archivo, sin extensión.' },
-        spec: { type: 'object', description: 'Contenido estructurado (pptx, docx, xlsx): el JSON de la skill correspondiente.' },
+        spec: { type: ['object', 'string'], description: 'Contenido estructurado (pptx, docx, xlsx): el JSON de la skill correspondiente (un objeto; si lo mandas como texto JSON también se acepta).' },
         html: { type: 'string', description: 'HTML autocontenido (solo pdf).' },
         allow_placeholders: {
           type: 'boolean',
@@ -100,11 +100,38 @@ export const DOCUMENT_TOOLS = [
         },
         subcarpeta: { type: 'string', description: 'Subcarpeta relativa dentro de la carpeta de la tarea (opcional, hasta 4 niveles).' }
       },
-      required: ['tipo', 'nombre'],
-      additionalProperties: false
+      required: ['tipo']
     }
   }
 ] as const
+
+/**
+ * Los modelos chicos mandan los argumentos con pequeñas variantes (`spec` como texto JSON, `contenido` en vez de `spec`, `name` en vez de
+ * `nombre`): antes la herramienta aparecía como «Invalid Tool» y el agente se rendía. Se aceptan las variantes y se rellenan los datos que falten.
+ */
+export function normalizeArgs(raw: Record<string, unknown>): Record<string, unknown> {
+  const a: Record<string, unknown> = { ...raw }
+  const alias = (to: string, from: string[]): void => {
+    if (a[to] === undefined) for (const f of from) if (a[f] !== undefined) { a[to] = a[f]; break }
+  }
+  alias('tipo', ['type', 'formato', 'format'])
+  alias('nombre', ['name', 'titulo', 'title', 'filename'])
+  alias('spec', ['contenido', 'content', 'data', 'documento'])
+  if (typeof a.tipo === 'string') a.tipo = a.tipo.trim().toLowerCase().replace(/^\./, '')
+  if (typeof a.spec === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(a.spec)
+      if (parsed && typeof parsed === 'object') a.spec = parsed
+    } catch {
+      /* se rechaza abajo con un mensaje claro */
+    }
+  }
+  if (typeof a.nombre !== 'string' || !a.nombre.trim()) {
+    const spec = a.spec as { title?: unknown } | undefined
+    a.nombre = typeof spec?.title === 'string' && spec.title.trim() ? spec.title : 'Documento'
+  }
+  return a
+}
 
 /** Todos los textos de un spec (valores string, a cualquier profundidad). */
 function stringsOf(v: unknown, out: string[] = []): string[] {
@@ -199,7 +226,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     }
     const spec = args.spec
     if (!spec || typeof spec !== 'object' || Array.isArray(spec))
-      return { error: `Para ${tipo} pasa \`spec\` (un objeto JSON, el de la skill ${tipo}).` }
+      return { error: `Falta el campo \`spec\` para ${tipo}: pásalo como un objeto JSON (o texto JSON) con el contenido del documento, el de la skill ${tipo}. Los campos son tipo, nombre y spec.` }
     let json: string
     try {
       json = JSON.stringify(spec)
@@ -212,7 +239,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     if (badSpec) return { error: badSpec }
     if (tipo === 'pptx') {
       if (!isPptxSpec(spec))
-        return { error: 'El `spec` no cumple el esquema de presentaciones del Chat (ver la skill pptx). No se generó nada.' }
+        return { error: `El \`spec\` no cumple el esquema de presentaciones del Chat (ver la skill pptx). ${explainPptx(spec)} No se generó nada: corrige ese campo y vuelve a llamar a documentos_crear.` }
       return { tipo, input: { kind: 'pptx', data: spec } }
     }
     if (tipo === 'docx') {
@@ -305,13 +332,22 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         bytes: res.images.reduce((n, b) => n + b.length, 0),
         ms: now() - t0
       })
+      // Un archivo que NO salió de `crear` (hecho con un script) no pasó por la validación ni por la revisión: se revisa aquí igual.
+      let reviewText = ''
+      if (!entry && tipo !== 'pdf') {
+        try {
+          reviewText = await reviewSummary(tipo, bytes)
+        } catch {
+          reviewText = ''
+        }
+      }
       const unit = tipo === 'pptx' ? 'diapositiva(s)' : tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
       const note = (res.truncated ? ` Se muestran las primeras ${res.images.length}.` : '') + (res.viaViewer ? SIMPLIFIED_NOTE : '')
       return {
         content: [
           {
             type: 'text' as const,
-            text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento (una por página): mira TODAS, no solo las últimas, y revisa que nada se corte ni se superponga; corrige todo de una vez. Si no pudiste ver alguna, dilo en «Para revisar».`
+            text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento (una por página): mira TODAS, no solo las últimas, y revisa que nada se corte ni se superponga; corrige todo de una vez. Si no pudiste ver alguna, dilo en «Para revisar».${reviewText}`
           },
           ...res.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))
         ]
@@ -336,6 +372,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     const t0 = now()
     if (name === 'renderizar' && this.deps.preview) return this.callPreview(binding, args)
     if (name !== 'crear') return this.text(`Herramienta desconocida: ${name}`, true)
+    args = normalizeArgs(args)
     const built = this.buildInput(args)
     if ('error' in built) {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'contenido', ms: now() - t0 })

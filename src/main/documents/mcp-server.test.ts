@@ -536,3 +536,23 @@ describe('renderizar', () => {
     expect(textOf(r)).not.toContain('/Users/ben')
   })
 })
+
+describe('crear: argumentos con variantes y errores claros', () => {
+  it('acepta spec como texto JSON y nombre ausente', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'docx', spec: JSON.stringify(DOCX) })
+    expect(r.body.result.isError).toBeUndefined()
+  })
+  it('el rechazo de pptx dice qué campo corregir', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'pptx', nombre: 'x', spec: { slides: [{ title: 'ok' }, { title: 'mal', layout: 'inventado' }] } })
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toContain('slides[1]')
+    expect(textOf(r)).toContain('layout')
+  })
+  it('rechaza «a definir» y celdas «pendiente»', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'docx', nombre: 'y', spec: { blocks: [{ type: 'paragraph', text: 'Monto: a definir por Finanzas' }] } })
+    expect(r.body.result.isError).toBe(true)
+  })
+})

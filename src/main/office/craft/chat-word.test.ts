@@ -269,3 +269,15 @@ describe('tabla de Word: filas enteras y sin hoja en blanco', () => {
     expect(flat).not.toContain('format.size={"size":1}')
   })
 })
+
+describe('tabla de Word: cantSplit por fila e índice con números', () => {
+  it('cada fila pide no dividirse entre páginas', () => {
+    const flat = chatDocxCommands({ title: 'T', blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 'y'], ['z', 'w']] }] } as never).flat()
+    expect(flat.filter((c) => c === 'table.properties={"allowBreak":false}').length).toBe(3)
+  })
+  it('con toc actualiza el índice al final', () => {
+    const flat = chatDocxCommands({ title: 'T', toc: true, blocks: [{ type: 'heading', level: 1, text: 'Uno' }] } as never).flat()
+    expect(flat).toContain('references.updateToc')
+    expect(chatDocxCommands({ title: 'T', blocks: [{ type: 'heading', level: 1, text: 'Uno' }] } as never).flat()).not.toContain('references.updateToc')
+  })
+})
