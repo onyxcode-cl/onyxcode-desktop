@@ -511,6 +511,15 @@ export function reviewPdf(html: string, bytes: Buffer): ReviewResult {
     'Las tablas largas tienen <thead> (se repite en cada página)',
     'Una tabla de más de 12 filas no tiene <thead>: sin él el encabezado no se repite en las páginas siguientes'
   )
+  const styleText = (html.match(/<style[\s\S]*?<\/style>/gi) ?? []).join(' ') + ' ' + (html.match(/\bstyle\s*=\s*"[^"]*"/gi) ?? []).join(' ')
+  const overlaps = /margin(?:-top|-bottom)?\s*:[^;}"]*-\d|translateY\(\s*-\d/i.test(styleText)
+  r.check(
+    !(overlaps && /overflow\s*:\s*hidden/i.test(styleText)),
+    'Nada que cruce una franja queda cortado',
+    'Hay elementos que se montan sobre otra franja (margen negativo o translateY) y un overflow: hidden: la franja los corta. Quita overflow: hidden y haz la franja más alta (padding-bottom mayor que lo que sobresalen) en vez de montar tarjetas'
+  )
+  if (overlaps && !/break-inside\s*:\s*avoid|page-break-inside\s*:\s*avoid/i.test(styleText))
+    r.note('Hay tarjetas que cruzan franjas: ponles break-inside: avoid para que no se partan entre páginas')
   r.check(/@page\b/i.test(html), 'Define @page (márgenes y tamaño)', 'Falta @page con tamaño A4 y márgenes de unos 18 a 22 mm')
   r.check(/<html\b[^>]*\blang\s*=/i.test(html), 'Declara el idioma (<html lang>)', 'Falta <html lang="es"> (accesibilidad y separación de sílabas)')
   const noAlt = (html.match(/<img\b[^>]*>/gi) ?? []).filter((t) => !/\balt\s*=/i.test(t)).length

@@ -303,17 +303,17 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         const colW = Math.floor(840 / k)
         const rowH = Math.min(48, Math.floor(330 / (tb.rows.length + 1)))
         const size = k > 4 ? 14 : 16
+        // Un solo tamaño para toda la tabla: el menor que necesita alguna celda. Achicar celda por celda dejaba letras desiguales en la misma fila.
+        const cells: Array<[string, boolean]> = [
+          ...tb.columns.map((t): [string, boolean] => [t, true]),
+          ...tb.rows.flatMap((row) => row.map((t, i): [string, boolean] => [t, i === 0]))
+        ]
+        const fit = cells.reduce(
+          (m, [t, bold]) => Math.min(m, fitSize(t, size, Math.floor((colW - 20) / (size * 0.55))), autoFitSize(t, size, colW - 20, rowH, bold)),
+          size
+        )
         const cell = (t: string, i: number, y: number, color: string, bold: boolean): void =>
-          txt(
-            60 + i * colW + 12,
-            y + Math.max(0, (rowH - size * 1.4) / 2),
-            colW - 20,
-            rowH,
-            t,
-            fitSize(t, size, Math.floor((colW - 20) / (size * 0.55))),
-            color,
-            bold
-          )
+          txt(60 + i * colW + 12, y + Math.max(0, (rowH - fit * 1.4) / 2), colW - 20, rowH, t, fit, color, bold)
         rect(60, 146, 840, rowH, accent)
         tb.columns.forEach((t, i) => cell(t, i, 146, pal.dark ? pal.bg : 'FFFFFF', true))
         tb.rows.forEach((row, r) => {

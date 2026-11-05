@@ -23,6 +23,12 @@ describe('restos de plantilla', () => {
     expect(templateLeftovers('Haga clic para agregar título')).toContain('texto de plantilla')
     expect(templateLeftovers('tel. xxxx')).toContain('xxx')
   })
+  it('detecta [PENDIENTE…] y [...] pero no citas normales', () => {
+    expect(templateLeftovers('Preparada para: [PENDIENTE: nombre]')).toContain('[PENDIENTE…]')
+    expect(templateLeftovers('Monto [por definir]')).toContain('[PENDIENTE…]')
+    expect(templateLeftovers('Total [...]')).toContain('[…]')
+    expect(templateLeftovers('Según [1] y [Todo el equipo]')).toEqual([])
+  })
   it('no confunde la palabra «todo» ni texto normal con restos', () => {
     expect(templateLeftovers('Lo hicimos todo bien. Todo el equipo participó; el índice [1] y la nota [a].')).toEqual([])
   })

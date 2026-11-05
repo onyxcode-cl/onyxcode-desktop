@@ -88,7 +88,7 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
   `27 de septiembre de 2026` o `2026-09-27`).
 - Resume primero (conclusiones / resumen ejecutivo) y detalla después.
 - Cita la fuente de cada dato (archivo o URL). No inventes datos: si falta información,
-  márcalo como `[PENDIENTE: …]`.
+  márcalo como `[PENDIENTE: …]` en tu mensaje o en un `.md` de notas, NUNCA dentro de un docx, xlsx, pptx o pdf entregado (ahí usa un valor de ejemplo marcado como ficticio, o redacta sin la cifra).
 - Nombra los archivos de forma descriptiva, en minúsculas, con guiones y sin espacios
   (`informe-ventas-2026-q3.md`). Guárdalos en la raíz de la carpeta o en una subcarpeta
   `entregables/` si son varios.

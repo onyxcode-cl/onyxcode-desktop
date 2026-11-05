@@ -37,3 +37,22 @@ describe('revisión de PDF (HTML + páginas)', () => {
     expect(await reviewSummary('pdf', pdf(1))).toContain('NO corrida')
   })
 })
+
+describe('reviewPdf: tarjetas que cruzan franjas y marcadores pendientes', () => {
+  const pdf1 = pdf(1)
+  const base = (css: string, body = '<p>Hola</p>'): string =>
+    `<html lang="es"><head><style>@page{size:A4;margin:0} body{font-size:12px} ${css}</style></head><body>${body}</body></html>`
+  it('marca ✘ si hay margen negativo con overflow hidden', () => {
+    const r = reviewPdf(base('.band{overflow:hidden} .card{margin-bottom:-40px}'), pdf1)
+    expect(JSON.stringify(r)).toContain('la franja los corta')
+    expect(r.ok).toBe(false)
+  })
+  it('no marca nada sin overflow hidden', () => {
+    const r = reviewPdf(base('.card{margin-bottom:-40px; break-inside:avoid}'), pdf1)
+    expect(r.ok).toBe(true)
+  })
+  it('cuenta [PENDIENTE: …] como defecto', () => {
+    const r = reviewPdf(base('', '<p>Para: [PENDIENTE: nombre]</p>'), pdf1)
+    expect(r.ok).toBe(false)
+  })
+})

@@ -217,6 +217,22 @@ describe('layouts nuevos (línea de tiempo, agenda, cita, tabla) y transición',
   })
 })
 
+describe('tabla: una sola letra para todas las celdas', () => {
+  it('una celda larga achica toda la tabla por igual, no solo su celda', () => {
+    const long = 'Descripción muy larga de una partida de inversión que no cabe en una celda angosta de la tabla'
+    const cmds = chatDeckCommands({
+      slides: [{ title: 'Inversión', layout: 'table', table: { columns: ['Ítem', 'Detalle', 'Monto', 'Plazo', 'Nota'], rows: [['A', long, '$1', '1', 'x'], ['B', 'corto', '$2', '2', 'y']] } }]
+    })
+    const idx = cmds.findIndex((c) => c.startsWith('insert.textBox=') && c.includes('Monto'))
+    const sizes = new Set<number>()
+    cmds.forEach((c, i) => {
+      if (i > idx - 1 && c.startsWith('insert.textBox=') && cmds[i + 1]?.startsWith('format.size=') && /"(Ítem|Detalle|Monto|Plazo|Nota|A|B|\$1|\$2|1|2|x|y|corto)"/.test(c))
+        sizes.add(JSON.parse(cmds[i + 1].slice('format.size='.length)).size)
+    })
+    expect(sizes.size).toBe(1)
+  })
+})
+
 describe('pie, nota y numeración legibles sobre un background propio', () => {
   const colorsOf = (cmds: string[]): string[] =>
     cmds.filter((c) => c.startsWith('format.color=')).map((c) => JSON.parse(c.slice('format.color='.length)).color)

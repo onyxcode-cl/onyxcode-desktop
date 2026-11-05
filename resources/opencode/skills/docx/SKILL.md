@@ -7,6 +7,8 @@ description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.d
 
 **Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
 
+Nunca dejes «[PENDIENTE…]», «[TODO]» ni «[…]» dentro del documento entregado: si falta un dato, usa un valor de ejemplo plausible marcado como ficticio o estimado («cifras de ejemplo» en una nota o el pie) o redacta sin la cifra; nunca inventes datos reales del usuario (nombres, montos de contratos). La revisión lo cuenta como defecto.
+
 **Ciclo obligatorio de calidad (crear → renderizar → mirar → corregir):**
 1. **Crea** con `documentos_crear` siguiendo la guía de diseño (reglas numéricas y lista de «no hagas esto»).
 2. **Renderiza** con `documentos_renderizar` el archivo creado y **mira TODAS las imágenes**, no solo la primera ni la última.
