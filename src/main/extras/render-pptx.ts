@@ -708,6 +708,7 @@ export async function renderPptx(rawData: PptxSpec): Promise<Buffer> {
     else if (layout === 'chart' && spec.chart) addChartSlide(slide, spec, palette, style, ctx)
     else if (layout === 'kpis' && spec.kpis && spec.kpis.length >= 2) addKpisSlide(slide, spec, palette, style, ctx)
     else addBulletsSlide(slide, spec, palette, style, ctx)
+    if (spec.speaker_notes?.trim()) slide.addNotes(spec.speaker_notes.trim())
   })
 
   return (await pres.write({ outputType: 'nodebuffer' })) as Buffer

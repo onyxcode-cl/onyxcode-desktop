@@ -385,6 +385,8 @@ export function chatDeckCommands(input: PptxSpec): string[] {
         else list(bullets, 60, many ? 148 : 156, 840, 9, many ? 38 : 52, many ? 18 : 22)
       }
     }
+    // Notas del orador: texto que solo ve quien presenta (DeckCraft: `slide.notes` sobre la diapositiva recién armada).
+    if (s.speaker_notes?.trim()) a('slide.notes', { text: s.speaker_notes.trim() })
   })
   a('slide.delete', { index: 0 }) // `file.new` deja una diapositiva vacía al inicio
   if (spec.transition) {

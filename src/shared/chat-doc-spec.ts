@@ -23,6 +23,8 @@ export const MAX_CHART_POINTS = 12
 export const MAX_CHART_LABEL_CHARS = 40
 export const MAX_EYEBROW_CHARS = 40
 export const MAX_NOTE_CHARS = 140
+/** Notas del orador de una diapositiva (texto que solo ve quien presenta). */
+export const MAX_SPEAKER_NOTES_CHARS = 2_000
 export const MAX_FOOTER_CHARS = 60
 export const MAX_COLUMN_HEADING_CHARS = 60
 export const MAX_COLUMN_BULLETS = 6
@@ -295,6 +297,8 @@ export interface PptxSlideSpec {
   eyebrow?: string
   /** Nota chica al pie (p.ej. "Cifras en miles de USD") — solo si hay algo real que decir; nunca se inventa "Datos ilustrativos" ni similar. */
   note?: string
+  /** Notas del orador (lo que se dice al presentar; no se ve en la lámina): hasta 2.000 caracteres. */
+  speaker_notes?: string
   /** Dos columnas con su propio encabezado — solo para `layout: "two-col"`; si no viene, se usan `bullets` repartidas mitad y mitad. */
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
@@ -518,6 +522,8 @@ function isSlide(v: unknown): v is PptxSlideSpec {
   if (s.chart !== undefined && !isChartSpec(s.chart)) return false
   if (s.eyebrow !== undefined && (typeof s.eyebrow !== 'string' || s.eyebrow.length > MAX_EYEBROW_CHARS)) return false
   if (s.note !== undefined && (typeof s.note !== 'string' || s.note.length > MAX_NOTE_CHARS)) return false
+  if (s.speaker_notes !== undefined && (typeof s.speaker_notes !== 'string' || s.speaker_notes.length > MAX_SPEAKER_NOTES_CHARS))
+    return false
   if (s.columns !== undefined) {
     if (!Array.isArray(s.columns) || s.columns.length !== 2) return false
     if (!s.columns.every(isColumnSpec)) return false

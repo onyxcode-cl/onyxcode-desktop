@@ -320,3 +320,27 @@ describe('189: arreglos de PowerPoint medidos', () => {
     expect(sizeOf(three, 'uno')).toBeGreaterThanOrEqual(26)
   })
 })
+
+describe('189: notas del orador', () => {
+  it('se validan: texto de hasta 2.000 caracteres', () => {
+    expect(isPptxSpec({ slides: [{ title: 'A', bullets: ['x'], speaker_notes: 'Di esto' }] })).toBe(true)
+    expect(isPptxSpec({ slides: [{ title: 'A', speaker_notes: 'x'.repeat(2001) }] })).toBe(false)
+    expect(isPptxSpec({ slides: [{ title: 'A', speaker_notes: 5 }] })).toBe(false)
+  })
+  it('DeckCraft recibe `slide.notes` justo después de la diapositiva a la que pertenecen', () => {
+    const cmds = chatDeckCommands({
+      slides: [
+        { title: 'Uno', bullets: ['a'], speaker_notes: ' Hola ' },
+        { title: 'Dos', bullets: ['b'] },
+        { title: 'Tres', bullets: ['c'], speaker_notes: 'Fin' }
+      ]
+    })
+    const notes = cmds.map((c, i) => [c, i] as const).filter(([c]) => c.startsWith('slide.notes='))
+    expect(notes.map(([c]) => JSON.parse(c.slice('slide.notes='.length)).text)).toEqual(['Hola', 'Fin'])
+    const news = cmds.map((c, i) => [c, i] as const).filter(([c]) => c.startsWith('slide.new='))
+    // cada nota va después de su `slide.new` y antes del siguiente
+    expect(notes[0][1]).toBeGreaterThan(news[0][1])
+    expect(notes[0][1]).toBeLessThan(news[1][1])
+    expect(notes[1][1]).toBeGreaterThan(news[2][1])
+  })
+})

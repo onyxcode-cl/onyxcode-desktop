@@ -446,3 +446,18 @@ describe('diapositivas libres con el generador de respaldo', () => {
     expect(out.slides[1]).toMatchObject({ title: 'Grande', bullets: ['Chico'], layout: 'bullets' })
   })
 })
+
+describe('189: notas del orador en el respaldo (pptxgenjs)', () => {
+  it('el texto queda en la nota de su diapositiva y solo ahí', async () => {
+    const buf = await renderPptx({
+      slides: [
+        { title: 'Uno', bullets: ['a'], speaker_notes: 'Notas con ñ' },
+        { title: 'Dos', bullets: ['b'] }
+      ]
+    } as never)
+    const zip = await JSZip.loadAsync(buf)
+    const notes = Object.keys(zip.files).filter((n) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(n))
+    const texts = await Promise.all(notes.map((n) => zip.file(n)!.async('string')))
+    expect(texts.filter((t) => t.includes('Notas con ñ'))).toHaveLength(1)
+  })
+})
