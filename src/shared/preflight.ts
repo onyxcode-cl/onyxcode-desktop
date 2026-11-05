@@ -131,6 +131,39 @@ export function canInstall(report: PreflightReport, unchecked: readonly Prefligh
   return unchecked.length > 0 && report.freeBytes !== null && diskEnough(report.freeBytes, requiredFreeBytes(report, unchecked))
 }
 
+/** Permisos de macOS: se activan a mano en Ajustes del Sistema; NUNCA entran en «Aceptar todo e instalar» y tienen su propio paso. */
+export const PERMS_IDS: readonly PreflightId[] = ['perms', 'files']
+
+/** Etapas de la preparación del primer uso: instalar lo instalable y, aparte (solo macOS), los permisos. */
+export type PreflightStage = 'install' | 'perms'
+
+/** ¿Hay algo del paso «Instalar»? Lo esencial que falta o cualquier pendiente que no sea un permiso (lo silencioso solo no cuenta). */
+export function installStageNeeded(report: PreflightReport): boolean {
+  if (report.skipped) return false
+  return blocking(report).length > 0 || optionalPending(report).some((c) => !PERMS_IDS.includes(c.id) && !QUIET_IDS.includes(c.id))
+}
+
+/** ¿Hay que ofrecer el paso de permisos? Solo en macOS (en Windows no hay componente `perms`) y mientras falte alguno. */
+export function permsStageNeeded(report: PreflightReport): boolean {
+  return !report.skipped && report.components.some((c) => c.id === 'perms' && !c.ok)
+}
+
+/** Total de pasos del primer uso: bienvenida, instalar, [permisos en macOS] y conectar la IA. */
+export function firstRunTotal(report: PreflightReport): number {
+  return report.components.some((c) => c.id === 'perms') ? 4 : 3
+}
+
+/** Todo lo instalable que falta, sin mirar casillas: lo que instala «Aceptar todo e instalar». */
+export function acceptAllPlan(report: PreflightReport): PreflightComponent[] {
+  return installable(report)
+}
+
+/** Filas de una etapa: «Instalar» sin permisos; «Permisos» solo los permisos (también el silencioso de archivos). */
+export function stageRows(report: PreflightReport, stage: PreflightStage, unchecked: readonly PreflightId[] = []): PreflightComponent[] {
+  if (stage === 'perms') return ordered(report).filter((c) => PERMS_IDS.includes(c.id))
+  return visibleRows(report, unchecked).filter((c) => !PERMS_IDS.includes(c.id))
+}
+
 /** Marca o desmarca un componente en la lista de desmarcados (los componentes nuevos nacen marcados). */
 export function toggleChecked(unchecked: readonly PreflightId[], id: PreflightId): PreflightId[] {
   return unchecked.includes(id) ? unchecked.filter((x) => x !== id) : [...unchecked, id]

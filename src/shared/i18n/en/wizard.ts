@@ -113,10 +113,24 @@ export const wizard = {
   'wizard.perms.help.copy': 'Copy commands',
   'wizard.perms.help.copied': 'Copied',
   'wizard.perms.help.restart': 'Restart {app}',
-  'preflight.firstRun.step': 'Step 2 of 3 · Get your computer ready',
   'preflight.laterHint':
     'Anything you leave for later can be installed or turned on from Settings › Diagnostics › “Install or turn on pieces”.',
   'settings.diag.components.open': 'Install or turn on pieces',
+  'preflight.step.install': 'Step {n} of {total} · Install what is needed',
+  'preflight.step.perms': 'Step {n} of {total} · macOS permissions',
+  'preflight.acceptAll': 'Accept all and install',
+  'preflight.acceptAll.subtitle': 'One click and {app} downloads and installs everything it needs. Or choose what to install.',
+  'preflight.acceptAll.size':
+    'About {size} will be downloaded in total, from GitHub and nodejs.org; it is verified as authentic and asks for no administrator password.',
+  'preflight.acceptAll.progress': '{done} of {total} ready',
+  'preflight.custom.show': 'Choose what to install',
+  'preflight.custom.hide': 'Back to the single button',
+  'preflight.state.click': 'Needs your click',
+  'preflight.perms.title': 'macOS permissions',
+  'preflight.perms.intro':
+    'Accessibility lets {app} move the mouse and type for you; Screen Recording lets it see what is on screen. Access to your files is optional. Each button opens the right panel in System Settings.',
+  'preflight.perms.note':
+    'macOS permissions are turned on by hand, when you need them. You can leave them for later: they are asked for when you use “Full control” or from Settings › Diagnostics.',
   'preflight.title': 'Getting {app} ready',
   'preflight.subtitle.blocking': 'Something essential is missing for {app} to work. You can fix it here.',
   'preflight.subtitle.optional':
@@ -213,6 +227,7 @@ export const wizard = {
   'wizard.example.title': 'Try an example',
   'wizard.example.body': 'See how it works with a sample task already written: “{sample}” You only have to send it.',
   'wizard.welcome.start': 'Get started',
-  'wizard.welcome.greetingNote': 'Three short steps: welcome, get your computer ready and connect your AI. You can start for free.',
+  'wizard.welcome.greetingNote':
+    'A few short steps: install what is needed, turn on permissions (Mac only) and connect your AI. You can start for free.',
   'wizard.auth.moreWays': 'Other ways to connect'
 } as const satisfies Messages<typeof es>

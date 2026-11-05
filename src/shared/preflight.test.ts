@@ -282,3 +282,34 @@ describe('«Acceso total al disco» (id files): opcional y silencioso (F8-B210)'
     expect(visibleRows(r).map((x) => x.id)).toContain('files')
   })
 })
+
+describe('recorrido de la primera vez: etapas', () => {
+  const comp = (id: string, ok: boolean, o: object = {}): never =>
+    ({ id, essential: id === 'engine' || id === 'storage', ok, installable: ['craft', 'runtimes', 'sandbox'].includes(id), ...o }) as never
+  const rep = (components: unknown[]): never => ({ at: 1, platform: 'darwin', appVersion: '1', freeBytes: 50e9, components }) as never
+
+  it('Aceptar todo instala todo lo instalable y nunca los permisos', async () => {
+    const m = await import('./preflight')
+    const r = rep([
+      comp('engine', true),
+      comp('craft', false, { sizeBytes: 205e6 }),
+      comp('runtimes', false, { sizeBytes: 67e6 }),
+      comp('perms', false),
+      comp('files', false)
+    ])
+    expect(m.acceptAllPlan(r).map((c) => c.id)).toEqual(['craft', 'runtimes'])
+    expect(m.stageRows(r, 'install').map((c) => c.id)).not.toContain('perms')
+    expect(m.stageRows(r, 'perms').map((c) => c.id)).toEqual(['perms', 'files'])
+  })
+  it('etapas: instalar si falta algo no-permiso; permisos solo en macOS y mientras falten; total 4 en Mac y 3 en Windows', async () => {
+    const m = await import('./preflight')
+    const mac = rep([comp('engine', true), comp('craft', true), comp('perms', false)])
+    expect(m.installStageNeeded(mac)).toBe(false)
+    expect(m.permsStageNeeded(mac)).toBe(true)
+    expect(m.firstRunTotal(mac)).toBe(4)
+    const win = rep([comp('engine', true), comp('sandbox', false, { sizeBytes: 2e9 })])
+    expect(m.installStageNeeded(win)).toBe(true)
+    expect(m.permsStageNeeded(win)).toBe(false)
+    expect(m.firstRunTotal(win)).toBe(3)
+  })
+})

@@ -14,12 +14,15 @@ import {
   installable,
   optionalPending,
   rowState,
+  stageRows,
   visibleRows,
+  type PreflightStage,
   type PreflightComponent,
   type PreflightId,
   type PreflightReport,
   type RuntimeMap
 } from '@shared/preflight'
+import { PERMS_IDS } from '@shared/preflight'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { call } from '../../lib/api'
@@ -46,8 +49,17 @@ export interface PreflightScreenProps {
   onOpenFullDisk?: () => void
   /** Casillas desmarcadas (por defecto todo lo opcional va marcado). */
   unchecked: readonly PreflightId[]
-  /** Primer uso: muestra «Paso 2 de 3» y recuerda dónde están las piezas que se dejen para más tarde. */
-  firstRun?: boolean
+  /** Primer uso: «Paso 2 de 4 · …» sobre el título. */
+  stepLabel?: string
+  /** Etapa del recorrido (instalar / permisos). Sin ella, la pantalla de siempre con todo junto (revisión de arranque). */
+  stage?: PreflightStage
+  /** «Aceptar todo e instalar»: instala todo lo instalable sin mirar casillas (nunca los permisos). */
+  onAcceptAll?: () => void
+  /** Casillas visibles («Elegir qué instalar»). */
+  custom?: boolean
+  onCustom?: () => void
+  /** Avance general de «Aceptar todo» (piezas terminadas de las que se instalan y % de la actual). */
+  progress?: { total: number; done: number; pct: number | null }
   onToggle: (id: PreflightId) => void
   /** Sin ids instala lo marcado; con ids (reintento de una fila) solo esos. */
   onInstall: (ids?: PreflightId[]) => void
@@ -61,21 +73,30 @@ export interface PreflightScreenProps {
 export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const t = useT()
   const { report, runtime } = p
-  const rows = visibleRows(report, p.unchecked)
+  const stage = p.stage
+  // Etapa «Instalar» con «Aceptar todo»: sin personalizar cuenta todo lo instalable; con «Elegir qué instalar», lo marcado.
+  const effUnchecked = stage === 'install' && !p.custom ? [] : p.unchecked
+  const showPicks = !stage || p.custom === true
+  const rows = stage ? stageRows(report, stage, effUnchecked) : visibleRows(report, p.unchecked)
   const block = blocking(report)
-  const optional = optionalPending(report)
+  const optional = optionalPending(report).filter((c) =>
+    stage === 'perms' ? PERMS_IDS.includes(c.id) : stage === 'install' ? !PERMS_IDS.includes(c.id) : true
+  )
   const choices = installable(report).map((c) => c.id)
-  const plan = installPlan(report, p.unchecked)
-  const bytes = downloadBytes(report, p.unchecked)
+  const plan = installPlan(report, effUnchecked)
+  const bytes = downloadBytes(report, effUnchecked)
   const anyFailed = Object.values(runtime).some((r) => r?.state === 'failed')
   const location = report.components.find((c) => c.id === 'location' && !c.ok)?.reason
   const perms = report.components.find((c) => c.id === 'perms')
-  const allDone = block.length === 0 && optional.length === 0
+  const allDone = block.length === 0 && (stage === 'install' ? choices.length === 0 : optional.length === 0)
+  const guided = stage === 'install' && p.onAcceptAll !== undefined
+  const permsPending = stage === 'perms' && report.components.some((c) => c.id === 'perms' && !c.ok)
   const size = sizeParts(bytes)
 
   const stateText = (c: PreflightComponent): string => {
     const st = rowState(c, runtime)
     const pct = runtime[c.id]?.pct
+    if (st === 'pending' && PERMS_IDS.includes(c.id)) return t('preflight.state.click')
     return st === 'downloading' && pct !== undefined ? t('preflight.progress', { pct }) : t(STATE_LABELS[st])
   }
 
@@ -98,22 +119,26 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         className="my-auto flex w-full max-w-lg flex-col items-center text-center"
       >
         <LogoMark size={64} variant="tile" animated={false} />
-        {p.firstRun && (
+        {p.stepLabel && (
           <p className="mt-4 text-meta font-medium text-muted" data-testid="preflight-step">
-            {t('preflight.firstRun.step')}
+            {p.stepLabel}
           </p>
         )}
         <h1
           id="preflight-title"
           tabIndex={-1}
-          className={`${p.firstRun ? 'mt-1' : 'mt-5'} font-display text-[26px] leading-8 font-semibold tracking-[-0.02em] outline-none`}
+          className={`${p.stepLabel ? 'mt-1' : 'mt-5'} font-display text-[26px] leading-8 font-semibold tracking-[-0.02em] outline-none`}
         >
-          {t('preflight.title', { app: DISPLAY_NAME })}
+          {stage === 'perms' ? t('preflight.perms.title') : t('preflight.title', { app: DISPLAY_NAME })}
         </h1>
         <p className="mt-2 max-w-md text-[14px] leading-5 text-muted">
-          {block.length > 0
-            ? t('preflight.subtitle.blocking', { app: DISPLAY_NAME })
-            : t('preflight.subtitle.optional', { app: DISPLAY_NAME })}
+          {stage === 'perms'
+            ? t('preflight.perms.intro', { app: DISPLAY_NAME })
+            : block.length > 0
+              ? t('preflight.subtitle.blocking', { app: DISPLAY_NAME })
+              : guided
+                ? t('preflight.acceptAll.subtitle', { app: DISPLAY_NAME })
+                : t('preflight.subtitle.optional', { app: DISPLAY_NAME })}
         </p>
 
         <ul className="mt-6 w-full space-y-2 text-left" aria-live="polite">
@@ -139,7 +164,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                   )}
                 </span>
                 <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
-                  {choices.includes(c.id) ? (
+                  {showPicks && choices.includes(c.id) ? (
                     <ComponentPick
                       id={c.id}
                       label={t(LABELS[c.id])}
@@ -203,14 +228,41 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         {perms && !perms.ok && perms.reason === 'restart' && <ScreenRestartNotice />}
         {perms && !perms.ok && p.permsStalled && <PermsHelp />}
 
-        {choices.length > 0 && !p.installing && (
+        {guided && p.installing && p.progress && p.progress.total > 0 && (
+          <div className="mt-4 w-full" data-testid="preflight-progress">
+            <div
+              role="progressbar"
+              aria-label={t('preflight.acceptAll.progress', { done: p.progress.done, total: p.progress.total })}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(((p.progress.done + (p.progress.pct ?? 0) / 100) / p.progress.total) * 100)}
+              className="h-1.5 w-full overflow-hidden rounded-full bg-active"
+            >
+              <div
+                className="h-full rounded-full bg-accent transition-[width]"
+                style={{ width: `${Math.round(((p.progress.done + (p.progress.pct ?? 0) / 100) / p.progress.total) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-1 text-[12px] text-muted">
+              {t('preflight.acceptAll.progress', { done: p.progress.done, total: p.progress.total })}
+            </p>
+          </div>
+        )}
+        {stage !== 'perms' && choices.length > 0 && !p.installing && (
           <p className="mt-4 text-[13px] text-muted" data-testid="preflight-size">
-            {plan.length > 0 ? t('preflight.size', { size: t(size.key, { n: size.n }) }) : t('preflight.size.none')}
+            {plan.length > 0
+              ? t(guided && !p.custom ? 'preflight.acceptAll.size' : 'preflight.size', { size: t(size.key, { n: size.n }) })
+              : t('preflight.size.none')}
+          </p>
+        )}
+        {stage === 'perms' && (
+          <p className="mt-4 text-[12px] text-subtle" data-testid="preflight-perms-note">
+            {t('preflight.perms.note')}
           </p>
         )}
         {block.length > 0 && <p className="mt-2 text-[12px] text-subtle">{t('preflight.cannotSkip', { app: DISPLAY_NAME })}</p>}
 
-        {optional.length > 0 && canContinue(report, runtime) && (
+        {stage !== 'perms' && optional.length > 0 && canContinue(report, runtime) && (
           <p className="mt-2 text-[12px] text-subtle" data-testid="preflight-later-hint">
             {t('preflight.laterHint')}
           </p>
@@ -220,8 +272,8 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
           <Button variant="ghost" onClick={p.onRecheck} disabled={p.installing}>
             <RefreshCw size={14} /> {t('preflight.recheck')}
           </Button>
-          <div className="flex items-center gap-2">
-            {optional.length > 0 && canContinue(report, runtime) && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {(stage === 'perms' ? permsPending : optional.length > 0) && canContinue(report, runtime) && (
               <Button variant="secondary" onClick={p.onContinue}>
                 {t('preflight.continueAnyway')}
               </Button>
@@ -231,7 +283,12 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                 {t('preflight.continue')}
               </Button>
             )}
-            {choices.length > 0 && (
+            {guided && choices.length > 0 && !p.custom && (
+              <Button variant="primary" size="lg" onClick={p.onAcceptAll} disabled={p.installing} loading={p.installing}>
+                {p.installing ? t('preflight.installing') : anyFailed ? t('preflight.retry') : t('preflight.acceptAll')}
+              </Button>
+            )}
+            {stage !== 'perms' && choices.length > 0 && (!guided || p.custom) && (
               <Button
                 variant="primary"
                 onClick={() => p.onInstall()}
@@ -242,6 +299,17 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
               </Button>
             )}
           </div>
+          {guided && choices.length > 0 && (
+            <Button
+              variant="link"
+              className="w-full justify-center"
+              onClick={p.onCustom}
+              disabled={p.installing}
+              aria-expanded={p.custom === true}
+            >
+              {p.custom ? t('preflight.custom.hide') : t('preflight.custom.show')}
+            </Button>
+          )}
         </div>
       </section>
     </div>

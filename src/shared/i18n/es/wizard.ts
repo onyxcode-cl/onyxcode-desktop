@@ -110,9 +110,23 @@ export const wizard = {
   'wizard.perms.help.copy': 'Copiar comandos',
   'wizard.perms.help.copied': 'Copiados',
   'wizard.perms.help.restart': 'Reiniciar {app}',
-  'preflight.firstRun.step': 'Paso 2 de 3 · Preparar tu equipo',
   'preflight.laterHint': 'Lo que dejes para más tarde lo instalas o activas desde Ajustes › Diagnóstico › «Instalar o activar piezas».',
   'settings.diag.components.open': 'Instalar o activar piezas',
+  'preflight.step.install': 'Paso {n} de {total} · Instalar lo necesario',
+  'preflight.step.perms': 'Paso {n} de {total} · Permisos de macOS',
+  'preflight.acceptAll': 'Aceptar todo e instalar',
+  'preflight.acceptAll.subtitle': 'Un clic y {app} descarga e instala todo lo que necesita. Si prefieres, elige qué instalar.',
+  'preflight.acceptAll.size':
+    'Se descargarán unos {size} en total, de GitHub y nodejs.org; se comprueba que sean auténticos y no pide contraseña de administrador.',
+  'preflight.acceptAll.progress': 'Listas {done} de {total}',
+  'preflight.custom.show': 'Elegir qué instalar',
+  'preflight.custom.hide': 'Volver al botón único',
+  'preflight.state.click': 'Falta tu clic',
+  'preflight.perms.title': 'Permisos de macOS',
+  'preflight.perms.intro':
+    'Accesibilidad deja que {app} mueva el ratón y escriba por ti; Grabación de pantalla, que vea lo que hay en pantalla. Acceso a tus archivos es opcional. Cada botón abre el panel correcto de Ajustes del Sistema.',
+  'preflight.perms.note':
+    'Los permisos de macOS se activan a mano, cuando los necesites. Puedes dejarlos para más tarde: se piden al usar «Control total» o desde Ajustes › Diagnóstico.',
   'preflight.title': 'Preparando {app}',
   'preflight.subtitle.blocking': 'Falta algo imprescindible para que {app} funcione. Aquí puedes arreglarlo.',
   'preflight.subtitle.optional':
@@ -208,6 +222,7 @@ export const wizard = {
   'wizard.example.title': 'Probar con un ejemplo',
   'wizard.example.body': 'Mira cómo funciona con una tarea de ejemplo ya escrita: «{sample}» Solo tendrás que enviarla.',
   'wizard.welcome.start': 'Empezar',
-  'wizard.welcome.greetingNote': 'Son 3 pasos cortos: la bienvenida, preparar tu equipo y conectar tu IA. Puedes empezar gratis.',
+  'wizard.welcome.greetingNote':
+    'Son unos pasos cortos: instalar lo necesario, activar los permisos (solo en Mac) y conectar tu IA. Puedes empezar gratis.',
   'wizard.auth.moreWays': 'Otras formas de conectar'
 } as const

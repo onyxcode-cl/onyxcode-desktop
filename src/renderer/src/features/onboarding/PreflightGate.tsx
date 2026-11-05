@@ -13,12 +13,18 @@ import {
   shouldShow,
   toggleChecked,
   type PreflightId,
+  type PreflightStage,
+  acceptAllPlan,
+  firstRunTotal,
+  installStageNeeded,
+  permsStageNeeded,
   type PreflightReport,
   type RuntimeMap,
   UNCHECKED_BY_DEFAULT
 } from '@shared/preflight'
 import { call } from '../../lib/api'
 import { useSettings } from '../../stores/settings'
+import { useT } from '../../lib/i18n'
 import { nativeCode } from '../code/impl/client'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { PreflightScreen } from './PreflightScreen'
@@ -56,14 +62,22 @@ async function fetchReport(): Promise<PreflightReport | null> {
 type Phase = 'checking' | 'show' | 'clear'
 
 export function PreflightGate({ children }: { children?: React.ReactNode }): React.JSX.Element {
+  const t = useT()
   const [phase, setPhase] = useState<Phase>('checking')
   const [report, setReport] = useState<PreflightReport | null>(null)
   const [runtime, setRuntime] = useState<RuntimeMap>({})
   const [installing, setInstalling] = useState(false)
   /** Casillas desmarcadas: lo recomendado nace marcado y lo opcional (`UNCHECKED_BY_DEFAULT`) desmarcado; la persona elige qué. */
   const [unchecked, setUnchecked] = useState<PreflightId[]>([...UNCHECKED_BY_DEFAULT])
-  /** Primer uso (aún sin asistente terminado): la pantalla es el paso 2 de 3 del recorrido. */
+  /** Primer uso (aún sin asistente terminado): la pantalla es un paso del recorrido (instalar y, en Mac, permisos). */
   const firstRun = useSettings((s) => !s.settings.onboarded)
+  /** Etapa del recorrido guiado: instalar lo instalable («Aceptar todo e instalar») y, aparte, los permisos de macOS. */
+  const [stage, setStage] = useState<PreflightStage>('install')
+  /** «Elegir qué instalar»: muestra las casillas en lugar del botón único. */
+  const [custom, setCustom] = useState(false)
+  /** Piezas de la tanda en curso y las ya terminadas (barra de avance general). */
+  const [batch, setBatch] = useState<PreflightId[]>([])
+  const [done, setDone] = useState<PreflightId[]>([])
   const [details, setDetails] = useState<Partial<Record<PreflightId, string>>>({})
   const [copied, setCopied] = useState<PreflightId | null>(null)
   const [permsWaiting, setPermsWaiting] = useState(false)
@@ -87,7 +101,13 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
     if (!alive.current) return
     if (!r) return setPhase('clear')
     setReport(r)
-    setPhase(forced.current || shouldShow(r, readDismissed()) ? 'show' : 'clear')
+    const show = forced.current || shouldShow(r, readDismissed())
+    // Recorrido guiado: al terminar «Instalar» se pasa solo a «Permisos» (si hay) y, sin nada que hacer en una etapa, se salta.
+    setStage((cur) => {
+      if (cur === 'install' && !installStageNeeded(r) && permsStageNeeded(r)) return 'perms'
+      return cur
+    })
+    setPhase(show ? 'show' : 'clear')
   }, [])
 
   useEffect(() => {
@@ -100,6 +120,8 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   useEffect(() => {
     const onOpen = (): void => {
       forced.current = true
+      setStage('install')
+      setCustom(false)
       void check()
     }
     window.addEventListener(PREFLIGHT_OPEN_EVENT, onOpen)
@@ -123,6 +145,8 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       if (ids.length === 0) return
       setInstalling(true)
       setDetails({})
+      setBatch(ids)
+      setDone([])
       const api: InstallApi = {
         craftInstall: () => cw('craft:install').catch(() => undefined),
         craftProgress: async () => {
@@ -142,14 +166,16 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
         alive: () => alive.current
       }
       await runInstall(ids, api, {
-        onRuntime: (id, rt) =>
-          alive.current &&
+        onRuntime: (id, rt) => {
+          if (!alive.current) return
           setRuntime((prev) => {
             const next = { ...prev }
             if (rt) next[id] = rt
             else delete next[id]
             return next
-          }),
+          })
+          if (!rt) setDone((d) => (d.includes(id) ? d : [...d, id]))
+        },
         onDetail: (id, d) => alive.current && setDetails((prev) => ({ ...prev, [id]: d }))
       })
       if (!alive.current) return
@@ -212,12 +238,29 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
     [details]
   )
 
+  const guided = firstRun || forced.current
+
+  /** «Aceptar todo e instalar»: todo lo instalable, sin mirar casillas y sin tocar los permisos (esos tienen su paso). */
+  const acceptAll = useCallback((): void => {
+    if (!report) return
+    void install(acceptAllPlan(report).map((c) => c.id))
+  }, [report, install])
+
   const proceed = useCallback((): void => {
+    // De «Instalar» a «Permisos» (solo macOS y si falta alguno); de «Permisos» —o sin permisos— se sale.
+    if (guided && stage === 'install' && report && permsStageNeeded(report)) {
+      setStage('perms')
+      return
+    }
     forced.current = false
     if (report) saveDismissed(report)
     setPhase('clear')
-  }, [report])
+  }, [report, guided, stage])
 
+  const total = report ? firstRunTotal(report) : 3
+  const stepLabel = firstRun
+    ? t(stage === 'perms' ? 'preflight.step.perms' : 'preflight.step.install', { n: stage === 'perms' ? 3 : 2, total })
+    : undefined
   if (phase === 'clear') return <>{children}</>
   if (phase === 'checking' || !report)
     return <div className="fixed inset-0 z-[60] bg-bg" aria-busy="true" data-testid="preflight-checking" />
@@ -231,7 +274,16 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       permsStalled={permsStalled}
       permsWaiting={permsWaiting}
       unchecked={unchecked}
-      firstRun={firstRun}
+      stage={guided ? stage : undefined}
+      stepLabel={guided ? stepLabel : undefined}
+      onAcceptAll={guided ? acceptAll : undefined}
+      custom={custom}
+      onCustom={() => setCustom((c) => !c)}
+      progress={{
+        total: batch.length,
+        done: done.length,
+        pct: Object.values(runtime).find((r) => r?.state === 'downloading')?.pct ?? null
+      }}
       onToggle={(id) => setUnchecked((u) => toggleChecked(u, id))}
       onInstall={(ids) => void install(ids)}
       onCopy={copy}

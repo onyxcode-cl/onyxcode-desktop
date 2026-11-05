@@ -43,8 +43,9 @@ vi.mock('../tasks/impl/bridge', () => ({
   })
 }))
 vi.mock('./Wizard', () => ({ OnboardingGate: () => createElement('div', { 'data-testid': 'wizard-step' }, 'Conecta tu IA') }))
+const runtimesInstall = vi.fn(async () => ({ ok: true }))
 vi.mock('../settings/impl/runtimes-view', () => ({
-  runtimesApi: { install: vi.fn(), status: vi.fn() },
+  runtimesApi: { install: (...a: unknown[]) => runtimesInstall(...(a as [])), status: vi.fn(async () => ({})) },
   runtimesPct: () => null
 }))
 vi.mock('../code/impl/client', () => ({ nativeCode: () => null }))
@@ -76,6 +77,7 @@ const mount = async (onboarded: boolean, os: 'darwin' | 'win32' = 'darwin'): Pro
 beforeEach(() => {
   vi.unstubAllGlobals()
   calls.length = 0
+  runtimesInstall.mockClear()
   localStorage.clear?.()
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -86,7 +88,15 @@ afterEach(() => {
   host.remove()
 })
 
-describe('primera vez: orden de los tres pasos', () => {
+describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA', () => {
+  const start = async (onboarded = false, os: 'darwin' | 'win32' = 'darwin'): Promise<void> => {
+    await mount(onboarded, os)
+    if (!onboarded) {
+      await act(async () => btn('Empezar')!.click())
+      await flush()
+    }
+  }
+
   it('1) bienvenida primero: no revisa nada ni muestra la lista ni el asistente', async () => {
     await mount(false)
     expect(q('welcome')).not.toBeNull()
@@ -95,30 +105,53 @@ describe('primera vez: orden de los tres pasos', () => {
     expect(calls).not.toContain('preflight:run')
   })
 
-  it('2) «Empezar» → la lista «Preparando» con «Paso 2 de 3», sin bienvenida ni asistente a la vez', async () => {
-    await mount(false)
-    await act(async () => btn('Empezar')!.click())
-    await flush()
-    expect(q('preflight-screen')).not.toBeNull()
-    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 3')
+  it('2) «Empezar» → «Instalar lo necesario» (paso 2 de 4 en Mac) con el botón grande y el total de descarga ANTES del clic', async () => {
+    await start()
+    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 4')
+    expect(btn('Aceptar todo e instalar')).toBeDefined()
+    expect(q('preflight-size')?.textContent).toMatch(/272 MB.*GitHub.*nodejs\.org/)
     expect(q('welcome')).toBeNull()
     expect(q('wizard-step')).toBeNull()
   })
 
-  it('casillas: lo recomendado (ArtCraft) marcado y lo opcional (Node.js y uv) desmarcado; el botón dice «Instalar lo marcado»', async () => {
-    await mount(false)
-    await act(async () => btn('Empezar')!.click())
-    await flush()
+  it('las casillas quedan debajo de «Elegir qué instalar»: recomendado marcado, opcional desmarcado, y «Instalar lo marcado»', async () => {
+    await start()
+    expect(q('pick-craft')).toBeNull()
+    await act(async () => btn('Elegir qué instalar')!.click())
     expect((q('pick-craft') as HTMLInputElement).checked).toBe(true)
     expect((q('pick-runtimes') as HTMLInputElement).checked).toBe(false)
     expect(btn('Instalar lo marcado')).toBeDefined()
+    expect(btn('Aceptar todo e instalar')).toBeUndefined()
     expect(q('preflight-size')?.textContent).toContain('205 MB')
   })
 
-  it('3) «Más tarde» deja pasar al asistente de conectar la IA y lo recuerda', async () => {
-    await mount(false)
-    await act(async () => btn('Empezar')!.click())
+  it('el paso de instalar NO lleva permisos; esos van aparte', async () => {
+    await start()
+    expect(q('preflight-row-perms')).toBeNull()
+    expect(q('preflight-row-files')).toBeNull()
+    expect(q('preflight-row-craft')).not.toBeNull()
+  })
+
+  it('«Aceptar todo e instalar» instala todo lo instalable (también Node.js y uv, aunque su casilla nazca desmarcada) y nunca pide permisos', async () => {
+    await start()
+    await act(async () => btn('Aceptar todo e instalar')!.click())
     await flush()
+    await flush()
+    expect(calls).toContain('craft:install')
+    expect(runtimesInstall).toHaveBeenCalledTimes(1)
+    expect(calls).not.toContain('computer:requestPermissions')
+  })
+
+  it('3) «Más tarde» en Mac pasa al paso de permisos (paso 3 de 4), con su aviso de «se activan a mano», y de ahí al asistente', async () => {
+    await start()
+    await act(async () => btn('Más tarde')!.click())
+    await flush()
+    expect(q('preflight-step')?.textContent).toContain('Paso 3 de 4')
+    expect(q('preflight-row-perms')).not.toBeNull()
+    expect(q('preflight-row-craft')).toBeNull()
+    expect(q('preflight-perms-note')?.textContent).toContain('a mano')
+    expect(q('preflight-row-perms')?.textContent).toContain('Falta tu clic')
+    expect(q('wizard-step')).toBeNull()
     await act(async () => btn('Más tarde')!.click())
     await flush()
     expect(q('preflight-screen')).toBeNull()
@@ -126,21 +159,16 @@ describe('primera vez: orden de los tres pasos', () => {
     expect(localStorage.getItem('lazunox.preflight.dismissed')).toContain('craft')
   })
 
-  it('Mac: la lista trae la fila de permisos de macOS', async () => {
-    await mount(false, 'darwin')
-    await act(async () => btn('Empezar')!.click())
-    await flush()
-    expect(q('preflight-row-perms')).not.toBeNull()
-  })
-
-  it('Windows: sin fila de permisos de macOS ni de ubicación; sí el entorno aislado, marcado', async () => {
-    await mount(false, 'win32')
-    await act(async () => btn('Empezar')!.click())
-    await flush()
+  it('Windows: «Paso 2 de 3», sin paso ni fila de permisos; «Más tarde» va directo al asistente; el entorno aislado entra en «Aceptar todo»', async () => {
+    await start(false, 'win32')
+    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 3')
     expect(q('preflight-row-perms')).toBeNull()
     expect(q('preflight-row-location')).toBeNull()
     expect(q('preflight-row-sandbox')).not.toBeNull()
-    expect((q('pick-sandbox') as HTMLInputElement).checked).toBe(true)
+    await act(async () => btn('Más tarde')!.click())
+    await flush()
+    expect(q('preflight-step')).toBeNull()
+    expect(q('wizard-step')).not.toBeNull()
   })
 })
 
@@ -152,13 +180,17 @@ describe('quien ya terminó el asistente', () => {
     expect(q('preflight-screen')).toBeNull()
   })
 
-  it('Ajustes › «Instalar o activar piezas» vuelve a abrir la lista aunque se haya dejado para más tarde, sin «Paso 2 de 3»', async () => {
+  it('Ajustes › «Instalar o activar piezas» vuelve a abrir la lista aunque se haya dejado para más tarde, con el mismo botón, sin numerar pasos', async () => {
     localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.9', ids: ['craft', 'runtimes', 'perms'] }))
     await mount(true)
     await act(async () => openPreflight())
     await flush()
     expect(q('preflight-screen')).not.toBeNull()
     expect(q('preflight-step')).toBeNull()
+    // Mismo recorrido: primero instalar, luego (en Mac) permisos; cada «Más tarde» avanza y el último cierra.
+    await act(async () => btn('Más tarde')!.click())
+    await flush()
+    expect(q('preflight-row-perms')).not.toBeNull()
     await act(async () => btn('Más tarde')!.click())
     await flush()
     expect(q('preflight-screen')).toBeNull()

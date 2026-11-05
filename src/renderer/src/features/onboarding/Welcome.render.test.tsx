@@ -42,7 +42,7 @@ describe.each(['darwin', 'win32'])('Welcome (%s): solo saluda', (platform) => {
   it('título, frase de qué viene y «Empezar» habilitado desde el primer momento', async () => {
     await mount(platform)
     expect(host.querySelector('h1')?.textContent).toContain('Bienvenido a')
-    expect(host.textContent).toContain('3 pasos cortos')
+    expect(host.textContent).toContain('pasos cortos')
     const start = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Empezar') as HTMLButtonElement
     expect(start.disabled).toBe(false)
   })
@@ -51,7 +51,7 @@ describe.each(['darwin', 'win32'])('Welcome (%s): solo saluda', (platform) => {
     expect(bridge).not.toHaveBeenCalled()
     expect(host.querySelector('input[type="checkbox"]')).toBeNull()
     expect(host.querySelector('ul')).toBeNull()
-    expect(host.textContent).not.toMatch(/ArtCraft|Node\.js|permisos/i)
+    expect(host.textContent).not.toMatch(/ArtCraft|Node\.js/i)
   })
   it('«Empezar» pasa al siguiente paso', async () => {
     const onDone = await mount(platform)
