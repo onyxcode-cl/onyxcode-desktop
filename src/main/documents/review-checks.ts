@@ -64,7 +64,16 @@ export interface PptxTextShape {
   /** Anclaje vertical del texto en su caja: `t`, `ctr` o `b` (`null` = arriba). */
   anchor: string | null
   fill: string | null
+  /** Posición de la forma en el XML (orden de apilado: más grande = más arriba). */
+  pos?: number
   runs: PptxRun[]
+}
+
+/** Forma con relleno sólido (panel, tarjeta, franja) que puede quedar detrás de un texto. */
+export interface PptxPanel {
+  box: Box
+  fill: string
+  pos: number
 }
 
 const attr = (s: string, name: string): string | undefined => new RegExp(`\\s${name}="([^"]*)"`).exec(s)?.[1]
@@ -85,7 +94,8 @@ function solidHex(xml: string): string | null {
 /** Formas con texto de una diapositiva, con su caja, relleno propio y tramos de letra (tamaño, negrita, color explícito). */
 export function pptxTextShapes(slideXml: string): PptxTextShape[] {
   const out: PptxTextShape[] = []
-  for (const sp of slideXml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? []) {
+  for (const m of slideXml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)) {
+    const sp = m[0]
     const runs: PptxRun[] = []
     for (const r of sp.match(/<a:r>[\s\S]*?<\/a:r>/g) ?? []) {
       const text = unesc([...r.matchAll(/<a:t(?:\s[^>]*)?>([^<]*)<\/a:t>/g)].map((m) => m[1]).join(''))
@@ -111,8 +121,23 @@ export function pptxTextShapes(slideXml: string): PptxTextShape[] {
       anchor: /<a:bodyPr\b[^>]*?\sanchor="([^"]+)"/.exec(sp)?.[1] ?? null,
       // Relleno propio de la forma: lo que va en spPr ANTES del contorno (`<a:ln>`).
       fill: solidHex(spPr.split('<a:ln')[0]),
+      pos: m.index ?? 0,
       runs
     })
+  }
+  return out
+}
+
+/** Formas con relleno sólido y caja conocida (paneles, tarjetas, franjas), en orden de apilado. Sirven de fondo real de los textos que quedan encima. */
+export function pptxPanels(slideXml: string): PptxPanel[] {
+  const out: PptxPanel[] = []
+  for (const m of slideXml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)) {
+    const spPr = /<p:spPr>[\s\S]*?<\/p:spPr>/.exec(m[0])?.[0] ?? ''
+    const geom = /<a:off x="(-?\d+)" y="(-?\d+)"\/>\s*<a:ext cx="(\d+)" cy="(\d+)"\/>/.exec(spPr)
+    const fill = solidHex(spPr.split('<a:ln')[0])
+    if (!geom || !fill) continue
+    const [x, y, w, h] = geom.slice(1).map(Number)
+    out.push({ box: { x, y, w, h }, fill, pos: m.index ?? 0 })
   }
   return out
 }
@@ -130,10 +155,26 @@ export interface ContrastProblem {
 }
 
 /** Tramos de texto con color explícito cuyo contraste contra su fondo conocido no llega al mínimo WCAG. */
-export function pptxContrastProblems(shapes: PptxTextShape[], slideBg: string | null, slideLabel: string): ContrastProblem[] {
+export function pptxContrastProblems(
+  shapes: PptxTextShape[],
+  slideBg: string | null,
+  slideLabel: string,
+  panels: PptxPanel[] = []
+): ContrastProblem[] {
   const out: ContrastProblem[] = []
   for (const s of shapes) {
-    const bg = s.fill ?? slideBg
+    // Fondo real: el relleno propio; si no, el panel más alto en el apilado que contiene el centro del texto (p. ej. texto claro
+    // sobre una tarjeta oscura); si no, el fondo de la diapositiva.
+    let behind: string | null = null
+    if (!s.fill && s.box) {
+      const cx = s.box.x + s.box.w / 2
+      const cy = s.box.y + s.box.h / 2
+      for (const p of panels) {
+        if (p.pos >= (s.pos ?? 0)) break
+        if (cx >= p.box.x && cx <= p.box.x + p.box.w && cy >= p.box.y && cy <= p.box.y + p.box.h) behind = p.fill
+      }
+    }
+    const bg = s.fill ?? behind ?? slideBg
     for (const r of s.runs) {
       if (!r.color) continue
       const ratio = contrastRatio(r.color, bg)
@@ -215,4 +256,24 @@ export function textNearEdge(
   const top = anchor === 't' && b.y < edge
   const bottom = anchor === 'b' && b.y + b.h > slideH - edge
   return left || right || top || bottom
+}
+
+/**
+ * Caja que ocupa el TEXTO (no la caja entera): se estima cuántas líneas ocupa con el ancho de la caja y el tamaño de letra, y se
+ * achica la altura hacia donde está anclado el texto (arriba, centro o abajo). Solo achica, nunca agranda; sin tamaño de letra
+ * conocido devuelve la caja tal cual. Sirve para no avisar «textos montados» cuando solo se tocan las cajas, no las letras.
+ */
+export function textExtentBox(shape: Pick<PptxTextShape, 'box' | 'anchor' | 'runs'>): Box | null {
+  const b = shape.box
+  if (!b) return null
+  const sizes = shape.runs.map((r) => r.sizePt).filter((n): n is number => n != null)
+  if (!sizes.length || b.w <= 0) return b
+  const size = Math.max(...sizes)
+  const chars = shape.runs.reduce((n, r) => n + r.text.length, 0)
+  const boxWidthPt = b.w / 12700
+  const lines = Math.max(1, Math.ceil((chars * size * 0.55) / boxWidthPt))
+  const h = Math.min(b.h, Math.round((lines * size * 1.2 + 7.2) * 12700))
+  const anchor = shape.anchor ?? 't'
+  const y = anchor === 'b' ? b.y + b.h - h : anchor === 'ctr' ? b.y + (b.h - h) / 2 : b.y
+  return { x: b.x, y, w: b.w, h }
 }

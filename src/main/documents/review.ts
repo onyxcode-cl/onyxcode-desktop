@@ -20,6 +20,8 @@ import {
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
+  pptxPanels,
+  textExtentBox,
   pptxTextShapes,
   templateLeftovers,
   textNearEdge,
@@ -251,8 +253,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
         tight.push(`${i + 1} («${ts.name}»)`)
     }
     const boxed = textShapes.filter((t) => t.box && !(t.placeholder && FOOTER_PH.has(t.placeholder)))
-    for (const [a, c] of overlappingPairs(boxed.map((t) => t.box!))) stacked.push(`${i + 1} («${boxed[a].name}» con «${boxed[c].name}»)`)
-    lowContrast.push(...pptxContrastProblems(textShapes, await slideBackground(zip, name, xml), `diapositiva ${i + 1}`))
+    for (const [a, c] of overlappingPairs(boxed.map((t) => textExtentBox(t)!))) stacked.push(`${i + 1} («${boxed[a].name}» con «${boxed[c].name}»)`)
+    lowContrast.push(...pptxContrastProblems(textShapes, await slideBackground(zip, name, xml), `diapositiva ${i + 1}`, pptxPanels(xml)))
     const hasTitle = sps.some((s) => /<p:ph[^>]*\stype="(title|ctrTitle)"/.test(s) && textOf(s).trim())
     if (!hasTitle) noTitle.push(String(i + 1))
     const shapes = [

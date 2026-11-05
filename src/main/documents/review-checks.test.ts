@@ -6,8 +6,10 @@ import {
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
+  pptxPanels,
   pptxTextShapes,
   templateLeftovers,
+  textExtentBox,
   textNearEdge
 } from './review-checks'
 
@@ -67,6 +69,37 @@ describe('PowerPoint: formas con texto', () => {
     expect(p.map((x) => x.where).join()).toContain('suave')
     expect(pptxContrastProblems(shapes, '0E2A2F', 'd')).toHaveLength(0) // claro sobre fondo oscuro: bien
     expect(pptxContrastProblems(shapes, null, 'd')).toHaveLength(0) // fondo desconocido: no se juzga
+  })
+  it('contraste: texto claro sobre un panel oscuro se juzga contra el panel, no contra el fondo claro de la lámina', () => {
+    const dark = '<a:solidFill><a:srgbClr val="24170F"/></a:solidFill>'
+    const xml =
+      sp('Panel', 0, 0, 5000, 5000, '', dark) +
+      sp('Sobre el panel', 500, 500, 2000, 800, run('14.000', 40, 'FBF6EE', true)) +
+      sp('Fuera del panel', 6000, 500, 2000, 800, run('claro', 40, 'FBF6EE', true))
+    const shapes = pptxTextShapes(xml)
+    const p = pptxContrastProblems(shapes, 'FBF6EE', 'diapositiva 4', pptxPanels(xml))
+    expect(p).toHaveLength(1) // solo el que queda fuera del panel
+    expect(p[0].where).toContain('claro')
+    // sin paneles (comportamiento anterior) los dos salían mal
+    expect(pptxContrastProblems(shapes, 'FBF6EE', 'd')).toHaveLength(2)
+  })
+  it('contraste: un panel que queda ENCIMA del texto en el apilado no cuenta como su fondo', () => {
+    const dark = '<a:solidFill><a:srgbClr val="24170F"/></a:solidFill>'
+    const xml = sp('Texto', 500, 500, 2000, 800, run('claro', 40, 'FBF6EE', true)) + sp('Panel', 0, 0, 5000, 5000, '', dark)
+    expect(pptxContrastProblems(pptxTextShapes(xml), 'FBF6EE', 'd', pptxPanels(xml))).toHaveLength(1)
+  })
+  it('textos montados: dos cajas que se tocan pero cuyo texto no se toca no se avisan; si el texto sí llega, sí', () => {
+    // Título de 30 pt en una línea dentro de una caja de 1,2 pulgadas, con una etiqueta que empieza a 1,05 pulgadas de su borde alto.
+    const title = pptxTextShapes(sp('Title 1', 731520, 914400, 10698480, 1097280, run('Del piloto en Santiago a 1.200 locales en 12 meses', 30)))[0]
+    const label = pptxTextShapes(sp('Etiqueta', 731520, 1874520, 3291840, 274320, run('MES 1–2', 12)))[0]
+    expect(overlappingPairs([title.box!, label.box!])).toHaveLength(1) // por cajas: aviso falso
+    expect(overlappingPairs([textExtentBox(title)!, textExtentBox(label)!])).toHaveLength(0) // por texto: bien
+    // Un título largo que sí ocupa 3 líneas llega hasta la etiqueta: se sigue avisando.
+    const long = pptxTextShapes(
+      sp('Title 1', 731520, 914400, 3000000, 1097280, run('Un título larguísimo que se parte en varias líneas y termina pisando lo de abajo del todo', 30))
+    )[0]
+    const under = pptxTextShapes(sp('Etiqueta', 731520, 1874520, 3000000, 274320, run('MES 1–2', 12)))[0]
+    expect(overlappingPairs([textExtentBox(long)!, textExtentBox(under)!])).toHaveLength(1)
   })
   it('texto grande exige 3 a 1, no 4,5 a 1', () => {
     const shapes = pptxTextShapes(sp('a', 0, 0, 1, 1, run('grande', 30, '888888')))
