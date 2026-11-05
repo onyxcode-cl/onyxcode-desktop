@@ -11,6 +11,7 @@
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
 import { protectSlide } from './pptx-guards'
+import type { ImageMap } from '../documents/image-files'
 import PptxGenJS from 'pptxgenjs'
 import type { PptxChartSpec, PptxColumnSpec, PptxLayout, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import { fitText, splitLabel, splitStatUnit, STYLES, THEMES, type Palette, type StyleParams } from './pptx-design'
@@ -30,6 +31,7 @@ const FOOTER_Y = 5.1
 function inferLayout(slide: PptxSlideSpec, index: number): PptxLayout {
   if (slide.layout) return slide.layout
   if (index === 0) return 'cover'
+  if (slide.image && index > 0) return 'image'
   if (slide.title && !slide.bullets?.length) return 'section'
   return 'bullets'
 }
@@ -318,6 +320,38 @@ function addBulletsSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette
         w: CONTENT_W,
         h: CONTENT_BOTTOM - top,
         fontSize: 16,
+        color: p.body,
+        fontFace: BODY_FONT,
+        valign: 'top',
+        margin: 0
+      }
+    )
+  }
+  addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
+}
+
+/** Diapositiva con una imagen de la carpeta de la tarea (ya validada y copiada) centrada en su caja y las viñetas al lado. Sin imagen: viñetas. */
+function addImageSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx, images?: ImageMap): void {
+  const img = spec.image ? images?.get(spec.image.path) : undefined
+  if (!img) return addBulletsSlide(slide, spec, p, s, ctx)
+  slide.background = { color: p.bg }
+  const top = addContentHeader(slide, spec, p, s)
+  const withText = !!spec.bullets?.length
+  const boxW = withText ? 5.7 : CONTENT_W
+  const boxH = CONTENT_BOTTOM - top
+  const k = Math.min(boxW / img.width, boxH / img.height)
+  const w = img.width * k
+  const h = img.height * k
+  slide.addImage({ path: img.file, x: MARGIN_X + (boxW - w) / 2, y: top + (boxH - h) / 2, w, h, altText: spec.image?.alt })
+  if (withText) {
+    slide.addText(
+      (spec.bullets ?? []).flatMap((text) => bulletRuns(text, p.ink, p.body)),
+      {
+        x: MARGIN_X + boxW + 0.3,
+        y: top,
+        w: CONTENT_W - boxW - 0.3,
+        h: boxH,
+        fontSize: 14,
         color: p.body,
         fontFace: BODY_FONT,
         valign: 'top',
@@ -682,7 +716,7 @@ export function degradeFreeSlides(data: PptxSpec): PptxSpec {
   }
 }
 
-export async function renderPptx(rawData: PptxSpec): Promise<Buffer> {
+export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<Buffer> {
   const data = degradeFreeSlides(rawData)
   const pres = new PptxGenJS()
   pres.defineLayout({ name: 'LAZUNOX', width: PAGE_W, height: PAGE_H })
@@ -705,6 +739,7 @@ export async function renderPptx(rawData: PptxSpec): Promise<Buffer> {
     else if (layout === 'steps') addStepsSlide(slide, spec, palette, style, ctx)
     else if (layout === 'two-col') addTwoColSlide(slide, spec, palette, style, ctx)
     else if (layout === 'cards') addCardsSlide(slide, spec, palette, style, ctx)
+    else if (layout === 'image') addImageSlide(slide, spec, palette, style, ctx, images)
     else if (layout === 'chart' && spec.chart) addChartSlide(slide, spec, palette, style, ctx)
     else if (layout === 'kpis' && spec.kpis && spec.kpis.length >= 2) addKpisSlide(slide, spec, palette, style, ctx)
     else addBulletsSlide(slide, spec, palette, style, ctx)

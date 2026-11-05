@@ -7,6 +7,7 @@ import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DocxSpec } from '@shared/chat-doc-spec'
+import type { ImageMap } from '../../documents/image-files'
 import { runCraft } from './craft-run'
 
 const ACCENT = '1F3864'
@@ -36,7 +37,7 @@ const looksNumeric = (s: string): boolean => NUM_RE.test(s) && /\d/.test(s)
  * Comandos de WordCraft (`id={json}` para `--cmd`), agrupados por bloque del documento (el encabezado/pie/título es el primer grupo).
  * Asume `DocxSpec` ya validado (`isDocxSpec`). La agrupación permite partir un documento grande en varias ejecuciones sin cortar un bloque.
  */
-export function chatDocxCommands(spec: DocxSpec): string[][] {
+export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] {
   const groups: string[][] = [[]]
   const lines = (): string[] => groups[groups.length - 1]
   const cmd = (command: string, params?: Record<string, unknown>): void => {
@@ -173,6 +174,25 @@ export function chatDocxCommands(spec: DocxSpec): string[][] {
         }
         break
       }
+      case 'image': {
+        // Solo con una copia ya validada (`images`, camino con carpeta de tarea); sin ella el bloque se omite: nunca se usa la ruta del modelo.
+        const img = images?.get(b.path)
+        if (!img) break
+        // Ancho en puntos (1 cm = 28,35 pt), 12 cm por defecto; WordCraft conserva la proporción. Nunca más ancho que la página útil (16 cm).
+        const width = Math.round(Math.min(b.width_cm ?? 12, 16) * 28.35 * 10) / 10
+        cmd('para.align', { value: 'center' })
+        cmd('insert.picture', { path: img.file, width, alt: b.alt ?? b.caption ?? '' })
+        // Tras insertar, la imagen queda SELECCIONADA: un `text.newParagraph` sin más la reemplaza y desaparece. Se lleva el cursor al final.
+        cmd('caret.docEnd')
+        cmd('text.newParagraph')
+        cmd('para.style', { style: 'Normal' })
+        if (b.caption) {
+          cmd('format.italic', { value: true })
+          par(b.caption, 'Normal', 'center')
+          cmd('format.italic', { value: false })
+        }
+        break
+      }
       case 'page_break':
         cmd('text.pageBreak')
         break
@@ -207,11 +227,11 @@ export function chunkGroups(groups: string[][], limit = CHUNK_BYTES): string[][]
  * Arma el .docx con WordCraft y devuelve sus bytes. Si los comandos no caben en una sola ejecución, se parte en tandas por bloque:
  * cada una abre el archivo anterior, escribe al final y lo guarda. Lanza si el programa falla (quien llama cae al camino de siempre).
  */
-export async function renderChatDocx(binary: string, spec: DocxSpec, timeoutMs = 60_000): Promise<Buffer> {
+export async function renderChatDocx(binary: string, spec: DocxSpec, timeoutMs = 60_000, images?: ImageMap): Promise<Buffer> {
   const dir = await mkdtemp(join(tmpdir(), 'lazunox-chatdoc-'))
   try {
     const out = join(dir, 'doc.docx')
-    const chunks = chunkGroups(chatDocxCommands(spec))
+    const chunks = chunkGroups(chatDocxCommands(spec, images))
     for (let i = 0; i < chunks.length; i++) {
       const args = ['run']
       if (i > 0) {

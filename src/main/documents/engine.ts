@@ -13,6 +13,7 @@ import { isPptxSpec, renderPptx, type PptxSpec } from '../extras/render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from '../extras/render-xlsx'
 import { isDocxSpec, type DocxSpec } from '@shared/chat-doc-spec'
 import { renderChatDocx } from '../office/craft/chat-word'
+import type { ImageMap } from './image-files'
 
 /** Fallo de generación con un motivo que la ventana puede explicar (el mensaje es un texto propio de la app, apto para mostrar). */
 export class ChatDocError extends Error {
@@ -31,6 +32,8 @@ export type ChatDocInput =
 export const DOC_EXT: Record<ChatDocInput['kind'], string> = { pdf: 'pdf', xlsx: 'xlsx', pptx: 'pptx', docx: 'docx' }
 
 export interface RenderOptions {
+  /** Imágenes ya leídas, validadas y copiadas (solo Tareas/Code, ver `documents/image-files.ts`). Sin ellas, las imágenes del spec se omiten. */
+  images?: ImageMap
   /** `false`: el PDF no descarga imágenes de internet (agentes aislados: la app no sale a la red en su nombre). Por defecto sí (Chat). */
   remoteImages?: boolean
 }
@@ -106,7 +109,7 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
     // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
     const word = craftBinary('wordcraft')
     if (!word) throw new ChatDocError('no-craft', 'El diseñador de documentos (WordCraft) no está instalado.')
-    return renderChatDocx(word, input.data)
+    return renderChatDocx(word, input.data, undefined, opts.images)
   }
   if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de PowerPoint inválidos.')
   await ensureCraft()
@@ -114,12 +117,12 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
   const craft = craftBinary('deckcraft')
   if (craft) {
     try {
-      return await renderChatDeck(craft, input.data)
+      return await renderChatDeck(craft, input.data, undefined, undefined, opts.images)
     } catch (e) {
       console.warn('[chat-docs] DeckCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
       recordCraftProblem('documento', e, { programa: 'deckcraft' }, { level: 'warn' })
     }
   }
   // Respaldo (pptxgenjs): mismas garantías que con DeckCraft: subtítulo de la portada y marcador de título en cada diapositiva.
-  return ensureTitlePlaceholders(await renderPptx(foldSubtitles(input.data)))
+  return ensureTitlePlaceholders(await renderPptx(foldSubtitles(input.data), opts.images))
 }

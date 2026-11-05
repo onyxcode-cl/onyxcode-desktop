@@ -21,6 +21,8 @@ import type { ChatDocInput } from './engine'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { OutputPathError, writeNewFile } from './output-path'
+import { imagePathsOf } from '@shared/chat-doc-spec'
+import { prepareImages, type ImageMap, type PreparedImages } from './image-files'
 import { readTaskFile, type TaskFile } from './input-path'
 import type { PreviewResult } from './preview'
 
@@ -50,7 +52,7 @@ export interface DocumentsBinding {
 
 export interface DocumentsDeps {
   /** El motor del Chat (`engine.renderBytes`); se inyecta para poder probar sin Electron. */
-  render: (input: ChatDocInput, title: string, opts: { remoteImages: false }) => Promise<Buffer>
+  render: (input: ChatDocInput, title: string, opts: { remoteImages: false; images?: ImageMap }) => Promise<Buffer>
   /** Vista previa en imágenes (PowerPoint y Word). `null` = ese tipo no se puede renderizar. Ausente = la herramienta `renderizar` no existe. */
   preview?: (tipo: Tipo, bytes: Buffer) => Promise<PreviewResult | null>
   now?: () => number
@@ -324,10 +326,21 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     quota.busy = true
     this.active++
     quota.stamps.push(t0)
+    let prepared: PreparedImages | null = null
     try {
       const title = typeof args.nombre === 'string' ? args.nombre : 'Documento'
+      // Imágenes de la carpeta de la tarea (solo pptx y docx): se leen con las comprobaciones de ruta, firma y tamaño y se copian a un temporal
+      // propio; ArtCraft solo ve esa copia. Un error aquí (ruta con «..», enlace, archivo que no es imagen, imagen enorme) rechaza el documento entero.
+      if (built.input.kind === 'pptx' || built.input.kind === 'docx') {
+        const wanted = imagePathsOf(built.input.kind, built.input.data as never)
+        if (wanted.length > 0)
+          prepared = await prepareImages(binding.folder, wanted, [
+            binding.folder,
+            binding.toAgentPath ? binding.toAgentPath(binding.folder) : binding.folder
+          ])
+      }
       const bytes = await withTimeout(
-        this.deps.render(built.input, title, { remoteImages: false }),
+        this.deps.render(built.input, title, { remoteImages: false, ...(prepared ? { images: prepared.images } : {}) }),
         this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS
       )
       const written = await writeNewFile(binding.folder, {
@@ -367,6 +380,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       // La salida cruda del motor puede traer rutas del equipo: no se le entrega al agente.
       return this.text('No se pudo generar el documento con el motor de la app. Revisa el contenido (spec) e inténtalo de nuevo.', true)
     } finally {
+      await prepared?.cleanup()
       quota.busy = false
       this.active--
     }

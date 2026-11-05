@@ -23,6 +23,8 @@ export const MAX_CHART_POINTS = 12
 export const MAX_CHART_LABEL_CHARS = 40
 export const MAX_EYEBROW_CHARS = 40
 export const MAX_NOTE_CHARS = 140
+/** Imágenes por documento (PowerPoint y Word): tope de cantidad; el tamaño de cada archivo lo verifica `documents/image-files.ts`. */
+export const MAX_IMAGES_PER_DOC = 10
 /** Notas del orador de una diapositiva (texto que solo ve quien presenta). */
 export const MAX_SPEAKER_NOTES_CHARS = 2_000
 export const MAX_FOOTER_CHARS = 60
@@ -162,6 +164,7 @@ export type PptxLayout =
   | 'quote'
   | 'agenda'
   | 'table'
+  | 'image'
   | 'free'
 export const PPTX_LAYOUTS: readonly PptxLayout[] = [
   'cover',
@@ -178,10 +181,21 @@ export const PPTX_LAYOUTS: readonly PptxLayout[] = [
   'quote',
   'agenda',
   'table',
+  'image',
   'free'
 ]
 
 /** Un gráfico nativo de PowerPoint (de verdad editable ahí, no una imagen) — una sola serie de datos. */
+/**
+ * Imagen de la carpeta de la tarea (solo en Tareas/Code, nunca en el Chat): `path` es RELATIVA a esa carpeta. Los programas de ArtCraft no
+ * leen esa ruta: la app lee el archivo con las comprobaciones de `input-path.ts` y les da una copia temporal propia.
+ */
+export interface DocImageRef {
+  path: string
+  /** Texto alternativo (lectores de pantalla): una frase que diga qué muestra. */
+  alt?: string
+}
+
 export type PptxChartType = 'bar' | 'line' | 'pie'
 export const PPTX_CHART_TYPES: readonly PptxChartType[] = ['bar', 'line', 'pie']
 
@@ -299,6 +313,8 @@ export interface PptxSlideSpec {
   note?: string
   /** Notas del orador (lo que se dice al presentar; no se ve en la lámina): hasta 2.000 caracteres. */
   speaker_notes?: string
+  /** Imagen de la carpeta de la tarea — solo para `layout: "image"` (las `bullets`, si hay, van como texto al lado). */
+  image?: DocImageRef
   /** Dos columnas con su propio encabezado — solo para `layout: "two-col"`; si no viene, se usan `bullets` repartidas mitad y mitad. */
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
@@ -346,6 +362,7 @@ export type DocxBlock =
       widths_cm?: number[]
       caption?: string
     }
+  | { type: 'image'; path: string; alt?: string; width_cm?: number; caption?: string }
   | { type: 'page_break' }
 export interface DocxSpec {
   title?: string
@@ -522,6 +539,8 @@ function isSlide(v: unknown): v is PptxSlideSpec {
   if (s.chart !== undefined && !isChartSpec(s.chart)) return false
   if (s.eyebrow !== undefined && (typeof s.eyebrow !== 'string' || s.eyebrow.length > MAX_EYEBROW_CHARS)) return false
   if (s.note !== undefined && (typeof s.note !== 'string' || s.note.length > MAX_NOTE_CHARS)) return false
+  if (s.image !== undefined && !isImageRef(s.image)) return false
+  if (s.layout === 'image' && s.image === undefined) return false
   if (s.speaker_notes !== undefined && (typeof s.speaker_notes !== 'string' || s.speaker_notes.length > MAX_SPEAKER_NOTES_CHARS))
     return false
   if (s.columns !== undefined) {
@@ -542,6 +561,35 @@ function isSlide(v: unknown): v is PptxSlideSpec {
 export const DOCX_ALIGN = ['left', 'right', 'center', 'justify']
 const docxText = (v: unknown, max = MAX_DOCX_TEXT_CHARS): v is string => typeof v === 'string' && v.length <= max
 const docxOpt = (v: unknown, max = MAX_DOCX_META_CHARS): boolean => v === undefined || docxText(v, max)
+
+/** Ruta relativa de una imagen: texto corto, sin URL, sin unidad ni `~` (la validación fuerte, con el disco, es de `readTaskImage`). */
+export function isImagePath(p: unknown): p is string {
+  return (
+    typeof p === 'string' &&
+    p.length > 0 &&
+    p.length <= 300 &&
+    !/^[a-z][a-z0-9+.-]*:/i.test(p) &&
+    !/^[\\/~]/.test(p) &&
+    !p.includes('..') &&
+    !/[\0\n\r]/.test(p)
+  )
+}
+function isImageRef(v: unknown): v is DocImageRef {
+  if (!v || typeof v !== 'object') return false
+  const r = v as Record<string, unknown>
+  return onlyKeys(r, ['path', 'alt']) && isImagePath(r.path) && (r.alt === undefined || (typeof r.alt === 'string' && r.alt.length <= 300))
+}
+
+/** Rutas de imagen que pide un documento (sin repetir), para que `crear` las lea y las valide antes de armar el archivo. */
+export function imagePathsOf(kind: 'pptx' | 'docx', spec: PptxSpec | DocxSpec): string[] {
+  const out = new Set<string>()
+  if (kind === 'pptx') {
+    for (const sl of (spec as PptxSpec).slides) if (sl.image) out.add(sl.image.path)
+  } else {
+    for (const b of (spec as DocxSpec).blocks) if (b.type === 'image') out.add(b.path)
+  }
+  return [...out]
+}
 
 function isDocxBlock(v: unknown): v is DocxBlock {
   if (!v || typeof v !== 'object') return false
@@ -594,6 +642,14 @@ function isDocxBlock(v: unknown): v is DocxBlock {
         return false
       return docxOpt(b.caption)
     }
+    case 'image':
+      return (
+        onlyKeys(b, ['type', 'path', 'alt', 'width_cm', 'caption']) &&
+        isImagePath(b.path) &&
+        docxOpt(b.alt) &&
+        docxOpt(b.caption) &&
+        (b.width_cm === undefined || (typeof b.width_cm === 'number' && b.width_cm >= 2 && b.width_cm <= 16))
+      )
     case 'page_break':
       return onlyKeys(b, ['type'])
     default:
@@ -608,7 +664,13 @@ export function isDocxSpec(v: unknown): v is DocxSpec {
   if (![d.title, d.subtitle, d.author, d.date, d.header, d.footer].every((x) => docxOpt(x))) return false
   if ((d.page_numbers !== undefined && typeof d.page_numbers !== 'boolean') || (d.toc !== undefined && typeof d.toc !== 'boolean'))
     return false
-  return Array.isArray(d.blocks) && d.blocks.length > 0 && d.blocks.length <= MAX_DOCX_BLOCKS && d.blocks.every(isDocxBlock)
+  return (
+    Array.isArray(d.blocks) &&
+    d.blocks.length > 0 &&
+    d.blocks.length <= MAX_DOCX_BLOCKS &&
+    d.blocks.every(isDocxBlock) &&
+    d.blocks.filter((b) => (b as { type?: string }).type === 'image').length <= MAX_IMAGES_PER_DOC
+  )
 }
 
 export function isPptxSpec(v: unknown): v is PptxSpec {
@@ -624,5 +686,11 @@ export function isPptxSpec(v: unknown): v is PptxSpec {
     (typeof spec.fonts !== 'object' || spec.fonts === null || !optFont(spec.fonts.title) || !optFont(spec.fonts.body))
   )
     return false
-  return Array.isArray(spec.slides) && spec.slides.length > 0 && spec.slides.length <= MAX_SLIDES && spec.slides.every(isSlide)
+  return (
+    Array.isArray(spec.slides) &&
+    spec.slides.length > 0 &&
+    spec.slides.length <= MAX_SLIDES &&
+    spec.slides.every(isSlide) &&
+    spec.slides.filter((sl) => sl.image !== undefined).length <= MAX_IMAGES_PER_DOC
+  )
 }

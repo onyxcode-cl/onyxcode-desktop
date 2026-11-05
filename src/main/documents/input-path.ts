@@ -13,6 +13,9 @@ import { segmentProblem } from '@shared/wsl-paths'
 import { OutputPathError } from './output-path'
 
 export const MAX_INPUT_BYTES = 25 * 1024 * 1024
+/** Una imagen que se incrusta en un documento: más que esto no entra (ni se lee entera en memoria). */
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif'])
 const MAX_DEPTH = 8
 const O_NOFOLLOW = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0
 /** macOS 11+: `O_NOFOLLOW_ANY` (0x20000000) rechaza un enlace en CUALQUIER componente de la ruta, no solo en el último; Node no lo expone. Sustituye a `O_NOFOLLOW` (juntos dan EINVAL). */
@@ -26,6 +29,9 @@ export interface TaskFile {
   tipo: InputTipo
   bytes: Buffer
 }
+
+/** Lo que se espera leer: un documento de Office/PDF (vista previa) o una imagen (para incrustarla). La firma de la imagen la comprueba quien llama. */
+export type ReadKind = 'office' | 'image'
 
 function isInside(root: string, child: string): boolean {
   return child === root || child.startsWith(root.endsWith(sep) ? root : root + sep)
@@ -70,12 +76,21 @@ export async function readTaskFile(
   root: string,
   raw: unknown,
   agentRoots: string[] = [],
-  hooks: { afterWalk?: () => Promise<void>; afterOpen?: () => Promise<void> } = {}
+  hooks: { afterWalk?: () => Promise<void>; afterOpen?: () => Promise<void> } = {},
+  kind: ReadKind = 'office'
 ): Promise<TaskFile> {
   const segs = relativeInputPath(raw, agentRoots)
   const ext = segs[segs.length - 1].split('.').pop()?.toLowerCase() ?? ''
-  const tipo = (EXT_TIPO as Record<string, InputTipo | undefined>)[segs[segs.length - 1].includes('.') ? ext : '']
-  if (!tipo) throw new OutputPathError('name', 'Solo se puede renderizar un .pptx, .docx, .xlsx o .pdf.')
+  const hasExt = segs[segs.length - 1].includes('.')
+  const maxBytes = kind === 'image' ? MAX_IMAGE_BYTES : MAX_INPUT_BYTES
+  let tipo: InputTipo | undefined
+  if (kind === 'image') {
+    if (!hasExt || !IMAGE_EXTS.has(ext)) throw new OutputPathError('name', 'Solo se admiten imágenes .png, .jpg, .webp o .gif.')
+    tipo = 'pdf' // marcador interno: el tipo real lo da la firma del archivo (ver `image-files.ts`)
+  } else {
+    tipo = (EXT_TIPO as Record<string, InputTipo | undefined>)[hasExt ? ext : '']
+    if (!tipo) throw new OutputPathError('name', 'Solo se puede renderizar un .pptx, .docx, .xlsx o .pdf.')
+  }
   let rootReal: string
   try {
     rootReal = await realpath(root)
@@ -123,7 +138,13 @@ export async function readTaskFile(
     const st = await fh.stat()
     if (!st.isFile() || `${st.dev}:${st.ino}` !== first.ids[first.ids.length - 1])
       throw new OutputPathError('outside', 'El archivo cambió mientras se abría.')
-    if (st.size > MAX_INPUT_BYTES) throw new OutputPathError('size', 'El archivo es demasiado grande para la vista previa (máx. 25 MB).')
+    if (st.size > maxBytes)
+      throw new OutputPathError(
+        'size',
+        kind === 'image'
+          ? 'La imagen es demasiado grande (máx. 5 MB).'
+          : 'El archivo es demasiado grande para la vista previa (máx. 25 MB).'
+      )
     await hooks.afterOpen?.()
     const bytes = Buffer.alloc(st.size)
     let off = 0
@@ -138,7 +159,7 @@ export async function readTaskFile(
     // Recorrido 2: la ruta tiene que seguir siendo la misma cadena de inodos (ni un directorio cambiado por un enlace, ni otro archivo).
     const second = await walk().catch(() => null)
     if (!second || second.ids.join('|') !== first.ids.join('|')) throw new OutputPathError('outside', 'El archivo cambió mientras se leía.')
-    if (!hasSignature(tipo, bytes)) throw new OutputPathError('name', `El archivo no es un .${tipo} válido.`)
+    if (kind === 'office' && !hasSignature(tipo, bytes)) throw new OutputPathError('name', `El archivo no es un .${tipo} válido.`)
     return { abs: cur, rel: segs.join('/'), tipo, bytes }
   } finally {
     await fh.close()

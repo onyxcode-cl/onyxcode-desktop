@@ -10,6 +10,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
+import type { ImageMap } from '../../documents/image-files'
 import { runCraft } from './craft-run'
 import { ensureTitlePlaceholders } from './pptx-titles'
 import { autoFitSize, createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
@@ -34,6 +35,7 @@ export function pieCategories(categories: string[], values: number[]): string[] 
 export function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['layout']> {
   if (s.layout) return s.layout
   if (index === 0) return 'cover'
+  if (s.image && index > 0) return 'image'
   if (s.title && !s.bullets?.length) return 'section'
   return 'bullets'
 }
@@ -57,7 +59,7 @@ export function foldSubtitles(spec: PptxSpec): PptxSpec {
 }
 
 /** Genera los comandos `id={json}` de DeckCraft para toda la presentación. Asume `PptxSpec` ya validado (`isPptxSpec`). */
-export function chatDeckCommands(input: PptxSpec): string[] {
+export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   const spec = foldSubtitles(input)
   // `theme` elige la paleta (colores) y `style` la decoración, como pide el agente de Chat: no es siempre el mismo diseño.
   const pal = spec.palette ? customPalette(spec.palette) : paletteFor(spec.theme)
@@ -322,6 +324,25 @@ export function chatDeckCommands(input: PptxSpec): string[] {
         })
         break
       }
+      case 'image': {
+        // Imagen de la carpeta de la tarea (ya validada y copiada por `documents/image-files.ts`): `images` solo existe en ese camino. Sin ella
+        // (Chat, o la imagen no se pudo leer) la lámina queda como título + viñetas: nunca se usa una ruta que escribió el modelo.
+        head(n, s)
+        const img = s.image ? images?.get(s.image.path) : undefined
+        if (!img) {
+          list(bullets, 60, 156, 840, 9, 52, 22)
+          break
+        }
+        const withText = bullets.length > 0
+        const box = { x: 60, y: 146, w: withText ? 540 : 840, h: 336 }
+        const k = Math.min(box.w / img.width, box.h / img.height)
+        const w = Math.round(img.width * k)
+        const h = Math.round(img.height * k)
+        a('insert.picture', { path: img.file, rect: [box.x + Math.round((box.w - w) / 2), box.y + Math.round((box.h - h) / 2), w, h] })
+        if (s.image?.alt) a('shape.altText', { text: s.image.alt })
+        if (withText) list(bullets, 640, 170, 260, 5, 70, 18)
+        break
+      }
       case 'free': {
         // Lienzo libre: la IA decide qué va y dónde. Todo se valida antes (`isPptxSpec`): solo textos y formas con colores hex.
         a('slide.new', { layout: 'blank' })
@@ -397,12 +418,18 @@ export function chatDeckCommands(input: PptxSpec): string[] {
 }
 
 /** Arma el .pptx con DeckCraft y devuelve sus bytes. Lanza si el programa falla (quien llama cae al generador de siempre). */
-export async function renderChatDeck(binary: string, spec: PptxSpec, timeoutMs = 30_000, run: typeof runCraft = runCraft): Promise<Buffer> {
+export async function renderChatDeck(
+  binary: string,
+  spec: PptxSpec,
+  timeoutMs = 30_000,
+  run: typeof runCraft = runCraft,
+  images?: ImageMap
+): Promise<Buffer> {
   const dir = await mkdtemp(join(tmpdir(), 'lazunox-chatdeck-'))
   try {
     const out = join(dir, 'deck.pptx')
     const args = ['run', '--save', out]
-    for (const cmd of chatDeckCommands(spec)) args.push('--cmd', cmd)
+    for (const cmd of chatDeckCommands(spec, images)) args.push('--cmd', cmd)
     await run(binary, args, timeoutMs)
     return await ensureTitlePlaceholders(await readFile(out))
   } finally {

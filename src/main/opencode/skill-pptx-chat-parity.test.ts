@@ -167,7 +167,7 @@ describe('Chat, Code, Tareas y Overdrive: una sola fuente de diseño de presenta
     // Una sola fuente del motor: la skill y el Chat usan la misma función, no una copia.
     expect(readFileSync(resolve(ROOT, 'src/main/office/craft/chat-deck-cli.ts'), 'utf8')).toContain('renderChatDeck')
     expect(readFileSync(resolve(ROOT, 'src/main/office/craft/chat-deck.ts'), 'utf8')).toMatch(
-      /export function chatDeckCommands[\s\S]*export async function renderChatDeck[\s\S]*chatDeckCommands\(spec\)/
+      /export function chatDeckCommands[\s\S]*export async function renderChatDeck[\s\S]*chatDeckCommands\(spec(, images)?\)/
     )
   })
 })
