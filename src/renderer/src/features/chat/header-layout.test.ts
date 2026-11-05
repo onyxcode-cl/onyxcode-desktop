@@ -32,4 +32,13 @@ describe('cabecera del Chat (E3/E4)', () => {
     expect(src).toContain("narrowRoot ? 'absolute inset-y-0 right-0 z-20 w-[min(100%,28rem)]")
     expect(src.match(/ref=\{rootRef\} className="relative flex h-full"/g) ?? []).toHaveLength(2)
   })
+  it('la píldora «Pensando 0:13 ×» va dentro de la cabecera, en el flujo y sin posición absoluta (no tapa los iconos)', () => {
+    expect(header).toContain('<ChatProgressHud')
+    expect(header.indexOf('<ChatProgressHud')).toBeLessThan(header.indexOf('justify-end'))
+    expect(src.slice(src.indexOf('</header>'))).not.toMatch(/^\s*<ChatProgressHud/)
+    const hud = readFileSync(join(__dirname, 'ChatProgressHud.tsx'), 'utf8')
+    expect(hud).not.toMatch(/\babsolute\b|\bfixed\b/)
+    expect(hud).toContain('shrink-0')
+    expect(hud).toContain('if (isRemoteSurface() || !progress.visible || dismissed) return null')
+  })
 })

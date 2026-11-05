@@ -438,6 +438,7 @@ export function ChatView(): React.JSX.Element {
           <span className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium">
             {displayTitle(session?.title, t('chat.newConversation'))}
           </span>
+          <ChatProgressHud entries={entries} busy={busy} />
           <div
             className={`hidden h-12 shrink-0 items-center justify-end gap-1.5 desk:flex ${docPanel.open && narrowRoot ? ' desk:hidden!' : ''}`}
           >
@@ -447,7 +448,6 @@ export function ChatView(): React.JSX.Element {
             <ReadingModeSwitch surface="chat" />
           </div>
         </header>
-        <ChatProgressHud entries={entries} busy={busy} />
         <TranscriptLoader sessionId={activeId} />
         <ChatMessageList
           entries={entries}
