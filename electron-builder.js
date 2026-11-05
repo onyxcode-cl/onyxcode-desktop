@@ -189,7 +189,7 @@ module.exports = {
       {
         from: 'resources/signing',
         to: 'signing',
-        filter: ['LazunoxLocalSigning.pem']
+        filter: ['LazunoxLocalSigning.cer']
       },
       // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
       // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).

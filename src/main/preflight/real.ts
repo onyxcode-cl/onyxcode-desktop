@@ -68,7 +68,7 @@ function run(file: string, args: readonly string[], timeoutMs = 15_000): Promise
 
 /** Certificado público empaquetado: `Contents/Resources/signing` (en desarrollo, `resources/signing` del repo). */
 function bundledCertPath(): string | null {
-  const name = 'LazunoxLocalSigning.pem'
+  const name = 'LazunoxLocalSigning.cer'
   const candidates = [join(process.resourcesPath ?? '', 'signing', name), join(app.getAppPath(), 'resources', 'signing', name)]
   return candidates.find((p) => existsSync(p)) ?? null
 }

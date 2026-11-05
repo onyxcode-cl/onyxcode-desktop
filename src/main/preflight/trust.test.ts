@@ -19,7 +19,7 @@ import {
   type TrustDeps
 } from './trust'
 
-const CERT = join(__dirname, '../../../resources/signing/LazunoxLocalSigning.pem')
+const CERT = join(__dirname, '../../../resources/signing/LazunoxLocalSigning.cer')
 const pem = readFileSync(CERT, 'utf8')
 const APP = '/Applications/Lazunox.app'
 const EXEC = `${APP}/Contents/MacOS/Lazunox`
@@ -54,7 +54,7 @@ function fake(opts: { trusted?: boolean; dr?: string; addResult?: RunResult; pla
   const deps: TrustDeps = {
     platform: opts.platform ?? 'darwin',
     execPath: EXEC,
-    certPath: opts.certText === null ? null : '/Applications/Lazunox.app/Contents/Resources/signing/LazunoxLocalSigning.pem',
+    certPath: opts.certText === null ? null : '/Applications/Lazunox.app/Contents/Resources/signing/LazunoxLocalSigning.cer',
     run,
     readFile: async () => opts.certText ?? pem,
     tempFile: async () => ({ path: '/tmp/x/ajustes.plist', cleanup: async () => undefined })
@@ -71,9 +71,27 @@ describe('certificado público empaquetado', () => {
     expect(sh).toContain(`PINNED_CERT_SHA1="${PINNED_CERT_SHA1}"`)
   })
   it('rechaza archivos con llave privada, vacíos o con más de un certificado', () => {
-    expect(certDer(`${pem}\n-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----`)).toBeNull()
+    expect(certDer(`${pem}\n${['-----BEGIN', 'PRIVATE KEY-----'].join(' ')}\nAAAA`)).toBeNull()
     expect(certDer('')).toBeNull()
     expect(certDer(pem + pem)).toBeNull()
+  })
+})
+
+describe('empaquetado del certificado público', () => {
+  it('va por extraResources de macOS (Contents/Resources/signing), fuera del .asar, y real.ts busca ese mismo nombre', () => {
+    const cfg = readFileSync(join(__dirname, '../../../electron-builder.js'), 'utf8')
+    expect(cfg).toContain("from: 'resources/signing'")
+    expect(cfg).toContain("filter: ['LazunoxLocalSigning.cer']")
+    expect(cfg).toContain("'!resources/signing/**'")
+    expect(readFileSync(join(__dirname, 'real.ts'), 'utf8')).toContain("'LazunoxLocalSigning.cer'")
+  })
+  it('la extensión .cer no es de secretos, y la guarda de secretos sigue marcando .pem/.p12/.key reales', () => {
+    const re =
+      /(^|\/)\.env(\..+)?$|\.(pem|p12|pfx|key|keystore)$|(^|\/)id_(rsa|ed25519|ecdsa)$|(^|\/)\.(npmrc|netrc)$|settings\.local\.json$/i
+    const guard = readFileSync(join(__dirname, '../../test/no-secrets.test.ts'), 'utf8')
+    expect(guard).toContain(String.raw`\.(pem|p12|pfx|key|keystore)$`)
+    for (const f of ['a/b.pem', 'x.p12', 'k.key', 'resources/signing/otro.pem']) expect(re.test(f)).toBe(true)
+    expect(re.test('resources/signing/LazunoxLocalSigning.cer')).toBe(false)
   })
 })
 
