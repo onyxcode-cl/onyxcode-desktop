@@ -7,6 +7,14 @@ description: Crear, inspeccionar, editar, revisar y TRADUCIR documentos Word (.d
 
 **Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
 
+**Ciclo obligatorio de calidad (crear → renderizar → mirar → corregir):**
+1. **Crea** con `documentos_crear` siguiendo la guía de diseño (reglas numéricas y lista de «no hagas esto»).
+2. **Renderiza** con `documentos_renderizar` el archivo creado y **mira TODAS las imágenes**, no solo la primera ni la última.
+3. Anota los defectos **por prioridad**: (a) texto cortado o fuera de la página, (b) elementos montados unos sobre otros, (c) contraste bajo o letra menor que el mínimo, (d) márgenes y separaciones apretados, (e) desalineación, páginas casi vacías o tablas partidas, (f) restos de plantilla («lorem», «TODO», «[insert») y errores de fórmula (#REF!, #DIV/0!…).
+4. **Corrige todo junto**: vuelve a crear el documento con otro nombre aplicando TODAS las correcciones en una sola vuelta (no arregles de a uno). Corrige en el contenido (`spec` o `html`), no a mano sobre el archivo.
+5. Vuelve a renderizar. **Máximo 3 rondas** en total; si la segunda ronda no mejora, para y declara en «Para revisar» lo que sigue mal. La primera vuelta casi siempre trae errores reales: nunca entregues sin mirar.
+6. Si la vista previa es la **VISTA SIMPLIFICADA** (no verificada), no concluyas nada sobre píxeles (caja gris, tipografía o gráfico simplificado no son errores): comprueba el contenido y la revisión ✔/✘, y escribe en «Para revisar» que el aspecto visual **no está verificado**.
+
 
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Abajo `PY` = ese intérprete y `S` = carpeta `scripts/` de esta skill.
 Nunca sobrescribas el archivo del usuario: toda salida es un archivo NUEVO (`-v2`, `-revisado`).

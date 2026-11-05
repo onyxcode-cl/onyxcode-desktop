@@ -34,7 +34,7 @@ export const RENDER_TIMEOUT_MS = 120_000
 export const SERVER_NAME = 'documentos'
 /** Aviso cuando las imágenes salen del visor de la app y no de ArtCraft. */
 const SIMPLIFIED_NOTE =
-  ' OJO: estas imágenes son la VISTA SIMPLIFICADA del visor de la app, no un render fiel de PowerPoint/Word: una caja gris rayada, un gráfico dibujado como barras sencillas o una tipografía de respaldo NO son errores del archivo; fíjate en textos cortados, orden, contenido que falta y cosas fuera de su sitio.'
+  ' VISTA NO VERIFICADA: estas imágenes son la VISTA SIMPLIFICADA del visor de la app, no un render fiel de PowerPoint/Word: una caja gris rayada, un gráfico dibujado como barras sencillas o una tipografía de respaldo NO son errores del archivo; fíjate en textos cortados, orden, contenido que falta y cosas fuera de su sitio. NO concluyas nada sobre píxeles (colores, tamaños, márgenes exactos) y escribe en «Para revisar» que el aspecto visual NO está verificado.'
 
 function log(...a: unknown[]): void {
   console.log('[documentos-mcp]', ...a.map(String))
@@ -82,7 +82,7 @@ export const DOCUMENT_TOOLS = [
       'Crea un documento NUEVO (PowerPoint .pptx, Word .docx, Excel .xlsx o PDF) con el mismo motor y la misma guía de diseño que el Chat, ' +
       'y lo guarda en la carpeta de esta tarea. Para pptx, docx y xlsx pasa `spec` (el mismo JSON que documentan las skills pptx, docx y xlsx); ' +
       'para pdf pasa `html` (documento autocontenido, sin recursos externos). `nombre` va sin extensión. Nunca sobrescribe: si el nombre existe, ' +
-      'añade « (2)». Devuelve la ruta del archivo creado y la revisión de calidad automática (lista ✔/✘): si hay puntos ✘, corrígelos creando de nuevo con otro nombre.',
+      'añade « (2)». Devuelve la ruta del archivo creado y la revisión de calidad automática (lista ✔/✘). Ciclo obligatorio: crea → `renderizar` → mira TODAS las imágenes → corrige todo junto (si hay puntos ✘ o defectos, vuelve a crear con otro nombre aplicando todas las correcciones) → máximo 3 rondas.',
     inputSchema: {
       type: 'object',
       properties: {
