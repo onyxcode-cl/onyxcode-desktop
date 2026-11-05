@@ -48,7 +48,20 @@ export function TrustGate(): React.JSX.Element {
  * Tarjeta de carpeta que macOS no deja leer (F8-B210). Sustituye al «proyecto medio abierto»: el motor no se arranca para esta
  * carpeta. «Volver a comprobar» y «Elegir otra carpeta» reintentan desde cero (sin recordar la negativa).
  */
-function FolderAccessCard(): React.JSX.Element | null {
+export interface FolderAccessCardProps {
+  /** Quién la pinta: cada modo (Code / Tareas) muestra solo las carpetas que él mismo intentó abrir. */
+  owner?: 'code' | 'tasks'
+  /** Reintenta abrir la carpeta (acción de la persona). Por defecto: abrir el proyecto en Code. */
+  onOpen?: (dir: string, opts?: { passive?: boolean }) => Promise<unknown>
+  /** «Elegir otra carpeta». Por defecto: el selector de Code. */
+  onPickOther?: () => void
+}
+
+export function FolderAccessCard({
+  owner = 'code',
+  onOpen = openProjectTrusted,
+  onPickOther
+}: FolderAccessCardProps = {}): React.JSX.Element | null {
   const t = useT()
   const blocked = useBlockedFolder()
   const firstRef = useRef<HTMLButtonElement>(null)
@@ -64,7 +77,7 @@ function FolderAccessCard(): React.JSX.Element | null {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [blocked])
-  if (!blocked) return null
+  if (!blocked || (blocked.owner ?? 'code') !== owner) return null
   const { dir, reason, cause, resetFailed } = blocked
   // Causa «motor»: el motor es la mini-app «Lazunox Motor» (id propio), así que «Volver a preguntar a macOS» también sirve: el
   // restablecimiento incluye su id (folder-access.ts, resetFolderPermission).
@@ -117,7 +130,8 @@ function FolderAccessCard(): React.JSX.Element | null {
             className={btn}
             onClick={() => {
               close()
-              void pickAndOpenFolder()
+              if (onPickOther) onPickOther()
+              else void pickAndOpenFolder()
             }}
           >
             {t('code.folderAccess.other')}
@@ -127,7 +141,7 @@ function FolderAccessCard(): React.JSX.Element | null {
             className={btn}
             onClick={() => {
               close()
-              void openProjectTrusted(dir)
+              void onOpen(dir)
             }}
           >
             {t('code.folderAccess.retry')}
@@ -160,7 +174,7 @@ function FolderAccessCard(): React.JSX.Element | null {
               ref={firstRef}
               type="button"
               className={primaryBtn}
-              onClick={() => void askMacAgain(dir, openProjectTrusted, engine ? 'engine' : 'all')}
+              onClick={() => void askMacAgain(dir, onOpen, engine ? 'engine' : 'all')}
             >
               {t('code.folderAccess.askAgain')}
             </button>

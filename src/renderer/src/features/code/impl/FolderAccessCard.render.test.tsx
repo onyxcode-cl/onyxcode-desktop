@@ -16,7 +16,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useLang } from '../../../lib/i18n'
-import { TrustGate } from './ProjectPicker'
+import { FolderAccessCard, TrustGate, type FolderAccessCardProps } from './ProjectPicker'
 import { openProjectTrusted } from './trust'
 import { setBlockedFolder } from './folder-access'
 import { useCode } from './store'
@@ -186,5 +186,25 @@ describe('carpeta denegada por macOS', () => {
     await act(async () => void (await openProjectTrusted(dir)))
     expect(host.textContent).not.toContain('Volver a preguntar a macOS')
     expect(document.activeElement?.textContent).toBe('Abrir Ajustes del Sistema')
+  })
+  it('carpeta de Tareas: la tarjeta de Code no la pinta; la de Tareas sí, con sus propios reintentos', async () => {
+    const onOpen = vi.fn((_d: string, _o?: { passive?: boolean }) => Promise.resolve())
+    const onPickOther = vi.fn()
+    const host2 = document.createElement('div')
+    document.body.appendChild(host2)
+    const root2 = createRoot(host2)
+    await act(async () => root2.render(createElement<FolderAccessCardProps>(FolderAccessCard, { owner: 'tasks', onOpen, onPickOther })))
+    await act(async () => setBlockedFolder({ dir, reason: 'denied', canReset: true, cause: 'app', owner: 'tasks' }))
+    expect(host.querySelector('[role="alertdialog"]')).toBeNull()
+    const btn = (label: string): HTMLElement => [...host2.querySelectorAll('button')].find((b) => b.textContent === label)!
+    expect(host2.textContent).toContain('macOS no dejó a Lazunox leer esta carpeta')
+    await act(async () => btn('Volver a comprobar').click())
+    expect(onOpen).toHaveBeenCalledWith(dir)
+    await act(async () => setBlockedFolder({ dir, reason: 'denied', canReset: true, cause: 'app', owner: 'tasks' }))
+    await act(async () => btn('Elegir otra carpeta').click())
+    expect(onPickOther).toHaveBeenCalledTimes(1)
+    expect(openProject).not.toHaveBeenCalled()
+    await act(async () => root2.unmount())
+    host2.remove()
   })
 })

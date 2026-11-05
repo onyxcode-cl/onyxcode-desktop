@@ -8,6 +8,7 @@
  */
 import { IconButton } from '../../../components/IconButton'
 import { useUnifiedApps } from './unified'
+import { FolderAccessCard } from '../../code/impl/ProjectPicker'
 import '../../../app/mobile/switch.css'
 import { ErrorNotice } from '../../../components/conversation/ErrorNotice'
 import { openExportOptions } from '../../../components/ExportConversation'
@@ -52,6 +53,9 @@ import {
   abortTask,
   stopIsolatedTask,
   approvePending,
+  chooseFolder,
+  reopenBlockedFolder,
+  selectFolderChecked,
   cancelPending,
   ensureFolderForSend,
   closeSideChat,
@@ -716,7 +720,7 @@ export function TasksWorkspace(): React.JSX.Element {
         <div className="mx-auto mt-3 flex w-full max-w-3xl items-start gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{error}</span>
-          <Button variant="ghost" onClick={() => void selectFolder(folder)}>
+          <Button variant="ghost" onClick={() => void selectFolderChecked(folder)}>
             <RefreshCw size={14} /> {t('tasks.ws.retry')}
           </Button>
         </div>
@@ -978,6 +982,7 @@ export function TasksWorkspace(): React.JSX.Element {
       <FullAccessDialog />
       <ProjectPanel />
 
+      <FolderAccessCard owner="tasks" onOpen={reopenBlockedFolder} onPickOther={() => void chooseFolder()} />
       {pending && <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />}
     </div>
   )

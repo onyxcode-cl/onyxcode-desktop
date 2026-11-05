@@ -20,6 +20,8 @@ export interface BlockedFolder {
   cause?: 'app' | 'engine'
   /** El último «Volver a preguntar» no pudo borrar la decisión: la tarjeta lo dice y queda «Abrir Ajustes del Sistema». */
   resetFailed?: boolean
+  /** Modo que intentó abrir la carpeta (la tarjeta solo la pinta su dueño). Por defecto Code. */
+  owner?: 'code' | 'tasks'
 }
 
 let blocked: BlockedFolder | null = null
@@ -28,6 +30,10 @@ const listeners = new Set<(b: BlockedFolder | null) => void>()
 export function setBlockedFolder(b: BlockedFolder | null): void {
   blocked = b
   for (const l of listeners) l(b)
+}
+
+export function getBlockedFolder(): BlockedFolder | null {
+  return blocked
 }
 
 /** Hook: carpeta bloqueada actual (o `null`). */
@@ -47,7 +53,7 @@ export function useBlockedFolder(): BlockedFolder | null {
  * `true` si se puede seguir abriendo la carpeta. Si macOS la deniega (o no responde) deja la tarjeta visible y devuelve `false`.
  * Falla abierto: sin API nativa (celular) o ante un error de la propia comprobación, sigue adelante y que el motor informe.
  */
-export async function ensureFolderReadable(dir: string, opts: { reask?: boolean } = {}): Promise<boolean> {
+export async function ensureFolderReadable(dir: string, opts: { reask?: boolean; owner?: 'code' | 'tasks' } = {}): Promise<boolean> {
   const native = nativeCode('dialogs')
   if (!native || typeof native.dialog?.checkFolderAccess !== 'function') return true
   try {
@@ -74,7 +80,8 @@ export async function ensureFolderReadable(dir: string, opts: { reask?: boolean 
         reason: status,
         cause: cause === 'engine' ? 'engine' : 'app',
         canReset: canReset === true && status === 'denied',
-        resetFailed: prevResetFailed(dir)
+        resetFailed: prevResetFailed(dir),
+        owner: opts.owner ?? 'code'
       })
       return false
     }

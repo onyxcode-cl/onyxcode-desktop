@@ -6,7 +6,7 @@ import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
-import { chooseFolder, forgetFolder, linkFolder, selectFolder, startChatWithoutFolder, unlinkFolder } from './actions'
+import { chooseFolder, forgetFolder, linkFolder, selectFolderChecked, startChatWithoutFolder, unlinkFolder } from './actions'
 import { cw } from './bridge'
 import { loadFolderSet, useTasks } from './store'
 import { chatFolderDate, chatFolderLabel, isChatFolderForDisplay, isChatFolderPath, useUnifiedApps } from './unified'
@@ -234,7 +234,7 @@ export function FolderMenu({
                   title={f.path}
                   onClick={() => {
                     setOpen(false)
-                    void selectFolder(f.path)
+                    void selectFolderChecked(f.path)
                   }}
                 >
                   <FolderOpen size={14} className="shrink-0 text-muted" />

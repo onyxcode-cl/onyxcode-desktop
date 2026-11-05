@@ -20,6 +20,7 @@ import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
 import { forgetChatSession } from './chatIndex'
+import { ensureFolderReadable } from '../../code/impl/folder-access'
 import { enableAutoOnlyFor, isChatFolderPath, useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
@@ -111,8 +112,29 @@ export async function chooseFolder(): Promise<void> {
   await connectChosenFolder(picked)
 }
 
-async function connectChosenFolder(picked: string): Promise<void> {
+/**
+ * ¿Deja macOS leer esta carpeta? Si la persona dijo «No permitir» antes, vuelve a pedir el permiso (borra esa decisión de Lazunox y
+ * de su motor y macOS pregunta otra vez) y, si sigue negado, deja la tarjeta «macOS no dejó a Lazunox leer esta carpeta» (Tareas).
+ * `passive` (reintento tras «Volver a preguntar») no vuelve a borrar nada. Falla abierto fuera de macOS y ante errores propios.
+ */
+export async function ensureTasksFolderReadable(dir: string, opts: { passive?: boolean } = {}): Promise<boolean> {
+  return ensureFolderReadable(dir, { reask: !opts.passive, owner: 'tasks' })
+}
+
+/** Elegir una carpeta ya conocida de la lista: antes se comprueba el permiso de macOS (acción de la persona). */
+export async function selectFolderChecked(folder: string): Promise<void> {
+  if (!(await ensureTasksFolderReadable(folder))) return
+  await selectFolder(folder)
+}
+
+/** Reintento desde la tarjeta de permisos de macOS (Tareas): vuelve al mismo camino que «Elegir carpeta». */
+export async function reopenBlockedFolder(dir: string, opts: { passive?: boolean } = {}): Promise<void> {
+  await connectChosenFolder(dir, opts)
+}
+
+async function connectChosenFolder(picked: string, opts: { passive?: boolean } = {}): Promise<void> {
   useTasks.setState({ error: null })
+  if (!(await ensureTasksFolderReadable(picked, opts))) return
   const { folders } = useTasks.getState()
   if (folders.some((f) => f.path === picked)) await selectFolder(picked)
   else useTasks.setState({ pendingApproval: picked })
