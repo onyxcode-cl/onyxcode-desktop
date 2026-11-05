@@ -43,6 +43,8 @@ export interface PreflightDeps {
   craft: () => CraftCheck
   /** Node.js y uv de la app; ausente = no aplica. */
   runtimes?: () => RuntimesCheck
+  /** Solo macOS: «Confiar en la firma de la app». `hidden` = la pieza no corresponde (no macOS, build sin la firma fijada). */
+  trust?: () => Promise<'hidden' | 'trusted' | 'untrusted'>
   /** Entorno aislado de Tareas (solo Windows con WSL); `null` = no aplica. */
   sandbox?: () => Promise<{ state: string; detail?: string } | null>
   /** Ayudante de control (`cu-helper`): solo si esta plataforma ofrece Control del PC. */
@@ -136,11 +138,12 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
     }
   }
 
-  const [engine, craft, runtimes, sandbox, mac, free, writable] = await Promise.all([
+  const [engine, craft, runtimes, sandbox, trust, mac, free, writable] = await Promise.all([
     guard('engine', d.engine),
     guard('craft', d.craft),
     d.runtimes ? guard('runtimes', d.runtimes) : Promise.resolve(null),
     d.sandbox ? guard('sandbox', d.sandbox, Math.max(ms, SANDBOX_TIMEOUT_MS)) : Promise.resolve(null),
+    d.trust ? guard('trust', d.trust, Math.max(ms, 3000)) : Promise.resolve(null),
     d.mac ? guard('perms', d.mac.status) : Promise.resolve(null),
     guard('disk', d.freeBytes),
     guard('storage', d.userDataWritable)
@@ -188,6 +191,16 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
       ...(sandbox.detail ? { detail: sandbox.detail } : {})
     })
   }
+
+  // Confiar en la firma (solo macOS con la firma fijada): no descarga nada; pide la contraseña del usuario una vez.
+  if (trust && trust !== 'hidden')
+    out.push({
+      id: 'trust',
+      essential: false,
+      ok: trust === 'trusted',
+      installable: true,
+      ...(trust === 'trusted' ? {} : { reason: 'missing' })
+    })
 
   // Disco: avisa si no alcanza para lo que falte instalar (ArtCraft ×4, Node.js y uv ×6, entorno aislado ×1); no bloquea la app, solo la instalación.
   const need = out.reduce((n, c) => (!c.ok && c.installable ? n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1) : n), 0)

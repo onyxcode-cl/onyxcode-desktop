@@ -3,8 +3,10 @@
  * pruebas están en `service.ts`; aquí solo se cablea y se guarda el último informe para Diagnóstico.
  */
 import { app } from 'electron'
-import { rmSync, statfsSync, writeFileSync } from 'node:fs'
-import { arch, homedir } from 'node:os'
+import { execFile } from 'node:child_process'
+import { existsSync, rmSync, statfsSync, writeFileSync } from 'node:fs'
+import { mkdtemp, readFile } from 'node:fs/promises'
+import { arch, homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PreflightId, PreflightReport } from '@shared/preflight'
 import { blocking, ordered } from '@shared/preflight'
@@ -19,6 +21,7 @@ import { getOpencodeInfo } from '../opencode/binary'
 import { resolveOpencodeAsync } from '../opencode/server'
 import type { ComputerService } from '../computer/service'
 import { detectFullDiskAccess } from './full-disk'
+import { trustCertificate, trustState, untrustCertificate, type RunResult, type TrustDeps, type TrustOutcome } from './trust'
 import { failureDetail, placementOf, runPreflightChecks, skippedReport, type PreflightDeps } from './service'
 
 export interface PreflightSources {
@@ -53,6 +56,47 @@ function userDataWritable(): boolean {
   }
 }
 
+/** `execFile` SIN shell: devuelve el código de salida y la salida (no lanza). */
+function run(file: string, args: readonly string[], timeoutMs = 15_000): Promise<RunResult> {
+  return new Promise((resolve) => {
+    execFile(file, [...args], { timeout: timeoutMs, maxBuffer: 1_000_000 }, (err, stdout, stderr) => {
+      const code = err ? (typeof (err as { code?: unknown }).code === 'number' ? (err as { code: number }).code : 1) : 0
+      resolve({ code, stdout: String(stdout), stderr: String(stderr) })
+    })
+  })
+}
+
+/** Certificado público empaquetado: `Contents/Resources/signing` (en desarrollo, `resources/signing` del repo). */
+function bundledCertPath(): string | null {
+  const name = 'LazunoxLocalSigning.pem'
+  const candidates = [join(process.resourcesPath ?? '', 'signing', name), join(app.getAppPath(), 'resources', 'signing', name)]
+  return candidates.find((p) => existsSync(p)) ?? null
+}
+
+function trustDeps(): TrustDeps {
+  return {
+    platform: process.platform,
+    execPath: process.execPath,
+    certPath: bundledCertPath(),
+    run,
+    readFile: (p) => readFile(p, 'utf8'),
+    tempFile: async () => {
+      const dir = await mkdtemp(join(tmpdir(), 'lazunox-trust-'))
+      return { path: join(dir, 'ajustes.plist'), cleanup: async () => rmSync(dir, { recursive: true, force: true }) }
+    }
+  }
+}
+
+/** «Confiar en la firma» (la pieza «trust» de «Preparando»): macOS muestra su aviso de contraseña. */
+export function trustSignature(): Promise<TrustOutcome> {
+  return trustCertificate(trustDeps())
+}
+
+/** Ajustes › «Quitar confianza en la firma de Lazunox». */
+export function untrustSignature(): Promise<TrustOutcome> {
+  return untrustCertificate(trustDeps())
+}
+
 function realDeps(): PreflightDeps {
   const { computer, sandboxStatus } = sources
   const mac = process.platform === 'darwin' && computer
@@ -79,6 +123,7 @@ function realDeps(): PreflightDeps {
     sandbox: sandboxStatus
       ? async () => sandboxStatus().then((s) => (s.backend === 'wsl' ? { state: s.state, detail: s.detail } : null))
       : undefined,
+    trust: process.platform === 'darwin' ? () => trustState(trustDeps()) : undefined,
     helperPresent: computer ? () => computer.helperPath() !== null : undefined,
     fullDisk: process.platform === 'darwin' ? () => detectFullDiskAccess() : undefined,
     mac: mac

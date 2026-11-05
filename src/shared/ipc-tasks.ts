@@ -1337,6 +1337,9 @@ export interface TasksInvokeContract {
   'preflight:run': { req: void; res: PreflightReport }
   /** Una instalación de la pantalla falló: se anota en el registro de problemas y vuelve el detalle redactado para «Copiar detalle». */
   'preflight:fail': { req: { id: PreflightId; code?: string; message?: string }; res: { detail: string } }
+  /** «Confiar en la firma» (solo macOS): `cancelled` = la persona canceló el aviso de macOS (no es un error). */
+  'preflight:trust': { req: void; res: { ok: boolean; error?: 'cancelled' | 'failed' | 'unavailable'; message?: string } }
+  'preflight:trust:remove': { req: void; res: { ok: boolean; error?: 'cancelled' | 'failed' | 'unavailable'; message?: string } }
 
   /** «Doctor»: revisa permisos, herramientas internas y componentes opcionales y devuelve qué funciona y qué falta (solo mira). */
   'doctor:run': { req: void; res: DoctorReport }
@@ -1594,6 +1597,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'runtimes:remove',
   'preflight:run',
   'preflight:fail',
+  'preflight:trust',
+  'preflight:trust:remove',
   'doctor:run',
   'tasks:sandbox:status',
   'tasks:sandbox:setup',

@@ -472,6 +472,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'runtimes:remove': 'X',
   'preflight:run': 'X',
   'preflight:fail': 'X',
+  'preflight:trust': 'X',
+  'preflight:trust:remove': 'X',
   'doctor:run': 'X', // revela permisos y software instalado de este Mac: solo en el Mac
   // Estado del entorno aislado: lectura. Instalarlo o cancelarlo (descarga, importa una distro) NO es cosa del celular.
   'tasks:sandbox:status': 'R',

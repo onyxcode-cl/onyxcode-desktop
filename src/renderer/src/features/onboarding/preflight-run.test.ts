@@ -14,6 +14,7 @@ function harness(over: Partial<InstallApi> = {}) {
     craftProgress: vi.fn(async () => 42),
     runtimesInstall: vi.fn(async () => (log.push('runtimes'), { ok: true })),
     runtimesProgress: vi.fn(async () => 55),
+    trustInstall: vi.fn(async () => (log.push('trust'), { ok: true })),
     sandboxSetup: vi.fn(async () => log.push('sandbox')),
     sandboxStatus: vi.fn(async () => ({ state: 'ready', setup: null })),
     fail: vi.fn(async (id, code) => ({ detail: `detalle ${id} ${code}` })),
@@ -198,5 +199,30 @@ describe('instalar solo lo marcado y reintentar por componente (F8-B197)', () =>
     const h = harness()
     expect(await runInstall([], h.api, h.ev)).toEqual([])
     expect(h.runtime).toEqual([])
+  })
+})
+
+describe('«Confiar en la firma» en la preparación', () => {
+  it('se instala al final y no descarga nada', async () => {
+    const h = harness()
+    const out = await runInstall(['craft', 'trust'], h.api, h.ev)
+    expect(h.log).toEqual(['craft', 'trust'])
+    expect(out.map((o) => o.ok)).toEqual([true, true])
+  })
+  it('cancelar el aviso de macOS NO es un fallo: no se anota, la pieza vuelve a «Falta tu clic» y el resto sigue', async () => {
+    const cancelled: PreflightId[] = []
+    const h = harness({ trustInstall: async () => ({ ok: false, error: 'cancelled' }) })
+    const out = await runInstall(['trust', 'craft'], h.api, { ...h.ev, onCancelled: (id) => void cancelled.push(id) })
+    expect(cancelled).toEqual(['trust'])
+    expect(h.api.fail).not.toHaveBeenCalled()
+    expect(h.runtime).not.toContainEqual(['trust', { state: 'failed', error: 'cancelled' }])
+    expect(h.runtime.at(-1)).toEqual(['craft', null])
+    expect(out.map((o) => o.code)).toEqual(['cancelled', undefined])
+  })
+  it('si macOS lo rechaza: falla con su motivo, se anota y se puede reintentar', async () => {
+    const h = harness({ trustInstall: async () => ({ ok: false, error: 'failed', message: 'x' }) })
+    await runInstall(['trust'], h.api, h.ev)
+    expect(h.api.fail).toHaveBeenCalledWith('trust', 'failed', 'x')
+    expect(h.runtime).toContainEqual(['trust', { state: 'failed', error: 'failed' }])
   })
 })

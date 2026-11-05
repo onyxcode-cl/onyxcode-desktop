@@ -37,6 +37,18 @@ export function ComponentsCard(): React.JSX.Element {
   }, [run])
 
   const rows = report && !report.skipped ? visibleRows(report) : []
+  const trustOn = report?.components.some((c) => c.id === 'trust' && c.ok) === true
+  const [removing, setRemoving] = useState(false)
+  const [removeFailed, setRemoveFailed] = useState(false)
+  const removeTrust = async (): Promise<void> => {
+    setRemoving(true)
+    setRemoveFailed(false)
+    const r = await cw('preflight:trust:remove').catch(() => null)
+    // Cancelar el aviso de macOS no es un error: queda como estaba.
+    if (!r?.ok && r?.error !== 'cancelled') setRemoveFailed(true)
+    setRemoving(false)
+    await run()
+  }
   return (
     <>
       <div className="mt-6 mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -65,7 +77,7 @@ export function ComponentsCard(): React.JSX.Element {
           return (
             <div key={c.id} className="flex items-start justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0">
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{t(LABELS[c.id])}</div>
+                <div className="text-sm font-medium">{t(LABELS[c.id], { app: DISPLAY_NAME })}</div>
                 <div className="mt-0.5 text-xs text-muted">
                   {c.ok
                     ? c.version
@@ -83,6 +95,16 @@ export function ComponentsCard(): React.JSX.Element {
           )
         })}
       </Card>
+      {trustOn && (
+        <div className="mt-4 rounded-ctl bg-inset px-4 py-3" data-testid="trust-remove">
+          <div className="text-sm font-medium">{t('settings.diag.trust.title', { app: DISPLAY_NAME })}</div>
+          <p className="mt-0.5 text-xs text-muted">{t('settings.diag.trust.desc', { app: DISPLAY_NAME })}</p>
+          <Button className="mt-2" variant="secondary" onClick={() => void removeTrust()} disabled={removing}>
+            {removing ? t('settings.diag.trust.removing') : t('settings.diag.trust.remove', { app: DISPLAY_NAME })}
+          </Button>
+          {removeFailed && <ErrorText>{t('settings.diag.trust.failed')}</ErrorText>}
+        </div>
+      )}
     </>
   )
 }
