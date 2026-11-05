@@ -244,14 +244,14 @@ describe('pantalla «Preparando»: Acceso a tus archivos (opcional, F8-B210)', (
     expect(html).toMatch(/data-testid="preflight-row-files" data-state="pending"/)
     expect(html).toContain('Acceso a tus archivos (opcional)')
     expect(html).toContain('puedes dejarlo apagado')
-    expect(html).toContain('Abrir Ajustes del Sistema')
+    expect(html).toContain('Mostrar Lazunox')
     expect(html).toContain('Reiniciar Lazunox')
     expect(html).not.toContain('No se puede omitir')
   })
   it('concedido: fila lista y sin botones', () => {
     const html = render(report(files({ ok: true, reason: undefined })))
     expect(html).toMatch(/data-testid="preflight-row-files" data-state="ready"/)
-    expect(html).not.toContain('Abrir Ajustes del Sistema')
+    expect(html).not.toContain('Mostrar Lazunox')
   })
   it('indeterminado: texto de que no se pudo comprobar', () => {
     expect(render(report(files({ reason: 'unknown' })))).toContain('No se pudo comprobar el Acceso total al disco')
