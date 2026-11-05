@@ -255,6 +255,8 @@ export interface ComputerStatus {
   win?: ComputerWinStatus
   /** Solo macOS: la app corre translocada (abierta desde un .dmg o Descargas) o desde un volumen; los permisos no se guardan bien ahí. */
   location?: 'translocated' | 'volume'
+  /** Solo macOS: la app lleva firma ad-hoc (sin certificado de Apple): cada versión nueva invalida los permisos aunque el interruptor siga encendido. */
+  adhoc?: boolean
 }
 
 /** «Estado en este PC» (Windows): lo que Ajustes muestra y lo que decide si Control del PC puede arrancar. */

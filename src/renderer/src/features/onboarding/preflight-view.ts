@@ -39,6 +39,8 @@ const HINTS: Partial<Record<PreflightId, Record<string, MsgKey>>> = {
   perms: {
     both: 'preflight.hint.perms.both',
     accessibility: 'preflight.hint.perms.accessibility',
+    'both-adhoc': 'preflight.hint.perms.both-adhoc',
+    'accessibility-adhoc': 'preflight.hint.perms.accessibility-adhoc',
     restart: 'preflight.hint.perms.restart',
     unknown: 'preflight.hint.perms.unknown'
   },

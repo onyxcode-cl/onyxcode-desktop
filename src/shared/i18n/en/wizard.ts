@@ -223,6 +223,10 @@ export const wizard = {
   'preflight.hint.helper.not-found': 'The {app} control helper was not found. Reinstall the app to be able to control the computer.',
   'preflight.hint.perms.both': 'The Accessibility and Screen Recording permissions are missing; computer control needs them.',
   'preflight.hint.perms.accessibility': 'The Accessibility permission is missing; computer control needs it.',
+  'preflight.hint.perms.both-adhoc':
+    'The Accessibility and Screen Recording permissions are missing. If they were already on, macOS drops them every time {app} updates: turn them off and on again in System Settings, then press “Check again”.',
+  'preflight.hint.perms.accessibility-adhoc':
+    'The Accessibility permission is missing. If it was already on, macOS drops it every time {app} updates: turn it off and on again in System Settings, then press “Check again”.',
   'preflight.hint.perms.restart':
     'Accessibility is on but Screen Recording is not yet: turn it on and restart {app} (macOS applies it when the app opens again).',
   'preflight.hint.perms.unknown': 'The permissions could not be checked. Press “Check again”.',

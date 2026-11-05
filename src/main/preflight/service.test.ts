@@ -206,6 +206,14 @@ describe('macOS: permisos, ubicación y ayudante (no esenciales)', () => {
     expect(r.components.find((c) => c.id === 'perms')).toMatchObject({ ok: false, essential: false, reason })
     expect(blocking(r)).toEqual([])
   })
+  it.each([
+    [{ accessibility: false, screenRecording: false, adhoc: true }, 'both-adhoc'],
+    [{ accessibility: false, screenRecording: true, adhoc: true }, 'accessibility-adhoc'],
+    [{ accessibility: true, screenRecording: false, adhoc: true }, 'restart']
+  ])('firma ad-hoc, permisos %j -> %s', async (st, reason) => {
+    const r = await runPreflightChecks(deps(mac(st)))
+    expect(r.components.find((c) => c.id === 'perms')).toMatchObject({ ok: false, reason })
+  })
   it('sin respuesta del ayudante de permisos: pendiente "unknown"', async () => {
     expect(await get(mac(null), 'perms')).toMatchObject({ ok: false, reason: 'unknown', essential: false })
   })

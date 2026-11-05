@@ -47,6 +47,7 @@ import { dirname, join } from 'node:path'
 import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { unpacked } from '../util/asar'
 import { runHelper } from '../util/exec'
+import { isAdhocSigned } from './adhoc'
 import { recordProblem } from '../diagnostics/problem-log'
 import { classifyAppLocation, permsStallDetail } from '@shared/mac-permissions'
 import {
@@ -1248,6 +1249,9 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       screens: [],
       ...locationField()
     }
+    // Solo en la app empaquetada de macOS (en desarrollo no hay firma de la app que importe).
+    const adhoc = app.isPackaged && process.platform === 'darwin' && (await isAdhocSigned())
+    if (adhoc) base.adhoc = true
     if (!bin) return base
     try {
       const perms = JSON.parse(await runHelper(bin, ['permissions'])) as { accessibility: boolean; screenRecording: boolean }
@@ -1257,7 +1261,8 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
         accessibility: !!perms.accessibility,
         screenRecording: !!perms.screenRecording,
         screens: screens.map((s) => ({ width: s.width, height: s.height, scale: s.scale })),
-        ...locationField()
+        ...locationField(),
+        ...(adhoc ? { adhoc: true } : {})
       }
     } catch (err) {
       console.error('[computer] helper:', err)

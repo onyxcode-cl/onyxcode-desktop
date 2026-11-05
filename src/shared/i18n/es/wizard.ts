@@ -220,6 +220,10 @@ export const wizard = {
   'preflight.hint.helper.not-found': 'No se encontró el ayudante de control de {app}. Reinstala la app para poder controlar el equipo.',
   'preflight.hint.perms.both': 'Faltan los permisos de Accesibilidad y de Grabación de pantalla, que el control del equipo necesita.',
   'preflight.hint.perms.accessibility': 'Falta el permiso de Accesibilidad, que el control del equipo necesita.',
+  'preflight.hint.perms.both-adhoc':
+    'Faltan los permisos de Accesibilidad y de Grabación de pantalla. Si ya los tenías activados, macOS los pierde cada vez que {app} se actualiza: apágalos y vuelve a encenderlos en Ajustes del Sistema, y pulsa «Revisar de nuevo».',
+  'preflight.hint.perms.accessibility-adhoc':
+    'Falta el permiso de Accesibilidad. Si ya lo tenías activado, macOS lo pierde cada vez que {app} se actualiza: apágalo y vuelve a encenderlo en Ajustes del Sistema, y pulsa «Revisar de nuevo».',
   'preflight.hint.perms.restart':
     'Accesibilidad está activada, pero Grabación de pantalla aún no: actívala y reinicia {app} (macOS la aplica al abrir la app de nuevo).',
   'preflight.hint.perms.unknown': 'No se pudo comprobar los permisos. Pulsa «Revisar de nuevo».',

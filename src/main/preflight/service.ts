@@ -49,7 +49,7 @@ export interface PreflightDeps {
   helperPresent?: () => boolean
   /** Solo macOS: permisos, y dónde corre la app. */
   mac?: {
-    status: () => Promise<{ accessibility: boolean; screenRecording: boolean } | null>
+    status: () => Promise<{ accessibility: boolean; screenRecording: boolean; adhoc?: boolean } | null>
     placement: () => AppPlacement
   }
   /** Solo macOS: ¿tiene la app «Acceso total al disco»? (solo lectura, sin pedir nada). Opcional y silencioso. */
@@ -209,7 +209,9 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
   if (d.mac) {
     if (mac) {
       const stage = permsStage(mac)
-      const reason = stage === 'ready' ? undefined : stage === 'restart' ? 'restart' : mac.screenRecording ? 'accessibility' : 'both'
+      const base = mac.screenRecording ? 'accessibility' : 'both'
+      // Firma ad-hoc: lo más probable es un permiso viejo (de otra versión) que sigue «encendido» en Ajustes; el texto lo explica.
+      const reason = stage === 'ready' ? undefined : stage === 'restart' ? 'restart' : mac.adhoc ? `${base}-adhoc` : base
       out.push({ id: 'perms', essential: false, ok: stage === 'ready', installable: false, ...(reason ? { reason } : {}) })
     } else out.push({ id: 'perms', essential: false, ok: false, installable: false, reason: 'unknown' })
     const place = d.mac.placement()

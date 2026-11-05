@@ -157,6 +157,8 @@ describe('textos de la pantalla', () => {
     const c = (o: object) => ({ id: 'craft' as const, essential: true, ok: false, installable: true, ...o })
     expect(hintKey(c({ reason: 'incomplete' }))).toBe('preflight.hint.craft.incomplete')
     expect(hintKey(c({ id: 'perms', essential: false, reason: 'restart' }))).toBe('preflight.hint.perms.restart')
+    expect(hintKey(c({ id: 'perms', essential: false, reason: 'both-adhoc' }))).toBe('preflight.hint.perms.both-adhoc')
+    expect(hintKey(c({ id: 'perms', essential: false, reason: 'accessibility-adhoc' }))).toBe('preflight.hint.perms.accessibility-adhoc')
     expect(hintKey(c({ id: 'sandbox', reason: 'needsWsl' }))).toBe('preflight.hint.sandbox.other')
     expect(hintKey(c({ id: 'helper', essential: false, reason: 'x' }))).toBe('preflight.hint.generic.optional')
     expect(hintKey(c({ ok: true }))).toBeNull()
