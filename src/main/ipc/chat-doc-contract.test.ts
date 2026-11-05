@@ -190,7 +190,7 @@ const DOCX: [string, unknown, boolean][] = [
     true
   ],
   ['sin bloques', { blocks: [] }, false],
-  ['bloque desconocido', { blocks: [{ type: 'image', path: 'a.png' }] }, false],
+  ['bloque desconocido', { blocks: [{ type: 'video', path: 'a.mp4' }] }, false],
   ['clave de más', { blocks: [{ type: 'paragraph', text: 'x', macro: 'y' }] }, false],
   ['tabla con fila corta', { blocks: [{ type: 'table', columns: ['a', 'b'], rows: [['1']] }] }, false],
   ['clave de más en el documento', { evil: 1, blocks: [{ type: 'page_break' }] }, false]

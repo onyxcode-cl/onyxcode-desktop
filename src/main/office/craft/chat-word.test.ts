@@ -106,7 +106,7 @@ describe('chat-word (prueba Craft)', () => {
 
   it.each([
     ['sin bloques', { blocks: [] }],
-    ['bloque desconocido', { blocks: [{ type: 'image', path: 'x.png' }] }],
+    ['bloque desconocido', { blocks: [{ type: 'video', path: 'x.mp4' }] }],
     ['encabezado de nivel 4', { blocks: [{ type: 'heading', level: 4, text: 'x' }] }],
     ['tabla con fila corta', { blocks: [{ type: 'table', columns: ['a', 'b'], rows: [['1']] }] }],
     ['clave de más', { blocks: [{ type: 'paragraph', text: 'x', macro: 'y' }] }],
