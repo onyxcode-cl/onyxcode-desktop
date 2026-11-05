@@ -56,6 +56,19 @@ describe('prompts de agente', () => {
     expect((s.match(/Archivos auxiliares/g) ?? []).length).toBeGreaterThanOrEqual(1)
   })
 
+  it('los temporales y renders de documentos van DENTRO de la tarea (nada de mktemp, /tmp ni $TMPDIR)', () => {
+    // `mktemp -d` cae en /var/folders/…/T (fuera de la carpeta de la tarea): pide un permiso que la app no puede conceder y la tarea queda detenida.
+    const tasks = read('tasks')
+    expect(tasks).toMatch(/NUNCA uses `\/tmp`, `\$TMPDIR` ni `mktemp`/)
+    expect(tasks).not.toMatch(/Usa `\/tmp` solo si/)
+    const skillsDir = join(__dirname, '../../../resources/opencode/skills')
+    for (const sk of ['docx', 'xlsx', 'pptx', 'pdf']) {
+      const md = readFileSync(join(skillsDir, sk, 'SKILL.md'), 'utf8')
+      expect(md, sk).not.toMatch(/carpeta nueva \(`mktemp -d`\)/)
+      expect(md, sk).toMatch(/DENTRO de `\.\/\.lazunox\/trabajo\/`/)
+    }
+  })
+
   it('chat.md pide citar las URL de websearch/webfetch', () => {
     expect(read('chat')).toMatch(/cita las fuentes/)
   })

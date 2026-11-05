@@ -174,7 +174,7 @@ Si lo usas:
   MÍRALA con la herramienta de imágenes y comprueba que nada se corta ni se superpone.
 - Si creaste la presentación con `documentos_crear`, mírala con `documentos_renderizar` (devuelve una imagen por diapositiva; también sirve para un .pptx que hiciste o editaste con `bash`: pasa su ruta relativa a la carpeta de la tarea) y corrige todo de una vez. Es la forma de verla también en Windows.
 - Solo si no obtuviste ninguna imagen (ni de `documentos_renderizar` ni de DeckCraft) avisa «solo hay verificación estructural» en «Para revisar» y pide que la persona mire la vista previa de la app; si viste las imágenes, no lo escribas.
-- Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
+- Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
 ## 3. Entregar
 Indica la ruta del .pptx y, en «Para revisar», lo que no pudiste comprobar (render, fuentes, animaciones).

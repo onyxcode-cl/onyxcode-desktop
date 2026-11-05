@@ -110,7 +110,7 @@ Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderiz
 `PY scripts/check_pdf.py salida.pdf --render --outdir ./.lazunox/trabajo/render`
 Imprime páginas, tamaño, texto extraíble, páginas en blanco y rutas de los PNG (usa `_shared/render.py`).
 **Mira al menos las primeras páginas PNG**: títulos cortados, tablas desbordadas, imágenes deformadas. Corrige y regenera.
-Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
+Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 Resultado esperado: `RESULTADO: correcto`. Si dice «revisar avisos», explica cada aviso o corrígelo.
 
 ### Entregar
