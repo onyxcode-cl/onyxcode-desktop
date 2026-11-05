@@ -225,3 +225,25 @@ describe('189: arreglos de Word', () => {
     expect(names(sin).filter((n) => n === 'para.keepNext')).toHaveLength(0)
   })
 })
+
+describe('portada', () => {
+  const spec = (extra: object): DocxSpec =>
+    ({ title: 'Propuesta', subtitle: 'Plan 2027', author: 'Ana', date: '1 de enero', blocks: [{ type: 'heading', level: 1, text: 'Uno' }], ...extra }) as DocxSpec
+  const names = (s: DocxSpec): string[] => chatDocxCommands(s).flat().map((l) => l.split('=')[0])
+  it('con cover: salto de página tras los datos y primera página sin encabezado ni pie', () => {
+    const c = names(spec({ cover: true }))
+    expect(c).toContain('layout.differentFirstPage')
+    expect(c).toContain('text.pageBreak')
+    expect(c.indexOf('text.pageBreak')).toBeGreaterThan(c.indexOf('para.borders'))
+  })
+  it('sin cover: título centrado de siempre y sin salto', () => {
+    const c = names(spec({}))
+    expect(c).not.toContain('text.pageBreak')
+    expect(c).not.toContain('layout.differentFirstPage')
+  })
+  it('cover exige título y ser booleano', () => {
+    expect(isDocxSpec(spec({ cover: true }))).toBe(true)
+    expect(isDocxSpec(spec({ cover: 'si' }))).toBe(false)
+    expect(isDocxSpec({ blocks: [{ type: 'paragraph', text: 'x' }], cover: true })).toBe(false)
+  })
+})

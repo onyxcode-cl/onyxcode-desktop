@@ -89,10 +89,33 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     cmd('insert.footer', { preset: 'pageNumber' })
     cmd('insert.closeHeader')
   }
-  if (spec.title) par(spec.title, 'Title', 'center')
-  if (spec.subtitle) par(spec.subtitle, 'Subtitle', 'center')
   const meta = [spec.author, spec.date === 'hoy' ? fechaEs() : spec.date].filter((x): x is string => !!x)
-  if (meta.length) par(meta.join(' · '), 'Normal', 'center')
+  if (spec.cover && spec.title) {
+    // Portada: página propia, título a la izquierda y bajado un tercio de la hoja, línea fina de acento bajo el subtítulo, y salto de
+    // página. Sin encabezado ni pie en esa primera página (la numeración sigue contando: el cuerpo parte en la 2).
+    if (spec.header || spec.footer || (spec.page_numbers ?? true)) cmd('layout.differentFirstPage')
+    const cover = (t: string, style: string, before: number, after: number, line = false): void => {
+      cmd('para.style', { style })
+      cmd('para.align', { value: 'left' })
+      cmd('para.spacing', { before, after })
+      cmd('para.borders', line ? { kind: 'bottom', width: 1.5, color: '1F3A5F' } : { kind: 'none' })
+      const tail = inline(t)
+      cmd('text.newParagraph')
+      for (const [c, p] of tail) cmd(c, p)
+    }
+    cover(spec.title, 'Title', 200, 12, !spec.subtitle)
+    // La línea fina de acento queda bajo el subtítulo (o bajo el título si no hay subtítulo).
+    if (spec.subtitle) cover(spec.subtitle, 'Subtitle', 0, 18, true)
+    if (meta.length) cover(meta.join(' · '), 'Normal', 24, 0)
+    cmd('text.pageBreak')
+    cmd('para.style', { style: 'Normal' })
+    cmd('para.borders', { kind: 'none' })
+    cmd('para.spacing', { before: 0, after: 8 })
+  } else {
+    if (spec.title) par(spec.title, 'Title', 'center')
+    if (spec.subtitle) par(spec.subtitle, 'Subtitle', 'center')
+    if (meta.length) par(meta.join(' · '), 'Normal', 'center')
+  }
   if (spec.toc) {
     cmd('references.toc', { levels: 3, title: 'Contenido' })
     cmd('caret.docEnd')

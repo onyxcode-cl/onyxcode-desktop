@@ -411,6 +411,8 @@ export interface DocxSpec {
   footer?: string
   page_numbers?: boolean
   toc?: boolean
+  /** Portada en su propia página (título grande, subtítulo, autor y fecha); sin encabezado ni pie. Requiere `title`. */
+  cover?: boolean
   blocks: DocxBlock[]
 }
 
@@ -749,10 +751,11 @@ function isDocxBlock(v: unknown): v is DocxBlock {
 export function isDocxSpec(v: unknown): v is DocxSpec {
   if (!v || typeof v !== 'object') return false
   const d = v as Record<string, unknown>
-  if (!onlyKeys(d, ['title', 'subtitle', 'author', 'date', 'header', 'footer', 'page_numbers', 'toc', 'blocks'])) return false
+  if (!onlyKeys(d, ['title', 'subtitle', 'author', 'date', 'header', 'footer', 'page_numbers', 'toc', 'cover', 'blocks'])) return false
   if (![d.title, d.subtitle, d.author, d.date, d.header, d.footer].every((x) => docxOpt(x))) return false
   if ((d.page_numbers !== undefined && typeof d.page_numbers !== 'boolean') || (d.toc !== undefined && typeof d.toc !== 'boolean'))
     return false
+  if (d.cover !== undefined && (typeof d.cover !== 'boolean' || (d.cover && !d.title))) return false
   return (
     Array.isArray(d.blocks) &&
     d.blocks.length > 0 &&

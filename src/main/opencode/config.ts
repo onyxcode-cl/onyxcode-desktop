@@ -145,7 +145,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           '(CLP)"],"rows":[["Norte",1234567],["Total",3580245]],"total_row":true,"caption":"Tabla 1. Ventas por ' +
           'región"},{"type":"page_break"}]}. Campos opcionales del documento: title, subtitle, author, date (texto o "hoy", ' +
           'que se reemplaza por la fecha de hoy), header (texto arriba a la derecha), footer (texto al pie; sin footer sale ' +
-          '"Página X de Y"), page_numbers (true/false) y toc (true = índice). Bloques (blocks, en orden): heading (level 1, ' +
+          '"Página X de Y"), page_numbers (true/false), toc (true = índice) y cover (true = portada en su propia página, sin encabezado ni pie; exige title; solo para informes formales, propuestas y contratos de 3 páginas o más). Bloques (blocks, en orden): heading (level 1, ' +
           '2 o 3, usa encabezados reales y no texto grande en negrita), paragraph (con **negrita** y *cursiva*; align ' +
           'opcional: left, right, center o justify), bullets y numbered (items: textos; una lista dentro de la lista se ' +
           'aplana; cada bloque numbered reinicia en 1), table (columns, rows con el mismo largo que columns; los números ' +
