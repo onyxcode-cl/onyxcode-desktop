@@ -485,6 +485,8 @@ export const tasks = {
   'tasks.review.hint': 'Revisión automática de la app sobre el archivo tal como está ahora. Si lo cambias, se revisa de nuevo.',
   'tasks.review.unavailable': 'No se pudo revisar este archivo.',
   'tasks.result.more': 'y {n} archivo(s) más en la pestaña Archivos creados.',
+  'tasks.result.older': 'Ver versiones anteriores ({n})',
+  'tasks.result.olderHide': 'Ocultar versiones anteriores',
   'tasks.deliv.open': 'Abrir',
   'tasks.deliv.reveal': 'Mostrar en Finder',
   'tasks.deliv.reveal.win': 'Mostrar en el Explorador',

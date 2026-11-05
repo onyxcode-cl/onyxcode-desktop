@@ -487,6 +487,8 @@ export const tasks = {
   'tasks.review.hint': 'Automatic check by the app on the file as it is now. If you change it, it is checked again.',
   'tasks.review.unavailable': 'This file could not be checked.',
   'tasks.result.more': 'and {n} more file(s) in the Files created tab.',
+  'tasks.result.older': 'Show earlier versions ({n})',
+  'tasks.result.olderHide': 'Hide earlier versions',
   'tasks.deliv.open': 'Open',
   'tasks.deliv.reveal': 'Show in Finder',
   'tasks.deliv.reveal.win': 'Show in File Explorer',

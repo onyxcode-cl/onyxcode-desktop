@@ -9,6 +9,7 @@ vi.mock('../../../lib/platform', async (orig) => ({
 }))
 
 import { ResultCard, isHelperFile } from './ResultCard'
+import { splitVersions } from './util'
 
 const file = (name: string, mtime: number) => ({ path: `/Users/x/Desktop/${name}`, relPath: name, size: 2048, mtime })
 
@@ -36,7 +37,7 @@ describe('ResultCard no se sale del marco (panel derecho abierto)', () => {
   // Anchos del chat con el panel derecho abierto (360, 450, 540, 700 px) × 1, 3 y 6 archivos con nombres largos. jsdom no calcula
   // layout: aquí se fijan las clases que lo garantizan; las medidas reales (Chromium) se hicieron con el arnés descrito en
   // PANEL-DERECHO-189.md: sin estas clases la fila sobraba 120 px a 360 y 30 px a 450 de ancho.
-  const long = 'informe-teletrabajo-pyme-40-personas-version-final-revisada-v'
+  const long = 'informe-teletrabajo-pyme-40-personas-version-final-revisada-parte'
   for (const n of [1, 3, 6]) {
     it(`${n} archivo(s) con nombre largo: columna que encoge, filas min-w-0 y nombre con «…»`, () => {
       Object.assign(mock, {
@@ -67,5 +68,35 @@ describe('isHelperFile', () => {
     expect(isHelperFile(f('~$informe.docx'))).toBe(true)
     expect(isHelperFile(f('bench-ventas.xlsx'))).toBe(false)
     expect(isHelperFile(f('datos.json'))).toBe(false)
+  })
+})
+
+describe('borradores v1/v2 (versiones anteriores)', () => {
+  const f = (name: string, mtime: number) => ({ path: `/Users/x/Desktop/${name}`, relPath: name, size: 2048, mtime })
+
+  it('splitVersions: la versión mayor es la entrega; sin sufijo cuenta como v1; no mezcla documentos ni extensiones', () => {
+    const all = [f('informe.docx', 1), f('informe-v2.docx', 2), f('informe-v3.docx', 3), f('informe-v3.pdf', 4), f('otro.docx', 5)]
+    const { latest, older } = splitVersions(all)
+    expect(latest.map((x) => x.relPath).sort()).toEqual(['informe-v3.docx', 'informe-v3.pdf', 'otro.docx'])
+    expect(older.map((x) => x.relPath).sort()).toEqual(['informe-v2.docx', 'informe.docx'])
+  })
+
+  it('splitVersions: un solo archivo, o un nombre que solo parece versión, no se agrupa', () => {
+    expect(splitVersions([f('plan-v2.pptx', 1)]).older).toEqual([])
+    expect(splitVersions([f('informe.docx', 1), f('informe-final.docx', 2)]).older).toEqual([])
+  })
+
+  it('la tarjeta muestra solo la última y ofrece «Ver versiones anteriores» sin listar los borradores', () => {
+    Object.assign(mock, { deliverables: { t1: [f('informe.docx', 1), f('informe-v2.docx', 2), f('informe-v3.docx', 3)] } })
+    const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
+    expect(html).toContain('informe-v3.docx')
+    expect(html).not.toContain('informe-v2.docx')
+    expect(html).not.toContain('>informe.docx<')
+    expect(html).toContain('Ver versiones anteriores (2)')
+  })
+
+  it('sin borradores no aparece el botón', () => {
+    Object.assign(mock, { deliverables: { t1: [f('a.docx', 1), f('b.pdf', 2)] } })
+    expect(renderToStaticMarkup(<ResultCard taskId="t1" />)).not.toContain('versiones anteriores')
   })
 })
