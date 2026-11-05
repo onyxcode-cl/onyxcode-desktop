@@ -9,6 +9,7 @@ import { t, type MsgKey } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
 import { isBackgroundShell } from '@shared/engine-notes'
 import { dateLocale } from '../../../lib/i18n'
+import { isInternalAccessNoise } from '../../../lib/plan-gate'
 import { plainBash } from './plain-bash'
 import { computerToolDetail, computerToolInfo, computerToolKind } from './computer-tools'
 
@@ -226,6 +227,14 @@ export function toolLabel(tool: string, status: string = 'completed'): string {
   return t(`tasks.tool.${id}.${state}` as MsgKey)
 }
 
+/**
+ * Paso que no debe verse: `computer_request_access` rechazado con el texto interno del servidor del Mac (el agente la llamó sin apps; en una
+ * tarea de documentos no hay nada que pedir). No aparece en la lista de pasos, ni en el contexto ni en los contadores.
+ */
+export function isInternalNoiseStep(part: ToolPart): boolean {
+  return part.tool === 'computer_request_access' && part.state.status === 'error' && isInternalAccessNoise(part.state.error)
+}
+
 export function friendlyTool(part: ToolPart, showPath: (path: string) => string = (x) => x): { verb: string; detail: string } {
   const input = part.state.input ?? {}
   if (part.tool === 'computer_request_access') return { verb: t('tasks.tool.plan.verb'), detail: t('tasks.tool.plan.detail') }
@@ -340,6 +349,7 @@ export function groupActivityBySteps(entries: MessageEntry[]): StepGroup[] {
         if (active && active !== current?.title) current = push(active)
         continue
       }
+      if (isInternalNoiseStep(p)) continue
       if (!current) current = push(null)
       current.tools.push(p)
     }
@@ -384,6 +394,7 @@ export function buildContext(entries: MessageEntry[]): ContextGroups {
   for (const e of entries) {
     for (const p of e.parts) {
       if (p.type !== 'tool') continue
+      if (isInternalNoiseStep(p)) continue
       if (computerToolKind(p.tool)) continue // ya se ve en "Control del Mac"
       const input = p.state.input ?? {}
       if (FILE_READ_TOOLS.has(p.tool)) {
@@ -502,4 +513,27 @@ export function rememberablePatterns(p: PermissionRequest): string[] {
   if (isProtectedPermission(p.metadata)) return []
   const list = p.always.length > 0 ? p.always : p.patterns
   return list.filter((pat) => isRememberablePermission(p.permission, pat))
+}
+
+/**
+ * Versiones de un mismo documento (`informe.docx`, `informe-v2.docx`, `informe-v3.docx`): la última es la entrega y las anteriores son
+ * borradores. Agrupa por carpeta + nombre sin el sufijo `-vN` + extensión; sin sufijo cuenta como v1. En cada grupo con 2 o más gana la
+ * versión mayor (a igualdad, la más reciente). No borra ni mueve nada: solo decide qué se ve primero.
+ */
+export function splitVersions<T extends { path: string; mtime: number }>(files: readonly T[]): { latest: T[]; older: T[] } {
+  const version = (p: string): number => {
+    const m = /-v(\d+)(?=\.[^./\\]+$)/i.exec(p)
+    return m ? Number(m[1]) : 1
+  }
+  const key = (p: string): string => p.replace(/-v\d+(?=\.[^./\\]+$)/i, '').toLowerCase()
+  const groups = new Map<string, T[]>()
+  for (const f of files) groups.set(key(f.path), [...(groups.get(key(f.path)) ?? []), f])
+  const latest: T[] = []
+  const older: T[] = []
+  for (const g of groups.values()) {
+    const sorted = [...g].sort((a, b) => version(b.path) - version(a.path) || b.mtime - a.mtime)
+    latest.push(sorted[0])
+    older.push(...sorted.slice(1))
+  }
+  return { latest, older }
 }
