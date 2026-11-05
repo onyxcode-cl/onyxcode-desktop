@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { read, type WorkSheet } from 'xlsx'
-import { MAX_AUTO_COL_WIDTH_PX, contrastColor, DEFAULT_COL_WIDTH_PX, DEFAULT_ROW_HEIGHT_PX, colLetter, sheetToGrid, workbookToGrid } from './model'
+import {
+  MAX_AUTO_COL_WIDTH_PX,
+  contrastColor,
+  DEFAULT_COL_WIDTH_PX,
+  DEFAULT_ROW_HEIGHT_PX,
+  colLetter,
+  sheetToGrid,
+  workbookToGrid
+} from './model'
 
 const fixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url)))
 
@@ -60,7 +68,10 @@ describe('negritas y anchos al contenido', () => {
   })
 
   it('una columna angosta se ensancha para que su texto entre completo, sin pasar el tope', () => {
-    const data = [[{ t: 's', v: 'Ken Tanaka Rodriguez de la Vega', w: 'Ken Tanaka Rodriguez de la Vega' }], [{ t: 's', v: 'x'.repeat(200), w: 'x'.repeat(200) }]]
+    const data = [
+      [{ t: 's', v: 'Ken Tanaka Rodriguez de la Vega', w: 'Ken Tanaka Rodriguez de la Vega' }],
+      [{ t: 's', v: 'x'.repeat(200), w: 'x'.repeat(200) }]
+    ]
     const g = sheetToGrid('H', { '!ref': 'A1:A2', '!data': data, '!cols': [{ wpx: 40 }] } as unknown as WorkSheet)
     expect(g.colWidthsPx[0]).toBe(MAX_AUTO_COL_WIDTH_PX)
     const g2 = sheetToGrid('H', { '!ref': 'A1:A1', '!data': [data[0]], '!cols': [{ wpx: 40 }] } as unknown as WorkSheet)
@@ -69,7 +80,11 @@ describe('negritas y anchos al contenido', () => {
   })
 
   it('un ancho del archivo mayor que el texto se respeta', () => {
-    const g = sheetToGrid('H', { '!ref': 'A1:A1', '!data': [[{ t: 's', v: 'a', w: 'a' }]], '!cols': [{ wpx: 200 }] } as unknown as WorkSheet)
+    const g = sheetToGrid('H', {
+      '!ref': 'A1:A1',
+      '!data': [[{ t: 's', v: 'a', w: 'a' }]],
+      '!cols': [{ wpx: 200 }]
+    } as unknown as WorkSheet)
     expect(g.colWidthsPx[0]).toBe(200)
   })
 })

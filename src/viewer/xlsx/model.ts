@@ -68,7 +68,12 @@ function cellOf(raw: CellObject | undefined, bold = false): GridCell {
   if (!raw) return { text: '' }
   const text = raw.w ?? (raw.v === undefined || raw.v === null ? '' : String(raw.v))
   const fill = fillOf(raw.s)
-  return { text, ...(raw.f ? { formula: raw.f } : {}), ...(fill ? { fill, color: contrastColor(fill) } : {}), ...(bold ? { bold: true } : {}) }
+  return {
+    text,
+    ...(raw.f ? { formula: raw.f } : {}),
+    ...(fill ? { fill, color: contrastColor(fill) } : {}),
+    ...(bold ? { bold: true } : {})
+  }
 }
 
 /** Filas/columnas declaradas por `!ref` (solo para saber si el parseo se recortó, nunca para reservar memoria). */
@@ -93,7 +98,7 @@ const AUTOFIT_ROWS = 300
  * «Ken T» ni un encabezado en negrita). Las combinadas no cuentan: su texto se reparte en varias columnas.
  */
 function widthsOf(cols: ColInfo[] | undefined, count: number, cells: GridCell[][], merges: MergeRect[]): number[] {
-  const inMerge = (r: number, c: number): boolean => merges.some((m) => r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2 && (m.c2 > m.c1))
+  const inMerge = (r: number, c: number): boolean => merges.some((m) => r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2 && m.c2 > m.c1)
   return Array.from({ length: count }, (_, c) => {
     const base = cols?.[c]?.wpx ?? DEFAULT_COL_WIDTH_PX
     let longest = 0
