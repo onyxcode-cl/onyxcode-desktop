@@ -32,6 +32,17 @@ describe('ResultCard', () => {
   })
 })
 
+describe('ResultCard no se sale del marco (panel derecho abierto)', () => {
+  it('la lista y cada fila pueden encogerse al ancho del chat', () => {
+    Object.assign(mock, { deliverables: { t1: [file('informe-teletrabajo-pyme-40-personas-v3.docx', 1)] } })
+    const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
+    // Una columna de grid «1fr» no baja del ancho mínimo de su contenido (el nombre sin cortar): se fuerza minmax(0,1fr)
+    // y la fila lleva min-w-0, o las filas desbordan el marco y el icono de carpeta queda cortado.
+    expect(html).toMatch(/<ul[^>]*class="[^"]*grid-cols-\[minmax\(0,1fr\)\]/)
+    expect(html).toMatch(/<li[^>]*class="[^"]*\bmin-w-0\b/)
+  })
+})
+
 describe('isHelperFile', () => {
   it('oculta los archivos de trabajo del agente y deja los entregables', () => {
     const f = (relPath: string) => ({ relPath, path: `/x/${relPath}` })

@@ -114,6 +114,7 @@ import {
   isUsingComputer
 } from './store'
 import { DocumentViewerPanel } from './DocumentViewerPanel'
+import { effectiveAsideTab, type AsideTab } from './aside-tab'
 import { sdkDir } from './conn-paths'
 import {
   extOf,
@@ -386,7 +387,7 @@ export function TasksWorkspace(): React.JSX.Element {
   const fullAccess = conn?.fullAccess === true
   // Navegador integrado del `aside`: pestaña "Progreso | Navegador" y ancho redimensionable.
   const composerRef = useRef<TasksComposerHandle>(null)
-  const [asideTab, setAsideTab] = useState<'progress' | 'browser' | 'viewer'>('progress')
+  const [asideTab, setAsideTab] = useState<AsideTab>('progress')
   const [fichaOpen, setFichaOpen] = useState(false)
   const readingMode = useWorkView('code')
   const [browserMounted, setBrowserMounted] = useState(false)
@@ -396,6 +397,8 @@ export function TasksWorkspace(): React.JSX.Element {
   // Visor de documentos (Fase 0 del plan del visor): `Deliverables.tsx` pide abrir un archivo con
   // `requestViewerOpen`; acá se cambia a la pestaña y se monta el panel.
   const viewerRequest = useTasks((s) => s.viewerRequest)
+  // Si el visor o el navegador desaparecen con su pestaña elegida, el panel vuelve a Progreso en vez de quedarse en blanco.
+  const tab = effectiveAsideTab(asideTab, { viewer: !!viewerRequest, browser: !!browserOwner })
   useEffect(() => {
     if (viewerRequest) {
       // La apertura automática (`auto`) no le quita el navegador integrado a quien lo está usando.
@@ -777,7 +780,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   { id: 'progress' as const, icon: ListChecks, label: t('tasks.ws.progress') },
                   ...(hasBrowserBridge() ? [{ id: 'browser' as const, icon: Globe, label: t('code.panel.browser') }] : [])
                 ].map((p) => {
-                  const on = panelOpen && !sideOpen && asideTab === p.id
+                  const on = panelOpen && !sideOpen && tab === p.id
                   return (
                     <button
                       key={p.id}
@@ -894,9 +897,9 @@ export function TasksWorkspace(): React.JSX.Element {
           aria-label={t('a11y.sidePanel')}
           className="relative hidden shrink-0 flex-col border-l border-border lg:flex desk:border-l-transparent desk:bg-sidebar"
           // El chat conserva 22 rem: con la ventana estrecha el panel cede espacio.
-          style={{ width: asideTab === 'browser' || asideTab === 'viewer' ? browserWidth : 320, maxWidth: 'calc(100% - 22rem)' }}
+          style={{ width: tab === 'browser' || tab === 'viewer' ? browserWidth : 320, maxWidth: 'calc(100% - 22rem)' }}
         >
-          {(asideTab === 'browser' || asideTab === 'viewer') && (
+          {(tab === 'browser' || tab === 'viewer') && (
             <div
               onPointerDown={onAsideResizeDown}
               onPointerMove={onAsideResizeMove}
@@ -912,7 +915,7 @@ export function TasksWorkspace(): React.JSX.Element {
                 title={t('tasks.ws.progress')}
                 aria-label={t('tasks.ws.progress')}
                 className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
-                  asideTab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+                  tab === 'progress' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                 }`}
               >
                 <ListChecks size={16} className="hidden desk:block" />
@@ -926,7 +929,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   title={TASKS_TERMS.browser}
                   aria-label={TASKS_TERMS.browser}
                   className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
-                    asideTab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+                    tab === 'browser' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
                   <Globe size={16} /> <span className="inline desk:hidden">{TASKS_TERMS.browser}</span>
@@ -939,7 +942,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   title={t('viewer.tab')}
                   aria-label={t('viewer.tab')}
                   className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
-                    asideTab === 'viewer' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
+                    tab === 'viewer' ? 'bg-active text-fg' : 'text-muted hover:bg-hover hover:text-fg'
                   }`}
                 >
                   <FileText size={16} /> <span className="inline desk:hidden">{t('viewer.tab')}</span>
@@ -952,22 +955,17 @@ export function TasksWorkspace(): React.JSX.Element {
               </IconButton>
             </span>
           </div>
-          <div className={`min-h-0 flex-1 ${asideTab === 'progress' ? 'flex flex-col' : 'hidden'}`}>
+          <div className={`min-h-0 flex-1 ${tab === 'progress' ? 'flex flex-col' : 'hidden'}`}>
             <ProgressPanel sessionID={activeId} busy={busy} />
           </div>
           {browserOwner && browserMounted && (
-            <div className={`min-h-0 flex-1 ${asideTab === 'browser' ? 'flex flex-col' : 'hidden'}`}>
-              <BrowserPanel owner={browserOwner} product="tasks" visible={asideTab === 'browser'} onAddToChat={addPageToComposer} />
+            <div className={`min-h-0 flex-1 ${tab === 'browser' ? 'flex flex-col' : 'hidden'}`}>
+              <BrowserPanel owner={browserOwner} product="tasks" visible={tab === 'browser'} onAddToChat={addPageToComposer} />
             </div>
           )}
           {viewerRequest && (
-            <div className={`min-h-0 flex-1 ${asideTab === 'viewer' ? 'flex flex-col' : 'hidden'}`}>
-              <DocumentViewerPanel
-                key={viewerRequest.nonce}
-                path={viewerRequest.path}
-                visible={asideTab === 'viewer'}
-                onClose={closeViewer}
-              />
+            <div className={`min-h-0 flex-1 ${tab === 'viewer' ? 'flex flex-col' : 'hidden'}`}>
+              <DocumentViewerPanel key={viewerRequest.nonce} path={viewerRequest.path} visible={tab === 'viewer'} onClose={closeViewer} />
             </div>
           )}
         </aside>

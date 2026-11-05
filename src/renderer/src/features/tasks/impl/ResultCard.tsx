@@ -31,13 +31,13 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
         <CheckCircle2 size={16} className="shrink-0 text-success" aria-hidden />
         {t('tasks.result.title')}
       </div>
-      <ul className="mt-2 grid gap-1.5">
+      <ul className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-1.5">
         {shown.map((f) => {
           const { icon: Icon, tone } = fileIcon(f.path)
           return (
             <li
               key={f.path}
-              className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-ctl bg-elevated px-2.5 py-2 ring-1 ring-inset ring-border"
+              className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 rounded-ctl bg-elevated px-2.5 py-2 ring-1 ring-inset ring-border"
             >
               <Icon size={18} className={`shrink-0 ${tone}`} aria-hidden />
               <span className="min-w-0 flex-1 truncate text-sm" title={f.path}>
