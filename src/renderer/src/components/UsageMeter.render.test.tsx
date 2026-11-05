@@ -59,4 +59,11 @@ describe('UsageMeter', () => {
     expect(h).toContain('stroke-linecap="round"')
     expect(h).not.toContain('\u00a0%</span>')
   })
+  it('con el último mensaje en curso (sin tokens aún) mide con el último que ya los tiene', () => {
+    surface('darwin')
+    const h = renderToStaticMarkup(
+      <UsageMeter messages={[assistant(250), { ...assistant(0), info: { ...assistant(0).info, id: 'a2' } }]} model={model} />
+    )
+    expect(h).toContain('25\u00a0%')
+  })
 })
