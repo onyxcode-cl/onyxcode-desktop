@@ -166,3 +166,62 @@ describe('chat-word (prueba Craft)', () => {
     }
   })
 })
+
+describe('189: arreglos de Word', () => {
+  const names = (spec: DocxSpec): string[] => chatDocxScript(spec).map((l) => l.split('=')[0])
+  const seq = (spec: DocxSpec): string[] =>
+    chatDocxScript(spec).map((l) => (l.includes('"value":false') ? `${l.split('=')[0]}:off` : l.split('=')[0]))
+
+  it('un párrafo que termina en **negrita** apaga la negrita DESPUÉS de crear el párrafo nuevo (si no, el resto sale en negrita)', () => {
+    const s = seq({
+      blocks: [
+        { type: 'paragraph', text: 'Hola **fin**' },
+        { type: 'paragraph', text: 'Siguiente' }
+      ]
+    })
+    const i = s.indexOf('format.bold')
+    expect(s.slice(i, i + 4)).toEqual(['format.bold', 'text.insert', 'text.newParagraph', 'format.bold:off'])
+  })
+
+  it('la cursiva final también se apaga después del salto; en medio del párrafo se apaga enseguida', () => {
+    const end = seq({ blocks: [{ type: 'paragraph', text: 'Fin *cursiva*' }] })
+    const i = end.indexOf('format.italic')
+    expect(end.slice(i, i + 4)).toEqual(['format.italic', 'text.insert', 'text.newParagraph', 'format.italic:off'])
+    const mid = seq({ blocks: [{ type: 'paragraph', text: 'Antes **medio** después' }] })
+    const j = mid.indexOf('format.bold')
+    expect(mid.slice(j, j + 4)).toEqual(['format.bold', 'text.insert', 'format.bold:off', 'text.insert'])
+  })
+
+  it('los ítems de lista que terminan en negrita también', () => {
+    const s = seq({ blocks: [{ type: 'bullets', items: ['uno **fuerte**', 'dos'] }] })
+    const i = s.indexOf('format.bold')
+    expect(s.slice(i, i + 4)).toEqual(['format.bold', 'text.insert', 'text.newParagraph', 'format.bold:off'])
+  })
+
+  it('el índice se titula «Contenido» (en español)', () => {
+    const c = cmds(chatDocxScript({ toc: true, blocks: [{ type: 'heading', level: 1, text: 'A' }] }))
+    expect(c.find((x) => x.command === 'references.toc')?.params).toEqual({ levels: 3, title: 'Contenido' })
+  })
+
+  it('la tabla repite su encabezado en cada página y el renglón de antes del total se queda con él', () => {
+    const spec: DocxSpec = {
+      blocks: [
+        {
+          type: 'table',
+          columns: ['A', 'B'],
+          rows: [
+            ['x', 1],
+            ['y', 2],
+            ['Total', 3]
+          ],
+          total_row: true
+        }
+      ]
+    }
+    expect(names(spec).filter((n) => n === 'table.repeatHeader')).toHaveLength(1)
+    // 2 celdas del renglón «y» (el penúltimo) llevan keepNext
+    expect(names(spec).filter((n) => n === 'para.keepNext')).toHaveLength(2)
+    const sin: DocxSpec = { blocks: [{ type: 'table', columns: ['A'], rows: [['x'], ['y']] }] }
+    expect(names(sin).filter((n) => n === 'para.keepNext')).toHaveLength(0)
+  })
+})

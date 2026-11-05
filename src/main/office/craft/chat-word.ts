@@ -42,25 +42,37 @@ export function chatDocxCommands(spec: DocxSpec): string[][] {
   const cmd = (command: string, params?: Record<string, unknown>): void => {
     lines().push(params ? `${command}=${JSON.stringify(params)}` : command)
   }
-  const inline = (t: string): void => {
-    for (const seg of t.split(INLINE)) {
-      if (!seg) continue
+  /**
+   * Texto con **negrita** y *cursiva*. Devuelve los comandos que apagan el formato del ÚLTIMO tramo: hay que emitirlos DESPUÉS de
+   * `text.newParagraph`, porque si se apagan antes, el párrafo siguiente hereda la marca de párrafo en negrita y todo el resto sale en negrita.
+   */
+  const inline = (t: string): Array<[string, Record<string, unknown>]> => {
+    const segs = t.split(INLINE).filter(Boolean)
+    let tail: Array<[string, Record<string, unknown>]> = []
+    segs.forEach((seg, i) => {
+      const last = i === segs.length - 1
+      const off = (command: string): void => {
+        if (last) tail = [[command, { value: false }]]
+        else cmd(command, { value: false })
+      }
       if (seg.startsWith('**') && seg.endsWith('**') && seg.length > 4) {
         cmd('format.bold', { value: true })
         cmd('text.insert', { text: seg.slice(2, -2) })
-        cmd('format.bold', { value: false })
+        off('format.bold')
       } else if (seg.startsWith('*') && seg.endsWith('*') && seg.length > 2) {
         cmd('format.italic', { value: true })
         cmd('text.insert', { text: seg.slice(1, -1) })
-        cmd('format.italic', { value: false })
+        off('format.italic')
       } else cmd('text.insert', { text: seg })
-    }
+    })
+    return tail
   }
   const par = (t: string, style?: string, align?: string): void => {
     if (style) cmd('para.style', { style })
     cmd('para.align', { value: align ?? 'left' })
-    inline(t)
+    const tail = inline(t)
     cmd('text.newParagraph')
+    for (const [c, p] of tail) cmd(c, p)
   }
 
   cmd('design.themeFonts', { heading: 'Arial', body: 'Arial' })
@@ -81,7 +93,7 @@ export function chatDocxCommands(spec: DocxSpec): string[][] {
   const meta = [spec.author, spec.date === 'hoy' ? fechaEs() : spec.date].filter((x): x is string => !!x)
   if (meta.length) par(meta.join(' · '), 'Normal', 'center')
   if (spec.toc) {
-    cmd('references.toc', { levels: 3 })
+    cmd('references.toc', { levels: 3, title: 'Contenido' })
     cmd('caret.docEnd')
   }
   cmd('para.style', { style: 'Normal' })
@@ -106,10 +118,11 @@ export function chatDocxCommands(spec: DocxSpec): string[][] {
         if (b.type === 'numbered') cmd('para.numbering', { kind: 'numbered' })
         else cmd('para.bullets')
         flat.forEach((it, k) => {
-          inline(it)
+          const tail = inline(it)
           // Cada bloque numerado reinicia en 1 (solo se puede con el cursor ya dentro de la lista).
           if (b.type === 'numbered' && k === 0 && numberedSeen) cmd('para.restartNumbering')
           cmd('text.newParagraph')
+          for (const [c, p] of tail) cmd(c, p)
         })
         if (b.type === 'numbered') {
           numberedSeen = true
@@ -141,6 +154,9 @@ export function chatDocxCommands(spec: DocxSpec): string[][] {
             const al = b.align?.[k] ?? (r > 0 && looksNumeric(v) ? 'right' : 'left')
             cmd('para.align', { value: al })
             cmd('text.insert', { text: v })
+            // La fila de encabezado se repite en cada página y el penúltimo renglón se queda con el total (no queda solo en la página siguiente).
+            if (r === 0 && k === 0) cmd('table.repeatHeader')
+            if (b.total_row && r === cells.length - 2) cmd('para.keepNext')
             if (r === 0) {
               cmd('format.bold', { value: false })
               cmd('format.color', { color: 'auto' })
