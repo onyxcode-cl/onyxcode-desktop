@@ -11,7 +11,7 @@
  * - webRequest cancela cualquier petición http(s)/ws/file desde esa sesión; permisos denegados;
  *   navegación y ventanas nuevas bloqueadas.
  */
-import { basePdfOptions, pdfPrintOptions } from './pdf-options'
+import { basePdfOptions, htmlFontSizesPt, pdfPrintOptions, printWithoutOrphanPage } from './pdf-options'
 import { t } from '@shared/i18n'
 import { app, BrowserWindow, clipboard, dialog, Menu, net, session, type Session } from 'electron'
 import { writeFile } from 'node:fs/promises'
@@ -204,6 +204,12 @@ const PDF_TIMEOUT_MS = 30_000
  * cancela http(s)/ws/file/ftp), permisos denegados y navegación bloqueada. Nada remoto se carga:
  * un `<img src="http://…">` queda roto en el PDF. Devuelve los bytes del PDF (A4, con fondos).
  */
+/** Letra más chica declarada en el HTML (pt), o `null` si no declara ninguna. */
+function smallestFontPt(html: string): number | null {
+  const sizes = htmlFontSizesPt(html)
+  return sizes.length ? Math.min(...sizes) : null
+}
+
 export async function renderHtmlToPdf(html: string, title = 'Documento', opts: { remoteImages?: boolean } = {}): Promise<Buffer> {
   const source = String(html ?? '')
   if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
@@ -259,15 +265,16 @@ export async function renderHtmlToPdf(html: string, title = 'Documento', opts: {
     ])
     await new Promise((resolve) => setTimeout(resolve, 250))
     // PDF etiquetado y con marcadores (experimental en Electron): si esa impresión falla, se reintenta sin ellos para no perder el PDF.
-    const print = async (): Promise<Buffer> => {
+    const print = async (scale: number): Promise<Buffer> => {
       try {
-        return await wc.printToPDF(pdfPrintOptions())
+        return await wc.printToPDF({ ...pdfPrintOptions(), ...(scale === 1 ? {} : { scale }) })
       } catch (e) {
         console.warn('[pdf] impresión con PDF etiquetado falló; se reintenta sin él:', e instanceof Error ? e.message : e)
-        return await wc.printToPDF({ ...basePdfOptions })
+        return await wc.printToPDF({ ...basePdfOptions, ...(scale === 1 ? {} : { scale }) })
       }
     }
-    return await Promise.race([print(), timeout])
+    // Última página casi vacía: si una escala suave baja el número de páginas, se usa (ver `printWithoutOrphanPage`).
+    return await Promise.race([printWithoutOrphanPage(print, smallestFontPt(source)), timeout])
   } finally {
     if (timer) clearTimeout(timer)
     artifacts.delete(id)

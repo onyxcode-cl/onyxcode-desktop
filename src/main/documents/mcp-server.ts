@@ -360,7 +360,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         built.tipo,
         bytes,
         this.deps.review,
-        built.input.kind === 'pptx' || built.input.kind === 'xlsx' ? built.input.data : undefined
+        built.input.kind === 'pptx' || built.input.kind === 'xlsx' ? built.input.data : built.input.kind === 'pdf' ? built.input.html : undefined
       )
       return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}`)
     } catch (err) {

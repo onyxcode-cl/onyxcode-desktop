@@ -7,6 +7,7 @@
  * calculado guardado (Excel). Si no se puede abrir el archivo, lo dice («NO corrida»): nunca finge una revisión.
  */
 import JSZip from 'jszip'
+import { htmlFontSizesPt, pdfPageCount } from '../extras/pdf-options'
 import type { PptxSpec } from '@shared/chat-doc-spec'
 import { foldSubtitles, layoutOf } from '../office/craft/chat-deck'
 import { isXlsxSpec } from '@shared/chat-doc-spec'
@@ -455,6 +456,35 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   return r.done()
 }
 
+// ---------------------------------------------------------------- PDF
+/** Revisión de un PDF hecho desde HTML: se juzga el HTML (que es lo que escribió quien lo pide) y el número de páginas del PDF. */
+export function reviewPdf(html: string, bytes: Buffer): ReviewResult {
+  const r = new Builder()
+  r.check(bytes.subarray(0, 4).toString('latin1') === '%PDF', 'El archivo es un PDF válido', 'El archivo no es un PDF válido')
+  const pages = pdfPageCount(bytes)
+  if (pages > 0) r.note(`${pages} página${pages === 1 ? '' : 's'}`)
+  const sizes = htmlFontSizesPt(html)
+  const min = sizes.length ? Math.min(...sizes) : null
+  r.check(
+    min === null || min >= 7.5,
+    'Letra de al menos 10 px',
+    `Hay letra de ${Math.round((min ?? 0) / 0.75)} px, ilegible impresa. Sube todo a 10 px o más (11 px o más en tablas): si una tabla no cabe, acorta las celdas o quita columnas en vez de achicar la letra`
+  )
+  r.check(!/\b(?:src|href)\s*=\s*["']?\s*(?:https?:)?\/\//i.test(html) && !/url\(\s*["']?\s*https?:/i.test(html), 'Sin recursos de internet', 'Hay recursos de internet (src/href/url http): el PDF no tiene red; usa data: o quítalos')
+  const longTables = (html.match(/<table\b[\s\S]*?<\/table>/gi) ?? []).filter((t) => (t.match(/<tr\b/gi) ?? []).length > 12)
+  r.check(
+    longTables.every((t) => /<thead\b/i.test(t)),
+    'Las tablas largas tienen <thead> (se repite en cada página)',
+    'Una tabla de más de 12 filas no tiene <thead>: sin él el encabezado no se repite en las páginas siguientes'
+  )
+  r.check(/@page\b/i.test(html), 'Define @page (márgenes y tamaño)', 'Falta @page con tamaño A4 y márgenes de unos 18 a 22 mm')
+  r.check(/<html\b[^>]*\blang\s*=/i.test(html), 'Declara el idioma (<html lang>)', 'Falta <html lang="es"> (accesibilidad y separación de sílabas)')
+  const noAlt = (html.match(/<img\b[^>]*>/gi) ?? []).filter((t) => !/\balt\s*=/i.test(t)).length
+  if (noAlt) r.note(`${noAlt} imagen${noAlt === 1 ? '' : 'es'} sin texto alternativo (alt)`)
+  checkTemplate(r, html.replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' '))
+  return r.done()
+}
+
 export async function reviewDocument(kind: 'docx' | 'xlsx' | 'pptx', bytes: Buffer, spec?: unknown): Promise<ReviewResult> {
   const zip = await JSZip.loadAsync(bytes)
   if (kind === 'docx') return reviewDocx(zip)
@@ -469,10 +499,12 @@ export async function reviewSummary(
   review: typeof reviewDocument = reviewDocument,
   spec?: unknown
 ): Promise<string> {
-  if (tipo !== 'docx' && tipo !== 'xlsx' && tipo !== 'pptx')
-    return '\nRevisión de calidad: NO corrida (no aplica a PDF). No la cites como hecha.'
+  if (tipo === 'pdf' && typeof spec !== 'string')
+    return '\nRevisión de calidad: NO corrida (no se recibió el HTML del PDF). No la cites como hecha.'
+  if (tipo !== 'docx' && tipo !== 'xlsx' && tipo !== 'pptx' && tipo !== 'pdf')
+    return '\nRevisión de calidad: NO corrida (tipo no revisable). No la cites como hecha.'
   try {
-    const res = await review(tipo, bytes, spec)
+    const res = tipo === 'pdf' ? reviewPdf(spec as string, bytes) : await review(tipo, bytes, spec)
     const lines = res.items.map((i) => `  ${i.note ? 'ℹ' : i.ok ? '✔' : '✘'} ${i.text}`).join('\n')
     return (
       `\nRevisión de calidad de la herramienta (salida de esta herramienta: puedes citarla en «Cómo se verificó»):\n${lines}\n` +
