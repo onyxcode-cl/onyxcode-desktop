@@ -131,6 +131,17 @@ export const wizard = {
     'Accessibility lets {app} move the mouse and type for you; Screen Recording lets it see what is on screen. Access to your files is optional. Each button opens the right panel in System Settings.',
   'preflight.perms.note':
     'macOS permissions are turned on by hand, when you need them. You can leave them for later: they are asked for when you use “Full control” or from Settings › Diagnostics.',
+  'preflight.c.trust': 'Trust the {app} signature',
+  'preflight.hint.trust.missing':
+    'Makes macOS remember {app}’s permissions after it updates. It will ask for your password once. You can remove it in Settings whenever you want.',
+  'preflight.error.trust': 'macOS did not accept the change. Press “Retry” or do it later from Settings › Diagnostics.',
+  'preflight.size.zero': 'Nothing is downloaded: only the signature is registered, and macOS asks for your password once.',
+  'settings.diag.trust.title': 'Trust in the {app} signature',
+  'settings.diag.trust.desc':
+    'macOS trusts the {app} signature, so it remembers its permissions when it updates. If you remove it, things go back to how they were: you may have to grant the permissions again.',
+  'settings.diag.trust.remove': 'Remove trust in the {app} signature',
+  'settings.diag.trust.removing': 'Removing…',
+  'settings.diag.trust.failed': 'macOS did not accept the change. Try again.',
   'preflight.title': 'Getting {app} ready',
   'preflight.subtitle.blocking': 'Something essential is missing for {app} to work. You can fix it here.',
   'preflight.subtitle.optional':

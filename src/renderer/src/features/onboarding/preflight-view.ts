@@ -15,6 +15,7 @@ export const LABELS: Record<PreflightId, MsgKey> = {
   craft: 'preflight.c.craft',
   runtimes: 'preflight.c.runtimes',
   sandbox: 'preflight.c.sandbox',
+  trust: 'preflight.c.trust',
   helper: 'preflight.c.helper',
   perms: 'preflight.c.perms',
   files: 'preflight.c.files',
@@ -35,6 +36,7 @@ const HINTS: Partial<Record<PreflightId, Record<string, MsgKey>>> = {
   craft: { missing: 'preflight.hint.craft.missing', incomplete: 'preflight.hint.craft.incomplete' },
   runtimes: { missing: 'preflight.hint.runtimes.missing', broken: 'preflight.hint.runtimes.broken' },
   sandbox: { needsSetup: 'preflight.hint.sandbox.needsSetup', broken: 'preflight.hint.sandbox.broken' },
+  trust: { missing: 'preflight.hint.trust.missing' },
   helper: { 'not-found': 'preflight.hint.helper.not-found' },
   perms: {
     both: 'preflight.hint.perms.both',
@@ -74,6 +76,7 @@ export function hintKey(c: PreflightComponent): MsgKey | null {
 export function failureKey(id: PreflightId, code: string | undefined): MsgKey {
   if (id === 'sandbox') return (code && SETUP_ERRORS[code]) || 'tasks.sandbox.error.generic'
   if (id === 'engine') return 'preflight.error.engine'
+  if (id === 'trust') return 'preflight.error.trust'
   if (id === 'runtimes') return runtimesErrorKey(code)
   return officeErrorKey(code)
 }

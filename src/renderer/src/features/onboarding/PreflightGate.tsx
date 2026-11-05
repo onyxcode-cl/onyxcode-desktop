@@ -156,6 +156,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
         },
         runtimesInstall: () => runtimesApi.install().catch(() => undefined),
         runtimesProgress: async () => runtimesPct(await runtimesApi.status()),
+        trustInstall: () => cw('preflight:trust').catch(() => undefined),
         sandboxSetup: () => cw('tasks:sandbox:setup'),
         sandboxStatus: () => cw('tasks:sandbox:status', { force: true }),
         fail: (id, code, message) =>
@@ -176,6 +177,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
           })
           if (!rt) setDone((d) => (d.includes(id) ? d : [...d, id]))
         },
+        onCancelled: (id) => alive.current && setDone((d) => d.filter((x) => x !== id)),
         onDetail: (id, d) => alive.current && setDetails((prev) => ({ ...prev, [id]: d }))
       })
       if (!alive.current) return

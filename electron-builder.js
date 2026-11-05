@@ -94,6 +94,8 @@ module.exports = {
     '!resources/wsl-images/**',
     // El script de reemplazo del actualizador va por extraResources (sellado), no dentro del .asar.
     '!resources/updater/**',
+    // El certificado público de firma va por mac.extraResources (Contents/Resources/signing), no dentro del .asar.
+    '!resources/signing/**',
     // El OpenCode oficial fijado (scripts/fetch-opencode.mjs) va por extraResources, nunca dentro del .asar.
     '!resources/opencode-bin/**',
     // El Python propio (scripts/fetch-python.mjs) va por extraResources (sellado y firmado), nunca dentro del .asar.
@@ -181,6 +183,13 @@ module.exports = {
         from: 'resources/keybox',
         to: 'keybox',
         filter: ['lazunox-keybox']
+      },
+      // Certificado PÚBLICO de firma («Lazunox Local Signing», huella fijada en scripts/install/install.sh) para el paso «Confiar en la firma»:
+      // `security` lo lee desde disco, no desde el .asar → Contents/Resources/signing. Nunca la llave privada (lo vigila `trust.test.ts`).
+      {
+        from: 'resources/signing',
+        to: 'signing',
+        filter: ['LazunoxLocalSigning.pem']
       },
       // Script de reemplazo del actualizador propio → Contents/Resources/updater/swap.sh. Sellado por la
       // firma del .app; la app lo COPIA a userData antes de lanzarlo (src/main/update/swap.ts).

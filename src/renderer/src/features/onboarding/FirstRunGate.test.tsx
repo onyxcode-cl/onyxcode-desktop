@@ -17,6 +17,7 @@ const c = (id: PreflightComponent['id'], o: Partial<PreflightComponent> = {}): P
   ...o
 })
 let platform: 'darwin' | 'win32' = 'darwin'
+let trustResult: { ok: boolean; error?: string } = { ok: true }
 const report = (): PreflightReport => ({
   at: 1,
   platform,
@@ -28,6 +29,7 @@ const report = (): PreflightReport => ({
     c('engine'),
     c('craft', { ok: false, reason: 'missing', sizeBytes: 205e6 }),
     c('runtimes', { ok: false, reason: 'missing', sizeBytes: 67e6 }),
+    ...(platform === 'darwin' ? [c('trust', { ok: false, reason: 'missing', installable: true })] : []),
     ...(platform === 'darwin'
       ? [c('perms', { ok: false, reason: 'both' }), c('location')]
       : [c('sandbox', { ok: false, reason: 'needsSetup', sizeBytes: 2e9 })])
@@ -39,6 +41,7 @@ vi.mock('../tasks/impl/bridge', () => ({
   cw: vi.fn(async (channel: string) => {
     calls.push(channel)
     if (channel === 'preflight:run') return report()
+    if (channel === 'preflight:trust') return trustResult
     return undefined
   })
 }))
@@ -78,6 +81,7 @@ beforeEach(() => {
   vi.unstubAllGlobals()
   calls.length = 0
   runtimesInstall.mockClear()
+  trustResult = { ok: true }
   localStorage.clear?.()
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -142,6 +146,60 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     expect(calls).not.toContain('computer:requestPermissions')
   })
 
+  it('Mac: «Confiar en la firma» sale en la lista de instalar, con su explicación, y entra en «Aceptar todo» (sin tocar permisos)', async () => {
+    await start()
+    const row = q('preflight-row-trust')!
+    expect(row.textContent).toContain('Confiar en la firma de Lazunox')
+    expect(row.textContent).toContain('Te pedirá tu contraseña una vez')
+    expect(row.textContent).toContain('Falta tu clic')
+    await act(async () => btn('Aceptar todo e instalar')!.click())
+    await flush()
+    await flush()
+    expect(calls).toContain('preflight:trust')
+    expect(calls).not.toContain('computer:requestPermissions')
+  })
+
+  it('«Confiar en la firma» marcada por defecto y desmarcable en «Elegir qué instalar»', async () => {
+    await start()
+    await act(async () => btn('Elegir qué instalar')!.click())
+    expect((q('pick-trust') as HTMLInputElement).checked).toBe(true)
+    await act(async () => (q('pick-trust') as HTMLInputElement).click())
+    await act(async () => btn('Instalar lo marcado')!.click())
+    await flush()
+    await flush()
+    expect(calls).not.toContain('preflight:trust')
+  })
+
+  it('cancelar el aviso de contraseña de macOS no es un error: la fila queda «Falta tu clic» y el recorrido sigue', async () => {
+    trustResult = { ok: false, error: 'cancelled' }
+    await start()
+    await act(async () => btn('Aceptar todo e instalar')!.click())
+    await flush()
+    await flush()
+    const row = q('preflight-row-trust')!
+    expect(row.getAttribute('data-state')).toBe('pending')
+    expect(row.textContent).toContain('Falta tu clic')
+    expect(host.textContent).not.toContain('macOS no aceptó el cambio')
+    expect(btn('Más tarde')).toBeDefined()
+  })
+
+  it('si macOS rechaza el cambio: «No se pudo» con el motivo y «Reintentar» en su fila', async () => {
+    trustResult = { ok: false, error: 'failed' }
+    await start()
+    await act(async () => btn('Aceptar todo e instalar')!.click())
+    await flush()
+    await flush()
+    const row = q('preflight-row-trust')!
+    expect(row.getAttribute('data-state')).toBe('failed')
+    expect(row.textContent).toContain('macOS no aceptó el cambio')
+    expect(row.textContent).toContain('Reintentar')
+  })
+
+  it('Windows: no hay pieza de firma', async () => {
+    await start(false, 'win32')
+    expect(q('preflight-row-trust')).toBeNull()
+  })
+
   it('3) «Más tarde» en Mac pasa al paso de permisos (paso 3 de 4), con su aviso de «se activan a mano», y de ahí al asistente', async () => {
     await start()
     await act(async () => btn('Más tarde')!.click())
@@ -174,14 +232,14 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
 
 describe('quien ya terminó el asistente', () => {
   it('no ve la bienvenida y, tras «Más tarde» en un arranque anterior, la lista no vuelve sola', async () => {
-    localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.9', ids: ['craft', 'runtimes', 'perms'] }))
+    localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.9', ids: ['craft', 'runtimes', 'trust', 'perms'] }))
     await mount(true)
     expect(q('welcome')).toBeNull()
     expect(q('preflight-screen')).toBeNull()
   })
 
   it('Ajustes › «Instalar o activar piezas» vuelve a abrir la lista aunque se haya dejado para más tarde, con el mismo botón, sin numerar pasos', async () => {
-    localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.9', ids: ['craft', 'runtimes', 'perms'] }))
+    localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.9', ids: ['craft', 'runtimes', 'trust', 'perms'] }))
     await mount(true)
     await act(async () => openPreflight())
     await flush()

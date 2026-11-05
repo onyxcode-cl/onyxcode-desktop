@@ -18,6 +18,8 @@ export interface InstallApi {
   /** `tasks:sandbox:setup`: devuelve enseguida; la instalación sigue en main. */
   sandboxSetup: () => Promise<unknown>
   sandboxStatus: () => Promise<{ state: string; setup: { running: boolean; pct: number; error?: string } | null }>
+  /** `preflight:trust` (solo macOS): macOS pide su contraseña. `cancelled` = la persona canceló: no es un error. */
+  trustInstall: () => Promise<{ ok: boolean; error?: 'cancelled' | 'failed' | 'unavailable'; message?: string } | undefined>
   /** `preflight:fail`: anota el fallo en el registro de problemas y devuelve el detalle redactado. */
   fail: (id: PreflightId, code: string | undefined, message: string | undefined) => Promise<{ detail: string } | null>
   sleep: (ms: number) => Promise<void>
@@ -27,6 +29,8 @@ export interface InstallApi {
 export interface InstallEvents {
   onRuntime: (id: PreflightId, rt: Runtime | null) => void
   onDetail: (id: PreflightId, detail: string) => void
+  /** La persona canceló un paso que pide su clic (aviso de contraseña de macOS): la pieza queda «Falta tu clic», sin error. */
+  onCancelled?: (id: PreflightId) => void
 }
 
 export interface InstallOutcome {
@@ -99,6 +103,13 @@ async function installSandbox(api: InstallApi, ev: InstallEvents): Promise<Insta
   return { id: 'sandbox', ok: false, code: 'generic' }
 }
 
+async function installTrust(api: InstallApi): Promise<InstallOutcome> {
+  const r = await api.trustInstall().catch(() => undefined)
+  if (r?.ok) return { id: 'trust', ok: true }
+  if (r?.error === 'cancelled') return { id: 'trust', ok: false, code: 'cancelled' }
+  return { id: 'trust', ok: false, code: r?.error ?? 'generic', message: r?.message }
+}
+
 /** Instala `ids` en orden. Devuelve el resultado de cada uno; los fallos ya quedaron anotados y con su detalle. */
 export async function runInstall(ids: readonly PreflightId[], api: InstallApi, ev: InstallEvents): Promise<InstallOutcome[]> {
   const out: InstallOutcome[] = []
@@ -112,10 +123,16 @@ export async function runInstall(ids: readonly PreflightId[], api: InstallApi, e
           ? await installRuntimes(api, ev)
           : id === 'sandbox'
             ? await installSandbox(api, ev)
-            : { id, ok: false, code: 'unsupported' }
+            : id === 'trust'
+              ? await installTrust(api)
+              : { id, ok: false, code: 'unsupported' }
     out.push(r)
     if (r.ok) ev.onRuntime(id, null)
-    else {
+    else if (r.code === 'cancelled') {
+      // Cancelar el aviso de macOS no es un fallo: la pieza vuelve a «Falta tu clic» y el resto sigue.
+      ev.onRuntime(id, null)
+      ev.onCancelled?.(id)
+    } else {
       ev.onRuntime(id, { state: 'failed', error: r.code })
       const d = await api.fail(id, r.code, r.message).catch(() => null)
       if (d) ev.onDetail(id, d.detail)

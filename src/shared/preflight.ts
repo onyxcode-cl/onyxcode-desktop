@@ -8,7 +8,8 @@
  * avisan como «Pendiente», se puede continuar («Más tarde») y se ofrecen cuando se necesiten o desde Ajustes.
  */
 
-export type PreflightId = 'storage' | 'disk' | 'engine' | 'craft' | 'runtimes' | 'sandbox' | 'helper' | 'perms' | 'files' | 'location'
+export type PreflightId =
+  'storage' | 'disk' | 'engine' | 'craft' | 'runtimes' | 'sandbox' | 'trust' | 'helper' | 'perms' | 'files' | 'location'
 
 /** Orden en que se muestran y se instalan. */
 export const PREFLIGHT_ORDER: readonly PreflightId[] = [
@@ -18,14 +19,16 @@ export const PREFLIGHT_ORDER: readonly PreflightId[] = [
   'craft',
   'runtimes',
   'sandbox',
+  'trust',
   'helper',
   'perms',
   'files',
   'location'
 ]
 
+/** «Confiar en la firma» (solo macOS, firma fijada) viaja al final: no descarga nada, pide la contraseña una vez. */
 /** Lo que el botón «Instalar lo que falta» instala, en este orden. El motor viene dentro de la app: no se descarga. */
-export const INSTALL_ORDER: readonly PreflightId[] = ['craft', 'runtimes', 'sandbox']
+export const INSTALL_ORDER: readonly PreflightId[] = ['craft', 'runtimes', 'sandbox', 'trust']
 
 /**
  * Casillas que NACEN desmarcadas (lo opcional de verdad): Node.js y uv solo sirven para los conectores locales de correo, calendario y
@@ -133,6 +136,9 @@ export function canInstall(report: PreflightReport, unchecked: readonly Prefligh
 
 /** Permisos de macOS: se activan a mano en Ajustes del Sistema; NUNCA entran en «Aceptar todo e instalar» y tienen su propio paso. */
 export const PERMS_IDS: readonly PreflightId[] = ['perms', 'files']
+
+/** Piezas que esperan un clic de la persona (la fila dice «Falta tu clic» mientras no lo da): permisos y confiar en la firma. */
+export const CLICK_IDS: readonly PreflightId[] = ['perms', 'files', 'trust']
 
 /** Etapas de la preparación del primer uso: instalar lo instalable y, aparte (solo macOS), los permisos. */
 export type PreflightStage = 'install' | 'perms'

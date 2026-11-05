@@ -127,6 +127,17 @@ export const wizard = {
     'Accesibilidad deja que {app} mueva el ratón y escriba por ti; Grabación de pantalla, que vea lo que hay en pantalla. Acceso a tus archivos es opcional. Cada botón abre el panel correcto de Ajustes del Sistema.',
   'preflight.perms.note':
     'Los permisos de macOS se activan a mano, cuando los necesites. Puedes dejarlos para más tarde: se piden al usar «Control total» o desde Ajustes › Diagnóstico.',
+  'preflight.c.trust': 'Confiar en la firma de {app}',
+  'preflight.hint.trust.missing':
+    'Hace que macOS recuerde los permisos de {app} cuando se actualice. Te pedirá tu contraseña una vez. Puedes quitarlo en Ajustes cuando quieras.',
+  'preflight.error.trust': 'macOS no aceptó el cambio. Pulsa «Reintentar» o hazlo después desde Ajustes › Diagnóstico.',
+  'preflight.size.zero': 'No se descarga nada: solo se registra la firma y macOS te pide tu contraseña una vez.',
+  'settings.diag.trust.title': 'Confianza en la firma de {app}',
+  'settings.diag.trust.desc':
+    'macOS confía en la firma de {app}, así que recuerda sus permisos al actualizar. Si lo quitas, vuelve a ser como antes: puede que tengas que dar los permisos de nuevo.',
+  'settings.diag.trust.remove': 'Quitar confianza en la firma de {app}',
+  'settings.diag.trust.removing': 'Quitando…',
+  'settings.diag.trust.failed': 'macOS no aceptó el cambio. Inténtalo de nuevo.',
   'preflight.title': 'Preparando {app}',
   'preflight.subtitle.blocking': 'Falta algo imprescindible para que {app} funcione. Aquí puedes arreglarlo.',
   'preflight.subtitle.optional':

@@ -314,3 +314,28 @@ describe('Acceso total al disco (id files, solo macOS; F8-B210)', () => {
     expect(await get({}, 'files')).toBeUndefined()
   })
 })
+
+describe('«Confiar en la firma» (solo macOS con la firma fijada)', () => {
+  it('sin confiar: pieza opcional e instalable, sin descarga, con motivo «missing»', async () => {
+    const c = await get({ trust: async () => 'untrusted' }, 'trust')
+    expect(c).toMatchObject({ ok: false, essential: false, installable: true, reason: 'missing' })
+    expect(c?.sizeBytes).toBeUndefined()
+  })
+  it('ya confiado (Mac de Ben): Listo', async () => {
+    expect(await get({ trust: async () => 'trusted' }, 'trust')).toMatchObject({ ok: true })
+  })
+  it('oculta (no macOS, build sin la firma fijada) o sin la comprobación: no hay fila', async () => {
+    expect(await get({ trust: async () => 'hidden' }, 'trust')).toBeUndefined()
+    expect(await get({}, 'trust')).toBeUndefined()
+  })
+  it('entra en «Aceptar todo» y no suma bytes ni exige disco', async () => {
+    const r = await runPreflightChecks(deps({ trust: async () => 'untrusted', freeBytes: () => 1 }))
+    expect(installPlan(r).map((c) => c.id)).toEqual(['trust'])
+    expect(r.components.find((c) => c.id === 'disk')?.ok).toBe(true)
+  })
+  it('una comprobación que falla no bloquea: la pieza simplemente no sale', async () => {
+    const onCheckError = vi.fn()
+    expect(await get({ trust: async () => Promise.reject(new Error('x')), onCheckError }, 'trust')).toBeUndefined()
+    expect(onCheckError).toHaveBeenCalled()
+  })
+})

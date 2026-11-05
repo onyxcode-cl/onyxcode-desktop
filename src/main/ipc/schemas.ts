@@ -1039,6 +1039,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'runtimes:cancel': none,
   'runtimes:remove': none,
   'preflight:run': none,
+  'preflight:trust': none,
+  'preflight:trust:remove': none,
   'preflight:fail': obj({ id: literal(...PREFLIGHT_ORDER), code: optional(str({ max: 80 })), message: optional(str({ max: 1000 })) }),
   'doctor:run': none,
   'tasks:sandbox:status': optional(obj({ force: optional(bool) })),

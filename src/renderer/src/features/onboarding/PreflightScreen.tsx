@@ -22,7 +22,7 @@ import {
   type PreflightReport,
   type RuntimeMap
 } from '@shared/preflight'
-import { PERMS_IDS } from '@shared/preflight'
+import { CLICK_IDS, PERMS_IDS } from '@shared/preflight'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { call } from '../../lib/api'
@@ -98,7 +98,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const stateText = (c: PreflightComponent): string => {
     const st = rowState(c, runtime)
     const pct = runtime[c.id]?.pct
-    if (st === 'pending' && PERMS_IDS.includes(c.id)) return t('preflight.state.click')
+    if (st === 'pending' && CLICK_IDS.includes(c.id)) return t('preflight.state.click')
     return st === 'downloading' && pct !== undefined ? t('preflight.progress', { pct }) : t(STATE_LABELS[st])
   }
 
@@ -169,7 +169,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                   {showPicks && choices.includes(c.id) ? (
                     <ComponentPick
                       id={c.id}
-                      label={t(LABELS[c.id])}
+                      label={t(LABELS[c.id], { app: DISPLAY_NAME })}
                       checked={!p.unchecked.includes(c.id)}
                       disabled={p.installing}
                       onChange={() => p.onToggle(c.id)}
@@ -178,7 +178,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                     </ComponentPick>
                   ) : (
                     <>
-                      <p className="font-medium text-fg">{t(LABELS[c.id])}</p>
+                      <p className="font-medium text-fg">{t(LABELS[c.id], { app: DISPLAY_NAME })}</p>
                       {hint && <p className="text-muted">{hint}</p>}
                     </>
                   )}
@@ -253,9 +253,11 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         )}
         {stage !== 'perms' && choices.length > 0 && !p.installing && (
           <p className="mt-4 text-[13px] text-muted" data-testid="preflight-size">
-            {plan.length > 0
-              ? t(guided && !p.custom ? 'preflight.acceptAll.size' : 'preflight.size', { size: t(size.key, { n: size.n }) })
-              : t('preflight.size.none')}
+            {plan.length === 0
+              ? t('preflight.size.none')
+              : bytes === 0
+                ? t('preflight.size.zero')
+                : t(guided && !p.custom ? 'preflight.acceptAll.size' : 'preflight.size', { size: t(size.key, { n: size.n }) })}
           </p>
         )}
         {stage === 'perms' && (
