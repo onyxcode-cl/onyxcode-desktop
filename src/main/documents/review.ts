@@ -178,7 +178,10 @@ async function slideBackground(zip: JSZip, slidePath: string, slideXml: string):
       if (!t) continue
       const parts = `${dir}/${t}`.split('/')
       const stack: string[] = []
-      for (const part of parts) part === '..' ? stack.pop() : part !== '.' && stack.push(part)
+      for (const part of parts) {
+        if (part === '..') stack.pop()
+        else if (part !== '.') stack.push(part)
+      }
       return stack.join('/')
     }
     return null
