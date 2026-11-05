@@ -33,14 +33,29 @@ describe('ResultCard', () => {
 })
 
 describe('ResultCard no se sale del marco (panel derecho abierto)', () => {
-  it('la lista y cada fila pueden encogerse al ancho del chat', () => {
-    Object.assign(mock, { deliverables: { t1: [file('informe-teletrabajo-pyme-40-personas-v3.docx', 1)] } })
-    const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
-    // Una columna de grid «1fr» no baja del ancho mínimo de su contenido (el nombre sin cortar): se fuerza minmax(0,1fr)
-    // y la fila lleva min-w-0, o las filas desbordan el marco y el icono de carpeta queda cortado.
-    expect(html).toMatch(/<ul[^>]*class="[^"]*grid-cols-\[minmax\(0,1fr\)\]/)
-    expect(html).toMatch(/<li[^>]*class="[^"]*\bmin-w-0\b/)
-  })
+  // Anchos del chat con el panel derecho abierto (360, 450, 540, 700 px) × 1, 3 y 6 archivos con nombres largos. jsdom no calcula
+  // layout: aquí se fijan las clases que lo garantizan; las medidas reales (Chromium) se hicieron con el arnés descrito en
+  // PANEL-DERECHO-189.md: sin estas clases la fila sobraba 120 px a 360 y 30 px a 450 de ancho.
+  const long = 'informe-teletrabajo-pyme-40-personas-version-final-revisada-v'
+  for (const n of [1, 3, 6]) {
+    it(`${n} archivo(s) con nombre largo: columna que encoge, filas min-w-0 y nombre con «…»`, () => {
+      Object.assign(mock, {
+        deliverables: {
+          t1: Array.from({ length: n }, (_, i) => ({ path: `/Users/x/Desktop/${long}${i}.docx`, relPath: `a${i}`, size: 12288, mtime: i }))
+        }
+      })
+      const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
+      // Una columna de grid «1fr» no baja del ancho mínimo de su contenido (el nombre sin cortar): se fuerza minmax(0,1fr)
+      // y la fila lleva min-w-0, o las filas desbordan el marco y el icono de carpeta queda cortado.
+      expect(html).toMatch(/<ul[^>]*class="[^"]*grid-cols-\[minmax\(0,1fr\)\]/)
+      const rows = html.match(/<li[^>]*>/g) ?? []
+      expect(rows).toHaveLength(Math.min(n, 3))
+      for (const r of rows) expect(r).toMatch(/\bmin-w-0\b/)
+      expect(html).toMatch(/class="min-w-0 flex-1 truncate/)
+      // Las acciones no se encogen ni se parten: se envuelven a la línea siguiente en vez de salirse.
+      expect(html).toMatch(/<li[^>]*class="[^"]*\bflex-wrap\b/)
+    })
+  }
 })
 
 describe('isHelperFile', () => {
