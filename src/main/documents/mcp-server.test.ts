@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSy
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DocumentsMcpServer, MAX_PER_BINDING_PER_HOUR, MAX_PREVIEWS_PER_HOUR, type AuditEntry } from './mcp-server'
+import { DocumentsMcpServer, localImageRefs, MAX_PER_BINDING_PER_HOUR, MAX_PREVIEWS_PER_HOUR, type AuditEntry } from './mcp-server'
 import type { ChatDocInput } from './engine'
 
 let folder: string
@@ -577,5 +577,12 @@ describe('crear: pase 4', () => {
     const blocks = Array.from({ length: 24 }, () => ({ type: 'paragraph', text }))
     const r = await call(port, token, { tipo: 'docx', nombre: 'largo', spec: { blocks }, paginas_objetivo: '4-5' })
     expect(textOf(r)).toContain('calculo unas')
+  })
+})
+
+describe('pdf con imágenes de la carpeta', () => {
+  it('localImageRefs encuentra rutas relativas y descarta data: y http (una ruta absoluta se deja pasar para que se rechace con mensaje)', () => {
+    const html = '<img src="logo.png"><img src="data:image/png;base64,xx"><img src="https://x/y.png"><div style="background:url(fondo.jpg)"></div><img src="/abs.png">'
+    expect(localImageRefs(html).sort()).toEqual(['/abs.png', 'fondo.jpg', 'logo.png'])
   })
 })

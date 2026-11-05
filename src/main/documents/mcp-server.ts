@@ -152,6 +152,18 @@ export function pageBudgetNote(target: unknown, spec: unknown): string {
   return ''
 }
 
+/** Rutas relativas de imágenes locales que nombra un HTML (`src="logo.png"`, `url(foto.jpg)`): no cuentan data:, http(s) ni rutas absolutas. */
+export function localImageRefs(html: string): string[] {
+  const found = new Set<string>()
+  const add = (v: string): void => {
+    const p = v.trim()
+    if (p && !/^(data:|https?:|\/\/|file:|#)/i.test(p) && /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(p)) found.add(p)
+  }
+  for (const m of html.matchAll(/<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/gi)) add(m[1]!)
+  for (const m of html.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)) add(m[1]!)
+  return [...found]
+}
+
 /** Todos los textos de un spec (valores string, a cualquier profundidad). */
 function stringsOf(v: unknown, out: string[] = []): string[] {
   if (typeof v === 'string') out.push(v)
@@ -374,6 +386,17 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       })
       // Un archivo que NO salió de `crear` (hecho con un script) no pasó por la validación ni por la revisión: se revisa aquí igual.
       let reviewText = ''
+      if (!entry && tipo === 'pdf') {
+        try {
+          const { extractKnowledgeText } = await import('../projects/extract')
+          const ex = await extractKnowledgeText('x.pdf', bytes)
+          const left = ex.ok ? templateLeftovers(ex.text) : []
+          if (left.length)
+            reviewText = `\nRevisión de calidad (PDF hecho fuera de documentos_crear):\n✘ Restos de plantilla en el texto: ${left.join(', ')}. Escribe el contenido real o un valor de ejemplo marcado como tal, y rehaz el PDF con documentos_crear tipo pdf (no con ReportLab ni scripts).`
+        } catch {
+          reviewText = ''
+        }
+      }
       if (!entry && tipo !== 'pdf') {
         try {
           reviewText = await reviewSummary(tipo, bytes)
@@ -444,8 +467,26 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
             binding.toAgentPath ? binding.toAgentPath(binding.folder) : binding.folder
           ])
       }
+      // PDF con imágenes de la carpeta de la tarea (logo, foto): el HTML las nombra con ruta relativa y aquí se incrustan como data: (el PDF no tiene
+      // red ni carpeta base). Antes esas rutas no cargaban y el agente se rendía y armaba el PDF con un script.
+      let renderInput = built.input
+      if (built.input.kind === 'pdf') {
+        const refs = localImageRefs(built.input.html)
+        if (refs.length > 0) {
+          prepared = await prepareImages(binding.folder, refs, [
+            binding.folder,
+            binding.toAgentPath ? binding.toAgentPath(binding.folder) : binding.folder
+          ])
+          let html = built.input.html
+          for (const [ref, img] of prepared.images) {
+            const uri = `data:${img.mime};base64,${(await readFile(img.file)).toString('base64')}`
+            html = html.split(ref).join(uri)
+          }
+          renderInput = { kind: 'pdf', html }
+        }
+      }
       const bytes = await withTimeout(
-        this.deps.render(built.input, title, { remoteImages: false, ...(prepared ? { images: prepared.images } : {}) }),
+        this.deps.render(renderInput, title, { remoteImages: false, ...(prepared ? { images: prepared.images } : {}) }),
         this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS
       )
       // Letra de menos de 12 pt en una lámina: se rechaza (hasta 2 veces seguidas por tarea; después se entrega con el ✘ para no atascar al agente).
