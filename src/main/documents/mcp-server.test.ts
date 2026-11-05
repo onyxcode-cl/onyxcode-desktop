@@ -556,3 +556,26 @@ describe('crear: argumentos con variantes y errores claros', () => {
     expect(r.body.result.isError).toBe(true)
   })
 })
+
+describe('crear: pase 4', () => {
+  it('rechaza [PENDIENTE: …] largo en un caption de tabla y «en evaluación»', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const long = '[PENDIENTE: montos reales de cada modalidad según la cotización vigente del proveedor de servicios, a confirmar con Finanzas el próximo mes]'
+    const t = (caption: string) => ({ blocks: [{ type: 'table', columns: ['A'], rows: [['1']], caption }] })
+    expect((await call(port, token, { tipo: 'docx', nombre: 'a', spec: t(long) })).body.result.isError).toBe(true)
+    expect((await call(port, token, { tipo: 'docx', nombre: 'b', spec: t('Montos en evaluación') })).body.result.isError).toBe(true)
+  })
+  it('rechaza una lámina de presupuesto sin ninguna cifra', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'pptx', nombre: 'p', spec: { slides: [{ title: 'Presupuesto 2027', bullets: ['Personal', 'Tecnología'] }] } })
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toContain('cifras de ejemplo')
+  })
+  it('avisa si el Word calculado se pasa de paginas_objetivo', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const text = Array.from({ length: 100 }, () => 'palabra').join(' ')
+    const blocks = Array.from({ length: 24 }, () => ({ type: 'paragraph', text }))
+    const r = await call(port, token, { tipo: 'docx', nombre: 'largo', spec: { blocks }, paginas_objetivo: '4-5' })
+    expect(textOf(r)).toContain('calculo unas')
+  })
+})

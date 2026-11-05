@@ -219,10 +219,12 @@ describe('189: arreglos de Word', () => {
       ]
     }
     expect(names(spec).filter((n) => n === 'table.repeatHeader')).toHaveLength(1)
-    // 2 celdas del renglón «y» (el penúltimo) llevan keepNext
-    expect(names(spec).filter((n) => n === 'para.keepNext')).toHaveLength(2)
+    // tabla corta: todas las filas menos la última se pegan a la siguiente (2 celdas × 3 filas)
+    expect(names(spec).filter((n) => n === 'para.keepNext')).toHaveLength(6)
     const sin: DocxSpec = { blocks: [{ type: 'table', columns: ['A'], rows: [['x'], ['y']] }] }
-    expect(names(sin).filter((n) => n === 'para.keepNext')).toHaveLength(0)
+    expect(names(sin).filter((n) => n === 'para.keepNext')).toHaveLength(2)
+    const larga: DocxSpec = { blocks: [{ type: 'table', columns: ['A'], rows: Array.from({ length: 20 }, (_, i) => [`f${i}`]) }] }
+    expect(names(larga).filter((n) => n === 'para.keepNext')).toHaveLength(1) // solo el encabezado
   })
 })
 

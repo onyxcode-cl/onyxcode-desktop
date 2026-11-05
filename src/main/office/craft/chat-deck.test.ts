@@ -360,3 +360,10 @@ describe('189: notas del orador', () => {
     expect(notes[1][1]).toBeGreaterThan(news[2][1])
   })
 })
+
+describe('acento legible', () => {
+  it('un verde claro sobre blanco se oscurece hasta 4,5:1', () => {
+    const p = customPalette({ bg: '#FFFFFF', text: '#10262B', accent: '#7BC47F' })
+    expect(contrastRatio(p.accent, p.bg)).toBeGreaterThanOrEqual(4.5)
+  })
+})

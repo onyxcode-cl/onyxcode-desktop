@@ -158,8 +158,13 @@ export function customPalette(p: {
 }): Palette {
   const bg = stripHash(p.bg)
   const text = stripHash(p.text)
-  const accent = stripHash(p.accent)
   const dark = luminance(bg) < 0.45
+  // El acento también se usa como color de letra (etiquetas, cifras) sobre el fondo y sobre las tarjetas: si no llega a 4,5:1 con ambos se
+  // acerca al color del texto hasta que llegue (un verde claro sobre blanco daba 2,3:1).
+  const panel0 = p.panel ? stripHash(p.panel) : mix(bg, text, dark ? 0.07 : 0.035)
+  let accent = stripHash(p.accent)
+  for (let i = 1; i <= 10 && Math.min(contrastRatio(accent, bg), contrastRatio(accent, panel0)) < 4.5; i++)
+    accent = mix(stripHash(p.accent), text, i * 0.1)
   const muted = p.muted ? stripHash(p.muted) : mix(text, bg, 0.42)
   const accent2 = p.accent2 ? stripHash(p.accent2) : mix(accent, text, 0.25)
   return {

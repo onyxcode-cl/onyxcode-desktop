@@ -14,7 +14,7 @@
  * dos en toda la app y un tope por hora; el registro de auditoría no lleva contenido.
  */
 import { reviewDocument, reviewSummary } from './review'
-import { templateLeftovers } from './review-checks'
+import { moneyWithoutNumbers, templateLeftovers } from './review-checks'
 
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
 import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
@@ -98,6 +98,10 @@ export const DOCUMENT_TOOLS = [
           type: 'boolean',
           description: 'SOLO si el usuario pidió expresamente una plantilla o formulario con campos vacíos: permite marcadores como [nombre]. Si no, el documento se rechaza con marcadores.'
         },
+        paginas_objetivo: {
+          type: ['string', 'number'],
+          description: 'Solo docx: páginas que pidió el usuario, como 5 o «4-5». La respuesta avisa si por la cantidad de texto lo calculado se pasa.'
+        },
         subcarpeta: { type: 'string', description: 'Subcarpeta relativa dentro de la carpeta de la tarea (opcional, hasta 4 niveles).' }
       },
       required: ['tipo']
@@ -133,6 +137,21 @@ export function normalizeArgs(raw: Record<string, unknown>): Record<string, unkn
   return a
 }
 
+/** Aviso de largo de un Word: se calcula por palabras (≈400 por página, las tablas ocupan más); solo si el encargo trae `paginas_objetivo`. */
+export function pageBudgetNote(target: unknown, spec: unknown): string {
+  const m = /^\s*(\d+)(?:\s*[-–a]\s*(\d+))?\s*$/.exec(String(target ?? ''))
+  if (!m) return ''
+  const lo = Number(m[1])
+  const hi = Number(m[2] ?? m[1])
+  const blocks = ((spec as { blocks?: Array<{ type?: string; rows?: unknown[] }> }).blocks ?? [])
+  const words = stringsOf(spec).join(' ').split(/\s+/).filter(Boolean).length
+  const rows = blocks.reduce((n, b) => n + (b.type === 'table' ? (b.rows?.length ?? 0) + 1 : 0), 0)
+  const pages = Math.max(1, Math.round((words + rows * 18) / 400 + blocks.filter((b) => b.type === 'page_break').length * 0.4))
+  if (pages > hi) return `\nLargo: pediste ${lo === hi ? lo : `${lo} a ${hi}`} páginas y por la cantidad de texto (~${words} palabras) calculo unas ${pages}: acórtalo (≈400 palabras por página, menos con tablas).`
+  if (pages < lo) return `\nLargo: pediste ${lo === hi ? lo : `${lo} a ${hi}`} páginas y por la cantidad de texto (~${words} palabras) calculo unas ${pages}: falta contenido.`
+  return ''
+}
+
 /** Todos los textos de un spec (valores string, a cualquier profundidad). */
 function stringsOf(v: unknown, out: string[] = []): string[] {
   if (typeof v === 'string') out.push(v)
@@ -164,6 +183,8 @@ interface Quota {
   busy: boolean
   stamps: number[]
   previews: number[]
+  /** Rechazos seguidos de una presentación por letra de menos de 12 pt. */
+  smallFont?: number
   /** Archivos creados por `crear` en esta atadura: ruta que vio el agente (y la del equipo) → ruta del equipo y huella. */
   created: Map<string, { abs: string; tipo: Tipo; sha: string }>
 }
@@ -237,6 +258,13 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     if (Object.prototype.hasOwnProperty.call(spec, '__proto__')) return { error: '`spec` tiene claves no permitidas.' }
     const badSpec = markers(stringsOf(spec).join('\n'))
     if (badSpec) return { error: badSpec }
+    if (!allowMarkers && (tipo === 'pptx' || tipo === 'docx')) {
+      const empty = moneyWithoutNumbers(tipo, spec)
+      if (empty.length)
+        return {
+          error: `Hay contenido de presupuesto, inversión o costos sin ninguna cifra (${empty.join(', ')}). No quites las cifras ni las reemplaces por «en evaluación»: pon cifras de ejemplo plausibles y márcalas como «cifras de ejemplo» en una nota o el pie. No se generó nada: corrige y vuelve a crear.`
+        }
+    }
     if (tipo === 'pptx') {
       if (!isPptxSpec(spec))
         return { error: `El \`spec\` no cumple el esquema de presentaciones del Chat (ver la skill pptx). ${explainPptx(spec)} No se generó nada: corrige ese campo y vuelve a llamar a documentos_crear.` }
@@ -408,6 +436,24 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         this.deps.render(built.input, title, { remoteImages: false, ...(prepared ? { images: prepared.images } : {}) }),
         this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS
       )
+      // Letra de menos de 12 pt en una lámina: se rechaza (hasta 2 veces seguidas por tarea; después se entrega con el ✘ para no atascar al agente).
+      if (built.tipo === 'pptx' && !this.deps.review) {
+        try {
+          const early = await reviewDocument('pptx', bytes, built.input.kind === 'pptx' ? built.input.data : undefined)
+          const small = early.items.find((it) => !it.ok && /menos de 12 pt/.test(it.text))
+          if (small && (quota.smallFont ?? 0) < 2) {
+            quota.smallFont = (quota.smallFont ?? 0) + 1
+            this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: 'letra-chica', ms: now() - t0 })
+            return this.text(
+              `${small.text}. No se generó nada: acorta el texto de las celdas o viñetas, pon menos filas o divide en dos láminas (la letra mínima es 12 pt) y vuelve a crear.`,
+              true
+            )
+          }
+          if (!small) quota.smallFont = 0
+        } catch {
+          /* la revisión final avisará */
+        }
+      }
       const written = await writeNewFile(binding.folder, {
         name: args.nombre,
         ext: built.tipo,
@@ -427,7 +473,8 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         this.deps.review,
         built.input.kind === 'pptx' || built.input.kind === 'xlsx' ? built.input.data : built.input.kind === 'pdf' ? built.input.html : undefined
       )
-      return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}`)
+      const pagesNote = built.input.kind === 'docx' ? pageBudgetNote(args.paginas_objetivo, built.input.data) : ''
+      return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${pagesNote}`)
     } catch (err) {
       if (err instanceof OutputPathError) {
         this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: err.code, ms: now() - t0 })

@@ -11,9 +11,10 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/\bTODO\b/, 'TODO'],
   [/\bTBD\b/, 'TBD'],
   [/\[\s*(insert|insertar|aquí|aqui|nombre|empresa|fecha|título|titulo|texto|cliente)\b[^\]]{0,40}\]/i, '[insertar…]'],
-  [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b[^\]]{0,80}\]/i, '[PENDIENTE…]'],
+  [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b/i, '[PENDIENTE…]'],
   [/\[\s*(\.{3}|…)\s*\]/, '[…]'],
   [/\b(a|por) (definir|determinar|confirmar)\b/i, '«a definir»'],
+  [/\ben evaluaci[oó]n\b|\bsujet[oa]s? a (confirmaci[oó]n|definici[oó]n|aprobaci[oó]n de (finanzas|presupuesto))\b|\bmontos? (por|a) (confirmar|definir|estimar)\b/i, '«en evaluación»'],
   [/^\s*(pendiente|n\/d|s\/d|n\.d\.|tbd)\s*$/im, 'celda «pendiente»'],
   [/texto de (ejemplo|relleno)|placeholder text|your text here|escribe aquí|escriba aquí/i, 'texto de relleno'],
   [/haga clic para|haz clic para|click to (add|edit)/i, 'texto de plantilla'],
@@ -280,4 +281,33 @@ export function textExtentBox(shape: Pick<PptxTextShape, 'box' | 'anchor' | 'run
   const anchor = shape.anchor ?? 't'
   const y = anchor === 'b' ? b.y + b.h - h : anchor === 'ctr' ? b.y + (b.h - h) / 2 : b.y
   return { x: b.x, y, w: b.w, h }
+}
+
+/** Palabras de un título que anuncian cifras (presupuesto, inversión, costos, precios, tarifas, cotización). */
+const MONEY_TOPIC = /presupuesto|inversi[oó]n|costos?\b|precios?\b|tarifas?\b|cotizaci[oó]n|financiamiento|retorno|roi\b/i
+
+/** Láminas (pptx) o tablas (docx) sobre dinero sin un solo dígito: el modelo quitó las cifras en vez de poner valores de ejemplo. */
+export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): string[] {
+  const out: string[] = []
+  const texts = (v: unknown, acc: string[] = []): string[] => {
+    if (typeof v === 'string') acc.push(v)
+    else if (typeof v === 'number') acc.push(String(v))
+    else if (Array.isArray(v)) v.forEach((x) => texts(x, acc))
+    else if (v && typeof v === 'object') Object.values(v).forEach((x) => texts(x, acc))
+    return acc
+  }
+  const s = spec as { slides?: Array<Record<string, unknown>>; blocks?: Array<Record<string, unknown>> }
+  if (kind === 'pptx') {
+    for (const [i, sl] of (s.slides ?? []).entries()) {
+      const title = typeof sl.title === 'string' ? sl.title : ''
+      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && !/\d/.test(texts({ ...sl, title: '' }).join(' '))) out.push(`lámina ${i + 1} «${title.slice(0, 40)}»`)
+    }
+  } else {
+    for (const [i, b] of (s.blocks ?? []).entries()) {
+      if (b.type !== 'table') continue
+      const cols = texts(b.columns).join(' ')
+      if (MONEY_TOPIC.test(cols) && !/\d/.test(texts(b.rows).join(' '))) out.push(`tabla del bloque ${i + 1}`)
+    }
+  }
+  return out
 }
