@@ -18,12 +18,12 @@ describe('opciones de impresión del PDF', () => {
 const fakePdf = (n: number): Buffer => Buffer.from(`%PDF-1.4\n29 0 obj\n<</Type /Pages\n/Count ${n}\n/Kids [2 0 R]>>\nendobj\n`)
 
 describe('última página casi vacía', () => {
-  it('no achica hasta dejar la letra más chica bajo 10 px', async () => {
+  it('no achica hasta dejar la letra más chica bajo 9 px', async () => {
     const calls: number[] = []
-    await printWithoutOrphanPage(async (sc) => (calls.push(sc), fakePdf(3)), 7.8)
+    await printWithoutOrphanPage(async (sc) => (calls.push(sc), fakePdf(2)), 7.0)
     expect(calls).toEqual([1])
     const c2: number[] = []
-    await printWithoutOrphanPage(async (sc) => (c2.push(sc), fakePdf(3)), 10)
+    await printWithoutOrphanPage(async (sc) => (c2.push(sc), fakePdf(2)), 10)
     expect(c2).toEqual([1, 0.95, 0.92, 0.9])
   })
   it('cuenta las páginas del nodo /Pages', () => {
@@ -34,22 +34,22 @@ describe('última página casi vacía', () => {
     const calls: number[] = []
     const out = await printWithoutOrphanPage(async (sc) => {
       calls.push(sc)
-      return fakePdf(sc === 1 ? 3 : sc === 0.92 ? 2 : 3)
+      return fakePdf(sc === 0.92 ? 1 : 2)
     })
-    expect(pdfPageCount(out)).toBe(2)
+    expect(pdfPageCount(out)).toBe(1)
     expect(calls).toEqual([1, 0.95, 0.92])
   })
   it('si ninguna escala baja las páginas, deja el original (sin achicar en vano)', async () => {
     const calls: number[] = []
     const out = await printWithoutOrphanPage(async (sc) => {
       calls.push(sc)
-      return fakePdf(3)
+      return fakePdf(2)
     })
-    expect(pdfPageCount(out)).toBe(3)
+    expect(pdfPageCount(out)).toBe(2)
     expect(calls).toEqual([1, 0.95, 0.92, 0.9])
   })
-  it('1 página o más de 12 no se tocan', async () => {
-    for (const n of [1, 13]) {
+  it('1 página o 3 o más no se tocan', async () => {
+    for (const n of [1, 3, 13]) {
       const calls: number[] = []
       await printWithoutOrphanPage(async (sc) => (calls.push(sc), fakePdf(n)))
       expect(calls).toEqual([1])

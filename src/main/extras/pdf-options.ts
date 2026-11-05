@@ -21,12 +21,12 @@ export function pdfPageCount(pdf: Buffer): number {
 
 /** Escalas que se prueban, de la más suave a la más chica, cuando la última página queda casi vacía. El piso (0,9) mantiene legible la letra. */
 export const PDF_SHRINK_SCALES = [0.95, 0.92, 0.9] as const
-/** Un PDF de 2 a 12 páginas puede tener la última casi vacía; uno de 1 página o uno largo no se toca. */
-export const PDF_SHRINK_MAX_PAGES = 12
-export const PDF_MIN_FONT_PT = 7.5 // 10 px: el mínimo de la guía del PDF
+/** Solo un PDF de 2 páginas se prueba: si baja a 1, la última ya no existe. En 3 o más, bajar una página puede dejar la nueva última casi vacía (medido en el set dorado). */
+export const PDF_SHRINK_MAX_PAGES = 2
+export const PDF_MIN_FONT_PT = 6.75 // 9 px: la guía pide 10 px al escribir; al achicar un 5-10 % se tolera hasta 9 px
 
 /**
- * Imprime y, si salen 2 a 12 páginas, prueba escalas suaves: se queda con la primera que baja el número de páginas (señal de que la
+ * Imprime y, si salen exactamente 2 páginas, prueba escalas suaves: se queda con la primera que baja el número de páginas (señal de que la
  * última tenía muy poco) y NUNCA con una que no lo baje, de modo que un documento bien lleno no se achica en vano.
  */
 export async function printWithoutOrphanPage(print: (scale: number) => Promise<Buffer>, minFontPt: number | null = null): Promise<Buffer> {
@@ -34,7 +34,7 @@ export async function printWithoutOrphanPage(print: (scale: number) => Promise<B
   const pages = pdfPageCount(first)
   if (pages < 2 || pages > PDF_SHRINK_MAX_PAGES) return first
   for (const scale of PDF_SHRINK_SCALES) {
-    // Nunca se achica hasta dejar la letra más chica del documento por debajo de 10 px (7,5 pt).
+    // Nunca se achica hasta dejar la letra más chica del documento por debajo de 9 px (6,75 pt).
     if (minFontPt !== null && minFontPt * scale < PDF_MIN_FONT_PT) break
     try {
       const smaller = await print(scale)
