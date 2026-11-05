@@ -19,6 +19,8 @@ import {
 import { getLang, t as tr, type MsgKey } from '@shared/i18n'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { Button } from '../../../components/Button'
+import { setAccessMode } from '../../tasks/impl/actions'
+import { useUnifiedApps } from '../../tasks/impl/unified'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { MODE_LABELS } from '@shared/labels'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
@@ -250,6 +252,10 @@ export function TasksSection(): React.JSX.Element {
   const prefs = useTasks((s) => s.prefs)
   const policy = useTasks((s) => s.policy)
   const activity = useTasks((s) => s.activity)
+  const unified = useUnifiedApps()
+  const connNow = useTasks((s) => s.conn)
+  const requestedFull = useTasks((s) => s.fullAccess)
+  const inFull = connNow ? connNow.fullAccess : requestedFull
   const locks = policyLocks(policy)
 
   const [trusted, setTrusted] = useState<TrustedFolder[] | null>(null)
@@ -461,6 +467,16 @@ export function TasksSection(): React.JSX.Element {
     }
   }
 
+  const enableNoIsolation = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: t('tasksSettings.noIsolation.confirmTitle'),
+      message: t('tasksComputer.unified.advancedWarn'),
+      confirmLabel: t('tasksSettings.noIsolation.confirm'),
+      danger: true
+    })
+    if (ok) await setAccessMode(true, true)
+  }
+
   const savePrefs = (patch: Parameters<typeof saveTasksPrefs>[0], area: string): void => {
     clear(area)
     saveTasksPrefs(patch).catch((err: unknown) => fail(area, err))
@@ -627,6 +643,19 @@ export function TasksSection(): React.JSX.Element {
         )}
         {errors.folders && <p className="mt-2 text-xs text-danger desk:text-meta">{errors.folders}</p>}
       </Group>
+
+      {/* Avanzado: sin aislamiento (antes un enlace en la portada de Overdrive) */}
+      {unified && !locks.fullAccess && (
+        <Group title={t('tasksSettings.noIsolation.title')} description={t('tasksSettings.noIsolation.desc')}>
+          <Card>
+            <Row label={t('tasksComputer.unified.advanced')} description={t('tasksComputer.unified.advancedWarn')}>
+              <Button size="sm" disabled={inFull} data-testid="settings-no-isolation" onClick={() => void enableNoIsolation()}>
+                {inFull ? t('tasksSettings.noIsolation.on') : t('tasksSettings.noIsolation.enable')}
+              </Button>
+            </Row>
+          </Card>
+        </Group>
+      )}
 
       {/* 3 · Permisos recordados */}
       <Group title={t('tasksSettings.rules.title')} description={t('tasksSettings.rules.desc')}>

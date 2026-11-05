@@ -299,7 +299,7 @@ describe('Personalización: conectores', () => {
     expect(byText('[role="dialog"] button', 'Quitar')).toBeNull() // no está añadido
   })
 
-  it('paso a paso: el aviso de datos y la casilla «Entiendo» frenan; sin cuenta se conecta desactivado en Tareas y sin secretos', async () => {
+  it('paso a paso: el aviso de datos y la casilla «Entiendo» frenan; sin cuenta se conecta desactivado en Overdrive y sin secretos', async () => {
     const installs: unknown[] = []
     setup({
       'mcp:installCatalog': (req) => {
@@ -323,7 +323,7 @@ describe('Personalización: conectores', () => {
     await click(byText('[role="dialog"] button', 'Seguir'))
     d = document.querySelector('[role="dialog"]')!
     expect(d.textContent).toContain('no necesita cuenta ni clave')
-    expect(d.textContent).toContain('queda apagado en Tareas')
+    expect(d.textContent).toContain('queda apagado en Overdrive')
     expect(installs).toEqual([])
     await click(byText('[role="dialog"] button', 'Conectar'))
     expect(installs).toEqual([{ id: 'context7', name: 'context7', inputs: {}, enable: true, askEachUse: true }])

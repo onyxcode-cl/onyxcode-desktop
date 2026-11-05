@@ -273,7 +273,6 @@ export function Home({
         </div>
 
         <SandboxSetupCard />
-        {!onboarded && <Onboarding onDismiss={() => setOnboardedPersisted(true)} />}
         <FullWorkspaceNote canChange={!folderBusy} />
         <ComputerPermissionsCard />
         <VisionModelHint />
@@ -297,20 +296,6 @@ export function Home({
             </span>
           )}
         </div>
-        {unified && !full && (
-          <div className="mt-2 flex flex-col items-center gap-0.5 px-6 text-center">
-            <button
-              type="button"
-              data-testid="unified-advanced"
-              disabled={folderBusy || phase === 'starting'}
-              onClick={() => void setAccessMode(true)}
-              className="text-xs font-medium text-accent underline underline-offset-2 transition hover:opacity-80 disabled:opacity-50"
-            >
-              {t('tasksComputer.unified.advanced')}
-            </button>
-            <span className="text-[11px] desk:text-meta text-subtle">{t('tasksComputer.unified.advancedWarn')}</span>
-          </div>
-        )}
         {sendError != null && (
           <div className="mx-auto mt-2 max-w-3xl px-6">
             <ErrorNotice error={sendError} />
@@ -321,6 +306,9 @@ export function Home({
             <ShieldCheck size={12} /> {t(unified ? 'tasks.home.sandboxActive.unified' : 'tasks.home.sandboxActive')}
           </p>
         )}
+
+        {/* La guía de primer uso va DEBAJO del cuadro: el cuadro de escribir es lo primero que se ve. */}
+        {!onboarded && <div className="mt-6"><Onboarding onDismiss={() => setOnboardedPersisted(true)} /></div>}
 
         {!remote && <ResumeBlock focus={focus} />}
 

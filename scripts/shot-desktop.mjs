@@ -224,6 +224,7 @@ const SCENARIOS = [
   'p2-code-panel',
   'p2-chat',
   'p2-chat-panel',
+  'p3-portada', // 1.8.9 · P3: portada de Overdrive al entrar (arriba del todo, con la guía de primer uso)
   'p2-tareas',
   'p2-tareas-panel',
   // 1.8.9 · P1: cabeceras (Chat y Tarea) con y sin panel; mide con elementFromPoint cada botón de la cabecera (P1-MEDIDA).
@@ -2117,6 +2118,12 @@ const S = {
   async 'p2-chat-panel'(ctx) {
     await S['chat-archivo-ver'](ctx)
     await p2State(ctx)
+  },
+  async 'p3-portada'(ctx) {
+    await openTasks(ctx, { keepOnboarding: true })
+    await vis(ctx.page.getByRole('region', { name: 'Así funcionan las tareas' }), 30_000)
+    await ctx.page.evaluate(() => document.querySelectorAll('*').forEach((el) => { if (el.scrollTop > 0) el.scrollTop = 0 }))
+    await sleep(400)
   },
   async 'p2-tareas'(ctx) {
     await S['tareas-lista'](ctx)

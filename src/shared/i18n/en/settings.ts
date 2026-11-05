@@ -470,14 +470,14 @@ export const settings = {
   'settings.engine.always.revoked': 'Done: that permission was removed.',
   'settings.engine.always.gone': 'That permission was no longer saved.',
   'settings.engine.always.truncated': 'Only the first {n} are shown. Use “Forget saved permissions” to delete the rest.',
-  'settings.engine.always.sandboxNote': 'It does not include the permissions of the isolated spaces used by Tasks mode.',
+  'settings.engine.always.sandboxNote': 'It does not include the permissions of the isolated spaces used by Overdrive.',
   'settings.engine.hooks.title': 'Hooks',
   'settings.engine.hooks.desc':
     'Your own commands that run automatically before or after the AI uses a tool, before or after the conversation is compacted, or when a turn ends. For example, they can block dangerous commands.',
   'settings.engine.hooks.warning': 'Hooks run commands with your permissions. Only put here what you understand.',
   'settings.engine.hooks.toggle': 'Turn on hooks',
   'settings.engine.hooks.toggleDesc':
-    'Off by default. When you change it, the engine restarts once nothing is in progress; editing the hooks while the switch is on does not restart it. They do not apply in the Tasks sandbox (only in Chat, Code and Tasks with Full control).',
+    'Off by default. When you change it, the engine restarts once nothing is in progress; editing the hooks while the switch is on does not restart it. They do not apply in the Overdrive sandbox (only in Chat, Code and Overdrive with Full control).',
   'settings.engine.hooks.editorLabel': 'Hooks file (JSON)',
   'settings.engine.hooks.editorHelp':
     'Events: PreToolUse (before a tool; exit code 2 blocks it), PostToolUse, PreCompact (before the conversation is compacted), PostCompact (after it is compacted; what it prints with exit code 0, up to 4000 characters, is added to the context that is kept) and Stop. “matcher” is a regular expression on the tool name; “timeout” is 1 to 60 seconds. At most 20 hooks per event, a command of up to 2000 characters and 64 KB in total.',
