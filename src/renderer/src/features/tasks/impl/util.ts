@@ -221,7 +221,7 @@ const SKILL_NAMES = new Set(['xlsx', 'docx', 'pptx', 'pdf'])
 const APP_TOOL: Record<string, 'docCreate' | 'docRender'> = { documentos_crear: 'docCreate', documentos_renderizar: 'docRender' }
 export function toolLabel(tool: string, status: string = 'completed'): string {
   const id = APP_TOOL[tool]
-  if (!id) return tool.replace(/_/g, ' ')
+  if (!id) return t('tasks.tool.other', { name: tool.replace(/_/g, ' ') })
   const state = status === 'running' || status === 'pending' ? 'doing' : status === 'error' ? 'failed' : 'done'
   return t(`tasks.tool.${id}.${state}` as MsgKey)
 }

@@ -214,7 +214,15 @@ export function EditChip({ part, root }: { part: ToolPart; root: string | null }
   const t = useT()
   const { file, patch } = useMemo(() => editInfo(part, root), [part, root])
   const rejected = part.state.status === 'error' && isRejectedText(part.state.error)
-  const label = rejected ? t('code.tool.notDone') : part.tool === 'write' ? t('code.tool.created') : t('code.tool.edited')
+  // Mientras espera tu permiso (o se aplica) aún no cambió nada: «Quiere editar»; «Editó» solo cuando ya se aplicó (U5).
+  const waiting = part.state.status === 'pending' || part.state.status === 'running'
+  const label = rejected
+    ? t('code.tool.notDone')
+    : waiting
+      ? t(part.tool === 'write' ? 'code.tool.wantsCreate' : 'code.tool.wantsEdit')
+      : part.tool === 'write'
+        ? t('code.tool.created')
+        : t('code.tool.edited')
   const stats = useMemo(() => (patch ? diffStats(patch) : { additions: 0, deletions: 0 }), [patch])
   const { dir, name } = splitPath(file)
   const status = part.state.status

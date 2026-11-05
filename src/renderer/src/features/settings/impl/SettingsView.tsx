@@ -575,7 +575,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
               </div>
               <div className="mb-2 w-56 shrink-0">{searchBox}</div>
             </div>
-            <div className="flex flex-wrap gap-1.5 pt-3">
+            <div className="flex gap-1.5 overflow-x-auto pt-3 [scrollbar-width:thin]">
               {sections
                 .filter((x) => x.group === activeGroup)
                 .map(({ id, label, icon: Icon }) => {
@@ -589,7 +589,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                         select(id)
                       }}
                       aria-current={current ? 'page' : undefined}
-                      className={`flex h-8 items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 ${current ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      className={`flex h-8 shrink-0 items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 ${current ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
                     >
                       <Icon size={14} className={current ? 'shrink-0 text-accent' : 'shrink-0'} />
                       {label()}

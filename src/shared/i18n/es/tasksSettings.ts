@@ -17,6 +17,7 @@ export const tasksSettings = {
   'tasksSettings.idle.inUse': 'En uso',
   'tasksSettings.idle.lessThanMin': 'Inactivo hace menos de 1 min',
   'tasksSettings.idle.min': 'Inactivo hace {min} min',
+  'tasksSettings.folder.autoName': 'Carpeta de tarea · {date}',
   'tasksSettings.idle.h': 'Inactivo hace {h} h',
   'tasksSettings.idle.hm': 'Inactivo hace {h} h {m} min',
   'tasksSettings.policy.fullControlOff': '{name} está desactivado.',

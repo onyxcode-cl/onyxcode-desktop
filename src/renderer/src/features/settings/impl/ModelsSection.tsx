@@ -89,7 +89,7 @@ export function ModelsSection(): React.JSX.Element {
         <Row label={t('models.default.label')} description={t('models.default.description')} layout="stack-narrow">
           <ModelSelect
             aria-label={t('models.default.aria')}
-            className="w-72 desk:@max-[34rem]:w-full"
+            className="w-80 desk:@max-[34rem]:w-full"
             providers={providers}
             value={settings.defaultModel}
             onChange={(v) => v && void update({ defaultModel: v })}
@@ -99,7 +99,7 @@ export function ModelsSection(): React.JSX.Element {
           <Row key={m.id} label={m.label} description={m.description} layout="stack-narrow">
             <ModelSelect
               aria-label={t('models.forMode.aria', { mode: m.label })}
-              className="w-72 desk:@max-[34rem]:w-full"
+              className="w-80 desk:@max-[34rem]:w-full"
               providers={providers}
               value={modelsByMode[m.id] ?? null}
               defaultLabel={t('models.useDefaultNamed', { model: modelLabel(providers, settings.defaultModel) })}

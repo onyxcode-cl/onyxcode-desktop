@@ -20,6 +20,7 @@ export const tasksSettings = {
   'tasksSettings.idle.inUse': 'In use',
   'tasksSettings.idle.lessThanMin': 'Idle for less than 1 min',
   'tasksSettings.idle.min': 'Idle for {min} min',
+  'tasksSettings.folder.autoName': 'Task folder · {date}',
   'tasksSettings.idle.h': 'Idle for {h} h',
   'tasksSettings.idle.hm': 'Idle for {h} h {m} min',
   'tasksSettings.policy.fullControlOff': '{name} is turned off.',

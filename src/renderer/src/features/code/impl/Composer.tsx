@@ -857,7 +857,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                       className={`flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[13px] font-medium ${agent === 'plan' ? 'bg-accent-soft text-accent' : 'text-muted active:bg-hover'}`}
                     >
                       {agent === 'plan' ? <ListChecks size={15} /> : <Hammer size={15} />}
-                      {agent === 'plan' ? 'Plan' : 'Build'}
+                      {t(agent === 'plan' ? 'code.agent.plan' : 'code.agent.build')}
                     </button>
                     <PermissionChip />
                     <span className="ml-auto" />
@@ -952,7 +952,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
           <Kbd>@</Kbd> {t('code.composer.hintFiles')}
         </span>
         <span>
-          <Kbd>{isWindowsPlatform() ? 'Shift+Tab' : '⇧Tab'}</Kbd> {'Plan / Build'}
+          <Kbd>{isWindowsPlatform() ? 'Shift+Tab' : '⇧Tab'}</Kbd> {t('code.agent.plan') + ' / ' + t('code.agent.build')}
         </span>
         <span>
           <Kbd>{isWindowsPlatform() ? 'Shift+Enter' : '⇧↵'}</Kbd> {t('code.composer.hintNewline')}

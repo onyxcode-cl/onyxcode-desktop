@@ -71,3 +71,12 @@ export function seedForExistingUser(s: FirstStepsState, hasConversations: boolea
 export function showFirstStepsAgain(s: FirstStepsState): FirstStepsState {
   return s.finished || firstStepsComplete(s) ? { done: [], hidden: false, finished: false, seeded: true } : { ...s, hidden: false }
 }
+
+/** Días tras los que la tarjeta aparece plegada por sí sola (si la persona no eligió otra cosa). */
+export const FIRST_STEPS_FOLD_AFTER_DAYS = 7
+
+/** ¿Ya pasó una semana desde que se vio por primera vez? `since` es la marca de tiempo (ms) de esa primera vez. */
+export function firstStepsShouldFold(since: number | null, now: number): boolean {
+  if (since === null || !Number.isFinite(since)) return false
+  return now - since >= FIRST_STEPS_FOLD_AFTER_DAYS * 24 * 3600 * 1000
+}

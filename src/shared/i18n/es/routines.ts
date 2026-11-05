@@ -174,7 +174,7 @@ export const routines = {
   'routines.empty.title': 'Automatiza tareas recurrentes',
   'routines.empty.desc':
     'Programa una instrucción para que el agente la ejecute solo y te avise con el resultado. Si la app estaba cerrada, se pone al día al volver a abrirla.',
-  'routines.empty.fromScratch': 'Empezar desde cero',
+  'routines.empty.fromScratch': 'Nueva rutina',
   'routines.view.noBridge': 'Falta `window.api.tasks` en el preload.',
   'routines.view.title': 'Rutinas',
   'routines.view.active': { one: '{count} activa', other: '{count} activas' },

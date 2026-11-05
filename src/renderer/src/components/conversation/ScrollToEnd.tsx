@@ -20,7 +20,7 @@ export function ScrollToEnd({
       onClick={onClick}
       aria-label={t('chat.msg.scrollEnd')}
       title={t('chat.msg.scrollEnd')}
-      className={`absolute bottom-3 left-1/2 flex -translate-x-1/2 animate-pop-in items-center justify-center rounded-full border border-border bg-elevated text-muted shadow-md transition-colors hover:text-fg ${isRemoteSurface() ? 'h-10 w-10 text-fg' : 'h-8 w-8'}`}
+      className={`absolute bottom-3 right-4 flex animate-pop-in items-center justify-center rounded-full border border-border bg-elevated text-muted shadow-md transition-colors hover:text-fg ${isRemoteSurface() ? 'h-10 w-10 text-fg' : 'h-8 w-8'}`}
     >
       <ArrowDown size={isRemoteSurface() ? 18 : 15} />
       {isRemoteSurface() && fresh && <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent" />}

@@ -245,12 +245,8 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
           shortcut={hints['settings.toggle']}
           pressed={settingsOpen}
           onClick={() => openSettings(!settingsOpen)}
-          // Con la lista visible el estado va en su pie; aquí solo avisa si no está conectado. Sin lista, siempre (no se pierde).
-          badge={
-            !listShown || serverState !== 'ready'
-              ? { label: statusLabel, tone: serverState === 'ready' ? 'bg-success' : serverState === 'error' ? 'bg-danger' : 'bg-warning' }
-              : undefined
-          }
+          // Solo avisa cuando hay un problema o está arrancando (ámbar o rojo): el punto verde parecía «hay algo nuevo» (E13).
+          badge={serverState !== 'ready' ? { label: statusLabel, tone: serverState === 'error' ? 'bg-danger' : 'bg-warning' } : undefined}
         >
           <Settings size={18} strokeWidth={1.8} aria-hidden="true" />
         </RailButton>
@@ -365,7 +361,7 @@ export function Sidebar({ showLabel }: { showLabel?: string }): React.JSX.Elemen
       {/* Pie discreto: estado de la conexión (el punto cambia de color si arranca o falla). */}
       <div
         className="mx-2.5 flex h-[42px] shrink-0 items-center gap-2.5 border-t border-border text-ui text-muted"
-        title={`OpenCode: ${statusLabel}`}
+        title={t('app.sidebar.engineStatus', { status: statusLabel })}
       >
         <span className={`size-[7px] shrink-0 rounded-full ${dot}`} aria-hidden="true" />
         <span className="min-w-0 truncate">{statusLabel}</span>

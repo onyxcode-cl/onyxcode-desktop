@@ -331,7 +331,7 @@ function PaletteDialog(): React.JSX.Element {
         aria-modal="true"
         aria-label={t('app.palette.title')}
         onKeyDown={onKeyDown}
-        className="flex max-h-[min(540px,78vh)] w-[600px] max-w-full animate-pop-in flex-col overflow-hidden rounded-modal border-0 bg-elevated shadow-modal"
+        className="flex max-h-[min(540px,calc(100vh-min(14vh,5rem)-1rem))] w-[600px] max-w-full animate-pop-in flex-col overflow-hidden rounded-modal border-0 bg-elevated shadow-modal"
       >
         <div className="flex h-[52px] items-center gap-3 border-b border-border/60 px-4">
           <Search size={20} className="shrink-0 text-muted" aria-hidden />

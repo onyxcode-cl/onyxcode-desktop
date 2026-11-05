@@ -8,6 +8,6 @@ describe('toolLabel (U3)', () => {
     expect(toolLabel('documentos_renderizar')).toBe('Miró el documento')
   })
   it('una herramienta desconocida solo pierde los guiones bajos', () => {
-    expect(toolLabel('otra_herramienta_rara')).toBe('otra herramienta rara')
+    expect(toolLabel('otra_herramienta_rara')).toBe('Usó la herramienta «otra herramienta rara»')
   })
 })

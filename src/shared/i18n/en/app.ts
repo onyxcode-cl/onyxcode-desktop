@@ -25,6 +25,8 @@ export const app = {
   'app.sidebar.projectActions': 'More actions',
   'app.sidebar.collapseProject': 'Collapse {name}',
   'app.sidebar.expandProject': 'Expand {name}',
+  'app.sidebar.engineStatus': 'Engine: {status}',
+  'app.sidebar.recentFolders': 'Recent folders',
   'app.sidebar.noProjects': 'No projects yet',
   'app.sidebar.working': 'Working',
   'app.sidebar.tree': 'Projects and conversations',

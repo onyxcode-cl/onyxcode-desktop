@@ -7,7 +7,7 @@ export const models = {
   'models.mode.tasks.description': 'Autonomous tasks on documents. Same model as the Overdrive picker.',
   'models.title': 'Models',
   'models.subtitle':
-    'Default model and one of its own per mode. Picking a model in Chat, Code or Overdrive remembers it for that mode only; it does not change the default. OpenCode Go models are listed first.',
+    'Default model and one of its own per mode. Picking a model in Chat, Code or Overdrive remembers it for that mode only; it does not change the default. The models included in your subscription are listed first.',
   'models.waitingServer': 'Waiting for the AI to finish starting…',
   'models.default.label': 'Default',
   'models.default.description':
@@ -15,7 +15,7 @@ export const models = {
   'models.default.aria': 'Default model',
   'models.forMode.aria': 'Model for {mode}',
   'models.useDefault': 'Use the default',
-  'models.useDefaultNamed': 'Use the default ({model})',
+  'models.useDefaultNamed': 'Default: {model}',
   'models.refreshList': 'Refresh list',
   'models.providers': 'AI services',
   'models.removeCreds.title': 'Remove credentials?',

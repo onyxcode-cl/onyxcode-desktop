@@ -178,7 +178,8 @@ describe('UsageSection', () => {
     }))
     await mountSection()
     expect(tid('usage-status')!.textContent).toContain('Aún no hay uso')
-    expect(rows('usage-by-bucket')).toHaveLength(7)
+    // Los días en cero no se listan (U13): sin uso en la semana queda «Sin datos.».
+    expect(rows('usage-by-bucket')).toEqual([['Sin datos.']])
     click(tid('usage-period-today'))
     expect(tid('usage-by-bucket')).toBeNull()
     click(tid('usage-period-30d'))

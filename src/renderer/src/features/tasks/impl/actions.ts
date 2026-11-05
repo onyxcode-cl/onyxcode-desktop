@@ -46,6 +46,7 @@ import {
   setTaskMeta,
   useTasks
 } from './store'
+import { markFirstStepDone } from '../../../stores/first-steps'
 import { sdkDir, showPath } from './conn-paths'
 import {
   CREATE_SKILL_PROMPT,
@@ -752,6 +753,10 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
     }
     sessions.setStatus(sessionID, 'idle')
     sessions.setError(sessionID, errorMessage(promptError))
+  } else if (text.trim()) {
+    // El motor aceptó el mensaje: también cuenta como «primera pregunta» y «ya hay un modelo» en Primeros pasos.
+    markFirstStepDone('message')
+    markFirstStepDone('model')
   }
 }
 

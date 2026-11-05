@@ -700,9 +700,9 @@ function EmptySession({ directory, error }: { directory: string; error: ConvErro
       {!returning && (
         <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-muted">
           {t('code.empty.use')}
-          <b className="font-medium text-fg">{'Plan'}</b>
+          <b className="font-medium text-fg">{t('code.agent.plan')}</b>
           {t('code.empty.planDesc')}
-          <b className="font-medium text-fg">{'Build'}</b>
+          <b className="font-medium text-fg">{t('code.agent.build')}</b>
           {t('code.empty.buildDesc')}
         </p>
       )}

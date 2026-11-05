@@ -6,7 +6,7 @@
  */
 import { Check, ChevronDown, ChevronUp, Circle } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { FIRST_STEP_IDS, firstStepsProgress, firstStepsVisible, type FirstStepId } from '@shared/first-steps'
+import { FIRST_STEP_IDS, firstStepsProgress, firstStepsShouldFold, firstStepsVisible, type FirstStepId } from '@shared/first-steps'
 import type { MsgKey } from '@shared/i18n'
 import { useT } from '../../lib/i18n'
 import { isRemoteSurface } from '../../lib/platform'
@@ -27,9 +27,19 @@ const LABEL: Record<FirstStepId, MsgKey> = {
   settings: 'firstSteps.step.settings'
 }
 
+const SINCE_KEY = 'firstSteps.since'
+
+/** Plegada si la persona la plegó; si nunca eligió, se pliega sola a los 7 días de verla por primera vez. */
 function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(COLLAPSED_KEY) === '1'
+    const v = localStorage.getItem(COLLAPSED_KEY)
+    if (v !== null) return v === '1'
+    const raw = localStorage.getItem(SINCE_KEY)
+    if (raw === null) {
+      localStorage.setItem(SINCE_KEY, String(Date.now()))
+      return false
+    }
+    return firstStepsShouldFold(Number(raw), Date.now())
   } catch {
     return false
   }
