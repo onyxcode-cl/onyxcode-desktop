@@ -59,7 +59,8 @@ export const tasksSettings = {
   'tasksSettings.work.desc': 'Las carpetas donde trabajan las tareas. Aquí puedes revocar el {fullControl} concedido a una carpeta.',
   'tasksSettings.work.desc.win': 'Las carpetas donde trabajan las tareas.',
   'tasksSettings.noIsolation.title': 'Avanzado: sin aislamiento',
-  'tasksSettings.noIsolation.desc': 'Solo si sabes lo que haces. Por defecto Overdrive trabaja dentro de una carpeta y pide permiso para lo delicado.',
+  'tasksSettings.noIsolation.desc':
+    'Solo si sabes lo que haces. Por defecto Overdrive trabaja dentro de una carpeta y pide permiso para lo delicado.',
   'tasksSettings.noIsolation.enable': 'Activar',
   'tasksSettings.noIsolation.on': 'Ya activo',
   'tasksSettings.noIsolation.confirmTitle': '¿Trabajar sin aislamiento?',

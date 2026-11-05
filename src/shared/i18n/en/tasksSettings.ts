@@ -61,7 +61,8 @@ export const tasksSettings = {
   'tasksSettings.work.desc': 'The folders where tasks work. Here you can revoke the {fullControl} granted to a folder.',
   'tasksSettings.work.desc.win': 'The folders where tasks work.',
   'tasksSettings.noIsolation.title': 'Advanced: no isolation',
-  'tasksSettings.noIsolation.desc': 'Only if you know what you are doing. By default Overdrive works inside a folder and asks permission for anything sensitive.',
+  'tasksSettings.noIsolation.desc':
+    'Only if you know what you are doing. By default Overdrive works inside a folder and asks permission for anything sensitive.',
   'tasksSettings.noIsolation.enable': 'Turn on',
   'tasksSettings.noIsolation.on': 'Already on',
   'tasksSettings.noIsolation.confirmTitle': 'Work without isolation?',

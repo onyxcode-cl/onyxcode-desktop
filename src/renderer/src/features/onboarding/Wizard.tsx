@@ -1,5 +1,5 @@
 /**
- * Asistente de primer uso: «Conecta tu IA», modelo, modos y «Prepara tu equipo» (4 pasos). Solo con un motor propio o sin motor se
+ * Paso 3 del primer uso (tras la bienvenida y «Preparando»): «Conecta tu IA», modelo, modos y cierre «Todo listo» (4 pasos). Va sobre fondo opaco: la pantalla de inicio no se ve detrás. Solo con un motor propio o sin motor se
  * añade el paso del motor (OpenCode) al principio (5 pasos). Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
  * «Conecta tu IA» ofrece primero lo gratuito (los modelos gratuitos de OpenCode, sin cuenta ni clave), luego OpenCode Go (con suscripción)
  * y cualquier otro servicio del catálogo de OpenCode (clave u OAuth). Nada de pago se destaca como recomendado.
@@ -42,14 +42,9 @@ import { useServer } from '../../stores/server'
 import { useSettings } from '../../stores/settings'
 import { useUi } from '../../stores/ui'
 import { useTasks } from '../tasks/impl/store'
-import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { ProviderKeyForm, unconnectedProviders, useProviderCatalog, useProviderConnect } from '../settings'
 import { SwitchNoticeBar } from '../settings/impl/SwitchNoticeBar'
 import { Badge, ErrorText } from '../settings/impl/ui'
-import { installFailureCode, officeErrorKey } from '../settings/impl/component-install'
-import { runtimesApi, runtimesErrorKey, runtimesPct } from '../settings/impl/runtimes-view'
-import { ComponentPick } from './ComponentPick'
-import { Welcome } from './Welcome'
 import {
   canAdvance,
   connectedNames,
@@ -90,8 +85,6 @@ function OnboardingHost(): React.JSX.Element | null {
   const completed = useRef(false)
   /** ¿Lleva el paso del motor? Se decide al mostrar el asistente y no cambia a mitad del recorrido (el contador de pasos sería inestable). */
   const [withEngine, setWithEngine] = useState(true)
-  /** La bienvenida (animación, revisión y preparación del equipo) va antes del primer paso, una vez por arranque del asistente. */
-  const [welcomed, setWelcomed] = useState(false)
 
   const refreshInfo = useCallback(async () => {
     try {
@@ -147,7 +140,6 @@ function OnboardingHost(): React.JSX.Element | null {
   }, [step])
 
   if (!step) return null
-  if (!welcomed) return <Welcome info={info} onDone={() => setWelcomed(true)} />
 
   const steps = stepsFor(undefined, withEngine)
   const finish = (): void => void update({ onboarded: true })
@@ -165,7 +157,7 @@ function OnboardingHost(): React.JSX.Element | null {
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--scrim)] p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg p-4">
       <section
         role="dialog"
         aria-modal="true"
@@ -687,186 +679,20 @@ function StepModes(): React.JSX.Element {
   )
 }
 
-// ───────────── Paso 5: prepara tu equipo (permisos + componentes) ─────────────
-
-type SetupItemId = 'craft' | 'runtimes' | 'sandbox'
-type SetupState = 'idle' | 'running' | 'done' | 'failed'
+// ───────────── Último paso: todo listo ─────────────
 
 /**
- * Un solo botón deja el equipo listo: en macOS pide Accesibilidad y Grabación de pantalla y baja ArtCraft (el diseñador de documentos: descarga de GitHub,
- * verificada por hash y firma); en Windows prepara el entorno aislado de Tareas. Pulsarlo ES el consentimiento de todo lo que la tarjeta
- * enumera; nada se hace antes. Cada pieza se puede reintentar y todo se puede hacer después desde Ajustes.
+ * Cierre del asistente. Ya NO instala nada: las piezas (ArtCraft, Node.js y uv, el entorno de Windows) se eligen y se instalan en la
+ * pantalla «Preparando» (paso 2 del primer uso), antes de conectar la IA; aquí solo se recuerda dónde está lo que se dejó para más
+ * tarde y se ofrece «Probar con un ejemplo». En macOS recuerda que los permisos se piden al usar «Control total».
  */
 export function StepSetup({ onTryExample }: { onTryExample: () => void }): React.JSX.Element {
   const t = useT()
   const mac = isMacPlatform()
   const caps = platformCaps()
-  const [items, setItems] = useState<Partial<Record<SetupItemId, SetupState>>>({})
-  const [craftMb, setCraftMb] = useState(0)
-  const [craftError, setCraftError] = useState<string | undefined>()
-  const [runtimesMb, setRuntimesMb] = useState(0)
-  const [runtimesError, setRuntimesError] = useState<string | undefined>()
-  const [pct, setPct] = useState<number | null>(null)
-  const [busy, setBusy] = useState(false)
-  /** Casillas desmarcadas: por defecto todo se instala junto; la persona elige qué. */
-  const [unchecked, setUnchecked] = useState<SetupItemId[]>([])
-  const set = (id: SetupItemId, st: SetupState): void => setItems((p) => ({ ...p, [id]: st }))
-
-  const refresh = useCallback(async (): Promise<void> => {
-    if (!hasTasksBridge()) return
-    const o = await cw('craft:status').catch(() => null)
-    if (o?.status.state === 'missing') {
-      setCraftMb(Math.round(o.status.sizeBytes / 1e6))
-      set('craft', 'idle')
-    } else if (o?.status.state === 'installed') set('craft', 'done')
-    // Node.js y uv (conectores locales): solo donde hay conectores locales.
-    const rs = await runtimesApi.status().catch(() => null)
-    if (rs?.offered) {
-      setRuntimesMb(Math.round(rs.missingBytes / 1e6))
-      set('runtimes', rs.ready ? 'done' : 'idle')
-    }
-    if (caps.tasks && caps.tasksSandbox === 'wsl') {
-      const s = await cw('tasks:sandbox:status', undefined).catch(() => null)
-      if (s) set('sandbox', s.state === 'ready' ? 'done' : 'idle')
-    }
-  }, [caps.tasks, caps.tasksSandbox])
-
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
-
-  /** Instala `only` (reintento de una fila) o, sin ello, todo lo que sigue marcado. */
-  const runAll = async (only?: SetupItemId): Promise<void> => {
-    const wants = (id: SetupItemId): boolean => (only ? only === id : !unchecked.includes(id))
-    setBusy(true)
-    try {
-      if (wants('craft') && items.craft && items.craft !== 'done') {
-        set('craft', 'running')
-        const poll = setInterval(() => {
-          void cw('craft:status')
-            .then((s) => {
-              const total = s.progress?.total ?? 0
-              setPct(s.installing && total > 0 ? Math.min(100, Math.round(((s.progress?.done ?? 0) / total) * 100)) : null)
-            })
-            .catch(() => undefined)
-        }, 1000)
-        const r = await cw('craft:install').catch(() => undefined)
-        clearInterval(poll)
-        setPct(null)
-        setCraftError(installFailureCode(r))
-        set('craft', r?.ok ? 'done' : 'failed')
-      }
-      if (wants('runtimes') && items.runtimes && items.runtimes !== 'done') {
-        set('runtimes', 'running')
-        const poll = setInterval(() => {
-          void runtimesApi
-            .status()
-            .then((s) => setPct(runtimesPct(s)))
-            .catch(() => undefined)
-        }, 1000)
-        const r = await runtimesApi.install().catch(() => undefined)
-        clearInterval(poll)
-        setPct(null)
-        setRuntimesError(installFailureCode(r))
-        set('runtimes', r?.ok ? 'done' : 'failed')
-      }
-      if (wants('sandbox') && items.sandbox && items.sandbox !== 'done') {
-        set('sandbox', 'running')
-        const poll = setInterval(() => {
-          void cw('tasks:sandbox:status', undefined).then((s) => setPct(s.setup?.running ? s.setup.pct : null))
-        }, 1500)
-        const s = await cw('tasks:sandbox:setup').catch(() => null)
-        clearInterval(poll)
-        setPct(null)
-        set('sandbox', s?.state === 'ready' ? 'done' : 'failed')
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const rows: Array<{ id: SetupItemId; label: string; hint: string }> = []
-  if (items.craft) rows.push({ id: 'craft', label: t('wizard.setup.craft'), hint: t('wizard.setup.craft.hint', { mb: craftMb }) })
-  if (items.runtimes)
-    rows.push({ id: 'runtimes', label: t('wizard.setup.runtimes'), hint: t('wizard.setup.runtimes.hint', { mb: runtimesMb }) })
-  if (items.sandbox) rows.push({ id: 'sandbox', label: t('wizard.setup.sandbox'), hint: t('wizard.setup.sandbox.hint') })
-  const checkedRows = rows.filter((r) => !unchecked.includes(r.id))
-  const allDone = rows.length > 0 && rows.every((r) => items[r.id] === 'done')
-  const nothingToDo = checkedRows.every((r) => items[r.id] === 'done')
-  const anyFailed = checkedRows.some((r) => items[r.id] === 'failed')
-
   return (
     <div className="space-y-3">
-      <Lead>{rows.length === 0 ? t('wizard.setup.nothing', { app: DISPLAY_NAME }) : t('wizard.setup.lead', { app: DISPLAY_NAME })}</Lead>
-      {rows.length > 0 && (
-        <ul className="space-y-2">
-          {rows.map((r) => {
-            const st = items[r.id] ?? 'idle'
-            const detail =
-              (st === 'running' && (r.id === 'sandbox' || r.id === 'craft' || r.id === 'runtimes') && pct !== null ? `${pct} % · ` : '') +
-              (st === 'failed'
-                ? r.id === 'craft' && craftError
-                  ? `${t(officeErrorKey(craftError))} ${t('wizard.setup.craft.retryHint')}`
-                  : r.id === 'runtimes' && runtimesError
-                    ? `${t(runtimesErrorKey(runtimesError))} ${t('wizard.setup.runtimes.retryHint')}`
-                    : t('wizard.setup.status.failed')
-                : st === 'done'
-                  ? t('wizard.setup.status.ready')
-                  : r.hint)
-            return (
-              <li key={r.id} className="flex items-start gap-3 rounded-ctl bg-inset px-3.5 py-3">
-                <span className="mt-0.5 shrink-0">
-                  {st === 'done' ? (
-                    <Check size={16} className="text-success" />
-                  ) : st === 'running' ? (
-                    <Loader2 size={16} className="animate-spin text-accent" />
-                  ) : (
-                    <Shield size={16} className={st === 'failed' ? 'text-warning' : 'text-subtle'} />
-                  )}
-                </span>
-                <div className="min-w-0 flex-1 text-[13px] leading-[18px]">
-                  {st === 'done' || st === 'running' ? (
-                    <>
-                      <p className="font-medium text-fg">{r.label}</p>
-                      <p className="text-muted">{detail}</p>
-                    </>
-                  ) : (
-                    // El texto de ayuda va DENTRO de la casilla para que quede enlazado con `aria-describedby` (igual que en la bienvenida).
-                    <ComponentPick
-                      id={r.id}
-                      label={r.label}
-                      checked={!unchecked.includes(r.id)}
-                      disabled={busy}
-                      onChange={(on) => setUnchecked((u) => (on ? u.filter((x) => x !== r.id) : [...u, r.id]))}
-                    >
-                      {detail}
-                    </ComponentPick>
-                  )}
-                  {st === 'failed' && (
-                    <Button className="mt-2" variant="secondary" size="sm" disabled={busy} onClick={() => void runAll(r.id)}>
-                      {t('wizard.setup.retry')}
-                    </Button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {rows.length > 0 && (
-        <div className="flex items-center gap-3">
-          <Button variant="primary" disabled={busy || allDone || nothingToDo} onClick={() => void runAll()}>
-            {busy
-              ? t('wizard.setup.running')
-              : allDone
-                ? t('wizard.setup.done')
-                : anyFailed
-                  ? t('wizard.setup.retry')
-                  : t('wizard.setup.run')}
-          </Button>
-          <span className="text-meta text-muted">{t('wizard.setup.later')}</span>
-        </div>
-      )}
+      <Lead>{t('wizard.setup.lead', { app: DISPLAY_NAME })}</Lead>
       {mac && caps.computer && (
         <p role="note" className="text-[13px] leading-[18px] text-muted">
           {t('wizard.setup.permsLater', { app: DISPLAY_NAME, mode: t('wizard.fullControl') })}

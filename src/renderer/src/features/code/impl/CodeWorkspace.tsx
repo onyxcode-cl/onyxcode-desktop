@@ -618,7 +618,13 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {busy && (
           <Tip
-            label={shells > 0 ? t('engine.stop.bg', { count: shells }) : helpers > 0 ? t('code.toolbar.stopAll', { count: helpers }) : t('code.toolbar.stop')}
+            label={
+              shells > 0
+                ? t('engine.stop.bg', { count: shells })
+                : helpers > 0
+                  ? t('code.toolbar.stopAll', { count: helpers })
+                  : t('code.toolbar.stop')
+            }
             shortcut={hintText(bindings['session.stop']).replace(/^Esc$/, 'esc')}
           >
             <button

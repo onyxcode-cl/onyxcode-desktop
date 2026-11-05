@@ -8,7 +8,10 @@ import { requestViewChatFile } from '../../lib/chatFileView'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-vi.mock('../../lib/platform', async (orig) => ({ ...(await orig<typeof import('../../lib/platform')>()), platformCaps: () => ({ docViewer: true }) }))
+vi.mock('../../lib/platform', async (orig) => ({
+  ...(await orig<typeof import('../../lib/platform')>()),
+  platformCaps: () => ({ docViewer: true })
+}))
 
 const XLSX: ChatFileInfo = { path: '/c/ventas.xlsx', name: 'ventas.xlsx', bytes: 2048, kind: 'office', canView: true, canOpen: true }
 

@@ -270,9 +270,9 @@ describe.skipIf(MODE === 'prod')(`calidad R2-C: asistente de primer uso (${MODE}
     await d.getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(d.getByRole('heading', { name: 'Cómo puedes usarlo' }))
     await clean(a.page, 'asistente:paso4')
-    // Paso 5 («Prepara tu equipo»): existe en macOS y en Windows.
+    // Paso 5 («Todo listo»): existe en macOS y en Windows.
     await d.getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d.getByRole('heading', { name: 'Prepara tu equipo' }))
+    await expectVisible(d.getByRole('heading', { name: 'Todo listo' }))
     await clean(a.page, 'asistente:paso5')
     await shot(a, SHOTS, 'asistente-paso5')
   })

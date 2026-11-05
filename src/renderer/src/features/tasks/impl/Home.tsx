@@ -308,7 +308,11 @@ export function Home({
         )}
 
         {/* La guía de primer uso va DEBAJO del cuadro: el cuadro de escribir es lo primero que se ve. */}
-        {!onboarded && <div className="mt-6"><Onboarding onDismiss={() => setOnboardedPersisted(true)} /></div>}
+        {!onboarded && (
+          <div className="mt-6">
+            <Onboarding onDismiss={() => setOnboardedPersisted(true)} />
+          </div>
+        )}
 
         {!remote && <ResumeBlock focus={focus} />}
 

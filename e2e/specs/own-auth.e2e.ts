@@ -103,9 +103,9 @@ describe('conexión propia de la app', () => {
     await expectVisible(d().getByRole('heading', { name: 'Elige tu modelo' }))
     await d().getByRole('button', { name: 'Continuar' }).click()
     await expectVisible(d().getByRole('heading', { name: 'Cómo puedes usarlo' }))
-    // Último paso, igual en macOS y Windows: «Prepara tu equipo».
+    // Último paso, igual en macOS y Windows: «Todo listo».
     await d().getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(d().getByRole('heading', { name: 'Prepara tu equipo' }))
+    await expectVisible(d().getByRole('heading', { name: 'Todo listo' }))
     await d().getByRole('button', { name: 'Empezar' }).click()
     await expectCount(app.page.getByRole('dialog'), 0)
     await expect.poll(() => settingsOf(userData).onboarded).toBe(true)

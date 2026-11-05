@@ -7,3 +7,8 @@ export function OnboardingGate(): null {
 export function PreflightGate({ children }: { children?: React.ReactNode }): React.JSX.Element {
   return children as React.JSX.Element
 }
+
+/** Ni el recorrido de la primera vez: en el celular no se muestra nada. */
+export function FirstRunGate(): null {
+  return null
+}

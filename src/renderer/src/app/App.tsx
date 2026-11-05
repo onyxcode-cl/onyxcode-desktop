@@ -4,7 +4,7 @@ import { ExportConversationHost } from '../components/ExportConversation'
 import { TranslatePdfHost } from '../features/translate-pdf/TranslatePdfDialog'
 import { LiveAnnouncer } from '../components/LiveAnnouncer'
 import { ErrorBoundary } from '../components/ErrorBoundary'
-import { OnboardingGate, PreflightGate } from '../features/onboarding'
+import { FirstRunGate } from '../features/onboarding'
 import { SettingsView } from '../features/settings'
 import { PersonalizacionView } from '../features/personalizacion'
 import { onOpencodeEvent, useServer } from '../stores/server'
@@ -201,9 +201,7 @@ function DesktopApp(): React.JSX.Element {
       <RemotePairHost />
       <RemoteConfirmHost />
       <ErrorBoundary label={t('app.boundary.onboarding')}>
-        <PreflightGate>
-          <OnboardingGate />
-        </PreflightGate>
+        <FirstRunGate />
       </ErrorBoundary>
       <ErrorBoundary label={t('app.boundary.palette')}>
         <CommandPalette />

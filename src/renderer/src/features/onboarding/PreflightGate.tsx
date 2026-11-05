@@ -1,5 +1,5 @@
 /**
- * Puerta de la revisión de arranque. En CADA arranque pide a main `preflight:run` (solo local, sin red) antes de enseñar la app:
+ * Puerta de la revisión de arranque (en el primer uso es el paso 2 de 3: bienvenida → preparar el equipo → conectar la IA). En CADA arranque pide a main `preflight:run` (solo local, sin red) antes de enseñar la app:
  *  - todo listo (o revisión omitida): deja pasar de inmediato, sin mostrar nada;
  *  - falta algo esencial: pantalla «Preparando Lazunox» que no se puede omitir, con el botón «Instalar lo que falta»;
  *  - solo avisos no esenciales: la misma pantalla con «Continuar de todos modos» (se recuerda por versión y por pendientes).
@@ -14,15 +14,18 @@ import {
   toggleChecked,
   type PreflightId,
   type PreflightReport,
-  type RuntimeMap
+  type RuntimeMap,
+  UNCHECKED_BY_DEFAULT
 } from '@shared/preflight'
 import { call } from '../../lib/api'
+import { useSettings } from '../../stores/settings'
 import { nativeCode } from '../code/impl/client'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { PreflightScreen } from './PreflightScreen'
 import { waitForMacPerms } from './perms-wait'
 import { runInstall, type InstallApi } from './preflight-run'
 import { runtimesApi, runtimesPct } from '../settings/impl/runtimes-view'
+import { PREFLIGHT_OPEN_EVENT } from './preflight-open'
 
 /** Plazo máximo de espera de la revisión: pasado, se entra a la app (la revisión nunca debe dejarla bloqueada). */
 export const PREFLIGHT_TIMEOUT_MS = 3500
@@ -34,11 +37,6 @@ function readDismissed(): ReturnType<typeof parseDismissal> {
   } catch {
     return null
   }
-}
-
-/** ¿La persona ya vio «Preparando» y lo dejó pasar? Entonces la bienvenida no vuelve a ofrecerle las mismas piezas opcionales. */
-export function preflightWasDismissed(): boolean {
-  return readDismissed() !== null
 }
 
 function saveDismissed(report: PreflightReport): void {
@@ -62,14 +60,18 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   const [report, setReport] = useState<PreflightReport | null>(null)
   const [runtime, setRuntime] = useState<RuntimeMap>({})
   const [installing, setInstalling] = useState(false)
-  /** Casillas desmarcadas: por defecto todo lo opcional se instala junto; la persona elige qué. */
-  const [unchecked, setUnchecked] = useState<PreflightId[]>([])
+  /** Casillas desmarcadas: lo recomendado nace marcado y lo opcional (`UNCHECKED_BY_DEFAULT`) desmarcado; la persona elige qué. */
+  const [unchecked, setUnchecked] = useState<PreflightId[]>([...UNCHECKED_BY_DEFAULT])
+  /** Primer uso (aún sin asistente terminado): la pantalla es el paso 2 de 3 del recorrido. */
+  const firstRun = useSettings((s) => !s.settings.onboarded)
   const [details, setDetails] = useState<Partial<Record<PreflightId, string>>>({})
   const [copied, setCopied] = useState<PreflightId | null>(null)
   const [permsWaiting, setPermsWaiting] = useState(false)
   const [permsStalled, setPermsStalled] = useState(false)
   const alive = useRef(true)
   const started = useRef(false)
+  /** Abierta a pedido desde Ajustes: no se cierra sola aunque «Más tarde» ya se hubiera elegido; se cierra con «Continuar». */
+  const forced = useRef(false)
   // Se vuelve a marcar vivo al montar: con StrictMode (desarrollo) React monta, desmonta y monta de nuevo el mismo componente, y sin esto la
   // primera revisión se descartaba (`alive` quedaba en false) y la pantalla se quedaba en «checking» para siempre.
   useEffect(() => {
@@ -85,13 +87,23 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
     if (!alive.current) return
     if (!r) return setPhase('clear')
     setReport(r)
-    setPhase(shouldShow(r, readDismissed()) ? 'show' : 'clear')
+    setPhase(forced.current || shouldShow(r, readDismissed()) ? 'show' : 'clear')
   }, [])
 
   useEffect(() => {
     if (started.current) return
     started.current = true
     void check()
+  }, [check])
+
+  // «Instalar o activar piezas» (Ajustes › Diagnóstico) vuelve a abrir la lista aunque se haya dejado para más tarde.
+  useEffect(() => {
+    const onOpen = (): void => {
+      forced.current = true
+      void check()
+    }
+    window.addEventListener(PREFLIGHT_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(PREFLIGHT_OPEN_EVENT, onOpen)
   }, [check])
 
   // Al volver de Ajustes del Sistema se revalida (permisos, ubicación) sin esperar a que la persona pulse nada.
@@ -201,6 +213,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   )
 
   const proceed = useCallback((): void => {
+    forced.current = false
     if (report) saveDismissed(report)
     setPhase('clear')
   }, [report])
@@ -218,6 +231,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       permsStalled={permsStalled}
       permsWaiting={permsWaiting}
       unchecked={unchecked}
+      firstRun={firstRun}
       onToggle={(id) => setUnchecked((u) => toggleChecked(u, id))}
       onInstall={(ids) => void install(ids)}
       onCopy={copy}

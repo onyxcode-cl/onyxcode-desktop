@@ -111,7 +111,17 @@ export interface XlsxChartSpec {
 export type XlsxFreeze = 'none' | 'row' | 'column' | 'both'
 export const XLSX_FREEZES: readonly XlsxFreeze[] = ['none', 'row', 'column', 'both']
 export type XlsxCondRule = 'above' | 'below' | 'greater' | 'less' | 'between' | 'text' | 'duplicates' | 'scale' | 'bars'
-export const XLSX_COND_RULES: readonly XlsxCondRule[] = ['above', 'below', 'greater', 'less', 'between', 'text', 'duplicates', 'scale', 'bars']
+export const XLSX_COND_RULES: readonly XlsxCondRule[] = [
+  'above',
+  'below',
+  'greater',
+  'less',
+  'between',
+  'text',
+  'duplicates',
+  'scale',
+  'bars'
+]
 export type XlsxCondColor = 'red' | 'green' | 'amber'
 export const XLSX_COND_COLORS: readonly XlsxCondColor[] = ['red', 'green', 'amber']
 export const MAX_XLSX_COND_PER_SHEET = 6
@@ -510,7 +520,10 @@ function isSheet(v: unknown): v is XlsxSheetSpec {
     )
   )
     return false
-  if (sh.conditional !== undefined && (!Array.isArray(sh.conditional) || sh.conditional.length > MAX_XLSX_COND_PER_SHEET || !sh.conditional.every(isCond)))
+  if (
+    sh.conditional !== undefined &&
+    (!Array.isArray(sh.conditional) || sh.conditional.length > MAX_XLSX_COND_PER_SHEET || !sh.conditional.every(isCond))
+  )
     return false
   if (
     sh.validations !== undefined &&

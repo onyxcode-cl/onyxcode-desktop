@@ -1,107 +1,64 @@
 // @vitest-environment jsdom
-// Paso «Prepara tu equipo» del asistente (F8-B197): casilla por componente, «Preparar todo» instala solo lo marcado y reintento por fila.
+// Último paso del asistente («Todo listo»): ya no instala nada ni repite la lista de piezas (eso vive solo en «Preparando»); ofrece el ejemplo.
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-const channels: string[] = []
-let craftResult: { ok: boolean; error?: string } = { ok: true }
-
+const bridge = vi.fn()
 vi.mock('../tasks/impl/bridge', () => ({
   hasTasksBridge: () => true,
-  cw: vi.fn(async (channel: string) => {
-    channels.push(channel)
-    if (channel === 'craft:status') return { status: { state: 'missing', sizeBytes: 205e6 } }
-    if (channel === 'runtimes:status') return { offered: true, items: [], ready: false, missingBytes: 67_329_746, installing: false }
-    if (channel === 'tasks:sandbox:status') return { state: 'ready' }
-    if (channel === 'craft:install') return craftResult
-    if (channel === 'runtimes:install') return { ok: true }
-    throw new Error(`canal inesperado ${channel}`)
-  })
+  cw: (...a: unknown[]) => bridge(...a)
 }))
 
 import { StepSetup } from './Wizard'
 
 let host: HTMLDivElement
 let root: Root
-const box = (id: string): HTMLInputElement => host.querySelector(`[data-testid="pick-${id}"]`) as HTMLInputElement
-const button = (label: string): HTMLButtonElement | undefined => [...host.querySelectorAll('button')].find((b) => b.textContent === label)
-const flush = async (): Promise<void> => {
+const mount = async (platform: string, onTryExample = vi.fn()): Promise<typeof onTryExample> => {
+  ;(window as unknown as { api: unknown }).api = { platform, capsFlags: { tasksWin: true } }
   await act(async () => {
-    await Promise.resolve()
+    root.render(createElement(StepSetup, { onTryExample }))
   })
+  return onTryExample
 }
 
-beforeEach(async () => {
+beforeEach(() => {
   vi.unstubAllGlobals()
-  channels.length = 0
-  craftResult = { ok: true }
-  ;(window as unknown as { api: unknown }).api = { platform: 'darwin', capsFlags: { tasksWin: true } }
+  bridge.mockReset()
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
-  await act(async () => {
-    root.render(createElement(StepSetup, { onTryExample: () => undefined }))
-  })
-  await flush()
 })
 afterEach(() => {
   act(() => root.unmount())
   host.remove()
 })
 
-describe('«Prepara tu equipo»: casillas por componente', () => {
-  // F8-B198: cada casilla queda descrita por su texto de ayuda (tamaño y origen) para lectores de pantalla.
-  const described = (id: string): string => {
-    const el = host.querySelector(`[data-testid="pick-${id}"]`) as HTMLInputElement
-    const ref = el.getAttribute('aria-describedby')
-    expect(ref).toBeTruthy()
-    return host.querySelector(`[id="${ref}"]`)?.textContent ?? ''
-  }
-
-  it('cada casilla queda descrita por su ayuda (aria-describedby), con tamaño y origen', () => {
-    expect(described('craft')).toContain('205 MB')
-    expect(described('craft')).toContain('GitHub')
-    expect(described('runtimes')).toContain('67 MB')
-    expect(described('runtimes')).toContain('nodejs.org')
+describe('«Todo listo»: cierre del asistente', () => {
+  it('no instala ni revisa nada, y no repite casillas ni «Preparar todo»', async () => {
+    await mount('darwin')
+    expect(bridge).not.toHaveBeenCalled()
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull()
+    expect(host.textContent).not.toContain('Preparar todo')
   })
-
-  it('ArtCraft y Node.js y uv salen marcados, con su tamaño y de dónde se bajan', () => {
-    expect(box('craft').checked).toBe(true)
-    expect(box('runtimes').checked).toBe(true)
-    expect(host.textContent).toContain('205 MB')
-    expect(host.textContent).toContain('GitHub')
-    expect(host.textContent).toContain('67 MB')
-    expect(host.textContent).toContain('nodejs.org')
+  it('dice dónde instalar después lo que se dejó para más tarde (Ajustes › Diagnóstico)', async () => {
+    await mount('win32')
+    expect(host.textContent).toContain('Ajustes › Diagnóstico')
   })
-
-  it('«Preparar todo» instala solo lo marcado', async () => {
-    await act(async () => box('craft').click())
-    await act(async () => button('Preparar todo')!.click())
-    await flush()
-    expect(channels).toContain('runtimes:install')
-    expect(channels).not.toContain('craft:install')
+  it('«Probar con un ejemplo» sigue a la vista', async () => {
+    const onTry = await mount('win32')
+    await act(async () =>
+      ([...host.querySelectorAll('button')].find((b) => b.textContent === 'Probar con un ejemplo') as HTMLButtonElement).click()
+    )
+    expect(onTry).toHaveBeenCalledTimes(1)
   })
-
-  it('con todo desmarcado el botón no se puede pulsar', async () => {
-    await act(async () => box('craft').click())
-    await act(async () => box('runtimes').click())
-    expect(button('Preparar todo')!.disabled).toBe(true)
-  })
-
-  it('un fallo conserva su estado y su fila tiene su propio «Reintentar» que repite solo ese componente', async () => {
-    craftResult = { ok: false, error: 'hash' }
-    await act(async () => button('Preparar todo')!.click())
-    await flush()
-    expect(host.textContent).toContain('Reintentar')
-    craftResult = { ok: true }
-    channels.length = 0
-    const rowRetry = [...host.querySelectorAll('li button')].find((b) => b.textContent === 'Reintentar') as HTMLButtonElement
-    await act(async () => rowRetry.click())
-    await flush()
-    expect(channels).toContain('craft:install')
-    expect(channels).not.toContain('runtimes:install')
+  it('en macOS recuerda que los permisos se piden al usar «Control total»; en Windows no menciona permisos de macOS', async () => {
+    await mount('darwin')
+    expect(host.querySelector('[role="note"]')?.textContent).toContain('Permisos de macOS')
+    await act(async () => root.render(createElement('div')))
+    await mount('win32')
+    expect(host.querySelector('[role="note"]')).toBeNull()
   })
 })

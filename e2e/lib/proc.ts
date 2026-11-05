@@ -11,7 +11,7 @@ export const FAKE_BIN_NAME = IS_WIN ? 'server.mjs' : 'opencode'
 /** Cómo nombra la interfaz el equipo del usuario («Mac» / «PC»; textos `*.win`). */
 export const DEVICE = IS_WIN ? 'PC' : 'Mac'
 
-/** Pasos del asistente de primer uso: iguales en macOS y Windows (el último es «Prepara tu equipo»). */
+/** Pasos del asistente de primer uso: iguales en macOS y Windows (el último es «Todo listo»). */
 export const STEPS_TOTAL = 5
 
 /** Separador de PATH. */

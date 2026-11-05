@@ -80,14 +80,14 @@ describe('PreflightScreen: casillas con interacción', () => {
     expect(box('craft').checked).toBe(false)
     expect(host.textContent).toContain('Se descargarán unos 67 MB.')
     // El botón pide «lo marcado» (sin ids): la puerta calcula el plan con las casillas.
-    await act(async () => btn(/Instalar lo que falta/)!.click())
+    await act(async () => btn(/Instalar lo marcado/)!.click())
     expect(onInstall).toHaveBeenCalledWith()
   })
   it('sin nada marcado el botón se apaga y «Más tarde» sigue disponible', async () => {
     await act(async () => root.render(createElement(Harness, { onInstall: vi.fn() })))
     await act(async () => box('craft').click())
     await act(async () => box('runtimes').click())
-    expect(btn(/Instalar lo que falta/)!.disabled).toBe(true)
+    expect(btn(/Instalar lo marcado/)!.disabled).toBe(true)
     expect(host.textContent).toContain('No hay nada marcado')
     expect(btn(/Más tarde/)).toBeTruthy()
   })

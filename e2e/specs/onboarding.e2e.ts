@@ -111,9 +111,9 @@ describe('asistente de primer uso', () => {
     for (const label of [MODE_LABELS.chat, MODE_LABELS.code, MODE_LABELS.tasks, MODE_LABELS.routines]) {
       await expectVisible(dialog().getByText(label, { exact: true }))
     }
-    // Último paso, igual en macOS y Windows: «Prepara tu equipo».
+    // Último paso, igual en macOS y Windows: «Todo listo».
     await dialog().getByRole('button', { name: 'Continuar' }).click()
-    await expectVisible(dialog().getByRole('heading', { name: 'Prepara tu equipo' }))
+    await expectVisible(dialog().getByRole('heading', { name: 'Todo listo' }))
     await dialog().getByRole('button', { name: 'Empezar' }).click()
     await expectCount(a.page.getByRole('dialog'), 0)
     await expect.poll(() => settingsOf(userData).onboarded).toBe(true)

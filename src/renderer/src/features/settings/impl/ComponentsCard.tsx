@@ -1,7 +1,7 @@
 /**
  * Ajustes › Diagnóstico › «Estado de componentes»: lo mismo que revisa el arranque (`preflight:run`): qué está listo y qué falta, con
- * versiones, y el botón «Revisar de nuevo». La misma lista sale en el informe exportado (main la guarda al revisar). Solo mira: instalar
- * lo que falta se hace en la pantalla «Preparando» del arranque o en la tarjeta de cada componente.
+ * versiones, y el botón «Revisar de nuevo». La misma lista sale en el informe exportado (main la guarda al revisar). Instalar lo que falta se hace
+ * en la pantalla «Preparando» (el botón «Instalar o activar piezas» la vuelve a abrir, también tras «Más tarde») o en la tarjeta de cada componente.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
@@ -11,6 +11,7 @@ import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { cw } from '../../tasks/impl/bridge'
 import { LABELS, hintKey } from '../../onboarding/preflight-view'
+import { openPreflight } from '../../onboarding/preflight-open'
 import { Badge, Card, ErrorText } from './ui'
 
 export function ComponentsCard(): React.JSX.Element {
@@ -43,10 +44,15 @@ export function ComponentsCard(): React.JSX.Element {
           <h3 className="text-sm font-semibold">{t('settings.diag.components.title')}</h3>
           <p className="text-xs text-muted">{t('settings.diag.components.desc', { app: DISPLAY_NAME })}</p>
         </div>
-        <Button onClick={() => void run()} disabled={busy}>
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}{' '}
-          {busy ? t('settings.diag.components.checking') : t('settings.diag.components.recheck')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={openPreflight}>
+            {t('settings.diag.components.open')}
+          </Button>
+          <Button onClick={() => void run()} disabled={busy}>
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}{' '}
+            {busy ? t('settings.diag.components.checking') : t('settings.diag.components.recheck')}
+          </Button>
+        </div>
       </div>
       <Card>
         {failed && (

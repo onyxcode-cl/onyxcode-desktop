@@ -255,8 +255,7 @@ export const chat = {
   'chat.msg.retryAttempt': 'Reintento {attempt}:',
   'chat.msg.thinking': 'Pensando',
   'chat.msg.retrying': 'El modelo no responde; reintentando…',
-  'chat.msg.retryFree':
-    'Se acabó el uso gratuito: conecta tu suscripción o tu clave en Ajustes › Modelos, o espera a que se reponga.',
+  'chat.msg.retryFree': 'Se acabó el uso gratuito: conecta tu suscripción o tu clave en Ajustes › Modelos, o espera a que se reponga.',
   'chat.msg.retryAuth': 'La clave o la sesión de tu IA no es válida; reintentando. Vuelve a conectarla en Ajustes › Modelos.',
   'chat.msg.retryNetwork': 'Sin conexión con el modelo; reintentando. Revisa tu internet.',
   'chat.msg.retryQuota': 'Tu servicio de IA pide esperar (límite de uso); reintentando…',

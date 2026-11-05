@@ -58,8 +58,8 @@ describe('pantalla «Preparando»: falta ArtCraft (opcional)', () => {
     // Disco y carpeta de datos listos no ocupan fila.
     expect(html).not.toContain('preflight-row-disk')
   })
-  it('«Instalar lo que falta» y también «Más tarde»: nada obliga a descargar para entrar', () => {
-    expect(html).toContain('Instalar lo que falta')
+  it('«Instalar lo marcado» y también «Más tarde»: nada obliga a descargar para entrar', () => {
+    expect(html).toContain('Instalar lo marcado')
     expect(html).toContain('Más tarde')
     expect(html).toContain('Opcional')
     expect(html).not.toContain('No se puede omitir')
@@ -88,7 +88,7 @@ describe('instalando y fallos', () => {
     expect(html).toContain('No hay espacio suficiente')
     expect(html).toContain('Reintentar')
     expect(html).toContain('Copiar detalle')
-    expect(html).not.toContain('Instalar lo que falta')
+    expect(html).not.toContain('Instalar lo marcado')
   })
   it('sin detalle todavía no ofrece «Copiar detalle»; con detalle copiado lo confirma', () => {
     const f = { craft: { state: 'failed', error: 'hash' } } as RuntimeMap
@@ -111,13 +111,13 @@ describe('instalando y fallos', () => {
     const html = render(r)
     expect(html).toMatch(/data-testid="preflight-row-disk" data-state="pending"/)
     expect(html).toContain('Libera espacio')
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>(?:(?!<\/button>).)*Instalar lo que falta/)
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>(?:(?!<\/button>).)*Instalar lo marcado/)
   })
   it('motor ausente: ofrece elegir motor manualmente y no hay nada que instalar', () => {
     const r = report([c('storage'), c('disk'), c('engine', { ok: false, reason: 'not-found' }), c('craft')])
     const html = render(r)
     expect(html).toContain('Elegir motor…')
-    expect(html).not.toContain('Instalar lo que falta')
+    expect(html).not.toContain('Instalar lo marcado')
     expect(html).toContain('No se puede omitir')
   })
 })
@@ -139,7 +139,7 @@ describe('avisos no esenciales', () => {
     expect(html).toMatch(/data-testid="preflight-row-location" data-state="pending"/)
     expect(html).toContain('Dar permisos')
     expect(html).toContain('Más tarde')
-    expect(html).not.toContain('Instalar lo que falta')
+    expect(html).not.toContain('Instalar lo marcado')
     expect(html).not.toContain('No se puede omitir')
   })
   it('reutiliza el aviso de app translocada y el de reinicio por Grabación de pantalla', () => {
@@ -208,12 +208,12 @@ describe('casillas por componente (F8-B197)', () => {
     expect(html).not.toMatch(/data-testid="pick-craft"[^>]*checked=""/)
     expect(html).toMatch(/data-testid="pick-runtimes"[^>]*checked=""/)
     expect(html).toContain('Se descargarán unos 67 MB.')
-    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Instalar lo que falta/)
+    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Instalar lo marcado/)
   })
-  it('con todo desmarcado no se descarga nada y «Instalar lo que falta» se apaga; «Más tarde» sigue', () => {
+  it('con todo desmarcado no se descarga nada y «Instalar lo marcado» se apaga; «Más tarde» sigue', () => {
     const html = render(faltaTodo(), { unchecked: ['craft', 'runtimes'] })
     expect(html).toContain('No hay nada marcado')
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Instalar lo que falta/)
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Instalar lo marcado/)
     expect(html).toContain('Más tarde')
   })
   it('durante la instalación las casillas quedan fijas', () => {

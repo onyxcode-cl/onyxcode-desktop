@@ -46,6 +46,8 @@ export interface PreflightScreenProps {
   onOpenFullDisk?: () => void
   /** Casillas desmarcadas (por defecto todo lo opcional va marcado). */
   unchecked: readonly PreflightId[]
+  /** Primer uso: muestra «Paso 2 de 3» y recuerda dónde están las piezas que se dejen para más tarde. */
+  firstRun?: boolean
   onToggle: (id: PreflightId) => void
   /** Sin ids instala lo marcado; con ids (reintento de una fila) solo esos. */
   onInstall: (ids?: PreflightId[]) => void
@@ -96,10 +98,15 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         className="my-auto flex w-full max-w-lg flex-col items-center text-center"
       >
         <LogoMark size={64} variant="tile" animated={false} />
+        {p.firstRun && (
+          <p className="mt-4 text-meta font-medium text-muted" data-testid="preflight-step">
+            {t('preflight.firstRun.step')}
+          </p>
+        )}
         <h1
           id="preflight-title"
           tabIndex={-1}
-          className="mt-5 font-display text-[26px] leading-8 font-semibold tracking-[-0.02em] outline-none"
+          className={`${p.firstRun ? 'mt-1' : 'mt-5'} font-display text-[26px] leading-8 font-semibold tracking-[-0.02em] outline-none`}
         >
           {t('preflight.title', { app: DISPLAY_NAME })}
         </h1>
@@ -203,7 +210,13 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         )}
         {block.length > 0 && <p className="mt-2 text-[12px] text-subtle">{t('preflight.cannotSkip', { app: DISPLAY_NAME })}</p>}
 
-        <div className="mt-5 flex w-full items-center justify-between gap-2">
+        {optional.length > 0 && canContinue(report, runtime) && (
+          <p className="mt-2 text-[12px] text-subtle" data-testid="preflight-later-hint">
+            {t('preflight.laterHint')}
+          </p>
+        )}
+
+        <div className="sticky bottom-0 mt-5 flex w-full flex-wrap items-center justify-between gap-2 bg-bg py-2">
           <Button variant="ghost" onClick={p.onRecheck} disabled={p.installing}>
             <RefreshCw size={14} /> {t('preflight.recheck')}
           </Button>

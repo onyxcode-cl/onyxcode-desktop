@@ -165,7 +165,7 @@ describe('pasos por plataforma', () => {
     expect(nextStep('setup', 'darwin', false)).toBeNull()
   })
 
-  it('ambas plataformas terminan en «Prepara tu equipo»', () => {
+  it('ambas plataformas terminan en «Todo listo»', () => {
     expect(stepsFor('darwin')).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])
     expect(stepsFor('win32')).toEqual(['opencode', 'auth', 'model', 'modes', 'setup'])
     expect(nextStep('modes', 'win32')).toBe('setup')

@@ -27,6 +27,12 @@ export const PREFLIGHT_ORDER: readonly PreflightId[] = [
 /** Lo que el botón «Instalar lo que falta» instala, en este orden. El motor viene dentro de la app: no se descarga. */
 export const INSTALL_ORDER: readonly PreflightId[] = ['craft', 'runtimes', 'sandbox']
 
+/**
+ * Casillas que NACEN desmarcadas (lo opcional de verdad): Node.js y uv solo sirven para los conectores locales de correo, calendario y
+ * archivos; sin ellos todo lo demás funciona. Lo recomendado (ArtCraft, entorno aislado de Windows) nace marcado. Se cambia aquí.
+ */
+export const UNCHECKED_BY_DEFAULT: readonly PreflightId[] = ['runtimes']
+
 /** Tamaño aproximado del entorno aislado de Windows (la distro propia): «unos 2 GB de disco». */
 export const SANDBOX_APPROX_BYTES = 2_000_000_000
 

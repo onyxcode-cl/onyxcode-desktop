@@ -52,7 +52,16 @@ describe('P6: avisos del motor en la conversación (motor nuevo)', () => {
       { info: assistantMessage('m2', 's1'), parts: [note, textPart('t1', 'm2', 's1', 'Hecho')] }
     ]
     const html = renderToStaticMarkup(
-      <MessageStream busy={false} error={null} root="/p" permissions={[]} questions={[]} onUnrevert={() => undefined} loading={false} entries={entries as never} />
+      <MessageStream
+        busy={false}
+        error={null}
+        root="/p"
+        permissions={[]}
+        questions={[]}
+        onUnrevert={() => undefined}
+        loading={false}
+        entries={entries as never}
+      />
     )
     expect(html).toContain('Reintento 1 de 4: falló la conexión. Esperando 3 s.')
     expect(html).toContain('Hecho')

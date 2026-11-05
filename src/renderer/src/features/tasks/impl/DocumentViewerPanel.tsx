@@ -16,7 +16,6 @@ import { useViewerViewport } from './useViewerViewport'
 
 type OpenState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready' }
 
-
 export function DocumentViewerPanel({
   path,
   visible,
