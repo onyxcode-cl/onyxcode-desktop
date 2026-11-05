@@ -14,7 +14,7 @@
  * dos en toda la app y un tope por hora; el registro de auditoría no lleva contenido.
  */
 import { reviewDocument, reviewSummary } from './review'
-import { moneyWithoutNumbers, templateLeftovers } from './review-checks'
+import { moneyWithoutNumbers, specGapCells, templateLeftovers } from './review-checks'
 
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
 import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
@@ -258,6 +258,18 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     if (Object.prototype.hasOwnProperty.call(spec, '__proto__')) return { error: '`spec` tiene claves no permitidas.' }
     const badSpec = markers(stringsOf(spec).join('\n'))
     if (badSpec) return { error: badSpec }
+    if (!allowMarkers) {
+      let gaps: string[] = []
+      try {
+        gaps = specGapCells(tipo, spec)
+      } catch {
+        gaps = [] // forma rara del spec: la validación de esquema de abajo da el error
+      }
+      if (gaps.length)
+        return {
+          error: `Hay celdas de texto donde van cifras (${gaps.slice(0, 4).join('; ')}). Completa cada una con un valor de ejemplo plausible marcado como «cifra de ejemplo» en una nota o el pie; no la dejes con «por validar», «en revisión» ni parecidos. No se generó nada: corrige y vuelve a crear.`
+        }
+    }
     if (!allowMarkers && (tipo === 'pptx' || tipo === 'docx')) {
       const empty = moneyWithoutNumbers(tipo, spec)
       if (empty.length)

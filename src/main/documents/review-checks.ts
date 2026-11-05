@@ -13,7 +13,7 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/\[\s*(insert|insertar|aquí|aqui|nombre|empresa|fecha|título|titulo|texto|cliente)\b[^\]]{0,40}\]/i, '[insertar…]'],
   [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b/i, '[PENDIENTE…]'],
   [/\[\s*(\.{3}|…)\s*\]/, '[…]'],
-  [/\b(a|por) (definir|determinar|confirmar)\b/i, '«a definir»'],
+  [/\b(a|por) (definir|determinar|confirmar|validar|revisar|estimar)\b|\ben revisi[oó]n\b/i, '«a definir»'],
   [/\ben evaluaci[oó]n\b|\bsujet[oa]s? a (confirmaci[oó]n|definici[oó]n|aprobaci[oó]n de (finanzas|presupuesto))\b|\bmontos? (por|a) (confirmar|definir|estimar)\b/i, '«en evaluación»'],
   [/^\s*(pendiente|n\/d|s\/d|n\.d\.|tbd)\s*$/im, 'celda «pendiente»'],
   [/texto de (ejemplo|relleno)|placeholder text|your text here|escribe aquí|escriba aquí/i, 'texto de relleno'],
@@ -300,7 +300,7 @@ export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): strin
   if (kind === 'pptx') {
     for (const [i, sl] of (s.slides ?? []).entries()) {
       const title = typeof sl.title === 'string' ? sl.title : ''
-      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && !/\d/.test(texts({ ...sl, title: '' }).join(' '))) out.push(`lámina ${i + 1} «${title.slice(0, 40)}»`)
+      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && texts({ ...sl, title: '' }).filter((t) => /\d/.test(t)).length < 3) out.push(`lámina ${i + 1} «${title.slice(0, 40)}»`)
     }
   } else {
     for (const [i, b] of (s.blocks ?? []).entries()) {
@@ -310,4 +310,38 @@ export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): strin
     }
   }
   return out
+}
+
+/**
+ * Detección POR ESTRUCTURA de cifras que faltan: en una columna donde la mayoría de las celdas trae números, una celda de texto corto sin
+ * dígito («Por validar», «En revisión», «Pendiente»…) es una cifra que se esquivó con otras palabras. Sirve para cualquier sinónimo.
+ */
+export function gapCells(columns: unknown[], rows: unknown[][]): string[] {
+  const out: string[] = []
+  const numeric = (v: unknown): boolean => typeof v === 'number' || (typeof v === 'string' && /\d/.test(v)) || (!!v && typeof v === 'object')
+  const gap = (v: unknown): boolean =>
+    typeof v === 'string' && v.trim().length > 0 && v.trim().length <= 28 && !/\d/.test(v) && !/^[\s—–-]+$/.test(v) && v.trim().split(/\s+/).length <= 4
+  const cols = Math.max(columns.length, ...rows.map((r) => r.length))
+  for (let c = 1; c < cols; c++) {
+    const cells = rows.map((r) => r[c])
+    const nums = cells.filter(numeric).length
+    const gaps = cells.filter(gap)
+    if (gaps.length > 0 && nums >= 2 && nums > gaps.length) out.push(`«${String(gaps[0]).trim()}» en la columna ${String(columns[c] ?? c + 1)}`)
+  }
+  return out
+}
+
+/** Tablas de un spec (pptx: `slides[].table`, docx: bloques `table`, xlsx: filas de cada hoja) con celdas de texto donde van cifras. */
+export function specGapCells(kind: 'pptx' | 'docx' | 'xlsx', spec: unknown): string[] {
+  const s = spec as { slides?: Array<{ table?: { columns?: unknown[]; rows?: unknown[][] } }>; blocks?: Array<Record<string, unknown>>; sheets?: Array<{ rows?: unknown[][] }> }
+  const found: string[] = []
+  const run = (cols: unknown[], rows: unknown[][], where: string): void => {
+    for (const g of gapCells(cols, rows)) found.push(`${where}: ${g}`)
+  }
+  const arr = <T>(v: T[] | undefined): T[] => (Array.isArray(v) ? v : [])
+  if (kind === 'pptx') arr(s.slides).forEach((sl, i) => sl?.table && Array.isArray(sl.table.rows) && run(sl.table.columns ?? [], sl.table.rows, `lámina ${i + 1}`))
+  else if (kind === 'docx')
+    arr(s.blocks).forEach((b, i) => b && b.type === 'table' && Array.isArray(b.rows) && run((b.columns as unknown[]) ?? [], b.rows as unknown[][], `tabla del bloque ${i + 1}`))
+  else arr(s.sheets).forEach((sh, i) => sh && Array.isArray(sh.rows) && sh.rows.length > 1 && run(sh.rows[0] ?? [], sh.rows.slice(1), `hoja ${i + 1}`))
+  return found
 }

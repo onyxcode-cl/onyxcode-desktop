@@ -10,7 +10,9 @@ import {
   pptxTextShapes,
   templateLeftovers,
   textExtentBox,
-  textNearEdge
+  textNearEdge,
+  specGapCells,
+  gapCells
 } from './review-checks'
 
 describe('restos de plantilla', () => {
@@ -157,5 +159,19 @@ describe('texto cerca del borde: se mide el texto, no la caja entera', () => {
   })
   it('sin caja no se juzga', () => {
     expect(textNearEdge({ box: null, align: null, anchor: null }, W, H, EDGE)).toBe(false)
+  })
+})
+
+describe('cifras que faltan, por estructura', () => {
+  it('una celda de texto en una columna de números es una cifra esquivada', () => {
+    const r = specGapCells('pptx', { slides: [{ table: { columns: ['Ítem', 'Monto'], rows: [['A', '$100'], ['B', '$200'], ['C', 'Por validar']] } }] })
+    expect(r.join()).toContain('Por validar')
+  })
+  it('no marca columnas de texto ni guiones', () => {
+    expect(specGapCells('docx', { blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 'sí'], ['y', 'no']] }] })).toEqual([])
+    expect(gapCells(['A', 'B'], [['x', 1], ['y', 2], ['z', '—']])).toEqual([])
+  })
+  it('xlsx: la primera fila es el encabezado', () => {
+    expect(specGapCells('xlsx', { sheets: [{ rows: [['Mes', 'Venta'], ['Ene', 10], ['Feb', 20], ['Mar', 'TBD']] }] }).length).toBe(1)
   })
 })

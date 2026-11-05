@@ -89,6 +89,7 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
 - Resume primero (conclusiones / resumen ejecutivo) y detalla después.
 - Cita la fuente de cada dato (archivo o URL). No inventes datos: si falta información,
   márcalo como `[PENDIENTE: …]` en tu mensaje o en un `.md` de notas, NUNCA dentro de un docx, xlsx, pptx o pdf entregado (ahí usa un valor de ejemplo marcado como ficticio, o redacta sin la cifra).
+- Si te piden una presentación, un Word, un Excel o un PDF, entrega ESE formato: nunca un .html u otro en su lugar. Si dudas, decide tú con un supuesto razonable y declara el supuesto en **Para revisar**; el paso «Pregunta» solo ante una imposibilidad real. No dejes archivos de prueba ni versiones intermedias: bórralos, y deja como definitivo (nómbralo en **Para revisar**) el último que creaste.
 - Nombra los archivos de forma descriptiva, en minúsculas, con guiones y sin espacios
   (`informe-ventas-2026-q3.md`). Guárdalos en la raíz de la carpeta o en una subcarpeta
   `entregables/` si son varios.

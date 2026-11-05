@@ -180,13 +180,13 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
             cmd('para.align', { value: al })
             cmd('text.insert', { text: v })
             cmd('para.keepLines') // la fila no se parte entre dos páginas
-            // Tabla de hasta 12 filas: todas las filas (menos la última) se pegan a la siguiente y la tabla entera cabe en una página; en una larga
+            // Tabla de hasta 15 filas: todas las filas (menos la última) se pegan a la siguiente y la tabla entera cabe en una página; en una larga
             // solo el encabezado va con la fila siguiente (no queda solo al pie). Con título al pie, la última fila se pega a él.
-            if ((r < cells.length - 1 && (cells.length <= 12 || r === 0)) || (b.caption && r === cells.length - 1)) cmd('para.keepNext')
+            if ((r < cells.length - 1 && (cells.length <= 16 || r === 0)) || (b.caption && r === cells.length - 1)) cmd('para.keepNext')
             if (k === 0) cmd('table.properties', { allowBreak: false }) // «no dividir fila entre páginas» (cantSplit) de ESTA fila
             // La fila de encabezado se repite en cada página y el penúltimo renglón se queda con el total (no queda solo en la página siguiente).
             if (r === 0 && k === 0) cmd('table.repeatHeader')
-            if (b.total_row && r === cells.length - 2 && cells.length > 12) cmd('para.keepNext')
+            if (b.total_row && r === cells.length - 2 && cells.length > 16) cmd('para.keepNext')
             if (r === 0) {
               cmd('format.bold', { value: false })
               cmd('format.color', { color: 'auto' })
