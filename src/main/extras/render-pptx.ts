@@ -10,6 +10,7 @@
  * Sigue sin imágenes externas ni el ciclo de revisión con visión de la skill oficial — eso
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
+import { protectSlide } from './pptx-guards'
 import PptxGenJS from 'pptxgenjs'
 import type { PptxChartSpec, PptxColumnSpec, PptxLayout, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import { fitText, splitLabel, splitStatUnit, STYLES, THEMES, type Palette, type StyleParams } from './pptx-design'
@@ -693,7 +694,7 @@ export async function renderPptx(rawData: PptxSpec): Promise<Buffer> {
 
   let sectionCount = 0
   data.slides.forEach((spec, i) => {
-    const slide = pres.addSlide()
+    const slide = protectSlide(pres.addSlide())
     const layout = inferLayout(spec, i)
     if (layout === 'section') sectionCount += 1
     const ctx: SlideCtx = { page: i + 1, total, sectionNumber: sectionCount, footer: data.footer }

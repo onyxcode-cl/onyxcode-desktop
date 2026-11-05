@@ -173,3 +173,53 @@ describe('resumen para el agente', () => {
     expect(txt).toContain('RESULTADO: OK')
   })
 })
+
+describe('Excel: el revisor de fórmulas entra en la revisión de `crear` cuando se pasa el spec', () => {
+  const book = async (): Promise<Buffer> => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file('xl/worksheets/sheet1.xml', '<worksheet><sheetData/></worksheet>')
+    return z.generateAsync({ type: 'nodebuffer' })
+  }
+  const spec = (total: number) => ({
+    sheets: [
+      {
+        name: 'Datos',
+        rows: [
+          ['R', 'V'],
+          ['N', 10],
+          ['C', 20],
+          ['Total', { formula: 'SUM(B2:B3)', value: total }]
+        ]
+      }
+    ]
+  })
+  it('total descuadrado → ✘ con las dos cifras', async () => {
+    const r = await reviewDocument('xlsx', await book(), spec(99))
+    expect(bad(r)).toContain('Fórmulas con problemas')
+    expect(bad(r)).toContain('suman 30')
+  })
+  it('total correcto → ✔; sin spec no se revisa', async () => {
+    const ok = await reviewDocument('xlsx', await book(), spec(30))
+    expect(ok.items.map((i) => i.text).join(' | ')).toContain('Las fórmulas pasan la revisión')
+    const sin = await reviewDocument('xlsx', await book())
+    expect(sin.items.map((i) => i.text).join(' | ')).not.toContain('Las fórmulas pasan la revisión')
+  })
+  it('una constante pegada o un IFERROR dan aviso ℹ, no ✘', async () => {
+    const s = {
+      sheets: [
+        {
+          name: 'Datos',
+          rows: [
+            ['a', 'b'],
+            [100, { formula: 'IFERROR(A2*1.19,0)', value: 119 }]
+          ]
+        }
+      ]
+    }
+    const r = await reviewDocument('xlsx', await book(), s)
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Datos!B2')
+  })
+})

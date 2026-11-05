@@ -9,6 +9,8 @@
 import JSZip from 'jszip'
 import type { PptxSpec } from '@shared/chat-doc-spec'
 import { foldSubtitles, layoutOf } from '../office/craft/chat-deck'
+import { isXlsxSpec } from '@shared/chat-doc-spec'
+import { reviewFormulas } from './formula-review'
 import {
   docxContrastProblems,
   docxSmallRuns,
@@ -231,7 +233,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
         if (run.sizePt < 10) tiny.push(`${i + 1} («${run.text.trim().slice(0, 20)}» ${run.sizePt} pt)`)
         else if (run.sizePt < 12) smallish.push(String(i + 1))
       }
-      const b = ts.box
+      // El número de página («02», «2 / 9») pegado a la esquina es normal: no se avisa.
+      const b = ts.runs.every((r) => /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(r.text)) ? null : ts.box
       if (
         b &&
         b.x >= -TOL &&
@@ -339,7 +342,7 @@ async function sheetFiles(zip: JSZip): Promise<Array<{ path: string; title: stri
     .map((path, i) => ({ path, title: `Hoja${i + 1}` }))
 }
 
-async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
+async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const r = new Builder()
   const sst = (await zip.file('xl/sharedStrings.xml')?.async('string')) ?? ''
   const shared = (sst.match(/<si>[\s\S]*?<\/si>/g) ?? []).map((s) =>
@@ -405,6 +408,19 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
     `Fórmulas con referencias rotas: ${short(brokenRefs)}`
   )
   checkTemplate(r, allText)
+  if (isXlsxSpec(spec)) {
+    const found = reviewFormulas(spec)
+    const errs = found.filter((x) => x.severity === 'error')
+    r.check(
+      errs.length === 0,
+      'Las fórmulas pasan la revisión (referencias, rangos y totales)',
+      `Fórmulas con problemas: ${short(
+        errs.map((x) => `${x.sheet}!${x.cell} (${x.message})`),
+        4
+      )}`
+    )
+    for (const w of found.filter((x) => x.severity === 'warning').slice(0, 3)) r.note(`${w.sheet}!${w.cell}: ${w.message}`)
+  }
   if (textAsNumber.length)
     r.note(
       `${textAsNumber.length} celda(s) guardan un número como texto (${short(textAsNumber, 4)}): no se suman ni se ordenan bien; pásalos como número de JSON`
@@ -440,7 +456,7 @@ export async function reviewDocument(kind: 'docx' | 'xlsx' | 'pptx', bytes: Buff
   const zip = await JSZip.loadAsync(bytes)
   if (kind === 'docx') return reviewDocx(zip)
   if (kind === 'pptx') return reviewPptx(zip, spec)
-  return reviewXlsx(zip)
+  return reviewXlsx(zip, spec)
 }
 
 /** Texto que se agrega a la respuesta de `crear`: la lista ✔/✘ o, si no se pudo, una frase explícita de que NO se corrió. */
