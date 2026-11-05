@@ -10,3 +10,12 @@ export function effectiveAsideTab(tab: AsideTab, has: { viewer: boolean; browser
   if (tab === 'browser' && !has.browser) return 'progress'
   return tab
 }
+
+/**
+ * La petición del visor vive en el almacén de Tareas y no sabía de qué tarea era: al cambiar de tarea el panel seguía con el documento de la
+ * anterior (pestaña en blanco con su nombre). Solo vale para la tarea que la pidió; sin dueño registrado (peticiones antiguas) vale siempre.
+ */
+export function viewerForTask<T extends { taskId?: string }>(req: T | null, activeTaskId: string | null): T | null {
+  if (!req) return null
+  return !req.taskId || req.taskId === activeTaskId ? req : null
+}

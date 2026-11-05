@@ -516,22 +516,26 @@ export function rememberablePatterns(p: PermissionRequest): string[] {
 }
 
 /**
- * Versiones de un mismo documento (`informe.docx`, `informe-v2.docx`, `informe-v3.docx`): la última es la entrega y las anteriores son
- * borradores. Agrupa por carpeta + nombre sin el sufijo `-vN` + extensión; sin sufijo cuenta como v1. En cada grupo con 2 o más gana la
- * versión mayor (a igualdad, la más reciente). No borra ni mueve nada: solo decide qué se ve primero.
+ * Versiones de un mismo documento (`informe.docx`, `informe-v2.docx`, `informe-final.docx`, `informe (2).docx`): una sola es la entrega y
+ * las demás son borradores. La familia es carpeta + nombre sin el sufijo de versión (`-vN`, `-final`, `-definitivo`, `-borrador`, `-copia`,
+ * ` (N)`) + extensión. Dentro de una familia con 2 o más gana «final/definitivo»; si no, la versión mayor (sin sufijo = v1); a igualdad, la
+ * más reciente. No borra ni mueve nada: solo decide qué se ve primero.
  */
+const VERSION_SUFFIX = /(?:-v\d+|-final|-definitivo|-borrador|-copia|\s\(\d+\))(?=\.[^./\\]+$)/i
+
 export function splitVersions<T extends { path: string; mtime: number }>(files: readonly T[]): { latest: T[]; older: T[] } {
-  const version = (p: string): number => {
-    const m = /-v(\d+)(?=\.[^./\\]+$)/i.exec(p)
-    return m ? Number(m[1]) : 1
+  const rank = (p: string): number => {
+    if (/-(final|definitivo)(?=\.[^./\\]+$)/i.test(p)) return 1_000_000
+    const v = /-v(\d+)(?=\.[^./\\]+$)/i.exec(p) ?? /\s\((\d+)\)(?=\.[^./\\]+$)/.exec(p)
+    return v ? Number(v[1]) : 1
   }
-  const key = (p: string): string => p.replace(/-v\d+(?=\.[^./\\]+$)/i, '').toLowerCase()
+  const key = (p: string): string => p.replace(VERSION_SUFFIX, '').toLowerCase()
   const groups = new Map<string, T[]>()
   for (const f of files) groups.set(key(f.path), [...(groups.get(key(f.path)) ?? []), f])
   const latest: T[] = []
   const older: T[] = []
   for (const g of groups.values()) {
-    const sorted = [...g].sort((a, b) => version(b.path) - version(a.path) || b.mtime - a.mtime)
+    const sorted = [...g].sort((a, b) => rank(b.path) - rank(a.path) || b.mtime - a.mtime)
     latest.push(sorted[0])
     older.push(...sorted.slice(1))
   }

@@ -83,9 +83,9 @@ describe('borradores v1/v2 (versiones anteriores)', () => {
     expect(older.map((x) => x.relPath).sort()).toEqual(['informe-v2.docx', 'informe.docx'])
   })
 
-  it('splitVersions: un solo archivo, o un nombre que solo parece versión, no se agrupa', () => {
+  it('splitVersions: un solo archivo, o otro documento con «final» en medio del nombre, no se agrupa', () => {
     expect(splitVersions([f('plan-v2.pptx', 1)]).older).toEqual([])
-    expect(splitVersions([f('informe.docx', 1), f('informe-final.docx', 2)]).older).toEqual([])
+    expect(splitVersions([f('informe.docx', 1), f('resumen-final-ventas.docx', 2)]).older).toEqual([])
   })
 
   it('la tarjeta muestra solo la última y ofrece «Ver versiones anteriores» sin listar los borradores', () => {
@@ -133,5 +133,27 @@ describe('entrega principal = el último documento creado con documentos_crear',
     const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
     expect(html.indexOf('b.docx')).toBeLessThan(html.indexOf('a.docx'))
     expect(html).not.toContain('versiones anteriores')
+  })
+})
+
+describe('familia de versiones: solo la entrega visible, todo lo demás plegado', () => {
+  const f = (name: string, mtime: number) => ({ path: `/Users/x/Desktop/${name}`, relPath: name, size: 2048, mtime })
+  it('«final» gana a -v2 y al original aunque v2 sea más nuevo', () => {
+    const { latest, older } = splitVersions([
+      f('informe.docx', 1),
+      f('informe-v2.docx', 9),
+      f('informe-final.docx', 5),
+      f('informe (2).docx', 4)
+    ])
+    expect(latest.map((x) => x.relPath)).toEqual(['informe-final.docx'])
+    expect(older.map((x) => x.relPath).sort()).toEqual(['informe (2).docx', 'informe-v2.docx', 'informe.docx'])
+  })
+  it('la tarjeta no lista v2 junto a final', () => {
+    Object.assign(mock, { deliverables: { t1: [f('informe-v2.docx', 9), f('informe-final.docx', 5)] } })
+    sess.messages = { t1: [] }
+    const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
+    expect(html).toContain('informe-final.docx')
+    expect(html).not.toContain('>informe-v2.docx<')
+    expect(html).toContain('Ver versiones anteriores (1)')
   })
 })
