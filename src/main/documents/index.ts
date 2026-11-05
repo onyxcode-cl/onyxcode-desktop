@@ -3,7 +3,7 @@ import { app } from 'electron'
 import { join } from 'node:path'
 import { setPrivateTmpBase } from '../office/craft/private-tmp'
 import { captureDeckSlides, captureDocxPages } from '../viewer/capture'
-import { craftBinary, renderBytes } from './engine'
+import { craftBinary, ensureCraft, renderBytes } from './engine'
 import { rasterizePdf } from './pdf-raster'
 import { renderPreview } from './preview'
 import { DocumentsMcpServer } from './mcp-server'
@@ -18,8 +18,10 @@ try {
 
 export const documentsMcp = new DocumentsMcpServer({
   render: (input, title, opts) => renderBytes(input, title, opts),
-  preview: (tipo, bytes) =>
-    renderPreview(
+  preview: async (tipo, bytes) => {
+    // PDF no usa ArtCraft; el resto sí: se instala bajo demanda si falta, para no mirar la vista simplificada sin necesidad.
+    if (tipo !== 'pdf') await ensureCraft()
+    return renderPreview(
       tipo,
       bytes,
       { deckcraft: craftBinary('deckcraft'), wordcraft: craftBinary('wordcraft'), gridcraft: craftBinary('gridcraft') },
@@ -29,4 +31,5 @@ export const documentsMcp = new DocumentsMcpServer({
         captureDeck: (bytes, timeoutMs) => captureDeckSlides(bytes, undefined, timeoutMs)
       }
     )
+  }
 })

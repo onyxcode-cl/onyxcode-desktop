@@ -35,10 +35,48 @@ export interface RenderOptions {
   remoteImages?: boolean
 }
 
-/** Ruta de un programa de ArtCraft si está instalado (`null` si no, o si no es macOS). */
+/** Ruta de un programa de ArtCraft si está instalado (`null` si no lo está o si la plataforma no tiene descarga fijada: hoy hay para macOS y Windows). */
 export function craftBinary(tool: 'deckcraft' | 'wordcraft' | 'gridcraft'): string | null {
   const st = craftService().status()
   return st.state === 'installed' ? (st.bins[tool] ?? null) : null
+}
+
+/** Tras un intento fallido no se vuelve a bajar hasta pasado este tiempo (para no repetir una descarga rota en cada documento). */
+const AUTO_INSTALL_RETRY_MS = 10 * 60_000
+let lastAutoInstallFailure = 0
+let autoInstalling: Promise<void> | null = null
+
+/**
+ * ArtCraft es el camino NORMAL de los documentos (macOS y Windows por igual): si falta, se instala bajo demanda la primera vez que se
+ * crea o se mira un documento, en vez de caer en silencio al generador de respaldo o a la vista simplificada. Un solo intento a la vez
+ * (los documentos que llegan mientras tanto esperan al mismo), sin repetir un fallo reciente, y nunca lanza: si no se puede, el
+ * llamador sigue con su respaldo de siempre. `LAZUNOX_CRAFT_AUTOINSTALL=0` lo apaga.
+ */
+export async function ensureCraft(now: () => number = Date.now): Promise<void> {
+  if (process.env.LAZUNOX_CRAFT_AUTOINSTALL === '0') return
+  try {
+    if (autoInstalling) return await autoInstalling
+    if (craftService().status().state !== 'missing') return
+    if (now() - lastAutoInstallFailure < AUTO_INSTALL_RETRY_MS) return
+    autoInstalling = (async () => {
+      const r = await craftService().installNow()
+      if (!r.ok) lastAutoInstallFailure = now()
+    })()
+    try {
+      await autoInstalling
+    } finally {
+      autoInstalling = null
+    }
+  } catch (e) {
+    lastAutoInstallFailure = now()
+    console.warn('[documentos] no se pudo instalar ArtCraft bajo demanda:', e instanceof Error ? e.message : e)
+  }
+}
+
+/** Solo pruebas: olvida el último fallo de instalación. */
+export function resetEnsureCraftForTests(): void {
+  lastAutoInstallFailure = 0
+  autoInstalling = null
 }
 
 export async function renderBytes(input: ChatDocInput, title: string, opts: RenderOptions = {}): Promise<Buffer> {
@@ -48,6 +86,7 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
     return pdf
   }
   if (input.kind === 'xlsx') {
+    await ensureCraft()
     if (!isXlsxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de Excel inválidos.')
     // Con GridCraft instalado el libro se arma con él (calcula las fórmulas); si falla, cae al generador de siempre.
     const grid = craftBinary('gridcraft')
@@ -62,6 +101,7 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
     return renderXlsx(input.data)
   }
   if (input.kind === 'docx') {
+    await ensureCraft()
     if (!isDocxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de Word inválidos.')
     // Word solo se arma con WordCraft (no hay generador de respaldo): sin el programa instalado, el panel avisa que falló.
     const word = craftBinary('wordcraft')
@@ -69,6 +109,7 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
     return renderChatDocx(word, input.data)
   }
   if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de PowerPoint inválidos.')
+  await ensureCraft()
   // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.
   const craft = craftBinary('deckcraft')
   if (craft) {
