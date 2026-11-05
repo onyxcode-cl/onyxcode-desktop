@@ -179,6 +179,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
             const al = b.align?.[k] ?? (r > 0 && looksNumeric(v) ? 'right' : 'left')
             cmd('para.align', { value: al })
             cmd('text.insert', { text: v })
+            cmd('para.keepLines') // la fila no se parte entre dos páginas
             // La fila de encabezado se repite en cada página y el penúltimo renglón se queda con el total (no queda solo en la página siguiente).
             if (r === 0 && k === 0) cmd('table.repeatHeader')
             if (b.total_row && r === cells.length - 2) cmd('para.keepNext')
@@ -221,6 +222,14 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         cmd('text.pageBreak')
         break
     }
+  }
+  // Word obliga a un párrafo vacío tras una tabla final: si la tabla llena la página, ese párrafo caía en una hoja en blanco. Se deja de 1 pt.
+  const last = spec.blocks[spec.blocks.length - 1]
+  if (last && last.type === 'table' && !last.caption) {
+    groups.push([])
+    cmd('caret.docEnd')
+    cmd('para.spacing', { before: 0, after: 0 })
+    cmd('format.size', { size: 1 })
   }
   return groups.filter((g) => g.length > 0)
 }

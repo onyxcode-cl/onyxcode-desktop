@@ -39,12 +39,11 @@ describe('PowerPoint: chequeos de aspecto', () => {
     )
     expect(bad(r)).toContain('montados')
   })
-  it('letra de menos de 10 pt → ✘; entre 10 y 12 → aviso ℹ', async () => {
+  it('letra de menos de 12 pt → ✘ (incluida la de 11 pt)', async () => {
     const r = await reviewDocument('pptx', await pptx([T, sp('Nota', 914400, 5000000, 8000000, 300000, 'letra mínima', 8, '', '')]))
-    expect(bad(r)).toContain('menos de 10 pt')
+    expect(bad(r)).toContain('menos de 12 pt')
     const r2 = await reviewDocument('pptx', await pptx([T, sp('Nota', 914400, 5000000, 8000000, 300000, 'letra chica', 11, '', '')]))
-    expect(bad(r2)).toBe('')
-    expect(notes(r2)).toContain('menos de 12 pt')
+    expect(bad(r2)).toContain('menos de 12 pt')
   })
   it('el número de página y los pies de página pueden ser chicos', async () => {
     const r = await reviewDocument(

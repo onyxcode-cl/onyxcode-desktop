@@ -14,6 +14,8 @@
  * dos en toda la app y un tope por hora; el registro de auditoría no lleva contenido.
  */
 import { reviewDocument, reviewSummary } from './review'
+import { templateLeftovers } from './review-checks'
+
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
 import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
 import { explainDocx, explainXlsx } from '../office/craft/doc-explain'
@@ -92,6 +94,10 @@ export const DOCUMENT_TOOLS = [
         nombre: { type: 'string', description: 'Nombre del archivo, sin extensión.' },
         spec: { type: 'object', description: 'Contenido estructurado (pptx, docx, xlsx): el JSON de la skill correspondiente.' },
         html: { type: 'string', description: 'HTML autocontenido (solo pdf).' },
+        allow_placeholders: {
+          type: 'boolean',
+          description: 'SOLO si el usuario pidió expresamente una plantilla o formulario con campos vacíos: permite marcadores como [nombre]. Si no, el documento se rechaza con marcadores.'
+        },
         subcarpeta: { type: 'string', description: 'Subcarpeta relativa dentro de la carpeta de la tarea (opcional, hasta 4 niveles).' }
       },
       required: ['tipo', 'nombre'],
@@ -99,6 +105,18 @@ export const DOCUMENT_TOOLS = [
     }
   }
 ] as const
+
+/** Todos los textos de un spec (valores string, a cualquier profundidad). */
+function stringsOf(v: unknown, out: string[] = []): string[] {
+  if (typeof v === 'string') out.push(v)
+  else if (Array.isArray(v)) v.forEach((x) => stringsOf(x, out))
+  else if (v && typeof v === 'object') Object.values(v).forEach((x) => stringsOf(x, out))
+  return out
+}
+
+const NO_MARKERS =
+  'No dejes marcadores en el documento. Escribe un valor de ejemplo plausible y márcalo como «cifra de ejemplo» o «ficticio» en una nota o el pie, o redacta sin la cifra. No se generó nada: corrige y vuelve a crear.'
+
 
 export const PREVIEW_TOOL = {
   name: 'renderizar',
@@ -165,10 +183,18 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     if (typeof rawTipo !== 'string' || !(TIPOS as readonly string[]).includes(rawTipo))
       return { error: 'tipo debe ser pptx, docx, xlsx o pdf.' }
     const tipo = rawTipo as Tipo
+    const allowMarkers = args.allow_placeholders === true
+    const markers = (text: string): string | null => {
+      if (allowMarkers) return null
+      const found = templateLeftovers(text)
+      return found.length ? `Hay marcadores o restos de plantilla en el contenido (${found.join(', ')}). ${NO_MARKERS}` : null
+    }
     if (tipo === 'pdf') {
       const html = args.html
       if (typeof html !== 'string' || !html.trim()) return { error: 'Para pdf pasa `html` con el documento.' }
       if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) return { error: 'El HTML supera 5 MB.' }
+      const bad = markers(html.replace(/<(style|script)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' '))
+      if (bad) return { error: bad }
       return { tipo, input: { kind: 'pdf', html } }
     }
     const spec = args.spec
@@ -182,6 +208,8 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     }
     if (Buffer.byteLength(json, 'utf8') > MAX_SPEC_BYTES) return { error: '`spec` supera 1 MB.' }
     if (Object.prototype.hasOwnProperty.call(spec, '__proto__')) return { error: '`spec` tiene claves no permitidas.' }
+    const badSpec = markers(stringsOf(spec).join('\n'))
+    if (badSpec) return { error: badSpec }
     if (tipo === 'pptx') {
       if (!isPptxSpec(spec))
         return { error: 'El `spec` no cumple el esquema de presentaciones del Chat (ver la skill pptx). No se generó nada.' }

@@ -130,6 +130,29 @@ describe('transporte y autenticación', () => {
   })
 })
 
+describe('crear: marcadores pendientes', () => {
+  const PEND = { blocks: [{ type: 'paragraph', text: 'Preparada para: [PENDIENTE: nombre]' }] }
+  it('rechaza un spec con [PENDIENTE…] con un error duro y sin generar nada', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const before = renders.length
+    const r = await call(port, token, { tipo: 'docx', nombre: 'Pend', spec: PEND })
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toContain('No dejes marcadores')
+    expect(renders.length).toBe(before)
+    expect(audits.at(-1)).toMatchObject({ tool: 'crear', result: 'rechazado', detail: 'contenido' })
+  })
+  it('rechaza el HTML de un pdf con marcadores', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'pdf', nombre: 'P', html: '<html><body><p>Total: [por definir]</p></body></html>' })
+    expect(r.body.result.isError).toBe(true)
+  })
+  it('con allow_placeholders: true (plantilla pedida) lo acepta', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'docx', nombre: 'Plantilla', spec: PEND, allow_placeholders: true })
+    expect(r.body.result.isError).toBeUndefined()
+  })
+})
+
 describe('crear', () => {
   it('Word: escribe en la carpeta de la atadura, sin imágenes remotas, y responde la ruta', async () => {
     const { token, port } = await server.clientFor({ folder })

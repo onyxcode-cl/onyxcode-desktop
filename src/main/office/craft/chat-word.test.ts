@@ -256,3 +256,16 @@ describe('tablas con aire en las celdas', () => {
     expect(c[c.indexOf('insert.table') + 1]).toBe('table.cellMargins')
   })
 })
+
+describe('tabla de Word: filas enteras y sin hoja en blanco', () => {
+  const spec = { title: 'T', blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 'y']] }] } as never
+  it('mantiene las líneas de cada celda juntas y deja el párrafo final de 1 pt tras una tabla final', () => {
+    const flat = chatDocxCommands(spec).flat()
+    expect(flat.filter((c) => c === 'para.keepLines').length).toBe(4)
+    expect(flat.at(-1)).toBe('format.size={"size":1}')
+  })
+  it('con un párrafo al final no encoge nada', () => {
+    const flat = chatDocxCommands({ title: 'T', blocks: [{ type: 'paragraph', text: 'fin' }] } as never).flat()
+    expect(flat).not.toContain('format.size={"size":1}')
+  })
+})

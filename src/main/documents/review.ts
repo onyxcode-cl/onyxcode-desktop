@@ -217,7 +217,6 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const noTitle: string[] = []
   const outside: string[] = []
   const tiny: string[] = []
-  const smallish: string[] = []
   const stacked: string[] = []
   const tight: string[] = []
   const lowContrast: ContrastProblem[] = []
@@ -235,8 +234,7 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       for (const run of ts.runs) {
         // El número de página («2 / 3») y el pie son texto de apoyo: se admite más chico.
         if (run.sizePt == null || /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(run.text)) continue
-        if (run.sizePt < 10) tiny.push(`${i + 1} («${run.text.trim().slice(0, 20)}» ${run.sizePt} pt)`)
-        else if (run.sizePt < 12) smallish.push(String(i + 1))
+        if (run.sizePt < 12) tiny.push(`${i + 1} («${run.text.trim().slice(0, 20)}» ${run.sizePt} pt)`)
       }
       // El número de página («02», «2 / 9») pegado a la esquina es normal: no se avisa.
       const pageNumber = ts.runs.every((r) => /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(r.text))
@@ -299,8 +297,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   )
   r.check(
     tiny.length === 0,
-    'Ninguna letra de menos de 10 pt',
-    `Letra demasiado chica (menos de 10 pt) en diapositiva ${short(tiny)}: usa 14 pt o más para el cuerpo`
+    'Ninguna letra de menos de 12 pt',
+    `Letra demasiado chica (menos de 12 pt) en diapositiva ${short(tiny)}: usa 14 pt o más para el cuerpo; si una tabla o lista no cabe, pon menos filas o divídela en dos láminas, no achiques la letra`
   )
   r.check(
     lowContrast.length === 0,
@@ -310,8 +308,6 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   checkTemplate(r, allText)
   if (tight.length)
     r.note(`Texto a menos de 0,3 pulgadas del borde en diapositiva ${short(tight)}: déjale al menos 0,5 pulgadas de margen si puedes`)
-  if (smallish.length)
-    r.note(`Letra de menos de 12 pt en diapositiva ${short([...new Set(smallish)], 8)}: para el cuerpo conviene 14 pt o más`)
   return r.done()
 }
 
