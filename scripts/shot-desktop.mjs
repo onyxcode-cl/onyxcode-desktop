@@ -235,7 +235,14 @@ const SCENARIOS = [
   'p1-tareas-panel',
   'kit' // kit de UI (app/dev/UiKit.tsx): NO va en la tanda por defecto; se pide con --scenario kit
 ]
-const SIZES = { '1280x800': [1280, 800], '1100x750': [1100, 750], '1000x700': [1000, 700], '900x700': [900, 700], '820x700': [820, 700] }
+const SIZES = {
+  '1280x800': [1280, 800],
+  '1100x750': [1100, 750],
+  '1084x700': [1084, 700],
+  '1000x700': [1000, 700],
+  '900x700': [900, 700],
+  '820x700': [820, 700]
+}
 // Sin --size: 1280x800 para todo y 1000x700 solo para chat y ajustes.
 const SMALL_ALSO =
   /^(uso|preparando-casillas|preparando-permiso|preparando-sin-conexion|onboarding-casillas|rutinas-bandeja-larga|rutinas-recetas|code-pr|chat-|ajustes-|caja-|galeria|personalizacion-|conectores-cotidianos|conectores-locales|runtimes-|busqueda-|trabajo-legible|proyectos-|telegram)/
@@ -890,6 +897,21 @@ async function p2State(ctx) {
   const st = process.env.LAZUNOX_P2_STATE || 'normal'
   const box = ctx.page.locator('main textarea[data-kb-composer]:visible').last()
   if (!(await box.isEditable().catch(() => false))) return
+  if (process.env.LAZUNOX_P1_BOXW) {
+    // Simula un cuadro angosto (panel fijo al lado en Windows): fija el ancho de la caja que contiene «Enviar».
+    await ctx.page.evaluate((w) => {
+      const vis = [...document.querySelectorAll('main textarea[data-kb-composer]')].pop()
+      let b = vis.parentElement
+      while (b && ![...b.querySelectorAll('button')].some((x) => /^Enviar/i.test(x.getAttribute('aria-label') || ''))) b = b.parentElement
+      if (b) {
+        b.style.width = `${w}px`
+        b.style.maxWidth = `${w}px`
+        b.style.flex = 'none'
+        b.style.marginLeft = '0'
+      }
+    }, process.env.LAZUNOX_P1_BOXW)
+    await sleep(400)
+  }
   if (st === 'largo') {
     await box.fill(
       'Necesito que revises con calma todo el módulo del carrito de compras, el cálculo del IVA y los redondeos, y que me expliques paso a paso qué cambiarías y por qué, sin tocar nada todavía. '.repeat(
@@ -958,7 +980,10 @@ async function p2Measure(ctx, name, theme, sizeKey) {
         const el = document.elementFromPoint(q.x + q.w / 2, q.y + q.h / 2)
         return !(el && (q.e.contains(el) || el.contains(q.e)))
       })
-      .map((q) => q.n)
+      .map((q) => {
+        const el = document.elementFromPoint(q.x + q.w / 2, q.y + q.h / 2)
+        return `${q.n} <- ${el ? el.tagName + '.' + String(el.className).slice(0, 60) + ' ' + (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20) : 'null'}`
+      })
     const send = rects.find((q) => isSend(q.e))
     const rows = new Set(rects.map((q) => Math.round(q.y / 6))).size
     const model = rects.find((q) => /modelo/i.test(q.n))
@@ -1059,6 +1084,14 @@ async function snap(ctx, name, theme, sizeKey) {
       return { x: a.x, y: a.y, width: a.width, height: a.height }
     })
     clip = { ...r, scale: 1 }
+  }
+  if (process.env.LAZUNOX_P1_INSET) {
+    // Simula los botones de ventana de Windows (137 px a 100 %, 207 a 150 %): fuerza --controls-inset en <main>.
+    await ctx.page.evaluate(
+      (n) => document.querySelector('main[data-app-main]')?.style.setProperty('--controls-inset', `${n}px`),
+      process.env.LAZUNOX_P1_INSET
+    )
+    await sleep(300)
   }
   if (name.startsWith('p2-')) await p2Measure(ctx, name, theme, sizeKey)
   if (name.startsWith('p1-')) await p1Measure(ctx, name, theme, sizeKey)
@@ -2122,7 +2155,11 @@ const S = {
   async 'p3-portada'(ctx) {
     await openTasks(ctx, { keepOnboarding: true })
     await vis(ctx.page.getByRole('region', { name: 'Así funcionan las tareas' }), 30_000)
-    await ctx.page.evaluate(() => document.querySelectorAll('*').forEach((el) => { if (el.scrollTop > 0) el.scrollTop = 0 }))
+    await ctx.page.evaluate(() =>
+      document.querySelectorAll('*').forEach((el) => {
+        if (el.scrollTop > 0) el.scrollTop = 0
+      })
+    )
     await sleep(400)
   },
   async 'p2-tareas'(ctx) {
