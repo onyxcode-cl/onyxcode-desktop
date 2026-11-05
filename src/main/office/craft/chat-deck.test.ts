@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isPptxSpec, type PptxSpec } from '@shared/chat-doc-spec'
 import { contrastRatio, customPalette, legibleInk } from './deck-kit'
-import { chatCoverSize, chatDeckCommands, deckToPdf, foldSubtitles, renderChatDeck } from './chat-deck'
+import { chatCoverSize, chatDeckCommands, deckToPdf, foldSubtitles, pieCategories, renderChatDeck } from './chat-deck'
 
 const FULL: PptxSpec = {
   theme: 'warm',
@@ -239,3 +239,84 @@ describe('pie, nota y numeración legibles sobre un background propio', () => {
 })
 
 const customMuted = (spec: PptxSpec): string => '#' + customPalette(spec.palette!).muted
+
+describe('189: arreglos de PowerPoint medidos', () => {
+  const j = (c: string): Record<string, unknown> => JSON.parse(c.slice(c.indexOf('=') + 1))
+  /** Tamaño de letra del cuadro de texto que lleva `text` (el `format.size` que sigue al `insert.textBox`). */
+  const sizeOf = (cmds: string[], text: string): number => {
+    const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === text)
+    expect(i, `no hay un cuadro con «${text}»`).toBeGreaterThanOrEqual(0)
+    return j(cmds[i + 1]).size as number
+  }
+
+  it('los gráficos usan los colores de la presentación: acento 1 a 6 del tema = paleta', () => {
+    const cmds = chatDeckCommands({ theme: 'green', slides: [{ title: 'T', bullets: ['x'] }] })
+    const c = cmds.find((x) => x.startsWith('design.colors='))
+    expect(c).toBeTruthy()
+    const colors = (j(c!).colors ?? {}) as Record<string, string>
+    expect(colors.accent1).toBe('#16A34A')
+    expect(Object.keys(colors)).toHaveLength(6)
+    expect(Object.values(colors).every((v) => /^#[0-9A-F]{6}$/.test(v))).toBe(true)
+    // no es el azul de siempre
+    expect(Object.values(colors)).not.toContain('#3B82F6')
+  })
+
+  it('con paleta propia, el acento 1 es el acento de la presentación', () => {
+    const cmds = chatDeckCommands({
+      palette: { bg: '#0E2A2F', text: '#F4F1EA', accent: '#F2B544' },
+      slides: [{ title: 'T', bullets: ['x'] }]
+    })
+    const colors = j(cmds.find((x) => x.startsWith('design.colors='))!).colors as Record<string, string>
+    expect(colors.accent1).toBe('#F2B544')
+  })
+
+  it('torta: la leyenda lleva el porcentaje de cada porción', () => {
+    expect(pieCategories(['A', 'B', 'C'], [46, 34, 20])).toEqual(['A · 46 %', 'B · 34 %', 'C · 20 %'])
+    expect(pieCategories(['A', 'B'], [1, 2])).toEqual(['A · 33,3 %'.replace(',', '.'), 'B · 66.7 %'])
+    expect(pieCategories(['A'], [0])).toEqual(['A'])
+    const cmds = chatDeckCommands({
+      slides: [{ title: 'P', layout: 'chart', chart: { type: 'pie', categories: ['A', 'B'], values: [3, 1] } }]
+    })
+    const ins = cmds.find((x) => x.startsWith('insert.chart='))!
+    expect(j(ins).categories).toEqual(['A · 75 %', 'B · 25 %'])
+    // las barras no cambian sus categorías
+    const bar = chatDeckCommands({
+      slides: [{ title: 'B', layout: 'chart', chart: { type: 'bar', categories: ['A', 'B'], values: [3, 1] } }]
+    })
+    expect(j(bar.find((x) => x.startsWith('insert.chart='))!).categories).toEqual(['A', 'B'])
+  })
+
+  it('el cierre muestra hasta 3 líneas, no solo la primera', () => {
+    const cmds = chatDeckCommands({
+      slides: [{ title: 'Gracias', layout: 'closing', bullets: ['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl', 'cuarta'] }]
+    })
+    const texts = cmds.filter((c) => c.startsWith('insert.textBox=')).map((c) => j(c).text)
+    expect(texts).toEqual(expect.arrayContaining(['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl']))
+    expect(texts).not.toContain('cuarta')
+  })
+
+  it('KPI: todas las cifras de la fila con el mismo tamaño', () => {
+    const cmds = chatDeckCommands({
+      slides: [
+        {
+          title: 'Resumen',
+          layout: 'kpis',
+          kpis: [
+            { label: 'Ventas', value: '$12.480 M' },
+            { label: 'Retención', value: '31,2%' },
+            { label: 'Clientes', value: '412' }
+          ]
+        }
+      ]
+    })
+    const sizes = ['$12.480 M', '31,2%', '412'].map((t) => sizeOf(cmds, t))
+    expect(new Set(sizes).size).toBe(1)
+  })
+
+  it('con pocas viñetas la letra es más grande y más separada (la lámina no queda vacía)', () => {
+    const three = chatDeckCommands({ slides: [{ title: 'X', layout: 'bullets', bullets: ['uno', 'dos', 'tres'] }] })
+    const six = chatDeckCommands({ slides: [{ title: 'X', layout: 'bullets', bullets: ['a', 'b', 'c', 'd', 'e', 'f'] }] })
+    expect(sizeOf(three, 'uno')).toBeGreaterThan(sizeOf(six, 'a'))
+    expect(sizeOf(three, 'uno')).toBeGreaterThanOrEqual(26)
+  })
+})

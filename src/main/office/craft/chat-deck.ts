@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import { runCraft } from './craft-run'
 import { ensureTitlePlaceholders } from './pptx-titles'
-import { createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
+import { autoFitSize, createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
 
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
 
@@ -22,6 +22,13 @@ export function chatCoverSize(title: string): number {
   if (title.length <= 14) return 110
   if (title.length <= 44) return 76
   return 56
+}
+
+/** Torta: «Norte · 46 %» en la leyenda (DeckCraft no ofrece etiqueta de porcentaje): cada porción con su parte del total. */
+export function pieCategories(categories: string[], values: number[]): string[] {
+  const total = values.reduce((n, v) => n + (Number.isFinite(v) ? Math.max(v, 0) : 0), 0)
+  if (total <= 0) return categories
+  return categories.map((c, i) => `${c} · ${Math.round((Math.max(values[i] ?? 0, 0) / total) * 1000) / 10}`.replace(/\.0$/, '') + ' %')
 }
 
 export function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['layout']> {
@@ -70,6 +77,9 @@ export function chatDeckCommands(input: PptxSpec): string[] {
   a('file.new')
   // Arial en todo: Inter (la del tema) no está en todos los equipos y PowerPoint la sustituye por una serif.
   a('design.fonts', { major: spec.fonts?.title ?? 'Arial', minor: spec.fonts?.body ?? 'Arial' })
+  // Los gráficos de DeckCraft pintan con los colores de ACENTO del tema (la opción `palette` de `chart.options` no la lee): se fijan acento 1 a 6
+  // con la paleta de la presentación, para que las barras y las porciones no salgan en el azul y naranja de siempre.
+  a('design.colors', { colors: Object.fromEntries([...DOTS, accent].slice(0, 6).map((col, i) => [`accent${i + 1}`, '#' + col])) })
   let sectionN = 0
 
   const foot = (s: PptxSlideSpec): void => {
@@ -133,7 +143,12 @@ export function chatDeckCommands(input: PptxSpec): string[] {
         ])
         dotrow(364, 116, 32, 22)
         txt(60, 184, 840, 100, title, fitSize(title, 62, 26), pal.text, true, 'center', -2, titleFont)
-        if (bullets[0]) txt(120, 298, 720, 60, bullets[0], 22, pal.muted, false, 'center')
+        // Hasta 3 líneas (la primera más grande): el contacto o la despedida de verdad no se pierden.
+        bullets
+          .slice(0, 3)
+          .forEach((line, k) =>
+            txt(120, k === 0 ? 298 : 338 + (k - 1) * 34, 720, k === 0 ? 60 : 34, line, k === 0 ? 22 : 18, pal.muted, false, 'center')
+          )
         if (s.note ?? footer) txt(60, 468, 840, 30, s.note ?? footer, 14, footInk(), false, 'center')
         break
       case 'stat': {
@@ -199,7 +214,7 @@ export function chatDeckCommands(input: PptxSpec): string[] {
           a('insert.chart', {
             type: CHART_TYPE[s.chart.type],
             rect: [60, 140, 840, 340],
-            categories: s.chart.categories,
+            categories: s.chart.type === 'pie' ? pieCategories(s.chart.categories, s.chart.values) : s.chart.categories,
             series: [{ name: title || 'Serie', values: s.chart.values }]
           })
           a('chart.options', {
@@ -218,12 +233,17 @@ export function chatDeckCommands(input: PptxSpec): string[] {
         const k = Math.max(ks.length, 1)
         const gap = 20
         const w = Math.floor((840 - gap * (k - 1)) / k)
+        // Un solo tamaño para todas las cifras de la fila (la más larga manda), así «$12.480 M» no queda más chico que «31,2%».
+        const kpiSize = Math.min(
+          ...ks.map((kp) => autoFitSize(kp.value, fitSize(kp.value, 54, Math.floor((w - 28) / 29)), w - 28, 110, true)),
+          54
+        )
         ks.forEach((kp, i) => {
           const x = 60 + i * (w + gap)
           rect(x, 160, w, 4, DOTS[i % DOTS.length])
           panel(x, 164, w, 250)
           txt(x + 18, 184, w - 36, 40, kp.label.toUpperCase(), 13, pal.muted, true, 'left', 2)
-          txt(x + 14, 232, w - 28, 110, kp.value, fitSize(kp.value, 54, Math.floor((w - 28) / 29)), pal.text, true, 'left', -1)
+          txt(x + 14, 232, w - 28, 110, kp.value, kpiSize, pal.text, true, 'left', -1)
           if (kp.delta) txt(x + 18, 350, w - 36, 50, kp.delta, 16, /^\s*[-−–]/.test(kp.delta) ? 'EC4899' : '22C55E', true)
         })
         break
@@ -359,7 +379,10 @@ export function chatDeckCommands(input: PptxSpec): string[] {
         // bullets (el normal)
         head(n, s)
         const many = bullets.length > 6
-        list(bullets, 60, many ? 148 : 156, 840, 9, many ? 38 : 52, many ? 18 : 22)
+        // Con pocas viñetas la lámina no queda con dos tercios vacíos: letra y separación crecen cuando hay 4 o menos.
+        const few = bullets.length <= 3 ? { y: 172, gap: 96, size: 28 } : bullets.length === 4 ? { y: 164, gap: 80, size: 26 } : null
+        if (few) list(bullets, 60, few.y, 840, 9, few.gap, few.size)
+        else list(bullets, 60, many ? 148 : 156, 840, 9, many ? 38 : 52, many ? 18 : 22)
       }
     }
   })
