@@ -40,7 +40,7 @@ import { elementTextsOf, isElementContextText, parseElementContext } from '../..
 import { clearPendingScroll, onScrollToPart, peekPendingScroll } from './scroll'
 import { showPath } from './conn-paths'
 import { engineNote } from '@shared/engine-notes'
-import { friendlyTool, isVisibleText } from './util'
+import { friendlyTool, isInternalNoiseStep, isVisibleText } from './util'
 import { isInternalAccessNoise, isPlanGateText } from '../../../lib/plan-gate'
 import { expandStepGroups, useWorkView, visibleStepParts } from '../../../lib/reading-mode'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -99,6 +99,7 @@ function buildBlocks(entries: MessageEntry[], busy = false): Block[] {
         blocks.push({ kind: 'retry', id: p.id, text: note, partIds: [p.id] })
         continue
       }
+      if (p.type === 'tool' && isInternalNoiseStep(p)) continue
       if (p.type === 'tool' || (p.type === 'reasoning' && p.text.trim())) {
         if (!steps) {
           steps = { kind: 'steps', id: p.id, parts: [], partIds: [] }
