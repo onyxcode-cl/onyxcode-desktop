@@ -15,6 +15,17 @@ export function isRejectedText(text: string | undefined | null): boolean {
   return !!text && REJECTED_RE.test(text)
 }
 
+/**
+ * El servidor de Control del Mac rechaza `computer_request_access` si el agente lo llama sin apps («Indica en "apps"… En este modo no
+ * hace falta plan.»). Es un reintento interno del agente, no algo que la persona deba leer ni un fallo de su tarea (p. ej. en una tarea de
+ * documentos): no se muestra ni cuenta como error.
+ */
+const INTERNAL_ACCESS_RE = /Indica (?:en "apps" las apps que vas a controlar|al menos una app en "apps")/
+
+export function isInternalAccessNoise(text: string | undefined | null): boolean {
+  return !!text && INTERNAL_ACCESS_RE.test(text)
+}
+
 export function isPlanGateText(text: string | undefined | null): boolean {
   return !!text && PLAN_GATE_RE.test(text)
 }
