@@ -1204,6 +1204,8 @@ export interface TasksInvokeContract {
   'computer:requestPermissions': { req: void; res: void }
   /** La interfaz esperó ~90 s y siguen faltando permisos: main lo anota en el registro de problemas (con lo que dice el helper). */
   'computer:reportPermsStall': { req: void; res: void }
+  /** Guía de un clic para permisos que no se conceden solos: abre el panel, muestra Lazunox.app en Finder y copia su ruta. */
+  'computer:guideAppAccess': { req: { pane: 'screen' | 'allFiles' }; res: { path: string | null } }
   /**
    * Windows: la tarjeta de consentimiento (sustituye a los permisos TCC). `show` abre/rearma, `check`/`uncheck` la casilla
    * «Entiendo», `confirm` concede (solo si está armada), `revoke` lo retira y detiene el control. En macOS: PLATFORM_UNSUPPORTED.
@@ -1558,6 +1560,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'computer:status',
   'computer:requestPermissions',
   'computer:reportPermsStall',
+  'computer:guideAppAccess',
   'computer:winConsent',
   'computer:auditLog',
   'computer:stop',

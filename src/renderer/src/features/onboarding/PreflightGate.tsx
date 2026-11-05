@@ -25,7 +25,6 @@ import {
 import { call } from '../../lib/api'
 import { useSettings } from '../../stores/settings'
 import { useT } from '../../lib/i18n'
-import { nativeCode } from '../code/impl/client'
 import { cw, hasTasksBridge } from '../tasks/impl/bridge'
 import { PreflightScreen } from './PreflightScreen'
 import { waitForMacPerms } from './perms-wait'
@@ -293,9 +292,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       onRecheck={recheck}
       onGrantPerms={() => void grantPerms()}
       onOpenFullDisk={() =>
-        void nativeCode()
-          ?.dialog.openFolderPrivacy('allFiles')
-          .catch(() => undefined)
+        void cw('computer:guideAppAccess', { pane: 'allFiles' }).catch(() => undefined)
       }
       onPickEngine={() => void pickEngine()}
     />

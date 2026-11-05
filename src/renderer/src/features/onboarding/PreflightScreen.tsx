@@ -26,9 +26,10 @@ import { CLICK_IDS, PERMS_IDS } from '@shared/preflight'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { call } from '../../lib/api'
+import { cw } from '../tasks/impl/bridge'
 import { useT } from '../../lib/i18n'
 import { ComponentPick } from './ComponentPick'
-import { AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
+import { AppAccessGuide, AppLocationNotice, PermsHelp, ScreenRestartNotice } from './PermsNotices'
 import { LABELS, STATE_LABELS, failureKey, hintKey, sizeParts } from './preflight-view'
 import { officeMb } from '../settings/impl/component-install'
 
@@ -205,7 +206,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                   {c.id === 'files' && st === 'pending' && (
                     <div className="mt-2 flex flex-wrap gap-2">
                       <Button variant="secondary" size="sm" onClick={() => p.onOpenFullDisk?.()}>
-                        {t('preflight.files.open')}
+                        {t('preflight.perms.showApp', { app: DISPLAY_NAME })}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => void call('app:relaunch')}>
                         {t('preflight.files.restart', { app: DISPLAY_NAME })}
@@ -213,11 +214,17 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                     </div>
                   )}
                   {c.id === 'perms' && st === 'pending' && (
-                    <div className="mt-2">
-                      <Button variant="secondary" size="sm" onClick={p.onGrantPerms} disabled={p.permsWaiting}>
-                        {p.permsWaiting ? <Loader2 size={13} className="animate-spin" /> : null}{' '}
-                        {t(c.reason === 'restart' ? 'preflight.perms.openScreen' : 'preflight.perms.grant')}
-                      </Button>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {c.reason !== 'restart' && (
+                        <Button variant="secondary" size="sm" onClick={p.onGrantPerms} disabled={p.permsWaiting}>
+                          {p.permsWaiting ? <Loader2 size={13} className="animate-spin" /> : null} {t('preflight.perms.grant')}
+                        </Button>
+                      )}
+                      {c.reason !== 'accessibility' && c.reason !== 'accessibility-adhoc' && (
+                        <Button variant="secondary" size="sm" onClick={() => void cw('computer:guideAppAccess', { pane: 'screen' }).catch(() => undefined)}>
+                          {t('preflight.perms.showApp', { app: DISPLAY_NAME })}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -228,6 +235,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         </ul>
 
         {(location === 'translocated' || location === 'volume') && <AppLocationNotice location={location} />}
+        {perms && !perms.ok && perms.reason !== 'accessibility' && perms.reason !== 'accessibility-adhoc' && perms.reason !== 'unknown' && <AppAccessGuide />}
         {perms && !perms.ok && perms.reason === 'restart' && <ScreenRestartNotice />}
         {perms && !perms.ok && p.permsStalled && <PermsHelp />}
 

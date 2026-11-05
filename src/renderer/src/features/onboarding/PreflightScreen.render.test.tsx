@@ -149,7 +149,8 @@ describe('avisos no esenciales', () => {
     expect(html).toContain('Falta un reinicio para Grabación de pantalla')
     expect(html).not.toContain('Dar permisos')
     // Con Accesibilidad dada y Pantalla pendiente, la fila sigue ofreciendo abrir el panel de Grabación de pantalla (y el reinicio).
-    expect(html).toContain('Abrir Grabación de pantalla')
+    expect(html).toContain('Mostrar Lazunox')
+    expect(html).toContain('Arrastra Lazunox a la lista')
     expect(html).toContain('Reiniciar')
   })
   it('permisos que no se activan tras esperar: ayuda de reparación', () => {

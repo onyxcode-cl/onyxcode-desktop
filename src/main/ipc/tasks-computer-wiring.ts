@@ -6,7 +6,8 @@
  * Código movido de `tasks-handlers.ts` sin cambios de comportamiento.
  */
 import { t } from '@shared/i18n'
-import { BrowserWindow, Notification, app, nativeImage, screen } from 'electron'
+import { BrowserWindow, Notification, app, clipboard, nativeImage, screen, shell } from 'electron'
+import { guideAppAccess } from '../computer/app-guide'
 import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -280,6 +281,14 @@ export function wireComputer(parts: ComputerParts, deps: ComputerWiringDeps): { 
   handle('computer:status', () => computer.status())
   handle('computer:requestPermissions', () => computer.requestPermissions())
   handle('computer:reportPermsStall', () => computer.reportPermsStall())
+  handle('computer:guideAppAccess', ({ pane }) =>
+    guideAppAccess(pane, {
+      execPath: process.execPath,
+      openPane: (url) => shell.openExternal(url),
+      reveal: (p) => shell.showItemInFolder(p),
+      copy: (t) => clipboard.writeText(t)
+    })
+  )
   // Windows: consentimiento propio de la app y registro auditable (sin soporte en macOS, que usa TCC y no tiene registro).
   const winOnly = (): void => {
     if (!computer.ownConsent) throw new IpcError('PLATFORM_UNSUPPORTED', t('merr.platform.unsupported'))

@@ -25,6 +25,16 @@ export function AppLocationNotice({ location }: { location: AppLocation | null |
   )
 }
 
+/** Guía de 2 líneas para dar Grabación de pantalla / Acceso total al disco: en macOS la app no aparece sola en esas listas. */
+export function AppAccessGuide(): React.JSX.Element {
+  const t = useT()
+  return (
+    <p className="mt-3 text-left text-[12px] leading-[17px] text-muted" data-testid="preflight-app-guide">
+      {t('preflight.perms.guide', { app: DISPLAY_NAME })}
+    </p>
+  )
+}
+
 /** Accesibilidad concedida y Pantalla no: explica el reinicio de inmediato y lo ofrece. */
 export function ScreenRestartNotice(): React.JSX.Element {
   const t = useT()
