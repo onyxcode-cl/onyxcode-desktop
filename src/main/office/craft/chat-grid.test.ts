@@ -175,3 +175,66 @@ describe('vista previa en PDF', () => {
     expect(await gridToPdf('/no/existe/gridcraft-cli', '/tmp/x.xlsx', '/tmp/x.pdf')).toBeNull()
   })
 })
+
+describe('formato condicional, congelado, anchos y validaciones', () => {
+  const base = (extra: object): unknown => ({
+    sheets: [{ name: 'V', rows: [['Nombre', 'Monto', 'Estado'], ['a', 5, 'ok'], ['b', 9, 'mal']], ...extra }]
+  })
+  it('valida lo bueno y rechaza lo malo', () => {
+    expect(
+      isXlsxSpec(
+        base({
+          freeze: 'both',
+          filter: true,
+          columnWidths: [20, null, 12],
+          conditional: [{ range: 'B2:B3', rule: 'greater', value: 6, color: 'amber' }, { range: 'C2:C3', rule: 'text', text: 'mal' }],
+          validations: [{ range: 'C2:C3', type: 'list', values: ['ok', 'mal'] }, { range: 'B2:B3', type: 'whole', min: 0, max: 100 }]
+        })
+      )
+    ).toBe(true)
+    for (const bad of [
+      { freeze: 'diagonal' },
+      { columnWidths: [200] },
+      { conditional: [{ range: 'B2:B3', rule: 'greater' }] },
+      { conditional: [{ range: 'B2:B3', rule: 'inventada' }] },
+      { conditional: [{ range: 'B2:B3', rule: 'above', color: 'azul' }] },
+      { validations: [{ range: 'C2:C3', type: 'list', values: ['a,b'] }] },
+      { validations: [{ range: 'B2:B3', type: 'whole', min: 5, max: 1 }] },
+      { validations: [{ range: 'B2:B3', type: 'custom', formula: '1' }] }
+    ])
+      expect(isXlsxSpec(base(bad))).toBe(false)
+  })
+  it('traduce a comandos de GridCraft', () => {
+    const c = cmds(
+      chatGridScript(
+        base({
+          freeze: 'both',
+          filter: true,
+          columnWidths: [20],
+          conditional: [{ range: 'B2:B3', rule: 'below' }],
+          validations: [{ range: 'C2:C3', type: 'list', values: ['ok', 'mal'] }]
+        }) as XlsxSpec
+      )
+    )
+    const by = (n: string) => c.filter((x) => x.command === n)
+    expect(by('view.freezePanes')[0].params).toEqual({ cell: 'B2' })
+    expect(by('view.freezeTopRow')).toHaveLength(0)
+    expect(by('data.filter')).toHaveLength(1)
+    expect(by('home.columnWidth')[0].params).toMatchObject({ cols: 'A:A', chars: 20 })
+    expect(by('data.validation')[0].params).toMatchObject({ type: 'list', formula1: 'ok,mal' })
+    const cf = by('home.conditionalFormat').find((x) => (x.params?.rule as { type: string }).type === 'aboveAverage')
+    expect(cf?.params?.rule).toMatchObject({ below: true, preset: 'lightRedFillDarkRedText' })
+  })
+  it('usa los operadores cortos de GridCraft (con lessThan salía «mayor que»)', () => {
+    const ops = (rule: string): unknown =>
+      (cmds(chatGridScript(base({ conditional: [{ range: 'B2:B3', rule, value: 2 }] }) as XlsxSpec)).find(
+        (x) => x.command === 'home.conditionalFormat' && (x.params?.rule as { type: string }).type === 'cellIs'
+      )?.params?.rule as { operator: string }).operator
+    expect(ops('greater')).toBe('greater')
+    expect(ops('less')).toBe('less')
+  })
+  it('sin freeze, mantiene la fila de encabezado congelada', () => {
+    expect(cmds(chatGridScript(base({}) as XlsxSpec)).some((x) => x.command === 'view.freezeTopRow')).toBe(true)
+    expect(cmds(chatGridScript(base({ freeze: 'none' }) as XlsxSpec)).some((x) => x.command === 'view.freezeTopRow')).toBe(false)
+  })
+})

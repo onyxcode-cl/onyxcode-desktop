@@ -108,9 +108,46 @@ export interface XlsxChartSpec {
   height?: number
 }
 
+export type XlsxFreeze = 'none' | 'row' | 'column' | 'both'
+export const XLSX_FREEZES: readonly XlsxFreeze[] = ['none', 'row', 'column', 'both']
+export type XlsxCondRule = 'above' | 'below' | 'greater' | 'less' | 'between' | 'text' | 'duplicates' | 'scale' | 'bars'
+export const XLSX_COND_RULES: readonly XlsxCondRule[] = ['above', 'below', 'greater', 'less', 'between', 'text', 'duplicates', 'scale', 'bars']
+export type XlsxCondColor = 'red' | 'green' | 'amber'
+export const XLSX_COND_COLORS: readonly XlsxCondColor[] = ['red', 'green', 'amber']
+export const MAX_XLSX_COND_PER_SHEET = 6
+export const MAX_XLSX_VALIDATIONS_PER_SHEET = 6
+export const MAX_XLSX_LIST_VALUES = 20
+
+/** Formato condicional nativo: `range` sin la fila de encabezado (p.ej. `"D2:D20"`). `value`/`value2` para greater/less/between; `text` para text. */
+export interface XlsxCondSpec {
+  range: string
+  rule: XlsxCondRule
+  value?: number
+  value2?: number
+  text?: string
+  color?: XlsxCondColor
+}
+
+/** Validación de datos nativa de un rango: lista desplegable, entero o decimal entre `min` y `max`. */
+export interface XlsxValidationSpec {
+  range: string
+  type: 'list' | 'whole' | 'decimal'
+  values?: string[]
+  min?: number
+  max?: number
+}
+
 export interface XlsxSheetSpec {
   name: string
   rows: XlsxCell[][]
+  /** Qué se congela al desplazarse: `row` (encabezado, lo normal), `column` (primera columna), `both` o `none`. */
+  freeze?: XlsxFreeze
+  /** Ancho por columna en caracteres (6–80); `null`/ausente = ajuste automático. */
+  columnWidths?: (number | null)[]
+  /** Filtros desplegables en el encabezado. */
+  filter?: boolean
+  conditional?: XlsxCondSpec[]
+  validations?: XlsxValidationSpec[]
   /** `columnFormats[i]` es el formato de la columna `i`; `null`/ausente = sin formato especial. */
   columnFormats?: (XlsxColumnFormat | null)[]
   /** Gráficos de esta hoja (hasta 4). */
@@ -413,6 +450,39 @@ function isXlsxChart(v: unknown): v is XlsxChartSpec {
   return dim(c.width) && dim(c.height)
 }
 
+function isCond(v: unknown): v is XlsxCondSpec {
+  if (!v || typeof v !== 'object') return false
+  const c = v as XlsxCondSpec
+  if (!onlyKeys(c, ['range', 'rule', 'value', 'value2', 'text', 'color'])) return false
+  if (typeof c.range !== 'string' || !(A1_RANGE.test(c.range) || /^[A-Z]{1,3}[1-9][0-9]{0,4}$/.test(c.range))) return false
+  if (!XLSX_COND_RULES.includes(c.rule)) return false
+  if (c.color !== undefined && !XLSX_COND_COLORS.includes(c.color)) return false
+  const num = (n: unknown): boolean => n === undefined || (typeof n === 'number' && Number.isFinite(n))
+  if (!num(c.value) || !num(c.value2)) return false
+  if (c.text !== undefined && (typeof c.text !== 'string' || c.text.length === 0 || c.text.length > 60)) return false
+  if ((c.rule === 'greater' || c.rule === 'less') && c.value === undefined) return false
+  if (c.rule === 'between' && (c.value === undefined || c.value2 === undefined)) return false
+  if (c.rule === 'text' && c.text === undefined) return false
+  return true
+}
+
+function isValidation(v: unknown): v is XlsxValidationSpec {
+  if (!v || typeof v !== 'object') return false
+  const c = v as XlsxValidationSpec
+  if (!onlyKeys(c, ['range', 'type', 'values', 'min', 'max'])) return false
+  if (typeof c.range !== 'string' || !(A1_RANGE.test(c.range) || A1_CELL.test(c.range))) return false
+  if (c.type === 'list') {
+    return (
+      Array.isArray(c.values) &&
+      c.values.length > 0 &&
+      c.values.length <= MAX_XLSX_LIST_VALUES &&
+      c.values.every((x) => typeof x === 'string' && x.length > 0 && x.length <= 40 && !/[,"]/.test(x))
+    )
+  }
+  if (c.type !== 'whole' && c.type !== 'decimal') return false
+  return typeof c.min === 'number' && typeof c.max === 'number' && Number.isFinite(c.min) && Number.isFinite(c.max) && c.min <= c.max
+}
+
 function isSheet(v: unknown): v is XlsxSheetSpec {
   if (
     !v ||
@@ -426,7 +496,26 @@ function isSheet(v: unknown): v is XlsxSheetSpec {
   const charts = (v as XlsxSheetSpec).charts
   if (charts !== undefined && (!Array.isArray(charts) || charts.length > MAX_XLSX_CHARTS_PER_SHEET || !charts.every(isXlsxChart)))
     return false
-  const formats = (v as XlsxSheetSpec).columnFormats
+  const sh = v as XlsxSheetSpec
+  if (sh.freeze !== undefined && !XLSX_FREEZES.includes(sh.freeze)) return false
+  if (sh.filter !== undefined && typeof sh.filter !== 'boolean') return false
+  if (
+    sh.columnWidths !== undefined &&
+    !(
+      Array.isArray(sh.columnWidths) &&
+      sh.columnWidths.length <= MAX_COLS_PER_ROW &&
+      sh.columnWidths.every((w) => w === null || (typeof w === 'number' && Number.isFinite(w) && w >= 6 && w <= 80))
+    )
+  )
+    return false
+  if (sh.conditional !== undefined && (!Array.isArray(sh.conditional) || sh.conditional.length > MAX_XLSX_COND_PER_SHEET || !sh.conditional.every(isCond)))
+    return false
+  if (
+    sh.validations !== undefined &&
+    (!Array.isArray(sh.validations) || sh.validations.length > MAX_XLSX_VALIDATIONS_PER_SHEET || !sh.validations.every(isValidation))
+  )
+    return false
+  const formats = sh.columnFormats
   return formats === undefined || isColumnFormats(formats)
 }
 

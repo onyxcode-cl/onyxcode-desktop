@@ -9,7 +9,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { XlsxCell, XlsxColumnFormat, XlsxSpec } from '@shared/chat-doc-spec'
+import type { XlsxCell, XlsxColumnFormat, XlsxCondColor, XlsxCondSpec, XlsxSpec } from '@shared/chat-doc-spec'
 import { runCraft } from './craft-run'
 
 const HEADER_FILL = '#1F3A5F'
@@ -50,6 +50,34 @@ function cellInput(c: XlsxCell): string | number | boolean | null {
   if (typeof c === 'number') return Number.isFinite(c) ? c : null
   if (typeof c === 'string') return /^['=]/.test(c) ? `'${c}` : c // texto literal: nunca fórmula
   return `=${c.formula.replace(/^=/, '')}`
+}
+
+const COND_PRESET: Record<XlsxCondColor, string> = { red: 'lightRedFillDarkRedText', green: 'greenFill', amber: 'yellowFill' }
+
+/** Regla de formato condicional de GridCraft para una del esquema. Sin `color`: rojo para «por debajo/menor», verde para el resto. */
+export function condRule(c: XlsxCondSpec): Record<string, unknown> {
+  const color: XlsxCondColor = c.color ?? (c.rule === 'below' || c.rule === 'less' ? 'red' : 'green')
+  const preset = COND_PRESET[color]
+  switch (c.rule) {
+    case 'above':
+      return { type: 'aboveAverage', preset }
+    case 'below':
+      return { type: 'aboveAverage', below: true, preset }
+    case 'greater':
+      return { type: 'cellIs', operator: 'greater', value: c.value, preset }
+    case 'less':
+      return { type: 'cellIs', operator: 'less', value: c.value, preset }
+    case 'between':
+      return { type: 'cellIs', operator: 'between', value: c.value, value2: c.value2, preset }
+    case 'text':
+      return { type: 'containsText', text: c.text, preset }
+    case 'duplicates':
+      return { type: 'duplicate', preset }
+    case 'scale':
+      return { type: 'colorScale' }
+    case 'bars':
+      return { type: 'dataBar' }
+  }
 }
 
 /** Guion de GridCraft (un comando JSON por línea) para todo el libro. Asume `XlsxSpec` ya validado (`isXlsxSpec`). */
@@ -112,6 +140,25 @@ export function chatGridScript(spec: XlsxSpec): string {
         cmd('home.numberFormat', { range: `${colLetter(k)}2:${colLetter(k)}${sheet.rows.length}`, code: NUM_CODES[f] })
     })
     cmd('home.autofitColumnWidth', { cols: `A:${last}` })
+    // Ancho fijo por columna cuando el encargo lo pide (si no, queda el ajuste automático de arriba).
+    sheet.columnWidths?.forEach((w, k) => {
+      if (w !== null && w !== undefined && k < width) cmd('home.columnWidth', { cols: `${colLetter(k)}:${colLetter(k)}`, chars: w })
+    })
+    for (const c of sheet.conditional ?? []) cmd('home.conditionalFormat', { range: c.range, rule: condRule(c) })
+    for (const v of sheet.validations ?? []) {
+      if (v.type === 'list') cmd('data.validation', { range: v.range, type: 'list', formula1: v.values!.join(','), dropdown: true, errorStyle: 'stop' })
+      else
+        cmd('data.validation', {
+          range: v.range,
+          type: v.type,
+          operator: 'between',
+          formula1: String(v.min),
+          formula2: String(v.max),
+          errorStyle: 'stop',
+          errorMessage: `Ingresa un valor entre ${v.min} y ${v.max}`
+        })
+    }
+    if (sheet.filter && sheet.rows.length > 1) cmd('data.filter', { range: all })
     // Gráficos nativos: sin `at`, a la derecha de los datos (dejando una columna libre), uno debajo de otro.
     sheet.charts?.forEach((ch, k) => {
       cmd('insert.chart', {
@@ -124,7 +171,10 @@ export function chatGridScript(spec: XlsxSpec): string {
       })
     })
     cmd('view.gridlines', { on: false })
-    if (sheet.rows.length > 1) cmd('view.freezeTopRow')
+    const freeze = sheet.freeze ?? (sheet.rows.length > 1 ? 'row' : 'none')
+    if (freeze === 'row' && sheet.rows.length > 1) cmd('view.freezeTopRow')
+    else if (freeze === 'column') cmd('view.freezeFirstColumn')
+    else if (freeze === 'both') cmd('view.freezePanes', { cell: 'B2' })
   })
   cmd('sheet.activate', { sheet: names[0] })
   return lines.join('\n') + '\n'
