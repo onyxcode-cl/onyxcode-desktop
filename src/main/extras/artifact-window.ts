@@ -11,6 +11,7 @@
  * - webRequest cancela cualquier petición http(s)/ws/file desde esa sesión; permisos denegados;
  *   navegación y ventanas nuevas bloqueadas.
  */
+import { basePdfOptions, pdfPrintOptions } from './pdf-options'
 import { t } from '@shared/i18n'
 import { app, BrowserWindow, clipboard, dialog, Menu, net, session, type Session } from 'electron'
 import { writeFile } from 'node:fs/promises'
@@ -257,7 +258,16 @@ export async function renderHtmlToPdf(html: string, title = 'Documento', opts: {
       new Promise((resolve) => setTimeout(resolve, 3000))
     ])
     await new Promise((resolve) => setTimeout(resolve, 250))
-    return await Promise.race([wc.printToPDF({ printBackground: true, pageSize: 'A4', preferCSSPageSize: true }), timeout])
+    // PDF etiquetado y con marcadores (experimental en Electron): si esa impresión falla, se reintenta sin ellos para no perder el PDF.
+    const print = async (): Promise<Buffer> => {
+      try {
+        return await wc.printToPDF(pdfPrintOptions())
+      } catch (e) {
+        console.warn('[pdf] impresión con PDF etiquetado falló; se reintenta sin él:', e instanceof Error ? e.message : e)
+        return await wc.printToPDF({ ...basePdfOptions })
+      }
+    }
+    return await Promise.race([print(), timeout])
   } finally {
     if (timer) clearTimeout(timer)
     artifacts.delete(id)
