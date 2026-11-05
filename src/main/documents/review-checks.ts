@@ -59,6 +59,10 @@ export interface PptxTextShape {
   name: string
   box: Box | null
   placeholder: string | null
+  /** Alineación del primer párrafo: `l`, `r`, `ctr` o `just` (`null` = la del tema, normalmente izquierda). */
+  align: string | null
+  /** Anclaje vertical del texto en su caja: `t`, `ctr` o `b` (`null` = arriba). */
+  anchor: string | null
   fill: string | null
   runs: PptxRun[]
 }
@@ -103,6 +107,8 @@ export function pptxTextShapes(slideXml: string): PptxTextShape[] {
       name: attr(/<p:cNvPr\b[^>]*>/.exec(sp)?.[0] ?? '', 'name') ?? 'forma',
       box: geom ? { x, y, w, h } : null,
       placeholder: /<p:ph\b[^>]*?\stype="([^"]+)"/.exec(sp)?.[1] ?? null,
+      align: /<a:pPr\b[^>]*?\salgn="([^"]+)"/.exec(sp)?.[1] ?? null,
+      anchor: /<a:bodyPr\b[^>]*?\sanchor="([^"]+)"/.exec(sp)?.[1] ?? null,
       // Relleno propio de la forma: lo que va en spPr ANTES del contorno (`<a:ln>`).
       fill: solidHex(spPr.split('<a:ln')[0]),
       runs
@@ -187,4 +193,26 @@ export function formulaSheetRefs(formula: string): string[] {
   const noStrings = formula.replace(/"(?:[^"]|"")*"/g, '""')
   for (const m of noStrings.matchAll(/(?:'((?:[^']|'')+)'|([A-Za-z_][\w.]*))!/g)) out.push((m[1] ?? m[2]).replace(/''/g, "'"))
   return out
+}
+
+/**
+ * ¿El TEXTO (no la caja entera) queda a menos de `edge` del borde de la lámina? La caja puede llegar al borde sin que el texto lo haga:
+ * un texto alineado a la izquierda solo se acerca al borde izquierdo, uno a la derecha solo al derecho, y uno centrado o anclado al
+ * medio no se mide (no se sabe dónde cae). Sin la forma del texto real, solo se avisa cuando el lado medible lo justifica.
+ */
+export function textNearEdge(
+  shape: Pick<PptxTextShape, 'box' | 'align' | 'anchor'>,
+  slideW: number,
+  slideH: number,
+  edge: number
+): boolean {
+  const b = shape.box
+  if (!b) return false
+  const align = shape.align ?? 'l'
+  const anchor = shape.anchor ?? 't'
+  const left = (align === 'l' || align === 'just') && b.x < edge
+  const right = (align === 'r' || align === 'just') && b.x + b.w > slideW - edge
+  const top = anchor === 't' && b.y < edge
+  const bottom = anchor === 'b' && b.y + b.h > slideH - edge
+  return left || right || top || bottom
 }

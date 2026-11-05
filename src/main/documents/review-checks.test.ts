@@ -7,7 +7,8 @@ import {
   pptxBackground,
   pptxContrastProblems,
   pptxTextShapes,
-  templateLeftovers
+  templateLeftovers,
+  textNearEdge
 } from './review-checks'
 
 describe('restos de plantilla', () => {
@@ -93,5 +94,29 @@ describe('Excel: hojas a las que apunta una fórmula', () => {
     expect(formulaSheetRefs("SUM(Hoja2!A1:A9)+'Ventas 2026'!B3")).toEqual(['Hoja2', 'Ventas 2026'])
     expect(formulaSheetRefs('IF(A1="Datos!",1,0)')).toEqual([])
     expect(formulaSheetRefs('SUM(A1:A9)')).toEqual([])
+  })
+})
+
+describe('texto cerca del borde: se mide el texto, no la caja entera', () => {
+  const W = 12192000
+  const H = 6858000
+  const EDGE = 274320
+  const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h })
+  it('una caja ancha pegada al borde derecho NO avisa si el texto va a la izquierda', () => {
+    expect(textNearEdge({ box: box(914400, 914400, W - 914400 - 100000, 500000), align: 'l', anchor: 't' }, W, H, EDGE)).toBe(false)
+  })
+  it('a la izquierda sí avisa; a la derecha solo con alineación a la derecha', () => {
+    expect(textNearEdge({ box: box(100000, 914400, 3000000, 500000), align: 'l', anchor: 't' }, W, H, EDGE)).toBe(true)
+    expect(textNearEdge({ box: box(8000000, 914400, W - 8000000 - 100000, 500000), align: 'r', anchor: 't' }, W, H, EDGE)).toBe(true)
+    expect(textNearEdge({ box: box(8000000, 914400, W - 8000000 - 100000, 500000), align: 'l', anchor: 't' }, W, H, EDGE)).toBe(false)
+  })
+  it('centrado o anclado al medio no se mide; arriba y abajo según el anclaje', () => {
+    expect(textNearEdge({ box: box(100000, 914400, W - 200000, 500000), align: 'ctr', anchor: 'ctr' }, W, H, EDGE)).toBe(false)
+    expect(textNearEdge({ box: box(914400, 50000, 3000000, 500000), align: 'l', anchor: 't' }, W, H, EDGE)).toBe(true)
+    expect(textNearEdge({ box: box(914400, 50000, 3000000, 500000), align: 'l', anchor: 'b' }, W, H, EDGE)).toBe(false)
+    expect(textNearEdge({ box: box(914400, H - 600000, 3000000, 560000), align: 'l', anchor: 'b' }, W, H, EDGE)).toBe(true)
+  })
+  it('sin caja no se juzga', () => {
+    expect(textNearEdge({ box: null, align: null, anchor: null }, W, H, EDGE)).toBe(false)
   })
 })

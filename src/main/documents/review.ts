@@ -20,6 +20,7 @@ import {
   pptxContrastProblems,
   pptxTextShapes,
   templateLeftovers,
+  textNearEdge,
   type ContrastProblem
 } from './review-checks'
 
@@ -234,14 +235,16 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
         else if (run.sizePt < 12) smallish.push(String(i + 1))
       }
       // El número de página («02», «2 / 9») pegado a la esquina es normal: no se avisa.
-      const b = ts.runs.every((r) => /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(r.text)) ? null : ts.box
+      const pageNumber = ts.runs.every((r) => /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(r.text))
+      const b = ts.box
       if (
+        !pageNumber &&
         b &&
         b.x >= -TOL &&
         b.y >= -TOL &&
         b.x + b.w <= sw + TOL &&
         b.y + b.h <= sh + TOL &&
-        (b.x < EDGE || b.y < EDGE || b.x + b.w > sw - EDGE || b.y + b.h > sh - EDGE)
+        textNearEdge(ts, sw, sh, EDGE)
       )
         tight.push(`${i + 1} («${ts.name}»)`)
     }
