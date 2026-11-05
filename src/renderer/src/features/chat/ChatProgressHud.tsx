@@ -1,6 +1,6 @@
 /**
- * HUD flotante "Progreso": arriba a la derecha de la columna de CHAT (nunca del panel de documento
- * — ese es una vista nativa que pinta encima del DOM; ver `useChatDocViewport.ts`). Muestra la señal
+ * HUD "Progreso": va EN la cabecera del CHAT, entre el título y los iconos, ocupando su propio sitio (antes flotaba
+ * encima y tapaba los iconos). Nunca en el panel de documento — ese es una vista nativa que pinta encima del DOM; ver `useChatDocViewport.ts`. Muestra la señal
  * de `useChatProgress` (razonando o generando un documento) con un cronómetro en vivo, mismo patrón
  * que `Elapsed` en `features/tasks/impl/TasksWorkspace.tsx`.
  */
@@ -34,7 +34,7 @@ export function ChatProgressHud({ entries, busy }: { entries: MessageEntry[]; bu
     <div
       role="status"
       aria-live="polite"
-      className="no-drag absolute top-3 right-3 z-10 hidden desk:right-[calc(var(--controls-inset,0px)+12px)] max-w-[260px] items-center gap-2 rounded-lg border border-border bg-elevated/95 px-2.5 py-1.5 text-[12.5px] shadow-md backdrop-blur desk:flex"
+      className="no-drag hidden max-w-[260px] shrink-0 items-center gap-2 rounded-lg border border-border bg-elevated/95 px-2.5 py-1.5 text-[12.5px] shadow-md backdrop-blur desk:flex"
     >
       <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
       <span className="min-w-0 flex-1 truncate font-medium">{progress.label}</span>
