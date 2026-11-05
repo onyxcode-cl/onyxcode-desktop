@@ -37,9 +37,9 @@ describe('inicio con la bandera', () => {
     expect(html).not.toContain('El computador completo')
     expect(html).toContain('Chat sin carpeta')
     expect(html).toContain('Manual')
-    expect(html).toContain('data-testid="unified-advanced"')
-    expect(html).toContain('Avanzado: sin aislamiento')
-    expect(html).toContain('ya no quedarían en una carpeta')
+    // «Avanzado: sin aislamiento» ya no está en la portada: vive en Ajustes › Overdrive.
+    expect(html).not.toContain('unified-advanced')
+    expect(html).not.toContain('Avanzado: sin aislamiento')
   })
   it('sin la bandera: el selector de siempre y nada del modo unificado', () => {
     const html = home()
@@ -48,7 +48,7 @@ describe('inicio con la bandera', () => {
     expect(html).not.toContain('unified-advanced')
     expect(html).not.toContain('Chat sin carpeta')
   })
-  it('con la carpeta del chat el inicio no dice «Trabajará dentro de …», el chip dice «Chat sin carpeta» y «Avanzado» se ve como enlace', () => {
+  it('con la carpeta del chat el inicio no dice «Trabajará dentro de …», el chip dice «Chat sin carpeta» y la portada no ofrece «Avanzado»', () => {
     o.unified = true
     useUnified.setState({ chatFolder: '/Users/x/Lazunox/Chats/20261027-d82fb4' })
     o.patch = { folder: '/Users/x/Lazunox/Chats/20261027-d82fb4', phase: 'ready' }
@@ -59,7 +59,7 @@ describe('inicio con la bandera', () => {
     expect(html).toContain('Chat sin carpeta')
     expect(html).not.toContain('chat nuevo')
     expect(html).toContain('Escribe lo que necesitas')
-    expect(html).toMatch(/data-testid="unified-advanced"[^>]*class="[^"]*text-accent[^"]*underline/)
+    expect(html).not.toContain('unified-advanced')
     useUnified.setState({ chatFolder: null })
   })
   it('sin carpeta las sugerencias no dicen «esta carpeta»', () => {

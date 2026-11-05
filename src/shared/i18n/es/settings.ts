@@ -468,14 +468,14 @@ export const settings = {
   'settings.engine.always.revoked': 'Listo: se quitó ese permiso.',
   'settings.engine.always.gone': 'Ese permiso ya no estaba guardado.',
   'settings.engine.always.truncated': 'Se muestran solo los primeros {n}. Usa «Olvidar los permisos guardados» para borrar el resto.',
-  'settings.engine.always.sandboxNote': 'No incluye los permisos de los espacios aislados del modo Tareas.',
+  'settings.engine.always.sandboxNote': 'No incluye los permisos de los espacios aislados de Overdrive.',
   'settings.engine.hooks.title': 'Ganchos',
   'settings.engine.hooks.desc':
     'Comandos tuyos que se ejecutan solos antes o después de que la IA use una herramienta, al compactar la conversación o al terminar un turno. Sirven, por ejemplo, para bloquear comandos peligrosos.',
   'settings.engine.hooks.warning': 'Los ganchos ejecutan comandos con tus permisos. Solo pon aquí lo que tú entiendas.',
   'settings.engine.hooks.toggle': 'Activar ganchos',
   'settings.engine.hooks.toggleDesc':
-    'Apagado por defecto. Al cambiarlo, el motor se reinicia cuando no haya nada en curso; editar los ganchos con el interruptor encendido no lo reinicia. No se aplican en el sandbox de Tareas (solo en Chat, Code y Tareas con Control total).',
+    'Apagado por defecto. Al cambiarlo, el motor se reinicia cuando no haya nada en curso; editar los ganchos con el interruptor encendido no lo reinicia. No se aplican en el sandbox de Overdrive (solo en Chat, Code y Overdrive con Control total).',
   'settings.engine.hooks.editorLabel': 'Archivo de ganchos (JSON)',
   'settings.engine.hooks.editorHelp':
     'Eventos: PreToolUse (antes de una herramienta; el código de salida 2 la bloquea), PostToolUse, PreCompact (antes de compactar la conversación), PostCompact (después de compactarla; lo que imprima con código 0, hasta 4000 caracteres, se suma al contexto que se conserva) y Stop. «matcher» es una expresión regular sobre el nombre de la herramienta; «timeout» va de 1 a 60 segundos. Máximo 20 ganchos por evento, comando de hasta 2000 caracteres y 64 KB en total.',

@@ -107,7 +107,7 @@ export const wizard = {
   'wizard.setup.runtimes.hint':
     'Two programs used by the email, calendar and files connectors. Downloaded once (about {mb} MB) from nodejs.org and github.com and checked before use. It does not ask for an administrator password.',
   'wizard.setup.runtimes.retryHint': 'Press “Try again” or do it later from Settings. Without this only those connectors fail.',
-  'wizard.setup.sandbox.hint': 'Optional, only for Tasks mode. Set up once (about 2 GB of disk), using what the app already includes.',
+  'wizard.setup.sandbox.hint': 'Optional, only for Overdrive. Set up once (about 2 GB of disk), using what the app already includes.',
   'wizard.setup.run': 'Set everything up',
   'wizard.setup.running': 'Setting up…',
   'wizard.setup.done': 'All set',
@@ -215,9 +215,9 @@ export const wizard = {
   'preflight.hint.runtimes.broken':
     'Some pieces are missing or damaged; they are downloaded again (about {mb} MB) from nodejs.org and github.com and verified before use.',
   'preflight.hint.sandbox.needsSetup':
-    'Optional, only for Tasks mode. Set up once (about 2 GB of disk), using what the app already includes.',
+    'Optional, only for Overdrive. Set up once (about 2 GB of disk), using what the app already includes.',
   'preflight.hint.sandbox.broken':
-    'Optional, only for Tasks mode. The environment is damaged; it is set up again from what the app includes.',
+    'Optional, only for Overdrive. The environment is damaged; it is set up again from what the app includes.',
   'preflight.hint.sandbox.other':
     'Needs Windows features turned on (WSL or virtualization). The steps are in Overdrive; you can continue and do it later.',
   'preflight.hint.helper.not-found': 'The {app} control helper was not found. Reinstall the app to be able to control the computer.',

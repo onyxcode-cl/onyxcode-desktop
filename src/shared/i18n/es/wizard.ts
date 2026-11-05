@@ -105,7 +105,7 @@ export const wizard = {
   'wizard.setup.runtimes.retryHint': 'Pulsa «Reintentar» o hazlo después desde Ajustes. Sin esto solo fallan esos conectores.',
   'wizard.setup.sandbox': 'Entorno aislado de Overdrive',
   'wizard.setup.sandbox.hint':
-    'Opcional, solo para el modo Tareas. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
+    'Opcional, solo para Overdrive. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'wizard.setup.run': 'Preparar todo',
   'wizard.setup.running': 'Preparando…',
   'wizard.setup.done': 'Todo listo',
@@ -212,9 +212,9 @@ export const wizard = {
   'preflight.hint.runtimes.broken':
     'Hay piezas que faltan o están dañadas; se vuelven a descargar (unos {mb} MB) de nodejs.org y github.com y se verifican antes de usarlas.',
   'preflight.hint.sandbox.needsSetup':
-    'Opcional, solo para el modo Tareas. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
+    'Opcional, solo para Overdrive. Se prepara una sola vez (unos 2 GB de disco), con lo que ya trae la app.',
   'preflight.hint.sandbox.broken':
-    'Opcional, solo para el modo Tareas. El entorno está dañado; se vuelve a preparar con lo que trae la app.',
+    'Opcional, solo para Overdrive. El entorno está dañado; se vuelve a preparar con lo que trae la app.',
   'preflight.hint.sandbox.other':
     'Necesita activar funciones de Windows (WSL o virtualización). Los pasos están en Overdrive; puedes continuar y hacerlo después.',
   'preflight.hint.helper.not-found': 'No se encontró el ayudante de control de {app}. Reinstala la app para poder controlar el equipo.',
