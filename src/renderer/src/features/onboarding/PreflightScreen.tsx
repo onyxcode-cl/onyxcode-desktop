@@ -88,7 +88,9 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const anyFailed = Object.values(runtime).some((r) => r?.state === 'failed')
   const location = report.components.find((c) => c.id === 'location' && !c.ok)?.reason
   const perms = report.components.find((c) => c.id === 'perms')
-  const allDone = block.length === 0 && (stage === 'install' ? choices.length === 0 : optional.length === 0)
+  // «Ubicación de la app» es un aviso (tiene su propia nota), no una tarea pendiente: por sí sola no quita el botón «Continuar».
+  const todo = optional.filter((c) => c.id !== 'location')
+  const allDone = block.length === 0 && (stage === 'install' ? choices.length === 0 : todo.length === 0)
   const guided = stage === 'install' && p.onAcceptAll !== undefined
   const permsPending = stage === 'perms' && report.components.some((c) => c.id === 'perms' && !c.ok)
   const size = sizeParts(bytes)
@@ -274,7 +276,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
             <RefreshCw size={14} /> {t('preflight.recheck')}
           </Button>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {(stage === 'perms' ? permsPending : optional.length > 0) && canContinue(report, runtime) && (
+            {(stage === 'perms' ? permsPending : optional.length > 0) && !allDone && canContinue(report, runtime) && (
               <Button variant="secondary" onClick={p.onContinue}>
                 {t('preflight.continueAnyway')}
               </Button>

@@ -1329,7 +1329,17 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
       askAccessibility: () => systemPreferences.isTrustedAccessibilityClient(true),
       screenGranted: () => systemPreferences.getMediaAccessStatus('screen') === 'granted',
       triggerScreen: async () => {
-        await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } })
+        // macOS 15+ solo añade la app a Grabación de pantalla cuando se INTENTA una captura: se prueban, en orden, la petición
+        // desde la app principal, la del ayudante (que atribuye a la app responsable) y una captura real mínima con ScreenCaptureKit.
+        // Mientras el permiso falte, la captura falla y no se guarda nada; si se concediera al instante, el archivo se borra enseguida.
+        await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 256, height: 256 } }).catch(() => undefined)
+        const bin = this.helperPath()
+        if (!bin || systemPreferences.getMediaAccessStatus('screen') === 'granted') return
+        await runHelper(bin, ['request-permissions'], 15_000).catch(() => undefined)
+        if (systemPreferences.getMediaAccessStatus('screen') === 'granted') return
+        const shot = join(app.getPath('temp'), `lzx-perm-${process.pid}.png`)
+        await runHelper(bin, ['screenshot-sck', shot], 15_000).catch(() => undefined)
+        rmSync(shot, { force: true })
       },
       openPane: async (pane) => {
         await shell.openExternal(pane === 'accessibility' ? PANE_ACCESSIBILITY : PANE_SCREEN)
