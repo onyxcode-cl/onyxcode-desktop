@@ -247,3 +247,12 @@ describe('portada', () => {
     expect(isDocxSpec({ blocks: [{ type: 'paragraph', text: 'x' }], cover: true })).toBe(false)
   })
 })
+
+describe('tablas con aire en las celdas', () => {
+  it('cada tabla fija los márgenes de celda justo después de crearse', () => {
+    const c = chatDocxCommands({ blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 1]] }] } as DocxSpec)
+      .flat()
+      .map((l) => l.split('=')[0])
+    expect(c[c.indexOf('insert.table') + 1]).toBe('table.cellMargins')
+  })
+})

@@ -162,6 +162,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
           ...b.rows.map((r) => r.map((v) => (v === null ? '' : typeof v === 'number' ? fmtNum(v, b.decimals) : v)))
         ]
         cmd('insert.table', { rows: cells.length, cols: n })
+        cmd('table.cellMargins', { top: 3, bottom: 3, left: 6, right: 6 }) // aire en cada celda: el texto no pega con la línea
         cells.forEach((row, r) => {
           const total = !!b.total_row && r === cells.length - 1
           row.forEach((v, k) => {
